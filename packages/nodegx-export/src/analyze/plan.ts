@@ -635,11 +635,34 @@ export type HandlerAction =
       /** The `const` the omittable form collects into; unused when every value is present. */
       queryLocal: string;
       /**
-       * `Open In New Tab`, as an authored literal. ⚠️ **`default: false` here and `default: true`
-       * on `External Link`** — the two nodes look like a pair and their unset state lands on
-       * opposite sides.
+       * 🔴 **This field means “the new-tab arm is reachable”, not “the port is on”** (EXP-011 §18,
+       * session 47). Every consumer already asks it that question — is `Failure` live, is `Error`
+       * writable, is `Completed` a join, is there an outcome to bind — and a wired port answers
+       * all four the same way an authored `true` does, because the tab can still be refused.
+       * What a wire adds is that the *other* arm is reachable too, and that is {@link newTabExpr}
+       * rather than a second reading of this one.
+       *
+       * ⚠️ **`default: false` here and `default: true` on `External Link`** — the two nodes look
+       * like a pair and their unset state lands on opposite sides.
        */
       newTab: boolean;
+      /**
+       * The wired `Open In New Tab`, as the expression the emitted handler branches on — set
+       * **only** where the port carries a wire, which is the only way both of this node's two
+       * actions become reachable in one handler (EXP-011 §18).
+       *
+       * 🔴 **The port is answerable because the runtime reads it exactly once, as `!!value`**
+       * (`navigate-to-path.ts:89`, an input `set` that stores a boolean), and `navigate` then
+       * reads that stored boolean (`:204`). ⚠️ `External Link`'s identically-named port is read
+       * **two different ways in two adjacent lines** — truthiness for the features string and
+       * strict equality for the target — which is why a wire defers there and translates here.
+       * The two nodes are not a pair on this port either.
+       *
+       * It is a truthiness sink, so a logic truth value lands here rather than deferring on the
+       * standing rule: the emitted read is the `if` test itself, which coerces exactly as `!!`
+       * does. Read **once**, at the top of the handler, so there is no local to bind it to.
+       */
+      newTabExpr?: ValueExpr;
       /**
        * The `const` the `window.open` result binds to. Emitted only where something branches on
        * it: a new tab with no chains and no Error row is the bare call the graph asked for.
@@ -5719,16 +5742,27 @@ function planComponent(
    * already committed to writing them as a real path (a `BrowserRouter` over `<Route path=…>`,
    * which is also what `RouterNavigate` has always assumed).
    *
-   * Four refusals, each about a mechanism:
+   * 🔴 **The list below said `Open In New Tab` defers "whose success test is the transient user
+   * activation and not the return value" until EXP-011 §18 (session 47), which is the sentence
+   * §17.1 was written to kill — and it survived the session that killed it, in this function's
+   * own header, twenty lines above the block refuting it.** §17 rewrote the deferral *string*
+   * and the ledger row and left the prose that had taught it. **A correction has to be applied
+   * to every place the claim was written, and the grep for that is the claim, not the code that
+   * returned it.**
    *
-   * - **`Open In New Tab` defers** — that arm is `window.open`, whose success test is the
-   *   transient user activation and not the return value (DEF-016, §14.1), plus a blocked-tab
-   *   `Error` row. That is `External Link`'s slice, not a flag on this one.
+   * Three refusals now, each about a mechanism:
+   *
    * - **A wired or absent `Path` defers** — every placeholder, the port list the editor draws
    *   and the whole url are derived from its text, so a path that is not known here is a node
    *   whose shape is not known here.
-   * - **`Error` defers** — see below; for the only shape this admits, nothing can write it.
-   * - **A `p-`/`q-` value that is a logic truth value defers**, on the standing rule.
+   * - **An `Error` read defers where no tab can open** — with `Open In New Tab` off *and*
+   *   unwired, the Path gate excludes the missing-path write and there is no tab to block, so
+   *   the row would be a string nothing ever writes.
+   * - **A `p-`/`q-` value that is a logic truth value defers**, on the standing rule. ⚠️ Not
+   *   `Open In New Tab`, which is a **truthiness sink** — see the block that resolves it.
+   *
+   * `Open In New Tab` itself translates in all three of its states: off (`navigate`), on
+   * (`window.open`), and **wired** (both, under a runtime branch — §18).
    */
   const compileNavigateToPath = (node: NodeIR): CompiledSink => {
     const ctx = newCtx();
@@ -5757,18 +5791,6 @@ function planComponent(
      * the runtime file's side so the two cannot drift apart silently.
      */
     const newTab = literalParam(node, 'openInNewTab') === true;
-    if (wiredPorts.has(`${node.id}:openInNewTab`)) {
-      /**
-       * Deferred by **scope, not by mechanism**, and the distinction is worth the sentence: the
-       * runtime reads this port exactly once, as `!!value` (`navigate-to-path.ts:89`), so a
-       * wired value is perfectly answerable — unlike `External Link`'s identically-named port,
-       * which is read two ways in two adjacent lines and genuinely cannot be. What a wire costs
-       * here is that both actions become reachable in one handler, so the emitted code needs
-       * `pushState` and `window.open` under a runtime branch with two different outcome sets
-       * beneath them. That is a slice, not a flag.
-       */
-      return { defer: 'scheduled — its Open In New Tab is wired, so both of the node’s two actions are reachable in one handler: a same-tab pushState that cannot fail and a window.open that can, each with its own outcome set. The port itself is answerable — the runtime reads it once, as `!!value` — so this is deferred by scope rather than by mechanism' };
-    }
 
     if (wiredPorts.has(`${node.id}:path`)) {
       return { defer: 'its Path is wired — the braced segments of the path text are what mint this node’s parameter ports, so a path that is not known here has no known ports either' };
@@ -5780,6 +5802,49 @@ function planComponent(
     if (wiredPorts.has(`${node.id}:queryNames`)) {
       return { defer: 'its Query list is wired — the list is an edit-only stringlist and is what mints the query ports' };
     }
+
+    /**
+     * 🔴 **The wired `Open In New Tab` (EXP-011 §18, session 47) — the arm §17.4 deferred, and
+     * it deferred by scope rather than by mechanism.** The port was always answerable: the
+     * runtime reads it **once**, as `!!value` in the input's own `set` (`navigate-to-path.ts:89`),
+     * and `navigate` then branches on the boolean that stored (`:204`). What a wire costs is that
+     * both of this node's two actions become reachable in one handler — a `pushState` that cannot
+     * fail and a `window.open` that can — which is the branch this slice builds.
+     *
+     * ⚠️ **Resolved with its own three lines rather than through {@link valueOf}, and the
+     * difference is the point.** `valueOf` defers a logic truth value on the standing rule,
+     * which is right for a `p-`/`q-` **value** — those are interpolated into a url, where a
+     * `true` would print the word. This port is a **truthiness sink**: the emitted read is the
+     * `if` test itself and coerces exactly as the runtime's `!!` does, so a Condition feeding it
+     * translates. The list at Pass 4f's `truthinessSink` says the same thing about `enabled`,
+     * `visible` and `mounted`, for the same reason.
+     *
+     * ⚠️ **The wire alone decides, and an authored literal beside it is not consulted** (§10.3's
+     * precedence): the runtime's port holds whichever value arrived last, and a wire that
+     * delivers is always after the value the project file was loaded with.
+     *
+     * 🔴 **Read once, at the top of the handler, so there is no local.** That is faithful only
+     * because it is what the runtime does — the value is read before the arm is chosen and
+     * nothing between the two can change it.
+     */
+    let newTabExpr: ValueExpr | undefined;
+    const newTabWire = component.connections.find((c) => c.toId === node.id && c.toProperty === 'openInNewTab');
+    if (newTabWire !== undefined) {
+      const resolved = resolveExpr(nodeById.get(newTabWire.fromId), newTabWire.fromProperty, ctx);
+      if (resolved === null) {
+        return { defer: ctx.defer ?? 'its Open In New Tab port has no statically known source' };
+      }
+      newTabExpr = resolved;
+      consumes.push(newTabWire.key);
+    }
+    /**
+     * 🔴 **The question every gate below actually asks is “can this open a tab”, never “is the
+     * port on”.** A wired port can be either at runtime, so the tab can be refused and `Failure`,
+     * `Error` and the join beneath `Completed` are all as live as they are for an authored `true`.
+     * Writing `newTab` in those places instead is the shape that silently drops a chain the app
+     * runs — which is exactly what §15's unconditional Failure `notes.push` did before §17.
+     */
+    const canNewTab = newTab || newTabExpr !== undefined;
 
     /**
      * The `Done` and `Completed` wires are the two that translate. The other three are handled
@@ -5800,7 +5865,7 @@ function planComponent(
        * when the read resolves, which runs passes after this; here the wire is only consumed.
        */
       if (wire.fromProperty === 'error') {
-        if (!newTab) {
+        if (!canNewTab) {
           return { defer: 'its Error output is read, and with Open In New Tab off neither of the node’s two failures can fire — the Path gate excludes the missing-path write and there is no tab to block — so the row would be a string nothing ever writes' };
         }
         /**
@@ -5833,7 +5898,7 @@ function planComponent(
        * a `notes.push` that kept firing after the arm opened would silently delete a chain the
        * app runs.
        */
-      if (wire.fromProperty === 'failure' && !newTab) {
+      if (wire.fromProperty === 'failure' && !canNewTab) {
         notes.push(
           `wire ${wire.key} dropped: Navigate To Path's Failure chain is dead — a literal Path cannot be missing and Open In New Tab is off, so neither of the node's two failures can fire (navigate-to-path.ts)`
         );
@@ -5933,7 +5998,7 @@ function planComponent(
      * consumed by the drop above — asking for the chain here as well would consume one wire key
      * twice, which is the double-count `EMPTY` deferrals are made of.
      */
-    const fail = newTab ? ('defer' in done ? done : doneChainOf(node, 'failure')) : { then: [], consumes: [], collapses: [], subscribes: [] };
+    const fail = canNewTab ? ('defer' in done ? done : doneChainOf(node, 'failure')) : { then: [], consumes: [], collapses: [], subscribes: [] };
     const completed = 'defer' in fail ? fail : doneChainOf(node, 'completed');
     navigatePathChainScope.delete(node.id);
     if ('defer' in done) return { defer: done.defer };
@@ -5950,7 +6015,9 @@ function planComponent(
         pathParams,
         query,
         queryLocal: navigatePathLocalOf(node),
-        newTab,
+        // “the new-tab arm is reachable”, which a wire makes true whatever it delivers (§18).
+        newTab: canNewTab,
+        newTabExpr,
         openedLocal: navigatePathOpenedLocalOf(node),
         then: done.then,
         // In-tab the chain is dropped above with a note; nothing can reach it.
@@ -6392,6 +6459,11 @@ function planComponent(
         case 'navigate-path':
           return (
             [...action.pathParams, ...action.query].every((p) => exprValidIn(p.expr, context, invokedScope)) &&
+            // EXP-011 §18. The wired `Open In New Tab` is a **third** expression on this action,
+            // read in the same scope as the url is built in — so it owes the same answer, and
+            // omitting it is the `return true` the comment above is about, arriving on a field
+            // instead of a kind.
+            (action.newTabExpr === undefined || exprValidIn(action.newTabExpr, context, invokedScope)) &&
             actionsValidIn([...action.then, ...action.failThen, ...action.completedThen], context, invokedScope)
           );
         case 'output-signal':

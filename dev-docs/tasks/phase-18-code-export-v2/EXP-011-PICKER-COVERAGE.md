@@ -1916,3 +1916,189 @@ and already showing that text, which is why the arm needed D2 to be a row at all
 - **`actionExprsOf`'s `usesPayload` walk (§17.3)** — closed in shape, unproven in fact. A firing
   case needs an `Event Sender` declaring a channel payload; whoever builds one should check it.
 - **The component stack pair** — Tier 3, behind `Page Stack`, exactly as §16 left them.
+
+## §18 Tier 2.5 continued — the wired `Open In New Tab`, and a correction that outlived the session that made it (session 47, 2026-08-29)
+
+**69 of 127 (54.3%)** — unchanged, and deliberately so. This is the third increment on a node the
+ledger already counts, and `Open In New Tab` now translates in **all three** of its states: off
+(`navigate`), on (`window.open`), and **wired** (both, under a runtime branch).
+
+§17.4 deferred this by **scope rather than by mechanism**, and that distinction turned out to be
+the whole of the work: nothing had to be learned about the runtime, only built.
+
+### §18.1 🔴 The sentence §17 killed was still in the file, in the function it was about
+
+§17.1 is the most-cited paragraph in this document: §15.4's deferral asserted that this node's
+success "is read from the transient user activation rather than from the return value", the
+sentence was inherited from `External Link`, and it was false. §17 rewrote the deferral string,
+rewrote the ledger row, added a long refutation at the `newTab` constant and pinned three tests
+against both runtime files.
+
+**And the sentence was still there.** `compileNavigateToPath`'s own header comment — twenty lines
+above the block refuting it — still opened its list of refusals with:
+
+> `Open In New Tab` defers — that arm is `window.open`, whose success test is the transient user
+> activation and not the return value (DEF-016, §14.1) […] That is `External Link`'s slice.
+
+It survived the session that killed it, in the same function, and it would have been the first
+thing the next reader of that function read.
+
+🔴 **A correction has to be applied to every place the claim was written, and the grep for that is
+the claim, not the code that returned it.** §17 corrected everything that *returned* the wrong
+answer — the deferral string, the ledger note — and nothing that merely *said* it. One
+`grep -rna "transient user activation"` over the package and the runtime found it in seconds;
+that grep was never run, because the fix felt complete when the behaviour was right.
+
+⚠️ **The header also said "Four refusals" and there are now three**, so the count had to move too
+— a stale list is a claim about how many things are true, not only about what they are.
+
+### §18.2 The branch is the runtime's own; what is hoisted out from under it is the work
+
+The emitted shape is `navigate-to-path.ts:204` line for line, with the outcomes lifted out:
+
+```tsx
+let wireGoOpened = true;
+if (typedId.get()) {
+  wireGoOpened = window.open('/note/9', '_blank') !== null;
+} else {
+  navigate('/note/9');
+}
+if (wireGoOpened) { …Done } else { setWireGoError('The browser blocked opening a new tab'); …Failure }
+wireCompleted.set(…);            // ← after the branch, as §17 established
+```
+
+Four decisions, and each is a claim rather than a formatting choice:
+
+| | why it is not tidiness |
+|---|---|
+| **`let … = true`** | 🔴 the initialiser **is** the same-tab arm's outcome. `pushState` cannot fail and the Path gate already excluded this node's *other* failure by admitting only a literal non-empty path, so in tab there is exactly one outcome and it is `Done`. Initialised `false`, every same-tab navigation runs the Failure chain |
+| **the outcome branch is hoisted, not copied per arm** | `Done` runs after *either* call succeeds. A copy per arm sends the graph's one signal twice, and then owes `Completed` a third copy |
+| **the url is built once, above the branch** | the runtime builds `compiledUrl` before it looks at the flag; an omittable query is a `for` loop with side effects, and a `const` declared inside one arm cannot be read from the other |
+| **`!== null` rather than the bare `Window`** | two arms assign this local, so it is a boolean in both or the emitted `let` is `Window \| null \| boolean` |
+
+🔴 **`newTab` in the IR now means "the new-tab arm is reachable", not "the port is on".** Every
+consumer already asked it that question — is `Failure` live, is `Error` writable, is `Completed` a
+join — and a wired port answers all of them the way an authored `true` does, because the tab can
+still be refused. Making it mean the other thing costs **14 test rows**, which is the largest
+single mutant in this file.
+
+⚠️ **The port is a truthiness sink, so a logic truth value lands here** where a `p-`/`q-` value
+still defers. The runtime coerces it once with `!!` and the emitted read is the `if` test itself.
+The `p-` control is what makes that a claim about *sinks* rather than a hole in the standing rule.
+
+### §18.3 🔴 A new *field* on an action owes the same six walkers a new *kind* does
+
+§11.6 is about a new `HandlerAction` kind carried by hand to six places; §17.3 is about a new
+*chain* on an existing kind, where nothing changes shape. This is a new **expression** on an
+existing kind, which is the same hazard again — and `tsc` finds none of it, because an optional
+field is optional everywhere.
+
+| walker | what it decides | proven? |
+|---|---|---|
+| `collectActionUse` | which variables are *referenced*, and so which are imported | ✅ **killed a row** — §17.3's measured defect, on a new field |
+| `navigatePathIsStatement` | block body vs arrow expression body | ✅ killed a row |
+| the wire's `consumes.push` | whether Pass 4f reports it as untranslated | ✅ killed a row, **once a test was written for it** |
+| `exprValidIn` | whether the expression is legal in this handler's scope | ⚠️ **killed nothing** |
+| `actionExprsOf` | `usesPayload` — does the receiver callback take `(payload)` | ⚠️ **killed nothing** |
+| `chainReadsNowLocal` | whether a `Now`'s `const … = new Date()` is emitted | ⚠️ **killed nothing — and the reason is a finding** |
+
+🔴 **`chainReadsNowLocal`'s firing case exists, was built, and this exporter refuses it.** A
+`Navigate To Path` inside a `Now`'s Done chain whose wired `Open In New Tab` reads that same Now
+is reported **"its trigger chain is cyclic"**, and both wires are dropped.
+
+**The control is what makes that a finding rather than an excuse.** The identical shape with a
+`Set Variable` in place of this node — same Now, same Done chain, same value wire back from the
+Now — translates and emits `const clockRead = new Date();`. So the refusal is about **this node**,
+not about the graph, and the cycle detector and `resolveExpr` disagree here in a way no sibling
+action reproduces. That is **unowned** and is recorded in the code at the line it defends.
+
+⚠️ Without the control, "cyclic" reads as a fact about the graph and the walker looks unprovable.
+It is the second time this session that a reading which *fit* was not one that *excluded*.
+
+### §18.4 What defers now
+
+| refusal | the mechanism |
+|---|---|
+| a wired or absent `Path` | unchanged — the braced segments are what mint the ports |
+| an `Error` read where **no** tab can open | sharper than §17's: the gate now asks "can this open a tab", which a wired port answers yes to whatever it delivers |
+| a wired `Open In New Tab` with no statically known source | the standing rule for every port — the source, not the port |
+| a `p-`/`q-` logic truth value | unchanged. ⚠️ **Not** `Open In New Tab`, which is a truthiness sink |
+
+**`Open In New Tab` itself no longer appears in this table in any state.**
+
+### §18.5 What proves it
+
+**74 tests** in `tests/navigate-to-path.test.ts` (was 57), **881 across the package** (was 864),
+`tsc --noEmit` clean, both ledger gates green, `nodegx-module-inject` 31/31.
+
+**Fourteen mutants, eleven killed:**
+
+| mutant | rows |
+|---|---|
+| `newTab` reads "the port is on" rather than "a tab can open" | **14** |
+| `collectActionUse` blind to the wired expression | 1 |
+| `navigatePathIsStatement` blind to the wired form | 1 |
+| the success flag starts `false` | 1 |
+| the flag binds the raw `Window` rather than a boolean | 1 |
+| the Error gate asks "is the port on" | 1 |
+| the Failure drop asks "is the port on" | 1 |
+| the two arms swapped | 1 |
+| the wire left unconsumed | **0 → 1** (see below) |
+| the Failure chain not compiled for a wired port | 1 |
+| `exprValidIn` blind to the wired expression | **0** |
+| `actionExprsOf` blind to the wired expression | **0** |
+| the `reads()` sweep blind to the wired expression | **0** — §18.3 |
+
+🔴 **One mutant killing nothing was a hole in the tests and was closed.** Removing the wire's
+`consumes.push` left the app emitting perfectly *and* Pass 4f reporting the wire as untranslated —
+a note that is simply false, and the kind a reader trusts. Nothing in the suite looked at the
+notes for a *translated* wire. There is now a row, with the unresolvable case as its control.
+
+⚠️ **A third failure was in the harness, before any mutant ran.** The first mutation pass reported
+`killed=None` for all thirteen — the runner searched jest's `--json` output for a key that is not
+first in the object, so every parse failed and the failure looked exactly like "this mutant killed
+nothing". **Thirteen zeros that meant nothing.** The tree was checked by `diff` against a
+snapshot after each run, never by the log or the exit code.
+
+**The project, built and driven.** `note-desk` again, the wired node added **through the MCP
+server** (§2's rule). `Open In New Tab` is wired from the `typedId` variable that the id box
+writes, so *the text box chooses which arm runs*. `npm run build` exits 0; the emitted handler
+matched the shape written down before emitting, line for line.
+
+**4 of 4 drive rows matched the predictions, no console errors:**
+
+| row | measured |
+|---|---|
+| D1 on load | error **empty**, url `/home` |
+| D2 box `x`, real gesture | error **stays empty**, tabs 2 → **3**, url unchanged |
+| D3 box `x`, **no** gesture | **"The browser blocked opening a new tab"**, no new tab |
+| D4 **box empty**, real gesture | url → **`/note/9`**, no new tab |
+
+🔴 **D2 and D4 are the pair, and they are the control on the *wire*.** Same button, same node,
+two different actions — and the only thing varied is the contents of a text box. Without the wire
+D4's arm is unreachable, and a suite that only ever measured the new-tab arm passes on an emitter
+that ignored the wire entirely. D2 and D3 remain the pair for the new-tab arm itself.
+
+Sabotage, one rule varied, predicted before running:
+
+| arm | change | rows that moved |
+|---|---|---|
+| A | `'noopener,noreferrer'` added to the **wired** call | **D2 only** — "The browser blocked opening a new tab" **beside a tab that opened** (2 → 3) |
+
+🔴 **D3 and D4 *not* moving were predictions, not gaps.** D3 was already blocked and already
+showing that text; D4 is the same-tab arm and has no features string to poison. An arm that moved
+every row would be measuring the page, not the rule.
+
+### §18.6 What this leaves
+
+- **A chain-local for `Error`** — unchanged from §14.6 and §17.6, still owed by two nodes.
+- **`exprValidIn` and `actionExprsOf` on this action** — closed in shape, unproven in fact, for
+  the reason §17.3 gave: the firing case needs an `Event Sender` declaring a channel payload.
+- 🔴 **The cycle refusal §18.3 measured** — a value wire back from a `Now` into this node is
+  called cyclic where the same wire into a `Set Variable` is not. **Unowned.** It is a fact about
+  `Navigate To Path`'s resolution, not about the graph, and the control proving that is in the
+  code comment at `component.ts`'s `reads()` sweep.
+- 🔴 **Whether "a correction must be grepped for by its claim" becomes a rule** — §16.5 asked
+  whether an exemption citing a runtime file must have a test naming it, and §17 gave that two
+  instances. §18.1 is a third and a different shape: the claim was corrected everywhere it was
+  *returned* and nowhere it was merely *said*. Still unowned.

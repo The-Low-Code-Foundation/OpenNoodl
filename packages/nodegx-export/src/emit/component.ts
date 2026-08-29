@@ -414,6 +414,16 @@ export function emitComponent(
     if (action.kind === 'navigate-path') {
       action.pathParams.forEach((p) => collectExprUse(p.expr));
       action.query.forEach((q) => collectExprUse(q.expr));
+      /**
+       * 🔴 **EXP-011 §18 — the same omission this block's own comment is about, one field
+       * later.** §17.3 measured what a missed expression costs here: a Variable read *only* by
+       * a path parameter was never counted as a reference, so the row was filtered out of
+       * `referencedStateVars` while the handler went on calling `.get()` on an identifier it
+       * never declared. A Variable read only by a wired `Open In New Tab` is the same defect
+       * with a different port, and neither `parse` nor `tsc` on this package can see it —
+       * an undeclared identifier is valid syntax.
+       */
+      if (action.newTabExpr !== undefined) collectExprUse(action.newTabExpr);
       action.then.forEach(collectActionUse);
       action.failThen.forEach(collectActionUse);
       action.completedThen.forEach(collectActionUse);
@@ -1316,6 +1326,22 @@ export function emitComponent(
           return (
             a.pathParams.some((p) => reads(p.expr)) ||
             a.query.some((p) => reads(p.expr)) ||
+            /**
+             * ⚠️ **EXP-011 §18 — added on consistency, and measured to be unreachable today.**
+             * This sweep answers "does anything in a `Now`'s Read chain read the bound instant",
+             * which decides whether `const … = new Date()` is emitted at all — so the firing case
+             * is a Navigate To Path *inside* a Now's Done chain whose wired `Open In New Tab`
+             * reads that same Now. Built, and this exporter refuses it: **"its trigger chain is
+             * cyclic"**, dropping both wires.
+             *
+             * 🔴 **The control is what makes that a finding rather than an excuse.** The
+             * identical shape with a `Set Variable` in place of this node — same Now, same Done
+             * chain, same value wire back from the Now — translates and emits `const clockRead =
+             * new Date();`. So the refusal is about *this node*, not about the graph, and the
+             * cycle detector and `resolveExpr` disagree here in a way no other action reproduces.
+             * That is unowned; this line is the defensive half of it.
+             */
+            (a.newTabExpr !== undefined && reads(a.newTabExpr)) ||
             a.then.some(inAction) ||
             a.failThen.some(inAction) ||
             a.completedThen.some(inAction)
@@ -1357,7 +1383,10 @@ export function emitComponent(
     // EXP-011 §17. The new-tab arm binds a `const` and branches whenever anything reads the
     // outcome — a Failure chain, or an Error row whose write needs the arm to sit in.
     a.failThen.length > 0 ||
-    (a.newTab && a.errorState !== undefined);
+    (a.newTab && a.errorState !== undefined) ||
+    // EXP-011 §18. A wired port is an `if/else` before any of that, so it is always statements —
+    // and it is the one case where the answer does not depend on a single thing being read.
+    a.newTabExpr !== undefined;
 
   const actionCode = (action: HandlerAction, indent = 0): string => {
     switch (action.kind) {
@@ -1473,11 +1502,15 @@ export function emitComponent(
         /**
          * The same-tab arm: `history.pushState` in the runtime, `navigate` here, and it cannot
          * fail — so `Completed` follows `Done` as one flat sequence and there is no arm at all.
+         *
+         * ⚠️ `action.newTab` reads "the new-tab arm is reachable", which a **wired** port makes
+         * true whatever it delivers (§18) — so this early return is the pure in-tab node, and the
+         * wired case falls through to the branch below that carries both.
          */
+        const inTabCall = `navigate(${urlCode})`;
         if (!action.newTab) {
-          const call = `navigate(${urlCode})`;
-          if (pre.length === 0 && doneChain.length === 0 && completedChain.length === 0) return call;
-          return [...pre, `${call};`, ...doneChain.map((a) => `${actionCode(a, indent)};`), ...tail].join(`\n${at}`);
+          if (pre.length === 0 && doneChain.length === 0 && completedChain.length === 0) return inTabCall;
+          return [...pre, `${inTabCall};`, ...doneChain.map((a) => `${actionCode(a, indent)};`), ...tail].join(`\n${at}`);
         }
 
         /**
@@ -1508,25 +1541,20 @@ export function emitComponent(
             ? []
             : [`${inner}${stateSetterOf(action.errorState)}('The browser blocked opening a new tab');`];
         const failBody = [...errorWrite, ...chainBody(action.failThen)];
-
-        /**
-         * Nothing reads the outcome — no chain on either arm and no row to write — so the result
-         * is not bound at all and the call stands alone, which is what the graph asked for.
-         * `Completed` still runs: it fires after every outcome, and with nothing to branch on
-         * there is only one place to put it.
-         */
-        if (doneChain.length === 0 && failBody.length === 0) {
-          if (pre.length === 0 && completedChain.length === 0) return openCall;
-          return [...pre, `${openCall};`, ...tail].join(`\n${at}`);
-        }
+        /** Whether anything looks at whether the tab opened — a chain on either arm, or the row. */
+        const readsOutcome = doneChain.length > 0 || failBody.length > 0;
 
         /**
          * 🔴 **`Completed` prints after the branch, never inside an arm.** It fires after every
          * outcome (`node.ts:958-995`), so a copy in the `Done` arm alone would run only on
          * success — §15.4 earned this port on "the gates leave exactly one outcome reachable",
          * and this arm is exactly the change that retires that argument.
+         *
+         * Built once and shared with the wired form below, because the outcomes beneath the two
+         * are the same outcomes: what a wire changes is *which call ran*, never what `Done` and
+         * `Failure` mean once it has.
          */
-        const branch =
+        const outcomeBranch = (): string[] =>
           doneChain.length > 0 && failBody.length > 0
             ? [
                 `if (${action.openedLocal}) {`,
@@ -1538,7 +1566,57 @@ export function emitComponent(
             : doneChain.length > 0
               ? [`if (${action.openedLocal}) {`, ...chainBody(action.then), `${at}}`]
               : [`if (!${action.openedLocal}) {`, ...failBody, `${at}}`];
-        return [...pre, `const ${action.openedLocal} = ${openCall};`, branch.join('\n'), ...tail].join(`\n${at}`);
+
+        /**
+         * 🔴 **The wired arm (EXP-011 §18) — both of the node's two actions in one handler**,
+         * which is the whole of what §17.4 deferred. The emitted shape is the runtime's own,
+         * `if (this._internal.openInNewTab) { open } else { pushState }` (`navigate-to-path.ts:204`),
+         * with the outcomes hoisted out from under it.
+         *
+         * 🔴 **The success flag is a `let` initialised to `true`, and that initialiser is a claim
+         * about the in-tab arm rather than a placeholder**: `pushState` cannot fail, and the Path
+         * gate above has already excluded the node's *other* failure by admitting only a literal
+         * non-empty path. So in tab there is exactly one outcome and it is `Done` — which is
+         * §15.4's argument, still true of *that arm*, now standing beside an arm it is false of.
+         *
+         * ⚠️ **The outcome branch is hoisted out of the arms rather than copied into each**, and
+         * that is not tidiness. `Done` runs after either call succeeds, so a copy per arm is the
+         * same chain twice — two `useSignal` sends where the graph has one, and a `Completed`
+         * join that would then have to be duplicated a third time. One flag, one branch.
+         *
+         * ⚠️ **`!== null` rather than the bare Window the unwired form binds**: this local is
+         * assigned from two arms with two different types, so it is a boolean in both or it is
+         * `Window | null | boolean` in the emitted `let`.
+         */
+        if (action.newTabExpr !== undefined) {
+          const arms = [
+            `if (${exprCode(action.newTabExpr, 'handler')}) {`,
+            readsOutcome ? `${inner}${action.openedLocal} = ${openCall} !== null;` : `${inner}${openCall};`,
+            `${at}} else {`,
+            `${inner}${inTabCall};`,
+            `${at}}`
+          ];
+          return [
+            ...pre,
+            ...(readsOutcome ? [`let ${action.openedLocal} = true;`] : []),
+            arms.join('\n'),
+            ...(readsOutcome ? [outcomeBranch().join('\n')] : []),
+            ...tail
+          ].join(`\n${at}`);
+        }
+
+        /**
+         * Nothing reads the outcome — no chain on either arm and no row to write — so the result
+         * is not bound at all and the call stands alone, which is what the graph asked for.
+         * `Completed` still runs: it fires after every outcome, and with nothing to branch on
+         * there is only one place to put it.
+         */
+        if (!readsOutcome) {
+          if (pre.length === 0 && completedChain.length === 0) return openCall;
+          return [...pre, `${openCall};`, ...tail].join(`\n${at}`);
+        }
+
+        return [...pre, `const ${action.openedLocal} = ${openCall};`, outcomeBranch().join('\n'), ...tail].join(`\n${at}`);
       }
       case 'navigate': {
         /**
@@ -3594,6 +3672,10 @@ export function emitComponent(
         return [
           ...a.pathParams.map((p) => p.expr),
           ...a.query.map((p) => p.expr),
+          // EXP-011 §18. A received payload can decide *which arm runs* as readily as it can
+          // fill `{id}` — and unlike the chain walk above, this one is the direct shape the
+          // comment above describes: an expression of this action, read in this handler.
+          ...(a.newTabExpr === undefined ? [] : [a.newTabExpr]),
           ...a.then.flatMap(actionExprsOf),
           ...a.failThen.flatMap(actionExprsOf),
           ...a.completedThen.flatMap(actionExprsOf)

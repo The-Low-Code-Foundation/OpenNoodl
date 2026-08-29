@@ -299,19 +299,24 @@ describe('§15.2 the query — authored, not left over, and omitted when unset',
 // ---------------------------------------------------------------------------------------------
 describe('§15.3 the gates, each with its named reason', () => {
   /**
-   * 🔴 **The deferral this replaces asserted a runtime behaviour that did not exist**, inherited
-   * from `External Link` and false here (§17.1). The port now translates; what is left of the
-   * old test is the guard below that the sentence cannot come back.
+   * 🔴 **This test has now been rewritten twice by the same sentence.** §15.4 deferred the arm
+   * claiming the success test was `navigator.userActivation` — inherited from `External Link`
+   * and false here (§17.1). §17 opened the authored arm and left the *wired* port deferred by
+   * scope. §18 opens that too, so the port does not defer at all in any of its three states.
+   *
+   * What survives across all three versions is the guard: whatever this node says about itself,
+   * it must never say the activation sentence, because that sentence is about the other node.
    */
-  test('Open In New Tab wired defers by scope, and does not claim the activation', () => {
-    const reason = deferralFor({ path: 'mood' }, (_ir, notes) => {
+  test('Open In New Tab translates in all three of its states, and never claims the activation', () => {
+    const wired = withNav({ path: 'mood' }, (_ir, notes) => {
       addVariable(notes, 'flagVar', 'flag');
       connect(notes, 'flagVar', 'value', 'go', 'openInNewTab', 'value');
     });
-    expect(reason).toContain('Open In New Tab is wired');
-    expect(reason).toContain('deferred by scope rather than by mechanism');
-    // The claim that was false: this node's success is NOT read from the activation.
-    expect(reason).not.toContain('transient user activation');
+    expect(wired.file).toContain('if (flag.get()) {');
+    // Nothing about this node deferred, and nothing anywhere claims the activation.
+    expect(wired.notes).not.toContain('Open In New Tab is wired');
+    expect(wired.notes).not.toContain('transient user activation');
+    expect(wired.file).not.toContain('userActivation');
   });
 
   /** The control for both rows above: unset is `false` here, and translates. */
@@ -862,4 +867,385 @@ describe('§15.6 the transcription is tested against the thing it transcribes', 
     expect(externalLinkSource).toContain("openInNewTab ? 'noopener,noreferrer' : ''");
     expect(externalLinkSource).toContain('openInNewTab === true || openInNewTab === undefined');
   });
+
+  /**
+   * 🔴 **§18's emitted shape is this `if/else`, so this is the claim that has to be pinned.**
+   * The wired form prints `if (<expr>) { window.open } else { navigate }` because the runtime
+   * prints `if (this._internal.openInNewTab) { window.open } else { pushState }` — one runtime
+   * read, two arms, and the outcome reported after both. If the runtime ever grows a second
+   * read of the flag, or the arms stop sharing `reportOutcomes(…, 'done')`, the export's single
+   * hoisted success flag stops being faithful and this row is where that is noticed.
+   */
+  test('the runtime branches once on the stored flag, and both arms fall through to one Done', () => {
+    expect(nodeSource).toContain('if (this._internal.openInNewTab) {');
+    expect(nodeSource).toContain("window.history.pushState({}, '', compiledUrl)");
+    expect(nodeSource).toContain("reportOutcomes(this, tokens, 'done')");
+    // Exactly one read of the flag at fire time — the `set` above is the other mention.
+    expect(nodeSource.split('_internal.openInNewTab').length - 1).toBe(2);
+  });
 });
+
+// ---------------------------------------------------------------------------------------------
+/**
+ * EXP-011 §18 (session 47) — the **wired** `Open In New Tab`, which is the arm §17.4 deferred.
+ *
+ * §17 deferred it by **scope**: the port was answerable — the runtime reads it once, as
+ * `!!value` — but a wire makes both of this node's two actions reachable in one handler, and
+ * that is a branch rather than a flag. This block is that branch.
+ *
+ * 🔴 **The failure this block is built against is a suite that grades the two arms separately
+ * and never grades the join.** Every assertion about "once" below is that failure written down:
+ * one url build, one `Done` chain, one `Completed`, one success flag. A copy-per-arm emitter
+ * passes every arm-shaped test there is.
+ *
+ * ⚠️ **The lone-button fixture is deliberate and it is §17.5's lesson.** Two of this file's
+ * mutants killed nothing because every case fired the node from the Add button, which already
+ * has an action — and two actions take the block form whatever the emitter decides. A node that
+ * is the *whole* handler is the only shape that reaches an arrow's expression body.
+ */
+describe('§18.1 the wired arm — both of the node’s actions under one runtime test', () => {
+  /** A variable to feed the port from, and the only thing that reads it unless a test says so. */
+  const wireFlag = (notes: ComponentIR, name = 'flag') => {
+    addVariable(notes, `${name}Var`, name);
+    connect(notes, `${name}Var`, 'value', 'go', 'openInNewTab', 'value');
+  };
+
+  /**
+   * 🔴 **The three-way control.** Off is `navigate` and no `window.open`; on is `window.open`
+   * and no `navigate`; wired is **both**. Either single arm alone is consistent with an emitter
+   * that ignored the wire and picked a default, which is the mistake this row exists to exclude.
+   */
+  test('off is one call, on is the other, and wired is both under one test', () => {
+    const off = withNav({ path: 'mood' }).file;
+    expect(off).toContain("navigate('/mood')");
+    expect(off).not.toContain('window.open');
+
+    const on = withNav({ path: 'mood', openInNewTab: true }).file;
+    expect(on).toContain("window.open('/mood', '_blank')");
+    expect(on).not.toContain("navigate('/mood')");
+
+    const { file, app } = withNav({ path: 'mood' }, (_ir, notes) => wireFlag(notes));
+    expect(file).toContain('if (flag.get()) {');
+    expect(file).toContain("window.open('/mood', '_blank');");
+    expect(file).toContain("navigate('/mood');");
+    expectParses(app);
+  });
+
+  /**
+   * ⚠️ **Read once, at the top of the handler, and that is the runtime's own shape** — the flag
+   * is read before the arm is chosen and nothing between the two can change it. A second read
+   * would be a second chance to disagree with itself.
+   */
+  test('the wire’s own read is the test, printed once and not coerced', () => {
+    const { file } = withNav({ path: 'mood' }, (_ir, notes) => wireFlag(notes));
+    expect(file.split('flag.get()').length - 1).toBe(1);
+    // `if (x)` coerces exactly as the runtime's `!!x` does, so a wrapper would be noise that
+    // reads like a decision.
+    expect(file).not.toContain('Boolean(flag');
+    expect(file).not.toContain('!!flag');
+  });
+
+  /**
+   * 🔴 **DEF-016's guard, at the new call site.** §17 measured that a features string makes
+   * `window.open` return null on success as much as on failure — so a `noopener` appearing here
+   * would put "The browser blocked opening a new tab" beside a tab that opened. The guard has to
+   * be repeated for this arm because this arm is a *different* emitted call.
+   */
+  test('the wired arm carries no features string either', () => {
+    const { file } = withNav({ path: 'mood' }, (_ir, notes) => wireFlag(notes));
+    expect(file).toContain("window.open('/mood', '_blank')");
+    expect(file).not.toContain('noopener');
+    expect(file).not.toContain('noreferrer');
+  });
+
+  /**
+   * 🔴 **The url is built once, above the branch — not once per arm.** The runtime builds
+   * `compiledUrl` before it looks at the flag, and an omittable query is a `for` loop with side
+   * effects: run once per arm it would still be correct, but it would be the same collection
+   * built twice and would read as two different urls. The `const` also cannot be declared inside
+   * an arm and used in the other.
+   */
+  test('an omittable query collects once, before the branch', () => {
+    const { file, app } = withNav(
+      { path: 'note/{id}', 'p-id': '8', queryNames: 'tone' },
+      (_ir, notes) => {
+        wireFlag(notes);
+        addVariable(notes, 'toneVar', 'tone');
+        connect(notes, 'toneVar', 'value', 'go', 'q-tone', 'value');
+      }
+    );
+    expect(file.split('const goQuery: string[] = [];').length - 1).toBe(1);
+    expect(file.indexOf('const goQuery')).toBeLessThan(file.indexOf('if (flag.get())'));
+    expectParses(app);
+  });
+});
+
+describe('§18.2 the outcomes — one join beneath two arms', () => {
+  const wireFlag = (notes: ComponentIR) => {
+    addVariable(notes, 'flagVar', 'flag');
+    connect(notes, 'flagVar', 'value', 'go', 'openInNewTab', 'value');
+  };
+  const sink = (id: string, name: string) => (_ir: ExportIR, notes: ComponentIR) => {
+    addNode(notes, { id, type: 'Set Variable', parameters: [{ name: 'name', value: literal(name) }] });
+    addVariable(notes, `${id}Src`, `${name}Seed`);
+    connect(notes, `${id}Src`, 'value', id, 'value', 'value');
+  };
+  /** The Error sink has to be rendered, or the read is not a read (§14). */
+  const readError = (configure: (ir: ExportIR, notes: ComponentIR, nav: NodeIR) => void) =>
+    withNav({ path: 'mood' }, (ir, notes, nav) => {
+      configure(ir, notes, nav);
+      const t = addNode(notes, { id: 'errText', type: 'Text', parameters: [] });
+      connect(notes, nav.id, 'error', t.id, 'text', 'value');
+      const root = notes.nodes.find((n) => (n.children ?? []).length > 0) ?? notes.nodes[0];
+      (root.children ??= []).push(t.id);
+    });
+
+  /**
+   * 🔴 **`Done` runs after either call succeeds, so it is emitted once beneath the branch.** A
+   * copy inside each arm passes every "is Done reachable" test there is and sends the graph's
+   * one signal twice. The count is the assertion; a `toContain` cannot see this at all.
+   */
+  test('the Done chain is emitted once, beneath the branch, not copied into each arm', () => {
+    const { file, app } = withNav({ path: 'mood' }, (ir, notes, nav) => {
+      wireFlag(notes);
+      sink('mark', 'trail')(ir, notes);
+      connect(notes, nav.id, 'done', 'mark', 'do');
+    });
+    expect(file.split('trail.set(trailSeed.get())').length - 1).toBe(1);
+    expect(file).toContain('if (goOpened) {');
+    expect(file.indexOf('if (flag.get())')).toBeLessThan(file.indexOf('if (goOpened)'));
+    expectParses(app);
+  });
+
+  /**
+   * 🔴 **`let … = true` is a claim about the in-tab arm, not a placeholder.** `pushState` cannot
+   * fail and the Path gate has already excluded this node's *other* failure by admitting only a
+   * literal non-empty path — so in tab there is exactly one outcome and it is `Done`. That is
+   * §15.4's argument, still true of that arm, now standing beside an arm it is false of.
+   * Initialised `false` instead, every same-tab navigation would run the Failure chain.
+   */
+  test('the success flag starts true, because the same-tab arm cannot fail', () => {
+    const { file } = withNav({ path: 'mood' }, (ir, notes, nav) => {
+      wireFlag(notes);
+      sink('mark', 'trail')(ir, notes);
+      connect(notes, nav.id, 'done', 'mark', 'do');
+    });
+    expect(file).toContain('let goOpened = true;');
+    // The same-tab arm assigns nothing — it is the initialiser that carries the answer.
+    expect(file).toMatch(/\} else \{\n\s*navigate\('\/mood'\);\n\s*\}/);
+  });
+
+  /**
+   * ⚠️ **A boolean in both arms, so the `let` has one type.** The unwired form binds the raw
+   * `Window | null`, which it can because only one arm writes it; here the same local is
+   * assigned `true` from the other arm, and `Window | null | boolean` would be a local whose
+   * type is an accident of which arms exist.
+   */
+  test('the flag is a boolean in both arms', () => {
+    const { file, app } = withNav({ path: 'mood' }, (ir, notes, nav) => {
+      wireFlag(notes);
+      sink('mark', 'trail')(ir, notes);
+      connect(notes, nav.id, 'done', 'mark', 'do');
+    });
+    expect(file).toContain("goOpened = window.open('/mood', '_blank') !== null;");
+    expect(file).not.toContain("const goOpened = window.open('/mood', '_blank');");
+    expectParses(app);
+  });
+
+  /**
+   * 🔴 **The Failure chain is live for a wired port and this pair is the row.** §15 dropped it
+   * unconditionally; §17 stopped dropping it for an authored `true`. A gate written `!newTab`
+   * rather than "can this open a tab" would silently delete a chain a wired app runs — which is
+   * the same `notes.push` mistake, one state later.
+   */
+  test('a wired port keeps the Failure chain, where an unwired off still drops it with the note', () => {
+    const wired = withNav({ path: 'mood' }, (ir, notes, nav) => {
+      wireFlag(notes);
+      sink('mark', 'trail')(ir, notes);
+      connect(notes, nav.id, 'failure', 'mark', 'do');
+    });
+    expect(wired.file).toContain('if (!goOpened) {');
+    expect(wired.notes).not.toContain('Failure chain is dead');
+
+    const off = withNav({ path: 'mood' }, (ir, notes, nav) => {
+      sink('mark', 'trail')(ir, notes);
+      connect(notes, nav.id, 'failure', 'mark', 'do');
+    });
+    expect(off.notes).toContain('Failure chain is dead');
+    expect(off.file).not.toContain('goOpened');
+  });
+
+  /**
+   * The same pair for `Error`: in tab nothing can write the row, so the read defers with its
+   * named reason; a wired port can be refused, so the row is earned.
+   */
+  test('a wired port earns the Error row, where an unwired off still defers it by name', () => {
+    const wired = readError((_ir, notes) => wireFlag(notes));
+    expect(wired.file).toContain("setGoError('The browser blocked opening a new tab');");
+    expect(wired.file).toContain('if (!goOpened) {');
+    expectParses(wired.app);
+
+    const off = readError(() => undefined);
+    expect(off.notes).toContain('its Error output is read');
+    expect(off.notes).toContain('neither of the node’s two failures can fire');
+    expect(off.file).not.toContain('The browser blocked opening a new tab');
+  });
+
+  /**
+   * 🔴 **`Completed` fires after every outcome, so it prints after the branch and not in an
+   * arm.** With two arms above it and two outcomes below it there are three wrong places to put
+   * it and one right one, and §15.4's argument for translating this port at all — "the gates
+   * leave exactly one outcome reachable" — is false of every wired node.
+   */
+  test('Completed prints after the outcome branch, beneath both arms', () => {
+    const { file, app } = withNav({ path: 'mood' }, (ir, notes, nav) => {
+      wireFlag(notes);
+      sink('yes', 'trailA')(ir, notes);
+      sink('fin', 'trailB')(ir, notes);
+      connect(notes, nav.id, 'done', 'yes', 'do');
+      connect(notes, nav.id, 'completed', 'fin', 'do');
+    });
+    expect(file.split('trailB.set(trailBSeed.get())').length - 1).toBe(1);
+    expect(file.indexOf('trailA.set')).toBeLessThan(file.indexOf('trailB.set'));
+    // Beneath the branch, not inside the arm that ran the Done chain.
+    expect(file).toMatch(/trailA\.set\(trailASeed\.get\(\)\);\n\s*\}\n\s*trailB\.set/);
+    expectParses(app);
+  });
+});
+
+describe('§18.3 the walkers a new expression is owed', () => {
+  /**
+   * 🔴 **§17.3's measured defect, on a new field.** `collectActionUse` deciding what is
+   * *referenced* is what earns a Variable its import; a read it cannot see emits a handler
+   * calling `.get()` on an identifier the file never declares. `expectParses` cannot catch that
+   * — an undeclared identifier is valid syntax — and neither can `tsc` on this package.
+   *
+   * The control varies exactly one thing: whether anything **else** in the component also reads
+   * the variable. Without it the subject reads equally well as "a variable used this way needs
+   * no declaration", which is a claim about variables rather than about this walker.
+   */
+  test('a Variable read only by the wired port still earns its import', () => {
+    const subject = withNav({ path: 'mood' }, (_ir, notes) => {
+      addVariable(notes, 'probeVar', 'probe');
+      connect(notes, 'probeVar', 'value', 'go', 'openInNewTab', 'value');
+    });
+    expect(subject.file).toContain('probe.get()');
+    expect(subject.file).toMatch(/import \{[^}]*\bprobe\b[^}]*\} from '\.\.\/stores\/variables'/);
+
+    const control = withNav({ path: 'mood' }, (_ir, notes) => {
+      addVariable(notes, 'probeVar', 'probe');
+      connect(notes, 'probeVar', 'value', 'go', 'openInNewTab', 'value');
+      const t = addNode(notes, { id: 'probeText', type: 'Text', parameters: [] });
+      connect(notes, 'probeVar', 'value', t.id, 'text', 'value');
+      const root = notes.nodes.find((n) => (n.children ?? []).length > 0) ?? notes.nodes[0];
+      (root.children ??= []).push(t.id);
+    });
+    expect(control.file).toMatch(/import \{[^}]*\bprobe\b[^}]*\} from '\.\.\/stores\/variables'/);
+  });
+
+  /**
+   * 🔴 **The lone-button fixture, and it exists because of what it caught.** §17.5's
+   * `navigatePathIsStatement` mutant moved no row: every case in this file fires the node from
+   * the Add button, which already has an action, and two actions take the block form whatever
+   * the predicate answers. Only a node that is the **whole** handler reaches an arrow's
+   * expression body, where `() => let goOpened = true` does not parse.
+   *
+   * ⚠️ §15's `date-now-read` note says the same sentence about the same fixture. This is the
+   * third time and the first time the fixture was changed rather than noted.
+   */
+  test('a wired node that is the whole handler prints a block, where an unwired one is an expression', () => {
+    const lone = (wire: boolean) =>
+      withNav({ path: 'mood' }, (_ir, notes, nav) => {
+        const solo = addNode(notes, {
+          id: 'soloBtn', type: 'net.noodl.controls.button',
+          parameters: [{ name: 'label', value: literal('Go') }]
+        });
+        const shell = notes.nodes.find((n) => n.id === 'notesShell')!;
+        (shell.children ??= []).push(solo.id);
+        connect(notes, solo.id, 'onClick', nav.id, 'navigate');
+        // 🔴 The Add button's wire is removed, or this node is never the whole handler.
+        notes.connections = notes.connections.filter(
+          (c) => !(c.fromId === 'addButton' && c.toProperty === 'navigate')
+        );
+        if (wire) {
+          addVariable(notes, 'flagVar', 'flag');
+          connect(notes, 'flagVar', 'value', nav.id, 'openInNewTab', 'value');
+        }
+      }, { fire: false });
+
+    const off = lone(false);
+    expect(off.file).toContain("onClick={() => navigate('/mood')}");
+
+    const wired = lone(true);
+    expect(wired.file).not.toContain("onClick={() => navigate('/mood')}");
+    expect(wired.file).not.toContain('onClick={() => window.open');
+    expect(wired.file).toMatch(/onClick=\{\(\) => \{[\s\S]*if \(flag\.get\(\)\) \{/);
+    expectParses(wired.app);
+  });
+});
+
+describe('§18.4 the gates that remain, each with its named reason', () => {
+  /**
+   * 🔴 **This port is a truthiness sink, and that is why a logic truth value lands here.** The
+   * runtime coerces it once with `!!`, and the emitted read is the `if` test itself, which
+   * coerces identically. The `p-` control is the row that makes this a claim about *sinks*
+   * rather than a hole in the standing rule: a truth value interpolated into a url would print
+   * the word `true`, and still defers.
+   */
+  test('a logic truth value lands in Open In New Tab, and still defers in a p- value', () => {
+    const { file, app } = withNav({ path: 'mood' }, (_ir, notes) => {
+      connect(notes, 'draftOrVisitor', 'result', 'go', 'openInNewTab', 'value');
+    });
+    expect(file).toContain('if (noteDraft.get() || visitorName.get()) {');
+    expect(file).toContain("window.open('/mood', '_blank');");
+    expectParses(app);
+
+    const reason = deferralFor({ path: 'note/{id}' }, (_ir, notes) => {
+      connect(notes, 'draftOrVisitor', 'result', 'go', 'p-id', 'value');
+    });
+    expect(reason).toContain('logic truth value');
+  });
+
+  /**
+   * 🔴 **A translated wire has to be *consumed*, and nothing else in the suite could see that.**
+   * Pass 4f reports every connection nobody claimed, so a wire read into the branch but left
+   * unconsumed emits the emitted app *and* a note saying it was not translated — a note that is
+   * simply false, and the kind a reader trusts. The mutation that removed the `consumes.push`
+   * killed no other row in this file.
+   */
+  test('the wire is consumed, so no leftover note claims it was not translated', () => {
+    const { notes } = withNav({ path: 'mood' }, (_ir, notes) => {
+      addVariable(notes, 'flagVar', 'flag');
+      connect(notes, 'flagVar', 'value', 'go', 'openInNewTab', 'value');
+    });
+    expect(notes).not.toContain('flagVar:value->go:openInNewTab');
+    // The control: an *unresolvable* source is genuinely untranslated and does say so.
+    const untranslated = withNav({ path: 'mood' }, (_ir, notes) => {
+      connect(notes, 'entryInput', 'text', 'go', 'openInNewTab', 'value');
+    });
+    expect(untranslated.notes).toContain('entryInput:text->go:openInNewTab');
+  });
+
+  /** A source this slice cannot read statically defers, and the sentence names the port. */
+  test('a wired port with no statically known source defers, naming Open In New Tab', () => {
+    const reason = deferralFor({ path: 'mood' }, (_ir, notes) => {
+      connect(notes, 'entryInput', 'text', 'go', 'openInNewTab', 'value');
+    });
+    expect(reason).toContain('Open In New Tab');
+  });
+
+  /**
+   * The Path gate is upstream of the port and stays that way: a node whose shape is unknown is
+   * unknown in both arms, so wiring the flag as well must not change which refusal is reported.
+   */
+  test('a wired Path still defers on the Path, even with Open In New Tab wired too', () => {
+    const reason = deferralFor({}, (_ir, notes) => {
+      addVariable(notes, 'pathVar', 'target');
+      connect(notes, 'pathVar', 'value', 'go', 'path', 'value');
+      addVariable(notes, 'flagVar', 'flag');
+      connect(notes, 'flagVar', 'value', 'go', 'openInNewTab', 'value');
+    });
+    expect(reason).toContain('its Path is wired');
+  });
+});
+
