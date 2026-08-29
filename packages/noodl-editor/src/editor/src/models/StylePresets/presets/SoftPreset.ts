@@ -11,17 +11,20 @@ export const SoftPreset: StylePreset = {
   isBuiltIn: true,
 
   tokens: {
-    // Primary — indigo
-    '--primary': '#6366f1',
-    '--primary-hover': '#4f46e5',
+    // Primary — indigo. DEF-001: indigo-500 put white at 4.47:1 — it missed 4.5 by 0.03, which is
+    // still a miss. One step to indigo-600 (6.29:1); hover follows to indigo-700.
+    '--primary': '#4f46e5',
+    '--primary-hover': '#4338ca',
     '--primary-foreground': '#ffffff',
-    // Secondary — light purple
-    '--secondary': '#a78bfa',
-    '--secondary-hover': '#8b5cf6',
+    // Secondary — purple. DEF-001: violet-400 was 2.72:1 under white, the worst text pair in any
+    // shipped preset. violet-600 is 5.70:1; hover follows to violet-700.
+    '--secondary': '#7c3aed',
+    '--secondary-hover': '#6d28d9',
     '--secondary-foreground': '#ffffff',
-    // Destructive — soft rose
-    '--destructive': '#fb7185',
-    '--destructive-hover': '#f43f5e',
+    // Destructive — rose. DEF-001: rose-400 was 2.69:1 under white, and the same value is the
+    // TextInput `error` border at 2.67:1 against 1.4.11's 3. rose-600 clears both (4.70 / 4.66).
+    '--destructive': '#e11d48',
+    '--destructive-hover': '#be123c',
     '--destructive-foreground': '#ffffff',
     // Muted
     '--muted': '#f5f3ff',
@@ -40,7 +43,7 @@ export const SoftPreset: StylePreset = {
     '--border-strong': '#d1d5db',
     '--border-control': '#6b7280',
     // Focus ring — indigo
-    '--ring': '#6366f1',
+    '--ring': '#4f46e5',
     '--ring-offset': '#fefefe',
     // Font family
     '--font-sans': '"DM Sans", ui-sans-serif, system-ui, sans-serif',
@@ -59,7 +62,7 @@ export const SoftPreset: StylePreset = {
   },
 
   preview: {
-    primaryColor: '#6366f1',
+    primaryColor: '#4f46e5',
     backgroundColor: '#fefefe',
     surfaceColor: '#f9fafb',
     borderColor: '#e5e7eb',

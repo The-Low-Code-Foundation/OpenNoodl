@@ -10,17 +10,20 @@ export const PlayfulPreset: StylePreset = {
   isBuiltIn: true,
 
   tokens: {
-    // Primary — purple
-    '--primary': '#8b5cf6',
-    '--primary-hover': '#7c3aed',
+    // Primary — purple. DEF-001: violet-500 put white at 4.23:1, below 1.4.3's 4.5. One step to
+    // violet-600 (5.70:1); hover follows to violet-700.
+    '--primary': '#7c3aed',
+    '--primary-hover': '#6d28d9',
     '--primary-foreground': '#ffffff',
     // Secondary — pink
-    '--secondary': '#ec4899',
-    '--secondary-hover': '#db2777',
+    // DEF-001: pink-500 was 3.53:1 under white. pink-600 is 4.60:1; hover follows to pink-700.
+    '--secondary': '#db2777',
+    '--secondary-hover': '#be185d',
     '--secondary-foreground': '#ffffff',
     // Destructive — rose
-    '--destructive': '#f43f5e',
-    '--destructive-hover': '#e11d48',
+    // DEF-001: rose-500 was 3.67:1 under white. rose-600 is 4.70:1; hover follows to rose-700.
+    '--destructive': '#e11d48',
+    '--destructive-hover': '#be123c',
     '--destructive-foreground': '#ffffff',
     // Muted
     '--muted': '#faf5ff',
@@ -39,7 +42,7 @@ export const PlayfulPreset: StylePreset = {
     '--border-strong': '#d8b4fe',
     '--border-control': '#a855f7',
     // Focus ring — purple
-    '--ring': '#8b5cf6',
+    '--ring': '#7c3aed',
     '--ring-offset': '#ffffff',
     // Font family — friendly rounded font with fallback
     '--font-sans': '"Nunito", "Quicksand", ui-sans-serif, sans-serif',
@@ -58,7 +61,7 @@ export const PlayfulPreset: StylePreset = {
   },
 
   preview: {
-    primaryColor: '#8b5cf6',
+    primaryColor: '#7c3aed',
     backgroundColor: '#ffffff',
     surfaceColor: '#faf5ff',
     borderColor: '#e9d5ff',

@@ -103,13 +103,14 @@ describe('generateProjectTokenCss', () => {
     });
 
     expect(css).toContain('--primary: #ff0000;');
-    expect(css).not.toContain('--primary: #3b82f6;');
+    // DEF-001 moved the default from `#3b82f6` (3.68:1 under white) to blue-600.
+    expect(css).not.toContain('--primary: #2563eb;');
   });
 
   it('falls back to defaults when the stored block is malformed', () => {
     const css = generateProjectTokenCss({ getMetaData: () => ({ version: 1, customTokens: 'nonsense' }) });
 
-    expect(css).toContain('--primary: #3b82f6;');
+    expect(css).toContain('--primary: #2563eb;');
   });
 
   it('tolerates a project with no metadata source at all', () => {

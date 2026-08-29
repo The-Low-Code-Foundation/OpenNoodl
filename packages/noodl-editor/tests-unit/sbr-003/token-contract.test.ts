@@ -221,7 +221,8 @@ describe('SBR-003 the deploy stamp: metadata in, :root out', () => {
 
   it('a bare project stamps the shipped defaults and no site token — the floor-is-the-fallback control', () => {
     const css = generateProjectTokenCss(projectWith(undefined));
-    expect(css).toContain('--primary: #3b82f6;');
+    // DEF-001: blue-600. The old #3b82f6 put white text on the primary button at 3.68:1.
+    expect(css).toContain('--primary: #2563eb;');
     expect(css).not.toContain(SITE_MEASURE_TOKEN);
   });
 });

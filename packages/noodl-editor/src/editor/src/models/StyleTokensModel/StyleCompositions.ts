@@ -223,26 +223,27 @@ export const STYLE_COMPOSITIONS: VocabComposition[] = [
     nodeType: 'net.noodl.controls.button',
     group: 'control',
     description:
-      'The secondary action. A control border needs 3:1 and no --border* token reaches it (best 1.48:1), so this uses --muted-foreground (4.76:1).',
+      'The secondary action. A control border needs 3:1, which is what --border-control is for; --border is decoration and only reaches 1.23:1.',
     parameters: {
       backgroundColor: 'transparent',
       color: 'var(--foreground)',
       borderRadius: 'var(--radius-full)',
       borderStyle: 'solid',
       borderWidth: 'var(--border-1)',
-      // ⚠️ DEVIATION from `ui-split-hero`, which writes `var(--border-control)`.
-      // THAT TOKEN DOES NOT EXIST — it is named in the design doctrine (§4) and
-      // in this one recipe, and in neither DefaultTokens.ts nor any preset. An
-      // undefined custom property makes `border-color` invalid, so the border
-      // falls back to `currentColor`: precisely the "a control at 1.00:1"
-      // failure §4 exists to prevent, shipped by the sentence preventing it.
+      // DEF-001: this is the line the previous comment said to change, and the
+      // condition it named has been met. That comment recorded — correctly, at
+      // the time — that `--border-control` did NOT exist, that `ui-split-hero`
+      // wrote it anyway, and that an undefined custom property makes
+      // `border-color` invalid so the border falls back to `currentColor`. The
+      // stand-in was `--muted-foreground` (4.76:1), which passed but meant a
+      // control border and a muted paragraph were the same token.
       //
-      // Measured against `--background` (#ffffff): --border 1.23:1,
-      // --border-subtle 1.10:1, --border-strong 1.48:1. No border token in the
-      // default set reaches the doctrine's 3:1. `--muted-foreground` (#64748b)
-      // is 4.76:1 and is real, so it is what a 3:1 control border can be TODAY.
-      // If a `--border-control` token is ever added, this is the line to change.
-      borderColor: 'var(--muted-foreground)',
+      // The token now ships in `DefaultTokens.ts` (#7c8894) and in all four
+      // presets that override, and it clears 3:1 in every one of them (3.62 to
+      // 4.83 against `--background`). So the recipe, the element configs and
+      // this composition finally say the same thing, and
+      // `tests-unit/def-001/design-token-contrast.test.ts` fails if they stop.
+      borderColor: 'var(--border-control)',
       paddingLeft: 'var(--space-6)',
       paddingRight: 'var(--space-6)',
       paddingTop: 'var(--space-3)',

@@ -12,15 +12,22 @@ export const DEFAULT_TOKENS: StyleTokenRecord[] = [
 
   // Primary - Main brand/action color
   {
+    // DEF-001: was `#3b82f6` (blue-500), which put `--primary-foreground` (#ffffff) at **3.68:1**
+    // — below WCAG 1.4.3's 4.5:1 — on the filled button of every project created by accepting the
+    // defaults. `ModernPreset` ships `tokens: {}`, so this value *is* Modern's, and the failure was
+    // never one preset's. Moved one step to blue-600 (**5.17:1**) on Richard's ruling that
+    // `--primary` moves and white text stays; `--primary-hover` and `--ring` moved with it so the
+    // three keep meaning one colour. Graded by `tests-unit/def-001/design-token-contrast.test.ts`,
+    // which derives the pairs from the element configs rather than listing them.
     name: '--primary',
-    value: '#3b82f6',
+    value: '#2563eb',
     category: 'color-semantic',
     isCustom: false,
     description: 'Main brand and action color'
   },
   {
     name: '--primary-hover',
-    value: '#2563eb',
+    value: '#1d4ed8',
     category: 'color-semantic',
     isCustom: false,
     description: 'Primary color on hover'
@@ -58,15 +65,18 @@ export const DEFAULT_TOKENS: StyleTokenRecord[] = [
 
   // Destructive
   {
+    // DEF-001: was `#ef4444` (red-500) at **3.76:1** against white — the destructive button's own
+    // label failed the same floor as the primary one, and the same value doubles as the TextInput
+    // `error` border. red-600 is **4.83:1**, and `--destructive-hover` moved to red-700 with it.
     name: '--destructive',
-    value: '#ef4444',
+    value: '#dc2626',
     category: 'color-semantic',
     isCustom: false,
     description: 'Dangerous actions and errors'
   },
   {
     name: '--destructive-hover',
-    value: '#dc2626',
+    value: '#b91c1c',
     category: 'color-semantic',
     isCustom: false,
     description: 'Destructive color on hover'
@@ -177,7 +187,9 @@ export const DEFAULT_TOKENS: StyleTokenRecord[] = [
   },
 
   // Focus ring
-  { name: '--ring', value: '#3b82f6', category: 'color-semantic', isCustom: false, description: 'Focus ring color' },
+  // DEF-001: tracks `--primary`. A focus ring answers to 1.4.11's 3:1, which #3b82f6 already met —
+  // it moved because a ring that is not the brand colour is a different bug.
+  { name: '--ring', value: '#2563eb', category: 'color-semantic', isCustom: false, description: 'Focus ring color' },
   {
     name: '--ring-offset',
     value: '#ffffff',

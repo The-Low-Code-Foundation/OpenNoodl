@@ -115,7 +115,8 @@ describe('AIX-006 style vocabulary', () => {
 
   it('lints raw values on a candidate and stays silent on token references', () => {
     // Three raw overrides on one Group → a variant candidate finding, and the
-    // raw #3b82f6 resolves to the existing --ring/-family token.
+    // DEF-001 moved --primary/--ring off #3b82f6, so this hex is now simply a raw value with no
+    // matching token — which is all this case needs it to be: the lint is about rawness.
     const raw = styleLintCandidate(
       filesFor({ backgroundColor: '#3b82f6', color: '#ffffff', borderColor: '#3b82f6' })
     );
