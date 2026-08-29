@@ -195,6 +195,14 @@ about a screen that *reads* as something, and on that path it reads as broken.
   slug (SBR-008), so the "names, slugs and status" half of the person sentence
   is still unverifiable. Re-drive once SBR-008 lands.
 - **AC2** still cannot close on SBR-008.
+- 🔴 **s16: AC1/AC2 do NOT unblock on s15's observation.** s15 read a `Page` row carrying `title`
+  and `slug` and recorded, carefully, that this was an observation and not a closure. Re-measured:
+  the fixture that produced it is identical to s14's on every static axis, and the filter that
+  drops these wires reads a debounced store nothing forces to settle — so a named row and a
+  nameless one are both what the mechanism produces (**SBR-008 §5**, **D13**). §5.6's two-row
+  table stands as evidence; what it is evidence *of* has changed.
+  ✅ **The drive that unblocks AC1 is named**: a second page created late in a settled session on
+  `SBR-016 Arrive Drive` — one variable, and it is also AC1's missing second row.
 - 🟡 **AC3 is unblocked and half-driven.** SBR-015's drive answered §5.7 (see
   `SBR-015 §2.3a`): publish now answers in 19 ms rather than hanging 30 s.
   Through the UI, a **successful** publish closes the menu at 211 ms and flips

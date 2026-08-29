@@ -243,6 +243,50 @@ Harmless at one row, linear in nothing, but it is a query the user pays for on e
 inside a row (SB-018 (1)). The fix is a trigger that fires on a row's *change* rather than on its
 first render.
 
+## Added 2026-08-29 (s16, SBR-008's re-measurement)
+
+## D13 — 🔴 What a build contains depends on when it was taken, not on what the project says
+
+**Severity: high. Product.** Owner: **`NONE`** — ⚠️ **and deliberately not SBR-008.** SBR-008's
+ruled fix makes the `prop-` ports resolve, which removes *this family* from the filter's reach; it
+does not change the filter, and every other dynamic-port family stays exposed. Grepped the phase's
+task files for the behaviour before recording it as unowned: no task's acceptance criteria mention
+the health pass, the export filter, or build determinism.
+
+`exportComponent` (`utils/exporter/util.ts:61`) drops every connection `getConnectionHealth` calls
+unhealthy. **`getConnectionHealth` (`NodeGraphModel.ts:662`) reads no ports** — it asks
+`WarningsModel` whether a warning is recorded and returns `healthy: true` when none is, which is
+also the answer when none has been evaluated yet. The warning it reads, `con-no-target-port`, is
+written on a debounced pass (≈2 s lazy; 50 ms on the urgent lane a viewer's arriving ports arm),
+and **nothing forces that pass to settle before an export**: no caller of `evaluateHealth()` exists
+in the deploy path, the viewer-bundle path or `ViewerConnection`.
+
+**One filter, three callers** — the viewer's component bundles (`editorapi.js:88`), incremental
+preview updates (`ViewerConnection.ts:993`), and the full export and deploy (`json.ts:159`/`:178`,
+`deployer.ts:108`). So this is not a deploy-only property, and a "works in preview" observation is
+not a control for it.
+
+**Where it bites:** two builds of a byte-identical project can differ in which wires they contain,
+with no diagnostic and nothing in the artefact recording which one you got. It is silent in both
+directions — a wire kept that the editor would call broken, or a wire dropped that the author can
+see on the canvas.
+
+🔴 **What it already cost this phase: four sessions of evidence pointing two ways.** s9, s12 and
+s14 each read a nameless `Page` row and filed it under SBR-008; s15 read a named one on a fixture
+measured identical to s14's on every static axis (SBR-008 §5.1) and recorded that the symptom "did
+not reproduce". **Both are what this mechanism produces.** The register carried it as a defect
+about *the deploy* for three sessions because no reading distinguished the filter from its caller.
+
+**What would close it:** force `evaluateHealth()` to completion before any export, so a build is a
+function of the project; or carry the health verdict in the artefact so a build says which wires it
+dropped and why. ⚠️ The first is the smaller change and the one that makes the second honest.
+
+⚠️ **Stated as a mechanism, not a confirmed cause of the two readings.** The timing account
+explains both and is grounded in the code above; *which* timing obtained in s14 and s15 was not
+observed, and the drive that would settle it is named in SBR-008 §5.5.
+
+---
+
 ---
 
 ✅ **D5–D8 and D10 were re-measured at HEAD on 2026-08-29** — see

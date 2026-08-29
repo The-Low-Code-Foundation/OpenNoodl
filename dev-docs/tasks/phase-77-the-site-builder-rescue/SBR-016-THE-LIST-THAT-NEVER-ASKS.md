@@ -287,10 +287,15 @@ oracle became `/(No|One|Two|Three) pages?[,.]/`, which only the admin list can p
 - 🔴 **Every arrival issues the query TWICE** once a row exists — the `list.itemOutputSignal-Changed`
   wire re-fetches when the repeater first renders a row. One wasted round trip per arrival, on both
   screens. **D12** in the register.
-- ✅ **SBR-008's symptom did not reproduce.** The created `Page` row carries `title` and `slug`, read
-  on the panel's own session: `{"title":"About us","slug":"about", …}`. SBR-017 §6.5 recorded them
-  missing on a mint one commit older. Recorded as an observation for SBR-008's owner, **not** as a
-  closure — the fixture differs in more than one way.
+- ⚠️ **SBR-008's symptom did not reproduce** — the created `Page` row carries `title` and `slug`,
+  read on the panel's own session: `{"title":"About us","slug":"about", …}`, where SBR-017 §6.5
+  recorded them missing on a mint one commit older. Recorded as an observation for SBR-008's owner,
+  **not** as a closure — the fixture differs in more than one way.
+  🔴 **s16 re-measured it and the caution was right, for a sharper reason than "the fixture
+  differs": the two fixtures do NOT differ.** They are the same project on every static axis, and
+  the export filter that drops these wires reads a debounced warnings store nothing forces to
+  settle — so both readings are what one mechanism produces and neither discriminates. **This
+  bullet unblocks nothing.** See **SBR-008 §5** and **D13**.
 
 ### 8.6 ⚠️ What was NOT observed
 

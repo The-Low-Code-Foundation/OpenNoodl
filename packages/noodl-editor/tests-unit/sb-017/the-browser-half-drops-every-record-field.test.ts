@@ -73,6 +73,39 @@
  * no creator but this panel and cannot. That prediction is **not measured here**
  * and must not be recorded as though it were.
  *
+ * ## 🔴 s16 (P77 SBR-008 §5): "the browser deploy drops" is the wrong subject
+ *
+ * This file says the 23 warnings are *"wires the browser deploy drops"*, and three later
+ * sessions inherited that framing and filed **preview** observations under a deploy-only
+ * defect. `exportComponent` has **three** callers, not one: the viewer's component bundles
+ * (`editorapi.js:88` → `exportComponentBundle`), incremental preview updates
+ * (`ViewerConnection.ts:993`), and the full export and deploy (`json.ts:159`/`:178`,
+ * `deployer.ts:108`). **Preview is behind the same filter.** Nothing in this file's
+ * measurements changes — it counts ports, and the count stands — but "the deploy" should be
+ * read as "any export" everywhere above.
+ *
+ * 🔴 And the filter does not consult the port set this file measures.
+ * `getConnectionHealth` reads `WarningsModel` and returns `healthy: true` when no warning is
+ * recorded — which is also the answer before the debounced health pass has run, and no
+ * export caller forces it to settle. So "which ports exist" and "which wires a build keeps"
+ * are two questions, and only the first is measured here. That is P77 **D13**.
+ *
+ * ⚠️ The §5.2-style prediction below — that `Page` and `Section` can never resolve because
+ * only this panel writes them — **was contradicted in the field**: P77's `SBR-016 Arrive
+ * Drive` created a `Page` row carrying `title` and `slug` into a class that had no such
+ * columns. The prediction was correctly marked unmeasured; it is now marked *doubted*.
+ *
+ * 🔴 **s16: this file's central assertion had never run.** `dbmodelcrudbase.ts` carried no
+ * `/// <reference>` to `noodl-runtime/src/globals.d.ts`, so required from THIS package's
+ * jest program it threw `TS2304` at require time for six of the seven Record nodes — and
+ * ts-jest renders that `TSError` with an **empty message**, so the red looked like a flake
+ * and said nothing. The `toEqual([])` below was passing on an array the harness never
+ * filled. ⚠️ **The known-firing control two tests down could not have caught it**: it was
+ * put there for exactly this failure mode, and it passes because `storageFetch` and
+ * `in-`/`out-` come from modules that compile. A control must be scoped to the population
+ * the rule is ABOUT. Fixed in `dbmodelcrudbase.ts`; all seven nodes now answer, and the
+ * answer is the one asserted.
+ *
  * ⚠️ This file measures **which ports exist**, not the export. The editor-side
  * assertion — that `exportComponent` really drops these wires — is the cloud
  * half's `tests/cloud/sb017-deploy-connection-parity.test.ts`, and it cannot be

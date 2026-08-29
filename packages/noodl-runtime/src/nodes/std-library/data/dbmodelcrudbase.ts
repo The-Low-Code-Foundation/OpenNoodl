@@ -1,3 +1,17 @@
+/// <reference path="../../../globals.d.ts" />
+//
+// Same rule as `TokenLifecycle.ts` and `ParseWireAdapter`, and the same reason: this file is
+// compiled by every consumer's program, `_noodl_cloud_runtime_version` (used by
+// `_getCurrentUser` below) is declared only in this package's `src/globals.d.ts`, and the
+// identifier must stay **bare** for webpack's DefinePlugin to substitute it.
+//
+// 🔴 P77 SBR-008 s16 — without this line the file does not COMPILE under a consumer's
+// program, and `tests-unit/sb-017/the-browser-half-drops-every-record-field.test.ts` was
+// requiring it from noodl-editor's jest: six of the seven Record nodes in the site-builder
+// template threw `TS2304` at require time, and the spec's central assertion — *"the runtime
+// announces NO `prop-` port"* — had been passing its own throw off as an empty port list.
+// ts-jest renders that TSError with a blank message, so the red said nothing at all.
+
 'use strict';
 
 import type {
