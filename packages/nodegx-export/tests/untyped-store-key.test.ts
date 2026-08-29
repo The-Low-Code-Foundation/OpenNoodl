@@ -5,6 +5,7 @@ import * as ts from 'typescript';
 import { Catalog } from '../src/catalog';
 import { emitApp } from '../src/emit/emitApp';
 import { parseProject } from '../src/parse/parseProject';
+import { typecheckEmittedApp } from './helpers/typecheckApp';
 import { ComponentIR, ConnectionIR, ExportIR, NodeIR, ParamValue } from '../src/ir/types';
 
 /**
@@ -357,5 +358,32 @@ describe('EXP-011 §10.5 — an untyped store key is coerced at its sink, not dr
       // ...and the marker is the reason the raw file may mention it at all.
       expect(moodFile(app)).toContain('TODO(export)');
     });
+  });
+
+  /**
+   * 🔴 **§25 — the same emission put through a compiler rather than a parser.**
+   *
+   * `withUntypedStoreKey` is the widest graph in this file: an HTTP request, a
+   * `GlobalStore.Set` writing an `unknown` into a key the store's `initialState` does not carry,
+   * and a `Subscribe` reading it back into a render sink. `expectParses` grades every row above
+   * as syntax only.
+   *
+   * 🔴 **This file has a named reason to be compiled rather than parsed, and it is three rows
+   * up.** The refusal for a key the store does not have exists because the emitted selector reads
+   * `s.<key>` against the generated interface — so lifting that gate would emit a **TS2339** in
+   * the exported app, which is valid syntax and invisible to every `expectParses` here. The row
+   * above proves the gate is shut by reading notes and grepping for the key name; this proves the
+   * complementary thing, that what the gate *does* let through compiles against the interface the
+   * store module generates.
+   *
+   * It is this hand-built graph rather than a fixture because **no fixture writes a store key
+   * from an untypable source** — `initialState` types every key the seven fixture projects use,
+   * so `tests/typecheck-emitted.test.ts` never emits an `unknown`-valued key at all.
+   */
+  it('the emitted app typechecks, and not merely parses', () => {
+    const { app } = withUntypedStoreKey((ir, mood, read) => {
+      connect(mood, read.id, 'value', 'noteEcho', 'text');
+    });
+    expect(typecheckEmittedApp(app)).toEqual([]);
   });
 });

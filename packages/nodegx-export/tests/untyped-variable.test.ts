@@ -5,6 +5,7 @@ import * as ts from 'typescript';
 import { Catalog } from '../src/catalog';
 import { emitApp } from '../src/emit/emitApp';
 import { parseProject } from '../src/parse/parseProject';
+import { typecheckEmittedApp } from './helpers/typecheckApp';
 import { ComponentIR, ConnectionIR, ExportIR, NodeIR, ParamValue } from '../src/ir/types';
 
 /**
@@ -321,6 +322,34 @@ describe('EXP-011 §10 — an untyped Variable is coerced at its sink, not dropp
     it('CONTROL — an unwired authored value still prints', () => {
       const app = emitApp(JSON.parse(JSON.stringify(baseIr)), catalog);
       expect(homeFile(app)).toContain('Name="Ada"');
+    });
+
+    /**
+     * 🔴 **§25 — this file's richest graph put through a compiler rather than a parser.**
+     *
+     * `onHome` is the widest emission this file builds: an HTTP request, a `Set Variable` writing
+     * an `unknown`, a read of it into a text sink on one page, and a second read into a component
+     * instance prop on another. `expectParses` grades all of that as syntax only.
+     *
+     * 🔴 **It is this graph rather than a fixture, and that was measured rather than reasoned.**
+     * The duplicate-prop defect two rows above lived here: `<GreetingCard Name="Ada" Name={x} />`
+     * is TS17001, a *compiler* error on perfectly good syntax. Deleting the instance-side dedup in
+     * `src/emit/component.ts` — `if (plan.bindings[node.id]?.[param.name] !== undefined) continue;`
+     * — puts it back, and with that mutant in place this row goes red naming
+     * `TS17001 src/pages/Home.tsx`, while **`tests/typecheck-emitted.test.ts` stays 11/11 green and
+     * `tests/emitted-syntax.test.ts` stays 16/16 green**. No fixture wires a port that already
+     * carries an authored value, so compiling all seven fixture apps never meets the shape.
+     *
+     * The row above pins the emitter's current answer with a regex count; this asserts the general
+     * thing that regex is a proxy for — that the file the export ships actually compiles. No parse
+     * can: a duplicate JSX attribute yields **zero** `parseDiagnostics`, which is why every
+     * `expectParses` in this file passes on the mutant.
+     */
+    it('the emitted app typechecks, and not merely parses', () => {
+      const app = onHome((ir, home, read) => {
+        connect(home, read.id, 'value', 'greetingCard', 'Name');
+      });
+      expect(typecheckEmittedApp(app)).toEqual([]);
     });
   });
 

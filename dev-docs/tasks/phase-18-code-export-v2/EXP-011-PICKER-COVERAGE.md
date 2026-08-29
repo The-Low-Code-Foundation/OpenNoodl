@@ -3152,6 +3152,89 @@ a private function inside the fixture suite.
   `emitted-syntax`, `in-code-markers`, `page-inputs`, `date-family`, `untyped-store-key`,
   `http-request`, `untyped-variable`. That is the cheapest remaining EXP-011 work and it is
   currently owned by `NONE`.
+  > 🔴 **Corrected by §26 — this list of eight is wrong in three ways, and five of the eight
+  > needed no row.** It was written from a grep for parse helpers rather than from what the
+  > fixture population already reaches. Read §26 before working from it.
 - ⚠️ **Cost, measured**: one program is ~750 ms, so converting all 32 `expectParses` call sites
   wholesale would roughly triple the suite. The two rows added here compile the richest graph in
   each file rather than every configuration, which is what keeps the suite at ~20 s.
+
+---
+
+## §26 The rows §25 asked for — and the list it asked for them on was wrong three times over (session 55, 2026-08-29)
+
+§25.4 left one item owned by `NONE`: add a `typecheckEmittedApp` row to each of **eight** files
+still carrying a private parse-only helper. Three rows were added. **Five of the eight needed
+none**, and finding that out was most of the work.
+
+### §26.1 🔴 The list was built from the checkers, not from the population
+
+§25's own headline lesson is *"ask what population a checker runs over before believing its
+reach."* Its closing list was then built by grepping for files that carry a parse helper — which
+is a fact about the **checkers**, not about what the fixture suite already compiles. Checked
+against the population, the eight fall into three groups:
+
+| File | Verdict | Why |
+|---|---|---|
+| `untyped-variable` | ✅ **row added** | No fixture wires a port that already carries an authored value |
+| `untyped-store-key` | ✅ **row added** | No fixture writes a store key from an untypable source; `cheer` feeds `GlobalStore.Set` only from string-typed sources |
+| `page-inputs` | ✅ **row added** | No fixture carries a `PageInputs` node, and no fixture `urlPath` has a braced segment |
+| `emitted-syntax` | ❌ **not applicable** | Runs over the **fixtures**, not a hand-built graph — the exact population `typecheck-emitted.test.ts` already compiles at zero |
+| `in-code-markers` | ❌ **not applicable** | Same — iterates the fixture directory |
+| `http-request` | ❌ **duplicate** | `quote-desk` wires `HTTP.out-text/out-author/out-echo → Text.text`, `error → Text`, `failure → Set Variable` — the generated answer interface, the cross-file import and the optional-chained read are all already compiled |
+| `array-vocabulary` | ❌ **duplicate** | `reading-shelf` wires `Collection2 → Filter Collection → Map Collection → For Each`, plus a `Model2` prop-minting `BookRow` — the composed row shape is already compiled |
+| `date-family` | ❌ **duplicate** | `deadline-desk` carries all six date nodes **and** the exact chain the hand-built case builds: `button.onClick → Now.read`, `Now.done → Set Variable.do`, `Now.iso → Set Variable.value`, `Variable2.value → Text.text` |
+
+🔴 **Two of these were caught only after the row had been written and was passing.** The rows for
+`http-request` and `array-vocabulary` were added, went green, and were then reverted when the
+fixtures were actually read. A green row is not evidence that it grades anything new.
+
+### §26.2 What was added
+
+Three rows, each over the richest graph in its file, each reached by an emitted page file proven
+to be in the program:
+
+- `tests/untyped-variable.test.ts` — the `onHome` graph: HTTP → `Set Variable` (`unknown`) →
+  a read into a text sink on one page, plus a second read into a component instance prop on
+  another.
+- `tests/untyped-store-key.test.ts` — HTTP → `GlobalStore.Set` into a key `initialState` does not
+  type → `Subscribe` back into a render sink.
+- `tests/page-inputs.test.ts` — a parameterised route with both router hooks declared. This is the
+  one slice whose value type comes from a **hook signature** rather than from the emitter.
+
+### §26.3 What proves it
+
+- **`tsc --noEmit`** exit 0; **jest 1070/1070 across 43 suites** (1067/43 before — 3 new rows).
+- 🔴 **The reach argument, measured a second time and on a different defect class.** Deleting the
+  instance-side dedup in `src/emit/component.ts` (`if (plan.bindings[node.id]?.[param.name] !==
+  undefined) continue;`, the second of the two occurrences) reintroduces the real
+  `<GreetingCard Name="Ada" Name={x} />` defect. With that mutant in place:
+
+  | Suite | Population | Result |
+  |---|---|---|
+  | `tests/untyped-variable.test.ts` — the new row | hand-built | 🔴 **red**, `TS17001 src/pages/Home.tsx:88` |
+  | `tests/typecheck-emitted.test.ts` | 7 fixtures | 🟢 **11/11 green** — misses it entirely |
+  | `tests/emitted-syntax.test.ts` | 7 fixtures | 🟢 **16/16 green** |
+
+- 🔴 **No parse can catch this class.** A duplicate JSX attribute yields **zero**
+  `parseDiagnostics` — measured directly, not inferred — so every `expectParses` in the file
+  passes on the mutant. TS17001 is a grammar error the *checker* raises.
+- ✅ **Neither of the other two rows is vacuous.** Each graph's emitted page file was sabotaged
+  through the helper's `overrides` and produced a diagnostic naming that file
+  (`src/pages/Mood.tsx`, `src/pages/Notes.tsx`), proving it is genuinely in the program rather
+  than passing on an empty one.
+- ⚠️ **Cost**: the suite moved **23 s → 27.7 s**. §25's "~750 ms per program" is a warm figure;
+  a cold program in a fresh jest worker measured **1.0–2.9 s**.
+
+### §26.4 What this leaves
+
+- ✅ **§25.4's item is closed.** Every file where a typecheck row reaches a population the fixture
+  suite does not now has one. Owner was `NONE`.
+- 🔴 **The remaining hole is the one §25 named and it has not moved**: `react-router-dom` is
+  *declared* by `tests/helpers/typecheckApp.ts`, not resolved — the repo has v5 and the app wants
+  v7. `page-inputs`' new row is graded against that declaration. **Building an exported app is
+  still the only instrument for the real third-party libraries.**
+- ⚠️ **`array-vocabulary` emits `mood2?: any;`** for a minted `Model2` prop (`tests/array-vocabulary.test.ts`,
+  "mints a prop, reads it at the sink"). A typecheck row over that graph would grade nothing at
+  the prop, because `any` is what it emits. Noticed in passing, not investigated; owner `NONE`.
+

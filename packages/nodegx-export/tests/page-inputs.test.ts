@@ -5,6 +5,7 @@ import * as ts from 'typescript';
 import { Catalog } from '../src/catalog';
 import { emitApp } from '../src/emit/emitApp';
 import { parseProject } from '../src/parse/parseProject';
+import { typecheckEmittedApp } from './helpers/typecheckApp';
 import { ComponentIR, ConnectionIR, ExportIR, NodeIR, ParamValue } from '../src/ir/types';
 
 /**
@@ -227,6 +228,30 @@ describe('EXP-011 Tier 2.5 §2 — the read, and the merge order it has to agree
     );
     expectParses(app);
     expect(notesFile(app)).toContain('{pageQuery.get("order-by") ?? pageParams["order-by"]}');
+  });
+
+  /**
+   * 🔴 **§25 — the same emission put through a compiler rather than a parser.**
+   *
+   * This is the slice where compiling grades the most, because the value under test is the only
+   * one in the package whose type comes from a *hook signature* rather than from the emitter:
+   * `useParams()` answers `string | undefined` per segment and `useSearchParams()[0].get()`
+   * answers `string | null`. The rows above assert the merge expression as text; this asserts
+   * that the expression's type is one the sink it lands in can actually accept.
+   *
+   * It is this hand-built graph rather than a fixture because **no fixture page has a braced
+   * segment in its `urlPath`, and none carries a `Page Inputs` node at all** — every fixture route
+   * is a bare literal, so `tests/typecheck-emitted.test.ts` emits neither hook in any of its seven
+   * apps and could not meet this shape.
+   *
+   * ⚠️ **Graded against the helper's ambient declaration of `react-router-dom`, not against the
+   * real v7 package** — the repo has v5 (`tests/helpers/typecheckApp.ts` says why). The hook
+   * return types there are written to match v7 deliberately, but a drift between them and the
+   * real library is this row's blind spot, and building an exported app remains what closes it.
+   */
+  it('the emitted app typechecks, and not merely parses', () => {
+    const { app } = readIntoHeading();
+    expect(typecheckEmittedApp(app)).toEqual([]);
   });
 });
 
