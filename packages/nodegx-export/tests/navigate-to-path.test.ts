@@ -5,6 +5,7 @@ import * as ts from 'typescript';
 import { Catalog } from '../src/catalog';
 import { emitApp } from '../src/emit/emitApp';
 import { parseProject } from '../src/parse/parseProject';
+import { typecheckEmittedApp } from './helpers/typecheckApp';
 import { ExportIR, ComponentIR, ConnectionIR, NodeIR, ParamValue } from '../src/ir/types';
 
 /**
@@ -1305,6 +1306,15 @@ describe('§24 — Error read from the node own chains', () => {
     expect(file).toContain('const [goError, setGoError] = useState<string | undefined>();');
     expect(file).toContain(`setGoError(${BLOCKED});`);
     expectParses(app);
+  });
+
+  /**
+   * 🔴 **§24.6 — the compiler, not the parser.** As in `external-link.test.ts`: no fixture project
+   * contains a `Navigate To Path`, so this graph is the only population where the §24.3 shape —
+   * a state row read from a chain and declared by an earning clause — can be compiled at all.
+   */
+  test('the emitted app typechecks, and not merely parses', () => {
+    expect(typecheckEmittedApp(chainReads('done').app)).toEqual([]);
   });
 
   /**

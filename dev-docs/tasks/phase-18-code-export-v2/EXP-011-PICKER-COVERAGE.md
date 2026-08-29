@@ -3081,3 +3081,77 @@ them because each is cheap to repeat:
 - ⚠️ **No corpus fixture contains an `External Link` or a `Navigate To Path` at all**, so every row
   above is driven from hand-built graphs and one authored project. That is a fact about the corpus,
   not about the code — the same shape as §22.8's stub-backend note.
+
+## §25 The typecheck suite §24.6 asked for — and why the suite it described would not have worked (session 54, 2026-08-29)
+
+§24.6 left one item owned by `NONE`: *"a `ts.createProgram` over the emitted files, in one suite,
+would close it for the whole package."* That suite now exists. **The sentence describing it was
+wrong in one load-bearing way, and the measurement that shows it is below.**
+
+### §25.1 What was built
+
+`tests/helpers/typecheckApp.ts` builds a real `ts.Program` over an emitted app's `src/**` and
+returns its semantic diagnostics. `tests/typecheck-emitted.test.ts` runs it over **all seven
+fixture projects**, each of which compiles to **zero diagnostics**.
+
+The compiler options are the ones the scaffold writes into the exported app's own `tsconfig.json`,
+so this is not a laxer dialect than `tsc -b`. What resolves for real: `react`, `react-dom` (the
+root's `@types/*`), and **`@nodegx/core` mapped to its committed `src`** — deliberately not to its
+`dist`, which is gitignored, so this suite's reach does not depend on whether somebody ran a build.
+
+🔴 **`react-router-dom` and `vite/client` are declared in the helper rather than resolved**, because
+the app depends on `react-router-dom@^7` and this repo has **v5** — a different API — and no Vite at
+all. Those declarations are typed rather than shorthand-`any` (`useParams()` answers
+`string | undefined` per segment, which the generator reasons about), but **router prop misuse is
+graded against them and not against the real package.** Building an exported app remains the only
+instrument for that. The `*.module.css` declaration is the same loose index signature `vite/client`
+ships, so it is not a weakening.
+
+### §25.2 🔴 A fixture-only suite is green on the defect that motivated it
+
+§24.6's own note — *no corpus fixture contains an `External Link` or a `Navigate To Path`* — is
+what breaks its recommendation, and the two facts were recorded three lines apart without being put
+together. **The defect class lives in the nodes the corpus does not have.**
+
+Measured, by restoring §24.3's mutant (all four earning clauses removed) and running both suites:
+
+| suite | population | under the §24.3 mutant |
+| --- | --- | --- |
+| `typecheck-emitted.test.ts` | the 7 fixture projects | **11/11 GREEN — misses it entirely** |
+| the new rows in `external-link` / `navigate-to-path` | hand-built graphs | **RED**, `TS2304 Cannot find name 'helpError'` |
+
+So "one suite over the fixtures closes it for the whole package" is **false**. It closes the class
+only for node types the corpus contains, and the picker's own number says 69 of 127 types are
+translated while the corpus exercises far fewer. **A typecheck row belongs beside the hand-built
+graph wherever a slice has one** — which is why `typecheckEmittedApp` is an exported helper and not
+a private function inside the fixture suite.
+
+### §25.3 What proves it
+
+- **`tsc --noEmit`** exit 0; **jest 1067/1067 across 43 suites** (1054/42 before — 13 new rows).
+- 🔴 **The control pair is permanent, not a scratchpad artefact.** Three rows in
+  `typecheck-emitted.test.ts` sabotage the emission and assert the checker goes red: a synthetic
+  undeclared name, **§24.3's exact shape** (a state read whose `useState` line is deleted), and a
+  row asserting that the same sabotage **still parses cleanly** — the two halves of why the parse
+  rows missed it, sitting next to each other.
+- 🔴 **The checker's first two findings were about the checker**, both caught by requiring the
+  known-good arm to reach zero rather than by reading the diagnostics as defects:
+  1. Stubbing every bare import as `any` gave **107 diagnostics on `cheer` alone** — `TS7026` (no
+     `JSX.IntrinsicElements`), `TS2347` (generic calls on an untyped `useState`). Real
+     `@types/react` removes all of them; an exclusion list would have hidden them instead.
+  2. A `directoryExists` that read only from disk made module resolution **prune directories that
+     existed only in memory**, reporting `TS2307 Cannot find module './client'` for a file that had
+     just been emitted. It reads exactly like a real defect in the emission.
+
+### §25.4 What this leaves
+
+- ✅ **§24.6's typecheck item is done and off the list.** Owner was `NONE`; the suite is committed.
+- 🔴 **The remaining hole is population, not mechanism.** Slices whose nodes no fixture contains
+  are graded only where someone adds a `typecheckEmittedApp` row to the hand-built graph. Two have
+  one. **The other eight files carrying a private `expectParses` do not** — `array-vocabulary`,
+  `emitted-syntax`, `in-code-markers`, `page-inputs`, `date-family`, `untyped-store-key`,
+  `http-request`, `untyped-variable`. That is the cheapest remaining EXP-011 work and it is
+  currently owned by `NONE`.
+- ⚠️ **Cost, measured**: one program is ~750 ms, so converting all 32 `expectParses` call sites
+  wholesale would roughly triple the suite. The two rows added here compile the richest graph in
+  each file rather than every configuration, which is what keeps the suite at ~20 s.

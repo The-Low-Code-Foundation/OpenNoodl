@@ -5,6 +5,7 @@ import * as ts from 'typescript';
 import { Catalog } from '../src/catalog';
 import { emitApp } from '../src/emit/emitApp';
 import { parseProject } from '../src/parse/parseProject';
+import { typecheckEmittedApp } from './helpers/typecheckApp';
 import { ExportIR, ComponentIR, ConnectionIR, NodeIR, ParamValue } from '../src/ir/types';
 
 /**
@@ -690,6 +691,19 @@ describe('EXP-011 §24 — Error read from the node own chains', () => {
     // The row is still written by the failure arm — directly, since nothing reads a local.
     expect(notes).toContain(`setHelpError(${BLOCKED});`);
     expectParses(app);
+  });
+
+  /**
+   * 🔴 **§24.6 — the same emission put through a compiler rather than a parser.**
+   *
+   * The row above asserts the `useState` line is present, which is what killed the §24.3 mutant.
+   * This asserts the stronger and more general thing: every name the file reads *resolves*. It is
+   * here rather than only over the fixtures because **no fixture project contains an
+   * `External Link` at all** — the population that carried the defect is this hand-built graph,
+   * so a fixture-only typecheck suite would have compiled seven apps and never met it.
+   */
+  it('the emitted app typechecks, and not merely parses', () => {
+    expect(typecheckEmittedApp(chainReads('done').app)).toEqual([]);
   });
 
   /**
