@@ -30,7 +30,7 @@ the site's root URL rendering no page at all.
 
 ### 1.1 🔴 P77 **D11** — and it is NOT the seam. The migration is wrong on its own terms.
 
-**Added 2026-08-29** from phase 77's SBR-016 drive (their s14), and it **changes §1's last
+**Added 2026-08-29** from phase 77's SBR-016 drive (their s15), and it **changes §1's last
 sentence.** §1 exonerates the migration — *"None of that is the defect"* — on the reading that it
 faithfully preserves a **pre-§2** author's intent and only the non-loading paths disagree. D11 is a
 case that reading does not cover:
@@ -42,7 +42,17 @@ case that reading does not cover:
 
 **Read at HEAD, and the peer's account holds with one correction:**
 
-- `RUN_ON_CHANGE_FAMILIES` has **17** families, not fifteen.
+- `RUN_ON_CHANGE_FAMILIES` has **18 entries for 15 families** — the four `Variable` types share
+  one definition (`variables/variablebase.ts`) and one row each, because the migration keys on type
+  name. The module says so two lines above the table. **Phase 77's "fifteen" was right.**
+
+  🔴 **I "corrected" it to 17, and 17 is neither number.** It came from a one-line regex over the
+  table requiring keys to match `[\w.\-]+`, and one key — `'Filter Collection'` — has a **space**
+  in it. 18 − 1 = 17. The failure mode is the one worth keeping: the number was **plausible**, it
+  sat between the two true numbers, and it fit nothing and excluded nothing — so nothing about it
+  looked wrong, and I used it to overturn a correct figure that had been read off the module's own
+  prose. **A hand-rolled counter's first output is a measurement of the counter.** Brace-match the
+  literal, or read the sentence the author already wrote.
 - 🔴 **There is no project-version guard anywhere in the pass.** The only conditions are *"this node
   is in a family"*, *"its control signal is wired"* and *"the key is absent"*
   (`runOnValueChangeMigration.ts:406-421`). Nothing distinguishes a graph carrying pre-§2 history
