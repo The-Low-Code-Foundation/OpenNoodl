@@ -1,100 +1,97 @@
 # Phase 80 — next session
 
-## State: DEF-001, 002, 003, 004, 006, 016, **017** closed. **DEF-007 is 🟡 partial.**
+## State: DEF-001, 002, 003, 004, 006, **014**, 016, 017 closed. **DEF-007 is 🟡 partial.**
 
-**s9 (2026-08-29)** took DEF-007 and drove its one flagged reading. Nothing in product source
-changed — **this session is documentation only**, so every gate stands where s8 left it and none
-was re-run. If you are picking up DEF-007, read **§2.1**, **§6** and **§6.1**; §3's item 3 is
-struck through and §2's bullet list is superseded by §2.1.
+**s10 (2026-08-29)** took **DEF-014** — the highest-bite open row — and closed all four acceptance
+criteria, including the person-level drive. It is a **product source change** in
+`noodl-runtime`'s SQLite adapter, so every gate was re-run; the readings are in §"What was run"
+below and they are the ones to quote.
 
 | commit | what |
 |---|---|
-| `7655c7ea` | **DEF-007** — §2.1 the empty population, §6 the seam from disk, §6.1 AC3 measured at 56 |
-| `fc4ebe45` | §2.1 widened to 340 manifests, and the modules qualification that changes the fix |
-| `0ab7dc8d` | register: DEF-007 → 🟡 partial, and the ruling §2.1 raised |
+| `77a82ddc` | **DEF-014 fixed at the cause** — `QueryBuilder.columnRef`, 30 adapter specs, the HTTP day-one spec, and one phase 77 spec inverted |
+| `4d5289d3` | **AC1 driven** — `publishPage` 200 on a site with no sections; and the refusal used to come *after* the page went public |
 
 ---
 
 ## 🔴 The finding, in one paragraph
 
-**The task asked for a fix whose population is empty, and the real gap was sitting next to it
-unnamed.** §3.3 said to give `PlatformTemplateProvider` the `rootNodeId` resolution
-`EmbeddedTemplateProvider` has. The mechanism reading was true — it does no resolution — but the
-*consequence* does not follow: the editor's writer emits `rootNodeId` and **never** `rootComponent`,
-so the name-shaped input that resolver exists for cannot reach the curated path, whose input is a
-real project's files uploaded verbatim. Across **340** manifests on this machine, exactly **2**
-carry `rootComponent` and both carry an id beside it — **the set carrying a name with no id is
-empty**. What *is* missing is any check that a template has a home **at all**: no publish gate, no
-install rescue, while `noodl-preview` already has the guess-and-warn the editor path lacks.
+**A column here is only ever created by a write, so on the day an app is made every property it
+filters on names a column that does not exist — and that was a 500, not an empty result.** The
+site-builder's Publish refused every page on every new site because of it. Fixed in one seam:
+`columnRef()` emits the SQL literal `NULL` when the table has no such column, so **an absent column
+behaves exactly as a column present and null in every row** — an equivalence, asserted operator by
+operator, because "returns nothing" is passed by an implementation that gets `$exists: false` and
+`$ne` backwards. 🔴 **The task's own proposed mechanism had no population**: §3 said `_Schema`
+separates a declared-but-unwritten property from a nonexistent one, and it cannot — `_Schema` is
+written in the same call as the `ALTER TABLE`, so *declared but unwritten* is not a state that
+exists here. That is **the second session running** that a task's named mechanism turned out to have
+nothing behind it (s9 was `rootComponent`, 0 of 340).
 
 ## What to do next
 
-**DEF-007's §3.2** — the migration half, which is now the whole of the task. §1.1 already forced
-its decision (a modern template must carry explicit `runOnChange-*` values, because the migration
-will keep reversing an unstated intent on every load). §6.1 prices it: **56 decisions, not a flag.**
-🔴 **Do not start by editing `site-builder.content.json` or its generator** — that artefact is
-phase 77's active file, moved by SBR-017 today. Sequence after their work lands, or pick a
-different artefact.
+**DEF-007's §3.2** is still the largest open piece and is still sequenced behind phase 77 —
+`site-builder.content.json` was edited by a peer at **20:19 today**, mid-run. §6.1 prices it: **56
+decisions, not a flag**, and §1.1 already forced the decision.
 
-Also open: **DEF-008**, **DEF-009**, **DEF-014**, **DEF-015**, and the four carried from phase 76
-by reference (**DEF-010/011/012/013** — three say their fix needs a corpus sweep, and that sweep is
-shared work to be done **once**). **DEF-005** is 🔒 on a Richard ruling.
+Also open: **DEF-008**, **DEF-009**, **DEF-015**, and the four carried from phase 76 by reference
+(**DEF-010/011/012/013** — three say their fix needs a corpus sweep, and that sweep is shared work
+to be done **once**). **DEF-005** is 🔒 on a Richard ruling.
 
-🔴 **The standing instruction still pays — six sessions running.** *Find the claim in your task
+⚠️ **DEF-015 is the natural next one** — it is the other row from the same SBR-015 drive, it is
+small (a classifier in `LocalBackendCard`), and its traps are already written down.
+
+🔴 **The standing instruction has now paid seven sessions running.** *Find the claim in your task
 that is a reading rather than a measurement, and drive that one first.* s4 deleted two of three
-rows, s5 found a defect the file did not contain, s6 found the defect had been fixed the day
-before, s7 found the rule was wrong about two of eleven cases, s8 found the recommended fix ships
-an accessibility defect, **s9 found a scope item with no population behind it**.
+rows, s5 found a defect the file did not contain, s6 found it had been fixed the day before, s7
+found the rule wrong about two of eleven cases, s8 found the recommended fix ships an accessibility
+defect, s9 found a scope item with no population, **s10 found the proposed mechanism could not tell
+apart the two things it was named to tell apart.**
 
 ## 🔴 What this session paid for, that the next one should not re-buy
 
-- 🔴 **"Does no X" is a fact about a mechanism; "therefore X is broken" needs the input shape.**
-  Both providers were graded against the same checklist and only one of them *takes the input the
-  checklist is about*. `EmbeddedTemplateProvider` resolves a name because its input is a
-  hand-authored TS object (`hello-world.template.ts:40`, `rootComponent: 'App'`);
-  `PlatformTemplateProvider` receives a saved project's bytes. ✅ **Before porting a fix between two
-  implementations of an interface, read what each one is handed** — the asymmetry was deliberate
-  and the file never said so.
-- ✅ **The absence was measured, not assumed, because the counter demonstrably fired.** It found
-  the 2 projects carrying `rootComponent`; that is the known-firing signal beside the zero. A count
-  of "0 with a name and no id" from a detector that had found nothing at all would have been worth
-  nothing.
-- 🔴 **Widening a denominator can strengthen one claim and correct another in the same pass.**
-  97 → 340 left the `rootComponent` claim intact but exposed that **63 have no home and most are
-  modules and prefabs, which have no home by design.** That single fact changes the fix: a
-  publish-time check keyed on `rootNodeId` would refuse every module. ✅ **The narrow denominator
-  was the right one for "how many broken projects" and the wide one for "does this shape exist" —
-  they are different questions and one number cannot serve both.**
-- ✅ **The whole seam is one call.** `applyPatches(content)` immediately before
-  `ProjectModel.fromJSON(content)`, and `fromJSON` does not apply patches itself. Two paths apply
-  it (editor open `projectmodel.editor.ts:24`, VC snapshot `snapshotProject.ts:112`); headless
-  render, code export, MCP authoring and template generation do not. ⚠️ **Three `fromJSON` call
-  sites inherit rather than decide** (`compilation.ts:83`, `exportProjectComponents.ts:88` operate
-  on an already-loaded project; `projectmodel.ts:218` `fromLocalStorage` has no pass at all) —
-  counting them as "does not apply" would have made the seam look wider than it is.
-- ✅ **`planRunOnValueChangeMigration` imports nothing**, so the disk-vs-load pair can be measured
-  over any artefact with `ts-node --transpile-only` and no editor. That is how §6.1 got a number in
-  minutes. Anchor it to an **md5**, not a path — the artefact moves.
+- 🔴 **A tracking table written by the same call as the thing it tracks cannot answer "was this
+  declared but not created".** `_Schema` and the SQL column are both written by `createTable` /
+  `addColumn`, so the set they would distinguish is empty — and `addColumn` *skips* its `_Schema`
+  update on a duplicate `ALTER`, so a column can exist, hold data, and be missing from the tracking
+  table. ✅ **The instrument is `PRAGMA table_info` on the live connection.** Read fresh, not
+  cached: **11.4 µs, 2.8% of a 200-row query**, and a stale cache would answer a *working* query
+  with no rows — silently, which is worse than the defect being fixed.
+- 🔴 **An assertion that the operation "did its work" must be one the failure would break — run the
+  mutant against THAT assertion, not just the suite.** `expect(page.published).toBe(true)` was the
+  obvious control for "the publish worked". Under the mutant it **still passed**, with the endpoint
+  answering 400 — and so did the ACL reading. That is how the partial-write finding was found: the
+  function writes the flag and opens the ACL, then fails. **Only the status code discriminates.**
+- ✅ **The defect had already been paid for twice at call sites and once in a comment.**
+  `service.ts::ensureSystemTables` pre-creates `_User`/`_Session` *with their columns* and its
+  docstring gives this exact reason; `DataBrowser.tsx:252` carries POL-014's fix for the same shape.
+  ✅ **Grep for the error string before believing a defect is one site wide** — three sightings
+  turned "found in the site builder" into "the site builder is where it was noticed".
+- ✅ **The equivalence is the spec, not the emptiness.** Two mutants: restoring the raise fails 25
+  adapter specs + 2 HTTP + 2 drive; the *lazy fix* (short-circuit an absent-column query to empty)
+  fails 7, all of them arms built for it. A spec that only asserted `results: []` would have passed
+  the second.
+- ⚠️ **`escapeColumn` strips non-alphanumerics**, so an existence check has to compare the
+  *sanitized* name against `PRAGMA`'s. And the ephemeral in-memory mock answers no PRAGMA — the
+  scope must read **unknown** there, not "no columns", or every query in that mode goes empty.
+  Pinned as a control.
 
 ## Traps carried
 
-- ⚠️ **Doc-only session: no gate was run and none needed to be.** s8's readings stand and are the
-  ones to quote — `test:ci` **2889 specs / 4 failures**, all four `AIX-006 style vocabulary` by
-  name, seed 74947. 🔴 **Do not quote that as evidence about anything committed today**; it
-  predates these commits and measures nothing in them. Re-run before any source change lands.
-- 🔴 **`catalog:examples` is still a PR gate (`pr.yml:210`) and still RED**, 60/62,
-  `comp-repeater-set-item-object` and `fn-aggregate-stats-function`, owner **`NONE`**, ~20 minutes,
-  both diagnostics carry their own `suggestion`. **It fails every PR until somebody takes it.**
-  Unchanged and unmeasured this session — no source moved.
-- ⚠️ **`typecheck:mcp` red on one peer error** (`TOKEN_PRELUDE` in `noodl-mcp/tests/tpl001Cloud.ts`)
-  and **2 failures in `tpl001Template.test.ts`** from a peer's uncommitted
-  `templates/members-area.security.json`. **Neither is phase 80's.** As recorded by s8; not
-  re-measured.
-- ⚠️ **`site-builder.content.json` is phase 77's, and it moved today** (mtime 12:44, commit
-  `cdd842fc`). §6.1's 56 is anchored to md5 `56e03abf8bb583cec6b038f5e12ed11e`. The **port names**
-  in D11 have already drifted since it was filed — the phenomenon persists, the specific ports do
-  not. Re-run the planner before quoting the breakdown.
-- ✅ **The checkout was idle**: no editor, no suite. The Electron processes matching
-  `electron/dist` were all **MCP servers** — attribute by PPID, not by name. The modified
-  `noodl-core-ui` SCSS and phase-75 docs in `git status` are a **peer's border sweep**, untouched
-  here.
+- ✅ **`test:ci` — 2894 specs, 5 failures, seed 32101, at `2cbe1d2f`.** Four are the named
+  **AIX-006 style vocabulary** floor. 🔴 **The fifth is SB-017 and it is a peer's, measured:**
+  `site-builder.content.json` mtime **20:19** and their `sb-017` spec **20:26**, both *inside* the
+  run window, and `sb017-deploy-connection-parity.test.ts` imports that artefact and nothing from
+  the query path. **The floor is still 4 by name; do not read 5 as a new baseline.**
+- ✅ `noodl-runtime` **2594 passed** / 145 suites (30 new), `nodegx-backend` **118/118 suites, 1391
+  passed**, `tsc --noEmit` clean in both.
+- 🔴 **`catalog:examples` is still a PR gate (`pr.yml:210`) and still RED**, 60/62, owner **`NONE`**,
+  ~20 minutes. Unchanged and unmeasured this session.
+- ⚠️ **`typecheck:mcp` red on one peer error** and 2 failures in `tpl001Template.test.ts` from a
+  peer's uncommitted fixture, as recorded by s8. Not re-measured; neither is phase 80's.
+- 🔴 **A pathspec commit ERRORS on an untracked file rather than skipping it** — `git add` the new
+  specs first, then commit by pathspec in the same command. Two new spec files hit this.
+- 🔴 **Do not reach for `git checkout --` to undo a mutant.** It would have discarded the whole
+  fix in that file. Revert the mutant by its exact text and `diff` against a scratchpad copy.
+- ⚠️ **The checkout was busy all session** — two peer sessions running full jest suites and one
+  editing `site-builder.content.json` live. Suites were run serially; `test:ci` waited.
