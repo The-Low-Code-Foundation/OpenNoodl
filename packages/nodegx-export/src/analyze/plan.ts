@@ -566,6 +566,34 @@ export type ValueExpr =
    */
   | { kind: 'now-out'; nodeId: string; output: 'date' | 'timestamp' | 'iso'; viaState?: string }
   /**
+   * The `Error` output of `External Link` or `Navigate To Path` (EXP-011 §24) — the message the
+   * node wrote just before it fired `Failure`.
+   *
+   * One kind for two nodes, because the two ports are the same port: a short string out of
+   * `_internal.lastError`, written immediately before the Failure fork and **never cleared**.
+   * `http-out`'s two forms (§8.2) reaching the third and fourth construct that needs them, and
+   * which form a read takes is decided by **where the read is**:
+   *
+   * - Inside the node's own **Failure** chain, `viaState` is absent and the read is `local` — the
+   *   `const` the failure arm binds the message to. It has to be: the setter has been called but
+   *   React state does not change inside the closure that called it, so a state read there would
+   *   deliver the *previous* failure's message.
+   * - Everywhere else — render, another handler, and **the node's own Done chain** — `viaState`
+   *   names the row the failure arm writes. In the Done chain that is not a concession: the
+   *   interpreter never clears `lastError` either, so a read there is the previous failure's
+   *   message in both, and the stale row is the faithful answer rather than the tolerable one.
+   *
+   * ⚠️ **`Navigate To Path`'s Completed chain gets neither form, and that is the asymmetry this
+   * kind is easiest to get wrong at.** `Completed` is printed as a join *beneath* both arms, so
+   * the failure arm's `const` is out of scope there, while the row is still the pre-render value
+   * — and unlike the Done chain that is now *wrong*, because Completed runs after the failure
+   * that just wrote the message. Neither form is faithful, so the read stays refused.
+   *
+   * `local` is carried on the expression rather than looked up from the node, so the emitter
+   * needs no second table to agree with about a name.
+   */
+  | { kind: 'outcome-error'; nodeId: string; local: string; viaState?: string }
+  /**
    * One of the five **pure** date nodes (EXP-011 Tier 1.3) — `Date Add`, `Date Compare`,
    * `Date Difference`, `Date Parts`, `Date To String`.
    *
@@ -687,6 +715,12 @@ export type HandlerAction =
        * fire, so there is no read to earn it.
        */
       errorState?: string;
+      /**
+       * The `const` the failure arm binds the message to, set only where something inside that
+       * arm reads `Error` (EXP-011 §24). Minted by the read, like the row above it — the
+       * commonest node here reads neither and emits neither.
+       */
+      errorLocal?: string;
       then: HandlerAction[];
       /** The `Failure` chain — reachable only for `newTab`, where the browser can refuse. */
       failThen: HandlerAction[];
@@ -770,6 +804,15 @@ export type HandlerAction =
        * the outcome channel, not to this port.
        */
       errorState?: string;
+      /**
+       * The `const` the failure arm binds the message to (EXP-011 §24), set only where something
+       * inside that arm reads `Error`.
+       *
+       * 🔴 **It is what stops the message being computed twice.** The write above picks between
+       * two strings by re-testing the link; a chain reading `Error` would otherwise have to print
+       * that same ternary again at every sink, and the two copies would be free to disagree.
+       */
+      errorLocal?: string;
       then: HandlerAction[];
       failThen: HandlerAction[];
     }
@@ -2898,21 +2941,36 @@ function planComponent(
    * `External Link`'s chain-local for the link (EXP-011 Tier 2.5), on `Now`'s naming rule —
    * the authored label, or `externalLink` where there is none.
    */
-  const externalLinkLocals = new Map<string, string>();
-  const externalLinkLocalOf = (node: NodeIR): string => {
-    let local = externalLinkLocals.get(node.id);
+  /**
+   * A chain-local's name, on one rule for every construct that mints one (EXP-011 §24).
+   *
+   * The authored label in camel case plus a suffix naming what the local holds, or `fallbackStem`
+   * where the node has no label — and uniqued against **state** names as well as other locals, so
+   * a local can never shadow a row a sibling expression reads.
+   *
+   * 🔴 **Idempotent per node, which is the property every caller depends on.** Two readers of the
+   * same node's local must be handed the same name, and the name has to survive being asked for
+   * during one pass and printed in another.
+   */
+  const mintLocal = (cache: Map<string, string>, node: NodeIR, fallbackStem: string, suffix: string): string => {
+    let local = cache.get(node.id);
     if (local === undefined) {
       const label = (node.authoredLabel ?? '').replace(/[^A-Za-z0-9]+/g, ' ').trim();
-      const stem = label.length > 0 ? pascalCase(label).replace(/[^A-Za-z0-9_$]/g, '') : 'ExternalLink';
-      const base = `${stem.charAt(0).toLowerCase()}${stem.slice(1)}Href`;
+      const stem = label.length > 0 ? pascalCase(label).replace(/[^A-Za-z0-9_$]/g, '') : fallbackStem;
+      const base = `${stem.charAt(0).toLowerCase()}${stem.slice(1)}${suffix}`;
       let name = base;
       let counter = 2;
       while (stateNameTaken(name)) name = `${base}${counter++}`;
       usedStateVarNames.add(name);
-      externalLinkLocals.set(node.id, name);
+      cache.set(node.id, name);
       local = name;
     }
     return local;
+  };
+
+  const externalLinkLocals = new Map<string, string>();
+  const externalLinkLocalOf = (node: NodeIR): string => {
+    return mintLocal(externalLinkLocals, node, 'ExternalLink', 'Href');
   };
 
   /**
@@ -2923,19 +2981,7 @@ function planComponent(
    */
   const navigatePathLocals = new Map<string, string>();
   const navigatePathLocalOf = (node: NodeIR): string => {
-    let local = navigatePathLocals.get(node.id);
-    if (local === undefined) {
-      const label = (node.authoredLabel ?? '').replace(/[^A-Za-z0-9]+/g, ' ').trim();
-      const stem = label.length > 0 ? pascalCase(label).replace(/[^A-Za-z0-9_$]/g, '') : 'Navigate';
-      const base = `${stem.charAt(0).toLowerCase()}${stem.slice(1)}Query`;
-      let name = base;
-      let counter = 2;
-      while (stateNameTaken(name)) name = `${base}${counter++}`;
-      usedStateVarNames.add(name);
-      navigatePathLocals.set(node.id, name);
-      local = name;
-    }
-    return local;
+    return mintLocal(navigatePathLocals, node, 'Navigate', 'Query');
   };
 
   /**
@@ -2951,19 +2997,7 @@ function planComponent(
    */
   const navigatePathOpenedLocals = new Map<string, string>();
   const navigatePathOpenedLocalOf = (node: NodeIR): string => {
-    let local = navigatePathOpenedLocals.get(node.id);
-    if (local === undefined) {
-      const label = (node.authoredLabel ?? '').replace(/[^A-Za-z0-9]+/g, ' ').trim();
-      const stem = label.length > 0 ? pascalCase(label).replace(/[^A-Za-z0-9_$]/g, '') : 'Navigate';
-      const base = `${stem.charAt(0).toLowerCase()}${stem.slice(1)}Opened`;
-      let name = base;
-      let counter = 2;
-      while (stateNameTaken(name)) name = `${base}${counter++}`;
-      usedStateVarNames.add(name);
-      navigatePathOpenedLocals.set(node.id, name);
-      local = name;
-    }
-    return local;
+    return mintLocal(navigatePathOpenedLocals, node, 'Navigate', 'Opened');
   };
 
   /**
@@ -2993,10 +3027,23 @@ function planComponent(
   const attachedNavigatePaths = new Set<string>();
 
   /**
-   * Node ids whose outcome chains are being compiled, while they are being compiled — the same
-   * §8.2 refusal `externalLinkChainScope` exists for, one node over.
+   * The chain being compiled for a node, while it is being compiled — `httpChainScope`'s shape,
+   * and the arm matters here for the same reason it does there (EXP-011 §24).
+   *
+   * ⚠️ **Three arms, and they get three different answers.** `failure` reads the arm's own
+   * `const`; `done` reads the row, which holds the previous failure's message exactly as the
+   * interpreter's uncleared `lastError` does; `completed` is refused, because the join beneath
+   * both arms can see neither a faithful row nor the arm's local.
    */
-  const navigatePathChainScope = new Set<string>();
+  const navigatePathChainScope = new Map<string, 'done' | 'failure' | 'completed'>();
+
+  /** Navigate To Path nodes whose Failure chain read `Error` — what earns the arm its `const`. */
+  const navigatePathErrorChainReads = new Set<string>();
+
+  /** The `const` `Navigate To Path`'s failure arm binds its message to (EXP-011 §24). */
+  const navigatePathErrorLocals = new Map<string, string>();
+  const navigatePathErrorLocalOf = (node: NodeIR): string =>
+    mintLocal(navigatePathErrorLocals, node, 'Navigate', 'ErrorMessage');
 
   /**
    * `External Link`'s `Error` output as a state row (EXP-011 §14) — `HTTP Request`'s
@@ -3033,14 +3080,27 @@ function planComponent(
   const attachedExternalLinks = new Set<string>();
 
   /**
-   * Node ids whose outcome chains are being compiled, while they are being compiled.
+   * The chain being compiled for a node, while it is being compiled (EXP-011 §24).
    *
-   * A read of `Error` from inside this node's own Failure chain cannot take the row:
-   * `setHelpError(...)` does not change `helpError` inside the closure that called it, so the
-   * chain would read the *previous* failure's message — §8.2's rule, and the reason
-   * `HTTP Request` keeps a chain-local. This slice refuses that read instead of minting one.
+   * `setHelpError(...)` does not change `helpError` inside the closure that called it, so a read
+   * of `Error` from the **Failure** chain cannot take the row — it would deliver the *previous*
+   * failure's message (§8.2). It takes the arm's own `const` instead, which is what
+   * `HTTP Request` has always done and what §14.4 left as this family's increment.
+   *
+   * 🔴 **The `done` arm is not the same question, and answering it the same way would be
+   * wrong.** There the previous failure's message *is* the right answer — the runtime never
+   * clears `_internal.lastError` — so the stale row is faithful, and the arm's `const` is not
+   * even in scope. `Completed` is refused one node over for a third reason again.
    */
-  const externalLinkChainScope = new Set<string>();
+  const externalLinkChainScope = new Map<string, 'done' | 'failure'>();
+
+  /** External Link nodes whose Failure chain read `Error` — what earns the arm its `const`. */
+  const externalLinkErrorChainReads = new Set<string>();
+
+  /** The `const` `External Link`'s failure arm binds its message to (EXP-011 §24). */
+  const externalLinkErrorLocals = new Map<string, string>();
+  const externalLinkErrorLocalOf = (node: NodeIR): string =>
+    mintLocal(externalLinkErrorLocals, node, 'ExternalLink', 'ErrorMessage');
 
   /**
    * `External Link`'s blocked-tab local (EXP-011 §14), on the link local's naming rule and
@@ -3048,35 +3108,11 @@ function planComponent(
    */
   const externalLinkBlockedLocals = new Map<string, string>();
   const externalLinkBlockedLocalOf = (node: NodeIR): string => {
-    let local = externalLinkBlockedLocals.get(node.id);
-    if (local === undefined) {
-      const label = (node.authoredLabel ?? '').replace(/[^A-Za-z0-9]+/g, ' ').trim();
-      const stem = label.length > 0 ? pascalCase(label).replace(/[^A-Za-z0-9_$]/g, '') : 'ExternalLink';
-      const base = `${stem.charAt(0).toLowerCase()}${stem.slice(1)}Blocked`;
-      let name = base;
-      let counter = 2;
-      while (stateNameTaken(name)) name = `${base}${counter++}`;
-      usedStateVarNames.add(name);
-      externalLinkBlockedLocals.set(node.id, name);
-      local = name;
-    }
-    return local;
+    return mintLocal(externalLinkBlockedLocals, node, 'ExternalLink', 'Blocked');
   };
 
   const nowLocalOf = (node: NodeIR): string => {
-    let local = nowLocals.get(node.id);
-    if (local === undefined) {
-      const label = (node.authoredLabel ?? '').replace(/[^A-Za-z0-9]+/g, ' ').trim();
-      const stem = label.length > 0 ? pascalCase(label).replace(/[^A-Za-z0-9_$]/g, '') : 'Clock';
-      const base = `${stem.charAt(0).toLowerCase()}${stem.slice(1)}Read`;
-      let name = base;
-      let counter = 2;
-      while (stateNameTaken(name)) name = `${base}${counter++}`;
-      usedStateVarNames.add(name);
-      nowLocals.set(node.id, name);
-      local = name;
-    }
-    return local;
+    return mintLocal(nowLocals, node, 'Clock', 'Read');
   };
 
   /**
@@ -4059,19 +4095,30 @@ function planComponent(
      * this slice leaves rather than the corner it cuts.
      */
     if (fromNode.type === EXTERNAL_LINK_TYPE && fromProperty === 'error') {
-      if (externalLinkChainScope.has(fromNode.id)) {
-        ctx.defer =
-          'its Error is read from one of its own outcome chains — the write and the read would be in one closure, so the read would deliver the previous failure\u2019s message';
-        return null;
-      }
-      // Earning: a Do this slice could not translate never writes the row, and binding a sink to
-      // a row nothing writes would render a blank where the app shows a message (§4a).
-      if (!attachedExternalLinks.has(fromNode.id)) {
+      const scope = externalLinkChainScope.get(fromNode.id);
+      /**
+       * Earning, and **only outside the chains** (§4a): a `Do` this slice could not translate
+       * never writes the row, so binding a sink to it would render a blank where the app shows a
+       * message. A node whose own chain is being compiled was reached by a trigger this slice
+       * *did* translate — and `attachedExternalLinks` is not filled until the pass after this
+       * one, so asking it here would refuse every chain read there is. `HTTP Request`'s clause,
+       * with its `scope === undefined` guard, for the same reason.
+       */
+      if (scope === undefined && !attachedExternalLinks.has(fromNode.id)) {
         const compiled = compiledOf(fromNode, 'do');
         ctx.defer = 'defer' in compiled ? compiled.defer : 'its Do is never fired by a translatable trigger';
         return null;
       }
-      return { kind: 'state-get', name: externalLinkErrorStateOf(fromNode).name, maybeUndefined: true };
+      if (scope === 'failure') {
+        externalLinkErrorChainReads.add(fromNode.id);
+        return { kind: 'outcome-error', nodeId: fromNode.id, local: externalLinkErrorLocalOf(fromNode) };
+      }
+      return {
+        kind: 'outcome-error',
+        nodeId: fromNode.id,
+        local: externalLinkErrorLocalOf(fromNode),
+        viaState: externalLinkErrorStateOf(fromNode).name
+      };
     }
     /**
      * `Navigate To Path`'s `Error` output (EXP-011 §17) — the same shape one node over, with the
@@ -4084,17 +4131,35 @@ function planComponent(
      * than a blank. {@link compileNavigateToPath} makes that refusal on the wire.
      */
     if (fromNode.type === NAVIGATE_TO_PATH_TYPE && fromProperty === 'error') {
-      if (navigatePathChainScope.has(fromNode.id)) {
+      const scope = navigatePathChainScope.get(fromNode.id);
+      /**
+       * 🔴 **The Completed chain keeps the refusal, and it is the one arm of the three that has
+       * to** (EXP-011 §24). `Completed` prints as a join *beneath* both outcome arms, so the
+       * failure arm's `const` is out of scope there — and the row is no substitute, because
+       * Completed runs after the failure that has just written it, in the same closure, where
+       * React state still holds the previous message. Neither form is the interpreter's answer,
+       * so neither is emitted.
+       */
+      if (scope === 'completed') {
         ctx.defer =
-          'its Error is read from one of its own outcome chains — the write and the read would be in one closure, so the read would deliver the previous failure\u2019s message';
+          'its Error is read from its Completed chain — that chain is a join printed beneath both outcome arms, so the failure arm\u2019s message is out of scope there and the state row still holds the previous failure\u2019s';
         return null;
       }
-      if (!attachedNavigatePaths.has(fromNode.id)) {
+      if (scope === undefined && !attachedNavigatePaths.has(fromNode.id)) {
         const compiled = compiledOf(fromNode, 'navigate');
         ctx.defer = 'defer' in compiled ? compiled.defer : 'its Navigate is never fired by a translatable trigger';
         return null;
       }
-      return { kind: 'state-get', name: navigatePathErrorStateOf(fromNode).name, maybeUndefined: true };
+      if (scope === 'failure') {
+        navigatePathErrorChainReads.add(fromNode.id);
+        return { kind: 'outcome-error', nodeId: fromNode.id, local: navigatePathErrorLocalOf(fromNode) };
+      }
+      return {
+        kind: 'outcome-error',
+        nodeId: fromNode.id,
+        local: navigatePathErrorLocalOf(fromNode),
+        viaState: navigatePathErrorStateOf(fromNode).name
+      };
     }
     /**
      * An `HTTP Request`'s outputs (EXP-011 Tier 1.2).
@@ -4313,6 +4378,15 @@ function planComponent(
        */
       case 'now-out':
         return false;
+      /**
+       * The row only when it is the row: it reads undefined until the first failure, exactly as
+       * the interpreter's unwritten getter does. The chain-local was assigned by the statement
+       * directly above the read, so inside the failure arm the message is always a string — and
+       * that is a real narrowing, not a shortcut, which is why the two forms answer differently
+       * (EXP-011 §24). Must agree with component.ts maybeUndefined.
+       */
+      case 'outcome-error':
+        return expr.viaState !== undefined;
       case 'state-get':
         return expr.maybeUndefined === true;
       // A list is never undefined: a named array is a module-scope `collection([])` that exists
@@ -4580,6 +4654,18 @@ function planComponent(
        */
       case 'now-out':
         return expr.output === 'timestamp' ? 'number' : expr.output === 'iso' ? 'string' : 'unknown';
+      /**
+       * Both messages are string literals the emitter writes itself (EXP-011 §24) — so `string`
+       * in **both** forms, and the row form does not append `| undefined` here.
+       *
+       * ⚠️ That is `state-get`'s convention two cases down, not an oversight: this function is
+       * the format-collapse gate and answers what the value *is*, while whether it can be absent
+       * is `maybeUndefinedExpr`'s question and is answered there. A row read arriving here as
+       * `string | undefined` would stop a one-part format collapsing, which is a shape no rule
+       * in this file asks for.
+       */
+      case 'outcome-error':
+        return 'string';
       case 'state-get':
         return plan.stateVars.find((v) => v.name === expr.name)?.tsType.replace(' | undefined', '') ?? 'unknown';
       case 'control-event':
@@ -5763,11 +5849,13 @@ function planComponent(
     const newTab = literalParam(node, 'openInNewTab') !== false;
 
     /**
-     * Both chains compile inside the scope, so an `Error` read within either is refused rather
-     * than silently bound to a row the closure cannot see updated (§8.2).
+     * Each chain compiles under **its own** arm (EXP-011 §24), because an `Error` read means a
+     * different thing in each: in `failure` the message the arm is about to write, in `done` the
+     * previous failure's — which is what the row holds and what the interpreter answers there.
      */
-    externalLinkChainScope.add(node.id);
+    externalLinkChainScope.set(node.id, 'done');
     const done = doneChainOf(node, 'done');
+    externalLinkChainScope.set(node.id, 'failure');
     const fail = 'defer' in done ? done : doneChainOf(node, 'failure');
     externalLinkChainScope.delete(node.id);
     if ('defer' in done) return { defer: done.defer };
@@ -5793,6 +5881,9 @@ function planComponent(
         newTab,
         local: externalLinkLocalOf(node),
         blockedLocal: externalLinkBlockedLocalOf(node),
+        // Set only where the failure arm itself reads the message — the ordinary node reads it
+        // nowhere and prints no `const` (EXP-011 §24).
+        errorLocal: externalLinkErrorChainReads.has(node.id) ? externalLinkErrorLocalOf(node) : undefined,
         guardLink,
         then: done.then,
         failThen: !guardLink && !newTab ? [] : fail.then
@@ -6063,17 +6154,20 @@ function planComponent(
      * `Done`. Emitting it flat here would have run it only on success, which is the shape of
      * §15's own `deepActions` mutant — a change that moves no test because nothing looked.
      *
-     * Both chains compile inside the scope, so an `Error` read from within either is refused
-     * rather than bound to a row the closure cannot see updated (§8.2, `External Link`'s rule).
+     * Each chain compiles under **its own** arm (EXP-011 §24) — `done` reads the row, `failure`
+     * the arm's `const`, and `completed` is refused, because a join beneath both arms can reach
+     * neither a faithful row nor the local.
      */
-    navigatePathChainScope.add(node.id);
+    navigatePathChainScope.set(node.id, 'done');
     const done = doneChainOf(node, 'done');
     /**
      * ⚠️ Compiled **only** for the new-tab arm, because in-tab the Failure wire was already
      * consumed by the drop above — asking for the chain here as well would consume one wire key
      * twice, which is the double-count `EMPTY` deferrals are made of.
      */
+    navigatePathChainScope.set(node.id, 'failure');
     const fail = canNewTab ? ('defer' in done ? done : doneChainOf(node, 'failure')) : { then: [], consumes: [], collapses: [], subscribes: [] };
+    navigatePathChainScope.set(node.id, 'completed');
     const completed = 'defer' in fail ? fail : doneChainOf(node, 'completed');
     navigatePathChainScope.delete(node.id);
     if ('defer' in done) return { defer: done.defer };
@@ -6084,6 +6178,8 @@ function planComponent(
       action: {
         kind: 'navigate-path',
         nodeId: node.id,
+        // As one node over: set only where the failure arm reads its own message (EXP-011 §24).
+        errorLocal: navigatePathErrorChainReads.has(node.id) ? navigatePathErrorLocalOf(node) : undefined,
         // Exactly the runtime's own normalisation: `_getLocationPath` strips one leading slash,
         // so one is put back. `//x` stays `//x`, which matches nothing on either side.
         to: authoredPath.startsWith('/') ? authoredPath : `/${authoredPath}`,
@@ -6419,6 +6515,14 @@ function planComponent(
         return true;
       /** `Now`, on the same footing as `http-out` and for the same reason. */
       case 'now-out':
+        return true;
+      /**
+       * `External Link` and `Navigate To Path`'s `Error`, on the same footing and the same
+       * reason (EXP-011 §24): the state form is an ordinary state read, and the local form is
+       * only ever minted while the failure chain that declares the local is being compiled, so
+       * an escaped local would first have to escape the action it is carried inside.
+       */
+      case 'outcome-error':
         return true;
       /**
        * A pure date call is valid wherever its arguments are — it reads nothing but them

@@ -2909,3 +2909,175 @@ says so — its authored artefact is a block program. No corpus fixture exercise
 ⚠️ **Nothing here is a comprehension measurement.** Whether the preserved block actually lets an
 unfamiliar developer rewrite the function is unmeasured, and belongs with the two EXP-004 lines
 already owed to a person.
+
+## §24 The `Error` a node's own chain could not read, and the arm that still cannot (session 53, 2026-08-29)
+
+**69 of 127 (54.3%)** — unchanged for a sixth session, and correctly so: this is a fidelity
+increment on two nodes the picker already counts, not a new type. `export-ledger:check` holds at
+175 types.
+
+This session built the increment §14.4 named and §17.6, §18.6 and §21.7 carried forward unchanged:
+**a chain-local for `Error`, owed by two nodes.** One construct closed both.
+
+### §24.1 Three chains, three different answers — and only one of them is the chain-local
+
+The refusal was real and was pinned by a test row: a read of `Error` from inside `External Link`'s
+or `Navigate To Path`'s own outcome chains deferred, because `setHelpError(...)` does not change
+`helpError` inside the closure that called it (§8.2). `HTTP Request` has always minted a
+chain-local for exactly this. These two now do too.
+
+🔴 **What made it more than a copy of `HTTP Request` is that "the node's own chains" is not one
+question.** It is three, and answering them the same way would have been wrong twice:
+
+| chain | what the interpreter answers | what the export emits | why |
+|---|---|---|---|
+| **Failure** | the message just written | the arm's own `const` | the row is one render behind, in the closure that set it |
+| **Done** | the *previous* failure's message — `_internal.lastError` is **never cleared** | the **state row** | the stale row is the faithful answer here, not a concession; and the `const` is declared in the `else` and is not even in scope |
+| **Completed** (`Navigate To Path` only) | the message just written | **nothing — still refused** | it prints as a join *beneath* both arms, so the `const` is out of scope **and** the row is still the previous message |
+
+The `Completed` row is the one worth keeping. A slice that translated "a read from any of this
+node's own chains" would have emitted a Completed chain showing a message one failure out of date
+— §8.2's exact bug surviving in the one place nobody looked — and every other assertion here would
+still have been green. `External Link`'s `Completed` is refused further upstream (§12.7), so the
+asymmetry only surfaces on one of the two nodes.
+
+### §24.2 The message is bound once, and that is what the `const` is for
+
+The guarded-new-tab form picks between two strings by re-testing the link. Before this slice that
+ternary had exactly one reader, the state setter. A chain read would have given it a second — and
+printing the decision again at each sink is two copies of one rule, free to drift. The arm now
+binds it once and everything reads the binding:
+
+```tsx
+} else {
+  const helpErrorMessage = helpHref === undefined || helpHref === null || helpHref === '' ? 'No link to open' : 'The browser blocked opening a new tab';
+  setHelpError(helpErrorMessage);          // the row, for render and for other handlers
+  lastLinkError.set(helpErrorMessage);     // the chain
+  navigate(`/mood?msg=${helpErrorMessage}`); // and the chain again, through a different sink
+}
+```
+
+⚠️ **The `const` is emitted only where the arm's chain actually reads it.** A node whose `Error`
+is read only from render emits the setter with the message inline, exactly as before — the
+commonest shape gains nothing and loses nothing. And the two forms differ in one more way that is
+not cosmetic: the row is **maybe-undefined** (nothing has written it before the first failure) and
+the `const` is not, so `{helpError ?? ''}` folds at a text sink while `${helpErrorMessage}`
+interpolates bare. That divergence is asserted with a control pair, because a mutation run showed
+nothing else in the suite could see it.
+
+### §24.3 🔴 The suite could not tell a row that is *read* from a row that is *declared*
+
+The most useful thing a mutant found was not about this slice's code. Removing **every** clause
+that earns an `Error` row through `referencedStateNames` emits a component containing
+`lastLinkError.set(helpError)` with **no `useState` above it** — a file that cannot compile — and
+**all 1054 tests passed.**
+
+`expectParses` parses, and an undeclared identifier is perfectly good syntax. Rows across this
+file assert that a read *appears*; none asserted that it *resolves to anything*. Two rows now do,
+one per node, and the mutant dies. 🔴 **The general hole is wider than these two rows** — every
+emitted-code assertion in this package is a parse, not a typecheck — and it is recorded in §24.6
+rather than fixed here.
+
+### §24.4 A redundant pair, taken apart by measurement rather than argued
+
+Two clauses earn the row, one on the read side and one on the writer side. Each was mutated out
+alone and **both survived** — which reads like dead code and was nearly recorded as "belt and
+braces". Removing **both** is what breaks it. So neither is redundant with nothing; they are
+redundant with *each other*, and the honest statement is that the pair is load-bearing and either
+half is spare. Both are kept, and the assertion added in §24.3 now grades the pair.
+
+⚠️ **The first attempt at that measurement was invalid and is recorded because the shape recurs.**
+The "both removed" arm left a *third* clause standing — the render walker's — so the row was still
+earned, and the export built cleanly. The reading fitted and did not exclude. Only when all three
+were removed did the build fail with `Cannot find name 'helpError'`.
+
+### §24.5 What proves it
+
+- **`tsc --noEmit`** exit 0; **jest 1054/1054 across 42 suites** (1044 before — 10 new rows).
+- 🔴 **The exported app builds**, which is the step that finds what these tests structurally
+  cannot. A project was authored on the `cheer` fixture carrying an `External Link` with a wired
+  link and a new tab, its `Error` read from **all four** places at once — the render, the Done arm,
+  and the Failure arm through two different sinks. `tsc -b && vite build` exit 0, 68 modules.
+- 🔴 **Two control arms, because a green build proves nothing unless it can go red.** With the Done
+  arm reading the local, the build fails `TS2304: Cannot find name 'helpErrorMessage'` — the
+  out-of-scope error no parse-only test can see. With all three earning clauses gone it fails
+  `TS2304: Cannot find name 'helpError'`.
+
+**Fifteen mutants: thirteen killed, and the two survivors are the §24.4 pair.**
+
+| mutant | verdict | reds |
+|---|---|---|
+| the Failure arm reads the row — §8.2's bug reintroduced | KILLED | 4 |
+| the Done arm reads the local, which is not in scope there | KILLED | 1 |
+| both chains compile under one arm, as before §24 | KILLED | 1 |
+| the earning check is asked inside the chains too | KILLED | 6 |
+| `outcome-error` invalid in every context | KILLED | 8 |
+| the `Completed` refusal branch disabled | KILLED | 1 |
+| `Completed` compiles under the failure arm | KILLED | 1 |
+| the `const` is never declared (External Link) | KILLED | 4 |
+| the `const` is never declared (Navigate To Path) | KILLED | 1 |
+| the setter re-derives the message instead of reading the binding | KILLED | 1 |
+| the text sink stops folding an `Error` read | KILLED | 2 |
+| the local is treated as maybe-undefined, like the row | KILLED | 1 |
+| **all earning clauses removed — the row is read and never declared** | KILLED | 2 |
+| the read-side earning clause alone | **SURVIVED — §24.4's pair** | 0 |
+| the writer-side earning clause alone | **SURVIVED — §24.4's pair** | 0 |
+
+⚠️ **Two of those were only killed after the suite was strengthened, and that is the point of
+running them** — the maybe-undefined mutant and the earning-clause mutant both passed a green suite
+first. ⚠️ **One came back NOT-APPLIED** because its search text carried a real `’` where the source
+carries the escape `’` — guessed rather than read off the file, the §22.5 shape again. It was
+corrected and re-run, and **NOT-APPLIED was never counted as a survivor.**
+
+**The app, driven.** Expectations written down before it ran. Row order is forced twice over: the
+Error row is never cleared, so the success row must precede any failure row, and the failure arm
+**navigates away**, so it runs last.
+
+| row | measured |
+|---|---|
+| D1 on load | `/notes`, the error text empty |
+| D2 a real url, clicked | **tab count 1 → 2**, url still `/notes`, error text **still empty** — the Done arm read the row, which nothing had written |
+| D3 the input cleared, clicked | **`/mood?msg=No link to open`** |
+
+D3 is the row that carries the slice: that message can only be there if the ternary tested the
+link *and* the `const` carried the answer into a sink.
+
+| arm | change | rows that moved |
+|---|---|---|
+| A | the ternary always picks the blocked string | **D3 only** — `/mood?msg=The browser blocked opening a new tab` |
+| B | the Failure arm reads the row (§8.2's bug) | **D3 only** — `/mood`, the message **gone entirely** |
+
+⚠️ **Arm B's written prediction was `/mood?msg=` and the measurement was `/mood`.** Both say the
+message was lost; the shape differs because an undefined query value is **omitted from the url**
+rather than sent as an empty key — §15.2's own rule, arriving from the other side. The prediction
+was right about the defect and wrong about its surface, and the arm is stronger than predicted: a
+user of the interpreted app sees a reason and a user of the exported one saw nothing at all.
+
+🔴 **Three instrument faults, all of which first read as findings.** The drive is recorded with
+them because each is cheap to repeat:
+
+1. **The router ate the evidence.** The first drive navigated to an unrouted `/oops/{msg}`, and the
+   scaffold's `<Route path="*" element={<Navigate to="/" replace />} />` replaced the url with `/`
+   before it could be read. The measurement said "nothing happened"; what happened was erased.
+2. **A plain `i.value = …` is swallowed by React's value tracker**, so the input never reached the
+   store and the success row silently became a failure row. The native setter plus an `input` event
+   is required even for an *uncontrolled* input.
+3. 🔴 **A fixed sleep after a rebuild raced the preview server, and the control stopped
+   reproducing** — which looked exactly like the sabotage working. Every wait is now a poll on a
+   condition, and the control was re-run and re-confirmed before either arm was believed.
+
+### §24.6 What this leaves
+
+- ✅ **The chain-local for `Error` is closed for both nodes**, and is no longer on any list.
+- 🔴 **`Navigate To Path`'s `Completed` chain still refuses an `Error` read**, deliberately and
+  with its own reason. Translating it needs the message hoisted above the branch, which changes the
+  emitted shape for every node of this kind — a slice of its own, and not obviously worth it.
+- 🔴 **Every emitted-code assertion in this package is a parse, not a typecheck** (§24.3). One
+  class of defect — a name that is read and never declared — is invisible to all 1054 rows, and was
+  found here only by building the app. A `ts.createProgram` over the emitted files, in one suite,
+  would close it for the whole package. **Owner: `NONE`.**
+- **`External Link`'s `Completed`**, the collection-state slice, the date family's signals and the
+  EXP-009 drive leftovers are unchanged and still unowned.
+- ⚠️ **No corpus fixture contains an `External Link` or a `Navigate To Path` at all**, so every row
+  above is driven from hand-built graphs and one authored project. That is a fact about the corpus,
+  not about the code — the same shape as §22.8's stub-backend note.

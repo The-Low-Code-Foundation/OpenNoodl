@@ -319,3 +319,48 @@ byte-compares the tree against a snapshot after every mutant.
 Gates: **911/911** · 39 suites · module-inject 31/31 · `tsc --noEmit` clean ·
 `export-ledger:check` OK (175 types) · picker ratchet **69/127 (54.3%)** ·
 `noodl-runtime` **2564 passed, 13 skipped, 144 suites**.
+
+### Session 53 — the `Error` a node's own chain could not read (EXP-011 §24, 2026-08-29)
+
+**The last unowned increment `External Link` and `Navigate To Path` were carrying since §14.4.** A
+read of `Error` from inside either node's own outcome chains deferred, because the setter has been
+called but React state does not change inside the closure that called it. `HTTP Request` has always
+minted a chain-local for that shape; these two now do too, and **one construct closed both**.
+
+🔴 **"The node's own chains" turned out to be three questions, not one.** The **Failure** arm reads
+the `const` it declares. The **Done** arm reads the **state row** — there the previous failure's
+message *is* the right answer, because the runtime never clears `_internal.lastError`, and the
+`const` is not in scope in that arm anyway. `Navigate To Path`'s **Completed** chain **still
+refuses**, and has to: it prints as a join beneath both arms, where the local is out of scope and
+the row is still one failure behind. A slice that translated "any read from any of the node's own
+chains" would have shipped the §8.2 bug into the one arm nobody was looking at.
+
+🔴 **The most useful finding was about the suite, not the slice.** With every clause that earns an
+`Error` row removed, the export emits `lastLinkError.set(helpError)` with **no `useState` above
+it** — a component that cannot compile — and **all 1054 tests passed**. `expectParses` parses, and
+an undeclared identifier is valid syntax. Two rows now assert the declaration; the general hole
+(every emitted-code assertion in this package is a parse, not a typecheck) is recorded as open and
+owned by **`NONE`**.
+
+⚠️ **A redundant pair, taken apart rather than argued.** Two clauses earn that row; each survives
+being removed alone, and only removing both breaks it. The first attempt at that measurement was
+invalid — it left a third clause standing — and the reading fitted without excluding.
+
+**The app was built and driven.** A project authored on the `cheer` fixture reads one `Error` from
+all four places at once: the render, the Done arm, and the Failure arm through two sinks.
+`tsc -b && vite build` exit 0, 68 modules. Driving it: a real url opens a tab and leaves the error
+text empty; the cleared input navigates to **`/mood?msg=No link to open`**, which that message can
+only reach if the ternary tested the link and the `const` carried it. Two sabotage arms moved D3
+and nothing else — and the second one, the §8.2 bug, loses the message **entirely** in the running
+app. 🔴 Three instrument faults preceded that reading and are written up in §24.5: the router's
+catch-all erased the url, `i.value =` was swallowed by React's value tracker, and a fixed sleep
+raced the rebuilt server so the **control stopped reproducing**, which looked exactly like the
+sabotage working.
+
+**Fifteen mutants, thirteen killed**; the two survivors are the redundant pair above. Two were only
+killed after the suite was strengthened, and one came back NOT-APPLIED because its search text was
+guessed rather than read off the file — corrected, re-run, never counted as a survivor.
+
+Gates: **1054/1054** · 42 suites · `tsc --noEmit` clean · `export-ledger:check` OK (175 types) ·
+picker ratchet **69/127 (54.3%)**, correctly unmoved — this is a fidelity increment on two nodes
+the picker already counts, not a new type.

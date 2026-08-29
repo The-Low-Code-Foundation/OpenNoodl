@@ -588,12 +588,13 @@ describe('EXP-011 §14 — the Error output', () => {
   });
 
   /**
-   * 🔴 §8.2's rule, third construct. `setHelpError(...)` does not change `helpError` inside the
-   * closure that called it, so a read from this node's own chain would deliver the PREVIOUS
-   * failure's message. `HTTP Request` mints a chain-local for exactly this; this slice refuses
-   * the read instead, and says which.
+   * 🔴 §8.2's rule, third construct — **which §24 stopped refusing**. `setHelpError(...)` does
+   * not change `helpError` inside the closure that called it, so the chain cannot take the row;
+   * it takes the failure arm's own `const` instead, which is what `HTTP Request` has always
+   * done. The rows that grade it are in the §24 describe at the foot of this file, and this
+   * one stays only to pin that the refusal is gone rather than merely unasserted.
    */
-  it('defers a read from inside the node own outcome chain, on the closure rule', () => {
+  it('no longer defers a read from inside the Failure chain', () => {
     const line = deferralFor((ir, notes, link) => {
       const set = addNode(notes, {
         id: 'showErr',
@@ -603,9 +604,10 @@ describe('EXP-011 §14 — the Error output', () => {
       connect(notes, link.id, 'failure', set.id, 'do');
       connect(notes, link.id, 'error', set.id, 'value', 'value');
     });
-    expect(line).toContain('one of its own outcome chains');
-    // The control: it must not fall into the catch-all, which would deny the port exists.
-    expect(line).not.toContain('publishes only');
+    expect(line).not.toContain('one of its own outcome chains');
+    // The control: it must not have fallen into the catch-all either, which would be the same
+    // refusal wearing a worse reason. `deferralFor` returns every note when none is a deferral.
+    expect(line).not.toContain('helpLink');
   });
 
   /**
@@ -617,5 +619,173 @@ describe('EXP-011 §14 — the Error output', () => {
     const { app } = readError({ fire: false });
     expect(notesFile(app)).not.toContain('useState');
     expect(app.notes.join('\n')).toContain('helpLink:error');
+  });
+});
+
+/**
+ * EXP-011 §24 — the `Error` read from inside the node's own outcome chains.
+ *
+ * §14.4 refused this read and named the increment it was leaving: `HTTP Request` mints a
+ * chain-local for exactly this shape, and this node did not. It does now.
+ *
+ * 🔴 **The three arms of this file are the point, and they get three different answers.** The
+ * Failure arm reads a `const` it declares; the Done arm reads the *row*, because there the
+ * previous failure's message is the right answer and the row is what holds it; and the node's
+ * `Completed` is refused upstream of all this, for a reason of its own (§12.7). A suite that
+ * only tested the Failure arm would pass on an emitter that returned the local everywhere —
+ * including where the local is not in scope, which does not compile.
+ */
+describe('EXP-011 §24 — Error read from the node own chains', () => {
+  const NO_LINK = "'No link to open'";
+  const BLOCKED = "'The browser blocked opening a new tab'";
+  const LOCAL = 'helpErrorMessage';
+
+  /** A `Set Variable` in one of the node's chains, fed by the node's own `Error`. */
+  const chainReads = (port: 'done' | 'failure', options: Parameters<typeof withLink>[1] = {}) =>
+    withLink((ir, notes, link) => {
+      const set = addNode(notes, {
+        id: 'showErr',
+        type: 'Set Variable',
+        parameters: [{ name: 'name', value: literal('lastLinkError') }]
+      });
+      connect(notes, link.id, port, set.id, 'do');
+      connect(notes, link.id, 'error', set.id, 'value', 'value');
+    }, options);
+
+  /**
+   * 🔴 The row this slice exists for: the failure arm binds its message, and the chain beneath
+   * reads that binding rather than the row the same closure has just set.
+   */
+  it('binds the message to a const in the failure arm, and the chain reads it', () => {
+    const { app } = chainReads('failure');
+    const notes = notesFile(app);
+    expect(notes).toContain(`const ${LOCAL} = `);
+    expect(notes).toContain(`lastLinkError.set(${LOCAL});`);
+    // 🔴 The control: it must NOT read the state row, which is the bug §8.2 names — the row
+    // still holds the previous failure's message inside the closure that just set it.
+    expect(notes).not.toContain('lastLinkError.set(helpError)');
+    expectParses(app);
+  });
+
+  /**
+   * 🔴 The control pair for the row above, and the one that proves the arms are told apart
+   * rather than the local being returned for any read inside any chain. In the Done arm the
+   * `const` is not even in scope — it is declared in the `else` — so an emitter that answered
+   * the local everywhere would emit a file that does not compile.
+   */
+  it('the Done arm reads the row instead, and declares no const', () => {
+    const { app } = chainReads('done');
+    const notes = notesFile(app);
+    expect(notes).toContain('lastLinkError.set(helpError);');
+    expect(notes).not.toContain(LOCAL);
+    /**
+     * 🔴 **The row is DECLARED, and this assertion is not decoration.** A read from a handler
+     * earns the row through `referencedStateNames`, and a mutation run found that clause is the
+     * only thing standing between this file and `lastLinkError.set(helpError)` with no
+     * `useState` above it — which every other row here passes on, because `expectParses` parses
+     * and an undeclared identifier is perfectly good syntax. The read was already asserted; that
+     * it resolves to something was not.
+     */
+    expect(notes).toContain('const [helpError, setHelpError] = useState<string | undefined>();');
+    // The row is still written by the failure arm — directly, since nothing reads a local.
+    expect(notes).toContain(`setHelpError(${BLOCKED});`);
+    expectParses(app);
+  });
+
+  /**
+   * 🔴 Both forms in one file, which is the case that proves they agree. The arm computes the
+   * message once, hands it to the row for the render sink, and hands the same binding to the
+   * chain — so the two readers cannot disagree about which failure it was.
+   */
+  it('a render sink and a chain read share one binding, not two copies of the ternary', () => {
+    const { app } = withLink((ir, notes, link) => {
+      connect(notes, link.id, 'error', 'notesHeading', 'text', 'value');
+      const set = addNode(notes, {
+        id: 'showErr',
+        type: 'Set Variable',
+        parameters: [{ name: 'name', value: literal('lastLinkError') }]
+      });
+      connect(notes, link.id, 'failure', set.id, 'do');
+      connect(notes, link.id, 'error', set.id, 'value', 'value');
+    });
+    const notes = notesFile(app);
+    expect(notes).toContain(`const ${LOCAL} = ${BLOCKED};`);
+    expect(notes).toContain(`setHelpError(${LOCAL});`);
+    expect(notes).toContain(`lastLinkError.set(${LOCAL});`);
+    // The render sink still folds the row, which is maybe-undefined until the first failure.
+    expect(notes).toContain("{helpError ?? ''}");
+    // 🔴 The control: the message is written ONCE. Two copies is the drift this binding exists
+    // to prevent, and `toContain` alone cannot see a second one.
+    expect(notes.split(BLOCKED).length - 1).toBe(1);
+    expectParses(app);
+  });
+
+  /**
+   * 🔴 The earning rule survives: a chain read alone earns **no state row**. Before §24 this
+   * shape deferred outright; it must not now emit a `useState` nobody reads instead.
+   */
+  it('a chain read alone emits the const and no state row at all', () => {
+    const { app } = chainReads('failure');
+    const notes = notesFile(app);
+    expect(notes).toContain(`const ${LOCAL} = `);
+    expect(notes).not.toContain('useState');
+    expect(notes).not.toContain('setHelpError');
+    expectParses(app);
+  });
+
+  /**
+   * 🔴 The control pair a mutation run asked for, and the only sink in this file that can see
+   * the difference. `maybeUndefined` decides whether a read is interpolated with `?? ''`, and
+   * the two forms disagree about it: the row can be read before any failure has written it, the
+   * arm's `const` was assigned one line above. Every other assertion here would pass on an
+   * emitter that called both maybe-undefined — this is the one that separates them.
+   *
+   * The shape is also an ordinary thing to author: on failure, go to an error page carrying the
+   * message.
+   */
+  it('the arm const interpolates bare, and the row it earns interpolates with the fold', () => {
+    const navChain = (port: 'done' | 'failure') =>
+      notesFile(
+        withLink((ir, notes, link) => {
+          addNode(notes, {
+            id: 'goOops',
+            type: 'PageStackNavigateToPath',
+            authoredLabel: 'Oops',
+            parameters: [{ name: 'path', value: literal('oops/{msg}') }]
+          });
+          connect(notes, link.id, port, 'goOops', 'navigate');
+          connect(notes, link.id, 'error', 'goOops', 'p-msg', 'value');
+        }).app
+      );
+    // The arm's own const cannot be absent, so the url takes it raw.
+    expect(navChain('failure')).toContain('navigate(`/oops/${' + LOCAL + '}`)');
+    expect(navChain('failure')).not.toContain(LOCAL + " ?? ''");
+    // The row can be read before the first failure, so the same sink folds it — the runtime's
+    // own `v !== undefined ? String(v) : ''`.
+    expect(navChain('done')).toContain("navigate(`/oops/${helpError ?? ''}`)");
+  });
+
+  /**
+   * The ternary form, where the link is wired so both failures are live. The control for the
+   * literal-link row above: an emitter that always bound the blocked string would pass that one.
+   */
+  it('binds the ternary where both failures can fire, and the single string where one can', () => {
+    const both = notesFile(
+      withLink((ir, notes, link) => {
+        connect(notes, 'noteDraftVar', 'value', link.id, 'link', 'value');
+        const set = addNode(notes, {
+          id: 'showErr',
+          type: 'Set Variable',
+          parameters: [{ name: 'name', value: literal('lastLinkError') }]
+        });
+        connect(notes, link.id, 'failure', set.id, 'do');
+        connect(notes, link.id, 'error', set.id, 'value', 'value');
+      }).app
+    );
+    expect(both).toContain(`const ${LOCAL} = helpHref === undefined || helpHref === null || helpHref === '' ? ${NO_LINK} : ${BLOCKED};`);
+
+    const one = notesFile(chainReads('failure').app);
+    expect(one).toContain(`const ${LOCAL} = ${BLOCKED};`);
+    expect(one).not.toContain(NO_LINK);
   });
 });

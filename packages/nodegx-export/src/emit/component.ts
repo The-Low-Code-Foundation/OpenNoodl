@@ -321,6 +321,11 @@ export function emitComponent(
     // EXP-011 Tier 1.2. A read through the state row earns that row; the chain-local form names
     // a local the enclosing action declares and earns nothing.
     if (expr.kind === 'http-out' && expr.viaState !== undefined) referencedStateNames.add(expr.viaState);
+    // EXP-011 §24, the same clause for `External Link` and `Navigate To Path`'s Error. 🔴 This
+    // one is opt-in and does not error when it is missing — the row would be written by the
+    // failure arm, read by the sink, and then dropped by the `referencedStateNames` filter as
+    // unreferenced, which emits a component that does not compile.
+    if (expr.kind === 'outcome-error' && expr.viaState !== undefined) referencedStateNames.add(expr.viaState);
     if (expr.kind === 'jsfun-out') {
       if (expr.viaState !== undefined) referencedStateNames.add(expr.viaState);
       referencedJsIds.add(expr.nodeId);
@@ -527,6 +532,9 @@ export function emitComponent(
     // The second walker, per the warning above: a render binding on an HTTP output reads the
     // state row the request writes, and the row has to survive the `referencedStateNames` filter.
     if (expr.kind === 'http-out' && expr.viaState !== undefined) referencedStateNames.add(expr.viaState);
+    // EXP-011 §24. A render read of an Error output is *always* the row form — the failure arm's
+    // `const` exists only inside that arm — so this clause earns every row render can see.
+    if (expr.kind === 'outcome-error' && expr.viaState !== undefined) referencedStateNames.add(expr.viaState);
     // EXP-011 Tier 1.3, the same clause twice more. A date call's arguments earn their hooks
     // through this walker, and a render read of `Now` earns the row it goes through — a render
     // read is *always* the row form, since the local exists only inside the Read chain.
@@ -954,6 +962,10 @@ export function emitComponent(
       // which is what lets `now.getTime()` print without a guard.
       case 'now-out':
         return false;
+      // The row is undefined until the first failure; the chain-local is assigned on the line
+      // above the read and never is. Must agree with plan.ts maybeUndefinedExpr (EXP-011 §24).
+      case 'outcome-error':
+        return expr.viaState !== undefined;
       case 'state-get':
         return expr.maybeUndefined === true;
       // A list is always an array — the module-scope `collection([])` exists from module load,
@@ -1137,6 +1149,13 @@ export function emitComponent(
        * Read chain. The two derived outputs are member reads off whichever one it is, and they
        * need no optional chaining: the row is seeded at mount and the local is a fresh `Date`.
        */
+      /**
+       * EXP-011 §24. The row where the read is outside the failure arm, the arm's own `const`
+       * inside it — and the name of that `const` rides on the expression, so there is no second
+       * table here that could disagree with the one that minted it.
+       */
+      case 'outcome-error':
+        return expr.viaState ?? expr.local;
       case 'now-out': {
         const base = expr.viaState ?? nowLocalOf(expr.nodeId);
         if (expr.output === 'timestamp') return `${base}.getTime()`;
@@ -1331,6 +1350,8 @@ export function emitComponent(
         // An effect can only ever see the state form: the chain-local one is minted inside the
         // action that declares the local, and an effect is not that action (EXP-011 Tier 1.2).
         case 'http-out':
+        // EXP-011 §24, the same clause and the same reason one construct over.
+        case 'outcome-error':
           if (e.viaState !== undefined) add(e.viaState);
           break;
         // EXP-011 Tier 1.3, same clause: an effect reading `Now` reads the row, so the row is
@@ -1675,10 +1696,19 @@ export function emitComponent(
          * unreachable and the blocked tab is the only failure left. `_internal.lastError`'s
          * short string — not the longer sentence `reportOutcomes` sends to the outcome channel.
          */
-        const errorWrite =
-          action.errorState === undefined
+        const BLOCKED = `'The browser blocked opening a new tab'`;
+        /**
+         * EXP-011 §24 — the arm's `const`, on `External Link`'s rule one node over and simpler
+         * for the reason above: there is only ever one message, so the binding exists to give the
+         * chain something the closure can actually see, not to avoid repeating a ternary.
+         */
+        const readsMessage = action.errorLocal !== undefined && action.failThen.length > 0;
+        const errorWrite: string[] = [
+          ...(readsMessage ? [`${inner}const ${action.errorLocal} = ${BLOCKED};`] : []),
+          ...(action.errorState === undefined
             ? []
-            : [`${inner}${stateSetterOf(action.errorState)}('The browser blocked opening a new tab');`];
+            : [`${inner}${stateSetterOf(action.errorState)}(${readsMessage ? action.errorLocal : BLOCKED});`])
+        ];
         const failBody = [...errorWrite, ...chainBody(action.failThen)];
         /** Whether anything looks at whether the tab opened — a chain on either arm, or the row. */
         const readsOutcome = doneChain.length > 0 || failBody.length > 0;
@@ -2072,18 +2102,35 @@ export function emitComponent(
         const NO_LINK = `'No link to open'`;
         const BLOCKED = `'The browser blocked opening a new tab'`;
         const hasFailure = action.guardLink || action.newTab;
-        const errorWrite: string[] =
-          action.errorState === undefined || !hasFailure
-            ? []
-            : [
-                `${inner}${stateSetterOf(action.errorState)}(${
-                  action.guardLink && action.newTab
-                    ? `${action.local} === undefined || ${action.local} === null || ${action.local} === '' ? ${NO_LINK} : ${BLOCKED}`
-                    : action.guardLink
-                      ? NO_LINK
-                      : BLOCKED
-                });`
-              ];
+        const message =
+          action.guardLink && action.newTab
+            ? `${action.local} === undefined || ${action.local} === null || ${action.local} === '' ? ${NO_LINK} : ${BLOCKED}`
+            : action.guardLink
+              ? NO_LINK
+              : BLOCKED;
+        /**
+         * EXP-011 §24 — the arm's own `const`, emitted where the chain beneath it reads `Error`.
+         *
+         * 🔴 **The message is bound once and everything reads that binding**, which is the whole
+         * point rather than a tidiness choice: the guarded-new-tab form is a ternary that
+         * re-tests the link, and printing it again at every sink would be the same decision
+         * written in several places, free to drift apart. It also has to be a `const` in the arm
+         * rather than a state read — `setLinkError(...)` does not change `linkError` inside the
+         * closure that just called it, so the chain would show the previous failure's message.
+         *
+         * The `failThen` test is what keeps it out of a configuration that cannot fail: with a
+         * literal link and `_self` the arm is dropped, and a `const` nothing reads would be an
+         * unused variable in a file that has to compile.
+         */
+        const readsMessage = action.errorLocal !== undefined && action.failThen.length > 0;
+        const errorWrite: string[] = !hasFailure
+          ? []
+          : [
+              ...(readsMessage ? [`${inner}const ${action.errorLocal} = ${message};`] : []),
+              ...(action.errorState === undefined
+                ? []
+                : [`${inner}${stateSetterOf(action.errorState)}(${readsMessage ? action.errorLocal : message});`])
+            ];
         /**
          * The failure arm is the write and then the chain — so a node whose `Error` is read has
          * an arm even with nothing wired to `Failure`, which is the runtime's own behaviour:
@@ -2721,9 +2768,18 @@ export function emitComponent(
       // are undefined until their first delivery and fold the same way (CONTROLLED-STATE §4d/§4f),
       // and so does a session read while nobody is signed in (USER-FAMILY §4c) — React renders
       // `undefined` as nothing either way, but the fold is what makes the emitted text say so.
+      // 🔴 EXP-011 §24 adds `outcome-error` here, and this whitelist is the reason it has to be
+      // added by hand: it is keyed by expr kind and has no exhaustiveness, so the Error read that
+      // used to arrive as a `state-get` and fold correctly went on compiling and silently stopped
+      // folding when its kind changed. It belongs with the string-typed reads above rather than
+      // with the `String(...)` coercion below — both messages are string literals this emitter
+      // writes itself, so the only question is presence.
       if (
         bound.kind === 'computed' &&
-        (bound.expr.kind === 'jsfun-out' || bound.expr.kind === 'state-get' || bound.expr.kind === 'session-get') &&
+        (bound.expr.kind === 'jsfun-out' ||
+          bound.expr.kind === 'state-get' ||
+          bound.expr.kind === 'session-get' ||
+          bound.expr.kind === 'outcome-error') &&
         maybeUndefined(bound.expr)
       ) {
         const code = bindingExpr(bound, 'text');

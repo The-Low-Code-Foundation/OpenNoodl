@@ -1249,3 +1249,103 @@ describe('§18.4 the gates that remain, each with its named reason', () => {
   });
 });
 
+
+/**
+ * EXP-011 §24 — the `Error` read from inside this node's own chains.
+ *
+ * `External Link`'s slice one node over, and the reason it is not a copy of it: this node has
+ * **three** chains rather than two, and the third one still has to refuse.
+ *
+ * 🔴 **`Completed` is printed as a join beneath both arms**, so neither form reaches it: the
+ * failure arm's `const` is out of scope there, and the row still holds the *previous* failure's
+ * message because Completed runs in the same closure that has just set it. That is the arm this
+ * describe exists to keep refused — a slice that translated "a read from any of the node's own
+ * chains" would emit a Completed chain showing the wrong message, and every other row here
+ * would still be green.
+ */
+describe('§24 — Error read from the node own chains', () => {
+  const BLOCKED = "'The browser blocked opening a new tab'";
+  const LOCAL = 'goErrorMessage';
+  /** Open In New Tab on: the only configuration in which this node has a failure at all. */
+  const TAB = { path: 'mood', openInNewTab: true };
+
+  const chainReads = (port: 'done' | 'failure' | 'completed', params: Record<string, string | number | boolean> = TAB) =>
+    withNav(params, (ir, notes, nav) => {
+      const set = addNode(notes, {
+        id: 'showErr',
+        type: 'Set Variable',
+        parameters: [{ name: 'name', value: literal('lastNavError') }]
+      });
+      connect(notes, nav.id, port, set.id, 'do');
+      connect(notes, nav.id, 'error', set.id, 'value', 'value');
+    });
+
+  test('the Failure chain reads the arm own const, not the row', () => {
+    const { file, app } = chainReads('failure');
+    expect(file).toContain(`const ${LOCAL} = ${BLOCKED};`);
+    expect(file).toContain(`lastNavError.set(${LOCAL});`);
+    // 🔴 The control: the row would be the previous failure's message in this closure.
+    expect(file).not.toContain('lastNavError.set(goError)');
+    // And a chain read alone earns no row — the earning rule, unchanged by §24.
+    expect(file).not.toContain('useState');
+    expectParses(app);
+  });
+
+  /**
+   * 🔴 The control pair: in the Done arm the previous failure's message *is* the right answer,
+   * and the row is what holds it. The arm's `const` is declared in the `else` and is not in
+   * scope here at all, so this row is also what stops the local escaping its block.
+   */
+  test('the Done chain reads the row, and no const is declared', () => {
+    const { file, app } = chainReads('done');
+    expect(file).toContain('lastNavError.set(goError);');
+    expect(file).not.toContain(LOCAL);
+    // 🔴 The row is declared, not merely read — `expectParses` cannot tell the two apart, and
+    // the earning clause that makes the difference is invisible to every other row here.
+    expect(file).toContain('const [goError, setGoError] = useState<string | undefined>();');
+    expect(file).toContain(`setGoError(${BLOCKED});`);
+    expectParses(app);
+  });
+
+  /**
+   * 🔴 The arm that must still refuse, with its own named reason. Without this row the slice
+   * reads as "the node's chains can read Error" and the Completed join would show a message one
+   * failure out of date — the exact bug §8.2 is about, surviving in the one place it was never
+   * fixed.
+   */
+  test('the Completed chain still defers, and says why it is different', () => {
+    const line = deferralFor(TAB, (ir, notes, nav) => {
+      const set = addNode(notes, {
+        id: 'showErr',
+        type: 'Set Variable',
+        parameters: [{ name: 'name', value: literal('lastNavError') }]
+      });
+      connect(notes, nav.id, 'completed', set.id, 'do');
+      connect(notes, nav.id, 'error', set.id, 'value', 'value');
+    });
+    expect(line).toContain('read from its Completed chain');
+    expect(line).toContain('join printed beneath both outcome arms');
+    // The control: not the generic own-chains sentence the other two arms no longer produce,
+    // and not the catch-all, which would deny the port exists.
+    expect(line).not.toContain('publishes only');
+  });
+
+  /**
+   * In tab the refusal is older than §24 and is made on a different ground — nothing can ever
+   * write the row — so the chain-local changes nothing here. The control that §24 did not
+   * quietly open a door the Path gate had closed.
+   */
+  test('in tab the read is still refused, on the write that can never happen', () => {
+    const line = deferralFor({ path: 'mood' }, (ir, notes, nav) => {
+      const set = addNode(notes, {
+        id: 'showErr',
+        type: 'Set Variable',
+        parameters: [{ name: 'name', value: literal('lastNavError') }]
+      });
+      connect(notes, nav.id, 'failure', set.id, 'do');
+      connect(notes, nav.id, 'error', set.id, 'value', 'value');
+    });
+    expect(line).toContain('neither of the node');
+    expect(line).toContain('string nothing ever writes');
+  });
+});
