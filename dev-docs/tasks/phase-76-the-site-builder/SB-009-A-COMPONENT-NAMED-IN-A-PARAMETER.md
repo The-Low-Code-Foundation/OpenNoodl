@@ -152,3 +152,26 @@ already blocking, and a browser component in a cloud graph has no benign reading
 4. `Show Popup` naming a missing component is reported — the check is generic, and this is the
    proof it did not quietly become a `RunTasks` special case.
 5. Corpus sweep run and its numbers recorded here before any blocking promotion.
+
+## AC1 re-confirmed at HEAD — 2026-08-29 (phase 80 DEF-002 s2)
+
+**Still open, still both arms silent.** Read while promoting an unrelated rule, and recorded here
+rather than as a new row — 🔴 *it was very nearly filed as one*, which is the exact rediscovery this
+register exists to prevent. The behaviour is this task's AC1 verbatim.
+
+| arm | door's answer at HEAD |
+|---|---|
+| **C** — cloud `RunTasks` naming `/#__cloud__/NoSuchHelper` | `isError=false`, `codes=[]` |
+| **D** — cloud `RunTasks` naming the browser component `/Card` | `isError=false`, `codes=[]` |
+| **B** (control, browser twin) — `For Each` naming a missing template | **refused**, `repeater-template-unresolved` |
+
+So the `RunTasks` twin of `repeater-template-unresolved` still does not exist, and B beside them is
+what makes that a gap rather than a policy.
+
+⚠️ **The two probes had to be repaired before they could be read.** Arms C and D were authored with
+**no connections at all**, so once `failure-reaches-nothing` became blocking (DEF-002 §2) the door
+rejected them for *that* — an unrelated rejection standing in for the answer each probe exists to
+give. **Nothing went red**: both assert only `typeof isError === 'boolean'`, true either way. Wired
+at `6b721df6` (`run`/`done`/`failure`/`unchanged`, mirroring the site-builder's own `RunTasks`), and
+the readings above are from the wired arms. **A probe that asserts nothing cannot notice when it
+stops measuring its own subject.**

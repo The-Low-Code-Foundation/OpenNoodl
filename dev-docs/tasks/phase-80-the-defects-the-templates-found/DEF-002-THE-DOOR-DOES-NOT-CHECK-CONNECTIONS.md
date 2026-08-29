@@ -225,6 +225,24 @@ written, and their metric counted **only failure wires that exist**, so it was s
 the two *unwired* ports that were actually firing. **Two measurements, both real, neither one
 answering the question — and the answer was in neither.**
 
+### ✅ §2 promoted, and what promoting it shadowed
+
+`FailureReachesNothing` is now in `AUTHORED_BLOCKING_WARNINGS` (`6b721df6`): with both false
+positives fixed it costs nothing — MCP **899/899** and `test:main` **6315/6315** with it in the set,
+stable across three runs. **The "4 failures" recorded earlier was a flake**, a peer running suites
+concurrently — the documented canary.
+
+⚠️ **It did shadow something, and no spec could have caught it.** The two `RunTasks` probes in
+`sb004RunTasksTemplate.test.ts` were authored with **no connections**, so the door began rejecting
+them for `failure-reaches-nothing` instead of answering what they ask. Both assert only
+`typeof isError === 'boolean'` — true either way — so nothing went red. Wired now, and they read
+`isError=false codes=[]` again.
+
+🔴 **That reading is not a new finding: it is DEF-010 (SB-009) acceptance criterion 1, verbatim** —
+*"Arms C and D of `sb004RunTasksTemplate.test.ts` invert"*. It was very nearly filed as a fresh row,
+and the standing rule that would have caught it is **grep the register for the behaviour, not the
+words**. Recorded in SB-009 instead, where the task already lives.
+
 ### ✅ All parts closed
 
 | part | state |

@@ -16,37 +16,35 @@ floor) · `test:main` **6311/6311** · MCP **897/897** · `typecheck:editor` and
 
 ---
 
-## 🔴 The one thing left on DEF-002, and it is small and named
+## ✅ DEF-002 is fully closed, promotion included
 
-**`failure-reaches-nothing` is a rule but not yet a blocking one.** To promote it, add
-`DiagnosticCode.FailureReachesNothing` to `AUTHORED_BLOCKING_WARNINGS` in `authoredCandidate.ts`.
+`failure-reaches-nothing` blocks authored output as of `6b721df6`. Nothing is owed on this task.
 
-What stops that today is **two deliberately-malformed test probes** —
-`/#__cloud__/probe/RunTasksCrossRuntime` and `/#__cloud__/probe/RunTasksMissing` — which exist to
-exercise a *different* check and fail this one on the way past (4 specs). **Wire their `failure`, or
-exempt them, and the promotion is free.** The shipped templates are clean.
+🔴 **Two things it got wrong on the way, both corrected in place, both worth not repeating:**
 
-🔴 **This entry said something else earlier today and it was wrong.** It said the promotion was
-blocked because the templates *"really do leave failure edges unanswered"*. They do not. It was
-blocked by **two false positives in the rule**, found only because a peer pushed back with a
-counter-measurement:
-
-- `mail.failure` unwired, because **`mail.completed → res.send` already answers** — `completed`
-  fires after every invocation *whatever the outcome*, so it answers the failure path.
-- `compose.failure` unwired, because a **parallel branch still answers**, so a throw there costs the
-  work, not the reply.
-
-Both are now exits with arms and controls. Corpus **249 → 182 → 33** (`d3461020`).
-
-⚠️ **And the peer's diagnosis was wrong too**, in the opposite direction: they proposed excluding
-components with no `Response` node — which the rule has always done — and their metric counted only
-failure wires that **exist**, so it could not see the two *unwired* ports doing the firing. **Two
-real measurements, neither answering the question. Re-measure the thing itself.**
+- **The deferral reason.** It said the promotion was blocked by the shipped templates *"really
+  leaving failure edges unanswered"*. They do not. It was **two false positives in the rule** — a
+  `completed` that already answers (it fires whatever the outcome), and a **parallel branch** that
+  already answers. Found only because a peer pushed back with a counter-measurement. Corpus
+  **249 → 182 → 33** (`d3461020`).
+  ⚠️ **The peer's diagnosis was also wrong**, in the opposite direction: they proposed excluding
+  components with no `Response`, which the rule has always done, and their metric counted only
+  failure wires that **exist** — structurally blind to the *unwired* ports actually firing. **Two
+  real measurements, neither answering the question.**
+- **"That's a new gap."** Promoting the rule shadowed the two `RunTasks` probes, and the reading
+  underneath — the door says nothing about a cloud `RunTasks` naming a missing template or one
+  across the runtime boundary — **is DEF-010 (SB-009) acceptance criterion 1, verbatim.** It was
+  nearly filed as a fresh row. **Grep the register for the BEHAVIOUR before filing anything.**
+  Recorded in SB-009, and the probes are wired so they measure their own subject again.
 
 ## Where to go next
 
 **DEF-003** is the next rank (three authoring acts with no honest surface; P77 D8 = P76 F15, P77 D7,
-P76 F16 — bites *every author*). DEF-010 C1 and DEF-004 are the other open work.
+P76 F16 — bites *every author*). **DEF-017** C1 (Track C) and DEF-004 are the other open work.
+
+🔴 **`DEF-010` was assigned to two different tasks and was resolved on 2026-08-29.** It now means
+**SB-009 only** (a component named in a parameter); **Track C is DEF-017**. Commits `e87ea775` and
+`42325550` say `DEF-010` and mean Track C.
 
 ⚠️ **DEF-014 and DEF-015 were filed into this phase by a peer** during s2 and this session never
 read them — check `TASKS.md` before ranking.
