@@ -5,6 +5,61 @@
 Two rows about the same moment: a cloud function did the wrong thing, and the product cannot say
 which node, or even that anything was wrong.
 
+## 0. Driven first, 2026-08-29 — and the file was right about (a), which is not the same as measured
+
+Last session's rule: **find the claim that is a reading rather than a measurement and drive that
+one first.** §1's *"one step per author `Log` line and nothing else"* was read out of
+`WorkflowRunner.createLogSink`. It is now driven — three real functions through a real
+`BackendService`, reading `executions.sqlite`:
+
+| graph | HTTP | record `status` | `steps` |
+|---|---|---|---|
+| Request → UUID → UUID → Response (**no Log**) | 200 | `success` | **`[]`** |
+| the same graph with **one Log spliced in** | 200 | `success` | **1**, `nodeId: log`, `net.noodl.Log` |
+| Request → Secret(**never provisioned**) → Response **on the `failure` edge** | 200 | **`success`** | **`[]`** |
+
+✅ **§1's reading holds.** Unlike DEF-003's rows, this one measured true: the recorder is reachable
+from the cloud path, and a `Log` line is the only thing that reaches it.
+
+🔴 **The third row is the finding, and it is not in this file.** A run in which a node **failed** —
+`secret/unavailable` — is recorded as **`status: "success"` with zero steps**. Two separate reasons,
+and both need naming:
+
+1. The execution record's `success` is derived from **the HTTP status code alone**
+   (`WorkflowRunner.run`: `statusCode >= 200 && < 300`). A graph that wires `failure → Response`
+   answers 200, so the record says the run succeeded. That is AC1's *"tells me it worked when it
+   did not"* arriving at the **record**, not only at the `completed` port — (a) and (b) are one
+   defect seen from two ends.
+2. **The information already exists, fully attributed, and is thrown away.** `reportOutcome`'s
+   failure path raises on the error bus, and the raised event carries exactly the columns
+   `execution_steps` has empty:
+
+   ```
+   {"nodeId":"sec","componentName":"/#__cloud__/failing",
+    "nodeType":"noodl.cloud.secret","code":"secret/unavailable","message":"Secret: …"}
+   ```
+
+   In the cloud runtime the only subscriber is `createConsoleErrorSubscriber` — a bare
+   `console.error`. Not the structured logger, no request id, no execution record. **Captured in
+   the drive**, so this is measured too.
+
+⚠️ **The error bus is the WRONG channel to fix this on, and it is worth saying why before someone
+tries.** It hangs off `NodeContext`, which is **one per `CloudRunner`**, and two cloud functions
+run concurrently in that one context (`runcontext.ts` says so, and
+`cloud-array-vocabulary.test.ts` pins it). A bus subscriber cannot tell whose request an event
+belongs to. The channel that can is the one CWF-013 already built for exactly this reason:
+`NodeScope.runContext`, set per request and inherited down every component instance.
+
+✅ **So the seam is `Node.prototype.beginOutcome` / `reportOutcome`** — per **invocation**, already
+carrying `done` / `unchanged` / `failure` plus a code and a message, and with `this.nodeScope` in
+hand to reach the run. Every action node in the product goes through it. §3.1's *"record a step per
+node"* is therefore **a step per action invocation**, which is also the only reading of it that has
+a status to record: a `String Format` does not succeed or fail.
+
+🔴 **Two producers now meet at one table.** The `Log` step written by `createLogSink` and the
+outcome step written for the same `Log` node are the same row twice — *a check in a second pipeline
+is a duplicate first.* One producer, and a spec that **asserts the cardinality**.
+
 ## 1. (a) `execution_steps` records what the author logged, never what the graph ran
 
 🔴 **The cause recorded in phase 77 D2 is wrong, and this is the third wrong reading of this row.**
@@ -74,6 +129,77 @@ visitor. **The rule is about where it lands, not about the port.**
    `outcome.ts` are **accepted** in the same run. 🔴 That pair is the whole test — a rule that
    refuses both has banned the port.
 5. Mutation-graded.
+
+## 4a. What was built — (a) CLOSED 2026-08-29, (b) still open
+
+**The seam is `Node.beginOutcome` / `reportOutcome`, on `NodeScope.runContext`.** A step is opened
+when an action starts and closed when it reports, carrying `done` / `unchanged` / `failure` and, on
+a failure, the code and message. `NodeRunContext` gained `beginStep` / `endStep`;
+`WorkflowRunner.createLogSink` became `createRunContext` and fills them from the `ExecutionLogger`
+that was already there.
+
+| | before | after |
+|---|---|---|
+| Request → UUID → UUID → Response | `[]` | 3 steps, named, in order |
+| the real `publishPage`, SB-015's seed | 0 steps | **6 steps**, including the `Run Tasks` **worker**'s |
+| Secret unprovisioned, handled on `failure` | `success`, `[]` | `success` + **one `error` step** naming `sec` and why |
+
+✅ **AC2, AC3 and AC5 met.** `def004-execution-steps.test.ts` (9) and
+`def004-publish-page-steps.test.ts` (5). Five mutants, all killed: the step never opened
+(**11 red**), the bridge removed (1), the duplicate guard disarmed (2), the log sink writing its
+own row again (1), `endStep` always reporting success (2).
+🔴 **AC4 — the `completed` rule at the door — is NOT built.** (b) is untouched; see §4b.
+
+### What it does not see, said plainly
+
+🔴 **A step is an action invocation. A node that neither succeeds nor fails records nothing.** A
+`DbCollection2` that returns rows is invisible in the record; the same node *failing* is visible,
+through a second bridge in `raiseRuntimeError` for the population that never adopted the outcome
+contract (`Static Data`, `DbCollection2`, every Function node's value-driven path — eighteen
+std-library modules). **So the list is: every action, plus every failure.** A query that quietly
+returned the wrong rows is still not in it. That is a real gap and it is the next thing to argue
+about, not a detail.
+
+⚠️ **The execution's own `status` is still derived from the HTTP answer alone, deliberately.** A
+graph that wires `failure → Response` and answers 200 did not fail; what was missing was the row
+underneath. Both halves are pinned by name in the suite so the choice cannot drift into an
+accident.
+
+### 🔴 Three things this cost, that the next reader should not re-buy
+
+1. **A mutant that killed nothing was the finding, and it was MY spec that was wrong.** The arm
+   labelled *"a node that never adopted the outcome contract"* used a `JavaScriptFunction` that
+   throws, chosen off a `sendSignalOnOutput('failure')` grep hit. `simplejavascript.ts` has
+   **both** paths, and its signal-driven `run` goes through `beginOutcome` — so the spec was a
+   second test of the outcome path wearing a label that said otherwise, and removing the bridge
+   entirely still passed 14/14. **A population derived from one grep is a hypothesis about the
+   population.** `Static Data` is the honest arm.
+2. **Adding a method to `Node.prototype` broke fourteen specs at once.** The duplicate guard was
+   first written as a `_reportOutcomeSignals` helper; several suites build a node as **a bag of
+   bound prototype methods** and never construct one, so the call was simply absent. The guard is
+   inline now, and the reason is in the code. **`Node.prototype` is a published surface to the
+   spec population, not only to the product.**
+3. **Two wrong instruments before the right one, on the same assertion.** "The steps are the
+   graph's own nodes" was first checked against ids typed out of `site-builder.content.json`, then
+   against `SB004_COMPONENTS`. Both went red on ids the run really did produce: **the MCP door
+   rewrites node ids on write** (`sections` → `sections-3`, `page` → `page-8`), and `Run Tasks`
+   instantiates its **worker** inside the run, so the worker's nodes belong in that record. Only
+   the **deployed bundle** could answer. ⚠️ **The template file and an authored project therefore
+   carry different node ids for the same function** — noted here because anything that joins a
+   record back to a canvas has to know that.
+
+## 4b. What is left
+
+- **AC4 — a rule about where `completed` lands**, beside DEF-002's rules in `noodl-mcp`'s door.
+  🔴 The pair is the whole test: a graph wiring `completed` into a record write is refused **by
+  name**, and `outcome.ts`'s two legitimate uses are **accepted in the same run**. A rule that
+  refuses both has banned the port.
+- **AC1's second half is only half-served.** The steps now say which node failed. Whether the
+  *record* should say a run "succeeded" while carrying an `error` step is the argument §4a leaves
+  open, and it is the same argument (b) is about one layer up.
+- ⚠️ **Nothing drives `MAX_STEPS_PER_RUN`** (1000, announced once as `function.steps.suppressed`).
+  Named rather than left silent; a graph that reaches it is a `Run Tasks` loop and building one in
+  a spec costs more than the cap is currently worth.
 
 ## 5. Traps
 
