@@ -143,6 +143,24 @@ describe('D18 — a control renders in the app font, not the browser default', (
     // browser's black; a control's `<label>` was just the one somebody happened to measure.
     expect(code).toContain('color: var(--foreground);');
 
+    // 🔴 **The floor has a SECOND copy, and nothing kept them in step.**
+    // `scripts/devtools/render-from-disk.js` reconstructs this block for the render harness
+    // and says so in its own comment — *"Keep these two in step"* — recording that when it
+    // once mirrored only the `:root` half, every page rendered in the browser's serif and
+    // "the harness looked like it had found the product's biggest defect; the product was
+    // fine and the harness was lying."
+    //
+    // Adding `color` to the real floor and not the mirror points that the other way: the
+    // harness would render the PREVIOUS product and quietly hide a fix. Measured — the two
+    // renders differ. So the copies are asserted equal here rather than left to a comment.
+    const harness = fs.readFileSync(
+      path.join(__dirname, '..', '..', '..', '..', 'scripts/devtools/render-from-disk.js'),
+      'utf-8'
+    );
+    for (const rule of ['font-family: var(--font-sans);', 'color: var(--foreground);']) {
+      expect(harness).toContain(rule);
+    }
+
     // Control: the comment strip actually strips, so "found it in code" means code.
     //
     // ⚠️ This asserted something false at first — that the rule appears in the prose too, so

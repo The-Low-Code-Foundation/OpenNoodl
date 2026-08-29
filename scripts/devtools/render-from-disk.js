@@ -370,8 +370,16 @@ function tokenCss(cb) {
     // serif single column is the exact signature of "the styling was discarded".
     // The harness looked like it had found the product's biggest defect; the
     // product was fine and the harness was lying. Keep these two in step.
+    //
+    // 🔴 Stepped 2026-08-29: the floor gained `color: var(--foreground)` (P78 D19 —
+    // it applied a font and no colour, so `--foreground` had no reader and every
+    // element that did not set its own rendered the browser's black). Without
+    // mirroring it here the harness renders the PREVIOUS product: labels in #000
+    // while the real viewer shows the token. That is the same lying-harness this
+    // comment already warns about, pointing the other way — it would hide a fix
+    // rather than invent a defect.
     done(
-      `<style id="noodl-design-tokens">:root {\n${decls.join('\n')}\n}\n\nbody {\n  font-family: var(--font-sans);\n}</style>`,
+      `<style id="noodl-design-tokens">:root {\n${decls.join('\n')}\n}\n\nbody {\n  font-family: var(--font-sans);\n  color: var(--foreground);\n}</style>`,
       `${decls.length} shipped defaults`
     );
   };
