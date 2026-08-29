@@ -1,16 +1,16 @@
 {
   "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
-  "componentId": "4f5c2adb-068c-5a26-863a-ab66de012c6b",
+  "componentId": "65344e91-c167-567b-8f79-804fc9f028c6",
   "version": 1,
   "nodes": [
     {
-      "id": "row",
+      "id": "row-4",
       "type": "Group",
-      "label": "One announcement",
+      "label": "One member",
       "children": [
-        "rowTitle",
-        "rowDate",
-        "readButton"
+        "rowName-2",
+        "rowEmail",
+        "rowStanding"
       ],
       "parameters": {
         "width": {
@@ -35,10 +35,10 @@
       "y": 40
     },
     {
-      "id": "rowTitle",
+      "id": "rowName-2",
       "type": "Text",
-      "label": "Title",
-      "parent": "row",
+      "label": "Who",
+      "parent": "row-4",
       "parameters": {
         "text": "",
         "fontSize": "var(--text-xl)",
@@ -50,10 +50,10 @@
       "y": 160
     },
     {
-      "id": "rowDate",
+      "id": "rowEmail",
       "type": "Text",
-      "label": "Posted",
-      "parent": "row",
+      "label": "Where to reach them",
+      "parent": "row-4",
       "parameters": {
         "text": "",
         "fontSize": "var(--text-sm)",
@@ -63,46 +63,40 @@
       "y": 280
     },
     {
-      "id": "readButton",
-      "type": "net.noodl.controls.button",
-      "label": "Read",
-      "parent": "row",
+      "id": "rowStanding",
+      "type": "Text",
+      "label": "What they are here",
+      "parent": "row-4",
       "parameters": {
-        "label": "Read",
-        "backgroundColor": "transparent",
-        "color": "var(--foreground)",
-        "borderRadius": "var(--radius-full)",
-        "borderStyle": "solid",
-        "borderWidth": "var(--border-1)",
-        "borderColor": "var(--border-control)",
-        "paddingLeft": "var(--space-6)",
-        "paddingRight": "var(--space-6)",
-        "paddingTop": "var(--space-3)",
-        "paddingBottom": "var(--space-3)",
+        "text": "",
         "fontSize": "var(--text-sm)",
-        "fontWeight": "var(--font-semibold)",
-        "sizeMode": "contentSize"
+        "color": "var(--muted-foreground)"
       },
       "x": 100,
       "y": 400
     },
     {
-      "id": "inputs-2",
+      "id": "inputs-5",
       "type": "Component Inputs",
-      "label": "The announcement",
+      "label": "The member",
       "ports": [
         {
-          "name": "id",
+          "name": "name",
           "plug": "output",
           "type": "string"
         },
         {
-          "name": "title",
+          "name": "email",
           "plug": "output",
           "type": "string"
         },
         {
-          "name": "postedAt",
+          "name": "joinedAt",
+          "plug": "output",
+          "type": "string"
+        },
+        {
+          "name": "standing",
           "plug": "output",
           "type": "string"
         }
@@ -111,28 +105,17 @@
       "y": 160
     },
     {
-      "id": "when",
+      "id": "describe",
       "type": "JavaScriptFunction",
-      "label": "The date, as a person writes it",
+      "label": "Say what they are, and since when, in English",
       "parameters": {
-        "functionScript": "if (Inputs.postedAt === undefined) return;\nconst raw = Inputs.postedAt || '';\nconst at = new Date(raw);\nOutputs.label = isNaN(at.getTime()) ? '' : at.toLocaleDateString();"
-      },
-      "x": 350,
-      "y": 280
-    },
-    {
-      "id": "goDetail",
-      "type": "RouterNavigate",
-      "label": "Open the announcement",
-      "parameters": {
-        "router": "Main",
-        "target": "/Pages/Announcement"
+        "functionScript": "if (Inputs.standing === undefined) return;\nconst LABELS = {\"moderator\":\"Moderator\",\"member\":\"Member\"};\nconst standing = Inputs.standing === null ? '' : String(Inputs.standing);\n// ⚠️ An unknown standing falls back to the stored word rather than to\n// an empty line: a row that says `trustee` is legible, and a row that\n// says nothing at all is the bug that hides the new standing nobody\n// added a label for.\nconst label = LABELS[standing] || standing;\nconst joined = Inputs.joinedAt === undefined || Inputs.joinedAt === null ? '' : String(Inputs.joinedAt);\n// The column is a full ISO timestamp; the day is what a person wants.\nconst day = joined.length >= 10 ? joined.slice(0, 10) : '';\nOutputs.description = day.length > 0 ? label + ' · since ' + day : label;"
       },
       "x": 350,
       "y": 400
     }
   ],
   "visualRoots": [
-    "row"
+    "row-4"
   ]
 }

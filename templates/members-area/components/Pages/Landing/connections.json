@@ -40,6 +40,12 @@
       "toProperty": "mounted"
     },
     {
+      "fromId": "read",
+      "fromProperty": "out-hasAssociation",
+      "toId": "inside",
+      "toProperty": "mounted"
+    },
+    {
       "fromId": "signInButton",
       "fromProperty": "onClick",
       "toId": "toSignIn-3",

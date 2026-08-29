@@ -108,6 +108,12 @@ const POLICY_SOURCE = path.join(__dirname, '..', 'templates', `${TEMPLATE_ID}.se
   } else {
     console.log(`  ${built.diagnostics.length} diagnostics the door raised and did not refuse over:`);
     for (const [key, count] of [...byCode.entries()].sort()) console.log(`    ${count.toString().padStart(3)} × ${key}`);
+    if (process.env.TPL001_DIAG_DETAIL) {
+      for (const d of built.diagnostics) {
+        const loc = (d as { location?: { component?: string; nodeId?: string; nodeType?: string } }).location ?? {};
+        console.log(`    DETAIL ${(d as { code: string }).code} | ${loc.component} > ${loc.nodeId} (${loc.nodeType}) | ${(d as { message: string }).message}`);
+      }
+    }
   }
 })().catch((error) => {
   console.error(error?.message ?? error);

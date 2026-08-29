@@ -115,6 +115,7 @@ export interface Tpl001Component {
 
 /** The one component instance every gated screen places. */
 export const STANDING_COMPONENT = '/Members/Standing';
+export const INSIDE_TILE_COMPONENT = '/Members/InsideTile';
 
 /** The repeater templates, named once so a page and its row cannot drift apart. */
 export const ANNOUNCEMENT_ROW = '/Members/AnnouncementRow';
@@ -152,6 +153,20 @@ const T_CARD_TITLE = composition('cardTitle');
 const T_LEAD = composition('lead');
 const T_META = composition('meta');
 const T_BODY = composition('body');
+
+/**
+ * The small uppercase line above the hero — `--primary` at **7.36:1** on
+ * `--background`, measured, and one of the at-most-three places the accent
+ * colour is spent.
+ *
+ * ⚠️ **It is a literal where the name and blurb are records, and the split is
+ * deliberate.** "Members' area" is a fact about *this template* — every install
+ * of it is one — whereas the association's name is a fact about the *recipient*,
+ * which is why that one comes out of a row a person can edit without opening the
+ * editor. A template that hard-codes the first is honest; one that hard-codes
+ * the second needs a developer to rename a church.
+ */
+const T_EYEBROW = composition('eyebrow');
 
 /**
  * The words inside a notice, toned to the box they sit in.
@@ -213,6 +228,41 @@ const NOTICE_ACCENT = { ...NOTICE, backgroundColor: 'var(--accent)' };
  * labelled controls rather than lines of prose.
  */
 const PANEL = { ...CARD, ...CARD_BODY, rowGap: 'var(--space-4)' };
+
+/**
+ * The hero's words, as the one group the vocabulary already had a name for.
+ *
+ * 🔴 `sectionHead` was listed in `USED_COMPOSITIONS` and used by nothing — see
+ * the note there. It is exactly this: eyebrow, headline and lead stacked at
+ * `--space-3`, with the air before the content built into its own padding.
+ *
+ * ⚠️ **Its `paddingBottom` is overridden, and the reason is a measurement.** At
+ * the composition's `--space-10` the rendered page put **60px above the two
+ * buttons and 21px below them**, so they read as the heading of the section
+ * beneath rather than as the hero's call to action — the closer thing wins, and
+ * the closer thing was the wrong one. `--space-6` puts them 44px under the blurb
+ * against 68px above "What members can see". The composition is right for a
+ * section head whose content is a block; these buttons belong to the head.
+ */
+const HERO_HEAD = { ...composition('sectionHead'), paddingBottom: 'var(--space-6)' };
+
+/**
+ * One tile in "what members can see".
+ *
+ * ⚠️ **The fill is not what makes it read as a tile.** `--surface` on
+ * `--background` measures **1.06:1** — invisible. The hairline does the work at
+ * **1.33:1**, which is the ratio `tpl001Theme.ts` already describes as
+ * deliberate for `--border`. Recorded because "I added a background and it looks
+ * like a card" is a conclusion the numbers here do not support; the edge is
+ * load-bearing and removing it would leave three unpainted paragraphs.
+ *
+ * ⚠️ **Two `Text` children, and that is load-bearing for the gate.** §2 of the
+ * ratchet counts a `Group` wrapping *exactly one* `Text` as a notice box and
+ * pins the total at 17. A tile is a title and a line, so it is not one — but a
+ * tile that lost its second `Text` would silently become an 18th notice and
+ * redden a spec that is about something else entirely.
+ */
+const TILE = { ...CARD, ...CARD_BODY };
 
 /**
  * A section that groups things on the page ground — **no fill, on purpose**.
@@ -629,18 +679,34 @@ const LANDING: Tpl001Component = {
       label: 'Page ground',
       parent: 'page',
       parameters: { ...PAGE_GROUND, alignX: 'center' },
-      children: ['heading', 'blurb', 'actions', 'setupCard']
+      children: ['hero', 'actions', 'inside', 'setupCard']
+    },
+    {
+      id: 'hero',
+      type: 'Group',
+      label: 'The hero',
+      parent: 'ground',
+      parameters: HERO_HEAD,
+      children: ['eyebrow', 'heading', 'blurb']
+    },
+    {
+      id: 'eyebrow',
+      type: 'Text',
+      label: 'Members’ area',
+      parent: 'hero',
+      // A literal, unlike its two siblings — see T_EYEBROW on why.
+      parameters: { text: 'Members’ area', ...T_EYEBROW }
     },
     {
       id: 'heading',
       type: 'Text',
       label: 'Association name',
-      parent: 'ground',
+      parent: 'hero',
       // Rule 3: a standing empty text, so nothing renders the word "Text" while
       // the record is on its way.
       parameters: { text: '', ...H_HERO }
     },
-    { id: 'blurb', type: 'Text', label: 'What we do', parent: 'ground', parameters: { text: '', ...T_LEAD } },
+    { id: 'blurb', type: 'Text', label: 'What we do', parent: 'hero', parameters: { text: '', ...T_LEAD } },
     {
       id: 'actions',
       type: 'Group',
@@ -665,6 +731,74 @@ const LANDING: Tpl001Component = {
       parent: 'actions',
       parameters: btn('Ask to join')
     },
+
+    // ── What is behind the door ──────────────────────────────────────────────
+    //
+    // 🔴 **Gated on `hasAssociation`, the same signal as the two buttons.** On a
+    // fresh install this section would otherwise sit above the "nobody has set
+    // this up yet" card promising a diary and a directory to a person whose
+    // first job is to create the association — an app describing itself in the
+    // present tense before it exists.
+    //
+    // ⚠️ **The three sentences are literals on purpose, and they are claims this
+    // template can keep**: `Pages/Members`, `Pages/Meetings` and
+    // `Pages/Directory` are all shipped, so nothing here describes a screen that
+    // is not in the artefact. `tpl001Template.test.ts` pins the page list, which
+    // is what stops this becoming a promise a later edit quietly breaks.
+    {
+      id: 'inside',
+      type: 'Group',
+      label: 'What members can see',
+      parent: 'ground',
+      // No fill: it holds tiles, and a card holding cards has no visible edge.
+      // The padding is the other half of the grouping fix described on
+      // `HERO_HEAD` — it is what puts the buttons with the hero.
+      parameters: { ...SECTION, paddingTop: 'var(--space-12)', mounted: false },
+      children: ['insideHeading', 'insideList']
+    },
+    {
+      id: 'insideHeading',
+      type: 'Text',
+      label: 'What members can see — heading',
+      parent: 'inside',
+      // `cardTitle` rather than `sectionHeading`: this sits under a --text-5xl
+      // hero, and a --text-3xl second heading competes with it.
+      parameters: { text: 'What members can see', ...H_SECTION }
+    },
+    {
+      id: 'insideList',
+      type: 'Group',
+      label: 'The three tiles',
+      parent: 'inside',
+      // Stacked, not a row. `gridAutoFit` and `columnsTwoUp` are the vocabulary's
+      // answer to this and both live on `Columns`, a node type this template does
+      // not use anywhere — and a Group row cannot collapse, so three tiles side
+      // by side at 390px would be three slivers.
+      parameters: laidOut('column', { width: { value: 100, unit: '%' } }, 'var(--space-3)'),
+      children: ['tileNews', 'tileDiary', 'tilePeople']
+    },
+    {
+      id: 'tileNews',
+      type: INSIDE_TILE_COMPONENT,
+      label: 'Announcements',
+      parent: 'insideList',
+      parameters: { title: 'Announcements', line: 'What the moderators have posted, newest first.' }
+    },
+    {
+      id: 'tileDiary',
+      type: INSIDE_TILE_COMPONENT,
+      label: 'The diary',
+      parent: 'insideList',
+      parameters: { title: 'The diary', line: 'Meetings and events, with the details and where to go.' }
+    },
+    {
+      id: 'tilePeople',
+      type: INSIDE_TILE_COMPONENT,
+      label: 'The directory',
+      parent: 'insideList',
+      parameters: { title: 'The directory', line: 'Who else is a member.' }
+    },
+
     {
       id: 'setupCard',
       type: 'Group',
@@ -751,6 +885,7 @@ const LANDING: Tpl001Component = {
     { fromId: 'read', fromProperty: 'out-needsSetup', toId: 'setupCard', toProperty: 'mounted' },
     // The two ways in are hidden until there is something to be a member of.
     { fromId: 'read', fromProperty: 'out-hasAssociation', toId: 'actions', toProperty: 'mounted' },
+    { fromId: 'read', fromProperty: 'out-hasAssociation', toId: 'inside', toProperty: 'mounted' },
 
     { fromId: 'signInButton', fromProperty: 'onClick', toId: 'toSignIn', toProperty: 'navigate' },
     { fromId: 'joinButton', fromProperty: 'onClick', toId: 'toJoin', toProperty: 'navigate' },
@@ -2574,6 +2709,64 @@ const DIRECTORY: Tpl001Component = {
   ]
 };
 
+/**
+ * One "what members can see" tile — a component, because the door insisted.
+ *
+ * 🔴 **This shape was authored inline first and the door refused it**, with
+ * `repeated-sibling-subtree`: *"3 sibling subtrees here are structurally
+ * identical (3 nodes each, rooted at Group). Make one component and instantiate
+ * it 3 times."* It is worth recording as a defect that did **not** happen — the
+ * rule is right, it fired on the first attempt, and the message named the fix
+ * rather than the symptom. Most of `DEFECTS-THE-TEMPLATES-FOUND.md` is the door
+ * failing to say something; this is the door saying it.
+ *
+ * ⚠️ **Deliberately not a `notice()`,** though it shares the surface. A notice
+ * is one sentence a person is meant to act on and is gated by something; a tile
+ * is standing description with a title of its own — and the difference is the
+ * thing §2 of the ratchet counts, so the two cannot share a shape. See `TILE`.
+ *
+ * ⚠️ **Placed by parameter, not by wire, and that is a measured choice.** D1 is
+ * that the door checks a connection to a component-instance port not at all.
+ * Parameters are the other half, and they ARE checked — verified here by
+ * sabotage, not by reading: `titel` and `nonsenseXyz` on one of these three came
+ * back `instance-unknown-parameter`, blocking, *"a component instance has only
+ * the ports its Component Inputs node declares … and this one declares 2"*, and
+ * nothing was written.
+ *
+ * ⚠️ **Ignore the six `info` lines this adds to the generation census.** Three
+ * instances × two passes raise `unknown-type-check-skipped` — *"the parameter
+ * values check did not run: type /Members/InsideTile is not in the node
+ * catalog"* — which reads exactly like the hole above and is not one. The
+ * catalog-driven check genuinely does not run; a **dedicated** check covers the
+ * same ground and refuses. Recorded as D21, disproved, so the next reader does
+ * not spend the session re-deriving it.
+ */
+export const INSIDE_TILE_NODES = [
+  {
+    id: 'tile',
+    type: 'Group',
+    label: 'One tile',
+    parameters: { ...TILE },
+    children: ['tileTitle', 'tileLine']
+  },
+  { id: 'tileTitle', type: 'Text', label: 'What it is', parent: 'tile', parameters: { text: '', ...T_CARD_TITLE } },
+  { id: 'tileLine', type: 'Text', label: 'What it holds', parent: 'tile', parameters: { text: '', ...T_NOTICE } },
+  {
+    id: 'inputs',
+    type: 'Component Inputs',
+    label: 'The tile',
+    ports: [
+      { name: 'title', type: 'string', plug: 'output' },
+      { name: 'line', type: 'string', plug: 'output' }
+    ]
+  }
+];
+
+export const INSIDE_TILE_WIRES = [
+  { fromId: 'inputs', fromProperty: 'title', toId: 'tileTitle', toProperty: 'text' },
+  { fromId: 'inputs', fromProperty: 'line', toId: 'tileLine', toProperty: 'text' }
+];
+
 // ── The set, in an order the door will accept ────────────────────────────────
 
 /** The four repeater rows and the standing gate: components, not pages. */
@@ -2589,7 +2782,11 @@ export const TPL001_PARTS: Tpl001Component[] = [
   },
   { path: 'Members/MeetingRow', nodes: MEETING_ROW_NODES, connections: MEETING_ROW_WIRES, deferred: ['goDetail'] },
   { path: 'Members/RequestRow', nodes: REQUEST_ROW_NODES, connections: REQUEST_ROW_WIRES },
-  { path: 'Members/MemberRow', nodes: MEMBER_ROW_NODES, connections: MEMBER_ROW_WIRES }
+  { path: 'Members/MemberRow', nodes: MEMBER_ROW_NODES, connections: MEMBER_ROW_WIRES },
+  // Placed directly by `Pages/Landing` rather than by a `For Each`, so it is
+  // here for the same reason the rows are: the page that places it is written
+  // later, and a component must exist before something instantiates it.
+  { path: 'Members/InsideTile', nodes: INSIDE_TILE_NODES, connections: INSIDE_TILE_WIRES }
 ];
 
 /**

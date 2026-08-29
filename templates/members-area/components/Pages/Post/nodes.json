@@ -485,7 +485,7 @@
         "borderRadius": "var(--radius-full)",
         "borderStyle": "solid",
         "borderWidth": "var(--border-1)",
-        "borderColor": "var(--muted-foreground)",
+        "borderColor": "var(--border-control)",
         "paddingLeft": "var(--space-6)",
         "paddingRight": "var(--space-6)",
         "paddingTop": "var(--space-3)",

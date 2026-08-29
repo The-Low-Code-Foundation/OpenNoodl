@@ -83,11 +83,19 @@
       "modified": "2026-08-28T00:00:00.000Z",
       "created": "2026-08-28T00:00:00.000Z"
     },
+    "Members/InsideTile": {
+      "path": "Members/InsideTile",
+      "type": "visual",
+      "nodeCount": 4,
+      "connectionCount": 2,
+      "modified": "2026-08-28T00:00:00.000Z",
+      "created": "2026-08-28T00:00:00.000Z"
+    },
     "Pages/Landing": {
       "path": "Pages/Landing",
       "type": "page",
-      "nodeCount": 15,
-      "connectionCount": 9,
+      "nodeCount": 23,
+      "connectionCount": 10,
       "modified": "2026-08-28T00:00:00.000Z",
       "created": "2026-08-28T00:00:00.000Z"
     },
@@ -173,8 +181,8 @@
     }
   },
   "stats": {
-    "totalComponents": 21,
-    "totalNodes": 277,
-    "totalConnections": 285
+    "totalComponents": 22,
+    "totalNodes": 289,
+    "totalConnections": 288
   }
 }

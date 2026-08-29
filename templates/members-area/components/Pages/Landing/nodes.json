@@ -23,9 +23,9 @@
       "label": "Page ground",
       "parent": "page",
       "children": [
-        "heading",
-        "blurb",
+        "hero",
         "actions",
+        "inside",
         "setupCard"
       ],
       "parameters": {
@@ -54,10 +54,48 @@
       "y": 160
     },
     {
+      "id": "hero",
+      "type": "Group",
+      "label": "The hero",
+      "parent": "ground",
+      "children": [
+        "eyebrow",
+        "heading",
+        "blurb"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "flexDirection": "column",
+        "rowGap": "var(--space-3)",
+        "paddingBottom": "var(--space-6)"
+      },
+      "x": 160,
+      "y": 280
+    },
+    {
+      "id": "eyebrow",
+      "type": "Text",
+      "label": "Members’ area",
+      "parent": "hero",
+      "parameters": {
+        "text": "Members’ area",
+        "fontSize": "var(--text-xs)",
+        "fontWeight": "var(--font-semibold)",
+        "letterSpacing": "var(--tracking-widest)",
+        "textTransform": "uppercase",
+        "color": "var(--primary)"
+      },
+      "x": 220,
+      "y": 400
+    },
+    {
       "id": "heading",
       "type": "Text",
       "label": "Association name",
-      "parent": "ground",
+      "parent": "hero",
       "parameters": {
         "text": "",
         "fontSize": "var(--text-5xl)",
@@ -66,14 +104,14 @@
         "letterSpacing": "var(--tracking-tighter)",
         "color": "var(--foreground)"
       },
-      "x": 160,
-      "y": 280
+      "x": 220,
+      "y": 520
     },
     {
       "id": "blurb",
       "type": "Text",
       "label": "What we do",
-      "parent": "ground",
+      "parent": "hero",
       "parameters": {
         "text": "",
         "fontSize": "var(--text-lg)",
@@ -84,8 +122,8 @@
           "unit": "px"
         }
       },
-      "x": 160,
-      "y": 400
+      "x": 220,
+      "y": 640
     },
     {
       "id": "actions",
@@ -102,7 +140,7 @@
         "columnGap": "var(--space-3)"
       },
       "x": 160,
-      "y": 520
+      "y": 760
     },
     {
       "id": "signInButton",
@@ -124,7 +162,7 @@
         "sizeMode": "contentSize"
       },
       "x": 220,
-      "y": 640
+      "y": 880
     },
     {
       "id": "joinButton",
@@ -138,7 +176,7 @@
         "borderRadius": "var(--radius-full)",
         "borderStyle": "solid",
         "borderWidth": "var(--border-1)",
-        "borderColor": "var(--muted-foreground)",
+        "borderColor": "var(--border-control)",
         "paddingLeft": "var(--space-6)",
         "paddingRight": "var(--space-6)",
         "paddingTop": "var(--space-3)",
@@ -148,7 +186,101 @@
         "sizeMode": "contentSize"
       },
       "x": 220,
-      "y": 760
+      "y": 1000
+    },
+    {
+      "id": "inside",
+      "type": "Group",
+      "label": "What members can see",
+      "parent": "ground",
+      "children": [
+        "insideHeading",
+        "insideList"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "flexDirection": "column",
+        "rowGap": "var(--space-4)",
+        "paddingTop": "var(--space-12)",
+        "mounted": false
+      },
+      "x": 160,
+      "y": 1120
+    },
+    {
+      "id": "insideHeading",
+      "type": "Text",
+      "label": "What members can see — heading",
+      "parent": "inside",
+      "parameters": {
+        "text": "What members can see",
+        "fontSize": "var(--text-xl)",
+        "fontWeight": "var(--font-semibold)",
+        "lineHeight": "var(--leading-snug)",
+        "color": "var(--foreground)"
+      },
+      "x": 220,
+      "y": 1240
+    },
+    {
+      "id": "insideList",
+      "type": "Group",
+      "label": "The three tiles",
+      "parent": "inside",
+      "children": [
+        "tileNews",
+        "tileDiary",
+        "tilePeople"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "flexDirection": "column",
+        "rowGap": "var(--space-3)"
+      },
+      "x": 220,
+      "y": 1360
+    },
+    {
+      "id": "tileNews",
+      "type": "/Members/InsideTile",
+      "label": "Announcements",
+      "parent": "insideList",
+      "parameters": {
+        "title": "Announcements",
+        "line": "What the moderators have posted, newest first."
+      },
+      "x": 280,
+      "y": 1480
+    },
+    {
+      "id": "tileDiary",
+      "type": "/Members/InsideTile",
+      "label": "The diary",
+      "parent": "insideList",
+      "parameters": {
+        "title": "The diary",
+        "line": "Meetings and events, with the details and where to go."
+      },
+      "x": 280,
+      "y": 1600
+    },
+    {
+      "id": "tilePeople",
+      "type": "/Members/InsideTile",
+      "label": "The directory",
+      "parent": "insideList",
+      "parameters": {
+        "title": "The directory",
+        "line": "Who else is a member."
+      },
+      "x": 280,
+      "y": 1720
     },
     {
       "id": "setupCard",
@@ -180,7 +312,7 @@
         "mounted": false
       },
       "x": 160,
-      "y": 880
+      "y": 1840
     },
     {
       "id": "setupText",
@@ -193,7 +325,7 @@
         "color": "var(--accent-foreground)"
       },
       "x": 220,
-      "y": 1000
+      "y": 1960
     },
     {
       "id": "setupButton",
@@ -215,7 +347,7 @@
         "sizeMode": "contentSize"
       },
       "x": 220,
-      "y": 1120
+      "y": 2080
     },
     {
       "id": "association",
@@ -224,8 +356,8 @@
       "parameters": {
         "collectionName": "Association"
       },
-      "x": 470,
-      "y": 1240
+      "x": 530,
+      "y": 2200
     },
     {
       "id": "read",
@@ -234,8 +366,8 @@
       "parameters": {
         "functionScript": "if (Inputs.rows === undefined) return;\nconst rows = Inputs.rows || [];\nconst row = rows.length > 0 ? rows[0] : undefined;\nOutputs.name = row ? (row.name || '') : '';\nOutputs.blurb = row ? (row.blurb || '') : '';\nOutputs.hasAssociation = rows.length > 0;\nOutputs.needsSetup = rows.length === 0;"
       },
-      "x": 470,
-      "y": 280
+      "x": 530,
+      "y": 520
     },
     {
       "id": "toSignIn-3",
@@ -245,8 +377,8 @@
         "router": "Main",
         "target": "/Pages/SignIn"
       },
-      "x": 470,
-      "y": 640
+      "x": 530,
+      "y": 880
     },
     {
       "id": "toJoin",
@@ -256,8 +388,8 @@
         "router": "Main",
         "target": "/Pages/Join"
       },
-      "x": 470,
-      "y": 760
+      "x": 530,
+      "y": 1000
     },
     {
       "id": "toSetup",
@@ -267,8 +399,8 @@
         "router": "Main",
         "target": "/Pages/Setup"
       },
-      "x": 470,
-      "y": 1120
+      "x": 530,
+      "y": 2080
     }
   ],
   "visualRoots": [

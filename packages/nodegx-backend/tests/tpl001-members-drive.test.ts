@@ -518,7 +518,30 @@ describe("TPL-001 — the members' area, driven", () => {
       // The template does not merely hide the content: `standing.Visitor` is
       // wired to a RouterNavigate. So the reading is the landing page.
       expect(visits['anon.members'].text).toContain('Members sign in');
-      expect(visits['anon.members'].text).not.toContain('Announcements');
+      // 🔴 **"Sign out", not "Announcements", and the swap is a correction to the
+      // instrument rather than a relaxation of the check.** This line asserted
+      // the absence of the word *Announcements* as a proxy for "the members page
+      // did not render". In s8 the landing page gained a "what members can see"
+      // tile whose title is that word, so the proxy began measuring the landing
+      // page's own copy — it would now fail on a correct app and pass on an
+      // incorrect one whose tile happened to be renamed.
+      //
+      // "Sign out" is the same claim with a marker the public pages cannot hold:
+      // measured on the shipped artefact, it appears twice on `Pages/Members` and
+      // zero times on `Landing`, `SignIn` and `Join`.
+      //
+      // ⚠️ **`text`, not `html`, and that is a reading rather than a preference.**
+      // `html` was tried first and FAILED: the members page's chrome *is* in the
+      // document for a stranger, unpainted — the page mounts, the standing check
+      // answers `Visitor`, and the RouterNavigate takes them away. So this is the
+      // same strength as the assertion it replaces (which also read `text`): the
+      // stranger is not *shown* the members page.
+      //
+      // 🔴 That is not the leak it looks like, and the spec below is why: no
+      // announcement title or body appears anywhere in `html`, painted or not.
+      // The chrome is static graph text; the records are what ACL protects, and
+      // they never arrive. That spec passed throughout this change.
+      expect(visits['anon.members'].text).not.toContain('Sign out');
     });
 
     it('and the same for /meetings', () => {

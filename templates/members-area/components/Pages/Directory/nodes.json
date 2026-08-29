@@ -1,33 +1,32 @@
 {
   "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
-  "componentId": "4a5dff26-a4d2-5774-85d9-5b4999b0c09b",
+  "componentId": "cfe297c3-5935-5876-8b95-da86dd072854",
   "version": 1,
   "nodes": [
     {
-      "id": "page-2",
+      "id": "page-11",
       "type": "Page",
-      "label": "Sign in",
+      "label": "Directory",
       "children": [
-        "ground-2"
+        "ground-11"
       ],
       "parameters": {
-        "title": "Sign in",
-        "urlPath": "sign-in"
+        "title": "Members",
+        "urlPath": "directory"
       },
       "x": 40,
       "y": 40
     },
     {
-      "id": "ground-2",
+      "id": "ground-11",
       "type": "Group",
       "label": "Page ground",
-      "parent": "page-2",
+      "parent": "page-11",
       "children": [
-        "heading-2",
-        "form",
-        "error",
-        "joinHint",
-        "joinButton-2"
+        "heading-9",
+        "notAllowed-3",
+        "directory",
+        "backButton-6"
       ],
       "parameters": {
         "width": {
@@ -55,12 +54,12 @@
       "y": 160
     },
     {
-      "id": "heading-2",
+      "id": "heading-9",
       "type": "Text",
       "label": "Heading",
-      "parent": "ground-2",
+      "parent": "ground-11",
       "parameters": {
-        "text": "Members sign in",
+        "text": "Members",
         "fontSize": "var(--text-3xl)",
         "fontWeight": "var(--font-semibold)",
         "lineHeight": "var(--leading-tight)",
@@ -71,123 +70,12 @@
       "y": 280
     },
     {
-      "id": "form",
+      "id": "notAllowed-3",
       "type": "Group",
-      "label": "The sign-in form",
-      "parent": "ground-2",
+      "label": "Not a moderator",
+      "parent": "ground-11",
       "children": [
-        "email",
-        "password",
-        "submit"
-      ],
-      "parameters": {
-        "width": {
-          "value": 100,
-          "unit": "%"
-        },
-        "backgroundColor": "var(--surface)",
-        "borderRadius": "var(--radius-xl)",
-        "borderStyle": "solid",
-        "borderWidth": "var(--border-1)",
-        "borderColor": "var(--border)",
-        "clip": true,
-        "flexDirection": "column",
-        "rowGap": "var(--space-4)",
-        "paddingLeft": "var(--space-5)",
-        "paddingRight": "var(--space-5)",
-        "paddingTop": "var(--space-5)",
-        "paddingBottom": "var(--space-5)"
-      },
-      "x": 160,
-      "y": 400
-    },
-    {
-      "id": "email",
-      "type": "net.noodl.controls.textinput",
-      "label": "Email",
-      "parent": "form",
-      "parameters": {
-        "sizeMode": "contentHeight",
-        "width": {
-          "value": 100,
-          "unit": "%"
-        },
-        "backgroundColor": "var(--background)",
-        "borderStyle": "solid",
-        "borderWidth": "var(--border-1)",
-        "borderColor": "var(--border-control)",
-        "borderRadius": "var(--radius-md)",
-        "paddingLeft": "var(--space-3)",
-        "paddingRight": "var(--space-3)",
-        "paddingTop": "var(--space-2)",
-        "paddingBottom": "var(--space-2)",
-        "fontSize": "var(--text-base)",
-        "color": "var(--foreground)",
-        "useLabel": true,
-        "label": "Email",
-        "type": "email"
-      },
-      "x": 220,
-      "y": 520
-    },
-    {
-      "id": "password",
-      "type": "net.noodl.controls.textinput",
-      "label": "Password",
-      "parent": "form",
-      "parameters": {
-        "sizeMode": "contentHeight",
-        "width": {
-          "value": 100,
-          "unit": "%"
-        },
-        "backgroundColor": "var(--background)",
-        "borderStyle": "solid",
-        "borderWidth": "var(--border-1)",
-        "borderColor": "var(--border-control)",
-        "borderRadius": "var(--radius-md)",
-        "paddingLeft": "var(--space-3)",
-        "paddingRight": "var(--space-3)",
-        "paddingTop": "var(--space-2)",
-        "paddingBottom": "var(--space-2)",
-        "fontSize": "var(--text-base)",
-        "color": "var(--foreground)",
-        "useLabel": true,
-        "label": "Password",
-        "type": "password"
-      },
-      "x": 220,
-      "y": 640
-    },
-    {
-      "id": "submit",
-      "type": "net.noodl.controls.button",
-      "label": "Sign in",
-      "parent": "form",
-      "parameters": {
-        "label": "Sign in",
-        "backgroundColor": "var(--primary)",
-        "color": "var(--primary-foreground)",
-        "borderRadius": "var(--radius-full)",
-        "borderStyle": "none",
-        "paddingLeft": "var(--space-6)",
-        "paddingRight": "var(--space-6)",
-        "paddingTop": "var(--space-3)",
-        "paddingBottom": "var(--space-3)",
-        "fontSize": "var(--text-sm)",
-        "fontWeight": "var(--font-semibold)",
-        "sizeMode": "contentSize"
-      },
-      "x": 220,
-      "y": 760
-    },
-    {
-      "id": "error",
-      "type": "Group",
-      "label": "Sign-in error",
-      "parent": "ground-2",
-      "children": [
-        "errorText"
+        "notAllowedText-3"
       ],
       "parameters": {
         "width": {
@@ -209,41 +97,118 @@
         "mounted": false
       },
       "x": 160,
+      "y": 400
+    },
+    {
+      "id": "notAllowedText-3",
+      "type": "Text",
+      "label": "Not a moderator — the words",
+      "parent": "notAllowed-3",
+      "parameters": {
+        "text": "Only a moderator can see the member list.",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--destructive)"
+      },
+      "x": 220,
+      "y": 520
+    },
+    {
+      "id": "directory",
+      "type": "Group",
+      "label": "The list",
+      "parent": "ground-11",
+      "children": [
+        "projectionNote",
+        "list-4",
+        "emptyState-4"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "flexDirection": "column",
+        "rowGap": "var(--space-4)",
+        "mounted": false
+      },
+      "x": 160,
+      "y": 640
+    },
+    {
+      "id": "projectionNote",
+      "type": "Text",
+      "label": "What this list is, and is not",
+      "parent": "directory",
+      "parameters": {
+        "text": "Everybody admitted through this app. Somebody given access directly on the backend will not appear here.",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--muted-foreground)"
+      },
+      "x": 220,
+      "y": 760
+    },
+    {
+      "id": "list-4",
+      "type": "For Each",
+      "label": "One row per member",
+      "parent": "directory",
+      "parameters": {
+        "templateType": "explicit",
+        "template": "/Members/MemberRow"
+      },
+      "x": 220,
       "y": 880
     },
     {
-      "id": "errorText",
-      "type": "Text",
-      "label": "Sign-in error — the words",
-      "parent": "error",
+      "id": "emptyState-4",
+      "type": "Group",
+      "label": "Nobody admitted yet",
+      "parent": "directory",
+      "children": [
+        "emptyStateText-4"
+      ],
       "parameters": {
-        "text": "",
-        "fontSize": "var(--text-sm)",
-        "color": "var(--destructive)"
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "backgroundColor": "var(--surface)",
+        "borderRadius": "var(--radius-xl)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border)",
+        "clip": true,
+        "flexDirection": "column",
+        "rowGap": "var(--space-2)",
+        "paddingLeft": "var(--space-5)",
+        "paddingRight": "var(--space-5)",
+        "paddingTop": "var(--space-5)",
+        "paddingBottom": "var(--space-5)",
+        "mounted": false
       },
       "x": 220,
       "y": 1000
     },
     {
-      "id": "joinHint",
+      "id": "emptyStateText-4",
       "type": "Text",
-      "label": "Not a member yet",
-      "parent": "ground-2",
+      "label": "Nobody admitted yet — the words",
+      "parent": "emptyState-4",
       "parameters": {
-        "text": "Not a member yet?",
+        "text": "Nobody has been admitted yet. People appear here once a moderator approves them.",
         "fontSize": "var(--text-sm)",
         "color": "var(--muted-foreground)"
       },
-      "x": 160,
+      "x": 280,
       "y": 1120
     },
     {
-      "id": "joinButton-2",
+      "id": "backButton-6",
       "type": "net.noodl.controls.button",
-      "label": "Ask to join",
-      "parent": "ground-2",
+      "label": "Back",
+      "parent": "ground-11",
       "parameters": {
-        "label": "Ask to join",
+        "label": "Back to the members area",
         "backgroundColor": "transparent",
         "color": "var(--foreground)",
         "borderRadius": "var(--radius-full)",
@@ -262,47 +227,74 @@
       "y": 1240
     },
     {
-      "id": "login",
-      "type": "net.noodl.user.LogIn",
-      "label": "Log in",
-      "x": 470,
-      "y": 1000
+      "id": "standing-5",
+      "type": "/Members/Standing",
+      "label": "Who is this?",
+      "x": 530,
+      "y": 640
     },
     {
-      "id": "errorGate",
-      "type": "Condition",
-      "label": "Show the sign-in refusal",
+      "id": "notModerator-3",
+      "type": "JavaScriptFunction",
+      "label": "Is this person not a moderator?",
       "parameters": {
-        "condition": true,
-        "runOnChange-condition": false
+        "functionScript": "if (Inputs.isModerator === undefined) return;\nOutputs.no = Inputs.isModerator !== true;"
       },
-      "x": 470,
+      "x": 530,
+      "y": 400
+    },
+    {
+      "id": "members",
+      "type": "DbCollection2",
+      "label": "Everybody this app admitted",
+      "parameters": {
+        "collectionName": "Member",
+        "runOnChange-collectionName": false,
+        "runOnChange-querySettings": false,
+        "visualSort": [
+          {
+            "property": "name",
+            "order": "ascending"
+          }
+        ]
+      },
+      "x": 530,
       "y": 880
     },
     {
-      "id": "toMembers-6",
+      "id": "emptyGate-4",
+      "type": "JavaScriptFunction",
+      "label": "Is the directory really empty?",
+      "parameters": {
+        "functionScript": "Outputs.empty = (Inputs.count || 0) === 0;"
+      },
+      "x": 530,
+      "y": 1000
+    },
+    {
+      "id": "toMembers-5",
       "type": "RouterNavigate",
-      "label": "Go to members area",
+      "label": "Back to the members area",
       "parameters": {
         "router": "Main",
         "target": "/Pages/Members"
       },
-      "x": 470,
-      "y": 1360
+      "x": 530,
+      "y": 1240
     },
     {
-      "id": "toJoin-2",
+      "id": "toLanding-5",
       "type": "RouterNavigate",
-      "label": "Go to the join form",
+      "label": "Out of the members area",
       "parameters": {
         "router": "Main",
-        "target": "/Pages/Join"
+        "target": "/Pages/Landing"
       },
-      "x": 470,
-      "y": 1240
+      "x": 530,
+      "y": 1360
     }
   ],
   "visualRoots": [
-    "page-2"
+    "page-11"
   ]
 }

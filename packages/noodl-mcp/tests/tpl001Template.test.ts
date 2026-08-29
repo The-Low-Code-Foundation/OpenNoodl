@@ -44,6 +44,7 @@ import { validateSecurityConfig } from '../../nodegx-backend/src/security/model'
 import { TPL001_CLOUD_COMPONENTS } from './tpl001Cloud';
 import { ANNOUNCEMENT_ROW, MEETING_ROW, REQUEST_ROW, STANDING_COMPONENT } from './tpl001Components';
 import { APP_COMPONENT, buildMembersTemplateProject, prepareArtefact, TEMPLATE_ID } from './tpl001Template';
+import { requestedCompositions, USED_COMPOSITIONS } from './tpl001Theme';
 import {
   COLLECTION_ANNOUNCEMENT,
   COLLECTION_ASSOCIATION,
@@ -243,8 +244,12 @@ describe('TPL-001 — the committed template is what the door writes today', () 
     // 🔴 Without this, "every byte agrees" is satisfiable by two empty file
     // lists — the same green, and the opposite fix.
     const committed = filesUnder(ARTEFACT);
-    // 21 components × 3 files, plus the registry, the project file and the policy.
-    expect(committed.length).toBe(21 * 3 + 3);
+    // 22 components × 3 files, plus the registry, the project file and the policy.
+    // 22 rather than 21 since s8: `Members/InsideTile`, the landing page's
+    // "what members can see" tile. It is a component and not three inline
+    // subtrees because the door refused the inline form —
+    // `repeated-sibling-subtree`, naming the remedy.
+    expect(committed.length).toBe(22 * 3 + 3);
     expect(committed).toContain('nodegx.project.json');
     expect(committed).toContain('nodegx.security.json');
     expect(committed).toContain(path.join('components', '_registry.json'));
@@ -255,13 +260,13 @@ describe('TPL-001 — the committed template is what the door writes today', () 
     );
   });
 
-  it('control: the generation really ran — twenty-one components, App first', async () => {
+  it('control: the generation really ran — twenty-two components, App first', async () => {
     // 🔴 Without this, the comparison above is satisfiable by two empty sets, and
     // a build that silently authored nothing would read as agreement.
     const built = await buildMembersTemplateProject();
-    expect(built.order).toHaveLength(21);
+    expect(built.order).toHaveLength(22);
     expect(built.order[0]).toBe(APP_COMPONENT);
-    expect(shipped).toHaveLength(21);
+    expect(shipped).toHaveLength(22);
   });
 });
 
@@ -742,7 +747,14 @@ describe('TPL-001 — the states a person can be in all have a screen', () => {
     // "hidden until it has something to say" were indistinguishable — the
     // missing gate only became visible when the notice was given a box, which
     // would otherwise have shipped as a permanently empty card under the form.
-    expect(gates.length).toBe(28);
+    //
+    // 29 since s8: `Pages/Landing`'s "what members can see" rides the same
+    // `hasAssociation` signal as the two buttons. Ungated it would promise a
+    // diary and a directory to the one person who cannot have them yet — the
+    // installer, whose first job is to create the association. Read on a fresh
+    // install before the fix was assumed: the page shows the eyebrow, the setup
+    // card and nothing else.
+    expect(gates.length).toBe(29);
   });
 
   it('AC6 — every list ships an empty state, hidden until a query has answered', () => {
@@ -975,5 +987,29 @@ describe('TPL-001 — the design system is finished, not merely opened', () => {
       return c.nodes.filter((n) => (n.children ?? []).some((id) => byId.get(id)?.type === 'For Each'));
     });
     expect(holders.length).toBe(4);
+  });
+
+  /**
+   * §4 — 🔴 **the list of compositions the template uses is the list it uses.**
+   *
+   * `USED_COMPOSITIONS` carried the sentence *"asserted by the gate, so a rename
+   * reddens"* for its whole life and **no gate read it** — `grep` returned the
+   * declaration and nothing else. It had drifted accordingly: `eyebrow` and
+   * `sectionHead` were on it while the template used neither, so the one thing
+   * it was for (noticing a composition that stopped being referenced) was
+   * exactly what it could not do.
+   *
+   * The right-hand side is not another hand-written list: `composition()`
+   * records every id it is asked for, and importing `tpl001Components` runs all
+   * of them at module scope. So this compares a declaration against a
+   * measurement rather than two declarations against each other.
+   */
+  it('§4 USED_COMPOSITIONS is exactly what the template asked the vocabulary for', () => {
+    const asked = requestedCompositions();
+    // Beside a known-firing signal: an empty recorder would make the comparison
+    // below pass against an empty list, which is the failure this file's own
+    // house rules are about.
+    expect(asked.length).toBeGreaterThan(10);
+    expect(asked).toEqual([...USED_COMPOSITIONS].sort());
   });
 });

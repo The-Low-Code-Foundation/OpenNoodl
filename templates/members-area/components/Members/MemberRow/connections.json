@@ -1,0 +1,37 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "65344e91-c167-567b-8f79-804fc9f028c6",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "inputs-5",
+      "fromProperty": "name",
+      "toId": "rowName-2",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "inputs-5",
+      "fromProperty": "email",
+      "toId": "rowEmail",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "inputs-5",
+      "fromProperty": "standing",
+      "toId": "describe",
+      "toProperty": "in-standing"
+    },
+    {
+      "fromId": "inputs-5",
+      "fromProperty": "joinedAt",
+      "toId": "describe",
+      "toProperty": "in-joinedAt"
+    },
+    {
+      "fromId": "describe",
+      "fromProperty": "out-description",
+      "toId": "rowStanding",
+      "toProperty": "text"
+    }
+  ]
+}
