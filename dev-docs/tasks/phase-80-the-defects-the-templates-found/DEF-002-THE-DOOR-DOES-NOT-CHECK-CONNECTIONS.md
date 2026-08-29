@@ -153,5 +153,51 @@ once.**
 | 1(b) `CloudFunction2` `in-*`/`out-*` → the endpoint's request/response params | ⬜ needs a new index off the same views |
 | 1(c) `RouterNavigate` `pm-*` → the page's `PageInputs.pathParams` + `{braces}` in `urlPath` | ⬜ same |
 | 2 `failure-reaches-nothing` | ⬜ — and 🔴 **DEF-002 read `noodl-mcp/src/validate.ts` and concluded "there is no rule". True, but the rules do not live there**: they are `noodl-editor/src/editor/src/validation/rules/`. Checked at HEAD: `unwiredOutcome` fires on a different shape entirely (unchanged declared, `done`+`failure` wired, neither `unchanged` nor `completed`), so the gap is real — but it was concluded from the wrong file, which is the third time a row in this family has been |
-| 3 `signal-into-value-port` | ⬜ — real: `typeIncompatibleConnection` explicitly treats *"a signal is involved"* as **compatible**, and `signalDrivenStaleInput` is `defaultEnabled: false` and about asynchrony |
+| 3 `signal-into-value-port` | ✅ **done** — see below |
 | AC6 both pipelines | 🔴 blocked on the calibration pass above |
+
+### ✅ Rule 3 landed — a signal into a value port
+
+`rules/signalIntoValuePort.ts` + 9 specs. **A `rules/` rule, not a precondition** — so unlike 1(a) it
+reaches `validate_project` *and* the write gate. That difference is what AC6 is about, and it is
+worth noticing that the two halves of one task landed on opposite sides of it.
+
+Nothing covered it, checked rather than assumed: `typeIncompatibleConnection` names *"a signal is
+involved"* as **sufficient** for compatibility — correct for a signal into a signal, and precisely
+why nobody was asking about the *direction*.
+
+#### 🔴 D10's mechanism is wrong at HEAD, and the diagnostic says what the runtime does instead
+
+D10 (and this task's §1(c)) describe it as *"the two writes coalesce and the consumer runs once, with
+`false`"*. At HEAD, `Node.prototype._setPulseFromConnection` queues **one** entry (`SIGNAL_PULSE`),
+and the drain loop plays it as `setInputValue(name, true)` then `setInputValue(name, false)` **in the
+same pass**. So the setter runs **twice** and the port **settles at `false`**.
+
+⚠️ Not pedantry: *"runs once with false"* and *"settles at false"* predict different things for a port
+with a side-effecting setter, and a diagnostic that states the wrong mechanism teaches the wrong
+repair. **The row was relayed from a measurement of an older runtime.** Read the caller.
+
+#### 🔴 `error` was tried, and the corpus gate refused it — correctly
+
+**Exactly one firing across the 96-project corpus**, and it is a **true positive**:
+`big-merge-test-mine`'s `/SessionData/Setup session` wires `Switch.switchedToOn` into
+`Script Downloader.startLoad`.
+
+Verified in the node definition rather than inferred — `startLoad` is
+`type: 'boolean', default: true, displayName: 'Load on start'`, described as *"whether the scripts
+are fetched as soon as the node appears, **rather than waiting for Load**"*, and `load` is the signal
+input beside it that the author meant. The pulse settles `startLoad` at `false`, so **that project's
+scripts never load**.
+
+So the rule is right and the project is broken — **and a rule that breaks CI over one real defect in
+an old import is a rule people switch off.** `warning` + membership of `AUTHORED_BLOCKING_WARNINGS`
+is the seam that already exists for exactly this split: advisory on a project somebody imported,
+**blocking on a graph an agent just wrote**. The set's own charter is *"output that is broken — a
+value the runtime discards"*, and a value input receiving a pulse discards it in the most literal way
+available.
+
+#### Gates
+
+`test:ci` **2889 specs, 4 failures, all `AIX-006` by name** — the floor, unmoved. `test:main`
+6287/6287. MCP **891/891**, and every shipped template runs through `validate_project`, which now
+runs this rule: none fires.
