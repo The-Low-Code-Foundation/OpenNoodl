@@ -35,8 +35,7 @@
         "title",
         "date",
         "body",
-        "refusal",
-        "backButton"
+        "refusal"
       ],
       "parameters": {
         "width": {
@@ -149,30 +148,6 @@
       "y": 880
     },
     {
-      "id": "backButton",
-      "type": "net.noodl.controls.button",
-      "label": "Back",
-      "parent": "ground-4",
-      "parameters": {
-        "label": "Back to announcements",
-        "backgroundColor": "transparent",
-        "color": "var(--foreground)",
-        "borderRadius": "var(--radius-full)",
-        "borderStyle": "solid",
-        "borderWidth": "var(--border-1)",
-        "borderColor": "var(--border-control)",
-        "paddingLeft": "var(--space-6)",
-        "paddingRight": "var(--space-6)",
-        "paddingTop": "var(--space-3)",
-        "paddingBottom": "var(--space-3)",
-        "fontSize": "var(--text-sm)",
-        "fontWeight": "var(--font-semibold)",
-        "sizeMode": "contentSize"
-      },
-      "x": 160,
-      "y": 1000
-    },
-    {
       "id": "pageInputs",
       "type": "PageInputs",
       "label": "Which announcement",
@@ -180,7 +155,7 @@
         "pathParams": "announcementId"
       },
       "x": 470,
-      "y": 1120
+      "y": 880
     },
     {
       "id": "hold",
@@ -230,17 +205,6 @@
       },
       "x": 470,
       "y": 760
-    },
-    {
-      "id": "toMembers",
-      "type": "RouterNavigate",
-      "label": "Back to the members area",
-      "parameters": {
-        "router": "Main",
-        "target": "/Pages/Members"
-      },
-      "x": 470,
-      "y": 1000
     }
   ],
   "visualRoots": [

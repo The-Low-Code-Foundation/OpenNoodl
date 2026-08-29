@@ -475,6 +475,61 @@ function btn(label: string): Record<string, unknown> {
 }
 
 /**
+ * A control in the band, which is **never** the filled button.
+ *
+ * 🔴 **It does not go through `btn()`, and that is the point.** `btn()` keys
+ * the variant on the words, so the moment the band carried an item labelled
+ * `Post something` it would have inherited `primaryButton` from
+ * `PRIMARY_LABELS` — a filled button in the header of **every** page, including
+ * `Pages/Post`, whose own submit is filled. Two filled buttons on a screen is
+ * the state `PRIMARY_LABELS`' own comment calls "no primary action at all",
+ * and here it would have been shipped on eleven screens at once.
+ *
+ * ⚠️ So emphasis is a property of the PLACE rather than of the label: a page
+ * may emphasise one action, the band emphasises nothing. The two controls
+ * reading `Post something` on `Pages/Members` are the same destination in the
+ * same words, one of them emphasised, which is the ordinary shape of a nav
+ * beside a call to action.
+ */
+/**
+ * A control that is a CHILD OF A `Columns`, made to fit the box it is given.
+ *
+ * 🔴 **`outlineButton` and `primaryButton` both pin `sizeMode: 'contentSize'`,
+ * and inside a `Columns` that is an overlap.** `calcAutoFit` divides the
+ * container into equal boxes and hands each child one; a content-sized button
+ * ignores the box and keeps its own width, so at 1280 the five-column band drew
+ * "Announcements" straight across the left edge of "Meetings". **Found by
+ * rendering it and looking** — every gate in this repository was green over it,
+ * and it is invisible at 390px, where two wider columns happen to fit the words.
+ *
+ * ⚠️ **Written as a rule over the PLACE, not fixed on the one node that showed
+ * it.** `Pages/Members`' three moderator actions have been in a `Columns` since
+ * s8 and are the same defect: "Requests to join" measures ~163px of content in
+ * a 165px box at 390px, so it clears by two pixels and reads as correct. A fix
+ * applied only where the symptom appeared would have left that one to surface
+ * on somebody else's font.
+ *
+ * ⚠️ `contentHeight` rather than `explicit`: the width comes from the column,
+ * the height must still come from the label. `width` is INERT without one of
+ * those two and the door says so.
+ */
+function inColumn(params: Record<string, unknown>): Record<string, unknown> {
+  return {
+    ...params,
+    sizeMode: 'contentHeight',
+    width: { value: 100, unit: '%' },
+    // A control in a column is not a pill standing on its own: the compositions'
+    // `--space-6` sides cost the label the room it needs inside a 142px box.
+    paddingLeft: 'var(--space-3)',
+    paddingRight: 'var(--space-3)'
+  };
+}
+
+function navBtn(label: string): Record<string, unknown> {
+  return inColumn({ label, ...withoutInertBorderWidth(composition('outlineButton')) });
+}
+
+/**
  * A notice and the box it lives in, as the two nodes they have to be.
  *
  * 🔴 **The GROUP keeps the notice's id; the `Text` takes `<id>Text`.** That is
@@ -1522,14 +1577,16 @@ const MEMBERS: Tpl001Component = {
       type: 'net.noodl.controls.button',
       label: 'Post something',
       parent: 'moderatorButtons',
-      parameters: btn('Post something')
+      // ⚠️ `inColumn`: this button is a child of `moderatorButtons`, a `Columns`.
+      parameters: inColumn(btn('Post something'))
     },
     {
       id: 'requestsButton',
       type: 'net.noodl.controls.button',
       label: 'Requests to join',
       parent: 'moderatorButtons',
-      parameters: btn('Requests to join')
+      // ⚠️ `inColumn`: this button is a child of `moderatorButtons`, a `Columns`.
+      parameters: inColumn(btn('Requests to join'))
     },
     {
       id: 'directoryButton',
@@ -1539,12 +1596,22 @@ const MEMBERS: Tpl001Component = {
       // ⚠️ Not "Members": this page is already called Members, and a button on
       // it leading to another screen with the same name is the kind of label
       // that only makes sense to whoever built it.
-      parameters: btn('Who belongs')
+      // ⚠️ `inColumn`: this button is a child of `moderatorButtons`, a `Columns`.
+      parameters: inColumn(btn('Who belongs'))
     },
     // ⚠️ No `signOutButton` here since s8: it lives in `Members/Chrome`, at the
     // top of every signed-in page, where a person looks for it. This page used
     // to be the only screen you could sign out from, so every other page ended
     // in "Back to the members area" for want of anywhere else to go.
+    //
+    // 🔴 **Those six back buttons are gone since s9**, and the band's nav is
+    // why. Each of them was the page's only exit and every one of them led
+    // here — so "navigation" in this template meant a round trip through the
+    // noticeboard whatever you wanted next. ⚠️ The three buttons below STAY:
+    // the band names PLACES in one word and this section names ACTIONS in a
+    // moderator's own words, under an eyebrow saying who they are for, and it
+    // carries the page's one filled button. A nav and a call to action are not
+    // the same control.
     { id: 'standing', type: STANDING_COMPONENT, label: 'Who is this?' },
     {
       id: 'announcements',
@@ -1664,7 +1731,7 @@ const ANNOUNCEMENT: Tpl001Component = {
       label: 'Page ground',
       parent: 'page',
       parameters: PAGE_GROUND,
-      children: ['title', 'date', 'body', 'refusal', 'backButton']
+      children: ['title', 'date', 'body', 'refusal']
     },
     { id: 'title', type: 'Text', label: 'Title', parent: 'ground', parameters: { text: '', ...H_PAGE } },
     { id: 'date', type: 'Text', label: 'Posted', parent: 'ground', parameters: { text: '', ...T_META } },
@@ -1672,13 +1739,6 @@ const ANNOUNCEMENT: Tpl001Component = {
     ...notice('refusal', 'Not available', 'ground', 'This announcement is not available to you.', {
       tone: 'refused'
     }),
-    {
-      id: 'backButton',
-      type: 'net.noodl.controls.button',
-      label: 'Back',
-      parent: 'ground',
-      parameters: btn('Back to announcements')
-    },
     { id: 'pageInputs', type: 'PageInputs', label: 'Which announcement', parameters: { pathParams: ANNOUNCEMENT_PARAM } },
     {
       id: 'hold',
@@ -1719,12 +1779,6 @@ const ANNOUNCEMENT: Tpl001Component = {
       // arrives once as `false` and reveals nothing, ever.
       parameters: { ...CONDITION_GATE }
     },
-    {
-      id: 'toMembers',
-      type: 'RouterNavigate',
-      label: 'Back to the members area',
-      parameters: { router: ROUTER, target: '/Pages/Members' }
-    }
   ],
   connections: [
     { fromId: 'pageInputs', fromProperty: `pm-${ANNOUNCEMENT_PARAM}`, toId: 'hold', toProperty: `in-${ANNOUNCEMENT_PARAM}` },
@@ -1739,8 +1793,6 @@ const ANNOUNCEMENT: Tpl001Component = {
 
     { fromId: 'record', fromProperty: 'failure', toId: 'refusalGate', toProperty: 'eval' },
     { fromId: 'refusalGate', fromProperty: 'result', toId: 'refusal', toProperty: 'mounted' },
-
-    { fromId: 'backButton', fromProperty: 'onClick', toId: 'toMembers', toProperty: 'navigate' }
   ]
 };
 
@@ -1778,7 +1830,7 @@ const MEETINGS: Tpl001Component = {
       label: 'Page ground',
       parent: 'page',
       parameters: PAGE_GROUND,
-      children: ['heading', 'pendingNotice', 'memberArea', 'backButton']
+      children: ['heading', 'pendingNotice', 'memberArea']
     },
     {
       id: 'heading',
@@ -1804,13 +1856,6 @@ const MEETINGS: Tpl001Component = {
       parameters: { templateType: 'explicit', template: MEETING_ROW }
     },
     ...notice('emptyState', 'Nothing in the diary', 'memberArea', NO_MEETINGS_TEXT),
-    {
-      id: 'backButton',
-      type: 'net.noodl.controls.button',
-      label: 'Back',
-      parent: 'ground',
-      parameters: btn('Back to the members area')
-    },
     { id: 'standing', type: STANDING_COMPONENT, label: 'Who is this?' },
     {
       id: 'today',
@@ -1842,12 +1887,6 @@ const MEETINGS: Tpl001Component = {
       parameters: { functionScript: 'Outputs.empty = (Inputs.count || 0) === 0;' }
     },
     {
-      id: 'toMembers',
-      type: 'RouterNavigate',
-      label: 'Back to the members area',
-      parameters: { router: ROUTER, target: '/Pages/Members' }
-    },
-    {
       id: 'toLanding',
       type: 'RouterNavigate',
       label: 'Out of the members area',
@@ -1866,8 +1905,6 @@ const MEETINGS: Tpl001Component = {
     { fromId: 'meetings', fromProperty: 'count', toId: 'emptyGate', toProperty: 'in-count' },
     { fromId: 'meetings', fromProperty: 'fetched', toId: 'emptyGate', toProperty: 'run' },
     { fromId: 'emptyGate', fromProperty: 'out-empty', toId: 'emptyState', toProperty: 'mounted' },
-
-    { fromId: 'backButton', fromProperty: 'onClick', toId: 'toMembers', toProperty: 'navigate' }
   ]
 };
 
@@ -1895,7 +1932,7 @@ const MEETING: Tpl001Component = {
       label: 'Page ground',
       parent: 'page',
       parameters: PAGE_GROUND,
-      children: ['title', 'when', 'place', 'details', 'refusal', 'backButton']
+      children: ['title', 'when', 'place', 'details', 'refusal']
     },
     { id: 'title', type: 'Text', label: 'Title', parent: 'ground', parameters: { text: '', ...H_PAGE } },
     { id: 'when', type: 'Text', label: 'When', parent: 'ground', parameters: { text: '', ...T_META } },
@@ -1904,13 +1941,6 @@ const MEETING: Tpl001Component = {
     ...notice('refusal', 'Not available', 'ground', 'This meeting is not available to you.', {
       tone: 'refused'
     }),
-    {
-      id: 'backButton',
-      type: 'net.noodl.controls.button',
-      label: 'Back',
-      parent: 'ground',
-      parameters: btn('Back to the diary')
-    },
     { id: 'pageInputs', type: 'PageInputs', label: 'Which meeting', parameters: { pathParams: MEETING_PARAM } },
     {
       id: 'hold',
@@ -1943,12 +1973,6 @@ const MEETING: Tpl001Component = {
       }
     },
     { id: 'refusalGate', type: 'Condition', label: 'Show the refusal', parameters: { ...CONDITION_GATE } },
-    {
-      id: 'toMeetings',
-      type: 'RouterNavigate',
-      label: 'Back to the diary',
-      parameters: { router: ROUTER, target: '/Pages/Meetings' }
-    }
   ],
   connections: [
     { fromId: 'pageInputs', fromProperty: `pm-${MEETING_PARAM}`, toId: 'hold', toProperty: `in-${MEETING_PARAM}` },
@@ -1964,8 +1988,6 @@ const MEETING: Tpl001Component = {
 
     { fromId: 'record', fromProperty: 'failure', toId: 'refusalGate', toProperty: 'eval' },
     { fromId: 'refusalGate', fromProperty: 'result', toId: 'refusal', toProperty: 'mounted' },
-
-    { fromId: 'backButton', fromProperty: 'onClick', toId: 'toMeetings', toProperty: 'navigate' }
   ]
 };
 
@@ -2358,7 +2380,7 @@ const POST: Tpl001Component = {
       label: 'Page ground',
       parent: 'page',
       parameters: PAGE_GROUND,
-      children: ['heading', 'notAllowed', 'tools', 'backButton']
+      children: ['heading', 'notAllowed', 'tools']
     },
     {
       id: 'heading',
@@ -2493,13 +2515,6 @@ const POST: Tpl001Component = {
       parent: 'meetingForm',
       parameters: { text: 'Added. Members can see it now.', mounted: false, ...T_CONFIRM }
     },
-    {
-      id: 'backButton',
-      type: 'net.noodl.controls.button',
-      label: 'Back',
-      parent: 'ground',
-      parameters: btn('Back to the members area')
-    },
     { id: 'standing', type: STANDING_COMPONENT, label: 'Who is this?' },
     {
       id: 'notModerator',
@@ -2539,12 +2554,6 @@ const POST: Tpl001Component = {
     { id: 'aDoneGate', type: 'Condition', label: 'Show the confirmation', parameters: { ...CONDITION_GATE } },
     { id: 'mDoneGate', type: 'Condition', label: 'Show the confirmation', parameters: { ...CONDITION_GATE } },
     {
-      id: 'toMembers',
-      type: 'RouterNavigate',
-      label: 'Back to the members area',
-      parameters: { router: ROUTER, target: '/Pages/Members' }
-    },
-    {
       id: 'toLanding',
       type: 'RouterNavigate',
       label: 'Out of the members area',
@@ -2573,8 +2582,6 @@ const POST: Tpl001Component = {
     { fromId: 'mButton', fromProperty: 'onClick', toId: 'createMeeting', toProperty: 'store' },
     { fromId: 'createMeeting', fromProperty: 'done', toId: 'mDoneGate', toProperty: 'eval' },
     { fromId: 'mDoneGate', fromProperty: 'result', toId: 'mDone', toProperty: 'mounted' },
-
-    { fromId: 'backButton', fromProperty: 'onClick', toId: 'toMembers', toProperty: 'navigate' }
   ]
 };
 
@@ -2612,7 +2619,7 @@ const REQUESTS: Tpl001Component = {
       label: 'Page ground',
       parent: 'page',
       parameters: PAGE_GROUND,
-      children: ['heading', 'notAllowed', 'queue', 'backButton']
+      children: ['heading', 'notAllowed', 'queue']
     },
     {
       id: 'heading',
@@ -2641,13 +2648,6 @@ const REQUESTS: Tpl001Component = {
       parameters: { templateType: 'explicit', template: REQUEST_ROW }
     },
     ...notice('emptyState', 'Nobody waiting', 'queue', NO_REQUESTS_TEXT),
-    {
-      id: 'backButton',
-      type: 'net.noodl.controls.button',
-      label: 'Back',
-      parent: 'ground',
-      parameters: btn('Back to the members area')
-    },
     { id: 'standing', type: STANDING_COMPONENT, label: 'Who is this?' },
     {
       id: 'notModerator',
@@ -2674,12 +2674,6 @@ const REQUESTS: Tpl001Component = {
       parameters: { functionScript: 'Outputs.empty = (Inputs.count || 0) === 0;' }
     },
     {
-      id: 'toMembers',
-      type: 'RouterNavigate',
-      label: 'Back to the members area',
-      parameters: { router: ROUTER, target: '/Pages/Members' }
-    },
-    {
       id: 'toLanding',
       type: 'RouterNavigate',
       label: 'Out of the members area',
@@ -2704,8 +2698,6 @@ const REQUESTS: Tpl001Component = {
     // SB-018 (1) is five sessions of a wire that named the port the author
     // wanted, spelled the way the row spells it, doing nothing.
     { fromId: 'list', fromProperty: 'itemOutputSignal-Changed', toId: 'requests', toProperty: 'storageFetch' },
-
-    { fromId: 'backButton', fromProperty: 'onClick', toId: 'toMembers', toProperty: 'navigate' }
   ]
 };
 
@@ -2750,7 +2742,7 @@ const DIRECTORY: Tpl001Component = {
       label: 'Page ground',
       parent: 'page',
       parameters: PAGE_GROUND,
-      children: ['heading', 'notAllowed', 'directory', 'backButton']
+      children: ['heading', 'notAllowed', 'directory']
     },
     {
       id: 'heading',
@@ -2786,13 +2778,6 @@ const DIRECTORY: Tpl001Component = {
       parameters: { templateType: 'explicit', template: MEMBER_ROW }
     },
     ...notice('emptyState', 'Nobody admitted yet', 'directory', NO_MEMBERS_TEXT),
-    {
-      id: 'backButton',
-      type: 'net.noodl.controls.button',
-      label: 'Back',
-      parent: 'ground',
-      parameters: btn('Back to the members area')
-    },
     { id: 'standing', type: STANDING_COMPONENT, label: 'Who is this?' },
     {
       id: 'notModerator',
@@ -2821,12 +2806,6 @@ const DIRECTORY: Tpl001Component = {
       parameters: { functionScript: 'Outputs.empty = (Inputs.count || 0) === 0;' }
     },
     {
-      id: 'toMembers',
-      type: 'RouterNavigate',
-      label: 'Back to the members area',
-      parameters: { router: ROUTER, target: '/Pages/Members' }
-    },
-    {
       id: 'toLanding',
       type: 'RouterNavigate',
       label: 'Out of the members area',
@@ -2847,8 +2826,6 @@ const DIRECTORY: Tpl001Component = {
     { fromId: 'members', fromProperty: 'count', toId: 'emptyGate', toProperty: 'in-count' },
     { fromId: 'members', fromProperty: 'fetched', toId: 'emptyGate', toProperty: 'run' },
     { fromId: 'emptyGate', fromProperty: 'out-empty', toId: 'emptyState', toProperty: 'mounted' },
-
-    { fromId: 'backButton', fromProperty: 'onClick', toId: 'toMembers', toProperty: 'navigate' }
   ]
 };
 
@@ -2935,6 +2912,14 @@ export const INSIDE_TILE_WIRES = [
  * `Association` is the one row the world may read, and with no trigger wired
  * there is no other moment for it to run.
  */
+export const BAND_NAV: ReadonlyArray<{ id: string; nav: string; label: string; target: string; moderatorOnly?: true }> = [
+  { id: 'navAnnouncements', nav: 'toAnnouncements', label: 'Announcements', target: '/Pages/Members' },
+  { id: 'navMeetings', nav: 'toMeetingsNav', label: 'Meetings', target: '/Pages/Meetings' },
+  { id: 'navPost', nav: 'toPostNav', label: 'Post', target: '/Pages/Post', moderatorOnly: true },
+  { id: 'navRequests', nav: 'toRequestsNav', label: 'Requests', target: '/Pages/Requests', moderatorOnly: true },
+  { id: 'navDirectory', nav: 'toDirectoryNav', label: 'Who belongs', target: '/Pages/Directory', moderatorOnly: true }
+];
+
 export const CHROME_NODES = [
   {
     id: 'bar',
@@ -2956,22 +2941,35 @@ export const CHROME_NODES = [
   {
     id: 'inner',
     type: 'Group',
-    label: 'The capped row',
+    label: 'The capped column',
     parent: 'bar',
     parameters: {
       width: { value: 100, unit: '%' },
       sizeMode: 'contentHeight',
       maxWidth: { value: 760, unit: 'px' },
       alignX: 'center',
+      flexDirection: 'column',
+      rowGap: 'var(--space-4)',
+      paddingLeft: 'var(--space-6)',
+      paddingRight: 'var(--space-6)'
+    },
+    children: ['topRow', 'nav']
+  },
+  {
+    id: 'topRow',
+    type: 'Group',
+    label: 'Who this is, and the way out',
+    parent: 'inner',
+    parameters: {
+      width: { value: 100, unit: '%' },
+      sizeMode: 'contentHeight',
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
       // 🔴 Measured at 390px: without this the association name wraps to two
       // lines and runs under the Sign out button. `space-between` puts air
       // between them only while there IS air.
-      columnGap: 'var(--space-4)',
-      paddingLeft: 'var(--space-6)',
-      paddingRight: 'var(--space-6)'
+      columnGap: 'var(--space-4)'
     },
     children: ['identity', 'signOutButton']
   },
@@ -2979,7 +2977,7 @@ export const CHROME_NODES = [
     id: 'identity',
     type: 'Group',
     label: 'Whose members’ area this is',
-    parent: 'inner',
+    parent: 'topRow',
     parameters: { flexDirection: 'column', rowGap: 'var(--space-1)' },
     children: ['eyebrow', 'name']
   },
@@ -3003,9 +3001,41 @@ export const CHROME_NODES = [
     id: 'signOutButton',
     type: 'net.noodl.controls.button',
     label: 'Sign out',
-    parent: 'inner',
+    parent: 'topRow',
     parameters: btn('Sign out')
   },
+  {
+    id: 'nav',
+    // 🔴 A `Columns`, for the reason `Pages/Members`' three moderator actions
+    // are one: no `Group` in the runtime has a breakpoint, and five items in a
+    // row is an overflow at 390px — the exact regression measured on three
+    // buttons last session, with "Who belongs" reduced to one visible letter.
+    //
+    // ⚠️ `minWidth` overridden from the composition's 280px, which is sized for
+    // CARDS. 132 fits all five across the 760px band on a desktop and folds to
+    // two columns at 390px. A tokenised `minWidth` would disable `autoFit`
+    // entirely (`Columns.tsx`), so it stays a literal `px` pair.
+    type: COLUMNS_NODE,
+    label: 'Where the band can take you',
+    parent: 'inner',
+    parameters: { ...composition('gridAutoFit'), minWidth: { value: 132, unit: 'px' } },
+    children: BAND_NAV.map((item) => item.id)
+  },
+  ...BAND_NAV.map((item) => ({
+    id: item.id,
+    type: 'net.noodl.controls.button',
+    label: item.label,
+    parent: 'nav',
+    // ⚠️ `navBtn`, never `btn` — see its own note. `Post` would otherwise be
+    // matched against `PRIMARY_LABELS` and filled on every page in the app.
+    parameters: item.moderatorOnly ? { ...navBtn(item.label), mounted: false } : navBtn(item.label)
+  })),
+  ...BAND_NAV.map((item) => ({
+    id: item.nav,
+    type: 'RouterNavigate',
+    label: `To ${item.label.toLowerCase()}`,
+    parameters: { router: ROUTER, target: item.target }
+  })),
   {
     id: 'association',
     type: 'DbCollection2',
@@ -3023,6 +3053,22 @@ export const CHROME_NODES = [
         "Outputs.name = rows.length > 0 ? (rows[0].name || '') : '';"
     }
   },
+  // 🔴 The band asks who the person is FOR ITSELF, and the alternative was
+  // measured rather than assumed. Three of the moderator's doors hang here, so
+  // something has to gate them — and the only other source is the page's own
+  // `Members/Standing`, which **two of the seven pages carrying this band do not
+  // have**: `Pages/Announcement` and `Pages/Meeting` gate on the record read
+  // instead, deliberately. Taking the answer from the page would have given a
+  // moderator their navigation on five screens and silently removed it on the
+  // two they reach by clicking a row.
+  //
+  // ⚠️ **The cost is a second `myStanding` call per page load**, and it is a
+  // real one. The cheaper shape — this instance publishing standing as component
+  // outputs and the five pages consuming it instead of owning one — is a better
+  // app and a worse change to make blind: every gate in AC2/AC3/AC4 is one of
+  // those wires, and the instrument that grades them is the backend drive suite.
+  // Recorded as D28 rather than done unmeasured.
+  { id: 'standing', type: STANDING_COMPONENT, label: 'Who is this?' },
   { id: 'logout', type: 'net.noodl.user.LogOut', label: 'Log out' },
   {
     id: 'toLanding',
@@ -3040,7 +3086,25 @@ export const CHROME_WIRES = [
   // name is persisted in every project that ever wired it, and renaming it would
   // break them. It is displayed as "Do".
   { fromId: 'signOutButton', fromProperty: 'onClick', toId: 'logout', toProperty: 'login' },
-  { fromId: 'logout', fromProperty: 'done', toId: 'toLanding', toProperty: 'navigate' }
+  { fromId: 'logout', fromProperty: 'done', toId: 'toLanding', toProperty: 'navigate' },
+  // ⚠️ A `Group` carries `didMount` — it is one of the shared outputs every
+  // visual node gets (`react-component-node.ts`) — so the band has a mount of
+  // its own to ask from and does not need the page to hand it one.
+  { fromId: 'bar', fromProperty: 'didMount', toId: 'standing', toProperty: 'Check' },
+  ...BAND_NAV.map((item) => ({
+    fromId: item.id,
+    fromProperty: 'onClick',
+    toId: item.nav,
+    toProperty: 'navigate'
+  })),
+  // Rule 4 does not bite here: `isModerator` is a VALUE port on the standing
+  // component, not a signal, so it may drive `mounted` directly.
+  ...BAND_NAV.filter((item) => item.moderatorOnly).map((item) => ({
+    fromId: 'standing',
+    fromProperty: 'isModerator',
+    toId: item.id,
+    toProperty: 'mounted'
+  }))
 ];
 
 // ── The set, in an order the door will accept ────────────────────────────────
@@ -3066,7 +3130,14 @@ export const TPL001_PARTS: Tpl001Component[] = [
   // The band across every signed-in page. `Pages/Landing` does not place it —
   // it has a hero carrying the same identity, and a stranger has nothing to
   // sign out of.
-  { path: 'Members/Chrome', nodes: CHROME_NODES, connections: CHROME_WIRES, deferred: ['toLanding'] }
+  {
+    path: 'Members/Chrome',
+    nodes: CHROME_NODES,
+    connections: CHROME_WIRES,
+    // Every destination in the band is a page authored after it, so all five
+    // navigators wait for the deferred pass. `toLanding` always did.
+    deferred: ['toLanding', ...BAND_NAV.map((item) => item.nav)]
+  }
 ];
 
 /**

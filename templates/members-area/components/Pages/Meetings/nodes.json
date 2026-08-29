@@ -34,8 +34,7 @@
       "children": [
         "heading-4",
         "pendingNotice-2",
-        "memberArea-2",
-        "backButton-2"
+        "memberArea-2"
       ],
       "parameters": {
         "width": {
@@ -198,31 +197,7 @@
       "y": 1120
     },
     {
-      "id": "backButton-2",
-      "type": "net.noodl.controls.button",
-      "label": "Back",
-      "parent": "ground-5",
-      "parameters": {
-        "label": "Back to the members area",
-        "backgroundColor": "transparent",
-        "color": "var(--foreground)",
-        "borderRadius": "var(--radius-full)",
-        "borderStyle": "solid",
-        "borderWidth": "var(--border-1)",
-        "borderColor": "var(--border-control)",
-        "paddingLeft": "var(--space-6)",
-        "paddingRight": "var(--space-6)",
-        "paddingTop": "var(--space-3)",
-        "paddingBottom": "var(--space-3)",
-        "fontSize": "var(--text-sm)",
-        "fontWeight": "var(--font-semibold)",
-        "sizeMode": "contentSize"
-      },
-      "x": 160,
-      "y": 1240
-    },
-    {
-      "id": "standing-2",
+      "id": "standing-3",
       "type": "/Members/Standing",
       "label": "Who is this?",
       "x": 530,
@@ -236,7 +211,7 @@
         "functionScript": "Outputs.day = new Date().toISOString().slice(0, 10);"
       },
       "x": 530,
-      "y": 1360
+      "y": 1120
     },
     {
       "id": "meetings",
@@ -277,17 +252,6 @@
       "y": 1000
     },
     {
-      "id": "toMembers-2",
-      "type": "RouterNavigate",
-      "label": "Back to the members area",
-      "parameters": {
-        "router": "Main",
-        "target": "/Pages/Members"
-      },
-      "x": 530,
-      "y": 1240
-    },
-    {
       "id": "toLanding-2",
       "type": "RouterNavigate",
       "label": "Out of the members area",
@@ -296,7 +260,7 @@
         "target": "/Pages/Landing"
       },
       "x": 530,
-      "y": 1480
+      "y": 1240
     }
   ],
   "visualRoots": [

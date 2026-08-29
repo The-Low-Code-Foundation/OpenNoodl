@@ -61,6 +61,8 @@ failure this file's first house rule exists to prevent.
 | **D25** | ⚠️ open (08-29) | **NONE** | template | every person reading a date or filling the meeting form |
 | **D26** | 🔴 open (08-29) | **NONE** — handed to P80 as C1 | product | every template we ship, not just this one |
 | **D27** | ✅ fixed s8 (08-29) | — | template | (was: anyone whose setup, join or approval threw) |
+| **D28** | 🔴 open (08-29) | **NONE** | product | every agent who lays controls out in the one node that reflows |
+| **D29** | ⚠️ open (08-29) | **phase 78** (Track B remainder) | template | every member — a second auth round trip on every page |
 
 🔴 **D18/D19/D20 are the first rows created since the sweep, and they were already unowned within a
 day of the process being put in place.** That is the argument for the column, not an argument
@@ -947,3 +949,65 @@ Two of the four functions needed a real decision rather than "wire it to `deny`"
   your membership just now"*. Answering `res` would have sent a standing nobody computed — the one
   thing that endpoint must never invent, because every gated screen in the template reads it.
 
+---
+
+## D28 — 🔴 A button inside a `Columns` overlaps the next one, because both button compositions pin `sizeMode: 'contentSize'`
+
+**Measured, s9, by rendering the members' band at 1280×900 and looking at it:** the five nav items
+were laid out in a `net.noodl.visual.columns`, and "Announcements" was drawn **straight across the
+left edge of "Meetings"**.
+
+The mechanism is a disagreement between two parts of the product that are meant to be used together:
+
+- `calcAutoFit` (`Columns.tsx`) divides the container into `floor((width + marginX) / (minWidth +
+  marginX))` equal boxes and hands each child exactly one.
+- `outlineButton` and `primaryButton` (`StyleCompositions.ts`) both ship `sizeMode: 'contentSize'`,
+  which tells the node to keep its own intrinsic width and ignore the box.
+
+So **following the design system verbatim, inside the one node in the runtime that reflows, produces
+overlapping controls.** `gridAutoFit`'s own description — *"fits as many columns as the CONTAINER
+holds and reflows itself — no breakpoints to maintain"* — is what sends an author here, and nothing
+in either description mentions the other.
+
+🔴 **Where it bites.** Any agent told to build a responsive row of actions. The vocabulary offers
+exactly one node that reflows and exactly two button recipes, and the three of them do not compose.
+
+⚠️ **And it hides at the width people check.** The overlap is a function of how much room a column
+has, so it appears at **wide** viewports, where the auto-fit makes many narrow columns, and vanishes
+at 390px, where two wide ones fit the words. Every layout habit built up this phase — *check 390px
+before committing* — points away from it.
+
+⚠️ **It was already shipped, two pixels from visible.** `Pages/Members`' three moderator actions have
+been in a `Columns` since s8: "Requests to join" measures ~163px of content into a ~165px box at
+390px. It cleared, so it read as correct, and it would have failed on a different font. The template
+side is fixed by `inColumn()` in `tpl001Components.ts` — a rule over *being a child of a `Columns`*
+rather than a fix on the node that showed the symptom — and gated by a whole-artefact sweep in
+`tpl001Template.test.ts` that reddens on any content-sized child.
+
+**What the product needs** is one of: `Columns` clamping its children's width, a `contentHeight`
+variant of the button compositions, or — cheapest and most honest — the `gridAutoFit` description
+saying that a `contentSize` child will overflow its column.
+
+---
+
+## D29 — ⚠️ `Members/Chrome` asks the server who you are a second time, on every page
+
+**Filed by the session that caused it, s9, rather than left for a reader to find.** The band carries
+three moderator-only destinations, so something has to gate them, and the band now places its own
+`Members/Standing` and fires it from its root `Group`'s `didMount`. Every signed-in page therefore
+makes **two `myStanding` calls**: the page's and the band's.
+
+⚠️ **Why the cheaper shape was not taken.** The band could publish standing as component outputs and
+the five pages that own an instance could consume it instead — one call, less graph. That is a better
+app and it was a worse change to make this session: **every gate AC2, AC3 and AC4 rest on is one of
+those wires**, and rewiring them means re-grading the boundary, not the layout. It is a change worth
+making beside a drive, not before one.
+
+⚠️ **Why the band could not simply borrow the page's answer.** Two of the seven pages carrying it —
+`Pages/Announcement` and `Pages/Meeting` — have no `Members/Standing` at all, deliberately: the record
+read is their gate. Taking the answer from the page would have given a moderator their navigation on
+five screens and silently removed it on the two they reach by clicking a row.
+
+**Not a correctness defect** — the two calls are reads, they cannot disagree in a way that matters,
+and the drive passes 71/71 with both in place. It is a cost, and it is written down so the next
+session decides about it rather than discovers it.

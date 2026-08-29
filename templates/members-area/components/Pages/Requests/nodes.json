@@ -34,8 +34,7 @@
       "children": [
         "heading-8",
         "notAllowed-2",
-        "queue",
-        "backButton-5"
+        "queue"
       ],
       "parameters": {
         "width": {
@@ -198,31 +197,7 @@
       "y": 1120
     },
     {
-      "id": "backButton-5",
-      "type": "net.noodl.controls.button",
-      "label": "Back",
-      "parent": "ground-10",
-      "parameters": {
-        "label": "Back to the members area",
-        "backgroundColor": "transparent",
-        "color": "var(--foreground)",
-        "borderRadius": "var(--radius-full)",
-        "borderStyle": "solid",
-        "borderWidth": "var(--border-1)",
-        "borderColor": "var(--border-control)",
-        "paddingLeft": "var(--space-6)",
-        "paddingRight": "var(--space-6)",
-        "paddingTop": "var(--space-3)",
-        "paddingBottom": "var(--space-3)",
-        "fontSize": "var(--text-sm)",
-        "fontWeight": "var(--font-semibold)",
-        "sizeMode": "contentSize"
-      },
-      "x": 160,
-      "y": 1240
-    },
-    {
-      "id": "standing-4",
+      "id": "standing-5",
       "type": "/Members/Standing",
       "label": "Who is this?",
       "x": 530,
@@ -267,17 +242,6 @@
       "y": 1000
     },
     {
-      "id": "toMembers-4",
-      "type": "RouterNavigate",
-      "label": "Back to the members area",
-      "parameters": {
-        "router": "Main",
-        "target": "/Pages/Members"
-      },
-      "x": 530,
-      "y": 1240
-    },
-    {
       "id": "toLanding-4",
       "type": "RouterNavigate",
       "label": "Out of the members area",
@@ -286,7 +250,7 @@
         "target": "/Pages/Landing"
       },
       "x": 530,
-      "y": 1360
+      "y": 1120
     }
   ],
   "visualRoots": [

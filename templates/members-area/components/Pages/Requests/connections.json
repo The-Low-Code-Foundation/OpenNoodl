@@ -6,17 +6,17 @@
     {
       "fromId": "page-10",
       "fromProperty": "didMount",
-      "toId": "standing-4",
+      "toId": "standing-5",
       "toProperty": "Check"
     },
     {
-      "fromId": "standing-4",
+      "fromId": "standing-5",
       "fromProperty": "isModerator",
       "toId": "queue",
       "toProperty": "mounted"
     },
     {
-      "fromId": "standing-4",
+      "fromId": "standing-5",
       "fromProperty": "isModerator",
       "toId": "notModerator-2",
       "toProperty": "in-isModerator"
@@ -28,13 +28,13 @@
       "toProperty": "mounted"
     },
     {
-      "fromId": "standing-4",
+      "fromId": "standing-5",
       "fromProperty": "Moderator",
       "toId": "requests",
       "toProperty": "storageFetch"
     },
     {
-      "fromId": "standing-4",
+      "fromId": "standing-5",
       "fromProperty": "Visitor",
       "toId": "toLanding-4",
       "toProperty": "navigate"
@@ -68,12 +68,6 @@
       "fromProperty": "itemOutputSignal-Changed",
       "toId": "requests",
       "toProperty": "storageFetch"
-    },
-    {
-      "fromId": "backButton-5",
-      "fromProperty": "onClick",
-      "toId": "toMembers-4",
-      "toProperty": "navigate"
     }
   ]
 }

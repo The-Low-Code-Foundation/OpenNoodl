@@ -703,3 +703,90 @@ it, and the person changing the composition has no reason to run the template su
 `tpl001Template.test.ts` + `templateAppearance.test.ts` **68/68** · the three tpl001 drives
 (`members-drive`, `empty-states`, `refused-query`) **71/71** · `typecheck:mcp` clean. Re-run after
 the peer commits landed mid-session, not before. ⚠️ `test:ci` not run — no editor source touched.
+
+---
+
+## 16. The navigation (s9, 2026-08-29) — 🟢 B2, and a defect the design system had all along
+
+**Every signed-in page used to end in a button back to the noticeboard. That was the whole of this
+app's navigation.** Six of them, one per page, each the page's only exit and every one leading to the
+same screen — so reaching the diary from the moderators' queue was a round trip through the
+noticeboard. They are gone; the band carries five destinations instead.
+
+| | before | after |
+|---|---|---|
+| ways out of a page, other than the browser's Back | **1**, always to `/members` | **5**, from the band |
+| destinations a moderator can reach in one click | 5 (only from `/members`) | **5, from any page** |
+| "Back to …" buttons in the artefact | 6 | **0** |
+| children of a `Columns` that overflow their box | **8** | 0 |
+| `tpl001Template` + `templateAppearance` | 68/68 | **73/73** |
+| the three tpl001 drives, real backend, real browser | 71/71 | **71/71** |
+
+### What the band is now
+
+Two rows inside the same 760px cap: the identity and `Sign out` on top, five nav items beneath.
+`Announcements`, `Meetings` for everybody; `Post`, `Requests`, `Who belongs` gated on `isModerator`.
+
+🔴 **The band asks the server who you are for itself, and the alternative was measured rather than
+assumed.** Two of the seven pages carrying it — `Pages/Announcement` and `Pages/Meeting` — have **no
+`Members/Standing` at all**, deliberately, because the record read is their gate. Borrowing the
+page's answer would have given a moderator their navigation on five screens and silently removed it
+on the two they reach by clicking a row. The cost is a second `myStanding` call per page and it is
+filed as **D29** rather than absorbed quietly.
+
+⚠️ **The moderator's toolbar on `Pages/Members` STAYS.** The band names *places* in one word; the
+toolbar names *actions* in a moderator's own words, under an eyebrow saying who they are for, and it
+carries the page's one filled button. A nav and a call to action are not the same control — and
+`navBtn` exists so the band can never inherit `primaryButton` from `PRIMARY_LABELS` and put a filled
+button in the header of all eleven screens.
+
+### 🔴 The defect was in the design system, and only a picture could see it
+
+`outlineButton` and `primaryButton` both pin `sizeMode: 'contentSize'`. `Columns` hands each child an
+equal box. A content-sized child **ignores the box**, so at 1280 the five-column band drew
+"Announcements" straight across the left edge of "Meetings". Following the design system verbatim,
+inside the one node in the runtime that reflows, produces overlapping controls — **D28**.
+
+⚠️ **It hides at the width this phase learned to check.** The overlap is a function of how much room
+a column has: it appears at **wide** viewports, where auto-fit makes many narrow columns, and vanishes
+at 390px, where two wide ones fit the words. *"Check 390px before committing any layout"* — s8's own
+trap, correctly learned — points away from this one.
+
+⚠️ **And it was already shipped, two pixels from visible.** `Pages/Members`' three moderator actions
+have been in a `Columns` since s8: "Requests to join" measures ~163px into a ~165px box at 390px. It
+cleared, so it read as correct. The fix is `inColumn()` — a rule over *being a child of a `Columns`*
+rather than a repair on the node that showed the symptom — and a whole-artefact sweep reddens on any
+content-sized child, `graded` pinned at 8 so an empty walk is not a pass.
+
+### 🔴 The first draft of the new gate could not fail, and the sabotage is what said so
+
+The band's specs compared the artefact against `BAND_NAV` — **the table the artefact is generated
+from**. That reads like "a declaration against a measurement" and is neither. Proved by deleting
+`moderatorOnly` from the `Post` row: both sides of the comparison moved together and the whole
+describe block stayed **green**, with only the unrelated `mounted` census noticing. The expectations
+are literals now. *A second statement of a fact has to be written independently of the first, or it is
+not a second statement.*
+
+Re-sabotaged after the repair: the ungated door reddens the census, a nav button wired to nothing
+reddens the destination spec — **and nothing else did**, the door included. The generation run was
+clean with a nav item that goes nowhere.
+
+### ✅ Graded by looking, and then by driving
+
+Rendered at **1280×900 and 390×844** before and after, for a member (two items, one row) and a
+moderator (five items on desktop, two columns × three rows at 390). Nine of eleven pages render
+clean at both widths, **0 console errors**; the two skipped take a route parameter the harness has no
+value for.
+
+🔴 **Then driven, because a picture cannot show that `didMount` fires.** The band's standing call
+hangs off its root `Group`'s `didMount` — a shared output every visual node carries — and that was
+read from source, not observed. The drive settles it: `moderator.*` pages paint
+`Sign out | Announcements | Meetings | Post | Requests | Who belongs`, and `member.*` and `pending.*`
+paint only the first three, **absent from `outerHTML`, not merely unpainted**. Same run, same
+instrument, opposite readings.
+
+### Gates (s9)
+
+`typecheck:mcp` clean · noodl-mcp **904/904, 67 suites** · the three tpl001 drives **71/71** against a
+real enforcing backend and a real headless browser. ⚠️ `test:ci` **not run** — no editor source
+touched, which is what has kept this phase from colliding all week.

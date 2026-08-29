@@ -6,17 +6,17 @@
     {
       "fromId": "page-9",
       "fromProperty": "didMount",
-      "toId": "standing-3",
+      "toId": "standing-4",
       "toProperty": "Check"
     },
     {
-      "fromId": "standing-3",
+      "fromId": "standing-4",
       "fromProperty": "isModerator",
       "toId": "tools",
       "toProperty": "mounted"
     },
     {
-      "fromId": "standing-3",
+      "fromId": "standing-4",
       "fromProperty": "isModerator",
       "toId": "notModerator",
       "toProperty": "in-isModerator"
@@ -28,7 +28,7 @@
       "toProperty": "mounted"
     },
     {
-      "fromId": "standing-3",
+      "fromId": "standing-4",
       "fromProperty": "Visitor",
       "toId": "toLanding-3",
       "toProperty": "navigate"
@@ -116,12 +116,6 @@
       "fromProperty": "result",
       "toId": "mDone",
       "toProperty": "mounted"
-    },
-    {
-      "fromId": "backButton-4",
-      "fromProperty": "onClick",
-      "toId": "toMembers-3",
-      "toProperty": "navigate"
     }
   ]
 }

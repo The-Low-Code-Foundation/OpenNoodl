@@ -36,8 +36,7 @@
         "when-3",
         "place",
         "details",
-        "refusal-2",
-        "backButton-3"
+        "refusal-2"
       ],
       "parameters": {
         "width": {
@@ -163,30 +162,6 @@
       "y": 1000
     },
     {
-      "id": "backButton-3",
-      "type": "net.noodl.controls.button",
-      "label": "Back",
-      "parent": "ground-6",
-      "parameters": {
-        "label": "Back to the diary",
-        "backgroundColor": "transparent",
-        "color": "var(--foreground)",
-        "borderRadius": "var(--radius-full)",
-        "borderStyle": "solid",
-        "borderWidth": "var(--border-1)",
-        "borderColor": "var(--border-control)",
-        "paddingLeft": "var(--space-6)",
-        "paddingRight": "var(--space-6)",
-        "paddingTop": "var(--space-3)",
-        "paddingBottom": "var(--space-3)",
-        "fontSize": "var(--text-sm)",
-        "fontWeight": "var(--font-semibold)",
-        "sizeMode": "contentSize"
-      },
-      "x": 160,
-      "y": 1120
-    },
-    {
       "id": "pageInputs-2",
       "type": "PageInputs",
       "label": "Which meeting",
@@ -194,7 +169,7 @@
         "pathParams": "meetingId"
       },
       "x": 470,
-      "y": 1240
+      "y": 1000
     },
     {
       "id": "hold-2",
@@ -244,17 +219,6 @@
       },
       "x": 470,
       "y": 880
-    },
-    {
-      "id": "toMeetings",
-      "type": "RouterNavigate",
-      "label": "Back to the diary",
-      "parameters": {
-        "router": "Main",
-        "target": "/Pages/Meetings"
-      },
-      "x": 470,
-      "y": 1120
     }
   ],
   "visualRoots": [

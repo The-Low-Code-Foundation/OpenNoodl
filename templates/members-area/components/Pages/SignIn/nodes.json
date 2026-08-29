@@ -280,7 +280,7 @@
       "y": 880
     },
     {
-      "id": "toMembers-6",
+      "id": "toMembers",
       "type": "RouterNavigate",
       "label": "Go to members area",
       "parameters": {

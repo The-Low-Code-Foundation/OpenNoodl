@@ -62,12 +62,6 @@
       "fromProperty": "result",
       "toId": "refusal",
       "toProperty": "mounted"
-    },
-    {
-      "fromId": "backButton",
-      "fromProperty": "onClick",
-      "toId": "toMembers",
-      "toProperty": "navigate"
     }
   ]
 }

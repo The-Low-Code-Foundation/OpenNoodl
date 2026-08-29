@@ -42,7 +42,13 @@ import * as path from 'path';
 import { validateSecurityConfig } from '../../nodegx-backend/src/security/model';
 
 import { TPL001_CLOUD_COMPONENTS } from './tpl001Cloud';
-import { ANNOUNCEMENT_ROW, MEETING_ROW, REQUEST_ROW, STANDING_COMPONENT } from './tpl001Components';
+import {
+  ANNOUNCEMENT_ROW,
+  CHROME_COMPONENT,
+  MEETING_ROW,
+  REQUEST_ROW,
+  STANDING_COMPONENT
+} from './tpl001Components';
 import { APP_COMPONENT, buildMembersTemplateProject, prepareArtefact, TEMPLATE_ID } from './tpl001Template';
 import { requestedCompositions, USED_COMPOSITIONS } from './tpl001Theme';
 import {
@@ -344,6 +350,171 @@ describe('TPL-001 — the app has an entry point, and it is the landing page', (
     const oneSegmentWildcards = paths.filter((p) => p.split('/').filter(Boolean).length === 1 && p.includes('{'));
     expect(oneSegmentWildcards).toEqual([]);
     expect(new Set(paths).size).toBe(paths.length);
+  });
+});
+
+// ── 2b. The band, and the way out of every page ───────────────────────
+
+/**
+ * 🔴 **B2 — every signed-in page used to end in a button back to the
+ * noticeboard, and that was the whole of this app's navigation.**
+ *
+ * Six of them, one per page, each the page's only exit and every one leading to
+ * the same screen — so reaching the diary from the queue was a round trip
+ * through the noticeboard. They are gone, and the band carries five destinations
+ * instead.
+ *
+ * ⚠️ **None of what follows is checked at the door.** The nav buttons are
+ * `net.noodl.controls.button` instances whose `onClick` is an ordinary wire, and
+ * the three gates are connections to a component-instance port — the class §3
+ * of this file exists because the door is *silent* about it. A nav item wired to
+ * nothing, or a moderator's door left ungated, is green everywhere else.
+ *
+ * 🔴 **The expectations below are LITERALS, and the first draft of them was
+ * not.** They compared the artefact against `BAND_NAV` — the table the artefact
+ * is generated FROM — which reads like "a declaration against a measurement"
+ * and is neither: proved by deleting `moderatorOnly` from the `Post` row, which
+ * moved both sides of the comparison together and left this whole describe
+ * block **green**. Only the `mounted` census in §6 noticed. A second statement
+ * of a fact has to be written independently of the first or it is not a second
+ * statement.
+ */
+describe('TPL-001 — the band is the navigation, and it goes somewhere', () => {
+  const chrome = () => byLegacyName.get(CHROME_COMPONENT) as StoredComponent;
+
+  /** The band's nav buttons, found by WHERE THEY SIT rather than by an authored id. */
+  const navButtons = (): StoredNode[] => {
+    const band = chrome();
+    const byId = new Map(band.nodes.map((n) => [n.id, n]));
+    const strip = band.nodes.find((n) => n.type === 'net.noodl.visual.columns');
+    if (!strip) throw new Error('the band ships no Columns — nothing reflows');
+    return (strip.children ?? []).map((id) => byId.get(id)).filter((n): n is StoredNode => n !== undefined);
+  };
+
+  it('🔴 ships every destination declared for it, each reaching a REGISTERED page', () => {
+    const band = chrome();
+    const byId = new Map(band.nodes.map((n) => [n.id, n]));
+    const routes = new Set(
+      ((byLegacyName.get(`/${APP_COMPONENT}`) as StoredComponent).nodes.find((n) => n.type === 'Router')
+        ?.parameters?.pages as { routes?: string[] })?.routes ?? []
+    );
+
+    const reached = navButtons().map((button) => {
+      const wire = band.connections.find((w) => w.fromId === button.id && w.fromProperty === 'onClick');
+      const navigator = wire ? byId.get(wire.toId) : undefined;
+      return {
+        label: String(button.parameters?.label),
+        // A button wired to nothing, and a button wired to a navigator whose
+        // target is not routed, are the same screen: a click that does nothing.
+        target: navigator?.type === 'RouterNavigate' ? String(navigator.parameters?.target) : '(nothing)',
+        routed: navigator?.type === 'RouterNavigate' && routes.has(String(navigator.parameters?.target))
+      };
+    });
+
+    expect(reached.filter((r) => !r.routed)).toEqual([]);
+    // Written out rather than mapped from `BAND_NAV` — see the block comment.
+    expect(reached.map((r) => `${r.label} → ${r.target}`)).toEqual([
+      'Announcements → /Pages/Members',
+      'Meetings → /Pages/Meetings',
+      'Post → /Pages/Post',
+      'Requests → /Pages/Requests',
+      'Who belongs → /Pages/Directory'
+    ]);
+  });
+
+  it('🔴 the moderator’s three doors are gated, and the member’s two are not', () => {
+    const band = chrome();
+    const standing = band.nodes.filter((n) => n.type === STANDING_COMPONENT);
+    // The band asks for itself — two of the seven pages carrying it have no
+    // standing component of their own to borrow an answer from.
+    expect(standing).toHaveLength(1);
+    expect(
+      band.connections.some((w) => w.toId === standing[0].id && w.toProperty === 'Check')
+    ).toBe(true);
+
+    const gatedBy = new Map(
+      band.connections
+        .filter((w) => w.fromId === standing[0].id && w.toProperty === 'mounted')
+        .map((w) => [w.toId, w.fromProperty])
+    );
+    const census = navButtons().map((button) => ({
+      label: String(button.parameters?.label),
+      gate: gatedBy.get(button.id) ?? '(none)',
+      mounted: button.parameters?.mounted
+    }));
+
+    // 🔴 The `mounted` PARAMETER matters as much as the wire. Without it
+    // the door is open on the first frame and closes only once the standing
+    // call answers — the flash AC2 is about, in the one place on the page a
+    // member could click straight through it.
+    expect(census).toEqual([
+      { label: 'Announcements', gate: '(none)', mounted: undefined },
+      { label: 'Meetings', gate: '(none)', mounted: undefined },
+      { label: 'Post', gate: 'isModerator', mounted: false },
+      { label: 'Requests', gate: 'isModerator', mounted: false },
+      { label: 'Who belongs', gate: 'isModerator', mounted: false }
+    ]);
+    // Control: the census is not all one answer, so it graded something.
+    expect(new Set(census.map((c) => c.gate)).size).toBe(2);
+  });
+
+  it('🔴 every page the band offers CARRIES the band, so no door leads to a dead end', () => {
+    // The failure this forbids is the one the six back buttons existed for: a
+    // page you can reach and cannot leave. It is now structural rather than a
+    // button per page — but only while every destination places the chrome.
+    const destinations = ['/Pages/Members', '/Pages/Meetings', '/Pages/Post', '/Pages/Requests', '/Pages/Directory'];
+    const without = destinations.filter((target) => {
+      const page = byLegacyName.get(target) as StoredComponent | undefined;
+      return !page || !page.nodes.some((n) => n.type === CHROME_COMPONENT);
+    });
+    expect(without).toEqual([]);
+  });
+
+  it('🔴 no child of a `Columns` is content-sized, anywhere in the artefact', () => {
+    // 🔴 **`calcAutoFit` divides the container into equal boxes and hands
+    // each child one; a `sizeMode: 'contentSize'` child ignores the box and
+    // keeps its own width.** Both button compositions pin exactly that, so
+    // following the design system verbatim inside the one node in the runtime
+    // that reflows produces overlapping controls — measured at 1280px, where
+    // "Announcements" was drawn across the left edge of "Meetings".
+    //
+    // ⚠️ It is a whole-artefact sweep rather than a check on the band, because
+    // the band is not where it was introduced: `Pages/Members`' three moderator
+    // actions have been in a `Columns` since s8, clearing their box by two
+    // pixels at 390px. The symptom appeared in one place and the defect was in
+    // two.
+    const offenders: string[] = [];
+    let graded = 0;
+    for (const component of shipped) {
+      const byId = new Map(component.nodes.map((n) => [n.id, n]));
+      for (const strip of component.nodes.filter((n) => n.type === 'net.noodl.visual.columns')) {
+        for (const childId of strip.children ?? []) {
+          const child = byId.get(childId);
+          if (!child) continue;
+          graded += 1;
+          const mode = child.parameters?.sizeMode;
+          if (mode === 'contentSize' || mode === undefined || child.parameters?.width === undefined) {
+            offenders.push(`${component.path} › ${strip.id} › ${childId} (sizeMode ${String(mode)})`);
+          }
+        }
+      }
+    }
+    expect(offenders).toEqual([]);
+    // Beside a known-firing count, so `[]` is a reading of a populated sweep and
+    // not a walk over no `Columns` at all.
+    expect(graded).toBe(8);
+  });
+
+  it('control: no page ships a button whose only job was to go back', () => {
+    // The six that were removed, asserted as an absence beside the known-firing
+    // signal above — the band's own five buttons were counted, so a walk that
+    // found nothing here walked a populated artefact.
+    const backish = allNodes()
+      .filter(({ node }) => node.type === 'net.noodl.controls.button')
+      .filter(({ node }) => String(node.parameters?.label ?? '').startsWith('Back to'))
+      .map(({ component, node }) => `${component.path} › ${String(node.parameters?.label)}`);
+    expect(backish).toEqual([]);
+    expect(navButtons()).toHaveLength(5);
   });
 });
 
@@ -757,7 +928,13 @@ describe('TPL-001 — the states a person can be in all have a screen', () => {
     // installer, whose first job is to create the association. Read on a fresh
     // install before the fix was assumed: the page shows the eyebrow, the setup
     // card and nothing else.
-    expect(gates.length).toBe(29);
+    //
+    // 32 since s9: the band's three moderator doors. They are the first gates in
+    // the template that hide a way THROUGH rather than a piece of content, and
+    // they are still `mounted` for the same reason as the rest — `visible`
+    // would leave three button-shaped holes in the header of every page a plain
+    // member opens.
+    expect(gates.length).toBe(32);
   });
 
   it('AC6 — every list ships an empty state, hidden until a query has answered', () => {

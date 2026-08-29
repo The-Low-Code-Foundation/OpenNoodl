@@ -68,12 +68,6 @@
       "fromProperty": "result",
       "toId": "refusal-2",
       "toProperty": "mounted"
-    },
-    {
-      "fromId": "backButton-3",
-      "fromProperty": "onClick",
-      "toId": "toMeetings",
-      "toProperty": "navigate"
     }
   ]
 }

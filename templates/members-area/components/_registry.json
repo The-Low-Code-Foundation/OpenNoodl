@@ -94,8 +94,8 @@
     "Members/Chrome": {
       "path": "Members/Chrome",
       "type": "visual",
-      "nodeCount": 10,
-      "connectionCount": 5,
+      "nodeCount": 23,
+      "connectionCount": 14,
       "modified": "2026-08-28T00:00:00.000Z",
       "created": "2026-08-28T00:00:00.000Z"
     },
@@ -126,24 +126,24 @@
     "Pages/Announcement": {
       "path": "Pages/Announcement",
       "type": "page",
-      "nodeCount": 15,
-      "connectionCount": 11,
+      "nodeCount": 13,
+      "connectionCount": 10,
       "modified": "2026-08-28T00:00:00.000Z",
       "created": "2026-08-28T00:00:00.000Z"
     },
     "Pages/Meetings": {
       "path": "Pages/Meetings",
       "type": "page",
-      "nodeCount": 17,
-      "connectionCount": 11,
+      "nodeCount": 15,
+      "connectionCount": 10,
       "modified": "2026-08-28T00:00:00.000Z",
       "created": "2026-08-28T00:00:00.000Z"
     },
     "Pages/Meeting": {
       "path": "Pages/Meeting",
       "type": "page",
-      "nodeCount": 16,
-      "connectionCount": 12,
+      "nodeCount": 14,
+      "connectionCount": 11,
       "modified": "2026-08-28T00:00:00.000Z",
       "created": "2026-08-28T00:00:00.000Z"
     },
@@ -166,31 +166,31 @@
     "Pages/Post": {
       "path": "Pages/Post",
       "type": "page",
-      "nodeCount": 31,
-      "connectionCount": 20,
+      "nodeCount": 29,
+      "connectionCount": 19,
       "modified": "2026-08-28T00:00:00.000Z",
       "created": "2026-08-28T00:00:00.000Z"
     },
     "Pages/Requests": {
       "path": "Pages/Requests",
       "type": "page",
-      "nodeCount": 17,
-      "connectionCount": 12,
+      "nodeCount": 15,
+      "connectionCount": 11,
       "modified": "2026-08-28T00:00:00.000Z",
       "created": "2026-08-28T00:00:00.000Z"
     },
     "Pages/Directory": {
       "path": "Pages/Directory",
       "type": "page",
-      "nodeCount": 18,
-      "connectionCount": 11,
+      "nodeCount": 16,
+      "connectionCount": 10,
       "modified": "2026-08-28T00:00:00.000Z",
       "created": "2026-08-28T00:00:00.000Z"
     }
   },
   "stats": {
     "totalComponents": 23,
-    "totalNodes": 306,
-    "totalConnections": 305
+    "totalNodes": 307,
+    "totalConnections": 308
   }
 }

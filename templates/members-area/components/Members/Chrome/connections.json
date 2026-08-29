@@ -32,6 +32,60 @@
       "fromProperty": "done",
       "toId": "toLanding-6",
       "toProperty": "navigate"
+    },
+    {
+      "fromId": "bar",
+      "fromProperty": "didMount",
+      "toId": "standing",
+      "toProperty": "Check"
+    },
+    {
+      "fromId": "navAnnouncements",
+      "fromProperty": "onClick",
+      "toId": "toAnnouncements",
+      "toProperty": "navigate"
+    },
+    {
+      "fromId": "navMeetings",
+      "fromProperty": "onClick",
+      "toId": "toMeetingsNav",
+      "toProperty": "navigate"
+    },
+    {
+      "fromId": "navPost",
+      "fromProperty": "onClick",
+      "toId": "toPostNav",
+      "toProperty": "navigate"
+    },
+    {
+      "fromId": "navRequests",
+      "fromProperty": "onClick",
+      "toId": "toRequestsNav",
+      "toProperty": "navigate"
+    },
+    {
+      "fromId": "navDirectory",
+      "fromProperty": "onClick",
+      "toId": "toDirectoryNav",
+      "toProperty": "navigate"
+    },
+    {
+      "fromId": "standing",
+      "fromProperty": "isModerator",
+      "toId": "navPost",
+      "toProperty": "mounted"
+    },
+    {
+      "fromId": "standing",
+      "fromProperty": "isModerator",
+      "toId": "navRequests",
+      "toProperty": "mounted"
+    },
+    {
+      "fromId": "standing",
+      "fromProperty": "isModerator",
+      "toId": "navDirectory",
+      "toProperty": "mounted"
     }
   ]
 }

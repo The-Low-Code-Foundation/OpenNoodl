@@ -42,7 +42,7 @@
     {
       "fromId": "login",
       "fromProperty": "done",
-      "toId": "toMembers-6",
+      "toId": "toMembers",
       "toProperty": "navigate"
     },
     {

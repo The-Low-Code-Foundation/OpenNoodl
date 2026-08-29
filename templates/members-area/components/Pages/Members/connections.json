@@ -6,41 +6,41 @@
     {
       "fromId": "page-3",
       "fromProperty": "didMount",
-      "toId": "standing",
+      "toId": "standing-2",
       "toProperty": "Check"
     },
     {
-      "fromId": "standing",
+      "fromId": "standing-2",
       "fromProperty": "isMember",
       "toId": "memberArea",
       "toProperty": "mounted"
     },
     {
-      "fromId": "standing",
+      "fromId": "standing-2",
       "fromProperty": "isModerator",
       "toId": "moderatorTools",
       "toProperty": "mounted"
     },
     {
-      "fromId": "standing",
+      "fromId": "standing-2",
       "fromProperty": "isPending",
       "toId": "pendingNotice",
       "toProperty": "mounted"
     },
     {
-      "fromId": "standing",
+      "fromId": "standing-2",
       "fromProperty": "isUnknown",
       "toId": "unknownNotice",
       "toProperty": "mounted"
     },
     {
-      "fromId": "standing",
+      "fromId": "standing-2",
       "fromProperty": "Member",
       "toId": "announcements",
       "toProperty": "storageFetch"
     },
     {
-      "fromId": "standing",
+      "fromId": "standing-2",
       "fromProperty": "Visitor",
       "toId": "toLanding",
       "toProperty": "navigate"
@@ -72,7 +72,7 @@
     {
       "fromId": "meetingsButton",
       "fromProperty": "onClick",
-      "toId": "toMeetings-2",
+      "toId": "toMeetings",
       "toProperty": "navigate"
     },
     {

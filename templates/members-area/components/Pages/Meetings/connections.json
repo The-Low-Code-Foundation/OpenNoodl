@@ -6,29 +6,29 @@
     {
       "fromId": "page-5",
       "fromProperty": "didMount",
-      "toId": "standing-2",
+      "toId": "standing-3",
       "toProperty": "Check"
     },
     {
-      "fromId": "standing-2",
+      "fromId": "standing-3",
       "fromProperty": "isMember",
       "toId": "memberArea-2",
       "toProperty": "mounted"
     },
     {
-      "fromId": "standing-2",
+      "fromId": "standing-3",
       "fromProperty": "isPending",
       "toId": "pendingNotice-2",
       "toProperty": "mounted"
     },
     {
-      "fromId": "standing-2",
+      "fromId": "standing-3",
       "fromProperty": "Member",
       "toId": "today",
       "toProperty": "run"
     },
     {
-      "fromId": "standing-2",
+      "fromId": "standing-3",
       "fromProperty": "Visitor",
       "toId": "toLanding-2",
       "toProperty": "navigate"
@@ -62,12 +62,6 @@
       "fromProperty": "out-empty",
       "toId": "emptyState-2",
       "toProperty": "mounted"
-    },
-    {
-      "fromId": "backButton-2",
-      "fromProperty": "onClick",
-      "toId": "toMembers-2",
-      "toProperty": "navigate"
     }
   ]
 }
