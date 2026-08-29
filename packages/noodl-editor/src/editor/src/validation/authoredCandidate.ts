@@ -277,36 +277,31 @@ export const AUTHORED_BLOCKING_WARNINGS: ReadonlySet<string> = new Set([
   // "clean report over a dead graph" shape every promotion above answers. Kept
   // a warning rather than an error so `validate:project` over hand-authored
   // corpora stays advisory, per the file's standing convention.
-  DiagnosticCode.WrongRuntimeNode
-  // DEF-002 §2 — `FailureReachesNothing` belongs here on the charter ("output
-  // that is broken": the caller is not told the wrong thing, it is told nothing
-  // and waits out a 30s timeout) and is **one step short** of being here.
+  DiagnosticCode.WrongRuntimeNode,
+  // DEF-002 §2 — the caller is not told the wrong thing, it is told **nothing**
+  // and waits out a 30s timeout. That is the most literal reading of this set's
+  // charter, "output that is broken", and it is why this belongs here.
   //
-  // 🔴 The reason recorded here an hour ago was WRONG, and a peer's counter-
-  // measurement is what forced the re-reading. It said the promotion was blocked
-  // because the shipped templates "really do leave failure edges unanswered".
-  // They do not. What blocked it was **two false positives in the rule**, both on
-  // `submitContactForm`, the one graph written to honour this task's own trap:
+  // 🔴 It took two wrong answers to get here, both recorded because the shape
+  // recurs. First: "the shipped templates leave failure edges unanswered" —
+  // they do not. Then a peer's counter-measurement said the rule's *population*
+  // was wrong and it should skip components with no `Response`, which it has
+  // always done. What was actually true was **two false positives in the rule**,
+  // both on `submitContactForm`, the one graph written to honour this task's own
+  // trap:
   //
-  //   - `mail.failure` was unwired because `mail.completed -> res.send` already
-  //     answers — `completed` "fires after every invocation, whatever the
-  //     outcome", so it answers the failure path too;
-  //   - `compose.failure` was unwired because a **parallel branch**
-  //     (`recipient -> save -> stored -> mail -> res`) still answers, so a throw
-  //     in `compose` costs the work and not the reply.
+  //   - `mail.failure` unwired because `mail.completed -> res.send` already
+  //     answers — `completed` fires whatever the outcome, so it answers the
+  //     failure path too;
+  //   - `compose.failure` unwired because a parallel branch
+  //     (`recipient -> save -> stored -> mail -> res`) still answers.
   //
-  // Both are now exits in the rule, each with an arm and a control. The corpus
-  // went 249 -> 182 -> **33**, and the shipped templates are **clean**.
-  //
-  // ⚠️ What is left is **two deliberately-malformed test probes** —
-  // `/#__cloud__/probe/RunTasksCrossRuntime` and `/#__cloud__/probe/RunTasksMissing`
-  // — which exist to exercise a different check and fail this one on the way
-  // past. That is the `PageWithoutPageNode` situation exactly: a gate a suite
-  // fails is a gate the suite may be asserting the wrong thing about. Whoever
-  // promotes this should wire those two probes' `failure`, or exempt them, and
-  // then add the code below. It is a small, named job — not the template repair
-  // this comment used to send people on.
-  ]);
+  // Both are now exits with an arm and a control, and the corpus went
+  // **249 -> 182 -> 33**. Neither measurement that argued about this could see
+  // the firing case: one counted only failure wires that *exist*, and an unwired
+  // port is not a wire.
+  DiagnosticCode.FailureReachesNothing
+]);
 
 /** Whether a diagnostic rejects an authored submission. */
 export function isBlockingForAuthoredOutput(diagnostic: Diagnostic): boolean {

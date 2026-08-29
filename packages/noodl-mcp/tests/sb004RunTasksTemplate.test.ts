@@ -125,6 +125,20 @@ describe('SB-004 probe: a component named through a parameter', () => {
         { id: 'req', type: 'noodl.cloud.request', parameters: { allowNoAuth: true } },
         { id: 'rt', type: 'RunTasks', parameters: { taskTemplate: '/#__cloud__/NoSuchHelper' } },
         { id: 'res', type: 'noodl.cloud.response' }
+      ],
+      // DEF-002 §2 — wired so this probe answers ITS OWN question. Unwired, the
+      // door rejects it for `failure-reaches-nothing` (a request that can never
+      // be answered really does hang), and the rejection this probe exists to
+      // read is replaced by an unrelated one. The specs would not have noticed:
+      // they assert `typeof isError === 'boolean'`, which is true either way.
+      connections: [
+        { fromId: 'req', fromProperty: 'receive', toId: 'rt', toProperty: 'run' },
+        { fromId: 'rt', fromProperty: 'done', toId: 'res', toProperty: 'send' },
+        { fromId: 'rt', fromProperty: 'failure', toId: 'res', toProperty: 'send' },
+        // The site-builder's own RunTasks wires this too (`tasks.unchanged -> deny.send`);
+        // without it `unwired-outcome` fires and adds noise to a probe whose only
+        // job is to be readable.
+        { fromId: 'rt', fromProperty: 'unchanged', toId: 'res', toProperty: 'send' }
       ]
     });
     report('C probe: Run Tasks -> missing template', res);
@@ -139,6 +153,20 @@ describe('SB-004 probe: a component named through a parameter', () => {
         { id: 'req', type: 'noodl.cloud.request', parameters: { allowNoAuth: true } },
         { id: 'rt', type: 'RunTasks', parameters: { taskTemplate: '/Card' } },
         { id: 'res', type: 'noodl.cloud.response' }
+      ],
+      // DEF-002 §2 — wired so this probe answers ITS OWN question. Unwired, the
+      // door rejects it for `failure-reaches-nothing` (a request that can never
+      // be answered really does hang), and the rejection this probe exists to
+      // read is replaced by an unrelated one. The specs would not have noticed:
+      // they assert `typeof isError === 'boolean'`, which is true either way.
+      connections: [
+        { fromId: 'req', fromProperty: 'receive', toId: 'rt', toProperty: 'run' },
+        { fromId: 'rt', fromProperty: 'done', toId: 'res', toProperty: 'send' },
+        { fromId: 'rt', fromProperty: 'failure', toId: 'res', toProperty: 'send' },
+        // The site-builder's own RunTasks wires this too (`tasks.unchanged -> deny.send`);
+        // without it `unwired-outcome` fires and adds noise to a probe whose only
+        // job is to be readable.
+        { fromId: 'rt', fromProperty: 'unchanged', toId: 'res', toProperty: 'send' }
       ]
     });
     report('D probe: Run Tasks -> browser component across the runtime boundary', res);
