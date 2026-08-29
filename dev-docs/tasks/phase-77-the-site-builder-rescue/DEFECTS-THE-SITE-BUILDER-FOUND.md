@@ -12,6 +12,27 @@ where they go to be *fixed*. This is the standing register for phase 77, and the
 🔴 **Scope: the product, not the template.** A wire missing from the site-builder's own graph is
 a template fix and belongs in an SBR task. A row here is something **any** NodeGX user hits.
 
+## 🔴 The objective, so it survives a prompt rewrite
+
+**Richard, 2026-08-29:** *"Part of the main objective of creating this template is to uncover
+bugs a builder might experience using NodeGX and fix them."*
+
+Uncovering is the half that is working. **Fixing is the half that is not**: at the time this
+file was created, across phases 77 and 78 there were ~20 unresolved rows and **one** named an
+owning task. So:
+
+- 🔴 **Every row carries an owner, or the literal `NONE`.** `NONE` is not a status, it is a
+  backlog item — a row that is recorded and unowned has been left behind, it just takes longer
+  to notice.
+- 🔴 **Every row says product or template.** A fix in this template's graph helps one template;
+  a fix in `validate.ts`, the runtime or the editor helps every builder. Only the second one is
+  the objective.
+- 🔴 **A template-scoped test does not close a row.** SBR-015 is the worked example and D1 is
+  left open because of it.
+- ⚠️ **Sweep both registers each phase-end** — this one and
+  [phase 78's](../phase-78-the-templates/DEFECTS-THE-TEMPLATES-FOUND.md). Ids drift (phase 78
+  carried two different `D10`s), and a register nobody re-reads is a notebook.
+
 ## House rules
 
 - 🔴 **A row is a measurement, not an impression.** Say what was done and what happened.

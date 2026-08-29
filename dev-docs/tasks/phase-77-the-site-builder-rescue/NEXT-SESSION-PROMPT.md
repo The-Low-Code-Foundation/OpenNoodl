@@ -15,6 +15,61 @@ named nothing. They "disagree" only because duplicate creates its copy **before*
 it stalls at and publish writes **after** one. `claimSite` (same file, 5 failure edges,
 **29 ms**) was the control that made it visible.
 
+## 🔴 FIRST JOB — sweep BOTH registers. No recorded bug may be silently left behind
+
+**Richard, 2026-08-29:** *"Part of the main objective of creating this template is to uncover
+bugs a builder might experience using NodeGX and fix them."*
+
+The templates are working — between them phases 77 and 78 have recorded **~20 unresolved product
+defects**. What is *not* working is what happens next: **exactly one of them names an owning
+task** (P77 D9 → SBR-008). The rest are written down and nothing is scheduled to fix them. A
+defect that is recorded and unowned is a defect that has been silently left behind; it just takes
+longer to notice.
+
+Two findings from the s10 census say the risk is already real, not hypothetical:
+
+- 🔴 **Phase 78 has two different defects both numbered `D10`** — "The template generators bypass
+  the design system" (line 339) and "ANSWERED, s5: applying a preset alone changes nothing"
+  (line 408). One of them can be closed by a reader who means the other. **Renumber.**
+- 🔴 **Phase 77's register did not exist until s10.** Ten sessions of product findings sat in task
+  files as notes. Six had to be collected back out of them (D5–D10) and are marked unverified.
+
+### The sweep
+
+Walk **both** files end to end:
+
+- `phase-77-the-site-builder-rescue/DEFECTS-THE-SITE-BUILDER-FOUND.md` — D1–D10
+- `phase-78-the-templates/DEFECTS-THE-TEMPLATES-FOUND.md` — D1–D16 (with the duplicate)
+
+For every row, produce four columns and **do not skip a row because it looks familiar**:
+
+| column | rule |
+|---|---|
+| **still real?** | re-measure, at HEAD. ⚠️ Several P77 rows are a phase old and the platform has moved under them — D5–D8 and D10 are explicitly marked unverified and were never re-run |
+| **owner** | a task id, or **`NONE`**. `NONE` is the output this sweep exists to produce |
+| **product or template?** | a fix in the site-builder's own graph helps one template; a fix in `validate.ts` / the runtime / the editor helps every user. 🔴 **Say which, per row** — this is the distinction the whole objective turns on |
+| **who it bites** | already required by both files' house rules; check it is actually filled in |
+
+### Then the part that is the actual objective
+
+**Turn the `NONE`s into tasks.** Ranked by *who it bites*, not by how cheap the fix is. The
+ranking trap is on record — *rank by the product surface, not by a corpus* cost phase 18 twelve
+sessions — and the template-shaped version of it is ranking by "what unblocks my template" when
+the objective is "what unblocks a builder".
+
+🔴 **A template-scoped test is not a product fix, and must not be allowed to close a row.**
+SBR-015 is the worked example: the rule *a cloud function's `Failure` must reach a Response* ships
+as a spec in the template's own suite. That protects one template and **no user** — the door
+(`noodl-mcp/src/validate.ts`) still ships the hole. P77 D1 stays open on purpose. Check no other
+row has been quietly closed the same way.
+
+⚠️ **Keep the disproved rows.** Both files say so already; the sweep must not tidy them away.
+"I thought this was broken and it is not" is worth as much as a real row, and P78 has four
+(D4, D6, D8, D10-answered).
+
+⚠️ **Coordinate on phase 78's file.** It is the other session's lane and had ~361 uncommitted
+lines at the time of writing. Agree who edits it before renumbering anything.
+
 ## 🔴 Product defects, now in a register — [DEFECTS-THE-SITE-BUILDER-FOUND.md](DEFECTS-THE-SITE-BUILDER-FOUND.md)
 
 Richard, 2026-08-28: *"We're making templates to surface bugs and issues with the whole NodeGX
@@ -40,7 +95,7 @@ product defects are now written down as work**, plus six collected from earlier 
 minutes at the top of the session deciding which get tasks before more template work lands on
 top of them.
 
-## 🔴 The first job: the drive that answers the question the fix made askable
+## 🔴 SECOND JOB — the drive that answers the question the fix made askable
 
 **Which node actually broke is still unknown, on purpose.** Four candidate causes each
 *fitted* the evidence and each was refuted — see SBR-015 §2.3 for the table. Wiring the
