@@ -51,6 +51,19 @@ P76 F16 — bites *every author*). DEF-010 C1 and DEF-004 are the other open wor
 ⚠️ **DEF-014 and DEF-015 were filed into this phase by a peer** during s2 and this session never
 read them — check `TASKS.md` before ranking.
 
+🔴 **DEF-016 was filed by a peer (phase 18, s41) and is the cheapest fix on the board.**
+[`External Link` reports `Failure` on every new tab it opens](DEF-016-EXTERNAL-LINK-ALWAYS-REPORTS-FAILURE.md)
+— the node sets `noopener` and then reads `window.open`'s return value as its blocked-tab test, and
+`noopener` makes that `null` by specification, so `Done` is unreachable and `Error` reads *"the
+browser blocked opening a new tab"* beside an open tab. Default configuration, so it bites every
+author who wired either port.
+
+**It is ready to build: §5 is measured, not a ruling.** `navigator.userActivation.isActive` is
+`false` exactly when the open is refused and `true` exactly when it succeeds (§5.1's two arms), so
+the fix keeps `noopener` *and* restores the diagnostic. ⚠️ Two things the file asks for that are
+easy to skip: **check the API in Safari**, and **update the code export's copy of this logic**
+(AC7) — it reproduces the runtime deliberately, so this fix makes it stale.
+
 ## 🔴 What this session paid for, that the next one should not re-buy
 
 - **A relayed description of a mechanism decays, even inside the task file that owns it.** DEF-002

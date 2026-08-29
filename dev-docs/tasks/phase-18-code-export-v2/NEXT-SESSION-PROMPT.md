@@ -53,6 +53,16 @@ stack also feeds `Page Inputs` at runtime, and the export does not route one at 
 static (there are exactly two failures and neither is a service's words), so it is `HTTP Request`'s
 `errorState` with the hard part removed. `Completed` needs a join beneath the outcome arms.
 
+### B2. ⚠️ When DEF-016 lands, this package owes a follow-up
+
+[DEF-016](../phase-80-the-defects-the-templates-found/DEF-016-EXTERNAL-LINK-ALWAYS-REPORTS-FAILURE.md)
+fixes `External Link` in the runtime — its `noopener` defeats its own blocked-tab test, so `Done` is
+unreachable. §12.6 explains why the export reproduces that **deliberately** today. The moment the
+runtime changes, this package's `case 'external-link'` in `src/emit/component.ts` is **stale**, and a
+stale copy here is worse than the original bug: it makes the exported app diverge from the app, which
+§11.3 treats as the worst class of difference. It is DEF-016's own AC7. **Check whether it has landed
+before starting anything else in this file.**
+
 ### C. The store-key gate — the same defect, one shape over — [§10.5](./EXP-011-PICKER-COVERAGE.md)
 
 Unchanged and still shut. `storeKeyReadOf` refuses a Global Store key whose type is not

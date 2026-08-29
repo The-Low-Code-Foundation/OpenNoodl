@@ -65,23 +65,70 @@ that either can **fire**. The same audit did find the neighbouring `undefined` d
 between `:51` and `:52` and filed it, so this is not a gap in attention: a port census asks a
 different question from a drive, and only the drive can answer this one.
 
-## 5. The fix, and the decision inside it
+## 5. The fix — measured, and no longer a three-way ruling
 
-The blocked-tab detection and `noopener` are **mutually exclusive by specification**; one of
-them has to give, and which one is a decision rather than a patch:
+The blocked-tab detection and `noopener` are mutually exclusive **as the node writes them today**:
+one reads a return value the other guarantees to be `null`. That framing offered only bad trades —
+give up the security property, or give up the diagnostic.
 
-- **Keep `noopener`, drop the detection.** `noopener` is a real security property — it denies
-  the opened page a live `window.opener` handle back into the app. Dropping the `:70` branch
-  means `Done` fires for every new tab and a genuinely blocked one is silent, which is the
-  state NDA-004 §2/§3 added this branch to end.
-- **Keep the detection, drop `noopener`.** Restores a working `Failure` and hands the opened
-  page a handle back. A security regression for a diagnostic.
-- **Keep both, detect differently.** `window.open` with `noopener` gives the caller nothing to
-  test, so detection has to come from elsewhere — a `document.visibilityState` or `blur` probe
-  shortly after the call. Heuristic, and worth measuring before choosing.
+**There is a fourth option, and it was measured rather than reasoned about.**
+`navigator.userActivation.isActive` is the condition the browser itself uses to decide whether to
+allow the open, and it is readable *before* the call, where `noopener` has not destroyed anything.
 
-⚠️ **Whichever way it goes, `Done`'s description is currently wrong** — it says *"Fires once
-the link has been handed to the browser"*, and it does not.
+### 5.1 The measurement
+
+Chrome 151, headless, against the exported app. Script: `probe-activation.mjs`, session 41's
+scratchpad. `typeof navigator.userActivation === 'object'`.
+
+| arm | `isActive` | `window.open` returned | tab actually opened |
+|-----|-----------|------------------------|---------------------|
+| no user gesture | **false** | NULL | **no** — 1 → 1 |
+| real user gesture (`Input.dispatchMouseEvent`) | **true** | NULL | **yes** — 1 → **2** |
+
+🔴 **`isActive` separates exactly the two cases the return value can no longer separate.** The
+return value is `NULL` in both rows and is therefore worthless; `isActive` differs in both rows and
+tracks what actually happened. That is the discrimination the `:70` branch was written to make.
+
+### 5.2 The recommended change
+
+Keep `'noopener,noreferrer'` exactly as it is. Replace the post-hoc return-value test with a
+pre-flight activation test, and let a `_blank` open that passes it report `done`:
+
+```ts
+const opened = window.open(link, target, params);
+
+// `noopener` makes `opened` null on success as well as on failure, so it cannot be the test.
+// `navigator.userActivation` is the condition the browser itself applies, and it is readable
+// here. Absent (older Safari) ⇒ no claim is made, which is the honest degradation: `done`.
+const activation = typeof navigator !== 'undefined' ? navigator.userActivation : undefined;
+if (target === '_blank' && activation !== undefined && !activation.isActive) {
+  this._internal.lastError = 'The browser blocked opening a new tab — this usually means the link was not opened directly from a user action';
+  this.flagOutputDirty('error');
+  this.reportOutcome(token, 'failure', { code: 'external-link/blocked', … });
+  return;
+}
+this.reportOutcome(token, 'done');
+```
+
+⚠️ **Check `navigator.userActivation` in Safari before landing.** The measurement above is Chrome
+only. The `activation !== undefined` guard is what makes an absent API degrade to "report `done`"
+rather than to "report `failure`" — the failure direction is the one that trains authors to ignore
+the port, which is the mistake this row exists to undo.
+
+⚠️ **This is a strict improvement, not a total one.** It catches the dominant cause — a graph that
+fires the link outside a user gesture — and stays silent where a user has hard-blocked popups for
+the site despite a gesture. Silent-on-the-rare-residue is the trade the node already makes for SSR;
+**always-wrong is not a trade at all.**
+
+### 5.3 Why not the other three
+
+- **Keep `noopener`, drop the detection entirely.** Acceptable, and strictly better than today, but
+  it discards a diagnostic that §5.1 shows is recoverable.
+- **Keep the detection, drop `noopener`.** A security regression — the opened page gets a live
+  `window.opener` handle back into the app — traded for a diagnostic §5.2 gets for free.
+  ⚠️ `noreferrer` alone does not help: it *implies* `noopener` per spec, so the return is still null.
+- **A `blur`/`visibilitychange` heuristic.** Timing-dependent and flaky, and unnecessary now that a
+  declarative signal exists.
 
 ## 6. What it does **not** block
 
@@ -100,6 +147,14 @@ the moment this row is fixed — no export change is owed.
    ⚠️ It cannot be a unit test against a stubbed `window.open` that returns a truthy object:
    that stub is the bug's blind spot. It has to return what a real `noopener` open returns.
 5. The `_self` path still reports `Done`, and a genuinely empty link still reports `Failure`.
+6. **Where `navigator.userActivation` is absent, the node reports `Done`, not `Failure`** — the
+   guard degrades toward the claim it can still support. A test with the API stubbed away is the
+   only way to hold this, and it is the one an implementer is most likely to skip.
+7. ⚠️ **The code export's `External Link` translation is checked after this lands** — it emits the
+   runtime's control flow deliberately (§6), so this fix makes it stale.
+   `packages/nodegx-export/src/emit/component.ts`, `case 'external-link'`, and its 22 tests in
+   `tests/external-link.test.ts`. It is a small edit, but it is **not** optional: leaving it makes
+   the exported app diverge from the app, which EXP-011 §11.3 treats as the worst class of bug.
 
 ## 8. Owner
 
