@@ -552,6 +552,12 @@ export function emitComponent(
       referencedStateNames.add(action.errorState);
       if (action.materialize !== undefined) referencedStateNames.add(action.materialize);
     }
+    // EXP-011 §14. Unlike the two above, this row exists only because something reads it — so it
+    // is already earned — but naming it here keeps the writer and the row inseparable, which is
+    // what stops a future filter dropping the binding the setter call names.
+    if (action.kind === 'external-link' && action.errorState !== undefined) {
+      referencedStateNames.add(action.errorState);
+    }
   }
   for (const lifted of Object.values(plan.instanceLifted)) {
     for (const entry of lifted) {
@@ -1285,7 +1291,12 @@ export function emitComponent(
    * expression body, and a literal-url button with no chains is neither.
    */
   const externalLinkIsStatement = (a: Extract<HandlerAction, { kind: 'external-link' }>): boolean =>
-    a.guardLink || a.then.length > 0 || a.failThen.length > 0;
+    a.guardLink ||
+    a.then.length > 0 ||
+    a.failThen.length > 0 ||
+    // EXP-011 §14. A read `Error` puts a setter call in the failure arm, which needs the arm —
+    // and for a `_self` link with no guard there is no failure to have, so no arm and no braces.
+    (a.errorState !== undefined && a.newTab);
 
   const actionCode = (action: HandlerAction, indent = 0): string => {
     switch (action.kind) {
@@ -1557,8 +1568,28 @@ export function emitComponent(
          * `noopener` and returned a Window while activation was false — where the runtime
          * reports failure. EXP-011 §11.3: the export must not work *better* than the app.
          */
-        const activationTest = `navigator.userActivation?.isActive !== false`;
-        const openAndTest = `(${openCall}, ${activationTest})`;
+        /**
+         * 🔴 **The activation is read into a local BEFORE the call, because the call consumes
+         * it.** This read used to sit inside the comma, after `window.open` — and measured in
+         * Chrome 151 that is `false` on every tab the app successfully opens: one control arm
+         * varying only whether the call sits between two reads of the getter gave `true, true`
+         * without it and `true, false` with it, while the tab count rose. Read there, the
+         * emitted app ran its Failure chain on success — DEF-016's exact symptom, on the export
+         * side, introduced by DEF-016's own fix.
+         *
+         * Hoisting it above the empty-link guard as well as above the call is safe and is what
+         * keeps one failure arm: the getter has no side effects (the control arm's two reads
+         * both answered `true`), and nothing between the two points can change it. The runtime
+         * reads it after its own guard, so the only difference is a read taken where the
+         * interpreter would not have bothered — unobservable.
+         *
+         * `=== false` rather than a truthiness test is the runtime's own three-way degradation:
+         * no `navigator`, no `userActivation`, or an `isActive` that is not a boolean all mean
+         * *no claim*, and the node reports done. `blocked` is only ever true off a value that
+         * was actually read.
+         */
+        const blockedRead = `const ${action.blockedLocal} = navigator.userActivation?.isActive === false;`;
+        const openAndTest = `(${openCall}, !${action.blockedLocal})`;
 
         /**
          * The condition under which the `done` chain runs. For a new tab the call is *part of*
@@ -1566,30 +1597,78 @@ export function emitComponent(
          * so the guard has to come first. For `_self` the call cannot report a failure, so it
          * becomes a statement inside the arm instead.
          */
-        // With no chain on either outcome nothing reads the test, so the activation is not read
-        // at all — the call alone is what the graph asked for.
-        const noChains = action.then.length === 0 && action.failThen.length === 0;
-        const successTest = noChains ? openCall : openAndTest;
-        const opened = action.newTab ? [guard, successTest].filter(Boolean).join(' && ') : (guard ?? '');
         const body = (actions: HandlerAction[]): string[] =>
           expandActions(actions).map((a) => `${inner}${actionCode(a, indent + 2)};`);
         const block = (head: string, ...rest: string[]): string => [head, ...rest, `${at}}`].join('\n');
+
+        /**
+         * EXP-011 §14 — the `Error` write, and the only place in this action where the node's
+         * two failures are told apart.
+         *
+         * Everywhere else they are one arm, because "no link" and "the browser blocked the tab"
+         * both run the Failure chain and nothing else. `Error` is the one port that
+         * distinguishes them, so the arm re-tests the link to pick the message:
+         *
+         * - **both failures live** (a guarded link opening a new tab) — the ternary. Its test is
+         *   the guard's three comparisons rather than a truthiness check, because that is the
+         *   set the runtime refuses on and a truthy test would give the wrong message for any
+         *   falsy non-empty value an `unknown` link can carry.
+         * - **only one is live** — the literal string, because the other cannot fire: `_self`
+         *   makes no blocked claim at all, and a literal link is provably non-empty.
+         * - **neither** (a literal link, `_self`) — nothing, and the row stays `undefined`
+         *   forever, which is exactly what the runtime's unwritten getter returns.
+         *
+         * Both strings are `_internal.lastError` verbatim. ⚠️ They are **not** the messages
+         * `reportOutcome` sends — the blocked one there is a longer sentence about user actions,
+         * and it goes to the outcome channel, never to this port.
+         */
+        const NO_LINK = `'No link to open'`;
+        const BLOCKED = `'The browser blocked opening a new tab'`;
+        const hasFailure = action.guardLink || action.newTab;
+        const errorWrite: string[] =
+          action.errorState === undefined || !hasFailure
+            ? []
+            : [
+                `${inner}${stateSetterOf(action.errorState)}(${
+                  action.guardLink && action.newTab
+                    ? `${action.local} === undefined || ${action.local} === null || ${action.local} === '' ? ${NO_LINK} : ${BLOCKED}`
+                    : action.guardLink
+                      ? NO_LINK
+                      : BLOCKED
+                });`
+              ];
+        /**
+         * The failure arm is the write and then the chain — so a node whose `Error` is read has
+         * an arm even with nothing wired to `Failure`, which is the runtime's own behaviour:
+         * `_internal.lastError` is written whether or not anything is listening. `http-call`'s
+         * arm is never empty for the same reason.
+         */
+        const failBody = [...errorWrite, ...body(action.failThen)];
+
+        // With no chain on either outcome and no row to write, nothing reads the test, so the
+        // activation is not read at all — the call alone is what the graph asked for.
+        const noChains = action.then.length === 0 && failBody.length === 0;
+        const successTest = noChains ? openCall : openAndTest;
+        const opened = action.newTab ? [guard, successTest].filter(Boolean).join(' && ') : (guard ?? '');
 
         // Each entry's FIRST line carries no base indent — the join below adds it, and the
         // caller pads the first. Continuation lines carry the absolute column (http-call's rule).
         const statements: string[] = [];
         if (action.guardLink) statements.push(`const ${action.local} = ${exprCode(action.link, 'handler')};`);
+        // Read only where the emitted `if` actually tests it — a `_self` link makes no blocked
+        // claim, and a call nothing branches on needs no test.
+        if (action.newTab && !noChains) statements.push(blockedRead);
 
         const selfCall = action.newTab ? [] : [`${inner}${openCall};`];
         if (opened === '') {
           // `_self` with a literal link: nothing can fail and nothing needs testing.
           statements.push(`${openCall};`, ...body(action.then).map((l) => l.slice(inner.length)));
-        } else if (action.then.length === 0 && action.failThen.length === 0) {
+        } else if (action.then.length === 0 && failBody.length === 0) {
           statements.push(action.newTab ? `${opened};` : `if (${opened}) ${openCall};`);
-        } else if (action.failThen.length === 0) {
+        } else if (failBody.length === 0) {
           statements.push(block(`if (${opened}) {`, ...selfCall, ...body(action.then)));
         } else if (action.then.length === 0 && action.newTab) {
-          statements.push(block(`if (!(${opened})) {`, ...body(action.failThen)));
+          statements.push(block(`if (!(${opened})) {`, ...failBody));
         } else {
           statements.push(
             [
@@ -1597,7 +1676,7 @@ export function emitComponent(
               ...selfCall,
               ...body(action.then),
               `${at}} else {`,
-              ...body(action.failThen),
+              ...failBody,
               `${at}}`
             ].join('\n')
           );

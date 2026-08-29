@@ -236,10 +236,33 @@ describe('EXP-011 Tier 2.5 §3 — the outcome chains', () => {
 
   it('a Done chain runs only where the open succeeded', () => {
     const notes = notesFile(withChain(['done']).app);
-    expect(notes).toContain(
-      `if ((window.open('${DOCS}', '_blank', 'noopener,noreferrer'), navigator.userActivation?.isActive !== false)) {`
-    );
+    expect(notes).toContain(`if ((window.open('${DOCS}', '_blank', 'noopener,noreferrer'), !helpBlocked)) {`);
     expect(notes).toContain('link0done.set(');
+  });
+
+  /**
+   * 🔴 **The row that says the read happens BEFORE the call, which is the whole of §14's fix.**
+   *
+   * `window.open` **consumes** the transient activation. Measured in Chrome 151 with one control
+   * arm varying only whether the call sits between two reads of the getter: without it both
+   * reads are `true`; with it the second is `false` while the tab count rises. So the emitted
+   * test read *after* the call — which is what shipped with DEF-016's export follow-up — is
+   * `false` on every tab the app successfully opens, and the app runs its Failure chain on
+   * success. DEF-016's exact symptom, on the export side, introduced by DEF-016's own fix.
+   *
+   * Ordering is the assertion, not the presence of either line: an emitter that reads the
+   * activation into a local *after* the call satisfies every other row in this file.
+   */
+  it('reads the activation before the call, because the call consumes it', () => {
+    const notes = notesFile(withChain(['done']).app);
+    const read = notes.indexOf('const helpBlocked = navigator.userActivation?.isActive === false;');
+    const call = notes.indexOf(`window.open('${DOCS}'`);
+    expect(read).toBeGreaterThan(-1);
+    expect(call).toBeGreaterThan(-1);
+    expect(read).toBeLessThan(call);
+    // The control: the test the `if` reads must be the local, not a second inline read — a
+    // second read after the call is exactly the value that is wrong.
+    expect(notes).not.toContain('), navigator.userActivation');
   });
 
   /**
@@ -254,7 +277,7 @@ describe('EXP-011 Tier 2.5 §3 — the outcome chains', () => {
    */
   it('the new-tab success test reads the activation, never the return value', () => {
     const notes = notesFile(withChain(['done']).app);
-    expect(notes).toContain('navigator.userActivation?.isActive !== false');
+    expect(notes).toContain('navigator.userActivation?.isActive === false');
     expect(notes).not.toContain(`if (window.open('${DOCS}'`);
   });
 
@@ -267,13 +290,15 @@ describe('EXP-011 Tier 2.5 §3 — the outcome chains', () => {
    */
   it('the emitted test degrades to Done where the activation API is absent', () => {
     const notes = notesFile(withChain(['done', 'failure']).app);
-    expect(notes).toContain('?.isActive !== false');
+    expect(notes).toContain('?.isActive === false');
     expect(notes).not.toContain('isActive === true');
 
-    // Read the emitted condition the way a browser would, in both arms and with the API gone.
+    // Read the emitted lines the way a browser would, in both arms and with the API gone. The
+    // emitted form binds `blocked` and tests `!blocked`, so this evaluates the pair.
     const evaluate = (userActivation: unknown): boolean => {
       const navigator = { userActivation } as { userActivation?: { isActive?: boolean } };
-      return navigator.userActivation?.isActive !== false;
+      const helpBlocked = navigator.userActivation?.isActive === false;
+      return !helpBlocked;
     };
     expect(evaluate(undefined)).toBe(true);
     expect(evaluate({ isActive: true })).toBe(true);
@@ -297,9 +322,7 @@ describe('EXP-011 Tier 2.5 §3 — the outcome chains', () => {
 
   it('a Failure chain alone inverts the test rather than emitting an empty success block', () => {
     const notes = notesFile(withChain(['failure']).app);
-    expect(notes).toContain(
-      `if (!((window.open('${DOCS}', '_blank', 'noopener,noreferrer'), navigator.userActivation?.isActive !== false))) {`
-    );
+    expect(notes).toContain(`if (!((window.open('${DOCS}', '_blank', 'noopener,noreferrer'), !helpBlocked))) {`);
     expect(notes).not.toContain('{\n      }');
   });
 
@@ -376,12 +399,14 @@ describe('EXP-011 Tier 2.5 §4 — what is dropped, and what defers', () => {
     expect(line).not.toContain('publishes only');
   });
 
-  it('defers a consumed Error on the state row it would need', () => {
-    expect(
-      deferralFor((ir, notes, link) => {
-        connect(notes, link.id, 'error', 'notesHeading', 'text', 'value');
-      })
-    ).toContain('needs a state row of its own');
+  it('no longer defers a consumed Error — it is a state row (§14)', () => {
+    const { app } = withLink((ir, notes, link) => {
+      connect(notes, link.id, 'error', 'notesHeading', 'text', 'value');
+    });
+    expect(app.notes.find((n) => n.includes('node helpLink') && n.includes('deferred'))).toBeUndefined();
+    // The control: the wire must be *consumed*, not merely un-deferred. A read this file resolves
+    // in a function nothing calls falls through to Pass 6 and reads as untranslated.
+    expect(app.notes.join('\n')).not.toContain('helpLink:error');
   });
 
   /**
@@ -461,5 +486,136 @@ describe('EXP-011 Tier 2.5 §5 — the floor beneath every assertion above', () 
     );
     expect(notes).toContain('onClick={() => {');
     expect(notes).not.toContain('onClick={() => const');
+  });
+});
+
+/**
+ * EXP-011 §14 — the `Error` output as a state row.
+ *
+ * `HTTP Request`'s `errorState`, one node over, with the hard part absent: both messages are
+ * static, so nothing has to be carried out of a service's answer. What is *not* absent is the
+ * discrimination — this is the only port that can tell the node's two failures apart, and the
+ * emitted failure arm is one arm, so the message has to re-derive which failure it was.
+ */
+describe('EXP-011 §14 — the Error output', () => {
+  const NO_LINK = "'No link to open'";
+  const BLOCKED = "'The browser blocked opening a new tab'";
+  const readError = (
+    options: Parameters<typeof withLink>[1] = {},
+    extra: (ir: ExportIR, notes: ComponentIR, link: NodeIR) => void = () => undefined
+  ) =>
+    withLink((ir, notes, link) => {
+      connect(notes, link.id, 'error', 'notesHeading', 'text', 'value');
+      extra(ir, notes, link);
+    }, options);
+
+  it('allocates a maybe-undefined row and binds the sink to it', () => {
+    const { app } = readError();
+    const notes = notesFile(app);
+    expect(notes).toContain('const [helpError, setHelpError] = useState<string | undefined>();');
+    // Undefined until the first failure is what the runtime's unwritten getter returns, and the
+    // sink folds it exactly as every other maybe-undefined read in this package does.
+    expect(notes).toContain('{helpError ?? \'\'}');
+    expectParses(app);
+  });
+
+  /**
+   * 🔴 The row nothing reads must not exist. This is why the allocator hangs off the *read*
+   * rather than off the node, unlike `HTTP Request`'s: a button opening a literal url is the
+   * commonest shape there is, and it emits one expression and no state at all.
+   */
+  it('emits no row at all where nothing reads the port', () => {
+    const notes = notesFile(withLink().app);
+    expect(notes).not.toContain('useState');
+    expect(notes).not.toContain('setHelpError');
+  });
+
+  /**
+   * 🔴 The message is `_internal.lastError`, which is the SHORT string — not the sentence
+   * `reportOutcome` sends. There are two strings for one failure and only one of them is this
+   * port's; the longer one goes to the outcome channel, where nothing in the export reads it.
+   */
+  it('writes the port own message, not the outcome channel longer sentence', () => {
+    const notes = notesFile(readError().app);
+    expect(notes).toContain(`setHelpError(${BLOCKED});`);
+    expect(notes).not.toContain('this usually means the link was not opened directly from a user action');
+  });
+
+  /**
+   * The discrimination, and the only place the two failures are told apart. A guarded link into
+   * a new tab is the one configuration where both can fire.
+   */
+  it('re-tests the link to pick between the two messages, where both can fire', () => {
+    const { app } = readError({}, (ir, notes, link) => {
+      connect(notes, 'noteDraftVar', 'value', link.id, 'link', 'value');
+    });
+    const notes = notesFile(app);
+    expect(notes).toContain(
+      `setHelpError(helpHref === undefined || helpHref === null || helpHref === '' ? ${NO_LINK} : ${BLOCKED});`
+    );
+    expectParses(app);
+  });
+
+  /**
+   * 🔴 The control pair for the row above: where only ONE failure can fire the message is a
+   * literal, and it must be the RIGHT one. Without both arms, an emitter that always wrote the
+   * blocked message would pass the `_self` row on the word "setHelpError" alone.
+   */
+  it('writes only the reachable message where only one failure can fire', () => {
+    // `_self` makes no blocked claim at all — the empty link is the only failure left.
+    const selfArm = notesFile(readError({ openInNewTab: false }, (ir, notes, link) => {
+      connect(notes, 'noteDraftVar', 'value', link.id, 'link', 'value');
+    }).app);
+    expect(selfArm).toContain(`setHelpError(${NO_LINK});`);
+    expect(selfArm).not.toContain(BLOCKED);
+
+    // A literal link is provably non-empty — the blocked tab is the only failure left.
+    const literalArm = notesFile(readError().app);
+    expect(literalArm).toContain(`setHelpError(${BLOCKED});`);
+    expect(literalArm).not.toContain(NO_LINK);
+  });
+
+  /**
+   * The configuration that already drops its Failure chain drops the write too, and owes the
+   * reader a sentence rather than a silent blank: a literal link cannot be empty and `_self`
+   * makes no blocked claim, so neither failure can fire and the row stays undefined for the life
+   * of the app — which is exactly what the interpreter's unwritten getter gives.
+   */
+  it('names the configuration where the row can never be written', () => {
+    const { app } = readError({ openInNewTab: false });
+    expect(notesFile(app)).not.toContain('setHelpError(');
+    expect(app.notes.join('\n')).toContain('Error output is read but can never be written');
+  });
+
+  /**
+   * 🔴 §8.2's rule, third construct. `setHelpError(...)` does not change `helpError` inside the
+   * closure that called it, so a read from this node's own chain would deliver the PREVIOUS
+   * failure's message. `HTTP Request` mints a chain-local for exactly this; this slice refuses
+   * the read instead, and says which.
+   */
+  it('defers a read from inside the node own outcome chain, on the closure rule', () => {
+    const line = deferralFor((ir, notes, link) => {
+      const set = addNode(notes, {
+        id: 'showErr',
+        type: 'Set Variable',
+        parameters: [{ name: 'name', value: literal('lastLinkError') }]
+      });
+      connect(notes, link.id, 'failure', set.id, 'do');
+      connect(notes, link.id, 'error', set.id, 'value', 'value');
+    });
+    expect(line).toContain('one of its own outcome chains');
+    // The control: it must not fall into the catch-all, which would deny the port exists.
+    expect(line).not.toContain('publishes only');
+  });
+
+  /**
+   * Earning, the record verbs' rule (§4a): a `Do` no translatable trigger fires never writes the
+   * row, so binding a sink to it would render a blank where the interpreted app shows a message.
+   * The read is refused and no row is left behind.
+   */
+  it('refuses the read and leaves no row where the Do never fires', () => {
+    const { app } = readError({ fire: false });
+    expect(notesFile(app)).not.toContain('useState');
+    expect(app.notes.join('\n')).toContain('helpLink:error');
   });
 });

@@ -1125,8 +1125,10 @@ being wrong the moment DEF-016 is fixed.
 - **Three Navigation nodes**: `Navigate To Path` and the component-stack pair. ⚠️ `Navigate To
   Path`'s first question is unchanged — it consults the project's `navigationPathType` (hash vs
   path) and the scaffold emits a `BrowserRouter` unconditionally.
-- **`External Link`'s `Error` output** is the cheapest increment left on this node: both messages
-  are static, so it is a state row and nothing else. `Completed` needs a join beneath the arms.
+- **`External Link`'s `Error` output** — ✅ **built in session 43, §14.** It was a state row, and
+  it was not *"and nothing else"*: the two failures had never needed telling apart before, and
+  building the port that tells them apart found a defect in the emitted code beside it.
+  `Completed` still needs a join beneath the arms.
 - **The store-key gate (§10.5)** — ✅ **closed in session 42, §13.**
 
 ⚠️ **DEF-016 landed** (`0c011b6b`), and with it the export's own follow-up: the emitted new-tab
@@ -1214,3 +1216,169 @@ would have turned a compile error into a silent wrong render.
 - **The `'expr'` mode is now the only caller of the strict rule.** If a future slice wants an
   untyped key in an expression position, it needs what §10 needed: a place that can say what it
   holds. There isn't one yet, and the deferral names itself.
+
+
+## §14 `External Link`'s `Error`, and the fix DEF-016 needed on this side too (session 43, 2026-08-29)
+
+**68 of 127 (53.5%)** — unchanged, because this is an increment on a node the ledger already
+counts. §12.7 called this *"a state row and nothing else"*. The row took an hour. What the hour
+also found is that the emitted app had been running its **Failure chain on every tab it
+successfully opened** since DEF-016's export follow-up landed, and no test in this package could
+see it.
+
+### §14.1 🔴 `window.open` consumes the transient activation, and that is a defect on this side
+
+DEF-016 fixed the runtime by reading `navigator.userActivation` **before** the call
+(`externallink.ts:96`). The export's copy landed in the same commit and read it **after**, inside
+the comma expression that keeps one failure arm:
+
+```tsx
+if (guard && (window.open(href, '_blank', 'noopener,noreferrer'), navigator.userActivation?.isActive !== false))
+```
+
+That is `false` on a successful open. `window.open` **consumes** the activation — Chrome allows
+one popup per gesture and spends the gesture doing it — so the value the `if` reads is the
+activation the call just used up.
+
+Measured before any code was written, one control arm varying **only** whether the call sits
+between two reads of the getter, both under a real `Input.dispatchMouseEvent` gesture:
+
+| arm | one thing varied | `before` | `after` | tabs |
+|---|---|---|---|---|
+| N | — | `true` | **`true`** | 1 → 1 |
+| C | the call between the reads | `true` | **`false`** | 1 → **2** |
+
+🔴 **Arm N is what makes this attributable rather than merely observed.** A lone `false` after
+the call fits "the call consumed it" and fits "the activation expired" and fits "the getter reads
+false in this host" equally well. Reading the getter twice with nothing between them excludes the
+second and third: the read is pure, so only the call can have spent it. Arm C's tab count is the
+other half — it says the open *succeeded* while the test said blocked, which is the whole defect
+in one row.
+
+The read now binds to a local before the call, which is the runtime's own order:
+
+```tsx
+const watchedHref = typedId.get();
+const watchedBlocked = navigator.userActivation?.isActive === false;
+if (!(watchedHref !== undefined && watchedHref !== null && watchedHref !== '' &&
+      (window.open(watchedHref, '_blank', 'noopener,noreferrer'), !watchedBlocked))) {
+  setWatchedError(watchedHref === undefined || watchedHref === null || watchedHref === '' ? 'No link to open' : 'The browser blocked opening a new tab');
+}
+```
+
+Hoisting the read above the *guard* as well as above the call is safe for the reason arm N
+measured: the getter has no side effects, so a read taken where the interpreter would not have
+bothered is unobservable. That is what keeps one failure arm instead of duplicating the chain.
+
+⚠️ **DEF-016's AC7 was graded met, and in letter it was**: the export did stop reading
+`window.open`'s return value. The ordering was never an acceptance criterion because nobody knew
+it was one. A criterion written as *"reads the activation, not the return value"* is satisfied by
+code that reads the activation at the wrong moment — **the AC named the expression and the defect
+was in the sequencing.**
+
+### §14.2 The row, and why it is allocated by the read
+
+`HTTP Request`'s `errorState`, one node over, with the hard part absent: both messages are static
+strings in the node's own source, so nothing has to be carried out of a service's answer.
+
+🔴 **Allocated by the read, not by the node** — `httpAnswerStateOf`'s rule rather than
+`httpErrorStateOf`'s, and the difference is the point. A request's Error row is always allocated
+because the call always writes it. Doing that here would put a `useState` nobody reads into the
+commonest shape in any project — a button that opens a literal url, which today emits one
+expression and no state at all. The read runs passes after the node compiled, so the row reaches
+the action in the late sweep (§8.3's allocation-order rule, **fourth instance**).
+
+### §14.3 🔴 The port is the only thing that tells the node's two failures apart
+
+Everywhere else in this action the two failures are one arm — §12's own comment says so: *"the
+two failures are indistinguishable once `Error` is out of the slice"*. `Error` is what takes it
+out of that state. `'No link to open'` and `'The browser blocked opening a new tab'` are two
+different writes, so the single failure arm re-tests the link to pick between them.
+
+Which message is live depends on the configuration, and only the live one is emitted:
+
+| `Link` | `Open In New Tab` | what can fire | emitted |
+|---|---|---|---|
+| wired | on | both | the ternary |
+| wired | off | the empty link only | `'No link to open'` |
+| literal | on | the blocked tab only | `'The browser blocked opening a new tab'` |
+| literal | off | **neither** | no write, and a note saying so |
+
+The last row is the configuration that already drops its Failure chain, and it drops the write on
+the same reasoning. The row is still allocated — a sink bound to it renders nothing, which is what
+the interpreter's unwritten getter gives — but a reader of the export is owed the sentence rather
+than a silent blank.
+
+⚠️ **The message is `_internal.lastError`, which is the SHORT string.** The blocked failure has
+*two* strings in the runtime and only one of them belongs to this port: `reportOutcome` sends a
+longer sentence about user actions to the outcome channel, and nothing in the export reads it. Two
+strings, one port, and it is not the one that reads better.
+
+### §14.4 What defers, and the consumer that was silent
+
+A read of `Error` from **inside this node's own outcome chains** defers. `setWatchedError(...)`
+does not change `watchedError` inside the closure that called it, so the chain would deliver the
+*previous* failure's message — §8.2's rule, third construct. `HTTP Request` mints a chain-local
+for exactly this; refusing the read is the increment this slice leaves rather than the corner it
+cuts.
+
+🔴 **`resolveExpr` answering the read was half the work, and the other half is silent** — the gap
+§7.5 named, hit for the third time. Pass 4f's admission predicate and Pass 4c's whitelist are both
+opt-in and neither errors, so the read resolved perfectly in a function nothing called and the
+wire fell through to Pass 6's catch-all: *"no deterministic translation in step 5"*, about a read
+this file had just been taught. **A new readable node has at least two consumers in this package.**
+Caught here by a test rather than by a build, which is the only reason it cost minutes.
+
+### §14.5 What proves it
+
+**33 tests** (was 22), **seven mutants killed**, every arm with a row count:
+
+| mutant | rows killed |
+|---|---|
+| the activation read moved back after the call | **3** |
+| the message always the blocked string | **2** |
+| Pass 4f's admission clause dropped | **6** |
+| a row allocated for every External Link | **3** |
+| the own-chain refusal dropped | **1** |
+| the never-written note dropped | **1** |
+| the earning check dropped | **1** |
+
+⚠️ **Two mutants first reported `Tests: 0 total`, which is not a kill.** Both were written as
+`if (false && …)`, which ts-jest rejects as a type error, so they never ran — session 42's lesson
+arriving on schedule. Re-written as outright deletions they killed one row each.
+
+**The project, built and driven.** `note-desk` again, with a **watched link** added through the
+MCP server: a guarded link into a new tab with **no outcome chains at all**, so a click never
+navigates away and the message stays on screen. `npm run build` exits 0; **8 of 8 drive rows
+matched**, no console errors.
+
+🔴 **Row order is part of the design, not a convenience.** The runtime never clears
+`_internal.lastError`, so the success row has to run *first* — after any failure the text is
+occupied and a later success proves nothing.
+
+| row | measured |
+|---|---|
+| D1 on load | empty |
+| D2 a real url, clicked | **empty, and the tab count rose 1 → 2** |
+| D3 the input cleared, clicked | `No link to open`, tabs unchanged |
+| D4 the handbook (literal, new tab) | tab count rose, text still D3's — never cleared |
+
+Sabotage, one rule per arm, expectations written before the run:
+
+| arm | change | rows that moved |
+|---|---|---|
+| A | the activation read moved back after the call | **D2 only** — `The browser blocked opening a new tab`, beside a tab that opened |
+| B | the message always the blocked string | **D3** — and D4 mirrored it |
+
+⚠️ **Arm B's prediction said "D3 only" and that was wrong about D4, in a way worth keeping.** D4
+is not an independent observation: the row is never cleared, so D4 reads whatever the last failure
+wrote and mirrors D3 by construction. It was never a second rule — which also means D4 could
+never have caught anything arm B's D3 did not.
+
+### §14.6 What this leaves
+
+- **`Completed`** — unchanged from §12.7: it fires after every outcome, and this slice still emits
+  the arms rather than a join beneath them.
+- **A chain-local for `Error`**, which would turn §14.4's refusal into a translation.
+- **Three Navigation nodes** — `Navigate To Path` and the component-stack pair, exactly as §12.7
+  left them.

@@ -178,7 +178,26 @@ ones building it forced, and each is in the code with its reason.
 | 4 — outcome test, not a port census | the whole `External Link` block; **every arm's `window.open` returns null** |
 | 5 — `_self` and empty link unchanged | two tests, one each |
 | 6 — absent API reports `Done` | *"a host with no userActivation API reports Done rather than guessing Failure"* |
-| 7 — the export's copy | `emit/component.ts` + 3 tests in `external-link.test.ts` |
+| 7 — the export's copy | `emit/component.ts` + 3 tests in `external-link.test.ts` — ⚠️ **met in letter, wrong in fact until 2026-08-29; see below** |
+
+### 9.1a 🔴 AC7 was graded met and the emitted code was still wrong
+
+The export stopped reading `window.open`'s return value, which is what AC7 asked for. It read
+`navigator.userActivation` **after** the call instead of before it, inside a comma expression —
+and **`window.open` consumes the transient activation**. So the exported app went on running its
+Failure chain on every tab it successfully opened: this defect's exact symptom, on the other side,
+introduced by this row's own fix.
+
+Measured in Chrome 151 by phase 18 session 43, one control arm varying only whether the call sits
+between two reads of the getter: without it both reads are `true`; with it the second is `false`
+while a tab opens. Fixed there, with the read bound to a local before the call — the order this
+node's own source already had. Full write-up: **EXP-011 §14.1**.
+
+⚠️ **The lesson is about the acceptance criterion, not the code.** AC7 named an *expression*
+("reads the activation, not the return value") and the defect was in the *sequencing*, so code
+satisfying the words exactly was still wrong. Nothing here needs reopening — this is recorded so
+the row is not read as evidence that the export side was checked end to end. It was not; it was
+checked against the sentence.
 
 ### 9.2 🔴 `isActive` is the diagnostic, and must not become a precondition
 

@@ -613,6 +613,8 @@ export type HandlerAction =
    */
   | {
       kind: 'external-link';
+      /** The node, so the attachment pass and the late row sweep can find it (§14). */
+      nodeId: string;
       link: ValueExpr;
       /** `Open In New Tab` — resolved here, because only an unwired port reaches this action. */
       newTab: boolean;
@@ -623,11 +625,38 @@ export type HandlerAction =
        */
       local: string;
       /**
+       * The local the blocked-tab test binds to, emitted only for a new tab whose outcome is
+       * read (EXP-011 §14).
+       *
+       * 🔴 **The binding is the correctness, and it is not a tidiness choice.** `window.open`
+       * **consumes** the transient activation — measured in Chrome 151, one control arm varying
+       * only whether the call sits between two reads of `navigator.userActivation.isActive`:
+       * without it both reads are `true`, with it the second is `false` while a tab opens. So
+       * the emitted test had to move *before* the call, exactly where the runtime reads it
+       * (`externallink.ts:96`). Read after, it is `false` on every tab successfully opened —
+       * which is DEF-016's own symptom, reintroduced on the export side by DEF-016's fix.
+       */
+      blockedLocal: string;
+      /**
        * False only where the link is provably non-empty — a non-empty literal. The runtime
        * refuses before touching the browser on `undefined`, `null` and `''`, and `window.open('')`
        * opens a blank tab, so this guard is observable even with no Failure chain wired.
        */
       guardLink: boolean;
+      /**
+       * The `Error` output as a state row (EXP-011 §14), filled by the late sweep and undefined
+       * where nothing reads it — which is the ordinary case, and why a button opening a literal
+       * url still emits one expression and no `useState`.
+       *
+       * 🔴 **This is the field that makes the two failures tell themselves apart.** Everywhere
+       * else in this action they are one arm, because "no link" and "the browser blocked the
+       * tab" both run the Failure chain and nothing else. `Error` is the one port that
+       * distinguishes them — two static strings, `externallink.ts:62` and `:101` — so the
+       * emitted failure arm re-tests the link to pick the message. Both strings are the node's
+       * own `_internal.lastError`, which is the SHORT one; the longer sentence beside it goes to
+       * the outcome channel, not to this port.
+       */
+      errorState?: string;
       then: HandlerAction[];
       failThen: HandlerAction[];
     }
@@ -879,6 +908,7 @@ export interface StateVarPlan {
     | 'variable'
     | 'http'
     | 'http-error'
+    | 'external-link-error'
     | 'now';
   /** The provenance comment above the row. */
   comment: string;
@@ -2721,6 +2751,71 @@ function planComponent(
     return local;
   };
 
+  /**
+   * `External Link`'s `Error` output as a state row (EXP-011 §14) — `HTTP Request`'s
+   * `errorState`, one node over, with the hard part absent: both messages are static.
+   *
+   * 🔴 **Allocated by the read, not by the node**, which is `httpAnswerStateOf`'s rule rather
+   * than `httpErrorStateOf`'s, and the difference is deliberate. A request's Error row is
+   * always allocated because the call always writes it; allocating one here for every External
+   * Link would put a `useState` nobody reads into the commonest shape there is — a button that
+   * opens a literal url, which today emits one expression and no rows at all.
+   *
+   * The read that allocates it runs passes after the node compiled, so the row reaches the
+   * action in the late sweep (§8.3's allocation-order rule, fourth instance).
+   */
+  const externalLinkErrorVars = new Map<string, StateVarPlan>();
+  const externalLinkErrorStateOf = (node: NodeIR): StateVarPlan => {
+    let stateVar = externalLinkErrorVars.get(node.id);
+    if (stateVar === undefined) {
+      stateVar = allocStateVar(
+        node.authoredLabel === undefined ? undefined : `${node.authoredLabel} Error`,
+        'linkError',
+        'string | undefined',
+        null,
+        node.id,
+        'external-link-error',
+        `The Error output of ${node.authoredLabel ? `"${node.authoredLabel}"` : 'the External Link'} — why the link could not be opened, set just before Failure fires and never cleared (externallink.ts).`
+      );
+      externalLinkErrorVars.set(node.id, stateVar);
+    }
+    return stateVar;
+  };
+
+  /** External Link nodes whose `Do` attached to a handler — the record verbs' earning rule. */
+  const attachedExternalLinks = new Set<string>();
+
+  /**
+   * Node ids whose outcome chains are being compiled, while they are being compiled.
+   *
+   * A read of `Error` from inside this node's own Failure chain cannot take the row:
+   * `setHelpError(...)` does not change `helpError` inside the closure that called it, so the
+   * chain would read the *previous* failure's message — §8.2's rule, and the reason
+   * `HTTP Request` keeps a chain-local. This slice refuses that read instead of minting one.
+   */
+  const externalLinkChainScope = new Set<string>();
+
+  /**
+   * `External Link`'s blocked-tab local (EXP-011 §14), on the link local's naming rule and
+   * minted beside it so the two cannot collide.
+   */
+  const externalLinkBlockedLocals = new Map<string, string>();
+  const externalLinkBlockedLocalOf = (node: NodeIR): string => {
+    let local = externalLinkBlockedLocals.get(node.id);
+    if (local === undefined) {
+      const label = (node.authoredLabel ?? '').replace(/[^A-Za-z0-9]+/g, ' ').trim();
+      const stem = label.length > 0 ? pascalCase(label).replace(/[^A-Za-z0-9_$]/g, '') : 'ExternalLink';
+      const base = `${stem.charAt(0).toLowerCase()}${stem.slice(1)}Blocked`;
+      let name = base;
+      let counter = 2;
+      while (stateNameTaken(name)) name = `${base}${counter++}`;
+      usedStateVarNames.add(name);
+      externalLinkBlockedLocals.set(node.id, name);
+      local = name;
+    }
+    return local;
+  };
+
   const nowLocalOf = (node: NodeIR): string => {
     let local = nowLocals.get(node.id);
     if (local === undefined) {
@@ -3706,6 +3801,30 @@ function planComponent(
         return null;
       }
       return { kind: 'state-get', name: verbErrorStateOf(fromNode).name, maybeUndefined: true };
+    }
+    /**
+     * `External Link`'s `Error` output (EXP-011 §14) — the record verbs' shape exactly: a
+     * maybe-undefined row that folds at its sinks the way the runtime's unwritten getter does.
+     *
+     * ⚠️ **A read from inside this node's own chains defers**, and the reason is §8.2's: the
+     * write and the read would sit in one closure, so the row would deliver the *previous*
+     * failure's message. `HTTP Request` mints a chain-local for this; that is the increment
+     * this slice leaves rather than the corner it cuts.
+     */
+    if (fromNode.type === EXTERNAL_LINK_TYPE && fromProperty === 'error') {
+      if (externalLinkChainScope.has(fromNode.id)) {
+        ctx.defer =
+          'its Error is read from one of its own outcome chains — the write and the read would be in one closure, so the read would deliver the previous failure\u2019s message';
+        return null;
+      }
+      // Earning: a Do this slice could not translate never writes the row, and binding a sink to
+      // a row nothing writes would render a blank where the app shows a message (§4a).
+      if (!attachedExternalLinks.has(fromNode.id)) {
+        const compiled = compiledOf(fromNode, 'do');
+        ctx.defer = 'defer' in compiled ? compiled.defer : 'its Do is never fired by a translatable trigger';
+        return null;
+      }
+      return { kind: 'state-get', name: externalLinkErrorStateOf(fromNode).name, maybeUndefined: true };
     }
     /**
      * An `HTTP Request`'s outputs (EXP-011 Tier 1.2).
@@ -5263,12 +5382,10 @@ function planComponent(
    *
    * Three refusals, each about a mechanism rather than about effort:
    *
-   * - **`Error` consumed defers the node.** The output is a string the node writes just before
-   *   `Failure`, so reading it outside the chain needs a state row of its own — `HTTP Request`'s
-   *   `errorState`, one node over. The two messages are static here (there are exactly two
-   *   failures and neither is a service's words), so this is a small slice of its own rather
-   *   than a hard one, and taking it *inside* this one would have been the only part of this
-   *   node that was not already a transcription.
+   * - **`Error` is a state row** (EXP-011 §14, session 43) — `HTTP Request`'s `errorState` with
+   *   the hard part absent, because both messages are static. It is allocated by the read rather
+   *   than by the node, so a link nothing asks about still emits no rows. A read from inside
+   *   this node's own chains still defers, on §8.2's closure rule.
    * - **A wired `Link` that resolves to a logic truth value defers**, on the standing rule that
    *   only truthiness sinks take one.
    * - **Any other output consumed defers**, named.
@@ -5280,9 +5397,6 @@ function planComponent(
     for (const wire of component.connections.filter((c) => c.fromId === node.id)) {
       if (!EXTERNAL_LINK_OUTPUTS.includes(wire.fromProperty)) {
         return { defer: `its ${wire.fromProperty} output is consumed, and this node publishes only Done, Completed, Unchanged, Failure and Error` };
-      }
-      if (wire.fromProperty === 'error') {
-        return { defer: 'its Error output is consumed — the message needs a state row of its own, which this slice does not allocate' };
       }
       /**
        * `Completed` fires after every outcome, so translating it means the chain in all three
@@ -5364,9 +5478,15 @@ function planComponent(
     }
     const newTab = literalParam(node, 'openInNewTab') !== false;
 
+    /**
+     * Both chains compile inside the scope, so an `Error` read within either is refused rather
+     * than silently bound to a row the closure cannot see updated (§8.2).
+     */
+    externalLinkChainScope.add(node.id);
     const done = doneChainOf(node, 'done');
+    const fail = 'defer' in done ? done : doneChainOf(node, 'failure');
+    externalLinkChainScope.delete(node.id);
     if ('defer' in done) return { defer: done.defer };
-    const fail = doneChainOf(node, 'failure');
     if ('defer' in fail) return { defer: fail.defer };
 
     /**
@@ -5384,9 +5504,11 @@ function planComponent(
     return {
       action: {
         kind: 'external-link',
+        nodeId: node.id,
         link,
         newTab,
         local: externalLinkLocalOf(node),
+        blockedLocal: externalLinkBlockedLocalOf(node),
         guardLink,
         then: done.then,
         failThen: !guardLink && !newTab ? [] : fail.then
@@ -6909,8 +7031,10 @@ function planComponent(
           attachedNowNodes.add(action.nodeId);
           scanActions(action.then);
         } else if (action.kind === 'external-link') {
-          // EXP-011 Tier 2.5. No node registry of its own to attach to — this exists so the
-          // chains are walked, which is what earns the popups, mutations and channels inside them.
+          // EXP-011 Tier 2.5. The chains are walked here, which is what earns the popups,
+          // mutations and channels inside them — and §14 gave the node a registry of its own,
+          // because an `Error` read has to know whether anything ever writes the row.
+          attachedExternalLinks.add(action.nodeId);
           scanActions(action.then);
           scanActions(action.failThen);
         } else if (action.kind === 'branch') {
@@ -7283,6 +7407,18 @@ function planComponent(
       DATE_NODES[fromNode.type] !== undefined &&
       DATE_NODES[fromNode.type].outputs[connection.fromProperty] !== undefined;
     const isNowRead = fromNode.type === NOW_TYPE && NOW_OUTPUTS[connection.fromProperty] !== undefined;
+    /**
+     * `External Link`'s `Error` into a rendered sink (EXP-011 §14) — the message in a Text
+     * beside the button, which is the whole point of the port.
+     *
+     * 🔴 **This clause is the gap §7.5 named, caught for the third time and by a test rather
+     * than by a build.** `resolveExpr` answering the read is only half of it: this predicate and
+     * Pass 4c's whitelist are both opt-in and neither errors, so the read resolved perfectly in
+     * a function nothing called, and the wire fell through to Pass 6's catch-all — *"no
+     * deterministic translation in step 5"*, about a read this file had just been taught. The
+     * note named the wrong thing and named it confidently.
+     */
+    const isExternalLinkErrorRead = fromNode.type === EXTERNAL_LINK_TYPE && connection.fromProperty === 'error';
     if (
       !isLatchRead &&
       !isControlRead &&
@@ -7292,7 +7428,8 @@ function planComponent(
       !isValueVariableRead &&
       !isHttpRead &&
       !isDateRead &&
-      !isNowRead
+      !isNowRead &&
+      !isExternalLinkErrorRead
     ) {
       continue;
     }
@@ -8165,6 +8302,17 @@ function planComponent(
         if (index >= 0) plan.stateVars.splice(index, 1);
       }
     }
+    /**
+     * `External Link`'s Error row on the same rule (EXP-011 §14). The read allocates it before
+     * the attachment pass has run, so a row belonging to a node whose `Do` never attached is
+     * removed here — the read that minted it deferred, and a `useState` nobody writes or reads
+     * would be left behind.
+     */
+    for (const [nodeId, stateVar] of externalLinkErrorVars) {
+      if (attachedExternalLinks.has(nodeId)) continue;
+      const index = plan.stateVars.indexOf(stateVar);
+      if (index >= 0) plan.stateVars.splice(index, 1);
+    }
     const fillMaterialize = (actions: HandlerAction[]): void => {
       for (const action of actions) {
         switch (action.kind) {
@@ -8189,14 +8337,37 @@ function planComponent(
             break;
           }
           /**
-           * EXP-011 Tier 2.5. `External Link` materialises nothing of its own — it has no answer
-           * to publish — but a request or a `Now` nested in either of its chains does, and this
+           * EXP-011 Tier 2.5. `External Link` materialises no answer of its own — it has none to
+           * publish — but a request or a `Now` nested in either of its chains does, and this
            * switch's `default` would skip both.
+           *
+           * §14: its `Error` row is wired to its writer here for the reason the two cases above
+           * give. The read that allocates it is a render binding, which resolves passes after
+           * this action compiled, so asking at compile time answered "nothing reads this" for
+           * every binding there is.
            */
-          case 'external-link':
+          case 'external-link': {
+            const row = externalLinkErrorVars.get(action.nodeId);
+            if (row !== undefined && plan.stateVars.includes(row)) {
+              action.errorState = row.name;
+              /**
+               * The configuration that already drops its Failure chain drops the Error write
+               * too, and for the same reason: a literal Link cannot be empty and `_self` makes
+               * no blocked claim, so neither of the node's two failures can fire. The row is
+               * still allocated — a sink bound to it renders nothing, which is what the
+               * interpreter's unwritten getter gives — but nothing ever writes it, and a reader
+               * of the export is owed that sentence rather than a silent blank.
+               */
+              if (!action.guardLink && !action.newTab) {
+                notes.push(
+                  `node ${action.nodeId}: External Link's Error output is read but can never be written — a literal Link cannot be empty and Open In New Tab is off, so neither of the node's two failures can fire (externallink.ts)`
+                );
+              }
+            }
             fillMaterialize(action.then);
             fillMaterialize(action.failThen);
             break;
+          }
           case 'branch':
             fillMaterialize(action.whenTrue);
             fillMaterialize(action.whenFalse);
