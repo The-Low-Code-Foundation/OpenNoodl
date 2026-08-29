@@ -98,7 +98,7 @@ parameters. Today the door's silence about connections reads as "checked and fin
 
 ---
 
-## 5. 🟡 PARTIAL — 2026-08-29
+## 5. ✅ COMPLETE — 2026-08-29 (s1 landed 1a and 3; s2 landed 1b, 1c, 2 and AC6)
 
 ### ✅ Rule 1(a) landed — the component instance
 
@@ -121,40 +121,106 @@ convention of the canvas, not a rule of the derivation.
 and every instance port in the template *that found this defect* pass the new error. MCP 892/892,
 `test:main` 6278/6278, `test:ci` at the floor (2889/4, all `AIX-006` by name).
 
-### 🔴 AC6 is NOT met, and the reason is bigger than this task recorded
+### ✅ AC6 met — `validate_project` now runs the precondition layer
 
-AC6 asks that **`validate_component` and `validate_project` both carry the rules**. They carry
-**none of the precondition layer at all** — and that is not a fact about DEF-002's rules, it is a
-fact about all thirteen.
+**The reason it was open was bigger than this task recorded, and it is now closed for all thirteen
+checks at once.** `validate_component`/`validate_project` → `validateOnDisk` ran the
+`SemanticValidator` and stopped; only `validateCandidate` composed the preconditions. **An agent
+calling `validate_project` to check its work got a strictly weaker answer than the door that let the
+work in**, and adding rules to that layer could never have changed it.
 
-| door | what it runs |
-|---|---|
-| `create_component` / `update_component` / `apply_plan` → **`validateCandidate`** | `SemanticValidator` **+ `preconditionDiagnostics`** (13 checks) |
-| **`validate_component`** / **`validate_project`** → **`validateOnDisk`** | `SemanticValidator`, and stops |
+**The live instance, on the project the MCP server was bound to while this was written:**
+`Puppy test 3`'s `/Pages/Admin` wires `query.items` into the Function port `items`. A Function node's
+ports are prefixed (`in-items`, `out-text` — `simplejavascript.ts` registers them so). The wire
+reaches nothing; `validate_project` called that project clean.
 
-🔴 **An agent calling `validate_project` to check its work gets a strictly weaker answer than the
-door that let the work in.** `checkNavigation`, `checkInstanceInterfaces`, `checkParameterValues`,
-`checkFunctionNodePorts`, `checkRepeaterTemplate` and the rest are all invisible to it. A clean
-`validate_project` therefore does **not** mean what a reader takes it to mean, and adding rules to
-the precondition layer will never change that.
+#### The calibration pass — `scripts/def-002-corpus-preconditions.ts`, `npm run calibrate:preconditions`
 
-⚠️ **Not fixed here on purpose.** Several of those checks were deliberately calibrated *against
-graphs an agent just wrote* (their own headers say so, at length), and `validate_project` also runs
-over hand-authored projects. Putting them on that door is a false-positive-tolerance decision with
-its own corpus evidence — the same call `authoredCandidate.ts` already records having made twice.
-**It needs one calibration pass over the corpus, and that pass answers it for all thirteen at
-once.**
+🔴 **The honest denominator is not "what do the preconditions emit".** `rules/parameterValue` (D13)
+already runs `checkParameterValues` on that door, so the naive count double-counts badly. The script
+reports only what the semantic validator does **not** already report.
 
-### ⬜ Still open in this task
+| population | errors | warnings | skip notes |
+|---|---|---|---|
+| the 94-project corpus | **24** | 69 | 1,355 → filtered |
+| the 3 shipped examples | **0** | **0** | 12 → filtered |
+
+**All 24 errors were read, not sampled:** 16 `unprefixed-function-port` (verified against the
+runtime's `in-`/`out-` registration *and* the wires on disk), 5 `repeater-without-template`, 3
+`repeater-with-visual-children`. Every one is a true positive. D13's precedent applies exactly —
+*"expect this to go red on real projects; that is the point, and it must not be softened"* — and it
+costs nothing here: **this door reports, it does not reject.** `AUTHORED_BLOCKING_WARNINGS` is
+untouched and still applies only where a write is accepted.
+
+⚠️ **The skip notes are filtered by CODE, not by severity.** `MonotoneTypography` is also an `info`
+and it is a *finding*, not a note about a check that did not run. The severity filter
+`rules/parameterValue` uses is correct there — `checkParameterValues` emits no other info — and here
+it would silently drop it.
+
+### ✅ Rules 1(b) and 1(c) landed — the adapter-minted ports
+
+`validation/derivedPortTargets.ts` + 15 specs. The other two of D1's three sabotages, refused by
+name. Their ports are not an interface, so `checkConnectionTargets` could not answer them: an editor
+adapter mints them from parameters on nodes inside the **target** component.
+
+🔴 **This task file's §1(c) was wrong, and building from it would have been wrong twice.** It sourced
+the `pm-` names from *"`PageInputs.pathParams` and the `{braces}` in `Page.urlPath`"*. At HEAD,
+`RouterNavigateAdapter.updatePortsForNode` reads `pathParams` **and `queryParams`**, and `urlPath`
+**not at all** — so that sentence would have refused every legitimate query-parameter wire (a false
+positive) and accepted a name that mints no port (a false negative). Both halves are graded arms.
+**The same decay §3 found in D10's mechanism, in the same file. Read the caller.**
+
+⚠️ `parseNameList` is **imported** from the adapters, not re-implemented: it splits on `,` **without
+trimming**, so `"a, b"` really does mint `pm- b`, and a checker that helpfully trimmed would refuse
+the port the editor made.
+
+**Calibration: zero across the 94-project corpus — and that number is only readable beside its
+arms.** The corpus holds **14 real prefixed wires** the check reads and accepts; a sabotaged copy of
+the members template (`in-name`→`in-nameXX`, `pm-announcementId`→`pm-noSuchParam`) yields **exactly
+2** errors. A clean corpus, not a dead checker.
+
+### ✅ Rule 2 landed — a `Failure` edge that reaches no response
+
+`validation/rules/failureReachesNothing.ts` + 9 specs. **A `rules/` rule**, so it reaches both doors.
+
+🔴 **It grades the failure EDGE, not the node — the 14th hole, as a permanent arm.** SBR-015's first
+version asked *"does this node reach a Response?"*, true of every node on a happy path, so it would
+have passed the unfixed `publishPage`. That mutant now kills three specs.
+
+**AC3's pair is real and it is in the corpus.** `Test site builder` holds `publishPage` as it
+shipped — **7** firings inside it. `SBR-015 Zero Section Drive` holds it as it ships now — **0**.
+One graph, one wire apart.
+
+🔴 **The first version fired 249 times, and that was a finding about the checker.** 67 were
+`noodl.cloud.response` nodes — **a response IS the send**, so requiring its own failure to reach a
+response is an infinite regress, and it was firing on both arms of its own acceptance pair. With
+that one principled exemption: **182 firings, 12 projects, all "no wire"**. The largest class
+(`JavaScriptFunction`, 100) is real — a throwing Function raises `failure`
+(`simplejavascript.ts:508`), so inside a cloud function that is a hang.
+
+⚠️ **Deliberately NOT in `AUTHORED_BLOCKING_WARNINGS` yet**, on the `ResponsiveArrangement`
+precedent and not on doubt about the rule. The promotion was **tried**: it fails **8** specs across 3
+suites (10 before `98bfdea0` cleared two), and **every one is a shipped template being regenerated
+through the door** — the templates really do leave failure edges unanswered, which is the defect
+phase 77 D1 reported. Repairing them is template work in another phase's files, and **a door that
+rejects graphs the product itself ships is a door that gets switched off.** The remaining blocker is
+the **site-builder** templates; the number is falling on its own.
+
+### ✅ All parts closed
 
 | part | state |
 |---|---|
-| 1(a) component instance | ✅ done |
-| 1(b) `CloudFunction2` `in-*`/`out-*` → the endpoint's request/response params | ⬜ needs a new index off the same views |
-| 1(c) `RouterNavigate` `pm-*` → the page's `PageInputs.pathParams` + `{braces}` in `urlPath` | ⬜ same |
-| 2 `failure-reaches-nothing` | ⬜ — and 🔴 **DEF-002 read `noodl-mcp/src/validate.ts` and concluded "there is no rule". True, but the rules do not live there**: they are `noodl-editor/src/editor/src/validation/rules/`. Checked at HEAD: `unwiredOutcome` fires on a different shape entirely (unchanged declared, `done`+`failure` wired, neither `unchanged` nor `completed`), so the gap is real — but it was concluded from the wrong file, which is the third time a row in this family has been |
-| 3 `signal-into-value-port` | ✅ **done** — see below |
-| AC6 both pipelines | 🔴 blocked on the calibration pass above |
+| 1(a) component instance | ✅ `validation/connectionTargets.ts`, 12 specs |
+| 1(b) `CloudFunction2` `in-*`/`out-*` | ✅ `validation/derivedPortTargets.ts`, in 15 specs |
+| 1(c) `RouterNavigate` `pm-*` | ✅ same module — and the task file's description of it was wrong |
+| 2 `failure-reaches-nothing` | ✅ `validation/rules/failureReachesNothing.ts`, 9 specs |
+| 3 `signal-into-value-port` | ✅ `validation/rules/signalIntoValuePort.ts`, 9 specs |
+| AC6 both pipelines | ✅ `validateOnDisk` composes the preconditions, calibrated |
+
+⚠️ **One thing this task found and did not own:** three diagnostic codes had stacked doc blocks above
+them in the wrong order, so only the last reached a member — `ConnectionUnknownInstancePort` and
+`UnprefixedFunctionPort` shipped with **no hover documentation** and two blocks documented nothing.
+Reattached in `c8e0f262`, no text changed.
 
 ### ✅ Rule 3 landed — a signal into a value port
 

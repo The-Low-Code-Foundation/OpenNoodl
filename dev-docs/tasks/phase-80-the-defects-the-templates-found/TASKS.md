@@ -9,7 +9,7 @@ derivation and [README.md](README.md) for why the phase exists.
 | id | status | task | source rows | bites |
 |---|---|---|---|---|
 | DEF-001 | ✅ done | [The defaults fail accessibility on the two controls every app has](DEF-001-THE-DEFAULTS-FAIL-ACCESSIBILITY.md) | P78 D11, D13 | every **end user** |
-| DEF-002 | 🟡 partial | [The door does not check connections](DEF-002-THE-DOOR-DOES-NOT-CHECK-CONNECTIONS.md) | P77 D1, D10 · P78 D1 | every **agent-authored app** |
+| DEF-002 | ✅ done | [The door does not check connections](DEF-002-THE-DOOR-DOES-NOT-CHECK-CONNECTIONS.md) | P77 D1, D10 · P78 D1 | every **agent-authored app** |
 | DEF-003 | ⬜ open | [Three authoring acts with no honest surface](DEF-003-THREE-AUTHORING-ACTS-WITH-NO-SURFACE.md) | P77 D8 = P76 F15 · P77 D7 · P76 F16 | every **author** |
 | DEF-004 | ⬜ open | [When it goes wrong you cannot see where](DEF-004-WHEN-IT-GOES-WRONG-YOU-CANNOT-SEE-WHERE.md) | P77 D2, D3 | anyone **debugging** |
 | DEF-005 | 🔒 ruling | [Membership is a category the graph cannot express](DEF-005-MEMBERSHIP-IS-UNEXPRESSIBLE.md) | P78 D2, D3 | every **membership app** |
@@ -56,6 +56,14 @@ should be done **once**, not three times.
   change and it is yours.
 - ✅ **DEF-001 — RULED 2026-08-29.** Richard: **`--primary` moves, white text stays.** Landed at
   `30eb92b2`. See DEF-001's §7.
+- ✅ **DEF-002 — CLOSED 2026-08-29.** All three rules and AC6. `1bc1cb8a` (1a), `95be7b4c` (3),
+  `820fde86` (AC6 + the calibration script), `c8e0f262` (1b/1c), `b91d696a` (2).
+  🔴 **One decision is deferred with its cost measured, not dropped:** promoting
+  `failure-reaches-nothing` into `AUTHORED_BLOCKING_WARNINGS` fails **8** specs, and every one is a
+  **shipped template** whose cloud functions really do leave failure edges unanswered. It belongs to
+  whoever repairs the **site-builder** templates — the members-area half is nearly clear after
+  `98bfdea0`. The cost is recorded in `authoredCandidate.ts` beside the set itself, so it cannot be
+  lost.
 - 🧭 **P76 F8, still open since s4** — `contactRecipient` cannot live in a world-readable
   `SiteSettings` row. Carried in phase 76 with no register; recorded here so it stops being invisible.
   It blocks the claim that a contact form reaches anyone.
