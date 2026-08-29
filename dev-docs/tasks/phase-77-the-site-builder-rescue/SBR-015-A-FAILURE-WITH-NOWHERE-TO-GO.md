@@ -248,7 +248,41 @@ claim from "the wiring never fires". **The missing arm is an HTTP-error failure*
 reaches a live backend and is refused by it. Until that arm is run, "AC1 fails" is true and
 "the fix does not work" is not yet earned.
 
-⬜ **AC1 remains open**, now with a measurement rather than an absence of one.
+#### 🟢 AC1 PASSES — second arm, 2026-08-29 (s20)
+
+The missing arm, supplied by the DEF-014 session: make a **live** backend refuse. Cheapest form is
+to point the call at a function that is not deployed (sabotage, not reasoning). Same project, same
+backend, backend **up** throughout (`404` on `/` = healthy):
+
+| | measured |
+|---|---|
+| the call | 1 request to `noSuchFunction` |
+| the refusal | **rendered** — `Function 'noSuchFunction' not found`, the **server's own sentence** |
+| its colour | `rgb(220, 38, 38)` = `--destructive` |
+| the menu | **closed** (`Duplicate` no longer hit-testable) |
+| elapsed | 18 s observed, rendered well inside it |
+
+**Both halves of the person sentence are true**: *"an admin who clicks Publish on a page that
+cannot be published is told so, and the menu stops being busy."* ✅ **AC1 CLOSED.**
+
+#### 🔴 …and the two arms together are a control pair with a defect in them
+
+One variable — whether the backend is reachable — and opposite results from the same wiring:
+
+| backend | `failure` fires? | what the admin sees |
+|---|---|---|
+| **up**, function refuses (404 from the runner) | **yes** | the refusal, in `--destructive`, menu closed |
+| **down**, connection refused (1 ms, `transferSize: 0`) | **no** | nothing, for 35 s. Menu still open |
+
+So the earlier negative was **not** the wiring, and saying so was worth the restraint: this is
+`CloudFunction2` **not reporting `failure` when the backend cannot be reached at all.** Its `error`
+callback does `reportOutcomes(…, 'failure')` (`cloudfunction2.ts:182`), so the node is capable —
+whatever a connection refusal does, it does not arrive there.
+
+🔴 **It is the same defect as SBR-015's, one layer further out.** SBR-015 fixed cloud functions
+whose failures reached nobody; this is a *call* whose failure reaches nobody — and it is the
+failure mode a person is most likely to meet, because "the backend is not running" is the ordinary
+way this breaks. **No owner. It belongs in phase 80, not here.**
 
 #### 🟡 WIRED 2026-08-29 (`379f4dec`) — the graph is done, the **drive is not**
 
