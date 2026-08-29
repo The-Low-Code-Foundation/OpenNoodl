@@ -119,7 +119,24 @@ before any of it was acted on, and every measurement in it held.
   ⚠️ **D19 (a control's own `<label>` renders `#000`) is NOT done** — the colour comes from the
   label style group (`TextInput.tsx:235`, and the same in Checkbox/RadioButton), not from the
   stylesheet, so it is a different fix from D18's and was left rather than guessed at.
-- ⬜ **C1 (D26) — open, and the highest-leverage item on the list.** Of eighteen compositions
+- ✅ **C1 (D26) — DONE `2c6a8876`.** Two compositions, `raised` and `ruled`, both **lifted verbatim
+  from `ui-data-table`** and diffed against their source nodes — identical. `raised` reads
+  `--surface-raised`, the token that was in the set and read by nothing; `ruled` carries **no fill
+  at all**, which is what stops a list reading as a stack of cards.
+  🔴 **The file's doctrine is that parameters are copied from a shipped, gated recipe and that a
+  composition which cannot be grounded is LEFT OUT rather than invented.** Worth knowing before
+  touching this file: "add a composition" is not a design task here, it is a sourcing task. Two
+  details came free from obeying it that taste would have got wrong — `ruled` uses
+  `--border-subtle` where `raised` uses `--border`, and `ruled` has no `backgroundColor`.
+  ⚠️ **`raised` only reads as raised on a `--surface` ground** (`--surface-raised` and
+  `--background` are both `#ffffff`), and its description says so.
+  ⚠️ **A drift sweep of all 20 compositions was run and NOT reported, twice, because both readings
+  were the checker** — a regex flattened `maxWidth: { value: 1200, unit: 'px' }` into a top-level
+  `unit` parameter, and every false positive carried that key. The doctrine holds. A mechanical
+  gate is worth having and needs a real parser.
+  🟢 **Phase 78's B3 is unblocked.**
+
+- ⬜ ~~**C1 (D26) — open**~~ Of eighteen compositions
   exactly **two** carry a content fill (`bandSurface`, `card`) and **both are `var(--surface)`**,
   so there is one way to make something look like a distinct object and **nine kinds of thing
   wear it**. That is the "standard bootstrap feel" Richard named. 🔴 **It is cheap:
