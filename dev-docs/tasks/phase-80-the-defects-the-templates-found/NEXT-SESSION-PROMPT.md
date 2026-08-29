@@ -13,8 +13,8 @@ banner saying so at its head.
 Gates at close: `typecheck:editor`, `typecheck:editor-tests`, `catalog:check`,
 `catalog:merge:check`, `catalog:groups:check`, `docs:nodes:check` **clean** ·
 `styleVocabularyPorts` **13/13** · `design-token-contrast` **13/13** · `noodl-mcp` **956 passed**
-· `catalog:examples` **60/62 — red, unchanged, still somebody's** · ⚠️ **`test:ci` NOT RUN** —
-see below.
+· `catalog:examples` **60/62 — red, unchanged, still somebody's** · ✅ **`test:ci` 2889 specs,
+4 failures, all four `AIX-006 style vocabulary` by name — the floor**, seed 74947.
 
 ---
 
@@ -82,13 +82,18 @@ an accessibility defect.
 
 ## Traps carried
 
-- ⚠️ **`test:ci` WAS NOT RUN, and that is a gap in this commit's evidence, not a clean reading.**
-  A peer (P77 s19) held the editor dev stack on CDP 9222 for the entire session and asked for no
-  `test:ci` and no second editor; their stack was still live at close. The unit suites that cover
-  everything changed here were run directly and are green, but **the floor was not re-measured**.
-  ✅ **Next session: run `test:ci` early and expect the floor of 4, all named `AIX-006 style
-  vocabulary`.** If it is not 4, suspect this commit first — `StyleCompositions.ts` feeds the
-  vocabulary those four specs are about.
+- ✅ **`test:ci` ran after the peer announced teardown, and it is the floor**: 2889 specs, 4
+  failures, all four `AIX-006 style vocabulary` **by name**, seed **74947**. `test-results.json`
+  was deleted first and the readout is 19s old, so a stale file could not have passed as this run.
+  ⚠️ **The runner printed `HEAD b25bc914` — a P18 peer's docs commit made 18 seconds earlier.**
+  `gitHead` is the checkout at read time, never authorship; `3a112837` was verified an ancestor
+  separately.
+  🔴 **The peer offered their own floor reading (seed 07472) and it was not adopted.** Theirs was
+  taken at 16:28, after this commit landed at 16:08, so it genuinely did compile this change — and
+  it still is not evidence about it. A relayed measurement is about the run that produced it; the
+  point of running it again was the **independent seed**, which is what separates a floor from a
+  repeat. ✅ **When a peer hands you a green reading of your own work, run it yourself anyway** —
+  it cost 90 seconds.
 - ⚠️ **`typecheck:mcp` is red on ONE error, and it is a peer's**: `TOKEN_PRELUDE` in
   `packages/noodl-mcp/tests/tpl001Cloud.ts`, uncommitted, mtime mid-session, mid-refactor.
   `noodl-mcp`'s own suite also carries **2 failures in `tpl001Template.test.ts`** from that peer's

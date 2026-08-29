@@ -400,8 +400,19 @@ composition which cannot be grounded is left out rather than made up.
 `tpl001Template.test.ts`, from a peer's uncommitted `templates/members-area.security.json`) ·
 `catalog:examples` **60/62 — unchanged, the same two `NONE`-owned recipes** ·
 ⚠️ `typecheck:mcp` red on **one** error in a peer's uncommitted `tests/tpl001Cloud.ts`
-(`TOKEN_PRELUDE`, mid-refactor) · ⚠️ **`test:ci` NOT RUN** — a peer held the editor stack on
-CDP 9222 for the whole session and asked for it; deferred rather than skipped.
+(`TOKEN_PRELUDE`, mid-refactor).
+
+✅ **`test:ci` RAN after the peer announced teardown: 2889 specs, 4 failures, all four
+`AIX-006 style vocabulary` BY NAME — the documented floor**, seed **74947**, readout mtime 19s
+old (`test-results.json` deleted first, so a stale file could not pass as this run).
+`3a112837` verified an ancestor of the compiled HEAD. ⚠️ The runner printed
+`HEAD b25bc914`, which is a **P18 peer's docs commit made 18 seconds earlier** — `gitHead` is the
+checkout at read time, never authorship.
+
+⚠️ **The peer also offered their own floor reading (seed 07472), taken at 16:28 — after this
+commit landed at 16:08, so it did compile this change.** It was not adopted as evidence: a relayed
+measurement about somebody else's run is not a reading of your own commit, and the independent
+seed is what makes the floor a floor rather than a repeat.
 
 **Mutants: 3 applied, 3 killed.** An unknown token on `fieldError` reddens the token check *by
 name*; reverting `textField` to the shipped `sizeMode: 'contentSize'` reddens the AC2 inert gate
