@@ -40,6 +40,36 @@ export interface RuntimeLogEntry {
 }
 
 /**
+ * One action invocation, opened at {@link NodeInstance.beginOutcome} (DEF-004).
+ *
+ * ⚠️ **A "step" is an action invocation, not a node the graph passed through.** A `String Format`
+ * neither succeeds nor fails, so there is nothing to record about it beyond that a value crossed
+ * a wire — which is the per-edge trace's job (`tracebuffer.ts`), a different instrument with a
+ * different cost. What an author debugging a wrong result needs is the list of things the graph
+ * *did*, each with a verdict, and that set is exactly the set of outcome-reporting invocations.
+ */
+export interface RuntimeStepStart {
+  /** The graph node that acted, so a step can be traced back to a place on a canvas. */
+  nodeId: string;
+  /** Its registered type name, e.g. `net.noodl.Log`. */
+  nodeType: string;
+  /**
+   * Optional per-node context for the record. ⚠️ Whatever consumes this is responsible for
+   * redacting it — a node hands over its own inputs and cannot know what the host considers a
+   * secret. The backend sink runs the same two redactions the log line gets, so a record is
+   * never less safe than the log.
+   */
+  inputData?: Record<string, unknown>;
+}
+
+/** How an invocation ended. `code` and `message` are present on `failure` only. */
+export interface RuntimeStepEnd {
+  status: 'done' | 'unchanged' | 'failure';
+  code?: string;
+  message?: string;
+}
+
+/**
  * Services scoped to one run of one graph.
  *
  * Deliberately small. This is not a general-purpose bag: everything on it has to be something that
@@ -48,6 +78,19 @@ export interface RuntimeLogEntry {
 export interface NodeRunContext {
   /** Where a `Log` node's line goes. Absent in the browser, where the console is the answer. */
   log?(entry: RuntimeLogEntry): void;
+  /**
+   * DEF-004 — where an action invocation is recorded. Returns an opaque handle the runtime hands
+   * back to {@link endStep}; `undefined` means the host declined to record this one (a cap, a
+   * disabled history) and the runtime must not then call `endStep`.
+   *
+   * ⚠️ **This has to be the per-run channel and not the error bus**, which is the obvious
+   * alternative and the wrong one: the bus hangs off `NodeContext`, there is one of those per
+   * `CloudRunner`, and two cloud functions run concurrently in it. A bus subscriber cannot say
+   * whose request an event belongs to. This can, for the same reason `log` can.
+   */
+  beginStep?(step: RuntimeStepStart): unknown;
+  /** Close the invocation opened by {@link beginStep}. Never called without a handle from it. */
+  endStep?(handle: unknown, end: RuntimeStepEnd): void;
   /** The HTTP request id this run belongs to, when there is one. Diagnostics only. */
   requestId?: string;
 }

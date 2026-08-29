@@ -193,6 +193,11 @@ export interface RuntimeNode extends NodeInstance {
   model?: any;
   variant?: NodeVariant;
   nodeScope: any;
+  /**
+   * DEF-004's duplicate guard. True only while this node is raising on behalf of an outcome it
+   * is already recording a step for. See `Node.raiseRuntimeError`.
+   */
+  _raisingForOutcome?: boolean;
   context: RuntimeNodeContext;
 
   _dirty: boolean;

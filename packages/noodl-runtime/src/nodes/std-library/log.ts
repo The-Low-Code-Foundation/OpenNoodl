@@ -133,7 +133,16 @@ const LogNode: NodeDefinitionOptions = {
       group: 'Actions',
       description: 'Writes the line. Nothing is written until this fires',
       valueChangedToTrue: function (this: LogNodeInstance) {
-        this._write(this.beginOutcome());
+        // DEF-004: the line itself is what makes one Log invocation worth telling from the next,
+        // so it is what goes on the step. ⚠️ Raw here, deliberately — the host redacts, and this
+        // module must never be able to see a secret's value (see the redaction note above).
+        this._write(
+          this.beginOutcome({
+            level: this._internal.level || 'info',
+            message: this._internal.message === undefined || this._internal.message === null ? '' : String(this._internal.message),
+            ...(this._internal.data !== undefined && this._internal.data !== null ? { data: this._internal.data } : {})
+          })
+        );
       }
     } as InputPortDefinition
   },

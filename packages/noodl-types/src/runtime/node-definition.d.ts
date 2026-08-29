@@ -266,8 +266,13 @@ export interface NodeInstance {
    * The token — not the node — carries "has this invocation reported yet", which is the only
    * shape that survives an action whose result arrives several frames later, and the reason
    * `Close Popup`'s latched-first-result class (FINDINGS **NV-iii**) cannot recur here.
+   *
+   * @param inputData DEF-004 — optional context recorded against this invocation's execution
+   *                  step where a host is recording (a cloud function). Pass what an author would
+   *                  need to tell two invocations of this node apart, and nothing a node cannot
+   *                  afford to have written down; the host redacts, but only what it can name.
    */
-  beginOutcome(): OutcomeToken;
+  beginOutcome(inputData?: Record<string, unknown>): OutcomeToken;
 
   /**
    * End an invocation with exactly one of `Done` / `Unchanged` / `Failure`, then `Completed`.
@@ -290,6 +295,12 @@ export type NodeOutcome = 'done' | 'unchanged' | 'failure';
 /** Opaque per-invocation token from {@link NodeInstance.beginOutcome}. */
 export interface OutcomeToken {
   reported: NodeOutcome | undefined;
+  /**
+   * DEF-004 — the host's handle for the execution step this invocation opened, or absent where
+   * no host is recording (every browser runtime). Opaque: only `reportOutcome` reads it, and only
+   * to hand it straight back.
+   */
+  step?: unknown;
 }
 
 /** The reason half of a `'failure'` outcome, raised on the NDA-004 channel. */

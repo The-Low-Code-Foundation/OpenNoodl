@@ -39,7 +39,13 @@ import {
 } from './functionDeclarations';
 // CWF-013 — type-only, from the cloud runtime's own declaration, so the sink this file builds
 // and the `NodeScope.runContext` a node reads cannot drift apart.
-import type { CloudKitLoadResult, NodeRunContext, RuntimeLogEntry } from '@cloud-runtime';
+import type {
+  CloudKitLoadResult,
+  NodeRunContext,
+  RuntimeLogEntry,
+  RuntimeStepEnd,
+  RuntimeStepStart
+} from '@cloud-runtime';
 
 // Bundled from noodl-viewer-cloud/src by esbuild (test-time: jest mapper).
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -133,6 +139,17 @@ export interface LogValueScrubber {
  */
 export const MAX_LOG_LINES_PER_RUN = 200;
 
+/**
+ * How many execution steps one run may record before the rest are counted and dropped.
+ *
+ * ⚠️ Same trap as the line cap above and a different denominator: a `Run Tasks` loop over 10,000
+ * items writes an execution step per action per item whether or not a single `Log` node is
+ * anywhere in the graph, so a cap that only bounded logging would bound nothing. Higher than the
+ * line cap because a step is the *evidence* — an author who capped their logging still wants the
+ * shape of the run — and, like it, the suppression is announced exactly once.
+ */
+export const MAX_STEPS_PER_RUN = 1000;
+
 export interface RunnerResponse {
   statusCode: number;
   body: string;
@@ -196,7 +213,8 @@ export class WorkflowRunner {
   }
 
   /**
-   * CWF-013 — where a `Log` node's line goes, for ONE run.
+   * CWF-013 / DEF-004 — the per-run services a cloud graph may reach: where a `Log` node's line
+   * goes, and where an action invocation is recorded.
    *
    * Built per run and handed to `CloudRunner.run`, which puts it on the request's own
    * `NodeScope`. That is what carries the request id: two functions run concurrently in this
@@ -213,15 +231,18 @@ export class WorkflowRunner {
    *     `Secret → Log` is a two-node graph.
    *
    * The execution-record copy goes through both too. A record that is safer than the log, or
-   * less safe, is a record nobody can reason about.
+   * less safe, is a record nobody can reason about. That now covers steps as well as lines: a
+   * node hands `beginOutcome` its own `inputData` raw, because a node must not be able to see a
+   * secret's value, so **this** is the only place that can redact it.
    */
-  private createLogSink(
+  private createRunContext(
     functionName: string,
     execLogger: ReturnType<ExecutionHistory['createLogger']>,
     trigger?: RunTriggerContext
   ): NodeRunContext {
     const requestId = trigger && trigger.requestId;
     let written = 0;
+    let stepsWritten = 0;
 
     return {
       requestId,
@@ -255,17 +276,67 @@ export class WorkflowRunner {
           ...(data !== undefined ? { data } : {})
         });
 
-        if (execLogger) {
-          // A step per line, started and completed in the same breath: a log line has no
-          // duration, and the History panel already renders steps.
-          const stepId = execLogger.startNode({
-            nodeId: (entry && entry.nodeId) || 'log',
-            nodeType: 'net.noodl.Log',
-            nodeName: 'Log',
-            inputData: { level, message, ...(data !== undefined ? { data } : {}) }
-          });
-          execLogger.completeNode(stepId, true);
+        // ⚠️ **No step is written here, and that is DEF-004's doing.** This used to open and
+        // close one, and since the `Log` node reports an outcome like every other action, the
+        // step channel below now writes the same row — two producers, one table, and a count
+        // that silently doubles. The line's own content is not lost: the node hands it to
+        // `beginOutcome` as the step's `inputData`, so it arrives through the one pipeline.
+        // `cloud-log-node.test.ts` asserts the cardinality.
+      },
+
+      /**
+       * DEF-004 — one row per action invocation, opened when the action starts.
+       *
+       * Returns the store's step id, or `undefined` where there is nothing to write to or the
+       * cap has been reached. The runtime treats `undefined` as "not recorded" and never calls
+       * `endStep` for it, which is what keeps a capped run from leaving half-open rows.
+       */
+      beginStep: (step: RuntimeStepStart): unknown => {
+        if (!execLogger) return undefined;
+
+        stepsWritten++;
+        if (stepsWritten > MAX_STEPS_PER_RUN) {
+          if (stepsWritten === MAX_STEPS_PER_RUN + 1) {
+            logger.warn('function.steps.suppressed', {
+              function: functionName,
+              requestId,
+              limit: MAX_STEPS_PER_RUN,
+              hint: 'an action inside a loop — the rest of this run’s steps are not recorded'
+            });
+          }
+          return undefined;
         }
+
+        const scrub = this.scrubSecretValues;
+        const inputData =
+          step.inputData !== undefined
+            ? ((scrub ? scrub.scrubValue(step.inputData) : step.inputData) as Record<string, unknown>)
+            : undefined;
+
+        // `startNode` answers `''` when history is off or no execution is open. Normalised to
+        // `undefined` so the runtime's "was this recorded" test is one check, not two.
+        const stepId = execLogger.startNode({ nodeId: step.nodeId, nodeType: step.nodeType, inputData });
+        return stepId || undefined;
+      },
+
+      /**
+       * Close the row. `unchanged` counts as a success: the action was valid and there was
+       * nothing to do, and colouring that red is how an author learns to ignore the column.
+       *
+       * ⚠️ The failure message is scrubbed here for the same reason the log line is — it is
+       * composed by the node from its own inputs, and `Secret`'s says which secret.
+       */
+      endStep: (handle: unknown, end: RuntimeStepEnd) => {
+        if (!execLogger || typeof handle !== 'string' || !handle) return;
+        const scrub = this.scrubSecretValues;
+        const failed = end.status === 'failure';
+        const reason = failed
+          ? new Error(
+              [end.code, scrub ? scrub.scrub(end.message || '') : end.message].filter(Boolean).join(': ') ||
+                'The action could not be performed'
+            )
+          : undefined;
+        execLogger.completeNode(handle, !failed, { outcome: end.status }, reason);
       }
     };
   }
@@ -526,7 +597,7 @@ export class WorkflowRunner {
       const response = await this.cloudRunner.run(functionName, request, {
         timeoutMs,
         // CWF-013: this is what gives a `Log` node in the graph somewhere to go.
-        runContext: this.createLogSink(functionName, execLogger, trigger)
+        runContext: this.createRunContext(functionName, execLogger, trigger)
       });
       const duration = Date.now() - startTime;
       safeLog(`Function ${functionName} completed in ${duration}ms`);
@@ -623,7 +694,7 @@ export class WorkflowRunner {
       // when you call it and does not when a workflow does, which is the worst of both.
       return await this.cloudRunner.run(functionName, request, {
         timeoutMs,
-        runContext: this.createLogSink(functionName, null)
+        runContext: this.createRunContext(functionName, null)
       });
     } catch (e) {
       if (isCloudFunctionTimeout(e)) {

@@ -14,6 +14,7 @@ import { coerceToType } from './expression-type-coercion';
 import { diagnosticsEnabled, setDiagnostic } from './diagnostics';
 import { COMPLETED_PORT, TREAT_UNCHANGED_AS } from './outcome';
 import { runOnChangeInput, runOnChangePortName, runOnValueChange } from './run-on-value-change';
+import type { NodeRunContext } from './runcontext';
 
 /**
  * OBS-003. The port name is appended, so one node with two NaN inputs raises two clearable
@@ -857,6 +858,30 @@ Node.prototype.raiseRuntimeError = function (code: string, message: string, deta
     message,
     detail
   });
+
+  // DEF-004 — the same failure, on the per-run channel, for the nodes that never adopted the
+  // outcome contract.
+  //
+  // 🔴 **This is not belt-and-braces; it is the majority of the population that matters.** The
+  // node a cloud function most often goes wrong on is the query, and `DbCollection2.setError`
+  // hand-rolls `sendSignalOnOutput('failure')` — it opens no outcome, so `beginOutcome` never
+  // ran and there is no step for `reportOutcome` to close. Eighteen std-library modules are in
+  // that state. Without this they fail invisibly in the record, which is the exact defect.
+  //
+  // ⚠️ **`_raisingForOutcome` is the duplicate guard, and it is load-bearing.**
+  // `reportOutcome('failure')` raises through here on its way out, and that raise already has a
+  // step: recording a second one would double every contract-adopting node's failures — *a check
+  // in a second pipeline is a duplicate first.* `def004-execution-steps.test.ts` asserts the
+  // cardinality on both populations.
+  if (this._raisingForOutcome) return;
+  const scope = this.nodeScope as { runContext?: NodeRunContext } | undefined;
+  const runContext = scope && scope.runContext;
+  if (!runContext || !runContext.beginStep || !runContext.endStep) return;
+
+  // Opened and closed in one breath: a hand-rolled failure has no "started" moment to record —
+  // the node reached this line having already decided it could not act.
+  const step = runContext.beginStep({ nodeId: this.id, nodeType: this.name });
+  if (step !== undefined && step !== null) runContext.endStep(step, { status: 'failure', code, message });
 };
 
 /**
@@ -900,8 +925,27 @@ Object.defineProperty(Node.prototype, 'diagnosticsEnabled', {
  * that exercises the node once (FINDINGS **NV-iii**). A fresh token per invocation is what makes
  * that class unrepresentable rather than merely fixed.
  */
-Node.prototype.beginOutcome = function () {
-  return { reported: undefined };
+Node.prototype.beginOutcome = function (inputData) {
+  const token: { reported: undefined; step?: unknown } = { reported: undefined };
+
+  // DEF-004 — one execution step per invocation, on the per-run channel CWF-013 built.
+  //
+  // ⚠️ **The cost discipline is the same one `tracebuffer.ts` states**: a runtime with no sink
+  // pays two property reads and allocates nothing beyond the token it already allocated. The
+  // browser attaches no `runContext` at all, so this is dead weight of two `undefined` checks
+  // there and always will be.
+  //
+  // Opened HERE rather than at `reportOutcome` on purpose: an action that begins and never
+  // reports — the hang that CWF-018's 504 exists for — leaves a `running` step naming the node
+  // that stopped, which is the single most useful row this table can hold. A step written only
+  // on completion would show nothing at all for exactly the run an author is trying to explain.
+  const scope = this.nodeScope as { runContext?: NodeRunContext } | undefined;
+  const runContext = scope && scope.runContext;
+  if (runContext && runContext.beginStep) {
+    token.step = runContext.beginStep({ nodeId: this.id, nodeType: this.name, inputData });
+  }
+
+  return token;
 };
 
 /**
@@ -956,51 +1000,97 @@ Node.prototype.reportOutcome = function (token, outcome, options) {
   if (token.reported !== undefined) {
     // "Exactly one" is the load-bearing half of the contract, so a second report is a library
     // defect and is reported as one rather than quietly winning or quietly losing.
-    this.raiseRuntimeError(
-      'outcome/duplicate',
-      `Reported ${token.reported} and then ${outcome} for one invocation, which the outcome contract forbids`,
-      { first: token.reported, second: outcome }
-    );
+    //
+    // Inside DEF-004's guard: this invocation already owns a step, closed by the first report.
+    // A second row here would say a node acted twice when a library bug is what happened.
+    this._raisingForOutcome = true;
+    try {
+      this.raiseRuntimeError(
+        'outcome/duplicate',
+        `Reported ${token.reported} and then ${outcome} for one invocation, which the outcome contract forbids`,
+        { first: token.reported, second: outcome }
+      );
+    } finally {
+      this._raisingForOutcome = false;
+    }
     return;
   }
   token.reported = outcome;
 
-  if (outcome === 'failure' && !(options && options.raise === false)) {
-    // Raised before the signal for the same reason values are flagged before it: a graph wiring
-    // `failure -> show` must already be able to read the reason when the pulse lands.
-    //
-    // `raise: false` means the reason is already on the channel from a more precise raise
-    // elsewhere — see `OutcomeFailureOptions.raise`. It suppresses the *duplicate*, never the
-    // only report.
-    this.raiseRuntimeError(
-      (options && options.code) || 'outcome/unspecified-failure',
-      (options && options.message) || 'The action could not be performed',
-      options && options.detail
-    );
+  // DEF-004's duplicate guard — see the note in `raiseRuntimeError`. Wraps the WHOLE block
+  // rather than only the failure raise, because `outcome/missing-port` and
+  // `outcome/missing-completed` raise on this same node for this same invocation, and each would
+  // otherwise add a step beside the one this invocation already owns.
+  //
+  // ⚠️ **Inline rather than a helper method, and the reason is a red suite.** Extracting the
+  // block as `Node.prototype._reportOutcomeSignals` broke fourteen specs at once: several suites
+  // build a node as **a bag of bound prototype methods** and never construct one, so a new method
+  // this one calls is simply absent (`this._reportOutcomeSignals is not a function`). Adding a
+  // required method to `Node.prototype` is a change to that whole spec population, not a
+  // refactor.
+  this._raisingForOutcome = true;
+  try {
+    if (outcome === 'failure' && !(options && options.raise === false)) {
+      // Raised before the signal for the same reason values are flagged before it: a graph wiring
+      // `failure -> show` must already be able to read the reason when the pulse lands.
+      //
+      // `raise: false` means the reason is already on the channel from a more precise raise
+      // elsewhere — see `OutcomeFailureOptions.raise`. It suppresses the *duplicate*, never the
+      // only report.
+      this.raiseRuntimeError(
+        (options && options.code) || 'outcome/unspecified-failure',
+        (options && options.message) || 'The action could not be performed',
+        options && options.detail
+      );
+    }
+
+    if (this.hasOutput(outcome)) {
+      this.sendSignalOnOutput(outcome);
+    } else {
+      this.raiseRuntimeError(
+        'outcome/missing-port',
+        `Reported ${outcome} but has no ${outcome} output, so the outcome reached no wire`,
+        { outcome }
+      );
+    }
+
+    // Universal, and the one port with no exemption — its whole value is that an author can rely
+    // on it being there.
+    if (this.hasOutput(COMPLETED_PORT)) {
+      this.sendSignalOnOutput(COMPLETED_PORT);
+    } else {
+      this.raiseRuntimeError(
+        'outcome/missing-completed',
+        'Adopted the outcome contract without a Completed output, which every action must have',
+        { outcome }
+      );
+    }
+
+  } finally {
+    this._raisingForOutcome = false;
   }
 
-  if (this.hasOutput(outcome)) {
-    this.sendSignalOnOutput(outcome);
-  } else {
-    this.raiseRuntimeError(
-      'outcome/missing-port',
-      `Reported ${outcome} but has no ${outcome} output, so the outcome reached no wire`,
-      { outcome }
-    );
-  }
-
-  // Universal, and the one port with no exemption — its whole value is that an author can rely
-  // on it being there.
-  if (this.hasOutput(COMPLETED_PORT)) {
-    this.sendSignalOnOutput(COMPLETED_PORT);
-  } else {
-    this.raiseRuntimeError(
-      'outcome/missing-completed',
-      'Adopted the outcome contract without a Completed output, which every action must have',
-      { outcome }
-    );
+  // DEF-004 — close the step opened in `beginOutcome`, last, once the signals are out.
+  //
+  // ⚠️ Read after the `unchanged` remap above, not before it: `Treat Unchanged as` turns a
+  // configured `unchanged` into a `failure` with its own code, and a record disagreeing with the
+  // wire an author is watching would be a second vocabulary for one event. The token's step is
+  // cleared so a duplicate report — already raised as `outcome/duplicate` — cannot close it twice.
+  const step = (token as { step?: unknown }).step;
+  if (step !== undefined && step !== null) {
+    (token as { step?: unknown }).step = undefined;
+    const scope = this.nodeScope as { runContext?: NodeRunContext } | undefined;
+    const runContext = scope && scope.runContext;
+    if (runContext && runContext.endStep) {
+      runContext.endStep(step, {
+        status: outcome,
+        code: options && options.code,
+        message: options && options.message
+      });
+    }
   }
 };
+
 
 /**
  * A value arriving over a wire.
