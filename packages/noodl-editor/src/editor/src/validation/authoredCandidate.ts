@@ -278,6 +278,27 @@ export const AUTHORED_BLOCKING_WARNINGS: ReadonlySet<string> = new Set([
   // a warning rather than an error so `validate:project` over hand-authored
   // corpora stays advisory, per the file's standing convention.
   DiagnosticCode.WrongRuntimeNode
+  // DEF-002 §2 — `FailureReachesNothing` belongs here on the charter ("output
+  // that is broken": the caller is not told the wrong thing, it is told nothing
+  // and waits out a 30s timeout) and is deliberately **not** here yet, on the
+  // `ResponsiveArrangement` precedent rather than on doubt about the rule.
+  //
+  // 🔴 The promotion was tried and measured, and what it rejects is the product,
+  // not a fixture. With it in this set, **10 specs across 3 suites fail** — and
+  // every one is a *shipped template being regenerated through the door*:
+  // `sb007Template`, `tpl001Template`, `sb004Authoring`. They fail because
+  // `publishPage`, `duplicatePage` and `submitContactForm` really do leave
+  // failure edges unanswered, which is the defect phase 77 D1 reported and the
+  // reason this rule exists. Corpus-wide the same promotion is 182 firings
+  // across 12 projects.
+  //
+  // ⚠️ So this is not `PageWithoutPageNode`, where the fixtures were teaching a
+  // shape the runtime refuses and correcting them WAS the fix. Here the graphs
+  // are the product's own templates, and repairing them is template work in
+  // another phase's files. Promoting first would block the door on graphs the
+  // product itself ships — a gate nobody can get past is a gate that gets
+  // switched off. **The rule reports everywhere today; the promotion follows the
+  // template repair**, and the number above is what it costs.
 ]);
 
 /** Whether a diagnostic rejects an authored submission. */

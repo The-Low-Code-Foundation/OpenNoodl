@@ -704,6 +704,23 @@ export enum DiagnosticCode {
    */
   ConnectionUnknownDerivedPort = 'connection-unknown-derived-port',
   /**
+   * DEF-002 §2 — in a cloud function, a `Failure` edge that reaches no response.
+   *
+   * Not a degraded result: the request ends only when something **sends**, so an
+   * unreached `Failure` is a **thirty-second hang**. `publishPage` and
+   * `duplicatePage` shipped in a real template with zero failure wires between
+   * them, and a zero-section publish returned nothing after 30,004 ms.
+   *
+   * 🔴 **The edge is graded, not the node**, and that distinction is the whole
+   * rule: SBR-015's first version asked *"does this node reach a Response?"* —
+   * true of every node on a happy path — and would have passed the very graph it
+   * was written for.
+   *
+   * Warning severity with an `AUTHORED_BLOCKING_WARNINGS` entry: advisory over
+   * hand-authored templates, blocking for a graph an agent just wrote.
+   */
+  FailureReachesNothing = 'failure-reaches-nothing',
+  /**
    * FIX-006 §3: a `Javascript2` (Script) node whose body declares nothing the
    * runtime can call again. Its code runs **once**, at parse time, and never
    * again — while still minting ports from `Inputs.`/`Outputs.` mentions, which

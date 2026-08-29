@@ -33,6 +33,7 @@ import { typeIncompatibleConnection } from './typeIncompatibleConnection';
 import { signalDrivenStaleInput } from './signalDrivenStaleInput';
 import { signalIntoValuePort } from './signalIntoValuePort';
 import { unwiredOutcome } from './unwiredOutcome';
+import { failureReachesNothing } from './failureReachesNothing';
 import { repeatedSiblingSubtree } from './repeatedSiblingSubtree';
 import { oversizedPage } from './oversizedPage';
 import { unlabelledNode } from './unlabelledNode';
@@ -66,6 +67,11 @@ export const ALL_RULES: Rule[] = [
   // exactly why nothing looked at the direction.
   signalIntoValuePort,
   unwiredOutcome,
+  // DEF-002 §2 — beside `unwiredOutcome` because they are the same author
+  // mistake at two altitudes: that one is an outcome the author enumerated and
+  // missed, this one is the outcome that, inside a cloud function, decides
+  // whether the caller is answered at all.
+  failureReachesNothing,
   repeatedSiblingSubtree,
   oversizedPage,
   // LEG-002 — last, and deliberately: it is the only rule in the set that
