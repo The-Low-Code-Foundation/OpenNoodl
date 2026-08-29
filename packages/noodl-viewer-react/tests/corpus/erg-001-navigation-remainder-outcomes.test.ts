@@ -117,6 +117,10 @@ async function graphWith(
 // Close Popup
 // =================================================================================================
 
+interface ExternalLinkInternals extends NodeInstance {
+  _internal: { lastError?: string };
+}
+
 interface ClosePopupInternals extends NodeInstance {
   _internal: { closeCallback?: (action: string | undefined, results: Record<string, unknown>) => void };
 }
@@ -187,16 +191,42 @@ describe('ERG-001 §4: External Link', () => {
     else (globalThis as { window?: unknown }).window = realWindow;
   });
 
-  function stubWindow(open: (...args: unknown[]) => unknown) {
-    (globalThis as { window?: unknown }).window = { open };
+  /**
+   * 🔴 DEF-016. `open` returns **null** by default, because that is what a real `window.open`
+   * returns when the features string contains `noopener` — which is what this node sets for
+   * every new tab. The stub that returned a truthy object was the bug's blind spot: it made
+   * the old `!opened` test pass in the suite and fail in every browser.
+   *
+   * `activation` is the second arm. `undefined` (the default) models a host without
+   * `navigator.userActivation`; `{ isActive: true/false }` models the two states of one that
+   * has it.
+   */
+  function stubWindow(
+    open: (...args: unknown[]) => unknown = () => null,
+    activation?: { isActive: boolean }
+  ) {
+    (globalThis as { window?: unknown }).window = {
+      open,
+      navigator: activation === undefined ? {} : { userActivation: activation }
+    };
   }
 
-  test('a link that opens reports Done then Completed, and Success is gone', async () => {
+  /**
+   * 🔴 DEF-016, AC1/AC2/AC4. **The node's default configuration.** `window.open` returns null
+   * here — not because anything failed, but because `noopener` makes it null on success too —
+   * and the user gesture is live. Before the fix this reported `Failure` with
+   * `external-link/blocked` beside an open tab, on every link an author shipped.
+   *
+   * The two arms below differ in `isActive` and in nothing else. That is the whole discrimination
+   * the fix rests on: the return value is null in both, so a test that varied *it* would be
+   * measuring a constant.
+   */
+  test('a new tab that opens reports Done then Completed, though window.open returned null', async () => {
     const opened: unknown[] = [];
     stubWindow((url: unknown) => {
       opened.push(url);
-      return {};
-    });
+      return null;
+    }, { isActive: true });
     const graph = await graphWith(ExternalLinkModule, 'net.noodl.externallink', {
       link: 'https://example.com',
       openInNewTab: true
@@ -209,10 +239,17 @@ describe('ERG-001 §4: External Link', () => {
     expect(outcomesOf(graph, 'node')).toEqual(['done']);
     expect(countOf(graph, 'node', 'completed')).toBe(1);
     expect(graph.signalsFor('node')).not.toContain('success');
+    // AC2 — nothing is set on the Done path.
+    expect(graph.node<ExternalLinkInternals>('node')._internal.lastError).toBeUndefined();
+    expect(graph.errors).toEqual([]);
   });
 
-  test('a blocked new tab is a Failure carrying its existing code', async () => {
-    stubWindow(() => null);
+  test('a new tab opened with no user activation is a Failure carrying its existing code', async () => {
+    const opened: unknown[] = [];
+    stubWindow((url: unknown) => {
+      opened.push(url);
+      return null;
+    }, { isActive: false });
     const graph = await graphWith(ExternalLinkModule, 'net.noodl.externallink', {
       link: 'https://example.com',
       openInNewTab: true
@@ -223,6 +260,74 @@ describe('ERG-001 §4: External Link', () => {
 
     expect(outcomesOf(graph, 'node')).toEqual(['failure']);
     expect(graph.errors.map((e) => e.code)).toEqual(['external-link/blocked']);
+    // 🔴 The open is still attempted. `isActive` is the diagnostic, not a precondition — a user
+    // who has allow-listed popups gets the tab without a gesture, and this node must not be the
+    // thing that takes it away.
+    expect(opened).toEqual(['https://example.com']);
+  });
+
+  /**
+   * 🔴 DEF-016 AC6, and the arm an implementer is most likely to skip. Where
+   * `navigator.userActivation` is absent — Safari before 16.4, Firefox before 120 — the node has
+   * nothing to base a blocked claim on, so it degrades toward the claim it can still support.
+   *
+   * ⚠️ Reporting `Failure` here would be the original defect wearing a different cause: an
+   * always-wrong port on a whole class of browser, which trains authors to ignore it.
+   */
+  test('a host with no userActivation API reports Done rather than guessing Failure', async () => {
+    stubWindow(() => null); // no activation object at all
+    const graph = await graphWith(ExternalLinkModule, 'net.noodl.externallink', {
+      link: 'https://example.com',
+      openInNewTab: true
+    });
+
+    pulse(graph, 'node', 'do');
+    await graph.settle(3);
+
+    expect(outcomesOf(graph, 'node')).toEqual(['done']);
+    expect(graph.errors).toEqual([]);
+  });
+
+  /**
+   * DEF-016 AC5. `_self` replaces the page rather than opening a tab, so there is no blocked
+   * case to report and activation is irrelevant to it — `isActive: false` here, and still `Done`.
+   */
+  test('the same-tab path reports Done even with no activation', async () => {
+    const opened: unknown[][] = [];
+    stubWindow((...args: unknown[]) => {
+      opened.push(args);
+      return null;
+    }, { isActive: false });
+    const graph = await graphWith(ExternalLinkModule, 'net.noodl.externallink', {
+      link: 'https://example.com',
+      openInNewTab: false
+    });
+
+    pulse(graph, 'node', 'do');
+    await graph.settle(3);
+
+    expect(opened).toEqual([['https://example.com', '_self', '']]);
+    expect(outcomesOf(graph, 'node')).toEqual(['done']);
+    expect(graph.errors).toEqual([]);
+  });
+
+  test('an empty link is still a Failure, and never reaches window.open', async () => {
+    const opened: unknown[] = [];
+    stubWindow((url: unknown) => {
+      opened.push(url);
+      return null;
+    }, { isActive: true });
+    const graph = await graphWith(ExternalLinkModule, 'net.noodl.externallink', {
+      link: '',
+      openInNewTab: true
+    });
+
+    pulse(graph, 'node', 'do');
+    await graph.settle(3);
+
+    expect(outcomesOf(graph, 'node')).toEqual(['failure']);
+    expect(graph.errors.map((e) => e.code)).toEqual(['external-link/no-link']);
+    expect(opened).toEqual([]);
   });
 
   /**

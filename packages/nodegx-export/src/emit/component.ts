@@ -1501,12 +1501,13 @@ export function emitComponent(
        * The emitted form is the runtime's control flow flattened into one condition, which it is
        * entitled to be because the two failures are indistinguishable once `Error` is out of the
        * slice: "no link" and "the browser blocked the tab" both run the Failure chain and nothing
-       * else. So `opened` never needs a name — the call *is* the test.
+       * else. So `opened` never needs a name.
        *
        * ```
        * const talkHref = speakerUrl;
        * if (talkHref !== undefined && talkHref !== null && talkHref !== '' &&
-       *     window.open(talkHref, '_blank', 'noopener,noreferrer')) { …then }
+       *     (window.open(talkHref, '_blank', 'noopener,noreferrer'),
+       *      navigator.userActivation?.isActive !== false)) { …then }
        * else { …failThen }
        * ```
        *
@@ -1515,9 +1516,15 @@ export function emitComponent(
        * a guard that ran the call anyway would open a window the app never opens. That is why
        * the guard survives even when nothing is wired to Failure.
        *
-       * ⚠️ **With Open In New Tab off there is no blocked case.** `_self` legitimately returns
-       * null in some browsers, so the runtime tests the return value *only* for `_blank`. The
-       * call is a statement of its own there and success is the guard alone.
+       * 🔴 **DEF-016 — the call is no longer the test.** It was, and that was a defect on both
+       * sides: `noopener` makes `window.open` return null on success as much as on failure, so
+       * `if (window.open(…))` ran the Failure chain on every tab it opened. The runtime now reads
+       * `navigator.userActivation` and this emits the same read. See `activationTest` below for
+       * why the comma, and why not `||`.
+       *
+       * ⚠️ **With Open In New Tab off there is no blocked case.** `_self` replaces the page
+       * rather than opening a tab, so the runtime makes no blocked claim for it at all. The call
+       * is a statement of its own there and success is the guard alone — no activation read.
        */
       case 'external-link': {
         const at = pad(indent);
@@ -1531,12 +1538,39 @@ export function emitComponent(
           : undefined;
 
         /**
+         * DEF-016. The success test for a new tab is **not** the return value.
+         *
+         * `noopener` — which the features string above always carries for `_blank` — makes
+         * `window.open` return null by specification, on success as much as on failure. The
+         * runtime therefore reads `navigator.userActivation` instead, before the call, and this
+         * emits the same test: `!== false` so that a host without the API (Safari before 16.4)
+         * reports done rather than claiming a block it cannot see, which is the runtime's
+         * degradation exactly.
+         *
+         * 🔴 **The comma is doing real work and is not a tidiness choice.** The open must still
+         * happen — and must still happen only *after* the link guard, because `window.open('')`
+         * opens a blank tab — while the value the `if` reads has to come from the activation
+         * instead. `(call, test)` is what keeps one `else` for a failure chain that would
+         * otherwise be duplicated into two arms.
+         *
+         * ⚠️ Not `openCall || activationTest`. That reads truthy on a browser that ignored
+         * `noopener` and returned a Window while activation was false — where the runtime
+         * reports failure. EXP-011 §11.3: the export must not work *better* than the app.
+         */
+        const activationTest = `navigator.userActivation?.isActive !== false`;
+        const openAndTest = `(${openCall}, ${activationTest})`;
+
+        /**
          * The condition under which the `done` chain runs. For a new tab the call is *part of*
          * it — `&&` is the runtime's own short circuit, and `window.open('')` opens a blank tab,
          * so the guard has to come first. For `_self` the call cannot report a failure, so it
          * becomes a statement inside the arm instead.
          */
-        const opened = action.newTab ? [guard, openCall].filter(Boolean).join(' && ') : (guard ?? '');
+        // With no chain on either outcome nothing reads the test, so the activation is not read
+        // at all — the call alone is what the graph asked for.
+        const noChains = action.then.length === 0 && action.failThen.length === 0;
+        const successTest = noChains ? openCall : openAndTest;
+        const opened = action.newTab ? [guard, successTest].filter(Boolean).join(' && ') : (guard ?? '');
         const body = (actions: HandlerAction[]): string[] =>
           expandActions(actions).map((a) => `${inner}${actionCode(a, indent + 2)};`);
         const block = (head: string, ...rest: string[]): string => [head, ...rest, `${at}}`].join('\n');

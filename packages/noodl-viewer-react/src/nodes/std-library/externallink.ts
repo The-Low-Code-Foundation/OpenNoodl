@@ -31,7 +31,8 @@ const ExternalLinkNode: NodeDefinitionOptions = {
       group: 'Actions',
       type: 'signal',
       displayName: 'Do',
-      description: 'Opens Link, or fires Failure if there is no Link or the browser blocked the new tab',
+      description:
+        'Opens Link, or fires Failure if there is no Link or the link was opened outside a user action',
       valueChangedToTrue(this: ExternalLinkInstance) {
         // ERG-001 §4. Only the port mints; this node has no value-driven route into the open.
         const token = this.beginOutcome();
@@ -63,11 +64,42 @@ const ExternalLinkNode: NodeDefinitionOptions = {
           return;
         }
 
-        const opened = window.open(link, target, params);
+        // DEF-016. The blocked-tab test is read *before* the call, not from its return value.
+        //
+        // `params` sets `noopener` for a new tab, and `window.open` returns null whenever
+        // `noopener` is set — by specification, on success as much as on failure. So the return
+        // value below cannot distinguish the two cases, and the `!opened` test this replaces
+        // reported `Failure` on every new tab the node successfully opened.
+        //
+        // `navigator.userActivation.isActive` is the condition the browser itself applies when
+        // deciding whether to allow the open, and it is readable here, where `noopener` has not
+        // destroyed anything. Measured against the exported app in Chrome 151: false exactly
+        // when the open is refused, true exactly when a tab appears.
+        //
+        // ⚠️ Read off `window` rather than the bare global so an SSR-shaped or older host is the
+        // same object the branch above already proved exists. Absent (Safari before 16.4,
+        // Firefox before 120) ⇒ no claim is made and the node reports `done`: the failure
+        // direction is the one that trains authors to ignore the port.
+        //
+        // ⚠️ A strict improvement, not a total one. It catches the dominant cause — a graph
+        // firing the link outside a user gesture — and stays silent where a user has hard-blocked
+        // popups despite one. That is the trade the SSR branch above already makes; always-wrong
+        // is not a trade at all.
+        //
+        // 🔴 The open is still attempted unconditionally. `isActive` is the diagnostic, never a
+        // precondition: a user who has allow-listed popups for the site gets the tab without a
+        // gesture, and gating the call on activation would take a working link away to improve a
+        // message. This branch decides what is *reported*, not what happens.
+        // Three separate absences degrade the same way — no `navigator`, no `userActivation`,
+        // or an `isActive` that is not a boolean. `blocked` is only ever true off a value that
+        // was actually read, which is why the test is `typeof … === 'boolean'` and not a
+        // truthiness check on the object.
+        const activation = window.navigator?.userActivation as { isActive?: boolean } | undefined;
+        const blocked = target === '_blank' && typeof activation?.isActive === 'boolean' && !activation.isActive;
 
-        // Same-tab navigation (`_self`) legitimately returns null in some browsers, so only
-        // treat a null as blocked when a new tab was actually asked for.
-        if (target === '_blank' && !opened) {
+        window.open(link, target, params);
+
+        if (blocked) {
           this._internal.lastError = 'The browser blocked opening a new tab';
           this.flagOutputDirty('error');
           this.reportOutcome(token, 'failure', {
@@ -92,9 +124,11 @@ const ExternalLinkNode: NodeDefinitionOptions = {
   // missing port.
   outputs: {
     ...outcomeOutputs({
-      done: 'Fires once the link has been handed to the browser. With Open In New Tab off the page is replaced, so nothing downstream of this may still exist',
+      done:
+        'Fires once the link has been handed to the browser. It does not promise a tab appeared — nothing readable in the page does, once Open In New Tab is on. With it off the page is replaced, so nothing downstream of this may still exist',
       unchanged: 'Fires when there is no browser to open a link in — a server-side render, where there is nothing to do and nothing to fail at',
-      failure: 'Fires when no Link was set, or the browser blocked the new tab'
+      failure:
+        'Fires when no Link was set, or when the link was opened outside a user action — the case a browser refuses a new tab for. A tab blocked for any other reason still reports Done'
     }),
     error: {
       type: 'string',

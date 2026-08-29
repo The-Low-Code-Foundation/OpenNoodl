@@ -236,8 +236,48 @@ describe('EXP-011 Tier 2.5 §3 — the outcome chains', () => {
 
   it('a Done chain runs only where the open succeeded', () => {
     const notes = notesFile(withChain(['done']).app);
-    expect(notes).toContain(`if (window.open('${DOCS}', '_blank', 'noopener,noreferrer')) {`);
+    expect(notes).toContain(
+      `if ((window.open('${DOCS}', '_blank', 'noopener,noreferrer'), navigator.userActivation?.isActive !== false)) {`
+    );
     expect(notes).toContain('link0done.set(');
+  });
+
+  /**
+   * 🔴 DEF-016. **The return value is not the test, and must not be.** `noopener` — which the
+   * features string above always carries — makes `window.open` return null by specification, on
+   * success as much as on failure, so an emitted `if (window.open(…))` runs the Failure chain on
+   * every tab it opens. That is the defect this row fixed in the runtime, and the export
+   * reproduces the runtime's control flow deliberately (EXP-011 §11.3), so it had to move too.
+   *
+   * The comma is load-bearing: the call still has to happen, still only after the link guard,
+   * while the value the `if` reads comes from the activation instead.
+   */
+  it('the new-tab success test reads the activation, never the return value', () => {
+    const notes = notesFile(withChain(['done']).app);
+    expect(notes).toContain('navigator.userActivation?.isActive !== false');
+    expect(notes).not.toContain(`if (window.open('${DOCS}'`);
+  });
+
+  /**
+   * 🔴 `!== false` rather than `=== true`, and it is the whole degradation story. On a host with
+   * no `navigator.userActivation` (Safari before 16.4, Firefox before 120) the read is
+   * `undefined`, which `!== false` treats as done — the runtime's own rule, that no claim is
+   * made where nothing can be read. `=== true` would report Failure on every link in those
+   * browsers, which is the original defect with a different cause.
+   */
+  it('the emitted test degrades to Done where the activation API is absent', () => {
+    const notes = notesFile(withChain(['done', 'failure']).app);
+    expect(notes).toContain('?.isActive !== false');
+    expect(notes).not.toContain('isActive === true');
+
+    // Read the emitted condition the way a browser would, in both arms and with the API gone.
+    const evaluate = (userActivation: unknown): boolean => {
+      const navigator = { userActivation } as { userActivation?: { isActive?: boolean } };
+      return navigator.userActivation?.isActive !== false;
+    };
+    expect(evaluate(undefined)).toBe(true);
+    expect(evaluate({ isActive: true })).toBe(true);
+    expect(evaluate({ isActive: false })).toBe(false);
   });
 
   /**
@@ -248,7 +288,7 @@ describe('EXP-011 Tier 2.5 §3 — the outcome chains', () => {
   it('a Failure chain runs in the opposite case, not beside the Done one', () => {
     const notes = notesFile(withChain(['done', 'failure']).app);
     expect(notes).toContain('} else {');
-    const ifIndex = notes.indexOf('if (window.open(');
+    const ifIndex = notes.indexOf('if ((window.open(');
     const elseIndex = notes.indexOf('} else {', ifIndex);
     expect(elseIndex).toBeGreaterThan(-1);
     expect(notes.indexOf('link0done.set(', ifIndex)).toBeLessThan(elseIndex);
@@ -257,7 +297,9 @@ describe('EXP-011 Tier 2.5 §3 — the outcome chains', () => {
 
   it('a Failure chain alone inverts the test rather than emitting an empty success block', () => {
     const notes = notesFile(withChain(['failure']).app);
-    expect(notes).toContain(`if (!(window.open('${DOCS}', '_blank', 'noopener,noreferrer'))) {`);
+    expect(notes).toContain(
+      `if (!((window.open('${DOCS}', '_blank', 'noopener,noreferrer'), navigator.userActivation?.isActive !== false))) {`
+    );
     expect(notes).not.toContain('{\n      }');
   });
 
@@ -282,7 +324,9 @@ describe('EXP-011 Tier 2.5 §3 — the outcome chains', () => {
       ).app
     );
     expect(notes).toContain(`window.open('${DOCS}', '_self', '')`);
-    expect(notes).not.toContain("if (window.open(");
+    expect(notes).not.toContain('if (window.open(');
+    // ⚠️ And no activation test either: `_self` has no blocked case for it to describe.
+    expect(notes).not.toContain('userActivation');
   });
 });
 
