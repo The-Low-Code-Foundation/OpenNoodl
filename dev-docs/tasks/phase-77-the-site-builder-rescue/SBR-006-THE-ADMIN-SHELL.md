@@ -244,3 +244,180 @@ The rows only ever appear after `create.done` or a row's `Changed` signal fires
 `pages-2.storageFetch`. §5.8's *"a refused query and an empty collection are the
 same screen"* is true and is a third state: **a collection that never asked** is
 pixel-identical to both. Owner: **NONE** — carried to phase 80.
+
+---
+
+## 5.11 🟢 s19 (2026-08-29) — **AC2 is MET**, on a site whose `Page` class has no `title` column
+
+AC2 has been blocked since s9 for one reason: the dialog wrote a row with
+`title: None, slug: None`. SBR-008's fix landed at `a14fb8e7`; this is that fix
+arriving at *this* task, driven on the one fixture where the reading cannot be an
+artefact of a grown schema.
+
+### 5.11.1 Why `SBR-017 Sign In Drive` and not a fresh mint
+
+🔴 **s17's warning was the design constraint**: the rows were named on
+`SBR-016 Arrive Drive` *because that fixture's `Page` class had already been
+written to* — SBR-008 §6.3's self-healing, where `SchemaHandler` fetches the
+schema on `window-focused` and `recordFieldPorts` mints a port per **column**. A
+drive on a grown fixture cannot tell the fix from the healing.
+
+`SBR-017 Sign In Drive` (`backend_mte82r1qhnr87`, port 8599) was left deliberately
+unspent, and its `Page` class is a photograph of the defect:
+
+| on `/Pages/Admin` → `Create a draft page` (`NewDbModelProperties`, class `Page`) | column in the fixture? |
+|---|---|
+| `prop-published`, `prop-showInNav`, `prop-navOrder` — arrive as **parameters** | ✅ all three exist |
+| `prop-title`, `prop-slug` — arrive as **wires** | 🔴 neither exists |
+
+The export copies parameters verbatim and filters wires, so **the table records
+which half survived**. That split is also what excludes the confound: with no
+`title` column, the schema path *cannot* mint `prop-title`. Only the wire can.
+
+### 5.11.2 The four-cell control, one node, one call
+
+`/Pages/Admin` node `a9988e3f-…`, `node.getPort(...)`:
+
+| port | column? | wired **here**? | `getPort` |
+|---|---|---|---|
+| `prop-title` | **no** | **yes** | ✅ **TRUE** ← the fix |
+| `prop-slug` | **no** | **yes** | ✅ **TRUE** ← the fix |
+| `prop-published` / `prop-showInNav` / `prop-navOrder` | yes | no (parameters) | ✅ TRUE |
+| `prop-seoDescription` | no | **no** (it is wired on `/Pages/PageEditor`) | 🔴 **false** |
+| `prop-neverWiredNoColumn` | no | no | 🔴 **false** |
+
+✅ **`prop-seoDescription` is the better of the two negative controls** and is worth
+keeping: it is a *real field of this template's `Page` model*, wired on another
+component, and this node still says **false**. So the port set is **per-node and
+wire-derived** — not "every `prop-` name the project mentions". A `getPort` that
+had started saying yes to everything is excluded twice, once by a name that does
+not exist and once by a name that does.
+
+With `evaluateHealth()` forced (D13 held constant, per §6.5 of SBR-008), the
+export keeps **336 of 336** connections project-wide, `/Pages/Admin` **10/10**
+with **2/2** `prop-` wires.
+
+⚠️ **336/336 on its own proves nothing** — it is equally what an inert filter
+produces. It is the two `false` cells above, taken through the same instrument in
+the same call, that make the 336 mean something.
+
+### 5.11.3 The act, and what the backend says
+
+One dialog, one `Create page`, title `S19 Wire Is The Declaration`, slug
+`s19-wire-declaration`:
+
+| | reading |
+|---|---|
+| **pre-state 14:03:01Z** | `Page` = 7 columns, **no `title`, no `slug`**; `_Schema.Page` `10:28:24`; 1 row |
+| **post-state 14:03:42Z** | `Page` = 9 columns — **`title` and `slug` created by that act**; `_Schema.Page` → **14:03:07**, the second of the create |
+| **controls, same DB, same moment** | `SiteSettings` `10:28:00`, `Theme` `10:28:00`, `_User` `10:27:59` — **unchanged** |
+| **no reload** | `window.__S19` set before the click, still set after |
+
+```
+objectId  | title                       | slug                 | createdAt
+7cb644bb… |                             |                      | 10:28:24.920Z   ← s14's build
+086848fa… | S19 Wire Is The Declaration | s19-wire-declaration | 14:03:07.857Z   ← s19's build
+```
+
+✅ **The before/after sits in one table, and then renders in one list.** Same
+project, same dialog, same node, same backend, same row component — the only
+variable is which build wrote the row. `notes/sbr006-ac2-named-row.png` shows it:
+the top row blank where its name and slug belong, the bottom row named, under
+**"Two pages, no published"**.
+
+✅ **AC2 is met.** The row appears without a reload *and* it has a name.
+
+⚠️ **The two rows differ in wall-clock as well as in build**, so this is a
+before/after pair rather than a two-arm control. What removes the alternative
+reading is not the pairing but §5.11.1: the schema path had no column to mint from
+at 14:03:01, measured, not argued.
+
+---
+
+## 5.12 🔴 s19 — AC3's other two actions cannot be driven: **both cloud functions throw at their first node**
+
+AC3 was `🟡 half-driven` — publish's success arm at s12. Unpublish and duplicate
+were never driven, and they still cannot be. On this fixture, through the menu:
+
+| action | UI | backend |
+|---|---|---|
+| Publish | `This page could not be published.` in **71 ms** | `error`, HTTP 400, **59 ms** |
+| Duplicate | `This page could not be duplicated. A partial copy may exist.` in **35 ms** | `error`, HTTP 400, **13 ms**, and `Page` really is unchanged (2 rows before, 2 after) |
+| `claimSite` | — | ✅ **success, 39 ms** — the control, same backend |
+
+✅ **The refusals are visible and fast, which is SBR-015's fix working**: the old
+behaviour was a silent 30 s 504. The template says the right thing. What it says
+is that the action failed.
+
+### 5.12.1 The cause, named — and it is only nameable because of DEF-004(a)
+
+`execution_steps` on `backend_mte82r1qhnr87` (written per action since
+`d229bf4b`):
+
+```
+exec_…u8ug0w2op  duplicatePage  JavaScriptFunction  error
+    function/script-threw: The script threw: Outputs.ready is not a function
+exec_…8xls7gh82  publishPage    JavaScriptFunction  error
+    function/script-threw: The script threw: Outputs.ready is not a function
+```
+
+Both are the **first** node in their chain — the gate that holds the request until
+its parameters arrive — so nothing downstream ran.
+
+🔴 **SBR-006 s9 and SBR-015 both looked straight at this and could not see it.**
+The same failure was an opaque HTTP 400 with **zero** steps. DEF-004(a) is what
+turned "publish does not work" into a file, a node and a message. That is the row
+paying for itself within a day.
+
+🔴 **And it refutes a recorded refutation.** SBR-015 s10 listed four candidate
+causes and marked the first REFUTED: *"undeclared signal ports — the artefact
+declares all six."* Measured on the shipped artefact at HEAD:
+
+```
+18 Function nodes call a signal output (Outputs.x())
+ 0 of them declare it in `scriptOutputs`
+```
+
+Not six of six declared — **eighteen of eighteen undeclared**, `claimSite`
+included. The refutation was about a different field from the one that decides.
+
+### 5.12.2 🔴 What I could NOT establish, and the experiment that would
+
+`publishPage` **succeeded in 12 ms** at `09:26:44Z` on `SBR-015 AC1 Drive`. So
+"undeclared ⇒ throws" is **not** the whole story, and neither is the 18/18 census
+above: `claimSite` is in it and works.
+
+Two variables sit between that success and my failure, and **I eliminated
+neither**:
+
+1. **The cloud runtime.** `d229bf4b` (12:10Z) is the only commit today touching
+   `packages/nodegx-backend/src`. The backend process serving the 09:26 success
+   predates it; mine (pid 78333, started 13:48Z) postdates it. I did **not** run
+   the pre-commit runtime, so this is a timing coincidence, not a mechanism —
+   and the `node.ts` diff adds step recording, it does not touch how `Outputs.x`
+   is built.
+2. **The project.** 🔴 **I diffed the two projects' `publishPage`, found them
+   byte-identical bar node ids, and wrongly concluded the project was constant.**
+   Both files had been rewritten *after* the 09:26 success (mtimes 11:17 and
+   12:13) — they match each other because **both were equally migrated**, not
+   because neither was. The artefact's gate node carries **only** `functionScript`;
+   the project's carries `runOnChange-in-pageId: false` and
+   `runOnChange-in-isPublic: false`, added on open. That is D5/D11's NDA-017
+   migration writing to the very node that now throws.
+
+⚠️ **A `diff` between two mutated copies is not a control.** Both had passed
+through the same mutation, so it measured that they were mutated *alike* — which
+is the one thing it could not fail to find.
+
+✅ **The experiment that separates them**, for whoever takes this: mint a project
+and **never open it**, then call `publishPage` against a backend built from a
+commit *before* `d229bf4b`. Vary one, then the other.
+
+⚠️ **`_updatePorts` builds output ports from `scriptOutputs` *and* from
+`_parseScriptForErrorsAndPorts` over the script text** (`simplejavascript.ts:781`).
+I first read only the `scriptOutputs` branch and claimed there was no script
+derivation; there is. Whether that parser types `Outputs.x()` as a **signal** is
+the open question, and `simplejavascript.ts` itself has not moved since 08-12.
+
+**AC3 stays ❌ for unpublish and duplicate, and it is not this task's to fix.**
+Filed as **D14**.

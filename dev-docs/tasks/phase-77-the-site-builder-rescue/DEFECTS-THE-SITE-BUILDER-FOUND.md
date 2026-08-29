@@ -332,3 +332,85 @@ refuted** and **D8 is a duplicate of phase 76's F15**. The rest stand.
 🔴 **And the platform had *not* moved under them** — which was the assumed reason to re-measure and
 was wrong. D6's file predates its own measurement by three weeks. **The rows were mis-derived, not
 stale**, and a re-measure scoped to "has the platform moved?" would have confirmed all five.
+
+---
+
+## D14 — 🔴 `Outputs.<signal>()` throws in a cloud Function node, and both row actions die at their first node
+
+**Found: SBR-006 §5.12, s19 (2026-08-29). Owner: `NONE`.**
+
+Through the admin overflow menu on `SBR-017 Sign In Drive`:
+
+| action | UI | backend record |
+|---|---|---|
+| Publish | `This page could not be published.` **71 ms** | `error`, HTTP 400, 59 ms |
+| Duplicate | `This page could not be duplicated. A partial copy may exist.` **35 ms** | `error`, HTTP 400, 13 ms |
+| `claimSite` | — | ✅ `success`, 39 ms — **control, same backend** |
+
+`execution_steps` names the node and the throw:
+
+```
+JavaScriptFunction  error
+  function/script-threw: The script threw: Outputs.ready is not a function
+```
+
+Both are the **first** node of their function — the gate that holds the request until its
+parameters arrive — so nothing downstream runs. Reproduced 3/3.
+
+### Why this is a *defect row* and not an SBR-006 acceptance failure
+
+SBR-006 AC3 asks that publish/unpublish/duplicate work from the menu. They cannot, and the reason
+is in the cloud runtime and the template's Function nodes, not in the admin shell. **AC3's
+messaging half is fine** — the refusals are visible and fast, which is SBR-015's fix doing its job;
+the old behaviour was a silent 30 s 504.
+
+### 🔴 It refutes a refutation, and it is only nameable because of DEF-004(a)
+
+SBR-015 s10 marked *"undeclared signal ports"* **REFUTED** on the grounds that *"the artefact
+declares all six."* Measured on the shipped artefact at HEAD:
+
+```
+18 Function nodes call a signal output (Outputs.x())
+ 0 declare it in `scriptOutputs`
+```
+
+Eighteen of eighteen undeclared, `claimSite` included. The refutation was about a different field
+from the one that decides.
+
+🔴 **And SBR-006 s9 and SBR-015 both looked straight at this failure and could not see it** — before
+`d229bf4b` it was an opaque HTTP 400 with zero steps. DEF-004(a) turned "publish does not work"
+into a file, a node and a message inside a day of landing.
+
+### ⚠️ What is NOT established — two variables, neither eliminated
+
+`publishPage` **succeeded in 12 ms at 09:26:44Z** on `SBR-015 AC1 Drive`. So "undeclared ⇒ throws"
+is not the whole story, and the 18/18 census does not settle it either.
+
+1. **The cloud runtime.** `d229bf4b` (12:10Z) is the only commit today touching
+   `packages/nodegx-backend/src`. The process serving the success predates it; the one serving the
+   failures postdates it. **The pre-commit runtime was not run**, and the `node.ts` diff adds step
+   recording without touching how `Outputs.x` is built — so this is a timing coincidence, not a
+   mechanism.
+2. **The project.** 🔴 The two projects' `publishPage` are byte-identical bar node ids — **and that
+   proves nothing**, because both had been rewritten after the success (mtimes 11:17, 12:13) by the
+   same NDA-017 migration (D5/D11). The artefact's gate node carries only `functionScript`; both
+   projects carry `runOnChange-in-pageId: false` added on open. **A diff between two equally
+   mutated copies measured that they were mutated alike** — the one thing it could not fail to find.
+
+✅ **The experiment that separates them:** mint a project and **never open it**, then call
+`publishPage` against a backend built from a commit before `d229bf4b`. Vary one, then the other.
+
+⚠️ `_updatePorts` derives output ports from `scriptOutputs` **and** from
+`_parseScriptForErrorsAndPorts` over the script text (`simplejavascript.ts:781`). Whether that
+parser types `Outputs.x()` as a **signal** is the live question. `simplejavascript.ts` has not moved
+since 08-12, so the Function node itself is not the change.
+
+### Owner
+
+**`NONE`** — deliberately, per this file's own rule. The nearest fit is
+**[DEF-002](../phase-80-the-defects-the-templates-found/DEF-002-THE-DOOR-DOES-NOT-CHECK-CONNECTIONS.md)**,
+and only for **half** of it: "a Function node calls a signal output the node does not declare, and
+the door says nothing" is exactly DEF-002's shape and would be a fourth rule there. The runtime half
+— whether this should throw at all, and what changed between 09:26Z and 14:05Z — fits no open task
+read today. Phase 80 outlives phase 77, so DEF-002 is a live home for the door half if its owner
+wants it.
