@@ -65,10 +65,12 @@ Ranked by *"can you build a normal app without it"*, not by corpus frequency.
 4. ✅ **`String` / `Number` / `Boolean` / `Color` (Variables, 4).** The plain value nodes. Cheap, and
    embarrassing to be missing. **Built, driven and gated in session 35 — §6.**
 
-### Tier 2 — common, not universal
+### Tier 2 — common, not universal  🟡 **2.5 mostly complete, session 40**
 
-5. **Navigation (5).** `Page Inputs` is the important one — no path parameters means no detail
-   pages. Then `Navigate To Path`, `External Link`, the component stack pair.
+5. **Navigation (5).** ✅ **`Page Inputs` built, driven and gated in session 40 — §11**, along
+   with the route patterns and the Navigate url builder, which were both recorded `translated`
+   and both emitted urls react-router could not match. The remaining four — `Navigate To Path`,
+   `External Link`, the component stack pair — are named in §11.8.
 6. **Cloud Services (9).** Mostly **unblocked by EXP-009**, and several may fall out of it for
    free — `Cloud Function`, `Record`, `Set User Properties`, `Sign In With`. Re-measure after
    EXP-009 lands rather than planning against today's list.
@@ -806,3 +808,176 @@ has not measured. It is a slice of its own and it is smaller than this one was.
 `typeOfSource` itself is now dead weight for render sinks and still live for the *format-collapse*
 decision. It was left alone deliberately: deleting it is a separate change with its own goldens,
 and the reason to touch it — sessions adding a line per node — is gone either way.
+
+## §11 Tier 2.5 as built — `Page Inputs`, and the two nodes beside it that were already lying (session 40, 2026-08-29)
+
+**66 → 67 of 127 (52.0% → 52.8%).** `pickerCoverageFloor` raised in the same commit.
+
+One node moved. That undersells the slice, and the ledger says so in its own floor comment now:
+**a detail page needs three things, and all three were broken while two of them were recorded
+`translated`.**
+
+### §11.1 The three things, and which of them the ledger could see
+
+`/note/{id}` is a route that carries a value, a node that reads it, and a Navigate that fills it
+in. Before this slice:
+
+| | node | ledger said | what it actually emitted |
+|---|---|---|---|
+| the route | `Page` / `Router` | translated | `<Route path="/note/{id}">` — react-router has no brace syntax, so this route matched the four literal characters `{id}` and nothing a user could type |
+| the read | `PageInputs` | deferred | nothing, correctly |
+| the Navigate | `RouterNavigate` | translated | `navigate('/note/{id}')` — the same non-url, from the other end |
+
+🔴 **The two `translated` rows are the finding.** The ledger records whether a node is *emitted*,
+never whether what is emitted *works*, and two nodes agreeing with each other about a broken url
+is exactly the shape that looks healthy from every angle the gate can see. Both ends had to be
+built for either to mean anything, and neither moves the number.
+
+### §11.2 The read — one expression, because the runtime has one namespace
+
+`Page Inputs` declares `pathParams` and `queryParams` as separate stringlists and the editor draws
+a port per name. The Router does not keep them separate: it hands the node a single flat map built
+as `Object.assign({}, match.params, urlQuery)` (`router.tsx:456`).
+
+So every `pm-name` read, whichever list declared it, is:
+
+```ts
+pageQuery.get("name") ?? pageParams.name
+```
+
+🔴 **The query is read first and that is not a preference.** Because the merge puts the whole query
+string *over* the matched path segments, `/note/42?id=99` reports `99` — and it does so for a name
+the author only ever listed as a path parameter. The obvious code, path first with query as the
+fallback, is a different function, and it differs on precisely the urls a person can type by hand.
+That single row is the only one in the drive table that distinguishes the two; see §11.5.
+
+`??` and not `||`, for the empty-value case: `?tone=` is `''` on both sides of the runtime's
+`Object.assign`, so it has to win here too rather than falling through to the path.
+
+### §11.3 The gate that stops the export being *better* than the app
+
+A `Page Inputs` on a component the Router does not route reads nothing, ever. The Router feeds the
+node by walking the **page's own** node scope (`router.tsx:602`), and a nested component has a
+scope of its own — so a `Page Inputs` one component below the page is never called and every
+output stays undefined for the life of the app.
+
+`useParams()` has no such boundary. It would read the enclosing route perfectly happily.
+
+🔴 **This is the one divergence a drive cannot find, because it looks like a success.** An export
+that read the value there would work *better* than the project it came from — you would click
+through it, see the right number, and conclude the slice was done. The read is therefore gated on
+the component being a routed page, and the refusal reuses the sentence `dispositionForLogic`
+already gave the node, now hoisted to module scope so the wire and the node cannot drift apart.
+The same fix widened that sentence to both stringlists: the old one asked only about `pathParams`,
+which read as a claim that a query-only node was fine off a route.
+
+### §11.4 The sink table is *narrower* than §10's, and that is the point
+
+An untyped Variable is `unknown` and §10 wraps it in `String(x ?? '')` because it could be an
+object. A url parameter is `string | undefined` — already printable, already absent-able — and
+every emitted sink is optional: a component prop prints as `Name?: string`, a DOM string attribute
+omits itself for `undefined`, and React renders `undefined` in a child position as nothing, which
+is exactly what the runtime's Text node does with it (*"an empty value renders nothing rather than
+the words null or undefined"*, `text.ts`).
+
+| sink | emitted | why |
+|---|---|---|
+| `text`, `string`, `truthy` | the read, bare | nothing to coerce; adding `String(x ?? '')` would be noise dressed as rigour |
+| `boolean` | `!!(x)` | `defaultChecked` and its kin are boolean attributes and the runtime coerces `!!value` at the port |
+| `number`, `opaque` | **refused, with a named reason** | `maxLength={pageQuery.get("n") ?? pageParams.n}` is not TypeScript, and `Number()` around it would be the exporter deciding what a non-numeric url segment means |
+
+The refusal is graded on its **reason** and is distinguishable from both *"has no statically known
+source"* and §10's untyped-variable refusal — three refusals, three different fixes. Its control
+runs down the same function at the same sink with an untyped Variable instead, because a control
+that fails earlier (at plan time, where the wire never becomes a binding at all) would be
+exercising a different mechanism and proving nothing about this one.
+
+### §11.5 What proves it
+
+- **`tests/page-inputs.test.ts`**, 27 cases. Every value that arrives is paired with a control
+  asserting the shape that should not: braces become colons **and** an unbraced path is untouched;
+  the hooks are declared **and** a page whose `Page Inputs` nothing reads declares neither; a
+  parameterised Navigate builds a template **and** an unparameterised one stays a plain literal.
+- **Three mutations, all killed**: reversing the merge order (8 reds), dropping the route-pattern
+  conversion (3), dropping the routing gate (1 — it is a single-purpose gate and one red is the
+  right number).
+- **`npm run build` on the emitted app**, which found two defects 748 unit tests did not (§11.6).
+- **The drive**: 13 rows written down before the app ran, 13 matched.
+- **Two sabotage arms**, separated so each rule is isolated.
+
+### §11.6 🔴 The build found two defects, and both hid in switches TypeScript does not check
+
+**One.** A Navigate whose `{id}` came from a text input's `onTextChanged`, fired by a *button*,
+emitted `navigate(`/note/${encodeURIComponent(event.target.value)}`)` into the button's handler —
+where `event` is the click and has no `.value`. TS18048, TS18047 and TS2339 on one line.
+
+The hole was `actionsValidIn`'s `case 'navigate': return true`. That was **correct** while a
+navigation carried nothing but a string, and became a lie the moment it carried expressions.
+
+⚠️ **The emitter had the identical hole in `actionExprsOf` (`case 'navigate': return []`)**, which
+feeds the `usesPayload` sweep — so a Navigate filling a parameter from a received event would have
+emitted a `useSignal` callback taking no argument around a body that read one. Two switches, same
+shape, same slice. Neither produced a compiler error: `actionsValidIn`'s callback has no return
+annotation, so `every`'s `unknown` swallows a missing case — the file already warns about this at
+`date-now-read`, and this is the second time it has bitten.
+
+**Adding a field to a `HandlerAction` has to be carried to every switch by hand, and `tsc` will
+not say which.**
+
+**Two.** `encodeURIComponent` is typed `string | number | boolean` and does **not** accept
+`undefined`. A page parameter fed by a Variable read is `string | undefined`, because a variable
+boots undefined — TS2345.
+
+The guard is `encodeURIComponent(x ?? '')`, applied only where the expression is maybe-undefined
+(a literal gets no fallback, and there is a control for that). ⚠️ **The runtime does neither.**
+Handed an undefined value the Router skips the substitution — leaving the literal `{id}` in the
+path — and then appends `?id=undefined` beside it, because the leftover loop finds the key the
+skipped branch never deleted. Three readings of one function, no two agreeing. There is no
+faithful url to emit, so this picks the one that is visibly *nothing*: an empty segment matches no
+route and the app stays put, where `/note/undefined` would render a detail page for a note called
+"undefined", which looks like data.
+
+The same reasoning is why a braced segment with **nothing** on its port defers by name rather than
+reproducing the runtime. It costs nothing that worked before — the old translation emitted
+`navigate('/note/{id}')`, a url react-router never matched.
+
+### §11.7 The project, the drive, and what the sabotage showed
+
+**Note Desk**, authored through the MCP over stdio (§2's rule — not hand-edited JSON): `Pages/Home`
+with three ways into the detail page (a fixed id, a fixed id carrying a `tone` query parameter, and
+an id typed into a field and held in a Variable), and `Pages/Note` at `note/{id}` reading both back
+out, with a badge gated on `mounted` so its absence is an absence from the DOM.
+
+⚠️ The typed-id path had to go **through a Variable**. Wiring the input's `onTextChanged` straight
+into the Navigate is the defect in §11.6, and the export now defers it — which is how the project
+came to be authored the way a person would have had to author it anyway.
+
+13/13 rows matched, including **D9** — `/note/42?id=99` reading `99`.
+
+**Sabotage B** (merge order reversed, nothing else) moved **exactly one row**: D9, from `99` to
+`42`. That is the strongest single result here — it confirms both that the drive can fail and that
+D9 is the only row in the table with any power to detect the merge order.
+
+**Sabotage A** (braces kept in the route pattern) moved 10 of 13, by the predicted mechanism: every
+`/note/…` url falls to the `*` route and redirects home.
+
+🔴 **One prediction was wrong, and it is worth keeping.** D4 — *"the QUIET MODE badge is absent"* —
+**still passed** under sabotage A, because on the redirected-to home page there is no badge either.
+An absence check was satisfied by the wrong absence. It is only sound as a pair with D7 (*badge
+present*), which did move; D4 alone would pass on an app that rendered nothing at all. The favicon
+404 appears in every arm and is not a finding.
+
+### §11.8 What this leaves
+
+- **The other four Navigation nodes** — `Navigate To Path`, `External Link`, and the component
+  stack pair — are the remainder of Tier 2.5 and each is small on its own. `External Link` is
+  `window.open(link, target, params)` and is the cheapest node left anywhere in the ledger.
+  ⚠️ `Navigate To Path` has a wrinkle the others do not: it consults the project's
+  `navigationPathType` setting (hash vs path), and the scaffold emits a `BrowserRouter`
+  unconditionally. That is a pre-existing decision this slice did not touch, and it is that node's
+  first question rather than an afterthought.
+- **The store-key gate (§10.5) is untouched and still the same shape**, one node over.
+- **`Page Stack`** and the component-stack family also feed `Page Inputs` at runtime
+  (`_setPageParams` has two callers). This slice translated the Router's half only; a component
+  stack does not route in the export at all, so the gate in §11.3 refuses those reads for the
+  right reason today, by accident of the same rule.

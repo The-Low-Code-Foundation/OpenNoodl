@@ -45,6 +45,12 @@ const SIMPLE_REF = /^[A-Za-z_$][A-Za-z0-9_$.]*(\(\))?$/;
  */
 const SESSION_LOCAL = 'session';
 
+/** EXP-011 Tier 2.5 — `useParams()`, this page's matched path segments. */
+const PAGE_PARAMS_LOCAL = 'pageParams';
+
+/** EXP-011 Tier 2.5 — the `URLSearchParams` half of `useSearchParams()`. */
+const PAGE_QUERY_LOCAL = 'pageQuery';
+
 /** Runtime signal outputs that have a direct DOM event equivalent. Anything else is reported. */
 const EVENT_ATTRS: Record<string, string> = {
   onClick: 'onClick',
@@ -263,8 +269,19 @@ export function emitComponent(
   // Earned by a surviving read, exactly as a variable earns its `useValue` — a `User` node whose
   // every read was gated leaves no hook behind (USER-FAMILY-TARGET §4c).
   let usesSession = false;
+  /**
+   * Earned by a surviving `page-param` read, exactly as `usesSession` is earned — a `Page
+   * Inputs` node whose every read was gated leaves no hook behind (EXP-011 Tier 2.5).
+   *
+   * One flag for both hooks, because the read genuinely uses both: the query overrides the path
+   * segment, so neither half of the expression is optional.
+   */
+  let usesPageParams = false;
   const collectExprUse = (expr: ValueExpr) => {
     if (expr.kind === 'session-get') usesSession = true;
+    // EXP-011 Tier 2.5 — the handler half; the render half is in `hookExprSources`, per the
+    // two-walker warning there.
+    if (expr.kind === 'page-param') usesPageParams = true;
     if (expr.kind === 'store-get') usedVariableNames.add(expr.variableName);
     if (expr.kind === 'store-key-get') usedStoreNames.add(expr.storeName);
     if (expr.kind === 'state-get') referencedStateNames.add(expr.name);
@@ -447,6 +464,8 @@ export function emitComponent(
     // `session.authenticated` in four bindings with no `const session` above them, and only
     // building the emitted app caught it (USER-FAMILY-TARGET §9).
     if (expr.kind === 'session-get') usesSession = true;
+    // EXP-011 Tier 2.5, the same clause twice — the render half of the page-parameter hooks.
+    if (expr.kind === 'page-param') usesPageParams = true;
     // The second walker, per the warning above: a render binding on an HTTP output reads the
     // state row the request writes, and the row has to survive the `referencedStateNames` filter.
     if (expr.kind === 'http-out' && expr.viaState !== undefined) referencedStateNames.add(expr.viaState);
@@ -543,6 +562,11 @@ export function emitComponent(
     'event',
     'navigate',
     'payload',
+    // Reserved unconditionally, as `navigate` is: a name that is a hook local in some components
+    // and a variable's local in others would make the same graph emit two different identifiers
+    // depending on what else the page happens to contain.
+    PAGE_PARAMS_LOCAL,
+    PAGE_QUERY_LOCAL,
     'styles',
     'joinClasses',
     SESSION_LOCAL,
@@ -702,6 +726,10 @@ export function emitComponent(
         return true; // every emitted component prop is optional
       case 'store-get':
         return true; // variables boot undefined until their first write (state.ts)
+      // EXP-011 Tier 2.5: `useParams()` answers undefined for a segment this route has not
+      // matched, and `URLSearchParams.get` answers null for a key the url does not carry.
+      case 'page-param':
+        return true;
       case 'store-key-get':
         return !(storeByName.get(expr.storeName)?.keys.find((k) => k.key === expr.key)?.required ?? false);
       // `authenticated` is a real boolean (`model !== undefined`); the rest are absent while
@@ -865,6 +893,25 @@ export function emitComponent(
         return propName(expr.name);
       case 'input-text':
         return 'event.target.value';
+      /**
+       * A url parameter (EXP-011 Tier 2.5) — the query first, the path segment behind it.
+       *
+       * 🔴 **The order is the runtime's merge, not a preference.** The Router builds one flat
+       * map as `Object.assign({}, match.params, urlQuery)` (`router.tsx:456`), so a query
+       * parameter of the same name wins over the matched path segment — `/product/42?id=99`
+       * reads `99`. Writing it the other way round would be the more obvious code and would
+       * disagree with the running app on exactly the urls a user can type by hand.
+       *
+       * `??` and not `||`: an empty query value (`?q=`) is `''` in both halves of the runtime's
+       * `Object.assign`, so it must win here too rather than falling through to the path.
+       */
+      case 'page-param': {
+        const key = JSON.stringify(expr.name);
+        const segment = /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(expr.name)
+          ? `${PAGE_PARAMS_LOCAL}.${expr.name}`
+          : `${PAGE_PARAMS_LOCAL}[${key}]`;
+        return `${PAGE_QUERY_LOCAL}.get(${key}) ?? ${segment}`;
+      }
       // A state read is the render closure's value in both modes (CONTROLLED-STATE §3.2);
       // chain-order correctness inside handlers is the plan-side snapshot rule's job.
       case 'state-get':
@@ -1219,8 +1266,49 @@ export function emitComponent(
   }
   const actionCode = (action: HandlerAction, indent = 0): string => {
     switch (action.kind) {
-      case 'navigate':
-        return `navigate('${action.to}')`;
+      /**
+       * The url the runtime's `getRelativeURL` would build, built here instead.
+       *
+       * `encodeURIComponent` on every value is the runtime's own call, and it is on the query
+       * side too — `router.tsx:630` encodes each leftover value before joining. A
+       * `URLSearchParams` here would be the more idiomatic React and the wrong semantics: it
+       * percent-encodes to a different table (a space becomes `+`), which the runtime's reader
+       * then decodes back to a space, so the two would agree on the value and disagree on the
+       * url the address bar shows.
+       */
+      case 'navigate': {
+        /**
+         * 🔴 `encodeURIComponent` is typed `string | number | boolean` — **not** `undefined` —
+         * and a page parameter fed by a Variable read is `string | undefined`, because a
+         * variable boots undefined. `encodeURIComponent(typedId.get())` is a TS2345, and the
+         * only thing that found it was `npm run build` on the emitted app.
+         *
+         * ⚠️ `?? ''` rather than `String(x)`, and the runtime does neither. Handed an undefined
+         * value the Router skips the substitution (leaving the literal `{id}` in the path) and
+         * then appends `?id=undefined` beside it, because the leftover loop finds the key the
+         * skipped branch never deleted — three readings of one function, no two agreeing. There
+         * is no faithful url to emit, so this picks the one that is visibly *nothing*: an empty
+         * segment matches no route and the app stays put, where `/note/undefined` would render a
+         * detail page for a note called "undefined", which looks like data.
+         */
+        const urlValue = (expr: ValueExpr): string => {
+          const code = exprCode(expr, 'handler');
+          return maybeUndefined(expr) ? `encodeURIComponent(${code} ?? '')` : `encodeURIComponent(${code})`;
+        };
+        const filled = action.pathParams.reduce(
+          (path, param) => path.replace(`{${param.name}}`, `\${${urlValue(param.expr)}}`),
+          action.to
+        );
+        const query = action.query
+          .map((param) => `${encodeURIComponent(param.name)}=\${${urlValue(param.expr)}}`)
+          .join('&');
+        const url = query === '' ? filled : `${filled}?${query}`;
+        // A url with nothing substituted into it is the string it always was — a plain literal
+        // reads better than a template with no holes, and the two are the same value.
+        return action.pathParams.length === 0 && action.query.length === 0
+          ? `navigate('${url}')`
+          : `navigate(\`${url}\`)`;
+      }
       // The optional call is the runtime's hasOutput/unwired case: a parent that passes
       // nothing gets nothing (COMPONENT-OUTPUTS-TARGET §3).
       case 'output-signal':
@@ -1501,7 +1589,13 @@ export function emitComponent(
   if (radioNameLocals.size > 0) reactImports.push('useId');
   if (reactImports.length > 0) externalImports.push(`import { ${reactImports.sort().join(', ')} } from 'react';`);
   if (plan.popups.length > 0) externalImports.push(`import { createPortal } from 'react-dom';`);
-  if (usesNavigate) externalImports.push(`import { useNavigate } from 'react-router-dom';`);
+  // One import line for whichever router hooks survived, in a stable order — three separate
+  // `import … from 'react-router-dom'` lines would be legal and would churn the diff.
+  const routerHooks = [
+    ...(usesNavigate ? ['useNavigate'] : []),
+    ...(usesPageParams ? ['useParams', 'useSearchParams'] : [])
+  ];
+  if (routerHooks.length > 0) externalImports.push(`import { ${routerHooks.join(', ')} } from 'react-router-dom';`);
 
   const internalImports = new Map<string, string>(); // specifier → line
   // One import per api module, carrying the reads and the writes together — the record verbs
@@ -1639,6 +1733,10 @@ export function emitComponent(
   const untypedVariableOf = (source: BindingSource): string | null =>
     source.kind === 'store' && source.untyped === true ? source.variableName : null;
 
+  /** The parameter name when this source is a bare `Page Inputs` read (EXP-011 Tier 2.5). */
+  const pageParamOf = (source: BindingSource): string | null =>
+    source.kind === 'computed' && source.expr.kind === 'page-param' ? source.expr.name : null;
+
   const rawBindingExpr = (source: BindingSource): string | null => {
     if (source.kind === 'prop') return propName(source.name);
     if (source.kind === 'store') return hookLocals.get(source.variableName) ?? null;
@@ -1659,7 +1757,40 @@ export function emitComponent(
    */
   const bindingExpr = (source: BindingSource, sink: Sink): string | null => {
     const base = rawBindingExpr(source);
-    if (base === null || untypedVariableOf(source) === null) return base;
+    if (base === null) return base;
+    /**
+     * A url parameter is `string | undefined`, which is a **narrower** question than §10's, and
+     * gets a narrower table (EXP-011 Tier 2.5).
+     *
+     * 🔴 **Four of the six sinks need nothing, and adding `String(x ?? '')` to them would be
+     * noise dressed as rigour.** §10 wraps an untyped Variable because it is `unknown` — it
+     * could be an object, and a sink has to be told what to do with one. Here the value is
+     * already a string or already absent, and every emitted sink is optional: a component prop
+     * prints as `Name?: string`, a DOM string attribute takes `undefined` by omitting itself,
+     * and React renders `undefined` in a child position as nothing — which is precisely what the
+     * runtime's Text node does with it ("an empty value renders nothing rather than the words
+     * null or undefined", text.ts).
+     *
+     * The two that do need an answer get the same one §10 gives them, for the same reasons.
+     */
+    if (pageParamOf(source) !== null) {
+      switch (sink) {
+        case 'text':
+        case 'string':
+        case 'truthy':
+          return base;
+        // `defaultChecked`, `muted`, `controls` and their kin are boolean attributes, and the
+        // runtime coerces `!!value` at the port — so the cast is the runtime's, not an invention.
+        case 'boolean':
+          return `!!(${base})`;
+        // `maxLength={pageQuery.get("n") ?? pageParams.n}` is not TypeScript, and `Number()`
+        // around it would be this exporter inventing what a non-numeric url segment means.
+        case 'number':
+        case 'opaque':
+          return null;
+      }
+    }
+    if (untypedVariableOf(source) === null) return base;
     switch (sink) {
       // The runtime's Text node puts whatever the variable holds through `String()` on its way
       // to the DOM, and a string attribute reaches the DOM the same way (§8.2's coercion).
@@ -1682,10 +1813,19 @@ export function emitComponent(
 
   /** Why a binding produced no code, so a refused untyped source does not read as a missing one. */
   const noSourceReason = (source: BindingSource, sink: Sink): string => {
-    const name = untypedVariableOf(source);
-    return name !== null && (sink === 'number' || sink === 'opaque')
-      ? `reads variable "${name}", which has no statically-typed writer, into a sink this slice cannot coerce it to`
-      : 'has no statically known source';
+    if (sink === 'number' || sink === 'opaque') {
+      const variable = untypedVariableOf(source);
+      if (variable !== null) {
+        return `reads variable "${variable}", which has no statically-typed writer, into a sink this slice cannot coerce it to`;
+      }
+      // EXP-011 Tier 2.5. Distinguishable from the line above and from "no statically known
+      // source" — three refusals with three different fixes, which §10.4 is the rule about.
+      const param = pageParamOf(source);
+      if (param !== null) {
+        return `reads page parameter "${param}", which the url delivers as text or not at all, into a sink this slice will not invent a cast for`;
+      }
+    }
+    return 'has no statically known source';
   };
 
   /** The state param a stateful control replaces with its controlled attribute (§4c). */
@@ -2749,6 +2889,11 @@ export function emitComponent(
       : `export function ${symbol}() {`;
   body.push(signature);
   if (usesNavigate) body.push('  const navigate = useNavigate();');
+  // EXP-011 Tier 2.5. `useSearchParams` returns a tuple whose setter this slice never uses —
+  // nothing in the vocabulary writes the query string.
+  if (usesPageParams) {
+    body.push(`  const ${PAGE_PARAMS_LOCAL} = useParams();`, `  const [${PAGE_QUERY_LOCAL}] = useSearchParams();`);
+  }
   for (const variableName of hookVariables) {
     body.push(`  const ${hookLocals.get(variableName)} = useValue(${variableByName.get(variableName)!.exportName});`);
   }
@@ -2792,6 +2937,7 @@ export function emitComponent(
   }
   if (
     usesNavigate ||
+    usesPageParams ||
     hookVariables.length > 0 ||
     hookStoreKeys.length > 0 ||
     hookCollections.length > 0 ||
@@ -2940,7 +3086,16 @@ export function emitComponent(
       // are, and a reader of this function wants them (the `usesPayload` test below is one).
       case 'date-now-read':
         return a.then.flatMap(actionExprsOf);
+      /**
+       * 🔴 **A navigation's page parameters are expressions, and this sweep is what finds
+       * them.** `usesPayload` walks this list to decide whether the emitted `useSignal`
+       * callback takes a `(payload)` argument; returning `[]` here meant a Navigate filling
+       * `{id}` from a received event emitted a callback with no argument and a body that read
+       * one — the same shape §10.3's duplicate attribute had, and equally a build failure
+       * rather than a wrong value.
+       */
       case 'navigate':
+        return [...a.pathParams.map((p) => p.expr), ...a.query.map((p) => p.expr)];
       case 'output-signal':
         return [];
     }

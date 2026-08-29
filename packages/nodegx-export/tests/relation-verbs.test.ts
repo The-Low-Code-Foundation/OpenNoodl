@@ -191,7 +191,31 @@ describe('§17 — Add Record Relation: the gates, in the order validateInputs r
 });
 
 describe('§17 — the Record node', () => {
-  it('a Record whose Id is fed by an untranslated node names that feeder — the corpus case', () => {
+  it('a Record whose Id is fed by an untranslated node names that feeder', () => {
+    const source = cloneIr();
+    addNode(source, ADMIN, 'uniqueId', 'Unique Id', {});
+    addNode(source, ADMIN, 'puppyModel', 'DbModel2', {
+      collectionName: lit('Puppy'),
+      idSource: lit('explicit')
+    });
+    wire(source, ADMIN, 'uniqueId', 'id', 'puppyModel', 'modelId');
+    expect(reasonFor(source, ADMIN, 'puppyModel')).toBe('its Id is fed by Unique Id, which has no statically known source');
+  });
+
+  /**
+   * EXP-011 Tier 2.5 moved this one. `PageInputs` was this file's example of an untranslated
+   * feeder — a Record whose Id came from a url parameter deferred *naming Page Inputs*, and the
+   * assertion above used to read `its Id is fed by PageInputs`. Now that a `pm-` read resolves,
+   * the Record falls through to its own wall.
+   *
+   * 🔴 **Kept as a test rather than deleted, because it is the more useful assertion of the
+   * two.** "The feeder is named" is tested above with a feeder that really is untranslated; what
+   * this pins is that closing one gate does not silently open the node behind it. The reason it
+   * now gives is the well-formed Record's reason, identical to the last test in this file — so a
+   * future slice that builds single-record reads will see both move together, and a slice that
+   * accidentally lets a Record through will see exactly this line fail.
+   */
+  it('a Record whose Id is a Page Inputs parameter clears the feeder gate and hits the Record wall', () => {
     const source = cloneIr();
     addNode(source, ADMIN, 'pageInputs', 'PageInputs', { pathParams: lit('id') });
     addNode(source, ADMIN, 'puppyModel', 'DbModel2', {
@@ -199,7 +223,9 @@ describe('§17 — the Record node', () => {
       idSource: lit('explicit')
     });
     wire(source, ADMIN, 'pageInputs', 'pm-id', 'puppyModel', 'modelId');
-    expect(reasonFor(source, ADMIN, 'puppyModel')).toBe('its Id is fed by PageInputs, which has no statically known source');
+    expect(reasonFor(source, ADMIN, 'puppyModel')).toBe(
+      'a single-record read by Id has no shape in the api stub — a collection query is the only read this slice emits'
+    );
   });
 
   it('a Record bound to the enclosing repeater row hits the row-identity wall by name', () => {
@@ -236,30 +262,51 @@ describe('§17 — the Record node', () => {
   });
 });
 
-describe('§17 — PageInputs: a path parameter with no route to carry it', () => {
-  it('an unrouted component reading path parameters says so, and names them', () => {
+describe('§17 — PageInputs: a page parameter with no route to carry it', () => {
+  it('an unrouted component reading page parameters says so, and names them', () => {
     const source = cloneIr();
     addNode(source, UNROUTED, 'pageInputs', 'PageInputs', { pathParams: lit('id') });
     expect(reasonFor(source, UNROUTED, 'pageInputs')).toBe(
-      'it reads the path parameters "id", but no Router routes this component, so there is no URL to read them from'
+      'it reads the page parameters "id", but no Router routes this component, so there is no URL to read them from'
+    );
+  });
+
+  /**
+   * EXP-011 Tier 2.5 added this row. The old shape of the reason asked only about `pathParams`,
+   * which read as a claim that a node declaring only *query* parameters was fine off a route —
+   * and it is not: the Router feeds a Page Inputs by walking the page's own node scope, so off a
+   * route neither list is ever filled.
+   */
+  it('the same is true of a component reading only query parameters', () => {
+    const source = cloneIr();
+    addNode(source, UNROUTED, 'pageInputs', 'PageInputs', { queryParams: lit('sort') });
+    expect(reasonFor(source, UNROUTED, 'pageInputs')).toBe(
+      'it reads the page parameters "sort", but no Router routes this component, so there is no URL to read them from'
     );
   });
 
   /**
    * The control the reason above needs: on a component the Router *does* route, the same node
-   * defers for the ordinary reason. Without this row, "no Router routes this component" would
-   * read as true of every PageInputs, which is the claim it is not making.
+   * does **not** give the no-route reason. Without this row, "no Router routes this component"
+   * would read as true of every PageInputs, which is the claim it is not making.
+   *
+   * ⚠️ The reason it gives instead moved in Tier 2.5, and the new one is about *this node* rather
+   * than about the slice: a routed Page Inputs nothing reads is inert in the running app too.
    */
-  it('a routed page reading path parameters defers for the ordinary slice reason instead', () => {
+  it('a routed page whose parameters nothing reads is inert, and says that instead', () => {
     const source = cloneIr();
     addNode(source, ADMIN, 'pageInputs', 'PageInputs', { pathParams: lit('id') });
-    expect(reasonFor(source, ADMIN, 'pageInputs')).toBe('a page path parameter is not translated in this slice');
+    expect(reasonFor(source, ADMIN, 'pageInputs')).toBe(
+      'nothing reads any of its parameters, so it contributes no value to the page'
+    );
   });
 
-  it('a PageInputs declaring nothing is the ordinary reason on either side of the route', () => {
+  it('a PageInputs declaring nothing off a route still names the route as the problem', () => {
     const source = cloneIr();
     addNode(source, UNROUTED, 'pageInputs', 'PageInputs');
-    expect(reasonFor(source, UNROUTED, 'pageInputs')).toBe('a page path parameter is not translated in this slice');
+    expect(reasonFor(source, UNROUTED, 'pageInputs')).toBe(
+      'it is a Page Inputs on a component no Router routes, so there is no URL to read from'
+    );
   });
 });
 
@@ -352,7 +399,7 @@ describe('§17 — a component with no visual root gets the named reasons too', 
     const source = withLogicOnlyComponent();
     addNode(source, LOGIC_ONLY, 'pageInputs', 'PageInputs', { pathParams: lit('id') });
     expect(reasonFor(source, LOGIC_ONLY, 'pageInputs')).toBe(
-      'it reads the path parameters "id", but no Router routes this component, so there is no URL to read them from'
+      'it reads the page parameters "id", but no Router routes this component, so there is no URL to read them from'
     );
   });
 

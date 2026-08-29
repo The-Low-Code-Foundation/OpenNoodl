@@ -27,7 +27,7 @@
 import { CatalogIndex } from '../catalog';
 import { ComponentIR, ConnectionIR, Disposition, ExportIR, KitNodeIR, ModuleIR, NodeIR } from '../ir/types';
 import { componentReachability, Reachability } from './reach';
-import { routedPages } from '../emit/scaffold';
+import { ScaffoldPage, routedPages } from '../emit/scaffold';
 import { pascalCase } from '../emit/naming';
 import { DateHelper } from '../emit/dateLib';
 import { CONTENT_PARAMS, iconSourceOf, StyleRole } from '../emit/style';
@@ -132,6 +132,14 @@ const HTTP_VALUE_OUTPUTS = ['response', 'statusCode', 'responseHeaders'];
 
 /** `Now` (EXP-011 Tier 1.3) — the one date node that is not a pure function of its inputs. */
 const NOW_TYPE = 'net.noodl.Now';
+
+/**
+ * `Page Inputs` (EXP-011 Tier 2.5) — the node that reads this page's url parameters.
+ *
+ * ⚠️ The catalog type name has no `net.noodl.` prefix and no space, unlike its display name
+ * "Page Inputs" and unlike every other node in its category bar `Page`. It is `PageInputs`.
+ */
+const PAGE_INPUTS = 'PageInputs';
 
 /** `Now`'s three value outputs, and what each reads off the instant. */
 const NOW_OUTPUTS: Record<string, 'date' | 'timestamp' | 'iso'> = {
@@ -362,6 +370,25 @@ export type ValueExpr =
   | { kind: 'store-get'; variableName: string }
   | { kind: 'store-key-get'; storeName: string; key: string }
   | { kind: 'payload'; key: string; receiverId: string }
+  /**
+   * A `Page Inputs` parameter (EXP-011 Tier 2.5) — one `pm-*` output, read from the url.
+   *
+   * 🔴 **One expression for both stringlists, because the runtime has one namespace.** The node
+   * declares `pathParams` and `queryParams` separately and the editor draws a port per name, but
+   * the Router hands the node a single flat map built as
+   * `Object.assign({}, match.params, urlQuery)` (`router.tsx:456`) — so a name in both lists is
+   * one port, and **every** query parameter in the url overrides the path segment of the same
+   * name, whether or not the author listed it. `?id=99` on `/product/42` reads `99`.
+   *
+   * That is why this carries no `from: 'path' | 'query'` discriminator: a read that consulted
+   * only the list the name was declared in would be a different function from the one the
+   * running app computes, and would differ exactly on the urls a user can type by hand.
+   *
+   * Maybe-undefined by definition — an unmatched segment or an absent query key — and it folds
+   * at its sinks the way the runtime's own Text node folds it ("an empty value renders nothing
+   * rather than the words null or undefined", text.ts).
+   */
+  | { kind: 'page-param'; name: string }
   | { kind: 'literal'; value: string | number | boolean }
   | { kind: 'format'; parts: Array<string | ValueExpr> }
   | { kind: 'logical'; op: 'and' | 'or'; operands: ValueExpr[] }
@@ -506,7 +533,23 @@ export type ValueExpr =
     };
 
 export type HandlerAction =
-  | { kind: 'navigate'; to: string }
+  /**
+   * A Router navigation (EXP-011 Tier 2.5). `to` is the target page's **authored** url path,
+   * braces and all, and `pathParams` names the expression each braced segment is filled from —
+   * the emitter builds the concrete url, because it is the only place the values exist.
+   *
+   * ⚠️ `query` is the runtime's *leftover* rule, not a second authored list: `getRelativeURL`
+   * substitutes every `pm-` value whose name appears in the path and appends **whatever is
+   * left** as a query string (`router.tsx:625-633`). So a `pm-sort` on a Navigate whose target
+   * path has no `{sort}` is `?sort=…`, and that is a feature authors use rather than an
+   * accident — it is how a page takes an optional parameter without putting it in the route.
+   */
+  | {
+      kind: 'navigate';
+      to: string;
+      pathParams: Array<{ name: string; expr: ValueExpr }>;
+      query: Array<{ name: string; expr: ValueExpr }>;
+    }
   | { kind: 'emit'; channelName: string; payload: Array<{ key: string; expr: ValueExpr }> }
   | { kind: 'store-set'; variableName: string; expr: ValueExpr }
   | { kind: 'globalstore-set'; storeName: string; key: string; expr: ValueExpr }
@@ -1152,8 +1195,15 @@ export interface ComponentPlan {
 export interface ProjectPlan {
   plans: ComponentPlan[];
   byLegacyPath: Map<string, ComponentPlan>;
-  /** Legacy component path → exported url path, from the scaffold's route table. */
-  urlPathByLegacy: Map<string, string>;
+  /**
+   * Legacy component path → the scaffold's route-table row for it.
+   *
+   * 🔴 **The whole row, not the url string it used to hold.** A parameterised page has three
+   * paths — the authored `/product/{id}`, the react-router pattern `/product/:id` and the
+   * concrete url a Navigate builds — and a `Map<string, string>` can only carry one of them.
+   * Carrying the row means the route table and the navigations into it cannot disagree.
+   */
+  pageByLegacy: Map<string, ScaffoldPage>;
   /** Collections needing an api stub module, in first-use order. */
   stubCollections: string[];
   /** App-wide Variables, discovery order — src/stores/variables.ts when non-empty. */
@@ -1184,7 +1234,7 @@ export interface ProjectPlan {
 
 export function planProject(ir: ExportIR, catalog: CatalogIndex): ProjectPlan {
   const pages = routedPages(ir);
-  const urlPathByLegacy = new Map(pages.map((p) => [`/${p.componentPath}`, p.urlPath]));
+  const pageByLegacy = new Map(pages.map((p) => [`/${p.componentPath}`, p]));
   const pageFileByPath = new Map(pages.map((p) => [p.componentPath, { fileBase: p.fileBase, symbol: p.symbol }]));
   const registry = collectAppState(ir);
 
@@ -1203,7 +1253,7 @@ export function planProject(ir: ExportIR, catalog: CatalogIndex): ProjectPlan {
       ir,
       catalog,
       registry,
-      urlPathByLegacy,
+      pageByLegacy,
       pageFileByPath,
       usedPageNames,
       usedComponentNames,
@@ -1269,7 +1319,7 @@ export function planProject(ir: ExportIR, catalog: CatalogIndex): ProjectPlan {
   return {
     plans,
     byLegacyPath,
-    urlPathByLegacy,
+    pageByLegacy,
     stubCollections,
     variables: [...registry.variables.values()],
     channels: [...registry.channels.values()],
@@ -1285,7 +1335,7 @@ function planComponent(
   ir: ExportIR,
   catalog: CatalogIndex,
   registry: AppStateRegistry,
-  urlPathByLegacy: Map<string, string>,
+  pageByLegacy: Map<string, ScaffoldPage>,
   pageFileByPath: Map<string, { fileBase: string; symbol: string }>,
   usedPageNames: Set<string>,
   usedComponentNames: Set<string>,
@@ -1724,6 +1774,12 @@ function planComponent(
     if (byPort.size > 0) model2Props.set(node.id, byPort);
     dispositions[node.id] = { kind: 'collapsed', into: plan.rootId ?? node.id };
   }
+
+  /**
+   * Whether the Router serves this component as a page — the condition a `Page Inputs` read
+   * depends on, spelled from the same map the file identity above is taken from.
+   */
+  const isRoutedPage = pageFileByPath.has(component.path);
 
   const declaresProp = (name: string): boolean => plan.props.some((p) => p.name === name);
   /** The named drop, spelled once so both read sites (expression and binding) say the same thing. */
@@ -3375,6 +3431,51 @@ function planComponent(
       }
       return { kind: 'prop', name };
     }
+    /**
+     * `Page Inputs` (EXP-011 Tier 2.5): a `pm-name` read is that url parameter.
+     *
+     * ⚠️ Deliberately **not** gated on the node's own `pathParams`/`queryParams` stringlists.
+     * The runtime's `registerOutputIfNeeded` registers any `pm-*` a wire asks for, so a name
+     * dropped from the stringlist after the wire was drawn still reads — as `undefined`, which
+     * is what this expression already means. Gating here would turn a live-but-empty read into
+     * a *deferral*, and those are the two readings §10.4 insists stay distinguishable.
+     */
+    if (fromNode.type === PAGE_INPUTS && fromProperty.startsWith('pm-')) {
+      const name = fromProperty.slice('pm-'.length);
+      if (name === '') {
+        ctx.defer = 'its parameter has an empty name';
+        return null;
+      }
+      /**
+       * 🔴 **A `Page Inputs` off a routed page reads nothing, and the export must read nothing
+       * too.** The Router feeds the node by walking `nodeScope.getNodesWithType('PageInputs')`
+       * over the *page's own* scope (`router.tsx:602`), and a nested component has its own
+       * scope — so a `Page Inputs` one component down from the page is never called at all and
+       * its every output stays undefined for the life of the app.
+       *
+       * React has no such boundary: `useParams()` in a nested component happily reads the
+       * enclosing route's parameters. Translating this without the gate would produce an export
+       * that **works better than the app it was exported from**, which is the one direction of
+       * divergence that cannot be found by driving the export — it looks like a success.
+       */
+      if (!isRoutedPage) {
+        ctx.defer = pageInputsUnroutedReason(fromNode);
+        return null;
+      }
+      /**
+       * The node collapses through `logicNodeIds`, the idiom every other value source here uses,
+       * rather than through a set of its own.
+       *
+       * 🔴 That is not tidiness — it is what makes the collapse survive a *speculative* resolve.
+       * `resolveExpr` is called to ask questions as well as to answer them (the record-neighbour
+       * sweep calls it just to find out whether a Record's Id feeder is translatable), and a
+       * bespoke "this node was read" set would mark the node translated on the strength of a
+       * question whose answer was then thrown away. `logicNodeIds` is only drained by a pass
+       * that *kept* the expression.
+       */
+      ctx.logicNodeIds.push(fromNode.id);
+      return { kind: 'page-param', name };
+    }
     if (fromNode.type === 'Component Inputs') {
       if (!declaresProp(fromProperty)) {
         ctx.defer = undeclaredPropReason(fromProperty);
@@ -3659,6 +3760,9 @@ function planComponent(
       case 'prop':
       case 'store-get':
       case 'payload':
+      // A url parameter is absent whenever the url does not carry it — an unmatched segment or
+      // a query key nobody typed (EXP-011 Tier 2.5).
+      case 'page-param':
         return true;
       case 'store-key-get':
         return !(registry.stores.get(expr.storeName)?.keys.find((k) => k.key === expr.key)?.required ?? false);
@@ -3914,6 +4018,19 @@ function planComponent(
         return registry.stores.get(expr.storeName)?.keys.find((k) => k.key === expr.key)?.tsType ?? 'unknown';
       case 'session-get':
         return expr.field === 'authenticated' ? 'boolean' : 'string';
+      /**
+       * `unknown`, **not `string`** — and the difference is the `dateToString` trap below, one
+       * node family over (EXP-011 Tier 2.5).
+       *
+       * A url parameter really is a string when it is there. But this function's consumer is the
+       * format-collapse decision, and a single-placeholder String Format collapses to the bare
+       * expression when its one part is `string`-typed. A page parameter is **undefined whenever
+       * the url does not carry it**, so collapsed it prints the word "undefined" where the
+       * runtime substitutes `''`. Left uncollapsed, the format's own `?? ''` interpolation does
+       * what the runtime does. This is the property §10.2 warned is not a type.
+       */
+      case 'page-param':
+        return 'unknown';
       case 'payload':
         return registry.channels.get(channelNameOf(nodeById.get(expr.receiverId)!)!)?.payload.find((p) => p.key === expr.key)?.tsType ?? 'unknown';
       case 'literal':
@@ -4944,6 +5061,75 @@ function planComponent(
     };
   };
 
+  /**
+   * A Router navigation with its page parameters (EXP-011 Tier 2.5).
+   *
+   * The runtime builds the url in `getRelativeURL` (`router.tsx:607-643`) and this is that
+   * function, resolved at generation time instead of at navigate time: every `{name}` the
+   * target page's path declares is filled from the `pm-name` value, and everything left over
+   * becomes a query parameter.
+   *
+   * 🔴 **A braced segment with no `pm-` value defers, and does not reproduce what the runtime
+   * does.** The runtime leaves the literal text `{id}` in the url *and* appends `?id=undefined`
+   * beside it, because the substitution loop skips the key and the leftover loop then finds it
+   * still there. That is not a navigation any author means, and it is the one place in this
+   * slice where "agree with the runtime" would mean emitting a url whose brokenness the export
+   * can see in advance. Naming it is the more useful answer — and it costs nothing that worked
+   * before, because the old translation emitted `navigate('/product/{id}')` for this case, a
+   * route react-router never matched at all.
+   */
+  const compileRouterNavigate = (node: NodeIR, page: ScaffoldPage): CompiledSink => {
+    const ctx = newCtx();
+    const consumes: string[] = [];
+
+    /**
+     * Every `pm-` value set on this node, wire beating authored value.
+     *
+     * ⚠️ The precedence is the one §10.3 settled for JSX attributes, and it is settled here for
+     * the same reason: the runtime's port holds *whichever arrived last*, and a wire that
+     * delivers is always after the parameter the project file was loaded with.
+     */
+    const values = new Map<string, ValueExpr>();
+    for (const param of node.parameters) {
+      if (!param.name.startsWith('pm-')) continue;
+      if (param.value.kind !== 'literal') continue;
+      values.set(param.name.slice('pm-'.length), { kind: 'literal', value: param.value.value });
+    }
+    for (const connection of component.connections) {
+      if (connection.toId !== node.id || !connection.toProperty.startsWith('pm-')) continue;
+      const expr = resolveExpr(nodeById.get(connection.fromId), connection.fromProperty, ctx);
+      if (expr === null) {
+        return { defer: ctx.defer ?? `page parameter "${connection.toProperty.slice('pm-'.length)}" has no statically known source` };
+      }
+      if (isBooleanExpr(expr)) {
+        return { defer: `page parameter "${connection.toProperty.slice('pm-'.length)}" is fed a logic truth value — only truthiness sinks take one in this slice` };
+      }
+      values.set(connection.toProperty.slice('pm-'.length), expr);
+      consumes.push(connection.key);
+    }
+
+    const pathParams: Array<{ name: string; expr: ValueExpr }> = [];
+    for (const name of page.pathParams) {
+      const expr = values.get(name);
+      if (expr === undefined) {
+        return { defer: `the target page's path declares {${name}} and nothing is set on its Page Param port` };
+      }
+      pathParams.push({ name, expr });
+      values.delete(name);
+    }
+
+    // Source order is `node.parameters` then wires, which is the order the values map was
+    // filled in — stable across runs, which is what the D-rules ask of an emitted url.
+    const query = Array.from(values, ([name, expr]) => ({ name, expr }));
+
+    return {
+      action: { kind: 'navigate', to: page.urlPath, pathParams, query },
+      consumes: [...consumes, ...ctx.consumes],
+      collapses: ctx.logicNodeIds,
+      subscribes: ctx.subscriberIds
+    };
+  };
+
   const compileSink = (node: NodeIR, port: string): CompiledSink => {
     if (RECORD_VERBS[node.type] !== undefined && port === 'store') return compileRecordOp(node);
     if (USER_VERBS[node.type] !== undefined && port === USER_VERBS[node.type].trigger) return compileUserOp(node);
@@ -4956,9 +5142,9 @@ function planComponent(
     if (node.type === 'NavigationClosePopup') return compileClosePopup(node, port);
     if (node.type === 'RouterNavigate') {
       const target = literalParam(node, 'target');
-      const url = typeof target === 'string' ? urlPathByLegacy.get(target) : undefined;
-      if (url === undefined) return { defer: `navigation target ${String(target)} is not a routed page` };
-      return { action: { kind: 'navigate', to: url }, consumes: [] };
+      const page = typeof target === 'string' ? pageByLegacy.get(target) : undefined;
+      if (page === undefined) return { defer: `navigation target ${String(target)} is not a routed page` };
+      return compileRouterNavigate(node, page);
     }
     if (node.type === 'Event Sender') {
       const channelName = channelNameOf(node);
@@ -5209,6 +5395,9 @@ function planComponent(
       case 'undefined':
       case 'state-get':
       case 'session-get':
+      // A url parameter reads in every context: both hooks are component-scope locals, so a
+      // handler closes over exactly what render sees (EXP-011 Tier 2.5).
+      case 'page-param':
         return true;
       case 'format':
         return expr.parts.every((p) => typeof p === 'string' || exprValidIn(p, context, invokedScope));
@@ -5327,7 +5516,23 @@ function planComponent(
          */
         case 'date-now-read':
           return actionsValidIn(action.then, context, invokedScope);
+        /**
+         * 🔴 **A navigation's page parameters are expressions, and this used to say `true`.**
+         *
+         * It was correct while a `navigate` carried nothing but a string. EXP-011 Tier 2.5 gave
+         * it `pathParams` and `query`, and the unconditional `true` then claimed a Navigate
+         * filling `{id}` from a text input's `onTextChanged` was valid inside a *button's*
+         * onClick — where `event` is the button's click and has no `.value`. The exported app
+         * did not compile: TS18048, TS18047 and TS2339 on one line.
+         *
+         * ⚠️ It is the second hole of this exact shape in one slice — `actionExprsOf` in the
+         * emitter had the same `return []`. Both are switches the compiler does not hold: this
+         * one because the `every` callback has no return annotation (see `date-now-read` above),
+         * that one for the same reason. **A new field on a HandlerAction has to be carried to
+         * every switch by hand, and `tsc` will not say which.**
+         */
         case 'navigate':
+          return [...action.pathParams, ...action.query].every((p) => exprValidIn(p.expr, context, invokedScope));
         case 'output-signal':
           return true;
       }
@@ -6882,6 +7087,54 @@ function planComponent(
     plan.bindings[toNode.id][connection.toProperty] = { kind: 'computed', expr };
   }
 
+  /**
+   * Pass 4h: `Page Inputs` reads into rendered sinks (EXP-011 Tier 2.5) — the url, read into
+   * the page it addressed.
+   *
+   * Pass 4g's shape, for Pass 4g's reason: the port name is a *prefix* (`pm-`), so the
+   * type-plus-exact-port whitelist Pass 4c matches on cannot express it. Everything the read
+   * needs to decide has already been decided in `resolveExpr` — whether the component is routed
+   * at all, and what the name resolves to — so a node that failed the gate has no expression
+   * here and its wire is reported by name.
+   *
+   * Sinks are restricted exactly as 4d and 4g restrict them, and for the same stated reason:
+   * only the ones the emitter honestly renders consume here, so a read landing somewhere the
+   * export draws nothing is reported rather than silently swallowed.
+   */
+  for (const connection of component.connections) {
+    if (consumed.has(connection.key)) continue;
+    const fromNode = nodeById.get(connection.fromId);
+    if (fromNode?.type !== PAGE_INPUTS || !connection.fromProperty.startsWith('pm-')) continue;
+    const toNode = nodeById.get(connection.toId);
+    if (!toNode || !rendered.has(toNode.id)) continue; // Pass 6 names the reason
+    const contentRole = (CONTENT_PARAMS[toNode.type] ?? {})[connection.toProperty];
+    const truthinessSink = connection.toProperty === 'visible' || connection.toProperty === 'mounted';
+    const bindable =
+      truthinessSink ||
+      contentRole === 'children' ||
+      contentRole === 'attr-not:disabled' ||
+      (contentRole !== undefined && contentRole.startsWith('attr:'));
+    if (!bindable) continue;
+    if (connection.toProperty === 'mounted' && toNode.id === plan.rootId) continue;
+    const ctx = newCtx();
+    const expr = resolveExpr(fromNode, connection.fromProperty, ctx);
+    if (expr === null) {
+      notes.push(`wire ${connection.key} dropped: ${ctx.defer ?? 'the Page Inputs node reads no url parameter'}`);
+      consumed.add(connection.key);
+      continue;
+    }
+    consumed.add(connection.key);
+    plan.bindings[toNode.id] = plan.bindings[toNode.id] ?? {};
+    plan.bindings[toNode.id][connection.toProperty] = { kind: 'computed', expr };
+    // The node emits nothing of its own — the read became two router hooks in this file. Pass
+    // 4c's tail, verbatim, for the reason its comment gives.
+    if (plan.file) {
+      for (const id of ctx.logicNodeIds) {
+        dispositions[id] = { kind: 'collapsed', into: `src/${plan.file.dir}/${plan.file.fileBase}.tsx` };
+      }
+    }
+  }
+
   // Pass 5: Component Inputs bindings and the query/array→repeater feeds (step 4's rules,
   // plus the Collection2 read side — COLLECTIONS-TARGET §2).
   const boundCollectionReaders = new Set<string>();
@@ -8086,12 +8339,19 @@ function recordNeighbourDefer(
     return 'a single-record read by Id has no shape in the api stub — a collection query is the only read this slice emits';
   }
 
+  /**
+   * EXP-011 Tier 2.5 translated the reads, so what is left here is the node that reads nothing.
+   *
+   * ⚠️ **Both stringlists, not just `pathParams`.** The old shape asked only about path
+   * parameters, which read as a claim that a `Page Inputs` declaring only *query* parameters was
+   * fine off a route. It is not: the Router feeds the node by walking the page's own node scope
+   * (`router.tsx:602`), so off a route it is never called at all and both lists stay empty.
+   */
   if (node.type === 'PageInputs') {
-    const declared = literalParam(node, 'pathParams');
-    if (typeof declared === 'string' && declared !== '' && !isRoutedPage) {
-      return `it reads the path parameters "${declared}", but no Router routes this component, so there is no URL to read them from`;
-    }
-    return 'a page path parameter is not translated in this slice';
+    if (!isRoutedPage) return pageInputsUnroutedReason(node);
+    // On a routed page, a node with no read left is one whose every read was consumed elsewhere
+    // (collapsed before this sweep) or one nothing reads at all — inert in the runtime too.
+    return 'nothing reads any of its parameters, so it contributes no value to the page';
   }
 
   /**
@@ -8118,6 +8378,22 @@ function recordNeighbourDefer(
   }
 
   return undefined;
+}
+
+/**
+ * Why a `Page Inputs` on an unrouted component reads nothing.
+ *
+ * 🔴 Module-level and called from **both** ends — `dispositionForLogic` gives it as the node's
+ * deferral and `resolveExpr` gives it as the wire's — because the two used to be separate
+ * sentences and a reader comparing them could not tell they were the same fact.
+ */
+function pageInputsUnroutedReason(node: NodeIR): string {
+  const declared = [literalParam(node, 'pathParams'), literalParam(node, 'queryParams')]
+    .filter((v): v is string => typeof v === 'string' && v !== '')
+    .join(',');
+  return declared === ''
+    ? 'it is a Page Inputs on a component no Router routes, so there is no URL to read from'
+    : `it reads the page parameters "${declared}", but no Router routes this component, so there is no URL to read them from`;
 }
 
 function dispositionForLogic(node: NodeIR, kits: KitIndex): Disposition {

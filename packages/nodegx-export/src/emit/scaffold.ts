@@ -25,9 +25,38 @@ export interface ScaffoldPage {
   fileBase: string;
   /** "ThankYouPage". */
   symbol: string;
-  /** "/thank-you" — from the component's Page node urlPath parameter. */
+  /** "/thank-you", or "/product/{id}" — the component's Page node urlPath, verbatim. */
   urlPath: string;
+  /**
+   * The same path as a react-router pattern: "/product/{id}" → "/product/:id".
+   *
+   * 🔴 **Not cosmetic — a braced segment matches nothing in react-router.** The runtime's own
+   * matcher splits on "/" and treats a `{name}` part as a capture (`router.tsx:746`); react-router
+   * spells the same thing `:name`. Emitting the authored path into `<Route path=…>` produced a
+   * route that only ever matched the literal text "{id}", so every detail page 404'd to the
+   * start page and the parameters this slice reads were never populated at all.
+   */
+  routePath: string;
+  /** The braced segment names, in path order — "/product/{id}/{tab}" → ["id", "tab"]. */
+  pathParams: string[];
   isStart: boolean;
+}
+
+/**
+ * The braced segments of an authored urlPath, in order.
+ *
+ * ⚠️ Deliberately the runtime's own regex (`router.tsx:614`), not a stricter one. `Navigate To
+ * Path` uses `/\{[A-Za-z0-9_]*\}/g` — a narrower alphabet — and the two disagreeing is a
+ * runtime fact this export is not the place to resolve: a Page whose urlPath is `/x/{a-b}` has a
+ * parameter as far as the Router is concerned, so it has one here.
+ */
+export function bracedParams(urlPath: string): string[] {
+  return (urlPath.match(/{([^}]+)}/g) ?? []).map((part) => part.slice(1, -1));
+}
+
+/** "/product/{id}" → "/product/:id". */
+function routePatternOf(urlPath: string): string {
+  return urlPath.replace(/{([^}]+)}/g, (_match, name: string) => `:${name}`);
 }
 
 export function emitScaffold(ir: ExportIR): Record<string, string> {
@@ -68,11 +97,14 @@ export function routedPages(ir: ExportIR): ScaffoldPage[] {
     const component = byLegacyPath.get(legacyPath);
     if (!component) continue;
     const fileBase = dedupe(pascalCase(lastSegment(component.path)), usedNames);
+    const urlPath = `/${pageUrlPath(component)}`;
     pages.push({
       componentPath: component.path,
       fileBase,
       symbol: `${fileBase}Page`,
-      urlPath: `/${pageUrlPath(component)}`,
+      urlPath,
+      routePath: routePatternOf(urlPath),
+      pathParams: bracedParams(urlPath),
       isStart: legacyPath === router.startPage
     });
   }
@@ -231,7 +263,7 @@ function appTsx(pages: ScaffoldPage[]): string {
   const start = pages.find((p) => p.isStart) ?? pages[0];
   const routes = [
     ...(start ? [`        <Route path="/" element={<${start.symbol} />} />`] : []),
-    ...pages.map((p) => `        <Route path="${p.urlPath}" element={<${p.symbol} />} />`),
+    ...pages.map((p) => `        <Route path="${p.routePath}" element={<${p.symbol} />} />`),
     ...(start ? [`        <Route path="*" element={<Navigate to="/" replace />} />`] : [])
   ].join('\n');
 
