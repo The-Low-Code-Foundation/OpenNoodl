@@ -142,8 +142,14 @@ describe('SB-004 probe: a component named through a parameter', () => {
       ]
     });
     report('C probe: Run Tasks -> missing template', res);
-    // Recorded, not asserted — this test exists to find out.
-    expect(typeof res.isError).toBe('boolean');
+    // DEF-010 (2026-08-29) — SB-009 AC1's C half, inverted: the missing helper
+    // is NAMED and the write is REFUSED. Promoted into
+    // AUTHORED_BLOCKING_WARNINGS on the corpus number AC5 demanded
+    // (`calibrate:door`: 178 projects, 614 parameters, 15 hits — all legacy,
+    // all true), so a cloud function can no longer validate clean while its
+    // only iteration primitive names a helper that does not exist.
+    expect(res.isError).toBe(true);
+    expect(codesOf(res)).toContain('component-parameter-unresolved');
   });
 
   it('D. PROBE — a cloud Run Tasks naming a real BROWSER component', async () => {
@@ -170,6 +176,11 @@ describe('SB-004 probe: a component named through a parameter', () => {
       ]
     });
     report('D probe: Run Tasks -> browser component across the runtime boundary', res);
-    expect(typeof res.isError).toBe('boolean');
+    // DEF-010 (2026-08-29) — SB-009 AC1's D half, inverted: the runtime
+    // boundary is named and it BLOCKS, because the cross-runtime half reuses
+    // `wrong-runtime-node`, blocking since SB-001. No corpus decision needed —
+    // a browser component in a cloud graph has no benign reading.
+    expect(res.isError).toBe(true);
+    expect(codesOf(res)).toContain('wrong-runtime-node');
   });
 });

@@ -156,6 +156,16 @@ export type { ParameterizedNode, PortTypeShape, WireFormat } from './parameterVa
 // LAS-012 — a Repeater that names a template component, and holds no children.
 export { checkRepeaterTemplate, REPEATER_TYPE } from './repeaterTemplate';
 export type { CheckRepeaterTemplateOptions, RepeaterNode } from './repeaterTemplate';
+// DEF-010 (SB-009) — the other twelve of the catalog's thirteen component-typed ports.
+export { checkComponentRefParameters } from './componentRefParameters';
+export type { CheckComponentRefParametersOptions } from './componentRefParameters';
+// DEF-009 (P76 F3) — a public write door with no rate limit.
+export { checkPublicWriteDoor, RECORD_WRITE_NODE_TYPES } from './publicWriteDoor';
+export type {
+  CheckPublicWriteDoorOptions,
+  FunctionSecurityEntry,
+  FunctionSecurityPolicy
+} from './publicWriteDoor';
 // DSG-004 §2.1 — doctrine §7: a Group never responds to width. Exported for the
 // same reason as the checks above it: one definition, both clients, no second
 // dialect. Both clients reach it through `authoredPreconditionDiagnostics`; the

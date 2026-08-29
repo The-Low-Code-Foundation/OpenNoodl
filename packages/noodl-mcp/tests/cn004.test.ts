@@ -105,7 +105,7 @@ function authoringDiagnostics(projectDir: string, component: string) {
   const stored = store.readComponent(component);
   const name = stored.files.component.path ?? stored.key;
   const views = authoredProjectViews(store, new Map([[name, stored.files]]));
-  return preconditionDiagnostics(name, stored.files, views);
+  return preconditionDiagnostics(store, name, stored.files, views);
 }
 
 /** The project pipeline, whole-project, as `validate_project` runs it. */
@@ -208,7 +208,7 @@ describe('acceptance criterion 1 — the authoring gate, on a real extracted kit
     files.nodes.nodes.find((n: { id: string }) => n.id === 'app_badge').parameters.showProgress = 'false';
 
     const views = authoredProjectViews(store, new Map([['/App', files]]));
-    const found = preconditionDiagnostics('/App', files, views).filter(
+    const found = preconditionDiagnostics(store, '/App', files, views).filter(
       (d) => d.code === 'invalid-parameter-value'
     );
 
@@ -317,8 +317,9 @@ describe('✅ D13 — the second pipeline now checks parameter values too', () =
     // arm rather than dropped as redundant: the two pipelines agreeing is the
     // property, and a change that moved the check from one to the other instead
     // of adding it to both would pass the first expectation alone.
-    const views = authoredProjectViews(new ProjectStore(dir), new Map());
-    const authored = preconditionDiagnostics('/App', files, views).filter(
+    const diskStore = new ProjectStore(dir);
+    const views = authoredProjectViews(diskStore, new Map());
+    const authored = preconditionDiagnostics(diskStore, '/App', files, views).filter(
       (d) => d.code === 'invalid-parameter-value'
     );
     expect(authored.map((d) => d.location.nodeType).sort()).toEqual(['Group', 'demo.kit.Badge']);

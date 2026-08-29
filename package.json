@@ -80,6 +80,7 @@
     "validate:project": "ts-node -P ./scripts/tsconfig.json ./scripts/validate-project.ts",
     "calibrate:completed": "ts-node -P ./scripts/tsconfig.json ./scripts/def-004-corpus-completed.ts",
     "calibrate:preconditions": "ts-node -P ./scripts/tsconfig.json ./scripts/def-002-corpus-preconditions.ts",
+    "calibrate:door": "ts-node -P ./scripts/tsconfig.json ./scripts/phase80-door-corpus.ts",
     "template:site-builder": "ts-node -T -P ./scripts/tsconfig.json ./scripts/generate-site-template.ts",
     "library:build": "node scripts/library/build.js",
     "library:check": "ts-node -P ./scripts/tsconfig.json ./scripts/library/check.ts",

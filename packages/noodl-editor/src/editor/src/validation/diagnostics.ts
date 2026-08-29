@@ -813,7 +813,48 @@ export enum DiagnosticCode {
    * `UnresolvedNavigation` shape: blocking for a graph an agent just wrote,
    * while `validate:project` over a hand-authored corpus stays advisory.
    */
-  WrongRuntimeNode = 'wrong-runtime-node'
+  WrongRuntimeNode = 'wrong-runtime-node',
+  /**
+   * DEF-010 (SB-009): a component named as the VALUE of a `component`-typed
+   * parameter — `Run Tasks`' `taskTemplate`, `Show Popup`'s `target`, the seven
+   * `repeaterComponent` ports — resolves to nothing in this project.
+   *
+   * The node-type spelling of the same reference has been gated since SB-001
+   * (`unresolved-component-ref`, blocking), and `For Each.template` has its own
+   * owner (`repeater-template-unresolved`). This code covers the other twelve of
+   * the catalog's thirteen component-typed ports, generically over the catalog,
+   * so port fourteen is covered on the day it is added.
+   *
+   * The runtime consequence is the silent kind (SB-009 s2, measured): a cloud
+   * `Run Tasks` naming a helper that does not exist validates clean, deploys,
+   * iterates over nothing and reports success having done no work.
+   *
+   * Warning severity; whether it joins `AUTHORED_BLOCKING_WARNINGS` is a corpus
+   * measurement, not an argument (SB-009 §"Open decision") — the cross-runtime
+   * half of the same check needs no such decision because it reuses
+   * `wrong-runtime-node`, which is already blocking.
+   */
+  ComponentParameterUnresolved = 'component-parameter-unresolved',
+  /**
+   * DEF-009 (P76 F3): a cloud function whose Request node ticks
+   * `allowNoAuth`, whose graph writes records, and for which no per-function
+   * `rateLimit` is configured — a public write door with no limit, shipped
+   * silently.
+   *
+   * The limiter exists and is per-function (`nodegx-backend/src/ops/rate-limit.ts`;
+   * `functions.<name>.rateLimit` in `nodegx.security.json`, or
+   * `PUT /admin/permissions/functions/<name>`), and the backend's boot warnings
+   * fire only on service-wide configuration — so before this code, the one
+   * person who could set a limit was never told there was one to set.
+   *
+   * Warning, never blocking: the limit may be configured later or live only on
+   * the running backend, and whether a public function's `rateLimit` should
+   * default to something is Richard's ruling (DEF-009 §3.2). Fires only when the
+   * caller can see the project's security policy — `security` omitted means "do
+   * not check", so a door that cannot read the project root stays honest about
+   * the limited functions it cannot see.
+   */
+  PublicWriteDoorUnlimited = 'public-write-door-unlimited'
 }
 
 // ─── Location ─────────────────────────────────────────────────────────────────

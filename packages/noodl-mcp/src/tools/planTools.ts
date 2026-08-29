@@ -410,7 +410,7 @@ function validateStaged(
   // into a Set already, so only this list needed it.
   const diagnostics = dedupeDiagnostics([
     ...report.diagnostics,
-    ...preconditionDiagnostics(legacyName, candidate, views)
+    ...preconditionDiagnostics(store, legacyName, candidate, views)
   ]);
   let errors = diagnostics.filter(isBlockingForAuthoredOutput);
 
@@ -435,7 +435,7 @@ function validateStaged(
     const baselineViews = authoredProjectViews(store, stagedOverlay(plan, { opId: operation.id, files: baseline }));
     const baselineDiagnostics = [
       ...baselineReport.diagnostics,
-      ...preconditionDiagnostics(legacyName, baseline, baselineViews)
+      ...preconditionDiagnostics(store, legacyName, baseline, baselineViews)
     ];
     const preexisting = new Set(baselineDiagnostics.filter(isBlockingForAuthoredOutput).map(diagnosticKey));
     errors = errors.filter((d) => !preexisting.has(diagnosticKey(d)));

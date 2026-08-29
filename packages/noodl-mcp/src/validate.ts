@@ -26,7 +26,10 @@
  * it clean.
  */
 
-import type { Diagnostic, ValidationReport } from './editor-deps';
+import * as fs from 'fs';
+import * as path from 'path';
+
+import type { Diagnostic, FunctionSecurityPolicy, ValidationReport } from './editor-deps';
 import {
   authoredNodes,
   authoredPreconditionDiagnostics,
@@ -137,13 +140,38 @@ export function authoredProjectViews(
  * backend as "do not check" rather than "there is no backend" — the only honest
  * answer a caller that cannot tell can give.
  */
+/**
+ * DEF-009 — the `functions` block of the project's `nodegx.security.json`.
+ *
+ * `null` when the project has no policy file (the check then reads every
+ * function as having no entry, which is the truth) and also when the file will
+ * not parse — a broken policy is a louder problem than a missing rate limit,
+ * and refusing every component write over it would make the security file able
+ * to brick authoring. Never `undefined` from this client: this server always
+ * knows the project root, so "cannot see the policy" is not a state it is in.
+ */
+export function projectSecurity(store: ProjectStore): FunctionSecurityPolicy | null {
+  try {
+    const raw = fs.readFileSync(path.join(store.projectDir, 'nodegx.security.json'), 'utf8');
+    const parsed = JSON.parse(raw) as { functions?: FunctionSecurityPolicy };
+    return parsed && typeof parsed === 'object' && parsed.functions && typeof parsed.functions === 'object'
+      ? parsed.functions
+      : null;
+  } catch {
+    return null;
+  }
+}
+
 export function preconditionDiagnostics(
+  store: ProjectStore,
   legacyName: string,
   candidate: ComponentFiles,
   views: readonly ComponentNodesView[]
 ): Diagnostic[] {
   return authoredPreconditionDiagnostics({
     component: legacyName,
+    // DEF-009 — null means "no policy file", never undefined: see projectSecurity.
+    security: projectSecurity(store),
     nodes: authoredNodes(candidate.nodes.nodes),
     components: [...views.map((v) => v.name), legacyName],
     urlPaths: declaredUrlPaths(views),
@@ -217,7 +245,7 @@ export function validateCandidate(
   const report = validator().validateComponent(candidateProject, name, validatorOptions);
 
   const views = authoredProjectViews(store, new Map([[name, candidate]]));
-  const diagnostics = dedupeDiagnostics([...report.diagnostics, ...preconditionDiagnostics(name, candidate, views)]);
+  const diagnostics = dedupeDiagnostics([...report.diagnostics, ...preconditionDiagnostics(store, name, candidate, views)]);
 
   let preexistingKeys = new Set<string>();
   if (baseline) {
@@ -239,7 +267,7 @@ export function validateCandidate(
     const baselineViews = authoredProjectViews(store, new Map([[baselineName, baseline]]));
     const baselineDiagnostics = dedupeDiagnostics([
       ...baselineReport.diagnostics,
-      ...preconditionDiagnostics(baselineName, baseline, baselineViews)
+      ...preconditionDiagnostics(store, baselineName, baseline, baselineViews)
     ]);
     preexistingKeys = new Set(baselineDiagnostics.filter(isBlockingForAuthoredOutput).map(diagnosticKey));
   }
@@ -317,7 +345,7 @@ function onDiskPreconditions(
     } catch {
       continue;
     }
-    for (const diagnostic of preconditionDiagnostics(target.name, files, views)) {
+    for (const diagnostic of preconditionDiagnostics(store, target.name, files, views)) {
       if (!emitSkipNotes && SKIP_NOTE_CODES.has(diagnostic.code)) continue;
       out.push(diagnostic);
     }

@@ -51,6 +51,7 @@
 
 import { checkBackendRequirements, type ProjectBackendFacts } from './backendRequirement';
 import type { CatalogIndex } from './CatalogIndex';
+import { checkComponentRefParameters } from './componentRefParameters';
 import { checkConnectionTargets } from './connectionTargets';
 import { checkDerivedPortTargets, derivedPortIndex, type DerivedPortIndex } from './derivedPortTargets';
 import {
@@ -65,6 +66,7 @@ import { checkFunctionNodePorts, checkScriptNodeRunnable, type FunctionWireLike 
 import { checkInstancePorts, type AuthoredPortLike } from './instancePorts';
 import { checkNavigation, checkPageShape, looksLikePageComponent, PAGE_NODE_TYPE } from './navigation';
 import { checkParameterValues } from './parameterValues';
+import { checkPublicWriteDoor, type FunctionSecurityPolicy } from './publicWriteDoor';
 import { checkRepeaterTemplate } from './repeaterTemplate';
 import { checkResponsiveArrangement } from './responsiveArrangement';
 import { checkRuntimeContext } from './runtimeContext';
@@ -257,6 +259,17 @@ export const AUTHORED_BLOCKING_WARNINGS: ReadonlySet<string> = new Set([
   // model that produced haiku's three blank sections.
   DiagnosticCode.RepeaterTemplateUnresolved,
   DiagnosticCode.RepeaterWithVisualChildren,
+  // DEF-010 (SB-009) — the parameter spelling of the same reference, promoted on
+  // the corpus number its task file demanded (`npm run calibrate:door`,
+  // 2026-08-29): 178 projects, 614 component-typed parameters checked (543
+  // `NavigationShowPopup.target`, 70 `RunTasks.taskTemplate`), **15 hits in 6
+  // projects, every sampled one a TRUE positive in a legacy hand-authored
+  // project** (dead popup targets whose components were renamed or deleted —
+  // the `RepeaterTemplateUnresolved` shape at 7× the population). Nothing
+  // authored today fires it, the baseline pass keeps legacy projects editable,
+  // and for a graph an agent just wrote a `taskTemplate` naming nothing is a
+  // cloud function that reports success having done no work per item.
+  DiagnosticCode.ComponentParameterUnresolved,
   // DSG-004 §2.2 — the `sizeMode` family, split out of
   // `InactiveConditionalParameter` precisely so this decision could be made about
   // it alone. The general code stays a warning: project-wide its population is
@@ -454,6 +467,15 @@ export interface AuthoredPreconditionOptions {
    * component a plan is about to create resolves for all three at once.
    */
   derived?: DerivedPortIndex;
+  /**
+   * DEF-009 — the `functions` block of the project's `nodegx.security.json`.
+   * **`undefined` means "do not check"; `null` means "the project has no policy
+   * file"** — the two must stay distinct, because a caller that cannot read the
+   * project root cannot tell a rate-limited public door from an unlimited one,
+   * and warning about a door that IS limited is the false positive that gets
+   * the rule switched off.
+   */
+  security?: FunctionSecurityPolicy | null;
 }
 
 /**
@@ -500,7 +522,8 @@ export interface AuthoredPreconditionOptions {
  * consequence of this one.
  */
 export function authoredPreconditionDiagnostics(options: AuthoredPreconditionOptions): Diagnostic[] {
-  const { component, nodes, components, urlPaths, catalog, backend, interfaces, connections, wires, derived } = options;
+  const { component, nodes, components, urlPaths, catalog, backend, interfaces, connections, wires, derived, security } =
+    options;
   return [
     ...checkParameterValues(nodes, catalog, { component }),
     ...(backend ? checkBackendRequirements(nodes, { ...backend, component }) : []),
@@ -522,6 +545,16 @@ export function authoredPreconditionDiagnostics(options: AuthoredPreconditionOpt
     ...(derived ? checkDerivedPortTargets(nodes, { component, derived, wires }) : []),
     ...checkComponentPortDirection(nodes, { component }),
     ...checkRepeaterTemplate(nodes, { component, components, connectedInputs: connections }),
+    // DEF-010 (SB-009) — the other twelve of the catalog's thirteen
+    // component-typed ports. `For Each.template` is skipped inside the check:
+    // the line above owns it, and a second producer over one population is a
+    // duplicate first — the spec asserts that cardinality.
+    ...checkComponentRefParameters(nodes, { component, components, catalog, connectedInputs: connections }),
+    // DEF-009 — a public write door with no rate limit. Guarded on `security`
+    // INSIDE the check (undefined = do not check, null = no policy file), the
+    // same convention as the guards above, but the undefined/null distinction
+    // lives with the predicate that needs it.
+    ...checkPublicWriteDoor(nodes, { component, security, catalog }),
     // DSG-004 §2.1 — doctrine §7's only mechanical claim, which had no gate.
     ...checkResponsiveArrangement(nodes, { component, catalog }),
     // DSG-004 §2.3 — doctrine §3, as an info that never blocks.

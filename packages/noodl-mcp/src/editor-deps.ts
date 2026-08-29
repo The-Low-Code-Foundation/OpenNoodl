@@ -76,6 +76,9 @@ export { checkInstancePorts } from '../../noodl-editor/src/editor/src/validation
 // been told it needs a backend by a server that is not advertising the tool that
 // makes one. One classification, both consequences.
 export { backendRequirementFor } from '../../noodl-editor/src/editor/src/validation';
+// DEF-009 — the shape of `nodegx.security.json`'s `functions` block, as the
+// shared `checkPublicWriteDoor` precondition reads it.
+export type { FunctionSecurityPolicy } from '../../noodl-editor/src/editor/src/validation';
 
 // ─── LAS-007: retrieval into the failure moment ───────────────────────────────
 // The DiagnosticCode → example table, beside the checks that produce the
@@ -648,3 +651,14 @@ export {
 // `projectmodules` is fs/vm/http only; no Electron reaches this file.
 export { recordKitProvenance } from '../../noodl-editor/src/shared/utils/projectmodules';
 export type { KitProvenance } from '../../noodl-editor/src/shared/utils/projectmodules';
+
+// ── DEF-011 (SB-010): the script-port derivation the door was missing ────────
+// `cloudDynamicPorts.ts` is the editor's import-free clone of the runtime's
+// `JavascriptNodeParser` grammar, pinned against the real runtime modules by
+// `tests-unit/sb-017/cloud-ports-agree-with-the-runtime.test.ts`. Re-exported
+// so the authored write path can persist the ports a `JavaScriptFunction`'s
+// script declares — the same derivation the exporter's `withScriptPorts`
+// backstop and the editor's `CloudDynamicPortsAdapter` already use, so three
+// consumers cannot drift.
+export { scriptPortsForNode } from '../../noodl-editor/src/editor/src/models/nodelibrary/cloudDynamicPorts';
+export type { GeneratedPort } from '../../noodl-editor/src/editor/src/models/nodelibrary/cloudDynamicPorts';
