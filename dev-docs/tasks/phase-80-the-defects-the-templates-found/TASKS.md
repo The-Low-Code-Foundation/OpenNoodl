@@ -8,7 +8,7 @@ derivation and [README.md](README.md) for why the phase exists.
 
 | id | status | task | source rows | bites |
 |---|---|---|---|---|
-| DEF-001 | ⬜ open | [The defaults fail accessibility on the two controls every app has](DEF-001-THE-DEFAULTS-FAIL-ACCESSIBILITY.md) | P78 D11, D13 | every **end user** |
+| DEF-001 | ✅ done | [The defaults fail accessibility on the two controls every app has](DEF-001-THE-DEFAULTS-FAIL-ACCESSIBILITY.md) | P78 D11, D13 | every **end user** |
 | DEF-002 | ⬜ open | [The door does not check connections](DEF-002-THE-DOOR-DOES-NOT-CHECK-CONNECTIONS.md) | P77 D1, D10 · P78 D1 | every **agent-authored app** |
 | DEF-003 | ⬜ open | [Three authoring acts with no honest surface](DEF-003-THREE-AUTHORING-ACTS-WITH-NO-SURFACE.md) | P77 D8 = P76 F15 · P77 D7 · P76 F16 | every **author** |
 | DEF-004 | ⬜ open | [When it goes wrong you cannot see where](DEF-004-WHEN-IT-GOES-WRONG-YOU-CANNOT-SEE-WHERE.md) | P77 D2, D3 | anyone **debugging** |
@@ -50,9 +50,8 @@ should be done **once**, not three times.
   is correct and must survive; the question is whether a browser may **read** its own roles. Reading
   one's own roles grants nothing — the server still decides every request — but it is a posture
   change and it is yours.
-- 🧭 **DEF-001 changes the shipped default palette.** That is a visible product change and it moves
-  every project created after it. Ruling wanted on whether `--primary` moves or
-  `--primary-foreground` does.
+- ✅ **DEF-001 — RULED 2026-08-29.** Richard: **`--primary` moves, white text stays.** Landed at
+  `30eb92b2`. See DEF-001's §7.
 - 🧭 **P76 F8, still open since s4** — `contactRecipient` cannot live in a world-readable
   `SiteSettings` row. Carried in phase 76 with no register; recorded here so it stops being invisible.
   It blocks the claim that a contact form reaches anyone.

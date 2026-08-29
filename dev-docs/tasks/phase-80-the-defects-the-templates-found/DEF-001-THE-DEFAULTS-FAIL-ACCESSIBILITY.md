@@ -80,3 +80,120 @@ than exempting them.
   *clears* the block** — so "apply Modern" and "apply nothing" are indistinguishable. Any fix that
   routes through Modern's token map does nothing. Fix the defaults.
 - 🔴 Grade **known-good against known-broken**. A ratchet green on both arms has measured nothing.
+
+---
+
+## 7. ✅ DONE — 2026-08-29, `30eb92b2`
+
+### The ruling
+
+**Richard, 2026-08-29:** *`--primary` moves, white text stays.* Asked with the candidates measured,
+because a preference between two colour schemes is not a thing to guess at.
+
+### 🔴 The task named 2 rows. The derivation found 62.
+
+The scope above said "the primary pair and the `textinput` border", and §2's own warning said the
+ratchet must be **derived from the variant/composition definitions, not from the token list**. Doing
+that literally — walking `ElementConfigRegistry` (every config, every variant, every interaction
+state) and `STYLE_COMPOSITIONS` — produced **50 pairs × 6 palettes = 300 readings**, of which **62
+failed** across **9 distinct pairs**:
+
+| pair | floor | worst | palettes failing |
+|---|---|---|---|
+| `--border` on `--accent` | 3 | **1.04** | all 6 |
+| `--border` on `--background` | 3 | **1.23** | all 6 |
+| `--primary-foreground` on `--primary` | 4.5 | 3.68 | defaults, modern, playful, soft |
+| `--primary` on `--background` | 4.5 | 3.68 | defaults, modern, playful, soft |
+| `--destructive-foreground` on `--destructive` | 4.5 | 2.69 | soft, playful, defaults, modern |
+| `--destructive-foreground` on `--destructive-hover` | 4.5 | 3.67 | soft |
+| `--destructive` on `--background` | 3 | 2.67 | soft |
+| `--secondary-foreground` on `--secondary` | 4.5 | 2.72 | soft, playful |
+| `--secondary-foreground` on `--secondary-hover` | 4.5 | 4.23 | soft |
+
+🔴 **Two of the three controls were never in the write-up.** DEF-001 named the TextInput. The same
+walk found the **Checkbox** on the identical 1.23:1 edge, and **Button/outline** — whose `hover`
+state (`--border` over `--accent`) is the worst reading in the whole set at **1.04:1**. A
+hand-written pair list would have fixed one control and shipped two.
+
+🔴 **And `--primary` is not only a background.** `Button/link`, `Checkbox:hover`'s border, `--ring`
+and the `eyebrow` composition all use it as *ink*. The task's own warning — *"a fix that clears the
+button and reddens a badge has moved the defect"* — was live: the same move that fixed the button
+fixed those five rows, and the derivation is what showed they existed.
+
+### What moved
+
+All values one Tailwind step darker; hover one step further; `--ring` follows `--primary` because a
+focus ring that is not the brand colour is a different bug. `preview.primaryColor` moved with each
+preset — **a second copy of a palette drifts silently**, and that legacy field is the second copy.
+
+| palette | token | was | now | was → now |
+|---|---|---|---|---|
+| **defaults** | `--primary` / `-hover` / `--ring` | `#3b82f6` | `#2563eb` | **3.68 → 5.17** |
+| **defaults** | `--destructive` / `-hover` | `#ef4444` | `#dc2626` | **3.76 → 4.83** |
+| **playful** | `--primary` / `-hover` / `--ring` | `#8b5cf6` | `#7c3aed` | **4.23 → 5.70** |
+| **playful** | `--secondary` / `-hover` | `#ec4899` | `#db2777` | **3.53 → 4.60** |
+| **playful** | `--destructive` / `-hover` | `#f43f5e` | `#e11d48` | **3.67 → 4.70** |
+| **soft** | `--primary` / `-hover` / `--ring` | `#6366f1` | `#4f46e5` | **4.47 → 6.29** |
+| **soft** | `--secondary` / `-hover` | `#a78bfa` | `#7c3aed` | **2.72 → 5.70** |
+| **soft** | `--destructive` / `-hover` | `#fb7185` | `#e11d48` | **2.69 → 4.70** |
+
+`minimal` and `enterprise` already cleared every floor and **did not move**.
+
+### The borders cost no palette change at all
+
+`--border-control` already ships in `DefaultTokens.ts` (`#7c8894`) **and in all four overriding
+presets**, and it already clears 3:1 in every one of them — 3.62 to 4.83 against `--background`,
+3.30 to 4.40 against `--accent`. Pointing `TextInputConfig`, `CheckboxConfig` and
+`ButtonConfig.outline` at it cleared all 12 border failures with no new colour.
+
+⚠️ **`outlineButton`'s comment was stale and said so honestly.** It recorded that `--border-control`
+*did not exist*, that `ui-split-hero` wrote it anyway, and — precisely — *"if a `--border-control`
+token is ever added, this is the line to change."* It was added. The line changed. That comment is
+the reason this row cost minutes instead of a re-derivation.
+
+### The ratchet
+
+`packages/noodl-editor/tests-unit/def-001/design-token-contrast.test.ts` — 12 specs.
+
+- **Pairs are derived from both sources**, and the spec asserts both contribute.
+- **The control/non-control classification is asserted TOTAL** in both directions: no node type it
+  meets is unclassified, and no name in the control list is unreachable. An exclusion list that
+  cannot fail is how the next control ships ungraded.
+- **`modern` and `defaults` must read identically** — `ModernPreset` ships `tokens: {}`, and if they
+  ever diverge one has been patched and the other has not.
+- **Every colour must resolve.** An unresolvable token would otherwise read as a silent pass.
+- **Four mutation arms**, each with its control pair beside it: (a) the defaults, (b) one preset
+  only, (c) an element config, (d) a composition.
+
+🔴 **Graded by sabotage, not by reasoning** (AC5):
+
+| sabotage | result |
+|---|---|
+| `failures()` returns `[]` | **all 4 arms red**, floors stay green — which is exactly why the arms exist |
+| `--primary` reverted to `#3b82f6` **in source** | floor red (10 readings named), plus arms (a)(b)(c) |
+
+⚠️ **It is not `nat-001/palette-contrast.spec.ts`, and the header says why.** That spec reads
+`colors.css` and grades the **editor's chrome**; this one reads `DefaultTokens`/the presets and
+grades **what a built app ships a visitor**. No token, file or population in common. Said in the
+file because *a check in a second pipeline is a duplicate first*.
+
+### Gates
+
+| gate | result |
+|---|---|
+| `test:main` | **6266 / 6266** |
+| `test:ci` | **2889 specs, 4 failures** — all `AIX-006 style vocabulary` **by name**. The floor, unmoved |
+| `typecheck:editor` | exit 0 |
+
+Three specs pinned the old `#3b82f6` and were moved with it: `tests/models/StyleTokenCoverage`,
+`tests-unit/sbr-003/token-contract`, and a now-stale comment in `tests/ai/authoring-style`.
+
+### 🔴 Not done, and not claimed — AC1's last inch
+
+**Nothing here observed a rendered button.** The two halves of the path are each graded — the token
+reaches `:root` (`sbr-003/token-contract` asserts `generateProjectTokenCss` emits
+`--primary: #2563eb;`) and `ButtonConfig` stamps `backgroundColor: var(--primary)` at creation — but
+a **source-text pass is not a paint-time measurement**, and this repo has the scar to prove it.
+
+A drive that drops a Button in a default project and samples the rendered pixels would close AC1's
+sentence outright. **It is owed.** Folded into DEF-008's re-drive rather than left as a footnote.
