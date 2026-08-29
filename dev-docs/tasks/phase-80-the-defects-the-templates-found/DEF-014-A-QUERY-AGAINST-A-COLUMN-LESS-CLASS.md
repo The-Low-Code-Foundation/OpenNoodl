@@ -213,7 +213,24 @@ and `_columnScope` must answer **unknown** rather than "no columns" — the latt
 query in that mode. Verified as a reading (`undefined`) *and* as behaviour (a query on a real column
 still returns its row), because the failure it guards against is silent.
 
-### 6.6 🔴 Three things this found that the row did not say
+### 6.5a AC1, driven
+
+`packages/nodegx-backend/tests/def014-publish-first-page.test.ts` — two arms on SB-015's harness
+(the template authored through the real MCP server, its own `nodegx.security.json`, a real
+`BackendService`), differing in **one variable**: whether a section has been written against a
+*different* page, which is the only thing that gives `Section` a `pageId` column. The page under
+test carries zero sections in both arms, and the count is read off the backend before the publish
+rather than assumed.
+
+    fixed    no section anywhere  → publishPage 200   {"pageId":…,"published":true}
+             column exists        → publishPage 200
+    mutant   no section anywhere  → publishPage 400   {"error":"This page could not be published."}
+             column exists        → publishPage 200
+
+The second row of each pair is the control: if publish failed *there* the file would be measuring a
+broken harness. **The mutant's pair is SBR-015 §2.1's reading, reproduced at will.**
+
+### 6.6 🔴 Four things this found that the row did not say
 
 - 🔴 **The product had already paid for this defect twice at call sites and once in a comment, and
   never at the cause.** `service.ts::ensureSystemTables` pre-creates `_User` and `_Session` *with
@@ -232,6 +249,16 @@ still returns its row), because the failure it guards against is silent.
   the old text kept above it. **The screen's sentence never depended on the error**, which is the
   stronger version of their fix. Owner of the red is whoever moved the measured thing; recorded here
   and flagged to phase 77.
+- 🔴 **`publishPage` issued its refusal AFTER making the page public.** Found by trying to write an
+  assertion that the publish *did its work* rather than merely answered — and discovering the
+  assertion could not fail. Under the mutant, `publishPage` returns **400 "This page could not be
+  published."** and the page comes back `published: true` with `ACL['*'].read === true`: the function
+  writes the flag and opens the ACL, and only then runs the sections query that was failing. **A
+  person was told their page could not be published, about a page that was published and
+  world-readable.** DEF-014 removes this cause; the ordering is untouched, so any later failure
+  inside that function leaves the same state. ⚠️ **The lesson is the smaller half:** `published:
+  true` looked like the obvious "it worked" assertion and discriminates nothing — only the status
+  code does. **Owner: `NONE`**, and it is the template's graph, which §5 says not to fix from here.
 - 🔴 **Nothing gives an auto-created class the columns its project has already declared** (§6.1's
   last paragraph). That is §3's third bullet, it is unowned, and it is the only route to a real
   typo/unwritten distinction. It is also the fix that would make a *misspelling* answerable rather
@@ -241,7 +268,7 @@ still returns its row), because the failure it guards against is silent.
 
 | AC | status |
 |---|---|
-| 1. (person) a new site publishes its first page | 🟡 **drive-equivalent green, the drive itself owed.** The exact failing request now answers `200 []` against a real service over HTTP. What is **not** yet observed is the site-builder's own `POST /functions/publishPage` returning 200 on a wizard-minted, claimed project with no sections — the control pair §2.1 measured. |
+| 1. (person) a new site publishes its first page | ✅ **driven — §2.1's control pair, re-run through the template's own cloud function.** `def014-publish-first-page.test.ts`: sign up, claim, one page, **zero sections anywhere** (measured, not assumed) → `POST /functions/publishPage` **200**, page world-readable. The with-column arm is beside it as the known-firing control. Under the mutant the pair reads **400 `"This page could not be published."` / 200** — §2.1's exact numbers. ⚠️ Not through the editor's wizard or the admin panel's button; the graph, policy, backend and function are real, the GUI is not in it. |
 | 2. absent column → `200` + `results: []`, with a negative control | ✅ both, at the adapter and over HTTP |
 | 3. the typo case decided and graded | ✅ decided as **empty + reported**, with the reason it cannot be decided any other way measured rather than asserted (§6.1) |
 | 4. a mutant reintroducing the raise reddens the drive-equivalent spec | ✅ 2 failures in the HTTP spec, 25 in the adapter specs — **plus a second mutant for the always-empty implementation the row warned about** |
