@@ -996,3 +996,135 @@ announcement they *can* read, in the same run on the same instrument.
 **22/22** · the three tpl001 drives **75/75** against a real enforcing backend and browser ·
 generation reproducible, **63 + 6** diagnostics. ⚠️ `test:ci` **not run** — no editor source
 touched, which is what has kept this phase from colliding all week.
+
+---
+
+## 19. The lists (s12, 2026-08-29) — 🟢 B3, and a gate that measured the wrong property twice
+
+**B3 was the last thing left in this template's look, and it was blocked on the kit until P80 landed
+C1 (`2c6a8876`).** Of eighteen compositions exactly **two** carried a content fill and both were
+`--surface`, so `card` was the only way to say *this is a thing* — and all four repeater rows said
+it. `ruled` is the row that is not a card: a hairline under it and **no fill at all**.
+
+| | before s12 | after |
+|---|---|---|
+| repeater rows wearing `card` | **4 of 4** | **1 of 4** — the one that should |
+| eight announcements, page height at 1280 | **1,879px** | **1,199px** |
+| six meetings | **1,497px** | **1,000px** — the diary fits one screen |
+| the directory at 390 | 1,062px | **898px** |
+| `tpl001Template` + `templateAppearance` | 86/86 | **89/89** (3 new, 5 sabotages) |
+| the three tpl001 drives | 75/75 | **75/75** |
+
+### 🔴 First: the four lists had never been looked at with rows in them
+
+§13 recorded this in s7 — *"the change to `ROW_CARD` is gated and typechecked but has NOT been
+looked at with rows in it"* — and it stayed open for **four sessions**, across two further rounds of
+styling those rows. The cause is structural and worth naming: **every list in this template draws
+its empty state on a fresh install**, correctly, because that is AC6. So `render-report` and every
+existing drive read the empty half, and the populated half had no instrument at all.
+
+✅ [`tpl001-rows.look.ts`](../../../packages/nodegx-backend/tests/tpl001-rows.look.ts) is that
+instrument — a harness, not a gate: it seeds a real backend through the template's own doors, signs
+a moderator in through the browser, and writes a PNG, the page text and the row geometry for each
+list at 1280 and 390. **B3's entire finding was visible in its first screenshot.** ⚠️ Seeded with
+*eight* announcements rather than the drives' one: a list of one looks fine however it is styled.
+
+### What each list is now, and the one that stayed a card
+
+- **Announcements** — `ruled`, the title and date growing on the left, `Read` at the far edge.
+- **Meetings** — the same, and **one meta line instead of two**: `12 January 2099 · The hall`, using
+  the separator the directory row already used. A diary is scanned down its dates.
+- **The directory** — `ruled`, but **not split** (below).
+- **Requests to join** — 🔴 **stays a `card`, and that is the section's point rather than an
+  exception to it.** A request is a decision with two consequential buttons on it, and boxing it
+  says *this is one thing you are being asked about*. A noticeboard, a diary and a directory are
+  lists of records a person scans. "Layout variety" that made all four `ruled` would have swapped
+  one uniform for another.
+
+⚠️ **`RULED_ROW` carries no `marginBottom`, which is the exact opposite of `ROW_CARD`'s.** A card
+needs the gap or its border sits flush against the next one's (§13); a ruled row needs the rows to
+**touch**, because the hairlines are the only thing making eight of them one list. That removal had
+a side effect nobody had asked it to pay: `ROW_CARD`'s margin was also the air under the whole list,
+and `Pages/Members`' "What's coming up" button landed 17px below the last row's hairline and 24px
+above the moderator section's rule — floating between two lines, reading as a ninth row. Hence
+`afterRuledList()`, written as a rule over *following a list* rather than a margin typed onto the
+one button.
+
+### 🔴 A sentence cannot sit at the far edge of one of these, and the runtime gives you no third option
+
+The directory row was built split first, with the standing against the right edge. It measured
+**348px per side** at 1280 — an even split, not a split at all — and at 390 it broke the addresses
+mid-word: `ada@example.invali / d`.
+
+Two mechanisms, both worth writing down because between them they exhaust the options:
+
+1. Every visual node's `width` port **defaults to `100%`** (`node-shared-port-definitions.ts:813`),
+   and `layout.ts:79-88` turns a percentage width inside a row into `flexGrow`. **Growing is what a
+   child does unless something stops it** — so the standing `Text` grew too, and `space-between` had
+   nothing left to distribute.
+2. Content-sizing it instead fixes the split and creates a worse problem: `flexShrink: 0`. It then
+   takes its full **197px out of a 342px row at every viewport**, and the growing column absorbs the
+   whole squeeze. There is no third behaviour.
+
+A button survives at the far edge because it is short and its width does not depend on the record
+(`button.ts:60` — `defaultSizeMode: 'contentSize'`). A sentence does not. So the directory keeps all
+three lines in one growing column and takes only the hairline from `ruled`. Same family as D28, one
+step out: there a content-sized child ignored the box `Columns` handed it, here it ignores the room
+the row has left.
+
+### 🔴 The new gate measured the wrong property twice, and each mistake needed a different instrument
+
+§7 of the ratchet is three specs. The third one — the only one about something invisible in the
+artefact — was wrong twice before it was right.
+
+| draft | what it required | what said so |
+|---|---|---|
+| 1st | the first child's `sizeMode` is `contentHeight`/`explicit` | **a render**: deleting `sizeMode` reddened it and the page measured **identically**, because `Group` defaults to `explicit` and that assigns the width anyway |
+| 2nd | …restated around `contentSize`, the mode that really drops the width | **the door**: `inert-dimension`, refusing the sabotage outright and naming the port, the node and the fix. A gate for something the door already rejects is not a gate |
+| 3rd | **exactly one child of a split row grows** | ✅ sabotage passes the door, reddens only this spec, and turns an 84px `Read` button into a **361px** one |
+
+🔴 **And the first draft could not have caught the defect it was written for.** The broken directory
+row's first child *did* grow — both children did. The number it reported was the same on either side
+of the defect, which is this repo's oldest trap wearing new clothes: a measurement of *some*
+property is not a measurement of the right one. It was only found by asking what the spec would say
+if the defect were present.
+
+### ✅ Sabotaged, five times
+
+| sabotage | reddened |
+|---|---|
+| the announcement row goes back to `ROW_CARD` | all three §7 specs, **and nothing else in 89** |
+| a `marginBottom` on `RULED_ROW` | §7's margin spec alone |
+| `sizeMode` deleted from the row's column | §7's split spec — **and the page was unchanged**, which is what condemned the draft |
+| `sizeMode: 'contentSize'` | **the door refused it** — `inert-dimension`, generation exit 1 |
+| the `Read` button made to grow | §7's split spec alone; door clean, button 361px wide |
+
+⚠️ The `contentSize` run is why the generator's **exit code and output are read every time**: the
+door refused, the previous artefact stayed on disk, and the render taken straight afterwards was of
+the healthy artefact. It reported no defect and meant nothing.
+
+### ⚠️ `raised` has no reader here, and that is a decision rather than an oversight
+
+C1 shipped two compositions; this template uses one. `raised` *"only reads as raised on a
+`var(--surface)` ground"* — its own description — and every list here sits on `--background`.
+Grounding one would mean filling a repeater's container, which **§3 of this ratchet forbids**, for a
+measurement: `--surface` rows on a `--surface` container measure **1.26:1** and the list stops
+reading as separate objects. ⚠️ That reason is about rows that carry a fill and a `ruled` row does
+not, so a directory rebuilt as a true `ui-data-table` — a `card` container, a `raised` head row,
+`ruled` rows inside — is now reachable and would need §3 revisited. Not taken: it is a second
+design, not a completion of this one, and §3 exists because the obvious version of it made every
+other instrument greener while the screen got worse.
+
+### ✅ Graded by looking, and then by driving
+
+All four lists rendered with rows at **1280×1000 and 390×844** as a signed-in moderator against a
+real enforcing backend, **0 console errors**, and read before and after. Then the three drives:
+**75/75**, including the meetings assertions that read `place` off `innerText` — which the joined
+`date · place` line still carries.
+
+### Gates (s12)
+
+`typecheck:mcp` clean · `tpl001Template` **67/67** (3 new) · `templateAppearance` **22/22** · the
+three tpl001 drives **75/75** against a real enforcing backend and browser · generation reproducible,
+**63 + 6** diagnostics. ⚠️ `test:ci` **not run** — no editor source touched, which is what has kept
+this phase from colliding all week.

@@ -65,6 +65,7 @@ failure this file's first house rule exists to prevent.
 | **D29** | ⚠️ open (08-29) | **phase 78** (Track B remainder) | template | every member — a second auth round trip on every page |
 | **D30** | 🔴 open (08-29) | **NONE** | product | every app with a column of numbers — money, times, scores |
 | **D31** | ✅ fixed s11 (08-29) | — | template | (was: every moderator who posted something wrong) |
+| **D32** | 🔴 open (08-29, s12) | **NONE** | product | every agent laying two things out along a row |
 
 🔴 **D18/D19/D20 are the first rows created since the sweep, and they were already unowned within a
 day of the process being put in place.** That is the argument for the column, not an argument
@@ -925,7 +926,7 @@ P75 finding where a template card drew the machine slug `starter` at a builder.
 
 ---
 
-## D26 — 🔴 The vocabulary has no composition that makes two things look *different* from each other
+## D26 — ✅ Fixed by P80 C1 (`2c6a8876`, 08-29). The vocabulary had no composition that made two things look *different* from each other
 
 **This is D20's larger half and it is the reason a NodeGX app reads as generic.** D20 says the
 vocabulary ships nothing for a field, a notice or an empty state. Touring all eleven pages says
@@ -946,6 +947,23 @@ that is flat and edged rather than filled and rounded, or a row treatment that i
 box, would do more than ten more variants of `card`. Related: the template uses **none** of `band`,
 `bandSurface`, `columnsTwoUp` or `gridAutoFit`, so part of the sameness is ours and part is the kit's;
 D26 is the kit's part.
+
+### ✅ How it was closed, and what the template did with it (s12)
+
+P80 C1 added two compositions, both lifted from `ui-data-table` rather than designed: **`ruled`** (a
+row separated by a hairline, no fill at all) and **`raised`** (`--surface-raised` with a `--border`
+hairline under it). TPL-001 s12 consumed `ruled` on three of its four repeater rows — the
+noticeboard, the diary and the directory — and the eight-announcement page went from **1,879px to
+1,199px**, reading as one list rather than eight objects. The fourth row, a request to join, **stays
+a `card` on purpose**: it is a decision with two consequential buttons on it, not a record being
+scanned.
+
+⚠️ **`raised` still has no reader, and the reason is worth recording.** It only reads as raised on a
+`var(--surface)` ground, and every list in TPL-001 sits on `--background`; grounding one would mean
+filling a repeater's container, which that template's §3 ratchet forbids on a measurement
+(`--surface` rows on a `--surface` container measure 1.26:1). A list rebuilt as a true
+`ui-data-table` — `card` container, `raised` head, `ruled` rows — is reachable and would need §3
+revisited. It is a second design rather than a completion of this one, so it was not taken.
 
 ---
 
@@ -1160,3 +1178,50 @@ label is in every visitor's document, including a stranger's — all three faile
 read as a leak. `html` is honest about **records**; a **control** is read off the `<button>`
 elements and a **sentence** off `body.innerText`. s8 learned half of this on one spec; it is a rule
 now.
+
+---
+
+## D32 — 🔴 Two children of a row both grow, and nothing says so: `justifyContent` silently does nothing
+
+**Measured, s12, by building it wrong and rendering it.** Owner: **NONE**.
+
+### What it is
+
+Every visual node's `width` port **defaults to `100%`** (`node-shared-port-definitions.ts:813-823`),
+and `layout.ts:79-88` turns a percentage width inside a `row` parent into `flexGrow`. So **growing
+is what a child of a row does unless something stops it** — and the only things that stop it are a
+non-percentage width or `sizeMode: contentSize`/`contentWidth`.
+
+Put two such children in a row with `justifyContent: 'space-between'` and the free space they were
+meant to be pushed apart by does not exist: they take half each. The parameter is not refused, not
+warned about, and not inert in any way the door can see — it is simply asked to distribute nothing.
+
+### The two readings that make it a defect rather than a preference
+
+| arm | what happened |
+|---|---|
+| directory row, standing at the far edge | **348px per side** at 1280 — an even split, not a split; at 390 the addresses broke mid-word, `ada@example.invali / d` |
+| announcement row, `Read` button given `sizeMode: 'contentHeight'` | an 84px button became **361px**. Generation **clean**, door silent, every other gate green |
+
+🔴 **The door already has the neighbouring rule and it is a good one.** Set `contentSize` *and* a
+width and it refuses with `inert-dimension`, naming the port, the node, and both fixes — that
+sabotage could not even reach the artefact. So the door checks a dimension that will never be read.
+What it does not check is a dimension that **will** be read, by more children than the layout can
+satisfy. Each parameter is individually valid; only their combination on one row is wrong.
+
+### Why it will bite an agent harder than a person
+
+A person drags a row out and sees it. An agent authoring through the door gets a clean write, a
+green validation and a diagnostic count of zero, and the only witness is a screenshot nobody took.
+It is the same family as **D28** — controls laid out in the one node that reflows — one step out:
+there a content-sized child ignored the box it was handed, here it ignores the room the row has
+left.
+
+⚠️ **Suggested shape, not a design.** A `warning` on a `Group` with `flexDirection: row` and a
+`justifyContent` that distributes free space, when more than one child would grow. It is decidable
+from the graph alone: the children, their types' `defaultSizeMode`, and their declared widths are
+all the door already has.
+
+✅ **Held on the template side meanwhile** — `tpl001Template.test.ts` §7 asserts that a split row has
+exactly one growing child, proved by the 361px-button sabotage. That is one template's gate, not a
+product fix, and it is why this row has an owner of `NONE` rather than being marked handled.

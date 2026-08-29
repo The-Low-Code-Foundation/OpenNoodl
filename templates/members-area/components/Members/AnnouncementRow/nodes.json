@@ -8,8 +8,7 @@
       "type": "Group",
       "label": "One announcement",
       "children": [
-        "rowTitle",
-        "rowDate",
+        "rowLines",
         "readButton"
       ],
       "parameters": {
@@ -17,28 +16,45 @@
           "value": 100,
           "unit": "%"
         },
-        "backgroundColor": "var(--surface)",
-        "borderRadius": "var(--radius-xl)",
-        "borderStyle": "solid",
-        "borderWidth": "var(--border-1)",
-        "borderColor": "var(--border)",
-        "clip": true,
-        "flexDirection": "column",
-        "rowGap": "var(--space-2)",
-        "paddingLeft": "var(--space-5)",
-        "paddingRight": "var(--space-5)",
-        "paddingTop": "var(--space-5)",
-        "paddingBottom": "var(--space-5)",
-        "marginBottom": "var(--space-4)"
+        "flexDirection": "row",
+        "alignItems": "center",
+        "borderBottomStyle": "solid",
+        "borderBottomWidth": "var(--border-1)",
+        "borderBottomColor": "var(--border-subtle)",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)",
+        "columnGap": "var(--space-4)",
+        "justifyContent": "space-between"
       },
       "x": 40,
       "y": 40
     },
     {
+      "id": "rowLines",
+      "type": "Group",
+      "label": "What it is, and when",
+      "parent": "row",
+      "children": [
+        "rowTitle",
+        "rowDate"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "rowGap": "var(--space-1)"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
       "id": "rowTitle",
       "type": "Text",
       "label": "Title",
-      "parent": "row",
+      "parent": "rowLines",
       "parameters": {
         "text": "",
         "fontSize": "var(--text-xl)",
@@ -46,21 +62,21 @@
         "lineHeight": "var(--leading-snug)",
         "color": "var(--foreground)"
       },
-      "x": 100,
-      "y": 160
+      "x": 160,
+      "y": 280
     },
     {
       "id": "rowDate",
       "type": "Text",
       "label": "Posted",
-      "parent": "row",
+      "parent": "rowLines",
       "parameters": {
         "text": "",
         "fontSize": "var(--text-sm)",
         "color": "var(--muted-foreground)"
       },
-      "x": 100,
-      "y": 280
+      "x": 160,
+      "y": 400
     },
     {
       "id": "readButton",
@@ -84,7 +100,7 @@
         "sizeMode": "contentSize"
       },
       "x": 100,
-      "y": 400
+      "y": 520
     },
     {
       "id": "inputs-2",
@@ -107,8 +123,8 @@
           "type": "string"
         }
       ],
-      "x": 350,
-      "y": 160
+      "x": 410,
+      "y": 280
     },
     {
       "id": "when",
@@ -117,8 +133,8 @@
       "parameters": {
         "functionScript": "function humanDay(raw) {\n  if (raw === undefined || raw === null) return '';\n  var s = String(raw);\n  if (s === '') return '';\n  var m = /^(\\d{4})-(\\d{2})-(\\d{2})$/.exec(s);\n  var at = m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : new Date(s);\n  if (isNaN(at.getTime())) return '';\n  return at.toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' });\n}\nif (Inputs.postedAt === undefined) return;\nOutputs.label = humanDay(Inputs.postedAt);"
       },
-      "x": 350,
-      "y": 280
+      "x": 410,
+      "y": 400
     },
     {
       "id": "goDetail",
@@ -128,8 +144,8 @@
         "router": "Main",
         "target": "/Pages/Announcement"
       },
-      "x": 350,
-      "y": 400
+      "x": 410,
+      "y": 520
     }
   ],
   "visualRoots": [

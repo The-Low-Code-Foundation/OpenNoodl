@@ -1526,4 +1526,196 @@ describe('TPL-001 — the design system is finished, not merely opened', () => {
     expect(seconds).toBe(1);
     expect(missing).toEqual([]);
   });
+
+  /**
+   * §7 — 🔴 **B3: a list of records reads as a LIST, and not every list is one.**
+   *
+   * Before this, all four repeater rows wore the same `card`: eight
+   * announcements rendered as eight boxes 175px tall for one line of
+   * information each, a six-meeting diary ran to 1,200px, and a directory of
+   * four people read as four objects rather than as a directory. The cause was
+   * in the kit — of eighteen compositions exactly **two** carried a content fill
+   * and both were `--surface` (D26) — so no template could fix it for itself
+   * until P80 C1 shipped `ruled`.
+   *
+   * 🔴 **And the fix was invisible to every gate here.** The whole suite stayed
+   * green across the change, byte-identity included, because it regenerates: the
+   * artefact and the source moved together and nothing compared either against a
+   * *statement*. So these three rows are literals, in the sense s9's finding
+   * settled — the side the rule is ABOUT is read from the shipped artefact, and
+   * the side that says what it should be is written here by hand.
+   */
+  const ROW_TREATMENTS: Record<string, 'ruled' | 'card'> = {
+    '/Members/AnnouncementRow': 'ruled',
+    '/Members/MeetingRow': 'ruled',
+    '/Members/MemberRow': 'ruled',
+    // 🔴 **The one that stays a card, and it is the point of the section rather
+    // than an exception to it.** A request to join is a decision with two
+    // consequential buttons on it, and boxing it says "this is one thing you are
+    // being asked about". A noticeboard, a diary and a directory are lists of
+    // records a person scans. "Layout variety" that made all four `ruled` would
+    // have swapped one uniform for another.
+    '/Members/RequestRow': 'card'
+  };
+
+  /**
+   * A component's root node, found by EXCLUSION rather than by a `parent` field.
+   *
+   * ⚠️ The artefact carries `parent` on every child, but `StoredNode` above does
+   * not declare it — and reaching for an undeclared field is how this file's own
+   * §5 finding started. The root is the node nothing lists as a child, which is
+   * true of the artefact whatever it happens to serialise.
+   */
+  const rootOf = (row: (typeof shipped)[number]) => {
+    const claimed = new Set(row.nodes.flatMap((n) => n.children ?? []));
+    return row.nodes.find((n) => !claimed.has(n.id));
+  };
+
+  /** How a row's ROOT is dressed in the shipped artefact, by what it carries. */
+  const treatmentOf = (row: (typeof shipped)[number]): string => {
+    const root = rootOf(row);
+    const p = (root?.parameters ?? {}) as Record<string, unknown>;
+    const filled = 'backgroundColor' in p;
+    const boxed = 'borderWidth' in p || 'borderRadius' in p;
+    const bottomRule = 'borderBottomWidth' in p;
+    if (filled && boxed && !bottomRule) return 'card';
+    if (!filled && !boxed && bottomRule) return 'ruled';
+    return `neither (fill:${filled} box:${boxed} rule:${bottomRule})`;
+  };
+
+  it('§7 every repeater row wears one of the two treatments, and which one is stated here', () => {
+    const rows = allNodes()
+      .filter(({ node }) => node.type === 'For Each')
+      .map(({ node }) => String(node.parameters?.template));
+    // Beside a known-firing signal, and pinned: four repeaters, four rows. A
+    // list that stopped repeating would make every census below pass over
+    // nothing.
+    expect(new Set(rows).size).toBe(4);
+    const found: Record<string, string> = {};
+    for (const name of [...new Set(rows)].sort()) {
+      const row = shipped.find((c) => c.path === name);
+      found[name] = row ? treatmentOf(row) : 'no such component';
+    }
+    expect(found).toEqual(ROW_TREATMENTS);
+    // And the two treatments are BOTH used: a map that agreed with itself on one
+    // value would satisfy the line above while the variety it is about was gone.
+    expect(new Set(Object.values(found)).size).toBe(2);
+  });
+
+  it('§7 a ruled row does not push the next one away, and a card does', () => {
+    const margins: Record<string, boolean> = {};
+    for (const [name] of Object.entries(ROW_TREATMENTS)) {
+      const row = shipped.find((c) => c.path === name);
+      const root = row ? rootOf(row) : undefined;
+      margins[name] = 'marginBottom' in ((root?.parameters ?? {}) as Record<string, unknown>);
+    }
+    // 🔴 The two arms are opposite and that is what makes this a reading. A card
+    // NEEDS the gap or its border sits flush against the next one's (§13); a
+    // ruled row needs the rows to TOUCH, because the hairlines are the only
+    // thing making eight of them one list rather than eight underlined
+    // paragraphs.
+    expect(margins).toEqual({
+      '/Members/AnnouncementRow': false,
+      '/Members/MeetingRow': false,
+      '/Members/MemberRow': false,
+      '/Members/RequestRow': true
+    });
+  });
+
+  /**
+   * §7 — 🔴 **the one thing in a split row that nothing else can see: how many
+   * of its children GROW.**
+   *
+   * A ruled row with an action at its far edge works only if exactly one child
+   * takes the slack. `layout.ts:79-88` turns a percentage width inside a row
+   * parent into `flexGrow`; every visual node's `width` port **defaults to
+   * `100%`** (`node-shared-port-definitions.ts:813-823`), so growing is what a
+   * child does unless something stops it. Two growers and
+   * `justifyContent: space-between` has nothing left to distribute: the row
+   * splits down the middle and the action is stranded in the centre.
+   *
+   * That is not a hypothetical — it is what the directory row did when it was
+   * first built this way. Measured: **348px per side** at 1280, and at 390 the
+   * standing wrapped onto two lines while the addresses broke mid-word
+   * (`ada@example.invali / d`). Every parameter was legal, the door raised
+   * nothing, §1–§6 were unmoved, and the composition was used correctly.
+   *
+   * 🔴 **This spec's first draft could not have caught that, and the mistake is
+   * worth keeping.** It asked whether the FIRST child grows — which was true of
+   * the broken directory row *and* of the healthy one, so the number it reported
+   * was the same on both sides of the defect. Two further things were wrong with
+   * it and each was found by a different instrument:
+   *
+   * 1. It required `sizeMode` to be `contentHeight` or `explicit`. Deleting
+   *    `sizeMode` reddened the spec and the page **rendered identically**, because
+   *    a `Group` defaults to `explicit` and that assigns the width anyway.
+   * 2. Restating it as `contentSize` — the mode that really does drop the width —
+   *    could not reach the artefact at all: **the door refuses it**,
+   *    `inert-dimension`, naming the port, the node and the fix. A gate for
+   *    something the door already rejects is not a gate.
+   *
+   * What is left is the thing the door does NOT check, because each parameter is
+   * individually valid and only their combination on one row is wrong.
+   */
+
+  /**
+   * A visual node's `sizeMode` when the artefact does not say — the product's
+   * own per-type default, which is what decides whether an unstated width is
+   * read at all.
+   *
+   * ⚠️ **A second copy of a product fact, and it is fenced rather than trusted.**
+   * A type absent from this table is a failure below, not an assumption: the
+   * whole defect this spec exists for is a node that grew when nobody meant it
+   * to, so "I do not know this type, assume it does not grow" is the one answer
+   * that must never be given silently.
+   */
+  const DEFAULT_SIZE_MODE: Record<string, string> = {
+    // `addDimensions(GroupNode)` — no options, so `defaultSizeMode = 'explicit'`.
+    Group: 'explicit',
+    // `text.ts:149` — `defaultSizeMode: 'contentHeight'`. A Text grows too, which
+    // is exactly how the directory ended up 50/50.
+    Text: 'contentHeight',
+    // `button.ts:60` — `defaultSizeMode: 'contentSize'`. This is the whole reason
+    // a button is safe at the far edge of a row and a sentence is not.
+    'net.noodl.controls.button': 'contentSize'
+  };
+
+  it('§7 a row that splits has exactly one child that grows into the gap', () => {
+    const unknownTypes: string[] = [];
+    const wrong: string[] = [];
+    let splits = 0;
+
+    const grows = (node: { type: string; parameters?: Record<string, unknown> }): boolean => {
+      const p = node.parameters ?? {};
+      const mode = (p.sizeMode as string | undefined) ?? DEFAULT_SIZE_MODE[node.type];
+      if (mode === undefined) {
+        unknownTypes.push(node.type);
+        return false;
+      }
+      if (mode === 'contentSize' || mode === 'contentWidth') return false;
+      // An absent `width` is the port's own default of 100% — so absence grows.
+      const width = (p.width as { unit?: string } | undefined) ?? { unit: '%' };
+      return width.unit === '%';
+    };
+
+    for (const [name] of Object.entries(ROW_TREATMENTS)) {
+      const row = shipped.find((c) => c.path === name);
+      const root = row ? rootOf(row) : undefined;
+      const p = (root?.parameters ?? {}) as Record<string, unknown>;
+      if (p.justifyContent !== 'space-between') continue;
+      splits += 1;
+      const kids = (root?.children ?? []).map((id) => row?.nodes.find((n) => n.id === id)).filter(Boolean);
+      const growers = kids.filter((k) => grows(k as { type: string; parameters?: Record<string, unknown> }));
+      if (growers.length !== 1) {
+        wrong.push(
+          `${name}: ${growers.length} of ${kids.length} children grow — ` +
+            `${kids.map((k) => `${k?.id}(${grows(k as never) ? 'grows' : 'fixed'})`).join(', ')}`
+        );
+      }
+    }
+    // A type this spec cannot reason about is a hole shaped like the defect.
+    expect(unknownTypes).toEqual([]);
+    expect(splits).toBe(2);
+    expect(wrong).toEqual([]);
+  });
 });

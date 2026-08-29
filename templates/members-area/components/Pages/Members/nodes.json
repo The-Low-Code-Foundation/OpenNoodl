@@ -298,7 +298,8 @@
         "paddingBottom": "var(--space-3)",
         "fontSize": "var(--text-sm)",
         "fontWeight": "var(--font-semibold)",
-        "sizeMode": "contentSize"
+        "sizeMode": "contentSize",
+        "marginTop": "var(--space-4)"
       },
       "x": 220,
       "y": 1720

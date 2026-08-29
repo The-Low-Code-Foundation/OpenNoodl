@@ -294,6 +294,95 @@ const SECTION = {
 const ROW_CARD = { ...CARD, ...CARD_BODY, marginBottom: 'var(--space-4)' };
 
 /**
+ * One row in a LIST — a hairline under it, and no fill at all.
+ *
+ * 🔴 **B3, and the defect it ends was that every list was a stack of cards.**
+ * Eight announcements, six meetings and a directory of members each rendered as
+ * a boxed object 175–200px tall carrying one line of information, so a
+ * noticeboard read as eight things rather than as one list of eight. The cause
+ * was in the kit rather than in this template: of eighteen compositions exactly
+ * **two** carried a content fill and both were `--surface`, so `card` was the
+ * only way to say "this is a thing". P80 C1 added the second surface and this
+ * row, both lifted from `ui-data-table`.
+ *
+ * ⚠️ **The card was never doing the work its fill claimed.** `--surface` on
+ * `--background` measures **1.06:1** — invisible, as `TILE` already records. A
+ * card here was read entirely by its hairline, which is exactly what `ruled` is:
+ * the same amount of visual information at a quarter of the height, and without
+ * the "separate object" reading that a box carries whether or not you can see
+ * its fill.
+ *
+ * 🔴 **No `marginBottom`, and that is the opposite of `ROW_CARD`'s.** A card
+ * needs the gap or its border sits flush against the next one's (§13). A ruled
+ * row needs the rows to TOUCH: the hairlines are what make eight of them one
+ * list, and air between them would make eight underlined paragraphs.
+ *
+ * ⚠️ The gap is this template's, not the composition's — `ruled` carries none,
+ * and `laidOut` is what keeps it the one the runtime reads: `group.ts:473-482`
+ * makes `columnGap` conditional on `flexDirection = row`, so a `rowGap` here
+ * would be a parameter nothing reads.
+ */
+const RULED_ROW = laidOut('row', { ...composition('ruled') }, 'var(--space-4)');
+
+/**
+ * A ruled row with an ACTION at its far edge — and only ever an action.
+ *
+ * 🔴 **A sentence cannot go on the right of one of these, and that is a
+ * measurement rather than a preference.** The directory row was built this way
+ * first, with the standing against the right edge, and at 390px it broke the
+ * addresses mid-word: `ada@example.invali / d`. This runtime gives a child of a
+ * row exactly two behaviours — a percentage width becomes `flexGrow` **and
+ * opts back into shrinking**, and anything else is content-sized with
+ * `flexShrink: 0` (`layout.ts:79-88`). There is no third. So a content-sized
+ * right-hand child takes its full width out of the row at every viewport and
+ * the growing column absorbs the whole squeeze.
+ *
+ * A button survives that because it is short and its width does not depend on
+ * the record; `Member · since 29 August 2026` measured **197px of a 342px row**
+ * and left 129px for a name and an address. Same family as D28, one step out:
+ * there the content-sized child ignored the box `Columns` handed it, here it
+ * ignores the room the row has left.
+ *
+ * ⚠️ `space-between` and the gap are the pair `Members/Chrome`'s `topRow`
+ * already carries, for the reason recorded there: `space-between` puts air
+ * between two things only while there IS air, and at 390px the gap is what
+ * stops the words running under the button.
+ */
+const RULED_ROW_SPLIT = { ...RULED_ROW, justifyContent: 'space-between' };
+
+/**
+ * The words in a ruled row: what the row is, and what it says about itself.
+ *
+ * 🔴 **It has to grow, and there is no `grow` port — a PERCENTAGE WIDTH is how
+ * this runtime spells it.** `layout.ts:83-88`: inside a `row` parent a
+ * percentage width becomes `flexGrow` and re-enables shrinking, which is the
+ * mechanism `card`'s own description means by *"width 100% lets the column size
+ * it"*. That is the whole of it — the width is the load-bearing half.
+ *
+ * ⚠️ **`sizeMode` is a choice here, not a requirement, and the first draft of
+ * this comment had that wrong.** It claimed `contentHeight` was what made the
+ * column grow. Sabotaged by deleting it and re-rendered: the row measured
+ * **identically**, 612px beside an 84px button. A `Group` defaults to
+ * `explicit` (`node-shared-port-definitions.ts:755`), which assigns the width
+ * too, so growth survives its absence. `contentHeight` stays because it is the
+ * true statement about this column — it is as tall as its lines — and because
+ * `explicit` would also hand it a height it has no business declaring. What
+ * would really stop it growing is `contentSize` or `contentWidth`, the two modes
+ * that never write a width at all, and §7 of the ratchet is about those.
+ *
+ * ⚠️ **Never fewer than two `Text` children.** §2 of the ratchet counts a
+ * `Group` wrapping exactly one `Text` as a notice box and pins the total; a row
+ * whose second line was dropped would silently become an extra notice and redden
+ * a spec about something else entirely. Same trap `TILE` records.
+ */
+const ROW_LINES = {
+  width: { value: 100, unit: '%' },
+  sizeMode: 'contentHeight',
+  flexDirection: 'column',
+  rowGap: 'var(--space-1)'
+};
+
+/**
  * The page's one action gets the filled button; everything else is the outline.
  *
  * 🔴 **`variant` is connection-only on this node**, which the `primaryButton`
@@ -472,6 +561,25 @@ const HUMAN_DAY_FN =
   "  if (isNaN(at.getTime())) return '';\n" +
   "  return at.toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' });\n" +
   '}\n';
+
+/**
+ * Give a sibling the air a ruled list needs under it.
+ *
+ * 🔴 **A ruled list ends with a rule, and the section gap that was enough after
+ * a card is not enough after a line.** `Pages/Members` is the one page where
+ * something follows a list — the "What's coming up" button — and at
+ * `SECTION`'s own `--space-4` it landed **17px under the last row's hairline and
+ * 24px above the moderator section's rule**, so it read as a ninth row of the
+ * announcements rather than as the section's closing action. The card version
+ * had no such problem: `ROW_CARD`'s own `marginBottom` was paying for this gap
+ * as a side effect, and removing it took the air with it.
+ *
+ * Written as a rule over *following a list* rather than as a margin typed onto
+ * the one button, so the next thing put below a repeater inherits the reason.
+ */
+function afterRuledList(params: Record<string, unknown>): Record<string, unknown> {
+  return { ...params, marginTop: 'var(--space-4)' };
+}
 
 function btn(label: string): Record<string, unknown> {
   return {
@@ -1406,17 +1514,25 @@ export const ANNOUNCEMENT_ROW_NODES = [
     id: 'row',
     type: 'Group',
     label: 'One announcement',
-    parameters: { ...ROW_CARD },
-    children: ['rowTitle', 'rowDate', 'readButton']
+    parameters: { ...RULED_ROW_SPLIT },
+    children: ['rowLines', 'readButton']
+  },
+  {
+    id: 'rowLines',
+    type: 'Group',
+    label: 'What it is, and when',
+    parent: 'row',
+    parameters: { ...ROW_LINES },
+    children: ['rowTitle', 'rowDate']
   },
   {
     id: 'rowTitle',
     type: 'Text',
     label: 'Title',
-    parent: 'row',
+    parent: 'rowLines',
     parameters: { text: '', ...T_CARD_TITLE }
   },
-  { id: 'rowDate', type: 'Text', label: 'Posted', parent: 'row', parameters: { text: '', ...T_META } },
+  { id: 'rowDate', type: 'Text', label: 'Posted', parent: 'rowLines', parameters: { text: '', ...T_META } },
   {
     id: 'readButton',
     type: 'net.noodl.controls.button',
@@ -1471,18 +1587,37 @@ export const MEETING_ROW_NODES = [
     id: 'row',
     type: 'Group',
     label: 'One meeting',
-    parameters: { ...ROW_CARD },
-    children: ['rowTitle', 'rowWhen', 'rowPlace', 'detailButton']
+    parameters: { ...RULED_ROW_SPLIT },
+    children: ['rowLines', 'detailButton']
+  },
+  {
+    id: 'rowLines',
+    type: 'Group',
+    label: 'What it is, when and where',
+    parent: 'row',
+    parameters: { ...ROW_LINES },
+    children: ['rowTitle', 'rowWhen']
   },
   {
     id: 'rowTitle',
     type: 'Text',
     label: 'Title',
-    parent: 'row',
+    parent: 'rowLines',
     parameters: { text: '', ...T_CARD_TITLE }
   },
-  { id: 'rowWhen', type: 'Text', label: 'When', parent: 'row', parameters: { text: '', ...T_META } },
-  { id: 'rowPlace', type: 'Text', label: 'Where', parent: 'row', parameters: { text: '', ...T_META } },
+  /**
+   * 🔴 **One meta line, not two, and that is the ruled row's doing.** The card
+   * stacked `when` and `place` as separate grey lines under the title, which was
+   * three lines of column in a box 200px tall. A diary is scanned down its dates,
+   * so the row keeps the date leading and hangs the place off it with the `·`
+   * the directory row already uses for exactly this — one separator in the app,
+   * not two.
+   *
+   * ⚠️ `rowPlace` is gone rather than emptied: a `Text` wired to nothing renders
+   * an empty box that still takes its line-height, and the drive reads `place`
+   * off `innerText`, which the joined line still carries.
+   */
+  { id: 'rowWhen', type: 'Text', label: 'When and where', parent: 'rowLines', parameters: { text: '', ...T_META } },
   {
     id: 'detailButton',
     type: 'net.noodl.controls.button',
@@ -1513,7 +1648,12 @@ export const MEETING_ROW_NODES = [
         // reading `next Tuesday` is legible and a blank line is the bug that
         // hides whatever somebody actually typed.
         "var day = humanDay(Inputs.when);\n" +
-        "Outputs.label = day === '' ? String(Inputs.when || '') : day;"
+        "var said = day === '' ? String(Inputs.when || '') : day;\n" +
+        // ⚠️ The separator only appears when there is something on both sides of
+        // it. A meeting with no place recorded would otherwise render a date
+        // with a dangling `·`, which reads as a field that failed to load.
+        "var where = Inputs.place === undefined || Inputs.place === null ? '' : String(Inputs.place);\n" +
+        "Outputs.label = where === '' ? said : said + ' \u00b7 ' + where;"
     }
   },
   {
@@ -1527,8 +1667,8 @@ export const MEETING_ROW_NODES = [
 export const MEETING_ROW_WIRES = [
   { fromId: 'inputs', fromProperty: 'title', toId: 'rowTitle', toProperty: 'text' },
   { fromId: 'inputs', fromProperty: 'when', toId: 'whenLabel', toProperty: 'in-when' },
+  { fromId: 'inputs', fromProperty: 'place', toId: 'whenLabel', toProperty: 'in-place' },
   { fromId: 'whenLabel', fromProperty: 'out-label', toId: 'rowWhen', toProperty: 'text' },
-  { fromId: 'inputs', fromProperty: 'place', toId: 'rowPlace', toProperty: 'text' },
   { fromId: 'inputs', fromProperty: 'id', toId: 'goDetail', toProperty: `pm-${MEETING_PARAM}` },
   { fromId: 'detailButton', fromProperty: 'onClick', toId: 'goDetail', toProperty: 'navigate' }
 ];
@@ -1653,18 +1793,38 @@ export const MEMBER_ROW_NODES = [
     id: 'row',
     type: 'Group',
     label: 'One member',
-    parameters: { ...ROW_CARD },
+    // 🔴 **`RULED_ROW`, not `RULED_ROW_SPLIT`, and the difference was measured
+    // rather than chosen.** This row has no action, so the only thing that could
+    // sit at its far edge is the standing — and see `RULED_ROW_SPLIT`: a
+    // content-sized sentence there does not shrink, so at 390px it took 197px of
+    // a 342px row and broke every address mid-word. A directory reads down its
+    // names; the hairline is what this row needed from `ruled`, not the split.
+    parameters: { ...RULED_ROW },
+    children: ['rowLines']
+  },
+  {
+    id: 'rowLines',
+    type: 'Group',
+    label: 'Who they are, where to reach them, and what they are here',
+    parent: 'row',
+    parameters: { ...ROW_LINES },
     children: ['rowName', 'rowEmail', 'rowStanding']
   },
   {
     id: 'rowName',
     type: 'Text',
     label: 'Who',
-    parent: 'row',
+    parent: 'rowLines',
     parameters: { text: '', ...T_CARD_TITLE }
   },
-  { id: 'rowEmail', type: 'Text', label: 'Where to reach them', parent: 'row', parameters: { text: '', ...T_META } },
-  { id: 'rowStanding', type: 'Text', label: 'What they are here', parent: 'row', parameters: { text: '', ...T_META } },
+  { id: 'rowEmail', type: 'Text', label: 'Where to reach them', parent: 'rowLines', parameters: { text: '', ...T_META } },
+  {
+    id: 'rowStanding',
+    type: 'Text',
+    label: 'What they are here',
+    parent: 'rowLines',
+    parameters: { text: '', ...T_META }
+  },
   {
     id: 'inputs',
     type: 'Component Inputs',
@@ -1802,7 +1962,7 @@ const MEMBERS: Tpl001Component = {
       type: 'net.noodl.controls.button',
       label: 'What is coming up',
       parent: 'memberArea',
-      parameters: btn('What’s coming up')
+      parameters: afterRuledList(btn('What’s coming up'))
     },
     {
       id: 'moderatorTools',

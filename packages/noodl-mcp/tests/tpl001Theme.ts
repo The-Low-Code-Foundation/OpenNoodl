@@ -156,6 +156,12 @@ export const USED_COMPOSITIONS = [
   'gridAutoFit',
   'card',
   'cardBody',
+  // s12 (B3). The row that is NOT a card: a hairline under it and no fill at
+  // all, so a noticeboard reads as one list of eight rather than as eight
+  // objects. It only exists because P80 C1 added it — of eighteen compositions
+  // exactly two carried a content fill and both were `--surface`, which is why
+  // every list in this template wore the same box (D26).
+  'ruled',
   'sectionHead',
   'primaryButton',
   'outlineButton',

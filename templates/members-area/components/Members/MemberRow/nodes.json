@@ -8,6 +8,31 @@
       "type": "Group",
       "label": "One member",
       "children": [
+        "rowLines-3"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "flexDirection": "row",
+        "alignItems": "center",
+        "borderBottomStyle": "solid",
+        "borderBottomWidth": "var(--border-1)",
+        "borderBottomColor": "var(--border-subtle)",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)",
+        "columnGap": "var(--space-4)"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "rowLines-3",
+      "type": "Group",
+      "label": "Who they are, where to reach them, and what they are here",
+      "parent": "row-4",
+      "children": [
         "rowName-2",
         "rowEmail",
         "rowStanding"
@@ -17,28 +42,18 @@
           "value": 100,
           "unit": "%"
         },
-        "backgroundColor": "var(--surface)",
-        "borderRadius": "var(--radius-xl)",
-        "borderStyle": "solid",
-        "borderWidth": "var(--border-1)",
-        "borderColor": "var(--border)",
-        "clip": true,
+        "sizeMode": "contentHeight",
         "flexDirection": "column",
-        "rowGap": "var(--space-2)",
-        "paddingLeft": "var(--space-5)",
-        "paddingRight": "var(--space-5)",
-        "paddingTop": "var(--space-5)",
-        "paddingBottom": "var(--space-5)",
-        "marginBottom": "var(--space-4)"
+        "rowGap": "var(--space-1)"
       },
-      "x": 40,
-      "y": 40
+      "x": 100,
+      "y": 160
     },
     {
       "id": "rowName-2",
       "type": "Text",
       "label": "Who",
-      "parent": "row-4",
+      "parent": "rowLines-3",
       "parameters": {
         "text": "",
         "fontSize": "var(--text-xl)",
@@ -46,34 +61,34 @@
         "lineHeight": "var(--leading-snug)",
         "color": "var(--foreground)"
       },
-      "x": 100,
-      "y": 160
+      "x": 160,
+      "y": 280
     },
     {
       "id": "rowEmail",
       "type": "Text",
       "label": "Where to reach them",
-      "parent": "row-4",
+      "parent": "rowLines-3",
       "parameters": {
         "text": "",
         "fontSize": "var(--text-sm)",
         "color": "var(--muted-foreground)"
       },
-      "x": 100,
-      "y": 280
+      "x": 160,
+      "y": 400
     },
     {
       "id": "rowStanding",
       "type": "Text",
       "label": "What they are here",
-      "parent": "row-4",
+      "parent": "rowLines-3",
       "parameters": {
         "text": "",
         "fontSize": "var(--text-sm)",
         "color": "var(--muted-foreground)"
       },
-      "x": 100,
-      "y": 400
+      "x": 160,
+      "y": 520
     },
     {
       "id": "inputs-5",
@@ -101,8 +116,8 @@
           "type": "string"
         }
       ],
-      "x": 350,
-      "y": 160
+      "x": 410,
+      "y": 280
     },
     {
       "id": "describe",
@@ -111,8 +126,8 @@
       "parameters": {
         "functionScript": "function humanDay(raw) {\n  if (raw === undefined || raw === null) return '';\n  var s = String(raw);\n  if (s === '') return '';\n  var m = /^(\\d{4})-(\\d{2})-(\\d{2})$/.exec(s);\n  var at = m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : new Date(s);\n  if (isNaN(at.getTime())) return '';\n  return at.toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' });\n}\nif (Inputs.standing === undefined) return;\nconst LABELS = {\"moderator\":\"Moderator\",\"member\":\"Member\"};\nconst standing = Inputs.standing === null ? '' : String(Inputs.standing);\n// ⚠️ An unknown standing falls back to the stored word rather than to\n// an empty line: a row that says `trustee` is legible, and a row that\n// says nothing at all is the bug that hides the new standing nobody\n// added a label for.\nconst label = LABELS[standing] || standing;\n// The column is a full ISO timestamp; the day is what a person wants —\n// and D25: this was the one site rendering it as `2026-08-29`.\nconst day = humanDay(Inputs.joinedAt);\nOutputs.description = day.length > 0 ? label + ' · since ' + day : label;"
       },
-      "x": 350,
-      "y": 400
+      "x": 410,
+      "y": 520
     }
   ],
   "visualRoots": [

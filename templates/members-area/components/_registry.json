@@ -54,7 +54,7 @@
     "Members/AnnouncementRow": {
       "path": "Members/AnnouncementRow",
       "type": "visual",
-      "nodeCount": 7,
+      "nodeCount": 8,
       "connectionCount": 5,
       "modified": "2026-08-28T00:00:00.000Z",
       "created": "2026-08-28T00:00:00.000Z"
@@ -78,7 +78,7 @@
     "Members/MemberRow": {
       "path": "Members/MemberRow",
       "type": "visual",
-      "nodeCount": 6,
+      "nodeCount": 7,
       "connectionCount": 5,
       "modified": "2026-08-28T00:00:00.000Z",
       "created": "2026-08-28T00:00:00.000Z"
@@ -190,7 +190,7 @@
   },
   "stats": {
     "totalComponents": 23,
-    "totalNodes": 358,
+    "totalNodes": 360,
     "totalConnections": 333
   }
 }
