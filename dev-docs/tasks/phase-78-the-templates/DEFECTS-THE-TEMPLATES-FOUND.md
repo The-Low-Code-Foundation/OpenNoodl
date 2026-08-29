@@ -55,6 +55,11 @@ failure this file's first house rule exists to prevent.
 | **D19** | ⚠️ open (08-29) | **NONE** — either way, see below | product | every person filling in any form |
 | **D20** | 🔴 open (08-29) | **NONE** — **DEF-006 agreed, not yet filed** | product | every agent styling on-system |
 | **D21** | ✅ disproved (08-29) | — | — | (would have been: every agent placing a component) |
+| **D22** | 🔴 open (08-29) | **NONE** | template | every install — the directory's first row |
+| **D23** | ⚠️ open (08-29) | **NONE** | template | anyone reading two pages titled the same |
+| **D24** | ⚠️ open (08-29) | **NONE** | template | a moderator approving somebody |
+| **D25** | ⚠️ open (08-29) | **NONE** | template | every person reading a date or filling the meeting form |
+| **D26** | 🔴 open (08-29) | **NONE** | product | every template we ship, not just this one |
 
 🔴 **D18/D19/D20 are the first rows created since the sweep, and they were already unowned within a
 day of the process being put in place.** That is the argument for the column, not an argument
@@ -819,4 +824,79 @@ needed*, beside a check that fired.
 
 ✅ This also confirms, from the other side, the standing note that **the door checks parameters and
 not wires** on a component instance. Parameters: refused, by name. Wires: D1.
+
+---
+
+## D22 — 🔴 The directory shows the founding moderator's email address as their name, twice
+
+Found 2026-08-29 (s8) by the first tour of every page **with content seeded** — which is exactly the
+reading TPL-001 §12 recorded as owed and nobody had taken. On a fresh install the directory's only
+row reads:
+
+```
+ruth@stanywhere.invalid          <- the name
+ruth@stanywhere.invalid          <- the email
+Moderator · since 2026-08-29
+```
+
+`claimAssociation` takes `associationName`, `blurb`, `email` and `password` and **never asks for a
+person's name**, so it writes the address into `Member.name`. Every install, on the first screen a
+moderator opens when they click "Who belongs".
+
+⚠️ **Template-side and cheap**: the setup form should ask the founder their name. It is also the one
+place the template can demonstrate that the directory is about people.
+
+---
+
+## D23 — ⚠️ Two different pages are both headed "Members"
+
+`/members` (the noticeboard) and `/directory` (who belongs). Measured off `body.innerText` on both:
+the first line of each is the word `Members`. The directory's own button on the members page says
+**"Who belongs"**, which is the better heading and is already written.
+
+---
+
+## D24 — ⚠️ Approve and Decline are touching
+
+The request row's button pair sets no gap, so the two controls share an edge. `Pages/Landing`'s pair
+sets `columnGap: var(--space-3)` and reads correctly; this row was never given one. It is the same
+class as the s7 finding about announcement cards with no gap between them — **a pair with no gap
+reads as one object**, and here the two objects are *approve* and *decline*.
+
+---
+
+## D25 — ⚠️ Three date formats, two of them machine, one in a label
+
+| where | renders |
+|---|---|
+| announcement rows | `26/08/2026` |
+| the directory | `2026-08-29` |
+| the meeting form's label | `Date (YYYY-MM-DD)` |
+
+The third is the worst: a **storage format shown to a person filling in a form**. Same family as the
+P75 finding where a template card drew the machine slug `starter` at a builder.
+
+---
+
+## D26 — 🔴 The vocabulary has no composition that makes two things look *different* from each other
+
+**This is D20's larger half and it is the reason a NodeGX app reads as generic.** D20 says the
+vocabulary ships nothing for a field, a notice or an empty state. Touring all eleven pages says
+something worse: of the eighteen compositions, there is exactly **one surface** — `card`.
+
+So announcement rows, meeting rows, request rows, directory rows, notices, form panels, the moderator
+toolbar and the landing tiles — **nine kinds of thing** — all wear the same `--surface` fill, the same
+`--radius-xl` and the same 1px hairline, because that is the only box on offer. An agent told to style
+on-system reaches for the only surface there is, every time.
+
+🔴 **Where it bites.** Richard, 2026-08-29, on seeing the landing page: *"It's definitely got that
+standard bootstrap feel about it."* That is the accurate description of a kit whose whole visual
+vocabulary is one rounded rectangle. It will hit **every** template we ship, so it is worth more than
+this template's own styling work.
+
+⚠️ **Not a request for more compositions — a request for contrast between them.** A second surface
+that is flat and edged rather than filled and rounded, or a row treatment that is a rule rather than a
+box, would do more than ten more variants of `card`. Related: the template uses **none** of `band`,
+`bandSurface`, `columnsTwoUp` or `gridAutoFit`, so part of the sameness is ours and part is the kit's;
+D26 is the kit's part.
 
