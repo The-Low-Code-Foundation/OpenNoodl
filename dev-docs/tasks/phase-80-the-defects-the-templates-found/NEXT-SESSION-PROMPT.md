@@ -81,12 +81,15 @@ found the rule was wrong about two of the eleven cases it reported.
 
 ## Traps carried
 
-- 🔴 **Three files are shared with a live peer session and TWO OF THEM CARRY BOTH OUR EDITS.**
-  `packages/noodl-mcp/tests/tpl001Components.ts` and `tpl001Template.test.ts` hold DEF-006's AC5
-  work (`compositionsStillNeedingInertBorderWidthRemoval`, §4b and its control) **uncommitted**,
-  alongside a peer's in-flight TPL-001/D29 band-outputs work. They were deliberately **not**
-  committed by pathspec, because that would have swept the peer's half-finished change into this
-  commit. They are green. ⚠️ **A `git checkout --` on either file destroys both halves.**
+- ✅ **The sibling sweep worked, in the direction that is benign — and only because it was named.**
+  `tpl001Components.ts` and `tpl001Template.test.ts` carried DEF-006's AC5 work
+  (`compositionsStillNeedingInertBorderWidthRemoval`, §4b and its control) *and* a peer's in-flight
+  TPL-001/D29 change. They were deliberately left out of `e337325c` rather than committed by
+  pathspec, because a pathspec commit takes a sibling's unstaged edits. The peer's own commit
+  `0430a3a8` then swept the DEF-006 hunks in — **and said so in its message**. Nothing lost.
+  ⚠️ The habit that made it safe was leaving them and *recording* it; had it not been recorded, a
+  `git checkout --` on either file would have destroyed both halves and neither of us would have
+  known which half was missing.
 - ⚠️ **`test:ci`'s 2889/4 was measured with a peer's uncommitted `packages/noodl-runtime/` and
   `tests-unit/sb-017/` edits in the tree**, because `test:ci` webpacks the working tree. The floor
   held and all four failures are the named AIX-006 four, so the reading is sound — but the `gitHead`
