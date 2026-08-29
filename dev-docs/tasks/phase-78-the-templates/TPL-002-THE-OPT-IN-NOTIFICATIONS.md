@@ -171,13 +171,26 @@ ship `mounted: false`, so a look taken only as a member would have measured the 
 either fix. §10 and §11 were red and the other twenty rows green; after the fixes, 22/22. The spec
 follows the product.
 
-### ⚠️ One finding left open, because it needs a ruling
+### ✅ The one finding left open is now ruled — s16, 2026-08-29
 
 **[D39](DEFECTS-THE-TEMPLATES-FOUND.md)** — the unsubscribe page does not name the association and
-offers no way back. Not an oversight: the page is built to make **no** round trip, and naming the
-association costs one public query. Richard's call.
+offers no way back. **Richard ruled: it stays one sentence.** No change to the artefact.
 
-Gates after: **noodl-mcp 958/958** · `tpl001Template.test.ts` **71/71** (one pinned `mounted` count
+🔴 **s16 re-priced the question before asking, and the pair was not one price.** D39 put the
+name and the way back to Richard as one item costing *"one public query"*. Only the **name** costs
+that; a link back is a static `RouterNavigate` with no data behind it, free. Asked separately, both
+declined — but a pair priced as one is a pair where the cheap half is decided on the expensive
+half's reasoning.
+
+🔴 **A ruling that changes nothing still needed a spec**, because the page's silence was
+previously just *what nobody had added yet* — nothing failed if a later session reached D39's
+conclusion independently and "fixed" it. `tpl001Template.test.ts` §5 now pins it against all four
+routes back (a query, a link, a second cloud function, or simply typing the name as words), each
+proved to redden alone by sabotaging the shipped artefact and restoring it byte-identically.
+
+Gates after s16: **noodl-mcp 959/959** · `tpl001Template.test.ts` **72/72** · `typecheck:mcp` clean.
+
+Gates after s15: **noodl-mcp 958/958** · `tpl001Template.test.ts` **71/71** (one pinned `mounted` count
 46 → 49, with the reason written beside it) · the four tpl001/tpl002 backend suites **130/130** ·
 `typecheck:mcp` and the backend `tsc` clean · generation exit 0, **94 diagnostics, all `info`**.
 ⚠️ `test:ci` not run — no editor source touched.

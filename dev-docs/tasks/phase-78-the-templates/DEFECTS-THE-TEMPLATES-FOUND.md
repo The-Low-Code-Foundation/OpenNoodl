@@ -69,10 +69,22 @@ failure this file's first house rule exists to prevent.
 | **D33** | 🔴 open (08-29, s14) | **NONE** | product | every member who was told they would be emailed |
 | **D34** | 🔴 open (08-29, s14) | **NONE** | product | everyone an app ever emails a link to |
 | **D35** | 🔴 open (08-29, s14) | **NONE** | product | every graph that accumulates anything server-side |
+| **D36** | 🔴 open — worked around in template (08-29, s15) | **NONE** | product | every screen whose answer has more than one form |
+| **D37** | 🔴 open — worked around in template (08-29, s15) | **NONE** | product | every person tapping the words beside a checkbox |
+| **D38** | ✅ fixed s15 — harness, not product | — | harness | (was: every drive asserting on a project string) |
+| **D39** | ✅ **RULED 08-29 by Richard — no change, and now pinned** | — | template | — (ruled: it stays one sentence) |
 
 🔴 **D18/D19/D20 are the first rows created since the sweep, and they were already unowned within a
 day of the process being put in place.** That is the argument for the column, not an argument
 against the timing.
+
+🔴 **And D36–D39 were filed as sections with no table line at all** — added 08-29 (s16), a day
+after the house rule that says a row is not finished until this table has a line for it. Worth
+saying plainly, because it is a **worse** failure than an unowned row and it reads as a milder one:
+an unowned row is at least *visible* to a sweep that reads the table, which is what a sweep reads.
+Four rows filed by the session that also wrote the rule were invisible to it. The count in s15's
+next-session prompt — *"twelve unowned rows"* — was derived from the sections, not the table; had
+anyone derived it from the table it would have said eight and been wrong in the safe direction.
 
 ⚠️ **Discussed with phase 80's owner 2026-08-29 and recorded in
 [THE SWEEP](../phase-77-the-site-builder-rescue/THE-SWEEP-2026-08-29.md#still-open-after-both-fixes)
@@ -1558,9 +1570,9 @@ project sentence needed an absence reading is `tpl002-account-drive.test.ts` §1
 
 ---
 
-## D39 — ⚠️ The unsubscribe page does not say whose list it is, and offers no way back
+## D39 — ✅ RULED: the unsubscribe page stays one sentence
 
-**Found s15, by looking at it.** Owner: **NONE**. Needs a ruling, not a fix.
+**Found s15, by looking at it. Ruled by Richard 2026-08-29 (s16): it stays as it is.** Owner: **—**.
 
 `Pages/Unsubscribe` is opened from an email by somebody with no session, and its eyebrow is the
 literal `Members' area` — every other page's band carries the association's name. So a person who
@@ -1576,3 +1588,49 @@ make none, and the cost lands on somebody on a phone in a mail client.
 
 **The question for Richard:** does the unsubscribe page name the association and offer a way back
 into the site, at the price of one public query, or does it stay a single sentence?
+
+### ✅ The ruling, 2026-08-29 — **it stays a single sentence**
+
+Richard chose the status quo. No change to the artefact; the page ships exactly as s15 built it.
+
+🔴 **What s16 corrected before asking, and it changes what the question was.** D39 filed the
+name and the way back as ONE ruling at ONE price — *"at the price of one public query"*. That is
+true of the **name** only. A link back is a `RouterNavigate` at a static target: no data, no
+session, no round trip, free. So the write-up attached the expensive half's cost to a pair whose
+other half was free, and a ruling made on it would have declined the free half on the expensive
+half's reasoning. Both were put to Richard separately priced; he declined both.
+
+Re-measured at HEAD before asking, because a row is a hypothesis until it is:
+
+- the eyebrow is still the literal `Members’ area` (`tpl001Components.ts`, the `pageHead` call);
+- the page still carries no band — 8 of 9 band-carrying pages, this one deliberately excluded;
+- the association row is still `acl-world-read: true` (`ASSOCIATION_RULES`,
+  `tpl001Vocabulary.ts:194`) and `Pages/Landing` still runs the fetch with no session, so the name
+  genuinely was available for the asking.
+
+### 🔴 Why a ruling to change **nothing** still cost a spec
+
+Before today the page's silence was a property of *what nobody had added yet*. Nothing failed if a
+later session looked at the same screen, reached D39's conclusion independently, and "fixed" it —
+which is precisely how a ruling gets silently reversed by someone who never knew there was one. A
+ruling names a place; it is not the same act as checking that place.
+
+`tpl001Template.test.ts` §5 *"the unsubscribe page fetches nothing and leads nowhere"* now reads it:
+nothing in `FETCHES`, nothing in `LEADS_AWAY`, exactly one `CloudFunction2` **pinned by name** to
+`unsubscribe`, and the four strings on the page pinned exactly. Beside a known-firing control on
+`Pages/Landing` — the other page a signed-out stranger opens, which does all three things this one
+declines — so the emptiness cannot be an emptiness produced by a misspelt node type.
+
+✅ **Proved by a control pair on the artefact the spec actually reads**, restored byte-identically
+afterwards (md5 match). Each of the four routes back to a reversal reddens its own row, alone:
+
+| sabotage on the shipped `Pages/Unsubscribe` | row that caught it |
+|---|---|
+| add a `DbCollection2` for the association | `FETCHES` — red |
+| add a button + `RouterNavigate` back to the landing page | `LEADS_AWAY` — red |
+| fetch the name through a **second** `CloudFunction2` | the by-name call pin — red |
+| just type the association’s name into a new `Text` | the four-string pin — red |
+
+⚠️ The third and fourth exist because the first two do not cover the page. A node-type absence
+says nothing about a cloud function that is already an allowed type, and nothing at all about
+words — and "add the name" is likeliest to arrive as words.

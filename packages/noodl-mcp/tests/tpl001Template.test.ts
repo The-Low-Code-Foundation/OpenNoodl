@@ -59,6 +59,7 @@ import {
   COLLECTION_MEETING,
   COLLECTION_MEMBER,
   COLLECTION_REQUEST,
+  FN_UNSUBSCRIBE,
   NO_ANNOUNCEMENTS_TEXT,
   NO_MEETINGS_TEXT,
   NO_REQUESTS_TEXT,
@@ -67,6 +68,8 @@ import {
   ROLE_MODERATOR,
   ROUTER,
   TPL001_COLLECTIONS,
+  UNSUBSCRIBE_FAILED_TEXT,
+  UNSUBSCRIBED_TEXT,
   TPL001_FUNCTIONS,
   TPL002_FUNCTIONS
 } from './tpl001Vocabulary';
@@ -1552,6 +1555,16 @@ describe('TPL-001 — the design system is finished, not merely opened', () => {
    */
   const HEAD_ID = /Head(-\d+)?$/;
 
+  /**
+   * The node types that put a request on the wire, and the node types that take
+   * a person somewhere. Both are read from the artefact's own census rather
+   * than invented: every db-shaped node this template ships is one of the four
+   * below (`NewDbModelProperties` and `DeleteDbModelProperties` are writes, and
+   * a write on this page would be worse than a read, not better).
+   */
+  const FETCHES = new Set(['DbCollection2', 'DbModel2', 'NewDbModelProperties', 'DeleteDbModelProperties']);
+  const LEADS_AWAY = new Set(['RouterNavigate', 'net.noodl.controls.button']);
+
   it('§5 every page heads itself with the eyebrow this table names', () => {
     const found: Record<string, string> = {};
     for (const component of shipped) {
@@ -1591,6 +1604,68 @@ describe('TPL-001 — the design system is finished, not merely opened', () => {
       return String(first?.parameters?.text ?? '') === bandEyebrow;
     });
     expect(repeats).toEqual([]);
+  });
+
+  /**
+   * 🔴 **RICHARD'S RULING, 2026-08-29 (D39): the unsubscribe page stays one
+   * sentence.** It names no association and offers no way back, and that is now
+   * a decision rather than an omission.
+   *
+   * The reason this is a spec and not a comment: the page's silence was
+   * previously a property of *what nobody had added yet*. Nothing failed if a
+   * later session, reading the same screen and reaching D39's conclusion
+   * independently, "fixed" it — which is exactly the shape of a ruling that gets
+   * silently reversed. The ruling names a place; this reads that place.
+   *
+   * ⚠️ **It costs a query and a link, and only one of those is expensive.** The
+   * association name is `acl-world-read`, so it CAN be fetched with no session —
+   * but on a page opened from a mail client its whole design is making no round
+   * trip. A link back is free, a static route with no data behind it. The ruling
+   * declines both; the check therefore covers both, because the cheap half is
+   * the one somebody adds without thinking about the ruling at all.
+   */
+  it('§5 the unsubscribe page fetches nothing and leads nowhere \u2014 Richard\u2019s D39 ruling', () => {
+    const page = byLegacyName.get('/Pages/Unsubscribe');
+    expect(page).toBeDefined();
+    const types = (page?.nodes ?? []).map((n) => String(n.type));
+
+    // 🔴 **Known-firing, and it is the whole reason to trust the three
+    // emptinesses below.** An absence measured with a misspelt node type reads
+    // exactly like an absence that is real, and the landing page is the natural
+    // control: it is the OTHER page a signed-out stranger opens, and it does all
+    // three of the things this one declines. If this block ever goes quiet, the
+    // rows underneath it have stopped meaning anything.
+    const landing = (byLegacyName.get('/Pages/Landing')?.nodes ?? []).map((n) => String(n.type));
+    expect(landing.filter((t) => FETCHES.has(t)).length).toBeGreaterThan(0);
+    expect(landing.filter((t) => LEADS_AWAY.has(t)).length).toBeGreaterThan(0);
+
+    // 1. Nothing reads the database. This is the half that would name the
+    //    association, and the half the ruling actually paid for.
+    expect(types.filter((t) => FETCHES.has(t))).toEqual([]);
+
+    // 2. Nothing leads anywhere — no button, no navigate. The free half.
+    expect(types.filter((t) => LEADS_AWAY.has(t))).toEqual([]);
+
+    // 3. It still makes exactly ONE outbound call, and it is the unsubscribe
+    //    itself. 🔴 This row is not redundant with (1): the association name is
+    //    reachable through a cloud function too, and a second `CloudFunction2`
+    //    is how a well-meaning session would add it without tripping either
+    //    absence above. Pinned by NAME, so swapping which function runs is a
+    //    red rather than a green.
+    const calls = (page?.nodes ?? []).filter((n) => n.type === 'CloudFunction2');
+    expect(calls.map((n) => String((n.parameters ?? {}).function))).toEqual([FN_UNSUBSCRIBE]);
+
+    // 4. And the words on it are still one heading and two notices. A sentence
+    //    naming the association would land here without touching a node type.
+    const texts = (page?.nodes ?? [])
+      .filter((n) => n.type === 'Text')
+      .map((n) => String((n.parameters ?? {}).text ?? ''));
+    expect(texts).toEqual([
+      'Members\u2019 area',
+      'Emails',
+      UNSUBSCRIBED_TEXT,
+      UNSUBSCRIBE_FAILED_TEXT
+    ]);
   });
 
   it('§5 the landing page heads itself with the hero, not a page head', () => {
