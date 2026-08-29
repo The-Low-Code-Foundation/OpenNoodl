@@ -626,6 +626,32 @@ export enum DiagnosticCode {
    * Error severity: a wire to a port that provably does not exist, on a node
    * that provably has the prefixed one, is not something anyone means to write.
    */
+  /**
+   * DEF-002 — a connection naming a port that does not exist on a **component
+   * instance**.
+   *
+   * The sibling of {@link InstanceUnknownParameter}, and the half that was
+   * missing. That one checks the ports a *parameter* names; this one the ports
+   * a *wire* names, and until now nothing did: `nonexistentPort` skips
+   * component refs outright (`isComponentRef`), which is correct for it —
+   * a component's ports are not in the catalog — and left the question
+   * unasked rather than answered.
+   *
+   * 🔴 **Measured by sabotage, phase 78 D1.** Renaming `standing.isMember` to
+   * `standing.isMemberXX` in the members-area template produced a run
+   * *identical* to the clean one: 46 `dynamic-port-skipped` infos and nothing
+   * else. The door's silence about connections read as "checked and fine".
+   *
+   * It fails **shut**: an instance output that resolves to nothing never fires,
+   * so the gate it controls never opens and the screen stays empty. Every
+   * access gate in the members' area is an instance port.
+   *
+   * Error severity. The target component's interface is derived from files the
+   * door has already read — this is not a guess about a runtime-created port,
+   * it is a lookup in an index built from the same declaration the runtime
+   * reads.
+   */
+  ConnectionUnknownInstancePort = 'connection-unknown-instance-port',
   UnprefixedFunctionPort = 'unprefixed-function-port',
   /**
    * FIX-006 §3: a `Javascript2` (Script) node whose body declares nothing the

@@ -51,6 +51,7 @@
 
 import { checkBackendRequirements, type ProjectBackendFacts } from './backendRequirement';
 import type { CatalogIndex } from './CatalogIndex';
+import { checkConnectionTargets } from './connectionTargets';
 import {
   checkComponentPortDirection,
   checkInstanceInterfaces,
@@ -440,6 +441,13 @@ export function authoredPreconditionDiagnostics(options: AuthoredPreconditionOpt
     ...checkPageShape(nodes, { component, isRoutedPage: looksLikePageComponent(component) }),
     ...checkInstancePorts(nodes, { component }),
     ...(interfaces ? checkInstanceInterfaces(nodes, { component, interfaces }) : []),
+    // DEF-002 §1(a) — the same index, asked about WIRES rather than parameters.
+    // `checkInstanceInterfaces` above covers an instance's parameters and has
+    // since LAS-001; nothing covered its connections, and phase 78's sabotage
+    // measured that silence: a mistyped instance port produced a run identical
+    // to the clean one. Guarded on `interfaces` for the same reason as its
+    // neighbour — omitted means "do not check".
+    ...(interfaces ? checkConnectionTargets(nodes, { component, interfaces, wires }) : []),
     ...checkComponentPortDirection(nodes, { component }),
     ...checkRepeaterTemplate(nodes, { component, components, connectedInputs: connections }),
     // DSG-004 §2.1 — doctrine §7's only mechanical claim, which had no gate.

@@ -113,6 +113,29 @@ export interface ComponentInterface {
   /** Input port names, as `componentmodel.getPorts()` publishes them. */
   inputs: readonly string[];
   /**
+   * DEF-002 — output port names, the other half of the same derivation.
+   *
+   * 🔴 **The plug is inverted, and getting it backwards is the whole trap.**
+   * `componentmodel.getPorts()` collects a `haveComponentPorts` node's
+   * `getPorts('input')` and republishes each as `plug: 'output'`, and vice
+   * versa. So a port authored with plug `"output"` (a value flowing *out* of a
+   * Component Inputs node into the graph) is an **input** of the instance, and
+   * a port authored with plug `"input"` is an **output**.
+   *
+   * ⚠️ Both node types in {@link COMPONENT_PORT_TYPES} contribute to both
+   * directions, exactly as `componentmodel` does — it filters on
+   * `haveComponentPorts` and never on which of the two node types carries it.
+   * Naming them "Inputs" and "Outputs" is a convention of the canvas, not a
+   * rule of the derivation, and a checker that assumed otherwise would refuse
+   * a graph the runtime accepts.
+   *
+   * Kept separate from `backwards` rather than derived from it: `backwards` is
+   * a *diagnostic* aid that answers "why does this component look empty", and
+   * it is only ever consulted when `inputs` is empty. This is a fact about the
+   * component that is true whatever else is true of it.
+   */
+  outputs: readonly string[];
+  /**
    * Names declared on a `Component Inputs`/`Component Outputs` node in the wrong
    * direction, so they are not part of the interface. Carried so the diagnostic
    * for an instance can say *why* the component looks empty.
@@ -150,6 +173,7 @@ export function componentInterfaceIndex(views: readonly ComponentInterfaceView[]
   const index = new Map<string, ComponentInterface>();
   for (const view of views) {
     const inputs: string[] = [];
+    const outputs: string[] = [];
     const backwards: string[] = [];
     const strayedTo = new Map<string, string>();
 
@@ -161,8 +185,15 @@ export function componentInterfaceIndex(views: readonly ComponentInterfaceView[]
           if (plug === undefined) continue; // `PortWithoutPlug` owns a plugless port.
           if (plug.indexOf('output') !== -1) {
             if (!inputs.includes(name)) inputs.push(name);
-          } else if (!backwards.includes(name)) {
-            backwards.push(name);
+          } else {
+            // DEF-002: an `input`-plugged port IS the component's output. It is
+            // *also* what `backwards` has always meant — a port on a Component
+            // *Inputs* node facing the wrong way — and both readings are true
+            // of the same declaration, because the two node types are
+            // indistinguishable to the derivation. So it lands in both lists,
+            // and each consumer asks its own question of it.
+            if (!outputs.includes(name)) outputs.push(name);
+            if (!backwards.includes(name)) backwards.push(name);
           }
         }
       } else {
@@ -170,7 +201,7 @@ export function componentInterfaceIndex(views: readonly ComponentInterfaceView[]
       }
     }
 
-    const record: ComponentInterface = { inputs, backwards, strayedTo };
+    const record: ComponentInterface = { inputs, outputs, backwards, strayedTo };
     index.set(view.name, record);
     index.set(refToPath(view.name), record);
   }
