@@ -19,7 +19,7 @@ derivation and [README.md](README.md) for why the phase exists.
 | DEF-009 | ⬜ open | [A public write door ships with no limit](DEF-009-A-PUBLIC-WRITE-DOOR-WITH-NO-LIMIT.md) | **P76 F3** | a **site owner** whose form fills their database |
 | DEF-017 | ✅ **done — C1, C2 (D18+D19), C3** | [Track C, handed over by phase 78](../phase-78-the-templates/TRACK-C-HANDOFF.md) | **P78 D18, D19, D26** | every app: controls in the wrong face; one content surface for nine kinds of thing |
 | DEF-014 | ✅ done | [A filter on a column nothing has written is a 500](DEF-014-A-QUERY-AGAINST-A-COLUMN-LESS-CLASS.md) — **all four ACs; AC1 driven through the template's own `publishPage`** | **P77 SBR-015 s12 drive** | every **site owner on day one** — the site-builder cannot publish its first page |
-| DEF-015 | ⬜ open | [The backend card calls three components undeployed that can never deploy](DEF-015-THE-CARD-WARNS-ABOUT-WORKERS.md) | **P77 SBR-015 s12 drive** | every **author with a Run Tasks worker** — a green deploy that reads as failed |
+| DEF-015 | ✅ done | [The backend card calls three components undeployed that can never deploy](DEF-015-THE-CARD-WARNS-ABOUT-WORKERS.md) — **all four ACs; AC1 and AC2 driven in the app at s12 (§9.2, §9.3)** | **P77 SBR-015 s12 drive** | every **author with a Run Tasks worker** — a green deploy that reads as failed |
 | DEF-016 | ✅ done | [External Link reports Failure on every new tab it opens](DEF-016-EXTERNAL-LINK-ALWAYS-REPORTS-FAILURE.md) | **P18 EXP-011 Tier 2.5 s41 drive** | every **author who wired Done or Failure** on the node — a link that worked, reported as blocked |
 
 ## Carried forward from phase 76, by reference
@@ -267,6 +267,40 @@ cheap to make later — and because nobody has yet read the two pairs against ea
   nested names at deploy so the author is told at push time. The first is what the name convention
   already promises.
 
+- 🔴 **The backend card cannot see a backend-side change: its only refresh is a push.** Owner:
+  **`NONE`**. Found by DEF-015 s12 while trying to drive that task's AC2 (see its **§9.4**).
+
+  **Measured, with the backend genuinely serving three functions and the project declaring four:**
+  the card kept reading four ✓ and zero warnings through a panel close/open **and** a full renderer
+  reload — with the backend verified as still serving three afterwards, so it was a stale reading
+  and not a silent re-push. The panel **hides rather than unmounts** (a stamp set on the section
+  survived the toggle), so `useEffect` never re-fires; and `CloudFunctionsSection` refreshes on
+  exactly two things — mount, and `CLOUD_FUNCTIONS_DEPLOY_STATE_CHANGED` with `isPushing` false.
+  A push whose export hash is unchanged **returns early without `notify()`**, so a no-op save does
+  not refresh it either.
+
+  🔴 **The consequence is about the `missing` row specifically.** A successful push always leaves
+  the backend holding exactly the project's endpoints, so `missing` is empty by construction
+  immediately after one. It can only ever render when a push **failed** — which is the case
+  WFA-001 built it for, with `lastError` beside it. It cannot render because the backend changed,
+  because the card never looks again.
+
+  ⚠️ **Not a defect in DEF-015's fix, and the header is honest** — it says `pushed 54s ago`. The
+  **rows** are what overclaim: *"in the project, not on this backend"* reads as a statement about
+  the backend now. Candidate fixes are a refresh when the panel opens, a poll while it is visible,
+  or wording that says *at last push*. That is a design choice with a cost, which is why it is
+  registered rather than done.
+
+- ⚠️ **A stale cloud function is rendered twice — as a green ✓ and as a warning.** Owner:
+  **`NONE`**. Found by DEF-015 s12 in the AC2 control frame, and visible in its screenshot.
+
+  `CloudFunctionsSection` renders `backendFunctions.map(...)` with a success tick for **every**
+  function the backend reports, and the `stale` block immediately below flags a subset of that same
+  list with a warning triangle. So a function that is on the backend but not in the project appears
+  as a healthy row *and* as a problem row, one line apart. Trivially fixed by rendering the ticks
+  over `backendFunctions` minus `stale`; recorded rather than folded into DEF-015 because it is a
+  rendering choice in a block that fix did not otherwise touch.
+
 ## Rulings needed (Richard)
 
 - 🧭 **Does this phase exist, or do these fold into 0.2.1's bug-fix phase?** The tasks are written to
@@ -392,6 +426,20 @@ before any of it was acted on, and every measurement in it held.
 - **P76 F10 / F12 / F13** — already owned by **SB-010** / **SB-011**.
 
 ## Session log
+
+- **2026-08-29 (s12)** — **DEF-015 closed: AC1 and AC2 driven in the running app.** The blocker s11
+  hit was cleared **without touching the defect that caused it** — instead of moving a peer's
+  deployed bundle aside, the drive project was given its own empty backend (a backend directory is
+  just `config.json` + `schema.json` + `data/` + `workflows/`, and `listBackends` is a plain
+  `readdir`), so the shared-backend collision was routed around rather than provoked. The card reads
+  **4 ✓ / 0 warnings / `3 workers, run in-process by these functions`** after an explicit
+  `Deploy functions`. 🔴 **AC2's recipe as written could not be run**: deleting an endpoint from the
+  deployed bundle and reloading the backend changes nothing on the card, because the card only
+  refreshes on a push — registered above with owner `NONE`. The control was built from the other
+  side instead (a second bundle adding one function the project does not have), and the instrument
+  reads **0 → 1 → 0** with the 1 naming exactly that function. **No repo source was edited**, so
+  `test:ci` was not re-run — there is nothing here for it to grade.
+  Two findings registered above, both owner `NONE`.
 
 - **2026-08-29 (s8)** — **DEF-006 (c) closed, and the survey's one judgement was wrong.** The six
   compositions landed verbatim — the vocabulary is **26** and now names a form field, a control that

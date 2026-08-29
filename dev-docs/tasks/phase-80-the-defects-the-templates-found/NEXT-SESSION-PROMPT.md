@@ -1,152 +1,125 @@
 # Phase 80 — next session
 
-## State: DEF-001, 002, 003, 004, 006, 014, 016, 017 closed. **DEF-015 is 🟢 built, 🟡 undriven.** DEF-007 is 🟡 partial.
+## State: DEF-001, 002, 003, 004, 006, **015**, 014, 016, 017 closed. DEF-007 is 🟡 partial.
 
-**s11 (2026-08-29)** took **DEF-015**. The fix, its specs and its mutant are landed and committed at
-`539bb840`. **AC1 and AC2 are the only things left on it, and they are blocked on a resource, not on
-a question** — see below.
-
-| commit | what |
-|---|---|
-| `539bb840` | **DEF-015 fixed at the cause** — `classifyCloudComponents`, the card diffing endpoints only, 11 specs |
-
----
-
-## 🔴 The finding, in one paragraph
-
-**The card was not misclassifying anything — it had no classifier at all.** It subtracted the
-backend's list of served functions from the editor's list of cloud components, and those two lists
-are built by **different predicates**: the editor applied only the `/#__cloud__/` prefix, the backend
-applies the prefix *and* SB-003's has-a-Request-node rule. So `missing` was the set difference
-between two predicates rather than a list of failed deploys, and it equalled the project's helpers
-exactly — in every project, forever, immediately after a successful push. 🔴 **`functionDeclarations.ts`
-predicts this in its own header** — *"two readers of one predicate is how a gate starts disagreeing
-with the thing it gates"* — written about the backend's two readers, which it keeps in step. The
-editor was a third reader nobody had counted, holding half the rule. Fixed by giving the editor the
-whole rule: endpoint / worker / unreachable, with the third bucket **visible** so a reference
-mechanism the rule does not know about surfaces instead of being absorbed.
+**s12 (2026-08-29)** finished **DEF-015**. AC1 and AC2 are driven in the running app; all four ACs
+are green and the task is closed. **No repo source was edited this session** — the fix landed at
+`539bb840` in s11 and needed nothing more. Everything s12 produced is documentation and two
+registered findings.
 
 ## What to do next
 
-⚠️ **First: finish DEF-015 by driving AC1 and AC2.** The recipe is in **DEF-015 §9.1**. The drive
-*ran* in s11 and got two of the four readings (§9.0 — the card's stopped branch already shows `4`
-where it used to show `7`, and a live `GET /admin/workflows` returns exactly the four endpoints).
+Phase 80's open work, largest first:
 
-🔴 **It was stopped by a product defect, not by the fix and not by contention** — deploying a *copy*
-of a site-builder project to a backend that already has one **kills the backend process** with an
-uncaught `Duplicate component name`. Registered in `TASKS.md`, owner `NONE`, with a curl-only
-reproduction. **Clear it first**, one of:
+- **DEF-007 §3.2** — still the largest open piece, still sequenced behind phase 77.
+- **DEF-008**, **DEF-009** — open, unstarted.
+- **DEF-010/011/012/013**, carried from phase 76 by reference. 🔴 **Three of the four share one
+  corpus sweep; do it once.** DEF-010/011/013 are the same door as DEF-002 — four checks, one file
+  (`noodl-mcp/src/validate.ts`). **Sequence them and assert cardinality where they meet.**
+- **DEF-018–DEF-025**, carried from phase 78 by reference. **Read phase 78's register, not the
+  table in `TASKS.md`.**
+- **DEF-005** is 🔒 on a Richard ruling.
 
-- move the colliding `~/.noodl/backends/<id>/workflows/*.workflow.json` aside — one reversible file
-  move; **s11 could not: writing under `~/.noodl` is outside this session's Bash permissions, and
-  that is the single thing standing between DEF-015 and closed**; or
-- attach the project to a backend whose `workflows/` directory is empty.
+Also open and unowned, sitting in `TASKS.md` with owner `NONE`: `catalog:examples` is still a PR
+gate (`pr.yml:210`) and still RED, 60/62, ~20 minutes, **unmeasured for a third session running**.
 
-⚠️ `Start ephemeral (no persistence)` does **not** avoid it — it drops data persistence, not the
-workflows directory.
-
-✅ The drive project is already registered in the launcher as **`DEF-015 Card Drive`** (a copy of
-`SBR-007 Page Editor Drive`), so opening it is one click.
-
-Then: **DEF-007's §3.2** is still the largest open piece and still sequenced behind phase 77.
-Also open: **DEF-008**, **DEF-009**, and the four carried from phase 76 by reference
-(**DEF-010/011/012/013** — three share one corpus sweep, to be done **once**). **DEF-005** is 🔒 on a
-Richard ruling.
-
-🔴 **The standing instruction has now paid eight sessions running.** *Find the claim in your task
-that is a reading rather than a measurement, and drive that one first.* s4 deleted two of three rows,
-s5 found a defect the file did not contain, s6 found it had been fixed the day before, s7 found the
-rule wrong about two of eleven cases, s8 found the recommended fix ships an accessibility defect,
-s9 found a scope item with no population, s10 found the proposed mechanism could not tell apart the
-two things it was named for, **s11 found the task pointed at the wrong file — and its stated
-mechanism was wrong for a third of its own population.**
+🔴 **The standing instruction has now paid nine sessions running.** *Find the claim in your task
+that is a reading rather than a measurement, and drive that one first.* s4 deleted two of three
+rows, s5 found a defect the file did not contain, s6 found it had been fixed the day before, s7
+found the rule wrong about two of eleven cases, s8 found the recommended fix ships an accessibility
+defect, s9 found a scope item with no population, s10 found the proposed mechanism could not tell
+apart the two things it was named for, s11 found the task pointed at the wrong file, **and s12 found
+that the task's own acceptance criterion could not be run as written.**
 
 ## 🔴 What this session paid for, that the next one should not re-buy
 
-- 🔴 **The corpus could not see the defect, and the parity spec could not either.** Under AC4's
-  mutant (classify by the `site/` folder instead of by node content), **all four specs that grade the
-  real shipped template passed** — including the backend-parity assertion the spec file itself calls
-  load-bearing. Only the six **synthetic** arms, built to make the folder and the content disagree,
-  went red. In today's template those two rules agree perfectly, so *"assert it against the real
-  artefact, and against what the backend really serves"* is a green suite over the wrong rule.
-  ✅ **A real-corpus spec is a regression net. A property is only visible where you made the
-  candidate rules disagree on purpose.**
-- 🔴 **The task file named the wrong seam AND the wrong mechanism, and each would have cost a
-  session.** §3 said the classification lives in `CloudFunctionsSection` — there was no
-  classification there or anywhere in the editor. §2 said the three warned components are `RunTasks`
-  task templates — **two are**; `site/ContactRecipient` is a component *instance* at the root of
-  `submitContactForm`. A fix built from that sentence leaves one triangle standing and fails AC1 on
-  the drive. ✅ **Read the artefact before the prose, even when the prose is a defect report that
-  already contains a screenshot.**
-- ✅ **`node.typename` is the honest field, not `node.type.name`.** The latter resolves through the
-  `NodeLibrary` singleton, which a spec bundle can leave pointing anywhere (sb017's spec snapshots
-  and restores it for exactly this reason). Reading the raw string is what let all the synthetic arms
-  run with no library loaded at all.
-- ✅ **`forEachNode` walks a component's own graph; `forEachNodeRecursive` descends into the
-  components it places.** The first is the boundary the backend draws over the exported bundle, where
-  an instance's inner nodes are not inlined. Using the recursive one would have made every *caller*
-  of a Request-node-holding helper an endpoint too.
-- ✅ **The pre-fix population is measurable without the editor.** A deployed bundle at
-  `~/.noodl/backends/<id>/workflows/*.workflow.json` is exactly what `declaredFunctionsIn` parses, so
-  the backend's own rule can be run over it offline. That gave the 7/4/3 split on a project a peer
-  had created independently — the product's population, not the template artefact's.
+- 🔴 **AC2's recipe was unrunnable, and the reason is a second finding.** §9.1 said: delete an
+  endpoint from the deployed bundle, `POST /admin/workflows/reload`, refresh the card. That was
+  done — the backend genuinely served **three** — and **the card went on reading four ✓ and zero
+  warnings**, through a panel close/open *and* a full renderer reload, with the backend verified as
+  still serving three afterwards. **The panel hides rather than unmounts** (a stamp on the section
+  survived the toggle), so `useEffect` never re-fires, and the only other refresh is a push.
+  ✅ **The control was rebuilt from the other side** — a second bundle adding one function the
+  project does not have — and the instrument reads **0 → 1 → 0**. Registered with owner `NONE`.
+- ✅ **A blocker can often be routed around instead of provoked.** s11 was stopped by the
+  shared-backend `Duplicate component name` crash and proposed moving a peer's deployed bundle
+  aside. The cheaper move was to give the drive project **its own empty backend**: a backend
+  directory is only `config.json` + `schema.json` + `data/` + `workflows/`
+  (`BackendManager.createBackend`), and `listBackends` is a plain `readdir` of
+  `~/.noodl/backends/*/config.json`, so one can be created by hand in a single command. Repoint the
+  project's `metadata.cloudservices` (`instanceId` / `endpoint` / `appId`) and the panel binds to
+  it — it matches by `instanceId` first, localhost port second. **The crash was never provoked and
+  no peer's file was touched.**
+- ✅ **The editor starts the project's backend on open and force-pushes to it**
+  (`ProjectBackendLifecycle` → `onBackendStarted`), *unless* it is already running, in which case it
+  **adopts** and does not push. That asymmetry is the difference between a reload that heals your
+  control and one that does not — and it is what let the stale reading in §9.4 be measured at all.
+- ✅ **`CloudFunctionsSection` has a `data-test` on every row shape** —
+  `cloud-function-live-*`, `cloud-function-missing-*`, `cloud-function-stale-*`, `cloud-workers-*`,
+  `cloud-component-unreachable-*`. **Read the card through those, not through `innerText`.** A
+  warning count is then a number, and the same expression serves both arms of the control.
+- ⚠️ **A ghost bundle is a cheap, reversible way to make a backend and a project disagree.** Copy a
+  real endpoint component out of the deployed bundle, rename it, **rewrite every node id**, `PUT
+  /admin/workflows/<probe-name>`. It is a *separate* bundle, so a project push does not remove it
+  and `DELETE /admin/workflows/<probe-name>` puts everything back.
 
-- 🔴 **A backend that dies tells the editor nothing.** `ServiceSupervisor` does not forward the
-  service's stdout/stderr into `.logs/dev.log`, so a crashed backend appears only as
-  `exited (code=1, signal=null)` plus a renderer-side `TypeError: fetch failed`. The cause is
-  recoverable in about two minutes by **running `packages/nodegx-backend/dist/cli.js serve` yourself**
-  against a *copy* of the data dir on a spare port — it prints the stack trace to stdout. The admin
-  token for `curl` is `secrets.json` → `adminToken`, sent as `authorization: Bearer <token>`.
-- ⚠️ **The launcher only lists projects it has opened before.** A freshly copied directory does not
-  appear. `~/Library/Application Support/NodeGX/recently_opened_project.json` → `recentProjects` takes
-  a `{retainedProjectDirectory, latestAccessed, id, name}` entry; add one and reload the window.
-- ⚠️ **The Add Backend modal renders every control twice** and the first copy is not hit-testable —
-  the measuring-ghost problem. Filter by `document.elementFromPoint`, stamp the reachable one, click
-  the stamp. Selecting a preset does not advance the dialog; the action is `add-managed-backend`.
+## 🔴 A launch hazard, measured with a control pair — read before any drive
 
-## 🔴 Two defects this session found beside its own task
+`scripts/start.ts` sweeps before it starts. `dev-processes.js`'s rule 1 is *"the command line
+contains the repo root **and** matches `DEV_TOOL`"*, and `DEV_TOOL` includes `nodegx-backend` and
+`scripts/devtools/`. **A hand-started backend and a `render-from-disk.js` are both dev-stack shapes
+and neither is in `NEVER_SWEEP`** — which protects MCP servers and test runners only. A dry run
+before launching showed this session's `dev:debug` would have killed a peer's live 8611 backend and
+their `render-from-disk` renderer, **seven seconds old**.
 
-Both registered in `TASKS.md` with owner **`NONE`**, both measured with `curl` against a live
-backend and no editor involved:
+🔴 **Whether it kills them turns on how the caller typed the path.** Same `cli.js`, same cwd, same
+flags:
 
-1. **A second project deploying to a shared local backend kills the backend process** — uncaught
-   `Duplicate component name` in `CloudRunner.load`. This is what blocked DEF-015's AC1.
-2. **A cloud function in a folder is declared, listed, ticked on the card, and 404s** — the route is
-   `/functions/:name` and `:name` does not match a nested path. `cloudFunctions.test.ts:85` is green
-   and pins the broken address as its expected value, comment and all.
+| arm | invocation | `sweep({dryRun:true})` |
+|---|---|---|
+| A | `node /Users/…/OpenNoodl/packages/nodegx-backend/dist/cli.js serve …` | **would be swept** |
+| B | `node packages/nodegx-backend/dist/cli.js serve …` | **not a target** |
 
-⚠️ **(2) is a limit of DEF-015's fix, recorded in its §10 and deliberately not "fixed" there.** The
-card compares the project's endpoints against what the backend *declares*, and a nested endpoint is
-in both sets — so it matches and gets a tick. "Declared" and "routable" are different claims; making
-the card guess the second would put it back to second-guessing the backend, which is the shape of
-the defect DEF-015 just removed.
+Confirmed independently on two live peer processes. **Both directions are bad**: a peer's live drive
+gets reaped, and a genuine orphan started relatively survives every `dev:stop` and every launch
+sweep, holding its port forever.
 
-✅ **Three ways to make a live backend refuse a call** (it stays up — 200 on `/admin/workflows`
-after each), handed to phase 77's SBR-006 AC1 drive and worth keeping:
-
-- `POST /functions/<undeployed-name>` → **404** `{"error":"Function 'X' not found"}` (the runner)
-- `POST /functions/publishPage` unauthenticated → **500** `{"error":"Unauthenticated requests not accepted."}`
-- any nested name → **404** `{"error":"Not found: POST /functions/..."}` (the router)
-
-🔴 **Assert on the BODY, not the status.** The first and third are both 404 and mean opposite things
-— one reached the runner, one never left the router. The first probe of this confounded them,
-because `site/SetSectionAccess` is *both* nested *and* a helper. Deploying the **same** graph twice
-changing **one** thing is what separated them.
+✅ **So: `node -e "require('./scripts/devtools/dev-processes.js').sweep({dryRun:true, onLog:console.log})"`
+before launching.** It kills nothing and names every process your launch would take. If a peer's
+work is in the list, ask them first — this session did, and they cleared it in one exchange.
 
 ## Traps carried
 
-- ✅ **`test:ci` — 2905 specs, 4 failures, seed 60404, at `6c358a3f`.** All four are the named
-  **AIX-006 style vocabulary** floor. **The floor is 4 by name.** s10's fifth (SB-017) is gone; it was
-  a peer's mid-edit artefact, as s10 recorded. Suite grew 2894 → 2905, exactly the 11 specs added.
-- ✅ `tsc -p noodl-editor` and `tsc -p noodl-editor/tsconfig.tests.json` both clean.
-- 🔴 **`catalog:examples` is still a PR gate (`pr.yml:210`) and still RED**, 60/62, owner **`NONE`**,
-  ~20 minutes. Unchanged and unmeasured this session.
+- ✅ **The drive project is ready and self-contained.** `DEF-015 Card Drive` is registered in the
+  launcher, bound to **its own** backend `backend_mtetnar43v9c6` on port **8603** with an empty
+  workflows directory. It no longer shares `backend_mterfnli74qwv` with `SBR-007 Page Editor Drive`,
+  so it will not trip the duplicate-component-name crash. **Leave it pointed there.**
+- 🔴 **`test:ci` was NOT re-run this session, deliberately** — no repo source was edited, so there
+  is nothing here for it to grade. The floor stands where s11 measured it: **2905 specs, 4 failures,
+  the named AIX-006 style-vocabulary floor. The floor is 4, by name.**
+- 🔴 **`catalog:examples` is still a PR gate (`pr.yml:210`) and still RED**, 60/62, owner `NONE`,
+  ~20 minutes. Unchanged and unmeasured for three sessions now.
 - ⚠️ **`typecheck:mcp` red on one peer error** and 2 failures in `tpl001Template.test.ts` from a
   peer's uncommitted fixture, as recorded by s8. Not re-measured; neither is phase 80's.
-- 🔴 **The editor is single-instance on this checkout** — one `:9222`, one user-data dir, and a
-  second `dev` stack reaps the first. A peer held it for all of s11. **Check `ps` for
-  `start-electron-dev` and ask before taking it**; a drive is not worth destroying a peer's.
-- ⚠️ **A pathspec commit errors on an untracked file** — `git add` the new spec first, then commit by
-  pathspec in the same command. One new spec file needed it, as s10 recorded.
-- ✅ **Undo a mutant by its exact text, then `diff` against a scratchpad copy taken before it was
-  applied.** `git checkout --` on those files would have discarded the fix.
+- 🔴 **The editor is single-instance on this checkout** — one `:9222`, one user-data dir. A peer
+  held probe processes for the first half of this session. **Check, ask, and dry-run the sweep.**
+- ⚠️ **A pathspec commit errors on an untracked file** — `git add` new files first, then commit by
+  pathspec in the same command.
+- ⚠️ **`~/.noodl` is writable from a Bash tool in this session.** s11 recorded that it was not, and
+  that was the single thing standing between DEF-015 and closed. **Re-test a recorded permission
+  limit before planning around it.**
+
+## Findings this phase now carries with owner `NONE`
+
+Unchanged from s11 except for the two new ones. In `TASKS.md`:
+
+1. `publishPage` issues its refusal **after** making the page public.
+2. Nothing gives an auto-created class the columns its project has already declared.
+3. No semantic token for error **text** (🧭 plausibly Richard's).
+4. A workflow step pointing at a cloud **helper** is told to deploy it, and deploying cannot help.
+5. A second project deploying to a shared local backend **kills the backend process**.
+6. A cloud function in a **folder** is declared, listed, ticked — and 404s.
+7. 🆕 **The backend card cannot see a backend-side change: its only refresh is a push**, so the
+   `missing` row is reachable only from a *failed* push.
+8. 🆕 **A stale cloud function is rendered twice** — a green ✓ and a warning triangle, one line
+   apart.

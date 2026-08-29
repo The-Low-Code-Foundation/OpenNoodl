@@ -203,12 +203,12 @@ product's and not the template artefact's.
 
 | AC | state | evidence |
 |---|---|---|
-| 1 — no warning after a correct deploy | 🟡 **not driven** | Blocked: see §9.1. Asserted computationally in `expects exactly what the backend would serve` — the editor's expected set and the backend's served set are equal over the real template, so the diff the card renders is empty. That is the arithmetic behind AC1, not AC1. |
-| 2 — negative control: an endpoint really missing | 🟡 **not driven** | Same blocker. |
+| 1 — no warning after a correct deploy | ✅ **driven** | s12, §9.2. Four ✓ endpoints, `3 workers, run in-process by these functions`, **zero** warning rows, after an explicit `Deploy functions` click. Screenshot `ac1-card.png`. |
+| 2 — negative control: a real backend/project disagreement | ✅ **driven** | s12, §9.3. The same instrument that read **0** warning rows reads **1**, naming exactly the disagreeing function. ⚠️ Driven on the `stale` arm, not `missing`, and §9.4 says why `missing` is not reachable from a drive. |
 | 3 — spec with both populations + an unrecognised third | ✅ | `reports a component it has no rule for rather than absorbing it`, plus the orphan-pair and transitive-chain arms. |
 | 4 — the `site/` prefix mutant reddens | ✅ | §8.1. 6 specs redden. |
 
-### 9.0 🔴 What the drive DID establish before it was blocked
+### 9.0 What session 11's drive established before it was blocked
 
 The editor was launched, a copy of a site-builder project opened, and the Backend Services panel
 read. Two things came out of it:
@@ -221,10 +221,9 @@ read. Two things came out of it:
    `submitContactForm`, `claimSite`. That is the array the card diffs against, so post-fix both sides
    of the subtraction are the same four names and `missing` is empty by construction.
 
-⚠️ **What is still not observed is the running branch** — four ✓ rows, the `3 workers, run
-in-process by these functions` line, and *zero* warning triangles in one frame — and AC2's control.
+✅ **Both of those were observed in session 12 — see §9.2 and §9.3.**
 
-### 9.1 🔴 Why AC1 and AC2 are not driven, and what it would take
+### 9.1 Why session 11 could not drive them, and how session 12 cleared it
 
 **Not contention in the end — a product defect.** Two peer sessions held the editor for most of
 this session, but both released it and the drive ran. It then hit this:
@@ -266,6 +265,156 @@ exactly the kind that a later edit reverts silently.
 
 🔴 **A `git checkout --` on `CloudFunctionsSection.tsx` is not how to undo anything here** — that
 file carries the fix.
+
+---
+
+# Session 12 — 2026-08-29
+
+### 9.2 ✅ AC1 — driven
+
+**The blocker was cleared without touching the defect that caused it.** s11's project was bound to
+`backend_mterfnli74qwv`, the backend already holding `SBR-007 Page Editor Drive`'s bundle — which is
+exactly the shared-backend collision registered in `TASKS.md`. It was cleared by giving the drive
+project **its own empty backend** rather than by moving a peer's file:
+
+- a backend directory is nothing but `config.json` + `schema.json` + `data/` + `workflows/`
+  (`BackendManager.createBackend`), and `listBackends` is a plain `readdir` of
+  `~/.noodl/backends/*/config.json` — so one can be created by hand, faithfully, in one command;
+- `backend_mtetnar43v9c6` on port **8603**, `projectIds` stamped with the drive project's id;
+- the project's `metadata.cloudservices` repointed at it (`instanceId` / `endpoint` / `appId`).
+  `BackendServicesPanel` matches by `instanceId` first and by localhost port second, so that is the
+  whole binding.
+
+The editor **started it automatically on project open** and pushed to it — `ProjectBackendLifecycle`
+starts a stopped backend and `onBackendStarted` forces a push. No collision, because the workflows
+directory was empty.
+
+**The reading, by the section's own `data-test` attributes** (`cloud-function-live-*`,
+`cloud-function-missing-*`, `cloud-function-stale-*`, `cloud-workers-*`,
+`cloud-component-unreachable-*`), after an explicit click on `Deploy functions`:
+
+| row shape | count | contents |
+|---|---|---|
+| ✓ live | **4** | `claimSite`, `duplicatePage`, `publishPage`, `submitContactForm` |
+| ⚠ missing | **0** | — |
+| ⚠ stale | **0** | — |
+| ⚠ unreachable | **0** | — |
+| workers line | **1** | `3 workers, run in-process by these functions` |
+| **warning rows total** | **0** | |
+
+Screenshot `ac1-card.png`: four green ticks, the workers line under a play glyph, no triangles,
+`pushed just now`. **That is AC1 in one frame.**
+
+✅ **The deployed artefact confirms the classification is the product's, not the template's.** The
+bundle the editor actually wrote to disk holds seven components, and exactly the four that carry a
+`noodl.cloud.request` node are the four the backend serves:
+
+    /#__cloud__/claimSite              request node ✓   → served
+    /#__cloud__/duplicatePage          request node ✓   → served
+    /#__cloud__/publishPage            request node ✓   → served
+    /#__cloud__/submitContactForm      request node ✓   → served
+    /#__cloud__/site/ContactRecipient  request node ✗   → worker
+    /#__cloud__/site/CopySectionToPage request node ✗   → worker
+    /#__cloud__/site/SetSectionAccess  request node ✗   → worker
+
+### 9.3 ✅ AC2 — driven, on the `stale` arm
+
+🔴 **AC2 as written in §9.1 cannot be run.** Its recipe was: delete an endpoint from the deployed
+bundle, `POST /admin/workflows/reload`, refresh the card. That was done — the backend genuinely
+served **three** — and **the card went on showing four ✓ and zero warnings**, through a panel
+close/open *and* a full renderer reload. §9.4 has the cause. The state only corrected when
+re-opening the project re-pushed the bundle and healed the deletion.
+
+**So the control was built the other way round, from the same disagreement.** A second bundle,
+`ghost-probe`, was PUT to the backend: one component copied from the real `claimSite`, renamed
+`/#__cloud__/ghostFunction`, with all nine node ids rewritten so nothing collided. The backend then
+served **five** while the project declared **four**. Clicking `Deploy functions` (a forced push,
+which replaces the project's own bundle and leaves `ghost-probe` alone) refreshed the card:
+
+| row shape | count | contents |
+|---|---|---|
+| ✓ live | 5 | the project's four, **plus `ghostFunction`** |
+| ⚠ stale | **1** | **`ghostFunction — on this backend, not in the project`** |
+| ⚠ missing / unreachable | 0 | — |
+| workers line | 1 | `3 workers, run in-process by these functions` — unchanged |
+| **warning rows total** | **1** | |
+
+Deleting `ghost-probe` and pushing again returned it to **0**. So the instrument reads
+**0 → 1 → 0**, and the 1 names exactly the disagreeing function. ✅ **That is what AC2 exists for:
+a rule that had merely stopped warning would have read 0 in the middle arm too.** Screenshot
+`ac2-control.png`.
+
+⚠️ **State plainly what this control does and does not cover.** It exercises the diff and the
+warning rendering, and it proves the workers line is not swallowing a real disagreement. It does
+**not** exercise the `missing` branch, for the reason in §9.4. `missing` is covered by the specs
+(AC3) and not by a drive.
+
+⚠️ **One thing the frame shows that is worth a second look:** `ghostFunction` appears **twice** —
+once as a green ✓ and once under the warning triangle. `backendFunctions.map` renders every function
+the backend reports, including the ones the next block flags as stale. Registered in `TASKS.md`.
+
+### 9.4 🔴 The card is a push-time readout, and its rows read like live claims
+
+**Measured, with a control.** With the backend genuinely serving three functions and the project
+declaring four, the card kept reading four ✓ / zero warnings across:
+
+1. closing and re-opening the Backend Services panel — **the panel hides rather than unmounts**; a
+   stamp set on the section survived the toggle, so `useEffect` never re-fired;
+2. a full `cdp reload` of the renderer — and the backend was verified as *still* serving three
+   afterwards, so this was a stale reading and not a silent re-push.
+
+The cause is in the section's refresh triggers, and there are only two: mount, and
+`CLOUD_FUNCTIONS_DEPLOY_STATE_CHANGED` with `isPushing` false. And a push whose export hash is
+unchanged **returns early without calling `notify()`** (`CloudFunctionDeployer.pushToBackend`), so a
+no-op save does not refresh it either.
+
+🔴 **The consequence for the `missing` branch.** A *successful* push always leaves the backend
+holding exactly the project's endpoints, so immediately after one, `missing` is empty by
+construction. `missing` can therefore only ever render when a push **failed** — which is precisely
+the case WFA-001 built it for, and `lastError` renders beside it. It is not reachable by changing
+the backend, because the card cannot see the backend change.
+
+⚠️ **This is not an argument that the fix is wrong**, and it is deliberately not folded into this
+task. The section's header says `pushed 54s ago`, which is honest about what it is. The rows say
+*"in the project, not on this backend"* and *"on this backend, not in the project"*, which read as
+claims about the backend right now. Whether that gap is worth closing — a poll, a refresh on panel
+open, or a reworded row — is a design question with a cost, so it is registered in `TASKS.md` with
+owner `NONE` rather than decided here.
+
+### 9.5 Drive conditions
+
+- Stack launched by this session (`dev:debug --quiet`), CDP on 9222. **No peer stack was running at
+  launch**, and a peer's two live probe processes were confirmed released first — see §9.6.
+- **No repo source was edited in this session**; the only changed paths under `packages/` at teardown
+  were peers' (nodegx-export, core-ui scss, an editor unit test). So `test:ci` was **not re-run**:
+  there is nothing in this session for it to grade. The floor stands where s11 left it — 2905 specs,
+  4 failures, the named AIX-006 vocabulary floor.
+- Teardown: `dev:stop` — 27 processes stopped, **16 peer MCP servers survived**, which is
+  `NEVER_SWEEP` doing its job.
+
+### 9.6 ⚠️ A launch hazard that is not in any task file, measured with a control pair
+
+`scripts/start.ts` sweeps before it starts, and `dev-processes.js`'s rule 1 is *"the command line
+contains the repo root **and** matches `DEV_TOOL`"* — where `DEV_TOOL` includes `nodegx-backend` and
+`scripts/devtools/`. **A hand-started backend and a `render-from-disk.js` are both dev-stack shapes,
+and neither is in `NEVER_SWEEP`.** A dry run before launching showed this session's `dev:debug` would
+have killed a peer's live 8611 backend and their `render-from-disk` renderer, seven seconds old.
+
+🔴 **Whether it kills them turns on how the caller typed the path.** Control pair — the same
+`cli.js`, the same cwd, the same flags, differing only in the script path:
+
+| arm | invocation | `sweep({dryRun:true})` |
+|---|---|---|
+| A | `node /Users/…/OpenNoodl/packages/nodegx-backend/dist/cli.js serve …` | **would be swept** |
+| B | `node packages/nodegx-backend/dist/cli.js serve …` | **not a target** |
+
+Independently confirmed on live processes: a peer's absolute-path backend was a target, their
+relative-path one was not. ✅ **Both directions are bad** — a peer's live drive can be reaped, and a
+genuine orphan started relatively survives every `dev:stop` and every launch sweep, holding its port
+forever. The evidence is the *invocation string*, not the process.
+
+⚠️ **Not registered as a phase 80 row: it is tooling, not the product surface this phase is graded
+on.** Recorded here and in memory so the next drive checks `sweep({dryRun:true})` before launching.
 
 ## 10. 🔴 A limit of this fix, found after it landed
 
