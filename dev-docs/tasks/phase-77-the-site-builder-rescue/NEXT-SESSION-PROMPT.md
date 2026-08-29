@@ -15,6 +15,31 @@ named nothing. They "disagree" only because duplicate creates its copy **before*
 it stalls at and publish writes **after** one. `claimSite` (same file, 5 failure edges,
 **29 ms**) was the control that made it visible.
 
+## 🔴 Product defects, now in a register — [DEFECTS-THE-SITE-BUILDER-FOUND.md](DEFECTS-THE-SITE-BUILDER-FOUND.md)
+
+Richard, 2026-08-28: *"We're making templates to surface bugs and issues with the whole NodeGX
+concept as well."* Phase 77 had no such file for ten sessions — its product findings sat inside
+task files as notes and ACs, which is where they go to be understood, not fixed. **Four unowned
+product defects are now written down as work**, plus six collected from earlier sessions:
+
+- **D1 (high, no owner)** — nothing in the door, the editor or the runtime warns that a node's
+  `Failure` reaches nobody. In a cloud function that is not a degraded result, it is a **30s
+  hang**. SBR-015 ships the rule as a *template-scoped test*, which protects one template and no
+  user; it belongs in `validate.ts` as a door diagnostic.
+- **D2 (medium-high, no owner)** — a cloud function's node steps are never recorded, so the
+  execution log says *that* one hung and never *where*. ⚠️ Not an unimplemented logger: the
+  recorder is complete and IS called, by the **workflow** engine — cloud functions run on a
+  different executor that never calls it.
+- **D3 (medium, no owner)** — `completed` reads as success, and `outcome.ts` records Richard
+  hitting this exact confusion once already on `Condition`. The wording fix did not reach far
+  enough; this time it marked a page published that no visitor can read.
+- **D4** — a refused query and an empty collection are the same screen. **Richard's call** which
+  task owns it.
+
+**These are the codebase half of this phase's value and none of them has an owner.** Worth ten
+minutes at the top of the session deciding which get tasks before more template work lands on
+top of them.
+
 ## 🔴 The first job: the drive that answers the question the fix made askable
 
 **Which node actually broke is still unknown, on purpose.** Four candidate causes each
