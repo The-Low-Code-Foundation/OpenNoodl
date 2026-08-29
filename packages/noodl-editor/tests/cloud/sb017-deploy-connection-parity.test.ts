@@ -347,6 +347,15 @@ describe('SB-017: the editor deploy path ships every connection the template hol
     // `test:ci` — the count was stale for a whole session before this run found
     // it. That is the argument for the gate being a literal: it only works if
     // somebody runs it.
+    //
+    // 🔴 20 → 23 is SBR-007's, and this time the gate did its job in the session
+    // that moved it: the rebuilt `/Pages/PageEditor` carries three new Function
+    // nodes — `headline` (the "Editing · <title>" line), `status` (the publish
+    // pill's word and colour) and `dirty` (acceptance 5's unsaved-changes
+    // comparison). ⚠️ **The count is the population; the LINE BELOW is the
+    // claim.** Three more browser Function nodes must still have had no ports
+    // written onto them by the cloud adapters, or the ruling's scope has leaked
+    // — and that assertion never even ran while this literal was stale.
     // Asserted on `dynamicports` rather than on an export, because
     // the export here is measured against the *cloud* node library — the browser
     // half's deploy is `build/deployer.ts`, and measuring it is SB-017 §6.5's
@@ -362,7 +371,7 @@ describe('SB-017: the editor deploy path ships every connection the template hol
         return nodes;
       });
 
-    expect(browserFunctions.length).toBe(20);
+    expect(browserFunctions.length).toBe(23);
     expect(browserFunctions.filter((node) => (node.dynamicports || []).length > 0)).toEqual([]);
 
     // …and the same sweep on the cloud side did write ports, so the assertion

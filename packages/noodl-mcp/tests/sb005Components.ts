@@ -205,9 +205,12 @@ export const ADMIN_FILL_EXEMPTIONS: ReadonlyArray<{ component: string; label: st
  * by it, and had **eleven** growing nodes to the public site's two.
  */
 export const ADMIN_LAYOUT_OWED: ReadonlyArray<{ component: string; label: string; owner: string }> = [
-  { component: 'Admin/SectionRow', label: 'One section', owner: 'SBR-007 — the section rows stack the same way the page rows did' },
-  { component: 'Pages/PageEditor', label: 'Editor', owner: 'SBR-007 — the page editor is rebuilt there' },
-  { component: 'Pages/PageEditor', label: 'Add a section', owner: 'SBR-007 — the page editor is rebuilt there' },
+  // 🔴 **SBR-007 paid its three rows and they are DELETED, not ticked.** The
+  // gate asserts this list exactly, so leaving a fixed row here would red just
+  // as loudly as adding a new one — which is the property that makes the list
+  // mean something. The three were `Admin/SectionRow | One section`,
+  // `Pages/PageEditor | Editor` and `Pages/PageEditor | Add a section`; all
+  // three now carry `STACKED` and the census counts 1 growing node, not 4.
   { component: 'Pages/Setup', label: 'Form', owner: 'SBR-002 — the claim screen is driven and passing; changing its size mode without re-driving it would be a blind edit to another task’s verified AC' }
 ];
 
@@ -675,11 +678,49 @@ export const SECTION_ROW_NODES = [
     id: 'row',
     type: 'Group',
     label: 'One section',
-    parameters: { flexDirection: 'column', paddingTop: 8, paddingBottom: 8 },
+    // 🔴 The third of SBR-007's `ADMIN_LAYOUT_OWED` rows, and the one that bit
+    // hardest: `Group` defaults to `explicit`, so without `STACKED` every row
+    // took `height: 100%` down the list's column and N sections DIVIDED the page
+    // between them instead of stacking. That is the same defect `/Admin/PageRow`
+    // carried before SBR-006 fixed it there — see {@link STACKED}.
+    //
+    // The card is §2's third bullet: a section has to read as a thing with an
+    // edge, not as four more controls in the same scroll. The raw `8`s are gone
+    // with it — spacing here is on the token scale like everything else.
+    parameters: {
+      ...STACKED,
+      flexDirection: 'column',
+      rowGap: 'var(--space-3)',
+      backgroundColor: 'var(--surface)',
+      borderStyle: 'solid',
+      borderWidth: 'var(--border-1)',
+      borderColor: 'var(--border)',
+      borderRadius: 'var(--radius-md)',
+      paddingTop: 'var(--space-4)',
+      paddingBottom: 'var(--space-4)',
+      paddingLeft: 'var(--space-4)',
+      paddingRight: 'var(--space-4)'
+    },
     children: ['kindText', 'bodyField', 'preview', 'pickButton', 'saveButton', 'deleteButton']
   },
   // SB-018 (3), same standing `text` as `/Admin/PageRow`'s two — see the note there.
-  { id: 'kindText', type: 'Text', label: 'Kind', parent: 'row', parameters: { fontWeight: 'var(--font-semibold)', text: '' } },
+  {
+    id: 'kindText',
+    type: 'Text',
+    label: 'Kind',
+    parent: 'row',
+    // SB-018 (3), same standing `text` as `/Admin/PageRow`'s two — see the note
+    // there. The type ramp is what makes the kind read as this card's heading.
+    parameters: {
+      ...STACKED,
+      text: '',
+      fontFamily: 'var(--font-sans)',
+      fontSize: 'var(--text-sm)',
+      fontWeight: 'var(--font-semibold)',
+      letterSpacing: 'var(--tracking-wide)',
+      color: 'var(--muted-foreground)'
+    }
+  },
   {
     id: 'bodyField',
     type: 'net.noodl.controls.textinput',
@@ -1327,74 +1368,278 @@ export const PAGE_EDITOR_NODES = [
   },
   {
     id: 'shell',
+    type: '/Admin/Shell',
+    label: 'Admin shell',
+    parent: 'page',
+    // 🔴 **SBR-007. This was the one admin screen that did not place the shell**,
+    // and it is the screen a client spends their time in. SBR-006 moved "Theme
+    // and settings" into a permanent sidebar item *"on every admin screen"* — but
+    // the sidebar, that link and `Sign out` all vanished the moment the client
+    // opened a page to edit it, and came back when they left. Measured over the
+    // shipped artefact: of the four admin pages, this was the only one whose tree
+    // contained no `/Admin/Shell`.
+    //
+    // `active: 'pages'` — editing a page is still the Pages section, so the rail
+    // must not go dark. That parameter is also what SBR-006 AC5 grades: the third
+    // placement of the shell, and the second that says `pages`.
+    parameters: { active: 'pages' },
+    // The screen's own body goes INSIDE the instance and arrives at the shell's
+    // `Component Children`, exactly as `/Pages/Admin` does it.
+    children: ['body']
+  },
+  {
+    id: 'body',
     type: 'Group',
     label: 'Editor',
-    parent: 'page',
-    parameters: { flexDirection: 'column', paddingTop: 24, paddingLeft: 24, paddingRight: 24 },
-    children: ['heading', 'titleField', 'slugField', 'seoField', 'navOrderField', 'showInNavBox', 'saveButton', 'addRow', 'sectionList', 'backButton']
+    parent: 'shell',
+    // 🔴 `STACKED`, and this is one of the three `ADMIN_LAYOUT_OWED` rows SBR-007
+    // owns. Without it this Group defaulted to `explicit` — `height: 100%` down
+    // the shell's column — which is the same defect the page rows had. The old
+    // raw `paddingTop: 24` / `paddingLeft: 24` are gone with it: the shell owns
+    // the page's padding now, and a raw dimension here had no token reason.
+    parameters: { ...STACKED, flexDirection: 'column', rowGap: 'var(--space-4)' },
+    children: ['headerRow', 'fieldsCard', 'sectionsPanel', 'backButton']
+  },
+
+  // ── The header row — §2's second bullet ─────────────────────────────────────
+  //
+  // "Editing · <title>", the publish state, whether there is anything unsaved,
+  // and the two actions. Save used to sit *below five fields and above the
+  // section list*, so on a page with sections it was off-screen while editing.
+  {
+    id: 'headerRow',
+    type: 'Group',
+    label: 'Editor header',
+    parent: 'body',
+    parameters: {
+      ...STACKED,
+      flexDirection: 'row',
+      alignItems: 'center',
+      columnGap: 'var(--space-3)'
+    },
+    children: ['heading', 'pill', 'dirtyMark', 'previewButton', 'saveButton']
   },
   {
     id: 'heading',
     type: 'Text',
     label: 'Heading',
-    parent: 'shell',
-    parameters: { text: 'Edit page', fontWeight: 'var(--font-bold)' }
+    parent: 'headerRow',
+    // Child of a ROW, so `IN_A_ROW` — `contentHeight` still assigns width and the
+    // heading would push the two actions off the screen (`/Pages/Admin`'s
+    // heading carries the same note, and SBR-004 measured that happening).
+    //
+    // Standing `text: ''` per SB-018 (3): `Text` declares `default: 'Text'`, so a
+    // node whose only source is a wire renders the literal word "Text" until the
+    // record first publishes.
+    parameters: {
+      ...IN_A_ROW,
+      text: '',
+      fontFamily: 'var(--font-sans)',
+      fontSize: 'var(--text-3xl)',
+      fontWeight: 'var(--font-bold)',
+      color: 'var(--foreground)'
+    }
+  },
+  {
+    id: 'pill',
+    type: 'Group',
+    label: 'Status pill',
+    parent: 'headerRow',
+    // The same pill `/Admin/PageRow` carries, for the same reason and fed by the
+    // same three-output function: §2 asks for the publish state to be visible
+    // *while editing*, and the list's pill is two screens away.
+    parameters: {
+      ...IN_A_ROW,
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingTop: 'var(--space-1)',
+      paddingBottom: 'var(--space-1)',
+      paddingLeft: 'var(--space-3)',
+      paddingRight: 'var(--space-3)',
+      borderRadius: 'var(--radius-md)',
+      // Authored as well as wired, SB-018 (3): a draft must not flash the
+      // published colour before `status` first publishes.
+      backgroundColor: 'var(--accent)'
+    },
+    children: ['pillText']
+  },
+  {
+    id: 'pillText',
+    type: 'Text',
+    label: 'Draft or published',
+    parent: 'pill',
+    parameters: {
+      ...IN_A_ROW,
+      text: 'Draft',
+      fontFamily: 'var(--font-sans)',
+      fontSize: 'var(--text-sm)',
+      fontWeight: 'var(--font-semibold)',
+      color: 'var(--muted-foreground)'
+    }
+  },
+  {
+    id: 'dirtyMark',
+    type: 'Text',
+    label: 'Unsaved changes',
+    parent: 'headerRow',
+    // 🔴 **Acceptance 5**, and `mounted`, never `visible` — SBR-004's drive
+    // measured `visible: false` as `visibility: hidden`, which HOLDS ITS SPACE.
+    // A clean form would otherwise reserve a gap where this sentence goes.
+    parameters: {
+      ...IN_A_ROW,
+      mounted: false,
+      text: 'Unsaved changes',
+      fontFamily: 'var(--font-sans)',
+      fontSize: 'var(--text-sm)',
+      color: 'var(--muted-foreground)'
+    }
+  },
+  {
+    id: 'previewButton',
+    type: 'net.noodl.controls.button',
+    label: 'Preview',
+    parent: 'headerRow',
+    parameters: { label: 'Preview' }
+  },
+  {
+    id: 'saveButton',
+    type: 'net.noodl.controls.button',
+    label: 'Save',
+    parent: 'headerRow',
+    parameters: { label: 'Save page' }
+  },
+
+  // ── The fields, in a card, grouped — §2's first bullet ──────────────────────
+  {
+    id: 'fieldsCard',
+    type: 'Group',
+    label: 'Page details',
+    parent: 'body',
+    // The card is what makes this screen stop being "everything left aligned in
+    // one column" — `backgroundColor` and `borderRadius` are two of
+    // `templateAppearance`'s `STRUCTURE_PARAMS`, and this page was the LAST bare
+    // page in the template when that census was run at HEAD.
+    parameters: {
+      ...STACKED,
+      flexDirection: 'column',
+      rowGap: 'var(--space-4)',
+      backgroundColor: 'var(--surface)',
+      borderStyle: 'solid',
+      borderWidth: 'var(--border-1)',
+      borderColor: 'var(--border)',
+      borderRadius: 'var(--radius-md)',
+      paddingTop: 'var(--space-6)',
+      paddingBottom: 'var(--space-6)',
+      paddingLeft: 'var(--space-6)',
+      paddingRight: 'var(--space-6)'
+    },
+    children: ['nameRow', 'seoField', 'navRow']
+  },
+  {
+    id: 'nameRow',
+    type: 'Group',
+    label: 'Title and slug',
+    parent: 'fieldsCard',
+    // Two-up. ⚠️ The two `textinput`s need no size mode of their own: only
+    // `Group`, `Text` and `Image` carry a `DEFAULT_SIZE_MODE` in
+    // `findGrowingNodes`, so a control is not graded and does not need an
+    // exemption row to sit in a row.
+    parameters: { ...STACKED, flexDirection: 'row', columnGap: 'var(--space-4)' },
+    children: ['titleField', 'slugField']
   },
   {
     id: 'titleField',
     type: 'net.noodl.controls.textinput',
     label: 'Title',
-    parent: 'shell',
+    parent: 'nameRow',
     parameters: { useLabel: true, label: 'Title' }
   },
   {
     id: 'slugField',
     type: 'net.noodl.controls.textinput',
     label: 'Slug',
-    parent: 'shell',
+    parent: 'nameRow',
     parameters: { useLabel: true, label: 'Slug' }
   },
   {
     id: 'seoField',
     type: 'net.noodl.controls.textinput',
     label: 'SEO description',
-    parent: 'shell',
+    parent: 'fieldsCard',
     parameters: { useLabel: true, label: 'Search description', type: 'textArea' }
+  },
+  {
+    id: 'navRow',
+    type: 'Group',
+    label: 'Navigation',
+    parent: 'fieldsCard',
+    // §2: nav order and show-in-navigation are one decision and belong together.
+    parameters: {
+      ...STACKED,
+      flexDirection: 'row',
+      alignItems: 'center',
+      columnGap: 'var(--space-4)'
+    },
+    children: ['navOrderField', 'showInNavBox']
   },
   {
     id: 'navOrderField',
     type: 'net.noodl.controls.textinput',
     label: 'Nav order',
-    parent: 'shell',
+    parent: 'navRow',
     parameters: { useLabel: true, label: 'Navigation order', type: 'number' }
   },
   {
     id: 'showInNavBox',
     type: 'net.noodl.controls.checkbox',
     label: 'Show in navigation',
-    parent: 'shell',
+    parent: 'navRow',
     parameters: { useLabel: true, label: 'Show in navigation' }
   },
+
+  // ── The sections — §2's third bullet ───────────────────────────────────────
   {
-    id: 'saveButton',
-    type: 'net.noodl.controls.button',
-    label: 'Save',
-    parent: 'shell',
-    parameters: { label: 'Save page' }
+    id: 'sectionsPanel',
+    type: 'Group',
+    label: 'Sections',
+    parent: 'body',
+    parameters: { ...STACKED, flexDirection: 'column', rowGap: 'var(--space-3)' },
+    children: ['sectionsHeader', 'sectionList']
   },
   {
-    id: 'addRow',
+    id: 'sectionsHeader',
     type: 'Group',
     label: 'Add a section',
-    parent: 'shell',
-    parameters: { flexDirection: 'row', alignItems: 'center' },
-    children: ['kindPicker', 'addButton']
+    parent: 'sectionsPanel',
+    // The second of SBR-007's three `ADMIN_LAYOUT_OWED` rows: this Group was the
+    // bare `addRow` and defaulted to filling its parent.
+    parameters: {
+      ...STACKED,
+      flexDirection: 'row',
+      alignItems: 'center',
+      columnGap: 'var(--space-3)'
+    },
+    children: ['sectionsHeading', 'kindPicker', 'addButton']
+  },
+  {
+    id: 'sectionsHeading',
+    type: 'Text',
+    label: 'Sections heading',
+    parent: 'sectionsHeader',
+    parameters: {
+      ...IN_A_ROW,
+      text: 'Sections',
+      fontFamily: 'var(--font-sans)',
+      fontSize: 'var(--text-xl)',
+      fontWeight: 'var(--font-semibold)',
+      color: 'var(--foreground)'
+    }
   },
   {
     id: 'kindPicker',
     type: 'net.noodl.controls.options',
     label: 'Section kind',
-    parent: 'addRow',
+    parent: 'sectionsHeader',
     // 🔴 `items` is NOT a comma list, and the door cannot say so — it is a static
     // `array` port, so no `dynamic-port-skipped` info covers it and a string
     // lands as a green graph that throws in `Select.tsx:116` the moment the page
@@ -1407,21 +1652,21 @@ export const PAGE_EDITOR_NODES = [
     id: 'addButton',
     type: 'net.noodl.controls.button',
     label: 'Add',
-    parent: 'addRow',
+    parent: 'sectionsHeader',
     parameters: { label: 'Add section' }
   },
   {
     id: 'sectionList',
     type: 'For Each',
     label: 'One row per section',
-    parent: 'shell',
+    parent: 'sectionsPanel',
     parameters: { templateType: 'explicit', template: '/Admin/SectionRow' }
   },
   {
     id: 'backButton',
     type: 'net.noodl.controls.button',
     label: 'Back',
-    parent: 'shell',
+    parent: 'body',
     parameters: { label: 'Back to pages' }
   },
   {
@@ -1516,6 +1761,113 @@ export const PAGE_EDITOR_NODES = [
     type: 'RouterNavigate',
     label: 'Back to the list',
     parameters: { router: ROUTER, target: '/Pages/Admin' }
+  },
+  {
+    id: 'headline',
+    type: 'JavaScriptFunction',
+    label: 'Which page is being edited',
+    // Rule 1: `Outputs.headline` is a value, so there is no signal port to declare.
+    //
+    // 🔴 `runOnChange-in-title: true` for SBR-004 §9.2's reason, the same one
+    // `/Admin/PageRow`'s `status` carries: the NDA-017 migration writes
+    // `runOnChange-<input>: false` over every value input on every project load,
+    // and an explicit `true` is what survives it. An absent key does not.
+    parameters: {
+      'runOnChange-in-title': true,
+      functionScript: [
+        // ⚠️ Guarded before `.trim()`. An unconnected or not-yet-published input
+        // arrives as `undefined` and carries NO default, so `.trim()` on it
+        // throws and takes the whole function with it.
+        'if (Inputs.title === undefined) return;',
+        "const title = String(Inputs.title === null ? '' : Inputs.title).trim();",
+        // A page genuinely can have no title — `/Pages/Admin` creates rows before
+        // anyone names them — and "Editing · " with nothing after it reads as a
+        // rendering fault rather than as an unnamed page.
+        "Outputs.headline = title === '' ? 'Editing · Untitled page' : 'Editing · ' + title;"
+      ].join('\n')
+    }
+  },
+  {
+    id: 'status',
+    type: 'JavaScriptFunction',
+    label: 'Draft or published, as a word and a colour',
+    // The same three outputs `/Admin/PageRow` derives, deliberately duplicated
+    // rather than shared: they are two components, and a `Component Inputs` hop
+    // to share four lines of string arithmetic would cost a placement.
+    parameters: {
+      'runOnChange-in-published': true,
+      functionScript: [
+        'const published = Inputs.published === true;',
+        "Outputs.label = published ? 'Published' : 'Draft';",
+        "Outputs.pillBackground = published ? 'var(--primary)' : 'var(--accent)';",
+        "Outputs.pillColor = published ? 'var(--primary-foreground)' : 'var(--muted-foreground)';"
+      ].join('\n')
+    }
+  },
+  {
+    id: 'dirty',
+    type: 'JavaScriptFunction',
+    label: 'Is there anything unsaved?',
+    // ── Acceptance 5, and why this is a COMPARISON and not a `States` node ────
+    //
+    // The obvious build is `States(Clean,Dirty)` with every field's `textChanged`
+    // signal driving `to-Dirty` and `save.done` driving `to-Clean`. It does not
+    // work, and the reason is measurable in `text-input.ts`: `startValue.set`
+    // calls `setText`, `setText` flags `onTextChanged`, and `onTextChanged`'s
+    // `onChange` fires the `textChanged` SIGNAL (`text-input.ts:272`). So the
+    // record merely *loading* marks the form dirty, and the only repair is to
+    // land a `to-Clean` after five `to-Dirty`s that arrive in the same pass —
+    // which is sequencing on drain order, the exact thing this task's third trap
+    // says is not a guarantee (P75 measured that order as an accident).
+    //
+    // A comparison is order-independent: it is a pure function of (loaded,
+    // current), so it gives the same answer whenever it runs. It also makes the
+    // marker CORRECT rather than merely present — typing a character and typing
+    // it back out again leaves the form clean, which a signal counter cannot do.
+    parameters: {
+      'runOnChange-in-title': true,
+      'runOnChange-in-slug': true,
+      'runOnChange-in-seo': true,
+      'runOnChange-in-navOrder': true,
+      'runOnChange-in-showInNav': true,
+      'runOnChange-in-loadedTitle': true,
+      'runOnChange-in-loadedSlug': true,
+      'runOnChange-in-loadedSeo': true,
+      'runOnChange-in-loadedNavOrder': true,
+      'runOnChange-in-loadedShowInNav': true,
+      functionScript: [
+        // Before the record has arrived there is nothing to be different FROM,
+        // and "no answer" is the honest reading — not "clean", which would be a
+        // claim about a form nobody has loaded yet.
+        'if (Inputs.loadedTitle === undefined) return;',
+        // `null`, `undefined` and `''` are the same emptiness to a person, and a
+        // number field publishes `12` where the record holds `"12"`. Comparing as
+        // trimmed strings is what stops a freshly loaded form reading dirty.
+        "const same = (a, b) => String(a === undefined || a === null ? '' : a).trim() === String(b === undefined || b === null ? '' : b).trim();",
+        'Outputs.dirty =',
+        '  !same(Inputs.title, Inputs.loadedTitle) ||',
+        '  !same(Inputs.slug, Inputs.loadedSlug) ||',
+        '  !same(Inputs.seo, Inputs.loadedSeo) ||',
+        '  !same(Inputs.navOrder, Inputs.loadedNavOrder) ||',
+        // A checkbox is a boolean on both sides, so it compares as one — an
+        // absent column reads `undefined`, which is `false` to a person.
+        '  (Inputs.showInNav === true) !== (Inputs.loadedShowInNav === true);'
+      ].join('\n')
+    }
+  },
+  {
+    id: 'preview',
+    type: 'RouterNavigate',
+    label: 'Preview the public page',
+    // 🔴 A COMPONENT target and a page parameter, never a built URL string.
+    // SBR-006's own fix (`8661ce83`) was exactly this defect on "View site": a
+    // target with no slug landed the visitor on the literal `{slug}`.
+    // `/Pages/Site`'s `urlPath` is `{slug}`, so `pm-slug` is what fills it.
+    //
+    // ⚠️ Fed from the RECORD's slug, not the slug FIELD: previewing a slug that
+    // has only been typed would open a page that does not exist yet. The preview
+    // is of what is saved, which is also what a visitor would get.
+    parameters: { router: ROUTER, target: '/Pages/Site' }
   }
 ];
 
@@ -1560,7 +1912,49 @@ export const PAGE_EDITOR_WIRES = [
   { fromId: 'sectionList', fromProperty: 'itemOutputSignal-Changed', toId: 'sections', toProperty: 'storageFetch' },
 
   { fromId: 'sections', fromProperty: 'items', toId: 'sectionList', toProperty: 'items' },
-  { fromId: 'backButton', fromProperty: 'onClick', toId: 'goBack', toProperty: 'navigate' }
+  { fromId: 'backButton', fromProperty: 'onClick', toId: 'goBack', toProperty: 'navigate' },
+
+  // ── The header row: which page, what state, and what is unsaved ────────────
+  { fromId: 'record', fromProperty: 'prop-title', toId: 'headline', toProperty: 'in-title' },
+  { fromId: 'headline', fromProperty: 'out-headline', toId: 'heading', toProperty: 'text' },
+
+  // The pill, wired exactly as `/Admin/PageRow` wires its own — same three
+  // outputs onto the same three ports.
+  { fromId: 'record', fromProperty: 'prop-published', toId: 'status', toProperty: 'in-published' },
+  { fromId: 'status', fromProperty: 'out-label', toId: 'pillText', toProperty: 'text' },
+  { fromId: 'status', fromProperty: 'out-pillBackground', toId: 'pill', toProperty: 'backgroundColor' },
+  { fromId: 'status', fromProperty: 'out-pillColor', toId: 'pillText', toProperty: 'color' },
+
+  // 🔴 Preview takes the RECORD's slug, not the field's — see the node's comment.
+  { fromId: 'record', fromProperty: 'prop-slug', toId: 'preview', toProperty: 'pm-slug' },
+  { fromId: 'previewButton', fromProperty: 'onClick', toId: 'preview', toProperty: 'navigate' },
+
+  // ── Acceptance 5: the two sides of the comparison ─────────────────────────
+  // What the record says…
+  { fromId: 'record', fromProperty: 'prop-title', toId: 'dirty', toProperty: 'in-loadedTitle' },
+  { fromId: 'record', fromProperty: 'prop-slug', toId: 'dirty', toProperty: 'in-loadedSlug' },
+  { fromId: 'record', fromProperty: 'prop-seoDescription', toId: 'dirty', toProperty: 'in-loadedSeo' },
+  { fromId: 'record', fromProperty: 'prop-navOrder', toId: 'dirty', toProperty: 'in-loadedNavOrder' },
+  { fromId: 'record', fromProperty: 'prop-showInNav', toId: 'dirty', toProperty: 'in-loadedShowInNav' },
+  // …and what the five controls currently hold. `onTextChanged` is the VALUE
+  // output (`text-input.ts:262`, display name "Value"), not the signal — the
+  // signal is `textChanged`, and using it here is the mistake the node's comment
+  // describes.
+  { fromId: 'titleField', fromProperty: 'onTextChanged', toId: 'dirty', toProperty: 'in-title' },
+  { fromId: 'slugField', fromProperty: 'onTextChanged', toId: 'dirty', toProperty: 'in-slug' },
+  { fromId: 'seoField', fromProperty: 'onTextChanged', toId: 'dirty', toProperty: 'in-seo' },
+  { fromId: 'navOrderField', fromProperty: 'onTextChanged', toId: 'dirty', toProperty: 'in-navOrder' },
+  { fromId: 'showInNavBox', fromProperty: 'checked', toId: 'dirty', toProperty: 'in-showInNav' },
+  { fromId: 'dirty', fromProperty: 'out-dirty', toId: 'dirtyMark', toProperty: 'mounted' },
+
+  // 🔴 **Re-read the row after a successful save, sequenced on `done`.** Two
+  // things need it and neither is cosmetic: the comparison above is against the
+  // record, so without a re-read the form stays "unsaved" forever after saving;
+  // and acceptance 4 asks the screen to show the STORED row rather than the
+  // input's own echo, which is only true if something goes back and asks.
+  //
+  // `done`, not `store`'s completion by wire order — this task's third trap.
+  { fromId: 'save', fromProperty: 'done', toId: 'record', toProperty: 'fetch' }
 ];
 
 // ── 6. Pages/ThemeEditor — the theme tokens and the site settings ────────────

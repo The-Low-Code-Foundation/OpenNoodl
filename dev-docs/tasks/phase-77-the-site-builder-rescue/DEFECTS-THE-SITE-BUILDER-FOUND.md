@@ -493,3 +493,106 @@ signal from `Outputs.x()` with **empty parens and no underscore in the name**
 (`cloudDynamicPorts.ts:203`). `Outputs.done(1)` and `Outputs.my_sig()` mint no signal port and
 still throw at runtime. No script in the template does either — the spec's population is asserted
 at 13 with the looser pattern, so one appearing turns the suite red rather than passing quietly.
+
+---
+
+## D15 — 🔴 The runtime has no file-drop capability at all, so "drop a file here" is not authorable
+
+**Found:** s21, building SBR-007 · **Owner:** `NONE` · **Product**, not template · **Bites:** any
+builder who wants a drop target, and SBR-007 AC3 as literally written.
+
+SBR-007 AC3 asks that *"dropping an image file onto the gallery editor uploads it"*. It is not
+buildable with the shipped node library, and the reason is a missing capability rather than a
+missing wire.
+
+**Measured, with a known-firing control beside it** — over `packages/noodl-viewer-react/src` and
+`packages/noodl-runtime/src`:
+
+| grep | hits |
+|---|---|
+| `onClick\|onMouseDown` — the control, proving the search path is right | **39** |
+| `onDrop=\|ondrop\|dataTransfer\|dragover\|dragenter\|DragEvent` | **0** |
+
+⚠️ The control earned its place: the first run of this pair used an unquoted shell variable for the
+two paths, zsh did not word-split it, and **both numbers came back 0** — an absence that looked
+exactly like the finding. A zero next to a zero is not a measurement.
+
+**What DOES exist, and why it is not the same thing:**
+
+- `visual/drag.ts` — a `Drag` node with `Drag Started`/`Moved`/`Ended` and `Drag X/Y`, `Delta X/Y`.
+  It moves an element by position. It reports **no drop target and no hit test**, so "what did I
+  drop this on" is arithmetic the author must do.
+- `std-library/openfilepicker.ts` + `uploadfile.ts` — the upload path that the template already
+  uses: **click** a button, get an OS file dialog, upload the result. `Open File Picker` has no
+  drop affordance.
+
+So the gesture AC3 names needs a new runtime node (a Drop Target that surfaces `dataTransfer.files`)
+or a drop-handling input on an existing visual node. That is a product change in the viewer, not a
+template edit, which is why SBR-007 did not quietly build something else and call it AC3.
+
+🔴 **Unowned on purpose.** It is not SBR-007's (that task owns a screen, not the node library) and
+it is not SBR-005's (that owns the gallery data model). It needs a task, and phase 77 should not
+close pretending AC3 was met.
+
+---
+
+## D16 — ⚠️ The appearance ratchet's per-page check cannot fail for any page that places a styled component
+
+**Found:** s21, while paying SBR-007's appearance debt · **Owner:** `NONE` · **Product** (a gate) ·
+**Bites:** anyone who reads a green §4 as "this screen is designed".
+
+`templateAppearance.test.ts` §4 asks whether a page is "an unstyled column". `barePages()` walks
+`reachable(t, page)` — the **transitive closure of placed components** — and calls the page styled
+if *any* node in that closure sets one of `STRUCTURE_PARAMS`.
+
+**Sabotage, run over the shipped artefact at HEAD:**
+
+| | bare? |
+|---|---|
+| `/Pages/PageEditor` as built | `false` |
+| `/Pages/PageEditor` with **every one of its own structure parameters stripped** | **`false`** |
+| `/Pages/Site` with every one of its own structure parameters stripped (control) | **`false`** |
+
+Because `/Admin/Shell` carries `backgroundColor`, a page that merely *places the shell* passes §4
+with an entirely unstyled body. The check grades **"does this page reach anything styled"**, not
+"is this page styled".
+
+🔴 **This matters to the row above it.** SBR-007 took site-builder from 1 bare page to 0 and
+tightened `BARE_PAGES_TODAY['site-builder']` to `[]` — but §4 would have reported that improvement
+for the shell placement alone. **The evidence that the page editor is actually designed is the
+count of structure parameters in its OWN tree: 0 → 9.** §4 is not that evidence and is not cited as
+it.
+
+**The stricter rule was measured and is NOT green today**, which is why this is a row and not a
+patch: grading each page's own tree makes `/Pages/ThemeEditor` bare (it delegates everything to the
+shell), and the rule change would re-grade `members-area` and `hello-world` too — two templates and
+another phase's gate. ⚠️ A rule promotion re-grades corpora nobody listed.
+
+---
+
+## D17 — 🟢 FIXED s21 · The page editor was the one admin screen that did not wear the admin shell
+
+**Found and fixed:** s21, SBR-007 · **Template**, not product · **Bites:** every client, on the
+screen they spend their time in.
+
+SBR-006 moved "Theme and settings" out of a button at the bottom of the page list and into *"a
+permanent sidebar item in `/Admin/Shell`, on every admin screen"*. Measured over the shipped
+artefact, that sentence was false:
+
+| page | places `/Admin/Shell`? |
+|---|---|
+| `/Pages/Admin` | `active: "pages"` |
+| `/Pages/ThemeEditor` | `active: "theme"` |
+| **`/Pages/PageEditor`** | 🔴 **none** |
+| `/Pages/Site`, `/Pages/SignIn`, `/Pages/Setup` | none — correct, these are not admin screens |
+
+So the rail, the theme link and `Sign out` vanished the moment a client opened a page to edit, and
+came back when they left. `sb005AdminPanel.test.ts`'s AC5 case pinned the placements at exactly
+`['Pages/Admin', 'Pages/ThemeEditor']` and was green throughout — **the gate asserted the defect.**
+
+✅ Fixed by placing the shell with `active: 'pages'`. ⚠️ **And AC5's second assertion had to change
+shape, not just its numbers**: it read `new Set(active).size === placements.length` — "every
+placement is unique" — which was accidentally equivalent to the real invariant while there were
+exactly two placements and is the *wrong rule* at three. The page editor sharing `pages` with the
+page list is correct (editing a page is still the Pages section). The invariant that survives is
+"more than one rendering exists", i.e. the interface is load-bearing.

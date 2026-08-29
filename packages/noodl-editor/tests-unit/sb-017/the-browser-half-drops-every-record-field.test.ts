@@ -363,8 +363,22 @@ describe('SB-017 §10.8: what the browser deploy drops, and what it costs', () =
     };
     const fixedBySb018: Record<string, number> = { '/Pages/PageEditor': 1, '/Pages/Admin': 1 };
 
+    // 🔴 **SBR-007 GREW this population by 8, and growth is not the same as
+    // regression.** The rebuilt page editor reads the record in five more places
+    // — `headline` takes `prop-title`, `status` takes `prop-published`, `preview`
+    // takes `prop-slug`, and the unsaved-changes comparison takes all five loaded
+    // fields — so there are 8 more `record.prop-*` wires than s17 counted.
+    //
+    // ⚠️ Pinned as arithmetic on top of s17's panel reading, in the style this
+    // block already used, so the ORIGINAL measurement stays visible and a number
+    // that moves for any other reason still reddens. What must NOT move is the
+    // census in the AC2 case below: 8 more wires of the same family must still
+    // all resolve, or SBR-007 has re-opened SBR-008's defect on a new screen.
+    const addedBySbr007: Record<string, number> = { '/Pages/PageEditor': 8 };
+
     expect(perComponent).toEqual({
-      '/Pages/PageEditor': s17PanelReading['/Pages/PageEditor'] - fixedBySb018['/Pages/PageEditor'],
+      '/Pages/PageEditor':
+        s17PanelReading['/Pages/PageEditor'] - fixedBySb018['/Pages/PageEditor'] + addedBySbr007['/Pages/PageEditor'],
       '/Pages/Admin': s17PanelReading['/Pages/Admin'] - fixedBySb018['/Pages/Admin'],
       '/Pages/ThemeEditor': s17PanelReading['/Pages/ThemeEditor'],
       '/Admin/SectionRow': s17PanelReading['/Admin/SectionRow']
@@ -384,7 +398,8 @@ describe('SB-017 §10.8: what the browser deploy drops, and what it costs', () =
   it('is 19 record fields and NOTHING else — SB-018`s two have been fixed away', () => {
     const rows = recordWires();
 
-    expect(rows.filter((r) => r.port.startsWith('prop-')).length).toBe(19);
+    // 19 → 27: SBR-007's eight, see the per-component case above.
+    expect(rows.filter((r) => r.port.startsWith('prop-')).length).toBe(27);
 
     // 🔴 The residue was two `For Each.Changed` wires, separated here rather than
     // lumped in because they wanted a different fix — and they got one. SB-018 (1)
@@ -397,7 +412,7 @@ describe('SB-017 §10.8: what the browser deploy drops, and what it costs', () =
     expect(rows.filter((r) => r.ownerType === 'For Each')).toEqual([]);
 
     // …which makes the whole census one family, and 11.4's decision is about it.
-    expect(rows.length).toBe(19);
+    expect(rows.length).toBe(27);
     expect(rows.every((r) => r.port.startsWith('prop-'))).toBe(true);
   });
 
@@ -431,7 +446,11 @@ describe('SB-017 §10.8: what the browser deploy drops, and what it costs', () =
     // schema (`getMetaData` → `undefined`, no columns, no backend), so nothing but the
     // derivation can move it. §6.5 is why that qualifier is load-bearing — the editor's
     // own chip read 32, 13 and 4 in one session with nothing edited.
-    expect(recordWires().filter((row) => row.port.startsWith('prop-')).length).toBe(19);
+    // 19 → 27 (SBR-007's eight). 🔴 **The `toBe` is the POPULATION and the
+    // `toEqual([])` is the CLAIM** — growing the first without the second staying
+    // empty is precisely how a new screen would re-open SBR-008's defect while
+    // this file went on reporting a tidy zero.
+    expect(recordWires().filter((row) => row.port.startsWith('prop-')).length).toBe(27);
     expect(unresolvedWires()).toEqual([]);
   });
 
@@ -511,7 +530,9 @@ describe('SB-017 §10.8: what the browser deploy drops, and what it costs', () =
     // The population is still there — the wires were never the problem.
     expect(Object.keys(byOwner).length).toBeGreaterThan(0);
     const wiredTotal = Object.values(byOwner).reduce((total, ports) => total + ports.length, 0);
-    expect(wiredTotal).toBe(19);
+    // 19 → 27: SBR-007's eight new `record.prop-*` reads on the rebuilt page
+    // editor. The line below is the one that matters and it is unchanged at 0.
+    expect(wiredTotal).toBe(27);
 
     // Before the fix this read `toBe(wiredTotal)` — every wired field on every node,
     // lost. Now none of them is.

@@ -268,7 +268,19 @@ const EXPECTED_PAGE_COUNT: Record<string, number> = {
  */
 const BARE_PAGES_TODAY: Record<string, string[]> = {
   'hello-world': ['/Home'],
-  'site-builder': ['/Pages/Admin', '/Pages/PageEditor', '/Pages/Setup', '/Pages/ThemeEditor'],
+  // 🟢 **SBR-007, 2026-08-29: site-builder's allowance is spent — the debt is
+  // paid and the ratchet is closed.** Measured at HEAD before the build, three
+  // of these four names were ALREADY not bare: `/Pages/Admin`, `/Pages/Setup`
+  // and `/Pages/ThemeEditor` had been styled by SBR-006 and SBR-002 without
+  // anyone coming back to shrink the list. `/Pages/PageEditor` was the only
+  // genuinely bare page left in the template, and it is the one this task owns.
+  //
+  // ⚠️ That is the failure mode a floor has: it goes stale GENEROUS, and a
+  // stale-generous floor hides exactly what it was built to catch — any one of
+  // the three could have regressed to bare and §4 would have stayed green.
+  // Leaving `[]` means the next bare page in site-builder reddens on the commit
+  // that introduces it.
+  'site-builder': [],
   'members-area': []
 };
 

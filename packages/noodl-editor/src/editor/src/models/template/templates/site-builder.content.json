@@ -1912,8 +1912,13 @@
                 "x": 100,
                 "y": 160,
                 "parameters": {
+                  "sizeMode": "contentHeight",
+                  "text": "",
+                  "fontFamily": "var(--font-sans)",
+                  "fontSize": "var(--text-sm)",
                   "fontWeight": "var(--font-semibold)",
-                  "text": ""
+                  "letterSpacing": "var(--tracking-wide)",
+                  "color": "var(--muted-foreground)"
                 },
                 "ports": [],
                 "dynamicports": []
@@ -1988,9 +1993,18 @@
             "x": 40,
             "y": 40,
             "parameters": {
+              "sizeMode": "contentHeight",
               "flexDirection": "column",
-              "paddingTop": 8,
-              "paddingBottom": 8
+              "rowGap": "var(--space-3)",
+              "backgroundColor": "var(--surface)",
+              "borderStyle": "solid",
+              "borderWidth": "var(--border-1)",
+              "borderColor": "var(--border)",
+              "borderRadius": "var(--radius-md)",
+              "paddingTop": "var(--space-4)",
+              "paddingBottom": "var(--space-4)",
+              "paddingLeft": "var(--space-4)",
+              "paddingRight": "var(--space-4)"
             },
             "ports": [],
             "dynamicports": []
@@ -2261,185 +2275,384 @@
             "children": [
               {
                 "id": "shell-2",
-                "type": "Group",
+                "type": "/Admin/Shell",
                 "children": [
                   {
-                    "id": "heading-2",
-                    "type": "Text",
-                    "children": [],
-                    "label": "Heading",
-                    "x": 160,
-                    "y": 280,
-                    "parameters": {
-                      "text": "Edit page",
-                      "fontWeight": "var(--font-bold)"
-                    },
-                    "ports": [],
-                    "dynamicports": []
-                  },
-                  {
-                    "id": "titleField",
-                    "type": "net.noodl.controls.textinput",
-                    "children": [],
-                    "label": "Title",
-                    "x": 160,
-                    "y": 400,
-                    "parameters": {
-                      "useLabel": true,
-                      "label": "Title"
-                    },
-                    "ports": [],
-                    "dynamicports": []
-                  },
-                  {
-                    "id": "slugField",
-                    "type": "net.noodl.controls.textinput",
-                    "children": [],
-                    "label": "Slug",
-                    "x": 160,
-                    "y": 520,
-                    "parameters": {
-                      "useLabel": true,
-                      "label": "Slug"
-                    },
-                    "ports": [],
-                    "dynamicports": []
-                  },
-                  {
-                    "id": "seoField",
-                    "type": "net.noodl.controls.textinput",
-                    "children": [],
-                    "label": "SEO description",
-                    "x": 160,
-                    "y": 640,
-                    "parameters": {
-                      "useLabel": true,
-                      "label": "Search description",
-                      "type": "textArea"
-                    },
-                    "ports": [],
-                    "dynamicports": []
-                  },
-                  {
-                    "id": "navOrderField",
-                    "type": "net.noodl.controls.textinput",
-                    "children": [],
-                    "label": "Nav order",
-                    "x": 160,
-                    "y": 760,
-                    "parameters": {
-                      "useLabel": true,
-                      "label": "Navigation order",
-                      "type": "number"
-                    },
-                    "ports": [],
-                    "dynamicports": []
-                  },
-                  {
-                    "id": "showInNavBox",
-                    "type": "net.noodl.controls.checkbox",
-                    "children": [],
-                    "label": "Show in navigation",
-                    "x": 160,
-                    "y": 880,
-                    "parameters": {
-                      "useLabel": true,
-                      "label": "Show in navigation"
-                    },
-                    "ports": [],
-                    "dynamicports": []
-                  },
-                  {
-                    "id": "saveButton-2",
-                    "type": "net.noodl.controls.button",
-                    "children": [],
-                    "label": "Save",
-                    "x": 160,
-                    "y": 1000,
-                    "parameters": {
-                      "label": "Save page"
-                    },
-                    "ports": [],
-                    "dynamicports": []
-                  },
-                  {
-                    "id": "addRow",
+                    "id": "body-2",
                     "type": "Group",
                     "children": [
                       {
-                        "id": "kindPicker",
-                        "type": "net.noodl.controls.options",
-                        "children": [],
-                        "label": "Section kind",
+                        "id": "headerRow",
+                        "type": "Group",
+                        "children": [
+                          {
+                            "id": "heading-2",
+                            "type": "Text",
+                            "children": [],
+                            "label": "Heading",
+                            "x": 280,
+                            "y": 520,
+                            "parameters": {
+                              "sizeMode": "contentSize",
+                              "text": "",
+                              "fontFamily": "var(--font-sans)",
+                              "fontSize": "var(--text-3xl)",
+                              "fontWeight": "var(--font-bold)",
+                              "color": "var(--foreground)"
+                            },
+                            "ports": [],
+                            "dynamicports": []
+                          },
+                          {
+                            "id": "pill",
+                            "type": "Group",
+                            "children": [
+                              {
+                                "id": "pillText",
+                                "type": "Text",
+                                "children": [],
+                                "label": "Draft or published",
+                                "x": 340,
+                                "y": 760,
+                                "parameters": {
+                                  "sizeMode": "contentSize",
+                                  "text": "Draft",
+                                  "fontFamily": "var(--font-sans)",
+                                  "fontSize": "var(--text-sm)",
+                                  "fontWeight": "var(--font-semibold)",
+                                  "color": "var(--muted-foreground)"
+                                },
+                                "ports": [],
+                                "dynamicports": []
+                              }
+                            ],
+                            "label": "Status pill",
+                            "x": 280,
+                            "y": 640,
+                            "parameters": {
+                              "sizeMode": "contentSize",
+                              "flexDirection": "row",
+                              "alignItems": "center",
+                              "paddingTop": "var(--space-1)",
+                              "paddingBottom": "var(--space-1)",
+                              "paddingLeft": "var(--space-3)",
+                              "paddingRight": "var(--space-3)",
+                              "borderRadius": "var(--radius-md)",
+                              "backgroundColor": "var(--accent)"
+                            },
+                            "ports": [],
+                            "dynamicports": []
+                          },
+                          {
+                            "id": "dirtyMark",
+                            "type": "Text",
+                            "children": [],
+                            "label": "Unsaved changes",
+                            "x": 280,
+                            "y": 880,
+                            "parameters": {
+                              "sizeMode": "contentSize",
+                              "mounted": false,
+                              "text": "Unsaved changes",
+                              "fontFamily": "var(--font-sans)",
+                              "fontSize": "var(--text-sm)",
+                              "color": "var(--muted-foreground)"
+                            },
+                            "ports": [],
+                            "dynamicports": []
+                          },
+                          {
+                            "id": "previewButton",
+                            "type": "net.noodl.controls.button",
+                            "children": [],
+                            "label": "Preview",
+                            "x": 280,
+                            "y": 1000,
+                            "parameters": {
+                              "label": "Preview"
+                            },
+                            "ports": [],
+                            "dynamicports": []
+                          },
+                          {
+                            "id": "saveButton-2",
+                            "type": "net.noodl.controls.button",
+                            "children": [],
+                            "label": "Save",
+                            "x": 280,
+                            "y": 1120,
+                            "parameters": {
+                              "label": "Save page"
+                            },
+                            "ports": [],
+                            "dynamicports": []
+                          }
+                        ],
+                        "label": "Editor header",
                         "x": 220,
-                        "y": 1240,
+                        "y": 400,
                         "parameters": {
-                          "useLabel": true,
-                          "label": "Kind"
+                          "sizeMode": "contentHeight",
+                          "flexDirection": "row",
+                          "alignItems": "center",
+                          "columnGap": "var(--space-3)"
                         },
                         "ports": [],
                         "dynamicports": []
                       },
                       {
-                        "id": "addButton",
+                        "id": "fieldsCard",
+                        "type": "Group",
+                        "children": [
+                          {
+                            "id": "nameRow",
+                            "type": "Group",
+                            "children": [
+                              {
+                                "id": "titleField",
+                                "type": "net.noodl.controls.textinput",
+                                "children": [],
+                                "label": "Title",
+                                "x": 340,
+                                "y": 1480,
+                                "parameters": {
+                                  "useLabel": true,
+                                  "label": "Title"
+                                },
+                                "ports": [],
+                                "dynamicports": []
+                              },
+                              {
+                                "id": "slugField",
+                                "type": "net.noodl.controls.textinput",
+                                "children": [],
+                                "label": "Slug",
+                                "x": 340,
+                                "y": 1600,
+                                "parameters": {
+                                  "useLabel": true,
+                                  "label": "Slug"
+                                },
+                                "ports": [],
+                                "dynamicports": []
+                              }
+                            ],
+                            "label": "Title and slug",
+                            "x": 280,
+                            "y": 1360,
+                            "parameters": {
+                              "sizeMode": "contentHeight",
+                              "flexDirection": "row",
+                              "columnGap": "var(--space-4)"
+                            },
+                            "ports": [],
+                            "dynamicports": []
+                          },
+                          {
+                            "id": "seoField",
+                            "type": "net.noodl.controls.textinput",
+                            "children": [],
+                            "label": "SEO description",
+                            "x": 280,
+                            "y": 1720,
+                            "parameters": {
+                              "useLabel": true,
+                              "label": "Search description",
+                              "type": "textArea"
+                            },
+                            "ports": [],
+                            "dynamicports": []
+                          },
+                          {
+                            "id": "navRow",
+                            "type": "Group",
+                            "children": [
+                              {
+                                "id": "navOrderField",
+                                "type": "net.noodl.controls.textinput",
+                                "children": [],
+                                "label": "Nav order",
+                                "x": 340,
+                                "y": 1960,
+                                "parameters": {
+                                  "useLabel": true,
+                                  "label": "Navigation order",
+                                  "type": "number"
+                                },
+                                "ports": [],
+                                "dynamicports": []
+                              },
+                              {
+                                "id": "showInNavBox",
+                                "type": "net.noodl.controls.checkbox",
+                                "children": [],
+                                "label": "Show in navigation",
+                                "x": 340,
+                                "y": 2080,
+                                "parameters": {
+                                  "useLabel": true,
+                                  "label": "Show in navigation"
+                                },
+                                "ports": [],
+                                "dynamicports": []
+                              }
+                            ],
+                            "label": "Navigation",
+                            "x": 280,
+                            "y": 1840,
+                            "parameters": {
+                              "sizeMode": "contentHeight",
+                              "flexDirection": "row",
+                              "alignItems": "center",
+                              "columnGap": "var(--space-4)"
+                            },
+                            "ports": [],
+                            "dynamicports": []
+                          }
+                        ],
+                        "label": "Page details",
+                        "x": 220,
+                        "y": 1240,
+                        "parameters": {
+                          "sizeMode": "contentHeight",
+                          "flexDirection": "column",
+                          "rowGap": "var(--space-4)",
+                          "backgroundColor": "var(--surface)",
+                          "borderStyle": "solid",
+                          "borderWidth": "var(--border-1)",
+                          "borderColor": "var(--border)",
+                          "borderRadius": "var(--radius-md)",
+                          "paddingTop": "var(--space-6)",
+                          "paddingBottom": "var(--space-6)",
+                          "paddingLeft": "var(--space-6)",
+                          "paddingRight": "var(--space-6)"
+                        },
+                        "ports": [],
+                        "dynamicports": []
+                      },
+                      {
+                        "id": "sectionsPanel",
+                        "type": "Group",
+                        "children": [
+                          {
+                            "id": "sectionsHeader",
+                            "type": "Group",
+                            "children": [
+                              {
+                                "id": "sectionsHeading",
+                                "type": "Text",
+                                "children": [],
+                                "label": "Sections heading",
+                                "x": 340,
+                                "y": 2440,
+                                "parameters": {
+                                  "sizeMode": "contentSize",
+                                  "text": "Sections",
+                                  "fontFamily": "var(--font-sans)",
+                                  "fontSize": "var(--text-xl)",
+                                  "fontWeight": "var(--font-semibold)",
+                                  "color": "var(--foreground)"
+                                },
+                                "ports": [],
+                                "dynamicports": []
+                              },
+                              {
+                                "id": "kindPicker",
+                                "type": "net.noodl.controls.options",
+                                "children": [],
+                                "label": "Section kind",
+                                "x": 340,
+                                "y": 2560,
+                                "parameters": {
+                                  "useLabel": true,
+                                  "label": "Kind"
+                                },
+                                "ports": [],
+                                "dynamicports": []
+                              },
+                              {
+                                "id": "addButton",
+                                "type": "net.noodl.controls.button",
+                                "children": [],
+                                "label": "Add",
+                                "x": 340,
+                                "y": 2680,
+                                "parameters": {
+                                  "label": "Add section"
+                                },
+                                "ports": [],
+                                "dynamicports": []
+                              }
+                            ],
+                            "label": "Add a section",
+                            "x": 280,
+                            "y": 2320,
+                            "parameters": {
+                              "sizeMode": "contentHeight",
+                              "flexDirection": "row",
+                              "alignItems": "center",
+                              "columnGap": "var(--space-3)"
+                            },
+                            "ports": [],
+                            "dynamicports": []
+                          },
+                          {
+                            "id": "sectionList-2",
+                            "type": "For Each",
+                            "children": [],
+                            "label": "One row per section",
+                            "x": 280,
+                            "y": 2800,
+                            "parameters": {
+                              "templateType": "explicit",
+                              "template": "/Admin/SectionRow"
+                            },
+                            "ports": [],
+                            "dynamicports": []
+                          }
+                        ],
+                        "label": "Sections",
+                        "x": 220,
+                        "y": 2200,
+                        "parameters": {
+                          "sizeMode": "contentHeight",
+                          "flexDirection": "column",
+                          "rowGap": "var(--space-3)"
+                        },
+                        "ports": [],
+                        "dynamicports": []
+                      },
+                      {
+                        "id": "backButton",
                         "type": "net.noodl.controls.button",
                         "children": [],
-                        "label": "Add",
+                        "label": "Back",
                         "x": 220,
-                        "y": 1360,
+                        "y": 2920,
                         "parameters": {
-                          "label": "Add section"
+                          "label": "Back to pages"
                         },
                         "ports": [],
                         "dynamicports": []
                       }
                     ],
-                    "label": "Add a section",
+                    "label": "Editor",
                     "x": 160,
-                    "y": 1120,
+                    "y": 280,
                     "parameters": {
-                      "flexDirection": "row",
-                      "alignItems": "center"
-                    },
-                    "ports": [],
-                    "dynamicports": []
-                  },
-                  {
-                    "id": "sectionList-2",
-                    "type": "For Each",
-                    "children": [],
-                    "label": "One row per section",
-                    "x": 160,
-                    "y": 1480,
-                    "parameters": {
-                      "templateType": "explicit",
-                      "template": "/Admin/SectionRow"
-                    },
-                    "ports": [],
-                    "dynamicports": []
-                  },
-                  {
-                    "id": "backButton",
-                    "type": "net.noodl.controls.button",
-                    "children": [],
-                    "label": "Back",
-                    "x": 160,
-                    "y": 1600,
-                    "parameters": {
-                      "label": "Back to pages"
+                      "sizeMode": "contentHeight",
+                      "flexDirection": "column",
+                      "rowGap": "var(--space-4)"
                     },
                     "ports": [],
                     "dynamicports": []
                   }
                 ],
-                "label": "Editor",
+                "label": "Admin shell",
                 "x": 100,
                 "y": 160,
                 "parameters": {
-                  "flexDirection": "column",
-                  "paddingTop": 24,
-                  "paddingLeft": 24,
-                  "paddingRight": 24
+                  "active": "pages"
                 },
                 "ports": [],
                 "dynamicports": []
@@ -2460,8 +2673,8 @@
             "type": "Static Data",
             "children": [],
             "label": "The five section kinds",
-            "x": 470,
-            "y": 1240,
+            "x": 590,
+            "y": 2560,
             "parameters": {
               "type": "json",
               "json": "[{\"Label\":\"Hero\",\"Value\":\"hero\"},{\"Label\":\"Rich text\",\"Value\":\"richText\"},{\"Label\":\"Gallery\",\"Value\":\"gallery\"},{\"Label\":\"Contact\",\"Value\":\"contact\"},{\"Label\":\"Call to action\",\"Value\":\"cta\"}]"
@@ -2474,8 +2687,8 @@
             "type": "PageInputs",
             "children": [],
             "label": "Which page",
-            "x": 470,
-            "y": 1720,
+            "x": 590,
+            "y": 3040,
             "parameters": {
               "pathParams": "pageId"
             },
@@ -2487,7 +2700,7 @@
             "type": "JavaScriptFunction",
             "children": [],
             "label": "Hold the page id",
-            "x": 470,
+            "x": 590,
             "y": 40,
             "parameters": {
               "functionScript": "if (Inputs.pageId === undefined || Inputs.pageId === '') return;\nOutputs.pageId = Inputs.pageId;\nOutputs.ready();"
@@ -2506,8 +2719,8 @@
             "type": "DbModel2",
             "children": [],
             "label": "The page being edited",
-            "x": 470,
-            "y": 400,
+            "x": 590,
+            "y": 1480,
             "parameters": {
               "collectionName": "Page",
               "idSource": "explicit"
@@ -2520,8 +2733,8 @@
             "type": "SetDbModelProperties",
             "children": [],
             "label": "Save the page fields",
-            "x": 470,
-            "y": 520,
+            "x": 590,
+            "y": 1600,
             "parameters": {
               "collectionName": "Page",
               "idSource": "explicit",
@@ -2535,8 +2748,8 @@
             "type": "DbCollection2",
             "children": [],
             "label": "This page's sections",
-            "x": 470,
-            "y": 1480,
+            "x": 590,
+            "y": 2800,
             "parameters": {
               "runOnChange-collectionName": false,
               "runOnChange-querySettings": false,
@@ -2561,8 +2774,8 @@
             "type": "NewDbModelProperties",
             "children": [],
             "label": "Add a section to this page",
-            "x": 470,
-            "y": 1360,
+            "x": 590,
+            "y": 2680,
             "parameters": {
               "collectionName": "Section",
               "accessControl": [
@@ -2584,11 +2797,76 @@
             "type": "RouterNavigate",
             "children": [],
             "label": "Back to the list",
-            "x": 470,
-            "y": 1600,
+            "x": 590,
+            "y": 2920,
             "parameters": {
               "router": "Main",
               "target": "/Pages/Admin"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "headline",
+            "type": "JavaScriptFunction",
+            "children": [],
+            "label": "Which page is being edited",
+            "x": 590,
+            "y": 520,
+            "parameters": {
+              "runOnChange-in-title": true,
+              "functionScript": "if (Inputs.title === undefined) return;\nconst title = String(Inputs.title === null ? '' : Inputs.title).trim();\nOutputs.headline = title === '' ? 'Editing · Untitled page' : 'Editing · ' + title;"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "status",
+            "type": "JavaScriptFunction",
+            "children": [],
+            "label": "Draft or published, as a word and a colour",
+            "x": 590,
+            "y": 760,
+            "parameters": {
+              "runOnChange-in-published": true,
+              "functionScript": "const published = Inputs.published === true;\nOutputs.label = published ? 'Published' : 'Draft';\nOutputs.pillBackground = published ? 'var(--primary)' : 'var(--accent)';\nOutputs.pillColor = published ? 'var(--primary-foreground)' : 'var(--muted-foreground)';"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "dirty",
+            "type": "JavaScriptFunction",
+            "children": [],
+            "label": "Is there anything unsaved?",
+            "x": 590,
+            "y": 880,
+            "parameters": {
+              "runOnChange-in-title": true,
+              "runOnChange-in-slug": true,
+              "runOnChange-in-seo": true,
+              "runOnChange-in-navOrder": true,
+              "runOnChange-in-showInNav": true,
+              "runOnChange-in-loadedTitle": true,
+              "runOnChange-in-loadedSlug": true,
+              "runOnChange-in-loadedSeo": true,
+              "runOnChange-in-loadedNavOrder": true,
+              "runOnChange-in-loadedShowInNav": true,
+              "functionScript": "if (Inputs.loadedTitle === undefined) return;\nconst same = (a, b) => String(a === undefined || a === null ? '' : a).trim() === String(b === undefined || b === null ? '' : b).trim();\nOutputs.dirty =\n  !same(Inputs.title, Inputs.loadedTitle) ||\n  !same(Inputs.slug, Inputs.loadedSlug) ||\n  !same(Inputs.seo, Inputs.loadedSeo) ||\n  !same(Inputs.navOrder, Inputs.loadedNavOrder) ||\n  (Inputs.showInNav === true) !== (Inputs.loadedShowInNav === true);"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "preview-2",
+            "type": "RouterNavigate",
+            "children": [],
+            "label": "Preview the public page",
+            "x": 590,
+            "y": 1000,
+            "parameters": {
+              "router": "Main",
+              "target": "/Pages/Site"
             },
             "ports": [],
             "dynamicports": []
@@ -2750,6 +3028,126 @@
             "fromProperty": "onClick",
             "toId": "goBack",
             "toProperty": "navigate"
+          },
+          {
+            "fromId": "record",
+            "fromProperty": "prop-title",
+            "toId": "headline",
+            "toProperty": "in-title"
+          },
+          {
+            "fromId": "headline",
+            "fromProperty": "out-headline",
+            "toId": "heading-2",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "record",
+            "fromProperty": "prop-published",
+            "toId": "status",
+            "toProperty": "in-published"
+          },
+          {
+            "fromId": "status",
+            "fromProperty": "out-label",
+            "toId": "pillText",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "status",
+            "fromProperty": "out-pillBackground",
+            "toId": "pill",
+            "toProperty": "backgroundColor"
+          },
+          {
+            "fromId": "status",
+            "fromProperty": "out-pillColor",
+            "toId": "pillText",
+            "toProperty": "color"
+          },
+          {
+            "fromId": "record",
+            "fromProperty": "prop-slug",
+            "toId": "preview-2",
+            "toProperty": "pm-slug"
+          },
+          {
+            "fromId": "previewButton",
+            "fromProperty": "onClick",
+            "toId": "preview-2",
+            "toProperty": "navigate"
+          },
+          {
+            "fromId": "record",
+            "fromProperty": "prop-title",
+            "toId": "dirty",
+            "toProperty": "in-loadedTitle"
+          },
+          {
+            "fromId": "record",
+            "fromProperty": "prop-slug",
+            "toId": "dirty",
+            "toProperty": "in-loadedSlug"
+          },
+          {
+            "fromId": "record",
+            "fromProperty": "prop-seoDescription",
+            "toId": "dirty",
+            "toProperty": "in-loadedSeo"
+          },
+          {
+            "fromId": "record",
+            "fromProperty": "prop-navOrder",
+            "toId": "dirty",
+            "toProperty": "in-loadedNavOrder"
+          },
+          {
+            "fromId": "record",
+            "fromProperty": "prop-showInNav",
+            "toId": "dirty",
+            "toProperty": "in-loadedShowInNav"
+          },
+          {
+            "fromId": "titleField",
+            "fromProperty": "onTextChanged",
+            "toId": "dirty",
+            "toProperty": "in-title"
+          },
+          {
+            "fromId": "slugField",
+            "fromProperty": "onTextChanged",
+            "toId": "dirty",
+            "toProperty": "in-slug"
+          },
+          {
+            "fromId": "seoField",
+            "fromProperty": "onTextChanged",
+            "toId": "dirty",
+            "toProperty": "in-seo"
+          },
+          {
+            "fromId": "navOrderField",
+            "fromProperty": "onTextChanged",
+            "toId": "dirty",
+            "toProperty": "in-navOrder"
+          },
+          {
+            "fromId": "showInNavBox",
+            "fromProperty": "checked",
+            "toId": "dirty",
+            "toProperty": "in-showInNav"
+          },
+          {
+            "fromId": "dirty",
+            "fromProperty": "out-dirty",
+            "toId": "dirtyMark",
+            "toProperty": "mounted"
+          },
+          {
+            "fromId": "save-2",
+            "fromProperty": "done",
+            "toId": "record",
+            "toProperty": "fetch"
           }
         ],
         "visualRoots": [
@@ -2833,7 +3231,7 @@
                 "dynamicports": []
               },
               {
-                "id": "pill",
+                "id": "pill-2",
                 "type": "Group",
                 "children": [
                   {
@@ -3045,7 +3443,7 @@
             "dynamicports": []
           },
           {
-            "id": "status",
+            "id": "status-2",
             "type": "JavaScriptFunction",
             "children": [],
             "label": "Draft or published, as a word and a colour",
@@ -3147,23 +3545,23 @@
           {
             "fromId": "inputs-6",
             "fromProperty": "published",
-            "toId": "status",
+            "toId": "status-2",
             "toProperty": "in-published"
           },
           {
-            "fromId": "status",
+            "fromId": "status-2",
             "fromProperty": "out-label",
             "toId": "rowStatus",
             "toProperty": "text"
           },
           {
-            "fromId": "status",
+            "fromId": "status-2",
             "fromProperty": "out-pillBackground",
-            "toId": "pill",
+            "toId": "pill-2",
             "toProperty": "backgroundColor"
           },
           {
-            "fromId": "status",
+            "fromId": "status-2",
             "fromProperty": "out-pillColor",
             "toId": "rowStatus",
             "toProperty": "color"
@@ -4006,11 +4404,11 @@
                 "type": "/Admin/Shell",
                 "children": [
                   {
-                    "id": "body-2",
+                    "id": "body-3",
                     "type": "Group",
                     "children": [
                       {
-                        "id": "headerRow",
+                        "id": "headerRow-2",
                         "type": "Group",
                         "children": [
                           {

@@ -428,7 +428,11 @@ describe('SB-005: the admin panel, through the MCP door', () => {
     // 9 → 13: SBR-017's way back in — the shell's sign-out landing, the sign-in
     // screen's two (into the panel, back to the claim screen) and the claim
     // screen's link forward to it.
-    expect(refs.length).toBe(13);
+    // 13 → 14: SBR-007's Preview button, which navigates to `/Pages/Site`.
+    // ⚠️ This counts `For Each.template` and `RouterNavigate.target` only — the
+    // page editor's new `/Admin/Shell` PLACEMENT is not a reference by this
+    // definition and moves this number not at all. AC5's test is what covers it.
+    expect(refs.length).toBe(14);
     for (const r of refs) expect(`${r}:${known.has(r)}`).toBe(`${r}:true`);
   });
 
@@ -595,7 +599,14 @@ describe('SB-005: the admin panel, through the MCP door', () => {
     // them must actually declare something — otherwise "no mismatches" could
     // mean the door never persisted `ports` and the check compared '' with ''.
     // 8 → 10: the shell's `navStyle` and the page list's row-count sentence.
-    expect(rows.length).toBe(10);
+    // 10 → 13: SBR-007's three on the page editor — `headline`, `status` and
+    // `dirty`. 🔴 **The second number stays 4 and that is the assertion that
+    // matters here**: all three emit VALUES only (`Outputs.headline`,
+    // `Outputs.label`, `Outputs.dirty`), never `Outputs.x()`, so none of them
+    // owes a declared signal port. A new code node that called a signal output
+    // and did not declare it would move the second number, not the first — which
+    // is D14's defect, one component over.
+    expect(rows.length).toBe(13);
     expect(rows.filter((r) => !r.endsWith('declared=')).length).toBe(4);
   });
 
@@ -650,8 +661,9 @@ describe('SB-005: the admin panel, through the MCP door', () => {
       // publish, unpublish, duplicate, claim.
       functions: 4,
       repeaters: 2,
-      // PageRow 1, SectionRow 2, Setup 1, PageEditor 1, ThemeEditor 3.
-      code: 10,
+      // PageRow 1, SectionRow 2, Setup 1, PageEditor 4, ThemeEditor 3.
+      // 10 → 13: SBR-007's `headline`, `status` and `dirty` on the page editor.
+      code: 13,
       // 4 → 5: SBR-017's `/Pages/SignIn`.
       pages: 5
     });
@@ -829,20 +841,33 @@ describe('SB-005: the admin panel, through the MCP door', () => {
     ).growing;
   }
 
-  it('AC5: the shell is placed by two screens, and they do not render the same', () => {
+  it('AC5: the shell is placed by every admin screen, and they do not all render the same', () => {
     const placements = SB005_COMPONENTS.filter((c) =>
       written[c.key]?.graph.nodes.some((n) => n.type === '/Admin/Shell')
     ).map((c) => c.key);
-    expect(placements.sort()).toEqual(['Pages/Admin', 'Pages/ThemeEditor']);
+    // 🟢 **SBR-007 added the third placement, and it was a defect that there were
+    // only two.** `/Pages/PageEditor` is an admin screen and did not wear the
+    // shell, so the rail, "Theme and settings" and `Sign out` disappeared on the
+    // one screen a client spends their time in and came back when they left.
+    expect(placements.sort()).toEqual(['Pages/Admin', 'Pages/PageEditor', 'Pages/ThemeEditor']);
 
     // 🔴 The half a shell fails silently: the MCP guidance's ghost is a component
     // that "renders identically however many times you place it". The interface
-    // has to CARRY something, and the two placements have to disagree.
+    // has to CARRY something, so the placements have to disagree.
     const active = placements.map(
       (k) => written[k].graph.nodes.find((n) => n.type === '/Admin/Shell')!.parameters?.active
     );
-    expect(active).toEqual(['pages', 'theme']);
-    expect(new Set(active).size).toBe(placements.length);
+    expect(active).toEqual(['pages', 'pages', 'theme']);
+
+    // ⚠️ **The invariant is "the interface is load-bearing", NOT "every placement
+    // is unique"** — and the difference only became visible at the third
+    // placement. `Set(active).size === placements.length` was an accidentally
+    // equivalent spelling while there were exactly two, and it is the WRONG rule:
+    // the page editor sharing `pages` with the page list is CORRECT (editing a
+    // page is still the Pages section, and the rail must not go dark), so the
+    // stricter reading would red on a screen that renders exactly as intended.
+    // What must stay true is that more than one rendering exists.
+    expect(new Set(active).size).toBeGreaterThan(1);
 
     // ...and `active` is a real declared port, not a parameter nobody reads.
     const inputs = byLabel(written['Admin/Shell'], 'Component Inputs', 'Which item is current');
