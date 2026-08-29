@@ -112,13 +112,20 @@ export const CLAIM_NODES = [
   {
     id: 'req',
     type: 'noodl.cloud.request',
-    label: 'claimAssociation(setupToken, associationName, blurb, email, password)',
+    label: 'claimAssociation(setupToken, associationName, blurb, moderatorName, email, password)',
     parameters: {
-      params: 'setupToken,associationName,blurb,email,password',
+      params: 'setupToken,associationName,blurb,moderatorName,email,password',
       'ptype-setupToken': 'string',
       'preq-setupToken': true,
       'ptype-associationName': 'string',
       'preq-associationName': true,
+      // 🔴 D22. Setup asked for the ASSOCIATION's name and never the person's,
+      // so the founding directory row was filed under their email address —
+      // shown twice, as the name and as the address, on the first screen a
+      // moderator opens. Required rather than optional: the person is standing
+      // at the form, and an optional name would just restore the fallback.
+      'ptype-moderatorName': 'string',
+      'preq-moderatorName': true,
       'ptype-blurb': 'string',
       'preq-blurb': false,
       'ptype-email': 'string',
@@ -198,6 +205,11 @@ export const CLAIM_NODES = [
         'Outputs.email = Inputs.email;\n' +
         'Outputs.password = Inputs.password;\n' +
         "Outputs.name = Inputs.name || 'Our association';\n" +
+        // Through the gate rather than straight from `req` to `founding`: Rule 2
+        // says everything downstream leaves from here, and routing it any other
+        // way would make the founding row's name a third producer arriving on a
+        // different schedule from the address beside it.
+        "Outputs.moderatorName = Inputs.moderatorName || '';\n" +
         "Outputs.blurb = Inputs.blurb || '';\n" +
         'Outputs.claimed = true;\n' +
         'Outputs.ok();'
@@ -271,10 +283,12 @@ export const CLAIM_NODES = [
         "const email = Inputs.email === null ? '' : String(Inputs.email);\n" +
         'Outputs.userId = Inputs.userId;\n' +
         'Outputs.email = email;\n' +
-        '// ⚠️ Setup asks for the ASSOCIATION\'s name, never the moderator\'s, so\n' +
-        '// there is no name to write — the address is what the person typed and\n' +
-        '// it is what the list can honestly show them as.\n' +
-        'Outputs.name = email;\n' +
+        '// D22: setup now asks the founder their own name, so the directory can\n' +
+        '// show a person rather than an address. The fallback stays because a\n' +
+        '// row filed under an email is still better than one filed under\n' +
+        '// nothing — but the door makes moderatorName required, so it is dead.\n' +
+        "const who = (Inputs.moderatorName || '').trim();\n" +
+        "Outputs.name = who === '' ? email : who;\n" +
         'Outputs.joinedAt = new Date().toISOString();\n' +
         "Outputs.standing = '" + MEMBER_STANDING_MODERATOR + "';\n" +
         'Outputs.file();'
@@ -309,6 +323,7 @@ export const CLAIM_WIRES = [
   { fromId: 'req', fromProperty: 'pm-setupToken', toId: 'gate', toProperty: 'in-supplied' },
   { fromId: 'req', fromProperty: 'pm-associationName', toId: 'gate', toProperty: 'in-name' },
   { fromId: 'req', fromProperty: 'pm-blurb', toId: 'gate', toProperty: 'in-blurb' },
+  { fromId: 'req', fromProperty: 'pm-moderatorName', toId: 'gate', toProperty: 'in-moderatorName' },
   { fromId: 'req', fromProperty: 'pm-email', toId: 'gate', toProperty: 'in-email' },
   { fromId: 'req', fromProperty: 'pm-password', toId: 'gate', toProperty: 'in-password' },
 
@@ -336,6 +351,7 @@ export const CLAIM_WIRES = [
 
   { fromId: 'create', fromProperty: 'userId', toId: 'founding', toProperty: 'in-userId' },
   { fromId: 'gate', fromProperty: 'out-email', toId: 'founding', toProperty: 'in-email' },
+  { fromId: 'gate', fromProperty: 'out-moderatorName', toId: 'founding', toProperty: 'in-moderatorName' },
   // Same pair `mark` is fired from, and for the same reason: the role has to
   // exist before anything claims in writing that it does.
   { fromId: 'grant', fromProperty: 'done', toId: 'founding', toProperty: 'run' },
@@ -347,14 +363,26 @@ export const CLAIM_WIRES = [
   { fromId: 'founding', fromProperty: 'out-joinedAt', toId: 'founder', toProperty: 'prop-joinedAt' },
   { fromId: 'founding', fromProperty: 'out-standing', toId: 'founder', toProperty: 'prop-standing' },
   { fromId: 'founding', fromProperty: 'out-file', toId: 'founder', toProperty: 'store' },
-  // 🔴 `founder` reaches NEITHER response, and that is the whole decision about
-  // it. Setup's answer is already argued down to one rule — the association is
-  // set up the moment the role is granted, which is why even `mark.failure`
-  // answers `res` — and a *directory* row is the least load-bearing write in the
-  // graph. Wiring its failure to `deny` would tell a moderator who holds
-  // `role:admin` that their members' area could not be set up, with no second
-  // setup possible. The cost is TPL-001 §14's row: the founder can be missing
-  // from a list they can still read.
+  // 🔴 **`founder`'s failure must not reach `deny`, and that decision stands.**
+  // Setup's answer is argued down to one rule — the association is set up the
+  // moment the role is granted, which is why even `mark.failure` answers `res` —
+  // and a *directory* row is the least load-bearing write in the graph. Telling a
+  // moderator who holds `role:admin` that their members' area could not be set
+  // up, with no second setup possible, would be the worse answer. The cost is
+  // TPL-001 §14's row: the founder can be missing from a list they can still read.
+  //
+  // 🔴 **What was wrong was reaching NEITHER response.** Until s8 this comment
+  // read "`founder` reaches neither, and that is the whole decision" — but "do
+  // not tell them it failed" and "send nothing at all" are different things, and
+  // the graph did the second. A cloud function's request ends only when a
+  // response node fires, so a failed directory write left the caller waiting the
+  // full 30 seconds for a 504 — P77's D1, in this template, on the one screen a
+  // person cannot retry. Found by a validation rule a peer was writing at the
+  // same time as this session; the rule is right and it caught a real hang.
+  //
+  // `res` and not `deny`: the account exists, so the honest answer is success.
+  { fromId: 'founding', fromProperty: 'failure', toId: 'res', toProperty: 'send' },
+  { fromId: 'founder', fromProperty: 'failure', toId: 'res', toProperty: 'send' },
 
   { fromId: 'gate', fromProperty: 'out-claimed', toId: 'res', toProperty: 'pm-claimed' },
   { fromId: 'mark', fromProperty: 'done', toId: 'res', toProperty: 'send' },
@@ -368,6 +396,10 @@ export const CLAIM_WIRES = [
   { fromId: 'secret', fromProperty: 'failure', toId: 'deny', toProperty: 'send' },
   { fromId: 'existing', fromProperty: 'failure', toId: 'deny', toProperty: 'send' },
   { fromId: 'gate', fromProperty: 'out-denied', toId: 'deny', toProperty: 'send' },
+  // The gate's own `failure` — a throw inside the script, as distinct from the
+  // `denied` it raises deliberately. Same indistinguishable answer, because a
+  // caller must not learn the difference between a refusal and a crash.
+  { fromId: 'gate', fromProperty: 'failure', toId: 'deny', toProperty: 'send' },
   { fromId: 'create', fromProperty: 'failure', toId: 'deny', toProperty: 'send' },
   { fromId: 'grant', fromProperty: 'failure', toId: 'deny', toProperty: 'send' }
 ];
@@ -543,7 +575,17 @@ export const REQUEST_WIRES = [
   // ⚠️ A filed-row failure IS a refusal here, unlike `claimAssociation`'s
   // association row: an account with no request behind it is invisible to every
   // moderator, so answering "received" would strand the person for ever.
-  { fromId: 'file', fromProperty: 'failure', toId: 'deny', toProperty: 'send' }
+  { fromId: 'file', fromProperty: 'failure', toId: 'deny', toProperty: 'send' },
+
+  // 🔴 **The three scripts' own failures, which reached nothing until s8.** A
+  // cloud function's request ends only when a response fires, so a throw in any
+  // of these left the caller waiting the full 30s for a 504 — P77's D1, here.
+  // `deny` and not `res`, following this function's stated rule directly above:
+  // a request that could not be filed is a refusal, and its message is the
+  // deliberately non-committal one, so this leaks nothing a caller could use.
+  { fromId: 'prep', fromProperty: 'failure', toId: 'deny', toProperty: 'send' },
+  { fromId: 'stamp', fromProperty: 'failure', toId: 'deny', toProperty: 'send' },
+  { fromId: 'received', fromProperty: 'failure', toId: 'deny', toProperty: 'send' }
 ];
 
 // ── 3. myStanding — what the browser is not allowed to work out for itself ───
@@ -668,7 +710,15 @@ export const STANDING_WIRES = [
   { fromId: 'decide', fromProperty: 'out-standing', toId: 'res', toProperty: 'pm-standing' },
   { fromId: 'decide', fromProperty: 'out-answered', toId: 'res', toProperty: 'send' },
 
-  { fromId: 'roles', fromProperty: 'failure', toId: 'unknown', toProperty: 'send' }
+  { fromId: 'roles', fromProperty: 'failure', toId: 'unknown', toProperty: 'send' },
+
+  // 🔴 The same s8 finding, and this function needed no new judgement: `unknown`
+  // exists precisely for "we could not check your membership just now", and a
+  // throw in either script is exactly that. Answering `res` instead would send a
+  // standing nobody computed, which is the one answer this endpoint must never
+  // invent — it is what every gated screen in the template reads.
+  { fromId: 'gate', fromProperty: 'failure', toId: 'unknown', toProperty: 'send' },
+  { fromId: 'decide', fromProperty: 'failure', toId: 'unknown', toProperty: 'send' }
 ];
 
 // ── 4. decideMembership — the door that mints members ────────────────────────
@@ -879,7 +929,14 @@ export const DECIDE_WIRES = [
   // ⚠️ A grant that succeeded and a delete that failed answers `deny`, and that
   // is the honest direction: the person IS a member, and the moderator needs to
   // see the row still on the queue rather than a success that hides it.
-  { fromId: 'remove', fromProperty: 'failure', toId: 'deny', toProperty: 'send' }
+  { fromId: 'remove', fromProperty: 'failure', toId: 'deny', toProperty: 'send' },
+
+  // 🔴 The same s8 finding. `deny` rather than `res`: unlike setup, nothing here
+  // is irreversible — a moderator whose approval failed can press the button
+  // again, and the queue still holds the row. Telling them it worked when it did
+  // not would leave somebody waiting to be let in who never will be.
+  { fromId: 'prep', fromProperty: 'failure', toId: 'deny', toProperty: 'send' },
+  { fromId: 'route', fromProperty: 'failure', toId: 'deny', toProperty: 'send' }
 ];
 
 // ── The set, in an order the door will accept ────────────────────────────────

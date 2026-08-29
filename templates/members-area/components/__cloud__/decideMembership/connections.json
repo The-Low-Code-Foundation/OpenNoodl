@@ -170,6 +170,18 @@
       "fromProperty": "failure",
       "toId": "deny-3",
       "toProperty": "send"
+    },
+    {
+      "fromId": "prep-2",
+      "fromProperty": "failure",
+      "toId": "deny-3",
+      "toProperty": "send"
+    },
+    {
+      "fromId": "route",
+      "fromProperty": "failure",
+      "toId": "deny-3",
+      "toProperty": "send"
     }
   ]
 }

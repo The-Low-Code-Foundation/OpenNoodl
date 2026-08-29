@@ -16,6 +16,12 @@
       "toProperty": "in-blurb"
     },
     {
+      "fromId": "yourNameField",
+      "fromProperty": "onTextChanged",
+      "toId": "claim",
+      "toProperty": "in-moderatorName"
+    },
+    {
       "fromId": "emailField-2",
       "fromProperty": "onTextChanged",
       "toId": "claim",
@@ -44,6 +50,12 @@
       "fromProperty": "onTextChanged",
       "toId": "check",
       "toProperty": "in-associationName"
+    },
+    {
+      "fromId": "yourNameField",
+      "fromProperty": "onTextChanged",
+      "toId": "check",
+      "toProperty": "in-moderatorName"
     },
     {
       "fromId": "emailField-2",

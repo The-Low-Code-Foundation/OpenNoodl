@@ -41,6 +41,12 @@
     },
     {
       "fromId": "req",
+      "fromProperty": "pm-moderatorName",
+      "toId": "gate",
+      "toProperty": "in-moderatorName"
+    },
+    {
+      "fromId": "req",
       "fromProperty": "pm-email",
       "toId": "gate",
       "toProperty": "in-email"
@@ -148,6 +154,12 @@
       "toProperty": "in-email"
     },
     {
+      "fromId": "gate",
+      "fromProperty": "out-moderatorName",
+      "toId": "founding",
+      "toProperty": "in-moderatorName"
+    },
+    {
       "fromId": "grant",
       "fromProperty": "done",
       "toId": "founding",
@@ -196,6 +208,18 @@
       "toProperty": "store"
     },
     {
+      "fromId": "founding",
+      "fromProperty": "failure",
+      "toId": "res",
+      "toProperty": "send"
+    },
+    {
+      "fromId": "founder",
+      "fromProperty": "failure",
+      "toId": "res",
+      "toProperty": "send"
+    },
+    {
       "fromId": "gate",
       "fromProperty": "out-claimed",
       "toId": "res",
@@ -228,6 +252,12 @@
     {
       "fromId": "gate",
       "fromProperty": "out-denied",
+      "toId": "deny",
+      "toProperty": "send"
+    },
+    {
+      "fromId": "gate",
+      "fromProperty": "failure",
       "toId": "deny",
       "toProperty": "send"
     },

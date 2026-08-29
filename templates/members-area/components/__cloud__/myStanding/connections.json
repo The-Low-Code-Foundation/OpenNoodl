@@ -74,6 +74,18 @@
       "fromProperty": "failure",
       "toId": "unknown",
       "toProperty": "send"
+    },
+    {
+      "fromId": "gate-2",
+      "fromProperty": "failure",
+      "toId": "unknown",
+      "toProperty": "send"
+    },
+    {
+      "fromId": "decide",
+      "fromProperty": "failure",
+      "toId": "unknown",
+      "toProperty": "send"
     }
   ]
 }

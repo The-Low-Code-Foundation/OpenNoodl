@@ -15,7 +15,7 @@
       "path": "__cloud__/claimAssociation",
       "type": "cloud",
       "nodeCount": 11,
-      "connectionCount": 40,
+      "connectionCount": 45,
       "modified": "2026-08-28T00:00:00.000Z",
       "created": "2026-08-28T00:00:00.000Z"
     },
@@ -23,7 +23,7 @@
       "path": "__cloud__/requestAccess",
       "type": "cloud",
       "nodeCount": 8,
-      "connectionCount": 27,
+      "connectionCount": 30,
       "modified": "2026-08-28T00:00:00.000Z",
       "created": "2026-08-28T00:00:00.000Z"
     },
@@ -31,7 +31,7 @@
       "path": "__cloud__/myStanding",
       "type": "cloud",
       "nodeCount": 6,
-      "connectionCount": 12,
+      "connectionCount": 14,
       "modified": "2026-08-28T00:00:00.000Z",
       "created": "2026-08-28T00:00:00.000Z"
     },
@@ -39,7 +39,7 @@
       "path": "__cloud__/decideMembership",
       "type": "cloud",
       "nodeCount": 9,
-      "connectionCount": 28,
+      "connectionCount": 30,
       "modified": "2026-08-28T00:00:00.000Z",
       "created": "2026-08-28T00:00:00.000Z"
     },
@@ -150,8 +150,8 @@
     "Pages/Setup": {
       "path": "Pages/Setup",
       "type": "page",
-      "nodeCount": 21,
-      "connectionCount": 19,
+      "nodeCount": 22,
+      "connectionCount": 21,
       "modified": "2026-08-28T00:00:00.000Z",
       "created": "2026-08-28T00:00:00.000Z"
     },
@@ -182,7 +182,7 @@
   },
   "stats": {
     "totalComponents": 22,
-    "totalNodes": 289,
-    "totalConnections": 288
+    "totalNodes": 290,
+    "totalConnections": 302
   }
 }

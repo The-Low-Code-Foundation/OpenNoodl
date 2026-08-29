@@ -6,13 +6,15 @@
     {
       "id": "req",
       "type": "noodl.cloud.request",
-      "label": "claimAssociation(setupToken, associationName, blurb, email, password)",
+      "label": "claimAssociation(setupToken, associationName, blurb, moderatorName, email, password)",
       "parameters": {
-        "params": "setupToken,associationName,blurb,email,password",
+        "params": "setupToken,associationName,blurb,moderatorName,email,password",
         "ptype-setupToken": "string",
         "preq-setupToken": true,
         "ptype-associationName": "string",
         "preq-associationName": true,
+        "ptype-moderatorName": "string",
+        "preq-moderatorName": true,
         "ptype-blurb": "string",
         "preq-blurb": false,
         "ptype-email": "string",
@@ -59,7 +61,7 @@
         "runOnChange-in-blurb": false,
         "runOnChange-in-email": false,
         "runOnChange-in-password": false,
-        "functionScript": "if (Inputs.rows === undefined) return;\nif (Inputs.expected === undefined || Inputs.supplied === undefined) return;\nconst expected = Inputs.expected || '';\nconst supplied = Inputs.supplied || '';\n// Constant-time compare. A plain === leaks the matching prefix length\n// through timing, and this is the one door in the template that mints\n// a moderator — the three extra lines are cheaper than the argument.\nlet diff = expected.length ^ supplied.length;\nconst n = Math.max(expected.length, supplied.length);\nfor (let i = 0; i < n; i++) {\n  diff |= (expected.charCodeAt(i) || 0) ^ (supplied.charCodeAt(i) || 0);\n}\n// An unprovisioned secret is never a match: an empty expected token\n// must not let a caller in with an empty string.\nconst tokenOk = expected.length > 0 && diff === 0;\nif (!tokenOk || Inputs.unclaimed !== true) {\n  Outputs.denied();\n  return;\n}\n// Rule 2: everything the rest of the graph needs leaves from HERE, so\n// no node downstream can act on a value that is still in flight.\nOutputs.username = Inputs.email;\nOutputs.email = Inputs.email;\nOutputs.password = Inputs.password;\nOutputs.name = Inputs.name || 'Our association';\nOutputs.blurb = Inputs.blurb || '';\nOutputs.claimed = true;\nOutputs.ok();"
+        "functionScript": "if (Inputs.rows === undefined) return;\nif (Inputs.expected === undefined || Inputs.supplied === undefined) return;\nconst expected = Inputs.expected || '';\nconst supplied = Inputs.supplied || '';\n// Constant-time compare. A plain === leaks the matching prefix length\n// through timing, and this is the one door in the template that mints\n// a moderator — the three extra lines are cheaper than the argument.\nlet diff = expected.length ^ supplied.length;\nconst n = Math.max(expected.length, supplied.length);\nfor (let i = 0; i < n; i++) {\n  diff |= (expected.charCodeAt(i) || 0) ^ (supplied.charCodeAt(i) || 0);\n}\n// An unprovisioned secret is never a match: an empty expected token\n// must not let a caller in with an empty string.\nconst tokenOk = expected.length > 0 && diff === 0;\nif (!tokenOk || Inputs.unclaimed !== true) {\n  Outputs.denied();\n  return;\n}\n// Rule 2: everything the rest of the graph needs leaves from HERE, so\n// no node downstream can act on a value that is still in flight.\nOutputs.username = Inputs.email;\nOutputs.email = Inputs.email;\nOutputs.password = Inputs.password;\nOutputs.name = Inputs.name || 'Our association';\nOutputs.moderatorName = Inputs.moderatorName || '';\nOutputs.blurb = Inputs.blurb || '';\nOutputs.claimed = true;\nOutputs.ok();"
       },
       "ports": [
         {
@@ -131,7 +133,7 @@
       "parameters": {
         "runOnChange-in-userId": false,
         "runOnChange-in-email": false,
-        "functionScript": "if (Inputs.userId === undefined || Inputs.email === undefined) return;\nconst email = Inputs.email === null ? '' : String(Inputs.email);\nOutputs.userId = Inputs.userId;\nOutputs.email = email;\n// ⚠️ Setup asks for the ASSOCIATION's name, never the moderator's, so\n// there is no name to write — the address is what the person typed and\n// it is what the list can honestly show them as.\nOutputs.name = email;\nOutputs.joinedAt = new Date().toISOString();\nOutputs.standing = 'moderator';\nOutputs.file();"
+        "functionScript": "if (Inputs.userId === undefined || Inputs.email === undefined) return;\nconst email = Inputs.email === null ? '' : String(Inputs.email);\nOutputs.userId = Inputs.userId;\nOutputs.email = email;\n// D22: setup now asks the founder their own name, so the directory can\n// show a person rather than an address. The fallback stays because a\n// row filed under an email is still better than one filed under\n// nothing — but the door makes moderatorName required, so it is dead.\nconst who = (Inputs.moderatorName || '').trim();\nOutputs.name = who === '' ? email : who;\nOutputs.joinedAt = new Date().toISOString();\nOutputs.standing = 'moderator';\nOutputs.file();"
       },
       "ports": [
         {

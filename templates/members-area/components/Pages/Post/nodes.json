@@ -375,7 +375,8 @@
         "fontSize": "var(--text-base)",
         "color": "var(--foreground)",
         "useLabel": true,
-        "label": "Date (YYYY-MM-DD)"
+        "label": "Date",
+        "placeholder": "2026-09-14"
       },
       "x": 280,
       "y": 1840

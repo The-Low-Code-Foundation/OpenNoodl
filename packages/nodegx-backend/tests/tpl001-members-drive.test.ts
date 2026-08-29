@@ -83,7 +83,7 @@ import { bindProjectToBackend, readHere, readVisit, Visit, withRenderedPage } fr
 jest.setTimeout(900000);
 
 /** The people. Their addresses are their usernames — the template signs in by email. */
-const MODERATOR = { email: 'mod@example.invalid', password: 'pw-moderator' };
+const MODERATOR = { name: 'Ruth Bramley', email: 'mod@example.invalid', password: 'pw-moderator' };
 /** Asked to join and was never decided. The state AC3 is about. */
 const PENDING = { name: 'Pat Pending', email: 'pat@example.invalid', password: 'pw-pat' };
 /** Asked to join and gets approved on camera, in §6. */
@@ -214,6 +214,9 @@ describe("TPL-001 — the members' area, driven", () => {
       setupToken: SETUP_TOKEN,
       associationName: 'St Anywhere',
       blurb: 'A congregation that meets on Sundays.',
+      // D22 (s8): `moderatorName` is required at the door now, and it is what
+      // the directory files the founding row under. §10 asserts the row.
+      moderatorName: MODERATOR.name,
       email: MODERATOR.email,
       password: MODERATOR.password
     });
@@ -804,13 +807,16 @@ describe("TPL-001 — the members' area, driven", () => {
   describe('§8 the directory lists who this app admitted, to moderators only', () => {
     it('the moderator is shown both people, by name', () => {
       const seen = visits['moderator.directory'].text;
-      expect(seen).toContain(MODERATOR.email);
+      // D22 (s8): the founder's NAME, not their address. This spec pinned the
+      // defect — setup had no name to write, so it filed the row under the
+      // email and the directory showed the same string twice.
+      expect(seen).toContain(MODERATOR.name);
       expect(seen).toContain(JOINER.name);
     });
 
     it('🔴 and the server agrees there are exactly two — the two writers both fired', () => {
       expect(`${http['moderator.directory'].status}/${http['moderator.directory'].rows}`).toBe('200/2');
-      expect([...http['moderator.directory'].titles].sort()).toEqual([JOINER.name, MODERATOR.email].sort());
+      expect([...http['moderator.directory'].titles].sort()).toEqual([JOINER.name, MODERATOR.name].sort());
     });
 
     it('says what each of them is, in English rather than in role names', () => {

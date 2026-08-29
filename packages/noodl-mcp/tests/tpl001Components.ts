@@ -422,6 +422,38 @@ function laidOut(
     : { ...rest, flexDirection: 'column', rowGap: gap };
 }
 
+/**
+ * The one date format in the template, as a snippet every site embeds.
+ *
+ * 🔴 **There were three, and two of them were machine formats.** D25: the rows
+ * and both detail pages rendered `26/08/2026` (`toLocaleDateString()` with no
+ * options), the directory rendered `2026-08-29` (an ISO slice), and the meeting
+ * form's own label read `Date (YYYY-MM-DD)`. Three formats, one app.
+ *
+ * ⚠️ **The locale stays the reader's** — that was right and is kept. What
+ * changes is the options: a long month is what a person writes on a
+ * noticeboard, and it is the part that made the old output look like a
+ * timestamp rather than a date.
+ *
+ * 🔴 **The `YYYY-MM-DD` branch is a real bug fix, not tidying.** `Meeting.when`
+ * is a date-only string, and `new Date('2026-09-14')` parses as **UTC
+ * midnight** — so in any negative-offset timezone `toLocaleDateString` rendered
+ * *the day before*. Every meeting in the diary was a day early for anybody west
+ * of Greenwich, and it renders correctly here only because this machine is not.
+ * The branch builds a local date from the parts instead. Anchored to `$` so a
+ * full ISO timestamp still takes the ordinary path.
+ */
+const HUMAN_DAY_FN =
+  'function humanDay(raw) {\n' +
+  "  if (raw === undefined || raw === null) return '';\n" +
+  '  var s = String(raw);\n' +
+  "  if (s === '') return '';\n" +
+  '  var m = /^(\\d{4})-(\\d{2})-(\\d{2})$/.exec(s);\n' +
+  '  var at = m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : new Date(s);\n' +
+  "  if (isNaN(at.getTime())) return '';\n" +
+  "  return at.toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' });\n" +
+  '}\n';
+
 function btn(label: string): Record<string, unknown> {
   return {
     label,
@@ -1062,14 +1094,11 @@ export const ANNOUNCEMENT_ROW_NODES = [
     type: 'JavaScriptFunction',
     label: 'The date, as a person writes it',
     parameters: {
-      // ⚠️ `toLocaleDateString` with no locale argument: the reader's own, which
-      // for an association's noticeboard is the only sensible answer and the one
-      // a hard-coded format would get wrong for every association but one.
+      // ⚠️ The reader's own locale, which for an association's noticeboard is the
+      // only sensible answer and the one a hard-coded format would get wrong for
+      // every association but one. See HUMAN_DAY_FN.
       functionScript:
-        "if (Inputs.postedAt === undefined) return;\n" +
-        "const raw = Inputs.postedAt || '';\n" +
-        'const at = new Date(raw);\n' +
-        "Outputs.label = isNaN(at.getTime()) ? '' : at.toLocaleDateString();"
+        HUMAN_DAY_FN + 'if (Inputs.postedAt === undefined) return;\n' + 'Outputs.label = humanDay(Inputs.postedAt);'
     }
   },
   {
@@ -1133,10 +1162,13 @@ export const MEETING_ROW_NODES = [
     label: 'The date, as a person writes it',
     parameters: {
       functionScript:
+        HUMAN_DAY_FN +
         'if (Inputs.when === undefined) return;\n' +
-        "const raw = Inputs.when || '';\n" +
-        'const at = new Date(raw);\n' +
-        'Outputs.label = isNaN(at.getTime()) ? raw : at.toLocaleDateString();'
+        // The raw string rather than nothing when it will not parse: a row
+        // reading `next Tuesday` is legible and a blank line is the bug that
+        // hides whatever somebody actually typed.
+        "var day = humanDay(Inputs.when);\n" +
+        "Outputs.label = day === '' ? String(Inputs.when || '') : day;"
     }
   },
   {
@@ -1189,7 +1221,11 @@ export const REQUEST_ROW_NODES = [
     type: 'Group',
     label: 'Decide',
     parent: 'row',
-    parameters: { flexDirection: 'row', alignItems: 'center' },
+    // 🔴 D24. This pair shipped with no gap, so approve and decline shared an
+    // edge and read as one object — on the one screen in the template where the
+    // two buttons mean opposite things. `Pages/Landing`'s pair had the gap all
+    // along; this one was simply never given it.
+    parameters: laidOut('row', { alignItems: 'center' }, 'var(--space-3)'),
     children: ['approveButton', 'declineButton']
   },
   {
@@ -1304,6 +1340,7 @@ export const MEMBER_ROW_NODES = [
     label: 'Say what they are, and since when, in English',
     parameters: {
       functionScript:
+        HUMAN_DAY_FN +
         'if (Inputs.standing === undefined) return;\n' +
         'const LABELS = ' +
         JSON.stringify(STANDING_LABELS) +
@@ -1314,9 +1351,9 @@ export const MEMBER_ROW_NODES = [
         '// says nothing at all is the bug that hides the new standing nobody\n' +
         '// added a label for.\n' +
         'const label = LABELS[standing] || standing;\n' +
-        "const joined = Inputs.joinedAt === undefined || Inputs.joinedAt === null ? '' : String(Inputs.joinedAt);\n" +
-        '// The column is a full ISO timestamp; the day is what a person wants.\n' +
-        "const day = joined.length >= 10 ? joined.slice(0, 10) : '';\n" +
+        '// The column is a full ISO timestamp; the day is what a person wants —\n' +
+        '// and D25: this was the one site rendering it as `2026-08-29`.\n' +
+        'const day = humanDay(Inputs.joinedAt);\n' +
         "Outputs.description = day.length > 0 ? label + ' · since ' + day : label;"
     }
   }
@@ -1627,9 +1664,7 @@ const ANNOUNCEMENT: Tpl001Component = {
       label: 'The date, as a person writes it',
       parameters: {
         functionScript:
-          'if (Inputs.postedAt === undefined) return;\n' +
-          "const at = new Date(Inputs.postedAt || '');\n" +
-          "Outputs.label = isNaN(at.getTime()) ? '' : at.toLocaleDateString();"
+          HUMAN_DAY_FN + 'if (Inputs.postedAt === undefined) return;\n' + 'Outputs.label = humanDay(Inputs.postedAt);'
       }
     },
     {
@@ -1846,10 +1881,10 @@ const MEETING: Tpl001Component = {
       label: 'The date, as a person writes it',
       parameters: {
         functionScript:
+          HUMAN_DAY_FN +
           'if (Inputs.when === undefined) return;\n' +
-          "const raw = Inputs.when || '';\n" +
-          'const at = new Date(raw);\n' +
-          'Outputs.label = isNaN(at.getTime()) ? raw : at.toLocaleDateString();'
+          "var day = humanDay(Inputs.when);\n" +
+          "Outputs.label = day === '' ? String(Inputs.when || '') : day;"
       }
     },
     { id: 'refusalGate', type: 'Condition', label: 'Show the refusal', parameters: { ...CONDITION_GATE } },
@@ -2055,7 +2090,15 @@ const SETUP: Tpl001Component = {
       label: 'The setup form',
       parent: 'ground',
       parameters: PANEL,
-      children: ['nameField', 'aboutField', 'emailField', 'passwordField', 'tokenField', 'claimButton']
+      children: [
+        'nameField',
+        'aboutField',
+        'yourNameField',
+        'emailField',
+        'passwordField',
+        'tokenField',
+        'claimButton'
+      ]
     },
     {
       id: 'nameField',
@@ -2070,6 +2113,18 @@ const SETUP: Tpl001Component = {
       label: 'About the association',
       parent: 'form',
       parameters: { ...FIELD, useLabel: true, label: 'About the association', type: 'textArea' }
+    },
+    {
+      id: 'yourNameField',
+      type: 'net.noodl.controls.textinput',
+      // 🔴 D22. Without this the founding directory row was filed under the
+      // moderator's email address, so the first screen they open shows the same
+      // string twice. It sits directly above the email box because the three
+      // fields below it are all about the person, and the two above are about
+      // the association.
+      label: 'Your name',
+      parent: 'form',
+      parameters: { ...FIELD, useLabel: true, label: 'Your name' }
     },
     {
       id: 'emailField',
@@ -2139,12 +2194,17 @@ const SETUP: Tpl001Component = {
         // 🔴 `Run` is ADDITIVE, so without these the check would also fire on
         // every keystroke and scold a person for a box they have not reached yet.
         'runOnChange-in-associationName': false,
+        'runOnChange-in-moderatorName': false,
         'runOnChange-in-email': false,
         'runOnChange-in-password': false,
         'runOnChange-in-setupToken': false,
         functionScript:
           'const blank = [];\n' +
           "if (!(Inputs.associationName || '').trim()) blank.push('the association’s name');\n" +
+          // D22: `moderatorName` is `preq` at the door, so leaving it out here
+          // would mean the browser said the form was complete and the server
+          // refused it with the one message that deliberately explains nothing.
+          "if (!(Inputs.moderatorName || '').trim()) blank.push('your name');\n" +
           "if (!(Inputs.email || '').trim()) blank.push('your email');\n" +
           "if (!(Inputs.password || '').trim()) blank.push('a password');\n" +
           "if (!(Inputs.setupToken || '').trim()) blank.push('the setup token');\n" +
@@ -2174,6 +2234,7 @@ const SETUP: Tpl001Component = {
   connections: [
     { fromId: 'nameField', fromProperty: 'onTextChanged', toId: 'claim', toProperty: 'in-associationName' },
     { fromId: 'aboutField', fromProperty: 'onTextChanged', toId: 'claim', toProperty: 'in-blurb' },
+    { fromId: 'yourNameField', fromProperty: 'onTextChanged', toId: 'claim', toProperty: 'in-moderatorName' },
     { fromId: 'emailField', fromProperty: 'onTextChanged', toId: 'claim', toProperty: 'in-email' },
     { fromId: 'passwordField', fromProperty: 'onTextChanged', toId: 'claim', toProperty: 'in-password' },
     { fromId: 'tokenField', fromProperty: 'onTextChanged', toId: 'claim', toProperty: 'in-setupToken' },
@@ -2183,6 +2244,7 @@ const SETUP: Tpl001Component = {
     // less than the page already knew.
     { fromId: 'claimButton', fromProperty: 'onClick', toId: 'check', toProperty: 'run' },
     { fromId: 'nameField', fromProperty: 'onTextChanged', toId: 'check', toProperty: 'in-associationName' },
+    { fromId: 'yourNameField', fromProperty: 'onTextChanged', toId: 'check', toProperty: 'in-moderatorName' },
     { fromId: 'emailField', fromProperty: 'onTextChanged', toId: 'check', toProperty: 'in-email' },
     { fromId: 'passwordField', fromProperty: 'onTextChanged', toId: 'check', toProperty: 'in-password' },
     { fromId: 'tokenField', fromProperty: 'onTextChanged', toId: 'check', toProperty: 'in-setupToken' },
@@ -2334,8 +2396,13 @@ const POST: Tpl001Component = {
       // ⚠️ A plain field carrying `YYYY-MM-DD` rather than a date picker: the
       // upcoming filter compares this string lexicographically, which is exactly
       // right for an ISO day and wrong for every other format a picker might
-      // hand over. The label says the format because the query depends on it.
-      parameters: { ...FIELD, useLabel: true, label: 'Date (YYYY-MM-DD)' }
+      // hand over.
+      //
+      // 🔴 D25: the format is still required, but it was in the LABEL — a person
+      // filling in a form was shown a storage format as the name of the field.
+      // It moves to the placeholder, which is where an example belongs, and the
+      // label becomes the word a person would use.
+      parameters: { ...FIELD, useLabel: true, label: 'Date', placeholder: '2026-09-14' }
     },
     {
       id: 'mPlace',
@@ -2598,7 +2665,10 @@ const DIRECTORY: Tpl001Component = {
       id: 'page',
       type: 'Page',
       label: 'Directory',
-      parameters: { title: 'Members', urlPath: 'directory' },
+      // 🔴 D23: this page and `Pages/Members` were both titled "Members" — in the
+      // browser tab and as the on-page heading. "Who belongs" is the wording
+      // already on the button that opens it.
+      parameters: { title: 'Who belongs', urlPath: 'directory' },
       children: ['ground']
     },
     {
@@ -2614,7 +2684,7 @@ const DIRECTORY: Tpl001Component = {
       type: 'Text',
       label: 'Heading',
       parent: 'ground',
-      parameters: { text: 'Members', ...H_PAGE }
+      parameters: { text: 'Who belongs', ...H_PAGE }
     },
     ...notice('notAllowed', 'Not a moderator', 'ground', 'Only a moderator can see the member list.', {
       tone: 'refused'

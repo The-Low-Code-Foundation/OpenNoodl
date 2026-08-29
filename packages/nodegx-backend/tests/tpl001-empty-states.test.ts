@@ -59,7 +59,7 @@ import { bindProjectToBackend, readVisit, Visit, withRenderedPage } from './help
 
 jest.setTimeout(900000);
 
-const MODERATOR = { email: 'mod@ac6.invalid', password: 'pw-moderator' };
+const MODERATOR = { name: 'Ruth Bramley', email: 'mod@ac6.invalid', password: 'pw-moderator' };
 const ASSOCIATION = { name: 'St Anywhere', blurb: 'A congregation that meets on Sundays.' };
 
 /** What a moderator posts BETWEEN the two visits, and nothing before. */
@@ -110,6 +110,9 @@ describe('TPL-001 AC6 — what a fresh install shows before anybody has posted a
       setupToken: SETUP_TOKEN,
       associationName: ASSOCIATION.name,
       blurb: ASSOCIATION.blurb,
+      // D22 (s8): the founder's own name, so the directory shows a person
+      // rather than their email address twice.
+      moderatorName: MODERATOR.name,
       email: MODERATOR.email,
       password: MODERATOR.password
     });
@@ -228,11 +231,13 @@ describe('TPL-001 AC6 — what a fresh install shows before anybody has posted a
     it('🔴 setup wrote the founding moderator’s own row', () => {
       // The reading `NO_MEMBERS_TEXT` cannot give, and the reason it is not
       // graded above: a moderator who can open this screen is already on it.
-      expect(directoryRows).toEqual([MODERATOR.email]);
+      // D22 (s8): under their NAME. Until setup asked for one, this row was
+      // filed under the email address and this spec asserted that as correct.
+      expect(directoryRows).toEqual([MODERATOR.name]);
     });
 
     it('and the moderator sees themselves rather than a blank list', () => {
-      expect(visits['empty.directory'].text).toContain(MODERATOR.email);
+      expect(visits['empty.directory'].text).toContain(MODERATOR.name);
       expect(visits['empty.directory'].text).toContain('Moderator');
     });
   });

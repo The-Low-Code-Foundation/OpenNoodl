@@ -72,8 +72,9 @@
         "declineButton"
       ],
       "parameters": {
+        "alignItems": "center",
         "flexDirection": "row",
-        "alignItems": "center"
+        "columnGap": "var(--space-3)"
       },
       "x": 100,
       "y": 400

@@ -136,6 +136,7 @@ describe('D4 — what a refused query looks like from inside the page', () => {
       setupToken: SETUP_TOKEN,
       associationName: 'St Anywhere',
       blurb: 'A congregation.',
+      moderatorName: 'Ruth Bramley',
       email: MODERATOR.email,
       password: MODERATOR.password
     });

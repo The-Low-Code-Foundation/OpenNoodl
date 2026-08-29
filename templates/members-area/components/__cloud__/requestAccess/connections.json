@@ -164,6 +164,24 @@
       "fromProperty": "failure",
       "toId": "deny-2",
       "toProperty": "send"
+    },
+    {
+      "fromId": "prep",
+      "fromProperty": "failure",
+      "toId": "deny-2",
+      "toProperty": "send"
+    },
+    {
+      "fromId": "stamp",
+      "fromProperty": "failure",
+      "toId": "deny-2",
+      "toProperty": "send"
+    },
+    {
+      "fromId": "received",
+      "fromProperty": "failure",
+      "toId": "deny-2",
+      "toProperty": "send"
     }
   ]
 }

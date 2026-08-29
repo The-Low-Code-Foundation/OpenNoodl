@@ -59,7 +59,8 @@ failure this file's first house rule exists to prevent.
 | **D23** | ⚠️ open (08-29) | **NONE** | template | anyone reading two pages titled the same |
 | **D24** | ⚠️ open (08-29) | **NONE** | template | a moderator approving somebody |
 | **D25** | ⚠️ open (08-29) | **NONE** | template | every person reading a date or filling the meeting form |
-| **D26** | 🔴 open (08-29) | **NONE** | product | every template we ship, not just this one |
+| **D26** | 🔴 open (08-29) | **NONE** — handed to P80 as C1 | product | every template we ship, not just this one |
+| **D27** | ✅ fixed s8 (08-29) | — | template | (was: anyone whose setup, join or approval threw) |
 
 🔴 **D18/D19/D20 are the first rows created since the sweep, and they were already unowned within a
 day of the process being put in place.** That is the argument for the column, not an argument
@@ -899,4 +900,50 @@ that is flat and edged rather than filled and rounded, or a row treatment that i
 box, would do more than ten more variants of `card`. Related: the template uses **none** of `band`,
 `bandSurface`, `columnsTwoUp` or `gridAutoFit`, so part of the sameness is ours and part is the kit's;
 D26 is the kit's part.
+
+---
+
+## D27 — ✅ Fixed s8. Ten nodes across all four cloud functions whose `failure` reached nothing
+
+**Found by a validation rule a peer was writing at the same moment**, not by this phase: generation
+suddenly refused with `failure-reaches-nothing`, from `failureReachesNothing.ts` sitting untracked in
+the working tree. The rule is right and it caught a real defect in this template.
+
+### What it was
+
+A cloud function's request ends only when a response node fires. Ten nodes could throw and had no
+connection on their `Failure` output at all, so the caller waited the full **30 seconds for a 504**
+with no message — **P77's D1, inside our own template**, while phase 78 was busy filing product
+defects about exactly this class.
+
+| function | nodes | now answers |
+|---|---|---|
+| `claimAssociation` | `gate`, `founding`, `founder` | `deny` for the gate's throw; **`res`** for the two directory writes |
+| `requestAccess` | `prep`, `stamp`, `received` | `deny` |
+| `myStanding` | `gate`, `decide` | **`unknown`** |
+| `decideMembership` | `prep`, `route` | `deny` |
+
+### 🔴 The comment that made it invisible
+
+`claimAssociation`'s wiring carried, in writing, since the function was authored:
+
+> *"🔴 `founder` reaches NEITHER response, and that is the whole decision about it."*
+
+It reads as settled, and the reasoning under it is sound — telling a moderator who already holds
+`role:admin` that setup failed would be worse, with no second setup possible. But **"do not tell them
+it failed" and "send nothing at all" are different things**, and the graph did the second. The
+decision was right; its implementation hung the request.
+
+⚠️ **This is the shape to watch for.** A confident comment explaining why a node deliberately does
+not reach one response reads, to every later reader, as an explanation of why it reaches nothing.
+
+### Where the judgement was not mechanical
+
+Two of the four functions needed a real decision rather than "wire it to `deny`":
+
+- **`claimAssociation`'s two directory writes answer `res`** — by that point the account exists and
+  holds the role, so success is the honest answer, and `mark.failure → res` was already the precedent.
+- **`myStanding` answers `unknown`**, a third response that exists precisely for *"we could not check
+  your membership just now"*. Answering `res` would have sent a standing nobody computed — the one
+  thing that endpoint must never invent, because every gated screen in the template reads it.
 

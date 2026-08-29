@@ -96,6 +96,7 @@
       "children": [
         "nameField-2",
         "aboutField",
+        "yourNameField",
         "emailField-2",
         "passwordField-2",
         "tokenField",
@@ -180,6 +181,34 @@
       "y": 760
     },
     {
+      "id": "yourNameField",
+      "type": "net.noodl.controls.textinput",
+      "label": "Your name",
+      "parent": "form-3",
+      "parameters": {
+        "sizeMode": "contentHeight",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "backgroundColor": "var(--background)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-control)",
+        "borderRadius": "var(--radius-md)",
+        "paddingLeft": "var(--space-3)",
+        "paddingRight": "var(--space-3)",
+        "paddingTop": "var(--space-2)",
+        "paddingBottom": "var(--space-2)",
+        "fontSize": "var(--text-base)",
+        "color": "var(--foreground)",
+        "useLabel": true,
+        "label": "Your name"
+      },
+      "x": 220,
+      "y": 880
+    },
+    {
       "id": "emailField-2",
       "type": "net.noodl.controls.textinput",
       "label": "Moderator email",
@@ -206,7 +235,7 @@
         "type": "email"
       },
       "x": 220,
-      "y": 880
+      "y": 1000
     },
     {
       "id": "passwordField-2",
@@ -235,7 +264,7 @@
         "type": "password"
       },
       "x": 220,
-      "y": 1000
+      "y": 1120
     },
     {
       "id": "tokenField",
@@ -264,7 +293,7 @@
         "type": "password"
       },
       "x": 220,
-      "y": 1120
+      "y": 1240
     },
     {
       "id": "claimButton",
@@ -286,7 +315,7 @@
         "sizeMode": "contentSize"
       },
       "x": 220,
-      "y": 1240
+      "y": 1360
     },
     {
       "id": "refusal-4",
@@ -316,7 +345,7 @@
         "mounted": false
       },
       "x": 160,
-      "y": 1360
+      "y": 1480
     },
     {
       "id": "refusalText-4",
@@ -329,7 +358,7 @@
         "color": "var(--destructive)"
       },
       "x": 220,
-      "y": 1480
+      "y": 1600
     },
     {
       "id": "missing",
@@ -359,7 +388,7 @@
         "mounted": false
       },
       "x": 160,
-      "y": 1600
+      "y": 1720
     },
     {
       "id": "missingText",
@@ -372,7 +401,7 @@
         "color": "var(--destructive)"
       },
       "x": 220,
-      "y": 1720
+      "y": 1840
     },
     {
       "id": "claim",
@@ -390,10 +419,11 @@
       "label": "Is anything still blank?",
       "parameters": {
         "runOnChange-in-associationName": false,
+        "runOnChange-in-moderatorName": false,
         "runOnChange-in-email": false,
         "runOnChange-in-password": false,
         "runOnChange-in-setupToken": false,
-        "functionScript": "const blank = [];\nif (!(Inputs.associationName || '').trim()) blank.push('the association’s name');\nif (!(Inputs.email || '').trim()) blank.push('your email');\nif (!(Inputs.password || '').trim()) blank.push('a password');\nif (!(Inputs.setupToken || '').trim()) blank.push('the setup token');\nif (blank.length === 0) {\n  Outputs.problem = '';\n  Outputs.ready();\n  return;\n}\n// Rule 2: the sentence and the signal that reveals it leave from the\n// same node, so nothing downstream can act on a value still in flight.\nOutputs.problem = blank.length === 1\n  ? 'Please fill in ' + blank[0] + '.'\n  : 'Please fill in ' + blank.slice(0, -1).join(', ') + ' and ' + blank[blank.length - 1] + '.';\nOutputs.blocked();"
+        "functionScript": "const blank = [];\nif (!(Inputs.associationName || '').trim()) blank.push('the association’s name');\nif (!(Inputs.moderatorName || '').trim()) blank.push('your name');\nif (!(Inputs.email || '').trim()) blank.push('your email');\nif (!(Inputs.password || '').trim()) blank.push('a password');\nif (!(Inputs.setupToken || '').trim()) blank.push('the setup token');\nif (blank.length === 0) {\n  Outputs.problem = '';\n  Outputs.ready();\n  return;\n}\n// Rule 2: the sentence and the signal that reveals it leave from the\n// same node, so nothing downstream can act on a value still in flight.\nOutputs.problem = blank.length === 1\n  ? 'Please fill in ' + blank[0] + '.'\n  : 'Please fill in ' + blank.slice(0, -1).join(', ') + ' and ' + blank[blank.length - 1] + '.';\nOutputs.blocked();"
       },
       "ports": [
         {
@@ -408,7 +438,7 @@
         }
       ],
       "x": 470,
-      "y": 1840
+      "y": 1960
     },
     {
       "id": "refusalGate-4",
@@ -419,7 +449,7 @@
         "runOnChange-condition": false
       },
       "x": 470,
-      "y": 1360
+      "y": 1480
     },
     {
       "id": "missingGate",
@@ -430,7 +460,7 @@
         "runOnChange-condition": false
       },
       "x": 470,
-      "y": 1600
+      "y": 1720
     },
     {
       "id": "missingClear",
@@ -441,7 +471,7 @@
         "runOnChange-condition": false
       },
       "x": 470,
-      "y": 1720
+      "y": 1840
     },
     {
       "id": "toSignIn-2",
@@ -452,7 +482,7 @@
         "target": "/Pages/SignIn"
       },
       "x": 470,
-      "y": 1960
+      "y": 2080
     }
   ],
   "visualRoots": [

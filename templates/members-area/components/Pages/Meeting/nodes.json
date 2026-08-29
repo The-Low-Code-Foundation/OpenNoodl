@@ -220,7 +220,7 @@
       "type": "JavaScriptFunction",
       "label": "The date, as a person writes it",
       "parameters": {
-        "functionScript": "if (Inputs.when === undefined) return;\nconst raw = Inputs.when || '';\nconst at = new Date(raw);\nOutputs.label = isNaN(at.getTime()) ? raw : at.toLocaleDateString();"
+        "functionScript": "function humanDay(raw) {\n  if (raw === undefined || raw === null) return '';\n  var s = String(raw);\n  if (s === '') return '';\n  var m = /^(\\d{4})-(\\d{2})-(\\d{2})$/.exec(s);\n  var at = m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : new Date(s);\n  if (isNaN(at.getTime())) return '';\n  return at.toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' });\n}\nif (Inputs.when === undefined) return;\nvar day = humanDay(Inputs.when);\nOutputs.label = day === '' ? String(Inputs.when || '') : day;"
       },
       "x": 470,
       "y": 400

@@ -11,7 +11,7 @@
         "ground-11"
       ],
       "parameters": {
-        "title": "Members",
+        "title": "Who belongs",
         "urlPath": "directory"
       },
       "x": 40,
@@ -59,7 +59,7 @@
       "label": "Heading",
       "parent": "ground-11",
       "parameters": {
-        "text": "Members",
+        "text": "Who belongs",
         "fontSize": "var(--text-3xl)",
         "fontWeight": "var(--font-semibold)",
         "lineHeight": "var(--leading-tight)",
