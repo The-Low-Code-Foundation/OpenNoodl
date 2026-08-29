@@ -43,7 +43,7 @@ failure this file's first house rule exists to prevent.
 | D7 | ✅ fixed s6 | — | template | (was: everyone gated against) |
 | D8 | ✅ disproved | — | — | — |
 | D9 | 🔴 residual open | **DEF-007** | product | the next template |
-| D10 | 🔴 open | **phase 78** (template-generator work) | template | every generated app |
+| D10 | ✅ **FIXED — re-measured on the artefact 08-29 (s17)** | — | template | (was: every generated app) |
 | D11 | 🔴 open | **DEF-001** | product | every end user |
 | D12 | 🔴 open | **DEF-006** | product | every agent styling on-system |
 | D13 | 🔴 open | **DEF-001** | product | every end user |
@@ -51,9 +51,9 @@ failure this file's first house rule exists to prevent.
 | D15 | ⚠️ open | **DEF-006** | product | every agent styling on-system |
 | D16 | ✅ fixed s6 | — | template | (was: every gated screen) |
 | D17 | ✅ answered s5 | — | — | — |
-| **D18** | 🔴 open (08-29) | **NONE** — ruled *not* DEF-001, see below | product | every person filling in any form |
-| **D19** | ⚠️ open (08-29) | **NONE** — either way, see below | product | every person filling in any form |
-| **D20** | 🔴 open (08-29) | **NONE** — **DEF-006 agreed, not yet filed** | product | every agent styling on-system |
+| **D18** | 🔴 open (08-29) | **DEF-017** — filed as Track C **C2** (was `NONE`, s17) | product | every person filling in any form |
+| **D19** | ⚠️ open (08-29) | **DEF-017** — filed as Track C **C2** (was `NONE`, s17) | product | every person filling in any form |
+| **D20** | 🔴 open (08-29) | **DEF-006** — **filed** as §0(c) (was `NONE`, s17) | product | every agent styling on-system |
 | **D21** | ✅ disproved (08-29) | — | — | (would have been: every agent placing a component) |
 | **D22** | 🔴 open (08-29) | **NONE** | template | every install — the directory's first row |
 | **D23** | ⚠️ open (08-29) | **NONE** | template | anyone reading two pages titled the same |
@@ -86,19 +86,54 @@ Four rows filed by the session that also wrote the rule were invisible to it. Th
 next-session prompt — *"twelve unowned rows"* — was derived from the sections, not the table; had
 anyone derived it from the table it would have said eight and been wrong in the safe direction.
 
-⚠️ **Discussed with phase 80's owner 2026-08-29 and recorded in
-[THE SWEEP](../phase-77-the-site-builder-rescue/THE-SWEEP-2026-08-29.md#still-open-after-both-fixes)
-— but no `DEF` task names any of the three yet, so all three stay `NONE` here.** Where it landed:
+✅ **RESOLVED 2026-08-29 (s17): all three now have an owner, and each was flipped by re-running
+the test this file itself set** — not by reading phase 80's status column. Where they landed:
 
-- **D20 → DEF-006, agreed by both sessions** — the agent opens the vocabulary looking for a field or
-  a notice and finds nothing, the same mechanism as D12 and D15. 🔴 **Agreed is not filed:** grep
-  DEF-006 for `D20` and it is absent. Until that line exists this row is still unowned in the only
-  place that schedules work.
-- **D18 → NOT DEF-001.** Accepted by phase 80's owner: it is a **fidelity** defect, not an
-  accessibility one — monospace is perfectly legible, it is simply not the app's typeface, and
-  filing it under an a11y-scoped task would widen that task silently. Needs a home about *the design
-  system not reaching the rendered control*. **Re-measure before filing.**
-- **D19 → genuinely either way** — it is an a11y contrast question *and* a reachability question.
+- **D20 → DEF-006.** The test written here was *"grep DEF-006 for `D20` and it is absent"*. It is no
+  longer absent: `DEF-006-THE-DESIGN-SYSTEM-PUNISHES-ITS-USER.md` names D20 in its source line and
+  carries **§0(c)** — *"the vocabulary has no composition for a field, a notice or an empty
+  state"* — as a section of its own. Same mechanism as D12 and D15, as predicted.
+- **D18, D19 → DEF-017**, phase 80's registration of **Track C**, which this phase handed over.
+  [TRACK-C-HANDOFF.md](TRACK-C-HANDOFF.md) §**C2** is titled *"D18 / D19: nine of ten control
+  classes never receive the app's font"* and carries D18's fidelity-not-a11y ruling verbatim. The
+  *"re-measure before filing"* note above was discharged by whoever wrote C2, not by this session.
+
+🔴 **The other eleven are unowned, and nothing anywhere is scheduled to take them.** After the four
+flips above, the rows whose owner cell still reads `NONE` are **D22, D23, D24, D28, D30, D32, D33,
+D34, D35, D36, D37** — eleven. Measured 2026-08-29 (s17): each of the eleven is named in **zero**
+files outside this register. Phases 77 and 80 do not mention one of them.
+
+🔴 **And the belief that someone had them was built out of a sentence about the past.** s16's
+next-session prompt said *"**Phase 80 owns the register sweep**, not this phase"*, and that sentence
+exists in exactly one place — that prompt. What phase 80 actually records (`TASKS.md`, its history
+line) is *"Phase created from the three-register sweep"*: a **completed** act on 08-29 that produced
+`DEF-001`–`DEF-017`, not a standing commitment to sweep anything again. ✅ **A phase created *by* a
+sweep does not thereby own the *next* one.** The rows that sweep did not pick up were left where
+they were, and a phase name in the prose above them read like a plan.
+
+⚠️ **The count was wrong in the safe-looking direction too.** That same prompt said *"Ten unowned
+rows"* and then enumerated eleven (*"D22–D24, D28, D30, D32–D37"*). The list was right; the total
+was not. This is the third counting error in this table's short life, after s15's *"twelve"* (from
+the sections) and the *"eight"* the table would then have given — 🔴 **so the standing fix is to
+derive the number from the table with a command and paste the output, never to count by eye.** The
+one used here:
+
+    awk -F'|' '/^\| *\*?\*?D[0-9]+\*?\*? *\|/ {r=$2;o=$4; gsub(/[ *]/,"",r); gsub(/^[ *]+/,"",o);
+      if (o ~ /^NONE/) {printf "%s ", r; n++}} END{print "\ncount: " n}' \
+      dev-docs/tasks/phase-78-the-templates/DEFECTS-THE-TEMPLATES-FOUND.md
+
+⚠️ **Match on the owner cell's FIRST token, not on the word `NONE` anywhere in it.** The first run
+of this command returned **14** — it was matching the *"(was `NONE`, s17)"* annotations that the
+flips above had just added. A checker that reads a field's history as its value overcounts exactly
+the rows someone has just fixed.
+
+🔴 **The lesson is the shape of the delay, not the delay.** Each of these three sat at `NONE` for a
+day *after* the work had a home, because the flip depended on a session that was not scheduled to
+look. The owner column is written here and satisfied over there, so nothing reddens when they
+disagree — and the failure direction is the dangerous one: a row that reads `NONE` gets re-derived
+at full price, which is the exact cost this column was added to stop. ✅ **A row whose owner cell
+states a test must have that test re-run by the next session that touches this table** — three
+greps, and they were the whole of it.
 
 ⚠️ **Naming.** `D17` was briefly a second `D10` in this file and was renumbered; every historical
 `D10` reference means the generators bypassing the design system. Settled 2026-08-29 (`56c9b372`):
@@ -445,9 +480,65 @@ let this row stand in for that reading.
 
 ---
 
-## D10 — 🔴 The template generators bypass the design system the product ships
+## D10 — ✅ FIXED. (Was: the template generators bypass the design system the product ships.)
 
-**Severity: high.** It is what a person judges the whole product by, before they test anything.
+**Severity: was high.** It is what a person judges the whole product by, before they test anything.
+
+> ✅ **Closed 2026-08-29 (s17), by re-measuring the artefact rather than by reading a task file.**
+> The fix has a named home — [`tpl001Theme.ts`](../../../packages/noodl-mcp/tests/tpl001Theme.ts),
+> whose header opens *"the look, and the only reason the members' area has one"* and quotes this
+> row's own measurement back as the defect it exists to end. It landed across `e5922d21`,
+> `556c9dc3`, `392fecc6` and `e337325c`. Re-run over `templates/members-area/` today:
+>
+> | | as recorded (08-28) | at HEAD (08-29) |
+> |---|---|---|
+> | nodes counted | 137 visual | **431** (all components, incl. cloud) |
+> | colour / background / border params | **0** | **555** |
+> | design tokens referenced | **2** | **1,197 references, 39 distinct** |
+> | `metadata.designTokens` | absent | **present**, with a custom palette |
+>
+> ⚠️ **What this measurement cannot see, stated because Richard's appearance criterion is graded by
+> looking.** Every number above counts **parameters in the artefact**, not pixels on a screen. It
+> establishes that the generator now goes *through* the design system instead of past it — which is
+> precisely what this row alleged and all it alleged. It does **not** establish that the result
+> looks good, and a session that reads "555 colour parameters" as "Richard would like it" has
+> substituted a proxy for the judgement he reserved. The instrument for that is still the one this
+> row named: **a screenshot**, via `tpl001-rows.look.ts`. Not run this session.
+>
+> 🔴 **And the row's own open question is answered by the artefact.** It asked *"whether recording a
+> preset alone visibly changes the rendered app, or whether nodes must also reference `var(--token)`
+> — that decides whether the fix is one call or a sweep over 137 nodes."* It was the sweep: the
+> palette is recorded **and** the nodes reference it, 1,197 times. The cheap answer was the wrong one.
+>
+> ⚠️ **Two things this closure does NOT cover, stated so neither is read as included:**
+>
+> 1. **`variant` parameters are still 0** across all 431 nodes. Not a residual of this row: the
+>    template instantiates **no `Button` nodes at all** — its buttons are `Group` + `Text` — so the
+>    node types that take variants are never placed. Whether that is the right construction is an
+>    appearance question for whoever grades the look, not a generator bypass.
+> 2. **The second template is fixed too — by a different mechanism, and looking for the first one
+>    reads as a defect that is not there.** This row claimed *"two templates, one failure: it is the
+>    process, not the template"*, so both had to be checked. `site-builder.content.json` at HEAD
+>    references **278 tokens, 33 distinct** — but carries **no `metadata.designTokens` block**, and
+>    that absence is **correct, not a gap**. The two templates ship by different paths: the members'
+>    area is **curated**, a project directory, so its palette must be *in* the artefact; the site
+>    builder is **embedded**, so `site-builder.template.ts:105` sets `designTokens:
+>    buildSiteDesignTokens()` on the `ProjectTemplate` record and
+>    `EmbeddedTemplateProvider.install` writes it into `metadata.designTokens` **at install**
+>    (`ProjectTemplate.ts:138-148`). Phase 77's SBR-003 owns that contract and
+>    [`siteTheme.ts`](../../../packages/noodl-editor/src/editor/src/models/template/templates/siteTheme.ts)
+>    is its single source.
+>
+>    🔴 **This session read that absence as the defect first, and was wrong.** Checking one delivery
+>    path's artefact for the *other* path's evidence finds nothing and the nothing looks like the
+>    original bug. ✅ **When a row spans two things delivered differently, name the mechanism for
+>    each before reading either one's absence as a finding.**
+>
+> 🔴 **This row was owned by `phase 78` — the phase that has nothing left to build.** Phase 80
+> bounced it back explicitly (*"template-generator work with a named home in phase 78"*), and phase
+> 78's next-session prompt said every buildable thing was built. **A phase name is not an owner once
+> that phase is closing; it is `NONE` wearing something that reads like a task id**, and the row
+> survived only because the work had already been done by a session doing something else.
 
 Richard, 2026-08-28, after driving TPL-001 by hand: *"it doesn't even look like a website… I'm at
 a loss about how both templates we've tried to create so far have been fucking shit on the front
