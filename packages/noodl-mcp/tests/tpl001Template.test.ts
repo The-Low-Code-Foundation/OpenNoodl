@@ -67,7 +67,8 @@ import {
   ROLE_MODERATOR,
   ROUTER,
   TPL001_COLLECTIONS,
-  TPL001_FUNCTIONS
+  TPL001_FUNCTIONS,
+  TPL002_FUNCTIONS
 } from './tpl001Vocabulary';
 
 jest.setTimeout(600000);
@@ -260,7 +261,7 @@ describe('TPL-001 — the committed template is what the door writes today', () 
     // "what members can see" tile. It is a component and not three inline
     // subtrees because the door refused the inline form —
     // `repeated-sibling-subtree`, naming the remedy.
-    expect(committed.length).toBe(23 * 3 + 3);
+    expect(committed.length).toBe(29 * 3 + 3); // TPL-002: +4 cloud functions, +2 pages
     expect(committed).toContain('nodegx.project.json');
     expect(committed).toContain('nodegx.security.json');
     expect(committed).toContain(path.join('components', '_registry.json'));
@@ -275,9 +276,9 @@ describe('TPL-001 — the committed template is what the door writes today', () 
     // 🔴 Without this, the comparison above is satisfiable by two empty sets, and
     // a build that silently authored nothing would read as agreement.
     const built = await buildMembersTemplateProject();
-    expect(built.order).toHaveLength(23);
+    expect(built.order).toHaveLength(29); // TPL-002: 8 endpoints, 13 pages
     expect(built.order[0]).toBe(APP_COMPONENT);
-    expect(shipped).toHaveLength(23);
+    expect(shipped).toHaveLength(29); // TPL-002: +4 endpoints, +2 pages
   });
 });
 
@@ -308,7 +309,7 @@ describe('TPL-001 — the app has an entry point, and it is the landing page', (
 
   it('lists every page component in the routes, and only pages', () => {
     const pageComponents = shipped.map((c) => c.path).filter((n) => n.startsWith('/Pages/'));
-    expect(pageComponents.length).toBe(11);
+    expect(pageComponents.length).toBe(13); // TPL-002: Account, Unsubscribe
     expect([...(pages().routes ?? [])].sort()).toEqual([...pageComponents].sort());
     // Control: the routes list is not simply everything — the four cloud
     // components a browser cannot show are not in it.
@@ -420,7 +421,9 @@ describe('TPL-001 — the band is the navigation, and it goes somewhere', () => 
       'Meetings → /Pages/Meetings',
       'Post → /Pages/Post',
       'Requests → /Pages/Requests',
-      'Who belongs → /Pages/Directory'
+      'Who belongs → /Pages/Directory',
+      // TPL-002. Not moderator-only: the setting it leads to is every member's.
+      'Your account → /Pages/Account'
     ]);
   });
 
@@ -454,7 +457,10 @@ describe('TPL-001 — the band is the navigation, and it goes somewhere', () => 
       { label: 'Meetings', gate: '(none)', mounted: undefined },
       { label: 'Post', gate: 'isModerator', mounted: false },
       { label: 'Requests', gate: 'isModerator', mounted: false },
-      { label: 'Who belongs', gate: 'isModerator', mounted: false }
+      { label: 'Who belongs', gate: 'isModerator', mounted: false },
+      // TPL-002. Ungated like Announcements and Meetings, and for the same
+      // reason: it leads to a page whose own panel is gated on `isMember`.
+      { label: 'Your account', gate: '(none)', mounted: undefined }
     ]);
     // Control: the census is not all one answer, so it graded something.
     expect(new Set(census.map((c) => c.gate)).size).toBe(2);
@@ -504,7 +510,7 @@ describe('TPL-001 — the band is the navigation, and it goes somewhere', () => 
     expect(offenders).toEqual([]);
     // Beside a known-firing count, so `[]` is a reading of a populated sweep and
     // not a walk over no `Columns` at all.
-    expect(graded).toBe(8);
+    expect(graded).toBe(9); // TPL-002: the sixth band button
   });
 
   it('control: no page ships a button whose only job was to go back', () => {
@@ -516,7 +522,7 @@ describe('TPL-001 — the band is the navigation, and it goes somewhere', () => 
       .filter(({ node }) => String(node.parameters?.label ?? '').startsWith('Back to'))
       .map(({ component, node }) => `${component.path} › ${String(node.parameters?.label)}`);
     expect(backish).toEqual([]);
-    expect(navButtons()).toHaveLength(5);
+    expect(navButtons()).toHaveLength(6);
   });
 });
 
@@ -704,7 +710,7 @@ describe('TPL-001 — the policy is the product', () => {
     const deployed = shipped
       .filter((c) => c.path.startsWith('/#__cloud__/'))
       .map((c) => c.path.slice('/#__cloud__/'.length));
-    expect(deployed.sort()).toEqual([...TPL001_FUNCTIONS].sort());
+    expect(deployed.sort()).toEqual([...TPL001_FUNCTIONS, ...TPL002_FUNCTIONS].sort());
     for (const fn of deployed) expect(policy.functions[fn]?.call).toBeDefined();
   });
 
@@ -781,8 +787,16 @@ describe('TPL-001 — the members-only queries have no trigger but the standing 
     // With either box left on, the node fetches the moment the graph is built —
     // before any standing is known, for anybody who opens the page. That is the
     // flash of content AC2 forbids, and it is a parameter rather than a wire.
+    // 🔴 **The browser half only, and TPL-002 is what made the scope explicit.**
+    // This rule is about a query that runs before any standing is known, for
+    // anybody who opens a page. A cloud function has no page and no standing
+    // gate: its boundary is `nodegx.security.json`'s `call` rule, which is the
+    // stronger one and is graded by "names a rule for every endpoint the
+    // artefact deploys". Leaving the four new endpoints in this population made
+    // it demand a gate that cannot exist there.
     const membersOnly = allNodes().filter(
-      ({ node }) =>
+      ({ component, node }) =>
+        !component.path.includes('__cloud__') &&
         node.type === 'DbCollection2' &&
         [COLLECTION_ANNOUNCEMENT, COLLECTION_MEETING, COLLECTION_REQUEST, COLLECTION_MEMBER].includes(
           String(node.parameters?.collectionName)
@@ -840,6 +854,10 @@ describe('TPL-001 — the members-only queries have no trigger but the standing 
     // `fromBand` below false, and this spec would then be grading nothing.
     expect(bandPorts.size).toBeGreaterThan(0);
     for (const component of shipped) {
+      // Same population as the NO_LOAD_TIME_FETCH rule above, and for the same
+      // reason: "its trigger comes from the standing gate" is a sentence about a
+      // page. See that spec's note.
+      if (component.path.includes('__cloud__')) continue;
       const instanceIds = new Set(
         component.nodes.filter((n) => n.type === STANDING_COMPONENT).map((n) => n.id)
       );
@@ -992,7 +1010,7 @@ describe('TPL-001 — the states a person can be in all have a screen', () => {
     // is the one place in the template where a single node's `mounted` is
     // driven from TWO conditions — the shape `Pages/Setup`'s `missingClear`
     // established.
-    expect(gates.length).toBe(40);
+    expect(gates.length).toBe(46); // TPL-002: Account ×4, Unsubscribe ×2
   });
 
   it('AC6 — every list ships an empty state, hidden until a query has answered', () => {
@@ -1369,7 +1387,7 @@ describe('TPL-001 — the design system is finished, not merely opened', () => {
     // that answer it. It was written with `notice()` first, which gave it a
     // notice's styling while a second child kept it out of this census — a spec
     // passing for a reason nobody had stated. It is a `PANEL` now.
-    expect(boxes.length).toBe(19);
+    expect(boxes.length).toBe(24); // TPL-002: 3 on Account, 2 on Unsubscribe
     const unpainted = boxes
       .filter(({ node }) => {
         const p = node.parameters ?? {};
@@ -1503,7 +1521,14 @@ describe('TPL-001 — the design system is finished, not merely opened', () => {
     '/Pages/Meeting': 'Meeting',
     '/Pages/Post': 'For moderators',
     '/Pages/Requests': 'For moderators',
-    '/Pages/Directory': 'For moderators'
+    '/Pages/Directory': 'For moderators',
+    // TPL-002. `Your account` rather than `For members`: the band already says
+    // whose members' area this is, and this page is about the reader themselves.
+    '/Pages/Account': 'Your account',
+    // ⚠️ The one page whose eyebrow DOES repeat the band's words, and it is the
+    // one page with no band on it — the reader arrives here from a mail client,
+    // signed out, and nothing else on the screen says which association this is.
+    '/Pages/Unsubscribe': 'Members\u2019 area'
   };
 
   /**
@@ -1540,7 +1565,10 @@ describe('TPL-001 — the design system is finished, not merely opened', () => {
       .map((c) => c.path)
       .sort();
     // Known-firing: seven pages carry it, so the filter below reads something.
-    expect(carriesBand.length).toBe(7);
+    // 🔴 Eight, not nine: `Pages/Unsubscribe` carries NO band, deliberately. It
+    // is opened signed out from a mail client, and a band would be an auth round
+    // trip on the one page whose whole point is not needing one.
+    expect(carriesBand.length).toBe(8);
 
     // 🔴 Read from the ARTEFACT, not from `PAGE_EYEBROWS`. The first version of
     // this spec filtered the hand-written table, so it graded the table against

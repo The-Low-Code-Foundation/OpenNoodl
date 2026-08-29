@@ -15,7 +15,7 @@
       "path": "__cloud__/claimAssociation",
       "type": "cloud",
       "nodeCount": 11,
-      "connectionCount": 45,
+      "connectionCount": 47,
       "modified": "2026-08-28T00:00:00.000Z",
       "created": "2026-08-28T00:00:00.000Z"
     },
@@ -39,7 +39,39 @@
       "path": "__cloud__/decideMembership",
       "type": "cloud",
       "nodeCount": 9,
-      "connectionCount": 30,
+      "connectionCount": 32,
+      "modified": "2026-08-28T00:00:00.000Z",
+      "created": "2026-08-28T00:00:00.000Z"
+    },
+    "__cloud__/myNotifySetting": {
+      "path": "__cloud__/myNotifySetting",
+      "type": "cloud",
+      "nodeCount": 6,
+      "connectionCount": 13,
+      "modified": "2026-08-28T00:00:00.000Z",
+      "created": "2026-08-28T00:00:00.000Z"
+    },
+    "__cloud__/setNotifySetting": {
+      "path": "__cloud__/setNotifySetting",
+      "type": "cloud",
+      "nodeCount": 7,
+      "connectionCount": 18,
+      "modified": "2026-08-28T00:00:00.000Z",
+      "created": "2026-08-28T00:00:00.000Z"
+    },
+    "__cloud__/unsubscribe": {
+      "path": "__cloud__/unsubscribe",
+      "type": "cloud",
+      "nodeCount": 7,
+      "connectionCount": 16,
+      "modified": "2026-08-28T00:00:00.000Z",
+      "created": "2026-08-28T00:00:00.000Z"
+    },
+    "__cloud__/notifyMembers": {
+      "path": "__cloud__/notifyMembers",
+      "type": "cloud",
+      "nodeCount": 11,
+      "connectionCount": 40,
       "modified": "2026-08-28T00:00:00.000Z",
       "created": "2026-08-28T00:00:00.000Z"
     },
@@ -94,8 +126,8 @@
     "Members/Chrome": {
       "path": "Members/Chrome",
       "type": "visual",
-      "nodeCount": 24,
-      "connectionCount": 21,
+      "nodeCount": 26,
+      "connectionCount": 22,
       "modified": "2026-08-28T00:00:00.000Z",
       "created": "2026-08-28T00:00:00.000Z"
     },
@@ -166,8 +198,8 @@
     "Pages/Post": {
       "path": "Pages/Post",
       "type": "page",
-      "nodeCount": 30,
-      "connectionCount": 18,
+      "nodeCount": 34,
+      "connectionCount": 32,
       "modified": "2026-08-28T00:00:00.000Z",
       "created": "2026-08-28T00:00:00.000Z"
     },
@@ -186,11 +218,27 @@
       "connectionCount": 9,
       "modified": "2026-08-28T00:00:00.000Z",
       "created": "2026-08-28T00:00:00.000Z"
+    },
+    "Pages/Account": {
+      "path": "Pages/Account",
+      "type": "page",
+      "nodeCount": 24,
+      "connectionCount": 15,
+      "modified": "2026-08-28T00:00:00.000Z",
+      "created": "2026-08-28T00:00:00.000Z"
+    },
+    "Pages/Unsubscribe": {
+      "path": "Pages/Unsubscribe",
+      "type": "page",
+      "nodeCount": 14,
+      "connectionCount": 10,
+      "modified": "2026-08-28T00:00:00.000Z",
+      "created": "2026-08-28T00:00:00.000Z"
     }
   },
   "stats": {
-    "totalComponents": 23,
-    "totalNodes": 355,
-    "totalConnections": 334
+    "totalComponents": 29,
+    "totalNodes": 430,
+    "totalConnections": 465
   }
 }

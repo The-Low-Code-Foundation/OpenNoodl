@@ -823,8 +823,25 @@ describe("TPL-001 — the members' area, driven", () => {
       expect(visits['moderator.post'].text).not.toContain('Added. Members can see it now.');
     });
 
-    it('says so after the announcement is posted', () => {
-      expect(visits['moderator.posted'].text).toContain('Posted. Members can see it now.');
+    /**
+     * 🔴 **The sentence changed, and what changed it is the evidence.** The page
+     * still ships `Posted. Members can see it now.` as the confirmation's
+     * standing text — and this reading is taken *after* TPL-002's fan-out has
+     * answered and replaced it. Nobody in this drive ticked the opt-in box, so
+     * the answer is the zero-recipient one, said out loud rather than left
+     * silent (TPL-002 §3: a silent post is indistinguishable from one whose
+     * emails all failed, and the moderator's next action differs completely).
+     *
+     * ⚠️ So this row now grades the whole Post-page chain in a real browser:
+     * `createAnnouncement.done` → `announce` → `notifyMembers` → `report` →
+     * the confirmation's `text`. It is the only reading in either suite that
+     * proves the browser half of TPL-002 is wired at all — the endpoint's own
+     * behaviour is graded in `tpl002-notifications.test.ts`, over HTTP, where no
+     * page is involved.
+     */
+    it('says so after the announcement is posted, and says what the emails did', () => {
+      expect(visits['moderator.posted'].text).toContain('Posted.');
+      expect(visits['moderator.posted'].text).toContain('Nobody has asked to be emailed yet');
     });
 
     it('and after the meeting is added', () => {

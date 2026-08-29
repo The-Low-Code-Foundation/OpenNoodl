@@ -42,7 +42,7 @@
     {
       "fromId": "sentGate",
       "fromProperty": "result",
-      "toId": "sent",
+      "toId": "sent-2",
       "toProperty": "mounted"
     },
     {

@@ -1,0 +1,85 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "1ea4c9cb-581e-5963-8f89-1dcebaaaaae4",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "req-5",
+      "fromProperty": "userId",
+      "toId": "who",
+      "toProperty": "in-userId"
+    },
+    {
+      "fromId": "req-5",
+      "fromProperty": "receive",
+      "toId": "who",
+      "toProperty": "run"
+    },
+    {
+      "fromId": "who",
+      "fromProperty": "out-userId",
+      "toId": "mine",
+      "toProperty": "qp-userId"
+    },
+    {
+      "fromId": "who",
+      "fromProperty": "out-ok",
+      "toId": "mine",
+      "toProperty": "storageFetch"
+    },
+    {
+      "fromId": "mine",
+      "fromProperty": "items",
+      "toId": "read",
+      "toProperty": "in-rows"
+    },
+    {
+      "fromId": "mine",
+      "fromProperty": "fetched",
+      "toId": "read",
+      "toProperty": "run"
+    },
+    {
+      "fromId": "read",
+      "fromProperty": "out-notify",
+      "toId": "res-5",
+      "toProperty": "pm-notify"
+    },
+    {
+      "fromId": "read",
+      "fromProperty": "out-answered",
+      "toId": "res-5",
+      "toProperty": "send"
+    },
+    {
+      "fromId": "who",
+      "fromProperty": "out-notify",
+      "toId": "res-5",
+      "toProperty": "pm-notify"
+    },
+    {
+      "fromId": "who",
+      "fromProperty": "out-nobody",
+      "toId": "res-5",
+      "toProperty": "send"
+    },
+    {
+      "fromId": "who",
+      "fromProperty": "failure",
+      "toId": "oops",
+      "toProperty": "send"
+    },
+    {
+      "fromId": "mine",
+      "fromProperty": "failure",
+      "toId": "oops",
+      "toProperty": "send"
+    },
+    {
+      "fromId": "read",
+      "fromProperty": "failure",
+      "toId": "oops",
+      "toProperty": "send"
+    }
+  ]
+}

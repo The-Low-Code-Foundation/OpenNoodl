@@ -6,17 +6,17 @@
     {
       "fromId": "association",
       "fromProperty": "items",
-      "toId": "read",
+      "toId": "read-2",
       "toProperty": "in-rows"
     },
     {
       "fromId": "association",
       "fromProperty": "fetched",
-      "toId": "read",
+      "toId": "read-2",
       "toProperty": "run"
     },
     {
-      "fromId": "read",
+      "fromId": "read-2",
       "fromProperty": "out-name",
       "toId": "name",
       "toProperty": "text"
@@ -30,7 +30,7 @@
     {
       "fromId": "logout",
       "fromProperty": "done",
-      "toId": "toLanding-6",
+      "toId": "toLanding-7",
       "toProperty": "navigate"
     },
     {
@@ -67,6 +67,12 @@
       "fromId": "navDirectory",
       "fromProperty": "onClick",
       "toId": "toDirectoryNav",
+      "toProperty": "navigate"
+    },
+    {
+      "fromId": "navAccount",
+      "fromProperty": "onClick",
+      "toId": "toAccountNav",
       "toProperty": "navigate"
     },
     {

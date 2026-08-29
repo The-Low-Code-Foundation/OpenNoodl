@@ -196,7 +196,7 @@
       "y": 2200
     },
     {
-      "id": "hold",
+      "id": "hold-3",
       "type": "JavaScriptFunction",
       "label": "Hold the id",
       "parameters": {
@@ -213,7 +213,7 @@
       "y": 40
     },
     {
-      "id": "record",
+      "id": "record-2",
       "type": "DbModel2",
       "label": "The announcement",
       "parameters": {

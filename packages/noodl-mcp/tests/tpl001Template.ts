@@ -51,6 +51,7 @@ import { createServer } from '../src/server';
 
 import { readAsLegacyProject } from './sb007Template';
 import { TPL001_CLOUD_COMPONENTS } from './tpl001Cloud';
+import { TPL002_CLOUD_COMPONENTS } from './tpl002Cloud';
 import { APP_NODES, APP_WIRES, TPL001_COMPONENTS, createPass } from './tpl001Components';
 import { TPL001_PRESET, TPL001_TOKENS } from './tpl001Theme';
 
@@ -257,7 +258,12 @@ export async function buildMembersTemplateProject(options: BuildOptions = {}): P
 
   if (!options.omitApp) await create(APP_COMPONENT, APP_NODES, APP_WIRES);
 
-  for (const c of TPL001_CLOUD_COMPONENTS) {
+  // 🔴 TPL-002's four are authored in the same pass and not a second one. A
+  // `CloudFunction2` names its endpoint by STRING, so there is no ordering
+  // constraint between any of the eight — but a page that calls one of them
+  // must not be written before the function exists on disk, and the browser
+  // components come after both loops.
+  for (const c of [...TPL001_CLOUD_COMPONENTS, ...TPL002_CLOUD_COMPONENTS]) {
     await create(c.path, c.nodes, c.connections);
   }
 

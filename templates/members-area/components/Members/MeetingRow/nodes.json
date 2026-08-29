@@ -4,7 +4,7 @@
   "version": 1,
   "nodes": [
     {
-      "id": "row-2",
+      "id": "row-4",
       "type": "Group",
       "label": "One meeting",
       "children": [
@@ -33,7 +33,7 @@
       "id": "rowLines-2",
       "type": "Group",
       "label": "What it is, when and where",
-      "parent": "row-2",
+      "parent": "row-4",
       "children": [
         "rowTitle-2",
         "rowWhen"
@@ -82,7 +82,7 @@
       "id": "detailButton",
       "type": "net.noodl.controls.button",
       "label": "Details",
-      "parent": "row-2",
+      "parent": "row-4",
       "parameters": {
         "label": "Details",
         "backgroundColor": "transparent",
@@ -154,6 +154,6 @@
     }
   ],
   "visualRoots": [
-    "row-2"
+    "row-4"
   ]
 }

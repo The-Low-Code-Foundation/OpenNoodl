@@ -69,13 +69,26 @@ export const MEMBERS_SECURITY = require(path.join(REPO, 'templates', 'members-ar
   unknown
 >;
 
-/** The four endpoints, in registry-key form. */
-export const CLOUD_KEYS = [
-  '__cloud__/claimAssociation',
-  '__cloud__/requestAccess',
-  '__cloud__/myStanding',
-  '__cloud__/decideMembership'
-];
+/**
+ * Every endpoint the shipped artefact carries, in registry-key form, **derived
+ * from disk**.
+ *
+ * 🔴 **This was a hand-written list of four, and TPL-002 found out how it
+ * fails.** Adding `myNotifySetting`, `setNotifySetting`, `unsubscribe` and
+ * `notifyMembers` to the template left this constant unchanged, so the bundle a
+ * drive loads held four of eight — and every call to a new one answered **404**,
+ * which reads exactly like an endpoint that is broken rather than one that was
+ * never deployed. Nothing in the harness could have said which.
+ *
+ * ⚠️ It is the same class as the frozen-fixture trap: a constant that presumes
+ * the live side only ever agrees with it. The directory IS the list, so this
+ * reads the directory — and a ninth function is bundled by existing.
+ */
+export const CLOUD_KEYS = fs
+  .readdirSync(path.join(TEMPLATE_DIR, 'components', '__cloud__'), { withFileTypes: true })
+  .filter((e) => e.isDirectory())
+  .map((e) => `__cloud__/${e.name}`)
+  .sort();
 
 /** The secret the setup flow compares against. Machine-local, never a project file. */
 export const SETUP_TOKEN = 'tpl001-setup-token-4f1ac9';
@@ -87,7 +100,7 @@ export function copyTemplateProject(label: string): string {
   return dir;
 }
 
-/** The four cloud components, converted to the bundle shape a backend loads. */
+/** Every cloud component the artefact carries, in the bundle shape a backend loads. */
 export function bundleMembersCloud(projectDir: string): WorkflowBundle {
   return bundleAuthoredComponents(projectDir, CLOUD_KEYS);
 }

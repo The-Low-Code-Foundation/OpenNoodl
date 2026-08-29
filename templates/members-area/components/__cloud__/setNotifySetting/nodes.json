@@ -1,0 +1,116 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "7518231e-2810-5ef0-8f46-204a7d86a24f",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "req-6",
+      "type": "noodl.cloud.request",
+      "label": "setNotifySetting(wanted)",
+      "parameters": {
+        "params": "wanted",
+        "ptype-wanted": "boolean",
+        "preq-wanted": true,
+        "allowNoAuth": false
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "who-2",
+      "type": "JavaScriptFunction",
+      "label": "Hold the change until both are here",
+      "parameters": {
+        "functionScript": "if (Inputs.wanted === undefined) return;\nconst id = Inputs.userId === undefined || Inputs.userId === null ? '' : String(Inputs.userId);\nif (id.length === 0) return;\nOutputs.userId = id;\nOutputs.wanted = Inputs.wanted === true;\nOutputs.ok();"
+      },
+      "ports": [
+        {
+          "name": "out-ok",
+          "plug": "output",
+          "type": "signal"
+        }
+      ],
+      "x": 40,
+      "y": 160
+    },
+    {
+      "id": "mine-2",
+      "type": "DbCollection2",
+      "label": "My directory row",
+      "parameters": {
+        "collectionName": "Member",
+        "runOnChange-collectionName": false,
+        "runOnChange-querySettings": false,
+        "visualFilter": {
+          "combinator": "and",
+          "rules": [
+            {
+              "property": "userId",
+              "operator": "equal to",
+              "input": "userId"
+            }
+          ]
+        }
+      },
+      "x": 40,
+      "y": 280
+    },
+    {
+      "id": "pick",
+      "type": "JavaScriptFunction",
+      "label": "The row to change, and what to put in it",
+      "parameters": {
+        "runOnChange-in-rows": false,
+        "runOnChange-in-wanted": false,
+        "functionScript": "function tpl002Rows(raw) {\n  const list = raw && raw.items ? raw.items : (Array.isArray(raw) ? raw : []);\n  const out = [];\n  for (let i = 0; i < list.length; i++) {\n    const m = list[i];\n    const data = m && m.data ? m.data : m;\n    const id = m && typeof m.getId === \"function\" ? m.getId() : (data && (data.id || data.objectId));\n    out.push({ id: id, data: data || {} });\n  }\n  return out;\n}\n// Two producers — the query supplies the row, the request supplies the\n// decision — so this opens with the readiness guard rule 2 prescribes.\nif (Inputs.rows === undefined || Inputs.wanted === undefined) return;\nconst rows = tpl002Rows(Inputs.rows);\nOutputs.notify = Inputs.wanted === true;\nif (rows.length === 0 || !rows[0].id) {\n  Outputs.norow();\n  return;\n}\nOutputs.rowId = rows[0].id;\nOutputs.write();"
+      },
+      "ports": [
+        {
+          "name": "out-write",
+          "plug": "output",
+          "type": "signal"
+        },
+        {
+          "name": "out-norow",
+          "plug": "output",
+          "type": "signal"
+        }
+      ],
+      "x": 40,
+      "y": 400
+    },
+    {
+      "id": "row",
+      "type": "SetDbModelProperties",
+      "label": "Save the setting",
+      "parameters": {
+        "collectionName": "Member",
+        "idSource": "explicit",
+        "storeProperties": "specified"
+      },
+      "x": 40,
+      "y": 520
+    },
+    {
+      "id": "res-6",
+      "type": "noodl.cloud.response",
+      "label": "Saved",
+      "parameters": {
+        "params": "notify"
+      },
+      "x": 40,
+      "y": 640
+    },
+    {
+      "id": "oops-2",
+      "type": "noodl.cloud.response",
+      "label": "Could not be saved",
+      "parameters": {
+        "status": "failure",
+        "errorMessage": "Your email setting could not be saved."
+      },
+      "x": 40,
+      "y": 760
+    }
+  ]
+}

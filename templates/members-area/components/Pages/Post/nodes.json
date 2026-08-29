@@ -634,6 +634,57 @@
       },
       "x": 530,
       "y": 160
+    },
+    {
+      "id": "announce",
+      "type": "JavaScriptFunction",
+      "label": "Everything the fan-out needs, from one node",
+      "parameters": {
+        "runOnChange-in-id": false,
+        "functionScript": "if (Inputs.id === undefined || String(Inputs.id).length === 0) return;\nOutputs.announcementId = String(Inputs.id);\n// 🔴 The app tells the server where the app is, because the server\n// cannot find out. `EmailConfigState.effectiveBaseUrl` exists and the\n// product’s own password-reset route uses it, but nothing exposes it\n// to a graph — see D34. `location.origin` is, by construction, where\n// this members’ area is served from, and the endpoint keeps only the\n// scheme and host of whatever it is handed.\nOutputs.siteUrl = typeof location !== 'undefined' && location.origin ? String(location.origin) : '';\nOutputs.go();"
+      },
+      "ports": [
+        {
+          "name": "out-go",
+          "plug": "output",
+          "type": "signal"
+        }
+      ],
+      "x": 530,
+      "y": 2800
+    },
+    {
+      "id": "notify",
+      "type": "CloudFunction2",
+      "label": "notifyMembers",
+      "parameters": {
+        "function": "notifyMembers"
+      },
+      "x": 530,
+      "y": 2920
+    },
+    {
+      "id": "report",
+      "type": "JavaScriptFunction",
+      "label": "What to tell the moderator",
+      "parameters": {
+        "runOnChange-in-sent": false,
+        "runOnChange-in-failed": false,
+        "runOnChange-in-error": false,
+        "functionScript": "// TPL-002 §3, and the four cases are separately actionable: post it\n// again, tell somebody another way, go and configure SMTP, or nothing.\nif (Inputs.sent === undefined) return;\nconst sent = Number(Inputs.sent) || 0;\nconst failed = Number(Inputs.failed) || 0;\nconst error = Inputs.error === undefined || Inputs.error === null ? '' : String(Inputs.error);\nif (sent === 0 && failed === 0) {\n  Outputs.line = \"Posted. Nobody has asked to be emailed yet, so no emails were sent.\";\n  return;\n}\nif (sent === 0) {\n  // 🔴 The mailer’s own words, verbatim. With SMTP unconfigured this\n  // is `notConfiguredReason()`, which names the Backend Services\n  // panel — the one thing the person reading it has to go and open.\n  Outputs.line = \"Posted — but the emails could not be sent. \" + (error || \"No emails could be sent.\");\n  return;\n}\nlet line = \"Posted. \" + \"Emailed to \" + sent +\n  (sent === 1 ? \" member who asked to be told.\" : \" members who asked to be told.\");\nif (failed > 0) {\n  line += \" \" + failed + \" could not be sent. \" + error;\n}\nOutputs.line = line;"
+      },
+      "x": 530,
+      "y": 1840
+    },
+    {
+      "id": "reportRefused",
+      "type": "JavaScriptFunction",
+      "label": "The fan-out itself was refused",
+      "parameters": {
+        "functionScript": "Outputs.line = \"Posted — but the emails could not be sent. \" + \"No emails could be sent.\";"
+      },
+      "x": 530,
+      "y": 1960
     }
   ],
   "visualRoots": [

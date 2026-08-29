@@ -6,41 +6,41 @@
     {
       "fromId": "association-2",
       "fromProperty": "items",
-      "toId": "read-2",
+      "toId": "read-3",
       "toProperty": "in-rows"
     },
     {
       "fromId": "association-2",
       "fromProperty": "fetched",
-      "toId": "read-2",
+      "toId": "read-3",
       "toProperty": "run"
     },
     {
-      "fromId": "read-2",
+      "fromId": "read-3",
       "fromProperty": "out-name",
       "toId": "heading",
       "toProperty": "text"
     },
     {
-      "fromId": "read-2",
+      "fromId": "read-3",
       "fromProperty": "out-blurb",
       "toId": "blurb",
       "toProperty": "text"
     },
     {
-      "fromId": "read-2",
+      "fromId": "read-3",
       "fromProperty": "out-needsSetup",
       "toId": "setupCard",
       "toProperty": "mounted"
     },
     {
-      "fromId": "read-2",
+      "fromId": "read-3",
       "fromProperty": "out-hasAssociation",
       "toId": "actions",
       "toProperty": "mounted"
     },
     {
-      "fromId": "read-2",
+      "fromId": "read-3",
       "fromProperty": "out-hasAssociation",
       "toId": "inside",
       "toProperty": "mounted"

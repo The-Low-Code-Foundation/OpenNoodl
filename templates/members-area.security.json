@@ -72,6 +72,19 @@
     },
     "decideMembership": {
       "call": "role:admin"
+    },
+    "myNotifySetting": {
+      "call": ["role:member", "role:admin"]
+    },
+    "setNotifySetting": {
+      "call": ["role:member", "role:admin"]
+    },
+    "unsubscribe": {
+      "call": "public",
+      "rateLimit": { "ratePerMinute": 10, "burst": 10 }
+    },
+    "notifyMembers": {
+      "call": "role:admin"
     }
   },
   "files": {

@@ -1,0 +1,10 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "7518231e-2810-5ef0-8f46-204a7d86a24f",
+  "name": "setNotifySetting",
+  "path": "/#__cloud__/setNotifySetting",
+  "type": "cloud",
+  "created": "2026-08-28T00:00:00.000Z",
+  "modified": "2026-08-28T00:00:00.000Z",
+  "modifiedBy": "noodl-mcp"
+}

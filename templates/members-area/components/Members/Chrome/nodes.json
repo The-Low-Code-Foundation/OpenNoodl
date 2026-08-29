@@ -159,7 +159,8 @@
         "navMeetings",
         "navPost",
         "navRequests",
-        "navDirectory"
+        "navDirectory",
+        "navAccount"
       ],
       "parameters": {
         "sizing": "autoFit",
@@ -319,6 +320,34 @@
       "y": 1480
     },
     {
+      "id": "navAccount",
+      "type": "net.noodl.controls.button",
+      "label": "Your account",
+      "parent": "nav",
+      "parameters": {
+        "label": "Your account",
+        "backgroundColor": "transparent",
+        "color": "var(--foreground)",
+        "borderRadius": "var(--radius-full)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-control)",
+        "paddingLeft": "var(--space-3)",
+        "paddingRight": "var(--space-3)",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "sizeMode": "contentHeight",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        }
+      },
+      "x": 220,
+      "y": 1600
+    },
+    {
       "id": "toAnnouncements",
       "type": "RouterNavigate",
       "label": "To announcements",
@@ -374,6 +403,17 @@
       "y": 1600
     },
     {
+      "id": "toAccountNav",
+      "type": "RouterNavigate",
+      "label": "To your account",
+      "parameters": {
+        "router": "Main",
+        "target": "/Pages/Account"
+      },
+      "x": 530,
+      "y": 1720
+    },
+    {
       "id": "association",
       "type": "DbCollection2",
       "label": "The association",
@@ -381,10 +421,10 @@
         "collectionName": "Association"
       },
       "x": 530,
-      "y": 1720
+      "y": 1840
     },
     {
-      "id": "read",
+      "id": "read-2",
       "type": "JavaScriptFunction",
       "label": "Its name, once there is one",
       "parameters": {
@@ -442,7 +482,7 @@
         }
       ],
       "x": 530,
-      "y": 1840
+      "y": 1960
     },
     {
       "id": "logout",
@@ -452,7 +492,7 @@
       "y": 760
     },
     {
-      "id": "toLanding-6",
+      "id": "toLanding-7",
       "type": "RouterNavigate",
       "label": "Back to the public page",
       "parameters": {
@@ -460,7 +500,7 @@
         "target": "/Pages/Landing"
       },
       "x": 530,
-      "y": 1960
+      "y": 2080
     }
   ],
   "visualRoots": [

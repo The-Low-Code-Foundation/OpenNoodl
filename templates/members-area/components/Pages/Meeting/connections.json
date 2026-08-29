@@ -6,47 +6,47 @@
     {
       "fromId": "pageInputs-2",
       "fromProperty": "pm-meetingId",
-      "toId": "hold-2",
+      "toId": "hold-4",
       "toProperty": "in-meetingId"
     },
     {
       "fromId": "page-6",
       "fromProperty": "didMount",
-      "toId": "hold-2",
+      "toId": "hold-4",
       "toProperty": "run"
     },
     {
-      "fromId": "hold-2",
+      "fromId": "hold-4",
       "fromProperty": "out-meetingId",
-      "toId": "record-2",
+      "toId": "record-3",
       "toProperty": "modelId"
     },
     {
-      "fromId": "hold-2",
+      "fromId": "hold-4",
       "fromProperty": "out-ready",
-      "toId": "record-2",
+      "toId": "record-3",
       "toProperty": "fetch"
     },
     {
-      "fromId": "record-2",
+      "fromId": "record-3",
       "fromProperty": "prop-title",
       "toId": "title-2",
       "toProperty": "text"
     },
     {
-      "fromId": "record-2",
+      "fromId": "record-3",
       "fromProperty": "prop-place",
       "toId": "place",
       "toProperty": "text"
     },
     {
-      "fromId": "record-2",
+      "fromId": "record-3",
       "fromProperty": "prop-details",
       "toId": "details",
       "toProperty": "text"
     },
     {
-      "fromId": "record-2",
+      "fromId": "record-3",
       "fromProperty": "prop-when",
       "toId": "whenLabel-2",
       "toProperty": "in-when"
@@ -58,7 +58,7 @@
       "toProperty": "text"
     },
     {
-      "fromId": "record-2",
+      "fromId": "record-3",
       "fromProperty": "failure",
       "toId": "refusalGate-2",
       "toProperty": "eval"
@@ -100,7 +100,7 @@
       "toProperty": "mounted"
     },
     {
-      "fromId": "hold-2",
+      "fromId": "hold-4",
       "fromProperty": "out-meetingId",
       "toId": "confirmed-2",
       "toProperty": "in-meetingId"

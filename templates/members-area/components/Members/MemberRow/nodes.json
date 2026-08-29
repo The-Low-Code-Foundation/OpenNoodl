@@ -4,7 +4,7 @@
   "version": 1,
   "nodes": [
     {
-      "id": "row-4",
+      "id": "row-6",
       "type": "Group",
       "label": "One member",
       "children": [
@@ -31,7 +31,7 @@
       "id": "rowLines-3",
       "type": "Group",
       "label": "Who they are, where to reach them, and what they are here",
-      "parent": "row-4",
+      "parent": "row-6",
       "children": [
         "rowName-2",
         "rowEmail",
@@ -131,6 +131,6 @@
     }
   ],
   "visualRoots": [
-    "row-4"
+    "row-6"
   ]
 }

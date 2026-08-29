@@ -1,0 +1,247 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "7651831b-6ed7-551e-861c-01904e380b3f",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "req-8",
+      "fromProperty": "pm-announcementId",
+      "toId": "hold-2",
+      "toProperty": "in-announcementId"
+    },
+    {
+      "fromId": "req-8",
+      "fromProperty": "pm-siteUrl",
+      "toId": "hold-2",
+      "toProperty": "in-siteUrl"
+    },
+    {
+      "fromId": "req-8",
+      "fromProperty": "receive",
+      "toId": "hold-2",
+      "toProperty": "run"
+    },
+    {
+      "fromId": "hold-2",
+      "fromProperty": "out-announcementId",
+      "toId": "record",
+      "toProperty": "modelId"
+    },
+    {
+      "fromId": "hold-2",
+      "fromProperty": "out-ok",
+      "toId": "record",
+      "toProperty": "fetch"
+    },
+    {
+      "fromId": "hold-2",
+      "fromProperty": "out-origin",
+      "toId": "plan",
+      "toProperty": "in-origin"
+    },
+    {
+      "fromId": "record",
+      "fromProperty": "prop-title",
+      "toId": "plan",
+      "toProperty": "in-title"
+    },
+    {
+      "fromId": "record",
+      "fromProperty": "prop-body",
+      "toId": "plan",
+      "toProperty": "in-body"
+    },
+    {
+      "fromId": "record",
+      "fromProperty": "done",
+      "toId": "wanting",
+      "toProperty": "storageFetch"
+    },
+    {
+      "fromId": "wanting",
+      "fromProperty": "items",
+      "toId": "plan",
+      "toProperty": "in-rows"
+    },
+    {
+      "fromId": "wanting",
+      "fromProperty": "fetched",
+      "toId": "plan",
+      "toProperty": "run"
+    },
+    {
+      "fromId": "plan",
+      "fromProperty": "out-next",
+      "toId": "pump",
+      "toProperty": "run"
+    },
+    {
+      "fromId": "pump",
+      "fromProperty": "out-to",
+      "toId": "mail",
+      "toProperty": "to"
+    },
+    {
+      "fromId": "pump",
+      "fromProperty": "out-subject",
+      "toId": "mail",
+      "toProperty": "subject"
+    },
+    {
+      "fromId": "pump",
+      "fromProperty": "out-text",
+      "toId": "mail",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "pump",
+      "fromProperty": "out-send",
+      "toId": "mail",
+      "toProperty": "send"
+    },
+    {
+      "fromId": "mail",
+      "fromProperty": "done",
+      "toId": "sent",
+      "toProperty": "run"
+    },
+    {
+      "fromId": "mail",
+      "fromProperty": "failure",
+      "toId": "bad",
+      "toProperty": "run"
+    },
+    {
+      "fromId": "mail",
+      "fromProperty": "error",
+      "toId": "bad",
+      "toProperty": "in-error"
+    },
+    {
+      "fromId": "sent",
+      "fromProperty": "out-outcome",
+      "toId": "pump",
+      "toProperty": "in-outcome"
+    },
+    {
+      "fromId": "sent",
+      "fromProperty": "out-error",
+      "toId": "pump",
+      "toProperty": "in-error"
+    },
+    {
+      "fromId": "sent",
+      "fromProperty": "out-go",
+      "toId": "pump",
+      "toProperty": "run"
+    },
+    {
+      "fromId": "bad",
+      "fromProperty": "out-outcome",
+      "toId": "pump",
+      "toProperty": "in-outcome"
+    },
+    {
+      "fromId": "bad",
+      "fromProperty": "out-error",
+      "toId": "pump",
+      "toProperty": "in-error"
+    },
+    {
+      "fromId": "bad",
+      "fromProperty": "out-go",
+      "toId": "pump",
+      "toProperty": "run"
+    },
+    {
+      "fromId": "pump",
+      "fromProperty": "out-sent",
+      "toId": "res-8",
+      "toProperty": "pm-sent"
+    },
+    {
+      "fromId": "pump",
+      "fromProperty": "out-failed",
+      "toId": "res-8",
+      "toProperty": "pm-failed"
+    },
+    {
+      "fromId": "pump",
+      "fromProperty": "out-error",
+      "toId": "res-8",
+      "toProperty": "pm-error"
+    },
+    {
+      "fromId": "pump",
+      "fromProperty": "out-finished",
+      "toId": "res-8",
+      "toProperty": "send"
+    },
+    {
+      "fromId": "plan",
+      "fromProperty": "out-sent",
+      "toId": "res-8",
+      "toProperty": "pm-sent"
+    },
+    {
+      "fromId": "plan",
+      "fromProperty": "out-failed",
+      "toId": "res-8",
+      "toProperty": "pm-failed"
+    },
+    {
+      "fromId": "plan",
+      "fromProperty": "out-error",
+      "toId": "res-8",
+      "toProperty": "pm-error"
+    },
+    {
+      "fromId": "plan",
+      "fromProperty": "out-nobody",
+      "toId": "res-8",
+      "toProperty": "send"
+    },
+    {
+      "fromId": "hold-2",
+      "fromProperty": "failure",
+      "toId": "oops-3",
+      "toProperty": "send"
+    },
+    {
+      "fromId": "record",
+      "fromProperty": "failure",
+      "toId": "oops-3",
+      "toProperty": "send"
+    },
+    {
+      "fromId": "wanting",
+      "fromProperty": "failure",
+      "toId": "oops-3",
+      "toProperty": "send"
+    },
+    {
+      "fromId": "plan",
+      "fromProperty": "failure",
+      "toId": "oops-3",
+      "toProperty": "send"
+    },
+    {
+      "fromId": "pump",
+      "fromProperty": "failure",
+      "toId": "oops-3",
+      "toProperty": "send"
+    },
+    {
+      "fromId": "sent",
+      "fromProperty": "failure",
+      "toId": "oops-3",
+      "toProperty": "send"
+    },
+    {
+      "fromId": "bad",
+      "fromProperty": "failure",
+      "toId": "oops-3",
+      "toProperty": "send"
+    }
+  ]
+}

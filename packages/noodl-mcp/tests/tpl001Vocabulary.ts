@@ -349,3 +349,164 @@ export const CONFIRM_REMOVE_NO = 'Keep it';
  * first.
  */
 export const REMOVE_FAILED_TEXT = 'That could not be removed just now. Please try again in a moment.';
+
+// ═════════════════════════════════════════════════════════════════════════════
+// TPL-002 — telling people something was posted
+// ═════════════════════════════════════════════════════════════════════════════
+
+/**
+ * 🔴 **The flag is ONE field on the `Member` row, and it is written `false`.**
+ *
+ * Not absent-means-off. The fan-out's filter is `notifyByEmail equal to true`,
+ * so an absent field would already be safe — but the account screen has to draw
+ * a box, and a box bound to `undefined` is a box that renders neither ticked nor
+ * unticked. `decideMembership` writes it explicitly at approval, which is the
+ * only moment a `Member` row is born.
+ *
+ * ⚠️ **Opt-in, and this is the one default in the template with a legal reason
+ * rather than a taste one.** TPL-002 §4: these are charities and congregations
+ * in the UK and EU, consent is opt-in, and a template shipping opt-out would
+ * teach every association that installed it to break the law on the first day.
+ */
+export const MEMBER_FIELD_NOTIFY = 'notifyByEmail';
+
+/**
+ * The one-click token the unsubscribe link carries.
+ *
+ * 🔴 **It exists because the person clicking it is signed OUT.** TPL-002 AC4 is
+ * explicit: from the email, without asking anyone. There is no session on that
+ * request and no role to check, so the token IS the authority — which means it
+ * must be unguessable, per-member, and must name a row without the caller ever
+ * naming one.
+ *
+ * ⚠️ **It is not a secret the template ships or an HMAC of a backend key.** Both
+ * were considered. A keyed digest would need a second provisioned secret beside
+ * `ASSOCIATION_SETUP_TOKEN`, and an association that never provisioned it would
+ * have unsubscribe links that silently never worked — the exact failure TPL-002
+ * §2 exists to avoid one layer up. A stored random token needs no provisioning
+ * and fails visibly if it is missing.
+ *
+ * ⚠️ **Minted lazily as well as at approval.** Every `Member` row written before
+ * this feature existed has no token, and a fan-out that skipped those rows would
+ * silently mail nobody on an association that had been running for a year. The
+ * pump mints one for any row that lacks it, in the same request that mails it.
+ */
+export const MEMBER_FIELD_UNSUBSCRIBE_TOKEN = 'unsubscribeToken';
+
+/** Reads the caller's own notification setting. `role:member`/`role:admin`. */
+export const FN_MY_NOTIFY = 'myNotifySetting';
+/**
+ * Writes the caller's own notification setting.
+ *
+ * 🔴 **The row is found from `req.userId` and never from a parameter.** TPL-002
+ * §6 calls this the one place row-level ACL is load-bearing, and the shape built
+ * here answers that concern by removing the write rather than guarding it: a
+ * member has no direct write access to `Member` at all — `create`/`update` stay
+ * `nobody` in the policy — and the only id this endpoint will act on is the one
+ * the session proves. "Nobody else's row" is then structural rather than a rule
+ * somebody has to keep correct.
+ */
+export const FN_SET_NOTIFY = 'setNotifySetting';
+/** Turns the setting off from the email itself. `public` — the token is the gate. */
+export const FN_UNSUBSCRIBE = 'unsubscribe';
+/** Mails the opted-in members about one announcement. `role:admin`. */
+export const FN_NOTIFY_MEMBERS = 'notifyMembers';
+
+/** Every endpoint TPL-002 adds, for the spec that holds the policy to them. */
+export const TPL002_FUNCTIONS = [FN_MY_NOTIFY, FN_SET_NOTIFY, FN_UNSUBSCRIBE, FN_NOTIFY_MEMBERS];
+
+/** The two roles allowed to read and set their own preference. Never `authenticated`. */
+export const MEMBER_OR_MODERATOR = [`role:${ROLE_MEMBER}`, `role:${ROLE_MODERATOR}`];
+
+/**
+ * "Members who asked to be told."
+ *
+ * ⚠️ `equal to true` and not `is not null`: the field is a boolean the account
+ * screen flips both ways, so a row that was ticked and then unticked holds
+ * `false` rather than nothing at all.
+ *
+ * 🔴 **`value`, not `input`, and the difference is the whole rule.** In a
+ * `visualFilter` leaf `input` names a PORT the value arrives on (`qp-<name>` on
+ * Query Records) and `value` is a literal — `collectFilterParameters` walks the
+ * tree collecting `input` names and nothing else. Written as `input: true` this
+ * rule named a port called `true` that nothing ever set, and the query returned
+ * **every member**: measured, s14, as a send that reached three people when one
+ * had opted in. `UPCOMING_FILTER`'s `input: 'today'` is the other shape, and it
+ * is correct there because `Pages/Meetings` wires `qp-today`.
+ */
+export const NOTIFY_FILTER = {
+  combinator: 'and',
+  rules: [{ property: MEMBER_FIELD_NOTIFY, operator: 'equal to', value: true }]
+};
+
+// ── The sentences ────────────────────────────────────────────────────────────
+
+/** The label on the box. It says what will happen, not what the field is called. */
+export const NOTIFY_OPT_IN_LABEL = 'Email me when a moderator posts an announcement';
+
+/** Under the box: the two things a person needs to know before ticking it. */
+export const NOTIFY_OPT_IN_NOTE =
+  'Off unless you turn it on. Every email has a link that turns it off again, and you do not need to sign in to use it.';
+
+export const NOTIFY_SAVED_ON_TEXT = 'Saved. We will email you when something is posted.';
+export const NOTIFY_SAVED_OFF_TEXT = 'Saved. We will not email you about new announcements.';
+export const NOTIFY_SAVE_FAILED_TEXT = 'That could not be saved just now. Please try again in a moment.';
+
+/** The unsubscribe page, signed out. */
+export const UNSUBSCRIBED_TEXT =
+  'Done. You will not receive any more emails about new announcements. You are still a member, and you can turn them back on from your account at any time.';
+/**
+ * ⚠️ **This one DOES distinguish, and that is a departure from the template's
+ * one-refusal rule.** Setup and join answer identically however they fail,
+ * because a distinguishable refusal there answers *"is this person one of you?"*
+ * to a stranger who asked. A token is different: it is 128 bits of randomness
+ * that only ever travelled to one address, so "that link did not work" tells a
+ * guesser nothing they could act on — and the person it does reach is somebody
+ * whose mail client mangled the URL, who otherwise sees a success page and goes
+ * on receiving email they asked to stop.
+ */
+export const UNSUBSCRIBE_FAILED_TEXT =
+  'That link did not work. It may have been broken by your email program — try copying the whole address, or turn emails off from your account.';
+
+/** What the moderator is told when the mail went out. `{n}` is filled in the graph. */
+export const NOTIFY_SENT_PREFIX = 'Emailed to ';
+export const NOTIFY_SENT_SUFFIX_ONE = ' member who asked to be told.';
+export const NOTIFY_SENT_SUFFIX_MANY = ' members who asked to be told.';
+
+/**
+ * 🔴 **TPL-002 §3, and the whole reason this task is separate from TPL-001.**
+ *
+ * Nobody ticked the box, so nothing was sent and nothing failed. Said out loud
+ * because the alternative — a silent post — is indistinguishable from a post
+ * whose emails all failed, and the moderator's next action differs completely.
+ */
+export const NOTIFY_NOBODY_TEXT = 'Posted. Nobody has asked to be emailed yet, so no emails were sent.';
+
+/**
+ * 🔴 **The §3 sentence is not written here, and that is deliberate.**
+ *
+ * The backend already writes it — `EmailConfigState.notConfiguredReason()`
+ * returns *"Email is not configured for this backend: no SMTP host/port set.
+ * Configure SMTP in the Backend Services panel (Email section)…"* — and it names
+ * the panel, which is the one thing the person reading it has to go and open.
+ * The template surfaces that string **verbatim** rather than replacing it with a
+ * sentence of its own, so an app built from this template cannot drift out of
+ * date with the product's own instructions.
+ *
+ * What the template owns is the LEAD-IN: the reassurance that the announcement
+ * itself was posted, which the backend's message knows nothing about and which
+ * is the moderator's first question.
+ */
+export const NOTIFY_FAILED_LEAD = 'Posted — but the emails could not be sent. ';
+
+/**
+ * The partial case, and it exists because the two halves are separately
+ * actionable: *some* members were emailed (so do not post it again) and some
+ * were not (so somebody has to be told another way).
+ */
+export const NOTIFY_PARTIAL_PREFIX = ' ';
+export const NOTIFY_PARTIAL_SUFFIX = ' could not be sent. ';
+/** Nothing reached anybody, and the mailer said nothing about why. */
+export const NOTIFY_NONE_SENT_TEXT = 'No emails could be sent.';
+/** The lead on the count. The announcement is posted whatever happened to the mail. */
+export const NOTIFY_POSTED_LEAD = 'Posted. ';

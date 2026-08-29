@@ -247,7 +247,11 @@ const EXPECTED_PAGE_COUNT: Record<string, number> = {
   // below. It answers it by NOT being bare: the sign-in screen carries the
   // template's own tokens, so the floor set does not grow with it.
   'site-builder': 6,
-  'members-area': 11
+  // 11 → 13: TPL-002's `/Pages/Account` and `/Pages/Unsubscribe`. The pin did
+  // what it is for again — both pages then had to answer §4, and both do: they
+  // are built from `PAGE_GROUND`, `PANEL`, `notice` and `pageHead`, which is the
+  // same token vocabulary the other eleven wear.
+  'members-area': 13
 };
 
 /**

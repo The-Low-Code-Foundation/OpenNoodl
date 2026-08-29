@@ -203,6 +203,18 @@
     },
     {
       "fromId": "founding",
+      "fromProperty": "out-notifyByEmail",
+      "toId": "founder",
+      "toProperty": "prop-notifyByEmail"
+    },
+    {
+      "fromId": "founding",
+      "fromProperty": "out-unsubscribeToken",
+      "toId": "founder",
+      "toProperty": "prop-unsubscribeToken"
+    },
+    {
+      "fromId": "founding",
       "fromProperty": "out-file",
       "toId": "founder",
       "toProperty": "store"

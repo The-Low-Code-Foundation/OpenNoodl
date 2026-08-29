@@ -58,6 +58,8 @@ import {
   FN_DECIDE,
   FN_MY_STANDING,
   FN_REQUEST_ACCESS,
+  MEMBER_FIELD_NOTIFY,
+  MEMBER_FIELD_UNSUBSCRIBE_TOKEN,
   MEMBER_STANDING_MEMBER,
   MEMBER_STANDING_MODERATOR,
   MODERATOR_ONLY_RULES,
@@ -71,6 +73,28 @@ import {
   STANDING_PENDING,
   STANDING_VISITOR
 } from './tpl001Vocabulary';
+
+/**
+ * TPL-002 — mint an unsubscribe key, inline, in the two scripts that write a
+ * `Member` row.
+ *
+ * 🔴 **`crypto` is the platform's, not a shim.** A `JavaScriptFunction`'s body is
+ * compiled with `new AsyncFunction(...)` and runs in this process's own global
+ * scope — there is no sandbox — so Node 22's `globalThis.crypto` is what
+ * `crypto.randomUUID()` resolves to. Two of them, because one UUID is 122 bits
+ * of randomness and this value is the sole authority behind a public endpoint.
+ *
+ * ⚠️ **A guard rather than a bare call.** If `crypto` were ever absent the
+ * fallback is deliberately NOT `Math.random()` dressed up as a token — it is an
+ * empty string, which the fan-out treats as "no unsubscribe key" and refuses to
+ * mail. Failing to send is recoverable; sending an unstoppable email is not.
+ */
+const TOKEN_PRELUDE =
+  'function tpl002Token() {\n' +
+  "  const c = typeof crypto !== 'undefined' ? crypto : undefined;\n" +
+  "  if (!c || typeof c.randomUUID !== 'function') return '';\n" +
+  "  return (c.randomUUID() + c.randomUUID()).replace(/-/g, '');\n" +
+  '}\n';
 
 /** One cloud component, in the shape `create_component` takes. */
 export interface Tpl001CloudComponent {
@@ -279,6 +303,7 @@ export const CLAIM_NODES = [
       // Rule 2: two producers (`create` supplies the id, `gate` the address), so
       // it opens with the readiness guard and everything downstream leaves here.
       functionScript:
+        TOKEN_PRELUDE +
         'if (Inputs.userId === undefined || Inputs.email === undefined) return;\n' +
         "const email = Inputs.email === null ? '' : String(Inputs.email);\n" +
         'Outputs.userId = Inputs.userId;\n' +
@@ -291,6 +316,11 @@ export const CLAIM_NODES = [
         "Outputs.name = who === '' ? email : who;\n" +
         'Outputs.joinedAt = new Date().toISOString();\n' +
         "Outputs.standing = '" + MEMBER_STANDING_MODERATOR + "';\n" +
+        // TPL-002. The founder is a `Member` row like everybody else, so it is
+        // born with the same two fields — off by default, and with a key that
+        // makes the unsubscribe link in their own copy of the email work.
+        `Outputs.${MEMBER_FIELD_NOTIFY} = false;\n` +
+        `Outputs.${MEMBER_FIELD_UNSUBSCRIBE_TOKEN} = tpl002Token();\n` +
         'Outputs.file();'
     }
   },
@@ -362,6 +392,14 @@ export const CLAIM_WIRES = [
   { fromId: 'founding', fromProperty: 'out-email', toId: 'founder', toProperty: 'prop-email' },
   { fromId: 'founding', fromProperty: 'out-joinedAt', toId: 'founder', toProperty: 'prop-joinedAt' },
   { fromId: 'founding', fromProperty: 'out-standing', toId: 'founder', toProperty: 'prop-standing' },
+  // TPL-002, and the same rule-2 reasoning as the wires on `member`.
+  { fromId: 'founding', fromProperty: `out-${MEMBER_FIELD_NOTIFY}`, toId: 'founder', toProperty: `prop-${MEMBER_FIELD_NOTIFY}` },
+  {
+    fromId: 'founding',
+    fromProperty: `out-${MEMBER_FIELD_UNSUBSCRIBE_TOKEN}`,
+    toId: 'founder',
+    toProperty: `prop-${MEMBER_FIELD_UNSUBSCRIBE_TOKEN}`
+  },
   { fromId: 'founding', fromProperty: 'out-file', toId: 'founder', toProperty: 'store' },
   // 🔴 **`founder`'s failure must not reach `deny`, and that decision stands.**
   // Setup's answer is argued down to one rule — the association is set up the
@@ -800,6 +838,7 @@ export const DECIDE_NODES = [
       'runOnChange-in-email': false,
       'runOnChange-in-approve': false,
       functionScript:
+        TOKEN_PRELUDE +
         '// Two producers — the row supplies the user id, the request supplies the\n' +
         '// decision — so this opens with the readiness guard rule 2 prescribes.\n' +
         'if (Inputs.userId === undefined || Inputs.approve === undefined) return;\n' +
@@ -818,6 +857,20 @@ export const DECIDE_NODES = [
         'Outputs.name = named.length > 0 ? named : email;\n' +
         'Outputs.joinedAt = new Date().toISOString();\n' +
         "Outputs.standing = '" + MEMBER_STANDING_MEMBER + "';\n" +
+        // ── TPL-002 ────────────────────────────────────────────────────────
+        // 🔴 Written `false` rather than left absent. The fan-out's filter is
+        // `equal to true`, so absence would already be safe — but the account
+        // screen draws a checkbox from this field, and a box bound to
+        // `undefined` renders neither ticked nor unticked. Opt-in is also the
+        // one default in this template with a legal reason: consent in the UK
+        // and EU is opt-in, and these are charities and congregations.
+        `Outputs.${MEMBER_FIELD_NOTIFY} = false;\n` +
+        // 🔴 The unsubscribe key, minted at the one moment a `Member` row is
+        // born. It is what lets AC4's link work with no session behind it, and
+        // the fan-out REFUSES to mail a row that has none — sending somebody
+        // email they have no one-click way out of is the thing AC4 exists to
+        // prevent. 128 bits from the platform's own CSPRNG.
+        `Outputs.${MEMBER_FIELD_UNSUBSCRIBE_TOKEN} = tpl002Token();\n` +
         '// A row whose userId is missing cannot be approved into anything. It is\n' +
         '// still a queue entry a moderator asked to be rid of, so it declines.\n' +
         'if (Inputs.approve === true && userId.length > 0) {\n' +
@@ -898,6 +951,15 @@ export const DECIDE_WIRES = [
   { fromId: 'route', fromProperty: 'out-email', toId: 'member', toProperty: 'prop-email' },
   { fromId: 'route', fromProperty: 'out-joinedAt', toId: 'member', toProperty: 'prop-joinedAt' },
   { fromId: 'route', fromProperty: 'out-standing', toId: 'member', toProperty: 'prop-standing' },
+  // TPL-002. Both leave `route` with everything else the row needs — rule 2 —
+  // so the projection cannot be written with either field still in flight.
+  { fromId: 'route', fromProperty: `out-${MEMBER_FIELD_NOTIFY}`, toId: 'member', toProperty: `prop-${MEMBER_FIELD_NOTIFY}` },
+  {
+    fromId: 'route',
+    fromProperty: `out-${MEMBER_FIELD_UNSUBSCRIBE_TOKEN}`,
+    toId: 'member',
+    toProperty: `prop-${MEMBER_FIELD_UNSUBSCRIBE_TOKEN}`
+  },
   // 🔴 `grant.done` and NOT `route.out-grant`: the projection may only be
   // written once the role it projects actually exists. Fired from the decision
   // instead, a grant that failed would leave a directory row for somebody the

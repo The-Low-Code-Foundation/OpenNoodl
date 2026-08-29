@@ -1,0 +1,262 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "e190644a-d3a1-513f-859a-fcd41ea4cd7c",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "page-13",
+      "type": "Page",
+      "label": "Unsubscribe",
+      "children": [
+        "ground-13"
+      ],
+      "parameters": {
+        "title": "Email settings",
+        "urlPath": "unsubscribe"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "ground-13",
+      "type": "Group",
+      "label": "Page ground",
+      "parent": "page-13",
+      "children": [
+        "headingHead-10",
+        "done",
+        "failed-3"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "maxWidth": {
+          "value": 760,
+          "unit": "px"
+        },
+        "flexDirection": "column",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "sizeMode": "explicit",
+        "height": {
+          "value": 100,
+          "unit": "%"
+        },
+        "alignX": "center",
+        "rowGap": "var(--space-5)",
+        "paddingTop": "var(--space-12)",
+        "paddingBottom": "var(--space-12)"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "headingHead-10",
+      "type": "Group",
+      "label": "Heading — the head",
+      "parent": "ground-13",
+      "children": [
+        "headingEyebrow-10",
+        "heading-11"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "flexDirection": "column",
+        "rowGap": "var(--space-1)",
+        "paddingBottom": "var(--space-2)"
+      },
+      "x": 160,
+      "y": 280
+    },
+    {
+      "id": "headingEyebrow-10",
+      "type": "Text",
+      "label": "Members’ area",
+      "parent": "headingHead-10",
+      "parameters": {
+        "text": "Members’ area",
+        "fontSize": "var(--text-xs)",
+        "fontWeight": "var(--font-semibold)",
+        "letterSpacing": "var(--tracking-widest)",
+        "textTransform": "uppercase",
+        "color": "var(--primary)"
+      },
+      "x": 220,
+      "y": 400
+    },
+    {
+      "id": "heading-11",
+      "type": "Text",
+      "label": "Heading",
+      "parent": "headingHead-10",
+      "parameters": {
+        "text": "Emails",
+        "fontSize": "var(--text-3xl)",
+        "fontWeight": "var(--font-semibold)",
+        "lineHeight": "var(--leading-tight)",
+        "letterSpacing": "var(--tracking-tight)",
+        "color": "var(--foreground)"
+      },
+      "x": 220,
+      "y": 520
+    },
+    {
+      "id": "done",
+      "type": "Group",
+      "label": "Turned off",
+      "parent": "ground-13",
+      "children": [
+        "doneText"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "backgroundColor": "var(--accent)",
+        "borderRadius": "var(--radius-xl)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border)",
+        "clip": true,
+        "flexDirection": "column",
+        "rowGap": "var(--space-2)",
+        "paddingLeft": "var(--space-5)",
+        "paddingRight": "var(--space-5)",
+        "paddingTop": "var(--space-5)",
+        "paddingBottom": "var(--space-5)",
+        "mounted": false
+      },
+      "x": 160,
+      "y": 640
+    },
+    {
+      "id": "doneText",
+      "type": "Text",
+      "label": "Turned off — the words",
+      "parent": "done",
+      "parameters": {
+        "text": "Done. You will not receive any more emails about new announcements. You are still a member, and you can turn them back on from your account at any time.",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--accent-foreground)"
+      },
+      "x": 220,
+      "y": 760
+    },
+    {
+      "id": "failed-3",
+      "type": "Group",
+      "label": "That link did not work",
+      "parent": "ground-13",
+      "children": [
+        "failedText-2"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "backgroundColor": "var(--surface)",
+        "borderRadius": "var(--radius-xl)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border)",
+        "clip": true,
+        "flexDirection": "column",
+        "rowGap": "var(--space-2)",
+        "paddingLeft": "var(--space-5)",
+        "paddingRight": "var(--space-5)",
+        "paddingTop": "var(--space-5)",
+        "paddingBottom": "var(--space-5)",
+        "mounted": false
+      },
+      "x": 160,
+      "y": 880
+    },
+    {
+      "id": "failedText-2",
+      "type": "Text",
+      "label": "That link did not work — the words",
+      "parent": "failed-3",
+      "parameters": {
+        "text": "That link did not work. It may have been broken by your email program — try copying the whole address, or turn emails off from your account.",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--destructive)"
+      },
+      "x": 220,
+      "y": 1000
+    },
+    {
+      "id": "pageInputs-3",
+      "type": "PageInputs",
+      "label": "The token",
+      "parameters": {
+        "queryParams": "token"
+      },
+      "x": 470,
+      "y": 1000
+    },
+    {
+      "id": "hold-5",
+      "type": "JavaScriptFunction",
+      "label": "Hold the token until the router has set it",
+      "parameters": {
+        "functionScript": "const token = Inputs.token === undefined || Inputs.token === null\n  ? '' : String(Inputs.token).trim();\n// A link with no token at all never reaches the endpoint: the refusal\n// is the same one either way, and not calling is one fewer public\n// request from a URL somebody mistyped.\nif (token.length === 0) {\n  Outputs.missing();\n  return;\n}\nOutputs.token = token;\nOutputs.ready();"
+      },
+      "ports": [
+        {
+          "name": "out-ready",
+          "plug": "output",
+          "type": "signal"
+        },
+        {
+          "name": "out-missing",
+          "plug": "output",
+          "type": "signal"
+        }
+      ],
+      "x": 470,
+      "y": 40
+    },
+    {
+      "id": "call-2",
+      "type": "CloudFunction2",
+      "label": "unsubscribe",
+      "parameters": {
+        "function": "unsubscribe"
+      },
+      "x": 470,
+      "y": 1120
+    },
+    {
+      "id": "doneGate",
+      "type": "Condition",
+      "label": "Show the confirmation",
+      "parameters": {
+        "condition": true,
+        "runOnChange-condition": false
+      },
+      "x": 470,
+      "y": 640
+    },
+    {
+      "id": "failGate-2",
+      "type": "Condition",
+      "label": "Show the refusal",
+      "parameters": {
+        "condition": true,
+        "runOnChange-condition": false
+      },
+      "x": 470,
+      "y": 880
+    }
+  ],
+  "visualRoots": [
+    "page-13"
+  ]
+}

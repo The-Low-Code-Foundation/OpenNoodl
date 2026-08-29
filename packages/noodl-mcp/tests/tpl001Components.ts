@@ -77,8 +77,28 @@ import {
   COLLECTION_REQUEST,
   FN_CLAIM,
   FN_DECIDE,
+  FN_MY_NOTIFY,
   FN_MY_STANDING,
+  FN_NOTIFY_MEMBERS,
   FN_REQUEST_ACCESS,
+  FN_SET_NOTIFY,
+  FN_UNSUBSCRIBE,
+  NOTIFY_FAILED_LEAD,
+  NOTIFY_NOBODY_TEXT,
+  NOTIFY_OPT_IN_LABEL,
+  NOTIFY_OPT_IN_NOTE,
+  NOTIFY_SAVED_OFF_TEXT,
+  NOTIFY_SAVED_ON_TEXT,
+  NOTIFY_SAVE_FAILED_TEXT,
+  NOTIFY_SENT_PREFIX,
+  NOTIFY_SENT_SUFFIX_MANY,
+  NOTIFY_SENT_SUFFIX_ONE,
+  NOTIFY_NONE_SENT_TEXT,
+  NOTIFY_PARTIAL_PREFIX,
+  NOTIFY_PARTIAL_SUFFIX,
+  NOTIFY_POSTED_LEAD,
+  UNSUBSCRIBED_TEXT,
+  UNSUBSCRIBE_FAILED_TEXT,
   MEETING_SORT,
   DIRECTORY_PROJECTION_NOTE,
   MEMBERS_READ_RULES,
@@ -135,6 +155,8 @@ export const MEMBER_ROW = '/Members/MemberRow';
 /** Page path parameters, spelled once for the `urlPath` and the `PageInputs`. */
 const ANNOUNCEMENT_PARAM = 'announcementId';
 const MEETING_PARAM = 'meetingId';
+/** TPL-002 — the query parameter the unsubscribe link carries. */
+const UNSUBSCRIBE_PARAM = 'token';
 
 // ── The look, from the product's own vocabulary ──────────────────────────────
 //
@@ -3027,6 +3049,81 @@ const POST: Tpl001Component = {
       type: 'RouterNavigate',
       label: 'Out of the members area',
       parameters: { router: ROUTER, target: '/Pages/Landing' }
+    },
+    // ── TPL-002 ──────────────────────────────────────────────────────────────
+    {
+      id: 'announce',
+      type: 'JavaScriptFunction',
+      label: 'Everything the fan-out needs, from one node',
+      ports: [{ name: 'out-go', plug: 'output', type: 'signal' }],
+      parameters: {
+        // 🔴 Rule 2 in the place it matters most on this page. The record id
+        // comes from the write; the site address comes from the browser. Two
+        // producers on a `CloudFunction2` would let `call` fire with one of the
+        // two parameters still in flight — and this endpoint mails everybody.
+        'runOnChange-in-id': false,
+        functionScript:
+          "if (Inputs.id === undefined || String(Inputs.id).length === 0) return;\n" +
+          'Outputs.announcementId = String(Inputs.id);\n' +
+          '// 🔴 The app tells the server where the app is, because the server\n' +
+          '// cannot find out. `EmailConfigState.effectiveBaseUrl` exists and the\n' +
+          '// product’s own password-reset route uses it, but nothing exposes it\n' +
+          '// to a graph — see D34. `location.origin` is, by construction, where\n' +
+          '// this members’ area is served from, and the endpoint keeps only the\n' +
+          '// scheme and host of whatever it is handed.\n' +
+          "Outputs.siteUrl = typeof location !== 'undefined' && location.origin ? String(location.origin) : '';\n" +
+          'Outputs.go();'
+      }
+    },
+    { id: 'notify', type: 'CloudFunction2', label: FN_NOTIFY_MEMBERS, parameters: { function: FN_NOTIFY_MEMBERS } },
+    {
+      id: 'report',
+      type: 'JavaScriptFunction',
+      label: 'What to tell the moderator',
+      parameters: {
+        // 🔴 Off, or this draws a sentence from a `sent` count that arrived
+        // before the endpoint said it was finished.
+        'runOnChange-in-sent': false,
+        'runOnChange-in-failed': false,
+        'runOnChange-in-error': false,
+        functionScript:
+          '// TPL-002 §3, and the four cases are separately actionable: post it\n' +
+          '// again, tell somebody another way, go and configure SMTP, or nothing.\n' +
+          'if (Inputs.sent === undefined) return;\n' +
+          'const sent = Number(Inputs.sent) || 0;\n' +
+          'const failed = Number(Inputs.failed) || 0;\n' +
+          "const error = Inputs.error === undefined || Inputs.error === null ? '' : String(Inputs.error);\n" +
+          'if (sent === 0 && failed === 0) {\n' +
+          `  Outputs.line = ${JSON.stringify(NOTIFY_NOBODY_TEXT)};\n` +
+          '  return;\n' +
+          '}\n' +
+          'if (sent === 0) {\n' +
+          '  // 🔴 The mailer’s own words, verbatim. With SMTP unconfigured this\n' +
+          '  // is `notConfiguredReason()`, which names the Backend Services\n' +
+          '  // panel — the one thing the person reading it has to go and open.\n' +
+          `  Outputs.line = ${JSON.stringify(NOTIFY_FAILED_LEAD)} + (error || ${JSON.stringify(NOTIFY_NONE_SENT_TEXT)});\n` +
+          '  return;\n' +
+          '}\n' +
+          `let line = ${JSON.stringify(NOTIFY_POSTED_LEAD)} + ${JSON.stringify(NOTIFY_SENT_PREFIX)} + sent +\n` +
+          `  (sent === 1 ? ${JSON.stringify(NOTIFY_SENT_SUFFIX_ONE)} : ${JSON.stringify(NOTIFY_SENT_SUFFIX_MANY)});\n` +
+          'if (failed > 0) {\n' +
+          `  line += ${JSON.stringify(NOTIFY_PARTIAL_PREFIX)} + failed + ${JSON.stringify(NOTIFY_PARTIAL_SUFFIX)} + error;\n` +
+          '}\n' +
+          'Outputs.line = line;'
+      }
+    },
+    {
+      id: 'reportRefused',
+      type: 'JavaScriptFunction',
+      label: 'The fan-out itself was refused',
+      parameters: {
+        // 🔴 The announcement IS posted — `createAnnouncement.done` is what
+        // fired this chain — so the sentence must say so before it says the
+        // emails failed. A bare "that did not work" would send a moderator back
+        // to post it a second time.
+        functionScript:
+          `Outputs.line = ${JSON.stringify(NOTIFY_FAILED_LEAD)} + ${JSON.stringify(NOTIFY_NONE_SENT_TEXT)};`
+      }
     }
   ],
   connections: [
@@ -3042,6 +3139,30 @@ const POST: Tpl001Component = {
     { fromId: 'stampAnnouncement', fromProperty: 'out-go', toId: 'createAnnouncement', toProperty: 'store' },
     { fromId: 'createAnnouncement', fromProperty: 'done', toId: 'aDoneGate', toProperty: 'eval' },
     { fromId: 'aDoneGate', fromProperty: 'result', toId: 'aDone', toProperty: 'mounted' },
+
+    // ── TPL-002 ────────────────────────────────────────────────────────────
+    // 🔴 The fan-out is fired by `done` and by nothing else. Firing it from the
+    // button would mail everybody about an announcement the write then refused.
+    { fromId: 'createAnnouncement', fromProperty: 'id', toId: 'announce', toProperty: 'in-id' },
+    { fromId: 'createAnnouncement', fromProperty: 'done', toId: 'announce', toProperty: 'run' },
+    { fromId: 'announce', fromProperty: 'out-announcementId', toId: 'notify', toProperty: 'in-announcementId' },
+    { fromId: 'announce', fromProperty: 'out-siteUrl', toId: 'notify', toProperty: 'in-siteUrl' },
+    { fromId: 'announce', fromProperty: 'out-go', toId: 'notify', toProperty: 'call' },
+
+    { fromId: 'notify', fromProperty: 'out-sent', toId: 'report', toProperty: 'in-sent' },
+    { fromId: 'notify', fromProperty: 'out-failed', toId: 'report', toProperty: 'in-failed' },
+    { fromId: 'notify', fromProperty: 'out-error', toId: 'report', toProperty: 'in-error' },
+    { fromId: 'notify', fromProperty: 'done', toId: 'report', toProperty: 'run' },
+    // 🔴 The confirmation the page already showed is REPLACED, not added to. The
+    // moderator reads one sentence about what happened, and the first version of
+    // it — "Posted. Members can see it now." — is true the whole time.
+    { fromId: 'report', fromProperty: 'out-line', toId: 'aDone', toProperty: 'text' },
+
+    { fromId: 'notify', fromProperty: 'failure', toId: 'reportRefused', toProperty: 'run' },
+    // D27: a throw while assembling the call is the same sentence, not silence.
+    { fromId: 'announce', fromProperty: 'failure', toId: 'reportRefused', toProperty: 'run' },
+    { fromId: 'report', fromProperty: 'failure', toId: 'reportRefused', toProperty: 'run' },
+    { fromId: 'reportRefused', fromProperty: 'out-line', toId: 'aDone', toProperty: 'text' },
 
     { fromId: 'mTitle', fromProperty: 'onTextChanged', toId: 'createMeeting', toProperty: 'prop-title' },
     { fromId: 'mWhen', fromProperty: 'onTextChanged', toId: 'createMeeting', toProperty: 'prop-when' },
@@ -3369,7 +3490,19 @@ export const BAND_NAV: ReadonlyArray<{ id: string; nav: string; label: string; t
   { id: 'navMeetings', nav: 'toMeetingsNav', label: 'Meetings', target: '/Pages/Meetings' },
   { id: 'navPost', nav: 'toPostNav', label: 'Post', target: '/Pages/Post', moderatorOnly: true },
   { id: 'navRequests', nav: 'toRequestsNav', label: 'Requests', target: '/Pages/Requests', moderatorOnly: true },
-  { id: 'navDirectory', nav: 'toDirectoryNav', label: 'Who belongs', target: '/Pages/Directory', moderatorOnly: true }
+  { id: 'navDirectory', nav: 'toDirectoryNav', label: 'Who belongs', target: '/Pages/Directory', moderatorOnly: true },
+  // 🔴 TPL-002. Not moderator-only: the setting it leads to is every member's,
+  // and a page with no route to it is a page nobody finds. It goes in the same
+  // `gridAutoFit` as the other five rather than beside Sign out, because
+  // `autoFit` is *designed* to wrap and a sixth item in a row that already
+  // wraps is not a new layout mechanism — whereas a third child in the top row
+  // would be, and D32 is what happens when one is added without looking.
+  //
+  // ⚠️ **Not yet looked at, and that is recorded rather than assumed.** Six
+  // items at `minWidth: 132` in the 760px band fits five across and folds the
+  // sixth — arithmetic, not a reading. Richard's rule is that appearance is
+  // graded by looking; TPL-002 §7 carries this as owed.
+  { id: 'navAccount', nav: 'toAccountNav', label: 'Your account', target: '/Pages/Account' }
 ];
 
 export const CHROME_NODES = [
@@ -3653,6 +3786,251 @@ export const TPL001_PARTS: Tpl001Component[] = [
  * 2. Everything else, with the deferred pass closing the cycles once every page
  *    exists.
  */
+// ── 14. Pages/Account — TPL-002's one box ────────────────────────────────────
+
+/**
+ * TPL-002 §4. **One tick box, defaulting to off**, and the two sentences a person
+ * needs before they tick it.
+ *
+ * 🔴 **The box is drawn from `myNotifySetting`, not from a query.** `Member` is
+ * `find: role:admin` — a member cannot read their own row, deliberately, because
+ * the row carries an email address and widening the collection so one person
+ * could read one row would let them read every row. TPL-001's own finding then
+ * applies unchanged: *a REFUSED query publishes `[]` exactly as an EMPTY one
+ * does*, so a box drawn off a query would render unticked for a member whose
+ * setting was on.
+ *
+ * ⚠️ **`checked` in and `Changed` out are deliberately asymmetric**, and the
+ * asymmetry is what makes this page not loop: `checked` set from the graph
+ * *"does not fire Changed"*, so loading the current setting into the box cannot
+ * trigger a save of the value that was just loaded.
+ */
+const ACCOUNT: Tpl001Component = {
+  path: 'Pages/Account',
+  nodes: [
+    {
+      id: 'page',
+      type: 'Page',
+      label: 'Your account',
+      parameters: { title: 'Your account', urlPath: 'account' },
+      children: ['chrome', 'ground']
+    },
+    { id: 'chrome', type: CHROME_COMPONENT, label: 'The band', parent: 'page' },
+    {
+      id: 'ground',
+      type: 'Group',
+      label: 'Page ground',
+      parent: 'page',
+      parameters: PAGE_GROUND,
+      children: ['headingHead', 'panel', 'savedOn', 'savedOff', 'failed']
+    },
+    ...pageHead('heading', 'Heading', 'ground', 'Your account', 'Emails'),
+    {
+      id: 'panel',
+      type: 'Group',
+      label: 'The setting',
+      parent: 'ground',
+      // 🔴 Mounted only for a member. A pending person has no `Member` row and
+      // no setting to change, and `mounted` leaves the subtree out of the
+      // document entirely rather than hiding it — the s8 finding, unchanged.
+      parameters: { ...PANEL, mounted: false },
+      children: ['boxRow', 'note']
+    },
+    {
+      id: 'boxRow',
+      type: 'Group',
+      label: 'Box and label',
+      parent: 'panel',
+      // 🔴 D32: two children of a row both grow unless something stops them, and
+      // then `justifyContent` distributes nothing. Exactly one child grows here
+      // — the label — and the box is pinned.
+      parameters: laidOut('row', { width: { value: 100, unit: '%' }, sizeMode: 'contentHeight' }, 'var(--space-3)'),
+      children: ['box', 'boxLabel']
+    },
+    {
+      id: 'box',
+      type: 'net.noodl.controls.checkbox',
+      label: 'Email me',
+      parent: 'boxRow',
+      // 🔴 `checked: false` is the shipped default and it is the legal one.
+      // TPL-002 §4: consent in the UK and EU is opt-in, and a template that
+      // shipped opt-out would teach every association that installed it to break
+      // the law on its first day.
+      // ⚠️ No `sizeMode`: the door refused it — `net.noodl.controls.checkbox`
+      // declares `width`/`height` and no size mode at all, and an unread
+      // parameter is exactly what `unknown-parameter` is for. The explicit pair
+      // is still what stops this child growing (D32).
+      parameters: { checked: false, width: { value: 24, unit: 'px' }, height: { value: 24, unit: 'px' } }
+    },
+    {
+      id: 'boxLabel',
+      type: 'Text',
+      label: 'What the box does',
+      parent: 'boxRow',
+      parameters: { text: NOTIFY_OPT_IN_LABEL, ...T_BODY }
+    },
+    {
+      id: 'note',
+      type: 'Text',
+      label: 'The two things to know first',
+      parent: 'panel',
+      parameters: { text: NOTIFY_OPT_IN_NOTE, ...T_META }
+    },
+    ...notice('savedOn', 'Saved, on', 'ground', NOTIFY_SAVED_ON_TEXT, { tone: 'accent' }),
+    ...notice('savedOff', 'Saved, off', 'ground', NOTIFY_SAVED_OFF_TEXT, { tone: 'accent' }),
+    ...notice('failed', 'Could not save', 'ground', NOTIFY_SAVE_FAILED_TEXT, { tone: 'refused' }),
+    { id: 'read', type: 'CloudFunction2', label: FN_MY_NOTIFY, parameters: { function: FN_MY_NOTIFY } },
+    { id: 'write', type: 'CloudFunction2', label: FN_SET_NOTIFY, parameters: { function: FN_SET_NOTIFY } },
+    {
+      id: 'which',
+      type: 'JavaScriptFunction',
+      label: 'Which confirmation to show',
+      ports: [
+        { name: 'out-on', plug: 'output', type: 'signal' },
+        { name: 'out-off', plug: 'output', type: 'signal' }
+      ],
+      parameters: {
+        // 🔴 `runOnChange` off: the answer arrives as a value and the endpoint's
+        // `done` is what says it is settled. On, this fires on the value alone
+        // and confirms a save the server has not reported yet.
+        'runOnChange-in-notify': false,
+        functionScript:
+          '// The one sentence is chosen by what was SAVED, not by what was\n' +
+          '// clicked: an untick that the server refused must not draw "saved".\n' +
+          'if (Inputs.notify === undefined) return;\n' +
+          'if (Inputs.notify === true) {\n' +
+          '  Outputs.on();\n' +
+          '  return;\n' +
+          '}\n' +
+          'Outputs.off();'
+      }
+    },
+    { id: 'onGate', type: 'Condition', label: 'Show "on"', parameters: { ...CONDITION_GATE } },
+    { id: 'offGate', type: 'Condition', label: 'Show "off"', parameters: { ...CONDITION_GATE } },
+    { id: 'failGate', type: 'Condition', label: 'Show the refusal', parameters: { ...CONDITION_GATE } },
+    {
+      id: 'toLanding',
+      type: 'RouterNavigate',
+      label: 'Out of the members area',
+      parameters: { router: ROUTER, target: '/Pages/Landing' }
+    }
+  ],
+  connections: [
+    // 🔴 The read is fired by `Member`, not by `didMount`: the band's standing
+    // gate is the one signal that means "this person is allowed to be here", and
+    // firing on mount would ask the endpoint on behalf of a visitor.
+    { fromId: 'chrome', fromProperty: 'Member', toId: 'read', toProperty: 'call' },
+    { fromId: 'chrome', fromProperty: 'isMember', toId: 'panel', toProperty: 'mounted' },
+    { fromId: 'chrome', fromProperty: 'Visitor', toId: 'toLanding', toProperty: 'navigate' },
+
+    // Loading the box. `checked` does not fire `Changed`, so this cannot loop.
+    { fromId: 'read', fromProperty: 'out-notify', toId: 'box', toProperty: 'checked' },
+
+    // The person ticks it. The box publishes the value and the signal, so the
+    // endpoint cannot be called with the previous state still in flight.
+    { fromId: 'box', fromProperty: 'checked', toId: 'write', toProperty: 'in-wanted' },
+    { fromId: 'box', fromProperty: 'onChange', toId: 'write', toProperty: 'call' },
+
+    { fromId: 'write', fromProperty: 'out-notify', toId: 'which', toProperty: 'in-notify' },
+    { fromId: 'write', fromProperty: 'done', toId: 'which', toProperty: 'run' },
+    { fromId: 'which', fromProperty: 'out-on', toId: 'onGate', toProperty: 'eval' },
+    { fromId: 'onGate', fromProperty: 'result', toId: 'savedOn', toProperty: 'mounted' },
+    { fromId: 'which', fromProperty: 'out-off', toId: 'offGate', toProperty: 'eval' },
+    { fromId: 'offGate', fromProperty: 'result', toId: 'savedOff', toProperty: 'mounted' },
+
+    { fromId: 'write', fromProperty: 'failure', toId: 'failGate', toProperty: 'eval' },
+    // 🔴 A read that failed reaches the same sentence. The box is then showing
+    // `false` because nothing loaded it, which is not the person's setting — so
+    // the screen must not be silent about it.
+    { fromId: 'read', fromProperty: 'failure', toId: 'failGate', toProperty: 'eval' },
+    { fromId: 'failGate', fromProperty: 'result', toId: 'failed', toProperty: 'mounted' }
+  ]
+};
+
+// ── 15. Pages/Unsubscribe — the one members-area page with no session ────────
+
+/**
+ * TPL-002 AC4. **Signed out, from the email, without asking anyone.**
+ *
+ * 🔴 **It carries no band.** `Members/Chrome` calls `myStanding` and draws
+ * navigation for a member; this page is opened by somebody who is not signed in,
+ * on a phone, from a mail client, and its whole job is one sentence. A band here
+ * would be an auth round trip on a page whose entire point is not needing one.
+ *
+ * 🔴 **The token arrives as a QUERY parameter, not a path segment.** A path
+ * segment would put an opaque credential in a route that the router registers
+ * and that a person might share; a query string is what every unsubscribe link
+ * on the internet uses, and `PageInputs.queryParams` reads it.
+ */
+const UNSUBSCRIBE_PAGE: Tpl001Component = {
+  path: 'Pages/Unsubscribe',
+  nodes: [
+    {
+      id: 'page',
+      type: 'Page',
+      label: 'Unsubscribe',
+      parameters: { title: 'Email settings', urlPath: 'unsubscribe' },
+      children: ['ground']
+    },
+    {
+      id: 'ground',
+      type: 'Group',
+      label: 'Page ground',
+      parent: 'page',
+      parameters: PAGE_GROUND,
+      children: ['headingHead', 'done', 'failed']
+    },
+    ...pageHead('heading', 'Heading', 'ground', 'Members’ area', 'Emails'),
+    ...notice('done', 'Turned off', 'ground', UNSUBSCRIBED_TEXT, { tone: 'accent' }),
+    ...notice('failed', 'That link did not work', 'ground', UNSUBSCRIBE_FAILED_TEXT, { tone: 'refused' }),
+    { id: 'pageInputs', type: 'PageInputs', label: 'The token', parameters: { queryParams: UNSUBSCRIBE_PARAM } },
+    {
+      id: 'hold',
+      type: 'JavaScriptFunction',
+      label: 'Hold the token until the router has set it',
+      ports: [
+        { name: 'out-ready', plug: 'output', type: 'signal' },
+        { name: 'out-missing', plug: 'output', type: 'signal' }
+      ],
+      parameters: {
+        // The token and the call leave from one node — rule 2 — and the page's
+        // mount is the one signal guaranteed to come after the Router has set
+        // the parameters.
+        functionScript:
+          `const token = Inputs.${UNSUBSCRIBE_PARAM} === undefined || Inputs.${UNSUBSCRIBE_PARAM} === null\n` +
+          `  ? '' : String(Inputs.${UNSUBSCRIBE_PARAM}).trim();\n` +
+          '// A link with no token at all never reaches the endpoint: the refusal\n' +
+          '// is the same one either way, and not calling is one fewer public\n' +
+          '// request from a URL somebody mistyped.\n' +
+          'if (token.length === 0) {\n' +
+          '  Outputs.missing();\n' +
+          '  return;\n' +
+          '}\n' +
+          'Outputs.token = token;\n' +
+          'Outputs.ready();'
+      }
+    },
+    { id: 'call', type: 'CloudFunction2', label: FN_UNSUBSCRIBE, parameters: { function: FN_UNSUBSCRIBE } },
+    { id: 'doneGate', type: 'Condition', label: 'Show the confirmation', parameters: { ...CONDITION_GATE } },
+    { id: 'failGate', type: 'Condition', label: 'Show the refusal', parameters: { ...CONDITION_GATE } }
+  ],
+  connections: [
+    { fromId: 'pageInputs', fromProperty: `pm-${UNSUBSCRIBE_PARAM}`, toId: 'hold', toProperty: `in-${UNSUBSCRIBE_PARAM}` },
+    { fromId: 'page', fromProperty: 'didMount', toId: 'hold', toProperty: 'run' },
+    { fromId: 'hold', fromProperty: 'out-token', toId: 'call', toProperty: `in-${UNSUBSCRIBE_PARAM}` },
+    { fromId: 'hold', fromProperty: 'out-ready', toId: 'call', toProperty: 'call' },
+
+    { fromId: 'call', fromProperty: 'done', toId: 'doneGate', toProperty: 'eval' },
+    { fromId: 'doneGate', fromProperty: 'result', toId: 'done', toProperty: 'mounted' },
+
+    { fromId: 'call', fromProperty: 'failure', toId: 'failGate', toProperty: 'eval' },
+    { fromId: 'hold', fromProperty: 'out-missing', toId: 'failGate', toProperty: 'eval' },
+    // D27: a throw in the hold is a refusal a person can see, not a blank page.
+    { fromId: 'hold', fromProperty: 'failure', toId: 'failGate', toProperty: 'eval' },
+    { fromId: 'failGate', fromProperty: 'result', toId: 'failed', toProperty: 'mounted' }
+  ]
+};
+
 export const TPL001_PAGES: Tpl001Component[] = [
   LANDING,
   SIGN_IN,
@@ -3664,7 +4042,12 @@ export const TPL001_PAGES: Tpl001Component[] = [
   SETUP,
   POST,
   REQUESTS,
-  DIRECTORY
+  DIRECTORY,
+  // TPL-002. Both are written LAST, and that is load-bearing: SB-006 F17 says
+  // the first page written becomes the router's `startPage`, and neither of
+  // these is the screen a stranger should land on.
+  ACCOUNT,
+  UNSUBSCRIBE_PAGE
 ];
 
 /**

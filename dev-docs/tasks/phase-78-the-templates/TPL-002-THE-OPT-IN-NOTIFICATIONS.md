@@ -75,3 +75,92 @@ sentence appears and nothing is queued.
   the member list — no `to:` with 24 addresses in it.
 - 🔴 A **shipped** `email.json` with a plausible-looking host would make every install try to send
   through somebody else's server. Ship no email config at all.
+
+---
+
+# 7. Status — built and graded, s14 (2026-08-29)
+
+**Everything in §5 is measured except AC4's browser half.** The feature is in the shipped artefact
+(`templates/members-area/`), which now carries **eight** cloud functions and **thirteen** pages.
+
+## What was built
+
+| piece | where |
+|---|---|
+| `notifyMembers(announcementId, siteUrl)` — the **serial pump** | `tpl002Cloud.ts` §4 |
+| `myNotifySetting()` / `setNotifySetting(wanted)` | `tpl002Cloud.ts` §1–2 |
+| `unsubscribe(token)` — public, token-gated | `tpl002Cloud.ts` §3 |
+| `notifyByEmail: false` + `unsubscribeToken` minted at approval | `tpl001Cloud.ts` — **both** row writers |
+| `Pages/Account` — one box, default off | `tpl001Components.ts` §14 |
+| `Pages/Unsubscribe` — no band, no session | `tpl001Components.ts` §15 |
+| the Post page's fan-out and its §3 readout | `tpl001Components.ts`, `POST` |
+| four `call` rules | `templates/members-area.security.json` |
+
+## The readings
+
+`tpl002-notifications.test.ts` — **29/29**, against a real enforcing backend (`security.enforced`
+asserted before anything is read) and a captured transport. Every reading is taken off **what the
+mail server was handed**, never off what the endpoint claimed.
+
+| AC | reading |
+|---|---|
+| 1 | Mo ticked the box; the transport was handed **one** message, to Mo |
+| 2 | Ann is approved, in `role:member`, has an address, and differs in **one field** — she was handed nothing, **in the same send** |
+| 3 | `email.json` removed ⇒ `sent: 0`, `failed: 3`, and the error is `notConfiguredReason()` **verbatim** — *"Email is not configured for this backend… Backend Services panel"*. The configured arm on the same instrument is the control (`sent: 1` and `sent: 3`) |
+| 4 | `unsubscribe(token)` with **no session** returns 200; `myNotifySetting` as Mo then answers `false`. Controls: Ann unaffected; an unknown token refused; a blank token refused before it reaches the query |
+| 5 | Pat is pending, so `setNotifySetting` is **403** and there is no `Member` row for the flag to live on — structural, not a guard |
+| 6 | one address made to throw ⇒ the other two still delivered, `sent: 2 / failed: 1`, error carries `550` |
+
+🔴 **Three opted-in members receive three distinct messages, with three distinct unsubscribe links.**
+That is the row D33 exists for, and it is what the naive graph cannot do.
+
+✅ **Sabotage-proved.** Reverting `NOTIFY_FILTER` to `input: true` reddens exactly AC1, AC2 and the
+count rows — the spec grades the product, not itself.
+
+✅ **The browser half of the Post page is graded by the drive**, not by this suite:
+`tpl001-members-drive.test.ts` §7 now reads *"Posted. Nobody has asked to be emailed yet, so no
+emails were sent."* off the rendered page after the moderator types and clicks — which is the whole
+chain `createAnnouncement.done → announce → notifyMembers → report → the confirmation's text`, in a
+real browser.
+
+Gates: **noodl-mcp 958/958** · **`tpl001Template.test.ts` 71/71** · the three tpl001 drives + tpl002
+**108/108** · `typecheck:mcp` and the backend `tsc` clean · generation exit 0, **94 diagnostics, all
+`info`**. ⚠️ `test:ci` not run — no editor source touched.
+
+## 🔴 What is NOT graded, and it is one thing
+
+**AC4's first half in a browser, and AC1/AC2's box.** `Pages/Account` and `Pages/Unsubscribe` are
+authored, registered, routed and gated, and every endpoint behind them is driven — but **nobody has
+ticked the box on the screen**, and nobody has opened the unsubscribe link in a page. The two pages
+are graded only as artefacts. Richard's rule is that appearance is an acceptance criterion graded by
+looking; that reading is owed.
+
+⚠️ **And with it, the band.** `BAND_NAV` now has **six** items in a `gridAutoFit` at
+`minWidth: 132px` in a 760px band — five across, the sixth folding. That is arithmetic, not a
+reading. It may be right; it has not been looked at.
+
+## Three defects it found
+
+- **[D33](DEFECTS-THE-TEMPLATES-FOUND.md)** — a fan-out send delivers **one** email and reports **N**
+  successes. The whole shape of `notifyMembers` is the workaround.
+- **[D34](DEFECTS-THE-TEMPLATES-FOUND.md)** — a cloud function cannot learn the app's own public
+  origin, so it cannot build a link into an email.
+- **[D35](DEFECTS-THE-TEMPLATES-FOUND.md)** — `Component` scope is **not** per-request; a flag left
+  in it made every later request hang for 30s.
+
+## Two things that were my error, recorded because they cost real time
+
+- 🔴 **`input` in a `visualFilter` names a PORT; `value` is the literal.** Written `input: true` the
+  opt-in filter named a port nothing set and the query returned **every member** — a send that
+  reached three people when one had opted in.
+- 🔴 **`DbModel2.Fetched` is a value-level announcement and fires twice per fetch**; `Done` is the
+  invocation's outcome and fires once. Sequenced off `Fetched`, the member query ran twice, `plan`
+  reset the cursor under a running pump, and **five messages went to three people**. Both ports are
+  documented correctly — the file says so at `dbmodelnode2.ts:172`. I did not read it first.
+
+## What is left
+
+1. ⬜ **Drive the two pages.** Tick the box, watch the email arrive, click the link from the message
+   body, come back and see it unticked. The harness for it already exists (`members-drive.ts`).
+2. ⬜ **Look at the band with six items in it**, at 1280 and at 390.
+3. ⬜ **T5 / publishing** is unchanged and still Richard's.

@@ -4,7 +4,7 @@
   "version": 1,
   "nodes": [
     {
-      "id": "row",
+      "id": "row-3",
       "type": "Group",
       "label": "One announcement",
       "children": [
@@ -33,7 +33,7 @@
       "id": "rowLines",
       "type": "Group",
       "label": "What it is, and when",
-      "parent": "row",
+      "parent": "row-3",
       "children": [
         "rowTitle",
         "rowDate"
@@ -82,7 +82,7 @@
       "id": "readButton",
       "type": "net.noodl.controls.button",
       "label": "Read",
-      "parent": "row",
+      "parent": "row-3",
       "parameters": {
         "label": "Read",
         "backgroundColor": "transparent",
@@ -149,6 +149,6 @@
     }
   ],
   "visualRoots": [
-    "row"
+    "row-3"
   ]
 }

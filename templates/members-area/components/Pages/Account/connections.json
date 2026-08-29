@@ -1,0 +1,97 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "61b8f921-c382-570e-8457-d136aa219d4c",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "chrome-8",
+      "fromProperty": "Member",
+      "toId": "read-4",
+      "toProperty": "call"
+    },
+    {
+      "fromId": "chrome-8",
+      "fromProperty": "isMember",
+      "toId": "panel",
+      "toProperty": "mounted"
+    },
+    {
+      "fromId": "chrome-8",
+      "fromProperty": "Visitor",
+      "toId": "toLanding-6",
+      "toProperty": "navigate"
+    },
+    {
+      "fromId": "read-4",
+      "fromProperty": "out-notify",
+      "toId": "box",
+      "toProperty": "checked"
+    },
+    {
+      "fromId": "box",
+      "fromProperty": "checked",
+      "toId": "write",
+      "toProperty": "in-wanted"
+    },
+    {
+      "fromId": "box",
+      "fromProperty": "onChange",
+      "toId": "write",
+      "toProperty": "call"
+    },
+    {
+      "fromId": "write",
+      "fromProperty": "out-notify",
+      "toId": "which",
+      "toProperty": "in-notify"
+    },
+    {
+      "fromId": "write",
+      "fromProperty": "done",
+      "toId": "which",
+      "toProperty": "run"
+    },
+    {
+      "fromId": "which",
+      "fromProperty": "out-on",
+      "toId": "onGate",
+      "toProperty": "eval"
+    },
+    {
+      "fromId": "onGate",
+      "fromProperty": "result",
+      "toId": "savedOn",
+      "toProperty": "mounted"
+    },
+    {
+      "fromId": "which",
+      "fromProperty": "out-off",
+      "toId": "offGate",
+      "toProperty": "eval"
+    },
+    {
+      "fromId": "offGate",
+      "fromProperty": "result",
+      "toId": "savedOff",
+      "toProperty": "mounted"
+    },
+    {
+      "fromId": "write",
+      "fromProperty": "failure",
+      "toId": "failGate",
+      "toProperty": "eval"
+    },
+    {
+      "fromId": "read-4",
+      "fromProperty": "failure",
+      "toId": "failGate",
+      "toProperty": "eval"
+    },
+    {
+      "fromId": "failGate",
+      "fromProperty": "result",
+      "toId": "failed-2",
+      "toProperty": "mounted"
+    }
+  ]
+}

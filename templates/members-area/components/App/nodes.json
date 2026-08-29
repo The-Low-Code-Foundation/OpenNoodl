@@ -44,7 +44,9 @@
             "/Pages/Setup",
             "/Pages/Post",
             "/Pages/Requests",
-            "/Pages/Directory"
+            "/Pages/Directory",
+            "/Pages/Account",
+            "/Pages/Unsubscribe"
           ]
         }
       },

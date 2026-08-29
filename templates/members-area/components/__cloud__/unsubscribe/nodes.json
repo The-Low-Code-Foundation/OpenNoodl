@@ -1,0 +1,118 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "195bfede-95e9-5f25-800d-d7a9d5b3ba79",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "req-7",
+      "type": "noodl.cloud.request",
+      "label": "unsubscribe(token)",
+      "parameters": {
+        "params": "token",
+        "ptype-token": "string",
+        "preq-token": true,
+        "allowNoAuth": true
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "hold",
+      "type": "JavaScriptFunction",
+      "label": "Hold the token",
+      "parameters": {
+        "functionScript": "const token = Inputs.token === undefined || Inputs.token === null ? '' : String(Inputs.token).trim();\n// A blank token must never reach the query: `unsubscribeToken equal to\n// \"\"` would match every row that never had one.\nif (token.length === 0) {\n  Outputs.blank();\n  return;\n}\nOutputs.token = token;\nOutputs.ok();"
+      },
+      "ports": [
+        {
+          "name": "out-ok",
+          "plug": "output",
+          "type": "signal"
+        },
+        {
+          "name": "out-blank",
+          "plug": "output",
+          "type": "signal"
+        }
+      ],
+      "x": 40,
+      "y": 160
+    },
+    {
+      "id": "holder",
+      "type": "DbCollection2",
+      "label": "Whose link is this?",
+      "parameters": {
+        "collectionName": "Member",
+        "runOnChange-collectionName": false,
+        "runOnChange-querySettings": false,
+        "visualFilter": {
+          "combinator": "and",
+          "rules": [
+            {
+              "property": "unsubscribeToken",
+              "operator": "equal to",
+              "input": "token"
+            }
+          ]
+        }
+      },
+      "x": 40,
+      "y": 280
+    },
+    {
+      "id": "pick-2",
+      "type": "JavaScriptFunction",
+      "label": "The row the token names",
+      "parameters": {
+        "runOnChange-in-rows": false,
+        "functionScript": "function tpl002Rows(raw) {\n  const list = raw && raw.items ? raw.items : (Array.isArray(raw) ? raw : []);\n  const out = [];\n  for (let i = 0; i < list.length; i++) {\n    const m = list[i];\n    const data = m && m.data ? m.data : m;\n    const id = m && typeof m.getId === \"function\" ? m.getId() : (data && (data.id || data.objectId));\n    out.push({ id: id, data: data || {} });\n  }\n  return out;\n}\nif (Inputs.rows === undefined) return;\nconst rows = tpl002Rows(Inputs.rows);\nif (rows.length === 0 || !rows[0].id) {\n  Outputs.nomatch();\n  return;\n}\nOutputs.rowId = rows[0].id;\n// Never the caller’s value. This door turns emails off and does nothing else.\nOutputs.off = false;\nOutputs.write();"
+      },
+      "ports": [
+        {
+          "name": "out-write",
+          "plug": "output",
+          "type": "signal"
+        },
+        {
+          "name": "out-nomatch",
+          "plug": "output",
+          "type": "signal"
+        }
+      ],
+      "x": 40,
+      "y": 400
+    },
+    {
+      "id": "row-2",
+      "type": "SetDbModelProperties",
+      "label": "Turn the emails off",
+      "parameters": {
+        "collectionName": "Member",
+        "idSource": "explicit",
+        "storeProperties": "specified"
+      },
+      "x": 40,
+      "y": 520
+    },
+    {
+      "id": "res-7",
+      "type": "noodl.cloud.response",
+      "label": "Turned off",
+      "parameters": {},
+      "x": 40,
+      "y": 640
+    },
+    {
+      "id": "nope",
+      "type": "noodl.cloud.response",
+      "label": "That link did not name anybody",
+      "parameters": {
+        "status": "failure",
+        "errorMessage": "That unsubscribe link did not work."
+      },
+      "x": 40,
+      "y": 760
+    }
+  ]
+}

@@ -106,6 +106,18 @@
       "toProperty": "prop-standing"
     },
     {
+      "fromId": "route",
+      "fromProperty": "out-notifyByEmail",
+      "toId": "member",
+      "toProperty": "prop-notifyByEmail"
+    },
+    {
+      "fromId": "route",
+      "fromProperty": "out-unsubscribeToken",
+      "toId": "member",
+      "toProperty": "prop-unsubscribeToken"
+    },
+    {
       "fromId": "grant-2",
       "fromProperty": "done",
       "toId": "member",

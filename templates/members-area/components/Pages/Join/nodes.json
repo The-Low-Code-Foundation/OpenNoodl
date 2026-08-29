@@ -25,7 +25,7 @@
       "children": [
         "headingHead-4",
         "form-2",
-        "sent",
+        "sent-2",
         "refusal-3",
         "hint",
         "signInButton-2"
@@ -279,7 +279,7 @@
       "y": 1240
     },
     {
-      "id": "sent",
+      "id": "sent-2",
       "type": "Group",
       "label": "Request received",
       "parent": "ground-7",
@@ -312,7 +312,7 @@
       "id": "sentText",
       "type": "Text",
       "label": "Request received — the words",
-      "parent": "sent",
+      "parent": "sent-2",
       "parameters": {
         "text": "Thank you. Your request has been passed to the moderators.",
         "fontSize": "var(--text-sm)",

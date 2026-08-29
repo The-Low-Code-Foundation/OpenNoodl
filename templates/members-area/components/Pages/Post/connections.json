@@ -70,6 +70,90 @@
       "toProperty": "mounted"
     },
     {
+      "fromId": "createAnnouncement",
+      "fromProperty": "id",
+      "toId": "announce",
+      "toProperty": "in-id"
+    },
+    {
+      "fromId": "createAnnouncement",
+      "fromProperty": "done",
+      "toId": "announce",
+      "toProperty": "run"
+    },
+    {
+      "fromId": "announce",
+      "fromProperty": "out-announcementId",
+      "toId": "notify",
+      "toProperty": "in-announcementId"
+    },
+    {
+      "fromId": "announce",
+      "fromProperty": "out-siteUrl",
+      "toId": "notify",
+      "toProperty": "in-siteUrl"
+    },
+    {
+      "fromId": "announce",
+      "fromProperty": "out-go",
+      "toId": "notify",
+      "toProperty": "call"
+    },
+    {
+      "fromId": "notify",
+      "fromProperty": "out-sent",
+      "toId": "report",
+      "toProperty": "in-sent"
+    },
+    {
+      "fromId": "notify",
+      "fromProperty": "out-failed",
+      "toId": "report",
+      "toProperty": "in-failed"
+    },
+    {
+      "fromId": "notify",
+      "fromProperty": "out-error",
+      "toId": "report",
+      "toProperty": "in-error"
+    },
+    {
+      "fromId": "notify",
+      "fromProperty": "done",
+      "toId": "report",
+      "toProperty": "run"
+    },
+    {
+      "fromId": "report",
+      "fromProperty": "out-line",
+      "toId": "aDone",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "notify",
+      "fromProperty": "failure",
+      "toId": "reportRefused",
+      "toProperty": "run"
+    },
+    {
+      "fromId": "announce",
+      "fromProperty": "failure",
+      "toId": "reportRefused",
+      "toProperty": "run"
+    },
+    {
+      "fromId": "report",
+      "fromProperty": "failure",
+      "toId": "reportRefused",
+      "toProperty": "run"
+    },
+    {
+      "fromId": "reportRefused",
+      "fromProperty": "out-line",
+      "toId": "aDone",
+      "toProperty": "text"
+    },
+    {
       "fromId": "mTitle",
       "fromProperty": "onTextChanged",
       "toId": "createMeeting",

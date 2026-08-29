@@ -1,0 +1,100 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "1ea4c9cb-581e-5963-8f89-1dcebaaaaae4",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "req-5",
+      "type": "noodl.cloud.request",
+      "label": "myNotifySetting()",
+      "parameters": {
+        "allowNoAuth": false
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "who",
+      "type": "JavaScriptFunction",
+      "label": "Whose setting is this?",
+      "parameters": {
+        "functionScript": "// A blank id is an unauthenticated request. The policy already refuses\n// one, so this branch is the belt to that braces — and it answers\n// `false` rather than an error, because \"not signed up\" is true.\nconst id = Inputs.userId === undefined || Inputs.userId === null ? '' : String(Inputs.userId);\nif (id.length === 0) {\n  Outputs.notify = false;\n  Outputs.nobody();\n  return;\n}\nOutputs.userId = id;\nOutputs.ok();"
+      },
+      "ports": [
+        {
+          "name": "out-ok",
+          "plug": "output",
+          "type": "signal"
+        },
+        {
+          "name": "out-nobody",
+          "plug": "output",
+          "type": "signal"
+        }
+      ],
+      "x": 40,
+      "y": 160
+    },
+    {
+      "id": "mine",
+      "type": "DbCollection2",
+      "label": "My directory row",
+      "parameters": {
+        "collectionName": "Member",
+        "runOnChange-collectionName": false,
+        "runOnChange-querySettings": false,
+        "visualFilter": {
+          "combinator": "and",
+          "rules": [
+            {
+              "property": "userId",
+              "operator": "equal to",
+              "input": "userId"
+            }
+          ]
+        }
+      },
+      "x": 40,
+      "y": 280
+    },
+    {
+      "id": "read",
+      "type": "JavaScriptFunction",
+      "label": "Ticked or not",
+      "parameters": {
+        "runOnChange-in-rows": false,
+        "functionScript": "function tpl002Rows(raw) {\n  const list = raw && raw.items ? raw.items : (Array.isArray(raw) ? raw : []);\n  const out = [];\n  for (let i = 0; i < list.length; i++) {\n    const m = list[i];\n    const data = m && m.data ? m.data : m;\n    const id = m && typeof m.getId === \"function\" ? m.getId() : (data && (data.id || data.objectId));\n    out.push({ id: id, data: data || {} });\n  }\n  return out;\n}\n// `rows` is the only output that separates \"matched nothing\" from \"no\n// query has run yet\"; `isEmpty` is true for both.\nif (Inputs.rows === undefined) return;\nconst rows = tpl002Rows(Inputs.rows);\nOutputs.notify = rows.length > 0 && rows[0].data['notifyByEmail'] === true;\nOutputs.answered();"
+      },
+      "ports": [
+        {
+          "name": "out-answered",
+          "plug": "output",
+          "type": "signal"
+        }
+      ],
+      "x": 40,
+      "y": 400
+    },
+    {
+      "id": "res-5",
+      "type": "noodl.cloud.response",
+      "label": "Your setting",
+      "parameters": {
+        "params": "notify"
+      },
+      "x": 40,
+      "y": 520
+    },
+    {
+      "id": "oops",
+      "type": "noodl.cloud.response",
+      "label": "Could not be read",
+      "parameters": {
+        "status": "failure",
+        "errorMessage": "Your email setting could not be read."
+      },
+      "x": 40,
+      "y": 640
+    }
+  ]
+}

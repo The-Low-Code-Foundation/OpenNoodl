@@ -1,0 +1,115 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "7518231e-2810-5ef0-8f46-204a7d86a24f",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "req-6",
+      "fromProperty": "userId",
+      "toId": "who-2",
+      "toProperty": "in-userId"
+    },
+    {
+      "fromId": "req-6",
+      "fromProperty": "pm-wanted",
+      "toId": "who-2",
+      "toProperty": "in-wanted"
+    },
+    {
+      "fromId": "req-6",
+      "fromProperty": "receive",
+      "toId": "who-2",
+      "toProperty": "run"
+    },
+    {
+      "fromId": "who-2",
+      "fromProperty": "out-userId",
+      "toId": "mine-2",
+      "toProperty": "qp-userId"
+    },
+    {
+      "fromId": "who-2",
+      "fromProperty": "out-ok",
+      "toId": "mine-2",
+      "toProperty": "storageFetch"
+    },
+    {
+      "fromId": "who-2",
+      "fromProperty": "out-wanted",
+      "toId": "pick",
+      "toProperty": "in-wanted"
+    },
+    {
+      "fromId": "mine-2",
+      "fromProperty": "items",
+      "toId": "pick",
+      "toProperty": "in-rows"
+    },
+    {
+      "fromId": "mine-2",
+      "fromProperty": "fetched",
+      "toId": "pick",
+      "toProperty": "run"
+    },
+    {
+      "fromId": "pick",
+      "fromProperty": "out-rowId",
+      "toId": "row",
+      "toProperty": "modelId"
+    },
+    {
+      "fromId": "pick",
+      "fromProperty": "out-notify",
+      "toId": "row",
+      "toProperty": "prop-notifyByEmail"
+    },
+    {
+      "fromId": "pick",
+      "fromProperty": "out-write",
+      "toId": "row",
+      "toProperty": "store"
+    },
+    {
+      "fromId": "pick",
+      "fromProperty": "out-notify",
+      "toId": "res-6",
+      "toProperty": "pm-notify"
+    },
+    {
+      "fromId": "row",
+      "fromProperty": "done",
+      "toId": "res-6",
+      "toProperty": "send"
+    },
+    {
+      "fromId": "pick",
+      "fromProperty": "out-norow",
+      "toId": "res-6",
+      "toProperty": "send"
+    },
+    {
+      "fromId": "who-2",
+      "fromProperty": "failure",
+      "toId": "oops-2",
+      "toProperty": "send"
+    },
+    {
+      "fromId": "mine-2",
+      "fromProperty": "failure",
+      "toId": "oops-2",
+      "toProperty": "send"
+    },
+    {
+      "fromId": "pick",
+      "fromProperty": "failure",
+      "toId": "oops-2",
+      "toProperty": "send"
+    },
+    {
+      "fromId": "row",
+      "fromProperty": "failure",
+      "toId": "oops-2",
+      "toProperty": "send"
+    }
+  ]
+}

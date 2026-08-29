@@ -66,6 +66,9 @@ failure this file's first house rule exists to prevent.
 | **D30** | 🔴 open (08-29) | **NONE** | product | every app with a column of numbers — money, times, scores |
 | **D31** | ✅ fixed s11 (08-29) | — | template | (was: every moderator who posted something wrong) |
 | **D32** | 🔴 open (08-29, s12) | **NONE** | product | every agent laying two things out along a row |
+| **D33** | 🔴 open (08-29, s14) | **NONE** | product | every member who was told they would be emailed |
+| **D34** | 🔴 open (08-29, s14) | **NONE** | product | everyone an app ever emails a link to |
+| **D35** | 🔴 open (08-29, s14) | **NONE** | product | every graph that accumulates anything server-side |
 
 🔴 **D18/D19/D20 are the first rows created since the sweep, and they were already unowned within a
 day of the process being put in place.** That is the argument for the column, not an argument
@@ -1274,3 +1277,152 @@ all the door already has.
 ✅ **Held on the template side meanwhile** — `tpl001Template.test.ts` §7 asserts that a split row has
 exactly one growing child, proved by the 361px-button sabotage. That is one template's gate, not a
 product fix, and it is why this row has an owner of `NONE` rather than being marked handled.
+
+## D33 — 🔴 A fan-out send delivers ONE email and reports N successes
+
+**Measured, s14, with a control pair that varies one thing.** Owner: **NONE**.
+
+### What it is
+
+TPL-002 needs the oldest shape in notification software: *one announcement, one email each to the
+members who asked for them.* There is no way to express it, and the way that looks like it works
+loses mail silently.
+
+**Half one — there is no loop.** `For Each` is `noodl-viewer-react/src/nodes/std-library/data/foreach.tsx`,
+a visual repeater that instantiates a component per item. `noodl-viewer-cloud/src/nodes/index.ts`
+does not register it and could not: there is nothing to instantiate server-side. So the only thing
+in a cloud function that can iterate is a `JavaScriptFunction` node's script — and a script's loop
+body cannot pulse a node's port, which is the only way to reach `Send Email`.
+
+**Half two — and this is the defect.** Pulse `Do` N times with a different `To` each time, which is
+what any author would try next, and the node's coalescing guard collapses the sends while settling
+every outcome:
+
+| arm | pulses | **`_noodl_send_email` calls** | outcomes reported |
+|---|---|---|---|
+| three addresses, **one pass** | 3 | **1** — `["c@x.invalid"]` | `done ×3` |
+| three addresses, **one pass each** (control) | 3 | 3 — `["a@…","b@…","c@…"]` | `done ×3` |
+
+The two arms differ in exactly one thing: whether an update pass separates the pulses. Same node,
+same mailer, same three addresses, same harness (`erg-001-cloud-node-outcomes.test.ts`'s probe).
+
+🔴 **The first arm is silent, and it reports success.** Two of three members never receive the mail,
+and the graph is told three times that the mail server accepted the message. `sendemail.ts`'s
+`scheduleSend` pushes each pulse's outcome token and returns early when `sendScheduled` is set; the
+one `doSend` that eventually runs reads `this._internal.to` — whichever address was written last —
+and calls `reportOutcomes(this, tokens, 'done')` for the whole batch.
+
+### Why this is not the same as the behaviour already pinned
+
+`erg-001` §4 has a row — *"two Dos coalesced into one pass still report two outcomes"* — which
+asserts `calls` is 1 and two `done`s fire, and it is **correct for what it is about**: the guard
+exists so that "set the fields, then press Do" batches, and Rule 1 says every invocation gets
+exactly one outcome. That row holds `To` constant. The defect is what the same mechanism does when
+`To` **varies**, which no row asks: the collapse stops being a de-duplication and becomes a
+delivery failure that the outcome contract then certifies as a success.
+
+### Where it bites a person
+
+The church secretary posts the harvest supper. Twenty-four members ticked the box. One of them gets
+the email — the last row the query returned — and the admin screen says it went to twenty-four.
+Nobody finds out until somebody does not turn up.
+
+⚠️ **Suggested shape, not a design.** Either the node keys its batch on `To` (a pulse that changes
+the address is a different invocation, not a re-press of the same one), or it refuses outright —
+`send-email/coalesced-recipients`, naming the addresses it dropped. The information is all present
+at the point of collapse: `scheduleSend` could compare `this._internal.to` against the address the
+queued tokens were minted under. Silently keeping the last one is the only option that cannot be
+right.
+
+✅ **Worked around on the template side** — TPL-002's fan-out is a **serial pump**: a
+`JavaScriptFunction` holding the cursor emits one address and one `Do`, and `Send Email`'s `done`
+**and** `failure` both wire back to advance it. The mailer resolves asynchronously, so every pulse
+lands in its own pass — the control arm above, built deliberately. That is one template's shape, not
+a product fix, and it is why this row's owner is `NONE`. It also means **every app that ever needs
+to mail two people has to rediscover it.**
+
+### Reproducing
+
+`erg-001-cloud-node-outcomes.test.ts` §4's `makeProbe`, three `to.set` / `send.valueChangedToTrue`
+pairs, `probe.flush()` once at the end for the first arm and after each pair for the control.
+
+## D34 — 🔴 A cloud function cannot find out what the app's own public address is
+
+**Measured, s14, by needing it and failing to find it.** Owner: **NONE**.
+
+### What it is
+
+TPL-002's emails carry an unsubscribe link, and a link in an email must be absolute. There is no
+way for a graph to learn its own origin:
+
+- `EmailConfigState.effectiveBaseUrl(fallback)` exists, is tested, and is what the product's own
+  flows use — `oauth-routes.ts:164`, `email-routes.ts:152`, `admin-auth.ts:72`. **All three are HTTP
+  routes inside the backend.** Nothing exposes it to a graph: no node, no process global beside
+  `_noodl_send_email` / `_noodl_get_secret` / `_noodl_system_users` / `_noodl_system_roles`.
+- The Request node **has** the incoming headers — `request.ts:257` does
+  `requestModel.set('Headers', req.headers)` — but they are set on a model with **no output port**.
+  The node's declared outputs are `Received`, `Authenticated`, `User Id`, `Allow Unauthenticated`
+  and the `{{*}}` parameter ports. A graph cannot read `Host` or `Origin`.
+
+So an app whose emails contain links has to be *told* where it lives, by something outside itself.
+
+### Where it bites a person
+
+Every app that mails anybody a link: a password reset it built itself, an invitation, a receipt, a
+confirmation, an unsubscribe. This is not an edge — it is most of what transactional email is.
+
+⚠️ **Suggested shape, not a design.** The narrow fix is an output port on the Request node for the
+request's own origin (`Origin`, falling back to `Host` + protocol), which the node already holds and
+throws away. The broader one is a read-only `Site Address` node resolving `effectiveBaseUrl` — the
+same seam shape `Secret` uses, and the one that also answers it for a workflow with no request.
+
+✅ **Worked around on the template side, and the workaround has a cost worth naming.** TPL-002's
+`notifyMembers` takes `siteUrl` as a parameter, and the Post page publishes `location.origin` — by
+construction the address this members' area is served from. `hold` then keeps **only the scheme and
+host** of what it is handed, because a caller-supplied string that reaches twenty-four inboxes must
+not be able to carry a path, a query or a fragment. The cost: the endpoint trusts its caller for a
+value that appears in an email, and only `role:admin` may call it, which is why that is tolerable
+here and would not be on a public endpoint.
+
+## D35 — 🔴 `Component` scope in a cloud function is NOT per-request, and nothing says so
+
+**Measured, s14, by four thirty-second timeouts.** Owner: **NONE**.
+
+### What it is
+
+A `JavaScriptFunction`'s script is handed four arguments, the last being a component scope object —
+`JavascriptNodeParser.getComponentScopeForNode`, keyed by `node.nodeScope.componentOwner.getInstanceId()`
+into a **module-level `_componentScopes` map**. It is the only place a graph can hold state across
+two runs of a node, which is what any loop needs.
+
+The reasonable assumption — a cloud function builds its graph per request, so its component scope is
+per request — is **false**. Instance ids are reused between invocations, so the object survives the
+request that filled it and the next request finds the previous one's contents.
+
+### The reading
+
+TPL-002's fan-out keeps its queue and cursor there. A guard was added so a second `plan` could not
+reset the cursor under a pump still walking it:
+
+    if (Component.tpl002 && Component.tpl002.planned === true) return;
+
+The first request worked. **Every later one returned before answering** — `plan` saw a `planned` flag
+left over from the previous request, returned, fired no outcome, and the Response node was never
+reached: `Cloud function "notifyMembers" did not send a response within 30000ms`, four times, in one
+suite run. Removing the guard restored it. Same code, same data, one flag.
+
+### Where it bites a person
+
+Anything that accumulates: a batch, a retry counter, a running total, a de-duplication set. The first
+request is correct and the second is wrong, which is the worst possible order for finding it — and in
+a cloud function the symptom is a **hang**, not an error, because a graph that returns early fires no
+Response.
+
+⚠️ **Suggested shape, not a design.** Either clear the scope when a request's `NodeScope` is reset
+(`NoodlCloudRuntime.run` already calls `requestScope.reset()` and `_onNodeDeleted()`), or — if
+process-lifetime is the intended semantics — say so on the port documentation and in
+`BACKEND-AUTHORING-MODEL.md`, because at present nothing in either states the lifetime at all.
+
+✅ **Held on the template side by never reading it back:** `plan` writes `Component.tpl002` **whole**
+on every run, so a stale scope is overwritten rather than inherited. That is one template's
+discipline, not a product fix.

@@ -6,41 +6,41 @@
     {
       "fromId": "pageInputs",
       "fromProperty": "pm-announcementId",
-      "toId": "hold",
+      "toId": "hold-3",
       "toProperty": "in-announcementId"
     },
     {
       "fromId": "page-4",
       "fromProperty": "didMount",
-      "toId": "hold",
+      "toId": "hold-3",
       "toProperty": "run"
     },
     {
-      "fromId": "hold",
+      "fromId": "hold-3",
       "fromProperty": "out-announcementId",
-      "toId": "record",
+      "toId": "record-2",
       "toProperty": "modelId"
     },
     {
-      "fromId": "hold",
+      "fromId": "hold-3",
       "fromProperty": "out-ready",
-      "toId": "record",
+      "toId": "record-2",
       "toProperty": "fetch"
     },
     {
-      "fromId": "record",
+      "fromId": "record-2",
       "fromProperty": "prop-title",
       "toId": "title",
       "toProperty": "text"
     },
     {
-      "fromId": "record",
+      "fromId": "record-2",
       "fromProperty": "prop-body",
       "toId": "body",
       "toProperty": "text"
     },
     {
-      "fromId": "record",
+      "fromId": "record-2",
       "fromProperty": "prop-postedAt",
       "toId": "when-2",
       "toProperty": "in-postedAt"
@@ -52,7 +52,7 @@
       "toProperty": "text"
     },
     {
-      "fromId": "record",
+      "fromId": "record-2",
       "fromProperty": "failure",
       "toId": "refusalGate",
       "toProperty": "eval"
@@ -94,7 +94,7 @@
       "toProperty": "mounted"
     },
     {
-      "fromId": "hold",
+      "fromId": "hold-3",
       "fromProperty": "out-announcementId",
       "toId": "confirmed",
       "toProperty": "in-announcementId"
