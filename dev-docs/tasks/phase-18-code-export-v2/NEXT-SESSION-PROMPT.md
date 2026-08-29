@@ -4,7 +4,8 @@
 
 **Tier 1 closed in session 38. Session 39 closed §8.7. Session 40 built `Page Inputs` and the two
 nodes beside it that were already lying. Session 41 built `External Link` — and its drive found a
-defect in the node itself, which is now [DEF-016](../phase-80-the-defects-the-templates-found/DEF-016-EXTERNAL-LINK-ALWAYS-REPORTS-FAILURE.md).**
+defect in the node itself, which is now [DEF-016](../phase-80-the-defects-the-templates-found/DEF-016-EXTERNAL-LINK-ALWAYS-REPORTS-FAILURE.md).
+Session 42 closed the store-key gate — the last of §10's leftovers (§13).**
 
 **68 of 127 (53.5%).** Read [EXP-011 §12](./EXP-011-PICKER-COVERAGE.md) before touching navigation,
 and [§11.1](./EXP-011-PICKER-COVERAGE.md) before trusting any ledger row.
@@ -61,22 +62,32 @@ stack also feeds `Page Inputs` at runtime, and the export does not route one at 
 static (there are exactly two failures and neither is a service's words), so it is `HTTP Request`'s
 `errorState` with the hard part removed. `Completed` needs a join beneath the outcome arms.
 
-### B2. ⚠️ When DEF-016 lands, this package owes a follow-up
+### B2. ✅ DEF-016 landed, and the export follow-up landed with it — nothing owed
 
-[DEF-016](../phase-80-the-defects-the-templates-found/DEF-016-EXTERNAL-LINK-ALWAYS-REPORTS-FAILURE.md)
-fixes `External Link` in the runtime — its `noopener` defeats its own blocked-tab test, so `Done` is
-unreachable. §12.6 explains why the export reproduces that **deliberately** today. The moment the
-runtime changes, this package's `case 'external-link'` in `src/emit/component.ts` is **stale**, and a
-stale copy here is worse than the original bug: it makes the exported app diverge from the app, which
-§11.3 treats as the worst class of difference. It is DEF-016's own AC7. **Check whether it has landed
-before starting anything else in this file.**
+`0c011b6b` fixed the runtime (the blocked-tab test now reads `navigator.userActivation` **before**
+the call, instead of `window.open`'s `noopener`-poisoned return value) **and** carried
+`case 'external-link'` in `src/emit/component.ts` with it. AC7 is met; the emitted test is
+`(window.open(…), navigator.userActivation?.isActive !== false)`.
 
-### C. The store-key gate — the same defect, one shape over — [§10.5](./EXP-011-PICKER-COVERAGE.md)
+⚠️ §12.6 still ends *"it stops being wrong the moment DEF-016 is fixed"* — that sentence is now
+**history, not a pending item**. §12.7 says so.
 
-Unchanged and still shut. `storeKeyReadOf` refuses a Global Store key whose type is not
-`string`/`number`, so a key written from an HTTP body drops its read exactly as a Variable used to.
-Not widened in §10 for a named reason: that gate is **shared with `resolveExpr`**, so lifting it
-lets `unknown` into arbitrary expression positions. A slice of its own, and small.
+🔴 **B above is therefore unblocked and unchanged in shape**: both `Error` messages are still
+static, and — worth checking against the source rather than against §12.4 — the value the `Error`
+output actually carries is `_internal.lastError`, the **short** `'The browser blocked opening a new
+tab'`, not the longer sentence `reportOutcome` sends to the outcome channel. Two strings, one port,
+and only one of them is the port's.
+
+### C. ✅ The store-key gate — closed in session 42 — [§13](./EXP-011-PICKER-COVERAGE.md)
+
+`storeKeyReadOf` now takes a mode: pass 4b's render binding takes `'binding'` and marks the source
+`untyped`, `resolveExpr` keeps `'expr'`. §10.5's named reason for not lifting it is why it was
+**split** rather than widened. A `boolean` key — refused by the same one-line test and never
+untypable at all — binds now too.
+
+🔴 **If you ever "simplify" `storeKeyReadOf` by deleting the mode parameter, one test row exists
+solely to stop you**: *an expression position still defers on the untyped key*. It is the only row
+that mutant 3 kills.
 
 **Recommendation: B first** (it is an hour and closes a node), then A.
 
@@ -95,33 +106,38 @@ lets `unknown` into arbitrary expression positions. A slice of its own, and smal
 5. **EXP-009 leftovers**: drive the exported login/admin forms in a browser, and delete the
    drive-residue user `exp009-drive` from the local Puppy backend's `_User`.
 
-## 🔴 What session 41 would tell you if it could only say five things
+## 🔴 What session 42 would tell you if it could only say five things
 
-1. **A definition that spreads a helper is not a port list.** `External Link`'s literal `outputs:`
-   object has four ports; the editor draws five, because `...outcomeOutputs({…})` adds `Completed`
-   to every node that uses it (`outcome.ts:164`). The first refusal sentence written from that
-   reading told an author a port they were looking at **did not exist**. Ask the catalog
-   (`get_node_type`), not the source file — re-reading the file returns the same four however
-   carefully you read it.
-2. **A control pair is what separates "the app is wrong" from "the browser said no".** The drive's
-   `Done` arm never fired. Three readings fitted: the typed value never reached the Variable, the
-   browser blocked the popup, or the emitter was wrong. The pair that settled it varied **one**
-   thing — the window-features string — and flipped the answer: `noopener` makes `window.open`
-   return `null` **while the tab opens**. That is DEF-016, and it is in the runtime, not the export.
-3. **A user gesture is part of the instrument.** `element.click()` is not a user activation, and
-   `window.open` is refused outside one — so a driver using it observes the blocked-tab arm for a
-   reason that has nothing to do with the app. Use `Input.dispatchMouseEvent`. Both arms of any
-   `window.open` measurement need it, or both return `null` and the pair proves nothing.
-4. **The row that catches a missing guard was not the row anyone would have predicted.** Sabotage A
-   removed the empty-link guard, and the "did it navigate to the failure page" row **did not move**
-   — an empty link still returns `null`, so the failure arm still ran. Only the **browser tab
-   count** moved. Write the row that observes the mechanism, not the row that observes the outcome
-   you happen to be able to see.
-5. **`tsc` held 2 of the 14 sites a new `HandlerAction` kind belongs to.** The other twelve are
-   `default:` arms, `else if` chains, ternaries and an `every` callback whose missing case comes
-   back `unknown` and is swallowed. §11.6 warned about two of them; the census is in §12's commit.
-   **Grep `case 'date-now-read'` across both packages** — it is the most recently added kind and
-   therefore the most complete map of where a kind has to go.
+*(Session 41's five — the spread helper that is not a port list, the `noopener` control pair, the
+user gesture as instrument, the tab-count row, and the 14 sites a new `HandlerAction` kind belongs
+to — are in `588bce72` and EXP-011 §12. Read §12 before touching `External Link`.)*
+
+1. **The file changed under me between two reads, and the second read was the true one.** Reading
+   `externallink.ts:40-90` gave a `window.open` return-value test; reading `:90-160` moments later
+   gave a `userActivation` test. Not two copies — a peer was committing DEF-016 **as I read**. The
+   tell was that the two readings could not both be true, and `stat` settled it in one command.
+   🔴 **On a shared checkout, a surprising reading is a question about *when* you read, not only
+   about what is there.** It also changed the plan: session 41's recommended next task (B) was
+   building on a shape that was being replaced, so this session took C instead.
+2. **A mutant that does not compile kills nothing and reads like a clean run.** Mutant 2's first
+   form was a type error, and jest reported **`Tests: 0 total`** — not a failure, not a kill.
+   🔴 **Every mutant arm owes a row count, and `0 total` means it never ran.** ts-jest typechecks
+   the tests here, so a mutation must be type-valid to be a mutation at all.
+3. **A green build proves a coercion is *valid*, never that it is *needed*.** The emitted app built
+   with `String(x ?? '')` in place — which says nothing on its own. The arm that says something is
+   the **necessity control**: emit the value bare, rebuild, and watch `tsc` fail with **TS2322 ×2**.
+   Do not report "the build passed" as evidence for a change the build would have passed without.
+4. 🔴 **And that same build is blind to one of the four rows — say so rather than let it read as
+   covered.** Bare `{loud}` where `loud: boolean` **compiles**, because `boolean` is a valid
+   `ReactNode`. But React renders a bare boolean as *nothing* where the runtime's Text node renders
+   `String(value)` → `"true"`. The coercion there fixes a divergence `tsc` cannot see, so the
+   necessity control covers the `unknown` sinks **only**, and §13.4 says which.
+5. **Two arms in this session were built wrong in the same way: the thing I varied was not the only
+   thing that differed.** The gate-still-shut row first wired into the fixture's `themeFormat`,
+   whose port **already had a wire** — so it measured a duplicate. And the boolean arm built its
+   store with a `literal` ParamValue where `initialState` parses as **`json`**, which is silently
+   ignored, emitting `store<MoodState>('mood', {})` and every key optional. 🔴 **Both failed
+   looking exactly like a pass would if you only checked the wire survived. Probe the real IR.**
 
 ## Standing practice
 
@@ -175,6 +191,9 @@ npm run export-ledger:picker                  # from the repo root — holds at 
 
 ## Instruments
 
+s42 scratchpad `641dc708-…`: `harness/` (the emitted untyped-store-key app, builds clean) and
+`snap/` (the pre-mutation copies of `plan.ts`/`component.ts` — mutants were restored by `cp -a` and
+md5-verified, never `git checkout --`).
 s41 scratchpad `44761146-…`: `EXPECTED-s41.md` (written before the run), `note-desk/` (the
 MCP-authored project, now carrying three External Links), `calls-link.json`, `drive-links.mjs`,
 `probe-noopener.mjs` (the DEF-016 control pair), `harness/` (clean, 9/9), `harness-sabA/`
