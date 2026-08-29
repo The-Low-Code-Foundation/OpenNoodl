@@ -234,13 +234,6 @@
       "y": 1360
     },
     {
-      "id": "standing-3",
-      "type": "/Members/Standing",
-      "label": "Who is this?",
-      "x": 530,
-      "y": 1000
-    },
-    {
       "id": "today",
       "type": "JavaScriptFunction",
       "label": "Today, as an ISO day",
@@ -248,7 +241,7 @@
         "functionScript": "Outputs.day = new Date().toISOString().slice(0, 10);"
       },
       "x": 530,
-      "y": 1360
+      "y": 160
     },
     {
       "id": "meetings",
@@ -297,7 +290,7 @@
         "target": "/Pages/Landing"
       },
       "x": 530,
-      "y": 1480
+      "y": 280
     }
   ],
   "visualRoots": [

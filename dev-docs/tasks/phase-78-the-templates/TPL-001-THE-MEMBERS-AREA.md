@@ -727,12 +727,17 @@ noticeboard. They are gone; the band carries five destinations instead.
 Two rows inside the same 760px cap: the identity and `Sign out` on top, five nav items beneath.
 `Announcements`, `Meetings` for everybody; `Post`, `Requests`, `Who belongs` gated on `isModerator`.
 
-🔴 **The band asks the server who you are for itself, and the alternative was measured rather than
-assumed.** Two of the seven pages carrying it — `Pages/Announcement` and `Pages/Meeting` — have **no
+🔴 **The band asks the server who you are, and since s13 it is the only thing that does.** Two of
+the seven pages carrying it — `Pages/Announcement` and `Pages/Meeting` — have **no
 `Members/Standing` at all**, deliberately, because the record read is their gate. Borrowing the
 page's answer would have given a moderator their navigation on five screens and silently removed it
-on the two they reach by clicking a row. The cost is a second `myStanding` call per page and it is
-filed as **D29** rather than absorbed quietly.
+on the two they reach by clicking a row — which is why the band has to be the asker.
+
+✅ **D29 is closed (s13).** It cost a second `myStanding` per page while the five pages that owned a
+standing check still asked as well; the band now publishes the whole answer and those five read it.
+**Measured at the browser, not inferred from the graph** — the drive counts the requests each page
+load actually made: 2 → 1 on those five, 1 unchanged on the two detail pages, 0 throughout on the
+landing page as the control.
 
 ⚠️ **The moderator's toolbar on `Pages/Members` STAYS.** The band names *places* in one word; the
 toolbar names *actions* in a moderator's own words, under an eyebrow saying who they are for, and it
@@ -941,8 +946,9 @@ back to the list it came from.
 `Pages/Announcement` and `Pages/Meeting` deliberately own no `Members/Standing` — the record read is
 their gate (§6). The band, which they both carry, already asks `myStanding` for its own three
 moderator doors, so it now publishes `isModerator` as a component output and they consume it.
-⚠️ **A strict subset of D29 that stops short of it on purpose**: D29 is the five pages that own a
-standing check dropping it, which touches every wire AC2/AC3/AC4 rest on.
+✅ **This was the first half of D29, and s13 did the rest**: the five pages that owned a standing
+check dropped it and read these same ports. It waited for a session that could run the drive because
+it touches every wire AC2/AC3/AC4 rest on — and the drive is what says those gates did not move.
 
 ### 🔴 Two specs that could not fail, found the same way as s9's and s10's
 

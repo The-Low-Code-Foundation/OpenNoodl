@@ -4,31 +4,25 @@
   "version": 1,
   "connections": [
     {
-      "fromId": "page-5",
-      "fromProperty": "didMount",
-      "toId": "standing-3",
-      "toProperty": "Check"
-    },
-    {
-      "fromId": "standing-3",
+      "fromId": "chrome-3",
       "fromProperty": "isMember",
       "toId": "memberArea-2",
       "toProperty": "mounted"
     },
     {
-      "fromId": "standing-3",
+      "fromId": "chrome-3",
       "fromProperty": "isPending",
       "toId": "pendingNotice-2",
       "toProperty": "mounted"
     },
     {
-      "fromId": "standing-3",
+      "fromId": "chrome-3",
       "fromProperty": "Member",
       "toId": "today",
       "toProperty": "run"
     },
     {
-      "fromId": "standing-3",
+      "fromId": "chrome-3",
       "fromProperty": "Visitor",
       "toId": "toLanding-2",
       "toProperty": "navigate"

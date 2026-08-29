@@ -4,19 +4,13 @@
   "version": 1,
   "connections": [
     {
-      "fromId": "page-11",
-      "fromProperty": "didMount",
-      "toId": "standing-6",
-      "toProperty": "Check"
-    },
-    {
-      "fromId": "standing-6",
+      "fromId": "chrome-7",
       "fromProperty": "isModerator",
       "toId": "directory",
       "toProperty": "mounted"
     },
     {
-      "fromId": "standing-6",
+      "fromId": "chrome-7",
       "fromProperty": "isModerator",
       "toId": "notModerator-3",
       "toProperty": "in-isModerator"
@@ -28,13 +22,13 @@
       "toProperty": "mounted"
     },
     {
-      "fromId": "standing-6",
+      "fromId": "chrome-7",
       "fromProperty": "Moderator",
       "toId": "members",
       "toProperty": "storageFetch"
     },
     {
-      "fromId": "standing-6",
+      "fromId": "chrome-7",
       "fromProperty": "Visitor",
       "toId": "toLanding-5",
       "toProperty": "navigate"

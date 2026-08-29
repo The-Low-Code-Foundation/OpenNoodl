@@ -45,9 +45,11 @@ import { TPL001_CLOUD_COMPONENTS } from './tpl001Cloud';
 import {
   ANNOUNCEMENT_ROW,
   CHROME_COMPONENT,
+  compositionsStillNeedingInertBorderWidthRemoval,
   MEETING_ROW,
   REQUEST_ROW,
-  STANDING_COMPONENT
+  STANDING_COMPONENT,
+  withoutInertBorderWidth
 } from './tpl001Components';
 import { APP_COMPONENT, buildMembersTemplateProject, prepareArtefact, TEMPLATE_ID } from './tpl001Template';
 import { requestedCompositions, USED_COMPOSITIONS } from './tpl001Theme';
@@ -807,12 +809,41 @@ describe('TPL-001 — the members-only queries have no trigger but the standing 
     expect(association?.node.parameters?.['runOnChange-collectionName']).toBeUndefined();
   });
 
+  /**
+   * 🔴 **The band's output ports that are driven by the band's OWN standing
+   * gate, proven inside `Members/Chrome` rather than trusted.**
+   *
+   * Since D29 the five pages that used to own a `Members/Standing` read the
+   * band's answer instead, so `chrome.Member` is now a legitimate trigger for a
+   * members-only query. Accepting *any* port on a chrome instance would make
+   * the gate below satisfiable by a band that forwarded something else — the
+   * hole shaped exactly like the defect. So the provenance is established here,
+   * once, from the band's own graph: a port qualifies only if a wire inside
+   * `Members/Chrome` carries it from that component's `Members/Standing`
+   * instance to its `Component Outputs`.
+   */
+  const bandPortsFromStanding = (): Set<string> => {
+    const band = byLegacyName.get(CHROME_COMPONENT) as StoredComponent;
+    const standingIds = new Set(band.nodes.filter((n) => n.type === STANDING_COMPONENT).map((n) => n.id));
+    const outputIds = new Set(band.nodes.filter((n) => n.type === 'Component Outputs').map((n) => n.id));
+    return new Set(
+      band.connections
+        .filter((w) => standingIds.has(w.fromId) && outputIds.has(w.toId))
+        .map((w) => String(w.toProperty))
+    );
+  };
+
   it('🔴 and each one’s only trigger comes from the standing gate or a write it caused', () => {
     const rows: Array<{ where: string; triggers: string[] }> = [];
+    const bandPorts = bandPortsFromStanding();
+    // The instrument must be able to fail: an empty set would make every
+    // `fromBand` below false, and this spec would then be grading nothing.
+    expect(bandPorts.size).toBeGreaterThan(0);
     for (const component of shipped) {
       const instanceIds = new Set(
         component.nodes.filter((n) => n.type === STANDING_COMPONENT).map((n) => n.id)
       );
+      const bandIds = new Set(component.nodes.filter((n) => n.type === CHROME_COMPONENT).map((n) => n.id));
       for (const node of component.nodes) {
         if (node.type !== 'DbCollection2') continue;
         const collection = String(node.parameters?.collectionName);
@@ -821,13 +852,17 @@ describe('TPL-001 — the members-only queries have no trigger but the standing 
         rows.push({ where: `${component.path} › ${node.id}`, triggers: triggersOf(component, node.id) });
         for (const wire of component.connections.filter((w) => w.toId === node.id && w.toProperty === 'storageFetch')) {
           const fromStanding = instanceIds.has(wire.fromId);
+          // D29: the band relaying the answer it already has. Same gate, one
+          // call — and `bandPorts` is what makes "the band" mean the standing
+          // check rather than any wire that happens to leave the chrome.
+          const fromBand = bandIds.has(wire.fromId) && bandPorts.has(wire.fromProperty);
           // The only other legitimate trigger is a refetch after a write this
           // page caused, which cannot fire before a moderator used a screen they
           // were already cleared for.
           const fromRefresh = wire.fromProperty.startsWith('itemOutputSignal-');
-          expect(`${component.path}:${wire.fromId}.${wire.fromProperty}:${fromStanding || fromRefresh}`).toBe(
-            `${component.path}:${wire.fromId}.${wire.fromProperty}:true`
-          );
+          expect(
+            `${component.path}:${wire.fromId}.${wire.fromProperty}:${fromStanding || fromBand || fromRefresh}`
+          ).toBe(`${component.path}:${wire.fromId}.${wire.fromProperty}:true`);
         }
       }
     }
@@ -1098,10 +1133,36 @@ describe('TPL-001 — a moderator can take something down again', () => {
     expect(band?.type).toBe(CHROME_COMPONENT);
 
     // 🔴 And the page does NOT place a `Members/Standing` of its own. That is
-    // the whole reason the band publishes the port: a second instance here
-    // would be a third `myStanding` per page load, which is D29's cost paid
-    // twice over rather than the wire this replaced it with.
+    // the whole reason the band publishes the port: an instance here would be a
+    // second `myStanding` per page load, which is the cost D29 removed from the
+    // other five rather than the wire that replaced it.
     expect(comp.nodes.filter((n) => n.type === STANDING_COMPONENT)).toEqual([]);
+  });
+
+  /**
+   * 🔴 **D29, stated once over the whole project rather than page by page.**
+   *
+   * The two specs above say the two detail pages place no standing gate. Since
+   * s13 that is true of every page: the band asks, and everything else reads the
+   * band. Asserted as a census because that is the form a regression shows up
+   * in — a page reintroducing its own gate is an ADDITION, and a rule written as
+   * "these five pages have none" would not see a sixth page appear with one.
+   */
+  it('🔴 the whole project places exactly one standing gate, and the band holds it', () => {
+    const placements = shipped.flatMap((c) =>
+      c.nodes.filter((n) => n.type === STANDING_COMPONENT).map((n) => `${c.path} › ${n.id}`)
+    );
+    expect(placements).toHaveLength(1);
+    expect(placements[0].startsWith(`${CHROME_COMPONENT} `)).toBe(true);
+  });
+
+  it('control: the census counts placements that exist, not a type nothing uses', () => {
+    // 🔴 Without this, the assertion above is satisfied by a typo in
+    // STANDING_COMPONENT — every page would place "none" of a type that is not
+    // there, and the count would be wrong in the other direction. The component
+    // itself must also be a thing the project ships.
+    expect(shipped.map((c) => c.path)).toContain(STANDING_COMPONENT);
+    expect(shipped.map((c) => c.path)).toContain(CHROME_COMPONENT);
   });
 
   it.each(DETAIL)('$page cannot delete without being asked, and never at page mount', ({ page }) => {
@@ -1375,6 +1436,41 @@ describe('TPL-001 — the design system is finished, not merely opened', () => {
     // house rules are about.
     expect(asked.length).toBeGreaterThan(10);
     expect(asked).toEqual([...USED_COMPOSITIONS].sort());
+  });
+
+  /**
+   * §4b — ✅ **DEF-006 (a) / AC5: the template's own repair has lapsed.**
+   *
+   * `withoutInertBorderWidth` was written as a *rule* rather than as an edit to
+   * one call site precisely so this test could exist. It stripped a `borderWidth`
+   * that `primaryButton` set under its own `borderStyle: 'none'` — a port the
+   * runtime never reads, one `inactive-conditional-parameter` per button, twelve
+   * on one generation run. That was one template working around a defect every
+   * agent authoring on-system had.
+   *
+   * 🔴 **Asserted over the compositions the vocabulary SHIPS, not the ones this
+   * template applies.** "The workaround does nothing for us" and "the product no
+   * longer needs the workaround" are different sentences, and only the second is
+   * what AC5 asks for. `raised` and `ruled` are in this population and neither
+   * has ever been through the helper.
+   *
+   * If a composition ever reintroduces the shape, this names it — which is why
+   * the helper stays rather than being deleted quietly.
+   */
+  it('§4b no shipped composition still needs the inert-borderWidth workaround', () => {
+    expect(compositionsStillNeedingInertBorderWidthRemoval()).toEqual([]);
+  });
+
+  it('§4b CONTROL — the workaround still removes the shape it is about', () => {
+    // Without this, §4b passes just as well on a helper that returns its input.
+    expect(Object.keys(withoutInertBorderWidth({ borderStyle: 'none', borderWidth: 0, color: 'red' }))).toEqual([
+      'borderStyle',
+      'color'
+    ]);
+    expect(Object.keys(withoutInertBorderWidth({ borderStyle: 'solid', borderWidth: 1 })).sort()).toEqual([
+      'borderStyle',
+      'borderWidth'
+    ]);
   });
 
   /**

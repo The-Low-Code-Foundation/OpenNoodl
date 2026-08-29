@@ -95,7 +95,7 @@
       "path": "Members/Chrome",
       "type": "visual",
       "nodeCount": 24,
-      "connectionCount": 15,
+      "connectionCount": 21,
       "modified": "2026-08-28T00:00:00.000Z",
       "created": "2026-08-28T00:00:00.000Z"
     },
@@ -118,8 +118,8 @@
     "Pages/Members": {
       "path": "Pages/Members",
       "type": "page",
-      "nodeCount": 29,
-      "connectionCount": 15,
+      "nodeCount": 28,
+      "connectionCount": 14,
       "modified": "2026-08-28T00:00:00.000Z",
       "created": "2026-08-28T00:00:00.000Z"
     },
@@ -134,8 +134,8 @@
     "Pages/Meetings": {
       "path": "Pages/Meetings",
       "type": "page",
-      "nodeCount": 17,
-      "connectionCount": 10,
+      "nodeCount": 16,
+      "connectionCount": 9,
       "modified": "2026-08-28T00:00:00.000Z",
       "created": "2026-08-28T00:00:00.000Z"
     },
@@ -166,31 +166,31 @@
     "Pages/Post": {
       "path": "Pages/Post",
       "type": "page",
-      "nodeCount": 31,
-      "connectionCount": 19,
+      "nodeCount": 30,
+      "connectionCount": 18,
       "modified": "2026-08-28T00:00:00.000Z",
       "created": "2026-08-28T00:00:00.000Z"
     },
     "Pages/Requests": {
       "path": "Pages/Requests",
       "type": "page",
-      "nodeCount": 17,
-      "connectionCount": 11,
+      "nodeCount": 16,
+      "connectionCount": 10,
       "modified": "2026-08-28T00:00:00.000Z",
       "created": "2026-08-28T00:00:00.000Z"
     },
     "Pages/Directory": {
       "path": "Pages/Directory",
       "type": "page",
-      "nodeCount": 18,
-      "connectionCount": 10,
+      "nodeCount": 17,
+      "connectionCount": 9,
       "modified": "2026-08-28T00:00:00.000Z",
       "created": "2026-08-28T00:00:00.000Z"
     }
   },
   "stats": {
     "totalComponents": 23,
-    "totalNodes": 360,
-    "totalConnections": 333
+    "totalNodes": 355,
+    "totalConnections": 334
   }
 }

@@ -520,13 +520,6 @@
       "y": 2680
     },
     {
-      "id": "standing-4",
-      "type": "/Members/Standing",
-      "label": "Who is this?",
-      "x": 530,
-      "y": 1000
-    },
-    {
       "id": "notModerator",
       "type": "JavaScriptFunction",
       "label": "Is this person not a moderator?",
@@ -640,7 +633,7 @@
         "target": "/Pages/Landing"
       },
       "x": 530,
-      "y": 2800
+      "y": 160
     }
   ],
   "visualRoots": [

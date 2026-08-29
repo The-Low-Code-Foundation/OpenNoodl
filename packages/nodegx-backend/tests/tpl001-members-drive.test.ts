@@ -171,6 +171,21 @@ describe("TPL-001 — the members' area, driven", () => {
   const inDocument: Record<string, string[]> = {};
   /** Every HTTP reading, same idea. */
   const http: Record<string, Reading> = {};
+  /**
+   * 🔴 **How many times each page load asked the server who the person is.**
+   *
+   * D29's subject, measured rather than inferred from the graph. One
+   * `Members/Standing` instance makes exactly one `myStanding` call when its
+   * `Check` fires, so counting instances would be a proxy — this counts the
+   * requests the browser actually made, which is the thing that costs a person
+   * a round trip.
+   *
+   * ⚠️ Read from `performance.getEntriesByType('resource')`, whose buffer is
+   * per-document. `look` navigates, so each reading covers that page load and
+   * no other. `lookHere` does not navigate and would report the load it sits
+   * on, so it deliberately does not record one.
+   */
+  const standingCalls: Record<string, number> = {};
   /** What the browser held after each sign-in — a session, or nothing. */
   const sessions: Record<string, string | null> = {};
   let enforced = false;
@@ -304,11 +319,26 @@ describe("TPL-001 — the members' area, driven", () => {
        */
       await page.setViewport({ width: 1280, height: 1600 });
 
+      /**
+       * The `myStanding` requests THIS document made, counted at the browser.
+       *
+       * ⚠️ Cross-origin — the backend is on its own port — so the entry carries
+       * a name and no timing detail. The name is all this needs.
+       */
+      const countStanding = async (): Promise<number> =>
+        Number(
+          await page.evaluate(
+            "performance.getEntriesByType('resource').filter(function (e) {" +
+              " return e.name.indexOf('myStanding') !== -1; }).length"
+          )
+        );
+
       const look = async (label: string, url: string) => {
         visits[label] = await readVisit(page, url);
         const cs = await controls(page, 'button');
         buttons[label] = offered(cs);
         inDocument[label] = present(cs);
+        standingCalls[label] = await countStanding();
       };
 
       /**
@@ -1021,6 +1051,56 @@ describe("TPL-001 — the members' area, driven", () => {
       // is what makes this 403 a refusal.
       expect(http['member.directory'].status).toBe(403);
       expect(http['anon.directory'].status).toBe(403);
+    });
+  });
+
+  /**
+   * §10 — D29. **Every signed-in page asks the server who you are exactly once.**
+   *
+   * Until s13 the five pages carrying their own `Members/Standing` asked twice:
+   * once for the page's gates, once for the band's three moderator-only doors.
+   * The band now publishes the answer it already has and those five read it, so
+   * there is one call per page load and the gates did not move — §2 to §9 above
+   * are the evidence for the second half of that sentence, and this section is
+   * the evidence for the first.
+   *
+   * 🔴 **Counted at the browser, not inferred from the graph.** A spec that
+   * counted `Members/Standing` instances would pass on a template that placed
+   * one instance and called it twice, and would fail on one that placed two and
+   * called neither — neither of which is what a person pays for. What costs
+   * them a round trip is a request, so a request is what is counted.
+   */
+  describe('§10 D29 — one standing check per page, not two', () => {
+    /** Every reading `look` took, i.e. every page load. `lookHere` records none. */
+    const loads = () => Object.keys(standingCalls).sort();
+
+    it('control: the landing page asks nobody, so a count of one below is a reading', () => {
+      // 🔴 The negative control. Without it, "1" everywhere would be equally
+      // consistent with an instrument that cannot tell requests apart at all.
+      // The landing page carries no band and no standing gate, and reads 0.
+      expect(standingCalls['anon.landing']).toBe(0);
+    });
+
+    it('control: there are page loads to grade, and every one of them was recorded', () => {
+      // Guards the shape of the assertion below: `every` over an empty list is
+      // vacuously true, which is the way this section could go quietly green.
+      expect(loads().length).toBeGreaterThan(15);
+      expect(loads().filter((k) => typeof standingCalls[k] !== 'number')).toEqual([]);
+    });
+
+    it('🔴 every page carrying the band asks exactly once', () => {
+      const banded = loads().filter((k) => k !== 'anon.landing');
+      const wrong = banded.filter((k) => standingCalls[k] !== 1).map((k) => `${k}=${standingCalls[k]}`);
+      expect(wrong).toEqual([]);
+    });
+
+    it('🔴 including the two detail pages, which have no standing gate of their own', () => {
+      // These two never had the second call — they gate on the record read and
+      // take `isModerator` from the band. Stated separately because they are the
+      // pages where a REGRESSION would show as a rise from one to two, and the
+      // assertion above would report that in a list of fifteen.
+      expect(standingCalls['member.announcement']).toBe(1);
+      expect(standingCalls['moderator.announcement']).toBe(1);
     });
   });
 });

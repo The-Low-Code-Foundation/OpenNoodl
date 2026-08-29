@@ -406,9 +406,39 @@
       "label": "Who the band knows this person to be",
       "ports": [
         {
+          "name": "isMember",
+          "plug": "input",
+          "type": "boolean"
+        },
+        {
           "name": "isModerator",
           "plug": "input",
           "type": "boolean"
+        },
+        {
+          "name": "isPending",
+          "plug": "input",
+          "type": "boolean"
+        },
+        {
+          "name": "isUnknown",
+          "plug": "input",
+          "type": "boolean"
+        },
+        {
+          "name": "Member",
+          "plug": "input",
+          "type": "signal"
+        },
+        {
+          "name": "Moderator",
+          "plug": "input",
+          "type": "signal"
+        },
+        {
+          "name": "Visitor",
+          "plug": "input",
+          "type": "signal"
         }
       ],
       "x": 530,

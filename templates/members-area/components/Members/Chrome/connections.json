@@ -89,9 +89,45 @@
     },
     {
       "fromId": "standing",
+      "fromProperty": "isMember",
+      "toId": "outputs-3",
+      "toProperty": "isMember"
+    },
+    {
+      "fromId": "standing",
       "fromProperty": "isModerator",
       "toId": "outputs-3",
       "toProperty": "isModerator"
+    },
+    {
+      "fromId": "standing",
+      "fromProperty": "isPending",
+      "toId": "outputs-3",
+      "toProperty": "isPending"
+    },
+    {
+      "fromId": "standing",
+      "fromProperty": "isUnknown",
+      "toId": "outputs-3",
+      "toProperty": "isUnknown"
+    },
+    {
+      "fromId": "standing",
+      "fromProperty": "Member",
+      "toId": "outputs-3",
+      "toProperty": "Member"
+    },
+    {
+      "fromId": "standing",
+      "fromProperty": "Moderator",
+      "toId": "outputs-3",
+      "toProperty": "Moderator"
+    },
+    {
+      "fromId": "standing",
+      "fromProperty": "Visitor",
+      "toId": "outputs-3",
+      "toProperty": "Visitor"
     }
   ]
 }

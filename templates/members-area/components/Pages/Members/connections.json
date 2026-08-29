@@ -4,43 +4,37 @@
   "version": 1,
   "connections": [
     {
-      "fromId": "page-3",
-      "fromProperty": "didMount",
-      "toId": "standing-2",
-      "toProperty": "Check"
-    },
-    {
-      "fromId": "standing-2",
+      "fromId": "chrome",
       "fromProperty": "isMember",
       "toId": "memberArea",
       "toProperty": "mounted"
     },
     {
-      "fromId": "standing-2",
+      "fromId": "chrome",
       "fromProperty": "isModerator",
       "toId": "moderatorTools",
       "toProperty": "mounted"
     },
     {
-      "fromId": "standing-2",
+      "fromId": "chrome",
       "fromProperty": "isPending",
       "toId": "pendingNotice",
       "toProperty": "mounted"
     },
     {
-      "fromId": "standing-2",
+      "fromId": "chrome",
       "fromProperty": "isUnknown",
       "toId": "unknownNotice",
       "toProperty": "mounted"
     },
     {
-      "fromId": "standing-2",
+      "fromId": "chrome",
       "fromProperty": "Member",
       "toId": "announcements",
       "toProperty": "storageFetch"
     },
     {
-      "fromId": "standing-2",
+      "fromId": "chrome",
       "fromProperty": "Visitor",
       "toId": "toLanding",
       "toProperty": "navigate"

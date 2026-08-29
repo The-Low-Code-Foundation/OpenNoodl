@@ -452,13 +452,6 @@
       "y": 2440
     },
     {
-      "id": "standing-2",
-      "type": "/Members/Standing",
-      "label": "Who is this?",
-      "x": 530,
-      "y": 1240
-    },
-    {
       "id": "announcements",
       "type": "DbCollection2",
       "label": "The announcements",
@@ -495,7 +488,7 @@
         "target": "/Pages/Landing"
       },
       "x": 530,
-      "y": 2560
+      "y": 160
     },
     {
       "id": "toMeetings",

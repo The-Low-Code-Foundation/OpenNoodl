@@ -101,7 +101,7 @@ import {
   UPCOMING_FILTER
 } from './tpl001Vocabulary';
 
-import { composition } from './tpl001Theme';
+import { composition, VOCABULARY } from './tpl001Theme';
 
 export { ROUTER };
 
@@ -499,7 +499,41 @@ const FIELD = {
 
 const CONDITION_GATE = { condition: true, 'runOnChange-condition': false };
 
-function withoutInertBorderWidth(params: Record<string, unknown>): Record<string, unknown> {
+/**
+ * DEF-006 (a) / AC5 — proof that {@link withoutInertBorderWidth} has nothing
+ * left to remove, exported so the suite can assert it rather than the comment
+ * claim it.
+ *
+ * Every composition the vocabulary ships, not the ones this template happens to
+ * apply: "the workaround is a no-op over what we use" and "the product no longer
+ * needs the workaround" are different sentences, and only the second is what
+ * lapsing means.
+ */
+export function compositionsStillNeedingInertBorderWidthRemoval(): string[] {
+  return (VOCABULARY.compositions as Array<{ id: string; parameters: Record<string, unknown> }>)
+    .filter((c) => Object.keys(withoutInertBorderWidth(c.parameters)).length !== Object.keys(c.parameters).length)
+    .map((c) => c.id);
+}
+
+/**
+ * ✅ **DEF-006 (a) — this has lapsed, which is what it was written as a rule to
+ * do.** It repaired `primaryButton` at the point of use because the composition
+ * shipped `borderStyle: 'none'` beside a `borderWidth`, and `borderWidth` is
+ * declared `borderStyle = solid OR dashed OR dotted` — so applying the design
+ * system verbatim earned an `inactive-conditional-parameter` per button. That
+ * was one template's workaround for a defect every agent had.
+ *
+ * The composition no longer carries it, nor does `ui-split-hero`, which is where
+ * the value was copied from. This is now a no-op over every composition the
+ * vocabulary ships, and `tpl001Template.test.ts` asserts that rather than taking
+ * this comment's word for it.
+ *
+ * 🔴 **Kept, not deleted.** It is a rule about a shape, not a patch on one
+ * value: a composition added tomorrow that sets a width under a `none` border
+ * would be caught here as well as by the vocabulary's own gate. Deleting it
+ * would also delete the evidence that the product fix landed.
+ */
+export function withoutInertBorderWidth(params: Record<string, unknown>): Record<string, unknown> {
   if (params.borderStyle !== 'none') return params;
   const { borderWidth, ...rest } = params;
   return rest;
@@ -843,7 +877,9 @@ function afterSection(params: Record<string, unknown>): Record<string, unknown> 
  * 1. **`isModerator` comes from the BAND, not from a new call.** These two
  *    pages have no `Members/Standing` — the record read is their gate (see
  *    `ANNOUNCEMENT`) — so the band publishes the answer it already fetched.
- *    `Members/Chrome`'s `outputs` node says why that is not D29.
+ *    Since s13 that is how EVERY gated page reads it (D29, closed), and these
+ *    two were simply the first: `Members/Chrome`'s `outputs` node has the whole
+ *    story.
  * 2. **The confirm step is not decoration.** A delete cannot be undone, and the
  *    button sits under a notice a moderator reached by tapping a row. `Yes,
  *    remove it` and `Keep it` are both outline controls: `PRIMARY_LABELS` is
@@ -2050,7 +2086,6 @@ const MEMBERS: Tpl001Component = {
     // moderator's own words, under an eyebrow saying who they are for, and it
     // carries the page's one filled button. A nav and a call to action are not
     // the same control.
-    { id: 'standing', type: STANDING_COMPONENT, label: 'Who is this?' },
     {
       id: 'announcements',
       type: 'DbCollection2',
@@ -2103,16 +2138,15 @@ const MEMBERS: Tpl001Component = {
     }
   ],
   connections: [
-    { fromId: 'page', fromProperty: 'didMount', toId: 'standing', toProperty: 'Check' },
-    { fromId: 'standing', fromProperty: 'isMember', toId: 'memberArea', toProperty: 'mounted' },
-    { fromId: 'standing', fromProperty: 'isModerator', toId: 'moderatorTools', toProperty: 'mounted' },
-    { fromId: 'standing', fromProperty: 'isPending', toId: 'pendingNotice', toProperty: 'mounted' },
-    { fromId: 'standing', fromProperty: 'isUnknown', toId: 'unknownNotice', toProperty: 'mounted' },
+    { fromId: 'chrome', fromProperty: 'isMember', toId: 'memberArea', toProperty: 'mounted' },
+    { fromId: 'chrome', fromProperty: 'isModerator', toId: 'moderatorTools', toProperty: 'mounted' },
+    { fromId: 'chrome', fromProperty: 'isPending', toId: 'pendingNotice', toProperty: 'mounted' },
+    { fromId: 'chrome', fromProperty: 'isUnknown', toId: 'unknownNotice', toProperty: 'mounted' },
     // 🔴 The only trigger the query has.
-    { fromId: 'standing', fromProperty: 'Member', toId: 'announcements', toProperty: 'storageFetch' },
+    { fromId: 'chrome', fromProperty: 'Member', toId: 'announcements', toProperty: 'storageFetch' },
     // A visitor is sent back to the front door rather than left on a page with
     // nothing on it. The refusal is the server's; this is the courtesy.
-    { fromId: 'standing', fromProperty: 'Visitor', toId: 'toLanding', toProperty: 'navigate' },
+    { fromId: 'chrome', fromProperty: 'Visitor', toId: 'toLanding', toProperty: 'navigate' },
 
     { fromId: 'announcements', fromProperty: 'items', toId: 'list', toProperty: 'items' },
     { fromId: 'announcements', fromProperty: 'count', toId: 'emptyGate', toProperty: 'in-count' },
@@ -2301,7 +2335,6 @@ const MEETINGS: Tpl001Component = {
       parameters: { templateType: 'explicit', template: MEETING_ROW }
     },
     ...notice('emptyState', 'Nothing in the diary', 'memberArea', NO_MEETINGS_TEXT),
-    { id: 'standing', type: STANDING_COMPONENT, label: 'Who is this?' },
     {
       id: 'today',
       type: 'JavaScriptFunction',
@@ -2339,11 +2372,10 @@ const MEETINGS: Tpl001Component = {
     }
   ],
   connections: [
-    { fromId: 'page', fromProperty: 'didMount', toId: 'standing', toProperty: 'Check' },
-    { fromId: 'standing', fromProperty: 'isMember', toId: 'memberArea', toProperty: 'mounted' },
-    { fromId: 'standing', fromProperty: 'isPending', toId: 'pendingNotice', toProperty: 'mounted' },
-    { fromId: 'standing', fromProperty: 'Member', toId: 'today', toProperty: 'run' },
-    { fromId: 'standing', fromProperty: 'Visitor', toId: 'toLanding', toProperty: 'navigate' },
+    { fromId: 'chrome', fromProperty: 'isMember', toId: 'memberArea', toProperty: 'mounted' },
+    { fromId: 'chrome', fromProperty: 'isPending', toId: 'pendingNotice', toProperty: 'mounted' },
+    { fromId: 'chrome', fromProperty: 'Member', toId: 'today', toProperty: 'run' },
+    { fromId: 'chrome', fromProperty: 'Visitor', toId: 'toLanding', toProperty: 'navigate' },
 
     { fromId: 'today', fromProperty: 'out-day', toId: 'meetings', toProperty: 'qp-today' },
     { fromId: 'meetings', fromProperty: 'items', toId: 'list', toProperty: 'items' },
@@ -2953,7 +2985,6 @@ const POST: Tpl001Component = {
       parent: 'meetingForm',
       parameters: { text: 'Added. Members can see it now.', mounted: false, ...T_CONFIRM }
     },
-    { id: 'standing', type: STANDING_COMPONENT, label: 'Who is this?' },
     {
       id: 'notModerator',
       type: 'JavaScriptFunction',
@@ -2999,11 +3030,10 @@ const POST: Tpl001Component = {
     }
   ],
   connections: [
-    { fromId: 'page', fromProperty: 'didMount', toId: 'standing', toProperty: 'Check' },
-    { fromId: 'standing', fromProperty: 'isModerator', toId: 'tools', toProperty: 'mounted' },
-    { fromId: 'standing', fromProperty: 'isModerator', toId: 'notModerator', toProperty: 'in-isModerator' },
+    { fromId: 'chrome', fromProperty: 'isModerator', toId: 'tools', toProperty: 'mounted' },
+    { fromId: 'chrome', fromProperty: 'isModerator', toId: 'notModerator', toProperty: 'in-isModerator' },
     { fromId: 'notModerator', fromProperty: 'out-no', toId: 'notAllowed', toProperty: 'mounted' },
-    { fromId: 'standing', fromProperty: 'Visitor', toId: 'toLanding', toProperty: 'navigate' },
+    { fromId: 'chrome', fromProperty: 'Visitor', toId: 'toLanding', toProperty: 'navigate' },
 
     { fromId: 'aTitle', fromProperty: 'onTextChanged', toId: 'createAnnouncement', toProperty: 'prop-title' },
     { fromId: 'aBody', fromProperty: 'onTextChanged', toId: 'createAnnouncement', toProperty: 'prop-body' },
@@ -3080,7 +3110,6 @@ const REQUESTS: Tpl001Component = {
       parameters: { templateType: 'explicit', template: REQUEST_ROW }
     },
     ...notice('emptyState', 'Nobody waiting', 'queue', NO_REQUESTS_TEXT),
-    { id: 'standing', type: STANDING_COMPONENT, label: 'Who is this?' },
     {
       id: 'notModerator',
       type: 'JavaScriptFunction',
@@ -3113,12 +3142,11 @@ const REQUESTS: Tpl001Component = {
     }
   ],
   connections: [
-    { fromId: 'page', fromProperty: 'didMount', toId: 'standing', toProperty: 'Check' },
-    { fromId: 'standing', fromProperty: 'isModerator', toId: 'queue', toProperty: 'mounted' },
-    { fromId: 'standing', fromProperty: 'isModerator', toId: 'notModerator', toProperty: 'in-isModerator' },
+    { fromId: 'chrome', fromProperty: 'isModerator', toId: 'queue', toProperty: 'mounted' },
+    { fromId: 'chrome', fromProperty: 'isModerator', toId: 'notModerator', toProperty: 'in-isModerator' },
     { fromId: 'notModerator', fromProperty: 'out-no', toId: 'notAllowed', toProperty: 'mounted' },
-    { fromId: 'standing', fromProperty: 'Moderator', toId: 'requests', toProperty: 'storageFetch' },
-    { fromId: 'standing', fromProperty: 'Visitor', toId: 'toLanding', toProperty: 'navigate' },
+    { fromId: 'chrome', fromProperty: 'Moderator', toId: 'requests', toProperty: 'storageFetch' },
+    { fromId: 'chrome', fromProperty: 'Visitor', toId: 'toLanding', toProperty: 'navigate' },
 
     { fromId: 'requests', fromProperty: 'items', toId: 'list', toProperty: 'items' },
     { fromId: 'requests', fromProperty: 'count', toId: 'emptyGate', toProperty: 'in-count' },
@@ -3204,7 +3232,6 @@ const DIRECTORY: Tpl001Component = {
       parameters: { templateType: 'explicit', template: MEMBER_ROW }
     },
     ...notice('emptyState', 'Nobody admitted yet', 'directory', NO_MEMBERS_TEXT),
-    { id: 'standing', type: STANDING_COMPONENT, label: 'Who is this?' },
     {
       id: 'notModerator',
       type: 'JavaScriptFunction',
@@ -3239,14 +3266,13 @@ const DIRECTORY: Tpl001Component = {
     }
   ],
   connections: [
-    { fromId: 'page', fromProperty: 'didMount', toId: 'standing', toProperty: 'Check' },
-    { fromId: 'standing', fromProperty: 'isModerator', toId: 'directory', toProperty: 'mounted' },
-    { fromId: 'standing', fromProperty: 'isModerator', toId: 'notModerator', toProperty: 'in-isModerator' },
+    { fromId: 'chrome', fromProperty: 'isModerator', toId: 'directory', toProperty: 'mounted' },
+    { fromId: 'chrome', fromProperty: 'isModerator', toId: 'notModerator', toProperty: 'in-isModerator' },
     { fromId: 'notModerator', fromProperty: 'out-no', toId: 'notAllowed', toProperty: 'mounted' },
     // 🔴 The only trigger the query has, and it is `Moderator` rather than
     // `Member`: this list is under the moderator's tools in §3.
-    { fromId: 'standing', fromProperty: 'Moderator', toId: 'members', toProperty: 'storageFetch' },
-    { fromId: 'standing', fromProperty: 'Visitor', toId: 'toLanding', toProperty: 'navigate' },
+    { fromId: 'chrome', fromProperty: 'Moderator', toId: 'members', toProperty: 'storageFetch' },
+    { fromId: 'chrome', fromProperty: 'Visitor', toId: 'toLanding', toProperty: 'navigate' },
 
     { fromId: 'members', fromProperty: 'items', toId: 'list', toProperty: 'items' },
     { fromId: 'members', fromProperty: 'count', toId: 'emptyGate', toProperty: 'in-count' },
@@ -3479,44 +3505,65 @@ export const CHROME_NODES = [
         "Outputs.name = rows.length > 0 ? (rows[0].name || '') : '';"
     }
   },
-  // 🔴 The band asks who the person is FOR ITSELF, and the alternative was
-  // measured rather than assumed. Three of the moderator's doors hang here, so
-  // something has to gate them — and the only other source is the page's own
-  // `Members/Standing`, which **two of the seven pages carrying this band do not
-  // have**: `Pages/Announcement` and `Pages/Meeting` gate on the record read
-  // instead, deliberately. Taking the answer from the page would have given a
-  // moderator their navigation on five screens and silently removed it on the
-  // two they reach by clicking a row.
+  // 🔴 **The one place this app asks the server who the person is.** Since s13
+  // it is the ONLY `Members/Standing` on any signed-in screen: the band asks
+  // once, from its own `Group`'s `didMount`, and publishes the answer through
+  // `outputs` below for whatever page placed it.
   //
-  // ⚠️ **The cost is a second `myStanding` call per page load**, and it is a
-  // real one. The cheaper shape — this instance publishing standing as component
-  // outputs and the five pages consuming it instead of owning one — is a better
-  // app and a worse change to make blind: every gate in AC2/AC3/AC4 is one of
-  // those wires, and the instrument that grades them is the backend drive suite.
-  // Recorded as D28 rather than done unmeasured.
+  // ⚠️ **It has to live here rather than on the page, and that is the whole
+  // reason the band is the asker.** Three of the moderator's doors hang in this
+  // component, so something in it must gate them — and **two of the seven pages
+  // carrying the band have no standing gate at all**: `Pages/Announcement` and
+  // `Pages/Meeting` gate on the record read instead, deliberately. Sourcing the
+  // band's answer from the page would have given a moderator their navigation on
+  // five screens and silently removed it on the two they reach by clicking a row.
+  //
+  // ✅ **D29, closed s13 and measured rather than reasoned.** It used to be one
+  // of two: the five pages that owned a `Members/Standing` asked as well, so
+  // every signed-in page load made two `myStanding` calls. The drive counts the
+  // requests the browser actually made (§10 there) — 2 on those five before, 1
+  // after, 0 on the landing page throughout as the control — and §2 to §9 are
+  // what say the gates did not move while the wires did.
   { id: 'standing', type: STANDING_COMPONENT, label: 'Who is this?' },
   /**
-   * 🔴 **The band re-publishes the answer it already has, and that is why the
-   * removal costs no second call.**
+   * 🔴 **The band re-publishes the answer it already has, and every gated screen
+   * in the app now reads it from here.**
    *
-   * `Pages/Announcement` and `Pages/Meeting` have no `Members/Standing` of
-   * their own — deliberately, because the record read is their gate — so the
-   * moderator-only "Remove this" needed a source for `isModerator`. The two
-   * candidates were a third `myStanding` per detail page, or this: the
-   * instance above is already asking on every page that carries the band, and
-   * publishing its answer adds a wire and no request.
+   * Added in s11 for the two detail pages — `Pages/Announcement` and
+   * `Pages/Meeting` have no `Members/Standing` of their own, so their
+   * moderator-only "Remove this" needed a source for `isModerator` and the
+   * alternative was a third `myStanding` per detail page. **s13 finished the
+   * job (D29):** the five pages that owned a standing gate dropped it and read
+   * these ports instead, which is one call per page load rather than two.
    *
-   * ⚠️ **This is a STRICT SUBSET of D29's fix and stops deliberately short of
-   * it.** D29 is the five pages that own a `Members/Standing` dropping it and
-   * consuming this instead — which touches every wire AC2/AC3/AC4 rest on, and
-   * belongs beside a drive. Adding the port changes nothing for those five:
-   * they neither read it nor lose theirs.
+   * ⚠️ **The wires it replaced are the ones AC2, AC3 and AC4 rest on**, which is
+   * why this half waited for a session that could run the drive. The gate that
+   * grades it — `tpl001Template.test.ts` §"the members-only queries have no
+   * trigger but the standing check" — does not accept any port on a chrome
+   * instance: it first proves, from this component's own graph, which of these
+   * ports the standing gate above actually drives. A band that forwarded
+   * something else would not satisfy it.
    */
   {
     id: 'outputs',
     type: 'Component Outputs',
     label: 'Who the band knows this person to be',
-    ports: [{ name: 'isModerator', type: 'boolean', plug: 'input' }]
+    // 🔴 **Exactly the seven the pages read, and no eighth.** `Members/Standing`
+    // also publishes `standing` (the raw string) and nothing on any page
+    // consumes it — a port added here "for completeness" would be a dimension
+    // that will never be read, which is the thing the door refuses elsewhere by
+    // name (`inert-dimension`). The five values drive `mounted`; the three
+    // signals trigger the queries. Rule 4 is why that split has to survive the
+    // move: a signal into a value port arrives once as `false`.
+    ports: [
+      { name: 'isMember', type: 'boolean', plug: 'input' },
+      { name: 'isModerator', type: 'boolean', plug: 'input' },
+      { name: 'isPending', type: 'boolean', plug: 'input' },
+      { name: 'isUnknown', type: 'boolean', plug: 'input' },
+      { name: 'Member', type: 'signal', plug: 'input' },
+      { name: 'Moderator', type: 'signal', plug: 'input' },
+      { name: 'Visitor', type: 'signal', plug: 'input' }
+    ]
   },
   { id: 'logout', type: 'net.noodl.user.LogOut', label: 'Log out' },
   {
@@ -3557,7 +3604,12 @@ export const CHROME_WIRES = [
   // The same value the three moderator-only nav items are gated on, handed up
   // to whichever page placed the band. See `outputs` for why it is here and not
   // a third call on the two pages that want it.
-  { fromId: 'standing', fromProperty: 'isModerator', toId: 'outputs', toProperty: 'isModerator' }
+  ...['isMember', 'isModerator', 'isPending', 'isUnknown', 'Member', 'Moderator', 'Visitor'].map((port) => ({
+    fromId: 'standing',
+    fromProperty: port,
+    toId: 'outputs',
+    toProperty: port
+  }))
 ];
 
 // ── The set, in an order the door will accept ────────────────────────────────

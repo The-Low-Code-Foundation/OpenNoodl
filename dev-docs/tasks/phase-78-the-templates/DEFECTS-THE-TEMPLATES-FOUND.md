@@ -62,7 +62,7 @@ failure this file's first house rule exists to prevent.
 | **D26** | ✅ **fixed by P80 C1 (`2c6a8876`, 08-29)** — `raised` and `ruled` compositions added; B3 unblocked | P80 | product | (was: every template we ship) |
 | **D27** | ✅ fixed s8 (08-29) | — | template | (was: anyone whose setup, join or approval threw) |
 | **D28** | 🔴 open (08-29) | **NONE** | product | every agent who lays controls out in the one node that reflows |
-| **D29** | ⚠️ open (08-29) | **phase 78** (Track B remainder) | template | every member — a second auth round trip on every page |
+| **D29** | ✅ **FIXED s13 (08-29)** — measured at the browser, both halves | — | template | (was: every member — a second auth round trip on every page) |
 | **D30** | 🔴 open (08-29) | **NONE** | product | every app with a column of numbers — money, times, scores |
 | **D31** | ✅ fixed s11 (08-29) | — | template | (was: every moderator who posted something wrong) |
 | **D32** | 🔴 open (08-29, s12) | **NONE** | product | every agent laying two things out along a row |
@@ -1052,7 +1052,7 @@ saying that a `contentSize` child will overflow its column.
 
 ---
 
-## D29 — ⚠️ `Members/Chrome` asks the server who you are a second time, on every page
+## D29 — ✅ FIXED s13. (Was: `Members/Chrome` asked the server who you are a second time, on every page.)
 
 **Filed by the session that caused it, s9, rather than left for a reader to find.** The band carries
 three moderator-only destinations, so something has to gate them, and the band now places its own
@@ -1073,6 +1073,55 @@ five screens and silently removed it on the two they reach by clicking a row.
 **Not a correctness defect** — the two calls are reads, they cannot disagree in a way that matters,
 and the drive passes 71/71 with both in place. It is a cost, and it is written down so the next
 session decides about it rather than discovers it.
+
+---
+
+### ✅ How it was closed (s13, 2026-08-29)
+
+The band now publishes the whole answer — `isMember`, `isModerator`, `isPending`, `isUnknown` and
+the three signals `Member`, `Moderator`, `Visitor` — and the five pages that owned a
+`Members/Standing` dropped it and read those ports. **Seven ports, not eight:** `Members/Standing`
+also publishes the raw `standing` string and no page consumes it, so adding it here would have been
+a dimension that will never be read.
+
+🔴 **The count was measured at the browser, not inferred from the graph.** A spec counting
+`Members/Standing` instances would pass on a template that placed one and called it twice, and fail
+on one that placed two and called neither — neither of which is what a person pays for. What costs
+them a round trip is a request, so §10 of the drive counts requests, off
+`performance.getEntriesByType('resource')`, per page load.
+
+| page load | before | after |
+|---|---|---|
+| the five that owned a standing gate — members, meetings, post, requests, directory | **2** | **1** |
+| the two detail pages, which never had one | 1 | 1 |
+| `anon.landing`, which carries no band | **0** | **0** |
+
+⚠️ **The `0` is the control and it is why the `1`s are a reading.** Without a page that asks nobody,
+"1 everywhere" would be equally consistent with an instrument that cannot tell requests apart at
+all. The `2`s in the *before* column are the other control: they are what this spec would report if
+the fix were reverted, and they were read from the same instrument on the same run at HEAD before
+anything was changed.
+
+**The gates did not move, and that is the half the drive says.** §2–§9 — AC2, AC3, AC4, AC5 against
+a real enforcing backend in a real browser — pass unchanged: **79/79**, up from 75 by exactly the
+four new specs. `tpl001Template.test.ts` is **71/71**, up from 67 by two D29 specs and two the
+peer's DEF-006 work added.
+
+🔴 **Two source-side gates were widened rather than relaxed, and both were sabotaged.**
+
+- *"each members-only query's only trigger comes from the standing gate"* now accepts a trigger from
+  the band — but only on a port it first **proves**, from `Members/Chrome`'s own graph, is wired
+  from that component's `Members/Standing`. Accepting any port on a chrome instance would have been
+  a hole shaped exactly like the defect. **Sabotage: stop forwarding `Member` from the standing gate
+  → that one spec reddens.**
+- A new **census**: the whole project places exactly one standing gate and the band holds it.
+  Written as a count rather than as "these five pages have none", because a regression here is an
+  *addition* and a page-list rule would not see a sixth page appear with one. **Sabotage: give
+  `Pages/Directory` its gate back → that one spec reddens.**
+
+⚠️ **Both sabotages generated with exit 0.** The door accepts a band forwarding an unproven port and
+a page placing a redundant standing gate, silently — so these two specs are the only thing between
+either defect and the shelf.
 
 ---
 
