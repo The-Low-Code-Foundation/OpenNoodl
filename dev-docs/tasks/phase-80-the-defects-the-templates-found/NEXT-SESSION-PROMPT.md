@@ -1,75 +1,98 @@
 # Phase 80 — next session
 
-## State: DEF-001, 002, 003, 004, 006, **008**, 014, 015, 016, 017 closed. DEF-007 is 🟡 partial.
+## State: DEF-001–004, 006, 008, **010, 011**, 014–017 closed. DEF-007 🟡 (§3.2). **DEF-009 🟡 (AC4 only)**.
 
-**s13 (2026-08-29)** closed **DEF-008** and took **`catalog:examples`** off the unowned list
-(60/62 → **62/62 green**). Repo edits: the two example JSONs + the regenerated enriched catalog +
-doc write-backs. **No editor/runtime source moved, so `test:ci` is not owed** — the floor stands at
-s11's 2905/4, AIX-006 by name.
+**s14 (2026-08-29/30)** closed the door family as one piece of work: **DEF-010** (`44298914`),
+**DEF-011** (`e6f26ffa`), and DEF-009's ACs 1–3 in the same first commit. The shared corpus
+sweep the three tasks each demanded ran **once** — `npm run calibrate:door`
+(`scripts/phase80-door-corpus.ts`), 178 projects across both project corpora
+(`vscode_projects/NodeGX test projects` + `vscode_projects/Noodl projects`).
+
+## What landed
+
+- **DEF-010**: `checkComponentRefParameters` in the shared precondition set — generic over the
+  catalog's `component`-typed ports; skips (`For Each`, `template`) whose owner is
+  `checkRepeaterTemplate` (cardinality asserted through the FULL composed set); unresolved →
+  `component-parameter-unresolved`, **promoted to blocking** on the sweep (614 parameters, 15
+  hits in 6 projects, all legacy hand-authored, sampled true — LearnBook's hit verified against
+  its real component list); cross-runtime → reuses `wrong-runtime-node`. SB-009 AC1's arms C/D
+  inverted and pinned in `sb004RunTasksTemplate.test.ts`.
+- **DEF-011**: `withAuthoredScriptPorts` (`noodl-mcp/src/scriptPorts.ts`) merges
+  `scriptPortsForNode`'s derivation into Function nodes' authored `ports` at BOTH assembly seams
+  (`assembleCreateFiles`/`assembleSetFiles` — all three doors). Dedupe by `(plug, name)`
+  everywhere the producers meet. Bracket-form `Inputs["x"]` ports deliberately not written.
+- **DEF-009**: `checkPublicWriteDoor` — public posture (graph `allowNoAuth` + configured `call`),
+  record-mutating node, no `rateLimit` → `public-write-door-unlimited` (warning, never blocking).
+  `security` **undefined = do-not-check ≠ null = no-policy-file**. Threaded via
+  `preconditionDiagnostics(store, …)`; `def009PublicWriteDoorDrive.test.ts` grades the threading.
+  Corpus: 110 public doors, 27 unlimited write doors in 23 projects — all `submitContactForm`.
+  Template now sets `10/min, burst 10` on it.
 
 ## What to do next
 
-- **DEF-009** — the next open task. Its scope 1 is a door rule in the same family as DEF-002, and
-  🔴 **DEF-010/011/013 are the same door** (`noodl-mcp/src/validate.ts` + editor `validation/`).
-  **Sequence all four as one piece of work and assert cardinality where they meet**; three of them
-  share one corpus sweep — do it once. DEF-009's default question is 🧭 Richard's; the diagnostic
-  is not.
-- **DEF-012**, **DEF-018–DEF-025** (read phase 78's register, not the TASKS.md table), **DEF-026**.
-- **DEF-007 §3.2** — 56 decisions, still sequenced behind phase 77's active file.
-- **DEF-005**, **DEF-013** — 🔒 on Richard rulings.
+- **DEF-012** (read SB-011 in phase 76) — a query that widens when it cannot narrow.
+- **DEF-018–DEF-025** (read phase 78's register `DEFECTS-THE-TEMPLATES-FOUND.md`, not the
+  TASKS.md table), **DEF-026**.
+- **DEF-007 §3.2** — 56 decisions, still sequenced behind phase 77's active file. ⚠️ s14
+  regenerated `site-builder.content.json` (derived ports) — **the md5 DEF-007 §6.1 anchors to
+  has moved again**; the 56-parameter reading is anchored to the OLD md5, re-derive with
+  `planRunOnValueChangeMigration` (imports nothing) before acting on it.
+- **DEF-005, DEF-013** — 🔒 Richard rulings. 🔴 **Before spending the DEF-013 ruling, re-drive
+  SB-012 §1's table at HEAD**: its middle rows ("targets checked only against disk") were
+  measured 08-26, and the plan door's `components` list has since been rebuilt from
+  `authoredProjectViews`, which overlays unapplied plan operations — the two-pages-that-link
+  plan may now stage clean, which would shrink the ruling to the `create_component` half.
+- **DEF-009 AC4** — 🧭 Richard: should a public function's `rateLimit` default to something
+  rather than `null`? Registered in TASKS.md rulings. Whatever is ruled, write the reason into
+  DEF-009's file.
 
-🔴 **The standing instruction has now paid ten sessions running.** *Find the claim in your task
-that is a reading rather than a measurement, and drive that one first.* s13's instance: DEF-008's
-§1 listed two candidate causes for D6, **both fitted and neither survived the drive** — the symptom
-itself did not reproduce, and the mechanism that does produce it (a parameter on a component
-instance) was in neither candidate.
+🔴 **The standing instruction has now paid eleven sessions.** *Find the claim in your task that
+is a reading rather than a measurement, and drive that one first.* s14's instance: SB-010's cost
+claim ("every authored cloud component 504s for 30s") had been **half-healed since it was
+written** — SBR-017's `withScriptPorts` export backstop already re-derives at deploy; the honest
+standing cost was every consumer of `nodes.json` that does not re-derive. The fix was re-scoped
+before it was built. **Check the tense.**
 
-## What s13 paid for, that the next session should not re-buy
+## What s14 paid for, that the next session should not re-buy
 
-- ✅ **P77 D6 is closed: `maxWidth` on `Text` works.** Driven headlessly (`withRenderedPage`, no
-  editor): bare `240` → `240%` (DEF-003(a)'s coercion, `unitless-dimension` fires — driven);
-  `{value:240,unit:'px'}` → `240px`; D6's exact shape (`contentSize` + `{100,'%'}`) → `100%`;
-  inside a For Each-instantiated component → `240px`. 🔴 **The one measured route to `none`:
-  the parameter authored on a component INSTANCE** — dropped silently at runtime, blocked at the
-  door by `interfaceless-instance` (driven). Full table in DEF-008 §4; phase 77's register updated.
-- ✅ **DEF-001 AC1's owed inch is paid**: a Button carrying ButtonConfig's stamps painted
-  `#2563eb`/white at **5.17:1** in a real render, `--primary` verified at `:root` in the same frame.
-- ✅ **`Model2`/`SetModelProperties` property ports are `prop-<field>` (value) and
-  `changed-<field>` (signal)** — a wire naming the bare property resolves to the signal, which is
-  the `signal-into-value-port` defect. Two shipped recipes taught it; both fixed.
-- ✅ **The demo-app MCP fixture's Router has NO `pages` parameter** (the door writes it on
-  `create_component`) — a hand-edited fixture renders a blank page with `router/no-pages` in the
-  console until you add `pages: {startPage, routes}` to the Router node yourself.
-- ✅ **The headless drive recipe**: `withRenderedPage` from `scripts/devtools/render-report.js` over
-  a `demo-app` copy; probe elements by `cssClassName` → `[class*=probe-]`; read computed style +
-  offsetWidth in one eval; absence beside a known-firing Group. Script:
-  `def008-maxwidth-drive.js` in this session's scratchpad
-  (`/private/tmp/claude-501/…/1c3384be-…/scratchpad/`).
-- 🔴 **`rg -rln` is a live trap, hit again this session**: `-r` is REPLACE — `-rln` becomes
-  `-r ln` and every displayed line is fabricated. The files listed are real; the line content is
-  not. Use `rg -l -n` spelled out.
+- 🔴 **A new door check re-grades every GENERATOR that authors through the door.** Both template
+  parity gates went red (committed templates carried `ports: []` pre-DEF-011) — the remedy is the
+  one the gates name: `npm run template:site-builder` / `template:members`, commit the result.
+  And the members generator validated its components in a temp project WITHOUT its policy file,
+  logging 3 limited doors as unlimited — `buildMembersTemplateProject` now seeds
+  `templates/members-area.security.json` into the temp dir BEFORE authoring.
+- 🔴 **A spec can pin a workaround state literally**: sb-018 asserted the contact node's `ports`
+  as exactly the one hand-declared signal. Restated as its meaning (signal exactly once,
+  `received` a value), not bumped.
+- ✅ **`preconditionDiagnostics` now takes the store first** — six call sites (validate.ts ×3,
+  planTools ×2, cn004 ×3 in tests). A new precondition option follows the undefined=skip
+  convention; DEF-009's is the one where undefined and null must stay distinct.
+- ✅ **tests-unit is jest and NOT in `test:ci`'s 2905** — the floor did not move when 21 specs
+  were added there. `test:ci` counts `packages/noodl-editor/tests/` (electron) only.
+- ⚠️ **`packages/noodl-mcp/dist` is stale AND now behind on behavior** — a running MCP server
+  answers without DEF-009/010/011. Owner: whoever cuts the next 0.2.1 build.
+
+## Gates (s14, all fresh)
+
+`test:ci` **2905 specs / 4 failures, all `AIX-006 style vocabulary` BY NAME, seed 77684**, fresh
+readout, HEAD `a94caa41` (pre-commit checkout — `gitHead` is read-time, never authorship) ·
+noodl-mcp **966/966 (71 suites)** · editor jest **6398/6398** · `test:main` green ·
+`typecheck:editor` + `typecheck:mcp` clean.
 
 ## Traps carried
 
-- 🔴 **The phase-77 register (`DEFECTS-THE-SITE-BUILDER-FOUND.md`) is UNCOMMITTED and shared**: it
-  holds s13's D6 update **and a peer's new D21 row** (deployed-site CORS login fix, P77 s25) in the
-  same working-tree file. **Deliberately not committed by pathspec** — that would sweep the peer's
-  edit. Whoever commits next takes both; do not rewrite it wholesale (`git log -5 -- <path>` first).
-- 🔴 **`test:ci` floor: 2905 specs, 4 failures, AIX-006 by name** (s11's reading; s12/s13 edited no
-  graded source). Re-measure with a fresh seed only when editor/runtime source moves.
-- ⚠️ **`typecheck:mcp` red on one peer error** and 2 `tpl001Template.test.ts` failures from a
-  peer's uncommitted fixture, as recorded by s8. Not re-measured since.
-- ⚠️ **`packages/noodl-mcp/dist` is stale** — a running MCP server answers from the old bundle.
-  Owner: whoever cuts the next 0.2.1 build.
-- 🔴 **The editor is single-instance on this checkout**; dry-run
-  `node -e "require('./scripts/devtools/dev-processes.js').sweep({dryRun:true, onLog:console.log})"`
-  before any launch — it names every process a launch would reap (s13's dry-run was empty).
-- ⚠️ **A pathspec commit errors on an untracked file** — `git add` new files first.
+- 🔴 **The phase-77 register (`DEFECTS-THE-SITE-BUILDER-FOUND.md`) is UNCOMMITTED and shared**
+  (s13's D6 update + a peer's D21 row). Whoever commits next takes both; `git log -5 -- <path>`
+  first, never rewrite wholesale.
+- 🔴 **Peer uncommitted edits in the tree**: 5 `.scss` files (core-ui + AskAboutNodeDialog),
+  dev-docs for phases 50/68/72/75, `border-sweep` test. Not mine, not committed by s14.
+- ⚠️ **MEMORY.md is ~26.9KB against a 24.4KB read limit — the tail is invisible.** s14's line is
+  net-shorter than it started; the remaining fat is peer lines whose staleness only their owners
+  can judge. If your section sits near the end, file it and shorten in place.
 
 ## Findings this phase carries with owner `NONE`
 
-Rows 1–6 and 8 unchanged from s12 (in `TASKS.md`): `publishPage` refuses after publishing ·
-auto-created classes get no declared columns · no `--destructive-text` token (🧭 plausibly
-Richard's) · helper-step told to deploy · shared-backend deploy kills the process · nested cloud
-function 404s · stale function rendered twice. **Row 7 (the card's push-only refresh) unchanged.**
-**`catalog:examples` is no longer on this list — fixed s13.**
+Unchanged from s13 (rows in `TASKS.md`): `publishPage` refuses after publishing · auto-created
+classes get no declared columns · no `--destructive-text` token (🧭 plausibly Richard's) ·
+helper-step told to deploy · shared-backend deploy kills the process · nested cloud function
+404s · stale function rendered twice · the card's push-only refresh.

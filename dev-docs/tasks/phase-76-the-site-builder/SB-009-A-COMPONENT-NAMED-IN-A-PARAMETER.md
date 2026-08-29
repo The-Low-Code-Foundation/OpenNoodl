@@ -1,12 +1,19 @@
 # SB-009 — A component named in a parameter is not checked by the authored gate
 
-> 🔴 **PHASE 76 IS CLOSED. THIS TASK IS OPEN AND IS NOW OWNED BY PHASE 80 AS DEF-010.**
-> Carried forward by reference on 2026-08-29 — this file keeps the measurements; phase 80
-> keeps the schedule. See
-> [phase 80's task list](../phase-80-the-defects-the-templates-found/TASKS.md).
+> ✅ **CLOSED 2026-08-29 by phase 80 as DEF-010** (`44298914`). `checkComponentRefParameters`
+> in the shared precondition set — generic over the catalog's `component`-typed ports, so port
+> fourteen is covered on the day it is added. **All five acceptance criteria met**, including
+> AC5's corpus sweep (`npm run calibrate:door`, 178 projects: **614 component-typed parameters
+> checked — 543 `NavigationShowPopup.target`, 70 `RunTasks.taskTemplate` — 15 unresolved in 6
+> projects, every sampled one a true positive in a legacy hand-authored project; 0 cross-runtime**).
+> `component-parameter-unresolved` promoted into `AUTHORED_BLOCKING_WARNINGS` on that number;
+> the cross-runtime half reuses `wrong-runtime-node`, already blocking. Arms C and D of
+> `sb004RunTasksTemplate.test.ts` inverted exactly as AC1 asked — C refused naming the missing
+> component, D refused naming the runtime boundary — and the For Each cardinality is asserted
+> through the FULL composed set (one diagnostic, the owner's). 10 editor specs + 2 mutants
+> killed (`tests-unit/def-010/`).
 
-
-**Status: ⬜ OPEN — measured, not fixed.** Found while designing SB-004 (2026-08-26 s2), filed
+**Status: ✅ CLOSED — was: measured, not fixed.** Found while designing SB-004 (2026-08-26 s2), filed
 rather than absorbed because the fix is wider than SB-004's scope: it touches twelve ports across
 eight node types, two of them outside the backend story entirely.
 

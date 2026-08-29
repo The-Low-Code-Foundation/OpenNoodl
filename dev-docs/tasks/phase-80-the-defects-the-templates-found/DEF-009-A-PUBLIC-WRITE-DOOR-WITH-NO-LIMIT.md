@@ -1,5 +1,24 @@
 # DEF-009 — A public write door ships with no limit and nothing says so
 
+> 🟡 **BUILT 2026-08-29 (`44298914`) — ACs 1–3 met; AC4 is 🧭 Richard's and open.**
+> `checkPublicWriteDoor` in the shared precondition set: fires
+> `public-write-door-unlimited` (warning, never blocking) when a cloud function's Request
+> ticks `allowNoAuth`, its configured `call` does not close the door, its graph holds a
+> record-mutating node, and no `rateLimit` with `ratePerMinute > 0` exists for it in the
+> project's `nodegx.security.json`. The message names both settable surfaces. **`security`
+> undefined = do-not-check, null = no-policy-file, kept distinct** so a caller that cannot
+> read the project root never warns about members-area's `claimAssociation`, which IS
+> limited. Threaded through `preconditionDiagnostics` (all three MCP doors) — the drive
+> spec (`def009PublicWriteDoorDrive.test.ts`) grades the threading, since a check whose
+> option nobody passes never runs (DEF-002 AC6's story). 11 editor specs + 2 mutants
+> killed. **Corpus** (`calibrate:door`, 178 projects): 110 public doors, **27 unlimited
+> write doors in 23 projects — every one the shipped site-builder's `submitContactForm`**.
+> **Scope 3 done**: `site-builder.security.json` now sets `10/min, burst 10` on it, the
+> members-area shape. The members template build also seeds its policy before authoring,
+> so its generator log stopped reporting three limited doors as unlimited.
+> **AC4 (the default question) remains Richard's** — registered in TASKS.md's rulings;
+> whatever is decided, write the reason here.
+
 **Source: phase 76 F3**, recorded 2026-08-26 and **filed nowhere**. Its own text says *"Open
 question for Richard / possibly a core gap to file."* It appears **exactly once** in the whole of
 phase 76 and was never picked up.

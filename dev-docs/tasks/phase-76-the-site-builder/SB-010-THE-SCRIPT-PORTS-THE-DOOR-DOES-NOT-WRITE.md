@@ -1,12 +1,26 @@
 # SB-010 — The script ports the authored door does not write
 
-> 🔴 **PHASE 76 IS CLOSED. THIS TASK IS OPEN AND IS NOW OWNED BY PHASE 80 AS DEF-011.**
-> Carried forward by reference on 2026-08-29 — this file keeps the measurements; phase 80
-> keeps the schedule. See
-> [phase 80's task list](../phase-80-the-defects-the-templates-found/TASKS.md).
+> ✅ **CLOSED 2026-08-29 by phase 80 as DEF-011** (`e6f26ffa`). Re-driven at HEAD FIRST —
+> the door still accepted a wire from an undeclared `Outputs.ok()` signal (`0/0/0`) and
+> persisted nothing — then fixed: `withAuthoredScriptPorts` (`noodl-mcp/src/scriptPorts.ts`)
+> merges `scriptPortsForNode`'s derivation into each Function node's authored `ports` at
+> candidate assembly, in the two seams all three doors share (`assembleCreateFiles` /
+> `assembleSetFiles`). That derivation is the editor's import-free runtime-grammar clone,
+> parity-pinned by `sb-017/cloud-ports-agree-with-the-runtime.test.ts` — so the door, the
+> canvas adapter and the export backstop are three callers of ONE grammar, all deduping by
+> `(plug, name)`.
+>
+> 🔄 **§"What it costs" had aged and the tense mattered**: since this file was written,
+> `exporter/cloudFunctions.ts::withScriptPorts` (SBR-017, 2026-08-29) re-derives ports at
+> deploy time, so an editor-driven deploy already healed itself. The standing cost at HEAD
+> was every OTHER consumer of `nodes.json` — headless render, nodegx-export, the graph as
+> the truth on disk. Corpus debt measured, not guessed: **3 nodes in 1 MCP-authored project**
+> still carry underived signal ports (`calibrate:door`).
+>
+> ⚠️ The bracket-form `Inputs["x"]` ports (grammar's `plug: 'inputs'` typo) are deliberately
+> NOT written — the runtime's own editor half drops wires to that form too.
 
-
-**Status: ⬜ OPEN — measured, worked around in SB-004, not fixed.** Found by SB-004 §7's
+**Status: ✅ CLOSED — was: measured, worked around in SB-004, not fixed.** Found by SB-004 §7's
 real-backend run (2026-08-26 s4) and filed rather than absorbed, because the workaround is per-graph
 and the gap is per-door: **every cloud component any agent authors through the MCP door has it.**
 

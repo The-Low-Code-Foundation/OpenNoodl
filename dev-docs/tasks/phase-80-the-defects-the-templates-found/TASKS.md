@@ -16,7 +16,7 @@ derivation and [README.md](README.md) for why the phase exists.
 | DEF-006 | ✅ done | [The design system punishes the agent that uses it](DEF-006-THE-DESIGN-SYSTEM-PUNISHES-ITS-USER.md) | P78 D12, D15, **D20** | every **agent** styling on-system |
 | DEF-007 | 🟡 partial | [A project means one thing on disk and another once loaded](DEF-007-DISK-AND-LOAD-DISAGREE.md) — **§6 seam named, §6.1 AC3 measured (56), §3.3 struck** | P78 D9 residual · P77 D5 · **P77 D11** | the **next template** |
 | DEF-008 | ✅ done | [The measurement owed](DEF-008-THE-MEASUREMENT-OWED.md) — **driven s13: D6 does not reproduce; `maxWidth` applies on `Text` in every authored form; the one route to `none` (instance-authored) is blocked at the door. DEF-001's rendered-button inch closed at 5.17:1 in the same render** | P77 D6 · P78 D5 | nobody yet — a re-drive |
-| DEF-009 | ⬜ open | [A public write door ships with no limit](DEF-009-A-PUBLIC-WRITE-DOOR-WITH-NO-LIMIT.md) | **P76 F3** | a **site owner** whose form fills their database |
+| DEF-009 | 🟡 partial | [A public write door ships with no limit](DEF-009-A-PUBLIC-WRITE-DOOR-WITH-NO-LIMIT.md) — **ACs 1–3 met s14 (`44298914`): `public-write-door-unlimited` + policy threading + template limit; AC4 (default) 🧭 Richard** | **P76 F3** | a **site owner** whose form fills their database |
 | DEF-017 | ✅ **done — C1, C2 (D18+D19), C3** | [Track C, handed over by phase 78](../phase-78-the-templates/TRACK-C-HANDOFF.md) | **P78 D18, D19, D26** | every app: controls in the wrong face; one content surface for nine kinds of thing |
 | DEF-014 | ✅ done | [A filter on a column nothing has written is a 500](DEF-014-A-QUERY-AGAINST-A-COLUMN-LESS-CLASS.md) — **all four ACs; AC1 driven through the template's own `publishPage`** | **P77 SBR-015 s12 drive** | every **site owner on day one** — the site-builder cannot publish its first page |
 | DEF-015 | ✅ done | [The backend card calls three components undeployed that can never deploy](DEF-015-THE-CARD-WARNS-ABOUT-WORKERS.md) — **all four ACs; AC1 and AC2 driven in the app at s12 (§9.2, §9.3)** | **P77 SBR-015 s12 drive** | every **author with a Run Tasks worker** — a green deploy that reads as failed |
@@ -30,8 +30,8 @@ them; **read the linked file, not a summary of it.**
 
 | id | status | task | source | bites |
 |---|---|---|---|---|
-| DEF-010 | ⬜ open | [SB-009 — a component named in a **parameter** is not checked](../phase-76-the-site-builder/SB-009-A-COMPONENT-NAMED-IN-A-PARAMETER.md) | P76 F1 | every agent-authored app; **13 `component`-typed ports, 1 has an owner** |
-| DEF-011 | ⬜ open | [SB-010 — the door does not derive a JS node's script ports](../phase-76-the-site-builder/SB-010-THE-SCRIPT-PORTS-THE-DOOR-DOES-NOT-WRITE.md) | P76 F10 | **every cloud component any agent authors** — dead signal outputs, a 30s 504 |
+| DEF-010 | ✅ done | [SB-009 — a component named in a **parameter** is not checked](../phase-76-the-site-builder/SB-009-A-COMPONENT-NAMED-IN-A-PARAMETER.md) — **all 5 ACs s14 (`44298914`); `component-parameter-unresolved` PROMOTED on the sweep (178 projects, 614 params, 15 hits all legacy-true); cross-runtime reuses `wrong-runtime-node`** | P76 F1 | every agent-authored app; **13 `component`-typed ports, 1 has an owner** |
+| DEF-011 | ✅ done | [SB-010 — the door does not derive a JS node's script ports](../phase-76-the-site-builder/SB-010-THE-SCRIPT-PORTS-THE-DOOR-DOES-NOT-WRITE.md) — **s14 (`e6f26ffa`): re-driven pre-fix, then `withAuthoredScriptPorts` at both assembly seams; templates regenerated; the 30s-504 tense had aged (SBR-017's export backstop) — the standing cost was every consumer of `nodes.json`** | P76 F10 | **every cloud component any agent authors** — dead signal outputs, a 30s 504 |
 | DEF-012 | ⬜ open | [SB-011 — a query widens when it cannot narrow](../phase-76-the-site-builder/SB-011-A-QUERY-THAT-WIDENS-WHEN-IT-CANNOT-NARROW.md) | P76 F12/F13 | a cloud query returns **every row** when asked for a few |
 | DEF-013 | 🔒 ruling | [SB-012 — three spellings of a component name](../phase-76-the-site-builder/SB-012-THREE-SPELLINGS-OF-A-COMPONENT-NAME.md) | P76 s6 | **an app whose pages link to each other cannot be authored in one pass** |
 
@@ -41,9 +41,20 @@ reference resolution. DEF-002 grades **wires**; DEF-010/013 grade **references n
 parameters**; DEF-011 is **port derivation**. Four checks, one file. 🔴 **Sequence them, and assert
 cardinality where they meet** — a check in a second pipeline is a duplicate first.
 
-🔴 **Three of the four say the same thing about their own fix: it needs a corpus sweep** to decide
-whether the new check *blocks* authored output or merely warns. That sweep is shared work and
-should be done **once**, not three times.
+✅ **The shared corpus sweep the three demanded was run ONCE, 2026-08-29** —
+`npm run calibrate:door` (`scripts/phase80-door-corpus.ts`) over 178 projects (both project
+corpora). Denominators printed with the findings: 614 component-typed parameters (543
+`ShowPopup.target`, 70 `taskTemplate`), 853 For Each templates counted-as-skipped, 612 cloud
+components, 110 public doors, 4,356 Function nodes. Findings: **15 unresolved / 6 projects (all
+legacy, sampled true) → promoted · 0 cross-runtime · 27 unlimited public write doors / 23
+projects (all `submitContactForm`) → warning stays advisory · 3 nodes of DEF-011 debt in 1
+MCP-authored project**.
+
+⚠️ **DEF-013's premise may have aged the same way DEF-011's cost claim had** — SB-012's middle
+rows (targets *are* checked, but "only against what is already on disk") were measured 2026-08-26,
+and the door's `components` list has since been rebuilt from `authoredProjectViews`, which
+overlays a plan's unapplied operations. **Re-drive SB-012 §1's table at HEAD before spending
+Richard's ruling** — the two-pages-that-link-to-each-other plan may now stage clean.
 
 ## Carried forward from phase 78, by reference
 
