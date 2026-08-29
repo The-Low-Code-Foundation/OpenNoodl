@@ -23,7 +23,13 @@ import ModelImport = require('../../../model');
 import CloudStore = require('../../../api/cloudstore');
 import { outcomeOutputs, reportOutcomes } from '../../../outcome';
 
-import { recordBackendPickerPorts, recordClassPorts, recordFieldPorts, recordSchemaContext } from './record-ports';
+import {
+  recordBackendPickerPorts,
+  recordClassPorts,
+  recordFieldPorts,
+  recordSchemaContext,
+  recordWiredFieldPorts
+} from './record-ports';
 import { sendSchemaPorts, staticPortNames } from './schema-ports';
 
 const Model = ModelImport as unknown as ModelModule;
@@ -516,28 +522,30 @@ function userInputSetter(this: DbModelNodeInstance, name: string, value: unknown
  * nodes rather than as a port.
  */
 function updatePorts(
-  nodeId: string,
-  parameters: Record<string, unknown>,
+  node: GraphNodeModel,
   editorConnection: EditorConnectionLike,
   graphModel: GraphModelLike
 ) {
-  const ctx = recordSchemaContext(graphModel, parameters);
+  const ctx = recordSchemaContext(graphModel, node.parameters);
   const ports: RuntimeDiscoveredPort[] = [];
 
   ports.push(...recordBackendPickerPorts(ctx));
   ports.push(...recordClassPorts(ctx));
 
-  if (ctx.selectedCollection) {
-    ports.push(
-      ...recordFieldPorts(ctx, {
+  // Two producers of one family, in this order on purpose — the schema half knows the
+  // column's type, the wire half only its name and returns nothing the schema half
+  // already covered. See `recordWiredFieldPorts` (P77 SBR-008) for why it exists.
+  const fieldPorts = ctx.selectedCollection
+    ? recordFieldPorts(ctx, {
         plug: 'output',
         skipRelationColumns: true,
         includeChangedSignals: true
       })
-    );
-  }
+    : [];
+  ports.push(...fieldPorts);
+  ports.push(...recordWiredFieldPorts(node, fieldPorts, { plug: 'output' }));
 
-  sendSchemaPorts(editorConnection, nodeId, ports, { staticPorts: staticPortNames(ModelNodeDefinition) });
+  sendSchemaPorts(editorConnection, node.id, ports, { staticPorts: staticPortNames(ModelNodeDefinition) });
 }
 
 const DbModelNodeModule: NodeModule = {
@@ -548,29 +556,57 @@ const DbModelNodeModule: NodeModule = {
     }
 
     function _managePortsForNode(node: GraphNodeModel) {
-      updatePorts(node.id, node.parameters, context.editorConnection, graphModel);
+      updatePorts(node, context.editorConnection, graphModel);
 
       node.on('parameterUpdated', function () {
-        updatePorts(node.id, node.parameters, context.editorConnection, graphModel);
+        updatePorts(node, context.editorConnection, graphModel);
       });
+
+      // P77 SBR-008 — the wire-derived half of `prop-*` changes when a WIRE changes, and
+      // nothing above fires for that. Both events are needed and neither covers the other:
+      // `inputConnectionAdded` reaches only the wire's TARGET node
+      // (`models/componentmodel.ts:149-158`), which is the write nodes' case and not the
+      // Record node's, whose `prop-*` are outputs. The component-level event carries both
+      // ends, so it is filtered to wires touching this node.
+      node.on('inputConnectionAdded', function () {
+        updatePorts(node, context.editorConnection, graphModel);
+      });
+
+      node.on('inputConnectionRemoved', function () {
+        updatePorts(node, context.editorConnection, graphModel);
+      });
+
+      const onConnectionChanged = function (connection: { sourceId?: string; targetId?: string }) {
+        if (!connection) return;
+        if (connection.sourceId !== node.id && connection.targetId !== node.id) return;
+        updatePorts(node, context.editorConnection, graphModel);
+      };
+
+      // `on` rather than the component being present: every real `ComponentModel` is an
+      // `EventSender`, but a node reaching here without one must not take the whole
+      // `setup()` down — it would cost the node every OTHER port on this list too.
+      if (typeof node.component?.on === 'function') {
+        node.component.on('connectionAdded', onConnectionChanged, node);
+        node.component.on('connectionRemoved', onConnectionChanged, node);
+      }
 
       graphModel.on('metadataChanged.dbCollections', function () {
         CloudStore.invalidateCollections();
-        updatePorts(node.id, node.parameters, context.editorConnection, graphModel);
+        updatePorts(node, context.editorConnection, graphModel);
       });
 
       graphModel.on('metadataChanged.systemCollections', function () {
         CloudStore.invalidateCollections();
-        updatePorts(node.id, node.parameters, context.editorConnection, graphModel);
+        updatePorts(node, context.editorConnection, graphModel);
       });
 
       // The two keys the picker and the schema-driven ports actually read now.
       graphModel.on('metadataChanged.backendServices', function () {
-        updatePorts(node.id, node.parameters, context.editorConnection, graphModel);
+        updatePorts(node, context.editorConnection, graphModel);
       });
 
       graphModel.on('metadataChanged.cloudservices', function () {
-        updatePorts(node.id, node.parameters, context.editorConnection, graphModel);
+        updatePorts(node, context.editorConnection, graphModel);
       });
     }
 

@@ -218,6 +218,134 @@ export function recordPortType(field: SchemaField): RuntimeDiscoveredPort['type'
   return getEnhancedFieldType(field).type;
 }
 
+/**
+ * A wire, in the shape the runtime's `ComponentModel.connections` holds it.
+ *
+ * 🔴 Not the editor's shape. `NodeGraphModel.connections` spells the same four fields
+ * `fromId`/`fromProperty`/`toId`/`toProperty`, and P77 SBR-008 §6.6 is what reading one
+ * with the other's field names costs: a census filtered on the wrong names reported **0**
+ * `prop-` wires on a graph that had nineteen, and a zero from a wrong field name is
+ * indistinguishable from a zero that means "they were dropped".
+ */
+export interface RecordConnectionLike {
+  sourceId?: string;
+  sourcePort?: string;
+  targetId?: string;
+  targetPort?: string;
+}
+
+/** The slice of a node {@link recordWiredFieldPorts} reads. */
+export interface RecordWiredPortNode {
+  id: string;
+  parameters?: Record<string, unknown>;
+  component?: { getConnectionsTo?(id: string): unknown[]; getConnectionsFrom?(id: string): unknown[] };
+}
+
+/**
+ * The field names this node's own graph requires a `prop-<field>` port for.
+ *
+ * 🔴 **This is the second copy of a rule the editor also holds** — `cloudDynamicPorts.ts`
+ * `recordFieldNames`, which derives the same set for cloud components because WF-007 left
+ * the editor with no runtime to ask. The two are graded against each other by
+ * `noodl-editor/tests-unit/sb-017/cloud-ports-agree-with-the-runtime.test.ts`; keep them
+ * in step or that harness goes red, which is the point of it.
+ *
+ * **Both ends of a wire count, regardless of plug.** The Record node publishes `prop-*`
+ * as outputs and the two write nodes take them as inputs, but the rule does not branch on
+ * that: `plug` is the caller's, and a wire touching this node at a `prop-` port is the
+ * declaration either way. That is `NodeScope.createConnection`'s own behaviour —
+ * `registerInputIfNeeded`/`registerOutputIfNeeded` mint `prop-<anything>` on the wire's
+ * own port before connecting it (`nodescope.ts:149-150`).
+ */
+export function recordWiredFieldNames(
+  nodeId: string,
+  parameters: Record<string, unknown> | undefined,
+  connections: readonly RecordConnectionLike[]
+): string[] {
+  const names: string[] = [];
+  const add = (portName: unknown) => {
+    if (typeof portName !== 'string' || !portName.startsWith('prop-')) return;
+    const field = portName.substring('prop-'.length);
+    if (field.length > 0 && !names.includes(field)) names.push(field);
+  };
+
+  for (const parameter of Object.keys(parameters || {})) add(parameter);
+  for (const connection of connections) {
+    if (!connection) continue;
+    if (connection.targetId === nodeId) add(connection.targetPort);
+    if (connection.sourceId === nodeId) add(connection.sourcePort);
+  }
+
+  return names;
+}
+
+/**
+ * `prop-<field>` ports for the columns the introspected schema does not have.
+ *
+ * ## Why a second producer of this family exists at all
+ *
+ * {@link recordFieldPorts} mints one port per **column of the selected class**, and P77
+ * SBR-008 is the circularity that leaves: on a fresh site a column exists once something
+ * has written it, and the graph that writes it is the graph whose ports are missing. A
+ * wire to a port that does not exist is an `error`-level warning, `exportComponent` drops
+ * every connection `getConnectionHealth` calls unhealthy, and **all three** export callers
+ * go through it — the deploy, the full project export and the viewer's own component
+ * bundles. So the wire is dropped from the build, the panel writes a page with no title,
+ * and the save reports success (SBR-008 §6.4, driven).
+ *
+ * The answer is the one `cloudDynamicPorts.ts` already took on the cloud side: **the wire
+ * is the declaration.** This is that same answer, in the runtime, for the browser half.
+ *
+ * ## The cost, stated rather than rounded off
+ *
+ * A mistyped `prop-titel` now writes a `titel` column instead of warning. That is the
+ * running node's behaviour reported accurately rather than a check weakened — the wire
+ * *does* register the port at run time — but it is a real loss of a real warning, and the
+ * same one the cloud half accepted.
+ *
+ * @param existingPorts ports already built from the schema. A field with a column keeps
+ *   **its** port and its narrowed type: this returns only what those do not cover, so the
+ *   two producers meet at one port per name rather than two. (`dedupeSchemaPorts` would
+ *   also drop the double at the send, keeping whichever came first — this makes which one
+ *   survives a property of the rule instead of a property of push order.)
+ */
+export function recordWiredFieldPorts(
+  node: RecordWiredPortNode | undefined,
+  existingPorts: readonly RuntimeDiscoveredPort[],
+  options: RecordFieldPortOptions
+): RuntimeDiscoveredPort[] {
+  const component = node?.component;
+  if (!node || !component) return [];
+
+  const connections: RecordConnectionLike[] = [
+    ...((component.getConnectionsTo?.(node.id) || []) as RecordConnectionLike[]),
+    ...((component.getConnectionsFrom?.(node.id) || []) as RecordConnectionLike[])
+  ];
+
+  const readOnlyFields = options.readOnlyFields || [];
+  const have = new Set(existingPorts.map((port) => port.name));
+  const ports: RuntimeDiscoveredPort[] = [];
+
+  for (const field of recordWiredFieldNames(node.id, node.parameters, connections)) {
+    if (readOnlyFields.includes(field)) continue;
+    if (have.has(`prop-${field}`)) continue;
+
+    ports.push({
+      name: `prop-${field}`,
+      displayName: field,
+      // `'*'` rather than a guessed column type: the type is read off the introspected
+      // column and there is no column. It is what `recordPortType` already answers for
+      // every Parse type with no entry in its table, so this is the family's own
+      // "not narrowed" answer rather than a new one.
+      type: { name: '*' },
+      plug: options.plug,
+      group: 'Properties'
+    });
+  }
+
+  return ports;
+}
+
 /** The `relationProperty` dropdown — the class's `Relation` columns. */
 export function recordRelationPorts(ctx: SchemaPortContext): RuntimeDiscoveredPort[] {
   if (!ctx.selectedCollection) return [];

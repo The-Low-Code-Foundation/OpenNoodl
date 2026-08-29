@@ -1492,6 +1492,19 @@ export interface ComponentModelLike extends EventSenderLike {
   getAllNodes(): GraphNodeModel[];
   getNodesWithType(type: string): GraphNodeModel[];
   /**
+   * The component's wires, filtered by one end. `componentmodel.ts` filters
+   * {@link connections} on each call and returns a fresh array, so the result is safe to
+   * hold — unlike {@link getRoots}.
+   *
+   * Named here because two dynamic-port families derive their ports from what the author
+   * wired rather than from what a schema declares: numbered inputs
+   * (`nodedefinition.ts:588`) and the Record family's `prop-*` (P77 SBR-008). A node's own
+   * `inputs`/`outputs` arrays are **not** the alternative — `nodemodel.ts` initialises both
+   * to `[]` and nothing in the runtime ever pushes to them.
+   */
+  getConnectionsTo(nodeId: string): { sourceId: string; sourcePort: string; targetId: string; targetPort: string }[];
+  getConnectionsFrom(nodeId: string): { sourceId: string; sourcePort: string; targetId: string; targetPort: string }[];
+  /**
    * The same array as {@link roots} — `componentmodel.js` returns it directly rather
    * than a copy, so callers must not mutate the result. Paired with the `rootAdded`
    * and `rootRemoved` events, which carry the affected node id.

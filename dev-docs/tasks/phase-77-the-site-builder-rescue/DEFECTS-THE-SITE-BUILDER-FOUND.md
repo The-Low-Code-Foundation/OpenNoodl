@@ -247,7 +247,18 @@ first render.
 
 ## D13 — 🔴 What a build contains depends on when it was taken, not on what the project says
 
-**Severity: high. Product.** Owner: **`NONE`** — ⚠️ **and deliberately not SBR-008.** SBR-008's
+**Severity: high. Product.** Owner: **`NONE`** — ⚠️ **and deliberately not SBR-008.**
+
+> 🔄 **s18 (2026-08-29): still `NONE`, still open, and SBR-008's fix landed without touching it.**
+> The `prop-` family now resolves from the node's own wires, so *this* family leaves the filter's
+> reach — exactly as the paragraph below predicted. **The filter is unchanged and every other
+> dynamic-port family is still exposed to it.** What did change is the direction the race settles
+> in for `prop-`: the ports exist from component import rather than waiting on a column, so the
+> window narrows to "before the viewer has reported any ports at all", which is common to every
+> dynamic family and is what D13 is about. ⚠️ **Do not read SBR-008's green specs as evidence
+> here** — they call `setup()` and read what it announces; the debounced pass is not in them.
+> Re-checked that no task has taken it: still no acceptance criterion in this phase or phase 80
+> mentions the health pass, the export filter or build determinism. SBR-008's
 ruled fix makes the `prop-` ports resolve, which removes *this family* from the filter's reach; it
 does not change the filter, and every other dynamic-port family stays exposed. Grepped the phase's
 task files for the behaviour before recording it as unowned: no task's acceptance criteria mention

@@ -41,6 +41,7 @@
 import {
   accessControlPortsForNode,
   cloudDynamicPortsForNode,
+  recordPortsForNode,
   scriptPortsForNode,
   type ConnectionLike,
   type GeneratedPort
@@ -132,16 +133,48 @@ function graphModelFor(nodes: TSFixme[]) {
   };
 }
 
+/**
+ * A wire as the **runtime's** `ComponentModel.connections` holds it.
+ *
+ * 🔴 The two halves of this file speak different field names for the same wire, and the
+ * template file is in the editor's. `utils/exporter/util.ts` `exportConnection` renames
+ * all four on the way to any runtime — the live viewer's deltas go through it too — so a
+ * runtime module reading `fromId` finds `undefined` on every wire and derives nothing,
+ * silently. SBR-008 §6.6 is that mistake made once already: a census filtered on the
+ * editor's names against the viewer's objects reported **0** wires on a graph with 19,
+ * and read as confirmation of the defect it was measuring.
+ */
+function asRuntimeConnections(connections: readonly ConnectionLike[]) {
+  return connections.map((c) => ({
+    sourceId: c.fromId,
+    sourcePort: c.fromProperty,
+    targetId: c.toId,
+    targetPort: c.toProperty
+  }));
+}
+
 /** What the real runtime module announces for one node, through `sendDynamicPorts`. */
-function runtimePortsFor(modulePath: string, node: TemplateNode): GeneratedPort[] {
+function runtimePortsFor(
+  modulePath: string,
+  node: TemplateNode,
+  connections: readonly ConnectionLike[] = []
+): GeneratedPort[] {
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   const nodeModule = require(modulePath);
   const announced: GeneratedPort[] = [];
 
+  const wires = asRuntimeConnections(connections);
   const runtimeNode = {
     id: node.id,
     parameters: node.parameters,
-    component: { name: '/#__cloud__/spec' },
+    component: {
+      name: '/#__cloud__/spec',
+      // The accessors the Record family's wire-derived `prop-*` reads (SBR-008 §2).
+      // `componentmodel.ts` filters and returns a fresh array; so does this.
+      getConnectionsTo: (id: string) => wires.filter((c) => c.targetId === id),
+      getConnectionsFrom: (id: string) => wires.filter((c) => c.sourceId === id),
+      on: () => undefined
+    },
     outputPorts: {} as Record<string, unknown>,
     on: () => undefined
   };
@@ -166,6 +199,14 @@ function runtimePortsFor(modulePath: string, node: TemplateNode): GeneratedPort[
 }
 
 const RUNTIME = '../../../noodl-runtime/src/nodes/std-library';
+
+/** The two node types with `prop-*` INPUTS, and the runtime module that builds them. */
+const RECORD_WRITE_MODULES: Record<string, string> = {
+  NewDbModelProperties: `${RUNTIME}/data/newdbmodelpropertiesnode`,
+  SetDbModelProperties: `${RUNTIME}/data/setdbmodelpropertiesnode`
+};
+
+const propOnly = (entry: string) => entry.startsWith('prop-');
 
 describe('SB-017: the editor derives the ports the runtime declares', () => {
   it('the runtime really announces ports in this scope — the comparison is not vacuous', () => {
@@ -207,10 +248,7 @@ describe('SB-017: the editor derives the ports the runtime declares', () => {
   });
 
   it('agrees on every access-control rule the template writes', () => {
-    const modules: Record<string, string> = {
-      NewDbModelProperties: `${RUNTIME}/data/newdbmodelpropertiesnode`,
-      SetDbModelProperties: `${RUNTIME}/data/setdbmodelpropertiesnode`
-    };
+    const modules = RECORD_WRITE_MODULES;
 
     let compared = 0;
     for (const typename of Object.keys(modules)) {
@@ -229,19 +267,96 @@ describe('SB-017: the editor derives the ports the runtime declares', () => {
     expect(compared).toBeGreaterThan(0);
   });
 
-  it('🔴 the runtime`s editor-side builder can declare NO `prop-` port here, and that is the whole reason this file exists', () => {
-    // The measurement behind `cloudDynamicPorts.ts`'s docblock: `recordFieldPorts`
-    // builds `prop-*` from the introspected columns of the selected class, and a
-    // freshly installed site has none — the graph that would write them is the
-    // graph whose ports are missing. So this is not a schema the editor is
-    // failing to read; there is no schema, and there cannot be one yet.
-    for (const typename of ['NewDbModelProperties', 'SetDbModelProperties']) {
-      const path =
-        typename === 'NewDbModelProperties'
-          ? `${RUNTIME}/data/newdbmodelpropertiesnode`
-          : `${RUNTIME}/data/setdbmodelpropertiesnode`;
+  it('🔴 with no wires AND no parameters the schema half declares no `prop-` port — the circularity SBR-008 is about', () => {
+    // The measurement `cloudDynamicPorts.ts`'s docblock stands on, kept because it is
+    // still true and is still the reason any of this exists: `recordFieldPorts` builds
+    // `prop-*` from the introspected columns of the selected class, and a freshly
+    // installed site has none — the graph that would write them is the graph whose ports
+    // are missing.
+    //
+    // 🔴 Both inputs have to be emptied, not just the wires. The derivation reads saved
+    // `prop-*` PARAMETERS as well as wires (both copies do), so a node stripped of its
+    // wires alone still announces `prop-published` and `prop-publishedAt` off its own
+    // parameters. Written first as "no wires" and it went red saying exactly that — which
+    // is the case doing its job: what isolates the schema half is emptying every input
+    // the other producer has, and there were two.
+    let checked = 0;
+    for (const typename of Object.keys(RECORD_WRITE_MODULES)) {
       for (const { node } of cloudNodesOfType(typename)) {
-        expect(signature(runtimePortsFor(path, node)).filter((e) => e.startsWith('prop-'))).toEqual([]);
+        const bare = { ...node, parameters: { collectionName: node.parameters.collectionName } };
+        expect(signature(runtimePortsFor(RECORD_WRITE_MODULES[typename], bare)).filter(propOnly)).toEqual([]);
+        checked++;
+      }
+    }
+    expect(checked).toBeGreaterThan(0);
+  });
+
+  it('🟢 …and given the node`s own wires the runtime declares exactly what the editor derives', () => {
+    // SBR-008 AC4 — the two copies of the derivation rule, graded against each other.
+    // `record-ports.ts` `recordWiredFieldNames` (runtime) against
+    // `cloudDynamicPorts.ts` `recordFieldNames` (editor), over the shipped template.
+    let compared = 0;
+
+    for (const typename of Object.keys(RECORD_WRITE_MODULES)) {
+      for (const { node, connections } of cloudNodesOfType(typename)) {
+        const mine = signature(recordPortsForNode(node, node.type, connections)).filter(propOnly);
+        const theirs = signature(runtimePortsFor(RECORD_WRITE_MODULES[typename], node, connections)).filter(propOnly);
+
+        expect(theirs).toEqual(mine);
+        if (mine.length > 0) compared++;
+      }
+    }
+
+    // Without this the case passes on two empty lists — which is precisely the state it
+    // replaced, so it is the one assertion here that cannot be omitted.
+    expect(compared).toBeGreaterThan(0);
+  });
+
+  it('🔴 the comparison discriminates — a mutant on EITHER copy reddens it', () => {
+    // A pair proves what you varied, so vary each side once and require the agreement to
+    // break both times. Without this the case above passes whenever both copies are
+    // wrong in the same way, which is the failure mode a second copy has.
+    const withWires = cloudNodesOfType('NewDbModelProperties')
+      .concat(cloudNodesOfType('SetDbModelProperties'))
+      .find(({ node, connections }) => recordPortsForNode(node, node.type, connections).some((p) => propOnly(p.name)));
+
+    expect(withWires).toBeDefined();
+    const { node, connections } = withWires;
+    const module = RECORD_WRITE_MODULES[node.type];
+
+    const agreed = signature(runtimePortsFor(module, node, connections)).filter(propOnly);
+    expect(agreed.length).toBeGreaterThan(0);
+
+    // 🔴 The wire is CHOSEN, not `connections[0]`. Dropping an arbitrary wire changes
+    // nothing here — most are not `prop-` wires at all, and a field that is also a saved
+    // parameter survives losing its wire. Written that way first and both mutants stayed
+    // green: a mutant that kills nothing is a finding about the mutant.
+    const wireOnly = agreed
+      .map((entry) => entry.slice('prop-'.length, entry.indexOf(':')))
+      .find((field) => !Object.keys(node.parameters).includes(`prop-${field}`));
+
+    expect(wireOnly).toBeDefined();
+    const without = connections.filter((c) => c.toProperty !== `prop-${wireOnly}` || c.toId !== node.id);
+    expect(without.length).toBeLessThan(connections.length);
+
+    // Mutant 1 — on the EDITOR copy's input.
+    expect(signature(recordPortsForNode(node, node.type, without)).filter(propOnly)).not.toEqual(agreed);
+
+    // Mutant 2 — on the RUNTIME copy's input, same wire.
+    expect(signature(runtimePortsFor(module, node, without)).filter(propOnly)).not.toEqual(agreed);
+  });
+
+  it('🔴 two producers, one port — the wire half never doubles a column`s port', () => {
+    // The trap SBR-008 §4 names: where two builders can mint the same name, assert the
+    // cardinality at the seam rather than trusting the dedupe downstream of it. Run
+    // against the RAW announced list, before `signature()` dedupes, or it cannot fail.
+    for (const typename of Object.keys(RECORD_WRITE_MODULES)) {
+      for (const { node, connections } of cloudNodesOfType(typename)) {
+        const names = runtimePortsFor(RECORD_WRITE_MODULES[typename], node, connections)
+          .map((p) => `${p.plug}:${p.name}`)
+          .filter((entry) => entry.includes(':prop-'));
+
+        expect(names).toEqual(Array.from(new Set(names)));
       }
     }
   });

@@ -47,6 +47,7 @@ import {
   recordBackendPickerPorts,
   recordClassPorts,
   recordFieldPorts,
+  recordWiredFieldPorts,
   recordRelationPorts,
   recordSchemaContext
 } from './record-ports';
@@ -381,8 +382,14 @@ function _addBaseInfo(
             ports.push(...recordRelationPorts(ctx));
           }
 
-          if (def._hasInputProperties && ctx.selectedCollection) {
-            ports.push(...recordFieldPorts(ctx, { plug: 'input' }));
+          if (def._hasInputProperties) {
+            // Two producers of one family, in this order on purpose. The schema half
+            // knows the column's type; the wire half only knows the name, and returns
+            // nothing the schema half already covered — see `recordWiredFieldPorts`
+            // (P77 SBR-008) for why the second one has to exist at all.
+            const fieldPorts = ctx.selectedCollection ? recordFieldPorts(ctx, { plug: 'input' }) : [];
+            ports.push(...fieldPorts);
+            ports.push(...recordWiredFieldPorts(node, fieldPorts, { plug: 'input' }));
           }
 
           def._additionalDynamicPorts && def._additionalDynamicPorts(node, ports, graphModel);
@@ -399,6 +406,34 @@ function _addBaseInfo(
         node.on('parameterUpdated', function () {
           _updatePorts();
         });
+
+        // P77 SBR-008 — the wire-derived half of `prop-*` changes when a WIRE changes, and
+        // nothing above fires for that. Both events are needed and neither covers the other:
+        // `inputConnectionAdded` reaches only the wire's TARGET node
+        // (`models/componentmodel.ts:149-158`), which is the write nodes' case and not the
+        // Record node's, whose `prop-*` are outputs. The component-level event carries both
+        // ends, so it is filtered to wires touching this node.
+        node.on('inputConnectionAdded', function () {
+          _updatePorts();
+        });
+
+        node.on('inputConnectionRemoved', function () {
+          _updatePorts();
+        });
+
+        const onConnectionChanged = function (connection: { sourceId?: string; targetId?: string }) {
+          if (!connection) return;
+          if (connection.sourceId !== node.id && connection.targetId !== node.id) return;
+          _updatePorts();
+        };
+
+        // `on` rather than the component being present: every real `ComponentModel` is an
+        // `EventSender`, but a node reaching here without one must not take the whole
+        // `setup()` down — it would cost the node every OTHER port on this list too.
+        if (typeof node.component?.on === 'function') {
+          node.component.on('connectionAdded', onConnectionChanged, node);
+          node.component.on('connectionRemoved', onConnectionChanged, node);
+        }
 
         graphModel.on('metadataChanged.dbCollections', function () {
           CloudStore.invalidateCollections();

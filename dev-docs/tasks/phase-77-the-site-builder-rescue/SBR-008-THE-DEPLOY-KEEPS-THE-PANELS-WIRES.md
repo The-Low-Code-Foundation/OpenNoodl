@@ -303,3 +303,236 @@ listed `closeResult-title -> prop-title` among the connections. The viewer's con
 viewer's objects and matched nothing. **A zero from the wrong field name is indistinguishable from a
 zero that means "the wires were dropped"** — and this one would have read as confirmation. It was
 caught only because two lines of one probe disagreed. The corrected census is the **19** in §6.2.
+
+---
+
+## 7. 🟢 s18 (2026-08-29) — the fix is built, and §2 named the wrong field
+
+The §2 ruling is right and is now implemented. Two of the sentences describing *how* were
+not, and both were sentences rather than measurements — which is the same shape as the two
+premises §5 had to correct.
+
+### 7.1 🔴 `NodeModel.inputs` / `.outputs` are dead fields, and §2 sent the fix at them
+
+§2 says, as its reachability argument:
+
+> `ComponentModel.addConnection` emits `inputConnectionAdded` on the target node
+> (`componentmodel.ts:149-158`); **`NodeModel.inputs`/`.outputs` are the connection lists.**
+
+The first half is true. The second is false. `models/nodemodel.ts` initialises both to `[]`
+in the constructor and **nothing in the runtime ever writes to either** — searched as
+mutations *and* assignments across `noodl-runtime/src`, with the same search shape run for
+`.connections` as a known-firing control, which finds `componentmodel.ts`'s `push` and
+`splice` immediately. The other packages have no writer either.
+
+🔴 **The claim came from the field's own docblock** — *"Connections into this node.
+Populated by `GraphModel`, not by this class."* A comment describing a collaborator that
+does not exist, restated into a plan as a fact about the code. It is the
+recommendation-carries-a-measurement trap with no measurement in it at all: nobody had read
+the field, only its label.
+
+✅ **The real accessor was already in the tree, doing this exact job.** Numbered inputs
+derive their port count from what the author wired, and have since long before this phase:
+
+```js
+const connections = node.component.getConnectionsTo(node.id).map((c) => c.targetPort);
+```
+
+— `nodedefinition.ts:588`, `registerSetupFunctionForNumberedInputs`. The fix uses
+`getConnectionsTo` / `getConnectionsFrom`, and both are now named on `ComponentModelLike`
+in `@noodl/types` rather than reached through `any`. The dead fields are relabelled at their
+declaration so the next reader is not sent the same way.
+
+### 7.2 🔴 The two halves of this fix speak different names for the same wire
+
+The editor's connection is `{fromId, fromProperty, toId, toProperty}`; the runtime's is
+`{sourceId, sourcePort, targetId, targetPort}`. `utils/exporter/util.ts` `exportConnection`
+renames all four, and **every** path into a runtime goes through it — including the live
+preview's per-wire deltas (`viewer-frame`'s `Model.connectionAdded` handler wraps
+`e.args.model` in it). So a runtime module reading `fromId` finds `undefined` on every wire,
+derives nothing, and reports it as *"there was nothing to derive."*
+
+⚠️ **`site-builder.content.json` holds the EDITOR spelling**, because a template is a
+project file and not an exported bundle. Both specs convert on the way in and say why.
+
+🔴 This is §6.6's trap one layer down, and it is now a **graded** one: mutating the runtime
+copy to read `fromId`/`toId` reddens **5 cases**. Before this session nothing would have
+caught it.
+
+### 7.3 What was built
+
+| | |
+|---|---|
+| `record-ports.ts` | `recordWiredFieldNames` + `recordWiredFieldPorts` — `prop-<field>` from the node's own `prop-*` parameters and the `prop-*` endpoints of wires touching it, typed `'*'`, skipping any name the schema half already minted |
+| `dbmodelcrudbase.ts` | the write nodes' `plug: 'input'` half, no longer gated on `ctx.selectedCollection` |
+| `dbmodelnode2.ts` | the Record node's `plug: 'output'` half |
+| both | re-push on `inputConnectionAdded`/`Removed` **and** on the component's `connectionAdded`/`Removed` filtered to this node |
+| `@noodl/types` | `getConnectionsTo` / `getConnectionsFrom` published on `ComponentModelLike` |
+
+🔴 **Both events are needed and neither covers the other.** `inputConnectionAdded` reaches
+only a wire's **target** node (`componentmodel.ts:155-158`), which is the write nodes' case
+and *not* the Record node's, whose `prop-*` are outputs. The component-level event carries
+both ends. Listening only to the node-level one would have left `DbModel2` never updating —
+and every spec here would still have passed, because they call `setup()` and read what it
+announces rather than moving a wire.
+
+### 7.4 The rule now exists twice, on purpose, and the pair is graded
+
+`cloudDynamicPorts.ts` `recordFieldNames` (editor, cloud components) and `record-ports.ts`
+`recordWiredFieldNames` (runtime, browser components) are the same rule. That is the cost
+§2 stated and accepted; the mitigation it named is now in place.
+`tests-unit/sb-017/cloud-ports-agree-with-the-runtime.test.ts` runs the **real runtime
+modules** over the shipped template's cloud nodes and requires the two to produce the same
+`prop-` signature, with `compared > 0` so it cannot pass on two empty lists.
+
+**AC4's mutants, run:**
+
+| mutant | reddens |
+|---|---|
+| the derivation returns `[]` | **5 cases** |
+| the parameter half dropped (wires only) | **1 case** — the agreement |
+| the runtime copy reads the editor's field names (§7.2) | **5 cases** |
+
+The mutant *inside* the agreement case had to be chosen rather than taken: `connections[0]`
+killed nothing, because most wires are not `prop-` wires and a field that is also a saved
+parameter survives losing its wire. It now picks a field reachable **only** through a wire.
+🔴 A mutant that kills nothing is a finding about the mutant, and this one was mine.
+
+### 7.5 🔴 The census this task's AC2 rests on was not asking anything
+
+`the-browser-half-drops-every-record-field.test.ts`'s `unresolvedWires()` was documented as
+*"a wire is counted when the node that owns the port does not announce it"* — **and it never
+asked**. It counted every `prop-` wire unconditionally. That was the right number for as
+long as the runtime announced no `prop-` port at all, so it read as a measurement for four
+sessions while being an assumption spelled as one; the moment the runtime started
+answering, it would have gone on reporting **19** for ever.
+
+It is now split: `recordWires()` is the population (still 19, unchanged by the fix — the
+wires were never the problem) and `unresolvedWires()` runs each node's real `setup()` and
+asks. **19 → 0.**
+
+✅ **AC2, pinned where §6.5 says it is safe to pin.** This harness states its schema —
+`getMetaData` answers `undefined` for every key, no backend, no columns, and none possible —
+so the only thing that can move the number is the derivation. The editor's chip cannot be
+pinned this way and this does not try to; §6.5 stands.
+
+🔴 **A negative control sits beside the zero**, because `[]` has two readings — *"every wire
+resolves"* and *"the census stopped finding anything"* — and they are indistinguishable
+from the zero alone. The same instrument is asked about `prop-nothingIsWiredToThis` on the
+same node in the same call, and still says no.
+
+### 7.6 Where the acceptance criteria stand
+
+| | verdict | evidence |
+|---|---|---|
+| **AC1** (person) | ⬜ **not driven** — the code is built, the deploy-and-save drive is not run. §6.4's repro is the acceptance pair and is still standing |
+| **AC2** (census 19 → 0) | ✅ **met, in the harness**, beside a stated schema state — §7.5 |
+| **AC3** (parity exemption) | ⚠️ **the AC names a constant that does not exist.** There is no `REMOVED_BY_SB018`; the list is `REMOVED_SINCE_THE_BUNDLE` in `tests/cloud/sb017-deploy-connection-parity.test.ts`, and the string `REMOVED_BY_SB018` appears in the repo **once**, inside a comment in `noodl-mcp/tests/sb006Components.ts` describing the *pattern*. A mention read as a name. The list is about wires the template deliberately **removed** (SB-018 (5), SBR-015) and is cloud-side; this fix is browser-side and should not touch it — **not yet re-run**, see below |
+| **AC4** (two copies graded) | ✅ **met** — §7.4, with mutants in both directions |
+| **AC5** (control pair) | ⬜ open, and §6.5's correction still governs it |
+
+### 7.7 ⚠️ What has NOT been run, and why
+
+`tests/cloud/sb017-deploy-connection-parity.test.ts` is an Electron spec and needs
+`test:ci`, which must run alone. **A peer's `nodegx-backend` jest suite was running for the
+whole of this session** (pid 87683, the TPL-001 drive specs), and two package suites at once
+produce flakes that read as the change's. The gate is left for the next session, first job,
+with nothing else competing.
+
+⚠️ The `tests-unit/sb-017` runs above overlapped that suite. They are pure — no ports, no
+database, no fixtures on disk — and the mutant runs discriminated cleanly, so the readings
+stand; recorded because "it was green" is not the same claim as "it was green alone".
+
+---
+
+## 8. 🟢 s18 — AC1 DRIVEN. The person sentence passes, with §6.4's control beside it
+
+`SBR-016 Arrive Drive`, the standing repro, on a stack built from HEAD (viewer bundle rebuilt
+15:11:37 and confirmed to carry `recordWiredFieldPorts` **before** the drive — a source change
+that has not reached the bundle is a drive of the old code).
+
+### 8.1 The four-cell control, on one node, in one call
+
+`/Pages/PageEditor`'s `SetDbModelProperties` (class `Page`). The editor's introspected schema at
+that moment — read from `dbCollections`, *before* the save — was
+`Page:[navOrder, published, showInNav, slug, title]`. **No `seoDescription`.**
+
+| port | column exists | wired | `node.getPort(...)` |
+|---|---|---|---|
+| `prop-seoDescription` | **no** | yes | ✅ **true** ← the fix |
+| `prop-title` | yes | yes | ✅ true |
+| `prop-published` | yes | **no** | ✅ true — the schema half, untouched |
+| `prop-neverWiredNoColumn` | no | no | 🔴 **false** |
+
+🔴 **The last row is why the other three mean anything.** Three `true`s are also what a
+`getPort` that had started saying yes to everything would produce, and that reading is
+indistinguishable from the fix working. The negative control is on the **same node, same call,
+same instrument** — the mistake §6.6 caught was a control that read zero for its own reasons, and
+this is the same mistake pre-empted in the other direction.
+
+### 8.2 The export keeps every wire, with the health pass forced
+
+`evaluateHealth()` called explicitly before each read, so **D13 is held constant rather than
+raced** — which is what §6.5 says AC5's control pair must do:
+
+| component | authored | exported | `prop-` authored | `prop-` kept |
+|---|---|---|---|---|
+| `/Pages/PageEditor` | 26 | **26** | 13 | **13** |
+| `/Pages/Admin` | 13 | **13** | 2 | **2** |
+| `/Admin/SectionRow` | 19 | **19** | 1 | **1** |
+
+**Zero unhealthy `prop-` wires** across all three. §6.1 measured `/Pages/Admin` flipping
+**13 → 11**; it is now **13 → 13**, and the two wires it used to lose are `prop-title` and
+`prop-slug`.
+
+### 8.3 🟢 AC1 — the save saves, and the discarded field is the one that changed
+
+Through the running preview, `/admin/pages` → `Edit` on `About us EDITED` → both fields changed
+in one form → one `Save page`:
+
+| field | column existed | result |
+|---|---|---|
+| `Title` → `About us ED s18ITED` | yes | ✅ saved |
+| `Search description` → `SEO-CANARY-18-FIXED` | **no** | ✅ **saved** — was silently discarded in §6.4 |
+
+```
+sqlite> SELECT objectId, title, slug, seoDescription, updatedAt FROM Page ORDER BY updatedAt DESC;
+62d8abb8…|About us ED s18ITED|about|SEO-CANARY-18-FIXED|2026-08-29T13:20:56.670Z
+5f4bcc4d…|Arm B Settled Build|arm-b-settled||2026-08-29T12:22:26.598Z
+3d5d8c25…|Arm A Early Build |arm-a-early ||2026-08-29T12:20:36.881Z
+```
+
+And the column and the class schema were **created by this save**:
+
+```
+sqlite> PRAGMA table_info(Page);   →  … 9|seoDescription|TEXT
+sqlite> SELECT name, updatedAt FROM _Schema;
+Page    | … "seoDescription","type":"String" …  | 2026-08-29 13:20:56   ← the second of the save
+Section | "order","pageId"                      | 2026-08-29 11:07:03   ← unchanged
+```
+
+✅ **`Section` is the second control**: a class in the same database, on the same backend, at the
+same moment — it did not grow. So `Page` growing is the write, not the backend introspecting or
+migrating something on its own.
+
+⚠️ **Scope, stated rather than rounded off.** This is the **preview** caller of the export filter,
+not a deploy-to-folder. §5.3 established that preview, the viewer's component bundles and the
+deploy are **one filter with three callers** — which is why this is evidence about the filter and
+not only about preview — but AC1's literal text says *"deploy the template to a folder, serve
+it"*, and that was not done. The mechanism is driven end to end; the deploy caller is inferred
+from the shared filter.
+
+⚠️ The two `Arm` rows have an empty `seoDescription` because nobody ever typed one into them, not
+because they failed — they are not a before/after control and are not offered as one. The
+before-reading is §6.4's drive at `12:24:59`, where the same form on the same row saved `title`
+and discarded `seoDescription` with no column to write it to.
+
+### 8.4 Acceptance criteria, closed
+
+| | verdict |
+|---|---|
+| **AC1** | ✅ **met, driven** — §8.3, with a control differing in one property and a negative control on the instrument |
+| **AC2** | ✅ **met** — 19 → 0, beside a stated schema state (§7.5) |
+| **AC3** | ✅ **un-widened**, and the AC named a constant that does not exist (§7.6) |
+| **AC4** | ✅ **met** — two copies graded, mutants both directions (§7.4) |
+| **AC5** | ✅ **met** — §8.2 holds the health pass constant by forcing it, which is what §6.5 said the pair had to do |

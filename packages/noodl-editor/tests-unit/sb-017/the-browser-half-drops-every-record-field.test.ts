@@ -185,15 +185,37 @@ function browserComponents(): { name: string; nodes: TemplateNode[]; connections
  * their initial sweep off that event rather than running it in `setup`, and
  * without it every list below would be empty for the wrong reason.
  */
-function runtimePortsFor(typename: string, node: TemplateNode): { name: string }[] {
+function runtimePortsFor(
+  typename: string,
+  node: TemplateNode,
+  connections: readonly TemplateConnection[] = []
+): { name: string }[] {
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   const nodeModule = require(MODULES[typename]);
   const announced: { name: string }[] = [];
 
+  // 🔴 Renamed on the way in. The template file spells a wire the EDITOR's way
+  // (`fromId`/`fromProperty`); every runtime receives it through
+  // `utils/exporter/util.ts` `exportConnection`, which renames all four. A runtime
+  // module handed the editor's spelling reads `undefined` off every wire and derives
+  // nothing — silently, and looking exactly like "there was nothing to derive". That
+  // is SBR-008 §6.6, which cost a session by reading as confirmation.
+  const wires = connections.map((c) => ({
+    sourceId: c.fromId,
+    sourcePort: c.fromProperty,
+    targetId: c.toId,
+    targetPort: c.toProperty
+  }));
+
   const runtimeNode = {
     id: node.id,
     parameters: node.parameters,
-    component: { name: '/Pages/spec' },
+    component: {
+      name: '/Pages/spec',
+      getConnectionsTo: (id: string) => wires.filter((c) => c.targetId === id),
+      getConnectionsFrom: (id: string) => wires.filter((c) => c.sourceId === id),
+      on: () => undefined
+    },
     outputPorts: {} as Record<string, unknown>,
     on: () => undefined
   };
@@ -228,18 +250,27 @@ function runtimePortsFor(typename: string, node: TemplateNode): { name: string }
 interface Unresolved {
   component: string;
   ownerType: string;
+  /** The node that owns the port — what `unresolvedWires` asks the runtime about. */
+  nodeId?: string;
   port: string;
   /** The class the dropped write lands in, for the Record family. */
   collection?: string;
 }
 
 /**
- * The census. A wire is counted when the node that owns the port does not
- * announce it and the static library cannot carry it either — which for this
- * template is `prop-<field>` (no columns) and `For Each.Changed` (no such port
- * on that node in any runtime; SB-018 (1)).
+ * The **population**: every `prop-<field>` wire in the browser components, plus the
+ * `For Each.Changed` residue SB-018 (1) fixed away.
+ *
+ * 🔴 Renamed from `unresolvedWires` by SBR-008, and the rename is the finding. Its
+ * docblock said *"a wire is counted when the node that owns the port does not announce
+ * it"* — and **it never asked**. Every `prop-` wire was counted unconditionally. That was
+ * the right number for as long as the runtime announced no `prop-` port at all, so it read
+ * as a measurement for four sessions while being an assumption spelled as one. The moment
+ * the runtime started answering, this function would have gone on reporting 19 for ever.
+ *
+ * What asks is {@link unresolvedWires}, below. This is its denominator.
  */
-function unresolvedWires(): Unresolved[] {
+function recordWires(): Unresolved[] {
   const found: Unresolved[] = [];
 
   for (const component of browserComponents()) {
@@ -254,6 +285,7 @@ function unresolvedWires(): Unresolved[] {
         found.push({
           component: component.name,
           ownerType: target.type,
+          nodeId: target.id,
           port: wire.toProperty,
           collection: String(target.parameters.collectionName ?? target.parameters.collectionId ?? '')
         });
@@ -261,6 +293,7 @@ function unresolvedWires(): Unresolved[] {
         found.push({
           component: component.name,
           ownerType: source.type,
+          nodeId: source.id,
           port: wire.fromProperty,
           collection: String(source.parameters.collectionName ?? source.parameters.collectionId ?? '')
         });
@@ -273,6 +306,39 @@ function unresolvedWires(): Unresolved[] {
   return found;
 }
 
+/**
+ * The census that asks: a `prop-` wire whose owning node does not announce the port.
+ *
+ * One `setup()` run per node, with that node's own component wires, exactly as the viewer
+ * runs it — and with `getMetaData` answering `undefined` for every key, which is a
+ * **stated schema state**: this template has no `dbCollections`, no columns, and cannot
+ * have any until something writes one.
+ *
+ * 🔴 That last sentence is why the number below is safe to pin and the editor's chip is
+ * not. SBR-008 §6.5: in one live session, with nothing edited, the editor's own census
+ * read 32, then 13, then 4 — it moves with how much of the backend schema has been
+ * introspected and whether the window has focused. Here there is no backend, so the only
+ * thing that can move this number is the derivation.
+ */
+function unresolvedWires(): Unresolved[] {
+  const announcedByNode = new Map<string, Set<string>>();
+
+  for (const component of browserComponents()) {
+    for (const node of component.nodes) {
+      if (!MODULES[node.type]) continue;
+      announcedByNode.set(
+        `${component.name}:${node.id}`,
+        new Set(runtimePortsFor(node.type, node, component.connections).map((port) => port.name))
+      );
+    }
+  }
+
+  return recordWires().filter((row) => {
+    if (!row.port.startsWith('prop-')) return true;
+    return !announcedByNode.get(`${row.component}:${row.nodeId}`)?.has(row.port);
+  });
+}
+
 describe('SB-017 §10.8: what the browser deploy drops, and what it costs', () => {
   it('accounts for the editor`s 23 warnings, per component, with nothing left over', () => {
     // 🔴 The claim this file exists to make. s17 read these four numbers off the
@@ -281,7 +347,7 @@ describe('SB-017 §10.8: what the browser deploy drops, and what it costs', () =
     // A census that landed near them would be a coincidence — one that lands on
     // all four is the same population.
     const perComponent: Record<string, number> = {};
-    for (const row of unresolvedWires()) {
+    for (const row of recordWires()) {
       perComponent[row.component] = (perComponent[row.component] ?? 0) + 1;
     }
 
@@ -316,7 +382,7 @@ describe('SB-017 §10.8: what the browser deploy drops, and what it costs', () =
   });
 
   it('is 19 record fields and NOTHING else — SB-018`s two have been fixed away', () => {
-    const rows = unresolvedWires();
+    const rows = recordWires();
 
     expect(rows.filter((r) => r.port.startsWith('prop-')).length).toBe(19);
 
@@ -335,23 +401,57 @@ describe('SB-017 §10.8: what the browser deploy drops, and what it costs', () =
     expect(rows.every((r) => r.port.startsWith('prop-'))).toBe(true);
   });
 
-  it('🔴 the runtime announces NO `prop-` port for any Record node in this template', () => {
-    // The mechanism, from the module that owns it rather than from its source
-    // text. `recordFieldPorts` emits one port per column of the selected class
-    // (`record-ports.ts:161`), and a site nobody has written to has no columns.
-    // Identical to the cloud half's §10.2, on the runtime the viewer runs.
+  it('🔴 the SCHEMA half still announces no `prop-` port — the circularity is not fixed, it is bypassed', () => {
+    // The mechanism, from the module that owns it rather than from its source text.
+    // `recordFieldPorts` emits one port per column of the selected class, and a site
+    // nobody has written to has no columns. SBR-008's fix does not change that and was
+    // never going to: it adds a SECOND producer beside it. Kept as a live assertion
+    // because if this ever turns green on its own, the number in the next case stops
+    // being evidence about the wire-derived half.
+    //
+    // Isolated by emptying BOTH of the other producer's inputs — the wires here, and the
+    // node's own saved `prop-*` parameters, which feed it too.
     let asked = 0;
 
     for (const component of browserComponents()) {
       for (const node of component.nodes) {
         if (!['DbModel2', 'NewDbModelProperties', 'SetDbModelProperties'].includes(node.type)) continue;
         asked++;
-        expect(runtimePortsFor(node.type, node).filter((port) => port.name.startsWith('prop-'))).toEqual([]);
+        const bare = { ...node, parameters: { collectionName: node.parameters.collectionName } };
+        expect(runtimePortsFor(node.type, bare).filter((port) => port.name.startsWith('prop-'))).toEqual([]);
       }
     }
 
     // A loop over nothing passes. This template's admin panel holds Record nodes.
     expect(asked).toBeGreaterThan(0);
+  });
+
+  it('🟢 SBR-008 AC2 — given the wires, every one of the 19 resolves. Census 19 → 0', () => {
+    // The number AC2 asks for, pinned where it is safe to pin: this harness states its
+    // schema (`getMetaData` → `undefined`, no columns, no backend), so nothing but the
+    // derivation can move it. §6.5 is why that qualifier is load-bearing — the editor's
+    // own chip read 32, 13 and 4 in one session with nothing edited.
+    expect(recordWires().filter((row) => row.port.startsWith('prop-')).length).toBe(19);
+    expect(unresolvedWires()).toEqual([]);
+  });
+
+  it('🔴 …and the census can still report a miss — the zero above is not the instrument', () => {
+    // 🔴 The negative control, and it is not optional. `unresolvedWires()` returning `[]`
+    // has two readings — "every wire resolves" and "the census stopped finding anything"
+    // — and they are indistinguishable from the zero alone. SBR-008 §6.6 is that mistake
+    // already paid for once at full price: a census filtered on the wrong field names
+    // reported 0 `prop-` wires on a graph that had 19, and it read as confirmation.
+    //
+    // So: ask the same instrument about a port the runtime really does not announce.
+    const admin = browserComponents().find((c) => c.name === '/Pages/Admin')!;
+    const create = admin.nodes.find((node) => node.type === 'NewDbModelProperties')!;
+
+    const announced = runtimePortsFor(create.type, create, admin.connections).map((port) => port.name);
+
+    // Present, via the wire — the half the fix adds.
+    expect(announced).toContain('prop-title');
+    // Absent — no wire, no parameter, no column. The instrument can still say no.
+    expect(announced).not.toContain('prop-nothingIsWiredToThis');
   });
 
   it('…and the same instrument DOES announce the families the browser keeps', () => {
@@ -379,14 +479,16 @@ describe('SB-017 §10.8: what the browser deploy drops, and what it costs', () =
     ).toBeGreaterThan(0);
   });
 
-  it('🔴 the loss is TOTAL per write node — every wired field, on every one of them', () => {
-    // The cost, which was the open half of §10.8. Zero columns means zero ports,
-    // so this is not a few fields going missing: for every write node in the
-    // panel, **every** `prop-` wire into it is dropped.
+  it('🟢 the loss WAS total per write node — and is now zero on every one of them', () => {
+    // The cost §10.8 left open, kept as the shape it had rather than deleted: zero
+    // columns meant zero ports, so this was never a few fields going missing — for
+    // every write node in the panel, **every** `prop-` wire into it was dropped.
     //
-    // Asserted per node rather than as a total, because "19 of 19" and "every
-    // node loses all of its wired fields" are different claims and only the
-    // second one says the panel cannot work at all.
+    // Asserted per node rather than as a total, because "19 of 19" and "every node
+    // loses all of its wired fields" are different claims, and only the second one says
+    // the panel cannot work at all. The same per-node shape now says the opposite, which
+    // is a stronger statement than one total reaching zero: a fix that repaired most
+    // nodes and missed one would pass a total and fail here.
     const dropped = unresolvedWires().filter((r) => r.port.startsWith('prop-'));
 
     const byOwner: Record<string, string[]> = {};
@@ -406,21 +508,29 @@ describe('SB-017 §10.8: what the browser deploy drops, and what it costs', () =
       }
     }
 
-    // Every write node that has any `prop-` wire loses all of them.
+    // The population is still there — the wires were never the problem.
     expect(Object.keys(byOwner).length).toBeGreaterThan(0);
-    expect(
-      Object.values(byOwner).reduce((total, ports) => total + ports.length, 0)
-    ).toBe(dropped.length);
+    const wiredTotal = Object.values(byOwner).reduce((total, ports) => total + ports.length, 0);
+    expect(wiredTotal).toBe(19);
 
-    // And the classes those fieldless writes land in, named — so this reads as a
-    // broken product rather than as a number.
+    // Before the fix this read `toBe(wiredTotal)` — every wired field on every node,
+    // lost. Now none of them is.
+    expect(dropped.length).toBe(0);
+
+    // And the classes those writes land in, named — so this reads as a product and not
+    // as a number. They are the four the fieldless writes used to corrupt; the list is
+    // kept because it is what says the fix covers all four and not just `Page`, which is
+    // the only one the s17 drive touched.
     //
-    // ⚠️ s19 note: `/Admin/PageRow`'s title and slug now carry a standing `text`
-    // (SB-018 (3)), so a deployed panel lists these fieldless rows as blank
-    // rather than as the literal word `Text`. That changes what the failure
-    // LOOKS like and nothing about what it is.
-    const classes = [...new Set(dropped.map((r) => r.collection))].sort();
-    expect(classes).toEqual(['Page', 'Section', 'SiteSettings', 'Theme']);
+    // ⚠️ s19 note: `/Admin/PageRow`'s title and slug carry a standing `text`
+    // (SB-018 (3)), so a deployed panel listed these fieldless rows as blank rather than
+    // as the literal word `Text`. That changed what the failure LOOKED like and nothing
+    // about what it was.
+    const classesWired = [
+      ...new Set(recordWires().filter((r) => r.port.startsWith('prop-')).map((r) => r.collection))
+    ].sort();
+    expect(classesWired).toEqual(['Page', 'Section', 'SiteSettings', 'Theme']);
+    expect([...new Set(dropped.map((r) => r.collection))]).toEqual([]);
   });
 
   it('🔴 …but a `prop-` set as a PARAMETER survives, so the bad row LOOKS valid', () => {
