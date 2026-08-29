@@ -33,6 +33,24 @@ owning task. So:
   [phase 78's](../phase-78-the-templates/DEFECTS-THE-TEMPLATES-FOUND.md). Ids drift (phase 78
   carried two different `D10`s), and a register nobody re-reads is a notebook.
 
+## ✅ SWEPT 2026-08-29 — every row below now has an owner
+
+[THE-SWEEP-2026-08-29.md](THE-SWEEP-2026-08-29.md) re-measured all three registers **at HEAD** —
+this one, phase 78's, and **phase 76's 28 findings, which had no register at all** (Richard:
+*"don't forget phase 76"*). The unowned product rows became
+**[phase 80](../phase-80-the-defects-the-templates-found/TASKS.md)**, ranked by who they bite.
+
+Six rows came back different from how they were written. In this file:
+
+| row | what changed |
+|---|---|
+| **D2** | cause **corrected for the third time** — the cloud path *does* call the recorder, from the `Log` node handler only |
+| **D4** | 🔄 **reclassified as TEMPLATE work** — `failure` and `error` both exist; the site builder never wired them |
+| **D6** | ❌ **cause REFUTED** — `maxWidth` *is* a declared port the door knows. Symptom unexplained |
+| **D8** | = **phase 76's F15**. The same defect, found twice, unowned in both |
+| **D5** | real **and deliberate** (Richard's 2026-08-06 decision); the residual is the disk/load seam |
+| **D1, D3, D7, D10** | confirmed real at HEAD, unchanged |
+
 ## House rules
 
 - 🔴 **A row is a measurement, not an impression.** Say what was done and what happened.
@@ -44,7 +62,8 @@ owning task. So:
 
 ## D1 — 🔴 Nothing anywhere warns that a node's `Failure` reaches nobody
 
-**Severity: high. No owner.** Found by SBR-015 (s10).
+**Severity: high. Owner: [DEF-002](../phase-80-the-defects-the-templates-found/DEF-002-THE-DOOR-DOES-NOT-CHECK-CONNECTIONS.md)** (assigned 2026-08-29). Found by SBR-015 (s10).
+✅ **Re-measured at HEAD 2026-08-29: still real.** `validate.ts` holds 8 occurrences of "failure" and every one is the `StructuralFailure` type or an unrelated comment.
 
 In a cloud function a `Failure` that reaches no `noodl.cloud.response` is not a degraded
 result — it is a **thirty-second hang**, because the request only ends when something sends.
@@ -74,7 +93,9 @@ and would pass the unfixed graph. Same family as phase 78's D1.
 
 ## D2 — 🔴 A cloud function's node steps are never recorded, so the execution log cannot say *where* it hung
 
-**Severity: medium-high. No owner.** Found by SBR-015 (s10).
+**Severity: medium-high. Owner: [DEF-004](../phase-80-the-defects-the-templates-found/DEF-004-WHEN-IT-GOES-WRONG-YOU-CANNOT-SEE-WHERE.md)** (assigned 2026-08-29). Found by SBR-015 (s10).
+
+🔴 **THE CAUSE BELOW IS WRONG — third wrong reading of this row.** The cloud function path **does** call the recorder: `WorkflowRunner.ts:261` is inside the **`Log` node handler**, writing one step per author log line with `nodeType` hardcoded to `net.noodl.Log`. The site-builder template holds **zero** `Log` nodes, which is the whole explanation of "3 executions, 0 steps". The true sentence: **`execution_steps` records what the author chose to log, never what the graph ran** — so the fix is smaller than the text below assumes. Kept as written because the correction is the finding.
 
 `executions.sqlite` has an `execution_steps` table with a full schema — `node_id`, `node_type`,
 `node_name`, `step_index`, `status`, `error_message`. After the SBR-006 drive it held **3
@@ -95,7 +116,7 @@ failed", and SBR-006 reached for it first exactly as intended. For a cloud funct
 
 ## D3 — ⚠️ `completed` reads as success, and the product has already been told so once
 
-**Severity: medium. No owner.** Found by SBR-015 (s10).
+**Severity: medium. Owner: [DEF-004](../phase-80-the-defects-the-templates-found/DEF-004-WHEN-IT-GOES-WRONG-YOU-CANNOT-SEE-WHERE.md)** (assigned 2026-08-29). Found by SBR-015 (s10).
 
 `completed` *"fires after every invocation, whatever the outcome"* (`outcome.ts`). Wired into a
 record write or a Response's `send` it therefore reports success **after a failure**. In the
@@ -116,7 +137,9 @@ the visitor). The rule is about **where it lands**.
 
 ## D4 — ⚠️ A refused query and an empty collection are the same screen
 
-**Severity: medium. Owner undecided — Richard's call (SBR-006 §5.8 or SBR-010).**
+**Severity: medium. 🔄 RECLASSIFIED 2026-08-29 — TEMPLATE work, and not Richard's call.** Owner: **SBR-006/SBR-010**.
+
+🔴 **Phase 78's D4 drove the opposite result and it holds at HEAD.** `DbCollection2` carries a `failure` **signal** and an `error` **string** (confirmed through the door, 2026-08-29), and a 403 fires `failure` — measured on one backend, two arms: an approved member got `200` and a row, a pending person got `403`, `failure` fired, and the console named `query-records/query-failed`. **The product supplies the means; the site builder never wired it.** Left as a platform row this would have opened a platform task for a wire.
 
 On a cold load with no session the admin page list renders the shell, the heading and `New page`
 and nothing else: no rows, and no row-count sentence, because `count` runs on `pages.fetched` and
@@ -134,12 +157,17 @@ the session that measured them; not re-measured in s10.
 
 | id | defect | measured | owner |
 |---|---|---|---|
-| D5 | 🔴 The NDA-017 migration writes `runOnChange-*: false` on load for **every** node whose control signal is wired — 37 nodes in a fresh project, zero `true`s. An explicit `true` survives; absent does not. Caused the site's root URL to render no page at all. | SBR-004 §9.2, s8 | template fixed; **the migration itself has no owner** |
-| D6 | ⚠️ `maxWidth` is **inert on `Text`** — authored, driven (`computed: none`), removed. | SBR-004 §9.3, s5/s8 | none |
-| D7 | ⚠️ `Text` declares **no padding ports and no `borderRadius`** — margins only. A padded nav item needs a wrapping `Group`. | SBR-006, s9 | none |
-| D8 | ⚠️ A bare number in a dimension port means **percent** (`width: 240` → `240%`). The door refuses it; the object form is the fix. Easy to write, hard to see. | SBR-006, s9 | none |
+| D5 | 🔴 The NDA-017 migration writes `runOnChange-*: false` on load for **every** node whose control signal is wired — 37 nodes in a fresh project, zero `true`s. An explicit `true` survives; absent does not. Caused the site's root URL to render no page at all. | SBR-004 §9.2, s8 | ✅ **re-measured 2026-08-29: real AND DELIBERATE** (Richard's decision, 2026-08-06 — the module states it at length). The residual is the disk/load seam → **[DEF-007](../phase-80-the-defects-the-templates-found/DEF-007-DISK-AND-LOAD-DISAGREE.md)** |
+| D6 | ❌ **CAUSE REFUTED 2026-08-29** — `maxWidth` **is** a declared port on `Text` and the door knows it (`get_node_type` returns it; `useDimensionConstraints` defaults `true` and no node opts out). The file last moved **2026-08-08**, three weeks *before* this was measured, so the row is **wrong, not stale**. Symptom unexplained. | SBR-004 §9.3, s5/s8 | **[DEF-008](../phase-80-the-defects-the-templates-found/DEF-008-THE-MEASUREMENT-OWED.md)** — a measurement owed, not a fix |
+| D7 | ⚠️ `Text` declares **no padding ports and no `borderRadius`** — margins only. A padded nav item needs a wrapping `Group`. | SBR-006, s9 | ✅ **confirmed at HEAD** (`paddingLeft`, `borderRadius` → `notFound`; `text.ts` calls `addMarginInputs` only) → **[DEF-003](../phase-80-the-defects-the-templates-found/DEF-003-THREE-AUTHORING-ACTS-WITH-NO-SURFACE.md)** |
+| D8 | ⚠️ A bare number in a dimension port means **percent** (`width: 240` → `240%`). The door refuses it; the object form is the fix. Easy to write, hard to see. | SBR-006, s9 | ✅ **confirmed at HEAD** (`react-component-node.ts:1925`). 🔴 **= phase 76's F15** — the same defect found twice, unowned in both → **[DEF-003](../phase-80-the-defects-the-templates-found/DEF-003-THREE-AUTHORING-ACTS-WITH-NO-SURFACE.md)** |
 | D9 | 🔴 The deploy drops **wire-only** `prop-*` — a parameter survives, a wire does not. | SB-017 §11.1 / SBR-006 §5.6 | **SBR-008** ✅ |
-| D10 | ⚠️ A signal into a **value** port writes true-then-false, and the input queue holds one entry per input name, so the two coalesce and the consumer runs **once, with `false`**. | SBR-002, s4b | template fixed; runtime behaviour unowned |
+| D10 | ⚠️ A signal into a **value** port writes true-then-false, and the input queue holds one entry per input name, so the two coalesce and the consumer runs **once, with `false`**. | SBR-002, s4b | ✅ real — re-confirmed independently by **phase 78's D4 instrument bug** and **D14** (s6). Runtime half → **[DEF-002](../phase-80-the-defects-the-templates-found/DEF-002-THE-DOOR-DOES-NOT-CHECK-CONNECTIONS.md)** rule 3 |
 
-⚠️ **D5–D8 and D10 are listed from their task files and have not been re-verified.** Re-measure
-before acting — several are a phase old and the platform has moved under them.
+✅ **D5–D8 and D10 were re-measured at HEAD on 2026-08-29** — see
+[THE-SWEEP-2026-08-29.md](THE-SWEEP-2026-08-29.md) §2. Two came back different: **D6's cause is
+refuted** and **D8 is a duplicate of phase 76's F15**. The rest stand.
+
+🔴 **And the platform had *not* moved under them** — which was the assumed reason to re-measure and
+was wrong. D6's file predates its own measurement by three weeks. **The rows were mis-derived, not
+stale**, and a re-measure scoped to "has the platform moved?" would have confirmed all five.
