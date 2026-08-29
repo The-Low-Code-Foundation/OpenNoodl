@@ -263,7 +263,6 @@
             "sizeMode": "contentSize",
             "backgroundColor": "var(--surface)",
             "borderStyle": "none",
-            "borderWidth": { "value": 0, "unit": "px" },
             "borderRadius": "var(--radius-md)",
             "paddingLeft": "var(--space-2)",
             "paddingRight": "var(--space-2)",

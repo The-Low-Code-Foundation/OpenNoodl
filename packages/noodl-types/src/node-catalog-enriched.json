@@ -63891,6 +63891,7 @@
               "label": "Display name",
               "parent": "form_root",
               "parameters": {
+                "useLabel": true,
                 "label": "Display name",
                 "placeholder": "Your name"
               }
@@ -65181,6 +65182,7 @@
               "label": "Terms consent",
               "parent": "root",
               "parameters": {
+                "useLabel": true,
                 "label": "I accept the terms of service"
               }
             },
@@ -65190,6 +65192,7 @@
               "label": "Age confirmation",
               "parent": "root",
               "parameters": {
+                "useLabel": true,
                 "label": "I am 18 or older"
               }
             },
@@ -65199,6 +65202,7 @@
               "label": "Newsletter opt-in",
               "parent": "root",
               "parameters": {
+                "useLabel": true,
                 "label": "Email me the newsletter"
               }
             },
@@ -65208,6 +65212,7 @@
               "label": "Offers opt-in",
               "parent": "root",
               "parameters": {
+                "useLabel": true,
                 "label": "Email me special offers"
               }
             },
@@ -67565,10 +67570,6 @@
                 "backgroundColor": "var(--primary)",
                 "color": "var(--primary-foreground)",
                 "borderRadius": "var(--radius-full)",
-                "borderWidth": {
-                  "value": 0,
-                  "unit": "px"
-                },
                 "borderStyle": "none",
                 "paddingLeft": "var(--space-6)",
                 "paddingRight": "var(--space-6)",
@@ -69089,10 +69090,6 @@
                 "sizeMode": "contentSize",
                 "backgroundColor": "var(--surface)",
                 "borderStyle": "none",
-                "borderWidth": {
-                  "value": 0,
-                  "unit": "px"
-                },
                 "borderRadius": "var(--radius-md)",
                 "paddingLeft": "var(--space-2)",
                 "paddingRight": "var(--space-2)",
@@ -69436,10 +69433,6 @@
                 "backgroundColor": "var(--primary)",
                 "color": "var(--primary-foreground)",
                 "borderRadius": "var(--radius-full)",
-                "borderWidth": {
-                  "value": 0,
-                  "unit": "px"
-                },
                 "borderStyle": "none",
                 "paddingLeft": "var(--space-6)",
                 "paddingRight": "var(--space-6)",
@@ -69914,10 +69907,6 @@
                 "backgroundColor": "var(--primary)",
                 "color": "var(--primary-foreground)",
                 "borderRadius": "var(--radius-full)",
-                "borderWidth": {
-                  "value": 0,
-                  "unit": "px"
-                },
                 "borderStyle": "none",
                 "paddingLeft": "var(--space-5)",
                 "paddingRight": "var(--space-5)",

@@ -27,6 +27,7 @@ import {
   checkComponentPortDirection,
   checkInstanceInterfaces,
   checkInstancePorts,
+  checkParameterValues,
   componentInterfaces,
   formatDiagnosticLine,
   NormProject,
@@ -35,6 +36,7 @@ import {
   formatReport,
   type Diagnostic
 } from '../packages/noodl-editor/src/editor/src/validation';
+import { loadDefaultCatalog } from '../packages/noodl-editor/src/editor/src/validation/catalog';
 
 const REPO_ROOT = path.resolve(__dirname, '..');
 const EXAMPLES_DIR = path.join(REPO_ROOT, 'docs/node-catalog/examples');
@@ -132,6 +134,53 @@ function interfaceDiagnostics(example: ExampleFile): Diagnostic[] {
   return diagnostics;
 }
 
+/**
+ * DEF-006 — the parameters a recipe sets that the runtime never reads.
+ *
+ * ## Why this is here now, when LAS-007 deliberately left it out
+ *
+ * The note above records the trade LAS-007 made: running the *whole*
+ * precondition set would have surfaced `7 inactive-conditional-parameter`, 2
+ * `invalid-parameter-value`, 1 `unsized-absolute-box` and 1 `raw-color-literal`
+ * across seven other examples — "real, pre-existing, and a different task's
+ * blast radius". That reasoning was right and it is unchanged for three of the
+ * four codes, which is why this runs **one** family rather than the set.
+ *
+ * What changed is that the fourth family had grown to **11** by 2026-08-29 and
+ * had reached the design system itself: `primaryButton`'s parameters are copied
+ * out of `ui-split-hero`, and it carried a `borderWidth` under a
+ * `borderStyle: "none"` that switches the port off — so every button an agent
+ * authored on-system earned a warning for obeying the instructions. Repairing
+ * the composition without a gate here would have left the recipe it is diffed
+ * against still wrong.
+ *
+ * All 11 are repaired: four buttons setting `borderWidth` beside
+ * `borderStyle: "none"`, five controls setting a `label` with `useLabel`
+ * defaulting to `false` — `logic-consent-gate` demonstrated a consent form whose
+ * four checkboxes render no words at all — and two that were **the rule's own
+ * false positives**, fixed in the rule rather than the recipe.
+ *
+ * 🔴 **Still deferred, with today's numbers rather than LAS-007's:** 2
+ * `invalid-parameter-value`, 1 `unsized-absolute-box`, 1 `raw-color-literal`,
+ * plus 28 `dynamic-port-skipped` and 11 `unknown-type-check-skipped` notices
+ * that report a check *not run* rather than a defect. Turning those on is the
+ * same argument as before and wants its own task.
+ */
+const INERT_PARAMETER_CODES = new Set(['inactive-conditional-parameter', 'inert-dimension']);
+
+function inertParameterDiagnostics(example: ExampleFile): Diagnostic[] {
+  const catalog = loadDefaultCatalog();
+  const diagnostics: Diagnostic[] = [];
+  for (const c of example.components) {
+    diagnostics.push(
+      ...checkParameterValues(c.nodes ?? [], catalog, { component: c.name }).filter((d) =>
+        INERT_PARAMETER_CODES.has(d.code)
+      )
+    );
+  }
+  return diagnostics;
+}
+
 function main(): void {
   const json = process.argv.includes('--json');
   const dirFlag = process.argv.indexOf('--dir');
@@ -166,7 +215,7 @@ function main(): void {
     }
 
     const report = validator.validate(toNormProject(example), { strict: true });
-    const interfaceFindings = interfaceDiagnostics(example);
+    const interfaceFindings = [...interfaceDiagnostics(example), ...inertParameterDiagnostics(example)];
     const dirty = report.summary.errors > 0 || report.summary.warnings > 0 || interfaceFindings.length > 0;
     if (dirty) {
       failed++;

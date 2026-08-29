@@ -14,7 +14,7 @@
           "parameters": { "flexDirection": "column" },
           "children": ["name_input", "notify_checkbox", "theme_dropdown", "volume_slider", "plan_group", "summary_text"]
         },
-        { "id": "name_input", "type": "net.noodl.controls.textinput", "label": "Display name", "parent": "form_root", "parameters": { "label": "Display name", "placeholder": "Your name" } },
+        { "id": "name_input", "type": "net.noodl.controls.textinput", "label": "Display name", "parent": "form_root", "parameters": { "useLabel": true, "label": "Display name", "placeholder": "Your name" } },
         { "id": "notify_checkbox", "type": "net.noodl.controls.checkbox", "label": "Notifications", "parent": "form_root" },
         { "id": "theme_dropdown", "type": "net.noodl.controls.options", "label": "Theme", "parent": "form_root" },
         { "id": "volume_slider", "type": "net.noodl.controls.range", "label": "Volume", "parent": "form_root", "parameters": { "min": 0, "max": 100, "step": 1 } },

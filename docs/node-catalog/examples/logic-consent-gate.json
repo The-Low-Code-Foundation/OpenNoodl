@@ -19,28 +19,28 @@
           "type": "net.noodl.controls.checkbox",
           "label": "Terms consent",
           "parent": "root",
-          "parameters": { "label": "I accept the terms of service" }
+          "parameters": { "useLabel": true, "label": "I accept the terms of service" }
         },
         {
           "id": "age_check",
           "type": "net.noodl.controls.checkbox",
           "label": "Age confirmation",
           "parent": "root",
-          "parameters": { "label": "I am 18 or older" }
+          "parameters": { "useLabel": true, "label": "I am 18 or older" }
         },
         {
           "id": "news_check",
           "type": "net.noodl.controls.checkbox",
           "label": "Newsletter opt-in",
           "parent": "root",
-          "parameters": { "label": "Email me the newsletter" }
+          "parameters": { "useLabel": true, "label": "Email me the newsletter" }
         },
         {
           "id": "offers_check",
           "type": "net.noodl.controls.checkbox",
           "label": "Offers opt-in",
           "parent": "root",
-          "parameters": { "label": "Email me special offers" }
+          "parameters": { "useLabel": true, "label": "Email me special offers" }
         },
         {
           "id": "email_note",

@@ -191,14 +191,28 @@ describe('CN-006 — the discovery door the placement depends on', () => {
     expect(found.data.revealed).toContain('create_node_kit');
   });
 
-  it('⚠️ CONTROL — a query about what it DOES does not find it', async () => {
-    // The cost of the placement, asserted rather than described. `find_tools`
-    // matches names only, and `project`'s purpose line does not say "kit" — so
-    // a model searching by subject comes away empty. This test exists to fail
-    // the day somebody widens the purpose line, so the trade-off is re-decided
-    // deliberately (and priced against CN-009's share of the 57 tokens) rather
-    // than drifting.
+  it('a query about what it DOES now finds it — DEF-006 (b)', async () => {
+    // ✅ **The tripwire that used to live here fired, and it was right to.** It
+    // asserted the opposite — `revealed: []` — and said in so many words that it
+    // "exists to fail the day somebody widens the purpose line, so the trade-off
+    // is re-decided deliberately rather than drifting". This is that decision,
+    // and the number it turned on is in `toolGroups.ts`'s `keywords` doc: the
+    // widening went into a field `find_tools` searches and no description
+    // renders, so the resident surface is **8,255 tokens before and after** —
+    // the cost the trade was deferred over is zero. `toolDisclosure.test.ts`
+    // measures it on every run rather than taking this comment's word for it.
     const found = await call<FindToolsResponse>(session, 'find_tools', { query: 'custom node' });
-    expect(found.data.revealed).toEqual([]);
+    expect(found.data.revealed).toContain('create_node_kit');
+  });
+
+  it('⚠️ CONTROL — a query about something this server does not do still reveals nothing', async () => {
+    // AC4. Widening a search until it matches everything is not a fix, and a
+    // search that reveals the whole surface has undone the deferral it sits in
+    // front of. This is the arm that says the widening is a widening and not a
+    // removal.
+    for (const query of ['zzzznotathing', 'photoshop', 'send a fax']) {
+      const found = await call<FindToolsResponse>(session, 'find_tools', { query });
+      expect({ query, revealed: found.data.revealed }).toEqual({ query, revealed: [] });
+    }
   });
 });

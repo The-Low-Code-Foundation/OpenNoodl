@@ -13,7 +13,7 @@ derivation and [README.md](README.md) for why the phase exists.
 | DEF-003 | ✅ done | [Three authoring acts with no honest surface](DEF-003-THREE-AUTHORING-ACTS-WITH-NO-SURFACE.md) | P77 D8 = P76 F15 · P77 D7 · P76 F16 | every **author** |
 | DEF-004 | ✅ done | [When it goes wrong you cannot see where](DEF-004-WHEN-IT-GOES-WRONG-YOU-CANNOT-SEE-WHERE.md) | P77 D2, D3 | anyone **debugging** |
 | DEF-005 | 🔒 ruling | [Membership is a category the graph cannot express](DEF-005-MEMBERSHIP-IS-UNEXPRESSIBLE.md) | P78 D2, D3 | every **membership app** |
-| DEF-006 | ⬜ open | [The design system punishes the agent that uses it](DEF-006-THE-DESIGN-SYSTEM-PUNISHES-ITS-USER.md) | P78 D12, D15 | every **agent** styling on-system |
+| DEF-006 | 🟡 **scope done, (c) open** | [The design system punishes the agent that uses it](DEF-006-THE-DESIGN-SYSTEM-PUNISHES-ITS-USER.md) | P78 D12, D15, **D20** | every **agent** styling on-system |
 | DEF-007 | ⬜ open | [A project means one thing on disk and another once loaded](DEF-007-DISK-AND-LOAD-DISAGREE.md) | P78 D9 residual · P77 D5 | the **next template** |
 | DEF-008 | ⬜ open | [The measurement owed](DEF-008-THE-MEASUREMENT-OWED.md) | P77 D6 · P78 D5 | nobody yet — a re-drive |
 | DEF-009 | ⬜ open | [A public write door ships with no limit](DEF-009-A-PUBLIC-WRITE-DOOR-WITH-NO-LIMIT.md) | **P76 F3** | a **site owner** whose form fills their database |
@@ -57,6 +57,18 @@ should be done **once**, not three times.
   (DEF-016) changed three `External Link` port descriptions without regenerating the catalog.
   **Fixed as a side effect of DEF-003's regeneration.** Recorded because it is last session's own
   lesson arriving twice: *a closed task's outstanding debts need an owner, not just its carried rows.*
+- 🔴 **`catalog:examples` — a PR CI gate (`pr.yml:210`) — is RED at HEAD, 60/62, and has been since
+  2026-08-29.** Measured by DEF-006 s7 before it changed anything, and again after: unchanged either
+  way. Two shipped recipes carry a warning each, and `catalog:examples` is warnings-as-errors:
+  `comp-repeater-set-item-object` fires `signal-into-value-port` on a checkbox's `checked`, and
+  `fn-aggregate-stats-function` fires `failure-reaches-nothing` on a cloud aggregate. **Both example
+  files date to `c0d6c86f` (2026-07-23) and are unchanged; what moved is the rules** —
+  `failure-reaches-nothing` was promoted by **DEF-002** on 2026-08-29. DEF-002's closing note says
+  what remains of that rule's corpus is *"two deliberately-malformed test probes"*; these are neither.
+  They are the recipes `get_example` hands every agent, teaching the two defects phases 76 and 77
+  filed as findings. 🔴 **Owner: `NONE`** — a closed task cannot own its debt, and this one is a PR
+  gate that fails every PR until somebody takes it. Fix is a graph edit to two recipes, ~20 minutes,
+  and both diagnostics carry their own `suggestion`.
 - ⚠️ **`packages/noodl-mcp/dist/noodl-mcp.cjs` is stale**, so a *running* MCP server still answers
   `notFound` for `Page.title` until the next build. Source, suites and committed catalog are correct.
   **Owner: whoever cuts the next 0.2.1 build.**
@@ -155,6 +167,18 @@ before any of it was acted on, and every measurement in it held.
 - **P76 F10 / F12 / F13** — already owned by **SB-010** / **SB-011**.
 
 ## Session log
+
+- **2026-08-29 (s7)** — **DEF-006's scope closed; (c) left, with a sourcing survey rather than a
+  sentence.** The audit AC2 asked for found **1** inert parameter in 20 compositions — and widening
+  the same instrument to the recipes those compositions are copied from found **11**, of which
+  **2 were the rule's own false positives**: `conditionIsUnsatisfied` answered from the authored
+  parameter bag while the canonical evaluator falls back to the port's default. Fixed in the rule,
+  measured over compositions + 62 examples + 40 projects (1,601 nodes) at **3 removed / 0 added**,
+  with a sabotage control at **70 added** so the zero is a reading. 🔴 **The contract test that
+  existed to catch exactly this could not**: its model of the canonical evaluator was a bag lookup
+  with the default fallback deleted. `find_tools` now finds a group by id/title/keywords — its own
+  description had been promising that already — at **8,255 → 8,254** resident tokens.
+  Commits: see the phase-80 next-session prompt.
 
 - **2026-08-29** — Phase created from the three-register sweep. 54 findings across phases 76, 77 and
   78 — **including phase 76's 28, which had no register at all** ([now it has one](../phase-76-the-site-builder/DEFECTS-PHASE-76-FOUND.md)). 17 still real, product-side and unowned; 3 already owned. Nothing built yet.

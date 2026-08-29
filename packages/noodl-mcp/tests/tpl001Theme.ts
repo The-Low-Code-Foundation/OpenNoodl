@@ -101,7 +101,7 @@ export const TPL001_TOKENS: ReadonlyArray<{ name: string; value: string }> = [
 
 // ── The product's own compositions, looked up by id ──────────────────────────
 
-const VOCABULARY = buildStyleVocabulary({ getMetaData: () => undefined });
+export const VOCABULARY = buildStyleVocabulary({ getMetaData: () => undefined });
 
 /**
  * One composition's parameters, by id.

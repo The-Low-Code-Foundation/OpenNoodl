@@ -29,6 +29,11 @@ import {
   renderStyleVocabulary
 } from '../../src/editor/src/models/StyleTokensModel/StyleVocabulary';
 import { loadDefaultCatalog } from '../../src/editor/src/validation/catalog';
+import {
+  conditionForInput,
+  conditionIsUnsatisfied,
+  resolveAgainstDefaults
+} from '../../src/editor/src/validation/portConditions';
 
 const catalog = loadDefaultCatalog();
 const vocab = buildStyleVocabulary();
@@ -204,6 +209,52 @@ describe('DSG-005 — the style vocabulary compositions', () => {
       expect(serialized).not.toContain('"children"');
       expect(serialized).not.toContain('"connections"');
     }
+  });
+
+  it('sets no parameter its own other parameters switch off — DEF-006 (a), AC2', () => {
+    // The whole population, not the ones a template happens to use. A
+    // composition is applied *verbatim* to a bare node of its `nodeType`, which
+    // is exactly what `get_style_vocabulary` instructs, so the parameter bag it
+    // ships IS the bag the condition gets answered against — with the node
+    // type's port defaults under it, the way the runtime reads them.
+    //
+    // What this caught: `primaryButton` set `borderStyle: 'none'` and then
+    // `borderWidth: 0`, and `borderWidth` is declared
+    // `borderStyle = solid OR dashed OR dotted`. Applying the composition as
+    // instructed produced one `inactive-conditional-parameter` per button —
+    // twelve on a single generation run — so an agent obeying the design system
+    // could only ignore a real diagnostic or diverge from the system. The
+    // first is how a real diagnostic stops being read.
+    //
+    // 20 compositions, 33 conditional parameters between them, and this is the
+    // number that must stay zero as compositions are added. `raised` and
+    // `ruled` arrived the day before this gate did and are clean.
+    const inert: string[] = [];
+    for (const c of compositions) {
+      const groups = catalog.declaredPortGroups(c.nodeType);
+      const resolved = resolveAgainstDefaults(c.parameters, catalog.inputDefaults(c.nodeType));
+      for (const property of Object.keys(c.parameters)) {
+        const condition = conditionForInput(groups, property);
+        if (condition && conditionIsUnsatisfied(condition, resolved)) {
+          inert.push(`${c.id}: ${c.nodeType}.${property} is off under "${condition}"`);
+        }
+      }
+    }
+    expect(inert).toEqual([]);
+  });
+
+  it('has conditional parameters for that gate to be about at all', () => {
+    // The check above passes just as cleanly over a composition set with no
+    // conditional ports in it, and over one whose node types the catalog cannot
+    // resolve. Both would be a gate measuring nothing. This is the denominator.
+    let conditional = 0;
+    for (const c of compositions) {
+      const groups = catalog.declaredPortGroups(c.nodeType);
+      for (const property of Object.keys(c.parameters)) {
+        if (conditionForInput(groups, property)) conditional++;
+      }
+    }
+    expect(conditional).toBeGreaterThan(20);
   });
 
   it('renders every composition into the prompt block, terse and by name', () => {

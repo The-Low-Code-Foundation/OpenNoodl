@@ -165,3 +165,77 @@ describe('AIX-006 style MCP tools', () => {
     expect(names).not.toContain('set_style_preset');
   });
 });
+
+/**
+ * DEF-006 (b) — AC1's sentence, as a test.
+ *
+ * > *"when I ask the thing I am building for the tools that change how my app
+ * > looks, using the words I would actually use, it shows me them."*
+ *
+ * The style writes are deferred behind `find_tools`, and `find_tools` searched
+ * tool *names* only — so the group titled "Design tokens", whose purpose is
+ * "change the design system", was reachable by `group: "theme"` and by nothing a
+ * person would type. An agent instructed to style on-system asked for a theme
+ * and was told there was nothing there, which is a named contributing cause of
+ * phase 78's D10 (*the template generators bypass the design system*).
+ *
+ * ⚠️ This connects **without** `reveal(session, 'theme')` — the whole point is
+ * the door, so pre-opening it would test nothing.
+ */
+describe('DEF-006 (b) — finding the tools that change how the app looks', () => {
+  let session: TestSession;
+
+  beforeEach(async () => {
+    session = await connect(copyFixture(), true);
+  });
+
+  afterEach(async () => {
+    await session.close();
+  });
+
+  it('reveals both style writes for every word somebody would search with', async () => {
+    // AC3. Each in its own call on a fresh needle — a reveal is sticky, so
+    // asserting the second query after the first has already opened the group
+    // would pass on a server where only the first works.
+    for (const query of ['theme', 'design', 'colour', 'color', 'palette', 'style', 'style guide', 'branding']) {
+      const s = await connect(copyFixture(), true);
+      try {
+        const found = await call<{ revealed: string[] }>(s, 'find_tools', { query });
+        expect({ query, revealed: found.data.revealed.sort() }).toEqual({
+          query,
+          revealed: expect.arrayContaining(['set_project_tokens', 'set_style_preset'])
+        });
+        // And advertised for real, not merely named in a payload.
+        const names = (await s.client.listTools()).tools.map((t) => t.name);
+        expect({ query, has: names.includes('set_project_tokens') }).toEqual({ query, has: true });
+      } finally {
+        await s.close();
+      }
+    }
+  });
+
+  it('⚠️ CONTROL — the same door stays shut for a query that means nothing here', async () => {
+    // AC4. Without this the test above passes on a `find_tools` that reveals
+    // everything for any input, which is the deferral deleted rather than fixed.
+    for (const query of ['zzzznotathing', 'spreadsheet formulas', 'book a flight']) {
+      const found = await call<{ revealed: string[] }>(session, 'find_tools', { query });
+      expect({ query, revealed: found.data.revealed }).toEqual({ query, revealed: [] });
+    }
+  });
+
+  it('⚠️ CONTROL — a query about roles still reveals four backend tools, not sixty', async () => {
+    // The reason group matching reads ids, titles and keywords and NOT the
+    // `purpose` prose. `backend`'s purpose contains the word "roles"; searching
+    // it would turn this partial reveal into the whole group and report it
+    // advertised, breaking the written contract that a partial reveal must leave
+    // a model a reason to ask for the rest.
+    const found = await call<{ revealed: string[]; groups: Array<{ group: string; advertised: boolean }> }>(
+      session,
+      'find_tools',
+      { query: 'role' }
+    );
+    expect(found.data.revealed).toContain('create_backend_role');
+    expect(found.data.revealed).not.toContain('provision_backend');
+    expect(found.data.groups.find((g) => g.group === 'backend')).toMatchObject({ advertised: false });
+  });
+});

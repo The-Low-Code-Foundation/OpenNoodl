@@ -271,7 +271,17 @@ export const STYLE_COMPOSITIONS: VocabComposition[] = [
       backgroundColor: 'var(--primary)',
       color: 'var(--primary-foreground)',
       borderRadius: 'var(--radius-full)',
-      borderWidth: { value: 0, unit: 'px' },
+      // DEF-006 (a) — `borderStyle: 'none'` is the whole instruction, and
+      // `borderWidth: 0` used to sit beside it. `borderWidth` is declared
+      // `borderStyle = solid OR dashed OR dotted`, so this composition switched
+      // the port off with one parameter and then set it with the next: applying
+      // it verbatim earned an `inactive-conditional-parameter` warning per
+      // button, twelve on one generation run. An agent following the design
+      // system exactly as instructed could only ignore a real diagnostic or
+      // diverge from the system. Removed here **and** from `ui-split-hero`,
+      // which is where the value was copied from — a composition that stops
+      // matching its own recipe cannot be diffed against it, which is the one
+      // property §"Where the values come from" claims.
       borderStyle: 'none',
       paddingLeft: 'var(--space-6)',
       paddingRight: 'var(--space-6)',

@@ -72,6 +72,27 @@ export interface ToolGroup {
    * would search for ("collections, roles, auth") rather than the subsystem.
    */
   purpose: string;
+  /**
+   * DEF-006 (b) — words a model would search for that the `purpose` cannot
+   * afford to carry.
+   *
+   * 🔴 **Read by `find_tools`' `query` and rendered into nothing.** Every
+   * `purpose` above is re-sent inside `find_tools`' description on every turn of
+   * every session, which is why two of them already record a discoverability
+   * cost they took deliberately rather than spend resident tokens on: the
+   * `project` group does not mention kits, and `explore` does not mention
+   * prefabs. Both notes end the same way — *"widening the purpose costs resident
+   * tokens and belongs in the next budget renegotiation"*.
+   *
+   * This is that widening at zero resident cost. Measured with the same fixture
+   * and normalisation as `tests/toolDisclosure.test.ts`: **8,255 tokens before
+   * and 8,255 after**, because nothing here reaches a description.
+   *
+   * ⚠️ Not a dumping ground. A keyword is a word somebody types when they mean
+   * this group and would otherwise be told there is nothing here; a query that
+   * matches everything reveals everything, which is the deferral undone.
+   */
+  keywords?: readonly string[];
   /** Tool names, exactly as registered. */
   tools: readonly string[];
   /** Advertised from the first `tools/list`. */
@@ -281,6 +302,10 @@ export const TOOL_GROUPS: readonly ToolGroup[] = Object.freeze([
     // these from anywhere, and `tests/libraryTools.test.ts` asserts that door.
     // Widening the purpose costs resident tokens and belongs in the next budget
     // renegotiation, not here.
+    // DEF-006 (b) — the LBR-008 note above records that "prefab" is reachable only
+    // because it happens to be inside a tool name. Said outright here, along with
+    // the words for the half of this group that searches an existing graph.
+    keywords: ['prefab', 'shelf', 'recipe', 'find', 'search', 'where is', 'understand'],
     tools: ['search_project', 'explain_component', 'list_examples', 'list_library', 'get_library_entry', 'install_prefab'],
     resident: false
   },
@@ -351,6 +376,10 @@ export const TOOL_GROUPS: readonly ToolGroup[] = Object.freeze([
     // outright, in the mode it exists for. So the group membership is
     // bookkeeping (the manifest guard requires every tool to have a home) and
     // the reveal path is not the one anybody uses.
+    // DEF-006 (b) — the widening the CN-006 note above asks for, off the resident
+    // budget. `kit` already reached `create_node_kit` by tool name; `custom node`
+    // and `import` did not reach anything.
+    keywords: ['kit', 'custom node', 'import', 'new project', 'open'],
     tools: ['list_projects', 'open_project', 'create_project', 'get_import_report', 'create_node_kit'],
     resident: false
   },
@@ -358,6 +387,12 @@ export const TOOL_GROUPS: readonly ToolGroup[] = Object.freeze([
     id: 'theme',
     title: 'Design tokens',
     purpose: 'change the design system — set token values, or apply a style preset.',
+    // DEF-006 (b). The words an agent told to "style on-system" actually types.
+    // `colour`/`color` and `palette` appear in neither the title nor the purpose,
+    // and this is the group holding the only two tools that change how an app
+    // looks — so the one instruction the design doctrine gives most often led to
+    // an empty answer.
+    keywords: ['theme', 'colour', 'color', 'palette', 'styling', 'style guide', 'branding', 'appearance', 'dark mode'],
     tools: ['set_project_tokens', 'set_style_preset'],
     resident: false
   }

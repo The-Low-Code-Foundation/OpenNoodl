@@ -14,7 +14,7 @@
 
 // Type-only import of the generated catalog shape (no runtime cost).
 import type { NodeCatalog, CatalogNode, CatalogPort, Typecast } from '../../../../../noodl-types/src/node-catalog';
-import type { DeclaredPortGroup } from './portConditions';
+import type { DeclaredPortGroup, ParameterBag } from './portConditions';
 
 export type { NodeCatalog, CatalogNode, CatalogPort };
 
@@ -57,6 +57,8 @@ export class CatalogIndex {
   private readonly byType = new Map<string, CatalogNode>();
   /** typeName → plug → Set<portName> (static + declared-port-group names). */
   private readonly portNamesCache = new Map<string, { input: Set<string>; output: Set<string> }>();
+  /** DEF-006 — memoised {@link inputDefaults} bags, one per node type. */
+  private readonly defaultsByType = new Map<string, ParameterBag>();
   /** from-type → Set<to-type> reachable via a documented typecast. */
   private readonly typecasts = new Map<string, Set<string>>();
   private readonly allTypeNames: string[];
@@ -204,6 +206,30 @@ export class CatalogIndex {
   portNames(typeName: string, plug: Plug): string[] {
     const set = this.portNamesFor(typeName)?.[plug];
     return set ? [...set].sort() : [];
+  }
+
+  /**
+   * DEF-006 — every statically-declared input default for a node type.
+   *
+   * The bag {@link conditionIsUnsatisfied} has to be answered against. The
+   * canonical evaluator reads `NodeGraphNode.getParameter`, which falls back to
+   * `port.default` when nothing is authored, so a condition like
+   * `useIcon = true AND iconSourceType = icon` is *satisfied* on a node that
+   * sets only `useIcon` — `iconSourceType` defaults to `icon`. Answered from
+   * the authored bag alone that reads as unsatisfied, and the validator reports
+   * an icon that renders perfectly well as never read.
+   *
+   * Memoised with the port-name sets, and for the same reason: this is called
+   * once per node in a whole-project validation.
+   */
+  inputDefaults(typeName: string): ParameterBag {
+    const cached = this.defaultsByType.get(typeName);
+    if (cached) return cached;
+    const node = this.byType.get(typeName);
+    const bag: ParameterBag = {};
+    if (node) for (const port of node.inputs) if (port.default !== undefined) bag[port.name] = port.default;
+    this.defaultsByType.set(typeName, bag);
+    return bag;
   }
 
   /** The catalog port object, when statically known. */

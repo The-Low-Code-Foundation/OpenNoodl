@@ -19,7 +19,11 @@
 import shippedCatalog from '../../../noodl-types/src/node-catalog.json';
 import { evaluateDynamicPortsCondition } from '../../src/editor/src/models/nodelibrary/dynamicPortRules';
 import { loadDefaultCatalog } from '../../src/editor/src/validation/catalog';
-import { conditionForInput, conditionIsUnsatisfied } from '../../src/editor/src/validation/portConditions';
+import {
+  conditionForInput,
+  conditionIsUnsatisfied,
+  resolveAgainstDefaults
+} from '../../src/editor/src/validation/portConditions';
 
 const catalog = loadDefaultCatalog();
 
@@ -76,6 +80,142 @@ describe('the two evaluators of one condition language', () => {
     expect(conditionIsUnsatisfied('#js params.anything === 3', {})).toBe(false);
     expect(conditionIsUnsatisfied("'{{portname}}.startMode' = explicit", {})).toBe(false);
     expect(conditionIsUnsatisfied('someParam IS WEIRD', {})).toBe(false);
+  });
+});
+
+/**
+ * DEF-006 — the same contract, against a canonical evaluator that has its
+ * defaults.
+ *
+ * 🔴 **The suite above could not have caught the divergence this describes, and
+ * the reason is worth keeping.** Its `asNode` stand-in is
+ * `getParameter: (name) => parameters[name]` — a bag lookup. The real
+ * `NodeGraphNode.getParameter` ends `return port ? port.default : undefined`,
+ * so it answers with the port's catalog default wherever nothing is authored.
+ * Modelling it as a bag lookup deleted the one behaviour the two evaluators
+ * differed on, and the gate then reported agreement for as long as it ran. A
+ * gate cannot find what its own model deletes.
+ *
+ * What it hid was live: `iconIconSource` is declared
+ * `useIcon = true AND iconSourceType = icon`, `iconSourceType` defaults to
+ * `icon`, and `ui-slide-over`'s close button sets `useIcon: true` and leaves the
+ * rest — so the validator reported two parameters as never read on a button
+ * whose icon renders. A false positive is the failure this contract names as the
+ * expensive one, and it was the failure present.
+ *
+ * So this arm is **type-aware**: it walks every declared port group of every
+ * shipped node type, and gives both evaluators that type's defaults.
+ */
+describe('the two evaluators, with the defaults the runtime actually reads', () => {
+  /** Every (type, condition) pair the catalog carries, with the type's defaults. */
+  function typedConditions(): Array<{ type: string; condition: string; defaults: Record<string, unknown> }> {
+    const out = [];
+    for (const node of shippedCatalog.nodes) {
+      const defaults: Record<string, unknown> = {};
+      for (const port of node.inputs ?? []) {
+        if ((port as { default?: unknown }).default !== undefined) defaults[port.name] = (port as { default?: unknown }).default;
+      }
+      for (const group of node.dynamicPorts?.declaredPortGroups ?? []) {
+        if (group.condition) out.push({ type: node.typeName, condition: group.condition, defaults });
+      }
+    }
+    return out;
+  }
+
+  /** The canonical evaluator's own fallback: authored, then the port default. */
+  function asRuntimeNode(parameters: Record<string, unknown>, defaults: Record<string, unknown>) {
+    return {
+      parameters,
+      getParameter: (name: string) => (parameters[name] !== undefined ? parameters[name] : defaults[name])
+    };
+  }
+
+  const typed = typedConditions();
+
+  it('has a corpus of typed conditions, and defaults inside it', () => {
+    expect(typed.length).toBeGreaterThan(100);
+    expect(typed.some((t) => Object.keys(t.defaults).length > 0)).toBe(true);
+  });
+
+  it('never calls a port off that the canonical evaluator would show', () => {
+    const disagreements: string[] = [];
+    for (const { type, condition, defaults } of typed) {
+      for (const bag of probesFor(condition)) {
+        const resolved = resolveAgainstDefaults(bag, defaults);
+        const visible = evaluateDynamicPortsCondition(condition, asRuntimeNode(bag, defaults));
+        if (visible && conditionIsUnsatisfied(condition, resolved)) {
+          disagreements.push(`${type}: ${condition}  with  ${JSON.stringify(bag)}`);
+        }
+      }
+    }
+    expect(disagreements).toEqual([]);
+  });
+
+  it('fails when the defaults are dropped — the regression this arm exists for', () => {
+    // The negative control. Answering the same corpus from the authored bag
+    // alone is what the validator did before DEF-006, and it must be visibly
+    // different from what it does now: an assertion that passes either way is
+    // measuring nothing. `iconIconSource` on a button is among the pairs this
+    // finds.
+    const withoutDefaults: string[] = [];
+    for (const { type, condition, defaults } of typed) {
+      for (const bag of probesFor(condition)) {
+        const visible = evaluateDynamicPortsCondition(condition, asRuntimeNode(bag, defaults));
+        if (visible && conditionIsUnsatisfied(condition, bag)) withoutDefaults.push(`${type}: ${condition}`);
+      }
+    }
+    expect(withoutDefaults.length).toBeGreaterThan(0);
+  });
+
+  it('keeps NOT SET meaning "no value at all", defaults included', () => {
+    // The merge could have broken this and the corpus would not have said so:
+    // `Group.width` is declared `sizeMode = explicit OR … OR sizeMode NOT SET`
+    // and `sizeMode` defaults to `explicit`, so the FIRST clause carries it
+    // either way. A port whose gate has no default is where NOT SET does the
+    // work, and it must still answer true there.
+    const groupWidth = conditionForInput(catalog.declaredPortGroups('Group'), 'width');
+    expect(groupWidth).toContain('NOT SET');
+    expect(conditionIsUnsatisfied(groupWidth, resolveAgainstDefaults({}, catalog.inputDefaults('Group')))).toBe(false);
+
+    // No default for the gate: NOT SET is the only satisfied clause, and it is.
+    expect(conditionIsUnsatisfied('gate = on OR gate NOT SET', resolveAgainstDefaults({}, {}))).toBe(false);
+    // And a gate that IS authored to something else still switches the port off.
+    expect(conditionIsUnsatisfied('gate = on OR gate NOT SET', resolveAgainstDefaults({ gate: 'off' }, {}))).toBe(true);
+  });
+
+  it('still calls borderWidth off under an explicit borderStyle: none', () => {
+    // The true positive DEF-006 (a) is about. Resolving defaults must not have
+    // widened into "assume every gate is satisfied": this one is authored off.
+    const condition = conditionForInput(catalog.declaredPortGroups('net.noodl.controls.button'), 'borderWidth');
+    const resolved = resolveAgainstDefaults(
+      { borderStyle: 'none', borderWidth: { value: 0, unit: 'px' } },
+      catalog.inputDefaults('net.noodl.controls.button')
+    );
+    expect(conditionIsUnsatisfied(condition, resolved)).toBe(true);
+  });
+
+  it('calls a checkbox label off, because useLabel really does default to false', () => {
+    // The other half of the corpus repair, and the reason it is a recipe fix
+    // rather than a rule fix: `addLabelInputs` writes the ` OR useLabel NOT SET`
+    // clause only when the default is `true`, which is `Button` and not
+    // `Checkbox`. `logic-consent-gate` shipped four checkboxes carrying a label
+    // and no `useLabel`, and rendered no words on any of them.
+    const condition = conditionForInput(catalog.declaredPortGroups('net.noodl.controls.checkbox'), 'label');
+    const defaults = catalog.inputDefaults('net.noodl.controls.checkbox');
+    expect(conditionIsUnsatisfied(condition, resolveAgainstDefaults({ label: 'I agree' }, defaults))).toBe(true);
+    expect(
+      conditionIsUnsatisfied(condition, resolveAgainstDefaults({ useLabel: true, label: 'I agree' }, defaults))
+    ).toBe(false);
+  });
+
+  it('calls a button icon source ON when only useIcon is set — the false positive itself', () => {
+    // `iconSourceType` defaults to `icon`, so this button's icon renders. The
+    // validator said it never would.
+    const condition = conditionForInput(catalog.declaredPortGroups('net.noodl.controls.button'), 'iconIconSource');
+    const defaults = catalog.inputDefaults('net.noodl.controls.button');
+    const authored = { useIcon: true, iconIconSource: { class: 'lucide', code: 'icon-x' } };
+    expect(conditionIsUnsatisfied(condition, authored)).toBe(true); // what it used to say
+    expect(conditionIsUnsatisfied(condition, resolveAgainstDefaults(authored, defaults))).toBe(false); // the truth
   });
 });
 

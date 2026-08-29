@@ -346,8 +346,8 @@ export function boundFindToolsDescription(): string {
     'Reveal tools this server has but is not currently advertising. The authoring set is advertised up ' +
     'front; the rest is held back so it is not re-sent on every turn, and is one call away. Held back: ' +
     catalogue +
-    ' Pass `group` to reveal a whole group, or `query` to search names and descriptions across everything ' +
-    'and reveal what matches. Call with neither for the inventory.'
+    ' Pass `group` to reveal a whole group, or `query` to search tool names and group subjects and reveal ' +
+    'what matches. Call with neither for the inventory.'
   );
 }
 
@@ -376,7 +376,7 @@ export function registerFindTools(server: McpServer, disclosure: ToolDisclosure)
           .enum(deferredGroups().map((g) => g.id) as [DeferredGroupId, ...DeferredGroupId[]])
           .optional()
           .describe('Reveal every tool in this group'),
-        query: z.string().optional().describe('Free-text over tool names and titles, e.g. "roles" or "workflow"')
+        query: z.string().optional().describe('Free-text over tool names and group subjects, e.g. "roles" or "theme"')
       }
     },
     guarded((args: { group?: DeferredGroupId; query?: string }) => {
@@ -393,10 +393,51 @@ export function registerFindTools(server: McpServer, disclosure: ToolDisclosure)
       if (args.group) revealed.push(...disclosure.revealGroup(args.group));
       if (args.query) {
         const needle = args.query.toLowerCase().trim();
-        const matches = TOOL_GROUPS.flatMap((g) => g.tools).filter(
-          (name) => needle.length > 0 && name.toLowerCase().includes(needle)
-        );
-        revealed.push(...disclosure.revealNames(matches));
+        if (needle.length > 0) {
+          /**
+           * DEF-006 (b) — a group is found by what it is *for*, not only by the
+           * spelling of a tool inside it.
+           *
+           * This searched tool names alone, and the sentence two lines up in
+           * this very tool's own description — "search names and descriptions
+           * across everything" — and its `query` parameter's — "free-text over
+           * tool names and titles" — were both already promising otherwise. The
+           * code was the half that had drifted.
+           *
+           * What that cost, measured: the group titled **"Design tokens"**,
+           * whose purpose is *"change the design system"*, holds the only two
+           * tools that change how an app looks — and `theme`, `design`,
+           * `colour`, `style guide` and `palette` all revealed **nothing**,
+           * while `group: "theme"` revealed both. An agent instructed to style
+           * on-system searches in the words it is thinking in and is told the
+           * capability does not exist. That is a named contributing cause of
+           * phase 78's D10, *the template generators bypass the design system*.
+           *
+           * 🔴 **Matched against the id, the title and the keywords — and
+           * deliberately NOT the `purpose`.** A purpose is a sentence, and its
+           * incidental nouns are the same words the tool names already carry:
+           * `backend`'s says "collections, schema, roles, permissions", so
+           * searching it would turn `query: "role"` — which reveals four tools
+           * today — into all sixty, and `groupStates` would then report the
+           * group advertised. That is the deferral undone by a synonym, and the
+           * contract it breaks is a written one: *a partial reveal must not
+           * claim the group is advertised, or a model has no reason to ever ask
+           * for the rest of it* (`toolDisclosure.test.ts`). Ids, titles and
+           * {@link ToolGroup.keywords} are short and chosen; the purpose is
+           * prose, and prose matches everything eventually.
+           *
+           * A group match reveals the whole group rather than tools by name,
+           * because matching a group's own title IS asking for the group — the
+           * same request `group:` makes, arrived at in the words somebody
+           * happened to have.
+           */
+          for (const group of TOOL_GROUPS) {
+            const haystack = [group.id, group.title, ...(group.keywords ?? [])].join(' ').toLowerCase();
+            if (haystack.includes(needle)) revealed.push(...disclosure.revealGroup(group.id));
+          }
+          const matches = TOOL_GROUPS.flatMap((g) => g.tools).filter((name) => name.toLowerCase().includes(needle));
+          revealed.push(...disclosure.revealNames(matches));
+        }
       }
       const payload: FindToolsResponse = {
         revealed,

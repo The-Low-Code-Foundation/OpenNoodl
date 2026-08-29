@@ -146,10 +146,6 @@
             "backgroundColor": "var(--primary)",
             "color": "var(--primary-foreground)",
             "borderRadius": "var(--radius-full)",
-            "borderWidth": {
-              "value": 0,
-              "unit": "px"
-            },
             "borderStyle": "none",
             "paddingLeft": "var(--space-6)",
             "paddingRight": "var(--space-6)",

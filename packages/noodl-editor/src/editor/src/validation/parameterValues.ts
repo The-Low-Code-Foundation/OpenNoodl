@@ -57,7 +57,7 @@
 
 import { CatalogIndex, nearest, type CatalogPort } from './CatalogIndex';
 import { DiagnosticCode, type Diagnostic, type Severity } from './diagnostics';
-import { conditionForInput, conditionIsUnsatisfied } from './portConditions';
+import { conditionForInput, conditionIsUnsatisfied, resolveAgainstDefaults } from './portConditions';
 import { SkippedCheck, unknownTypeSkip } from './unknownTypeSkip';
 import { isExpressionParameter } from '../models/ExpressionParameter';
 
@@ -780,6 +780,20 @@ export function checkParameterValues(
     const dynamic = catalog.hasRuntimeDynamicPorts(node.type);
     const portGroups = catalog.declaredPortGroups(node.type);
     /**
+     * DEF-006 — the bag every port *condition* below is answered against.
+     *
+     * Not `parameters`. A condition is a question about sibling values as the
+     * runtime sees them, and the runtime sees a port's default wherever nothing
+     * was authored — so asking the authored bag alone reports a port switched
+     * off by a gate that is in fact satisfied by its own default. See
+     * {@link resolveAgainstDefaults} for the measurement and for why `NOT SET`
+     * survives the merge.
+     *
+     * Only the conditions read this. Every other check below is about what the
+     * author actually wrote, and must keep seeing exactly that.
+     */
+    const resolvedForConditions = resolveAgainstDefaults(parameters, catalog.inputDefaults(node.type));
+    /**
      * CN-010 / AC2 — the parameters this node's carve-out is about to skip.
      *
      * Collected rather than reported inline so that one node yields one notice
@@ -859,7 +873,7 @@ export function checkParameterValues(
       // once `sizeMode` is fixed — and a repair round that is told only the
       // first one produces a second broken image.
       const condition = conditionForInput(portGroups, name);
-      if (condition && conditionIsUnsatisfied(condition, parameters)) {
+      if (condition && conditionIsUnsatisfied(condition, resolvedForConditions)) {
         // DSG-004 §2.2 — the `sizeMode` family is reported under its own code so
         // that it can block authored output while the wider population stays a
         // warning, and so that the message can carry the exit rather than only
