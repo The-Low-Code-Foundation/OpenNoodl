@@ -793,10 +793,24 @@ about where `test:main` runs, which is bigger than one task.
 
 ---
 
-## D20 — 🔴 The page title is unreadable below its own width, and there is no gesture that reaches it
+## D20 — 🟢 **FIXED and DRIVEN s26** · The page title was unreadable below its own width
 
-**Found:** s24, driving [D18](#d18) · **Owner: `NONE`** — it needs a design decision, not a build ·
-**Template**, not product · **Bites:** any client whose page title is longer than their window.
+**Found:** s24, driving [D18](#d18) · **Owner: SBR-007** (was `NONE`) · **Template** — confirmed by
+measurement, see below · **Bites:** any client whose page title is longer than their window.
+
+🔴 **The decision it was waiting for was settled by measuring the runtime, not by taste**, and the
+two options it listed turned out to have OPPOSITE dispositions: **wrap is template work and was
+reachable all along**; **ellipsize is product work and has no port** — now [D22](#d22). Full working,
+both arms and the short-title control, in [SBR-007 §30](SBR-007-THE-PAGE-EDITOR.md).
+
+**The fix:** the heading takes `{ sizeMode: 'contentHeight', width: { value: 60, unit: '%' } }`,
+which flips `layout.ts:82` (`flexShrink: 1`) and `Text.tsx:60` (`whiteSpace: pre-wrap`) at once.
+Driven at six viewports: the heading tracks the window (1296 → 193 px) instead of sitting at 965 px,
+nothing is clipped at any width, and `Save page` still hit-tests `SELF` throughout, so D18 holds.
+
+⚠️ **It was not free.** `layout.ts` assigns `flexGrow` and `flexShrink` in the SAME branch, so the
+actions now sit right of the header rather than beside the title. **That half is Richard's** — it is
+an appearance judgement and it reverts in two parameters.
 
 The `Editing · <title>` heading in `/Pages/PageEditor`'s header row **never shrinks and never
 wraps**. Measured with the same probe, in the same runs as D18's drive, in **both** arms:
@@ -820,7 +834,7 @@ the actions, and it is not a fix that exists for the text.
 in the `Title` field below, and the heading is a label rather than a control. It is a legibility
 defect, not a blocked task, which is why it is filed at `NONE` rather than escalated.
 
-**What it needs is a decision, one of:**
+**The decision it needed, now taken (kept for the reasoning):**
 
 - let the title shrink and ellipsize (`flexShrink: 1` plus a text-overflow treatment) — but the
   runtime opts a node into shrinking only via a percentage size along the parent's direction, so
@@ -910,3 +924,42 @@ traffic to the surface it is measuring must exclude itself before it reads.
 The credentials theory that followed was wrong too, and wrong in the more dangerous way: a
 `credentials: 'include'` pair *reproduced* `ERR_FAILED` exactly, which fits and excludes nothing.
 `corsErrorStatus` was there to be read the whole time and named a different cause.
+
+---
+
+## D22 — 🔴 A `Text` cannot be ellipsized, because the runtime ships no `text-overflow` port
+
+**Found:** s26, deciding [D20](#d20) · **Owner:** `NONE` · **Product**, not template · **Bites:** any
+author who wants a single-line label that degrades gracefully instead of wrapping.
+
+D20 offered three options — shrink-and-ellipsize, wrap, or accept. Wrap was buildable and is now
+shipped. **Ellipsize is not authorable at all**, and the reason is a missing port, not a missing wire.
+
+**Measured over `packages/noodl-viewer-react/src` and `packages/noodl-runtime/src`:**
+
+| grep | hits |
+|---|---|
+| `textOverflow` / `text-overflow` — the finding | **0** |
+| `wordBreak` — control, a `Text` `inputCss` port that DOES exist | **2** |
+| files carrying `inputCss` — control, the mechanism a new port would use | **11** |
+
+⚠️ **The controls earned their place.** The first run passed both search paths as a quoted shell
+variable, zsh did not word-split it, and the finding *and both controls* came back **0** — an absence
+indistinguishable from the finding. Identical to the trap [D15](#d15) records; caught here only
+because the controls were read alongside.
+
+**What exists and why it is not the same thing:** `Text` declares exactly one `inputCss` port,
+`wordBreak` (`normal` | `break-all`), and `Text.tsx:60` picks `whiteSpace` from `sizeMode` alone —
+`pre` for `contentSize`/`contentWidth`, `pre-wrap` otherwise. An author can choose *where* text
+breaks and cannot choose *not to break it*, so "one line, then …" has no expression.
+
+**The shape of the fix:** a `textOverflow` `inputCss` port on `Text` (the `wordBreak` block is the
+template for it, three lines), plus the `whiteSpace: nowrap` + `overflow: hidden` pair that
+`text-overflow: ellipsis` requires to do anything. 🔴 That last part is why it is a **product** row
+and not a port addition: `whiteSpace` is currently derived from `sizeMode` with no author input, so
+an ellipsis port that cannot also stop the wrapping would be inert — the same shape as
+[D12](../phase-78-the-templates/DEFECTS-THE-TEMPLATES-FOUND.md)'s inert `borderWidth`.
+
+🔴 **Unowned on purpose.** It is not SBR-007's — that task owns a screen, not the node library.
+
+---

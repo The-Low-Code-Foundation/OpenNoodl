@@ -1442,15 +1442,39 @@ export const PAGE_EDITOR_NODES = [
     type: 'Text',
     label: 'Heading',
     parent: 'headerRow',
-    // Child of a ROW, so `IN_A_ROW` — `contentHeight` still assigns width and the
-    // heading would push the two actions off the screen (`/Pages/Admin`'s
-    // heading carries the same note, and SBR-004 measured that happening).
+    // 🔴 **D20 — a percentage width is the ONLY way to make a `Text` legible when
+    // it is longer than its row**, and it takes TWO runtime branches at once:
+    //
+    //  - `layout.ts:82` starts every node `flexShrink: 0`; only a percentage size
+    //    along the parent's direction opts back in (`flexShrink: 1` + `flexGrow`).
+    //  - `Text.tsx:60` sets `whiteSpace: 'pre'` — i.e. NOWRAP — for `contentSize`
+    //    and `contentWidth`, and `pre-wrap` for everything else.
+    //
+    // `IN_A_ROW` (`contentSize`) fails both, which is why the heading measured
+    // **965px at 1920/1440/1200/1024/800/600 alike** with a 57-character title,
+    // right edge pinned at 1237 and `scrollWidth === innerWidth`, so the overflow
+    // was CLIPPED and no gesture reached it. D18's `flexWrap` cannot help: wrap
+    // moves whole children onto a new line and does nothing to one child that is
+    // itself too wide.
+    //
+    // 🔴 The two are INSEPARABLE in this runtime — `layout.ts` assigns `flexGrow`
+    // and `flexShrink` in the SAME branch — so opting the heading into shrinking
+    // necessarily opts it into growing, which is why the actions now sit right
+    // rather than clustered beside the title. That is a real visual change and it
+    // was not free.
+    //
+    // 60% and not 100%: at 100% the heading owns its line at EVERY width, so the
+    // actions drop to a second row even at 1920 where they fit today. 60% keeps
+    // the one-line header wherever it fits and clips nothing anywhere.
+    // ⚠️ Dimension ports take `{value, unit}` — a bare `'60%'` string is accepted
+    // in silence and renders at content width (P77 D8 / P76 F15's family).
     //
     // Standing `text: ''` per SB-018 (3): `Text` declares `default: 'Text'`, so a
     // node whose only source is a wire renders the literal word "Text" until the
     // record first publishes.
     parameters: {
-      ...IN_A_ROW,
+      sizeMode: 'contentHeight',
+      width: { value: 60, unit: '%' },
       text: '',
       fontFamily: 'var(--font-sans)',
       fontSize: 'var(--text-3xl)',

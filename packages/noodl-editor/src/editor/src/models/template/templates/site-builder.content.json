@@ -2293,7 +2293,11 @@
                             "x": 280,
                             "y": 520,
                             "parameters": {
-                              "sizeMode": "contentSize",
+                              "sizeMode": "contentHeight",
+                              "width": {
+                                "value": 60,
+                                "unit": "%"
+                              },
                               "text": "",
                               "fontFamily": "var(--font-sans)",
                               "fontSize": "var(--text-3xl)",

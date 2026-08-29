@@ -1602,6 +1602,31 @@ const NON_SHRINKING = ['contentSize', 'contentHeight'];
 const DISPLAY_SIZES = ['var(--text-2xl)', 'var(--text-3xl)', 'var(--text-4xl)', 'var(--text-5xl)'];
 
 /**
+ * 🔴 **D20 corrected this rule, and the correction is the point.** `sizeMode`
+ * ALONE cannot say whether a child shrinks. `layout.ts:82` opts a node back in
+ * only where it converts a percentage size ALONG THE PARENT'S DIRECTION into
+ * `flexGrow` + `flexShrink: 1` — so for a ROW the question is whether the child
+ * has a **percentage `width`**, and the mode only decides whether a width is
+ * assigned at all (`explicit` and `contentHeight` assign one; `contentSize` and
+ * `contentWidth` do not).
+ *
+ * Graded against the driven readings of SBR-007 §30: the page-editor heading is
+ * `contentHeight` — a member of `NON_SHRINKING` — and measured `flexShrink: 1`,
+ * `flexGrow: 60` on the rendered screen, tracking the viewport 1296 → 193px.
+ * The old list-only test called that node non-shrinking and stayed GREEN while
+ * saying so, which is the failure mode this suite has hit before: the literal
+ * did not move, the sentence beside it stopped being true.
+ */
+function childCanShrinkInARow(child: { parameters?: Record<string, unknown> }): boolean {
+  const p = child.parameters ?? {};
+  const mode = p.sizeMode;
+  const assignsWidth = typeof mode === 'string' && !['contentSize', 'contentWidth'].includes(mode);
+  if (!assignsWidth) return false;
+  const w = p.width as { unit?: string } | undefined;
+  return typeof w === 'object' && w !== null && w.unit === '%';
+}
+
+/**
  * Rows whose width depends on a string nobody has typed yet. Grades the reason,
  * not just the emptiness — a pass that graded no rows at all would satisfy
  * `unreachable == []` exactly as well as one that cleared every row, and those
@@ -1630,7 +1655,7 @@ function gradeUnboundedRows(project: Content): { graded: string[]; unreachable: 
       if (unbounded.length === 0) continue;
 
       const label = `${component.name} #${node.id}`;
-      const canShrink = !modes.every((m) => NON_SHRINKING.includes(m));
+      const canShrink = children.some((c) => childCanShrinkInARow(c));
       const wraps = p.flexWrap === 'wrap' || p.flexWrap === 'wrap-reverse';
       const scrolls = p.scrollEnabled === true;
 
@@ -1643,26 +1668,66 @@ function gradeUnboundedRows(project: Content): { graded: string[]; unreachable: 
   return { graded: graded.sort(), unreachable: unreachable.sort() };
 }
 
+/**
+ * The wire-fed display Text inside a row — the child whose width nobody can know
+ * when the template is authored, and the one both mutants below operate on.
+ * Resolved through the row's own `children`, never by authored id.
+ */
+function unboundedChildOf(row: { children?: { type?: string; parameters?: Record<string, unknown> }[] }) {
+  const child = (row.children ?? []).find(
+    (c) => c.type === 'Text' && DISPLAY_SIZES.includes((c.parameters ?? {}).fontSize as string) && (c.parameters ?? {}).text === ''
+  );
+  if (!child) throw new Error('the header row no longer carries a wire-fed display Text — D18/D20 cannot be graded');
+  child.parameters = child.parameters ?? {};
+  return child as { parameters: Record<string, unknown> };
+}
+
 describe('D18 — a row sized by a string nobody has typed yet stays reachable', () => {
   it('the page editor header wraps rather than clipping its actions away', () => {
     const { graded, unreachable } = gradeUnboundedRows(shipped);
 
-    expect(graded).toEqual(['/Pages/PageEditor #headerRow — flexShrink:0 throughout, and the row wraps (D18\'s lever)']);
+    // 🔴 The reason moved with D20, and the reason is what this grades. The row
+    // no longer relies on wrapping alone: its heading carries a percentage width,
+    // so a child genuinely shrinks (`flexShrink: 1`, measured on the screen).
+    expect(graded).toEqual(['/Pages/PageEditor #headerRow — a child can shrink, so the row reflows']);
     expect(unreachable).toEqual([]);
   });
 
   it('MUTANT: the row as it actually shipped reddens the grader', () => {
-    // D18 exactly — `flexWrap` dropped, everything else untouched. Calls the same
-    // grader the green arm calls, so a grader that stopped looking would fail here.
+    // 🔴 **The mutant needs BOTH levers dropped now, and that is the finding.**
+    // Before D20 this test removed `flexWrap` alone and the row went unreachable.
+    // It no longer does — with a shrinkable heading the row reflows without
+    // wrapping at all — so removing wrap by itself would leave the grader GREEN
+    // and this mutant would have quietly stopped testing anything.
     const mutant = JSON.parse(JSON.stringify(shipped)) as Content;
-    const row = mutant.components
-      .flatMap((c) => nodesOf(c))
-      .find((n) => n.id === 'headerRow');
+    const row = mutant.components.flatMap((c) => nodesOf(c)).find((n) => n.id === 'headerRow');
     if (!row) throw new Error('the artefact no longer holds #headerRow — D18 cannot be graded');
+    // 🔴 By the row's OWN CHILD, never by a global id: the door rewrites ids on
+    // write (`heading` ships as `heading-2`), and a `find` on the authored id
+    // silently matches a DIFFERENT component's node — which is what made the
+    // first version of this mutant mutate nothing and still read green.
+    const heading = unboundedChildOf(row);
     delete (row.parameters as Record<string, unknown>).flexWrap;
+    delete (heading.parameters as Record<string, unknown>).width;
+    (heading.parameters as Record<string, unknown>).sizeMode = 'contentSize';
 
     const { graded, unreachable } = gradeUnboundedRows(mutant);
     expect(unreachable).toEqual(['/Pages/PageEditor #headerRow — flexShrink:0 throughout, and it neither wraps nor scrolls']);
     expect(graded).toEqual([]);
+  });
+
+  it('MUTANT: dropping D20 alone still reddens nothing, because D18 wrap remains', () => {
+    // The other half of the pair — it proves the two levers are INDEPENDENT, and
+    // that the green above is not being carried by wrap alone.
+    const mutant = JSON.parse(JSON.stringify(shipped)) as Content;
+    const row = mutant.components.flatMap((c) => nodesOf(c)).find((n) => n.id === 'headerRow');
+    if (!row) throw new Error('the artefact no longer holds #headerRow');
+    const heading = unboundedChildOf(row);
+    delete (heading.parameters as Record<string, unknown>).width;
+    (heading.parameters as Record<string, unknown>).sizeMode = 'contentSize';
+
+    const { graded, unreachable } = gradeUnboundedRows(mutant);
+    expect(graded).toEqual(['/Pages/PageEditor #headerRow — flexShrink:0 throughout, and the row wraps (D18\'s lever)']);
+    expect(unreachable).toEqual([]);
   });
 });

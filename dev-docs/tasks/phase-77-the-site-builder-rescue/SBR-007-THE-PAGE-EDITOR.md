@@ -629,3 +629,127 @@ fix; cross-origin passed only after it. The table in §25 is the cross-origin ru
 | **D21** | 🟢 **NEW, FIXED and DRIVEN s25** (§27) — product, `nodegx-backend` |
 
 🔴 **AC3 is still not met, and the phase must not close as if it were.** D15 is unowned.
+
+---
+
+## 30. 🔴 [D20](DEFECTS-THE-SITE-BUILDER-FOUND.md) — decided by measurement, fixed, and driven
+
+s25 left D20 as *"a design decision, not a build"*, with a suspicion in the handoff that the
+ellipsize option *"probably needs `layout.ts` — so this may be a **product** row wearing template
+clothes."* **The suspicion was right about one option and wrong about the other, and the two have
+opposite dispositions.** That is what the session settled first, before building anything.
+
+### 30.1 The disposition, read off the runtime
+
+The heading fails to shrink **and** fails to wrap, and those are two different branches:
+
+| mechanism | where | what it does |
+|---|---|---|
+| shrink | `layout.ts:82` | every node starts `flexShrink: 0`; **only** a percentage size along the parent's direction assigns `flexGrow` **and** `flexShrink: 1` |
+| wrap | `Text.tsx:60` | `whiteSpace: 'pre'` — i.e. **nowrap** — for `contentSize` and `contentWidth`; `pre-wrap` for every other mode |
+
+`IN_A_ROW` is `{ sizeMode: 'contentSize' }`, which fails both at once. So:
+
+- **wrap is TEMPLATE work and reachable today** — one percentage width flips *both* branches,
+  because a percentage width is only legal in a mode that assigns a width, and every such mode
+  takes `Text.tsx`'s `pre-wrap` path.
+- **ellipsize is PRODUCT work** — `textOverflow` / `text-overflow` measures **0** across
+  `noodl-viewer-react/src` and `noodl-runtime/src`, against controls of **2** (`wordBreak`, a port
+  that exists) and **11** (files carrying `inputCss`, the mechanism a new port would use). There is
+  no port to set. ⚠️ The first run of that pair passed both paths as a quoted shell variable, zsh
+  did not word-split it, and the finding *and both controls* read 0 — the same zsh trap
+  [D15](DEFECTS-THE-SITE-BUILDER-FOUND.md) recorded, caught here only because the controls were
+  read before the finding.
+
+### 30.2 🔴 The two levers are inseparable, and that is a product observation
+
+`layout.ts` assigns `flexGrow` and `flexShrink` **in the same branch**. There is no way to opt a
+node into shrinking without also opting it into growing. So the fix necessarily moves the actions to
+the right of the row rather than clustering them beside the title. **That is a real visual change
+and it was not free** — it is recorded here rather than discovered by whoever next looks at the
+screen and wonders when the header changed.
+
+### 30.3 The control arm reproduced §22 exactly, which is what licensed the fix
+
+Two arms, copies of the fixture `SBR-007 Page Editor Drive`, differing by **exactly two parameters**
+on one node (`diff -r` over the trees returns only `sizeMode` and `width`). Backend: a **copy** of
+`backend_mterfnli74qwv`'s data on 8601, so the fixture's own rows are untouched. Signed in as
+`owner@sbr007.test`, height held at 900 so only width varies.
+
+| viewport | §22 recorded | control arm measured | agrees |
+|---|---|---|---|
+| 1920 / 1440 / 1200 / 1024 / 800 / 600 | **965 px at every width** | **965 px at every width** | ✅ |
+| heading box | 272..1237 | 272..1237 | ✅ |
+| `scrollWidth === innerWidth` | true at every width | true at every width | ✅ |
+
+The control also read the mechanism straight off the screen — `whiteSpace: pre`, `flexShrink: 0` —
+which is the two branches above, confirmed rather than inferred.
+
+⚠️ **§22 calls the title 56 characters; it is 57.** The pixel width is identical, so it is the same
+string and the count was off by one. Recorded because the *number* is what a future session would
+re-derive from.
+
+### 30.4 The fixed arm
+
+`{ sizeMode: 'contentHeight', width: { value: 60, unit: '%' } }` → `flexShrink: 1`, `flexGrow: 60`,
+`whiteSpace: pre-wrap`.
+
+| viewport | heading width | lines | right edge vs row | `Save page` |
+|---|---|---|---|---|
+| 1920 | 1296 | 1 | 1568 < 1888 | `SELF` |
+| 1440 | 816 | 2 | 1088 < 1408 | `SELF` |
+| 1200 | 576 | 2 | 848 < 1168 | `SELF` |
+| 1024 | 517 | 2 | 789 < 992 | `SELF` |
+| 800 | 393 | 3 | 665 < 768 | `SELF` |
+| 600 | 193 | 7 | 465 < 568 | `SELF` |
+
+**Nothing is clipped at any width**, the heading tracks the viewport instead of being pinned at 965,
+and `Save page` hit-tests `SELF` throughout — so **D18 has not regressed.**
+
+### 30.5 ✅ The short-title control — the fix does not cost the common case
+
+Re-run with the fixture's own 21-character title in both arms. The reading that matters is the one
+that was *not* expected: **the control clips a 21-character title too.** At 600px its heading is
+272..681 against a viewport of 600, so even a short title ran off the screen; the fixed arm wraps it
+to three lines and keeps it inside. There is no width at which the fix is worse.
+
+### 30.6 Why 60% and not 100%
+
+Measured, not chosen: at `100%` the heading owns its line at **every** width, so the actions drop to
+a second row even at 1920 where they fit today — a permanent extra header row for every title,
+including short ones. 60% keeps the one-line header wherever it fits. It wraps slightly more at the
+extremes (7 lines vs 5 at 600px) and that is the trade that was taken.
+
+🔴 **This is the half that is still Richard's**, and it is an appearance judgement, not a
+measurement: the fix moves the actions to the right of the header. Reverting to the old look is two
+parameters.
+
+### 30.7 🔴 The gate said `flexShrink:0 throughout` and would have gone on saying it
+
+D18's grader classified shrinkability from `sizeMode` alone, against
+`NON_SHRINKING = ['contentSize', 'contentHeight']`. The fixed heading is `contentHeight` — **in that
+list** — and measures `flexShrink: 1` on the rendered screen. So the gate stayed **green while its
+own sentence became false**, which is this suite's recorded failure mode: the literal did not move,
+the claim beside it stopped being true.
+
+The rule now models `layout.ts` — a child shrinks in a row iff its mode assigns a width
+(`explicit`/`contentHeight`) **and** that width is a percentage — and the row is graded *"a child
+can shrink, so the row reflows"* rather than *"it wraps"*.
+
+🔴 **And the mutant had stopped testing anything.** Dropping `flexWrap` alone no longer reddens the
+grader, because a shrinkable heading reflows the row without wrapping at all. It now drops **both**
+levers, and a **second** mutant drops D20's alone to prove the two are independent — the green above
+is not being carried by wrap.
+
+⚠️ **Both mutants silently mutated the wrong node first.** `find(n => n.id === 'heading')` matched a
+node in another component, because **the door rewrites ids on write** — `heading` ships as
+`heading-2`. They now resolve the target through the row's own `children`. A mutant that mutates
+nothing is green for the same reason a correct one is.
+
+### 30.8 What this leaves
+
+- **Ellipsize is unbuilt and unowned** — it needs a `textOverflow` port on `Text` that does not
+  exist. It is a **product** row and it is not SBR-007's. Filed as **D22**, `NONE`.
+- ⚠️ **Dimension ports take `{value, unit}`.** A bare `'60%'` string was accepted **in silence** and
+  rendered at content width — the first fixed arm read `flexShrink: 0` and `965px` and looked like a
+  refuted fix. Same family as **D8**/**F15**.
