@@ -120,6 +120,25 @@ export function stripScope(path: string, note: string): string {
 const bullet = (line: string): string => `- ${line}`;
 
 /**
+ * The ordered steps as Markdown, shared by the report and the README so the two cannot format the
+ * same facts differently. Three-space continuation indent is what keeps the detail and locations
+ * inside their numbered item rather than starting a new block after it.
+ */
+export function renderSteps(steps: NextStep[]): string[] {
+  const out: string[] = [];
+  steps.forEach((step, i) => {
+    out.push(`${i + 1}. **${step.title}**`);
+    out.push(`   ${step.detail}`);
+    if (step.where.length > 0) out.push(`   In ${step.where.map((w) => `\`${w}\``).join(', ')}.`);
+    out.push('');
+  });
+  // The blank line after the final item is the section separator the caller would otherwise add
+  // twice; every other `out.push('')` in this file is the caller's.
+  out.pop();
+  return out;
+}
+
+/**
  * The report, as Markdown.
  *
  * Pure — it is handed everything it says and reads nothing, so the suite can drive it on data
@@ -268,6 +287,31 @@ export function renderReport(data: ExportReportData): string {
     }
   }
 
+  /*
+   * EXP-004's "clear next steps, with file locations", and the one section that tells the author
+   * what to *do* rather than what happened.
+   *
+   * 🔴 **It sits here, between the itemised list and the honesty section, because the last step is
+   * always "test it".** Put the steps after the honesty section and that step reads as an
+   * afterthought to a caveat; put them before the itemised list and the report leads on work
+   * outstanding, which is the exact failure EXP-004's risk table calls "a good export looking bad".
+   * The full list is also in `README.md` — same function, two readers — because the two files are
+   * reached by different routes: a developer opens the README, and the `TODO(export)` markers in
+   * the code send them here.
+   */
+  const steps = nextSteps(data);
+  out.push('## What to do next, in order');
+  out.push('');
+  out.push(
+    steps.length === 1
+      ? 'One thing, and it is the one every export ends on.'
+      : 'Most-missing first — how much of the running app is not there without it. The last step ' +
+          'is on every export, however well it went.'
+  );
+  out.push('');
+  out.push(...renderSteps(steps));
+  out.push('');
+
   // ── The honesty section ────────────────────────────────────────────────────
   out.push('## What this export claims, and what it does not');
   out.push('');
@@ -334,4 +378,145 @@ export function renderReport(data: ExportReportData): string {
   out.push('');
 
   return out.join('\n');
+}
+
+/**
+ * One thing the author has to do, and where.
+ *
+ * `where` is *locations*, not always files: a component the export refused entirely has no file to
+ * name, so the component's own path is what a reader can act on. The renderers do not know the
+ * difference and do not need to — both print it as a code span.
+ */
+export interface NextStep {
+  /** Imperative, one sentence, ending in a full stop. */
+  title: string;
+  /** What is broken until it is done. This is the sentence that justifies the position. */
+  detail: string;
+  /** Files or component paths, in emission order. May be empty. */
+  where: string[];
+}
+
+/**
+ * EXP-004's *"actionable next steps ordered by priority"*, computed once and rendered twice.
+ *
+ * ## 🔴 The ordering criterion, written down so it can be argued with
+ *
+ * **How much of the running app is missing without it, most first.** Not difficulty, not the
+ * number of refusals, and deliberately not the order the report prints its sections in — the
+ * report is organised for *looking something up*, and this list is organised for *doing the work*.
+ *
+ * 1. **Components with no file at all.** The most absent thing the export produces: a route can
+ *    lead to a component that was never written.
+ * 2. **A stubbed `src/api/`.** Every read answers empty and every write throws, across the whole
+ *    app rather than one screen.
+ * 3. **Refusals in components a route reaches.** Screens that render, missing behaviour.
+ * 4. **Refusals in components no route reaches.** The same work, but nothing runs it today — which
+ *    is the whole of why it sits below 3 rather than beside it.
+ * 5. **Kits that shipped files but contributed no nodes.**
+ * 6. **Anything the export said about the project as a whole.**
+ * 7. **Test what was generated.** Always present, always last, and the only step that is not about
+ *    something missing.
+ *
+ * ⚠️ **1 above 2 is a judgement and not a measurement.** A missing component takes out one screen;
+ * a stubbed backend takes out every data path in the app. They are ranked the way they are because
+ * "nothing was emitted" is strictly more absent than "a stub exists, and it names the node it came
+ * from" — but an author whose app is one page and six queries would reasonably reverse them. Both
+ * lines say what they cost, so the reading does not depend on the rank alone.
+ *
+ * ## What is *not* in the order
+ *
+ * Within a group, components stay in **emission order** — the order they appear in the report's
+ * own sections, so a reader can scan straight down from a step to its detail. Sorting them by
+ * refusal count was considered and rejected: it would break that correspondence to express a
+ * ranking that the counts printed beside them already express.
+ *
+ * Pure, and driven directly by the suite for the four shapes the corpus does not contain
+ * (a stubbed backend, project-wide notes, a clean export, and every group at once).
+ */
+export function nextSteps(data: ExportReportData): NextStep[] {
+  const steps: NextStep[] = [];
+  const generated = data.components.filter((c) => c.file !== null);
+  const attention = generated.filter((c) => c.notes.length > 0);
+  const reached = attention.filter((c) => !c.unreachable);
+  const unreached = attention.filter((c) => c.unreachable);
+  const deferred = data.components.filter((c) => c.skipped?.kind === 'deferred');
+  const count = (cs: ReportComponent[]): number => cs.reduce((n, c) => n + c.notes.length, 0);
+  // ⚠️ One is spelled and everything else is a digit. "Write the 1 component the export could not
+  // generate" is what the obvious version produces, and it is the sentence a reader trips on.
+  const many = (n: number, one: string, rest = `${one}s`): string =>
+    n === 1 ? `one ${one}` : `${n} ${rest}`;
+
+  if (deferred.length > 0) {
+    steps.push({
+      title: `Write the ${many(deferred.length, 'component')} the export could not generate.`,
+      detail:
+        'No file was emitted at all — not an empty one, not a stub. Anything that places one ' +
+        'renders nothing, and the report gives the reason each was refused.',
+      where: deferred.map((c) => c.path)
+    });
+  }
+
+  if (backendMode(data) === 'stubbed') {
+    steps.push({
+      title: 'Point `src/api/` at a data source.',
+      detail:
+        'Until you do, every read answers empty and every write throws. Your project declares no ' +
+        'backend, so the export had nothing to connect them to; each stub carries the node it was ' +
+        'generated from, so you can see what it is meant to fetch or save.',
+      // `client.ts` is not emitted in this mode at all, and `http.ts` is real code calling an
+      // address the author typed — neither is a stub, and neither is this step's work.
+      where: data.files.filter((f) => f.startsWith('src/api/') && f !== 'src/api/http.ts')
+    });
+  }
+
+  if (reached.length > 0) {
+    steps.push({
+      title: `Fill in ${many(count(reached), 'refusal')} in ${many(reached.length, 'component')} a route reaches.`,
+      detail:
+        'Each refusal is a node, wire or parameter the export had no rule for: the screen renders, ' +
+        'people get to it, and some of what it used to do is missing.',
+      where: reached.map((c) => c.file as string)
+    });
+  }
+
+  if (unreached.length > 0) {
+    steps.push({
+      title: `Fill in ${many(count(unreached), 'refusal')} in ${many(unreached.length, 'component')} no route reaches.`,
+      detail:
+        'The same kind of work as above, and lower only because nothing in the app renders this ' +
+        'today. A screen you were part way through building moves to the top of this list the ' +
+        'moment you route to it.',
+      where: unreached.map((c) => c.file as string)
+    });
+  }
+
+  if (data.modules.length > 0) {
+    steps.push({
+      title: `Replace the nodes ${many(data.modules.length, 'kit')} could not contribute.`,
+      detail:
+        'Their files shipped — fonts, icons and scripts are all still here — but the node types ' +
+        'they would have registered are not, so anything built from those nodes is missing. The ' +
+        'report names each kit and why it could not contribute.',
+      where: []
+    });
+  }
+
+  if (data.project.length > 0) {
+    steps.push({
+      title: `Settle the ${many(data.project.length, 'note')} the export left about the project itself.`,
+      detail: 'These belong to no single component. The report states each one in full.',
+      where: []
+    });
+  }
+
+  steps.push({
+    title: 'Test it, including the parts nothing above mentions.',
+    detail:
+      'Everything not listed above is code the exporter believed it could translate. That is a ' +
+      'claim about its rules, not about your project, and the section below says exactly what it ' +
+      'does and does not cover.',
+    where: []
+  });
+
+  return steps;
 }

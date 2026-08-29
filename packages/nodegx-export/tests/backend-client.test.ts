@@ -106,9 +106,25 @@ describe('the connected export, byte-for-byte against the hand-written target', 
     expect(app.files['src/api/session.ts']).toBe(golden('session.ts'));
   });
 
-  test('.env.example and README.md arrive with the client', () => {
+  test('.env.example arrives with the client', () => {
     expect(app.files['.env.example']).toBe(golden('env.example'));
-    expect(app.files['README.md']).toBe(golden('README.md'));
+  });
+
+  /*
+   * ⚠️ **`README.md` used to be compared against a golden here, and is not any more.** EXP-009
+   * wrote that golden as the hand-written target for a README this branch emitted: a backend-only
+   * file about two environment variables. EXP-004 makes the README the exported repository's front
+   * door — emitted for every project, generated from the report data, and mostly about what needs
+   * doing rather than about a backend at all. The document the golden described no longer exists,
+   * so the row could not be kept either way.
+   *
+   * What replaced it is `tests/exported-readme.test.ts`, and the backend half of this fixture's
+   * README is pinned there against the same endpoint and application id `.env.example` uses.
+   */
+  test('the README points at the same deployment .env.example does', () => {
+    const readme = app.files['README.md'];
+    expect(readme).toContain('default: `http://localhost:8581`');
+    expect(readme).toContain('default: `backend_msjck0y2ukxwv`');
   });
 
   test('the report says where the calls go', () => {
@@ -141,10 +157,23 @@ describe('AC5 — no privileged credential in the output', () => {
 describe('AC7 — a project with no backend still exports and builds, and says so', () => {
   const stubApp = emitApp(withoutBackend(), catalog);
 
-  test('no client, no .env.example, no README', () => {
+  test('no client and no .env.example — but a README, without an env-var section', () => {
     expect(stubApp.files['src/api/client.ts']).toBeUndefined();
     expect(stubApp.files['.env.example']).toBeUndefined();
-    expect(stubApp.files['README.md']).toBeUndefined();
+    /*
+     * 🔴 **This row asserted `toBeUndefined()` on the README until EXP-004, and it was pinning the
+     * defect.** The README was emitted inside `apiModules` under `backend !== undefined && hasApi`,
+     * so the file a developer opens first arrived only for a project that both declared a NodeGX
+     * backend and queried it — six of the seven corpus fixtures got none. The absence was never
+     * what AC7 was about; AC7 is that a backendless project *still exports and says so*, and a
+     * missing README is the opposite of saying so.
+     *
+     * The env-var section is what is genuinely conditional, and that is what is asserted now.
+     */
+    expect(stubApp.files['README.md']).toBeDefined();
+    expect(stubApp.files['README.md']).not.toContain('VITE_NODEGX_ENDPOINT');
+    expect(stubApp.files['README.md']).not.toContain('.env.example');
+    expect(stubApp.files['README.md']).toContain('Point `src/api/` at a data source.');
   });
 
   test('the api modules are the pre-EXP-009 stubs', () => {

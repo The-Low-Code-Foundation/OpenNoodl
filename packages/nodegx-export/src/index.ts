@@ -15,7 +15,18 @@ export {
   PreflightAttention,
   PreflightNoFile
 } from './emit/preflight';
-export { ExportReportData, ReportComponent, REPORT_PATH, renderReport, backendMode, BackendMode } from './emit/report';
+export {
+  ExportReportData,
+  ReportComponent,
+  REPORT_PATH,
+  renderReport,
+  backendMode,
+  BackendMode,
+  NextStep,
+  nextSteps,
+  renderSteps
+} from './emit/report';
+export { README_PATH, renderReadme, ReadmeBackend } from './emit/readme';
 export { emitKits, EmittedCopy, EmittedKits, KitBinding } from './emit/kits';
 export { parseModules } from './parse/parseModules';
 export { runKitSource, KitRunResult, KitRunOutcome } from './parse/kitSource';

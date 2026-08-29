@@ -20,10 +20,17 @@
  *    uses of the word rather than asserting its absence: the report has to carry one sentence
  *    denying verification, so "the word is absent" is a claim that cannot be true here.
  *
- * ⚠️ **`renderReport` is pure and is driven directly for the shapes no fixture produces.** The
- * corpus has no project with zero refusals, which is the case the "lead with what worked" rule is
- * really about — a report that reads well only when there is bad news is not the one this task
- * asked for.
+ * ⚠️ **`renderReport` is pure and is driven directly for the shapes no fixture produces.** That is
+ * still why the last `describe` exists — a project with no failing module, no project-wide note and
+ * no deferred component is a shape the corpus does not contain, and the "lead with what worked"
+ * rule is really about the case where there is no bad news at all.
+ *
+ * 🔴 **The sentence that used to be here said "the corpus has no project with zero refusals". It
+ * has two** — `reading-shelf` and `deadline-desk` both refuse nothing and both render the
+ * *"Nothing."* branch. That was true when this file was written and stopped being true when later
+ * sessions added fixtures. It is corrected rather than dropped because a stale *"no fixture covers
+ * this"* is how a directly-driven row gets deleted by someone who greps, finds a fixture, and
+ * believes the comment about why the row is there.
  */
 
 import * as fs from 'fs';

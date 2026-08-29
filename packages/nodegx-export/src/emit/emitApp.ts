@@ -11,6 +11,7 @@ import { CloudServicesIR, ExportIR } from '../ir/types';
 import { emitComponent } from './component';
 import { DATE_LIB_PATH, dateLibSource } from './dateLib';
 import { EmittedCopy, emitKits } from './kits';
+import { README_PATH, renderReadme } from './readme';
 import { ExportReportData, REPORT_PATH, ReportComponent, renderReport, stripScope } from './report';
 import { emitScaffold } from './scaffold';
 import { emitStateModules } from './state';
@@ -173,7 +174,10 @@ export function emitApp(ir: ExportIR, catalog: Catalog): EmittedApp {
    */
   const report: ExportReportData = {
     projectName: ir.project.name,
-    files: [...Object.keys(files), REPORT_PATH].sort(),
+    // ⚠️ Both generated files are in their own count. Neither exists as a key yet — they are
+    // written from this record two statements below — and an author reading "34 files" has to see
+    // 34 in `ls`, the README and the report included.
+    files: [...Object.keys(files), REPORT_PATH, README_PATH].sort(),
     components: reportComponents,
     modules: moduleFailures,
     project: projectNotes,
@@ -182,6 +186,7 @@ export function emitApp(ir: ExportIR, catalog: Catalog): EmittedApp {
     httpModule: api.files.some(([path]) => path === 'src/api/http.ts')
   };
   files[REPORT_PATH] = renderReport(report);
+  files[README_PATH] = renderReadme(report, ir.project.cloudservices ?? null);
 
   return {
     files: Object.fromEntries(Object.entries(files).sort(([a], [b]) => (a < b ? -1 : 1))),
@@ -233,7 +238,9 @@ function withCoreDependency(packageJson: string): string {
  * Two forms per module, decided once for the whole project:
  *
  * - **Connected** (metadata.cloudservices present): bodies call `src/api/client.ts`, which
- *   speaks the same Parse wire the running app does. `.env.example` and a README arrive with it.
+ *   speaks the same Parse wire the running app does, and `.env.example` arrives with it.
+ *   ⚠️ `README.md` used to as well; since EXP-004 it is emitted for every export, from the report
+ *   data, and this branch only decides whether it carries an environment-variable section.
  * - **Stub** (no backend, AC7): byte-identical to what this emitted before EXP-009 — reads
  *   answer empty, writes throw — with the reason named in the report. A half-declared backend
  *   parses to none (parseCloudServices), so it lands here too.
@@ -418,7 +425,11 @@ function apiModules(
   if (backend !== undefined && hasApi) {
     stubs.push(['src/api/client.ts', clientModule(backend)]);
     stubs.push(['.env.example', envExample(backend)]);
-    stubs.push(['README.md', readmeMd(ir, backend)]);
+    // ⚠️ `README.md` used to be pushed here too, and that was the defect EXP-004 closed: it made
+    // the repository's front door conditional on the project having a backend to query. It is now
+    // emitted unconditionally in `emitApp`, from the report data, and knows about far more than
+    // the two environment variables this branch could tell it.
+
   }
   return { files: stubs, notes, usesBackend: hasApi };
 }
@@ -1121,26 +1132,3 @@ function envExample(backend: CloudServicesIR): string {
   );
 }
 
-function readmeMd(ir: ExportIR, backend: CloudServicesIR): string {
-  return `# ${ir.project.name}
-
-Exported from NodeGX.
-
-## Run
-
-\`\`\`
-npm install
-npm run dev
-\`\`\`
-
-## Backend
-
-This app talks to the project's NodeGX backend through \`src/api/client.ts\`. Two environment
-variables configure it, with the project's own values as defaults:
-
-- \`VITE_NODEGX_ENDPOINT\` — the backend's base URL (default: \`${backend.endpoint}\`)
-- \`VITE_NODEGX_APP_ID\` — the backend's application id (default: \`${backend.appId}\`)
-
-Copy \`.env.example\` to \`.env\` to point at another deployment; no generated code needs editing.
-`;
-}

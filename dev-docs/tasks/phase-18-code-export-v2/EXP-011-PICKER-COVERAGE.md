@@ -2608,3 +2608,189 @@ property of running these scripts today — and it had already hardened into sta
   leftover sweep's distinctive population is still empty — all unchanged from §20.8.
 - **A chain-local for `Error`**, **the collection-state slice**, **the date family's signals** and
   the **EXP-009 drive leftovers** are all unchanged and still unowned.
+
+## §22 EXP-004's README, and the front door that was conditional on a backend (session 51, 2026-08-29)
+
+**69 of 127 (54.3%)** — unchanged for a fourth session, and nothing on the picker moved. This
+session built EXP-004's two remaining unblocked scope items: **a `README.md` in the exported
+project** and **actionable next steps ordered by priority**. 🔴 **The first of them was not a new
+file — it was a file that already existed and was emitted for one project in seven.**
+
+### §22.1 🔴 The README was conditional on the project having a backend, and six of seven fixtures got none
+
+`README.md` has been emitted since EXP-009, from inside `apiModules`:
+
+```ts
+if (backend !== undefined && hasApi) {
+  stubs.push(['src/api/client.ts', clientModule(backend)]);
+  stubs.push(['.env.example', envExample(backend)]);
+  stubs.push(['README.md', readmeMd(ir, backend)]);   // ← the defect
+}
+```
+
+Read in place that condition looks right: it guards the three files that are *about* the backend
+client. Two of them are. The third is the repository's front door.
+
+Measured across the corpus before anything was written:
+
+| fixture | backend | `README.md` |
+|---|---|---|
+| `puppy-test-3` | connected | ✅ |
+| `cheer` | none | ❌ |
+| `deadline-desk` | none | ❌ |
+| `kits` | none | ❌ |
+| `quote-desk` | none (has `src/api/http.ts`) | ❌ |
+| `reading-shelf` | none | ❌ |
+| `variable-dial` | none | ❌ |
+
+**Six of seven exports had no README at all**, and the one that did said nothing about what the
+export left out, never named `EXPORT-REPORT.md`, and did not mention that the export is one-way.
+
+🔴 **A test was pinning it.** `backend-client.test.ts` had a row named *"no client, no
+`.env.example`, no README"* asserting `expect(stubApp.files['README.md']).toBeUndefined()`, under a
+`describe` block titled **"AC7 — a project with no backend still exports and builds, and says so"**.
+The assertion and the heading it sat under were in direct contradiction: a missing README is the
+opposite of *saying so*. The absence was never what AC7 was about, and a green row had made it look
+settled. This is [a gate with a hole shaped like the defect] one more time — the hole was named,
+described, and asserted on.
+
+### §22.2 The ordered next steps, and the criterion written down so it can be argued with
+
+`nextSteps(data)` returns a list, and its ordering criterion is **how much of the running app is
+missing without it, most first**. Not difficulty, not refusal count, and deliberately not the order
+the report prints its sections in — the report is organised for *looking something up* and this list
+is organised for *doing the work*.
+
+1. Components with no file at all — a route can lead to something never written.
+2. A stubbed `src/api/` — every read answers empty and every write throws, across the whole app.
+3. Refusals in components a route reaches — screens that render, missing behaviour.
+4. Refusals in components no route reaches — the same work, nothing runs it today.
+5. Kits that shipped files but contributed no nodes.
+6. Anything the export said about the project as a whole.
+7. Test what was generated — on every export, always last, the only step not about an absence.
+
+⚠️ **1 above 2 is a judgement and not a measurement, and is recorded as one.** A missing component
+takes out one screen; a stubbed backend takes out every data path in the app. They are ranked the
+way they are because *"nothing was emitted"* is strictly more absent than *"a stub exists and it
+names the node it came from"* — but an author whose app is one page and six queries would
+reasonably reverse them. Both lines state what they cost, so the reading does not rest on the rank.
+
+**Within a group, components stay in emission order.** Sorting them by refusal count was considered
+and rejected: it would break the correspondence with the report's own section order to express a
+ranking the counts printed beside them already express. 🔴 That is the §21.5 lesson applied
+forward — an ordering that changes nothing observable is a tie-break kept for a tie that is not.
+
+### §22.3 One decision, two readers — and the third surface that deliberately does not get it
+
+The list renders into **both** `EXPORT-REPORT.md` and `README.md`, from one `nextSteps` call, the
+pattern `backendMode` established in §21.3. Both are needed because they are **reached by different
+routes**: a developer opens the README, and the `TODO(export)` markers in the generated code point
+at the report by name. A reader who arrives by either route has to be able to find out what to do.
+
+⚠️ **The pre-flight does not get it, and that is a choice.** `renderPreflight` is read standing up,
+before the export exists, by someone deciding whether to proceed — not by someone with a repository
+in front of them to work on. Adding seven steps about files that do not exist yet would lengthen the
+one document whose whole value is being short. Recorded here rather than left to be re-derived.
+
+What the two documents do **not** share is the itemised refusals. Those are in the report only; the
+README gives the count and sends the reader next door. Two full copies of that list would be two
+things to keep in step, and the one that drifted would be the one nobody regenerated.
+
+### §22.4 🔴 A golden was retired, and the bar for that is higher than for adding one
+
+`tests/goldens/exp009/README.md` was EXP-009's **hand-written target output** for a backend-only
+README about two environment variables. That document no longer exists: the README is now generated
+from the report data, emitted for every project, and is mostly about what needs doing.
+
+The golden could not be kept, and it could not honestly be *regenerated* either — a "golden" written
+by copying this session's own output is a snapshot of prose written an hour earlier, and it grades
+nothing about whether the prose is right. It was deleted, and replaced by `tests/exported-readme.test.ts`
+(52 rows), including one that pins this fixture's endpoint and application id against the same
+values `.env.example` uses — which is the part of the old golden that was making a claim.
+
+### §22.5 What proves it
+
+`packages/nodegx-export`: **`tsc --noEmit` exit 0**, **jest 1039/1039 across 42 suites** (986/41
+before this session — 52 new rows in `exported-readme.test.ts`, and one existing row split in two).
+
+🔴 **Sixteen mutants, run against the whole suite rather than the new file** — the README is emitted
+by `emitApp`, so a mutation to it can redden rows in `missing-interface`, `backend-client` and
+`export-report` too, and scoping the run to one test file would have graded a smaller thing than the
+change.
+
+**Eighteen mutants, eighteen killed, none survived.** Tree restored byte-identical after every one.
+
+| mutant | verdict | reds |
+|---|---|---|
+| the ladder is reversed | KILLED | 3 |
+| unreachable components are ranked above reachable ones | KILLED | 3 |
+| the stub step is ranked below the component refusals | KILLED | 3 |
+| the last step is dropped when there is other work | KILLED | 2 |
+| a refusal count counts components instead of refusals | KILLED | 3 |
+| one is printed as a digit | KILLED | 1 |
+| the real HTTP module is listed as a stub to connect | KILLED | 1 |
+| a component with no file is located by nothing | KILLED | 1 |
+| **the README is emitted only for a project with a backend, as before EXP-004** | KILLED | **35** |
+| the README is left out of the file count it is part of | KILLED | 2 |
+| the README claims the generated code was verified | KILLED | 14 |
+| the README copies the report's itemised refusals instead of pointing at them | KILLED | 5 |
+| the README stops naming the report at all | KILLED | 5 |
+| the one-way warning is dropped | KILLED | 7 |
+| a clean export is still sent grepping for markers that do not exist | KILLED | 2 |
+| the README leads on what is missing rather than how to run it | KILLED | 1 |
+| the env-var section is printed for a project that never queries the backend | KILLED | 1 |
+| the report renders its own, shorter list | KILLED | 5 |
+| the continuation indent is lost, so details leave their list item | KILLED | 1 |
+
+🔴 **The 35-red row is the §22.1 defect, reintroduced deliberately** — restoring the old condition
+reddens rows in four suites, which is what "six of seven fixtures lost their README" looks like from
+inside the suite. Before this session it was green.
+
+⚠️ **Two mutants came back NOT-APPLIED first** — their search text matched zero times because the
+indentation and the string-concatenation break were guessed rather than read off the file. Both were
+corrected and re-run, and **NOT-APPLIED was never counted as a survivor**. A mutation table where a
+typo reads as "nothing to fix here" is the instrument grading itself.
+
+### §22.6 What the rendered output showed that the types could not
+
+Both readings of the generated documents found things no test would have:
+
+- 🔴 **"Write the 1 component the export could not generate."** The obvious pluraliser prints a bare
+  digit at n=1, and that is the sentence a reader trips on. One is now spelled and everything else
+  is a digit.
+- 🔴 **"Write the 11 things left out of 2 components"** — *things* is exactly the vagueness EXP-004's
+  *"be specific, not statistical"* rule forbids. It is now *refusals*, which is the vocabulary the
+  pre-flight already uses.
+- 🔴 **Three near-identical caveats in a row** on a clean export: the report's *"Nothing."*, then a
+  next-step saying nothing had been run, then the honesty section saying it again at length. That is
+  EXP-004's own risk — *"the report is so cautious that a good export looks bad"* — arriving through
+  the addition rather than the original. The step's detail is now two lines and points below.
+- ⚠️ **A straight apostrophe.** `report.ts` emits `’` and the new `readme.ts` emitted `'`, in two
+  Markdown files that sit next to each other in the same folder. Normalised.
+
+### §22.7 A stale claim in a test's own framing
+
+`export-report.test.ts`'s header says *"The corpus has no project with zero refusals, which is the
+case the 'lead with what worked' rule is really about."* **It has two** — `reading-shelf` and
+`deadline-desk` both refuse nothing and both render the *"Nothing."* branch. The sentence was true
+when session 48 wrote it and stopped being true when later sessions added fixtures.
+
+It is a comment and not a check, so nothing was green that should have been red. It is worth
+correcting anyway: a false *"no fixture covers this"* is how a directly-driven row gets deleted two
+sessions later by someone who greps, finds a fixture, and believes the comment about why the row
+exists. Corrected in place, with the two fixtures named.
+
+### §22.8 What this leaves
+
+- 🔴 **The in-editor post-export report is still blocked, still owned by `NONE`** — §21.1, unchanged.
+  `@nodegx/export` still has no consumer in the product, and this session did not add one.
+- 🔴 **EXP-004's last unchecked scope line is the in-code marker's missing node source.** It names
+  the refused port and the reason; EXP-004 asks for the original node source in the comment. Still a
+  recorded narrowing, still unbuilt, and **not** blocked by anything.
+- ⚠️ **The stub-backend step is exercised only by hand-built data.** No corpus project both queries a
+  backend and declares none, so §22.5's stub-locations row and the `src/api/http.ts` exclusion are
+  driven directly. That is a fact about the corpus, not about the code — and it is the same shape as
+  §21.2's `cleanFlips = 0`.
+- ⚠️ **The trace-coverage scope line is still not applicable.** EXP-003 does not exist, so there are
+  no traces; both surfaces say nothing has been run, which is narrower than EXP-004 anticipated and
+  is the honest statement today.

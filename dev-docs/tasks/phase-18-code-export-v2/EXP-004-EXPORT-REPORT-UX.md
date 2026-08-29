@@ -51,13 +51,13 @@ There is a specific new risk this task must handle. EXP-003 uses AI translation 
 
 ### In Scope
 - [x] Pre-flight export estimate from project analysis — **exact, not estimated**; see §21.2
-- [ ] Post-export report — ✅ **as a file in the exported project** (§19); 🔴 **in-editor is BLOCKED**, see §21.1
+- [x] Post-export report — ✅ **as a file in the exported project** (§19), now carrying the ordered next steps (§22); 🔴 **in-editor is BLOCKED**, see §21.1
 - [x] Per-item detail: node, location in generated code, status, reason
 - [ ] Trace-coverage communication in plain language — **not applicable until EXP-003 exists**; there are no traces
 - [x] In-code markers (§20) — ⚠️ the marker names the refused port and reason; it does **not** carry the original node source
-- [ ] A `README.md` in the exported project explaining what it is, what needs work, and how to proceed
+- [x] A `README.md` in the exported project explaining what it is, what needs work, and how to proceed — §22; 🔴 it already existed and was emitted for **one project in seven**
 - [x] Honest framing of what verification does and does not prove — ⚠️ narrower than written: EXP-003 does not exist, so **nothing has been run at all**
-- [ ] Actionable next steps ordered by priority
+- [x] Actionable next steps ordered by priority — `nextSteps()`, rendered into **both** the report and the README; the criterion is in §22.2, and *“most-missing first”* is a judgement at one rank and says so
 
 ### Out of Scope
 - Fixing anything the report identifies (that is the user's work, or a future task)
@@ -91,7 +91,7 @@ There is a specific new risk this task must handle. EXP-003 uses AI translation 
 - Report accuracy: every stub, unverified translation, and generated component appears with the correct status.
 - Pre-flight estimate matches the actual outcome within a reasonable margin on the test corpus.
 - In-code markers are consistently formatted and greppable.
-- **Comprehension test**: a developer unfamiliar with the project reads the exported README and can state what needs doing without asking questions.
+- **Comprehension test**: a developer unfamiliar with the project reads the exported README and can state what needs doing without asking questions. ⚠️ **UNRUN, and it cannot be run by the session that wrote the prose** — the author of a document is the one reader guaranteed to find it clear. Owed to Richard or to someone outside this work; the same is true of implementation step 6's external review of the verification wording.
 - No unverified item is presented in language that implies verification.
 
 ## 🔴 Where this task's own framing gave way (session 50)
@@ -114,10 +114,10 @@ for the numbers and the control pair that now guards the layer.
 ## Success Criteria
 
 - [x] Pre-flight available before export — **exact**; `emit-app.ts --preflight`, writes nothing
-- [ ] Post-export report — ✅ in the exported project; 🔴 **in-editor BLOCKED** (§21.1)
+- [x] Post-export report — ✅ in the exported project, with next steps and file locations (§22); 🔴 **in-editor BLOCKED** (§21.1)
 - [ ] Trace-coverage caveat — **no traces exist**; both surfaces say nothing has been run
 - [x] In-code markers consistent and greppable — ⚠️ **without** original node source
-- [ ] Exported README enables an unfamiliar developer to proceed unaided
+- [ ] Exported README enables an unfamiliar developer to proceed unaided — ⚠️ **the README is built (§22); the claim is not measured.** This criterion is a comprehension test with a person, and no person has read it
 - [x] Unverified work is never framed as verified — asserted per fixture in both suites
 - [x] Report leads with what succeeded — asserted, and mutation-killed in both surfaces
 
@@ -140,7 +140,7 @@ for the numbers and the control pair that now guards the layer.
 
 - [ ] Branch `task/exp-004-export-report-ux`
 - [ ] Pre-flight estimate; report data model from generator/verifier output
-- [ ] In-editor report and exported README
+- [ ] In-editor report and exported README — ✅ **README built** (§22); 🔴 in-editor blocked on a task that is not this one (§21.1)
 - [ ] Consistent in-code markers with original source preserved
 - [ ] Plain-language verification explanation, externally reviewed
 - [ ] Comprehension test with an unfamiliar developer

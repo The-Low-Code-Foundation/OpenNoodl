@@ -194,12 +194,14 @@ describe('the parent end — an attribute the target does not declare', () => {
     deleteComponentInputsNode(mutated, 'Components/GreetingCard');
     const after = emitApp(mutated, catalog);
     const changed = Object.keys(before.files).filter((f) => before.files[f] !== after.files[f]);
-    // 🔴 `EXPORT-REPORT.md` moving is the point of it, not blast radius. EXP-004's report is the
-    // written record of what the export refused, so a new refusal that left it unchanged would be
-    // the defect — it would mean the app shipped with a report that did not describe it. The
-    // *code* claim is unweakened and is the line below.
+    // 🔴 `EXPORT-REPORT.md` and `README.md` moving is the point of them, not blast radius. The
+    // report is the written record of what the export refused, and the README carries EXP-004's
+    // ordered next steps — a new refusal that left either unchanged would be the defect, because
+    // the app would ship with a front door and a record that did not describe it. The *code* claim
+    // is unweakened and is the line below.
     expect(changed.sort()).toEqual([
       'EXPORT-REPORT.md',
+      'README.md',
       'src/components/GreetingCard.tsx',
       'src/pages/Home.tsx'
     ]);
