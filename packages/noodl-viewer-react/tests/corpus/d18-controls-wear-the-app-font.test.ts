@@ -105,6 +105,52 @@ describe('D18 — a control renders in the app font, not the browser default', (
     expect(stillDeclares).toBe(false);
   });
 
+  it('🔴 the floor `inherit` depends on still exists — body carries var(--font-sans)', () => {
+    // 🔴 **This fix is only as good as the thing it inherits FROM.** `font-family: inherit`
+    // on a control resolves up to `body`, and `body` gets its family from exactly one place:
+    // `TokenResolver.generateCss`, which appends
+    //
+    //     body { font-family: var(--font-sans); }
+    //
+    // after the `:root` block (POL-006 — a brand-new project rendered Hello World in **Times**
+    // until that floor existed, because a *declared* default never runs its setter).
+    //
+    // Delete that line and every control silently returns to the browser's serif while the
+    // three `font-family: inherit` declarations this file grades stay exactly as they are —
+    // green gate, broken app. Asserting the mechanism without asserting what it stands on is
+    // how a fix passes its own test and changes nothing.
+    //
+    // ⚠️ **Comments stripped first.** The rule appears in this function's own doc comment as
+    // prose, so an unstripped check passes on the documentation while the code that emits it
+    // is gone — the exact failure this test exists to catch.
+    //
+    // ⚠️ The file holds the rule inside a template literal, so what is on disk is the
+    // two-character escape backslash-n, not a newline. The first version of this test matched
+    // a real newline, found nothing, and went red for that reason rather than a real one.
+    const TOKEN_RESOLVER = path.join(
+      __dirname, '..', '..', '..',
+      'noodl-editor/src/editor/src/models/StyleTokensModel/TokenResolver.ts'
+    );
+    const raw = fs.readFileSync(TOKEN_RESOLVER, 'utf-8');
+    const code = raw.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+
+    expect(code).toContain('font-family: var(--font-sans);');
+    expect(code).toMatch(/body \{\\n\s*font-family: var\(--font-sans\);/);
+
+    // Control: the comment strip actually strips, so "found it in code" means code.
+    //
+    // ⚠️ This asserted something false at first — that the rule appears in the prose too, so
+    // stripping would reduce the count. It does not: the doc comment writes the *camelCase*
+    // form `fontFamily: 'var(--font-sans)'` (it is describing a node port), which is a
+    // different string from the CSS the function emits. The premise was wrong, not the
+    // subject, and only having a control at all surfaced that.
+    //
+    // `TextConfig` is named only in the doc comment, so it is the honest witness that the
+    // strip ran.
+    expect(raw).toContain('TextConfig');
+    expect(code).not.toContain('TextConfig');
+  });
+
   it('🔴 the `body` composition no longer tells an author controls inherit the page font', () => {
     // The CSS repair alone would have been undone by the next generator that read this line:
     // it is what an agent reads *before deciding not to set a font*. Guarded on the exact
