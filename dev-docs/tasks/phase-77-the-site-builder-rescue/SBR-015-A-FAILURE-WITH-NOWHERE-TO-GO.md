@@ -277,6 +277,42 @@ answer now **exists**; nothing renders it. ⬜ **AC1 open.** ⚠️ The fix is i
    before or after the fix.** It will not, because the template has no `Log` nodes. The fix's own
    Response — `This page could not be published.` — is the readout, not the log.
 
+## 4a. 🔴 AC2's population, measured — and it is already blocking someone else
+
+**2026-08-29, s12.** DEF-002 §2 landed a rule (`b91d696a`): in a cloud function, a `failure`
+edge that reaches no `noodl.cloud.response` is reported by `validate_project` /
+`validate_component`. Its author tried promoting it to `AUTHORED_BLOCKING_WARNINGS`, hit **8
+failing specs** across `sb007Template` / `sb004Authoring` / `tpl001Template`, and read them as
+*"publishPage, duplicatePage and submitContactForm really do leave failure edges unanswered"*.
+
+**They do not.** Counting, over the shipped artefact, `failure` wires whose target is not a
+`noodl.cloud.response`:
+
+| component | responses | `failure` wires | **not → response** |
+|---|---|---|---|
+| `publishPage` | 2 | 5 | **0** |
+| `duplicatePage` | 2 | 8 | **0** |
+| `submitContactForm` | 1 | 2 | **0** |
+| `claimSite` | 2 | 6 | **0** |
+| `site/SetSectionAccess` | 0 | 1 | **1** |
+| `site/CopySectionToPage` | 0 | 1 | **1** |
+| `site/ContactRecipient` | 0 | 1 | **1** |
+
+The component set agrees with the artefact (`sb004Components.ts:419–431`, `:737–…`): endpoints
+go `failure → deny.send`; the three workers go `failure → outputs.Failure`. Both populations,
+same answer.
+
+🔴 **So the templates are not the blocker — the rule's population is.** The endpoints were
+repaired at `48ad4dfc`. The only three offenders have **no Response node at all**, by design:
+they answer through the Run Tasks contract's failure output, which is what
+`failure → Component Outputs.Failure` *is*. Three workers × three regeneration paths ≈ the 8.
+
+**Promoting the rule as written would demand a "fix" to three components that are correct.** AC2
+above already names those three and says the rule *"must say which one it is grading rather than
+quietly widening to both"* — this is that warning arriving as a real cost, in someone else's
+lane, before the gate was even written here. ⚠️ Whoever writes AC2's gate and whoever promotes
+DEF-002 §2 are writing **the same predicate**; write it once.
+
 ## 5. Traps
 
 - 🔴 **`claimSite` is the control and must stay one.** It is the only cloud function in the
