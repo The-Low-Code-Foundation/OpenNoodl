@@ -190,10 +190,34 @@ accident.
 
 ## 4b. What is left
 
-- **AC4 — a rule about where `completed` lands**, beside DEF-002's rules in `noodl-mcp`'s door.
-  🔴 The pair is the whole test: a graph wiring `completed` into a record write is refused **by
-  name**, and `outcome.ts`'s two legitimate uses are **accepted in the same run**. A rule that
-  refuses both has banned the port.
+- **AC4 — a rule about where `completed` lands**, beside DEF-002's rules (they live in
+  `packages/noodl-editor/src/editor/src/validation/diagnostics.ts`, not in `noodl-mcp`).
+
+  🔴 **AC4 contradicts itself, and the measurement is below.** It asks for `completed` reaching a
+  record write **or a `noodl.cloud.response.send`** to be refused by name, while requiring the two
+  documented legitimate uses to be accepted in the same run. **Those two uses are not in
+  `outcome.ts`** — that file holds the port's *wording*, no graphs — they are in the shipped
+  site-builder, and every `completed` wire in every shipped template is one of them:
+
+  | template component | from | to |
+  |---|---|---|
+  | `/#__cloud__/site/ContactRecipient` | `noodl.cloud.secret` | `JavaScriptFunction.run` |
+  | `/#__cloud__/submitContactForm` | `noodl.cloud.sendemail` | **`noodl.cloud.response.send`** |
+
+  The second is the one AC4 names as the defect. *An unprovisioned secret must still reach the
+  picker* and *a bounced mail must still answer the visitor* — the second **is** a `completed`
+  into a `send`, and refusing it bans the port on the only graph that ships it.
+
+  ✅ **So the rule is not about the target node type.** What distinguishes SBR-006's defect from
+  `submitContactForm` is what the wire *claims*: `publishPage` marked a page `published` — it
+  wrote a **success fact** about work that may not have happened. Answering the caller regardless
+  is the port working as designed. The rule has to be about a `completed` reaching a **write**
+  whose payload asserts the outcome, not about `send`. 🔴 **Two of three shipped `completed` wires
+  would be false positives under AC4 as written — measure the corpus before writing the
+  predicate, and treat AC4's target list as a hypothesis.**
+  ⚠️ **The blocking arm has NO positive instance in any shipped template** (zero `completed` wires
+  into a record write), so it needs a deliberately-malformed probe graph — the same shape DEF-002
+  left two of behind.
 - **AC1's second half is only half-served.** The steps now say which node failed. Whether the
   *record* should say a run "succeeded" while carrying an `error` step is the argument §4a leaves
   open, and it is the same argument (b) is about one layer up.
