@@ -8,6 +8,7 @@
       "type": "Page",
       "label": "Directory",
       "children": [
+        "chrome-7",
         "ground-11"
       ],
       "parameters": {
@@ -16,6 +17,14 @@
       },
       "x": 40,
       "y": 40
+    },
+    {
+      "id": "chrome-7",
+      "type": "/Members/Chrome",
+      "label": "The band",
+      "parent": "page-11",
+      "x": 100,
+      "y": 160
     },
     {
       "id": "ground-11",
@@ -51,7 +60,7 @@
         "paddingBottom": "var(--space-12)"
       },
       "x": 100,
-      "y": 160
+      "y": 280
     },
     {
       "id": "heading-9",
@@ -67,7 +76,7 @@
         "color": "var(--foreground)"
       },
       "x": 160,
-      "y": 280
+      "y": 400
     },
     {
       "id": "notAllowed-3",
@@ -97,7 +106,7 @@
         "mounted": false
       },
       "x": 160,
-      "y": 400
+      "y": 520
     },
     {
       "id": "notAllowedText-3",
@@ -110,7 +119,7 @@
         "color": "var(--destructive)"
       },
       "x": 220,
-      "y": 520
+      "y": 640
     },
     {
       "id": "directory",
@@ -132,7 +141,7 @@
         "mounted": false
       },
       "x": 160,
-      "y": 640
+      "y": 760
     },
     {
       "id": "projectionNote",
@@ -145,7 +154,7 @@
         "color": "var(--muted-foreground)"
       },
       "x": 220,
-      "y": 760
+      "y": 880
     },
     {
       "id": "list-4",
@@ -157,7 +166,7 @@
         "template": "/Members/MemberRow"
       },
       "x": 220,
-      "y": 880
+      "y": 1000
     },
     {
       "id": "emptyState-4",
@@ -187,7 +196,7 @@
         "mounted": false
       },
       "x": 220,
-      "y": 1000
+      "y": 1120
     },
     {
       "id": "emptyStateText-4",
@@ -200,7 +209,7 @@
         "color": "var(--muted-foreground)"
       },
       "x": 280,
-      "y": 1120
+      "y": 1240
     },
     {
       "id": "backButton-6",
@@ -224,14 +233,14 @@
         "sizeMode": "contentSize"
       },
       "x": 160,
-      "y": 1240
+      "y": 1360
     },
     {
       "id": "standing-5",
       "type": "/Members/Standing",
       "label": "Who is this?",
       "x": 530,
-      "y": 640
+      "y": 760
     },
     {
       "id": "notModerator-3",
@@ -241,7 +250,7 @@
         "functionScript": "if (Inputs.isModerator === undefined) return;\nOutputs.no = Inputs.isModerator !== true;"
       },
       "x": 530,
-      "y": 400
+      "y": 520
     },
     {
       "id": "members",
@@ -259,7 +268,7 @@
         ]
       },
       "x": 530,
-      "y": 880
+      "y": 1000
     },
     {
       "id": "emptyGate-4",
@@ -269,7 +278,7 @@
         "functionScript": "Outputs.empty = (Inputs.count || 0) === 0;"
       },
       "x": 530,
-      "y": 1000
+      "y": 1120
     },
     {
       "id": "toMembers-5",
@@ -280,7 +289,7 @@
         "target": "/Pages/Members"
       },
       "x": 530,
-      "y": 1240
+      "y": 1360
     },
     {
       "id": "toLanding-5",
@@ -291,7 +300,7 @@
         "target": "/Pages/Landing"
       },
       "x": 530,
-      "y": 1360
+      "y": 1480
     }
   ],
   "visualRoots": [

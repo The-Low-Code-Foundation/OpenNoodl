@@ -1,0 +1,37 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "cd133680-a154-5770-8e2f-5eb39e610782",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "association",
+      "fromProperty": "items",
+      "toId": "read",
+      "toProperty": "in-rows"
+    },
+    {
+      "fromId": "association",
+      "fromProperty": "fetched",
+      "toId": "read",
+      "toProperty": "run"
+    },
+    {
+      "fromId": "read",
+      "fromProperty": "out-name",
+      "toId": "name",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "signOutButton",
+      "fromProperty": "onClick",
+      "toId": "logout",
+      "toProperty": "login"
+    },
+    {
+      "fromId": "logout",
+      "fromProperty": "done",
+      "toId": "toLanding-6",
+      "toProperty": "navigate"
+    }
+  ]
+}

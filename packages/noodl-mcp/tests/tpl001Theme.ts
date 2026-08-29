@@ -150,6 +150,10 @@ export function composition(id: string): Record<string, unknown> {
  */
 export const USED_COMPOSITIONS = [
   'shell',
+  // s8. `Pages/Members`' three moderator actions reflow on a `Columns`, because
+  // no Group in the runtime has a breakpoint and three buttons in a row ran off
+  // the right edge at 390px. First use of an `arrangement` composition here.
+  'gridAutoFit',
   'card',
   'cardBody',
   'sectionHead',

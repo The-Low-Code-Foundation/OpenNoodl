@@ -59,7 +59,7 @@
       "label": "The hero",
       "parent": "ground",
       "children": [
-        "eyebrow",
+        "eyebrow-2",
         "heading",
         "blurb"
       ],
@@ -76,7 +76,7 @@
       "y": 280
     },
     {
-      "id": "eyebrow",
+      "id": "eyebrow-2",
       "type": "Text",
       "label": "Members’ area",
       "parent": "hero",
@@ -350,7 +350,7 @@
       "y": 2080
     },
     {
-      "id": "association",
+      "id": "association-2",
       "type": "DbCollection2",
       "label": "The association",
       "parameters": {
@@ -360,7 +360,7 @@
       "y": 2200
     },
     {
-      "id": "read",
+      "id": "read-2",
       "type": "JavaScriptFunction",
       "label": "The association, or the invitation to set one up",
       "parameters": {

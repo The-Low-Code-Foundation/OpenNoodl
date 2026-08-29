@@ -244,12 +244,15 @@ describe('TPL-001 — the committed template is what the door writes today', () 
     // 🔴 Without this, "every byte agrees" is satisfiable by two empty file
     // lists — the same green, and the opposite fix.
     const committed = filesUnder(ARTEFACT);
-    // 22 components × 3 files, plus the registry, the project file and the policy.
+    // 23 components × 3 files, plus the registry, the project file and the policy.
+    // 23 rather than 22 since s8: `Members/Chrome`, the band across every
+    // signed-in page — the association's name now appears on all seven of them
+    // rather than only on the landing page.
     // 22 rather than 21 since s8: `Members/InsideTile`, the landing page's
     // "what members can see" tile. It is a component and not three inline
     // subtrees because the door refused the inline form —
     // `repeated-sibling-subtree`, naming the remedy.
-    expect(committed.length).toBe(22 * 3 + 3);
+    expect(committed.length).toBe(23 * 3 + 3);
     expect(committed).toContain('nodegx.project.json');
     expect(committed).toContain('nodegx.security.json');
     expect(committed).toContain(path.join('components', '_registry.json'));
@@ -260,13 +263,13 @@ describe('TPL-001 — the committed template is what the door writes today', () 
     );
   });
 
-  it('control: the generation really ran — twenty-two components, App first', async () => {
+  it('control: the generation really ran — twenty-three components, App first', async () => {
     // 🔴 Without this, the comparison above is satisfiable by two empty sets, and
     // a build that silently authored nothing would read as agreement.
     const built = await buildMembersTemplateProject();
-    expect(built.order).toHaveLength(22);
+    expect(built.order).toHaveLength(23);
     expect(built.order[0]).toBe(APP_COMPONENT);
-    expect(shipped).toHaveLength(22);
+    expect(shipped).toHaveLength(23);
   });
 });
 

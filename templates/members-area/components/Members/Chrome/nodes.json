@@ -1,0 +1,173 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "cd133680-a154-5770-8e2f-5eb39e610782",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "bar",
+      "type": "Group",
+      "label": "The band",
+      "children": [
+        "inner"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "flexDirection": "column",
+        "alignItems": "center",
+        "backgroundColor": "var(--surface)",
+        "borderBottomStyle": "solid",
+        "borderBottomWidth": "var(--border-1)",
+        "borderBottomColor": "var(--border)",
+        "paddingTop": "var(--space-4)",
+        "paddingBottom": "var(--space-4)"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "inner",
+      "type": "Group",
+      "label": "The capped row",
+      "parent": "bar",
+      "children": [
+        "identity",
+        "signOutButton"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "maxWidth": {
+          "value": 760,
+          "unit": "px"
+        },
+        "alignX": "center",
+        "flexDirection": "row",
+        "alignItems": "center",
+        "justifyContent": "space-between",
+        "columnGap": "var(--space-4)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "identity",
+      "type": "Group",
+      "label": "Whose members’ area this is",
+      "parent": "inner",
+      "children": [
+        "eyebrow",
+        "name"
+      ],
+      "parameters": {
+        "flexDirection": "column",
+        "rowGap": "var(--space-1)"
+      },
+      "x": 160,
+      "y": 280
+    },
+    {
+      "id": "eyebrow",
+      "type": "Text",
+      "label": "Members’ area",
+      "parent": "identity",
+      "parameters": {
+        "text": "Members’ area",
+        "fontSize": "var(--text-xs)",
+        "fontWeight": "var(--font-semibold)",
+        "letterSpacing": "var(--tracking-widest)",
+        "textTransform": "uppercase",
+        "color": "var(--primary)"
+      },
+      "x": 220,
+      "y": 400
+    },
+    {
+      "id": "name",
+      "type": "Text",
+      "label": "The association",
+      "parent": "identity",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-xl)",
+        "fontWeight": "var(--font-semibold)",
+        "lineHeight": "var(--leading-snug)",
+        "color": "var(--foreground)"
+      },
+      "x": 220,
+      "y": 520
+    },
+    {
+      "id": "signOutButton",
+      "type": "net.noodl.controls.button",
+      "label": "Sign out",
+      "parent": "inner",
+      "parameters": {
+        "label": "Sign out",
+        "backgroundColor": "transparent",
+        "color": "var(--foreground)",
+        "borderRadius": "var(--radius-full)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-control)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "sizeMode": "contentSize"
+      },
+      "x": 160,
+      "y": 640
+    },
+    {
+      "id": "association",
+      "type": "DbCollection2",
+      "label": "The association",
+      "parameters": {
+        "collectionName": "Association"
+      },
+      "x": 470,
+      "y": 760
+    },
+    {
+      "id": "read",
+      "type": "JavaScriptFunction",
+      "label": "Its name, once there is one",
+      "parameters": {
+        "functionScript": "if (Inputs.rows === undefined) return;\nconst rows = Inputs.rows || [];\nOutputs.name = rows.length > 0 ? (rows[0].name || '') : '';"
+      },
+      "x": 470,
+      "y": 520
+    },
+    {
+      "id": "logout",
+      "type": "net.noodl.user.LogOut",
+      "label": "Log out",
+      "x": 470,
+      "y": 640
+    },
+    {
+      "id": "toLanding-6",
+      "type": "RouterNavigate",
+      "label": "Back to the public page",
+      "parameters": {
+        "router": "Main",
+        "target": "/Pages/Landing"
+      },
+      "x": 470,
+      "y": 880
+    }
+  ],
+  "visualRoots": [
+    "bar"
+  ]
+}

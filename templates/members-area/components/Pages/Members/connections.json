@@ -92,18 +92,6 @@
       "fromProperty": "onClick",
       "toId": "toDirectory",
       "toProperty": "navigate"
-    },
-    {
-      "fromId": "signOutButton",
-      "fromProperty": "onClick",
-      "toId": "logout",
-      "toProperty": "login"
-    },
-    {
-      "fromId": "logout",
-      "fromProperty": "done",
-      "toId": "toLanding",
-      "toProperty": "navigate"
     }
   ]
 }

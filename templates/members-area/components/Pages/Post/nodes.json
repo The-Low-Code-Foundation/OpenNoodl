@@ -8,6 +8,7 @@
       "type": "Page",
       "label": "Post",
       "children": [
+        "chrome-5",
         "ground-9"
       ],
       "parameters": {
@@ -16,6 +17,14 @@
       },
       "x": 40,
       "y": 40
+    },
+    {
+      "id": "chrome-5",
+      "type": "/Members/Chrome",
+      "label": "The band",
+      "parent": "page-9",
+      "x": 100,
+      "y": 160
     },
     {
       "id": "ground-9",
@@ -51,7 +60,7 @@
         "paddingBottom": "var(--space-12)"
       },
       "x": 100,
-      "y": 160
+      "y": 280
     },
     {
       "id": "heading-7",
@@ -67,7 +76,7 @@
         "color": "var(--foreground)"
       },
       "x": 160,
-      "y": 280
+      "y": 400
     },
     {
       "id": "notAllowed",
@@ -97,7 +106,7 @@
         "mounted": false
       },
       "x": 160,
-      "y": 400
+      "y": 520
     },
     {
       "id": "notAllowedText",
@@ -110,7 +119,7 @@
         "color": "var(--destructive)"
       },
       "x": 220,
-      "y": 520
+      "y": 640
     },
     {
       "id": "tools",
@@ -131,7 +140,7 @@
         "mounted": false
       },
       "x": 160,
-      "y": 640
+      "y": 760
     },
     {
       "id": "announcementForm",
@@ -164,7 +173,7 @@
         "paddingBottom": "var(--space-5)"
       },
       "x": 220,
-      "y": 760
+      "y": 880
     },
     {
       "id": "aHeading",
@@ -179,7 +188,7 @@
         "color": "var(--foreground)"
       },
       "x": 280,
-      "y": 880
+      "y": 1000
     },
     {
       "id": "aTitle",
@@ -207,7 +216,7 @@
         "label": "Title"
       },
       "x": 280,
-      "y": 1000
+      "y": 1120
     },
     {
       "id": "aBody",
@@ -236,7 +245,7 @@
         "type": "textArea"
       },
       "x": 280,
-      "y": 1120
+      "y": 1240
     },
     {
       "id": "aButton",
@@ -258,7 +267,7 @@
         "sizeMode": "contentSize"
       },
       "x": 280,
-      "y": 1240
+      "y": 1360
     },
     {
       "id": "aDone",
@@ -272,7 +281,7 @@
         "color": "var(--accent-foreground)"
       },
       "x": 280,
-      "y": 1360
+      "y": 1480
     },
     {
       "id": "meetingForm",
@@ -307,7 +316,7 @@
         "paddingBottom": "var(--space-5)"
       },
       "x": 220,
-      "y": 1480
+      "y": 1600
     },
     {
       "id": "mHeading",
@@ -322,7 +331,7 @@
         "color": "var(--foreground)"
       },
       "x": 280,
-      "y": 1600
+      "y": 1720
     },
     {
       "id": "mTitle",
@@ -350,7 +359,7 @@
         "label": "Title"
       },
       "x": 280,
-      "y": 1720
+      "y": 1840
     },
     {
       "id": "mWhen",
@@ -379,7 +388,7 @@
         "placeholder": "2026-09-14"
       },
       "x": 280,
-      "y": 1840
+      "y": 1960
     },
     {
       "id": "mPlace",
@@ -407,7 +416,7 @@
         "label": "Where"
       },
       "x": 280,
-      "y": 1960
+      "y": 2080
     },
     {
       "id": "mDetails",
@@ -436,7 +445,7 @@
         "type": "textArea"
       },
       "x": 280,
-      "y": 2080
+      "y": 2200
     },
     {
       "id": "mButton",
@@ -458,7 +467,7 @@
         "sizeMode": "contentSize"
       },
       "x": 280,
-      "y": 2200
+      "y": 2320
     },
     {
       "id": "mDone",
@@ -472,7 +481,7 @@
         "color": "var(--accent-foreground)"
       },
       "x": 280,
-      "y": 2320
+      "y": 2440
     },
     {
       "id": "backButton-4",
@@ -496,14 +505,14 @@
         "sizeMode": "contentSize"
       },
       "x": 160,
-      "y": 2440
+      "y": 2560
     },
     {
       "id": "standing-3",
       "type": "/Members/Standing",
       "label": "Who is this?",
       "x": 530,
-      "y": 640
+      "y": 760
     },
     {
       "id": "notModerator",
@@ -513,7 +522,7 @@
         "functionScript": "if (Inputs.isModerator === undefined) return;\nOutputs.no = Inputs.isModerator !== true;"
       },
       "x": 530,
-      "y": 400
+      "y": 520
     },
     {
       "id": "stampAnnouncement",
@@ -530,7 +539,7 @@
         }
       ],
       "x": 530,
-      "y": 1240
+      "y": 1360
     },
     {
       "id": "createAnnouncement",
@@ -558,7 +567,7 @@
         "acl-member-write": false
       },
       "x": 530,
-      "y": 1000
+      "y": 1120
     },
     {
       "id": "createMeeting",
@@ -586,7 +595,7 @@
         "acl-member-write": false
       },
       "x": 530,
-      "y": 1720
+      "y": 1840
     },
     {
       "id": "aDoneGate",
@@ -597,7 +606,7 @@
         "runOnChange-condition": false
       },
       "x": 530,
-      "y": 1360
+      "y": 1480
     },
     {
       "id": "mDoneGate",
@@ -608,7 +617,7 @@
         "runOnChange-condition": false
       },
       "x": 530,
-      "y": 2320
+      "y": 2440
     },
     {
       "id": "toMembers-3",
@@ -619,7 +628,7 @@
         "target": "/Pages/Members"
       },
       "x": 530,
-      "y": 2440
+      "y": 2560
     },
     {
       "id": "toLanding-3",
@@ -630,7 +639,7 @@
         "target": "/Pages/Landing"
       },
       "x": 530,
-      "y": 2560
+      "y": 2680
     }
   ],
   "visualRoots": [

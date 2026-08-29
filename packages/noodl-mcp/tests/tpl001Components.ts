@@ -115,6 +115,9 @@ export interface Tpl001Component {
 
 /** The one component instance every gated screen places. */
 export const STANDING_COMPONENT = '/Members/Standing';
+export const CHROME_COMPONENT = '/Members/Chrome';
+/** The one node in the runtime that reflows — see `moderatorButtons`. */
+const COLUMNS_NODE = 'net.noodl.visual.columns';
 export const INSIDE_TILE_COMPONENT = '/Members/InsideTile';
 
 /** The repeater templates, named once so a page and its row cannot drift apart. */
@@ -305,7 +308,17 @@ const PRIMARY_LABELS: ReadonlySet<string> = new Set([
   'Set up this members\u2019 area',
   'Post it',
   'Add it to the diary',
-  'Approve'
+  'Approve',
+  // s8. `Pages/Members` had FIVE buttons and every one of them was the outline,
+  // so the busiest screen in the template had no main action at all.
+  //
+  // ⚠️ **Correcting this file's own framing**: the fix is not "every page gets a
+  // filled button". Five of eleven pages have no primary and four of those are
+  // right to — `Meetings`, `Directory` and the two detail pages are for reading,
+  // and a filled button on a page whose job is to be read invents an urgency
+  // that is not there. `Pages/Members` was the real one: a moderator arrives to
+  // post something, and that action looked exactly like "Who belongs".
+  'Post something'
 ]);
 
 /**
@@ -1391,7 +1404,13 @@ const MEMBERS: Tpl001Component = {
       type: 'Page',
       label: 'Members',
       parameters: { title: 'Members', urlPath: 'members' },
-      children: ['ground']
+      children: ['chrome', 'ground']
+    },
+    {
+      id: 'chrome',
+      type: CHROME_COMPONENT,
+      label: 'The band',
+      parent: 'page'
     },
     {
       id: 'ground',
@@ -1399,14 +1418,18 @@ const MEMBERS: Tpl001Component = {
       label: 'Page ground',
       parent: 'page',
       parameters: PAGE_GROUND,
-      children: ['heading', 'pendingNotice', 'unknownNotice', 'memberArea', 'moderatorTools', 'signOutButton']
+      children: ['heading', 'pendingNotice', 'unknownNotice', 'memberArea', 'moderatorTools']
     },
     {
       id: 'heading',
       type: 'Text',
       label: 'Heading',
       parent: 'ground',
-      parameters: { text: 'Members', ...H_PAGE }
+      // ⚠️ **"Announcements", not "Members", since s8.** The band above now says
+      // whose members' area this is, so a page heading repeating the word
+      // "Members" named the app twice and the screen not at all. This page IS
+      // the noticeboard; `listHeading` used to say so underneath and is gone.
+      parameters: { text: 'Announcements', ...H_PAGE }
     },
     // 🔴 AC3's screen. A pending member is refused exactly as a stranger is, and
     // this is the sentence that stops that refusal reading as a broken app — now
@@ -1425,14 +1448,7 @@ const MEMBERS: Tpl001Component = {
       // ⚠️ A SECTION, not a card: it holds the announcement cards, and a card
       // inside a card has no edge anybody can see (1.26:1 between the fills).
       parameters: { ...SECTION, mounted: false },
-      children: ['listHeading', 'list', 'emptyState', 'meetingsButton']
-    },
-    {
-      id: 'listHeading',
-      type: 'Text',
-      label: 'Announcements',
-      parent: 'memberArea',
-      parameters: { text: 'Announcements', ...H_SECTION }
+      children: ['list', 'emptyState', 'meetingsButton']
     },
     {
       id: 'list',
@@ -1466,42 +1482,69 @@ const MEMBERS: Tpl001Component = {
       // 🔴 AC4's first half. The second half — the write being refused at the
       // server — is `Announcement.create: role:admin` in the policy, and it is
       // the half that counts: UI-only enforcement fails that criterion.
-      // A panel rather than three buttons loose on the page. It holds no cards,
-      // so it can carry a surface without swallowing anything.
-      parameters: { ...laidOut('row', PANEL, 'var(--space-3)'), alignItems: 'center', mounted: false },
+      //
+      // ⚠️ **No longer a panel, since s8.** Boxing these three made the page read
+      // as five buttons of which three were in a card and two were not, for no
+      // reason a reader could see — and the box was the same `--surface` card
+      // the announcements above it wear, so it claimed to be the same kind of
+      // thing as an announcement. An eyebrow says who they are for in a word,
+      // which is what the box was trying and failing to say.
+      parameters: { ...SECTION, mounted: false },
+      children: ['moderatorEyebrow', 'moderatorButtons']
+    },
+    {
+      id: 'moderatorEyebrow',
+      type: 'Text',
+      label: 'For moderators',
+      parent: 'moderatorTools',
+      parameters: { text: 'For moderators', ...T_EYEBROW }
+    },
+    {
+      id: 'moderatorButtons',
+      // 🔴 **A `Columns`, and it is the only node in the runtime that could be.**
+      // Measured at 390px: three buttons in a `Group` row ran off the right edge
+      // — "Who belongs" was a single visible letter — and no Group has a
+      // breakpoint, which the `columnsTwoUp` composition says in its own
+      // description. `gridAutoFit` reflows on the CONTAINER's width with no
+      // breakpoints to maintain.
+      //
+      // ⚠️ `minWidth` overridden from the composition's 280px: that is sized for
+      // cards, and at 280 three buttons would be two columns on a desktop that
+      // has room for three. 160 fits three across at 712px and two at 342px.
+      type: COLUMNS_NODE,
+      label: 'The three moderator actions',
+      parent: 'moderatorTools',
+      parameters: { ...composition('gridAutoFit'), minWidth: { value: 160, unit: 'px' } },
       children: ['postButton', 'requestsButton', 'directoryButton']
     },
     {
       id: 'postButton',
       type: 'net.noodl.controls.button',
       label: 'Post something',
-      parent: 'moderatorTools',
+      parent: 'moderatorButtons',
       parameters: btn('Post something')
     },
     {
       id: 'requestsButton',
       type: 'net.noodl.controls.button',
       label: 'Requests to join',
-      parent: 'moderatorTools',
+      parent: 'moderatorButtons',
       parameters: btn('Requests to join')
     },
     {
       id: 'directoryButton',
       type: 'net.noodl.controls.button',
       label: 'Who belongs',
-      parent: 'moderatorTools',
+      parent: 'moderatorButtons',
       // ⚠️ Not "Members": this page is already called Members, and a button on
       // it leading to another screen with the same name is the kind of label
       // that only makes sense to whoever built it.
       parameters: btn('Who belongs')
     },
-    {
-      id: 'signOutButton',
-      type: 'net.noodl.controls.button',
-      label: 'Sign out',
-      parent: 'ground',
-      parameters: btn('Sign out')
-    },
+    // ⚠️ No `signOutButton` here since s8: it lives in `Members/Chrome`, at the
+    // top of every signed-in page, where a person looks for it. This page used
+    // to be the only screen you could sign out from, so every other page ended
+    // in "Back to the members area" for want of anywhere else to go.
     { id: 'standing', type: STANDING_COMPONENT, label: 'Who is this?' },
     {
       id: 'announcements',
@@ -1523,7 +1566,6 @@ const MEMBERS: Tpl001Component = {
         functionScript: 'Outputs.empty = (Inputs.count || 0) === 0;'
       }
     },
-    { id: 'logout', type: 'net.noodl.user.LogOut', label: 'Log out' },
     {
       id: 'toLanding',
       type: 'RouterNavigate',
@@ -1575,15 +1617,10 @@ const MEMBERS: Tpl001Component = {
     { fromId: 'meetingsButton', fromProperty: 'onClick', toId: 'toMeetings', toProperty: 'navigate' },
     { fromId: 'postButton', fromProperty: 'onClick', toId: 'toPost', toProperty: 'navigate' },
     { fromId: 'requestsButton', fromProperty: 'onClick', toId: 'toRequests', toProperty: 'navigate' },
-    { fromId: 'directoryButton', fromProperty: 'onClick', toId: 'toDirectory', toProperty: 'navigate' },
-
-    // 🔴 `login`, on the Log Out node, is not a typo. `logout.ts:67` states why:
-    // *"Named `login` rather than `logout`: the port name is persisted in every
-    // project that uses this node, so it cannot be corrected without breaking
-    // them."* It is displayed as "Do". The door refuses `logout` and suggests
-    // this, which is how it was found.
-    { fromId: 'signOutButton', fromProperty: 'onClick', toId: 'logout', toProperty: 'login' },
-    { fromId: 'logout', fromProperty: 'done', toId: 'toLanding', toProperty: 'navigate' }
+    { fromId: 'directoryButton', fromProperty: 'onClick', toId: 'toDirectory', toProperty: 'navigate' }
+    // ⚠️ Signing out moved to `Members/Chrome` in s8, and the Log Out node went
+    // with the button that drove it. `toLanding` stays: it is still the
+    // destination when the standing check answers `Visitor`.
   ],
   deferred: ['toMeetings', 'toPost', 'toRequests', 'toDirectory']
 };
@@ -1613,7 +1650,13 @@ const ANNOUNCEMENT: Tpl001Component = {
       // 🔴 Braces, not a colon (`router.tsx:614`, `:753`), and two segments so
       // no one-segment page can ever tie with it.
       parameters: { title: 'Announcement', urlPath: `announcements/{${ANNOUNCEMENT_PARAM}}` },
-      children: ['ground']
+      children: ['chrome', 'ground']
+    },
+    {
+      id: 'chrome',
+      type: CHROME_COMPONENT,
+      label: 'The band',
+      parent: 'page'
     },
     {
       id: 'ground',
@@ -1721,7 +1764,13 @@ const MEETINGS: Tpl001Component = {
       type: 'Page',
       label: 'Meetings',
       parameters: { title: 'What’s coming up', urlPath: 'meetings' },
-      children: ['ground']
+      children: ['chrome', 'ground']
+    },
+    {
+      id: 'chrome',
+      type: CHROME_COMPONENT,
+      label: 'The band',
+      parent: 'page'
     },
     {
       id: 'ground',
@@ -1832,7 +1881,13 @@ const MEETING: Tpl001Component = {
       type: 'Page',
       label: 'Meeting',
       parameters: { title: 'Meeting', urlPath: `meetings/{${MEETING_PARAM}}` },
-      children: ['ground']
+      children: ['chrome', 'ground']
+    },
+    {
+      id: 'chrome',
+      type: CHROME_COMPONENT,
+      label: 'The band',
+      parent: 'page'
     },
     {
       id: 'ground',
@@ -2289,7 +2344,13 @@ const POST: Tpl001Component = {
       type: 'Page',
       label: 'Post',
       parameters: { title: 'Post something', urlPath: 'post' },
-      children: ['ground']
+      children: ['chrome', 'ground']
+    },
+    {
+      id: 'chrome',
+      type: CHROME_COMPONENT,
+      label: 'The band',
+      parent: 'page'
     },
     {
       id: 'ground',
@@ -2537,7 +2598,13 @@ const REQUESTS: Tpl001Component = {
       type: 'Page',
       label: 'Requests',
       parameters: { title: 'Requests to join', urlPath: 'requests' },
-      children: ['ground']
+      children: ['chrome', 'ground']
+    },
+    {
+      id: 'chrome',
+      type: CHROME_COMPONENT,
+      label: 'The band',
+      parent: 'page'
     },
     {
       id: 'ground',
@@ -2669,7 +2736,13 @@ const DIRECTORY: Tpl001Component = {
       // browser tab and as the on-page heading. "Who belongs" is the wording
       // already on the button that opens it.
       parameters: { title: 'Who belongs', urlPath: 'directory' },
-      children: ['ground']
+      children: ['chrome', 'ground']
+    },
+    {
+      id: 'chrome',
+      type: CHROME_COMPONENT,
+      label: 'The band',
+      parent: 'page'
     },
     {
       id: 'ground',
@@ -2837,6 +2910,139 @@ export const INSIDE_TILE_WIRES = [
   { fromId: 'inputs', fromProperty: 'line', toId: 'tileLine', toProperty: 'text' }
 ];
 
+/**
+ * The band across the top of every signed-in page.
+ *
+ * 🔴 **Cause 5 of "it feels like Bootstrap": the association's name appeared on
+ * exactly one screen.** Sign in and you could be in any app — eleven pages, each
+ * headed with a generic noun, two of them the same generic noun (D23). This puts
+ * the identity on every page a member sees, which is the one thing no amount of
+ * spacing work can substitute for.
+ *
+ * ⚠️ **It sits OUTSIDE the page ground, as a sibling of it.** `PAGE_GROUND` caps
+ * content at 760px and centres it; a header inside that would be a 760px strip
+ * floating on the page rather than a band across it. This is the vocabulary's
+ * own `band` + `shell` shape — a full-width surface with a capped, centred row
+ * inside — built here rather than composed from `band` because `band` carries
+ * `--space-20` of vertical padding, which is a section's air and not a header's.
+ *
+ * ⚠️ **Two rows, not one, and that is a mobile decision.** The name and the way
+ * out sit on one line with the nav beneath, because six pill buttons and a
+ * heading on one 390px line is a wrap or an overflow and there is no `flexWrap`
+ * on a Group.
+ *
+ * ⚠️ **The query keeps its load-time fetch**, exactly as `Pages/Landing`'s does:
+ * `Association` is the one row the world may read, and with no trigger wired
+ * there is no other moment for it to run.
+ */
+export const CHROME_NODES = [
+  {
+    id: 'bar',
+    type: 'Group',
+    label: 'The band',
+    parameters: {
+      width: { value: 100, unit: '%' },
+      flexDirection: 'column',
+      alignItems: 'center',
+      backgroundColor: 'var(--surface)',
+      borderBottomStyle: 'solid',
+      borderBottomWidth: 'var(--border-1)',
+      borderBottomColor: 'var(--border)',
+      paddingTop: 'var(--space-4)',
+      paddingBottom: 'var(--space-4)'
+    },
+    children: ['inner']
+  },
+  {
+    id: 'inner',
+    type: 'Group',
+    label: 'The capped row',
+    parent: 'bar',
+    parameters: {
+      width: { value: 100, unit: '%' },
+      sizeMode: 'contentHeight',
+      maxWidth: { value: 760, unit: 'px' },
+      alignX: 'center',
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      // 🔴 Measured at 390px: without this the association name wraps to two
+      // lines and runs under the Sign out button. `space-between` puts air
+      // between them only while there IS air.
+      columnGap: 'var(--space-4)',
+      paddingLeft: 'var(--space-6)',
+      paddingRight: 'var(--space-6)'
+    },
+    children: ['identity', 'signOutButton']
+  },
+  {
+    id: 'identity',
+    type: 'Group',
+    label: 'Whose members’ area this is',
+    parent: 'inner',
+    parameters: { flexDirection: 'column', rowGap: 'var(--space-1)' },
+    children: ['eyebrow', 'name']
+  },
+  {
+    id: 'eyebrow',
+    type: 'Text',
+    label: 'Members’ area',
+    parent: 'identity',
+    parameters: { text: 'Members’ area', ...T_EYEBROW }
+  },
+  {
+    id: 'name',
+    type: 'Text',
+    label: 'The association',
+    parent: 'identity',
+    // Rule 3: a standing empty text, so nothing renders the word "Text" while
+    // the record is on its way.
+    parameters: { text: '', ...T_CARD_TITLE }
+  },
+  {
+    id: 'signOutButton',
+    type: 'net.noodl.controls.button',
+    label: 'Sign out',
+    parent: 'inner',
+    parameters: btn('Sign out')
+  },
+  {
+    id: 'association',
+    type: 'DbCollection2',
+    label: 'The association',
+    parameters: { collectionName: COLLECTION_ASSOCIATION }
+  },
+  {
+    id: 'read',
+    type: 'JavaScriptFunction',
+    label: 'Its name, once there is one',
+    parameters: {
+      functionScript:
+        'if (Inputs.rows === undefined) return;\n' +
+        'const rows = Inputs.rows || [];\n' +
+        "Outputs.name = rows.length > 0 ? (rows[0].name || '') : '';"
+    }
+  },
+  { id: 'logout', type: 'net.noodl.user.LogOut', label: 'Log out' },
+  {
+    id: 'toLanding',
+    type: 'RouterNavigate',
+    label: 'Back to the public page',
+    parameters: { router: ROUTER, target: '/Pages/Landing' }
+  }
+];
+
+export const CHROME_WIRES = [
+  { fromId: 'association', fromProperty: 'items', toId: 'read', toProperty: 'in-rows' },
+  { fromId: 'association', fromProperty: 'fetched', toId: 'read', toProperty: 'run' },
+  { fromId: 'read', fromProperty: 'out-name', toId: 'name', toProperty: 'text' },
+  // 🔴 `login`, on the Log Out node, is not a typo — `logout.ts:67`: the port
+  // name is persisted in every project that ever wired it, and renaming it would
+  // break them. It is displayed as "Do".
+  { fromId: 'signOutButton', fromProperty: 'onClick', toId: 'logout', toProperty: 'login' },
+  { fromId: 'logout', fromProperty: 'done', toId: 'toLanding', toProperty: 'navigate' }
+];
+
 // ── The set, in an order the door will accept ────────────────────────────────
 
 /** The four repeater rows and the standing gate: components, not pages. */
@@ -2856,7 +3062,11 @@ export const TPL001_PARTS: Tpl001Component[] = [
   // Placed directly by `Pages/Landing` rather than by a `For Each`, so it is
   // here for the same reason the rows are: the page that places it is written
   // later, and a component must exist before something instantiates it.
-  { path: 'Members/InsideTile', nodes: INSIDE_TILE_NODES, connections: INSIDE_TILE_WIRES }
+  { path: 'Members/InsideTile', nodes: INSIDE_TILE_NODES, connections: INSIDE_TILE_WIRES },
+  // The band across every signed-in page. `Pages/Landing` does not place it —
+  // it has a hero carrying the same identity, and a stranger has nothing to
+  // sign out of.
+  { path: 'Members/Chrome', nodes: CHROME_NODES, connections: CHROME_WIRES, deferred: ['toLanding'] }
 ];
 
 /**

@@ -91,6 +91,14 @@
       "modified": "2026-08-28T00:00:00.000Z",
       "created": "2026-08-28T00:00:00.000Z"
     },
+    "Members/Chrome": {
+      "path": "Members/Chrome",
+      "type": "visual",
+      "nodeCount": 10,
+      "connectionCount": 5,
+      "modified": "2026-08-28T00:00:00.000Z",
+      "created": "2026-08-28T00:00:00.000Z"
+    },
     "Pages/Landing": {
       "path": "Pages/Landing",
       "type": "page",
@@ -111,14 +119,14 @@
       "path": "Pages/Members",
       "type": "page",
       "nodeCount": 27,
-      "connectionCount": 17,
+      "connectionCount": 15,
       "modified": "2026-08-28T00:00:00.000Z",
       "created": "2026-08-28T00:00:00.000Z"
     },
     "Pages/Announcement": {
       "path": "Pages/Announcement",
       "type": "page",
-      "nodeCount": 14,
+      "nodeCount": 15,
       "connectionCount": 11,
       "modified": "2026-08-28T00:00:00.000Z",
       "created": "2026-08-28T00:00:00.000Z"
@@ -126,7 +134,7 @@
     "Pages/Meetings": {
       "path": "Pages/Meetings",
       "type": "page",
-      "nodeCount": 16,
+      "nodeCount": 17,
       "connectionCount": 11,
       "modified": "2026-08-28T00:00:00.000Z",
       "created": "2026-08-28T00:00:00.000Z"
@@ -134,7 +142,7 @@
     "Pages/Meeting": {
       "path": "Pages/Meeting",
       "type": "page",
-      "nodeCount": 15,
+      "nodeCount": 16,
       "connectionCount": 12,
       "modified": "2026-08-28T00:00:00.000Z",
       "created": "2026-08-28T00:00:00.000Z"
@@ -158,7 +166,7 @@
     "Pages/Post": {
       "path": "Pages/Post",
       "type": "page",
-      "nodeCount": 30,
+      "nodeCount": 31,
       "connectionCount": 20,
       "modified": "2026-08-28T00:00:00.000Z",
       "created": "2026-08-28T00:00:00.000Z"
@@ -166,7 +174,7 @@
     "Pages/Requests": {
       "path": "Pages/Requests",
       "type": "page",
-      "nodeCount": 16,
+      "nodeCount": 17,
       "connectionCount": 12,
       "modified": "2026-08-28T00:00:00.000Z",
       "created": "2026-08-28T00:00:00.000Z"
@@ -174,15 +182,15 @@
     "Pages/Directory": {
       "path": "Pages/Directory",
       "type": "page",
-      "nodeCount": 17,
+      "nodeCount": 18,
       "connectionCount": 11,
       "modified": "2026-08-28T00:00:00.000Z",
       "created": "2026-08-28T00:00:00.000Z"
     }
   },
   "stats": {
-    "totalComponents": 22,
-    "totalNodes": 290,
-    "totalConnections": 302
+    "totalComponents": 23,
+    "totalNodes": 306,
+    "totalConnections": 305
   }
 }

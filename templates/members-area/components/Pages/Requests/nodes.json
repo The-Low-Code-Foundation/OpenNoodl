@@ -8,6 +8,7 @@
       "type": "Page",
       "label": "Requests",
       "children": [
+        "chrome-6",
         "ground-10"
       ],
       "parameters": {
@@ -16,6 +17,14 @@
       },
       "x": 40,
       "y": 40
+    },
+    {
+      "id": "chrome-6",
+      "type": "/Members/Chrome",
+      "label": "The band",
+      "parent": "page-10",
+      "x": 100,
+      "y": 160
     },
     {
       "id": "ground-10",
@@ -51,7 +60,7 @@
         "paddingBottom": "var(--space-12)"
       },
       "x": 100,
-      "y": 160
+      "y": 280
     },
     {
       "id": "heading-8",
@@ -67,7 +76,7 @@
         "color": "var(--foreground)"
       },
       "x": 160,
-      "y": 280
+      "y": 400
     },
     {
       "id": "notAllowed-2",
@@ -97,7 +106,7 @@
         "mounted": false
       },
       "x": 160,
-      "y": 400
+      "y": 520
     },
     {
       "id": "notAllowedText-2",
@@ -110,7 +119,7 @@
         "color": "var(--destructive)"
       },
       "x": 220,
-      "y": 520
+      "y": 640
     },
     {
       "id": "queue",
@@ -131,7 +140,7 @@
         "mounted": false
       },
       "x": 160,
-      "y": 640
+      "y": 760
     },
     {
       "id": "list-3",
@@ -143,7 +152,7 @@
         "template": "/Members/RequestRow"
       },
       "x": 220,
-      "y": 760
+      "y": 880
     },
     {
       "id": "emptyState-3",
@@ -173,7 +182,7 @@
         "mounted": false
       },
       "x": 220,
-      "y": 880
+      "y": 1000
     },
     {
       "id": "emptyStateText-3",
@@ -186,7 +195,7 @@
         "color": "var(--muted-foreground)"
       },
       "x": 280,
-      "y": 1000
+      "y": 1120
     },
     {
       "id": "backButton-5",
@@ -210,14 +219,14 @@
         "sizeMode": "contentSize"
       },
       "x": 160,
-      "y": 1120
+      "y": 1240
     },
     {
       "id": "standing-4",
       "type": "/Members/Standing",
       "label": "Who is this?",
       "x": 530,
-      "y": 640
+      "y": 760
     },
     {
       "id": "notModerator-2",
@@ -227,7 +236,7 @@
         "functionScript": "if (Inputs.isModerator === undefined) return;\nOutputs.no = Inputs.isModerator !== true;"
       },
       "x": 530,
-      "y": 400
+      "y": 520
     },
     {
       "id": "requests",
@@ -245,7 +254,7 @@
         ]
       },
       "x": 530,
-      "y": 760
+      "y": 880
     },
     {
       "id": "emptyGate-3",
@@ -255,7 +264,7 @@
         "functionScript": "Outputs.empty = (Inputs.count || 0) === 0;"
       },
       "x": 530,
-      "y": 880
+      "y": 1000
     },
     {
       "id": "toMembers-4",
@@ -266,7 +275,7 @@
         "target": "/Pages/Members"
       },
       "x": 530,
-      "y": 1120
+      "y": 1240
     },
     {
       "id": "toLanding-4",
@@ -277,7 +286,7 @@
         "target": "/Pages/Landing"
       },
       "x": 530,
-      "y": 1240
+      "y": 1360
     }
   ],
   "visualRoots": [
