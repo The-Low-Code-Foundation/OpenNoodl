@@ -203,6 +203,53 @@ so, and the menu stops being busy"* — is still false. The half of it that chan
 answer now **exists**; nothing renders it. ⚠️ The fix is in **`sb005Components.ts`** — PageRow
 and Setup live there; `sb004Components.ts` holds the cloud endpoints this task already changed.
 
+#### 🔴 DRIVEN 2026-08-29 (s20) — **AC1 STILL FAILS, and the wiring is not why**
+
+Project `SBR-015 AC1 Refusal`, minted fresh from the regenerated template, wizard-attached backend
+`backend_mteswypad9d4u` on 8602, `SITE_SETUP_TOKEN` provisioned under the `functions` namespace,
+claimed through `/admin/setup`, one page created through the dialog.
+
+**The happy path is verified and is better than it was:**
+
+| | measured |
+|---|---|
+| publish a page with **zero sections** | **succeeds**, 16 ms — row reads `Published`, count sentence becomes *"One page, one published"*, menu closes |
+| the title | `About us` renders — the dialog's `prop-*` reach the record now |
+| the empty list before that | *"No pages yet. Use New page to make your first one."* (SBR-016) |
+
+🔴 **s12's trigger is gone.** A brand-new site publishing its first page was a 400 because the
+auto-created `Section` class had no `pageId` column; that is fixed (phase-80 **DEF-014**), and a
+zero-section page is now publishable exactly as §2.3a said it should be. **AC3 is therefore
+satisfied and AC1 lost its cheap repro in the same change.**
+
+**So the refusal was driven against a dead backend instead** — `kill` the listener on 8602, then
+Unpublish:
+
+| | measured |
+|---|---|
+| the call | `publishPage` fired, **1 ms**, `transferSize: 0` — connection refused |
+| the refusal text | **absent**, 35 s later. No node matching `/could not\|did not work\|failed/` |
+| anything in `--destructive` | **0 elements** at `rgb(220, 38, 38)` |
+| the menu | **still open** — `Duplicate` still hit-testable |
+| the row | still `Published` |
+
+🔴 **Both `failure` wires failed to act** (`to-Refused` and `to-Closed`), which is the tell: this
+is not the Text or the `States` node, it is the signal never arriving.
+
+**And it is not a missing graph.** Measured on the minted project rather than assumed:
+`components/Admin/PageRow/nodes.json` contains the refusal Text and `connections.json` contains
+**6 `failure` wires**. The wiring shipped.
+
+⚠️ **What this drive does NOT establish.** It ran **one** failure mode — a backend that is not
+listening. `CloudFunction2`'s `error` callback does call `setError`, which does
+`reportOutcomes(…, 'failure')` (`cloudfunction2.ts:182`), so the node is *capable*. Whether a
+**connection refusal** reaches that callback at all is the open question, and it is a different
+claim from "the wiring never fires". **The missing arm is an HTTP-error failure** — a call that
+reaches a live backend and is refused by it. Until that arm is run, "AC1 fails" is true and
+"the fix does not work" is not yet earned.
+
+⬜ **AC1 remains open**, now with a measurement rather than an absence of one.
+
 #### 🟡 WIRED 2026-08-29 (`379f4dec`) — the graph is done, the **drive is not**
 
 `failure → callState.to-Refused` on all three calls, `done → to-Quiet` so a later success
