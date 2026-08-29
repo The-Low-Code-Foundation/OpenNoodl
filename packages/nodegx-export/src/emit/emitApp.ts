@@ -11,6 +11,7 @@ import { CloudServicesIR, ExportIR } from '../ir/types';
 import { emitComponent } from './component';
 import { DATE_LIB_PATH, dateLibSource } from './dateLib';
 import { EmittedCopy, emitKits } from './kits';
+import { ExportReportData, REPORT_PATH, ReportComponent, renderReport, stripScope } from './report';
 import { emitScaffold } from './scaffold';
 import { emitStateModules } from './state';
 
@@ -36,6 +37,15 @@ export interface EmittedApp {
   copies: EmittedCopy[];
   /** EXP-004's feed: everything analysis or emission dropped or deferred, per component. */
   notes: string[];
+  /**
+   * The same facts, grouped by the scope the pushing code already knew (EXP-004).
+   *
+   * 🔴 **Built beside `notes`, never derived from it.** `notes` is a flat list of sentences and
+   * three dozen suites assert on its wording; recovering "which component is this about" by
+   * reading those sentences back would make every reword a re-grouping. Both channels are filled
+   * at the same push site, where `plan` is in hand and scope is a fact rather than a guess.
+   */
+  report: ExportReportData;
 }
 
 export function emitApp(ir: ExportIR, catalog: Catalog): EmittedApp {
@@ -54,29 +64,54 @@ export function emitApp(ir: ExportIR, catalog: Catalog): EmittedApp {
   }
   const kits = emitKits(ir, usedCustomTypes);
   Object.assign(files, kits.files);
-  notes.push(...kits.notes, ...moduleNotes(ir, project));
+  const moduleFailures = [...kits.notes, ...moduleNotes(ir, project)];
+  notes.push(...moduleFailures);
+
+  /**
+   * EXP-004's second channel. Every `push` below is paired with the `notes.push` on the line
+   * beside it — same fact, once as a sentence and once with the scope the caller already knows.
+   * Nothing here reads `notes` back.
+   */
+  const projectNotes: string[] = [];
 
   if (ir.project.cloudComponents.length > 0) {
-    notes.push(
-      `${ir.project.cloudComponents.length} cloud function component(s) skipped — they run on the backend's interpreter, not in the frontend export: ${ir.project.cloudComponents.join(', ')}`
-    );
+    const cloud = `${ir.project.cloudComponents.length} cloud function component(s) skipped — they run on the backend's interpreter, not in the frontend export: ${ir.project.cloudComponents.join(', ')}`;
+    notes.push(cloud);
+    projectNotes.push(cloud);
   }
 
   // Reachability is reported, never acted on: an unreachable component is still emitted, because
   // the author may be mid-build and the export is not the place to decide their project has dead
   // code. What it changes is how the rest of this list reads — a deferral in a component no route
   // reaches is not a gap in the export's reach (reach.ts, RECORD-VERBS §20).
+  const unreachable = new Set<string>();
   for (const legacy of project.reachability.unreachable) {
+    const path = legacy.replace(/^\//, '');
+    unreachable.add(path);
     notes.push(
-      `${legacy.replace(/^\//, '')}: no route reaches this component, so nothing in the running app renders it — its notes below describe code the app never runs`
+      `${path}: no route reaches this component, so nothing in the running app renders it — its notes below describe code the app never runs`
     );
   }
 
   /** Date helpers any component imports — the gate on emitting `src/lib/date.ts` at all. */
   const dateHelpersUsed = new Set<string>();
+  const reportComponents: ReportComponent[] = [];
   for (const plan of project.plans) {
     if (plan.skipReason) {
-      if (plan.rootId === null && !plan.file) notes.push(`${plan.path}: ${plan.skipReason}`);
+      if (plan.rootId === null && !plan.file) {
+        notes.push(`${plan.path}: ${plan.skipReason}`);
+        reportComponents.push({
+          path: plan.path,
+          role: plan.role,
+          file: null,
+          notes: [],
+          unreachable: unreachable.has(plan.path),
+          // ⚠️ `skipKind` decides which side of "lead with what worked" this lands on, and it is
+          // set at the two sites in `plan.ts` that know. Defaulting it here would put a
+          // logic-only component under "handled by the app shell" the day a third skip appears.
+          skipped: { kind: plan.skipKind ?? 'deferred', reason: plan.skipReason }
+        });
+      }
       continue;
     }
     const emitted = emitComponent(plan, project, ir, index, kits.bindings);
@@ -84,6 +119,16 @@ export function emitApp(ir: ExportIR, catalog: Catalog): EmittedApp {
     Object.assign(files, emitted.files);
     notes.push(...emitted.notes);
     notes.push(...plan.notes.map((note) => `${plan.path}: ${note}`));
+    reportComponents.push({
+      path: plan.path,
+      role: plan.role,
+      // Read off what was actually emitted rather than rebuilt from `plan.file`'s parts. The
+      // naming rule (`src/<dir>/<fileBase>.tsx`, deduplicated per directory) lives in one place,
+      // and a second copy here would be right until the day it was not.
+      file: Object.keys(emitted.files).find((f) => f.endsWith('.tsx')) ?? Object.keys(emitted.files)[0] ?? null,
+      notes: [...emitted.notes.map((note) => stripScope(plan.path, note)), ...plan.notes],
+      unreachable: unreachable.has(plan.path)
+    });
     for (const helper of emitted.dateHelpers) dateHelpersUsed.add(helper);
   }
 
@@ -103,6 +148,11 @@ export function emitApp(ir: ExportIR, catalog: Catalog): EmittedApp {
     files[path] = content;
   }
   notes.push(...api.notes);
+  // ⚠️ Deliberately NOT added to `projectNotes`. These two lines say which *mode* the api modules
+  // are in — connected, or stubs because the project declares no backend — and the report states
+  // that up front, under what was generated. Pushing them here as well would both duplicate the
+  // fact and file a working backend under "what needs your attention", which is the exact failure
+  // EXP-004's risk table calls "a good export looking bad".
   Object.assign(files, emitStateModules(project));
 
   // Dependencies are computed from the output (TARGET-OUTPUT §3): the library is earned by an
@@ -114,10 +164,30 @@ export function emitApp(ir: ExportIR, catalog: Catalog): EmittedApp {
     files['package.json'] = withCoreDependency(files['package.json']);
   }
 
+  /*
+   * EXP-004 — the report is written into the app, and it counts itself.
+   *
+   * ⚠️ **Emitted last, and its own path is in the count.** The number an author reads has to be
+   * the number of files they can see in the folder; leaving the report out of its own total would
+   * be off by one against `ls`, which is the first thing anyone checks.
+   */
+  const report: ExportReportData = {
+    projectName: ir.project.name,
+    files: [...Object.keys(files), REPORT_PATH].sort(),
+    components: reportComponents,
+    modules: moduleFailures,
+    project: projectNotes,
+    backendEndpoint: ir.project.cloudservices?.endpoint ?? null,
+    usesBackend: api.usesBackend,
+    httpModule: api.files.some(([path]) => path === 'src/api/http.ts')
+  };
+  files[REPORT_PATH] = renderReport(report);
+
   return {
     files: Object.fromEntries(Object.entries(files).sort(([a], [b]) => (a < b ? -1 : 1))),
     copies: [...kits.copies].sort((a, b) => (a.to < b.to ? -1 : a.to > b.to ? 1 : 0)),
-    notes
+    notes,
+    report
   };
 }
 
@@ -168,7 +238,26 @@ function withCoreDependency(packageJson: string): string {
  *   answer empty, writes throw — with the reason named in the report. A half-declared backend
  *   parses to none (parseCloudServices), so it lands here too.
  */
-function apiModules(ir: ExportIR, project: ProjectPlan): { files: Array<[string, string]>; notes: string[] } {
+function apiModules(
+  ir: ExportIR,
+  project: ProjectPlan
+): {
+  files: Array<[string, string]>;
+  notes: string[];
+  /**
+   * Whether this project asks anything of a *backend* — a collection query, a mutation, or a
+   * session call.
+   *
+   * 🔴 **Returned rather than re-derived, and the difference was a wrong sentence in the report.**
+   * "Are there api files?" and "does this project use a backend?" are two predicates, and
+   * `src/api/http.ts` is exactly where they part: an `HTTP Request` talks to whatever address the
+   * author typed, so it is real code in a project with no backend at all. EXP-004's report asked
+   * the first question and printed the second question's answer — telling a `quote-desk` author
+   * their working fetch was "emitted as a stub: reads answer empty and writes throw". The
+   * predicate this function already computes is the only one that means it.
+   */
+  usesBackend: boolean;
+} {
   type Site = { componentPath: string; nodeId: string };
   type Module = {
     typeName: string;
@@ -331,7 +420,7 @@ function apiModules(ir: ExportIR, project: ProjectPlan): { files: Array<[string,
     stubs.push(['.env.example', envExample(backend)]);
     stubs.push(['README.md', readmeMd(ir, backend)]);
   }
-  return { files: stubs, notes };
+  return { files: stubs, notes, usesBackend: hasApi };
 }
 
 /**

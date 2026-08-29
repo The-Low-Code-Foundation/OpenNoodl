@@ -26,7 +26,7 @@ README §*What went wrong* has the mechanism.
 | [EXP-001](./EXP-001-NODEGX-CORE.md) | `@nodegx/core` companion library | ✅ **Built** — `packages/nodegx-core`, 2.8 KB gzipped against an 8 KB budget, gated. No call sites: EXP-002 emits zero imports of it, by design |
 | [EXP-002](./EXP-002-DETERMINISTIC-GENERATORS.md) | Deterministic generators | 🟡 **In progress, re-aimed.** 51 picker nodes translate. `packages/nodegx-export`: 504 tests, 40/40 corpus projects typecheck. Remaining work moved to EXP-011 |
 | [EXP-003](./EXP-003-AI-LOGIC-TRANSLATION.md) | AI logic translation + trace harness | ⚪ Not started. **Reconsider the sizing** — it was scoped against corpus JS-node counts, most of which are in the unplaced prefab kit |
-| [EXP-004](./EXP-004-EXPORT-REPORT-UX.md) | Export report & honesty UX | 🔴 **Promoted.** The report exists **only as stdout**. A deferred node leaves *no marker in the emitted file* — see §"What a gap looks like" |
+| [EXP-004](./EXP-004-EXPORT-REPORT-UX.md) | Export report & honesty UX | 🟡 **Half built (§19).** `EXPORT-REPORT.md` now ships **inside the exported app**, structurally grouped, leading with what worked, and honest that nothing was run. ⚠️ Still missing: the **in-code markers** (a deferred wire on a rendered element leaves nothing in the file — see §"What a gap looks like", still true) and both **editor** surfaces (pre-flight estimate, in-editor report) |
 | [EXP-005](./EXP-005-MULTIFRAMEWORK-PIPELINE.md) | Multi-framework pipeline | ⚪ Not started |
 | [EXP-006](./EXP-006-EXPORT-AUTHORING-INTENT.md) | Export carries authoring intent | ⚪ Not started |
 | [EXP-007](./EXP-007-EXPORT-PROVENANCE.md) | Export provenance & regeneration safety | ⚪ Not started |
@@ -59,10 +59,15 @@ A deferred node is **invisible in the output**. Exported from `Puppy test 3`:
 <p className={styles.listText} />                            {/* empty — a Function fed it */}
 ```
 
-No `TODO`, no comment, no marker; grep finds zero. No report file is written into the output at
-all — the notes go to the export console and nothing keeps them. **The failure mode is a silently
-half-working app**, which is worse than a loud one. Every dropped wire already has a good sentence
-written about it; none of it survives into the artefact.
+No `TODO`, no comment, no marker; grep finds zero. **This half is still true at §19** — a wire
+dropped from an element that still renders leaves that element in place, looking right and doing
+nothing, and `puppy-test-3`'s emitted code carries no `TODO(export)` at all.
+
+✅ **The other half is closed.** Since §19 the sentences do survive into the artefact:
+`EXPORT-REPORT.md` is written into the exported app, and it names itself as the complete list
+precisely *because* the markers are not one. **The failure mode is a silently half-working app**,
+which is worse than a loud one — it is now a half-working app that comes with a written account of
+which half.
 
 ## The corpus, and its new job description
 
@@ -209,10 +214,11 @@ wire — a port only `Cancel` can fire, and `Cancel` is unwired — stays empty 
 a **mutant**: one Output Field pointed at a field no body has and the header emptied, after which
 exactly two readings changed.
 
-🔴 **A defect found in the editor, not the export**: `updatePorts` still publishes the
-pre-ERG-001 `success` port, so the HTTP Request node draws **both `Done` and a `Success` that can
-never fire** — the runtime sends `done`. The export drops such a wire with that reason rather than
-reproducing the silence; the one-line fix belongs in `httpnode.ts`.
+🔴 **A defect found in the editor, not the export**: `updatePorts` published the pre-ERG-001
+`success` port, so the HTTP Request node drew **both `Done` and a `Success` that could never
+fire** — the runtime sends `done`. The export drops such a wire with that reason rather than
+reproducing the silence. ✅ **Fixed in `httpnode.ts` at §19** (session 48); the export's arm stays,
+because a project authored before the fix still has the wire saved.
 
 ⚠️ **A gap this slice found and did not close**: a Variable written from an HTTP output types as
 `unknown`, and Pass 4 drops every read of a variable with no `string`-typed writer — so
@@ -272,3 +278,42 @@ Two control *pairs* carry the measurement — the same two instants compared at 
 
 Gates: **704/704** · module-inject 31/31 · `tsc --noEmit` clean · `export-ledger:check` OK ·
 picker ratchet **60 → 66 of 127 (52.0%)**.
+
+### Session 48 — the report the markers pointed at, and a port that could never fire
+
+**EXP-011 §19.** Two items from §18's list, neither of them a picker node — the ratchet holds at
+**69/127 (54.3%)**.
+
+**`httpnode.ts`'s dead `Success` port is gone** (§8.5's one line). `updatePorts` published the
+pre-ERG-001 name while the node fires `done`, so the editor drew an output nothing could send and
+a wire from it ran nothing. ⚠️ Deleting the port does not delete the wires a saved project already
+has — the export's arm stays, and the editor now raises its existing `con-no-source-port` error,
+which is the author-facing half of the same statement. The test asserts the **rule** (every signal
+output published must be one the node declares), not the name.
+
+**`EXPORT-REPORT.md` ships inside the exported app** — EXP-004's first half. Grouped from a
+structured channel built beside `notes`, never parsed back out of it; leads with what worked;
+carries every refusal with the exporter's own reason; and says plainly that nothing has been run,
+replayed or compared, because EXP-003 does not exist.
+
+🔴 **Three findings the build produced.** The data-access line was keyed on *"were any api files
+emitted"* and told `quote-desk` — which has a working generated `fetch` and no backend — that its
+reads answer empty and its writes throw; two predicates, one name, and the wrong one re-derived
+beside the right one. Two green checkers had populations that had quietly grown (a backtick sweep
+that meant *code* and now saw Markdown; a blast-radius assertion the report legitimately joins).
+And the report's own closing paragraph implied every listed refusal leaves a `TODO(export)` marker
+— it does not, `puppy-test-3` has none at all, and an overstatement there is the exact failure
+this task exists to prevent.
+
+**`scripts/emit-app.ts` dropped `copies`** — every `noodl_modules` asset that travels byte-for-byte
+(fonts, icons, kit scripts). The defect `kits.ts` closed, one layer up, green throughout because no
+test drives that script. Driven by hand: 17 files, **12 copied assets**, `dots.woff2` md5-identical.
+
+**Twelve mutants, ten killed on the first pass; both survivors closed.** One was a real hole — kit
+load failures could vanish from the report and all 910 tests passed — and one was weak and is
+recorded as weak. The runner reads jest's summary line and exit code, never a `--json` key, and
+byte-compares the tree against a snapshot after every mutant.
+
+Gates: **911/911** · 39 suites · module-inject 31/31 · `tsc --noEmit` clean ·
+`export-ledger:check` OK (175 types) · picker ratchet **69/127 (54.3%)** ·
+`noodl-runtime` **2564 passed, 13 skipped, 144 suites**.

@@ -188,12 +188,24 @@ describe('the parent end — an attribute the target does not declare', () => {
     ]);
   });
 
-  test('the refusal touches the two files it names and nothing else', () => {
+  test('the refusal touches the two files it names, the report, and nothing else', () => {
     const before = emitApp(cloneIr(), catalog);
     const mutated = cloneIr();
     deleteComponentInputsNode(mutated, 'Components/GreetingCard');
     const after = emitApp(mutated, catalog);
     const changed = Object.keys(before.files).filter((f) => before.files[f] !== after.files[f]);
-    expect(changed.sort()).toEqual(['src/components/GreetingCard.tsx', 'src/pages/Home.tsx']);
+    // 🔴 `EXPORT-REPORT.md` moving is the point of it, not blast radius. EXP-004's report is the
+    // written record of what the export refused, so a new refusal that left it unchanged would be
+    // the defect — it would mean the app shipped with a report that did not describe it. The
+    // *code* claim is unweakened and is the line below.
+    expect(changed.sort()).toEqual([
+      'EXPORT-REPORT.md',
+      'src/components/GreetingCard.tsx',
+      'src/pages/Home.tsx'
+    ]);
+    expect(changed.filter((f) => f.startsWith('src/')).sort()).toEqual([
+      'src/components/GreetingCard.tsx',
+      'src/pages/Home.tsx'
+    ]);
   });
 });

@@ -350,7 +350,7 @@ describe('EXP-011 Tier 1.2 — HTTP Request', () => {
       expect(httpFile(app)).toContain('export async function fetchQuote');
     });
 
-    it("drops a wire from the editor's stale Success port, and names it", () => {
+    it('drops a wire from the retired Success port, and names it', () => {
       const { app } = withRequest((ir, notes, http) => {
         const set = addNode(notes, {
           id: 'afterSuccess',
@@ -360,10 +360,11 @@ describe('EXP-011 Tier 1.2 — HTTP Request', () => {
         });
         connect(notes, http.id, 'success', set.id, 'do');
       });
-      // 🔴 `updatePorts` still publishes the pre-ERG-001 name, so the editor draws a Success
-      // port beside Done — and the node fires `done`. The wire does nothing in the running app,
-      // and the report is where an author can find that out.
-      expect(notesReport(app)).toContain('stale port name the editor still draws');
+      // 🔴 The editor used to draw a Success port beside Done, because `updatePorts` published
+      // the pre-ERG-001 name while the node fired `done`. §19 deleted the port — and this row
+      // stays, because deleting a port does not delete the wires a project already saved. This
+      // is the arm that keeps such a project's export honest rather than silently untranslated.
+      expect(notesReport(app)).toContain('a port this node stopped drawing');
     });
   });
 

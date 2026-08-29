@@ -347,8 +347,14 @@ describe('the puppy fixture is untouched by the slice', () => {
     for (const [name, content] of Object.entries(puppy.files)) {
       // EXP-009: the backend client is protocol code, not graph translation — template
       // literals and branches are its normal idiom, and backend-client.test.ts pins the
-      // whole file byte-for-byte, a stronger claim than this scan. README.md is prose.
-      if (name === 'src/api/client.ts' || name === 'README.md') continue;
+      // whole file byte-for-byte, a stronger claim than this scan.
+      if (name === 'src/api/client.ts') continue;
+      // 🔴 Excluded **by kind, not by name.** This sweep is about generated *code*: a backtick in
+      // TypeScript is a template literal, and in Markdown it is a code span. `README.md` used to
+      // be listed here individually, and EXP-004's `EXPORT-REPORT.md` reddened it the day it
+      // arrived — the checker's population had quietly grown to include prose. Every `.md` the
+      // export writes is prose, so that is the line.
+      if (name.endsWith('.md')) continue;
       // A bare `not.toContain('if (')` stood in for "no Condition branch" until the record
       // verbs' Missing Record Id guard put a legitimate `if` in this fixture. The proxy was
       // always wider than the claim; assert the claim. Backticks appear in the api stubs' doc

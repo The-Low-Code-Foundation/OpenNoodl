@@ -1280,6 +1280,17 @@ export interface ComponentPlan {
   file: ComponentFilePlan | null;
   /** Why file is null, for the report. */
   skipReason?: string;
+  /**
+   * Which *kind* of skip {@link skipReason} describes — EXP-004's report leads with what worked,
+   * and these two do not belong on the same side of that line.
+   *
+   * 🔴 **A discriminator rather than a read of the sentence.** There are exactly two skips: the
+   * router shell, which the scaffold emits as `src/App.tsx` and is therefore *done*, and a
+   * logic-only component, which is *not*. Both arrive as one `notes` string prefixed with the
+   * component path, and a report that grouped them by matching the prose would call a working
+   * export broken the first time either sentence was reworded. Set at the two sites that know.
+   */
+  skipKind?: 'scaffolded' | 'deferred';
   /** The node the JSX root renders (the Page node for pages). */
   rootId: string | null;
   /** A page's sole Group child merged into the page div (TARGET-OUTPUT §2's shape). */
@@ -1617,6 +1628,7 @@ function planComponent(
             : { kind: 'deferred', to: 'EXP-003', reason: 'node beside the router shell' };
     }
     plan.skipReason = 'router shell — emitted as src/App.tsx by the scaffold';
+    plan.skipKind = 'scaffolded';
     return plan;
   }
 
@@ -1674,6 +1686,7 @@ function planComponent(
         named !== undefined ? { kind: 'deferred', to: 'EXP-003', reason: named } : dispositionForLogic(node, kits);
     }
     plan.skipReason = 'no visual root — logic-only components defer to EXP-003';
+    plan.skipKind = 'deferred';
     return plan;
   }
   if (roots.length > 1) {
@@ -5214,11 +5227,23 @@ function planComponent(
         consumes.push(wire.key);
         continue;
       }
-      // The editor draws a `Success` port beside `Done` because `updatePorts` still publishes the
-      // pre-ERG-001 name; the node itself fires `done`. A wire from it is dead in the running app.
+      /*
+       * 🔴 **Kept after the editor-side fix, and the reason is the tense.**
+       *
+       * `httpnode.ts`'s `updatePorts` used to publish the pre-ERG-001 name, so the editor drew a
+       * `Success` port beside `Done` and a wire from it ran nothing — the node fires `done`.
+       * EXP-011 §8.5 reported that rather than reproducing it, and §19 deleted the port.
+       *
+       * ⚠️ **Deleting the port does not delete the wires.** A project authored before the fix
+       * still has the connection saved in its `nodes.json`, and the export reads what is on disk.
+       * So this arm is not dead code: it is the only thing standing between such a project and a
+       * `success` wire that the export would otherwise call untranslated. The editor now marks
+       * the same wire with "Source port doesn't exist" (`evaluateConnectionHealth`), which is the
+       * author-facing half of the same statement.
+       */
       if (wire.fromProperty === 'success') {
         notesHere.push(
-          `wire ${wire.key} dropped: the node's success output is a stale port name the editor still draws — the runtime fires "done", and nothing is listening on "success" there either`
+          `wire ${wire.key} dropped: "success" is a port this node stopped drawing — it was the pre-ERG-001 name for "done" and was never fired under either name, so the wire ran nothing in the editor either`
         );
         consumes.push(wire.key);
         continue;

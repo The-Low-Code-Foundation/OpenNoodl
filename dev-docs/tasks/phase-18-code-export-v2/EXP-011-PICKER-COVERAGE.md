@@ -2102,3 +2102,204 @@ every row would be measuring the page, not the rule.
   whether an exemption citing a runtime file must have a test naming it, and §17 gave that two
   instances. §18.1 is a third and a different shape: the claim was corrected everywhere it was
   *returned* and nowhere it was merely *said*. Still unowned.
+
+## §19 The report the markers pointed at, and a defect fixed in the editor rather than reported (session 48, 2026-08-29)
+
+**69 of 127 (54.3%)** — unchanged, and nothing on the picker moved. This session did the two
+things at the top of §18's list, and neither is a node: the dead `Success` port §8.5 found in
+`httpnode.ts`, and **EXP-004's export report**, which two generated `TODO(export)` markers have
+pointed at by name since EXP-002 without it existing.
+
+### §19.1 🔴 §18.1's rule, applied before the fix rather than after it — and it found three more
+
+§18.1 is the lesson that a correction has to be grepped for **by its claim, not by the code that
+returned it**. §8.5's fix is one deleted `ports.push` in `updatePorts`, and the fix on its own
+would have left four statements of the old fact standing. `grep -rn "still publishes"` and a walk
+of the claim found them:
+
+| place | what it said | now |
+|---|---|---|
+| `httpnode.ts` `updatePorts` | drew `Success` beside `Done` | **deleted**, with the rule in its place |
+| `plan.ts`'s `success` arm | *"a stale port name the editor **still draws**"* | rewritten — **the arm stays** |
+| `http-request.test.ts` | asserted that sentence | asserts the new one |
+| `PROGRESS.md` §8.5 | *"`updatePorts` **still publishes**"* | past tense, and names the fix |
+
+🔴 **The export's arm is not dead code and deleting the port is not deleting the wires.** A project
+authored before this fix still has the `success` connection saved in its `nodes.json`, and the
+export reads what is on disk. That arm is the only thing between such a project and a wire the
+export would otherwise report as untranslated. What *changed* is the tense of every sentence
+around it — which is the whole finding, because the code was already right.
+
+⚠️ **The editor's half of the same statement already existed.** `evaluateConnectionHealth` raises
+`con-no-source-port` — *"Source port doesn't exist."*, `level: 'error'`, shown globally — so an
+author with a `Success` wire now sees a red error where they previously saw a wire that ran
+nothing. That is the migration answer: the port was **never fired under either name**, so nothing
+that worked stops working, and the one thing that changes is that the author can see it.
+
+**The catalog was right all along**, which is why the export could report this rather than
+reproduce it: `node-catalog.json` lists the static declaration (`done`/`unchanged`/`failure`/
+`completed`, no `success`), and only the *running* editor concatenated the stale dynamic list over
+it. A defect visible from exactly one of the three surfaces that describe this node.
+
+**The test is a rule, not a row.** `test/nodes/http-outcome-ports.test.ts` (6 rows) asserts that
+**every signal output `updatePorts` publishes is one the node type declares** — because
+`reportOutcome` gates on `hasOutput`, that set *is* "what this node can fire". A row naming
+`success` would pass the next time a stale name is copied in. ⚠️ Its population is asserted
+non-empty first: a subject set of zero passes on a publish that carries no outputs at all.
+
+### §19.2 EXP-004 — the report, and the three framing rules that are the actual work
+
+`EXPORT-REPORT.md` is now written into every exported app, from a structured channel built beside
+`notes` in `emitApp`. The prose is the deliverable, and EXP-004 names what it has to do:
+
+- **Lead with what worked.** Counts, then the components that came out whole, then what is
+  missing. A project with nothing to report says **"Nothing."** rather than printing an empty
+  heading — a case no fixture produces, which is why `renderReport` is pure and driven directly.
+- **Be specific, not statistical.** No percentage and no confidence score. Every line is a named
+  component, a named node or wire, and the exporter's own sentence for refusing it.
+- **Never let unverified code look verified.** ⚠️ The honest statement today is *narrower* than
+  EXP-004 anticipated — EXP-003's trace verification does not exist, so nothing has been run,
+  replayed or compared. The report says exactly that, and the test **counts** the uses of the word
+  "verified" rather than asserting its absence, because the page has to carry one sentence
+  denying it.
+
+🔴 **Grouping is by what the caller already knew, never by reading the prose back.** Scope is a
+fact at the push site (`plan` is in hand); `skipKind` — two assignments in `plan.ts` — is what
+tells the router shell, which the scaffold *emits*, from a logic-only component, which nothing
+emits. Both arrive as one sentence prefixed with a component path, and told apart by matching
+words they would swap sides the day either was reworded.
+
+⚠️ **No timestamp, and that is not an oversight.** The generators are byte-stable by design; a
+date line would break every golden in the package and turn "nothing changed" into noise.
+
+### §19.3 🔴 Two predicates wearing one name, and it printed a false sentence about working code
+
+The report's data-access line was keyed on **"were any api files emitted"**. `quote-desk` emits
+`src/api/http.ts` — a real, generated `fetch` for an `HTTP Request` — and declares no backend. So
+the report told its author, in the app they had just exported:
+
+> **Data access** in `src/api/`, emitted as **stubs**: reads answer empty and writes throw. The
+> project declares no backend…
+
+Every word of which is false about `http.ts`. `apiModules` had **already computed** the right
+predicate — `byCollection.size > 0 || hasSessionCalls`, "does this project ask anything of a
+*backend*" — and used it for its own note; the report re-derived a different one from the file
+list and got a question nobody had asked answered.
+
+🔴 **The reading fit and did not exclude.** The bullet rendered, it was grammatical, and on five of
+seven fixtures it was even right. It is now returned from `apiModules` rather than re-derived, and
+`src/api/http.ts` has its own line saying what it actually is. The rows are a control pair: same
+sentence generator, opposite answers, and the only thing varied is whether the project asks
+anything of a backend.
+
+### §19.4 🔴 Two green checkers whose populations had quietly grown
+
+Adding one Markdown file to the output reddened two suites, and neither was a defect in the
+report:
+
+- **`logic.test.ts`** sweeps every emitted file for backticks, meaning *"no template literals"*. A
+  backtick in TypeScript is a template literal; in Markdown it is a code span. The sweep already
+  carried `README.md` as a **named** exemption — so the population had grown before, and been
+  patched by name. It now excludes `.md` **by kind**, which is the population it always meant.
+- **`missing-interface.test.ts`** asserted a refusal touches *"the two files it names and nothing
+  else"*. The report is a third file, and it moving is **the point of it** — a new refusal that
+  left the report unchanged would ship an app whose report did not describe it. The code claim is
+  kept, unweakened, as its own line.
+
+### §19.5 🔴 The report nearly overstated itself, in the file whose job is not to
+
+The honesty section closed with what read as a promise:
+
+> Every marker names the node it stands in for, so a line here and a marker there are the two ends
+> of the same fact.
+
+Which says *every line has a marker*. It does not. **`puppy-test-3`'s emitted code carries no
+`TODO(export)` at all** while its report lists nine refusals — because a marker goes where an
+element could not be generated, and a wire dropped from an element that still renders leaves that
+element in place, looking right and doing nothing. PROGRESS.md's "what a gap looks like" section
+has said so since session 21 and is **still true**; EXP-004's in-code-marker half is not built.
+
+⚠️ **The failure this would have caused is the specific one this task exists to prevent**: a
+reader greps, finds nothing, and reads that as an all-clear — from the one document they were told
+to trust. The report now names itself as the complete list and the markers as a shortcut, and the
+row asserting it is written as the pair it is: **the markers are absent *and* the report says so.**
+Asserting only the wording would pass on the day markers arrive and the sentence went stale.
+
+🔴 It was found by grepping the emitted output for the string the report tells the reader to grep
+for. Nothing in the suite would have caught it, because prose that overstates is still prose.
+
+### §19.6 A defect in the one shipped entry point, which no test drives
+
+`scripts/emit-app.ts` wrote `files` and **dropped `copies` on the floor** — the `noodl_modules`
+assets that travel byte-for-byte (EXP-010 AC5): a kit's script, an icon set's `.woff2`, Inter's
+four `.ttf`. They are a separate channel precisely because a font is not a string.
+
+⚠️ **This is the defect `kits.ts` closed, reintroduced one layer up**, in the words of its own
+copy sites: *"a file the author wrote, silently absent from their exported repo."* Every gate
+stayed green throughout, because no test drives this script. Driven by hand on the `kits` fixture:
+17 files and **12 copied assets**, and `dots.woff2` md5-identical to its source.
+
+### §19.7 What proves it
+
+**911 tests** across the package (was 881) in **39 suites** (was 38) — `tests/export-report.test.ts`
+is 30 of them. `tsc --noEmit` clean, `nodegx-module-inject` 31/31, both ledger gates green
+(`69/127`; 175 types). `noodl-runtime`: **2564 passed, 13 skipped, 144 suites**, including the new
+`http-outcome-ports.test.ts`.
+
+**Twelve mutants, ten killed on the first pass, and the harness was checked before the zeros were
+believed** — the runner reads jest's **summary line and exit code**, never a `--json` key (§18.5's
+thirteen meaningless zeros), and restores the tree from a snapshot and byte-compares it after
+every mutant, so a mutant that failed to *apply* cannot read as one that killed nothing. Baseline
+and post-run tree both green.
+
+| mutant | rows |
+|---|---|
+| the report file is not emitted at all | **20** |
+| the per-component note list is truncated | 5 |
+| attention printed before what worked | 2 |
+| unreachable components never flagged | 2 |
+| the stub sentence keyed on any api file (§19.3) | 1 |
+| `stripScope` trims up to the first colon, whatever it belongs to | 1 |
+| the report left out of its own file count | 1 |
+| the router shell not marked `scaffolded` (§19.2) | 1 |
+| the report carries a timestamp | 1 |
+| a project with no gaps prints an empty heading | 1 |
+| **kit load failures never reach the report** | **0 → 1** |
+| **the honesty section's heading is renamed** | **0 → 1** |
+
+🔴 **One survivor was a real hole.** `modules: []` — every kit load failure silently absent from
+the report — passed all 910. `renderReport` was driven on *synthetic* module data, and the
+per-component rows walk `report.components`, which module failures are not in; **nothing crossed
+the one wiring that carries them.** There is now a row on the `kits` fixture, whose four failing
+modules are the population that makes it checkable.
+
+⚠️ **The other survivor was weak, and is recorded as weak.** Renaming the honesty section's
+heading survived *honestly*: every sentence the rows assert was still on the page, so nothing the
+tests claimed had stopped being true. A row was added anyway — it closes a gap in **legibility**,
+not in a claim — and saying which of the two it is, is the point. A survivor is a finding about
+the tests only until a control shows otherwise.
+
+### §19.8 What this leaves
+
+- 🔴 **EXP-004's editor half is untouched, and it is the larger half.** The pre-flight estimate
+  (*before* exporting, so the user chooses with accurate expectations) and the in-editor
+  post-export report with drill-down are both editor surfaces, and nothing here builds either.
+  What is done is the copy that travels with the code — the one the markers name.
+- 🔴 **EXP-004's in-code markers are also not built**, and §19.5 is the measurement: a deferred
+  wire on an element that still renders leaves nothing in the file. The report now says so rather
+  than implying otherwise, which makes this a *stated* gap rather than a silent one — but it is
+  the next piece of EXP-004 worth building, and it is where "the original node source preserved
+  in a comment" belongs.
+- **A chain-local for `Error`** — unchanged from §14.6, §17.6 and §18.6, still owed by two nodes.
+- **`exprValidIn` and `actionExprsOf` on `Navigate To Path`** — still closed in shape and unproven
+  in fact; still needs an `Event Sender` declaring a channel payload.
+- 🔴 **The cycle refusal §18.3 measured** — still **unowned**, still a fact about that node rather
+  than about the graph.
+- ⚠️ **A second copy of the HTTP node's `error` port, drifted.** `updatePorts` republishes `error`
+  with `group: 'Events'` while the node's static declaration says `group: 'Error'`, and
+  `replaceOrAppendPorts` makes the dynamic one win — so the editor files that port under a group
+  the node did not ask for. Cosmetic, measured, **not fixed**: moving a port between groups in the
+  property panel is a ruling, not a cleanup. **Unowned.**
+- 🔴 **Whether "a correction must be grepped for by its claim" becomes a rule** — §18.6 left this
+  unowned and §19.1 is the first session to *apply* it prospectively, where it found three
+  statements a behaviour-only fix would have left standing. Still unowned as a rule.
