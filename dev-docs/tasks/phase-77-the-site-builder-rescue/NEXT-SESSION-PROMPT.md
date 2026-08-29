@@ -121,8 +121,11 @@ the backend schema either way — but it is not written down as if it were seen.
 - 🔴 **A plain `jest` run is NOT in `NEVER_SWEEP`** (`dev-processes.js:269`) — only
   `test:ci`/`test:main`, `noodl-mcp.cjs`, `test.js --ci`, `run-electron-tests.js`,
   `webpack.test-ci`. **An editor launch sweeps a peer's package suite**, and a swept suite reads as
-  `EXIT=137` with no summary line. s17 waited one out rather than launching over it. A peer has
-  measured the wider table (`npm --prefix … test` is unprotected too) and is taking the fix.
+  `EXIT=137` with no summary line. s17 waited one out rather than launching over it.
+  ✅ **Fixed the same day at `cbfc5fb3`** — `.bin/jest` and `npm exec jest` are now in `NEVER_SWEEP`,
+  gated by `noodl-editor/tests-unit/dev-tools/a-sweep-spares-a-peers-suite.test.ts` (13 cases, both
+  arms), and the shield covers the whole tree. **Still run `dev:stop -- --list` and read it**: it is
+  the only instrument that shows the hazard, and a dry run on a quiet checkout cannot.
 - Shared checkout: **pathspec commits only, never `git add`**; announce editor launches **and**
   teardowns; `test:ci` alone, never beside a live stack.
 - Richard, 2026-08-28: **no short paths** — full six screens of
