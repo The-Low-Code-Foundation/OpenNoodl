@@ -2,131 +2,123 @@
 
 ## ✅ No hold. Freeze cleared 2026-08-28 (s4): *"Freeze is off, go nuts."*
 
-## State: **SBR-015 is done.** AC1, AC2 and AC3 are met; AC4 is 🟡 by design
+## State: **SBR-017 is built and driven.** The owner can get back into their own site
 
-**s13 (2026-08-29)** paid the drive that `379f4dec` owed. The thirty-second silence that started
-this task now ends as a sentence on screen in **29 ms**.
-
-🔴 **The previous handover was stale in two places and cost this session twenty minutes** — it
-named "wire PageRow's failure" as the first job when `379f4dec` had already wired it, and called
-AC2's gate unwritten when it existed with a mutant. **Re-read the task file before believing a
-handover's job list**; a handover is written before the next commit lands.
+**s14 (2026-08-29)** closed the biggest hole in the story. The template had one authentication node
+in twenty-one components — `SignUp` — and no `Log In` anywhere. It now has a sign-in page, a
+sign-out affordance, and a sentence for the visitor who is neither.
 
 Read in this order:
 
-1. **[SBR-015 §2.3d](SBR-015-A-FAILURE-WITH-NOWHERE-TO-GO.md)** — the drive, both arms, and the
-   measurement error it corrected.
-2. **[SBR-017](SBR-017-THERE-IS-NO-WAY-BACK-IN.md)** and
-   **[SBR-016](SBR-016-THE-LIST-THAT-NEVER-ASKS.md)** — the two biggest open holes, below.
+1. **[SBR-017 §6](SBR-017-THERE-IS-NO-WAY-BACK-IN.md)** — the drive, the control pair, and the
+   harness trap in §6.6 that will cost you twenty minutes if you skip it.
+2. **[SBR-016](SBR-016-THE-LIST-THAT-NEVER-ASKS.md)** — now the **first job**, and it is holding
+   another task's AC hostage. Its new section has the strongest control it has had.
 3. **[THE-SWEEP-2026-08-29.md](THE-SWEEP-2026-08-29.md)** — s11's 54 rows, still the register.
 
 ---
 
-## 🟢 SBR-015 AC1 — MET. Both arms, same button, one variable
+## 🔴 FIRST JOB — SBR-016, and it is no longer just its own defect
 
-**Why a fresh project was necessary, and this is the reusable half.** A project is a **copy** of
-the template taken at mint time. `SBR-015 Zero Section Drive` was minted *before* `379f4dec`, so
-its PageRow still carries `done` and no `failure` — re-driving the old fixture would have
-re-measured the old defect and read as a regression. Verified before driving: the new project's
-`components/Admin/PageRow/connections.json` holds all **9** new edges.
+Arriving at `/admin/pages` renders the shell, the heading and `New page` and **nothing else**.
 
-The variable is whether `Section` has a `pageId` column. It was created by writing a Section row
-against a *different* page, so the page under test had **zero** sections in both arms.
+**s14 took the reading that settles which of the three states it is.** From inside the running app,
+on the session the panel itself holds, at the moment the panel was showing nothing:
 
-| `Section.pageId` | backend | what the admin sees, from the click |
-|---|---|---|
-| **absent** | `error`, **11 ms** | **29 ms** — `This page could not be published.` under the title, menu closed |
-| **present** | `success`, **12 ms** | **31 ms** menu closed *and refusal cleared*; **48 ms** pill `Published` |
-| absent again | `error`, **11 ms** | **29 ms** — refusal returns |
+```
+GET http://localhost:8599/classes/Page   (X-Parse-Session-Token: the panel's own)
+→ 200, 1 row, 2 ms
+```
 
-`done → to-Quiet` genuinely resets a prior refusal — observed, not just asserted. The text renders
-`rgb(220,38,38)` = `--destructive`, 210×33 px, `mounted` so it takes no space when absent.
+Same principal, same instant. Not refused. Not empty. **It never asks** — `pages-2` fetches only on
+`create.done` or a row's `Changed`.
 
-🔴 **The measurement error, because it will happen again.** The first refusal reading was
-**5,827 ms** and was nearly reported. The clock started when the button was *stamped* — in one
-`npm run cdp` process — and the click arrived from a *second* process, so the interval measured
-**CLI startup plus app latency**. Anchoring `t0` inside the page, in a capture-phase `click`
-listener, gave **29 ms**. ✅ **If the clock and the cause are in different processes, the number
-is about the harness.** The question that caught it: *what would this read if the app were
-instant?* — still ~5,800 ms.
+⚠️ **Both arms are on one fixture now**, which is the cheapest reproduction this has ever had:
+`SBR-017 Sign In Drive` showed its row immediately after `New page` and showed nothing after a
+sign-in. **Create-then-look works; arrive-and-look does not.** Any drive that creates a page first
+cannot see this, which is how s9, s12 and s13 all missed it.
 
-⚠️ **`CloudFunction2` does not go through `window.fetch`** — a fetch hook records nothing and that
-reads exactly like SBR-016's "never asked". What carried this was the DOM plus the backend's
-`workflow_executions`.
+🔴 **It blocks SBR-017 AC1's second half** — *"reach `/admin/pages` with the rows visible"*. The
+owner reaches it; the rows are not there; and nothing in SBR-017 can fix that.
 
----
-
-## 🔴 FIRST JOB — SBR-017, the biggest hole left in the story
-
-**The template has one auth node in twenty-one components: `SignUp`, on `/Pages/Setup`. There is
-no `LogIn` anywhere.** An owner who claims their site and later loses their session cannot get
-back into their own admin panel.
-
-Measured on the drive backend, against an already-claimed site:
-
-| step | result |
-|---|---|
-| `POST /users` — a second account | **201**, real `_User` row **and a session token** |
-| `POST /functions/claimSite`, correct token | **400** `This site cannot be claimed.` |
-
-A right refusal and a locked door. `net.noodl.user.LogIn` exists in the runtime; the template
-never places it. ⚠️ Signup logs the new user in, which is why the s9, s12 and s13 drives all
-missed it — claiming and being signed in were one act.
-
-## 🔴 SECOND JOB — SBR-016, and it adds a *third* state to §5.8
-
-Arriving at `/admin/pages` renders the shell, the heading and `New page` and **nothing else**,
-while `GET /classes/Page` on the same session returns the rows.
-
-🔴 **It is not a refused query. There is no query.** `pages-2` fetches only on `create.done` or a
-row's `Changed`, so **any drive that creates a page first cannot see this** — s9, s12 and s13 all
-created a page first. A refused query, an empty collection and a collection that never asked are
-three states, pixel-identical, with three different fixes.
-
----
-
-## Where each AC now stands
+## Where the ACs now stand
 
 | | verdict | evidence |
 |---|---|---|
-| **SBR-015 AC1** | ✅ | §2.3d — 29 ms refusal, 31/48 ms success control |
-| **SBR-015 AC2** | ✅ | `sb007Template.test.ts:576-830`, 9 specs, derived population + graded exemptions + naming mutant |
-| **SBR-015 AC3** | ✅ | §2.3a, control pair |
-| **SBR-015 AC4** | 🟡 | `execution_steps` 0 rows across all four executions — the task says why, and it is right |
-| **SBR-006 AC1** | 🟡 | driven; rows still carry no title or slug (SBR-008) |
-| **SBR-006 AC2** | 🟡 | blocked on SBR-008 |
-| **SBR-006 AC3** | ✅ | both halves now driven — success s12, refusal s13 |
-| **SBR-006 AC4** | ✅ | `View site` lands on `/` |
-| **SBR-006 AC5** | ✅ | s9's control pair |
+| **SBR-017 AC1** | 🟡 | §6.2 — sign out **53 ms**, sign back in **82 ms**, `/admin/pages` reached. Rows missing, and that is SBR-016 (§6.4) |
+| **SBR-017 AC2** | ✅ | §6.2 step 5 — wrong password, **114 ms** refusal, `--destructive`, path unchanged. Structural half gated |
+| **SBR-017 AC3** | ✅ | §6.2 step 4 — the **words**, asserted by name in the gate and observed |
+| **SBR-017 AC4** | ✅ | `sb007Template.test.ts` §8, five specs, router-walk + mutant |
+| **SBR-015 AC1/2/3** | ✅ | s13, §2.3d |
+| **SBR-015 AC4** | 🟡 | `execution_steps` 0 rows — the task says why, and it is right |
+| **SBR-006 AC1/AC2** | 🟡 | blocked on SBR-008 (rows still carry no title or slug) |
+| **SBR-006 AC3/AC4/AC5** | ✅ | s9, s12, s13 |
 
-## Reproduced independently on a brand-new backend, so all three are stronger
+## What s14 built, in one paragraph
 
-- **DEF-014** — `GET /classes/Section?where={"pageId":…}` → **500 `no such column: "pageId"`**, on
-  a backend where the table did not exist at all. A brand-new site cannot publish its first page.
-- **DEF-015** — the card warned three workers were *"in the project, not on this backend"* while
-  reading **"pushed just now"**, on a project minted minutes earlier.
-- **SBR-008** — the `Page` row has `objectId/createdAt/updatedAt/ACL/published/showInNav/navOrder`
-  and **no `title`, no `slug`**.
+`/Pages/SignIn` at `admin/signin` — email, password, `net.noodl.user.LogIn`, a constant refusal on
+a `States` node that **resets**, and `RouterNavigate` into the panel on `done`. **`failure`, never
+`completed`** — `completed` fires on every outcome and would raise the refusal on the successful
+sign-in too, which would make AC2's two paths one screen while the drive still passed its first
+arm. `/Admin/Shell` gains a `Sign out` rail item and the signed-out sentence, both driven from one
+`net.noodl.user.User`'s `authenticated` — one through an `Inverter`, so the two are opposite by
+construction. `/Pages/Setup` gains one link forward.
+
+🔴 **The scope call SBR-017 §3 asked for: Setup cannot refuse before signing anyone up.** Refusing
+early means asking *"is this site claimed yet?"* — the oracle SB-004 F7 removed on purpose, and
+there is no endpoint that answers it. The link is the half that actually helps: the owner who lands
+on `/admin/setup` because it is the only screen mentioning their account now has somewhere else to
+go, so the commonest way a roleless second `_User` gets created stops happening. The account
+factory itself is a **backend** setting (signup is open by default) and stays recorded as one.
+
+## 🔴 Read this before any drive of the preview
+
+**The editor's preview pane gives the viewer webview a `96 × 0` viewport.** Every CDP click into it
+reports success, arrives `isTrusted: true` with the coordinates you asked for, and hit-tests to
+`<html>` — `document.elementFromPoint` returns `null` outside the visual viewport, and every
+control in the page is outside it. `getBoundingClientRect()` answers normally the whole time, so
+the element's box and the element's reachability disagree and only one of them is being read.
+
+✅ **`Emulation.setDeviceMetricsOverride` on the viewer target, on the same connection as the
+clicks.** `npm run cdp` opens a connection per invocation and the override dies with it, so a drive
+needs its own small script that connects once and does the whole arm.
+`Emulation.setFocusEmulationEnabled` belongs there too and is **not sufficient alone** — with it
+only, `document.activeElement` stayed at `BODY`.
+
+⚠️ Also: `npm run cdp -- screenshot --target=viewer` **hangs** on the webview target, and
+`location.href = '/admin/setup'` does not reach a page — the Router resets the path to `/` on load.
+`window.Noodl.Navigation.navigateToPath(...)` is what works.
 
 ## Standing context
 
-- 🔴 **Drive fixtures — do not overwrite.** **`SBR-015 AC1 Drive`** (backend `backend_mte62ofkj8whc`,
-  port 8598, token `drive-token-ac1`, owner `owner@ac1.test` / `drive-pass-ac1`) is the *post-fix*
-  fixture and the only one whose PageRow carries the failure wiring. ⚠️ It is left in the
-  **refusal arm**: `Section.pageId` is renamed to `pageId_hidden` — rename it back for the success
-  arm. **`SBR-015 Zero Section Drive`** (`backend_mte3mrsp5qtbd`) is *pre-fix* and cannot test AC1.
-  **`SBR-006 Admin Drive`** (`backend_mtdg3sdziq5nw`) is DEF-004's before-arm.
+- 🔴 **Drive fixtures — do not overwrite.**
+  **`SBR-017 Sign In Drive`** (backend `backend_mte82r1qhnr87`, port 8599, secret
+  `SITE_SETUP_TOKEN=drive-token-017`, owner `owner@sbr017.test` / `drive-pass-017`) is the only
+  fixture minted from a template that **has a sign-in page**, and it holds one `Page` row and a
+  claimed site. It is the right fixture for SBR-016.
+  **`SBR-015 AC1 Drive`** (`backend_mte62ofkj8whc`, 8598, `drive-token-ac1`,
+  `owner@ac1.test` / `drive-pass-ac1`) is SBR-015's, left in the **refusal** arm —
+  `Section.pageId` renamed to `pageId_hidden`; rename it back for the success arm.
+  **`SBR-015 Zero Section Drive`** (`backend_mte3mrsp5qtbd`) and **`SBR-006 Admin Drive`**
+  (`backend_mtdg3sdziq5nw`) are both **pre-fix** and cannot test anything current.
+- 🔴 **A project is a copy of the template at mint time.** Any template change needs a **freshly
+  minted** project to drive; re-driving an old fixture re-measures the old defect and reads as a
+  regression. Verify the copy on disk before driving — `components/<Path>/connections.json`.
 - 🔴 Never scope by time. Every task's ACs include a person sentence — verify as written; if the
   platform cannot express what an AC asks for, **say so and record the gap**.
-- ⚠️ **`test:ci` was not run in s13** — no editor, runtime or MCP source was touched. The
-  noodl-mcp jest suite was run for `-t "SBR-015"` (9 passed). s10's floor stands (**2889 specs,
-  4 failures, all `AIX-006 style vocabulary` by name**).
-- Shared checkout: **pathspec commits only, never `git add`** (s13 staged by mistake and unstaged
-  immediately); announce editor launches **and** teardowns; `test:ci` alone, never beside a live
-  stack.
-- Drive mechanics that cost time: the backend card's **Secrets panel is in the `…` overflow**, and
-  every item in that menu **renders twice** — pick the copy `elementFromPoint` returns. The
-  preview canvas is **456×313** with a panel open and **756** wide with it collapsed.
+- ⚠️ **`test:ci` was not run in s14** — no editor, runtime or MCP *source* was touched, only the
+  MCP test-data modules and the generated artefact. The noodl-mcp jest suites `sb005AdminPanel`,
+  `sb006PublicSite` and `sb007Template` were run: **130 passed, 0 failed**, and
+  `npm run typecheck:mcp` is clean. s10's floor stands (**2889 specs, 4 failures, all
+  `AIX-006 style vocabulary` by name**).
+- Census pins that moved in s14, deliberately: **21 → 22** components, **5 → 6** registered pages,
+  **9 → 13** component references, **4 → 5** `Page` nodes.
+- Shared checkout: **pathspec commits only, never `git add`**; announce editor launches **and**
+  teardowns; `test:ci` alone, never beside a live stack.
+- ⚠️ **The launcher's `Connect GitHub` sits at the top-right of the header, close to where a
+  mis-resolved selector lands.** s14 opened its device-code flow by accident and cancelled it;
+  nothing was authorised. Cancel needs the **hittable** copy — `BaseDialog` renders a measuring
+  ghost, and `elementFromPoint` is what tells them apart.
 - Richard, 2026-08-28: **no short paths** — full six screens of
   https://claude.ai/code/artifact/f1986b40-e827-4770-abb8-1dc8f17e1810 ; assessment:
   https://claude.ai/code/artifact/f4b2077a-7a78-4c33-8bf7-8b7f343f0b0b .

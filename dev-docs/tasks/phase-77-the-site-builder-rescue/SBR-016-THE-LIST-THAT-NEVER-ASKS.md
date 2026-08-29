@@ -92,3 +92,29 @@ different fixes, and the screen distinguishes none of them.
 - ⚠️ `runOnChange-*` is written by the NDA-017 migration on load for every node whose control
   signal is wired (SBR-004 §9.2) — **disk and loaded disagree**, so read the running graph,
   not only the artefact.
+
+## Reproduced independently, with a stronger control — 2026-08-29 (s14, SBR-017's drive)
+
+The original reading was **"0 requests to `:8597` after load"**, which is real but is *consistent
+with a query that was refused before it left the page*. SBR-017's drive took the reading the other
+way round, from inside the running app, on the **session the panel itself holds**, at the moment
+the panel was showing nothing:
+
+```
+GET http://localhost:8599/classes/Page
+X-Parse-Session-Token: <the panel's own token>
+→ 200, 1 row, 2 ms
+```
+
+Same principal, same instant, row readable. So the panel is not refused and the collection is not
+empty: **it never asks.** Second backend (`backend_mte82r1qhnr87`), project minted from the
+regenerated template.
+
+⚠️ **Both arms are on one fixture**, which is the cheapest reproduction this defect has: in the
+same session the list *did* render its row immediately after `New page`, because `pages-2` fetches
+on `create.done`. **Create-then-look works; sign-in-and-look does not.** That is also why s9, s12
+and s13 missed it — every one of them created a page first.
+
+🔴 **It now blocks another task's acceptance criterion.** SBR-017 AC1 asks the owner to sign back
+in and *"reach `/admin/pages` with the rows visible"*. They reach it; the rows are not visible; and
+nothing in SBR-017 can fix that. See SBR-017 §6.4.
