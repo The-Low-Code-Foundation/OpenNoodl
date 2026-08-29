@@ -284,9 +284,12 @@ export const AUTHORED_BLOCKING_WARNINGS: ReadonlySet<string> = new Set([
   // `ResponsiveArrangement` precedent rather than on doubt about the rule.
   //
   // 🔴 The promotion was tried and measured, and what it rejects is the product,
-  // not a fixture. With it in this set, **10 specs across 3 suites fail** — and
+  // not a fixture. With it in this set, **8 specs across 3 suites fail** — and
   // every one is a *shipped template being regenerated through the door*:
-  // `sb007Template`, `tpl001Template`, `sb004Authoring`. They fail because
+  // `sb007Template`, `sb004Authoring`, `tpl001Template`. It was **10** an hour
+  // earlier; `98bfdea0` (TPL-001 Track A, *"ten requests that could hang for
+  // 30s"*) cleared two, so the remaining blocker is the **site-builder**
+  // templates and this number is falling on its own. They fail because
   // `publishPage`, `duplicatePage` and `submitContactForm` really do leave
   // failure edges unanswered, which is the defect phase 77 D1 reported and the
   // reason this rule exists. Corpus-wide the same promotion is 182 firings
