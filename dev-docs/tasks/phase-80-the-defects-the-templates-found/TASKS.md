@@ -69,6 +69,7 @@ this register once already, and that is how one row gets worked twice and anothe
 | DEF-023 | ⬜ open | **P78 D35** | `Component` scope in a cloud function is **not** per-request, and nothing says so | every **graph that accumulates anything server-side** |
 | DEF-024 | ⬜ open | **P78 D36** | A `Condition` can only ever turn a gate **ON**, so a screen accumulates contradictory answers | every **screen whose answer has more than one form** |
 | DEF-025 | ⬜ open | **P78 D37** | A control's label is a click target only via the control's own `label` port — which **defaults OFF** | every **person tapping the words beside a checkbox** |
+| DEF-026 | ⬜ open | A cloud call to an unreachable backend reports nothing | **P77 SBR-015 AC1 drive** | **anyone** whose backend is not running — the ordinary way this breaks |
 
 🔴 **Three of phase 78's eleven unowned rows are NOT here, deliberately: D22, D23 and D24 are
 template-side.** This phase is graded on the product surface and never on a template being fixed
@@ -429,3 +430,20 @@ before any of it was acted on, and every measurement in it held.
 
 - **2026-08-29** — Phase created from the three-register sweep. 54 findings across phases 76, 77 and
   78 — **including phase 76's 28, which had no register at all** ([now it has one](../phase-76-the-site-builder/DEFECTS-PHASE-76-FOUND.md)). 17 still real, product-side and unowned; 3 already owned. Nothing built yet.
+
+### DEF-026 — a cloud call to an unreachable backend reports nothing
+
+🔴 **Found by SBR-015's AC1 drive as a control pair**, one variable, identical wiring:
+
+| backend | `failure` fires? | what the admin sees |
+|---|---|---|
+| **up**, function refuses (`404` from the runner) | **yes** | the refusal, in `--destructive`, menu closed |
+| **down**, connection refused (**1 ms**, `transferSize: 0`) | **no** | **nothing, for 35 s.** Menu still open |
+
+`CloudFunction2`'s `error` callback does `reportOutcomes(…, 'failure')` (`cloudfunction2.ts:182`), so the node is capable — whatever a connection refusal does, it does not arrive there.
+
+🔴 **This is SBR-015's defect one layer further out.** SBR-015 fixed cloud *functions* whose failures reached nobody; this is a *call* whose failure reaches nobody. And it is the failure a person is most likely to meet: "the backend is not running" is the ordinary way this breaks, while a deployed function refusing is the rare way.
+
+**Where it bites:** every app, every author. A graph wired correctly for failure still shows the user nothing, and the author has no way to tell from the canvas.
+
+⚠️ **Not diagnosed further** — the drive established *that* it does not fire, not *where* the refusal is lost. Owner: **NONE**.
