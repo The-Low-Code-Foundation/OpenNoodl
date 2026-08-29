@@ -54,6 +54,7 @@ failure this file's first house rule exists to prevent.
 | **D18** | 🔴 open (08-29) | **NONE** — ruled *not* DEF-001, see below | product | every person filling in any form |
 | **D19** | ⚠️ open (08-29) | **NONE** — either way, see below | product | every person filling in any form |
 | **D20** | 🔴 open (08-29) | **NONE** — **DEF-006 agreed, not yet filed** | product | every agent styling on-system |
+| **D21** | ✅ disproved (08-29) | — | — | (would have been: every agent placing a component) |
 
 🔴 **D18/D19/D20 are the first rows created since the sweep, and they were already unowned within a
 day of the process being put in place.** That is the argument for the column, not an argument
@@ -679,6 +680,32 @@ ratchet are all green over it, and none of them can see a font.
 parameters and there is no `fontFamily` among the ones the door accepts for this node, so a template
 author cannot fix their own form. Product-side, and it is one line of CSS.
 
+### 🔴 Widened 2026-08-29 (s8): it is not "forms", it is **every control** — including buttons
+
+Measured on `Pages/Landing` of the shipped artefact, same instrument, same run as the hero work:
+
+| element | `font-family` |
+|---|---|
+| the eyebrow, the headline, the blurb (`Text`) | `"Source Sans Pro", …` ✅ |
+| **"Members sign in"** — `net.noodl.controls.button` | **`Arial`** |
+| **"Ask to join"** — the same node type | **`Arial`** |
+
+🔴 **This moves the blast radius from "any app with a form" to "any app at all".** A button is on
+every page of every template; the landing page a stranger sees before they have typed anything is
+already in two typefaces. It also means the defect is visible in the screenshots in this repo and
+has been all along — nobody looked at the *buttons*.
+
+⚠️ **And the vocabulary actively tells an agent not to fix it.** The `body` composition's own
+description reads *"Never set `fontFamily` — the project body already carries `var(--font-sans)`"*.
+That is true for `Text` and false for every control: `<button>`, `<input>` and `<textarea>` do not
+inherit `font-family` from `body` in any browser. An agent doing exactly what the design system says
+produces an app in three typefaces.
+
+🔴 **This is the strongest argument yet that D18 is not a `DEF-001` a11y row.** Nothing here is
+illegible — it is the product failing to apply its own design token to the elements a person
+actually touches. Whatever task takes it should be about **fidelity**, and the `body` composition's
+description has to change in the same breath or the next agent re-derives the same wrong conclusion.
+
 ---
 
 ## D19 — ⚠️ A control's own label is pure `#000`, not `--foreground`, and no composition can reach it
@@ -718,3 +745,46 @@ templates now have two unrelated ideas of what a form field looks like.
 is the non-obvious half: a notice is a `Group` wrapping a `Text`, because `Group` carries the
 surfaces and `Text` carries the type ramp. A composition names parameters for **one** node, so the
 vocabulary would need a two-node *pattern*, which is a shape it currently has no way to express.
+
+---
+
+## D21 — ✅ Disproved. A component instance's parameters *are* checked; the `info` line saying they are not is about a different check
+
+**Kept because it cost a measurement and looks exactly like D1.** Filed under this file's second
+house rule: a candidate that turns out to be nothing is worth as much as a real row.
+
+Authoring `Pages/Landing`'s three tiles as instances of `Members/InsideTile` (s8) added **six new
+`info` diagnostics** to a generation run that had reported `55 × dynamic-port-skipped` and nothing
+else for several sessions. All six read:
+
+> The **"parameter values"** check did not run on this node: type `/Members/InsideTile` is not in the
+> node catalog, so there is nothing to check it against. The node is unverified by this check rather
+> than verified as correct.
+
+That is D1's exact shape — *the door does not check the thing that carries all the meaning* — and the
+three instances carry every visible word on those tiles in two parameters.
+
+🔴 **It is not a hole. Measured by sabotage, not by reading the code.** `titel` (a typo of `title`)
+and `nonsenseXyz: 42` were put on one instance and the template regenerated:
+
+```
+create_component "Pages/Landing" rejected — nothing was written.
+  instance-unknown-parameter (warning, blocking):
+  "titel" is not an input of /Members/InsideTile. A component instance has only the ports its
+  Component Inputs node declares — it carries no layout, style or lifecycle ports of its own —
+  and this one declares 2: "title", "line"
+```
+
+**Both** bad parameters were caught, the message named the fix, and nothing was written. The
+catalog-driven check genuinely does not run on a project component type; a **dedicated** check
+covers the same ground and is stricter than the generic one would have been.
+
+⚠️ **The trap, for whoever reads the census next.** The generation summary prints
+`6 × info unknown-type-check-skipped` with no location, so it reads as "six unverified nodes". The
+control that settles it is cheap: regenerate from `HEAD` (55, nothing else), then with the change
+(61). The six are three instances × two passes, and they are the *absence of a check that is not
+needed*, beside a check that fired.
+
+✅ This also confirms, from the other side, the standing note that **the door checks parameters and
+not wires** on a component instance. Parameters: refused, by name. Wires: D1.
+

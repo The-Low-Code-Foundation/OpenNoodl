@@ -2,138 +2,115 @@
 
 ## Where it stands
 
-**The members' area has a look now, and building it turned up three product defects that no gate in
-this repo can see.** Last session's prompt put "the remaining bare surfaces" at the top of the
-queue. That is done. It was bigger than the one line suggested.
+**The landing page is designed, and the session found six shipped files that had never been
+committed at all.** Last session's queue put the hero first; that is done, and the work underneath it
+was larger than the one line suggested.
 
 | | before | after |
 |---|---|---|
-| `Text` nodes with **no size and no colour** | **31 of 45** | **0** |
-| cards in the whole app | 4 (the repeater rows) | 4 rows + **17 notice boxes** + 5 panels |
-| gap between two announcement cards | **0px — borders touching** | `--space-4` |
-| `Pages/SignIn` refusal | **ungated**, always mounted | gated on `login.failure` |
-| drive suite | 47 | **51** |
-| `tpl001Template.test.ts` | 42 | **45** (three new ratchet rows) |
+| landing page content height (900px viewport) | **333px** | 741px |
+| compositions on `USED_COMPOSITIONS` with **no user** | **2** (`eyebrow`, `sectionHead`) | 0 |
+| gates reading `USED_COMPOSITIONS` | **0** — it claimed one in its own doc comment | 1 (§4) |
+| components in the template | 21 | **22** (`Members/InsideTile`) |
+| `mounted` gates | 28 | **29** |
+| files in the artefact that git had never seen | **6** | 0 |
+| template + appearance | 67/67 | **68/68** |
+| tpl001 drives (three suites) | 51 + others | **71/71** |
 
-✅ Gates on the finished tree: template + appearance **67/67**, drive **51/51**, `typecheck` and
-`typecheck:mcp` both clean. ⚠️ `test:ci` **not run** — no editor source was touched.
+✅ `typecheck:mcp` clean. ⚠️ `test:ci` **not run** — no editor source touched.
 
-## 🔴 Read this before you change anything about a notice
+## 🔴 Read this before you touch the artefact
 
-**A notice is a `Group` wrapping one `Text`, and the `Group` keeps the notice's id.** That is not
-cosmetic bookkeeping — it is why this change moved **zero** `mounted` connections. `Text` cannot
-carry a surface (the vocabulary is explicit: `Group` carries fills, `Text` carries the type ramp),
-so every notice needed a wrapper; had the wrapper taken a new id, twenty `mounted` wires would have
-been repointed by hand and one missed wire is a card that never hides.
+**Regenerating carries product-side composition changes into the template, and nobody is watching
+that seam.** DEF-001 (`30eb92b2`) moved the outline button's border to `--border-control`; the
+shipped template still said `--muted-foreground`, so `tpl001Template.test.ts`'s byte-identity gate
+was **red at that commit** until this session regenerated. The gate works — but the person changing
+a composition has no reason to run the template suite, and will not see it.
 
-Only **two** connections in the whole template changed, both because their `text` is wired and the
-port lives on the inner node: `Pages/Setup`'s `missing` → `missingText`, `Pages/SignIn`'s `error`
-→ `errorText`.
+✅ Regenerate and diff **before** concluding anything about the artefact: `npm run template:members`,
+then `git diff -- templates/`. A change you did not make is a product change arriving.
 
-✅ `notice(id, label, parent, text, { tone })` in `tpl001Components.ts` is the only way to make one.
-Tones are `neutral` (empty states, "not a moderator"), `accent` (pending, request received) and
-`refused` (genuine failures). Every pair is measured — 6.62, 6.45 and 5.96 against the surface it
-actually lands on.
+## 🔴 And read this before you add a second of anything to a page
 
-## 🔴 And read this before you "improve" a list
+**The door refuses three structurally identical sibling subtrees** — `repeated-sibling-subtree`,
+naming the remedy: *"Make one component and instantiate it 3 times."* That is why the landing tiles
+are `Members/InsideTile` rather than three copies. The rule is right and it fired on the first
+attempt.
 
-**§3 of the new ratchet forbids a fill on any container of a `For Each`, and it is the one rule here
-that breaks the wrong way.** `card` fills with `--surface` and the row cards fill with `--surface`,
-so wrapping a list in a card makes the row edges measure **1.26:1** against their own container and
-the list stops reading as separate cards.
-
-⚠️ **The mistake makes every other instrument greener.** Measured, not assumed: with the fill added,
-`templateAppearance.test.ts` **passed** — the colour count went up, a structural parameter was
-added, and §2 was satisfied. Only §3 went red. If you find §3 in your way, the answer is not to
-relax it.
+⚠️ **The six `info` lines that come with a component instance are not a hole.** A clean run is now
+`55 × dynamic-port-skipped` **+ `6 × unknown-type-check-skipped`**; the six say the catalog-driven
+*parameter values* check did not run on `/Members/InsideTile`. A dedicated check does: `titel` came
+back `instance-unknown-parameter`, blocking, listing both real ports. Settled as **D21, disproved** —
+do not spend the session re-deriving it. A count above 61 is yours.
 
 ## Then, in order
 
-1. ⬜ **The landing page hero.** `H_HERO` is wired and the page is still a name, a blurb and two
-   buttons. It is the one page a stranger sees, and it is now the least designed screen in the
-   template — everything around it moved. ⚠️ It renders empty without a backend, so look at it with
-   one.
-2. ⬜ **Seed sample content** (AC6 ships graphs, not rows — still open and additive). Every list
+1. ⬜ **Seed sample content** (AC6 ships graphs, not rows — still open and additive). Every list
    renders its designed empty state, which is correct and is why the screenshots are quiet. It also
-   means **nobody has yet seen the row cards with the new gap in them**; that reading is owed.
-3. ⬜ **D18 / D19 / D20** — the three product defects below. D18 is one line of CSS and is on the
-   first screen a person fills in.
-4. ⬜ **Then** T5 / publishing. AC1 is ungradeable until it is on the shelf.
+   means **nobody has yet seen the row cards with the gap added in s7**; that reading is still owed,
+   and it is now the oldest unpaid one in this phase.
+2. ⬜ **D18 / D19 / D20** — see below. D18 got worse and clearer this session.
+3. ⬜ **Then** T5 / publishing. AC1 is ungradeable until it is on the shelf.
 
-## 🔴 The three product defects, all found by looking at a screenshot
+## 🔴 D18 is bigger than it was filed as, and it is still unowned
 
-Recorded in [DEFECTS-THE-TEMPLATES-FOUND.md](DEFECTS-THE-TEMPLATES-FOUND.md). Richard, today:
-*"Part of the main objective of creating this template is to uncover bugs a builder might experience
-using NodeGX and fix them."* These are that, and **not one of them is visible to any gate** — 45
-byte-identity specs, 51 drive specs, the appearance ratchet and two typechecks are all green over
-all three.
+**It is not "forms" — it is every control, including buttons.** Measured on `Pages/Landing` with
+`getComputedStyle`: the eyebrow, headline and blurb get `Source Sans Pro`; **both buttons render
+`Arial`**. So the defect is on every page of every template, not only pages with a form, and it is
+visible in screenshots already in this repo — nobody had looked at the *buttons*.
 
-- **D18 🔴 Form controls ignore `--font-sans`.** Measured with `getComputedStyle` on `Pages/Setup`:
-  the `<label>` gets the project's font, the `<input>` renders **Arial** and the same node with
-  `type: 'textArea'` renders **monospace**. Those are UA defaults — nothing sets `font-family` on
-  form controls at all. Every form in every NodeGX app is in a typeface the app does not use, and
-  any multi-line field looks like a code editor. ⚠️ **Not fixable from a template**: there is no
-  `fontFamily` among the parameters the door accepts for that node.
-- **D19 ⚠️ A control's label is pure `#000`,** not `--foreground`, while the input's own text beside
-  it is correctly tokenised. Same family, smaller.
-- **D20 🔴 The vocabulary has 18 compositions and none for a field, a notice, or an empty state.**
-  This is the *mechanism* behind D10 rather than a separate complaint: a generator told to style
-  on-system looks for the element in front of it, finds nothing, and writes bare text. ⚠️ The
-  non-obvious half: a composition names parameters for **one** node, and a notice is inherently two
-  (`Group` + `Text`), so the vocabulary has no way to express the pattern even in principle.
+⚠️ **The vocabulary actively tells an agent not to fix it.** The `body` composition's description
+reads *"Never set `fontFamily` — the project body already carries `var(--font-sans)`"*. True for
+`Text`, false for `<button>`, `<input>` and `<textarea>`, which do not inherit it. Whatever task
+takes D18 must change that description in the same breath.
+
+🔴 **Ownership, unchanged and now overdue.** D18/D19/D20 are recorded in
+[THE SWEEP](../phase-77-the-site-builder-rescue/THE-SWEEP-2026-08-29.md) but **no `DEF` task names
+any of them**. D20 → DEF-006 was *agreed by both sessions* and still is not filed — grep DEF-006 for
+`D20` and it is absent. D18 is ruled **not DEF-001** (a fidelity defect, not an a11y one, and the
+button reading strengthens that: nothing here is illegible).
 
 ## Traps
 
-- 🔴 **`readVisit` navigates; `readHere` does not.** Anything a click produced is gone if you
-  navigate. The new §1b sign-in arm depends on this, exactly as §7's D14 arm does.
+- 🔴 **A pathspec commit does not pick up untracked files.** This is how six artefacts — including
+  `tpl001Theme.ts`, the appearance ratchet, and the `Pages/Directory` and `Members/MemberRow`
+  component directories — sat unversioned across two sessions that each believed they had committed
+  the template. ✅ **`git status --short | grep '^??'` before you believe a commit was complete.**
+- 🔴 **A drive spec can measure a word rather than a property.** `§3` asserted the absence of
+  "Announcements" to mean *the members page did not render*; a new tile owning that word broke it
+  while the app got better. It reads **"Sign out"** now — and `text`, not `html`, because the members
+  page's chrome IS in a stranger's document unpainted. Not a leak: the load-bearing spec (no
+  announcement title or body anywhere in `html`) passed throughout.
+- 🔴 **`USED_COMPOSITIONS` was decoration for its whole life** — it said *"asserted by the gate"* and
+  no gate read it. ✅ It is now compared against `requestedCompositions()`, recorded by
+  `composition()` itself. **Grep for a reader before believing a list is enforced.**
 - 🔴 **The template is GENERATED.** `tpl001Components.ts` is the source; `npm run template:members`
-  **clears `templates/members-area/` wholesale**. ✅ Snapshot and `diff -r` after regenerating.
-- 🔴 **`rowGap` and `columnGap` are direction-conditional** (`group.ts:473-482`), so the wrong one
-  of the pair is a parameter the runtime never reads. `laidOut(direction, params, gap)` carries only
-  the one that direction reads — use it rather than spreading `PANEL` onto a row.
-- 🔴 **A parameter can be inert and the door refuses and names the fix.** `width` on a text input
-  needs `sizeMode`; `borderWidth` needs a `borderStyle` that is not `none`. **Read the message.**
-  ✅ A clean generation run reports `55 × info dynamic-port-skipped` and nothing else — a warning
-  count above that is yours.
-- 🔴 **`${PIPESTATUS[0]}` is empty in zsh**, and `cmd | tail` reports **tail's** exit code. Redirect
-  to a file and read `$?`.
-- 🔴 **The compositions are looked up, never typed.** `composition(id)` throws on an unknown id.
-- ⚠️ **Order matters**: preset first, project tokens second. `set_style_preset` **clears** the token
-  block.
-- ⚠️ **Never open `templates/members-area/` in the editor** — opening writes `.gitignore`,
-  `.mcp.json` and `CLAUDE.md` into it. Copy it first; the render harness above works on a copy.
-- ⚠️ `nodegx-backend` and `noodl-mcp` are **jest**, run **from the package directory**, and never
-  two package suites at once.
-- Shared checkout: commit **by pathspec**, untracked ⇒ add+commit in one chain.
+  **clears `templates/members-area/` wholesale**. ✅ Snapshot and `diff -r`.
+  ✅ `TPL001_DIAG_DETAIL=1 npm run template:members` now prints every diagnostic individually — the
+  summary line alone is a count with no location.
+- 🔴 **§2 of the ratchet counts a `Group` wrapping exactly ONE `Text` as a notice and pins it at 17.**
+  A tile is two Texts. A tile that lost its second would silently become an 18th notice.
+- 🔴 **§3 forbids a fill on any container of a `For Each`**, and undoing it makes every other
+  instrument *greener*. If §3 is in your way the answer is not to relax it.
+- 🔴 **`readVisit` navigates; `readHere` does not.** Anything a click produced is gone if you navigate.
+- 🔴 **`rowGap`/`columnGap` are direction-conditional** — use `laidOut(direction, params, gap)`.
+- 🔴 **A parameter can be inert and the door names the fix.** `width` on a text input needs
+  `sizeMode`; `borderWidth` needs a non-`none` `borderStyle`. **Read the message.**
+- 🔴 **`${PIPESTATUS[0]}` is empty in zsh**, and `cmd | tail` reports **tail's** exit code.
+- ⚠️ **Stay inside `--space-12`.** Only `--space-2/3/4/5/6/10/12` are proven to resolve in this
+  template; `band` reaches for `--space-20` but nothing here has rendered it.
+- ⚠️ **Never open `templates/members-area/` in the editor** — opening writes three files into it.
+- ⚠️ `nodegx-backend` and `noodl-mcp` are **jest**, run **from the package directory**, never two
+  package suites at once. `typecheck:mcp` is a **root** script.
+- ⚠️ **HEAD moves under you.** Four peer commits landed mid-session here. Re-run the gates *after*
+  the last one, not before.
 
 ## Richard's rulings, still standing
 
 - **Appearance is an acceptance criterion on every template, graded BEFORE the behaviour work, by
-  looking at it.** ✅ Honoured this session: the change was rendered and read with
-  `getComputedStyle`, which is how all three defects above were found.
-- **Templates exist to surface product defects** — bugs found while building go in this prompt as
-  work.
-- **Privacy**: `requestAccess` keeps the non-answer. ⚠️ The setup form's message names a blank box
-  in the browser and never reaches the server; *wrong token* and *already set up* remain
-  indistinguishable.
+  looking at it.** ✅ Honoured: the page was rendered and read at 1280 and 390, both arms, before and
+  after — and the "before" reading is what found the 333px.
+- **Templates exist to surface product defects** — findings go in the register **as work with an
+  owner**, never as notes.
+- **Privacy**: `requestAccess` keeps the non-answer.
 - **Publishing**: not yet. He drives it first.
-
-## ⚠️ Housekeeping carried in this session's commit
-
-- A peer added a five-line cross-link block to `DEFECTS-THE-TEMPLATES-FOUND.md` pointing at phase
-  77's sibling register, and deliberately left it uncommitted so a pathspec commit would not sweep
-  the ~361 uncommitted insertions in that file. It rides along here.
-- **Phase 78 had two different defects both numbered D10.** The second (*"applying a preset alone
-  changes nothing"*) is now **D17**, with a note saying so. Every existing "D10" reference means the
-  first one — the generators bypassing the design system — and still resolves correctly.
-- ✅ **The register now opens with a table carrying an owner for all 20 rows**, mapped to
-  [phase 80](../phase-80-the-defects-the-templates-found/TASKS.md), which was created the same day
-  from a three-register sweep. ⚠️ The `status` column is **as recorded, not re-measured at HEAD** —
-  only the 08-29 rows were measured today, and a re-measure of the rest is owed.
-- 🔴 **Two things a next session must not trip over.** (1) Phase 80 calls this file's **D10**
-  **`D10a`** — the sweep disambiguated the duplicate at the same time this file renumbered the other
-  half to D17, so there are two fixes for one problem. Same row, two names; the register says so in
-  both directions, and **one of the two files should be made to match the other**. (2) **D18/D19/D20
-  are unowned.** D20 is a clean fit for DEF-006. **D18/D19 are not a clean fit for DEF-001** — that
-  task is scoped to accessibility, and D18 is a *fidelity* defect, not an a11y one. Filing them
-  there without a re-measure would put a typography bug inside an accessibility task.

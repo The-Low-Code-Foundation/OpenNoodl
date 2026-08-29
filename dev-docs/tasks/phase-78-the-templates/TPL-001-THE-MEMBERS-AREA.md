@@ -621,3 +621,85 @@ state — the mechanism behind D10).
 
 `tpl001Template.test.ts` + `templateAppearance.test.ts` **67/67** · drive **51/51** · `typecheck`
 and `typecheck:mcp` clean. ⚠️ `test:ci` not run — no editor source touched.
+
+---
+
+## 15. The landing page (s8, 2026-08-29) — 🟢 the least designed screen is designed
+
+⚠️ **Numbered 15, not 14.** This file's headings restarted once already — there are two §11s, two
+§12s and two §13s — so the next free number in *either* run is 15. Same lesson as the duplicate D10
+this phase spent a session untangling: a colliding identifier costs more than an ugly one.
+
+### What it was
+
+Read with a backend at 1280×900 before anything was changed, because the standing ruling is that
+appearance is graded **by looking at it**. A name, a blurb and two buttons occupying **333px of a
+900px viewport**, and nothing else on the one page a stranger sees. The column *was* correctly
+centred (712px wide, centre at x=640) — the emptiness was vertical, not horizontal.
+
+### What it is
+
+- An **eyebrow** — "Members' area", `--primary` on `--background` at **7.36:1**. A literal where the
+  name and blurb are records, deliberately: the eyebrow is a fact about *this template*, the name is
+  a fact about the *recipient*.
+- The hero's three lines wrapped in **`sectionHead`**, the composition that exists for exactly this.
+- **"What members can see"** — three tiles naming `Pages/Members`, `Pages/Meetings` and
+  `Pages/Directory`. Claims the artefact keeps, and §1 of the ratchet pins the page list so a later
+  edit cannot quietly break them.
+
+### 🔴 Two compositions had no user, and the list that should have caught it was decoration
+
+`USED_COMPOSITIONS` in `tpl001Theme.ts` carried the sentence *"asserted by the gate, so a rename
+reddens"* since it was written. **No gate read it** — `grep` returned the declaration and nothing
+else — and it had drifted accordingly: `eyebrow` and `sectionHead` were on the list while the
+template used neither.
+
+✅ Both are now used, and **§4** compares the list against `requestedCompositions()`, which
+`composition()` records as it is called. A declaration against a measurement, not against a second
+declaration. Proved by sabotage: removing `eyebrow` reddens it.
+
+### 🔴 The door refused the first attempt, and was right
+
+Three identical tile subtrees came back `repeated-sibling-subtree` — *"Make one component and
+instantiate it 3 times."* Hence `Members/InsideTile`, placed by **parameter**. Most of
+[DEFECTS-THE-TEMPLATES-FOUND.md](DEFECTS-THE-TEMPLATES-FOUND.md) is the door failing to say
+something; this is worth recording as the door saying it.
+
+The six new `unknown-type-check-skipped` info lines that came with it look exactly like D1 and are
+not — **D21, disproved by sabotage**: `titel` was refused as `instance-unknown-parameter` naming both
+existing ports.
+
+### ⚠️ The rhythm was wrong before it was measured
+
+First render put **60px above the two buttons and 21px below** them, so they read as the heading of
+the section beneath rather than as the hero's call to action. `sectionHead`'s `paddingBottom` is
+overridden to `--space-6` and the section below takes `--space-12`: **44 above, 69 below**.
+
+### 🔴 A drive spec's instrument broke, not its subject
+
+`§3` asserted `not.toContain('Announcements')` as a proxy for *the members page did not render* — and
+the new tile owns that word. Swapped for **"Sign out"**, which appears twice on `Pages/Members` and
+zero times on `Landing`, `SignIn` and `Join`. Read off `text` and not `html`, because `html` **fails**:
+the members page's chrome *is* in a stranger's document, unpainted, before the RouterNavigate takes
+them away. Not a leak — the load-bearing spec (no announcement title or body anywhere in `html`)
+passed throughout, and the chrome is static graph text while the records are what ACL protects.
+
+### 🔴 Six files had never been committed
+
+`tpl001Theme.ts`, `templateAppearance.test.ts`, `tpl001-empty-states.test.ts` and the **`Pages/Directory`
+and `Members/MemberRow` component directories**. A pathspec commit does not pick up untracked files,
+so two sessions that believed they had committed the template had shipped one missing two of its
+components on a fresh clone. Now in history.
+
+### ⚠️ Regenerating carried a peer's product fix into the artefact
+
+DEF-001 (`30eb92b2`) moved the outline button's border to `--border-control`. The shipped template
+still said `--muted-foreground`, so **the byte-identity gate was red at that commit** until this
+regeneration. A composition change on the product side silently reddens every template that consumes
+it, and the person changing the composition has no reason to run the template suite.
+
+### Gates (s8)
+
+`tpl001Template.test.ts` + `templateAppearance.test.ts` **68/68** · the three tpl001 drives
+(`members-drive`, `empty-states`, `refused-query`) **71/71** · `typecheck:mcp` clean. Re-run after
+the peer commits landed mid-session, not before. ⚠️ `test:ci` not run — no editor source touched.
