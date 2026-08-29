@@ -137,6 +137,12 @@ describe('D18 — a control renders in the app font, not the browser default', (
     expect(code).toContain('font-family: var(--font-sans);');
     expect(code).toMatch(/body \{\\n\s*font-family: var\(--font-sans\);/);
 
+    // 🔴 P78 D19 — the colour half of the same floor, gated here because it is the same
+    // one line, the same mechanism and the same failure. The floor was font-only, so
+    // `--foreground` had no reader and every element that did not set a colour rendered the
+    // browser's black; a control's `<label>` was just the one somebody happened to measure.
+    expect(code).toContain('color: var(--foreground);');
+
     // Control: the comment strip actually strips, so "found it in code" means code.
     //
     // ⚠️ This asserted something false at first — that the rule appears in the prose too, so

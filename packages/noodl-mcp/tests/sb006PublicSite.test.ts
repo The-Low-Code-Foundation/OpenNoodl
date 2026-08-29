@@ -1356,8 +1356,10 @@ describe('SB-006: the public site, beside the panel it shares a router with', ()
     expect(shell.parameters?.maxWidth).toBe('var(--site-measure)');
     // And the ground beneath it consumes the background token — before SBR-004
     // nothing did, so a Theme record could change `--background` and no element
-    // ever read it (`TokenResolver.generateCss` stamps `:root` and a body FONT,
-    // and nothing else).
+    // ever read it (`TokenResolver.generateCss` stamps `:root` and a body floor).
+    // ⚠️ That floor was font-only when this was written; P78 D19 added
+    // `color: var(--foreground)` to it 2026-08-29. It still stamps no
+    // background, so this assertion stands: `--background` needs a node to read it.
     const ground = w.graph.nodes.find((n) => n.parameters?.backgroundColor === 'var(--background)');
     expect(`a node consumes --background: ${ground !== undefined}`).toBe('a node consumes --background: true');
   });
