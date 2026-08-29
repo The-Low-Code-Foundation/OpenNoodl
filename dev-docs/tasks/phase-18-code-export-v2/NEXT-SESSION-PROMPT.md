@@ -1,18 +1,21 @@
-# Next session — Tier 2.5's node list is closed, and what is left of it are increments
+# Next session — the arm is open, and what it left is a branch and two unproven walkers
 
 ## Where the phase stands
 
-**Tier 1 closed in session 38. Session 39 closed §8.7. Session 40 built `Page Inputs`. Session 41
-built `External Link` and found [DEF-016](../phase-80-the-defects-the-templates-found/DEF-016-EXTERNAL-LINK-ALWAYS-REPORTS-FAILURE.md).
-Session 42 closed the store-key gate (§13). Session 43 built `External Link`'s `Error` (§14).
-Session 44 built `Navigate To Path` (§15). Session 45 translated nothing on purpose: it read the
-component stack pair, found the sentence five sessions had planned around was false in both
-halves, and re-tiered the pair behind the container it drives (§16).**
+**Tier 1 closed in session 38. s39 closed §8.7. s40 built `Page Inputs`. s41 built `External Link`
+and found [DEF-016](../phase-80-the-defects-the-templates-found/DEF-016-EXTERNAL-LINK-ALWAYS-REPORTS-FAILURE.md).
+s42 closed the store-key gate (§13). s43 built `External Link`'s `Error` (§14). s44 built
+`Navigate To Path` (§15). s45 re-tiered the component stack pair behind the container it drives
+(§16). s46 built `Open In New Tab` (§17) — and found the sentence §15.4 gave as the reason to
+defer it was false, inherited from `External Link`.**
 
-**69 of 127 (54.3%)** — unchanged, and the floor is ratcheted.
+**69 of 127 (54.3%)** — unchanged, and the floor is ratcheted. §17 is an increment on a node the
+ledger already counts.
 
-🔴 **Read [§16.1](./EXP-011-PICKER-COVERAGE.md) before you trust any exemption sentence**, and
-[§11.1](./EXP-011-PICKER-COVERAGE.md) before trusting any ledger row.
+🔴 **Read [§17.1](./EXP-011-PICKER-COVERAGE.md) before trusting any sentence that explains one
+node by naming another.** It is the second instance in two sessions ([§16.1](./EXP-011-PICKER-COVERAGE.md)
+was the first), and this time the false sentence was the *plan for the work* rather than a note
+about work already done.
 
 ## The objective, so it cannot drift
 
@@ -23,35 +26,35 @@ a deployed NodeGX backend — exports to a React repo that builds, runs, and sti
 
 ```
 npm run export-ledger:picker      # ratcheted in PR CI — holds at 69/127 (54.3%)
-npm run export-ledger:check       # also enforces the SHAPE of a deferral (EXP-011 AC4)
+npm run export-ledger:check       # 175 types: 83 deferred, 76 translated, 1 stubbed, 15 backend-only
 ```
 
 🔴 The corpus audit is a regression net, never a priority oracle.
 🔴 Custom node types are **deliberately** outside the picker number — `$customNodesComment` in
 `packages/nodegx-export/coverage-ledger.json` says why. Do not "fix" it by adding them.
 
-## What session 45 settled, so nobody re-opens it
+## What session 46 settled, so nobody re-opens it
 
-**The component stack pair is answered and is not available to build.** `PageStackNavigate` and
-`PageStackNavigateBack` are now **Tier 3**, behind the `Page Stack` they drive, which is Tier 3
-item 10 and deferred. A pusher with no stack has nothing to push onto, and `PageStack` appears
-nowhere in `packages/nodegx-export/src`. §16.2 has the mechanism table if it is ever picked up —
-the decisive fact is that **a push is a call and a pop is its return**, carrying named values
-(`backResult-*`) and a named outcome (`backAction-*`) back to the pusher, which a url cannot
-express. `tests/component-stack-pair.test.ts` fails the day `Page Stack` is translated, which is
-the moment to reconsider — you do not need to remember this.
+**`Navigate To Path`'s new-tab arm reads `window.open`'s return value, and that is correct.** The
+node passes **no features string** (`navigate-to-path.ts:205`). `External Link` reads
+`navigator.userActivation` only because it passes `noopener`, which makes `window.open` return
+null on success as much as on failure — that is DEF-016 and the runtime says so at
+`externallink.ts:69`. Measured in Chrome 151, three arms under real gestures; the sabotage arm
+that adds `noopener` to the emitted call puts "The browser blocked opening a new tab" **beside a
+tab that opened**. Three tests in §15.6's drift-alarm block pin both runtime files against each
+other, so this cannot quietly become folklore again.
 
-⚠️ **Do not plan against "the pair feeds `Page Inputs`".** It never did. Both `_setPageParams`
-callers are the Router; the string in `navigation-stack.tsx` is a comment.
+⚠️ **Do not plan against "Open In New Tab needs the activation read".** It never did.
 
 ## Do this next — in the order they are worth doing
 
-### 1. `Navigate To Path`'s `Open In New Tab` (§15.6) — the top of the list
+### 1. A wired `Open In New Tab` (§17.4) — the top of the list
 
-The `window.open` arm, wanting DEF-016's activation read and a blocked-tab `Error` row.
-**`External Link` (§14) is the worked example and it is a close one** — §14.1 has the transient
-activation finding, §14.3 has why the port is the only thing that tells the node's two failures
-apart. This is the last named increment on a `translated` row in Tier 2.5.
+Now deferred on a reason about **this slice**, not about the node: the runtime reads that port
+exactly once, as `!!value`, so the value is answerable. What a wire costs is that both actions
+become reachable in one handler — `pushState` and `window.open` under a runtime branch, with two
+different outcome sets beneath them (in tab nothing can fail; in a new tab `Failure`, `Error` and
+a `Completed` join are all live). §17.2's table is the shape; the branch is the work.
 
 ### 2. `updatePorts` in `httpnode.ts` still publishes `success` — [§8.5](./EXP-011-PICKER-COVERAGE.md)
 
@@ -60,11 +63,14 @@ existing project may have wired is a migration question, not only a fix.
 
 ### 3. EXP-004 — the honesty UX (a report file into the output)
 
-Every `TODO(export)` marker ends with "See the export report", and there is no report. §10–§16's
-refusals all join them. 🔴 **§16.5 adds a requirement to this**: the report should carry the
-deferral *reasons*, and those reasons are prose nothing verifies — see the gate hole below.
+Every `TODO(export)` marker ends with "See the export report", and there is no report. §10–§17's
+refusals all join them. 🔴 §16.5's requirement still stands: the report should carry the deferral
+*reasons*, and those reasons are prose that only a test can verify — see the gate hole below.
 
-### 4. A chain-local for `External Link`'s `Error` (§14.4).
+### 4. A chain-local for `Error` (§14.4, §17.6) — now owed by **two** nodes
+
+`External Link` and `Navigate To Path` both refuse a read of `Error` from inside their own
+outcome chains, on §8.2's closure rule. One chain-local closes both.
 
 ### 5. The collection-state slice — unblocks `Set Object Properties` and `Remove Object From Array`.
 
@@ -73,54 +79,62 @@ deferral *reasons*, and those reasons are prose nothing verifies — see the gat
 ### 7. EXP-009 leftovers — drive the exported login/admin forms; delete the drive-residue user
 `exp009-drive` from the local Puppy backend's `_User`.
 
-## 🔴 A gate hole session 45 found and did not close
+## 🔴 Two things session 46 left honestly unfinished
 
-`scripts/export-ledger/check.js` enforces that a deferral **names its kind and tier**
-(`scheduled — …` / `deliberately out of scope — …`). It does **not**, and cannot, check that the
-*reason* is true. Two rows asserted a runtime behaviour that did not exist and passed every gate
-for five sessions, while the number beside them looked maintained.
+**`actionExprsOf`'s chain walk is closed in shape and unproven in fact (§17.3).** Every sibling
+kind flatMaps its chains because `usesPayload` reads that list and nothing else flattens for it;
+`navigate-path` did not, and now does. A **firing** case needs a payload read inside this action's
+chain inside an `Event Receiver` — which needs an `Event Sender` declaring the channel payload, or
+the receiver's port never resolves. This session could not build one. If you do, check it.
 
-**If you write an exemption that makes a factual claim about the runtime, pin it with a test** —
-`tests/component-stack-pair.test.ts` is the pattern. Whether that becomes a *rule* (an exemption
-citing a runtime file must have a test naming it) is unowned and worth a decision.
+**The gate hole §16.5 found is still open.** `scripts/export-ledger/check.js` enforces that a
+deferral names its kind and tier. It cannot check that the *reason* is true — and §17 is the
+second slice to find a reason that was not. Three tests now pin §17's runtime claims
+(`tests/navigate-to-path.test.ts`, the §15.6 block, each with `externallink.ts` as a control that
+must disagree). Whether "an exemption citing a runtime file must have a test naming it" becomes a
+**rule** is unowned and now has two instances behind it.
 
-## 🔴 Before adding any new `HandlerAction` kind, read §11.6 and §15.5
+## 🔴 Adding a chain to an existing action kind is as dangerous as adding a kind
 
-A new kind must be carried **by hand** to six places, and `tsc` finds only two of them:
+§11.6's table is about a new `HandlerAction` **kind** carried by hand to six places. §17 added a
+**chain to an existing kind**, where nothing changes shape and so nothing complains at all.
+Walking every consumer rather than the ones the slice touched found three already blind:
 
-| consumer | caught by tsc? |
-|---|---|
-| `actionCode` (`component.ts`) | ✅ explicit return type |
-| `actionExprsOf` (`component.ts`) | ✅ explicit return type |
-| `deepActions` (`component.ts:416`) | ❌ |
-| `usesNavigate` (`component.ts:577`) | ❌ |
-| `inAction` (`component.ts`, has `default: false`) | ❌ |
-| `isStatement` (`component.ts:~1770`) | ❌ |
-| `actionsValidIn` (`plan.ts`, `every` swallows `unknown`) | ❌ |
-| the attached-scan (`plan.ts:~7320`) | ❌ |
+| walker | file | state before §17 |
+|---|---|---|
+| `collectActionUse` | `emit/component.ts` | 🔴 **no case — a live defect since §15** |
+| `fillMaterialize` | `analyze/plan.ts` | no case; the switch has no `default`, so chains were never descended into |
+| `actionExprsOf` | `emit/component.ts` | chains not walked, unlike every sibling |
 
-## 🔴 What session 45 would tell you if it could only say four things
+**Grep every consumer of the action kind before adding a chain to it, and read what each one
+decides.** `tsc` finds none of these.
 
-1. **A grep cannot tell a mention from a call, and the sentence it produced outlived five
-   sessions.** `navigation-stack.tsx` matched `_setPageParams` because it *names* it in a comment
-   explaining an analogy. Nobody opened the file. The claim then hardened by being *relayed* —
-   into §15.6, into two ledger rows, into two session prompts — until it read as a finding rather
-   than a search result. **Re-run the search that produced an inherited claim before planning
-   against it.** §15.1 is the same lesson one session earlier; this is its second instance, and
-   the second one had travelled further.
-2. 🔴 **The load-bearing question was never the one being asked.** Five sessions asked "does a
-   component stack map onto routes?" The answer that mattered was structural and took one ledger
-   query: **the container is in a later tier**. Two nodes were scheduled a full tier ahead of the
-   thing they drive, so no answer to the routing question could have produced a translation.
-   **Before designing a node, check that what it drives exists in the target.**
-3. 🔴 **An exemption sentence is prose no gate verifies.** `check.js` grades the *shape* of a
-   deferral — that it names a kind and a tier — and that made two false rows look reviewed. A
-   measurement of form reads as a measurement of substance when nothing separates them.
-4. **Prove the instrument before trusting it, on synthetic arms that must disagree.** The counter
-   here is fed two snippets differing by one `//` and must return 1 and 0, while a text search
-   matches both. Without that pair, a counter returning 0 for everything makes the whole file pass
-   while measuring nothing — and the real-file text match is asserted too, as a known-firing
-   control, so an AST assertion cannot go vacuously green.
+## 🔴 What session 46 would tell you if it could only say four things
+
+1. **A sentence that explains one node by naming another is a claim about two nodes, and the
+   second one is usually unchecked.** §15.4's deferral was accurate about `External Link` in every
+   clause and false about the node it was written on. It survived a session, three ledger rows and
+   two session prompts, and it was the *plan* for this session's work. §16.1 is the same lesson one
+   session earlier from a different cause — a grep hitting a comment. **Re-derive an inherited
+   claim against its own subject before building on it.**
+2. 🔴 **The control that matters is the one that reproduces the mechanism you are dismissing.**
+   The arm that measured `noopener` returning null *in this host* is what turned "that does not
+   apply here" from an assumption into a measurement. Without it, the bare call returning a Window
+   is equally consistent with "this browser never returns null" and the false sentence survives.
+   And the negative control — the same call with **no gesture** — is what proves a *blocked* test
+   can detect blocking rather than only success.
+3. 🔴 **A mutant that kills nothing is a finding about the tests, twice over.** `deepActions`
+   blind to the new chain moved no row, because the sweeps walking it ask questions the outer
+   action already answers — a **state row** in the chain is what tells the difference.
+   `navigatePathIsStatement` moved no row because every fixture fires the node from a button that
+   *already has another action*, and two actions take the block form regardless. **§15's
+   `date-now-read` note says that same sentence about that same fixture** — the second time the
+   habit hid the same class of bug.
+4. **Check the tree after any harness that edits source.** The first mutation run hit the
+   120-second tool timeout and was killed mid-mutation, leaving `plan.ts` mutated with `tsc`
+   green — a mutant compiles, that is the point of it. Re-running with `nohup … &` then reported
+   *completed* for the wrapper while Python was still working, and the empty log read exactly like
+   a finished run. **`diff` against a snapshot, not the exit code and not the log.**
 
 ## Standing practice
 
@@ -133,7 +147,7 @@ ts-morph and Prettier stay uninstalled; `packages/nodegx-export` is not in root 
 ```
 cd packages/nodegx-export
 ../../node_modules/.bin/tsc --noEmit          # exit 0
-../../node_modules/.bin/jest                  # 845/845, 38 suites (835/37 before §16 added 10)
+../../node_modules/.bin/jest                  # 864/864, 38 suites (845 before §17 added 19)
 cd ../nodegx-module-inject && ../../node_modules/.bin/jest --config jest.config.js   # 31/31
 npm run export-ledger:picker                  # from the repo root — holds at 69/127
 npm run export-ledger:check                   # 175 types: 83 deferred, 76 translated, 1 stubbed, 15 backend-only
@@ -141,20 +155,30 @@ npm run export-ledger:check                   # 175 types: 83 deferred, 76 trans
 
 ⚠️ `ts-node` needs an **absolute** path and `--compiler-options '{"module":"commonjs"}'`, run from
 `packages/nodegx-export`. Copy the harness with **`cp -a`** so the `@nodegx/core` symlink survives.
-⚠️ **`${PIPESTATUS[0]}` is empty in zsh** — run gates **without a pipe** and read `$?`. Session 45
-hit this again: `npm run … | tail` printed `CHECK_EXIT=` and told you nothing.
+⚠️ **`${PIPESTATUS[0]}` is empty in zsh** — run gates **without a pipe** and read `$?`.
+⚠️ **A foreground `sleep` is blocked by this harness.** To wait, use `run_in_background: true`
+with an `until <check>; do sleep 5; done` loop — that is also how to wait out a long mutation run
+without the 120-second timeout killing it mid-edit.
 
 ## Authoring a project without an MCP server bound to it (unchanged, and it works)
+
+⚠️ **The session's own `nodegx` MCP server binds ONCE.** It was already bound to s40's `note-desk`
+copy, and `open_project` on a different directory reports `bound: false` and changes nothing. Use
+the stdio client instead — that is what it is for.
 
 1. Drive a **second server over stdio from a script**: `mcp-client.mjs`, ~50 lines over `spawn` +
    newline-delimited JSON-RPC, running the server from **`src` via ts-node**, never `dist/`.
    ⚠️ Its calls file is a list of `{ "name", "arguments" }` — not `{ "tool", "args" }`.
-2. `update_component` takes `{ path, set: { nodes, connections, visualRoots } }` — a whole
-   component in one call. ⚠️ `nodes` is a **flat list**; `children` holds **id strings**.
+2. `update_component` takes `operations` (`add_node` / `add_connection` / …) as well as `set` —
+   for **appending** to an existing page, `operations` is the one to use and it is idempotent
+   enough that a second run does not duplicate nodes.
 3. ⚠️ `p-`/`q-` parameters report `dynamic-port-skipped` at **info** severity and the write lands.
    That is "unverified", not "verified correct" — the emitted code is the check.
 4. ⚠️ **Create a page before any page that navigates to it**, and **writing a page can steal
    `startPage`** — check `components/App/nodes.json` afterwards.
+5. ⚠️ An `HTTP Request` fixture needs **`url`**, not `resource` — with the wrong name every wire
+   into it drops with *"it has no URL, so every Fetch answers Failure"* and the node vanishes
+   from the emitted file, which reads exactly like the translation refusing.
 
 ## Building and driving an exported app
 
@@ -165,21 +189,23 @@ hit this again: `npm run … | tail` printed `CHECK_EXIT=` and told you nothing.
   (`lsof -ti :52xx -sTCP:LISTEN | xargs kill`). ⚠️ **`vite preview` binds `localhost`, and
   `curl 127.0.0.1` gets nothing.**
 - Launch Chrome **separately** on a non-default debug port with a fresh `--user-data-dir`.
+  🔴 **Do not pass `--disable-popup-blocking`** if a `window.open` is under test — the blocked
+  arm is a control and that flag silently deletes it.
 - 🔴 **Read `textContent` per element, never `body.innerText`.**
-- 🔴 **Click with `Input.dispatchMouseEvent`**, never `element.click()`.
+- 🔴 **Click with `Input.dispatchMouseEvent`**, never `element.click()` — a scripted click is not
+  a user activation, and `window.open` is refused outside one. That difference is a *row* when
+  the node under test opens a tab: gesture and no-gesture are the two arms.
 - 🔴 **Write the expected answers down before the app runs**, then **sabotage in separate arms** —
-  one rule per arm. 🔴 **And check each arm's prediction says something can MOVE**: a row whose
-  two arms agree by construction is not a row, and §15.5's D9 was one until it was rebuilt.
+  one rule per arm. 🔴 **And check each arm's prediction says something can MOVE.**
+- ⚠️ **An error row is never cleared**, so a success row must run **before** any failure row.
 
 ## Instruments
 
-s45 had no drive — the slice was a reading, and `tests/component-stack-pair.test.ts` is its only
-artefact. The runtime files it pins: `navigation-stack.tsx`, `router.tsx`, `navigate.ts`,
-`navigate-back.ts`, all in `packages/noodl-viewer-react/src/nodes/navigation/`.
-s44 scratchpad `7408cf11-…`: `EXPECTED-s44.md`, `note-desk/`, `calls-s44*.json`, `drive-nav.mjs`,
-`app/`, `mutate.sh` + `m1..m12.py`, `sab.sh` + `sabA.py`/`sabB.py`, `snap/`.
-s43 `2011a26f-…`: `probe/`, `harness/`, `drive-error.mjs`.
-s40 `1a63a0f6-…`: `mcp-client.mjs`, `emit-to-app.ts`. s38 `e94a3353-…`: the original `corpus-harness/`.
+s46 scratchpad `cf0e64bb-…/openarm/`: `EXPECTED.md` (the three-arm window.open control),
+`EXPECTED-drive.md`, `index.html` + `target.html` + `drive.mjs` (the CDP harness), `mut/run.py`
+and `mut/run2.py` (the mutation runner, with `plan.orig.ts`/`component.orig.ts` snapshots),
+`note-desk/`, `app/`, `calls-s46.json`, `mcp-client.mjs`, `emit-to-app.ts`.
+s44 `7408cf11-…`; s43 `2011a26f-…`; s40 `1a63a0f6-…`; s38 `e94a3353-…` (the original harness).
 
 ⚠️ `packages/nodegx-export/src/analyze/appState.ts` contains **four raw NUL bytes**. `grep` and `rg`
 treat the whole file as **binary and print nothing** — use `rg -a`.
