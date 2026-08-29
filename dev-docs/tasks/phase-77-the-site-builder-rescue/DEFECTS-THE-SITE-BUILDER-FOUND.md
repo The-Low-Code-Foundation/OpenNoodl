@@ -180,9 +180,23 @@ the session that measured them; not re-measured in s10.
 
 ## D11 — 🔴 The NDA-017 migration reverses a graph authored *after* NDA-017, and the only defence is undocumented
 
-**Severity: high. Product.** Owner: **`NONE`** — closest neighbour is
-[DEF-007](../phase-80-the-defects-the-templates-found/DEF-007-DISK-AND-LOAD-DISAGREE.md), which is
-about the disk/load *seam*; this is about the migration's *population* and is a different claim.
+**Severity: high. Product.** Owner: 🔄 **[DEF-007 §1.1](../phase-80-the-defects-the-templates-found/DEF-007-DISK-AND-LOAD-DISAGREE.md)**
+(phase 80) — **reassigned 2026-08-29, same day it was filed.** It was recorded `NONE` here on the
+reading that DEF-007 is about the disk/load *seam* and this is about the migration's *population*.
+DEF-007's owner read it at HEAD and took it: it is that row's mechanism, in that row's file, and it
+**changes DEF-007 §1's conclusion** — §1 exonerated the migration (*"None of that is the defect"*)
+on the reading that it only bites paths that do not load, and this case is one that reading does not
+cover.
+
+🔴 **This file keeps the finding and not the ownership.** An unowned copy of an owned row is exactly
+how phase 76's F15 became phase 77's D8 — two write-ups, zero fixes. Read DEF-007 §1.1 for the
+owner's version; what follows is the measurement it was derived from.
+
+⚠️ **One number to reconcile.** DEF-007 §1.1 says `RUN_ON_CHANGE_FAMILIES` has **17** families. Read
+at HEAD it has **18 entries** and, by the module's own accounting two lines above the table,
+**fifteen families** — *"Eighteen entries for fifteen families: the four Variable types share one
+definition (`variables/variablebase.ts`) and one row each here"*. Neither count changes the claim;
+flagged so the two files do not carry two numbers.
 
 **Sharper than D5, which recorded the migration as "real AND DELIBERATE" and stopped there.** It is
 deliberate, and it is still a defect for every project created from today onwards, because the

@@ -169,7 +169,15 @@ authors actually built, and under the old contract wiring `storageFetch` *did* s
 `collectionName`. What the migration cannot do is tell a graph written before §2 from one this
 template minted this morning — the module says so itself: *"nothing is stamped into the project (the
 format has nowhere to put a marker — an open question §2 recorded and did not close)"*. So it fires
-on a project authored today and reverses its author's intent. That is now **D11** in the register.
+on a project authored today and reverses its author's intent. That is **D11** in the register, and
+it is owned by **[DEF-007 §1.1](../phase-80-the-defects-the-templates-found/DEF-007-DISK-AND-LOAD-DISAGREE.md)**
+in phase 80 — reassigned from `NONE` the same day, by that task's owner.
+
+🔴 **There is no version guard in the pass and there cannot be one.** The conditions are only *"in a
+family"*, *"control signal wired"*, *"key absent"* — and **absence is the only evidence it has**. A
+modern author who never set the parameter is indistinguishable from a legacy author relying on the
+old default. That is why an authored `true` is not merely *a* defence but the only one that can
+exist, and why writing explicit values at generation time stops being the cheap option.
 
 ### 7.3 The second instance, which §3 asked to be checked rather than assumed
 
