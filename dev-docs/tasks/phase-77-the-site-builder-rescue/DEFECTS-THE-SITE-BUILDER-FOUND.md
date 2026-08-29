@@ -192,11 +192,18 @@ cover.
 how phase 76's F15 became phase 77's D8 — two write-ups, zero fixes. Read DEF-007 §1.1 for the
 owner's version; what follows is the measurement it was derived from.
 
-⚠️ **One number to reconcile.** DEF-007 §1.1 says `RUN_ON_CHANGE_FAMILIES` has **17** families. Read
-at HEAD it has **18 entries** and, by the module's own accounting two lines above the table,
-**fifteen families** — *"Eighteen entries for fifteen families: the four Variable types share one
-definition (`variables/variablebase.ts`) and one row each here"*. Neither count changes the claim;
-flagged so the two files do not carry two numbers.
+✅ **A number reconciled the same day, and the reason is worth more than the number.** DEF-007 §1.1
+first said `RUN_ON_CHANGE_FAMILIES` has **17** families, and used it to correct phase 77's fifteen.
+At HEAD it has **18 entries / 15 families** — the module says so two lines above the table (the four
+`Variable` types share one definition and one row each). Corrected in `b4299300`; nothing in either
+claim moved.
+
+🔴 **The cause: a one-line regex keyed on `[\w.\-]+`, which skips `'Filter Collection'` because it
+has a space in it.** 18 − 1 = 17. **A hand-rolled counter's first output is a measurement of the
+counter, not of the thing** — and this one was hard to catch precisely because it was *plausible*:
+17 sits between the two true numbers, so it fitted nothing and excluded nothing, and was used to
+overturn a figure taken from the author's own prose. ✅ **When a count disagrees with a comment
+written by the code's author, suspect the count first**, and say which artefact you counted.
 
 **Sharper than D5, which recorded the migration as "real AND DELIBERATE" and stopped there.** It is
 deliberate, and it is still a defect for every project created from today onwards, because the
