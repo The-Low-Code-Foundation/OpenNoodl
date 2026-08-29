@@ -2794,3 +2794,118 @@ exists. Corrected in place, with the two fixtures named.
 - ⚠️ **The trace-coverage scope line is still not applicable.** EXP-003 does not exist, so there are
   no traces; both surfaces say nothing has been run, which is narrower than EXP-004 anticipated and
   is the honest statement today.
+
+## §23 The code of a node the export refused, and the field built to carry it that nothing reads (session 52, 2026-08-29)
+
+**69 of 127 (54.3%)** — unchanged for a fifth session; nothing on the picker moved, deliberately.
+This session built EXP-004's last unblocked scope line: *"the original node source preserved in
+comments so a developer can see what the code is meant to do."*
+
+### §23.1 🔴 A translated Function keeps its body; a refused one lost it — which is backwards
+
+A re-host wrapper prints only when something that survived references it (`referencedJsIds`), and
+that reference check is correct: a wrapper nothing calls is dead code. But the **body went with
+it**, and the body is the only statement anywhere of what the developer now has to write.
+
+So the export preserved author code in exactly the case where the code was already there as code,
+and dropped it in exactly the case where the comment was the only remaining record.
+
+Measured across the corpus before anything was built:
+
+| | count |
+|---|---|
+| nodes carrying `sourceText` | 4 of 332 |
+| of those, reaching a `jsFunctions` definition | 3 |
+| of those, whose body **never prints** | **1** |
+
+The one is `puppy-test-3`'s `formatList`, a `JavaScriptFunction` deferred because *"its outputs
+feed nothing statically translatable"*. Its marker sat beside the empty `<p>` naming
+`formatList.text`, and `formatList` existed **nowhere in the exported repo**.
+
+🔴 **One in the corpus is not one on the product surface**, and the ledger's own rule applies: a
+Function whose outputs feed nothing statically translatable is an ordinary thing to author, and
+Function nodes are among the most common nodes there are. The corpus number is a regression net,
+not a priority.
+
+### §23.2 The near-miss that a control caught — `reading-shelf`'s `toRow`
+
+The first sweep flagged **two** script nodes whose source reached no output. The second,
+`reading-shelf`'s `toRow` (`Map Collection`, a `mapScript`), looked identical to `formatList` by
+every measurement taken: its node id appeared in no emitted file, and its script text appeared
+nowhere. Its pre-flight, meanwhile, said *"Every node and every wire in this project has a
+translation, and the export refuses none of them"* — which read like a second, worse defect.
+
+Reading the emitted page settled it. The mapping **is** translated, inlined into the collection
+chain:
+
+```tsx
+booksItems.filter((row) => row.shelf == 'favourite').slice().sort(…).map((row) => ({ title: row.title, badge: row.shelf }))
+```
+
+The pre-flight was right and the instrument was wrong: *"is the author's text in the output"*
+answers a different question from *"was this node translated"*, and for every node that translates
+into something other than a verbatim quotation it answers **no** on correct code. Had the sweep
+been trusted, this session would have filed a defect against a working translation and "fixed" it
+by preserving source beside code that already did the job. **The reading fitted; it did not
+exclude.**
+
+### §23.3 Why the source sits at module scope, and not on the marker beside the element
+
+Two reasons, and the second decided it.
+
+A refused Function is still a function, and module scope above the component is where the printed
+wrappers already live — a developer who now has to write it wants it where it will go, not
+indented six levels inside JSX children.
+
+🔴 And **`referencedJsIds` is only complete once the tree walk has finished.** The inline markers
+render *during* that walk, so a marker that asked *"did this wrapper print?"* would have been
+asking before the answer existed, and would have preserved the source of functions that went on to
+print their own. The block is emitted in the wrapper loop, after the walk, where the set is final.
+
+⚠️ **Registration is not emission, and this was nearly the bug.** `plan.jsFunctions` was the
+obvious discriminator and it is the wrong one: `formatList` **is** registered. Only
+`referencedJsIds` separates a body that prints from one that does not, and a measurement was what
+showed it — the proxy was tested before it was used, and it failed.
+
+### §23.4 🔴 U+2028 ends a `//` comment, and the first control that said otherwise was measuring nothing
+
+Author code goes into a line comment, so every JS line terminator has to split it — including
+U+2028 and U+2029, which end a `//` comment exactly as a newline does and spill the rest of the
+line into the module as code.
+
+The first negative control reported **0 parse errors with the guard removed**, which would have
+made the guard decoration. It was measuring nothing: the probe carried a literal U+2028 in *its own
+TypeScript source*, where it had already been consumed as a line break — so the body under test
+never contained one. Writing it as the escape `\u2028` made the hazard appear at once:
+
+| | emitted file carries U+2028 | parse errors |
+|---|---|---|
+| guard in place | no | **0** |
+| naive `\n` split | yes | **1 — *Unterminated string literal*** |
+
+Confirmed independently against all three parsers the exported app meets — **TypeScript, esbuild
+and V8** — each reporting *Unterminated string literal* on the naive rendering. This is the
+`commentSafe` hazard one construct over, and [a literal in your own source reads as absence] again.
+
+### §23.5 What was measured, and what was not
+
+- **`tsc --noEmit`** exit 0; **1044/1044, 42 suites** (1039 before; five rows added).
+- **Six mutants, six killed** over the branch, the body loop, the U+2028 split, the reference test
+  and the marker's node name. The rows include a control pair whose only variable is the one wire
+  that decides whether anything reads the node's outputs.
+- 🔴 **The exported app builds** — `puppy-test-3` emitted into a harness, `tsc -b && vite build`
+  exit 0, and the report's own `grep -rn "TODO(export)" src` now returns **6 markers** where the
+  reader is pointed: `Admin.tsx:67` names `formatList.text` and `Admin.tsx:9` carries its body.
+
+⚠️ **`NodeIR.sourceText` still has no consumer.** The field the IR documents as *"the
+preserved-as-comment fallback when a translation stays unverified"* is written by the parser and
+read by nothing — this session used `JsFunctionPlan.body`, which is what the wrapper would have
+printed and is therefore the honest thing to quote. For `kind: 'function'` the two are the same
+text. The field is left as it was rather than quietly deleted or quietly adopted.
+
+⚠️ **A Visual Function's preserved block is generated code, not authored text**, and its wording
+says so — its authored artefact is a block program. No corpus fixture exercises that branch.
+
+⚠️ **Nothing here is a comprehension measurement.** Whether the preserved block actually lets an
+unfamiliar developer rewrite the function is unmeasured, and belongs with the two EXP-004 lines
+already owed to a person.

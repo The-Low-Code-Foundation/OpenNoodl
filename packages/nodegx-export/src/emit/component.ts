@@ -3541,6 +3541,72 @@ export function emitComponent(
     return lines;
   };
 
+  /**
+   * EXP-004's last in-code marker: the author's own code for a script node this export refused.
+   *
+   * ## The gap this closes
+   *
+   * A wrapper prints only when something that survived references it (`referencedJsIds`). When
+   * nothing survived to read a Function's outputs the plan still registers the definition and the
+   * emit layer drops it — correctly, because a wrapper nothing calls is dead code. But the body
+   * goes with it, and the body is the only statement anywhere of what the node was meant to do.
+   * On `puppy-test-3` the marker beside the empty `<p>` names `formatList.text`, and the function
+   * that computed it exists nowhere in the exported repo: the developer asked to rewrite it is
+   * given the node's name and nothing else.
+   *
+   * ## Why here, and not on the marker beside the element
+   *
+   * Two reasons, and the second is the load-bearing one.
+   *
+   * A refused Function is still a function, and module scope above the component is where the
+   * printed wrappers already live — a developer who now has to write it wants it where it will
+   * go, not indented six levels inside JSX children.
+   *
+   * 🔴 And `referencedJsIds` is only complete once the tree walk has finished. The inline markers
+   * render *during* that walk, so a marker that asked "did this wrapper print?" would be asking
+   * before the answer existed, and would preserve the source of functions that went on to print
+   * their own. This loop runs after the walk, where the set is final.
+   *
+   * ## Commented, never emitted as code
+   *
+   * Un-dropping the wrapper here would reintroduce the dead code the reference check exists to
+   * remove, and for a Function whose inputs never resolved it would reintroduce code that does
+   * not typecheck. So the source is carried as a comment and nothing else.
+   */
+  const REFUSED_SOURCE_WORDING: Record<JsFunctionPlan['kind'], { noun: string; preserved: string }> = {
+    function: { noun: 'Function', preserved: 'Its authored body is' },
+    expression: { noun: 'Expression', preserved: 'Its authored expression is' },
+    // A Visual Function's authored artefact is a block program, not text. `body` is the code
+    // generated from it — the closest honest thing there is, and exactly what the wrapper would
+    // have printed. Saying "authored" of it would be a small lie in a comment whose whole job is
+    // to be the one trustworthy record.
+    visual: { noun: 'Visual Function', preserved: 'The body generated from its block program is' }
+  };
+
+  /**
+   * 🔴 Author content splits on **every** JS line terminator, not just `\n`. U+2028 and U+2029
+   * end a `//` comment exactly as a newline does, so a body carrying one — inside a string
+   * literal, which is where they occur — would close the comment early and spill its remainder
+   * into the module as code. This is `commentSafe`'s hazard one construct over.
+   */
+  const commentSafeLines = (text: string): string[] => text.split(/\r\n|[\n\r\u2028\u2029]/);
+
+  const refusedSourceLines = (def: JsFunctionPlan): string[] => {
+    const { noun, preserved } = REFUSED_SOURCE_WORDING[def.kind];
+    const label = nodeById.get(def.nodeId)?.authoredLabel;
+    const named = label !== undefined ? `"${label}" (node ${def.nodeId})` : `node ${def.nodeId}`;
+    const out = [
+      `// TODO(export): the ${noun} ${named} has no translation here.`,
+      '// Nothing that survived this export reads its outputs, so no wrapper was generated for it.',
+      `// ${preserved} preserved below, because this comment is its only record in this repo.`,
+      '// See the export report.'
+    ];
+    // Verbatim, per the IR's contract for `sourceText`: never trimmed, never reformatted. A line
+    // that is only whitespace carries nothing, and is emitted bare rather than as trailing space.
+    for (const line of commentSafeLines(def.body)) out.push(line.trim() === '' ? '//' : `//   ${line}`);
+    return out;
+  };
+
   const jsxLines = render(plan.rootId, 4);
   /**
    * The markers that cannot be siblings, as line comments above the `return`.
@@ -3582,10 +3648,12 @@ export function emitComponent(
 
   const body: string[] = [];
   // Re-host wrappers print above the component — locality is what a React developer inherits
-  // (EXP-003 §4). Only referenced definitions print, in the plan's resolution order.
+  // (EXP-003 §4). Only referenced definitions print as code, in the plan's resolution order; a
+  // definition nothing kept leaves its source behind as a comment instead (EXP-004), so the node
+  // the inline marker names can still be read somewhere in the repo.
   for (const def of Object.values(jsFunByNode)) {
-    if (!referencedJsIds.has(def.nodeId)) continue;
-    body.push(...jsWrapperLines(def), '');
+    if (referencedJsIds.has(def.nodeId)) body.push(...jsWrapperLines(def), '');
+    else body.push(...refusedSourceLines(def), '');
   }
   if (usesJoinClasses) {
     body.push(

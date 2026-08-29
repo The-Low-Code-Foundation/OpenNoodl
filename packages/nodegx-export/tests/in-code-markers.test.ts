@@ -37,6 +37,14 @@ const FIXTURES = fs
 
 const exportOf = (fixture: string) => emitApp(parseProject(path.join(__dirname, 'fixtures', fixture), catalog), catalog);
 
+/** Parse diagnostics for every emitted TS/TSX file — the control every marker row leans on. */
+const parseErrorsIn = (app: ReturnType<typeof emitApp>): string[] =>
+  sourcesOf(app).flatMap(([file, source]) => {
+    const sf = ts.createSourceFile(file, source, ts.ScriptTarget.ESNext, true, file.endsWith('.tsx') ? ts.ScriptKind.TSX : ts.ScriptKind.TS);
+    const diagnostics = (sf as unknown as { parseDiagnostics: ts.Diagnostic[] }).parseDiagnostics ?? [];
+    return diagnostics.map((d) => `${file}: ${ts.flattenDiagnosticMessageText(d.messageText, ' ')}`);
+  });
+
 const sourcesOf = (app: ReturnType<typeof emitApp>) =>
   Object.entries(app.files).filter(([name]) => name.endsWith('.ts') || name.endsWith('.tsx'));
 
@@ -162,12 +170,6 @@ describe('the marker survives the places JSX will not take a comment', () => {
     component.nodes.push(full);
     return full;
   };
-  const parseErrorsIn = (app: ReturnType<typeof emitApp>): string[] =>
-    sourcesOf(app).flatMap(([file, source]) => {
-      const sf = ts.createSourceFile(file, source, ts.ScriptTarget.ESNext, true, file.endsWith('.tsx') ? ts.ScriptKind.TSX : ts.ScriptKind.TS);
-      const diagnostics = (sf as unknown as { parseDiagnostics: ts.Diagnostic[] }).parseDiagnostics ?? [];
-      return diagnostics.map((d) => `${file}: ${ts.flattenDiagnosticMessageText(d.messageText, ' ')}`);
-    });
 
   it('a port name carrying a comment terminator does not end the comment early', () => {
     /*
@@ -217,5 +219,108 @@ describe('the marker survives the places JSX will not take a comment', () => {
 
   it('every emitted file in every fixture still parses with markers in it', () => {
     for (const fixture of FIXTURES) expect(parseErrorsIn(exportOf(fixture))).toEqual([]);
+  });
+});
+
+describe("a refused script node's own source is preserved (EXP-004)", () => {
+  /*
+   * EXP-004 asks for markers "with the original node source preserved in comments so a developer
+   * can see what the code is meant to do". The markers above name the node and the reason; this
+   * is the source half.
+   *
+   * 🔴 **The half that was missing was the half that matters.** A wrapper prints only when
+   * something that survived references it. A Function whose translation *worked* therefore has
+   * its body in the file as code — and a Function this export **refused** had its body dropped
+   * with the wrapper, which is exactly the case where the body is the only statement of what the
+   * developer now has to write. On `puppy-test-3` the marker beside the empty `<p>` named
+   * `formatList.text` and `formatList` existed nowhere in the exported repo.
+   *
+   * Measured on the corpus before building: 4 of 332 nodes carry `sourceText`, 3 reach a
+   * `jsFunctions` definition, and exactly 1 of those never prints its body. The corpus number is
+   * small; the product surface is not, because a Function whose outputs feed nothing statically
+   * translatable is an ordinary thing to author.
+   */
+  const CHEER = path.join(__dirname, 'fixtures', 'cheer');
+  const cheerIr = parseProject(CHEER, catalog);
+  const cloneCheer = (): ExportIR => JSON.parse(JSON.stringify(cheerIr));
+  const homeOf = (ir: ExportIR): ComponentIR => ir.components.find((c) => c.path === 'Pages/Home')!;
+  const homeSourceOf = (ir: ExportIR): string => String(emitApp(ir, catalog).files['src/pages/Home.tsx']);
+  /** The body of cheer's `formatShout`, which the fixture wires and this suite un-wires. */
+  const SHOUT_BODY = "name.toUpperCase() + '!'";
+
+  it("preserves the body of the corpus Function whose wrapper never prints, and names the node the marker names", () => {
+    const admin = exportOf('puppy-test-3').files['src/pages/Admin.tsx'];
+    // The inline marker points the reader at `formatList` — this is what it points them to.
+    expect(admin).toContain('the wire into "text", from JavaScriptFunction formatList.text');
+    expect(admin).toContain('TODO(export): the Function "Format Puppy List" (node formatList)');
+    expect(admin).toContain('//   const list = Inputs.items || [];');
+    expect(admin).toContain("//   Outputs.text = list.map(p =>");
+  });
+
+  it('a referenced Function prints its wrapper and gets no preserved-source comment', () => {
+    /*
+     * The control half of the pair below. One wire is the only difference between the two rows,
+     * and it is the wire that decides whether anything reads the node's outputs.
+     */
+    const home = homeSourceOf(cloneCheer());
+    expect(home).toContain('function formatShout(');
+    expect(home).toContain(SHOUT_BODY);
+    expect(home).not.toContain('TODO(export): the Function');
+  });
+
+  it('cutting the one wire that reads it drops the wrapper and keeps the body as a comment', () => {
+    const ir = cloneCheer();
+    const home = homeOf(ir);
+    const before = home.connections.length;
+    home.connections = home.connections.filter((c) => c.fromId !== 'formatShout');
+    // The variable is one wire, and it is asserted rather than assumed.
+    expect(before - home.connections.length).toBe(1);
+
+    const source = homeSourceOf(ir);
+    expect(source).not.toContain('function formatShout(');
+    expect(source).toContain('TODO(export): the Function "formatShout" (node formatShout)');
+    // 🔴 The point of the whole row: the author's code survives the refusal.
+    expect(source).toContain(`//   Outputs.text = ${SHOUT_BODY};`);
+  });
+
+  it('a Function with no wires at all still leaves its source behind', () => {
+    /*
+     * The orphan is the case a reader would expect to fall through the gap, because nothing
+     * reads it *and* nothing feeds it. The definition is still registered, so it is still
+     * carried. This row is here because "it happened to work" and "it is guaranteed" are
+     * different claims, and only a row makes it the second one.
+     */
+    const ir = cloneCheer();
+    const home = homeOf(ir);
+    home.connections = home.connections.filter((c) => c.fromId !== 'formatShout' && c.toId !== 'formatShout');
+    const source = homeSourceOf(ir);
+    expect(source).toContain('TODO(export): the Function');
+    expect(source).toContain(SHOUT_BODY);
+  });
+
+  it('a body carrying U+2028 does not end the comment that carries it', () => {
+    /*
+     * 🔴 **U+2028 and U+2029 are JS line terminators**, so they close a `//` comment exactly as a
+     * newline does and spill the rest of the line into the module as code. Confirmed against all
+     * three parsers the exported app meets — TypeScript, esbuild and V8 — each of which reports
+     * *Unterminated string literal* on the naive rendering. A body carrying one inside a string
+     * literal is author content the corpus will never produce, which is the reason to write it.
+     *
+     * ⚠️ **The escape, never the literal.** A literal U+2028 in this file would end *this*
+     * string too, and the file would not compile — which is how the hazard was confirmed.
+     */
+    const ir = cloneCheer();
+    const home = homeOf(ir);
+    home.connections = home.connections.filter((c) => c.fromId !== 'formatShout');
+    const script = home.nodes.find((n) => n.id === 'formatShout')!.parameters.find((p) => p.name === 'functionScript')!;
+    script.value = { kind: 'script', source: "const sep = '\u2028';\nOutputs.text = 'a' + sep + 'b';" } as ParamValue;
+
+    const app = emitApp(ir, catalog);
+    const source = String(app.files['src/pages/Home.tsx']);
+    // The terminator is spent as a line break inside the comment block, so none reaches the file.
+    expect(source).not.toContain('\u2028');
+    expect(source).toContain("//   const sep = '");
+    expect(source).toContain("//   Outputs.text = 'a' + sep + 'b';");
+    expect(parseErrorsIn(app)).toEqual([]);
   });
 });
