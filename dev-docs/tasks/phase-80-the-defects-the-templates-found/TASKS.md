@@ -17,6 +17,7 @@ derivation and [README.md](README.md) for why the phase exists.
 | DEF-007 | ⬜ open | [A project means one thing on disk and another once loaded](DEF-007-DISK-AND-LOAD-DISAGREE.md) | P78 D9 residual · P77 D5 | the **next template** |
 | DEF-008 | ⬜ open | [The measurement owed](DEF-008-THE-MEASUREMENT-OWED.md) | P77 D6 · P78 D5 | nobody yet — a re-drive |
 | DEF-009 | ⬜ open | [A public write door ships with no limit](DEF-009-A-PUBLIC-WRITE-DOOR-WITH-NO-LIMIT.md) | **P76 F3** | a **site owner** whose form fills their database |
+| DEF-010 | 🟡 C2 done, **C1 open** | [Track C, handed over by phase 78](../phase-78-the-templates/TRACK-C-HANDOFF.md) | **P78 D18, D19, D26** | every app: controls in the wrong face; one content surface for nine kinds of thing |
 | DEF-014 | ⬜ open | [A filter on a column nothing has written is a 500](DEF-014-A-QUERY-AGAINST-A-COLUMN-LESS-CLASS.md) | **P77 SBR-015 s12 drive** | every **site owner on day one** — the site-builder cannot publish its first page |
 | DEF-015 | ⬜ open | [The backend card calls three components undeployed that can never deploy](DEF-015-THE-CARD-WARNS-ABOUT-WORKERS.md) | **P77 SBR-015 s12 drive** | every **author with a Run Tasks worker** — a green deploy that reads as failed |
 | DEF-016 | ⬜ open | [External Link reports Failure on every new tab it opens](DEF-016-EXTERNAL-LINK-ALWAYS-REPORTS-FAILURE.md) | **P18 EXP-011 Tier 2.5 s41 drive** | every **author who wired Done or Failure** on the node — a link that worked, reported as blocked |
@@ -70,6 +71,38 @@ should be done **once**, not three times.
   in phase 78. Disproved as a platform limitation: `metadata.designTokens` persists and the artefact
   ships it.
 - **P77 D9** (deploy drops wire-only `prop-*`) — already owned by **SBR-008**.
+
+### DEF-010 — Track C, and why it is phase 80's rather than phase 78's
+
+🧭 **Richard scoped the members'-area repair into three tracks and ruled Track C ours**: it is
+product source (`StyleCompositions.ts`, the viewer's control CSS), and phase 78 has deliberately
+never touched editor source — that isolation is what has kept the two phases from colliding.
+Everything is measured with file and line in
+[TRACK-C-HANDOFF.md](../phase-78-the-templates/TRACK-C-HANDOFF.md); it was verified at source
+before any of it was acted on, and every measurement in it held.
+
+- ✅ **C2 (D18/D19) — DONE `42325550`.** `assets/style.css` had **exactly one `font-family`
+  declaration in the whole file**, on `.ndl-controls-select`; `button` and `textinput` now
+  inherit too. `StyleCompositions.ts`'s `body` description was corrected in the same commit —
+  it told an author controls inherit the page font, which is what a generator reads *before
+  deciding not to set one*, so the CSS repair alone would have been rewritten.
+  ⚠️ **D19 (a control's own `<label>` renders `#000`) is NOT done** — the colour comes from the
+  label style group (`TextInput.tsx:235`, and the same in Checkbox/RadioButton), not from the
+  stylesheet, so it is a different fix from D18's and was left rather than guessed at.
+- ⬜ **C1 (D26) — open, and the highest-leverage item on the list.** Of eighteen compositions
+  exactly **two** carry a content fill (`bandSurface`, `card`) and **both are `var(--surface)`**,
+  so there is one way to make something look like a distinct object and **nine kinds of thing
+  wear it**. That is the "standard bootstrap feel" Richard named. 🔴 **It is cheap:
+  `--surface-raised` is already in the token set, declared once and read by nothing** — verified:
+  0 references in `StyleCompositions.ts`, and its single occurrence in the members-area is a
+  *declaration* in the project token block, not a paint. The second surface does not need a
+  palette decision, it needs a **reader**. Same shape as *a token nothing reads is a theme
+  nobody sees*.
+  ⚠️ **Not more variants of `card`** — what is missing is contrast *between* compositions: a
+  **raised** treatment on a `--surface` ground, and a **ruled** treatment so a list stops looking
+  like a stack of cards. 🔴 **Phase 78's B3 is capped until C1 lands.**
+- ✅ **C3 (D20)** — filed at `f9367dc7` as DEF-006 §0(c).
+
 - **P76 F10 / F12 / F13** — already owned by **SB-010** / **SB-011**.
 
 ## Session log
