@@ -152,6 +152,62 @@ export function escapeColumn(name: string): string {
 }
 
 /**
+ * What the table actually has, for the one question SQL will not be asked
+ * politely (DEF-014).
+ *
+ * A collection here is created on first use with **no user columns at all**
+ * (`LocalSQLAdapter._ensureTable`), and its columns appear one at a time as
+ * writes arrive (`create`/`save` → `SchemaManager.addColumn`). So on the day an
+ * app is made, every property it filters on is a column that does not exist
+ * yet — and `WHERE "pageId" = ?` against a table without a `pageId` is not an
+ * empty result in SQLite, it is `no such column`, which the adapter surfaces as
+ * an error and the HTTP layer as a 500. "Nothing has been written yet" is the
+ * ordinary state of a new app, not a fault, and a query is entitled to say
+ * *nothing matches* about it.
+ *
+ * `present` is read from `PRAGMA table_info` on the live connection at build
+ * time — never from `_Schema`, which for an auto-created table records
+ * `{"columns": []}` and therefore knows nothing the table does not. When it is
+ * omitted the builder substitutes nothing and behaves exactly as it always has;
+ * a caller that cannot see the schema must not guess that a column is missing.
+ *
+ * @see columnRef for the substitution and the semantics it is chosen to match.
+ */
+export interface ColumnScope {
+  /** Column names the table has right now, as `PRAGMA table_info` reports them. */
+  present: ReadonlySet<string>;
+  /** Out-parameter: every name substituted, so the caller can report the typo case. */
+  absent?: Set<string>;
+}
+
+/**
+ * A column reference, or `NULL` when the table has no such column.
+ *
+ * **The rule, stated once: a column the table does not have behaves exactly
+ * like a column it does have and no row has filled in.** That is not a
+ * convenience choice — it is the only one that keeps every operator consistent
+ * without writing a second set of semantics for absence. Substituting the SQL
+ * literal `NULL` for the column reference reproduces the all-NULL column's
+ * answer term by term: `= ?`, `!= ?`, `IN`, `NOT IN`, `>` and `LIKE` all
+ * evaluate to NULL and match nothing; `IS NULL` (`$exists: false`) matches
+ * every row; `IS NOT NULL` (`$exists: true`) matches none. Those are the
+ * readings an all-NULL column gives today, and the equivalence is asserted as a
+ * pair in the specs rather than reasoned about here.
+ *
+ * ⚠️ It is deliberately **not** "return no rows". An implementation that
+ * short-circuits the whole query to empty gets `$exists: false` and `$ne`
+ * backwards, and passes a test that only ever asks for the day-one case.
+ */
+export function columnRef(name: string, scope?: ColumnScope, tableAlias?: string): string {
+  const escaped = escapeColumn(name);
+  if (scope && !scope.present.has(escaped.slice(1, -1))) {
+    scope.absent?.add(name);
+    return 'NULL';
+  }
+  return tableAlias ? `${tableAlias}.${escaped}` : escaped;
+}
+
+/**
  * Build the row-level ACL predicate (BAK-003).
  *
  * A row is visible/writable when its ACL column is NULL (no ACL = public,
@@ -251,6 +307,10 @@ function convertQueryValue(value: unknown): unknown {
  * @param where - Parse-style query object
  * @param params - Array to push parameter values to
  * @param schema - Optional schema for type-aware conversion
+ * @param scope - DEF-014: the table's real columns. A condition naming a
+ *   column the table does not have compiles to `NULL`, which answers exactly as
+ *   an all-NULL column would, instead of failing the whole statement with
+ *   `no such column`. Omitted = no substitution (see {@link ColumnScope}).
  * @param tableAlias - BAK-008: when the caller is joining the
  *   collection's table against another (the FTS5 shadow table, whose columns
  *   are named after the indexed fields), unqualified column references like
@@ -263,7 +323,8 @@ export function buildWhereClause(
   where: Record<string, unknown> | undefined,
   params: unknown[],
   schema?: unknown,
-  tableAlias?: string
+  tableAlias?: string,
+  scope?: ColumnScope
 ): string {
   if (!where || Object.keys(where).length === 0) {
     return '';
@@ -275,7 +336,7 @@ export function buildWhereClause(
     // Handle logical operators
     if (key === '$and' && Array.isArray(condition)) {
       const subConditions = condition
-        .map((sub) => buildWhereClause(sub as Record<string, unknown>, params, schema, tableAlias))
+        .map((sub) => buildWhereClause(sub as Record<string, unknown>, params, schema, tableAlias, scope))
         .filter((c) => c);
       if (subConditions.length > 0) {
         conditions.push(`(${subConditions.join(' AND ')})`);
@@ -285,7 +346,7 @@ export function buildWhereClause(
 
     if (key === '$or' && Array.isArray(condition)) {
       const subConditions = condition
-        .map((sub) => buildWhereClause(sub as Record<string, unknown>, params, schema, tableAlias))
+        .map((sub) => buildWhereClause(sub as Record<string, unknown>, params, schema, tableAlias, scope))
         .filter((c) => c);
       if (subConditions.length > 0) {
         conditions.push(`(${subConditions.join(' OR ')})`);
@@ -310,7 +371,7 @@ export function buildWhereClause(
     }
 
     // Handle field conditions
-    const col = tableAlias ? `${tableAlias}.${escapeColumn(key)}` : escapeColumn(key);
+    const col = columnRef(key, scope, tableAlias);
 
     if (typeof condition !== 'object' || condition === null) {
       // Direct equality
@@ -553,9 +614,17 @@ function translateOperator(
  *
  * @param sort - Sort specification (e.g., 'name' or '-createdAt' for desc)
  * @param tableAlias - BAK-008: qualify column references (see buildWhereClause).
+ * @param scope - DEF-014: sorting by a column the table does not have compiles
+ *   to `ORDER BY NULL`, which is what sorting by an all-NULL column does — every
+ *   row ties. Before this, a list page sorted by a property nothing had written
+ *   yet failed the same way a filter on one did.
  * @returns SQL ORDER BY clause (without "ORDER BY" keyword)
  */
-export function buildOrderClause(sort: string | string[] | undefined, tableAlias?: string): string {
+export function buildOrderClause(
+  sort: string | string[] | undefined,
+  tableAlias?: string,
+  scope?: ColumnScope
+): string {
   if (!sort) {
     return '';
   }
@@ -566,7 +635,7 @@ export function buildOrderClause(sort: string | string[] | undefined, tableAlias
     const trimmed = s.trim();
     const desc = trimmed.startsWith('-');
     const name = desc ? trimmed.substring(1) : trimmed;
-    const col = tableAlias ? `${tableAlias}.${escapeColumn(name)}` : escapeColumn(name);
+    const col = columnRef(name, scope, tableAlias);
     return `${col} ${desc ? 'DESC' : 'ASC'}`;
   });
 
@@ -576,7 +645,7 @@ export function buildOrderClause(sort: string | string[] | undefined, tableAlias
 /**
  * Build a SELECT query
  */
-export function buildSelect(options: SelectOptions, schema?: unknown): BuiltQuery {
+export function buildSelect(options: SelectOptions, schema?: unknown, scope?: ColumnScope): BuiltQuery {
   const params: unknown[] = [];
   const table = escapeTable(options.collection);
 
@@ -589,7 +658,14 @@ export function buildSelect(options: SelectOptions, schema?: unknown): BuiltQuer
     // relation subquery in buildWhere already used.
     const fields = new Set(['objectId', ...selectArray.map((s) => s.trim())]);
     selectClause = Array.from(fields)
-      .map((f) => escapeColumn(f))
+      .map((f) => {
+        // DEF-014: `select` names columns too. An absent one is selected as an
+        // explicit NULL under its own name, so the record carries the key with
+        // no value — the same row an all-NULL column produces — rather than the
+        // statement failing and the caller getting no record at all.
+        const ref = columnRef(f, scope);
+        return ref === 'NULL' ? `NULL as ${escapeColumn(f)}` : ref;
+      })
       .join(', ');
   }
 
@@ -598,7 +674,7 @@ export function buildSelect(options: SelectOptions, schema?: unknown): BuiltQuer
   // Build WHERE clause (query filter AND row-level ACL predicate)
   const conditions: string[] = [];
   if (options.where) {
-    const whereClause = buildWhereClause(options.where, params, schema);
+    const whereClause = buildWhereClause(options.where, params, schema, undefined, scope);
     if (whereClause) {
       conditions.push(whereClause);
     }
@@ -613,7 +689,7 @@ export function buildSelect(options: SelectOptions, schema?: unknown): BuiltQuer
 
   // Build ORDER BY clause
   if (options.sort) {
-    const orderClause = buildOrderClause(options.sort);
+    const orderClause = buildOrderClause(options.sort, undefined, scope);
     if (orderClause) {
       sql += ` ORDER BY ${orderClause}`;
     }
@@ -636,7 +712,7 @@ export function buildSelect(options: SelectOptions, schema?: unknown): BuiltQuer
 /**
  * Build a COUNT query
  */
-export function buildCount(options: QueryOptionsBase, schema?: unknown): BuiltQuery {
+export function buildCount(options: QueryOptionsBase, schema?: unknown, scope?: ColumnScope): BuiltQuery {
   const params: unknown[] = [];
   const table = escapeTable(options.collection);
 
@@ -644,7 +720,7 @@ export function buildCount(options: QueryOptionsBase, schema?: unknown): BuiltQu
 
   const conditions: string[] = [];
   if (options.where) {
-    const whereClause = buildWhereClause(options.where, params, schema);
+    const whereClause = buildWhereClause(options.where, params, schema, undefined, scope);
     if (whereClause) {
       conditions.push(whereClause);
     }
@@ -842,7 +918,7 @@ export function toFts5MatchQuery(term: string): string {
  * callers should translate the resulting "no such table" SQL error into a
  * clear "search not enabled" message (see LocalSQLAdapter.search).
  */
-export function buildSearchSelect(options: SearchOptions, schema?: unknown): BuiltQuery {
+export function buildSearchSelect(options: SearchOptions, schema?: unknown, scope?: ColumnScope): BuiltQuery {
   const params: unknown[] = [];
   const table = escapeTable(options.collection);
   const ftsTable = escapeTable(`${options.collection}_fts`);
@@ -856,7 +932,7 @@ export function buildSearchSelect(options: SearchOptions, schema?: unknown): Bui
   const conditions = [`${ftsTable} MATCH ?`];
 
   if (options.where) {
-    const whereClause = buildWhereClause(options.where, params, schema, table);
+    const whereClause = buildWhereClause(options.where, params, schema, table, scope);
     if (whereClause) conditions.push(whereClause);
   }
   const aclClause = buildAclPredicate(options.collection, options.acl, params);
@@ -865,7 +941,7 @@ export function buildSearchSelect(options: SearchOptions, schema?: unknown): Bui
   sql += ` WHERE ${conditions.join(' AND ')}`;
 
   if (options.sort) {
-    const orderClause = buildOrderClause(options.sort, table);
+    const orderClause = buildOrderClause(options.sort, table, scope);
     if (orderClause) sql += ` ORDER BY ${orderClause}`;
   } else {
     // Default: best match first. bm25() is lower-is-better in SQLite.
@@ -888,7 +964,7 @@ export function buildSearchSelect(options: SearchOptions, schema?: unknown): Bui
  * Build a COUNT query for a search (BAK-008) — same MATCH + filter + ACL
  * predicate as buildSearchSelect, no ranking/snippet/order/limit.
  */
-export function buildSearchCount(options: SearchOptions, schema?: unknown): BuiltQuery {
+export function buildSearchCount(options: SearchOptions, schema?: unknown, scope?: ColumnScope): BuiltQuery {
   const params: unknown[] = [];
   const table = escapeTable(options.collection);
   const ftsTable = escapeTable(`${options.collection}_fts`);
@@ -899,7 +975,7 @@ export function buildSearchCount(options: SearchOptions, schema?: unknown): Buil
   const conditions = [`${ftsTable} MATCH ?`];
 
   if (options.where) {
-    const whereClause = buildWhereClause(options.where, params, schema, table);
+    const whereClause = buildWhereClause(options.where, params, schema, table, scope);
     if (whereClause) conditions.push(whereClause);
   }
   const aclClause = buildAclPredicate(options.collection, options.acl, params);
@@ -913,16 +989,22 @@ export function buildSearchCount(options: SearchOptions, schema?: unknown): Buil
 /**
  * Build a DISTINCT query
  */
-export function buildDistinct(options: QueryOptionsBase & { property: string }): BuiltQuery {
+export function buildDistinct(
+  options: QueryOptionsBase & { property: string },
+  scope?: ColumnScope
+): BuiltQuery {
   const params: unknown[] = [];
   const table = escapeTable(options.collection);
-  const col = escapeColumn(options.property);
+  // DEF-014: aliased, so an absent column still comes back under the name the
+  // caller reads it by (LocalSQLAdapter.distinct indexes rows by property).
+  const ref = columnRef(options.property, scope);
+  const col = ref === 'NULL' ? `NULL as ${escapeColumn(options.property)}` : ref;
 
   let sql = `SELECT DISTINCT ${col} FROM ${table}`;
 
   const conditions: string[] = [];
   if (options.where) {
-    const whereClause = buildWhereClause(options.where, params);
+    const whereClause = buildWhereClause(options.where, params, undefined, undefined, scope);
     if (whereClause) {
       conditions.push(whereClause);
     }
@@ -942,7 +1024,8 @@ export function buildDistinct(options: QueryOptionsBase & { property: string }):
  * Build an AGGREGATE query
  */
 export function buildAggregate(
-  options: QueryOptionsBase & { group: Record<string, AggregateGroupConfig>; limit?: number; skip?: number }
+  options: QueryOptionsBase & { group: Record<string, AggregateGroupConfig>; limit?: number; skip?: number },
+  scope?: ColumnScope
 ): BuiltQuery {
   const params: unknown[] = [];
   const table = escapeTable(options.collection);
@@ -950,17 +1033,20 @@ export function buildAggregate(
   const selectParts: string[] = [];
 
   for (const [alias, groupConfig] of Object.entries(options.group)) {
+    // DEF-014: an aggregate over a column nothing has written aggregates NULLs —
+    // AVG/SUM/MAX/MIN answer null and COUNT(DISTINCT NULL) answers 0, which is
+    // what the same aggregate over an all-NULL column already answers.
     if (groupConfig.avg !== undefined) {
-      selectParts.push(`AVG(${escapeColumn(groupConfig.avg)}) as ${escapeColumn(alias)}`);
+      selectParts.push(`AVG(${columnRef(groupConfig.avg, scope)}) as ${escapeColumn(alias)}`);
     } else if (groupConfig.sum !== undefined) {
-      selectParts.push(`SUM(${escapeColumn(groupConfig.sum)}) as ${escapeColumn(alias)}`);
+      selectParts.push(`SUM(${columnRef(groupConfig.sum, scope)}) as ${escapeColumn(alias)}`);
     } else if (groupConfig.max !== undefined) {
-      selectParts.push(`MAX(${escapeColumn(groupConfig.max)}) as ${escapeColumn(alias)}`);
+      selectParts.push(`MAX(${columnRef(groupConfig.max, scope)}) as ${escapeColumn(alias)}`);
     } else if (groupConfig.min !== undefined) {
-      selectParts.push(`MIN(${escapeColumn(groupConfig.min)}) as ${escapeColumn(alias)}`);
+      selectParts.push(`MIN(${columnRef(groupConfig.min, scope)}) as ${escapeColumn(alias)}`);
     } else if (groupConfig.distinct !== undefined) {
       // COUNT DISTINCT as alternative to $addToSet
-      selectParts.push(`COUNT(DISTINCT ${escapeColumn(groupConfig.distinct)}) as ${escapeColumn(alias)}`);
+      selectParts.push(`COUNT(DISTINCT ${columnRef(groupConfig.distinct, scope)}) as ${escapeColumn(alias)}`);
     }
   }
 
@@ -972,7 +1058,7 @@ export function buildAggregate(
 
   const conditions: string[] = [];
   if (options.where) {
-    const whereClause = buildWhereClause(options.where, params);
+    const whereClause = buildWhereClause(options.where, params, undefined, undefined, scope);
     if (whereClause) {
       conditions.push(whereClause);
     }

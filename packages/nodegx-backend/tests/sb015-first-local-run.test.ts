@@ -311,19 +311,29 @@ describe('SB-015 §6.4 — the first local run of a project made from the templa
       expect(v.title).toBe('Site');
 
       /**
-       * 🔴 The reading that fixed the fix. This arm's Page query FAILS — it
-       * does not come back empty — because `claimSite` is what creates the
-       * collections, so before it runs there is nothing to query:
+       * 🔴 **This assertion was inverted by DEF-014 on 2026-08-29, and the
+       * inversion is the point.** It used to read:
        *
-       *   [noodl] DbCollection2 (/Pages/Site): Failed to fetch.
-       *   [query-records/query-failed]
+       *   > This arm's Page query FAILS — it does not come back empty —
+       *   > because `claimSite` is what creates the collections, so before it
+       *   > runs there is nothing to query:
+       *   >   [noodl] DbCollection2 (/Pages/Site): Failed to fetch.
+       *   >   [query-records/query-failed]
        *
-       * The first version of the diagnosis read the failure before the missing
-       * settings row and reported this state as a refusal — true, and useless
-       * to the person who has to fix it. Pinned here because the console line
-       * is the evidence that the two conditions really are simultaneous.
+       * That was true and it was the defect DEF-014 names: a filter on a
+       * column no row has written was `no such column` at the database and 500
+       * on the wire, not an empty result. Fixed at the cause
+       * (`QueryBuilder.columnRef`), this arm's query now comes back **empty**,
+       * and the browser console carries **nothing at all**.
+       *
+       * What the spec was actually protecting survives, and is asserted
+       * directly instead of through a console line: the screen names this
+       * state, and it does so WITHOUT needing a query to fail — which is the
+       * stronger version of SB-015 §6.4a's fix, because the sentence a person
+       * reads no longer depends on an error the product should not be raising.
        */
-      expect(v.errors.join('\n')).toContain('query-records/query-failed');
+      expect(v.errors.join('\n')).not.toContain('query-records/query-failed');
+      expect(v.errors).toEqual([]);
 
       // …and the control renders a real page through the same instrument, so
       // this is a reading about the state and not about the browser.

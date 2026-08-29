@@ -245,6 +245,8 @@ class LocalSQLAdapter {
   _collections: Record<string, CollectionConfig>;
   _mockData?: Record<string, Record<string, AdapterRecord>>;
   _mockSchema?: Record<string, { name: string; columns: Array<{ name: string; type?: string }> }>;
+  /** DEF-014: (collection.column) pairs already reported absent, so the log says it once. */
+  _absentColumnsReported: Set<string>;
 
   /**
    * @param dbPath - Path to SQLite database file
@@ -295,6 +297,10 @@ class LocalSQLAdapter {
 
     // Collection schemas (like CloudStore._collections)
     this._collections = options.collections || {};
+
+    // DEF-014: a filter on a column no row has written is answered, not raised.
+    // Reported once per collection+column so a hot query does not flood the log.
+    this._absentColumnsReported = new Set();
   }
 
   /**
@@ -664,6 +670,65 @@ class LocalSQLAdapter {
   }
 
   /**
+   * The columns a table actually has, read from the live connection (DEF-014).
+   *
+   * 🔴 **`PRAGMA table_info`, not `_Schema`.** The two are not interchangeable
+   * and the tracking table is the wrong instrument here twice over: for a table
+   * auto-created by first use it records `{"columns": []}` while the table has
+   * the four system columns, and `addColumn` skips its `_Schema` update when the
+   * `ALTER TABLE` reports a duplicate — so a column can exist, hold data, and be
+   * missing from `_Schema`. Treating that as absent would answer a working query
+   * with no rows, which is a worse defect than the one this fixes.
+   *
+   * Returns `undefined` when the schema cannot be read (the ephemeral in-memory
+   * mock answers no PRAGMA), and `undefined` means *no substitution* — the
+   * builder then behaves exactly as it did before. An empty result is treated
+   * the same way: every real table has `objectId`, so nothing is not an answer.
+   *
+   * @private
+   */
+  _columnScope(collection: string): QueryBuilder.ColumnScope | undefined {
+    try {
+      const rows = this.db.prepare(`PRAGMA table_info(${QueryBuilder.escapeTable(collection)})`).all() as Array<{
+        name?: string;
+      }>;
+      if (!Array.isArray(rows) || rows.length === 0) return undefined;
+      const present = new Set(rows.map((r) => r.name).filter((n): n is string => typeof n === 'string'));
+      if (present.size === 0) return undefined;
+      return { present, absent: new Set<string>() };
+    } catch (e) {
+      return undefined;
+    }
+  }
+
+  /**
+   * Say once, in the log, that a query named a column the collection has never
+   * had (DEF-014).
+   *
+   * The result is correct either way — the query is answered as it would be for
+   * a column every row left empty. What the log carries is the case this cannot
+   * tell apart from that one: **a misspelled property name**. Nothing in this
+   * backend can separate the two, because a column here is only ever created by
+   * a write, so "declared but unwritten" is not a state that exists (see
+   * DEF-014 §3). A silent empty result for a typo is its own defect; this is the
+   * cheapest honest signal, and it is why the fix is not simply a swallowed error.
+   *
+   * @private
+   */
+  _reportAbsentColumns(collection: string, scope: QueryBuilder.ColumnScope | undefined): void {
+    if (!scope || !scope.absent || scope.absent.size === 0) return;
+    for (const name of scope.absent) {
+      const key = `${collection}.${name}`;
+      if (this._absentColumnsReported.has(key)) continue;
+      this._absentColumnsReported.add(key);
+      console.warn(
+        `LocalSQLAdapter: collection "${collection}" has no column "${name}" — no record has ever ` +
+          'carried that property, so it is read as empty. If the name is a typo, nothing else will say so.'
+      );
+    }
+  }
+
+  /**
    * Get schema for a collection
    *
    * @private
@@ -766,7 +831,8 @@ class LocalSQLAdapter {
       this._guardAclSupport(options);
 
       const schema = this._getSchema(options.collection);
-      const { sql, params } = QueryBuilder.buildSelect(options, schema);
+      const scope = this._columnScope(options.collection);
+      const { sql, params } = QueryBuilder.buildSelect(options, schema, scope);
 
       const rows = this.db.prepare(sql).all(...params) as AdapterRecord[];
       const results = rows.map((row) => this._rowToRecord(row, options.collection));
@@ -774,11 +840,12 @@ class LocalSQLAdapter {
       // Handle count if requested
       let count;
       if (options.count) {
-        const { sql: countSQL, params: countParams } = QueryBuilder.buildCount(options, schema);
+        const { sql: countSQL, params: countParams } = QueryBuilder.buildCount(options, schema, scope);
         const countRow = this.db.prepare(countSQL).get(...countParams) as { count?: number } | undefined;
         count = countRow?.count || 0;
       }
 
+      this._reportAbsentColumns(options.collection, scope);
       options.success(results, count);
     } catch (e) {
       console.error('LocalSQLAdapter.query error:', e);
@@ -825,7 +892,8 @@ class LocalSQLAdapter {
       }
 
       const schema = this._getSchema(options.collection);
-      const { sql, params } = QueryBuilder.buildSearchSelect(options, schema);
+      const scope = this._columnScope(options.collection);
+      const { sql, params } = QueryBuilder.buildSearchSelect(options, schema, scope);
 
       const rows = this.db.prepare(sql).all(...params) as AdapterRecord[];
       const results = rows.map((row) => {
@@ -840,11 +908,12 @@ class LocalSQLAdapter {
 
       let count;
       if (options.count) {
-        const { sql: countSQL, params: countParams } = QueryBuilder.buildSearchCount(options, schema);
+        const { sql: countSQL, params: countParams } = QueryBuilder.buildSearchCount(options, schema, scope);
         const countRow = this.db.prepare(countSQL).get(...countParams) as { count?: number } | undefined;
         count = countRow?.count || 0;
       }
 
+      this._reportAbsentColumns(options.collection, scope);
       options.success(results, count);
     } catch (e) {
       if (/no such table/i.test(e.message || '')) {
@@ -1049,9 +1118,11 @@ class LocalSQLAdapter {
       this._guardAclSupport(options);
 
       const schema = this._getSchema(options.collection);
-      const { sql, params } = QueryBuilder.buildCount(options, schema);
+      const scope = this._columnScope(options.collection);
+      const { sql, params } = QueryBuilder.buildCount(options, schema, scope);
 
       const row = this.db.prepare(sql).get(...params) as { count?: number } | undefined;
+      this._reportAbsentColumns(options.collection, scope);
       options.success(row?.count || 0);
     } catch (e) {
       console.error('LocalSQLAdapter.count error:', e);
@@ -1067,8 +1138,10 @@ class LocalSQLAdapter {
       this._ensureTable(options.collection);
       this._guardAclSupport(options);
 
-      const { sql, params } = QueryBuilder.buildAggregate(options);
+      const scope = this._columnScope(options.collection);
+      const { sql, params } = QueryBuilder.buildAggregate(options, scope);
       const row = this.db.prepare(sql).get(...params) as AdapterRecord | undefined;
+      this._reportAbsentColumns(options.collection, scope);
 
       // Format result like Parse Server
       const result: Record<string, unknown> = {};
@@ -1093,9 +1166,11 @@ class LocalSQLAdapter {
       this._ensureTable(options.collection);
       this._guardAclSupport(options);
 
-      const { sql, params } = QueryBuilder.buildDistinct(options);
+      const scope = this._columnScope(options.collection);
+      const { sql, params } = QueryBuilder.buildDistinct(options, scope);
       const rows = this.db.prepare(sql).all(...params) as AdapterRecord[];
 
+      this._reportAbsentColumns(options.collection, scope);
       const results = rows.map((r) => r[options.property]);
       options.success(results);
     } catch (e) {

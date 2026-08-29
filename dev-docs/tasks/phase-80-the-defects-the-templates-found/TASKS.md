@@ -18,7 +18,7 @@ derivation and [README.md](README.md) for why the phase exists.
 | DEF-008 | ⬜ open | [The measurement owed](DEF-008-THE-MEASUREMENT-OWED.md) | P77 D6 · P78 D5 | nobody yet — a re-drive |
 | DEF-009 | ⬜ open | [A public write door ships with no limit](DEF-009-A-PUBLIC-WRITE-DOOR-WITH-NO-LIMIT.md) | **P76 F3** | a **site owner** whose form fills their database |
 | DEF-017 | ✅ **done — C1, C2 (D18+D19), C3** | [Track C, handed over by phase 78](../phase-78-the-templates/TRACK-C-HANDOFF.md) | **P78 D18, D19, D26** | every app: controls in the wrong face; one content surface for nine kinds of thing |
-| DEF-014 | ⬜ open | [A filter on a column nothing has written is a 500](DEF-014-A-QUERY-AGAINST-A-COLUMN-LESS-CLASS.md) | **P77 SBR-015 s12 drive** | every **site owner on day one** — the site-builder cannot publish its first page |
+| DEF-014 | 🟡 partial | [A filter on a column nothing has written is a 500](DEF-014-A-QUERY-AGAINST-A-COLUMN-LESS-CLASS.md) — **fixed at the cause; AC2/3/4 ✅, AC1's drive owed** | **P77 SBR-015 s12 drive** | every **site owner on day one** — the site-builder cannot publish its first page |
 | DEF-015 | ⬜ open | [The backend card calls three components undeployed that can never deploy](DEF-015-THE-CARD-WARNS-ABOUT-WORKERS.md) | **P77 SBR-015 s12 drive** | every **author with a Run Tasks worker** — a green deploy that reads as failed |
 | DEF-016 | ✅ done | [External Link reports Failure on every new tab it opens](DEF-016-EXTERNAL-LINK-ALWAYS-REPORTS-FAILURE.md) | **P18 EXP-011 Tier 2.5 s41 drive** | every **author who wired Done or Failure** on the node — a link that worked, reported as blocked |
 
@@ -69,11 +69,37 @@ should be done **once**, not three times.
   filed as findings. 🔴 **Owner: `NONE`** — a closed task cannot own its debt, and this one is a PR
   gate that fails every PR until somebody takes it. Fix is a graph edit to two recipes, ~20 minutes,
   and both diagnostics carry their own `suggestion`.
+- ⚠️ **A phase 77 spec asserted DEF-014's defect as correct behaviour, and phase 80 moved it.**
+  `nodegx-backend/tests/sb015-first-local-run.test.ts` pinned the unclaimed arm's page query as
+  *failing* (`query-records/query-failed`) rather than returning empty — true when written, and the
+  evidence for SB-015 §6.4a's screen fix. With DEF-014 fixed at the cause the arm reports **zero**
+  browser errors and the screen still names the state, so the assertion was inverted in place with
+  its original text kept above it. **Suite green: 117/117, 1384 passed.** Recorded here because the
+  owner of a red is whoever moved the measured thing, and that was this phase — phase 77 should know
+  the reading changed, not discover it.
 - ⚠️ **`packages/noodl-mcp/dist/noodl-mcp.cjs` is stale**, so a *running* MCP server still answers
   `notFound` for `Page.title` until the next build. Source, suites and committed catalog are correct.
   **Owner: whoever cuts the next 0.2.1 build.**
 
 ## Findings this phase raised that nobody owns
+
+- 🔴 **Nothing gives an auto-created class the columns its project has already declared.** Owner:
+  **`NONE`**. Found by DEF-014 s10 (see that file's **§6.1**), and it is DEF-014 §3's own third
+  bullet left undone rather than a new idea.
+
+  A collection in the local backend is created by its first *use* with no columns, and gains them one
+  at a time as writes arrive. The project already knows better — its `dbCollections` metadata names
+  every property — but that knowledge never reaches the running backend: **every** `createAdapter`
+  call site in `nodegx-backend` omits the `collections` option, so `_collections` is `{}` in every
+  running backend, and `provisionBackend.ts` creates collections only on the AI-authoring plan path
+  (where its own comment calls the step advisory).
+
+  🔴 **It is the only route to a real typo/unwritten distinction.** DEF-014's fix answers a filter on
+  an unwritten property as empty and reports it once in the log, because nothing in the backend can
+  tell a misspelling from a property no record has carried yet — *declared but unwritten* is not a
+  state that exists here. Provisioning the declared columns is what would create it. Until then, a
+  misspelled property name is reportable and not refusable.
+
 
 - 🔴 **There is no semantic token for error TEXT, and that is why a composition has to reach for a
   raw palette token to stay legible.** Owner: **`NONE`**. Found by DEF-006 s8 while sourcing
