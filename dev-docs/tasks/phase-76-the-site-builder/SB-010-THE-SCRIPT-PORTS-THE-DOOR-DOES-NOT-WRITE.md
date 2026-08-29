@@ -1,5 +1,11 @@
 # SB-010 — The script ports the authored door does not write
 
+> 🔴 **PHASE 76 IS CLOSED. THIS TASK IS OPEN AND IS NOW OWNED BY PHASE 80 AS DEF-011.**
+> Carried forward by reference on 2026-08-29 — this file keeps the measurements; phase 80
+> keeps the schedule. See
+> [phase 80's task list](../phase-80-the-defects-the-templates-found/TASKS.md).
+
+
 **Status: ⬜ OPEN — measured, worked around in SB-004, not fixed.** Found by SB-004 §7's
 real-backend run (2026-08-26 s4) and filed rather than absorbed, because the workaround is per-graph
 and the gap is per-door: **every cloud component any agent authors through the MCP door has it.**

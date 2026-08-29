@@ -1109,3 +1109,82 @@ flush out), then SB-004..006 authored *with* the new surface, then SB-007/008.
   **64 / 774, 0**. `noodl-runtime` **143 / 2571, 0**. `noodl-viewer-cloud` **10 / 193, 0**.
   `typecheck:editor`, `typecheck:editor-tests`, `typecheck:mcp` all exit 0. No editor stack
   launched; every suite run alone.
+
+---
+
+# 🔴 PHASE 76 — CLOSED 2026-08-29
+
+Closed on Richard's instruction, after the three-register sweep and with everything still open
+either **carried forward by name** or **consciously dropped by name**. Nothing is left implicit:
+the phase's own lesson is that a finding written down and not scheduled is a finding left behind.
+
+**What the phase was and what it did.** Scoped to flush core backend bugs by building the hardest
+template we ship. It did that — **eighteen tasks, 28 numbered findings, 24 of them fixed in the
+session that found them or given a task.** What it never produced is an application anyone would
+use, which is why phase 77 exists. Both halves are true and the second does not cancel the first.
+
+## Carried forward — phase 80 owns these now
+
+🔴 **Four tasks were `⬜ open` at close.** An owner in a closing phase is not an owner, so each is
+adopted by phase 80 **by reference** — the files here keep the measurements, phase 80 keeps the
+schedule. Each carries a banner saying so.
+
+| was | now | one line |
+|---|---|---|
+| **SB-009** | **DEF-010** | a component named in a **parameter** is not checked; 13 `component`-typed ports, 1 has an owner |
+| **SB-010** | **DEF-011** | the door writes no script ports, so **every cloud component any agent authors** has dead signal outputs once deployed — a 30s 504 |
+| **SB-011** | **DEF-012** | a cloud `Query Records` widens when it cannot narrow, two independent ways |
+| **SB-012** | **DEF-013** | 🧭 three spellings of a component name; an app whose pages link to each other cannot be authored in one pass |
+
+Also carried, from findings that never had a task at all:
+
+| finding | now | |
+|---|---|---|
+| **F15** bare number on a dimension port = `%` | **DEF-003** | 🔴 phase 77 rediscovered this as **D8** |
+| **F16** `Page.title` dead after export | **DEF-003** | sharper at HEAD: unsettable **headlessly at all** |
+| **F3** public write door, no rate limit | **DEF-009** | its own text said *"possibly a core gap to file"*; filed nowhere |
+
+## Rulings that die with the phase unless Richard takes them
+
+🧭 These are **decisions, not work**, and none blocks anything shipping. Recorded in
+[phase 80's TASKS.md](../phase-80-the-defects-the-templates-found/TASKS.md) so they survive:
+
+- **F8** — `contactRecipient` cannot live in a world-readable `SiteSettings` row. **Open since s4.**
+  It blocks the claim that a submitted message *reaches* anyone.
+- **D3** — does SB-003's boundary fix ride 0.2.1? It touches the permissions panel and every
+  existing backend.
+- **`Section.kind` has five values and `data` can express four** — `cta` has no destination. Either
+  the panel drops `cta` or `data` grows `linkSlug`/`linkLabel`; the second changes SB-004 §2's class
+  model.
+- **SB-012's three candidate fixes** (resolve siblings / downgrade to warning / a plural create) —
+  the task file argues against the middle one.
+
+## 🔴 Consciously dropped, and why — so nobody re-derives them
+
+⚠️ **These are not carried forward. If that is wrong, it is wrong on the record rather than by
+accident.**
+
+- **"The panel's UI was never clicked."** SB-005/SB-008's stated residual: rows were written over
+  REST carrying the panel's authored ACL, not by a click. **Superseded** — phase 77's SBR-006
+  drives the admin shell for real, and the site builder's panels have been rebuilt since.
+- **Rule 4 is UNMEASURED** (third session running at close): nothing in the phase filters on a
+  Pointer. **Dropped as a phase-76 obligation**; it is a gap in `BACKEND-AUTHORING-MODEL.md`'s
+  evidence, not a defect, and no row depends on it.
+- **SSG skips dynamic `{param}` routes**, so it would pre-render the three literal admin paths and
+  *not* the public site. **Not a defect and not carried** — it is a **claim SB-007 must never
+  make**, and it is recorded here because the danger is somebody asserting SSG works for this
+  template.
+- **`typecheck:backend-tests` OOMs on this machine** (V8 heap exhaustion at 4 GB and 8 GB, inputs
+  byte-identical to a clean run). Measured as **environmental, not this phase's** — but it *"needs
+  an owner"* and does not have one. 🔴 **Dropped from phase 76 with that stated**, because a
+  machine-local toolchain failure is not a product defect and phase 80 is a product-defect phase.
+  If it recurs on another machine it is a real row and should be filed then.
+
+## The two sentences worth carrying out of eighteen tasks
+
+- 🔴 **A green authoring run means well-formed and nothing else.** The phase's own lesson, three
+  times over, and the reason every SB task ended in a drive rather than an assertion.
+- 🔴 **Correct and usable were never the same criterion.** Every one of the eighteen tasks asked
+  *"does the graph do the correct thing?"* and none asked *"would a person get anywhere?"* That
+  diagnosis created phase 77, and the person-sentence acceptance criterion it produced is now a
+  house rule in phases 77, 78 and 80.

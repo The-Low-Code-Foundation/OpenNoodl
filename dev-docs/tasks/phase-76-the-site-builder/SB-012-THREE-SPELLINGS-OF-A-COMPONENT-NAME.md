@@ -1,5 +1,11 @@
 # SB-012 — Three spellings of "a component by name", three different answers
 
+> 🔴 **PHASE 76 IS CLOSED. THIS TASK IS OPEN AND IS NOW OWNED BY PHASE 80 AS DEF-013.**
+> Carried forward by reference on 2026-08-29 — this file keeps the measurements; phase 80
+> keeps the schedule. See
+> [phase 80's task list](../phase-80-the-defects-the-templates-found/TASKS.md).
+
+
 **Status: ⬜ MEASURED s6 (2026-08-26), worked around in SB-005, not fixed.**
 
 Found while authoring SB-005's admin panel, which is the first thing this phase has built that has

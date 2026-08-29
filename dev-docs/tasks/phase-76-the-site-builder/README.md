@@ -1,6 +1,13 @@
 # Phase 76 — The Site Builder
 
-**Scoped:** 2026-08-26, from Richard's template roster for the 0.2.1 launch. **Status: OPEN, not started.**
+> 🔴 **PHASE 76 IS CLOSED (2026-08-29).** Eighteen tasks, 28 findings, 24 fixed in-session or
+> given a task. Its four still-open tasks (SB-009..012) and three unowned findings are carried
+> forward by name — read [**the closing section at the end of TASKS.md**](TASKS.md) before
+> acting on anything here, and its findings register is
+> [DEFECTS-PHASE-76-FOUND.md](DEFECTS-PHASE-76-FOUND.md).
+
+
+**Scoped:** 2026-08-26, from Richard's template roster for the 0.2.1 launch. **Status: CLOSED 2026-08-29.**
 **Prefix:** `SB`.
 
 The first of three default launcher templates for 0.2.1 (order ruled by Richard 2026-08-26:

@@ -17,14 +17,20 @@ did not.**
 | | |
 |---|---|
 | findings recorded | **28** |
-| fixed in the session that found them, or given an SB task | **24** |
-| still real and unowned | **3** (F3 with a corrected premise, F15, F16) |
-| open ruling | **1** (F8, Richard's, since s4) |
+| **resolved** — fixed in the session that found them, or by a task that is now done | **20** |
+| owned by a task that was still **`⬜ open` at close** | **4** (F1, F10, F12, F13) |
+| still real and **unowned** | **3** (F3 with a corrected premise, F15, F16) |
+| open **ruling** | **1** (F8, Richard's, since s4) |
 
-F10, F12 and F13 became **SB-010** and **SB-011** on the day they were found. F18 was fixed in
-`QueryBuilder.ts` in the session that found it. F22, F24, F25, F26, F27 all landed the same way.
-**That is the standard**, and it is what phases 77 and 78 should be measured against — not the
-other way round.
+F18 was fixed in `QueryBuilder.ts` in the session that found it; F22, F24, F25, F26 and F27 all
+landed the same way. **That is the standard**, and it is what phases 77 and 78 should be measured
+against — not the other way round.
+
+🔴 **CORRECTED 2026-08-29 at close.** The first version of this table counted **24 resolved**,
+because it read *"F10, F12, F13 → SB-010, SB-011"* as a resolution. **It is not.** SB-009, SB-010,
+SB-011 and SB-012 were all `⬜ open` when the phase closed — measured, worked around in the
+template, and never fixed in the product. **An owner in a closing phase is not an owner**; it is a
+row about to become unowned again, wearing a task id. All four are carried into phase 80.
 
 ⚠️ **This register is retrospective.** Everything below is read from the phase's own task files
 except the four rows marked **re-measured**, which were checked at HEAD on 2026-08-29.
@@ -54,15 +60,29 @@ still and wait — it gets rediscovered, at full price, by someone who then also
   Recorded in [phase 80's TASKS.md](../phase-80-the-defects-the-templates-found/TASKS.md) so it
   stops being invisible.
 
-## Fixed or owned — the other 24
+## Owned by a task that was still open at close → carried into phase 80
+
+🔴 **All four were measured, worked around in the template, and never fixed in the product.** Read
+phase 76's task file for the measurement; phase 80 holds the schedule.
+
+| finding | was | now | why it matters |
+|---|---|---|---|
+| **F1** | SB-009 ⬜ | **[DEF-010](../phase-80-the-defects-the-templates-found/TASKS.md)** | a component named in a **parameter** is unchecked; the same name as a node **`type`** IS refused. **One spelling of the same reference goes unresolved.** 13 `component`-typed ports, 1 has an owner |
+| **F10** | SB-010 ⬜ | **[DEF-011](../phase-80-the-defects-the-templates-found/TASKS.md)** | 🔴 **every cloud component any agent authors** has dead custom signal outputs once deployed — **a 30s 504, not an error**. Same symptom phase 77's SBR-015 spent a session on |
+| **F12, F13** | SB-011 ⬜ | **[DEF-012](../phase-80-the-defects-the-templates-found/TASKS.md)** | a cloud query returns **every row** when asked for a few, two independent ways |
+
+⚠️ **F10's workaround survives in the shipped template** — verified 2026-08-29: `publishPage`'s two
+`JavaScriptFunction` nodes declare `out-ready` / `out-built` as output signals in their `ports`
+field, and the wires use those names. So SB-010 does **not** explain SBR-015's hang here. That is a
+refutation worth keeping: it was a candidate that fitted.
+
+## Fixed in-session — the other 20
 
 | ids | disposition |
 |---|---|
-| **F1** | → **SB-009** (a component named in a `component`-typed parameter) |
 | **F2** | the two enforcement layers are not switched together — handled as a **drive discipline**: every drive asserts `started.security.enforced === true` first |
 | **F4** | process, not product — a stale MCP `dist`. Vehicle changed to `createServer` from `src` |
-| **F5, F6, F7, F9, F11, F14, F17, F19, F20, F21, F22, F23, F24, F25, F26, F27, F28** | fixed in-session, or → **SB-013**/**SB-014**/**SB-016** |
-| **F10, F12, F13** | → **SB-010**, **SB-011** |
+| **F5, F6, F7, F9, F11, F14, F17, F19, F20, F21, F22, F23, F24, F25, F26, F27, F28** | fixed in-session, or → **SB-013**/**SB-014**/**SB-016**, all ✅ done |
 | **F18** | fixed in `QueryBuilder.ts` (`convertQueryValue`) — a boolean literal could not bind on SQLite at all, and the public site had no navigation on any page |
 
 ⚠️ **F9 is real and by design** — the door makes node ids unique project-wide, so an authored node

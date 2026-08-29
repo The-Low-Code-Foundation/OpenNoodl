@@ -18,6 +18,29 @@ derivation and [README.md](README.md) for why the phase exists.
 | DEF-008 | ⬜ open | [The measurement owed](DEF-008-THE-MEASUREMENT-OWED.md) | P77 D6 · P78 D5 | nobody yet — a re-drive |
 | DEF-009 | ⬜ open | [A public write door ships with no limit](DEF-009-A-PUBLIC-WRITE-DOOR-WITH-NO-LIMIT.md) | **P76 F3** | a **site owner** whose form fills their database |
 
+## Carried forward from phase 76, by reference
+
+🔴 **These four were `⬜ open` when phase 76 closed.** They are **not re-authored here** — a second
+copy of a task drifts from the first, and phase 76's files hold the measurements. Phase 80 owns
+them; **read the linked file, not a summary of it.**
+
+| id | status | task | source | bites |
+|---|---|---|---|---|
+| DEF-010 | ⬜ open | [SB-009 — a component named in a **parameter** is not checked](../phase-76-the-site-builder/SB-009-A-COMPONENT-NAMED-IN-A-PARAMETER.md) | P76 F1 | every agent-authored app; **13 `component`-typed ports, 1 has an owner** |
+| DEF-011 | ⬜ open | [SB-010 — the door does not derive a JS node's script ports](../phase-76-the-site-builder/SB-010-THE-SCRIPT-PORTS-THE-DOOR-DOES-NOT-WRITE.md) | P76 F10 | **every cloud component any agent authors** — dead signal outputs, a 30s 504 |
+| DEF-012 | ⬜ open | [SB-011 — a query widens when it cannot narrow](../phase-76-the-site-builder/SB-011-A-QUERY-THAT-WIDENS-WHEN-IT-CANNOT-NARROW.md) | P76 F12/F13 | a cloud query returns **every row** when asked for a few |
+| DEF-013 | 🔒 ruling | [SB-012 — three spellings of a component name](../phase-76-the-site-builder/SB-012-THREE-SPELLINGS-OF-A-COMPONENT-NAME.md) | P76 s6 | **an app whose pages link to each other cannot be authored in one pass** |
+
+⚠️ **DEF-010, DEF-011 and DEF-013 are the same door as
+[DEF-002](DEF-002-THE-DOOR-DOES-NOT-CHECK-CONNECTIONS.md)** — `noodl-mcp/src/validate.ts` and its
+reference resolution. DEF-002 grades **wires**; DEF-010/013 grade **references named in
+parameters**; DEF-011 is **port derivation**. Four checks, one file. 🔴 **Sequence them, and assert
+cardinality where they meet** — a check in a second pipeline is a duplicate first.
+
+🔴 **Three of the four say the same thing about their own fix: it needs a corpus sweep** to decide
+whether the new check *blocks* authored output or merely warns. That sweep is shared work and
+should be done **once**, not three times.
+
 ## Rulings needed (Richard)
 
 - 🧭 **Does this phase exist, or do these fold into 0.2.1's bug-fix phase?** The tasks are written to

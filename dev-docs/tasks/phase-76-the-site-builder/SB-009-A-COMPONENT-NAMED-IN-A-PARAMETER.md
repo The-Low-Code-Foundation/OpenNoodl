@@ -1,5 +1,11 @@
 # SB-009 — A component named in a parameter is not checked by the authored gate
 
+> 🔴 **PHASE 76 IS CLOSED. THIS TASK IS OPEN AND IS NOW OWNED BY PHASE 80 AS DEF-010.**
+> Carried forward by reference on 2026-08-29 — this file keeps the measurements; phase 80
+> keeps the schedule. See
+> [phase 80's task list](../phase-80-the-defects-the-templates-found/TASKS.md).
+
+
 **Status: ⬜ OPEN — measured, not fixed.** Found while designing SB-004 (2026-08-26 s2), filed
 rather than absorbed because the fix is wider than SB-004's scope: it touches twelve ports across
 eight node types, two of them outside the backend story entirely.

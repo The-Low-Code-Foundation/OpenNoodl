@@ -1,5 +1,11 @@
 # SB-011 — A query that widens when it cannot narrow
 
+> 🔴 **PHASE 76 IS CLOSED. THIS TASK IS OPEN AND IS NOW OWNED BY PHASE 80 AS DEF-012.**
+> Carried forward by reference on 2026-08-29 — this file keeps the measurements; phase 80
+> keeps the schedule. See
+> [phase 80's task list](../phase-80-the-defects-the-templates-found/TASKS.md).
+
+
 **Status: ⬜ OPEN — measured, worked around in SB-004, not fixed.** Two independent ways a
 `Query Records` node inside a cloud function returns **every row in the class** when it was asked
 for a few, both found by SB-004 §7's real-backend run (2026-08-26 s4).
