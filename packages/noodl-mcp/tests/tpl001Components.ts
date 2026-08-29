@@ -569,6 +569,22 @@ function notice(
 }
 
 /**
+ * The wrapper `pageHead()` puts its two lines in.
+ *
+ * ⚠️ **`paddingBottom` overridden from the composition's `--space-10`.** That
+ * 40px is the air before a section whose head carries a lead paragraph; this
+ * head is two short lines, and 40px on top of `PAGE_GROUND`'s own 20px `rowGap`
+ * put 60px between a page's title and its first card while the cards sat 16px
+ * apart. `--space-2` makes it 28px, which is more than the gap between siblings
+ * and less than the gap before a new section.
+ */
+const PAGE_HEAD = {
+  ...composition('sectionHead'),
+  rowGap: 'var(--space-1)',
+  paddingBottom: 'var(--space-2)'
+};
+
+/**
  * A `Group` that fills its page and stacks its children — now CENTRED and
  * CAPPED.
  *
@@ -612,6 +628,84 @@ const PAGE_GROUND = {
  * router; typing the list here would be a twin of that mechanism, agreeing with
  * it until the first page either side gains one.
  */
+/**
+ * A page's head: the eyebrow that says what KIND of screen this is, and the
+ * heading, in the group the vocabulary already has for the pair.
+ *
+ * 🔴 **The `Text` keeps the id and the GROUP takes a derived one — the opposite
+ * of `notice()`, for the same reason.** The rule in both places is that the id
+ * stays on the node other things point at, and here that is the heading itself:
+ * `Pages/Announcement` and `Pages/Meeting` wire `record.prop-title` into
+ * `title.text`, so a wrapper that stole the id would have silently moved those
+ * two connections onto a `Group`, which has no `text` port. A notice is gated
+ * and so its Group is the referenced node; a heading is written into and so its
+ * Text is.
+ *
+ * ⚠️ **What the eyebrow is allowed to say.** The band already carries
+ * `Members' area` above the association's name on the seven pages that show it,
+ * so a page eyebrow repeating that phrase would put the same words twice on one
+ * screen. It names the thing the heading cannot: the audience on a tool screen,
+ * and the record type on the two pages whose heading IS a record's title —
+ * without it, "Autumn fete" gives a reader no way to tell an announcement from
+ * a meeting.
+ *
+ * ⚠️ `rowGap` overridden from the composition's `--space-3`. 12px is the gap
+ * for an eyebrow/heading/lead stack; this pair has no lead, and the band's own
+ * identity block sets `--space-1` for the same eyebrow-over-title pairing. The
+ * two eyebrow stacks in the app now agree.
+ */
+function pageHead(id: string, label: string, parent: string, eyebrow: string, text: string): unknown[] {
+  return [
+    {
+      id: `${id}Head`,
+      type: 'Group',
+      label: `${label} \u2014 the head`,
+      parent,
+      parameters: PAGE_HEAD,
+      children: [`${id}Eyebrow`, id]
+    },
+    {
+      id: `${id}Eyebrow`,
+      type: 'Text',
+      label: eyebrow,
+      parent: `${id}Head`,
+      parameters: { text: eyebrow, ...T_EYEBROW }
+    },
+    { id, type: 'Text', label, parent: `${id}Head`, parameters: { text, ...H_PAGE } }
+  ];
+}
+
+/**
+ * A section that FOLLOWS another section on the same ground, and the hairline
+ * that says where one ends and the next begins.
+ *
+ * 🔴 **Written as a rule over the PLACE, like `inColumn`.** The one page that
+ * needs it today is `Pages/Members`, where a member's announcements and a
+ * moderator's three tools were two `SECTION`s separated by nothing but the
+ * ground's own 20px gap — the same gap that sits between a heading and a
+ * notice, so the page read as one list of things rather than as two zones with
+ * different audiences. A fix written onto that node alone would not have
+ * covered the next page to stack two sections.
+ *
+ * ⚠️ **`--border` at 1.33:1 is deliberate and sufficient here** — it is the
+ * hairline `tpl001Theme.ts` describes for exactly this, and a decorative
+ * divider carries no contrast minimum. The token that does carry one is
+ * `--border-control`, and this is not a control.
+ *
+ * ⚠️ It pairs with `mounted`, not `visible`: `moderatorTools` leaves the tree
+ * entirely for a member, so the rule leaves with it rather than drawing a line
+ * under a page with nothing beneath it.
+ */
+function afterSection(params: Record<string, unknown>): Record<string, unknown> {
+  return {
+    ...params,
+    borderTopStyle: 'solid',
+    borderTopWidth: 'var(--border-1)',
+    borderTopColor: 'var(--border)',
+    paddingTop: 'var(--space-6)'
+  };
+}
+
 export const APP_NODES = [
   {
     id: 'app_root',
@@ -1023,15 +1117,9 @@ const SIGN_IN: Tpl001Component = {
       label: 'Page ground',
       parent: 'page',
       parameters: { ...PAGE_GROUND, alignX: 'center' },
-      children: ['heading', 'form', 'error', 'joinHint', 'joinButton']
+      children: ['headingHead', 'form', 'error', 'joinHint', 'joinButton']
     },
-    {
-      id: 'heading',
-      type: 'Text',
-      label: 'Heading',
-      parent: 'ground',
-      parameters: { text: 'Members sign in', ...H_PAGE }
-    },
+    ...pageHead('heading', 'Heading', 'ground', 'Members’ area', 'Members sign in'),
     {
       id: 'form',
       type: 'Group',
@@ -1473,19 +1561,17 @@ const MEMBERS: Tpl001Component = {
       label: 'Page ground',
       parent: 'page',
       parameters: PAGE_GROUND,
-      children: ['heading', 'pendingNotice', 'unknownNotice', 'memberArea', 'moderatorTools']
+      children: ['headingHead', 'pendingNotice', 'unknownNotice', 'memberArea', 'moderatorTools']
     },
-    {
-      id: 'heading',
-      type: 'Text',
-      label: 'Heading',
-      parent: 'ground',
-      // ⚠️ **"Announcements", not "Members", since s8.** The band above now says
-      // whose members' area this is, so a page heading repeating the word
-      // "Members" named the app twice and the screen not at all. This page IS
-      // the noticeboard; `listHeading` used to say so underneath and is gone.
-      parameters: { text: 'Announcements', ...H_PAGE }
-    },
+    // ⚠️ **"Announcements", not "Members", since s8.** The band above now says
+    // whose members' area this is, so a page heading repeating the word
+    // "Members" named the app twice and the screen not at all. This page IS
+    // the noticeboard; `listHeading` used to say so underneath and is gone.
+    //
+    // ⚠️ Its eyebrow reads "For members" against the "For moderators" one
+    // further down: this is the one page in the app with a zone for each
+    // audience, and the two eyebrows are what say so.
+    ...pageHead('heading', 'Heading', 'ground', 'For members', 'Announcements'),
     // 🔴 AC3's screen. A pending member is refused exactly as a stranger is, and
     // this is the sentence that stops that refusal reading as a broken app — now
     // in the accent box the token was introduced for and nothing had ever read.
@@ -1544,7 +1630,10 @@ const MEMBERS: Tpl001Component = {
       // the announcements above it wear, so it claimed to be the same kind of
       // thing as an announcement. An eyebrow says who they are for in a word,
       // which is what the box was trying and failing to say.
-      parameters: { ...SECTION, mounted: false },
+      // ⚠️ `afterSection`: this is the second zone on the page, and the hairline
+      // is what makes it read as one. See that helper on why the rule belongs to
+      // the PLACE rather than to this node.
+      parameters: { ...afterSection(SECTION), mounted: false },
       children: ['moderatorEyebrow', 'moderatorButtons']
     },
     {
@@ -1731,9 +1820,9 @@ const ANNOUNCEMENT: Tpl001Component = {
       label: 'Page ground',
       parent: 'page',
       parameters: PAGE_GROUND,
-      children: ['title', 'date', 'body', 'refusal']
+      children: ['titleHead', 'date', 'body', 'refusal']
     },
-    { id: 'title', type: 'Text', label: 'Title', parent: 'ground', parameters: { text: '', ...H_PAGE } },
+    ...pageHead('title', 'Title', 'ground', 'Announcement', ''),
     { id: 'date', type: 'Text', label: 'Posted', parent: 'ground', parameters: { text: '', ...T_META } },
     { id: 'body', type: 'Text', label: 'Body', parent: 'ground', parameters: { text: '', ...T_BODY } },
     ...notice('refusal', 'Not available', 'ground', 'This announcement is not available to you.', {
@@ -1830,15 +1919,9 @@ const MEETINGS: Tpl001Component = {
       label: 'Page ground',
       parent: 'page',
       parameters: PAGE_GROUND,
-      children: ['heading', 'pendingNotice', 'memberArea']
+      children: ['headingHead', 'pendingNotice', 'memberArea']
     },
-    {
-      id: 'heading',
-      type: 'Text',
-      label: 'Heading',
-      parent: 'ground',
-      parameters: { text: 'What’s coming up', ...H_PAGE }
-    },
+    ...pageHead('heading', 'Heading', 'ground', 'For members', 'What’s coming up'),
     ...notice('pendingNotice', 'Waiting to be approved', 'ground', PENDING_TEXT, { tone: 'accent' }),
     {
       id: 'memberArea',
@@ -1932,9 +2015,9 @@ const MEETING: Tpl001Component = {
       label: 'Page ground',
       parent: 'page',
       parameters: PAGE_GROUND,
-      children: ['title', 'when', 'place', 'details', 'refusal']
+      children: ['titleHead', 'when', 'place', 'details', 'refusal']
     },
-    { id: 'title', type: 'Text', label: 'Title', parent: 'ground', parameters: { text: '', ...H_PAGE } },
+    ...pageHead('title', 'Title', 'ground', 'Meeting', ''),
     { id: 'when', type: 'Text', label: 'When', parent: 'ground', parameters: { text: '', ...T_META } },
     { id: 'place', type: 'Text', label: 'Where', parent: 'ground', parameters: { text: '', ...T_META } },
     { id: 'details', type: 'Text', label: 'Details', parent: 'ground', parameters: { text: '', ...T_BODY } },
@@ -2021,15 +2104,9 @@ const JOIN: Tpl001Component = {
       label: 'Page ground',
       parent: 'page',
       parameters: { ...PAGE_GROUND, alignX: 'center' },
-      children: ['heading', 'form', 'sent', 'refusal', 'hint', 'signInButton']
+      children: ['headingHead', 'form', 'sent', 'refusal', 'hint', 'signInButton']
     },
-    {
-      id: 'heading',
-      type: 'Text',
-      label: 'Heading',
-      parent: 'ground',
-      parameters: { text: 'Ask to join', ...H_PAGE }
-    },
+    ...pageHead('heading', 'Heading', 'ground', 'Members’ area', 'Ask to join'),
     // 🔴 The fields were loose on the page ground, full-bleed down a single
     // column. A form is one thing a person fills in, and a panel is how a page
     // says so.
@@ -2142,15 +2219,9 @@ const SETUP: Tpl001Component = {
       label: 'Page ground',
       parent: 'page',
       parameters: { ...PAGE_GROUND, alignX: 'center' },
-      children: ['heading', 'blurb', 'form', 'refusal', 'missing']
+      children: ['headingHead', 'blurb', 'form', 'refusal', 'missing']
     },
-    {
-      id: 'heading',
-      type: 'Text',
-      label: 'Heading',
-      parent: 'ground',
-      parameters: { text: 'Set up this members’ area', ...H_PAGE }
-    },
+    ...pageHead('heading', 'Heading', 'ground', 'First run', 'Set up this members’ area'),
     {
       id: 'blurb',
       type: 'Text',
@@ -2380,15 +2451,9 @@ const POST: Tpl001Component = {
       label: 'Page ground',
       parent: 'page',
       parameters: PAGE_GROUND,
-      children: ['heading', 'notAllowed', 'tools']
+      children: ['headingHead', 'notAllowed', 'tools']
     },
-    {
-      id: 'heading',
-      type: 'Text',
-      label: 'Heading',
-      parent: 'ground',
-      parameters: { text: 'Post something', ...H_PAGE }
-    },
+    ...pageHead('heading', 'Heading', 'ground', 'For moderators', 'Post something'),
     ...notice('notAllowed', 'Not a moderator', 'ground', 'Only a moderator can post here.', {
       tone: 'refused'
     }),
@@ -2619,15 +2684,9 @@ const REQUESTS: Tpl001Component = {
       label: 'Page ground',
       parent: 'page',
       parameters: PAGE_GROUND,
-      children: ['heading', 'notAllowed', 'queue']
+      children: ['headingHead', 'notAllowed', 'queue']
     },
-    {
-      id: 'heading',
-      type: 'Text',
-      label: 'Heading',
-      parent: 'ground',
-      parameters: { text: 'Requests to join', ...H_PAGE }
-    },
+    ...pageHead('heading', 'Heading', 'ground', 'For moderators', 'Requests to join'),
     ...notice('notAllowed', 'Not a moderator', 'ground', 'Only a moderator can see who is waiting to join.', {
       tone: 'refused'
     }),
@@ -2742,15 +2801,9 @@ const DIRECTORY: Tpl001Component = {
       label: 'Page ground',
       parent: 'page',
       parameters: PAGE_GROUND,
-      children: ['heading', 'notAllowed', 'directory']
+      children: ['headingHead', 'notAllowed', 'directory']
     },
-    {
-      id: 'heading',
-      type: 'Text',
-      label: 'Heading',
-      parent: 'ground',
-      parameters: { text: 'Who belongs', ...H_PAGE }
-    },
+    ...pageHead('heading', 'Heading', 'ground', 'For moderators', 'Who belongs'),
     ...notice('notAllowed', 'Not a moderator', 'ground', 'Only a moderator can see the member list.', {
       tone: 'refused'
     }),

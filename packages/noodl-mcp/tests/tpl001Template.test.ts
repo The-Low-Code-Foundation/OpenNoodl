@@ -1192,4 +1192,154 @@ describe('TPL-001 — the design system is finished, not merely opened', () => {
     expect(asked.length).toBeGreaterThan(10);
     expect(asked).toEqual([...USED_COMPOSITIONS].sort());
   });
+
+  /**
+   * §5 — 🔴 **every page says what KIND of screen it is, and the words are
+   * LITERALS here.**
+   *
+   * The table below is typed out rather than imported, and that is the whole
+   * design of this spec. s9's band specs mapped over `BAND_NAV` to build both
+   * sides of their comparison, so deleting a field moved the expectation and the
+   * measurement together and the block stayed green over a real regression. This
+   * one reads the shipped artefact on one side and a hand-written table on the
+   * other, so an eyebrow that changes wording, loses its page or gains a
+   * duplicate reddens.
+   *
+   * ⚠️ **`Pages/Landing` is absent on purpose and pinned as absent below.** Its
+   * eyebrow belongs to the hero (`HERO_HEAD`), not to a page head, and adding it
+   * to this table would quietly widen what "a page head" means.
+   *
+   * ⚠️ The words themselves are a judgement, and the reason is recorded on
+   * `pageHead()`: the band already carries "Members' area" over the association
+   * name on seven pages, so a page eyebrow may not repeat that phrase there.
+   */
+  const PAGE_EYEBROWS: Record<string, string> = {
+    '/Pages/SignIn': 'Members\u2019 area',
+    '/Pages/Join': 'Members\u2019 area',
+    '/Pages/Setup': 'First run',
+    '/Pages/Members': 'For members',
+    '/Pages/Meetings': 'For members',
+    '/Pages/Announcement': 'Announcement',
+    '/Pages/Meeting': 'Meeting',
+    '/Pages/Post': 'For moderators',
+    '/Pages/Requests': 'For moderators',
+    '/Pages/Directory': 'For moderators'
+  };
+
+  /**
+   * 🔴 **Matched on `Head` with an optional `-n`, and the eyebrow is read as the
+   * head's FIRST CHILD rather than by name.** D6 recorded that the door remaps a
+   * node id that collides with one already written — the eleven pages all call
+   * their heading `heading`, so ten of them ship as `headingHead-2` … `-8`. The
+   * first version of this spec derived the eyebrow's id from the head's with
+   * `replace(/Head$/, '')`, which silently matched nothing on every remapped
+   * page and reported **two** of the ten as if the other eight had no eyebrow at
+   * all. An id in this artefact is not a name you may do arithmetic on.
+   */
+  const HEAD_ID = /Head(-\d+)?$/;
+
+  it('§5 every page heads itself with the eyebrow this table names', () => {
+    const found: Record<string, string> = {};
+    for (const component of shipped) {
+      const head = component.nodes.find((n) => n.type === 'Group' && HEAD_ID.test(n.id));
+      if (!head) continue;
+      const first = component.nodes.find((n) => n.id === (head.children ?? [])[0]);
+      if (first) found[component.path] = String(first.parameters?.text ?? '');
+    }
+    expect(found).toEqual(PAGE_EYEBROWS);
+  });
+
+  it('§5 the page eyebrow never repeats the words the band is already saying', () => {
+    // The band's own eyebrow, read from the artefact rather than assumed.
+    const band = byLegacyName.get('/Members/Chrome');
+    const bandEyebrow = String(band?.nodes.find((n) => n.id === 'eyebrow')?.parameters?.text ?? '');
+    expect(bandEyebrow).toBe('Members\u2019 area');
+
+    const carriesBand = shipped
+      .filter((c) => c.nodes.some((n) => n.type === '/Members/Chrome'))
+      .map((c) => c.path)
+      .sort();
+    // Known-firing: seven pages carry it, so the filter below reads something.
+    expect(carriesBand.length).toBe(7);
+
+    // 🔴 Read from the ARTEFACT, not from `PAGE_EYEBROWS`. The first version of
+    // this spec filtered the hand-written table, so it graded the table against
+    // the band and never opened the shipped pages at all: setting
+    // `Pages/Members`' eyebrow to the band's own words left it green. A rule
+    // about what a screen shows has to read the screen.
+    const repeats = carriesBand.filter((page) => {
+      const component = byLegacyName.get(page);
+      const head = component?.nodes.find((n) => n.type === 'Group' && HEAD_ID.test(n.id));
+      const first = component?.nodes.find((n) => n.id === (head?.children ?? [])[0]);
+      return String(first?.parameters?.text ?? '') === bandEyebrow;
+    });
+    expect(repeats).toEqual([]);
+  });
+
+  it('§5 the landing page heads itself with the hero, not a page head', () => {
+    const landing = byLegacyName.get('/Pages/Landing');
+    expect(landing).toBeDefined();
+    expect(landing?.nodes.filter((n) => HEAD_ID.test(n.id)).map((n) => n.id)).toEqual([]);
+    // It still has an eyebrow — it is simply the hero's, and it is found by what
+    // it LOOKS like, because `eyebrow` collided with the band's and shipped as
+    // `eyebrow-2`. See the note on `HEAD_ID`.
+    const eyebrows = (landing?.nodes ?? []).filter(
+      (n) => n.type === 'Text' && (n.parameters ?? {}).textTransform === 'uppercase'
+    );
+    expect(eyebrows.map((n) => String(n.parameters?.text ?? ''))).toEqual(['Members\u2019 area']);
+  });
+
+  /**
+   * §6 — 🔴 **a section that follows another section carries the rule that says
+   * where one ends.**
+   *
+   * Derived from the artefact's own parent/child structure rather than from a
+   * list of node ids: any `Group` that is the second-or-later `SECTION` under
+   * one ground has to carry a top border. A page that grows a second zone and
+   * forgets the hairline reddens here without anybody adding it to a table.
+   *
+   * ⚠️ A `SECTION` is recognised the way the eye does — a full-width column
+   * `Group` with no fill of its own that holds more than one child. The notice
+   * boxes §2 pins are excluded by their fill, and the card rows by theirs.
+   *
+   * 🔴 **A page HEAD is not a section, and `paddingBottom` is what tells them
+   * apart.** The first version of this spec counted every `headingHead` as the
+   * first section on its page, which made the real content section the "second"
+   * one everywhere and reported **seven** stacked pairs where there is one. The
+   * distinction is the vocabulary's own: `sectionHead` carries the air below it
+   * (`paddingBottom`) and `SECTION` carries none, so a head bundles its own
+   * separation and a section is separated by the rule. `Pages/Landing`'s `hero`
+   * is excluded by exactly this, correctly — "What members can see" follows a
+   * head, not another section.
+   */
+  it('§6 the second section on a page carries a rule above it', () => {
+    const missing: string[] = [];
+    let seconds = 0;
+    for (const component of shipped) {
+      const byId = new Map(component.nodes.map((n) => [n.id, n]));
+      for (const parent of component.nodes) {
+        const kids = (parent.children ?? []).map((id) => byId.get(id)).filter(Boolean) as typeof component.nodes;
+        const sections = kids.filter((k) => {
+          const q = k.parameters ?? {};
+          return (
+            k.type === 'Group' &&
+            !('backgroundColor' in q) &&
+            !('paddingBottom' in q) &&
+            (k.children ?? []).length > 1 &&
+            q.flexDirection === 'column'
+          );
+        });
+        for (const later of sections.slice(1)) {
+          seconds += 1;
+          if (!('borderTopWidth' in (later.parameters ?? {}))) {
+            missing.push(`${component.path} \u203a ${later.id} follows a section with no rule above it`);
+          }
+        }
+      }
+    }
+    // Beside a known-firing signal: `[]` below has to be a reading rather than
+    // an empty population, and today exactly one page stacks two sections.
+    expect(seconds).toBe(1);
+    expect(missing).toEqual([]);
+  });
 });

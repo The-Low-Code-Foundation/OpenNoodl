@@ -23,7 +23,7 @@
       "label": "Page ground",
       "parent": "page-2",
       "children": [
-        "heading-2",
+        "headingHead",
         "form",
         "error",
         "joinHint",
@@ -55,10 +55,47 @@
       "y": 160
     },
     {
+      "id": "headingHead",
+      "type": "Group",
+      "label": "Heading — the head",
+      "parent": "ground-2",
+      "children": [
+        "headingEyebrow",
+        "heading-2"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "flexDirection": "column",
+        "rowGap": "var(--space-1)",
+        "paddingBottom": "var(--space-2)"
+      },
+      "x": 160,
+      "y": 280
+    },
+    {
+      "id": "headingEyebrow",
+      "type": "Text",
+      "label": "Members’ area",
+      "parent": "headingHead",
+      "parameters": {
+        "text": "Members’ area",
+        "fontSize": "var(--text-xs)",
+        "fontWeight": "var(--font-semibold)",
+        "letterSpacing": "var(--tracking-widest)",
+        "textTransform": "uppercase",
+        "color": "var(--primary)"
+      },
+      "x": 220,
+      "y": 400
+    },
+    {
       "id": "heading-2",
       "type": "Text",
       "label": "Heading",
-      "parent": "ground-2",
+      "parent": "headingHead",
       "parameters": {
         "text": "Members sign in",
         "fontSize": "var(--text-3xl)",
@@ -67,8 +104,8 @@
         "letterSpacing": "var(--tracking-tight)",
         "color": "var(--foreground)"
       },
-      "x": 160,
-      "y": 280
+      "x": 220,
+      "y": 520
     },
     {
       "id": "form",
@@ -99,7 +136,7 @@
         "paddingBottom": "var(--space-5)"
       },
       "x": 160,
-      "y": 400
+      "y": 640
     },
     {
       "id": "email",
@@ -128,7 +165,7 @@
         "type": "email"
       },
       "x": 220,
-      "y": 520
+      "y": 760
     },
     {
       "id": "password",
@@ -157,7 +194,7 @@
         "type": "password"
       },
       "x": 220,
-      "y": 640
+      "y": 880
     },
     {
       "id": "submit",
@@ -179,7 +216,7 @@
         "sizeMode": "contentSize"
       },
       "x": 220,
-      "y": 760
+      "y": 1000
     },
     {
       "id": "error",
@@ -209,7 +246,7 @@
         "mounted": false
       },
       "x": 160,
-      "y": 880
+      "y": 1120
     },
     {
       "id": "errorText",
@@ -222,7 +259,7 @@
         "color": "var(--destructive)"
       },
       "x": 220,
-      "y": 1000
+      "y": 1240
     },
     {
       "id": "joinHint",
@@ -235,7 +272,7 @@
         "color": "var(--muted-foreground)"
       },
       "x": 160,
-      "y": 1120
+      "y": 1360
     },
     {
       "id": "joinButton-2",
@@ -259,14 +296,14 @@
         "sizeMode": "contentSize"
       },
       "x": 160,
-      "y": 1240
+      "y": 1480
     },
     {
       "id": "login",
       "type": "net.noodl.user.LogIn",
       "label": "Log in",
       "x": 470,
-      "y": 1000
+      "y": 1240
     },
     {
       "id": "errorGate",
@@ -277,7 +314,7 @@
         "runOnChange-condition": false
       },
       "x": 470,
-      "y": 880
+      "y": 1120
     },
     {
       "id": "toMembers",
@@ -288,7 +325,7 @@
         "target": "/Pages/Members"
       },
       "x": 470,
-      "y": 1360
+      "y": 1600
     },
     {
       "id": "toJoin-2",
@@ -299,7 +336,7 @@
         "target": "/Pages/Join"
       },
       "x": 470,
-      "y": 1240
+      "y": 1480
     }
   ],
   "visualRoots": [

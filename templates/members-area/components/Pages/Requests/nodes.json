@@ -32,7 +32,7 @@
       "label": "Page ground",
       "parent": "page-10",
       "children": [
-        "heading-8",
+        "headingHead-7",
         "notAllowed-2",
         "queue"
       ],
@@ -62,10 +62,47 @@
       "y": 280
     },
     {
+      "id": "headingHead-7",
+      "type": "Group",
+      "label": "Heading — the head",
+      "parent": "ground-10",
+      "children": [
+        "headingEyebrow-7",
+        "heading-8"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "flexDirection": "column",
+        "rowGap": "var(--space-1)",
+        "paddingBottom": "var(--space-2)"
+      },
+      "x": 160,
+      "y": 400
+    },
+    {
+      "id": "headingEyebrow-7",
+      "type": "Text",
+      "label": "For moderators",
+      "parent": "headingHead-7",
+      "parameters": {
+        "text": "For moderators",
+        "fontSize": "var(--text-xs)",
+        "fontWeight": "var(--font-semibold)",
+        "letterSpacing": "var(--tracking-widest)",
+        "textTransform": "uppercase",
+        "color": "var(--primary)"
+      },
+      "x": 220,
+      "y": 520
+    },
+    {
       "id": "heading-8",
       "type": "Text",
       "label": "Heading",
-      "parent": "ground-10",
+      "parent": "headingHead-7",
       "parameters": {
         "text": "Requests to join",
         "fontSize": "var(--text-3xl)",
@@ -74,8 +111,8 @@
         "letterSpacing": "var(--tracking-tight)",
         "color": "var(--foreground)"
       },
-      "x": 160,
-      "y": 400
+      "x": 220,
+      "y": 640
     },
     {
       "id": "notAllowed-2",
@@ -105,7 +142,7 @@
         "mounted": false
       },
       "x": 160,
-      "y": 520
+      "y": 760
     },
     {
       "id": "notAllowedText-2",
@@ -118,7 +155,7 @@
         "color": "var(--destructive)"
       },
       "x": 220,
-      "y": 640
+      "y": 880
     },
     {
       "id": "queue",
@@ -139,7 +176,7 @@
         "mounted": false
       },
       "x": 160,
-      "y": 760
+      "y": 1000
     },
     {
       "id": "list-3",
@@ -151,7 +188,7 @@
         "template": "/Members/RequestRow"
       },
       "x": 220,
-      "y": 880
+      "y": 1120
     },
     {
       "id": "emptyState-3",
@@ -181,7 +218,7 @@
         "mounted": false
       },
       "x": 220,
-      "y": 1000
+      "y": 1240
     },
     {
       "id": "emptyStateText-3",
@@ -194,14 +231,14 @@
         "color": "var(--muted-foreground)"
       },
       "x": 280,
-      "y": 1120
+      "y": 1360
     },
     {
       "id": "standing-5",
       "type": "/Members/Standing",
       "label": "Who is this?",
       "x": 530,
-      "y": 760
+      "y": 1000
     },
     {
       "id": "notModerator-2",
@@ -211,7 +248,7 @@
         "functionScript": "if (Inputs.isModerator === undefined) return;\nOutputs.no = Inputs.isModerator !== true;"
       },
       "x": 530,
-      "y": 520
+      "y": 760
     },
     {
       "id": "requests",
@@ -229,7 +266,7 @@
         ]
       },
       "x": 530,
-      "y": 880
+      "y": 1120
     },
     {
       "id": "emptyGate-3",
@@ -239,7 +276,7 @@
         "functionScript": "Outputs.empty = (Inputs.count || 0) === 0;"
       },
       "x": 530,
-      "y": 1000
+      "y": 1240
     },
     {
       "id": "toLanding-4",
@@ -250,7 +287,7 @@
         "target": "/Pages/Landing"
       },
       "x": 530,
-      "y": 1120
+      "y": 1360
     }
   ],
   "visualRoots": [

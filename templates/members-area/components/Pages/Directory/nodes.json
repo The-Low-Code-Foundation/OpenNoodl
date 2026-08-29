@@ -32,7 +32,7 @@
       "label": "Page ground",
       "parent": "page-11",
       "children": [
-        "heading-9",
+        "headingHead-8",
         "notAllowed-3",
         "directory"
       ],
@@ -62,10 +62,47 @@
       "y": 280
     },
     {
+      "id": "headingHead-8",
+      "type": "Group",
+      "label": "Heading — the head",
+      "parent": "ground-11",
+      "children": [
+        "headingEyebrow-8",
+        "heading-9"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "flexDirection": "column",
+        "rowGap": "var(--space-1)",
+        "paddingBottom": "var(--space-2)"
+      },
+      "x": 160,
+      "y": 400
+    },
+    {
+      "id": "headingEyebrow-8",
+      "type": "Text",
+      "label": "For moderators",
+      "parent": "headingHead-8",
+      "parameters": {
+        "text": "For moderators",
+        "fontSize": "var(--text-xs)",
+        "fontWeight": "var(--font-semibold)",
+        "letterSpacing": "var(--tracking-widest)",
+        "textTransform": "uppercase",
+        "color": "var(--primary)"
+      },
+      "x": 220,
+      "y": 520
+    },
+    {
       "id": "heading-9",
       "type": "Text",
       "label": "Heading",
-      "parent": "ground-11",
+      "parent": "headingHead-8",
       "parameters": {
         "text": "Who belongs",
         "fontSize": "var(--text-3xl)",
@@ -74,8 +111,8 @@
         "letterSpacing": "var(--tracking-tight)",
         "color": "var(--foreground)"
       },
-      "x": 160,
-      "y": 400
+      "x": 220,
+      "y": 640
     },
     {
       "id": "notAllowed-3",
@@ -105,7 +142,7 @@
         "mounted": false
       },
       "x": 160,
-      "y": 520
+      "y": 760
     },
     {
       "id": "notAllowedText-3",
@@ -118,7 +155,7 @@
         "color": "var(--destructive)"
       },
       "x": 220,
-      "y": 640
+      "y": 880
     },
     {
       "id": "directory",
@@ -140,7 +177,7 @@
         "mounted": false
       },
       "x": 160,
-      "y": 760
+      "y": 1000
     },
     {
       "id": "projectionNote",
@@ -153,7 +190,7 @@
         "color": "var(--muted-foreground)"
       },
       "x": 220,
-      "y": 880
+      "y": 1120
     },
     {
       "id": "list-4",
@@ -165,7 +202,7 @@
         "template": "/Members/MemberRow"
       },
       "x": 220,
-      "y": 1000
+      "y": 1240
     },
     {
       "id": "emptyState-4",
@@ -195,7 +232,7 @@
         "mounted": false
       },
       "x": 220,
-      "y": 1120
+      "y": 1360
     },
     {
       "id": "emptyStateText-4",
@@ -208,14 +245,14 @@
         "color": "var(--muted-foreground)"
       },
       "x": 280,
-      "y": 1240
+      "y": 1480
     },
     {
       "id": "standing-6",
       "type": "/Members/Standing",
       "label": "Who is this?",
       "x": 530,
-      "y": 760
+      "y": 1000
     },
     {
       "id": "notModerator-3",
@@ -225,7 +262,7 @@
         "functionScript": "if (Inputs.isModerator === undefined) return;\nOutputs.no = Inputs.isModerator !== true;"
       },
       "x": 530,
-      "y": 520
+      "y": 760
     },
     {
       "id": "members",
@@ -243,7 +280,7 @@
         ]
       },
       "x": 530,
-      "y": 1000
+      "y": 1240
     },
     {
       "id": "emptyGate-4",
@@ -253,7 +290,7 @@
         "functionScript": "Outputs.empty = (Inputs.count || 0) === 0;"
       },
       "x": 530,
-      "y": 1120
+      "y": 1360
     },
     {
       "id": "toLanding-5",
@@ -264,7 +301,7 @@
         "target": "/Pages/Landing"
       },
       "x": 530,
-      "y": 1240
+      "y": 1480
     }
   ],
   "visualRoots": [

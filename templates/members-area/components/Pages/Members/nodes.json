@@ -32,7 +32,7 @@
       "label": "Page ground",
       "parent": "page-3",
       "children": [
-        "heading-3",
+        "headingHead-2",
         "pendingNotice",
         "unknownNotice",
         "memberArea",
@@ -64,10 +64,47 @@
       "y": 280
     },
     {
+      "id": "headingHead-2",
+      "type": "Group",
+      "label": "Heading — the head",
+      "parent": "ground-3",
+      "children": [
+        "headingEyebrow-2",
+        "heading-3"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "flexDirection": "column",
+        "rowGap": "var(--space-1)",
+        "paddingBottom": "var(--space-2)"
+      },
+      "x": 160,
+      "y": 400
+    },
+    {
+      "id": "headingEyebrow-2",
+      "type": "Text",
+      "label": "For members",
+      "parent": "headingHead-2",
+      "parameters": {
+        "text": "For members",
+        "fontSize": "var(--text-xs)",
+        "fontWeight": "var(--font-semibold)",
+        "letterSpacing": "var(--tracking-widest)",
+        "textTransform": "uppercase",
+        "color": "var(--primary)"
+      },
+      "x": 220,
+      "y": 520
+    },
+    {
       "id": "heading-3",
       "type": "Text",
       "label": "Heading",
-      "parent": "ground-3",
+      "parent": "headingHead-2",
       "parameters": {
         "text": "Announcements",
         "fontSize": "var(--text-3xl)",
@@ -76,8 +113,8 @@
         "letterSpacing": "var(--tracking-tight)",
         "color": "var(--foreground)"
       },
-      "x": 160,
-      "y": 400
+      "x": 220,
+      "y": 640
     },
     {
       "id": "pendingNotice",
@@ -107,7 +144,7 @@
         "mounted": false
       },
       "x": 160,
-      "y": 520
+      "y": 760
     },
     {
       "id": "pendingNoticeText",
@@ -120,7 +157,7 @@
         "color": "var(--accent-foreground)"
       },
       "x": 220,
-      "y": 640
+      "y": 880
     },
     {
       "id": "unknownNotice",
@@ -150,7 +187,7 @@
         "mounted": false
       },
       "x": 160,
-      "y": 760
+      "y": 1000
     },
     {
       "id": "unknownNoticeText",
@@ -163,7 +200,7 @@
         "color": "var(--destructive)"
       },
       "x": 220,
-      "y": 880
+      "y": 1120
     },
     {
       "id": "memberArea",
@@ -185,7 +222,7 @@
         "mounted": false
       },
       "x": 160,
-      "y": 1000
+      "y": 1240
     },
     {
       "id": "list",
@@ -197,7 +234,7 @@
         "template": "/Members/AnnouncementRow"
       },
       "x": 220,
-      "y": 1120
+      "y": 1360
     },
     {
       "id": "emptyState",
@@ -227,7 +264,7 @@
         "mounted": false
       },
       "x": 220,
-      "y": 1240
+      "y": 1480
     },
     {
       "id": "emptyStateText",
@@ -240,7 +277,7 @@
         "color": "var(--muted-foreground)"
       },
       "x": 280,
-      "y": 1360
+      "y": 1600
     },
     {
       "id": "meetingsButton",
@@ -264,7 +301,7 @@
         "sizeMode": "contentSize"
       },
       "x": 220,
-      "y": 1480
+      "y": 1720
     },
     {
       "id": "moderatorTools",
@@ -282,10 +319,14 @@
         },
         "flexDirection": "column",
         "rowGap": "var(--space-4)",
+        "borderTopStyle": "solid",
+        "borderTopWidth": "var(--border-1)",
+        "borderTopColor": "var(--border)",
+        "paddingTop": "var(--space-6)",
         "mounted": false
       },
       "x": 160,
-      "y": 1600
+      "y": 1840
     },
     {
       "id": "moderatorEyebrow",
@@ -301,7 +342,7 @@
         "color": "var(--primary)"
       },
       "x": 220,
-      "y": 1720
+      "y": 1960
     },
     {
       "id": "moderatorButtons",
@@ -325,7 +366,7 @@
         }
       },
       "x": 220,
-      "y": 1840
+      "y": 2080
     },
     {
       "id": "postButton",
@@ -351,7 +392,7 @@
         }
       },
       "x": 280,
-      "y": 1960
+      "y": 2200
     },
     {
       "id": "requestsButton",
@@ -379,7 +420,7 @@
         }
       },
       "x": 280,
-      "y": 2080
+      "y": 2320
     },
     {
       "id": "directoryButton",
@@ -407,14 +448,14 @@
         }
       },
       "x": 280,
-      "y": 2200
+      "y": 2440
     },
     {
       "id": "standing-2",
       "type": "/Members/Standing",
       "label": "Who is this?",
       "x": 530,
-      "y": 1000
+      "y": 1240
     },
     {
       "id": "announcements",
@@ -432,7 +473,7 @@
         ]
       },
       "x": 530,
-      "y": 1120
+      "y": 1360
     },
     {
       "id": "emptyGate",
@@ -442,7 +483,7 @@
         "functionScript": "Outputs.empty = (Inputs.count || 0) === 0;"
       },
       "x": 530,
-      "y": 1240
+      "y": 1480
     },
     {
       "id": "toLanding",
@@ -453,7 +494,7 @@
         "target": "/Pages/Landing"
       },
       "x": 530,
-      "y": 2320
+      "y": 2560
     },
     {
       "id": "toMeetings",
@@ -464,7 +505,7 @@
         "target": "/Pages/Meetings"
       },
       "x": 530,
-      "y": 1480
+      "y": 1720
     },
     {
       "id": "toPost",
@@ -475,7 +516,7 @@
         "target": "/Pages/Post"
       },
       "x": 530,
-      "y": 1960
+      "y": 2200
     },
     {
       "id": "toRequests",
@@ -486,7 +527,7 @@
         "target": "/Pages/Requests"
       },
       "x": 530,
-      "y": 2080
+      "y": 2320
     },
     {
       "id": "toDirectory",
@@ -497,7 +538,7 @@
         "target": "/Pages/Directory"
       },
       "x": 530,
-      "y": 2200
+      "y": 2440
     }
   ],
   "visualRoots": [

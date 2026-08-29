@@ -32,7 +32,7 @@
       "label": "Page ground",
       "parent": "page-6",
       "children": [
-        "title-2",
+        "titleHead-2",
         "when-3",
         "place",
         "details",
@@ -64,10 +64,47 @@
       "y": 280
     },
     {
+      "id": "titleHead-2",
+      "type": "Group",
+      "label": "Title — the head",
+      "parent": "ground-6",
+      "children": [
+        "titleEyebrow-2",
+        "title-2"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "flexDirection": "column",
+        "rowGap": "var(--space-1)",
+        "paddingBottom": "var(--space-2)"
+      },
+      "x": 160,
+      "y": 400
+    },
+    {
+      "id": "titleEyebrow-2",
+      "type": "Text",
+      "label": "Meeting",
+      "parent": "titleHead-2",
+      "parameters": {
+        "text": "Meeting",
+        "fontSize": "var(--text-xs)",
+        "fontWeight": "var(--font-semibold)",
+        "letterSpacing": "var(--tracking-widest)",
+        "textTransform": "uppercase",
+        "color": "var(--primary)"
+      },
+      "x": 220,
+      "y": 520
+    },
+    {
       "id": "title-2",
       "type": "Text",
       "label": "Title",
-      "parent": "ground-6",
+      "parent": "titleHead-2",
       "parameters": {
         "text": "",
         "fontSize": "var(--text-3xl)",
@@ -76,8 +113,8 @@
         "letterSpacing": "var(--tracking-tight)",
         "color": "var(--foreground)"
       },
-      "x": 160,
-      "y": 400
+      "x": 220,
+      "y": 640
     },
     {
       "id": "when-3",
@@ -90,7 +127,7 @@
         "color": "var(--muted-foreground)"
       },
       "x": 160,
-      "y": 520
+      "y": 760
     },
     {
       "id": "place",
@@ -103,7 +140,7 @@
         "color": "var(--muted-foreground)"
       },
       "x": 160,
-      "y": 640
+      "y": 880
     },
     {
       "id": "details",
@@ -116,7 +153,7 @@
         "color": "var(--foreground)"
       },
       "x": 160,
-      "y": 760
+      "y": 1000
     },
     {
       "id": "refusal-2",
@@ -146,7 +183,7 @@
         "mounted": false
       },
       "x": 160,
-      "y": 880
+      "y": 1120
     },
     {
       "id": "refusalText-2",
@@ -159,7 +196,7 @@
         "color": "var(--destructive)"
       },
       "x": 220,
-      "y": 1000
+      "y": 1240
     },
     {
       "id": "pageInputs-2",
@@ -169,7 +206,7 @@
         "pathParams": "meetingId"
       },
       "x": 470,
-      "y": 1000
+      "y": 1240
     },
     {
       "id": "hold-2",
@@ -197,7 +234,7 @@
         "idSource": "explicit"
       },
       "x": 470,
-      "y": 400
+      "y": 640
     },
     {
       "id": "whenLabel-2",
@@ -207,7 +244,7 @@
         "functionScript": "function humanDay(raw) {\n  if (raw === undefined || raw === null) return '';\n  var s = String(raw);\n  if (s === '') return '';\n  var m = /^(\\d{4})-(\\d{2})-(\\d{2})$/.exec(s);\n  var at = m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : new Date(s);\n  if (isNaN(at.getTime())) return '';\n  return at.toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' });\n}\nif (Inputs.when === undefined) return;\nvar day = humanDay(Inputs.when);\nOutputs.label = day === '' ? String(Inputs.when || '') : day;"
       },
       "x": 470,
-      "y": 520
+      "y": 760
     },
     {
       "id": "refusalGate-2",
@@ -218,7 +255,7 @@
         "runOnChange-condition": false
       },
       "x": 470,
-      "y": 880
+      "y": 1120
     }
   ],
   "visualRoots": [

@@ -58,11 +58,12 @@ failure this file's first house rule exists to prevent.
 | **D22** | 🔴 open (08-29) | **NONE** | template | every install — the directory's first row |
 | **D23** | ⚠️ open (08-29) | **NONE** | template | anyone reading two pages titled the same |
 | **D24** | ⚠️ open (08-29) | **NONE** | template | a moderator approving somebody |
-| **D25** | ⚠️ open (08-29) | **NONE** | template | every person reading a date or filling the meeting form |
+| **D25** | ✅ fixed in Track A — **re-measured 08-29 (s10)** | — | template | (was: every person reading a date or filling the meeting form) |
 | **D26** | 🔴 open (08-29) | **NONE** — handed to P80 as C1 | product | every template we ship, not just this one |
 | **D27** | ✅ fixed s8 (08-29) | — | template | (was: anyone whose setup, join or approval threw) |
 | **D28** | 🔴 open (08-29) | **NONE** | product | every agent who lays controls out in the one node that reflows |
 | **D29** | ⚠️ open (08-29) | **phase 78** (Track B remainder) | template | every member — a second auth round trip on every page |
+| **D30** | 🔴 open (08-29) | **NONE** | product | every app with a column of numbers — money, times, scores |
 
 🔴 **D18/D19/D20 are the first rows created since the sweep, and they were already unowned within a
 day of the process being put in place.** That is the argument for the column, not an argument
@@ -868,7 +869,24 @@ reads as one object**, and here the two objects are *approve* and *decline*.
 
 ---
 
-## D25 — ⚠️ Three date formats, two of them machine, one in a label
+## D25 — ✅ FIXED in Track A. Re-measured 2026-08-29 (s10) and the row was stale.
+
+🔴 **The row said `open` for a day after the fix shipped.** Track A (`98bfdea0`) replaced all three
+formats with one `humanDay()` snippet and wrote the reason into `HUMAN_DAY_FN`'s own doc comment —
+including that `new Date('2026-09-14')` parses as **UTC midnight**, so every meeting rendered a day
+early west of Greenwich. Nobody came back and moved this row. Recorded because it is the failure the
+table's own preamble warns about: a `status` column is as-recorded, and an unread row is worse than
+no row.
+
+**Measured on the artefact, 2026-08-29** — not on the task file:
+
+| | |
+|---|---|
+| `toLocaleDateString` call sites in `templates/members-area/` | **5, all identical** (`day: 'numeric', month: 'long', year: 'numeric'`) |
+| occurrences of `YYYY-MM-DD` anywhere in the artefact | **0** |
+| what the drives render | `20 August 2026`, `29 August 2026`, `1 January 2099` |
+
+### What it was
 
 | where | renders |
 |---|---|
@@ -1011,3 +1029,49 @@ five screens and silently removed it on the two they reach by clicking a row.
 **Not a correctness defect** — the two calls are reads, they cannot disagree in a way that matters,
 and the drive passes 71/71 with both in place. It is a cost, and it is written down so the next
 session decides about it rather than discovers it.
+
+---
+
+## D30 — 🔴 The type ramp cannot reach `font-variant-numeric`, so no app built here can align a column of numbers
+
+**Severity: medium. Owner: NONE. Side: product.** Found by TPL-001 Track B4, whose third item —
+*"tabular numerals on dates"* — turned out to be unreachable through the door.
+
+### The measurement
+
+Every `Text` in the runtime gets its type ramp from one shared port group,
+[`node-shared-port-definitions.ts:1452`](../../../packages/noodl-viewer-react/src/node-shared-port-definitions.ts).
+The group is exactly nine ports:
+
+`textStyle` · `fontFamily` · `fontSize` · `fontWeight` · `fontStyle` · `color` · `letterSpacing` ·
+`lineHeight` · `textTransform`
+
+There is no `fontVariantNumeric`, and a parameter naming a port that does not exist is dropped — so
+**tabular figures cannot be set on any node, by any template, by an agent, or by a person in the
+style panel.**
+
+⚠️ **Beside a known-firing signal, so the absence is a reading and not a failed search.** The same
+grep over the same file finds `letterSpacing` (line 1686) and `textTransform` (line 1733) — two
+ports of the same kind, declared the same way, in the same block. The instrument fires; the port is
+not there.
+
+🔴 **And there is no escape hatch.** A template's `nodegx.project.json` carries `settings` and
+`metadata.designTokens` and nothing else — no stylesheet, no class, no CSS. A design token is a
+*value*; `font-variant-numeric` needs a *property* to consume it, and no port exposes one. So this
+cannot be worked around in a template the way `--border-control` was.
+
+### Where it bites a person
+
+Any app with a column of numbers: subscriptions and amounts, kick-off times, scores, stock counts,
+invoice totals. With proportional figures a right-aligned money column is visibly ragged — `1` is
+narrower than `8` in most sans faces — and the usual one-line CSS fix is unavailable. This is the
+first template to look for it and it will not be the last: an association's treasurer's report is
+the obvious second screen of the members' area.
+
+### ⚠️ Why TPL-001 does not need it, and why that is not a reason to close this
+
+The template's one date format, since Track A, is `20 August 2026` — prose, not a numeric grid.
+Month names differ in width, so tabular figures would align nothing here even if they were
+reachable. **B4 therefore shipped without them deliberately**, on the merits rather than because the
+port was missing, and the two reasons are independent: the item was worth dropping *and* it could
+not have been done. The gap is filed because the next template will have a table in it.

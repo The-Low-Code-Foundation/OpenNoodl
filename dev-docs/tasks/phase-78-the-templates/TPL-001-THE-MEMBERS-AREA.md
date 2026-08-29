@@ -790,3 +790,109 @@ instrument, opposite readings.
 `typecheck:mcp` clean · noodl-mcp **904/904, 67 suites** · the three tpl001 drives **71/71** against a
 real enforcing backend and a real headless browser. ⚠️ `test:ci` **not run** — no editor source
 touched, which is what has kept this phase from colliding all week.
+
+---
+
+## 17. Type doing more work (s10, 2026-08-29) — 🟢 B4, and the one item that could not be built
+
+**Track B4 was three things.** Two shipped; the third turned out to be unreachable through the door
+and is now [D30](DEFECTS-THE-TEMPLATES-FOUND.md).
+
+| | before s10 | after |
+|---|---|---|
+| pages that say what KIND of screen they are | **1 of 11** (the landing hero) | **11 of 11** |
+| `eyebrow` placements in the artefact | **3** — the hero, the band, one section | **13** |
+| pages whose two audience zones are separated by anything but a gap | **0 of 1** | **1 of 1** |
+| `tpl001Template` + `templateAppearance` | 73/73 | **77/77** (4 new specs) |
+| the three tpl001 drives | 71/71 | **71/71** |
+
+### What changed
+
+**Every page now heads itself with an eyebrow.** `pageHead()` puts the eyebrow and the heading in
+the `sectionHead` group the vocabulary already had, and the words say the thing the heading cannot:
+
+- **`For members` / `For moderators`** on the app screens. This template's whole product is *what a
+  non-member cannot see*, and now the screen says which side of that line it is on. `Pages/Members`
+  carries both — `For members` at the top and `For moderators` below the rule — because it is the
+  one page with a zone for each.
+- **`Announcement` / `Meeting`** on the two detail pages, where the heading IS the record's title.
+  Without it, "The harvest supper" gives a reader no way to tell which kind of thing they opened.
+- **`Members' area`** on `Pages/SignIn` and `Pages/Join`, which carry no band, and **`First run`**
+  on `Pages/Setup`, which is the only screen a person sees exactly once.
+
+🔴 **What the eyebrow was NOT allowed to say, and it is a measurement.** The band already carries
+`Members' area` over the association's name on **seven** of the eleven pages. A page eyebrow
+repeating that phrase would have put the same two words twice on one screen, in the same size,
+weight, colour and letter-spacing, about 150px apart. §5's second spec reads both sides off the
+artefact and fails if any band-carrying page ever says it.
+
+**A rule between sections.** `afterSection()` gives a section that follows another one a hairline
+and the air above it. `Pages/Members` was a member's announcements and a moderator's three tools
+separated by the ground's own 20px gap — the same gap that sits between a heading and a notice — so
+the page read as one list rather than two zones with different audiences.
+
+### 🔴 The third item could not be built, and both reasons are worth writing down
+
+*"Tabular numerals on dates"* is unreachable. The runtime's shared text-style group is nine ports
+and `font-variant-numeric` is not one of them; a template's project file carries `settings` and
+`designTokens` and no stylesheet, so there is no escape hatch either. Filed as **D30**.
+
+⚠️ **And it would not have paid.** Since Track A the one date format is `20 August 2026` — prose.
+Month names differ in width, so tabular figures align nothing here. The two reasons are
+**independent**, which is why both are recorded: the item deserved dropping on the merits *and* it
+was impossible, and either alone would have been a weaker record.
+
+### 🔴 The gate found two things about itself before it found anything about the template
+
+Both surfaced from writing §5/§6 as literals and then sabotaging them, per s9's rule.
+
+1. **An id in this artefact is not a name you may do arithmetic on.** All eleven pages call their
+   heading `heading`, so the door remaps ten of them (`headingHead-2` … `-8`) — D6's documented
+   behaviour. The first §5 derived the eyebrow's id from the head's with `replace(/Head$/, '')`,
+   which matched nothing on every remapped page and **reported two of ten as if the other eight had
+   no eyebrow at all**. It now reads the head's first child.
+2. **A page head is not a section, and `paddingBottom` is what tells them apart.** §6's first draft
+   counted every `headingHead` as its page's first section, making the real content section the
+   "second" one everywhere: **seven** stacked pairs reported where there is one. The vocabulary
+   already draws the distinction — `sectionHead` carries the air below it, `SECTION` carries none.
+
+### 🔴 And the sabotage caught a spec that graded a table against a table
+
+§5's "never repeats the band's words" **passed** with `Pages/Members`' eyebrow set to the band's own
+phrase. It was filtering `PAGE_EYEBROWS` — the hand-written table — against a value read from the
+artefact, so the shipped page eyebrows were never opened. Same family as s9's finding, one turn
+further out: it is not enough for one side to be a measurement, the side the rule is ABOUT has to
+be. It now reads the pages and reddens.
+
+### ✅ Graded by looking, and then by driving
+
+`Pages/Members` rendered at **1280×900 and 390×844** with both zones open: the rule spans the
+measure, the eyebrows sit clear of the band's, and the moderator's three buttons still reflow to two
+columns at 390 without overlapping (D28's repair holds). `Pages/SignIn` and `Pages/Setup` read at
+1280. Then driven — the trace paints `FOR MEMBERS | Announcements` for a member and
+`FOR MODERATORS | Post something` for a moderator, on the real backend.
+
+⚠️ **One thing looked at and deliberately not changed.** With the eyebrow carrying the context,
+`Pages/SignIn`'s heading could shed a word — `Members sign in` → `Sign in`, exactly the move s8 made
+on `Pages/Members`. It is also a **button label on the landing page** and a `PRIMARY_LABELS` key,
+and three drive assertions read the string. Settled copy with a blast radius, for one word: left
+alone, recorded here.
+
+### Gates (s10)
+
+`typecheck:mcp` clean · `tpl001Template` **55/55** (4 new) · the three tpl001 drives **71/71**
+against a real enforcing backend and browser · generation reproducible, **57 + 6** diagnostics.
+
+🔴 **Two reds in `noodl-mcp` that are not this task's**, both established rather than assumed:
+
+- `templateAppearance §1 site-builder has the pinned page count` — expected 5, got **6**. A peer's
+  **live** work: `site-builder.content.json` and three `sb00*` specs are modified in the tree with
+  mtimes minutes old. Theirs to re-pin; they will meet it when they run the suite they are editing.
+- `renderReportModule` **AWP-003 ×2** — fails at HEAD, unrelated. The test file (08-09), the
+  fixture (tracked, clean), `render-report.js` and `visualRoots.ts` are all unmodified. The one
+  modified file nearby, `render-from-disk.js` (phase 80's DEF-003, 12 minutes old), is **excluded**:
+  it is reached only through `RENDER_SCRIPT` at the server launch, and `blankDiagnosis` is static
+  analysis that never spawns a server.
+
+⚠️ `test:ci` **not run** — no editor source touched, which is what has kept this phase from
+colliding all week.
