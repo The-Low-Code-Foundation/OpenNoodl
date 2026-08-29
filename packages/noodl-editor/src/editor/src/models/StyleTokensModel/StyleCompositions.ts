@@ -178,6 +178,71 @@ export const STYLE_COMPOSITIONS: VocabComposition[] = [
     recipe: 'ui-card-grid-repeater'
   },
   {
+    // 🔴 P78 D26 / phase-80 DEF-010 C1. Until this pair, **two** of eighteen
+    // compositions carried a content fill and **both were `var(--surface)`** —
+    // so there was exactly one way to make something look like a distinct
+    // object, and nine kinds of thing on the members-area template wore it.
+    // Richard, on the finished landing page: *"It's definitely got that standard
+    // bootstrap feel about it."* That is the cause, and it is in the kit rather
+    // than in any template.
+    //
+    // 🔴 **`--surface-raised` was already in the token set and read by nothing.**
+    // The second surface never needed designing — it needed a reader. This is it.
+    //
+    // ⚠️ **It only reads as raised on a `--surface` ground.** `--surface-raised`
+    // is `#ffffff` and so is `--background`, so this on the page background is
+    // invisible. The recipe uses it exactly that way: a header row inside a
+    // `--surface` table. The description says so, because a composition that
+    // disappears where an author first tries it is worse than none.
+    id: 'raised',
+    nodeType: 'Group',
+    group: 'surface',
+    description:
+      'A band that sits above the surface it is on — a table header, a toolbar, the head of a list. Only reads as raised on a var(--surface) ground, never on the page background.',
+    parameters: {
+      width: GROUP,
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: 'var(--surface-raised)',
+      borderBottomStyle: 'solid',
+      borderBottomWidth: 'var(--border-1)',
+      borderBottomColor: 'var(--border)',
+      paddingTop: 'var(--space-3)',
+      paddingBottom: 'var(--space-3)'
+    },
+    recipe: 'ui-data-table'
+  },
+  {
+    // 🔴 The other half of D26, and the one that stops a list looking like a
+    // stack of cards: a row separated by a **hairline** rather than boxed.
+    //
+    // ⚠️ **No `backgroundColor` at all** — that is the whole point and it is
+    // lifted, not chosen. A ruled row inherits the surface it sits on, so ten of
+    // them read as one object with divisions rather than ten objects. Giving it
+    // a fill would make it another flavour of `card`, which is precisely what
+    // phase 78 asked us not to add.
+    //
+    // ⚠️ `--border-subtle`, not `--border`. Also lifted: the recipe rules
+    // *between* rows more quietly than it rules the header off from them, and
+    // that difference is what keeps a long list from reading as a grid.
+    id: 'ruled',
+    nodeType: 'Group',
+    group: 'surface',
+    description:
+      'One row in a list, separated from the next by a hairline instead of being boxed. Carries no fill on purpose — it inherits the surface it sits on.',
+    parameters: {
+      width: GROUP,
+      flexDirection: 'row',
+      alignItems: 'center',
+      borderBottomStyle: 'solid',
+      borderBottomWidth: 'var(--border-1)',
+      borderBottomColor: 'var(--border-subtle)',
+      paddingTop: 'var(--space-3)',
+      paddingBottom: 'var(--space-3)'
+    },
+    recipe: 'ui-data-table'
+  },
+  {
     id: 'cardBody',
     nodeType: 'Group',
     group: 'surface',
