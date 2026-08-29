@@ -31,6 +31,7 @@ import { orphanedNode } from './orphanedNode';
 import { detachedPageContent } from './detachedPageContent';
 import { typeIncompatibleConnection } from './typeIncompatibleConnection';
 import { signalDrivenStaleInput } from './signalDrivenStaleInput';
+import { signalIntoValuePort } from './signalIntoValuePort';
 import { unwiredOutcome } from './unwiredOutcome';
 import { repeatedSiblingSubtree } from './repeatedSiblingSubtree';
 import { oversizedPage } from './oversizedPage';
@@ -59,6 +60,11 @@ export const ALL_RULES: Rule[] = [
   detachedPageContent,
   typeIncompatibleConnection,
   signalDrivenStaleInput,
+  // DEF-002 §3 — beside `typeIncompatibleConnection`'s neighbours because it is
+  // the question that rule deliberately does not ask: it treats "a signal is
+  // involved" as compatible, which is right for a signal into a signal and is
+  // exactly why nothing looked at the direction.
+  signalIntoValuePort,
   unwiredOutcome,
   repeatedSiblingSubtree,
   oversizedPage,
@@ -81,6 +87,7 @@ export {
   detachedPageContent,
   typeIncompatibleConnection,
   signalDrivenStaleInput,
+  signalIntoValuePort,
   unwiredOutcome,
   repeatedSiblingSubtree,
   oversizedPage,

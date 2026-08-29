@@ -208,6 +208,16 @@ export interface ComponentNodesView {
  * policy, so promoting a code here cannot turn 6 corpus hits into errors.
  */
 export const AUTHORED_BLOCKING_WARNINGS: ReadonlySet<string> = new Set([
+  // DEF-002 §3 — the set's charter is "output that is broken: a value the
+  // runtime discards", and a value input receiving a signal pulse discards it in
+  // the most literal way available: the port settles at `false` every time.
+  // `warning` rather than `error` because the corpus carries exactly one, and it
+  // is a TRUE positive in a hand-authored import (`big-merge-test-mine` wires
+  // `Switch.switchedToOn` into `Script Downloader.startLoad`, a boolean flag,
+  // when it meant the `load` signal beside it). Advisory for a project somebody
+  // imported; blocking for a graph an agent just wrote — which is the whole
+  // reason this set exists.
+  DiagnosticCode.SignalIntoValuePort,
   DiagnosticCode.UnknownParameter,
   DiagnosticCode.UnitlessDimension,
   DiagnosticCode.UnresolvedNavigation,

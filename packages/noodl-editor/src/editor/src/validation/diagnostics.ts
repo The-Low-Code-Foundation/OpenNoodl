@@ -651,6 +651,32 @@ export enum DiagnosticCode {
    * it is a lookup in an index built from the same declaration the runtime
    * reads.
    */
+  /**
+   * DEF-002 §3 — a **signal** output wired into a **value** input.
+   *
+   * The runtime writes `true` then `false` on the target input. The input queue
+   * holds **one entry per input name**, so the two writes coalesce and the
+   * consumer runs **once, with `false`** — the opposite of what the graph looks
+   * like it says.
+   *
+   * 🔴 **It bit an instrument built to measure a different defect.** Phase 78
+   * D4's first twin wired a query's `failure` into `unknownNotice.visible`, and
+   * the notice painted for the person whose query **succeeded** and not for the
+   * one who was refused. Exactly inverted, on a graph built by someone reading
+   * carefully. *An instrument built out of a seam you already know is broken
+   * measures the seam.*
+   *
+   * ⚠️ Nothing covered it. `typeIncompatibleConnection` treats *"a signal is
+   * involved"* as **compatible** — correctly, for a signal into a signal —
+   * and `signalDrivenStaleInput` is `defaultEnabled: false` and asks about
+   * asynchrony. The direction is what makes this one decidable: a signal into a
+   * *value* port is never the graph anyone drew.
+   *
+   * Error severity, and it can afford to be: it fires only when **both** ports
+   * are statically known in the catalog, so a runtime-created port on either end
+   * takes the same skip every other rule here takes.
+   */
+  SignalIntoValuePort = 'signal-into-value-port',
   ConnectionUnknownInstancePort = 'connection-unknown-instance-port',
   UnprefixedFunctionPort = 'unprefixed-function-port',
   /**
