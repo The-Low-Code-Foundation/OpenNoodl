@@ -1,103 +1,88 @@
 # Phase 80 — next session
 
-## State: DEF-001, DEF-002, DEF-003 and DEF-016 are closed. The next rank is DEF-004.
+## State: DEF-001, DEF-002, DEF-003, DEF-016 closed. **DEF-004 is 🟡 — (a) done, (b) open.**
 
-**s4 (2026-08-29)** took DEF-003 and closed all three of its rows — and **two of them were not what
-the register said they were.** Read `DEF-003-…md` §7 before anything else; it is short and it is the
-session's whole finding.
+**s5 (2026-08-29)** took DEF-004 and closed its first half. Read `DEF-004-…md` **§0** and **§4a**
+before anything else — §0 is the drive that came first, §4a is what it cost.
 
 | commit | what |
 |---|---|
-| `be64b4eb` | **DEF-003** — `Page.title`/`urlPath` declared, `noBoxExit` at both doors, two instrument fixes, the catalog regenerated |
-| `3d4c24db` | DEF-003 closed in the register, with two other people's reds named |
+| `d229bf4b` | **DEF-004 (a)** — a cloud run records what the graph did; 14 new specs |
+| `fd8e25b0` | the drive, and the three instruments that were wrong |
+| `0d224e24` | 🔴 **AC4 contradicts itself** — measured. Read this before touching (b) |
 
 Gates at close: `test:ci` **2889 specs, 4 failures, all `AIX-006 style vocabulary` by name** (the
-floor, seed 85339) · viewer-react **1087/1087** · nodegx-export **797/797** · nodegx-backend
-**1306 passed / 10 skipped** · noodl-mcp **927/928** (see §"not yours" below) · `typecheck:editor`,
-`typecheck:mcp`, `catalog:check`, `catalog:merge:check`, `catalog:groups:check`, `docs:nodes:check`
-all clean.
+floor, seed 42026) · nodegx-backend **114 suites, 1324 passed / 10 skipped** · noodl-runtime
+**2558 passed / 13 skipped** · viewer-cloud **193/193** · viewer-react **1087/1087** · noodl-mcp
+**947/947** · nodegx-export **845/845** · `typecheck:editor`, `typecheck:mcp`, `catalog:check`,
+`catalog:merge:check`, `catalog:groups:check`, `docs:nodes:check` all clean.
 
 ---
 
 ## 🔴 The finding, in one paragraph
 
-**DEF-003 §6 said *"(c) is read from the door, not driven — drive it before building the fix"*, and
-that instruction was worth more than the rest of the file.** Driven: **(c)'s premise is false** — a
-page authored headlessly with `title` set renders with that `document.title`, and always has; the
-exporter reads the parameter and never needed the port. **(a) was already fixed** — the door has
-blocked a bare number on a percent-defaulted port since phase 40, and both phases that recorded the
-row measured the *coercion* and never asked the door. Only **(b)** needed the fix it asked for.
-
-⚠️ **The general shape, and it is worth carrying:** phases 76 and 77 recorded three rows by reading
-source and one catalogue response. Two of the three were wrong about what the product does. **A row
-recorded from a reading is a hypothesis; ranking it as a defect makes it look like a measurement.**
+**DEF-004 §1's reading held — and the row it did NOT contain was the defect.** Driven before
+building: a cloud function in which a node **failed** was recorded as `status: "success"` with
+**zero steps**, while the failure itself — carrying `nodeId`, `nodeType`, `code` and `message` —
+went to a bare `console.error` and nowhere else. The information already existed and was thrown
+away. The fix is `Node.beginOutcome` / `reportOutcome` on `NodeScope.runContext` — **not** the
+error bus, which hangs off `NodeContext`, of which there is one per `CloudRunner` with concurrent
+requests in it, so a bus subscriber cannot say whose request an event belongs to. The real
+`publishPage` now records **6 steps including the `Run Tasks` worker's**, where SBR-006's drive
+found *3 executions, 0 steps*.
 
 ## What to do next
 
-**DEF-004** — *When it goes wrong you cannot see where* (P77 D2, D3; bites anyone debugging). Not
-read yet this session.
+**DEF-004 (b)**, or **DEF-006** if you would rather not carry (b)'s open question.
 
-🔴 **DEF-007 grew a §1.1 late on 2026-08-29 and it changes that task's premise** — phase 77's
-SBR-016 drive found the `runOnValueChange` migration reversing two queries in a template authored
-entirely **after** §2, on an ordinary editor load. DEF-007 §1 currently exonerates the migration
-(*"None of that is the defect"*); that is no longer the whole story, and §3.2's two options turn out
-not to be alternatives. Read §1.1 before DEF-007, and note it is now the **owner** of what phase 77
-filed as D11 with owner `NONE`. Open beside it: **DEF-017 C1** (`--surface-raised` declared and read by
-nothing; phase 78's B3 is capped until it lands), **DEF-006**, **DEF-007**, **DEF-008**, **DEF-009**,
+🔴 **If you take (b), read `DEF-004-…md` §4b FIRST — AC4 as written refuses a wire AC4 requires.**
+Every `completed` wire in every shipped template is one of the two uses AC4 says must be accepted,
+and one of them lands on `noodl.cloud.response.send`, which AC4 names as the defect. The rule is
+**not** about the target node type: what separates SBR-006's defect from `submitContactForm` is
+that `publishPage` wrote a **success fact** about work that may not have happened. Also: the
+blocking arm has **no positive instance** in any shipped template, so it needs a probe graph.
+
+Open beside it: **DEF-017 C1**, **DEF-006**, **DEF-007** (read its **§1.1**, added late 08-29 — it
+changes that task's premise and makes it the owner of P77's D11), **DEF-008**, **DEF-009**,
 **DEF-014**, **DEF-015**, and the four carried from phase 76 by reference.
 
-🔴 **Before you start DEF-004, do to it what §6 made me do to DEF-003: find the claim in it that is a
-reading rather than a measurement, and drive that one first.** It is two hours that can delete a day.
-
-## 🔴 Reds that are NOT yours
-
-- ✅ **`templateAppearance.test.ts` site-builder page count — CLOSED by phase 77 the same day.**
-  I called it TPL-001's because the pin lives in their file; phase 77 took it because **SBR-017 is
-  what made the template six pages**. noodl-mcp is **938/938** now. ⚠️ The shape is worth keeping:
-  **the owner of a red is whoever moved the measured thing, not whoever owns the file the number
-  is written in.**
-- **`nodegx-export` is jest, not vitest.** `npx vitest run` there gives *36 suites failed, no tests,
-  `describe is not defined`* — a wrong-runner result that reads exactly like a broken package. Use
-  `npm test`. It is **797/797**, up from 788 with the peer's uncommitted EXP-011 work in the tree.
-- **Two `nodegx-backend` browser drives in one jest run flake on each other** (they bind real
-  sockets). `sb015-default-policy-drive` failed beside `sb015-first-local-run` and passed alone.
-  Run that suite `--runInBand`.
+🔴 **Do to your task what §0 did to this one: find the claim in it that is a reading rather than a
+measurement, and drive that one first.** It has now paid twice running — s4 deleted two of three
+rows that way, and s5 found a defect the file did not contain.
 
 ## 🔴 What this session paid for, that the next one should not re-buy
 
-- **A previous session had already written the correct fix for (c), in a code comment, with the
-  condition for its own deletion.** `parameterValues.ts`'s D16 carve-out closed with *"the honest fix
-  is to declare the ports on `Page`, at which point this function has no population and should be
-  deleted rather than left."* Nobody did it, because the carve-out made the symptom stop. **A
-  suppression that names its own real fix is a task nobody filed** — when you write one, file it.
-- 🔴 **A heuristic keyed on a PORT NAME changes meaning the moment a port is declared.** Declaring
-  `title` on `Page` made it "content-bearing" in `render-report.js`'s regex, which broke
-  `blankDiagnosis` on AWP-003's real artefact — a blank page the tool could no longer explain. The
-  suite caught it. **Widening a node's declared surface is a change to every name-keyed rule in the
-  repo, not only to the rule you are working on.**
-- 🔴 **Your instrument can produce a value the product cannot.** `render-from-disk.js` was missing
-  the exporter's title fallback, so an untitled page rendered `document.title === "undefined"`. That
-  is a string no product path emits, and it cost an hour as a phantom product defect. **When a drive
-  gives you a surprising value, diff the harness against the real producer before writing it up.**
-- **My own rule had a false positive and only a control found it.** `noBoxExit`'s first version
-  probed box-model names only, so it fired on `Circle` — which paints through `fillColor` and
-  `strokeColor` — and would have told that author to wrap it in a `Group`. **A new rule's first job
-  is to name the population it claims to be about, and to put a member of the neighbouring
-  population in the spec.**
-- **`catalog:check` is a PR CI gate and was red at HEAD**, because DEF-016 changed node descriptions
-  without regenerating. Fixed here as a side effect. Same lesson as last session's, one artifact
-  over: **a closed task's debts need an owner.**
+- **A mutant that killed nothing, and the spec was mine.** The arm labelled *"a node that never
+  adopted the outcome contract"* used a `JavaScriptFunction` that throws, chosen off a
+  `sendSignalOnOutput('failure')` grep hit. `simplejavascript.ts` has **both** paths and its
+  signal-driven `run` goes through `beginOutcome` — so the spec was a second test of the outcome
+  path wearing a label that said otherwise, and deleting the code it claimed to grade still passed
+  14/14. **A population derived from one grep is a hypothesis about the population.** `Static Data`
+  is the honest arm.
+- 🔴 **Adding a method to `Node.prototype` reddened fourteen specs at once.** Several suites build
+  a node as **a bag of bound prototype methods** and never construct one, so a new method the
+  prototype calls is simply absent (`this._X is not a function`). `Node.prototype` is a published
+  surface to the spec population, not only to the product. The guard is inline for that reason.
+- 🔴 **Two wrong id lists before the deployed bundle was the only honest source.** "The steps are
+  the graph's own nodes" was checked first against `site-builder.content.json`, then against
+  `SB004_COMPONENTS`; both went red on ids the run really did produce. **The MCP door rewrites node
+  ids on write** (`sections` → `sections-3`, `page` → `page-8`), and `Run Tasks` instantiates its
+  **worker** inside the run. ⚠️ **The template file and an authored project carry different node
+  ids for the same function** — anything joining a record back to a canvas has to know that.
+- **The step recorder does not see everything, and the file says so.** A step is an **action
+  invocation**; a `DbCollection2` that returns rows is invisible, the same node failing is visible
+  through a second bridge in `raiseRuntimeError`. **Every action, plus every failure** — a query
+  that quietly returned the wrong rows is still not in the record.
 
 ## Traps carried
 
-- ⚠️ **The viewer bundle at session start was a 14.3 MB dev build**, not the 1.5 MB
-  `webpack.viewer.prod.js` output the render harness documents. Anyone who measured against it was
-  measuring a different artefact. It is now the prod build. It is **gitignored and shared** — rebuild
-  it with the documented command before any drive, and check nothing else is driving first.
-- 🔴 **`grep`/ugrep found ZERO matches for `runtimeBehavior`** across a tree containing hundreds.
-  `rg` found them instantly. Also hit again: **`rg -rn` is parsed as `-r n`** and rewrites every
-  matched line to the literal `n` — it looks like a bizarre codebase, not like a flag error.
-- ⚠️ **`git commit <pathspecs>` errors on an untracked path** rather than skipping it silently, which
-  is the good half of that trap. `git add` the new files and commit in the same breath.
-- ⚠️ **zsh does not word-split an unquoted `$PATHS`** — a long pathspec list in a variable arrives as
-  one giant filename. List them literally.
+- ⚠️ **`packages/noodl-runtime/dist-types/` is generated and gitignored, and `noodl-viewer-cloud`
+  typechecks against it, not against source.** A new export in `runcontext.ts` is invisible until
+  `npm run build:types` in `noodl-runtime`. The error reads as a missing export you just wrote.
+- ⚠️ **A cloud function whose graph hangs answers 504 and records `status: error` with zero
+  steps** — the query on a nonexistent collection does exactly this. That case is *not* improved by
+  this session's work and is worth someone's attention.
+- 🔴 **`rg -ln` and `rg -rn` mangle output**, hit twice more this session: `rg -ln "beginOutcome"`
+  printed lines with `beginOutcome` rewritten to `ln`. Use long flags.
+- ⚠️ **`nodegx-backend`'s suite takes ~250s and must be `--runInBand`** (two browser drives bind
+  real sockets and flake on each other).
