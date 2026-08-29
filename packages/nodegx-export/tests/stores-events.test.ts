@@ -354,9 +354,17 @@ describe('the whole fixture translates', () => {
 });
 
 describe('tokens.css carries the effective set (STEP5-TARGET §6, the scaffold correction)', () => {
+  /**
+   * ⚠️ The value tracks the editor's `DEFAULT_TOKENS` rather than restating it — the scaffold
+   * reads them straight through, which is why DEF-001's contrast ruling reached this file
+   * without touching `nodegx-export` at all. `#3b82f6` failed AA against white at 3.68:1 and
+   * Richard ruled the token moves and the white text stays (phase 80 DEF-001, `30eb92b2`);
+   * `#2563eb` is 5.17:1. DEF-001 moved the three editor specs that pinned the old value and
+   * did not have this one in its sweep, which is what left the red behind it.
+   */
   test('a project with no overrides gets the shipped defaults', () => {
     const tokens = app.files['src/styles/tokens.css'];
-    expect(tokens).toContain('--primary: #3b82f6;');
+    expect(tokens).toContain('--primary: #2563eb;');
     expect(tokens).toContain('--space-4:');
     expect(tokens).toContain('--radius-xl:');
   });
@@ -365,7 +373,7 @@ describe('tokens.css carries the effective set (STEP5-TARGET §6, the scaffold c
     const puppy = emitApp(parseProject(PUPPY_FIXTURE, catalog), catalog);
     const tokens = puppy.files['src/styles/tokens.css'];
     expect(tokens).toContain('--primary: #18181b;');
-    expect(tokens).not.toContain('--primary: #3b82f6;');
+    expect(tokens).not.toContain('--primary: #2563eb;');
     expect(tokens).toContain('--space-4:');
   });
 });
