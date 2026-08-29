@@ -2451,3 +2451,160 @@ no invented `s.nosuchkey` read reaches the app — is checked exactly as hard.
 - **A chain-local for `Error`**, **`exprValidIn`/`actionExprsOf` on `Navigate To Path`**, **the
   cycle refusal §18.3 measured**, and **the HTTP `error` port group drift** — all unchanged and
   still unowned.
+
+## §21 EXP-004's pre-flight, and the host neither editor surface has (session 50, 2026-08-29)
+
+**69 of 127 (54.3%)** — unchanged for a third session, and nothing on the picker moved. This
+session built EXP-004's *before you export* surface and measured the layer it should be built at.
+🔴 **It also established, with a repo-wide grep, that `@nodegx/export` has no consumer anywhere in
+the product** — which changes what "the editor half" means and is the most important thing here.
+
+### §21.1 🔴 The package has zero consumers, so the editor surfaces are not a UI problem
+
+Every list in this phase — PROGRESS's EXP-004 row, §20.8, the session-49 prompt — describes what
+remains as *"both editor surfaces (pre-flight estimate, in-editor report)"*, which reads as two
+panels waiting to be drawn. They are not.
+
+```
+grep -rln "emitApp\|nodegx-export\|@nodegx/export" packages/ --include=*.ts --include=*.tsx \
+  --include=*.js --include=*.json | grep -v packages/nodegx-export/
+```
+
+Three hits, **all of them comments**: two in `nodegx-module-inject` describing who its synchronous
+scanner exists for, one in a `noodl-runtime` test crediting where a defect was first seen. There is
+no import, no dependency entry, no webpack alias. `packages/noodl-editor/package.json` lists four
+`@nodegx/*` packages and this is not one of them.
+
+⚠️ **`exportProjectComponents.ts` is not this.** The editor's only thing called "Export" zips a
+*component bundle* — Noodl's own `.json` interchange — and has nothing to do with code export.
+
+So an in-editor **post-export** report has no post-export moment to attach to: there is no command
+in the product that runs this pipeline at all. The one shipped entry point is
+`scripts/emit-app.ts`, run by hand through `ts-node`. EXP-004 puts the export *mechanism*
+explicitly out of scope ("the export mechanism itself (EXP-002/003)"), so the honest statement is
+that **one of EXP-004's two editor surfaces is blocked on a task that is not EXP-004**, and it has
+been listed as ordinary remaining work for two sessions.
+
+🔴 **The wiring itself is not the hard part, and saying so keeps the estimate honest.** The editor
+aliases sibling packages by path (`@noodl-core-ui` → `packages/noodl-core-ui/src`), `ts-loader`'s
+`exclude: /node_modules/` does not bite a symlinked workspace package once webpack resolves it,
+and the resolver already accepts `.ts`. What is missing is the command, the directory picker, the
+progress and failure handling, and a panel with drill-down — a feature, not a wire.
+
+### §21.2 🔴 The cheap pre-flight was measured *before* it was written, because it is the one to reach for
+
+EXP-004 asks for a pre-flight **estimate** whose testing plan is that it "match the actual outcome
+within a reasonable margin". The obvious implementation stops after `planProject`: that is where
+most refusals are decided (§20.1), and it is most of the answer for a fraction of the work.
+
+A probe over all seven fixtures, run before any code was written:
+
+| | refusals |
+|---|---|
+| plan layer only (`plan.notes`) | **28** |
+| what the export actually records | **32** |
+
+The four it cannot see are decided during emission — three `parameter … has no style/content
+mapping` on `puppy-test-3`, one retired kit parameter on `kits`. ⚠️ **The divergence is invisible
+at component level today: `cleanFlips = 0`, no fixture has a component whose *only* refusals are
+emit-layer ones.** That is a fact about the corpus, not a property of the layers — one unmapped
+`padding` and no dropped wires would be called clean and export dirty.
+
+**So the pre-flight is exact, and EXP-004's "estimate" framing is what gave way.** `emitApp` is
+pure: it reads nothing, writes nothing, returns strings, and takes about a tenth of a second per
+corpus project. Writing to disk is the caller's separate act. There is no reason to approximate a
+number you can compute, and **building a deliberately worse predictor so that a margin exists to
+measure would have been the measurement measuring nothing** — a reading that fits rather than one
+that excludes.
+
+The control pair is in the suite rather than only in this document: `planLayer < exact` is asserted
+over the corpus, so a future rewrite to the cheap layer reddens a row instead of quietly
+under-reporting.
+
+### §21.3 Two accounts of one export, and the decision that must not exist twice
+
+`renderReport` prints one sentence about `src/api/` and the pre-flight a shorter one. The
+discriminator behind both — *does the project ask anything of a backend, and did it name one* —
+is now `backendMode()` in `report.ts`, read by both. A second copy would have been right until
+`usesBackend` grew a third case, at which point the before and after surfaces would disagree about
+the same project in the same export.
+
+`summarizePreflight` reads everything off `EmittedApp` and recomputes nothing, for the same reason:
+the moment it decides for itself what counts as whole, an author can be told "six of ten come out
+clean", proceed on it, and read a report describing something else.
+
+### §21.4 🔴 Two defects the rendered output showed that the types could not
+
+Both were found by printing the thing and reading it, not by a failing test.
+
+- **The headline number could not see the largest omission there is.** It counted refusals recorded
+  *inside* generated components, so `puppy-test-3` announced **18** and then printed nineteen
+  bullets — the extra being `Components/BenchLogicProbe`, a whole component with no file at all.
+  A component that does not exist is not a node dropped from one, and the number that led the
+  section was blind to exactly that.
+- **The sentence introducing the list described a different list.** *"Each one is a node, wire or
+  parameter…"*, printed directly above a bullet that is a whole component. Widened to name it.
+
+⚠️ **`- **6 of 10** components translate…`** also sat one line under `- **34 files** — 4 pages and
+6 components`, so the same ten were "components" twice with two different meanings. The noun is
+gone: `**6 of the 10** come out with nothing left over`.
+
+### §21.5 What proves it
+
+**986 tests** across the package (was 927) in **41 suites** (was 40) — `tests/preflight.test.ts` is
+59 of them. `tsc --noEmit` clean, `nodegx-module-inject` 31/31, both ledger gates green
+(`69/127`; 175 types). The report goldens are byte-identical through the `backendMode` refactor.
+
+🔴 **Three rows drive `scripts/emit-app.ts` itself.** §19.6 records a defect that lived in this
+runner while every gate stayed green, for one reason — *no test drives this script*. `--preflight`'s
+whole promise is a negative about the filesystem, and a negative about the filesystem cannot be
+checked anywhere else. The third row is the control: the same runner, without the flag, must write
+the app, its report **and its copied assets**, or "nothing was written" would pass on a runner that
+writes nothing either way.
+
+**Nine mutants, eight killed, and the survivor is proven equivalent rather than excused:**
+
+| mutant | rows |
+|---|---|
+| `refusals` drops the no-file components | 1 |
+| copied assets folded into the file count | 1 |
+| the pre-flight computed at the plan layer | 5 |
+| the problem list printed before what worked | 7 |
+| the honesty sentence softened to claim verification | 7 |
+| `--preflight` writes the app anyway | 2 |
+| the attention list not sorted at all | 1 |
+| the attention list sorted best-first | 1 |
+| **the tie-break removed** | **0 — equivalent** |
+
+⚠️ **The zero was checked rather than argued.** The tie-break was mutated out and the rendered
+attention order dumped for all seven fixtures: **byte-identical**. `puppy-test-3` does hold a
+genuine tie — `Components/BenchEmitter` and `Pages/Admin Login`, four refusals each — and its
+emission order already happens to be alphabetical, so nothing in the corpus distinguishes the
+clause from its absence. It stays for a tie that is *not* alphabetical, and the comment on it now
+says that instead of the determinism claim it used to make, which was wrong: `Array.prototype.sort`
+is stable by specification, so emission order was never non-deterministic.
+
+⚠️ **One of this session's own rows was decorative when first written**, and is recorded because
+the shape recurs. *"The pre-flight sees a refusal only decided during emission"* asserted that
+`emitApp` produces such notes and that `summary.refusals` was at least their count — both facts
+about `emitApp`, neither about where the pre-flight reads from. A plan-layer pre-flight would have
+passed it. It now compares against the cheap layer's own answer for the same project.
+
+### §21.6 A relayed timing that does not reproduce
+
+The session-49 prompt warns that `ts-node` "takes **well over two minutes** to start, so run it
+with `run_in_background`". Measured here on `scripts/emit-app.ts`: **1.5 s wall**. That is why the
+runner can be driven from the suite at all. Whatever the original reading was about, it is not a
+property of running these scripts today — and it had already hardened into standing advice.
+
+### §21.7 What this leaves
+
+- 🔴 **The in-editor post-export report is blocked, and on a task that is not EXP-004** — §21.1.
+  Whoever picks it up owns an editor export command first. **`NONE` today.**
+- 🔴 **The pre-flight has an engine and a CLI host, and no host an author reaches.** It is exactly
+  as reachable as the export itself is, which is the consistent position — but "an author decides
+  with accurate expectations" is not true of anyone who is not running `ts-node`.
+- ⚠️ **A marker line is still not wrapped**, popup slot refusals still cannot be marked, and the
+  leftover sweep's distinctive population is still empty — all unchanged from §20.8.
+- **A chain-local for `Error`**, **the collection-state slice**, **the date family's signals** and
+  the **EXP-009 drive leftovers** are all unchanged and still unowned.

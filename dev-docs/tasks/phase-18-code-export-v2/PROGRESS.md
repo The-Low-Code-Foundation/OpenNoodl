@@ -26,7 +26,7 @@ README §*What went wrong* has the mechanism.
 | [EXP-001](./EXP-001-NODEGX-CORE.md) | `@nodegx/core` companion library | ✅ **Built** — `packages/nodegx-core`, 2.8 KB gzipped against an 8 KB budget, gated. No call sites: EXP-002 emits zero imports of it, by design |
 | [EXP-002](./EXP-002-DETERMINISTIC-GENERATORS.md) | Deterministic generators | 🟡 **In progress, re-aimed.** 51 picker nodes translate. `packages/nodegx-export`: 504 tests, 40/40 corpus projects typecheck. Remaining work moved to EXP-011 |
 | [EXP-003](./EXP-003-AI-LOGIC-TRANSLATION.md) | AI logic translation + trace harness | ⚪ Not started. **Reconsider the sizing** — it was scoped against corpus JS-node counts, most of which are in the unplaced prefab kit |
-| [EXP-004](./EXP-004-EXPORT-REPORT-UX.md) | Export report & honesty UX | 🟡 **Half built (§19).** `EXPORT-REPORT.md` now ships **inside the exported app**, structurally grouped, leading with what worked, and honest that nothing was run. ⚠️ Still missing: the **in-code markers** (a deferred wire on a rendered element leaves nothing in the file — see §"What a gap looks like", still true) and both **editor** surfaces (pre-flight estimate, in-editor report) |
+| [EXP-004](./EXP-004-EXPORT-REPORT-UX.md) | Export report & honesty UX | 🟡 **Three of four parts built (§19–§21).** `EXPORT-REPORT.md` ships **inside the exported app** (§19); **in-code markers** put a `TODO(export)` on the element at whichever end of a dropped wire renders (§20); the **pre-flight** summary is exact, not estimated, and hosted at `emit-app.ts --preflight` (§21). 🔴 Left: the **in-editor report**, which is **blocked** — `@nodegx/export` has **no consumer anywhere in the product**, so there is no post-export moment to attach it to. Owner **`NONE`**; see §21.1 |
 | [EXP-005](./EXP-005-MULTIFRAMEWORK-PIPELINE.md) | Multi-framework pipeline | ⚪ Not started |
 | [EXP-006](./EXP-006-EXPORT-AUTHORING-INTENT.md) | Export carries authoring intent | ⚪ Not started |
 | [EXP-007](./EXP-007-EXPORT-PROVENANCE.md) | Export provenance & regeneration safety | ⚪ Not started |
@@ -59,9 +59,11 @@ A deferred node is **invisible in the output**. Exported from `Puppy test 3`:
 <p className={styles.listText} />                            {/* empty — a Function fed it */}
 ```
 
-No `TODO`, no comment, no marker; grep finds zero. **This half is still true at §19** — a wire
-dropped from an element that still renders leaves that element in place, looking right and doing
-nothing, and `puppy-test-3`'s emitted code carries no `TODO(export)` at all.
+No `TODO`, no comment, no marker; grep finds zero. ✅ **This was true through §19 and is closed at
+§20.** A dropped wire now marks the element at whichever end of it renders — the sink when it
+renders, else the source — so the button above carries a `TODO(export)` naming what it lost.
+⚠️ **A refusal between two logic nodes still has no element to sit on**, which is why the report,
+not the markers, remains the complete list.
 
 ✅ **The other half is closed.** Since §19 the sentences do survive into the artefact:
 `EXPORT-REPORT.md` is written into the exported app, and it names itself as the complete list

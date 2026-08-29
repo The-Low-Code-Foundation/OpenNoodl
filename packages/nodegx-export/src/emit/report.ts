@@ -93,6 +93,22 @@ export interface ExportReportData {
   httpModule: boolean;
 }
 
+/**
+ * Which of the three states the generated `src/api/` is in.
+ *
+ * 🔴 **One decision, two readers.** The report prints a sentence from it and the pre-flight
+ * summary (EXP-004's before-you-export surface) prints a different one, and the discriminator
+ * itself — *does the project ask anything of a backend, and did it name one* — must not exist
+ * twice. A second copy would be right until the day `usesBackend` grew a third case, and the two
+ * surfaces would then disagree about the same project in the same export.
+ */
+export type BackendMode = 'connected' | 'stubbed' | 'absent';
+
+export function backendMode(data: Pick<ExportReportData, 'usesBackend' | 'backendEndpoint'>): BackendMode {
+  if (!data.usesBackend) return 'absent';
+  return data.backendEndpoint !== null ? 'connected' : 'stubbed';
+}
+
 /** `"Pages/Home: wire x dropped"` → `"wire x dropped"`, when the prefix is this component's. */
 export function stripScope(path: string, note: string): string {
   // An exact known-prefix test, not a pattern: `emitComponent` writes `${plan.path}: ` onto its
@@ -144,10 +160,11 @@ export function renderReport(data: ExportReportData): string {
         'plus the app shell, styles and build config'
     )
   );
-  if (data.usesBackend) {
+  const backend = backendMode(data);
+  if (backend !== 'absent') {
     out.push(
       bullet(
-        data.backendEndpoint !== null
+        backend === 'connected'
           ? `**Data access** in \`src/api/\`, calling your NodeGX backend at \`${data.backendEndpoint}\`. ` +
               'Override the endpoint with `.env` — see `.env.example`, and `README.md` for the rest.'
           : '**Data access** in `src/api/`, emitted as **stubs**: reads answer empty and writes throw. ' +

@@ -50,13 +50,13 @@ There is a specific new risk this task must handle. EXP-003 uses AI translation 
 ## Scope
 
 ### In Scope
-- [ ] Pre-flight export estimate from project analysis
-- [ ] Post-export report (in-editor and as a file in the exported project)
-- [ ] Per-item detail: node, location in generated code, status, reason
-- [ ] Trace-coverage communication in plain language
-- [ ] In-code markers with original source preserved
+- [x] Pre-flight export estimate from project analysis — **exact, not estimated**; see §21.2
+- [ ] Post-export report — ✅ **as a file in the exported project** (§19); 🔴 **in-editor is BLOCKED**, see §21.1
+- [x] Per-item detail: node, location in generated code, status, reason
+- [ ] Trace-coverage communication in plain language — **not applicable until EXP-003 exists**; there are no traces
+- [x] In-code markers (§20) — ⚠️ the marker names the refused port and reason; it does **not** carry the original node source
 - [ ] A `README.md` in the exported project explaining what it is, what needs work, and how to proceed
-- [ ] Honest framing of what verification does and does not prove
+- [x] Honest framing of what verification does and does not prove — ⚠️ narrower than written: EXP-003 does not exist, so **nothing has been run at all**
 - [ ] Actionable next steps ordered by priority
 
 ### Out of Scope
@@ -94,15 +94,32 @@ There is a specific new risk this task must handle. EXP-003 uses AI translation 
 - **Comprehension test**: a developer unfamiliar with the project reads the exported README and can state what needs doing without asking questions.
 - No unverified item is presented in language that implies verification.
 
+## 🔴 Where this task's own framing gave way (session 50)
+
+**"Pre-flight *estimate*", and "matches the actual outcome within a reasonable margin", are the
+wrong shape for this pipeline** — recorded here rather than quietly satisfied.
+
+`emitApp` is pure: it reads nothing, writes nothing, returns the generated files as strings, and
+runs in about a tenth of a second on every project in the corpus. Committing those strings to a
+directory is the caller's separate act. So the real answer is available before the author has
+chosen anywhere to put it, and **the pre-flight is exact**. A margin here would be a defect, not a
+tolerance.
+
+⚠️ **The cheap alternative was measured before the code was written**, because it is the one a
+later session will reach for: stopping after `planProject` sees **28** refusals across the seven
+fixtures where the export records **32**. Building that, so that a "within a reasonable margin"
+test had something to pass, would have been a measurement that could not fail — see EXP-011 §21.2
+for the numbers and the control pair that now guards the layer.
+
 ## Success Criteria
 
-- [ ] Pre-flight estimate available before export and reasonably accurate
-- [ ] Post-export report accurate and complete, in-editor and in the exported project
-- [ ] Trace-coverage caveat stated in plain language, without false precision
-- [ ] In-code markers consistent, greppable, with original source preserved
+- [x] Pre-flight available before export — **exact**; `emit-app.ts --preflight`, writes nothing
+- [ ] Post-export report — ✅ in the exported project; 🔴 **in-editor BLOCKED** (§21.1)
+- [ ] Trace-coverage caveat — **no traces exist**; both surfaces say nothing has been run
+- [x] In-code markers consistent and greppable — ⚠️ **without** original node source
 - [ ] Exported README enables an unfamiliar developer to proceed unaided
-- [ ] Unverified work is never framed as verified
-- [ ] Report leads with what succeeded
+- [x] Unverified work is never framed as verified — asserted per fixture in both suites
+- [x] Report leads with what succeeded — asserted, and mutation-killed in both surfaces
 
 ## Risks & Mitigations
 
