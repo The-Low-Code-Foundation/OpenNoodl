@@ -186,12 +186,37 @@ about a screen that *reads* as something, and on that path it reads as broken.
 
 ### 5.9 Owed
 
-- **AC4's fix is not driven.** `pm-slug: ''` is authored, regenerated and gated,
-  but the running editor holds the project in memory so an on-disk patch never
-  reached the viewer. Verifying it needs a project minted from the regenerated
-  template. The repro is exact: click View site, expect `/`, the bug is `/{slug}`.
+- ✅ **AC4's fix is now driven — s12, 2026-08-29.** On a project minted from the
+  regenerated template, clicking `View site` in the shell lands on
+  `location.pathname === "/"`. Not `/%7Bslug%7D`. **AC4 passes.**
 - **AC1 was driven with one page, not ≥2** — the second row arrived only as
-  `duplicatePage`'s untitled copy. Re-drive once SBR-008 lands, when rows have
-  titles and slugs to show.
-- **AC2 and AC3 cannot close** on SBR-008 and §5.7 respectively.
+  `duplicatePage`'s untitled copy. s12 drove it with **two** rows created through
+  the dialog and the list rendered both, but the rows still carry no title or
+  slug (SBR-008), so the "names, slugs and status" half of the person sentence
+  is still unverifiable. Re-drive once SBR-008 lands.
+- **AC2** still cannot close on SBR-008.
+- 🟡 **AC3 is unblocked and half-driven.** SBR-015's drive answered §5.7 (see
+  `SBR-015 §2.3a`): publish now answers in 19 ms rather than hanging 30 s.
+  Through the UI, a **successful** publish closes the menu at 211 ms and flips
+  the pill to `Published` with the count sentence following — AC3's second half,
+  driven. Its first half fails: a **refused** publish still shows the admin
+  nothing, because `/Admin/PageRow`'s cloud-function nodes have no `failure`
+  wire. That is SBR-015 AC1, not this task.
 - `test:ci` still owed from s8.
+
+### 5.10 🔴 s12: the page list issues no query when you arrive at it
+
+Separate from §5.8, and sharper. Arriving at `/admin/pages` — cold load *or*
+navigation from the public site — renders the shell, the heading and `New page`
+and **nothing else**, while `GET /classes/Page` with that same session returns
+both rows. Not a refused query: **no query**.
+
+Measured, with the control beside it:
+`performance.getEntriesByType('resource')` after the load lists **0 requests to
+`:8597`** and **5 to `:8574`** (the bundle, the fonts, the icons) — so the
+instrument records requests and there were none to the backend.
+
+The rows only ever appear after `create.done` or a row's `Changed` signal fires
+`pages-2.storageFetch`. §5.8's *"a refused query and an empty collection are the
+same screen"* is true and is a third state: **a collection that never asked** is
+pixel-identical to both. Owner: **NONE** — carried to phase 80.

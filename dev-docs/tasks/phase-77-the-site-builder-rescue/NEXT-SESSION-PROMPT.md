@@ -2,185 +2,201 @@
 
 ## ✅ No hold. Freeze cleared 2026-08-28 (s4): *"Freeze is off, go nuts."*
 
-## State: the sweep is done, phase 76 is closed, and the drive is owed twice
+## State: **the drive is done.** SBR-015's question is answered, and it found four more things
 
-**s11 (2026-08-29)** swept phases 76, 77 and 78 — 54 findings, re-measured at HEAD — then closed
-phase 76 with everything open carried forward or dropped **by name**. What it did **not** do is the
-drive, which s10 also owed. **That is the first job.**
+**s12 (2026-08-29)** minted a project from the regenerated template, gave it a
+wizard-attached backend, provisioned `SITE_SETUP_TOKEN` through the Secrets panel, claimed the
+site, created two pages through the dialog and published one. The drive owed by s10 and s11 is
+**paid**.
 
 Read in this order:
 
-1. **[THE-SWEEP-2026-08-29.md](THE-SWEEP-2026-08-29.md)** — all 54, four columns each.
-2. **[phase 80](../phase-80-the-defects-the-templates-found/TASKS.md)** — **13 tasks**, ranked by who
-   they bite.
-3. **[phase 76's closing section](../phase-76-the-site-builder/TASKS.md)** (end of the file) and its
-   **[new register](../phase-76-the-site-builder/DEFECTS-PHASE-76-FOUND.md)**.
-
-🔴 **The lesson that cost the most: "owned" was too generous, and it was the sweep's own trap.** The
-first pass counted three rows as owned and stopped. Checking the *owners* rather than the assignment:
-**SB-009, SB-010, SB-011, SB-012 and SBR-008 are all `⬜ open`.** An owner in a closing phase is not
-an owner — it is a row about to become unowned again, wearing a task id. The check is not *"does a
-task id appear?"* but ***"is that task open, and does its phase outlive this one?"***
+1. **[SBR-015 §2.3a/b/c](SBR-015-A-FAILURE-WITH-NOWHERE-TO-GO.md)** — the answer, the control
+   pair, and what AC1 still owes.
+2. **[SBR-016](SBR-016-THE-LIST-THAT-NEVER-ASKS.md)** and
+   **[SBR-017](SBR-017-THERE-IS-NO-WAY-BACK-IN.md)** — new, both found by that drive.
+3. **[phase 80's DEF-014 and DEF-015](../phase-80-the-defects-the-templates-found/TASKS.md)** —
+   the two product-side rows the drive turned up.
+4. **[THE-SWEEP-2026-08-29.md](THE-SWEEP-2026-08-29.md)** — s11's 54 rows, still the register.
 
 ---
 
-## 🔴 FIRST JOB — the SBR-015 drive. Owed by s10 and s11; do not defer it a third time
+## 🟢 SBR-015 AC3 — ANSWERED. The node is `sections-3`, and the cause is one missing column
 
-**Publish a page with zero sections** (the drive's page `0826ed8b` had none — `Section: 0` across the
-site) and read what happens.
+**The thirty-second hang is gone.** The zero-section publish now answers **`HTTP 400 This page
+could not be published.` in 12–19 ms** (was `error`, 30,004 ms, `timedOut: true`). That body is
+`deny`'s own `errorMessage`, so SBR-015's wiring is what made the backend able to speak.
 
-### 🆕 s11 read the graph and the runtime, and it makes a falsifiable prediction
-
-⚠️ **This is a reading, not a measurement — it is here to be refuted, not believed.** But it turns
-"two candidates" into one crisp question.
-
-`publishPage`'s post-SBR-015 wiring, traced from the artefact:
+**Which node — measured, not inferred.** The same query `sections-3` runs, issued directly with
+the admin's session token:
 
 ```
-req.receive → prep.run
-prep.out-pageId  → sections-3.qp-pageId          (a filter PORT, so the query re-fetches)
-sections-3.items → withFlag.in-sections
-sections-3.fetched → withFlag.run
-withFlag.out-tasks → tasks.items ; withFlag.out-built → tasks.run
-tasks.done → page-6.store ; page-6.done → res.send
-prep|sections-3|withFlag|tasks|page-6 .failure → deny.send      ← SBR-015 added these
-tasks.unchanged → deny.send                                     ← and this
+GET /classes/Section?where={"pageId":"…"}  →  500  no such column: "pageId"
 ```
 
-Three source readings, each of which the drive can falsify:
+The auto-created `Section` class holds only `objectId/createdAt/updatedAt/ACL` and zero rows. A
+filter on a column nothing has ever written is a **500, not an empty result set**.
 
-1. **The guard passes.** `withFlag` returns early only if `Inputs.sections === undefined`. `items`'s
-   getter returns `_internal.collection`, which `setCollection` **binds after a fetch** — so an empty
-   fetch yields a bound collection, not `undefined`. And a Collection is an **array-backed Proxy**
-   (`collection.ts`), so `.map` works.
-2. **So `withFlag` runs**, publishes `out-tasks = []` and fires `out-built` → `tasks.run`.
-3. **`Run Tasks` with an empty list fires `done`, not `unchanged`.** Its own port description:
-   *"Fires when the run ended having done its work: every task completed without failing, **the Items
-   list was empty**, or an Abort was honoured."* `unchanged` is for *"a Do while a run is already in
-   progress"*.
+**The control pair, one variable** — `Section.pageId` present or absent. The column was created
+by writing a Section row against a *different* page, so the page under test carried zero
+sections in both arms:
 
-🔴 **Prediction: the zero-section publish now SUCCEEDS** — `tasks.done` → `page-6.store` →
-`page-6.done` → `res.send`.
-
-### What each outcome means — this is the point of the drive
-
-| what you see | what it means |
+| `Section.pageId` | publish, same page, same body |
 |---|---|
-| **succeeds, fast** | the reading holds. 🔴 Then the 30s hang had a cause the failure-wiring did **not** address, and it is **still present** — SBR-015 §2.3 stays open and the repro is wrong, not the diagnosis |
-| **fast `deny`** — *"This page could not be published."* | a node genuinely **failed** → **candidate 1** (the query against a `Section` schema created in that same second). SBR-015's fix is what made it speak. ⚠️ Also then a **template defect in its own right**: a page with no sections is legitimately publishable |
-| **still hangs 30s** | **candidate 2** — a guarded `return` somewhere, which is **not** a failure and so reaches no `deny`. Refutes reading 1 above; find which guard |
+| absent | **400** — 12 ms |
+| present | **200** `{published:true}` — 24 ms |
 
-Record the answer in **SBR-015 §2.3 whichever way it goes**, including "it simply succeeds".
+So three of s11's readings are **confirmed, not merely unrefuted**: the guards pass, `Run Tasks`
+on an empty list fires `done` (not `unchanged`), and **a zero-section page is legitimately
+publishable**.
 
-⚠️ **A candidate that fitted and is now REFUTED, so nobody re-derives it:** phase 76's **SB-010** —
-a deployed `JavaScriptFunction`'s custom signal outputs are dead unless the graph declares them as
-ports, which is *also* a 30s 504. Checked at HEAD: `publishPage`'s `prep` and `withFlag` **do**
-declare `out-ready` / `out-built` in their `ports` field and the wires use those names. The
-workaround survived regeneration. **Not the cause here.**
-
-⚠️ Needs a project minted from the **regenerated** template. The running editor holds the project in
-memory, so an on-disk patch never reaches the viewer.
+🔴 **The consequence nobody had stated: a brand-new site can never publish its first page.** That
+is **[DEF-014](../phase-80-the-defects-the-templates-found/DEF-014-A-QUERY-AGAINST-A-COLUMN-LESS-CLASS.md)**,
+and it is a backend defect — **do not fix it in the template**. That would make the site builder
+work and leave every other app broken, and would remove the only place it is currently visible.
 
 ---
 
-## 🔴 SECOND JOB — phase 80, top of the rank
+## 🔴 FIRST JOB — SBR-015 AC1. The fix landed on the cloud half only
 
-**[DEF-001](../phase-80-the-defects-the-templates-found/DEF-001-THE-DEFAULTS-FAIL-ACCESSIBILITY.md)**
-is the only row whose harm lands on **someone who never chose NodeGX**. Measured at HEAD,
-`--primary-foreground` on `--primary` against the 4.5:1 AA floor:
+Same button, two arms, both driven through the UI:
 
-| preset | ratio | |
+| backend answered | what the admin sees |
+|---|---|
+| **400 in 19 ms** | **nothing, for 47 s observed.** Menu stays open, pill stays `Draft`, no message. A `MutationObserver` over `document.body` recorded **zero** text changes |
+| **200 in 24 ms** | menu closes at **211 ms**; at **228 ms** the pill reads `Published` and the count sentence updates |
+
+`/Admin/PageRow`'s `publish`, `unpublish` and `duplicate` `CloudFunction2` nodes wire **`done`
+only** — no `failure` on any of the three. The success arm is the control that proves it is the
+wiring, not the drive.
+
+This is a small change in **`packages/noodl-mcp/tests/sb005Components.ts`** (PageRow lives there, not in `sb004Components.ts` — that file holds the cloud endpoints) plus somewhere to put the message, and it closes
+SBR-015 AC1 and unblocks SBR-006 AC3's first half. **Do it first.**
+
+**Three things already established, so do not re-derive them** (SBR-015 §2.3b has them in full):
+
+1. The hole is **exactly three nodes** — PageRow's `publishPage(true)`, `publishPage(false)` and
+   `duplicatePage`. Every other `CloudFunction2` in every other browser component already wires
+   `failure` or `error`. Contained, not systemic.
+2. The precedent is `claimSite` again, same file: `/Pages/Setup` does
+   `claim.failure → claimGate.eval → claimRefusal.visible`. PageRow wants that plus
+   `failure → menuState.to-Closed` for the "stops being busy" half. ⚠️ **`visible` holds its
+   space, `mounted` does not** — P78 D16 was exactly that bug.
+3. 🔴 **AC2's gate as designed could not have caught this.** Its population is *components
+   holding a `noodl.cloud.request`* — cloud endpoints only — so a browser component that
+   **calls** one is invisible to it. Widen it to grade `CloudFunction2` callers, or this comes
+   back. **A checker's population is part of the checker**, third time this phase.
+
+⚠️ **Ownership**: SBR-015's author (session `98671`) has offered to take AC1 and is holding off
+`sb005Components.ts` pending a word. **Say who has it before either of you edits** — a collision
+there costs a template regeneration and three count pins.
+
+---
+
+## 🔴 SECOND JOB — SBR-017, because it is the biggest hole in the story
+
+**The template has one auth node in twenty-one components: `SignUp`, on `/Pages/Setup`. There is
+no `LogIn` anywhere.** An owner who claims their site and later loses their session cannot get
+back into their own admin panel.
+
+Measured on the drive backend, against an already-claimed site:
+
+| step | result |
+|---|---|
+| `POST /users` — a second account | **201**, real `_User` row **and a session token** |
+| `POST /functions/claimSite`, correct token | **400** `This site cannot be claimed.` |
+
+A right refusal and a locked door. `net.noodl.user.LogIn` exists in the runtime; the template
+never places it. ⚠️ Signup logs the new user in, which is exactly why the s9 and s12 drives both
+missed it — claiming and being signed in were one act.
+
+---
+
+## 🔴 THIRD JOB — SBR-016, and it adds a *third* state to §5.8
+
+Arriving at `/admin/pages` renders the shell, the heading and `New page` and **nothing else**,
+while `GET /classes/Page` on the same session returns both rows.
+
+🔴 **It is not a refused query. There is no query.** Measured in the viewer after load, with the
+control beside it: **0 requests to `:8597`**, **5 to `:8574`**. `pages-2` fetches only on
+`create.done` or a row's `Changed`, so **any drive that creates a page first cannot see this** —
+which is what happened in s9.
+
+SBR-006 §5.8 said a refused query and an empty collection are the same screen. A collection that
+never asked is a third, pixel-identical to both, and its fix is a third fix.
+
+---
+
+## Where each AC now stands
+
+| | verdict | evidence |
 |---|---|---|
-| **defaults / `modern`** | **3.68** | 🔴 the wizard's default — and `ModernPreset` ships `tokens: {}`, so this is `DefaultTokens.ts` |
-| `playful` / `soft` | **4.23** / **4.47** | 🔴 |
-| `minimal` / `enterprise` | 17.72 / 17.85 | ✅ |
-
-Plus `textinput`'s `default` border at **1.33:1** against WCAG 1.4.11's 3:1 — where `--border-control`
-already exists and already passes.
-
-🧭 **Needs a ruling first:** does `--primary` move, or `--primary-foreground`? It changes every
-project created after it.
-
----
-
-## 🔴 Phase 76 is CLOSED — what came across, and what did not
-
-Four tasks were `⬜ open` at close and are now phase 80's, **by reference** (the P76 files keep the
-measurements; a second copy of a task drifts). Each P76 file carries a banner.
-
-| was | now | one line |
-|---|---|---|
-| SB-009 | **DEF-010** | a component named in a **parameter** is unchecked — the same name as a node **`type`** IS refused. One spelling of one reference goes unresolved |
-| SB-010 | **DEF-011** | the door writes no script ports → **every cloud component any agent authors** has dead signal outputs, a 30s 504 |
-| SB-011 | **DEF-012** | a cloud query **widens when it cannot narrow**, two independent ways |
-| SB-012 | **DEF-013** | 🧭 an app whose pages link to each other **cannot be authored in one pass** |
-
-⚠️ **DEF-002, DEF-010, DEF-011, DEF-013 are all `noodl-mcp/src/validate.ts`.** DEF-002 grades wires;
-010/013 grade references in parameters; 011 is port derivation. 🔴 **Three of them say their fix
-needs a corpus sweep to decide block-vs-warn — do that sweep ONCE.**
-
-🧭 **Four rulings survive the close** and are in phase 80's TASKS.md: **F8** (`contactRecipient` in a
-world-readable row — open since s4), **D3** (does SB-003's boundary fix ride 0.2.1?), **`Section.kind`
-has five values and `data` expresses four**, and **SB-012's three candidate fixes**.
-
-⚠️ **Consciously dropped, on the record** — the panel-UI-never-clicked residual (superseded by
-SBR-006), **rule 4 UNMEASURED**, **SSG skips dynamic `{param}` routes** (a claim SB-007 must never
-make), and **`typecheck:backend-tests` OOMing on this machine** (environmental; it *"needs an owner"*
-and does not have one — file it if it recurs elsewhere).
+| **SBR-015 AC1** | ❌ | nothing on screen for 47 s; success arm 211 ms — §2.3b |
+| **SBR-015 AC2** | ⬜ | the artefact gate, unwritten |
+| **SBR-015 AC3** | ✅ | §2.3a, control pair |
+| **SBR-015 AC4** | 🟡 | s11's correction stands — `executions.sqlite` will not name a node, and did not |
+| **SBR-006 AC1** | 🟡 | driven with **two** rows this time, but they still carry no title or slug (SBR-008) |
+| **SBR-006 AC2** | 🟡 | blocked on SBR-008 |
+| **SBR-006 AC3** | 🟡 | success half driven (211/228 ms); refusal half is SBR-015 AC1 |
+| **SBR-006 AC4** | ✅ | **driven** — `View site` lands on `location.pathname === "/"`, not `/%7Bslug%7D` |
+| **SBR-006 AC5** | ✅ | s9's control pair |
 
 ---
 
-## 🔴 Still owed inside phase 77
+## Two more things the drive saw, recorded so they are not rediscovered
 
-- **SBR-006 AC4's fix is authored and gated but NOT driven.** Click View site, expect `/`; the bug
-  was `location.pathname === "/%7Bslug%7D"`. Same regenerated-template requirement.
-- **SBR-006 AC1 was driven with one page, not ≥2.** Re-drive once SBR-008 lands.
-- **SBR-006 AC2** stays half until **SBR-008** (`prop-*` is wire-only). ⚠️ **SBR-008 is `⬜ open`** —
-  see the "owned" lesson above.
-- ✅ **§5.8 is no longer Richard's call.** The sweep reclassified P77 D4 as template work:
-  `DbCollection2` carries `failure` (signal) and `error` (string) at HEAD and phase 78's D4 **drove**
-  it — a 403 fires `failure`. The site builder never wired them. → SBR-006/SBR-010.
+- **[DEF-015](../phase-80-the-defects-the-templates-found/DEF-015-THE-CARD-WARNS-ABOUT-WORKERS.md)**
+  — after a successful `Deploy functions` (the card's own timestamp reads *"pushed just now"*),
+  the backend card still warns that `site/ContactRecipient`, `site/CopySectionToPage` and
+  `site/SetSectionAccess` are *"in the project, not on this backend"*. They are Run Tasks
+  workers with no `noodl.cloud.request` node and can never be endpoints. The proof they work is
+  beside the warning: `publishPage` returns 200 having done `SetSectionAccess`'s job.
+- **SBR-008, again, now with a consequence on the public site.** The created `Page` rows have
+  **no `title`/`slug` columns at all**. After a *successful* publish the public site says *"This
+  site's pages are not available right now."* — and the row is genuinely readable anonymously
+  (verified: anonymous `GET /classes/Page?where={"published":true}` → 200, one row). It has no
+  slug for the router to match. Nothing new; a sharper repro.
 
-## 🔴 The lessons most likely to repeat
+---
 
-- 🔴 **An unowned row gets rediscovered at full price.** P76 **F15** and P77 **D8** are one defect,
-  measured and written up twice, fixed zero times.
-- 🔴 **A re-measure scoped to the wrong question confirms everything.** The stated reason to re-verify
-  P77's rows was *"the platform has moved under them"*. **It had not** — D6's source file predates its
-  own measurement by three weeks. The derivations were wrong, not stale. Ask **"is this reading
-  right?"**, not **"is it stale?"**
-- 🔴 **P77 D2 has now been diagnosed wrong three times, each from the caller list rather than the
-  caller.** `WorkflowRunner.ts:261` is the **`Log` node handler**; the template has zero `Log` nodes.
-  `execution_steps` records what the author logged, never what the graph ran.
-- 🔴 **A template-scoped test does not close a row.** SBR-015 ships its rule in one template's suite;
-  `validate.ts` still has the hole. P77 D1 is open on purpose.
+## Traps this drive paid for
 
-## Traps carried
-
-- ⚠️ **Phase 78's register is the other session's lane** and is being edited concurrently. It needs
-  two things from its owner (sweep §5): **renumber the duplicate `D10`** and **add an owner column**.
-  Nothing in s11 touched it.
-- ⚠️ **Artefact node types are not authoring names**; a component instance's type is its
-  **legacyName**. A hand-written type list is an exclusion list that cannot fail.
-- ⚠️ Two count pins move whenever a cloud graph does: `sb-007/site-template.test.ts` node ids (**234**)
-  and `sb017-helper-is-lossless.test.ts` connections (**118**).
-  `sb017-deploy-connection-parity.test.ts` compares against a **frozen deployed bundle** — a removed
-  wire must join `REMOVED_SINCE_THE_BUNDLE` with a reason.
-- ⚠️ Read the summary line, not the exit code: `test:ci` exits 1 at the floor (**2889 specs, 4
-  failures, all `AIX-006 style vocabulary` by name**); readout is
-  `packages/noodl-editor/tests/test-results.json`.
-- ⚠️ **`test:ci` was not run in s11** — no editor, runtime or MCP source was touched; documentation
-  only. s10's floor stands.
+- 🔴 **Empty-because-refused, empty-because-empty and empty-because-never-asked are the same
+  pixels.** The instrument that separates them is `performance.getEntriesByType('resource')` in
+  the viewer — and a zero reading proves nothing without a known-firing control beside it (the 5
+  requests to `:8574`).
+- 🔴 **`executions.sqlite` records duration and status but never a node.** It said `HTTP 400` in
+  19 ms, which was enough to kill the hang hypothesis and not enough to name anything. What
+  named `sections-3` was **issuing the query by hand and reading the body**.
+- 🔴 **A drive that edits before it looks cannot see a missing initial fetch.** Arrive, then
+  look, then edit.
+- ⚠️ **The preview canvas is 456×313 css px with a panel open**, and `elementFromPoint` returns
+  `null` outside the viewport — which reads as *"something is covering the button"* rather than
+  *"the button is off-screen"*. Close the panel (756 wide) or check `innerWidth` first.
+- ⚠️ **Toggling an editor panel reloads the viewer** and drops any `window.*` recorder.
+  Re-install after any editor-side interaction.
+- ⚠️ The Secrets panel is **not** on the backend card's button row — it is in the card's `…`
+  overflow menu, and every item in that menu renders twice (the `BaseDialog` ghost). Stamp the
+  copy `elementFromPoint` actually returns.
 
 ## Standing context
 
+- Drive artefacts: **`SBR-015 Zero Section Drive`** (project in
+  `~/vscode_projects/NodeGX test projects/`, backend `backend_mte3mrsp5qtbd`, port 8597, token
+  `drive-token-sbr015`, owner `owner@sbr015.test` / `drive-pass-015`). It holds both arms of the
+  control pair and the `Section` class in its post-query state — **do not overwrite it** until
+  DEF-014 is fixed and re-driven. 🔴 **`SBR-006 Admin Drive`** (`backend_mtdg3sdziq5nw`) is
+  DEF-004's before-arm; likewise do not overwrite.
+- A peer offers two disposable fixtures: backend `backend_mtbxrca3axpbc` (port 8588) and project
+  `~/Documents/sb015-editor-drive`. ⚠️ That backend is **already claimed** and has misled one
+  session; a fresh wizard-made backend is cleaner and takes two minutes.
+- 🔴 Never scope by time. Every task's ACs include a person sentence — verify as written; if the
+  platform cannot express what an AC asks for, **say so and record the gap**.
+- ⚠️ **`test:ci` was not run in s12** — no editor, runtime or MCP source was touched;
+  documentation only. s10's floor stands (**2889 specs, 4 failures, all `AIX-006 style
+  vocabulary` by name**; readout `packages/noodl-editor/tests/test-results.json`).
+- Shared checkout: **pathspec commits only** (untracked ⇒ `add`+`commit` in one chain); announce
+  editor launches **and** teardowns; `test:ci` alone, never beside a live stack.
 - Richard, 2026-08-28: **no short paths** — full six screens of
   https://claude.ai/code/artifact/f1986b40-e827-4770-abb8-1dc8f17e1810 ; assessment:
   https://claude.ai/code/artifact/f4b2077a-7a78-4c33-8bf7-8b7f343f0b0b .
-- 🔴 Never scope by time. Every task's ACs include a person sentence — verify as written; if the
-  platform cannot express what an AC asks for, **say so and record the gap**.
-- Drive artefacts: **`SBR-006 Admin Drive`** (claimed, backend `backend_mtdg3sdziq5nw`, token
-  `drive-token-sbr006`) holds s9's three calls. 🔴 **It is DEF-004's before-arm; do not overwrite
-  it.** `SBR-004 Mounted Drive` carries s8's.
-- Shared checkout: **pathspec commits only**; announce editor launches **and** teardowns; `test:ci`
-  alone, never beside a live stack.

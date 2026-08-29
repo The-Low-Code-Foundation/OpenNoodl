@@ -118,15 +118,115 @@ What *is* established: the `Section` class was auto-created with empty columns a
 `21:14:56 UTC`, **the same second `publishPage` started**, and the site had `Section: 0` rows.
 So the query reached the backend and the break is at or after `fetched`, on a zero-row path.
 
-🔴 **This is deliberately left open**, and the four refutations above are why: each one *fitted*
-the evidence and each one was wrong. Wiring the failures is what makes the backend answer the
-question; guessing a fifth time and wiring second would waste the measurement.
+🔴 **This was deliberately left open** until the failures were wired, and the four refutations
+above are why: each one *fitted* the evidence and each one was wrong. Wiring first and guessing
+second is what made the backend answer the question rather than the next reader.
 
-The remaining candidates, both now instrumented, are the query reporting `failure` (a zero-row
-query against a class auto-created in that same second) and a code node's guard returning
-because an input is still `undefined`. The guard case is the quieter of the two — a guarded
-`return` is not a `failure`, so it will show as *no response and no failure either*, and the
-gate in AC2 should be read with that in mind.
+### 2.3a 🟢 ANSWERED by the drive of 2026-08-29 (s12)
+
+**It is the query, and the cause is one column that does not exist yet.**
+
+A project minted from the regenerated template, its own wizard-attached backend
+(`backend_mte3mrsp5qtbd`, port 8597), `SITE_SETUP_TOKEN` provisioned through the Secrets panel,
+claimed through `/admin/setup`, two pages created through the dialog, **zero sections anywhere**.
+Publish clicked on the first row.
+
+| | before SBR-015 (SBR-006 §5.7) | after SBR-015 (this drive) |
+|---|---|---|
+| `publishPage`, zero sections | `error`, **30,004 ms**, `timedOut: true` | `error`, **19 ms**, `HTTP 400` |
+| what the caller receives | nothing, then a timeout | `{"error":"This page could not be published."}` |
+
+That body is `deny`'s `errorMessage`, verbatim. **The thirty-second hang is gone** — 30,004 ms to
+12–19 ms, with a named refusal. This is the middle row of the outcome table the handover wrote:
+a node genuinely failed, and SBR-015's wiring is what made it speak.
+
+**Which node, measured rather than inferred.** The same query the `sections-3` node runs, issued
+directly with the admin's session token:
+
+```
+GET /classes/Section?where={"pageId":"baa851b3-…"}
+→ 500 {"error":"no such column: \"pageId\" - should this be a string literal in single-quotes?"}
+```
+
+The auto-created `Section` table holds **exactly four columns** — `objectId`, `createdAt`,
+`updatedAt`, `ACL` — and zero rows. A filter on a column the class has never been given is a
+**500, not an empty result set**. `sections-3` reports `failure`, `failure` reaches `deny`, and
+`deny` answers 400.
+
+**The control pair that settles it.** One variable moved — whether `Section` has a `pageId`
+column. The column was created by writing a Section row against the *other* page, so the page
+under test still had **zero** sections in both arms:
+
+| `Section.pageId` | publish `baa851b3` (zero sections either way) |
+|---|---|
+| absent | **400** `This page could not be published.` — 12 ms |
+| present | **200** `{"pageId":"baa851b3-…","published":true}` — 24 ms |
+
+Everything else held: same page, same user, same backend, same request body.
+
+**Three readings the handover made are therefore confirmed, not merely unrefuted:**
+
+1. `withFlag`'s guard passes on an empty fetch — the 200 arm ran the whole chain.
+2. **`Run Tasks` on an empty list fires `done`, not `unchanged`** — the 200 came through
+   `tasks.done → page-6.store → page-6.done → res.send`, and `tasks.unchanged → deny.send` did
+   not fire.
+3. **A page with no sections is legitimately publishable.** The refusal is a bug, not policy —
+   the second arm publishes it correctly, world-read ACL and all.
+
+🔴 **And the consequence nobody had stated: a brand-new site can never publish its first page.**
+Until *some* Section row with a `pageId` exists anywhere in the backend, every publish 400s. The
+template's own first-run story — claim, create a page, publish it — is blocked at the last step,
+on every new site, every time. That is a defect in its own right and it is **not** SBR-015's; see
+§2.3c.
+
+### 2.3b 🔴 AC1 is NOT met — the fix landed on the cloud half only
+
+The same button, two arms, both driven through the UI:
+
+| backend answered | what the admin sees |
+|---|---|
+| **400 in 19 ms** | **nothing, for 47 s observed** — the menu stays open, the pill stays `Draft`, no message anywhere. A `MutationObserver` over `document.body` recorded **zero** text changes |
+| **200 in 24 ms** | menu closes at **211 ms**; at **228 ms** the pill reads `Published` and the count sentence becomes *"Two pages, one published"* |
+
+`/Admin/PageRow`'s `publish`, `unpublish` and `duplicate` `CloudFunction2` nodes wire **`done`
+only**. There is no `failure` wire on any of the three. So the backend now produces a fast,
+correct, well-worded refusal and the browser throws it away.
+
+AC1's person sentence — *"an admin who clicks Publish on a page that cannot be published is told
+so, and the menu stops being busy"* — is still false. The half of it that changed is that the
+answer now **exists**; nothing renders it. ⬜ **AC1 open.** ⚠️ The fix is in **`sb005Components.ts`** — PageRow and Setup live there; `sb004Components.ts` holds the cloud endpoints this task already changed.
+
+**Three things established after the drive, by the task's author, so nobody re-derives them:**
+
+1. **The browser-side hole is exactly three nodes**, measured across the whole artefact:
+   PageRow's `publishPage(true)`, `publishPage(false)` and `duplicatePage`. Every other
+   `CloudFunction2` in every other browser component already wires `failure` or `error`. It is
+   contained, not systemic.
+2. **The precedent is `claimSite` again, in the same file.** `/Pages/Setup` already does the
+   shape: `claim.failure → claimGate.eval → claimRefusal.visible`, with `claim.error`
+   deliberately not read (a fixed string, not the server's). PageRow wants the same plus
+   `failure → menuState.to-Closed` for the "stops being busy" half. ⚠️ **`visible` holds its
+   space and `mounted` does not** — P78 D16 was exactly that bug.
+3. 🔴 **AC2's gate, as designed, structurally could not have caught this.** Its population is
+   *"components holding a `noodl.cloud.request`"* — cloud endpoints only — so a browser
+   component that **calls** one is invisible to it. A cloud function that could only succeed was
+   fixed, and a panel that could only succeed was left one layer up, behind a checker whose
+   population guaranteed it would not be noticed. **A checker's population is part of the
+   checker** — third time in this phase. AC2 must grade `CloudFunction2` **callers** too, or
+   this returns.
+
+### 2.3c Two rows this drive owes elsewhere, so they are not lost here
+
+- 🔴 **The column-less auto-created class** (§2.3a). `publishPage` is *correct* to refuse a query
+  that errored; the defect is that a filter against a never-written column is a 500 rather than
+  zero rows, and that the template therefore cannot publish its first page. **Owner: NONE** —
+  raised as a phase 80 row; see `../phase-80-the-defects-the-templates-found/TASKS.md`.
+- 🔴 **The admin page list never queries on load.** Arriving at `/admin/pages` cold renders the
+  shell, the heading and `New page` and **nothing else**, while `GET /classes/Page` with the same
+  session returns both rows. Measured, not inferred: `performance.getEntriesByType('resource')`
+  after load showed **0 requests to :8597** and **5 to :8574** as the control. This is *not*
+  SBR-006 §5.8's refused query — there is no query. **Owner: NONE** — phase 80 row.
+
 
 ## 3. Scope
 
@@ -145,9 +245,15 @@ gate in AC2 should be read with that in mind.
 
 ## 4. Acceptance criteria
 
-1. **A person sees the failure.** With the site-builder deployed, a Publish that cannot succeed
-   answers in well under thirty seconds with a failure status, and the row's menu stops being
-   busy. Driven, not asserted from the graph.
+1. ⬜ **A person sees the failure.** With the site-builder deployed, a Publish that cannot
+   succeed answers in well under thirty seconds with a failure status, and the row's menu stops
+   being busy. Driven, not asserted from the graph.
+   🔴 **Driven 2026-08-29 and it does NOT pass — see §2.3b.** The backend half is done: 30,004 ms
+   became **19 ms** with `HTTP 400 This page could not be published.` The browser half was never
+   wired — `/Admin/PageRow`'s three `CloudFunction2` nodes carry `done` and no `failure` — so the
+   admin still sees nothing at all, for 47 s observed. The success arm through the same button
+   closes the menu at 211 ms, which is the control proving the wiring and not the drive is what
+   is missing.
 2. **A gate over the artefact**: every failure-capable node in every `#__cloud__` component
    either wires `failure` to a Response `send` or is exempted **by name with a reason**, in the
    shape SBR-004 §9.5 uses. 🔴 An exclusion list cannot fail — grade the reason column, and add
@@ -156,10 +262,11 @@ gate in AC2 should be read with that in mind.
    have no Response node at all — they answer through the Run Tasks contract's failure output,
    so they are a legitimately different population and the rule must say which one it is
    grading rather than quietly widening to both.
-3. **The original question is then answered**: with failures wired, re-run publish on a page
-   with zero sections and record which node reports. AC3 of SBR-006 unblocks on this, and the
-   answer goes in §2.3 — including the case where it turns out to succeed, which would make the
-   zero-section path the whole defect.
+3. ✅ **The original question is then answered** — 2026-08-29, in §2.3a. The node is
+   **`sections-3`**, and the cause is measured with a one-variable control pair: the auto-created
+   `Section` class has no `pageId` column, so its filter is a **500**, not an empty result set.
+   Add the column and the identical zero-section publish returns **200** in 24 ms. SBR-006 AC3 is
+   unblocked; the residue is two rows carried to phase 80 (§2.3c), not more work here.
 4. **`execution_steps` either records cloud-function nodes or the task says why it cannot.** A
    log table that exists and is always empty is worse than no table: SBR-006 reached for it
    first, exactly as intended, and it could not separate "never called" from "called and
