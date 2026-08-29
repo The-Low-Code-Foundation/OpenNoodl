@@ -104,6 +104,35 @@ mechanism was wrong for a third of its own population.**
   the measuring-ghost problem. Filter by `document.elementFromPoint`, stamp the reachable one, click
   the stamp. Selecting a preset does not advance the dialog; the action is `add-managed-backend`.
 
+## 🔴 Two defects this session found beside its own task
+
+Both registered in `TASKS.md` with owner **`NONE`**, both measured with `curl` against a live
+backend and no editor involved:
+
+1. **A second project deploying to a shared local backend kills the backend process** — uncaught
+   `Duplicate component name` in `CloudRunner.load`. This is what blocked DEF-015's AC1.
+2. **A cloud function in a folder is declared, listed, ticked on the card, and 404s** — the route is
+   `/functions/:name` and `:name` does not match a nested path. `cloudFunctions.test.ts:85` is green
+   and pins the broken address as its expected value, comment and all.
+
+⚠️ **(2) is a limit of DEF-015's fix, recorded in its §10 and deliberately not "fixed" there.** The
+card compares the project's endpoints against what the backend *declares*, and a nested endpoint is
+in both sets — so it matches and gets a tick. "Declared" and "routable" are different claims; making
+the card guess the second would put it back to second-guessing the backend, which is the shape of
+the defect DEF-015 just removed.
+
+✅ **Three ways to make a live backend refuse a call** (it stays up — 200 on `/admin/workflows`
+after each), handed to phase 77's SBR-006 AC1 drive and worth keeping:
+
+- `POST /functions/<undeployed-name>` → **404** `{"error":"Function 'X' not found"}` (the runner)
+- `POST /functions/publishPage` unauthenticated → **500** `{"error":"Unauthenticated requests not accepted."}`
+- any nested name → **404** `{"error":"Not found: POST /functions/..."}` (the router)
+
+🔴 **Assert on the BODY, not the status.** The first and third are both 404 and mean opposite things
+— one reached the runner, one never left the router. The first probe of this confounded them,
+because `site/SetSectionAccess` is *both* nested *and* a helper. Deploying the **same** graph twice
+changing **one** thing is what separated them.
+
 ## Traps carried
 
 - ✅ **`test:ci` — 2905 specs, 4 failures, seed 60404, at `6c358a3f`.** All four are the named
