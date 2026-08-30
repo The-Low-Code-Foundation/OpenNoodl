@@ -612,8 +612,15 @@ describe('SB-005: the admin panel, through the MCP door', () => {
     // code node (first) that declares something (second). A pair that had called
     // a signal without declaring it would have moved the first alone — and been
     // caught by the loop above, which is where the mismatch is actually named.
-    expect(rows.length).toBe(15);
-    expect(rows.filter((r) => !r.endsWith('declared=')).length).toBe(6);
+    // 15 → 16 and 6 → 7: AC2's GESTURE — `dropIndex` on `/Admin/SectionRow`, the
+    // first of these three to live in the row rather than on the editor. It moves
+    // both numbers for the same reason the pair did, and it declares TWO signals
+    // rather than one (`out-go` and `out-snap`) — which the second number cannot
+    // see, because it counts nodes that declare something and not ports. The loop
+    // above is what checks both are declared; a `snap` called and undeclared
+    // would red there, naming the node.
+    expect(rows.length).toBe(16);
+    expect(rows.filter((r) => !r.endsWith('declared=')).length).toBe(7);
   });
 
   it('MUTANT: dropping a declared signal port reddens', () => {
@@ -644,6 +651,44 @@ describe('SB-005: the admin panel, through the MCP door', () => {
    * These counts are what make the greens above mean "checked" rather than "not
    * present" — the trap this phase has hit more than once.
    */
+  /**
+   * 🔴 **The invariant AC2's drag rests on, and it is a TREE property, not a wire.**
+   *
+   * `dropIndex` on `/Admin/SectionRow` turns a drop into a `toIndex` by counting
+   * `el.parentElement.children` — the siblings whose centre sits above the dragged card's. A
+   * `For Each` draws no box of its own and renders its items into its VISUAL PARENT's element, so
+   * that count is only the section rows while the For Each's parent holds the For Each and nothing
+   * else. `sectionRows` exists for exactly this.
+   *
+   * Before it existed the For Each sat directly under `sectionsPanel`, beside `sectionsHeader` and
+   * `reorderRefusal` — two elements that would have been counted as rows above every section, so
+   * every drop would have reported an index two too high and the endpoint would have obeyed it.
+   *
+   * ⚠️ **Nothing else in this suite can see that.** The wires are all correct in that arrangement,
+   * the appearance ratchet is satisfied by it, and the whole thing renders. It fails only when a
+   * person drags, which is why it is asserted here rather than left to be found.
+   */
+  it("the section repeater's parent holds the repeater and nothing else — AC2's drop index depends on it", () => {
+    const editor = written['Pages/PageEditor'];
+    const repeater = editor.graph.nodes.find((n) => n.type === 'For Each');
+    expect(repeater).toBeDefined();
+
+    // `children` is a list of ids, not of nodes — see the `Written` type at the top of this file.
+    const parentOf = (id: string) => editor.graph.nodes.find((n) => (n.children ?? []).includes(id));
+
+    const holder = parentOf(repeater!.id);
+    expect(holder).toBeDefined();
+    // The claim: one child, and it is the repeater.
+    expect(holder!.children ?? []).toEqual([repeater!.id]);
+
+    // …and the control, which is what says the walk above found a real tree rather than an empty
+    // one: the holder is itself placed, and its own parent has SEVERAL children — the arrangement
+    // the repeater used to be in, still present one level up.
+    const panel = parentOf(holder!.id);
+    expect(panel).toBeDefined();
+    expect((panel!.children ?? []).length).toBeGreaterThan(1);
+  });
+
   it('CENSUS: the checks above ran over the nodes they claim to cover', () => {
     const count = (type: string) =>
       SB005_COMPONENTS.reduce((n, c) => n + byType(written[c.key], type).length, 0);
@@ -672,7 +717,11 @@ describe('SB-005: the admin panel, through the MCP door', () => {
       // 10 → 13: SBR-007's `headline`, `status` and `dirty` on the page editor.
       // 13 → 15: AC2's `moveUp` and `moveDown`, also on the page editor — two
       // nodes rather than one because a Function has a single `run` signal.
-      code: 15,
+      // 15 → 16: AC2's `dropIndex`, on `/Admin/SectionRow` — so the SectionRow
+      // term of the breakdown above is 3, not 2. It is in the ROW because it is
+      // the only place that can see the dropped card's element; the two planners
+      // are on the editor because only the editor can see the sorted list.
+      code: 16,
       // 4 → 5: SBR-017's `/Pages/SignIn`.
       pages: 5
     });

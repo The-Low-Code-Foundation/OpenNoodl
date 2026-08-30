@@ -680,10 +680,35 @@ export const PAGE_ROW_WIRES = [
  * second panel rule. A published section edited here must keep its world rule.
  */
 export const SECTION_ROW_NODES = [
+  // ── SBR-007 AC2's gesture. It is a drag, and it is arithmetic in the graph ──
+  //
+  // 🔴 **This node is the whole of the runtime change AC2 needed, which is none.**
+  // The row's visual root is a `Drag` wrapping the card; `Drag` renders no
+  // element of its own (`Drag.tsx` delegates `draggableNodeRef` to
+  // `children[0].getDOMElement()`), so the card is still the box that lays out
+  // and still carries every style parameter below. Driven in a browser with a
+  // synthesised pointer: `ac2DragGestureDrive.test.ts`.
+  //
+  // `axis: 'y'` because a list reorders on one axis. `useParentBounds: false`
+  // is the value that was DRIVEN rather than the default — a row that escapes
+  // the list mid-gesture snaps back, and pinning the gesture to a container
+  // exactly as tall as its rows was what made the first drive read zero.
+  //
+  // ⚠️ **A `Drag` child loses its `cssClassName`** — `react-draggable` clones it
+  // away. Nothing here sets one, but anyone adding a class to the card will find
+  // it silently absent from the DOM. That is **D28**.
+  {
+    id: 'drag',
+    type: 'Drag',
+    label: 'Drag this section to reorder it',
+    parameters: { axis: 'y', useParentBounds: false },
+    children: ['row']
+  },
   {
     id: 'row',
     type: 'Group',
     label: 'One section',
+    parent: 'drag',
     // 🔴 The third of SBR-007's `ADMIN_LAYOUT_OWED` rows, and the one that bit
     // hardest: `Group` defaults to `explicit`, so without `STACKED` every row
     // took `height: 100%` down the list's column and N sections DIVIDED the page
@@ -727,22 +752,25 @@ export const SECTION_ROW_NODES = [
       color: 'var(--muted-foreground)'
     }
   },
-  // ── SBR-007 AC2's gesture, and it is buttons rather than a drag ───────────
+  // ── The buttons, kept beside the drag rather than replaced by it ──────────
   //
-  // 🔴 **Not a shortcut — measured.** A drag needs to answer "which row am I
-  // over", and this runtime cannot: `visual/drag.ts` reports `Drag X/Y` and
-  // `Delta X/Y` and no drop target, so the index has to be arithmetic over the
-  // row pitch — and **no node in the viewer reports its own rendered geometry
-  // to the graph**. The one node with any size output at all is `Video`
-  // (`videoWidth`/`videoHeight`, the intrinsic media size, plus a `domelement`
-  // that exists on nothing else), and these rows are anything but uniform: a
-  // textarea and an image preview make every one a different height. So
-  // `Drag Y / rowHeight` has no `rowHeight` to divide by. Recorded as
-  // **D23** — it is D15's twin, one capability short in the same place.
+  // 🔴 **The comment that stood here was wrong, and it was wrong in the way
+  // that costs most.** It said "no node in the viewer reports its own rendered
+  // geometry to the graph", filed that as **D23**, and turned an unbuilt
+  // gesture into a product blocker nobody owned. All 27 box-drawing visual
+  // nodes have carried four `Bounding Box` outputs the whole time, and D23 is
+  // disproved and kept as evidence. Its proposed fix — a `domelement` output on
+  // `Group` — would have shipped the product's second unconnectable port (D27).
   //
-  // What survives is the half AC2 is actually about: a person changes the
-  // order and a visitor sees it. These two buttons do that, and they hand the
-  // endpoint a `toIndex` exactly as a drop would.
+  // Its LAST clause was true and is the one that mattered: these rows are
+  // genuinely not uniform, so there is no pitch to divide by. What `dropIndex`
+  // below does instead is count the siblings whose centre is above the dragged
+  // card's — which needs no pitch, and is therefore indifferent to the clause
+  // that survived.
+  //
+  // ✅ **The buttons stay.** A drag is not reachable from a keyboard, and AC2
+  // is about a client changing the order — not about the pointer they do it
+  // with. Both routes hand the same endpoint the same `toIndex`.
   {
     id: 'moveRow',
     type: 'Group',
@@ -857,6 +885,60 @@ export const SECTION_ROW_NODES = [
     parameters: { collectionName: 'Section', idSource: 'explicit' }
   },
   {
+    id: 'dropIndex',
+    type: 'JavaScriptFunction',
+    label: 'Which position did this section land on',
+    // 🔴 **The gesture's whole brain, and it needs nothing the runtime does not
+    // already ship.** `Inputs.el` is the CARD's `this` — a `reference` output on
+    // every visual node — and a `Function` node's author-declared input is `*`,
+    // which `canCastPortTypes` accepts from anything. `getDOMElement()` on the
+    // far side is the same accessor `Group.tsx`'s own `Scroll To Element` uses.
+    //
+    // 🔴 **`el.parentElement` must contain the rows and NOTHING ELSE**, which is
+    // why `sectionRows` exists on the page editor. A `For Each` renders its items
+    // into its visual parent's element, so with the For Each still sitting
+    // directly under `sectionsPanel` this would have counted the header and the
+    // refusal line as rows and reported an index two too high. The drive's `pc=`
+    // reading is the control that catches exactly this.
+    //
+    // `runOnChange-in-el: false` for the same reason as the two planners below:
+    // the element reference lands when the row mounts, and a script that ran on
+    // arrival would fire on every redraw rather than on a release.
+    ports: [
+      { name: 'out-go', plug: 'output', type: 'signal' },
+      { name: 'out-snap', plug: 'output', type: 'signal' }
+    ],
+    parameters: {
+      'runOnChange-in-el': false,
+      functionScript:
+        'if (Inputs.el === undefined) return;\n' +
+        'const el = Inputs.el.getDOMElement && Inputs.el.getDOMElement();\n' +
+        'if (!el || !el.parentElement) return;\n' +
+        // Snap first and unconditionally. `Drag` leaves the element translated
+        // where the pointer dropped it and nothing in the runtime puts it back,
+        // so a drop that does NOT move the section still owes the row its
+        // position — otherwise the card stays where it was let go and the next
+        // gesture measures from a lie.
+        'Outputs.snap();\n' +
+        'const kids = Array.prototype.slice.call(el.parentElement.children);\n' +
+        'const mine = el.getBoundingClientRect();\n' +
+        'const centre = mine.top + mine.height / 2;\n' +
+        'const own = kids.indexOf(el);\n' +
+        'let to = 0;\n' +
+        'for (let i = 0; i < kids.length; i++) {\n' +
+        '  if (kids[i] === el) continue;\n' +
+        '  const r = kids[i].getBoundingClientRect();\n' +
+        '  if (r.top + r.height / 2 < centre) to++;\n' +
+        '}\n' +
+        // A drag that ends where it started is not a request. Guarded return, so
+        // neither `go` nor a write happens — the same discipline `moveUp` applies
+        // to a row already at the top.
+        'if (to === own) return;\n' +
+        'Outputs.toIndex = to;\n' +
+        'Outputs.go();'
+    }
+  },
+  {
     id: 'outputs',
     type: 'Component Outputs',
     label: 'Tell the editor something changed',
@@ -873,7 +955,14 @@ export const SECTION_ROW_NODES = [
     ports: [
       { name: 'Changed', type: 'signal', plug: 'input' },
       { name: 'MoveUp', type: 'signal', plug: 'input' },
-      { name: 'MoveDown', type: 'signal', plug: 'input' }
+      { name: 'MoveDown', type: 'signal', plug: 'input' },
+      // The drag's pair. `DropIndex` is a VALUE and `DropAt` is the signal, and
+      // they must be that way round: `For Each` flags every `itemOutput-…` dirty
+      // and THEN sends `itemOutputSignal-…`, in one scheduled pass
+      // (`foreach.tsx:915-928`), so the index has landed by the time the call
+      // fires. A single signal carrying the number could not exist.
+      { name: 'DropAt', type: 'signal', plug: 'input' },
+      { name: 'DropIndex', type: 'number', plug: 'input' }
     ]
   }
 ];
@@ -912,7 +1001,17 @@ export const SECTION_ROW_WIRES = [
 
   // AC2. The button press IS the signal — there is nothing to fold first.
   { fromId: 'moveUpButton', fromProperty: 'onClick', toId: 'outputs', toProperty: 'MoveUp' },
-  { fromId: 'moveDownButton', fromProperty: 'onClick', toId: 'outputs', toProperty: 'MoveDown' }
+  { fromId: 'moveDownButton', fromProperty: 'onClick', toId: 'outputs', toProperty: 'MoveDown' },
+
+  // AC2's gesture. The release is the trigger and the card's own element is the
+  // only other thing the arithmetic needs — no pitch, no sibling records, no
+  // runtime change. `out-snap` returns the card to where it started, on every
+  // release including the ones that ask for nothing.
+  { fromId: 'row', fromProperty: 'this', toId: 'dropIndex', toProperty: 'in-el' },
+  { fromId: 'drag', fromProperty: 'onStop', toId: 'dropIndex', toProperty: 'run' },
+  { fromId: 'dropIndex', fromProperty: 'out-snap', toId: 'drag', toProperty: 'snapToPositionY.do' },
+  { fromId: 'dropIndex', fromProperty: 'out-toIndex', toId: 'outputs', toProperty: 'DropIndex' },
+  { fromId: 'dropIndex', fromProperty: 'out-go', toId: 'outputs', toProperty: 'DropAt' }
 ];
 
 // ── 3. Pages/Setup — the first-run claim screen ──────────────────────────────
@@ -1708,7 +1807,25 @@ export const PAGE_EDITOR_NODES = [
     label: 'Sections',
     parent: 'body',
     parameters: { ...STACKED, flexDirection: 'column', rowGap: 'var(--space-3)' },
-    children: ['sectionsHeader', 'reorderRefusal', 'sectionList']
+    children: ['sectionsHeader', 'reorderRefusal', 'sectionRows']
+  },
+  {
+    id: 'sectionRows',
+    type: 'Group',
+    label: 'The section rows',
+    parent: 'sectionsPanel',
+    // 🔴 **This Group exists for the drag, and it is not cosmetic.** A `For Each`
+    // renders its items into its VISUAL PARENT's element — it draws no box of its
+    // own — so with `sectionList` sitting directly under `sectionsPanel` the rows
+    // were DOM siblings of `sectionsHeader` and `reorderRefusal`. `dropIndex`
+    // counts `parentElement.children`, and it would have counted those two as
+    // rows above every section, reporting an index two too high on every drop.
+    //
+    // It repeats the panel's own `flexDirection` and `rowGap` so the rendered
+    // result is unchanged: this is a container the arithmetic needs, not a
+    // layout change.
+    parameters: { ...STACKED, flexDirection: 'column', rowGap: 'var(--space-3)' },
+    children: ['sectionList']
   },
   {
     id: 'reorderRefusal',
@@ -1782,7 +1899,7 @@ export const PAGE_EDITOR_NODES = [
     id: 'sectionList',
     type: 'For Each',
     label: 'One row per section',
-    parent: 'sectionsPanel',
+    parent: 'sectionRows',
     parameters: { templateType: 'explicit', template: '/Admin/SectionRow' }
   },
   {
@@ -2148,6 +2265,20 @@ export const PAGE_EDITOR_WIRES = [
   { fromId: 'moveDown', fromProperty: 'out-sectionId', toId: 'reorder', toProperty: 'in-sectionId' },
   { fromId: 'moveDown', fromProperty: 'out-toIndex', toId: 'reorder', toProperty: 'in-toIndex' },
   { fromId: 'moveDown', fromProperty: 'out-go', toId: 'reorder', toProperty: 'call' },
+
+  // AC2's gesture reaches the SAME endpoint by a shorter road, because the row
+  // that was dropped has already worked out where it landed — there is no
+  // direction to turn into a position, so there is no third planner.
+  //
+  // 🔴 `itemActionItemId` is set for EVERY item output signal a row sends,
+  // `Changed` included, so this wire updates `in-sectionId` on saves and deletes
+  // too. That is harmless and it is worth saying why: the value only matters when
+  // `call` fires, and `For Each` sets the id, flags the item outputs, and sends
+  // the signal in one scheduled pass — so the id and the index that arrive with
+  // `DropAt` are always the dropped row's.
+  { fromId: 'sectionList', fromProperty: 'itemActionItemId', toId: 'reorder', toProperty: 'in-sectionId' },
+  { fromId: 'sectionList', fromProperty: 'itemOutput-DropIndex', toId: 'reorder', toProperty: 'in-toIndex' },
+  { fromId: 'sectionList', fromProperty: 'itemOutputSignal-DropAt', toId: 'reorder', toProperty: 'call' },
 
   // The list has to be re-read, not re-sorted in place: the endpoint renumbered
   // rows this browser never named, so the only true ordering is the stored one.

@@ -384,7 +384,12 @@ describe('SB-017: the editor deploy path ships every connection the template hol
     // 23 → 25: AC2's `moveUp` and `moveDown` on `/Pages/PageEditor`. They are
     // BROWSER Function nodes, which is the half this case is about — the cloud
     // export must leave them alone however many of them there are.
-    expect(browserFunctions.length).toBe(25);
+    // 25 → 26: AC2's GESTURE — `dropIndex` on `/Admin/SectionRow`. It is the
+    // first browser Function in this count that lives in a REPEATER ITEM rather
+    // than on a screen, which is worth naming because the line below is about
+    // what the cloud adapters wrote onto it: an item template is authored once
+    // and instantiated N times, and the adapters walk components, not instances.
+    expect(browserFunctions.length).toBe(26);
     expect(browserFunctions.filter((node) => (node.dynamicports || []).length > 0)).toEqual([]);
 
     // …and the same sweep on the cloud side did write ports, so the assertion

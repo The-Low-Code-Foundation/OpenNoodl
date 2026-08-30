@@ -2280,154 +2280,169 @@
       "graph": {
         "roots": [
           {
-            "id": "row",
-            "type": "Group",
+            "id": "drag",
+            "type": "Drag",
             "children": [
               {
-                "id": "kindText",
-                "type": "Text",
-                "children": [],
-                "label": "Kind",
-                "x": 100,
-                "y": 160,
-                "parameters": {
-                  "sizeMode": "contentHeight",
-                  "text": "",
-                  "fontFamily": "var(--font-sans)",
-                  "fontSize": "var(--text-sm)",
-                  "fontWeight": "var(--font-semibold)",
-                  "letterSpacing": "var(--tracking-wide)",
-                  "color": "var(--muted-foreground)"
-                },
-                "ports": [],
-                "dynamicports": []
-              },
-              {
-                "id": "moveRow",
+                "id": "row",
                 "type": "Group",
                 "children": [
                   {
-                    "id": "moveUpButton",
-                    "type": "net.noodl.controls.button",
+                    "id": "kindText",
+                    "type": "Text",
                     "children": [],
-                    "label": "Move up",
+                    "label": "Kind",
                     "x": 160,
-                    "y": 400,
+                    "y": 280,
                     "parameters": {
-                      "sizeMode": "contentSize",
-                      "label": "Move up"
+                      "sizeMode": "contentHeight",
+                      "text": "",
+                      "fontFamily": "var(--font-sans)",
+                      "fontSize": "var(--text-sm)",
+                      "fontWeight": "var(--font-semibold)",
+                      "letterSpacing": "var(--tracking-wide)",
+                      "color": "var(--muted-foreground)"
                     },
                     "ports": [],
                     "dynamicports": []
                   },
                   {
-                    "id": "moveDownButton",
+                    "id": "moveRow",
+                    "type": "Group",
+                    "children": [
+                      {
+                        "id": "moveUpButton",
+                        "type": "net.noodl.controls.button",
+                        "children": [],
+                        "label": "Move up",
+                        "x": 220,
+                        "y": 520,
+                        "parameters": {
+                          "sizeMode": "contentSize",
+                          "label": "Move up"
+                        },
+                        "ports": [],
+                        "dynamicports": []
+                      },
+                      {
+                        "id": "moveDownButton",
+                        "type": "net.noodl.controls.button",
+                        "children": [],
+                        "label": "Move down",
+                        "x": 220,
+                        "y": 640,
+                        "parameters": {
+                          "sizeMode": "contentSize",
+                          "label": "Move down"
+                        },
+                        "ports": [],
+                        "dynamicports": []
+                      }
+                    ],
+                    "label": "Move this section",
+                    "x": 160,
+                    "y": 400,
+                    "parameters": {
+                      "sizeMode": "contentHeight",
+                      "flexDirection": "row",
+                      "columnGap": "var(--space-2)"
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  },
+                  {
+                    "id": "bodyField",
+                    "type": "net.noodl.controls.textinput",
+                    "children": [],
+                    "label": "Body",
+                    "x": 160,
+                    "y": 760,
+                    "parameters": {
+                      "useLabel": true,
+                      "label": "Body",
+                      "type": "textArea"
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  },
+                  {
+                    "id": "preview",
+                    "type": "Image",
+                    "children": [],
+                    "label": "Image preview",
+                    "x": 160,
+                    "y": 880,
+                    "parameters": {},
+                    "ports": [],
+                    "dynamicports": []
+                  },
+                  {
+                    "id": "pickButton",
                     "type": "net.noodl.controls.button",
                     "children": [],
-                    "label": "Move down",
+                    "label": "Choose image",
                     "x": 160,
-                    "y": 520,
+                    "y": 1000,
                     "parameters": {
-                      "sizeMode": "contentSize",
-                      "label": "Move down"
+                      "label": "Choose image"
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  },
+                  {
+                    "id": "saveButton",
+                    "type": "net.noodl.controls.button",
+                    "children": [],
+                    "label": "Save",
+                    "x": 160,
+                    "y": 1120,
+                    "parameters": {
+                      "label": "Save"
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  },
+                  {
+                    "id": "deleteButton",
+                    "type": "net.noodl.controls.button",
+                    "children": [],
+                    "label": "Delete",
+                    "x": 160,
+                    "y": 1240,
+                    "parameters": {
+                      "label": "Delete"
                     },
                     "ports": [],
                     "dynamicports": []
                   }
                 ],
-                "label": "Move this section",
+                "label": "One section",
                 "x": 100,
-                "y": 280,
+                "y": 160,
                 "parameters": {
                   "sizeMode": "contentHeight",
-                  "flexDirection": "row",
-                  "columnGap": "var(--space-2)"
-                },
-                "ports": [],
-                "dynamicports": []
-              },
-              {
-                "id": "bodyField",
-                "type": "net.noodl.controls.textinput",
-                "children": [],
-                "label": "Body",
-                "x": 100,
-                "y": 640,
-                "parameters": {
-                  "useLabel": true,
-                  "label": "Body",
-                  "type": "textArea"
-                },
-                "ports": [],
-                "dynamicports": []
-              },
-              {
-                "id": "preview",
-                "type": "Image",
-                "children": [],
-                "label": "Image preview",
-                "x": 100,
-                "y": 760,
-                "parameters": {},
-                "ports": [],
-                "dynamicports": []
-              },
-              {
-                "id": "pickButton",
-                "type": "net.noodl.controls.button",
-                "children": [],
-                "label": "Choose image",
-                "x": 100,
-                "y": 880,
-                "parameters": {
-                  "label": "Choose image"
-                },
-                "ports": [],
-                "dynamicports": []
-              },
-              {
-                "id": "saveButton",
-                "type": "net.noodl.controls.button",
-                "children": [],
-                "label": "Save",
-                "x": 100,
-                "y": 1000,
-                "parameters": {
-                  "label": "Save"
-                },
-                "ports": [],
-                "dynamicports": []
-              },
-              {
-                "id": "deleteButton",
-                "type": "net.noodl.controls.button",
-                "children": [],
-                "label": "Delete",
-                "x": 100,
-                "y": 1120,
-                "parameters": {
-                  "label": "Delete"
+                  "flexDirection": "column",
+                  "rowGap": "var(--space-3)",
+                  "backgroundColor": "var(--surface)",
+                  "borderStyle": "solid",
+                  "borderWidth": "var(--border-1)",
+                  "borderColor": "var(--border)",
+                  "borderRadius": "var(--radius-md)",
+                  "paddingTop": "var(--space-4)",
+                  "paddingBottom": "var(--space-4)",
+                  "paddingLeft": "var(--space-4)",
+                  "paddingRight": "var(--space-4)"
                 },
                 "ports": [],
                 "dynamicports": []
               }
             ],
-            "label": "One section",
+            "label": "Drag this section to reorder it",
             "x": 40,
             "y": 40,
             "parameters": {
-              "sizeMode": "contentHeight",
-              "flexDirection": "column",
-              "rowGap": "var(--space-3)",
-              "backgroundColor": "var(--surface)",
-              "borderStyle": "solid",
-              "borderWidth": "var(--border-1)",
-              "borderColor": "var(--border)",
-              "borderRadius": "var(--radius-md)",
-              "paddingTop": "var(--space-4)",
-              "paddingBottom": "var(--space-4)",
-              "paddingLeft": "var(--space-4)",
-              "paddingRight": "var(--space-4)"
+              "axis": "y",
+              "useParentBounds": false
             },
             "ports": [],
             "dynamicports": []
@@ -2437,8 +2452,8 @@
             "type": "Component Inputs",
             "children": [],
             "label": "The section record",
-            "x": 410,
-            "y": 160,
+            "x": 470,
+            "y": 280,
             "parameters": {},
             "ports": [
               {
@@ -2469,8 +2484,8 @@
             "type": "JavaScriptFunction",
             "children": [],
             "label": "Read the body and image out of data",
-            "x": 410,
-            "y": 640,
+            "x": 470,
+            "y": 760,
             "parameters": {
               "functionScript": "const d = Inputs.data || {};\nOutputs.body = d.body || '';\nOutputs.image = (d.image && d.image.url) || '';"
             },
@@ -2504,8 +2519,8 @@
             "type": "Open File Picker",
             "children": [],
             "label": "Choose an image",
-            "x": 410,
-            "y": 880,
+            "x": 470,
+            "y": 1000,
             "parameters": {
               "acceptedFileTypes": "image/*"
             },
@@ -2517,8 +2532,8 @@
             "type": "Upload File",
             "children": [],
             "label": "Upload it",
-            "x": 410,
-            "y": 1240,
+            "x": 470,
+            "y": 1360,
             "parameters": {},
             "ports": [],
             "dynamicports": []
@@ -2528,8 +2543,8 @@
             "type": "JavaScriptFunction",
             "children": [],
             "label": "Fold the edits back into data",
-            "x": 410,
-            "y": 760,
+            "x": 470,
+            "y": 880,
             "parameters": {
               "functionScript": "if (Inputs.data === undefined) return;\nconst next = Object.assign({}, Inputs.data);\nif (Inputs.body !== undefined) next.body = Inputs.body;\nif (Inputs.image !== undefined && Inputs.image !== null) next.image = Inputs.image;\nOutputs.data = next;\nOutputs.built();"
             },
@@ -2575,8 +2590,8 @@
             "type": "SetDbModelProperties",
             "children": [],
             "label": "Save this section",
-            "x": 410,
-            "y": 1360,
+            "x": 470,
+            "y": 1480,
             "parameters": {
               "collectionName": "Section",
               "idSource": "explicit",
@@ -2590,8 +2605,8 @@
             "type": "DeleteDbModelProperties",
             "children": [],
             "label": "Delete this section",
-            "x": 410,
-            "y": 1120,
+            "x": 470,
+            "y": 1240,
             "parameters": {
               "collectionName": "Section",
               "idSource": "explicit"
@@ -2600,12 +2615,51 @@
             "dynamicports": []
           },
           {
+            "id": "dropIndex",
+            "type": "JavaScriptFunction",
+            "children": [],
+            "label": "Which position did this section land on",
+            "x": 470,
+            "y": 40,
+            "parameters": {
+              "runOnChange-in-el": false,
+              "functionScript": "if (Inputs.el === undefined) return;\nconst el = Inputs.el.getDOMElement && Inputs.el.getDOMElement();\nif (!el || !el.parentElement) return;\nOutputs.snap();\nconst kids = Array.prototype.slice.call(el.parentElement.children);\nconst mine = el.getBoundingClientRect();\nconst centre = mine.top + mine.height / 2;\nconst own = kids.indexOf(el);\nlet to = 0;\nfor (let i = 0; i < kids.length; i++) {\n  if (kids[i] === el) continue;\n  const r = kids[i].getBoundingClientRect();\n  if (r.top + r.height / 2 < centre) to++;\n}\nif (to === own) return;\nOutputs.toIndex = to;\nOutputs.go();"
+            },
+            "ports": [
+              {
+                "name": "out-go",
+                "plug": "output",
+                "type": "signal"
+              },
+              {
+                "name": "out-snap",
+                "plug": "output",
+                "type": "signal"
+              },
+              {
+                "name": "in-el",
+                "displayName": "el",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "out-toIndex",
+                "displayName": "toIndex",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              }
+            ],
+            "dynamicports": []
+          },
+          {
             "id": "outputs",
             "type": "Component Outputs",
             "children": [],
             "label": "Tell the editor something changed",
-            "x": 410,
-            "y": 400,
+            "x": 470,
+            "y": 520,
             "parameters": {},
             "ports": [
               {
@@ -2622,6 +2676,16 @@
                 "name": "MoveDown",
                 "plug": "input",
                 "type": "signal"
+              },
+              {
+                "name": "DropAt",
+                "plug": "input",
+                "type": "signal"
+              },
+              {
+                "name": "DropIndex",
+                "plug": "input",
+                "type": "number"
               }
             ],
             "dynamicports": []
@@ -2753,10 +2817,40 @@
             "fromProperty": "onClick",
             "toId": "outputs",
             "toProperty": "MoveDown"
+          },
+          {
+            "fromId": "row",
+            "fromProperty": "this",
+            "toId": "dropIndex",
+            "toProperty": "in-el"
+          },
+          {
+            "fromId": "drag",
+            "fromProperty": "onStop",
+            "toId": "dropIndex",
+            "toProperty": "run"
+          },
+          {
+            "fromId": "dropIndex",
+            "fromProperty": "out-snap",
+            "toId": "drag",
+            "toProperty": "snapToPositionY.do"
+          },
+          {
+            "fromId": "dropIndex",
+            "fromProperty": "out-toIndex",
+            "toId": "outputs",
+            "toProperty": "DropIndex"
+          },
+          {
+            "fromId": "dropIndex",
+            "fromProperty": "out-go",
+            "toId": "outputs",
+            "toProperty": "DropAt"
           }
         ],
         "visualRoots": [
-          "row"
+          "drag"
         ]
       }
     },
@@ -3116,15 +3210,31 @@
                             "dynamicports": []
                           },
                           {
-                            "id": "sectionList-2",
-                            "type": "For Each",
-                            "children": [],
-                            "label": "One row per section",
+                            "id": "sectionRows",
+                            "type": "Group",
+                            "children": [
+                              {
+                                "id": "sectionList-2",
+                                "type": "For Each",
+                                "children": [],
+                                "label": "One row per section",
+                                "x": 340,
+                                "y": 3040,
+                                "parameters": {
+                                  "templateType": "explicit",
+                                  "template": "/Admin/SectionRow"
+                                },
+                                "ports": [],
+                                "dynamicports": []
+                              }
+                            ],
+                            "label": "The section rows",
                             "x": 280,
                             "y": 2920,
                             "parameters": {
-                              "templateType": "explicit",
-                              "template": "/Admin/SectionRow"
+                              "sizeMode": "contentHeight",
+                              "flexDirection": "column",
+                              "rowGap": "var(--space-3)"
                             },
                             "ports": [],
                             "dynamicports": []
@@ -3147,7 +3257,7 @@
                         "children": [],
                         "label": "Back",
                         "x": 220,
-                        "y": 3040,
+                        "y": 3160,
                         "parameters": {
                           "label": "Back to pages"
                         },
@@ -3887,6 +3997,24 @@
           {
             "fromId": "moveDown",
             "fromProperty": "out-go",
+            "toId": "reorder",
+            "toProperty": "call"
+          },
+          {
+            "fromId": "sectionList-2",
+            "fromProperty": "itemActionItemId",
+            "toId": "reorder",
+            "toProperty": "in-sectionId"
+          },
+          {
+            "fromId": "sectionList-2",
+            "fromProperty": "itemOutput-DropIndex",
+            "toId": "reorder",
+            "toProperty": "in-toIndex"
+          },
+          {
+            "fromId": "sectionList-2",
+            "fromProperty": "itemOutputSignal-DropAt",
             "toId": "reorder",
             "toProperty": "call"
           },
