@@ -80,7 +80,7 @@ this register once already, and that is how one row gets worked twice and anothe
 | DEF-023 | ✅ done | **P78 D35** | `Component` scope in a cloud function is **not** per-request, and nothing says so — **fixed s16 (`acd053e0`). 🔴 The recorded mechanism was the browser's: the cloud runtime never reaches `_componentScopes` — `noodl-js-api.js` overrode the scope to ONE module-level object, shared across all scripts, functions, requests and CONCURRENT requests. Now a WeakMap keyed on the component-owner INSTANCE (ids repeat across requests; instances do not): same-instance scripts still share (TPL-002's plan/pump contract), a new request starts clean, entries die with the request's graph — the leak half held by construction, not a spec** | every **graph that accumulates anything server-side** |
 | DEF-024 | ⬜ open | **P78 D36** | A `Condition` can only ever turn a gate **ON**, so a screen accumulates contradictory answers | every **screen whose answer has more than one form** |
 | DEF-025 | ⬜ open | **P78 D37** | A control's label is a click target only via the control's own `label` port — which **defaults OFF** | every **person tapping the words beside a checkbox** |
-| DEF-026 | ⬜ open | A cloud call to an unreachable backend reports nothing | **P77 SBR-015 AC1 drive** | **anyone** whose backend is not running — the ordinary way this breaks |
+| DEF-026 | ✅ done | A cloud call to an unreachable backend reports nothing — **fixed s17: `CloudFunction2`'s error handler dereferenced `e.error` unconditionally, and a connection refusal hands it `undefined` (real Chrome probed at HEAD: `readyState 4, status 0, response ''` ⇒ `JSON.parse` throws ⇒ body `undefined`), so the ONE route to the `failure` outcome died on a TypeError inside the XHR callback. Handler now total; status 0 reports "Could not reach the backend at <endpoint>". Same hole filled in `Noodl.CloudFunctions.run` (rejected with `undefined`; JSON error bodies still pass through untouched)** | **anyone** whose backend is not running — the ordinary way this breaks |
 
 🔴 **Three of phase 78's eleven unowned rows are NOT here, deliberately: D22, D23 and D24 are
 template-side.** This phase is graded on the product surface and never on a template being fixed
@@ -556,3 +556,42 @@ before any of it was acted on, and every measurement in it held.
 **Where it bites:** every app, every author. A graph wired correctly for failure still shows the user nothing, and the author has no way to tell from the canvas.
 
 ⚠️ **Not diagnosed further** — the drive established *that* it does not fire, not *where* the refusal is lost. Owner: **NONE**.
+
+#### ✅ CLOSED s17 (2026-08-30) — the refusal was lost to a TypeError in the one handler that could report it
+
+**Diagnosis, reproduced red at HEAD before building.** A connection refusal terminates the XHR at
+`readyState 4, status 0, response ''` — **measured in real Chrome this session**, not read from the
+spec: the render harness's own headless Chrome, a genuinely closed port, terminal state
+`{readyState: 4, status: 0, response: '', parseThrew: true}`. So `_makeRequest`'s `JSON.parse`
+throws, the handler receives `undefined`, and `doCall`'s error callback did
+`e.error` unconditionally (`cloudfunction2.ts:312`) — **a TypeError inside the XHR callback,
+upstream of `setError`**, which is the only route to `reportOutcomes(…, 'failure')`. The node was
+capable exactly as the drive said; nothing ever arrived.
+
+- 🔴 **Wider than a refusal**: ANY error status with a non-JSON body (a proxy's HTML 502 page) took
+  the same throw. Own spec arm.
+- ✅ **Fix**: the handler is total, and `_makeRequest` now passes `xhr.status` so the two failures
+  with opposite fixes stay separated — status 0 (nothing answered) reports
+  **"Could not reach the backend at `<endpoint>`"**; an answered error keeps its body's reason.
+  The JSON-body arm (the drive's live-backend 404) is the suite's known-firing control and was
+  green pre-fix.
+- ✅ **Same hole, one API over**: `Noodl.CloudFunctions.run` rejected with `undefined` on a
+  refusal (its `reject(err)` simply forwarded the empty body). It now rejects with
+  `{error: 'Could not reach the backend at <endpoint>'}` — **object shape preserved deliberately**;
+  a JSON error body still passes through verbatim because user scripts read `err.error` off it.
+- **Not touched**: the deprecated `Cloud Function` node already tolerates `undefined` and fires
+  `failure` (carries no reason by design); the cloud runtime's calls are fetch-based and never had
+  this path.
+- **Mutants**: pre-fix red stands as the totality mutant (both new arms); the status-0 branch
+  mutant (refusal collapsed to the generic message) kills exactly the endpoint-naming arm.
+- ⚠️ **The owed inch: the committed viewer bundles still carry the old handler**
+  (`noodl-editor/src/external/viewer`, `deploy`, ssr copies, and `nodegx-backend/deploy/artifact`)
+  — a drive through the editor TODAY exercises the stale bundle, not this fix. Every link is
+  measured at HEAD (the pre-fix SBR-015 drive proved the request leaves the node; today's probe
+  proved Chrome's refusal shape; the unit suite grades the handler over exactly that shape) — the
+  end-to-end conjunction through a FRESH bundle rides with the next viewer rebuild, and P77
+  SBR-015's 🟡 wired-not-yet-driven admin drive is the instrument that will observe it.
+  Owner: whoever cuts the next 0.2.1 build (same row as DEF-021/023's dist note).
+
+**Gates s17**: viewer-react **1091/1091** (s16's 1088 + exactly the 3 new arms), `tsc --noEmit`
+clean. `test:ci` not owed — no editor or noodl-runtime source moved.
