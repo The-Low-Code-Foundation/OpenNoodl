@@ -10,6 +10,7 @@ import { HttpCallPlan, HttpValuePlan, planProject, ProjectPlan, QueryPlan, Sessi
 import { CloudServicesIR, ExportIR } from '../ir/types';
 import { emitComponent } from './component';
 import { DATE_LIB_PATH, dateLibSource } from './dateLib';
+import { UTIL_LIB_PATH, utilLibSource } from './utilLib';
 import { EmittedCopy, emitKits } from './kits';
 import { README_PATH, renderReadme } from './readme';
 import { ExportReportData, REPORT_PATH, ReportComponent, renderReport, stripScope } from './report';
@@ -96,6 +97,8 @@ export function emitApp(ir: ExportIR, catalog: Catalog): EmittedApp {
 
   /** Date helpers any component imports — the gate on emitting `src/lib/date.ts` at all. */
   const dateHelpersUsed = new Set<string>();
+  /** The same gate for `src/lib/util.ts` (EXP-011 Tier 2.7). */
+  const utilHelpersUsed = new Set<string>();
   const reportComponents: ReportComponent[] = [];
   for (const plan of project.plans) {
     if (plan.skipReason) {
@@ -135,6 +138,7 @@ export function emitApp(ir: ExportIR, catalog: Catalog): EmittedApp {
       unreachable: unreachable.has(plan.path)
     });
     for (const helper of emitted.dateHelpers) dateHelpersUsed.add(helper);
+    for (const helper of emitted.utilHelpers) utilHelpersUsed.add(helper);
   }
 
   /**
@@ -146,6 +150,15 @@ export function emitApp(ir: ExportIR, catalog: Catalog): EmittedApp {
    */
   if (dateHelpersUsed.size > 0) {
     files[DATE_LIB_PATH] = GENERATED_MODULE_TS + dateLibSource();
+  }
+
+  /**
+   * `src/lib/util.ts` (EXP-011 Tier 2.7) — the same rule one library over, and a **separate**
+   * module rather than a section of `date.ts`: a project that formats a date should not ship the
+   * string utilities, and neither module imports the other.
+   */
+  if (utilHelpersUsed.size > 0) {
+    files[UTIL_LIB_PATH] = GENERATED_MODULE_TS + utilLibSource();
   }
 
   const api = apiModules(ir, project);

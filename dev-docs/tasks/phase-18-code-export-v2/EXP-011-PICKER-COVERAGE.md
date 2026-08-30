@@ -1,6 +1,6 @@
 # EXP-011 — Close the picker gap, ranked by what apps need
 
-**Status:** 🟡 In progress — **Tier 1 is COMPLETE. Tier 1.3 (the date family) built, driven and gated**, session 38
+**Status:** 🟡 In progress — **Tier 1 COMPLETE; Tier 2.7's three pure utilities built, driven and gated**, session 65
 **Depends on:** nothing — but sequenced after EXP-009 and EXP-010, which are worth more per hour
 **Replaces:** every "what to build next" list in this phase from sessions 20–31
 
@@ -12,7 +12,7 @@
 node scripts/export-ledger/picker-coverage.js
 ```
 
-> **PICKER COVERAGE: 66 of 127 placeable nodes export (52.0%)** — 2026-08-29, session 38
+> **PICKER COVERAGE: 73 of 127 placeable nodes export (57.5%)** — 2026-08-30, session 65
 > (51 / 40.2% when this task was written; **Variables** left the table in session 35, four of the
 > eight Data nodes of Tier 1.1 left it in session 36, `HTTP Request` in session 37, and the whole
 > **date family** — all six — in session 38, which is what takes this past half)
@@ -77,7 +77,10 @@ Ranked by *"can you build a normal app without it"*, not by corpus frequency.
 6. **Cloud Services (9).** Mostly **unblocked by EXP-009**, and several may fall out of it for
    free — `Cloud Function`, `Record`, `Set User Properties`, `Sign In With`. Re-measure after
    EXP-009 lands rather than planning against today's list.
-7. **String/Math utilities (4).** `Substring`, `String Mapper`, `Number Remapper`, `UUID`.
+7. **String/Math utilities.** ✅ **`Substring`, `String Mapper` and `Number Remapper` built,
+   driven and gated in session 65 — §36**, which also found DEF-033: `Substring`'s panel declares
+   an `End` the node does not use. The remainder is the **id pair**, `Unique Id` and `UUID`, and
+   §36.9 says why they are `Now`'s shape rather than another pure call.
 
 ### Tier 3 — real, but a smaller audience
 
@@ -104,7 +107,7 @@ nobody will ever do. Most of the current 101 exemptions say the latter, verbatim
 
 1. ✅ **The picker number moves and holds.** Every slice raises `pickerCoverageFloor` in the same
    commit — `export-ledger:picker` fails if it does not.
-   *(51 → 55 → 59 → 60 → 66 → 67 → 68, sessions 35–41.)*
+   *(51 → 55 → 59 → 60 → 66 → 67 → 68, sessions 35–41; → 70 by session 47; → 73 in session 65.)*
 2. ✅ **Tier 1 complete ⇒ 66 of 127 (52.0%).** Tiers 1+2 ⇒ ≈87 (≈68%). Everything except the
    "not a target" list ⇒ ≈108 (≈85%).
    *(The original projection said ~72. Session 37 revised it to "nearer 66 than 72", because
@@ -114,7 +117,8 @@ nobody will ever do. Most of the current 101 exemptions say the latter, verbatim
 3. ✅ **Each slice has a picker-exercising project** that exports, builds and runs (§2).
    *(Tier 1.4's is `tests/fixtures/variable-dial` — §6.4; Tier 1.1's is
    `tests/fixtures/reading-shelf` — §7.4; Tier 1.2's is `tests/fixtures/quote-desk` — §8.6;
-   Tier 1.3's is `tests/fixtures/deadline-desk` — §9.5.)*
+   Tier 1.3's is `tests/fixtures/deadline-desk` — §9.5; Tier 2.7's is
+   `tests/fixtures/ticket-desk` — §36.7.)*
 4. ✅ **The exemption sentences get rewritten** so that "deferred" means one of *deliberately out of
    scope* (with the reason) or *scheduled* (with the tier), never "pre-gate backlog".
    *(All 97, session 35, and `export-ledger:check` now enforces the shape — §6.5.)*
@@ -4415,3 +4419,174 @@ ledger 175 types.
   reader.
 - ⚠️ **Children authored inside a component instance** (§34.5) — still unowned, still needs
   `instkids.ts` fixed before any conclusion.
+
+---
+
+## §36 Tier 2.7 as built — the three small utilities, and the panel that disagrees with its own node (session 65, 2026-08-30)
+
+**`Substring`, `Number Remapper` and `String Mapper` are built, driven and gated.**
+Picker **70 → 73 of 127 (57.5%)**, floor raised in the same commit.
+
+Seventeen sessions had passed since §18 added a picker node — §19–§35 were all report, honesty and
+defect work, and every one of them was worth doing. The board re-derived from the task files put
+Tier 2.7 first all the same: four nodes named in §3, no design question standing in front of any of
+them, and an acceptance criterion that moves when they land.
+
+### §36.1 What they are
+
+Each is a function of its inputs and holds nothing else, which is `date-call`'s shape one library
+over — so each becomes **one call** into a new emitted `src/lib/util.ts`, and they compose. The
+emitted page from the fixture, whole:
+
+```tsx
+import { mapString, remapNumber, substring } from '../lib/util';
+
+<p className={styles.text}>{substring(subjectValue, 0, 12)}</p>
+<p className={styles.text}>
+  {mapString(subjectValue, { 'open': 'Open now', 'waiting': 'Waiting on the customer', 'closed': 'Closed for the day' }, 'Not a status I know')}
+</p>
+<p className={styles.gaugeText}>{remapNumber(34, 0, 100, 0, 10, true)}</p>
+```
+
+A separate module from `date.ts` deliberately: a project that formats no date ships no date
+library, and a row asserts that.
+
+### §36.2 🔴 The panel says 0 and the node answers -1 — DEF-033
+
+`Substring`'s `End` port **declares a default of `0`** in the catalog and in the property panel.
+Its `initialize` writes **`-1`**. `registerInput` writes a declared default straight into
+`_inputValues` **without calling the setter** (`node.ts:137-139`), and `result`'s getter reads
+`_internal.endIndex` — so the value the node is actually holding is `-1`.
+
+The two are not a near-miss. They are opposite:
+
+| `End` | what it means | what the node returns for `"hello"` |
+|---|---|---|
+| `-1` — what `initialize` wrote, and what runs | to the end of the string | `hello` |
+| `0` — what the panel shows | stop before character 0 | `` (empty, for every input) |
+
+An export that trusted the catalog would have emitted an app in which **every `Substring` returned
+the empty string**, and it would have looked right in review: the fallback would have matched the
+documented default, and no fixture in the corpus contains the node. §A's harness leaves an unset
+port genuinely unset and drives the interpreter, which is the only way the difference is visible.
+
+Registered as **DEF-033** — a product defect, not an export one. Owner **`NONE`**.
+
+### §36.3 The two rules an object literal does not get for free
+
+`String Mapper` is `inputs.indexOf(current)` over two index-aligned numbered families, and the
+emitted object literal reproduces it only because the planner fixes two things when it builds the
+table. Both were measured on the interpreter first, in §A, and then asserted on the emitted call:
+
+- **First wins.** `indexOf` finds the earliest matching Input; an object literal keeps the *last*
+  value written for a repeated key. A repeat is dropped at table-build time.
+- **A present key with an `undefined` value.** An Input whose Mapping was never filled in publishes
+  **empty**, not Default — the interpreter reads `mappings[idx]` off the index it found, and a hole
+  there is an empty answer. So the helper tests `hasOwnProperty` rather than `??`, and the table
+  keeps the key. A `??` is right about every case except the author's half-filled table.
+
+The port names are `input 0`, `output 0`, … **with a space** — read off
+`registerNumberedInput`'s `inputName.slice(name.length + 1)` (`nodedefinition.ts:145`), not guessed.
+
+### §36.4 What defers, and what does not
+
+A wired numbered port defers the mapper, naming the port: the table is read at generation time and
+a wire is not knowable until the app runs. Two wires into one input defer on last-writer-wins.
+
+**Nothing defers on an editor-constrained port**, and that is a departure from Tier 1.3 rather than
+an oversight. The date family's enum gate exists because `addToDate` **throws** on a unit it does
+not know; `Number Remapper`'s `clamp` is `value ? true : false` and its arithmetic coerces, so
+there is nothing here a wire can break.
+
+One divergence is translated-with-a-note rather than refused: `Substring`'s `string` setter is
+`value.toString()`, which **raises** on an empty arrival. The helper answers `''` and the report
+says so, on the date family's rule that an export whose failure mode is an uncaught exception in
+somebody's page is worse than one that says what it did.
+
+### §36.5 🔴 The clause that was added on this file's own warning and turned out to be dead
+
+§9's comment says, in bold: *"Adding a readable output to a node in this file is **never** one edit.
+The two that are silent are this one and Pass 4c's whitelist below."* So both were done.
+
+Then the mutants disagreed:
+
+| mutant | what it changes | rows killed |
+|---|---|---|
+| M4 | remove the `isUtilRead` clause from Pass 4f's predicate | **0** |
+| M6 | remove Pass 4c's whitelist entry | **0** |
+| M7 | remove **both** | **12** |
+
+They are an **OR**, and Pass 4c strictly dominates for this family: it runs first (line 8664 vs
+8810), it consumes every wire it matches, and Pass 4f skips a consumed wire — so no read of these
+three can reach the later predicate at all. A `visible`-sink probe was run across both arms to look
+for a discriminating case and found none.
+
+The clause was removed and the reasoning left in its place. **The warning is still right for the
+family it was written about**: a node whose read needs a *state row* — `Now`, `HTTP Request`, an
+`Error` output — is not in Pass 4c's whitelist, so the later predicate is its only way in. What
+decides which site a new node needs is whether its read is a pure expression or a row. Adding it to
+both and shipping a branch nothing can execute is not the safe option, it is an unmeasured one.
+
+### §36.6 The instrument
+
+`tests/string-math-utilities.test.ts`, 27 rows in three parts, and §A is the one that can catch a
+mistake: the emitted `src/lib/util.ts` is transpiled, loaded, and driven against **the three node
+definitions themselves**, transpiled out of `noodl-runtime/src` and called through their real
+setters and getters. 600 `Substring` cells, 300 `Number Remapper` cells, and the mapper's holes,
+repeats and unset input. A transcription is exactly the kind of work that reads correctly and is
+subtly false; comparing it against a second copy of its own logic would have proved only that both
+copies say the same thing.
+
+Every mutant lands on the row written for it:
+
+| mutant | rows killed |
+|---|---|
+| `end` fallback `-1` → `0` (the declared default) | 1 — *"an unopened panel exports the value initialize wrote"* |
+| `??` instead of `hasOwnProperty` in the helper | 1 — *"an Input with no Mapping publishes empty"* |
+| no first-wins guard when building the table | 1 — *"a repeated Input keeps the first mapping"* |
+| `slice(offset, to)` instead of the `substr` length | 1 — the 600-cell grid |
+| Pass 4c's whitelist removed (after §36.5) | **12** |
+
+⚠️ **§A alone would not have caught the `-1`.** The fallback lives in the planner, not in the
+library, so M1 kills a §B row and leaves all ten §A rows green. The measurement and the use of the
+measurement are two different assertions and they needed two.
+
+### §36.7 The fixture
+
+`tests/fixtures/ticket-desk` — a subject box, a truncated echo of it, a status word mapped to a
+label, and a priority score remapped onto ten. Routed, rendering, and picked up automatically by
+the five suites that enumerate `tests/fixtures` (`emitted-syntax`, `exported-readme`,
+`in-code-markers`, `preflight`, `typecheck-emitted`), so it gates from here on without anyone
+adding it to a list.
+
+🔴 **None of the three nodes appears anywhere in the 60-project corpus** — 0 instances against
+controls of 1564 `Text`, 4 `String Format` and 1 `Date Add` over the same 2667 files. That is the
+README's point restated: the corpus cannot see a node nobody in it used, and a new fixture is the
+only instrument this slice could have been graded by.
+
+### §36.8 The corpus, and the one red that is not this slice's
+
+`build-corpus.ts` over the 60 v2 projects reads **59/60**, and the failure is
+**pre-existing**: `Members area (TPL-001)`, `src/components/MemberRow.tsx(16,15)`, `TS7053` —
+`LABELS[standing]` inside a **preserved `Function` node body**, an author's own JavaScript emitted
+verbatim under EXP-003 §4. An inferred object literal indexed by a `string` does not typecheck
+under the harness's settings.
+
+🔴 **Measured, not assumed.** The diagnostic *fits* a `mapString` table so exactly — an object of
+two string fields, indexed by a string — that it read as this slice's regression at first glance.
+The control is the same project, the same harness and the **pre-change `src`**, and it produces the
+identical diagnostic at the identical line and column. Owner **`NONE`**; it is EXP-003's, and it
+is the second thing this session nearly attributed to the wrong cause.
+
+Gates: **tsc 0**, **jest 1211/1211 in 48 suites** (48 files on disk), picker **73/127 (57.5%)**,
+ledger 175 types, corpus **59/60** (unchanged — the one red is pre-existing and controlled).
+
+### §36.9 What this leaves
+
+- 🔴 **`Unique Id` and `net.noodl.UUID` are the rest of Tier 2.7 and are a different shape.** Both
+  hold a generated id and both have a `New` action with `done`/`failure` outcomes, so neither is a
+  pure call — they want `Now`'s treatment: a state row seeded by a lazy `useState` initializer, an
+  action that writes it, and a chain-local read inside the action's own chain. `nowStateOf` and
+  `date-now-read` are the pattern to copy. **UUID additionally has an `Error` output**, which is
+  §14's row-allocated-by-the-read rule for the third time.
+- ⚠️ **The row-owned write is still the top row** and is still untouched by this session.

@@ -43,7 +43,7 @@ npm run export-ledger:picker          # ratcheted in PR CI
 node scripts/export-ledger/picker-coverage.js    # the readable report
 ```
 
-> **PICKER COVERAGE: 51 of 127 placeable nodes export (40.2%)** — 2026-08-28
+> **PICKER COVERAGE: 73 of 127 placeable nodes export (57.5%)** — 2026-08-30, session 65
 
 "Placeable" means `inNodePicker`, not deprecated, browser-capable: what a person can actually drop
 on a canvas. The floor lives in `coverage-ledger.json` as `pickerCoverageFloor` and ratchets both
@@ -114,7 +114,7 @@ where export means *taking your app with its backend*. Everything downstream fol
 | [EXP-008](./EXP-008-EXPORT-COVERAGE-LEDGER.md) | Coverage ledger & contributor gate | ✅ Built — **picker ratchet added 2026-08-28** |
 | [EXP-009](./EXP-009-BACKEND-CONNECTION.md) | **The exported app talks to its deployed backend** | 🟢 **Built + driven s33** — AC4 (cloud functions) waits on EXP-011's node |
 | [EXP-010](./EXP-010-CUSTOM-NODES-AND-MODULES.md) | **Custom nodes, modules and prefabs export** | 🔴 **NEW** |
-| [EXP-011](./EXP-011-PICKER-COVERAGE.md) | **Close the picker gap, ranked by what apps need** | 🟡 **TIER 1 COMPLETE** — 66/127 (52.0%); Tier 2 (Navigation, Cloud Services, string/math) is next |
+| [EXP-011](./EXP-011-PICKER-COVERAGE.md) | **Close the picker gap, ranked by what apps need** | 🟡 **TIER 1 COMPLETE, Tier 2.7's three pure utilities built** — 73/127 (57.5%); Tier 2's remainder is Cloud Services (9), the id pair and the component stack pair |
 
 ### Order, and why
 

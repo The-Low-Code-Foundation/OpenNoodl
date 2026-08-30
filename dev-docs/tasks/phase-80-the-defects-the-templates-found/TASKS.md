@@ -116,6 +116,16 @@ free repo-wide before use.
 | DEF-031 | ⬜ open | **P77 [D22](../phase-77-the-site-builder-rescue/DEFECTS-THE-SITE-BUILDER-FOUND.md#d22)** | **A `Text` cannot be ellipsized** — the runtime ships no `text-overflow` port. `textOverflow`/`text-overflow` = **0**; controls: `wordBreak` = 2 (a `Text` `inputCss` port that DOES exist), 11 files carrying `inputCss` (the mechanism a new port would use). D20 offered shrink-and-ellipsize, wrap, or accept; wrap shipped because ellipsize **is not authorable at all** | every **author who wants a single-line label** that degrades instead of wrapping |
 | DEF-032 | ⬜ open | **P77 [D32](../phase-77-the-site-builder-rescue/DEFECTS-THE-SITE-BUILDER-FOUND.md#d32)** | **The pass that grades the migration's writes examines one of sixty-five** — `gradeMountTriggered` opens with a `continue` and reaches **1.5%** of `plan.writes`. 🔴 It is the answer to *why D31 shipped past a suite that already knew about the migration*. ⚠️ Do **not** "fix" it by making the template state all 65 — that changes what the migration is for. **The gate is the gap** | the **team**, and through them every user of a template — a suite that reads as coverage and is not |
 
+## Carried forward from phase 18, by reference — **registered s24 (2026-08-30)**
+
+⚠️ **Not re-authored here.**
+[EXP-011 §36.2](../phase-18-code-export-v2/EXP-011-PICKER-COVERAGE.md) holds the measurement and
+the harness that made it visible. **Read it, not this table.** Id checked free repo-wide before use.
+
+| id | status | source | what it is | bites |
+|---|---|---|---|---|
+| DEF-033 | ⬜ open | **P18 [§36.2](../phase-18-code-export-v2/EXP-011-PICKER-COVERAGE.md)** | **`Substring`'s property panel says `End = 0` and the node behaves as `End = -1`.** The port *declares* `0`; `initialize` writes `-1`; `registerInput` puts a declared default into `_inputValues` **without calling the setter** (`node.ts:137-139`) and the getter reads `_internal.endIndex`. The two are opposite answers, not a near-miss — `-1` returns the rest of the string, `0` returns `''` for every input. ⚠️ The fix is a **decision**, not a one-liner: aligning the declared default to `-1` changes what the panel shows, and aligning `initialize` to `0` changes what every existing `Substring` returns. 🔴 The export agrees with the **node**, so an export is not a workaround for this | every **author who drops a `Substring` and reads its panel** — the number shown is not the number running |
+
 🔴 **Two of the five are gate defects (DEF-030, DEF-032), and they are the ones that let the
 others ship.** A pass whose first line is a `continue` is not coverage until you have counted what
 it **reached** — the number that mattered in D32 was never the offender count, it was the `1`.

@@ -40,6 +40,7 @@ import { componentReachability, Reachability } from './reach';
 import { ScaffoldPage, routedPages } from '../emit/scaffold';
 import { pascalCase } from '../emit/naming';
 import { DateHelper } from '../emit/dateLib';
+import { UtilHelper, UTIL_HELPER_MAY_BE_UNDEFINED } from '../emit/utilLib';
 import { CONTENT_PARAMS, iconSourceOf, StyleRole } from '../emit/style';
 import {
   expressionIdentifiersOf,
@@ -264,6 +265,64 @@ const DATE_NODES: Record<string, { fn: DateHelper; args: DateArgSpec[]; outputs:
       { port: 'timeZone', fallback: '' }
     ],
     outputs: { currentValue: null }
+  }
+};
+
+/**
+ * The three small **pure** utilities (EXP-011 Tier 2.7), each as one call into `src/lib/util.ts`.
+ *
+ * `Substring` and `Number Remapper` are plain positional calls. `String Mapper` is the one with
+ * a table, so its `numbered` field names the two index-aligned families the interpreter pairs by
+ * position and `args` covers only its two ordinary ports.
+ *
+ * 🔴 **Every fallback here is `initialize`'s, and one of them contradicts the port's declared
+ * default.** `Substring`'s `end` declares 0 and `initialize` writes **-1**, which are opposite
+ * answers — 0 yields the empty string, -1 yields the rest of the string — and the runtime uses
+ * -1, because `registerInput` writes a declared default into `_inputValues` without calling the
+ * setter (`node.ts:137-139`) and the getter reads `_internal.endIndex`. So an author who never
+ * opened the panel has a node whose *panel says 0* and whose *answer is the whole string*, and
+ * the export has to agree with the answer. Registered as DEF-018.
+ *
+ * ⚠️ `clamp` and `inputValue` are the editor-constrained pair on `Number Remapper`
+ * (`allowEditOnly` and `allowConnectionOnly`), and neither constraint earns a deferral the way
+ * the date family's enums do: that gate exists because `addToDate` **throws** on a unit it does
+ * not know. Nothing here throws — `clamp`'s setter is `value ? true : false` and the arithmetic
+ * coerces — so a wire on either is translated rather than refused.
+ */
+const UTIL_NODES: Record<
+  string,
+  {
+    fn: UtilHelper;
+    args: Array<{ port: string; fallback?: string | number | boolean }>;
+    outputs: string[];
+    /** `String Mapper` only — the numbered families, in `input`/`mapping` order. */
+    numbered?: { match: string; to: string };
+  }
+> = {
+  Substring: {
+    fn: 'substring',
+    args: [{ port: 'string', fallback: '' }, { port: 'start', fallback: 0 }, { port: 'end', fallback: -1 }],
+    outputs: ['result']
+  },
+  'Number Remapper': {
+    fn: 'remapNumber',
+    args: [
+      { port: 'inputValue', fallback: 0 },
+      { port: 'minInputValue', fallback: 0 },
+      { port: 'maxInputValue', fallback: 1 },
+      { port: 'minOutputValue', fallback: 0 },
+      { port: 'maxOutputValue', fallback: 1 },
+      { port: 'clamp', fallback: true }
+    ],
+    outputs: ['remappedValue']
+  },
+  'String Mapper': {
+    fn: 'mapString',
+    // No fallback on either: an unset Input String matches nothing and an unset Default *is*
+    // the undefined the node publishes, so both are the empty argument rather than a literal.
+    args: [{ port: 'inputString' }, { port: 'defaultMapping' }],
+    outputs: ['mappedString'],
+    numbered: { match: 'input', to: 'output' }
   }
 };
 
@@ -623,6 +682,35 @@ export type ValueExpr =
       kind: 'date-call';
       fn: DateHelper;
       args: ValueExpr[];
+    }
+  /**
+   * One of the three small **pure** utilities (EXP-011 Tier 2.7) — `Substring`,
+   * `Number Remapper`, `String Mapper`.
+   *
+   * Structurally `date-call`'s twin: a node that is a function of its inputs and holds nothing
+   * else becomes one call into an emitted library, `args` in the helper's parameter order, and
+   * the calls compose. Every clause in this package that walks a `date-call`'s arguments walks
+   * this one's for the same reason, which is why the two are handled together at each of them
+   * rather than by a second copy of each walker.
+   *
+   * They are a separate kind rather than a widened `DateHelper` because the two libraries are
+   * separate modules in the emitted app: a project that formats a date should not ship the
+   * string utilities, and the import lines are earned per helper.
+   *
+   * ⚠️ **`cases` is `mapString`'s table and prints between `args[0]` and `args[1]`.** The two
+   * numbered-input families are index-aligned lists in the interpreter — `inputs[n]` matched by
+   * `indexOf`, `mappings[n]` read off the index it found — and an object literal reproduces that
+   * exactly once two things are true of how it is built: **first-wins on a repeated Input**,
+   * because `indexOf` finds the first and an object literal keeps the last; and a **present key
+   * with an `undefined` value** for an Input whose Mapping was never filled in, because that
+   * publishes empty rather than falling through to Default. Both are done where the table is
+   * built, and the helper's `hasOwnProperty` is the second half of the second one.
+   */
+  | {
+      kind: 'util-call';
+      fn: UtilHelper;
+      args: ValueExpr[];
+      cases?: Array<{ from: string; to: string | undefined }>;
     };
 
 export type HandlerAction =
@@ -4080,6 +4168,158 @@ function planComponent(
     return { kind: 'date-call', fn: spec.fn, args };
   };
 
+  /**
+   * One of the three small pure utilities read as a value (EXP-011 Tier 2.7).
+   *
+   * `dateReadExpr`'s shape one family over, and the differences are the interesting part:
+   *
+   * - **An argument with no fallback is the `undefined` expression, not a deferral.** Only
+   *   `String Mapper`'s two ordinary ports have none, and for both of them unset *is* the answer
+   *   the interpreter publishes — an unset Input String matches nothing and an unset Default is
+   *   the empty result the node hands out. Refusing there would refuse a node that works.
+   * - **No enum gate.** Nothing in this family throws on an unexpected value, so there is no
+   *   input a wire has to be kept off.
+   * - **`String Mapper`'s table is read off the parameters**, not off `args`, because the two
+   *   numbered families are a dynamic port set rather than a fixed one.
+   */
+  const utilReadExpr = (
+    node: NodeIR,
+    fromProperty: string,
+    spec: (typeof UTIL_NODES)[string],
+    ctx: ResolveCtx
+  ): ValueExpr | null => {
+    if (!spec.outputs.includes(fromProperty)) {
+      ctx.defer = `its ${fromProperty} output is not a port this slice reads`;
+      return null;
+    }
+    if (ctx.visited.has(node.id)) {
+      ctx.defer = 'a wire cycle through logic nodes';
+      return null;
+    }
+    ctx.visited.add(node.id);
+
+    const args: ValueExpr[] = [];
+    for (const arg of spec.args) {
+      const wires = component.connections.filter((c) => c.toId === node.id && c.toProperty === arg.port);
+      if (wires.length > 1) {
+        ctx.defer = `two wires feed its ${arg.port} input — last-writer-wins is not statically ordered`;
+        return null;
+      }
+      if (wires.length === 1) {
+        const expr = resolveExpr(nodeById.get(wires[0].fromId), wires[0].fromProperty, ctx);
+        if (expr === null) {
+          if (ctx.defer === undefined) ctx.defer = `its ${arg.port} input has no statically known source`;
+          return null;
+        }
+        /**
+         * 🔴 The one divergence in this family, reported where the emptiness enters the graph.
+         *
+         * `Substring`'s `string` setter is `value.toString()`, so an arriving `null` or
+         * `undefined` **throws** in the interpreter rather than yielding an empty result — the
+         * port's own description says as much. The helper answers `''` instead, on the date
+         * family's rule that an export whose failure mode is an uncaught exception in somebody's
+         * page is worse than one that says what it did. The other two ports coerce in both, so
+         * only this one is worth a line in the report.
+         */
+        if (node.type === 'Substring' && arg.port === 'string' && maybeUndefinedExpr(expr)) {
+          notes.push(
+            `node ${node.id} (Substring) reads String from a source that can be empty — the interpreter raises an error on an empty arrival rather than answering, and the exported call answers the empty string instead`
+          );
+        }
+        ctx.consumes.push(wires[0].key);
+        args.push(expr);
+        continue;
+      }
+      // Unwired: the panel's value, or what `initialize` wrote when the author never opened it.
+      const literal = literalParam(node, arg.port);
+      if (literal !== undefined) {
+        args.push({ kind: 'literal', value: literal });
+        continue;
+      }
+      args.push(arg.fallback === undefined ? { kind: 'undefined' } : { kind: 'literal', value: arg.fallback });
+    }
+
+    let cases: Array<{ from: string; to: string | undefined }> | undefined;
+    if (spec.numbered !== undefined) {
+      const table = numberedMappingOf(node, spec.numbered, ctx);
+      if (table === null) return null;
+      cases = table;
+    }
+
+    ctx.logicNodeIds.push(node.id);
+    return { kind: 'util-call', fn: spec.fn, args, ...(cases !== undefined ? { cases } : {}) };
+  };
+
+  /**
+   * `String Mapper`'s two numbered-input families, read off the node as the table they are.
+   *
+   * The port names are `input 0`, `input 1`, … and `output 0`, `output 1`, … — **with a space**,
+   * which is `registerNumberedInput`'s `inputName.slice(name.length + 1)` read backwards
+   * (`nodedefinition.ts:145`) and not a guess. The two are paired **by index**, which is what
+   * makes a hole meaningful: an author who fills in `input 0` and `input 2` leaves a sparse array
+   * behind, `indexOf` skips holes, and only the two present pairs can ever match.
+   *
+   * 🔴 **A wired numbered port defers the node**, and the reason is the table rather than the
+   * wire. A wire can deliver any string at any time, so the pairs stop being knowable at
+   * generation time — and an emitted object literal with a computed key would quietly change
+   * which entry wins when two of them collide. The overwhelmingly common shape is an authored
+   * table, and that one translates.
+   *
+   * ⚠️ **First wins.** `indexOf` finds the earliest matching Input; an object literal keeps the
+   * *last* value written for a repeated key. So a repeat is dropped here rather than emitted,
+   * and the node's answer is preserved.
+   */
+  const numberedMappingOf = (
+    node: NodeIR,
+    numbered: { match: string; to: string },
+    ctx: ResolveCtx
+  ): Array<{ from: string; to: string | undefined }> | null => {
+    const indexOfPort = (name: string, base: string): number | null => {
+      if (!name.startsWith(base + ' ')) return null;
+      const index = Number(name.slice(base.length + 1));
+      return Number.isInteger(index) && index >= 0 ? index : null;
+    };
+    for (const c of component.connections) {
+      if (c.toId !== node.id) continue;
+      if (indexOfPort(c.toProperty, numbered.match) !== null || indexOfPort(c.toProperty, numbered.to) !== null) {
+        ctx.defer = `a wire feeds its ${c.toProperty} port — the mapping table is read at generation time, and a wired entry is not knowable until the app runs`;
+        return null;
+      }
+    }
+
+    const matches = new Map<number, string>();
+    const targets = new Map<number, string>();
+    for (const parameter of node.parameters) {
+      if (parameter.value.kind !== 'literal') continue;
+      const matchIndex = indexOfPort(parameter.name, numbered.match);
+      if (matchIndex !== null) {
+        // `value === undefined ? '' : value.toString()`, the numbered setter verbatim.
+        matches.set(matchIndex, String(parameter.value.value));
+        continue;
+      }
+      const targetIndex = indexOfPort(parameter.name, numbered.to);
+      if (targetIndex !== null) targets.set(targetIndex, String(parameter.value.value));
+    }
+
+    const cases: Array<{ from: string; to: string | undefined }> = [];
+    const seen = new Set<string>();
+    for (const index of [...matches.keys()].sort((a, b) => a - b)) {
+      const from = matches.get(index)!;
+      if (seen.has(from)) continue; // first wins, as `indexOf` does
+      seen.add(from);
+      // A present key with no value: the Input matched, `mappings[idx]` is a hole, and the node
+      // publishes empty rather than falling through to Default. `hasOwnProperty` in the helper
+      // is the other half of this.
+      cases.push({ from, to: targets.get(index) });
+    }
+    if (cases.length === 0) {
+      notes.push(
+        `node ${node.id} (String Mapper) has no Input/Mapping pairs filled in, so it answers its Default for every input`
+      );
+    }
+    return cases;
+  };
+
   const resolveExpr = (fromNode: NodeIR | undefined, fromProperty: string, ctx: ResolveCtx): ValueExpr | null => {
     if (!fromNode) return null;
     if (LIST_PRODUCERS.has(fromNode.type) && fromProperty === 'items') return listReadOf(fromNode, ctx);
@@ -4405,6 +4645,11 @@ function planComponent(
       const spec = DATE_NODES[fromNode.type];
       if (spec !== undefined) return dateReadExpr(fromNode, fromProperty, spec, ctx);
     }
+    // The three small pure utilities (EXP-011 Tier 2.7) — the same, one library over.
+    {
+      const spec = UTIL_NODES[fromNode.type];
+      if (spec !== undefined) return utilReadExpr(fromNode, fromProperty, spec, ctx);
+    }
     // The `User` node's session reads (USER-FAMILY-TARGET §4c). Not an action: the runtime's
     // outputs are getters over `UserService`, re-read on four session events, so the faithful
     // translation is a read of the session and not a stored value.
@@ -4535,6 +4780,13 @@ function planComponent(
        */
       case 'date-call':
         return true;
+      /**
+       * Per helper, from the table the emitted library declares (EXP-011 Tier 2.7) — and it is
+       * `mapString` alone. `substring` always answers a string and `remapNumber` always answers a
+       * number, `NaN` included, which is the same number the interpreter publishes.
+       */
+      case 'util-call':
+        return UTIL_HELPER_MAY_BE_UNDEFINED[expr.fn];
       /**
        * Never — alone in the date family. `initialize` reads the clock when the node is created,
        * so the outputs are never empty before the first Read, and the emitted row is seeded at
@@ -4812,6 +5064,15 @@ function planComponent(
        */
       case 'date-call':
         return 'unknown';
+      /**
+       * `string` for the two that always answer one, `number` for the remapper (EXP-011 Tier
+       * 2.7). `mapString` is the exception and it is `unknown` for `dateToString`'s reason: it
+       * is **undefined when nothing matched and no Default was authored**, so folding it into a
+       * bare expression at a single-placeholder String Format would print the word "undefined"
+       * where the interpreter substitutes `''`.
+       */
+      case 'util-call':
+        return expr.fn === 'remapNumber' ? 'number' : expr.fn === 'substring' ? 'string' : 'unknown';
       /**
        * The instant is a `Date`, and `Date` is not a type this vocabulary's sinks fold — the two
        * derived reads are the ones with ordinary types.
@@ -6839,6 +7100,10 @@ function planComponent(
        */
       case 'date-call':
         return expr.args.every((a) => exprValidIn(a, context, invokedScope));
+      // The same, one library over (EXP-011 Tier 2.7): a pure call is valid wherever its
+      // arguments are, and `cases` is authored text that is valid everywhere.
+      case 'util-call':
+        return expr.args.every((a) => exprValidIn(a, context, invokedScope));
     }
   };
 
@@ -7481,6 +7746,7 @@ function planComponent(
        * because the emitted code is well-formed and merely wrong by one chain step.
        */
       case 'date-call':
+      case 'util-call':
         return e.args.some((a) => exprTouchesSnap(a, snap));
       default:
         return false;
@@ -7539,7 +7805,8 @@ function planComponent(
        * fresh object per site — no shared argument record — so the substitution lands, unlike
        * `jsfun-out`'s, which has to gate instead.
        */
-      case 'date-call': {
+      case 'date-call':
+      case 'util-call': {
         const args: ValueExpr[] = [];
         for (const a of expr.args) {
           const r = snapExpr(a, snap);
@@ -8404,7 +8671,11 @@ function planComponent(
     And: ['result'],
     Or: ['result'],
     Inverter: ['result'],
-    Condition: ['result', 'isfalse']
+    Condition: ['result', 'isfalse'],
+    // EXP-011 Tier 2.7, and this is the **first** of the two opt-in sites the predicate below
+    // warns about. Derived from `UTIL_NODES` rather than restated, so a fourth utility cannot be
+    // taught to `resolveExpr` and left invisible here.
+    ...Object.fromEntries(Object.entries(UTIL_NODES).map(([type, spec]) => [type, spec.outputs]))
   };
   for (const connection of component.connections) {
     if (consumed.has(connection.key)) continue;
@@ -8612,6 +8883,21 @@ function planComponent(
       DATE_NODES[fromNode.type] !== undefined &&
       DATE_NODES[fromNode.type].outputs[connection.fromProperty] !== undefined;
     const isNowRead = fromNode.type === NOW_TYPE && NOW_OUTPUTS[connection.fromProperty] !== undefined;
+    /**
+     * 🔴 **The three small utilities (EXP-011 Tier 2.7) are deliberately NOT here, and the
+     * paragraph above is why that is not an oversight.** They were added here first, on that
+     * warning, and a mutant proved the clause dead: removing it alone changed nothing, removing
+     * Pass 4c's whitelist alone changed nothing, and removing **both** killed twelve rows. The
+     * two are an OR for this family and Pass 4c strictly dominates — it runs first, it consumes
+     * every wire it matches, and this pass skips a consumed wire, so no read of theirs can reach
+     * this line.
+     *
+     * The warning still holds for the family it was written about. A node that needs a **state
+     * row** — `Now`, `HTTP Request`, an `Error` output — is not in Pass 4c's whitelist at all,
+     * so this predicate is its only way in. What decides which of the two sites a new node needs
+     * is whether its read is a pure expression or a row, and that is worth measuring rather than
+     * adding it to both and shipping a branch nothing can execute.
+     */
     /**
      * `External Link`'s `Error` into a rendered sink (EXP-011 §14) — the message in a Text
      * beside the button, which is the whole point of the port.
@@ -9142,7 +9428,14 @@ function planComponent(
    * sink-shaped reason for them would blame the sink for a refusal the source made.
    */
   for (const node of component.nodes) {
-    const isDateNode = DATE_NODES[node.type] !== undefined || node.type === NOW_TYPE;
+    /**
+     * ⚠️ The three small utilities (EXP-011 Tier 2.7) ride this sweep rather than getting a
+     * second copy of it: they are pure value nodes with no trigger port, which is the exact
+     * shape the loop below already handles — every reason they can produce comes out of
+     * `resolveExpr`, and Pass 4f leaves the wire unconsumed when one does.
+     */
+    const isDateNode =
+      DATE_NODES[node.type] !== undefined || node.type === NOW_TYPE || UTIL_NODES[node.type] !== undefined;
     if (!isDateNode || dispositions[node.id] !== undefined) continue;
     let verdict: string | null = null;
     for (const c of component.connections) {

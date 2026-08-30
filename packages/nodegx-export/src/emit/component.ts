@@ -32,6 +32,7 @@ import { ExportIR, ITEM_OUTPUT_SIGNAL, NodeIR } from '../ir/types';
 import { KitBinding, tsTypeOf as kitPortTsType } from './kits';
 import { assignClassNames, ClassCandidate, partitionMergeGroup, pascalCase, propIdentifier, propIdentifiers } from './naming';
 import { tsLiteral } from './state';
+import { UTIL_HELPER_MAY_BE_UNDEFINED, UTIL_LIB_PATH } from './utilLib';
 import { computeNodeStyle, computeRoleCss, CONTENT_ATTR_ORDER, CONTENT_PARAMS, Decl, iconSourceOf, RoleCss, StyleRole } from './style';
 
 const GENERATED_TS = '// @nodegx:generated (visual — provenance markers complete in EXP-007)\n';
@@ -105,6 +106,8 @@ export interface EmittedComponent {
    * module exists exactly when something names it.
    */
   dateHelpers: Set<string>;
+  /** The same, for `src/lib/util.ts` (EXP-011 Tier 2.7) — same rationale, same filling walkers. */
+  utilHelpers: Set<string>;
 }
 
 export function emitComponent(
@@ -264,6 +267,7 @@ export function emitComponent(
   const usedCollectionNames = new Set<string>();
   /** Which `src/lib/date.ts` helpers this component calls — the import list (EXP-011 Tier 1.3). */
   const usedDateHelpers = new Set<string>();
+  const usedUtilHelpers = new Set<string>();
   // Re-host wrappers (EXP-003 §4): only definitions that surviving expressions/actions
   // reference print — the plan registers every resolved definition, referenced or not.
   const jsFunByNode = plan.jsFunctions;
@@ -309,6 +313,12 @@ export function emitComponent(
      */
     if (expr.kind === 'date-call') {
       usedDateHelpers.add(expr.fn);
+      expr.args.forEach(collectExprUse);
+    }
+    // EXP-011 Tier 2.7, the same clause one library over. `cases` is authored text and earns
+    // nothing; only the arguments read anything.
+    if (expr.kind === 'util-call') {
+      usedUtilHelpers.add(expr.fn);
       expr.args.forEach(collectExprUse);
     }
     // A read through the row earns that row; the chain-local form names a local the enclosing
@@ -545,6 +555,10 @@ export function emitComponent(
     // read is *always* the row form, since the local exists only inside the Read chain.
     if (expr.kind === 'date-call') {
       usedDateHelpers.add(expr.fn);
+      expr.args.forEach(hookExprSources);
+    }
+    if (expr.kind === 'util-call') {
+      usedUtilHelpers.add(expr.fn);
       expr.args.forEach(hookExprSources);
     }
     if (expr.kind === 'now-out' && expr.viaState !== undefined) referencedStateNames.add(expr.viaState);
@@ -963,6 +977,10 @@ export function emitComponent(
       // its first format. Must agree with plan.ts maybeUndefinedExpr (EXP-011 Tier 1.3).
       case 'date-call':
         return true;
+      // Per helper, off the emitted library's own table (EXP-011 Tier 2.7). Must agree with
+      // plan.ts maybeUndefinedExpr, which reads the same table.
+      case 'util-call':
+        return UTIL_HELPER_MAY_BE_UNDEFINED[expr.fn];
       // Never: the row is seeded at mount by a lazy initializer and every write is a fresh Date,
       // which is what lets `now.getTime()` print without a guard.
       case 'now-out':
@@ -1174,6 +1192,22 @@ export function emitComponent(
        */
       case 'date-call':
         return `${expr.fn}(${expr.args.map((a) => exprCode(a, mode)).join(', ')})`;
+      /**
+       * One of the three small utilities (EXP-011 Tier 2.7) — the node *is* the call, printed
+       * the same way in both modes.
+       *
+       * ⚠️ `cases` prints **between the first and second argument**, which is `mapString`'s
+       * signature and nothing more general: the table is the second parameter there, and the
+       * planner is the only place that knows a table exists at all.
+       */
+      case 'util-call': {
+        const printed = expr.args.map((a) => exprCode(a, mode));
+        if (expr.cases !== undefined) {
+          const entries = expr.cases.map((c) => `${tsLiteral(c.from)}: ${c.to === undefined ? 'undefined' : tsLiteral(c.to)}`);
+          printed.splice(1, 0, `{ ${entries.join(', ')} }`);
+        }
+        return `${expr.fn}(${printed.join(', ')})`;
+      }
       // One `const session = useSession()` per component, read the same way in both modes — the
       // hook is a render local and a handler closes over it (USER-FAMILY §4c).
       case 'session-get':
@@ -1366,6 +1400,7 @@ export function emitComponent(
           if (e.viaState !== undefined) add(e.viaState);
           break;
         case 'date-call':
+        case 'util-call':
           e.args.forEach(walk);
           break;
         case 'jsfun-out': {
@@ -1453,7 +1488,7 @@ export function emitComponent(
   function chainReadsNowLocal(actions: HandlerAction[], nodeId: string): boolean {
     const reads = (e: ValueExpr): boolean => {
       if (e.kind === 'now-out') return e.nodeId === nodeId && e.viaState === undefined;
-      if (e.kind === 'date-call') return e.args.some(reads);
+      if (e.kind === 'date-call' || e.kind === 'util-call') return e.args.some(reads);
       if (e.kind === 'format') return e.parts.some((p) => typeof p !== 'string' && reads(p));
       if (e.kind === 'logical') return e.operands.some(reads);
       if (e.kind === 'not' || e.kind === 'truthy') return reads(e.operand);
@@ -2408,6 +2443,11 @@ export function emitComponent(
   if (usedDateHelpers.size > 0) {
     const specifier = `${relRoot}/lib/date`;
     internalImports.set(specifier, `import { ${[...usedDateHelpers].sort().join(', ')} } from '${specifier}';`);
+  }
+  /** EXP-011 Tier 2.7 — the same clause for `src/lib/util.ts`, derived from its declared path. */
+  if (usedUtilHelpers.size > 0) {
+    const specifier = `${relRoot}/${UTIL_LIB_PATH.replace(/^src\//, '').replace(/\.ts$/, '')}`;
+    internalImports.set(specifier, `import { ${[...usedUtilHelpers].sort().join(', ')} } from '${specifier}';`);
   }
   if (usedVariableNames.size > 0) {
     const specifier = `${relRoot}/stores/variables`;
@@ -4117,6 +4157,9 @@ export function emitComponent(
     // Without this the emitted `useSignal` callback takes no argument and the call inside it
     // reads a `payload` nothing bound.
     (e.kind === 'date-call' && e.args.some(containsPayload)) ||
+    // EXP-011 Tier 2.7 — the same, and missing it emits a `useSignal` callback that takes no
+    // argument around a call reading a `payload` nothing bound.
+    (e.kind === 'util-call' && e.args.some(containsPayload)) ||
     (e.kind === 'jsfun-out' && jsArgExprs(e.nodeId).some(containsPayload));
   for (const receiver of plan.receivers) {
     const channel = channelByName.get(receiver.channelName)!;
@@ -4165,7 +4208,7 @@ export function emitComponent(
     files[`${baseDir}/${plan.file.fileBase}.module.css`] = GENERATED_CSS + '\n' + cssBlocks.join('\n\n') + '\n';
   }
 
-  return { files, notes, dateHelpers: usedDateHelpers };
+  return { files, notes, dateHelpers: usedDateHelpers, utilHelpers: usedUtilHelpers };
 }
 
 /** Pre-order walk of the render tree, root first — CSS class order and naming order. */
