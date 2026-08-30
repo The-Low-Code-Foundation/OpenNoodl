@@ -12,7 +12,7 @@ derivation and [README.md](README.md) for why the phase exists.
 | DEF-002 | ✅ done | [The door does not check connections](DEF-002-THE-DOOR-DOES-NOT-CHECK-CONNECTIONS.md) | P77 D1, D10 · P78 D1 | every **agent-authored app** |
 | DEF-003 | ✅ done | [Three authoring acts with no honest surface](DEF-003-THREE-AUTHORING-ACTS-WITH-NO-SURFACE.md) | P77 D8 = P76 F15 · P77 D7 · P76 F16 | every **author** |
 | DEF-004 | ✅ done | [When it goes wrong you cannot see where](DEF-004-WHEN-IT-GOES-WRONG-YOU-CANNOT-SEE-WHERE.md) | P77 D2, D3 | anyone **debugging** |
-| DEF-005 | 🔒 ruling | [Membership is a category the graph cannot express](DEF-005-MEMBERSHIP-IS-UNEXPRESSIBLE.md) | P78 D2, D3 | every **membership app** |
+| DEF-005 | ⬜ **RULED s23, unbuilt** | [Membership is a category the graph cannot express](DEF-005-MEMBERSHIP-IS-UNEXPRESSIBLE.md) | P78 D2, D3 | every **membership app** |
 | DEF-006 | ✅ done | [The design system punishes the agent that uses it](DEF-006-THE-DESIGN-SYSTEM-PUNISHES-ITS-USER.md) | P78 D12, D15, **D20** | every **agent** styling on-system |
 | DEF-007 | 🟡 partial | [A project means one thing on disk and another once loaded](DEF-007-DISK-AND-LOAD-DISAGREE.md) — **§6 seam named, §6.1 AC3 measured (56), §3.3 struck** | P78 D9 residual · P77 D5 · **P77 D11** | the **next template** |
 | DEF-008 | ✅ done | [The measurement owed](DEF-008-THE-MEASUREMENT-OWED.md) — **driven s13: D6 does not reproduce; `maxWidth` applies on `Text` in every authored form; the one route to `none` (instance-authored) is blocked at the door. DEF-001's rendered-button inch closed at 5.17:1 in the same render** | P77 D6 · P78 D5 | nobody yet — a re-drive |
@@ -33,7 +33,7 @@ them; **read the linked file, not a summary of it.**
 | DEF-010 | ✅ done | [SB-009 — a component named in a **parameter** is not checked](../phase-76-the-site-builder/SB-009-A-COMPONENT-NAMED-IN-A-PARAMETER.md) — **all 5 ACs s14 (`44298914`); `component-parameter-unresolved` PROMOTED on the sweep (178 projects, 614 params, 15 hits all legacy-true); cross-runtime reuses `wrong-runtime-node`** | P76 F1 | every agent-authored app; **13 `component`-typed ports, 1 has an owner** |
 | DEF-011 | ✅ done | [SB-010 — the door does not derive a JS node's script ports](../phase-76-the-site-builder/SB-010-THE-SCRIPT-PORTS-THE-DOOR-DOES-NOT-WRITE.md) — **s14 (`e6f26ffa`): re-driven pre-fix, then `withAuthoredScriptPorts` at both assembly seams; templates regenerated; the 30s-504 tense had aged (SBR-017's export backstop) — the standing cost was every consumer of `nodes.json`** | P76 F10 | **every cloud component any agent authors** — dead signal outputs, a 30s 504 |
 | DEF-012 | ✅ done | [SB-011 — a query widens when it cannot narrow](../phase-76-the-site-builder/SB-011-A-QUERY-THAT-WIDENS-WHEN-IT-CANNOT-NARROW.md) — **§1 CLOSED s15 (2026-08-30): a failed translation fails the node (Query Records + Aggregate), `schemaFor` reads the built-in `columns` shape, a first-write Pointer column keeps its `targetClass`; SB-004 §7's pinned arm inverted; 3 mutants killed. §2 (fetch-before-parameters) CLOSED s22 (2026-08-30): the runtime cannot distinguish *not yet arrived* from *deliberately absent* (`dropUnresolvedConnected`), so the fix is the door precondition s15's finding named — `query-fetches-before-its-filter` (`queryBeforeFilter.ts`, advisory, both doors): cloud `DbCollection2`, connected filter param with a real `qp-` wire, either run-on-change box not `false`. Corpus (`calibrate:query-timing`, 178 projects): 625 queries, 325 wired-filter, 59 cloud firings in 12 projects all legacy-true (one is `fetched → response.send` — the caller receives every row), 34 already carrying SB-004's workaround silent, 180 browser left alone by decision. 11 specs, 7/7 mutants killed. See SB-011 §5 + TASKS.md s22** | P76 F12/F13 | a cloud query returns **every row** when asked for a few |
-| DEF-013 | 🔒 ruling | [SB-012 — three spellings of a component name](../phase-76-the-site-builder/SB-012-THREE-SPELLINGS-OF-A-COMPONENT-NAME.md) | P76 s6 | **an app whose pages link to each other cannot be authored in one pass** |
+| DEF-013 | ⬜ **RULED s23 — re-drive first** | [SB-012 — three spellings of a component name](../phase-76-the-site-builder/SB-012-THREE-SPELLINGS-OF-A-COMPONENT-NAME.md) | P76 s6 | **an app whose pages link to each other cannot be authored in one pass** |
 
 ⚠️ **DEF-010, DEF-011 and DEF-013 are the same door as
 [DEF-002](DEF-002-THE-DOOR-DOES-NOT-CHECK-CONNECTIONS.md)** — `noodl-mcp/src/validate.ts` and its
@@ -94,6 +94,37 @@ and not a gap: **eleven rows, eight carried, three placed elsewhere.**
 doing nothing and saying nothing*; DEF-022 and DEF-023 are both *a cloud function's model of its own
 world*. They are filed one-per-row because a wrong merge is expensive to unpick and a right one is
 cheap to make later — and because nobody has yet read the two pairs against each other at the source.
+
+## Carried forward from phase 77, by reference — **registered s23 (2026-08-30)**
+
+🔴 **Five product-side rows in phase 77's register had no owner and no task, and four of them
+predate this phase.** Found by a sweep of every `NONE`-owned row in both registers against this
+table, run at Richard's instruction on 2026-08-30. **D15's own entry in the sweep that created
+phase 80 says *"it needs a task"* — it never got one**, which is this phase's founding failure
+with a different row number.
+
+⚠️ **Same rule as the other two carries: NOT re-authored here.**
+[Phase 77's register](../phase-77-the-site-builder-rescue/DEFECTS-THE-SITE-BUILDER-FOUND.md)
+holds the measurements, the sabotages and the controls. **Read it, not this table.** Ids checked
+free repo-wide before use.
+
+| id | status | source | what it is | bites |
+|---|---|---|---|---|
+| DEF-028 | ⬜ open | **P77 [D13](../phase-77-the-site-builder-rescue/DEFECTS-THE-SITE-BUILDER-FOUND.md#d13)** | **What a build contains depends on when it was taken, not on what the project says.** The export health filter races the viewer's dynamic-port announcement. ⚠️ SBR-008's ruled fix removed the `prop-` family from the filter's reach and **left the filter unchanged** — every other dynamic-port family is still exposed. 🔴 Do not read SBR-008's green specs as evidence: they call `setup()` and read what it announces; the debounced pass is not in them | every **author who exports or deploys** — two builds of one project, different contents, no error |
+| DEF-029 | ⬜ open | **P77 [D15](../phase-77-the-site-builder-rescue/DEFECTS-THE-SITE-BUILDER-FOUND.md#d15)** | **The runtime has no file-drop capability at all**, so "drop a file here" is not authorable. Measured with a known-firing control: `onDrop`/`dataTransfer`/`dragover`/`dragenter`/`DragEvent` = **0** against a **39**-hit `onClick` control over the same two packages. A missing capability, not a missing wire | every **builder who wants a drop target** — and SBR-007 AC3 as literally written |
+| DEF-030 | ⬜ open | **P77 [D16](../phase-77-the-site-builder-rescue/DEFECTS-THE-SITE-BUILDER-FOUND.md#d16)** | **The appearance ratchet's per-page check cannot fail** for any page that places a styled component — `barePages()` walks the transitive closure of placed components. 🔴 Sabotage at HEAD: `/Pages/PageEditor` reads *not bare* with **every one of its own structure parameters stripped**, and so does the `/Pages/Site` control | anyone who reads a **green §4 as "this screen is designed"** — a gate that cannot fail |
+| DEF-031 | ⬜ open | **P77 [D22](../phase-77-the-site-builder-rescue/DEFECTS-THE-SITE-BUILDER-FOUND.md#d22)** | **A `Text` cannot be ellipsized** — the runtime ships no `text-overflow` port. `textOverflow`/`text-overflow` = **0**; controls: `wordBreak` = 2 (a `Text` `inputCss` port that DOES exist), 11 files carrying `inputCss` (the mechanism a new port would use). D20 offered shrink-and-ellipsize, wrap, or accept; wrap shipped because ellipsize **is not authorable at all** | every **author who wants a single-line label** that degrades instead of wrapping |
+| DEF-032 | ⬜ open | **P77 [D32](../phase-77-the-site-builder-rescue/DEFECTS-THE-SITE-BUILDER-FOUND.md#d32)** | **The pass that grades the migration's writes examines one of sixty-five** — `gradeMountTriggered` opens with a `continue` and reaches **1.5%** of `plan.writes`. 🔴 It is the answer to *why D31 shipped past a suite that already knew about the migration*. ⚠️ Do **not** "fix" it by making the template state all 65 — that changes what the migration is for. **The gate is the gap** | the **team**, and through them every user of a template — a suite that reads as coverage and is not |
+
+🔴 **Two of the five are gate defects (DEF-030, DEF-032), and they are the ones that let the
+others ship.** A pass whose first line is a `continue` is not coverage until you have counted what
+it **reached** — the number that mattered in D32 was never the offender count, it was the `1`.
+
+⚠️ **D12 and D29 stay with phase 77 deliberately** — both are template-side (a double query on
+arrival; the site-builder's one-way confirmation/refusal latches), and this phase is graded on the
+product surface. **Seven rows found unowned, five carried, two placed elsewhere**, so the split is
+a decision on record and not a gap. **Phase 78's register is clean**: its only late `NONE` row,
+D38, is a harness finding already corrected in place, and D39 is ruled.
 
 ## Reds that belong to someone else, named so they stop reading as regressions
 
@@ -427,6 +458,20 @@ does not exist under `nodegx-backend/tests/`. It exists under `noodl-editor/test
 control — grepping the repo for a string that *is* there — is what separated "moved" from "gone".
 
 ## Rulings needed (Richard)
+
+# ✅ ALL RULED — 2026-08-30. See [RICHARD-RULINGS-2026-08-30.md](RICHARD-RULINGS-2026-08-30.md).
+
+🔴 **Captured, NOT built.** Every one of the five is the next session's work, and **two went
+AGAINST the recommendation put to Richard** — read the reasons, not just the verdicts.
+
+| row | ruling |
+|---|---|
+| **DEF-005** | **Build BOTH halves** — `roles` output on `User` + cloud `List Users In Role`. Cloud-only survives on the **writes**. AC3's negative control is what makes (a) safe |
+| **DEF-013** | **Re-drive SB-012 §1 at HEAD FIRST** — it may already stage clean. Option 2 (downgrade to a warning) **ruled out permanently** |
+| **DEF-009 AC4** | 🔴 **Against the recommendation**: default to `{ ratePerMinute: 60, burst: 30 }`, matching `auth`. Owes a corpus check over the 27 unlimited doors |
+| **DEF-025** | **Flip at creation, in BOTH doors** (palette + MCP). Blunt runtime flip stays ruled out — it stamps `'Label'` on every existing bare checkbox |
+| **DEF-007 §3.2** | **The template writes explicit values.** Sequenced behind phase 77's live lane on `site-builder.content.json` |
+| **the 5 orphans** | 🔴 **Against the offered alternative** of a fresh phase 81: **register all five here** as DEF-028–032 |
 
 - 🧭 **Does this phase exist, or do these fold into 0.2.1's bug-fix phase?** The tasks are written to
   survive either answer. What they must not do is stay inside a template phase — a template phase

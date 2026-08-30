@@ -66,10 +66,21 @@ by "what unblocks my template" when the objective is "what unblocks a builder".
 
 ## Closing note — s23, 2026-08-30
 
-**The phase is at the end of its *buildable* work, not closed.** Of 27 rows, **22 are done**;
-DEF-007/009/025 are partial with their remainders named, and DEF-005/013 are waiting on rulings
-that are Richard's to give. Nothing open is blocked on a session — which is a different statement
-from "there is nothing left", and the difference is the one this phase was created to keep.
+**⚠️ SUPERSEDED THE SAME DAY — see the update below.** As written this said: *"the phase is at
+the end of its buildable work"* — 27 rows, 22 done, five blocked on Richard.
+
+### Update, 2026-08-30 evening: **32 rows, and nothing is blocked**
+
+Richard **ruled all five** blocked rows in one pass
+([RICHARD-RULINGS-2026-08-30.md](RICHARD-RULINGS-2026-08-30.md)), and a sweep of every
+`NONE`-owned row in phases 77 and 78 against this table found **five more product-side rows with
+no home** — now DEF-028–032. **Four of the five predate this phase**, and **D15's entry in the
+very sweep that created phase 80 says *"it needs a task"*.** It never got one.
+
+🔴 **So the honest reading of "at the end of its buildable work" was: at the end of the rows
+somebody had already written down.** The phase was not near its end; it was near the end of its
+*visible* end. That is the same failure as the handoff below, one level up — and it is why the
+closing note now leads with a count derived by command rather than a judgement.
 
 ### The house rules, graded against the table rather than asserted
 
