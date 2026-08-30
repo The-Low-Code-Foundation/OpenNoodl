@@ -79,7 +79,7 @@ this register once already, and that is how one row gets worked twice and anothe
 | DEF-022 | ⬜ open | **P78 D34** | A cloud function cannot find out what the app's own public address is | **everyone an app ever emails a link to** |
 | DEF-023 | ✅ done | **P78 D35** | `Component` scope in a cloud function is **not** per-request, and nothing says so — **fixed s16 (`acd053e0`). 🔴 The recorded mechanism was the browser's: the cloud runtime never reaches `_componentScopes` — `noodl-js-api.js` overrode the scope to ONE module-level object, shared across all scripts, functions, requests and CONCURRENT requests. Now a WeakMap keyed on the component-owner INSTANCE (ids repeat across requests; instances do not): same-instance scripts still share (TPL-002's plan/pump contract), a new request starts clean, entries die with the request's graph — the leak half held by construction, not a spec** | every **graph that accumulates anything server-side** |
 | DEF-024 | ⬜ open | **P78 D36** | A `Condition` can only ever turn a gate **ON**, so a screen accumulates contradictory answers | every **screen whose answer has more than one form** |
-| DEF-025 | ⬜ open | **P78 D37** | A control's label is a click target only via the control's own `label` port — which **defaults OFF** | every **person tapping the words beside a checkbox** |
+| DEF-025 | 🟡 partial | **P78 D37** | A control's label is a click target only via the control's own `label` port — which **defaults OFF** — **door half built s17: `label-not-a-click-target` warns on a Checkbox/Radio Button whose words sit in an adjacent sibling Text (43 true firings / 186 toggles over the 178-project corpus, denominators printed; stays advisory — the corpus carries 43 legitimate legacy instances, the `raw-color-literal` precedent). Default-flip half 🧭 Richard — see the s17 section: a blunt flip stamps the literal string `'Label'` onto every existing bare checkbox** | every **person tapping the words beside a checkbox** |
 | DEF-026 | ✅ done | A cloud call to an unreachable backend reports nothing — **fixed s17: `CloudFunction2`'s error handler dereferenced `e.error` unconditionally, and a connection refusal hands it `undefined` (real Chrome probed at HEAD: `readyState 4, status 0, response ''` ⇒ `JSON.parse` throws ⇒ body `undefined`), so the ONE route to the `failure` outcome died on a TypeError inside the XHR callback. Handler now total; status 0 reports "Could not reach the backend at <endpoint>". Same hole filled in `Noodl.CloudFunctions.run` (rejected with `undefined`; JSON error bodies still pass through untouched)** | **anyone** whose backend is not running — the ordinary way this breaks |
 
 🔴 **Three of phase 78's eleven unowned rows are NOT here, deliberately: D22, D23 and D24 are
@@ -628,3 +628,57 @@ capable exactly as the drive said; nothing ever arrived.
 
 **Gates s17**: viewer-react **1091/1091** (s16's 1088 + exactly the 3 new arms), `tsc --noEmit`
 clean. `test:ci` not owed — no editor or noodl-runtime source moved.
+
+### DEF-025 — s17 (2026-08-30): the door half, and the ruling the default flip needs
+
+**Premises re-verified at HEAD before building** (`addLabelInputs`: `useLabel` defaults `false`;
+Button alone opts into `true`; `Checkbox.tsx`/`RadioButton.tsx` render `<label htmlFor>` only under
+`useLabel` — D37's reading holds unchanged).
+
+✅ **`label-not-a-click-target`** (`rules/labelNotAClickTarget.ts`, registered beside
+`repeatedSiblingSubtree`): fires on a Checkbox/Radio Button whose effective `useLabel` is off with
+an **immediate sibling** Text carrying words (authored or wired). 13 specs; 4 mutants, each killed
+by exactly its arm — ⚠️ the adjacency mutant **survived its first arm**: with the scan widened to
+all siblings, the heading-dismissal probe happened to land back on the control itself at the
+one-spacer distance and dismissed the hit; the arm now holds a two-spacer shape too.
+
+- **Scope is the TOGGLE pair deliberately, and the reason is written in the rule**: the design
+  system's own `field` composition puts a separate `fieldLabel` Text above `Text Input`/`Options`,
+  so including them fires on the doctrine's recommended shape. No catalog property carries "the
+  words are the tap surface" — the list is short, reasoned, and re-decidable.
+- **Corpus** (`npm run calibrate:labels`, 178 projects, 0 unreadable): **186 toggles — 29 own their
+  label, 47 sit beside a Text, 43 findings, every one read and true** (legacy form kits' `/Form/
+  Checkbox` + "LABEL", `Single Choice/Item` radios, one imported filter component across ten drive
+  fixtures). Warning stays advisory — 43 legitimate legacy instances is `raw-color-literal`'s
+  situation, not a promotion.
+- 🔴 **A rule promotion re-grades every corpus the rule reaches, again**: `catalog:examples`
+  (strict, warnings-as-errors) went **61/62** on `comp-repeater-set-item-object` — a task row
+  checkbox beside a wired title, the todo-row shape where tapping "Buy milk" does nothing. A true
+  positive in an exemplar; **the example now rides the title on the checkbox's own `label` port**
+  (`useLabel` on, `row_inputs.title → label`), 62/62, `catalog:merge` + `catalog:check` re-run
+  (noodl-types enriched catalog regenerated — not a docs-only change).
+- ✅ **A catalog-flip spec arm pins the DEF-006 lesson forward**: the rule reads the effective
+  default from the catalog, so the day the default flips, the rule falls silent on unset ports with
+  no second edit. (That arm is also what makes the authored-bag-only mutant killable at all —
+  both toggles default false today, so the clause was otherwise unobservable.)
+- **Templates**: site-builder's one toggle owns its label (read-only scan); members-area's account
+  checkbox was repaired in phase 78 s15 and is graded on the rendered DOM by
+  `tpl002-account-drive` §11.
+
+🧭 **The default-flip half needs Richard, and the honest options are three, not two**:
+1. **Flip `useLabel` to `true` on the toggles** — every existing project's bare checkbox suddenly
+   renders the literal string **"Label"** (the `label` port's default) beside it. A visible
+   regression on every unlabelled box in every project; not a candidate as stated.
+2. **Leave the default; the rule carries the correction** — what shipped this session.
+3. **Flip at CREATION, not at runtime**: the editor/door authors `useLabel: true` onto newly
+   placed toggles (the `STARTER`-params shape), so new work gets the right default and no existing
+   rendering moves. Needs a decision on where (palette drop, MCP door, both).
+
+**Gates s17 (DEF-025)**: editor jest **6409/6411** — the 2 reds are `sb-007/site-template`'s
+template-count arms, the peer's live phase-77 lane (their `ab17845d` moved the template after this
+session's DEF-026 commit; their own `10b26d57` names the suite as already red) · noodl-mcp
+**966/966** (validateOnDisk composes the rule) · `catalog:examples` 62/62 · `catalog:check` clean ·
+`typecheck:editor` + `:editor-tests` + `:mcp` clean · corpus false-positive gate asserts zero
+*errors*, warnings pass by design · `test:ci` **2905 specs / 4 failures, all AIX-006 BY NAME, seed
+90017, fresh readout** — the floor, and s15's 7 peer-template reds are gone (the peer committed
+their template work at `ab17845d`).

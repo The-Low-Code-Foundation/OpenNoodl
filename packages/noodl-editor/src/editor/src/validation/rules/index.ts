@@ -36,6 +36,7 @@ import { unwiredOutcome } from './unwiredOutcome';
 import { failureReachesNothing } from './failureReachesNothing';
 import { completedCommitsUnchecked } from './completedCommitsUnchecked';
 import { repeatedSiblingSubtree } from './repeatedSiblingSubtree';
+import { labelNotAClickTarget } from './labelNotAClickTarget';
 import { oversizedPage } from './oversizedPage';
 import { unlabelledNode } from './unlabelledNode';
 
@@ -81,6 +82,11 @@ export const ALL_RULES: Rule[] = [
   // so this covers a hole in it rather than repeating it.
   completedCommitsUnchecked,
   repeatedSiblingSubtree,
+  // DEF-025 — beside `repeatedSiblingSubtree` because both read the visual
+  // tree's arrangement rather than wires: that one asks whether siblings
+  // should have been one component, this one whether the Text sibling of a
+  // toggle control was meant to be the control's own label.
+  labelNotAClickTarget,
   oversizedPage,
   // LEG-002 — last, and deliberately: it is the only rule in the set that
   // reports a matter of legibility rather than of correctness, and a reader
@@ -105,6 +111,7 @@ export {
   unwiredOutcome,
   completedCommitsUnchecked,
   repeatedSiblingSubtree,
+  labelNotAClickTarget,
   oversizedPage,
   unlabelledNode
 };

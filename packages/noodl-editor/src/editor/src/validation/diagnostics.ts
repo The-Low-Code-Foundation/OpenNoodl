@@ -192,6 +192,30 @@ export enum DiagnosticCode {
    */
   RepeatedSiblingSubtree = 'repeated-sibling-subtree',
   /**
+   * DEF-025 (P78 D37) — the words beside a toggle control are a `Text` node,
+   * so tapping them does nothing.
+   *
+   * `Checkbox` and `Radio Button` render a `<label for>` — a real click
+   * target — only from their own `label` port, and `useLabel` defaults
+   * **off**. So the obvious way to build a labelled checkbox, a `Text` beside
+   * it in a row, produces a control whose sentence is inert and whose only hit
+   * area is the box itself: 24×24 px, exactly WCAG 2.2 SC 2.5.8's minimum and
+   * no more. Measured on the members-area account page (D37): the page's
+   * entire product was one decision, and on a phone the whole of it was a
+   * 24 px square. It fails silently — the graph looks right, the screen looks
+   * right, and no spec that asserts the text is on the page can see it.
+   *
+   * Deliberately the TOGGLE pair only, never `Text Input` or `Options`: their
+   * doctrinal shape is a separate `fieldLabel` Text above the control (the
+   * `field` composition), label-click there is a focus nicety rather than the
+   * primary interaction, and a rule that fires on the design system's own
+   * recommended pattern teaches an agent to distrust the whole diagnostic set.
+   *
+   * A warning, not authored-blocking: promotion is a decision that gets made
+   * against corpus evidence, per the `unsized-absolute-box` precedent.
+   */
+  LabelNotAClickTarget = 'label-not-a-click-target',
+  /**
    * LAS-003/F7 — a `position: absolute` box with neither `width` nor `height`,
    * carrying decoration (background, border, radius, shadow).
    *
