@@ -71,6 +71,38 @@ describe('DEF-009 — the public write door with no limit is named', () => {
     expect(found).toHaveLength(1);
   });
 
+  // ==========================================================================
+  // DEF-009 AC4 — the door still fires, and now says which of two things is true
+  // ==========================================================================
+
+  it('AC4 — an undeclared door is told the DEFAULT it is running on, with its numbers', () => {
+    const [found] = checkPublicWriteDoor(publicWriteGraph(), {
+      component: DOOR,
+      security: { submitContactForm: { call: 'public' } },
+      catalog: CATALOG
+    });
+    expect(found.message).toContain('60 requests a minute, burst 30');
+    // 🔴 The sentence this replaced. Left as an assertion rather than deleted:
+    // the class bucket is no longer "the only bound" and a door that says so
+    // again is a regression, not a rewording.
+    expect(found.message).not.toContain('600/min');
+    expect(found.message).not.toContain('only bound');
+  });
+
+  it('AC4 — a DELIBERATELY zeroed door is not told it is bounded at 60/min', () => {
+    // The two states that reach the warning are no longer the same state: this
+    // one has opted out of the default, so telling it the default applies would
+    // be the same class of untruth AC4 came back to correct.
+    const [found] = checkPublicWriteDoor(publicWriteGraph(), {
+      component: DOOR,
+      security: { submitContactForm: { call: 'public', rateLimit: { ratePerMinute: 0, burst: 0 } } },
+      catalog: CATALOG
+    });
+    expect(found.message).not.toContain('60 requests a minute');
+    expect(found.message).toContain('no limit at all');
+    expect(found.message).toContain('as fast as they can send requests');
+  });
+
   it('NEGATIVE — a public READ-ONLY function is silence', () => {
     const nodes = [
       { id: 'req', type: 'noodl.cloud.request', parameters: { allowNoAuth: true } },

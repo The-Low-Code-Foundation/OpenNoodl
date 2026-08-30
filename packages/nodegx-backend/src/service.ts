@@ -33,7 +33,7 @@ import { scanDeployedFunctions } from './workflow/functionDeclarations';
 import { WorkflowSubsystem } from './workflow/WorkflowSubsystem';
 import { SecurityState, SecurityStartupError } from './security/state';
 import { applyProjectPolicy, describeProjectPolicyOutcome } from './security/projectPolicy';
-import { functionTimeoutMs } from './security/model';
+import { functionRateLimitAnnouncement, functionTimeoutMs } from './security/model';
 import { SearchState, SearchStartupError } from './search/SearchState';
 import { SearchIndexer, SearchCapabilityError } from './search/SearchIndexer';
 import { ChangeBus } from './realtime/ChangeBus';
@@ -234,14 +234,28 @@ export class BackendService {
     //     fires after the port is open is not an interlock. The predicate is
     //     shared with the runner (`functionDeclarations.ts`) so the two cannot
     //     disagree about what an endpoint is.
+    const deployedFunctions = scanDeployedFunctions(path.join(this.options.dataDir, 'workflows'));
     this.security = new SecurityState({
       dataDir: this.options.dataDir,
       loopback: !requiresAuth(this.options),
       cliToken: this.options.authToken,
       readonlyToken: this.options.readonlyToken,
-      deployedFunctions: scanDeployedFunctions(path.join(this.options.dataDir, 'workflows')),
+      deployedFunctions,
       facade: this.facade
     });
+
+    // DEF-009 AC4. Deliberately OUTSIDE the non-loopback block above: those
+    // warnings are about how this service is exposed, and this one is about a
+    // budget that now applies wherever it runs. An operator whose payment or
+    // delivery webhook is a public writing function has to find that out here,
+    // from their own log at start-up, rather than from the provider's dashboard
+    // after the retries started coming back 429 — the corpus behind the ruling
+    // holds three such endpoints. `null` when nothing is affected, which is the
+    // ordinary case and prints nothing.
+    const rateLimitDefaultNotice = functionRateLimitAnnouncement(this.security.config, deployedFunctions);
+    if (rateLimitDefaultNotice) {
+      logger.info('ratelimit.public-write-default', { detail: rateLimitDefaultNotice });
+    }
     if (!this.security.config.devOpen && this.persistence.status.ephemeral) {
       // The in-memory mock cannot evaluate ACL predicates; enforcing on top of
       // it would be silent non-enforcement. Refuse rather than pretend.

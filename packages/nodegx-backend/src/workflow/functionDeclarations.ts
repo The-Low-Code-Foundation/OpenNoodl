@@ -48,6 +48,15 @@ export interface FunctionDeclaration {
    * whole of SB-016; see the task file's §3.
    */
   allowNoAuth: boolean;
+  /**
+   * DEF-009 AC4: does the endpoint's own graph write records?
+   *
+   * Read here rather than beside the limiter because this is the one place that
+   * already opens the bundle, and because the deploy interlock and the request
+   * dispatcher have to agree about which endpoints the public-write default
+   * applies to.
+   */
+  writesRecords: boolean;
 }
 
 /** A component as it appears inside an exported workflow bundle. */
@@ -82,6 +91,52 @@ export function requestNodeAllowsNoAuth(requestNode: Record<string, unknown> | n
 }
 
 /**
+ * DEF-009 AC4 — the node types that create, change or delete records.
+ *
+ * 🔴 **A second copy of a list drifts silently.** The authoring door keeps the
+ * same list in `noodl-editor/src/editor/src/validation/publicWriteDoor.ts`, and
+ * the two live in packages with no import between them — the editor cannot
+ * depend on the backend and the backend must not depend on the editor. So they
+ * are held equal by a spec that reads the other file
+ * (`def009-public-write-default.test.ts`) rather than by hope: the door WARNS
+ * about exactly the population this default LIMITS, and a type renamed on one
+ * side would otherwise quietly narrow one of them.
+ *
+ * Wider than port derivation's list and narrower than DEF-004's `COMMIT_PORTS`,
+ * for the reason the door states: `response.send` is an answer, not a row, and a
+ * public door that can DELETE rows unmetered is the same standing invitation as
+ * one that inserts them.
+ */
+export const RECORD_WRITE_NODE_TYPES: readonly string[] = [
+  'NewDbModelProperties',
+  'SetDbModelProperties',
+  'DeleteDbModelProperties',
+  'AddDbModelRelation',
+  'RemoveDbModelRelation'
+];
+
+/**
+ * Does this node tree create, change or delete a record?
+ *
+ * Recursive for `findRequestNode`'s reason: the export nests children rather
+ * than flattening them, and a write inside a Group is still the graph's write.
+ *
+ * ⚠️ **Per-graph, exactly like the door's predicate.** A write inside a HELPER
+ * this function reaches through `Run Tasks` is not seen here. Widening to
+ * transitive reach would make the default apply to more functions than the
+ * warning names, and the two must describe the same population — otherwise an
+ * author is told one thing and charged another.
+ */
+export function graphWritesRecords(nodes: Record<string, unknown>[]): boolean {
+  for (const node of nodes) {
+    if (typeof node.type === 'string' && RECORD_WRITE_NODE_TYPES.includes(node.type)) return true;
+    const children = node.children as Record<string, unknown>[] | undefined;
+    if (Array.isArray(children) && graphWritesRecords(children)) return true;
+  }
+  return false;
+}
+
+/**
  * Every endpoint one exported bundle declares.
  *
  * `exportData` is the parsed `*.workflow.json`; anything that is not shaped like
@@ -100,7 +155,8 @@ export function declaredFunctionsIn(exportData: unknown, workflowName: string): 
     found.push({
       name: component.name.slice(CLOUD_COMPONENT_PREFIX.length),
       workflow: workflowName,
-      allowNoAuth: requestNodeAllowsNoAuth(requestNode)
+      allowNoAuth: requestNodeAllowsNoAuth(requestNode),
+      writesRecords: graphWritesRecords(component.nodes || [])
     });
   }
   return found;

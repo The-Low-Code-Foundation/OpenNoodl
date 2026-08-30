@@ -35,6 +35,7 @@ import {
   CLOUD_COMPONENT_PREFIX,
   declaredFunctionsIn,
   findRequestNode,
+  graphWritesRecords,
   requestNodeAllowsNoAuth
 } from './functionDeclarations';
 // CWF-013 — type-only, from the cloud runtime's own declaration, so the sink this file builds
@@ -753,6 +754,35 @@ export class WorkflowRunner {
   }
 
   /**
+   * DEF-009 AC4: does this function's own graph create, change or delete a
+   * record?
+   *
+   * A sibling of `findRequestNodeForFunction` rather than a widening of it: the
+   * existing lookup answers *where is the Request node*, and its three callers
+   * want that node itself. The predicate is `functionDeclarations`', so the
+   * dispatcher's answer and the deploy interlock's answer come from one place —
+   * the module docblock's rule about two readers of one predicate.
+   *
+   * ⚠️ **A name this runner has not loaded answers `false`**, which fails OPEN
+   * for the default. That is the same degradation `functionAllowsNoAuth` already
+   * has at the same call site, and it is bounded by the same fact: a function
+   * the runner cannot find is a function the dispatcher 404s before any budget
+   * is spent.
+   */
+  functionWritesRecords(functionName: string): boolean {
+    const fullName = `${CLOUD_COMPONENT_PREFIX}${functionName}`;
+    for (const exportData of this.loadedWorkflows.values()) {
+      const components =
+        (exportData.components as { name: string; nodes?: Record<string, unknown>[] }[] | undefined) || [];
+      for (const component of components) {
+        if (component.name !== fullName) continue;
+        if (graphWritesRecords(component.nodes || [])) return true;
+      }
+    }
+    return false;
+  }
+
+  /**
    * The graph author's auth declaration for a function: the Request node's
    * `allowNoAuth` parameter. BAK-003 uses it as the default `call` rule
    * (public when true, authenticated otherwise); a config entry overrides it.
@@ -761,11 +791,18 @@ export class WorkflowRunner {
     return requestNodeAllowsNoAuth(this.findRequestNodeForFunction(functionName));
   }
 
-  getAvailableFunctions(): { name: string; workflow: string }[] {
-    const functions: { name: string; workflow: string }[] = [];
+  getAvailableFunctions(): { name: string; workflow: string; writesRecords: boolean }[] {
+    const functions: { name: string; workflow: string; writesRecords: boolean }[] = [];
     for (const [workflowName, exportData] of this.loadedWorkflows) {
       for (const declaration of declaredFunctionsIn(exportData, workflowName)) {
-        functions.push({ name: declaration.name, workflow: declaration.workflow });
+        functions.push({
+          name: declaration.name,
+          workflow: declaration.workflow,
+          // DEF-009 AC4: the panel has to show what budget applies, and that
+          // answer depends on this. Carried rather than re-derived by the
+          // caller, which would be a second reader of the predicate.
+          writesRecords: declaration.writesRecords
+        });
       }
     }
     return functions;

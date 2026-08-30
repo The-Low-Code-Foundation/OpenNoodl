@@ -42,8 +42,8 @@ import {
   ClpOp,
   Principal,
   checkFunctionCall,
+  effectiveFunctionRateLimit,
   functionIdempotency,
-  functionRateLimit,
   functionTimeoutMs,
   ruleAllows,
   validateAclShape
@@ -1643,9 +1643,18 @@ export class HttpServer {
     // already been spent above, deliberately: a call refused here still cost the
     // caller its shared allowance, which is what stops a hammered function from
     // being a free way to probe the service.
+    //
+    // DEF-009 AC4: and a public door that WRITES rows has a budget whether or
+    // not anyone declared one — `effectiveFunctionRateLimit` is the resolver,
+    // and the only thing that changes here is which function computes the
+    // policy. The declared case is byte-for-byte what it was, including the
+    // zeroed-is-unlimited convention.
     if (route.access.kind === 'function') {
       const functionName = params[route.access.nameParam];
-      const policy = functionRateLimit(this.security.config, functionName);
+      const { policy } = effectiveFunctionRateLimit(this.security.config, functionName, {
+        allowNoAuth: this.functionAllowsNoAuth(functionName),
+        writesRecords: this.functionWritesRecords(functionName)
+      });
       if (policy) {
         const own = this.rateLimiter.checkPolicy(`function:${functionName}`, limitKey, policy);
         if (!own.allowed) refuse(own, `function:${functionName}`, `function "${functionName}"`);
@@ -1812,6 +1821,20 @@ export class HttpServer {
   private functionAllowsNoAuth(name: string): boolean {
     const runner = this.getRunner();
     return runner ? runner.functionAllowsNoAuth(name) : false;
+  }
+
+  /**
+   * DEF-009 AC4: does the function's graph write records? — the other half of
+   * what decides whether the public-write default applies.
+   *
+   * A function the runner does not know about answers `false`, which is the
+   * OPEN direction here rather than the closed one. It is bounded by the same
+   * fact that bounds the line above: a name the runner cannot find is 404'd
+   * before its graph could write anything.
+   */
+  private functionWritesRecords(name: string): boolean {
+    const runner = this.getRunner();
+    return runner ? runner.functionWritesRecords(name) : false;
   }
 
   /**

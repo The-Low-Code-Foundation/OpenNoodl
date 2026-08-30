@@ -35,6 +35,8 @@ import {
   SecurityConfig,
   checkClp,
   checkFunctionCall,
+  effectiveFunctionRateLimit,
+  PUBLIC_WRITE_DEFAULT_RATE_LIMIT,
   canAccessRecord,
   effectiveFunctionRule,
   validateSecurityConfig,
@@ -210,12 +212,25 @@ export class AdminSecurityRoutes {
     const runner = this.getRunner();
     const deployed = runner ? runner.getAvailableFunctions() : [];
     const workflowOf = new Map(deployed.map((f) => [f.name, f.workflow]));
+    // DEF-009 AC4: carried from the runner's own reading of the bundle, never
+    // re-derived here — a second reader of the write predicate is how the panel
+    // starts naming a budget the dispatcher does not spend.
+    const writesRecordsOf = new Map(deployed.map((f) => [f.name, f.writesRecords]));
     const names = [...new Set([...deployed.map((f) => f.name), ...Object.keys(this.security.config.functions)])].sort();
 
     const functions = names.map((name) => {
       const entry = this.security.config.functions[name];
       const allowNoAuth = this.allowsNoAuth(name);
       const resolved = effectiveFunctionRule(this.security.config, name, allowNoAuth);
+      // DEF-009 AC4. The panel showed the DECLARED rateLimit and nothing else,
+      // which was honest while undeclared meant unlimited and becomes a lie the
+      // moment a default exists. Same treatment as `timeoutMs` below: the
+      // declared value survives verbatim, and what actually applies is reported
+      // beside it rather than folded into it.
+      const budget = effectiveFunctionRateLimit(this.security.config, name, {
+        allowNoAuth,
+        writesRecords: writesRecordsOf.get(name) === true
+      });
       const anonymousAllowed = ruleAllows(resolved.rule, { kind: 'anonymous' });
       return {
         name,
@@ -229,6 +244,14 @@ export class AdminSecurityRoutes {
         allowNoAuth,
         runAs: (entry && entry.runAs) || null,
         rateLimit: (entry && entry.rateLimit) || null,
+        /**
+         * DEF-009 AC4: the budget being SPENT, and where it came from.
+         * `declared` with a null policy is the deliberate `{0,0}` opt-out;
+         * `public-write-default` is this endpoint running on the 60/30 floor
+         * because it is public and writes rows.
+         */
+        effectiveRateLimit: budget.policy || null,
+        rateLimitSource: budget.source,
         /**
          * CWF-018. `null` = undeclared, and the panel should say what applies
          * instead — `defaultTimeoutMs` below. A declared `0` is "no limit" and
@@ -251,6 +274,13 @@ export class AdminSecurityRoutes {
       classRateLimit: this.getFunctionClassPolicy(),
       /** What an undeclared `timeoutMs` means, in the same units (CWF-018). */
       defaultTimeoutMs: DEFAULT_FUNCTION_TIMEOUT_MS,
+      /**
+       * DEF-009 AC4: what an undeclared `rateLimit` means for a PUBLIC endpoint
+       * that writes records. It means nothing for any other function, which is
+       * why the per-row `rateLimitSource` is the field to read and this is only
+       * the number to print beside it.
+       */
+      publicWriteDefaultRateLimit: PUBLIC_WRITE_DEFAULT_RATE_LIMIT,
       /**
        * CWF-016: how long an answered key is replayed, and whether the store is
        * up at all. A panel that offers the switch while sqlite is unavailable
