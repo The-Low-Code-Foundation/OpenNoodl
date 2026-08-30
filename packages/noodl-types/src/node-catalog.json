@@ -5585,7 +5585,7 @@
             "name": "boolean"
           },
           "isSignal": false,
-          "description": "Whether the last test found Condition true, for wiring into a value rather than branching on a signal; null until the first test"
+          "description": "Whether the last test found Condition true, for wiring into a value rather than branching on a signal; null until the first test. If Condition is a constant, every test pushes the same value — a mounted gate wired that way only ever turns on; a Switch is the two-way shape"
         }
       ],
       "dynamicPorts": null,
@@ -26934,7 +26934,7 @@
             "name": "boolean"
           },
           "isSignal": false,
-          "description": "True while the switch is on"
+          "description": "True while the switch is on — wire it into a mounted or visible port for a gate that turns on AND off"
         },
         {
           "name": "switched",

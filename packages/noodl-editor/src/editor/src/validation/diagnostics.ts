@@ -596,6 +596,22 @@ export enum DiagnosticCode {
   JustifyContentDistributesNothing = 'justify-content-distributes-nothing',
 
   /**
+   * DEF-024 (P78 D36) — a `mounted`/`visible` input whose every writer is a
+   * constant-condition `Condition`, and the only value those writers can push
+   * is `true`: the element can be shown but never put away again within a page
+   * life, so a screen whose answer has more than one form accumulates
+   * contradictory answers. Driven in real Chrome at HEAD
+   * (`def024-gate-drive.test.ts`): tick then untick leaves BOTH notices in the
+   * document, while the same transitions through a `Switch` per answer —
+   * `state → mounted` — leave exactly one.
+   *
+   * A **warning**, per gate port. The template workaround (a constant-`false`
+   * Condition on the same port) and the Switch shape are both silent by
+   * construction. See `oneWayGate.ts` for the abstentions and the calibration.
+   */
+  GateOnlyTurnsOn = 'gate-only-turns-on',
+
+  /**
    * DSG-004 §2.3 — a page whose text is all one weight, so nothing on it is
    * emphasised over anything else.
    *

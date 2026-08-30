@@ -116,7 +116,8 @@ const ConditionNode: NodeDefinitionOptions = {
       displayName: 'Is True',
       group: 'Booleans',
       description:
-        'Whether the last test found Condition true, for wiring into a value rather than branching on a signal; null until the first test',
+        'Whether the last test found Condition true, for wiring into a value rather than branching on a signal; null until the first test. ' +
+        'If Condition is a constant, every test pushes the same value — a mounted gate wired that way only ever turns on; a Switch is the two-way shape',
       get(this: ConditionNodeInstance) {
         if (!this._internal.hasEvaluated) return null;
         return !!this.getInputValue('condition');

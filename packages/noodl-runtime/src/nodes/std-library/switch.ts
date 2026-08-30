@@ -73,7 +73,7 @@ const Switch: NodeDefinitionOptions = {
       group: 'Values',
       type: 'boolean',
       displayName: 'Current State',
-      description: 'True while the switch is on',
+      description: 'True while the switch is on — wire it into a mounted or visible port for a gate that turns on AND off',
       getter(this: SwitchInstance) {
         return this._internal.state;
       }

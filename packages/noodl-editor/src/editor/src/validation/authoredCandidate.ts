@@ -69,6 +69,7 @@ import { checkParameterValues } from './parameterValues';
 import { checkPublicWriteDoor, type FunctionSecurityPolicy } from './publicWriteDoor';
 import { checkRepeaterTemplate } from './repeaterTemplate';
 import { checkLayoutInertCombination } from './layoutInertCombination';
+import { checkOneWayGate } from './oneWayGate';
 import { checkResponsiveArrangement } from './responsiveArrangement';
 import { checkRuntimeContext } from './runtimeContext';
 import { checkTypographyHierarchy } from './typographyHierarchy';
@@ -454,9 +455,10 @@ export interface AuthoredPreconditionOptions {
    * source port by the time it arrives.
    *
    * **Omitted means "do not check"**, the convention the options above follow.
-   * Only {@link checkFunctionNodePorts} reads it, and only to compare an endpoint
-   * against the ports a Function node's own script creates — the one question in
-   * this layer that needs the wire itself rather than the fact of one.
+   * {@link checkFunctionNodePorts} reads it to compare an endpoint against the
+   * ports a Function node's own script creates, and {@link checkOneWayGate}
+   * reads it to ask which writers feed a gate port — the two questions in this
+   * layer that need the wire itself rather than the fact of one.
    */
   wires?: readonly FunctionWireLike[];
   /**
@@ -562,6 +564,9 @@ export function authoredPreconditionDiagnostics(options: AuthoredPreconditionOpt
     // parameter is silently inert: a contentSize child of a Columns, and a
     // distributing justifyContent on a row whose children all grow.
     ...checkLayoutInertCombination(nodes, { component, catalog, connectedInputs: connections }),
+    // DEF-024 — a mounted/visible gate whose every writer is a constant-true
+    // Condition: it can only ever turn on, so sibling answers accumulate.
+    ...checkOneWayGate(nodes, { component, catalog, wires }),
     // DSG-004 §2.3 — doctrine §3, as an info that never blocks.
     ...checkTypographyHierarchy(nodes, { component, connectedInputs: connections }),
     // FIX-007 §2 — the wire the port rule is right to skip and nothing else could see.

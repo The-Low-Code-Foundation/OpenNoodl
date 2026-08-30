@@ -181,6 +181,7 @@ export type { ArrangementNode, CheckResponsiveArrangementOptions } from './respo
 // silently inert: a contentSize child of a Columns, a distributing
 // justifyContent on a row whose children all grow.
 export { checkLayoutInertCombination, widthIsPercentage } from './layoutInertCombination';
+export { checkOneWayGate } from './oneWayGate';
 export type { CheckLayoutInertCombinationOptions, LayoutNode } from './layoutInertCombination';
 // DSG-004 §2.3 — doctrine §3: a page with one font weight.
 export { checkTypographyHierarchy, MIN_TEXT_NODES, TEXT_WEIGHT_TYPES } from './typographyHierarchy';
