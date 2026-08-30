@@ -882,3 +882,13 @@ every change. No ruling was spent.
   abstention · demote non-Condition abstain to contributes-nothing — needed its own MIXED-writers
   arm, added after the corpus run · no-eval pushes anyway · fire on `{false}` · mounted-only ·
   promote to blocking). String-swap restore, md5 parity both files.
+
+**Gates (s21, all fresh, commits `f519c43e` + `07e9237f`)**: editor jest **6442/6447** (5 reds,
+none phase 80's: sb-007 ×2 template lane + sb-018 ×2 P77 drag lane, both as s20 recorded, +
+**bld-004 `reasoningChannel` — a parallel-load FLAKE of the stall-guard timer: red in two full
+runs, 8/8 alone**) · noodl-mcp **994/994** (990 + the 4 drive specs) · noodl-runtime **2597
+passed** · viewer-react **1095/1095** · `typecheck:editor`/`:editor-tests`/`:mcp` clean ·
+catalog check/merge:check/groups:check clean · `catalog:examples` **62/62 strict** (no shipped
+recipe fires the new rule) · **`test:ci` 2905 specs / 4 failures, all AIX-006 BY NAME, seed
+38774, fresh readout, gitHead `07e9237f`** — the canonical floor. ⚠️ A full-suite run piped to
+`tail` loses the failure names — redirect to a file, then grep `^FAIL`.
