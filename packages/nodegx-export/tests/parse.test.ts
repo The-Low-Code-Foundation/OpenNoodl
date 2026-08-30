@@ -53,6 +53,44 @@ describe('parseProject over the puppy-test-3 fixture', () => {
     expect(click!.kind).toBe('signal');
   });
 
+  test("sourceText holds JavaScript only — a Text node's authored CSS is not code", () => {
+    /*
+     * 🔴 The field's contract says *author-written code*, and its writer selected on "does this
+     * port open a code editor". Those are not the same set, and the gap is most of the catalog:
+     * of the 36 node types carrying a codeeditor input, 29 carry `styleCss`, whose declared
+     * language is `text`, and Static Data's `json`/`csv` are data. Exactly seven ports are
+     * JavaScript. A Text node with authored CSS was filling `sourceText` with that CSS — which
+     * matters now that a consumer prints the field under a sentence calling it a script.
+     *
+     * The language is in the catalog, so the set is derived from it rather than restated here.
+     * 🔴 Both arms are in one row on purpose: a writer that dropped CSS by dropping *everything*
+     * would pass the CSS half alone, and the fixture's two real scripts are what excludes it.
+     */
+    const dir = fs.mkdtempSync(path.join(require('os').tmpdir(), 'nodegx-sourcetext-'));
+    fs.cpSync(FIXTURE, dir, { recursive: true });
+    const nodesPath = path.join(dir, 'components', 'Pages', 'Admin', 'nodes.json');
+    const doc = JSON.parse(fs.readFileSync(nodesPath, 'utf8'));
+    const titleText = doc.nodes.find((n: { id: string }) => n.id === 'titleText');
+    expect(titleText.type).toBe('Text');
+    titleText.parameters.styleCss = '.title { color: rebeccapurple; }\n';
+    fs.writeFileSync(nodesPath, JSON.stringify(doc));
+
+    const parsed = parseProject(dir, catalog);
+    const carriers = parsed.components
+      .flatMap((c) => c.nodes.map((n) => ({ component: c.path, node: n })))
+      .filter(({ node }) => node.sourceText !== undefined)
+      .map(({ component, node }) => `${component}/${node.id}`)
+      .sort();
+
+    const admin = parsed.components.find((c) => c.path === 'Pages/Admin')!;
+    // The CSS is still an authored parameter — it is only not *code*.
+    expect(admin.nodes.find((n) => n.id === 'titleText')!.parameters.map((p) => p.name)).toContain('styleCss');
+    // 🔴 The project's one genuine script, and nothing else. `Pages/Admin/titleText` here is the
+    // defect, and `[]` would be the writer having dropped everything.
+    expect(carriers).toEqual(['Pages/Admin/formatList']);
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
   test('an unauthored mapping script lives on the declared port default, not in parameters', () => {
     // The fixture's For Each never had its mapping customised: `parameters` holds only
     // `template`, and the identity map({...}) script exists solely as the declared port's

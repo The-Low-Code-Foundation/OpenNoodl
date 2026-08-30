@@ -14,7 +14,15 @@ import * as path from 'path';
 // The shipped default token set, read from the editor module that owns it (the Rise lesson:
 // never restate content the artifact already carries). Pure data, no editor runtime involved.
 import { DEFAULT_TOKENS } from '../../../noodl-editor/src/editor/src/models/StyleTokensModel/DefaultTokens';
-import { Catalog, CatalogIndex, EXECUTION_REVEALED_TYPES, isCodeEditorType, isSignalPort, portTypeName } from '../catalog';
+import {
+  Catalog,
+  CatalogIndex,
+  EXECUTION_REVEALED_TYPES,
+  isCodeEditorType,
+  isJavaScriptCodeEditorType,
+  isSignalPort,
+  portTypeName
+} from '../catalog';
 import {
   AuthoringIntent,
   CloudServicesIR,
@@ -228,12 +236,24 @@ function parseNode(raw: RawNode, catalog: CatalogIndex): NodeIR {
     if (isCodeEditorType(port.type)) scriptParamNames.add(port.name);
   }
 
+  /**
+   * 🔴 The **narrower** set, and `sourceText` is the only thing that wants it. Every codeeditor
+   * port classifies as a `script` parameter, which is honest — it is what the editor opens a code
+   * editor for. But 29 of the catalog's 36 are `styleCss`, and a Text node with authored CSS was
+   * filling `sourceText` with that CSS, under a contract promising author-written *code*. The
+   * language is in the catalog, so ask it. See `isJavaScriptCodeEditorType`.
+   */
+  const jsScriptParamNames = new Set(rawPorts.filter((p) => isJavaScriptCodeEditorType(p.type)).map((p) => p.name));
+  for (const port of catalogEntry?.inputs ?? []) {
+    if (isJavaScriptCodeEditorType(port.type)) jsScriptParamNames.add(port.name);
+  }
+
   const parameters: ParamIR[] = Object.entries(raw.parameters ?? {})
     .map(([name, value]) => ({ name, value: classifyParam(value, scriptParamNames.has(name)) }))
     // D3: parameters sort by name; the source JSON's object key order is not trusted.
     .sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
 
-  const scriptSources = parameters.filter((p) => p.value.kind === 'script');
+  const scriptSources = parameters.filter((p) => p.value.kind === 'script' && jsScriptParamNames.has(p.name));
 
   return {
     id: raw.id,

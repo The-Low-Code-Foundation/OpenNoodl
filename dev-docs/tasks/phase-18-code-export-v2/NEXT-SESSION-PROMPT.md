@@ -1,33 +1,36 @@
-# Next session — the typecheck rows are placed, and the list that asked for them was mostly wrong
+# Next session — `sourceText` has a consumer, and the field was not holding what it promised
 
 ## Where the phase stands
 
-**Session 55 closed §25.4's item.** Three `typecheckEmittedApp` rows were added — to
-`untyped-variable`, `untyped-store-key` and `page-inputs` — and **five of the eight files §25.4
-named needed no row at all**, because the fixture suite already compiles their shapes. §26 has the
-table, file by file, with the reason for each verdict.
+**Session 56 closed handoff item 3.** `NodeIR.sourceText` was *"adopt it or delete it"*; it is
+**adopted**, and deciding it by measurement found two defects rather than settling a preference.
+§27 has the long form.
+
+- 🔴 **A refused `Map Collection` script was vanishing from the export entirely** — reported, and
+  marked in code by a `TODO` naming the node, with the author's script **nowhere in the repo**.
+  That is §20's argument for the Function case, verbatim, one node-family over. Now preserved.
+- 🔴 **The field's writer did not match its contract.** It promised *author-written code* and
+  selected on *"does this port open a code editor"* — and 29 of the catalog's 36 codeeditor ports
+  are `styleCss`. A Text node's authored CSS was landing in `sourceText`. The catalog names the
+  language, so the set is now derived from it.
 
 **69 of 127 (54.3%)** — unchanged, and correctly: this session added no translation.
 
 ## 🔴 Read this before planning anything
 
-1. 🔴 **§25.4's list of eight was built by grepping for parse helpers — a fact about the
-   *checkers*, not about the population.** That is the exact mistake §25 was written to warn
-   about, made in §25's own closing paragraph. `emitted-syntax` and `in-code-markers` iterate the
-   fixture directory itself; `http-request`, `array-vocabulary` and `date-family` are covered by
-   `quote-desk`, `reading-shelf` and `deadline-desk`. **Before adding a checker anywhere, read
-   what the existing population already reaches.**
-2. 🔴 **A green row is not evidence that it grades anything new.** The `http-request` and
-   `array-vocabulary` rows were written, went green, and were reverted once the fixtures were
-   actually read. Passing said nothing either way.
-3. 🔴 **`git diff -- packages/nodegx-export/src` run from *inside* `packages/nodegx-export`
-   matches nothing and prints nothing** — pathspecs are relative to cwd, and empty output reads
-   exactly like "clean". It was believed once this session. **Run `git` from the repo root, or
-   check `git status --short` which is not pathspec-filtered.** The independent check that was
-   sound was `diff -r snap/src src`.
+1. 🔴 **Editing a parsed `ExportIR`'s parameter does not move `sourceText`** — the *parser* writes
+   it from that same parameter. The first draft of these rows mutated the parameter alone and
+   watched the **original** mapping come back in the comment. Rows that need the two to agree must
+   **re-parse a patched copy from disk**.
+2. 🔴 **`grep sourceText src` returns a hit in `emit/component.ts` that is a comment**, with the
+   real code beside it reading `JsFunctionPlan.body`. A mention reads as a call; this one sits in
+   the exact file a consumer would live in.
+3. 🔴 **A refusal is filed against the dropped wire, whose `fromId` is the *outermost* node of the
+   chain.** In `Collection2 → Filter → Map → For Each` a refusing **Filter** files against the
+   **Map**'s wire. Anything that wants "which node refused" must be registered where the decision
+   is made — deriving it from the wire names the wrong node.
 4. **Building the app is still the only instrument for the real third-party libraries** — the
-   helper *declares* `react-router-dom` rather than resolving it (repo has v5, app wants v7), so
-   `page-inputs`' new row is graded against that declaration.
+   helper *declares* `react-router-dom` rather than resolving it (repo has v5, app wants v7).
 
 ## The objective, so it cannot drift
 
@@ -39,7 +42,7 @@ a deployed NodeGX backend — exports to a React repo that builds, runs, and sti
 ```
 cd packages/nodegx-export
 ../../node_modules/.bin/tsc --noEmit          # exit 0
-../../node_modules/.bin/jest                  # 1070/1070, 43 suites (1067/43 before §26); ~20-28 s
+../../node_modules/.bin/jest                  # 1076/1076, 43 suites (1070/43 before §27); ~19-26 s
 npm run export-ledger:picker                  # from the repo root — holds at 69/127 (54.3%)
 npm run export-ledger:check                   # 175 types
 ```
@@ -58,8 +61,9 @@ None can be closed by whoever wrote the artefact; all three are recorded as unru
   and can state what needs doing without asking questions."* `tests/fixtures/puppy-test-3` exports
   the richest example.
 - **The external review of the verification wording** (implementation step 6).
-- **Whether the preserved source block actually helps** — the code is *there*; whether a developer
-  can rewrite `formatList` from it is unmeasured.
+- **Whether the preserved source block actually helps** — the code is *there*, and as of §27 it is
+  there for Map Collection, For Each and Script nodes too; whether a developer can rewrite
+  `formatList` from it is still unmeasured.
 
 ### 2. Decide whether the editor gets an export command at all — Richard's call
 
@@ -68,17 +72,20 @@ None can be closed by whoever wrote the artefact; all three are recorded as unru
 command — a feature, not a wiring job — and is owned by **`NONE`**. §21.1 has the evidence.
 **Ask before building it.** It may belong in its own task.
 
-### 3. `NodeIR.sourceText` still has no consumer — decide, do not inherit
+### 3. A logic-only component still loses a Script node's code — owner `NONE` (§27.6)
 
-The field the IR documents as *"the preserved-as-comment fallback"* is written by the parser and
-read by nothing; s52 quoted `JsFunctionPlan.body` instead. **Adopt it or delete it**, rather than
-carrying the ambiguity a sixth time.
+§27's sweep runs only in components that emit a file. The router shell and a **logic-only**
+component return before it, because there is no module for a comment to live in — so a
+`Javascript2` node in a logic-only component still loses its code to the report alone. Named
+deliberately rather than quietly included. Closing it means the **report** carrying the source, or
+a component that emits nothing gaining somewhere to put it. Decide which before building.
 
 ### 4. `array-vocabulary` emits `mood2?: any;` for a minted `Model2` prop — owner `NONE`
 
-Noticed in passing at §26.4, not investigated. A minted repeater prop typed `any` means the
-emitted child grades nothing at that prop, in the compiler or anywhere else. Worth one look before
-anybody adds a typecheck row over that graph expecting it to catch something.
+Noticed at §26.4, **still not investigated** — this session went to item 3 instead. A minted
+repeater prop typed `any` means the emitted child grades nothing at that prop, in the compiler or
+anywhere else. Worth one look before anybody adds a typecheck row over that graph expecting it to
+catch something.
 
 ### 5. `Navigate To Path`'s `Completed` chain (§24.6)
 
@@ -88,21 +95,26 @@ obviously worth it — decide before starting.
 
 ### 6. The collection-state slice — unblocks `Set Object Properties` and `Remove Object From Array`.
 
+§7.3 draws the line: the read side of `Object` translates, the write side does not, because a row
+written from inside the row is state the enclosing list owns rather than a prop the parent passes
+down. `Remove Object From Array` is blocked one level up on a repeater row's outputs.
+
 ### 7. The date family's signals — an `effect()` slice, not a date slice (§9.6).
 
 ### 8. EXP-009 leftovers — drive the exported login/admin forms; delete the drive-residue user
 `exp009-drive` from the local Puppy backend's `_User`.
 
-## 🔴 What session 55 would tell you if it could only say three things
+## 🔴 What session 56 would tell you if it could only say three things
 
-1. **Read the population before adding the checker.** Five of eight files on a list written one
-   section earlier needed nothing, and reading four fixture `connections.json` files was all it
-   took to find out.
-2. **A passing new check is not a working new check.** Two rows passed and were still noise.
-   Ask what it would catch that something already running does not.
-3. **When an instrument reports "clean", check the instrument was pointed at anything.** An empty
-   `git diff` from the wrong cwd and a vacuous typecheck over an empty program fail identically:
-   silently, and looking exactly like success.
+1. **"Adopt or delete" is answered by measuring what each would cost, not by taste.** Deleting
+   would have closed a hole that was open; adopting as-written would have printed a Text node's
+   CSS under a sentence calling it a script. Both were found by running something.
+2. **A control that cannot go red proves nothing.** Every row here is paired — the translated Map
+   Collection, and all seven fixtures emitting **zero** of these comments. Two mutants then showed
+   the refusal rows redden while the controls stay green. The disagreement is the finding.
+3. **Ask the catalog rather than listing what you think is in it.** The `codeeditor` field names
+   the language, so the seven JavaScript ports are derived. A hand-written list would have been
+   wrong on the day someone added a port, and would have looked right forever.
 
 ## Standing practice
 
@@ -118,24 +130,24 @@ ts-morph and Prettier stay uninstalled; `packages/nodegx-export` is not in root 
 inheriting a relayed floor.
 
 ⚠️ **The shell's cwd is shared and parallel `cd` calls race** — use absolute paths in any command
-you send in parallel.
-✅ **Restore a mutated `src` with `cp -a snap/src/. src/` and then `diff -r`** — that pair is what
-actually proved `src` was clean this session, not the `git diff` beside it.
+you send in parallel. 🔴 A `cd` inside a compound command persists into later tool calls, and a
+relative `../../node_modules/.bin/…` then fails from the wrong directory — it bit once this
+session.
+✅ **Restore a mutated `src` with `cp -a snap/src/. src/` and then `diff -r`.**
 ⚠️ **`jest -t` takes a REGEX**, and a filtered run that matches nothing still exits 0. **Check the
-summary line says something ran** — and grep the output for the row name, because a `tail` can cut
-the row you added off the end of the list.
+summary line says something ran** — and `--verbose` plus a grep for the row name is what proves it.
+🔴 **`${PIPESTATUS[0]}` is empty in zsh** — `cmd > file 2>&1; echo $?` is what reads an exit code.
 
 ## Mutating the emitter to prove a checker's reach
 
-The pattern that produced §26.3, and it is worth reusing:
+The pattern that produced §26.3 and §27.5, and it is worth reusing:
 
 1. `cp -a src <scratchpad>/snap/` first.
-2. Mutate **by line number after asserting the line's content** — `if (plan.bindings[node.id]?.
-   [param.name] !== undefined) continue;` occurs **twice** (kit side 3325, instance side 3395),
-   and a `str.replace` assert of `count == 1` correctly refused. A python assert that fails leaves
-   the source untouched, which is why the first run measured nothing and said so.
-3. Run **both** the new row and the fixture-only suites. The finding is the *disagreement*.
-4. `cp -a snap/src/. src/ && diff -r snap/src src`.
+2. Mutate **by asserting the anchor's uniqueness before replacing it** — a python `assert
+   s.count(old) == 1` that fails leaves the source untouched, which is why a run that measured
+   nothing said so instead of lying.
+3. Run **both** the new rows and the control rows. The finding is the *disagreement*.
+4. `cp -a snap/src/. src/ && diff -r snap/src src` between mutants, not just at the end.
 
 ## Building and driving an exported app
 
@@ -173,13 +185,16 @@ Worth reading before claiming any shape is untested (§26.1 is the long form):
 | `kits` | custom nodes / modules |
 
 **No fixture has**: a `PageInputs` node, a braced `urlPath`, an `External Link`, a
-`Navigate To Path`, an untyped store key, or a wire into a port that already carries an authored
-value. Those are the populations only a hand-built graph reaches.
+`Navigate To Path`, an untyped store key, a wire into a port that already carries an authored
+value, or — as of §27 — **a refused script on a node that is not a Function**. Those are the
+populations only a hand-built graph reaches.
 
 ## Instruments
 
-s55 scratchpad `756fcbe6-…/scratchpad/snap/src` (the pre-mutation snapshot).
-s54 `61e7da69-…/scratchpad/snap/src`.
+s56 scratchpad `0258c50b-…/scratchpad` — `snap/src` (pre-mutation), `refused-map.ts` (the probe
+that found §27.2), `contract.ts` (§27.3), `control.ts` (the corpus control), `probe.ts` (the
+`Javascript2`/`For Each` reach measurement).
+s55 `756fcbe6-…/scratchpad/snap/src`. s54 `61e7da69-…`.
 s53 `efd50c1e-…` — `mut.py`, `harness/` (a built export with `node_modules` and the `@nodegx/core`
 symlink), `proj2/`, `drive.mjs`, `arm.sh`, `EXPECTED.md`. **The harness is still intact.**
 s52 `e4b8cbef-…`; s51 `9fcea17d-…`; s50 `e54aeffc-…`; s49 `481a2793-…`; s48 `e6b5ff80-…`;

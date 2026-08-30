@@ -324,3 +324,121 @@ describe("a refused script node's own source is preserved (EXP-004)", () => {
     expect(parseErrorsIn(app)).toEqual([]);
   });
 });
+
+describe("a refused script on a node that is not a Function is preserved too (EXP-004)", () => {
+  /*
+   * The same loss one node-family over, and it was silent until it was measured.
+   *
+   * `refusedSourceLines` covers Function / Expression / Visual Function, because those three are
+   * `jsFunctions` and have a wrapper to withhold. Every other script-bearing node carries its
+   * JavaScript as a **parameter** of a node doing something else — a Map Collection's mapping, a
+   * Repeater's template, a Script node's code. A `Map Collection` whose mapping the export
+   * refuses is deferred with a reason and an in-code marker naming it, and its script appeared
+   * **nowhere in the exported repo** — the exact case §20 built the Function half for, where the
+   * authored text is the only statement of what the developer now has to write.
+   *
+   * 🔴 The refusal arm alone proves nothing, so the control is the first row: a Map Collection
+   * whose mapping *does* translate must get no comment, or "a comment appeared" is equally
+   * consistent with a comment appearing always.
+   *
+   * ⚠️ These rows re-parse a patched copy on disk rather than editing a parsed `ExportIR`. The
+   * emitted comment prints `NodeIR.sourceText`, which the **parser** writes from the same
+   * parameter the refusal reads — so an in-memory edit to the parameter alone leaves the two
+   * disagreeing and the row measures a state production never reaches. Found by writing it the
+   * other way first, and watching the original mapping come back in the comment.
+   */
+  const SHELF = path.join(__dirname, 'fixtures', 'reading-shelf');
+  /** The fixture re-parsed from a temp copy whose `Pages/Home` node doc `patch` has edited. */
+  const shelfPatched = (patch: (doc: { nodes: Array<Record<string, unknown>> }) => void): ReturnType<typeof emitApp> => {
+    const dir = fs.mkdtempSync(path.join(require('os').tmpdir(), 'nodegx-refused-script-'));
+    try {
+      fs.cpSync(SHELF, dir, { recursive: true });
+      const nodesPath = path.join(dir, 'components', 'Pages', 'Home', 'nodes.json');
+      const doc = JSON.parse(fs.readFileSync(nodesPath, 'utf8'));
+      patch(doc);
+      fs.writeFileSync(nodesPath, JSON.stringify(doc));
+      return emitApp(parseProject(dir, catalog), catalog);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  };
+  const shelfWithMapping = (mapScript: string): ReturnType<typeof emitApp> =>
+    shelfPatched((doc) => {
+      const toRow = doc.nodes.find((n) => (n as { id: string }).id === 'toRow') as { type: string; parameters: Record<string, unknown> };
+      expect(toRow.type).toBe('Map Collection');
+      toRow.parameters.mapScript = mapScript;
+    });
+
+  it('CONTROL: a Map Collection whose mapping translates gets no preserved-source comment', () => {
+    const home = String(exportOf('reading-shelf').files['src/pages/Home.tsx']);
+    expect(home).not.toContain('has an authored script that');
+    // ...and the reason it needs none: the mapping is in the file, as the thing it means.
+    expect(home).toContain('badge:');
+  });
+
+  it('a Map Collection whose Script is refused keeps that script in the emitted file', () => {
+    // A function-valued mapping — `parseIdentityMapping` refuses it, which is the whole premise.
+    const app = shelfWithMapping("map({\n  title: 'title',\n  badge: function (r) { return r.shelf.toUpperCase(); }\n})\n");
+    const home = String(app.files['src/pages/Home.tsx']);
+    expect(home).toContain('TODO(export): the Map Collection "To row" (node toRow) has an authored script that');
+    // 🔴 The point of the row: the author's code survives the refusal, **verbatim** — the
+    // author's own two-space indent is still there under the comment prefix, because "never
+    // trimmed, never reformatted" is the contract and a re-indented record is a rewritten one.
+    expect(home).toContain('//   map({');
+    expect(home).toContain("//     title: 'title',");
+    expect(home).toContain('//     badge: function (r) { return r.shelf.toUpperCase(); }');
+    expect(home).toContain('//   })');
+    expect(parseErrorsIn(app)).toEqual([]);
+  });
+
+  it('reaches a Script node, whose entire content is the code that was being dropped', () => {
+    /*
+     * 🔴 The population claim, measured rather than argued. `Map Collection` refuses at a named
+     * site; `Javascript2` has no site at all — it is a deferred *type*, and falls through the
+     * generic path. If the rule were quietly Map-Collection-shaped this row is where that shows,
+     * and this is the case that costs the most: a Script node is nothing **but** its code, so
+     * before this the whole node left the export without a trace of what it did.
+     */
+    const app = shelfPatched((doc) => {
+      doc.nodes.push({
+        id: 'scriptNode',
+        type: 'Javascript2',
+        label: 'Tally',
+        parameters: { code: 'define({\n  run() { this.setOutputs({ total: 2 }); }\n})\n' },
+        x: 900,
+        y: 200
+      });
+    });
+    const home = String(app.files['src/pages/Home.tsx']);
+    expect(home).toContain('TODO(export): the Javascript2 "Tally" (node scriptNode) has an authored script that');
+    expect(home).toContain('//     run() { this.setOutputs({ total: 2 }); }');
+    expect(parseErrorsIn(app)).toEqual([]);
+  });
+
+  it('the whole unmutated corpus emits no preserved-script comment at all', () => {
+    /*
+     * The false-positive half. This block prints for any script-bearing node the plan did not
+     * record as translated, and the population is every node in every component — a rule one
+     * predicate too wide would decorate the corpus with comments claiming code was lost when it
+     * was not. Seven fixtures, zero comments.
+     */
+    for (const fixture of FIXTURES) {
+      const files = exportOf(fixture).files as Record<string, string>;
+      for (const [name, body] of Object.entries(files)) {
+        expect(`${fixture}/${name}: ${String(body).includes('has an authored script that')}`).toBe(`${fixture}/${name}: false`);
+      }
+    }
+  });
+
+  it('a U+2028 inside a refused script does not end the comment that carries it', () => {
+    /*
+     * The hazard `commentSafeLines` exists for, on this second population. A literal U+2028 here
+     * would end this file's string too — hence the escape.
+     */
+    const app = shelfWithMapping("map({ title: function (r) { return 'a\u2028b'; } })");
+    const home = String(app.files['src/pages/Home.tsx']);
+    expect(home).toContain('has an authored script that');
+    expect(home).not.toContain('\u2028');
+    expect(parseErrorsIn(app)).toEqual([]);
+  });
+});

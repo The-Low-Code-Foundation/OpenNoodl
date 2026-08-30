@@ -988,6 +988,22 @@ export type ApiCallArg =
  * assignments to `Outputs` publishing, script-declared signal outputs callable (as no-ops when
  * nothing consumes them, exactly as an unwired pulse lands nowhere).
  */
+/**
+ * A node whose authored JavaScript did not reach the emitted code, preserved so the repo carries
+ * a record of it. Not a `JsFunctionPlan`: these nodes have no wrapper and no ports mined from the
+ * body — the script is a *parameter* of a node that does something else (a Map Collection's
+ * mapping, a Repeater's template, a Script node's code).
+ */
+export interface RefusedScriptPlan {
+  nodeId: string;
+  /** The graph type, for the comment's noun — "Map Collection", "Javascript2". */
+  typeName: string;
+  /** The author's label for the node, when it has one. */
+  label?: string;
+  /** Verbatim, from `NodeIR.sourceText`. Never trimmed, never reformatted. */
+  source: string;
+}
+
 export interface JsFunctionPlan {
   nodeId: string;
   kind: 'function' | 'expression' | 'visual';
@@ -1450,6 +1466,20 @@ export interface ComponentPlan {
    */
   jsFunctions: Record<string, JsFunctionPlan>;
   /**
+   * Nodes carrying author-written JavaScript that this component did **not** translate, and that
+   * are not Function/Expression/Visual Function — those three are `jsFunctions`, and the emit
+   * layer already preserves a refused one's body as a comment.
+   *
+   * 🔴 This is the same loss one node-family over, and it was silent. A `Map Collection` whose
+   * Script does more than name properties is deferred with a reason and an in-code marker naming
+   * the node — and its script text appeared **nowhere in the exported repo**, which is exactly
+   * the case where that text is the only statement of what the developer now has to write
+   * (EXP-004, and §20's argument for the Function case verbatim).
+   *
+   * Node order, so the output is deterministic.
+   */
+  refusedScripts: RefusedScriptPlan[];
+  /**
    * State rows (CONTROLLED-STATE-TARGET §3), registered the moment a use resolves — the emit
    * layer prints exactly the vars that surviving actions/expressions/effects reference.
    */
@@ -1695,6 +1725,7 @@ function planComponent(
     repeaters: {},
     staticData: [],
     jsFunctions: {},
+    refusedScripts: [],
     stateVars: [],
     syncEffects: [],
     pushEffects: [],
@@ -1705,6 +1736,19 @@ function planComponent(
     dispositions,
     notes
   };
+
+  /**
+   * Node ids whose authored JavaScript this component *did* translate into emitted code.
+   *
+   * 🔴 Registered at the success arm rather than inferred from the absence of a deferral, because
+   * the two are not the same question. A refusal is filed against the **wire that was dropped**,
+   * whose `fromId` is the outermost node of the chain — in `Collection2 → Filter → Map → For Each`
+   * a refusing *Filter* files against the *Map*'s wire. Reading the script off the dropped wire's
+   * source would then preserve the Map's mapping under the Filter's reason: a comment that names
+   * the wrong node's code. Asking "did this node's own script survive" is the question that has
+   * an answer here.
+   */
+  const translatedScriptIds = new Set<string>();
 
   // The router shell: the scaffold generates App.tsx from RouterIR; the visual generator owns
   // nothing here (TARGET-OUTPUT §3).
@@ -3743,6 +3787,8 @@ function planComponent(
       return null;
     }
     ctx.logicNodeIds.push(node.id);
+    // The mapping became emitted code — this node's script is in the repo, as the thing it means.
+    translatedScriptIds.add(node.id);
     return { kind: 'list-map', source, entries: mapping.map((m) => ({ key: m.input, field: m.field })) };
   };
 
@@ -9160,6 +9206,28 @@ function planComponent(
         notes.push(`node ${node.id} (${node.type}) deferred: ${disposition.kind === 'deferred' ? disposition.reason : ''}`);
       }
     }
+  }
+
+  /**
+   * The authored JavaScript that did not make it, on nodes that carry a script but are not
+   * Function/Expression/Visual Function.
+   *
+   * ⚠️ Only the components that emit a file reach here. The two early returns above — the router
+   * shell and a logic-only component — produce no module for a comment to live in, so a Script
+   * node in a logic-only component still loses its code to the report alone. Named rather than
+   * silently included, because "every refused script is preserved" would be the wrong sentence.
+   */
+  for (const node of component.nodes) {
+    if (node.sourceText === undefined) continue;
+    // Function/Expression/Visual Function are `jsFunctions`; `refusedSourceLines` preserves those.
+    if (jsNodeKindOf(node.type) !== null) continue;
+    if (translatedScriptIds.has(node.id)) continue;
+    plan.refusedScripts.push({
+      nodeId: node.id,
+      typeName: node.type,
+      ...(node.authoredLabel !== undefined ? { label: node.authoredLabel } : {}),
+      source: node.sourceText
+    });
   }
 
   return plan;

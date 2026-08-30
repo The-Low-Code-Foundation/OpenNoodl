@@ -22,6 +22,7 @@ import {
   ComponentPlan,
   HandlerAction,
   JsFunctionPlan,
+  RefusedScriptPlan,
   MutationPlan,
   ProjectPlan,
   QueryPlan,
@@ -3663,6 +3664,26 @@ export function emitComponent(
     return out;
   };
 
+  /**
+   * The same record for a script that is a *parameter* of a node doing something else.
+   *
+   * 🔴 The wording cannot borrow `REFUSED_SOURCE_WORDING`'s "no wrapper was generated for it":
+   * these nodes never had a wrapper to generate. What is true of all of them is narrower and is
+   * the thing the reader needs — the node is in the graph, its script is not in this repo.
+   */
+  const refusedScriptLines = (refused: RefusedScriptPlan): string[] => {
+    const named = refused.label !== undefined ? `"${commentSafe(refused.label)}" (node ${commentSafe(refused.nodeId)})` : `node ${commentSafe(refused.nodeId)}`;
+    const out = [
+      `// TODO(export): the ${commentSafe(refused.typeName)} ${named} has an authored script that`,
+      '// this export did not translate, so none of it is anywhere else in this repo.',
+      '// It is preserved below, because this comment is its only record here.',
+      '// See the export report.'
+    ];
+    // Verbatim, per the IR's contract for `sourceText`: never trimmed, never reformatted.
+    for (const line of commentSafeLines(refused.source)) out.push(line.trim() === '' ? '//' : `//   ${line}`);
+    return out;
+  };
+
   const jsxLines = render(plan.rootId, 4);
   /**
    * The markers that cannot be siblings, as line comments above the `return`.
@@ -3711,6 +3732,10 @@ export function emitComponent(
     if (referencedJsIds.has(def.nodeId)) body.push(...jsWrapperLines(def), '');
     else body.push(...refusedSourceLines(def), '');
   }
+  // The same preservation for script-bearing nodes that are not re-host wrappers — a Map
+  // Collection's mapping, a Repeater's template, a Script node's code. The plan decides which
+  // ones did not translate; this only prints them.
+  for (const refused of plan.refusedScripts) body.push(...refusedScriptLines(refused), '');
   if (usesJoinClasses) {
     body.push(
       'function joinClasses(...classes: Array<string | false | undefined>) {',

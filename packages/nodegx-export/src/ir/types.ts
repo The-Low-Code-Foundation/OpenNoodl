@@ -253,9 +253,14 @@ export interface NodeIR {
   /** Written by EXP-003 from trace data; absent until then. */
   resolvedPorts?: PortIR[];
   /**
-   * Verbatim author-written code for script-bearing nodes (Function, Expression, mapping
-   * scripts). This is the EXP-003 LLM payload and the preserved-as-comment fallback when a
-   * translation stays unverified. Never trimmed, never reformatted.
+   * Verbatim author-written **JavaScript** for script-bearing nodes, from the first such
+   * parameter in name order. This is the EXP-003 LLM payload and the preserved-as-comment
+   * fallback when a translation stays unverified. Never trimmed, never reformatted.
+   *
+   * 🔴 "Script-bearing" is decided by the catalog's declared **language**, not by the presence of
+   * a code editor — `styleCss` is a codeeditor port on 29 node types and holds CSS, and Static
+   * Data's `json`/`csv` hold data. Selecting on the code editor alone put a Text node's CSS in
+   * this field, under this sentence. See `isJavaScriptCodeEditorType`.
    */
   sourceText?: string;
   parent?: string;

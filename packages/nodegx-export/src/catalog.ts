@@ -104,3 +104,21 @@ export function portTypeName(type: string | CatalogPortType | undefined): string
 export function isCodeEditorType(type: string | CatalogPortType | undefined): boolean {
   return typeof type === 'object' && type !== null && typeof type.codeeditor === 'string';
 }
+
+/**
+ * A codeeditor port whose language is **JavaScript**.
+ *
+ * 🔴 `isCodeEditorType` is not this question, and the gap between them is most of the catalog.
+ * Of the 36 node types carrying a codeeditor input, 29 carry `styleCss` (`codeeditor: 'text'`),
+ * one is CSS Definition's `style` (`'css'`), and Static Data's `json`/`csv` are data. Exactly
+ * seven ports are JavaScript — Function's `functionScript`, Expression's `expression`,
+ * Map Collection's `mapScript`, For Each's `templateScript`, Script's `code` and REST's two.
+ * The catalog names the language, so this set is *derived* rather than listed here (EXP-007's
+ * rule: never restate catalog content).
+ *
+ * This is the predicate `NodeIR.sourceText` needs: its contract promises author-written **code**,
+ * and selecting on `isCodeEditorType` fills it with a Text node's CSS instead.
+ */
+export function isJavaScriptCodeEditorType(type: string | CatalogPortType | undefined): boolean {
+  return typeof type === 'object' && type !== null && type.codeeditor === 'javascript';
+}

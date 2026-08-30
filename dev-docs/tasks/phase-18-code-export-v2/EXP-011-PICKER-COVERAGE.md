@@ -3238,3 +3238,118 @@ to be in the program:
   "mints a prop, reads it at the sink"). A typecheck row over that graph would grade nothing at
   the prop, because `any` is what it emits. Noticed in passing, not investigated; owner `NONE`.
 
+
+---
+
+## §27 `sourceText`'s consumer, and the contract it was not keeping (session 56, 2026-08-30)
+
+Session 55 left `NodeIR.sourceText` as a decision: *"the field the IR documents as the
+preserved-as-comment fallback is written by the parser and read by nothing. **Adopt it or delete
+it**, rather than carrying the ambiguity a sixth time."*
+
+**Adopted** — because measuring what deleting it would cost found a live defect, and measuring
+what adopting it would print found a second one. Both are fixed. Picker coverage is unchanged at
+**69/127 (54.3%)** and correctly so: no node type gained a translation.
+
+### §27.1 The field had no consumer — confirmed, and the grep nearly said otherwise
+
+`grep sourceText src` returns a hit in `src/emit/component.ts`. It is a **comment**, inside
+`refusedSourceLines`, and the code beside it reads `JsFunctionPlan.body`. The trap the memory
+already names — *a MENTION reads as a CALL* — with the mention sitting in the one file where a
+consumer would live.
+
+### §27.2 🔴 Deleting it would have closed nothing, and left a measured hole open
+
+Of **4 nodes in 332** across the seven fixtures carrying `sourceText`, three are Function or
+Expression — `jsFunctions`, whose refused bodies §20 already preserves. The fourth is
+`reading-shelf`'s `toRow`, a **`Map Collection`**, and it is the interesting one.
+
+Its mapping was sabotaged into a function-valued one, which `parseIdentityMapping` refuses:
+
+| Question | Before |
+|---|---|
+| Is the refusal reported? | ✅ `EXPORT-REPORT.md` names it, with the reason |
+| Is there an in-code marker? | ✅ `src/pages/Home.tsx`, naming `Map Collection toRow.items` |
+| **Is the author's script anywhere in the repo?** | 🔴 **Nowhere** — all four probes missed |
+
+That is §20's argument verbatim, one node-family over: *a script this export refused is exactly
+the case where the authored text is the only statement of what the developer now has to write.*
+`refusedSourceLines` covers Function / Expression / Visual Function because those three have a
+wrapper to withhold. Every other script-bearing node carries its JavaScript as a **parameter of a
+node doing something else**, and had no equivalent.
+
+### §27.3 🔴 Adopting it as written would have printed a Text node's CSS as "its authored script"
+
+The contract said *"verbatim author-written code for script-bearing nodes."* The writer selected
+on `isCodeEditorType` — *does this port open a code editor* — and those are not the same set. The
+catalog was asked, and it names the language:
+
+| `codeeditor` | ports | what they hold |
+|---|---|---|
+| `javascript` | **7** — `functionScript`, `expression`, `mapScript`, `templateScript`, `code`, REST's two | code |
+| `text` | **29** — 27 × `styleCss`, Static Data's `csv`, ParseCSV's `text` | CSS and data |
+| `css` | 1 — CSS Definition's `style` | CSS |
+| `json` | 1 — Static Data's `json` | data |
+
+Measured, not inferred: giving `cheer`'s `headline` Text node an authored `styleCss` put
+`.headline { color: rebeccapurple; }` into `sourceText`. So the writer now selects on
+`isJavaScriptCodeEditorType`, **derived from the catalog** rather than listed here (EXP-007's
+rule). The field's doc comment says what it actually holds.
+
+### §27.4 What was built
+
+- **`isJavaScriptCodeEditorType`** (`src/catalog.ts`) — the language predicate, beside the port
+  predicate it is repeatedly mistaken for.
+- **`RefusedScriptPlan` / `ComponentPlan.refusedScripts`** — script-bearing nodes that are not
+  `jsFunctions` and whose script this component did not translate, in node order.
+- **`translatedScriptIds`** — the success-arm register. 🔴 **Registered where the translation
+  happens, not inferred from the absence of a deferral**, and the difference is a wrong-node bug:
+  a refusal is filed against the **dropped wire**, whose `fromId` is the *outermost* node of the
+  chain. In `Collection2 → Filter → Map → For Each` a refusing **Filter** files against the
+  **Map**'s wire, so reading the script off the dropped wire's source would preserve the Map's
+  mapping under the Filter's reason — a comment naming the wrong node's code.
+- **`refusedScriptLines`** (`src/emit/component.ts`) — the comment block, through the existing
+  `commentSafe` / `commentSafeLines` pair. It cannot borrow `REFUSED_SOURCE_WORDING`'s *"no
+  wrapper was generated for it"*: these nodes never had a wrapper.
+
+### §27.5 What proves it
+
+- **`tsc --noEmit`** 0; **jest 1076/1076 in 43 suites** (1070/43 before — 6 new rows); both ledger
+  gates OK; picker unchanged at 69/127.
+- 🔴 **Two mutants, and the disagreement is the finding.**
+
+  | Mutant | Refusal rows | CONTROL + corpus rows |
+  |---|---|---|
+  | emit hook removed | 🔴 **2 red** | 🟢 green |
+  | writer widened back to every codeeditor port | 🔴 **1 red** (`parse`) | 🟢 green |
+
+  Anchors were asserted before replacement in both, and `cp -a snap/src/. src/ && diff -r`
+  restored between them.
+- ✅ **The control is a row, not a note.** A `Map Collection` whose mapping *does* translate gets
+  no comment and keeps its mapping as code — without it, "a comment appeared" is equally
+  consistent with a comment appearing always.
+- ✅ **The false-positive half is a row too**: all seven fixtures, every emitted file, **zero**
+  preserved-script comments. The rule's population is every node in every component, and one
+  predicate too wide would decorate a clean corpus with claims that code was lost.
+- ✅ **The reach is measured, not argued.** A hand-built probe added a `Javascript2` and a
+  `For Each` with an authored `templateScript`; both preserve their script, and `toRow` beside
+  them — translated — still gets nothing. `Javascript2` matters most: it is a deferred *type* with
+  no named site, and a Script node is nothing **but** its code, so the whole node was leaving the
+  export with no trace of what it did. That case is now a row.
+- ⚠️ **Verbatim means the author's own indentation too**, and the first draft of the assertion got
+  this wrong — `//   ` prefix *plus* the script's two-space indent. The row now pins all four
+  lines, because "never trimmed, never reformatted" is the contract and a re-indented record is a
+  rewritten one.
+
+### §27.6 What this leaves
+
+- ⚠️ **Only components that emit a file are covered**, and the planner says so in a comment. The
+  router shell and a **logic-only component** return before the sweep — there is no module for a
+  comment to live in — so a `Script` node in a logic-only component still loses its code to the
+  report alone. Named rather than silently included. Owner **`NONE`**.
+- ⚠️ **`REST2`'s `requestScript`/`responseScript` are covered by the same rule** but were not
+  driven: the type is deprecated and out of scope, so no row asserts it.
+- 🔴 **The mutation lesson worth keeping**: editing a parsed `ExportIR`'s *parameter* does not move
+  `sourceText`, which the **parser** writes from that same parameter. The first draft of these
+  rows did exactly that and watched the original mapping come back in the comment. The rows now
+  re-parse a patched copy from disk, so the two agree the way they always do in production.
