@@ -1141,3 +1141,63 @@ commit.
 the BLD-004 flake is the visible cost. The check and the run were issued in one command, so the
 `ps` output could not be acted on. ✅ **Make the peer-check its own call, and read it, before
 starting anything.**
+
+---
+
+## s24 (2026-08-30) — DEF-013 closed, and both gates fixed before anything trusted them
+
+**Three rows closed: DEF-013, DEF-032, DEF-030.** The handoff's order was followed exactly —
+the cheap re-drive first, then the two instruments, because a gate you have not audited cannot be
+evidence about anything else.
+
+### DEF-013 — the row that did not close for free
+
+The ruling was *re-drive before deciding*, on the chance the door had moved underneath the
+measurement. It had not. `def013SiblingResolution.test.ts` reproduces SB-012 §1's transcript
+**character for character** on a live in-process server built from `src`, including the *did you
+mean* that offers `/Pages/A` to `Pages/A` itself and omits `/Pages/B`.
+
+Fixed at the plan door per option 1. `plannedComponentNames(plan)` feeds **both** halves of the
+gate — `overlayProject`'s `refNames` and a new `alsoResolvable` argument on
+`preconditionDiagnostics`.
+
+🔴 **The drive corrected the register as well as closing the row.** SB-012's table recorded node
+`type` as resolving against an unapplied sibling. It does not — that `✅` was measured on a sibling
+already **staged**, the sequential case. A node-`type` **cycle** was refused too. All three
+spellings were broken and the table said one of them was fine.
+
+### DEF-032 — the `1` is now a number the suite asserts
+
+Measured first: `plan.writes` = **65**, mount-triggered = **1**, graded = **1**, skipped = **64**.
+D32's table is confirmed at HEAD. `gradeWriteBackCycle` grades the failure mode nothing graded and
+reaches **29 of 65** — a number asserted for the same reason the `1` now is.
+
+**Two confidences, kept apart**: `repeaterItem` (D31's exact shape) asserted as a defect, 0 at HEAD,
+mutant-killed; `sameCollection` (**6 rows**, all `/Pages/ThemeEditor`) a **pinned census**, filed as
+P77 **D33** and owed a drive. Plausible-benign is not measured, and D31 looked benign by the same
+reasoning until the runtime named it.
+
+### DEF-030 — worse than "cannot fail"
+
+Under the placement rule `barePages` returned `[]` for **all three** shipped templates, so §4
+compared an empty set against its floor in every case. Rule is now the page's own tree; it
+re-grades **one** page, not two — `/Pages/ThemeEditor`, on the floor by name, **phase 77's repair**.
+Second vacuity: hello-world's floor entry `/Home` never matched the real name `/#__page__/Home`.
+
+### Gates — s24 (2026-08-30)
+
+| gate | reading |
+|---|---|
+| `noodl-mcp` jest | **77 suites / 1007 tests, all passed** (994 at s23 + 13 new arms) |
+| `typecheck:mcp` (`tsc --noEmit`) | **clean** |
+| `def013SiblingResolution` | **5/5**, 3 mutants each killed by a named arm |
+| `sb007Template` | **59/59**, D32's mutant + control live |
+| `templateAppearance` | **24/24**, D30's mutant asserts both halves |
+
+⚠️ **Not run this session, deliberately**: `test:ci`, editor jest, viewer-react. Nothing here
+touches the viewer or the editor's runtime — the two source changes are both in `noodl-mcp/src`,
+and the other three files are specs. **A next session that touches product code owes the wider set.**
+
+✅ **The peer check was its own tool call every time**, per s23's cost. One peer jest run was seen
+and waited out; a P18 peer landed `6f91ae2a` mid-session adding **DEF-033** to the table, and a
+phase 77 peer held `TASKS.md` and `SBR-006` uncommitted throughout — both left alone.
