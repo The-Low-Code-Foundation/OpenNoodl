@@ -176,8 +176,22 @@ describe('SB-018 (1): the row tells the list, and the list refreshes', () => {
     // The measurement the disposition turned on. Read from the module, with the
     // item component's ports taken from the shipped artefact rather than from a
     // fixture — so this is the graph that ships, not a plausible neighbour.
+    // 🔴 Held as the EXACT set per component rather than a `toContain`, because
+    // the claim is about what the module announces and a subset check would go
+    // green on a row that had lost `Changed` and gained something else.
+    // `/Admin/SectionRow` grew two signals with SBR-007 AC2 — the row says which
+    // way it wants to move and the page editor works out where, since a row
+    // knows its own `order` and nothing about its siblings'.
+    const expected: Record<string, Record<string, { type: string }>> = {
+      '/Admin/PageRow': { Changed: { type: 'signal' } },
+      '/Admin/SectionRow': {
+        Changed: { type: 'signal' },
+        MoveDown: { type: 'signal' },
+        MoveUp: { type: 'signal' }
+      }
+    };
     for (const rowComponent of ['/Admin/PageRow', '/Admin/SectionRow']) {
-      expect(outputPortsOf(rowComponent)).toEqual({ Changed: { type: 'signal' } });
+      expect(outputPortsOf(rowComponent)).toEqual(expected[rowComponent]);
       expect(announcedPortsFor(rowComponent)).toContain('itemOutputSignal-Changed');
     }
   });
@@ -194,9 +208,21 @@ describe('SB-018 (1): the row tells the list, and the list refreshes', () => {
   it('the shipped template wires the announced name, and no `For Each.Changed` survives anywhere', () => {
     const wires = refreshWiresFromRepeaters();
 
-    // Every wire *out of* a repeater in this template is one of the two refreshes.
+    // 🔴 Every wire *out of* a repeater in this template, in artefact order. Two
+    // are the refreshes this item is about; the other four are SBR-007 AC2's
+    // reorder path, and they are here rather than excluded because that is what
+    // keeps this a census — a rule that skipped what it did not recognise would
+    // stop being able to say a `Changed` wire had come back.
+    //
+    // ⚠️ `itemActionItemId` appears TWICE, once per planner, and that is the
+    // shape rather than a duplicate: the id and the signal must leave the SAME
+    // node or the script runs against the previous row.
     expect(wires).toEqual([
       { component: '/Pages/PageEditor', port: 'itemOutputSignal-Changed', template: '/Admin/SectionRow' },
+      { component: '/Pages/PageEditor', port: 'itemActionItemId', template: '/Admin/SectionRow' },
+      { component: '/Pages/PageEditor', port: 'itemOutputSignal-MoveUp', template: '/Admin/SectionRow' },
+      { component: '/Pages/PageEditor', port: 'itemActionItemId', template: '/Admin/SectionRow' },
+      { component: '/Pages/PageEditor', port: 'itemOutputSignal-MoveDown', template: '/Admin/SectionRow' },
       { component: '/Pages/Admin', port: 'itemOutputSignal-Changed', template: '/Admin/PageRow' }
     ]);
 

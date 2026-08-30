@@ -65,6 +65,9 @@
     "duplicatePage": {
       "call": "role:admin"
     },
+    "reorderSection": {
+      "call": "role:admin"
+    },
     "submitContactForm": {
       "call": "public",
       "rateLimit": { "ratePerMinute": 10, "burst": 10 }

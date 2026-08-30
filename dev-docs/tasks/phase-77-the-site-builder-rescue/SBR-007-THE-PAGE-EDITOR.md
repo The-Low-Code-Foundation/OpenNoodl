@@ -301,7 +301,7 @@ left-anchored at 384 and fine at every width. It is this screen's header row alo
 | | verdict |
 |---|---|
 | **AC1** | 🟢 **preview half MET and DRIVEN**, signed-out · ⬜ **deployed half owed** — now unblocked (SBR-008 closed s18), not attempted |
-| **AC2** | ⬜ not built — sibling renumbering needs a cloud function and a decision (§8) |
+| **AC2** | 🟢 **outcome BUILT + DRIVEN s27** (§31) — `reorderSection` renumbers siblings and the stored order moves · 🔴 the **drag gesture** is not met: no node reports geometry, **D23**, `NONE` |
 | **AC3** | 🟡 thumbnail shipped (source-measured, **not driven** — needs an OS file dialog) · 🔴 drop gesture blocked on **D15** · ⬜ gallery model is SBR-005's |
 | **AC4** | 🟢 **MET and DRIVEN** — `PUT` then `GET`, and the header proves the record won (§12.2) |
 | **AC5** | 🟢 **MET and DRIVEN** — three states including the undo (§12.3) |
@@ -514,7 +514,7 @@ which is not this task's build.
 | | verdict |
 |---|---|
 | **AC1** | 🟢 preview half MET and DRIVEN (s22) · ⬜ **deployed half still owed** — unblocked since SBR-008 closed at s18, not attempted at s22, s23 or s24 |
-| **AC2** | ⬜ not built — sibling renumbering needs a cloud function and a decision (§8) |
+| **AC2** | 🟢 **outcome BUILT + DRIVEN s27** (§31) — `reorderSection` renumbers siblings and the stored order moves · 🔴 the **drag gesture** is not met: no node reports geometry, **D23**, `NONE` |
 | **AC3** | 🟡 thumbnail shipped, source-measured only · 🔴 drop gesture blocked on **D15**, `NONE` · ⬜ gallery model is SBR-005's |
 | **AC4** | 🟢 MET and DRIVEN (§12.2) |
 | **AC5** | 🟢 MET and DRIVEN (§12.3) |
@@ -620,7 +620,7 @@ fix; cross-origin passed only after it. The table in §25 is the cross-origin ru
 | | verdict |
 |---|---|
 | **AC1** | 🟢 **MET AND DRIVEN, both halves** — preview s22 (§12.1), **deployed s25 (§25)** |
-| **AC2** | ⬜ not built — sibling renumbering needs a cloud function and a decision (§8) |
+| **AC2** | 🟢 **outcome BUILT + DRIVEN s27** (§31) — `reorderSection` renumbers siblings and the stored order moves · 🔴 the **drag gesture** is not met: no node reports geometry, **D23**, `NONE` |
 | **AC3** | 🟡 thumbnail shipped, source-measured only · 🔴 drop gesture blocked on **D15**, `NONE` · ⬜ gallery model is SBR-005's |
 | **AC4** | 🟢 MET and DRIVEN (§12.2) |
 | **AC5** | 🟢 MET and DRIVEN (§12.3) — the dirty marker was seen again on the deployed panel at s25 |
@@ -753,3 +753,93 @@ nothing is green for the same reason a correct one is.
 - ⚠️ **Dimension ports take `{value, unit}`.** A bare `'60%'` string was accepted **in silence** and
   rendered at content width — the first fixed arm read `flexShrink: 0` and `965px` and looked like a
   refuted fix. Same family as **D8**/**F15**.
+
+---
+
+# 🟢 s27 (2026-08-30) — AC2 is built and driven, and its *gesture* is a product row
+
+## 31. What AC2 needed, and why it was never an afternoon
+
+§8 called it *"buildable, not built, and more expensive than it looks"*, and both halves held.
+
+**The write half is genuinely cloud-only.** Reordering does not write the section that moved — it
+renumbers its **siblings**. A `SectionRow` is a `For Each` template that knows its own `id`, `kind`,
+`order` and `data` and nothing about the row above it, and the browser runtime has no loop node. So
+a panel that wanted to write N records would need N authored `Set Record`s for an N nobody knows.
+`Run Tasks` is that loop, it is cloud-only, and this is exactly what it is for.
+
+### 31.1 What shipped
+
+**`/#__cloud__/reorderSection(pageId, sectionId, toIndex)`** and its worker
+**`/#__cloud__/site/SetSectionOrder`** — the signature §8 named. It sorts, splices, and writes each
+moved row its index.
+
+🔴 **`toIndex` is a position in the order-sorted list, not an `order` value**, and that distinction
+is the whole reason the endpoint sorts rather than doing arithmetic. Nothing has ever guaranteed
+`order` is contiguous: sections are born at `sections.count`, so deleting the middle of three leaves
+`0, 2`. A caller computing `order - 1` to move a row up would, on that page, ask for position 1
+meaning position 0. Sorting removes the assumption instead of documenting it — and because the write
+renumbers to the index, `order` **is** contiguous afterwards for every page anyone has reordered.
+
+🔴 **The worker carries NO access rules**, and that is the invariant rather than an omission.
+Reordering a *published* page is an ordinary edit; `ADMIN_ONLY_RULES` here would revoke the world's
+read on every section it touched while `Page.published` stayed `true`. **Driven**: a published
+page's sections are still anonymously readable after a reorder.
+
+**The browser half** is `Move up` / `Move down` on each row, `MoveUp`/`MoveDown` Component Outputs,
+and two planner Function nodes on the page editor that turn a direction into a `toIndex`.
+
+- **Two planners, not one**, because a `JavaScriptFunction` has exactly ONE input signal (`run`) —
+  `simplejavascript.ts` mints `in-<name>` for values only — so there is no way to tell one script
+  which button was pressed.
+- 🔴 **`runOnChange-in-…: false` on both, and it is load-bearing.** `itemActionItemId` is set for
+  **every** item output signal a row sends, `Changed` included (`foreach.tsx:911`). Left ticked — and
+  absent means ticked — pressing **Save** on a row would land a new `itemId`, re-run both scripts,
+  and silently move the section the client had just edited.
+- The id and the trigger both leave `sectionList`, which is `publishPage`'s `prep` rule. `For Each`
+  gives it for free: it flags every `itemOutput-…` dirty and *then* sends the signal, in one
+  scheduled pass (`foreach.tsx:915-927`).
+- ⚠️ **`CloudFunction2` has no `success` port** — ERG-001 renamed it `done` (`cloudfunction2.ts:143-156`).
+- ⚠️ **`failure` is a signal and `mounted` is a value port**, so they cannot be wired together — a
+  signal into a value port arrives once, as `false`. A `States` node is the recorded repair, and it
+  resets, so a refusal cannot outlive the thing it was about.
+
+### 31.2 The drive — AC2 is met, on stored rows
+
+Ten cases in `sb004-publication-invariant.test.ts`, which authors through the real MCP door and runs
+a real backend with enforcement on. **Every reading is taken from the stored rows, never from the
+answer.** Third-to-first, back down, contiguity, the bystander page untouched, a no-op that answers
+rather than hanging, clamping past the end, a section from another page refused, the published-ACL
+invariant, and a non-admin refused 403.
+
+### 31.3 🔴 The gesture is NOT met, and it is a product row
+
+AC2 says *"dragging"*. It ships as buttons, because **no visual node reports its rendered geometry
+to the graph** — measured with controls, filed as **D23**, `NONE`. `Drag` gives an offset and no
+drop target; these rows are a textarea and an image preview, so no two are the same height; there is
+no `rowHeight` to divide by. D23 is D15's twin, one capability short in the same place.
+
+**AC2's outcome is met and driven. AC2's gesture is not, and this is not rounded off.**
+
+### 31.4 What driving cost, beyond the fix
+
+- 🔴 **A checker had a hole nothing had ever reached.** `sb007Template.test.ts`'s SBR-016 rule walks
+  a query's producers to find a trigger that predates any edit. `CloudFunction2` was in its
+  `TRANSPARENT` set but has no `runOnValueChange` entry, so it fell through to *"not signal-driven,
+  so a value landing runs it"* — untrue: `scheduleCall` is *"the only method the `Call` port
+  reaches"*. With `reorder.done → storageFetch` the walk reported the page editor's query as running
+  because *"the page mounted"* — **true of the value it followed, false of the trigger it graded**.
+  Fixed with an explicit `INVOCATION_ONLY` map. 🔴 **The pinned literal did not need to move**: with
+  the checker right it names the mount path again, which is what says the hole was the cause.
+- ⚠️ **Four census literals moved and one I read backwards.** `sb005AdminPanel`'s pair is *code
+  nodes* and *code nodes that declare a port*; I commented that the second would stay at 4 and it
+  correctly went to 6 — both planners declare `out-go`. The number was right and my sentence about
+  it was wrong.
+- 🔴 **The template must ship a rule for its own endpoint.** `site-builder.security.json` gained
+  `reorderSection: role:admin`, because SB-016's gate refuses a public bind while any endpoint is
+  undeclared. Its *"two of four land on the wrong rule"* finding is now **three of five** — the
+  finding got wider as the template grew.
+- 🔴 **D24** — the reorder drive makes `duplicatePage` fail 4 runs in 5 with `run-tasks/already-running`
+  on duplicatePage's own node, from a previous request. Three controls say it is not call volume.
+  **Two wrong readings were recorded on the way** (an id shift that did not happen, then a bundle
+  order that was luck) — see D24. Unowned, mechanism unestablished.

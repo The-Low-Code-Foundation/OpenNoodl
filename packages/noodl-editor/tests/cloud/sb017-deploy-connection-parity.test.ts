@@ -371,7 +371,10 @@ describe('SB-017: the editor deploy path ships every connection the template hol
         return nodes;
       });
 
-    expect(browserFunctions.length).toBe(23);
+    // 23 → 25: AC2's `moveUp` and `moveDown` on `/Pages/PageEditor`. They are
+    // BROWSER Function nodes, which is the half this case is about — the cloud
+    // export must leave them alone however many of them there are.
+    expect(browserFunctions.length).toBe(25);
     expect(browserFunctions.filter((node) => (node.dynamicports || []).length > 0)).toEqual([]);
 
     // …and the same sweep on the cloud side did write ports, so the assertion
@@ -480,9 +483,14 @@ describe('SB-017: the editor deploy path ships every connection the template hol
     // The denominator, as a literal. A regex that stopped matching, or a
     // template that stopped calling signals, would otherwise pass this case
     // vacuously — the population has to be read before the measurement.
+    // 🔴 13 → 15 over 11 → 13 nodes: SBR-007 AC2's `reorderSection` adds `prep`
+    // (`out-ready`) and `plan` (`out-built`). Both numbers had to move together —
+    // two new Function nodes each declaring exactly one signal. A port count that
+    // moved without the node count would mean a script had grown a second signal,
+    // which is a different fact and is what this pair exists to separate.
     const pairs = Object.values(expectedByComponent).flatMap((nodes) => Object.values(nodes).flat());
-    expect(pairs.length).toBe(13);
-    expect(Object.values(expectedByComponent).flatMap((nodes) => Object.keys(nodes)).length).toBe(11);
+    expect(pairs.length).toBe(15);
+    expect(Object.values(expectedByComponent).flatMap((nodes) => Object.keys(nodes)).length).toBe(13);
 
     const exported = exportCloudFunctionsToJSON(project) as TSFixme;
 
@@ -535,7 +543,7 @@ describe('SB-017: the editor deploy path ships every connection the template hol
         (n.ports ?? []).filter((p: TSFixme) => p.type === 'signal').map(() => 1)
       )
     );
-    expect(real.length).toBe(13);
+    expect(real.length).toBe(15);
   });
 
 });
@@ -550,7 +558,7 @@ describe('SB-017: the editor deploy path ships every connection the template hol
  * array to that throw is `withScriptPorts`'s docblock; this suite is the other
  * end — the export.
  *
- * 🔴 **The 13 signal ports are not derived. They are persisted**, on the node,
+ * 🔴 **The signal ports are not derived. They are persisted**, on the node,
  * in `site-builder.content.json`, and the drive project carried them on disk at
  * the moment of the deploy that lost them (checked: `nodes.json` for both the
  * failing and the working project holds `out-ready:output:signal`). So no sweep
@@ -626,22 +634,23 @@ describe('D14: a cloud bundle carries its signal ports even when no node type re
     // all. This is the pair that makes the next case a reproduction rather than
     // a description.
     const nodes = cloudFunctionNodes();
-    expect(nodes.length).toBe(11);
+    // 11 → 13 with AC2's `prep` and `plan` — see the healthy suite's note.
+    expect(nodes.length).toBe(13);
     expect(nodes.every((node) => NodeLibrary.instance.typeIsMissing(node.type))).toBe(true);
 
     // The persisted ports the export is about to be asked for.
     const persisted = nodes.flatMap((node: TSFixme) =>
       (node.ports || []).filter((p: TSFixme) => p.type === 'signal')
     );
-    expect(persisted.length).toBe(13);
+    expect(persisted.length).toBe(15);
   });
 
-  it('still ships all 13 signal ports', () => {
-    // The same 13 the healthy suite counts, and the equality is the claim: what
+  it('still ships all 15 signal ports', () => {
+    // The same 15 the healthy suite counts, and the equality is the claim: what
     // a deploy contains is a property of the project, not of when in the session
     // it was taken. 🔴 Red before `withScriptPorts` — the export dropped every
     // one of them, which is the bundle that shipped.
-    expect(signalPorts(exportCloudFunctionsToJSON(project) as TSFixme).length).toBe(13);
+    expect(signalPorts(exportCloudFunctionsToJSON(project) as TSFixme).length).toBe(15);
   });
 
   it('adds only what the script declares — it does not invent a port', () => {

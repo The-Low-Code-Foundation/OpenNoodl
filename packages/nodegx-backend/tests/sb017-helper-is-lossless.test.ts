@@ -179,7 +179,13 @@ describe('SB-017 acceptance 1 (backend half): the authored-bundle helper is loss
     expect(fromHelper['/#__cloud__/duplicatePage']).toBe(31);
     expect(fromHelper['/#__cloud__/submitContactForm']).toBe(21);
     expect(fromHelper['/#__cloud__/claimSite']).toBe(21);
-    expect(Object.values(fromHelper).reduce((total, n) => total + n, 0)).toBe(118);
+    // SBR-007 AC2 adds two components and 24 wires: `reorderSection` (19) and
+    // its worker `site/SetSectionOrder` (5). The endpoint is born with its
+    // failure edges rather than acquiring them later — SBR-015's rule is a gate
+    // now, so the +6/+9 story above is history rather than a pattern to repeat.
+    expect(fromHelper['/#__cloud__/reorderSection']).toBe(19);
+    expect(fromHelper['/#__cloud__/site/SetSectionOrder']).toBe(5);
+    expect(Object.values(fromHelper).reduce((total, n) => total + n, 0)).toBe(142);
   });
 
   it('loses no wire, and re-points none — asserted as a multiset, not a count', () => {

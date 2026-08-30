@@ -2303,12 +2303,56 @@
                 "dynamicports": []
               },
               {
+                "id": "moveRow",
+                "type": "Group",
+                "children": [
+                  {
+                    "id": "moveUpButton",
+                    "type": "net.noodl.controls.button",
+                    "children": [],
+                    "label": "Move up",
+                    "x": 160,
+                    "y": 400,
+                    "parameters": {
+                      "sizeMode": "contentSize",
+                      "label": "Move up"
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  },
+                  {
+                    "id": "moveDownButton",
+                    "type": "net.noodl.controls.button",
+                    "children": [],
+                    "label": "Move down",
+                    "x": 160,
+                    "y": 520,
+                    "parameters": {
+                      "sizeMode": "contentSize",
+                      "label": "Move down"
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  }
+                ],
+                "label": "Move this section",
+                "x": 100,
+                "y": 280,
+                "parameters": {
+                  "sizeMode": "contentHeight",
+                  "flexDirection": "row",
+                  "columnGap": "var(--space-2)"
+                },
+                "ports": [],
+                "dynamicports": []
+              },
+              {
                 "id": "bodyField",
                 "type": "net.noodl.controls.textinput",
                 "children": [],
                 "label": "Body",
                 "x": 100,
-                "y": 280,
+                "y": 640,
                 "parameters": {
                   "useLabel": true,
                   "label": "Body",
@@ -2323,7 +2367,7 @@
                 "children": [],
                 "label": "Image preview",
                 "x": 100,
-                "y": 400,
+                "y": 760,
                 "parameters": {},
                 "ports": [],
                 "dynamicports": []
@@ -2334,7 +2378,7 @@
                 "children": [],
                 "label": "Choose image",
                 "x": 100,
-                "y": 520,
+                "y": 880,
                 "parameters": {
                   "label": "Choose image"
                 },
@@ -2347,7 +2391,7 @@
                 "children": [],
                 "label": "Save",
                 "x": 100,
-                "y": 640,
+                "y": 1000,
                 "parameters": {
                   "label": "Save"
                 },
@@ -2360,7 +2404,7 @@
                 "children": [],
                 "label": "Delete",
                 "x": 100,
-                "y": 760,
+                "y": 1120,
                 "parameters": {
                   "label": "Delete"
                 },
@@ -2393,7 +2437,7 @@
             "type": "Component Inputs",
             "children": [],
             "label": "The section record",
-            "x": 350,
+            "x": 410,
             "y": 160,
             "parameters": {},
             "ports": [
@@ -2425,8 +2469,8 @@
             "type": "JavaScriptFunction",
             "children": [],
             "label": "Read the body and image out of data",
-            "x": 350,
-            "y": 280,
+            "x": 410,
+            "y": 640,
             "parameters": {
               "functionScript": "const d = Inputs.data || {};\nOutputs.body = d.body || '';\nOutputs.image = (d.image && d.image.url) || '';"
             },
@@ -2460,8 +2504,8 @@
             "type": "Open File Picker",
             "children": [],
             "label": "Choose an image",
-            "x": 350,
-            "y": 520,
+            "x": 410,
+            "y": 880,
             "parameters": {
               "acceptedFileTypes": "image/*"
             },
@@ -2473,8 +2517,8 @@
             "type": "Upload File",
             "children": [],
             "label": "Upload it",
-            "x": 350,
-            "y": 880,
+            "x": 410,
+            "y": 1240,
             "parameters": {},
             "ports": [],
             "dynamicports": []
@@ -2484,8 +2528,8 @@
             "type": "JavaScriptFunction",
             "children": [],
             "label": "Fold the edits back into data",
-            "x": 350,
-            "y": 400,
+            "x": 410,
+            "y": 760,
             "parameters": {
               "functionScript": "if (Inputs.data === undefined) return;\nconst next = Object.assign({}, Inputs.data);\nif (Inputs.body !== undefined) next.body = Inputs.body;\nif (Inputs.image !== undefined && Inputs.image !== null) next.image = Inputs.image;\nOutputs.data = next;\nOutputs.built();"
             },
@@ -2531,8 +2575,8 @@
             "type": "SetDbModelProperties",
             "children": [],
             "label": "Save this section",
-            "x": 350,
-            "y": 1000,
+            "x": 410,
+            "y": 1360,
             "parameters": {
               "collectionName": "Section",
               "idSource": "explicit",
@@ -2546,8 +2590,8 @@
             "type": "DeleteDbModelProperties",
             "children": [],
             "label": "Delete this section",
-            "x": 350,
-            "y": 760,
+            "x": 410,
+            "y": 1120,
             "parameters": {
               "collectionName": "Section",
               "idSource": "explicit"
@@ -2560,12 +2604,22 @@
             "type": "Component Outputs",
             "children": [],
             "label": "Tell the editor something changed",
-            "x": 350,
-            "y": 1120,
+            "x": 410,
+            "y": 400,
             "parameters": {},
             "ports": [
               {
                 "name": "Changed",
+                "plug": "input",
+                "type": "signal"
+              },
+              {
+                "name": "MoveUp",
+                "plug": "input",
+                "type": "signal"
+              },
+              {
+                "name": "MoveDown",
                 "plug": "input",
                 "type": "signal"
               }
@@ -2687,6 +2741,18 @@
             "fromProperty": "done",
             "toId": "outputs",
             "toProperty": "Changed"
+          },
+          {
+            "fromId": "moveUpButton",
+            "fromProperty": "onClick",
+            "toId": "outputs",
+            "toProperty": "MoveUp"
+          },
+          {
+            "fromId": "moveDownButton",
+            "fromProperty": "onClick",
+            "toId": "outputs",
+            "toProperty": "MoveDown"
           }
         ],
         "visualRoots": [
@@ -3032,12 +3098,30 @@
                             "dynamicports": []
                           },
                           {
+                            "id": "reorderRefusal",
+                            "type": "Text",
+                            "children": [],
+                            "label": "Why that move did not work",
+                            "x": 280,
+                            "y": 2800,
+                            "parameters": {
+                              "sizeMode": "contentHeight",
+                              "mounted": false,
+                              "text": "Those sections could not be reordered.",
+                              "fontFamily": "var(--font-sans)",
+                              "fontSize": "var(--text-sm)",
+                              "color": "var(--destructive)"
+                            },
+                            "ports": [],
+                            "dynamicports": []
+                          },
+                          {
                             "id": "sectionList-2",
                             "type": "For Each",
                             "children": [],
                             "label": "One row per section",
                             "x": 280,
-                            "y": 2800,
+                            "y": 2920,
                             "parameters": {
                               "templateType": "explicit",
                               "template": "/Admin/SectionRow"
@@ -3063,7 +3147,7 @@
                         "children": [],
                         "label": "Back",
                         "x": 220,
-                        "y": 2920,
+                        "y": 3040,
                         "parameters": {
                           "label": "Back to pages"
                         },
@@ -3123,7 +3207,7 @@
             "children": [],
             "label": "Which page",
             "x": 590,
-            "y": 3040,
+            "y": 3520,
             "parameters": {
               "pathParams": "pageId"
             },
@@ -3198,7 +3282,7 @@
             "children": [],
             "label": "This page's sections",
             "x": 590,
-            "y": 2800,
+            "y": 3040,
             "parameters": {
               "runOnChange-collectionName": false,
               "runOnChange-querySettings": false,
@@ -3214,6 +3298,134 @@
                   }
                 ]
               }
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "moveUp",
+            "type": "JavaScriptFunction",
+            "children": [],
+            "label": "Where does this section go if it moves up",
+            "x": 590,
+            "y": 3160,
+            "parameters": {
+              "runOnChange-in-sections": false,
+              "runOnChange-in-itemId": false,
+              "functionScript": "if (Inputs.sections === undefined || Inputs.itemId === undefined) return;\nconst rows = (Inputs.sections || []).map((s) => ({ id: s.id, order: (s.data || s).order }));\nrows.sort((a, b) => (a.order - b.order) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));\nconst from = rows.findIndex((r) => r.id === Inputs.itemId);\nif (from <= 0) return;\nOutputs.sectionId = Inputs.itemId;\nOutputs.toIndex = from - 1;\nOutputs.go();"
+            },
+            "ports": [
+              {
+                "name": "out-go",
+                "plug": "output",
+                "type": "signal"
+              },
+              {
+                "name": "in-sections",
+                "displayName": "sections",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "in-itemId",
+                "displayName": "itemId",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "out-sectionId",
+                "displayName": "sectionId",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              },
+              {
+                "name": "out-toIndex",
+                "displayName": "toIndex",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              }
+            ],
+            "dynamicports": []
+          },
+          {
+            "id": "moveDown",
+            "type": "JavaScriptFunction",
+            "children": [],
+            "label": "Where does this section go if it moves down",
+            "x": 590,
+            "y": 3280,
+            "parameters": {
+              "runOnChange-in-sections": false,
+              "runOnChange-in-itemId": false,
+              "functionScript": "if (Inputs.sections === undefined || Inputs.itemId === undefined) return;\nconst rows = (Inputs.sections || []).map((s) => ({ id: s.id, order: (s.data || s).order }));\nrows.sort((a, b) => (a.order - b.order) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));\nconst from = rows.findIndex((r) => r.id === Inputs.itemId);\nif (from < 0 || from >= rows.length - 1) return;\nOutputs.sectionId = Inputs.itemId;\nOutputs.toIndex = from + 1;\nOutputs.go();"
+            },
+            "ports": [
+              {
+                "name": "out-go",
+                "plug": "output",
+                "type": "signal"
+              },
+              {
+                "name": "in-sections",
+                "displayName": "sections",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "in-itemId",
+                "displayName": "itemId",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "out-sectionId",
+                "displayName": "sectionId",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              },
+              {
+                "name": "out-toIndex",
+                "displayName": "toIndex",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              }
+            ],
+            "dynamicports": []
+          },
+          {
+            "id": "reorderState",
+            "type": "States",
+            "children": [],
+            "label": "Did the last move refuse?",
+            "x": 590,
+            "y": 2800,
+            "parameters": {
+              "states": "Quiet,Refused",
+              "values": "refused",
+              "type-refused": "boolean",
+              "value-Quiet-refused": false,
+              "value-Refused-refused": true
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "reorder",
+            "type": "CloudFunction2",
+            "children": [],
+            "label": "reorderSection",
+            "x": 590,
+            "y": 2920,
+            "parameters": {
+              "function": "reorderSection"
             },
             "ports": [],
             "dynamicports": []
@@ -3247,7 +3459,7 @@
             "children": [],
             "label": "Back to the list",
             "x": 590,
-            "y": 2920,
+            "y": 3400,
             "parameters": {
               "router": "Main",
               "target": "/Pages/Admin"
@@ -3599,6 +3811,114 @@
             "fromProperty": "onClick",
             "toId": "goBack",
             "toProperty": "navigate"
+          },
+          {
+            "fromId": "sections-2",
+            "fromProperty": "items",
+            "toId": "moveUp",
+            "toProperty": "in-sections"
+          },
+          {
+            "fromId": "sectionList-2",
+            "fromProperty": "itemActionItemId",
+            "toId": "moveUp",
+            "toProperty": "in-itemId"
+          },
+          {
+            "fromId": "sectionList-2",
+            "fromProperty": "itemOutputSignal-MoveUp",
+            "toId": "moveUp",
+            "toProperty": "run"
+          },
+          {
+            "fromId": "sections-2",
+            "fromProperty": "items",
+            "toId": "moveDown",
+            "toProperty": "in-sections"
+          },
+          {
+            "fromId": "sectionList-2",
+            "fromProperty": "itemActionItemId",
+            "toId": "moveDown",
+            "toProperty": "in-itemId"
+          },
+          {
+            "fromId": "sectionList-2",
+            "fromProperty": "itemOutputSignal-MoveDown",
+            "toId": "moveDown",
+            "toProperty": "run"
+          },
+          {
+            "fromId": "hold",
+            "fromProperty": "out-pageId",
+            "toId": "reorder",
+            "toProperty": "in-pageId"
+          },
+          {
+            "fromId": "moveUp",
+            "fromProperty": "out-sectionId",
+            "toId": "reorder",
+            "toProperty": "in-sectionId"
+          },
+          {
+            "fromId": "moveUp",
+            "fromProperty": "out-toIndex",
+            "toId": "reorder",
+            "toProperty": "in-toIndex"
+          },
+          {
+            "fromId": "moveUp",
+            "fromProperty": "out-go",
+            "toId": "reorder",
+            "toProperty": "call"
+          },
+          {
+            "fromId": "moveDown",
+            "fromProperty": "out-sectionId",
+            "toId": "reorder",
+            "toProperty": "in-sectionId"
+          },
+          {
+            "fromId": "moveDown",
+            "fromProperty": "out-toIndex",
+            "toId": "reorder",
+            "toProperty": "in-toIndex"
+          },
+          {
+            "fromId": "moveDown",
+            "fromProperty": "out-go",
+            "toId": "reorder",
+            "toProperty": "call"
+          },
+          {
+            "fromId": "reorder",
+            "fromProperty": "done",
+            "toId": "sections-2",
+            "toProperty": "storageFetch"
+          },
+          {
+            "fromId": "reorder",
+            "fromProperty": "failure",
+            "toId": "reorderState",
+            "toProperty": "to-Refused"
+          },
+          {
+            "fromId": "reorder",
+            "fromProperty": "done",
+            "toId": "reorderState",
+            "toProperty": "to-Quiet"
+          },
+          {
+            "fromId": "reorderState",
+            "fromProperty": "refused",
+            "toId": "reorderRefusal",
+            "toProperty": "mounted"
+          },
+          {
+            "fromId": "reorder",
+            "fromProperty": "error",
+            "toId": "reorderRefusal",
+            "toProperty": "text"
           },
           {
             "fromId": "record",
@@ -8123,6 +8443,433 @@
             "fromId": "mark",
             "fromProperty": "failure",
             "toId": "deny-3",
+            "toProperty": "send"
+          }
+        ]
+      }
+    },
+    {
+      "name": "/#__cloud__/site/SetSectionOrder",
+      "graph": {
+        "roots": [
+          {
+            "id": "inputs-10",
+            "type": "Component Inputs",
+            "children": [],
+            "label": "The section, and where it lands",
+            "x": 40,
+            "y": 40,
+            "parameters": {},
+            "ports": [
+              {
+                "name": "objectId",
+                "plug": "output",
+                "type": "string"
+              },
+              {
+                "name": "order",
+                "plug": "output",
+                "type": "number"
+              },
+              {
+                "name": "Do",
+                "plug": "output",
+                "type": "signal"
+              }
+            ],
+            "dynamicports": []
+          },
+          {
+            "id": "write-2",
+            "type": "SetDbModelProperties",
+            "children": [],
+            "label": "Write this section its new order",
+            "x": 40,
+            "y": 160,
+            "parameters": {
+              "collectionName": "Section",
+              "idSource": "explicit",
+              "storeProperties": "specified"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "outputs-6",
+            "type": "Component Outputs",
+            "children": [],
+            "label": "Task result",
+            "x": 40,
+            "y": 280,
+            "parameters": {},
+            "ports": [
+              {
+                "name": "Success",
+                "plug": "input",
+                "type": "signal"
+              },
+              {
+                "name": "Failure",
+                "plug": "input",
+                "type": "signal"
+              }
+            ],
+            "dynamicports": []
+          }
+        ],
+        "connections": [
+          {
+            "fromId": "inputs-10",
+            "fromProperty": "objectId",
+            "toId": "write-2",
+            "toProperty": "modelId"
+          },
+          {
+            "fromId": "inputs-10",
+            "fromProperty": "order",
+            "toId": "write-2",
+            "toProperty": "prop-order"
+          },
+          {
+            "fromId": "inputs-10",
+            "fromProperty": "Do",
+            "toId": "write-2",
+            "toProperty": "store"
+          },
+          {
+            "fromId": "write-2",
+            "fromProperty": "done",
+            "toId": "outputs-6",
+            "toProperty": "Success"
+          },
+          {
+            "fromId": "write-2",
+            "fromProperty": "failure",
+            "toId": "outputs-6",
+            "toProperty": "Failure"
+          }
+        ]
+      }
+    },
+    {
+      "name": "/#__cloud__/reorderSection",
+      "graph": {
+        "roots": [
+          {
+            "id": "req-5",
+            "type": "noodl.cloud.request",
+            "children": [],
+            "label": "reorderSection(pageId, sectionId, toIndex)",
+            "x": 40,
+            "y": 40,
+            "parameters": {
+              "params": "pageId,sectionId,toIndex",
+              "ptype-pageId": "string",
+              "preq-pageId": true,
+              "ptype-sectionId": "string",
+              "preq-sectionId": true,
+              "ptype-toIndex": "number",
+              "preq-toIndex": true,
+              "allowNoAuth": false
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "prep-3",
+            "type": "JavaScriptFunction",
+            "children": [],
+            "label": "Hold the request until all three parameters are here",
+            "x": 40,
+            "y": 160,
+            "parameters": {
+              "functionScript": "if (Inputs.pageId === undefined || Inputs.sectionId === undefined) return;\nif (Inputs.toIndex === undefined) return;\nOutputs.pageId = Inputs.pageId;\nOutputs.sectionId = Inputs.sectionId;\nOutputs.toIndex = Inputs.toIndex;\nOutputs.ready();"
+            },
+            "ports": [
+              {
+                "name": "out-ready",
+                "plug": "output",
+                "type": "signal"
+              },
+              {
+                "name": "in-pageId",
+                "displayName": "pageId",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "in-sectionId",
+                "displayName": "sectionId",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "in-toIndex",
+                "displayName": "toIndex",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "out-pageId",
+                "displayName": "pageId",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              },
+              {
+                "name": "out-sectionId",
+                "displayName": "sectionId",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              },
+              {
+                "name": "out-toIndex",
+                "displayName": "toIndex",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              }
+            ],
+            "dynamicports": []
+          },
+          {
+            "id": "sections-5",
+            "type": "DbCollection2",
+            "children": [],
+            "label": "This page's sections",
+            "x": 40,
+            "y": 280,
+            "parameters": {
+              "runOnChange-collectionName": false,
+              "runOnChange-querySettings": false,
+              "collectionName": "Section",
+              "visualFilter": {
+                "combinator": "and",
+                "rules": [
+                  {
+                    "property": "pageId",
+                    "operator": "equal to",
+                    "input": "pageId"
+                  }
+                ]
+              }
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "plan",
+            "type": "JavaScriptFunction",
+            "children": [],
+            "label": "Sort, move, and renumber what actually moved",
+            "x": 40,
+            "y": 400,
+            "parameters": {
+              "functionScript": "if (Inputs.sections === undefined) return;\nif (Inputs.sectionId === undefined || Inputs.toIndex === undefined) return;\nconst rows = (Inputs.sections || []).map((s) => ({ id: s.id, order: (s.data || s).order }));\nrows.sort((a, b) => (a.order - b.order) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));\nconst from = rows.findIndex((r) => r.id === Inputs.sectionId);\nif (from < 0) throw new Error('That section is not on this page.');\nlet to = Math.round(Number(Inputs.toIndex));\nif (!isFinite(to)) to = from;\nto = Math.max(0, Math.min(rows.length - 1, to));\nconst moved = rows.splice(from, 1)[0];\nrows.splice(to, 0, moved);\nOutputs.tasks = rows\n  .map((r, i) => ({ objectId: r.id, order: i, was: r.order }))\n  .filter((t) => t.was !== t.order)\n  .map((t) => ({ objectId: t.objectId, order: t.order }));\nOutputs.movedTo = to;\nOutputs.built();"
+            },
+            "ports": [
+              {
+                "name": "out-built",
+                "plug": "output",
+                "type": "signal"
+              },
+              {
+                "name": "in-sections",
+                "displayName": "sections",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "in-sectionId",
+                "displayName": "sectionId",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "in-toIndex",
+                "displayName": "toIndex",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "out-tasks",
+                "displayName": "tasks",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              },
+              {
+                "name": "out-movedTo",
+                "displayName": "movedTo",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              }
+            ],
+            "dynamicports": []
+          },
+          {
+            "id": "tasks-3",
+            "type": "RunTasks",
+            "children": [],
+            "label": "Renumber every section that moved",
+            "x": 40,
+            "y": 520,
+            "parameters": {
+              "taskTemplate": "/#__cloud__/site/SetSectionOrder",
+              "stopOnFailure": true
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "res-5",
+            "type": "noodl.cloud.response",
+            "children": [],
+            "label": "Answer with where it landed",
+            "x": 40,
+            "y": 640,
+            "parameters": {
+              "params": "sectionId,order"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "deny-4",
+            "type": "noodl.cloud.response",
+            "children": [],
+            "label": "Could not reorder",
+            "x": 40,
+            "y": 760,
+            "parameters": {
+              "status": "failure",
+              "errorMessage": "These sections could not be reordered."
+            },
+            "ports": [],
+            "dynamicports": []
+          }
+        ],
+        "connections": [
+          {
+            "fromId": "req-5",
+            "fromProperty": "pm-pageId",
+            "toId": "prep-3",
+            "toProperty": "in-pageId"
+          },
+          {
+            "fromId": "req-5",
+            "fromProperty": "pm-sectionId",
+            "toId": "prep-3",
+            "toProperty": "in-sectionId"
+          },
+          {
+            "fromId": "req-5",
+            "fromProperty": "pm-toIndex",
+            "toId": "prep-3",
+            "toProperty": "in-toIndex"
+          },
+          {
+            "fromId": "req-5",
+            "fromProperty": "receive",
+            "toId": "prep-3",
+            "toProperty": "run"
+          },
+          {
+            "fromId": "prep-3",
+            "fromProperty": "out-pageId",
+            "toId": "sections-5",
+            "toProperty": "qp-pageId"
+          },
+          {
+            "fromId": "sections-5",
+            "fromProperty": "items",
+            "toId": "plan",
+            "toProperty": "in-sections"
+          },
+          {
+            "fromId": "prep-3",
+            "fromProperty": "out-sectionId",
+            "toId": "plan",
+            "toProperty": "in-sectionId"
+          },
+          {
+            "fromId": "prep-3",
+            "fromProperty": "out-toIndex",
+            "toId": "plan",
+            "toProperty": "in-toIndex"
+          },
+          {
+            "fromId": "sections-5",
+            "fromProperty": "fetched",
+            "toId": "plan",
+            "toProperty": "run"
+          },
+          {
+            "fromId": "plan",
+            "fromProperty": "out-tasks",
+            "toId": "tasks-3",
+            "toProperty": "items"
+          },
+          {
+            "fromId": "plan",
+            "fromProperty": "out-built",
+            "toId": "tasks-3",
+            "toProperty": "run"
+          },
+          {
+            "fromId": "prep-3",
+            "fromProperty": "out-sectionId",
+            "toId": "res-5",
+            "toProperty": "pm-sectionId"
+          },
+          {
+            "fromId": "plan",
+            "fromProperty": "out-movedTo",
+            "toId": "res-5",
+            "toProperty": "pm-order"
+          },
+          {
+            "fromId": "tasks-3",
+            "fromProperty": "done",
+            "toId": "res-5",
+            "toProperty": "send"
+          },
+          {
+            "fromId": "prep-3",
+            "fromProperty": "failure",
+            "toId": "deny-4",
+            "toProperty": "send"
+          },
+          {
+            "fromId": "sections-5",
+            "fromProperty": "failure",
+            "toId": "deny-4",
+            "toProperty": "send"
+          },
+          {
+            "fromId": "plan",
+            "fromProperty": "failure",
+            "toId": "deny-4",
+            "toProperty": "send"
+          },
+          {
+            "fromId": "tasks-3",
+            "fromProperty": "failure",
+            "toId": "deny-4",
+            "toProperty": "send"
+          },
+          {
+            "fromId": "tasks-3",
+            "fromProperty": "unchanged",
+            "toId": "deny-4",
             "toProperty": "send"
           }
         ]

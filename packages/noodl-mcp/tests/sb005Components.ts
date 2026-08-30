@@ -87,6 +87,12 @@ import { ADMIN_ONLY_RULES } from './sb004Components';
 export const FN_CLAIM = 'claimSite';
 export const FN_PUBLISH = 'publishPage';
 export const FN_DUPLICATE = 'duplicatePage';
+/**
+ * SBR-007 AC2. The write half of reordering is cloud-only because it renumbers
+ * SIBLINGS and the browser runtime has no loop node — see the endpoint's own
+ * note in `sb004Components.ts`.
+ */
+export const FN_REORDER = 'reorderSection';
 
 /** The Router the template's `App` component hosts; `RouterNavigate.router` names it. */
 export const ROUTER = 'Main';
@@ -701,7 +707,7 @@ export const SECTION_ROW_NODES = [
       paddingLeft: 'var(--space-4)',
       paddingRight: 'var(--space-4)'
     },
-    children: ['kindText', 'bodyField', 'preview', 'pickButton', 'saveButton', 'deleteButton']
+    children: ['kindText', 'moveRow', 'bodyField', 'preview', 'pickButton', 'saveButton', 'deleteButton']
   },
   // SB-018 (3), same standing `text` as `/Admin/PageRow`'s two — see the note there.
   {
@@ -720,6 +726,44 @@ export const SECTION_ROW_NODES = [
       letterSpacing: 'var(--tracking-wide)',
       color: 'var(--muted-foreground)'
     }
+  },
+  // ── SBR-007 AC2's gesture, and it is buttons rather than a drag ───────────
+  //
+  // 🔴 **Not a shortcut — measured.** A drag needs to answer "which row am I
+  // over", and this runtime cannot: `visual/drag.ts` reports `Drag X/Y` and
+  // `Delta X/Y` and no drop target, so the index has to be arithmetic over the
+  // row pitch — and **no node in the viewer reports its own rendered geometry
+  // to the graph**. The one node with any size output at all is `Video`
+  // (`videoWidth`/`videoHeight`, the intrinsic media size, plus a `domelement`
+  // that exists on nothing else), and these rows are anything but uniform: a
+  // textarea and an image preview make every one a different height. So
+  // `Drag Y / rowHeight` has no `rowHeight` to divide by. Recorded as
+  // **D23** — it is D15's twin, one capability short in the same place.
+  //
+  // What survives is the half AC2 is actually about: a person changes the
+  // order and a visitor sees it. These two buttons do that, and they hand the
+  // endpoint a `toIndex` exactly as a drop would.
+  {
+    id: 'moveRow',
+    type: 'Group',
+    label: 'Move this section',
+    parent: 'row',
+    parameters: { ...STACKED, flexDirection: 'row', columnGap: 'var(--space-2)' },
+    children: ['moveUpButton', 'moveDownButton']
+  },
+  {
+    id: 'moveUpButton',
+    type: 'net.noodl.controls.button',
+    label: 'Move up',
+    parent: 'moveRow',
+    parameters: { ...IN_A_ROW, label: 'Move up' }
+  },
+  {
+    id: 'moveDownButton',
+    type: 'net.noodl.controls.button',
+    label: 'Move down',
+    parent: 'moveRow',
+    parameters: { ...IN_A_ROW, label: 'Move down' }
   },
   {
     id: 'bodyField',
@@ -816,7 +860,21 @@ export const SECTION_ROW_NODES = [
     id: 'outputs',
     type: 'Component Outputs',
     label: 'Tell the editor something changed',
-    ports: [{ name: 'Changed', type: 'signal', plug: 'input' }]
+    // 🔴 `MoveUp`/`MoveDown` leave the row rather than calling the endpoint
+    // here, and that is the only place the call CAN live. A row knows its own
+    // `order` and nothing about its siblings', so it cannot turn "up" into a
+    // position — `order - 1` is only the row above when `order` happens to be
+    // contiguous, which nothing guarantees (`addSection` writes `count`, and a
+    // delete leaves a gap). The editor holds the whole sorted list; the row
+    // does not. `For Each` carries both halves out together: it flags every
+    // `itemOutput-…` dirty and THEN sends `itemOutputSignal-…`, in one
+    // scheduled pass (`foreach.tsx:905-928`), so `itemActionItemId` has landed
+    // by the time the signal arrives.
+    ports: [
+      { name: 'Changed', type: 'signal', plug: 'input' },
+      { name: 'MoveUp', type: 'signal', plug: 'input' },
+      { name: 'MoveDown', type: 'signal', plug: 'input' }
+    ]
   }
 ];
 
@@ -850,7 +908,11 @@ export const SECTION_ROW_WIRES = [
   { fromId: 'deleteButton', fromProperty: 'onClick', toId: 'remove', toProperty: 'store' },
 
   { fromId: 'save', fromProperty: 'done', toId: 'outputs', toProperty: 'Changed' },
-  { fromId: 'remove', fromProperty: 'done', toId: 'outputs', toProperty: 'Changed' }
+  { fromId: 'remove', fromProperty: 'done', toId: 'outputs', toProperty: 'Changed' },
+
+  // AC2. The button press IS the signal — there is nothing to fold first.
+  { fromId: 'moveUpButton', fromProperty: 'onClick', toId: 'outputs', toProperty: 'MoveUp' },
+  { fromId: 'moveDownButton', fromProperty: 'onClick', toId: 'outputs', toProperty: 'MoveDown' }
 ];
 
 // ── 3. Pages/Setup — the first-run claim screen ──────────────────────────────
@@ -1646,7 +1708,26 @@ export const PAGE_EDITOR_NODES = [
     label: 'Sections',
     parent: 'body',
     parameters: { ...STACKED, flexDirection: 'column', rowGap: 'var(--space-3)' },
-    children: ['sectionsHeader', 'sectionList']
+    children: ['sectionsHeader', 'reorderRefusal', 'sectionList']
+  },
+  {
+    id: 'reorderRefusal',
+    type: 'Text',
+    label: 'Why that move did not work',
+    parent: 'sectionsPanel',
+    // 🔴 `mounted`, never `visible` — an absent refusal must take no space above
+    // the list. Same rule, same reason, as `/Admin/PageRow`'s `rowRefusal`.
+    // The standing `text` is there because `Text` declares `default: 'Text'`,
+    // so a node whose only `text` is a wire renders the literal word until that
+    // wire publishes.
+    parameters: {
+      ...STACKED,
+      mounted: false,
+      text: 'Those sections could not be reordered.',
+      fontFamily: 'var(--font-sans)',
+      fontSize: 'var(--text-sm)',
+      color: 'var(--destructive)'
+    }
   },
   {
     id: 'sectionsHeader',
@@ -1785,6 +1866,92 @@ export const PAGE_EDITOR_NODES = [
       collectionName: 'Section',
       visualFilter: SECTIONS_OF_PAGE_FILTER
     }
+  },
+  // ── AC2: turning "up" into a position, which only this component can do ────
+  //
+  // The row fires the signal; the editor holds the list. Both planners take the
+  // same two inputs and differ by one character, and they are two nodes rather
+  // than one because a `JavaScriptFunction` has exactly ONE input signal
+  // (`run`) — `simplejavascript.ts` mints `in-<name>` for values only — so
+  // there is no way to tell one script which direction was pressed.
+  //
+  // 🔴 **`runOnChange-in-…: false` on both, and it is load-bearing.**
+  // `itemActionItemId` is set for EVERY item output signal a row sends,
+  // `Changed` included (`foreach.tsx:911`). Ticked — and absent means ticked
+  // (`run-on-value-change.ts`) — pressing **Save** on a row would land a new
+  // `itemId`, re-run both scripts, and silently move the section the client had
+  // just edited. `run` is left as the only trigger, which is the same repair
+  // the queries in this file make for the same reason.
+  {
+    id: 'moveUp',
+    type: 'JavaScriptFunction',
+    label: 'Where does this section go if it moves up',
+    // Rule 1 — a custom signal port must be declared.
+    ports: [{ name: 'out-go', plug: 'output', type: 'signal' }],
+    parameters: {
+      'runOnChange-in-sections': false,
+      'runOnChange-in-itemId': false,
+      functionScript:
+        'if (Inputs.sections === undefined || Inputs.itemId === undefined) return;\n' +
+        // The same sort as the endpoint's, and for the same reason: `order` is
+        // not guaranteed contiguous, so a position has to be READ rather than
+        // computed from the row's own number. The id tie-break keeps two rows
+        // sharing an `order` from resolving two ways on two presses.
+        "const rows = (Inputs.sections || []).map((s) => ({ id: s.id, order: (s.data || s).order }));\n" +
+        'rows.sort((a, b) => (a.order - b.order) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));\n' +
+        'const from = rows.findIndex((r) => r.id === Inputs.itemId);\n' +
+        // Already at the top is not an error and not a request: a guarded
+        // return, which fires neither `failure` nor `go`.
+        'if (from <= 0) return;\n' +
+        'Outputs.sectionId = Inputs.itemId;\n' +
+        'Outputs.toIndex = from - 1;\n' +
+        'Outputs.go();'
+    }
+  },
+  {
+    id: 'moveDown',
+    type: 'JavaScriptFunction',
+    label: 'Where does this section go if it moves down',
+    ports: [{ name: 'out-go', plug: 'output', type: 'signal' }],
+    parameters: {
+      'runOnChange-in-sections': false,
+      'runOnChange-in-itemId': false,
+      functionScript:
+        'if (Inputs.sections === undefined || Inputs.itemId === undefined) return;\n' +
+        "const rows = (Inputs.sections || []).map((s) => ({ id: s.id, order: (s.data || s).order }));\n" +
+        'rows.sort((a, b) => (a.order - b.order) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));\n' +
+        'const from = rows.findIndex((r) => r.id === Inputs.itemId);\n' +
+        'if (from < 0 || from >= rows.length - 1) return;\n' +
+        'Outputs.sectionId = Inputs.itemId;\n' +
+        'Outputs.toIndex = from + 1;\n' +
+        'Outputs.go();'
+    }
+  },
+  {
+    id: 'reorderState',
+    type: 'States',
+    label: 'Did the last move refuse?',
+    // 🔴 This node is here because `failure` is a **signal** and `mounted` is a
+    // value port, and a signal into a value port arrives ONCE, as `false` — so
+    // wiring the two together directly gives a refusal that never appears. The
+    // `States` node is the recorded repair, and it also **resets**: a later move
+    // that works returns the panel to `Quiet`, so a refusal cannot outlive the
+    // thing it was about. Same shape as `/Admin/PageRow`'s `callState`.
+    parameters: {
+      states: 'Quiet,Refused',
+      values: 'refused',
+      'type-refused': 'boolean',
+      'value-Quiet-refused': false,
+      'value-Refused-refused': true
+    }
+  },
+  {
+    id: 'reorder',
+    type: 'CloudFunction2',
+    label: 'reorderSection',
+    // The constant IS the parameter — a `CloudFunction2` stores the target
+    // without the `/#__cloud__/` prefix. See the note on `FN_CLAIM`.
+    parameters: { function: FN_REORDER }
   },
   {
     id: 'addSection',
@@ -1955,6 +2122,50 @@ export const PAGE_EDITOR_WIRES = [
 
   { fromId: 'sections', fromProperty: 'items', toId: 'sectionList', toProperty: 'items' },
   { fromId: 'backButton', fromProperty: 'onClick', toId: 'goBack', toProperty: 'navigate' },
+
+  // ── AC2: the row says which way, the editor works out where ───────────────
+  //
+  // 🔴 The id and the trigger both leave `sectionList`, which is the rule
+  // `publishPage`'s `prep` was written to obey — a value and the signal that
+  // consumes it must come from the SAME node, or the script runs against the
+  // previous row. `For Each` gives that for free here: it flags every
+  // `itemOutput-…` dirty and sends the signal in one scheduled pass
+  // (`foreach.tsx:915-927`).
+  { fromId: 'sections', fromProperty: 'items', toId: 'moveUp', toProperty: 'in-sections' },
+  { fromId: 'sectionList', fromProperty: 'itemActionItemId', toId: 'moveUp', toProperty: 'in-itemId' },
+  { fromId: 'sectionList', fromProperty: 'itemOutputSignal-MoveUp', toId: 'moveUp', toProperty: 'run' },
+
+  { fromId: 'sections', fromProperty: 'items', toId: 'moveDown', toProperty: 'in-sections' },
+  { fromId: 'sectionList', fromProperty: 'itemActionItemId', toId: 'moveDown', toProperty: 'in-itemId' },
+  { fromId: 'sectionList', fromProperty: 'itemOutputSignal-MoveDown', toId: 'moveDown', toProperty: 'run' },
+
+  // `hold`, not `pageInputs` — the page id the query filtered on is the one the
+  // endpoint must renumber within, and they have to be the same value.
+  { fromId: 'hold', fromProperty: 'out-pageId', toId: 'reorder', toProperty: 'in-pageId' },
+  { fromId: 'moveUp', fromProperty: 'out-sectionId', toId: 'reorder', toProperty: 'in-sectionId' },
+  { fromId: 'moveUp', fromProperty: 'out-toIndex', toId: 'reorder', toProperty: 'in-toIndex' },
+  { fromId: 'moveUp', fromProperty: 'out-go', toId: 'reorder', toProperty: 'call' },
+  { fromId: 'moveDown', fromProperty: 'out-sectionId', toId: 'reorder', toProperty: 'in-sectionId' },
+  { fromId: 'moveDown', fromProperty: 'out-toIndex', toId: 'reorder', toProperty: 'in-toIndex' },
+  { fromId: 'moveDown', fromProperty: 'out-go', toId: 'reorder', toProperty: 'call' },
+
+  // The list has to be re-read, not re-sorted in place: the endpoint renumbered
+  // rows this browser never named, so the only true ordering is the stored one.
+  //
+  // ⚠️ `done`, and there is no `success` port to reach for — `CloudFunction2`
+  // renamed it (`cloudfunction2.ts:143-156`, ERG-001 §4). `completed` would be
+  // the wrong port for the SBR-015 reason: it fires whatever the outcome, so a
+  // refused move would re-read the list as if it had worked.
+  { fromId: 'reorder', fromProperty: 'done', toId: 'sections', toProperty: 'storageFetch' },
+
+  // SBR-015's browser half. A refusal nobody renders is a client pressing the
+  // button again. `error` is the node's own "why the last call failed"
+  // (`cloudfunction2.ts:157`), so the message the endpoint chose is the one
+  // shown — and the state, not the signal, is what mounts the Text.
+  { fromId: 'reorder', fromProperty: 'failure', toId: 'reorderState', toProperty: 'to-Refused' },
+  { fromId: 'reorder', fromProperty: 'done', toId: 'reorderState', toProperty: 'to-Quiet' },
+  { fromId: 'reorderState', fromProperty: 'refused', toId: 'reorderRefusal', toProperty: 'mounted' },
+  { fromId: 'reorder', fromProperty: 'error', toId: 'reorderRefusal', toProperty: 'text' },
 
   // ── The header row: which page, what state, and what is unsaved ────────────
   { fromId: 'record', fromProperty: 'prop-title', toId: 'headline', toProperty: 'in-title' },

@@ -606,8 +606,14 @@ describe('SB-005: the admin panel, through the MCP door', () => {
     // owes a declared signal port. A new code node that called a signal output
     // and did not declare it would move the second number, not the first — which
     // is D14's defect, one component over.
-    expect(rows.length).toBe(13);
-    expect(rows.filter((r) => !r.endsWith('declared=')).length).toBe(4);
+    // 13 → 15 and 4 → 6: SBR-007 AC2's `moveUp` and `moveDown` on the page
+    // editor. They move BOTH numbers, and that is the reading that says they are
+    // right: each emits `Outputs.go()` and each declares `out-go`, so each is a
+    // code node (first) that declares something (second). A pair that had called
+    // a signal without declaring it would have moved the first alone — and been
+    // caught by the loop above, which is where the mismatch is actually named.
+    expect(rows.length).toBe(15);
+    expect(rows.filter((r) => !r.endsWith('declared=')).length).toBe(6);
   });
 
   it('MUTANT: dropping a declared signal port reddens', () => {
@@ -659,11 +665,14 @@ describe('SB-005: the admin panel, through the MCP door', () => {
       // Admin's page list, PageEditor's sections, ThemeEditor's two singletons.
       queries: 4,
       // publish, unpublish, duplicate, claim.
-      functions: 4,
+      // 4 → 5: SBR-007 AC2's `reorder` on the page editor.
+      functions: 5,
       repeaters: 2,
       // PageRow 1, SectionRow 2, Setup 1, PageEditor 4, ThemeEditor 3.
       // 10 → 13: SBR-007's `headline`, `status` and `dirty` on the page editor.
-      code: 13,
+      // 13 → 15: AC2's `moveUp` and `moveDown`, also on the page editor — two
+      // nodes rather than one because a Function has a single `run` signal.
+      code: 15,
       // 4 → 5: SBR-017's `/Pages/SignIn`.
       pages: 5
     });

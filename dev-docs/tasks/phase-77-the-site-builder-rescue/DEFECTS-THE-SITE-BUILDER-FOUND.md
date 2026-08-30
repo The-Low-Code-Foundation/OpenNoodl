@@ -963,3 +963,97 @@ an ellipsis port that cannot also stop the wrapping would be inert — the same 
 🔴 **Unowned on purpose.** It is not SBR-007's — that task owns a screen, not the node library.
 
 ---
+
+## D23 — 🔴 No visual node reports its rendered geometry, so a drag cannot know what it is over
+
+**Found:** s27, building [SBR-007](SBR-007-THE-PAGE-EDITOR.md) AC2 · **Owner:** `NONE` ·
+**Product**, not template · **Bites:** any author asked for drag-to-reorder, drag-to-resize, a
+sticky header, or anything else whose logic depends on where a node actually ended up.
+
+AC2's own sentence is *"dragging a section from position 3 to 1"*. `visual/drag.ts` gives
+`Drag Started/Moved/Ended`, `Drag X/Y` and `Delta X/Y` — **an offset in pixels and no drop target**,
+which [D15](#d15) already recorded for files. So the author has to turn an offset into an index
+themselves, and that needs the row pitch. **There is no way to ask for it.**
+
+**Measured over `packages/noodl-viewer-react/src/nodes` (67 files, 51 `outputs:` blocks):**
+
+| grep | hits |
+|---|---|
+| an output port naming `clientHeight` / `offsetHeight` / `measuredHeight` / `boundingBox` / `boundingClientRect` — the finding | **0** |
+| `displayName` matching height/width/size/bounds/top/left — control, the search reaches port declarations | **20** |
+| nodes exposing `type: 'domelement'` — the one escape hatch a script could measure through | **1** (`visual/video.ts`) |
+
+⚠️ **The first population was wrong and the control is what said so.** Grepping `plug: 'output'`
+returned **18** hits across the whole directory, which is far too few for 51 output blocks — viewer
+nodes declare outputs in an `outputs:` object, not with `plug`. A finding of 0 against that
+denominator would have been a fact about the grep. Re-run against `outputs:`, the controls fire and
+the 0 stands.
+
+The single near-hit is `Video`'s `videoWidth`/`videoHeight`, and they are the **intrinsic media
+size**, not layout geometry — a `Group` has no equivalent. `Video` also carries the only
+`domelement` output in the runtime, described as *"for a Group to scroll to or a script to reach"*;
+one node having it is the shape of the fix, not an existing capability.
+
+**Why it bites here specifically:** these rows are a textarea and an image preview, so no two are
+the same height. `Drag Y / rowHeight` has no `rowHeight` — not one that is merely awkward to
+compute, one the graph cannot see at all.
+
+**What shipped instead:** `Move up` / `Move down` on each `SectionRow`, which hand
+`reorderSection` the same `toIndex` a drop would. AC2's *outcome* — a person changes the order and a
+visitor sees it — is met and driven; **AC2's gesture is not**, and the task file says so rather
+than rounding it off.
+
+**The shape of the fix:** a `domelement` output on `Group` (three lines, `video.ts:283-288` is the
+template) would be enough — a code node could then measure siblings itself. A drop-target port pair
+would close [D15](#d15) at the same time.
+
+---
+
+## D24 — 🔴 A cloud function's graph outlives its request, and one endpoint's traffic can 400 another
+
+**Found:** s27, driving AC2 · **Owner:** `NONE` · **Product**, not template · **Bites:** any site
+whose admin reorders sections and then duplicates a page — the second act answers *"A partial copy
+may exist"* having copied nothing.
+
+Adding the `reorderSection` drive to `sb004-publication-invariant.test.ts` **before** the
+`duplicatePage` block makes that block fail, and the backend names the cause itself:
+
+```
+RunTasks (/#__cloud__/duplicatePage): Do was triggered while a run was still in progress,
+so it was ignored [run-tasks/already-running]  { nodeId: 'run' }
+```
+
+`already-running` reports `unchanged`, `unchanged` is wired to `deny`, and the caller gets a 400.
+🔴 **The node is `duplicatePage`'s own**, and nothing in that request started a run — the state was
+left behind by an **earlier request**, because `internal.state` lives on the node instance and the
+instance outlives the invocation.
+
+**Three controls, five runs each, same slot in the same file:**
+
+| what runs before `duplicatePage` | green |
+|---|---|
+| the `reorderSection` drive (7 calls) — the finding | **1 / 5** |
+| `publishPage` × 10 — a control that also uses `Run Tasks` | **5 / 5** |
+| `submitContactForm` × 7 — a control with no `Run Tasks` | **5 / 5** |
+
+So it is **not** call volume, and not "any traffic". ⚠️ **The mechanism is not established** — why
+this endpoint provokes it and a `Run Tasks` endpoint at higher volume does not is unexplained, and
+naming a cause here would be the thing this phase keeps writing down as a trap.
+
+🔴 **Two readings this session got wrong before the controls existed**, both kept because each
+looked conclusive:
+
+1. *"The insertion shifted node ids."* Moving the two new components to the end of
+   `SB004_COMPONENTS` turned the suite green three times running. **The ids were identical in both
+   arrangements** — measured, after asserting it. What actually varied was position in the bundle,
+   not ids.
+2. *"So it is bundle order."* Appending them was then green 3/3 — and **1/5** when re-run. The
+   first arrangement had been flaky all along (1 pass, then 3 fails) and both "stable" readings were
+   luck. Swapping two *existing* components with the new ones removed changes nothing, which is the
+   control that killed the theory.
+
+**Meanwhile:** the AC2 drive is placed after every `duplicatePage` call in that file, which is
+deterministic rather than lucky — the traffic cannot reach a request that has already finished. That
+is ordering, **not a fix**, and it is commented as such at the placement.
+
+---

@@ -100,7 +100,11 @@ describe('DEF-015: the shipped site-builder template', () => {
     project = ProjectModel.fromJSON(JSON.parse(JSON.stringify(siteBuilderContent)));
   });
 
-  it('classifies its seven cloud components as four endpoints and three workers', () => {
+  // 🔴 The exact map, not a count — a role that flipped would keep any count the
+  // same. Seven at DEF-015; nine since SBR-007 AC2, whose endpoint and worker are
+  // classified by the same rule as the rest and are named here so a regression in
+  // either direction has to say which component moved.
+  it('classifies its nine cloud components as five endpoints and four workers', () => {
     expect(rolesOf(project)).toEqual({
       claimSite: 'endpoint',
       duplicatePage: 'endpoint',
@@ -108,7 +112,9 @@ describe('DEF-015: the shipped site-builder template', () => {
       submitContactForm: 'endpoint',
       'site/ContactRecipient': 'worker',
       'site/CopySectionToPage': 'worker',
-      'site/SetSectionAccess': 'worker'
+      'site/SetSectionAccess': 'worker',
+      reorderSection: 'endpoint',
+      'site/SetSectionOrder': 'worker'
     });
   });
 
@@ -150,8 +156,9 @@ describe('DEF-015: the shipped site-builder template', () => {
     // `SetSectionAccess` is present.
     const bundle = exportCloudFunctionsToJSON(project);
     expect((bundle.components as TSFixme[]).length).toBe(getCloudFunctionNames(project).length);
-    expect(getCloudFunctionNames(project).length).toBe(7);
-    expect(getCloudEndpointNames(project).length).toBe(4);
+    // 7 → 9 and 4 → 5 with SBR-007 AC2's `reorderSection` and its worker.
+    expect(getCloudFunctionNames(project).length).toBe(9);
+    expect(getCloudEndpointNames(project).length).toBe(5);
   });
 });
 

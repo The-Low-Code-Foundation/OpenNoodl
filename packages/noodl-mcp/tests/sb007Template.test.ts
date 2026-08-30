@@ -174,7 +174,9 @@ describe('SB-007 — the committed template is a regeneration, not a copy', () =
     const built = await buildSiteTemplateProject();
     // 19 → 21: SBR-006 adds `/Admin/Shell` and `/Admin/NewPageDialog`.
     // 21 → 22: SBR-017 adds `/Pages/SignIn`.
-    expect(built.project.components).toHaveLength(22);
+    // 22 → 24: SBR-007 AC2 adds `/#__cloud__/reorderSection` and the worker it
+    // runs, `/#__cloud__/site/SetSectionOrder`.
+    expect(built.project.components).toHaveLength(24);
     expect(built.order[0]).toBe(APP_COMPONENT);
   });
 });
@@ -207,7 +209,10 @@ describe('SB-007 — the App component is the difference between a router and no
     expect(built.order.filter((key) => key.startsWith('Pages/'))).toHaveLength(6);
     // 18 → 20, same two components, minus the App this arm deliberately omits.
     // 20 → 21 with SBR-017's sign-in page.
-    expect(built.project.components).toHaveLength(21);
+    // 21 → 23 with AC2's endpoint and its worker — both cloud components, which
+    // this arm writes exactly as the other one does. That they are here at all is
+    // the point of the assertion below: written, and registered nowhere.
+    expect(built.project.components).toHaveLength(23);
 
     // And not one of them landed in a router, with no diagnostic anywhere.
     expect(built.registrations).toEqual({});
@@ -382,7 +387,8 @@ describe('SB-007 — the public site catch-all does not compete with an admin pa
 describe('SB-007 — what the template contains', () => {
   it('ships the cloud half, so a deploy has the publication flow', () => {
     const cloud = shipped.components.map((c) => c.name).filter((n) => n.startsWith('/#__cloud__/'));
-    expect(cloud).toHaveLength(7);
+    // 7 → 9: SBR-007 AC2's `reorderSection` and its `site/SetSectionOrder` worker.
+    expect(cloud).toHaveLength(9);
     expect(cloud).toEqual(expect.arrayContaining(['/#__cloud__/publishPage', '/#__cloud__/claimSite']));
   });
 
@@ -777,6 +783,30 @@ describe('SBR-016 — every query can run before anybody has edited anything', (
     'Component Inputs'
   ]);
 
+  /**
+   * 🔴 **Node types that cannot emit anything without being invoked, and the port
+   * that invokes them.** `nodeIsFree`'s fallback — *"it is not signal-driven, so
+   * a value landing runs it"* — reads `RUN_ON_CHANGE_FAMILIES` to decide whether
+   * a node has a control signal, and a type absent from that registry falls
+   * through to being graded by its VALUE inputs. For `CloudFunction2` that is
+   * simply untrue: `scheduleCall` is *"the only method the `Call` port reaches"*
+   * (`cloudfunction2.ts:225-227`), so a cloud call with an edit-free `in-pageId`
+   * and a button on its `Call` was being graded edit-free.
+   *
+   * It went unnoticed because nothing had ever reached it: `CloudFunction2` is in
+   * `TRANSPARENT`, but until SBR-007 AC2 wired `reorder.done → storageFetch` no
+   * cloud call had ever sat on a query's trigger path. The walk then reported
+   * `/Pages/PageEditor sections-2` as running because *"the page mounted"* —
+   * true of the value it followed, and false of the trigger it was grading.
+   *
+   * The registry cannot answer this on its own, and should not be made to: it
+   * describes which value inputs re-run a node, and these types have none. So
+   * the assumption is written here, where the rule that depends on it lives.
+   */
+  const INVOCATION_ONLY: Record<string, string> = {
+    CloudFunction2: 'call'
+  };
+
   interface Verdict {
     free: boolean;
     why: string;
@@ -802,8 +832,18 @@ describe('SBR-016 — every query can run before anybody has edited anything', (
         inFlight.add(node.id);
         try {
           const family = RUN_ON_CHANGE_FAMILIES[node.type];
-          const control = family?.controlSignal;
+          // 🔴 `INVOCATION_ONLY` first. A type in it has no value-driven run at
+          // all, so falling through to the value-input branch below would grade
+          // it by something that cannot make it produce. See the map's note.
+          const control = INVOCATION_ONLY[node.type] ?? family?.controlSignal;
           const controlWires = control ? incoming(node.id, control) : [];
+
+          // An invocation-only node with nothing on its invoking port never runs,
+          // so it cannot vouch for anything — and saying so is not the same
+          // sentence as "run only by an edit".
+          if (INVOCATION_ONLY[node.type] && controlWires.length === 0) {
+            return { free: false, why: `${node.type} is never invoked` };
+          }
 
           // Its control signal is wired: that signal is the only thing that runs it.
           if (controlWires.length > 0) {
@@ -1021,6 +1061,10 @@ describe('SBR-016 — every query can run before anybody has edited anything', (
     expect(offenders).toEqual([
       '/Pages/PageEditor sections-2 — no trigger that predates an edit: storageFetch <= NewDbModelProperties.done — a write the person caused; ' +
         'storageFetch <= For Each.itemOutputSignal-Changed — a row signalled a change; ' +
+        // 🔴 AC2's third producer, and the reason it reads this way rather than
+        // vouching for the query is `INVOCATION_ONLY` — see that map's note. A
+        // cloud call is only ever run by whatever presses its `Call`.
+        'storageFetch <= CloudFunction2.done <= CloudFunction2 run only by an edit; ' +
         'collectionName is stored but the migration silenced runOnChange-collectionName; ' +
         'visualFilter is stored but the migration silenced runOnChange-querySettings; ' +
         'qp-pageId arrives but the migration silenced runOnChange-qp-pageId'
@@ -1184,12 +1228,18 @@ describe('SBR-015 — a cloud function has no silent exit', () => {
       '/#__cloud__/claimSite',
       '/#__cloud__/duplicatePage',
       '/#__cloud__/publishPage',
+      // SBR-007 AC2. Its worker `site/SetSectionOrder` is deliberately NOT here,
+      // which is the half of this assertion that keeps the split honest.
+      '/#__cloud__/reorderSection',
       '/#__cloud__/submitContactForm'
     ]);
     const workers = shipped.components.filter(
       (c) => c.name.startsWith('/#__cloud__/') && !nodesOf(c).some((n) => n.type === 'noodl.cloud.request')
     );
-    expect(workers).toHaveLength(3);
+    // 3 → 4: SBR-007 AC2's `site/SetSectionOrder`, which is a worker for the same
+    // reason the other three are — Run Tasks drives it, and it answers through
+    // Component Outputs rather than a Response.
+    expect(workers).toHaveLength(4);
     expect(workers.every((c) => nodesOf(c).every((n) => n.type !== 'noodl.cloud.response'))).toBe(true);
   });
 

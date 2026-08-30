@@ -746,6 +746,263 @@ export const DUPLICATE_WIRES = [
   { fromId: 'run', fromProperty: 'unchanged', toId: 'deny', toProperty: 'send' }
 ];
 
+// ── reorderSection, and the worker it composes ───────────────────────────────
+
+/**
+ * SBR-007 AC2. **The write half of drag-to-reorder, and the reason it needed a
+ * cloud function rather than an afternoon.**
+ *
+ * `order` has been on `Section` since SB-004 and nothing has ever written it
+ * except `addSection`, which sets it to the current count. Moving a section is
+ * not a write to that section: it renumbers its **siblings**, and the browser
+ * cannot do that. A `SectionRow` is a `For Each` template — it knows its own
+ * `id`, `kind`, `order` and `data` and nothing about the row above it — and
+ * there is no loop node in the browser runtime, so a panel that wanted to write
+ * N records would need N authored `Set Record`s for an N nobody knows.
+ *
+ * `Run Tasks` is that loop, it is cloud-only, and this is what it is for.
+ *
+ * 🔴 **The worker carries NO access rules**, for the module header's second
+ * panel reason and not by omission. Reordering the sections of a *published*
+ * page is an ordinary edit; adding `ADMIN_ONLY_RULES` here would revoke the
+ * world's read on every section it touched while `Page.published` stayed
+ * `true` — the publication invariant broken in the direction its mirror cannot
+ * show, by a node whose author was only moving a row up.
+ */
+export const ORDER_WORKER_NODES = [
+  {
+    id: 'inputs',
+    type: 'Component Inputs',
+    label: 'The section, and where it lands',
+    // Run Tasks pushes each item KEY onto a declared input of the same name
+    // (`runtasks.ts:419-432`), so these two names are the item's two keys.
+    ports: [
+      { name: 'objectId', type: 'string', plug: 'output' },
+      { name: 'order', type: 'number', plug: 'output' },
+      { name: 'Do', type: 'signal', plug: 'output' }
+    ]
+  },
+  {
+    id: 'write',
+    type: 'SetDbModelProperties',
+    label: 'Write this section its new order',
+    // 🔴 No access rules. See the component note above — this is the same
+    // omission `/Admin/SectionRow`'s `save` makes, for the same invariant.
+    parameters: { collectionName: 'Section', idSource: 'explicit', storeProperties: 'specified' }
+  },
+  {
+    id: 'outputs',
+    type: 'Component Outputs',
+    label: 'Task result',
+    // Matched by STRING, like every other worker in this file — see
+    // `WORKER_NODES`' note on what a rename costs.
+    ports: [
+      { name: 'Success', type: 'signal', plug: 'input' },
+      { name: 'Failure', type: 'signal', plug: 'input' }
+    ]
+  }
+];
+
+export const ORDER_WORKER_WIRES = [
+  { fromId: 'inputs', fromProperty: 'objectId', toId: 'write', toProperty: 'modelId' },
+  { fromId: 'inputs', fromProperty: 'order', toId: 'write', toProperty: 'prop-order' },
+  { fromId: 'inputs', fromProperty: 'Do', toId: 'write', toProperty: 'store' },
+  { fromId: 'write', fromProperty: 'done', toId: 'outputs', toProperty: 'Success' },
+  { fromId: 'write', fromProperty: 'failure', toId: 'outputs', toProperty: 'Failure' }
+];
+
+/**
+ * The endpoint. `reorderSection(pageId, sectionId, toIndex)` — the signature
+ * SBR-007 §8 named, and `toIndex` is a **position in the order-sorted list**,
+ * not an `order` value.
+ *
+ * That distinction is the whole of why the endpoint sorts rather than
+ * arithmetic-ing. Nothing has ever guaranteed `order` is contiguous: sections
+ * are born at `sections.count`, and deleting the middle one of three leaves
+ * `0, 2`. A caller that computed `order - 1` to move a row up would, on that
+ * page, ask for position 1 when it meant position 0. Sorting and splicing
+ * removes the assumption instead of documenting it — and because the write
+ * renumbers every moved sibling to its index, `order` **is** contiguous
+ * afterwards, for every page a person has ever reordered.
+ */
+export const REORDER_NODES = [
+  {
+    id: 'req',
+    type: 'noodl.cloud.request',
+    label: 'reorderSection(pageId, sectionId, toIndex)',
+    parameters: {
+      // A stringlist is one comma-separated STRING — see `publishPage`'s note.
+      params: 'pageId,sectionId,toIndex',
+      'ptype-pageId': 'string',
+      'preq-pageId': true,
+      'ptype-sectionId': 'string',
+      'preq-sectionId': true,
+      'ptype-toIndex': 'number',
+      'preq-toIndex': true,
+      allowNoAuth: false
+    }
+  },
+  {
+    id: 'prep',
+    type: 'JavaScriptFunction',
+    label: 'Hold the request until all three parameters are here',
+    // Rule 1 — a custom signal port must be DECLARED or `Outputs.ready()` is
+    // `not a function` once this bundle is served without an editor attached.
+    ports: [{ name: 'out-ready', plug: 'output', type: 'signal' }],
+    parameters: {
+      // Rule 2, and `publishPage`'s `prep` is the measurement behind it: the
+      // port carrying the query's filter and the port firing its fetch must
+      // leave the SAME node, or the query runs once unfiltered against every
+      // Section on the site. Here that would renumber another page's sections.
+      //
+      // `toIndex` may legitimately be `0`, so the test is `undefined` and not
+      // falsiness — the same trap `withFlag` records for a `false` flag.
+      functionScript:
+        'if (Inputs.pageId === undefined || Inputs.sectionId === undefined) return;\n' +
+        'if (Inputs.toIndex === undefined) return;\n' +
+        'Outputs.pageId = Inputs.pageId;\n' +
+        'Outputs.sectionId = Inputs.sectionId;\n' +
+        'Outputs.toIndex = Inputs.toIndex;\n' +
+        'Outputs.ready();'
+    }
+  },
+  {
+    id: 'sections',
+    type: 'DbCollection2',
+    label: "This page's sections",
+    parameters: {
+      // 🔴 Both boxes off, and `Do` deliberately unwired below. See
+      // `publishPage`'s query: a Query Records node fetches ONCE, UNFILTERED,
+      // the moment the graph is built, and that first result is the one the rest
+      // of the graph acts on. For this endpoint that is every Section on the
+      // site renumbered into one page's ordering.
+      'runOnChange-collectionName': false,
+      'runOnChange-querySettings': false,
+      collectionName: 'Section',
+      visualFilter: SECTIONS_OF_PAGE_FILTER
+    }
+  },
+  {
+    id: 'plan',
+    type: 'JavaScriptFunction',
+    label: 'Sort, move, and renumber what actually moved',
+    ports: [{ name: 'out-built', plug: 'output', type: 'signal' }],
+    parameters: {
+      // Two producers: `sections` from the query that also triggers this node,
+      // `sectionId`/`toIndex` from `prep`. Rule 2 — the first run arrives with
+      // only the query's own value on it.
+      functionScript:
+        'if (Inputs.sections === undefined) return;\n' +
+        'if (Inputs.sectionId === undefined || Inputs.toIndex === undefined) return;\n' +
+        // `items` is the collection's Models (`dbcollectionnode2.ts:389-396`),
+        // so the fields live under `.data`; the `|| s` keeps a plain-object
+        // array working too — the same shape `duplicatePage`'s builder uses.
+        'const rows = (Inputs.sections || []).map((s) => ({ id: s.id, order: (s.data || s).order }));\n' +
+        // 🔴 The tie-break is not tidiness. Two sections may share an `order` —
+        // `addSection` writes `sections.count`, and a page whose count was stale
+        // by one write has a duplicate — and `Array.prototype.sort` is only
+        // stable with respect to the array it was GIVEN. That array is a query
+        // result whose row order the backend does not promise, so without the
+        // second key the same request could renumber two ways on two calls.
+        'rows.sort((a, b) => (a.order - b.order) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));\n' +
+        'const from = rows.findIndex((r) => r.id === Inputs.sectionId);\n' +
+        // A section that is not on this page is not a 500 and not a silent
+        // success: it is a request that cannot be honoured, so it throws into
+        // the `failure` edge that `deny` is wired to.
+        "if (from < 0) throw new Error('That section is not on this page.');\n" +
+        'let to = Math.round(Number(Inputs.toIndex));\n' +
+        'if (!isFinite(to)) to = from;\n' +
+        // Clamping rather than refusing: a drop past the end of the list means
+        // "last", which is what a person doing it meant.
+        'to = Math.max(0, Math.min(rows.length - 1, to));\n' +
+        'const moved = rows.splice(from, 1)[0];\n' +
+        'rows.splice(to, 0, moved);\n' +
+        // Only the rows whose number actually changed are written. On a ten
+        // section page a one place move is two writes, not ten.
+        //
+        // ⚠️ A move to where the section already is therefore builds an EMPTY
+        // list, and `Run Tasks` fires `Done` on one deliberately — *"an empty
+        // list is a run that completed, not a run that found nothing to
+        // change"* (`runtasks.ts:664-668`). So a no-op answers 200 with the
+        // position it is already at, which is the true statement. It is not
+        // refused, and `unchanged` below is not that case.
+        'Outputs.tasks = rows\n' +
+        '  .map((r, i) => ({ objectId: r.id, order: i, was: r.order }))\n' +
+        '  .filter((t) => t.was !== t.order)\n' +
+        '  .map((t) => ({ objectId: t.objectId, order: t.order }));\n' +
+        'Outputs.movedTo = to;\n' +
+        'Outputs.built();'
+    }
+  },
+  {
+    id: 'tasks',
+    type: 'RunTasks',
+    label: 'Renumber every section that moved',
+    parameters: {
+      taskTemplate: '/#__cloud__/site/SetSectionOrder',
+      stopOnFailure: true
+    }
+  },
+  {
+    id: 'res',
+    type: 'noodl.cloud.response',
+    label: 'Answer with where it landed',
+    parameters: { params: 'sectionId,order' }
+  },
+  {
+    id: 'deny',
+    type: 'noodl.cloud.response',
+    label: 'Could not reorder',
+    parameters: {
+      status: 'failure',
+      // Like `publishPage`'s, there is nothing to conceal — the caller is an
+      // admin already holding this page's id — and one string because the node
+      // cannot carry a per-edge one.
+      errorMessage: 'These sections could not be reordered.'
+    }
+  }
+];
+
+export const REORDER_WIRES = [
+  // The Request feeds exactly one node. See `publishPage`'s wires for what the
+  // alternative measured.
+  { fromId: 'req', fromProperty: 'pm-pageId', toId: 'prep', toProperty: 'in-pageId' },
+  { fromId: 'req', fromProperty: 'pm-sectionId', toId: 'prep', toProperty: 'in-sectionId' },
+  { fromId: 'req', fromProperty: 'pm-toIndex', toId: 'prep', toProperty: 'in-toIndex' },
+  { fromId: 'req', fromProperty: 'receive', toId: 'prep', toProperty: 'run' },
+
+  // 🔴 `Do` deliberately UNWIRED — the filter value arriving IS the fetch.
+  { fromId: 'prep', fromProperty: 'out-pageId', toId: 'sections', toProperty: 'qp-pageId' },
+
+  { fromId: 'sections', fromProperty: 'items', toId: 'plan', toProperty: 'in-sections' },
+  { fromId: 'prep', fromProperty: 'out-sectionId', toId: 'plan', toProperty: 'in-sectionId' },
+  { fromId: 'prep', fromProperty: 'out-toIndex', toId: 'plan', toProperty: 'in-toIndex' },
+  { fromId: 'sections', fromProperty: 'fetched', toId: 'plan', toProperty: 'run' },
+
+  { fromId: 'plan', fromProperty: 'out-tasks', toId: 'tasks', toProperty: 'items' },
+  { fromId: 'plan', fromProperty: 'out-built', toId: 'tasks', toProperty: 'run' },
+
+  // 🔴 `done`, never `completed` — SBR-015's rule, and `publishPage`'s comment
+  // is the reason: `completed` fires whatever the outcome, so it would answer
+  // 200 after a run that renumbered nothing.
+  { fromId: 'prep', fromProperty: 'out-sectionId', toId: 'res', toProperty: 'pm-sectionId' },
+  { fromId: 'plan', fromProperty: 'out-movedTo', toId: 'res', toProperty: 'pm-order' },
+  { fromId: 'tasks', fromProperty: 'done', toId: 'res', toProperty: 'send' },
+
+  // SBR-015 — every node in this endpoint that can fail has somewhere to fail
+  // to. `plan` is the one that raises on purpose: an unknown `sectionId`.
+  { fromId: 'prep', fromProperty: 'failure', toId: 'deny', toProperty: 'send' },
+  { fromId: 'sections', fromProperty: 'failure', toId: 'deny', toProperty: 'send' },
+  { fromId: 'plan', fromProperty: 'failure', toId: 'deny', toProperty: 'send' },
+  // The outcome ports only — see publishPage's note on why `aborted` is not here.
+  { fromId: 'tasks', fromProperty: 'failure', toId: 'deny', toProperty: 'send' },
+  // 🔴 `unchanged` here is NOT the empty-list case — that is `Done`, above. It
+  // is a run that never started: an absent `Items` (*"a wiring mistake"*,
+  // `runtasks.ts:625`) or a `Do` that raced a run already in flight. Neither
+  // wrote anything, so refusing is the honest answer.
+  { fromId: 'tasks', fromProperty: 'unchanged', toId: 'deny', toProperty: 'send' }
+];
+
 // ── submitContactForm, and the settings helper it composes ───────────────────
 
 /**
@@ -1368,5 +1625,19 @@ export const SB004_COMPONENTS: Sb004Component[] = [
     legacyName: '/#__cloud__/claimSite',
     nodes: CLAIM_NODES,
     connections: CLAIM_WIRES
-  }
+  },
+  {
+    path: '#__cloud__/site/SetSectionOrder',
+    key: '__cloud__/site/SetSectionOrder',
+    legacyName: '/#__cloud__/site/SetSectionOrder',
+    nodes: ORDER_WORKER_NODES,
+    connections: ORDER_WORKER_WIRES
+  },
+  {
+    path: '#__cloud__/reorderSection',
+    key: '__cloud__/reorderSection',
+    legacyName: '/#__cloud__/reorderSection',
+    nodes: REORDER_NODES,
+    connections: REORDER_WIRES
+  },
 ];

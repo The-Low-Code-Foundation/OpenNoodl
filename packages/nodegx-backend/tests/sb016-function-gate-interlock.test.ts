@@ -203,12 +203,16 @@ describe('SB-016 — the gate with no defaults tier', () => {
   // ==========================================================================
 
   describe('the endpoint scan', () => {
-    it('finds the template’s four endpoints off the deployed bundle, by name', () => {
+    // 🔴 Five since SBR-007 AC2. `reorderSection` is `allowNoAuth: false`, so on
+    // a public bind with no rule for it this gate must name it — an endpoint the
+    // scan cannot see is one the deployer never gets asked about.
+    it('finds the template’s endpoints off the deployed bundle, by name', () => {
       const found = scanDeployedFunctions(path.join(dataDir, 'workflows'));
       expect(found.map((f) => f.name).sort()).toEqual([
         'claimSite',
         'duplicatePage',
         'publishPage',
+        'reorderSection',
         'submitContactForm'
       ]);
     });
@@ -222,7 +226,8 @@ describe('SB-016 — the gate with no defaults tier', () => {
         submitContactForm: true,
         claimSite: false,
         publishPage: false,
-        duplicatePage: false
+        duplicatePage: false,
+        reorderSection: false
       });
     });
 
@@ -234,11 +239,20 @@ describe('SB-016 — the gate with no defaults tier', () => {
       const helpers = SB004_COMPONENTS.filter((c) => c.path.startsWith('#__cloud__/site/')).map((c) =>
         c.path.replace('#__cloud__/', '')
       );
-      expect(helpers).toEqual(['site/SetSectionAccess', 'site/CopySectionToPage', 'site/ContactRecipient']);
+      // Order is authoring order, not sorted — `site/SetSectionOrder` is last
+      // because SBR-007 AC2 appended it. It is a helper for the same reason as
+      // the other three: no Request node, so it must never be callable by name.
+      expect(helpers).toEqual([
+        'site/SetSectionAccess',
+        'site/CopySectionToPage',
+        'site/ContactRecipient',
+        'site/SetSectionOrder'
+      ]);
 
       const found = scanDeployedFunctions(path.join(dataDir, 'workflows')).map((f) => f.name);
       for (const helper of helpers) expect(found).not.toContain(helper);
-      expect(found).toHaveLength(4);
+      // 4 → 5 with SBR-007 AC2's `reorderSection`.
+      expect(found).toHaveLength(5);
       // …and they are in the bundle, so the exclusion is a filter and not an absence.
       const bundled = bundle.components.map((c) => c.name);
       for (const helper of helpers) expect(bundled).toContain(`/#__cloud__/${helper}`);
@@ -297,7 +311,10 @@ describe('SB-016 — the gate with no defaults tier', () => {
     }
 
     it('two of the four endpoints land on the wrong rule, and they are the privileged pair', () => {
-      expect(score().wrong).toEqual(['duplicatePage', 'publishPage']);
+      // 🔴 Three now, and the third is the point rather than noise:
+      // `reorderSection` is another admin-only write the "privileged" heuristic
+      // mis-scores, so this finding got WIDER as the template grew.
+      expect(score().wrong).toEqual(['duplicatePage', 'publishPage', 'reorderSection']);
     });
 
     it('🔴 the narrow candidate does NOT refuse exactly those two — it refuses three', () => {
@@ -305,7 +322,7 @@ describe('SB-016 — the gate with no defaults tier', () => {
       // exactly the two that are wrong." Measured, it refuses claimSite too,
       // whose port-derived `authenticated` is precisely what SB-004 §4 wants.
       const { narrow, wrong } = score();
-      expect(narrow).toEqual(['claimSite', 'duplicatePage', 'publishPage']);
+      expect(narrow).toEqual(['claimSite', 'duplicatePage', 'publishPage', 'reorderSection']);
       expect(narrow).not.toEqual(wrong);
       expect(INTENDED.claimSite).toBe('authenticated');
     });
@@ -315,7 +332,7 @@ describe('SB-016 — the gate with no defaults tier', () => {
       // claimSite from publishPage is an intention that exists in neither the
       // graph port nor the config, so no startup-time predicate can read it.
       const { broad, wrong } = score();
-      expect(broad).toEqual(['claimSite', 'duplicatePage', 'publishPage', 'submitContactForm']);
+      expect(broad).toEqual(['claimSite', 'duplicatePage', 'publishPage', 'reorderSection', 'submitContactForm']);
       expect(broad).not.toEqual(wrong);
     });
 
@@ -345,6 +362,7 @@ describe('SB-016 — the gate with no defaults tier', () => {
       expect(unresolvedFunctionRules(partial, deployed).map((f) => f.name)).toEqual([
         'claimSite',
         'duplicatePage',
+        'reorderSection',
         'submitContactForm'
       ]);
     });
@@ -445,10 +463,10 @@ describe('SB-016 — the gate with no defaults tier', () => {
     });
 
     it('names every unresolved endpoint, not "some function"', () => {
-      for (const name of ['publishPage', 'duplicatePage', 'submitContactForm', 'claimSite']) {
+      for (const name of ['publishPage', 'duplicatePage', 'submitContactForm', 'claimSite', 'reorderSection']) {
         expect(message).toContain(name);
       }
-      expect(message).toContain('4 cloud functions');
+      expect(message).toContain('5 cloud functions');
     });
 
     it('says what each endpoint currently resolves to and where that came from', () => {
@@ -489,6 +507,7 @@ describe('SB-016 — the gate with no defaults tier', () => {
         'claimSite',
         'duplicatePage',
         'publishPage',
+        'reorderSection',
         'submitContactForm'
       ]);
     });
@@ -539,10 +558,11 @@ describe('SB-016 — the gate with no defaults tier', () => {
         'claimSite',
         'duplicatePage',
         'publishPage',
+        'reorderSection',
         'submitContactForm'
       ]);
       // …and the message names only what is still missing.
-      expect(run.message).toContain('3 cloud functions');
+      expect(run.message).toContain('4 cloud functions');
     });
 
     it('preserves sibling fields on an entry that has a rule but no call', () => {
