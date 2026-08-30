@@ -3449,3 +3449,121 @@ wildcard-typed, so the schema could not have helped them.
 So: a typecheck row over an emitted component interface grades **9 of 20** prop positions today,
 and the other 11 are positions the graph itself leaves untyped. Nothing to fix; the item is closed
 with a denominator rather than left open a second time. Owner was `NONE`.
+
+## §29 The button in a list row, which exported as a button that does nothing (session 58, 2026-08-30)
+
+The session began where §28.5 pointed — the collection-state slice, whose two picker nodes both
+defer on *"which row fired is not statically expressible"*. That sentence did not survive being
+read against the runtime it describes. What it was hiding was not a missing feature but a
+**silent loss**, in the most common interaction a list has.
+
+### §29.1 🔴 The recorded blocker was wrong about its own runtime
+
+`Remove Object From Array` and `Set Object Properties` both defer, and both reasons lead to the
+relay gate: a repeater's row outputs *"cannot reach the page at all yet"*. The gate is still in
+the code at HEAD, so the refusal is current rather than stale — but `foreach.tsx` says otherwise:
+
+```js
+itemOutputSignalTriggered(name, model, itemNode) {
+  this._internal.itemActionItemId = model.getId();   // ← the runtime NAMES the row
+  this._internal.itemActionSignal = name;
+  this.flagOutputDirty('itemActionItemId');
+  ...
+  this._internal.itemOutputs[key] = itemNode._outputs[key].value;   // ← and snapshots ITS values
+  this.sendSignalOnOutput('itemOutputSignal-' + this._internal.itemActionSignal);
+}
+```
+
+The runtime publishes which row fired, as `itemActionItemId`, and the relayed values are that
+row's, snapshotted at signal time. And on the emit side the question is never even asked: each
+row is `<NoteRow …/>` inside a `.map()`, so its callback closes over its own `item`. **The
+sentence was true of neither end.** It had been repeated across ten sessions.
+
+🔴 **This is the "check the tense" trap in its sharpest form.** The recorded mechanism was not
+stale and was not the wrong runtime's — it was an *under-reading of this one*, which no amount of
+re-reading the task file would have corrected. Only opening `foreach.tsx` did.
+
+### §29.2 🔴 What the refusal was hiding: a wire planned, claimed, and then discarded
+
+Probing the three relay shapes against the emitter found something worse than a deferral. With a
+delete button in `NoteRow` and its `removed` signal relayed to a `Clear Array` on the page:
+
+| Shape | Before | Report said |
+|---|---|---|
+| relayed signal → the page's `Component Outputs` | deferred, named | the deferral |
+| **relayed signal → an action chain** | **nothing emitted** | **`notes: []`** |
+| **the repeater's own `itemsRendered` → an action chain** | **nothing emitted** | **`notes: []`** |
+| `itemActionItemId` → a Text | deferred, named | the deferral |
+
+The two middle rows are the defect. `plan.handlers['notesList']['itemOutputSignal-removed']`
+was populated correctly — the action compiled, `{kind:'collection-clear', collectionName:'notes'}` —
+and the sink was dispositioned **`{kind:'collapsed', into:'notesList'}`**. The plan therefore
+*affirmatively claimed the node was translated, into the repeater*. `renderRepeater` then never
+read `plan.handlers` at all.
+
+🔴 **A delete button in a list row exported as a button that does nothing, and the export report
+said nothing needed attention.** Not a gap in the report's wording — the report was told the node
+was fine.
+
+🔴 **The absence was only worth believing beside a firing control.** The same `Clear Array`, driven
+by an ordinary page button, emits `notes.clear();`. That is what separates "the relay is dropped"
+from "the sink does not translate", and they have opposite fixes.
+
+### §29.3 What was built
+
+- **`rowSignalAttrs` in `renderRepeater`** — a relayed `itemOutputSignal-<name>` becomes the
+  template's own callback prop on the row element, spliced into all **four** feed branches
+  (static data, list expression, named collection, query). `<NoteRow … onRemoved={() => notes.clear()} />`.
+- **The `outputSinkOf` gate corrected** — a relayed row signal into the parent's own output now
+  translates (`onRemoved={() => onRowGone?.()}`); what still refuses is a port that is *not* a
+  relayed row signal, and the reason now says that instead of the disproved sentence.
+- **`ITEM_OUTPUT_SIGNAL` / `ITEM_OUTPUT_VALUE` in `ir/types.ts`** — the runtime's own prefixes,
+  shared because the plan gates on them and the emitter strips them.
+- **Nothing is lost in silence.** A repeater's own pulse, and a relay whose template declares no
+  such output, are both named in the report.
+
+⚠️ **One runtime nuance deliberately not reproduced**: `hasScheduledTriggerItemOutputSignal`
+coalesces two rows firing in the *same frame* into one pulse. Per-row callbacks run both. Two rows
+cannot be clicked in one frame, so only a programmatic fire reaches the divergence. Recorded
+rather than papered over.
+
+### §29.4 What proves it
+
+`tests/repeater-row-signals.test.ts`, 14 rows — and three mutants, because a suite that cannot go
+red grades nothing:
+
+| Mutant | Killed |
+|---|---|
+| the fix removed from all four feed branches (the original defect) | **9 of 12** |
+| the `itemOutputSignal-` prefix guard removed | **exactly the 4 lifecycle rows** |
+| a callback emitted even when nothing relays | **exactly the negative control** |
+
+🔴 **The negative control is what makes the rest mean anything** — a template that declares
+`removed` while the repeater relays nothing must get **no** attribute, or every positive row above
+would read identically for an emitter that always emitted one.
+
+🔴 **A `toContain` passes on dead code** (§24.3), so the slice is graded by `typecheckEmittedApp`
+as well: the emitted app **compiles**, and `NoteRow.tsx` really declares `onRemoved?: () => void;`.
+The two ends agree by construction rather than by assertion.
+
+Gates: **jest 1095/1095 in 44 suites** (was 1081/43), **tsc 0**, picker **69/127**, ledger check
+175 types. The picker number is unchanged and correctly so — this fixed a *wire shape* on a node
+that already translated, not a node type.
+
+### §29.5 What this leaves
+
+- **The collection-state slice is no longer blocked on what §7.3 said it was.** `Remove Object
+  From Array` needs an Object Id from inside the row; the row's identity now reaches the page in a
+  callback, so the next session should re-derive that node's disposition from the code rather than
+  from the recorded reason — which is exactly what this session had to do.
+- **`itemActionItemId` still defers, and that reason did survive**: it is read as a *value*,
+  continuously, and its value is whichever row fired last — state the emitted list does not hold.
+  A row in the suite pins this so §29 is not read as having translated the whole node.
+- **The repeater's lifecycle pulses (`itemsRendered`, `done`, `completed`, `failure`) are
+  `effect()` work** — now reported rather than lost, but still not translated.
+- 🔴 **No fixture carries a row with a button in it.** The suite builds the shape by hand onto
+  `cheer`'s `NoteRow`. A fixture that has one would put this shape under the corpus audit and the
+  emitted-typecheck sweep permanently, and is worth an hour.
+- ⚠️ **Not driven in a browser this session.** The slice is graded by compile + mutants, and the
+  callback-prop end of it (`NoteRow` calling `onRemoved`) is the Component Outputs slice's, which
+  §10 drove. A drive of a list with a working delete button is still owed.

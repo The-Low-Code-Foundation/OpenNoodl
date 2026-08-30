@@ -25,7 +25,7 @@
  */
 
 import { CatalogIndex } from '../catalog';
-import { ComponentIR, ConnectionIR, Disposition, ExportIR, KitNodeIR, ModuleIR, NodeIR } from '../ir/types';
+import { ComponentIR, ConnectionIR, Disposition, ExportIR, ITEM_OUTPUT_SIGNAL, KitNodeIR, ModuleIR, NodeIR } from '../ir/types';
 import { componentReachability, Reachability } from './reach';
 import { ScaffoldPage, routedPages } from '../emit/scaffold';
 import { pascalCase } from '../emit/naming';
@@ -4872,7 +4872,7 @@ function planComponent(
       if (wire.toId === node.id) return { defer: `its ${port} output drives itself` };
       const target = nodeById.get(wire.toId);
       if (target?.type === 'Component Outputs') {
-        const sink = outputSinkOf(wire.toProperty, node);
+        const sink = outputSinkOf(wire.toProperty, node, wire.fromProperty);
         if ('drop' in sink) {
           notes.push(wireNote(wire, `${sink.drop}`));
           consumes.push(wire.key);
@@ -6775,12 +6775,25 @@ function planComponent(
    * fails the node; a port nothing declares drops alone — the runtime's own `hasOutput`
    * guard drops that write too, so silence there is the faithful translation.
    */
-  const outputSinkOf = (port: string, fromNode: NodeIR | undefined): CompiledSink | { drop: string } => {
+  const outputSinkOf = (port: string, fromNode: NodeIR | undefined, fromProperty: string): CompiledSink | { drop: string } => {
     const prop = outputPropByPort.get(port);
     if (prop !== undefined) {
-      if (fromNode?.type === 'For Each') {
+      /**
+       * 🔴 **A relayed row signal reaches the parent's own output, and this used to refuse it**
+       * on the ground that "which row fired is not statically expressible". That sentence was
+       * wrong about this runtime and wrong about the emitted code. `itemOutputSignalTriggered`
+       * (`foreach.tsx`) sets `itemActionItemId = model.getId()` before it pulses — the runtime
+       * names the row — and on this side the question is never asked, because each row is its
+       * own element and its callback closes over its own `item`. Forwarding a pulse to the
+       * parent's callback needs no row identity at all.
+       *
+       * The repeater's *own* pulses still refuse, and now for the reason that is actually true
+       * of them: they fire from the list's progress rather than from a row, which is effect()
+       * work (the same ruling `rowSignalAttrs` applies on the emit side).
+       */
+      if (fromNode?.type === 'For Each' && !fromProperty.startsWith(ITEM_OUTPUT_SIGNAL)) {
         return {
-          defer: `a repeater relays its rows' outputs into "${port}" — which row fired is not statically expressible in this slice`
+          defer: `a repeater's "${fromProperty}" is not a row's relayed signal — the runtime registers those as "itemOutputSignal-<name>" — so it fires from the list's own progress rather than a row, which is effect() work this slice does not translate`
         };
       }
       return { action: { kind: 'output-signal', prop }, consumes: [] };
@@ -7602,7 +7615,7 @@ function planComponent(
     consumed.add(connection.key);
     let compiled: CompiledSink;
     if (outputsSink) {
-      const sink = outputSinkOf(connection.toProperty, fromNode);
+      const sink = outputSinkOf(connection.toProperty, fromNode, connection.fromProperty);
       if ('drop' in sink) {
         notes.push(wireNote(connection, `${sink.drop}`));
         continue;

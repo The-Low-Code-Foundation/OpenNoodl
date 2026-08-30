@@ -230,7 +230,15 @@ describe('child-side shapes (§4)', () => {
     expect(disposition.kind).toBe('deferred');
   });
 
-  test('a For Each relaying its rows defers named — which row fired is not expressible', () => {
+  /**
+   * 🔴 The sentence this test used to assert — "which row fired is not statically expressible" —
+   * was wrong about the runtime and about the emitted code, and it hid a silent loss for ten
+   * sessions (EXP-011 §29). A *relayed row* signal now translates; what still defers is a port
+   * that is not a relayed row signal at all, and `waved` (unprefixed) is exactly that: the
+   * runtime registers a row's relay as `itemOutputSignal-waved`, so a bare `waved` on a repeater
+   * can only be one of its own pulses.
+   */
+  test('a repeater port that is not a relayed row signal defers named', () => {
     const mutated = cloneIr();
     componentOf(mutated, 'Components/FarewellCard').nodes.push({
       id: 'rows',
@@ -242,7 +250,8 @@ describe('child-side shapes (§4)', () => {
     });
     wire(mutated, 'Components/FarewellCard', 'rows', 'waved', 'farewellOutputs', 'waved', 'value');
     const result = emitApp(mutated, catalog);
-    expect(result.notes.join('\n')).toContain("a repeater relays its rows' outputs");
+    expect(result.notes.join('\n')).toContain("is not a row's relayed signal");
+    expect(result.notes.join('\n')).toContain('itemOutputSignal-<name>');
   });
 
   test('a wire into a port nothing declares drops alone — the node stays translated', () => {

@@ -28,7 +28,7 @@ import {
   QueryPlan,
   ValueExpr
 } from '../analyze/plan';
-import { ExportIR, NodeIR } from '../ir/types';
+import { ExportIR, ITEM_OUTPUT_SIGNAL, NodeIR } from '../ir/types';
 import { KitBinding, tsTypeOf as kitPortTsType } from './kits';
 import { assignClassNames, ClassCandidate, partitionMergeGroup, pascalCase, propIdentifier, propIdentifiers } from './naming';
 import { tsLiteral } from './state';
@@ -3043,6 +3043,59 @@ export function emitComponent(
       }
       return out;
     };
+    /**
+     * A row's signal, relayed by the repeater — the shape every list with a button in it has.
+     *
+     * 🔴 **This used to be planned and then silently discarded.** `plan.handlers` gets an entry
+     * for a wire out of a `For Each` exactly as it does for any other rendered node, and the
+     * sink was dispositioned `collapsed into <the repeater>` — so the report affirmatively said
+     * the node was translated while `renderRepeater` emitted no callback at all. A delete button
+     * in a row exported as a button that does nothing, with nothing in the report to find.
+     *
+     * The runtime names the firing row: `itemOutputSignalTriggered` sets
+     * `itemActionItemId = model.getId()` and snapshots *that row's* outputs before pulsing
+     * `itemOutputSignal-<name>` (`foreach.tsx`). So "which row fired" was never the obstacle it
+     * was recorded as — and on this side it is not even asked: each row is its own element, and
+     * the callback closes over its own `item`.
+     *
+     * ⚠️ One runtime nuance this does not reproduce: `hasScheduledTriggerItemOutputSignal`
+     * coalesces two rows firing in the *same frame* into a single pulse carrying the last
+     * signal. Per-row callbacks run both. Two rows cannot be clicked in one frame, so the
+     * divergence needs a programmatic fire to reach.
+     */
+    const rowSignalAttrs = (attrIndent: number): string[] => {
+      const handlers = plan.handlers[node.id];
+      if (handlers === undefined) return [];
+      const propByPort = new Map((templatePlan?.outputProps ?? []).map((o) => [o.port, o.prop]));
+      const out: string[] = [];
+      for (const [port, actions] of Object.entries(handlers)) {
+        if (!port.startsWith(ITEM_OUTPUT_SIGNAL)) {
+          // The repeater's own lifecycle pulses (`itemsRendered`, and the outcome signals) are
+          // not a row's event — they fire from the list's own progress, which is effect() work.
+          // Named rather than dropped: this is the branch that used to lose them in silence.
+          notes.push(
+            `${plan.path}: For Each ${node.id} signal "${port}" is not a row's relayed signal (those register as "${ITEM_OUTPUT_SIGNAL}<name>") — it fires from the list's own progress, which is effect() work — dropped, reported`
+          );
+          defer(
+            node.id,
+            `the "${port}" signal`,
+            'is not a row\u2019s relayed signal but the repeater\u2019s own pulse, which fires from the list\u2019s progress \u2014 effect() work rather than a row callback'
+          );
+          continue;
+        }
+        const templatePort = port.slice(ITEM_OUTPUT_SIGNAL.length);
+        const prop = propByPort.get(templatePort);
+        if (prop === undefined) {
+          notes.push(
+            `${plan.path}: For Each ${node.id} relays row signal "${templatePort}", which ${templateLegacy} declares no callback prop for — dropped, reported`
+          );
+          defer(node.id, `the relayed row signal "${templatePort}"`, `has no callback prop on ${templateLegacy}`);
+          continue;
+        }
+        out.push(`${prop}={${handlerArrow(actions, '()', attrIndent)}}`);
+      }
+      return out;
+    };
     if (!repeater || noFeed || !target || repeater.mapping === null) {
       const reason = !repeater?.templatePath
         ? 'no template component'
@@ -3088,7 +3141,7 @@ export function emitComponent(
       // §3.2: `id` keys only when every row has a unique one, mirroring the runtime's own
       // record identity; otherwise index, which is the same information the runtime has.
       const keyAttr = staticData.keyField ? `key={${itemLocal}.${staticData.keyField}}` : `key={${indexLocal}}`;
-      const attrs = [keyAttr, ...rowAttrs(keptStatic, itemLocal)];
+      const attrs = [keyAttr, ...rowAttrs(keptStatic, itemLocal), ...rowSignalAttrs(indent + 2)];
       const lines = element(target.symbol, attrs, null, indent + 2, false);
       const params = staticData.keyField ? itemLocal : `${itemLocal}, ${indexLocal}`;
       return [`${pad(indent)}{${staticData.constName}.map((${params}) => (`, ...lines, `${pad(indent)}))}`];
@@ -3115,7 +3168,7 @@ export function emitComponent(
           );
         }
       }
-      const attrs = [`key={${indexLocal}}`, ...rowAttrs(keptExpr, itemLocal)];
+      const attrs = [`key={${indexLocal}}`, ...rowAttrs(keptExpr, itemLocal), ...rowSignalAttrs(indent + 2)];
       const lines = element(target.symbol, attrs, null, indent + 2, false);
       const srcCode = exprCode(itemsExpr, 'render');
       // `?? []` is foreach.tsx's own "empty arrival clears the list".
@@ -3134,13 +3187,13 @@ export function emitComponent(
       );
     }
     if (collection) {
-      const attrs = [`key={${indexLocal}}`, ...rowAttrs(kept, itemLocal)];
+      const attrs = [`key={${indexLocal}}`, ...rowAttrs(kept, itemLocal), ...rowSignalAttrs(indent + 2)];
       const lines = element(target.symbol, attrs, null, indent + 2, false);
       const local = collectionLocals.get(collection.name)!;
       return [`${pad(indent)}{${local}.map((${itemLocal}, ${indexLocal}) => (`, ...lines, `${pad(indent)}))}`];
     }
     const item = query!.itemName;
-    const attrs = [`key={${item}.id}`, ...rowAttrs(kept, item)];
+    const attrs = [`key={${item}.id}`, ...rowAttrs(kept, item), ...rowSignalAttrs(indent + 2)];
     const lines = element(target.symbol, attrs, null, indent + 2, false);
     return [`${pad(indent)}{${query!.stateName}.map((${item}) => (`, ...lines, `${pad(indent)}))}`];
   };

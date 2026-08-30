@@ -1,4 +1,15 @@
 /**
+ * The prefix a `For Each` gives a relayed row signal, and the one it gives a relayed row value.
+ *
+ * These are the runtime's own names, registered in `foreach.tsx`'s `_managePortsForNode`: a
+ * template's signal output becomes `itemOutputSignal-<name>` on the repeater, a value output
+ * `itemOutput-<name>`. Shared because the plan gates on them and the emitter strips them, and a
+ * second copy of a prefix drifts.
+ */
+export const ITEM_OUTPUT_SIGNAL = 'itemOutputSignal-';
+export const ITEM_OUTPUT_VALUE = 'itemOutput-';
+
+/**
  * The export IR — the shared contract between the deterministic generators (EXP-002), AI logic
  * translation (EXP-003) and the manifest consumers (EXP-004/005/007).
  *
