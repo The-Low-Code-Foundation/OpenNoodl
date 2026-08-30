@@ -6,11 +6,29 @@ const JavascriptNodeParser = require('@noodl/runtime/src/javascriptnodeparser');
 
 //Cloud functions override some of the JavascriptNodeParser functions
 
-//Override getComponentScopeForNode to just return an empty object. This basically disabled the 'Component' API in Function/Script nodes and removes a massive memory leak
-//Also improves performance.
-const componentScope = {};
-JavascriptNodeParser.getComponentScopeForNode = function () {
-  return componentScope;
+//Override getComponentScopeForNode so the 'Component' API lives exactly as long as its request.
+//
+//DEF-023 (phase 78 D35): this used to return ONE module-level object — so `Component` state
+//survived the request that filled it and was shared between every script, every function and
+//every CONCURRENT request in the process. A graph that guarded itself on a Component flag
+//returned early on the previous request's flag, fired no outcome, and hung to the 30s 504.
+//
+//Keyed on the component-owner INSTANCE, not its id: ids repeat across requests, but each
+//request instantiates a fresh graph, so a WeakMap on the instance gives scripts in one
+//component instance a shared scope (the browser contract, and the only reason `Component`
+//is useful) while a new request starts clean. Entries die with the request's graph, which
+//is the leak the old single-object override existed to stop.
+const componentScopes = new WeakMap();
+JavascriptNodeParser.getComponentScopeForNode = function (node) {
+  const owner = node && node.nodeScope && node.nodeScope.componentOwner;
+  const key = owner || node;
+  if (!key || typeof key !== 'object') return {};
+  let scope = componentScopes.get(key);
+  if (scope === undefined) {
+    scope = {};
+    componentScopes.set(key, scope);
+  }
+  return scope;
 };
 
 //override the Noodl API so it uses a model scope
