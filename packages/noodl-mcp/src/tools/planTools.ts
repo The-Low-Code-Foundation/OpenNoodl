@@ -77,7 +77,7 @@ import { authoredProjectViews, preconditionDiagnostics } from '../validate';
 import type { WriteValidation } from '../validate';
 import type { WriteValidationSummary } from './responses';
 import type { NodeInput } from './author';
-import { assembleCreateFiles, assembleSetFiles, normalizeAuthoredNodes, projectVisualPredicate } from './author';
+import { assembleCreateFiles, assembleSetFiles, nodeIdsOf, normalizeAuthoredNodes, projectVisualPredicate } from './author';
 // LAS-012 §4 — the skeleton's own writer owns the predicate for "untouched".
 import { isUntouchedSkeletonPage } from './createProject';
 // AAQ-005: one authoring vocabulary — the same node/connection shapes
@@ -782,14 +782,26 @@ export function registerPlanTools(
           );
         }
 
-        const reconciled = reconcileHierarchy(normalizeAuthoredNodes(args.nodes));
+        // DEF-025 — the baseline moves ahead of the reconcile because "is this
+        // node new?" is a question only the component's current ids can answer,
+        // and a staged UPDATE re-sends the whole graph exactly as
+        // `update_component`'s `set` door does. A create has no baseline and
+        // every node in it is new, which is why the argument is absent there
+        // rather than an empty set passed for symmetry.
+        const legacyName = pathToLegacyName(operation.target);
+        let baseline: ComponentFiles | undefined;
+        if (operation.kind !== 'create') {
+          baseline = store.readComponent(operation.target).files;
+        }
+
+        const reconciled = reconcileHierarchy(
+          normalizeAuthoredNodes(args.nodes, baseline ? nodeIdsOf(baseline) : undefined)
+        );
         if (reconciled.errors.length > 0) {
           throw new ToolError('invalid-argument', 'Node hierarchy is inconsistent.', { errors: reconciled.errors });
         }
 
-        const legacyName = pathToLegacyName(operation.target);
         let candidate: ComponentFiles;
-        let baseline: ComponentFiles | undefined;
         if (operation.kind === 'create') {
           candidate = assembleCreateFiles({
             path: operation.target,
@@ -801,9 +813,8 @@ export function registerPlanTools(
             isVisualType: projectVisualPredicate(store)
           });
         } else {
-          baseline = store.readComponent(operation.target).files;
           candidate = assembleSetFiles(
-            baseline,
+            baseline!,
             { nodes: reconciled.nodes, connections: args.connections, visualRoots: args.visual_roots },
             projectVisualPredicate(store)
           );

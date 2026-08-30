@@ -16,6 +16,7 @@ import { z } from 'zod';
 import type { ComponentV2File, ConnectionsV2File, ConnectionV2, NodesV2File, NodeV2 } from '../editor-deps';
 import {
   foldNodeComment,
+  planCreationDefaults,
   formatDiagnosticLine,
   inferComponentType,
   layoutAuthoredNodes,
@@ -140,8 +141,39 @@ export function ensureIds(nodes: NodeInput[]): NodeV2[] {
  * `add_node` is folded in `normalizeOperations` and `update_node.set` in
  * `graph.ts`, which are the two paths that do not carry a whole node list.
  */
-export function normalizeAuthoredNodes(nodes: NodeInput[]): NodeV2[] {
-  return ensureIds(nodes).map((n) => foldNodeComment(n));
+/**
+ * DEF-025 — fill a newly placed node's silent parameters, and only a newly
+ * placed one's.
+ *
+ * `existingIds` is the whole discriminator. A node whose id is already in the
+ * component is being **re-sent**, not created: `update_component`'s `set` door
+ * carries the entire graph on every call, so applying a creation default there
+ * would flip `useLabel` on a checkbox a person deliberately left bare — an
+ * existing rendering moving, which is the one consequence the ruling forbids.
+ * A node with no id yet, or an id the component has never seen, is new.
+ */
+function withCreationDefaults<T extends { id?: string; type?: string; parameters?: Record<string, unknown> }>(
+  node: T,
+  existingIds?: ReadonlySet<string>
+): T {
+  if (node.id !== undefined && existingIds?.has(node.id)) return node;
+  if (typeof node.type !== 'string') return node;
+
+  const writes = planCreationDefaults(node.type, node);
+  if (writes.length === 0) return node;
+
+  const parameters = { ...(node.parameters ?? {}) };
+  for (const write of writes) parameters[write.parameter] = write.value;
+  return { ...node, parameters };
+}
+
+export function normalizeAuthoredNodes(nodes: NodeInput[], existingIds?: ReadonlySet<string>): NodeV2[] {
+  return ensureIds(nodes).map((n) => withCreationDefaults(foldNodeComment(n), existingIds));
+}
+
+/** The ids a component already holds — what makes "newly placed" answerable. */
+export function nodeIdsOf(files: ComponentFiles): ReadonlySet<string> {
+  return new Set((files.nodes.nodes ?? []).map((n) => n.id));
 }
 
 /**
@@ -337,7 +369,10 @@ function normalizeOperations(operations: OperationInput[]): UpdateOperation[] {
     // LEG-001 — the same fold `normalizeAuthoredNodes` does for a whole graph.
     // `add_node` carries one node through a different door; a comment written
     // here has to land in the same place.
-    const node = foldNodeComment(op.node.id ? op.node : { ...op.node, id: crypto.randomUUID() });
+    // DEF-025 — `add_node` needs no id set to consult: `applyOperations`
+    // refuses an id the component already holds, so every node arriving here
+    // is new by construction.
+    const node = withCreationDefaults(foldNodeComment(op.node.id ? op.node : { ...op.node, id: crypto.randomUUID() }));
     return { ...op, node };
   }) as UpdateOperation[];
 }
@@ -589,7 +624,7 @@ export function registerAuthorTools(
         let applied: string[] | undefined;
 
         if (args.set) {
-          const reconciled = reconcileHierarchy(normalizeAuthoredNodes(args.set.nodes));
+          const reconciled = reconcileHierarchy(normalizeAuthoredNodes(args.set.nodes, nodeIdsOf(baseline)));
           if (reconciled.errors.length > 0) {
             throw new ToolError('invalid-argument', 'Node hierarchy is inconsistent.', { errors: reconciled.errors });
           }

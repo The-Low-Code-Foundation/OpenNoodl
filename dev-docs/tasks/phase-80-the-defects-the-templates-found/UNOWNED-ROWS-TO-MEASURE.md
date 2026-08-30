@@ -177,3 +177,40 @@ was written.**
    78's D4 is the worked example.
 4. **A row that measures true gets a `DEF-0xx` id and a person's sentence**, or it is not a row.
    Ids `DEF-033`+ are free as of 2026-08-30.
+
+---
+
+## The drag door skips STYLE-002's defaults entirely — found s25 (2026-08-30)
+
+**Not measured looking for it.** DEF-025 needed to know which creation seam reaches *both* editor
+doors, and the answer turned out to be that one of the two existing mechanisms reaches only one.
+
+`ElementConfigRegistry.applyDefaults` has **exactly one call site** —
+`NodePicker.utils.createNodeFunction:25`. The other path that mints a brand-new node,
+`NodeOperations.createNewNode` (reached from `nodegrapheditor.drag.ts:121` and `:132`, i.e. a **drag
+from the library onto the canvas**), never calls it. `seedNewNode` is called from both, which is how
+FUN-002's own header describes the pair — so the asymmetry is in `applyDefaults`, not in the doors.
+
+⚠️ **The `-a` flag is why this was seen at all.** This repo's `grep` is ugrep with `-I`, and it
+skipped `author.ts` and others *silently* as binary; the first sweep for `applyDefaults` returned
+call sites that looked complete and were not. Any absence measured here without `-a` is worthless.
+
+**What a person gets.** Four types carry an ElementConfig — `net.noodl.controls.button`, `Text`,
+`net.noodl.controls.textinput`, `net.noodl.controls.checkbox`. Placed from the node picker they
+arrive with token-based sizing, radius, cursor and their initial variant. Dragged from the library
+they arrive bare. That includes **DEF-001's accessibility repair**: `borderColor:
+var(--border-control)` is the 1.23:1 edge fix, and it is in `CheckboxConfig.defaults` and
+`TextInputConfig`'s — so the same control is accessible or not depending on which gesture created it.
+
+🔴 **Measured from source, NOT driven.** The call-site count is exact; what a dragged node actually
+renders has not been observed in a running editor, and that drive is what this row owes before
+anyone fixes it. ⚠️ An editor drive serves a BUILT bundle — rebuild before believing it.
+
+**Candidate fix, not a design**: move `applyDefaults` beside `seedNewNode` inside
+`NodeOperations.createNewNode` and `NodePicker.utils.createNodeFunction`, or fold it into
+`seedNewNode` so "what a node arrives with" has one home rather than two with different reach.
+⚠️ It is not a pure one-liner: the picker applies defaults **before** the node is added to the graph
+and `seedNewNode` runs **after** (deliberately, for undo granularity), so folding them changes when
+the write lands relative to the `create` undo entry.
+
+Owner: **NONE**. Gets a `DEF-0xx` id when someone measures it.

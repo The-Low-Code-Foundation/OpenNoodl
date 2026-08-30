@@ -238,6 +238,16 @@ export type {
   ValidationError
 } from '../../noodl-editor/src/editor/src/schemas';
 
+// ─── Creation defaults (DEF-025) ──────────────────────────────────────────────
+// Richard's ruling of 2026-08-30 is "flip at creation, in BOTH doors", and this
+// import is what makes that one decision rather than two. The module is
+// deliberately import-free — it is the editor's own node-seed decision layer —
+// so it costs this package nothing to pull in, and the alternative (a second
+// copy of the toggle list on the MCP side) is precisely the drift that would
+// have the door emit graphs its own validator warns about.
+export { planCreationDefaults, LABEL_TARGET_CONTROLS } from '../../noodl-editor/src/editor/src/models/nodeSeed/newNodeSeed';
+export type { NewNodeSeed, SeedableNode } from '../../noodl-editor/src/editor/src/models/nodeSeed/newNodeSeed';
+
 // ─── io helpers (STRUCT-002) ──────────────────────────────────────────────────
 export { legacyNameToPath, inferComponentType } from '../../noodl-editor/src/editor/src/io/ProjectExporter';
 

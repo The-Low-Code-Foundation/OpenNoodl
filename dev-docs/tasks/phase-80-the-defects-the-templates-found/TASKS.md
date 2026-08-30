@@ -79,7 +79,7 @@ this register once already, and that is how one row gets worked twice and anothe
 | DEF-022 | ✅ done | **P78 D34** | A cloud function cannot find out what the app's own public address is — **fixed s18: the Request node has an `Origin` output. The node already held the answer and threw it away (`request.ts` stored `req.headers` on the `Request` model with no port); `requestOrigin.ts` now derives it once — the caller's `Origin` header when usable (a browser POST always carries the page's own address, the thing TPL-002 had to be told from outside), else forwarded-host/host + forwarded-proto, else honestly blank (a workflow step has no caller). Port description names the trust boundary: caller-supplied, right for links back to whoever called, NOT for a password-reset a third party will click — that stays `effectiveBaseUrl`'s job, still unreachable from a graph (row below, `NONE`). 🔴 D34's "nothing exposes it to a graph" was too strong: an Object node with Id `Request` reads the raw `Headers` bag today, probed through the real runner — corrected in the register, not silently** | **everyone an app ever emails a link to** |
 | DEF-023 | ✅ done | **P78 D35** | `Component` scope in a cloud function is **not** per-request, and nothing says so — **fixed s16 (`acd053e0`). 🔴 The recorded mechanism was the browser's: the cloud runtime never reaches `_componentScopes` — `noodl-js-api.js` overrode the scope to ONE module-level object, shared across all scripts, functions, requests and CONCURRENT requests. Now a WeakMap keyed on the component-owner INSTANCE (ids repeat across requests; instances do not): same-instance scripts still share (TPL-002's plan/pump contract), a new request starts clean, entries die with the request's graph — the leak half held by construction, not a spec** | every **graph that accumulates anything server-side** |
 | DEF-024 | ✅ done | **P78 D36** | A `Condition` can only ever turn a gate **ON**, so a screen accumulates contradictory answers — **closed s21 (08-30), and it was NOT the design ruling the queue expected: 🔴 the register's mechanism claim was false when written — `Switch` (same Logic category) has been the two-way shape all along (`On`/`Off` signals, `Current State` pushed on every change; one Switch per answer = fewer nodes than the paired-clear workaround), and `Condition.result` itself pushes `false` on a false test. What can only turn a gate on is the AUTHORED shape (constant `condition: true`, Evaluate-pulsed), so the defect narrowed to "nothing says so": shipped `gate-only-turns-on` (advisory warning, both doors, `oneWayGate.ts`) — fires when every writer into a `mounted`/`visible` is a constant-condition Condition and the pushable set is exactly `{true}`; paired-clear and Switch shapes silent by construction; one-way DISMISS (`{false}`) not fired on, by decision with corpus numbers. Driven at HEAD first in real Chrome (`def024-gate-drive.test.ts`): latch tick-then-untick leaves BOTH notices; Switch control arm leaves exactly one. Corpus (`calibrate:gates`, 178 projects): 3,287 written gate ports, 3,211 abstain, **75 firings, all true, zero false positives read** — concentrated in the site-builder template's copies (→ P77 **D29**, filed) and pre-s6 members-area copies. 🔴 The shipped `templates/members-area/` still carries **12 one-way latches** (s15's workaround fixed `Account` only) — template work, filed in P78's D36 section. Plus one sentence each on `Condition.result`/`Switch.state` naming the two-way shape (catalog regenerated). 12 specs, 7 mutants each killed by its own arm** | every **screen whose answer has more than one form** |
-| DEF-025 | 🟡 partial | **P78 D37** | A control's label is a click target only via the control's own `label` port — which **defaults OFF** — **door half built s17: `label-not-a-click-target` warns on a Checkbox/Radio Button whose words sit in an adjacent sibling Text (43 true firings / 186 toggles over the 178-project corpus, denominators printed; stays advisory — the corpus carries 43 legitimate legacy instances, the `raw-color-literal` precedent). Default-flip half 🧭 Richard — see the s17 section: a blunt flip stamps the literal string `'Label'` onto every existing bare checkbox** | every **person tapping the words beside a checkbox** |
+| DEF-025 | ✅ | **P78 D37** | A control's label is a click target only via the control's own `label` port — which **defaults OFF** — **door half built s17: `label-not-a-click-target` warns on a Checkbox/Radio Button whose words sit in an adjacent sibling Text (43 true firings / 186 toggles over the 178-project corpus, denominators printed; stays advisory — the corpus carries 43 legitimate legacy instances, the `raw-color-literal` precedent). Default-flip half **CLOSED s25**: ruled `flip at CREATION, in BOTH doors` and built — editor (`newNodeSeed`, reaching both creation paths) and MCP (`create_component`, `update_component` `set` + `add_node`, the plan door), "newly placed" decided by **id**, so no existing rendering moves. 🔴 The flip would have SILENCED this very rule on the population it creates (measured 2→0→2 on real projects); the rule now fires on an **authored** `useLabel: true` whose Label is still the placeholder, and s17's catalog-flip arm still passes untouched** | every **person tapping the words beside a checkbox** |
 | DEF-026 | ✅ done | A cloud call to an unreachable backend reports nothing — **fixed s17: `CloudFunction2`'s error handler dereferenced `e.error` unconditionally, and a connection refusal hands it `undefined` (real Chrome probed at HEAD: `readyState 4, status 0, response ''` ⇒ `JSON.parse` throws ⇒ body `undefined`), so the ONE route to the `failure` outcome died on a TypeError inside the XHR callback. Handler now total; status 0 reports "Could not reach the backend at <endpoint>". Same hole filled in `Noodl.CloudFunctions.run` (rejected with `undefined`; JSON error bodies still pass through untouched)** | **anyone** whose backend is not running — the ordinary way this breaks |
 | DEF-027 | ✅ done | **P77 D28** | A `Drag`'s direct child loses its `cssClassName`, so a draggable element cannot be styled or selected from a stylesheet — `react-draggable` clones the child with its own `className` and the authored one does not survive it. 🔴 **Found by driving, and the two controls are what make it about `Drag` rather than about `cssClassName`**: a Group one level further in and a Text deeper still take their class by the SAME kind of connection from the SAME `Component Inputs` node and keep theirs (`ac2DragGestureDrive.test.ts`, and `ac2-page-editor-drag-drive.test.ts` has to find the template's own cards by `.react-draggable` because of it). It fails **silently**: the class is accepted at the door, stored in the graph, and absent from the DOM. **fixed s23 (2026-08-30): the discarding was the SPREAD's, not `Drag`'s.** `NoodlReactComponent.render` spread `...noodlNode.props` then `...otherProps`, and the library's injected `className` — arriving in `otherProps` — overwrote the author's. `react-draggable` could not merge it either: the child it clones is the wrapper element, whose props are only `{key, noodlNode, ref}`, so its own `clsx(children.props.className || '', …)` had nothing to see. Class names accumulate rather than disagree, so the two are now joined; `style` keeps its deliberate parent-wins precedence (its own arm, and a mutant proving that arm is live). Fixed at the spread rather than in `Drag.tsx` so any future wrapper is covered — **and D28's uncounted sweep now has a number: one.** `Drag.tsx:214` holds the only `cloneElement` in the viewer and `react-draggable` is the only third-party wrapper around authored children. Re-driven at HEAD first (9/9, the two pins passing), then flipped as the spec's own header instructed and re-driven green. 5 specs, 5 mutants each killed by a named arm. ⚠️ **The drive serves the gitignored `noodl.viewer.js`** — the first post-fix run was 9/9 RED until it was rebuilt, and read like a broken fix | every **author who styles, animates or selects a draggable row** — most of what anyone does with a drag |
 
@@ -1201,3 +1201,100 @@ and the other three files are specs. **A next session that touches product code 
 ✅ **The peer check was its own tool call every time**, per s23's cost. One peer jest run was seen
 and waited out; a P18 peer landed `6f91ae2a` mid-session adding **DEF-033** to the table, and a
 phase 77 peer held `TASKS.md` and `SBR-006` uncommitted throughout — both left alone.
+
+---
+
+### DEF-025 — s25 (2026-08-30): the flip lands in both doors, and the rule survives its own fix
+
+**Richard's ruling built as written**: `useLabel: true` is authored onto **newly placed** `Checkbox`
+/ `Radio Button` by the editor **and** by this repo's MCP doors. Nothing touches the port's declared
+default, so **no existing rendering moves** and no shipped checkbox starts saying "Label".
+
+**Premises re-verified at HEAD before building** (the standing instruction, 15th payment):
+`addLabelInputs` still defaults `useLabel: false`; `Checkbox.tsx:170` / `RadioButton.tsx:178` still
+gate `<label htmlFor>` on it; the catalog still carries `useLabel: false` **and** `label: 'Label'` as
+static inputs on both types. D37's reading holds unchanged.
+
+#### 🔴 The flip would have blinded the detector s17 shipped — measured, then fixed
+
+The ruling assumed flipping at creation is inert with respect to `label-not-a-click-target`. **It is
+not.** The rule skipped any control whose *effective* `useLabel` was true, on the reasoning that
+such a control "already owns its words". After the flip that reasoning is false: a door-created
+toggle has `useLabel: true` with `label` still at its **placeholder**, so the rule would fall silent
+on precisely the population the flip creates.
+
+**Measured on real corpus data, not argued.** Two genuine findings in `fb020-drive`, with the flip
+applied to their checkboxes:
+
+| rule | findings on the same two nodes |
+|---|---|
+| as s17 shipped it | **0** — both defects vanish |
+| with the `unfinished` clause | **2**, message naming the placeholder |
+
+So the rule now fires when `useLabel` was **authored** true and the `label` is unset, blank, or the
+catalog's own `'Label'`, with a words-carrying sibling Text — and stays silent once the words are in
+the port, or arrive over a connection.
+
+⚠️ **The clause is `authored === true`, deliberately, not `effective === true`.** An *unset* port
+under a hypothetically flipped catalog default is a different product, and s17's catalog-flip arm —
+which the ruling names as load-bearing, and the only thing that makes the authored-bag-only mutant
+killable — **still passes untouched**. Mutant M4 (widening `authored` to `effective`) kills exactly
+that arm and nothing else, which is how the discriminator was shown to be doing real work.
+
+#### Where it landed
+
+- **Editor**: `newNodeSeed.ts` gains `CREATION_DEFAULTS_BY_TYPE` beside FUN-002's body-seed table —
+  same moment, same guards, same undo discipline (its own entry, so one ⌘Z takes the label off and
+  leaves the control). `seedNewNode` applies both. **No call-site change was needed**, because
+  `seedNewNode` is already called from both paths that mint a brand-new node.
+- 🔴 **The other creation mechanism was the wrong seam, and measuring said so.**
+  `ElementConfigRegistry.applyDefaults` has **one** call site (`NodePicker.utils:25`); the
+  drag-onto-canvas door never calls it. Building on it would have fixed one door of the two the
+  ruling names. **Registered as its own unowned row** — it means STYLE-002's tokens *and DEF-001's
+  accessibility border* reach a picker-placed control and not a dragged one.
+- **MCP**: one funnel, `normalizeAuthoredNodes(nodes, existingIds?)`, reaching `create_component`,
+  `update_component`'s `set` branch, and the plan door's stage; `add_node` is handled in
+  `normalizeOperations`, where a new id is guaranteed by construction.
+- 🔴 **"Newly placed" is decided by id, not by door.** `set` re-sends the entire graph on every
+  call, so a bare checkbox arriving there is usually one someone deliberately left bare. Flipping it
+  would be an existing rendering moving — the one consequence the ruling forbids. The plan door's
+  baseline read moved ahead of its reconcile for the same reason.
+- **One list, two readers**: `LABEL_TARGET_CONTROLS` lives in the import-free seed module and the
+  validation rule imports it. A spec asserts the set the door fills **is** the set the rule watches.
+
+#### Gates — s25 (2026-08-30)
+
+| gate | reading |
+|---|---|
+| `noodl-mcp` jest | **78 suites / 1015 tests, all passed** (1007 at s24 + the 8 new door arms) |
+| editor jest | **6473 tests, 4 failed** — `sb-007` (2) + `sb-018` (2), **both peer lanes** |
+| ↳ ownership check | the same **4 failed / 52 passed** with this session's three editor files restored to HEAD |
+| `tests-unit/def-025` | **28/28** (13 s17 arms + 7 new + 8 decision arms), `fun-002` **7/7** |
+| `catalog:examples` | **62/62** strict, warnings-as-errors — the recipe s17 repaired stays clean |
+| `calibrate:labels` | **233 projects, 0 unreadable · 77 toggles · 16 findings · 0 from the new clause** |
+| ↳ its control | injected flip on 2 real nodes fires the new message — the 0 is an absence, not a dead path |
+| `typecheck:mcp` · `:editor` · `:editor-tests` | **clean** |
+| `test:ci` | **2905 specs / 4 failures, seed 28644, fresh readout** — all four **AIX-006 style vocabulary, BY NAME**: the floor |
+| mutants | **8, each killed by its own arms** — M1/M2 (decision), M3/M4 (rule), M5–M8 (the four doors) |
+
+`test:ci` exits **1 at the floor**, exactly as a timed-out run does, so the exit code was not read as
+the result: the readout's mtime was checked fresh (23:01:49, read at 23:02:05) and the four failures
+were read **by name**, not counted.
+
+⚠️ **A phase 77 peer landed `420994d3` (SBR-015 AC4) while `test:ci` was running** — which is why the
+readout's `gitHead` is a commit this session never worked from. The bundle under test was built
+before that commit, so the reading is of this session's code; the peer's work is simply not in it.
+Their commit touched phase 77's `TASKS.md` and `UNOWNED-ROWS-TO-MEASURE.md` — **not** phase 80's
+files of the same names, which is a collision waiting for whoever reads a bare filename in a log.
+
+⚠️ **`calibrate:labels` is NOT s17's corpus.** s17 measured 178 projects / 186 toggles / 43
+findings; the invocation was never written down, and the 233 roots enumerated this session yield 77
+toggles. **Different population, so this is not evidence that the 43 legacy firings are unchanged**
+— it is evidence about the population reached here. The script takes its roots as arguments; a
+session that wants comparability must record the command, not just the number.
+
+⚠️ **The editor half's *wiring* is graded by the call sites, not by a spec**, exactly as FUN-002
+left it — `seedNewNode` is reached from both creation paths and the decision is graded directly.
+**What is owed is a drive**: place a Checkbox from the picker and drag one from the library, and
+observe both arrive with the Label port visible in the property panel. Not done this session — an
+editor drive serves a **built bundle** and `test:ci` held the machine.

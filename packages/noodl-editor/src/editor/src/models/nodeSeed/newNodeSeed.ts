@@ -35,6 +35,16 @@
  * The caller therefore writes it with `setParameter(..., { undo: true })`,
  * which makes it a normal undoable edit — one ⌘Z removes it, and it stays gone.
  *
+ * ## Two tables, one moment
+ *
+ * DEF-025 added a second kind of write to this module. `SEEDED_PARAMETER_BY_TYPE`
+ * answers "what body does this node arrive with"; `CREATION_DEFAULTS_BY_TYPE`
+ * answers "what parameters does this node arrive with". They share the moment
+ * (creation, once, undoably) and the guards, so they share the module rather
+ * than growing a second mechanism beside it — the editor already has one of
+ * those (`ElementConfigRegistry.applyDefaults`) and it is reachable from only
+ * ONE of the two creation paths, which is exactly the drift this avoids.
+ *
  * @module models/nodeSeed
  */
 
@@ -47,6 +57,51 @@ const SEEDED_PARAMETER_BY_TYPE: Record<string, string> = {
   JavaScriptFunction: 'functionScript'
 };
 
+/**
+ * DEF-025 (P78 D37) — the controls whose visible words are the tap surface,
+ * and the display name each is known by.
+ *
+ * `Checkbox` and `Radio Button` emit their `<label for="…">` — a real click
+ * target wired to the input — only when `useLabel` is on, and it defaults
+ * **off**. So the obvious authoring, a `Text` beside the control, renders a
+ * sentence that does nothing when tapped and a hit area of 24×24 px: WCAG 2.2
+ * SC 2.5.8's minimum and no more.
+ *
+ * ⚠️ **This is the one copy of the list.** `validation/rules/
+ * labelNotAClickTarget` imports it rather than keeping its own, because the
+ * rule and the creation default are two halves of one decision: the day a
+ * control joins or leaves this set, both must move together or the door
+ * produces exactly what the rule warns about.
+ *
+ * `Text Input` and `Options` share the `useLabel: false` default and are
+ * deliberately absent: the design system's own `field` composition puts a
+ * separate `fieldLabel` Text above those, so including them would fire on the
+ * doctrine's own recommended shape. "The label is the tap target" is a
+ * semantic fact about the control that no catalog property carries, which is
+ * why the list is written here and reasoned rather than derived.
+ */
+export const LABEL_TARGET_CONTROLS: ReadonlyMap<string, string> = new Map([
+  ['net.noodl.controls.checkbox', 'Checkbox'],
+  ['net.noodl.controls.radiobutton', 'Radio Button']
+]);
+
+/**
+ * DEF-025 — what a brand-new node arrives with in its parameter bag.
+ *
+ * Richard's ruling (2026-08-30): flip at **creation**, not at runtime, and in
+ * **both** doors. New work gets a control whose words are a real click target;
+ * no existing rendering moves, because nothing here touches the port's
+ * declared default and nothing here runs on load, paste, duplicate or import.
+ *
+ * ⚠️ The blunt alternative — flipping `useLabel`'s catalog default to `true` —
+ * is ruled OUT permanently: every existing project's bare checkbox would
+ * suddenly render the literal string `'Label'` (the `label` port's default).
+ * That is a visible regression on every unlabelled box in every project.
+ */
+const CREATION_DEFAULTS_BY_TYPE: Record<string, Record<string, unknown>> = Object.fromEntries(
+  [...LABEL_TARGET_CONTROLS.keys()].map((type) => [type, { useLabel: true }])
+);
+
 /** Structural view of a node model — deliberately not `NodeGraphNode`. */
 export interface SeedableNode {
   parameters?: Record<string, unknown>;
@@ -55,7 +110,8 @@ export interface SeedableNode {
 /** The write a caller should make, or `null` for "leave this node alone". */
 export interface NewNodeSeed {
   parameter: string;
-  value: string;
+  /** `unknown`, not `string`: a creation default may be a boolean. */
+  value: unknown;
 }
 
 /**
@@ -81,7 +137,33 @@ export function planNewNodeSeed(typeName: string, node: SeedableNode, seedText: 
   return { parameter, value: seedText };
 }
 
+/**
+ * Decide which parameters a just-created node of `typeName` should arrive with.
+ *
+ * Returns `[]` — do nothing — for every type with no creation defaults, and
+ * skips any parameter the node **already carries a value for**. That guard is
+ * what makes an explicit `useLabel: false` from an authoring door survive: a
+ * caller who said what they wanted is never corrected, and the default only
+ * fills a silence.
+ *
+ * ⚠️ Like {@link planNewNodeSeed}, this must reach a node only on creation.
+ * That is enforced by the call sites, not by anything visible from here.
+ */
+export function planCreationDefaults(typeName: string, node: SeedableNode): NewNodeSeed[] {
+  const defaults = CREATION_DEFAULTS_BY_TYPE[typeName];
+  if (!defaults) return [];
+
+  return Object.entries(defaults)
+    .filter(([parameter]) => node?.parameters?.[parameter] === undefined)
+    .map(([parameter, value]) => ({ parameter, value }));
+}
+
 /** The types this module will seed. Exported for tests and for a grep to find. */
 export function seedableNodeTypes(): string[] {
   return Object.keys(SEEDED_PARAMETER_BY_TYPE);
+}
+
+/** The types that arrive with parameters. Exported for tests and for a grep. */
+export function typesWithCreationDefaults(): string[] {
+  return Object.keys(CREATION_DEFAULTS_BY_TYPE);
 }

@@ -43,17 +43,39 @@
  * @module noodl-editor/validation/rules/labelNotAClickTarget
  */
 
+import { LABEL_TARGET_CONTROLS } from '../../models/nodeSeed/newNodeSeed';
 import { Diagnostic, DiagnosticCode } from '../diagnostics';
 import { NormComponent, NormNode } from '../model';
 import { Rule, RuleContext } from './types';
 
-/** The controls whose visible words are the tap surface. See the header. */
-const TOGGLE_TYPES = new Map<string, string>([
-  ['net.noodl.controls.checkbox', 'Checkbox'],
-  ['net.noodl.controls.radiobutton', 'Radio Button']
-]);
+/**
+ * The controls whose visible words are the tap surface.
+ *
+ * ⚠️ Imported, not repeated. DEF-025's creation default writes `useLabel: true`
+ * onto exactly this set, and a rule warning about a set the door does not fill
+ * (or a door filling a set the rule does not watch) is the drift that would
+ * make the product warn about its own output. One list, two readers.
+ */
+const TOGGLE_TYPES = LABEL_TARGET_CONTROLS;
 
 const TEXT_TYPE = 'Text';
+
+/**
+ * DEF-025 — is this control's own `label` still the placeholder?
+ *
+ * True when nothing readable has been put in the port: unset (so the catalog's
+ * `'Label'` renders), authored to that same default, authored blank, or
+ * authored to whitespace. A **connection** into `label` counts as finished —
+ * the words arrive at runtime and no static reading can say what they are.
+ */
+function labelIsPlaceholder(control: NormNode, component: NormComponent, catalogDefault: unknown): boolean {
+  if (component.connections.some((c) => c.toId === control.id && c.toProperty === 'label')) return false;
+
+  const authored = control.parameters?.label;
+  if (authored === undefined) return true;
+  if (typeof authored !== 'string') return false;
+  return authored.trim() === '' || authored === catalogDefault;
+}
 
 /** Does this `Text` node carry words — authored or wired in? */
 function carriesWords(text: NormNode, component: NormComponent): boolean {
@@ -80,9 +102,22 @@ export const labelNotAClickTarget: Rule = {
         // catalog default is `false` for both types today, so an unset port
         // means the label path is off; an authored `true` means the control
         // already owns its words and a sibling Text is something else.
+        const defaults = ctx.catalog.inputDefaults(control.type);
         const authored = control.parameters?.useLabel;
-        const effective = authored !== undefined ? authored : ctx.catalog.inputDefaults(control.type).useLabel;
-        if (effective === true) continue;
+        const effective = authored !== undefined ? authored : defaults.useLabel;
+
+        // DEF-025 — the state the creation default creates, and the only one it
+        // does. A door-authored `useLabel: true` whose `label` was never filled
+        // in renders the literal placeholder BESIDE the sibling Text: two sets
+        // of words, and the ones a person reads are still inert. That is
+        // unfinished, not fixed, so the warning must survive its own fix.
+        //
+        // ⚠️ Deliberately `authored === true`, not `effective === true`: an
+        // UNSET port under a flipped catalog default is a different product —
+        // one where every toggle is label-on and the placeholder question gets
+        // re-decided — and the arm pinning that case stays silent, as it should.
+        const unfinished = authored === true && labelIsPlaceholder(control, component, defaults.label);
+        if (effective === true && !unfinished) continue;
 
         if (!control.parent) continue;
         const parent = nodeById.get(control.parent);
@@ -104,14 +139,20 @@ export const labelNotAClickTarget: Rule = {
           if (second && second.type === control.type) continue;
 
           const words = typeof sibling.parameters?.text === 'string' ? ` (“${sibling.parameters.text}”)` : '';
+          const hitArea = displayName === 'Checkbox' ? 'box' : 'button';
+          const message = unfinished
+            ? `This ${displayName} has Enable Label (useLabel) on — as every newly created one does — but its ` +
+              `Label is still the placeholder, so it renders the word “Label” beside the Text${words} a person ` +
+              `actually reads, and only the placeholder is a click target. Move the words onto the ${displayName}'s ` +
+              `own Label port and remove the sibling Text.`
+            : `The Text beside this ${displayName}${words} is not a click target — tapping the words does nothing, ` +
+              `and the only hit area is the ${hitArea} itself. ` +
+              `Put the words on the control instead: set Enable Label (useLabel) and Label on the ${displayName} ` +
+              `(they render as a real <label> wired to the input) and remove the sibling Text.`;
           out.push({
             code: DiagnosticCode.LabelNotAClickTarget,
             severity: 'warning',
-            message:
-              `The Text beside this ${displayName}${words} is not a click target — tapping the words does nothing, ` +
-              `and the only hit area is the ${displayName === 'Checkbox' ? 'box' : 'button'} itself. ` +
-              `Put the words on the control instead: set Enable Label (useLabel) and Label on the ${displayName} ` +
-              `(they render as a real <label> wired to the input) and remove the sibling Text.`,
+            message,
             location: {
               component: component.name,
               nodeId: control.id,

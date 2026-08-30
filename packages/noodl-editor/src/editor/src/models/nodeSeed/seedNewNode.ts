@@ -21,13 +21,24 @@
 
 import { SEED_FUNCTION_BODY } from '@noodl-core-ui/components/code-editor';
 
-import { planNewNodeSeed, SeedableNode } from './newNodeSeed';
+import { planCreationDefaults, planNewNodeSeed, SeedableNode } from './newNodeSeed';
 
 import type { NodeGraphNode } from '../nodegraphmodel';
 
 export function seedNewNode(node: NodeGraphNode, typeName: string): void {
-  const seed = planNewNodeSeed(typeName, node as unknown as SeedableNode, SEED_FUNCTION_BODY);
-  if (!seed) return;
+  const structural = node as unknown as SeedableNode;
 
-  node.setParameter(seed.parameter, seed.value, { undo: true, label: 'seed function' });
+  const seed = planNewNodeSeed(typeName, structural, SEED_FUNCTION_BODY);
+  if (seed) {
+    node.setParameter(seed.parameter, seed.value, { undo: true, label: 'seed function' });
+  }
+
+  // DEF-025 — the same moment, the same undo discipline. Its own entry rather
+  // than folded into `create`, so one ⌘Z takes the label off and leaves the
+  // control: the escape hatch for someone who wants the bare box on purpose.
+  // No type carries both a body and a creation default today; if one ever does,
+  // two entries is the correct answer and not a wrinkle.
+  for (const write of planCreationDefaults(typeName, structural)) {
+    node.setParameter(write.parameter, write.value, { undo: true, label: 'default parameters' });
+  }
 }

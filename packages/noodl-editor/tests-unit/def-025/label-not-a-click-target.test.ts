@@ -231,6 +231,90 @@ describe('DEF-025 — what the rule deliberately does not fire on', () => {
     expect(labelNotAClickTarget.run(ctx)).toEqual([]);
   });
 
+  // ── The state DEF-025's own fix creates ─────────────────────────────────────
+  //
+  // Flipping `useLabel` on at creation writes `true` into the bag while the
+  // `label` port is still its placeholder. Read naively, that is "the control
+  // owns its words" and this rule would fall silent on exactly the population
+  // the flip created — the fix blinding its own detector. These arms hold that
+  // shut.
+
+  it('🔴 fires when useLabel was authored on but the Label is still the placeholder', () => {
+    const found = run(
+      row([
+        { id: 'cb', type: CHECKBOX, parameters: { useLabel: true } },
+        { id: 'words', type: 'Text', parameters: { text: 'Remember me' } }
+      ])
+    );
+    expect(found).toHaveLength(1);
+    expect(found[0].location.nodeId).toBe('cb');
+    // The message has to name the state, not the old repair: the author DID
+    // enable the label, and telling them to enable it reads as a false finding.
+    expect(found[0].message).toContain('placeholder');
+    expect(found[0].message).toContain('Remember me');
+  });
+
+  it('falls silent once the words are actually in the Label port', () => {
+    const found = run(
+      row([
+        { id: 'cb', type: CHECKBOX, parameters: { useLabel: true, label: 'Remember me' } },
+        { id: 'words', type: 'Text', parameters: { text: 'Something else entirely' } }
+      ])
+    );
+    expect(found).toEqual([]);
+  });
+
+  it('a Label arriving over a connection is finished, not a placeholder', () => {
+    // No static reading can say what the words will be, and a wired label is
+    // the members-area repair's own shape.
+    const component = row(
+      [
+        { id: 'cb', type: CHECKBOX, parameters: { useLabel: true } },
+        { id: 'words', type: 'Text', parameters: { text: 'Remember me' } }
+      ],
+      [{ fromId: 'src', fromProperty: 'value', toId: 'cb', toProperty: 'label' }] as NormComponent['connections']
+    );
+    expect(run(component)).toEqual([]);
+  });
+
+  it('the literal placeholder string authored by hand counts as unfinished', () => {
+    const found = run(
+      row([
+        { id: 'cb', type: CHECKBOX, parameters: { useLabel: true, label: 'Label' } },
+        { id: 'words', type: 'Text', parameters: { text: 'Remember me' } }
+      ])
+    );
+    expect(found).toHaveLength(1);
+  });
+
+  it('a blank Label is not a click target either', () => {
+    const found = run(
+      row([
+        { id: 'cb', type: CHECKBOX, parameters: { useLabel: true, label: '   ' } },
+        { id: 'words', type: 'Text', parameters: { text: 'Remember me' } }
+      ])
+    );
+    expect(found).toHaveLength(1);
+  });
+
+  it('🔴 a freshly created toggle with nothing beside it is not a finding', () => {
+    // Every new Checkbox in the product now arrives `useLabel: true` with the
+    // placeholder. On its own that is the normal state of new work, and a rule
+    // that fired on it would fire once per node placed.
+    expect(run(row([{ id: 'cb', type: CHECKBOX, parameters: { useLabel: true } }]))).toEqual([]);
+  });
+
+  it('the Radio Button half of the pair behaves identically', () => {
+    const found = run(
+      row([
+        { id: 'rb', type: RADIO, parameters: { useLabel: true } },
+        { id: 'words', type: 'Text', parameters: { text: 'Standard delivery' } }
+      ])
+    );
+    expect(found).toHaveLength(1);
+    expect(found[0].message).toContain('Radio Button');
+  });
+
   it('an authored useLabel: false is the default state, not an exemption', () => {
     // Authoring the port to its default changes nothing about the rendered DOM,
     // so it cannot change the finding either.
