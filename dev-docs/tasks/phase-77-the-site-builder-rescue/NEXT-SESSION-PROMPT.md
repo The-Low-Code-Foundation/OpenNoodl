@@ -2,23 +2,22 @@
 
 ## ✅ No hold. Freeze cleared 2026-08-28 (s4): *"Freeze is off, go nuts."*
 
-## State: **s32 fixed both of s31's defects. AC2 is met on the artefact a person receives.**
+## State: **s33 closed SBR-006. A task went green, and no product source was touched to do it.**
 
-s31 ended with a sentence it refused to round up: *"AC2's gesture works on the real page editor, and
-the artefact a person receives cannot show it."* That is no longer true. **D30 and D31 are fixed,
-driven on the shipped project, and the specs that pinned them are now the regression net for them.**
+s32 handed over a board rather than a defect register, and the top row was
+**SBR-006 AC3's `Unpublish`, never clicked**. It is clicked now.
+**`packages/nodegx-backend/tests/sbr006-unpublish-drive.test.ts` — 14 specs, all green, 67.9 s**, on
+the whole template authored through the real MCP server, deployed with enforcement ON, and driven
+in headless Chrome through the template's own sign-in form. **SBR-006 is CLOSED, all five ACs.**
 
 Read in this order:
 
-1. **[SBR-007 §35](SBR-007-THE-PAGE-EDITOR.md)** — the two edits, what the drive reads now, and the
-   three things that were not obvious.
-2. **[D31](DEFECTS-THE-SITE-BUILDER-FOUND.md#d31)** 🟢 and
-   **[D30](DEFECTS-THE-SITE-BUILDER-FOUND.md#d30)** 🟢 — both closed, with the before/after readings.
-3. Still open and unchanged: **[D15](DEFECTS-THE-SITE-BUILDER-FOUND.md#d15)** 🔴 (AC3's only
-   remaining blocker), **[D13](DEFECTS-THE-SITE-BUILDER-FOUND.md#d13)**,
-   **[D16](DEFECTS-THE-SITE-BUILDER-FOUND.md#d16)**,
-   **[D22](DEFECTS-THE-SITE-BUILDER-FOUND.md#d22)**,
-   **[D29](DEFECTS-THE-SITE-BUILDER-FOUND.md#d29)** (a peer's).
+1. **[SBR-006 §5.14](SBR-006-THE-ADMIN-SHELL.md)** — the sequence, the mutant, and the three things
+   that were not obvious.
+2. **[TASKS.md → s33](TASKS.md)** — the session log entry, and the one reading handed on rather
+   than acted on.
+3. The register is **unchanged by this session** — no new defect row was filed, because none was
+   found. That is the point of the entry, not an omission.
 
 ---
 
@@ -31,83 +30,94 @@ anything else:**
 > **A defect becomes the next session's first job ONLY if it blocks an acceptance criterion.**
 > Otherwise it is filed with an owner, and **the next session builds the next task.**
 
-**Why this phase in particular:** s19 → s32 filed **19 new defect rows in 14 sessions — not one
-session filed zero** — and closed **one** task. The last genuinely new task to go green was
-**SBR-008, at s18**. Seven tasks have never been started. 🔴 **The ratchet has TRIPPED: build.**
+**Where the ratchet stands:** s19 → s32 filed 19 defect rows in 14 sessions and closed one task.
+**s33 filed zero rows and closed one task.** That is the shape the rule is asking for; keep it.
+🔴 **Seven tasks have still never been started.**
 
-### 🟢 BUILD THIS: **SBR-006 AC3 — `Unpublish`**
+### 🟢 BUILD THIS: **SBR-015 AC4 — the re-read**
 
-AC3 names three actions. Publish and Duplicate are driven green (s22). **`Unpublish` has never been
-clicked.** It is one click on a fixture that already exists, it closes an acceptance criterion, and
-it is the cheapest ✅ on the board.
+It is a **reading, not a build**, and it is the cheapest ✅ left on the board. AC4 was recorded 🟡
+because `execution_steps` held **0 rows**. It does not any more, and s33 has a direct sighting of it:
+**six** steps on every `publishPage` run, each named and each `success` —
 
-**First concrete step:** mint a project from the current template, claim it, publish a page, then
-click `Unpublish` from the row menu and read the **stored row** — not the response, not the screen.
-The fixture pattern and credentials are in *Standing context* below.
+```
+JavaScriptFunction · JavaScriptFunction · RunTasks · SetDbModelProperties · SetDbModelProperties · noodl.cloud.response
+```
+
+✅ **AC4's literal wording is met by that reading, and its text was checked rather than assumed:**
+
+> *"`execution_steps` either records cloud-function nodes or the task says why it cannot."*
+> ⚠️ *"Smaller than it reads… This AC is about **graph** nodes being recorded, not about building a
+> recorder."*
+
+So the AC asks for **graph nodes named in the table** — which is exactly what the six steps above
+are. 🔴 **It is NOT about a failure path** (a first draft of this handoff said it was, and that was
+wrong — the task file says the opposite in as many words). ⚠️ **It also warns you off a trap in
+advance**: *"do not expect `executions.sqlite` to name the failing node… the template has no `Log`
+nodes. The fix's own Response is the readout, not the log."*
+
+**First concrete step:** open [SBR-015 §4](SBR-015-A-FAILURE-WITH-NOWHERE-TO-GO.md), read AC4
+alongside s33's reading, and either close it or write down precisely which clause is still short.
+🔴 **Take the reading inside SBR-015's own instrument rather than citing s33's** — a criterion
+closed on another task's incidental sighting is the pattern this phase keeps paying for.
 
 ### Then, in order
 
 | | what |
 |---|---|
-| 2 | **SBR-015 AC4** — a **re-read, not a build**. AC4 was recorded 🟡 because `execution_steps` held 0 rows; DEF-004(a) now writes a step per action. Re-take the reading |
-| 3 | **SBR-012** — the raw-colour gate. ⚠️ **It owns SBR-004's AC3**, so it closes an AC in another task too |
-| 4 | **SBR-005** — sections worth having; **owns AC3's gallery model**. The largest unbuilt piece |
-| 5 | **SBR-009 / 010 / 011 / 013** — never built. SBR-011 was **ruled BUILD, not strike** |
+| 2 | **SBR-012** — the raw-colour gate. ⚠️ **It owns SBR-004's AC3**, so it closes an AC in another task too |
+| 3 | **SBR-005** — sections worth having; **owns AC3's gallery model**. The largest unbuilt piece |
+| 4 | **SBR-009 / 010 / 011 / 013** — never built. SBR-011 was **ruled BUILD, not strike** |
+| 5 | **SBR-003** — still owes the `var(--token)` dimension-port probe, and nothing else |
 | last | **SBR-014** — re-verifies every person-sentence AC, so it **cannot run until the rest are built** |
 
 ### 🔴 The phase's end condition
 
 **SBR-014 is the gate on closing phase 77**, and it re-verifies every person-sentence AC. It cannot
-start while seven tasks are unbuilt. 🔴 **That is the distance to done — not the length of the
-defect register.**
+start while six tasks are unbuilt. 🔴 **That is the distance to done — not the length of the defect
+register.**
 
 ⚠️ **AC3 of SBR-007 cannot be met at all** — **D15**, no drop-target capability in the runtime for a
 file arriving from outside the page (`dataTransfer`, `dragover`, `dragenter`, `DragEvent` all **0**
 against a **39**-hit `onClick` control over **369** files), re-measured at HEAD with a boundary
-control at s29. **Phase 77 must not close pretending AC3 is met**, and s32's pointer drag does
-**not** narrow it — that was in-page pointer work and needed none of the missing API.
-
-## 🔴 What s32 paid for, and would pay again
-
-- 🔴 **The handoff told me to import a constant, and doing that would have broken the build.**
-  s31 said to import `SECTION_SORT` from `sb006Components.ts`. But `sb006` already imports `ROUTER`
-  **from `sb005`** *and uses it at module-eval time* — so importing back makes a cycle in which
-  `ROUTER` is still in its **TDZ** when `sb006`'s body runs. ✅ **Move the constant to the module
-  that is already upstream and re-export it downstream** (the pattern `ROUTER` itself used). One
-  copy either way, which was the point. 🔴 **`grep '^import'` both files before believing a
-  "just import it" instruction**, and check whether the symbol is used at module-eval time or
-  inside a function — that decides whether the cycle is fatal or merely ugly.
-- 🔴 **When a fix lands, its mutants must INVERT — and their preconditions with them.** s31's
-  mutants *repaired* the project to name a cause; after the fix that mutant repairs nothing, and
-  `setParams`' precondition (*keys ABSENT beforehand*) goes red. The arms now **restore** the defect,
-  and `setParams` grew a **mirror precondition**: the keys must be present **and `false`** before
-  being overwritten. ✅ **Without it, a template that quietly stopped stating them would leave the
-  arm "restoring" a defect that was never absent** — the shipped arm reddens and the mutant still
-  looks like it did its job.
-- 🔴 **A control does not become obsolete when the bug is fixed — it becomes a control about the
-  MUTANT.** s31's exclusion of the obvious suspect (removing `Changed → storageFetch` does not stop
-  the loop) proves nothing about a loop that no longer exists. Re-based on the restored defect it
-  still reads **20,507** row writes with the wire gone.
-- ✅ **"Check X while you are there" is answered by reading X's wires, not by applying the same fix.**
-  `unpack` takes `in-data` on the same wire but has **no `run` connected** — the value change is its
-  only trigger, so silencing it would blank the body textarea and the image preview permanently.
-- ⚠️ **A flipped spec reddened a DIFFERENT spec, and the difference mattered.** `sb007Template` went
-  52/53 — the red was a **mutant** whose offender string enumerates the query's stored parameters,
-  which now includes `visualSort`. 🔴 **The real gate never moved** (`offenders: []`, same nine
-  graded reasons), so `visualSort` added a stored **parameter**, not a **trigger**. ✅ **Check the
-  gate that would catch the real regression is still green before editing an expected literal.**
-- ⚠️ **A census that counts by LABEL counts things that are not the same kind of thing.** Four nodes
-  are labelled *"This page's sections"*; two are now sorted and two are not — and the two that are
-  not are **cloud functions with no screen**. `reorderSection` sorts in its own script because it
-  cannot trust query row order at all. "2 of 4" would have read as a half-fix.
-- 🔴 **A wait-loop that greps `ps` for a runner name never exits here.** A peer has a watcher running
-  for over a day whose *command line* contains `jest|vitest`, so `ps` output always contains the
-  word. ✅ **Wait on a PID** (`while kill -0 <pid>`), never on a name — the same reason kills are
-  attributed by PPID.
+control at s29. **Phase 77 must not close pretending AC3 is met.**
 
 ---
 
-## Richard's, still small and still unanswered — carried from s26, untouched by s27–s32
+## 🔴 What s33 paid for, and would pay again
+
+- 🔴 **The ORDER of the acts was the measurement, not ceremony.** The stored row starts
+  `published: false` — so a drive that clicked `Unpublish` on a fresh draft and read `false` would
+  have passed **on a button wired to nothing**. The reading it wants is the state the row was
+  already in. Publishing first, *through the same menu*, is what puts a known-firing `true` there.
+  ✅ **Before asserting a value, ask what the assertion would read if the mechanism did nothing.**
+- 🔴 **A same-endpoint sibling still had to be clicked, and the gap had a shape.**
+  `sb004-publication-invariant` has driven `publishPage`'s unpublish direction over HTTP for many
+  sessions, which makes *"s22 covered it by proxy"* very tempting. But **`in-publish: false` is a
+  constant on the node, not a value on a wire** — a `CloudFunction2` that never carried it would
+  call the same endpoint, answer **200**, record `success`, and **publish the page again**, with the
+  pill then saying the opposite of what was asked for. ✅ **Ask what the failure would LOOK like
+  before deciding an existing spec already covers a sibling.**
+- 🔴 **The first run went 13/14 and the red was the SEED, not the product.** The seeded page
+  answered **200 to an anonymous reader before anything was published** — which fits a serious
+  defect exactly, because `canAccessRecord` really does read an **absent** ACL as public
+  (`model.ts:701-718`), and `sb004Components.ts` carries a 🔴 comment saying so. It is **not** that:
+  `/Pages/Admin`'s `create` node — the template's own `New page` path — writes `ADMIN_ONLY_RULES`,
+  so a page a **person** creates is born admin-only. The drive's seed had reached past the
+  template's own door with a raw `POST /classes/Page`. ✅ **A seed that bypasses the product's own
+  creation path is not a fixture, it is a second product** — and what excluded the defect reading
+  was going and reading the create node, not the other thirteen greens.
+- 🔴 **A mutant wire must be named by BOTH ends here.** SBR-007's `dropWire` matches on the
+  properties alone, and `(onClick, call)` names **three** wires in `Admin/PageRow` — publish,
+  unpublish and duplicate. Its own `removed:1` would have caught that loudly, but only after a
+  wasted run; `dropWireById` in the new file cannot reach it.
+- ⚠️ **`| tail -N` on a backgrounded run throws away the evidence.** Two runs' console readings were
+  lost to it before the third was captured whole. The log lines a drive prints are the record; do
+  not pipe them through a truncating tail.
+
+---
+
+## Richard's, still small and still unanswered — carried from s26, untouched by s27–s33
 
 **D20's fix moved the actions.** The heading grows as well as shrinks — `layout.ts` assigns
 `flexGrow` and `flexShrink` in the same branch, so there is no third option — which puts
@@ -117,7 +127,7 @@ it** (`sizeMode: 'contentSize'`, drop `width`) at the cost of putting D20 back.
 
 ---
 
-## ✅ The instruments — SIX, and they answer different questions
+## ✅ The instruments — SEVEN, and they answer different questions
 
 🔴 **Pick by what is being asked, not by which one you used last.**
 
@@ -128,10 +138,14 @@ it** (`sizeMode: 'contentSize'`, drop `width`) at the cost of putting D20 back.
 | does a **cloud function** actually do what it claims | `sb004-publication-invariant.test.ts` (§31) |
 | does a **node's port** report what it declares | `d23GeometryDrive.test.ts` (§32) |
 | does a **gesture** do what it looks like it does | `ac2DragGestureDrive.test.ts` (§33) |
-| does **the shipped screen** do it, against a real backend | `ac2-page-editor-drag-drive.test.ts` (§34–§35) |
+| does **the shipped page editor** do it, against a real backend | `ac2-page-editor-drag-drive.test.ts` (§34–§35) |
+| does **a row action on the shipped admin list** do it | `sbr006-unpublish-drive.test.ts` (SBR-006 §5.14) |
 
 ```
-# the shipped-screen drive — now green on the SHIPPED project, mutants restore the defects
+# the row-action drive — 14 specs, ~68 s, seeds its own backend, no fixture needed
+cd packages/nodegx-backend && npx jest sbr006-unpublish-drive --runInBand
+
+# the shipped-screen drive
 cd packages/nodegx-backend && npx jest ac2-page-editor-drag-drive     # 23 specs, ~6 min
 
 # the gesture-mechanism drive
@@ -145,18 +159,27 @@ npm run template:site-builder && cd packages/noodl-mcp && npx jest sb007Template
 ```
 
 - 🔴 **Read the stored rows, never the answer** — *and count them.*
+- 🔴 **Seed through the product's own door, or write the ACL the product's own door writes.**
+  s33 §5.14.4 is what that rule costs when it is skipped.
 - 🔴 **A page in the middle of a write storm refuses the reader too** — read stored rows BEFORE
   opening a writing screen, not only after.
-- 🔴 **`buttons: 1` on every `mouseMoved`** or `react-draggable` ignores the move and the failure
-  reads like *"the runtime cannot drag"*.
-- 🔴 **Vary something the store cannot fill back in.** `data: null` is not `undefined`, so a
-  "without `data`" arm is not a control.
+- 🔴 **`buttons: 1` on every `mouseMoved`** or `react-draggable` ignores the move.
+- 🔴 **Vary something the store cannot fill back in.** `data: null` is not `undefined`.
 - ⚠️ **Count every mutant edit** — `removed:1`, `matched:1`, and the precondition on the keys.
 - 🔴 **A new endpoint owes a rule in `site-builder.security.json`** or SB-016's gate refuses a
   public bind.
 - ✅ **`--sabotage` wires a connection to a port that does not exist.** If the census does not report
   it dropped, the health filter did not run and **every other reading in that run is void**.
 - 🔴 **A headless export's health filter fails OPEN, silently** — `registerModule(project)` first.
+
+## Gates taken at s33
+
+- ✅ **`sbr006-unpublish-drive` — 14/14, 67.9 s**, three times (13/14 on the first, seed fixed, then
+  twice green; the last on the committed bytes).
+- ⬜ **Nothing else was run, deliberately.** **This session changed no product source** — the only
+  delta is one new spec file — so no existing suite could have moved. 🔴 **And `sb007Template` was
+  NOT run on purpose**: a peer had uncommitted D32 work in it all session, so a reading would have
+  been about their in-flight edit rather than about anything here.
 
 ## The register — an APPENDIX, not the agenda
 
@@ -165,24 +188,19 @@ these while a task is unbuilt.
 
 ### `BACKLOG` — [D32](DEFECTS-THE-SITE-BUILDER-FOUND.md#d32), the gate that let D31 through
 
-⚠️ **Blocks no AC.** Real and worth fixing — but it is a defect about this phase's own instruments, which is the exact signature the standing rule exists to interrupt.
-Filed by the parallel s32 session that fixed D30/D31 in a worktree; the template fix landed from the
-other one (`505d9b38`) and this row is what that work did not carry.
+⚠️ **Blocks no AC.** ⚠️ **A peer appeared to be fixing this during s33** — `sb007Template.test.ts`
+carried uncommitted edits (a deep-clone fix in `migrationProject()` plus a reach-counting assertion
+naming D32) from ~21:44 onward. 🔴 **That is an observation of a working tree, not a closure.**
+**Re-read the file and `git log` before either claiming it is done or starting it.**
 
 `sb007Template`'s `gradeMountTriggered` walks the migration's writes and opens with a `continue` for
-any node not triggered by `didMount` — so it examines **1 of 65** (68 before the fix). **D31's three
-writes were among the skipped**, which is why a suite that already knew about the migration was
-green while the page editor wrote six figures of updates in eleven seconds.
-
-The missing rule, in D31's exact shape and statically checkable: does a silenced input's value come,
-directly or transitively, from a record write that this same node's output causes? 🔴 **Do not "fix"
-it by making the template state all 65** — that changes what the migration is for. **The gate is the
-gap.** ✅ **Count what a checker REACHED, not just what it flagged.**
+any node not triggered by `didMount` — so it examines **1 of 65**. **D31's three writes were among
+the skipped.** 🔴 **Do not "fix" it by making the template state all 65.** **The gate is the gap.**
+✅ **Count what a checker REACHED, not just what it flagged.**
 
 ## Where the phase now stands
 
-🔴 **Re-derived from the task FILES at s32** — s31's version omitted seven open rows and carried
-SBR-016 as open when its own file had said 🟢 since s15.
+🔴 **Re-derived from the task FILES at s33.**
 
 | | verdict |
 |---|---|
@@ -190,21 +208,21 @@ SBR-016 as open when its own file had said 🟢 since s15.
 | **SBR-003** | 🟡 built, swept, driven — **owed: the `var(--token)` dimension-port probe** |
 | **SBR-004** | 🟢 AC1/2/4 driven · AC3 is SBR-012's |
 | **SBR-005** | ⬜ **OPEN, never built** — **and it owns AC3's gallery model** |
-| **SBR-006** | AC1/2/4/5 ✅ · **AC3 🟡** — `Unpublish` is the one act of three still undriven |
-| **SBR-007** | 🟢 AC1 ✅, AC4 ✅, AC5 ✅ · **AC2 ✅ ALL THREE HALVES AND ON THE SHIPPED ARTEFACT** (outcome s27, gesture s30, real screen s31, shipped project s32) · AC3 blocked by D15 alone · D18/D20/D24/D30/D31 ✅ |
+| **SBR-006** | 🟢 **CLOSED s33 — ALL FIVE ACs.** AC3's three actions all clicked: Publish + Duplicate (s22), **Unpublish (s33)** |
+| **SBR-007** | 🟢 AC1 ✅, AC4 ✅, AC5 ✅ · **AC2 ✅ ALL THREE HALVES AND ON THE SHIPPED ARTEFACT** (s27/s30/s31/s32) · AC3 blocked by D15 alone · D18/D20/D24/D30/D31 ✅ |
 | **SBR-008** | ✅ all five, s18 |
 | **SBR-009** | ⬜ **OPEN, never built** — the theme editor demos itself |
 | **SBR-010** | ⬜ **OPEN, never built** — messages |
-| **SBR-011** | ⬜ **OPEN, never built** — live preview over the realtime hub; **ruled BUILD, not strike** |
+| **SBR-011** | ⬜ **OPEN, never built** — live preview; **ruled BUILD, not strike** |
 | **SBR-012** | ⬜ **OPEN, never built** — the raw-colour gate; **it owns SBR-004's AC3** |
 | **SBR-013** | ⬜ **OPEN, never built** — the doctrine rule |
-| **SBR-014** | ⬜ **OPEN, and LAST** — re-verifies every person-sentence AC, so it cannot go before the rest |
-| **SBR-015** | AC1/2/3 ✅ s13 · **AC4** 🟡 re-read: DEF-004(a) now writes a step per action |
-| **SBR-016** | ✅ **s15, all four ACs** — ⚠️ `TASKS.md` read `⬜ open` until s32 corrected it |
+| **SBR-014** | ⬜ **OPEN, and LAST** — re-verifies every person-sentence AC |
+| **SBR-015** | AC1/2/3 ✅ s13 · **AC4 🟡 — the re-read is the next job, and it looks like a CLOSE.** AC4 asks for **graph nodes recorded**; s33 read six, each named |
+| **SBR-016** | ✅ s15, all four ACs |
 | **SBR-017** | ✅ s14 · AC1 🟡 half (SBR-016 owned the other half) |
 | **D13 / D16** | 🔴 open, `NONE` |
 | **D14** | 🟢 fixed s20, DRIVEN s22 — the **browser** deploy path is still exposed and `NONE` |
-| **D15** | 🔴 **`BLOCKS` SBR-007 AC3** · `NONE` — no drop target for a FILE; **AC3 cannot be met**. Stands at HEAD |
+| **D15** | 🔴 **`BLOCKS` SBR-007 AC3** · `NONE` — no drop target for a FILE. Stands at HEAD |
 | **D17 / D18 / D21** | 🟢 fixed and driven (s21/s24/s25) |
 | **D19** | 🟢 reds fixed s23 — 🔴 **`test:main` watched is still `NONE`** |
 | **D20** | 🟢 FIXED + DRIVEN s26; **the appearance half is Richard's** |
@@ -212,35 +230,36 @@ SBR-016 as open when its own file had said 🟢 since s15.
 | **D23** | 🟢 DISPROVED s29, kept |
 | **D24** | 🟢 FIXED + GATED s28 |
 | **D25 / D26 / D27** | 🔴 `NONE` — all three registered in phase 80 |
-| **D28** | 🟢 **FIXED by a peer as phase 80 `DEF-027`** during s32 — the spread was discarding the author's `cssClassName` |
-| **D29** | 🔴 `NONE` — one-way gate latches; **a peer's row**, filed from phase 80 s21 |
-| **D30 / D31** | 🟢 **FIXED + DRIVEN s32** — template work, done in this phase, as s31 decided |
-| **D32** | 🔴 **NEW s32, `NONE`** — the gate that let D31 through: `gradeMountTriggered` examined **1 of 65** nodes |
+| **D28** | 🟢 FIXED by a peer as phase 80 `DEF-027` during s32 |
+| **D29** | 🔴 `NONE` — one-way gate latches; **a peer's row**, from phase 80 s21 |
+| **D30 / D31** | 🟢 FIXED + DRIVEN s32 |
+| **D32** | 🔴 s32, `NONE` — ⚠️ **a peer had uncommitted work on it during s33; verify before touching** |
 
 ## Standing context
 
 - ✅ **The template is generated, not authored.** Edit
   `packages/noodl-mcp/tests/sb00{4,5,6}Components.ts`, then `npm run template:site-builder`.
   `sb007Template.test.ts` asserts the committed artefact is byte-identical to a fresh generation.
-  ⚠️ **Census literals live in FIVE files**; a **parameter-only** change should move none — s32
-  verified this rather than assuming it.
-- 🔴 **`SECTION_SORT` now lives in `sb005Components.ts`** and `sb006Components.ts` re-exports it.
-  Both section-drawing queries share that one copy. Do not reintroduce a second.
-- ✅ **Fixture: `SBR-007 Page Editor Drive`**, backend `backend_mterfnli74qwv`, port **8601**,
-  `SITE_SETUP_TOKEN=drive-token-007`, `owner@sbr007.test` / `drive-pass-007`. Page
-  `e921dd5b-93a5-40e4-bb75-75c37da395c0`, slug `drive-007`. 🔴 **Drive a COPY of the backend data.**
-  ⚠️ Its `Section` table is EMPTY — the s31/s32 drive seeds its own backend instead.
+  ⚠️ **Census literals live in FIVE files.** **s33 changed none of this** — it added a spec only.
+- 🔴 **`SECTION_SORT` lives in `sb005Components.ts`** and `sb006Components.ts` re-exports it. Do not
+  reintroduce a second copy.
+- ✅ **`sbr006-unpublish-drive` needs no fixture and no running backend** — it authors, deploys and
+  seeds its own, on an ephemeral port, and tears it all down. Prefer it as the pattern for driving a
+  row action over reusing the manual `SBR-007 Page Editor Drive` backend.
+- ✅ **Older fixture, still on disk if wanted: `SBR-007 Page Editor Drive`**, backend
+  `backend_mterfnli74qwv`, port **8601**, `SITE_SETUP_TOKEN=drive-token-007`,
+  `owner@sbr007.test` / `drive-pass-007`. 🔴 **Drive a COPY.** ⚠️ Its `Section` table is EMPTY.
 - ✅ **The setup token is a file, not a UI step**: `~/.noodl/backends/<id>/secrets.json`, `functions`
   namespace. `SecretsStore` re-reads on every call, so no restart.
-- 🔴 **A node's port description lives in FOUR generated copies.** Changing one in the runtime owes
+- 🔴 **A node's port description lives in FOUR generated copies.** Changing one owes
   `catalog:generate` → `catalog:merge` → `docs:nodes` **and** `cloud-library:generate`.
 - 🔴 **A source change is not a drive until the bundle carries it** — the viewer
   (`external/viewer/noodl.viewer.js`), the deploy runtime (`external/deploy/noodl.deploy.js`, a
   *different file*), and `nodegx-backend/dist`. **A template change is different** — project data,
-  read from disk every boot, so no rebuild. **s32 changed no product source**, so no bundle is stale.
-- ⚠️ **A peer was active in the shared checkout throughout s32**, fixing D28 as phase 80's
-  `DEF-027` (`ac2DragGestureDrive.test.ts`, and the runtime's `NoodlReactComponent.render`). Their
-  files were **excluded from s32's commit** — attributed by **mtime**, not by `git status`.
+  read from disk every boot, so no rebuild. **s33 changed no product source**, so no bundle is stale.
+- ⚠️ **Peers were active in the shared checkout throughout s33** — D32 in `noodl-mcp`, a border
+  sweep in `noodl-core-ui`/`noodl-editor`, and phase-18 export work that was committed mid-session.
+  s33's commit used **pathspecs naming only its own files**.
 - Shared checkout: **pathspec commits only, never `git add` to stage** (except to make an untracked
   file committable); `git status --porcelain | grep '^??'` before committing. Announce editor
   launches **and** teardowns. `test:ci` alone.
