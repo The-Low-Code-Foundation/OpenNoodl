@@ -76,7 +76,7 @@ this register once already, and that is how one row gets worked twice and anothe
 | DEF-019 | ⬜ open | **P78 D30** | The type ramp cannot reach `font-variant-numeric`, so no app built here can align a column of numbers | every **app with a column of numbers** — money, times, scores |
 | DEF-020 | ⬜ open | **P78 D32** | Two children of a row both grow and nothing says so: `justifyContent` silently does nothing | every **agent laying two things out along a row** |
 | DEF-021 | ✅ done | **P78 D33** | A fan-out send delivers **one** email and reports **N** successes — **fixed s16 (`4adab228`): each queued outcome token is stamped with the `To` it was minted under; stamps agree → today's path verbatim (one send, fields read after inputs settle), stamps disagree → one send per consecutive run of the minted address, each run settled by its own call. 3 mutants, each killed by exactly its arm; erg-001 §4's constant-To pin untouched** | every **member who was told they would be emailed** |
-| DEF-022 | ⬜ open | **P78 D34** | A cloud function cannot find out what the app's own public address is | **everyone an app ever emails a link to** |
+| DEF-022 | ✅ done | **P78 D34** | A cloud function cannot find out what the app's own public address is — **fixed s18: the Request node has an `Origin` output. The node already held the answer and threw it away (`request.ts` stored `req.headers` on the `Request` model with no port); `requestOrigin.ts` now derives it once — the caller's `Origin` header when usable (a browser POST always carries the page's own address, the thing TPL-002 had to be told from outside), else forwarded-host/host + forwarded-proto, else honestly blank (a workflow step has no caller). Port description names the trust boundary: caller-supplied, right for links back to whoever called, NOT for a password-reset a third party will click — that stays `effectiveBaseUrl`'s job, still unreachable from a graph (row below, `NONE`). 🔴 D34's "nothing exposes it to a graph" was too strong: an Object node with Id `Request` reads the raw `Headers` bag today, probed through the real runner — corrected in the register, not silently** | **everyone an app ever emails a link to** |
 | DEF-023 | ✅ done | **P78 D35** | `Component` scope in a cloud function is **not** per-request, and nothing says so — **fixed s16 (`acd053e0`). 🔴 The recorded mechanism was the browser's: the cloud runtime never reaches `_componentScopes` — `noodl-js-api.js` overrode the scope to ONE module-level object, shared across all scripts, functions, requests and CONCURRENT requests. Now a WeakMap keyed on the component-owner INSTANCE (ids repeat across requests; instances do not): same-instance scripts still share (TPL-002's plan/pump contract), a new request starts clean, entries die with the request's graph — the leak half held by construction, not a spec** | every **graph that accumulates anything server-side** |
 | DEF-024 | ⬜ open | **P78 D36** | A `Condition` can only ever turn a gate **ON**, so a screen accumulates contradictory answers | every **screen whose answer has more than one form** |
 | DEF-025 | 🟡 partial | **P78 D37** | A control's label is a click target only via the control's own `label` port — which **defaults OFF** — **door half built s17: `label-not-a-click-target` warns on a Checkbox/Radio Button whose words sit in an adjacent sibling Text (43 true firings / 186 toggles over the 178-project corpus, denominators printed; stays advisory — the corpus carries 43 legitimate legacy instances, the `raw-color-literal` precedent). Default-flip half 🧭 Richard — see the s17 section: a blunt flip stamps the literal string `'Label'` onto every existing bare checkbox** | every **person tapping the words beside a checkbox** |
@@ -352,6 +352,48 @@ cheap to make later — and because nobody has yet read the two pairs against ea
   🟡 What is left is whether a signal named `Fetched` should fire without a fetch at all. Two
   candidate repairs (fire only when the bound model has data; or split the bind announcement onto
   its own port), both of which re-grade browser graphs that rely on today's shape.
+
+- 🔴 **The one `domelement` port in the product cannot reach the destination its own description
+  names.** Owner: **`NONE`**. **Raised by phase 77 s29**
+  ([D27](../phase-77-the-site-builder-rescue/DEFECTS-THE-SITE-BUILDER-FOUND.md#d27)), registered
+  here because phase 77 is closing and this is a node-library row.
+
+  `Video.onVideoElementCreated` is typed `domelement` and described as *"for a **Group to scroll
+  to** or a script to reach"*. `Group`'s `Scroll To Element - Element` is typed `reference`, and
+  `canCastPortTypes('domelement','reference')` — executed over the shipped `typecasts` table — is
+  **`false`**. The editor refuses the wire the description prescribes, with a `type-mismatch`.
+
+  **And it would not have worked if it had connected**: `Group.tsx:113` calls
+  `noodlChild.getDOMElement()`, so it wants the *node*; `Video.tsx:217` sends the raw element, which
+  has no such method, and the guard would report *"no rendered DOM element — it may not be
+  mounted"* about an element that is mounted. Two defects in eight words of description.
+
+  **Measured over the 175-node catalog**: `domelement` has **1** output and **0** inputs, and
+  reaches **0** typed inputs (the 14 it reaches are `*` wildcards). Control: `reference` has **27**
+  outputs — `this`, on every visual node — which is the working wire, one identifier away.
+
+  **Shape of the fix**, ascending: repair the description (⚠️ **four generated copies**); or widen
+  `scrollToElement` to accept either and add the cast; or leave the port as the script hatch it is.
+
+  🔴 **Why it is worth a row rather than a footnote.** Phase 77's D23 proposed *"a `domelement`
+  output on `Group`, three lines, `video.ts` is the template"* as a fix. Copying this port would
+  have added a **second** unconnectable port and read as closed. The row was stopped because the
+  fix was checked before it was written — see phase 77 §32.5.
+
+- 🔴 **The configured site address is unreachable from a graph — DEF-022's broader half.** Owner:
+  **`NONE`**. Registered s18 (2026-08-30) while closing DEF-022, which answered the *request's*
+  half only. `EmailConfigState.effectiveBaseUrl(fallback)` is the product's own answer to "where
+  does this app live" — configured, operator-owned, NOT caller-supplied — and its three consumers
+  are all HTTP routes inside the backend (`oauth-routes.ts`, `email-routes.ts`, `admin-auth.ts`).
+  No node and no process global beside `_noodl_send_email`/`_noodl_get_secret`/
+  `_noodl_system_users`/`_noodl_system_roles` exposes it. Two populations DEF-022's port cannot
+  serve: a **workflow with no request** (the Origin output is honestly blank there — measured,
+  it is the spec's third arm), and a **link a third party will click** (a password reset built
+  from a caller-supplied header is the classic reset-poisoning shape; the port's description
+  says not to). D34's suggested shape stands: a read-only `Site Address` node resolving
+  `effectiveBaseUrl`, the same seam `Secret` uses (a process global set by the backend, a
+  cloud-only node reading it). The email templates the backend sends already use it; a graph
+  composing its own email cannot.
 
 ## Rulings needed (Richard)
 

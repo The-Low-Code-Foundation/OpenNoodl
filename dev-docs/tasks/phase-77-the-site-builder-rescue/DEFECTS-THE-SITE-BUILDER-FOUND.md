@@ -552,6 +552,29 @@ template edit, which is why SBR-007 did not quietly build something else and cal
 it is not SBR-005's (that owns the gallery data model). It needs a task, and phase 77 should not
 close pretending AC3 was met.
 
+### D15 update, s29 — re-measured at HEAD, and it STANDS (unlike its twin)
+
+[D23](#d23) was filed as this row's twin and has now been disproved, so this one was re-run rather
+than inherited. It holds, and the re-run sharpened it:
+
+| grep, over the same two packages | s21 | s29 |
+|---|---|---|
+| `dataTransfer` | 0 | **0** |
+| `dragover` / `dragenter` / `dragleave` | 0 | **0** |
+| `DragEvent` | 0 | **0** |
+| `onDrop` (word-bounded) | 0 | **0** |
+| `onClick` / `onMouseDown` — control | 39 | **39** |
+| `.ts`/`.tsx` files reached — control on the *boundary*, which is what D23 lacked | — | **369** |
+
+⚠️ **A combined `onDrop|ondrop|…` alternation now reads 8, and all 8 are `onDropped`** — the
+pending-inner-action queue's discard callback (`react-component-node.ts:153-1546`), nothing to do
+with dropping a file. A substring match on an unrelated identifier, in the direction that would have
+*retired* this row. Split the terms.
+
+🔴 **The file-count control is the one this row did not have before**, and it is the exact control
+whose absence made D23 wrong: it proves the search reached the *population*, not merely that the
+*predicate* fires. D15 survives it; D23 did not.
+
 ---
 
 ## D16 — ⚠️ The appearance ratchet's per-page check cannot fail for any page that places a styled component
@@ -964,48 +987,94 @@ an ellipsis port that cannot also stop the wrapping would be inert — the same 
 
 ---
 
-## D23 — 🔴 No visual node reports its rendered geometry, so a drag cannot know what it is over
+## D23 — 🟢 **DISPROVED s29 · every visual node has reported its rendered geometry the whole time**
 
-**Found:** s27, building [SBR-007](SBR-007-THE-PAGE-EDITOR.md) AC2 · **Owner:** `NONE` ·
-**Product**, not template · **Bites:** any author asked for drag-to-reorder, drag-to-resize, a
-sticky header, or anything else whose logic depends on where a node actually ended up.
+**Found:** s27, building [SBR-007](SBR-007-THE-PAGE-EDITOR.md) AC2 · **Re-measured and DISPROVED:**
+s29, in a browser · **Owner:** SBR-007 · **Kept, not deleted** — a disproved row is evidence about
+the instrument, and this one is the sharpest the phase has.
 
-AC2's own sentence is *"dragging a section from position 3 to 1"*. `visual/drag.ts` gives
-`Drag Started/Moved/Ended`, `Drag X/Y` and `Delta X/Y` — **an offset in pixels and no drop target**,
-which [D15](#d15) already recorded for files. So the author has to turn an offset into an index
-themselves, and that needs the row pitch. **There is no way to ask for it.**
+### What it said
 
-**Measured over `packages/noodl-viewer-react/src/nodes` (67 files, 51 `outputs:` blocks):**
+*"No visual node reports its rendered geometry, so a drag cannot know what it is over."* Measured
+over `packages/noodl-viewer-react/src/nodes` (67 files, 51 `outputs:` blocks):
 
 | grep | hits |
 |---|---|
-| an output port naming `clientHeight` / `offsetHeight` / `measuredHeight` / `boundingBox` / `boundingClientRect` — the finding | **0** |
-| `displayName` matching height/width/size/bounds/top/left — control, the search reaches port declarations | **20** |
-| nodes exposing `type: 'domelement'` — the one escape hatch a script could measure through | **1** (`visual/video.ts`) |
+| an output naming `clientHeight` / `offsetHeight` / `measuredHeight` / `boundingBox` / `boundingClientRect` | **0** |
+| `displayName` matching height/width/size/bounds/top/left — control | **20** |
 
-⚠️ **The first population was wrong and the control is what said so.** Grepping `plug: 'output'`
-returned **18** hits across the whole directory, which is far too few for 51 output blocks — viewer
-nodes declare outputs in an `outputs:` object, not with `plug`. A finding of 0 against that
-denominator would have been a fact about the grep. Re-run against `outputs:`, the controls fire and
-the 0 stands.
+### Why that 0 was a fact about the grep
 
-The single near-hit is `Video`'s `videoWidth`/`videoHeight`, and they are the **intrinsic media
-size**, not layout geometry — a `Group` has no equivalent. `Video` also carries the only
-`domelement` output in the runtime, described as *"for a Group to scroll to or a script to reach"*;
-one node having it is the shape of the fix, not an existing capability.
+🔴 **The four ports are declared once for every visual node, in a file that is not in `nodes/`.**
+`react-component-node.ts:1053-1111` declares `screenPositionX`, `screenPositionY`, `boundingWidth`
+and `boundingHeight` in a `Bounding Box` group, as getters over `clientBoundingRect`, filled by a
+`DOMBoundingBoxObserver` that starts on `onFirstConnectionAdded`. `boundingHeight`'s own description
+is *"Height this element actually ended up with after layout, in pixels"* — the sentence the row
+said did not exist.
 
-**Why it bites here specifically:** these rows are a textarea and an image preview, so no two are
-the same height. `Drag Y / rowHeight` has no `rowHeight` — not one that is merely awkward to
-compute, one the graph cannot see at all.
+**Measured over the 175-node catalog — the product surface, not the source tree:**
 
-**What shipped instead:** `Move up` / `Move down` on each `SectionRow`, which hand
-`reorderSection` the same `toIndex` a drop would. AC2's *outcome* — a person changes the order and a
-visitor sees it — is met and driven; **AC2's gesture is not**, and the task file says so rather
-than rounding it off.
+| | count |
+|---|---|
+| visual nodes in the catalog | **29** |
+| carrying **all four** `Bounding Box` outputs | **27** |
+| carrying none | **2** — `Component Children`, `For Each`, neither of which draws a box |
 
-**The shape of the fix:** a `domelement` output on `Group` (three lines, `video.ts:283-288` is the
-template) would be enough — a code node could then measure siblings itself. A drop-target port pair
-would close [D15](#d15) at the same time.
+⚠️ **The control could not have caught this, and that is the lesson.** It was run over the *same
+directory* as the finding, so it proved the grep reached port declarations and could not prove it
+reached *these* port declarations. **A control drawn from the same population as the finding tests
+the search syntax, not the search boundary.** The row already carried one repair of exactly this
+kind — `plug: 'output'` → `outputs:` — and repairing the *predicate* twice never re-asked whether
+the *directory* was right.
+
+### Driven, because a declaration is a claim
+
+`packages/noodl-mcp/tests/d23GeometryDrive.test.ts` — authored through the real MCP door, rendered
+in a headless Chrome by `withRenderedPage`, **5 specs, ~11s**. Two `Group`s at deliberately
+different authored heights, each wired `boundingHeight → Text.text`, plus a literal `Text` as the
+render control:
+
+| probe | read back |
+|---|---|
+| box A, authored `height: 160px` | `offsetHeight` **160** · its port says **"160"** |
+| box B, authored `height: 240px` | `offsetHeight` **240** · its port says **"240"** |
+| box A `boundingWidth`, authored `320px` | **"320"** |
+| the script arm (below) | **"160"** |
+| the literal control | `"render control literal"` |
+
+🔴 **Two boxes, not one, on purpose.** One box is satisfied by a port reporting the viewport, the
+page, or a constant. Two that disagree by exactly the amount they were authored to disagree by are
+not.
+
+### And the script hatch the row said did not exist
+
+The row's second claim was that the only escape was `domelement`, *"1 hit (`visual/video.ts`)"*.
+That is also false, and by a wider margin: **every visual node exposes `this`** — a `reference`
+output carrying the node itself, **27 of them in the catalog**. A `Function` node's author-declared
+input defaults to `type: '*'` (`simplejavascript.ts:699`), and `canCastPortTypes` accepts anything
+into `*`. So this connection is legal today:
+
+```
+Group.this ──▶ Function.in-el        // script:
+                                     //   Inputs.el.getDOMElement().getBoundingClientRect().height
+```
+
+`getDOMElement()` is the same accessor `Group.tsx`'s own `Scroll To Element` resolves through. The
+drive's fifth spec runs exactly this and reads back **160** — *the row pitch the row said "the graph
+cannot see at all"*.
+
+### What this changes
+
+- **SBR-007 AC2's gesture is not blocked by a missing capability.** `Drag` gives `Drag Y`, the
+  `Bounding Box` ports give the pitch, and the arithmetic between them is authoring work. It was
+  never built, which is a different and much smaller statement than the one on file.
+- 🔴 **The proposed fix would have shipped a dead port.** *"A `domelement` output on `Group` (three
+  lines, `video.ts:283-288` is the template)"* — see **[D27](#d27)**: `domelement` reaches **0** of
+  the library's typed inputs, and cannot reach the one destination `Video`'s own description names.
+  A row that is wrong about the defect is usually wrong about the repair in the same direction.
+- **[D15](#d15) is untouched.** It is about `dataTransfer`, not geometry, and it was re-measured at
+  HEAD this session and stands. The two were filed as twins and are not: one was a real absence,
+  one was a grep boundary.
 
 ---
 
@@ -1137,3 +1206,63 @@ repairing one of them leaves the runtime inconsistent in a way an author cannot 
 that sweeps the family, with the primitive/reference line stated once.
 
 ---
+
+---
+
+## D27 — 🔴 The only `domelement` port in the product cannot reach the destination its own description names
+
+**Found:** s29, while disproving [D23](#d23) · **Owner:** `NONE` · **Product**, not template ·
+**Bites:** anyone who follows `Video`'s `DOM Element` port to the place the port tells them to take
+it — and anyone who copies it, which is what D23 proposed doing.
+
+`Video.onVideoElementCreated` is declared `type: 'domelement'` and described as *"The underlying
+video element, **for a Group to scroll to** or a script to reach"* (`video.ts:283-288`). The
+destination in that sentence is `Group`'s `Scroll To Element - Element`, and it is declared
+`type: 'reference'` (`group.ts:133-142`).
+
+**`canCastPortTypes` transcribed from `nodelibrary.ts:369` and executed over the shipped catalog's
+own `typecasts` table:**
+
+| pair | result |
+|---|---|
+| `domelement` → `reference` — **the wire the description names** | **`false`** |
+| `domelement` → `string` | `false` |
+| `domelement` → `*` — control, the rule does return `true` for something | `true` |
+| `reference` → `reference` — control, the destination is reachable by *something* | `true` |
+| `number` → `string` — control, an ordinary cast still works | `true` |
+
+So the editor refuses that connection with `type-mismatch`, and `getConnectionStatus` renders
+*"a source port of type **DOM Element** cannot be connected to a target port with type
+**Reference**"*. **The port's description is a route the product does not have.**
+
+**And it would not have worked if it had connected.** `Group.tsx:113-139` implements
+`scrollToElement(noodlChild)` by calling `noodlChild.getDOMElement()` — it wants the **node**, not
+the element. `Video.tsx:217` sends the raw `HTMLVideoElement`, which has no `getDOMElement`, so the
+guard would return *"the node on Element has no rendered DOM element — it may not be mounted"*: a
+plausible sentence, and the wrong one, about an element that is mounted. Two defects stacked in the
+same eight words of description.
+
+**Measured over the 175-node catalog:**
+
+| | count |
+|---|---|
+| `domelement` **outputs** in the whole library | **1** (`Video.onVideoElementCreated`) |
+| `domelement` **inputs** in the whole library | **0** |
+| typed input ports it can legally reach | **0** — the 14 it reaches are all `*` wildcards |
+| `reference` **outputs** — control, the type the destination *does* take | **27** (`this`, on every visual node) |
+
+🔴 **The working wire already exists and is one identifier away**: `Video.this → Group.scrollToElement.element`, a `reference` on both ends, driven green in `d23GeometryDrive.test.ts`'s script arm through the same `getDOMElement()` accessor.
+
+**The shape of the fix**, in ascending order of blast radius:
+
+1. **Repair the description** — one string, no behaviour: say the port hands a raw DOM element to a
+   script, and point `Scroll To Element` at `This` instead. ⚠️ A node's port description lives in
+   **four generated copies** (`catalog:generate` → `catalog:merge` → `docs:nodes` **and**
+   `cloud-library:generate`).
+2. **Widen `scrollToElement`** to accept either a node or an element — three lines in `Group.tsx`,
+   and `domelement → reference` added to the cast table.
+3. Leave the port as the script hatch it actually is.
+
+🔴 **Unowned on purpose, and it is the reason [D23](#d23)'s proposed fix had to be stopped.** D23
+offered *"a `domelement` output on `Group` (three lines, `video.ts:283-288` is the template)"*.
+Copying this port would have doubled a dead end — and the row would have read as closed.

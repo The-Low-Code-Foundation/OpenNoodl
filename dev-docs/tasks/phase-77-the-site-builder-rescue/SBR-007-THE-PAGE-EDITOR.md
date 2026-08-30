@@ -301,7 +301,7 @@ left-anchored at 384 and fine at every width. It is this screen's header row alo
 | | verdict |
 |---|---|
 | **AC1** | 🟢 **preview half MET and DRIVEN**, signed-out · ⬜ **deployed half owed** — now unblocked (SBR-008 closed s18), not attempted |
-| **AC2** | 🟢 **outcome BUILT + DRIVEN s27** (§31) — `reorderSection` renumbers siblings and the stored order moves · 🔴 the **drag gesture** is not met: no node reports geometry, **D23**, `NONE` |
+| **AC2** | 🟢 **outcome BUILT + DRIVEN s27** (§31) — `reorderSection` renumbers siblings and the stored order moves · ⬜ the **drag gesture** is still not built, but s29 **DISPROVED D23**: the geometry was always on the wire (§32), so this is authoring work, not a missing capability |
 | **AC3** | 🟡 thumbnail shipped (source-measured, **not driven** — needs an OS file dialog) · 🔴 drop gesture blocked on **D15** · ⬜ gallery model is SBR-005's |
 | **AC4** | 🟢 **MET and DRIVEN** — `PUT` then `GET`, and the header proves the record won (§12.2) |
 | **AC5** | 🟢 **MET and DRIVEN** — three states including the undo (§12.3) |
@@ -514,7 +514,7 @@ which is not this task's build.
 | | verdict |
 |---|---|
 | **AC1** | 🟢 preview half MET and DRIVEN (s22) · ⬜ **deployed half still owed** — unblocked since SBR-008 closed at s18, not attempted at s22, s23 or s24 |
-| **AC2** | 🟢 **outcome BUILT + DRIVEN s27** (§31) — `reorderSection` renumbers siblings and the stored order moves · 🔴 the **drag gesture** is not met: no node reports geometry, **D23**, `NONE` |
+| **AC2** | 🟢 **outcome BUILT + DRIVEN s27** (§31) — `reorderSection` renumbers siblings and the stored order moves · ⬜ the **drag gesture** is still not built, but s29 **DISPROVED D23**: the geometry was always on the wire (§32), so this is authoring work, not a missing capability |
 | **AC3** | 🟡 thumbnail shipped, source-measured only · 🔴 drop gesture blocked on **D15**, `NONE` · ⬜ gallery model is SBR-005's |
 | **AC4** | 🟢 MET and DRIVEN (§12.2) |
 | **AC5** | 🟢 MET and DRIVEN (§12.3) |
@@ -620,7 +620,7 @@ fix; cross-origin passed only after it. The table in §25 is the cross-origin ru
 | | verdict |
 |---|---|
 | **AC1** | 🟢 **MET AND DRIVEN, both halves** — preview s22 (§12.1), **deployed s25 (§25)** |
-| **AC2** | 🟢 **outcome BUILT + DRIVEN s27** (§31) — `reorderSection` renumbers siblings and the stored order moves · 🔴 the **drag gesture** is not met: no node reports geometry, **D23**, `NONE` |
+| **AC2** | 🟢 **outcome BUILT + DRIVEN s27** (§31) — `reorderSection` renumbers siblings and the stored order moves · ⬜ the **drag gesture** is still not built, but s29 **DISPROVED D23**: the geometry was always on the wire (§32), so this is authoring work, not a missing capability |
 | **AC3** | 🟡 thumbnail shipped, source-measured only · 🔴 drop gesture blocked on **D15**, `NONE` · ⬜ gallery model is SBR-005's |
 | **AC4** | 🟢 MET and DRIVEN (§12.2) |
 | **AC5** | 🟢 MET and DRIVEN (§12.3) — the dirty marker was seen again on the deployed panel at s25 |
@@ -812,14 +812,18 @@ answer.** Third-to-first, back down, contiguity, the bystander page untouched, a
 rather than hanging, clamping past the end, a section from another page refused, the published-ACL
 invariant, and a non-admin refused 403.
 
-### 31.3 🔴 The gesture is NOT met, and it is a product row
+### 31.3 ⬜ The gesture is NOT met — and s29 found the recorded reason was false
 
-AC2 says *"dragging"*. It ships as buttons, because **no visual node reports its rendered geometry
-to the graph** — measured with controls, filed as **D23**, `NONE`. `Drag` gives an offset and no
-drop target; these rows are a textarea and an image preview, so no two are the same height; there is
-no `rowHeight` to divide by. D23 is D15's twin, one capability short in the same place.
+AC2 says *"dragging"*. It ships as buttons. **s27 recorded why as a missing capability — filed as
+D23, `NONE`, D15's twin — and [§32](#32) disproved that.** Every visual node has reported its
+rendered geometry the whole time, on four `Bounding Box` output ports, driven in a browser.
 
-**AC2's outcome is met and driven. AC2's gesture is not, and this is not rounded off.**
+So the standing entry here was wrong in the way that costs most: it converted *"nobody built this"*
+into *"the runtime cannot do this"*, and put an authoring job behind a product row nobody owned.
+
+**AC2's outcome is met and driven. AC2's gesture is unbuilt — and buildable.** The remaining work is
+`Drag Y` ÷ the pitch the `Bounding Box` ports report, which is arithmetic in the graph. Left unbuilt
+rather than quietly ticked, but it is now scoped as SBR-007's own work and not a blocker.
 
 ### 31.4 What driving cost, beyond the fix
 
@@ -898,3 +902,87 @@ it.
   ([D25], description repaired, behaviour unowned) and an identical value re-running a node
   ([D26], unowned, twelve node families). Both are registered in phase 80. **The template fix helps
   one template; those two are the objective.**
+
+---
+
+## 32. s29 — the row that was wrong about the runtime, and the port it would have duplicated
+
+**The session's whole finding is that [D23](DEFECTS-THE-SITE-BUILDER-FOUND.md#d23) was false**, and
+the way it was false is worth more than the row was.
+
+### 32.1 What was on file
+
+*"No visual node reports its rendered geometry, so a drag cannot know what it is over."* Filed s27
+with a measurement, a control, and a note that the control had already caught one bad population:
+
+> ⚠️ **The first population was wrong and the control is what said so.** Grepping `plug: 'output'`
+> returned 18 hits across the whole directory, which is far too few for 51 output blocks […]
+> Re-run against `outputs:`, the controls fire and the 0 stands.
+
+### 32.2 What is actually there
+
+`react-component-node.ts:1053-1111` declares a **`Bounding Box`** output group **once, for every
+visual node**: `Screen Position X`, `Screen Position Y`, `Width`, `Height`. `boundingHeight`'s
+shipped description is *"Height this element actually ended up with after layout, in pixels"*.
+
+| measured over the 175-node catalog | |
+|---|---|
+| visual nodes | **29** |
+| carrying all four `Bounding Box` outputs | **27** |
+| carrying none | **2** — `Component Children`, `For Each`, neither of which draws a box |
+
+And a second route the row also missed: **`this`, a `reference` output on all 27**, which a
+`Function` node's `*`-typed input accepts, and on which `getDOMElement()` is available — the same
+accessor `Group.tsx`'s own `Scroll To Element` resolves through.
+
+### 32.3 🔴 The lesson: a control drawn from the same population tests the syntax, not the boundary
+
+The s27 control was *"`displayName` matching height/width/size/bounds/top/left — **20**"*, run over
+`noodl-viewer-react/src/nodes`. It proved the grep reached port declarations. It could not prove the
+grep reached **these** port declarations, because they are not in `nodes/` — and no control drawn
+from inside the searched directory ever could.
+
+The row repaired its *predicate* twice (`plug:` → `outputs:`) and never re-asked its **directory**.
+✅ **A finding of 0 needs a control on the boundary as well as on the predicate**: a count of files
+reached, or a known-present instance of the thing being searched for, deliberately placed *outside*
+the population under suspicion. [D15](DEFECTS-THE-SITE-BUILDER-FOUND.md#d15) was re-run this session
+with that second control and **survives it**; D23 did not.
+
+### 32.4 The drive
+
+`packages/noodl-mcp/tests/d23GeometryDrive.test.ts` — **5 specs, ~11s**, authored through the real
+MCP door, rendered in headless Chrome by `withRenderedPage`. A catalog declaration is a claim: these
+four ports are *getters* over `clientBoundingRect`, filled by a polling observer that only starts on
+`onFirstConnectionAdded`, so "declared" and "reports the number" are different questions.
+
+| probe | read back |
+|---|---|
+| Group A, authored `160px` | port says **"160"**, `offsetHeight` **160** |
+| Group B, authored `240px` | port says **"240"**, `offsetHeight` **240** |
+| Group A `boundingWidth`, authored `320px` | **"320"** |
+| `Group.this` → `Function` → `getBoundingClientRect().height` | **"160"** |
+| literal `Text` — the render control | `"render control literal"` |
+
+🔴 **Two boxes at different heights, not one.** A single box is satisfied by a port reporting the
+viewport, the page, or a constant. Two that differ by exactly what they were authored to differ by
+are not. This is the same discrimination `def003PageTitleDrive` built its control page for.
+
+### 32.5 The fix the row proposed would have shipped a dead port
+
+D23 offered *"a `domelement` output on `Group` (three lines, `video.ts:283-288` is the template)"*.
+Executing `canCastPortTypes` over the shipped `typecasts` table:
+
+- `domelement` reaches **0** typed inputs in the 175-node library (the 14 it reaches are `*`).
+- `domelement → reference` is **`false`** — and `reference` is the type of `Group`'s
+  `Scroll To Element - Element`, **the destination `Video`'s own port description names**.
+
+That is now [**D27**](DEFECTS-THE-SITE-BUILDER-FOUND.md#d27), and it exists only because the fix was
+checked before it was written. 🔴 **A row that is wrong about the defect is usually wrong about the
+repair, in the same direction** — here it would have added a second unconnectable port and closed
+looking green.
+
+### 32.6 What this leaves
+
+- **AC2's gesture** — unbuilt, and now scoped as authoring work rather than a product blocker.
+- **AC3** — still not met, still blocked by **D15**, which was re-measured at HEAD and stands.
+  The two were filed as twins; only one of them was real.
