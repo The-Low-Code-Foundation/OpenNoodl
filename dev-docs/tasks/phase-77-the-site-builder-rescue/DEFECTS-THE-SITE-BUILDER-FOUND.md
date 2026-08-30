@@ -1442,3 +1442,31 @@ touch it and this drive did not measure it.
 verbatim. They are not there already because phase 80's `TASKS.md` and `NEXT-SESSION-PROMPT.md` had
 another session's **uncommitted** edits in the working tree throughout s31 — the same reason D28 is
 still here.
+
+---
+
+## Where these rows were filed, and why not all of them went to the same place
+
+**s31, 2026-08-30.** Phase 80's `TASKS.md` came clean in the working tree while this session was
+writing, and the three rows owing a home were placed by **which surface the fix touches**, which is
+that register's own stated rule:
+
+> *Three of phase 78's eleven unowned rows are NOT here, deliberately: D22, D23 and D24 are
+> template-side. This phase is graded on the product surface and never on a template being fixed
+> downstream of it.*
+
+| row | fix touches | filed |
+|---|---|---|
+| **D28** — a `Drag`'s child loses its `cssClassName` | `react-draggable` in the **runtime** | ✅ **phase 80 as `DEF-027`** |
+| **D30** — the editor's section query has no `visualSort` | `sb005Components.ts` → the **template** | **stays here** |
+| **D31** — `merge` re-runs on the value it writes | `sb005Components.ts` → the **template** | **stays here** |
+
+🔴 **D30 and D31 are not unowned by omission — they are this phase's own work.** Filing them in
+phase 80 would put two template edits behind a product phase's dependencies, which is the exact
+split phase 78 recorded and phase 80 refused. Phase 77 owns the site-builder template; the repairs
+are specified in the rows above and both are already proven by a mutant arm in
+`nodegx-backend/tests/ac2-page-editor-drag-drive.test.ts`.
+
+⚠️ **`NONE` on D30/D31 therefore means "no session has picked them up yet", not "no phase owns
+them".** The next phase-77 session's first job is to fix them — see
+[NEXT-SESSION-PROMPT.md](NEXT-SESSION-PROMPT.md).

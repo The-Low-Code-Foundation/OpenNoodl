@@ -1109,3 +1109,153 @@ it, plus every static property of the template that the mechanism depends on. Wh
 done is loading the real `/Pages/PageEditor` against a backend with sections and dragging one. That
 is a `render-from-disk` + fixture-backend job, and it is the difference between "built and gated"
 and "driven" — the distinction this phase has paid for twice.
+
+## 34. s31 — the real page editor, dragged. AC2's gesture works and the shipped screen cannot show it
+
+§33.7 left one line at ⬜: *"loading the real `/Pages/PageEditor` against a backend with sections and
+dragging one."* This session did it. The gesture is **driven end to end** — and the drive found two
+defects on that screen that have nothing to do with the gesture, one of which makes the shipped
+artefact unable to demonstrate it.
+
+The drive is [`packages/nodegx-backend/tests/ac2-page-editor-drag-drive.test.ts`](../../../packages/nodegx-backend/tests/ac2-page-editor-drag-drive.test.ts)
+— **23 specs, ~6 minutes, all green**.
+
+### 34.1 The instrument — SB-008's harness joined to the fifth one
+
+| half | what it contributes |
+|---|---|
+| `helpers/site-drive.ts` | the whole template authored through the **real MCP server**, deployed to a real `BackendService` with the shipped `site-builder.security.json` and **`enforced === true`**, rendered by `render-from-disk.js` under headless Chrome |
+| `Input.dispatchMouseEvent` | a real pointer on the same CDP connection — 🔴 `buttons: 1` on every move |
+| **one-edit mutants of the project on disk** | `render-from-disk.js` reads the v2 project files, so an arm can vary exactly **one connection** or **one parameter bag** and nothing else |
+
+🔴 **Every mutant edit is COUNTED** — `dropWire` asserts `removed:1`, `setParams` asserts
+`matched:1` *and* that the keys were absent beforehand. A mutant that varied nothing is an arm that
+measured nothing, and here the mutants are the whole causal argument.
+
+The browser signs in through `/admin/signin` with the template's own form, and the reading taken is
+**the session the runtime's store holds** — "the form did something" and "there is a session" are
+two claims.
+
+### 34.2 🔴 AC2's gesture, on the real screen
+
+Three sections seeded as the owner (`hero`/`richText`/`gallery`, `order` 0/1/2), then **moved once
+through `reorderSection` over HTTP before any browser opened** so that the stored order is
+`richText, hero, gallery` by construction. The last drawn card is dragged to the top.
+
+| reading | |
+|---|---|
+| container | `strays:[] children:3` — `sectionRows` holds the rows and nothing else |
+| press | `inCard:yes`, hit-tested before pressing |
+| gesture | `gallery`, DOM index 2 → 0, `dy = -614` |
+| **stored rows after** | `gallery 0, richText 1, hero 2` — **exactly `applyReorder(stored, gallery, 0)`** |
+| refusal | none mounted |
+| snap-back | every card `matrix(1, 0, 0, 1, 0, 0)` |
+| a button in the card | `Move up` hit-tests `BUTTON.ndl-controls-button` **after** the drag |
+| `Move up` on the last STORED card | `hero 2 → 1`, orders still `{0,1,2}` |
+
+✅ **The drop reached the deployed endpoint carrying the index the DOM produced.** The expectation
+is *computed* by `applyReorder` from what was actually stored, not typed — and the card dragged is
+the one placement where the DOM index and the stored index disagree, so "the call never fired" and
+"the call fired and asked for nothing" cannot be the same reading.
+
+⚠️ **Driven on the arm where `merge` is passive.** The shipped artefact cannot hold still long
+enough to be dragged — see 34.4. Stated rather than smoothed over: **AC2's gesture works on the real
+page editor, and the artefact a person receives cannot show it.**
+
+### 34.3 🔴 [D30](DEFECTS-THE-SITE-BUILDER-FOUND.md#d30) — the editor draws its sections in an order nobody else uses
+
+`/Pages/Site`'s section query carries `visualSort: [{ property: 'order' }]`. `/Pages/PageEditor`'s
+carries **none** — same node label, *"This page's sections"*, four of them in the template, exactly
+one sorted, and the unsorted one is the editor's (identified by its unique `runOnChange-qp-pageId`).
+
+🔴 **It is the gesture's own foundation.** `dropIndex` counts **DOM siblings**; `reorderSection`
+renumbers the list sorted by **`order`**. Those are the same list only while the editor draws in
+`order`.
+
+What that costs, measured on the screen:
+
+| | |
+|---|---|
+| drawn | `hero, richText, gallery` |
+| stored | `richText, hero, gallery` |
+| after dragging the bottom card to the top | drawn **unchanged**; stored becomes `gallery, richText, hero` |
+| `Move up` on the card a client sees LAST | button real, reachable, hit-tested — **nothing changes** |
+
+✅ **The last row is the finding in the form a person meets it.** The bottom card holds stored
+position 0, so the planner's guarded return is *correct* and the press is legitimately refused — on
+a row that visibly has two rows above it, with no message. The button is not broken; the **list**
+is.
+
+⚠️ It predates the drag. `Move up`/`Move down` have always renumbered a list the client was never
+shown, and the ten stored-row cases in `sb004-publication-invariant.test.ts` grade the **endpoint**
+— which is correct — rather than the screen. 🔴 **That is the shape this phase keeps paying for: a
+green suite over the half that was right.**
+
+### 34.4 🔴 [D31](DEFECTS-THE-SITE-BUILDER-FOUND.md#d31) — opening the page editor writes, forever, unprompted
+
+**No pointer, no key, no click.** A page that was opened and looked at for eleven seconds:
+
+| arm | `SetDbModelProperties` errors | `cyclic-loop` | `query-failed` | writes landed |
+|---|---|---|---|---|
+| **shipped** | **115,755** | 142 | 69 | ✅ |
+| shipped, minus the editor's `Changed → storageFetch` wire | **15,102** | 6 | 0 | ✅ |
+| shipped, plus three `runOnChange-in-…: false` on `merge` | **0** | **0** | **0** | ❌ |
+
+🔴 **The runtime names it itself** — `[noodl] JavaScriptFunction (/Admin/SectionRow): Cyclic loop
+detected [runtime/cyclic-loop]`. This file did not infer a loop; the viewer raised one.
+
+🔴 **The obvious suspect is excluded by an arm, not by reasoning.** `save.done → Changed →
+sections.storageFetch` is a real edge and removing it does **not** stop the loop — it only stops
+the query failures. A fix aimed at the editor would have measured green on every gate and changed
+nothing.
+
+**The cycle is inside the row.** `merge` re-runs whenever a value lands on it (`runOnChange` reads
+**absent as ticked**), `merge.out-built → save.store` writes the section, `SetDbModelProperties`
+writes into the very model `For Each` feeds the row's `data` from, and `merge` builds a *fresh
+object* every run — so the value always counts as changed and the node runs again.
+
+✅ **The three parameters that stop it are ones the product already knows about.** Eleven other
+`JavaScriptFunction` nodes in this template state `runOnChange-…: false`, **three of them in this
+same screen**, and the editor's NDA-017 migration writes exactly these three onto any node whose
+`run` is connected — which `merge`'s is (`saveButton.onClick`, `upload.done`). The artefact ships
+without them.
+
+⚠️ **Which is also the scope statement.** A project *opened in the editor* is repaired by the
+migration on load. Every consumer that reads the artefact without running `applyPatches` — this
+harness, a headless render, an agent reading the project through the MCP door — gets the loop. The
+`SBR-007 Page Editor Drive` fixture on disk **has** the three parameters, and it was minted through
+the editor; the template at HEAD does not.
+
+### 34.5 What the session paid for, and would pay again
+
+- 🔴 **Read the stored rows BEFORE opening the screen, not only after.** The first version read
+  `storedBoot` after `openEditor` and got `{}` — three rows whose `order` was simply *absent* from
+  the response, because the loop had already saturated the limiter and the harness's own reads were
+  being refused. An expectation computed from that is arithmetic over nothing. ✅ **A page in the
+  middle of a write storm refuses the reader too.**
+- 🔴 **A control the backend un-varies is not a control.** The first attempt at naming the cause
+  seeded one page *with* `data` and one *without*, on the theory that `merge`'s `if (Inputs.data ===
+  undefined) return` guard would protect the second. Both stormed — because `Section.data` is a
+  column the moment any section has one, so the "without" rows come back as `data: null`, and
+  `null !== undefined`. ✅ **Vary something the store cannot fill back in.**
+- 🔴 **The consequence a person reports may be the flakier reading.** The list emptying itself was
+  true on two of four runs; the query being **refused** was true on all four. The spec asserts the
+  refusal and logs the card count — and the mutant arm reads `queryFailed: 0`, so it is not a
+  constant. ⚠️ Asserting the empty list would have shipped a spec that goes red for a reason
+  unrelated to the defect.
+- 🔴 **Two of this file's own assertions were wrong before the product was.** `Move up` on the last
+  *drawn* card "failing" was D30 being correct, and `queries:2 sorted:1` was a guess about a
+  template that holds four. ✅ **When a drive goes red, ask which side the error is on** — both
+  times the reading was right and the expectation was not, and both turned into evidence.
+- ⚠️ **The heights are uniform here** (291/291/291) and that is a fact rather than a failure: the
+  body sits in a fixed-height textarea. The non-uniform arm the clause s29 left standing is
+  `ac2DragGestureDrive.test.ts`'s, where the rows are authored in line counts.
+
+### 34.6 Where AC2 stands after s31
+
+| | |
+|---|---|
+| **outcome** (a client reorders, a visitor sees it) | ✅ driven s27, ten stored-row cases |
+| **gesture** (by dragging) | ✅ built s30, mechanism driven s30 |
+| **the template's own drag, rendered end to end** | ✅ **DRIVEN s31** — on the arm D31 does not melt |
+| **on the artefact a person receives** | 🔴 **NOT demonstrable** — D31 destroys the screen, D30 sends the section elsewhere |
