@@ -1485,9 +1485,24 @@ to mail two people has to rediscover it.**
 `erg-001-cloud-node-outcomes.test.ts` §4's `makeProbe`, three `to.set` / `send.valueChangedToTrue`
 pairs, `probe.flush()` once at the end for the first arm and after each pair for the control.
 
-## D34 — 🔴 A cloud function cannot find out what the app's own public address is
+## D34 — ✅ FIXED by DEF-022 (2026-08-30). (Was: A cloud function cannot find out what the app's own public address is.)
 
-**Measured, s14, by needing it and failing to find it.** Owner: **NONE**.
+> ✅ **Closed — the Request node now has an `Origin` output** (`requestOrigin.ts` holds the one
+> derivation: the caller's `Origin` header when it sent a usable one, else the forwarded/host
+> pair, else honestly blank). A browser's cloud-function call is a POST and a POST always
+> carries `Origin` — the page's own address, the thing TPL-002 had to be told from outside.
+> ⚠️ **One sentence below was too strong and is corrected here rather than silently:** *"Nothing
+> exposes it to a graph"* — an Object node with Id `Request` and property `Headers` reads the
+> raw header bag today (probed through the real runner before building). That route is
+> undocumented and leaves every builder re-deriving origin by hand (`Origin: null`, comma-listed
+> forwarded headers, array values), which is why the port is still the fix — but the register
+> should not overstate what was impossible. **The broader half stays open as a row in phase 80's
+> TASKS.md (owner `NONE`)**: a workflow with no request still has no way to learn an address, and
+> `effectiveBaseUrl` — the configured, non-caller-supplied answer, the one a password-reset email
+> must use — is still unreachable from a graph. Full account: phase 80 TASKS.md s18,
+> `def022-request-origin.test.ts`.
+
+**Measured, s14, by needing it and failing to find it.** Owner: **DEF-022 — done**.
 
 ### What it is
 
