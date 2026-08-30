@@ -75,9 +75,9 @@ this register once already, and that is how one row gets worked twice and anothe
 | DEF-018 | ⬜ open | **P78 D28** | A button inside a `Columns` overlaps the next one — both button compositions pin `sizeMode: 'contentSize'` | every **agent who lays controls out** in the one node that reflows |
 | DEF-019 | ⬜ open | **P78 D30** | The type ramp cannot reach `font-variant-numeric`, so no app built here can align a column of numbers | every **app with a column of numbers** — money, times, scores |
 | DEF-020 | ⬜ open | **P78 D32** | Two children of a row both grow and nothing says so: `justifyContent` silently does nothing | every **agent laying two things out along a row** |
-| DEF-021 | ⬜ open | **P78 D33** | A fan-out send delivers **one** email and reports **N** successes | every **member who was told they would be emailed** |
+| DEF-021 | ✅ done | **P78 D33** | A fan-out send delivers **one** email and reports **N** successes — **fixed s16 (`4adab228`): each queued outcome token is stamped with the `To` it was minted under; stamps agree → today's path verbatim (one send, fields read after inputs settle), stamps disagree → one send per consecutive run of the minted address, each run settled by its own call. 3 mutants, each killed by exactly its arm; erg-001 §4's constant-To pin untouched** | every **member who was told they would be emailed** |
 | DEF-022 | ⬜ open | **P78 D34** | A cloud function cannot find out what the app's own public address is | **everyone an app ever emails a link to** |
-| DEF-023 | ⬜ open | **P78 D35** | `Component` scope in a cloud function is **not** per-request, and nothing says so | every **graph that accumulates anything server-side** |
+| DEF-023 | ✅ done | **P78 D35** | `Component` scope in a cloud function is **not** per-request, and nothing says so — **fixed s16 (`acd053e0`). 🔴 The recorded mechanism was the browser's: the cloud runtime never reaches `_componentScopes` — `noodl-js-api.js` overrode the scope to ONE module-level object, shared across all scripts, functions, requests and CONCURRENT requests. Now a WeakMap keyed on the component-owner INSTANCE (ids repeat across requests; instances do not): same-instance scripts still share (TPL-002's plan/pump contract), a new request starts clean, entries die with the request's graph — the leak half held by construction, not a spec** | every **graph that accumulates anything server-side** |
 | DEF-024 | ⬜ open | **P78 D36** | A `Condition` can only ever turn a gate **ON**, so a screen accumulates contradictory answers | every **screen whose answer has more than one form** |
 | DEF-025 | ⬜ open | **P78 D37** | A control's label is a click target only via the control's own `label` port — which **defaults OFF** | every **person tapping the words beside a checkbox** |
 | DEF-026 | ⬜ open | A cloud call to an unreachable backend reports nothing | **P77 SBR-015 AC1 drive** | **anyone** whose backend is not running — the ordinary way this breaks |
@@ -445,6 +445,29 @@ before any of it was acted on, and every measurement in it held.
 - **P76 F10 / F12 / F13** — already owned by **SB-010** / **SB-011**.
 
 ## Session log
+
+- **2026-08-30 (s16)** — **DEF-021 and DEF-023 closed, both reproduced at HEAD before building**
+  (`4adab228`, `acd053e0`). DEF-021: D33's one-pass/three-addresses arm went red exactly as
+  recorded (1 mailer call, last address, 3 dones); fix stamps each queued outcome token with the
+  `To` it was minted under and treats a batch whose stamps disagree as a fan-out — one send per
+  consecutive run of the minted address, each settled by its own call. 🔴 **The stamp must never
+  become the address a SINGLE-address batch uses** — a pulse can arrive before its `To` in the
+  same pass, so that path still reads the settled value (its own spec arm, and the mutant that
+  proves it). DEF-023: the standing instruction paid a 13th time — **the recorded mechanism was
+  the wrong runtime's**. D35 cited `_componentScopes` keyed by reused instance ids; the cloud
+  runtime never reaches it (`noodl-js-api.js` overrode the scope to ONE module-level object —
+  wider than the row: shared across functions and CONCURRENT requests too, and across runners in
+  one process, which the third spec arm caught by accident when the previous test's flag leaked
+  in). Fix: WeakMap keyed on the component-owner instance. ⚠️ **TPL-002's `plan` script comment
+  now overstates** — it asserts "`Component` is not per-request" as current fact; true when
+  written, fixed by DEF-023. Regenerating the template for a comment was not done (byte-gate
+  churn beside a peer's mcp test edits); owner: **whoever next regenerates members-area**
+  (phase 78 T6 window). Gates: viewer-cloud **204/204** (was 194; +7 DEF-021, +3 DEF-023),
+  `tsc -p noodl-viewer-cloud` clean, backend consumer suites over viewer-cloud/src
+  (tpl002-notifications, cwf-016) **45/45**, tpl002 serial pump green pre- and post-fix (one
+  address per pass — never enters the new branch). `test:ci` not owed: no editor or
+  noodl-runtime source moved. ⚠️ noodl-mcp/dist and nodegx-backend/dist staleness now also
+  covers DEF-021/023 — owner unchanged (next 0.2.1 build).
 
 - **2026-08-29 (s13)** — **DEF-008 closed: the measurement was taken and D6 does not reproduce.**
   Rendered headlessly (`withRenderedPage` over a `demo-app` copy, no editor), `maxWidth` on `Text`

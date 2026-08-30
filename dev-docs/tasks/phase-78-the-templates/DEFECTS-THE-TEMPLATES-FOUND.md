@@ -66,9 +66,9 @@ failure this file's first house rule exists to prevent.
 | **D30** | 🔴 open (08-29) | **DEF-019** (registered 08-29) | product | every app with a column of numbers — money, times, scores |
 | **D31** | ✅ fixed s11 (08-29) | — | template | (was: every moderator who posted something wrong) |
 | **D32** | 🔴 open (08-29, s12) | **DEF-020** (registered 08-29) | product | every agent laying two things out along a row |
-| **D33** | 🔴 open (08-29, s14) | **DEF-021** (registered 08-29) | product | every member who was told they would be emailed |
+| **D33** | ✅ **FIXED by DEF-021 (`4adab228`, 08-30) — re-driven at HEAD first, red exactly as recorded** | DEF-021 | product | (was: every member who was told they would be emailed) |
 | **D34** | 🔴 open (08-29, s14) | **DEF-022** (registered 08-29) | product | everyone an app ever emails a link to |
-| **D35** | 🔴 open (08-29, s14) | **DEF-023** (registered 08-29) | product | every graph that accumulates anything server-side |
+| **D35** | ✅ **FIXED by DEF-023 (`acd053e0`, 08-30) — the behaviour held, the recorded mechanism was the browser's; see the section note** | DEF-023 | product | (was: every graph that accumulates anything server-side) |
 | **D36** | 🔴 open — worked around in template (08-29, s15) | **DEF-024** (registered 08-29) | product | every screen whose answer has more than one form |
 | **D37** | 🔴 open — worked around in template (08-29, s15) | **DEF-025** (registered 08-29) | product | every person tapping the words beside a checkbox |
 | **D38** | ✅ fixed s15 — harness, not product | — | harness | (was: every drive asserting on a project string) |
@@ -1405,9 +1405,21 @@ all the door already has.
 exactly one growing child, proved by the 361px-button sabotage. That is one template's gate, not a
 product fix, and it is why this row has an owner of `NONE` rather than being marked handled.
 
-## D33 — 🔴 A fan-out send delivers ONE email and reports N successes
+## D33 — ✅ FIXED by DEF-021 (`4adab228`, 2026-08-30). (Was: a fan-out send delivers ONE email and reports N successes.)
 
-**Measured, s14, with a control pair that varies one thing.** Owner: **NONE**.
+> ✅ **Closed by re-running this row's own repro at HEAD first** — the one-pass arm went red
+> exactly as the table below records (1 call, last address, 3 dones). `Send Email` now stamps
+> each queued outcome token with the `To` it was minted under: stamps agree → today's batch
+> exactly (one send, fields read after inputs settle); stamps disagree → one send per
+> consecutive run of the minted address, in pulse order, each run settled by its own call, a
+> blank or refused address failing only its own invocations. The suggested shape's first
+> option ("the node keys its batch on To"), taken over the refusal. erg-001 §4's constant-To
+> pin is untouched. ⚠️ **TPL-002's serial pump stays as shipped** — it is still the right
+> construction for per-recipient content, which the stamp does not carry (a fan-out batch
+> reads subject/body at dispatch time, so all runs share the pass's settled content).
+> Full account: phase 80 TASKS.md s16, `def021-send-email-fanout.test.ts`.
+
+**Measured, s14, with a control pair that varies one thing.** Owner: **DEF-021 — done**.
 
 ### What it is
 
@@ -1511,9 +1523,24 @@ not be able to carry a path, a query or a fragment. The cost: the endpoint trust
 value that appears in an email, and only `role:admin` may call it, which is why that is tolerable
 here and would not be on a public endpoint.
 
-## D35 — 🔴 `Component` scope in a cloud function is NOT per-request, and nothing says so
+## D35 — ✅ FIXED by DEF-023 (`acd053e0`, 2026-08-30). (Was: `Component` scope in a cloud function is NOT per-request.)
 
-**Measured, s14, by four thirty-second timeouts.** Owner: **NONE**.
+> ✅ **Closed — and the mechanism this row recorded was the wrong runtime's.** The behaviour
+> held (reproduced through `CloudRunner.run` before building: the second request read the
+> first's flag), but the cloud runtime never reaches `_componentScopes` or its reused
+> instance ids — `noodl-js-api.js` overrode `getComponentScopeForNode` to return ONE
+> module-level object, so the scope was shared across all scripts, all functions, all
+> requests, all CONCURRENT requests, and even two runners in one process. Now a WeakMap
+> keyed on the component-owner INSTANCE: scripts in one component instance share (the
+> contract this template's `plan`/`pump` pair rests on), a new request starts clean, and
+> entries die with the request's graph — the leak the old override existed to stop, held by
+> construction. ⚠️ **This template's `plan` comment ("`Component` is not per-request… the
+> only safe use is state overwritten on the way in") is now STALE as a statement of the
+> product**, though the write-whole discipline it prescribes remains harmless; it lapses
+> whenever the members-area is next regenerated. Full account: phase 80 TASKS.md s16,
+> `def023-component-scope-lifetime.test.ts`.
+
+**Measured, s14, by four thirty-second timeouts.** Owner: **DEF-023 — done**.
 
 ### What it is
 
