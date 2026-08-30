@@ -367,6 +367,10 @@ export function emitComponent(
       action.then.forEach(collectActionUse);
       action.unchangedThen.forEach(collectActionUse);
     }
+    if (action.kind === 'collection-remove') {
+      usedCollectionNames.add(action.collectionName);
+      action.then.forEach(collectActionUse);
+    }
     if (action.kind === 'branch') {
       collectExprUse(action.cond);
       action.whenTrue.forEach(collectActionUse);
@@ -1391,7 +1395,12 @@ export function emitComponent(
    */
   const expandActions = (actions: HandlerAction[]): HandlerAction[] =>
     actions.flatMap((a) =>
-      a.kind === 'popup-show' && a.then.length > 0
+      // EXP-011 §30. A row removal has one arm and it always runs (the other two outcomes are
+      // proved dead at compile), so its chain is *following statements* rather than an arm —
+      // `popup-show`'s treatment. That is also what keeps `notes.remove(item)` an expression:
+      // an action that printed its own chain would have to become a block, and the commonest
+      // shape by far is a delete button with nothing after it.
+      (a.kind === 'popup-show' || a.kind === 'collection-remove') && a.then.length > 0
         ? [{ ...a, then: [] }, ...expandActions(a.then)]
         : // A jsfun-run is only its done-chain (EXP-003 §4 A2h): output reads inline the call
           // at their sinks, so the run itself needs no statement — unless it materializes its
@@ -1464,6 +1473,8 @@ export function emitComponent(
           return a.entries.some((e) => reads(e.expr));
         case 'collection-clear':
           return a.then.some(inAction) || a.unchangedThen.some(inAction);
+        case 'collection-remove':
+          return a.then.some(inAction);
         case 'branch':
           return reads(a.cond) || a.whenTrue.some(inAction) || a.whenFalse.some(inAction);
         case 'api-call':
@@ -1865,6 +1876,24 @@ export function emitComponent(
         if (!hasUnchanged) return ifElse(test, armCode(action.then, call), null);
         if (!hasDone) return ifElse(test, call, armCode(action.unchangedThen));
         return ifElse(test, armCode(action.then, call), armCode(action.unchangedThen));
+      }
+      /**
+       * `Remove Object From Array` (EXP-011 §30) — `notes.remove(item)`.
+       *
+       * 🔴 **No id is spelled, and that is the whole translation.** The graph names the row with
+       * a `For Each`'s Item Id; `compileCollectionRemove` proves that id is the row whose signal
+       * this callback *is*, and the callback already closes over that row. `Collection.remove`
+       * is `indexOf` — reference equality — which is exact here for the same reason: the plan's
+       * gate 3 requires the repeater to be feeding off this very array, so `item` is the array's
+       * own element and not a copy of it.
+       *
+       * `itemLocal` rather than a per-repeater lookup because gate 3 admits only the named-array
+       * feed, and `renderRepeater`'s collection branch binds exactly this local. A query or
+       * static-data feed never reaches here.
+       */
+      case 'collection-remove': {
+        const collection = collectionByName.get(action.collectionName)!;
+        return `${collection.exportName}.remove(${itemLocal})`;
       }
       case 'emit': {
         const channel = channelByName.get(action.channelName)!;
@@ -4019,6 +4048,8 @@ export function emitComponent(
         return a.entries.map((e) => e.expr);
       case 'collection-clear':
         return [...a.then.flatMap(actionExprsOf), ...a.unchangedThen.flatMap(actionExprsOf)];
+      case 'collection-remove':
+        return a.then.flatMap(actionExprsOf);
       case 'branch':
         return [a.cond, ...a.whenTrue.flatMap(actionExprsOf), ...a.whenFalse.flatMap(actionExprsOf)];
       case 'popup-show':

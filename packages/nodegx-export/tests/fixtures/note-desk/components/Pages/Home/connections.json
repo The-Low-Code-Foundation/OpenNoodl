@@ -1,0 +1,73 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "6e0d3b74-5a91-4c26-b8f7-1e4a92d05f38",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "noteInput",
+      "fromProperty": "onTextChanged",
+      "toId": "noteVar",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "noteVar",
+      "fromProperty": "value",
+      "toId": "makeNote",
+      "toProperty": "prop-text"
+    },
+    {
+      "fromId": "addButton",
+      "fromProperty": "onClick",
+      "toId": "makeNote",
+      "toProperty": "new"
+    },
+    {
+      "fromId": "makeNote",
+      "fromProperty": "id",
+      "toId": "insertNote",
+      "toProperty": "modifyId"
+    },
+    {
+      "fromId": "makeNote",
+      "fromProperty": "done",
+      "toId": "insertNote",
+      "toProperty": "add"
+    },
+    {
+      "fromId": "notesArray",
+      "fromProperty": "items",
+      "toId": "noteList",
+      "toProperty": "items"
+    },
+    {
+      "fromId": "noteList",
+      "fromProperty": "itemActionItemId",
+      "toId": "removeNote",
+      "toProperty": "modifyId"
+    },
+    {
+      "fromId": "noteList",
+      "fromProperty": "itemOutputSignal-removed",
+      "toId": "removeNote",
+      "toProperty": "remove"
+    },
+    {
+      "fromId": "removeNote",
+      "fromProperty": "done",
+      "toId": "removedVar",
+      "toProperty": "do"
+    },
+    {
+      "fromId": "removedLabel",
+      "fromProperty": "savedValue",
+      "toId": "removedVar",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "statusVar",
+      "fromProperty": "value",
+      "toId": "statusText",
+      "toProperty": "text"
+    }
+  ]
+}

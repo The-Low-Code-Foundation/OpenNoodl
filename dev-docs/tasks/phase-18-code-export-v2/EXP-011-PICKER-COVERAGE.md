@@ -3567,3 +3567,166 @@ that already translated, not a node type.
 - ⚠️ **Not driven in a browser this session.** The slice is graded by compile + mutants, and the
   callback-prop end of it (`NoteRow` calling `onRemoved`) is the Component Outputs slice's, which
   §10 drove. A drive of a list with a working delete button is still owed.
+
+---
+
+## §30 The node the disproved sentence was blocking, and the fix that could not fire (session 59, 2026-08-30)
+
+**69 → 70 of 127 (54.3% → 55.1%).** `pickerCoverageFloor` raised in the same commit.
+
+§29 disproved the sentence two nodes were deferring on and asked the next session to re-derive
+their dispositions **from the code rather than from the recorded reason**. Doing that translated
+one of them — and then a fixture built to protect §29 found that **§29's own fix could not fire
+on a real project.**
+
+### §30.1 `Remove Object From Array`, and why it needs no id
+
+§7.3 blocked it on *"it needs an Object Id, and in a list an author actually builds that comes
+from inside the repeater row — which cannot reach the page at all yet"*. The first half is true
+and is what the translation is built on; the second half was §29's disproved sentence.
+
+`foreach.tsx` publishes the firing row as **`itemActionItemId`** — `model.getId()`, set
+*synchronously* before the `itemOutputSignal-<name>` pulse is scheduled. So the wire an author
+draws, `Item Id → Object Id`, is not a value this slice has to hold state for: it is a *name for
+the row whose callback the emitted code is already standing in*. The emitted form spells no id
+at all:
+
+```tsx
+{notesItems.map((item, index) => (
+  <NoteRow key={index} text={item.text} onRemoved={() => { notes.remove(item); lastAction.set('Removed a note.'); }} />
+))}
+```
+
+Three gates, and each is a way the emitted call would otherwise be silently wrong:
+
+1. the Array Id is a literal name with an emitted module (`Clear Array`'s gate);
+2. exactly one wire feeds `Object Id`, and it is a `For Each`'s `itemActionItemId`. The action is
+   then **valid in one place only** — `actionsValidIn` refuses it unless the handler is that same
+   repeater's `itemOutputSignal-*`. `ExprContext`'s `dom` variant gained a `port` for this: a
+   chain hung off the same repeater's `itemsRendered` is the list's own progress and names no row,
+   and `nodeId` alone cannot tell the two apart;
+3. **that repeater must repeat the very array being written.** `Collection.remove` is `indexOf` —
+   reference equality — so a repeater fed by a mapped list (`.map((row) => ({…}))`, a fresh object
+   per row) or by a different array would emit a call that removes nothing at all. A *filtered*
+   list would happen to work, since `.filter` keeps the references; it is refused anyway, because
+   "happens to work" is not a property this compile can read off an expression.
+
+🔴 **Neither `Failure` nor `Unchanged` can fire once those hold, and it is measured rather than
+assumed.** Failure's three causes (`collectionnode-remove.ts`) are answered by gates 2, 1 and —
+for "an Object Id nothing has loaded" — `Model.exists`, which answers from both registry tiers
+for as long as something holds the record, which the collection does. `Unchanged` needs
+`contains(model)` false, and gate 3 makes the row a member by construction. Both wires are
+**dropped with a note**, exactly as `Clear Array`'s dead `Failure` is.
+
+⚠️ **The §29 divergence recurs here and now moves data rather than a pulse.**
+`hasScheduledTriggerItemOutputSignal` coalesces two rows firing in one frame into a single pulse
+carrying the last row's id — the interpreter would remove one row where the emitted app removes
+both. Two rows cannot be clicked in one frame.
+
+### §30.2 `Set Object Properties` — re-derived, and still blocked, for a different reason
+
+The prompt warned against assuming §29 unblocked both, and it had not. Read against the code:
+
+- **Inside the row** (`idSource = foreach`) it is still §4's line exactly: the write is the
+  enclosing list's state, and the row is a template that receives props.
+- **From the page** (`Id ← Item Id`, fired by a relayed row signal) the *id* now resolves — that is
+  what §30.1 does. What does not resolve is the **value**: in every shape an author builds, the
+  new value comes from a control *inside* the row, and a row's value reaches the page only as
+  `itemOutput-<name>`, a continuous read of "whichever row fired last" — the one port §29
+  measured and left deferred. **The blocker moved from identity to value; it did not go away.**
+- ⚠️ And a third thing, for whoever builds it: `Collection.updateWhere` **replaces** the row
+  object, so `item` goes stale for anything later in the same chain. A write followed by a removal
+  in one handler would remove nothing.
+
+The recorded reason in `dispositionForLogic` and in the ledger now says this instead of the half
+of it that was written down.
+
+### §30.3 🔴 The fixture found that §29 could not fire on a real project
+
+§29 closed by asking for a fixture carrying a row with a button in it, because the suite built the
+shape by hand. `tests/fixtures/note-desk` — Note Desk, three components, a delete button per row —
+was authored for that, and its **first export refused the wire**:
+
+```
+wire noteList:itemOutputSignal-removed->removeNote:remove dropped: the trigger is not a rendered
+element event or a receiver
+```
+
+A relayed row signal is a **dynamic port**: `registerOutputIfNeeded` mints
+`itemOutputSignal-<name>` at runtime, so it is in no catalog, and dynamic ports are derived rather
+than persisted, so it is in no project file either. `resolveSourcePortKind` — correctly refusing
+to guess `'signal'` — answers `'value'`, and the wire fell out of the handler branch.
+
+🔴 **Every row of §29's suite passed over this**, because the test helper `wire()` *declares* the
+connection a signal. The fix was real and the grading was on a population the defect could not
+appear in. The escape hatch added is the `instanceSignal`/`customSignal` rule one node type over —
+the definition decides, not the parse — and the runtime is unambiguous: the registration hands
+back a getter that returns nothing and the port is pulsed with `sendSignalOnOutput`.
+
+🔴 **The absence was read beside a firing control**: `portKind('For Each','itemsRendered')` is
+`'signal'` and `portKind('For Each','itemOutputSignal-removed')` is `undefined`, in the same
+assertion — so this is a gap in what the parse can *see*, not a resolver that answers `'value'`
+for everything.
+
+A second, older hole surfaced in the same work: **`scanActions` never descended into an array
+mutator's chains**, so a popup opened from a `Clear Array`'s Done chain never earned its slot
+registration. §17.3's shape — not a switch that stops compiling, a walk that quietly stops
+walking. Fixed for both mutators, and graded by a row that goes red without it.
+
+### §30.4 What proves it
+
+`tests/collection-remove.test.ts`, 20 rows, and **six mutants**, because a suite that cannot go
+red grades nothing:
+
+| Mutant | Killed |
+|---|---|
+| the validity gate answers true everywhere | the 2 negative controls (page button, lifecycle pulse) |
+| only the **port** half of the gate removed | **exactly** the lifecycle-pulse row |
+| gate 3 (the repeater must repeat this array) removed | **exactly** the 2 feed rows |
+| `scanActions` no longer descends a `Clear Array` chain | **exactly** the `clear` popup row, not the `remove` one |
+| a row callback emitted for any port (§29's guard) | 4 rows across both suites |
+| the `repeaterRowSignal` escape hatch removed (**§29 as shipped**) | **exactly the 2 from-disk rows, and no hand-built row** |
+
+The last one is the finding stated as a measurement: the in-memory rows are *blind* to it, which
+is what a fixture buys.
+
+**And it was driven.** The built export served by `vite preview`, in headless Chrome over CDP,
+reading `textContent` back after real clicks — expected answers written down first:
+
+```
+boot                  rows []                        status ""
+add alpha/beta/gamma  rows ["alpha","beta","gamma"]   status ""
+delete MIDDLE (beta)  rows ["alpha","gamma"]          status "Removed a note."
+delete last  (gamma)  rows ["alpha"]                  status "Removed a note."
+delete only  (alpha)  rows []                         status "Removed a note."
+console errors        []
+```
+
+🔴 **The middle row is the whole measurement.** Deleting the first or the last reads identically
+for an emitter that removed `notesItems[0]` — a reading that fits rather than one that excludes.
+The sabotage arm (`notes.remove(item)` → `notes.remove(notesItems[0])`, rebuilt and re-driven)
+reads `["beta","gamma"]` at that step, exactly as written down beforehand.
+
+⚠️ **One reading was wrong before it was right, and the fix was in the instrument.** The status
+line read `""` on every step because the reader asked for "the last `<p>` with no button beside
+it" — and the status `<p>`'s parent is the page div, which holds the Add button. The DOM said
+`Removed a note.` all along. Probing before reporting is what separated a broken reader from a
+Done chain that does not fire.
+
+Gates: **jest 1131/1131 in 45 suites** (1095/44 before), **tsc 0**, picker **70/127**, ledger
+check 175 types.
+
+### §30.5 What this leaves
+
+- 🔴 **`itemOutput-<name>` — a relayed row *value* — is now the single port standing in front of
+  the rest of the collection-state slice.** It blocks `Set Object Properties` (§30.2) and it is
+  what `itemActionItemId` read as a value still refuses. Inside a row callback the value is
+  knowable only when the template's output is a pass-through of a prop; in general it is the row's
+  own local state, which the parent cannot see. Whether the pass-through case is worth carving out
+  is the next design question in this area, owned by **`NONE`**.
+- ⚠️ **Two more fixtures' worth of population is still unreached.** `note-desk` closes "a row with
+  a button in it"; §26.1's list of what no fixture has still holds for `PageInputs`, a braced
+  `urlPath`, an `External Link`, a `Navigate To Path`, an untyped store key, and a wire into a port
+  that already carries an authored value.
+- ⚠️ `Create New Array` and `For Each Actions` remain deliberately out of scope, and both reasons
+  survived this session's reading unchanged.

@@ -832,6 +832,21 @@ export type HandlerAction =
    * the call on the empty arm is the same no-op the guard would have made.
    */
   | { kind: 'collection-clear'; collectionName: string; then: HandlerAction[]; unchangedThen: HandlerAction[] }
+  /**
+   * `Remove Object From Array` (EXP-011 §30) — `notes.remove(item)`, inside the row callback of
+   * the repeater named by {@link repeaterId}.
+   *
+   * 🔴 **This action is only meaningful in one place, and the type says so.** The node's Object
+   * Id is a `For Each`'s `itemActionItemId`, which the runtime sets to `model.getId()` of the
+   * row that fired *immediately before* pulsing `itemOutputSignal-<name>` (`foreach.tsx`). Read
+   * anywhere else it is "whichever row fired last", which the emitted list holds no state for —
+   * so `actionsValidIn` refuses this action outside that repeater's own row signal, and the row
+   * the interpreter names becomes the `item` the callback already closes over.
+   *
+   * There is no `unchangedThen` and no failure arm because in this shape neither can fire, and
+   * the compile proves it rather than assuming it: see `compileCollectionRemove`.
+   */
+  | { kind: 'collection-remove'; collectionName: string; repeaterId: string; then: HandlerAction[] }
   /** A Condition in a handler chain: `if (cond) whenTrue; else whenFalse;` (LOGIC-TARGET §3). */
   | { kind: 'branch'; cond: ValueExpr; whenTrue: HandlerAction[]; whenFalse: HandlerAction[] }
   /** Fires the component's own signal output: `onWaved?.()` (COMPONENT-OUTPUTS-TARGET §4). */
@@ -4782,6 +4797,8 @@ function planComponent(
     NewModel: 'new',
     // EXP-011 Tier 1.1. The port is `clear`; its display name is "Do".
     CollectionClear: 'clear',
+    // EXP-011 §30. The port is `remove`; its display name is "Do", like every mutator here.
+    CollectionRemove: 'remove',
     // EXP-011 Tier 1.2. `cancel` is the node's second action port and defers the node (§8).
     [HTTP_TYPE]: 'fetch',
     // EXP-011 Tier 1.3. `Now` is the date family's only action; the other five are pure and have
@@ -5729,6 +5746,135 @@ function planComponent(
   };
 
   /**
+   * The named array a `For Each` repeats, resolved from the wire rather than from the plan.
+   *
+   * 🔴 **`plan.repeaters[id].itemsCollectionName` is not filled until pass 3**, thousands of
+   * lines below the attachment loop this runs inside, so reading it here would answer
+   * `undefined` for every repeater in the project — an absence that looks exactly like "this
+   * list is not fed by a named array". The pass-3 branch's own gates are repeated here on
+   * purpose: what matters is that the two agree, and the only way to be sure of that is to ask
+   * the same three questions of the same wire.
+   */
+  const repeaterCollectionFeed = (repeaterId: string): string | undefined => {
+    const wire = component.connections.find(
+      (c) => c.toId === repeaterId && c.toProperty === 'items' && c.fromProperty === 'items'
+    );
+    if (wire === undefined) return undefined;
+    const source = nodeById.get(wire.fromId);
+    if (source === undefined || source.type !== 'Collection2') return undefined;
+    if (collectionReadEligible(source) !== true) return undefined;
+    return collectionNameOf(source, wiredPorts);
+  };
+
+  /**
+   * `Remove Object From Array` (EXP-011 §30) — the array vocabulary's second mutator, and the
+   * one §7.3 recorded as blocked on a sentence §29 disproved.
+   *
+   * The recorded reason was that the node needs an Object Id, which "comes from inside the
+   * repeater row — which cannot reach the page at all yet". Half of that is still true and it is
+   * the half this compile is built around: the Object Id does come from the row. What was wrong
+   * was the second half. `foreach.tsx` publishes the firing row as `itemActionItemId`
+   * (`model.getId()`, set *synchronously* before the `itemOutputSignal-<name>` pulse is
+   * scheduled), and on the emitted side each row is its own element whose callback closes over
+   * its own `item`. So the wire the author draws — `Item Id → Object Id` — is not a value this
+   * slice has to hold state for; it is a name for the row the callback is already standing in.
+   *
+   * That is why the gates below are about *where the id comes from* rather than about the node:
+   *
+   * 1. the Array Id is a literal name with an emitted module (`Clear Array`'s gate);
+   * 2. exactly one wire feeds `Object Id`, and it is a `For Each`'s `itemActionItemId`;
+   * 3. that same `For Each` repeats *this* array.
+   *
+   * Gate 3 is not decoration. `Collection.remove` is `indexOf` — reference equality — so a
+   * repeater fed by a mapped list (`.map((row) => ({…}))`, a fresh object per row) or by a
+   * different array would emit a call that silently removes nothing. A filtered list would
+   * happen to work, because `.filter` keeps the references; it is refused all the same, because
+   * "happens to work" is not a property this compile can read off the expression.
+   *
+   * 🔴 **Neither `Failure` nor `Unchanged` can fire once those gates hold, and that is a
+   * measured claim rather than a convenient one.** `Failure` has three causes
+   * (`collectionnode-remove.ts`): no Object Id — gate 2 wired it; no bound array — gate 1
+   * resolved it, and `resolveCollectionId` mints a collection for any literal string; and an
+   * Object Id nothing has loaded — the id came from a rendered row, and `Model.exists` answers
+   * from both registry tiers for as long as anything holds the record, which the collection
+   * does. `Unchanged` needs `contains(model)` to be false, and gate 3 makes the row a member by
+   * construction. So both are dropped with a note, exactly as `Clear Array`'s dead `Failure` is
+   * — deferring a whole translation over a wire that cannot fire in the interpreter either
+   * would lose a translation to a no-op.
+   *
+   * ⚠️ **The divergence this does not reproduce is §29's, and here it moves data rather than a
+   * pulse.** `hasScheduledTriggerItemOutputSignal` coalesces two rows firing in the same frame
+   * into one pulse carrying the last row's id, so the interpreter would remove one row where
+   * the emitted app removes both. Two rows cannot be clicked in one frame; only a programmatic
+   * fire reaches it. Recorded rather than papered over.
+   */
+  const compileCollectionRemove = (node: NodeIR): CompiledSink => {
+    const collectionName = collectionNameOf(node, wiredPorts);
+    if (collectionName === undefined) {
+      return { defer: 'its Array Id is not a literal name — a runtime-addressed array has no emitted module' };
+    }
+    if (!registry.collections.has(collectionName)) {
+      return { defer: `no emitted module names the array "${collectionName}"` };
+    }
+
+    const idWires = component.connections.filter((c) => c.toId === node.id && c.toProperty === 'modifyId');
+    if (idWires.length === 0) {
+      return {
+        defer:
+          'nothing is wired to its Object Id, so every Do answers Failure with "No object Id specified" and the array is never touched'
+      };
+    }
+    if (idWires.length > 1) {
+      return { defer: 'two wires feed its Object Id — last-writer-wins is not statically ordered' };
+    }
+    const idWire = idWires[0];
+    const idSource = nodeById.get(idWire.fromId);
+    if (idSource?.type !== 'For Each' || idWire.fromProperty !== 'itemActionItemId') {
+      return {
+        defer: `its Object Id is fed by ${idSource === undefined ? 'nothing' : `${idSource.type}'s "${idWire.fromProperty}"`} rather than a repeater's Item Id — an id this slice cannot resolve to a row it is standing in`
+      };
+    }
+    const repeaterId = idSource.id;
+    const feed = repeaterCollectionFeed(repeaterId);
+    if (feed !== collectionName) {
+      return {
+        defer:
+          feed === undefined
+            ? `the repeater its Object Id comes from is not fed by a named array, so the row it names is not an object this array holds — removal is by identity (Collection.remove is indexOf), and a derived row is a different object`
+            : `the repeater its Object Id comes from repeats "${feed}" while this node removes from "${collectionName}" — the row it names is not a member of the array being written`
+      };
+    }
+
+    const consumes: string[] = [idWire.key];
+    for (const wire of component.connections.filter((c) => c.fromId === node.id)) {
+      if (wire.fromProperty === 'completed') {
+        return { defer: 'its Completed output is consumed — this slice translates the Done chain only' };
+      }
+      if (wire.fromProperty === 'failure' || wire.fromProperty === 'unchanged') {
+        notes.push(
+          wireNote(
+            wire,
+            wire.fromProperty === 'failure'
+              ? `Remove Object From Array's Failure needs an unresolvable array or an unloaded object, and a row of the array it removes from is neither — the wire is dead in the interpreter too`
+              : `Remove Object From Array's Unchanged fires only when the object was not in the array, and the row named here is a member of it by construction — the wire is dead in the interpreter too`
+          )
+        );
+        consumes.push(wire.key);
+      }
+    }
+
+    const done = doneChainOf(node, 'done');
+    if ('defer' in done) return { defer: done.defer };
+
+    return {
+      action: { kind: 'collection-remove', collectionName, repeaterId, then: done.then },
+      consumes: [...consumes, ...done.consumes],
+      collapses: done.collapses,
+      subscribes: done.subscribes
+    };
+  };
+
+  /**
    * `Now`'s `Read` (EXP-011 Tier 1.3) — the date family's one action.
    *
    * Simpler than every other asynchronous-looking node here because it is not asynchronous:
@@ -6388,6 +6534,7 @@ function planComponent(
       };
     }
     if (node.type === 'CollectionClear') return compileCollectionClear(node);
+    if (node.type === 'CollectionRemove') return compileCollectionRemove(node);
     if (node.type === HTTP_TYPE) return compileHttpFetch(node);
     if (node.type === NOW_TYPE) return compileNowRead(node);
     if (node.type === 'Condition') return compileCondition(node);
@@ -6538,7 +6685,19 @@ function planComponent(
     return result;
   };
 
-  type ExprContext = { kind: 'dom'; nodeId: string } | { kind: 'receiver'; receiverId: string } | { kind: 'render' };
+  /**
+   * Where an action or expression is being asked to run.
+   *
+   * `port` names the output the handler hangs off, and it exists for exactly one reader: a
+   * repeater's handlers are keyed by port, and only the `itemOutputSignal-<name>` ones become a
+   * row's callback (§29). An action that is legal in a row and nowhere else — `collection-remove`
+   * — cannot tell the two apart from `nodeId` alone, and a repeater's own `itemsRendered` chain
+   * is not a row.
+   */
+  type ExprContext =
+    | { kind: 'dom'; nodeId: string; port?: string }
+    | { kind: 'receiver'; receiverId: string }
+    | { kind: 'render' };
 
   const exprValidIn = (expr: ValueExpr, context: ExprContext, invokedScope?: ReadonlySet<string>): boolean => {
     switch (expr.kind) {
@@ -6627,6 +6786,22 @@ function planComponent(
           return (
             actionsValidIn(action.then, context, invokedScope) &&
             actionsValidIn(action.unchangedThen, context, invokedScope)
+          );
+        /**
+         * 🔴 **The one action in this union that is legal in a single place** (EXP-011 §30). It
+         * removes "the row that fired", and the only place that phrase has a referent is inside
+         * the callback of the repeater whose row fired — where the emitted code closes over
+         * `item` and needs no id at all. The port test is as load-bearing as the node test: a
+         * chain hung off the same repeater's `itemsRendered` is the list's own progress, and
+         * nothing there names a row.
+         */
+        case 'collection-remove':
+          return (
+            context.kind === 'dom' &&
+            context.nodeId === action.repeaterId &&
+            context.port !== undefined &&
+            context.port.startsWith(ITEM_OUTPUT_SIGNAL) &&
+            actionsValidIn(action.then, context, invokedScope)
           );
         case 'store-set':
         case 'globalstore-set':
@@ -7345,6 +7520,13 @@ function planComponent(
         for (const [k, v] of unchangedSnap) if (snap.get(k) !== v) snap.set(k, 'op');
         return { ...action, then, unchangedThen };
       }
+      /**
+       * §30. One arm and it always runs — gates 1-3 of `compileCollectionRemove` prove the other
+       * two outcomes dead — so this is `popup-show`'s single-chain treatment and not
+       * `collection-clear`'s two-arm one: the chain carries the enclosing snapshot onward
+       * unchanged rather than marking later reads order-unknown.
+       */
+      case 'collection-remove':
       case 'popup-show':
       case 'popup-close': {
         const then = snapActionList(action.then, snap);
@@ -7642,7 +7824,7 @@ function planComponent(
       isTextInputType(fromNode.type) &&
       connection.fromProperty === 'textChanged'
     ) {
-      if (!actionsValidIn([compiled.action], { kind: 'dom', nodeId: fromNode.id })) {
+      if (!actionsValidIn([compiled.action], { kind: 'dom', nodeId: fromNode.id, port: 'textChanged' })) {
         const reason = 'the action reads values that only exist in another handler';
         if (outputsSink) {
           if (!failedOutputsNodes.has(toNode.id)) failedOutputsNodes.set(toNode.id, reason);
@@ -7682,8 +7864,35 @@ function planComponent(
       fromNode !== undefined &&
       plan.roleOf[fromNode.id] === 'custom' &&
       customSignalOutputs(fromNode).has(connection.fromProperty);
-    if (fromNode && rendered.has(fromNode.id) && (connection.kind === 'signal' || instanceSignal || customSignal)) {
-      if (!actionsValidIn([compiled.action], { kind: 'dom', nodeId: fromNode.id })) {
+    /**
+     * 🔴 **The third instance of the same blindness, and it was hiding §29 entirely.**
+     *
+     * A repeater's relayed row signal is a *dynamic* port: `registerOutputIfNeeded` mints
+     * `itemOutputSignal-<name>` at runtime when the editor asks for it (`foreach.tsx`), so it is
+     * in no catalog and — because dynamic ports are derived rather than persisted — in no
+     * project file either. `resolveSourcePortKind` therefore falls back to `'value'`, which is
+     * the right default and the wrong answer here, and the wire fell out of this branch as
+     * *"the trigger is not a rendered element event or a receiver"*.
+     *
+     * ⚠️ **§29 was graded only on hand-built IR that declared the wire a signal itself**, so
+     * every row of that suite passed over a translation that could not fire on a project parsed
+     * from disk. `tests/fixtures/note-desk` is what found it, on its first export, which is what
+     * a fixture is for: §29's own closing note asked for one, and this is the defect it caught.
+     *
+     * The runtime is unambiguous about the kind — the registration hands back a getter that
+     * returns nothing and the port is pulsed with `sendSignalOnOutput` — so this is the
+     * `instanceSignal` rule one node type over: the definition decides, not the parse.
+     */
+    const repeaterRowSignal =
+      fromNode !== undefined &&
+      fromNode.type === 'For Each' &&
+      connection.fromProperty.startsWith(ITEM_OUTPUT_SIGNAL);
+    if (
+      fromNode &&
+      rendered.has(fromNode.id) &&
+      (connection.kind === 'signal' || instanceSignal || customSignal || repeaterRowSignal)
+    ) {
+      if (!actionsValidIn([compiled.action], { kind: 'dom', nodeId: fromNode.id, port: connection.fromProperty })) {
         const reason = 'the action reads values that only exist in another handler';
         if (outputsSink) {
           if (!failedOutputsNodes.has(toNode.id)) failedOutputsNodes.set(toNode.id, reason);
@@ -7849,6 +8058,16 @@ function planComponent(
         } else if (action.kind === 'branch') {
           scanActions(action.whenTrue);
           scanActions(action.whenFalse);
+        } else if (action.kind === 'collection-clear') {
+          // 🔴 EXP-011 §30. The array mutators own chains too, and this walker did not descend
+          // into them — so a popup opened from a `Clear Array`'s Done, or a record verb called
+          // there, never earned its registration and was emitted as a call into nothing. The
+          // same §17.3 shape: not a switch that stops compiling, a walk that quietly stops
+          // walking. Found while adding the case below, which would have had the identical hole.
+          scanActions(action.then);
+          scanActions(action.unchangedThen);
+        } else if (action.kind === 'collection-remove') {
+          scanActions(action.then);
         }
       }
     };
@@ -8886,7 +9105,15 @@ function planComponent(
           case 'popup-show':
           case 'popup-close':
           case 'jsfun-run':
+          // EXP-011 §30, and the same omission the sibling walker had: a session read inside an
+          // array mutator's Done chain is as ordinary as one inside a request's, and missing it
+          // here leaves the page importing a `useSession` the module never exported.
+          case 'collection-remove':
             walkActions(action.then);
+            break;
+          case 'collection-clear':
+            walkActions(action.then);
+            walkActions(action.unchangedThen);
             break;
           case 'state-set':
             if (action.expr !== undefined) walkExpr(action.expr);
@@ -9221,6 +9448,9 @@ function planComponent(
           case 'collection-clear':
             fillMaterialize(action.then);
             fillMaterialize(action.unchangedThen);
+            break;
+          case 'collection-remove':
+            fillMaterialize(action.then);
             break;
           case 'popup-show':
           case 'popup-close':
@@ -9712,11 +9942,37 @@ function recordNeighbourDefer(
   if (node.type === 'CollectionNew') {
     return 'it mints an array with a generated Id, and the only thing that Id can feed is another node’s Array Id — which, being a wire rather than a literal name, is exactly what has no emitted module';
   }
+  /**
+   * 🔴 EXP-011 §30. This used to read *"a row's outputs cannot reach the page at all yet"*, and
+   * that sentence was disproved in §29 — `foreach.tsx` names the firing row and the emitted row
+   * closes over its own `item`. The node translates now, so reaching here means one of
+   * `compileCollectionRemove`'s gates answered, and each of those files its own reason on the
+   * wire. What is left for this fallback is the node nothing triggers at all.
+   */
   if (node.type === 'CollectionRemove') {
-    return 'it needs an Object Id, and in a list an author actually builds that comes from inside the repeater row — which cannot reach the page at all yet ("which row fired is not statically expressible")';
+    return 'nothing is wired to its Do, so it never removes anything';
   }
+  /**
+   * 🔴 EXP-011 §30.2 re-derived this against the code rather than inheriting §7.3's sentence,
+   * because §29 had just disproved the sentence beside it. The recorded reason survived, but it
+   * was not the whole one and the missing half is what names the next slice:
+   *
+   * - **Inside the row** (`idSource = foreach`) it is still §4's line exactly: the write is the
+   *   enclosing list's state and the row is a template that receives props, so there is nothing
+   *   in the row for the write to reach.
+   * - **On the page**, with `Id ← the repeater's Item Id` and the Do fired by a relayed row
+   *   signal, the *id* now resolves — §30 does that for `Remove Object From Array`. What does
+   *   not resolve is the **value**: in every shape an author actually builds, the new value comes
+   *   from a control *inside* the row, and a row's value reaches the page only as
+   *   `itemOutput-<name>`, which is a continuous read of "whichever row fired last" — the one
+   *   port §29 measured and left deferred. So the blocker moved from identity to value.
+   * - ⚠️ And a third thing this fallback must not hide: `Collection.updateWhere` replaces the
+   *   row object, so `item` goes stale for anything later in the same chain — a write followed
+   *   by a removal in one handler would remove nothing. That is a design question, not a wiring
+   *   one, and it belongs to whoever builds this.
+   */
   if (node.type === 'SetModelProperties') {
-    return 'it writes properties onto a record; a row written from inside the row is state the list owns, which is the collection-state slice rather than this one (EXP-002-MODEL2-TARGET-OUTPUT §4)';
+    return 'it writes properties onto a record; inside a row that is state the enclosing list owns (EXP-002-MODEL2-TARGET-OUTPUT §4), and from the page the row’s id resolves but the value it would write does not — a row’s value reaches the page only as the repeater’s "last row that fired" read';
   }
   if (node.type === 'For Each Actions') {
     return 'its Item Id is the runtime record id of a repeater row, which the emitted app has no counterpart for, and its other ports are the Repeater’s removal handshake — lifecycle signals, which are effect() work';
