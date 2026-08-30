@@ -7208,6 +7208,22 @@ function planComponent(
       }
       const wire = wires[0];
       const from = nodeById.get(wire.fromId);
+      /**
+       * ⚠️ **This sentence is the one §29 disproved, and this branch serves several populations**
+       * (EXP-011 §33.4). It never reads `fromProperty`, so a bare relay name (a port the runtime
+       * never registers), a lifecycle pulse, a signal-prefixed value and a genuine
+       * `itemOutput-<name>` all receive a reason that is true only of the last of them.
+       *
+       * 🔴 **It is left alone on a measurement, not on an opinion.** Wires reaching here:
+       * **0** across the 60 exportable projects, **0** across the fixtures, **2** in
+       * `fb020b-drive` — a classic `project.json` that `parseProject` cannot open at all. All 18
+       * exportable `For Each → Component Outputs` wires go into *signal* ports and take the
+       * `outputSinkOf` path above, which §31 already split by population.
+       *
+       * Splitting this one would need a new fixture arm for a shape no reachable project has —
+       * the case §32.4 declined on its own census. If a real project ever lands here, split it
+       * the way §31.2 split its sibling, and do not inherit the sentence.
+       */
       if (from?.type === 'For Each') {
         fail(
           wire.key,
@@ -7870,6 +7886,11 @@ function planComponent(
      * ⚠️ 12 such wires sit in 10 project directories under `NodeGX test projects` — though
      * `md5` says nine of those are one authored graph copied nine times, so the honest count of
      * distinct authoring mistakes is small. §32 has the census.
+     *
+     * ⚠️ **And 12 reads wider than it is** (§33.2): **4 of the 12 are in `fb020b-drive`, a classic
+     * `project.json` that `parseProject` refuses at the front door** — 40 of the 101 corpus
+     * directories are that format. The count this gate can ever reach is **8**, and those 8 are
+     * §32.3's one-graph-copied family.
      */
     if (fromNode?.type === 'For Each' && connection.fromProperty.startsWith(ITEM_OUTPUT_SIGNAL)) {
       const relayed = connection.fromProperty.slice(ITEM_OUTPUT_SIGNAL.length);
@@ -10064,6 +10085,13 @@ function recordNeighbourDefer(
    *   from a control *inside* the row, and a row's value reaches the page only as
    *   `itemOutput-<name>`, which is a continuous read of "whichever row fired last" — the one
    *   port §29 measured and left deferred. So the blocker moved from identity to value.
+   * - 🔴 **§33.1 counted the population that sentence ranks, and it is empty.** Every
+   *   `Set Object Properties` in the corpus — 14 nodes, 11 projects, 6 independent graphs by
+   *   `md5`, 1 of them in a project the exporter can parse — sits **inside a repeater template**.
+   *   Not one is on a page. The page-side shape described just above is drawn by nobody, and
+   *   `itemOutput-<name>` gates **zero** exportable wires, so it is not "the single port in front
+   *   of this slice" that §30.5 and §32.6 called it. The blocker every real instance meets is the
+   *   first bullet: the write is state the enclosing list owns.
    * - ⚠️ And a third thing this fallback must not hide: `Collection.updateWhere` replaces the
    *   row object, so `item` goes stale for anything later in the same chain — a write followed
    *   by a removal in one handler would remove nothing. That is a design question, not a wiring

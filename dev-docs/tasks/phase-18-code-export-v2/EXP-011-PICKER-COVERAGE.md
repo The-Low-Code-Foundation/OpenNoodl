@@ -3718,6 +3718,9 @@ check 175 types.
 
 ### §30.5 What this leaves
 
+- 🔴 **CORRECTED by §33.1** — the bullet below ranks a port that gates **zero** wires the exporter
+  can reach: all 14 authored `Set Object Properties` sit *inside* a row, never on a page, so the
+  blocker every real instance meets is §4's. Original text kept as written:
 - 🔴 **`itemOutput-<name>` — a relayed row *value* — is now the single port standing in front of
   the rest of the collection-state slice.** It blocks `Set Object Properties` (§30.2) and it is
   what `itemActionItemId` read as a value still refuses. Inside a row callback the value is
@@ -3766,7 +3769,10 @@ Three prongs, because "which translations gate on a port kind" has three answers
 | `DbModel2`/`Model2` `prop-*`, `net.noodl.HTTP` `out-*`, `ComponentObject` `value-*`, `JavaScriptFunction` outputs, `Event Receiver` `message` | genuine values — the fallback is the right answer |
 | `For Each` bare relay names, `SetModelProperties` `stored` | **wires from ports the runtime never registers** — see §31.2 |
 
-**So: the exporter holds no unfound instance of the §30.3 class.** ⚠️ Stated with its limit — the
+**So: the exporter holds no unfound instance of the §30.3 class.** ⚠️ **A third limit, added by
+§33.2:** the probe read all 101 corpus directories, **40 of which are a classic `project.json`
+that `parseProject` cannot open at all** — the conclusion holds, the counts read wider than the
+exporter's reach. ⚠️ Stated with its limit — the
 probe reads *source* ports on projects that exist on disk. A catalog that disagreed with the
 runtime about a port it *does* declare would not appear in it, and neither would a target-side
 port; both are different questions from the one §30.3 raised.
@@ -3979,9 +3985,183 @@ files on disk.
 ### §32.6 What this leaves
 
 - 🔴 `itemOutput-<name>` — §30.5's relayed row *value* — is still the single port in front of the
-  rest of the collection-state slice. Untouched.
+  rest of the collection-state slice. Untouched. — **CORRECTED by §33.1: zero exportable wires.**
 - 🔴 The `NONE`-owned product finding is now **scoped**: not "the editor hides it" but "the write
   path that authors it cannot see it, and the surface that reports it cannot advise". The place to
   fix it is named in §32.1.
 - ⚠️ §31.1's two sweep limits remain unexamined: a catalog/runtime disagreement over a *declared*
   port, and the target-port side. This session examined the source side only.
+
+## §33 The carve-out §30.5 asked about, and the population it was standing in front of (session 62, 2026-08-30)
+
+**70 of 127 (55.1%), unchanged. No node was translated.** The session's product is a measurement
+that answers §30.5's question **no**, three recorded numbers corrected, and one scope fact that
+applies to every from-disk sweep this phase has run.
+
+§32 closed by naming `itemOutput-<name>` — a relayed row *value* — as "the single port in front of
+the rest of the collection-state slice", and asked whether the **pass-through-of-a-prop** case is
+worth carving out, because that would unblock `Set Object Properties`. The honest way to answer it
+is to count what authors have actually drawn, so that is what this session did.
+
+### §33.1 The answer: the carve-out is real, and it is worth nothing
+
+The static fact §30.5 described **does hold** where it occurs. Corpus-wide there is exactly **one**
+wire drawn from a correctly-spelled `itemOutput-<name>`, and its template output *is* a
+pass-through of a prop:
+
+```
+fb020b-drive  /Card Grid   itemOutput-Title  (template output "Title" ← Component Inputs)
+                                             → Component Outputs."Clicked Title"
+```
+
+That is one wire, in one project, and **the exporter cannot open that project** (§33.2). Over the
+60 projects the exporter *can* parse, the count of `itemOutput-<name>` wires is **zero**.
+
+🔴 **And the shape the carve-out was meant to unblock is built by nobody.** Every
+`Set Object Properties` in the corpus — **14 nodes across 11 projects, without exception** — sits
+**inside a repeater template**, not on a page:
+
+| Host | Independent graphs | Copies | Format |
+|---|---|---|---|
+| `/Filters/Multi Choice/Item` | 1 | 8 (byte-identical, `md5 cbca43c8…`) | v2 |
+| `/Cashflow/Row` | 1 | 2 (byte-identical) | classic |
+| `fb020b-drive` `/Multi Select/{Dropdown/Option, Dropdown/Pill, List/Item, Pills/Item}` | 4 | 4 | classic |
+
+**6 independent authored graphs; 6 of 6 inside a row; 0 on a page.** In the exportable half the
+number is **1** independent graph. Its 24 wires are the same three every time:
+`Model2.id → modelId`, `checkbox.checked → prop-Checked`, `checkbox.onChange → store`.
+
+🔴 **So §30.2's sentence is half right in the way that misdirects.** It says *"in every shape an
+author actually builds, the new value comes from a control inside the row"* — true, and the
+**node is inside the row too**. The page-side shape it goes on to describe (`Id ← Item Id`, value
+`← itemOutput-<name>`, fired by a relayed row signal) is the shape the recorded blocker guards, and
+**no author in this corpus has ever drawn it.** The port ranked "single blocker in front of the
+slice" gates nothing that exists.
+
+The blocker in front of `Set Object Properties`, for every instance an author has actually written,
+is the one §4 named and §30.2 listed *first* and then moved past: **the write is state the
+enclosing list owns.**
+
+### §33.2 🔴 Two in five "corpus" projects are a format the exporter refuses at the front door
+
+`emit-app.ts` on `fb020b-drive` does not refuse a wire; it never gets that far:
+
+```
+Error: ENOENT: … /fb020b-drive/nodegx.project.json
+    at parseProject (src/parse/parseProject.ts:66)
+```
+
+`parseProject` reads **`nodegx.project.json` only**. A classic `project.json` — the pre-0.2.0
+format, which the editor imports rather than opens — is not a bad export, it is not an export at
+all. Of the 101 directories under `NodeGX test projects`: **60 v2, 40 classic, 1 neither.**
+
+This is very likely correct as product behaviour (a user's classic project is imported to v2
+first; `fb020b-drive` still carries its `IMPORT-REPORT.md`). **It is a fact about this phase's
+instrument, not about the exporter**, and it has been unmarked on every from-disk row since §30.3.
+Split by format, s61's own census reads:
+
+| | v2 (60, exportable) | classic (40, unparseable) |
+|---|---|---|
+| `For Each` output wires | 67 | 9 |
+| `BARE-NAME` | 18 | 0 |
+| `WRONG-PREFIX(sig→val)` | **8** | **4** |
+| `itemOutput-<name>` | **0** | 1 |
+
+🔴 **Correction to §32.3.** *"12 such wires sit in 10 project directories"* is arithmetically right
+and reads one way too wide: **4 of the 12 are in `fb020b-drive`**, which the exporter cannot open,
+and the other 8 are §32.3's own one-graph-copied family. The comment at `plan.ts:7874` says 12; it
+now says which 8 the exporter can ever reach. This is the same shape §32.3 caught by `md5` — a
+count that is true, over a population that is not the one the reader assumes.
+
+### §33.3 §31.1's limit #1, measured — and it comes back clean on the exportable half
+
+§31.1 left "a catalog/runtime disagreement over a *declared* port" explicitly unexamined, and both
+§31 and §32 answered the port question by reading the **template**. But `resolveSourcePortKind`
+(`parseProject.ts:313`) reads the node's own **`dynamicports` first**, and never consults the
+template at all — so the two can disagree and nothing had compared them.
+
+They were compared. Over the 60 v2 projects: **33 relay wires declared in `dynamicports`, 33
+agree with the template, 0 disagree.**
+
+⚠️ **4 disagreements exist and they are all in `fb020b-drive`** — `dynamicports` says
+`itemOutputSignal-Selection Changed` is a `signal`, the template declares that output a value.
+`dynamicports` is the loser: `_managePortsForNode` (`foreach.tsx`) mints ports from the
+template's declarations, so the runtime registers `itemOutput-Selection Changed` and the persisted
+record is a stale snapshot. It is an **imported** classic project, which is where a stale snapshot
+would come from, and the exporter cannot read it. So the limit is real, its only instances are
+out of reach, and §32's template-first gate is the right way round.
+
+⚠️ **Also measured, and it is why this was not obvious:** dynamic ports **are** persisted, as
+`dynamicports` on the For Each node, in 48 of the 62 projects that have a repeater. §30.3 recorded
+*"dynamic ports are derived rather than persisted, so in no project file either"* — that is **false
+as written**; what is true is that they are not persisted **in the fixtures**, which is where §30.3
+was measuring. `note-desk` and `relay-desk` carry none, so every fixture row exercises the
+fall-through path and none exercises the path 48 real projects take first.
+
+### §33.4 The branch that still carries the sentence §29 disproved — and why it is left alone
+
+`plan.ts:7211` refuses a `For Each → Component Outputs` **value**-port wire with
+*"which row fired is not statically expressible in this slice"* — word for word the sentence §29
+disproved for the id, and §31.2's shape exactly: one branch, several populations, a reason true of
+one. It never looks at `fromProperty`, so a bare relay name (dead port), a lifecycle pulse, a
+signal-prefixed value and a genuine `itemOutput-` all get the same sentence.
+
+**It is left unchanged, deliberately, and the measurement is the argument.** Wires reaching that
+branch: **v2 corpus 0, fixtures 0, classic 2.** All 18 exportable `For Each → Component Outputs`
+wires go into **signal** ports and take the other path (`plan.ts:6979`), which §31 already split.
+Changing behaviour here would need a new fixture arm for a shape no reachable project has — which
+is the case §32.4 declined on its own census, for the same reason. The comment now records that the
+sentence is the disproved one and that its population is empty, so the next reader inherits the
+measurement rather than the sentence.
+
+### §33.5 What proves it, and the reading that was wrong first
+
+Four sweeps in the s62 scratchpad, all from disk, all reusable: `rowvalue_sweep.py` (row values and
+where they come from), `declared_sweep.py` (is the relay port declared on the node),
+`disagree_sweep.py` (dynamicports vs template; and every wire into a `SetModelProperties`),
+`outsink_sweep.py` (the `plan.ts:7211` population). Plus `foreach_sweep_fixed.py` — s61's census
+with the loader fix below.
+
+🔴 **The first run of `declared_sweep.py` reported 9 wires, and 9 was a lie.** 69 of 101 projects
+had thrown inside the loader and the handler wrote `ERR …` to a stderr file **that was not read**.
+A per-project `try/except` in a sweep does not report an absence; it manufactures one, and the
+number it prints is small, plausible, and shaped like a finding.
+
+✅ **What caught it was running s61's census unmodified as a control first** — it reported **76**
+against a recorded 76, so the corpus was reachable and my 9 was mine. This is
+[[a-control-pair-proves-what-you-varied-only]] doing its job: without the known-firing arm beside
+it, "only 9 relay wires exist in the whole corpus" is exactly the kind of clean result that gets
+written down.
+
+⚠️ **The crash itself is a parse fact worth keeping**: in some v2 components a node's `children`
+holds **id strings**, not nested objects, so any walker must skip non-dicts. s61's loader never
+flattened and so never hit it — and, checked directly, walking children changes the corpus count
+**not at all** (76 either way), because every `For Each` sits at root level. s61's census needed no
+correction on this point.
+
+⚠️ **Instruments marked**: all of the above read **source** ports, on projects **on disk**, and
+now report the v2/classic split. The target-port side (§31.1's limit #2) is still examined by
+nothing.
+
+Gates: **tsc 0**, **jest 1158/1158 in 46 suites**, picker **70/127 (55.1%)**, ledger 175 types,
+46 test files on disk. No behaviour changed this session; comments and recorded reasons did.
+
+### §33.6 What this leaves
+
+- 🔴 **`itemOutput-<name>` should come off the top of the list.** It gates **zero** exportable
+  wires. §30.5 and §32.6 both name it "the single port in front of the rest of the collection-state
+  slice"; measured, it is in front of a shape nobody builds. Both entries are corrected in place.
+- 🔴 **The shape actually in front of the slice is the row-owned write** (§4): a control inside a
+  row writing onto that row's record — `checkbox.onChange → Set Object Properties.store`,
+  `Model2.id → modelId`. **1 independent graph in the exportable corpus, 6 corpus-wide, 14 nodes.**
+  Whether it translates is a real question and nobody has asked it against the code since §4; the
+  emitted row already closes over its own `item`, which is the fact that unblocked §29 and §30.
+  Owner **`NONE`** — and it is a design question (`Collection.updateWhere` **replaces** the row
+  object, §30.2's third warning) rather than a wiring one.
+- ⚠️ **Every from-disk row in this phase now owes a v2/classic split.** §30.3, §31.1 and §32.3 were
+  all measured over a corpus 40% of which the exporter refuses at `parseProject`. None of their
+  *conclusions* moves — checked, not assumed — but their counts read wider than they are.
+- ⚠️ **No fixture carries `dynamicports`**, and 48 of 62 real projects with a repeater do. Every
+  fixture row exercises the fall-through in `resolveSourcePortKind`; none exercises the branch real
+  projects hit first. Cheap to close: one fixture arm.
+- ⚠️ §31.1's limit #2 — the **target**-port side — remains examined by nothing.
