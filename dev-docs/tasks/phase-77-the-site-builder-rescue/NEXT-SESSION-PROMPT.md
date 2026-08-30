@@ -178,25 +178,31 @@ npm run template:site-builder && cd packages/noodl-mcp && npx jest sb007Template
   twice green; the last on the committed bytes).
 - ⬜ **Nothing else was run, deliberately.** **This session changed no product source** — the only
   delta is one new spec file — so no existing suite could have moved. 🔴 **And `sb007Template` was
-  NOT run on purpose**: a peer had uncommitted D32 work in it all session, so a reading would have
-  been about their in-flight edit rather than about anything here.
+  NOT run on purpose**: a peer held uncommitted D32 work in it all session (since landed as
+  `ff6183cd`), so any reading would have been about their in-flight edit rather than anything here.
+  ⚠️ **That gate is therefore UNREAD at this HEAD by this session** — if you need it, run it fresh.
 
 ## The register — an APPENDIX, not the agenda
 
 🔴 **Every row below is `BACKLOG` unless it says `BLOCKS <AC>`.** Do not open a session on one of
 these while a task is unbuilt.
 
-### `BACKLOG` — [D32](DEFECTS-THE-SITE-BUILDER-FOUND.md#d32), the gate that let D31 through
+### 🟢 [D32](DEFECTS-THE-SITE-BUILDER-FOUND.md#d32) — **FIXED by a peer during s33.** Off the board.
 
-⚠️ **Blocks no AC.** ⚠️ **A peer appeared to be fixing this during s33** — `sb007Template.test.ts`
-carried uncommitted edits (a deep-clone fix in `migrationProject()` plus a reach-counting assertion
-naming D32) from ~21:44 onward. 🔴 **That is an observation of a working tree, not a closure.**
-**Re-read the file and `git log` before either claiming it is done or starting it.**
+`sb007Template`'s `gradeMountTriggered` examined **1 of 65** of the migration's writes, which is how
+D31 shipped past a suite that already knew about the migration. A peer fixed it in parallel with
+this session and landed it as **`ff6183cd` — `fix(p80/def-032)`**, touching
+`packages/noodl-mcp/tests/sb007Template.test.ts` (+294) plus phase 80's own register. ✅ **Verified
+from `git log`, not from the working tree** — s33 first recorded it as an uncommitted-edit sighting
+and then re-checked once the commit landed.
 
-`sb007Template`'s `gradeMountTriggered` walks the migration's writes and opens with a `continue` for
-any node not triggered by `didMount` — so it examines **1 of 65**. **D31's three writes were among
-the skipped.** 🔴 **Do not "fix" it by making the template state all 65.** **The gate is the gap.**
-✅ **Count what a checker REACHED, not just what it flagged.**
+⚠️ **Note the register it moved to: it is `DEF-032` in PHASE 80**, not a phase-77 row any more.
+🔴 **IDs collide across registers — qualify them.** ✅ The lesson survives the fix:
+**count what a checker REACHED, not just what it flagged.**
+
+### The register otherwise
+
+No row was added by s33, and no open row `BLOCKS` an AC except **D15**.
 
 ## Where the phase now stands
 
@@ -233,7 +239,7 @@ the skipped.** 🔴 **Do not "fix" it by making the template state all 65.** **T
 | **D28** | 🟢 FIXED by a peer as phase 80 `DEF-027` during s32 |
 | **D29** | 🔴 `NONE` — one-way gate latches; **a peer's row**, from phase 80 s21 |
 | **D30 / D31** | 🟢 FIXED + DRIVEN s32 |
-| **D32** | 🔴 s32, `NONE` — ⚠️ **a peer had uncommitted work on it during s33; verify before touching** |
+| **D32** | 🟢 **FIXED by a peer during s33 as phase 80 `DEF-032` (`ff6183cd`)** — `sb007Template`'s reach, 1 of 65 |
 
 ## Standing context
 
