@@ -24,7 +24,18 @@ Read in this order:
 
 ## 🔴 FIRST JOB — pick one; there is no forced next step
 
-s32 closed both of s31's rows and opened one of its own. What is left is a choice, not a sequence:
+s32 closed both of s31's rows and opened one of its own. What is left is a choice, not a sequence.
+
+🔴 **But the choice is wider than the four options below, and this handoff hid that until now.**
+**Seven tasks are still `⬜ open` and have never been built** — SBR-005, 009, 010, 011, 012, 013,
+014 — and **SBR-003 is 🟡 with an owed probe**. s31's stance table listed none of them and s32
+copied it forward before catching it; the table at the foot of this file is now **re-derived from
+the task FILES**. ⚠️ **Check [README.md](README.md) §5 for the dependency order before picking** —
+the options below are the ones with a known cheap next action, not the board.
+
+⚠️ **And `TASKS.md` carried SBR-016 as `⬜ open` while its own file has said 🟢 FIXED AND DRIVEN
+since s15.** Corrected at s32. 🔴 **Where a status column and a task file disagree, the FILE is the
+artefact** — the column is a summary somebody has to remember to update.
 
 ### (a0) 🔴 **[D32](DEFECTS-THE-SITE-BUILDER-FOUND.md#d32) — the gate that let D31 through**
 Filed by the parallel s32 session that fixed D30/D31 in a worktree; the template fix landed from the
@@ -157,14 +168,27 @@ npm run template:site-builder && cd packages/noodl-mcp && npx jest sb007Template
 
 ## Where the phase now stands
 
+🔴 **Re-derived from the task FILES at s32** — s31's version omitted seven open rows and carried
+SBR-016 as open when its own file had said 🟢 since s15.
+
 | | verdict |
 |---|---|
-| **SBR-005** | ⬜ open — **and it owns AC3's gallery model** |
+| **SBR-001 / SBR-002** | ✅ closed s2 / s4 |
+| **SBR-003** | 🟡 built, swept, driven — **owed: the `var(--token)` dimension-port probe** |
+| **SBR-004** | 🟢 AC1/2/4 driven · AC3 is SBR-012's |
+| **SBR-005** | ⬜ **OPEN, never built** — **and it owns AC3's gallery model** |
 | **SBR-006** | AC1/2/4/5 ✅ · **AC3 🟡** — `Unpublish` is the one act of three still undriven |
+| **SBR-009** | ⬜ **OPEN, never built** — the theme editor demos itself |
+| **SBR-010** | ⬜ **OPEN, never built** — messages |
+| **SBR-011** | ⬜ **OPEN, never built** — live preview over the realtime hub; **ruled BUILD, not strike** |
+| **SBR-012** | ⬜ **OPEN, never built** — the raw-colour gate; **it owns SBR-004's AC3** |
+| **SBR-013** | ⬜ **OPEN, never built** — the doctrine rule |
+| **SBR-014** | ⬜ **OPEN, and LAST** — re-verifies every person-sentence AC, so it cannot go before the rest |
 | **SBR-007** | 🟢 AC1 ✅, AC4 ✅, AC5 ✅ · **AC2 ✅ ALL THREE HALVES AND ON THE SHIPPED ARTEFACT** (outcome s27, gesture s30, real screen s31, shipped project s32) · AC3 blocked by D15 alone · D18/D20/D24/D30/D31 ✅ |
 | **SBR-008** | ✅ all five, s18 |
 | **SBR-015** | AC1/2/3 ✅ s13 · **AC4** 🟡 re-read: DEF-004(a) now writes a step per action |
-| **SBR-016 / SBR-017** | ✅ s14/s15 |
+| **SBR-016** | ✅ **s15, all four ACs** — ⚠️ `TASKS.md` read `⬜ open` until s32 corrected it |
+| **SBR-017** | ✅ s14 · AC1 🟡 half (SBR-016 owned the other half) |
 | **D13 / D16** | 🔴 open, `NONE` |
 | **D14** | 🟢 fixed s20, DRIVEN s22 — the **browser** deploy path is still exposed and `NONE` |
 | **D15** | 🔴 `NONE` — no drop target for a FILE; **AC3 cannot be met**. Stands at HEAD |
@@ -178,6 +202,7 @@ npm run template:site-builder && cd packages/noodl-mcp && npx jest sb007Template
 | **D28** | 🟢 **FIXED by a peer as phase 80 `DEF-027`** during s32 — the spread was discarding the author's `cssClassName` |
 | **D29** | 🔴 `NONE` — one-way gate latches; **a peer's row**, filed from phase 80 s21 |
 | **D30 / D31** | 🟢 **FIXED + DRIVEN s32** — template work, done in this phase, as s31 decided |
+| **D32** | 🔴 **NEW s32, `NONE`** — the gate that let D31 through: `gradeMountTriggered` examined **1 of 65** nodes |
 
 ## Standing context
 
