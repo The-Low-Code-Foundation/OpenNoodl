@@ -1,14 +1,14 @@
 # SB-011 — A query that widens when it cannot narrow
 
-> 🔴 **PHASE 76 IS CLOSED. THIS TASK IS OPEN AND IS NOW OWNED BY PHASE 80 AS DEF-012.**
+> 🔴 **PHASE 76 IS CLOSED. THIS TASK IS OWNED BY PHASE 80 AS DEF-012.**
 > Carried forward by reference on 2026-08-29 — this file keeps the measurements; phase 80
 > keeps the schedule. See
 > [phase 80's task list](../phase-80-the-defects-the-templates-found/TASKS.md).
 
-
-**Status: ⬜ OPEN — measured, worked around in SB-004, not fixed.** Two independent ways a
-`Query Records` node inside a cloud function returns **every row in the class** when it was asked
-for a few, both found by SB-004 §7's real-backend run (2026-08-26 s4).
+**Status: 🟡 §1 CLOSED (2026-08-30, phase 80 s15) — §2 measured and left open with a
+finding.** §5 below records what landed and what the re-measurement corrected. Two independent
+ways a `Query Records` node inside a cloud function returns **every row in the class** when it
+was asked for a few, both found by SB-004 §7's real-backend run (2026-08-26 s4).
 
 Filed together because they share a consequence and a direction: a filter that cannot be applied
 becomes no filter, and the caller is told nothing. In a read-only view that shows too much; in
@@ -101,6 +101,72 @@ Candidate: a query with declared filter parameters should not run until they hav
 least once, rather than running immediately and dropping them. That changes long-standing behaviour
 for browser graphs too, so it **needs a corpus sweep, not an argument** — same disposition as
 SB-009.
+
+## 5. What phase 80 s15 measured and built (2026-08-30)
+
+**Re-driven before building** (the standing instruction): the defect reproduced at HEAD exactly
+as §1 records — string arm 2 rows, pointer arm all 3 as a 200. But two of this file's readings
+had to be corrected by measurement first:
+
+- 🔴 **"Nothing in the cloud runtime populates `_collections`" was too wide.** The cache is a
+  lazy getter over `NoodlRuntime.instance.getMetaData('dbCollections')` — and a deployed cloud
+  bundle carries the **whole** `project.metadata` (`exporter/cloudFunctions.ts:298`). What was
+  actually absent was the *metadata*: the §1 probe's bundle carried `metadata: {}`, and no
+  built-in-backend project had `dbCollections` in a shape `schemaFor` could read.
+- 🔴 **The corpus says who this bites, and it is not who §1 implies.** 280 `points to` rules in
+  14 projects: **264 carry a legacy Parse-era `schema.properties` entry with `targetClass`** —
+  those translate today, in cloud functions too, and were not touched. **16 rules (4 projects)
+  had no usable schema** — those were silently widening and now fail loudly. **0 rules** sat on
+  the built-in backend's `columns` shape — the gap was fully forward-looking, i.e. exactly the
+  thing SB-004 hit.
+
+**What landed — both §1 candidate fixes, plus the schema chain end to end:**
+
+1. **A failed translation can no longer widen** (`dbcollectionnode2.ts::getStorageFilter`): the
+   catch returns `{ failed }`, `fetch()` answers it with `setError` — `error` port, `failure`
+   signal, `raiseRuntimeError` (which DEF-004's step record now carries on a backend). The same
+   guard went into the cloud `Aggregate Records` node, whose translation failure previously
+   **threw out of the update pass** — a hang, neither fetched nor failed
+   (`aggregatenode.js`; graded by `nda-012` C6).
+2. **`schemaFor` reads the built-in backend's cache shape** (`queryutils.ts`): a `dbCollections`
+   entry carrying `columns: [{name, type, targetClass}]` — the shape `SchemaHandler` caches from
+   `backend:getSchema` — now yields a `FilterSchema`; only the legacy `.schema.properties` shape
+   did before.
+3. **A first-write Pointer column records its `targetClass`** (`LocalSQLAdapter` create/save +
+   `AdapterFacade.ensureImportShape`): the Pointer value's own `className` was being dropped, so
+   nothing the editor could ever cache would have carried a target class. `_Schema` →
+   `/admin/schema` → `backend:getSchema` → `dbCollections` all pass it through verbatim, so the
+   chain closes without touching any of them.
+
+**Specs** — `sb004-publication-invariant.test.ts`: the pinned pointer arm **inverted in place**
+(it asserted the defect: 200 with n=3; it now asserts the meaning: the graph's own failure route
+answers, 400) and a new `DEF-012` describe pins the same filter **narrowing to 2** once the
+bundle carries its schema, plus the write-half (`targetClass` visible in `/admin/schema/Chunk`).
+`queryutils.test.ts` — the `columns` shape translates; a column with no `targetClass` still
+refuses. **Three mutants, each killed by exactly the arm built for it** (columns branch off →
+narrow arms red; swallow restored → refusal arm red; targetClass dropped → write-half red).
+
+⚠️ **Known limits, on record:**
+- `_collections` is still module-global and materialises **once** per process from whichever
+  runtime constructed last. On a shared local backend serving several bundles, the schema a
+  filter translates against is the last-loaded bundle's. Pre-existing; the duplicate-name crash
+  (phase 80 TASKS.md, owner `NONE`) sits in front of it in every real shared arrangement.
+- A Pointer column created **before** this fix keeps its bare `Pointer` type — `addColumn`
+  swallows the duplicate and never updates `_Schema`. Backfilling belongs with *"nothing gives an
+  auto-created class its declared columns"* (same register, owner `NONE`).
+- An MCP-authored project with no editor never gets `dbCollections` cached at all, so its cloud
+  `points to` fails loudly rather than working. Loud is the fix's floor, not its ceiling.
+
+**§2 measured, not built.** 270 parameter-fed `Query Records` nodes in the corpora: **265 sit at
+the run-on-change default** (78 in cloud components, 15 projects) — the population the load-time
+unfiltered fetch fires for. 🔴 **The candidate fix as §2 states it collides with the
+optional-filter contract**: `dropUnresolvedConnected: true` exists because *a rule whose port
+supplies nothing does not narrow* — so "wait until the parameters have been supplied" cannot
+distinguish *not yet arrived* from *deliberately absent*, and would leave an optional-filter
+query never running at all. The honest candidate is narrower: a **door-side precondition** (the
+DEF-002 family) on cloud-function queries whose filter has connected parameters and whose
+run-on-change boxes are on — SB-004's own workaround, taught at authoring time, no runtime
+behaviour change to sweep. Left open with this note.
 
 ## Related
 

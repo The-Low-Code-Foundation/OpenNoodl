@@ -143,6 +143,13 @@ var AggregateNode = {
       }
 
       const f = this.getStorageFilter();
+      if (f && f.failed) {
+        // Same rule as Query Records: a filter that cannot be translated must
+        // fail the node — the alternative here was a throw that abandoned the
+        // update pass, so the graph neither fetched nor failed.
+        this.setError(f.failed);
+        return;
+      }
       this._internal.currentQuery = {
         where: f.where,
       };
@@ -167,13 +174,17 @@ var AggregateNode = {
       const storageSettings = this._internal.storageSettings;
       if (storageSettings['storageFilterType'] === undefined || storageSettings['storageFilterType'] === 'simple') {
         // Create simple filter
-        const _where =
-          this._internal.visualFilter !== undefined
-            ? QueryUtils.convertVisualFilter(this._internal.visualFilter, {
-                queryParameters: this._internal.queryParameters,
-                collectionName: this._internal.name
-              })
-            : undefined;
+        let _where;
+        if (this._internal.visualFilter !== undefined) {
+          try {
+            _where = QueryUtils.convertVisualFilter(this._internal.visualFilter, {
+              queryParameters: this._internal.queryParameters,
+              collectionName: this._internal.name
+            });
+          } catch (e) {
+            return { failed: e.message || 'The filter could not be applied.' };
+          }
+        }
 
         return {
           where: _where,

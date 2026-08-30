@@ -182,7 +182,9 @@ interface DbCollectionNodeInstance extends NodeInstance {
   setError(err: string): void;
   scheduleFetch(): void;
   fetch(): void;
-  getStorageFilter(): { where?: ParseWhere; neutralWhere?: Filter; sort?: string | string[] } | undefined;
+  getStorageFilter():
+    | { where?: ParseWhere; neutralWhere?: Filter; sort?: string | string[]; failed?: string }
+    | undefined;
   getStorageLimit(): number | undefined;
   getStorageSkip(): number | undefined;
   getStorageFetchTotalCount(): boolean;
@@ -847,6 +849,10 @@ const DbCollectionNode: NodeDefinitionOptions = {
 
       const _c = Collection.get();
       const f = this.getStorageFilter();
+      if (f && f.failed) {
+        this.setError(f.failed);
+        return;
+      }
       const limit = this.getStorageLimit();
       const skip = this.getStorageSkip();
       const count = this.getStorageFetchTotalCount();
@@ -923,12 +929,20 @@ const DbCollectionNode: NodeDefinitionOptions = {
             _neutral = QueryUtils.convertVisualFilterToNeutral(this._internal.visualFilter, filterOptions);
             _where = QueryUtils.convertVisualFilter(this._internal.visualFilter, filterOptions);
           } catch (e) {
-            this.context.editorConnection.sendWarning(
-              this.nodeScope.componentOwner.name,
-              this.id,
-              'query-collection-filter',
-              { message: (e as Error).message }
-            );
+            if (this.context.editorConnection) {
+              this.context.editorConnection.sendWarning(
+                this.nodeScope.componentOwner.name,
+                this.id,
+                'query-collection-filter',
+                { message: (e as Error).message }
+              );
+            }
+            // A filter that cannot be translated must not fall away: an
+            // unfiltered query is every row in the class, answered as a
+            // success. SB-011 measured a cloud function's publish flow opening
+            // every Section on the site through exactly this path — the warning
+            // above goes to a socket a deployed backend does not have.
+            return { failed: (e as Error).message || 'The filter could not be applied.' };
           }
         }
 

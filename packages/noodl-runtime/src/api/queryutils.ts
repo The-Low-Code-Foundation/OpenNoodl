@@ -118,8 +118,22 @@ function schemaFor(collectionName: string | undefined): FilterSchema | undefined
   } catch (e) {
     return undefined;
   }
-  if (!collection || !collection.schema) return undefined;
-  return { collection: collectionName, properties: collection.schema.properties };
+  if (!collection) return undefined;
+  if (collection.schema) return { collection: collectionName, properties: collection.schema.properties };
+  // `dbCollections` metadata comes in two shapes: a Parse-era entry carries
+  // `schema.properties`; the built-in backend's cache (SchemaHandler reading
+  // `backend:getSchema`) carries a `columns` array. A `pointsTo` filter against
+  // the second shape used to read as "no schema" and be refused.
+  if (Array.isArray(collection.columns)) {
+    const properties: Record<string, { type?: string; required?: boolean; targetClass?: string }> = {};
+    for (const column of collection.columns) {
+      if (column && column.name) {
+        properties[column.name] = { type: column.type, required: column.required, targetClass: column.targetClass };
+      }
+    }
+    return { collection: collectionName, properties };
+  }
+  return undefined;
 }
 
 /**

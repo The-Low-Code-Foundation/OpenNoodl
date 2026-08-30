@@ -980,7 +980,13 @@ class LocalSQLAdapter {
         for (const [key, value] of Object.entries(options.data)) {
           if (key !== 'id' && key !== 'createdAt' && key !== 'updatedAt') {
             const type = this._inferType(value);
-            this.schemaManager.addColumn(options.collection, { name: key, type });
+            const column: { name: string; type: string; targetClass?: string } = { name: key, type };
+            // A Pointer value names its class. Recording it is what gives a
+            // `pointsTo` filter a `targetClass` to translate against; a bare
+            // `Pointer` column refuses that filter forever.
+            const className = type === 'Pointer' && (value as { className?: string }).className;
+            if (className) column.targetClass = className;
+            this.schemaManager.addColumn(options.collection, column);
           }
         }
       }
@@ -1023,7 +1029,13 @@ class LocalSQLAdapter {
         for (const [key, value] of Object.entries(options.data)) {
           if (key !== 'id' && key !== 'createdAt' && key !== 'updatedAt') {
             const type = this._inferType(value);
-            this.schemaManager.addColumn(options.collection, { name: key, type });
+            const column: { name: string; type: string; targetClass?: string } = { name: key, type };
+            // A Pointer value names its class. Recording it is what gives a
+            // `pointsTo` filter a `targetClass` to translate against; a bare
+            // `Pointer` column refuses that filter forever.
+            const className = type === 'Pointer' && (value as { className?: string }).className;
+            if (className) column.targetClass = className;
+            this.schemaManager.addColumn(options.collection, column);
           }
         }
       }

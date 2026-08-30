@@ -105,6 +105,10 @@ const SITE_SECURITY = {
   functions: {
     publishPage: { call: 'role:admin' },
     duplicatePage: { call: 'role:admin' },
+    // SBR-007 AC2. Reordering is an admin act on an admin's own page — the same
+    // policy publish and duplicate carry, and the reason the drive below can
+    // assert a 403 for an outsider at all.
+    reorderSection: { call: 'role:admin' },
     submitContactForm: { call: 'public' },
     claimSite: { call: 'authenticated' }
   },
@@ -277,7 +281,11 @@ describe('SB-004 §7 — the publication invariant on a real backend', () => {
   // ==========================================================================
 
   describe('the deployed bundle is what the door wrote', () => {
-    it('carries all seven components under their cloud names', () => {
+    // 🔴 The list is DERIVED on both sides, so this cannot drift into checking a
+    // subset — which is what makes every drive below a reading about the whole
+    // authored set. Seven at SB-004; nine since SBR-007 AC2 added
+    // `reorderSection` and `site/SetSectionOrder`.
+    it('carries every authored component under its cloud name', () => {
       expect(bundle.components.map((c) => c.name).sort()).toEqual(
         SB004_COMPONENTS.map((c) => c.legacyName).sort()
       );
@@ -734,6 +742,169 @@ describe('SB-004 §7 — the publication invariant on a real backend', () => {
       expect((await client.get('/classes/ContactMessage', asUser(outsider))).status).toBe(403);
     });
   });
+
+  // ⚠️ **Placed last on purpose, and the reason is a defect rather than tidiness.**
+  // Run BEFORE the `duplicatePage` block, this drive makes that block fail four
+  // runs in five with `run-tasks/already-running` on duplicatePage's OWN node —
+  // state left behind by an earlier request, because a cloud function's graph is
+  // shared across requests. It is not call volume: ten `publishPage` calls and
+  // seven `submitContactForm` calls in the same slot are green five times out of
+  // five, and only this endpoint's traffic provokes it. Recorded as **D24**,
+  // unowned, with those controls. Ordering keeps this gate honest meanwhile —
+  // it does not fix anything, and D24 is the thing to fix.
+  // ==========================================================================
+  // 3b. reorderSection — SBR-007 AC2, the half a browser cannot do
+  // ==========================================================================
+
+  /**
+   * 🔴 **This is AC2's evidence, and the authoring side could not be.**
+   * `sb007Template.test.ts` can say the graph is shaped right; only a run can
+   * say `order` moved. The endpoint exists because reordering renumbers
+   * SIBLINGS: a `SectionRow` is a `For Each` template that knows its own id and
+   * nothing about the row above it, and the browser runtime has no loop node.
+   *
+   * Every reading below is taken from the STORED rows, never from the answer —
+   * the response says where the function thinks it put things, and that is the
+   * claim under test rather than the evidence for it.
+   */
+  describe('reorderSection renumbers the siblings a browser cannot reach (SBR-007 AC2)', () => {
+    let target: { page: string; sections: string[] };
+    let bystander: { page: string; sections: string[] };
+
+    const reorder = (pageId: string, sectionId: string, toIndex: number, as: Session = owner) =>
+      client.post<{ result?: Record<string, unknown> }>(
+        '/functions/reorderSection',
+        { pageId, sectionId, toIndex },
+        asUser(as)
+      );
+
+    /** The stored order of a page's sections, as ids, low `order` first. */
+    async function storedOrder(of: { sections: string[] }): Promise<string[]> {
+      const rows = await Promise.all(
+        of.sections.map(async (id) => ({ id, order: (await readAsAdmin('Section', id)).json.order as number }))
+      );
+      return rows.sort((a, b) => a.order - b.order).map((r) => r.id);
+    }
+
+    beforeAll(async () => {
+      // Three sections, born `order` 0/1/2 — AC2's own sentence is "from position
+      // 3 to 1", so three is the smallest list that can express it.
+      target = await makeDraftPage('Team', 'team', ['hero', 'richText', 'cta']);
+      // 🔴 The same control F5 exists for, and it is not decoration here either:
+      // this endpoint runs a filtered query and then WRITES to every row it came
+      // back with. An unfiltered one would renumber the whole site, and an
+      // assertion that only reads the target page cannot see that.
+      bystander = await makeDraftPage('Careers', 'careers', ['hero', 'richText']);
+    });
+
+    it('CONTROL: the page starts in the order it was created in', async () => {
+      // Without this, "the order changed" could be read off a page that was
+      // never in the order the next test assumes it moved from.
+      expect(await storedOrder(target)).toEqual(target.sections);
+      expect(await storedOrder(bystander)).toEqual(bystander.sections);
+    });
+
+    it('🔴 AC2: the third section moves to the first, in the STORED rows', async () => {
+      const [first, second, third] = target.sections;
+      const res = await reorder(target.page, third, 0);
+      expect(res.status).toBe(200);
+      expect(res.json.result).toEqual({ sectionId: third, order: 0 });
+
+      // The reading that is actually AC2: what a visitor's query would return.
+      expect(await storedOrder(target)).toEqual([third, first, second]);
+    });
+
+    it('renumbered CONTIGUOUSLY from zero, which is what makes a next move safe', async () => {
+      // The endpoint writes each row its INDEX, so `order` is 0..n-1 afterwards
+      // however gapped it was before. The browser's planners rely on positions
+      // rather than on this — but a template whose numbers drift apart forever
+      // would be a different artefact after every move.
+      const orders = await Promise.all(
+        target.sections.map(async (id) => (await readAsAdmin('Section', id)).json.order as number)
+      );
+      expect(orders.slice().sort()).toEqual([0, 1, 2]);
+    });
+
+    it('🔴 left every OTHER page exactly where it was', async () => {
+      expect(await storedOrder(bystander)).toEqual(bystander.sections);
+      const orders = await Promise.all(
+        bystander.sections.map(async (id) => (await readAsAdmin('Section', id)).json.order as number)
+      );
+      expect(orders).toEqual([0, 1]);
+    });
+
+    it('moves back down again — one graph, driven by the index', async () => {
+      const [first, second, third] = target.sections;
+      const res = await reorder(target.page, third, 2);
+      expect(res.status).toBe(200);
+      expect(res.json.result).toEqual({ sectionId: third, order: 2 });
+      expect(await storedOrder(target)).toEqual([first, second, third]);
+    });
+
+    it('a move to where it already is answers rather than hanging', async () => {
+      // 🔴 The empty-task-list path, and it is a real risk rather than a
+      // hypothetical: this graph answers from `RunTasks.done`, and a node that
+      // reported nothing for an empty list would leave the request with no exit
+      // at all — a thirty-second 504, which is the SBR-015 shape. `Run Tasks`
+      // fires `Done` on an empty list on purpose (`runtasks.ts:664-668`), and
+      // this is the assertion that the purpose holds end to end.
+      const before = await storedOrder(target);
+      const res = await reorder(target.page, target.sections[0], 0);
+      expect(res.status).toBe(200);
+      expect(await storedOrder(target)).toEqual(before);
+    });
+
+    it('clamps an index past the end instead of refusing or corrupting', async () => {
+      const [first, second, third] = target.sections;
+      const res = await reorder(target.page, first, 99);
+      expect(res.status).toBe(200);
+      expect(res.json.result).toEqual({ sectionId: first, order: 2 });
+      expect(await storedOrder(target)).toEqual([second, third, first]);
+
+      // Put it back, so the cases after this one start where they think they do.
+      await reorder(target.page, first, 0);
+      expect(await storedOrder(target)).toEqual([first, second, third]);
+    });
+
+    it('refuses a section that belongs to another page, and writes nothing', async () => {
+      // The `plan` node throws on purpose here. Without the `failure` edge that
+      // throw would be a silent 504 — SBR-015's whole subject.
+      const before = await storedOrder(target);
+      const res = await reorder(target.page, bystander.sections[0], 0);
+      expect(res.status).toBeGreaterThanOrEqual(400);
+      expect(await storedOrder(target)).toEqual(before);
+      expect(await storedOrder(bystander)).toEqual(bystander.sections);
+    });
+
+    it('🔴 keeps a PUBLISHED page readable by the world after a reorder', async () => {
+      // The invariant this endpoint could most easily have broken. Its worker
+      // writes `prop-order` with NO access rules; had it carried the draft rule
+      // the way `SetSectionAccess` does, moving a row on a live page would have
+      // revoked the world's read on it while `Page.published` stayed true.
+      await client.post('/functions/publishPage', { pageId: target.page, publish: true }, asUser(owner));
+      const [first, , third] = target.sections;
+      expect((await readAnonymously('Section', third)).status).toBe(200);
+
+      const res = await reorder(target.page, third, 0);
+      expect(res.status).toBe(200);
+
+      for (const section of target.sections) {
+        const row = await readAsAdmin('Section', section);
+        expect(row.json.ACL).toEqual({ ...DRAFT_ACL, '*': { read: true, write: false } });
+        expect((await readAnonymously('Section', section)).status).toBe(200);
+      }
+      expect(await storedOrder(target)).toEqual([third, first, target.sections[1]]);
+
+      await client.post('/functions/publishPage', { pageId: target.page, publish: false }, asUser(owner));
+    });
+
+    it('refuses a non-admin caller, and changes nothing when it does', async () => {
+      const before = await storedOrder(target);
+      const denied = await reorder(target.page, target.sections[0], 2, outsider);
+      expect(denied.status).toBe(403);
+      expect(await storedOrder(target)).toEqual(before);
+    });
+  });
 });
 
 // ============================================================================
@@ -830,15 +1001,14 @@ describe('SB-004 §7 — an unprovisioned setup token fails CLOSED', () => {
  * an undefined filter is a query with no `where`, and a query with no `where`
  * returns **every row in the class** — into a flow whose next act is to rewrite
  * access control on everything it was handed.
+ *
+ * DEF-012 closed that: the catch now fails the node, so the arm below pins the
+ * refusal answering through the graph's own failure route — and the describe
+ * after it pins the same filter NARROWING once the bundle carries its schema.
  */
-describe('SB-004 §7 — a `points to` filter cannot narrow inside a cloud function', () => {
-  let dataDir: string;
-  let service: BackendService;
-  let base = '';
-  const client = httpClient(() => base);
 
-  /** Request → prep → Query Records(filter) → count what came back. */
-  const probe = (name: string, property: string, operator: string) => ({
+/** Request → prep → Query Records(filter) → count what came back. */
+const pointerProbe = (name: string, property: string, operator: string) => ({
     name: `/#__cloud__/${name}`,
     ports: [],
     roots: [],
@@ -907,6 +1077,11 @@ describe('SB-004 §7 — a `points to` filter cannot narrow inside a cloud funct
     ]
   });
 
+describe('SB-004 §7 — a `points to` filter cannot narrow inside a cloud function', () => {
+  let dataDir: string;
+  let service: BackendService;
+  let base = '';
+  const client = httpClient(() => base);
   let mine = '';
 
   beforeAll(async () => {
@@ -915,7 +1090,7 @@ describe('SB-004 §7 — a `points to` filter cannot narrow inside a cloud funct
     fs.writeFileSync(
       path.join(dataDir, 'workflows', 'probe.workflow.json'),
       JSON.stringify({
-        components: [probe('byPointer', 'owner', 'points to'), probe('byString', 'ownerId', 'equal to')],
+        components: [pointerProbe('byPointer', 'owner', 'points to'), pointerProbe('byString', 'ownerId', 'equal to')],
         settings: {},
         metadata: {}
       })
@@ -960,15 +1135,104 @@ describe('SB-004 §7 — a `points to` filter cannot narrow inside a cloud funct
     expect(res.json.result?.n).toBe(2);
   });
 
-  it('🔴 the POINTER arm returns ALL THREE — silently, as a success', async () => {
+  it('the POINTER arm with no schema fails LOUDLY — never a success carrying every row', async () => {
+    // DEF-012 inverted this pin. As authored by SB-004 §7 this arm asserted the
+    // defect (`200`, n === 3 — every row in the class, answered as a success,
+    // which is how publishing one page opened every Section on the site). The
+    // meaning, not the number: a filter that cannot be translated must not
+    // widen — the node fails, and the graph's own failure route answers.
     const res = await client.post<{ result?: { n?: number }; error?: string }>('/functions/byPointer', {
       pageId: mine
     });
-    // Not an error and not an empty set: a 200 carrying more rows than were
-    // asked for. That is why SB-004 §2's fallback was taken rather than the
-    // Pointer being kept with a note about it.
+    expect(res.status).toBe(400);
+    expect(res.json.result).toBeUndefined();
+    expect(res.json.error).toBe('the query itself failed');
+  });
+});
+
+/**
+ * DEF-012's other half: the same filter NARROWS once the bundle carries the
+ * schema. The metadata here is the `columns` shape `SchemaHandler` caches into
+ * `dbCollections` from `backend:getSchema` — not the Parse-era
+ * `schema.properties` shape — because the built-in backend's cache is the shape
+ * every project on the shipped backend actually carries, and it is the shape
+ * `schemaFor` used to read as "no schema at all".
+ */
+describe('DEF-012 — the pointer filter narrows once the bundle carries its schema', () => {
+  let dataDir: string;
+  let service: BackendService;
+  let base = '';
+  const client = httpClient(() => base);
+  let mine = '';
+
+  beforeAll(async () => {
+    dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'def012-ptr-'));
+    fs.mkdirSync(path.join(dataDir, 'workflows'), { recursive: true });
+    fs.writeFileSync(
+      path.join(dataDir, 'workflows', 'probe.workflow.json'),
+      JSON.stringify({
+        components: [pointerProbe('byPointer', 'owner', 'points to')],
+        settings: {},
+        metadata: {
+          dbCollections: [
+            {
+              name: 'Chunk',
+              columns: [
+                { name: 'owner', type: 'Pointer', targetClass: 'Owner' },
+                { name: 'ownerId', type: 'String' }
+              ]
+            }
+          ]
+        }
+      })
+    );
+    service = new BackendService({ dataDir, port: 0, backendId: 'def012-ptr', backendName: 'DEF-012 pointer probe' });
+    base = (await service.start()).listen.url;
+
+    const owner = await client.post<{ objectId: string }>('/classes/Owner', { name: 'mine' });
+    const other = await client.post<{ objectId: string }>('/classes/Owner', { name: 'theirs' });
+    mine = owner.json.objectId;
+    const chunk = (ownerId: string) =>
+      client.post('/classes/Chunk', {
+        ownerId,
+        owner: { __type: 'Pointer', className: 'Owner', objectId: ownerId }
+      });
+    await chunk(mine);
+    await chunk(mine);
+    await chunk(other.json.objectId);
+
+    // `CloudStore._collections` is a module-global cache, materialised by the
+    // FIRST filter translated in this process — the describe above, whose
+    // bundle has empty metadata. This service shares that module (jest keeps
+    // one registry per file), so the cache must be re-derived from THIS
+    // service's runtime — the newest `NoodlRuntime.instance` — or the arm
+    // below silently measures the other bundle's emptiness.
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    (require('@noodl/runtime/src/api/cloudstore') as { invalidateCollections(): void }).invalidateCollections();
+  });
+
+  afterAll(async () => {
+    await service?.stop();
+    fs.rmSync(dataDir, { recursive: true, force: true });
+  });
+
+  it('the first write recorded the Pointer column with its class — the half SchemaHandler caches', async () => {
+    // Before DEF-012 a first-write Pointer column was recorded as a bare
+    // `Pointer` — the value's own `className` was dropped — so nothing the
+    // editor could ever cache would have carried a `targetClass`.
+    const schema = await client.get<{ columns: Array<{ name: string; type: string; targetClass?: string }> }>(
+      '/admin/schema/Chunk',
+      adminHeaders(dataDir)
+    );
+    const ownerColumn = schema.json.columns.find((c) => c.name === 'owner');
+    expect(ownerColumn?.type).toBe('Pointer');
+    expect(ownerColumn?.targetClass).toBe('Owner');
+  });
+
+  it('the POINTER arm narrows to the two rows it asked for', async () => {
+    const res = await client.post<{ result?: { n?: number } }>('/functions/byPointer', { pageId: mine });
     expect(res.status).toBe(200);
-    expect(res.json.result?.n).toBe(3);
+    expect(res.json.result?.n).toBe(2);
   });
 });
 
