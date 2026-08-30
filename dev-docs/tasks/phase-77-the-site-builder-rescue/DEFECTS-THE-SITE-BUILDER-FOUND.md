@@ -1522,6 +1522,57 @@ touch the template, not the product surface) and s32 closed them here, which is 
 
 ---
 
+## D32 — 🔴 The pass that grades the migration's writes examines one of sixty-five
+
+**Found 2026-08-30, in a parallel session that fixed D30/D31 independently in a worktree.** Owner:
+**NONE**. Not a screen defect — a **gate** defect, and it is the answer to *why D31 shipped past a
+suite that already knew about the migration*.
+
+The template deliberately does not state every `runOnChange-*` its nodes need; it leaves most to the
+editor's NDA-017 migration, and `sb007Template.test.ts` asserts that on purpose — *"the migration
+really does fire on this template, in bulk"*. That is a good known-firing signal and it is **not**
+the problem.
+
+The problem is the pass that grades those writes. `gradeMountTriggered` walks `plan.writes` and opens
+with:
+
+```ts
+if (!incoming.some((w) => MOUNT_SIGNALS.includes(w.fromProperty))) continue;
+```
+
+so a write is examined **only** when its node is triggered by `didMount`. Everything else is skipped
+before a single rule runs.
+
+**Measured on the artefact** (`planRunOnValueChangeMigration` over `site-builder.content.json`, with
+the grader's own predicate applied to every write):
+
+| artefact | writes the migration would make | **graded** | **skipped** |
+|---|---|---|---|
+| before the D31 fix | **68** — three of them `merge:in-data/in-body/in-image` | **1** | **67** |
+| **at HEAD, after the fix** | **65** — none on `/Admin/SectionRow` | **1** | **64** |
+
+🔴 **D31's three writes were among the sixty-seven.** `merge`'s control signal is `saveButton.onClick`
+and `upload.done`, never `didMount`, so the grader `continue`d past it while the shipped page editor
+wrote six figures of updates in eleven seconds.
+
+⚠️ **The mount rule is not wrong.** It grades a real hazard — an input silenced on a node whose
+producer arrives after mount — and it grades it correctly. The defect is that **nothing grades the
+other failure mode**: a silenced input whose value is fed, directly or transitively, by a record
+write that this same node's output causes. That is D31's shape, and it is statically checkable from
+the artefact.
+
+**What a repair looks like**: a second pass over `plan.writes` asking, for each, whether the node's
+output reaches a `SetDbModelProperties` / `NewDbModelProperties` whose collection feeds the
+`For Each` supplying the silenced input. 🔴 **Do NOT "fix" this by making the template state all 65** —
+that changes what the migration is for and needs its own argument. **The gate is the gap.**
+
+🔴 **The general lesson, and it is this phase's recurring one.** `gradeMountTriggered` reads as
+coverage of the migration's writes and is coverage of **1.5%** of them. ✅ **A pass whose first line
+is a `continue` is not coverage until you have counted what it REACHED** — the number that mattered
+here was never the offender count, it was the `1`.
+
+---
+
 ## Where these rows were filed, and why not all of them went to the same place
 
 **s31, 2026-08-30.** Phase 80's `TASKS.md` came clean in the working tree while this session was
