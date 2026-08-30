@@ -24,7 +24,21 @@ Read in this order:
 
 ## 🔴 FIRST JOB — pick one; there is no forced next step
 
-s32 closed the only rows this phase had queued as work. What is left is a choice, not a sequence:
+s32 closed both of s31's rows and opened one of its own. What is left is a choice, not a sequence:
+
+### (a0) 🔴 **[D32](DEFECTS-THE-SITE-BUILDER-FOUND.md#d32) — the gate that let D31 through**
+Filed by the parallel s32 session that fixed D30/D31 in a worktree; the template fix landed from the
+other one (`505d9b38`) and this row is what that work did not carry.
+
+`sb007Template`'s `gradeMountTriggered` walks the migration's writes and opens with a `continue` for
+any node not triggered by `didMount` — so it examines **1 of 65** (68 before the fix). **D31's three
+writes were among the skipped**, which is why a suite that already knew about the migration was
+green while the page editor wrote six figures of updates in eleven seconds.
+
+The missing rule, in D31's exact shape and statically checkable: does a silenced input's value come,
+directly or transitively, from a record write that this same node's output causes? 🔴 **Do not "fix"
+it by making the template state all 65** — that changes what the migration is for. **The gate is the
+gap.** ✅ **Count what a checker REACHED, not just what it flagged.**
 
 ### (a) **SBR-006 AC3 — `Unpublish` is one click**
 AC3 names three actions. Publish and Duplicate are driven green (s22). **`Unpublish` has never been
