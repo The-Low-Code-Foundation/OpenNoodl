@@ -1449,9 +1449,18 @@ export default {
     const textStylePortPrefix = args.styleTag || '';
 
     const ports = ['label'].concat(
-      ['textStyle', 'fontFamily', 'fontSize', 'fontWeight', 'fontStyle', 'color', 'letterSpacing', 'lineHeight', 'textTransform'].map(
-        (port) => textStylePortPrefix + port
-      )
+      [
+        'textStyle',
+        'fontFamily',
+        'fontSize',
+        'fontWeight',
+        'fontStyle',
+        'color',
+        'letterSpacing',
+        'lineHeight',
+        'textTransform',
+        'fontVariantNumeric'
+      ].map((port) => textStylePortPrefix + port)
     );
     if (args.enableSpacing) {
       ports.push('labelSpacing');
@@ -1525,7 +1534,17 @@ export default {
         index: index,
         type: {
           name: 'textStyle',
-          childPorts: ['fontFamily', 'fontSize', 'fontWeight', 'fontStyle', 'color', 'letterSpacing', 'lineHeight', 'textTransform'],
+          childPorts: [
+            'fontFamily',
+            'fontSize',
+            'fontWeight',
+            'fontStyle',
+            'color',
+            'letterSpacing',
+            'lineHeight',
+            'textTransform',
+            'fontVariantNumeric'
+          ],
           childPortPrefix: portPrefix
         },
         group: group,
@@ -1749,6 +1768,39 @@ export default {
           parentPort: textStyleInputName
         },
         default: 'none',
+        popout: args.popout,
+        styleTag,
+        allowVisualStates: true,
+        onChange() {
+          if (this.props[textStyleInputName]) {
+            this.forceUpdate();
+          }
+        }
+      },
+      // The bundled Inter's default figures are proportional (`1` advances 1308/2048 em, `8`
+      // 1736) and the font has shipped a `tnum` feature since POL-006 — so every column of
+      // numbers a project renders is ragged, and the one-line fix had no port to arrive
+      // through (P78 D30). Two values rather than the full `font-variant-numeric` grammar
+      // because aligning digits is the axis an app here needs; the rest can join the enum
+      // later without breaking anything authored against this one.
+      [portPrefix + 'fontVariantNumeric']: {
+        index: index + 6.5,
+        group: group,
+        displayName: 'Numerals',
+        editorName: prettyName('Numerals'),
+        description:
+          'Tabular draws every digit at the same width so columns of numbers align; Normal follows the font',
+        applyDefault: false,
+        targetStyleProperty: 'fontVariantNumeric',
+        type: {
+          name: 'enum',
+          enums: [
+            { label: 'Normal', value: 'normal' },
+            { label: 'Tabular', value: 'tabular-nums' }
+          ],
+          parentPort: textStyleInputName
+        },
+        default: 'normal',
         popout: args.popout,
         styleTag,
         allowVisualStates: true,

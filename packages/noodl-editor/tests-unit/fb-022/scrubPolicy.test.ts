@@ -180,9 +180,10 @@ describe('FB-022 AC4 — which of the real ports scrub', () => {
   it('is a real split, not an empty one in either direction', () => {
     // 🔴 Both sides, and the sum. A sweep that answered "no" to everything would pass every
     // exclusion arm above it, and a sweep that answered "yes" to everything would pass every
-    // inclusion arm. Measured on 2026-08-26: 33 scrub, 40 do not, of 73.
+    // inclusion arm. Measured on 2026-08-26: 33 scrub, 40 do not, of 73. The 41st rejection is
+    // DEF-019's `fontVariantNumeric` (an enum offers nothing to drag-scrub).
     expect(scrubbable.length).toBe(33);
-    expect(rejected.length).toBe(40);
+    expect(rejected.length).toBe(41);
     expect(scrubbable.length + rejected.length).toBe(CATALOG.length);
   });
 

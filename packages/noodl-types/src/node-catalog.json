@@ -15306,6 +15306,32 @@
           "allowVisualStates": true
         },
         {
+          "name": "fontVariantNumeric",
+          "displayName": "Numerals",
+          "editorName": "Numerals",
+          "group": "Text Style",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Normal",
+                "value": "normal"
+              },
+              {
+                "label": "Tabular",
+                "value": "tabular-nums"
+              }
+            ],
+            "parentPort": "textStyle"
+          },
+          "isSignal": false,
+          "default": "normal",
+          "description": "Tabular draws every digit at the same width so columns of numbers align; Normal follows the font",
+          "index": 25.5,
+          "allowVisualStates": true
+        },
+        {
           "name": "fontWeight",
           "displayName": "Font Weight",
           "editorName": "Font Weight",
@@ -15768,7 +15794,8 @@
               "color",
               "letterSpacing",
               "lineHeight",
-              "textTransform"
+              "textTransform",
+              "fontVariantNumeric"
             ]
           },
           "isSignal": false,
@@ -27219,6 +27246,32 @@
           "allowVisualStates": true
         },
         {
+          "name": "fontVariantNumeric",
+          "displayName": "Numerals",
+          "editorName": "Numerals",
+          "group": "Text Style",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Normal",
+                "value": "normal"
+              },
+              {
+                "label": "Tabular",
+                "value": "tabular-nums"
+              }
+            ],
+            "parentPort": "textStyle"
+          },
+          "isSignal": false,
+          "default": "normal",
+          "description": "Tabular draws every digit at the same width so columns of numbers align; Normal follows the font",
+          "index": 25.5,
+          "allowVisualStates": true
+        },
+        {
           "name": "fontWeight",
           "displayName": "Font Weight",
           "editorName": "Font Weight",
@@ -27767,7 +27820,8 @@
               "color",
               "letterSpacing",
               "lineHeight",
-              "textTransform"
+              "textTransform",
+              "fontVariantNumeric"
             ]
           },
           "isSignal": false,
@@ -39323,6 +39377,32 @@
           "allowVisualStates": true
         },
         {
+          "name": "fontVariantNumeric",
+          "displayName": "Numerals",
+          "editorName": "Numerals",
+          "group": "Label Text Style",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Normal",
+                "value": "normal"
+              },
+              {
+                "label": "Tabular",
+                "value": "tabular-nums"
+              }
+            ],
+            "parentPort": "textStyle"
+          },
+          "isSignal": false,
+          "default": "normal",
+          "description": "Tabular draws every digit at the same width so columns of numbers align; Normal follows the font",
+          "index": 25.5,
+          "allowVisualStates": true
+        },
+        {
           "name": "fontWeight",
           "displayName": "Font Weight",
           "editorName": "Font Weight",
@@ -39978,7 +40058,8 @@
               "color",
               "letterSpacing",
               "lineHeight",
-              "textTransform"
+              "textTransform",
+              "fontVariantNumeric"
             ]
           },
           "isSignal": false,
@@ -40468,7 +40549,8 @@
               "color",
               "letterSpacing",
               "lineHeight",
-              "textTransform"
+              "textTransform",
+              "fontVariantNumeric"
             ]
           },
           {
@@ -41514,6 +41596,32 @@
           "allowVisualStates": true
         },
         {
+          "name": "labelfontVariantNumeric",
+          "displayName": "Numerals",
+          "editorName": "Numerals",
+          "group": "Label Text Style",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Normal",
+                "value": "normal"
+              },
+              {
+                "label": "Tabular",
+                "value": "tabular-nums"
+              }
+            ],
+            "parentPort": "labeltextStyle"
+          },
+          "isSignal": false,
+          "default": "normal",
+          "description": "Tabular draws every digit at the same width so columns of numbers align; Normal follows the font",
+          "index": 25.5,
+          "allowVisualStates": true
+        },
+        {
           "name": "labelfontWeight",
           "displayName": "Font Weight",
           "editorName": "Font Weight",
@@ -41592,7 +41700,8 @@
               "color",
               "letterSpacing",
               "lineHeight",
-              "textTransform"
+              "textTransform",
+              "fontVariantNumeric"
             ]
           },
           "isSignal": false,
@@ -42440,6 +42549,7 @@
               "labelletterSpacing",
               "labellineHeight",
               "labeltextTransform",
+              "labelfontVariantNumeric",
               "labelSpacing"
             ]
           },
@@ -43304,6 +43414,32 @@
           "allowVisualStates": true
         },
         {
+          "name": "fontVariantNumeric",
+          "displayName": "Numerals",
+          "editorName": "Numerals",
+          "group": "Text Style",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Normal",
+                "value": "normal"
+              },
+              {
+                "label": "Tabular",
+                "value": "tabular-nums"
+              }
+            ],
+            "parentPort": "textStyle"
+          },
+          "isSignal": false,
+          "default": "normal",
+          "description": "Tabular draws every digit at the same width so columns of numbers align; Normal follows the font",
+          "index": 25.5,
+          "allowVisualStates": true
+        },
+        {
           "name": "fontWeight",
           "displayName": "Font Weight",
           "editorName": "Font Weight",
@@ -43584,6 +43720,32 @@
           "allowVisualStates": true
         },
         {
+          "name": "labelfontVariantNumeric",
+          "displayName": "Numerals",
+          "editorName": "Numerals",
+          "group": "Label Text Style",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Normal",
+                "value": "normal"
+              },
+              {
+                "label": "Tabular",
+                "value": "tabular-nums"
+              }
+            ],
+            "parentPort": "labeltextStyle"
+          },
+          "isSignal": false,
+          "default": "normal",
+          "description": "Tabular draws every digit at the same width so columns of numbers align; Normal follows the font",
+          "index": 25.5,
+          "allowVisualStates": true
+        },
+        {
           "name": "labelfontWeight",
           "displayName": "Font Weight",
           "editorName": "Font Weight",
@@ -43662,7 +43824,8 @@
               "color",
               "letterSpacing",
               "lineHeight",
-              "textTransform"
+              "textTransform",
+              "fontVariantNumeric"
             ]
           },
           "isSignal": false,
@@ -44206,7 +44369,8 @@
               "color",
               "letterSpacing",
               "lineHeight",
-              "textTransform"
+              "textTransform",
+              "fontVariantNumeric"
             ]
           },
           "isSignal": false,
@@ -44730,6 +44894,7 @@
               "labelletterSpacing",
               "labellineHeight",
               "labeltextTransform",
+              "labelfontVariantNumeric",
               "labelSpacing"
             ]
           },
@@ -45760,6 +45925,32 @@
           "allowVisualStates": true
         },
         {
+          "name": "labelfontVariantNumeric",
+          "displayName": "Numerals",
+          "editorName": "Numerals",
+          "group": "Label Text Style",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Normal",
+                "value": "normal"
+              },
+              {
+                "label": "Tabular",
+                "value": "tabular-nums"
+              }
+            ],
+            "parentPort": "labeltextStyle"
+          },
+          "isSignal": false,
+          "default": "normal",
+          "description": "Tabular draws every digit at the same width so columns of numbers align; Normal follows the font",
+          "index": 25.5,
+          "allowVisualStates": true
+        },
+        {
           "name": "labelfontWeight",
           "displayName": "Font Weight",
           "editorName": "Font Weight",
@@ -45838,7 +46029,8 @@
               "color",
               "letterSpacing",
               "lineHeight",
-              "textTransform"
+              "textTransform",
+              "fontVariantNumeric"
             ]
           },
           "isSignal": false,
@@ -46654,6 +46846,7 @@
               "labelletterSpacing",
               "labellineHeight",
               "labeltextTransform",
+              "labelfontVariantNumeric",
               "labelSpacing"
             ]
           },
@@ -49770,6 +49963,32 @@
           "allowVisualStates": true
         },
         {
+          "name": "fontVariantNumeric",
+          "displayName": "Numerals",
+          "editorName": "Numerals",
+          "group": "Text Style",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Normal",
+                "value": "normal"
+              },
+              {
+                "label": "Tabular",
+                "value": "tabular-nums"
+              }
+            ],
+            "parentPort": "textStyle"
+          },
+          "isSignal": false,
+          "default": "normal",
+          "description": "Tabular draws every digit at the same width so columns of numbers align; Normal follows the font",
+          "index": 24.5,
+          "allowVisualStates": true
+        },
+        {
           "name": "fontWeight",
           "displayName": "Font Weight",
           "editorName": "Font Weight",
@@ -50039,6 +50258,32 @@
           "allowVisualStates": true
         },
         {
+          "name": "labelfontVariantNumeric",
+          "displayName": "Numerals",
+          "editorName": "Label Numerals",
+          "group": "Label Text Style",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Normal",
+                "value": "normal"
+              },
+              {
+                "label": "Tabular",
+                "value": "tabular-nums"
+              }
+            ],
+            "parentPort": "labeltextStyle"
+          },
+          "isSignal": false,
+          "default": "normal",
+          "description": "Tabular draws every digit at the same width so columns of numbers align; Normal follows the font",
+          "index": 25.5,
+          "allowVisualStates": true
+        },
+        {
           "name": "labelfontWeight",
           "displayName": "Font Weight",
           "editorName": "Label Font Weight",
@@ -50117,7 +50362,8 @@
               "color",
               "letterSpacing",
               "lineHeight",
-              "textTransform"
+              "textTransform",
+              "fontVariantNumeric"
             ]
           },
           "isSignal": false,
@@ -50728,7 +50974,8 @@
               "color",
               "letterSpacing",
               "lineHeight",
-              "textTransform"
+              "textTransform",
+              "fontVariantNumeric"
             ]
           },
           "isSignal": false,
@@ -51327,6 +51574,7 @@
               "labelletterSpacing",
               "labellineHeight",
               "labeltextTransform",
+              "labelfontVariantNumeric",
               "labelSpacing"
             ]
           },

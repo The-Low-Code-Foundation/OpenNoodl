@@ -191,6 +191,7 @@ const PASSTHROUGH = new Set([
   'fontFamily',
   'fontSize',
   'fontStyle',
+  'fontVariantNumeric',
   'fontWeight',
   'justifyContent',
   'letterSpacing',

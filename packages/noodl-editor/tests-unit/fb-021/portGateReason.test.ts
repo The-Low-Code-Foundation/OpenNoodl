@@ -310,12 +310,15 @@ describe('FB-021 — over the shipped catalog, not a fixture', () => {
     }
   });
 
-  it('finds all 349 conditionally-gated input ports', () => {
-    expect(all).toHaveLength(349);
+  // 354 = the 349 measured 2026-08-26 plus DEF-019's `labelfontVariantNumeric` on the five
+  // controls whose label ramp sits behind `useLabel = true` (Button, Checkbox, Radio Button,
+  // Text Input, Options) — all five explained, hence both counts moved by exactly 5.
+  it('finds all 354 conditionally-gated input ports', () => {
+    expect(all).toHaveLength(354);
   });
 
-  it('explains 338 of them', () => {
-    expect(all.filter((row) => row.explained)).toHaveLength(338);
+  it('explains 343 of them', () => {
+    expect(all.filter((row) => row.explained)).toHaveLength(343);
   });
 
   /*

@@ -291,6 +291,21 @@ describe('computeNodeStyle', () => {
     expect(style.decls.find((d) => d.prop === 'height')).toBeUndefined();
   });
 
+  test('fontVariantNumeric passes through as font-variant-numeric (DEF-019 / P78 D30)', () => {
+    const node = {
+      id: 'x',
+      type: 'Text',
+      catalogRef: 'Text',
+      parameters: [{ name: 'fontVariantNumeric', value: { kind: 'literal', value: 'tabular-nums' } as const }],
+      declaredPorts: [],
+      portKnowledge: 'partial' as const
+    };
+    const style = computeNodeStyle(node, 'text', index);
+    const decl = style.decls.find((d) => d.prop === 'font-variant-numeric');
+    expect(decl?.value).toBe('tabular-nums');
+    expect(style.unhandled).toEqual([]);
+  });
+
   test('unknown parameters are reported as unhandled, never guessed into CSS', () => {
     const node = {
       id: 'x',
