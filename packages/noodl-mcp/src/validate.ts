@@ -162,18 +162,28 @@ export function projectSecurity(store: ProjectStore): FunctionSecurityPolicy | n
   }
 }
 
+/**
+ * DEF-013 — component names that resolve although no component exists for them
+ * yet, over and above the ones `views` carries.
+ *
+ * The plan door supplies its own declared operations here. They are names ONLY,
+ * deliberately: a planned component has no nodes, and adding it to `views` would
+ * give it an empty interface rather than no interface — turning "unknown, do not
+ * check" into "this component has no ports" for every instance of it.
+ */
 export function preconditionDiagnostics(
   store: ProjectStore,
   legacyName: string,
   candidate: ComponentFiles,
-  views: readonly ComponentNodesView[]
+  views: readonly ComponentNodesView[],
+  alsoResolvable: readonly string[] = []
 ): Diagnostic[] {
   return authoredPreconditionDiagnostics({
     component: legacyName,
     // DEF-009 — null means "no policy file", never undefined: see projectSecurity.
     security: projectSecurity(store),
     nodes: authoredNodes(candidate.nodes.nodes),
-    components: [...views.map((v) => v.name), legacyName],
+    components: [...views.map((v) => v.name), legacyName, ...alsoResolvable],
     urlPaths: declaredUrlPaths(views),
     // LAS-001 — from the same views, so a component this plan is about to create
     // resolves as an interface exactly when it resolves as a navigation target.

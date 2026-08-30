@@ -238,7 +238,39 @@ function overlayProject(store: ProjectStore, plan: ServerPlan, extra?: { opId: s
   ];
   const refNames = new Set<string>(components.map((c) => c.name));
   for (const name of stagedByName.keys()) refNames.add(name.replace(/^\//, ''));
+  // DEF-013 — the plan's own DECLARED creates, staged or not. Without this a
+  // true cycle (D places E, E places D) cannot be authored in one plan by any
+  // order, because whichever is staged first names a sibling that exists only
+  // as an intent. SB-012's table recorded node `type` as resolving against an
+  // unapplied sibling; the re-drive found that was only ever true of a sibling
+  // already STAGED — the sequential case — and the cycle failed here too.
+  //
+  // Safe against a partial apply because apply_plan re-validates every
+  // operation against `applyPlanView`, whose `operations` list has the skipped
+  // ones removed: a component left pointing at a skipped sibling is refused
+  // then, with nothing written.
+  for (const name of plannedComponentNames(plan)) refNames.add(name.replace(/^\//, ''));
   return { components, componentRefs: buildComponentRefs([...refNames]) };
+}
+
+/**
+ * DEF-013 — every component name this plan commits to producing.
+ *
+ * A plan is a promise that all of its operations land together, so a reference
+ * to a declared sibling is correct at stage time whatever order the fan out
+ * runs in. `update` targets are included for completeness; they already exist
+ * on disk and so change nothing.
+ *
+ * Deliberately NOT fed in as component *views*: a planned component has no
+ * nodes yet, and a view with an empty node list would turn "this interface is
+ * unknown, do not check" into "this interface is empty", which is how an
+ * instance of a planned sibling would start being told its perfectly good
+ * parameters are not ports.
+ */
+function plannedComponentNames(plan: ServerPlan): string[] {
+  return plan.plan.operations
+    .filter((op) => op.kind !== 'doc')
+    .map((op) => pathToLegacyName(op.target));
 }
 
 /**
@@ -410,7 +442,9 @@ function validateStaged(
   // into a Set already, so only this list needed it.
   const diagnostics = dedupeDiagnostics([
     ...report.diagnostics,
-    ...preconditionDiagnostics(store, legacyName, candidate, views)
+    // DEF-013 — the plan's declared siblings resolve as names. See
+    // `plannedComponentNames`.
+    ...preconditionDiagnostics(store, legacyName, candidate, views, plannedComponentNames(plan))
   ]);
   let errors = diagnostics.filter(isBlockingForAuthoredOutput);
 
@@ -435,7 +469,7 @@ function validateStaged(
     const baselineViews = authoredProjectViews(store, stagedOverlay(plan, { opId: operation.id, files: baseline }));
     const baselineDiagnostics = [
       ...baselineReport.diagnostics,
-      ...preconditionDiagnostics(store, legacyName, baseline, baselineViews)
+      ...preconditionDiagnostics(store, legacyName, baseline, baselineViews, plannedComponentNames(plan))
     ];
     const preexisting = new Set(baselineDiagnostics.filter(isBlockingForAuthoredOutput).map(diagnosticKey));
     errors = errors.filter((d) => !preexisting.has(diagnosticKey(d)));
