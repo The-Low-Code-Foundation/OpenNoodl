@@ -32,7 +32,7 @@ them; **read the linked file, not a summary of it.**
 |---|---|---|---|---|
 | DEF-010 | ✅ done | [SB-009 — a component named in a **parameter** is not checked](../phase-76-the-site-builder/SB-009-A-COMPONENT-NAMED-IN-A-PARAMETER.md) — **all 5 ACs s14 (`44298914`); `component-parameter-unresolved` PROMOTED on the sweep (178 projects, 614 params, 15 hits all legacy-true); cross-runtime reuses `wrong-runtime-node`** | P76 F1 | every agent-authored app; **13 `component`-typed ports, 1 has an owner** |
 | DEF-011 | ✅ done | [SB-010 — the door does not derive a JS node's script ports](../phase-76-the-site-builder/SB-010-THE-SCRIPT-PORTS-THE-DOOR-DOES-NOT-WRITE.md) — **s14 (`e6f26ffa`): re-driven pre-fix, then `withAuthoredScriptPorts` at both assembly seams; templates regenerated; the 30s-504 tense had aged (SBR-017's export backstop) — the standing cost was every consumer of `nodes.json`** | P76 F10 | **every cloud component any agent authors** — dead signal outputs, a 30s 504 |
-| DEF-012 | 🟡 partial | [SB-011 — a query widens when it cannot narrow](../phase-76-the-site-builder/SB-011-A-QUERY-THAT-WIDENS-WHEN-IT-CANNOT-NARROW.md) — **§1 CLOSED s15 (2026-08-30): a failed translation fails the node (Query Records + Aggregate), `schemaFor` reads the built-in `columns` shape, a first-write Pointer column keeps its `targetClass`; SB-004 §7's pinned arm inverted; 3 mutants killed. §2 (fetch-before-parameters) measured — 265/270 parameter-fed queries at the default — and left with a finding: the file's own candidate collides with the optional-filter contract; the honest candidate is a door precondition. See SB-011 §5** | P76 F12/F13 | a cloud query returns **every row** when asked for a few |
+| DEF-012 | ✅ done | [SB-011 — a query widens when it cannot narrow](../phase-76-the-site-builder/SB-011-A-QUERY-THAT-WIDENS-WHEN-IT-CANNOT-NARROW.md) — **§1 CLOSED s15 (2026-08-30): a failed translation fails the node (Query Records + Aggregate), `schemaFor` reads the built-in `columns` shape, a first-write Pointer column keeps its `targetClass`; SB-004 §7's pinned arm inverted; 3 mutants killed. §2 (fetch-before-parameters) CLOSED s22 (2026-08-30): the runtime cannot distinguish *not yet arrived* from *deliberately absent* (`dropUnresolvedConnected`), so the fix is the door precondition s15's finding named — `query-fetches-before-its-filter` (`queryBeforeFilter.ts`, advisory, both doors): cloud `DbCollection2`, connected filter param with a real `qp-` wire, either run-on-change box not `false`. Corpus (`calibrate:query-timing`, 178 projects): 625 queries, 325 wired-filter, 59 cloud firings in 12 projects all legacy-true (one is `fetched → response.send` — the caller receives every row), 34 already carrying SB-004's workaround silent, 180 browser left alone by decision. 11 specs, 7/7 mutants killed. See SB-011 §5 + TASKS.md s22** | P76 F12/F13 | a cloud query returns **every row** when asked for a few |
 | DEF-013 | 🔒 ruling | [SB-012 — three spellings of a component name](../phase-76-the-site-builder/SB-012-THREE-SPELLINGS-OF-A-COMPONENT-NAME.md) | P76 s6 | **an app whose pages link to each other cannot be authored in one pass** |
 
 ⚠️ **DEF-010, DEF-011 and DEF-013 are the same door as
@@ -893,3 +893,60 @@ catalog check/merge:check/groups:check clean · `catalog:examples` **62/62 stric
 recipe fires the new rule) · **`test:ci` 2905 specs / 4 failures, all AIX-006 BY NAME, seed
 38774, fresh readout, gitHead `07e9237f`** — the canonical floor. ⚠️ A full-suite run piped to
 `tail` loses the failure names — redirect to a file, then grep `^FAIL`.
+
+## s22 (2026-08-30) — DEF-012 §2 built: the door teaches the ordering the runtime cannot decide
+
+**The queue's one workable candidate, built exactly as s15's finding specified it.** The reading
+was re-driven first (18th payment, nothing new returned this time): `runOnValueChange` is still
+absent-means-ticked, `setCollectionName`/`setVisualFilter` still schedule the load-time fetch,
+and `dropUnresolvedConnected: true` is still the contract that makes "wait for the parameters"
+unbuildable in the runtime — *not yet arrived* and *deliberately absent* are indistinguishable
+there. The one place the ordering IS decidable is the authored graph, so the fix is a door
+precondition.
+
+- **`query-fetches-before-its-filter`** (`queryBeforeFilter.ts`, advisory warning, both doors
+  via `authoredPreconditionDiagnostics`, registered after `checkOneWayGate`): fires when a
+  cloud component's `DbCollection2` has an authored collection name, a filter naming a
+  connected value whose `qp-` port carries a real wire, and either run-on-change box not
+  authored `false` (the exact runtime contract). Abstains: browser components (long-standing
+  behaviour there, 180 corpus instances left alone — a decision with numbers beside it), a
+  wired collection name (fetch ordering not decidable from the graph), static-value filters, a
+  connected rule with no wire (never narrows in ANY pass — a different absence), and SB-004's
+  workaround whatever else is wired (a `Do` beside both-boxes-false is an authored trigger).
+- **The traversal is a duplicated copy, pinned by parity.** `collectFilterParameters` reads
+  both saved filter shapes (pre-BCN-003b `{combinator,rules}` and current `{type,conditions}`);
+  this layer must not import the runtime (the `RUN_ON_CHANGE_PREFIX` reason), so the spec's
+  parity arm runs both implementations over the same filters — the
+  `fix-007/function-ports.test.ts` idiom.
+- **Corpus** (`npm run calibrate:query-timing`, new script, 178 projects, 0 unreadable,
+  denominators printed): 625 Query Records nodes, 325 with a wired filter parameter — cloud:
+  **59 firings in 12 projects** (classifier and rule agree exactly), 34 with the workaround
+  already applied (all silent — SB-004-era authored projects), 0 wired-collection abstentions —
+  browser: 180 at the default, 52 with the workaround. Firings sampled from disk and read true:
+  LearnBook's `Find role` (nested OR/AND group, `pm-roleName → qp-roleName`, both boxes absent,
+  `fetched → store`) and `Get Techpack Object Metadata` (TWO connected params, `fetched →
+  response.send` — **the caller receives every row in the class**). All 59 are legacy imports;
+  every MCP-era authored project carries the workaround, which is what "taught at authoring
+  time" is for.
+- **Templates scanned before shipping the rule** (the s14 lesson — a door rule re-grades every
+  generator): site-builder's 3 filtered cloud queries and members-area's 3 all carry the
+  workaround; no parity gate moved.
+- **Mutants: 7/7 killed, each by exactly its own arm** (drop cloud guard · fire without the
+  wire — this arm initially held wires `[]`, which the no-wires early return would have
+  satisfied under the sabotage; given a real non-`qp-` wire before the ledger ran · boxes read
+  `=== true` instead of `!== false` · drop workaround abstention · drop wired-collection
+  abstention · drop the saved-shape walk · promote to blocking). String-swap restore, md5
+  parity both files.
+- **SB-011 §5 updated in place** — the "left open with this note" paragraph now records what
+  was built. DEF-012 row flipped to ✅ done.
+
+**Gates (s22, all fresh)**: editor jest **6454/6458** (4 reds in 2 suites, none phase 80's —
+sb-007 ×2 + sb-018 ×2, the P77/P78 template lane: BOTH files' working-tree edits moved INSIDE
+the run window, `site-builder.content.json` 13:43:49 + `sb007Template.test.ts` 13:44:32,
+uncommitted; the mcp red below is the same lane. 6447 → 6458 = the 11 specs added) · noodl-mcp
+**993/994** (the 1 = sb007 SBR-016 mutant-arm string-pin vs the template's new `visualSort`
+clause — the peer's in-flight edit, theirs) · `typecheck:editor`/`:editor-tests`/`:mcp` clean ·
+`catalog:examples` **62/62 strict** · `catalog:check` clean (no catalog change — descriptions
+untouched) · **`test:ci` 2905 specs / 4 failures, all AIX-006 style vocabulary BY NAME, seed
+87145, readout 13s old at read, gitHead `b86c5b69`** (a peer commit inside the window — a
+read-time fact) — the canonical floor.

@@ -1,68 +1,62 @@
 # Phase 80 — next session
 
-## State: **no workable open row left.** DEF-001–004, 006, 008, 010, 011, 014–024, 026 closed. DEF-007/009/012/025 🟡 partial; DEF-005/013 🧭 await rulings.
+## State: **no workable open row left — again, and this time the queue is empty of buildable candidates.**
 
-**s21 (2026-08-30) closed DEF-024** — and the design ruling the queue expected was never needed.
-Re-driving the reading first found the register's mechanism claim false when written: **`Switch`
-has been the two-way gate shape all along** (`On`/`Off` in, `Current State` pushed on every
-change), and `Condition.result` itself pushes `false` on a false test. The one-way thing is the
-AUTHORED latch (constant `condition: true`, Evaluate-pulsed). So the fix was guidance, not a
-primitive:
+DEF-001–004, 006, 008, 010, 011, 012, 014–024, 026 closed. DEF-007/009/025 🟡 partial;
+DEF-005/013 🧭 await rulings.
 
-- **`gate-only-turns-on`** (`oneWayGate.ts`, advisory, both doors): every writer into a
-  `mounted`/`visible` is a constant-condition Condition and the pushable set is exactly `{true}`.
-  Paired-clear workaround, Switch shape, mixed writers, wired conditions: all silent/abstained.
-  One-way dismiss (`{false}`) not fired on, by decision — corpus holds 1.
-- **Driven at HEAD first** (`def024-gate-drive.test.ts`, real door + real Chrome):
-  tick-then-untick leaves BOTH notices in the latch arm, exactly one in the Switch arm.
-- **Corpus** (`npm run calibrate:gates`, 178 projects): 3,287 written gate ports, 3,211 abstain,
-  **75 firings, all true, zero false positives read**. 12 specs; 7 mutants, each killed by its
-  own arm.
-- **Descriptions**: `Condition.result` and `Switch.state` now name the two-way shape; catalog
-  regenerated and merged.
+**s22 (2026-08-30) closed DEF-012** — §2's leftover was the one workable candidate and it built
+exactly as s15's finding specified. `query-fetches-before-its-filter` (`queryBeforeFilter.ts`,
+advisory, both doors): a cloud `DbCollection2` with an authored collection name, a connected
+filter parameter whose `qp-` port carries a real wire, and either run-on-change box not authored
+`false`. The runtime half stays untouched on purpose: `dropUnresolvedConnected` makes *not yet
+arrived* and *deliberately absent* indistinguishable there — the ordering is only decidable in
+the authored graph.
 
-## What s21's calibration found for OTHER phases (filed, not fixed)
-
-- **P77 D29 (their register, appended)**: the embedded site-builder template ships the latch —
-  `/Site/ContactForm`'s confirmation AND refusal (a failed-then-successful send shows both) plus
-  2 `/Pages/Setup` refusals. Verified in `site-builder.content.json` at HEAD, read-only. Their
-  active lane; do not fix from here.
-- **P78 D36 section (updated in place)**: the shipped `templates/members-area/` still carries
-  **12 one-way latches** — s15's workaround covered `Pages/Account` only (Join's
-  received/refusal pair, Post's two confirmations, SignIn, Setup, Announcement/Meeting,
-  Unsubscribe). Template work, T6 family, behind Richard's T5 like the rest of P78.
+- **Corpus** (`npm run calibrate:query-timing`, 178 projects): 625 Query Records nodes, 325
+  with a wired filter parameter — **59 cloud firings in 12 projects, all legacy imports,
+  sampled true from disk** (one is `fetched → response.send`: the caller receives every row in
+  the class); 34 cloud queries already carry SB-004's workaround (silent); 180 browser
+  instances at the default left alone, by decision with numbers.
+- **Templates scanned before shipping**: site-builder ×3 + members-area ×3 filtered cloud
+  queries all carry the workaround; no parity gate moved.
+- 11 specs (incl. a traversal-parity arm against the runtime's `collectFilterParameters` —
+  the duplicated-copy idiom), 7/7 mutants killed each by its own arm.
 
 ## What to do next
 
-- **DEF-012 §2 leftover** — the honest candidate is written in s15's section: a DEF-002-family
-  door precondition on cloud queries with connected filter params and run-on-change boxes on
-  (265/270 at the default, 78 cloud). Buildable without a ruling; SB-011 §5 has the numbers.
-- **DEF-007 §3.2** — still 56 decisions on `site-builder.content.json`, still sequenced behind
-  phase 77's active file. Do not start while P77 is mid-flight there.
+- **The phase is likely at its natural end.** The honest next move is the closing sweep the
+  s21 prompt named: grade the README's own criteria against the table, re-read the
+  "Findings this phase raised that nobody owns" register (rows with owner `NONE` — check each
+  is still true at HEAD before re-filing), and write the phase's closing note. Do not invent
+  rows to keep the phase alive.
+- **DEF-007 §3.2** — 56 decisions on `site-builder.content.json`, still sequenced behind
+  phase 77's active lane on that file. Check whether P77 is still mid-flight there
+  (`git log -5 -- packages/noodl-editor/src/editor/src/models/template/templates/site-builder.content.json`
+  + mtime) before considering it.
 - **🧭 Richard queue** (unchanged): DEF-025 flip (3 options in TASKS.md s17) · DEF-009 AC4
   (rateLimit default) · DEF-005, DEF-013 rulings (re-drive SB-012 §1 at HEAD before spending
   DEF-013's — the door's `components` now overlays unapplied plan ops).
-- If none of those is workable, the phase may be at its natural end: consider a closing sweep
-  (README's grading criteria vs the table) rather than inventing rows.
 
 ## Traps carried
 
-- ⚠️ **dist staleness (standing)**: a *running* MCP server answers without `gate-only-turns-on`
-  (and 018–023/026's codes) until rebuilt; the editor's `cloudruntime/sandbox.viewer.bundle.js`
-  half stands. The external viewer bundle was fresh as of s20 and s21 did not touch runtime
-  behaviour (descriptions only).
-- ⚠️ **Editor floor: 6442/6447, 5 reds, none phase 80's**: sb-007 ×2 (template-count lane) +
-  sb-018 ×2 (P77 drag lane, DropAt/DropIndex, same as s20) + **bld-004 `reasoningChannel` ×1 —
-  a parallel-load FLAKE of the stall-guard timer: red in two full runs, 8/8 alone.** A lone red
-  is a flake until re-run alone.
-- 🔴 **A full-suite run piped to `tail` loses the failure names** — redirect the whole run to a
-  file, then grep `^FAIL` / `●`.
+- ⚠️ **dist staleness (standing)**: a *running* MCP server answers without
+  `query-fetches-before-its-filter` (and 018–024/026's codes) until rebuilt; the editor's
+  `cloudruntime/sandbox.viewer.bundle.js` half stands. s22 touched no runtime behaviour, so
+  viewer bundles owe nothing new.
+- ⚠️ **Peer sessions run full backend suites back-to-back on this checkout** — s22 waited out
+  two in one session. Check `ps -Ao pid,ppid,command | grep jest` and attribute by PPID
+  before starting any suite; never run two package suites at once.
+- 🔴 **A full-suite run piped to `tail` loses the failure names** — redirect the whole run to
+  a file, then grep `^FAIL` / `●`.
 - 🔴 **`git checkout -- <file>` is not a mutant undo** — python string-swap restores only.
 - ⚠️ **`grep` refused `HttpServer.ts` as binary (s18)** — `-a` on any grep over
   `nodegx-backend/src/server/`.
 
-## Gates (s21, commit pending — see TASKS.md s21 for detail)
+## Gates (s22, all fresh — detail in TASKS.md s22)
 
-editor jest **6442/6447** (5 reds named above, none mine; +12 = oneWayGate specs) · noodl-mcp,
-noodl-runtime, typechecks, catalog gates, `test:ci`: recorded in TASKS.md s21 once the session's
-final runs land — trust the readouts there over this file if they disagree.
+editor jest **6454/6458** (4 reds = the P77/P78 template lane's in-flight edits, mtimes inside
+the run window; 6447 → 6458 = the 11 new specs) · noodl-mcp **993/994** (the 1 = the same lane's
+sb007 string-pin vs the template's new `visualSort`) · typechecks ×3 clean · `catalog:examples`
+62/62 strict · `catalog:check` clean · **`test:ci` 2905/4, all AIX-006 BY NAME, seed 87145,
+fresh readout** — the floor. Trust TASKS.md s22 over this file if they disagree.

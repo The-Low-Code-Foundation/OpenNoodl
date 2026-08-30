@@ -168,6 +168,21 @@ DEF-002 family) on cloud-function queries whose filter has connected parameters 
 run-on-change boxes are on — SB-004's own workaround, taught at authoring time, no runtime
 behaviour change to sweep. Left open with this note.
 
+**§2 BUILT — phase 80 s22 (2026-08-30), exactly the door precondition above.**
+`query-fetches-before-its-filter` (`queryBeforeFilter.ts`, advisory warning, both doors via
+`authoredPreconditionDiagnostics`): fires on a cloud `DbCollection2` whose filter names a
+connected value with a real wire on its `qp-` port while either run-on-change box is not
+authored `false` (the exact runtime contract — absent means ticked). Abstains: browser
+components (the same first fetch is long-standing behaviour there — 180 corpus instances left
+alone, by decision with numbers), a wired collection name (fetch ordering undecidable), static
+filters, and the applied workaround whatever else is wired. Corpus
+(`npm run calibrate:query-timing`, 178 projects): 625 Query Records nodes, 325 with a wired
+filter parameter, **59 cloud firings in 12 projects** — sampled from disk, true, including a
+`fetched → response.send` whose caller receives every row in the class — and 34 cloud queries
+already carrying SB-004's workaround, all silent. The traversal is duplicated from
+`collectFilterParameters` (this layer must not import the runtime); a parity spec arm runs both
+over the same filters. Details in phase 80 TASKS.md s22.
+
 ## Related
 
 - SB-004 §6 **F12** and **F13** — the findings, with the workarounds SB-004 took, and §2's
