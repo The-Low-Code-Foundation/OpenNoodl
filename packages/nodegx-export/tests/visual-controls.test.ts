@@ -403,6 +403,9 @@ describe('range, dropdown, video, circle (VISUALS-TARGET §4–§7)', () => {
       });
     });
     expect(result.notes.join('\n')).toContain('its items arrives over a wire');
+    // §34.7 — the claim in this row's name is about the emitted FILE ("rather than render an
+    // empty shell"), and a note cannot see whether the shell is there. The marker is.
+    expect(result.files['src/components/Showcase.tsx']).toContain('TODO(export): net.noodl.controls.options — node pick sits here in the');
   });
 
   test('video passes sources and flags through, always stating object-fit', () => {
@@ -488,11 +491,15 @@ describe('wire-fed controls name their source, not a phantom structure wall (§1
   test('useLabel still defers as structure — it decides whether the label element exists', () => {
     const result = withSource('Model2', 'row', 'prop-Show', 'remember', 'useLabel');
     expect(result.notes.join('\n')).toContain('its useLabel arrives over a wire, so the rendered structure is not static');
+    // "whether the label element exists" is a fact about the file, so the file is what says it.
+    expect(result.files['src/components/Showcase.tsx']).toContain('node remember sits here in the');
   });
 
   test("a radio's wired value still defers as structure — it decides which child is checked", () => {
     const result = withSource('Model2', 'row', 'prop-Value', 'small', 'value');
     expect(result.notes.join('\n')).toContain('its value arrives over a wire, so the rendered structure is not static');
+    // "which child is checked" is likewise a fact about the file.
+    expect(result.files['src/components/Showcase.tsx']).toContain('node small sits here in the');
   });
 
   test('an unwired control is untouched by the split', () => {

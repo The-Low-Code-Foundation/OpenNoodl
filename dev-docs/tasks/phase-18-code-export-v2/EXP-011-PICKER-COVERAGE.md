@@ -4296,3 +4296,122 @@ ledger 175 types.
   instrument that would measure it needs fixing first.
 - ⚠️ **Every gate in this phase that asserts a sentence should be checked against the artefact.**
   §34.5 found two; the same pattern (`toContain` on notes, nothing on files) is cheap to grep for.
+
+## §35 The half §34.7 left, measured as a class rather than taken as a row (session 64, 2026-08-30)
+
+§34.7's second bullet said *"a deferred logic node's reason still reaches the report only by
+accident — one `notes.push` and a decision about noise"*. Both halves of that sentence turned out to
+be about a bigger and differently-shaped thing than the row it was written against, and the
+"decision about noise" is now decided by a measurement instead of a guess.
+
+### §35.1 The property nobody was checking
+
+`src/emit/report.ts` renders a component's **`notes`** and **never** its `dispositions`
+(`renderReport` reads `c.notes` at the per-component section and nothing else per node). So the
+invariant EXP-004 rests on — *nothing dropped silently* — is really the claim **"every gate that
+files a `deferred` disposition also remembered its own `notes.push`"**, and that is a property of
+42 separate assignment sites which nothing verified. `model2ForeachGate` was one of them; it was
+not the interesting one.
+
+### §35.2 The measurement, and the control that makes it mean something
+
+Over s62's `v2only` farm (the 60 exportable projects), asking of every deferred node **"does its id
+appear anywhere in its own `EXPORT-REPORT.md`"** — the weakest bar there is, weaker than "its reason
+is explained":
+
+| | |
+|---|---|
+| deferred nodes, id **present** in the report (CONTROL) | **1490** |
+| deferred nodes appearing **nowhere** in it | **76** |
+
+🔴 **The control shares a reason shape with the finding.** `logic node (…)` reads **212 present**
+and **39 absent** — so the absence is a fact about *those nodes*, not about an unreportable family,
+which is what a bare "76 are missing" could not have told anyone.
+
+Splitting the 76 by whether a note in that component could render at all — `report.ts` renders
+per-component notes only for `c.file !== null`:
+
+| | |
+|---|---|
+| `file=NONE skip=scaffolded` (the router shell) | 36 |
+| `file=NONE skip=deferred` (component already named at component level) | 21 |
+| **`file=yes` — a note here WOULD render** | **19** |
+
+⚠️ **The 19 is the number a fix can move**, and checking it first is what stopped this being graded
+against 76 nodes, 57 of which no `notes.push` could ever have reached. That is
+[[a-recommendation-carries-a-measurement-of-some-property-not-the-right-one]] avoided rather than
+walked into.
+
+### §35.3 🔴 The premise of §34.7's bullet was true and its instance count was zero
+
+`model2ForeachGate`'s sentence does reach the report only by accident — but over 60 projects the
+accident **always happens**. Model2 reads **silent = 0**: every deferred `Model2` in the corpus has
+dropped wires whose notes name it. The same for the larger `query result is not consumed by a
+rendered repeater` (86 instances, DbCollection2, likewise no `notes.push` at `plan.ts:9403` while
+its neighbours 15 lines up have one) — **all 86 ids are in their reports**, via wire notes reading
+`wire <id>:items->…:in-rows has no deterministic translation in step 5`.
+
+So the single `notes.push` §34.7 proposed would have changed **no report in the corpus**. What is
+actually invisible is a deferred node with **no wires** — the case a wire note cannot cover, and the
+one a corpus hides best because authors rarely leave nodes unwired.
+
+### §35.4 The fix: a sweep, not a push
+
+`sweepUnreportedDeferrals()` runs at all **three** exits of `planComponent`, beside
+`sweepRefusedScripts()` — the two early returns included, because those are where a gate is most
+likely to be the last word on a node (§17's hole, one construct over). It asks the same weak
+question the measurement did: *does any note mention this node at all?* If one does, it says
+nothing, so a node already named by a dropped-wire note gains no duplicate line and the report grows
+by exactly what nothing else said.
+
+**The noise decision, made from the data**: the catch-all's own reason is `logic node (<type>)`,
+which restates the type — rendered through the generic format it would read *"node … (Timer)
+deferred: logic node (Timer)"*. That branch emits **"node … (Timer) has no translation in this
+slice — it is not in the generated app"** instead; every other reason is printed verbatim.
+
+**After**: 76 absent → **57**, and the `file=yes` bucket → **0**. Control moved 1490 → 1509, +19,
+in step.
+
+### §35.5 What proves it
+
+🔴 **No fixture on disk exercises the sweep's rendered path** — checked, not assumed: over
+`tests/fixtures` it produces zero report lines, because every fixture's deferred logic nodes already
+have a wire note. A row phrased *"over every fixture, nothing is unreported"* would have been the
+`all([])` trap — true, vacuous, and green against a deleted sweep. So
+`tests/unreported-deferrals.test.ts` **builds** the case: an orphan logic node, wired to nothing, in
+`Components/PuppyCard` (a component that generates a file, asserted).
+
+All seven rows assert the emitted **`EXPORT-REPORT.md`**, not `plan.notes` — §34.5's lesson, applied
+where it was learned. Four mutants, each killed by different rows, `tsc` clean on every one:
+
+| mutant | rows killed |
+|---|---|
+| bottom-exit `sweepUnreportedDeferrals()` removed | *deferred and unnamed*, *names it in the report*, *a gate with a real sentence* |
+| both early-return calls removed | *reaches the logic-only early return* |
+| the `said.includes(node.id)` dedupe guard removed | *says it once, not once per pass* |
+| the stutter branch removed | *names it in the report*, *does not stutter* |
+
+§34.7's fourth bullet, done: grepping the suite for `toContain` on a **note** where the row's claim
+is about a **file** returned 30 candidates, of which 27 also assert `result.files` (`global-store`'s
+*"but still renders"* and `stores-events`'s *"still renders"* both do). The three that did not are
+all in `visual-controls.test.ts` — the dropdown's *"rather than render an empty shell"*, `useLabel`'s
+*"whether the label element exists"*, and the radio's *"which child is checked"* — and each now
+asserts the marker in `src/components/Showcase.tsx` beside its note. The existing row *"a control
+that renders is not marked as dropped"* is their control.
+
+Gates: **tsc 0**, **jest 1168/1168 in 47 suites** (47 files on disk), picker **70/127 (55.1%)**,
+ledger 175 types.
+
+### §35.6 What this leaves
+
+- 🔴 **The row-owned write is still the top row**, with §34.7's sharpened question untouched by this
+  session. Owner `NONE`; design question.
+- ⚠️ **The 36 router-shell nodes are still unreported, and a `notes.push` cannot fix them** — the
+  App component has `file === null`, so `report.ts` renders none of its notes. `withPreserved`
+  (§27.6) already rescues the script-bearing ones; a non-script `Group` beside the Router is
+  mentioned nowhere. Closing it means changing **`report.ts`**, not `plan.ts`. Owner `NONE`.
+- ⚠️ **The 21 in `skip=deferred` components** are named at component level under *"Components with
+  no generated file"* with the component's own reason. Judged adequate, not measured against a
+  reader.
+- ⚠️ **Children authored inside a component instance** (§34.5) — still unowned, still needs
+  `instkids.ts` fixed before any conclusion.

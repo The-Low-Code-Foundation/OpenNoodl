@@ -1793,6 +1793,41 @@ function planComponent(
    * `translatedScriptIds` is empty at the early returns, which is the truth about them: a
    * component that emitted nothing translated nothing.
    */
+  /**
+   * EXP-004 AC "nothing dropped silently", enforced rather than remembered.
+   *
+   * 🔴 **`src/emit/report.ts` renders a component's `notes` and never its `dispositions`.** So a
+   * gate that computes a reason, stores it against the node and pushes no note has dropped that
+   * node from the exported app with the report saying nothing about it — and every gate having
+   * remembered its own `notes.push` is a property nobody was checking. Measured over the 60
+   * exportable corpus projects before this existed: **76 deferred nodes appeared nowhere in their
+   * own `EXPORT-REPORT.md`**, against a control of **1490 that did** — the same reason shapes in
+   * both arms, so the absence is about these nodes and not about an unreportable family.
+   *
+   * This sweep asks the weakest question that still means something — *does any note mention this
+   * node at all* — so a node already named by a dropped-wire note is left alone and the report
+   * gains no duplicate line. What it catches is only what nothing else says.
+   *
+   * ⚠️ It runs at all three exits, beside `sweepRefusedScripts`, because the two early returns are
+   * where a gate is most likely to be the last word on a node (§17's hole, one construct over).
+   */
+  const sweepUnreportedDeferrals = (): void => {
+    const said = notes.join('\n');
+    for (const node of component.nodes) {
+      const disposition = dispositions[node.id];
+      if (disposition === undefined || disposition.kind !== 'deferred') continue;
+      if (said.includes(node.id)) continue;
+      const type = node.type || 'untyped';
+      // The catch-all's own reason is `logic node (<type>)`, which a note would stutter back at
+      // the author. The fact they need is the same either way: it is not in the generated app.
+      notes.push(
+        disposition.reason === `logic node (${type})`
+          ? `node ${node.id} (${type}) has no translation in this slice — it is not in the generated app`
+          : `node ${node.id} (${type}) deferred: ${disposition.reason}`
+      );
+    }
+  };
+
   const sweepRefusedScripts = (): void => {
     for (const node of component.nodes) {
       if (node.sourceText === undefined) continue;
@@ -1825,6 +1860,7 @@ function planComponent(
     plan.skipReason = 'router shell — emitted as src/App.tsx by the scaffold';
     plan.skipKind = 'scaffolded';
     sweepRefusedScripts();
+    sweepUnreportedDeferrals();
     return plan;
   }
 
@@ -1884,6 +1920,7 @@ function planComponent(
     plan.skipReason = 'no visual root — logic-only components defer to EXP-003';
     plan.skipKind = 'deferred';
     sweepRefusedScripts();
+    sweepUnreportedDeferrals();
     return plan;
   }
   if (roots.length > 1) {
@@ -9627,6 +9664,7 @@ function planComponent(
   }
 
   sweepRefusedScripts();
+  sweepUnreportedDeferrals();
 
   return plan;
 }
