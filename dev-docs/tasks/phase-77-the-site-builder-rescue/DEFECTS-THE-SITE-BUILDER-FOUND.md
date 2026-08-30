@@ -1266,3 +1266,54 @@ same eight words of description.
 🔴 **Unowned on purpose, and it is the reason [D23](#d23)'s proposed fix had to be stopped.** D23
 offered *"a `domelement` output on `Group` (three lines, `video.ts:283-288` is the template)"*.
 Copying this port would have doubled a dead end — and the row would have read as closed.
+
+---
+
+<a id="d28"></a>
+
+## D28 — 🔴 A `Drag`'s child loses its CSS class, so a draggable element cannot be styled or selected
+
+**Found s30, by driving.** Product. Owner: **`NONE`** — it owes a row in
+[phase 80](../phase-80-the-defects-the-templates-found/TASKS.md); see the note at the end.
+
+`react-draggable` clones its child with its own `className`, and the child's authored
+`cssClassName` does not survive it. The element that reaches the DOM carries `react-draggable` and
+nothing else.
+
+| read off the rendered page (`ac2DragGestureDrive.test.ts`) | |
+|---|---|
+| `Group` inside a `Drag`, `cssClassName` set by connection | class in DOM: **`react-draggable`** — the authored one is **absent** |
+| `Group` one level further in, same kind of connection, same `Component Inputs` node | **present** |
+| `Text` inside the same card, same kind of connection | **present** |
+| `Group` outside any `Drag`, `cssClassName` by parameter | **present** |
+
+🔴 **The three controls are what make this about `Drag` and not about `cssClassName`.** The obvious
+competing reading — "a *connected* `cssClassName` does not apply" — is excluded by rows two and
+three, which take their class by the same mechanism from the same node and keep it. Row four
+excludes "this Group was special". Without them a single missing class proves nothing, which is the
+shape [D23](#d23) got wrong.
+
+**Who it bites.** Anyone who makes something draggable and then tries to style it, animate it, or
+reach it from a stylesheet — which is most of what a person does with a drag. It fails **silently**:
+the class is accepted in the editor, stored in the graph, survives the deploy, and is simply not
+there at runtime. There is no error and nothing to search for.
+
+**Not the same defect as [D27](#d27)**, though they rhyme: D27 is a port that cannot be connected,
+this is a port that connects, stores, and is discarded on render.
+
+**The shape of the fix.** `Drag.tsx` renders `<Draggable>` around the child and lets
+`react-draggable` own `className`. Merging rather than replacing is the repair, and it is in the
+viewer's own component — not in the dependency. ⚠️ **Check it against `Drag`'s siblings first**: any
+other node that clones a child through a third-party wrapper has the same shape, and a fix that
+names only `Drag` would leave them. Nobody has counted them.
+
+🔴 **Two assertions in `ac2DragGestureDrive.test.ts` PIN this defect deliberately** and say so in
+their own name, because the drive's row selector (`.probe-list > .react-draggable`) depends on the
+card having no usable class of its own. Whoever fixes this replaces those two lines with
+`expect(boot['probe-card-a']).toBeDefined()` and points `READ` at `.probe-card-a` — it is not a
+spec to delete.
+
+⚠️ **Why it is not yet a phase-80 row.** That register's `TASKS.md` had another session's
+**uncommitted** edits in the working tree for the whole of s30, and appending to it would have
+swept them into a pathspec commit. The row is written here in full so it can be moved verbatim;
+moving it is the first documentation job of the next session.

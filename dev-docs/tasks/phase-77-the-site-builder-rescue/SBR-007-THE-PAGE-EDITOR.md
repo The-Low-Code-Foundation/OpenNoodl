@@ -986,3 +986,126 @@ looking green.
 - **AC2's gesture** — unbuilt, and now scoped as authoring work rather than a product blocker.
 - **AC3** — still not met, still blocked by **D15**, which was re-measured at HEAD and stands.
   The two were filed as twins; only one of them was real.
+
+---
+
+## 33. s30 — AC2's gesture, built, because the thing blocking it was a sentence
+
+s29 disproved [D23](DEFECTS-THE-SITE-BUILDER-FOUND.md#d23) and left AC2's gesture *"scoped as
+authoring work rather than a product blocker"*. This session did the authoring. **AC2 is now met on
+both halves.**
+
+### 33.1 🔴 The clause s29 did NOT disprove, and why it stopped mattering
+
+D23's comment in the template source had three clauses. s29 killed the middle one — every visual
+node reports its geometry. The **last** one was true and was the real difficulty:
+
+> these rows are anything but uniform: a textarea and an image preview make every one a different
+> height. So `Drag Y / rowHeight` has no `rowHeight` to divide by.
+
+That is correct, and it stays correct. A `For Each` item is handed its own record and nothing else,
+so a row cannot know its siblings' heights, and its own height is not the pitch when they differ.
+
+⚠️ **Reading s29's result as "so the gesture is easy" would have been D23's error with the sign
+flipped** — a measurement of *some* property (the ports exist) standing in for the one that decides
+(the index is computable).
+
+**What makes the clause irrelevant is a different arithmetic, not a workaround.** From the dragged
+card's own element, `parentElement.children` is **every sibling's box at once**, so the drop index
+is a count of siblings whose centre is above the dragged card's centre. No pitch appears anywhere,
+so non-uniform rows cannot affect it. The route is `this` → a `Function` node's `*` input →
+`getDOMElement()`, which is exactly the door s29's fifth probe opened and did not walk through.
+
+### 33.2 The drive — `ac2DragGestureDrive.test.ts`, 9 specs, ~28s
+
+Authored through the real MCP door, rendered in headless Chrome by `withRenderedPage`, **pointer
+synthesised with `Input.dispatchMouseEvent` on the same CDP connection**. Not a call into `onStop`:
+a drive that fired the handler itself would prove the arithmetic and say nothing about whether
+`react-draggable` ever sees a pointer inside a `For Each` item, which is the half nobody had run.
+
+| arm | read back |
+|---|---|
+| three rows, three authored line-counts | heights **80 / 170 / 98** — non-uniform by construction |
+| card 0 dragged DOWN past both | `idx=2 sib=2 dy=179 pc=probe-list` |
+| card 2 dragged UP past one | `idx=1 sib=2 dy=-197` — **a different answer** |
+| card 1 pressed and released where it stands | `idx=1 dy=4` — its own index, not an edge |
+| a **button** inside the draggable card, clicked | `CLICKED` |
+
+🔴 **Three drags, three answers.** One drag is satisfied by a script returning a constant, by a port
+reporting the viewport, or by arithmetic that is right only for uniform rows. The no-move arm kills
+"always reports last" and "always reports first" together, and it is the one a threshold-and-divide
+implementation fails.
+
+🔴 **The fourth arm is what licensed the template change at all.** `/Admin/SectionRow` is nothing
+but controls — a textarea, a file picker, `Save`, `Delete` — and `react-draggable` starts on
+`mousedown` anywhere in its child, with no `handle` or `cancel` port on the `Drag` node to narrow
+it. Had the press been swallowed, the row would have been draggable *or* usable, and the honest
+outcome would have been a product row rather than a build.
+
+### 33.3 What shipped
+
+- **`/Admin/SectionRow`** — a `Drag` root (`axis: 'y'`) wrapping the card, and **`dropIndex`**, the
+  count above. `Drag` renders no element of its own, so the card is still the box that lays out and
+  still carries every style parameter it had.
+- **The buttons stay.** A drag is not reachable from a keyboard, and AC2 is about a client changing
+  the order — not about the pointer they do it with. Both roads hand the same endpoint the same
+  `toIndex`, and `Move up`/`Move down` remain the arm the ten stored-row cases in
+  `sb004-publication-invariant.test.ts` drive.
+- **`/Pages/PageEditor` gains `sectionRows`**, and it is not cosmetic — see below.
+- **No planner.** The two existing ones turn a *direction* into a position; a drop already **is** a
+  position, so the row's outputs reach `reorder` directly.
+
+### 33.4 🔴 The trap that would have shipped a silently wrong index
+
+A `For Each` draws no box of its own and renders its items into its **visual parent's** element.
+With `sectionList` still sitting directly under `sectionsPanel`, the rows were DOM siblings of
+`sectionsHeader` and `reorderRefusal` — **two elements `dropIndex` would have counted as rows above
+every section**, so every drop would have reported an index two too high and the endpoint would have
+obeyed it.
+
+⚠️ **Nothing else in the suite can see that.** The wires are all correct in that arrangement, the
+appearance ratchet is satisfied by it, the census counts are right, and the page renders. It fails
+only when a person drags.
+
+So it is gated — *"the section repeater's parent holds the repeater and nothing else"* in
+`sb005AdminPanel.test.ts` — and **the gate was sabotaged**: moving one extra element into the
+container reddens it and leaves the other 33 specs green. A gate that only ever ran on the good
+arrangement would have been the same kind of evidence the appearance ratchet turned out to be
+(D16).
+
+✅ **The drive's `pc=` reading is the control for this class**, and it is why the hit test reports
+its working — the parent's class and the sibling count — rather than only its answer. An index
+counted over the wrong parent is still a plausible small integer.
+
+### 33.5 [D28](DEFECTS-THE-SITE-BUILDER-FOUND.md#d28) — found by driving, `NONE`
+
+**A `Drag`'s direct child loses its `cssClassName`.** Three controls at other depths, taking their
+class by the same mechanism from the same node, keep theirs — which is what makes it about `Drag`
+rather than about `cssClassName`. It fails silently and it bites anyone who styles a draggable row.
+
+### 33.6 Two things the drive cost, and would cost again
+
+- 🔴 **A connected number cannot say `px`.** The first version authored `h → card.height` and got
+  `height: 60%; flex-grow: 60` — three rows dividing the list in the authored ratio. `SIDEBAR_WIDTH`
+  records this trap for *parameters*, where the `{value, unit}` object form escapes it; **a
+  connection has no such form**, so a dimension driven by a wire is always a percentage. The rows
+  are authored in line counts because of it.
+- ⚠️ **`Drag` leaves the element translated where it was dropped**, and nothing in the runtime puts
+  it back. Two arms of the first drive read `idx=0` and `NaN` — both the page answering honestly
+  about a state the arms had not accounted for, one of them because the press landed on a card that
+  had been dragged over the coordinate being pressed. Each arm now loads its own page, and the
+  template owes `Snap To Position Y → 0` on **every** release, which is what `out-snap` is for.
+
+### 33.7 Where AC2 stands
+
+| | |
+|---|---|
+| **outcome** (a client reorders, a visitor sees it) | ✅ driven s27, ten stored-row cases |
+| **gesture** (by dragging) | ✅ **built s30**, mechanism driven with a real pointer |
+| **the template's own drag, rendered end to end** | ⬜ **NOT driven** — see the next session's first job |
+
+🔴 **Stated plainly rather than ticked.** What was driven is the *mechanism*, on a page authored for
+it, plus every static property of the template that the mechanism depends on. What has **not** been
+done is loading the real `/Pages/PageEditor` against a backend with sections and dragging one. That
+is a `render-from-disk` + fixture-backend job, and it is the difference between "built and gated"
+and "driven" — the distinction this phase has paid for twice.
