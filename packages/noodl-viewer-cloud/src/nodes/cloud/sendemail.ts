@@ -143,11 +143,15 @@ export const node = {
      * ⚠️ The pending array is created lazily here rather than in `initialize`: several suites
      * build this node as a bag of bound methods and never call `initialize`, and an eager field
      * is `undefined` exactly where the first invocation reads it.
+     *
+     * DEF-021: each queued outcome token is stamped with the `To` it was minted under, so
+     * `doSend` can tell a re-press of the same send from a fan-out whose addresses the
+     * coalescing guard used to collapse — one delivered mail, N `done`s.
      */
     scheduleSend: function (token) {
       if (token) {
         if (!this._internal.pendingSendOutcomes) this._internal.pendingSendOutcomes = [];
-        this._internal.pendingSendOutcomes.push(token);
+        this._internal.pendingSendOutcomes.push({ token, to: this._internal.to });
       }
 
       // The guard drops the second pulse's *send* deliberately — that is how "set the fields,
@@ -163,12 +167,48 @@ export const node = {
     doSend: function () {
       // Taken into a local *before* the request starts, so a second `Do` arriving mid-flight
       // owns its own batch rather than being settled by this request's answer.
-      const tokens = this._internal.pendingSendOutcomes || [];
+      const pending = this._internal.pendingSendOutcomes || [];
       this._internal.pendingSendOutcomes = undefined;
 
-      if (!this._internal.to) {
-        this.setError('Send Email: "To" is required.', tokens);
+      // DEF-021: a pulse that changed the address is a different invocation, not a re-press of
+      // the one already queued. When every stamp agrees the batch is one send reading its
+      // fields AFTER inputs have settled — the stamp must NOT become the address it uses,
+      // because a pulse can arrive before its `To` in the same pass. When the stamps disagree
+      // the batch is a fan-out: one send per consecutive run of the minted address, each run
+      // settled by its own call. Collapsing those to the last address delivered one mail and
+      // reported N successes (phase 78 D33).
+      const fanOut = pending.length > 1 && pending.some((p) => p.to !== pending[0].to);
+      if (!fanOut) {
+        this.dispatchSend(
+          this._internal.to,
+          pending.map((p) => p.token)
+        );
         return;
+      }
+
+      const runs = [];
+      for (const p of pending) {
+        const last = runs[runs.length - 1];
+        if (last && last.to === p.to) last.tokens.push(p.token);
+        else runs.push({ to: p.to, tokens: [p.token] });
+      }
+      // Sequential on purpose: the runs stay in pulse order and the mailer is one resource. A
+      // run's failure settles its own tokens only; the chain itself never rejects.
+      let chain = Promise.resolve();
+      for (const run of runs) {
+        chain = chain.then(() => this.dispatchSend(run.to, run.tokens));
+      }
+    },
+    /**
+     * One mailer call settling exactly `tokens`. Content fields are read here, at dispatch
+     * time — for the single-address batch that is after the pass's inputs settled, which is
+     * the "set the fields, then press Do" contract. Returns a promise that resolves (never
+     * rejects) when the call is settled, so fan-out runs can be chained.
+     */
+    dispatchSend: function (to, tokens) {
+      if (!to) {
+        this.setError('Send Email: "To" is required.', tokens);
+        return Promise.resolve();
       }
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -179,12 +219,12 @@ export const node = {
             'function/workflow (BAK-002) — it is not usable in the browser viewer.',
           tokens
         );
-        return;
+        return Promise.resolve();
       }
 
       const useTemplate = this._internal.template && this._internal.template !== 'none';
       const request = {
-        to: this._internal.to,
+        to: to,
         subject: this._internal.subject,
         text: this._internal.text,
         html: this._internal.html,
@@ -192,7 +232,7 @@ export const node = {
         variables: this._internal.variables
       };
 
-      Promise.resolve(sendEmail(request))
+      return Promise.resolve(sendEmail(request))
         .then((result) => {
           if (result && result.success) {
             reportOutcomes(this, tokens, 'done');
