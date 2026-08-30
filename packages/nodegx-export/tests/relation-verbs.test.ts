@@ -191,15 +191,28 @@ describe('§17 — Add Record Relation: the gates, in the order validateInputs r
 });
 
 describe('§17 — the Record node', () => {
+  /**
+   * ⚠️ **The feeder is `To CSV`, and the node it used to be is why.** This row was written with a
+   * `Unique Id` and EXP-011 §37 translated that node, so the assertion started reading a reason
+   * about a *resolved* read — the second time this test has lost its example, after Tier 2.5 took
+   * `PageInputs` (see the note below).
+   *
+   * 🔴 The replacement is drawn from the ledger's **`deliberately out of scope`** set rather than
+   * its `scheduled` set. A scheduled node is one some later session translates, and this row then
+   * fails for a reason that has nothing to do with what it is testing. `net.noodl.ToCSV` is one
+   * nobody is waiting on, so the example stops being a moving target.
+   */
   it('a Record whose Id is fed by an untranslated node names that feeder', () => {
     const source = cloneIr();
-    addNode(source, ADMIN, 'uniqueId', 'Unique Id', {});
+    addNode(source, ADMIN, 'toCsv', 'net.noodl.ToCSV', {});
     addNode(source, ADMIN, 'puppyModel', 'DbModel2', {
       collectionName: lit('Puppy'),
       idSource: lit('explicit')
     });
-    wire(source, ADMIN, 'uniqueId', 'id', 'puppyModel', 'modelId');
-    expect(reasonFor(source, ADMIN, 'puppyModel')).toBe('its Id is fed by Unique Id, which has no statically known source');
+    wire(source, ADMIN, 'toCsv', 'text', 'puppyModel', 'modelId');
+    expect(reasonFor(source, ADMIN, 'puppyModel')).toBe(
+      'its Id is fed by net.noodl.ToCSV, which has no statically known source'
+    );
   });
 
   /**

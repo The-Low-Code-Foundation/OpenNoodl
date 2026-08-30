@@ -4590,3 +4590,183 @@ ledger 175 types, corpus **59/60** (unchanged — the one red is pre-existing an
   `date-now-read` are the pattern to copy. **UUID additionally has an `Error` output**, which is
   §14's row-allocated-by-the-read rule for the third time.
 - ⚠️ **The row-owned write is still the top row** and is still untouched by this session.
+
+---
+
+## §37 Tier 2.7 finished — the id pair, and the port that clears where its neighbour does not (session 66, 2026-08-30)
+
+**73 → 75 of 127 (57.5% → 59.1%).** `pickerCoverageFloor` raised in the same commit. Tier 2.7 is
+complete, and Tier 2's remainder is now **Cloud Services (9)** and the **component stack pair**.
+
+§36.9 called these "the other half of the tier" and predicted `Now`'s treatment. That was right
+about the shape and it understated the difference: `Now` has one arm, and the second arm is where
+everything interesting in this slice turned out to be.
+
+### §37.1 They are two nodes, and the export has to keep saying so
+
+| | `Unique Id` | `UUID` |
+|---|---|---|
+| generator | `Model.guid()` — **10 chars from `Math.random()`** (`model.ts` `_randomString`) | `crypto.randomUUID`, falling back to `getRandomValues` |
+| can it fail | **no**, and it has no Failure port — `uniqueid.ts` says a port that can never fire is what §5's dead-end check complains about | **yes**, with `failure` *and* an `Error` output |
+| the row | `useState<string>(() => randomId())` | `useState<string \| undefined>(() => initialUuid())` |
+| the `New` | `date-now-read`'s shape — a `const`, a setter, the chain | a `const` and an `if`/`else` over a `UuidResult` |
+
+🔴 **Collapsing them into one generator is the way this slice is most likely to be wrong, and it
+raises the picker number by two either way.** Every shape check anyone would think to write —
+"is there an id here", "is it non-empty", "does it change on New" — passes on the wrong one. It is
+graded in three places: an exact differential per node, a `not.toContain` in the fixture rows, and
+sabotage arm A, which swapped `Unique Id`'s generator and moved exactly the two rows predicted.
+
+### §37.2 🔴 `Error` is cleared here and is not cleared next door
+
+§24 settled "a read from the node's own chains" for `External Link` and `Navigate To Path` and
+found it was three questions. It is three here too, and **one of the three answers is the
+opposite one**:
+
+| read from | `Id` | `Error` |
+|---|---|---|
+| render, another handler | the row | the row |
+| the **Done** arm | the arm's own local | 🔴 **refused** — `_generate` *clears* the message before Done fires, so every such read is empty |
+| the **Failure** arm | 🔴 **the row** — the interpreter left `Id` as it was, so the pre-write row is the faithful answer | the arm's own local |
+
+`External Link`'s `_internal.lastError` is **never** cleared, so §24 reads the stale row in the
+Done arm and is right to. `_generate` does `this._internal.error = undefined` and flags it dirty.
+Copying §24 here would have printed a message the running app had just erased — and it would have
+been the natural thing to do, because the two nodes are one file apart and look alike.
+
+The two diagonals are the other half. Reading the local in the Failure arm names a property that
+does not exist on a failed `UuidResult`; reading the row in the Done arm delivers the previous id.
+
+⚠️ **The success arm's `setRecordIdError(undefined)` is a line no driven app can grade.** Sabotage
+arm C deleted it, rebuilt, re-drove — and **every row was identical**, because the failure never
+fires in a browser that has a CSPRNG. It is recorded as a row the drive **cannot** see rather than
+as one that passed, and a test grades it instead.
+
+### §37.3 The result is a discriminated union, and that is a typing decision with a reason
+
+`tryRandomUuid()` returns `{ ok: true; uuid } | { ok: false; error }` rather than
+`{ uuid?, error? }`. An optional-property pair does not narrow, so `recordIdNew.uuid` in the
+success arm would be `string | undefined` and every sink downstream would guard a value that is
+always present. This is what lets the emitted app typecheck with no `!`:
+
+```tsx
+const recordIdNew = tryRandomUuid();
+if (recordIdNew.ok) {
+  setRecordId(recordIdNew.uuid);
+  setRecordIdError(undefined);        // ← §37.2, and not decoration
+  lastRecord.set(recordIdNew.uuid);
+} else {
+  setRecordIdError(recordIdNew.error);
+  lastFailure.set(recordIdNew.error);
+}
+```
+
+### §37.4 What defers, and the one deferral that names its own fix
+
+- **`Completed`, on both nodes** — it fires after every outcome and this slice emits the arms, on
+  `HTTP Request`'s and `External Link`'s sentence. ⚠️ **`Unique Id`'s reason is a different
+  sentence, because the node has only one outcome and its own catalog description says so**:
+  *"it always fires together with Done, and wiring either one does the same thing."* So the
+  refusal names the one-move fix — wire it to Done — instead of the generic join sentence. What
+  stops it being free is the case where **both** are wired: two chains whose relative order this
+  file would be choosing rather than reading.
+- **`Done`/`Failure` read as a value** — a pulse carries nothing to read, on `Now`'s sentence.
+- **A wired `New` that never attached** — `Now`'s §4a rule: binding to a row nothing writes would
+  freeze the app at its mount id with nothing to say why.
+
+### §37.5 🔴 The instruments, and what each one cannot see
+
+**The differential is exact, not statistical.** Both generators are random, so "it looks like an
+id" is the assertion that cannot fail. The entropy source is pinned instead — a seeded
+`Math.random` for one, a fixed `getRandomValues` for the other — and then the **emitted module**
+and the interpreter's own code must produce the same string character for character. That catches
+a reordered alphabet, a changed length, `Math.floor((1 + r) * 0x10000)` "tidied" to
+`Math.floor(r * len)`, the version nibble in the wrong byte, and the hyphen positions. A broken
+copy of the emitted module is run beside it and must disagree.
+
+⚠️ **The `getRandomValues` throw message is asserted verbatim against the interpreter's**, because
+it is the only sentence `Error` can ever carry.
+
+**Eight mutants, six killed and two survivors that both say something:**
+
+| mutant | rows killed |
+|---|---|
+| Pass 4f's `isIdRead` clause dropped | **6** |
+| the Done arm reads the row instead of the chain-local | **2** |
+| the row-boot import earning dropped | **4** |
+| the lazy initializer made eager | **2** |
+| the success arm's Error clear dropped | **1** |
+| the Done-chain Error refusal dropped | **1** |
+| `id-out` dropped from the text-fold whitelist | **0 → 1** (a row was added) |
+| the id nodes added to Pass 4c's whitelist **as well** | **0**, deliberately |
+
+🔴 **The last row is §36.5's question answered from the other side, and it says something narrower
+than "Pass 4f is the right home".** Both passes call `resolveExpr`, so both bind the *same* row
+read; the output is identical, and since Pass 4c runs first and consumes the wire, adding them
+there would make the Pass 4f clause the dead one. So it is not a choice between a right and a
+wrong translation — it is one site or two, and §36.5's finding was that two leaves a branch
+nothing can execute. Pass 4f is the site because that is where the rest of the **state-row**
+family already lives (`Now`, `HTTP Request`, both `Error` ports), none of which is in Pass 4c's
+whitelist. **Consistency is the argument; the mutants are what say the alternative was redundant
+rather than wrong.**
+
+⚠️ **The text-fold survivor was a real hole.** `id-out` was added to `childText`'s whitelist — the
+one keyed by expression kind with no exhaustiveness, whose own comment records §24 being bitten by
+it — and nothing graded it. **No driven row and no typecheck could:** React renders `undefined` as
+nothing, so a dropped fold is invisible until the same read reaches a format, where it prints the
+text `undefined`. The row added is a **control pair** — a `UUID`'s Id must fold, a `Unique Id`'s
+must not — because asserting only the first passes on an emitter that folds every id read.
+
+### §37.6 The project (§2's requirement), and the drive
+
+`tests/fixtures/badge-desk` — **Badge Desk**, one routed page, both nodes, both value reads through
+the row, both Done chains reading the chain-local, and `UUID`'s `Error` read from both the render
+and the Failure arm. It reports **nothing dropped** beyond the router shell, and is picked up
+automatically by the five suites that enumerate `tests/fixtures`.
+
+Exports, builds under `tsc -b && vite build` (48 modules), and driven in headless Chrome over CDP
+with every expected answer **written down before the app ran**:
+
+```
+D1  rowKey   T5xgwU3923                              ← 10 chars, NOT a UUID
+    recordId ec23585e-6944-44bf-a082-09deaaeaaa2c    ← v4, variant a
+    lastKey / lastRecord / error / lastFailure: all empty
+D2  click New row key → rowKey changes, and lastKey == THE NEW rowKey
+D3  click New record id → recordId changes, lastRecord == THE NEW recordId
+D4  2s, no clicks: everything unchanged
+console errors: []
+```
+
+🔴 **D2 and D3 are the rows that exclude rather than fit.** A state-row read in the Done chain
+gives the *previous* id — which is a real, plausible, correctly-shaped id, and on any board that
+only asked "did something get saved" it looks perfect.
+
+**Three sabotage arms, one rule each, predictions written first:**
+
+| arm | change | measured |
+|---|---|---|
+| **A** | `Unique Id` draws from the UUID generator | **rowKey only** — 36 chars — and lastKey followed it; recordId untouched. As predicted. |
+| **B** | the Done arm reads through the row | **lastKey and lastRecord only**, each one click behind; D1 identical. As predicted. |
+| **C** | the success arm stops clearing `Error` | 🔴 **nothing moved** — as predicted, and recorded as a row this drive cannot grade |
+
+⚠️ **One claim in this slice was written and then measured false, and the correction is kept.** A
+comment said the eager `useState(randomId())` "would draw a fresh id on every render, and an id
+that changes on every render remounts the row it keys". React **discards** that argument after
+mount, so the rendered id is identical and no drive row can separate the two. The lazy form is
+right because it is the faithful transcription of a once-per-construction `initialize` — the cost
+of the eager one is a generator call, and a **CSPRNG draw**, per render. Mutant M7 kills it in the
+emitted *text*, which is the only place the difference exists.
+
+### §37.7 The corpus cannot grade this slice either
+
+**0 instances of both types across all 60 v2 projects**, against controls of **1564 `Text`** and
+**1 `net.noodl.Now`** over 796 `nodes.json` files. Same finding as §36 and for the same reason: the
+fixture was the only possible instrument, and the corpus is the regression net.
+
+### §37.8 What this leaves
+
+- 🔴 **Tier 2's remainder is `Cloud Services` (9) and the component stack pair** (§15.6 says that
+  pair is a routing question). Tier 2.7 is done.
+- **`Unique Id`'s `Completed`** is a translatable increment — §37.4 has the whole argument and the
+  one thing to settle, which is the order of two chains when both ports are wired.
+- ⚠️ **The row-owned write is still the top row** and is still untouched.

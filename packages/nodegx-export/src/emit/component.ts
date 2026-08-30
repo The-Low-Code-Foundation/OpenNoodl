@@ -21,6 +21,7 @@ import {
   BindingSource,
   ComponentPlan,
   HandlerAction,
+  IdNewAction,
   JsFunctionPlan,
   RefusedScriptPlan,
   MutationPlan,
@@ -33,6 +34,7 @@ import { KitBinding, tsTypeOf as kitPortTsType } from './kits';
 import { assignClassNames, ClassCandidate, partitionMergeGroup, pascalCase, propIdentifier, propIdentifiers } from './naming';
 import { tsLiteral } from './state';
 import { UTIL_HELPER_MAY_BE_UNDEFINED, UTIL_LIB_PATH } from './utilLib';
+import { ID_HELPERS_BY_FN, ID_LIB_PATH, IdHelper } from './idLib';
 import { computeNodeStyle, computeRoleCss, CONTENT_ATTR_ORDER, CONTENT_PARAMS, Decl, iconSourceOf, RoleCss, StyleRole } from './style';
 
 const GENERATED_TS = '// @nodegx:generated (visual — provenance markers complete in EXP-007)\n';
@@ -108,6 +110,8 @@ export interface EmittedComponent {
   dateHelpers: Set<string>;
   /** The same, for `src/lib/util.ts` (EXP-011 Tier 2.7) — same rationale, same filling walkers. */
   utilHelpers: Set<string>;
+  /** EXP-011 §37 — which of `src/lib/id.ts`'s helpers this component calls. */
+  idHelpers: Set<string>;
 }
 
 export function emitComponent(
@@ -268,6 +272,17 @@ export function emitComponent(
   /** Which `src/lib/date.ts` helpers this component calls — the import list (EXP-011 Tier 1.3). */
   const usedDateHelpers = new Set<string>();
   const usedUtilHelpers = new Set<string>();
+  /**
+   * `src/lib/id.ts`'s helpers (EXP-011 §37).
+   *
+   * 🔴 **Not collected by either expression walker, and it is the first family that is not.**
+   * The two calls are in an *action* and in a *row's initializer* — `randomId()` inside the New,
+   * and `() => initialUuid()` as the `useState` boot. Neither is a `ValueExpr`, so the clauses
+   * `usedDateHelpers` and `usedUtilHelpers` ride on cannot see them, and a `Unique Id` with
+   * nothing on `New` has **only** the boot. Both sources are gathered below, after the action
+   * list and the surviving rows are both known.
+   */
+  const usedIdHelpers = new Set<IdHelper>();
   // Re-host wrappers (EXP-003 §4): only definitions that surviving expressions/actions
   // reference print — the plan registers every resolved definition, referenced or not.
   const jsFunByNode = plan.jsFunctions;
@@ -324,6 +339,10 @@ export function emitComponent(
     // A read through the row earns that row; the chain-local form names a local the enclosing
     // action declares and earns nothing (the `http-out` rule).
     if (expr.kind === 'now-out' && expr.viaState !== undefined) referencedStateNames.add(expr.viaState);
+    // EXP-011 §37, the same clause for the two id nodes. 🔴 Opt-in and silent when missing, on
+    // the `outcome-error` note below: the row would be written by the action, read by the sink,
+    // then dropped as unreferenced — a component naming an identifier it never declares.
+    if (expr.kind === 'id-out' && expr.viaState !== undefined) referencedStateNames.add(expr.viaState);
     if (expr.kind === 'format') {
       for (const part of expr.parts) if (typeof part !== 'string') collectExprUse(part);
     }
@@ -417,6 +436,14 @@ export function emitComponent(
       if (action.materialize !== undefined) referencedStateNames.add(action.materialize);
       action.then.forEach(collectActionUse);
     }
+    // EXP-011 §37. Both rows are references whether or not anything reads them — the record
+    // verbs' rule for a written row — and both chains carry expressions of their own.
+    if (action.kind === 'id-new') {
+      if (action.materialize !== undefined) referencedStateNames.add(action.materialize);
+      if (action.errorMaterialize !== undefined) referencedStateNames.add(action.errorMaterialize);
+      action.then.forEach(collectActionUse);
+      action.failThen.forEach(collectActionUse);
+    }
     // EXP-011 Tier 2.5. The link is an expression and both outcome chains are chains; this node
     // writes no row of its own, so there is nothing else here to reference.
     if (action.kind === 'external-link') {
@@ -490,13 +517,17 @@ export function emitComponent(
             // the first one's Done, and the `useNavigate()` hook it needs goes undeclared.
             a.kind === 'navigate-path'
             ? [a, ...deepActions(a.then), ...deepActions(a.failThen), ...deepActions(a.completedThen)]
-          : a.kind === 'popup-show' ||
-              a.kind === 'popup-close' ||
-              a.kind === 'jsfun-run' ||
-              a.kind === 'api-call' ||
-              a.kind === 'date-now-read'
-            ? [a, ...deepActions(a.then)]
-            : [a]
+          : // EXP-011 §37. Two arms, so it cannot join the single-chain list below — a popup
+            // opened from a UUID's Failure chain is a popup nothing here knows is attached.
+            a.kind === 'id-new'
+            ? [a, ...deepActions(a.then), ...deepActions(a.failThen)]
+            : a.kind === 'popup-show' ||
+                a.kind === 'popup-close' ||
+                a.kind === 'jsfun-run' ||
+                a.kind === 'api-call' ||
+                a.kind === 'date-now-read'
+              ? [a, ...deepActions(a.then)]
+              : [a]
     );
   for (const receiver of plan.receivers) usedChannelNames.add(receiver.channelName);
 
@@ -562,6 +593,9 @@ export function emitComponent(
       expr.args.forEach(hookExprSources);
     }
     if (expr.kind === 'now-out' && expr.viaState !== undefined) referencedStateNames.add(expr.viaState);
+    // EXP-011 §37. A render read of an id is *always* the row form — the local exists only
+    // inside the New chain — so this clause earns every id row render can see.
+    if (expr.kind === 'id-out' && expr.viaState !== undefined) referencedStateNames.add(expr.viaState);
     if (expr.kind === 'jsfun-out') {
       if (expr.viaState !== undefined) {
         // A materialized read (§4f) goes through the state var, not a render local.
@@ -985,6 +1019,16 @@ export function emitComponent(
       // which is what lets `now.getTime()` print without a guard.
       case 'now-out':
         return false;
+      /**
+       * The id nodes (EXP-011 §37). The chain-local never — it is minted only in the Done arm,
+       * where the generator has just answered. The row only for `UUID`, whose `initialize`
+       * catches and leaves `Id` blank on a host with no CSPRNG; `Unique Id`'s cannot fail.
+       *
+       * 🔴 Must agree with `maybeUndefinedExpr` in `plan.ts`, which reads the same `fn` off the
+       * same expression rather than restating the rule.
+       */
+      case 'id-out':
+        return expr.fn === 'randomUuid' && expr.viaState !== undefined;
       // The row is undefined until the first failure; the chain-local is assigned on the line
       // above the read and never is. Must agree with plan.ts maybeUndefinedExpr (EXP-011 §24).
       case 'outcome-error':
@@ -1120,6 +1164,22 @@ export function emitComponent(
     // something a reader can find rather than crashing here.
     return action !== undefined && action.kind === 'date-now-read' ? action.local : 'clockRead';
   };
+  /**
+   * What a read of `Id` says **inside the New chain** (EXP-011 §37), read off the plan so the
+   * expression side and the action side cannot disagree — `nowLocalOf`'s rule one node over.
+   *
+   * 🔴 **The two nodes bind different things to the local.** `Unique Id`'s is the id itself;
+   * `UUID`'s is the whole `UuidResult`, so the id is `<local>.uuid` — and that member read is
+   * `string` only inside the `if (<local>.ok)` block the Done chain is emitted into. This is the
+   * one place that spelling lives.
+   */
+  const idLocalReadOf = (nodeId: string): string => {
+    const action = deepActions(allActions).find((a) => a.kind === 'id-new' && a.nodeId === nodeId);
+    // Unreachable, and total rather than `!` for `nowLocalOf`'s stated reason: a local-form
+    // `id-out` is minted only inside the Done chain of a New that attached.
+    if (action === undefined || action.kind !== 'id-new') return 'idNew';
+    return action.fn === 'randomUuid' ? `${action.local}.uuid` : action.local;
+  };
   const exprCode = (expr: ValueExpr, mode: 'handler' | 'render'): string => {
     switch (expr.kind) {
       case 'prop':
@@ -1179,6 +1239,13 @@ export function emitComponent(
        */
       case 'outcome-error':
         return expr.viaState ?? expr.local;
+      /**
+       * A `Unique Id`'s or `UUID`'s `Id` (EXP-011 §37) — the row anywhere, the Done chain's own
+       * binding inside it. No optional chaining on either: the row is a string the sink guards
+       * through `maybeUndefined` where it can be blank, and the local is narrowed by the `if`.
+       */
+      case 'id-out':
+        return expr.viaState ?? idLocalReadOf(expr.nodeId);
       case 'now-out': {
         const base = expr.viaState ?? nowLocalOf(expr.nodeId);
         if (expr.output === 'timestamp') return `${base}.getTime()`;
@@ -1399,6 +1466,11 @@ export function emitComponent(
         case 'now-out':
           if (e.viaState !== undefined) add(e.viaState);
           break;
+        // EXP-011 §37, same clause: an effect reading an id reads the row, so the row is the
+        // dependency. The local form cannot reach an effect — it lives inside the New's arm.
+        case 'id-out':
+          if (e.viaState !== undefined) add(e.viaState);
+          break;
         case 'date-call':
         case 'util-call':
           e.args.forEach(walk);
@@ -1485,9 +1557,9 @@ export function emitComponent(
    * That is the §7.2 trap this package has already been bitten by twice; a `function` declaration
    * is hoisted whole and cannot reproduce it.
    */
-  function chainReadsNowLocal(actions: HandlerAction[], nodeId: string): boolean {
+  function chainReadsChainLocal(actions: HandlerAction[], leaf: (e: ValueExpr) => boolean): boolean {
     const reads = (e: ValueExpr): boolean => {
-      if (e.kind === 'now-out') return e.nodeId === nodeId && e.viaState === undefined;
+      if (leaf(e)) return true;
       if (e.kind === 'date-call' || e.kind === 'util-call') return e.args.some(reads);
       if (e.kind === 'format') return e.parts.some((p) => typeof p !== 'string' && reads(p));
       if (e.kind === 'logical') return e.operands.some(reads);
@@ -1558,17 +1630,54 @@ export function emitComponent(
         case 'jsfun-run':
         case 'date-now-read':
           return a.then.some(inAction);
+        // EXP-011 §37. Both arms, on the hazard the two notes above name: the Failure arm can
+        // read the id through the row, and `default: false` would say it reads nothing.
+        case 'id-new':
+          return a.then.some(inAction) || a.failThen.some(inAction);
         default:
           return false;
       }
     };
     return actions.some(inAction);
   }
+
+  /**
+   * Whether a `Now`'s Read chain reads the instant it bound (EXP-011 Tier 1.3), and whether an id
+   * node's `New` chain reads the id it generated (§37).
+   *
+   * 🔴 **One walker with the leaf test lifted out, rather than two copies of the switch above.**
+   * That switch is the thing that goes stale — its own comments record two actions that were
+   * missing from it and answered "reads nothing" about a value built from the very thing being
+   * asked about. A second copy would be a second place for the next action to be missing from.
+   */
+  function chainReadsNowLocal(actions: HandlerAction[], nodeId: string): boolean {
+    return chainReadsChainLocal(actions, (e) => e.kind === 'now-out' && e.nodeId === nodeId && e.viaState === undefined);
+  }
+
+  function chainReadsIdLocal(actions: HandlerAction[], nodeId: string): boolean {
+    return chainReadsChainLocal(actions, (e) => e.kind === 'id-out' && e.nodeId === nodeId && e.viaState === undefined);
+  }
   /**
    * Whether an `External Link` prints statements rather than one expression (EXP-011 Tier 2.5).
    * A guarded link binds a `const`; an outcome chain branches. Neither is legal in an arrow's
    * expression body, and a literal-url button with no chains is neither.
    */
+  /**
+   * Whether a `New` prints an `if`/`else` rather than a call (EXP-011 §37).
+   *
+   * `Unique Id` never does — it cannot fail, so there is no branch to take. A `UUID` does as soon
+   * as it has anything to put in an arm: a row to write, a message to clear, or a chain. A `UUID`
+   * whose id and outcomes nobody reads is `tryRandomUuid();` on its own, which is exactly what
+   * the interpreter does with a `New` nothing is listening to.
+   *
+   * 🔴 **Raw fields, and the emitter below branches on this same function rather than on its own
+   * recomputation of the answer.** The caller uses it to decide whether to append a `;`, and the
+   * two disagreeing would put a semicolon after a block or drop one after a call.
+   */
+  const idNewIsBlock = (a: IdNewAction): boolean =>
+    a.fn === 'randomUuid' &&
+    (a.materialize !== undefined || a.errorMaterialize !== undefined || a.then.length > 0 || a.failThen.length > 0);
+
   const externalLinkIsStatement = (a: Extract<HandlerAction, { kind: 'external-link' }>): boolean =>
     a.guardLink ||
     a.then.length > 0 ||
@@ -2273,6 +2382,79 @@ export function emitComponent(
         // An empty Read is `new Date()` discarded — what the node does when nothing consumes it.
         return statements.length > 0 ? statements.join(`;\n${at}`) : 'new Date()';
       }
+      /**
+       * A `Unique Id`'s or `UUID`'s `New` (EXP-011 §37) — `date-now-read` for the node that
+       * cannot fail, and an `if`/`else` over one `const` for the node that can.
+       *
+       * ```tsx
+       * const ticketIdNew = tryRandomUuid();
+       * if (ticketIdNew.ok) {
+       *   setTicketId(ticketIdNew.uuid);
+       *   setTicketIdError(undefined);   // ← the clear, and it is not decoration
+       * } else {
+       *   setTicketIdError(ticketIdNew.error);
+       * }
+       * ```
+       *
+       * 🔴 **`setTicketIdError(undefined)` on the success arm is where this node stops copying
+       * `External Link`.** There, `_internal.lastError` is never cleared, so §14's driven board
+       * shows a stale message beside a link that worked and the export is right to reproduce it.
+       * `_generate` *does* clear — `this._internal.error = undefined` then `flagOutputDirty` —
+       * so an export that only ever wrote the message would leave a failure's text on screen
+       * through every subsequent success. Two nodes, one line apart, opposite answers.
+       *
+       * ⚠️ The failure arm writes the message and **nothing else**: `_generate` returns before
+       * touching `uuid`, so `Id` keeps the id it had. That is why a read of `Id` from the Failure
+       * chain resolves to the row and not to this local, which has no id on it.
+       */
+      case 'id-new': {
+        const at = pad(indent);
+        const inner = pad(indent + 2);
+        const call = `${ID_HELPERS_BY_FN[action.fn].call}()`;
+        /**
+         * `Unique Id` — `date-now-read`'s shape exactly. The `const` is emitted only where
+         * something reads it, and a `New` whose id and chain nobody consumes is `randomId()`
+         * discarded, which is what the node does when nothing is listening.
+         */
+        if (!idNewIsBlock(action)) {
+          const statements: string[] = [];
+          if (action.materialize !== undefined || chainReadsIdLocal(action.then, action.nodeId)) {
+            statements.push(`const ${action.local} = ${call}`);
+          }
+          if (action.materialize !== undefined) {
+            statements.push(`${stateSetterOf(action.materialize)}(${action.local})`);
+          }
+          statements.push(...expandActions(action.then).map((a) => actionCode(a, indent)));
+          return statements.length > 0 ? statements.join(`;\n${at}`) : call;
+        }
+        const doneStatements: string[] = [];
+        if (action.materialize !== undefined) {
+          doneStatements.push(`${stateSetterOf(action.materialize)}(${action.local}.uuid)`);
+        }
+        if (action.errorMaterialize !== undefined) {
+          doneStatements.push(`${stateSetterOf(action.errorMaterialize)}(undefined)`);
+        }
+        doneStatements.push(...expandActions(action.then).map((a) => actionCode(a, indent + 2)));
+        const failStatements: string[] = [];
+        if (action.errorMaterialize !== undefined) {
+          failStatements.push(`${stateSetterOf(action.errorMaterialize)}(${action.local}.error)`);
+        }
+        failStatements.push(...expandActions(action.failThen).map((a) => actionCode(a, indent + 2)));
+        const arm = (list: string[]): string => list.map((line) => `${inner}${line};`).join('\n');
+        const head = `const ${action.local} = ${call};`;
+        // Only the arms that have something in them get braces. A UUID whose Failure nobody
+        // wired and whose Error nobody reads has no `else` to print — the commonest shape.
+        if (failStatements.length === 0) return [head, `${at}if (${action.local}.ok) {`, arm(doneStatements), `${at}}`].join('\n');
+        if (doneStatements.length === 0) return [head, `${at}if (!${action.local}.ok) {`, arm(failStatements), `${at}}`].join('\n');
+        return [
+          head,
+          `${at}if (${action.local}.ok) {`,
+          arm(doneStatements),
+          `${at}} else {`,
+          arm(failStatements),
+          `${at}}`
+        ].join('\n');
+      }
       case 'branch': {
         const armCode = (armActions: HandlerAction[]): string => {
           const list = expandActions(armActions);
@@ -2333,7 +2515,19 @@ export function emitComponent(
        * query collector, or a chain printed beside the call, is a statement; a bare
        * `navigate('/pricing')` is an expression and keeps its semicolon.
        */
-      (a.kind === 'navigate-path' && navigatePathIsStatement(a));
+      (a.kind === 'navigate-path' && navigatePathIsStatement(a)) ||
+      /**
+       * EXP-011 §37, and the seventh instance of this file's oldest hazard. A `Unique Id`'s New
+       * declares a `const` and a `UUID`'s prints an `if`; both are statements. A `UUID` whose id
+       * and outcomes nobody reads is the bare call and stays an expression.
+       *
+       * ⚠️ `a.fn === 'randomId' && …` is deliberately **not** written here: the `Unique Id` form
+       * emits a `const` only where something reads it, and asking `idNewIsBlock` alone would
+       * call that case an expression. The `materialize`/chain test is what actually decides, and
+       * it is the same test the emitter runs.
+       */
+      (a.kind === 'id-new' &&
+        (idNewIsBlock(a) || a.materialize !== undefined || a.then.length > 0 || chainReadsIdLocal(a.then, a.nodeId)));
     if (isAsync || expanded.some(isStatement)) {
       // A try/catch is a statement, not an expression: it prints at the handler's own column and
       // takes no terminator. Every other action keeps the semicolon the existing goldens pin.
@@ -2342,12 +2536,15 @@ export function emitComponent(
           a.kind === 'api-call' ||
           a.kind === 'http-call' ||
           (a.kind === 'external-link' && externalLinkIsStatement(a)) ||
-          (a.kind === 'navigate-path' && navigatePathIsStatement(a))
+          (a.kind === 'navigate-path' && navigatePathIsStatement(a)) ||
+          // EXP-011 §37. The block form ends in `}` and must not take a terminator; the
+          // `Unique Id` form is a run of statements and takes one, exactly as a Now Read does.
+          (a.kind === 'id-new' && idNewIsBlock(a))
             ? `${pad(indent + 2)}${actionCode(a, indent + 2)}`
             : // A `Now` Read prints several statements and needs the column too, or its second
               // and third lines start at column 0 (EXP-011 Tier 1.3). Valid either way — this is
               // about the emitted code being read by a person, which is EXP-002's whole standard.
-              `${pad(indent + 2)}${actionCode(a, a.kind === 'date-now-read' ? indent + 2 : 0)};`
+              `${pad(indent + 2)}${actionCode(a, a.kind === 'date-now-read' || a.kind === 'id-new' ? indent + 2 : 0)};`
         )
         .join('\n');
       return `${head} => {\n${body}\n${pad(indent)}}`;
@@ -2448,6 +2645,23 @@ export function emitComponent(
   if (usedUtilHelpers.size > 0) {
     const specifier = `${relRoot}/${UTIL_LIB_PATH.replace(/^src\//, '').replace(/\.ts$/, '')}`;
     internalImports.set(specifier, `import { ${[...usedUtilHelpers].sort().join(', ')} } from '${specifier}';`);
+  }
+  /**
+   * EXP-011 §37 — `src/lib/id.ts`, earned from the two places the calls actually are.
+   *
+   * ⚠️ **The rows are filtered before this runs**, which is what makes the second loop correct
+   * rather than approximate: `referencedStateVars` is the set that survives to be emitted, so a
+   * row nothing reads earns no import for an initializer that is never printed.
+   */
+  for (const a of deepActions(allActions)) {
+    if (a.kind === 'id-new') usedIdHelpers.add(ID_HELPERS_BY_FN[a.fn].call);
+  }
+  for (const v of referencedStateVars) {
+    if (v.bootHelper !== undefined) usedIdHelpers.add(v.bootHelper);
+  }
+  if (usedIdHelpers.size > 0) {
+    const specifier = `${relRoot}/${ID_LIB_PATH.replace(/^src\//, '').replace(/\.ts$/, '')}`;
+    internalImports.set(specifier, `import { ${[...usedIdHelpers].sort().join(', ')} } from '${specifier}';`);
   }
   if (usedVariableNames.size > 0) {
     const specifier = `${relRoot}/stores/variables`;
@@ -2849,7 +3063,13 @@ export function emitComponent(
         (bound.expr.kind === 'jsfun-out' ||
           bound.expr.kind === 'state-get' ||
           bound.expr.kind === 'session-get' ||
-          bound.expr.kind === 'outcome-error') &&
+          bound.expr.kind === 'outcome-error' ||
+          // 🔴 EXP-011 §37 adds `id-out`, and it is the **eighth** instance of the hazard the
+          // paragraph above names: a `UUID`'s Id row is undefined on a host with no CSPRNG, and
+          // without this line the read compiled, rendered and silently did not fold. React shows
+          // `undefined` as nothing either way, so nothing observable would have caught it — but a
+          // format that interpolates the same read prints the text "undefined".
+          bound.expr.kind === 'id-out') &&
         maybeUndefined(bound.expr)
       ) {
         const code = bindingExpr(bound, 'text');
@@ -4108,6 +4328,11 @@ export function emitComponent(
       // are, and a reader of this function wants them (the `usesPayload` test below is one).
       case 'date-now-read':
         return a.then.flatMap(actionExprsOf);
+      // EXP-011 §37. The same, plus the second arm — `usesPayload` walks this list, so a New
+      // whose Failure chain reads a received event's payload is found here or the emitted
+      // callback takes no argument and its body reads one.
+      case 'id-new':
+        return [...a.then.flatMap(actionExprsOf), ...a.failThen.flatMap(actionExprsOf)];
       // EXP-011 Tier 2.5. The link, the wired Open In New Tab, and both chains — `usesPayload`
       // walks this list, so a link built from a received event's payload is found here or the
       // emitted callback takes no argument and its body reads one.
@@ -4208,7 +4433,7 @@ export function emitComponent(
     files[`${baseDir}/${plan.file.fileBase}.module.css`] = GENERATED_CSS + '\n' + cssBlocks.join('\n\n') + '\n';
   }
 
-  return { files, notes, dateHelpers: usedDateHelpers, utilHelpers: usedUtilHelpers };
+  return { files, notes, dateHelpers: usedDateHelpers, utilHelpers: usedUtilHelpers, idHelpers: usedIdHelpers };
 }
 
 /** Pre-order walk of the render tree, root first — CSS class order and naming order. */

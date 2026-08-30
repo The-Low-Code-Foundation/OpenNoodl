@@ -11,6 +11,7 @@ import { CloudServicesIR, ExportIR } from '../ir/types';
 import { emitComponent } from './component';
 import { DATE_LIB_PATH, dateLibSource } from './dateLib';
 import { UTIL_LIB_PATH, utilLibSource } from './utilLib';
+import { ID_LIB_PATH, idLibSource } from './idLib';
 import { EmittedCopy, emitKits } from './kits';
 import { README_PATH, renderReadme } from './readme';
 import { ExportReportData, REPORT_PATH, ReportComponent, renderReport, stripScope } from './report';
@@ -99,6 +100,8 @@ export function emitApp(ir: ExportIR, catalog: Catalog): EmittedApp {
   const dateHelpersUsed = new Set<string>();
   /** The same gate for `src/lib/util.ts` (EXP-011 Tier 2.7). */
   const utilHelpersUsed = new Set<string>();
+  /** The same gate for `src/lib/id.ts` (EXP-011 §37). */
+  const idHelpersUsed = new Set<string>();
   const reportComponents: ReportComponent[] = [];
   for (const plan of project.plans) {
     if (plan.skipReason) {
@@ -139,6 +142,7 @@ export function emitApp(ir: ExportIR, catalog: Catalog): EmittedApp {
     });
     for (const helper of emitted.dateHelpers) dateHelpersUsed.add(helper);
     for (const helper of emitted.utilHelpers) utilHelpersUsed.add(helper);
+    for (const helper of emitted.idHelpers) idHelpersUsed.add(helper);
   }
 
   /**
@@ -159,6 +163,14 @@ export function emitApp(ir: ExportIR, catalog: Catalog): EmittedApp {
    */
   if (utilHelpersUsed.size > 0) {
     files[UTIL_LIB_PATH] = GENERATED_MODULE_TS + utilLibSource();
+  }
+  /**
+   * `src/lib/id.ts` (EXP-011 §37) — the same rule one library over, and a third module rather
+   * than a section of either of the other two: an app that formats a date should not ship a
+   * CSPRNG, and neither of the three imports another.
+   */
+  if (idHelpersUsed.size > 0) {
+    files[ID_LIB_PATH] = GENERATED_MODULE_TS + idLibSource();
   }
 
   const api = apiModules(ir, project);

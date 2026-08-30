@@ -41,6 +41,7 @@ import { ScaffoldPage, routedPages } from '../emit/scaffold';
 import { pascalCase } from '../emit/naming';
 import { DateHelper } from '../emit/dateLib';
 import { UtilHelper, UTIL_HELPER_MAY_BE_UNDEFINED } from '../emit/utilLib';
+import { ID_HELPERS_BY_FN, IdHelper } from '../emit/idLib';
 import { CONTENT_PARAMS, iconSourceOf, StyleRole } from '../emit/style';
 import {
   expressionIdentifiersOf,
@@ -146,6 +147,45 @@ const NOW_TYPE = 'net.noodl.Now';
 
 /** `External Link` (EXP-011 Tier 2.5) — the one Navigation node that leaves the app entirely. */
 const EXTERNAL_LINK_TYPE = 'net.noodl.externallink';
+
+/** `Unique Id` (EXP-011 §37). Ten characters of `Math.random()`, and it cannot fail. */
+const UNIQUE_ID_TYPE = 'Unique Id';
+
+/** `UUID` (EXP-011 §37). A version-4 UUID from the platform CSPRNG, and it can. */
+const UUID_TYPE = 'net.noodl.UUID';
+
+/**
+ * The two id nodes (EXP-011 §37), which are `Now`'s shape rather than the pure utilities'.
+ *
+ * Each holds **one** generated id — seeded at construction by `initialize`, replaced by `New` —
+ * so the value output is a *row*, not an expression, and the `New` is an action rather than a
+ * recomputation. That is the whole reason they are not in `UTIL_NODES` beside `Substring`.
+ *
+ * 🔴 **`failure` is present on exactly one of them, and that is the node's own decision rather
+ * than a gap.** `uniqueid.ts` says so in a comment: `Model.guid()` cannot fail, so a Failure port
+ * would be one that can never fire. `UUID` can fail — there may be no CSPRNG — and carries
+ * `failure` **and** an `Error` output to say why.
+ *
+ * The `boot`/`call` helper split lives in `idLib.ts` and is read from there, not restated: the
+ * two differ for `UUID` because `initialize` swallows the failure and `_generate` reports it.
+ */
+const ID_NODES: Record<
+  string,
+  {
+    /** The value output port — the id itself. */
+    output: string;
+    fn: 'randomId' | 'randomUuid';
+    /** The `New` action's port name. The two nodes spell it differently. */
+    trigger: string;
+    /** What the node is called in a deferral sentence. */
+    label: string;
+    /** Whether the node has a Failure arm and an `Error` output at all. */
+    canFail: boolean;
+  }
+> = {
+  [UNIQUE_ID_TYPE]: { output: 'guid', fn: 'randomId', trigger: 'new', label: 'Unique Id', canFail: false },
+  [UUID_TYPE]: { output: 'uuid', fn: 'randomUuid', trigger: 'generate', label: 'UUID', canFail: true }
+};
 
 /**
  * The outputs `External Link` publishes.
@@ -635,6 +675,16 @@ export type ValueExpr =
    */
   | { kind: 'now-out'; nodeId: string; output: 'date' | 'timestamp' | 'iso'; viaState?: string }
   /**
+   * A `Unique Id`'s or `UUID`'s `Id` output (EXP-011 §37) — the row anywhere, the chain's own
+   * local inside the `New` chain, on `now-out`'s rule and for `now-out`'s reason.
+   *
+   * `fn` rides on the expression rather than being looked up from the node, because the one
+   * question every consumer asks about this kind — can the read be empty — is answered by which
+   * generator it is: `randomId` cannot fail, so its row is seeded; `randomUuid` can, so its row
+   * boots `undefined` on a host with no CSPRNG.
+   */
+  | { kind: 'id-out'; nodeId: string; fn: 'randomId' | 'randomUuid'; viaState?: string }
+  /**
    * The `Error` output of `External Link` or `Navigate To Path` (EXP-011 §24) — the message the
    * node wrote just before it fired `Failure`.
    *
@@ -1085,7 +1135,46 @@ export type HandlerAction =
       /** The state row the instant is written to, where anything outside the chain reads it. */
       materialize?: string;
       then: HandlerAction[];
-    };
+    }
+  | IdNewAction;
+
+/**
+ * A `Unique Id`'s or `UUID`'s `New` (EXP-011 §37) — `date-now-read`'s shape, with a failure arm
+ * on one of the two nodes and none on the other.
+ *
+ * 🔴 **One kind for both nodes, discriminated by `fn`.** §9.4 counted eleven sites that enumerate
+ * this union and named the five the compiler does not hold; a second action kind would have paid
+ * that toll twice for two nodes whose only structural difference is whether `failThen` can be
+ * non-empty. `ID_NODES.canFail` is the fact, and it is stated once.
+ *
+ * Like `date-now-read`, `materialize` and `errorMaterialize` are filled in the verdict sweep and
+ * never at compile time — a render read of `Id` resolves passes later, so asking "does anything
+ * read this" here answers *no* for every render read there is (§8.3's allocation-order rule).
+ */
+export type IdNewAction = {
+  kind: 'id-new';
+  nodeId: string;
+  fn: 'randomId' | 'randomUuid';
+  /**
+   * The chain-local the `New` binds to.
+   *
+   * ⚠️ **It is not the id in both cases.** For `randomId` the local *is* the string; for
+   * `randomUuid` it is the `UuidResult`, and a read of `Id` inside the Done chain is
+   * `<local>.uuid` — which narrows to `string` there and only there. `idLocalReadOf` is the one
+   * place that spelling lives, so the expression side and the action side cannot disagree.
+   */
+  local: string;
+  /** The id row, where anything outside the chain reads it. */
+  materialize?: string;
+  /**
+   * `UUID` only — the `Error` row, allocated by a *read* rather than by the node (§14.2's rule).
+   * A UUID whose Error nobody reads emits no row and no clearing setter.
+   */
+  errorMaterialize?: string;
+  then: HandlerAction[];
+  /** `UUID` only. Always empty for `Unique Id`, which has no Failure port to wire. */
+  failThen: HandlerAction[];
+};
 
 /**
  * One argument of an {@link HandlerAction} `api-call`: either a plain value, or the object
@@ -1182,6 +1271,16 @@ export interface StateVarPlan {
    * general form.
    */
   bootCode?: string;
+  /**
+   * The emitted-library helper {@link bootCode} calls, where it calls one (EXP-011 §37).
+   *
+   * 🔴 **The import is earned from this field and never by reading `bootCode`.** `bootCode` is a
+   * string emitted verbatim, and the two id rows are the first whose initializer calls into
+   * `src/lib/id.ts` — every other earn site in `component.ts` walks *expressions*, and a row's
+   * boot is not an expression it can see. A `Unique Id` with nothing on `New` has a row and no
+   * action at all, so there is nothing else left to derive the import from.
+   */
+  bootHelper?: IdHelper;
   originNodeId: string;
   origin:
     | 'switch'
@@ -1195,7 +1294,11 @@ export interface StateVarPlan {
     | 'http-error'
     | 'external-link-error'
     | 'navigate-path-error'
-    | 'now';
+    | 'now'
+    /** EXP-011 §37 — the id a `Unique Id` or a `UUID` holds. */
+    | 'id'
+    /** EXP-011 §37 — a `UUID`'s Error. `Unique Id` has no Failure port and never allocates one. */
+    | 'id-error';
   /** The provenance comment above the row. */
   comment: string;
 }
@@ -3403,6 +3506,95 @@ function planComponent(
    */
   const attachedNowNodes = new Set<string>();
 
+  /**
+   * The two id nodes (EXP-011 §37) — `Now`'s three registers, one construct wider.
+   *
+   * `idLocals` is the chain-local the `New` binds; `idVars` is the id row; `idErrorVars` is
+   * `UUID`'s Error row, which is allocated by a **read** and not by the node (§14.2's rule).
+   */
+  const idLocals = new Map<string, string>();
+  const idLocalOf = (node: NodeIR): string => mintLocal(idLocals, node, 'Id', 'New');
+
+  /**
+   * The id a `Unique Id` or a `UUID` holds, as a state row.
+   *
+   * 🔴 **Seeded lazily, on `nowStateOf`'s rule.** Both nodes generate one id in `initialize`, so
+   * `Id` is never empty before the first `New` — `useState(() => randomId())` is that, one
+   * generation per mount, which is what `initialize` is.
+   *
+   * ⚠️ **The eager `useState(randomId())` would not show a *different* id, and saying it would is
+   * the overstatement to avoid here.** React evaluates the argument on every render and discards
+   * it after the first, so the rendered id is identical either way and no drive row can tell them
+   * apart. What the eager form actually costs is a generator call per render — `Math.random()` for
+   * one node and a **CSPRNG draw** for the other. The lazy form is right because it is the
+   * faithful transcription of a once-per-construction `initialize`, not because the alternative
+   * is visibly broken.
+   *
+   * ⚠️ **`UUID`'s row is maybe-undefined and `Unique Id`'s is not**, and that asymmetry is the
+   * node's own: `Model.guid()` cannot fail, while `UUID`'s `initialize` catches and leaves `Id`
+   * blank on a host with no CSPRNG. `maybeUndefinedExpr` reads the same `fn` to answer it.
+   */
+  const idVars = new Map<string, StateVarPlan>();
+  const idStateOf = (node: NodeIR): StateVarPlan => {
+    let stateVar = idVars.get(node.id);
+    if (stateVar === undefined) {
+      const spec = ID_NODES[node.type];
+      const helpers = ID_HELPERS_BY_FN[spec.fn];
+      stateVar = allocStateVar(
+        node.authoredLabel,
+        spec.fn === 'randomUuid' ? 'uuid' : 'uniqueId',
+        spec.fn === 'randomUuid' ? 'string | undefined' : 'string',
+        null,
+        node.id,
+        'id',
+        `The id ${node.authoredLabel ? `"${node.authoredLabel}"` : spec.label} holds. Generated once at mount, as the node's own initialize generates it, and replaced by New.`
+      );
+      stateVar.bootCode = `() => ${helpers.boot}()`;
+      stateVar.bootHelper = helpers.boot;
+      idVars.set(node.id, stateVar);
+    }
+    return stateVar;
+  };
+
+  /**
+   * `UUID`'s `Error` as a state row (EXP-011 §37) — `httpAnswerStateOf`'s allocation rule, not
+   * `httpErrorStateOf`'s: allocated by the **read**, so a UUID nobody asks for a message from
+   * emits no row and no clearing setter. That is the commonest shape by a distance.
+   */
+  const idErrorVars = new Map<string, StateVarPlan>();
+  const idErrorStateOf = (node: NodeIR): StateVarPlan => {
+    let stateVar = idErrorVars.get(node.id);
+    if (stateVar === undefined) {
+      stateVar = allocStateVar(
+        // ` Error` appended, on the naming rule the other three Error rows already use. Without
+        // it the row takes the node's own label, collides with the id row and comes out as
+        // `recordId2` — a name that says nothing about being a message.
+        node.authoredLabel === undefined ? undefined : `${node.authoredLabel} Error`,
+        'uuidError',
+        'string | undefined',
+        null,
+        node.id,
+        'id-error',
+        `Why ${node.authoredLabel ? `"${node.authoredLabel}"` : 'UUID'} could not generate an id. Cleared on every New that succeeds, as the node's own _generate clears it.`
+      );
+      idErrorVars.set(node.id, stateVar);
+    }
+    return stateVar;
+  };
+
+  /**
+   * The id nodes currently having a `New` chain compiled, and **which arm** — the shape
+   * `externalLinkChainScope` already uses, rather than `nowChainScope`'s bare Set.
+   *
+   * 🔴 The arm has to be per node and not one mutable variable: an id node's Done chain can fire
+   * a second id node's `New`, and a single `let` would report the inner node's arm for a read of
+   * the outer one. `Now` needs no such thing because it has only one arm to be in.
+   */
+  const idChainScope = new Map<string, 'done' | 'failure'>();
+
+  /** Id nodes whose `New` attached to a handler. `attachedNowNodes`'s twin, and the same rule. */
+  const attachedIdNodes = new Set<string>();
+
   // ---- Static Data: the authored blob as a build-time constant (STATIC-DATA-TARGET) --------
   //
   // `type`, `csv` and `json` are all `allowEditOnly` (staticdata.ts), so this is not a solver
@@ -4640,6 +4832,84 @@ function planComponent(
         ? { kind: 'now-out', nodeId: fromNode.id, output }
         : { kind: 'now-out', nodeId: fromNode.id, output, viaState: nowStateOf(fromNode).name };
     }
+    /**
+     * The two id nodes' outputs (EXP-011 §37) — `Now`'s two forms, plus the one thing `Now` does
+     * not have: an arm on which the value is **not** written.
+     *
+     * 🔴 **"Inside its own chain" is three questions here, not one — §24's rule, one node over.**
+     *
+     * | read from | `Id` | `Error` |
+     * |---|---|---|
+     * | render, or another handler | the row | the row |
+     * | the **Done** arm | the arm's own local — `setId(…)` does not change `id` in this closure | 🔴 **refused**: `_generate` *clears* the message before Done fires, so every such read is empty |
+     * | the **Failure** arm | 🔴 **the row** — the interpreter leaves `Id` as it was, so the pre-write row *is* the faithful answer | the arm's own local |
+     *
+     * The two diagonals are the point. Reading the local in the Failure arm would name a property
+     * that does not exist on a failed `UuidResult`; reading the row in the Done arm would deliver
+     * the previous id (§8.2). And `Error` is where this node **stops** copying `External Link`:
+     * there `_internal.lastError` is never cleared, so §24 reads the stale row in the Done arm and
+     * is right to. `_generate` clears it, so the same code here would print a message the running
+     * app has just erased.
+     */
+    {
+      const spec = ID_NODES[fromNode.type];
+      if (spec !== undefined) {
+        const arm = idChainScope.get(fromNode.id);
+        const inChain = arm !== undefined;
+        /**
+         * A wired `New` that never attached, on `Now`'s rule (§4a in this family): the
+         * interpreter still regenerates on every `New`, and binding to a row nothing writes
+         * would freeze the app at its mount id with nothing to say why. A `New` that is
+         * *unwired* needs no such check — the constructed id is then the whole of the node.
+         */
+        const rowIsReadable = (): boolean => {
+          if (!inChain && wiredPorts.has(`${fromNode.id}:${spec.trigger}`) && !attachedIdNodes.has(fromNode.id)) {
+            const compiled = compiledOf(fromNode, spec.trigger);
+            ctx.defer = 'defer' in compiled ? compiled.defer : 'its New is never fired by a translatable trigger';
+            return false;
+          }
+          ctx.logicNodeIds.push(fromNode.id);
+          return true;
+        };
+        if (fromProperty === spec.output) {
+          // The Done arm is the only place the local holds a fresh id; the Failure arm did not
+          // write one, so it reads the row exactly as anything outside the chain does.
+          if (arm === 'done') {
+            ctx.logicNodeIds.push(fromNode.id);
+            return { kind: 'id-out', nodeId: fromNode.id, fn: spec.fn };
+          }
+          if (!rowIsReadable()) return null;
+          return { kind: 'id-out', nodeId: fromNode.id, fn: spec.fn, viaState: idStateOf(fromNode).name };
+        }
+        if (spec.canFail && fromProperty === 'error') {
+          if (arm === 'done') {
+            ctx.defer =
+              'its Error is read from its own Done chain — the node clears the message before Done fires, so that read is always empty';
+            return null;
+          }
+          if (arm === 'failure') {
+            ctx.logicNodeIds.push(fromNode.id);
+            // ⚠️ A member expression rather than a bare name, and `outcome-error` prints its
+            // `local` verbatim so it carries one. The arm's `const` is the whole `UuidResult`
+            // — one binding for the two things the arm needs, which is what lets the emitted
+            // `else` narrow `.error` to `string` instead of guarding a value that is present.
+            return { kind: 'outcome-error', nodeId: fromNode.id, local: `${idLocalOf(fromNode)}.error` };
+          }
+          if (!rowIsReadable()) return null;
+          return {
+            kind: 'outcome-error',
+            nodeId: fromNode.id,
+            local: `${idLocalOf(fromNode)}.error`,
+            viaState: idErrorStateOf(fromNode).name
+          };
+        }
+        ctx.defer =
+          fromProperty === 'done' || fromProperty === 'failure'
+            ? `its ${fromProperty === 'done' ? 'Done' : 'Failure'} output is consumed as a value — a pulse carries nothing to read`
+            : `its ${fromProperty} output is not a port this slice reads`;
+        return null;
+      }
+    }
     // The five pure date nodes (EXP-011 Tier 1.3) — each an ordinary function call.
     {
       const spec = DATE_NODES[fromNode.type];
@@ -4794,6 +5064,20 @@ function planComponent(
        */
       case 'now-out':
         return false;
+      /**
+       * The id nodes (EXP-011 §37), and the answer differs **by node** rather than by form.
+       *
+       * The chain-local is never undefined in either: it is only ever minted inside the Done arm,
+       * where the generator has just answered. The *row* is `Unique Id`'s never — `Model.guid()`
+       * cannot fail, so `initialize` always seeds it — and `UUID`'s sometimes, because that
+       * node's `initialize` catches and leaves `Id` blank where the host has no CSPRNG.
+       *
+       * 🔴 Reading `fn` off the expression and not the node: this function has no node table in
+       * scope, and a sink that folded `{uuid}` with `?? ''` where the row can be blank — or
+       * emitted a bare `{uniqueId}` where it cannot — would be wrong in one direction each.
+       */
+      case 'id-out':
+        return expr.fn === 'randomUuid' && expr.viaState !== undefined;
       /**
        * The row only when it is the row: it reads undefined until the first failure, exactly as
        * the interpreter's unwritten getter does. The chain-local was assigned by the statement
@@ -5091,6 +5375,9 @@ function planComponent(
        */
       case 'outcome-error':
         return 'string';
+      /** Both nodes publish a string id, in both forms (EXP-011 §37). */
+      case 'id-out':
+        return 'string';
       case 'state-get':
         return plan.stateVars.find((v) => v.name === expr.name)?.tsType.replace(' | undefined', '') ?? 'unknown';
       case 'control-event':
@@ -5137,6 +5424,12 @@ function planComponent(
     [EXTERNAL_LINK_TYPE]: 'do',
     // EXP-011 §15. `Navigate To Path`'s only action port.
     [NAVIGATE_TO_PATH_TYPE]: 'navigate',
+    /**
+     * EXP-011 §37. The two id nodes' only action port — and they **spell it differently**
+     * (`new` against `generate`) while both display it as "New". Derived from `ID_NODES` rather
+     * than written out here, so the table that knows the port name is the only place it lives.
+     */
+    ...Object.fromEntries(Object.entries(ID_NODES).map(([type, spec]) => [type, spec.trigger])),
     Condition: 'eval',
     NewDbModelProperties: 'store',
     SetDbModelProperties: 'store',
@@ -6234,6 +6527,74 @@ function planComponent(
   };
 
   /**
+   * `Unique Id`'s and `UUID`'s `New` (EXP-011 §37) — `compileNowRead` with a second arm.
+   *
+   * Synchronous like `Now`'s Read and unlike everything else in this file with a Failure arm:
+   * `_generate` regenerates, flags the outputs dirty and reports its outcome in the one call. So
+   * the two arms are the two halves of an `if`, not a promise's continuations.
+   *
+   * 🔴 **`Unique Id` compiles the Done arm and no other, and that is the node's own statement.**
+   * `uniqueid.ts` says a Failure port would be one that can never fire, because `Model.guid()`
+   * cannot fail. Asking `doneChainOf(node, 'failure')` there would not merely be dead — it would
+   * defer the whole node on any project that had somehow wired a port the editor does not offer.
+   */
+  const compileIdNew = (node: NodeIR): CompiledSink => {
+    const spec = ID_NODES[node.type];
+    const readable = new Set([spec.output, 'done', ...(spec.canFail ? ['failure', 'error'] : [])]);
+    for (const wire of component.connections.filter((c) => c.fromId === node.id)) {
+      if (readable.has(wire.fromProperty)) continue;
+      /**
+       * `Completed`, on `HTTP Request`'s and `External Link`'s sentence (§8.4, §12.7) — it fires
+       * after every outcome, and this slice emits the arms rather than a join beneath them.
+       *
+       * ⚠️ **`Unique Id`'s Completed is a translatable increment and is deliberately not taken
+       * here.** That node has exactly one outcome, and its own catalog description says so:
+       * *"it always fires together with Done, and wiring either one does the same thing"* — so
+       * `completed` could simply compile as `done`. What stops it being free is the case where
+       * **both** are wired: two chains whose relative order this file would be choosing rather
+       * than reading. The reason below names the one-move fix so an author is not left guessing.
+       */
+      if (wire.fromProperty === 'completed') {
+        return {
+          defer: spec.canFail
+            ? 'its Completed output is consumed — it fires after every outcome, and this slice emits the outcome arms rather than a join beneath them'
+            : 'its Completed output is consumed — this node has only one outcome, so Completed and Done always fire together; wire the chain to Done instead and it translates unchanged'
+        };
+      }
+      return {
+        defer: `its ${wire.fromProperty} output is consumed, and this node publishes only ${[...readable].join(', ')}`
+      };
+    }
+    const local = idLocalOf(node);
+    idChainScope.set(node.id, 'done');
+    const done = doneChainOf(node, 'done');
+    // The Failure arm is compiled only where the node has one. `'defer' in done` short-circuits
+    // it for the same reason `compileExternalLink` does: a deferred Done defers the node, and
+    // compiling the second arm afterwards would mint locals for code that is never emitted.
+    idChainScope.set(node.id, 'failure');
+    const fail =
+      spec.canFail && !('defer' in done)
+        ? doneChainOf(node, 'failure')
+        : { then: [], consumes: [], collapses: [], subscribes: [] };
+    idChainScope.delete(node.id);
+    if ('defer' in done) return { defer: done.defer };
+    if ('defer' in fail) return { defer: fail.defer };
+    return {
+      action: {
+        kind: 'id-new',
+        nodeId: node.id,
+        fn: spec.fn,
+        local,
+        then: done.then,
+        failThen: fail.then
+      },
+      consumes: [...done.consumes, ...fail.consumes],
+      collapses: [...done.collapses, ...fail.collapses],
+      subscribes: [...done.subscribes, ...fail.subscribes]
+    };
+  };
+
+  /**
    * A Router navigation with its page parameters (EXP-011 Tier 2.5).
    *
    * The runtime builds the url in `getRelativeURL` (`router.tsx:607-643`) and this is that
@@ -6866,6 +7227,7 @@ function planComponent(
     if (node.type === 'CollectionRemove') return compileCollectionRemove(node);
     if (node.type === HTTP_TYPE) return compileHttpFetch(node);
     if (node.type === NOW_TYPE) return compileNowRead(node);
+    if (ID_NODES[node.type] !== undefined) return compileIdNew(node);
     if (node.type === 'Condition') return compileCondition(node);
     /**
      * ⚠️ **Everything below this line is the Set Variable case, and there is no `default`.**
@@ -7086,6 +7448,14 @@ function planComponent(
       case 'now-out':
         return true;
       /**
+       * The id nodes (EXP-011 §37), on the same footing and the same reason: the row form is an
+       * ordinary state read, and the local form is only ever minted while the Done chain that
+       * declares the local is being compiled, so an escaped local would first have to escape the
+       * action it is carried inside.
+       */
+      case 'id-out':
+        return true;
+      /**
        * `External Link` and `Navigate To Path`'s `Error`, on the same footing and the same
        * reason (EXP-011 §24): the state form is an ordinary state read, and the local form is
        * only ever minted while the failure chain that declares the local is being compiled, so
@@ -7186,6 +7556,19 @@ function planComponent(
          */
         case 'date-now-read':
           return actionsValidIn(action.then, context, invokedScope);
+        /**
+         * EXP-011 §37. The `New` reads nothing of its own; both its arms run in this same
+         * closure, so both constrain.
+         *
+         * ⚠️ Hand-written for the reason the `date-now-read` case above gives, and this is the
+         * site that warning exists for: the callback has no return annotation, so `every`'s
+         * `unknown` would have swallowed a missing case here and `tsc` would have said nothing.
+         */
+        case 'id-new':
+          return (
+            actionsValidIn(action.then, context, invokedScope) &&
+            actionsValidIn(action.failThen, context, invokedScope)
+          );
         /**
          * EXP-011 Tier 2.5. The link and (where wired) Open In New Tab are read in the handler,
          * and both outcome chains run in that same closure.
@@ -7979,6 +8362,22 @@ function planComponent(
         if (!Array.isArray(then)) return then;
         return { ...action, then };
       }
+      /**
+       * EXP-011 §37, on the `date-now-read` rule above and with the second arm carried too.
+       *
+       * The id row is deliberately **not** entered in the snapshot, and for a sharper reason
+       * than `Now`'s: every read of `Id` inside the Done arm already takes the local form, and
+       * every read inside the Failure arm is *meant* to be the pre-write row — the interpreter
+       * did not write one there. Rewriting that read to a snapshot of the value the arm did not
+       * produce would break the one case this node has that `Now` does not.
+       */
+      case 'id-new': {
+        const then = snapActionList(action.then, snap);
+        if (!Array.isArray(then)) return then;
+        const failThen = snapActionList(action.failThen, snap);
+        if (!Array.isArray(failThen)) return failThen;
+        return { ...action, then, failThen };
+      }
       default:
         return action;
     }
@@ -8484,6 +8883,13 @@ function planComponent(
         } else if (action.kind === 'date-now-read') {
           attachedNowNodes.add(action.nodeId);
           scanActions(action.then);
+        } else if (action.kind === 'id-new') {
+          // EXP-011 §37. Both chains are walked, which is what earns the popups, mutations and
+          // channels inside them — and the node gets a registry of its own for `Now`'s reason:
+          // a read of `Id` through the row has to know whether anything ever writes it.
+          attachedIdNodes.add(action.nodeId);
+          scanActions(action.then);
+          scanActions(action.failThen);
         } else if (action.kind === 'external-link') {
           // EXP-011 Tier 2.5. The chains are walked here, which is what earns the popups,
           // mutations and channels inside them — and §14 gave the node a registry of its own,
@@ -8921,6 +9327,35 @@ function planComponent(
      * silent are this one and Pass 4c's whitelist below.
      */
     const isNavigatePathErrorRead = fromNode.type === NAVIGATE_TO_PATH_TYPE && connection.fromProperty === 'error';
+    /**
+     * The two id nodes' `Id` and `UUID`'s `Error` into a rendered sink (EXP-011 §37) — the id in
+     * a Text, the message beside the button that generates it.
+     *
+     * 🔴 **This pass only, and the reason is measured rather than argued — §36.5's rule applied
+     * to its other half.** Two mutants:
+     *
+     * - removing this clause killed **six** rows, so it is load-bearing;
+     * - *adding* these nodes to Pass 4c's whitelist as well killed **zero**.
+     *
+     * ⚠️ The second number is the one worth reading, and it says something narrower than "Pass 4f
+     * is the right home". Both passes call `resolveExpr`, so both would bind the *same* row read
+     * here — the output is identical, and since Pass 4c runs first and consumes the wire, adding
+     * them there would make **this** clause the dead one. So the choice is not between a right
+     * and a wrong translation; it is between one site and two, and §36.5's finding was that
+     * shipping both leaves a branch nothing can execute.
+     *
+     * This is the site because it is where the rest of the state-row family already lives:
+     * `Now`, `HTTP Request` and the two `Error` ports are all here and none of them is in Pass
+     * 4c's whitelist. Consistency with them is the argument; the mutants are what say the other
+     * option would have been redundant rather than wrong.
+     *
+     * Derived from `ID_NODES` rather than restated, so a third id node cannot be taught to
+     * `resolveExpr` and left invisible here.
+     */
+    const isIdRead =
+      ID_NODES[fromNode.type] !== undefined &&
+      (connection.fromProperty === ID_NODES[fromNode.type].output ||
+        (ID_NODES[fromNode.type].canFail && connection.fromProperty === 'error'));
     if (
       !isLatchRead &&
       !isControlRead &&
@@ -8932,7 +9367,8 @@ function planComponent(
       !isDateRead &&
       !isNowRead &&
       !isExternalLinkErrorRead &&
-      !isNavigatePathErrorRead
+      !isNavigatePathErrorRead &&
+      !isIdRead
     ) {
       continue;
     }
@@ -9434,9 +9870,19 @@ function planComponent(
      * shape the loop below already handles — every reason they can produce comes out of
      * `resolveExpr`, and Pass 4f leaves the wire unconsumed when one does.
      */
+    /**
+     * ⚠️ The two id nodes (EXP-011 §37) ride this sweep for the reason the utilities do: every
+     * reason they can produce comes out of `resolveExpr` or out of their own `New`, which is the
+     * shape the loop below already handles. The `New` trigger is read from `ID_NODES` rather
+     * than spelled here, because the two nodes spell that port differently.
+     */
     const isDateNode =
-      DATE_NODES[node.type] !== undefined || node.type === NOW_TYPE || UTIL_NODES[node.type] !== undefined;
+      DATE_NODES[node.type] !== undefined ||
+      node.type === NOW_TYPE ||
+      UTIL_NODES[node.type] !== undefined ||
+      ID_NODES[node.type] !== undefined;
     if (!isDateNode || dispositions[node.id] !== undefined) continue;
+    const idTrigger = ID_NODES[node.type]?.trigger;
     let verdict: string | null = null;
     for (const c of component.connections) {
       if (consumed.has(c.key)) continue;
@@ -9447,6 +9893,15 @@ function planComponent(
           compiled !== undefined && 'defer' in compiled
             ? compiled.defer
             : 'its Read is never fired by a translatable source';
+        break;
+      }
+      // The same clause for an id node's own `New`, and the same precedence.
+      if (idTrigger !== undefined && c.toId === node.id && c.toProperty === idTrigger) {
+        const compiled = compiledSinks.get(`${node.id}:${idTrigger}`);
+        verdict =
+          compiled !== undefined && 'defer' in compiled
+            ? compiled.defer
+            : 'its New is never fired by a translatable source';
         break;
       }
       if (c.fromId === node.id) {
@@ -9858,6 +10313,26 @@ function planComponent(
             const row = nowVars.get(action.nodeId);
             if (row !== undefined && plan.stateVars.includes(row)) action.materialize = row.name;
             fillMaterialize(action.then);
+            break;
+          }
+          /**
+           * EXP-011 §37, on the same rule and for the same reason: a render read of `Id`
+           * resolves passes after the `New` compiled, so asking here whether anything reads the
+           * row is the only place that can answer truthfully.
+           *
+           * ⚠️ **Two rows, and the second one may legitimately be absent.** The id row is like
+           * `Now`'s — earned without any action at all, since a node with nothing on `New` is
+           * still the id it constructed. The Error row is `httpAnswerStateOf`'s rule: allocated
+           * by a read, so a `UUID` nobody asks a message from has none, and the success arm then
+           * emits no clearing setter either.
+           */
+          case 'id-new': {
+            const row = idVars.get(action.nodeId);
+            if (row !== undefined && plan.stateVars.includes(row)) action.materialize = row.name;
+            const errorRow = idErrorVars.get(action.nodeId);
+            if (errorRow !== undefined && plan.stateVars.includes(errorRow)) action.errorMaterialize = errorRow.name;
+            fillMaterialize(action.then);
+            fillMaterialize(action.failThen);
             break;
           }
           /**
