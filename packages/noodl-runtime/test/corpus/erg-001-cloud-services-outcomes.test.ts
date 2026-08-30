@@ -347,6 +347,45 @@ describe('ERG-001 §4: Record', () => {
     expect(graph.signalsFor('node')).not.toContain('completed');
   });
 
+  /**
+   * 🔴 **P77 D25 — what the binding path's `Fetched` announces, and what its description
+   * promised.**
+   *
+   * The row above pins that binding fires `Fetched` with no outcome; this one measures the
+   * consequence an author meets. `Fetched` said *"Fires once the record has been read and the
+   * property outputs are up to date"*, and on this path the record has not been read and the
+   * outputs are empty — so a graph triggered by it acts on nothing. The site-builder's
+   * `duplicatePage` did exactly that and wrote a `Copy of Untitled` page per request before it
+   * wrote the real one (`sb004-publication-invariant.test.ts`, the "exactly ONE page" row).
+   *
+   * ⚠️ **The behaviour is deliberate and stays** — `Done` exists precisely because the two
+   * paths differ, and the row above is the decision that keeps them apart. What was wrong was
+   * the sentence an author reads in the property panel and the catalog, so that is what moved.
+   */
+  test('🔴 D25: binding fires Fetched while every property output is still empty', async () => {
+    const graph = await graphWith(DbModelModule, 'DbModel2', { collectionName: 'articles' });
+    graph.node('node').setInputValue('modelId', 'r1');
+    await graph.settle(2);
+
+    // The announcement went out...
+    expect(graph.signalsFor('node')).toContain('fetched');
+    // ...about a record nobody has read: `Model.get` minted an empty local model.
+    const model = (graph.node('node') as unknown as { _internal: { model?: { data: unknown } } })._internal.model;
+    expect(model && model.data).toEqual({});
+
+    // 🔴 And the port no longer claims otherwise. Read off the DEFINITION, which is what the
+    // property panel and the MCP catalog render — a live `Output` carries no description, and
+    // an assertion against that object read `''` and would have passed any wording at all.
+    // Asserted on the substance rather than verbatim, so rewording stays cheap while
+    // re-promising a read cannot pass.
+    const description = String(
+      (DbModelModule as unknown as { node: { outputs: Record<string, { description?: string }> } }).node.outputs.fetched
+        .description || ''
+    );
+    expect(description).toMatch(/bind/i);
+    expect(description).toMatch(/Done/);
+  });
+
   test('a Fetch with no Id reports Failure with the family code, then Completed', async () => {
     const graph = await graphWith(DbModelModule, 'DbModel2', { collectionName: 'articles' });
     pulse(graph, 'fetch');

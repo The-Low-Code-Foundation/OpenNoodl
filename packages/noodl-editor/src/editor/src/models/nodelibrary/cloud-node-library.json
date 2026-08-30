@@ -1204,7 +1204,7 @@
           "plug": "output",
           "group": "Events",
           "displayName": "Fetched",
-          "description": "Fires once the record has been read and the property outputs are up to date"
+          "description": "Fires when the Id binds a record, and again when a Fetch finishes reading it — a bind has read nothing, so use Done to act on data that is really there"
         },
         {
           "name": "changed",

@@ -161,7 +161,15 @@ const ModelNodeDefinition: NodeDefinitionOptions = {
       type: 'signal',
       displayName: 'Fetched',
       group: 'Events',
-      description: 'Fires once the record has been read and the property outputs are up to date'
+      // 🔴 P77 D25 — the old sentence was *"Fires once the record has been read and the
+      // property outputs are up to date"*, and on the binding path neither half is true:
+      // `setModel` fires this straight from the `Id` setter (line ~324), where nothing has
+      // been read and every `prop-` output is empty. A site-builder endpoint hung a write
+      // off it and created a row per request from data that had not arrived. The twin
+      // (`Model2`) already said "bound"; this one now says what it does too, and names the
+      // port that means what this one promised.
+      description:
+        'Fires when the Id binds a record, and again when a Fetch finishes reading it — a bind has read nothing, so use Done to act on data that is really there'
     },
     changed: {
       type: 'signal',

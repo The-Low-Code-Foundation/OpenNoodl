@@ -631,127 +631,15 @@ describe('SB-004 §7 — the publication invariant on a real backend', () => {
     });
   });
 
-  // ==========================================================================
-  // 4. duplicatePage — acceptance 4
-  // ==========================================================================
-
-  describe('duplicatePage copies a page into a draft (acceptance 4)', () => {
-    let source: { page: string; sections: string[] };
-    let copyId: string;
-
-    beforeAll(async () => {
-      source = await makeDraftPage('Pricing', 'pricing', ['hero', 'cta']);
-      // Published on purpose: the copy must come back a draft even when its
-      // source is public, which is the assertion that separates "copied the
-      // fields" from "copied the publication state".
-      await client.post('/functions/publishPage', { pageId: source.page, publish: true }, asUser(owner));
-
-      const res = await client.post<{ result?: { pageId?: string } }>(
-        '/functions/duplicatePage',
-        { pageId: source.page },
-        asUser(owner)
-      );
-      expect(res.status).toBe(200);
-      copyId = String(res.json.result?.pageId);
-      expect(copyId).toMatch(/\S/);
-      expect(copyId).not.toBe(source.page);
-    });
-
-    it('produces a DRAFT copy, admin-only, with the mirror cleared', async () => {
-      const copy = await readAsAdmin('Page', copyId);
-      expect(copy.status).toBe(200);
-      expect(copy.json.published).toBe(false);
-      expect(copy.json.ACL).toEqual(DRAFT_ACL);
-      expect((await readAnonymously('Page', copyId)).status).toBe(404);
-    });
-
-    it('carries the fields over and renames the copy so it cannot collide', async () => {
-      const copy = await readAsAdmin('Page', copyId);
-      expect(copy.json.title).toBe('Copy of Pricing');
-      expect(String(copy.json.slug)).toMatch(/^pricing-copy-[a-z0-9]{6}$/);
-    });
-
-    it('copies the sections onto the NEW page, each one a draft', async () => {
-      // Read every Section and select here: the graph's own filter is exercised
-      // by publishPage above, on the run that proves it narrows to one page.
-      const all = await client.get<{ results: Row[] }>('/classes/Section?limit=1000', asUser(owner));
-      expect(all.status).toBe(200);
-      const pointsAt = (row: Row, pageId: string) => row.pageId === pageId;
-      const copied = all.json.results.filter((r) => pointsAt(r, copyId));
-
-      expect(copied).toHaveLength(source.sections.length);
-      expect(copied.map((r) => r.kind).sort()).toEqual(['cta', 'hero']);
-      // The copies are new rows, not the originals repointed.
-      expect(copied.map((r) => r.objectId).some((id) => source.sections.includes(id))).toBe(false);
-      for (const row of copied) {
-        expect(row.ACL).toEqual(DRAFT_ACL);
-        expect((await readAnonymously('Section', row.objectId)).status).toBe(404);
-      }
-      // And the source still has its own, still published.
-      expect(all.json.results.filter((r) => pointsAt(r, source.page))).toHaveLength(source.sections.length);
-    });
-
-    it('left the published source alone', async () => {
-      expect((await readAnonymously('Page', source.page)).status).toBe(200);
-      expect((await readAsAdmin('Page', source.page)).json.title).toBe('Pricing');
-    });
-  });
-
-  // ==========================================================================
-  // 5. submitContactForm — acceptance 5
-  // ==========================================================================
-
-  describe('submitContactForm takes a message from a visitor with no session (acceptance 5)', () => {
-    it('answers an anonymous caller and records the enquiry', async () => {
-      const res = await client.post<{ result?: Record<string, unknown> }>('/functions/submitContactForm', {
-        name: 'A visitor',
-        email: 'visitor@example.invalid',
-        message: 'Do you take on small jobs?',
-        pageSlug: 'services'
-      });
-      expect(res.status).toBe(200);
-
-      const found = await client.get<{ results: Row[] }>('/classes/ContactMessage', asUser(owner));
-      expect(found.status).toBe(200);
-      const row = found.json.results.find((r) => r.email === 'visitor@example.invalid');
-      expect(row).toBeDefined();
-      expect(row!.message).toBe('Do you take on small jobs?');
-      expect(row!.handled).toBe(false);
-    });
-
-    it('🔴 is the ONLY door to that class: nobody may write one directly', async () => {
-      // §4's `create: 'nobody'` — the function bypasses both layers because it
-      // runs as system, and that is exactly why the direct door must be shut.
-      const asVisitor = await client.post('/classes/ContactMessage', {
-        name: 'bot',
-        email: 'bot@example.invalid',
-        message: 'x'
-      });
-      expect(asVisitor.status).toBe(403);
-      // Not even the site owner, who is an admin everywhere else in this table.
-      const asOwner = await client.post(
-        '/classes/ContactMessage',
-        { name: 'owner', email: 'o@example.invalid', message: 'x' },
-        asUser(owner)
-      );
-      expect(asOwner.status).toBe(403);
-    });
-
-    it('keeps the enquiries admin-only', async () => {
-      expect((await client.get('/classes/ContactMessage')).status).toBe(403);
-      expect((await client.get('/classes/ContactMessage', asUser(outsider))).status).toBe(403);
-    });
-  });
-
-  // ⚠️ **Placed last on purpose, and the reason is a defect rather than tidiness.**
-  // Run BEFORE the `duplicatePage` block, this drive makes that block fail four
-  // runs in five with `run-tasks/already-running` on duplicatePage's OWN node —
-  // state left behind by an earlier request, because a cloud function's graph is
-  // shared across requests. It is not call volume: ten `publishPage` calls and
-  // seven `submitContactForm` calls in the same slot are green five times out of
-  // five, and only this endpoint's traffic provokes it. Recorded as **D24**,
-  // unowned, with those controls. Ordering keeps this gate honest meanwhile —
-  // it does not fix anything, and D24 is the thing to fix.
+  // 🔴 **Placed before `duplicatePage` on purpose, and that is the D24 gate.**
+  // This arrangement used to make the `duplicatePage` block fail one run in five
+  // to three in five with `run-tasks/already-running` on duplicatePage's own
+  // node, and s27 recorded the cause as a graph outliving its request. That was
+  // wrong. Traced (s28), every request builds a FRESH `Run Tasks` instance and
+  // the second `Do` came from within the same request: `newProps` ran four times
+  // and each run wrote a Page row. The 400 was the last symptom of a graph that
+  // was writing four copies and answering with the fourth. See D24 and the row
+  // count asserted in the block below.
   // ==========================================================================
   // 3b. reorderSection — SBR-007 AC2, the half a browser cannot do
   // ==========================================================================
@@ -905,6 +793,147 @@ describe('SB-004 §7 — the publication invariant on a real backend', () => {
       expect(await storedOrder(target)).toEqual(before);
     });
   });
+
+  // ==========================================================================
+  // 4. duplicatePage — acceptance 4
+  // ==========================================================================
+
+  describe('duplicatePage copies a page into a draft (acceptance 4)', () => {
+    let source: { page: string; sections: string[] };
+    let copyId: string;
+
+    beforeAll(async () => {
+      source = await makeDraftPage('Pricing', 'pricing', ['hero', 'cta']);
+      // Published on purpose: the copy must come back a draft even when its
+      // source is public, which is the assertion that separates "copied the
+      // fields" from "copied the publication state".
+      await client.post('/functions/publishPage', { pageId: source.page, publish: true }, asUser(owner));
+
+      const res = await client.post<{ result?: { pageId?: string } }>(
+        '/functions/duplicatePage',
+        { pageId: source.page },
+        asUser(owner)
+      );
+      expect(res.status).toBe(200);
+      copyId = String(res.json.result?.pageId);
+      expect(copyId).toMatch(/\S/);
+      expect(copyId).not.toBe(source.page);
+    });
+
+    /**
+     * 🔴 **D24 — one act, one row. The suite was green for ten sessions while
+     * this endpoint wrote FOUR pages per call.**
+     *
+     * Nothing counted, so nothing saw it: every other assertion here reads the
+     * copy the response named, and that one is correct. The other three were
+     * `Copy of Untitled` / `Copy of Pricing` drafts with no sections, sitting in
+     * the admin's page list where a person would have to delete them by hand.
+     *
+     * The cause was two runtime behaviours meeting an unguarded write —
+     * `Record.Fetched` firing from the `Id` setter before any read, and a
+     * Function node re-running on every value arrival including one carrying the
+     * same value. Both are recorded as their own rows; this assertion is what
+     * stops the template drifting back.
+     *
+     * ⚠️ Counted over the whole class, never over the answer: the response can
+     * only ever name one page, so a reading taken from it could not have seen
+     * this defect and cannot see it come back.
+     */
+    it('🔴 wrote exactly ONE page — the copy it answered with, and no others (D24)', async () => {
+      const pages = await client.get<{ results: Row[] }>('/classes/Page?limit=1000', asUser(owner));
+      const copies = (pages.json.results || []).filter((r) => String(r.title || '').startsWith('Copy of'));
+      // Named, not merely counted: a failure should say what the extra rows were.
+      expect(copies.map((c) => `${c.title}|${c.objectId === copyId ? 'answered' : 'ORPHAN'}`).sort()).toEqual([
+        'Copy of Pricing|answered'
+      ]);
+    });
+
+    it('produces a DRAFT copy, admin-only, with the mirror cleared', async () => {
+      const copy = await readAsAdmin('Page', copyId);
+      expect(copy.status).toBe(200);
+      expect(copy.json.published).toBe(false);
+      expect(copy.json.ACL).toEqual(DRAFT_ACL);
+      expect((await readAnonymously('Page', copyId)).status).toBe(404);
+    });
+
+    it('carries the fields over and renames the copy so it cannot collide', async () => {
+      const copy = await readAsAdmin('Page', copyId);
+      expect(copy.json.title).toBe('Copy of Pricing');
+      expect(String(copy.json.slug)).toMatch(/^pricing-copy-[a-z0-9]{6}$/);
+    });
+
+    it('copies the sections onto the NEW page, each one a draft', async () => {
+      // Read every Section and select here: the graph's own filter is exercised
+      // by publishPage above, on the run that proves it narrows to one page.
+      const all = await client.get<{ results: Row[] }>('/classes/Section?limit=1000', asUser(owner));
+      expect(all.status).toBe(200);
+      const pointsAt = (row: Row, pageId: string) => row.pageId === pageId;
+      const copied = all.json.results.filter((r) => pointsAt(r, copyId));
+
+      expect(copied).toHaveLength(source.sections.length);
+      expect(copied.map((r) => r.kind).sort()).toEqual(['cta', 'hero']);
+      // The copies are new rows, not the originals repointed.
+      expect(copied.map((r) => r.objectId).some((id) => source.sections.includes(id))).toBe(false);
+      for (const row of copied) {
+        expect(row.ACL).toEqual(DRAFT_ACL);
+        expect((await readAnonymously('Section', row.objectId)).status).toBe(404);
+      }
+      // And the source still has its own, still published.
+      expect(all.json.results.filter((r) => pointsAt(r, source.page))).toHaveLength(source.sections.length);
+    });
+
+    it('left the published source alone', async () => {
+      expect((await readAnonymously('Page', source.page)).status).toBe(200);
+      expect((await readAsAdmin('Page', source.page)).json.title).toBe('Pricing');
+    });
+  });
+
+  // ==========================================================================
+  // 5. submitContactForm — acceptance 5
+  // ==========================================================================
+
+  describe('submitContactForm takes a message from a visitor with no session (acceptance 5)', () => {
+    it('answers an anonymous caller and records the enquiry', async () => {
+      const res = await client.post<{ result?: Record<string, unknown> }>('/functions/submitContactForm', {
+        name: 'A visitor',
+        email: 'visitor@example.invalid',
+        message: 'Do you take on small jobs?',
+        pageSlug: 'services'
+      });
+      expect(res.status).toBe(200);
+
+      const found = await client.get<{ results: Row[] }>('/classes/ContactMessage', asUser(owner));
+      expect(found.status).toBe(200);
+      const row = found.json.results.find((r) => r.email === 'visitor@example.invalid');
+      expect(row).toBeDefined();
+      expect(row!.message).toBe('Do you take on small jobs?');
+      expect(row!.handled).toBe(false);
+    });
+
+    it('🔴 is the ONLY door to that class: nobody may write one directly', async () => {
+      // §4's `create: 'nobody'` — the function bypasses both layers because it
+      // runs as system, and that is exactly why the direct door must be shut.
+      const asVisitor = await client.post('/classes/ContactMessage', {
+        name: 'bot',
+        email: 'bot@example.invalid',
+        message: 'x'
+      });
+      expect(asVisitor.status).toBe(403);
+      // Not even the site owner, who is an admin everywhere else in this table.
+      const asOwner = await client.post(
+        '/classes/ContactMessage',
+        { name: 'owner', email: 'o@example.invalid', message: 'x' },
+        asUser(owner)
+      );
+      expect(asOwner.status).toBe(403);
+    });
+
+    it('keeps the enquiries admin-only', async () => {
+      expect((await client.get('/classes/ContactMessage')).status).toBe(403);
+      expect((await client.get('/classes/ContactMessage', asUser(outsider))).status).toBe(403);
+    });
+  });
+
 });
 
 // ============================================================================

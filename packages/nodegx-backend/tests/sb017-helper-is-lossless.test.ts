@@ -176,7 +176,15 @@ describe('SB-017 acceptance 1 (backend half): the authored-bundle helper is loss
     // difference diagnosable. The three worker components are untouched: they
     // have no Response node and answer through the Run Tasks contract instead.
     expect(fromHelper['/#__cloud__/publishPage']).toBe(22);
-    expect(fromHelper['/#__cloud__/duplicatePage']).toBe(31);
+    // ⚠️ **32 and not s18's 31 — D24, and again a template edit.** `duplicatePage`
+    // ran its `newProps` code node four times per request and wrote a Page row on
+    // each, because the write hung off `Record.Fetched` (which fires from the `Id`
+    // setter, before any read) and off every value arrival. The repair moved the
+    // trigger to the fetch's `Done` outcome and added ONE wire — `source.id ->
+    // newProps.in-sourceId`, the readiness value the guard tests. The three
+    // `runOnChange-in-*` parameters that came with it are parameters, not wires,
+    // so they do not land here.
+    expect(fromHelper['/#__cloud__/duplicatePage']).toBe(32);
     expect(fromHelper['/#__cloud__/submitContactForm']).toBe(21);
     expect(fromHelper['/#__cloud__/claimSite']).toBe(21);
     // SBR-007 AC2 adds two components and 24 wires: `reorderSection` (19) and
@@ -185,7 +193,7 @@ describe('SB-017 acceptance 1 (backend half): the authored-bundle helper is loss
     // now, so the +6/+9 story above is history rather than a pattern to repeat.
     expect(fromHelper['/#__cloud__/reorderSection']).toBe(19);
     expect(fromHelper['/#__cloud__/site/SetSectionOrder']).toBe(5);
-    expect(Object.values(fromHelper).reduce((total, n) => total + n, 0)).toBe(142);
+    expect(Object.values(fromHelper).reduce((total, n) => total + n, 0)).toBe(143);
   });
 
   it('loses no wire, and re-points none — asserted as a multiset, not a count', () => {

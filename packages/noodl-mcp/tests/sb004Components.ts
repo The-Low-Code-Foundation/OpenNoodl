@@ -559,11 +559,43 @@ export const DUPLICATE_NODES = [
     type: 'JavaScriptFunction',
     label: 'Name the copy',
     ports: [{ name: 'out-built', plug: 'output', type: 'signal' }],
-    // ⚠️ No readiness guard, deliberately: both values come from the `source`
-    // Record node that also fires the trigger, and an absent `title` on a page
-    // that has none is a real answer here rather than a value still in flight.
+    // 🔴 **This node writes a Page row every time it runs, so it must run
+    // exactly once — and D24 measured it running FOUR times per request.**
+    //
+    // The comment that stood here said no readiness guard was needed because
+    // "both values come from the `source` Record node that also fires the
+    // trigger". Measured, that was false twice over:
+    //
+    //  1. `Fetched` fires from the **`Id` input setter** as well as from a
+    //     completed read (`dbmodelnode2.ts:324`, and the port's own outcome
+    //     note says so) — so the first run happened with `title` undefined and
+    //     wrote a `Copy of Untitled` page nobody asked for. The trigger is
+    //     `Done`, the *fetch invocation's* outcome, which cannot fire before
+    //     the read it reports on.
+    //  2. Every value arrival re-runs a Function node by default (NDA-017 §2 —
+    //     `Run` is additive, the boxes are the only governor), including an
+    //     arrival that carries the **same value as last time**. `title` and
+    //     `slug` each landed twice more, and each landing wrote another page.
+    //
+    // So: one trigger, and the two value inputs unticked. The guard below is
+    // belt-and-braces on top of both — an absent `title` on a page that has
+    // none is still a real answer, which is why it guards on the *id* rather
+    // than on the fields.
     parameters: {
+      // NDA-017 §2 — `Run` is additive. With `Done` wired above, these two must
+      // be unticked or the write happens once per value arrival.
+      'runOnChange-in-title': false,
+      'runOnChange-in-slug': false,
+      // ⚠️ `sourceId` above all: `Id` is known at BIND time, before any read, so
+      // an arrival on this port is the one that could run the write earliest of
+      // the three — and it is the one the guard cannot catch, because the guard
+      // tests exactly this value.
+      'runOnChange-in-sourceId': false,
       functionScript:
+        // The id is the readiness test: `Done` reports a finished read, and a
+        // record that was read has an id. `title` cannot serve — a page with no
+        // title is legal, so "absent" there means nothing.
+        'if (Inputs.sourceId === undefined || Inputs.sourceId === null) return;\n' +
         "const title = Inputs.title || 'Untitled';\n" +
         "const slug = Inputs.slug || 'page';\n" +
         "Outputs.title = 'Copy of ' + title;\n" +
@@ -693,7 +725,12 @@ export const DUPLICATE_WIRES = [
   { fromId: 'prep', fromProperty: 'out-ready', toId: 'source', toProperty: 'fetch' },
   { fromId: 'source', fromProperty: 'prop-title', toId: 'newProps', toProperty: 'in-title' },
   { fromId: 'source', fromProperty: 'prop-slug', toId: 'newProps', toProperty: 'in-slug' },
-  { fromId: 'source', fromProperty: 'fetched', toId: 'newProps', toProperty: 'run' },
+  // 🔴 D24 — `Done`, not `Fetched`. `Fetched` also fires when the `Id` input
+  // merely BINDS the node to a record it has not read (`dbmodelnode2.ts:324`),
+  // and a write hung off it therefore fires before the data exists. `Done` is
+  // the fetch invocation's own outcome and cannot.
+  { fromId: 'source', fromProperty: 'id', toId: 'newProps', toProperty: 'in-sourceId' },
+  { fromId: 'source', fromProperty: 'done', toId: 'newProps', toProperty: 'run' },
   { fromId: 'newProps', fromProperty: 'out-title', toId: 'copy', toProperty: 'prop-title' },
   { fromId: 'newProps', fromProperty: 'out-slug', toId: 'copy', toProperty: 'prop-slug' },
   // `sourceObjectId` is `allowConnectionsOnly` — a wire, never a parameter. Here

@@ -157,7 +157,17 @@ const REMOVED_SINCE_THE_BUNDLE: string[] = [
   'JavaScriptFunction.out-built -> noodl.cloud.response.pm-received',
   // SBR-015 — `completed` replaced by `done` on both Run Tasks nodes
   'RunTasks.completed -> SetDbModelProperties.store',
-  'RunTasks.completed -> noodl.cloud.response.send'
+  'RunTasks.completed -> noodl.cloud.response.send',
+  // 🔴 P77 D24 — `Fetched` replaced by `Done` on `duplicatePage`'s page read.
+  // `Record.Fetched` fires from the `Id` **setter** as well as from a finished
+  // read, so the write hung off it ran before the data existed: measured, one
+  // call wrote FOUR Page rows, three of them junk drafts a person would have to
+  // delete by hand. `Done` is the fetch invocation's own outcome and cannot fire
+  // early. The replacement adds `DbModel2.id -> JavaScriptFunction.in-sourceId`,
+  // which is an ADDITION and therefore not exempted here — this list is
+  // shortfall only, and an addition has to survive the parity assertion on its
+  // own.
+  'DbModel2.fetched -> JavaScriptFunction.run'
 ];
 
 describe('SB-017: the editor deploy path ships every connection the template holds', () => {

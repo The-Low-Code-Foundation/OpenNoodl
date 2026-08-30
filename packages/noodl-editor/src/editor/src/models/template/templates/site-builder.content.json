@@ -7375,13 +7375,23 @@
             "x": 40,
             "y": 400,
             "parameters": {
-              "functionScript": "const title = Inputs.title || 'Untitled';\nconst slug = Inputs.slug || 'page';\nOutputs.title = 'Copy of ' + title;\nOutputs.slug = slug + '-copy-' + Math.random().toString(36).slice(2, 8);\nOutputs.built();"
+              "runOnChange-in-title": false,
+              "runOnChange-in-slug": false,
+              "runOnChange-in-sourceId": false,
+              "functionScript": "if (Inputs.sourceId === undefined || Inputs.sourceId === null) return;\nconst title = Inputs.title || 'Untitled';\nconst slug = Inputs.slug || 'page';\nOutputs.title = 'Copy of ' + title;\nOutputs.slug = slug + '-copy-' + Math.random().toString(36).slice(2, 8);\nOutputs.built();"
             },
             "ports": [
               {
                 "name": "out-built",
                 "plug": "output",
                 "type": "signal"
+              },
+              {
+                "name": "in-sourceId",
+                "displayName": "sourceId",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
               },
               {
                 "name": "in-title",
@@ -7632,7 +7642,13 @@
           },
           {
             "fromId": "source",
-            "fromProperty": "fetched",
+            "fromProperty": "id",
+            "toId": "newProps",
+            "toProperty": "in-sourceId"
+          },
+          {
+            "fromId": "source",
+            "fromProperty": "done",
             "toId": "newProps",
             "toProperty": "run"
           },
