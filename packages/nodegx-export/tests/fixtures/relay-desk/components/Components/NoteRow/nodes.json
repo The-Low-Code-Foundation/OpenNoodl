@@ -74,6 +74,11 @@
           "name": "removed",
           "plug": "input",
           "type": "signal"
+        },
+        {
+          "name": "noteId",
+          "plug": "input",
+          "type": "string"
         }
       ],
       "x": 350,

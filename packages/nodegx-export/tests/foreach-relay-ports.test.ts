@@ -68,3 +68,71 @@ describe('a repeater wire that names no port, parsed off disk (§31)', () => {
     expect(app.files['src/pages/Home.tsx']).toContain('notes.remove(item)');
   });
 });
+
+// ---------------------------------------------------------------------------------------------
+// §32 — the third arm: the prefix is a claim about the template, not a fact about the runtime.
+//
+// §31 split the *bare* relay name off the repeater's own pulses and left `itemOutputSignal-<name>`
+// trusted on sight. `_managePortsForNode` (`foreach.tsx`) mints that prefix only for a template
+// output declared a **signal**; a value output becomes `itemOutput-<name>`. So a wire carrying the
+// signal prefix over a value output names a port that does not exist.
+//
+// ⚠️ Measured in the editor, not inferred: opening `cn027-drive` raises `con-no-source-port`
+// ("Source port doesn't exist.", level error) on exactly this wire, while `itemsRendered` on the
+// same node in the same pass stays clean — see §32.2. The from-disk census counts **12** such
+// wires across 10 project directories, though `md5` shows nine of those are one authored graph
+// copied nine times.
+// ---------------------------------------------------------------------------------------------
+
+describe('a repeater wire whose prefix its template contradicts (§32)', () => {
+  const desk = parseProject(path.join(__dirname, 'fixtures', 'relay-desk'), catalog);
+  const app = emitApp(desk, catalog);
+  const noteOut = (port: string) =>
+    app.notes.find((n: string) => n.includes(`wire listRepeater:${port}->`)) ?? `(no note for "${port}")`;
+
+  test('the template’s own declaration is the discriminator, and it reads both ways', () => {
+    // The control is inside the row: NoteRow declares one signal output and one value output, so
+    // this is a discriminator and not a predicate that answers the same way for everything.
+    const row = desk.components.find((c) => c.path === 'Components/NoteRow');
+    const ports = row?.nodes.find((n) => n.type === 'Component Outputs')?.declaredPorts ?? [];
+    expect(ports.find((p) => p.name === 'removed')?.kind).toBe('signal');
+    expect(ports.find((p) => p.name === 'noteId')?.kind).not.toBe('signal');
+  });
+
+  test('the signal prefix over a value output is refused as a port that does not exist', () => {
+    const note = noteOut('itemOutputSignal-noteId');
+    expect(note).toContain('declares "noteId" as a value');
+    // The port the runtime *does* register, so the author can find it without guessing.
+    expect(note).toContain('itemOutput-noteId');
+    expect(note).toContain('never fires in the editor either');
+  });
+
+  test('it is not refused for a downstream reason — the sentence that sent an author to wait', () => {
+    // 🔴 The point of the row. In `cn027-drive` this wire was dropped as "the script reads the
+    // Noodl API — Tier B": true of its target, and it tells the author to wait for an increment of
+    // this exporter after which the wire would still not fire. A dead source port outranks every
+    // downstream reason.
+    const note = noteOut('itemOutputSignal-noteId');
+    // 🔴 The positive anchor first. Mutant A (the discriminator answers "signal" everywhere) made
+    // the three `not.toContain`s below pass on a note that never fired — an absence asserted with
+    // no known-firing signal beside it is not a measurement. This line is what makes them one.
+    expect(note).toContain('does not exist');
+    expect(note).not.toContain('Tier B');
+    expect(note).not.toContain("fires from the list's own progress");
+    expect(note).not.toContain('output at all');
+  });
+
+  test('the three arms get three different sentences, in one pass over one node', () => {
+    const bare = noteOut('removed');
+    const pulse = noteOut('itemsRendered');
+    const mistyped = noteOut('itemOutputSignal-noteId');
+    expect(new Set([bare, pulse, mistyped]).size).toBe(3);
+    expect(bare).toContain('output at all');
+    expect(pulse).toContain("fires from the list's own progress");
+    expect(mistyped).toContain('as a value');
+  });
+
+  test('and the relay that does translate is still untouched by the third arm', () => {
+    expect(app.files['src/pages/Home.tsx']).toContain('notes.remove(item)');
+  });
+});

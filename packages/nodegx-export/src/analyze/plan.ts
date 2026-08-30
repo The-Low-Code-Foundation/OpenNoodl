@@ -7804,6 +7804,28 @@ function planComponent(
   // popup sweep reports the node when it never attaches. A Component Outputs sink never takes
   // its disposition here — failures accumulate in failedOutputsNodes and the post-pass rules
   // once, so the outcome cannot depend on wire order.
+  /**
+   * Which relay port the runtime actually mints for a row output — read off the **template's own
+   * declaration**, which is what `_managePortsForNode` (`foreach.tsx`) does: it walks the template
+   * component's output ports and emits `itemOutputSignal-<name>` for a **signal** and
+   * `itemOutput-<name>` for anything else. So the prefix a wire carries is a *claim* about the
+   * template, never a fact about the runtime.
+   */
+  const templateRelayKind = (repeaterNode: NodeIR, outputName: string): 'signal' | 'value' | undefined => {
+    const templatePath = literalParam(repeaterNode, 'template');
+    if (typeof templatePath !== 'string') return undefined;
+    const wanted = templatePath.replace(/^\//, '');
+    const template = ir.components.find((c) => c.path === wanted);
+    if (template === undefined) return undefined;
+    for (const n of template.nodes) {
+      if (n.type !== 'Component Outputs') continue;
+      for (const port of n.declaredPorts) {
+        if (port.plug === 'input' && port.name === outputName) return port.kind === 'signal' ? 'signal' : 'value';
+      }
+    }
+    return undefined;
+  };
+
   const receiverActions = new Map<string, HandlerAction[]>();
   for (const connection of component.connections) {
     if (consumed.has(connection.key)) continue;
@@ -7828,6 +7850,49 @@ function planComponent(
       continue;
     }
     consumed.add(connection.key);
+    /**
+     * 🔴 **The prefix was taken as a fact, and it is a claim about the template.**
+     *
+     * §31 split the *bare* relay name off the repeater's own pulses, and left the
+     * `itemOutputSignal-<name>` arm trusted on sight. But the runtime mints that prefix only for a
+     * template output declared a **signal**; a value output becomes `itemOutput-<name>`. So a wire
+     * reading `itemOutputSignal-Selection Changed` on a template whose `Selection Changed` is typed
+     * `*` names a port that **does not exist**, and is dead in the editor too — measured there,
+     * not inferred: opening `cn027-drive` raises `con-no-source-port` ("Source port doesn't exist.")
+     * on exactly this wire, beside a clean `itemsRendered` in the same pass.
+     *
+     * ⚠️ This runs **before** the action is compiled, deliberately. That wire was being
+     * refused for its *target* — "the script reads the Noodl API — Tier B" — which is a true
+     * sentence that sends the author to wait for a later increment of this exporter, when the wire
+     * would still not fire after it shipped. A dead source port outranks every downstream reason,
+     * and §31.2's lesson is that only the sentence bites a human.
+     *
+     * ⚠️ 12 such wires sit in 10 project directories under `NodeGX test projects` — though
+     * `md5` says nine of those are one authored graph copied nine times, so the honest count of
+     * distinct authoring mistakes is small. §32 has the census.
+     */
+    if (fromNode?.type === 'For Each' && connection.fromProperty.startsWith(ITEM_OUTPUT_SIGNAL)) {
+      const relayed = connection.fromProperty.slice(ITEM_OUTPUT_SIGNAL.length);
+      const relayKind = templateRelayKind(fromNode, relayed);
+      /**
+       * ⚠️ **Deliberately only the `value` arm.** A template that declares no such output at all
+       * is already reported, well, by `rowSignalAttrs` on the emit side — it names the template
+       * component, which is the more useful sentence — and §29's rows pin that. Intercepting it here
+       * too would trade a better message for a worse one and claim a behaviour change the corpus
+       * does not ask for: the from-disk census found **12** wires of the `value` shape and **zero**
+       * where the output is simply absent.
+       */
+      if (relayKind === 'value') {
+        const reason = `the row template declares "${relayed}" as a value, so the runtime registers "${ITEM_OUTPUT_VALUE}${relayed}" and never "${connection.fromProperty}" — this wire names a port that does not exist, and never fires in the editor either; re-draw it from the row output you meant`;
+        if (outputsSink) {
+          if (!failedOutputsNodes.has(toNode.id)) failedOutputsNodes.set(toNode.id, reason);
+        } else {
+          dispositions[toNode.id] = { kind: 'deferred', to: 'EXP-003', reason };
+        }
+        notes.push(wireNote(connection, reason));
+        continue;
+      }
+    }
     let compiled: CompiledSink;
     if (outputsSink) {
       const sink = outputSinkOf(connection.toProperty, fromNode, connection.fromProperty);

@@ -3847,3 +3847,141 @@ Gates: **jest 1153/1153 in 46 suites** (1131/45 before), **tsc 0**, picker **70/
   in front of the rest of the collection-state slice.
 - ⚠️ The two sweep limits in §31.1 are unexamined by anything: a catalog/runtime disagreement over
   a *declared* port, and the target-port side of the same question.
+
+## §32 The question §31 left for the editor, and the prefix that was a claim rather than a fact (session 61, 2026-08-30)
+
+**70 of 127 (55.1%), unchanged.** No node was translated this session. §31 asked whoever picked up
+its `NONE`-owned finding to check one thing first — *does the editor warn about these wires?* — and
+that check both answered the question and found a third family standing in the same place.
+
+### §32.1 The answer: the editor reports it, measured in the editor
+
+**Yes.** `evaluateConnectionHealth` (`NodeGraphModel.ts:757`) raises `con-no-source-port` —
+*"Source port doesn't exist."*, `level: 'error'`, `showGlobally: true` — for every one of these
+wires, on project open, **without navigating to the affected component**. The count reaches the
+author: the topbar renders an amber **1** (`titlebar.ts` sums `showGlobally` warnings), and
+PNL-006's per-component dot uses the same source.
+
+So §31.4's finding is **not a silent failure**. That disposition is settled and the phase-sized
+version of it can be struck.
+
+🔴 **What is still true, and is the useful half:** the surface that reports it cannot say what to
+do, and the surface that could say it never speaks.
+
+- The **editor health warning** fires, with a generic sentence and no suggestion.
+- The **validator** (`rules/nonexistentPort.ts`) has `suggestPort` and an alternatives list, and
+  **abstains** — `catalog.isDynamicNode('For Each')` is true, and legitimately so: the catalog
+  records its mechanisms as `["declared-port-groups","runtime-discovered"]`. So the AI/MCP write
+  path that authored these wires got nothing, which is why they exist at all.
+- ⚠️ FIX-007 §fix-3 already named where a real fix would go — *"an eleventh check in
+  `authoredPreconditionDiagnostics`, which has `catalog` and needs no loaded NodeLibrary"* — and
+  LAS-012's `repeaterTemplate.ts` is a precondition of exactly that shape for the sibling defect,
+  built because `NormNode` carries no `parameters`. The design question is answered; only the
+  building is open. Still owned by **`NONE`**.
+
+### §32.2 🔴 The control failed, and the failure was the finding
+
+The drive was set up as a discriminator: in `cn027-drive`, two bare relay names against
+`itemOutputSignal-Selection Changed` as the arm that should stay clean. **All three warned.**
+
+The reason is not that the check is noise. Asking the editor what ports the node actually has:
+
+| Node | port the editor registers | the wire says |
+|---|---|---|
+| `FeaturedProducts.repeater` | `itemOutputSignal-addToBasket` | `addToBasket` |
+| `Multi Choice` repeater | `itemOutput-Selection Changed` | `itemOutputSignal-Selection Changed` |
+
+`_managePortsForNode` (`foreach.tsx`) reads the **template component's** output ports and mints
+`itemOutputSignal-<name>` for a **signal** and `itemOutput-<name>` for anything else.
+`/Filters/Multi Choice/Item` declares `Selection Changed` as type `*`, so the signal-prefixed port
+was never registered. My control was a **third instance of the same defect**, drawn from the very
+population being searched — the boundary was never tested.
+
+✅ A real control was then run on `relay-desk`, whose repeater carries a static `itemsRendered`
+beside the bare `removed`: **one warning in the whole project**, on `removed` alone. Same node,
+same component, same pass.
+
+🔴 It also corrects §31.1's own table, which classified `itemOutputSignal-*` (10 wires, 7 projects)
+as *"a real signal — covered by §30.3's fix"*. At least twelve of them are not real signals at all.
+
+### §32.3 The census, corrected, and what the "9 projects" was
+
+A from-disk sweep over the fixtures and every project under `NodeGX test projects`, reproducing
+`_managePortsForNode`'s rule and **calibrated against the editor's own `getPorts()` first`**:
+
+| Verdict | wires |
+|---|---|
+| `OK` | 43 |
+| `BARE-NAME` — the name without the prefix | 19 |
+| `WRONG-PREFIX` — signal prefix over a value output | 12 |
+| `NO-TEMPLATE` — repeater with no template at all | 8 |
+
+**39 of 82** For Each output wires name a port that does not exist.
+
+⚠️ **The `NO-TEMPLATE` rows are already owned** — LAS-012's `repeaterTemplate.ts`, and
+`phase55-s6-haiku` is the project in its own docblock. Not a new finding; struck from the count.
+
+🔴 **And the spread is an artefact of copying.** `md5` on
+`components/Components/FeaturedProducts/connections.json` is **byte-identical across all nine**
+projects carrying the `addToBasket`/`browse` pair. §31.4's *"26 wires in 9 projects"* is true and
+reads as nine independent authors making one mistake; it is **one authored graph copied nine
+times**. The honest count of distinct authoring mistakes is ~3 graphs. That is an argument about
+priority, and it belongs beside the number.
+
+### §32.4 The defect this phase could close, and did
+
+The exporter trusted the `itemOutputSignal-` prefix on sight — `repeaterRowSignal` (`plan.ts`)
+tested the string and nothing else. So a wire whose template contradicts the prefix passed the gate
+as a genuine relay and was refused **downstream**, for its target: in `cn027-drive`,
+*"the script reads the Noodl API — Tier B"*.
+
+🔴 **That sentence is §31.1's own evidence that §30.3's fix "has real reach".** It is true of the
+target and it sends the author to wait for an increment of this exporter, after which the wire
+would still not fire. A dead source port outranks every downstream reason — §31.2's lesson, one
+layer along, and the third session running in which a recorded row asserted a reason true of a
+different population.
+
+The gate now reads the kind off the **template's own declaration**, before the action compiles.
+`cn027-drive` re-exported says instead: *"the row template declares "Selection Changed" as a value,
+so the runtime registers "itemOutput-Selection Changed" and never "itemOutputSignal-Selection
+Changed" — this wire names a port that does not exist, and never fires in the editor either."*
+
+⚠️ **Deliberately narrow.** Only the `value` arm. A template declaring no such output at all is
+already reported by `rowSignalAttrs` on the emit side, which names the template component — the
+better sentence — and §29's rows pin it. The first cut intercepted that too and broke two of them;
+the census says **zero** corpus wires have that shape, so widening would have traded a better
+message for a worse one to serve nobody.
+
+### §32.5 What proves it
+
+`relay-desk` gains a third arm — `NoteRow` declares a **value** output `noteId` beside its signal
+`removed`, and the repeater carries `itemOutputSignal-noteId` out to Component Outputs. Parsed off
+disk, so no hand-built IR can satisfy it. `tests/foreach-relay-ports.test.ts` gains 5 rows, and two
+mutants that disagree:
+
+| Mutant | Killed |
+|---|---|
+| the kind reads `'signal'` everywhere (guard never fires) | **exactly** §32's 3 positive rows |
+| the kind reads `'value'` everywhere (guard always fires) | **8** rows across §29/§30/§31/§32 — every genuine relay |
+
+Disjoint kill sets; both mutants typecheck, so neither is a `Tests: 0 total` in disguise. The
+control lives inside a row: `NoteRow` declares one signal output and one value output, asserted in
+one breath.
+
+⚠️ **Mutant A also caught a bad row of mine.** *"It is not refused for a downstream reason"* was
+three `not.toContain`s, and under the mutant it passed on a note that never fired — an absence
+asserted with no known-firing signal beside it. A positive anchor was added; it now dies with the
+others.
+
+Gates: **jest 1158/1158 in 46 suites** (1153/46 before), **tsc 0**, picker **70/127**, 46 test
+files on disk.
+
+### §32.6 What this leaves
+
+- 🔴 `itemOutput-<name>` — §30.5's relayed row *value* — is still the single port in front of the
+  rest of the collection-state slice. Untouched.
+- 🔴 The `NONE`-owned product finding is now **scoped**: not "the editor hides it" but "the write
+  path that authors it cannot see it, and the surface that reports it cannot advise". The place to
+  fix it is named in §32.1.
+- ⚠️ §31.1's two sweep limits remain unexamined: a catalog/runtime disagreement over a *declared*
+  port, and the target-port side. This session examined the source side only.

@@ -7,7 +7,9 @@
       "id": "listGroup",
       "type": "Group",
       "label": "Note list",
-      "children": ["listRepeater"],
+      "children": [
+        "listRepeater"
+      ],
       "parameters": {
         "flexDirection": "column",
         "rowGap": "var(--space-2)"
@@ -31,7 +33,11 @@
       "type": "Component Inputs",
       "label": "Interface in",
       "ports": [
-        { "name": "items", "plug": "output", "type": "array" }
+        {
+          "name": "items",
+          "plug": "output",
+          "type": "array"
+        }
       ],
       "x": 460,
       "y": 40
@@ -41,8 +47,21 @@
       "type": "Component Outputs",
       "label": "Interface out",
       "ports": [
-        { "name": "rowRemoved", "plug": "input", "type": "signal" },
-        { "name": "listRendered", "plug": "input", "type": "signal" }
+        {
+          "name": "rowRemoved",
+          "plug": "input",
+          "type": "signal"
+        },
+        {
+          "name": "listRendered",
+          "plug": "input",
+          "type": "signal"
+        },
+        {
+          "name": "relayedNoteId",
+          "plug": "input",
+          "type": "signal"
+        }
       ],
       "x": 460,
       "y": 160
