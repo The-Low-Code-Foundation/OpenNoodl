@@ -63,7 +63,7 @@ failure this file's first house rule exists to prevent.
 | **D27** | ✅ fixed s8 (08-29) | — | template | (was: anyone whose setup, join or approval threw) |
 | **D28** | ✅ **FIXED by DEF-018 (08-30) — re-driven at HEAD first, 14px overlap exactly as recorded** | DEF-018 | product | (was: every agent who lays controls out in the one node that reflows) |
 | **D29** | ✅ **FIXED s13 (08-29)** — measured at the browser, both halves | — | template | (was: every member — a second auth round trip on every page) |
-| **D30** | 🔴 open (08-29) | **DEF-019** (registered 08-29) | product | every app with a column of numbers — money, times, scores |
+| **D30** | ✅ **FIXED by DEF-019 (08-30, `f14a1faa`) — re-driven at HEAD first; the shipped Inter's proportional figures made the rag 19.45px on four digits, `tabular-nums` renders both strings at exactly 82.921875px** | DEF-019 | product | (was: every app with a column of numbers — money, times, scores) |
 | **D31** | ✅ fixed s11 (08-29) | — | template | (was: every moderator who posted something wrong) |
 | **D32** | ✅ **FIXED by DEF-020 (08-30) — re-driven at HEAD first, 640/640 gap-0 exactly as recorded; the maxWidth false-positive shape found and excluded** | DEF-020 | product | (was: every agent laying two things out along a row) |
 | **D33** | ✅ **FIXED by DEF-021 (`4adab228`, 08-30) — re-driven at HEAD first, red exactly as recorded** | DEF-021 | product | (was: every member who was told they would be emailed) |
@@ -1267,10 +1267,21 @@ either defect and the shelf.
 
 ---
 
-## D30 — 🔴 The type ramp cannot reach `font-variant-numeric`, so no app built here can align a column of numbers
+## D30 — ✅ FIXED by DEF-019 (08-30, `f14a1faa`). (Was: the type ramp cannot reach `font-variant-numeric`, so no app built here can align a column of numbers)
 
-**Severity: medium. Owner: NONE. Side: product.** Found by TPL-001 Track B4, whose third item —
-*"tabular numerals on dates"* — turned out to be unreachable through the door.
+**Severity: was medium. Owner: DEF-019 (closed). Side: product.** Found by TPL-001 Track B4, whose
+third item — *"tabular numerals on dates"* — turned out to be unreachable through the door.
+
+**The fix (2026-08-30):** a tenth port in the shared group — `fontVariantNumeric` ('Numerals',
+enum Normal/`tabular-nums`), in the `textStyle` picker's childPorts and the `useLabel` dynamic
+list, passed through the code exporter as `font-variant-numeric`. Re-driven at HEAD before
+building, and the measurement sharpened who it bites: **the shipped Inter itself** (v3.019, the
+file `starterAssets.ts` copies into every new project) has proportional default figures (`1` =
+1308/2048 em, `8` = 1736) *and* a `tnum` feature — so the rag was the default in every new
+project, and the fix was always one feature-flag away. Driven in real Chrome against the shipped
+TTF: `1111` = 59.47px vs `8888` = 78.92px without the port; both exactly 82.921875px with it.
+`noodl-mcp/tests/def019-numerals-drive.test.ts` holds the drive; the "no escape hatch" paragraph
+below is the record of why a template could not work around it.
 
 ### The measurement
 
