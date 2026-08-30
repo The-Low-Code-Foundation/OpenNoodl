@@ -1317,3 +1317,128 @@ spec to delete.
 **uncommitted** edits in the working tree for the whole of s30, and appending to it would have
 swept them into a pathspec commit. The row is written here in full so it can be moved verbatim;
 moving it is the first documentation job of the next session.
+
+---
+
+## D29 — 🔴 The template's confirmation and refusal are one-way latches, so a retry that succeeds shows both
+
+**Found 2026-08-30 by P80 DEF-024's corpus calibration (`npm run calibrate:gates`), verified
+against this template's own source at HEAD** (`site-builder.content.json`, read-only — filed
+here rather than fixed because the file is this phase's active lane). Owner: **NONE**.
+
+Four gates in the embedded template are constant-`true` Conditions whose only trigger is
+`Evaluate`, feeding `mounted`/`visible` — the shape P80's new `gate-only-turns-on` warning names:
+
+| component | gate | port |
+|---|---|---|
+| `/Site/ContactForm` | `The one confirmation` ← 'Show the confirmation' | `mounted` |
+| `/Site/ContactForm` | `The one refusal` ← 'Show the refusal' | `mounted` |
+| `/Pages/Setup` | `The one refusal` ← 'Show the refusal' | `visible` |
+| `/Pages/Setup` | `Signup refusal` ← 'Show the signup refusal' | `visible` |
+
+Nothing can ever push `false` into any of them within a page life. A visitor whose contact-form
+send **fails and then succeeds on the retry** is shown *the confirmation and the refusal at
+once*, with nothing to say which won — P78 D36's exact accumulation, in the OTHER shipped
+template. The mechanism drive is `noodl-mcp/tests/def024-gate-drive.test.ts` (real Chrome:
+tick-then-untick leaves both notices in the document; the Switch-per-answer control arm leaves
+exactly one).
+
+**The repair is one node per answer, not more Conditions**: `Switch` — `done → on` on its own
+switch and `→ off` on the other's, `state → mounted`. Or the members template's paired
+constant-`false` clear (`tpl001Components.ts` s15 shape) if the Conditions stay. Either shape
+also silences the new warning; regenerating the template surfaces it today as 4 advisory
+`gate-only-turns-on` diagnostics.
+
+⚠️ The 17-ish SBR drive-fixture projects in the corpus all carry copies of this shape — they are
+this one defect, not seventeen.
+
+---
+
+## D30 — 🔴 The page editor draws its sections in an order nobody else uses, so reordering moves the wrong one
+
+**Found 2026-08-30 (s31) by driving the real `/Pages/PageEditor`** —
+`nodegx-backend/tests/ac2-page-editor-drag-drive.test.ts`, 23 specs, real backend with enforcement
+on, real pointer. Owner: **NONE**. See [SBR-007 §34.3](SBR-007-THE-PAGE-EDITOR.md).
+
+`/Pages/Site`'s section query carries `visualSort: [{ property: 'order' }]`. `/Pages/PageEditor`'s
+carries **none**. Both are labelled *"This page's sections"*; the template holds four such queries
+and exactly one is sorted, and the unsorted one is the editor's — identified by its unique
+`runOnChange-qp-pageId`, not by position.
+
+🔴 **It is AC2's own foundation.** `dropIndex` counts **DOM siblings**; `reorderSection` renumbers
+the list sorted by **`order`**. Those are the same list only while the editor draws in `order`.
+
+Measured on the screen, with the stored order deliberately made to differ before any browser opened:
+
+| | |
+|---|---|
+| drawn | `hero, richText, gallery` |
+| stored | `richText, hero, gallery` |
+| drag the bottom card to the top | screen **unchanged**; stored becomes `gallery, richText, hero` |
+| `Move up` on the card a client sees LAST | button real, reachable, hit-tested — **nothing happens** |
+
+✅ **The last row is how a person meets it.** The bottom card holds stored position 0, so the
+planner's guarded return is *correct* and the press is legitimately refused — on a row that visibly
+has two above it, with no message. The button is not broken; the list is.
+
+⚠️ **It predates the drag.** `Move up`/`Move down` have always renumbered a list the client was
+never shown. The ten stored-row cases in `sb004-publication-invariant.test.ts` grade the
+**endpoint**, which is correct, and never open a screen.
+
+**The repair is one parameter**: `visualSort: SECTION_SORT` on the `sections` node in
+`sb005Components.ts`, the constant `/Pages/Site` already uses. Then `npm run template:site-builder`.
+The drive pins the current state — flip `editorSorted:false` to `true` in the FINDING spec rather
+than deleting it.
+
+---
+
+## D31 — 🔴 Opening the page editor on a page with sections starts a cyclic write loop that never stops
+
+**Found 2026-08-30 (s31), same drive.** Owner: **NONE**. See
+[SBR-007 §34.4](SBR-007-THE-PAGE-EDITOR.md).
+
+Eleven seconds of a page that was opened and looked at — **no pointer, no key, no click**:
+
+| arm | `SetDbModelProperties` errors | `cyclic-loop` | `query-failed` | writes landed |
+|---|---|---|---|---|
+| **shipped** | **115,755** | 142 | 69 | ✅ |
+| minus the editor's `Changed → storageFetch` wire | **15,102** | 6 | 0 | ✅ |
+| plus three `runOnChange-in-…: false` on `merge` | **0** | **0** | **0** | ❌ |
+
+🔴 **The runtime names it** — `[noodl] JavaScriptFunction (/Admin/SectionRow): Cyclic loop detected
+[runtime/cyclic-loop]`. Not an inference.
+
+🔴 **The obvious suspect is excluded by an arm.** `save.done → Changed → sections.storageFetch` is a
+real edge and removing it does **not** stop the loop; it only stops the query failures. A fix aimed
+at the editor would have measured green on every gate and changed nothing.
+
+**The cycle is inside the row.** `merge` re-runs whenever a value lands on it (`runOnChange` reads
+**absent as ticked**), `merge.out-built → save.store` writes the section, `SetDbModelProperties`
+writes into the very model `For Each` feeds the row's `data` from, and `merge` returns a *fresh
+object* every run, so the value always counts as changed.
+
+**Consequences**: the backend's 1200/min limiter is reached from an idle screen; the page's own
+`DbCollection2` is refused with everything else; the client's section list has been observed
+emptying entirely (two of four runs — the refusal is the stable reading, the empty list is not).
+
+✅ **The three parameters that stop it are ones the product already knows about.** Eleven other
+`JavaScriptFunction` nodes in this template state `runOnChange-…: false`, three of them in this same
+screen, and the editor's NDA-017 migration writes exactly these three onto any node whose `run` is
+connected — which `merge`'s is (`saveButton.onClick`, `upload.done`).
+
+⚠️ **Scope, stated so it is not overclaimed.** A project *opened in the editor* is repaired by
+`applyRunOnValueChangeMigration` on load — the `SBR-007 Page Editor Drive` fixture on disk carries
+the three parameters and the template at HEAD does not. Every consumer that reads the artefact
+without running `applyPatches` gets the loop: a headless render, a deploy taken from the artefact,
+an agent reading the project through the MCP door.
+
+**The repair is three parameters** on `merge` in `sb005Components.ts` —
+`'runOnChange-in-data': false`, `'runOnChange-in-body': false`, `'runOnChange-in-image': false` —
+then `npm run template:site-builder`. 🔴 **Check `unpack` in the same component while you are
+there**: it takes `in-data` on the same wire and has no `run` connected, so the migration would not
+touch it and this drive did not measure it.
+
+⚠️ **Both D30 and D31 owe rows in phase 80** and are written here in full so they can be moved
+verbatim. They are not there already because phase 80's `TASKS.md` and `NEXT-SESSION-PROMPT.md` had
+another session's **uncommitted** edits in the working tree throughout s31 — the same reason D28 is
+still here.

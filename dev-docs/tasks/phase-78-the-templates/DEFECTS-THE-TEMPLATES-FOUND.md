@@ -69,7 +69,7 @@ failure this file's first house rule exists to prevent.
 | **D33** | ✅ **FIXED by DEF-021 (`4adab228`, 08-30) — re-driven at HEAD first, red exactly as recorded** | DEF-021 | product | (was: every member who was told they would be emailed) |
 | **D34** | 🔴 open (08-29, s14) | **DEF-022** (registered 08-29) | product | everyone an app ever emails a link to |
 | **D35** | ✅ **FIXED by DEF-023 (`acd053e0`, 08-30) — the behaviour held, the recorded mechanism was the browser's; see the section note** | DEF-023 | product | (was: every graph that accumulates anything server-side) |
-| **D36** | 🔴 open — worked around in template (08-29, s15) | **DEF-024** (registered 08-29) | product | every screen whose answer has more than one form |
+| **D36** | ✅ **product half CLOSED by DEF-024 (08-30)** — `gate-only-turns-on` warns at both doors; Condition/Switch descriptions name the two-way shape. 🔴 **The s15 workaround covered `Pages/Account` ONLY: the shipped artefact still carries 12 one-way latches** (see the section) — template work, this phase's | **DEF-024** (closed 08-30) | product | every screen whose answer has more than one form |
 | **D37** | 🔴 open — worked around in template (08-29, s15) | **DEF-025** (registered 08-29) | product | every person tapping the words beside a checkbox |
 | **D38** | ✅ fixed s15 — harness, not product | — | harness | (was: every drive asserting on a project string) |
 | **D39** | ✅ **RULED 08-29 by Richard — no change, and now pinned** | — | template | — (ruled: it stays one sentence) |
@@ -1682,6 +1682,39 @@ template's discipline, not a product fix: nothing stops the next author wiring o
 `Condition` that pushed `false` when its condition is false rather than not pushing at all, would
 make the correct graph the short one. At present the correct graph is twice the size of the wrong
 one, which is the wrong way round.
+
+### Corrected and closed by P80 DEF-024 (2026-08-30) — the mechanism claim was too strong, and the two-way node already existed
+
+🔴 **"There is no shape that means *and put the other one away*" was FALSE when written.** The
+`Switch` node — the same Logic category as `Condition` — has taken `On`/`Off`/`Flip` signals and
+pushed `Current State` on every change the whole time. One Switch per answer (`state → mounted`,
+each path switching the others off) shows exactly one answer, with FEWER nodes than the paired
+constant-`false` Conditions this section prescribes. Driven in real Chrome at HEAD beside the
+latch shape (`noodl-mcp/tests/def024-gate-drive.test.ts`): the latch's tick-then-untick leaves
+both notices in the document; the same transitions through Switches leave exactly one. The node
+is also more honest than the title: `Condition.result` pushes `false` whenever a test finds
+false — what can only turn a gate on is the AUTHORED shape (constant `condition: true`,
+`Evaluate`-pulsed), which was this template's `CONDITION_GATE` and nothing else. So the suggested
+redesigns above were never needed; the defect was that **nothing said so at the moment of need**.
+
+✅ **What P80 shipped**: `gate-only-turns-on` (advisory warning, editor + MCP doors,
+`oneWayGate.ts`) — fires when every writer into a `mounted`/`visible` is a constant-condition
+Condition and the pushable set is exactly `{true}`; the paired-clear workaround and the Switch
+shape are both silent by construction. Plus one sentence each on `Condition.result` ("a Switch is
+the two-way shape") and `Switch.state` ("wire it into mounted or visible"). Corpus over 178
+projects: 3,287 written gate ports, 75 firings, every one a notice/confirmation/refusal, zero
+false positives read.
+
+🔴 **The s15 workaround fixed ONE page, and the calibrator run over `templates/members-area/`
+says so: 12 one-way latches remain in the shipped artefact** — `/Pages/Join` ("Request received"
++ "The one refusal" — the accumulating pair, verbatim), `/Pages/Post` ("Announcement posted" +
+"Meeting added"), `/Pages/SignIn`, `/Pages/Setup` ("The one refusal"), `/Pages/Announcement` and
+`/Pages/Meeting` ("Not available" + "It did not go"), `/Pages/Unsubscribe` (both notices).
+`Pages/Account`'s three clears and the Setup/Post `missingClear`/`confirmClear` pairs are the 6
+two-way pairs the calibrator counts. **Template work, this phase's** — same T6 family as
+D22/23/24; regenerating after the fix will surface any leftovers as `gate-only-turns-on`
+warnings in the generation run. The sister finding in the site-builder template is P77's **D29**
+(`/Site/ContactForm`'s confirmation+refusal pair, 2 more in `/Pages/Setup`).
 
 ---
 

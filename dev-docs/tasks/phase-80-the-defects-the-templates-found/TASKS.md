@@ -78,7 +78,7 @@ this register once already, and that is how one row gets worked twice and anothe
 | DEF-021 | ✅ done | **P78 D33** | A fan-out send delivers **one** email and reports **N** successes — **fixed s16 (`4adab228`): each queued outcome token is stamped with the `To` it was minted under; stamps agree → today's path verbatim (one send, fields read after inputs settle), stamps disagree → one send per consecutive run of the minted address, each run settled by its own call. 3 mutants, each killed by exactly its arm; erg-001 §4's constant-To pin untouched** | every **member who was told they would be emailed** |
 | DEF-022 | ✅ done | **P78 D34** | A cloud function cannot find out what the app's own public address is — **fixed s18: the Request node has an `Origin` output. The node already held the answer and threw it away (`request.ts` stored `req.headers` on the `Request` model with no port); `requestOrigin.ts` now derives it once — the caller's `Origin` header when usable (a browser POST always carries the page's own address, the thing TPL-002 had to be told from outside), else forwarded-host/host + forwarded-proto, else honestly blank (a workflow step has no caller). Port description names the trust boundary: caller-supplied, right for links back to whoever called, NOT for a password-reset a third party will click — that stays `effectiveBaseUrl`'s job, still unreachable from a graph (row below, `NONE`). 🔴 D34's "nothing exposes it to a graph" was too strong: an Object node with Id `Request` reads the raw `Headers` bag today, probed through the real runner — corrected in the register, not silently** | **everyone an app ever emails a link to** |
 | DEF-023 | ✅ done | **P78 D35** | `Component` scope in a cloud function is **not** per-request, and nothing says so — **fixed s16 (`acd053e0`). 🔴 The recorded mechanism was the browser's: the cloud runtime never reaches `_componentScopes` — `noodl-js-api.js` overrode the scope to ONE module-level object, shared across all scripts, functions, requests and CONCURRENT requests. Now a WeakMap keyed on the component-owner INSTANCE (ids repeat across requests; instances do not): same-instance scripts still share (TPL-002's plan/pump contract), a new request starts clean, entries die with the request's graph — the leak half held by construction, not a spec** | every **graph that accumulates anything server-side** |
-| DEF-024 | ⬜ open | **P78 D36** | A `Condition` can only ever turn a gate **ON**, so a screen accumulates contradictory answers | every **screen whose answer has more than one form** |
+| DEF-024 | ✅ done | **P78 D36** | A `Condition` can only ever turn a gate **ON**, so a screen accumulates contradictory answers — **closed s21 (08-30), and it was NOT the design ruling the queue expected: 🔴 the register's mechanism claim was false when written — `Switch` (same Logic category) has been the two-way shape all along (`On`/`Off` signals, `Current State` pushed on every change; one Switch per answer = fewer nodes than the paired-clear workaround), and `Condition.result` itself pushes `false` on a false test. What can only turn a gate on is the AUTHORED shape (constant `condition: true`, Evaluate-pulsed), so the defect narrowed to "nothing says so": shipped `gate-only-turns-on` (advisory warning, both doors, `oneWayGate.ts`) — fires when every writer into a `mounted`/`visible` is a constant-condition Condition and the pushable set is exactly `{true}`; paired-clear and Switch shapes silent by construction; one-way DISMISS (`{false}`) not fired on, by decision with corpus numbers. Driven at HEAD first in real Chrome (`def024-gate-drive.test.ts`): latch tick-then-untick leaves BOTH notices; Switch control arm leaves exactly one. Corpus (`calibrate:gates`, 178 projects): 3,287 written gate ports, 3,211 abstain, **75 firings, all true, zero false positives read** — concentrated in the site-builder template's copies (→ P77 **D29**, filed) and pre-s6 members-area copies. 🔴 The shipped `templates/members-area/` still carries **12 one-way latches** (s15's workaround fixed `Account` only) — template work, filed in P78's D36 section. Plus one sentence each on `Condition.result`/`Switch.state` naming the two-way shape (catalog regenerated). 12 specs, 7 mutants each killed by its own arm** | every **screen whose answer has more than one form** |
 | DEF-025 | 🟡 partial | **P78 D37** | A control's label is a click target only via the control's own `label` port — which **defaults OFF** — **door half built s17: `label-not-a-click-target` warns on a Checkbox/Radio Button whose words sit in an adjacent sibling Text (43 true firings / 186 toggles over the 178-project corpus, denominators printed; stays advisory — the corpus carries 43 legitimate legacy instances, the `raw-color-literal` precedent). Default-flip half 🧭 Richard — see the s17 section: a blunt flip stamps the literal string `'Label'` onto every existing bare checkbox** | every **person tapping the words beside a checkbox** |
 | DEF-026 | ✅ done | A cloud call to an unreachable backend reports nothing — **fixed s17: `CloudFunction2`'s error handler dereferenced `e.error` unconditionally, and a connection refusal hands it `undefined` (real Chrome probed at HEAD: `readyState 4, status 0, response ''` ⇒ `JSON.parse` throws ⇒ body `undefined`), so the ONE route to the `failure` outcome died on a TypeError inside the XHR callback. Handler now total; status 0 reports "Could not reach the backend at <endpoint>". Same hole filled in `Noodl.CloudFunctions.run` (rejected with `undefined`; JSON error bodies still pass through untouched)** | **anyone** whose backend is not running — the ordinary way this breaks |
 
@@ -837,3 +837,48 @@ their lane, same two as s17) · tests-unit suite 24/24 · noodl-mcp **985/985** 
 drive) · `catalog:examples` 62/62 strict (the new warnings fire on no shipped recipe) ·
 `typecheck:editor` / `:editor-tests` / `:mcp` clean · `test:ci` re-run this session with a fresh
 readout (see below).
+
+## s21 (2026-08-30) — DEF-024 closed, and the ruling it was queued for was never needed
+
+**The last open row is closed.** The next-session prompt expected DEF-024 to be "closest to a
+design ruling" — the register's own suggested shapes were a `mounted` off-signal or a redesigned
+`Condition`. Re-driving the reading first (the 17th payment of the rule, in DEF-003(c)'s
+direction: the recorded *impossibility* was false) found the product already ships the two-way
+shape: **`Switch`**, in the same Logic category, `On`/`Off`/`Flip` in, `Current State` pushed on
+every change. No ruling was spent.
+
+- **The claim, restated at the width measured**: `Condition.result` pushes `false` whenever a
+  test finds false. What can only ever turn a gate ON is the authored latch — constant
+  `condition: true`, `Evaluate`-pulsed (`CONDITION_GATE` in the members template) — because every
+  test of a constant tests the same way. The defect is real (driven: both contradictory notices
+  in one document at HEAD) but it is an AUTHORING-GUIDANCE gap, not a missing primitive.
+- **`gate-only-turns-on`** (`oneWayGate.ts`, registered after `checkLayoutInertCombination`,
+  advisory): fires when every writer into a visual node's `mounted`/`visible` is a
+  constant-condition `Condition` and the union of pushable values is exactly `{true}`. Abstains
+  on any non-Condition writer, any wired condition, component-instance targets; a no-`eval`
+  constant Condition contributes nothing (a dead gate is a different absence, not claimed);
+  `{false}`-only (one-way dismiss) is a recorded decision, not a firing — the corpus holds 1.
+- **Corpus** (`npm run calibrate:gates`, new script, 178 projects, 0 unreadable, denominators
+  printed): 3,287 written gate ports on knowable visual nodes; 3,211 abstained (healthy two-way
+  writers); 0 two-way constant pairs outside the members template; **75 firings in 18 projects,
+  every one a notice/confirmation/refusal, all read, zero false positives**. Concentration
+  honest-limit: ~17 projects are SBR drive-fixture copies of ONE site-builder shape (filed as
+  P77 **D29** — `/Site/ContactForm`'s confirmation+refusal pair and 2 `/Pages/Setup` refusals,
+  verified against `site-builder.content.json` at HEAD read-only; their lane, not touched).
+- 🔴 **The shipped `templates/members-area/` artefact still carries 12 one-way latches** —
+  calibrator run over it directly: Join's received/refusal pair, Post's two confirmations,
+  SignIn, Setup, Announcement/Meeting × (Not available + It did not go), Unsubscribe's both.
+  s15's workaround covered `Pages/Account` only. Filed in P78 D36's section (template work, T6
+  family). The 6 two-way pairs (Account ×3, Setup, Post, Account-fail) are what the workaround
+  looks like to the calibrator — counted, silent.
+- **Descriptions**: `Condition.result` now says a constant Condition only ever pushes one value
+  and names `Switch`; `Switch.state` says "wire it into a mounted or visible port". Catalog
+  regenerated + merged. The D28-precedent "cheapest honest fix" half.
+- **Drive** (`def024-gate-drive.test.ts`, real door + real Chrome, 4 specs): fresh load = no
+  notices (control); one tick = exactly the on-notice in both arms (the known-firing signal);
+  tick-then-untick = latch shows BOTH, Switch arm shows exactly one. The load-bearing assertions
+  are on the notice that should have GONE — D36's own generic form.
+- **Mutants: 7/7 killed, each by exactly its own arm** (ignore `isfalse` · drop wired-condition
+  abstention · demote non-Condition abstain to contributes-nothing — needed its own MIXED-writers
+  arm, added after the corpus run · no-eval pushes anyway · fire on `{false}` · mounted-only ·
+  promote to blocking). String-swap restore, md5 parity both files.
