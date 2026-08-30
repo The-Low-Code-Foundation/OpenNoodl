@@ -676,7 +676,12 @@ export interface NoodlReactComponentProps {
   [prop: string]: any;
 }
 
-class NoodlReactComponent extends React.Component<NoodlReactComponentProps> {
+/**
+ * Exported for DEF-027's spec, which renders it inside a real `Drag` to grade the className
+ * merge at the seam. Nothing outside this module constructs it — the node's own `render` is
+ * still the only production caller.
+ */
+export class NoodlReactComponent extends React.Component<NoodlReactComponentProps> {
   componentDidMount() {
     // During SSR (server) and SSR hydration (client pre-settle), triggerDidMount()
     // already sent this node's didMount before React committed; sending it again on
@@ -744,6 +749,30 @@ class NoodlReactComponent extends React.Component<NoodlReactComponentProps> {
       //otherProps can be empty, but some react components add additional props to their children
       ...otherProps
     };
+
+    /**
+     * DEF-027. A React parent that injects a `className` **adds** to the node's own; it does not
+     * replace it. `style` above is deliberately the other way round (the parent wins, see
+     * `NoodlReactComponentProps`) because two parents disagreeing about a css property must
+     * resolve to one value. Class names do not disagree — they accumulate — so the spread's
+     * last-one-wins was silently discarding the author's.
+     *
+     * The node that made this visible is `Drag`: `react-draggable` clones its child with
+     * `clsx(children.props.className || '', 'react-draggable', …)`, and the child it clones is
+     * *this* wrapper element, whose props are only `{key, noodlNode, ref}` (see the node's
+     * `render`). So the library's own merge has nothing to see, it hands down a bare
+     * `react-draggable`, and `...otherProps` then overwrote the `cssClassName` the author set.
+     * The element reaching the DOM carried `react-draggable` and nothing else: accepted at the
+     * door, stored in the graph, surviving the deploy, and simply absent at runtime.
+     *
+     * Fixed here rather than in `Drag.tsx` because the discarding is the spread's, not the
+     * node's — a repair naming `Drag` would leave any future wrapper with the same hole. `Drag`
+     * is the only child-cloning node in the viewer today (it holds the sole `cloneElement`), so
+     * the sweep D28 asked for has an answer, and it is one.
+     */
+    if (otherProps.className && noodlNode.props.className) {
+      props.className = `${noodlNode.props.className} ${otherProps.className}`;
+    }
 
     if (noodlNode.noodlNodeAsProp) {
       props.noodlNode = noodlNode;

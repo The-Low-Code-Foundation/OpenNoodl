@@ -63,3 +63,35 @@ by "what unblocks my template" when the objective is "what unblocks a builder".
   five ways an instrument lies, all on record from P67.
 - ⚠️ **If the platform cannot express what an AC asks for, say so and record the gap** rather than
   quietly substituting something it can.
+
+## Closing note — s23, 2026-08-30
+
+**The phase is at the end of its *buildable* work, not closed.** Of 27 rows, **22 are done**;
+DEF-007/009/025 are partial with their remainders named, and DEF-005/013 are waiting on rulings
+that are Richard's to give. Nothing open is blocked on a session — which is a different statement
+from "there is nothing left", and the difference is the one this phase was created to keep.
+
+### The house rules, graded against the table rather than asserted
+
+| rule | verdict |
+|---|---|
+| **Every task's acceptance criteria include a person's sentence** | ✅ **13 of 13 task files.** ⚠️ In *two* shapes: DEF-001–009 carry it as **AC #1** (`A person's sentence:`); DEF-014/015/016/027 carry it as **§1**, a section. Neither grep finds both, which is how a first pass of this grading read *nine files missing the rule* and a second read *four*. Both were the same instrument measuring a heading string instead of the rule |
+| **Never scope by time** | ✅ no time-scoping language anywhere in the phase's files |
+| **Grade known-good against known-broken** | ✅ every closed row since DEF-014 carries a mutant matrix, and the later ones name **which arm** kills each mutant rather than counting reds |
+| **Say so when the platform cannot express an AC** | ✅ DEF-012 §2 is the worked example — the runtime *cannot* decide the ordering (`dropUnresolvedConnected` makes "not yet arrived" and "deliberately absent" identical), so the fix moved to the door and the gap was recorded rather than substituted around |
+| **A template-scoped test does not close a row** | ✅ held. DEF-024's template latches went to phase 78 as template work; DEF-027 was fixed at the viewer's prop spread rather than in the one node that exposed it |
+
+### What the phase actually proved
+
+The rule it was created to enforce — *findings get an owner or the name `NONE`* — **worked, and
+was nearly beaten once.** DEF-027 was appended to the table at 12:50 on 2026-08-30 by phase 77;
+this phase's own handoff was written at 13:22 and said the queue held **no workable open row
+left**. Both were reading the same file, 32 minutes apart. The row survived because the next
+session graded the **table** and not the handoff.
+
+🔴 **That is the phase's most transferable result, and it is not the fix count.** A register only
+protects a finding if the thing read at the start of a session is the register. A summary written
+over it — however careful, however recent — is a second copy, and a second copy drifts. The
+[unowned register's HEAD re-check](TASKS.md#the-unowned-register-re-checked-at-head--s23-2026-08-30)
+is the same lesson in the other direction: five of twelve rows there are marked *not re-measured*
+rather than carried forward as though they had been.

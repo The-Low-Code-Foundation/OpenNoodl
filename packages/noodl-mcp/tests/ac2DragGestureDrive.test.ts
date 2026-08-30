@@ -134,10 +134,10 @@ const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 /**
  * One evaluate, one moment — a report assembled from five reads is about none of them.
  *
- * The cards are read through `.probe-list > .react-draggable` rather than by an authored class,
- * and the selector is doing two jobs: it is the only handle the card has (see the `cssClassName`
- * spec) and the `>` is the parent-boundary control — if `For Each` rendered its items into a
- * wrapper, this returns nothing and every arm below fails loudly rather than quietly.
+ * The cards are read by the class their author gave them. Until D28 was fixed they could not be:
+ * `react-draggable` was the only handle the card had, and the selector had to borrow it. The `>`
+ * is the parent-boundary control either way — if `For Each` rendered its items into a wrapper,
+ * this returns nothing and every arm below fails loudly rather than quietly.
  */
 const READ = `(function () {
   var out = {};
@@ -146,7 +146,7 @@ const READ = `(function () {
     var r = el.getBoundingClientRect();
     out[key] = { text: el.innerText, top: Math.round(r.top), height: Math.round(r.height) };
   });
-  var cards = document.querySelectorAll('.probe-list > .react-draggable');
+  var cards = document.querySelectorAll('.probe-list > [class*="probe-card-"]');
   for (var i = 0; i < cards.length; i++) {
     var cr = cards[i].getBoundingClientRect();
     out['card' + i] = { text: cards[i].className, top: Math.round(cr.top), height: Math.round(cr.height) };
@@ -493,20 +493,26 @@ describe('SBR-007 AC2 — whether a pointer drag can produce the toIndex reorder
    * most of what anyone does with a drag — and it fails silently: the class is accepted in the
    * editor, stored in the graph, and absent from the DOM. Registered as **D28**.
    *
-   * 🔴 **The last two assertions PIN THE DEFECT and are meant to go red when it is fixed.** They
-   * are here because the drive's own selector depends on the card having no usable class, so a
-   * silent repair would leave `.probe-list > .react-draggable` matching nothing and every arm above
-   * failing for a reason that has nothing to do with the arms. Whoever fixes D28 should replace
-   * these two lines with `expect(boot['probe-card-a']).toBeDefined()` and point `READ` at
-   * `.probe-card-a` — not delete the spec. The first two assertions are the controls and stay
-   * either way.
+   * ✅ **FIXED 2026-08-30 as phase 80's DEF-027, and the last two assertions are flipped rather
+   * than deleted, exactly as this block asked.** The discarding was the *spread's*, not `Drag`'s:
+   * `NoodlReactComponent.render` merged `...noodlNode.props` then `...otherProps`, and the
+   * library's injected `className` — landing in `otherProps` — overwrote the author's. It could
+   * not merge on the library's side either, because the child `react-draggable` clones is the
+   * wrapper element, whose props are only `{key, noodlNode, ref}`, so its own
+   * `clsx(children.props.className || '', …)` had nothing to see. The two now accumulate, which
+   * is what class names do; `style` keeps its deliberate parent-wins precedence.
+   *
+   * `READ` reads the cards by `probe-card-` now instead of borrowing `.react-draggable`. The
+   * first two assertions were the controls that made this about `Drag` rather than about
+   * `cssClassName`, and they stay.
    */
-  it('FINDING (pins D28 — flip the last two lines when it is fixed) — a Drag child loses its cssClassName', () => {
+  it('a Drag child keeps its cssClassName (was the D28 pin, flipped when DEF-027 fixed it)', () => {
     expect(boot['probe-inner-a']).toBeDefined();
     expect(boot['probe-report-a']).toBeDefined();
 
-    expect(boot['probe-card-a']).toBeUndefined();
-    expect(boot.card0.text).toBe('react-draggable');
+    expect(boot['probe-card-a']).toBeDefined();
+    expect(boot.card0.text).toContain('probe-card-a');
+    expect(boot.card0.text).toContain('react-draggable');
   });
 
   /**

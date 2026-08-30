@@ -81,7 +81,7 @@ this register once already, and that is how one row gets worked twice and anothe
 | DEF-024 | ✅ done | **P78 D36** | A `Condition` can only ever turn a gate **ON**, so a screen accumulates contradictory answers — **closed s21 (08-30), and it was NOT the design ruling the queue expected: 🔴 the register's mechanism claim was false when written — `Switch` (same Logic category) has been the two-way shape all along (`On`/`Off` signals, `Current State` pushed on every change; one Switch per answer = fewer nodes than the paired-clear workaround), and `Condition.result` itself pushes `false` on a false test. What can only turn a gate on is the AUTHORED shape (constant `condition: true`, Evaluate-pulsed), so the defect narrowed to "nothing says so": shipped `gate-only-turns-on` (advisory warning, both doors, `oneWayGate.ts`) — fires when every writer into a `mounted`/`visible` is a constant-condition Condition and the pushable set is exactly `{true}`; paired-clear and Switch shapes silent by construction; one-way DISMISS (`{false}`) not fired on, by decision with corpus numbers. Driven at HEAD first in real Chrome (`def024-gate-drive.test.ts`): latch tick-then-untick leaves BOTH notices; Switch control arm leaves exactly one. Corpus (`calibrate:gates`, 178 projects): 3,287 written gate ports, 3,211 abstain, **75 firings, all true, zero false positives read** — concentrated in the site-builder template's copies (→ P77 **D29**, filed) and pre-s6 members-area copies. 🔴 The shipped `templates/members-area/` still carries **12 one-way latches** (s15's workaround fixed `Account` only) — template work, filed in P78's D36 section. Plus one sentence each on `Condition.result`/`Switch.state` naming the two-way shape (catalog regenerated). 12 specs, 7 mutants each killed by its own arm** | every **screen whose answer has more than one form** |
 | DEF-025 | 🟡 partial | **P78 D37** | A control's label is a click target only via the control's own `label` port — which **defaults OFF** — **door half built s17: `label-not-a-click-target` warns on a Checkbox/Radio Button whose words sit in an adjacent sibling Text (43 true firings / 186 toggles over the 178-project corpus, denominators printed; stays advisory — the corpus carries 43 legitimate legacy instances, the `raw-color-literal` precedent). Default-flip half 🧭 Richard — see the s17 section: a blunt flip stamps the literal string `'Label'` onto every existing bare checkbox** | every **person tapping the words beside a checkbox** |
 | DEF-026 | ✅ done | A cloud call to an unreachable backend reports nothing — **fixed s17: `CloudFunction2`'s error handler dereferenced `e.error` unconditionally, and a connection refusal hands it `undefined` (real Chrome probed at HEAD: `readyState 4, status 0, response ''` ⇒ `JSON.parse` throws ⇒ body `undefined`), so the ONE route to the `failure` outcome died on a TypeError inside the XHR callback. Handler now total; status 0 reports "Could not reach the backend at <endpoint>". Same hole filled in `Noodl.CloudFunctions.run` (rejected with `undefined`; JSON error bodies still pass through untouched)** | **anyone** whose backend is not running — the ordinary way this breaks |
-| DEF-027 | ⬜ open | **P77 D28** | A `Drag`'s direct child loses its `cssClassName`, so a draggable element cannot be styled or selected from a stylesheet — `react-draggable` clones the child with its own `className` and the authored one does not survive it. 🔴 **Found by driving, and the two controls are what make it about `Drag` rather than about `cssClassName`**: a Group one level further in and a Text deeper still take their class by the SAME kind of connection from the SAME `Component Inputs` node and keep theirs (`ac2DragGestureDrive.test.ts`, and `ac2-page-editor-drag-drive.test.ts` has to find the template's own cards by `.react-draggable` because of it). It fails **silently**: the class is accepted at the door, stored in the graph, and absent from the DOM. The pinning spec says to flip its last two lines rather than delete them | every **author who styles, animates or selects a draggable row** — most of what anyone does with a drag |
+| DEF-027 | ✅ done | **P77 D28** | A `Drag`'s direct child loses its `cssClassName`, so a draggable element cannot be styled or selected from a stylesheet — `react-draggable` clones the child with its own `className` and the authored one does not survive it. 🔴 **Found by driving, and the two controls are what make it about `Drag` rather than about `cssClassName`**: a Group one level further in and a Text deeper still take their class by the SAME kind of connection from the SAME `Component Inputs` node and keep theirs (`ac2DragGestureDrive.test.ts`, and `ac2-page-editor-drag-drive.test.ts` has to find the template's own cards by `.react-draggable` because of it). It fails **silently**: the class is accepted at the door, stored in the graph, and absent from the DOM. **fixed s23 (2026-08-30): the discarding was the SPREAD's, not `Drag`'s.** `NoodlReactComponent.render` spread `...noodlNode.props` then `...otherProps`, and the library's injected `className` — arriving in `otherProps` — overwrote the author's. `react-draggable` could not merge it either: the child it clones is the wrapper element, whose props are only `{key, noodlNode, ref}`, so its own `clsx(children.props.className || '', …)` had nothing to see. Class names accumulate rather than disagree, so the two are now joined; `style` keeps its deliberate parent-wins precedence (its own arm, and a mutant proving that arm is live). Fixed at the spread rather than in `Drag.tsx` so any future wrapper is covered — **and D28's uncounted sweep now has a number: one.** `Drag.tsx:214` holds the only `cloneElement` in the viewer and `react-draggable` is the only third-party wrapper around authored children. Re-driven at HEAD first (9/9, the two pins passing), then flipped as the spec's own header instructed and re-driven green. 5 specs, 5 mutants each killed by a named arm. ⚠️ **The drive serves the gitignored `noodl.viewer.js`** — the first post-fix run was 9/9 RED until it was rebuilt, and read like a broken fix | every **author who styles, animates or selects a draggable row** — most of what anyone does with a drag |
 
 🔴 **Three of phase 78's eleven unowned rows are NOT here, deliberately: D22, D23 and D24 are
 template-side.** This phase is graded on the product surface and never on a template being fixed
@@ -395,6 +395,36 @@ cheap to make later — and because nobody has yet read the two pairs against ea
   `effectiveBaseUrl`, the same seam `Secret` uses (a process global set by the backend, a
   cloud-only node reading it). The email templates the backend sends already use it; a graph
   composing its own email cannot.
+
+### The unowned register, re-checked at HEAD — s23 (2026-08-30)
+
+The closing sweep the s21 and s22 prompts both named. **Seven rows re-measured at HEAD rather
+than re-read.** All seven are still true; two citations were wrong in ways that cost a reader
+time, and both are corrected in place above rather than noted here only.
+
+| row | still true at HEAD? | what the re-measure found |
+|---|---|---|
+| `publishPage` refuses after publishing | **not re-measured** — needs a live backend, not a grep. Named so the gap is a decision |
+| auto-created class gets no declared columns | ✅ | 4 real `createAdapter` call sites (`cli.ts` ×3, `service.ts`); **none** passes `collections`. The 5th hit is the definition |
+| no semantic token for error text | ✅ | `destructive-text` appears **0** times in `noodl-core-ui` and `noodl-editor` |
+| a step pointing at a cloud helper is told to deploy it | ✅ | `projectFunctionNames()` still returns `getCloudFunctionNames(...)` unfiltered |
+| a second project deploying to a shared backend kills it | **not re-measured** — needs two live deploys |
+| a cloud function in a folder is unreachable | ✅ | 🔴 **the citation was `cloudFunctions.test.ts:85` with no package**, and the obvious guess (`nodegx-backend/tests/`) does not contain it. It is `packages/noodl-editor/tests/cloud/cloudFunctions.test.ts:85`, and line 85 is exactly the pinning comment. Path added above |
+| the backend card cannot see a backend-side change | **not re-measured** — a screen, not a grep |
+| a stale function renders twice | ✅ | `CloudFunctionsSection.tsx:123` filters `stale` **out of** `backendFunctions`, and `:138` still maps the unfiltered list above `:162`'s `stale.map` |
+| an unchanged value re-runs Run On Value Change | ✅ | `simplejavascript.ts:580` stores the value and calls `scheduleRun()` with no comparison to what was there |
+| `Record.Fetched` fires on bind | **not re-measured** — behaviour, needs a run |
+| the `domelement` port cannot reach its own description | **not re-measured** — needs the typecast table executed |
+| the configured site address is unreachable from a graph | ✅ **substance**, ❌ **count** | 🔴 **"its three consumers" is four.** `admin-email.ts:133` calls `effectiveBaseUrl` too, and it has done since `e7a74773` (2026-07-27) — **before the row was written on 2026-08-30**, so this is a miscount at the time of writing and not drift. The row's conclusion is untouched: all four are backend-internal, none is reachable from a graph |
+
+🔴 **Five rows are marked "not re-measured" rather than re-asserted.** Each needs a live backend,
+a screen or a run, and copying them forward unchecked is precisely what turns a register into a
+backlog — the failure this phase exists to answer. They are named, not quietly carried.
+
+⚠️ **A citation without a package cost this sweep a wrong conclusion before it caught it.** The
+first read of the folder row concluded the gate had been deleted, because `cloudFunctions.test.ts`
+does not exist under `nodegx-backend/tests/`. It exists under `noodl-editor/tests/cloud/`. A
+control — grepping the repo for a string that *is* there — is what separated "moved" from "gone".
 
 ## Rulings needed (Richard)
 
@@ -950,3 +980,109 @@ clause — the peer's in-flight edit, theirs) · `typecheck:editor`/`:editor-tes
 untouched) · **`test:ci` 2905 specs / 4 failures, all AIX-006 style vocabulary BY NAME, seed
 87145, readout 13s old at read, gitHead `b86c5b69`** (a peer commit inside the window — a
 read-time fact) — the canonical floor.
+
+## s23 (2026-08-30) — DEF-027 closed: the row the handoff said did not exist
+
+**The queue was not empty.** `NEXT-SESSION-PROMPT.md` said *"no workable open row left — again,
+and this time the queue is empty of buildable candidates"*. The table said `DEF-027 | ⬜ open`.
+Phase 77 appended that row at **12:50**; s22 wrote the handoff at **13:22**, 32 minutes later,
+having read the same file. 🔴 **Grade the table, never a summary of it** — this is the phase's own
+founding failure (a finding nobody names gets rediscovered at full price) arriving from the
+inside, and it is written into the [README's closing note](README.md#closing-note--s23-2026-08-30)
+rather than only here.
+
+### The defect, and why the recorded mechanism was half right
+
+D28 filed it as *"`react-draggable` clones the child with its own `className`"*. Driven at HEAD
+first (`ac2DragGestureDrive.test.ts`, real Chrome, real pointer — **9/9, both pins passing**, the
+defect confirmed as shipped), then read at the source: **two things had to be true and either
+alone is harmless.**
+
+- `react-draggable` *does* merge — `clsx(children.props.className || '', 'react-draggable', …)`.
+  It had nothing to see: the child it clones is the `NoodlReactComponent` **wrapper** element,
+  created with only `{key, noodlNode, ref}`. The author's class lives on `noodlNode.props`, one
+  level deeper.
+- `NoodlReactComponent.render` spread `...noodlNode.props` and then `...otherProps`, so the
+  library's injected `className` — arriving in `otherProps` — **overwrote** the author's.
+
+`style` immediately above is deliberately parent-wins, and `NoodlReactComponentProps` says so,
+because two parents disagreeing about a css property must resolve to one value. **Class names do
+not disagree; they accumulate.** Applying the `style` precedence to `className` is the whole bug.
+
+### Fixed at the spread, not in `Drag.tsx` — and D28's uncounted sweep now has a number
+
+D28 warned: *"any other node that clones a child through a third-party wrapper has the same shape
+… **Nobody has counted them.**"* **Counted: one.** `Drag.tsx:214` holds the only `cloneElement`
+in `packages/noodl-viewer-react/src`, and `react-draggable` is the only third-party wrapper any
+node puts around authored children (`@better-scroll` acts on `Group`'s own element, not on a
+child's props). The fix went to the spread anyway, so a future wrapper cannot reopen it — still
+"in the viewer's own component, not in the dependency", which is what D28 asked for.
+
+- **5 specs** (`noodl-viewer-react/tests/def027-drag-child-css-class.test.tsx`). Both halves of
+  the mechanism are real — the real `Drag`, the real library, the real wrapper, the real `Text`
+  leaf; only `noodlNode.props` is a fixture, and that is genuinely just data.
+- **5 mutants, each killed by a named arm** — M1 drop the merge · M2 `&&`→`||` (an absent half
+  stringifies to `"undefined"`) · M3 keep only the authored half · M4 merge *before* the spread ·
+  **M5 mutates code this task did not change**, to prove the style-precedence control arm is not
+  vacuous. M1/M3/M4 share FINDING and fail on different assertions of it; said rather than
+  papered over.
+- **The pinning drive was flipped, not deleted**, exactly as its own header instructed, and
+  `READ` now finds the cards by `probe-card-` instead of borrowing `.react-draggable`.
+  Re-driven after: **9/9 green**. D28 marked ✅ in phase 77's register, with its mechanism
+  corrected in place.
+
+🔴 **The trap that made a working fix read as a broken one.** The first post-fix drive came back
+**9/9 RED**. `render-report.js` serves `packages/noodl-editor/src/external/viewer/noodl.viewer.js`
+— a **gitignored build artifact** — so the drive was still running the pre-fix viewer, and the
+new selector (which depends on the fix) matched nothing, failing every arm at once. Anyone
+driving a *runtime* change through this harness owes
+`cd packages/noodl-viewer-react && npx webpack --config webpack-configs/webpack.viewer.prod.js`
+between the two runs. ⚠️ It is a **shared mutable artifact on this checkout** — rebuilding it
+swaps what every peer's drive serves, so check for a running drive first.
+
+### Also closed this session
+
+- **s22's DEF-012 gate line was never recorded.** The handoff said the readouts would land *"once
+  the session's final runs land"*, and they did not; the work was also still uncommitted at 13:39.
+  ⚠️ **Another session committed it at 13:55** (`dde4d477` + `5786d8a5`) while s23 was mid-flight —
+  so the commit is **not** this session's, only the gate readout is: `queryBeforeFilter.test.ts`
+  **PASS** inside the full editor jest run below.
+
+⚠️ **s23's own D28 edit was swept into a peer's pathspec commit** (`505d9b38`, phase 77's
+D30/D31 fix) — the documented hazard, in the harmless direction: committed under someone else's
+message rather than lost. Recorded so the D28 disposition can be found by `git log` on the right
+commit.
+- **The unowned register re-checked at HEAD** — see the section above. Seven rows re-measured,
+  all still true; **five explicitly marked *not re-measured*** rather than carried; two citations
+  corrected (a `cloudFunctions.test.ts` with no package, and a "three consumers" that was four
+  when it was written).
+
+### Gates — s23 (2026-08-30)
+
+| gate | reading |
+|---|---|
+| `typecheck:viewer` / `:mcp` / `:editor` / `:editor-tests` | **clean**, all four |
+| `noodl-viewer-react` jest | **84 suites / 1100 tests, all passed** |
+| `noodl-mcp` jest | **76 suites / 994 tests, all passed** |
+| `ac2DragGestureDrive` (real Chrome, real pointer) | **9/9** pre-fix *and* post-fix, with the two pins inverted between them |
+| `noodl-editor` jest (`test:main`) | **6453 passed, 5 failed / 6458** — see attribution below |
+| `test:ci` | **2905 specs, 4 failures, seed 79922** — 🔴 **all four AIX-006 *by name*: the recorded floor exactly.** Exit 1 is the floor's own behaviour, not a regression |
+
+🔴 **The five editor-jest reds, attributed rather than waved through:**
+
+- **`bld-004/reasoningChannel` — a FLAKE.** Green on its own re-run. It went red under load while
+  two package suites were live on this checkout.
+- **`sb-007/site-template` (×2) and `sb-018/the-list-refreshes-when-a-row-changes` (×2) — a
+  peer's, and demonstrably so.** SB-007 asserts `project.components` has length **22**; the tree
+  holds **24**. `site-builder.content.json`, `sb005Components.ts`, `sb006Components.ts` and
+  `sb007Template.test.ts` were all **uncommitted working-tree edits** at the time of the run —
+  phase 77's active D30/D31 lane, landed shortly after as `505d9b38`.
+- **None of the five touches `react-component-node.ts` or `queryBeforeFilter.ts`.** Checked, not
+  assumed: `grep` for both names across all three failing spec files returns nothing, and
+  `tests-unit/validation/queryBeforeFilter.test.ts` **PASSED** in the same run — which is the gate
+  reading s22 owed and never recorded.
+
+⚠️ **s23 ran a viewer-react suite and a webpack build while a peer's backend suite was live**, and
+the BLD-004 flake is the visible cost. The check and the run were issued in one command, so the
+`ps` output could not be acted on. ✅ **Make the peer-check its own call, and read it, before
+starting anything.**
