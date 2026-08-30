@@ -1910,6 +1910,36 @@ function planComponent(
   // Walk the visual tree: roles, render children, the page collapse. The radio-group flag rides
   // the walk: a Radio Button anywhere below a Radio Button Group joins its group (React context
   // in the runtime); one outside any group is inert there (radio-button/no-group) and defers.
+  /**
+   * The comment left where a visual child that did not render used to be.
+   *
+   * 🔴 **EXP-010 AC3 built this and scoped it to one population; EXP-011 §34 measured the rest.**
+   * AC3 is titled *"nothing dropped silently"* and it marked the child the export could not
+   * *identify* — no catalog entry, no component, no loaded kit. Every other deferred visual child
+   * was left out of the JSX with nothing where it stood, and that is the same defect AC3 exists to
+   * close: over the 60 exportable corpus projects, **73 of 73** deferred visual controls — every
+   * `range`, `options`, `checkbox`, Radio Button and Radio Button Group — vanished from the
+   * generated source, while the export wrote 1077 marked node ids elsewhere in the same files. A
+   * reader of the exported repo had nothing to search for and no reason to suspect a control was
+   * ever there.
+   *
+   * ⚠️ The unidentifiable case keeps its own sentence, because it says something the node's own
+   * reason cannot: the *type* is unknown, so a kit probably failed to load. Every other child is
+   * marked with the reason analysis already computed for it.
+   */
+  const markDroppedChild = (parentId: string, child: NodeIR, reason: string) => {
+    const unidentified =
+      child.type !== '' && !child.type.startsWith('/') && child.catalogRef === null && !kits.has(child.type);
+    const list = (plan.droppedChildren[parentId] = plan.droppedChildren[parentId] ?? []);
+    list.push({
+      nodeId: child.id,
+      type: child.type || 'untyped',
+      reason: unidentified
+        ? `No catalog entry, and no kit in noodl_modules registered this type — if it came from a custom kit, that kit did not load`
+        : reason
+    });
+  };
+
   const walk = (node: NodeIR, inRadioGroup: boolean) => {
     const role = roleOf(node);
     if (role === null || role === 'unsupported') return;
@@ -1937,6 +1967,7 @@ function planComponent(
           'a Radio Button outside a Radio Button Group cannot be selected (the runtime raises radio-button/no-group)';
         dispositions[child.id] = { kind: 'deferred', to: 'EXP-003', reason };
         notes.push(`node ${child.id} (${child.type}) deferred: ${reason}`);
+        markDroppedChild(node.id, child, reason);
         continue;
       }
       if (childRole === null || childRole === 'unsupported') {
@@ -1949,17 +1980,7 @@ function planComponent(
             ? `node ${child.id} (${child.type}) deferred: ${reason}`
             : `node ${child.id} (${child.type || 'untyped'}) is in the visual tree but has no generator yet`
         );
-        // EXP-010 AC3. A child the export cannot *identify* — no catalog entry, no component, no
-        // loaded kit — is marked where it stood. See `droppedChildren`: this is the population the
-        // silent-hole defect was about, and a kit that failed to load puts its nodes here.
-        if (child.type !== '' && !child.type.startsWith('/') && child.catalogRef === null && !kits.has(child.type)) {
-          const list = (plan.droppedChildren[node.id] = plan.droppedChildren[node.id] ?? []);
-          list.push({
-            nodeId: child.id,
-            type: child.type,
-            reason: `No catalog entry, and no kit in noodl_modules registered this type — if it came from a custom kit, that kit did not load`
-          });
-        }
+        markDroppedChild(node.id, child, reason);
         continue;
       }
       plan.childrenOf[node.id].push(child.id);
@@ -9932,7 +9953,12 @@ function visualDeferReason(
   if (wired !== undefined) return `its ${wired} arrives over a wire, so the rendered structure is not static`;
   const contentPort = (CONTENT_BOUND_PORTS[role] ?? []).find((port) => wiredIn.has(`${node.id}:${port}`));
   if (contentPort !== undefined) {
-    return `its ${contentPort} is fed by ${wiredIn.get(`${node.id}:${contentPort}`)} — the structure renders, the value is not statically known`;
+    // ⚠️ EXP-011 §34. This used to end *"the structure renders, the value is not statically
+    // known"*, and the first half was not true: a node with a defer reason never reaches
+    // `plan.childrenOf`, so it is left out of the JSX entirely. The distinction session 30 drew is
+    // still the useful one — the wall is the *source*, not the port — so the source stays named;
+    // what changed is the claim about the output, which an author could check and find false.
+    return `its ${contentPort} is fed by ${wiredIn.get(`${node.id}:${contentPort}`)} — the value is not statically known, and the node is left out rather than drawn with a wrong one`;
   }
   const literal = (name: string) => {
     const value = node.parameters.find((p) => p.name === name)?.value;

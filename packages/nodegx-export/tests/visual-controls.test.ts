@@ -459,14 +459,16 @@ describe('wire-fed controls name their source, not a phantom structure wall (§1
   test('a wired checkbox label names the record feeding it', () => {
     const result = withSource('Model2', 'row', 'prop-Label', 'remember', 'label');
     const notes = result.notes.join('\n');
-    expect(notes).toContain('its label is fed by Model2 — the structure renders, the value is not statically known');
+    expect(notes).toContain(
+      'its label is fed by Model2 — the value is not statically known, and the node is left out rather than drawn with a wrong one'
+    );
     expect(notes).not.toContain('its label arrives over a wire');
   });
 
   test('a wired range bound names the record feeding it', () => {
     const result = withSource('net.noodl.ComponentObject', 'rec', 'value-Min', 'volume', 'min');
     expect(result.notes.join('\n')).toContain(
-      'its min is fed by net.noodl.ComponentObject — the structure renders, the value is not statically known'
+      'its min is fed by net.noodl.ComponentObject — the value is not statically known, and the node is left out rather than drawn with a wrong one'
     );
   });
 
@@ -498,6 +500,44 @@ describe('wire-fed controls name their source, not a phantom structure wall (§1
     expect(notes).not.toContain('is fed by');
     expect(notes).not.toContain('arrives over a wire');
   });
+
+  /**
+   * EXP-011 §34. Every row above asserts the *note*, and a note is not the thing the author reads
+   * first — the exported repo is. A deferred control was left out of the JSX with nothing where it
+   * stood, which is exactly the defect EXP-010 AC3 ("nothing dropped silently") exists to close;
+   * AC3 marked the child whose *type* could not be identified and left every other one silent.
+   *
+   * 🔴 Measured before the fix, over the 60 exportable corpus projects: **73 of 73** deferred
+   * visual controls appeared nowhere in generated source, while the same export wrote 1077 marked
+   * node ids into those same files. These rows assert the file, so the gate can no longer pass on a
+   * report sentence alone.
+   */
+  const showcaseFile = (result: { files: Record<string, string> }) => result.files['src/components/Showcase.tsx'];
+
+  test('a deferred control leaves a marker where it stood, in the emitted file', () => {
+    const file = showcaseFile(withSource('Model2', 'row', 'prop-Label', 'remember', 'label'));
+    expect(file).toContain('TODO(export): net.noodl.controls.checkbox — node remember sits here in the');
+    expect(file).toContain('its label is fed by Model2');
+  });
+
+  test('the marker names the reason, not a generic sentence', () => {
+    const file = showcaseFile(withSource('net.noodl.ComponentObject', 'rec', 'value-Min', 'volume', 'min'));
+    expect(file).toContain('TODO(export): net.noodl.controls.range — node volume sits here in the');
+    expect(file).toContain('its min is fed by net.noodl.ComponentObject');
+    expect(file).not.toContain('No catalog entry');
+  });
+
+  /**
+   * The discriminating row. A control that renders must NOT also be marked as dropped — otherwise
+   * the fix would be trading a silent hole for a marker on every working node, and the marker would
+   * stop meaning anything.
+   */
+  test('a control that renders is not marked as dropped', () => {
+    const file = showcaseFile(withShowcase());
+    expect(file).toContain('type="checkbox"');
+    expect(file).not.toContain('sits here in the');
+  });
+
 });
 
 describe('nothing regresses on the untouched fixture', () => {

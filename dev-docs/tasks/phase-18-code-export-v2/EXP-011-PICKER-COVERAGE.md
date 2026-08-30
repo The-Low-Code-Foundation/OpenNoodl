@@ -4165,3 +4165,134 @@ Gates: **tsc 0**, **jest 1158/1158 in 46 suites**, picker **70/127 (55.1%)**, le
   fixture row exercises the fall-through in `resolveSourcePortKind`; none exercises the branch real
   projects hit first. Cheap to close: one fixture arm.
 - ⚠️ §31.1's limit #2 — the **target**-port side — remains examined by nothing.
+
+## §34 The row §33.6 ranked first, and the hole its own report was standing in (session 63, 2026-08-30)
+
+**70 of 127 (55.1%), unchanged. No node was translated, and a defect that had never been counted
+was fixed.** §33.6 put the **row-owned write** at the top of the list. This session drove that
+reading before building against it, which is the rule that has now paid five sessions running: the
+recorded blocker is not the one that fires, and one screen further out the export was dropping
+**73 of 73** deferred visual controls out of the generated code with nothing where they stood.
+
+### §34.1 The real graph, and the gate that actually fires
+
+Every `Set Object Properties` an author has drawn is one of two graphs, and the dominant one — 8
+byte-identical copies, the single exportable independent graph — is `/Filters/Multi Choice/Item`:
+
+```
+Model2 (idSource=foreach, properties "Label,Checked")
+  prop-Label   → checkbox.label
+  prop-Checked → checkbox.checked
+  id           → SetModelProperties.modelId
+checkbox.onChange → SetModelProperties.store
+checkbox.checked  → SetModelProperties.prop-Checked
+SetModelProperties.stored → Component Outputs."Selection Changed"
+```
+
+🔴 **The `Model2` here has no `prop-` *input* at all**, so §5.4 — *"a row written from inside the
+row is state the list owns"*, the sentence the ledger, `plan.ts:10100` and §33.6 all name as this
+family's blocker — **never fires**. Read off the disposition rather than reasoned about, the gate
+that fires is **§5.3**:
+
+```
+Model2 55bc9a45  deferred: Object 55bc9a45: its Id output is consumed,
+                           and a repeater row has no id in the emitted app
+```
+
+The write is refused *because the read side already collapsed*, and it collapsed on the `id`
+output, not on a write into the row. That is a different question with a different answer: §29 and
+§30 established that the emitted row closes over its own `item`, and `Collection.updateWhere`
+matches by predicate — so "which row" has a referent on this side that is **not** a string id. The
+recorded blocker asks for an id the emitted app does not have; the shape may not need one.
+
+⚠️ **Not built, deliberately** — it is still the design question §33.6 named (`updateWhere`
+*replaces* the row object), and the measurement below turned out to be worth more. Owner **`NONE`**.
+
+### §34.2 🔴 The reason is computed, stored, and shown to nobody
+
+`model2ForeachGate`'s sentence goes into `dispositions` at `plan.ts:2173` with **no `notes.push`
+beside it**. It reaches the report only when some *wire* resolution path happens to quote it. In
+`/Filters/Range` it does (`wire … dropped: Object 57b6ed64: no For Each names this component as its
+template`). In `/Filters/Multi Choice/Item` the consumer is a checkbox that defers first, so all
+three wires fall to pass 6's `has no deterministic translation in step 5` and the computed sentence
+is printed nowhere. The catch-all at `plan.ts:9591` cannot rescue it: it fires only on
+`dispositions[id] === undefined`, and this node has one.
+
+### §34.3 🔴 The finding: every deferred visual control vanished, and 1077 of its neighbours did not
+
+`Item.tsx` exports as `<div className={styles.group} />`. The checkbox is **not** in the file, and
+there is no marker saying it ever existed. A node with a defer reason never reaches
+`plan.childrenOf`, so the emitter closes over the gap.
+
+Measured over the **60 exportable** projects, in-process:
+
+| | before | after |
+|---|---|---|
+| deferred visual nodes (`range`, `options`, `checkbox`, Radio Button, Radio Button Group) | 73 | 73 |
+| **marked in generated source** | **0** | **70** |
+| silent | **73** | **3** |
+| *control:* node ids named in a `TODO(export)` marker in the same files | 1077 | 1155 |
+
+✅ **The control is what makes the zero mean anything.** "marked = 0" reads identically if the
+detector is broken; the export writing 1077 marked ids over the same corpus, through the same
+detector, says the absence is real.
+
+🔴 **This is EXP-010 AC3 — *"nothing dropped silently"*, ticked ✅ — holding for one population
+only.** AC3 marked the child whose *type* could not be identified (a kit that failed to load).
+Every identified-but-deferred visual child had the same hole, and the AC's own words cover it. The
+fix widens the existing machinery: `markDroppedChild` now marks both, the unidentifiable case
+keeping its own sentence because "a kit did not load" is something the node's reason cannot say.
+
+### §34.4 ⚠️ The sentence that claimed the opposite of what the file showed
+
+`visualDeferReason` ended *"— the structure renders, the value is not statically known"*. The
+structure does **not** render; the node is left out entirely. Session 30 introduced that half to say
+the wall is the *source* and not the port, which is right and is kept — but as written it told an
+author to look for a checkbox that is not there. It now reads *"— the value is not statically known,
+and the node is left out rather than drawn with a wrong one"*. Behaviour is unchanged: rendering a
+control without its authored bound would be the export emitting a 0–100 slider where the app draws
+the row's, which is what the defer is for.
+
+### §34.5 The gate hole, and the three still silent
+
+🔴 **The two rows pinning that sentence asserted `result.notes` and never `result.files`** — the
+suite could not see that the claim was false, which is the [[a-gate-can-have-a-hole-shaped-like-the-defect]]
+shape for the eighteenth time in this phase. Three rows now assert the emitted **file**, including a
+discriminating one: a control that renders must **not** also be marked, or the marker stops meaning
+anything.
+
+⚠️ **3 of 73 are still silent, and they are a different defect.** All three are `options` nodes whose
+ancestor chain runs through a **component instance** (`/Admin/Shell`): `walk` descends into an
+instance's children and dispositions them, but `renderInstance` emits `<Shell … />` self-closing, so
+the marker is attached to a parent the emitter never renders — EXP-010's "nearly wrong #3" (the page
+collapse orphaning markers) one construct over. Corpus-wide, **19 component instances in 8 projects
+have children authored inside them, 217 nodes in those subtrees**. ⚠️ **Do not read that as a
+finding yet**: the probe's `src.includes(id)` counts a node that *rendered* and one merely *named in
+a marker* alike, so its 96/217 split separates nothing. Splitting those two is the first move for
+whoever takes it. Owner **`NONE`**.
+
+### §34.6 What proves it
+
+`silenthole.ts` (the table above, with its control arm) and `instkids.ts` in the s63 scratchpad, both
+in-process over s62's `v2only` farm. 🔴 **The first run of `silenthole.ts` read 73 marked / 0 silent
+— the exact opposite of the truth — because `app.files` includes `EXPORT-REPORT.md`, which names
+every deferred node id.** Joining all the emitted files made every hole look marked; the number that
+would have been written down was produced by measuring the wrong property, and it would have read as
+"there is no problem here". Restricting to `.tsx`/`.ts` inverted it. That is
+[[a-recommendation-carries-a-measurement-of-some-property-not-the-right-one]] a seventh time, caught
+by asking what the number would be if the defect *were* present.
+
+Gates: **tsc 0**, **jest 1161/1161 in 46 suites** (46 files on disk), picker **70/127 (55.1%)**,
+ledger 175 types.
+
+### §34.7 What this leaves
+
+- 🔴 **The row-owned write is still the top row, and its question is now sharper**: not "can a row
+  write to itself" but **"does the write need an id at all, when `updateWhere` matches by
+  predicate and the row closes over its own `item`?"** Owner `NONE`; design question.
+- 🔴 **A deferred *logic* node's reason still reaches the report only by accident** (§34.2). The
+  visual half is fixed; the logic half is one `notes.push` and a decision about noise.
+- ⚠️ **Children authored inside a component instance** (§34.5) — unowned, unmeasured, and the
+  instrument that would measure it needs fixing first.
+- ⚠️ **Every gate in this phase that asserts a sentence should be checked against the artefact.**
+  §34.5 found two; the same pattern (`toContain` on notes, nothing on files) is cheap to grep for.
