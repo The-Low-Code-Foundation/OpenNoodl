@@ -556,6 +556,46 @@ export enum DiagnosticCode {
   InertDimension = 'inert-dimension',
 
   /**
+   * DEF-018 (P78 D28) — a `Columns` child sized to its own content, which keeps
+   * its intrinsic width, ignores the box the column hands it, and draws across
+   * its neighbour whenever its content is wider.
+   *
+   * The combination half of {@link InertDimension}: there the node's own
+   * `sizeMode` switches a `width` off; here the child's `sizeMode` switches off
+   * the one thing its *parent* exists to provide. Both button compositions ship
+   * `sizeMode: 'contentSize'` and `net.noodl.controls.button`'s type default is
+   * the same value, so following the design system verbatim inside the one node
+   * in the runtime that reflows produces overlapping controls — measured on the
+   * members band's own five buttons, 14px of overlap at 1280×900, appearing at
+   * *wide* viewports where auto-fit makes the columns narrow
+   * (`def018-def020-layout-drive.test.ts`).
+   *
+   * A **warning**, per child (the repair is per child), resolved against the
+   * catalog defaults the runtime itself falls back to. See
+   * `layoutInertCombination.ts` for the calibration and the honest limits.
+   */
+  ColumnsChildKeepsOwnWidth = 'columns-child-keeps-own-width',
+
+  /**
+   * DEF-020 (P78 D32) — a row `Group` whose `justifyContent` distributes free
+   * space, with two or more children that grow: the free space never exists,
+   * the children split the row evenly, and the parameter is silently inert.
+   *
+   * Every visual node's `width` defaults to `100%`, and `layout.ts` turns a
+   * percentage width inside a `row` parent into `flexGrow` — so growing is what
+   * a child of a row does unless something stops it. Measured: two default
+   * Texts under `space-between` split a 1280px row 640/640 with a 0px gap; the
+   * content-sized control shows a 1108px gap
+   * (`def018-def020-layout-drive.test.ts`).
+   *
+   * Fires only when at least **two** children grow: with exactly one, the row
+   * usually renders what the author meant (one side fills, the other sits at
+   * the edge) and the parameter is merely redundant. A **warning**, one per
+   * Group — the repair is a decision about the row, not about one child.
+   */
+  JustifyContentDistributesNothing = 'justify-content-distributes-nothing',
+
+  /**
    * DSG-004 §2.3 — a page whose text is all one weight, so nothing on it is
    * emphasised over anything else.
    *

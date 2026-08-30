@@ -72,9 +72,9 @@ this register once already, and that is how one row gets worked twice and anothe
 
 | id | status | source row | what it is | bites |
 |---|---|---|---|---|
-| DEF-018 | ⬜ open | **P78 D28** | A button inside a `Columns` overlaps the next one — both button compositions pin `sizeMode: 'contentSize'` | every **agent who lays controls out** in the one node that reflows |
+| DEF-018 | ✅ done | **P78 D28** | A button inside a `Columns` overlaps the next one — both button compositions pin `sizeMode: 'contentSize'` — **fixed s19: `columns-child-keeps-own-width` (warning, per offending child) in the new `layoutInertCombination.ts` precondition, reaching both doors through `authoredPreconditionDiagnostics`. A Columns hands every child a fixed box (`column-item`, flexGrow/flexShrink 0) and clips nothing; a child whose RESOLVED `sizeMode` is contentSize/contentWidth ignores it — resolved against catalog defaults per DEF-006, because a bare button's TYPE DEFAULT is contentSize. Re-driven at HEAD first: the members band's own five buttons overlap 14px at 1280×900, inColumn control arm zero (`def018-def020-layout-drive.test.ts`). `gridAutoFit`'s description now carries the sentence D28 called the cheapest honest fix** | every **agent who lays controls out** in the one node that reflows |
 | DEF-019 | ⬜ open | **P78 D30** | The type ramp cannot reach `font-variant-numeric`, so no app built here can align a column of numbers | every **app with a column of numbers** — money, times, scores |
-| DEF-020 | ⬜ open | **P78 D32** | Two children of a row both grow and nothing says so: `justifyContent` silently does nothing | every **agent laying two things out along a row** |
+| DEF-020 | ✅ done | **P78 D32** | Two children of a row both grow and nothing says so: `justifyContent` silently does nothing — **fixed s19: `justify-content-distributes-nothing` (warning, per row) in the same `layoutInertCombination.ts`. A row Group with a distributing `justifyContent` and ≥2 children that would grow (percentage width → `flexGrow` in `layout.ts`; width DEFAULTS to 100%, so growing is what a child of a row does) is asked to distribute space that never exists. Re-driven at HEAD first: 640/640 split, 0px gap; content-sized control 1108px gap at the edges. 🔴 **Calibration found the predicate's one WRONG shape, not just noise**: a maxWidth-capped grower leaves real free space and there justifyContent WORKS — 10 of 43 corpus firings were that shape, now excluded (child with authored/wired maxWidth = unknowable, not growing). Exactly-one-grower rows stay silent by design (they render what the author meant)** | every **agent laying two things out along a row** |
 | DEF-021 | ✅ done | **P78 D33** | A fan-out send delivers **one** email and reports **N** successes — **fixed s16 (`4adab228`): each queued outcome token is stamped with the `To` it was minted under; stamps agree → today's path verbatim (one send, fields read after inputs settle), stamps disagree → one send per consecutive run of the minted address, each run settled by its own call. 3 mutants, each killed by exactly its arm; erg-001 §4's constant-To pin untouched** | every **member who was told they would be emailed** |
 | DEF-022 | ✅ done | **P78 D34** | A cloud function cannot find out what the app's own public address is — **fixed s18: the Request node has an `Origin` output. The node already held the answer and threw it away (`request.ts` stored `req.headers` on the `Request` model with no port); `requestOrigin.ts` now derives it once — the caller's `Origin` header when usable (a browser POST always carries the page's own address, the thing TPL-002 had to be told from outside), else forwarded-host/host + forwarded-proto, else honestly blank (a workflow step has no caller). Port description names the trust boundary: caller-supplied, right for links back to whoever called, NOT for a password-reset a third party will click — that stays `effectiveBaseUrl`'s job, still unreachable from a graph (row below, `NONE`). 🔴 D34's "nothing exposes it to a graph" was too strong: an Object node with Id `Request` reads the raw `Headers` bag today, probed through the real runner — corrected in the register, not silently** | **everyone an app ever emails a link to** |
 | DEF-023 | ✅ done | **P78 D35** | `Component` scope in a cloud function is **not** per-request, and nothing says so — **fixed s16 (`acd053e0`). 🔴 The recorded mechanism was the browser's: the cloud runtime never reaches `_componentScopes` — `noodl-js-api.js` overrode the scope to ONE module-level object, shared across all scripts, functions, requests and CONCURRENT requests. Now a WeakMap keyed on the component-owner INSTANCE (ids repeat across requests; instances do not): same-instance scripts still share (TPL-002's plan/pump contract), a new request starts clean, entries die with the request's graph — the leak half held by construction, not a spec** | every **graph that accumulates anything server-side** |
@@ -724,3 +724,116 @@ session's DEF-026 commit; their own `10b26d57` names the suite as already red) �
 *errors*, warnings pass by design · `test:ci` **2905 specs / 4 failures, all AIX-006 BY NAME, seed
 90017, fresh readout** — the floor, and s15's 7 peer-template reds are gone (the peer committed
 their template work at `ab17845d`).
+
+### DEF-022 — s18 (2026-08-30): the Request node learns to say where the app lives
+
+**The reading re-driven at HEAD before building** (the standing instruction, 14th payment, and this
+time it *narrowed the claim rather than the fix*): `request.ts` still stored `req.headers` on the
+`Request` model with no output port (`requestModel.set('Headers', …)`), and the backend's
+`runFunction` passes `ctx.req.headers` verbatim — but 🔴 **D34's "nothing exposes it to a graph"
+was too strong**. Probed through the real runner: an Object node (`Model2`) with Id `Request` and
+property `Headers` reads the whole bag today. Undocumented, undiscoverable, and it hands a builder
+raw headers to re-derive origin from — so the port remains the right fix, but the register's
+sentence was corrected in place (P78 D34), not silently.
+
+✅ **What landed**: `origin` output on `noodl.cloud.request`, derivation in
+`requestOrigin.ts` (one place, commented for the traps): the caller's `Origin` when it is a usable
+web origin — a browser's cloud-function call is a POST and a POST always carries the page's own
+address, exactly what TPL-002 had to be told from outside — else `x-forwarded-host`/`host` +
+sanitised `x-forwarded-proto` (default `http`, what a direct localhost backend actually serves),
+else `undefined` rather than an invented address. Case-insensitive over header names
+(`CloudRunner.run` is a public seam; Node's lowercasing is a transport fact, not a contract),
+first-entry reads for comma lists and array values, trailing slash stripped
+(`effectiveBaseUrl`'s discipline, so `origin + path` composes).
+
+- **The trust boundary is in the port description, not just the register**: everything derived
+  here is caller-supplied. Right for a link sent back to whoever called; wrong for a link a THIRD
+  party will click (reset-poisoning shape). That job stays with the operator-configured
+  `effectiveBaseUrl` — unreachable from a graph, now a `NONE` row above (DEF-022's broader half).
+- **15 specs** (`def022-request-origin.test.ts`): a derivation table where every precedence rule
+  and every refusal has a row, plus four arms through `CloudRunner.run` — browser-shaped,
+  curl-shaped, the no-headers workflow-step arm (answers 200, port honestly blank), and a
+  two-requests-one-runner bleed-through arm.
+- **Mutants**: M1 (origin lookup dropped) killed by 6, M2 (proto defaults https) by 7, M4′ (wiring
+  deleted) by 3. 🔴 **Two survivors, both verdicts about the code, not the specs**: the
+  `=== 'null'` clause was DEAD CODE (the `/^https?:\/\//` shape test already refuses it) — clause
+  removed, behaviour still pinned; and a stale-origin mutant CANNOT fire because each request
+  builds a fresh component instance (DEF-023's own construction) — the bleed-through arm stays as
+  a pin, recorded as held-by-construction.
+- **Catalog regenerated** (`catalog:generate` + `catalog:merge`, diff = exactly the new port ×2
+  files), `catalog:check` + `catalog:merge:check` clean — DEF-003's lesson, paid forward: a port
+  that exists only in the runtime is `notFound` at every door.
+- ⚠️ **Template-side adoption is P78's lane, not this row's**: TPL-002's `notifyMembers` still
+  takes `siteUrl` as a parameter (its admin-only trust note stands); rewiring it onto the new
+  port belongs with the members-area template work, same split as D22/D23/D24.
+- ⚠️ **The committed sandbox/viewer bundles predate the port** — an editor drive today shows no
+  `Origin` output on the canvas until the next cloudruntime bundle rebuild. Same owner as the
+  standing dist note (DEF-021/023/026, whoever cuts the next 0.2.1 build).
+
+**Gates s18** (commit `ae890a71`): noodl-viewer-cloud **219/219** (s16's 204 + the 15 new) +
+`tsc --noEmit` clean · noodl-mcp **971/971** (catalog consumer, re-run after regeneration) ·
+backend request-node consumer suites (`cwf-014-typed-request-bodies`, `cloud-function-timeout`,
+`--runInBand`) 22/22 · `catalog:check` + `catalog:merge:check` clean · **`test:ci` 2905 specs / 4
+failures, all AIX-006 BY NAME, seed 75285, fresh readout** — the floor, run because a new declared
+port has broken name-keyed heuristics before (DEF-003/`blankDiagnosis`); no editor rule keys on
+`origin` (checked) and none went red. ⚠️ Its `gitHead eac2544d` is the P77 peer's D23 commit
+landing mid-window — read-time fact; result is exactly at the floor, which tolerates it.
+
+### DEF-018 + DEF-020 — s19 (2026-08-30): the layout pair, closed as one module
+
+**Read against each other at the source first, as the register asked, and the merge the candidate
+grouping suspected is real**: both are a parent/child layout combination in which a declared
+parameter is silently inert, decidable from the graph alone — D28 a child that refuses the box its
+parent exists to hand it, D32 children that absorb the space their parent was asked to distribute.
+One precondition module (`layoutInertCombination.ts`, both doors via
+`authoredPreconditionDiagnostics`), two codes, filed as two rows because the *repairs* differ:
+per-child for D28 (the count is the number of edits), per-row for D32 (the repair is a decision
+about the row).
+
+✅ **Both readings re-driven at HEAD before building** (`def018-def020-layout-drive.test.ts`,
+rendered in real Chrome at 1280×900, one-variable control per arm — an absence is only a reading
+beside a known-firing signal). D28: the members band's five buttons, `primaryButton` verbatim in an
+autoFit Columns — "Announcements board" (158px of content, 128px box) draws **14px across**
+"Meetings calendar"; `inColumn` control arm zero overlap in the identical Columns. D32: two default
+Texts under `space-between` split 1280px **640/640, gap 0**; content-sized control **gap 1108px**,
+both children at the row's edges. Neither claim narrowed — both rows held as recorded.
+
+- ✅ **`columns-child-keeps-own-width`** (warning, per child): resolved `sizeMode` ∈
+  {contentSize, contentWidth} on a knowable direct child of a Columns. Resolution is
+  `resolveAgainstDefaults` over `CatalogIndex.inputDefaults` — DEF-006's evaluator, for DEF-006's
+  reason: `net.noodl.controls.button`'s TYPE DEFAULT is `contentSize`, so the authored bag alone
+  misses the child most likely to be there (own mutant, killed). Skips: component instances (root
+  sizing not in this graph), For Each children (separate render path), wired sizeMode/width.
+- ✅ **`justify-content-distributes-nothing`** (warning, per row): row Group + distributing
+  `justifyContent` + **≥2** growers (percentage width, position relative, sizeMode reads width).
+  Exactly-one-grower rows silent by design — that row usually renders what the author meant.
+  🔴 **The calibration found the predicate's one WRONG shape**: a **maxWidth-capped grower leaves
+  real free space, and there justifyContent WORKS** — `maxWidth` binds as plain CSS. 10 of 43
+  corpus firings were that shape; a child with authored or wired maxWidth is now *unknowable, not
+  growing* (own spec arm + mutant).
+- ✅ **Corpus** (`npm run calibrate:layout`, new script, 178 projects, 0 unreadable, denominators
+  printed): D28 **13 firings / 319 Columns / 562 direct children, 4 projects — all 13 authored
+  sizeMode, 0 from the type default** (the bare-button worry is empty in this corpus). D32 **33
+  firings / 317 distributing rows / 3,099 row Groups, 14 projects**. Sampled from disk, true:
+  the REFERENCE BUILD's own footer ("© 2026 Kiln & Co." / "Privacy · Terms" splitting 50/50) and
+  sonnet's Basket rows — "Subtotal" and "£33.50" split evenly instead of label-left, price-right.
+  The agent-authored replays (phase55 NavBars, InfoStrips, Footers) are firing rows, which is the
+  promotion case; **both stay advisory** on the `responsiveArrangement` precedent (promotion is
+  earned against authored candidates at generation time; the corpus carries 46 legacy instances),
+  and the spec pins non-membership in `AUTHORED_BLOCKING_WARNINGS` so a later edit cannot promote
+  silently.
+- ✅ **Mutants: 9 killed, 1 survivor by EQUIVALENCE, recorded in the code** — the D32 row-level
+  `resolveAgainstDefaults` answers identically to the authored bag today (no catalog default makes
+  a Group a row or distributes a justify); kept as the evaluator anyway so a future default change
+  is absorbed, with a comment saying the mutant survives (s18's precedent: a survivor is a verdict
+  about the code, not a spec to fake).
+- ✅ **`gridAutoFit`'s description** now carries D28's "cheapest and most honest" fix: the second
+  sentence says children must take the column's width and that a contentSize child (what both
+  button recipes stamp) draws across the next column. The door rule is the mechanical half; the
+  description is the teaching half, at the moment an author reaches for the one node that reflows.
+
+**Gates s19**: editor jest **6433/6435** (the 2 = the peer's known sb-007 template-count arms,
+their lane, same two as s17) · tests-unit suite 24/24 · noodl-mcp **985/985** (includes the new
+drive) · `catalog:examples` 62/62 strict (the new warnings fire on no shipped recipe) ·
+`typecheck:editor` / `:editor-tests` / `:mcp` clean · `test:ci` re-run this session with a fresh
+readout (see below).

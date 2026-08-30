@@ -427,7 +427,12 @@ export const STYLE_COMPOSITIONS: VocabComposition[] = [
     nodeType: 'net.noodl.visual.columns',
     group: 'arrangement',
     description:
-      'A grid of unknown length. Fits as many columns as the CONTAINER holds and reflows itself — no breakpoints to maintain.',
+      // DEF-018 (P78 D28): the second sentence is the product's cheapest honest fix — nothing in
+      // either button recipe or this one said the three do not compose, and the overlap appears
+      // at wide viewports, where auto-fit makes the columns narrow. The door's
+      // `columns-child-keeps-own-width` is the mechanical half; this is the teaching half.
+      'A grid of unknown length. Fits as many columns as the CONTAINER holds and reflows itself — no breakpoints to maintain. ' +
+      'Children must take the column\'s width: sizeMode "contentHeight" with width 100%. A contentSize child (what both button recipes stamp) keeps its own width and draws across the next column.',
     parameters: {
       sizing: 'autoFit',
       minWidth: { value: 280, unit: 'px' },

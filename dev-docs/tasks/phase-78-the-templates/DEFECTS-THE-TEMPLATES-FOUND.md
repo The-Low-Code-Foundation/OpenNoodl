@@ -61,11 +61,11 @@ failure this file's first house rule exists to prevent.
 | **D25** | ✅ fixed in Track A — **re-measured 08-29 (s10)** | — | template | (was: every person reading a date or filling the meeting form) |
 | **D26** | ✅ **fixed by P80 C1 (`2c6a8876`, 08-29)** — `raised` and `ruled` compositions added; B3 unblocked | P80 | product | (was: every template we ship) |
 | **D27** | ✅ fixed s8 (08-29) | — | template | (was: anyone whose setup, join or approval threw) |
-| **D28** | 🔴 open (08-29) | **DEF-018** (registered 08-29) | product | every agent who lays controls out in the one node that reflows |
+| **D28** | ✅ **FIXED by DEF-018 (08-30) — re-driven at HEAD first, 14px overlap exactly as recorded** | DEF-018 | product | (was: every agent who lays controls out in the one node that reflows) |
 | **D29** | ✅ **FIXED s13 (08-29)** — measured at the browser, both halves | — | template | (was: every member — a second auth round trip on every page) |
 | **D30** | 🔴 open (08-29) | **DEF-019** (registered 08-29) | product | every app with a column of numbers — money, times, scores |
 | **D31** | ✅ fixed s11 (08-29) | — | template | (was: every moderator who posted something wrong) |
-| **D32** | 🔴 open (08-29, s12) | **DEF-020** (registered 08-29) | product | every agent laying two things out along a row |
+| **D32** | ✅ **FIXED by DEF-020 (08-30) — re-driven at HEAD first, 640/640 gap-0 exactly as recorded; the maxWidth false-positive shape found and excluded** | DEF-020 | product | (was: every agent laying two things out along a row) |
 | **D33** | ✅ **FIXED by DEF-021 (`4adab228`, 08-30) — re-driven at HEAD first, red exactly as recorded** | DEF-021 | product | (was: every member who was told they would be emailed) |
 | **D34** | 🔴 open (08-29, s14) | **DEF-022** (registered 08-29) | product | everyone an app ever emails a link to |
 | **D35** | ✅ **FIXED by DEF-023 (`acd053e0`, 08-30) — the behaviour held, the recorded mechanism was the browser's; see the section note** | DEF-023 | product | (was: every graph that accumulates anything server-side) |
@@ -1143,7 +1143,19 @@ Two of the four functions needed a real decision rather than "wire it to `deny`"
 
 ---
 
-## D28 — 🔴 A button inside a `Columns` overlaps the next one, because both button compositions pin `sizeMode: 'contentSize'`
+## D28 — ✅ FIXED by DEF-018 (2026-08-30). (Was: a button inside a `Columns` overlaps the next one, because both button compositions pin `sizeMode: 'contentSize'`.)
+
+> ✅ **Closed by re-running this row's own repro at HEAD first** — the composition verbatim in an
+> autoFit Columns at 1280×900: "Announcements board" (158px of content into a 128px box) drew
+> **14px across** "Meetings calendar"; the `inColumn` control arm in the identical Columns had
+> zero overlap (`noodl-mcp/tests/def018-def020-layout-drive.test.ts`). The product took two of
+> the three exits this row offered: the door now warns (`columns-child-keeps-own-width`, per
+> offending child, resolved against catalog defaults — a BARE button fires too, its type default
+> is `contentSize`), and `gridAutoFit`'s description carries the sentence this row called the
+> cheapest honest fix. Corpus: 13 firings / 562 Columns children over 178 projects, all authored,
+> all true. Advisory, with non-promotion pinned. Same module as D32's fix — the two rows are one
+> mechanism a step apart, and were read against each other before either was built. Full account:
+> phase 80 TASKS.md s19, `layoutInertCombination.ts`.
 
 **Measured, s9, by rendering the members' band at 1280×900 and looking at it:** the five nav items
 were laid out in a `net.noodl.visual.columns`, and "Announcements" was drawn **straight across the
@@ -1360,7 +1372,20 @@ now.
 
 ---
 
-## D32 — 🔴 Two children of a row both grow, and nothing says so: `justifyContent` silently does nothing
+## D32 — ✅ FIXED by DEF-020 (2026-08-30). (Was: two children of a row both grow, and nothing says so: `justifyContent` silently does nothing.)
+
+> ✅ **Closed by re-running this row's own repro at HEAD first** — two default Texts under
+> `space-between` split a 1280px row **640/640 with a 0px gap**; the content-sized control showed
+> a 1108px gap with both children at the edges. The suggested shape shipped almost verbatim:
+> `justify-content-distributes-nothing`, a warning on a row Group with a distributing
+> `justifyContent` when **two or more** children would grow (one grower stays silent — that row
+> renders what the author meant). 🔴 **Calibration found the one shape where this row's predicate
+> is WRONG rather than noisy**: a maxWidth-capped grower leaves real free space, and there
+> justifyContent works — 10 of 43 corpus firings were that shape and are now excluded. The 33
+> that remain include the reference build's own footer and sonnet's Basket ("Subtotal" /
+> "£33.50" splitting evenly instead of label-left, price-right) — read from disk, true.
+> §7's template gate stays; the door half this row said was missing now exists. Full account:
+> phase 80 TASKS.md s19, `layoutInertCombination.ts`.
 
 **Measured, s12, by building it wrong and rendering it.** Owner: **NONE**.
 

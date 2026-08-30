@@ -68,6 +68,7 @@ import { checkNavigation, checkPageShape, looksLikePageComponent, PAGE_NODE_TYPE
 import { checkParameterValues } from './parameterValues';
 import { checkPublicWriteDoor, type FunctionSecurityPolicy } from './publicWriteDoor';
 import { checkRepeaterTemplate } from './repeaterTemplate';
+import { checkLayoutInertCombination } from './layoutInertCombination';
 import { checkResponsiveArrangement } from './responsiveArrangement';
 import { checkRuntimeContext } from './runtimeContext';
 import { checkTypographyHierarchy } from './typographyHierarchy';
@@ -557,6 +558,10 @@ export function authoredPreconditionDiagnostics(options: AuthoredPreconditionOpt
     ...checkPublicWriteDoor(nodes, { component, security, catalog }),
     // DSG-004 §2.1 — doctrine §7's only mechanical claim, which had no gate.
     ...checkResponsiveArrangement(nodes, { component, catalog }),
+    // DEF-018/DEF-020 — the two layout combinations in which a declared
+    // parameter is silently inert: a contentSize child of a Columns, and a
+    // distributing justifyContent on a row whose children all grow.
+    ...checkLayoutInertCombination(nodes, { component, catalog, connectedInputs: connections }),
     // DSG-004 §2.3 — doctrine §3, as an info that never blocks.
     ...checkTypographyHierarchy(nodes, { component, connectedInputs: connections }),
     // FIX-007 §2 — the wire the port rule is right to skip and nothing else could see.

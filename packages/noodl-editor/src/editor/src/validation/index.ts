@@ -177,6 +177,11 @@ export {
   MIN_TRACK_NODES
 } from './responsiveArrangement';
 export type { ArrangementNode, CheckResponsiveArrangementOptions } from './responsiveArrangement';
+// DEF-018/DEF-020 — the layout combinations in which a declared parameter is
+// silently inert: a contentSize child of a Columns, a distributing
+// justifyContent on a row whose children all grow.
+export { checkLayoutInertCombination, widthIsPercentage } from './layoutInertCombination';
+export type { CheckLayoutInertCombinationOptions, LayoutNode } from './layoutInertCombination';
 // DSG-004 §2.3 — doctrine §3: a page with one font weight.
 export { checkTypographyHierarchy, MIN_TEXT_NODES, TEXT_WEIGHT_TYPES } from './typographyHierarchy';
 export type { CheckTypographyHierarchyOptions } from './typographyHierarchy';
