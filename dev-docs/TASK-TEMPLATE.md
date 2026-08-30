@@ -278,3 +278,22 @@ grep -r "pattern" packages/
 - Result: [what happened]
 - Next: [what to try next]
 ```
+
+---
+
+## 🔴 Before you write the phase's handoff
+
+Read [`guidelines/PHASE-EXECUTION.md`](guidelines/PHASE-EXECUTION.md).
+
+A phase is graded on **acceptance criteria built**, not on defects found. The standing rule:
+
+> **A defect becomes the next session's first job ONLY if it blocks an acceptance criterion.**
+> Otherwise it is filed in the register with an owner, and the next session builds the next task.
+
+A `NEXT-SESSION-PROMPT.md` must open with **the task board**, re-derived from the task files, with
+every unbuilt task said in the words `⬜ never built` — then the next task to build, then the
+phase's end condition, and only then the defect register as an appendix.
+
+⚠️ **Do not copy the previous handoff's status table forward.** Phase 77 hid seven unbuilt tasks for
+two sessions that way, and carried one task as open for seventeen sessions after its own file said
+it was done.

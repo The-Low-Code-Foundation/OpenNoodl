@@ -22,58 +22,50 @@ Read in this order:
 
 ---
 
-## 🔴 FIRST JOB — pick one; there is no forced next step
+## 🔴 THE BOARD — this is the agenda. Build a task.
 
-s32 closed both of s31's rows and opened one of its own. What is left is a choice, not a sequence.
+🔴 **Standing rule, set by Richard 2026-08-30 — read
+[`dev-docs/guidelines/PHASE-EXECUTION.md`](../../guidelines/PHASE-EXECUTION.md) before doing
+anything else:**
 
-🔴 **But the choice is wider than the four options below, and this handoff hid that until now.**
-**Seven tasks are still `⬜ open` and have never been built** — SBR-005, 009, 010, 011, 012, 013,
-014 — and **SBR-003 is 🟡 with an owed probe**. s31's stance table listed none of them and s32
-copied it forward before catching it; the table at the foot of this file is now **re-derived from
-the task FILES**. ⚠️ **Check [README.md](README.md) §5 for the dependency order before picking** —
-the options below are the ones with a known cheap next action, not the board.
+> **A defect becomes the next session's first job ONLY if it blocks an acceptance criterion.**
+> Otherwise it is filed with an owner, and **the next session builds the next task.**
 
-⚠️ **And `TASKS.md` carried SBR-016 as `⬜ open` while its own file has said 🟢 FIXED AND DRIVEN
-since s15.** Corrected at s32. 🔴 **Where a status column and a task file disagree, the FILE is the
-artefact** — the column is a summary somebody has to remember to update.
+**Why this phase in particular:** s19 → s32 filed **19 new defect rows in 14 sessions — not one
+session filed zero** — and closed **one** task. The last genuinely new task to go green was
+**SBR-008, at s18**. Seven tasks have never been started. 🔴 **The ratchet has TRIPPED: build.**
 
-### (a0) 🔴 **[D32](DEFECTS-THE-SITE-BUILDER-FOUND.md#d32) — the gate that let D31 through**
-Filed by the parallel s32 session that fixed D30/D31 in a worktree; the template fix landed from the
-other one (`505d9b38`) and this row is what that work did not carry.
+### 🟢 BUILD THIS: **SBR-006 AC3 — `Unpublish`**
 
-`sb007Template`'s `gradeMountTriggered` walks the migration's writes and opens with a `continue` for
-any node not triggered by `didMount` — so it examines **1 of 65** (68 before the fix). **D31's three
-writes were among the skipped**, which is why a suite that already knew about the migration was
-green while the page editor wrote six figures of updates in eleven seconds.
-
-The missing rule, in D31's exact shape and statically checkable: does a silenced input's value come,
-directly or transitively, from a record write that this same node's output causes? 🔴 **Do not "fix"
-it by making the template state all 65** — that changes what the migration is for. **The gate is the
-gap.** ✅ **Count what a checker REACHED, not just what it flagged.**
-
-### (a) **SBR-006 AC3 — `Unpublish` is one click**
 AC3 names three actions. Publish and Duplicate are driven green (s22). **`Unpublish` has never been
-clicked.** This is the cheapest open ✅ in the phase and it closes an AC.
+clicked.** It is one click on a fixture that already exists, it closes an acceptance criterion, and
+it is the cheapest ✅ on the board.
 
-### (b) **SBR-015 AC4 — a re-read, not a build**
-The row says *"re-read: DEF-004(a) now writes a step per action"*. AC4 was recorded 🟡 on the
-evidence that `execution_steps` held **0 rows**. That is no longer how the backend behaves. **Re-take
-the reading before deciding anything.**
+**First concrete step:** mint a project from the current template, claim it, publish a page, then
+click `Unpublish` from the row menu and read the **stored row** — not the response, not the screen.
+The fixture pattern and credentials are in *Standing context* below.
 
-### (c) **SBR-005 — open, and it owns AC3's gallery model**
-The largest remaining piece, and the one AC3 partly depends on. ⚠️ It does **not** unblock AC3 on
-its own — see D15 below.
+### Then, in order
 
-🔴 **AC3 cannot be met by any of these.** **D15** stands at HEAD: no drop-target capability in the
-runtime (`dataTransfer`, `dragover`, `dragenter`, `DragEvent` all **0**, beside a **39**-hit
-`onClick` control over **369** files), re-measured with a boundary control at s29.
+| | what |
+|---|---|
+| 2 | **SBR-015 AC4** — a **re-read, not a build**. AC4 was recorded 🟡 because `execution_steps` held 0 rows; DEF-004(a) now writes a step per action. Re-take the reading |
+| 3 | **SBR-012** — the raw-colour gate. ⚠️ **It owns SBR-004's AC3**, so it closes an AC in another task too |
+| 4 | **SBR-005** — sections worth having; **owns AC3's gallery model**. The largest unbuilt piece |
+| 5 | **SBR-009 / 010 / 011 / 013** — never built. SBR-011 was **ruled BUILD, not strike** |
+| last | **SBR-014** — re-verifies every person-sentence AC, so it **cannot run until the rest are built** |
 
-⚠️ **s32 does NOT narrow D15, and the temptation to read it that way is now stronger.** D15 is about
-**a file arriving from outside the page**. s32 dragged a real section with a real pointer, on the
-shipped artefact, and needed none of it. The two were filed as twins and **only one was ever real**.
-**Phase 77 must not close pretending AC3 is met.**
+### 🔴 The phase's end condition
 
----
+**SBR-014 is the gate on closing phase 77**, and it re-verifies every person-sentence AC. It cannot
+start while seven tasks are unbuilt. 🔴 **That is the distance to done — not the length of the
+defect register.**
+
+⚠️ **AC3 of SBR-007 cannot be met at all** — **D15**, no drop-target capability in the runtime for a
+file arriving from outside the page (`dataTransfer`, `dragover`, `dragenter`, `DragEvent` all **0**
+against a **39**-hit `onClick` control over **369** files), re-measured at HEAD with a boundary
+control at s29. **Phase 77 must not close pretending AC3 is met**, and s32's pointer drag does
+**not** narrow it — that was in-page pointer work and needed none of the missing API.
 
 ## 🔴 What s32 paid for, and would pay again
 
@@ -166,6 +158,27 @@ npm run template:site-builder && cd packages/noodl-mcp && npx jest sb007Template
   it dropped, the health filter did not run and **every other reading in that run is void**.
 - 🔴 **A headless export's health filter fails OPEN, silently** — `registerModule(project)` first.
 
+## The register — an APPENDIX, not the agenda
+
+🔴 **Every row below is `BACKLOG` unless it says `BLOCKS <AC>`.** Do not open a session on one of
+these while a task is unbuilt.
+
+### `BACKLOG` — [D32](DEFECTS-THE-SITE-BUILDER-FOUND.md#d32), the gate that let D31 through
+
+⚠️ **Blocks no AC.** Real and worth fixing — but it is a defect about this phase's own instruments, which is the exact signature the standing rule exists to interrupt.
+Filed by the parallel s32 session that fixed D30/D31 in a worktree; the template fix landed from the
+other one (`505d9b38`) and this row is what that work did not carry.
+
+`sb007Template`'s `gradeMountTriggered` walks the migration's writes and opens with a `continue` for
+any node not triggered by `didMount` — so it examines **1 of 65** (68 before the fix). **D31's three
+writes were among the skipped**, which is why a suite that already knew about the migration was
+green while the page editor wrote six figures of updates in eleven seconds.
+
+The missing rule, in D31's exact shape and statically checkable: does a silenced input's value come,
+directly or transitively, from a record write that this same node's output causes? 🔴 **Do not "fix"
+it by making the template state all 65** — that changes what the migration is for. **The gate is the
+gap.** ✅ **Count what a checker REACHED, not just what it flagged.**
+
 ## Where the phase now stands
 
 🔴 **Re-derived from the task FILES at s32** — s31's version omitted seven open rows and carried
@@ -178,20 +191,20 @@ SBR-016 as open when its own file had said 🟢 since s15.
 | **SBR-004** | 🟢 AC1/2/4 driven · AC3 is SBR-012's |
 | **SBR-005** | ⬜ **OPEN, never built** — **and it owns AC3's gallery model** |
 | **SBR-006** | AC1/2/4/5 ✅ · **AC3 🟡** — `Unpublish` is the one act of three still undriven |
+| **SBR-007** | 🟢 AC1 ✅, AC4 ✅, AC5 ✅ · **AC2 ✅ ALL THREE HALVES AND ON THE SHIPPED ARTEFACT** (outcome s27, gesture s30, real screen s31, shipped project s32) · AC3 blocked by D15 alone · D18/D20/D24/D30/D31 ✅ |
+| **SBR-008** | ✅ all five, s18 |
 | **SBR-009** | ⬜ **OPEN, never built** — the theme editor demos itself |
 | **SBR-010** | ⬜ **OPEN, never built** — messages |
 | **SBR-011** | ⬜ **OPEN, never built** — live preview over the realtime hub; **ruled BUILD, not strike** |
 | **SBR-012** | ⬜ **OPEN, never built** — the raw-colour gate; **it owns SBR-004's AC3** |
 | **SBR-013** | ⬜ **OPEN, never built** — the doctrine rule |
 | **SBR-014** | ⬜ **OPEN, and LAST** — re-verifies every person-sentence AC, so it cannot go before the rest |
-| **SBR-007** | 🟢 AC1 ✅, AC4 ✅, AC5 ✅ · **AC2 ✅ ALL THREE HALVES AND ON THE SHIPPED ARTEFACT** (outcome s27, gesture s30, real screen s31, shipped project s32) · AC3 blocked by D15 alone · D18/D20/D24/D30/D31 ✅ |
-| **SBR-008** | ✅ all five, s18 |
 | **SBR-015** | AC1/2/3 ✅ s13 · **AC4** 🟡 re-read: DEF-004(a) now writes a step per action |
 | **SBR-016** | ✅ **s15, all four ACs** — ⚠️ `TASKS.md` read `⬜ open` until s32 corrected it |
 | **SBR-017** | ✅ s14 · AC1 🟡 half (SBR-016 owned the other half) |
 | **D13 / D16** | 🔴 open, `NONE` |
 | **D14** | 🟢 fixed s20, DRIVEN s22 — the **browser** deploy path is still exposed and `NONE` |
-| **D15** | 🔴 `NONE` — no drop target for a FILE; **AC3 cannot be met**. Stands at HEAD |
+| **D15** | 🔴 **`BLOCKS` SBR-007 AC3** · `NONE` — no drop target for a FILE; **AC3 cannot be met**. Stands at HEAD |
 | **D17 / D18 / D21** | 🟢 fixed and driven (s21/s24/s25) |
 | **D19** | 🟢 reds fixed s23 — 🔴 **`test:main` watched is still `NONE`** |
 | **D20** | 🟢 FIXED + DRIVEN s26; **the appearance half is Richard's** |

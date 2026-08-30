@@ -74,6 +74,31 @@ This will prevent wasting time on trial-and-error.
 
 **Do NOT** keep trying variations of the same approach. Recognize the pattern and escalate.
 
+#### …and the same loop at PHASE scale: build the tasks, don't farm the defects
+
+**Decided 2026-08-30 by Richard. Full rule: `dev-docs/guidelines/PHASE-EXECUTION.md` — read it
+before writing any `NEXT-SESSION-PROMPT.md`.**
+
+> *"I love things being well tested, but we need to push forward with the alpha launch."*
+
+Driving a real screen reliably finds more defects than one session can fix. If the handoff always
+says *"FIRST JOB: fix this defect"*, the queue is fed faster than it drains and **the phase has no
+reachable end state.** Phase 77 filed **19 defect rows in 14 sessions — not one session filed
+zero** — while closing **one** task, with **seven tasks never started**.
+
+- ✅ **A defect is the next session's first job ONLY if it BLOCKS an acceptance criterion.**
+  Otherwise: file it in the register with an owner, and **build the next task.**
+- ✅ **An AC never built is a feature the alpha does not have; a defect in the register is a feature
+  that is imperfect. For a launch, absent is worse than imperfect.**
+- ✅ **The ratchet — two consecutive sessions closing zero ACs ⇒ the next session MUST build a task.**
+- ✅ **A handoff opens with the TASK BOARD**, re-derived from the task *files* (never copied forward
+  from the previous handoff), with unbuilt tasks said in the words `⬜ never built`. The register is
+  an appendix.
+- ❌ **This does not relax any gate.** Every drive, mutant and control stays. **The ordering changed,
+  not the rigour** — finding a defect is a reason to *write it down* now, not to *fix it* now.
+- 🚩 **The signal that a phase has closed the loop on itself: it starts filing defects about its own
+  test instruments.** Stop and build.
+
 ### 4. Document Discoveries Systematically
 
 **When you learn something important about the codebase:**
@@ -141,6 +166,7 @@ packages/
 
 **Read these FIRST for relevant tasks:**
 
+- `dev-docs/guidelines/PHASE-EXECUTION.md` - **Build the tasks, don't farm the defects (READ BEFORE writing any handoff or picking the next session's work)**
 - `dev-docs/reference/COMPATIBILITY-POLICY.md` - **NodeGX is a fresh start; legacy projects are not a constraint (READ BEFORE acting on any "existing projects" clause)**
 - `dev-docs/reference/CODEBASE-MAP.md` - Navigation guide
 - `dev-docs/reference/COMMON-ISSUES.md` - Known problems/solutions
