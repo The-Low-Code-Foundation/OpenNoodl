@@ -843,3 +843,58 @@ no `rowHeight` to divide by. D23 is D15's twin, one capability short in the same
   on duplicatePage's own node, from a previous request. Three controls say it is not call volume.
   **Two wrong readings were recorded on the way** (an id shift that did not happen, then a bundle
   order that was luck) — see D24. Unowned, mechanism unestablished.
+
+---
+
+## §32 — s28: D24 was not what s27 wrote down, and the endpoint was writing four pages
+
+**2026-08-30.** §31 left D24 as *"a cloud function's graph outlives its request"*, unowned and with
+its mechanism explicitly unestablished. It is established now, and the recorded mechanism was
+wrong — the true one is worse and had been shipping, green, for ten sessions.
+
+### What the trace said
+
+An env-gated trace in `runtasks.ts` and `simplejavascript.ts` (added, read, reverted) printed an
+instance identity beside every `Do`. **Every request builds a fresh `Run Tasks` instance**, and the
+two `Do` pulses that produced `already-running` were **1ms apart on that same fresh instance**.
+Nothing outlived anything.
+
+The two pulses came from a code node that **ran four times in one request**, each run firing the
+signal wired to `Create Record.store`:
+
+| run | trigger | wrote |
+|---|---|---|
+| 1 | `source.fetched` — sent by the **`Id` setter**, before any read | `Copy of Untitled` |
+| 2 | `title`/`slug` arrived | `Copy of Pricing`, no sections |
+| 3 | `title`/`slug` arrived **again, identical** | `Copy of Pricing`, no sections |
+| 4 | the last arrival | the real copy, answered |
+
+🔴 **Counted over `/classes/Page`, one Duplicate press left four rows.** The 400 was only the
+fourth `Do` colliding with the third run — the one symptom that reaches a caller, which is why it
+was the only one anybody saw.
+
+### The repair, and the gate
+
+`source.done` in place of `source.fetched`; `runOnChange-in-title/-in-slug/-in-sourceId` unticked;
+a readiness guard on the id. **Four rows → one**, and the AC2 drive is back in front of
+`duplicatePage` — 5/5 green, zero `already-running`. The count is now asserted
+(`wrote exactly ONE page … (D24)`), naming every extra row `ORPHAN`; reverting the template reddens
+it.
+
+### What it cost, and what it is worth remembering
+
+- 🔴 **Every assertion in a 47-spec suite read the row the response named.** That row was always
+  correct. A defect that writes *extra* rows is invisible to every reading taken from the answer —
+  and the file's own header says to read the stored rows, which it did, for the one id it was given.
+  **The reading that finds this class is a count over the class.**
+- 🔴 **s27's mechanism fitted every observation and excluded nothing.** Traffic dependence,
+  flakiness, one endpoint and not another — all explained, all still explained by the true cause.
+  What separated them was an **instance identity in a trace**, not more thought about the same
+  evidence.
+- ⚠️ **A peer had measured the opposite the same morning.** DEF-023 (09:21) established that a cloud
+  function's component scope dies with its request. That was a free contradiction of s27's sentence,
+  sitting in the git log, and this session nearly re-derived it from scratch.
+- 🔴 **Two runtime behaviours are behind it and neither is fixed**: `Fetched` firing on a bind
+  ([D25], description repaired, behaviour unowned) and an identical value re-running a node
+  ([D26], unowned, twelve node families). Both are registered in phase 80. **The template fix helps
+  one template; those two are the objective.**

@@ -320,6 +320,39 @@ cheap to make later — and because nobody has yet read the two pairs against ea
   over `backendFunctions` minus `stale`; recorded rather than folded into DEF-015 because it is a
   rendering choice in a block that fix did not otherwise touch.
 
+- 🔴 **A value that has not changed re-runs a "Run On Value Change" input.** Owner: **`NONE`**.
+  **Raised by phase 77 s28** ([D26](../phase-77-the-site-builder-rescue/DEFECTS-THE-SITE-BUILDER-FOUND.md#d26)),
+  registered here because phase 77 is closing and this bites every builder.
+
+  `simplejavascript.ts`'s `setScriptInputValue` schedules a run whenever a value lands on a ticked
+  input, without comparing it to the value already there. Measured in a cloud-function trace: a code
+  node received `title: 'Pricing'` twice, identically, ran twice, and **wrote a database row on each
+  run**. That was three quarters of a defect where one `Duplicate` press created four pages.
+
+  🔴 **It contradicts the runtime's own contract.** `run-on-value-change.ts` — Richard's 2026-08-01
+  decision, written up in that file — justifies keeping `Run` on the grounds that an async re-fetch
+  *"that returns an identical value fires no change"*. Only true if an identical value is not a
+  change; today it is one.
+
+  **Shape of the fix**: an equality guard for **primitives only** (a mutated array is the same
+  reference and must still re-run). Four lines per family — and **twelve families share the idiom**
+  (`expression.ts`, `condition.ts`, `dbcollectionnode2.ts` and nine more), which is what makes it a
+  task rather than a patch: repairing one leaves the runtime inconsistent in a way no author can see.
+
+- 🟡 **`Record.Fetched` fires when the `Id` merely binds — the description is fixed, the behaviour
+  is not.** Owner: **`NONE`**. **Raised by phase 77 s28**
+  ([D25](../phase-77-the-site-builder-rescue/DEFECTS-THE-SITE-BUILDER-FOUND.md#d25)).
+
+  `setModel` sends `Fetched` from the `Id` input setter, where `Model.get(id)` has minted an empty
+  local model and nothing has been read. Deliberate, and `Done` exists because of it. ✅ s28 fixed
+  the **description**, which promised *"the record has been read and the property outputs are up to
+  date"* and was false in both halves on that path — regenerated through the catalog, the cloud
+  library and the docs site, because there are four copies of it.
+
+  🟡 What is left is whether a signal named `Fetched` should fire without a fetch at all. Two
+  candidate repairs (fire only when the bound model has data; or split the bind announcement onto
+  its own port), both of which re-grade browser graphs that rely on today's shape.
+
 ## Rulings needed (Richard)
 
 - 🧭 **Does this phase exist, or do these fold into 0.2.1's bug-fix phase?** The tasks are written to

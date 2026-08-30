@@ -1009,51 +1009,131 @@ would close [D15](#d15) at the same time.
 
 ---
 
-## D24 — 🔴 A cloud function's graph outlives its request, and one endpoint's traffic can 400 another
+## D24 — 🟢 FIXED s28 · `duplicatePage` wrote FOUR pages per call, and the 400 was its last symptom
 
-**Found:** s27, driving AC2 · **Owner:** `NONE` · **Product**, not template · **Bites:** any site
-whose admin reorders sections and then duplicates a page — the second act answers *"A partial copy
-may exist"* having copied nothing.
+**Found:** s27, driving AC2 · **Re-measured and fixed:** s28 · **Owner:** SBR-007 ·
+**Template** (the fix) with **two product rows behind it** ([D25](#d25), [D26](#d26)) ·
+**Bites:** anybody who presses Duplicate — they get one page in the answer and three junk drafts
+in the list.
 
-Adding the `reorderSection` drive to `sb004-publication-invariant.test.ts` **before** the
-`duplicatePage` block makes that block fail, and the backend names the cause itself:
+### 🔴 s27's recorded mechanism was wrong, and this is what the trap looks like
+
+s27 wrote *"a cloud function's graph outlives its request … state left behind by an earlier
+request, because the graph is shared across requests"*. It is not. Traced at HEAD (an env-gated
+`[D24]` line in `runtasks.ts` and `simplejavascript.ts`, since reverted), **every request builds a
+fresh `Run Tasks` instance** — `CloudRunner.run` creates the component in a per-request `NodeScope`
+and tears it down on settle — and the two `Do` pulses that produced `already-running` were **1ms
+apart inside one request**, on an instance that had `initialize`d 20ms earlier:
 
 ```
-RunTasks (/#__cloud__/duplicatePage): Do was triggered while a run was still in progress,
-so it was ignored [run-tasks/already-running]  { nodeId: 'run' }
+inst=15 initialize                      ← this request's own node
+inst=15 Do PULSE   {state: idle}        ← pulse 1
+inst=15 RUN START  {numTasks: 2}
+inst=15 Do PULSE   {state: running}     ← pulse 2, 1ms later, SAME instance
+inst=15 ALREADY-RUNNING                 → unchanged → deny → 400
 ```
 
-`already-running` reports `unchanged`, `unchanged` is wired to `deny`, and the caller gets a 400.
-🔴 **The node is `duplicatePage`'s own**, and nothing in that request started a run — the state was
-left behind by an **earlier request**, because `internal.state` lives on the node instance and the
-instance outlives the invocation.
+⚠️ The reading that fitted and excluded nothing was *"an earlier request left state behind"*: it
+explains the flakiness, it explains the traffic dependency, and it is false. What separated it from
+the truth was an **instance identity in the trace** — not more reasoning about the same evidence.
+The peer session that fixed [DEF-023] the same morning had already established the opposite
+(component scope now dies with the request), which is the second signal this row had available and
+did not use.
 
-**Three controls, five runs each, same slot in the same file:**
+### What was actually happening
 
-| what runs before `duplicatePage` | green |
-|---|---|
-| the `reorderSection` drive (7 calls) — the finding | **1 / 5** |
-| `publishPage` × 10 — a control that also uses `Run Tasks` | **5 / 5** |
-| `submitContactForm` × 7 — a control with no `Run Tasks` | **5 / 5** |
+`duplicatePage` hangs its page write off a code node, and that code node **ran four times per
+request**. Each run fired `Outputs.built()`, and `built` is wired to `Create Record.store`:
 
-So it is **not** call volume, and not "any traffic". ⚠️ **The mechanism is not established** — why
-this endpoint provokes it and a `Run Tasks` endpoint at higher volume does not is unexplained, and
-naming a cause here would be the thing this phase keeps writing down as a trap.
+| run | why it ran | what it wrote |
+|---|---|---|
+| 1 | `source.fetched` — fired by the **`Id` setter**, before any read | `Copy of Untitled`, 0 sections |
+| 2 | `title` and `slug` arrived (changed) | `Copy of Pricing`, 0 sections |
+| 3 | `title` and `slug` arrived **again, identical** (`same: true` in the trace) | `Copy of Pricing`, 0 sections |
+| 4 | the last arrival | `Copy of Pricing`, **2 sections** — the one it answered with |
 
-🔴 **Two readings this session got wrong before the controls existed**, both kept because each
-looked conclusive:
+Measured over the class rather than off the answer, one call left **four `Copy of …` rows**. The
+`already-running` 400 is the fourth run's `Do` landing while the third run's was still in flight —
+a symptom of the same repeat, and the only one that was ever visible, because it is the only one
+that reaches the caller. **The suite had been green for ten sessions with this happening**: every
+assertion read the copy the response named, and that one is always correct.
 
-1. *"The insertion shifted node ids."* Moving the two new components to the end of
-   `SB004_COMPONENTS` turned the suite green three times running. **The ids were identical in both
-   arrangements** — measured, after asserting it. What actually varied was position in the bundle,
-   not ids.
-2. *"So it is bundle order."* Appending them was then green 3/3 — and **1/5** when re-run. The
-   first arrangement had been flaky all along (1 pass, then 3 fails) and both "stable" readings were
-   luck. Swapping two *existing* components with the new ones removed changes nothing, which is the
-   control that killed the theory.
+### The fix, and what it costs
 
-**Meanwhile:** the AC2 drive is placed after every `duplicatePage` call in that file, which is
-deterministic rather than lucky — the traffic cannot reach a request that has already finished. That
-is ordering, **not a fix**, and it is commented as such at the placement.
+Two lines of template, in `sb004Components.ts`:
+
+- **`source.done` instead of `source.fetched`** into `newProps.run`. `Done` is the fetch
+  invocation's outcome and cannot fire before the read; `Fetched` fires on binding too. See
+  [D25](#d25).
+- **`runOnChange-in-title` / `-in-slug` / `-in-sourceId` unticked** on `newProps`, so a value
+  arrival no longer re-runs a node whose run performs a write. See [D26](#d26).
+- Plus `source.id -> newProps.in-sourceId` and a readiness guard on the id, which is belt-and-braces
+  on both.
+
+**Result: four rows → one**, and the reorder-before-duplicate arrangement that used to fail one run
+in five to three in five is **5/5 green with zero `already-running` events**.
+
+🔴 **The gate is a count, and it had to be**: `it('wrote exactly ONE page — the copy it answered
+with, and no others (D24)')` in `sb004-publication-invariant.test.ts`, asserted over
+`/classes/Page` and naming each row `answered` or `ORPHAN`. Reverting the template reddens it and
+prints the orphans. The AC2 drive is **back in front of `duplicatePage`**, where s27's comment said
+it could not go — that arrangement is now the D24 gate rather than a workaround.
+
+⚠️ **What this fix does NOT do.** It repairs one endpoint. The two runtime behaviours behind it are
+unowned and every other graph in the product is still exposed to them — a code node that writes is
+the ordinary shape, not an exotic one. That is D25 and D26, and they are the rows that matter.
+
+---
+
+## D25 — 🟡 `Record.Fetched` fires when the `Id` merely BINDS, and its description promised a read
+
+**Found:** s28, tracing [D24](#d24) · **Owner:** `NONE` (the behaviour) · **Product** ·
+**Bites:** any graph that acts on `Fetched` — it acts once on a record nobody has read yet.
+
+`setModel` sends `Fetched` straight from the `Id` input setter (`dbmodelnode2.ts:324`), where
+`Model.get(id)` has minted an **empty local model** and nothing has been fetched. The behaviour is
+deliberate and documented in the file's own outcome note — `Done` exists precisely because the two
+paths differ, and `erg-001-cloud-services-outcomes.test.ts` pins the binding path as outcome-free.
+
+🔴 **What was wrong was the sentence an author reads.** The port said *"Fires once the record has
+been read and the property outputs are up to date"* — false on that path in both halves, and the
+twin node (`Model2`) already said "bound". A template believed it and wrote a junk row per request.
+
+✅ **Fixed s28, the description only**: it now names the bind, and points at `Done` for acting on
+data that is really there. Regenerated through `catalog:generate` → `catalog:merge` → `docs:nodes`
+and `cloud-library:generate`, so the property panel, the MCP catalog, the docs site and the cloud
+library all say it — **four copies, and a fix to one of them is not a fix**.
+
+🟡 **Still open, and unowned: the behaviour.** A signal named `Fetched` that fires without a fetch
+is a trap a description can only warn about. Two candidate repairs, neither costed: fire it only
+when the bound model has data, or split the bind announcement onto its own port. Both would
+re-grade browser graphs that rely on the current shape, which is why this is a row rather than a
+patch.
+
+---
+
+## D26 — 🔴 A value that has not changed re-runs a "Run On Value Change" input
+
+**Found:** s28, tracing [D24](#d24) · **Owner:** `NONE` · **Product** · **Bites:** any code node
+that writes, sends, or charges — it does it once per arrival, not once per change.
+
+`simplejavascript.ts`'s `setScriptInputValue` schedules a run whenever a value lands on a ticked
+input. It **never compares the value to the one already there**. Measured in the D24 trace:
+`title: 'Pricing'` and `slug: 'pricing'` arrived a second time carrying exactly what they carried
+the first time (`same: true`), the node ran again, and that run wrote a Page row.
+
+🔴 **The contract this contradicts is the runtime's own.** `run-on-value-change.ts` — Richard's
+2026-08-01 decision, written up in that file — says an async re-fetch *"that returns an identical
+value fires no change, so a node that must re-run once per fetch still wires `Run`"*. That sentence
+is the justification for keeping `Run` at all, and it is only true if an identical value is not a
+change. Today it is one.
+
+**The shape of the fix, and why it is not in this session:** an equality guard for **primitives
+only** in `setScriptInputValue` (objects and arrays must still re-run — a producer may have mutated
+one in place, and the runtime cannot know). It is four lines. What makes it a row rather than a
+patch is that **twelve node families share this idiom** — `expression.ts`, `condition.ts`,
+`dbcollectionnode2.ts` and nine more all call `shouldRunOnValueChange` with no comparison — and
+repairing one of them leaves the runtime inconsistent in a way an author cannot see. It wants a task
+that sweeps the family, with the primitive/reference line stated once.
 
 ---
