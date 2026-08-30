@@ -260,9 +260,16 @@ node scripts/devtools/drive-deployed.js <folder> [--port N] [--hold]
   (`external/viewer/noodl.viewer.js`), the deploy runtime (`external/deploy/noodl.deploy.js`, a
   *different file*), and `nodegx-backend/dist`. **A template change is different** — project data,
   read from disk every boot, so no rebuild. **s31 changed no product source**, so no bundle is stale.
-- ✅ **The gates at s31**: `nodegx-backend` **1429 / 120 suites** (1406/119 at s30, plus this
-  session's 23 specs in one new file). `noodl-mcp`, `noodl-runtime` and editor `test:ci` **not
-  re-run**: no source in any of them changed. ⚠️ **A lone red is a flake until re-run.**
+- ✅ **The gates at s31, and the reading is SPLIT — stated rather than rounded up.** Every one of
+  `nodegx-backend`'s **120** suites has a green reading, but not from one process:
+  **119 `PASS`, zero `FAIL`** in the full run, which was **cut off before its summary line** while
+  two peer suites were running; and the 120th — this session's new file — **23/23, `EXIT 0`**,
+  standalone, three minutes earlier. 🔴 **The gap was found by reconciling the `PASS` count against
+  `ls tests/*.test.ts`, not by reading the tail** — a run with no `Tests:` line and 119 greens looks
+  exactly like a clean one. A clean single-process re-run is still owed and is cheap
+  (`cd packages/nodegx-backend && npx jest`, ~10 min).
+- ✅ `noodl-mcp`, `noodl-runtime` and editor `test:ci` **not re-run**: **s31 changed no product
+  source** — one new test file and documentation. ⚠️ **A lone red is a flake until re-run.**
 - ⚠️ **A peer was live in this phase's register during s31.** They filed **D29** from phase 80 s21 at
   12:34; D30/D31 were appended after it, never over it. The register was committed with their row in
   it — named here so it is not a surprise.
