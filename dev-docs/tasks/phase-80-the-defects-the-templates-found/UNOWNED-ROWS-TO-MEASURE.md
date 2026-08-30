@@ -1,5 +1,8 @@
 # The five unowned rows that need a measurement, not a re-read
 
+> 🟢 **§1 is measured and DISPROVED (2026-08-30), by phase 77 s34 — four left.** The instrument
+> is named in the row.
+
 **Written s23 (2026-08-30) at Richard's instruction.** The
 [unowned register](TASKS.md#findings-this-phase-raised-that-nobody-owns) holds twelve rows. Seven
 were re-measured at HEAD in s23's closing sweep and all seven still hold. **These five could not
@@ -17,6 +20,28 @@ mistake phase 77's re-measure nearly made.
 ---
 
 ## 1. `publishPage` issues its refusal after making the page public
+
+## 🟢 MEASURED AND DISPROVED AT HEAD — 2026-08-30, by phase 77 s34
+
+**Instrument:** `packages/nodegx-backend/tests/sbr015-execution-steps-drive.test.ts` (SBR-015 §4d)
+— a deployed site-builder, a deliberate failure inside `publishPage`, and the page's stored row
+read back afterwards, exactly as "what to measure" below asks.
+
+| after the call | `published` | `ACL` |
+|---|---|---|
+| control, 200 | `true` | `{role:admin…, "*": {read: true, write: false}}` |
+| **refusal, 400** | **`false`** | **`{role:admin: {read, write}}` — no `*` rule at all** |
+
+**A refused publish leaves the page a draft and world-unreadable.** The control arm is beside it,
+so this is not an inert row being read. Both are pinned as specs, and the row needs no phase-77
+fix.
+
+⚠️ **The bound, so this is not over-read.** The failure was forced at `withFlag`, not at the
+sections query the recorded reading used. Both sit upstream of the **only** edge that can write —
+`tasks.done → page.store` — so what was measured is the *ordering claim*, not one node's timing.
+🔴 **If a second edge into `page.store` is ever added, this verdict stops covering the row.**
+
+*The original row, kept:*
 
 **Needs:** a live local backend + the site-builder template installed.
 

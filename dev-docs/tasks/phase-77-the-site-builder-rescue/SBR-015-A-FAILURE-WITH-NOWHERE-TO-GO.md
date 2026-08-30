@@ -2,8 +2,11 @@
 
 > 🟢 **AC1, AC2 and AC3 are met (2026-08-29, s13).** The drive is in **§2.3d** — 30,004 ms of
 > silence became a named refusal on screen in **29 ms**, with a success control arm at 31/48 ms
-> through the same button. **AC4 stays 🟡 by design**: `execution_steps` is 0 rows and the task
-> already says why. 🔴 **Read §2.3d before re-driving anything here** — a project is a *copy* of
+> through the same button. 🟢 **AC4 IS MET (2026-08-30, s34) — §4c**: a failing publish records
+> `withFlag:JavaScriptFunction:error` by name and with its reason, while the nodes past it are
+> absent and the control records all seven. `execution_steps` is no longer 0 rows — phase 80's
+> **DEF-004** moved the recorder onto `beginOutcome`, so the *"zero `Log` nodes"* explanation is
+> this row's history rather than its state. **ALL FOUR ACs ARE NOW MET.** 🔴 **Read §2.3d before re-driving anything here** — a project is a *copy* of
 > the template at mint time, so the older drive fixtures cannot test this fix.
 
 **Found by SBR-006's drive (§5.7), which could not own it.** Two row actions on the admin
@@ -480,7 +483,20 @@ overwrite this project until DEF-014 is fixed.
    `Section` class has no `pageId` column, so its filter is a **500**, not an empty result set.
    Add the column and the identical zero-section publish returns **200** in 24 ms. SBR-006 AC3 is
    unblocked; the residue is two rows carried to phase 80 (§2.3c), not more work here.
-4. **`execution_steps` either records cloud-function nodes or the task says why it cannot.** A
+4. ✅ **`execution_steps` either records cloud-function nodes or the task says why it cannot.**
+   — **DRIVEN 2026-08-30 (s34), both arms, see §4c.** A failing `publishPage` now records
+   `withFlag:JavaScriptFunction:error — function/script-threw: The script threw: Outputs.built is
+   not a function`, and the three nodes downstream of it are **absent** while the successful
+   control records all seven. That is the AC's second sentence answered in the table: *"never
+   called"* and *"called and failed"* are two different row sets.
+   🔴 **The mechanism changed under this task and the AC did not**: phase 80's **DEF-004** moved
+   the recorder off `Log` lines and onto `beginOutcome` / `raiseRuntimeError`, so the explanation
+   below — *"the template ships zero `Log` nodes"* — is why the table was empty **then** and is no
+   longer why it would be.
+
+   *Original text, kept because its warning shaped the instrument:*
+
+   ⬜ **`execution_steps` either records cloud-function nodes or the task says why it cannot.** A
    log table that exists and is always empty is worse than no table: SBR-006 reached for it
    first, exactly as intended, and it could not separate "never called" from "called and
    failed".
@@ -489,6 +505,81 @@ overwrite this project until DEF-014 is fixed.
    🔴 **For anyone driving this task: do not expect `executions.sqlite` to name the failing node,
    before or after the fix.** It will not, because the template has no `Log` nodes. The fix's own
    Response — `This page could not be published.` — is the readout, not the log.
+
+## 4c. 🟢 AC4 IS MET — driven 2026-08-30 (s34), two arms, one variable
+
+**`packages/nodegx-backend/tests/sbr015-execution-steps-drive.test.ts` — 10 specs, ~3 s.** It
+authors the whole template through the real MCP door, deploys two backends with enforcement on,
+seeds each identically, and publishes once on each.
+
+| arm | the one variable | HTTP | `execution_steps` |
+|---|---|---|---|
+| **A — control** | `withFlag` declares its `out-built` port | **200** | **7**, every one `success`, including the Run Tasks **worker's** two `write` rows |
+| **M — mutant** | that one declaration removed | **400** `This page could not be published.` | **3** — `prep:success`, **`withFlag:error — function/script-threw: The script threw: Outputs.built is not a function`**, `deny:success` |
+
+`tasks`, `page-8` and `res` are **absent** from arm M and **present** in arm A. That pair is the
+AC, literally: the table separates *"never called"* from *"called and failed"*, and it names the
+node and the reason for the one that failed.
+
+🔴 **Why AC4 could move without anyone touching this task.** Phase 80's **DEF-004** rewired the
+recorder: a step is now opened by `beginOutcome` (every action invocation) and by
+`raiseRuntimeError` (`node.ts`), not by a `Log` line. §2's correction — *"`execution_steps` records
+what the author logged, never what the graph ran"* — was true when written and is now the history
+of the row, not its state. ⚠️ **Re-read an AC's mechanism before re-asserting its verdict**; this
+one had been 🟡 through four handoffs on an explanation that had stopped applying.
+
+### Why the mutant, and not a hostile input — three failures that do not fail
+
+Each of these was tried first, and each **succeeded**, which is why the arm is a mutant:
+
+| attempt | what actually happened |
+|---|---|
+| `pageId` naming no record | **200 `published: true`**, five `success` rows, nothing written — **[D34](DEFECTS-THE-SITE-BUILDER-FOUND.md#d34)** |
+| a Section whose ACL forbids writes | published fine — a cloud function is not ACL-bound |
+| a non-admin caller | **403 at the function gate**; the graph never ran, and **no record was written at all** |
+
+The mutant is instead the failure `sb004Components.ts` names in its own comment on the wires this
+task added: *"the documented deployed failure mode of these nodes is `Outputs.built is not a
+function` when a custom signal port was not declared… That is precisely the error these edges
+would have named."* The drive is that sentence, measured.
+
+### 🔴 Two instrument traps this paid for
+
+- **`readRun` is keyed on the previous run id.** The first draft read *"the latest `publishPage`
+  record"*, and the non-admin arm — **403**, no record written — read back the *previous* arm's row
+  and would have been reported as its own. ✅ **A reader that cannot tell "no record" from
+  "someone else's record" has the defect this task is about.**
+- **The mutant returns its own edit count**, asserted `=== 1`. A mutation that matched nothing
+  leaves the arm identical to the control, and the pair then reads *"the failure was not
+  recorded"* when no failure was ever caused.
+
+### ⚠️ What this instrument cannot see, stated rather than left to be discovered
+
+A step exists for **action** invocations and for `raiseRuntimeError`. A pure value node, or a
+branch that never fired, will never appear however well it works — so *"node X has no row"* is
+evidence about action nodes only. Both arms are therefore compared against **arm A's own recorded
+set**, never against the authored node list.
+
+## 4d. 🟢 A phase-80 row settled on the way past — the refusal does NOT publish first
+
+**Phase 80's `UNOWNED-ROWS-TO-MEASURE.md` §1** carries *"`publishPage` issues its refusal after
+making the page public"* — recorded at DEF-014 s10, and that file says the row's value is telling
+phase 77 where it lives. It asks for exactly what arm M is: force any later failure inside the
+function, then read the page's stored `published` and ACL.
+
+| after the call | `published` | `ACL` |
+|---|---|---|
+| **arm A** (200) | `true` | `{role:admin…, "*": {read: true, write: false}}` |
+| **arm M** (400 refusal) | **`false`** | **`{role:admin: {read,write}}` — no `*` rule at all** |
+
+🟢 **Disproved at HEAD.** A refused publish leaves the page a draft and world-unreadable, and the
+control proves the assertion is not reading an inert row. Both are pinned as specs.
+
+⚠️ **The bound on that, so it is not over-read.** The failure here is at `withFlag`, not at the
+sections query the recorded reading used. Both sit upstream of the **only** edge that can write —
+`tasks.done → page.store` — so this measures the *ordering claim*, not one node's timing. 🔴 **If a
+second edge into `page.store` is ever added, this assertion stops covering that row and the row
+comes back.**
 
 ## 4a. 🔴 AC2's population — and a counter-measurement of mine that was blind
 

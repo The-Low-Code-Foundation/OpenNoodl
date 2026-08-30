@@ -1698,6 +1698,46 @@ reason. That is the point of pinning an unknown rather than skipping it.
 
 ---
 
+## D34 — 🔴 Publishing a page that no longer exists answers `200 published: true`, and writes nothing
+
+**Found 2026-08-30 (s34), by [SBR-015 AC4's own drive](SBR-015-A-FAILURE-WITH-NOWHERE-TO-GO.md#4c-🟢-ac4-is-met--driven-2026-08-30-s34-two-arms-one-variable)** ·
+**Owner: `NONE`** · **Product (runtime), not template** · **Bites:** an admin who clicks Publish on
+a row whose page was deleted in another tab, or by a colleague a minute ago. They are told it
+published. The list agrees. Nothing was written.
+
+Measured on a deployed site-builder, both calls in one session against one backend:
+
+| the call | answer | `execution_steps` | rows in `Page` afterwards |
+|---|---|---|---|
+| `publishPage {pageId: <real>, publish: true}` | **200** `{published:true}` | 7, all `success` | 1, updated |
+| `publishPage {pageId: 'sbr015-no-such-page-0000'}` | **200** `{published:true}` | **5, all `success`** | **1 — nothing created, nothing changed** |
+
+🔴 **Attributed exactly one hop, and deliberately no further.** The backend route the node's own
+contract names answers correctly:
+
+```
+PUT /classes/Page/sbr015-no-such-page-0000  →  404
+```
+
+So a 404 exists and is lost somewhere between that route and the node. `SetDbModelProperties`
+passes `error: (err) => setError(err, tokens)` (`setdbmodelpropertiesnode.ts:146-148`), which
+reports `failure` — and `failure` **is** wired to `deny` in this graph, by SBR-015's own fix. A
+failure here would therefore have refused correctly and said so.
+⚠️ **Which hop drops it — the cloud-side store adapter, or the callback — is NOT established.**
+That is the first measurement for whoever takes this, and the control pair is already standing in
+`sbr015-execution-steps-drive.test.ts`.
+
+**Not SBR-015's, and not AC1's either.** AC1's sentence is *"an admin who clicks Publish on a page
+that **cannot be published** is told so"*, and it is met on both arms (§2.3d, §4c): the refusal
+path works whenever a node fails. This row sits upstream of all of that — a node that **should**
+fail reports `done` — so no failure edge can reach it and wiring is not the fix.
+
+🔴 **It is the runtime, not the site builder.** It fires for any app that writes a record by
+explicit id, which is why it is registered here (where it was measured) but belongs beside
+[D25/D26/D27](#d25) in phase 80. **Ids collide across registers — this is phase 77's `D34`.**
+
+---
+
 ## Where these rows were filed, and why not all of them went to the same place
 
 **s31, 2026-08-30.** Phase 80's `TASKS.md` came clean in the working tree while this session was

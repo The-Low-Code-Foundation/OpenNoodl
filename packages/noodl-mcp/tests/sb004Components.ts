@@ -350,7 +350,10 @@ export const ENDPOINT_NODES = [
       // conceal here — the caller is already an admin holding this page's id.
       // The message is still one string because the node cannot carry a
       // per-edge one; *which* node failed belongs in the execution log, and
-      // that it is not there yet is SBR-015 AC4.
+      // as of DEF-004 it IS there: a failing run records
+      // `withFlag:JavaScriptFunction:error — Outputs.built is not a function`
+      // by name, with the nodes past it absent. Driven both arms in
+      // SBR-015 §4c, which is what closed AC4.
       errorMessage: 'This page could not be published.'
     }
   }
