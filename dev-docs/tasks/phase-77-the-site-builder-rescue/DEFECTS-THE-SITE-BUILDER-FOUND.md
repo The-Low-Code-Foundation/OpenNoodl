@@ -1522,7 +1522,7 @@ touch the template, not the product surface) and s32 closed them here, which is 
 
 ---
 
-## D32 — 🔴 The pass that grades the migration's writes examines one of sixty-five
+## D32 — 🟢 FIXED s24 (phase 80 DEF-032). The pass that grades the migration's writes examined one of sixty-five
 
 **Found 2026-08-30, in a parallel session that fixed D30/D31 independently in a worktree.** Owner:
 **NONE**. Not a screen defect — a **gate** defect, and it is the answer to *why D31 shipped past a
@@ -1570,6 +1570,83 @@ that changes what the migration is for and needs its own argument. **The gate is
 coverage of the migration's writes and is coverage of **1.5%** of them. ✅ **A pass whose first line
 is a `continue` is not coverage until you have counted what it REACHED** — the number that mattered
 here was never the offender count, it was the `1`.
+
+### 🟢 The fix, s24 (2026-08-30) — phase 80 **DEF-032**
+
+**Measured first, and the table above is confirmed at HEAD**: `plan.writes` = **65**,
+mount-triggered = **1**, graded = **1**, skipped = **64**.
+
+Three things shipped in `sb007Template.test.ts`, and the second is the repair:
+
+**1. The `1` is now asserted.** `D32 — the mount pass reaches 1 of 65 writes` pins both the write
+count and the reach, with the cardinality asserted where they meet. The mount pass is unchanged —
+it grades a real hazard correctly — but it can no longer read as coverage without the number beside
+it.
+
+**2. `gradeWriteBackCycle` — the failure mode nothing graded.** For every write, whether the node's
+output reaches a `SetDbModelProperties`/`NewDbModelProperties` on a collection that also feeds the
+silenced input. Two confidences, deliberately kept apart:
+
+| bucket | shape | at HEAD | asserted as |
+|---|---|---|---|
+| `repeaterItem` | the input is a **repeater item** and the node writes the collection the repeater draws from — **D31 exactly** | **0** | a defect (green, mutant-killed) |
+| `sameCollection` | reads and writes one collection by any other route | **6** | a **pinned census**, not a defect |
+| `cleared` | writes a collection that does not feed it | 23 | reason column |
+
+**It reaches 29 of 65**, against the mount pass's 1, and that number is asserted too — D32's own
+lesson applied to D32's own repair.
+
+🔴 **The mutant restores D31 and names TWO ports, not three.** With `merge`'s three
+`runOnChange-*` deleted, the pass reds on `in-data` **and** `in-body` — `in-body` traces back to the
+repeater item through `unpack-2 → bodyField.startValue → bodyField.onTextChanged`, which is why
+D31's fix needed three flags rather than one. `in-image` is correctly absent: it comes from
+`upload.cloudFile`, so it is in the migration's write set without being in the cycle. *A grader that
+named all three would be naming the port list, not the loop.*
+
+✅ **A CONTROL asserts the two passes are not the same pass** — the offending write is invisible to
+`gradeMountTriggered` and visible to this one. Without it the mutant could pass for the wrong reason.
+
+⚠️ **The template is NOT asked to state all 65**, per this row's own warning. The pass fires only
+where a write is load-bearing against a cycle.
+
+**3. A latent contamination fixed, found by the new control.** `migrationProject()` shallow-spread
+each node, so every `parameters` object was **the same object** as the module-level `shipped`
+artefact's — and the two mutant arms `delete` from it. The mutation outlived the test that made it:
+a later `migrationProject()` came back with the previous mutant's damage already applied, which is
+how the new control arm failed with `merge` undefined. Nodes and connections are now copied.
+
+---
+
+## D33 — 🔴 Six same-collection writes on the theme editor, plausible and unmeasured
+
+**Found 2026-08-30 (s24), by D32's new pass.** Owner: **NONE**. **Not a confirmed defect — a
+candidate list with a number on it.**
+
+`gradeWriteBackCycle`'s `sameCollection` bucket holds six writes on `/Pages/ThemeEditor` whose node
+both reads and writes one collection:
+
+| node | inputs | collection |
+|---|---|---|
+| `buildTokens` | `in-primary`, `in-background`, `in-text`, `in-fontDisplay` | `Theme` |
+| `readTheme` | `in-rows` | `Theme` |
+| `readSettings-2` | `in-rows` | `SiteSettings` |
+
+**The plausible reading is benign**: the route back runs through `startValue` on a text input, and
+`startValue` does not emit `onTextChanged`, so the written value may never re-enter the node. On
+that reading the migration's flags are belt-and-braces and nothing is wrong.
+
+🔴 **Plausible is not measured, and D31 is why this row exists rather than a sentence in D32.** D31
+looked benign by exactly this kind of reasoning until the runtime named it —
+`[noodl] JavaScriptFunction (/Admin/SectionRow): Cyclic loop detected [runtime/cyclic-loop]` — and
+it was 115,755 write errors in eleven seconds of a page nobody had touched. The difference between
+these six and D31 is a runtime question the artefact cannot answer.
+
+**What it needs**: a drive on the theme editor, watching for `cyclic-loop` and counting
+`SetDbModelProperties` writes on an idle screen — the same instrument that settled D31.
+
+✅ **The census is asserted exactly**, so a **seventh** cannot appear quietly: a new entry fails
+`D32 — the unconfirmed same-collection census is exactly the six known rows` and someone reads the
+reason. That is the point of pinning an unknown rather than skipping it.
 
 ---
 

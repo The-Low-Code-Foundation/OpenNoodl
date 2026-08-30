@@ -476,9 +476,18 @@ describe('SB-007 — the NDA-017 migration cannot silence a mount-triggered node
       // `eachNode` recurses through `children`, and a saved v2 graph's `children`
       // are id strings rather than nodes. The migration decides per node and never
       // per subtree, so a flat list of every node is the whole graph to it.
+      // 🔴 DEEP clone, and D32's control arm is why. The spread below used to be
+      // shallow, so every node's `parameters` was the SAME object as the
+      // module-level `shipped` artefact's — and the two mutant arms in this
+      // block `delete` from it. The mutation outlived the test that made it and
+      // leaked into every later reader of `shipped`, which is how a fresh
+      // `migrationProject()` came back with the mutant's damage already applied.
       graph: {
-        roots: nodesOf(c).map(({ children, ...node }) => node),
-        connections: c.graph.connections ?? []
+        roots: nodesOf(c).map(({ children, ...node }) => ({
+          ...node,
+          parameters: node.parameters ? { ...node.parameters } : node.parameters
+        })),
+        connections: (c.graph.connections ?? []).map((w) => ({ ...w }))
       } as GradableComponent['graph']
     }))
   });
@@ -547,6 +556,287 @@ describe('SB-007 — the NDA-017 migration cannot silence a mount-triggered node
     }
     return { offenders: offenders.sort(), graded: graded.sort() };
   }
+
+  /**
+   * 🔴 **D32 — what the pass above REACHES, asserted as a number.**
+   *
+   * `gradeMountTriggered` opens with a `continue`, so it examines a write only
+   * when the node is triggered by `didMount`. Over the shipped artefact that is
+   * **one write of sixty-five**. The pass is not wrong — it grades a real hazard
+   * correctly — but it reads as coverage of the migration and is coverage of
+   * 1.5% of it, and that is how D31 shipped past a suite that already knew about
+   * the migration.
+   *
+   * The number is pinned here so it cannot drift silently. If the artefact grows
+   * a second mount-triggered node this arm fails and someone reads the reason.
+   * ✅ *A pass whose first line is a `continue` is not coverage until you have
+   * counted what it REACHED.*
+   */
+  it('D32 — the mount pass reaches 1 of 65 writes, and the rest are graded below', () => {
+    const project = migrationProject();
+    const plan = planRunOnValueChangeMigration(project as MigrationProjectLike);
+    const { graded, offenders } = gradeMountTriggered(project);
+
+    expect(plan.writes.length).toBe(65);
+    // Cardinality: every write is either reached by the mount pass or skipped by
+    // it. Asserted where the two meet, so "graded" can never quietly mean "few".
+    expect(graded.length + offenders.length).toBe(1);
+  });
+
+  // ── D32's second pass: the failure mode nothing graded ──────────────────────
+
+  /** The nodes that write a record. A write is what closes the loop below. */
+  const RECORD_WRITE_TYPES = ['SetDbModelProperties', 'NewDbModelProperties'];
+  /** The node that reads a collection back out. */
+  const COLLECTION_TYPES = ['DbCollection2'];
+  const COMPONENT_INPUTS = 'Component Inputs';
+  const FOR_EACH = 'For Each';
+
+  /**
+   * 🔴 **D32's repair: the OTHER failure mode, and the one D31 actually was.**
+   *
+   * `gradeMountTriggered` asks whether silencing an input BREAKS the node. This
+   * asks the mirror question — whether silencing it is the only thing STOPPING
+   * the node from running forever: the node's output reaches a record write on
+   * collection `K`, and the silenced input is fed from `K`.
+   *
+   * 🔴 **Why an offender is a TEMPLATE defect, not a migration one.** NDA-017
+   * writes these flags on **editor load only**. A headless render, a deploy taken
+   * from the artefact, or an agent reading through the MCP door never runs it. A
+   * load-bearing flag the template leaves to the migration is therefore present
+   * exactly for the consumer that was going to be fine and absent for the three
+   * that were not. D31 was 115,755 write errors in eleven seconds of a page
+   * nobody touched.
+   *
+   * ⚠️ This does NOT require the template to state all 65. It reaches a write
+   * only when that write's node both reads and writes one collection.
+   *
+   * **Two confidences, kept apart on purpose** — see the arms below:
+   *  - `repeaterItem` — the input is a **repeater item** and the node writes the
+   *    very collection the repeater draws from. This is D31 exactly: the write
+   *    lands on the item's own model, so the item changes, so the node re-runs.
+   *    A **confirmed** hazard, and the mutant restores it.
+   *  - `sameCollection` — the node reads and writes one collection by any other
+   *    route. **Plausible, unconfirmed**: whether the value actually cycles
+   *    depends on whether the write reaches the input again at runtime, and D31
+   *    needed the runtime's own `[runtime/cyclic-loop]` to settle that. Pinned as
+   *    a census rather than asserted as a defect.
+   */
+  function gradeWriteBackCycle(project: GradableProject): {
+    repeaterItem: string[];
+    sameCollection: string[];
+    cleared: string[];
+    reached: number;
+  } {
+    const plan = planRunOnValueChangeMigration(project as MigrationProjectLike);
+    const byComponent = new Map(project.components.map((c) => [c.name, c]));
+
+    /** Every collection a node's output reaches a record write on, transitively. */
+    function collectionsWritten(component: GradableComponent, nodeId: string): Set<string> {
+      const nodes = new Map(component.graph.roots.map((n) => [n.id, n]));
+      const found = new Set<string>();
+      const seen = new Set<string>([nodeId]);
+      const queue = [nodeId];
+      while (queue.length > 0) {
+        const current = queue.shift() as string;
+        for (const wire of component.graph.connections) {
+          if (wire.fromId !== current || seen.has(wire.toId)) continue;
+          seen.add(wire.toId);
+          const target = nodes.get(wire.toId);
+          if (target && RECORD_WRITE_TYPES.includes(target.type)) {
+            const name = target.parameters?.['collectionName'];
+            if (typeof name === 'string') found.add(name);
+          }
+          queue.push(wire.toId);
+        }
+      }
+      return found;
+    }
+
+    /** Collections that reach this component as a `For Each` item, project-wide. */
+    function collectionsFeedingTemplate(templateName: string): Set<string> {
+      const found = new Set<string>();
+      for (const carrier of project.components) {
+        const nodes = new Map(carrier.graph.roots.map((n) => [n.id, n]));
+        for (const each of carrier.graph.roots) {
+          if (each.type !== FOR_EACH) continue;
+          if (each.parameters?.['template'] !== templateName) continue;
+          for (const wire of carrier.graph.connections) {
+            if (wire.toId !== each.id || wire.toProperty !== 'items') continue;
+            const source = nodes.get(wire.fromId);
+            if (!source || !COLLECTION_TYPES.includes(source.type)) continue;
+            const name = source.parameters?.['collectionName'];
+            if (typeof name === 'string') found.add(name);
+          }
+        }
+      }
+      return found;
+    }
+
+    /**
+     * Every collection whose contents can reach this input, walking BACKWARDS,
+     * and whether the route was the component's own interface (a repeater item).
+     */
+    function feeding(
+      component: GradableComponent,
+      nodeId: string,
+      input: string
+    ): { collections: Set<string>; viaInterface: Set<string> } {
+      const nodes = new Map(component.graph.roots.map((n) => [n.id, n]));
+      const collections = new Set<string>();
+      const viaInterface = new Set<string>();
+      const seen = new Set<string>();
+      const queue: Array<{ id: string; port?: string }> = [{ id: nodeId, port: input }];
+      while (queue.length > 0) {
+        const current = queue.shift() as { id: string; port?: string };
+        for (const wire of component.graph.connections) {
+          if (wire.toId !== current.id) continue;
+          if (current.port !== undefined && wire.toProperty !== current.port) continue;
+          if (seen.has(wire.fromId)) continue;
+          seen.add(wire.fromId);
+          const source = nodes.get(wire.fromId);
+          if (source && COLLECTION_TYPES.includes(source.type)) {
+            const name = source.parameters?.['collectionName'];
+            if (typeof name === 'string') collections.add(name);
+          }
+          if (source && source.type === COMPONENT_INPUTS) {
+            for (const name of collectionsFeedingTemplate(component.name)) {
+              collections.add(name);
+              viaInterface.add(name);
+            }
+          }
+          queue.push({ id: wire.fromId });
+        }
+      }
+      return { collections, viaInterface };
+    }
+
+    const repeaterItem: string[] = [];
+    const sameCollection: string[] = [];
+    const cleared: string[] = [];
+    let reached = 0;
+
+    for (const write of plan.writes) {
+      const component = byComponent.get(write.component);
+      if (!component) continue;
+      const nodes = new Map(component.graph.roots.map((n) => [n.id, n]));
+
+      const written = collectionsWritten(component, write.nodeId);
+      if (written.size === 0) continue;
+      reached++;
+
+      const { collections, viaInterface } = feeding(component, write.nodeId, write.input);
+      const shared = [...written].filter((k) => collections.has(k)).sort();
+      const label = `${write.component} ${nodes.get(write.nodeId)?.type}#${write.nodeId}.${write.input}`;
+      if (shared.length === 0) {
+        cleared.push(`${label} — writes "${[...written].sort().join(', ')}", which does not feed it`);
+        continue;
+      }
+      if (shared.some((k) => viaInterface.has(k))) {
+        repeaterItem.push(`${label} — writes "${shared.join(', ')}" and is fed it AS A REPEATER ITEM`);
+      } else {
+        sameCollection.push(`${label} — reads and writes "${shared.join(', ')}"`);
+      }
+    }
+    return {
+      repeaterItem: repeaterItem.sort(),
+      sameCollection: sameCollection.sort(),
+      cleared: cleared.sort(),
+      reached
+    };
+  }
+
+  /**
+   * 🔴 **D32's own number, applied to D32's own repair.** The pass above must not
+   * be graded the way `gradeMountTriggered` was — by its offender count, with
+   * nobody asking what it examined. It reaches **29 of 65**, against the mount
+   * pass's **1**, and every one of the 29 is either named as a hazard or cleared
+   * with a stated reason.
+   */
+  it('D32 — the second pass reaches 29 of 65, and clears the rest by name', () => {
+    const project = migrationProject();
+    const plan = planRunOnValueChangeMigration(project as MigrationProjectLike);
+    const { repeaterItem, sameCollection, cleared, reached } = gradeWriteBackCycle(project);
+
+    expect(plan.writes.length).toBe(65);
+    expect(reached).toBe(29);
+    // Cardinality where the three buckets meet: nothing reached is unaccounted for.
+    expect(repeaterItem.length + sameCollection.length + cleared.length).toBe(reached);
+  });
+
+  it('D32 — no write the migration must make stands in a REPEATER-ITEM write-back cycle', () => {
+    // 🟢 Green because the template states D31's three flags itself since s32, so
+    // the migration no longer plans them. The mutant below is what proves this
+    // arm can fail.
+    expect(gradeWriteBackCycle(migrationProject()).repeaterItem).toEqual([]);
+  });
+
+  it('D32 MUTANT: D31 as it shipped — the three flags back off the template', () => {
+    const project = migrationProject();
+    const row = project.components.find((c) => c.name === '/Admin/SectionRow')!;
+    const merge = row.graph.roots.find((n) => n.parameters?.['runOnChange-in-data'] === false)!;
+    expect(merge).toBeDefined();
+    for (const input of ['in-data', 'in-body', 'in-image']) {
+      delete (merge.parameters as Record<string, unknown>)[`runOnChange-${input}`];
+    }
+
+    // 🔴 TWO of the three, and which two is the finding rather than a detail.
+    // `in-data` is the repeater item itself; `in-body` traces back to it through
+    // `unpack-2 → bodyField.startValue → bodyField.onTextChanged`, which is why
+    // D31's fix needed three flags and not one. `in-image` is absent because it
+    // comes from `upload.cloudFile` — the upload, not the collection — so it is
+    // in the migration's write set without being in the cycle. A grader that
+    // named all three would be naming the port list, not the loop.
+    expect(gradeWriteBackCycle(project).repeaterItem).toEqual([
+      `/Admin/SectionRow JavaScriptFunction#${merge.id}.in-body — writes "Section" and is fed it AS A REPEATER ITEM`,
+      `/Admin/SectionRow JavaScriptFunction#${merge.id}.in-data — writes "Section" and is fed it AS A REPEATER ITEM`
+    ]);
+  });
+
+  it('D32 CONTROL: the second pass reaches a write the mount pass cannot see', () => {
+    // 🔴 The two passes must not be the same pass. The mount arm reaches ONE
+    // write, and it is not this one — so if this arm ever started agreeing with
+    // it, the mutant above would be passing for the wrong reason.
+    const project = migrationProject();
+    const row = project.components.find((c) => c.name === '/Admin/SectionRow')!;
+    const merge = row.graph.roots.find((n) => n.parameters?.['runOnChange-in-data'] === false)!;
+    for (const input of ['in-data', 'in-body', 'in-image']) {
+      delete (merge.parameters as Record<string, unknown>)[`runOnChange-${input}`];
+    }
+    const mount = gradeMountTriggered(project);
+    const cycle = gradeWriteBackCycle(project);
+
+    expect([...mount.offenders, ...mount.graded].some((line) => line.includes('.in-data'))).toBe(false);
+    expect(cycle.repeaterItem.some((line) => line.includes('.in-data'))).toBe(true);
+  });
+
+  /**
+   * 🔴 **The unconfirmed six, pinned rather than hidden.**
+   *
+   * These reach a record write on a collection they also read, but NOT as a
+   * repeater item — so whether the written value comes back round to the input
+   * is a runtime question this artefact cannot answer. Every one is on
+   * `/Pages/ThemeEditor`, and the plausible reading is benign: `startValue` on a
+   * text input does not emit `onTextChanged`, so the write may never re-enter.
+   *
+   * ⚠️ **Plausible is not measured.** D31 looked benign by the same reasoning
+   * until the runtime named it — `[noodl] JavaScriptFunction (/Admin/SectionRow):
+   * Cyclic loop detected [runtime/cyclic-loop]`. These are owed a drive on the
+   * theme editor, filed as phase 77 **D33**.
+   *
+   * The census is asserted exactly so a SEVENTH cannot appear quietly. A new
+   * entry fails this arm and someone reads the reason.
+   */
+  it('D32 — the unconfirmed same-collection census is exactly the six known rows', () => {
+    expect(gradeWriteBackCycle(migrationProject()).sameCollection).toEqual([
+      '/Pages/ThemeEditor JavaScriptFunction#buildTokens.in-background — reads and writes "Theme"',
+      '/Pages/ThemeEditor JavaScriptFunction#buildTokens.in-fontDisplay — reads and writes "Theme"',
+      '/Pages/ThemeEditor JavaScriptFunction#buildTokens.in-primary — reads and writes "Theme"',
+      '/Pages/ThemeEditor JavaScriptFunction#buildTokens.in-text — reads and writes "Theme"',
+      '/Pages/ThemeEditor JavaScriptFunction#readSettings-2.in-rows — reads and writes "SiteSettings"',
+      '/Pages/ThemeEditor JavaScriptFunction#readTheme.in-rows — reads and writes "Theme"'
+    ]);
+  });
 
   it('no node the migration silences is triggered by mount off an unordered producer', () => {
     const { offenders, graded } = gradeMountTriggered(migrationProject());
