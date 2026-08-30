@@ -3730,3 +3730,120 @@ check 175 types.
   that already carries an authored value.
 - ⚠️ `Create New Array` and `For Each Actions` remain deliberately out of scope, and both reasons
   survived this session's reading unchanged.
+
+## §31 The sweep §30.3 asked for, and the branch that was telling nine projects the wrong thing (session 60, 2026-08-30)
+
+**70 of 127 (55.1%), unchanged.** No node was translated this session; a refusal that was
+misdescribing the author's own graph now describes it.
+
+§30 closed by asking for a deliberate sweep of the §30.3 defect class — *a dynamic port is
+invisible to the parse, and the exporter has more than one* — graded **from disk** rather than
+from a hand-built IR. That sweep came back clean, and the thing it found on the way was a
+different defect standing in the same place.
+
+### §31.1 The sweep, and the shape of its answer
+
+Three prongs, because "which translations gate on a port kind" has three answers:
+
+1. **`ConnectionIR.kind` has exactly one consumer in the whole exporter** — the handler branch in
+   `plan.ts`. It already carries all three escape hatches (`instanceSignal`, `customSignal`,
+   `repeaterRowSignal`), so there is no second gate to have missed one.
+2. **`catalog.portKind` has exactly one caller** — `resolveSourcePortKind` itself, which *is* the
+   fallback site. Everything else that classifies a port reads `declaredPorts`, and those are
+   persisted in the project file, which is the property the defect needs to be absent.
+3. **The population itself.** A probe replicating `resolveSourcePortKind`'s three checks was run
+   over the 8 fixtures and ~60 projects under `NodeGX test projects`, listing every connection
+   that reaches the `'value'` fallback because neither the node's own ports nor the catalog knows
+   the source port. That is the complete set of places the defect can live.
+
+🔴 **The probe was calibrated on a known-firing case before it was believed**: it re-found
+`note-desk`'s `itemOutputSignal-removed` — §30.3's defect — unprompted. Its output classifies as:
+
+| Fallback port | Verdict |
+|---|---|
+| `For Each` `itemOutputSignal-*` (10 wires, 7 projects) | a real signal — **covered by §30.3's fix** |
+| `Logic Builder` `ok` / `bad` (8 wires, 4 projects) | real signals, **deliberately** deferred through `detectIO` with named reasons — not blind |
+| `DbModel2`/`Model2` `prop-*`, `net.noodl.HTTP` `out-*`, `ComponentObject` `value-*`, `JavaScriptFunction` outputs, `Event Receiver` `message` | genuine values — the fallback is the right answer |
+| `For Each` bare relay names, `SetModelProperties` `stored` | **wires from ports the runtime never registers** — see §31.2 |
+
+**So: the exporter holds no unfound instance of the §30.3 class.** ⚠️ Stated with its limit — the
+probe reads *source* ports on projects that exist on disk. A catalog that disagreed with the
+runtime about a port it *does* declare would not appear in it, and neither would a target-side
+port; both are different questions from the one §30.3 raised.
+
+🔴 **§30.3's fix has real reach, and that was measured rather than inferred.** Re-exporting
+`cn027-drive` shows `itemOutputSignal-Selection Changed` now dropped for a *downstream* reason
+(its script reads the Noodl API — Tier B) instead of being swallowed by the handler gate. The fix
+was graded on one fixture; it fires on real projects.
+
+### §31.2 🔴 One branch, two populations, and a sentence true of only one
+
+A wire out of a `For Each` that is not an `itemOutputSignal-<name>` relay was refused as *"the
+repeater's own pulse — it fires from the list's own progress rather than a row, which is effect()
+work this slice does not translate"*.
+
+That is exactly right for `itemsRendered` and the outcome signals. It is **false** for a bare
+relay name. `registerOutputIfNeeded` (`foreach.tsx`) registers only `itemOutputSignal-<name>` and
+`itemOutput-<name>`, and **returns having done nothing for anything else** — so `addToBasket` on a
+repeater is not a lifecycle pulse, it is *no port at all*, and the wire is dead in the editor too.
+
+🔴 **The two readings ask the author for opposite things.** One says *wait for a later increment
+of the exporter*; the other says *go and re-draw a wire that has never worked*. Telling an author
+the first when the second is true is the more expensive error of the two, because it recommends
+patience for a bug.
+
+⚠️ **The population is real, and lopsided.** The same from-disk sweep counted **26** such wires in
+**9** projects — `cn027-drive`'s "add to basket" and "browse" among them, which is that site's
+primary call to action — and **zero** wires drawn from a genuine list-level pulse anywhere in the
+corpus. Every occurrence this branch had ever met in a real project was getting the wrong sentence.
+
+Which arm applies is now read **off the catalog** rather than restated in code (the Rise lesson):
+a port the catalog declares is a real output; a dynamic one is known by the runtime's own two
+prefixes; anything else is not a port.
+
+⚠️ **The hand-built row that should have caught it asserted the defect instead.** `component-outputs`
+§4 wired a bare `waved` off a repeater and asserted *"is not a row's relayed signal"*, its comment
+reasoning that a bare name *"can only be one of its own pulses"* — the one step that does not
+follow. The row is corrected and renamed, and it is the second time in two sessions that a
+hand-built IR row has been the thing standing between a defect and its discovery.
+
+### §31.3 What proves it
+
+`tests/fixtures/relay-desk` — `note-desk` plus a `NoteList` component whose repeater carries
+**both** arms out to Component Outputs: a bare `removed`, and a real `itemsRendered`. Parsed off
+disk, so neither arm can be satisfied by a hand-made IR. `tests/foreach-relay-ports.test.ts`, 5
+rows, and **two mutants that disagree**:
+
+| Mutant | Killed |
+|---|---|
+| the discriminator answers "registered" everywhere | **exactly** the 2 bare-name rows |
+| the discriminator answers "not registered" everywhere | **exactly** the 2 lifecycle rows |
+
+The disagreement is the finding: one predicate, two populations, each row pinned to its own.
+Both mutants typecheck (`tsc` exit 0 on each), so neither result is a `Tests: 0 total` in
+disguise. The control lives inside a row rather than beside it — `portKind('For Each',
+'itemsRendered')` is `'signal'` and `portKind('For Each','removed')` is `undefined`, asserted in
+one breath, so this is a discriminator and not a predicate that answers the same way for
+everything.
+
+The fixture also joins the five whole-corpus sweeps (emitted syntax, typecheck, markers, README,
+preflight) automatically, which is the first coverage any of them have of **a project containing a
+wire the author drew wrong**.
+
+Gates: **jest 1153/1153 in 46 suites** (1131/45 before), **tsc 0**, picker **70/127**, ledger check
+175 types.
+
+### §31.4 What this leaves
+
+- 🔴 **A product finding this phase cannot close, owned by `NONE`.** Two families of wire in real
+  projects point at ports the runtime does not register: a `For Each`'s bare relay names (26
+  wires, 9 projects) and `SetModelProperties`'s `stored` (8 wires, 5 projects — `stored` was
+  renamed to the shared `done` by ERG-001 §4, which migrated `library/prefabs`' seven connections
+  but could not migrate anybody's project). In both the author's graph looks wired and does
+  nothing. **What was measured is that the port is unregistered; what was *not* measured is
+  whether the editor warns about it** — that check is the first thing whoever picks this up should
+  do, because it decides whether this is a silent failure or a reported one.
+- ⚠️ `itemOutput-<name>` — §30.5's relayed row *value* — is untouched and remains the single port
+  in front of the rest of the collection-state slice.
+- ⚠️ The two sweep limits in §31.1 are unexamined by anything: a catalog/runtime disagreement over
+  a *declared* port, and the target-port side of the same question.

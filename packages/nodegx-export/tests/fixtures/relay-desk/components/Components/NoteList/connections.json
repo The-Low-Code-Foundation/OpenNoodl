@@ -1,0 +1,10 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "b71e4d20-3c86-4f95-a0d2-6f83e1c94a57",
+  "version": 1,
+  "connections": [
+    { "fromId": "listInputs", "fromProperty": "items", "toId": "listRepeater", "toProperty": "items" },
+    { "fromId": "listRepeater", "fromProperty": "removed", "toId": "listOutputs", "toProperty": "rowRemoved" },
+    { "fromId": "listRepeater", "fromProperty": "itemsRendered", "toId": "listOutputs", "toProperty": "listRendered" }
+  ]
+}

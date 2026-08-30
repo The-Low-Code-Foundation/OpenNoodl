@@ -25,7 +25,17 @@
  */
 
 import { CatalogIndex } from '../catalog';
-import { ComponentIR, ConnectionIR, Disposition, ExportIR, ITEM_OUTPUT_SIGNAL, KitNodeIR, ModuleIR, NodeIR } from '../ir/types';
+import {
+  ComponentIR,
+  ConnectionIR,
+  Disposition,
+  ExportIR,
+  ITEM_OUTPUT_SIGNAL,
+  ITEM_OUTPUT_VALUE,
+  KitNodeIR,
+  ModuleIR,
+  NodeIR
+} from '../ir/types';
 import { componentReachability, Reachability } from './reach';
 import { ScaffoldPage, routedPages } from '../emit/scaffold';
 import { pascalCase } from '../emit/naming';
@@ -6967,8 +6977,31 @@ function planComponent(
        * work (the same ruling `rowSignalAttrs` applies on the emit side).
        */
       if (fromNode?.type === 'For Each' && !fromProperty.startsWith(ITEM_OUTPUT_SIGNAL)) {
+        /**
+         * 🔴 **This branch serves two populations, and the sentence below is true of only one.**
+         *
+         * `itemsRendered` and the outcome pulses really are the list's own progress. But a wire
+         * drawn from a *bare* relay name — `addToBasket`, `browse` — names no port at all:
+         * `registerOutputIfNeeded` (`foreach.tsx`) registers only `itemOutputSignal-<name>` and
+         * `itemOutput-<name>`, and returns having done nothing for anything else. The wire is
+         * therefore dead **in the editor too**, not merely untranslated here.
+         *
+         * The two readings ask the author for opposite things — wait for a later increment, or
+         * go and re-draw a broken wire — so they get different sentences. Which one applies is
+         * read off the catalog rather than restated here (the Rise lesson): a port the catalog
+         * declares is a real output, and a dynamic one is known by the runtime's own prefixes.
+         *
+         * ⚠️ Measured, not assumed: 26 such wires sit in 9 projects under
+         * `NodeGX test projects` (`cn027-drive`'s "add to basket" among them), every one of
+         * which was being told its behaviour was merely deferred.
+         */
+        const registered =
+          fromProperty.startsWith(ITEM_OUTPUT_VALUE) ||
+          catalog.portKind(fromNode.type, fromProperty, 'output') !== undefined;
         return {
-          defer: `a repeater's "${fromProperty}" is not a row's relayed signal — the runtime registers those as "itemOutputSignal-<name>" — so it fires from the list's own progress rather than a row, which is effect() work this slice does not translate`
+          defer: registered
+            ? `a repeater's "${fromProperty}" is not a row's relayed signal — the runtime registers those as "itemOutputSignal-<name>" — so it fires from the list's own progress rather than a row, which is effect() work this slice does not translate`
+            : `a repeater has no "${fromProperty}" output at all — the runtime registers only its own lifecycle pulses and a row's relayed "itemOutputSignal-<name>", so this wire never fires in the editor either; re-draw it from the row signal you meant`
         };
       }
       return { action: { kind: 'output-signal', prop }, consumes: [] };

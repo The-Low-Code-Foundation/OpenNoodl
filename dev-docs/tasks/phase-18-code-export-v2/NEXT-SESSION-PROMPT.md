@@ -1,37 +1,38 @@
-# Next session — the fix that could not fire, and the one port left in front of the slice
+# Next session — the sweep came back clean, and the refusal that was sending authors the wrong way
 
 ## Where the phase stands
 
-Session 59 went where §29.5 pointed — re-derive the collection-state slice **from the code, not
-from the recorded reason** — and did three things. §30 has the long form.
+Session 60 did the sweep §30.3 asked for, and it came back **clean** — the exporter holds no
+unfound instance of that defect class. The thing it found on the way was a different defect
+standing in the same place. §31 has the long form.
 
-- ✅ **`Remove Object From Array` translates.** A delete button in a list row now exports as
-  `onRemoved={() => notes.remove(item)}`. The Object Id is a `For Each`'s Item Id, which the
-  runtime sets to the firing row before pulsing — so the id *names the row the callback is already
-  standing in*, and the emitted form spells no id at all. **69 → 70 of 127 (55.1%).**
-- 🔴 **A fixture built to protect §29 found that §29 could not fire on a real project.** A relayed
-  row signal is a dynamic port, so it is in no catalog and no project file; `resolveSourcePortKind`
-  answered `'value'` and the wire was dropped. Every row of §29's suite passed over it, because the
-  test helper *declares* the wire a signal. Fixed, and pinned by from-disk rows.
-- ✅ **`Set Object Properties` re-derived and still deferred — for a different reason.** The id
-  resolves now; the **value** does not.
+- ✅ **The §30.3 sweep is done, from disk, on the whole population.** `ConnectionIR.kind` has
+  exactly one consumer and it already carries all three hatches; `catalog.portKind` has exactly one
+  caller and it *is* the fallback; and a probe over the 8 fixtures + ~60 real projects listed every
+  connection that reaches the `'value'` fallback. Every one is classified in §31.1's table.
+- ✅ **§30.3's fix has real reach, measured not inferred.** `itemOutputSignal-Selection Changed` in
+  `cn027-drive` now gets past the handler gate and is dropped for a downstream reason instead.
+- 🔴 **One refusal branch was serving two populations and its sentence was true of only one.** A
+  bare relay name on a repeater (`addToBasket`) is **no port at all**, not a lifecycle pulse — the
+  wire is dead in the editor too. **26 wires in 9 real projects** were being told to wait for a
+  later exporter increment when the truth was "go and re-draw this". Fixed, split on the catalog,
+  graded off disk by a new fixture and two mutants that disagree.
 
 ## 🔴 Read this before planning anything
 
-1. 🔴 **An in-memory IR test can be blind to the defect it is grading.** §29 was correct, complete
-   and ungraded on the only population that mattered. **Any slice that depends on a dynamic port
-   needs at least one row that parses a fixture off disk.**
-2. 🔴 **`itemOutput-<name>` is the single port in front of the rest of this slice** (§30.5). It
-   blocks `Set Object Properties`, and it is what `itemActionItemId`-as-a-value still refuses.
-3. 🔴 **`Collection.remove` is `indexOf` — reference equality.** That is why §30's gate 3 requires
-   the repeater to repeat *the very array being written*: a mapped feed hands back fresh objects
-   and would emit a call that removes nothing. A filtered feed would happen to work and is refused
-   anyway.
-4. ⚠️ **`Collection.updateWhere` replaces the row object**, so `item` goes stale for anything later
-   in the same handler. Whoever builds the write side owns that question.
-5. ⚠️ **Probe the instrument before reporting an absence.** The drive read `status ""` on every
-   step; the DOM said `Removed a note.` all along, and the reader was wrong (the status `<p>`'s
-   parent holds the Add button).
+1. 🔴 **`itemOutput-<name>` is still the single port in front of the rest of this slice** (§30.5).
+   Nothing this session changed that. It blocks `Set Object Properties`.
+2. 🔴 **A hand-built row was again the thing hiding the defect.** `component-outputs` §4 asserted
+   the wrong sentence *and its comment reasoned its way there* ("a bare name can only be one of its
+   own pulses" — the step that does not follow). Two sessions running. When a row asserts a
+   *reason*, ask what population that reason is true of.
+3. ⚠️ **The sweep's limits, stated so nobody re-reads it as broader than it was**: it reads
+   **source** ports on projects **that exist on disk**. A catalog that disagreed with the runtime
+   about a port it *does* declare would not appear in it, and neither would the target-port side.
+   Both are open questions, and neither is examined by anything.
+4. ⚠️ **The probe is worth keeping** — it is ~60 lines of Python and it re-found §30.3's defect
+   unprompted, which is how it was calibrated before being believed. It is in the s60 scratchpad
+   as `fallback_probe.py`; it is not in the repo.
 
 ## The objective, so it cannot drift
 
@@ -43,8 +44,8 @@ a deployed NodeGX backend — exports to a React repo that builds, runs, and sti
 ```
 cd packages/nodegx-export
 ../../node_modules/.bin/tsc --noEmit          # exit 0
-../../node_modules/.bin/jest                  # 1131/1131, 45 suites (1095/44 before §30); ~30 s
-npm run export-ledger:picker                  # from the repo root — 70/127 (55.1%)
+../../node_modules/.bin/jest                  # 1153/1153, 46 suites (1131/45 before §31); ~20 s
+npm run export-ledger:picker                  # from the repo root — 70/127 (55.1%), unchanged
 npm run export-ledger:check                   # 175 types
 ```
 
@@ -54,28 +55,35 @@ npm run export-ledger:check                   # 175 types
 
 ## Do this next — in the order they are worth doing
 
-### 1. ⚠️ Sweep for the §30.3 defect class before building anything new
+### 1. 🔴 The product finding §31 could not close — owned by `NONE`, and it needs one cheap check first
 
-**A dynamic port is invisible to the parse, and the exporter has more than one.** §30.3 found one
-by accident. Ask the question deliberately: which other translations gate on `connection.kind`, an
-`instanceSignal`-style hatch, or a catalog port lookup — and which of those ports are minted at
-runtime rather than declared? `registerOutputIfNeeded`-style code is the tell. Grade whatever you
-find **from disk**, not from a hand-built IR. This is cheap and it is the highest-value hour here.
+Two families of wire in real projects point at ports **the runtime never registers**: a `For
+Each`'s bare relay names (26 wires, 9 projects) and `SetModelProperties`'s `stored` (8 wires, 5
+projects — renamed to the shared `done` by ERG-001 §4, which migrated `library/prefabs`' seven
+connections but could not migrate anybody's project). In both, the author's graph looks wired and
+does nothing.
+
+🔴 **What was measured is that the port is unregistered. What was *not* measured is whether the
+editor warns about it.** Do that check before anything else — it decides whether this is a silent
+failure worth a phase or a reported one already handled. `packages/noodl-mcp/src/graph.ts` has no
+port-existence validation on connections, which is a hint and not an answer; the editor is a
+different surface and is the one that matters.
 
 ### 2. 🔴 Decide whether a relayed row *value* has a carve-out — the last port in this slice
 
 `itemOutput-<name>` reaches the page as "whichever row fired last". Inside the row's own callback,
 though, the value is knowable **whenever the template's output port is a pass-through of a prop**
-— which is a static fact about the template, readable from `templatePlan`. If that carve-out is
-real, `Set Object Properties` from the page unblocks with it. If it is not, say so with the
-measurement. Owned by **`NONE`**; §30.2 and §30.5 have the derivation.
+— a static fact about the template, readable from `templatePlan`. If that carve-out is real,
+`Set Object Properties` from the page unblocks with it. If it is not, say so with the measurement.
+Owned by **`NONE`**; §30.2 and §30.5 have the derivation.
 
 ### 3. The fixtures nothing reaches
 
-`note-desk` closes "a row with a button in it". §26.1's list still holds for: a `PageInputs` node,
-a braced `urlPath`, an `External Link`, a `Navigate To Path`, an untyped store key, a wire into a
+`relay-desk` (§31) closes "a project containing a wire the author drew wrong" — the first coverage
+the five whole-corpus sweeps have of that. §26.1's list still holds for: a `PageInputs` node, a
+braced `urlPath`, an `External Link`, a `Navigate To Path`, an untyped store key, a wire into a
 port that already carries an authored value, and a refused script on a node that is not a
-Function. Each is a hand-built graph away, and §30.3 is the argument for building them.
+Function. Each is a hand-built graph away.
 
 ### 4. Three EXP-004 lines still need Richard, not a session
 
@@ -97,24 +105,27 @@ command — a feature, not a wiring job — and is owned by **`NONE`**. §21.1 h
 
 ### 6. Smaller, and each decidable on its own
 
+- The two sweep limits in §31.1 — a catalog/runtime disagreement over a declared port, and the
+  target-port side. Neither is examined by anything. Cheap to scope, unknown to close.
 - `Navigate To Path`'s `Completed` chain (§24.6) — still refuses an `Error` read, deliberately.
   **Decide before starting; not obviously worth it.**
 - The date family's signals, and the repeater's lifecycle pulses (`itemsRendered`, `done`,
-  `completed`, `failure`) — one `effect()` slice, not two (§9.6, §29.5).
+  `completed`, `failure`) — one `effect()` slice, not two (§9.6, §29.5). ⚠️ §31's census found
+  **zero** such wires anywhere in the corpus, which is a real argument about its priority.
 - EXP-009 leftovers — drive the exported login/admin forms; delete the drive-residue user
   `exp009-drive` from the local Puppy backend's `_User`.
 
-## 🔴 What session 59 would tell you if it could only say three things
+## 🔴 What session 60 would tell you if it could only say three things
 
-1. **A fixture is a population, not a convenience.** The hour §29 asked for bought a defect that
-   twenty in-memory assertions could not see, and the mutant proves it: removing the fix kills
-   *exactly* the two from-disk rows and **no hand-built row**.
-2. **Re-deriving a blocker means reading both ends.** `Remove` unblocked and `Set Properties` did
-   not, and the difference is not in either node — it is in whether the *id* or the *value* has to
-   cross the boundary. Inheriting §7.3's one sentence for both would have got one of them wrong.
-3. **Prove a wire is dead before dropping it.** `Failure` and `Unchanged` on the removal are
-   dropped-with-a-note, and each cause is answered by a named gate and a line of runtime source.
-   Deferring the whole node over them would have lost a translation to a no-op.
+1. **A clean sweep is a result, and it is only worth what its population is worth.** "No other
+   instance of the §30.3 class" means something because it was measured over ~68 projects on disk
+   and calibrated on a known-firing case first — not because the code was read and looked fine.
+2. **A refusal is a recommendation to a person.** The disposition was right in all 26 cases and the
+   *reason* sent the author the opposite way from the truth. A branch can be correct about what it
+   does and wrong about what it says, and only the second one bites a human.
+3. **When one predicate serves two populations, make the two disagree.** The mutant that answers
+   "registered" everywhere and the one that answers "not registered" everywhere kill disjoint rows.
+   Either alone would have looked like a passing suite.
 
 ## Standing practice
 
@@ -122,50 +133,56 @@ Work on `cline-dev`; commit by **exact file pathspecs** (never a directory, neve
 🔴 **`git status | grep '^??'` first** — a pathspec commit skips untracked files. ⚠️ A *new* test
 file or fixture is untracked, and `git commit <pathspec>` **errors** rather than skipping it —
 `git add` it and commit in the same command so the staging window stays closed.
+🔴 **A peer was editing `packages/nodegx-export/src/emit/style.ts` and `tests/visual.test.ts`
+during session 60**, interleaved by mtime with this session's edits in the *same package*. Both
+were left untouched and uncommitted here. Check `git status` against your own mtimes before
+assuming a dirty file in this package is yours.
 ⚠️ **Delete scratch scripts from `scripts/` and probe specs from `tests/` before committing** —
 and **reconcile the suite count against disk** (`ls tests/*.test.ts | wc -l`), which is what
-catches a probe left behind.
+catches a probe left behind. (46 files, 46 suites at the end of s60.)
 ts-morph and Prettier stay uninstalled; `packages/nodegx-export` is not in root `test:packages`.
 
 ⚠️ **`test:ci` was not run by this session and was not needed** — nothing outside
 `packages/nodegx-export` was touched. If you touch `noodl-runtime`, run it yourself rather than
 inheriting a relayed floor.
 
-⚠️ **Peers are active in this checkout.** Commit by pathspec and their trees stay untouched.
-
 ⚠️ **The shell's cwd is shared and parallel `cd` calls race** — use absolute paths in any command
-you send in parallel. 🔴 A `cd` inside a compound command persists into later tool calls.
-🔴 **`cmd | head; echo $?` reads `head`'s exit code, not `cmd`'s** — redirect to a file and echo
-`$?` on its own.
+you send in parallel. 🔴 A `cd` inside a compound command persists into later tool calls, and s60
+lost two calls to exactly that. 🔴 **`cmd | head; echo $?` reads `head`'s exit code, not `cmd`'s** —
+redirect to a file and echo `$?` on its own. ⚠️ **`timeout` is not on this machine** (BSD).
 ✅ **Restore a mutated `src` with `cp -a snap/src/. src/` and then `diff -r`.**
 
 ## Mutating to prove a checker's reach
 
-The pattern that produced §26.3, §27.5, §29.4 and §30.4, and it is worth reusing:
+The pattern that produced §26.3, §27.5, §29.4, §30.4 and §31.3, and it is worth reusing:
 
 1. `cp -a src <scratchpad>/snap/` first — and take a **second** snapshot *after* the fix, because
    the pre-fix one is not a mutant undo (§28's trap).
 2. Mutate **by asserting the anchor's uniqueness before replacing it** — a python
    `assert s.count(old) == 1` that fails leaves the source untouched.
-3. ⚠️ **A mutant that breaks the typecheck reads as `Tests: 0 total`, not as a kill** — narrowing
-   in a `switch`/`else if` is easy to break by accident. Check `tsc` on the mutant before believing
-   its result. (§30 hit this once: `else if (false)` broke the narrowing.)
+3. ⚠️ **A mutant that breaks the typecheck reads as `Tests: 0 total`, not as a kill.** Check `tsc`
+   on the mutant before believing its result. (§30 hit this; §31 checked both mutants and both
+   were clean.) A boolean mutant like `String(x).length >= 0` keeps narrowing intact where a bare
+   `true` may not.
 4. Run **both** the new rows and the control rows. The finding is the *disagreement*.
 5. Name the killed rows with `--verbose` — jest prints no per-test lines for a multi-suite run.
 
 ## Building and driving an exported app
 
 - **`scripts/emit-app.ts` is the honest runner** — `emit-app.ts <project> <outDir>`, or
-  `--preflight <project>` for the read-standing-up summary (writes nothing).
+  `--preflight <project>` for the read-standing-up summary (writes nothing). ✅ It runs happily
+  against a project **outside** `tests/fixtures`, which is how §31 graded real projects.
 - 🔴 **The build is still the only instrument for the real third-party libraries.**
 - ✅ **`typecheckEmittedApp` (`tests/helpers/typecheckApp.ts`) is the cheap instrument** — use it on
   any row asserting emitted text, because **a `toContain` passes on dead code** (§24.3).
 - Harness: `cp -a` a prepared harness (so the `@nodegx/core` symlink survives), `rm -rf src dist
   tsconfig.tsbuildinfo`, then emit into it. ⚠️ The emit **does** overwrite `package.json` (renaming
   the app); `node_modules` survives, so the build still works — but do not expect it to be intact.
-- 🔴 **Author a fixture project by copying an existing one** — `reading-shelf` is the cheapest
-  three-component template — far cheaper than driving MCP. A new directory under `tests/fixtures`
-  joins the emitted-syntax, typecheck, markers, README and preflight sweeps automatically.
+- 🔴 **Author a fixture project by copying an existing one** — §31 built `relay-desk` from
+  `note-desk` in minutes. ⚠️ **Watch the collateral**: feeding the new component from an existing
+  `Collection2` broke `note-desk`'s removal (two consumers fail `Remove`'s gate 3) and quietly
+  changed what the fixture was grading. Re-read the *whole* report after touching a fixture, not
+  just the lines you came for.
 - Serve with `npx vite preview --port 53xx --strictPort`; stop it by port
   (`lsof -ti :53xx -sTCP:LISTEN | xargs kill`). ⚠️ **`vite preview` binds `localhost`, and
   `curl 127.0.0.1` gets nothing.**
@@ -177,12 +194,13 @@ The pattern that produced §26.3, §27.5, §29.4 and §30.4, and it is worth reu
   and pick the case that *excludes*, not the one that merely fits (§30.4: the **middle** row).
 - ⚠️ **An error row is never cleared** — a success row must run **before** any failure row.
 
-## The eight fixtures, and what each one already covers
+## The nine fixtures, and what each one already covers
 
 | Fixture | Covers |
 |---|---|
 | `cheer` | the base for most hand-built graphs; `GlobalStore.Set/Subscribe`, popups, component IO, `For Each` |
 | `note-desk` | **a delete button in a list row** — the relayed row signal, `Remove Object From Array`, a Done chain (§30) |
+| `relay-desk` | **a wire the author drew wrong** — a repeater port that names no output, beside a real lifecycle pulse (§31) |
 | `deadline-desk` | **all six date nodes**, plus `Now → Set Variable → Variable2 → Text` |
 | `quote-desk` | `net.noodl.HTTP` with response mappings, `error`, `failure`, `canceled` |
 | `reading-shelf` | `Collection2 → Filter Collection → Map Collection → For Each`, `Model2` prop minting |
@@ -196,9 +214,12 @@ value, or a refused script on a node that is not a Function.
 
 ## Instruments
 
-s59 scratchpad `1d23bd1f-…/scratchpad` — `snap-src` (pre-§30), **`fixed-src` (post-§30, the correct
-mutant undo)**, `mut.py`, `EXPECTED.md`, `drive.mjs`, `app/` (a built, driven export of
-`note-desk`), `app-src-good`, `jest-baseline.log`, `jest-final.log`.
+s60 scratchpad `3685c239-…/scratchpad` — **`fallback_probe.py` (the §31 sweep, reusable)**,
+`snap-src` (pre-§31), **`fixed-src` (post-§31, the correct mutant undo)**, `mut.py`, `mutA.log`,
+`mutB.log`, `jest-final2.log`, `cn027-out`/`cn027-out2` (a real project before and after the fix),
+`relay-out2`, `tut003-out`.
+s59 `1d23bd1f-…` — `snap-src`, `fixed-src` (pre-/post-§30), `drive.mjs`, `app/` (a built, driven
+export of `note-desk`), `EXPECTED.md`.
 s58 `85b9297a-…` — `snap-src`, `fixed-src` (pre-/post-§29).
 s57 `2fc5fa30-…` — `snap/src` (pre-§28). ⚠️ pre-fix: not a mutant undo.
 s56 `0258c50b-…` — `snap/src`, `refused-map.ts`, `contract.ts`, `control.ts`, `probe.ts`.

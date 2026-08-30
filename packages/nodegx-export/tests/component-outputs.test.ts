@@ -236,9 +236,16 @@ describe('child-side shapes (§4)', () => {
    * sessions (EXP-011 §29). A *relayed row* signal now translates; what still defers is a port
    * that is not a relayed row signal at all, and `waved` (unprefixed) is exactly that: the
    * runtime registers a row's relay as `itemOutputSignal-waved`, so a bare `waved` on a repeater
-   * can only be one of its own pulses.
+   * is not one.
+   *
+   * 🔴 **This row used to finish that sentence with "…so it can only be one of the repeater's own
+   * pulses", and that step was wrong (§31).** `registerOutputIfNeeded` registers only
+   * `itemOutputSignal-<name>` and `itemOutput-<name>` and does nothing at all for anything else,
+   * so a bare `waved` is not a lifecycle pulse — it is *no port*, and the wire is dead in the
+   * editor too. The two readings send the author opposite ways, so they now get different
+   * sentences; `tests/foreach-relay-ports.test.ts` grades both arms off disk.
    */
-  test('a repeater port that is not a relayed row signal defers named', () => {
+  test('a repeater port that names no output at all defers named', () => {
     const mutated = cloneIr();
     componentOf(mutated, 'Components/FarewellCard').nodes.push({
       id: 'rows',
@@ -250,7 +257,7 @@ describe('child-side shapes (§4)', () => {
     });
     wire(mutated, 'Components/FarewellCard', 'rows', 'waved', 'farewellOutputs', 'waved', 'value');
     const result = emitApp(mutated, catalog);
-    expect(result.notes.join('\n')).toContain("is not a row's relayed signal");
+    expect(result.notes.join('\n')).toContain('a repeater has no "waved" output at all');
     expect(result.notes.join('\n')).toContain('itemOutputSignal-<name>');
   });
 
