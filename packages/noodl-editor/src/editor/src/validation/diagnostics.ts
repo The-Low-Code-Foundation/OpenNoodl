@@ -612,6 +612,24 @@ export enum DiagnosticCode {
   GateOnlyTurnsOn = 'gate-only-turns-on',
 
   /**
+   * DEF-012 §2 (P76 SB-011 §2) — a cloud Query Records node that filters on
+   * connected parameters while its run-on-change boxes sit at the default, so
+   * it fetches the moment the graph is built — before any value can have
+   * reached a `qp-` port. An unsupplied connected rule is dropped rather than
+   * failed (the optional-filter contract), so the first fetch returns every
+   * row in the class and `fetched` fires on the unfiltered result; the
+   * narrowed re-query arrives a pass later. Measured on a real backend
+   * (SB-004 §7): publishing one page flipped the access rules on every
+   * Section in the site, with the correct filter in the file.
+   *
+   * A **warning**, per query node. The repair is SB-004's own pinned
+   * workaround — both boxes `false`, leaving the parameter's arrival as the
+   * only trigger. See `queryBeforeFilter.ts` for the abstentions and why the
+   * runtime cannot fix this itself.
+   */
+  QueryFetchesBeforeItsFilter = 'query-fetches-before-its-filter',
+
+  /**
    * DSG-004 §2.3 — a page whose text is all one weight, so nothing on it is
    * emphasised over anything else.
    *

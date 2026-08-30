@@ -70,6 +70,7 @@ import { checkPublicWriteDoor, type FunctionSecurityPolicy } from './publicWrite
 import { checkRepeaterTemplate } from './repeaterTemplate';
 import { checkLayoutInertCombination } from './layoutInertCombination';
 import { checkOneWayGate } from './oneWayGate';
+import { checkQueryBeforeFilter } from './queryBeforeFilter';
 import { checkResponsiveArrangement } from './responsiveArrangement';
 import { checkRuntimeContext } from './runtimeContext';
 import { checkTypographyHierarchy } from './typographyHierarchy';
@@ -567,6 +568,10 @@ export function authoredPreconditionDiagnostics(options: AuthoredPreconditionOpt
     // DEF-024 — a mounted/visible gate whose every writer is a constant-true
     // Condition: it can only ever turn on, so sibling answers accumulate.
     ...checkOneWayGate(nodes, { component, catalog, wires }),
+    // DEF-012 §2 — a cloud query with connected filter parameters that fetches
+    // at graph build, before the parameters can arrive: the first result is
+    // every row in the class. Reads wires; omitted means "do not check".
+    ...checkQueryBeforeFilter(nodes, { component, wires, catalog }),
     // DSG-004 §2.3 — doctrine §3, as an info that never blocks.
     ...checkTypographyHierarchy(nodes, { component, connectedInputs: connections }),
     // FIX-007 §2 — the wire the port rule is right to skip and nothing else could see.
