@@ -66,6 +66,17 @@ export interface ReportComponent {
   unreachable: boolean;
   /** Set when nothing was emitted for this component at all. */
   skipped?: { kind: 'scaffolded' | 'deferred'; reason: string };
+  /**
+   * Authored scripts this export did not translate, on a component that emitted no file
+   * (EXP-011 §27.6).
+   *
+   * 🔴 **Only ever populated when {@link file} is `null`.** A component with a module carries the
+   * identical record as a code comment beside the node, and printing it here as well would make
+   * the report a second copy of something the repo already holds — the shape that is a duplicate
+   * before it is a check. `emitApp` fills this in its skip branch and nowhere else, so which of
+   * the two carriers holds a script is decided by whether a file exists, not by a filter.
+   */
+  preservedScripts?: Array<{ nodeId: string; typeName: string; label?: string; source: string }>;
 }
 
 export interface ExportReportData {
@@ -118,6 +129,23 @@ export function stripScope(path: string, note: string): string {
 }
 
 const bullet = (line: string): string => `- ${line}`;
+
+/**
+ * The longest run of backticks in a text, so a fenced block can be opened with one more.
+ *
+ * 🔴 A preserved script is author content and the fence is markup — the same hazard
+ * `commentSafe` answers on the code side, one output format over. A body containing ``` would
+ * otherwise close the fence early and spill its remainder into the report as prose.
+ */
+const longestBacktickRun = (text: string): number => {
+  let longest = 0;
+  let run = 0;
+  for (const ch of text) {
+    run = ch === '`' ? run + 1 : 0;
+    if (run > longest) longest = run;
+  }
+  return longest;
+};
 
 /**
  * The ordered steps as Markdown, shared by the report and the README so the two cannot format the
@@ -221,8 +249,22 @@ export function renderReport(data: ExportReportData): string {
   }
 
   // ── Then, and only then, what is missing ───────────────────────────────────
+  /**
+   * Components carrying a script that only this report can hold (EXP-011 §27.6), in report order.
+   *
+   * 🔴 Not filtered to `deferred`. A script-bearing node beside the **router shell** is
+   * `scaffolded`, which lands in the "what worked" half above and in none of the three terms
+   * below — so without this the report could say "Nothing" needs attention while an authored
+   * script had vanished from the export entirely, which is the exact sentence §27.6 exists to
+   * stop the export saying.
+   */
+  const withPreserved = data.components.filter((c) => (c.preservedScripts?.length ?? 0) > 0);
   const nothingToReport =
-    attention.length === 0 && deferred.length === 0 && data.modules.length === 0 && data.project.length === 0;
+    attention.length === 0 &&
+    deferred.length === 0 &&
+    withPreserved.length === 0 &&
+    data.modules.length === 0 &&
+    data.project.length === 0;
 
   if (nothingToReport) {
     out.push('## What needs your attention');
@@ -247,6 +289,30 @@ export function renderReport(data: ExportReportData): string {
       out.push('');
       for (const c of deferred) out.push(bullet(`\`${c.path}\` — ${c.skipped?.reason}`));
       out.push('');
+    }
+
+    for (const c of withPreserved) {
+      out.push(`### Code from \`${c.path}\` that is only in this file`);
+      out.push('');
+      out.push(
+        'This component generated no file, so there is no module for a comment to sit in. The ' +
+          'scripts below were written in the project and this export did not translate them — ' +
+          'they are **not anywhere else in the exported repo**, and this is their only record.'
+      );
+      out.push('');
+      for (const script of c.preservedScripts ?? []) {
+        const named = script.label !== undefined ? `"${script.label}" (node \`${script.nodeId}\`)` : `node \`${script.nodeId}\``;
+        out.push(bullet(`${script.typeName} ${named}:`));
+        out.push('');
+        // Verbatim, per the IR's contract for `sourceText`: never trimmed, never reformatted.
+        // A fence needs no comment-terminator escaping, but it does need to survive a body that
+        // contains one — so the fence is long enough that the script cannot close it.
+        const fence = '`'.repeat(Math.max(3, longestBacktickRun(script.source) + 1));
+        out.push(`${fence}javascript`);
+        out.push(script.source);
+        out.push(fence);
+        out.push('');
+      }
     }
 
     for (const c of attention) {

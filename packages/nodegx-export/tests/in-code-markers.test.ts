@@ -349,7 +349,10 @@ describe("a refused script on a node that is not a Function is preserved too (EX
    */
   const SHELF = path.join(__dirname, 'fixtures', 'reading-shelf');
   /** The fixture re-parsed from a temp copy whose `Pages/Home` node doc `patch` has edited. */
-  const shelfPatched = (patch: (doc: { nodes: Array<Record<string, unknown>> }) => void): ReturnType<typeof emitApp> => {
+  const shelfPatched = (
+    patch: (doc: { nodes: Array<Record<string, unknown>> }) => void,
+    alsoPatch?: (dir: string) => void
+  ): ReturnType<typeof emitApp> => {
     const dir = fs.mkdtempSync(path.join(require('os').tmpdir(), 'nodegx-refused-script-'));
     try {
       fs.cpSync(SHELF, dir, { recursive: true });
@@ -357,11 +360,35 @@ describe("a refused script on a node that is not a Function is preserved too (EX
       const doc = JSON.parse(fs.readFileSync(nodesPath, 'utf8'));
       patch(doc);
       fs.writeFileSync(nodesPath, JSON.stringify(doc));
+      alsoPatch?.(dir);
       return emitApp(parseProject(dir, catalog), catalog);
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });
     }
   };
+
+  /**
+   * A component written into the temp copy carrying `nodes`, and nothing else.
+   *
+   * A component with no node that renders takes `planComponent`'s **logic-only** early return, so
+   * this is how §27.6's population is reached at all: the seven fixtures contain 36 components,
+   * 8 of which emit no file, and **none** of those 8 carries a script. The corpus is this rule's
+   * zero control, not its subject — measured before these rows were written, because a checker
+   * whose population is empty passes for the wrong reason.
+   */
+  const addComponent = (dir: string, name: string, nodes: Array<Record<string, unknown>>): void => {
+    const compDir = path.join(dir, 'components', 'Components', name);
+    fs.mkdirSync(compDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(compDir, 'component.json'),
+      JSON.stringify({ id: `id-${name}`, name, path: `/Components/${name}`, type: 'visual' })
+    );
+    fs.writeFileSync(path.join(compDir, 'nodes.json'), JSON.stringify({ nodes }));
+    fs.writeFileSync(path.join(compDir, 'connections.json'), JSON.stringify({ connections: [] }));
+  };
+
+  const TALLY = { id: 'tallyNode', type: 'Javascript2', label: 'Tally', parameters: { code: 'define({\n  run() { this.setOutputs({ total: 2 }); }\n})\n' }, x: 100, y: 100 };
+  const reportOf = (app: ReturnType<typeof emitApp>): string => String(app.files['EXPORT-REPORT.md']);
   const shelfWithMapping = (mapScript: string): ReturnType<typeof emitApp> =>
     shelfPatched((doc) => {
       const toRow = doc.nodes.find((n) => (n as { id: string }).id === 'toRow') as { type: string; parameters: Record<string, unknown> };
@@ -427,6 +454,85 @@ describe("a refused script on a node that is not a Function is preserved too (EX
       for (const [name, body] of Object.entries(files)) {
         expect(`${fixture}/${name}: ${String(body).includes('has an authored script that')}`).toBe(`${fixture}/${name}: false`);
       }
+    }
+  });
+
+  /*
+   * ── §27.6: the components that emit no file ───────────────────────────────────────────────
+   *
+   * §27 preserved a refused script as a comment in the module its component emitted, and said so
+   * about the components that emit none: the router shell and a logic-only component return
+   * before the sweep, so a `Script` node in one still lost its code entirely. There is no module
+   * for a comment to live in, so the **report** carries it — the same choice the record-neighbour
+   * sweep already had to make at the same early return.
+   *
+   * 🔴 Which carrier holds a script is decided by whether a file exists, never by a filter:
+   * `emitApp` fills `preservedScripts` in its skip branch and only there. The duplicate row below
+   * is what holds that, because "the report also prints it" is the failure that looks like
+   * success.
+   */
+  it('a logic-only component keeps its Script in the report, which is the only place it can be', () => {
+    const app = shelfPatched(
+      () => {},
+      (dir) => addComponent(dir, 'Tally', [TALLY])
+    );
+    const report = reportOf(app);
+    expect(report).toContain('### Code from `Components/Tally` that is only in this file');
+    // Verbatim, per the IR's contract for `sourceText` — the author's own two-space indent.
+    expect(report).toContain('  run() { this.setOutputs({ total: 2 }); }');
+    // 🔴 And the reason the report has to carry it: the component emitted nothing to carry it.
+    expect(Object.keys(app.files).some((f) => f.includes('Tally'))).toBe(false);
+  });
+
+  it('names the node and its type, so the reader knows what the code was doing', () => {
+    const report = reportOf(shelfPatched(() => {}, (dir) => addComponent(dir, 'Tally', [TALLY])));
+    expect(report).toContain('Javascript2 "Tally" (node `tallyNode`)');
+  });
+
+  it('a script beside the router shell is preserved too, and stops the report saying "Nothing"', () => {
+    /*
+     * 🔴 The scaffolded arm, which is not a duplicate of the logic-only one. A router-shell
+     * refusal lands in the report's "what worked" half and in none of the three terms that used
+     * to decide `nothingToReport` — so before the gate counted preserved scripts, this export
+     * could tell the reader that **nothing** needed their attention while an authored script had
+     * vanished from it. That is the precise sentence this rule exists to stop.
+     */
+    const app = shelfPatched(
+      () => {},
+      (dir) => {
+        const nodesPath = path.join(dir, 'components', 'App', 'nodes.json');
+        const doc = JSON.parse(fs.readFileSync(nodesPath, 'utf8'));
+        doc.nodes.push(TALLY);
+        fs.writeFileSync(nodesPath, JSON.stringify(doc));
+      }
+    );
+    const report = reportOf(app);
+    expect(report).toContain('### Code from `App` that is only in this file');
+    expect(report).toContain('  run() { this.setOutputs({ total: 2 }); }');
+  });
+
+  it('CONTROL: a component that DOES emit a file keeps its script in the file and not twice', () => {
+    /*
+     * The duplicate half. Both carriers read the same `plan.refusedScripts`, so a rule that ran
+     * them both would put the identical script in the module *and* the report — two records of
+     * one thing, and the reader with no way to tell whether they are the same loss or two.
+     */
+    const app = shelfPatched((doc) => {
+      doc.nodes.push({ id: 'scriptNode', type: 'Javascript2', label: 'Tally', parameters: { code: 'define({ run() {} })' }, x: 900, y: 200 });
+    });
+    expect(String(app.files['src/pages/Home.tsx'])).toContain('has an authored script that');
+    expect(reportOf(app)).not.toContain('that is only in this file');
+  });
+
+  it('CONTROL: the unmutated corpus prints no preserved-script section in any report', () => {
+    /*
+     * The false-positive half, on the report this time. Every one of the 8 components across the
+     * seven fixtures that emits no file is a candidate for this section, and none of them should
+     * draw it.
+     */
+    for (const fixture of FIXTURES) {
+      const report = String((exportOf(fixture).files as Record<string, string>)['EXPORT-REPORT.md'] ?? '');
+      expect(`${fixture}: ${report.includes('that is only in this file')}`).toBe(`${fixture}: false`);
     }
   });
 

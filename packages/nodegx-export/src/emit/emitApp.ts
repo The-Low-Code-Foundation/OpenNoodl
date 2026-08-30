@@ -110,7 +110,11 @@ export function emitApp(ir: ExportIR, catalog: Catalog): EmittedApp {
           // ⚠️ `skipKind` decides which side of "lead with what worked" this lands on, and it is
           // set at the two sites in `plan.ts` that know. Defaulting it here would put a
           // logic-only component under "handled by the app shell" the day a third skip appears.
-          skipped: { kind: plan.skipKind ?? 'deferred', reason: plan.skipReason }
+          skipped: { kind: plan.skipKind ?? 'deferred', reason: plan.skipReason },
+          // EXP-011 §27.6 — this component has no module, so the report is the only place its
+          // authored scripts can survive. The emitting branch below deliberately does not set
+          // this: there, `refusedScriptLines` has already written them into the file.
+          ...(plan.refusedScripts.length > 0 ? { preservedScripts: plan.refusedScripts } : {})
         });
       }
       continue;

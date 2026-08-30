@@ -3353,3 +3353,99 @@ rule). The field's doc comment says what it actually holds.
   `sourceText`, which the **parser** writes from that same parameter. The first draft of these
   rows did exactly that and watched the original mapping come back in the comment. The rows now
   re-parse a patched copy from disk, so the two agree the way they always do in production.
+
+---
+
+## §28 The components with nowhere to put a comment, and a note that pointed at the smallest case (session 57, 2026-08-30)
+
+Session 56 closed §27 with two items owned by `NONE`. Both are answered here — one by building,
+one by measuring and deciding it needed no build.
+
+Picker coverage is unchanged at **69/127 (54.3%)**, correctly: no node type gained a translation.
+
+### §28.1 §27.6, closed — the report carries what no module can
+
+§27's sweep runs at the bottom of `planComponent`, which the two early returns never reach. So a
+`Script` node in a **logic-only** component, or beside the **router shell**, kept losing its code
+entirely: the export named the node and preserved nothing, which is the sentence §27 was written
+to stop it saying.
+
+**The decision §27.6 left open was between the report carrying the source and a component that
+emits nothing gaining somewhere to put it.** The report, for three reasons:
+
+- A component that emits nothing has, by definition, nowhere for a comment to sit. Giving it a
+  module means emitting a file nothing imports — a worse artefact than the hole.
+- The report already carries every other refusal for exactly these components.
+- 🔴 **The identical shape was already closed once, at the same early return.** The
+  record-neighbour sweep has a line in `plan.ts` explaining that it returns before the bottom
+  sweep, so a relation verb in a logic-only component would fall through. Same return, same
+  reason, one sweep over.
+
+The sweep became `sweepRefusedScripts()` and is called at all three exits.
+
+🔴 **Which carrier holds a script is decided by whether a file exists, never by a filter.**
+`emitApp` fills `ReportComponent.preservedScripts` in its skip branch and only there; the
+emitting branch leaves it unset because `refusedScriptLines` has already written the script into
+the module. The two consumers sit on opposite sides of `plan.file`, so "exactly one copy" is
+structural rather than a condition that could drift.
+
+### §28.2 🔴 The report could have said "Nothing" while a script vanished
+
+`nothingToReport` gated the whole "what needs your attention" half on three terms —
+`attention`, `deferred`, `modules`, `project`. A script-bearing node beside the **router shell**
+is `scaffolded`, which lands in the *what worked* half and in none of those terms.
+
+Measured, not argued: `reading-shelf` unmutated reports **"Nothing. Every node and every wire in
+this project had a translation, and the export refused none of them."** Add a `Javascript2` beside
+its router and, without the gate, that sentence is unchanged while the script is nowhere in the
+export. The gate now counts preserved scripts, and the row that names this reddens without it.
+
+⚠️ A preserved script is author content and a fence is markup — `commentSafe`'s hazard in a
+second output format. `longestBacktickRun` opens the block with one more backtick than the script's
+longest run, so a body containing ``` cannot close it early.
+
+### §28.3 What proves it
+
+- **`tsc --noEmit`** 0; **jest 1081/1081 in 43 suites** (1076/43 before — 5 new rows); both ledger
+  gates OK; picker unchanged at 69/127.
+- 🔴 **The corpus population is empty, and that was measured before the rows were written.**
+  36 components across the seven fixtures, **8** emitting no file, **4** carrying `sourceText`,
+  and **0** of those 4 inside a skipped component. So the corpus is this rule's *zero control*,
+  never its subject, and the rows are graded on components written into a temp copy.
+- 🔴 **Three mutants, and the disagreement is the finding.**
+
+  | Mutant | Preservation rows | Duplicate CONTROL | Corpus CONTROL |
+  |---|---|---|---|
+  | `sweepRefusedScripts()` removed from both early returns | 🔴 **3 red** | 🟢 green | 🟢 green |
+  | emitting branch *also* fills `preservedScripts` | 🟢 green | 🔴 **red** | 🟢 green |
+  | `nothingToReport` stops counting preserved scripts | 🔴 **1 red** (router shell) | 🟢 green | 🟢 green |
+
+  Anchors were asserted before replacement in each.
+- ⚠️ **The first restore was from the pre-fix snapshot and silently reverted the fix**, which the
+  suite then reported as green — a snapshot taken before a change is not an undo for a *mutant*
+  applied after it. Caught by re-running; the fix was re-applied and re-measured.
+- 🔴 **The suite count is the honest reading, not the test count.** The full run said **44 suites**
+  where 43 were expected: a scratch probe left in `tests/`. `1082 − 1076 = 6` against 5 rows
+  written reconciled it exactly. Delete the probe, and the number is 1081/43.
+
+### §28.4 §26.4's `mood2?: any` — measured, and not a defect
+
+§26.4 recorded, uninvestigated: *"`array-vocabulary` emits `mood2?: any;` for a minted `Model2`
+prop, so a typecheck row over that graph would grade nothing at the prop."* True, and the `any` is
+correct. The note pointed at the **smallest instance of a wider honest refusal**.
+
+The census across all seven fixtures — **20 emitted props, 11 of them `any`, 9 `string`**:
+
+| Population | Count | Why `any` |
+|---|---|---|
+| Declared `Component Inputs` ports | **10** | Every one declares port type `"*"` — the editor's wildcard. `tsTypeOf` maps it to `any` because the author stated no type. `PuppyCard`'s five ports declare `"string"` and emit `string`. |
+| The minted `Model2` row prop | **1** | The row's shape is not stated by the graph, and both ends refuse consistently: `collection-get`/`list-map`/`list-filter` resolve to `any[]`, each with a written reason. |
+
+🔴 **Only one of the eleven is the minted prop §26.4 named.** And the fixture that carries a real
+collection schema (`puppy-test-3` — the other six declare no `metadata.dbCollections`, matching
+the 32-of-39 figure the code already records) is exactly the one whose ten `any` props are
+wildcard-typed, so the schema could not have helped them.
+
+So: a typecheck row over an emitted component interface grades **9 of 20** prop positions today,
+and the other 11 are positions the graph itself leaves untyped. Nothing to fix; the item is closed
+with a denominator rather than left open a second time. Owner was `NONE`.

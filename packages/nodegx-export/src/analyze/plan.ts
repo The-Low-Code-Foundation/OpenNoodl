@@ -1750,6 +1750,39 @@ function planComponent(
    */
   const translatedScriptIds = new Set<string>();
 
+  /**
+   * The authored JavaScript that did not make it, on nodes that carry a script but are not
+   * Function/Expression/Visual Function.
+   *
+   * 🔴 **Run at every exit, not only the one that emits a file.** The two early returns below —
+   * the router shell and a logic-only component — produce no module for a comment to live in, so
+   * before EXP-011 §27.6 was closed a `Script` node in a logic-only component lost its code
+   * entirely: the export named the node and preserved nothing. That is the same shape the
+   * record-neighbour sweep already had to close at the logic-only return, one sweep over.
+   *
+   * ⚠️ The plan is the only carrier. Where a file *is* emitted, `refusedScriptLines` turns this
+   * into a code comment; where none is, `emitApp`'s skip branch hands it to the report, and that
+   * branch is the only other reader. So exactly one copy of a script exists in any export — the
+   * two consumers are on opposite sides of `plan.file`, rather than a filter that could drift.
+   *
+   * `translatedScriptIds` is empty at the early returns, which is the truth about them: a
+   * component that emitted nothing translated nothing.
+   */
+  const sweepRefusedScripts = (): void => {
+    for (const node of component.nodes) {
+      if (node.sourceText === undefined) continue;
+      // Function/Expression/Visual Function are `jsFunctions`; `refusedSourceLines` preserves those.
+      if (jsNodeKindOf(node.type) !== null) continue;
+      if (translatedScriptIds.has(node.id)) continue;
+      plan.refusedScripts.push({
+        nodeId: node.id,
+        typeName: node.type,
+        ...(node.authoredLabel !== undefined ? { label: node.authoredLabel } : {}),
+        source: node.sourceText
+      });
+    }
+  };
+
   // The router shell: the scaffold generates App.tsx from RouterIR; the visual generator owns
   // nothing here (TARGET-OUTPUT §3).
   if (component.nodes.some((n) => n.type === 'Router')) {
@@ -1766,6 +1799,7 @@ function planComponent(
     }
     plan.skipReason = 'router shell — emitted as src/App.tsx by the scaffold';
     plan.skipKind = 'scaffolded';
+    sweepRefusedScripts();
     return plan;
   }
 
@@ -1824,6 +1858,7 @@ function planComponent(
     }
     plan.skipReason = 'no visual root — logic-only components defer to EXP-003';
     plan.skipKind = 'deferred';
+    sweepRefusedScripts();
     return plan;
   }
   if (roots.length > 1) {
@@ -9208,27 +9243,7 @@ function planComponent(
     }
   }
 
-  /**
-   * The authored JavaScript that did not make it, on nodes that carry a script but are not
-   * Function/Expression/Visual Function.
-   *
-   * ⚠️ Only the components that emit a file reach here. The two early returns above — the router
-   * shell and a logic-only component — produce no module for a comment to live in, so a Script
-   * node in a logic-only component still loses its code to the report alone. Named rather than
-   * silently included, because "every refused script is preserved" would be the wrong sentence.
-   */
-  for (const node of component.nodes) {
-    if (node.sourceText === undefined) continue;
-    // Function/Expression/Visual Function are `jsFunctions`; `refusedSourceLines` preserves those.
-    if (jsNodeKindOf(node.type) !== null) continue;
-    if (translatedScriptIds.has(node.id)) continue;
-    plan.refusedScripts.push({
-      nodeId: node.id,
-      typeName: node.type,
-      ...(node.authoredLabel !== undefined ? { label: node.authoredLabel } : {}),
-      source: node.sourceText
-    });
-  }
+  sweepRefusedScripts();
 
   return plan;
 }

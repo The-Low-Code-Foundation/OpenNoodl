@@ -1,18 +1,20 @@
-# Next session — `sourceText` has a consumer, and the field was not holding what it promised
+# Next session — the two `NONE` rows session 56 left, and what is left needs a person
 
 ## Where the phase stands
 
-**Session 56 closed handoff item 3.** `NodeIR.sourceText` was *"adopt it or delete it"*; it is
-**adopted**, and deciding it by measurement found two defects rather than settling a preference.
-§27 has the long form.
+**Session 57 closed both items §27.6 and §26.4 left owned by `NONE`.** One by building, one by
+measuring and finding there was nothing to build. §28 has the long form.
 
-- 🔴 **A refused `Map Collection` script was vanishing from the export entirely** — reported, and
-  marked in code by a `TODO` naming the node, with the author's script **nowhere in the repo**.
-  That is §20's argument for the Function case, verbatim, one node-family over. Now preserved.
-- 🔴 **The field's writer did not match its contract.** It promised *author-written code* and
-  selected on *"does this port open a code editor"* — and 29 of the catalog's 36 codeeditor ports
-  are `styleCss`. A Text node's authored CSS was landing in `sourceText`. The catalog names the
-  language, so the set is now derived from it.
+- ✅ **§27.6 closed — a logic-only component no longer loses a `Script` node's code.** The sweep
+  runs at all three exits now, and where there is no module the **report** carries the source.
+  Which carrier holds a script is decided by whether a file exists, never by a filter.
+- 🔴 **The report could have said "Nothing needs your attention" while a script vanished.** A
+  script beside the router shell is `scaffolded`, which landed in the *what worked* half and in
+  none of `nothingToReport`'s terms. `reading-shelf` unmutated genuinely prints that sentence, so
+  this was one node away from live. The gate now counts preserved scripts.
+- ✅ **§26.4's `mood2?: any` is not a defect** — it is the smallest instance of a wider honest
+  refusal. **20 props across the corpus, 11 `any`**; ten are declared ports whose port type is
+  the wildcard `"*"`, one is the minted row prop. Closed with a denominator.
 
 **69 of 127 (54.3%)** — unchanged, and correctly: this session added no translation.
 
@@ -31,6 +33,12 @@
    is made — deriving it from the wire names the wrong node.
 4. **Building the app is still the only instrument for the real third-party libraries** — the
    helper *declares* `react-router-dom` rather than resolving it (repo has v5, app wants v7).
+5. 🔴 **A component that emits no file is invisible to every check that reads emitted files.**
+   Eight of the corpus's 36 components are in that class. §28's rule reaches them only because it
+   is fed from the **plan**; anything asserted over `app.files` alone cannot see them at all.
+6. ⚠️ **`reading-shelf` unmutated reports "Nothing" needs attention** — which makes it the right
+   fixture for any row about the report's empty state, and a trap for any row that assumes a
+   refusal is already there.
 
 ## The objective, so it cannot drift
 
@@ -42,7 +50,7 @@ a deployed NodeGX backend — exports to a React repo that builds, runs, and sti
 ```
 cd packages/nodegx-export
 ../../node_modules/.bin/tsc --noEmit          # exit 0
-../../node_modules/.bin/jest                  # 1076/1076, 43 suites (1070/43 before §27); ~19-26 s
+../../node_modules/.bin/jest                  # 1081/1081, 43 suites (1076/43 before §28); ~19-26 s
 npm run export-ledger:picker                  # from the repo root — holds at 69/127 (54.3%)
 npm run export-ledger:check                   # 175 types
 ```
@@ -72,49 +80,39 @@ None can be closed by whoever wrote the artefact; all three are recorded as unru
 command — a feature, not a wiring job — and is owned by **`NONE`**. §21.1 has the evidence.
 **Ask before building it.** It may belong in its own task.
 
-### 3. A logic-only component still loses a Script node's code — owner `NONE` (§27.6)
+### 3. The collection-state slice — the first buildable item, and it is a big one
 
-§27's sweep runs only in components that emit a file. The router shell and a **logic-only**
-component return before it, because there is no module for a comment to live in — so a
-`Javascript2` node in a logic-only component still loses its code to the report alone. Named
-deliberately rather than quietly included. Closing it means the **report** carrying the source, or
-a component that emits nothing gaining somewhere to put it. Decide which before building.
+⚠️ **Sized before starting, and it is not a remainder-of-a-session job.** It unblocks
+`Set Object Properties` and `Remove Object From Array`, but §7.3 shows why neither is one row:
+`Remove Object From Array` is blocked *one level up* on a repeater row's outputs, which still
+defer on *"which row fired is not statically expressible"*. Closing that is a design decision
+about how a row identifies itself to the enclosing list, and `Set Object Properties` needs
+list-owned state on top of it. Comparable in size to §10 or §11 — start it at the top of a
+session, not the end of one.
 
-### 4. `array-vocabulary` emits `mood2?: any;` for a minted `Model2` prop — owner `NONE`
-
-Noticed at §26.4, **still not investigated** — this session went to item 3 instead. A minted
-repeater prop typed `any` means the emitted child grades nothing at that prop, in the compiler or
-anywhere else. Worth one look before anybody adds a typecheck row over that graph expecting it to
-catch something.
-
-### 5. `Navigate To Path`'s `Completed` chain (§24.6)
+### 4. `Navigate To Path`'s `Completed` chain (§24.6)
 
 Still refuses an `Error` read, deliberately. Translating it means hoisting the message above the
 branch, which changes the emitted shape for every node of this kind. A slice of its own, and not
 obviously worth it — decide before starting.
 
-### 6. The collection-state slice — unblocks `Set Object Properties` and `Remove Object From Array`.
+### 5. The date family's signals — an `effect()` slice, not a date slice (§9.6).
 
-§7.3 draws the line: the read side of `Object` translates, the write side does not, because a row
-written from inside the row is state the enclosing list owns rather than a prop the parent passes
-down. `Remove Object From Array` is blocked one level up on a repeater row's outputs.
-
-### 7. The date family's signals — an `effect()` slice, not a date slice (§9.6).
-
-### 8. EXP-009 leftovers — drive the exported login/admin forms; delete the drive-residue user
+### 6. EXP-009 leftovers — drive the exported login/admin forms; delete the drive-residue user
 `exp009-drive` from the local Puppy backend's `_User`.
 
-## 🔴 What session 56 would tell you if it could only say three things
+## 🔴 What session 57 would tell you if it could only say three things
 
-1. **"Adopt or delete" is answered by measuring what each would cost, not by taste.** Deleting
-   would have closed a hole that was open; adopting as-written would have printed a Text node's
-   CSS under a sentence calling it a script. Both were found by running something.
-2. **A control that cannot go red proves nothing.** Every row here is paired — the translated Map
-   Collection, and all seven fixtures emitting **zero** of these comments. Two mutants then showed
-   the refusal rows redden while the controls stay green. The disagreement is the finding.
-3. **Ask the catalog rather than listing what you think is in it.** The `codeeditor` field names
-   the language, so the seven JavaScript ports are derived. A hand-written list would have been
-   wrong on the day someone added a port, and would have looked right forever.
+1. **Measure the population before writing the checker, and say so when it is empty.** The corpus
+   has 36 components, 8 emitting no file, 4 carrying `sourceText`, and **0** of those 4 in a
+   skipped component. Knowing that *first* is what made the corpus this rule's zero control and
+   sent the real rows to a hand-built graph, instead of five green rows over nothing.
+2. **A snapshot taken before a fix is not an undo for a mutant applied after it.** Restoring
+   `plan.ts` from `snap/` after mutant 1 silently reverted the fix as well, and the suite went
+   green reporting a state that was not the one being measured. Re-apply and re-measure.
+3. **Reconcile the suite count against disk, not against the tests you meant to add.** The run
+   said 44 suites where 43 were expected — a scratch probe left in `tests/`. `1082 − 1076 = 6`
+   against 5 rows written is what caught it.
 
 ## Standing practice
 
@@ -191,6 +189,8 @@ populations only a hand-built graph reaches.
 
 ## Instruments
 
+s57 scratchpad `2fc5fa30-…/scratchpad` — `snap/src` (pre-§28), `jest-baseline.log`. ⚠️ that
+snapshot is **pre-fix**: restoring from it reverts §28, it is not a mutant undo.
 s56 scratchpad `0258c50b-…/scratchpad` — `snap/src` (pre-mutation), `refused-map.ts` (the probe
 that found §27.2), `contract.ts` (§27.3), `control.ts` (the corpus control), `probe.ts` (the
 `Javascript2`/`For Each` reach measurement).
