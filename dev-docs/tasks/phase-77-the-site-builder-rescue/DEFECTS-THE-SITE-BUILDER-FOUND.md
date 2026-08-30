@@ -577,7 +577,7 @@ whose absence made D23 wrong: it proves the search reached the *population*, not
 
 ---
 
-## D16 — ⚠️ The appearance ratchet's per-page check cannot fail for any page that places a styled component
+## D16 — 🟢 FIXED s24 (phase 80 DEF-030). The appearance ratchet's per-page check could not fail for any page that places a styled component
 
 **Found:** s21, while paying SBR-007's appearance debt · **Owner:** `NONE` · **Product** (a gate) ·
 **Bites:** anyone who reads a green §4 as "this screen is designed".
@@ -610,6 +610,54 @@ shell), and the rule change would re-grade `members-area` and `hello-world` too 
 another phase's gate. ⚠️ A rule promotion re-grades corpora nobody listed.
 
 ---
+
+### 🟢 The fix, s24 (2026-08-30) — phase 80 **DEF-030**
+
+**Sabotage reproduced at HEAD first.** Strip every structural parameter from `/Pages/PageEditor`'s
+own nodes and `barePages` still returns `[]`. The check could not fail.
+
+🔴 **And it was worse than "cannot fail": it found nothing anywhere.** Under the placement rule,
+`barePages` returns `[]` for **all three** shipped templates — so §4 was comparing an empty set
+against its floor in every case. Both of its arms (a subset filter and a `<=` count) pass trivially
+on an empty set.
+
+**The rule is now the page's OWN tree.** Placing a designed component is not an answer to *"was this
+screen designed"* — every admin page places the same shell, so under the old rule the shell answered
+for all of them at once. `STRUCTURE_PARAMS` is unchanged and still deliberately narrow (no padding,
+no gaps, no `flexDirection` — the artefact that provoked the file set 125 of those and still read as
+one column), so a page that places a shell and sets a `maxWidth`, a `fontSize` or a surface on
+anything of its own passes.
+
+**What the stricter rule re-grades — ONE page, not two:**
+
+| template | bare under the own-tree rule |
+|---|---|
+| hello-world | none |
+| **site-builder** | **`/Pages/ThemeEditor`** |
+| members-area | none |
+
+🔴 **`/Pages/ThemeEditor` is real debt and it is this phase's.** Its own tree sets not one
+structural parameter: the single Group it owns (`shell-3`) carries `flexDirection`, `rowGap` and
+`sizeMode`, every one of which `STRUCTURE_PARAMS` excludes on purpose. Everything that paints the
+screen belongs to `/Admin/Shell`, which the page merely places. It is on the floor **by name with
+its reason**, not exempted — template-side, so **phase 77 owns the repair**.
+
+🔴 **A second vacuity, found while re-measuring the floor.** `hello-world`'s allowance was
+`['/Home']` — but that template's page is `/#__page__/Home`, so the entry named a page that does not
+exist under that spelling, *and* the real page sets a `fontSize` so it was never bare either. An
+allowance nobody can spend and nobody notices. A new arm now asserts **every floor entry names a
+real page**.
+
+**§4's assertion is now EQUALITY**, not a subset and not a count — the old pair let the floor go
+stale *generous*, which is the failure mode the file already names one screen above its own floor.
+Fixing a page reddens the arm, and shrinking the floor in the same commit is what a ratchet is for.
+
+✅ **The mutant asserts BOTH halves**, which is what makes it about the defect rather than about the
+new rule: the sabotaged page is called designed by `barePagesByPlacement` (kept, for exactly this)
+and named by `barePages`. Asserting only the second would prove the new rule works without showing
+what was wrong.
+
+`templateAppearance.test.ts` 24/24; noodl-mcp **1007/1007**, `tsc --noEmit` clean.
 
 ## D17 — 🟢 FIXED s21 · The page editor was the one admin screen that did not wear the admin shell
 

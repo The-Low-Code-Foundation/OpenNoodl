@@ -211,8 +211,17 @@ function pageComponents(t: CensusTemplate): CensusComponent[] {
   return t.components.filter((c) => c.nodes.some((n) => n.type === 'Page'));
 }
 
-/** Pages whose whole reachable tree sets not one structural parameter. */
-function barePages(t: CensusTemplate): string[] {
+/**
+ * 🔴 **DEF-030 (P77 D16). The rule this replaced, kept because a control needs
+ * it.** It asked whether the page's whole REACHABLE tree — every component the
+ * page places, transitively — sets a structural parameter. So a page passed by
+ * *placing* something styled, and a page that places the admin shell passes
+ * whatever it does itself.
+ *
+ * **Sabotage at HEAD**: strip every structural parameter from `/Pages/PageEditor`'s
+ * own nodes and this still returns `[]`. The check could not fail.
+ */
+function barePagesByPlacement(t: CensusTemplate): string[] {
   const byName = new Map(t.components.map((c) => [c.legacyName, c]));
   return pageComponents(t)
     .filter((page) => {
@@ -223,6 +232,27 @@ function barePages(t: CensusTemplate): string[] {
       }
       return true;
     })
+    .map((c) => c.legacyName)
+    .sort();
+}
+
+/**
+ * Pages whose OWN tree sets not one structural parameter.
+ *
+ * The question §4 is meant to ask is whether *this screen* was designed, and
+ * placing a designed component is not an answer to it — every admin page places
+ * the same shell, so under the old rule the shell answered for all of them at
+ * once. A page's own nodes are the part its author wrote.
+ *
+ * ⚠️ It is not a claim that a page must repaint what it places. `STRUCTURE_PARAMS`
+ * is deliberately narrow — no padding, no gaps, no `flexDirection`, because the
+ * artefact that provoked this file set 125 of those and was still one column.
+ * A page that places a shell and sets a `maxWidth`, a `fontSize` or a surface on
+ * anything of its own passes.
+ */
+function barePages(t: CensusTemplate): string[] {
+  return pageComponents(t)
+    .filter((page) => !page.nodes.some((n) => Object.keys(n.parameters).some((p) => STRUCTURE_PARAMS.has(p))))
     .map((c) => c.legacyName)
     .sort();
 }
@@ -267,20 +297,21 @@ const EXPECTED_PAGE_COUNT: Record<string, number> = {
  * here because §1 pins its page count, so it cannot quietly become an app.
  */
 const BARE_PAGES_TODAY: Record<string, string[]> = {
-  'hello-world': ['/Home'],
-  // 🟢 **SBR-007, 2026-08-29: site-builder's allowance is spent — the debt is
-  // paid and the ratchet is closed.** Measured at HEAD before the build, three
-  // of these four names were ALREADY not bare: `/Pages/Admin`, `/Pages/Setup`
-  // and `/Pages/ThemeEditor` had been styled by SBR-006 and SBR-002 without
-  // anyone coming back to shrink the list. `/Pages/PageEditor` was the only
-  // genuinely bare page left in the template, and it is the one this task owns.
-  //
-  // ⚠️ That is the failure mode a floor has: it goes stale GENEROUS, and a
-  // stale-generous floor hides exactly what it was built to catch — any one of
-  // the three could have regressed to bare and §4 would have stayed green.
-  // Leaving `[]` means the next bare page in site-builder reddens on the commit
-  // that introduces it.
-  'site-builder': [],
+  // 🔴 **Was `['/Home']`, and that entry never matched anything.** The page's
+  // legacy name is `/#__page__/Home`, so the allowance was for a page that does
+  // not exist under that spelling — and the real one sets a `fontSize`, so it
+  // was never bare either. Two ways for the same row to be vacuous.
+  'hello-world': [],
+  // 🔴 **`/Pages/ThemeEditor` is real debt, surfaced by DEF-030's stricter rule.**
+  // Its own tree sets NOT ONE structural parameter: the only Group it owns
+  // (`shell-3`) carries `flexDirection`, `rowGap` and `sizeMode`, every one of
+  // which `STRUCTURE_PARAMS` excludes on purpose — they are the layout plumbing
+  // the members-area artefact had 125 of while still reading as one column.
+  // Everything that paints the screen belongs to `/Admin/Shell`, which the page
+  // merely places. Under the placement rule the shell answered for it.
+  // ⚠️ Template-side, so **phase 77 owns the repair** (its site-builder lane).
+  // Listed rather than exempted so paying it is a visible pending job.
+  'site-builder': ['/Pages/ThemeEditor'],
   'members-area': []
 };
 
@@ -343,14 +374,47 @@ describe('template appearance ratchet', () => {
 
   // ── §4 the ratchet ─────────────────────────────────────────────────────────
   describe('§4 no page is an unstyled column', () => {
-    it.each(TEMPLATES.map((t) => [t.id, t] as const))('%s adds no newly bare page', (id, t) => {
-      // The names are in the failure message on purpose: a count tells whoever
-      // reddened this nothing about which screen to go and look at.
-      expect(barePages(t).filter((p) => !BARE_PAGES_TODAY[id].includes(p))).toEqual([]);
+    // 🔴 EQUALITY, not a subset and not a count. The old pair of arms let the
+    // floor go stale GENEROUS — which is the failure mode this file already
+    // names one screen up, and which it then had: `hello-world`'s allowance was
+    // for `/Home`, a name no page in that template carries. A floor that lists
+    // a page which is not bare is an allowance nobody can spend and nobody
+    // notices. Fixing a page now reddens this arm, and shrinking the floor in
+    // the same commit is the point of a ratchet.
+    it.each(TEMPLATES.map((t) => [t.id, t] as const))('%s: exactly the pages on the floor are bare', (id, t) => {
+      expect(barePages(t)).toEqual([...BARE_PAGES_TODAY[id]].sort());
     });
 
-    it.each(TEMPLATES.map((t) => [t.id, t] as const))('%s never grows its bare-page count', (id, t) => {
-      expect(barePages(t).length).toBeLessThanOrEqual(BARE_PAGES_TODAY[id].length);
+    it.each(TEMPLATES.map((t) => [t.id, t] as const))('%s: every floor entry names a real page', (id, t) => {
+      const names = pageComponents(t).map((c) => c.legacyName);
+      expect(BARE_PAGES_TODAY[id].filter((p) => !names.includes(p))).toEqual([]);
+    });
+
+    it('MUTANT: a page stripped of its own structure reds — and did NOT before', () => {
+      const sabotaged = JSON.parse(
+        JSON.stringify(TEMPLATES.find((t) => t.id === 'site-builder'))
+      ) as CensusTemplate;
+      const page = sabotaged.components.find((c) => c.legacyName === '/Pages/PageEditor')!;
+      for (const node of page.nodes) {
+        for (const key of Object.keys(node.parameters)) if (STRUCTURE_PARAMS.has(key)) delete node.parameters[key];
+      }
+
+      // 🔴 The two halves together are the defect. The rule that shipped calls
+      // the sabotaged page designed, because it still PLACES `/Admin/Shell`;
+      // the rule that replaced it names the page. Asserting only the second
+      // would prove the new rule works without showing what was wrong.
+      expect(barePagesByPlacement(sabotaged)).toEqual([]);
+      expect(barePages(sabotaged)).toContain('/Pages/PageEditor');
+    });
+
+    it('CONTROL: the placement rule finds NOTHING anywhere, which is why it read green', () => {
+      // Not one page in any shipped template is bare by the old rule — so §4's
+      // census was an empty set compared against its floor, in all three.
+      for (const t of TEMPLATES) expect(barePagesByPlacement(t)).toEqual([]);
+      // And the new rule is not vacuous the other way: it finds a real one.
+      expect(barePages(TEMPLATES.find((t) => t.id === 'site-builder') as CensusTemplate)).toEqual([
+        '/Pages/ThemeEditor'
+      ]);
     });
   });
 });
