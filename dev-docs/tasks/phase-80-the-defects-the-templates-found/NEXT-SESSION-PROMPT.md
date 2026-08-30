@@ -1,62 +1,82 @@
 # Phase 80 — next session
 
-## State: **no workable open row left — again, and this time the queue is empty of buildable candidates.**
+## State: **22 of 27 done. The buildable work is finished; what is left is Richard's.**
 
-DEF-001–004, 006, 008, 010, 011, 012, 014–024, 026 closed. DEF-007/009/025 🟡 partial;
+DEF-001–004, 006, 008, 010–012, 014–024, 026, **027** closed. DEF-007/009/025 🟡 partial;
 DEF-005/013 🧭 await rulings.
 
-**s22 (2026-08-30) closed DEF-012** — §2's leftover was the one workable candidate and it built
-exactly as s15's finding specified. `query-fetches-before-its-filter` (`queryBeforeFilter.ts`,
-advisory, both doors): a cloud `DbCollection2` with an authored collection name, a connected
-filter parameter whose `qp-` port carries a real wire, and either run-on-change box not authored
-`false`. The runtime half stays untouched on purpose: `dropUnresolvedConnected` makes *not yet
-arrived* and *deliberately absent* indistinguishable there — the ordering is only decidable in
-the authored graph.
+🔴 **Read [TASKS.md](TASKS.md)'s table before you read this paragraph.** The s22 handoff said
+*"no workable open row left — the queue is empty of buildable candidates"* while the table held
+`DEF-027 | ⬜ open`, appended by phase 77 **32 minutes earlier**. s23 found it by grading the
+table. This file is a summary and summaries drift; the table is the phase.
 
-- **Corpus** (`npm run calibrate:query-timing`, 178 projects): 625 Query Records nodes, 325
-  with a wired filter parameter — **59 cloud firings in 12 projects, all legacy imports,
-  sampled true from disk** (one is `fetched → response.send`: the caller receives every row in
-  the class); 34 cloud queries already carry SB-004's workaround (silent); 180 browser
-  instances at the default left alone, by decision with numbers.
-- **Templates scanned before shipping**: site-builder ×3 + members-area ×3 filtered cloud
-  queries all carry the workaround; no parity gate moved.
-- 11 specs (incl. a traversal-parity arm against the runtime's `collectFilterParameters` —
-  the duplicated-copy idiom), 7/7 mutants killed each by its own arm.
+```
+grep -E '^\| DEF-0[0-9]{2} \|' TASKS.md | grep -v '✅'
+```
+
+**s23 (2026-08-30) closed DEF-027** — a `Drag`'s child lost its `cssClassName`. The recorded
+mechanism (D28: *"`react-draggable` clones the child with its own `className`"*) was half right.
+The library **does** merge and had nothing to see: the child it clones is the
+`NoodlReactComponent` wrapper, whose props are only `{key, noodlNode, ref}`. The discarding was
+the **spread** — `...noodlNode.props` then `...otherProps`, last wins. Fixed at the spread, not in
+`Drag.tsx`, so a future wrapper cannot reopen it; **D28's uncounted sibling sweep answered: one.**
+5 specs, 5 mutants each killed by a named arm. The pinning drive was flipped, not deleted.
+
+Also done: the **closing sweep** both prior prompts named — the README's house rules graded
+against the table (all five hold), the unowned register re-checked at HEAD, and the phase's
+[closing note](README.md#closing-note--s23-2026-08-30).
 
 ## What to do next
 
-- **The phase is likely at its natural end.** The honest next move is the closing sweep the
-  s21 prompt named: grade the README's own criteria against the table, re-read the
-  "Findings this phase raised that nobody owns" register (rows with owner `NONE` — check each
-  is still true at HEAD before re-filing), and write the phase's closing note. Do not invent
-  rows to keep the phase alive.
-- **DEF-007 §3.2** — 56 decisions on `site-builder.content.json`, still sequenced behind
-  phase 77's active lane on that file. Check whether P77 is still mid-flight there
-  (`git log -5 -- packages/noodl-editor/src/editor/src/models/template/templates/site-builder.content.json`
-  + mtime) before considering it.
-- **🧭 Richard queue** (unchanged): DEF-025 flip (3 options in TASKS.md s17) · DEF-009 AC4
-  (rateLimit default) · DEF-005, DEF-013 rulings (re-drive SB-012 §1 at HEAD before spending
-  DEF-013's — the door's `components` now overlays unapplied plan ops).
+**There is no buildable product row left in this phase, and that statement was checked against
+the table on 2026-08-30 at s23's end.** If you are reading this later, re-run the grep above
+before believing it — that is the whole lesson of s22→s23.
+
+- **🧭 Richard's queue, and it is the phase's only real remainder:**
+  - **DEF-025** — the default flip (3 options in TASKS.md s17). A blunt flip stamps the literal
+    string `'Label'` onto every existing bare checkbox.
+  - **DEF-009 AC4** — the `rateLimit` default.
+  - **DEF-005** and **DEF-013** rulings. ⚠️ **Re-drive SB-012 §1's table at HEAD before spending
+    DEF-013's** — the door's `components` list is now built from `authoredProjectViews`, which
+    overlays a plan's unapplied operations, so the two-pages-that-link-to-each-other plan may
+    already stage clean.
+- **DEF-007 §3.2** — 56 decisions on `site-builder.content.json`. ⚠️ **Phase 77 is still live on
+  that file** — it landed `505d9b38` during s23 and its D30/D31 lane is open. Check
+  `git log -5 -- packages/noodl-editor/src/editor/src/models/template/templates/site-builder.content.json`
+  and its mtime before touching it.
+- **The unowned register has five rows marked *not re-measured*** (they need a live backend, a
+  screen or a run — see the sweep table in TASKS.md). Any of them is honest work for a session
+  with a backend up; none is a phase-80 row until someone measures it.
 
 ## Traps carried
 
+- 🔴 **A drive serves a BUILT bundle.** `render-report.js` serves
+  `packages/noodl-editor/src/external/viewer/noodl.viewer.js`, a **gitignored artifact**. A
+  `noodl-viewer-react/src` change is invisible to any noodl-mcp drive until
+  `cd packages/noodl-viewer-react && npx webpack --config webpack-configs/webpack.viewer.prod.js`
+  (~40s). s23's first post-fix drive came back **9/9 RED** for this reason alone and read exactly
+  like a broken fix. ⚠️ It is **shared and mutable on this checkout** — check for a running drive
+  before rebuilding.
 - ⚠️ **dist staleness (standing)**: a *running* MCP server answers without
-  `query-fetches-before-its-filter` (and 018–024/026's codes) until rebuilt; the editor's
-  `cloudruntime/sandbox.viewer.bundle.js` half stands. s22 touched no runtime behaviour, so
-  viewer bundles owe nothing new.
-- ⚠️ **Peer sessions run full backend suites back-to-back on this checkout** — s22 waited out
-  two in one session. Check `ps -Ao pid,ppid,command | grep jest` and attribute by PPID
-  before starting any suite; never run two package suites at once.
-- 🔴 **A full-suite run piped to `tail` loses the failure names** — redirect the whole run to
-  a file, then grep `^FAIL` / `●`.
-- 🔴 **`git checkout -- <file>` is not a mutant undo** — python string-swap restores only.
-- ⚠️ **`grep` refused `HttpServer.ts` as binary (s18)** — `-a` on any grep over
-  `nodegx-backend/src/server/`.
+  `query-fetches-before-its-filter` and 018–024/026's codes until rebuilt. DEF-027 changed the
+  viewer, so `cloudruntime/sandbox.viewer.bundle.js` may owe a rebuild too — unmeasured.
+- 🔴 **Make the peer-check its own tool call and READ it before starting a suite.** s23 issued
+  `ps` and the suite in one command, ran a viewer-react suite plus a webpack build beside a
+  peer's backend suite, and paid for it with a BLD-004 flake that had to be re-run alone.
+- 🔴 **A pathspec commit sweeps a sibling's edit** — s23's D28 update to phase 77's register went
+  in under `505d9b38`, someone else's commit. Harmless here (committed, not lost), but it is why
+  `git log <file>` will not show s23's message for that change.
+- 🔴 **Cite a package with a filename.** The register's `cloudFunctions.test.ts:85` is under
+  `noodl-editor/tests/cloud/`, not `nodegx-backend/tests/`, and the wrong guess reads as *"the
+  gate was deleted"*. Run a control grep for a string that IS there before concluding absence.
+- 🔴 **A full-suite run piped to `tail` loses the failure names** — redirect to a file, grep
+  `^FAIL` / `●`.
+- 🔴 **`git checkout -- <file>` is not a mutant undo** — python string-swap restores only, with
+  md5 parity after.
 
-## Gates (s22, all fresh — detail in TASKS.md s22)
+## Gates (s23 — full table in TASKS.md § *Gates — s23*)
 
-editor jest **6454/6458** (4 reds = the P77/P78 template lane's in-flight edits, mtimes inside
-the run window; 6447 → 6458 = the 11 new specs) · noodl-mcp **993/994** (the 1 = the same lane's
-sb007 string-pin vs the template's new `visualSort`) · typechecks ×3 clean · `catalog:examples`
-62/62 strict · `catalog:check` clean · **`test:ci` 2905/4, all AIX-006 BY NAME, seed 87145,
-fresh readout** — the floor. Trust TASKS.md s22 over this file if they disagree.
+4 typechecks clean · viewer-react **1100/1100** · noodl-mcp **994/994** · `ac2DragGestureDrive`
+**9/9** both sides of the fix · `test:ci` **2905 specs, 4 failures, all AIX-006 by name — the
+floor** · editor jest **6453/6458**, the five reds attributed (one flake, four a peer's
+uncommitted template edits), and `queryBeforeFilter.test.ts` **PASS** — the reading s22 owed.
