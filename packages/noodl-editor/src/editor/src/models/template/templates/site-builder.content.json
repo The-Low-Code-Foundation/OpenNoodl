@@ -2546,6 +2546,9 @@
             "x": 470,
             "y": 880,
             "parameters": {
+              "runOnChange-in-data": false,
+              "runOnChange-in-body": false,
+              "runOnChange-in-image": false,
               "functionScript": "if (Inputs.data === undefined) return;\nconst next = Object.assign({}, Inputs.data);\nif (Inputs.body !== undefined) next.body = Inputs.body;\nif (Inputs.image !== undefined && Inputs.image !== null) next.image = Inputs.image;\nOutputs.data = next;\nOutputs.built();"
             },
             "ports": [
@@ -3407,7 +3410,13 @@
                     "input": "pageId"
                   }
                 ]
-              }
+              },
+              "visualSort": [
+                {
+                  "property": "order",
+                  "order": "ascending"
+                }
+              ]
             },
             "ports": [],
             "dynamicports": []

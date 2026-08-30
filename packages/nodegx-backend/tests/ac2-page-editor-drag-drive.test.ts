@@ -13,22 +13,30 @@
  * `For Each.itemOutput-DropIndex` → `CloudFunction2` → a deployed `reorderSection` rather than into
  * a `Text` node, and the container the arithmetic counts over is the template's `sectionRows`.
  *
- * ## 🔴 What running it found: the shipped screen cannot be dragged, for two reasons that are not
- * the gesture
+ * ## 🔴 What running it found — two defects that are not the gesture, and 🟢 what s32 did
  *
- *  1. **`/Pages/PageEditor`'s section query states no `visualSort`** while `/Pages/Site`'s does, so
- *     the panel draws its sections in whatever order the backend hands back rather than in `order`.
- *     `dropIndex` counts DOM siblings and `reorderSection` renumbers the list sorted by `order`;
- *     those are the same list only while the editor draws in `order`.
- *  2. **`/Admin/SectionRow`'s `merge` node re-runs on the value it writes**, so opening the editor
- *     on a page that has sections starts a cyclic loop that writes to the backend until the
- *     1200/min limiter refuses everything, and the client's sections then vanish from the screen.
+ * s31 ran this file and found that the shipped screen could not be dragged at all, for two reasons
+ * that had nothing to do with the gesture:
  *
- * The second one makes the first undriveable on the shipped artefact — the page destroys itself
- * before a gesture can be graded — so the drag is driven on an arm that differs from the shipped
- * project by the parameters the editor's own NDA-017 migration would write. Stated plainly rather
- * than papered over: **AC2's gesture works on the real page editor, and the artefact a person
- * receives cannot show it.**
+ *  1. **[D30] `/Pages/PageEditor`'s section query stated no `visualSort`** while `/Pages/Site`'s
+ *     did, so the panel drew its sections in whatever order the backend handed back rather than in
+ *     `order`. `dropIndex` counts DOM siblings and `reorderSection` renumbers the list sorted by
+ *     `order`; those are the same list only while the editor draws in `order`.
+ *  2. **[D31] `/Admin/SectionRow`'s `merge` node re-ran on the value it writes**, so opening the
+ *     editor on a page that had sections started a cyclic loop that wrote to the backend until the
+ *     1200/min limiter refused everything — 115,755 write errors in eleven seconds on a screen
+ *     nobody was touching — and the client's sections then vanished from the screen.
+ *
+ * The second made the first undriveable on the shipped artefact, so s31 drove the drag on a mutant
+ * arm and said so rather than papering over it.
+ *
+ * 🟢 **s32 fixed both, in the template that generates the artefact** — three
+ * `runOnChange-in-…: false` on `merge` (first in the bag) and the shared `SECTION_SORT` on the
+ * editor's query. **The specs were FLIPPED rather than deleted, and the arms inverted with them:**
+ * the gesture now runs on the SHIPPED project, and the mutants restore the defects instead of
+ * repairing them, so this file is the regression net for both rows. What it now says is the thing
+ * s31 could not: **AC2's gesture works on the real page editor, on the artefact a person
+ * receives.**
  *
  * ## The instrument
  *
@@ -79,7 +87,7 @@ import {
 
 jest.setTimeout(1800000);
 
-/** The shipped template artefact, read for the static half of finding 2. */
+/** The shipped template artefact, read for the static half of D30. */
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const SITE_TEMPLATE = require('../../noodl-editor/src/editor/src/models/template/templates/site-builder.content.json');
 
@@ -269,7 +277,8 @@ function setParams(
   componentPath: string,
   nodeLabel: string,
   params: Record<string, unknown>,
-  label: string
+  label: string,
+  precondition: 'absent' | 'present-and-false' = 'absent'
 ): void {
   const file = path.join(dir, 'components', componentPath, 'nodes.json');
   const doc = JSON.parse(fs.readFileSync(file, 'utf-8')) as {
@@ -278,12 +287,28 @@ function setParams(
   const matched = doc.nodes.filter((n) => n.label === nodeLabel);
   expect(`${label} matched:${matched.length}`).toBe(`${label} matched:1`);
   const existing = matched[0].parameters || {};
-  // 🔴 The keys must be ABSENT before the edit, or the arm varied nothing and the whole comparison
-  // with the shipped arm is between two identical projects.
-  expect(`${label} already set:${Object.keys(params).filter((k) => k in existing).join(',')}`).toBe(
-    `${label} already set:`
-  );
-  matched[0].parameters = { ...params, ...existing };
+  if (precondition === 'absent') {
+    // 🔴 The keys must be ABSENT before the edit, or the arm varied nothing and the whole
+    // comparison with the shipped arm is between two identical projects.
+    expect(`${label} already set:${Object.keys(params).filter((k) => k in existing).join(',')}`).toBe(
+      `${label} already set:`
+    );
+    matched[0].parameters = { ...params, ...existing };
+  } else {
+    /**
+     * 🔴 **The mirror precondition, and s32 needs it more than the original.** An arm that
+     * RESTORES a defect the template now fixes has to prove the fix was there to undo: the keys
+     * must be present AND `false` beforehand. Without this, a template that quietly stopped
+     * stating them would leave this arm "restoring" a defect that was never absent — the shipped
+     * arm would go red and this one would still look like it had done its job.
+     */
+    expect(
+      `${label} was:${Object.keys(params)
+        .map((k) => `${k}=${JSON.stringify(existing[k])}`)
+        .join(',')}`
+    ).toBe(`${label} was:${Object.keys(params).map((k) => `${k}=false`).join(',')}`);
+    matched[0].parameters = { ...existing, ...params };
+  }
   fs.writeFileSync(file, JSON.stringify(doc, null, 2));
 }
 
@@ -363,9 +388,12 @@ describe('SBR-007 AC2 — dragging a section on the REAL page editor, against an
   /** Whatever the page showed for a refusal — the template mounts one on `reorder.failure`. */
   let refusalText = '';
   let moveUpFound = { ok: false } as { ok: boolean; why?: string; card?: string; hits?: string };
+  /** The SHIPPED artefact, opened and left alone. Quiet since s32 fixed D31. */
   let watchShipped: Watch = NO_WATCH;
-  let watchNoRefetch: Watch = NO_WATCH;
-  let watchPassiveMerge: Watch = NO_WATCH;
+  /** The defect put back on `merge` — what says the three parameters are load-bearing. */
+  let watchDefect: Watch = NO_WATCH;
+  /** …and the same defect with the editor's refetch wire also removed: still storms. */
+  let watchDefectNoRefetch: Watch = NO_WATCH;
 
   const readOrders = async (s: Seeded): Promise<Record<string, number>> => {
     const out: Record<string, number> = {};
@@ -516,8 +544,10 @@ describe('SBR-007 AC2 — dragging a section on the REAL page editor, against an
     // 🔴 Without this the drive would be measuring a coincidence. The editor states no sort, so
     // what it draws is whatever the backend returns — which for freshly created rows may happen to
     // agree with `order`. Moving one section through the endpoint first makes the two orders
-    // differ by construction, so finding 1 is a reading rather than a lucky observation, and so
-    // the drag has a position it can actually change.
+    // differ by construction. 🔴 **It matters MORE after s32, not less**: now that the editor
+    // sorts, a page whose stored order happened to match its creation order would let a screen
+    // that ignored `order` still draw the right list, and the three D30 specs below would pass on
+    // a template with no `visualSort` at all. This is what keeps them measurements.
     const moved = await client.post<{ result?: { order?: number } }>(
       '/functions/reorderSection',
       { pageId: gesturePage.pageId, sectionId: gesturePage.sectionIds[1], toIndex: 0 },
@@ -526,52 +556,22 @@ describe('SBR-007 AC2 — dragging a section on the REAL page editor, against an
     expect(moved.status).toBe(200);
     storedSeeded = await readOrders(gesturePage);
 
-    // ── ARM 1: the shipped project, watched with nothing touching it ─────────
+    // ── ARM 1: the shipped project — the artefact a person actually receives ──
+    //
+    // 🔴 **This arm inverted at s32.** Until D31 was fixed it was the arm that STORMED, and the
+    // gesture had to be driven on a mutant because the shipped screen could not hold still. It is
+    // now the quiet one, and it is where the gesture runs. That is the whole of what s32 bought:
+    // the artefact a person receives can demonstrate AC2.
     await withRenderedPage({ projectDir, backendPort }, async (page0) => {
       const page = page0 as RenderedPage;
       browserSession = await signInBrowser(page);
       watchShipped = await watchForWrites(page, watchPage, 'shipped');
-    });
 
-    // ── ARM 2: the editor's own refetch wire removed ─────────────────────────
-    //
-    // `sectionList.itemOutputSignal-Changed → sections.storageFetch` is the obvious candidate for
-    // the cycle: a row's write reports `Changed`, the editor refetches, the refetch redelivers
-    // `data`, and round it goes. This arm is what says whether that is the loop — and it is the
-    // arm that turned out to be the control rather than the cause.
-    await wait(RATE_WINDOW_MS);
-    const noRefetch = copyProject(projectDir, 'norefetch');
-    mutantDirs.push(noRefetch);
-    dropWire(noRefetch, 'Pages/PageEditor', 'itemOutputSignal-Changed', 'storageFetch', 'refetch-on-Changed');
-    await withRenderedPage({ projectDir: noRefetch, backendPort }, async (page0) => {
-      const page = page0 as RenderedPage;
-      await signInBrowser(page);
-      watchNoRefetch = await watchForWrites(page, watchPage, 'no refetch-on-Changed');
-    });
-
-    // ── ARM 3: `merge` made passive, which is what closes it — and the gesture ──
-    //
-    // 🔴 The three parameters are not invented for this arm. `RUN_ON_CHANGE_FAMILIES` gives
-    // `JavaScriptFunction` the control signal `run` and the discovered prefix `in-`, and
-    // `merge.run` IS connected (`saveButton.onClick`, `upload.done`) — so the editor's NDA-017
-    // migration writes exactly these three the first time the project is opened. They are the
-    // repair the product already knows about, applied to the artefact that ships without them.
-    await wait(RATE_WINDOW_MS);
-    const passiveMerge = copyProject(projectDir, 'passivemerge');
-    mutantDirs.push(passiveMerge);
-    setParams(
-      passiveMerge,
-      'Admin/SectionRow',
-      'Fold the edits back into data',
-      { 'runOnChange-in-data': false, 'runOnChange-in-body': false, 'runOnChange-in-image': false },
-      'passive merge'
-    );
-    await withRenderedPage({ projectDir: passiveMerge, backendPort }, async (page0) => {
-      const page = page0 as RenderedPage;
-      await signInBrowser(page);
-      watchPassiveMerge = await watchForWrites(page, watchPage, 'passive merge');
-
-      // ── The gesture, on the only arm where the screen holds still ──────────
+      // ── The gesture, ON THE SHIPPED ARM ───────────────────────────────────
+      //
+      // 🔴 **This is what s32 moved.** s31 could only drive the gesture on a mutant, because
+      // the shipped screen was writing 115,755 times in eleven seconds and would not hold
+      // still. It now runs on the artefact a person receives.
       storedBoot = await readOrders(gesturePage);
       boot = await openEditor(page, gesturePage);
       // eslint-disable-next-line no-console
@@ -582,11 +582,12 @@ describe('SBR-007 AC2 — dragging a section on the REAL page editor, against an
       if (boot.cardCount === SECTIONS.length) {
         // The LAST card, dragged to the TOP.
         //
-        // 🔴 The choice is the measurement. Under finding 1 the drawn order and the stored order
-        // disagree, and a drag of a card whose DOM position already matches its stored position
-        // asks the endpoint for the place it holds — so "the call never fired" and "the call fired
-        // and asked for nothing" would be the same reading. The last card is at DOM index 2 and,
-        // after the pre-move above, no section is at stored index 2 and DOM index 2 at once.
+        // 🔴 The choice is still the measurement, for a reason that CHANGED at s32. Before D30
+        // was fixed the drawn and stored orders disagreed, and the last card was chosen because
+        // no section sat at stored index 2 and DOM index 2 at once. Now they agree by
+        // construction — so the reason is the simpler one: the last card holds stored index 2 and
+        // is being asked for index 0, which it does not hold. "The call never fired" and "the
+        // call fired and asked for nothing" still cannot read the same.
         const fromIndex = boot.cards.length - 1;
         const source = boot.cards[fromIndex];
         const top = boot.cards[0];
@@ -647,14 +648,16 @@ describe('SBR-007 AC2 — dragging a section on the REAL page editor, against an
         //
         // Two presses, and the pair is a measurement rather than a retry.
         //
-        // 🔴 The FIRST is on the card a client sees at the bottom of the list. Under finding 1
-        // that card need not be the last section, and here it is the FIRST one — so `Move up`
-        // correctly refuses (a row already at the top is the planner's guarded return) and the
-        // client's press does nothing at all, on a button they can see and a row that visibly has
-        // rows above it.
+        // 🔴 The FIRST is on the card a client sees at the bottom of the list. Before D30 was
+        // fixed that card need not have been the last section — it was the FIRST one, so `Move up`
+        // correctly refused (a row already at the top is the planner's guarded return) and the
+        // client's press did nothing at all, on a button they could see and a row that visibly had
+        // rows above it. It now moves the row it points at.
         //
-        // The SECOND is on whichever card holds the last STORED position, and it is the one that
-        // says the button road still works after the gesture was built on top of it.
+        // The SECOND is on whichever card holds the last STORED position AFTER that press, and it
+        // is the one that says the button road still works after the gesture was built on top of
+        // it. The two are still distinct presses on distinct rows, because the first one moved the
+        // row it was aimed at out of last place.
         const findMoveUp = async (whichCard: string): Promise<typeof moveUpFound> =>
           JSON.parse(
             String(
@@ -707,6 +710,55 @@ describe('SBR-007 AC2 — dragging a section on the REAL page editor, against an
         // eslint-disable-next-line no-console
         console.log('        stored after Move up:', JSON.stringify(storedAfterMoveUp));
       }
+    });
+
+    // ── ARM 2: the defect put back — one parameter bag, counted ──────────────
+    //
+    // 🔴 **The regression net, and the mutant is now the DEFECT rather than the fix.**
+    // `runOnChange` reads absent as ticked, so what shipped was the ABSENCE of these three keys.
+    // The template states them `false`; this arm states them `true` — same node, same wires, same
+    // backend, same window, three values different. If the template ever loses them, ARM 1 goes
+    // red and this arm is what that red would look like.
+    await wait(RATE_WINDOW_MS);
+    const defectRestored = copyProject(projectDir, 'defect');
+    mutantDirs.push(defectRestored);
+    setParams(
+      defectRestored,
+      'Admin/SectionRow',
+      'Fold the edits back into data',
+      { 'runOnChange-in-data': true, 'runOnChange-in-body': true, 'runOnChange-in-image': true },
+      'defect restored',
+      'present-and-false'
+    );
+    await withRenderedPage({ projectDir: defectRestored, backendPort }, async (page0) => {
+      const page = page0 as RenderedPage;
+      await signInBrowser(page);
+      watchDefect = await watchForWrites(page, watchPage, 'defect restored');
+    });
+
+    // ── ARM 3: the defect put back AND the editor's refetch wire removed ─────
+    //
+    // 🔴 s31's exclusion of the obvious suspect, RE-BASED onto the restored defect so it still
+    // asks its question. `sectionList.itemOutputSignal-Changed → sections.storageFetch` is the
+    // edge everybody names first; removing it does NOT stop the loop, it only stops the query
+    // refusals. A fix aimed there would have measured green on every gate and changed nothing —
+    // which is exactly why this arm has to survive the fix rather than be deleted with it.
+    await wait(RATE_WINDOW_MS);
+    const defectNoRefetch = copyProject(projectDir, 'defect-norefetch');
+    mutantDirs.push(defectNoRefetch);
+    setParams(
+      defectNoRefetch,
+      'Admin/SectionRow',
+      'Fold the edits back into data',
+      { 'runOnChange-in-data': true, 'runOnChange-in-body': true, 'runOnChange-in-image': true },
+      'defect restored + no refetch',
+      'present-and-false'
+    );
+    dropWire(defectNoRefetch, 'Pages/PageEditor', 'itemOutputSignal-Changed', 'storageFetch', 'refetch-on-Changed');
+    await withRenderedPage({ projectDir: defectNoRefetch, backendPort }, async (page0) => {
+      const page = page0 as RenderedPage;
+      await signInBrowser(page);
+      watchDefectNoRefetch = await watchForWrites(page, watchPage, 'defect restored, no refetch-on-Changed');
     });
   });
 
@@ -773,8 +825,9 @@ describe('SBR-007 AC2 — dragging a section on the REAL page editor, against an
   it('a real pointer drag on the REAL page editor reaches the endpoint and renumbers the STORED rows', () => {
     // The oracle is the stored row, read as the owner, over the ids this file created — and the
     // expectation is computed from what was stored and what was dragged rather than typed.
-    // ⚠️ Driven on the arm where `merge` is passive; the shipped artefact cannot hold still long
-    // enough to be dragged at all. See finding 2.
+    // ✅ **Driven on the SHIPPED arm since s32.** s31 could only take this reading on a mutant,
+    // because the artefact a person receives was writing 115,755 times in eleven seconds and could
+    // not hold still long enough to be dragged. D31 fixed that, and this moved.
     expect(gesturePage.sectionIds.map((id) => storedAfterDrag[id])).toEqual(
       gesturePage.sectionIds.map((id) => expectedAfterDrag[id])
     );
@@ -811,37 +864,46 @@ describe('SBR-007 AC2 — dragging a section on the REAL page editor, against an
     expect(after).not.toEqual(before);
   });
 
-  it('FINDING — but `Move up` on the card a client sees at the BOTTOM does nothing at all', () => {
-    // 🔴 Finding 1 in the form a person meets it. The bottom card holds stored position 0, so the
-    // planner's guarded return is correct and the press is legitimately refused — on a row that
-    // visibly has two rows above it, with no message and no change. The button is real, reachable
-    // and hit-tested; it is the LIST that is wrong.
+  it('`Move up` on the card a client sees at the BOTTOM moves the row they pointed at', () => {
+    /**
+     * 🔴 **D30 in the form a person met it, now fixed.** Before the sort, the bottom card held
+     * stored position 0 — so the planner's guarded return was correct and the press was
+     * legitimately refused, on a row that visibly had two rows above it, with no message and no
+     * change. The button was never broken; the LIST was.
+     *
+     * The press is unchanged and still hit-tested. What changed is that the card at the bottom of
+     * what a client sees is now the row that is actually last.
+     */
     expect(`hits:${moveUpFound.hits} changed:${JSON.stringify(storedAfterBottomMoveUp) !== JSON.stringify(storedAfterDrag)}`).toBe(
-      'hits:BUTTON.ndl-controls-button changed:false'
+      'hits:BUTTON.ndl-controls-button changed:true'
     );
   });
 
   // ==========================================================================
-  // 🔴 FINDING 1 — the editor does not draw its sections in `order`
+  // 🟢 D30 — the editor draws its sections in `order`. Fixed s32.
   // ==========================================================================
 
   /**
    * `/Pages/Site` sorts its sections (`SECTION_SORT` → `visualSort: [{ property: 'order' }]`).
-   * `/Pages/PageEditor`'s `sections` query states no `visualSort` at all, so the panel renders
-   * whatever the backend returns.
+   * `/Pages/PageEditor`'s `sections` query stated **no** `visualSort` at all, so the panel
+   * rendered whatever the backend returned. s32 gave it the SAME CONSTANT, moved to
+   * `sb005Components.ts` so both queries share one copy rather than two that can drift.
    *
    * 🔴 **It is the gesture's own foundation.** `dropIndex` counts DOM siblings and
    * `reorderSection` renumbers the list sorted by `order`. Those are the same list only while the
-   * editor draws in `order`. Under this mismatch the index a drop produces is an index into a list
-   * nobody else uses, so the section does not land where it was dropped — and on a list that
-   * happens to come back reversed, dragging the top card to the bottom asks for the position it
-   * already holds and reads as a drag that does nothing.
+   * editor draws in `order`. Under the old mismatch the index a drop produced was an index into a
+   * list nobody else used, so the section did not land where it was dropped.
    *
-   * ⚠️ It predates the drag. `Move up` and `Move down` have always renumbered a list the client was
+   * ⚠️ It predated the drag. `Move up` and `Move down` had always renumbered a list the client was
    * never shown, and the ten stored-row cases in `sb004-publication-invariant.test.ts` grade the
-   * endpoint — which is correct — rather than the screen.
+   * endpoint — which is correct — rather than the screen. 🔴 **That is the shape this phase kept
+   * paying for: a green suite over the half that was right.**
+   *
+   * 🔴 **The pre-move in `beforeAll` is what keeps these three specs honest.** The stored order is
+   * deliberately not the creation order, so a page editor that ignored `order` would still draw
+   * the wrong list and redden them. They are measurements, not tautologies.
    */
-  it('FINDING — the shipped page editor states no sort on its section query, while the public site does', () => {
+  it('the shipped page editor states the SAME sort on its section query as the public site', () => {
     /**
      * The artefact, not a paraphrase of it — and the two queries are found by the same label
      * because they genuinely carry the same one: *"This page's sections"*, once in `/Pages/Site`
@@ -870,15 +932,16 @@ describe('SBR-007 AC2 — dragging a section on the REAL page editor, against an
       '        section queries in the template:',
       JSON.stringify(queries.map((q) => Object.keys(q.parameters ?? {})))
     );
-    // Pinned rather than fixed here: the fix is a `visualSort` on one query and it belongs on a
-    // register with an owner. Whoever fixes it should make this `editorSorted:true` — not delete it.
+    // 🔴 Flipped rather than deleted at s32: this is now the regression net for D30. The four
+    // queries share a label, and the identification is still `runOnChange-qp-pageId`, so a
+    // template that regrows a second unsorted section query reddens this rather than sliding past.
     expect(
       `queries:${queries.length} editor:${editor.length} anySorted:${sorted.length > 0} ` +
         `editorSorted:${editor[0]?.parameters?.visualSort !== undefined}`
-    ).toBe('queries:4 editor:1 anySorted:true editorSorted:false');
+    ).toBe('queries:4 editor:1 anySorted:true editorSorted:true');
   });
 
-  it('FINDING — and on the screen, the drawn order is not the stored order', () => {
+  it('and on the screen, the drawn order IS the stored order', () => {
     const drawn = boot.cards.map(kindOf);
     const stored = gesturePage.sectionIds
       .map((id, i) => ({ kind: SECTIONS[i].kind, order: storedBoot[id] }))
@@ -886,94 +949,121 @@ describe('SBR-007 AC2 — dragging a section on the REAL page editor, against an
       .map((s) => s.kind);
     // eslint-disable-next-line no-console
     console.log('        drawn:', JSON.stringify(drawn), 'stored order:', JSON.stringify(stored));
-    expect(drawn).not.toEqual(stored);
+    expect(drawn).toEqual(stored);
   });
 
-  it('FINDING — so the section did not land where the client dropped it', () => {
-    // The client dragged the last card to the top of the list they could see. What the stored rows
-    // record is that card put at index 0 of a list in a DIFFERENT order, so the section it now sits
-    // above is not the one it was dropped above.
+  it('so the section landed exactly where the client dropped it', () => {
+    // The client dragged the last card to the top of the list they could see, and what the stored
+    // rows record is that card at index 0 of THE SAME list. Before D30 was fixed the drop landed
+    // at index 0 of a list in a different order, so the section it ended up above was not the one
+    // it had been dropped above.
     const storedAfter = Object.keys(storedAfterDrag).sort((a, b) => storedAfterDrag[a] - storedAfterDrag[b]);
     const drawnAfter = afterDrag.cards.map(kindOf);
     const storedKinds = storedAfter.map((id) => SECTIONS[gesturePage.sectionIds.indexOf(id)].kind);
     // eslint-disable-next-line no-console
     console.log('        after the drop — drawn:', JSON.stringify(drawnAfter), 'stored:', JSON.stringify(storedKinds));
-    expect(drawnAfter).not.toEqual(storedKinds);
+    expect(drawnAfter).toEqual(storedKinds);
   });
 
   // ==========================================================================
-  // 🔴 FINDING 2 — opening the shipped page editor writes, forever, unprompted
+  // 🟢 D31 — opening the shipped page editor writes nothing. Fixed s32.
   // ==========================================================================
 
   /**
-   * `/Admin/SectionRow`'s `merge` re-runs whenever a value lands on it — `runOnChange` reads absent
+   * `/Admin/SectionRow`'s `merge` re-ran whenever a value landed on it — `runOnChange` reads absent
    * as **ticked** — and `merge.out-built → save.store` writes the section back. `SetDbModelProperties`
    * writes into the very model `For Each` feeds the row's `data` from, and `merge` builds a fresh
-   * object every run, so the value always counts as changed and the node runs again.
+   * object every run, so the value always counted as changed and the node ran again.
    *
-   * 🔴 **The three parameters that stop it are ones the product already knows about.** Eleven other
+   * 🔴 **The three parameters that stop it are ones the product already knew about.** Eleven other
    * `JavaScriptFunction` nodes in this same template state `runOnChange-…: false`, three of them in
    * this very screen, and the editor's NDA-017 migration writes exactly these three onto any node
-   * whose `run` is connected — which `merge`'s is. The artefact ships without them.
+   * whose `run` is connected — which `merge`'s is (`saveButton.onClick`, `upload.done`). The
+   * artefact shipped without them; s32 states them, FIRST in the bag, because
+   * `NodeScope.setNodeParameters` drains queued values in key order.
    *
-   * 🔴 **Nothing in the suite could see it.** Every wire is individually right, the census counts
-   * are right, the page renders, and the endpoint's own suite never opens a screen. It needs a
-   * browser, a real backend, and a page that HAS sections — which is why it survived s22's drive of
-   * this very screen: that page had none.
+   * ⚠️ **`unpack` is deliberately NOT given the same treatment**, and that was measured rather
+   * than assumed. It takes `in-data` on the same wire but has **no `run` connected**, so the value
+   * change is its only trigger — silencing it would leave the body textarea and the image preview
+   * permanently empty. The NDA-017 migration skips it for exactly the same reason.
+   *
+   * 🔴 **Nothing else in the suite could see this.** Every wire is individually right, the census
+   * counts are right, the page renders, and the endpoint's own suite never opens a screen. It
+   * needs a browser, a real backend, and a page that HAS sections — which is why it survived s22's
+   * drive of this very screen: that page had none.
    */
-  it('FINDING — a shipped page editor nobody is touching attempts writes on its own', () => {
-    // No pointer, no key, no click — the arm is a page that was opened and looked at.
-    expect(watchShipped.rowWrites).toBeGreaterThan(0);
+  it('a shipped page editor nobody is touching attempts NO writes of its own', () => {
+    // No pointer, no key, no click — the arm is a page that was opened and looked at. This read
+    // 115,755 before s32.
+    expect(watchShipped.rowWrites).toBe(0);
   });
 
-  it('FINDING — the runtime names it: a cyclic loop, in the row', () => {
-    // Not this file's inference. `runtime/cyclic-loop` is the viewer's own diagnostic, raised
-    // against `/Admin/SectionRow`.
-    expect(watchShipped.cyclic).toBeGreaterThan(0);
+  it('and the runtime raises no cyclic loop against the row', () => {
+    // Not this file's inference either way. `runtime/cyclic-loop` is the viewer's OWN diagnostic,
+    // and it was raised 142 times against `/Admin/SectionRow` before s32.
+    expect(watchShipped.cyclic).toBe(0);
   });
 
-  it('FINDING — it does not stop: the backend’s rate limiter is what ends it', () => {
-    // The limiter is 1200 data requests a minute. Reaching it from a page nobody is touching is
-    // what makes this a loop rather than a redundant write on load.
-    expect(watchShipped.rowWrites).toBeGreaterThan(50);
-  });
-
-  it('FINDING — and the page’s own section query starts being refused with it', () => {
+  it('and no write LANDED either — attempted and landed are two readings', () => {
     /**
-     * The consequence, which is the half a person reports: the limiter does not distinguish the
-     * loop's writes from the screen's reads, so the `DbCollection2` that draws the sections starts
-     * failing on a page whose rows are all still in the database.
+     * 🔴 A separate question from the one above, kept separate. The error counts say how many
+     * writes were **attempted**; `updatedAt` says whether one **landed**. A loop whose writes were
+     * all refused by the rate limiter moves no timestamp at all, so a fix measured only on
+     * timestamps could call the storm quiet. This asserts both halves are now genuinely zero.
+     */
+    expect(`landed:${watchShipped.landed} rows:${watchShipped.after.length}`).toBe(
+      `landed:false rows:${SECTIONS.length}`
+    );
+  });
+
+  it('and the page’s own section query is never refused — the consequence a person reported', () => {
+    /**
+     * The consequence, which was the half a person reported: the limiter does not distinguish the
+     * loop's writes from the screen's reads, so the `DbCollection2` that draws the sections began
+     * failing on a page whose rows were all still in the database.
      *
-     * ⚠️ **Asserted on the refusal, not on the empty list.** Whether the list is empty at the
-     * moment this arm looks depends on which side of a failed fetch the window closes — it was
-     * empty on two of the four runs of this file and populated on the others. The refusal itself
-     * was present every time, and it is the thing that is true rather than the thing that was
-     * true twice. The mutant arm below reads `queryFailed:0`, so this is not a constant.
+     * ⚠️ **Asserted on the refusal, not on the empty list.** Whether the list was empty at the
+     * moment this arm looked depended on which side of a failed fetch the window closed — it was
+     * empty on two of s31's four runs and populated on the others. The refusal was present every
+     * time, and it is the thing that is true rather than the thing that was true twice.
+     *
+     * 🔴 **The direction reversed at s32 and the pairing is what stops it being a constant.** The
+     * shipped arm must now read `0` and the DEFECT arm must read above it — a spec that only said
+     * `shipped == 0` would pass just as well if the console capture had broken.
      */
     // eslint-disable-next-line no-console
     console.log('        cards left on screen at the end of the shipped arm:', watchShipped.cardsAtEnd);
-    expect(`queryFailed:${watchShipped.queryFailed > 0} mutantQueryFailed:${watchPassiveMerge.queryFailed}`).toBe(
-      'queryFailed:true mutantQueryFailed:0'
+    expect(`queryFailed:${watchShipped.queryFailed} defectQueryFailed:${watchDefect.queryFailed > 0}`).toBe(
+      'queryFailed:0 defectQueryFailed:true'
     );
   });
 
-  it('CONTROL — removing the editor’s refetch wire does NOT stop it: the cycle is inside the row', () => {
-    // 🔴 The obvious suspect, excluded. `save.done → Changed → storageFetch` is a real edge and it
-    // is not the one that closes the loop — which matters, because a fix aimed at the editor would
-    // have been measured green by every gate and changed nothing.
-    expect(watchNoRefetch.rowWrites).toBeGreaterThan(50);
-  });
-
-  it('CONTROL — making `merge` passive DOES stop it, on the same page and the same backend', () => {
-    // 🔴 The arm that names the cause. Same template, same backend, same browser, same window,
-    // same page — three parameters different, and the edit was counted.
-    expect(`rowWrites:${watchPassiveMerge.rowWrites} cyclic:${watchPassiveMerge.cyclic}`).toBe(
-      'rowWrites:0 cyclic:0'
+  it('MUTANT — putting the three parameters back to `true` brings the whole storm back', () => {
+    /**
+     * 🔴 **The regression net for D31, and the reason the quiet above is a measurement.** Same
+     * template, same backend, same browser, same window, same page — three parameter VALUES
+     * different, and the edit was counted twice over: `matched:1`, and the keys asserted present
+     * and `false` beforehand.
+     *
+     * Without this arm, `rowWrites:0` on the shipped arm is satisfied just as well by a console
+     * capture that broke, a page that never loaded, or a backend that was not running.
+     */
+    expect(`rowWrites:${watchDefect.rowWrites > 50} cyclic:${watchDefect.cyclic > 0}`).toBe(
+      'rowWrites:true cyclic:true'
     );
   });
 
-  it('CONTROL — and that quiet arm still rendered the three rows, so it is quiet rather than broken', () => {
-    // A mutant that rendered nothing would be quiet for the wrong reason.
-    expect(watchPassiveMerge.cardsAtEnd).toBe(SECTIONS.length);
+  it('MUTANT — and removing the editor’s refetch wire does NOT stop it: the cycle is inside the row', () => {
+    // 🔴 The obvious suspect, still excluded — re-based onto the restored defect so it keeps
+    // asking its question after the fix. `save.done → Changed → storageFetch` is a real edge and
+    // it is not the one that closes the loop, which matters because a fix aimed at the editor
+    // would have been measured green by every gate and changed nothing.
+    expect(watchDefectNoRefetch.rowWrites).toBeGreaterThan(50);
+  });
+
+  it('CONTROL — the shipped arm still rendered the three rows, so it is quiet rather than broken', () => {
+    // 🔴 An arm that rendered nothing would be quiet for the wrong reason — and after s32 this is
+    // the SHIPPED arm, so it is also the claim that the fix cost the screen nothing.
+    expect(watchShipped.cardsAtEnd).toBe(SECTIONS.length);
   });
 });

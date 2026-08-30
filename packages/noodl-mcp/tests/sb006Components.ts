@@ -116,7 +116,7 @@
  * stamp never reached (a declared token default alone never runs a setter).
  */
 import { THEME_TOKEN_FIELDS } from '../../noodl-editor/src/editor/src/models/template/templates/siteTheme';
-import { ROUTER } from './sb005Components';
+import { ROUTER, SECTION_SORT } from './sb005Components';
 
 export const THEME_KEYS = THEME_TOKEN_FIELDS;
 
@@ -126,6 +126,9 @@ export const THEME_KEYS = THEME_TOKEN_FIELDS;
  * nothing would report it.
  */
 export { ROUTER } from './sb005Components';
+// 🔴 D30 — one copy, shared with `/Pages/PageEditor`'s query. Re-exported so this
+// module's own consumers are unaffected by where it is defined.
+export { SECTION_SORT } from './sb005Components';
 
 /** The public site's one page component, as `RouterNavigate.target` names it. */
 export const SITE_PAGE = '/Pages/Site';
@@ -311,9 +314,6 @@ export const NAV_FILTER = {
 
 /** Published pages, in the order the admin asked for. SB-004 §2's derived nav. */
 export const NAV_SORT = [{ property: 'navOrder', order: 'ascending' }];
-
-/** Sections render in `order`, which is what makes a page a page. */
-export const SECTION_SORT = [{ property: 'order', order: 'ascending' }];
 
 /** The one thing a failed contact submission is allowed to say. */
 export const CONTACT_REFUSAL_TEXT = 'That message could not be sent.';

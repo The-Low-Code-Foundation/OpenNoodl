@@ -1259,3 +1259,145 @@ the editor; the template at HEAD does not.
 | **gesture** (by dragging) | ✅ built s30, mechanism driven s30 |
 | **the template's own drag, rendered end to end** | ✅ **DRIVEN s31** — on the arm D31 does not melt |
 | **on the artefact a person receives** | 🔴 **NOT demonstrable** — D31 destroys the screen, D30 sends the section elsewhere |
+
+---
+
+## 35. s32 — both of s31's defects fixed, and the drive that pinned them now defends them
+
+s31 ended with AC2's gesture driven on the real page editor and a sentence it refused to round up:
+*"AC2's gesture works on the real page editor, and the artefact a person receives cannot show it."*
+This session fixed the two rows that made that true. **The artefact can now show it.**
+
+Everything below is the same instrument s31 built —
+[`ac2-page-editor-drag-drive.test.ts`](../../../packages/nodegx-backend/tests/ac2-page-editor-drag-drive.test.ts),
+**23 specs, ~5.7 min, all green** — run against a fixed template rather than a broken one.
+
+### 35.1 The two edits, and the one that was not where it looked
+
+**[D31](DEFECTS-THE-SITE-BUILDER-FOUND.md#d31)** — three parameters on `merge` in
+`SECTION_ROW_NODES`, **first in the bag**:
+
+```ts
+'runOnChange-in-data': false,
+'runOnChange-in-body': false,
+'runOnChange-in-image': false,
+```
+
+**[D30](DEFECTS-THE-SITE-BUILDER-FOUND.md#d30)** — `visualSort: SECTION_SORT` on the `sections`
+node of `PAGE_EDITOR_NODES`.
+
+🔴 **`SECTION_SORT` had to MOVE, and the handoff's instruction would have broken the build.** The
+prompt said to import it from `sb006Components.ts`. But `sb006` already imports `ROUTER` from
+`sb005` **and uses it at module-eval time** (`parameters: { router: ROUTER, … }`, twice) — so
+importing back would have created a cycle in which `ROUTER` is still in its TDZ when `sb006`'s body
+evaluates. The constant now lives in `sb005Components.ts`; `sb006` re-exports it exactly the way it
+already re-exports `ROUTER`. **One copy, no cycle, no consumer moved** — which was the point of the
+instruction, reached the other way round.
+
+✅ **`unpack` was the open question s31 left, and the answer is NO.** It takes `in-data` on the same
+wire but has **no `run` connected** — one inbound wire in `connections.json` — so the value change
+is its only trigger. Silencing it would leave the body textarea and the image preview permanently
+empty. The NDA-017 migration skips it for exactly that reason. 🔴 **Measured rather than left
+alone**, which is what the row asked for.
+
+### 35.2 🟢 What the drive reads now
+
+| reading | s31 | s32 |
+|---|---|---|
+| drawn vs stored at boot | `hero, richText, gallery` vs `richText, hero, gallery` | **identical** |
+| after dragging the bottom card to the top | drawn unchanged; stored `gallery, richText, hero` | **both `gallery, richText, hero`** |
+| `Move up` on the card a client sees LAST | hit-tested, **nothing happens** | **moves the row they pointed at** |
+| a shipped editor nobody is touching | **115,755** write errors, 142 cyclic, 69 refusals | **0 / 0 / 0**, and no write landed |
+| the arm the gesture runs on | a **mutant** | **the shipped project** |
+
+### 35.3 🔴 The specs were FLIPPED and the arms INVERTED — which is the part worth stealing
+
+The handoff's table said flip rather than delete, and doing it exposed something the table did not
+anticipate: **the mutants had to change direction too.**
+
+s31's mutants *repaired* the shipped project to name a cause. Once the template is fixed, that
+mutant repairs nothing — and `setParams`' own precondition (*the keys must be ABSENT beforehand*)
+would have gone red. So the arms now **restore the defect**:
+
+| arm | s31 | s32 |
+|---|---|---|
+| 1 | shipped — stormed | **shipped — quiet, and the gesture runs here** |
+| 2 | shipped minus the refetch wire — still stormed | **defect restored (`true`) — storms** |
+| 3 | shipped plus the three flags — quiet, gesture here | **defect restored + refetch wire dropped — still storms** |
+
+🔴 **`setParams` grew a mirror precondition, and it is load-bearing.** An arm that restores a defect
+must prove the fix was there to undo: the keys are asserted **present and `false`** before being
+forced to `true`. Without it, a template that quietly stopped stating them would leave arm 2
+"restoring" a defect that was never absent — arm 1 would go red and arm 2 would still look like it
+had done its job. ✅ **A mutant that varied nothing is an arm that measured nothing**, and that is
+as true of un-fixing as of fixing.
+
+🔴 **Arm 3 had to be re-based, not deleted.** s31's best reading was that removing
+`Changed → storageFetch` does *not* stop the loop — the obvious suspect, excluded by an arm rather
+than by reasoning. Once the loop is gone that arm proves nothing about a loop that does not exist,
+so it now sits on top of the restored defect and still asks its question: **20,507 row writes with
+the wire gone.** ✅ **When a fix lands, a control does not become obsolete — it becomes a control
+about the mutant.**
+
+### 35.4 What the gates said, and the one that was not a gate
+
+- ✅ **`sb007Template` 53/53.** Byte-identity with a fresh generation held immediately; the one red
+  was a **different** spec — a MUTANT whose offender string enumerates the query's stored
+  parameters, which now includes `visualSort`. 🔴 **The real gate never moved**: the spec above it
+  still reads `offenders: []` and the same nine graded reasons, so `visualSort` added a stored
+  parameter and **not a trigger**. That distinction is the whole reason the string was safe to
+  update rather than a red to argue with.
+- ✅ **Census literals moved none of them**, as the handoff predicted — verified rather than
+  assumed. The change is parameters-only; `code`, `declared` and `browserFunctions` count nodes and
+  functions.
+- ⚠️ **`ac2DragGestureDrive` went red 9/9 inside the full `noodl-mcp` run and green 9/9 alone.**
+  A headless-Chrome drive under 76-suite contention — `r[k]` came back `undefined` because the page
+  had not rendered. **A lone red is a flake until re-run**, and this one was. It imports nothing
+  this session touched.
+- ✅ Its `a Drag child keeps its cssClassName` spec now reads *"was the D28 pin, flipped when
+  DEF-027 fixed it"* — **a peer fixed [D28](DEFECTS-THE-SITE-BUILDER-FOUND.md#d28) in phase 80**
+  while this work was in flight.
+- ✅ **`nodegx-backend` 120/120 in one process**, 1429 passed + 10 skipped, summary line present, and
+  🔴 **the suite count reconciles against `ls tests/*.test.ts` (120)** — the check s31's cut-off run
+  failed and had to reconstruct.
+- ✅ **Editor `test:ci`: 2905 specs, 4 failures, seed 74344, `gitHead` 2842866a — the recorded floor,
+  all four AIX-006 by name**, on a readout deleted before the run and written at 14:29:23.
+  🔴 **The first attempt to verify "all four are AIX-006" returned `True` from an EMPTY list** — the
+  extractor used the wrong schema, found no failures, and `all([])` is vacuously true. The real keys
+  are `failedCount` / `failures[]`; the claim only means anything because the list holds **4**.
+  ✅ **An absence needs a known-firing signal beside it**, and this one nearly shipped without one.
+- ✅ **`sb017-deploy-connection-parity` really did run** — traced through the barrel
+  (`tests/index.ts:239` `export * from './cloud'` → `tests/cloud/index.ts:3`) rather than assumed,
+  because **a spec that is not in `index.ts` never runs** and this is the file whose census literal
+  a previous session left stale for a week by not running it.
+
+### 35.5 🔴 Two of the four section queries are still unsorted, and that is correct
+
+The census logs four nodes labelled *"This page's sections"*. Two are now sorted; two are not — and
+reading that as a half-fix would be wrong:
+
+| query | sorted | why |
+|---|---|---|
+| `/Pages/Site` | ✅ | draws a list to a visitor |
+| `/Pages/PageEditor` | ✅ **s32** | draws a list to a client |
+| `/#__cloud__/publishPage` | ❌ | **a cloud function.** No screen |
+| `/#__cloud__/reorderSection` | ❌ | **a cloud function**, and it sorts in its own script |
+
+`reorderSection` sorts with an explicit `id` tie-break and its own comment says why a `visualSort`
+would not help it anyway: *"That array is a query result whose row order the backend does not
+promise."* ✅ **The two queries that draw a list to a person are the two that are sorted.**
+
+### 35.6 Where AC2 stands after s32
+
+| | |
+|---|---|
+| **outcome** (a client reorders, a visitor sees it) | ✅ driven s27, ten stored-row cases |
+| **gesture** (by dragging) | ✅ built s30, mechanism driven s30 |
+| **the template's own drag, rendered end to end** | ✅ driven s31 |
+| **on the artefact a person receives** | 🟢 **DRIVEN s32 — on the shipped project, no mutant** |
+
+**AC2 is met on all three halves and on the shipped artefact.** AC3 is unchanged and still blocked
+by [D15](DEFECTS-THE-SITE-BUILDER-FOUND.md#d15) alone — no drop-target capability in the runtime for
+a **file arriving from outside the page**. ⚠️ **s32 changes nothing about D15**: this drag is
+in-page pointer work and needed none of it. The twins were filed together and only one was ever
+real.

@@ -277,6 +277,18 @@ export const SECTIONS_OF_PAGE_FILTER = {
   rules: [{ property: 'pageId', operator: 'equal to', input: 'pageId' }]
 };
 
+/**
+ * Sections render in `order`, which is what makes a page a page.
+ *
+ * 🔴 **Defined here rather than in `sb006Components.ts` so that BOTH queries can
+ * share one copy.** `/Pages/Site` and `/Pages/PageEditor` must sort the same way
+ * or the editor draws a list nobody else uses — D30. sb006 already imports from
+ * this module (`ROUTER`), and it uses `ROUTER` at module-eval time, so the
+ * dependency cannot run the other way without a cycle; sb006 re-exports this the
+ * same way it re-exports `ROUTER`, so its own consumers are unaffected.
+ */
+export const SECTION_SORT = [{ property: 'order', order: 'ascending' }];
+
 // ── 1. Admin/PageRow — one row of the page list ──────────────────────────────
 
 /**
@@ -858,6 +870,28 @@ export const SECTION_ROW_NODES = [
     // bundle is served without an editor attached.
     ports: [{ name: 'out-built', plug: 'output', type: 'signal' }],
     parameters: {
+      // 🔴 **D31, and the three keys are FIRST in the bag deliberately.**
+      // `NodeScope.setNodeParameters` drains queued values in the bag's own key
+      // order, so a `runOnChange-*` that landed AFTER the value it governs lets
+      // the load-time run it exists to prevent happen once anyway.
+      //
+      // Absent reads as TICKED (`run-on-value-change.ts`), and ticked is a
+      // cycle: `merge.out-built → save.store` writes the section,
+      // `SetDbModelProperties` writes into the very model `For Each` feeds this
+      // row's `data` from, and `merge` builds a FRESH object every run — so the
+      // value always counts as changed and the node runs again. Opening the
+      // page editor on a page with sections produced 115,755 write errors in
+      // eleven seconds with nobody touching the screen, until the backend's
+      // rate limiter refused the page's own section query too.
+      //
+      // `run` is left as the only trigger, which it already has
+      // (`saveButton.onClick`, `upload.done`) — the same repair the queries and
+      // the two planners in this file make, and exactly what the editor's
+      // NDA-017 migration writes onto this node the first time the project is
+      // opened. The artefact used to ship without them.
+      'runOnChange-in-data': false,
+      'runOnChange-in-body': false,
+      'runOnChange-in-image': false,
       // Two producers reach this node — the record's own `data` and whatever the
       // author has changed since — so it guards, per rule 2. `body` and `image`
       // are legitimately empty strings, so the test is `undefined`.
@@ -1981,7 +2015,14 @@ export const PAGE_EDITOR_NODES = [
       // for. The trigger has to be the filter value, and this is how it survives.
       'runOnChange-qp-pageId': true,
       collectionName: 'Section',
-      visualFilter: SECTIONS_OF_PAGE_FILTER
+      visualFilter: SECTIONS_OF_PAGE_FILTER,
+      // 🔴 **D30.** The same sort `/Pages/Site` uses, and the SAME CONSTANT —
+      // a second copy of a sort is the copy that drifts. Without it this panel
+      // renders whatever the backend happens to return, and `dropIndex` counts
+      // DOM siblings while `reorderSection` renumbers the list sorted by
+      // `order`: the same list only while the editor draws in `order`. The
+      // buttons predate the drag and were renumbering an unshown list too.
+      visualSort: SECTION_SORT
     }
   },
   // ── AC2: turning "up" into a position, which only this component can do ────

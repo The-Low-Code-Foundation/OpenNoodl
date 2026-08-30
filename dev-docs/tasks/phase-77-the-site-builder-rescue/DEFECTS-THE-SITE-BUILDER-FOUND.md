@@ -1273,8 +1273,23 @@ Copying this port would have doubled a dead end — and the row would have read 
 
 ## D28 — 🔴 A `Drag`'s child loses its CSS class, so a draggable element cannot be styled or selected
 
-**Found s30, by driving.** Product. Owner: **`NONE`** — it owes a row in
-[phase 80](../phase-80-the-defects-the-templates-found/TASKS.md); see the note at the end.
+**Found s30, by driving.** Product. ✅ **FIXED 2026-08-30 by phase 80 as
+[DEF-027](../phase-80-the-defects-the-templates-found/DEF-027-A-DRAG-CHILD-LOSES-ITS-CSS-CLASS.md)**
+(owner was `NONE`; the row was moved into that phase's table at 12:50 and closed at s23).
+
+🔴 **The mechanism below is right about the symptom and wrong about where it lives.** The
+discarding is not `react-draggable`'s and not `Drag`'s — it is the **wrapper's prop spread**.
+`NoodlReactComponent.render` spread `...noodlNode.props` and then `...otherProps`, so the
+library's injected `className` overwrote the author's. The library had in fact tried to merge
+(`clsx(children.props.className || '', 'react-draggable', …)`) and had nothing to see, because
+the child it clones is the wrapper element, whose props are only `{key, noodlNode, ref}`. Both
+halves had to be true; either alone is harmless. Corrected here rather than silently, and the
+"shape of the fix" paragraph below is corrected in place for the same reason.
+
+**The sweep this row asked for has an answer: one.** `Drag.tsx:214` is the only `cloneElement`
+in `packages/noodl-viewer-react/src`, and `react-draggable` the only third-party wrapper any
+node puts around authored children. It was fixed at the spread anyway, so a future wrapper
+cannot reopen it.
 
 `react-draggable` clones its child with its own `className`, and the child's authored
 `cssClassName` does not survive it. The element that reaches the DOM carries `react-draggable` and
@@ -1301,22 +1316,32 @@ there at runtime. There is no error and nothing to search for.
 **Not the same defect as [D27](#d27)**, though they rhyme: D27 is a port that cannot be connected,
 this is a port that connects, stores, and is discarded on render.
 
-**The shape of the fix.** `Drag.tsx` renders `<Draggable>` around the child and lets
-`react-draggable` own `className`. Merging rather than replacing is the repair, and it is in the
-viewer's own component — not in the dependency. ⚠️ **Check it against `Drag`'s siblings first**: any
-other node that clones a child through a third-party wrapper has the same shape, and a fix that
-names only `Drag` would leave them. Nobody has counted them.
+**The shape of the fix** — recorded as written, then what it turned out to be. *Written:*
+"`Drag.tsx` renders `<Draggable>` around the child and lets `react-draggable` own `className`.
+Merging rather than replacing is the repair, and it is in the viewer's own component — not in the
+dependency. ⚠️ Check it against `Drag`'s siblings first […] Nobody has counted them."
 
-🔴 **Two assertions in `ac2DragGestureDrive.test.ts` PIN this defect deliberately** and say so in
-their own name, because the drive's row selector (`.probe-list > .react-draggable`) depends on the
-card having no usable class of its own. Whoever fixes this replaces those two lines with
-`expect(boot['probe-card-a']).toBeDefined()` and points `READ` at `.probe-card-a` — it is not a
-spec to delete.
+*Built:* merging was right and "in the viewer's own component" was right; the **place** was the
+wrapper's spread, not `Drag.tsx`. Fixing it there is what makes the sibling warning moot rather
+than merely answered.
 
-⚠️ **Why it is not yet a phase-80 row.** That register's `TASKS.md` had another session's
-**uncommitted** edits in the working tree for the whole of s30, and appending to it would have
-swept them into a pathspec commit. The row is written here in full so it can be moved verbatim;
-moving it is the first documentation job of the next session.
+✅ **The two pinning assertions in `ac2DragGestureDrive.test.ts` were flipped, not deleted**,
+exactly as this paragraph instructed, and `READ` now finds the cards by `probe-card-` instead of
+borrowing `.react-draggable`. The drive was re-run at HEAD **before** the fix (9/9, both pins
+passing — the defect confirmed as shipped) and again after (9/9 with the pins inverted).
+
+⚠️ **Between those two runs the viewer bundle has to be rebuilt.** `render-report.js` serves
+`packages/noodl-editor/src/external/viewer/noodl.viewer.js`, a gitignored build artifact; the
+first post-fix run came back **9/9 red** purely because of it, which reads exactly like a broken
+fix. Anyone driving a runtime change through this harness owes
+`cd packages/noodl-viewer-react && npx webpack --config webpack-configs/webpack.viewer.prod.js`
+first.
+
+✅ **Moved, and the delay very nearly cost the row.** It was appended to phase 80's `TASKS.md`
+at 12:50; that phase's s22 wrote its handoff at 13:22 saying the queue held **no workable open
+row left**, having read the same file. 32 minutes. The row survived because s23 read the table
+rather than the handoff — which is the argument for grading a phase against its table and never
+against a summary of it.
 
 ---
 
@@ -1354,11 +1379,12 @@ this one defect, not seventeen.
 
 ---
 
-## D30 — 🔴 The page editor draws its sections in an order nobody else uses, so reordering moves the wrong one
+## D30 — 🟢 FIXED s32. The page editor drew its sections in an order nobody else used, so reordering moved the wrong one
 
 **Found 2026-08-30 (s31) by driving the real `/Pages/PageEditor`** —
 `nodegx-backend/tests/ac2-page-editor-drag-drive.test.ts`, 23 specs, real backend with enforcement
-on, real pointer. Owner: **NONE**. See [SBR-007 §34.3](SBR-007-THE-PAGE-EDITOR.md).
+on, real pointer. 🟢 **FIXED and DRIVEN 2026-08-30 (s32)** — see the block at the end of this row
+and [SBR-007 §35](SBR-007-THE-PAGE-EDITOR.md). See also [§34.3](SBR-007-THE-PAGE-EDITOR.md).
 
 `/Pages/Site`'s section query carries `visualSort: [{ property: 'order' }]`. `/Pages/PageEditor`'s
 carries **none**. Both are labelled *"This page's sections"*; the template holds four such queries
@@ -1385,17 +1411,44 @@ has two above it, with no message. The button is not broken; the list is.
 never shown. The ten stored-row cases in `sb004-publication-invariant.test.ts` grade the
 **endpoint**, which is correct, and never open a screen.
 
-**The repair is one parameter**: `visualSort: SECTION_SORT` on the `sections` node in
-`sb005Components.ts`, the constant `/Pages/Site` already uses. Then `npm run template:site-builder`.
-The drive pins the current state — flip `editorSorted:false` to `true` in the FINDING spec rather
-than deleting it.
+### 🟢 The fix, s32
+
+`visualSort: SECTION_SORT` on the `sections` node of `PAGE_EDITOR_NODES` in `sb005Components.ts`,
+then `npm run template:site-builder`.
+
+🔴 **`SECTION_SORT` MOVED, rather than being imported where it stood.** It was defined in
+`sb006Components.ts`, but `sb006` already imports `ROUTER` from `sb005` **and uses it at
+module-eval time** — importing back would have made a cycle in which `ROUTER` is still in its TDZ
+when `sb006`'s body runs. It now lives in `sb005Components.ts` and `sb006` re-exports it exactly
+the way it already re-exports `ROUTER`, so there is still **one copy** and no consumer moved.
+
+**Driven, on the real screen** (`ac2-page-editor-drag-drive.test.ts`, 23/23):
+
+| | before | after |
+|---|---|---|
+| drawn vs stored at boot | `hero, richText, gallery` vs `richText, hero, gallery` | **both `richText, hero, gallery`** |
+| after dragging the bottom card to the top | drawn unchanged, stored `gallery, richText, hero` | **both `gallery, richText, hero`** |
+| `Move up` on the card a client sees LAST | hit-tested, **nothing happens** | **moves the row they pointed at** |
+
+⚠️ **Two of the four section queries are still unsorted, and that is correct.** They are
+`/#__cloud__/publishPage` and `/#__cloud__/reorderSection` — **cloud functions, not screens**.
+`reorderSection` sorts in its own script with an `id` tie-break and its comment says why it cannot
+trust query order at all: *"That array is a query result whose row order the backend does not
+promise."* The two queries that **draw a list to a person** are the two that are now sorted.
+
+The three FINDING specs were **flipped, not deleted** — `editorSorted:true`, and the two
+drawn-vs-stored specs moved from `not.toEqual` to `toEqual`. 🔴 The `beforeAll` pre-move that makes
+the stored order differ from the creation order matters MORE now, not less: without it a screen
+that ignored `order` would still draw the right list and those specs would pass on a template with
+no `visualSort` at all.
 
 ---
 
-## D31 — 🔴 Opening the page editor on a page with sections starts a cyclic write loop that never stops
+## D31 — 🟢 FIXED s32. Opening the page editor on a page with sections started a cyclic write loop that never stopped
 
-**Found 2026-08-30 (s31), same drive.** Owner: **NONE**. See
-[SBR-007 §34.4](SBR-007-THE-PAGE-EDITOR.md).
+**Found 2026-08-30 (s31), same drive.** 🟢 **FIXED and DRIVEN 2026-08-30 (s32)** — see the block at
+the end of this row and [SBR-007 §35](SBR-007-THE-PAGE-EDITOR.md). See also
+[§34.4](SBR-007-THE-PAGE-EDITOR.md).
 
 Eleven seconds of a page that was opened and looked at — **no pointer, no key, no click**:
 
@@ -1432,16 +1485,40 @@ the three parameters and the template at HEAD does not. Every consumer that read
 without running `applyPatches` gets the loop: a headless render, a deploy taken from the artefact,
 an agent reading the project through the MCP door.
 
-**The repair is three parameters** on `merge` in `sb005Components.ts` —
-`'runOnChange-in-data': false`, `'runOnChange-in-body': false`, `'runOnChange-in-image': false` —
-then `npm run template:site-builder`. 🔴 **Check `unpack` in the same component while you are
-there**: it takes `in-data` on the same wire and has no `run` connected, so the migration would not
-touch it and this drive did not measure it.
+### 🟢 The fix, s32
 
-⚠️ **Both D30 and D31 owe rows in phase 80** and are written here in full so they can be moved
-verbatim. They are not there already because phase 80's `TASKS.md` and `NEXT-SESSION-PROMPT.md` had
-another session's **uncommitted** edits in the working tree throughout s31 — the same reason D28 is
-still here.
+Three parameters on `merge` in `sb005Components.ts` — `'runOnChange-in-data': false`,
+`'runOnChange-in-body': false`, `'runOnChange-in-image': false` — **first in the bag**, because
+`NodeScope.setNodeParameters` drains queued values in key order and a flag that landed after the
+value it governs would let the load-time run happen once anyway. Then
+`npm run template:site-builder`.
+
+**Driven, on the real screen** (`ac2-page-editor-drag-drive.test.ts`, 23/23):
+
+| arm | `SetDbModelProperties` errors | `cyclic-loop` | `query-failed` | writes landed |
+|---|---|---|---|---|
+| **shipped, after the fix** | **0** | **0** | **0** | **none** |
+| shipped + the three flags forced back to `true` | 20,000+ | ✅ | ✅ | ✅ |
+| …and that arm with the refetch wire also dropped | 20,507 | 6 | 0 | ✅ |
+
+✅ **`unpack` was checked, and it must NOT get the same treatment.** It takes `in-data` on the same
+wire and has **no `run` connected** (`connections.json` gives it exactly one inbound wire), so the
+value change is its only trigger — silencing it would leave the body textarea and the image preview
+permanently empty. The NDA-017 migration skips it for the same reason. 🔴 **That is a measurement,
+not a decision to leave it alone**: s31 recorded it as unmeasured and this is the reading.
+
+✅ **Save still works.** `merge.run` keeps both its wires (`saveButton.onClick`, `upload.done`), and
+the three flags govern only the value inputs. The quiet arm renders all three cards, which is the
+spec that stops "quiet" being confused with "broken".
+
+🔴 **The arms INVERTED, and the specs were flipped rather than deleted.** The gesture now runs on
+the **shipped** project — s31 could only drive it on a mutant — and the mutants now *restore* the
+defect instead of repairing it. `setParams` grew a mirror precondition for this: the defect-arm
+asserts the three keys are present **and `false`** beforehand, so a template that quietly stopped
+stating them cannot leave an arm "restoring" a defect that was never absent.
+
+✅ **Neither D30 nor D31 owes a row in phase 80** — s31 settled that by the rule below (both fixes
+touch the template, not the product surface) and s32 closed them here, which is where they belonged.
 
 ---
 
@@ -1457,16 +1534,14 @@ that register's own stated rule:
 
 | row | fix touches | filed |
 |---|---|---|
-| **D28** — a `Drag`'s child loses its `cssClassName` | `react-draggable` in the **runtime** | ✅ **phase 80 as `DEF-027`** |
+| **D28** — a `Drag`'s child loses its `cssClassName` | the **wrapper's prop spread** (not `react-draggable`) | ✅ **FIXED — phase 80 `DEF-027`, s23** |
 | **D30** — the editor's section query has no `visualSort` | `sb005Components.ts` → the **template** | **stays here** |
 | **D31** — `merge` re-runs on the value it writes | `sb005Components.ts` → the **template** | **stays here** |
 
-🔴 **D30 and D31 are not unowned by omission — they are this phase's own work.** Filing them in
-phase 80 would put two template edits behind a product phase's dependencies, which is the exact
-split phase 78 recorded and phase 80 refused. Phase 77 owns the site-builder template; the repairs
-are specified in the rows above and both are already proven by a mutant arm in
-`nodegx-backend/tests/ac2-page-editor-drag-drive.test.ts`.
+🔴 **D30 and D31 were not unowned by omission — they were this phase's own work.** Filing them in
+phase 80 would have put two template edits behind a product phase's dependencies, which is the
+exact split phase 78 recorded and phase 80 refused. Phase 77 owns the site-builder template.
 
-⚠️ **`NONE` on D30/D31 therefore means "no session has picked them up yet", not "no phase owns
-them".** The next phase-77 session's first job is to fix them — see
-[NEXT-SESSION-PROMPT.md](NEXT-SESSION-PROMPT.md).
+✅ **s32 fixed both, which is what that decision was for.** The routing call took one session to
+pay off: the rows stayed where the hands were, and the mutant arms s31 left behind meant the
+repair was not a proposal but an arm that had already run.

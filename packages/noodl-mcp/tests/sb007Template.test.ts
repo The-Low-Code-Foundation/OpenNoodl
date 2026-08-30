@@ -1067,6 +1067,11 @@ describe('SBR-016 — every query can run before anybody has edited anything', (
         'storageFetch <= CloudFunction2.done <= CloudFunction2 run only by an edit; ' +
         'collectionName is stored but the migration silenced runOnChange-collectionName; ' +
         'visualFilter is stored but the migration silenced runOnChange-querySettings; ' +
+        // D30's `visualSort`, reported by the same clause and for the same reason: it is
+        // governed by `runOnChange-querySettings`, which `NO_LOAD_TIME_FETCH` switches off. It
+        // is a stored parameter, never a trigger — which is why the spec above still grades
+        // this query as having one, and `offenders` there is still empty.
+        'visualSort is stored but the migration silenced runOnChange-querySettings; ' +
         'qp-pageId arrives but the migration silenced runOnChange-qp-pageId'
     ]);
   });
