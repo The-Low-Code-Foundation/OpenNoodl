@@ -1,0 +1,10 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "9f3615c0-7acb-5506-823f-ebd7032818ba",
+  "name": "FeatureItem",
+  "path": "/Components/FeatureItem",
+  "type": "visual",
+  "created": "2026-08-31T00:00:00.000Z",
+  "modified": "2026-08-31T00:00:00.000Z",
+  "modifiedBy": "vib-006"
+}

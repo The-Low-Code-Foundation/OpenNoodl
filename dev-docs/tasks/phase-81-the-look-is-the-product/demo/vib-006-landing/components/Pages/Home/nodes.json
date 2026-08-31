@@ -1,0 +1,101 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "0667e8cd-9d35-556c-8525-2048e52218ec",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "page",
+      "type": "Page",
+      "label": "Home",
+      "parameters": {
+        "title": "Ashcombe Market Garden",
+        "urlPath": ""
+      },
+      "children": [
+        "sec_hero",
+        "sec_strip",
+        "sec_story",
+        "sec_boxes",
+        "sec_stats",
+        "sec_quotes",
+        "sec_cta",
+        "sec_footer"
+      ]
+    },
+    {
+      "id": "sec_hero",
+      "type": "/Sections/Hero",
+      "label": "Hero",
+      "parameters": {},
+      "parent": "page",
+      "x": 60,
+      "y": 160
+    },
+    {
+      "id": "sec_strip",
+      "type": "/Sections/TrustStrip",
+      "label": "TrustStrip",
+      "parameters": {},
+      "parent": "page",
+      "x": 60,
+      "y": 250
+    },
+    {
+      "id": "sec_story",
+      "type": "/Sections/HowItWorks",
+      "label": "HowItWorks",
+      "parameters": {},
+      "parent": "page",
+      "x": 60,
+      "y": 340
+    },
+    {
+      "id": "sec_boxes",
+      "type": "/Sections/Boxes",
+      "label": "Boxes",
+      "parameters": {},
+      "parent": "page",
+      "x": 60,
+      "y": 430
+    },
+    {
+      "id": "sec_stats",
+      "type": "/Sections/Numbers",
+      "label": "Numbers",
+      "parameters": {},
+      "parent": "page",
+      "x": 60,
+      "y": 520
+    },
+    {
+      "id": "sec_quotes",
+      "type": "/Sections/Testimonials",
+      "label": "Testimonials",
+      "parameters": {},
+      "parent": "page",
+      "x": 60,
+      "y": 610
+    },
+    {
+      "id": "sec_cta",
+      "type": "/Sections/ClosingCta",
+      "label": "ClosingCta",
+      "parameters": {},
+      "parent": "page",
+      "x": 60,
+      "y": 700
+    },
+    {
+      "id": "sec_footer",
+      "type": "/Sections/SiteFooter",
+      "label": "SiteFooter",
+      "parameters": {},
+      "parent": "page",
+      "x": 60,
+      "y": 790
+    }
+  ],
+  "visualRoots": [
+    "page"
+  ]
+}

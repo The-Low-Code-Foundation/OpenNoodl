@@ -1,0 +1,10 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "fbe0ccc9-b377-5d03-88db-9d17b5e2dcd0",
+  "name": "QuoteCard",
+  "path": "/Components/QuoteCard",
+  "type": "visual",
+  "created": "2026-08-31T00:00:00.000Z",
+  "modified": "2026-08-31T00:00:00.000Z",
+  "modifiedBy": "vib-006"
+}

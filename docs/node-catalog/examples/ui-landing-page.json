@@ -1,0 +1,2509 @@
+{
+  "id": "ui-landing-page",
+  "title": "A complete landing page: eight bands, seven photographs, five item components",
+  "description": "THE WORKED PAGE. Every other UI recipe in this corpus is one band; this is what they look like assembled, and it is the thing to copy when the brief is \"a landing page\". Read it for the SHAPE, then replace every word and every picture — the copy here is a Somerset veg-box scheme because a page written in a real voice about a real thing is the only kind that shows what the voice is for. Eight bands, and the grounds ALTERNATE: a photograph under a scrim, --surface with hairlines, the page background, --surface again, --gradient-deep, --gradient-surface, --gradient-brand, --muted. That sequence is the point. A page with one background colour end to end is the first thing that reads as a template, and no amount of spacing rescues it. Each band is exactly ONE shell (maxWidth 1200, --space-6 either side), so all eight gutters agree; a band that disagrees reads as a bug rather than a choice. THE HERO is the one departure worth studying: `imageGround` with a real photograph, a --gradient-scrim over it, and a shell that is EXPLICIT 100% height with justifyContent space-between — so the nav sits at the top of the picture and the copy at its foot, with no absolutely-positioned node anywhere. Everywhere else on this page a shell carries sizeMode contentHeight, because a shell that fills its band by accident leaves the band nothing to justify. Filling one on purpose and justifying inside it is a different thing. THE MEASURE lives on the shell and on the copy GROUP, never on the headline. A maxWidth on the type strands the white space on one side of a wide viewport, which is the thing that reads as broken at 1900. THE PICTURES are seven different photographs from the bundled starter imagery, each chosen by SUBJECT: turned soil as the hero ground because the page is about growing; a market stall beside the copy that explains the boxes; three different vegetables on three cards; three different faces in three testimonials. Nothing here is decoration — a page whose every image is the same abstract is decorated, not designed. THE REPEATED THINGS are components (FeatureItem, BoxCard, StatTile, QuoteCard, FooterColumn), each with a Component Inputs node whose ports are explicitly declared and plugged \"output\". An undeclared port is a parameter silently discarded at the instance, and writing the subtree out three times is a repeated-sibling-subtree warning.",
+  "demonstrates": [
+    "Page",
+    "Group",
+    "Text",
+    "Image",
+    "net.noodl.visual.icon",
+    "net.noodl.visual.columns",
+    "net.noodl.controls.button",
+    "Component Inputs"
+  ],
+  "components": [
+    {
+      "name": "/Pages/Home",
+      "nodes": [
+        {
+          "id": "page",
+          "type": "Page",
+          "label": "Home",
+          "parameters": {
+            "title": "Ashcombe Market Garden",
+            "urlPath": ""
+          },
+          "children": [
+            "sec_hero",
+            "sec_strip",
+            "sec_story",
+            "sec_boxes",
+            "sec_stats",
+            "sec_quotes",
+            "sec_cta",
+            "sec_footer"
+          ]
+        },
+        {
+          "id": "sec_hero",
+          "type": "/Sections/Hero",
+          "label": "Hero",
+          "parameters": {},
+          "parent": "page",
+          "x": 60,
+          "y": 160
+        },
+        {
+          "id": "sec_strip",
+          "type": "/Sections/TrustStrip",
+          "label": "TrustStrip",
+          "parameters": {},
+          "parent": "page",
+          "x": 60,
+          "y": 250
+        },
+        {
+          "id": "sec_story",
+          "type": "/Sections/HowItWorks",
+          "label": "HowItWorks",
+          "parameters": {},
+          "parent": "page",
+          "x": 60,
+          "y": 340
+        },
+        {
+          "id": "sec_boxes",
+          "type": "/Sections/Boxes",
+          "label": "Boxes",
+          "parameters": {},
+          "parent": "page",
+          "x": 60,
+          "y": 430
+        },
+        {
+          "id": "sec_stats",
+          "type": "/Sections/Numbers",
+          "label": "Numbers",
+          "parameters": {},
+          "parent": "page",
+          "x": 60,
+          "y": 520
+        },
+        {
+          "id": "sec_quotes",
+          "type": "/Sections/Testimonials",
+          "label": "Testimonials",
+          "parameters": {},
+          "parent": "page",
+          "x": 60,
+          "y": 610
+        },
+        {
+          "id": "sec_cta",
+          "type": "/Sections/ClosingCta",
+          "label": "ClosingCta",
+          "parameters": {},
+          "parent": "page",
+          "x": 60,
+          "y": 700
+        },
+        {
+          "id": "sec_footer",
+          "type": "/Sections/SiteFooter",
+          "label": "SiteFooter",
+          "parameters": {},
+          "parent": "page",
+          "x": 60,
+          "y": 790
+        }
+      ],
+      "connections": []
+    },
+    {
+      "name": "/Sections/Hero",
+      "nodes": [
+        {
+          "id": "hero_band",
+          "type": "Group",
+          "label": "Hero — photograph ground under a scrim",
+          "parameters": {
+            "width": {
+              "value": 100,
+              "unit": "%"
+            },
+            "sizeMode": "explicit",
+            "height": {
+              "value": 660,
+              "unit": "px"
+            },
+            "flexDirection": "column",
+            "alignItems": "center",
+            "justifyContent": "flex-start",
+            "backgroundImage": "noodl_modules/starter-imagery/texture-soil.webp",
+            "backgroundGradient": "var(--gradient-scrim)",
+            "backgroundSize": "cover",
+            "backgroundPosition": "center",
+            "backgroundColor": "var(--foreground)",
+            "paddingTop": "var(--space-6)",
+            "paddingBottom": "var(--space-16)"
+          },
+          "children": [
+            "hero_shell"
+          ]
+        },
+        {
+          "id": "hero_shell",
+          "type": "Group",
+          "label": "Shell",
+          "parameters": {
+            "width": {
+              "value": 100,
+              "unit": "%"
+            },
+            "maxWidth": {
+              "value": 1200,
+              "unit": "px"
+            },
+            "sizeMode": "explicit",
+            "flexDirection": "column",
+            "paddingLeft": "var(--space-6)",
+            "paddingRight": "var(--space-6)",
+            "height": {
+              "value": 100,
+              "unit": "%"
+            },
+            "justifyContent": "space-between"
+          },
+          "parent": "hero_band",
+          "children": [
+            "hero_nav",
+            "hero_copy"
+          ]
+        },
+        {
+          "id": "hero_nav",
+          "type": "Group",
+          "label": "Nav",
+          "parameters": {
+            "width": {
+              "value": 100,
+              "unit": "%"
+            },
+            "sizeMode": "contentHeight",
+            "flexDirection": "row",
+            "alignItems": "center",
+            "justifyContent": "space-between",
+            "flexWrap": "wrap",
+            "columnGap": "var(--space-6)",
+            "rowGap": "var(--space-3)"
+          },
+          "parent": "hero_shell",
+          "children": [
+            "hero_mark",
+            "hero_links",
+            "hero_navcta"
+          ]
+        },
+        {
+          "id": "hero_mark",
+          "type": "Group",
+          "label": "Wordmark",
+          "parameters": {
+            "sizeMode": "contentSize",
+            "flexDirection": "row",
+            "alignItems": "center",
+            "columnGap": "var(--space-2)"
+          },
+          "parent": "hero_nav",
+          "children": [
+            "hero_markicon",
+            "hero_marktext"
+          ]
+        },
+        {
+          "id": "hero_markicon",
+          "type": "net.noodl.visual.icon",
+          "label": "Wordmark glyph",
+          "parameters": {
+            "iconIconSource": {
+              "class": "lucide",
+              "code": "icon-sprout",
+              "codeAsClass": true
+            },
+            "iconSize": {
+              "value": 22,
+              "unit": "px"
+            },
+            "iconColor": "var(--primary-foreground)"
+          },
+          "parent": "hero_mark"
+        },
+        {
+          "id": "hero_marktext",
+          "type": "Text",
+          "label": "hero_marktext",
+          "parameters": {
+            "fontSize": "var(--text-base)",
+            "fontWeight": "var(--font-semibold)",
+            "letterSpacing": "var(--tracking-tight)",
+            "color": "var(--primary-foreground)",
+            "text": "Ashcombe Market Garden"
+          },
+          "parent": "hero_mark"
+        },
+        {
+          "id": "hero_links",
+          "type": "Group",
+          "label": "Nav links",
+          "parameters": {
+            "sizeMode": "contentSize",
+            "flexDirection": "row",
+            "alignItems": "center",
+            "columnGap": "var(--space-6)"
+          },
+          "parent": "hero_nav",
+          "children": [
+            "hero_l1",
+            "hero_l2",
+            "hero_l3"
+          ]
+        },
+        {
+          "id": "hero_l1",
+          "type": "Text",
+          "label": "hero_l1",
+          "parameters": {
+            "sizeMode": "contentSize",
+            "fontSize": "var(--text-sm)",
+            "fontWeight": "var(--font-medium)",
+            "color": "var(--primary-foreground)",
+            "text": "Boxes"
+          },
+          "parent": "hero_links"
+        },
+        {
+          "id": "hero_l2",
+          "type": "Text",
+          "label": "hero_l2",
+          "parameters": {
+            "sizeMode": "contentSize",
+            "fontSize": "var(--text-sm)",
+            "fontWeight": "var(--font-medium)",
+            "color": "var(--primary-foreground)",
+            "text": "The garden"
+          },
+          "parent": "hero_links"
+        },
+        {
+          "id": "hero_l3",
+          "type": "Text",
+          "label": "hero_l3",
+          "parameters": {
+            "sizeMode": "contentSize",
+            "fontSize": "var(--text-sm)",
+            "fontWeight": "var(--font-medium)",
+            "color": "var(--primary-foreground)",
+            "text": "Saturday stall"
+          },
+          "parent": "hero_links"
+        },
+        {
+          "id": "hero_navcta",
+          "type": "net.noodl.controls.button",
+          "label": "Nav action",
+          "parameters": {
+            "sizeMode": "contentSize",
+            "backgroundColor": "transparent",
+            "color": "var(--primary-foreground)",
+            "borderRadius": "var(--radius-full)",
+            "borderStyle": "solid",
+            "borderWidth": "var(--border-1)",
+            "borderColor": "var(--border-glass)",
+            "paddingLeft": "var(--space-4)",
+            "paddingRight": "var(--space-4)",
+            "paddingTop": "var(--space-2)",
+            "paddingBottom": "var(--space-2)",
+            "fontSize": "var(--text-sm)",
+            "fontWeight": "var(--font-semibold)",
+            "label": "Take a box"
+          },
+          "parent": "hero_nav"
+        },
+        {
+          "id": "hero_copy",
+          "type": "Group",
+          "label": "Hero copy",
+          "parameters": {
+            "width": {
+              "value": 100,
+              "unit": "%"
+            },
+            "sizeMode": "contentHeight",
+            "flexDirection": "column",
+            "rowGap": "var(--space-5)",
+            "maxWidth": {
+              "value": 900,
+              "unit": "px"
+            }
+          },
+          "parent": "hero_shell",
+          "children": [
+            "hero_badge",
+            "hero_head",
+            "hero_lead",
+            "hero_actions"
+          ]
+        },
+        {
+          "id": "hero_badge",
+          "type": "Group",
+          "label": "Badge",
+          "parameters": {
+            "sizeMode": "contentSize",
+            "flexDirection": "row",
+            "alignItems": "center",
+            "columnGap": "var(--space-2)",
+            "backgroundColor": "var(--surface-glass)",
+            "borderStyle": "solid",
+            "borderWidth": "var(--border-1)",
+            "borderColor": "var(--border-glass)",
+            "borderRadius": "var(--radius-full)",
+            "paddingLeft": "var(--space-4)",
+            "paddingRight": "var(--space-4)",
+            "paddingTop": "var(--space-2)",
+            "paddingBottom": "var(--space-2)"
+          },
+          "parent": "hero_copy",
+          "children": [
+            "hero_badgeicon",
+            "hero_badgetext"
+          ]
+        },
+        {
+          "id": "hero_badgeicon",
+          "type": "net.noodl.visual.icon",
+          "label": "Badge glyph",
+          "parameters": {
+            "iconIconSource": {
+              "class": "lucide",
+              "code": "icon-map-pin",
+              "codeAsClass": true
+            },
+            "iconSize": {
+              "value": 14,
+              "unit": "px"
+            },
+            "iconColor": "var(--primary-foreground)"
+          },
+          "parent": "hero_badge"
+        },
+        {
+          "id": "hero_badgetext",
+          "type": "Text",
+          "label": "hero_badgetext",
+          "parameters": {
+            "fontSize": "var(--text-xs)",
+            "fontWeight": "var(--font-semibold)",
+            "letterSpacing": "var(--tracking-wide)",
+            "color": "var(--primary-foreground)",
+            "text": "Somerset · packed Thursday, delivered Friday"
+          },
+          "parent": "hero_badge"
+        },
+        {
+          "id": "hero_head",
+          "type": "Text",
+          "label": "hero_head",
+          "parameters": {
+            "fontSize": "var(--display-lg)",
+            "fontWeight": "var(--font-bold)",
+            "lineHeight": "var(--leading-none)",
+            "letterSpacing": "var(--tracking-tighter)",
+            "color": "var(--primary-foreground)",
+            "text": "Eleven acres, forty crops, one van."
+          },
+          "parent": "hero_copy"
+        },
+        {
+          "id": "hero_lead",
+          "type": "Text",
+          "label": "hero_lead",
+          "parameters": {
+            "fontSize": "var(--text-lg)",
+            "lineHeight": "var(--leading-relaxed)",
+            "color": "var(--primary-foreground)",
+            "maxWidth": {
+              "value": 620,
+              "unit": "px"
+            },
+            "text": "We grow what this ground actually wants, pick it on Thursday morning and drive it out on Friday. You do not choose what is in the box. The season does."
+          },
+          "parent": "hero_copy"
+        },
+        {
+          "id": "hero_actions",
+          "type": "Group",
+          "label": "Actions",
+          "parameters": {
+            "sizeMode": "contentSize",
+            "flexDirection": "row",
+            "flexWrap": "wrap",
+            "alignItems": "center",
+            "columnGap": "var(--space-3)",
+            "rowGap": "var(--space-3)",
+            "paddingTop": "var(--space-2)"
+          },
+          "parent": "hero_copy",
+          "children": [
+            "hero_cta",
+            "hero_secondary"
+          ]
+        },
+        {
+          "id": "hero_cta",
+          "type": "net.noodl.controls.button",
+          "label": "Primary",
+          "parameters": {
+            "sizeMode": "contentSize",
+            "backgroundColor": "var(--primary)",
+            "color": "var(--primary-foreground)",
+            "borderRadius": "var(--radius-full)",
+            "borderStyle": "none",
+            "paddingLeft": "var(--space-6)",
+            "paddingRight": "var(--space-6)",
+            "paddingTop": "var(--space-3)",
+            "paddingBottom": "var(--space-3)",
+            "fontSize": "var(--text-sm)",
+            "fontWeight": "var(--font-semibold)",
+            "label": "Take a box — £14 a week"
+          },
+          "parent": "hero_actions"
+        },
+        {
+          "id": "hero_secondary",
+          "type": "net.noodl.controls.button",
+          "label": "Secondary",
+          "parameters": {
+            "sizeMode": "contentSize",
+            "backgroundColor": "transparent",
+            "color": "var(--primary-foreground)",
+            "borderRadius": "var(--radius-full)",
+            "borderStyle": "solid",
+            "borderWidth": "var(--border-1)",
+            "borderColor": "var(--border-glass)",
+            "paddingLeft": "var(--space-6)",
+            "paddingRight": "var(--space-6)",
+            "paddingTop": "var(--space-3)",
+            "paddingBottom": "var(--space-3)",
+            "fontSize": "var(--text-sm)",
+            "fontWeight": "var(--font-semibold)",
+            "label": "See this week's box"
+          },
+          "parent": "hero_actions"
+        }
+      ],
+      "connections": []
+    },
+    {
+      "name": "/Sections/TrustStrip",
+      "nodes": [
+        {
+          "id": "strip_band",
+          "type": "Group",
+          "label": "Trust strip",
+          "parameters": {
+            "width": {
+              "value": 100,
+              "unit": "%"
+            },
+            "flexDirection": "column",
+            "alignItems": "center",
+            "paddingTop": "var(--space-10)",
+            "paddingBottom": "var(--space-10)",
+            "backgroundColor": "var(--surface)",
+            "borderTopStyle": "solid",
+            "borderTopWidth": "var(--border-1)",
+            "borderTopColor": "var(--border)",
+            "borderBottomStyle": "solid",
+            "borderBottomWidth": "var(--border-1)",
+            "borderBottomColor": "var(--border)"
+          },
+          "children": [
+            "strip_shell"
+          ]
+        },
+        {
+          "id": "strip_shell",
+          "type": "Group",
+          "label": "Shell",
+          "parameters": {
+            "width": {
+              "value": 100,
+              "unit": "%"
+            },
+            "maxWidth": {
+              "value": 1200,
+              "unit": "px"
+            },
+            "sizeMode": "contentHeight",
+            "flexDirection": "column",
+            "paddingLeft": "var(--space-6)",
+            "paddingRight": "var(--space-6)"
+          },
+          "parent": "strip_band",
+          "children": [
+            "strip_cols"
+          ]
+        },
+        {
+          "id": "strip_cols",
+          "type": "net.noodl.visual.columns",
+          "label": "Three up",
+          "parameters": {
+            "layoutString": "1 1 1",
+            "marginX": {
+              "value": 48,
+              "unit": "px"
+            },
+            "mediumBreakpoint": {
+              "value": 900,
+              "unit": "px"
+            },
+            "mediumLayout": "1",
+            "smallBreakpoint": {
+              "value": 640,
+              "unit": "px"
+            },
+            "smallLayout": "1"
+          },
+          "parent": "strip_shell",
+          "children": [
+            "strip_i1",
+            "strip_i2",
+            "strip_i3"
+          ]
+        },
+        {
+          "id": "strip_i1",
+          "type": "/Components/FeatureItem",
+          "label": "Grown here",
+          "parameters": {
+            "icon": {
+              "class": "lucide",
+              "code": "icon-sprout",
+              "codeAsClass": true
+            },
+            "title": "Picked eleven miles away",
+            "body": "Two fields at Ashcombe and a polytunnel we put up in 2021."
+          },
+          "parent": "strip_cols"
+        },
+        {
+          "id": "strip_i2",
+          "type": "/Components/FeatureItem",
+          "label": "Delivery",
+          "parameters": {
+            "icon": {
+              "class": "lucide",
+              "code": "icon-truck",
+              "codeAsClass": true
+            },
+            "title": "One van, one morning",
+            "body": "Friday between six and eleven. We text when we are two stops away."
+          },
+          "parent": "strip_cols"
+        },
+        {
+          "id": "strip_i3",
+          "type": "/Components/FeatureItem",
+          "label": "Crates",
+          "parameters": {
+            "icon": {
+              "class": "lucide",
+              "code": "icon-recycle",
+              "codeAsClass": true
+            },
+            "title": "The crate comes back",
+            "body": "Leave it out the week after and we swap it. Forty lost in four years."
+          },
+          "parent": "strip_cols"
+        }
+      ],
+      "connections": []
+    },
+    {
+      "name": "/Sections/HowItWorks",
+      "nodes": [
+        {
+          "id": "story_band",
+          "type": "Group",
+          "label": "How it works",
+          "parameters": {
+            "width": {
+              "value": 100,
+              "unit": "%"
+            },
+            "flexDirection": "column",
+            "alignItems": "center",
+            "paddingTop": "var(--space-20)",
+            "paddingBottom": "var(--space-20)"
+          },
+          "children": [
+            "story_shell"
+          ]
+        },
+        {
+          "id": "story_shell",
+          "type": "Group",
+          "label": "Shell",
+          "parameters": {
+            "width": {
+              "value": 100,
+              "unit": "%"
+            },
+            "maxWidth": {
+              "value": 1200,
+              "unit": "px"
+            },
+            "sizeMode": "contentHeight",
+            "flexDirection": "column",
+            "paddingLeft": "var(--space-6)",
+            "paddingRight": "var(--space-6)"
+          },
+          "parent": "story_band",
+          "children": [
+            "story_cols"
+          ]
+        },
+        {
+          "id": "story_cols",
+          "type": "net.noodl.visual.columns",
+          "label": "Two up",
+          "parameters": {
+            "layoutString": "1 1",
+            "marginX": {
+              "value": 48,
+              "unit": "px"
+            },
+            "mediumBreakpoint": {
+              "value": 900,
+              "unit": "px"
+            },
+            "mediumLayout": "1",
+            "smallBreakpoint": {
+              "value": 640,
+              "unit": "px"
+            },
+            "smallLayout": "1"
+          },
+          "parent": "story_shell",
+          "children": [
+            "story_copy",
+            "story_media"
+          ]
+        },
+        {
+          "id": "story_copy",
+          "type": "Group",
+          "label": "Copy",
+          "parameters": {
+            "width": {
+              "value": 100,
+              "unit": "%"
+            },
+            "sizeMode": "contentHeight",
+            "flexDirection": "column",
+            "rowGap": "var(--space-4)"
+          },
+          "parent": "story_cols",
+          "children": [
+            "story_eyebrow",
+            "story_head",
+            "story_p1",
+            "story_p2"
+          ]
+        },
+        {
+          "id": "story_eyebrow",
+          "type": "Text",
+          "label": "story_eyebrow",
+          "parameters": {
+            "fontSize": "var(--text-xs)",
+            "fontWeight": "var(--font-semibold)",
+            "letterSpacing": "var(--tracking-widest)",
+            "textTransform": "uppercase",
+            "color": "var(--primary)",
+            "text": "How it works"
+          },
+          "parent": "story_copy"
+        },
+        {
+          "id": "story_head",
+          "type": "Text",
+          "label": "story_head",
+          "parameters": {
+            "fontSize": "var(--text-3xl)",
+            "fontWeight": "var(--font-semibold)",
+            "lineHeight": "var(--leading-tight)",
+            "letterSpacing": "var(--tracking-tight)",
+            "color": "var(--foreground)",
+            "text": "You get what came out of the ground that week."
+          },
+          "parent": "story_copy"
+        },
+        {
+          "id": "story_p1",
+          "type": "Text",
+          "label": "story_p1",
+          "parameters": {
+            "fontSize": "var(--text-base)",
+            "lineHeight": "var(--leading-relaxed)",
+            "color": "var(--foreground)",
+            "text": "There is no choosing. In February that means celeriac, leeks and enough kale to bore you. In July it means we are apologising for the courgettes. Both are the same promise kept."
+          },
+          "parent": "story_copy"
+        },
+        {
+          "id": "story_p2",
+          "type": "Text",
+          "label": "story_p2",
+          "parameters": {
+            "fontSize": "var(--text-base)",
+            "lineHeight": "var(--leading-relaxed)",
+            "color": "var(--muted-foreground)",
+            "text": "Every box carries a card saying what is in it, what to do with the awkward one, and what we got wrong that week."
+          },
+          "parent": "story_copy"
+        },
+        {
+          "id": "story_media",
+          "type": "Group",
+          "label": "Media",
+          "parameters": {
+            "width": {
+              "value": 100,
+              "unit": "%"
+            },
+            "sizeMode": "contentHeight",
+            "flexDirection": "column"
+          },
+          "parent": "story_cols",
+          "children": [
+            "story_photo"
+          ]
+        },
+        {
+          "id": "story_photo",
+          "type": "Image",
+          "label": "Photograph",
+          "parameters": {
+            "sizeMode": "explicit",
+            "objectFit": "cover",
+            "width": {
+              "value": 100,
+              "unit": "%"
+            },
+            "height": {
+              "value": 360,
+              "unit": "px"
+            },
+            "borderRadius": "var(--radius-2xl)",
+            "src": "noodl_modules/starter-imagery/people-market.webp",
+            "alt": "A grower weighing produce on a market stall"
+          },
+          "parent": "story_media"
+        }
+      ],
+      "connections": []
+    },
+    {
+      "name": "/Sections/Boxes",
+      "nodes": [
+        {
+          "id": "boxes_band",
+          "type": "Group",
+          "label": "The boxes",
+          "parameters": {
+            "width": {
+              "value": 100,
+              "unit": "%"
+            },
+            "flexDirection": "column",
+            "alignItems": "center",
+            "paddingTop": "var(--space-20)",
+            "paddingBottom": "var(--space-20)",
+            "backgroundColor": "var(--surface)",
+            "borderTopStyle": "solid",
+            "borderTopWidth": "var(--border-1)",
+            "borderTopColor": "var(--border)",
+            "borderBottomStyle": "solid",
+            "borderBottomWidth": "var(--border-1)",
+            "borderBottomColor": "var(--border)"
+          },
+          "children": [
+            "boxes_shell"
+          ]
+        },
+        {
+          "id": "boxes_shell",
+          "type": "Group",
+          "label": "Shell",
+          "parameters": {
+            "width": {
+              "value": 100,
+              "unit": "%"
+            },
+            "maxWidth": {
+              "value": 1200,
+              "unit": "px"
+            },
+            "sizeMode": "contentHeight",
+            "flexDirection": "column",
+            "paddingLeft": "var(--space-6)",
+            "paddingRight": "var(--space-6)"
+          },
+          "parent": "boxes_band",
+          "children": [
+            "boxes_head",
+            "boxes_cols"
+          ]
+        },
+        {
+          "id": "boxes_head",
+          "type": "Group",
+          "label": "Section head",
+          "parameters": {
+            "width": {
+              "value": 100,
+              "unit": "%"
+            },
+            "sizeMode": "contentHeight",
+            "flexDirection": "column",
+            "rowGap": "var(--space-3)",
+            "paddingBottom": "var(--space-10)"
+          },
+          "parent": "boxes_shell",
+          "children": [
+            "boxes_eyebrow",
+            "boxes_title",
+            "boxes_lead"
+          ]
+        },
+        {
+          "id": "boxes_eyebrow",
+          "type": "Text",
+          "label": "boxes_eyebrow",
+          "parameters": {
+            "fontSize": "var(--text-xs)",
+            "fontWeight": "var(--font-semibold)",
+            "letterSpacing": "var(--tracking-widest)",
+            "textTransform": "uppercase",
+            "color": "var(--primary)",
+            "text": "The boxes"
+          },
+          "parent": "boxes_head"
+        },
+        {
+          "id": "boxes_title",
+          "type": "Text",
+          "label": "boxes_title",
+          "parameters": {
+            "fontSize": "var(--text-3xl)",
+            "fontWeight": "var(--font-semibold)",
+            "lineHeight": "var(--leading-tight)",
+            "letterSpacing": "var(--tracking-tight)",
+            "color": "var(--foreground)",
+            "text": "Three sizes, and a table on Saturdays."
+          },
+          "parent": "boxes_head"
+        },
+        {
+          "id": "boxes_lead",
+          "type": "Text",
+          "label": "boxes_lead",
+          "parameters": {
+            "fontSize": "var(--text-lg)",
+            "lineHeight": "var(--leading-relaxed)",
+            "color": "var(--muted-foreground)",
+            "maxWidth": {
+              "value": 560,
+              "unit": "px"
+            },
+            "text": "Cancel any week before Wednesday midnight. No contract, no minimum, no app."
+          },
+          "parent": "boxes_head"
+        },
+        {
+          "id": "boxes_cols",
+          "type": "net.noodl.visual.columns",
+          "label": "Three up",
+          "parameters": {
+            "layoutString": "1 1 1",
+            "marginX": {
+              "value": 24,
+              "unit": "px"
+            },
+            "mediumBreakpoint": {
+              "value": 900,
+              "unit": "px"
+            },
+            "mediumLayout": "1",
+            "smallBreakpoint": {
+              "value": 640,
+              "unit": "px"
+            },
+            "smallLayout": "1"
+          },
+          "parent": "boxes_shell",
+          "children": [
+            "boxes_c1",
+            "boxes_c2",
+            "boxes_c3"
+          ]
+        },
+        {
+          "id": "boxes_c1",
+          "type": "/Components/BoxCard",
+          "label": "Small box",
+          "parameters": {
+            "image": "noodl_modules/starter-imagery/food-carrots.webp",
+            "alt": "Carrots in a wooden crate",
+            "title": "The small box",
+            "price": "£14 a week",
+            "body": "Six or seven lines. Enough for two people who cook most nights."
+          },
+          "parent": "boxes_cols"
+        },
+        {
+          "id": "boxes_c2",
+          "type": "/Components/BoxCard",
+          "label": "Full box",
+          "parameters": {
+            "image": "noodl_modules/starter-imagery/food-board.webp",
+            "alt": "A red onion and peppercorns on a wooden board",
+            "title": "The full box",
+            "price": "£22 a week",
+            "body": "Ten to twelve lines, including the awkward ones. Feeds four, or two who batch-cook."
+          },
+          "parent": "boxes_cols"
+        },
+        {
+          "id": "boxes_c3",
+          "type": "/Components/BoxCard",
+          "label": "Saturday stall",
+          "parameters": {
+            "image": "noodl_modules/starter-imagery/food-grocer.webp",
+            "alt": "A greengrocer stall with a customer choosing vegetables",
+            "title": "The Saturday stall",
+            "price": "Eight until it goes",
+            "body": "Whatever did not fit in a box, on the table at Ashcombe Cross."
+          },
+          "parent": "boxes_cols"
+        }
+      ],
+      "connections": []
+    },
+    {
+      "name": "/Sections/Numbers",
+      "nodes": [
+        {
+          "id": "stats_band",
+          "type": "Group",
+          "label": "The numbers",
+          "parameters": {
+            "width": {
+              "value": 100,
+              "unit": "%"
+            },
+            "sizeMode": "contentHeight",
+            "flexDirection": "column",
+            "alignItems": "center",
+            "backgroundGradient": "var(--gradient-deep)",
+            "paddingTop": "var(--space-20)",
+            "paddingBottom": "var(--space-20)"
+          },
+          "children": [
+            "stats_shell"
+          ]
+        },
+        {
+          "id": "stats_shell",
+          "type": "Group",
+          "label": "Shell",
+          "parameters": {
+            "width": {
+              "value": 100,
+              "unit": "%"
+            },
+            "maxWidth": {
+              "value": 1200,
+              "unit": "px"
+            },
+            "sizeMode": "contentHeight",
+            "flexDirection": "column",
+            "paddingLeft": "var(--space-6)",
+            "paddingRight": "var(--space-6)"
+          },
+          "parent": "stats_band",
+          "children": [
+            "stats_head",
+            "stats_cols"
+          ]
+        },
+        {
+          "id": "stats_head",
+          "type": "Group",
+          "label": "Section head",
+          "parameters": {
+            "width": {
+              "value": 100,
+              "unit": "%"
+            },
+            "sizeMode": "contentHeight",
+            "flexDirection": "column",
+            "rowGap": "var(--space-3)",
+            "paddingBottom": "var(--space-10)"
+          },
+          "parent": "stats_shell",
+          "children": [
+            "stats_eyebrow",
+            "stats_title"
+          ]
+        },
+        {
+          "id": "stats_eyebrow",
+          "type": "Text",
+          "label": "stats_eyebrow",
+          "parameters": {
+            "fontSize": "var(--text-xs)",
+            "fontWeight": "var(--font-semibold)",
+            "letterSpacing": "var(--tracking-widest)",
+            "textTransform": "uppercase",
+            "color": "var(--primary-foreground)",
+            "text": "Last season"
+          },
+          "parent": "stats_head"
+        },
+        {
+          "id": "stats_title",
+          "type": "Text",
+          "label": "stats_title",
+          "parameters": {
+            "fontSize": "var(--text-3xl)",
+            "fontWeight": "var(--font-semibold)",
+            "lineHeight": "var(--leading-tight)",
+            "letterSpacing": "var(--tracking-tight)",
+            "color": "var(--primary-foreground)",
+            "text": "The whole business, in four numbers."
+          },
+          "parent": "stats_head"
+        },
+        {
+          "id": "stats_cols",
+          "type": "net.noodl.visual.columns",
+          "label": "Four up",
+          "parameters": {
+            "layoutString": "1 1 1 1",
+            "marginX": {
+              "value": 20,
+              "unit": "px"
+            },
+            "mediumBreakpoint": {
+              "value": 900,
+              "unit": "px"
+            },
+            "mediumLayout": "1 1",
+            "smallBreakpoint": {
+              "value": 640,
+              "unit": "px"
+            },
+            "smallLayout": "1 1"
+          },
+          "parent": "stats_shell",
+          "children": [
+            "stats_t1",
+            "stats_t2",
+            "stats_t3",
+            "stats_t4"
+          ]
+        },
+        {
+          "id": "stats_t1",
+          "type": "/Components/StatTile",
+          "label": "Acres",
+          "parameters": {
+            "value": "11",
+            "label": "acres in cultivation"
+          },
+          "parent": "stats_cols"
+        },
+        {
+          "id": "stats_t2",
+          "type": "/Components/StatTile",
+          "label": "Crops",
+          "parameters": {
+            "value": "40",
+            "label": "crops through the year"
+          },
+          "parent": "stats_cols"
+        },
+        {
+          "id": "stats_t3",
+          "type": "/Components/StatTile",
+          "label": "Boxes",
+          "parameters": {
+            "value": "318",
+            "label": "boxes packed last week"
+          },
+          "parent": "stats_cols"
+        },
+        {
+          "id": "stats_t4",
+          "type": "/Components/StatTile",
+          "label": "Air miles",
+          "parameters": {
+            "value": "0",
+            "label": "air miles in the boxes"
+          },
+          "parent": "stats_cols"
+        }
+      ],
+      "connections": []
+    },
+    {
+      "name": "/Sections/Testimonials",
+      "nodes": [
+        {
+          "id": "quotes_band",
+          "type": "Group",
+          "label": "Testimonials",
+          "parameters": {
+            "width": {
+              "value": 100,
+              "unit": "%"
+            },
+            "flexDirection": "column",
+            "alignItems": "center",
+            "paddingTop": "var(--space-20)",
+            "paddingBottom": "var(--space-20)",
+            "backgroundGradient": "var(--gradient-surface)",
+            "borderBottomStyle": "solid",
+            "borderBottomWidth": "var(--border-1)",
+            "borderBottomColor": "var(--border)"
+          },
+          "children": [
+            "quotes_shell"
+          ]
+        },
+        {
+          "id": "quotes_shell",
+          "type": "Group",
+          "label": "Shell",
+          "parameters": {
+            "width": {
+              "value": 100,
+              "unit": "%"
+            },
+            "maxWidth": {
+              "value": 1200,
+              "unit": "px"
+            },
+            "sizeMode": "contentHeight",
+            "flexDirection": "column",
+            "paddingLeft": "var(--space-6)",
+            "paddingRight": "var(--space-6)"
+          },
+          "parent": "quotes_band",
+          "children": [
+            "quotes_head",
+            "quotes_cols"
+          ]
+        },
+        {
+          "id": "quotes_head",
+          "type": "Group",
+          "label": "Section head",
+          "parameters": {
+            "width": {
+              "value": 100,
+              "unit": "%"
+            },
+            "sizeMode": "contentHeight",
+            "flexDirection": "column",
+            "rowGap": "var(--space-3)",
+            "paddingBottom": "var(--space-10)"
+          },
+          "parent": "quotes_shell",
+          "children": [
+            "quotes_eyebrow",
+            "quotes_title"
+          ]
+        },
+        {
+          "id": "quotes_eyebrow",
+          "type": "Text",
+          "label": "quotes_eyebrow",
+          "parameters": {
+            "fontSize": "var(--text-xs)",
+            "fontWeight": "var(--font-semibold)",
+            "letterSpacing": "var(--tracking-widest)",
+            "textTransform": "uppercase",
+            "color": "var(--primary)",
+            "text": "Six hundred households"
+          },
+          "parent": "quotes_head"
+        },
+        {
+          "id": "quotes_title",
+          "type": "Text",
+          "label": "quotes_title",
+          "parameters": {
+            "fontSize": "var(--text-3xl)",
+            "fontWeight": "var(--font-semibold)",
+            "lineHeight": "var(--leading-tight)",
+            "letterSpacing": "var(--tracking-tight)",
+            "color": "var(--foreground)",
+            "text": "What people say when we ask them to stop."
+          },
+          "parent": "quotes_head"
+        },
+        {
+          "id": "quotes_cols",
+          "type": "net.noodl.visual.columns",
+          "label": "Three up",
+          "parameters": {
+            "layoutString": "1 1 1",
+            "marginX": {
+              "value": 24,
+              "unit": "px"
+            },
+            "mediumBreakpoint": {
+              "value": 900,
+              "unit": "px"
+            },
+            "mediumLayout": "1",
+            "smallBreakpoint": {
+              "value": 640,
+              "unit": "px"
+            },
+            "smallLayout": "1"
+          },
+          "parent": "quotes_shell",
+          "children": [
+            "quotes_q1",
+            "quotes_q2",
+            "quotes_q3"
+          ]
+        },
+        {
+          "id": "quotes_q1",
+          "type": "/Components/QuoteCard",
+          "label": "Priya",
+          "parameters": {
+            "quote": "I throw away less food in a year of this than I used to in a month. The card in the box tells you what to do with the kohlrabi.",
+            "name": "Priya Raman",
+            "role": "Wells · since 2023",
+            "avatar": "noodl_modules/starter-imagery/avatar-2.webp"
+          },
+          "parent": "quotes_cols"
+        },
+        {
+          "id": "quotes_q2",
+          "type": "/Components/QuoteCard",
+          "label": "Tom",
+          "parameters": {
+            "quote": "They emailed in March to say the crop had failed and knocked a week off before I noticed. Nobody does that.",
+            "name": "Tom Beckett",
+            "role": "Shepton Mallet · since 2021",
+            "avatar": "noodl_modules/starter-imagery/avatar-4.webp"
+          },
+          "parent": "quotes_cols"
+        },
+        {
+          "id": "quotes_q3",
+          "type": "/Components/QuoteCard",
+          "label": "Amal",
+          "parameters": {
+            "quote": "It is not cheaper than the supermarket. It is better, and it turns up, and I have stopped thinking about it.",
+            "name": "Amal Haddad",
+            "role": "Frome · since 2024",
+            "avatar": "noodl_modules/starter-imagery/avatar-6.webp"
+          },
+          "parent": "quotes_cols"
+        }
+      ],
+      "connections": []
+    },
+    {
+      "name": "/Sections/ClosingCta",
+      "nodes": [
+        {
+          "id": "cta_band",
+          "type": "Group",
+          "label": "Closing CTA",
+          "parameters": {
+            "width": {
+              "value": 100,
+              "unit": "%"
+            },
+            "sizeMode": "contentHeight",
+            "flexDirection": "column",
+            "alignItems": "center",
+            "backgroundGradient": "var(--gradient-brand)",
+            "paddingTop": "var(--space-24)",
+            "paddingBottom": "var(--space-24)"
+          },
+          "children": [
+            "cta_shell"
+          ]
+        },
+        {
+          "id": "cta_shell",
+          "type": "Group",
+          "label": "Shell",
+          "parameters": {
+            "width": {
+              "value": 100,
+              "unit": "%"
+            },
+            "maxWidth": {
+              "value": 720,
+              "unit": "px"
+            },
+            "sizeMode": "contentHeight",
+            "flexDirection": "column",
+            "alignItems": "center",
+            "rowGap": "var(--space-5)",
+            "paddingLeft": "var(--space-6)",
+            "paddingRight": "var(--space-6)"
+          },
+          "parent": "cta_band",
+          "children": [
+            "cta_badge",
+            "cta_head",
+            "cta_sub",
+            "cta_actions"
+          ]
+        },
+        {
+          "id": "cta_badge",
+          "type": "Group",
+          "label": "Badge",
+          "parameters": {
+            "sizeMode": "contentSize",
+            "flexDirection": "row",
+            "alignItems": "center",
+            "columnGap": "var(--space-2)",
+            "backgroundColor": "var(--surface-glass)",
+            "borderStyle": "solid",
+            "borderWidth": "var(--border-1)",
+            "borderColor": "var(--border-glass)",
+            "borderRadius": "var(--radius-full)",
+            "paddingLeft": "var(--space-4)",
+            "paddingRight": "var(--space-4)",
+            "paddingTop": "var(--space-2)",
+            "paddingBottom": "var(--space-2)"
+          },
+          "parent": "cta_shell",
+          "children": [
+            "cta_badgeicon",
+            "cta_badgetext"
+          ]
+        },
+        {
+          "id": "cta_badgeicon",
+          "type": "net.noodl.visual.icon",
+          "label": "Badge glyph",
+          "parameters": {
+            "iconIconSource": {
+              "class": "lucide",
+              "code": "icon-sprout",
+              "codeAsClass": true
+            },
+            "iconSize": {
+              "value": 14,
+              "unit": "px"
+            },
+            "iconColor": "var(--primary-foreground)"
+          },
+          "parent": "cta_badge"
+        },
+        {
+          "id": "cta_badgetext",
+          "type": "Text",
+          "label": "cta_badgetext",
+          "parameters": {
+            "fontSize": "var(--text-xs)",
+            "fontWeight": "var(--font-semibold)",
+            "letterSpacing": "var(--tracking-wide)",
+            "color": "var(--primary-foreground)",
+            "text": "Eleven boxes left on the spring round"
+          },
+          "parent": "cta_badge"
+        },
+        {
+          "id": "cta_head",
+          "type": "Text",
+          "label": "cta_head",
+          "parameters": {
+            "fontSize": "var(--display-md)",
+            "fontWeight": "var(--font-bold)",
+            "lineHeight": "var(--leading-none)",
+            "letterSpacing": "var(--tracking-tighter)",
+            "color": "var(--primary-foreground)",
+            "textAlignX": "center",
+            "text": "Start on Friday."
+          },
+          "parent": "cta_shell"
+        },
+        {
+          "id": "cta_sub",
+          "type": "Text",
+          "label": "cta_sub",
+          "parameters": {
+            "fontSize": "var(--text-lg)",
+            "lineHeight": "var(--leading-relaxed)",
+            "color": "var(--primary-foreground)",
+            "textAlignX": "center",
+            "text": "Pick a size, tell us where the crate goes, and cancel any week you like."
+          },
+          "parent": "cta_shell"
+        },
+        {
+          "id": "cta_actions",
+          "type": "Group",
+          "label": "Actions",
+          "parameters": {
+            "sizeMode": "contentSize",
+            "flexDirection": "row",
+            "flexWrap": "wrap",
+            "alignItems": "center",
+            "columnGap": "var(--space-3)",
+            "rowGap": "var(--space-3)",
+            "paddingTop": "var(--space-2)",
+            "justifyContent": "center"
+          },
+          "parent": "cta_shell",
+          "children": [
+            "cta_primary",
+            "cta_secondary"
+          ]
+        },
+        {
+          "id": "cta_primary",
+          "type": "net.noodl.controls.button",
+          "label": "Primary",
+          "parameters": {
+            "sizeMode": "contentSize",
+            "backgroundColor": "var(--primary-foreground)",
+            "color": "var(--primary)",
+            "borderRadius": "var(--radius-full)",
+            "borderStyle": "none",
+            "paddingLeft": "var(--space-6)",
+            "paddingRight": "var(--space-6)",
+            "paddingTop": "var(--space-3)",
+            "paddingBottom": "var(--space-3)",
+            "fontSize": "var(--text-sm)",
+            "fontWeight": "var(--font-semibold)",
+            "label": "Take a box"
+          },
+          "parent": "cta_actions"
+        },
+        {
+          "id": "cta_secondary",
+          "type": "net.noodl.controls.button",
+          "label": "Secondary",
+          "parameters": {
+            "sizeMode": "contentSize",
+            "backgroundColor": "transparent",
+            "color": "var(--primary-foreground)",
+            "borderRadius": "var(--radius-full)",
+            "borderStyle": "solid",
+            "borderWidth": "var(--border-1)",
+            "borderColor": "var(--border-glass)",
+            "paddingLeft": "var(--space-6)",
+            "paddingRight": "var(--space-6)",
+            "paddingTop": "var(--space-3)",
+            "paddingBottom": "var(--space-3)",
+            "fontSize": "var(--text-sm)",
+            "fontWeight": "var(--font-semibold)",
+            "label": "Check the delivery area"
+          },
+          "parent": "cta_actions"
+        }
+      ],
+      "connections": []
+    },
+    {
+      "name": "/Sections/SiteFooter",
+      "nodes": [
+        {
+          "id": "footer_band",
+          "type": "Group",
+          "label": "Footer",
+          "parameters": {
+            "width": {
+              "value": 100,
+              "unit": "%"
+            },
+            "sizeMode": "contentHeight",
+            "flexDirection": "column",
+            "alignItems": "center",
+            "backgroundColor": "var(--muted)",
+            "borderTopStyle": "solid",
+            "borderTopWidth": "var(--border-1)",
+            "borderTopColor": "var(--border)",
+            "paddingTop": "var(--space-16)",
+            "paddingBottom": "var(--space-10)"
+          },
+          "children": [
+            "footer_shell"
+          ]
+        },
+        {
+          "id": "footer_shell",
+          "type": "Group",
+          "label": "Shell",
+          "parameters": {
+            "width": {
+              "value": 100,
+              "unit": "%"
+            },
+            "maxWidth": {
+              "value": 1200,
+              "unit": "px"
+            },
+            "sizeMode": "contentHeight",
+            "flexDirection": "column",
+            "paddingLeft": "var(--space-6)",
+            "paddingRight": "var(--space-6)",
+            "rowGap": "var(--space-10)"
+          },
+          "parent": "footer_band",
+          "children": [
+            "footer_cols",
+            "footer_rule"
+          ]
+        },
+        {
+          "id": "footer_cols",
+          "type": "net.noodl.visual.columns",
+          "label": "Four up",
+          "parameters": {
+            "layoutString": "2 1 1 1",
+            "marginX": {
+              "value": 32,
+              "unit": "px"
+            },
+            "mediumBreakpoint": {
+              "value": 900,
+              "unit": "px"
+            },
+            "mediumLayout": "1 1",
+            "smallBreakpoint": {
+              "value": 640,
+              "unit": "px"
+            },
+            "smallLayout": "1"
+          },
+          "parent": "footer_shell",
+          "children": [
+            "footer_about",
+            "footer_k1",
+            "footer_k2",
+            "footer_k3"
+          ]
+        },
+        {
+          "id": "footer_about",
+          "type": "Group",
+          "label": "About",
+          "parameters": {
+            "width": {
+              "value": 100,
+              "unit": "%"
+            },
+            "sizeMode": "contentHeight",
+            "flexDirection": "column",
+            "rowGap": "var(--space-3)"
+          },
+          "parent": "footer_cols",
+          "children": [
+            "footer_mark",
+            "footer_blurb"
+          ]
+        },
+        {
+          "id": "footer_mark",
+          "type": "Group",
+          "label": "Wordmark",
+          "parameters": {
+            "sizeMode": "contentSize",
+            "flexDirection": "row",
+            "alignItems": "center",
+            "columnGap": "var(--space-2)"
+          },
+          "parent": "footer_about",
+          "children": [
+            "footer_markicon",
+            "footer_marktext"
+          ]
+        },
+        {
+          "id": "footer_markicon",
+          "type": "net.noodl.visual.icon",
+          "label": "Wordmark glyph",
+          "parameters": {
+            "iconIconSource": {
+              "class": "lucide",
+              "code": "icon-sprout",
+              "codeAsClass": true
+            },
+            "iconSize": {
+              "value": 20,
+              "unit": "px"
+            },
+            "iconColor": "var(--primary)"
+          },
+          "parent": "footer_mark"
+        },
+        {
+          "id": "footer_marktext",
+          "type": "Text",
+          "label": "footer_marktext",
+          "parameters": {
+            "fontSize": "var(--text-base)",
+            "fontWeight": "var(--font-semibold)",
+            "letterSpacing": "var(--tracking-tight)",
+            "color": "var(--foreground)",
+            "text": "Ashcombe Market Garden"
+          },
+          "parent": "footer_mark"
+        },
+        {
+          "id": "footer_blurb",
+          "type": "Text",
+          "label": "footer_blurb",
+          "parameters": {
+            "fontSize": "var(--text-sm)",
+            "color": "var(--muted-foreground)",
+            "maxWidth": {
+              "value": 320,
+              "unit": "px"
+            },
+            "lineHeight": "var(--leading-relaxed)",
+            "text": "Ashcombe Cross, Somerset. Eleven acres, growing since 2019. Boxes packed Thursday and out on Friday."
+          },
+          "parent": "footer_about"
+        },
+        {
+          "id": "footer_k1",
+          "type": "/Components/FooterColumn",
+          "label": "Boxes",
+          "parameters": {
+            "heading": "Boxes",
+            "a": "The small box",
+            "b": "The full box",
+            "c": "Gift a box"
+          },
+          "parent": "footer_cols"
+        },
+        {
+          "id": "footer_k2",
+          "type": "/Components/FooterColumn",
+          "label": "The garden",
+          "parameters": {
+            "heading": "The garden",
+            "a": "What we grow",
+            "b": "Open days",
+            "c": "Volunteering"
+          },
+          "parent": "footer_cols"
+        },
+        {
+          "id": "footer_k3",
+          "type": "/Components/FooterColumn",
+          "label": "Practical",
+          "parameters": {
+            "heading": "Practical",
+            "a": "Delivery area",
+            "b": "Cancel a week",
+            "c": "Get in touch"
+          },
+          "parent": "footer_cols"
+        },
+        {
+          "id": "footer_rule",
+          "type": "Group",
+          "label": "Bottom rule",
+          "parameters": {
+            "width": {
+              "value": 100,
+              "unit": "%"
+            },
+            "sizeMode": "contentHeight",
+            "flexDirection": "row",
+            "alignItems": "center",
+            "columnGap": "var(--space-4)",
+            "borderTopStyle": "solid",
+            "borderTopWidth": "var(--border-1)",
+            "borderTopColor": "var(--border)",
+            "paddingTop": "var(--space-6)"
+          },
+          "parent": "footer_shell",
+          "children": [
+            "footer_copy"
+          ]
+        },
+        {
+          "id": "footer_copy",
+          "type": "Text",
+          "label": "footer_copy",
+          "parameters": {
+            "fontSize": "var(--text-sm)",
+            "color": "var(--muted-foreground)",
+            "text": "© 2026 Ashcombe Market Garden · Photographs are CC0 from the bundled starter imagery"
+          },
+          "parent": "footer_rule"
+        }
+      ],
+      "connections": []
+    },
+    {
+      "name": "/Components/FeatureItem",
+      "nodes": [
+        {
+          "id": "fi_root",
+          "type": "Group",
+          "label": "Item",
+          "parameters": {
+            "width": {
+              "value": 100,
+              "unit": "%"
+            },
+            "sizeMode": "contentHeight",
+            "flexDirection": "row",
+            "columnGap": "var(--space-3)",
+            "alignItems": "flex-start"
+          },
+          "children": [
+            "fi_icon",
+            "fi_copy"
+          ]
+        },
+        {
+          "id": "fi_icon",
+          "type": "net.noodl.visual.icon",
+          "label": "Glyph",
+          "parameters": {
+            "iconIconSource": {
+              "class": "lucide",
+              "code": "icon-sprout",
+              "codeAsClass": true
+            },
+            "iconSize": {
+              "value": 22,
+              "unit": "px"
+            },
+            "iconColor": "var(--primary)"
+          },
+          "parent": "fi_root"
+        },
+        {
+          "id": "fi_copy",
+          "type": "Group",
+          "label": "Copy",
+          "parameters": {
+            "width": {
+              "value": 100,
+              "unit": "%"
+            },
+            "sizeMode": "contentHeight",
+            "flexDirection": "column",
+            "rowGap": "var(--space-1)"
+          },
+          "parent": "fi_root",
+          "children": [
+            "fi_t",
+            "fi_b"
+          ]
+        },
+        {
+          "id": "fi_t",
+          "type": "Text",
+          "label": "t",
+          "parameters": {
+            "fontSize": "var(--text-sm)",
+            "fontWeight": "var(--font-semibold)",
+            "color": "var(--foreground)",
+            "text": "Title"
+          },
+          "parent": "fi_copy"
+        },
+        {
+          "id": "fi_b",
+          "type": "Text",
+          "label": "b",
+          "parameters": {
+            "fontSize": "var(--text-sm)",
+            "lineHeight": "var(--leading-normal)",
+            "color": "var(--muted-foreground)",
+            "text": "Body"
+          },
+          "parent": "fi_copy"
+        },
+        {
+          "id": "fi_inputs",
+          "type": "Component Inputs",
+          "label": "What varies per instance",
+          "x": 40,
+          "y": 40,
+          "ports": [
+            {
+              "name": "title",
+              "plug": "output",
+              "type": "*"
+            },
+            {
+              "name": "body",
+              "plug": "output",
+              "type": "*"
+            },
+            {
+              "name": "icon",
+              "plug": "output",
+              "type": "*"
+            }
+          ]
+        }
+      ],
+      "connections": [
+        {
+          "fromId": "fi_inputs",
+          "fromProperty": "icon",
+          "toId": "fi_icon",
+          "toProperty": "iconIconSource"
+        },
+        {
+          "fromId": "fi_inputs",
+          "fromProperty": "title",
+          "toId": "fi_t",
+          "toProperty": "text"
+        },
+        {
+          "fromId": "fi_inputs",
+          "fromProperty": "body",
+          "toId": "fi_b",
+          "toProperty": "text"
+        }
+      ]
+    },
+    {
+      "name": "/Components/BoxCard",
+      "nodes": [
+        {
+          "id": "bc_root",
+          "type": "Group",
+          "label": "Card",
+          "parameters": {
+            "width": {
+              "value": 100,
+              "unit": "%"
+            },
+            "sizeMode": "contentHeight",
+            "backgroundColor": "var(--surface)",
+            "borderRadius": "var(--radius-xl)",
+            "borderStyle": "solid",
+            "borderWidth": "var(--border-1)",
+            "borderColor": "var(--border)",
+            "clip": true,
+            "flexDirection": "column"
+          },
+          "children": [
+            "bc_photo",
+            "bc_body"
+          ]
+        },
+        {
+          "id": "bc_photo",
+          "type": "Image",
+          "label": "Photograph",
+          "parameters": {
+            "sizeMode": "explicit",
+            "objectFit": "cover",
+            "width": {
+              "value": 100,
+              "unit": "%"
+            },
+            "height": {
+              "value": 240,
+              "unit": "px"
+            },
+            "src": "noodl_modules/starter-imagery/food-carrots.webp",
+            "alt": "Vegetables"
+          },
+          "parent": "bc_root"
+        },
+        {
+          "id": "bc_body",
+          "type": "Group",
+          "label": "Card body",
+          "parameters": {
+            "width": {
+              "value": 100,
+              "unit": "%"
+            },
+            "sizeMode": "contentHeight",
+            "flexDirection": "column",
+            "rowGap": "var(--space-2)",
+            "paddingLeft": "var(--space-5)",
+            "paddingRight": "var(--space-5)",
+            "paddingTop": "var(--space-5)",
+            "paddingBottom": "var(--space-5)"
+          },
+          "parent": "bc_root",
+          "children": [
+            "bc_title",
+            "bc_price",
+            "bc_text"
+          ]
+        },
+        {
+          "id": "bc_title",
+          "type": "Text",
+          "label": "title",
+          "parameters": {
+            "fontSize": "var(--text-xl)",
+            "fontWeight": "var(--font-semibold)",
+            "lineHeight": "var(--leading-snug)",
+            "color": "var(--foreground)",
+            "text": "Title"
+          },
+          "parent": "bc_body"
+        },
+        {
+          "id": "bc_price",
+          "type": "Text",
+          "label": "price",
+          "parameters": {
+            "fontSize": "var(--text-sm)",
+            "fontWeight": "var(--font-semibold)",
+            "letterSpacing": "var(--tracking-wide)",
+            "color": "var(--primary)",
+            "text": "Price"
+          },
+          "parent": "bc_body"
+        },
+        {
+          "id": "bc_text",
+          "type": "Text",
+          "label": "text",
+          "parameters": {
+            "fontSize": "var(--text-sm)",
+            "lineHeight": "var(--leading-relaxed)",
+            "color": "var(--muted-foreground)",
+            "text": "Body"
+          },
+          "parent": "bc_body"
+        },
+        {
+          "id": "bc_inputs",
+          "type": "Component Inputs",
+          "label": "What varies per instance",
+          "x": 40,
+          "y": 40,
+          "ports": [
+            {
+              "name": "image",
+              "plug": "output",
+              "type": "*"
+            },
+            {
+              "name": "alt",
+              "plug": "output",
+              "type": "*"
+            },
+            {
+              "name": "title",
+              "plug": "output",
+              "type": "*"
+            },
+            {
+              "name": "price",
+              "plug": "output",
+              "type": "*"
+            },
+            {
+              "name": "body",
+              "plug": "output",
+              "type": "*"
+            }
+          ]
+        }
+      ],
+      "connections": [
+        {
+          "fromId": "bc_inputs",
+          "fromProperty": "image",
+          "toId": "bc_photo",
+          "toProperty": "src"
+        },
+        {
+          "fromId": "bc_inputs",
+          "fromProperty": "alt",
+          "toId": "bc_photo",
+          "toProperty": "alt"
+        },
+        {
+          "fromId": "bc_inputs",
+          "fromProperty": "title",
+          "toId": "bc_title",
+          "toProperty": "text"
+        },
+        {
+          "fromId": "bc_inputs",
+          "fromProperty": "price",
+          "toId": "bc_price",
+          "toProperty": "text"
+        },
+        {
+          "fromId": "bc_inputs",
+          "fromProperty": "body",
+          "toId": "bc_text",
+          "toProperty": "text"
+        }
+      ]
+    },
+    {
+      "name": "/Components/StatTile",
+      "nodes": [
+        {
+          "id": "st_root",
+          "type": "Group",
+          "label": "Tile",
+          "parameters": {
+            "width": {
+              "value": 100,
+              "unit": "%"
+            },
+            "sizeMode": "contentHeight",
+            "flexDirection": "column",
+            "rowGap": "var(--space-2)",
+            "backgroundColor": "var(--surface-glass)",
+            "borderStyle": "solid",
+            "borderWidth": "var(--border-1)",
+            "borderColor": "var(--border-glass)",
+            "borderRadius": "var(--radius-2xl)",
+            "backdropBlur": {
+              "value": 14,
+              "unit": "px"
+            },
+            "paddingTop": "var(--space-6)",
+            "paddingBottom": "var(--space-6)",
+            "paddingLeft": "var(--space-5)",
+            "paddingRight": "var(--space-5)"
+          },
+          "children": [
+            "st_value",
+            "st_label"
+          ]
+        },
+        {
+          "id": "st_value",
+          "type": "Text",
+          "label": "value",
+          "parameters": {
+            "fontSize": "var(--text-5xl)",
+            "fontWeight": "var(--font-bold)",
+            "lineHeight": "var(--leading-none)",
+            "letterSpacing": "var(--tracking-tighter)",
+            "color": "var(--primary-foreground)",
+            "text": "0"
+          },
+          "parent": "st_root"
+        },
+        {
+          "id": "st_label",
+          "type": "Text",
+          "label": "label",
+          "parameters": {
+            "fontSize": "var(--text-xs)",
+            "fontWeight": "var(--font-semibold)",
+            "letterSpacing": "var(--tracking-widest)",
+            "textTransform": "uppercase",
+            "color": "var(--gray-300)",
+            "lineHeight": "var(--leading-snug)",
+            "text": "Label"
+          },
+          "parent": "st_root"
+        },
+        {
+          "id": "st_inputs",
+          "type": "Component Inputs",
+          "label": "What varies per instance",
+          "x": 40,
+          "y": 40,
+          "ports": [
+            {
+              "name": "value",
+              "plug": "output",
+              "type": "*"
+            },
+            {
+              "name": "label",
+              "plug": "output",
+              "type": "*"
+            }
+          ]
+        }
+      ],
+      "connections": [
+        {
+          "fromId": "st_inputs",
+          "fromProperty": "value",
+          "toId": "st_value",
+          "toProperty": "text"
+        },
+        {
+          "fromId": "st_inputs",
+          "fromProperty": "label",
+          "toId": "st_label",
+          "toProperty": "text"
+        }
+      ]
+    },
+    {
+      "name": "/Components/QuoteCard",
+      "nodes": [
+        {
+          "id": "qc_root",
+          "type": "Group",
+          "label": "Quote card",
+          "parameters": {
+            "width": {
+              "value": 100,
+              "unit": "%"
+            },
+            "sizeMode": "contentHeight",
+            "flexDirection": "column",
+            "rowGap": "var(--space-5)",
+            "backgroundColor": "var(--surface)",
+            "borderRadius": "var(--radius-xl)",
+            "borderStyle": "solid",
+            "borderWidth": "var(--border-1)",
+            "borderColor": "var(--border)",
+            "boxShadowEnabled": true,
+            "boxShadowOffsetY": {
+              "value": 1,
+              "unit": "px"
+            },
+            "boxShadowBlurRadius": {
+              "value": 3,
+              "unit": "px"
+            },
+            "boxShadowColor": "var(--border)",
+            "paddingTop": "var(--space-6)",
+            "paddingBottom": "var(--space-6)",
+            "paddingLeft": "var(--space-6)",
+            "paddingRight": "var(--space-6)"
+          },
+          "children": [
+            "qc_mark",
+            "qc_quote",
+            "qc_author"
+          ]
+        },
+        {
+          "id": "qc_mark",
+          "type": "net.noodl.visual.icon",
+          "label": "Quote mark",
+          "parameters": {
+            "iconIconSource": {
+              "class": "lucide",
+              "code": "icon-quote",
+              "codeAsClass": true
+            },
+            "iconSize": {
+              "value": 22,
+              "unit": "px"
+            },
+            "iconColor": "var(--primary)"
+          },
+          "parent": "qc_root"
+        },
+        {
+          "id": "qc_quote",
+          "type": "Text",
+          "label": "quote",
+          "parameters": {
+            "fontSize": "var(--text-base)",
+            "lineHeight": "var(--leading-relaxed)",
+            "color": "var(--foreground)",
+            "text": "Quote"
+          },
+          "parent": "qc_root"
+        },
+        {
+          "id": "qc_author",
+          "type": "Group",
+          "label": "Author row",
+          "parameters": {
+            "width": {
+              "value": 100,
+              "unit": "%"
+            },
+            "sizeMode": "contentHeight",
+            "flexDirection": "row",
+            "alignItems": "center",
+            "columnGap": "var(--space-3)",
+            "borderTopStyle": "solid",
+            "borderTopWidth": "var(--border-1)",
+            "borderTopColor": "var(--border-subtle)",
+            "paddingTop": "var(--space-4)"
+          },
+          "parent": "qc_root",
+          "children": [
+            "qc_face",
+            "qc_who"
+          ]
+        },
+        {
+          "id": "qc_face",
+          "type": "Image",
+          "label": "Portrait",
+          "parameters": {
+            "sizeMode": "explicit",
+            "objectFit": "cover",
+            "width": {
+              "value": 44,
+              "unit": "px"
+            },
+            "height": {
+              "value": 44,
+              "unit": "px"
+            },
+            "borderRadius": "var(--radius-full)",
+            "src": "noodl_modules/starter-imagery/avatar-2.webp",
+            "alt": "Portrait"
+          },
+          "parent": "qc_author"
+        },
+        {
+          "id": "qc_who",
+          "type": "Group",
+          "label": "Who",
+          "parameters": {
+            "sizeMode": "contentHeight",
+            "width": {
+              "value": 100,
+              "unit": "%"
+            },
+            "flexDirection": "column",
+            "rowGap": "var(--space-0-5)"
+          },
+          "parent": "qc_author",
+          "children": [
+            "qc_name",
+            "qc_role"
+          ]
+        },
+        {
+          "id": "qc_name",
+          "type": "Text",
+          "label": "name",
+          "parameters": {
+            "fontSize": "var(--text-sm)",
+            "fontWeight": "var(--font-semibold)",
+            "color": "var(--foreground)",
+            "text": "Name"
+          },
+          "parent": "qc_who"
+        },
+        {
+          "id": "qc_role",
+          "type": "Text",
+          "label": "role",
+          "parameters": {
+            "fontSize": "var(--text-xs)",
+            "color": "var(--muted-foreground)",
+            "text": "Role"
+          },
+          "parent": "qc_who"
+        },
+        {
+          "id": "qc_inputs",
+          "type": "Component Inputs",
+          "label": "What varies per instance",
+          "x": 40,
+          "y": 40,
+          "ports": [
+            {
+              "name": "quote",
+              "plug": "output",
+              "type": "*"
+            },
+            {
+              "name": "name",
+              "plug": "output",
+              "type": "*"
+            },
+            {
+              "name": "role",
+              "plug": "output",
+              "type": "*"
+            },
+            {
+              "name": "avatar",
+              "plug": "output",
+              "type": "*"
+            }
+          ]
+        }
+      ],
+      "connections": [
+        {
+          "fromId": "qc_inputs",
+          "fromProperty": "quote",
+          "toId": "qc_quote",
+          "toProperty": "text"
+        },
+        {
+          "fromId": "qc_inputs",
+          "fromProperty": "name",
+          "toId": "qc_name",
+          "toProperty": "text"
+        },
+        {
+          "fromId": "qc_inputs",
+          "fromProperty": "role",
+          "toId": "qc_role",
+          "toProperty": "text"
+        },
+        {
+          "fromId": "qc_inputs",
+          "fromProperty": "avatar",
+          "toId": "qc_face",
+          "toProperty": "src"
+        }
+      ]
+    },
+    {
+      "name": "/Components/FooterColumn",
+      "nodes": [
+        {
+          "id": "fc_root",
+          "type": "Group",
+          "label": "Footer column",
+          "parameters": {
+            "width": {
+              "value": 100,
+              "unit": "%"
+            },
+            "sizeMode": "contentHeight",
+            "flexDirection": "column",
+            "rowGap": "var(--space-3)"
+          },
+          "children": [
+            "fc_heading",
+            "fc_a",
+            "fc_b",
+            "fc_c"
+          ]
+        },
+        {
+          "id": "fc_heading",
+          "type": "Text",
+          "label": "heading",
+          "parameters": {
+            "fontSize": "var(--text-xs)",
+            "fontWeight": "var(--font-semibold)",
+            "letterSpacing": "var(--tracking-widest)",
+            "textTransform": "uppercase",
+            "color": "var(--foreground)",
+            "text": "Heading"
+          },
+          "parent": "fc_root"
+        },
+        {
+          "id": "fc_a",
+          "type": "Text",
+          "label": "a",
+          "parameters": {
+            "fontSize": "var(--text-sm)",
+            "color": "var(--muted-foreground)",
+            "text": "Link"
+          },
+          "parent": "fc_root"
+        },
+        {
+          "id": "fc_b",
+          "type": "Text",
+          "label": "b",
+          "parameters": {
+            "fontSize": "var(--text-sm)",
+            "color": "var(--muted-foreground)",
+            "text": "Link"
+          },
+          "parent": "fc_root"
+        },
+        {
+          "id": "fc_c",
+          "type": "Text",
+          "label": "c",
+          "parameters": {
+            "fontSize": "var(--text-sm)",
+            "color": "var(--muted-foreground)",
+            "text": "Link"
+          },
+          "parent": "fc_root"
+        },
+        {
+          "id": "fc_inputs",
+          "type": "Component Inputs",
+          "label": "What varies per instance",
+          "x": 40,
+          "y": 40,
+          "ports": [
+            {
+              "name": "heading",
+              "plug": "output",
+              "type": "*"
+            },
+            {
+              "name": "a",
+              "plug": "output",
+              "type": "*"
+            },
+            {
+              "name": "b",
+              "plug": "output",
+              "type": "*"
+            },
+            {
+              "name": "c",
+              "plug": "output",
+              "type": "*"
+            }
+          ]
+        }
+      ],
+      "connections": [
+        {
+          "fromId": "fc_inputs",
+          "fromProperty": "heading",
+          "toId": "fc_heading",
+          "toProperty": "text"
+        },
+        {
+          "fromId": "fc_inputs",
+          "fromProperty": "a",
+          "toId": "fc_a",
+          "toProperty": "text"
+        },
+        {
+          "fromId": "fc_inputs",
+          "fromProperty": "b",
+          "toId": "fc_b",
+          "toProperty": "text"
+        },
+        {
+          "fromId": "fc_inputs",
+          "fromProperty": "c",
+          "toId": "fc_c",
+          "toProperty": "text"
+        }
+      ]
+    }
+  ]
+}

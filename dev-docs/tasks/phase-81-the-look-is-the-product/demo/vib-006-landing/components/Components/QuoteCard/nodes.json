@@ -1,0 +1,194 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "fbe0ccc9-b377-5d03-88db-9d17b5e2dcd0",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "qc_root",
+      "type": "Group",
+      "label": "Quote card",
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "rowGap": "var(--space-5)",
+        "backgroundColor": "var(--surface)",
+        "borderRadius": "var(--radius-xl)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border)",
+        "boxShadowEnabled": true,
+        "boxShadowOffsetY": {
+          "value": 1,
+          "unit": "px"
+        },
+        "boxShadowBlurRadius": {
+          "value": 3,
+          "unit": "px"
+        },
+        "boxShadowColor": "var(--border)",
+        "paddingTop": "var(--space-6)",
+        "paddingBottom": "var(--space-6)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)"
+      },
+      "children": [
+        "qc_mark",
+        "qc_quote",
+        "qc_author"
+      ]
+    },
+    {
+      "id": "qc_mark",
+      "type": "net.noodl.visual.icon",
+      "label": "Quote mark",
+      "parameters": {
+        "iconIconSource": {
+          "class": "lucide",
+          "code": "icon-quote",
+          "codeAsClass": true
+        },
+        "iconSize": {
+          "value": 22,
+          "unit": "px"
+        },
+        "iconColor": "var(--primary)"
+      },
+      "parent": "qc_root"
+    },
+    {
+      "id": "qc_quote",
+      "type": "Text",
+      "label": "quote",
+      "parameters": {
+        "fontSize": "var(--text-base)",
+        "lineHeight": "var(--leading-relaxed)",
+        "color": "var(--foreground)",
+        "text": "Quote"
+      },
+      "parent": "qc_root"
+    },
+    {
+      "id": "qc_author",
+      "type": "Group",
+      "label": "Author row",
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "row",
+        "alignItems": "center",
+        "columnGap": "var(--space-3)",
+        "borderTopStyle": "solid",
+        "borderTopWidth": "var(--border-1)",
+        "borderTopColor": "var(--border-subtle)",
+        "paddingTop": "var(--space-4)"
+      },
+      "parent": "qc_root",
+      "children": [
+        "qc_face",
+        "qc_who"
+      ]
+    },
+    {
+      "id": "qc_face",
+      "type": "Image",
+      "label": "Portrait",
+      "parameters": {
+        "sizeMode": "explicit",
+        "objectFit": "cover",
+        "width": {
+          "value": 44,
+          "unit": "px"
+        },
+        "height": {
+          "value": 44,
+          "unit": "px"
+        },
+        "borderRadius": "var(--radius-full)",
+        "src": "noodl_modules/starter-imagery/avatar-2.webp",
+        "alt": "Portrait"
+      },
+      "parent": "qc_author"
+    },
+    {
+      "id": "qc_who",
+      "type": "Group",
+      "label": "Who",
+      "parameters": {
+        "sizeMode": "contentHeight",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "flexDirection": "column",
+        "rowGap": "var(--space-0-5)"
+      },
+      "parent": "qc_author",
+      "children": [
+        "qc_name",
+        "qc_role"
+      ]
+    },
+    {
+      "id": "qc_name",
+      "type": "Text",
+      "label": "name",
+      "parameters": {
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "color": "var(--foreground)",
+        "text": "Name"
+      },
+      "parent": "qc_who"
+    },
+    {
+      "id": "qc_role",
+      "type": "Text",
+      "label": "role",
+      "parameters": {
+        "fontSize": "var(--text-xs)",
+        "color": "var(--muted-foreground)",
+        "text": "Role"
+      },
+      "parent": "qc_who"
+    },
+    {
+      "id": "qc_inputs",
+      "type": "Component Inputs",
+      "label": "What varies per instance",
+      "x": 40,
+      "y": 40,
+      "ports": [
+        {
+          "name": "quote",
+          "plug": "output",
+          "type": "*"
+        },
+        {
+          "name": "name",
+          "plug": "output",
+          "type": "*"
+        },
+        {
+          "name": "role",
+          "plug": "output",
+          "type": "*"
+        },
+        {
+          "name": "avatar",
+          "plug": "output",
+          "type": "*"
+        }
+      ]
+    }
+  ],
+  "visualRoots": [
+    "qc_root"
+  ]
+}

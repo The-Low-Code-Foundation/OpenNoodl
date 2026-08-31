@@ -1,0 +1,149 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "81eade04-cee0-5874-8cac-73c921eefb22",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "bc_root",
+      "type": "Group",
+      "label": "Card",
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "backgroundColor": "var(--surface)",
+        "borderRadius": "var(--radius-xl)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border)",
+        "clip": true,
+        "flexDirection": "column"
+      },
+      "children": [
+        "bc_photo",
+        "bc_body"
+      ]
+    },
+    {
+      "id": "bc_photo",
+      "type": "Image",
+      "label": "Photograph",
+      "parameters": {
+        "sizeMode": "explicit",
+        "objectFit": "cover",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "height": {
+          "value": 240,
+          "unit": "px"
+        },
+        "src": "noodl_modules/starter-imagery/food-carrots.webp",
+        "alt": "Vegetables"
+      },
+      "parent": "bc_root"
+    },
+    {
+      "id": "bc_body",
+      "type": "Group",
+      "label": "Card body",
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "rowGap": "var(--space-2)",
+        "paddingLeft": "var(--space-5)",
+        "paddingRight": "var(--space-5)",
+        "paddingTop": "var(--space-5)",
+        "paddingBottom": "var(--space-5)"
+      },
+      "parent": "bc_root",
+      "children": [
+        "bc_title",
+        "bc_price",
+        "bc_text"
+      ]
+    },
+    {
+      "id": "bc_title",
+      "type": "Text",
+      "label": "title",
+      "parameters": {
+        "fontSize": "var(--text-xl)",
+        "fontWeight": "var(--font-semibold)",
+        "lineHeight": "var(--leading-snug)",
+        "color": "var(--foreground)",
+        "text": "Title"
+      },
+      "parent": "bc_body"
+    },
+    {
+      "id": "bc_price",
+      "type": "Text",
+      "label": "price",
+      "parameters": {
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "letterSpacing": "var(--tracking-wide)",
+        "color": "var(--primary)",
+        "text": "Price"
+      },
+      "parent": "bc_body"
+    },
+    {
+      "id": "bc_text",
+      "type": "Text",
+      "label": "text",
+      "parameters": {
+        "fontSize": "var(--text-sm)",
+        "lineHeight": "var(--leading-relaxed)",
+        "color": "var(--muted-foreground)",
+        "text": "Body"
+      },
+      "parent": "bc_body"
+    },
+    {
+      "id": "bc_inputs",
+      "type": "Component Inputs",
+      "label": "What varies per instance",
+      "x": 40,
+      "y": 40,
+      "ports": [
+        {
+          "name": "image",
+          "plug": "output",
+          "type": "*"
+        },
+        {
+          "name": "alt",
+          "plug": "output",
+          "type": "*"
+        },
+        {
+          "name": "title",
+          "plug": "output",
+          "type": "*"
+        },
+        {
+          "name": "price",
+          "plug": "output",
+          "type": "*"
+        },
+        {
+          "name": "body",
+          "plug": "output",
+          "type": "*"
+        }
+      ]
+    }
+  ],
+  "visualRoots": [
+    "bc_root"
+  ]
+}

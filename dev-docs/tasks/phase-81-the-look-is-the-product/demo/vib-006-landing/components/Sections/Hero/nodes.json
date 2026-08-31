@@ -1,0 +1,389 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "d81749a3-25aa-5c32-896d-c53df1c6e07b",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "hero_band",
+      "type": "Group",
+      "label": "Hero — photograph ground under a scrim",
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "explicit",
+        "height": {
+          "value": 660,
+          "unit": "px"
+        },
+        "flexDirection": "column",
+        "alignItems": "center",
+        "justifyContent": "flex-start",
+        "backgroundImage": "noodl_modules/starter-imagery/texture-soil.webp",
+        "backgroundGradient": "var(--gradient-scrim)",
+        "backgroundSize": "cover",
+        "backgroundPosition": "center",
+        "backgroundColor": "var(--foreground)",
+        "paddingTop": "var(--space-6)",
+        "paddingBottom": "var(--space-16)"
+      },
+      "children": [
+        "hero_shell"
+      ]
+    },
+    {
+      "id": "hero_shell",
+      "type": "Group",
+      "label": "Shell",
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "maxWidth": {
+          "value": 1200,
+          "unit": "px"
+        },
+        "sizeMode": "explicit",
+        "flexDirection": "column",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "height": {
+          "value": 100,
+          "unit": "%"
+        },
+        "justifyContent": "space-between"
+      },
+      "parent": "hero_band",
+      "children": [
+        "hero_nav",
+        "hero_copy"
+      ]
+    },
+    {
+      "id": "hero_nav",
+      "type": "Group",
+      "label": "Nav",
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "row",
+        "alignItems": "center",
+        "justifyContent": "space-between",
+        "flexWrap": "wrap",
+        "columnGap": "var(--space-6)",
+        "rowGap": "var(--space-3)"
+      },
+      "parent": "hero_shell",
+      "children": [
+        "hero_mark",
+        "hero_links",
+        "hero_navcta"
+      ]
+    },
+    {
+      "id": "hero_mark",
+      "type": "Group",
+      "label": "Wordmark",
+      "parameters": {
+        "sizeMode": "contentSize",
+        "flexDirection": "row",
+        "alignItems": "center",
+        "columnGap": "var(--space-2)"
+      },
+      "parent": "hero_nav",
+      "children": [
+        "hero_markicon",
+        "hero_marktext"
+      ]
+    },
+    {
+      "id": "hero_markicon",
+      "type": "net.noodl.visual.icon",
+      "label": "Wordmark glyph",
+      "parameters": {
+        "iconIconSource": {
+          "class": "lucide",
+          "code": "icon-sprout",
+          "codeAsClass": true
+        },
+        "iconSize": {
+          "value": 22,
+          "unit": "px"
+        },
+        "iconColor": "var(--primary-foreground)"
+      },
+      "parent": "hero_mark"
+    },
+    {
+      "id": "hero_marktext",
+      "type": "Text",
+      "label": "hero_marktext",
+      "parameters": {
+        "fontSize": "var(--text-base)",
+        "fontWeight": "var(--font-semibold)",
+        "letterSpacing": "var(--tracking-tight)",
+        "color": "var(--primary-foreground)",
+        "text": "Ashcombe Market Garden"
+      },
+      "parent": "hero_mark"
+    },
+    {
+      "id": "hero_links",
+      "type": "Group",
+      "label": "Nav links",
+      "parameters": {
+        "sizeMode": "contentSize",
+        "flexDirection": "row",
+        "alignItems": "center",
+        "columnGap": "var(--space-6)"
+      },
+      "parent": "hero_nav",
+      "children": [
+        "hero_l1",
+        "hero_l2",
+        "hero_l3"
+      ]
+    },
+    {
+      "id": "hero_l1",
+      "type": "Text",
+      "label": "hero_l1",
+      "parameters": {
+        "sizeMode": "contentSize",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-medium)",
+        "color": "var(--primary-foreground)",
+        "text": "Boxes"
+      },
+      "parent": "hero_links"
+    },
+    {
+      "id": "hero_l2",
+      "type": "Text",
+      "label": "hero_l2",
+      "parameters": {
+        "sizeMode": "contentSize",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-medium)",
+        "color": "var(--primary-foreground)",
+        "text": "The garden"
+      },
+      "parent": "hero_links"
+    },
+    {
+      "id": "hero_l3",
+      "type": "Text",
+      "label": "hero_l3",
+      "parameters": {
+        "sizeMode": "contentSize",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-medium)",
+        "color": "var(--primary-foreground)",
+        "text": "Saturday stall"
+      },
+      "parent": "hero_links"
+    },
+    {
+      "id": "hero_navcta",
+      "type": "net.noodl.controls.button",
+      "label": "Nav action",
+      "parameters": {
+        "sizeMode": "contentSize",
+        "backgroundColor": "transparent",
+        "color": "var(--primary-foreground)",
+        "borderRadius": "var(--radius-full)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-glass)",
+        "paddingLeft": "var(--space-4)",
+        "paddingRight": "var(--space-4)",
+        "paddingTop": "var(--space-2)",
+        "paddingBottom": "var(--space-2)",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "label": "Take a box"
+      },
+      "parent": "hero_nav"
+    },
+    {
+      "id": "hero_copy",
+      "type": "Group",
+      "label": "Hero copy",
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "rowGap": "var(--space-5)",
+        "maxWidth": {
+          "value": 900,
+          "unit": "px"
+        }
+      },
+      "parent": "hero_shell",
+      "children": [
+        "hero_badge",
+        "hero_head",
+        "hero_lead",
+        "hero_actions"
+      ]
+    },
+    {
+      "id": "hero_badge",
+      "type": "Group",
+      "label": "Badge",
+      "parameters": {
+        "sizeMode": "contentSize",
+        "flexDirection": "row",
+        "alignItems": "center",
+        "columnGap": "var(--space-2)",
+        "backgroundColor": "var(--surface-glass)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-glass)",
+        "borderRadius": "var(--radius-full)",
+        "paddingLeft": "var(--space-4)",
+        "paddingRight": "var(--space-4)",
+        "paddingTop": "var(--space-2)",
+        "paddingBottom": "var(--space-2)"
+      },
+      "parent": "hero_copy",
+      "children": [
+        "hero_badgeicon",
+        "hero_badgetext"
+      ]
+    },
+    {
+      "id": "hero_badgeicon",
+      "type": "net.noodl.visual.icon",
+      "label": "Badge glyph",
+      "parameters": {
+        "iconIconSource": {
+          "class": "lucide",
+          "code": "icon-map-pin",
+          "codeAsClass": true
+        },
+        "iconSize": {
+          "value": 14,
+          "unit": "px"
+        },
+        "iconColor": "var(--primary-foreground)"
+      },
+      "parent": "hero_badge"
+    },
+    {
+      "id": "hero_badgetext",
+      "type": "Text",
+      "label": "hero_badgetext",
+      "parameters": {
+        "fontSize": "var(--text-xs)",
+        "fontWeight": "var(--font-semibold)",
+        "letterSpacing": "var(--tracking-wide)",
+        "color": "var(--primary-foreground)",
+        "text": "Somerset · packed Thursday, delivered Friday"
+      },
+      "parent": "hero_badge"
+    },
+    {
+      "id": "hero_head",
+      "type": "Text",
+      "label": "hero_head",
+      "parameters": {
+        "fontSize": "var(--display-lg)",
+        "fontWeight": "var(--font-bold)",
+        "lineHeight": "var(--leading-none)",
+        "letterSpacing": "var(--tracking-tighter)",
+        "color": "var(--primary-foreground)",
+        "text": "Eleven acres, forty crops, one van."
+      },
+      "parent": "hero_copy"
+    },
+    {
+      "id": "hero_lead",
+      "type": "Text",
+      "label": "hero_lead",
+      "parameters": {
+        "fontSize": "var(--text-lg)",
+        "lineHeight": "var(--leading-relaxed)",
+        "color": "var(--primary-foreground)",
+        "maxWidth": {
+          "value": 620,
+          "unit": "px"
+        },
+        "text": "We grow what this ground actually wants, pick it on Thursday morning and drive it out on Friday. You do not choose what is in the box. The season does."
+      },
+      "parent": "hero_copy"
+    },
+    {
+      "id": "hero_actions",
+      "type": "Group",
+      "label": "Actions",
+      "parameters": {
+        "sizeMode": "contentSize",
+        "flexDirection": "row",
+        "flexWrap": "wrap",
+        "alignItems": "center",
+        "columnGap": "var(--space-3)",
+        "rowGap": "var(--space-3)",
+        "paddingTop": "var(--space-2)"
+      },
+      "parent": "hero_copy",
+      "children": [
+        "hero_cta",
+        "hero_secondary"
+      ]
+    },
+    {
+      "id": "hero_cta",
+      "type": "net.noodl.controls.button",
+      "label": "Primary",
+      "parameters": {
+        "sizeMode": "contentSize",
+        "backgroundColor": "var(--primary)",
+        "color": "var(--primary-foreground)",
+        "borderRadius": "var(--radius-full)",
+        "borderStyle": "none",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "label": "Take a box — £14 a week"
+      },
+      "parent": "hero_actions"
+    },
+    {
+      "id": "hero_secondary",
+      "type": "net.noodl.controls.button",
+      "label": "Secondary",
+      "parameters": {
+        "sizeMode": "contentSize",
+        "backgroundColor": "transparent",
+        "color": "var(--primary-foreground)",
+        "borderRadius": "var(--radius-full)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-glass)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "label": "See this week's box"
+      },
+      "parent": "hero_actions"
+    }
+  ],
+  "visualRoots": [
+    "hero_band"
+  ]
+}
