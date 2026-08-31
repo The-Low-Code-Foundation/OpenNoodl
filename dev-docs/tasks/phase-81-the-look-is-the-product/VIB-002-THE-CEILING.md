@@ -246,7 +246,10 @@ the border.
 4. ✅ **The doctrine and vocabulary text that teaches it** — `prompts/design.ts` §3, §4 and §7;
    `get_style_vocabulary` picks the compositions and tokens up from the tables it already renders.
 5. ✅ **A verdict recorded from the picture** — §5, PASSABLE, with the WORTHY gap named and owned.
-   ⚠️ Provisional until Richard has looked (README §3.5).
+   ⚠️ Provisional until Richard has looked (README §3.5). Sheet sent 2026-08-31:
+   **https://claude.ai/code/artifact/dac65b42-f8b6-430d-80a0-9c9ce7a4a6e1**
+   — the three calibration questions on it are §5's verdict, the gradient ambition, and the empty
+   right-hand half.
 
 ## §7 Explicitly NOT in this task
 
