@@ -107,3 +107,24 @@ So *"always re-render on an editor-driven change, keep the fast path for runtime
 would satisfy the ruling in full without making animation slow. ⚠️ **This is a reading of the
 ruling, not the ruling.** If Richard means the fast path should go entirely, that is a bigger and
 different change — **ask before building.**
+
+---
+
+## 5. DEF-007 AC4 — ✅ **Ruled: move it into the codebase AND add the test.**
+
+AC4 asks for one thing: *every path that loads a project, and whether it runs the upgrade step
+(`applyPatches`).* §6's table already answers it — **4 of the 6 load paths skip the upgrade.** The
+content was never the problem; **where it lives is.**
+
+Ruled: take **both** steps, not the cheap half.
+
+1. **Move the table out of this task file** into the codebase — beside `applyPatches` itself and/or
+   `dev-docs/reference/`. A task file is a record of a phase; when P80 closes nobody maintains it,
+   and AC4's own words are *"the **seam's** documentation"*.
+2. **Add a test that fails when a new path reaches `ProjectModel.fromJSON` without going through
+   `applyPatches` first.**
+
+🔴 **Step 2 is the point, and the reason is the same one that decided DEF-037.** This is a
+hand-maintained list of "which things need the special treatment" — exactly the kind that decayed
+until Checkbox was missed while Radio Button was fixed. Without the test it is a snapshot that
+looks authoritative and goes quietly wrong the first time someone adds a seventh load path.
