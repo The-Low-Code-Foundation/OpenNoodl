@@ -12,19 +12,19 @@ board from `TASKS.md` + the task files; do not trust this file's copy of it.
 | VIB-002 The Ceiling | 🟡 **PASSABLE — Richard ruled it** |
 | VIB-003 The Pictures | 🟡 **PASSABLE — Richard ruled it** |
 | VIB-004 The Marketing Kit | 🟡 **PASSABLE**, not yet seen by Richard |
-| VIB-011 The Stock Library | 🟡 **PASSABLE — Richard ruled it.** 44 CC0 photographs |
+| VIB-011 The Stock Library | 🟡 **PASSABLE — ruled TWICE**, explicitly: *"VIB 011 is passable, a fine minimalist landing page"*. ✅ The cautious reading of his first sentence was right |
 | VIB-012 Prune On Deploy | 🟢 **BUILT.** 3.35 MB → 92 KB. ⚠️ full Electron deploy never run end to end |
-| VIB-006 The Worked Page | 🟡 **WORTHY — the phase's first — provisional until Richard looks.** `ui-landing-page.json` ships |
-| VIB-005 / VIB-007 | ⬜ **both startable now, in parallel — see below** |
+| VIB-006 The Worked Page | 🟢 **CLOSED — WORTHY, RICHARD RULED IT**: *"It looks fucking pro, good job. VIB 006 screens are amazing"*. The phase's first close on the look |
+| VIB-007 The Loop *(rescoped)* | ⬜ **the next job** — M1 mandatory render, M2 traps→diagnostics, M3 poverty findings |
+| VIB-013 The Altitude *(new)* | ⬜ the section expander; startable in parallel |
+| VIB-005 The Ambush Defaults | ⬜ startable now — M2 for the runtime-default family |
 | VIB-008/009 | ⬜ prove it on the shipped templates |
-| VIB-010 | ⬜ the exit exam. **Its dependency VIB-006 is now met**; it still waits on VIB-007 |
+| VIB-010 | ⬜ the exit exam. **VIB-006 is met**; now waits on VIB-007 **and VIB-013** |
 
-## 🔴 Richard has FOUR things waiting on him, and none is a blocker to building
+## 🔴 Richard has TWO things waiting on him, and neither blocks building
 
-He has not seen the VIB-006 page. **Show him
-`verdicts/vib-006/2026-08-31/landing-door/landing-{desktop,wide,phone,preview}-{viewport,full}.png`** —
-this is the phase's first WORTHY and §3.5 says his look supersedes. Carry the three older questions
-with it, still unanswered from VIB-011 (silence is not assent):
+✅ **He has seen the VIB-006 page and ruled it WORTHY.** Two older VIB-011 questions are still
+unanswered and stay open (silence is not assent):
 
 1. ~~Is the potter right for a generic hero?~~ **ANSWERED by VIB-006 §10** — no, and not because it is
    a subject. A band **ground** wants a `ground-*`/`texture-*`; a media column wants a `tile` subject.
@@ -35,20 +35,37 @@ with it, still unanswered from VIB-011 (silence is not assent):
 3. **Is 3.32 MB per project acceptable?** Owner **NONE** — ask him. (Deploy payload is solved: V36/VIB-012.)
 4. **NEW: does the VIB-006 page read WORTHY to him?** If yes, it is the first close in the phase.
 
-## 🔴 The next task is VIB-005 or VIB-007, and VIB-006 sharpened both
+## 🔴 The next task is VIB-007 (rescoped) or VIB-005 — read `VIB-007-THE-LOOP.md` §2 FIRST
 
-**VIB-005** got a new row with a fresh measurement: **V38 — there is no on-system way to vertically
-centre one `Columns` child against a taller one, and the parameter that looks like it does is inert.**
-Three configurations rendered identically (details in VIB-006 §7). It sits beside V1/V17/V21/V14 as
-the same family: a layout default that silently does nothing, with no door diagnostic.
+**VIB-007 was rescoped and VIB-013 opened**, after Richard asked how to bake this phase's results into
+the MCP instead of re-teaching them every session. The argument is not a preference — the mapping was
+run over all **41** register rows before either file was written
+(`demo/map-register-to-mechanisms.py`, reproducible):
 
-**VIB-007** now owns five rows (V22, V26, V28, V31, V32, V35) plus the `ui-split-hero` description fix
-from §10. ⚠️ **V35: the resident MCP tool surface has ONE token of headroom** (8,279 of 8,280) — the
-next task to touch any tool description will red that gate. **V22 is still unruled and must be a
-render, not a reading**: whether a `For Each` feeds item properties into ports never declared decides
-whether **14** examples are broken or work by another route. That is VIB-007's first job.
+| | rows | still live |
+|---|---|---|
+| **M1** render is mandatory | 5 | 5 |
+| **M2** trap → authoring-time diagnostic | 14 | **11** |
+| **M3** gate fires on poverty | 6 | 6 |
+| **M4** section expander (VIB-013) | 5 | 4 |
+| **M5** corpus generated from compositions (VIB-013) | 5 | **0** |
+| retired by nothing | 16 | 5 |
 
-**VIB-010** is unblocked on the VIB-006 side. It is the exit exam and should stay last.
+**18 of the 23 live rows (78%) fall out to a mechanism rather than to a paragraph.**
+
+- **VIB-007 — The Loop** (M1+M2+M3). 🔴 **Its first job is a RENDER, not code**: V22 must be ruled —
+  whether a `For Each` feeds item properties into ports never declared decides whether **14** examples
+  are broken or work by another route.
+- **VIB-013 — The Altitude** (M4+M5). The section expander. ⚠️ M5 retires 5 rows and **none is open**:
+  prevention, not cleanup — build it, but last, and do not let it delay M4.
+- **VIB-005** is unchanged and still startable: it is M2 applied to the runtime-default family
+  (V1, V2, V14, V17, V21, **V38** — new this session).
+
+🔴 **Two rejections worth not re-litigating.** *Instruction* was measured and rejected as the lever:
+**V17** is a session that shipped V1 **after reading V1**, and **V35** leaves **one token** of resident
+surface to instruct with. And the five live rows no mechanism retires are **named** in
+`VIB-007-THE-LOOP.md` §2 (V3, V18, V31, V35, V41) rather than glossed — V35 is not retirable at all,
+it is the constraint that picks this design.
 
 ## What this session settled
 
