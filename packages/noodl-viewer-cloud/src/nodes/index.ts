@@ -58,6 +58,7 @@ export function registerNodes(runtime: NoodlRuntime) {
     require('./cloud/addusertorole'),
     require('./cloud/removeuserfromrole'),
     require('./cloud/getuserroles'),
+    require('./cloud/listusersinrole'),
 
     require('./data/aggregatenode'),
 

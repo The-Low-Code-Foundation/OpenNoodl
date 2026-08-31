@@ -56909,6 +56909,17 @@
           "description": "Id of the signed-in user record; empty while nobody is signed in"
         },
         {
+          "name": "roles",
+          "displayName": "Roles",
+          "group": "General",
+          "plug": "output",
+          "type": {
+            "name": "array"
+          },
+          "isSignal": false,
+          "description": "Roles the signed-in user is in, resolved by the server on each session read; empty while nobody is signed in, and not set on backends that do not track roles"
+        },
+        {
           "name": "username",
           "displayName": "Username",
           "group": "General",
@@ -59719,6 +59730,222 @@
       }
     },
     {
+      "typeName": "noodl.cloud.listusersinrole",
+      "displayName": "List Users In Role",
+      "category": "Cloud",
+      "isVisual": false,
+      "isDeprecated": false,
+      "inNodePicker": true,
+      "availableIn": [
+        "cloud"
+      ],
+      "providedBy": "noodl-viewer-cloud",
+      "docs": "https://docs.noodl.net/nodes/cloud-functions/list-users-in-role",
+      "inputs": [
+        {
+          "name": "limit",
+          "displayName": "Limit",
+          "group": "General",
+          "plug": "input",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false,
+          "default": 100,
+          "description": "How many members to return in one call; Total still reports the whole membership, so a clipped page is always visible as one"
+        },
+        {
+          "name": "read",
+          "displayName": "Do",
+          "group": "Actions",
+          "plug": "input",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "isSignal": true,
+          "description": "Reads the members of the role"
+        },
+        {
+          "name": "role",
+          "displayName": "Role",
+          "group": "General",
+          "plug": "input",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "Name of the role to list the members of, matching the name a permission rule uses after \"role:\" — letters, digits, underscore and hyphen only"
+        },
+        {
+          "name": "skip",
+          "displayName": "Skip",
+          "group": "General",
+          "plug": "input",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false,
+          "default": 0,
+          "description": "How many members to step over before this page — Skip 100 with Limit 100 is the second page"
+        },
+        {
+          "name": "treatUnchangedAs",
+          "displayName": "Treat Unchanged as",
+          "group": "Advanced",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "allowEditOnly": true,
+            "enums": [
+              {
+                "label": "Unchanged",
+                "value": "unchanged"
+              },
+              {
+                "label": "Done",
+                "value": "done"
+              },
+              {
+                "label": "Failure",
+                "value": "failure"
+              }
+            ]
+          },
+          "isSignal": false,
+          "default": "unchanged",
+          "description": "What this node reports when the action was valid and there was nothing to do. Unchanged (the default) keeps it a third outcome of its own. Done suits a project whose chains should carry on either way; Failure suits one whose idiom is that a no-op is a bug. Completed fires whatever this is set to."
+        }
+      ],
+      "outputs": [
+        {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once Users and User Ids hold this page of the role membership"
+        },
+        {
+          "name": "error",
+          "displayName": "Error",
+          "group": "Error",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "Why the last operation could not be performed"
+        },
+        {
+          "name": "failure",
+          "displayName": "Failure",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when the members could not be read — a blank Role, an unusable name, or a role that does not exist"
+        },
+        {
+          "name": "total",
+          "displayName": "Total",
+          "group": "Members",
+          "plug": "output",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false,
+          "description": "How many members the role has in total, before Limit — compare it with the length of Users to know whether there is another page"
+        },
+        {
+          "name": "unchanged",
+          "displayName": "Unchanged",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when the role exists and has no members at all — the \"nobody has joined yet\" branch"
+        },
+        {
+          "name": "userIds",
+          "displayName": "User Ids",
+          "group": "Members",
+          "plug": "output",
+          "type": {
+            "name": "array"
+          },
+          "isSignal": false,
+          "description": "Object ids of the members in this page, in the same order as Users"
+        },
+        {
+          "name": "users",
+          "displayName": "Users",
+          "group": "Members",
+          "plug": "output",
+          "type": {
+            "name": "array"
+          },
+          "isSignal": false,
+          "description": "The member records for this page, shaped exactly like the account record /users/me answers with, so a For Each over them reads the same property names the User node does"
+        }
+      ],
+      "dynamicPorts": null,
+      "parameterEncoding": null,
+      "enrichment": {
+        "typeName": "noodl.cloud.listusersinrole",
+        "summary": "Lists the accounts in a permission role, from inside a cloud function. Cloud-only and read-only — the inverse of Get User Roles.",
+        "description": "Get User Roles answers 'which roles is this user in'. List Users In Role answers the other direction: 'who is in this role'. Both walk the same membership junction, and until this node existed only one direction was reachable — so 'show me the member list', the most ordinary screen in a membership app, could not be built at all except by maintaining a separate collection that duplicates the role table and goes stale the first time somebody changes a membership by hand. `Users` holds the member records in the same shape the User node reads, so a For Each over them uses the same property names. `Total` is the whole membership before `Limit`, so a clipped page is always visible as one rather than silently looking like the complete roster. `unchanged` fires when the role exists and nobody has joined it; a role that does not exist is a `failure` naming it, because answering an empty list for a misspelled role draws the empty-community screen for a typo.",
+        "whenToUse": "Whenever a cloud function needs the membership of a role rather than the roles of a member — rendering a members directory or a staff list, counting how many people hold a subscription tier, or fanning a notification out to everyone in a role. Compare `Total` with the length of `Users` to decide whether to ask for another page.",
+        "ports": {
+          "role": "Value; required. Name of the role to list, matching the name a permission rule uses after `role:`. A blank or unusable name is a `failure`, and so is a role that does not exist.",
+          "limit": "Value, default 100. How many members to return in one call. Turning ids into records is one fetch each, so this is bounded rather than unlimited; `Total` still reports the whole membership.",
+          "skip": "Value, default 0. How many members to step over before this page — Skip 100 with Limit 100 is the second page.",
+          "read": "Signal (Do); performs the read. Nothing happens until this fires.",
+          "treatUnchangedAs": "Edit-only enum, default Unchanged. Set it to Failure if an empty role should be treated as a check failing rather than a distinct outcome.",
+          "users": "Value; the member records for this page, shaped like the account record /users/me answers with.",
+          "userIds": "Value; object ids of the members in this page, in the same order as Users.",
+          "total": "Value; how many members the role has in total, before Limit.",
+          "done": "Signal; fires once Users and User Ids hold this page of the membership.",
+          "unchanged": "Signal; fires when the role exists and has no members at all — the 'nobody has joined yet' branch.",
+          "failure": "Signal; fires when the members could not be read — a blank Role, an unusable name, or a role that does not exist.",
+          "completed": "Signal; fires after every attempt, whatever the outcome.",
+          "error": "Value; why the last attempt failed."
+        },
+        "examples": [],
+        "patterns": [
+          "Put this behind a cloud function whose call rule names the role that may see the roster — a member list is other people's account records, and a cloud function runs as system, so the function's own permission rule is the only thing deciding who may read it.",
+          "Page a large role by wiring Skip from a page counter and comparing Total against the running count of rows already shown, rather than assuming one call returned everybody."
+        ],
+        "antiPatterns": [
+          "Rendering Users straight onto a public page without a call rule on the function — the graph's Allow Unauthenticated port is what applies when no rule is written, and ticked means the whole membership roster is readable by anyone on the internet.",
+          "Treating the length of Users as the membership count; it is the size of one page, and Total is the number that answers 'how many members are there'."
+        ],
+        "relatedNodes": [
+          "noodl.cloud.getuserroles",
+          "noodl.cloud.addusertorole",
+          "noodl.cloud.removeuserfromrole"
+        ]
+      }
+    },
+    {
       "typeName": "noodl.cloud.removeuserfromrole",
       "displayName": "Remove User From Role",
       "category": "Cloud",
@@ -61038,8 +61265,8 @@
     "version": "1.0.0",
     "docs": "docs/node-catalog/ENRICHMENT.md",
     "coverage": {
-      "documented": 175,
-      "total": 175
+      "documented": 176,
+      "total": 176
     }
   },
   "compatibility": {

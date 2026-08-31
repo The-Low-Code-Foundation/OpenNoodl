@@ -931,7 +931,15 @@ function generateNodeLibrary(nodeRegister: NodeRegisterLike, options?: { runtime
           // that do. An author scanning the picker should be able to see that
           // granting privilege is its own thing.
           name: 'Roles',
-          items: ['noodl.cloud.addusertorole', 'noodl.cloud.removeuserfromrole', 'noodl.cloud.getuserroles']
+          items: [
+            'noodl.cloud.addusertorole',
+            'noodl.cloud.removeuserfromrole',
+            'noodl.cloud.getuserroles',
+            // DEF-005 (b). Beside Get User Roles rather than under Users,
+            // because the two are the two directions of one junction and an
+            // author who found one should see the other.
+            'noodl.cloud.listusersinrole'
+          ]
         }
       ]
     }

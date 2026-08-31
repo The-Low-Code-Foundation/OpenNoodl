@@ -12,7 +12,7 @@ derivation and [README.md](README.md) for why the phase exists.
 | DEF-002 | ✅ done | [The door does not check connections](DEF-002-THE-DOOR-DOES-NOT-CHECK-CONNECTIONS.md) | P77 D1, D10 · P78 D1 | every **agent-authored app** |
 | DEF-003 | ✅ done | [Three authoring acts with no honest surface](DEF-003-THREE-AUTHORING-ACTS-WITH-NO-SURFACE.md) | P77 D8 = P76 F15 · P77 D7 · P76 F16 | every **author** |
 | DEF-004 | ✅ done | [When it goes wrong you cannot see where](DEF-004-WHEN-IT-GOES-WRONG-YOU-CANNOT-SEE-WHERE.md) | P77 D2, D3 | anyone **debugging** |
-| DEF-005 | ⬜ **RULED s23, unbuilt** | [Membership is a category the graph cannot express](DEF-005-MEMBERSHIP-IS-UNEXPRESSIBLE.md) | P78 D2, D3 | every **membership app** |
+| DEF-005 | ✅ **BUILT s27** | [Membership is a category the graph cannot express](DEF-005-MEMBERSHIP-IS-UNEXPRESSIBLE.md) — **both halves; AC1–4 met, AC5 (TPL-001's member list) outstanding and never the acceptance** | P78 D2, D3 | every **membership app** |
 | DEF-006 | ✅ done | [The design system punishes the agent that uses it](DEF-006-THE-DESIGN-SYSTEM-PUNISHES-ITS-USER.md) | P78 D12, D15, **D20** | every **agent** styling on-system |
 | DEF-007 | 🟡 partial | [A project means one thing on disk and another once loaded](DEF-007-DISK-AND-LOAD-DISAGREE.md) — **§6 seam named, §6.1 AC3 measured (56), §3.3 struck** | P78 D9 residual · P77 D5 · **P77 D11** | the **next template** |
 | DEF-008 | ✅ done | [The measurement owed](DEF-008-THE-MEASUREMENT-OWED.md) — **driven s13: D6 does not reproduce; `maxWidth` applies on `Text` in every authored form; the one route to `none` (instance-authored) is blocked at the door. DEF-001's rendered-button inch closed at 5.17:1 in the same render** | P77 D6 · P78 D5 | nobody yet — a re-drive |

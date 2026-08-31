@@ -67,7 +67,8 @@ import { ROLE_NAME_RULE, RoleStore, isValidRoleName } from './RoleStore';
 export type SystemRoleRequest =
   | { op: 'add'; role?: unknown; userId?: unknown; createRole?: unknown }
   | { op: 'remove'; role?: unknown; userId?: unknown }
-  | { op: 'list'; userId?: unknown };
+  | { op: 'list'; userId?: unknown }
+  | { op: 'members'; role?: unknown; limit?: unknown; skip?: unknown };
 
 /**
  * What every operation answers with.
@@ -95,6 +96,26 @@ export interface SystemRoleResult {
   roles?: string[];
   /** `add` only: whether this call created the role as well as the membership. */
   roleCreated?: boolean;
+  /**
+   * `members` only: the ids in this role, for the requested page.
+   *
+   * ⚠️ Distinct from `roles` above and the two must never be conflated: `roles`
+   * answers *which roles is this user in*, `userIds` answers *who is in this
+   * role*. They are the two directions of one junction and this module was, up
+   * to DEF-005, only able to walk it one way.
+   */
+  userIds?: string[];
+  /** `members` only: the wire records for `userIds`, in the same order. */
+  users?: Record<string, unknown>[];
+  /**
+   * `members` only: how many members the role has IN TOTAL, before `limit`.
+   *
+   * 🔴 Reported separately so a clipped page is legible as one. A member list
+   * that silently showed the first hundred of four hundred would be the
+   * "nothing is silently missing" failure in the exact screen this operation
+   * exists to draw.
+   */
+  total?: number;
 }
 
 export interface SystemRolesDeps {
@@ -117,6 +138,32 @@ function fail(code: string, error: string): SystemRoleResult {
 /** A non-empty string, or undefined. */
 function optionalString(value: unknown): string | undefined {
   return typeof value === 'string' && value.length > 0 ? value : undefined;
+}
+
+/**
+ * How many members `members` returns when the graph does not say.
+ *
+ * A number rather than "all of them" because the record fan-out is N fetches
+ * and a role can hold every account on the backend; a hundred is a screenful
+ * with room to spare, and `total` always tells the truth about what was
+ * clipped.
+ */
+export const DEFAULT_MEMBER_PAGE = 100;
+
+/**
+ * Read a paging port that may hold anything.
+ *
+ * ⚠️ An unset port arrives as `undefined`, and a Number node's unconnected
+ * output can arrive as `0` — so `0` for a limit means "the author wired
+ * nothing meaningful", not "return no rows". Answering an empty page there
+ * would be a member list that renders blank because of a port nobody touched.
+ * Numeric strings are accepted because a Request parameter is a string.
+ */
+function boundedInt(value: unknown, fallback: number, minimumMeaningful: number): number {
+  const n = typeof value === 'string' ? Number(value) : value;
+  if (typeof n !== 'number' || !Number.isFinite(n) || n < 0) return fallback;
+  const floored = Math.floor(n);
+  return floored < minimumMeaningful ? fallback : floored;
 }
 
 /**
@@ -152,6 +199,8 @@ export class SystemRoles {
         return this.remove(request);
       case 'list':
         return this.list(request);
+      case 'members':
+        return this.members(request);
       default:
         return fail('role/unknown-op', `Unknown role operation "${String((request as { op: string }).op)}".`);
     }
@@ -318,6 +367,106 @@ export class SystemRoles {
       error: roles.length > 0 ? undefined : 'That user is in no roles.',
       userId,
       roles
+    };
+  }
+
+  // ==========================================================================
+  // members — DEF-005 (b), the inverse of `list`
+  // ==========================================================================
+
+  /**
+   * Who is in this role? A read, so it audits nothing — the same stance
+   * `list` and `audit-actions.ts` take for every other read here.
+   *
+   * ## Why this exists
+   *
+   * `list` answers "which roles is this user in". **There was no inverse**, so
+   * *"show me the member list"* — the most ordinary screen in a membership app
+   * — could not be built at all except by maintaining a projection collection
+   * that duplicates `_Role` and goes stale the first time somebody changes a
+   * role by hand. TPL-001 ships without its member list for exactly this
+   * reason.
+   *
+   * ## Paging is not a nicety
+   *
+   * The junction read is one indexed lookup, but turning ids into records is
+   * N fetches, and a role can hold every account on the backend. An unpaged
+   * version would have a cliff in it that only appears once somebody is
+   * successful. `total` is the full count and `userIds`/`users` are the page,
+   * so a graph can always tell a complete list from a first page.
+   *
+   * ## `Unchanged` is "the role is empty"
+   *
+   * The same reading `list` gives for a user in no roles: "there is nobody
+   * here" is the branch a member-list screen wants to take, and an empty array
+   * on a `Done` wire is the shape that gets mistaken for a port nobody
+   * connected. ⚠️ A role that does not EXIST is a Failure rather than an empty
+   * list — the same call that would be a typo, and `add` refuses it for the
+   * same reason.
+   */
+  private async members(request: Extract<SystemRoleRequest, { op: 'members' }>): Promise<SystemRoleResult> {
+    const name = optionalString(request.role);
+    if (!name) {
+      return fail('role/name-required', 'List Users In Role: a Role is required.');
+    }
+    if (!isValidRoleName(name)) {
+      return fail(
+        'role/invalid-name',
+        `List Users In Role: "${name}" is not a usable role name. ${ROLE_NAME_RULE}.`
+      );
+    }
+
+    const role = await this.roles.find(name);
+    if (!role) {
+      // ⚠️ NOT an empty list. `remove` can read "no such role" as the goal
+      // already met, because nobody being in a role that does not exist is
+      // true. Here the honest answer to "who is in it" is that the question
+      // does not resolve — and answering `[]` would draw an empty member list
+      // for a misspelled role, which looks exactly like a community nobody has
+      // joined yet.
+      return fail(
+        'role/not-found',
+        `There is no role named "${name}". Create it in the editor's Permissions panel, where the rules that ` +
+          'grant through it are written too.'
+      );
+    }
+
+    const all = this.roles.members(role);
+    const skip = boundedInt(request.skip, 0, 0);
+    // `1`, not `DEFAULT_MEMBER_PAGE`: a limit of 5 is a limit of 5. Only a
+    // value that cannot mean a page — 0, negative, unparseable — falls back.
+    const limit = boundedInt(request.limit, DEFAULT_MEMBER_PAGE, 1);
+    const page = all.slice(skip, skip + limit);
+
+    const users: Record<string, unknown>[] = [];
+    const present: string[] = [];
+    for (const userId of page) {
+      let row: Record<string, unknown>;
+      try {
+        row = await this.facade.rawFetch('_User', userId);
+      } catch {
+        // ⚠️ A junction row whose user is gone is skipped rather than fatal.
+        // `Delete User` does not sweep memberships, so this is a state the
+        // product can genuinely be in, and failing the whole page would make
+        // one deleted account hide every remaining member.
+        continue;
+      }
+      present.push(userId);
+      // `wireRecord` is what `/login` and `/users/me` answer with, so the rows
+      // a member list gets are shaped like the row the `User` node already
+      // reads — and `_hashed_password` is stripped by the same code path
+      // rather than by a second rule here that could drift from it.
+      users.push(await this.facade.wireRecord('_User', row));
+    }
+
+    return {
+      outcome: all.length > 0 ? 'done' : 'unchanged',
+      code: all.length > 0 ? undefined : 'role/no-members',
+      error: all.length > 0 ? undefined : `The role "${name}" has no members.`,
+      role: name,
+      userIds: present,
+      users,
+      total: all.length
     };
   }
 

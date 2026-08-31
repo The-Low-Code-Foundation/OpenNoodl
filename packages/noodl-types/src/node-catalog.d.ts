@@ -174,6 +174,7 @@ export type NodeTypeName =
   | 'noodl.cloud.hmac'
   | 'noodl.cloud.jwtsign'
   | 'noodl.cloud.jwtverify'
+  | 'noodl.cloud.listusersinrole'
   | 'noodl.cloud.removeuserfromrole'
   | 'noodl.cloud.request'
   | 'noodl.cloud.response'

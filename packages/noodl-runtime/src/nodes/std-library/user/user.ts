@@ -206,6 +206,59 @@ const UserNodeDefinition: NodeDefinitionOptions = {
         return this._internal.error;
       }
     },
+    /**
+     * DEF-005 (a) — the roles the signed-in user is in. **Read-only, and it is
+     * not a property port.**
+     *
+     * ## Why this is a port and not a cloud function
+     *
+     * `_Role` is a system class, so `isSystemCollection` gives it a fixed
+     * `nobody` posture whatever the config says and no browser query reaches
+     * it. Before this port, every membership app had to ship a bespoke
+     * `myStanding` cloud function — a round trip, a security-policy entry and
+     * four nodes — *just to decide whether to render a page*. The cheaper
+     * workaround was worse: issue the members-only query, let the server refuse
+     * it, and branch on the refusal, which means **flickering through "nothing
+     * here"** on the way to telling somebody they may not look.
+     *
+     * ## Why handing it to the browser grants nothing
+     *
+     * 🔴 The value is resolved **server-side, per response**, from
+     * `SecurityState.rolesForUser` — the same JOIN the access check itself runs
+     * — and arrives on `/users/me` and `/login`, the reads the client already
+     * makes. Nothing consults it again. Enforcement re-resolves membership from
+     * the junction on every gated request, so a user who rewrites this value in
+     * the page changes what their own browser *draws* and nothing about what
+     * the server will *do*. That asymmetry is why the read is safe here while
+     * the role **writes** stay cloud-only: `addusertorole` in a browser bundle
+     * is one wire from a button to "make me an admin", and this is not.
+     *
+     * ⚠️ **`undefined` is a third answer, not an empty list.** Nobody signed in,
+     * and a backend that does not track roles at all, both report `undefined`;
+     * a signed-in user in no roles reports `[]`. Collapsing the three would make
+     * "we could not ask" render as "you are not a member", which is the
+     * confident-wrong version of the very screen this port exists to draw.
+     *
+     * Refreshed wherever the user model is — `Fetch`, sign-in, session regain —
+     * so a membership granted by a cloud function is one `Fetch` away, with no
+     * new session and no re-login.
+     */
+    roles: {
+      type: 'array',
+      displayName: 'Roles',
+      group: 'General',
+      description:
+        'Roles the signed-in user is in, resolved by the server on each session read; empty while nobody is ' +
+        'signed in, and not set on backends that do not track roles',
+      getter: function (this: UserNodeInstance) {
+        if (this._internal.model === undefined) return undefined;
+        const roles = this._internal.model.get('roles');
+        // Pass through only a real list. A backend that answered something else
+        // is a backend this port cannot speak for, and returning its value would
+        // put that disagreement inside somebody's `For Each`.
+        return Array.isArray(roles) ? roles : undefined;
+      }
+    },
     username: {
       type: 'string',
       displayName: 'Username',
@@ -313,6 +366,10 @@ const UserNodeDefinition: NodeDefinitionOptions = {
       this.flagOutputDirty('authenticated');
       this.flagOutputDirty('email');
       this.flagOutputDirty('username');
+      // DEF-005 (a). Every path that reaches here has just re-read the session
+      // from the server, which is the only thing that can change this value —
+      // a membership is granted in a cloud function, never in this process.
+      this.flagOutputDirty('roles');
 
       // Notify all properties changed
       if (model)
