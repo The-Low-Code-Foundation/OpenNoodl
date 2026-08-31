@@ -39,12 +39,20 @@ import type { BackendConfig } from './types';
  * a project whose backend is stopped is a project whose agent gets no schema
  * block, which is the same outcome as having no backend and is honest about it.
  *
- * ⚠️ **Empty means "we could not look", not "there is nothing"**, and every caller
- * owes that distinction to whatever it is writing. `SchemaHandler._store()` writes
- * `dbCollections = undefined` whenever the fetch failed, so a stopped backend and a
- * backend with no tables are the same value here — which is exactly why
+ * ⚠️ **Empty still means "we could not look", not "there is nothing"**, and every
+ * caller owes that distinction to whatever it is writing — which is why
  * `buildBackendSummary` keeps its "unknown, not absent" branch for the empty case
  * (AAQ-011 F8) rather than concluding the project stores nothing.
+ *
+ * 🔴 **DEF-035 narrowed which cases land here, and the old sentence is now wrong.**
+ * `SchemaHandler._store()` used to write `dbCollections = undefined` whenever the
+ * fetch failed, so a stopped backend and a backend with no tables were the same
+ * value. They no longer are: a backend we could not reach leaves the cache
+ * untouched (`decideSchemaCache` returns `write: false`), and `[]` now means the
+ * backend answered and genuinely has no tables. What still arrives as `undefined`
+ * is a project with no endpoint, a foreign Parse server, and a project whose
+ * backend has never once been reachable — so "we could not look" remains the
+ * honest reading of empty, for a smaller set of reasons.
  *
  * Exported for that caller. It is the *built-in* half only: `buildBackendSummary`
  * already walks the Backend Services entries itself, so handing it the whole of
