@@ -11,24 +11,46 @@ Re-derive the board from `TASKS.md` + the task files; do not trust this file's c
 |---|---|
 | VIB-001 The Judge | 🟢 **CLOSED**, all 5 ACs. Baseline 9 SHITTY / 0 / 0 after Richard's ruling |
 | VIB-002 The Ceiling | 🟡 **PASSABLE — RICHARD RULED IT**: *"very passable, nearly worthy, definitely night and day with the original"* |
-| VIB-003 The Pictures | 🟡 **PASSABLE**, 5 ACs met, **awaiting Richard's look** (sheet below). The first phase-81 page on which the imagery/iconography tell does **not** fire |
+| VIB-003 The Pictures | 🟡 **PASSABLE — RICHARD RULED IT**: *"nice, deffo passable and looking like a modern base template, good job"*. The first phase-81 page on which the imagery/iconography tell does **not** fire |
+| VIB-011 The Stock Library | 🟡 **OPENED by his instruction.** Pipeline proven, source found, library unbuilt |
 | VIB-004/005/007 | ⬜ all three startable now, in parallel |
 | VIB-006 | ⬜ consumes 002/003/004 |
 | VIB-008/009 | ⬜ prove it on the shipped templates |
 | VIB-010 | ⬜ the exit exam |
 
-## 🔴 First job: VIB-004 (The Marketing Kit) — and VIB-003's verdict says exactly what it is for
+## ✅ All three sheet questions came back — read these before planning anything
 
-**Sheet sent to Richard 2026-08-31**: https://claude.ai/code/artifact/bb77d21d-0770-484a-85da-ad5b1b30a273
+Sheet: https://claude.ai/code/artifact/bb77d21d-0770-484a-85da-ad5b1b30a273
 
-Three questions on it. **Read his answers before planning**, because the first two change the work:
+1. **PASSABLE confirmed** — *"nice, deffo passable and looking like a modern base template, good
+   job"*. The tier is not reopened; VIB-004 is the next job.
+2. 🔴 **THE MEASURE IS RULED (V29).** *"the wider you go… white space to the left and right
+   **equally**… not just on one side, that's weird… the structural page divs have a max width and
+   are centred."* **An empty half is a DEFECT, not defensible negative space.** V15 is answered.
+   ⚠️ The VIB-003 page already satisfies it (64/64 at 1280, 374/374 at 1900); **the VIB-002
+   image-scrim band does not** (374 left, **766** right at 1900). **VIB-004 builds sections that fill
+   or centre within the measure — never one-sided.**
+3. 🔴 **A BUNDLED STOCK LIBRARY IS WANTED (V30) → VIB-011 opened.** *"download some stock images and
+   keep them in the deployed editor… even for when the MCP is making custom apps for people it can
+   piocher in the image library."* This **supersedes** VIB-003's generated-abstract decision.
 
-1. **Is PASSABLE right, or still SHITTY?** A SHITTY reopens the tier rather than pointing at VIB-004.
-2. 🔴 **The empty right-hand half at ≥1280 — re-asked.** VIB-002's sheet got no ruling and the
-   handoff correctly said not to read the silence as agreement. *A hero can defend negative space;
-   a feature band cannot* — which of those it is decides whether VIB-004 builds sections that fill
-   the measure or sections that sit inside it.
-3. Should the product ship starter pictures at all (see below).
+## 🔴 And a fourth thing he named, which is VIB-004's first job (V27)
+
+> *"still some spacing problems in the cards… spacing and padding seems to be a weak point with the
+> MCP."*
+
+Swept over the 64 examples: **30 raw pixel numbers** where a token belongs, **20 asymmetric
+paddings** — **13 of them the identical `paddingLeft`+`paddingTop`-only signature**, padding on two
+sides and nothing on the other two — and **58 row/column Groups with 2+ children and no gap at all**.
+
+✅ The 14 `LeftTop` nodes and the media card are fixed. 🔴 **The 58 no-gap containers are NOT** —
+deliberately, because many are logic examples where a gap is a judgement call and changing 58 nodes
+without looking at each render is the proxy this phase refuses. **That is VIB-004's, and it is the
+single highest-density source of "it looks unfinished" left in the corpus.**
+
+⚠️ `paddingLeft` accepts `var(--space-4)` (CSS pass-through) but a **units-typed** port like
+`Columns.marginX` needs `{value, unit}` and **silently drops a `var()` string** — and
+`catalog:examples` accepts the broken form. V28, VIB-007.
 
 **What VIB-003's verdict named as the whole remaining gap**, and it is one sentence: *nothing on the
 page is a designed object.* The card band is a two-column row inside a Group with 12px of padding —
