@@ -20,6 +20,7 @@ import { ToolError } from './errors';
 import { installProjectOverlay } from './kitOverlay';
 import { ProjectBinding } from './project/ProjectBinding';
 import { createExampleBudget } from './tools/attachments';
+import { RenderLedger } from './renderVerdict';
 import { registerAuthorTools } from './tools/author';
 import { createPlanRegistry, registerPlanTools } from './tools/planTools';
 import { registerBackendReadTools, registerBackendWriteTools } from './tools/backendTools';
@@ -129,6 +130,11 @@ export function createServer(options: ServerOptions): CreatedServer {
   // registration is unconditional in both modes and the *policy* decides what is
   // advertised, so binding a project later (BST-002) never has to re-register
   // anything.
+  // VIB-007 M1 — one ledger per server, beside the plan registry and for the
+  // same reason: two servers in one process (which is every test file in this
+  // suite) must not be able to certify each other's projects.
+  const renderLedger = new RenderLedger();
+
   const disclosure = new ToolDisclosure(binding.isBound);
   const rec = recordTools(server, disclosure);
 
@@ -140,7 +146,7 @@ export function createServer(options: ServerOptions): CreatedServer {
   // convert is useful long before anyone is allowed to change anything.
   registerImportReportTool(rec, binding);
   registerCatalogTools(rec);
-  registerValidateTools(rec, binding);
+  registerValidateTools(rec, binding, renderLedger);
   registerStyleReadTools(rec, binding);
   registerDocsReadTools(rec, binding);
   registerBackendReadTools(rec);
@@ -150,7 +156,7 @@ export function createServer(options: ServerOptions): CreatedServer {
   // LAS-005 — read-only and unconditional, the same posture as the rest of the
   // read surface: rendering a project changes nothing about it, and a read-only
   // server is exactly where "is this page actually right?" gets asked.
-  registerRenderTools(rec, binding);
+  registerRenderTools(rec, binding, renderLedger);
   // BST-006. Takes no store, like `create_project`: it reads the launcher's own
   // recent-projects file, which is machine state rather than project state. That
   // is what makes it answerable on a server with nothing bound — and it is the
@@ -179,8 +185,8 @@ export function createServer(options: ServerOptions): CreatedServer {
     // rejection of a code carries the recipe and the fifth carries its id. A
     // repair loop must not be re-sent the same fragment every turn.
     const exampleBudget = createExampleBudget();
-    registerAuthorTools(rec, binding, planRegistry, exampleBudget, disclosure);
-    registerPlanTools(rec, binding, planRegistry, exampleBudget, disclosure);
+    registerAuthorTools(rec, binding, planRegistry, exampleBudget, renderLedger, disclosure);
+    registerPlanTools(rec, binding, planRegistry, exampleBudget, renderLedger, disclosure);
     registerStyleWriteTools(rec, binding);
     registerDocsWriteTools(rec, binding);
     registerBackendWriteTools(rec);

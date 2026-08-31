@@ -53,7 +53,6 @@ import {
   componentInterfaces,
   dedupeDiagnostics,
   diagnosticKey,
-  isComponentRef,
   DocPathError,
   formatDiagnosticLine,
   isBlockingForAuthoredOutput,
@@ -66,6 +65,9 @@ import type { ConnectionV2 } from '../editor-deps';
 import { catalogGeneration, catalogIndex } from '../catalog';
 import { ToolError } from '../errors';
 import { automaticRenderDisabled, runRenderReport } from '../render';
+import type { RenderLedger, RenderVerdict } from '../renderVerdict';
+import { drawsSomething } from '../visualRoots';
+import { completionPayload } from './completion';
 import type { ComponentFiles } from '../graph';
 import { reconcileHierarchy } from '../graph';
 import { deconflictNodeIds, remapNote } from '../project/nodeIds';
@@ -351,10 +353,7 @@ function validationBlock(
  */
 function wroteSomethingVisual(plan: ServerPlan, operation: PlanOperation): boolean {
   const files = plan.staged.get(operation.id);
-  if (!files) return false;
-  if (files.nodes.visualRoots && files.nodes.visualRoots.length > 0) return true;
-  const catalog = catalogIndex();
-  return files.nodes.nodes.some((node) => isComponentRef(node.type) || catalog.getNode(node.type)?.isVisual === true);
+  return files ? drawsSomething(files) : false;
 }
 
 /**
@@ -367,10 +366,17 @@ function wroteSomethingVisual(plan: ServerPlan, operation: PlanOperation): boole
  * short note for the same reason: "your write succeeded but the optional
  * screenshot tool crashed" must not read like "your write failed".
  */
-async function renderSummaryFor(store: ProjectStore): Promise<Record<string, unknown>> {
+async function renderSummaryFor(
+  store: ProjectStore,
+  ledger: RenderLedger
+): Promise<{ summary: Record<string, unknown>; verdict?: RenderVerdict }> {
   try {
     const { report } = await runRenderReport(store.projectDir, { screenshot: 'none' });
-    return {
+    // VIB-007 M1 — recorded before the numbers are shaped, so the verdict is
+    // about the render that just ran rather than about the subset of it this
+    // response happens to quote.
+    const verdict = ledger.record(store.projectDir, report);
+    const summary = {
       summary: report.summary,
       findings: report.findings,
       viewports: Object.fromEntries(
@@ -388,10 +394,13 @@ async function renderSummaryFor(store: ProjectStore): Promise<Record<string, unk
       ),
       note: 'Numbers only. Call render_report for the screenshots — a picture that loads is not a picture of the right thing.'
     };
+    return { summary, verdict };
   } catch (err) {
     return {
-      skipped: err instanceof ToolError ? err.message : `The render did not run: ${(err as Error).message}`,
-      note: 'The plan was applied. Only the render check was skipped; call render_report to retry it.'
+      summary: {
+        skipped: err instanceof ToolError ? err.message : `The render did not run: ${(err as Error).message}`,
+        note: 'The plan was applied. Only the render check was skipped; call render_report to retry it.'
+      }
     };
   }
 }
@@ -511,6 +520,10 @@ export function registerPlanTools(
   binding: ProjectBinding,
   registry: PlanRegistry,
   examples: ExampleBudget,
+  // VIB-007 M1 — the session's memory of what a render said. Shared with
+  // `render_report` and `validate_project`: a look taken through one door has to
+  // count at the others, or "have you looked?" becomes a per-tool question.
+  ledger: RenderLedger,
   // AWP-006 — see registerAuthorTools. Optional for the same reason.
   disclosure?: ToolDisclosure
 ): void {
@@ -894,9 +907,8 @@ export function registerPlanTools(
           .enum(['summary', 'off'])
           .optional()
           .describe(
-            'summary (the default when the plan wrote anything visual) renders the project and appends the ' +
-              'numbers — broken images, dead placeholder texts, one-column grids. Call render_report for the ' +
-              'screenshots.'
+            'summary (forced when the plan wrote anything visual — you may not skip looking) renders and ' +
+              'returns the numbers plus a done/not-done verdict. Call render_report for the screenshots.'
           )
       }
     },
@@ -970,6 +982,24 @@ export function registerPlanTools(
         surviving.push(...validation.diagnostics);
       }
 
+      // 🔴 VIB-007 M1 — the one thing a caller may not do is decide not to look.
+      //
+      // Refused **before any write**, and refused rather than ignored: silently
+      // rendering anyway would make the parameter a lie, and honouring it would
+      // leave the whole mechanism one keyword away from off. The environment
+      // escape (`NODEGX_RENDER_DISABLED`) is deliberately left alone — it
+      // belongs to whoever runs the server (CI, a container with no Chrome),
+      // not to the model authoring the page.
+      const visualPlan = componentOps.some((op) => wroteSomethingVisual(serverPlan, op));
+      if (args.render === 'off' && visualPlan && !automaticRenderDisabled()) {
+        throw new ToolError(
+          'invalid-argument',
+          'This plan writes something visual, so render:"off" is refused — nothing was written. A graph is a ' +
+            'claim and a render is evidence, and the turn that wrote the page is the turn that can still fix ' +
+            'it. Re-apply without render:"off" (it takes ~8s and returns the numbers).'
+        );
+      }
+
       // Commit: components first, then the docs that record them. Validation
       // was all-or-nothing above; the writes themselves are sequential file
       // operations. Docs last here (and first in the editor, which has an undo
@@ -1025,11 +1055,16 @@ export function registerPlanTools(
       // to go and look, and the audit measured that a mid-tier model never does.
       // Screenshots are deliberately NOT here: they belong to `render_report`,
       // which the caller reaches for when the numbers say something is wrong.
-      const wantsRender =
-        args.render !== 'off' &&
-        !automaticRenderDisabled() &&
-        componentOps.some((op) => wroteSomethingVisual(serverPlan, op));
-      const render = wantsRender ? await renderSummaryFor(store) : undefined;
+      // VIB-007 M1 — the write happened, so whatever the ledger remembered is
+      // now about a project that no longer exists.
+      ledger.invalidate();
+      const wantsRender = args.render !== 'off' && !automaticRenderDisabled() && visualPlan;
+      const rendered = wantsRender ? await renderSummaryFor(store, ledger) : undefined;
+      // The verdict comes from the ledger, not from `rendered`, so the three
+      // ways of not having a verdict — the render was refused for the whole
+      // process, it threw, or it was never wanted — all arrive as the same
+      // honest "nobody has looked at this".
+      const completion = completionPayload(ledger.state(store.projectDir));
 
       return jsonResult({
         applied,
@@ -1038,7 +1073,12 @@ export function registerPlanTools(
         ...registrationSummary(registration),
         ...(settingsWritten.length > 0 ? { settings: settingsWritten } : {}),
         ...validationBlock(surviving, summarize(surviving)),
-        ...(render ? { render } : {}),
+        ...(rendered ? { render: rendered.summary } : {}),
+        // 🔴 Above `note`, and `note` no longer says the work is finished. The
+        // plan is applied and discarded — that is a fact about the files, and it
+        // was the last thing in the response, which is how it got read as a
+        // verdict on the page.
+        ...completion,
         note: 'Plan applied and discarded. Re-read components with get_component for fresh revisions.'
       });
     })

@@ -38,7 +38,7 @@
  */
 
 import { catalogIndex, isVisualNodeType } from './catalog';
-import { unflattenNodes } from './editor-deps';
+import { isComponentRef, unflattenNodes } from './editor-deps';
 import type { LegacyNode, NodeV2 } from './editor-deps';
 
 /**
@@ -54,6 +54,29 @@ export type VisualTypePredicate = (typeName: string) => boolean;
 /** The catalog's answer alone. Correct for every built-in type; says `false` for
  * a component instance, because the catalog has never heard of one. */
 export const catalogVisualPredicate: VisualTypePredicate = (typeName) => isVisualNodeType(typeName);
+
+/**
+ * Did this write put anything on a screen?
+ *
+ * The question decides whether `apply_plan` renders by default and whether the
+ * bag-of-nodes doors report a completion verdict (VIB-007 M1), so it errs toward
+ * yes: a component that declares visual roots, holds a node the catalog calls
+ * visual, or instantiates another project component (whose visual-ness this
+ * cannot see from here) counts. A write of pure logic or a cloud function
+ * renders nothing worth eight seconds.
+ *
+ * ⚠️ It lives here, beside the other "does this draw?" answers, because it was
+ * about to have a second implementation: `apply_plan` asks it of a staged
+ * operation and `create_component` asks it of a candidate, and two copies of a
+ * visual-ness predicate is the exact three-twins shape BCN-003 is about.
+ */
+export function drawsSomething(files: { nodes: { nodes?: NodeV2[]; visualRoots?: string[] } }): boolean {
+  if (files.nodes.visualRoots && files.nodes.visualRoots.length > 0) return true;
+  const catalog = catalogIndex();
+  return (files.nodes.nodes ?? []).some(
+    (node) => isComponentRef(node.type) || catalog.getNode(node.type)?.isVisual === true
+  );
+}
 
 /**
  * The editor's rule, applied to a component's flat `nodes.json` list.

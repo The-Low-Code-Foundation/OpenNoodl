@@ -95,6 +95,13 @@ console.log(JSON.stringify({ error: { actionable: true, message: 'no viewer',
 process.exit(1);
 `;
 
+/** The report block, found by shape rather than by index — see the verdict note below. */
+function jsonBlock(res: RawContentResult): string {
+  const block = res.content.find((c) => c.type === 'text' && (c.text as string).trim().startsWith('{'));
+  if (!block) throw new Error('no JSON block in the response');
+  return block.text as string;
+}
+
 describe('LAS-005 — render_report', () => {
   let session: TestSession;
   let dir: string;
@@ -121,7 +128,12 @@ describe('LAS-005 — render_report', () => {
     const res = (await session.client.callTool({ name: 'render_report', arguments: {} })) as RawContentResult;
 
     expect(res.isError).toBeFalsy();
-    const report = JSON.parse(res.content[0].text as string);
+    // VIB-007 M1 — the verdict comes FIRST, before the JSON, so the report is
+    // no longer content[0]. That ordering is the mechanism, not a detail: a
+    // caller who reads one block reads the one that says whether it is done.
+    expect(res.content[0].text).toContain('NOT DONE');
+    expect(res.content[0].text).toContain('dead-placeholder-text');
+    const report = JSON.parse(jsonBlock(res));
     expect(report.summary).toContain('dead-placeholder-text');
     expect(report.findings[0].code).toBe('dead-placeholder-text');
 
@@ -180,10 +192,14 @@ describe('LAS-005 §4 — apply_plan closes the loop', () => {
     else process.env.NODEGX_RENDER_DISABLED = originalDisabled;
   });
 
-  async function applyPlan(nodes: unknown[], render?: 'summary' | 'off') {
+  async function applyPlan(
+    nodes: unknown[],
+    render?: 'summary' | 'off',
+    op: { target: string; intent: string } = { target: 'Pages/Catalogue', intent: 'The listing page' }
+  ) {
     const plan = await call<CreatePlanResponse>(session, 'create_plan', {
       request: 'Add a catalogue page',
-      operations: [{ kind: 'create', target: 'Pages/Catalogue', intent: 'The listing page' }]
+      operations: [{ kind: 'create', target: op.target, intent: op.intent }]
     });
     await call(session, 'stage_plan_operation', {
       plan_id: plan.data.planId,
@@ -210,9 +226,28 @@ describe('LAS-005 §4 — apply_plan closes the loop', () => {
     expect(res.data.render?.findings?.[0].code).toBe('dead-placeholder-text');
   });
 
-  it('does not render when the caller says off', async () => {
+  /**
+   * 🔴 VIB-007 M1 changed this contract, and the old assertion is kept as the
+   * thing it became rather than deleted: `render:"off"` used to be honoured on a
+   * visual plan, which left the whole mechanism one keyword away from off.
+   */
+  it('refuses render:"off" on a plan that wrote something visual — and writes nothing', async () => {
     session = await connect(copyFixture());
     const res = await applyPlan(PAGE_NODES, 'off');
+
+    expect(res.isError).toBeTruthy();
+    expect((res.data as unknown as { error: { message: string } }).error.message).toContain('is refused');
+    // Refused BEFORE the write, which is the half a refusal usually gets wrong.
+    const listed = await call<{ components: Array<{ path: string }> }>(session, 'list_components');
+    expect(listed.data.components.map((c) => c.path)).not.toContain('Pages/Catalogue');
+  });
+
+  it('still honours render:"off" for a plan that drew nothing — the control', async () => {
+    session = await connect(copyFixture());
+    const res = await applyPlan([{ id: 'lg_state', type: 'States', parameters: { states: 'idle' } }], 'off', {
+      target: 'Logic/Flags',
+      intent: 'A states node, nothing on screen'
+    });
 
     expect(res.isError).toBeFalsy();
     expect(res.data.render).toBeUndefined();

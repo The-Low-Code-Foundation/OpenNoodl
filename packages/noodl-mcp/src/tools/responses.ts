@@ -268,6 +268,12 @@ export interface ValidateComponentResponse {
 export interface ValidateProjectResponse {
   summary: ValidationReport['summary'];
   diagnostics: Diagnostic[];
+  /**
+   * VIB-007 M1 — the completion block from `tools/completion.ts`. Loose because
+   * it is the same shape on four doors and typing it four times is four things
+   * to drift; `done` is always present on it, and the rest is the reason.
+   */
+  [completion: string]: unknown;
 }
 
 // ─── Author ───────────────────────────────────────────────────────────────────

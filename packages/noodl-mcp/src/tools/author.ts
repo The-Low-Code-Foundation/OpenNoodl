@@ -31,6 +31,9 @@ import { componentIsPage, registerPages, registrationSummary } from '../project/
 import type { NodeIdRemap } from '../project/nodeIds';
 import { deconflictNodeIds, remapNote } from '../project/nodeIds';
 import type { ProjectBinding } from '../project/ProjectBinding';
+import type { RenderLedger } from '../renderVerdict';
+import { drawsSomething } from '../visualRoots';
+import { completionPayload } from './completion';
 import type { ProjectStore } from '../project/ProjectStore';
 import type { ExampleBudget } from './attachments';
 import { examplesBlock } from './attachments';
@@ -450,6 +453,10 @@ export function registerAuthorTools(
   binding: ProjectBinding,
   plans: PlanRegistry,
   examples: ExampleBudget,
+  // VIB-007 M1 — see `registerPlanTools`. This door does not render (a two-node
+  // fix must not cost eight seconds), but every write it makes moves the project
+  // out from under whatever the last render said.
+  ledger: RenderLedger,
   // AWP-006. Optional so the four existing call sites in the suite that build a
   // registration directly keep working; when absent nothing is deferred, which
   // is the same posture `--all-tools` gives.
@@ -547,6 +554,7 @@ export function registerAuthorTools(
         if (!validation.ok) rejectWith(validation, `create_component "${path}"`, examples);
 
         const { revision } = store.writeComponent(path, candidate, { expectNew: true });
+        ledger.invalidate();
         // AAQ-005: a page component is not a page until a Router lists it. The
         // editor's apply has done this since AAQ-001; this door did not, so
         // every page Claude Code created was unreachable. After the write, so
@@ -572,7 +580,13 @@ export function registerAuthorTools(
           // stays open by decision (primitive-only, no ceremony for a two-node
           // fix), and LAS-011 measures whether one line was enough before
           // anything harder is considered. Silent for anyone who did use a plan.
-          ...(isPage && !plans.hasPlans() ? { planAdvisory: PAGE_WITHOUT_PLAN_ADVISORY } : {})
+          ...(isPage && !plans.hasPlans() ? { planAdvisory: PAGE_WITHOUT_PLAN_ADVISORY } : {}),
+          // VIB-007 M1 — this door writes and does not render, so the only
+          // honest thing it can say about a page is that nobody has looked at
+          // it yet. Said on every visual write rather than only on pages: a
+          // section component is what the page is made of, and "I only changed
+          // a card" is how a page stops being the thing anybody renders.
+          ...(drawsSomething(candidate) ? completionPayload(ledger.state(store.projectDir)) : {})
         };
         return jsonResult(payload);
       }
@@ -689,6 +703,7 @@ export function registerAuthorTools(
         if (!validation.ok) rejectWith(validation, `update_component "${stored.key}"`, examples);
 
         const { revision } = store.writeComponent(stored.key, candidate, { ifRevision: args.if_revision });
+        ledger.invalidate();
         // Updates register too, exactly as the editor's apply does: a page that
         // exists but was never listed is the state this task is about, and
         // re-listing one already listed is a no-op.
@@ -703,7 +718,8 @@ export function registerAuthorTools(
           ...remapPayload(remapped),
           ...successPayload(validation),
           ...backendRevealPayload(disclosure?.revealForNodes(candidate.nodes.nodes) ?? []),
-          ...visualRootsPayload(candidate, args.set?.visual_roots)
+          ...visualRootsPayload(candidate, args.set?.visual_roots),
+          ...(drawsSomething(candidate) ? completionPayload(ledger.state(store.projectDir)) : {})
         };
         return jsonResult(payload);
       }
@@ -737,6 +753,7 @@ export function registerAuthorTools(
       }
       const brokenRefs = usages.length > 0 ? validateDeletion(store, stored.key) : [];
       const { removed } = store.deleteComponent(stored.key);
+      ledger.invalidate();
       const payload: DeleteComponentResponse = {
         deleted: stored.key,
         removedFiles: removed,

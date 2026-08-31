@@ -9,11 +9,13 @@ import { z } from 'zod';
 import { sortDiagnostics } from '../editor-deps';
 import type { ProjectBinding } from '../project/ProjectBinding';
 import type { ProjectStore } from '../project/ProjectStore';
+import type { RenderLedger } from '../renderVerdict';
 import { validateOnDisk } from '../validate';
+import { completionPayload } from './completion';
 import type { ValidateComponentResponse, ValidateProjectResponse } from './responses';
 import { guarded, jsonResult } from './util';
 
-export function registerValidateTools(server: McpServer, binding: ProjectBinding): void {
+export function registerValidateTools(server: McpServer, binding: ProjectBinding, ledger: RenderLedger): void {
   const strictArg = z
     .boolean()
     .optional()
@@ -58,7 +60,14 @@ export function registerValidateTools(server: McpServer, binding: ProjectBinding
       const { report } = validateOnDisk(store, { strict: args.strict });
       const payload: ValidateProjectResponse = {
         summary: report.summary,
-        diagnostics: sortDiagnostics(report.diagnostics)
+        diagnostics: sortDiagnostics(report.diagnostics),
+        // 🔴 VIB-007 M1 — this is the "is my work good?" call, and until now it
+        // could answer yes about a project nobody had ever looked at. A clean
+        // graph is a claim about structure; `done` is a claim about the picture,
+        // and only a render can make it. Cheap: it reads the session's ledger
+        // and re-hashes the project, and never renders — a validate that cost
+        // eight seconds would stop being called.
+        ...completionPayload(ledger.state(store.projectDir))
       };
       return jsonResult(payload);
     })

@@ -1,0 +1,15 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/project-v2.json",
+  "name": "VIB-007 M1 — the page nobody looked at",
+  "version": "4",
+  "nodegxVersion": "1.1.0",
+  "settings": {
+    "htmlTitle": "VIB-007 M1",
+    "navigationPathType": "path"
+  },
+  "structure": {
+    "componentsDir": "components",
+    "assetsDir": "assets"
+  },
+  "rootNodeId": "app_root"
+}

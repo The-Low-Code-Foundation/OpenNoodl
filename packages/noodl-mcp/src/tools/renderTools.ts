@@ -22,6 +22,7 @@ import { z } from 'zod';
 import type { ProjectBinding } from '../project/ProjectBinding';
 import type { ProjectStore } from '../project/ProjectStore';
 import { runRenderReport } from '../render';
+import type { RenderLedger } from '../renderVerdict';
 import { guarded, type ToolResult } from './util';
 
 /**
@@ -32,7 +33,7 @@ import { guarded, type ToolResult } from './util';
 const MAX_SCALE = 1;
 const MIN_SCALE = 0.1;
 
-export function registerRenderTools(server: McpServer, binding: ProjectBinding): void {
+export function registerRenderTools(server: McpServer, binding: ProjectBinding, ledger: RenderLedger): void {
   server.registerTool(
     'render_report',
     {
@@ -81,7 +82,8 @@ export function registerRenderTools(server: McpServer, binding: ProjectBinding):
         page?: string;
       }): Promise<ToolResult> => {
         const scale = args.scale === undefined ? undefined : Math.min(MAX_SCALE, Math.max(MIN_SCALE, args.scale));
-        const { report, screenshots } = await runRenderReport(binding.require().projectDir, {
+        const projectDir = binding.require().projectDir;
+        const { report, screenshots } = await runRenderReport(projectDir, {
           viewports: args.viewports,
           screenshot: args.screenshot,
           scale,
@@ -89,8 +91,21 @@ export function registerRenderTools(server: McpServer, binding: ProjectBinding):
           page: args.page
         });
 
+        // VIB-007 M1 — the look is recorded, so that afterwards something in
+        // this server can answer "is it done?". ⚠️ **Only a whole-project render
+        // certifies**: a `page`-scoped run is a reading about one page, and
+        // `render-report.js` already says so in its own summary rather than
+        // letting it out-claim its coverage. Recording it as the project's
+        // verdict would launder that reading into the app.
+        const verdict = args.page === undefined ? ledger.record(projectDir, report) : undefined;
+
         return {
           content: [
+            // 🔴 Before the JSON, not inside it. The verdict is the sentence the
+            // caller must not be able to skim past — a report whose top-level
+            // shape reads as success is how "Rendered clean" survived over a
+            // page nobody could reach.
+            ...(verdict ? [{ type: 'text' as const, text: verdictHeadline(verdict) }] : []),
             { type: 'text', text: JSON.stringify(report, null, 2) },
             // Each image is announced before it arrives, because an agent
             // reading a bare image has no way to know which viewport it is.
@@ -103,4 +118,9 @@ export function registerRenderTools(server: McpServer, binding: ProjectBinding):
       }
     )
   );
+}
+
+/** The verdict as the one line a caller reads first. */
+function verdictHeadline(verdict: { done: boolean; reason: string }): string {
+  return verdict.done ? `DONE — ${verdict.reason}` : verdict.reason;
 }

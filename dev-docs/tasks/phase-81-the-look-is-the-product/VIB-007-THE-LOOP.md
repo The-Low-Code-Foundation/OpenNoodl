@@ -237,3 +237,122 @@ one. 🔴 **A relayed count decays more slowly than the sentence attached to it.
 V22 is one of six predicates. **V23, V28, V29, V32, V33 are unbuilt.** V32 is the cheapest by a
 distance — it is *configuration only* (run `raw-color-literal` in `catalog:examples`) and it now has a
 worked precedent in this section for what switching a check on over an existing corpus costs.
+
+---
+
+## §7 🔴 AC1 BUILT, 2026-08-31 — the render is mandatory, and "done" is a thing only a render can say
+
+AC1 was this task's own first call — *"it converts a taste problem into a feedback-loop problem"* —
+and the handoff put it ahead of AC2's tail. It was built.
+
+### What was measured before anything was written
+
+The seam was **not** what §3 M1 assumed. Read from the door as it actually is:
+
+| | state before this session |
+|---|---|
+| `apply_plan` | **already renders by itself** when the plan wrote anything visual (LAS-005 §4), and appends the numbers |
+| `create_component` / `update_component` | **never render**, and LAS-006's own note calls this *"the door a page most often comes through without a plan"* |
+| anything | **nothing turns a render finding into a refusal**, and nothing anywhere records that a render happened |
+
+So M1's gap was never *"add a render"*. It was that **the render's numbers were appended to a
+response whose top-level shape said success**, and `validate_project` — the call a model makes to ask
+whether its work is good — could answer yes about a project nobody had ever looked at. 🔴 That is the
+same failure one level up as the render report that said *"Rendered clean: 83 texts, 10 images"* over
+content nobody could reach (AWP-004), and the same shape as VIB-001's own *legible-and-operable-is-not-a-grade*:
+**a structural pass proxying for the thing actually being asked.**
+
+### 🔴 The design decision, and the first design was wrong
+
+The first shape was **the door refuses the write** — render the staged overlay before `apply_plan`
+commits, and reject a plan whose page renders dirty. It is buildable (a project copy is ~3.4 MB, tens
+of milliseconds against an 8-second render) and it is **wrong on M1's own argument**. M1 exists
+because *"a model is mediocre at one-shot taste and good at iterating against a signal"*. A door that
+will not save a page until it renders clean **destroys the loop it was built to create** — you cannot
+fix what you were not allowed to write.
+
+✅ So: **this refuses to certify, never to write.** Writes stay open, looking becomes unavoidable, and
+`done` becomes a thing only a clean render can produce. The one refusal that *is* a refusal sits where
+a caller can actively avoid looking, and it is refused **before any write**:
+
+> `apply_plan` with `render: "off"` on a plan that wrote something visual → **rejected, nothing
+> written.** The environment escape (`NODEGX_RENDER_DISABLED`) is deliberately untouched: it belongs
+> to whoever runs the server — CI, a container with no Chrome — not to the model authoring the page.
+
+### What shipped
+
+1. **`src/renderVerdict.ts`** — `verdictFor(report)` and the `RenderLedger`.
+   - 🔴 **The blocking family is measured, not chosen.** `nodegx-render-measure` already grades its own
+     findings and the five it calls `error` are exactly the five that mean unfinished — blank render,
+     a repeater that built no rows, a text still showing a node-type default, a broken image, content
+     nobody can reach. The predicate is **the severity**; retyping the list here would be a second copy
+     to drift. Everything at `warning` is reported and does not block.
+   - 🔴 **An unmeasured routed page is not a clean page.** `render-report.js` already refuses to let a
+     summary out-claim its coverage; the verdict follows it, or "done" over a page nobody could address
+     would be AWP-004 wearing this module's face.
+   - **Staleness is a content signature, not bookkeeping.** Component bytes + `nodegx.routes.json` +
+     `nodegx.styles.json` + `_registry.json` are hashed; `assets/` and `noodl_modules/` go in by
+     (path, size, mtime), because a `broken-image` is fixed by the *file* arriving and a signature
+     blind to assets would certify a page whose photographs had been deleted. ⚠️ Stated bound: a
+     replacement of identical size *and* mtime is invisible — a `touch -r` away, and nothing does it
+     by accident.
+   - **In memory, and strict when it knows nothing.** It writes nothing into the project (opening one
+     already writes three files). A fresh session over a finished project reports `done: false,
+     'nobody has looked'` — the honest epistemic state, eight seconds from cleared.
+2. **`src/tools/completion.ts`** — one completion block for every door. `done` is present on **both**
+   arms, because a field that appears only when something is wrong is a field whose absence has to be
+   interpreted, and the absence of a warning is exactly what a model reads as success.
+3. **The doors**: `render_report` records the verdict and prints it **as the first content block,
+   before the JSON**; `apply_plan` refuses `render:"off"` on a visual plan and carries the verdict
+   *above* its `note`; `create_component`/`update_component` invalidate the ledger and report the state
+   they have put the project into; **`validate_project` now answers `done`**.
+   ⚠️ A **page-scoped** `render_report` deliberately does **not** certify — it is a reading about one
+   page, and recording it as the project's verdict would launder that reading into the app.
+4. **`drawsSomething()` moved into `src/visualRoots.ts`.** `apply_plan` asked it of a staged operation
+   and `create_component` was about to ask it of a candidate — the exact three-twins shape BCN-003 is
+   about, caught before the second copy existed.
+
+### The demonstration — AC1's actual close
+
+`demo/build-vib007-m1.js` writes a deliberately poor page: a `Text` with **no `text` parameter** (the
+node draws its own type name) and an `Image` pointing at a photograph that is not in the project.
+Everything else about it is tidy — tokens for every colour and space, a real heading, a scrolling
+spine — **which is the point**: it passes every structural check and it is three empty words and a
+grey rectangle. `packages/noodl-mcp/tests/vib007-m1.door.ts` drives the real door over it with a real
+Chrome (outside `testMatch`, like a `.look.ts`, so it cannot redden a gate):
+
+| step | reading |
+|---|---|
+| 1 | `validate_project` → **NOT DONE** — *"nothing has rendered this project in its current state, so nobody has looked at it"* |
+| 2 | `render_report` (real Chrome) → **NOT DONE — 4 blocking findings**: `dead-placeholder-text` and `broken-image`, at desktop **and** phone. `validate_project` agrees and lists them |
+| 3 | the fix through `update_component` (real copy for the three dead texts) + the photograph placed → **still NOT DONE**, because nobody has looked since |
+| 4 | 🔴 `render_report` → **DONE — "Rendered, and the render is clean."** and `validate_project` says `done: true` |
+
+🔴 **Step 4 is the arm that makes the other three mean anything.** A gate that never accepts is
+indistinguishable from a gate that is broken — the half this repo's icon gate and V22's own door spec
+each had to be given, and the third time in this phase.
+
+⚠️ **`mustFix` lists each defect once per viewport and is not deduped by code.** A finding that fires
+at 390 and not at 1280 is a different page; the spec asserts the code **set** and the viewport
+**count** separately, so a silent collapse to one viewport is caught rather than passing.
+
+### Gates (2026-08-31) — 🔴 every row is an EXIT STATUS
+
+| gate | reading |
+|---|---|
+| `tests/vib007-m1.door.ts` (real Chrome) | **exit 0** — 4/4, the four steps above |
+| `tests/vib007RenderGate.test.ts` | **exit 0** — 12/12, incl. the signature **mutation** and the accepts arm |
+| `npx jest --config packages/noodl-mcp/jest.config.js` | see the handoff's table |
+| the surface budget spec | **exit 0** — 🔴 **8,274 tokens, six under 8,280.** The `render` parameter's new description is *shorter* than the one it replaced, which handed back **5 tokens** against V35's recorded 1 |
+| `npm run typecheck:mcp` | **exit 0** |
+
+### What AC1 does NOT close
+
+**No register row was closed by this.** §2's mapping classifies rows by the mechanism that would have
+**prevented** them, which is not the same claim as "the defect is now fixed": V9's instruction surfaces
+are unchanged, V11's door-state instrument is VIB-001's, and V15/V26/V29 are measurements nothing here
+takes. M1 makes the loop mandatory; the rows close when their own defects do.
+
+⚠️ **AC3 (M3, the poverty findings) is the one this most obviously enables** — a mandatory render is
+where a poverty finding would be read, and until M3 ships the gate is silent on the exact failure the
+VIB-001 baseline is made of: a page that renders perfectly clean and is worth nothing to look at.
