@@ -272,7 +272,7 @@
           "unit": "px"
         },
         "borderRadius": "var(--radius-2xl)",
-        "src": "noodl_modules/starter-imagery/tile-1.svg",
+        "src": "noodl_modules/starter-imagery/work-potter.webp",
         "alt": "Describe the photo — it is read aloud, and it is what shows if the image fails"
       },
       "parent": "b1_media",
@@ -717,7 +717,7 @@
       "label": "The quotes",
       "parameters": {
         "type": "json",
-        "json": "[{\"id\":\"q1\",\"quote\":\"I stopped opening a browser to check what the page looked like. That is the whole review.\",\"name\":\"Priya Raman\",\"role\":\"Design lead, Kiln & Co.\",\"portrait\":\"noodl_modules/starter-imagery/portrait.svg\"},{\"id\":\"q2\",\"quote\":\"The first project already had a typeface, an icon set and six pictures in it. I built the page, not the scaffolding.\",\"name\":\"Tom Aldiss\",\"role\":\"Founder, two-person studio\",\"portrait\":\"noodl_modules/starter-imagery/portrait.svg\"},{\"id\":\"q3\",\"quote\":\"We ran the whole workshop on a train with no signal and nothing degraded.\",\"name\":\"Marguerite Osei\",\"role\":\"Training, NHS trust\",\"portrait\":\"noodl_modules/starter-imagery/portrait.svg\"}]"
+        "json": "[{\"id\":\"q1\",\"quote\":\"I stopped opening a browser to check what the page looked like. That is the whole review.\",\"name\":\"Priya Raman\",\"role\":\"Design lead, Kiln & Co.\",\"portrait\":\"noodl_modules/starter-imagery/avatar-3.webp\"},{\"id\":\"q2\",\"quote\":\"The first project already had a typeface, an icon set and six pictures in it. I built the page, not the scaffolding.\",\"name\":\"Tom Aldiss\",\"role\":\"Founder, two-person studio\",\"portrait\":\"noodl_modules/starter-imagery/avatar-1.webp\"},{\"id\":\"q3\",\"quote\":\"We ran the whole workshop on a train with no signal and nothing degraded.\",\"name\":\"Marguerite Osei\",\"role\":\"Training, NHS trust\",\"portrait\":\"noodl_modules/starter-imagery/avatar-2.webp\"}]"
       },
       "x": 60,
       "y": 3130,

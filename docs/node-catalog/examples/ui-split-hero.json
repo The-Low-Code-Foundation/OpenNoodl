@@ -239,7 +239,7 @@
               "unit": "px"
             },
             "borderRadius": "var(--radius-2xl)",
-            "src": "noodl_modules/starter-imagery/tile-1.svg",
+            "src": "noodl_modules/starter-imagery/work-potter.webp",
             "alt": "Describe the photo — it is read aloud, and it is what shows if the image fails"
           },
           "parent": "media"

@@ -166,14 +166,22 @@ rescue it. Every listing gets a picture, every feature row gets an icon.
 **Every project created here already has both, offline.** You do not need a URL and you must not
 invent one:
 
-- \`noodl_modules/starter-imagery/\` — \`ground-aurora.svg\` and \`ground-ridge.svg\` (wide, for a
-  \`backgroundImage\` or a hero \`Image\`), \`tile-1/2/3.svg\` (4:3, for cards — three DIFFERENT
-  pictures, so a row of three does not read as one thing repeated) and \`portrait.svg\` (square, for
-  an avatar). Reference one as \`"noodl_modules/starter-imagery/tile-1.svg"\`. They are abstract and
-  colourless on purpose: an SVG loaded through \`src\` cannot read this project's tokens, so a
-  branded one would clash the moment the palette changed. Put the brand on with
-  \`backgroundGradient\` — which IS a token — over the top. **Replace them with real pictures when
-  you have them; they are a floor, not a finish.**
+- \`noodl_modules/starter-imagery/\` — **44 real photographs**, CC0, already cropped for the job they
+  are for. Reference one as \`"noodl_modules/starter-imagery/work-welder.webp"\`. 🔴 **Get the list
+  from \`get_style_vocabulary\`'s \`imagery\` block and pick by SUBJECT**, not by guessing a filename:
+  \`hero\` (16:9 band grounds, chosen dark enough to carry display type), \`work\` (somebody making
+  something), \`people\`, \`food\`, \`animals\`, \`texture\` (surfaces) and \`avatar\` (256px squares
+  framed on a face — there are six DIFFERENT faces, and a testimonial row wearing one face three
+  times is the thing a reader notices before they read a word).
+  **A picture has to say something about the subject.** A page whose every image is the same
+  abstract is decorated, not designed — that page exists, it is the VIB-004 marketing demo, and
+  "the pictures communicate nothing" is precisely why it is not finished.
+- The same directory also holds six abstract SVGs (\`ground-aurora.svg\`, \`ground-ridge.svg\`,
+  \`tile-1/2/3.svg\`, \`portrait.svg\`). They are the fallback for when **no photograph would be
+  honest** about the subject — an app about accountancy is not improved by a stock welder. 🔴 Never
+  use a \`ground-*\` as a SUBJECT picture: they are designed to be dark and empty so text reads on
+  them, and \`ui-split-hero\` pointed its media column at \`ground-ridge.svg\` and rendered a black
+  rectangle at the top of the most-copied recipe in the corpus.
 - \`noodl_modules/lucide-icons/\` — the glyph set. 🔴 **Get the value from
   \`get_style_vocabulary\`'s \`icons\` block and copy it whole.** An icon parameter is
   \`{"class": "lucide", "code": "icon-check", "codeAsClass": true}\`, and all three fields matter:

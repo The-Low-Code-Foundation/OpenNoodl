@@ -39,7 +39,7 @@
             "flexDirection": "column",
             "alignItems": "center",
             "justifyContent": "flex-end",
-            "backgroundImage": "",
+            "backgroundImage": "noodl_modules/starter-imagery/ground-city-dusk.webp",
             "backgroundGradient": "var(--gradient-scrim)",
             "backgroundSize": "cover",
             "backgroundPosition": "center",

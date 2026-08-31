@@ -26,6 +26,7 @@ import {
 } from '../editor-deps';
 import { ToolError } from '../errors';
 import { readIconSets, renderIconSets } from '../iconSets';
+import { readImagery, renderImagery } from '../imagery';
 import type { ProjectBinding } from '../project/ProjectBinding';
 import type { ProjectStore } from '../project/ProjectStore';
 import { guarded, jsonResult } from './util';
@@ -91,12 +92,16 @@ export function registerStyleReadTools(server: McpServer, binding: ProjectBindin
         "This project's design system: design tokens by category (semantic colours, spacing, typography, " +
         'radius, borders, shadows), the legal variants/sizes per element type, and the named COMPOSITIONS — ' +
         'ready-made parameter sets for a card, a shell, a section head, the buttons and the type ramp, each ' +
-        'naming the recipe that shows it assembled, and the icon sets installed here with a copyable ' +
-        'iconIconSource value. Reference a token in a node ' +
+        'naming the recipe that shows it assembled, the icon sets installed here with a copyable ' +
+        'iconIconSource value, and the bundled stock photographs. ' +
+        'Reference a token in a node ' +
         'parameter as "var(--token-name)" (never a raw hex or px). Set detail: "prompt" for the compact ' +
         'prompt-shaped block, or "full" (default) for the structured JSON. Built-in presets are listed too.',
       inputSchema: {
-        detail: z.enum(['full', 'prompt']).optional().describe('full = structured JSON (default); prompt = compact text block')
+        detail: z
+          .enum(['full', 'prompt'])
+          .optional()
+          .describe('full = structured JSON (default); prompt = compact text block')
       }
     },
     guarded((args: { detail?: 'full' | 'prompt' }) => {
@@ -108,11 +113,18 @@ export function registerStyleReadTools(server: McpServer, binding: ProjectBindin
       // editor's own AI loop reaches the same fact through the doctrine (`prompts/design.ts` §5),
       // which is where a shared function would have had to put it anyway.
       const icons = readIconSets(store.projectDir);
+      // VIB-011, and the same argument one asset class along: a model cannot use what it cannot
+      // enumerate. 44 photographs on disk that this response never mentions are 44 photographs an
+      // authoring model will not reach for. Read from the project for the same reason as `icons` —
+      // what is installed is a fact about a directory, not about the product.
+      const imagery = readImagery(store.projectDir);
 
       if (args.detail === 'prompt') {
-        return jsonResult({ vocabulary: `${renderStyleVocabulary(vocab)}\n\n${renderIconSets(icons)}` });
+        return jsonResult({
+          vocabulary: `${renderStyleVocabulary(vocab)}\n\n${renderIconSets(icons)}\n\n${renderImagery(imagery)}`
+        });
       }
-      return jsonResult({ ...vocab, icons });
+      return jsonResult({ ...vocab, icons, imagery });
     })
   );
 }
@@ -154,9 +166,11 @@ export function registerStyleWriteTools(server: McpServer, binding: ProjectBindi
         'coherent look from the start. Applied as token overrides on top of the defaults (like ' +
         'set_project_tokens). List available presets via get_style_vocabulary (presets field).',
       inputSchema: {
-        preset_id: z
-          .string()
-          .describe(`One of: ${listVocabularyPresets().map((p) => p.id).join(', ')}`)
+        preset_id: z.string().describe(
+          `One of: ${listVocabularyPresets()
+            .map((p) => p.id)
+            .join(', ')}`
+        )
       }
     },
     guarded((args: { preset_id: string }) => {
@@ -175,7 +189,12 @@ export function registerStyleWriteTools(server: McpServer, binding: ProjectBindi
         return jsonResult({ ok: true, preset: preset.id, customTokenCount: 0 });
       }
       const customTokens = upsertTokens(store, entries);
-      return jsonResult({ ok: true, preset: preset.id, updated: entries.map((e) => e.name), customTokenCount: customTokens.length });
+      return jsonResult({
+        ok: true,
+        preset: preset.id,
+        updated: entries.map((e) => e.name),
+        customTokenCount: customTokens.length
+      });
     })
   );
 }

@@ -5,8 +5,39 @@
  * and set_style_preset persist overrides into nodegx.project.json → metadata,
  * which is exactly where the editor's importer reads them back.
  */
+
+import * as fs from 'fs';
+import * as path from 'path';
+
 import type { StyleVocabulary } from '../src/editor-deps';
 import { call, connect, copyFixture, readJson, reveal, TestSession } from './helpers';
+
+/** Where the starter imagery lives in the app tree, and where a real project gets it from. */
+const STARTER_IMAGERY = path.join(
+  __dirname,
+  '../../noodl-editor/src/assets/starter-project/noodl_modules/starter-imagery'
+);
+
+/**
+ * Put the starter imagery into a fixture copy, the way `installStarterAssets` puts it into every
+ * project the editor creates.
+ *
+ * 🔴 **This exists because the budget spec was measuring a project nobody has.** `copyFixture()` is
+ * bare JSON — no Inter, no Lucide, no pictures — so `get_style_vocabulary`'s icon block rendered its
+ * "none installed" sentence and its imagery block would have too. Both are the CHEAP arm. Measured
+ * either way: the imagery block costs **+225 prompt / +515 full** installed, against **+45 / +31**
+ * empty, so the gate was reading about an eighth of the real number and calling it the cost. It is
+ * V19's shape exactly, one instrument along — the Judge photographing a project state that has never
+ * existed — and it is why the ceilings below moved even though nothing about the *product* got more
+ * expensive between two readings.
+ */
+function installStarterImagery(projectDir: string): void {
+  const dest = path.join(projectDir, 'noodl_modules', 'starter-imagery');
+  fs.mkdirSync(dest, { recursive: true });
+  for (const file of fs.readdirSync(STARTER_IMAGERY)) {
+    fs.copyFileSync(path.join(STARTER_IMAGERY, file), path.join(dest, file));
+  }
+}
 
 interface ProjectFile {
   metadata?: { designTokens?: { version: number; customTokens: Array<{ name: string; value: string }> } };
@@ -145,23 +176,101 @@ describe('AIX-006 style MCP tools', () => {
    * per-call cost of the vocabulary is now the largest single MCP response in
    * the server" and price its addition against that, rather than against the
    * headroom the number below happens to leave.
+   *
+   * ─────────────────────────────────────────────────────────────────────────
+   * **RAISED AGAIN 2026-08-31 (VIB-011) — and the interesting half is not the
+   * new block, it is that THIS GATE COULD NOT SEE ITS OWN SUBJECT.**
+   *
+   * VIB-011's imagery block reports the 44 bundled photographs by subject.
+   * Measured on the bare fixture it costs **+45 prompt / +31 full**; measured on
+   * a project that actually has the library — which is every project the editor
+   * creates, since `STARTER_ASSETS` installs it — it costs **+225 / +515**. The
+   * gate was reading the "none installed" sentence and billing the product for
+   * it. The icon block has the same two arms and the note above says so in
+   * passing (*"a project that actually has an icon set, which the fixture here
+   * does not"*), which means this instrument has been measuring the cheap arm
+   * since VIB-003 and nobody priced the real one.
+   *
+   * 🔴 So the spec now INSTALLS the starter imagery before measuring, and the
+   * ceilings are set against that reading: prompt **4,032** of 4,400, full
+   * **13,869** of 14,400. Two of the three tokens in this raise are the
+   * instrument getting honest, not the payload getting bigger.
+   *
+   * ⚠️ The general shape, which outlives this number: **a budget measured on a
+   * fixture is a budget on the fixture.** Anything whose cost depends on what is
+   * installed in the project has to be measured with it installed, or the gate
+   * bounds a payload no user receives.
    * ═════════════════════════════════════════════════════════════════════════
    */
   it('stays inside its wire budget, in the shape the model is billed for', async () => {
-    const promptResult = await session.client.callTool({
-      name: 'get_style_vocabulary',
-      arguments: { detail: 'prompt' }
-    });
-    const fullResult = await session.client.callTool({ name: 'get_style_vocabulary', arguments: {} });
-    const wireChars = (r: unknown) =>
-      ((r as { content: Array<{ text: string }> }).content ?? []).reduce((n, c) => n + (c.text?.length ?? 0), 0);
-    // /4 to match `toolDisclosure`'s convention, so the two budgets are comparable.
-    const promptTokens = Math.round(wireChars(promptResult) / 4);
-    const fullTokens = Math.round(wireChars(fullResult) / 4);
-    expect({
-      prompt: promptTokens <= 4_000 ? 'within budget' : promptTokens,
-      full: fullTokens <= 14_000 ? 'within budget' : fullTokens
-    }).toEqual({ prompt: 'within budget', full: 'within budget' });
+    // 🔴 Measured on a project that HAS the starter assets, which is every project a person makes.
+    // See the note above: the plain fixture is a state no user is ever in.
+    const withLibrary = copyFixture();
+    installStarterImagery(withLibrary);
+    const loaded = await connect(withLibrary, true);
+    await reveal(loaded, 'theme');
+    try {
+      const promptResult = await loaded.client.callTool({
+        name: 'get_style_vocabulary',
+        arguments: { detail: 'prompt' }
+      });
+      const fullResult = await loaded.client.callTool({ name: 'get_style_vocabulary', arguments: {} });
+      const wireChars = (r: unknown) =>
+        ((r as { content: Array<{ text: string }> }).content ?? []).reduce((n, c) => n + (c.text?.length ?? 0), 0);
+      // /4 to match `toolDisclosure`'s convention, so the two budgets are comparable.
+      const promptTokens = Math.round(wireChars(promptResult) / 4);
+      const fullTokens = Math.round(wireChars(fullResult) / 4);
+      expect({
+        prompt: promptTokens <= 4_400 ? 'within budget' : promptTokens,
+        full: fullTokens <= 14_400 ? 'within budget' : fullTokens
+      }).toEqual({ prompt: 'within budget', full: 'within budget' });
+    } finally {
+      await loaded.close();
+    }
+  });
+
+  /**
+   * The control for the budget spec above: the block must actually be IN the payload it is bounding.
+   *
+   * 🔴 Without this, a `readImagery` that returned nothing would make the budget spec greener, and
+   * "we are inside budget" and "the imagery block is missing" would print identically. A ceiling is
+   * only evidence about a thing that is present.
+   */
+  it('reports the installed stock imagery, by subject, with a copyable src', async () => {
+    const withLibrary = copyFixture();
+    installStarterImagery(withLibrary);
+    const loaded = await connect(withLibrary, true);
+    await reveal(loaded, 'theme');
+    try {
+      const { data } = await call<{
+        imagery: { total: number; subjects: Array<{ subject: string; files: string[] }> };
+      }>(loaded, 'get_style_vocabulary', {});
+      expect(data.imagery.total).toBeGreaterThanOrEqual(40);
+      expect(data.imagery.subjects.map((s) => s.subject)).toEqual(
+        expect.arrayContaining(['hero', 'work', 'people', 'food', 'animals', 'texture', 'avatar'])
+      );
+      const { data: promptData } = await call<{ vocabulary: string }>(loaded, 'get_style_vocabulary', {
+        detail: 'prompt'
+      });
+      expect(promptData.vocabulary).toContain('STOCK IMAGERY');
+      expect(promptData.vocabulary).toContain('noodl_modules/starter-imagery/<name>.webp');
+      expect(promptData.vocabulary).toContain('avatar-1');
+    } finally {
+      await loaded.close();
+    }
+  });
+
+  /**
+   * And the other arm: a project WITHOUT the module must be told so in as many words.
+   *
+   * ⚠️ This is the arm that matters for correctness rather than cost. A model that invents an image
+   * `src` renders an empty box, and "there are no photographs here" is the only thing that stops it
+   * — the same failure the `material-icons` hint used to produce (register V20).
+   */
+  it('says so plainly when a project has no imagery, rather than implying some', async () => {
+    const { data } = await call<{ vocabulary: string }>(session, 'get_style_vocabulary', { detail: 'prompt' });
+    expect(data.vocabulary).toContain('STOCK IMAGERY — none installed');
+    expect(data.vocabulary).toContain('Do not invent an image src');
   });
 
   it('set_project_tokens persists overrides into nodegx.project.json metadata', async () => {

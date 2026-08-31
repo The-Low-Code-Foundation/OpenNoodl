@@ -76,5 +76,59 @@ export const STARTER_ASSETS: readonly StarterAsset[] = [
   { from: `${STARTER_ROOT}noodl_modules/starter-imagery/tile-1.svg`, to: 'noodl_modules/starter-imagery/tile-1.svg' },
   { from: `${STARTER_ROOT}noodl_modules/starter-imagery/tile-2.svg`, to: 'noodl_modules/starter-imagery/tile-2.svg' },
   { from: `${STARTER_ROOT}noodl_modules/starter-imagery/tile-3.svg`, to: 'noodl_modules/starter-imagery/tile-3.svg' },
-  { from: `${STARTER_ROOT}noodl_modules/starter-imagery/portrait.svg`, to: 'noodl_modules/starter-imagery/portrait.svg' }
+  { from: `${STARTER_ROOT}noodl_modules/starter-imagery/portrait.svg`, to: 'noodl_modules/starter-imagery/portrait.svg' },
+
+  // ── The stock photograph library (VIB-011) ─────────────────────────────────
+  // 44 CC0/public-domain photographs, ~3.4 MB, from `Category:Images from Unsplash` and
+  // `Category:Images from Pixabay` on Wikimedia Commons. Built by
+  // `scripts/library/make-stock-library.js` from candidates gathered and licence-checked by
+  // `scripts/library/fetch-stock-imagery.js`.
+  //
+  // 🔴 **This supersedes the abstract-SVG decision, not the SVGs.** VIB-003 shipped generated art on
+  // a licence argument — *a photograph carries a provenance this repo cannot check on a reader's
+  // behalf* — and the argument was right about the risk and wrong about the conclusion: the risk is
+  // checkable, per file, and `LICENCES.json` beside these files is that check. The six SVGs stay,
+  // because shipped recipes point at them and because an abstract ground is still the honest answer
+  // when no photograph would be true about the subject.
+  //
+  // 🔴 **Free to use is not free to bundle**, which is why the licence class is narrow. This library
+  // is redistributed twice — inside the editor, and inside every app a user deploys — and CC0/PD is
+  // the only class with no downstream obligation and no restriction on redistributing the images as
+  // a collection. `LICENCES.json` is listed first so the record travels with the pictures.
+  { from: `${STARTER_ROOT}noodl_modules/starter-imagery/LICENCES.json`, to: 'noodl_modules/starter-imagery/LICENCES.json' },
+  // Band grounds and hero media, 1600x900, chosen dark or deep enough to carry display type.
+  ...["ground-canyon.webp", "ground-city-dusk.webp", "ground-coast.webp", "ground-dune.webp", "ground-forest-fog.webp", "ground-red-rock.webp", "ground-shore.webp", "ground-skyline.webp"].map((file) => ({
+    from: `${STARTER_ROOT}noodl_modules/starter-imagery/${file}`,
+    to: `noodl_modules/starter-imagery/${file}`
+  })),
+  // Surfaces rather than subjects, 1200x675 and deliberately softer — see `ROLES` in the build script.
+  ...["texture-brick.webp", "texture-coffee.webp", "texture-earth.webp", "texture-pebbles.webp", "texture-snow.webp", "texture-soil.webp"].map((file) => ({
+    from: `${STARTER_ROOT}noodl_modules/starter-imagery/${file}`,
+    to: `noodl_modules/starter-imagery/${file}`
+  })),
+  // Somebody making something. The category that stops a feature row looking like a theme demo.
+  ...["work-baker.webp", "work-carpenter.webp", "work-chef.webp", "work-hands-clay.webp", "work-leather-bench.webp", "work-machine-shop.webp", "work-potter.webp", "work-welder.webp"].map((file) => ({
+    from: `${STARTER_ROOT}noodl_modules/starter-imagery/${file}`,
+    to: `noodl_modules/starter-imagery/${file}`
+  })),
+  // People at work and in places, 900x675.
+  ...["people-cafe.webp", "people-coffee-shop.webp", "people-desk.webp", "people-market.webp", "people-meeting.webp"].map((file) => ({
+    from: `${STARTER_ROOT}noodl_modules/starter-imagery/${file}`,
+    to: `noodl_modules/starter-imagery/${file}`
+  })),
+  // Produce, plates and markets, 900x675.
+  ...["food-bakery.webp", "food-board.webp", "food-bread.webp", "food-carrots.webp", "food-grocer.webp", "food-market.webp", "food-plate.webp"].map((file) => ({
+    from: `${STARTER_ROOT}noodl_modules/starter-imagery/${file}`,
+    to: `noodl_modules/starter-imagery/${file}`
+  })),
+  // Animals, 900x675.
+  ...["animal-cat.webp", "animal-dog.webp", "animal-horse.webp", "animal-sheep.webp"].map((file) => ({
+    from: `${STARTER_ROOT}noodl_modules/starter-imagery/${file}`,
+    to: `noodl_modules/starter-imagery/${file}`
+  })),
+  // 256px squares framed on the face, for testimonial and comment rows.
+  ...["avatar-1.webp", "avatar-2.webp", "avatar-3.webp", "avatar-4.webp", "avatar-5.webp", "avatar-6.webp"].map((file) => ({
+    from: `${STARTER_ROOT}noodl_modules/starter-imagery/${file}`,
+    to: `noodl_modules/starter-imagery/${file}`
+  })),
 ];

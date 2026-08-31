@@ -104,7 +104,7 @@
       "type": "Image",
       "label": "Portrait",
       "parameters": {
-        "src": "noodl_modules/starter-imagery/portrait.svg",
+        "src": "noodl_modules/starter-imagery/avatar-5.webp",
         "alt": "",
         "sizeMode": "explicit",
         "objectFit": "cover",
