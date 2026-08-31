@@ -1,3 +1,14 @@
+/**
+ * DEF-007 — 🔴 **this call is the seam.** `ProjectModel.fromJSON` does *not* apply patches, so a
+ * path that reaches it without calling `applyPatches` first sees the project file exactly as
+ * written, while the editor sees a graph the run-on-value-change migration below has rewritten.
+ * On the shipped site-builder template those two readings differ in **56 stored parameters**.
+ *
+ * **Which paths are on which side is registered in `./projectLoadSeam.ts`**, and
+ * `noodl-editor/tests-unit/def007-project-load-seam.test.ts` fails when a new `fromJSON` call site
+ * appears that is not registered there. Read the registry before adding a caller — most load
+ * paths today do *not* run this.
+ */
 const { Patches } = require('./projectpatchgenerators');
 const {
   applyRunOnValueChangeMigration,

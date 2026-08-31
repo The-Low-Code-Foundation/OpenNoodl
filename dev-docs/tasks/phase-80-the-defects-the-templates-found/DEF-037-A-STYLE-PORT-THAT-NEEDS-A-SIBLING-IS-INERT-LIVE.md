@@ -1,7 +1,7 @@
 # DEF-037 — a style port whose effect needs a sibling property does nothing until the preview reloads
 
-**Found by** DEF-031's drive, [§6.3](DEF-031-A-TEXT-CANNOT-BE-ELLIPSIZED.md). **Status ⬜ open.**
-**Owner: NONE** — registered as work, not as notes on another row.
+**Found by** DEF-031's drive, [§6.3](DEF-031-A-TEXT-CANNOT-BE-ELLIPSIZED.md). **Status ✅ BUILT + DRIVEN s37.**
+**Owner: phase 80.** AC1, AC2, AC3, AC4, AC5, AC6 all taken — see §8.
 
 ---
 
@@ -160,3 +160,104 @@ escape hatch is the shipped mechanism**, and AC3 (a control port that needs no s
 apply live) is satisfied for free by using it rather than by re-rendering on every style change.
 The open question is whether to hand-annotate the four remaining ports or to derive the answer —
 🧭 **a decision, and it should be taken with §7.3's table in front of whoever takes it.**
+
+
+---
+
+## 8. ✅ BUILT AND DRIVEN — session 37
+
+🧭 **Richard ruled the shape on 2026-08-31** (the ruling itself said *derive it*; the **shape** was
+offered and not ruled, and was put to him this session): **always re-render on an editor-driven
+change, and always re-render for a `styleTag`'d port.** Both halves shipped in `e1ea7f09`.
+
+### 8.1 The two halves, and why each is a class rather than a list
+
+| half | where | what it covers |
+| --- | --- | --- |
+| **editor-driven** | `node.ts` `_onNodeModelParameterUpdated` → `_scheduleEditorDrivenRerender` | every parameter an author changes, on every node type |
+| **`styleTag`'d** | `react-component-node.ts` `setStyle` | every tagged port, **including one driven by a wire in a deployed app** |
+
+✅ **The editor half had a known-firing control already in the file.** The *reset* branch of
+`_onNodeModelParameterUpdated` has called `_resetReactVirtualDOM` since long before this row, and
+its comment describes this exact bug. **Only the set branch was missing it.**
+⚠️ Deliberately weaker than `_resetReactVirtualDOM`, which mints a new React key and **remounts** —
+that would discard focus, scroll and video state on every keystroke in the property panel.
+
+🔴 **`styleTag` is the right derivation, not a proxy for one.** Every force-update check in
+`setStyle` lives inside `if (!styleTag)`, so a tagged port had **no safety net at all** — which is
+*how* the defect was distributed: Checkbox's `Width` and Radio Button's `Width` are declared
+identically and only Radio Button carried the `onChange`. A tagged style is by construction one the
+component re-reads at render onto a different inner element. **The hot path the DOM patch exists for
+— a wire animating `opacity`/`transform` per frame — is untagged and keeps it.**
+⚠️ The population is small and contained: `styleTag` appears in **5 files**
+(`node-shared-port-definitions`, `checkbox`, `radiobutton`, `text-input`, `options`).
+
+### 8.2 ✅ The drive — AC1, AC2, AC3, AC5
+
+Real `dev:debug` Electron editor, live preview (`--target=viewer`), fixture
+`NodeGX test projects/def037-drive` (`/App`: a 300px `contentHeight` Group holding a `Text` whose
+label overflows). **Every reading below was taken without a reload**, by `setParameter` on the node
+model — the same path the property panel uses.
+
+| arm | `text-overflow` | `white-space` | `overflow` | `overflow-wrap` | height | scroll/client |
+| --- | --- | --- | --- | --- | ---: | --- |
+| baseline `wrap` | `clip` | `pre-wrap` | `visible` | `anywhere` | **38px** | 300 / 300 |
+| **live → `ellipsis`** | `ellipsis` | **`nowrap`** | **`hidden`** | **`normal`** | **19px** | **526 / 300** |
+| **live → back to `wrap`** | `clip` | `pre-wrap` | `visible` | `anywhere` | **38px** | 300 / 300 |
+
+🔴 **This is s35's measurement inverted.** s35 got `ellipsis` beside **`pre-wrap`** — the derived
+siblings never moved. All four now move together, in both directions, and the row collapses 38px →
+19px and back. **AC1 and AC2.**
+
+✅ **AC3's control, run *after* the two known-firing signals above** (a zero read first would be
+indistinguishable from a broken harness): `wordBreak` — a port needing no sibling — still applied
+live (`word-break: break-all`) and moved nothing else. The fast path is intact.
+✅ `wrap` still never reaches the DOM as CSS; its computed value is `clip`, the CSS initial.
+
+### 8.3 ✅ AC6 — one of the three source-read instances, driven
+
+A `Checkbox` was added to the running graph and its `Width` set live, 32px → 80px.
+
+- **tagged `<div noodl-style-tag=checkbox>`**: `32px` → `80px` — this moved *before* the fix too;
+  the DOM patch finds the tagged element.
+- 🔴 **inner `<input>`, whose width render *derives* (`Checkbox.tsx:56-57`)**: style attribute now
+  reads **`width: 80px; height: 32px;`**. **That is the half that was inert** — pre-fix it stayed
+  `32px` while the wrapper grew. `height` correctly unchanged: only `width` was set.
+
+### 8.4 ⚠️ What is still NOT measured — say it before quoting this row
+
+- ⚠️ **The drive cannot say which half fixed the Checkbox.** A parameter change is *both*
+  editor-driven and (for Checkbox) tagged. The isolation is done by tests, not by the drive:
+  `def037-styletag-rerenders.test.ts` drives `setStyle` directly with and without a tag.
+- ⚠️ **The deployed-app arm is untested end to end.** §7.1's finding — a *wire* driving a tagged
+  port in a shipped app — is covered by unit test and by construction, **not by a running deployed
+  app**. Nobody has published an app and animated a tagged port.
+- ⚠️ **`borderColor` on Checkbox and Radio Button (2 of the 3 new instances) were not driven.**
+  They are the same class as the driven `width` and are covered by the same code path; the tick
+  glyph only renders when `useIcon` is on, which the drive fixture did not set.
+- ⚠️ **The `…` glyph is still unresolved at capture resolution**, exactly as DEF-031 §6.2 recorded.
+  What is measured is the mechanism and the consequence (the row stops growing), not the glyph.
+
+### 8.5 The gates
+
+`typecheck:runtime`, `typecheck:viewer`, `typecheck:editor` — **all exit 0**.
+`noodl-runtime` **2610 passed / 147 suites**, `noodl-viewer-react` **1138 passed / 87 suites**, both
+**exit 0**.
+
+**Three mutants, each reddening a different set** — and the sets are the argument, not the count:
+
+| mutant | rows killed | what survives, and why that is right |
+| --- | --- | --- |
+| remove the editor-driven scheduling (the pre-fix state) | **4 of 6** | the two rows asserting a wire drives *no* render |
+| re-render on connection input too (**"always re-render"** — the change the ruling did *not* ask for) | **exactly the 2 controls** | the four editor-driven rows |
+| `styleTag` branch forces no update (pre-fix) | **3 of 5** tagged rows | both untagged controls |
+
+🔴 **A test proving only "setParameter re-renders" would have passed against all three.** The
+editor/runtime split is only meaningful if the two are distinguishable, so the rows assert a
+**difference on one node** rather than two absolutes read from two fixtures.
+
+⚠️ **A trap this row paid for, in the test harness rather than the product**: the first run of the
+`styleTag` spec read **0 renders on every row**, which looks exactly like a fix that does not work.
+`getDOMElement` is itself a node method, so assigning the stub *before* the method-binding loop let
+the loop overwrite it, and `setStyle` took its `if (!domElement) return` early exit. ✅ **Rule out
+your instrument before believing a zero** — the fix was one line of ordering.

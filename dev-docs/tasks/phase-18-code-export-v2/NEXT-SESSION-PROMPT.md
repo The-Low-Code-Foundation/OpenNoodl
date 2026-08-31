@@ -18,6 +18,30 @@
 **Cloud Services (9)** and the **component stack pair** (§15.6 says that pair is a routing
 question). There is no longer a Tier 2 node with a clear run at it.
 
+## 🆕 Handed in from phase 80 on 2026-08-31 — DEF-033 is now P18's to build
+
+**Richard ruled it, in P80's lane, and P80 does not build it.** *"Yeah just make it show the
+truth, that seems like a no brainer."*
+
+`Substring`'s `End` port **declares** `default: 0` while `initialize` writes `-1` — the panel shows
+a number the node is not holding, and they are opposite answers, not a near-miss (`-1` returns the
+rest of the string, `0` returns `''` for every input). This is **P18's own finding**, registered
+from [§36.2](EXP-011-PICKER-COVERAGE.md) with owner `NONE`; the owner is now **P18**.
+
+**The build:** align the declared default to `-1` at
+[`substring.ts:52`](../../../packages/noodl-runtime/src/nodes/std-library/substring.ts#L52).
+**Node behaviour is unchanged**, the export already agrees with the node, and **no target-output
+row or emitted artefact moves.**
+
+⚠️ **Two things §36.2 now records that are easy to miss:**
+
+- The port's `description` currently explains the very mismatch being removed (*"setting it to 0
+  yields nothing"*). **Rewrite it in the same commit** or the panel contradicts itself.
+- 🔴 **`result` must NOT change.** A test that watches `result` passes identically before and after
+  — it cannot grade this fix. Grade the **declared default and the panel**.
+
+---
+
 ## What session 66 did
 
 Built **EXP-011 §37 — the id pair**, `Unique Id` and `net.noodl.UUID`, finishing Tier 2.7.

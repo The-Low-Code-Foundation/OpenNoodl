@@ -4470,7 +4470,33 @@ the empty string**, and it would have looked right in review: the fallback would
 documented default, and no fixture in the corpus contains the node. §A's harness leaves an unset
 port genuinely unset and drives the interpreter, which is the only way the difference is visible.
 
-Registered as **DEF-033** — a product defect, not an export one. Owner **`NONE`**.
+Registered as **DEF-033** — a product defect, not an export one.
+
+🧭 **RULED by Richard 2026-08-31 (given in phase 80, relayed here): show the truth.** *"Yeah just
+make it show the truth, that seems like a no brainer."* Align the **declared** default to `-1` so
+the panel shows the number that already runs. **Node behaviour is unchanged and nothing already
+built moves** — the export already agrees with the node, so no emitted artefact and no target-output
+row changes.
+
+🔴 **Owner is now `P18` — P80 ruled it and handed it over; P80 does not build it.**
+
+**The change is one line.** [`packages/noodl-runtime/src/nodes/std-library/substring.ts:52`](../../../packages/noodl-runtime/src/nodes/std-library/substring.ts#L52)
+— the `end` port's `default: 0` becomes `default: -1`, matching `initialize`'s
+`internal.endIndex = -1` at [line 29](../../../packages/noodl-runtime/src/nodes/std-library/substring.ts#L29).
+
+⚠️ **Two things to check before calling it done, because the declared default is read by more than
+the panel:**
+
+1. **The port `description` contradicts the new default.** It currently reads *"leave it unset to
+   run to the end of the string, since setting it to 0 yields nothing"* — written to explain the
+   very mismatch this ruling removes. Once the declaration says `-1`, that sentence describes a
+   state the panel no longer shows. **Rewrite it in the same commit.**
+2. **A declared default never runs its setter** (`registerInput` writes it straight into
+   `_inputValues`, `node.ts:137-139`) — which is the whole mechanism of this defect. So changing
+   the declaration moves **what is displayed and what an unset port reports**, not what the node
+   computes. ✅ **Grade it by reading the port's declared default and the panel, not by asserting
+   `result` changed — `result` must NOT change, and a test that watches `result` will pass
+   identically before and after the fix.**
 
 ### §36.3 The two rules an object literal does not get for free
 

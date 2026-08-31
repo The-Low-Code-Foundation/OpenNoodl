@@ -178,7 +178,31 @@ template nobody can open; warning matches the behaviour a person already gets fr
    ✅ **GREEN 2026-08-31 (s31).** Was 56 on 2026-08-29, re-derived at **65** two days later, now
    **0** — the whole seam, both `applyPatches` passes, measured with the before artefact as a
    red control. See §6.2. Gated by `DEF-007 AC3` in `sb007Template.test.ts`.
-4. The seam's documentation names each path and which side it is on.
+4. ✅ **CLOSED s37 — the seam's documentation names each path and which side it is on, and a test
+   keeps it honest.** Richard ruled *both* steps, not the cheap half:
+   - The table now lives in the codebase as
+     [`projectLoadSeam.ts`](../../../packages/noodl-editor/src/editor/src/models/ProjectPatches/projectLoadSeam.ts),
+     beside `applyPatches` — which now carries a pointer to it at the top of the file.
+   - 🔴 **The test is the point**:
+     [`def007-project-load-seam.test.ts`](../../../packages/noodl-editor/tests-unit/def007-project-load-seam.test.ts)
+     scans shipped source for `ProjectModel.fromJSON` and **fails when a call site appears that is
+     not registered**, and when a registered one disappears. ✅ **Proved by mutant**: a seventh
+     load path added to `noodl-preview/src` reddened exactly that row and no other; removing it
+     went green again.
+   - ✅ **The extractor is validated against an answer known by hand** (the editor's open path and
+     the headless render path) before any absence it reports is trusted, and **comments are
+     stripped** — `loader.ts` names `fromJSON` in a docstring twelve lines above the real call, and
+     two more files name it while calling nothing. A control row asserts a comment-only mention is
+     not a call site.
+   - ⚠️ **The first run found `src/editor/index.bundle.js` and `src/frames/viewer-frame/index.bundle.js`** —
+     gitignored webpack output that contains a copy of everything. Excluded by name, with the
+     reason recorded in the file.
+   - ⚠️ **What the scan cannot see**: a reader that never constructs a `ProjectModel` — code
+     export, the MCP server, template generation. Those are registered as prose in
+     `NON_FROMJSON_READERS` and **nothing enforces them**; the boundary is stated, not hidden.
+   - **The measurement is unchanged and is now asserted**: of the five `fromJSON` sites in shipped
+     source, **exactly one applies the upgrade** (the editor's own open path); two inherit it from
+     an already-loaded project and two skip it outright.
 
 ## 5. Traps
 
