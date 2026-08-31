@@ -123,10 +123,32 @@ npx jest --config packages/nodegx-backend/jest.config.js \
 - `unreachablePx` is recorded on every shot, so content below a fold nothing can scroll to is a
   number beside the picture instead of something a taller viewport hides.
 
-⚠️ **Neither file is type-checked by anything.** `packages/nodegx-backend/tsconfig.json` includes
-only `src/**/*`, and its ts-jest runs `isolatedModules: true` (transpile, no check). The jest run is
-the only thing that proves these compile, and it proves it by executing them. Same shape as the
-`tsc -p noodl-editor` / `tests-unit` trap already recorded.
+🔴 **CORRECTED 2026-08-31 (VIB-002 session, after the checkout came back from a peer).** This
+paragraph used to read *"Neither file is type-checked by anything… the jest run is the only thing
+that proves these compile"*, and **that was wrong when it was written** — it was then copied into
+VIB-002's file and handoff, so it misled two tasks.
+
+What is true: `packages/nodegx-backend/tsconfig.json` includes only `src/**/*`, and its ts-jest runs
+`isolatedModules: true` (transpile, no check). What does not follow is the conclusion. There is a
+**second** tsconfig — `packages/nodegx-backend/tsconfig.tests.json`, added by PLAT-004 long before
+this file — whose `include` is `["tests/**/*.ts", "src/**/*"]`, and it is run by
+`npm run typecheck:backend-tests`.
+
+Measured rather than reasoned about (`tsc --showConfig`, which resolves the file list without
+compiling): the gate resolves **256 files, and all eight `.look.ts` files are among them**, plus
+`tests/helpers/judge.ts`. So:
+
+    npm run typecheck:backend-tests      # the ONLY gate that types a .look.ts
+
+⚠️ **It is slow and it contends.** A run of it was SIGTERM'd at 10 minutes on this machine at load
+13 with three unrelated apps busy — a timeout there is a reading about the machine, not about the
+code. Do not read a killed run as a failure, and do not start a second one: check
+`ps -Ao pid,ppid,command | grep '[t]sc -p packages/nodegx-backend'` first, because a peer running the
+same gate is easy to duplicate and the duplicate only makes both slower.
+
+The general lesson is the one this phase keeps re-learning: *"nothing checks this"* is an **absence
+claim**, and an absence claim needs the search that would have found the thing. One `grep` of
+`package.json` for `typecheck:` would have found it.
 
 ## §9 🔴 The harness defect this found in itself, before it judged anything
 

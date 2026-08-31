@@ -272,6 +272,23 @@ the border.
 | `styleVocabularyPorts.test.ts` + `design-token-contrast.test.ts` | 26 passed |
 | `packages/noodl-viewer-react` suite | 85 suites / 1107 tests passed |
 | `vib002-ground.look.ts` | 3 passed, 4 shots, `unreachablePx` 0 at every width |
+| `npm run typecheck:backend-tests` | ⚠️ **not run by this session — see below** |
+
+🔴 **A correction to this file's own §3, and to `VIB-001-THE-JUDGE.md` §8 which it inherited from.**
+Both said *"neither look file is type-checked by anything — the jest run is the typecheck."* **That
+is false.** `packages/nodegx-backend/tsconfig.tests.json` (PLAT-004, long predating either file)
+includes `tests/**/*.ts`, and `npm run typecheck:backend-tests` runs it. Measured with
+`tsc --showConfig`: the gate resolves 256 files and **all eight `.look.ts` files are among them**,
+including `vib002-ground.look.ts` and `tests/helpers/judge.ts`.
+
+So this task shipped a `.look.ts` without running the one gate that types it, on a stated belief
+that no such gate existed. The belief was an **absence claim made without the search that would
+have disproved it** — one `grep` of `package.json` for `typecheck:` finds it.
+
+⚠️ **Status when this was written**: a peer session (which built VIB-004) reported the same gate had
+not completed for them either, and was found already re-running it — so it is owned, and a second
+concurrent run would only have made both slower. The result belongs to whoever's run finishes; this
+row stays ⚠️ until a clean reading is recorded against it.
 
 
 ---
