@@ -142,6 +142,36 @@ describe('AWP-005 — the response budget (a ratchet: move the number, say why)'
   });
 
   /**
+   * 🔴 **Ratchet moved 13,500 → 14,300 by P81/VIB-006 (2026-08-31), and the growth is NOT this
+   * task's.** It was exposed by one, not caused by one: `packages/noodl-types/src/node-catalog-enriched.json`
+   * — the file `get_node_type` answers from — had not been regenerated since VIB-002, so **everything
+   * merged into the catalog after that was invisible to the door AND unpriced by this spec.**
+   * `npm run catalog:merge` brought it up to date and the bill arrived all at once.
+   *
+   * | | before | after |
+   * |---|---|---|
+   * | worst single (**`Group`**) | 12,282 | **13,689** |
+   * | `net.noodl.controls.textinput` | 12,899 | **13,261** |
+   *
+   * ⚠️ The ceiling case has moved **back** to `Group`. Measure it; do not read it from here.
+   *
+   * **What bought it, attributed rather than assumed**: `Group` gained **2 inputs and 8 outputs** in
+   * the `File Drop` group — P80's DEF-029 (`f725d184`), committed work whose derived catalog was
+   * never regenerated. Measured by stripping the `File Drop`-grouped ports back out: they are
+   * **2,651 of the 2,880 bytes** `Group` grew, i.e. **92%**. `Group` carries no `examples` field at
+   * all, so the three examples added to the corpus since VIB-002 (`ui-cta-band`,
+   * `ui-testimonial-row`, `ui-landing-page`) contribute **nothing** to this number.
+   *
+   * Headroom is preserved rather than spent, on the same convention as the ratchet below: 601 tokens
+   * before (12,899 of 13,500), **611 now** (13,689 of 14,300).
+   *
+   * 🔴 **The lesson this spec should carry: a budget on a GENERATED file is only a budget on the last
+   * time it was generated.** This ceiling exists to catch growth nobody noticed, and a stale derived
+   * artefact defeats it silently — the ports were in the product and unpriced here for four commits.
+   * `npm run catalog:merge:check` is the gate that says so; run it when a port or an example lands.
+   *
+   * ---
+   *
    * Ratchet moved 12,500 → 13,500 by CN-010 (2026-08-17). The why, in numbers:
    *
    * | | before | after |
@@ -170,11 +200,11 @@ describe('AWP-005 — the response budget (a ratchet: move the number, say why)'
    * 12,500), 601 now (12,899 of 13,500). This ceiling exists to catch growth
    * nobody noticed; this growth was measured before it was taken.
    */
-  it('keeps any single full-detail response under 13,500 tokens', async () => {
+  it('keeps any single full-detail response under 14,300 tokens', async () => {
     const over: Array<{ name: string; cost: number }> = [];
     for (const name of allTypeNames()) {
       const c = await cost([name], 'full');
-      if (c >= 13_500) over.push({ name, cost: c });
+      if (c >= 14_300) over.push({ name, cost: c });
     }
     expect(over).toEqual([]);
   });
