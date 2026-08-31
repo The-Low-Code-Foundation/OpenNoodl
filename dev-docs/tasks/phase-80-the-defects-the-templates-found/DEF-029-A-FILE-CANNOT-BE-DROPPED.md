@@ -144,3 +144,30 @@ through that instrument. Re-run type-validly (`outputs: []`), it reddens the gat
   appearance judgement and a **one-line revert** — deleting the entry puts `Accept File Drops` on
   the first screen of all five nodes. It is filed advanced because that is five nodes' basic tier
   taxed permanently for a port most screens never set. **Richard's call if he wants it promoted.**
+
+
+---
+
+## 6. Half a drive (session 35)
+
+✅ **The ports are live in a running editor.** Read off
+`NodeLibrary.instance.getNodeTypeWithName('Text')` in a real `dev:debug` renderer — the same
+declaration the property panel builds from. All eight outputs and both inputs are present, grouped
+and labelled:
+
+| name | plug | group | label |
+| --- | --- | --- | --- |
+| `acceptFileDrops` | input | File Drop | Accept File Drops |
+| `acceptedFileTypes` | input | File Drop | Accepted file types |
+| `filesDropped` | output | File Drop | Files Dropped |
+| `filesRejected` | output | File Drop | Files Rejected |
+| `droppedFileName` / `droppedFileType` / `droppedFileSizeInBytes` | output | File Drop | File Name / File Type / File Size In Bytes |
+
+⚠️ A peer reports these fold into **Advanced CSS** in the rendered panel — expand it or a drive
+reports them missing. **Not verified here**: this reading is the node library, not the panel's DOM.
+
+🔴 **Still owed, and it is the half that matters**: nobody has dragged a file onto a running
+preview and watched `Files Dropped` fire, `Is Dragging Over` go true, or a rejected type take the
+`Files Rejected` arm. That needs CDP's `Input.dispatchDragEvent` with a real `DataTransfer` —
+`scripts/devtools/cdp.js` does not expose it today, and a synthetic DOM event would bypass exactly
+the `preventDefault`-on-`dragover` behaviour this row is about.

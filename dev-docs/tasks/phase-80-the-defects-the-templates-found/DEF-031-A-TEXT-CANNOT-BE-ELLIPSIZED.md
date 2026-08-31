@@ -93,9 +93,9 @@ declaration would grade a shape no user ever meets, and would stay green if the 
 content, so nothing overflows and no `text-overflow` value can show. The port's own description
 and tooltip say so. This is a property of the size mode and is not fixable here.
 
-⚠️ **Undriven in a real editor.** The port is graded at the compiled node and at the rendered DOM,
-but nobody has watched `Text Overflow` appear in a running editor's property panel and ellipsize a
-label on canvas. 🔴 A drive serves a **built bundle** — `render-report.js` serves the gitignored
+✅ **Driven session 35 — see §6.** The port is live in a running editor and a real label
+ellipsizes in the live preview. ⚠️ The drive also found that the port is **inert until the preview
+reloads** (§6.3), which is registered as **DEF-037**. 🔴 A drive serves a **built bundle** — `render-report.js` serves the gitignored
 `packages/noodl-editor/src/external/viewer/noodl.viewer.js`, so this needs
 `cd packages/noodl-viewer-react && npx webpack --config webpack-configs/webpack.viewer.prod.js`
 (~40s) first, or the change is invisible.
@@ -106,3 +106,82 @@ background ports in the same window; a regeneration at 10:23 folded both port se
 Committing it while either lane's source was still uncommitted would leave `catalog:check` failing
 on a clean checkout — a catalog entry with no source behind it. **This commit lands the source
 only**, so that whichever lane commits the catalog does so with every port in it already backed.
+
+
+---
+
+## 6. The drive (session 35)
+
+Driven in a real `dev:debug` Electron editor on a **copy** of `LearnBook`, against the live
+preview (`--target=viewer`, the embedded webview serving `localhost:8574`).
+
+**Fixture**: `/#Dashboard/dashboard/Left dashboard/Welcome row` › the `Welcome` `Text` node,
+`sizeMode: contentHeight` — so its width is fixed by its parent and only its height is content-driven,
+which is the mode this port is for.
+
+### 6.1 ✅ The port is live in a running editor
+
+Read off `NodeLibrary.instance.getNodeTypeWithName('Text')` in the running renderer — the same
+declaration the property panel builds its rows from:
+
+```json
+{ "name": "textOverflow", "plug": "input", "group": "Text", "default": "wrap",
+  "type": { "name": "enum", "enums": [ {"label":"Wrap","value":"wrap"},
+            {"label":"Clip","value":"clip"}, {"label":"Ellipsis","value":"ellipsis"} ] } }
+```
+
+⚠️ **This is the node library, not the panel's DOM.** Nobody has yet read the rendered
+`Text Overflow` row out of the property panel itself — the graph is drawn on a single `<canvas>`,
+so selecting a node to open the panel needs a canvas-coordinate click that this drive did not take.
+**That half of the AC is still owed.**
+
+### 6.2 ✅ The label ellipsizes, and the wrap arm is the control
+
+Three readings on the same element, each after a genuine render:
+
+| arm | `text-overflow` | `white-space` | `overflow` | height | lines |
+| --- | --- | --- | --- | ---: | ---: |
+| **default (`wrap`)**, long text | `clip` | `pre-wrap` | `visible` | **42px** | **2** |
+| **`ellipsis`**, same text | `ellipsis` | `nowrap` | `hidden` | **21px** | **1** |
+
+🔴 **The wrap arm is the defect, reproduced live**: a label outgrowing its box wrapped to a second
+line and pushed the row's height from 21px to 42px — the person-sentence in §1, on a real screen.
+
+✅ **`wrap` never reaches the DOM as CSS.** The wrap arm's computed `text-overflow` is `clip`, the
+CSS *initial* value — not the string `wrap`. That is AC3, confirmed in a browser rather than jsdom.
+
+✅ **Genuinely overflowing, not merely single-lined**: with the text lengthened,
+**`scrollWidth` 1419 vs `clientWidth` 893** on a `nowrap`/`hidden` box — the text is 526px wider
+than its container and is being clipped.
+
+⚠️ **The `…` glyph itself was not resolved.** The screenshot shows the label on one line cut at the
+box edge; at capture resolution the final glyph cannot be told from a clipped letter. What is
+measured is the complete mechanism (`ellipsis` + `nowrap` + `hidden` + real overflow) and the
+consequence that matters (the row no longer grows). A `clip`-vs-`ellipsis` pixel comparison would
+settle the glyph and was not taken.
+
+### 6.3 🔴 What the drive found: the port does nothing until the preview reloads
+
+Setting `Text Overflow` **while the preview is running** put `text-overflow: ellipsis` on the
+element and **left `white-space: pre-wrap`** — so the text kept wrapping and nothing visibly
+happened. Setting it back to `Wrap` live changed **nothing either**: the DOM stayed
+`ellipsis`/`nowrap`/`hidden`, still truncated. **Inert in both directions.**
+
+⚠️ **This first read as "the fix does not work"** — the DOM showed the exact "property arrives and
+does nothing" shape §2 says the fix prevents. It is not: `Text.tsx`'s branch cannot produce
+`textOverflow: ellipsis` beside `white-space: pre-wrap`, because the wrapping arm *deletes*
+`style.textOverflow`. That impossibility is what said the value had been patched onto the element
+by a path that never ran the render.
+
+✅ **The control that names it.** `wordBreak` — the **pre-existing** sibling `inputCss` port on the
+same node, set the same way in the same session — **applied live and immediately** (`word-break:
+break-all`). So the live-patch path works; it is not a platform-wide "style ports don't update".
+
+🔴 **The distinction, which is the whole row**: `wordBreak` *is* its own CSS declaration.
+`textOverflow` only means something in company with `white-space`, `overflow` and `overflow-wrap`
+— and those are computed in the React render, which the live patch does not run. **It is the first
+`Text` style port whose effect depends on siblings the render derives.**
+
+**Registered as [DEF-037](TASKS.md).** It does not block any of this row's ACs — a reopened
+project renders correctly from disk (`"textOverflow": "ellipsis"` persisted, verified in
+`project.json`) — but it breaks the edit-and-see loop the port is used through.

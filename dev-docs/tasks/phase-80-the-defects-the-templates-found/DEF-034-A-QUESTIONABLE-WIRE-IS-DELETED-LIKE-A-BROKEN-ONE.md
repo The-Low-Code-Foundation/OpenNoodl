@@ -1,6 +1,6 @@
 # DEF-034 — a wire the editor calls *questionable* is deleted from the build like a broken one
 
-**Status: ✅ CLOSED** (session 32). Measured, fixed, specced. **AC5 (a drive) is owed.**
+**Status: ✅ CLOSED** (session 32). Measured, fixed, specced. **AC5 driven session 35 — see §6.**
 
 **Registered by**: DEF-028 §6, this phase. Derived from source; **blast radius unmeasured until now.**
 
@@ -131,9 +131,10 @@ functions and the AI sandbox all get it by construction.
   is unchanged.
 - **AC4 ✅** Both warning keys are raised by the **real** evaluator in the spec, not written into
   `WarningsModel` by hand.
-- **AC5 ⚠️ OWED — a drive.** Nobody has taken a build in a real editor of a project with a
-  gate-wired port and confirmed the wire is in the artefact. 🔴 A drive serves a **built bundle** —
-  `noodl-preview/dist` is stale until rebuilt. `LearnBook › Pretty button` is the named fixture.
+- **AC5 ✅ DRIVEN (s35).** A copy of `LearnBook` opened in a real `dev:debug` Electron editor;
+  the real `exportToJSON(project, {useBundles:false})` produced an artefact containing
+  `vertical gap -> rowGap` on `Pretty button`. The build under the drive was read out of the
+  running renderer, not assumed. **Full readings in §6.**
 
 ## Files
 
@@ -153,3 +154,99 @@ functions and the AI sandbox all get it by construction.
 - 🔴 **A backgrounded command's exit code lies.** The harness reported `exit code 0` for a `test:ci`
   run whose log ends in `npm error code 1` and five TS errors. ✅ **Read the log, not the code.**
 - ⚠️ **This runner has no `toHaveLength`.** `expect(x.length).toBe(n)`.
+
+
+---
+
+## 6. The drive (session 35) — AC5
+
+**Fixture.** A **copy** of `~/vscode_projects/Noodl projects/LearnBook` (opening a project writes
+into it, so the original is never the fixture), opened through the product's own door —
+`LocalProjectsModel.openProjectFromFolder`, then a real `cdp click` on its launcher card.
+211 components, 2,719 connections in the model.
+
+### 6.1 ✅ Which build was under the drive — read, not assumed
+
+Before anything was measured, `exportComponent.toString()` was read **in the running renderer**:
+
+```
+getConnectionHealth({ sourceId: c.fromId, … }, { levels: ['error'] }); if (health.healthy) { js…
+```
+
+🔴 **This is the check that makes the rest of the section mean anything.** A drive on a stale
+bundle reports "no defect" in exactly the shape that closes a row wrongly.
+
+### 6.2 The artefact contains the wire
+
+`exportToJSON(ProjectModel.instance, {useBundles: false})` — 211 components, **2,587
+connections**. `/Global visual components/Pretty button` exported **19 of its 19** wires,
+including the one this row exists for:
+
+```
+layout        -> flexDirection
+horizontal gap -> columnGap
+vertical gap  -> rowGap      ← the wire the pre-fix build deleted
+min width     -> minWidth
+```
+
+⚠️ **The default `exportToJSON` bundles lazily** — only the root bundle's components are inlined,
+which read as 4 components / 57 connections and would have missed the fixture entirely.
+`{useBundles: false}` is the whole-project arm.
+
+### 6.3 🔴 Presence is not proof — the control arm
+
+A wire being in the artefact is equally consistent with *"the fix kept it"* and *"it was never
+gated in this build"*. So both code paths were run over the **same** connections in the **same**
+loaded editor:
+
+| arm | call | what shipped |
+| --- | --- | --- |
+| fixed | `getConnectionHealth(ref, {levels:['error']})` | what `exportComponent` passes today |
+| pre-fix | `getConnectionHealth(ref)` | what it passed before DEF-034 — no args, every level |
+
+**On `Pretty button`: fixed keeps 19, pre-fix keeps 18. They disagree on exactly one wire —
+`vertical gap -> rowGap`**, carrying `con-target-port-gated` at `level: 'warning'`, with the
+editor's own message:
+
+> *"This wire is delivering a value the node ignores: **Layout** has switched this port off.
+> Vertical Gap applies when Layout is Vertical or Multi Line Wrap is On…"*
+
+### 6.4 Project-wide, and both warning keys are represented
+
+| | connections |
+| --- | ---: |
+| in the model | 2,719 |
+| kept by the **fixed** build | **2,587** |
+| kept by the **pre-fix** build | 2,577 |
+| **saved by the fix** | **10**, across **9 components** |
+| dropped by **both** | **132** |
+
+✅ **Two instruments, one number.** The export reported 2,587 connections; an independent loop
+over `getConnectionHealth` counted 2,587 healthy ones. They were computed by different code and
+agree exactly.
+
+**Every saved wire is `level: 'warning'`, and both keys the row named are in it:**
+
+| key | level | saved |
+| --- | --- | ---: |
+| `con-target-port-gated` | warning | 5 |
+| `con-type-unconverted` | warning | 5 |
+
+**Every wire still dropped is `level: 'error'`** — `con-no-source-port` 101, `con-no-target-port`
+31. ✅ **AC2 holds in a real editor**: 132 broken wires are still deleted from the build.
+
+### 6.5 ✅ AC3, seen on the canvas
+
+With `Pretty button` open, the `Vertical Gap` wire is drawn **dashed** while the export keeps it.
+FB-021's dash is unchanged, which is what AC3 asserts and what Richard asked for — the editor
+still says *questionable*, and the build no longer says *deleted*.
+
+### 6.6 ⚠️ What this drive does not show
+
+- **It is not a deploy.** `exportToJSON` is the artefact every build path feeds on, but nobody
+  served this bundle to a browser and watched the gap apply when the state flips to `column`.
+- **The 132 error drops are this project's pre-existing broken wires**, read in whatever schema
+  state the editor happened to be in. 6 of them touch the user family. 🔴 **That is not a
+  measurement of DEF-035's wipe delta and must not be quoted as one** — no wipe was triggered here.
+- **10 is this project's number, not the corpus's.** The corpus reading (313 across 35 projects)
+  is §"The measurement" above and was taken with a different instrument.
