@@ -5,6 +5,8 @@
 >
 > 🆕 **§6 added s29 (2026-08-31) and it is already MEASURED** — it was found by being blocked by
 > it, not by a sweep. Five left to measure.
+>
+> ⚠️ **`DEF-036` is taken (s34).** The next free id is **`DEF-037`**.
 
 **Written s23 (2026-08-30) at Richard's instruction.** The
 [unowned register](TASKS.md#findings-this-phase-raised-that-nobody-owns) holds twelve rows. Seven
