@@ -8,7 +8,8 @@
 > templates and even for when the MCP is making custom apps for people it can piocher in the image
 > library. Wouldn't take up too much space and would solve a lot of problems."*
 
-**Status: 🟡 PASSABLE — BUILT, SHIPPED, TAUGHT AND JUDGED 2026-08-31 (session 5). Read §7–§13.**
+**Status: 🟡 PASSABLE — BUILT, SHIPPED, TAUGHT, JUDGED AND SEEN BY RICHARD, 2026-08-31 (session 5).**
+**Read §7–§14.**
 
 ⚠️ §1–§6 below are the ORIGINAL scoping and are kept as written. **§1's source table is materially
 wrong and §7 corrects it** — it excluded Unsplash on the current Unsplash Licence, which is not the
@@ -263,3 +264,30 @@ a polish pass on this one.
 ✅ **Mutation-checked, not assumed.** Breaking `readImagery` to return empty reds
 `reports the installed stock imagery` — and leaves the **budget** spec green, which is precisely why
 that control had to exist: an absent block is a cheaper block.
+
+## §14 🔴 Richard's ruling, 2026-08-31 — verbatim
+
+He was shown all eight photographs (four widths, full page and first fold) and answered:
+
+> *"It's looking better and better, good job"*
+
+**Recorded as PASSABLE, not WORTHY**, and deliberately so. This phase's rubric closes a task on
+WORTHY alone, and his sentence sits in the same register as the two rulings before it — VIB-002's
+*"very passable, nearly worthy"* and VIB-003's *"deffo passable and looking like a modern base
+template, good job"* — both of which are recorded PASSABLE. 🔴 **Reading approval as a grade is how
+the first baseline scored two pages PASSABLE for being legible** (README §2), and the same caution
+applies one notch up: *better* is a direction, not a verdict.
+
+⚠️ **Three questions were put to him with the screenshots and NONE was answered.** Silence is not
+assent, and each changes what somebody builds next, so they stay open rather than being closed by
+the ruling that arrived beside them:
+
+1. **Is the potter right for a GENERIC hero recipe?** `ui-split-hero` is the most-copied recipe in
+   the corpus, so this photograph now lands at the top of every page built from it. It suits *this*
+   page's ceramics copy, which flatters it and would not flatter the next one. Owner: **VIB-006**,
+   which has to choose a hero anyway.
+2. **Are the six faces the right six?** They are the fix for three identical portraits and diversity
+   was a deliberate criterion, but the specific people are his call. Owner: **NONE** — ask him.
+3. **Is 3.32 MB per project acceptable?** It is copied into every project at creation. Cut from
+   4.63 MB by dropping texture resolution; it could halve again by shipping fewer than 44.
+   Owner: **NONE** — ask him.

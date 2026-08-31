@@ -14,22 +14,30 @@ file's copy of it.
 | VIB-002 The Ceiling | 🟡 **PASSABLE — RICHARD RULED IT**: *"very passable, nearly worthy, definitely night and day with the original"* |
 | VIB-003 The Pictures | 🟡 **PASSABLE — RICHARD RULED IT**: *"nice, deffo passable and looking like a modern base template, good job"* |
 | VIB-004 The Marketing Kit | 🟡 **PASSABLE, not yet seen by Richard.** ⚠️ Its named blocker (the pictures) is now CLOSED |
-| VIB-011 The Stock Library | 🟡 **PASSABLE this session — NOT YET SEEN BY RICHARD.** 44 CC0 photographs shipped, taught, and rendered |
+| VIB-011 The Stock Library | 🟡 **PASSABLE — RICHARD RULED IT**: *"It's looking better and better, good job"*. 44 CC0 photographs shipped, taught, rendered |
 | VIB-006 The Worked Page | ⬜ **the next job — see below** |
 | VIB-005/007 | ⬜ startable now, in parallel |
 | VIB-008/009 | ⬜ prove it on the shipped templates |
 | VIB-010 | ⬜ the exit exam |
 
-## 🔴 Two things to show Richard, in this order
+## 🔴 Richard has seen it — and three questions he did NOT answer
 
-1. **The page with real pictures.**
-   `verdicts/vib-011/2026-08-31/marketing-with-photographs/marketing-desktop-full.png`
-   (and `marketing-wide-viewport.png`). The hero is a potter's hands on a wheel; the three
-   testimonials are three different faces. This session judged it **PASSABLE**; his look supersedes.
-2. **The library itself**, so he can say whether the 44 are the right 44 —
-   `packages/noodl-editor/src/assets/starter-project/noodl_modules/starter-imagery/`, 3.32 MB.
-   ⚠️ **`people` was the category his own instruction was most specific about** (*"people doing
-   shit"*) and it is the one that took a change of collection to fix. Worth his eye.
+He was shown all eight photographs (four widths, full page and first fold) and ruled:
+*"It's looking better and better, good job"*. **Recorded PASSABLE, not WORTHY** — same register as
+VIB-002's *"very passable, nearly worthy"* and VIB-003's *"deffo passable… good job"*, both recorded
+PASSABLE. 🔴 *Better* is a direction, not a verdict; reading approval as a grade is the mistake
+README §2 exists to prevent.
+
+⚠️ **Three questions went with those screenshots and none came back. Silence is not assent**, and
+each changes what somebody builds next:
+
+1. **Is the potter right for a GENERIC hero?** `ui-split-hero` is the most-copied recipe in the
+   corpus, so `work-potter.webp` now lands at the top of every page built from it. It suits *this*
+   page's ceramics copy, which flatters it and will not flatter the next one. → **VIB-006** has to
+   choose a hero anyway; treat this as its first decision.
+2. **Are the six faces the right six?** → ask him.
+3. **Is 3.32 MB per project acceptable?** Copied into every project at creation; cut from 4.63 MB,
+   could halve again by shipping fewer than 44. → ask him.
 
 ## 🔴 The next task is VIB-006, and VIB-011 is the argument for it
 
