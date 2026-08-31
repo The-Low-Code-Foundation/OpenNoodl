@@ -97,32 +97,38 @@ so.** Third time this phase (V17; VIB-003's lost band; this).
 | `repeatedSiblingSubtree.test.ts` | **9/9** (6 + 3 new, one a control) |
 | `npm run typecheck:editor` | clean |
 | `vib004-marketing.look.ts` | **4/4**, four viewports, `starterAssets.failed: []` |
-| `npm run typecheck:backend-tests` | ⚠️ **see below — not a clean reading** |
+| `npm run typecheck:backend-tests` | ⚠️ **cannot run locally — OOMs at 8 GB. Control-proven pre-existing; CI covers it. See below** |
 
-🔴 **`typecheck:backend-tests` did not complete, and the cause is contention, not this code.**
-First attempt died after ~10 min with a V8 fatal (a bare hex stack, **no `error TS` lines**); the
-second was still running at 15 min. Both overlapped P80 session 34's `npm run dev:debug` on this
-shared checkout — **three concurrent webpack processes, load average 19.35**. It is a CI gate
-(`.github/workflows/pr.yml:39`) and passes there, so the slowness is the machine, not the config.
+✅ **`typecheck:backend-tests` is SETTLED — do not chase it again.** It **cannot complete on this
+machine**, and the reason has nothing to do with any look file:
 
-⚠️ **It still has to be re-run, because it is the ONLY gate that typechecks a `.look.ts` file** —
-the backend's ts-jest runs with `isolatedModules: true`, so **a green jest run does not typecheck
-it**. `tsconfig.tests.json` includes `tests/**/*.ts`, which covers look files.
-**First job for the next session, once the checkout is quiet**:
+- `tc3`: **exit 134** (SIGABRT) — `FATAL ERROR: Ineffective mark-compacts near heap limit`, 828s of
+  GC against an explicit **8 GB** heap, on a **quiet** checkout (load 5.2, nothing else running).
+- 🔴 **CONTROL, run with `vib004-marketing.look.ts` MOVED ASIDE: exit 134, the identical OOM.** So
+  the OOM is a property of the gate's type graph, not of anything this session wrote.
+- A P81 peer in the VIB-002 lane reached the same conclusion independently and committed it as
+  **`8ad63c44`** — *"the gate OOMs locally, CI runs it, and zero errors was a crash"*. Scoping the
+  entry to one file changes nothing: every `*.look.ts` imports `helpers/judge.ts`, which reaches the
+  backend's whole `src/**`. **The entry is scopeable; the type graph is not.**
 
-    npm run typecheck:backend-tests
+✅ **It does not need to run locally.** `.github/workflows/pr.yml:39` runs it in the `typecheck` job,
+so every `.look.ts` is typed on PR. That is the coverage; local is not the gate.
 
-If it reports errors, they are most likely in `packages/nodegx-backend/tests/vib004-marketing.look.ts`
-(this session's only backend file). Nothing else this session touched is in that gate's scope.
+⚠️ **Still true and still load-bearing**: the backend's ts-jest runs `isolatedModules: true`, so **a
+green jest run does not typecheck a `.look.ts`.** CI is the only thing that does.
 
-⚠️ **Do not repeat this session's substitute.** Re-running the look file through an ad-hoc jest
-config with `isolatedModules: false` looks like a cheap typecheck and is **not a valid instrument
-here**: it reports
+🔴 **AND THE TRAP THIS ALMOST BECAME:** the crashed run wrote **zero `error TS` lines**, so a
+`grep -c 'error TS'` over its log reads **`0`** — indistinguishable from a clean pass. **Gate on the
+EXIT CODE, never on the absence of error lines.** A run that dies before the reporting stage
+produces an empty error list, which is the friendliest possible shape for a lie.
+
+⚠️ **Do not repeat this session's other dead end** either. Re-running a look file through an ad-hoc
+jest config with `isolatedModules: false` looks like a cheap substitute typecheck and is **not a
+valid instrument**: it reports
 `noodl-editor/.../authoring/candidate.ts:46 error TS2304: Cannot find name 'Crypto'` — a DOM lib
-type, in a file neither look file owns. **The control settles it**: the identical command on
-`vib003-pictures.look.ts`, which shipped last session, fails identically. The instrument resolves
-`lib` differently from `tsc -p` and cannot distinguish a good file from a bad one. Use the real
-gate.
+type in a file neither look file owns. **The control settles it**: the identical command on
+`vib003-pictures.look.ts`, which shipped last session, fails identically. It resolves `lib`
+differently from `tsc -p` and cannot tell a good file from a bad one.
 
 ## Standing cautions (unchanged, all still true)
 

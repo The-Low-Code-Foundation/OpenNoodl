@@ -169,6 +169,7 @@ instrument's numbers have been blind to the thing the task was about (V17, VIB-0
 | `styleVocabularyPorts.test.ts` | **13/13** — every new property is a real port, every token exists, no raw hex, every `recipe` id names a file |
 | `repeatedSiblingSubtree.test.ts` | **9/9** (6 existing + 3 new, one a control) |
 | `npm run typecheck:editor` | clean |
+| `npm run typecheck:backend-tests` | ⚠️ **cannot complete on this machine — and it is not this task's code.** Exit **134**, `FATAL ERROR: Ineffective mark-compacts near heap limit`, 828s of GC against an explicit 8 GB heap, on a quiet checkout. 🔴 **Control run with `vib004-marketing.look.ts` moved aside: exit 134, the identical OOM.** A P81 peer in the VIB-002 lane reached the same conclusion independently (`8ad63c44`). Every `*.look.ts` imports `helpers/judge.ts`, which reaches the backend's whole `src/**` — the entry is scopeable, the type graph is not. ✅ `.github/workflows/pr.yml:39` runs it on PR, which is the coverage that matters, and it is the **only** thing that types a `.look.ts` (backend ts-jest is `isolatedModules`) |
 | `vib004-marketing.look.ts` | **4/4**, four viewports shot, starter assets installed, `failed: []` |
 
 🔴 **The wire budget was measured before AND after, which is V24's lesson applied.** Baseline on
@@ -226,3 +227,10 @@ capability present in the token set and unreachable from the ports. Seam: **VOCA
 caught by reading the gate's own header, not by the gate. The header says so deliberately (the F14
 blast-radius argument) — but "the gate is green" and "the corpus has no raw colours" are different
 claims, and only the first is true.
+
+🔴 **One trap this gate nearly set, worth more than the gate.** The crashed run wrote **zero
+`error TS` lines**, so `grep -c 'error TS'` over its log reads **`0`** — byte-for-byte
+indistinguishable from a clean pass. A run that dies before the reporting stage produces an empty
+error list, which is the friendliest possible shape for a lie. **Gate on the exit code, never on the
+absence of error lines.** This session read `EXIT=134` and reported the gate unrun; a session that
+had read only the grep would have reported it green.
