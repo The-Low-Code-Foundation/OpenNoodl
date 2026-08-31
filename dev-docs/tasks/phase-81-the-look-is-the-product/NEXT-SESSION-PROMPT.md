@@ -118,12 +118,17 @@ in a new `dev-docs/tasks/phase-82-0.2.2-the-first-row-on-the-shelf/`) was asked 
 docs-only and never touched the file, so it belongs to `opennoodl-07` or `opennoodl-f1`. Neither that
 file nor `phase-82/` is in this session's commit.
 
-🔴 **A backgrounded command's reported exit code lied, and the shape is worth carrying.** `test:ci`
-was launched wrapped as `(npm run test:ci > log 2>&1; echo "EXIT=$?" >> log)`. The harness reported
-the **subshell's** status — the `echo`'s, always 0 — and announced *"completed (exit code 0)"* for a
-run that **exited 1**. The honest reading came from the `EXIT=` line inside the log and from
-`test-results.json`'s own `failedCount`. **Never take a background notification's exit code for the
-command's**; put the status in the log and read it there.
+🔴 **A background run reported "exit code 0" for a gate that exited 1 — and the harness was RIGHT.**
+`test:ci` was launched wrapped as `(npm run test:ci > log 2>&1; echo "EXIT=$?" >> log)`. A subshell
+exits with the status of its **last** command, which was the `echo`. The harness reported the
+subshell correctly. **The defect was the question, not the answer**: "did the wrapper succeed?" was
+asked when "did npm succeed?" was meant — so do not record this as the harness lying, which is the
+framing that makes the next reader blame the notification instead of their own shell.
+
+✅ **What actually gave the reading**, and what to do instead: the `EXIT=1` line inside the log, and
+`packages/noodl-editor/tests/test-results.json` — `totalCount` 2928, `failedCount` 4, the four names,
+and a **fresh mtime** (22:21:21). End a gate command with the gate, and read the readout, never the
+notification.
 
 ## Standing cautions
 
