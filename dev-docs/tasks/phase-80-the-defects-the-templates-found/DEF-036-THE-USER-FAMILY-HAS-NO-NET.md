@@ -105,3 +105,76 @@ machine; the product surface is every app anyone builds a sign-up form in.
 🧭 **A decision, not only a fix.** AC1 is straightforward; whether the accounts table
 should get the same "the wire is the declaration" rule as an app table is a product
 judgement, and this row should not be built as if it were not.
+
+---
+
+## 6. 🔴 Part 3 measured before building — 2026-08-31, s38. **The canvas half already ships.**
+
+The ruling's *"what to check before building"* asked whether a missing schema field reaches the
+dashed state or goes straight to `level: 'error'` and silent deletion. **Checked at HEAD, and the
+answer splits the sentence in two.** Read from source, not driven — see the boundary at the end.
+
+| Richard's clause | today | where |
+| --- | --- | --- |
+| *"it would remain"* on the canvas | ✅ **already true** | nothing prunes it — see below |
+| *"but be a dotted line"* | ✅ **already true** | `NodeGraphEditorConnection.ts:960` |
+| *"the errors would flag that the port doesn't exist anymore"* | ✅ **already true** | `con-no-target-port`, `level: 'error'`, `showGlobally: true` |
+| dropped from the **build** | 🔴 **true, and this is the whole gap** | `exporter/util.ts`, `{ levels: ['error'] }` |
+
+**The three readings.**
+
+1. **Nothing prunes the connection.** `removeConnection` is reached only from
+   `removeConnectionsForNode` (a node being deleted) and explicit gestures.
+   `evaluateConnectionHealth` *records a warning* and never deletes. A wire whose port vanished
+   stays in `comp.graph.connections`.
+2. **It is already dashed, and for the error level specifically.**
+   `NodeGraphEditorConnection.paint` reads `if (!this.getHealth().healthy) ctx.setLineDash([5])`.
+   🔴 **The canvas passes no `levels` narrowing** — that argument is `exportComponent`'s alone —
+   so an `error` verdict dashes exactly like a `warning` one. DEF-034's own note says so in
+   passing: *"The dash comes free either way — `getConnectionHealth` turns any unhealthy verdict
+   into `setLineDash([5])` in every paint path."*
+3. **The export is the only place the wire disappears.** `exportComponent` asks with
+   `{ levels: ['error'] }` and pushes only `health.healthy` connections.
+
+### 🔴 So the ruling's sentence *"today they are dropped, not dashed"* is HALF right
+
+**Dropped from the build: yes. Not dashed: no — they are already dashed and already flagged.**
+That phrasing entered this file from the ruling summary and I am correcting it here rather than
+leaving two documents disagreeing. ⚠️ **A session that took it literally would go looking for a
+dash that already exists and would report the work as done without changing anything.**
+
+### 🧭 What is left is a DECISION, and it should not be guessed at
+
+The only thing part 3 could still change is **whether such a wire survives the export**, and that
+is not obviously what Richard asked for:
+
+- His sentence is about the **canvas** — *"it would remain … and the errors would flag"* — which
+  is the surface that already behaves that way. Read narrowly, **part 3 is already satisfied and
+  the correct action is to close it, not build it.**
+- Read as *"and it should also still be in the build"*, it **contradicts DEF-034**, which was
+  ruled deliberately: an `error` means *"this cannot work at all"* and still deletes. Under
+  Ruling B the column genuinely does not exist, so an exported wire would deliver a value to
+  nothing — and the runtime has no port to receive it.
+
+⚠️ **Ask before building.** The cheap, non-contradicting reading is that part 3 is already met,
+and the remaining value in this row is **parts 1 and 2** — which the ruling itself calls the part
+that closes the person-sentence: *"an empty schema today produces no ports **and no
+explanation**."* The explanation is still missing, and nothing measured here changes that.
+
+### ⚠️ The boundary on this measurement
+
+**Read at HEAD, not driven.** The three readings above are source; no wire to a deleted schema
+field was watched being painted in a running editor this session. What would settle it is opening
+a project with a `net.noodl.user.*` node, emptying the schema cache (DEF-035 §6's recipe), and
+looking at the canvas — the dash and the Problems-panel entry are both observable there.
+
+## 7. 🔴 The ACs in §4 were written for Option A and Richard overruled it
+
+**AC1 says** *"a User-family node with an empty schema still offers a `prop-<field>` port for
+every field one of its own wires names"* — **that is Option A**, the wire declaring the column,
+which the 2026-08-31 ruling rejected on product shape. **AC2 and AC3 are Option A's cardinality
+and ignore-list criteria and go with it.**
+
+**They must be rewritten before anyone builds against them**, exactly as DEF-037's AC3 had to be.
+🔴 **Do not try to satisfy both** — a session that reads §4 top-down and starts building will
+build the thing that was overruled. AC4 (driven) and AC5 (`test:ci` floor) survive unchanged.
