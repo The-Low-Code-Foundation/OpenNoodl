@@ -1,12 +1,12 @@
 # Phase 80 — next session
 
-## State: **33 rows. 30 ✅ · 3 open.**
+## State: **35 rows. 31 ✅ · 4 open.**
 
-s29 closed **DEF-029**, the row the last handoff put first, and it was **smaller than the handoff
-believed** — for a reason worth carrying. Commit `f725d184`.
+s30 closed **DEF-028**, the row the last handoff put first and called "the highest-value open row
+on the board by a distance". It was. Commit `1ddd158e`. Two rows were **registered out of it**
+rather than absorbed into it — the board grew by two on purpose.
 
-🔴 **Read [TASKS.md](TASKS.md)'s table before you read this paragraph.** Seventh time this is
-worth saying, and s29 is the seventh case — see the lesson below.
+🔴 **Read [TASKS.md](TASKS.md)'s table before you read this paragraph.** Eighth time.
 
 ```
 grep -aE '^\| DEF-0[0-9]{2} \|' TASKS.md | grep -av '✅'
@@ -17,171 +17,155 @@ DEF-007 §3.2 only.** Unchanged this session.
 
 ---
 
-## The lesson s29 paid for: a scope estimate decays exactly like a measurement
+## The lesson s30 paid for: a register's *counts* decay like its numbers and its scopes
 
-🔴 **The handoff said DEF-029 needed "a decision about what a dropped file *is* in this runtime",
-and called it "a bigger build than DEF-031 was". It needed no decision at all.**
+🔴 **D13 said "one filter, three callers". There are eight, across seven entry points** — and two
+of them (`sandboxExport.ts`, `componentBench.ts`) are AI-authoring paths the register never named.
+The row's substance was entirely correct. Its arithmetic was three sessions old.
 
-`Open File Picker` has always emitted a browser `File` on a `type: '*'` port. `Upload File`'s
-`File` input has always documented itself as taking *"the file to upload, as an Open File Picker
-node produces it"*. The contract was written down, in both directions, before the row was
-registered. The build emits that same shape under those same names and wires into the upload path
-that already existed.
+This is now the **third session running** to find the same shape:
 
-✅ **Before believing a scope estimate, ask the door whether the kit already answers the open
-question.** One `grep -ral 'File' .../nodes` and two file reads — about four minutes — turned an
-open-ended design question into a naming exercise. The register row was *true*: the capability
-was genuinely absent, 0 against controls of 37. What had decayed was the **estimate attached to
-it**, and nobody re-derives an estimate because it does not look like a claim.
+| session | what was stale beneath a true row |
+| --- | --- |
+| s28 | a recorded **number** |
+| s29 | a recorded **scope estimate** |
+| s30 | a recorded **count of call sites** |
 
-⚠️ This is the same shape as s28's lesson one level up: s28 found a recorded *number* stale
-beneath a true row; s29 found a recorded *scope* stale beneath a true row.
+✅ **Re-derive any quantity at the point where you rely on it.** Here the count decided the
+*design*: three callers is a case for patching callers, eight is a case for fixing the filter. A
+stale count would have produced a defensible fix with a hole in it.
 
-### And the mutant that "survived" because it never ran
+### And a spec that passed for the wrong reason
 
-🔴 **A mutation harness that greps only for failure lines cannot tell "no failures" from "the
-suite never compiled".** M5 renamed a dynamic `outputs:` key to `mutantOutputs:` — a **type
-error**, so ts-jest compiled nothing, zero tests ran, and a `grep '✕'` found nothing and printed
-it under the heading that meant *survived*. Re-run type-validly (`outputs: []`) it reddens
-immediately.
+🔴 **AC3 asserted an absence and passed vacuously on the first run.** `exportConnection` renames a
+wire's fields — `from/toProperty` on the graph become `source/targetPort` in the artefact — so the
+helper mapped every wire to `'undefined->undefined'`, and `not.toContain('screenX->…')` was
+satisfied by a list of the wrong *shape* rather than by a wire that had been dropped.
 
-✅ **Print `Tests:` cardinality beside every mutant.** A mutant must be *type-valid* to be a
-mutant at all.
+✅ **Put a known-firing positive beside every absence** — and pick one that reads the same **before
+and after** the fix, so it cannot itself be hiding the defect. Here: `toContain('image->image')`,
+the wire that survives in both directions. AC3 was then re-measured **red** before being made green.
+That cost one extra `test:ci` cycle and was worth it.
 
 ---
 
 ## The work, in the order it should be done
 
-### 1. DEF-028 — build determinism
+### 1. DEF-007 §3.2 — the template writes explicit values
 
-P77 D13. Unchanged, and now the highest-value open row on the board by a distance. The export
-health filter races the viewer's dynamic-port announcement, so **what a build contains depends on
-when it was taken.**
+Now the highest-value open row. Drive the **56 disagreements across 13 components** to zero by
+making template generation write the values — phase 78 D14's choice.
 
-⚠️ **SBR-008's fix removed the `prop-` family from the filter's reach and left the filter
-unchanged** — every other dynamic-port family is still exposed. 🔴 **Do not read SBR-008's green
-specs as evidence**: they call `setup()` and read what it announces; the debounced pass is not in
-them.
-
-🆕 **s29 added a new dynamic-port family to five visual nodes** (DEF-029's `File Drop` group,
-gated on `acceptFileDrops = true`). If DEF-028's exposure is per-family, that is one more family
-in its blast radius — worth measuring first, since it is fresh and its shape is known.
-
-### 2. DEF-007 §3.2 — the template writes explicit values
-
-Drive the **56 disagreements across 13 components** to zero by making template generation write
-the values — phase 78 D14's choice.
-
-⚠️ **`site-builder.content.json` is phase 77's lane and is STILL uncommitted** — last written
-2026-08-30 23:19, unchanged through s29. ✅ `git log -5 --` and `stat` it before starting.
+⚠️ **`site-builder.content.json` is phase 77's lane and is STILL uncommitted** — unchanged through
+s30. ✅ `git log -5 --` and `stat` it before starting.
 
 🔴 **AC3 is a PAIR** — the artefact rendered from disk **and** the same project loaded in the
 editor, asserted together. **The byte gate cannot help**: it compares the artefact to a fresh run
 of the same generator, so a field neither side writes is a field both sides "agree" about. It
 passed over D9 exactly this way.
 
-### 3. DEF-033 — a peer's row
+### 2. DEF-034 — a `level: 'warning'` wire is deleted like an error one
 
-`Substring`'s panel says `End = 0`, the node behaves as `End = -1`. Registered by the **P18** lane
-at `6f91ae2a`. ⚠️ Its own text says the fix is **a decision, not a one-liner** — check with that
-lane first.
+**New, registered by DEF-028 §6, and the cheaper of the two new rows.** `getWarnings` does not
+filter by level, so **any** warning key on a connection makes `getConnectionHealth` return
+`healthy: false` and the export filter drops the wire — including FB-021's `con-target-port-gated`,
+whose own comment says the wire *"is valid and its value is ignored"*.
 
-### 4. The unowned rows that need measuring
+DEF-028 did not create this; it **made it deterministic**, so a wire into a `basic`-gated port now
+always leaves the build.
 
-[UNOWNED-ROWS-TO-MEASURE.md](UNOWNED-ROWS-TO-MEASURE.md) — now **six**. §1 is disproved; **§6 is
-new and already measured**, because s29 was blocked by it rather than sweeping for it.
+⚠️ **Derived from source; blast radius UNMEASURED, and that is the first job.** `grep -a` puts
+`con-target-port-gated` in exactly one file — its writer — so nothing grades it. FB-021 measured
+**328** `basic`-gated input ports against 21 `extended`, so the population is large; **whether any
+shipped template actually wires into one** is unknown. Measure that before deciding it matters. It
+may cost nothing — the value was already ignored at runtime — and "may cost nothing" is a
+measurement nobody has taken.
 
-🆕 **§6 — `group.ts` cannot be imported from a test at all.** `Group.tsx` pulls in an ESM `.js`
-scroll plugin and this package's jest preset is bare `ts-jest`. The runtime's most-used visual
-node is ungraded, and the failure reads **`Tests: 0 total`** — like a missing file, not a broken
-import. What it owes before a fix: whether adding a `.js` transform changes any of the 86 passing
-suites. ⚠️ Shared config — not a change to make casually from a lane that is not about it.
+### 3. DEF-035 — the schema fetch still decides which ports exist
 
-**Measure one fully before starting the next.** A row that measures true gets a `DEF-0xx` id
-(`DEF-034`+ are free) and a person's sentence. ✅ **Keep the disproved ones, marked.**
+**New, D13's other half, and explicitly NOT closed by DEF-028.** `SchemaHandler` fetches the
+backend schema on **`window-focused`**; `recordFieldPorts` mints one port per column. DEF-028 makes
+the export read a *settled verdict about the ports that exist at that moment* — it does not make
+the port set a function of the project. **A build taken with the schema cold still differs from one
+taken warm.** P77 s17 watched the census move **19 unhealthy → 4** on its own with no edit.
+
+🔴 **Do not read DEF-028's green specs as covering this.** They pin a static graph; the schema
+never enters them.
+
+### 4. DEF-033 — a peer's row
+
+`Substring`'s panel says `End = 0`, the node behaves as `End = -1`. Registered by **P18** at
+`6f91ae2a`. ⚠️ Its own text says the fix is **a decision, not a one-liner** — check with that lane.
+
+### 5. The unowned rows
+
+[UNOWNED-ROWS-TO-MEASURE.md](UNOWNED-ROWS-TO-MEASURE.md) — six. §1 disproved; §6 measured.
+**Measure one fully before starting the next.** `DEF-036`+ are free.
 
 ---
 
 ## Owed elsewhere
 
-- 🔴 **DEF-029 is undriven in a real editor.** Nobody has ticked `Accept File Drops` in a property
-  panel and dropped a file on a canvas. 🔴 A drive serves a **built bundle** — rebuild
-  `noodl-viewer-react` first (~40s) or the ports are invisible. ⚠️ The ports fold into
-  **`Advanced CSS`** in the panel (classified `plumbing` beside `Pointer Events`) — expand it, or
-  the drive will report them missing.
-- ⚠️ **DEF-029's tier placement is Richard's call.** `File Drop` is folded into `Advanced CSS`;
-  deleting one line in `propertyPanelTiers.ts` puts `Accept File Drops` on the first screen of
-  Group, Text, Image, Circle and Video. Filed advanced because that is five nodes' basic tier
-  taxed for a port most screens never set.
-- ⚠️ **DEF-029 does not cover directory drops or paste.** `dataTransfer.items` /
-  `webkitGetAsEntry` are untouched; `onPaste` with a file clipboard is the same capability through
-  a different gesture and is not built.
+- 🔴 **DEF-028 is undriven.** Nobody has taken two exports of one real project in a real editor and
+  diffed them. The specs are the real model but a synthetic graph. A drive would also be the only
+  way to see DEF-035's half move.
+- 🔴 **DEF-029 is undriven in a real editor.** Nobody has ticked `Accept File Drops` and dropped a
+  file. 🔴 A drive serves a **built bundle** — rebuild `noodl-viewer-react` first (~40s). ⚠️ The
+  ports fold into **`Advanced CSS`** — expand it or the drive reports them missing.
+- ⚠️ **DEF-029's tier placement is Richard's call**; and it does **not** cover directory drops or
+  paste.
 - ⚠️ **DEF-031, DEF-005's `Roles` output, DEF-009's default and DEF-025's editor half are all
-  undriven in a real editor.** Each cheap, each the surface a person actually meets.
-- 🔴 **DEF-005 AC5 — TPL-001's member list.** Still owed: a roster page on `List Users In Role` in
-  `nodegx-backend/tests/helpers/members-drive.ts`. Explicitly *evidence, not the acceptance*.
-- 🔴 **P77 D33 — six unconfirmed same-collection writes on `/Pages/ThemeEditor`**, registered by
-  DEF-032, owed a drive: watch for `[runtime/cyclic-loop]` and count `SetDbModelProperties` on an
-  idle theme editor.
+  undriven.** Each cheap, each the surface a person actually meets.
+- 🔴 **DEF-005 AC5 — TPL-001's member list**, a roster page on `List Users In Role`.
+- 🔴 **P77 D33 — six unconfirmed same-collection writes on `/Pages/ThemeEditor`**, owed a drive.
 - ⚠️ **`create_component` still cannot author a cycle in one pass** — DEF-013's named weakness.
 
 ---
 
 ## The gate baselines, measured this session
 
-🔴 **`test:main` has 5 pre-existing failures in this working tree, and they are NOT yours.**
-Confirmed by a catalog-reverted control — each fails identically with the catalog at HEAD:
+🔴 **`test:ci` floor is 4, and s30 confirmed it twice — all four AIX-006, BY NAME.**
 
-| suite | tests | attribution |
+| run | seed | failures |
 | --- | --- | --- |
-| `sb-007/site-template` | 2 | pre-existing |
-| `sb-018/the-list-refreshes-when-a-row-changes` | 2 | pre-existing |
-| `aib-007/backendRequirement` | 1 | pre-existing |
+| unfixed | 25387 | **7** = 4 floor + 3 DEF-028 |
+| fixed | 19613 | **4** = the floor exactly |
 
-✅ **The control that settles ownership costs one minute**: `git show HEAD:<catalog> > <catalog>`,
-re-run, restore from a scratchpad copy. Never `git checkout --`. s29's two owned failures (FB-017,
-FB-021) flipped green under it and the other three did not — that pair of readings is the evidence,
-not either one alone.
+Different seeds, so the green is not a pinned order. **2909 specs** both times.
 
-- **`noodl-viewer-react`**: 86 suites / 1133 tests green.
-- **`noodl-mcp`**: 1 pre-existing failure — `styleTools` AIX-006 wire budget, `prompt` 3161/3000
-  and `full` 11720/11000. Identical with the catalog reverted, so it is not port-count driven.
-- **`catalog:check`, `catalog:groups:check`**: green. Typechecks: editor, editor-tests, viewer clean.
+⚠️ **A P81 peer was editing `src/editor/src/validation/parameterValues.ts` at 11:34:12, inside the
+fixed run's webpack window.** It cannot have masked anything — a broken peer edit could only have
+*added* failures, and the count came back at exactly the floor — and their graders live in
+`tests-unit/` (`test:main`), not this suite. Recorded because the reading was taken beside someone
+else's work and a future session should not have to wonder.
+
+- Editor typecheck: clean.
+- **Not re-run this session**: `test:main` (5 pre-existing failures, attribution settled at s29),
+  `noodl-viewer-react`, `noodl-mcp`, `catalog:check`. Nothing this session touched them — the
+  change is two editor files and a spec.
 
 ---
 
 ## Traps carried
 
-- 🔴 **A mutant must be TYPE-VALID or it is not a mutant.** A type error means zero tests ran, and
-  a failure-line grep reads that as survival. ✅ Print `Tests:` cardinality per mutant.
-- 🔴 **`Tests: 0 total` reads like a missing file.** Three separate causes now: a module reading
-  `Noodl.deployed` at import time, a ts-jest type error, and an untransformed ESM `.js` in the
-  import graph. ✅ Read the SyntaxError, do not assume the path is wrong.
-- 🔴 **A new shared port group owes two census gates**: `fb-017/propertyPanelTiers` (classify it in
-  `ADVANCED_CSS_GROUPS`, `BASIC_CSS_ORDER` or `SUBJECT_GROUPS` — the sweep fails on any shared
-  visual group left unclassified) and `fb-021/portGateReason` (the gated-input census moves).
-  ✅ Both moved by exactly 5 here and every new gated port was explained — that equality is the
-  reading, not the raw number.
-- 🔴 **`SUBJECT_GROUPS` means "ports that name the thing the node IS".** Filing a capability group
-  there because it feels important says something untrue. A Group is not a drop zone by nature.
-- 🔴 **`grep -c` counts LINES, not occurrences**, and **a substring is not a word** — `onDrop`
-  matched `onDropped` 8 times. ✅ `grep -aoE '\bname\b' | wc -l`.
-- 🔴 **`grep` here is ugrep with `-I`** and skips source files as binary, SILENTLY. ✅ `grep -a`.
-- 🔴 **A python heredoc anchor that "obviously matches" may not** — one anchor this session was
-  off by two spaces of indentation and asserted `0`. ✅ **Assert `count(anchor) == 1`, always.**
-- 🔴 **An index built on a key that is `None` collapses every row into one** and reports "no
-  differences" with total confidence. s29's first catalog diff read **0 changed nodes** across 176
-  because the entries are keyed `typeName`, not `name`. ✅ **Assert cardinality on both sides of a
-  diff** (`len(index) == 176`) before believing an absence.
-- 🔴 **A generated artefact folds in every uncommitted edit in the tree.** ✅ `--out-dir` to a
-  scratchpad and diff *the port surface* before regenerating in place. It was clean this time —
-  exactly 5 nodes, exactly the new ports — and that is a measurement, not an assumption.
-- 🔴 **The Bash tool's cwd persists across calls and resets after some failures.** ✅ Absolute
-  paths, or re-`cd` in the same command.
-- 🔴 **Snapshot before mutating, restore with `cp`.** Never `git checkout --`. ✅ `md5 -q` the
-  restored file against the snapshot before believing the tree is clean.
-- 🔴 **A pathspec commit sweeps a sibling's unstaged edit** and **skips untracked files silently**.
-  ✅ `git add` your own untracked files individually, then `git commit <pathspecs>`. Two peer files
-  were untracked in `tests-unit/border-sweep/` and `noodl-mcp/tests/` this session and stayed out.
-- 🔴 **D-numbers COLLIDE across registers** (P77 and P78 both have D22, D25, D32) and **two phases
-  have both a `TASKS.md` and an `UNOWNED-ROWS-TO-MEASURE.md`**. Qualify with the phase.
+- 🔴 **An absence assertion can pass on a list of the WRONG SHAPE.** Not just on a wire that was
+  correctly dropped. ✅ A known-firing positive control beside it, chosen to read the same before
+  and after the fix.
+- 🔴 **A register's COUNTS decay like its numbers.** Third session running. ✅ Re-derive any
+  quantity where you rely on it — especially one that decides a design.
+- 🔴 **`getWarnings` does not filter by level**, so `level: 'warning'` and `level: 'error'` are the
+  same verdict to every consumer that asks "is this healthy". See DEF-034.
+- 🔴 **`test:ci` writes `tests/test-results.json`, NOT `test-results.json`.** s30 deleted the wrong
+  path, then read `EXIT=1` with no results file and briefly took it for the timeout trap. ✅ Delete
+  the path the runner prints, and require a fresh **mtime**.
+- 🔴 **`exportComponent` is duck-typed on `comp.graph`** — it imports fine in the plain-Node
+  `tests-unit` runner while `NodeGraphModel` does not (it reaches `bugtracker` → Electron). A
+  filter spec there would grade a stub. The real model lives in the **Electron jasmine suite**.
+- 🔴 **A spec absent from `tests/nodegraph/index.ts` never runs** — the barrel says so in its own
+  comment.
+- 🔴 **D-numbers COLLIDE across registers.** `tests-unit/d-13/` is **phase 69's** D13, not P77's.
+  Qualify with the phase before assuming a directory is prior art on your row.
+- 🔴 **`grep -a` always** — ugrep's `-I` skips source files as binary, silently.
+- 🔴 **Assert `count(anchor) == 1`** before every python heredoc replace.
+- 🔴 **`git add` untracked files individually, then `git commit <pathspecs>`.** Never stage — a
+  sibling's commit sweeps staged files, and a pathspec commit skips untracked ones silently.
