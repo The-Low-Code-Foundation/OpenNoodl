@@ -55,12 +55,34 @@ export function Text(props: TextProps) {
 
   style.color = props.noodlNode.context.styles.resolveColor(style.color);
 
-  // Respect '\n' in the string
-  if (props.sizeMode === 'contentSize' || props.sizeMode === 'contentWidth') {
-    style.whiteSpace = 'pre';
+  // DEF-031 — `text-overflow` does something only on a single line that is allowed to
+  // overflow, and this function decides both of those rather than the author: the branch
+  // below forces `white-space`, and the wrapping arm adds `overflow-wrap: anywhere` on top.
+  // A `textOverflow` port on its own would therefore have reached the DOM and done nothing,
+  // which is why the port and this branch had to land together.
+  //
+  // `'wrap'` is the port's default and is deliberately not a CSS value, so that the panel
+  // and the node agree: the default wraps, and it must not reach the DOM as invalid CSS.
+  const truncates = style.textOverflow === 'ellipsis' || style.textOverflow === 'clip';
+
+  if (truncates) {
+    style.whiteSpace = 'nowrap';
+    // Only supply the clipping the author did not; an explicit `overflow` stays theirs.
+    if (style.overflow === undefined) {
+      style.overflow = 'hidden';
+    }
   } else {
-    style.whiteSpace = 'pre-wrap';
-    style.overflowWrap = 'anywhere';
+    if (style.textOverflow !== undefined) {
+      delete style.textOverflow;
+    }
+
+    // Respect '\n' in the string
+    if (props.sizeMode === 'contentSize' || props.sizeMode === 'contentWidth') {
+      style.whiteSpace = 'pre';
+    } else {
+      style.whiteSpace = 'pre-wrap';
+      style.overflowWrap = 'anywhere';
+    }
   }
 
   if (style.opacity === 0) {

@@ -82,6 +82,23 @@ const TextNode: ReactNodeDefinition = {
         ]
       },
       default: 'normal'
+    },
+    textOverflow: {
+      index: 28,
+      group: 'Text',
+      displayName: 'Text Overflow',
+      description:
+        'What a line too long for its box does. Needs a width the text can exceed, so it has no effect while the size mode is content-sized',
+      applyDefault: false,
+      type: {
+        name: 'enum',
+        enums: [
+          { label: 'Wrap', value: 'wrap' },
+          { label: 'Clip', value: 'clip' },
+          { label: 'Ellipsis', value: 'ellipsis' }
+        ]
+      },
+      default: 'wrap'
     }
   },
   inputs: {
@@ -164,6 +181,17 @@ function defineTooltips(node) {
       'Control where line breaks are allowed',
       '- Normal: Break on spaces and other whitespace characters',
       '- Break All: Allow line breaks between any two characters, including inside words'
+    ]
+  });
+
+  node.inputCss.textOverflow.tooltip = createTooltip({
+    title: 'Text overflow',
+    body: [
+      'What a line too long for its box does',
+      '- Wrap: Flow onto as many lines as it needs',
+      '- Clip: Stay on one line and cut off at the edge',
+      '- Ellipsis: Stay on one line and end in a \u2026 where it was cut',
+      'Clip and Ellipsis need a width the text can exceed, so neither shows while the size mode is content-sized'
     ]
   });
 }
