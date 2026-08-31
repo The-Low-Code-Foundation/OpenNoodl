@@ -31,7 +31,7 @@ Four checks now ship: `raw-color-literal` switched on in the corpus gate, `unsou
 gate and the door, `raw-spacing-literal`, and the curated Lucide set widened 212 → 215. Two corpus
 repairs, both graded by mutation rather than by census.
 
-## 🔴 Seven things worth carrying out of this session
+## 🔴 Nine things worth carrying out of this session
 
 1. 🔴 **Three of the five register rows did not survive being measured, and two of the tabled
    predicates would have condemned CORRECT authoring.** V23's *"a glyph absent from the manifest"*
@@ -51,12 +51,25 @@ repairs, both graded by mutation rather than by census.
    silently"*. The new spacing rule matched it first and `continue`d, replacing that error with a
    warning about tokens. Caught by `tests-unit/aib-001/parameterValues.test.ts` — **a neighbour's
    spec**, run only because the whole validation neighbourhood was run.
-5. 🔴 **A dead guard is worse than no guard.** `node.type !== COLUMNS_TYPE && SPACING_PORTS.has(name)`
+5. 🔴 **A check in a shared loop is graded by suites in OTHER tasks' directories — and a peer found
+   the third one AFTER the commit.** `def-003` (a P80 file) held two unfiltered `toEqual([])` rows
+   over `paddingLeft: 24`, one of them an explicit anti-widening tripwire. They now assert the **set
+   of codes**, which is a *stronger* guarantee than total silence: it names who may speak, so a
+   fourth rule still trips the row. ⚠️ **Note the shape**: `validation/` was CLEAN in the working
+   tree, so a dirty-tree check said "not mine" — it was **committed**, and `git log -- <path>` is
+   what found it.
+6. 🔴 **A noise estimate taken from the corpus is taken from the wrong population.** 401 of 402
+   corpus spacing parameters are already tokenised — it is the most tokenised artefact set that
+   exists, so it could not show how often `raw-spacing-literal` fires on ordinary work.
+   `paddingLeft: 24` is correct authoring and now draws a warning. That is `raw-color-literal`'s
+   deliberate bargain and this sits inside it, but **price a user-facing rule against a real
+   project, not against `docs/node-catalog/examples`**.
+7. 🔴 **A dead guard is worse than no guard.** `node.type !== COLUMNS_TYPE && SPACING_PORTS.has(name)`
    — `Columns` has **no padding port at all** and neither margin is in the port set, so the type test
    could never exclude anything while reading as the thing protecting you. Assert the mechanism.
-6. ✅ **Derive a table from its source rather than restating it.** The spacing spec builds the scale
+8. ✅ **Derive a table from its source rather than restating it.** The spacing spec builds the scale
    from `DefaultTokens.ts` and caught four missing tokens (`--space-20/24/28/32`) on its first run.
-7. ✅ **The corpus's own prose can ask for a narrowing before the check exists.**
+9. ✅ **The corpus's own prose can ask for a narrowing before the check exists.**
    `ui-image-scrim-band`'s description — *"Leaving it empty is not broken: the gradient alone is
    still a designed ground"* — is what produced V33's gradient exemption. Without it the check would
    have contradicted the recipe it was written for.
@@ -103,7 +116,8 @@ indistinguishable from a clean pass.
 | `npm run catalog:examples` | **exit 0** — 67/67 strict, three more checks on |
 | `catalog:examples` on a mutated copy | **exit 1** — 66/67, the one raw colour named |
 | `npm run catalog:merge:check` | **exit 0** after regeneration; **exit 1 before it** |
-| editor `validation\|parameterValue\|diagnostic\|vib-007` | **exit 0** — **16 suites / 219 tests** |
+| editor `validation\|parameterValue\|diagnostic\|vib-007\|def-003\|aib-001` | **exit 0** — **20 suites / 267 tests** |
+| **full `noodl-editor` jest** | ⚠️ **exit 1 — 5 failed / 6596 passed** = the floor P80 s40 recorded (sb-007 ×2, sb-018 ×2, aib-007 ×1). It read **7** until `c83eb13b` |
 | `npm run typecheck:editor` | **exit 0** |
 | `npm run typecheck:mcp` | **exit 0** |
 | full `noodl-mcp` suite | ⚠️ **exit 1 — 83 suites / 1085 tests, 4 failed.** See the caution |
