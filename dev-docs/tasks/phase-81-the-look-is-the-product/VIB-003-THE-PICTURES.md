@@ -371,7 +371,11 @@ the placeholder rather than the page.
    claim proved here is that the sanctioned vocabulary and corpus draw; the claim about the shipped
    templates is VIB-008/VIB-009's.
 5. ✅ **A verdict recorded from the picture** — §5, PASSABLE, with the WORTHY gap named and owned.
-   ⚠️ **Provisional until Richard has looked** (README §3.5).
+   ⚠️ **Provisional until Richard has looked** (README §3.5). Sheet sent 2026-08-31:
+   **https://claude.ai/code/artifact/bb77d21d-0770-484a-85da-ad5b1b30a273**
+   — three questions on it: (1) is PASSABLE right, or still SHITTY; (2) **the empty right-hand half
+   at ≥1280, re-asked** because VIB-002's sheet got no ruling on it and the silence must not be read
+   as agreement; (3) should the product ship starter pictures at all.
 
 ## §7 Explicitly NOT in this task
 
