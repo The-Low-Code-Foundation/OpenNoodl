@@ -44,6 +44,7 @@ import {
   createPass,
   exemptionKey
 } from './sb006Components';
+import { RAW_COLOR_LITERAL, STYLE_VALUE_PORT } from './siteBuilderStyleScan';
 import {
   planRunOnValueChangeMigration,
   type MigrationProjectLike
@@ -444,10 +445,11 @@ export function assertSeoSplit(w: Written): void {
  *     has no token for and never should — they are arrangement, not measurement
  *     — so the arm only fires on numbers and unit objects.
  */
-const RAW_COLOR_LITERAL = /#[0-9a-fA-F]{3,8}\b|\brgba?\s*\(|\bhsla?\s*\(/;
-const STYLE_VALUE_PORT =
-  /^(padding|margin|border|font|color|background|width|height|maxWidth|minWidth|maxHeight|minHeight|rowGap|columnGap|letterSpacing|lineHeight|opacity)/i;
-
+// 🔴 The two patterns moved to `siteBuilderStyleScan.ts` when SBR-012 widened
+// this scan to the generated artefact. They are IMPORTED rather than copied:
+// two suites enforcing "no raw colour" from two definitions of "colour" would
+// drift the moment either is tightened, and the first symptom would be a green
+// gate over a population it no longer describes.
 export function rawStyleValues(entries: ReadonlyArray<readonly [string, Written]>): string[] {
   const found: string[] = [];
   for (const [key, w] of entries) {

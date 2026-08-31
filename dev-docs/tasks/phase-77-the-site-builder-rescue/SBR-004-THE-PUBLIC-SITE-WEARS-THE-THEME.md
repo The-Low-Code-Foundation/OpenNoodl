@@ -691,3 +691,31 @@ defensive, and the sentence claiming otherwise should not be relayed.
 **AC1 ✅, AC2 ✅, AC4 ✅** (§9, re-measured here). **The root URL renders**, driven, with a
 control pair rather than a single pass. AC3 remains SBR-012's. 🔴 §11.3's widening — every page,
 not just `/` — is the thing to carry forward.
+
+---
+
+## 12. 🟢 AC3 MET — s35, by SBR-012. **SBR-004 is CLOSED, all four ACs.**
+
+AC3's sentence is *"every style value is a token, or a named exemption, and SBR-012's gate is
+green."* It read on **SBR-012's** gate by construction, and that gate now exists:
+**`packages/noodl-mcp/tests/sbr012RawColourGate.test.ts` — 25 specs**, over the two populations
+§5's *Still owed* named — the generated artefact **and** all four component sets.
+
+| what SBR-004 shipped as the seed | what SBR-012 added |
+|---|---|
+| a scan over the **five SB-006 component sets** | the **generated artefact** (289 KB) and the other component sets, including `sb007Template.ts`'s `App` shell |
+| three planted-value mutants | **six** — hex on a colour port, hex in a **script body**, hex in the **artefact only**, `var(--tpyo)`, a token **deleted** from the universe, and an unnamed dimension |
+| the exemption list, keyed `label \| port` | keyed **`component \| label \| port`** — the template has several nodes labelled `Heading` and exactly one sets a raw width |
+| — | 🆕 the **"every consumed token resolves"** arm: 33 distinct names, 284 uses, **0 unresolved** |
+
+**HEAD reads zero on every arm.** 🔴 That is only believable because the instrument's **reach** is
+asserted as a floor in the same run — 24 components, ≥500 parameter rows, ≥30 script bodies
+including `applyTheme` by name — and because every arm is paired with a plant that must red.
+
+⚠️ **The widening immediately found one thing the seed could not see**:
+[D35](DEFECTS-THE-SITE-BUILDER-FOUND.md#d35), `/Pages/Setup`'s `Form` spacing itself with a bare
+`24` where `--space-6` **is** `24px`. It is fixed. The seed's population — SB-006's five
+components — did not contain it, which is the whole argument for the second population.
+
+🔴 **§11.3's widening (every page, not just `/`) is a DRIVE, and it remains SBR-014's**, not AC3's.
+Closing this task does not close that.

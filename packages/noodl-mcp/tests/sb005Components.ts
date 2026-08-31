@@ -1089,7 +1089,25 @@ export const SETUP_NODES = [
     type: 'Group',
     label: 'Form',
     parent: 'page',
-    parameters: { flexDirection: 'column', paddingTop: 24, paddingLeft: 24, paddingRight: 24 },
+    // 🔴 SBR-012's first finding, and it was already half-fixed. These three
+    // ports carried the literal `24` — the exact value of `--space-6` — and the
+    // identical trio was removed from `/Pages/PageEditor`'s `Editor` group
+    // during SBR-007 with the sentence *"a raw dimension here had no token
+    // reason."* This one survived because nothing scanned it: SB-006's raw-value
+    // gate reads the five SB-006 components only, and Setup is SB-005's.
+    //
+    // ⚠️ Not a rendering defect — `paddingTop` on a Group is `px`-only
+    // (`node-catalog.json`: `defaultUnit: "px"`, `units: ["px"]`), so the bare
+    // number rendered 24px and `UnitlessDimension` correctly stayed silent. It
+    // is a spacing value written as a literal where the scale already names it,
+    // which is why it takes the fix and NOT an exemption: the exemption list
+    // says spacing, colour, radius, face and font size must gain no entries.
+    parameters: {
+      flexDirection: 'column',
+      paddingTop: 'var(--space-6)',
+      paddingLeft: 'var(--space-6)',
+      paddingRight: 'var(--space-6)'
+    },
     children: ['heading', 'blurb', 'emailField', 'passwordField', 'tokenField', 'claimButton', 'claimRefusal', 'signupRefusal', 'toSignIn']
   },
   {
@@ -2687,7 +2705,10 @@ export const ADMIN_SHELL_NODES = [
     // `Layout.size` turns into `flexGrow` and the sidebar eats half the screen.
     // An authored size on the axis is what `findGrowingNodes` accepts as "the
     // author said a size out loud". `SIDEBAR_WIDTH` is a raw dimension with a
-    // reason, in `ADMIN_RAW_DIMENSIONS`.
+    // reason, in `TEMPLATE_DIMENSION_EXEMPTIONS` (`siteBuilderStyleScan.ts`).
+    // ⚠️ That name used to read `ADMIN_RAW_DIMENSIONS`, which never existed —
+    // an exemption list named in a comment and never written, so the rail's
+    // reason was unenforced until SBR-012 built the list it pointed at.
     parameters: {
       sizeMode: 'explicit',
       width: SIDEBAR_WIDTH,

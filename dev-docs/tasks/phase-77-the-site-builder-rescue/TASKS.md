@@ -749,3 +749,70 @@ published being refused, and that path works on both arms. Wiring cannot reach a
 **Gates taken:** `sbr015-execution-steps-drive` **10/10** (three times, the last on the committed
 bytes); `def004-publish-page-steps` **5/5** beside it; **`sb007Template` 59/59** — the gate s33
 deliberately left unread at this HEAD, now read, and byte-identity holds after the comment fix.
+
+---
+
+## s35 — 2026-08-30. **SBR-012 BUILT, all four ACs. SBR-004 AC3 closes with it.**
+
+**Two tasks in two sessions became three in three, and one row filed — which is also fixed.**
+
+s34's handoff named SBR-012 as the build: top of s33's ordering, 45 lines, fully scoped, and it
+**owns SBR-004's AC3**. It is built.
+
+**`packages/noodl-mcp/tests/sbr012RawColourGate.test.ts` — 25 specs, ~0.7 s**, plus
+**`siteBuilderStyleScan.ts`**, the instrument, extracted so this gate and `sb006PublicSite.test.ts`
+scan from **one** definition of "colour" rather than two that drift.
+
+| arm | artefact (289 KB) | component sets (4 files) |
+|---|---|---|
+| raw colour | **0** | **0**, comments stripped |
+| unresolved `var(--x)` | **0** of 33 distinct, 284 uses | **0** of 33 distinct |
+| non-token dimensions | **12** → **9**, all named with reasons | — |
+
+### What this session paid for, and would pay again
+
+- 🔴 **THE TASK FILE'S CITED MECHANISM HAD MOVED, AND CARRIED A SECOND HOLE IT DID NOT NAME.**
+  `RawColorLiteral` is at `parameterValues.ts:1001`, not `:976`. Reading it rather than trusting the
+  citation turned up a hole the task file missed: `RAW_COLOR` is **anchored** `^\s*`, so
+  `'1px solid #cdc5b6'` walks past the product's own check. There is now a spec that runs both
+  patterns over one smuggled string. ✅ **s34's lesson generalises past ACs — a citation is a claim
+  about the product, and claims expire.**
+- 🔴 **ZERO EVERYWHERE IS THE READING A BROKEN CHECKER ALSO PRODUCES.** All three arms read zero on
+  HEAD. So the instrument's **reach** is asserted as a floor in the same run — 24 components, ≥500
+  parameter rows, ≥30 script bodies including `applyTheme` **by name**, every source shrinking under
+  comment-stripping — and **every arm is paired with a planted defect that must red.** Calibration
+  came before the first assertion, as the task's own trap demanded.
+- 🔴 **THE GATE'S FIRST FINDING WAS REAL, AND THE OBVIOUS DIAGNOSIS WAS WRONG.**
+  [D35](DEFECTS-THE-SITE-BUILDER-FOUND.md#d35): `/Pages/Setup`'s `Form` set `padding{Top,Left,Right}: 24`.
+  The tempting reading — *the door refuses a bare number because these ports are percentages* — is
+  `sb005Components.ts`'s own documented sentence about `SIDEBAR_WIDTH`, and it is about **`width`**.
+  `node-catalog.json` says `paddingTop` is `px`-only, so it rendered 24px and `UnitlessDimension`
+  was **right** to stay silent. ✅ **Read the port's own shape; a sibling port one line away had the
+  opposite rule.**
+- 🔴 **AND IT WAS A SURVIVOR — the same trio was fixed in `/Pages/PageEditor` during SBR-007.** It
+  lived because **nothing scanned it**: SB-006's gate reads SB-006's five components, and Setup is
+  SB-005's. ✅ **A gate whose population is narrower than the artefact reports a template clean that
+  it never looked at** — which is the entire case for SBR-012's second population.
+- ✅ **Fixed, not exempted, and the doctrine decided that** — the exemption list says spacing,
+  colour, radius, face and font size gain no entries. Three lines; the regenerated artefact diffs by
+  exactly those three.
+- 🔴 **A LABEL-ONLY EXEMPTION KEY WOULD HAVE SILENTLY WIDENED.** SB-006's four live where `label` is
+  unique; the template has **several** nodes labelled `Heading` and exactly one sets a raw width.
+  `TEMPLATE_DIMENSION_EXEMPTIONS` is keyed `component | label | port`, and the ambiguity is asserted
+  as a spec rather than trusted to a comment. Equality is checked **both directions**: an exemption
+  matching nothing reads exactly like a raw value that was never introduced.
+- ⚠️ **A REASON NAMED IN A COMMENT AND NEVER WRITTEN IS AN UNENFORCED REASON.**
+  `sb005Components.ts` pointed the reader at **`ADMIN_RAW_DIMENSIONS`** for the admin rail's
+  justification. That constant **never existed**. The comment now names the list SBR-012 built.
+- 🔴 **AC4 NAMED A GATE THIS FILE IS NOT IN, AND ASSERTING IT WOULD HAVE PASSED.** The AC says
+  `test:ci` "(registered in the spec barrel)" — the **editor's** convention. This package has no
+  barrel and `test:ci` does not execute it at all. AC4 is checked where it lives: `jest.config.js`'s
+  glob, `test:packages` scoping `@noodl/mcp`, `pr.yml` running `test:packages` — read from disk, and
+  confirmed independently with `jest --listTests`. ✅ **A spec written against the wrong runner is
+  green and measures nothing.**
+
+**Gates taken:** `sbr012RawColourGate` **25/25**; the **full `@noodl/mcp` suite — 79 suites, 1040
+tests, exit 0**, with the file count reconciled against `jest --listTests` (79) so no suite silently
+failed to run; `sb007Template` **byte-identity holds**; `sb006PublicSite`/`sb005AdminPanel`/
+`sb004Authoring` **106/106** after the regex extraction; `tsc --noEmit` on `@noodl/mcp` **exit 0**
+(jest runs with `diagnostics: false`, so a type error would otherwise never surface).

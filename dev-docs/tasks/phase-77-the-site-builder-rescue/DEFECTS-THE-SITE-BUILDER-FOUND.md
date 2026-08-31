@@ -1738,6 +1738,39 @@ explicit id, which is why it is registered here (where it was measured) but belo
 
 ---
 
+## D35 — 🟢 FIXED s35. The setup page spaced itself with a bare `24` where `--space-6` is `24px`
+
+**Found by SBR-012's gate on its first run over the whole artefact, and fixed in the same session
+because the doctrine left no other disposition.**
+
+`/Pages/Setup` → the `Form` group carried `paddingTop: 24`, `paddingLeft: 24`, `paddingRight: 24`
+(`sb005Components.ts`). `--space-6` **is** `24px`, so the intent was the token and the spelling was
+a literal.
+
+⚠️ **Not a rendering defect, and that was measured rather than assumed.** `paddingTop` on a `Group`
+is `px`-only in `node-catalog.json` (`defaultUnit: "px"`, `units: ["px"]`), so it rendered 24px.
+`DiagnosticCode.UnitlessDimension` fires only when a port's default unit is `%` — it was **right**
+to stay silent here, and the sibling `width` port, which *is* `%`-default, is why the check exists
+at all. Reasoning from that sibling would have produced a confident wrong reading.
+
+🔴 **It is a survivor, and that is the finding.** The identical trio was removed from
+`/Pages/PageEditor`'s `Editor` group during **SBR-007**, with the sentence *"a raw dimension here
+had no token reason."* This copy lived on because **nothing scanned it**: `sb006PublicSite.test.ts`
+reads the five SB-006 components, and Setup belongs to SB-005. A gate whose population is narrower
+than the artefact reports a clean template it has not looked at.
+
+### 🟢 The fix, s35
+
+`var(--space-6)` on all three ports. `npm run template:site-builder` regenerates with a diff of
+**exactly those three lines**; `sb007Template` byte-identity holds; the full `@noodl/mcp` suite is
+79 suites / 1040 tests, exit 0.
+
+**No owner needed — it is closed.** Filed here rather than left in the task file because a fix with
+no row is a repair the register cannot count, and this one is the argument for SBR-012's second
+population.
+
+---
+
 ## Where these rows were filed, and why not all of them went to the same place
 
 **s31, 2026-08-30.** Phase 80's `TASKS.md` came clean in the working tree while this session was

@@ -158,8 +158,14 @@ export const SITE_CURRENT_SLUG_VAR = 'siteCurrentSlug';
  * An **exemption list, not a relaxation** (the `REMOVED_BY_SB018` pattern): the
  * suite scans the five component sets for raw style values and every hit must be
  * named here, so adding a raw value reds the gate until someone writes down why.
- * SBR-012 widens the same scan to the generated artefact and the other two
- * component sets.
+ *
+ * ✅ **SBR-012 built the widening this comment promised.** `TEMPLATE_DIMENSION_EXEMPTIONS`
+ * (`siteBuilderStyleScan.ts`) covers the whole generated artefact — nine entries,
+ * of which these four are the SB-006 half, imported by key rather than retyped so
+ * the reasons below have one copy. 🔴 **This list is no longer the whole story:**
+ * a raw dimension outside `/Site/*` and `/Pages/Site` is named there, not here,
+ * and the template-wide keys carry a component because several components hold a
+ * node labelled `Heading` and only one sets a raw width.
  *
  * 🔴 Colour, radius, gap, face and font size have **no** entries and must not
  * gain any — the vocabulary covers all five, so a raw one there is a defect
