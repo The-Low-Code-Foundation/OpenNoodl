@@ -1,0 +1,338 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "0667e8cd-9d35-556c-8525-2048e52218ec",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "page",
+      "type": "Page",
+      "label": "V28",
+      "parameters": {
+        "title": "V28 — a token in a units-typed port",
+        "urlPath": "home"
+      },
+      "children": [
+        "shell"
+      ]
+    },
+    {
+      "id": "shell",
+      "type": "Group",
+      "label": "Shell",
+      "parent": "page",
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "scrollEnabled": true,
+        "backgroundColor": "var(--surface-1)"
+      },
+      "children": [
+        "a_band",
+        "b_band",
+        "c_band",
+        "d_band"
+      ]
+    },
+    {
+      "id": "a_band",
+      "type": "Group",
+      "label": "ARM-A-EXPLICIT-200PX",
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "rowGap": "var(--space-2)",
+        "paddingTop": "var(--space-4)",
+        "paddingBottom": "var(--space-4)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)"
+      },
+      "children": [
+        "a_label",
+        "a_box"
+      ],
+      "parent": "shell"
+    },
+    {
+      "id": "a_label",
+      "type": "Text",
+      "label": "label",
+      "parent": "a_band",
+      "parameters": {
+        "text": "ARM-A-EXPLICIT-200PX",
+        "textStyle": "body",
+        "color": "var(--text-1)"
+      }
+    },
+    {
+      "id": "a_box",
+      "type": "Group",
+      "label": "box",
+      "parent": "a_band",
+      "parameters": {
+        "sizeMode": "explicit",
+        "height": {
+          "value": 64,
+          "unit": "px"
+        },
+        "backgroundColor": "var(--primary)",
+        "borderRadius": "var(--radius-md)",
+        "width": {
+          "value": 200,
+          "unit": "px"
+        }
+      },
+      "children": [
+        "a_inner"
+      ]
+    },
+    {
+      "id": "a_inner",
+      "type": "Group",
+      "label": "inner",
+      "parent": "a_box",
+      "parameters": {
+        "sizeMode": "explicit",
+        "width": {
+          "value": 8,
+          "unit": "px"
+        },
+        "height": {
+          "value": 8,
+          "unit": "px"
+        },
+        "backgroundColor": "var(--primary-foreground)"
+      },
+      "children": []
+    },
+    {
+      "id": "b_band",
+      "type": "Group",
+      "label": "ARM-B-TOKEN-IN-WIDTH",
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "rowGap": "var(--space-2)",
+        "paddingTop": "var(--space-4)",
+        "paddingBottom": "var(--space-4)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)"
+      },
+      "children": [
+        "b_label",
+        "b_box"
+      ],
+      "parent": "shell"
+    },
+    {
+      "id": "b_label",
+      "type": "Text",
+      "label": "label",
+      "parent": "b_band",
+      "parameters": {
+        "text": "ARM-B-TOKEN-IN-WIDTH",
+        "textStyle": "body",
+        "color": "var(--text-1)"
+      }
+    },
+    {
+      "id": "b_box",
+      "type": "Group",
+      "label": "box",
+      "parent": "b_band",
+      "parameters": {
+        "sizeMode": "explicit",
+        "height": {
+          "value": 64,
+          "unit": "px"
+        },
+        "backgroundColor": "var(--primary)",
+        "borderRadius": "var(--radius-md)",
+        "width": "var(--space-16)"
+      },
+      "children": [
+        "b_inner"
+      ]
+    },
+    {
+      "id": "b_inner",
+      "type": "Group",
+      "label": "inner",
+      "parent": "b_box",
+      "parameters": {
+        "sizeMode": "explicit",
+        "width": {
+          "value": 8,
+          "unit": "px"
+        },
+        "height": {
+          "value": 8,
+          "unit": "px"
+        },
+        "backgroundColor": "var(--primary-foreground)"
+      },
+      "children": []
+    },
+    {
+      "id": "c_band",
+      "type": "Group",
+      "label": "ARM-C-NO-WIDTH-AT-ALL",
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "rowGap": "var(--space-2)",
+        "paddingTop": "var(--space-4)",
+        "paddingBottom": "var(--space-4)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)"
+      },
+      "children": [
+        "c_label",
+        "c_box"
+      ],
+      "parent": "shell"
+    },
+    {
+      "id": "c_label",
+      "type": "Text",
+      "label": "label",
+      "parent": "c_band",
+      "parameters": {
+        "text": "ARM-C-NO-WIDTH-AT-ALL",
+        "textStyle": "body",
+        "color": "var(--text-1)"
+      }
+    },
+    {
+      "id": "c_box",
+      "type": "Group",
+      "label": "box",
+      "parent": "c_band",
+      "parameters": {
+        "sizeMode": "explicit",
+        "height": {
+          "value": 64,
+          "unit": "px"
+        },
+        "backgroundColor": "var(--primary)",
+        "borderRadius": "var(--radius-md)"
+      },
+      "children": [
+        "c_inner"
+      ]
+    },
+    {
+      "id": "c_inner",
+      "type": "Group",
+      "label": "inner",
+      "parent": "c_box",
+      "parameters": {
+        "sizeMode": "explicit",
+        "width": {
+          "value": 8,
+          "unit": "px"
+        },
+        "height": {
+          "value": 8,
+          "unit": "px"
+        },
+        "backgroundColor": "var(--primary-foreground)"
+      },
+      "children": []
+    },
+    {
+      "id": "d_band",
+      "type": "Group",
+      "label": "ARM-D-TOKEN-IN-PADDING",
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "rowGap": "var(--space-2)",
+        "paddingTop": "var(--space-4)",
+        "paddingBottom": "var(--space-4)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)"
+      },
+      "children": [
+        "d_label",
+        "d_box"
+      ],
+      "parent": "shell"
+    },
+    {
+      "id": "d_label",
+      "type": "Text",
+      "label": "label",
+      "parent": "d_band",
+      "parameters": {
+        "text": "ARM-D-TOKEN-IN-PADDING",
+        "textStyle": "body",
+        "color": "var(--text-1)"
+      }
+    },
+    {
+      "id": "d_box",
+      "type": "Group",
+      "label": "box",
+      "parent": "d_band",
+      "parameters": {
+        "sizeMode": "explicit",
+        "height": {
+          "value": 64,
+          "unit": "px"
+        },
+        "backgroundColor": "var(--primary)",
+        "borderRadius": "var(--radius-md)",
+        "width": {
+          "value": 200,
+          "unit": "px"
+        },
+        "paddingLeft": "var(--space-16)"
+      },
+      "children": [
+        "d_inner"
+      ]
+    },
+    {
+      "id": "d_inner",
+      "type": "Group",
+      "label": "inner",
+      "parent": "d_box",
+      "parameters": {
+        "sizeMode": "explicit",
+        "width": {
+          "value": 8,
+          "unit": "px"
+        },
+        "height": {
+          "value": 8,
+          "unit": "px"
+        },
+        "backgroundColor": "var(--primary-foreground)"
+      },
+      "children": []
+    }
+  ],
+  "visualRoots": [
+    "page"
+  ]
+}

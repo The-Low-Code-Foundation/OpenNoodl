@@ -618,6 +618,101 @@ const UNIT_SUFFIXED_TRACK = /^(\d+(?:\.\d+)?)(fr|px|%|em|rem|vw|vh)$/;
  */
 const RAW_COLOR = /^\s*(#[0-9a-fA-F]{3,8}|rgba?\(|hsla?\()/;
 
+// ─── VIB-007 / register V28: the raw spacing literal ─────────────────────────
+
+/**
+ * The ports on which a `--space` token is the system's answer, and the row's own claim narrowed
+ * by two measurements rather than by taste.
+ *
+ * 🔴 **`marginX`/`marginY` on a `Columns` are deliberately NOT here, and tokenising them is a
+ * defect rather than a repair.** `Columns.tsx`'s own docblock: *"autofold genuinely needs a number,
+ * and a `var()` cannot be resolved without computed styles. A tokenised `marginX` still folds as
+ * though the gutter were 0, and a tokenised `minWidth` disables `autoFit` entirely."* The 15
+ * `marginX` values in the corpus are the largest group that *looks* like this family and every one
+ * of them is correct. A rule written to V28's sentence would have told an author to break the fold.
+ *
+ * ⚠️ `borderRadius`, `fontSize`, `iconSize`, `zIndex` and the `boxShadow*` offsets are excluded for
+ * the plainer reason: a radius is not a gap, and `--space-2` meaning 8px is a coincidence of the
+ * scale rather than a statement that 8px of corner is on-system.
+ */
+const SPACING_PORTS = new Set([
+  'paddingTop',
+  'paddingBottom',
+  'paddingLeft',
+  'paddingRight',
+  'marginTop',
+  'marginBottom',
+  'marginLeft',
+  'marginRight',
+  'rowGap',
+  'columnGap',
+  'gap'
+]);
+
+/**
+ * `--space` tokens by their pixel value, so the message can name the exact token to write.
+ *
+ * 🔴 **The rule fires only when a token matches EXACTLY**, which is the second narrowing and the
+ * one that keeps its advice actionable. `raw-color-literal` can warn on any hex because
+ * `get_style_vocabulary` will always have *a* colour to offer; a `paddingTop: 13` has no token that
+ * means 13px, and telling an author to tokenise it would be telling them to invent one. A value off
+ * the scale is a different finding — *"this spacing is off the scale"* — and this is not it.
+ *
+ * ⚠️ Kept in step with `DefaultTokens.ts` by `tests-unit/vib-007/spacingLiteral.test.ts`, which
+ * derives the table from the token file and reddens if the scale moves. A second copy of a palette
+ * drifts silently, so it is graded rather than trusted.
+ */
+const SPACE_TOKEN_BY_PX: Record<number, string> = {
+  0: '--space-0',
+  1: '--space-px',
+  2: '--space-0-5',
+  4: '--space-1',
+  6: '--space-1-5',
+  8: '--space-2',
+  10: '--space-2-5',
+  12: '--space-3',
+  14: '--space-3-5',
+  16: '--space-4',
+  20: '--space-5',
+  24: '--space-6',
+  28: '--space-7',
+  32: '--space-8',
+  36: '--space-9',
+  40: '--space-10',
+  44: '--space-11',
+  48: '--space-12',
+  56: '--space-14',
+  64: '--space-16',
+  80: '--space-20',
+  96: '--space-24',
+  112: '--space-28',
+  128: '--space-32'
+};
+
+/**
+ * The pixel value a spacing parameter carries, or `undefined` if it is not a plain pixel length.
+ *
+ * Two shapes only: a bare number (the legacy and `initialize()` form, read as px on these ports)
+ * and the `{ value, unit }` object the property panel writes. A `var()`, a `clamp()` or a `%`
+ * returns `undefined` — those are on-system or intentional, and neither is this rule's business.
+ *
+ * 🔴 **A `"16px"` STRING is deliberately not one of them, and leaving it in was a real regression
+ * caught by a neighbour's spec.** On a units-typed port that string is not merely untokenised, it is
+ * *dropped* — `setInputValue` finds no `unit` and deletes the property — and
+ * `InvalidParameterValue` already reports it as an **error** whose message is *"dropped silently"*.
+ * Reading it here made this rule fire first and `continue`, replacing that error with a warning
+ * about tokens: an author would have been told their spacing was off-system when in fact it was
+ * about to vanish. A new check that quietly downgrades an existing one is worse than no check.
+ */
+export function spacingPixels(value: unknown): number | undefined {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : undefined;
+  if (isPlainObject(value)) {
+    const { value: v, unit } = value as { value?: unknown; unit?: unknown };
+    if (unit === 'px' && typeof v === 'number' && Number.isFinite(v)) return v;
+  }
+  return undefined;
+}
+
 /**
  * Mirrors `readLayoutToken` in the runtime
  * (`noodl-viewer-react/src/components/visual/Columns/Columns.tsx`), which is the
@@ -1048,6 +1143,35 @@ export function checkParameterValues(
           location: locate(component, node, name)
         });
         continue;
+      }
+
+      // VIB-007 / V28 — the spacing half of the sentence the doctrine only enforces for colour:
+      // *"never emit a raw hex or px when a token fits"*. Narrowed twice from the register row —
+      // `Columns` gutters must stay numeric and the token has to match exactly — because the
+      // unnarrowed rule would have condemned 15 correct corpus values and offered a token that
+      // does not exist for a 16th.
+      //
+      // ⚠️ Both narrowings live in the two tables above and NOT in a condition here. A
+      // `node.type !== COLUMNS_TYPE` guard was written first and was dead on arrival: `Columns`
+      // declares `marginX`/`marginY` and no padding port at all, and neither margin is in
+      // SPACING_PORTS. A dead guard reads as the thing protecting you, which is worse than no
+      // guard — the spec asserts the real mechanism instead.
+      if (SPACING_PORTS.has(name)) {
+        const px = spacingPixels(value);
+        const token = px === undefined ? undefined : SPACE_TOKEN_BY_PX[px];
+        if (token) {
+          diagnostics.push({
+            code: DiagnosticCode.RawSpacingLiteral,
+            severity: 'warning',
+            message:
+              `"${name}" is ${JSON.stringify(value)}, which is ${px}px written out. Spacing comes ` +
+              `from the project's scale — "var(${token})" is exactly this value — so the rhythm of ` +
+              'the page stays one decision rather than a number repeated by hand.',
+            location: locate(component, node, name),
+            suggestion: JSON.stringify(`var(${token})`)
+          });
+          continue;
+        }
       }
 
       const problem = wireFormatFor(port)?.check(value, portTypeShape(port)!);

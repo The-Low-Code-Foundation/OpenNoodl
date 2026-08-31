@@ -257,6 +257,37 @@ export enum DiagnosticCode {
    */
   RawColorLiteral = 'raw-color-literal',
   /**
+   * VIB-007 / register V28 — a spacing port written as a raw pixel value where a `--space` token
+   * carries exactly that number. The other half of the doctrine's *"never emit a raw hex or px when
+   * a token fits"*, which until now was enforced only for colour.
+   *
+   * 🔴 **Narrowed twice, and both narrowings came from a measurement rather than from taste.**
+   * `Columns`' `marginX`/`marginY` are excluded because the runtime's own note says autofold needs a
+   * number and a tokenised gutter folds as though it were 0 — the 15 corpus values that look most
+   * like this defect are all correct. And the rule fires only when a token matches the value
+   * exactly, so its advice is always a token that exists; `paddingTop: 13` is a different finding.
+   *
+   * A warning, like its colour twin and for the same reason: imported and legacy content is
+   * untokenised rather than wrong.
+   */
+  RawSpacingLiteral = 'raw-spacing-literal',
+  /**
+   * VIB-007 / register V33 — an image-typed input set to the empty string with no connection
+   * feeding it: a picture with no source, which draws nothing.
+   *
+   * 🔴 **The connection list is the predicate.** `ui-card-grid-repeater` ships `"src": ""` on a
+   * repeater's card and is *correct* — `card_inputs.image` is wired into it and fills it per row.
+   * `ui-image-scrim-band` shipped `"backgroundImage": ""` with nothing wired and was the recipe
+   * named for its image. Two identical empty strings, opposite verdicts.
+   *
+   * A warning rather than an error, and deliberately: an agent that places an Image in one call
+   * and wires it in the next is momentarily in this state and should not be refused. It is
+   * nonetheless fatal in `catalog:examples`, which runs warnings-as-errors — and that is the gate
+   * V33 actually walked through. ⚠️ Whether the poverty family should ever refuse is register V42
+   * and is not decided here.
+   */
+  UnsourcedImage = 'unsourced-image',
+  /**
    * A bare number on a units-typed port that is read as a **percentage** —
    * `width`, `height`, `maxWidth`, `minWidth`. `{ value, unit }` is the form
    * real content uses: across the whole repository these ports are written in

@@ -524,3 +524,178 @@ closed here. The other five name measurements nothing in this session takes — 
 band whose gutter disagrees with its siblings, a repeater with no empty state. 🔴 §2's mapping
 classifies a row by the mechanism that would have **prevented** it, which is not the same claim as
 *"the defect is now fixed"*.
+
+---
+
+## §9 🔴 AC2's TAIL BUILT, 2026-08-31 — four of the five, and three register rows were wrong
+
+§6 left AC2 owing **V23, V28, V29, V32, V33**. Four are built. **V29 is not**, and §9.6 says why in a
+sentence rather than leaving it to be inferred.
+
+🔴 **The headline is not the four checks. It is that three of the five rows did not survive being
+measured** — and in two cases the predicate §3 tabled would have condemned correct authoring,
+including the phase's only WORTHY artefact. This is the fourth, fifth and sixth time in this phase
+that a register row has been found materially wrong when the thing it describes was finally
+measured (after V5, V6, V7 and V12).
+
+### 9.1 V32 — the corpus gate now runs `raw-color-literal`, and it cost one repair
+
+The row is a sentence about what a green gate claims: a `"boxShadowColor": "rgb(15 23 42 / 0.08)"`
+passed `catalog:examples` **66/66 strict, warnings-as-errors**, and was caught by a person reading
+the gate's header. *"The gate is green"* and *"the corpus has no raw colours"* were different claims
+and only the first was true.
+
+**Blast radius measured before the switch, not after.** Across all 67 examples the whole
+`checkParameterValues` set reports **one** `raw-color-literal`: `var-avatar-picker-responsive`'s
+`Color` node holding `#3366ff`. That is what made this the cheapest of the four families LAS-007
+deferred, rather than a rerun of the F14 argument.
+
+🔴 **The repair needed a ruling, and got one.** `var(--primary)` reaching a colour port *through a
+`Color` variable node* is a runtime question. `Color`'s `cast` is `(value) => value`, which is a
+reading of one file. `packages/nodegx-backend/tests/vib007-v32.look.ts` renders three arms on one
+page: a `Color` node holding a hex (the known-firing signal), the same wiring holding
+`var(--primary)`, and a `Text` whose `color` **parameter** is that token with no node in between.
+Arms B and C paint the identical `rgb(37, 99, 235)`; arm A paints `rgb(51, 102, 255)`; zero console
+errors. ⚠️ **B is compared against C, never against a literal** — a hard-coded `rgb(37, 99, 235)`
+would be a second copy of `DefaultTokens.ts` that reddens when the palette moves and nothing breaks.
+
+⚠️ **Also measured: the switch leaves a hole, and in the corpus the hole is luck.**
+`checkParameterValues` can only reach a port the catalog declares, so a colour on a
+**dynamically-discovered** port is invisible to it — `anim-hover-highlight`'s `Color Blend.color-0`
+and `color-1` are two raw hexes the gate still cannot see. They are also **correct authoring**:
+`Color Blend`'s own port description reads *"the inputs must be 6-digit hex, since any other notation
+yields nonsense"*, so a token would break them. A different dynamic-port node would not have that
+excuse. Pinned in the spec so it is known rather than assumed → register **V43**.
+
+### 9.2 V33 — a picture with no source, and the connection list is the whole predicate
+
+`ui-image-scrim-band` shipped `"backgroundImage": ""` with nothing wired into it, through a gate
+running it 66/66 strict. The instructive half is the control in the same sweep:
+`ui-card-grid-repeater`'s identical `"src": ""` **is** connection-fed and is *correct*. Two empty
+strings, opposite verdicts, and only the wires separate them — so the obvious form of this check, a
+static "no empty image parameters" sweep, would be wrong about one of the only two in the corpus.
+
+`DiagnosticCode.UnsourcedImage` (`unsourced-image`, **warning**) and `checkImageSources` ship in
+`validation/imageSource.ts`, on the corpus gate and on the authoring door
+(`authoredCandidate.ts`, reading `connectedInputs` — the set that already answers *is this input
+fed*). An **absent** parameter is not a hit; only an explicitly empty one is.
+
+🔴 **The corpus asked for a narrowing before the check existed.** `ui-image-scrim-band`'s own
+description ends *"Leaving it empty is not broken: the gradient alone is still a designed ground"* —
+and it is right: `backgroundImage` and `backgroundGradient` compose into one CSS declaration. Without
+an exemption this check would have contradicted the recipe it was written for, trading a V33 for a
+V39. **The narrowing is the rule, not a concession to it**, and the mutation test restores the
+pre-repair value *with the gradient deleted* so the exemption is proved scoped rather than absolute.
+
+⚠️ **Warning, not error, and that is a decision**: an agent that places an Image in one call and
+wires it in the next is momentarily in this state. It is nonetheless fatal in `catalog:examples`,
+which runs warnings-as-errors — the gate V33 actually walked through. Whether the poverty family
+should ever refuse is **V42**.
+
+### 9.3 V23 — the predicate as tabled would have condemned the WORTHY page
+
+§3's table says *"a glyph name absent from the installed manifest"*. Measured over all 67 examples
+before anything was written: **16 glyph values, of which 7 render but sit outside the curated 212 —
+and 5 of those 7 are on `ui-landing-page`**, the VIB-006 page Richard ruled *"it looks fucking
+pro"*. **Not one corpus glyph fails to render.** A check written to that sentence fires on a page a
+person has already ruled beautiful, for glyphs that draw perfectly. That is `dead-placeholder-text`
+(§8) one section later.
+
+**The two lists are different claims, and the product ships the proof.** The starter manifest's own
+`_note`: *"This is a curated starter set. The bundled font contains all 1998 Lucide glyphs and
+styles.css has a rule for every one of them, so any name from lucide.dev can be added."* The library
+module's copy of the same manifest lists all **1998**, of which the starter's 212 is a strict subset.
+
+ - absent from the **stylesheet** → draws nothing. A defect. The corpus has **none**.
+ - absent from the curated **manifest** → renders, but the editor's picker cannot offer it, so a
+   model copying the corpus writes a value a person then cannot find in the UI. **That is V23's
+   actual complaint**, and the repair is to widen the list, not to flag the artefact.
+
+So V23 ships as a repair with a gate: `icon-inbox`, `icon-sprout` and `icon-recycle` added to the
+curated set (**212 → 215**), and `tests-unit/vib-007/corpusGlyphsAreAuthorable.test.ts` to stop the
+corpus drifting off it again. ⚠️ The *correct* diagnostic — a glyph with no stylesheet rule at all —
+has **zero** corpus hits and needs the project's `noodl_modules/`, which the pure value rule
+deliberately cannot read (`parameterValues.ts`'s `icon` docblock says so). It belongs at the door,
+where `readIconSets` already reads the manifest, and is **not built** → register **V44**.
+
+### 9.4 V28 — both of the row's claims were wrong, and the rule that survives is narrow
+
+**Claim 2, *"a `var()` in a units-typed port, which is dropped silently"* — disproved by a render.**
+`vib007-v28.look.ts` draws four arms differing only in `width`: explicit `200px` reads **200**,
+`var(--space-16)` reads **64** — exactly the token's value — no width at all reads **708**, and the
+same token on `paddingLeft` insets by **64**. The value is **honoured**. Arm C is what makes that a
+measurement rather than an inference: *dropped* and *resolved to something unexpected* are different
+verdicts and only a rendered no-width arm separates them. A diagnostic written to the row's sentence
+would have told authors that correct, working code was broken.
+
+**Claim 1, *"30 raw pixel numbers where a `--space` token belongs"* — re-derived to 1.** Of **402**
+spacing parameters in the corpus, **401** are tokenised. The 15 that look most like the family are
+`Columns` `marginX`/`marginY`, and those are correct: `Columns.tsx`'s own note reads *"autofold
+genuinely needs a number… A tokenised `marginX` still folds as though the gutter were 0, and a
+tokenised `minWidth` disables `autoFit` entirely."*
+
+What ships is `DiagnosticCode.RawSpacingLiteral` (`raw-spacing-literal`, **warning**) — the spacing
+half of the doctrine's *"never emit a raw hex or px when a token fits"*, which until now was enforced
+for colour only. **Narrowed twice, both from measurements:** the gutters are outside the port set,
+and the rule fires only when a `--space` token matches the value **exactly**, so its advice is always
+a token that exists. `paddingTop: 13` is a different finding and this is not it. One corpus hit,
+repaired (`logic-toggle-details-panel`'s `paddingTop: 8` → `var(--space-2)`).
+
+### 9.5 🔴 Two defects this session's own specs found in this session's own code
+
+Worth more than the four checks, because both were invisible to every green gate:
+
+1. **The new rule silently downgraded an existing error.** `paddingTop: "16px"` on a units-typed port
+   is not untokenised — it is **dropped**, and `InvalidParameterValue` has always reported it as an
+   **error** whose message is literally *"dropped silently"*. Reading the `"16px"` string as a
+   spacing literal made the new rule fire first and `continue`, replacing that error with a warning
+   about tokens: an author would have been told their spacing was off-system when it was about to
+   vanish. Caught by `tests-unit/aib-001/parameterValues.test.ts` — a **neighbour's** spec, not this
+   task's. 🔴 **A new check that quietly downgrades an old one is worse than no check, and only
+   running the neighbourhood finds it.**
+2. **A guard that was dead on arrival.** The rule was first written `node.type !== COLUMNS_TYPE &&
+   SPACING_PORTS.has(name)`. `Columns` declares `marginX`/`marginY` and **no padding port at all**,
+   and neither margin is in `SPACING_PORTS` — so the type test could never have excluded anything.
+   It read as the thing protecting the fold while the port set was doing all the work. Removed, and
+   the spec now asserts the real mechanism. **A dead guard is worse than no guard**: the next reader
+   trusts it.
+
+The spacing scale table was also short by four tokens (`--space-20/24/28/32`), found on the first run
+of the spec that **derives** the scale from `DefaultTokens.ts` rather than restating it — the second
+copy of a palette drifts, so it is graded rather than trusted.
+
+### 9.6 What AC2 still owes — one predicate
+
+**V29 is unbuilt.** *"A `maxWidth` on a `Text` inside a centred shell — the measure belongs to the
+shell."* It is the last of the six and it is the one with a **ruling already attached** (Richard,
+2026-08-31: *"the structural page divs have a max width… white space to the left and right
+equally"*), so the predicate does not need an experiment first the way V22 and V28 did. ⚠️ It does
+need a decision the other four did not: `maxWidth` appears **42 times** in the corpus, by far the
+largest raw-px population measured this session, so the blast radius is real and the narrowing is
+most of the work. Read §9.4 for what happened the last time a row's number was taken at face value.
+
+### Gates (2026-08-31) — 🔴 every row is an EXIT STATUS
+
+| gate | reading |
+|---|---|
+| `vib007-v32.look.ts` (real Chrome, three arms) | **exit 0** — 1/1, `consoleErrors []` |
+| `vib007-v28.look.ts` (real Chrome, four arms) | **exit 0** — 1/1, `consoleErrors []` |
+| `npm run catalog:examples` | **exit 0** — 67/67 strict, with three more checks switched on |
+| `catalog:examples` on a mutated copy (V32) | **exit 1** — 66/67, the one raw colour named |
+| `npm run catalog:merge:check` | **exit 0** after regeneration; **exit 1 before it**, on this session's corpus edits |
+| the four new specs + `undeclaredComponentPort` + `phase-55` | **exit 0** — 6 suites / 50 tests |
+| editor `validation|parameterValue|diagnostic|vib-007` | **exit 0** — **16 suites / 219 tests** |
+| `npm run typecheck:editor` | **exit 0** |
+| `npm run typecheck:mcp` | **exit 0** |
+| full `noodl-mcp` suite | ⚠️ **exit 1 — 83 suites / 1085 tests, 4 failed.** See below |
+| `npm run typecheck:backend-tests` | ⚠️ **not run** — OOMs on this box (exit 134). CI `pr.yml:39` covers it |
+| `npm run test:ci` | ⚠️ **not run** — a peer session had `scripts/start.ts` and a community `npm run dev` live in this checkout throughout |
+
+🔴 **The red suites are `provision.test.ts` + `projectOwnsBackend.test.ts` again, and it was measured
+rather than argued.** Neither file imports **anything** this session touched — `grep -c validation`
+over both returns **0**, and every change here is in `validation/`, the corpus, `scripts/` or specs.
+The **failing set moves between runs**: the full-suite run failed 4 (three in `provision`, one in
+`projectOwnsBackend`), the pair run alone failed **3 / 20 passed** — a *different* three, with
+`projectOwnsBackend` green. And a peer session (P80 s41) announced and was running `dev:debug` plus a
+community dev server against this checkout for the whole session, which is a plausible holder of the
+durable backend state these two contend on. **This is the third handoff to record the same pair.**

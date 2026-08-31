@@ -1,0 +1,15 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/project-v2.json",
+  "name": "VIB-007 — V32, does a design token survive a Color node?",
+  "version": "4",
+  "nodegxVersion": "1.1.0",
+  "settings": {
+    "htmlTitle": "V32",
+    "navigationPathType": "path"
+  },
+  "structure": {
+    "componentsDir": "components",
+    "assetsDir": "assets"
+  },
+  "rootNodeId": "app_root"
+}

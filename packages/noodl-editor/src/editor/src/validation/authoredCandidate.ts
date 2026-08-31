@@ -63,6 +63,7 @@ import {
   type ComponentInterfaceView
 } from './componentInterface';
 import { DiagnosticCode, type Diagnostic } from './diagnostics';
+import { checkImageSources } from './imageSource';
 import { checkFunctionNodePorts, checkScriptNodeRunnable, type FunctionWireLike } from './functionPorts';
 import { checkInstancePorts, type AuthoredPortLike } from './instancePorts';
 import { checkNavigation, checkPageShape, looksLikePageComponent, PAGE_NODE_TYPE } from './navigation';
@@ -557,6 +558,12 @@ export function authoredPreconditionDiagnostics(options: AuthoredPreconditionOpt
     // of rows and every one shows the component's own placeholder. Reads wires; omitted
     // means "do not check", the same convention as its neighbours.
     ...(wires ? checkUndeclaredComponentPorts(nodes, wires, { component }) : []),
+    // VIB-007 / register V33 — an image-typed input set to "" with nothing wired into it. The
+    // connection list is the whole predicate: `ui-card-grid-repeater`'s identical `"src": ""` is
+    // correct because a repeater fills it per row, and `ui-image-scrim-band`'s was the recipe
+    // named for its image shipping without one. Reads `connections` rather than `wires` because
+    // the question is "is this input fed", which is exactly what that set answers.
+    ...checkImageSources(nodes, { component, catalog, connectedInputs: connections }),
     ...checkRepeaterTemplate(nodes, { component, components, connectedInputs: connections }),
     // DEF-010 (SB-009) — the other twelve of the catalog's thirteen
     // component-typed ports. `For Each.template` is skipped inside the check:

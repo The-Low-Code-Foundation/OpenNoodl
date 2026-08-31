@@ -33,7 +33,7 @@
           "type": "Group",
           "label": "Details panel",
           "parent": "root",
-          "parameters": { "flexDirection": "column", "paddingTop": 8 },
+          "parameters": { "flexDirection": "column", "paddingTop": "var(--space-2)" },
           "children": ["details_text"]
         },
         {
