@@ -288,6 +288,13 @@ the ruling that arrived beside them:
    which has to choose a hero anyway.
 2. **Are the six faces the right six?** They are the fix for three identical portraits and diversity
    was a deliberate criterion, but the specific people are his call. Owner: **NONE** — ask him.
-3. **Is 3.32 MB per project acceptable?** It is copied into every project at creation. Cut from
-   4.63 MB by dropping texture resolution; it could halve again by shipping fewer than 44.
-   Owner: **NONE** — ask him.
+3. **Is 3.32 MB per project acceptable?** — 🔴 **ANSWERED, AND THE ANSWER IS WORSE THAN THE
+   QUESTION ASSUMED.** He asked whether it is *only* per project, or whether it also goes out with a
+   deployed app. **It goes out with the deploy.** Measured by running the real filter
+   (`buildIgnoreMatcher`) over the paths, with `docs/`, `node_modules/` and `components/` beside them
+   as known-excluded controls: those three are EXCLUDED and **every `starter-imagery/*.webp` SHIPS**.
+   `noodl_modules/` is in no default ignore rule and appears nowhere in `utils/compilation/`.
+   ⚠️ Scope it right: browsers fetch only what a page references, so this is **deploy payload, not
+   per-visitor page weight**. ✅ And it confirms the licence reasoning was *necessary* — the library
+   really is redistributed twice, so CC0 was required, not cautious. Filed as **V36**, and the
+   decision (prune-on-deploy / ship fewer / accept it) is his.
