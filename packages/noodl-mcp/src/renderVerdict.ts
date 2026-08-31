@@ -63,6 +63,21 @@ import * as path from 'path';
 
 import type { RenderFindingPayload, RenderReportPayload } from './render';
 
+/**
+ * VIB-007 M3 — the poverty family, read from the measurement package rather
+ * than restated. `isPovertyFinding` is the only thing that decides which codes
+ * mean *"whole, and a default template"*, and a second copy of that list here
+ * would be right today and wrong the first time a fourth one ships.
+ *
+ * ⚠️ Required rather than imported for the reason the rest of this package
+ * reaches `render-report.js` that way: the harness resolves through the
+ * workspace and has no build step.
+ */
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { isPovertyFinding } = require('@nodegx/render-measure') as {
+  isPovertyFinding: (f: { code?: string } | null | undefined) => boolean;
+};
+
 /** One routed page the render could not measure, and why. */
 export interface UnmeasuredPage {
   component: string;
@@ -79,6 +94,21 @@ export interface RenderVerdict {
   blocking: RenderFindingPayload[];
   /** Routed pages nobody looked at. Empty on a done verdict, by construction. */
   unmeasuredPages: UnmeasuredPage[];
+  /**
+   * VIB-007 M3 — findings that say the page is **whole and worth nothing to
+   * look at**: one ground end to end, no imagery or iconography, no display
+   * type. README §2's WordPress-starter tells, measured.
+   *
+   * 🔴 **Present on a `done: true` verdict, and that is the whole point.** These
+   * do not block — they are `warning`, and README §2 exempts app-chrome pages
+   * from the marketing tells they encode, so refusing to certify a settings page
+   * would be this instrument being confidently wrong. But a verdict that said
+   * *"Rendered, and the render is clean"* about a page measuring as a default
+   * template would be the AWP-004 defect wearing this module's face for the
+   * second time: a summary out-claiming what was actually established. All nine
+   * VIB-001 baseline pages render clean.
+   */
+  poverty: RenderFindingPayload[];
   /** One sentence, written to be read by a model that has nothing else. */
   reason: string;
 }
@@ -106,6 +136,10 @@ export function blockingFindings(report: RenderReportPayload): RenderFindingPayl
   return (report.findings ?? []).filter((f) => f.severity === 'error');
 }
 
+export function povertyFindings(report: RenderReportPayload): RenderFindingPayload[] {
+  return (report.findings ?? []).filter((f) => isPovertyFinding(f));
+}
+
 export function unmeasuredPages(report: RenderReportPayload): UnmeasuredPage[] {
   const pages = (report as RenderReportPayload & PagesBearingReport).pages;
   if (!Array.isArray(pages)) return [];
@@ -118,8 +152,23 @@ export function unmeasuredPages(report: RenderReportPayload): UnmeasuredPage[] {
 export function verdictFor(report: RenderReportPayload): RenderVerdict {
   const blocking = blockingFindings(report);
   const unmeasured = unmeasuredPages(report);
+  const poverty = povertyFindings(report);
   if (blocking.length === 0 && unmeasured.length === 0) {
-    return { done: true, blocking, unmeasuredPages: unmeasured, reason: 'Rendered, and the render is clean.' };
+    // 🔴 Done and clean are two claims, and M3 is the case where they part
+    // company: nothing is broken, and the page reads as a WordPress starter.
+    // Saying only the first is what every gate in the product did to all nine
+    // baseline pages.
+    const codes = [...new Set(poverty.map((f) => f.code))];
+    return {
+      done: true,
+      blocking,
+      unmeasuredPages: unmeasured,
+      poverty,
+      reason: poverty.length
+        ? `Rendered, and nothing is broken — but it measures as a default template: ${codes.join(', ')}. ` +
+          'Nothing here blocks; look at the screenshot before calling it finished.'
+        : 'Rendered, and the render is clean.'
+    };
   }
   const parts: string[] = [];
   if (blocking.length > 0) {
@@ -138,6 +187,7 @@ export function verdictFor(report: RenderReportPayload): RenderVerdict {
     done: false,
     blocking,
     unmeasuredPages: unmeasured,
+    poverty,
     reason: `NOT DONE — ${parts.join('; ')}. Fix them and render again.`
   };
 }
@@ -279,7 +329,10 @@ export class RenderLedger {
   /** The state of the project on disk right now, as far as anybody has looked. */
   state(projectDir: string): RenderState {
     if (!this.last) {
-      return { looked: false, done: false, blocking: [], unmeasuredPages: [], reason: NEVER_LOOKED };
+      // `poverty: []` here means "nobody measured", not "no poverty" — which is
+      // exactly what `looked: false` beside it says. A reader that treats an
+      // empty list as a clean bill has read past the field that qualifies it.
+      return { looked: false, done: false, blocking: [], unmeasuredPages: [], poverty: [], reason: NEVER_LOOKED };
     }
     if (this.last.signature !== projectSignature(projectDir)) {
       return {
@@ -287,6 +340,7 @@ export class RenderLedger {
         done: false,
         blocking: [],
         unmeasuredPages: [],
+        poverty: [],
         reason:
           'NOT DONE — the project has changed since the last render, so the last clean reading is about a ' +
           'page that no longer exists. Call render_report again.'

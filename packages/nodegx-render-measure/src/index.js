@@ -175,6 +175,86 @@ function measureExpression(placeholders, probes = []) {
   const images = visible.filter((el) => el.tagName === 'IMG');
   const brokenImages = images.filter((el) => el.complete && el.naturalWidth === 0);
 
+  // VIB-007 M3 — iconography, which no earlier finding needed and which
+  // 'no-imagery' cannot be honest without: README section 2's tell is "no
+  // imagery AND no iconography", and a page of five Lucide glyphs and no
+  // photographs satisfies only half of it.
+  //
+  // Four shapes, because IconGlyph has four branches and only two of them carry
+  // a class this could key on. Measured against the VIB-006 page rather than
+  // read off the component: the font branch renders
+  // span.lucide.icon-sprout with NO ndl-icon-glyph class on it, so a selector
+  // written from that constant would have counted zero on a page with ten.
+  //
+  //   sprite / inline -> .ndl-icon-glyph
+  //   the Icon node   -> .ndl-visual-icon wrapper
+  //   an inline svg   -> the svg element itself
+  //   a font glyph    -> a ::before whose content is a Private Use Area
+  //                      codepoint, which is what an icon font IS. Restricting
+  //                      to U+E000..U+F8FF is what keeps a bullet, a quote mark
+  //                      or a CSS counter from counting as iconography.
+  //
+  // A Set of ELEMENTS, so the wrapper and the glyph it holds are not two icons.
+  // Over-counting is harmless here and under-counting is not: the predicate is
+  // "is there any iconography at all", so a wrapper counted twice still says
+  // yes, and a glyph missed entirely says no when the answer is yes.
+  const PUA_FIRST = 0xe000;
+  const PUA_LAST = 0xf8ff;
+  const isGlyphContent = (raw) => {
+    if (!raw || raw === 'none' || raw === 'normal') return false;
+    const text = raw.replace(/^["']|["']$/g, '');
+    if (!text.length) return false;
+    for (const ch of text) {
+      const pt = ch.codePointAt(0);
+      if (pt < PUA_FIRST || pt > PUA_LAST) return false;
+    }
+    return true;
+  };
+  const iconEls = new Set();
+  for (const el of visible) {
+    const list = el.classList;
+    if (list && (list.contains('ndl-icon-glyph') || list.contains('ndl-visual-icon'))) {
+      iconEls.add(el);
+      continue;
+    }
+    if (String(el.tagName).toLowerCase() === 'svg') {
+      iconEls.add(el);
+      continue;
+    }
+    if (isGlyphContent(getComputedStyle(el, '::before').content)) iconEls.add(el);
+  }
+
+  // VIB-007 M3 — the page's full-bleed surfaces and what each is painted with.
+  //
+  // README section 2's first WordPress tell is "one background colour end to
+  // end", and the reading it needs is the number of DISTINCT grounds across the
+  // bands, not across every element: a page whose sections alternate has a
+  // designed rhythm, and a page whose cards and inputs happen to carry three
+  // greys does not. The width filter is the one the rhythm block already uses,
+  // so "band" means the same thing in both readings.
+  //
+  // background-image is read BEFORE background-color and wins, because a
+  // gradient or a photograph sits on top of the colour and is the ground a
+  // person sees. Measured, not assumed: every one of the VIB-006 page's
+  // gradient bands reports backgroundColor rgba(0, 0, 0, 0) and its whole
+  // identity is in background-image, so a colour-only count read 6 grounds on a
+  // page that has 8.
+  const groundCounts = {};
+  for (const el of visible) {
+    const r = el.getBoundingClientRect();
+    if (r.width < vw * 0.6 || r.height < 8) continue;
+    const cs = getComputedStyle(el);
+    const painted =
+      cs.backgroundImage && cs.backgroundImage !== 'none'
+        ? cs.backgroundImage
+        : cs.backgroundColor && cs.backgroundColor !== 'rgba(0, 0, 0, 0)' && cs.backgroundColor !== 'transparent'
+          ? cs.backgroundColor
+          : null;
+    if (!painted) continue;
+    const key = String(painted).slice(0, 120);
+    groundCounts[key] = (groundCounts[key] || 0) + 1;
+  }
+
   // DSG-006 §4 — "one accent". A designed page carries one chromatic colour as
   // a background and neutrals for everything else; five accents is decorated
   // rather than designed. Neutral is decided by *chroma* (max minus min
@@ -349,6 +429,9 @@ function measureExpression(placeholders, probes = []) {
       fontWeights,
       fontSizes,
       distinctFontSizes: Object.keys(fontSizes).length,
+      // VIB-007 M3 — the display-type reading. Derived here rather than in
+      // summarise so a client that only keeps the summary still has it.
+      largestFontSize: Object.keys(fontSizes).reduce((max, px) => Math.max(max, parseFloat(px) || 0), 0),
       bodyFontFamily: getComputedStyle(document.body).fontFamily.slice(0, 80)
     },
     placeholders: {
@@ -358,6 +441,10 @@ function measureExpression(placeholders, probes = []) {
     },
     images: {
       total: images.length,
+      // VIB-007 M3. Deliberately inside the images block rather than beside it: every
+      // consumer that asks "does this page have any pictures" has to ask both
+      // halves, and two sibling fields is how one of them gets forgotten.
+      icons: iconEls.size,
       onScreen: images.filter(onScreen).length,
       unreachable: images.filter(unreachable).length,
       broken: brokenImages.length,
@@ -377,6 +464,13 @@ function measureExpression(placeholders, probes = []) {
       // The denominator behind every "share", emitted so a score can be
       // recomputed from the report without knowing which viewport produced it.
       viewportArea: round(viewportArea)
+    },
+    grounds: {
+      distinct: Object.keys(groundCounts).length,
+      values: Object.keys(groundCounts)
+        .map((ground) => ({ ground, count: groundCounts[ground] }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 8)
     },
     rhythm: {
       bands: bands.length,
@@ -429,10 +523,100 @@ const RenderFinding = {
   HorizontalOverflow: 'horizontal-overflow',
   FlatTypeScale: 'flat-type-scale',
   EmptyDecoratedBox: 'empty-decorated-box',
-  ConsoleError: 'console-error'
+  ConsoleError: 'console-error',
+  /**
+   * VIB-007 M3 — the three poverty findings.
+   *
+   * 🔴 **Every other finding in this list detects EXCESS or BREAKAGE**, which is
+   * register V10: a page can pass all thirteen of them, render perfectly clean,
+   * and be worth nothing to look at. That is what the entire VIB-001 baseline
+   * is — nine pages ruled SHITTY, and the report called every one of them
+   * clean.
+   *
+   * These three are not invented. Each is one of the WordPress-starter tells
+   * README section 2 lists verbatim, restricted to the ones a render can see:
+   *
+   *   "one background colour end to end"          -> SingleGround
+   *   "no imagery and no iconography anywhere"    -> NoImagery
+   *   "headline under ~48px on desktop"           -> NoDisplayType
+   *
+   * ⚠️ **They are warnings, not errors, and that is a decision rather than an
+   * oversight.** `error` is the severity `noodl-mcp`'s render verdict blocks
+   * "done" on (VIB-007 M1), and README section 2 exempts app-chrome pages (forms,
+   * lists, settings) from the marketing tells — a settings page needs no 72px
+   * headline and refusing to certify one would be the instrument being wrong,
+   * loudly, on every honest project. The instrument cannot currently tell a
+   * landing page from a settings page; until something can, poverty is reported
+   * and does not refuse.
+   */
+  SingleGround: 'single-ground',
+  NoImagery: 'no-imagery',
+  NoDisplayType: 'no-display-type'
 };
 
 const SEVERITY_ORDER = { error: 0, warning: 1, info: 2 };
+
+/**
+ * VIB-007 M3 — **the poverty family, as one list, exported.**
+ *
+ * A client has to be able to ask "did this page measure as a default template?"
+ * without knowing which three codes that means today. Two consumers already
+ * need it — the render verdict, which must not let a `done: true` say *clean*
+ * about a page with nothing on it, and any report that wants to group these
+ * apart from the twelve defect detectors.
+ *
+ * 🔴 Written once because the alternative is the BCN-003 shape this repo has
+ * paid for: a second copy of a code list is right the day it is written and
+ * silently wrong the first time a fourth poverty finding ships.
+ */
+const POVERTY_FINDINGS = [RenderFinding.SingleGround, RenderFinding.NoImagery, RenderFinding.NoDisplayType];
+
+/** Is this finding about the page being poor rather than broken? */
+function isPovertyFinding(finding) {
+  return Boolean(finding) && POVERTY_FINDINGS.indexOf(finding.code) !== -1;
+}
+
+/**
+ * VIB-007 M3 — the display-type threshold, **quoted from README section 2**:
+ * *"Type ramp reading as two sizes; headline under ~48px on desktop"*.
+ *
+ * 🔴 It is the rubric's number, not one fitted to the two artefacts AC3 names,
+ * and the seven measurement fixtures in `noodl-mcp/tests/fixtures/render` are
+ * the check on that. Every real build recorded there tops out at **exactly 48
+ * or 60px** — haiku, sonnet, kimi and the ecommerce reference, four independent
+ * authors — while the two shipped templates the VIB-001 baseline ruled SHITTY
+ * top out at **30px**. The threshold falls in a gap the corpus put there.
+ *
+ * ⚠️ **Desktop only, because that is the only width the rubric gives a number
+ * for.** A phone threshold would be invented, and an invented number in a
+ * finding that fires on real projects is how a gate teaches a lie. What this
+ * cannot see is therefore stated rather than guessed: a page whose desktop
+ * headline is fine and whose phone headline collapses is not this finding's.
+ */
+const DISPLAY_TYPE_MIN_PX = 48;
+
+/**
+ * How many distinct full-bleed grounds a page needs before it stops reading as
+ * *"one background colour end to end"* (README section 2's first tell).
+ *
+ * One is the tell exactly. Two is a page with a header or a footer that differs
+ * from its body, which is the least a designed page does, so the predicate is
+ * `<= 1` rather than a taste threshold: measured, the VIB-001 baseline's two
+ * one-ground pages read 1 and the VIB-006 page reads far more.
+ */
+const MIN_DISTINCT_GROUNDS = 2;
+
+/**
+ * A page with fewer visible texts than this is not a page whose *poverty* is
+ * the finding — `blank-render` and the placeholder checks own that territory,
+ * and a poverty finding on top of them is a second sentence about one defect.
+ *
+ * ⚠️ Deliberately low. The existing `flat-type-scale` uses 10 and consequently
+ * fires on **none** of the nine SHITTY baseline pages (they carry 3 to 10
+ * texts) — the concrete case behind VIB-007 section 3's *"the machinery already
+ * exists and is set too quiet"*.
+ */
+const POVERTY_MIN_TEXTS = 3;
 
 /**
  * AWP-004 — how far past its own scrollable extent a page may lay content out
@@ -733,6 +917,60 @@ function summarise(viewports, diagnosis, overridden = {}) {
       });
     }
 
+    // ── VIB-007 M3 — poverty: the page is whole, and it is a default template ──
+    //
+    // 🔴 Everything above this line detects excess or breakage. These three ask
+    // the opposite question, and a page can answer badly while passing every
+    // one of them — which is what all nine VIB-001 baseline pages did.
+    //
+    // 🔴 **A field this measurement does not carry is UNKNOWN, never zero.**
+    // The seven recorded fixtures predate `grounds` and `images.icons`, and a
+    // predicate reading `undefined` as "none" would report *"no imagery"* about
+    // four builds that ship sixteen photographs. An absence is only assertable
+    // beside a signal known to fire, and here the signal is the field existing.
+    const poorEnoughToJudge = v.text.elements >= POVERTY_MIN_TEXTS;
+
+    if (poorEnoughToJudge && v.images && typeof v.images.icons === 'number' && v.images.total === 0 && v.images.icons === 0) {
+      add({
+        code: RenderFinding.NoImagery,
+        severity: 'warning',
+        viewport: name,
+        message:
+          `${v.text.elements} text elements and not one picture or glyph — no images, no icons. ` +
+          'README §2\'s second WordPress-starter tell is "no imagery and no iconography anywhere on ' +
+          'the page", and this page measures as exactly that. The Image and Icon nodes are in the kit ' +
+          'and the starter modules ship photographs and 1,998 Lucide glyphs.'
+      });
+    }
+
+    if (poorEnoughToJudge && isDesktop && typeof v.text.largestFontSize === 'number' && v.text.largestFontSize > 0 && v.text.largestFontSize < DISPLAY_TYPE_MIN_PX) {
+      add({
+        code: RenderFinding.NoDisplayType,
+        severity: 'warning',
+        viewport: name,
+        message:
+          `The largest text on this page renders at ${Math.round(v.text.largestFontSize)}px across ` +
+          `${plural(v.text.distinctFontSizes, 'distinct size', 'distinct sizes')}. README §2 calls a headline ` +
+          `under ~${DISPLAY_TYPE_MIN_PX}px on desktop a WordPress-starter tell; nothing on this page is ` +
+          'operating as display type.',
+        evidence: v.text.fontSizes
+      });
+    }
+
+    if (poorEnoughToJudge && v.grounds && typeof v.grounds.distinct === 'number' && v.grounds.distinct < MIN_DISTINCT_GROUNDS) {
+      add({
+        code: RenderFinding.SingleGround,
+        severity: 'warning',
+        viewport: name,
+        message:
+          `Every full-width band on this page is painted the same — ${plural(v.grounds.distinct, 'distinct ground', 'distinct grounds')} ` +
+          'across the whole page. README §2\'s first WordPress-starter tell is "one background colour end to ' +
+          'end". A ground can be a colour, a gradient or an image, and alternating them is what makes a page ' +
+          'read as sections rather than as one column.',
+        evidence: v.grounds.values
+      });
+    }
+
     if (v.consoleErrors && v.consoleErrors.length) {
       add({
         code: RenderFinding.ConsoleError,
@@ -861,6 +1099,13 @@ module.exports = {
   RenderFinding,
   SEVERITY_ORDER,
   CLIPPED_CONTENT_SLACK,
+  // VIB-007 M3 — exported because a spec that restates 48 is a second copy of
+  // README §2's number, and the one that drifts is always the copy.
+  DISPLAY_TYPE_MIN_PX,
+  MIN_DISTINCT_GROUNDS,
+  POVERTY_MIN_TEXTS,
+  POVERTY_FINDINGS,
+  isPovertyFinding,
   // The two halves of the loop: what to evaluate in the page, and what the
   // numbers that come back mean.
   measureExpression,

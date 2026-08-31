@@ -356,3 +356,171 @@ takes. M1 makes the loop mandatory; the rows close when their own defects do.
 ⚠️ **AC3 (M3, the poverty findings) is the one this most obviously enables** — a mandatory render is
 where a poverty finding would be read, and until M3 ships the gate is silent on the exact failure the
 VIB-001 baseline is made of: a page that renders perfectly clean and is worth nothing to look at.
+
+---
+
+## §8 🔴 AC3 BUILT, 2026-08-31 — the gate fires on poverty, and V10 closes
+
+AC1's own closing line named this: *"a mandatory render is where a poverty finding would be read, and
+until M3 ships the gate is silent on the exact failure the VIB-001 baseline is made of — a page that
+renders perfectly clean and is worth nothing to look at."* It was built.
+
+### 🔴 The measurement came first, and §3's own table was the wrong number
+
+§3 M3 tabulates *"distinct grounds on the page: baseline 1, VIB-006 7"*. That number is counted in
+`vib006-landing.look.ts` over **`nodes.json` parameters** — it is a fact about the graph. A render
+finding sees a rendered DOM, and there is no reason the two agree. So nothing was designed until
+`packages/nodegx-backend/tests/vib007-m3-measure.look.ts` had rendered both arms through the real
+instrument with the starter assets installed (VIB-003 / V19 — measuring VIB-006 without them prices
+the empty arm and calls it the page).
+
+What a real Chrome returned, `templates/members-area` at its door beside the VIB-006 page:
+
+| | baseline (4 door pages × 2 viewports) | VIB-006 |
+|---|---|---|
+| visible texts | 3–10 | **73** |
+| largest rendered type | 14–30px | **94px** desktop / 48px phone |
+| distinct type sizes | 2–5 | **9** |
+| images / icons | **0 / 0**, every row | **7 / 20** |
+| distinct full-bleed grounds | 0–2 | **6–7** |
+
+⚠️ **Two of those columns did not exist before this session.** `images.icons` and `grounds` are new
+measurements, and both had to be, because the finding they feed cannot be honest without them:
+
+- **Icons.** README §2's tell is *"no imagery **and no iconography**"*. A page of five glyphs and no
+  photographs satisfies half of it. 🔴 The DOM was **probed, not inferred**: `IconGlyph` has four
+  branches and the font one renders `span.lucide.icon-sprout` **with no `ndl-icon-glyph` class on
+  it** — a selector written from the module's own constant would have counted zero on a page with
+  ten. The universal half is a `::before` whose content is a Private Use Area codepoint, which is
+  what an icon font *is*; restricting to U+E000–U+F8FF is what stops a bullet counting as an icon.
+- **Grounds.** Every gradient band on the VIB-006 page reports `backgroundColor: rgba(0, 0, 0, 0)`
+  and carries its whole identity in `background-image`, so the existing colour-only accent/neutral
+  count read **6** grounds on a page that has 8. `background-image` is read first and wins.
+
+### The three, and why they are the rubric's rather than the data's
+
+Each is one of the WordPress-starter tells README §2 lists **verbatim**, restricted to the three a
+render can see. The numbers only calibrate what the rubric already names:
+
+| finding | README §2, verbatim | predicate |
+|---|---|---|
+| `single-ground` | *"one background colour end to end"* | fewer than 2 distinct full-bleed grounds |
+| `no-imagery` | *"No imagery and no iconography anywhere on the page"* | 0 images **and** 0 icons |
+| `no-display-type` | *"headline under ~48px on desktop"* | largest type < 48px, **desktop viewports only** |
+
+🔴 **`DISPLAY_TYPE_MIN_PX` is 48 because README §2 says 48**, and the corpus is the check on it, not
+the source of it. The seven recorded measurement fixtures in `noodl-mcp/tests/fixtures/render` are
+four independent authors' real builds — haiku, sonnet, kimi, the ecommerce reference — and **every
+one tops out at exactly 48 or 60px**, while the two templates Richard ruled SHITTY top out at 30. The
+threshold falls in a gap the corpus put there. A ratio fitted to the two artefacts under test would
+have landed at 2.6 and meant nothing.
+
+⚠️ **Desktop only, because that is the only width the rubric gives a number for.** A phone threshold
+would have been invented, and what this cannot see is stated rather than guessed: a page whose
+desktop headline is fine and whose phone headline collapses is not this finding's business.
+
+### The reading, both arms, by a real Chrome
+
+| arm | `no-imagery` | `no-display-type` | `single-ground` |
+|---|---|---|---|
+| baseline `members-area` door, 8 viewport-rows | **8 of 8** | **4 of 4 desktop rows** | **6 of 8** |
+| **VIB-006 page**, desktop + phone | **0** | **0** | **0** |
+
+**AC3's both arms, met.** The control is the only artefact in the repo a person has ruled WORTHY, and
+it is asserted to be *rich by every axis the three read* — so a fixture that quietly lost its
+photographs reddens rather than turning arm 2 into a tautology.
+
+### 🔴 A field that was never measured is UNKNOWN, never zero
+
+The seven older fixtures predate `grounds` and `images.icons`. A predicate reading `undefined` as
+"none" would have reported *"no imagery"* about four builds that ship sixteen photographs. Every
+poverty predicate requires its field to **exist**; the specs run all six older fixtures through and
+assert silence. This is the `all([])` trap — an absence is only assertable beside a signal known to
+fire, and here the signal is the field being present at all.
+
+### ⚠️ They are warnings, and that is a decision — register V42
+
+VIB-007 §3 hoped for *"promoting the poverty family from advice to pressure"*. What shipped is
+pressure, not a gate, and the reason is a distinction the instrument cannot make: **README §2 exempts
+app-chrome pages from the marketing tells these encode**, and nothing in a render tells a landing page
+from a settings page. At `error` they would block `done` (VIB-007 M1) on every honest form in every
+project. Recorded as **V42, owner NONE** — it needs a ruling on whether a page should declare its kind.
+
+So the pressure is applied where it is honest — in the sentence, on the `done: true` arm:
+
+> `done: true`, `doneBecause: "Rendered, and nothing is broken — but it measures as a default
+> template: no-imagery, no-display-type, single-ground. Nothing here blocks; look at the screenshot
+> before calling it finished."` plus a `looksLike` block naming each tell.
+
+🔴 Because *"Rendered, and the render is clean"* over a page measuring as a WordPress starter is the
+**AWP-004 shape for the third time in this phase**: a summary out-claiming what was established. All
+nine baseline pages render clean. The field is named `looksLike` rather than `warnings` deliberately —
+a model reading *warnings* beside `done: true` has already been told which to believe.
+
+### 🔴 The defect AC3 found by measuring: the WORTHY page could never be certified
+
+Rendering the control turned up **`dead-placeholder-text`, severity `error`, at both viewports** on the
+VIB-006 page — which means the one artefact a person has ruled WORTHY **could not be reported done by
+the mechanism AC1 built to report it**, and had not been able to since the day AC1 shipped.
+
+The cause: `StatTile`'s value `Text` hardcodes `"0"` as the fallback its `Component Inputs` feeds, and
+the fourth tile legitimately sets `value: "0"` — *"0 air miles in the boxes"*, a real statistic and the
+best line on the page. `overriddenDefaults` therefore listed `"0"` as a placeholder, and the finding
+asserted the stronger of two readings as determined fact: *"That value is only ever visible when the
+input does not arrive, so it did not arrive."* It arrived.
+
+🔴 **A refused value and a never-requested value are the same picture and have opposite fixes.** The
+graph separates them and was already on disk: a literal that **any instance supplies verbatim for the
+port that feeds it** is ambiguous and is now dropped — per site, because one word can be a genuine dead
+fallback in one component and deliberate content in another. The control is asserted beside it: `Title`,
+`Body`, `Quote`, `Name` and `Heading` are all still reported, and Kimi K3's own fixture case still
+fires. After the fix the VIB-006 page renders **zero findings at both viewports** — the first time it
+has been certifiable.
+
+⚠️ This was not an AC3 sub-goal. It became the first job because it **failed AC3's accepts arm**: the
+control could not be shown silent while an unrelated error was firing on it.
+
+### What shipped
+
+1. **`@nodegx/render-measure`** — `images.icons`, `grounds`, `text.largestFontSize` in
+   `measureExpression`; `SingleGround` / `NoImagery` / `NoDisplayType`; `DISPLAY_TYPE_MIN_PX`,
+   `MIN_DISTINCT_GROUNDS`, `POVERTY_MIN_TEXTS`; and **`POVERTY_FINDINGS` / `isPovertyFinding`**, so
+   *which codes mean poverty* is written once rather than copied into every consumer.
+   ⚠️ The module's own warning bit on the first edit: **a backtick in a comment inside
+   `measureExpression` ends the template literal**, and it surfaces as a syntax error hundreds of
+   lines away.
+2. **`scripts/devtools/render-report.js`** — the `overriddenDefaults` fix above, and the new
+   constants re-exported so a spec reads README §2's number instead of restating it.
+3. **`noodl-mcp`** — `RenderVerdict.poverty`, `povertyFindings()`, the `done: true` sentence above,
+   and `looksLike` on the completion block for every door.
+4. **`packages/nodegx-backend/tests/vib007-m3-measure.look.ts`** — the harness the design was measured
+   from, kept, because it is the thing to re-run when either artefact moves.
+5. **Two fixtures recorded from real renders**: `vib001-members-join-door.json` and
+   `vib006-landing-worthy.json`, so AC3's evidence is checkable without a browser.
+   ⚠️ A frozen fixture answers the question its subject asked on the day it was recorded — the
+   `.look.ts` is what re-derives them.
+
+### Gates (2026-08-31) — 🔴 every row is an EXIT STATUS
+
+| gate | reading |
+|---|---|
+| `vib007-m3-measure.look.ts` (real Chrome, both arms) | **exit 0** |
+| `tests/vib007PovertyFindings.test.ts` | **exit 0** — **22/22**, incl. every mutation, both accepts arms and the six older fixtures |
+| the three render specs together (poverty + `vib007RenderGate` + `renderReportModule`) | **exit 0** — 75/75 |
+| `@nodegx/render-measure` purity | **exit 0** — 5/5 |
+| `npm run typecheck:mcp` | **exit 0** |
+| `npm run typecheck:editor` | **exit 0** |
+| `noodl-editor/tests-unit/bld-014` (the render-measure consumers) | **exit 0** — 49/49 |
+| `npx jest --config packages/noodl-mcp/jest.config.js` (full) | ⚠️ **exit 1 — 82 suites / 1083 tests, 2 failed**, both in the `provision.test.ts` + `projectOwnsBackend.test.ts` pair. **Measured as not this session's**: the same pair run at **HEAD** fails **identically (3 failed / 20 passed)**, `projectOwnsBackend` alone passes 12/12 both at HEAD and with these changes, the failing set *moves between runs*, and neither suite imports anything changed here. ⚠️ A peer session was editing this checkout's editor/schema code throughout |
+| `npm run typecheck:backend-tests` | ⚠️ **not run** — settled as un-runnable on this box (OOM, exit 134). CI `pr.yml:39` covers it |
+| `npm run test:ci` | ⚠️ **not run.** Checked rather than assumed: `lessondrawncount.ts` gates on `severity === 'error'`, so three new `warning` findings are invisible to the lesson grader |
+| `npm run catalog:examples` / `catalog:merge:check` | ⚠️ **not run** — no corpus, example or port edit this session |
+
+### What AC3 does NOT close
+
+**AC2 still owes five predicates** (V23, V28, V29, V32, V33) and **AC4 — the A/B through the Judge —
+is untouched.** §3 M3 claims this retires V4, V9, V14, V15 and V26 as well as V10; only **V10** is
+closed here. The other five name measurements nothing in this session takes — a dead-viewport ratio, a
+band whose gutter disagrees with its siblings, a repeater with no empty state. 🔴 §2's mapping
+classifies a row by the mechanism that would have **prevented** it, which is not the same claim as
+*"the defect is now fixed"*.

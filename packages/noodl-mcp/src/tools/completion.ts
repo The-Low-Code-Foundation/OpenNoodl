@@ -9,10 +9,39 @@
  * @module noodl-mcp/tools/completion
  */
 
+import type { RenderFindingPayload } from '../render';
 import type { RenderState, RenderVerdict } from '../renderVerdict';
 
 /** How many blocking findings are worth spelling out before the list is noise. */
 const MAX_LISTED = 12;
+
+/**
+ * VIB-007 M3 — the half of the answer that is not about breakage.
+ *
+ * 🔴 **It rides on the `done: true` arm as well**, and that is the point. A page
+ * with no imagery, one ground and no display type is *finished* by every check
+ * the product has — that is precisely what all nine VIB-001 baseline pages were,
+ * and `doneBecause: 'Rendered, and the render is clean'` over one of them is the
+ * same sentence AWP-004 was about: a summary out-claiming what was established.
+ *
+ * ⚠️ It is named `looksLike`, not `warnings`, because a model reading a field
+ * called warnings next to `done: true` has been told which of the two to
+ * believe. This asks it to look at the picture.
+ */
+function lookPayload(poverty: RenderFindingPayload[]): Record<string, unknown> {
+  if (poverty.length === 0) return {};
+  const byCode = new Map<string, RenderFindingPayload>();
+  for (const f of poverty) if (!byCode.has(f.code)) byCode.set(f.code, f);
+  return {
+    looksLike: {
+      verdict: 'This page measures as a default template — nothing is broken and nothing shows a decision.',
+      tells: [...byCode.values()].map((f) => ({ code: f.code, message: f.message })),
+      // Not a refusal, said plainly, so a model does not read a silent field as
+      // permission and does not read a loud one as a block.
+      blocking: false
+    }
+  };
+}
 
 /**
  * The completion block, as it appears at the top level of a write response.
@@ -23,8 +52,10 @@ const MAX_LISTED = 12;
  * defect this mechanism exists to close, one level up.
  */
 export function completionPayload(state: RenderState | (RenderVerdict & { looked?: boolean })): Record<string, unknown> {
-  if (state.done) return { done: true, doneBecause: state.reason };
+  const look = lookPayload(state.poverty ?? []);
+  if (state.done) return { done: true, doneBecause: state.reason, ...look };
   return {
+    ...look,
     done: false,
     notDone: state.reason,
     ...(state.blocking.length > 0

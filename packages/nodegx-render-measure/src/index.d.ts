@@ -59,6 +59,16 @@ export declare const RenderFinding: {
   readonly FlatTypeScale: 'flat-type-scale';
   readonly EmptyDecoratedBox: 'empty-decorated-box';
   readonly ConsoleError: 'console-error';
+  /**
+   * VIB-007 M3 — the poverty family. Every code above detects excess or
+   * breakage; these three detect a page that is whole and is a default
+   * template, which is what all nine VIB-001 baseline pages were. They are
+   * `warning`, never `error`: `error` is what the render verdict blocks "done"
+   * on, and app-chrome pages are exempt from the marketing tells they encode.
+   */
+  readonly SingleGround: 'single-ground';
+  readonly NoImagery: 'no-imagery';
+  readonly NoDisplayType: 'no-display-type';
 };
 
 export type RenderFindingCode = (typeof RenderFinding)[keyof typeof RenderFinding];
@@ -68,6 +78,19 @@ export type RenderSeverity = 'error' | 'warning' | 'info';
 export declare const SEVERITY_ORDER: Record<RenderSeverity, number>;
 
 export declare const CLIPPED_CONTENT_SLACK: number;
+
+/** VIB-007 M3 — README §2's *"headline under ~48px on desktop"*, as a number. */
+export declare const DISPLAY_TYPE_MIN_PX: number;
+
+/**
+ * VIB-007 M3 — the codes that mean *the page is whole and is a default
+ * template*, as one list. A consumer grouping these apart from the twelve
+ * defect detectors must read this rather than restate it.
+ */
+export declare const POVERTY_FINDINGS: readonly RenderFindingCode[];
+
+/** Is this finding about the page being poor rather than broken? */
+export declare function isPovertyFinding(finding: { code?: string } | null | undefined): boolean;
 
 export interface RenderFindingResult {
   code: RenderFindingCode;

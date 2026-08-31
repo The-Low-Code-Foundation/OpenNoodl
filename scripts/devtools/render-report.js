@@ -71,6 +71,11 @@ const {
   RenderFinding,
   SEVERITY_ORDER,
   CLIPPED_CONTENT_SLACK,
+  DISPLAY_TYPE_MIN_PX,
+  MIN_DISTINCT_GROUNDS,
+  POVERTY_MIN_TEXTS,
+  POVERTY_FINDINGS,
+  isPovertyFinding,
   measureExpression,
   summarise,
   summaryLine,
@@ -331,20 +336,71 @@ function listProbes(projectDir) {
  *
  * This says nothing about *why* the input failed to arrive — that is the graph's
  * business, not the render's. It reports that the fallback is what a human sees.
+ *
+ * ## 🔴 Except when an instance supplies the same string on purpose
+ *
+ * Found by VIB-007 AC3, measuring the phase's **only WORTHY page**: the VIB-006
+ * landing page carries a `StatTile` whose fallback is `"0"` and a fourth
+ * instance that legitimately sets `value: "0"` — *"0 air miles in the boxes"*,
+ * a real statistic and the best line on the page. On screen the two are the
+ * same pixel, and the finding this feeds asserts the stronger reading as
+ * determined fact: *"That value is only ever visible when the input does not
+ * arrive, so it did not arrive."* It did arrive.
+ *
+ * 🔴 The consequence was not cosmetic. `dead-placeholder-text` is `error`, and
+ * VIB-007 M1 blocks `done` on exactly that severity — so the one page a person
+ * has ruled WORTHY could never be certified, at either viewport, by the
+ * mechanism built to certify it. **A refusal and a never-requested value are
+ * the same picture and have opposite fixes**; the graph is what separates them,
+ * and the graph is already on disk here.
+ *
+ * So a literal an instance supplies verbatim for the port that feeds it is
+ * **ambiguous, and dropped** — a fallback is only evidence of an absent input
+ * when nobody could have sent it. Per site, not per string: the same word can
+ * be a genuine dead fallback in one component and deliberate content in
+ * another.
  */
 function overriddenDefaults(projectDir) {
+  const { components } = readComponents(projectDir);
+
+  // What every instance of every component actually sets, keyed
+  // `componentName\u0000portName` -> Set of literal values. Built once, because
+  // the alternative is a nested scan per connection.
+  const suppliedByInstances = new Map();
+  for (const component of components) {
+    for (const node of component.nodes) {
+      const params = node.parameters || {};
+      for (const port of Object.keys(params)) {
+        const value = params[port];
+        if (typeof value !== 'string' || !value.trim()) continue;
+        const key = node.type + '\u0000' + port;
+        if (!suppliedByInstances.has(key)) suppliedByInstances.set(key, new Set());
+        suppliedByInstances.get(key).add(value.trim());
+      }
+    }
+  }
+
   const found = new Map();
-  for (const component of readComponents(projectDir).components) {
+  for (const component of components) {
     const byId = new Map(component.nodes.map((n) => [n.id, n]));
     for (const conn of component.connections) {
       const from = byId.get(conn.sourceId ?? conn.fromId);
       const to = byId.get(conn.targetId ?? conn.toId);
       const port = conn.targetPort ?? conn.toProperty;
+      // The name of the component INPUT that feeds this port — what an instance
+      // would set to override the fallback.
+      const inputPort = conn.sourcePort ?? conn.fromProperty;
       if (!from || !to || from.type !== 'Component Inputs') continue;
       if (!TEXT_BEARING_PORTS.test(port)) continue;
       const hardcoded = (to.parameters || {})[port];
       if (typeof hardcoded !== 'string' || !hardcoded.trim()) continue;
       const key = hardcoded.trim();
+
+      // 🔴 An instance of THIS component setting THIS input to THIS exact string
+      // makes the picture ambiguous, so the finding must not claim it.
+      const supplied = inputPort && suppliedByInstances.get(component.name + '\u0000' + inputPort);
+      if (supplied && supplied.has(key)) continue;
+
       // Every site, not the first one seen: Kimi hardcodes "Title" in both
       // `TrustItem` and `NoticeDialog`, and a finding that named only one would
       // send an agent to fix a component that was never on screen.
@@ -1593,6 +1649,13 @@ module.exports = {
   contentBearingTypeNames,
   BlankCause,
   placeholderStrings,
+  // VIB-007 M3 — the poverty thresholds, so a spec reads README §2's number
+  // rather than restating it.
+  DISPLAY_TYPE_MIN_PX,
+  MIN_DISTINCT_GROUNDS,
+  POVERTY_MIN_TEXTS,
+  POVERTY_FINDINGS,
+  isPovertyFinding,
   checkPrerequisites,
   findChrome,
   freePort,
