@@ -21,16 +21,21 @@ s36 drove **DEF-029**'s remaining half and closed **DEF-037 AC4**. Commit `04850
 
 ---
 
-## 🧭 IN FRONT OF RICHARD — still DEF-036, unchanged for three sessions
+## 🧭 ✅ **ALL FOUR DECISIONS RULED 2026-08-31 — read
+[RICHARD-RULINGS-2026-08-31.md](RICHARD-RULINGS-2026-08-31.md) FIRST. None are built.**
 
-**Should a wire be allowed to declare a column on the *accounts* table, the way it already can on
-an app table?** P77's SBR-008 accepted that cost for app tables. The alternative — what ships
-today — is a sign-up form that silently stops writing its custom fields whenever the schema is
-cold. **271 wires across 21 of 118 corpus projects.** Not a fix to be guessed at.
+| row | ruling |
+| --- | --- |
+| **DEF-036** | ❌ **Option B — a wire must NOT declare a column on the accounts table.** Overruled on product shape, not cost. **New scope instead**: an "Add a field" button on the data node; an explicit *no backend attached / not running* warning; and a wire to a deleted field that **stays on canvas, dotted, and errors**. 🔴 Do not re-open by re-arguing the 271 wires |
+| **DEF-007** | ✅ **Refuse at publish.** 🆕 **Plus a new item**: scream when someone tries to **delete** a home page |
+| **DEF-033** | ✅ **Show the truth** — panel shows `-1`, behaviour unchanged. 🔴 **P18 builds it** |
+| **DEF-037** | ❌ **Option B — derive it.** *"The preview is supposed to be a true, live, auto updating view of what's in the node canvas at all times."* 🔴 **AC3 now contradicts the ruling — rewrite it** |
 
-🧭 **Second, smaller decision, new this session:** DEF-037 §7.5 — whether to hand-annotate the four
-remaining derived style ports with `onChange`, or derive the answer. Take it with §7.3's table in
-front of you.
+🔴 **Two of the four went AGAINST the recommendation** (DEF-036 and DEF-037), both on principle
+rather than on cost. The rulings file records *why*, and the why is what stops the next session
+re-arguing them.
+
+🧭 **Still genuinely open and unanswered: DEF-007 AC4** — see the work list below.
 
 ---
 
