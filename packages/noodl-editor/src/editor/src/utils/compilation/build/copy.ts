@@ -29,7 +29,8 @@ import { filesystem, FileInfo } from '@noodl/platform';
 
 import { ProjectFormatDetector } from '../../../io/ProjectFormatDetector';
 import { clearFolders } from './cleanup';
-import { buildIgnoreMatcher, getDefaultReason, IgnoreMatcher, IgnoreRule } from './ignore';
+import { buildIgnoreMatcher, getDefaultReason, IgnoreMatcher, IgnoreRule, IgnoreRuleSource } from './ignore';
+import { ALWAYS_KEPT, planStarterImageryPrune, STARTER_IMAGERY_DIR } from './starterImagery';
 
 /** The name of the ignore file, in the project root. */
 export const IGNORE_FILE_NAME = '.noodlignore';
@@ -40,7 +41,7 @@ export interface ExcludedFile {
   /** The pattern that excluded it, as written. */
   rule: string;
   /** Where that pattern came from. */
-  source: 'default' | '.noodlignore';
+  source: IgnoreRuleSource | 'unreferenced-imagery';
   /**
    * Why the default exists, when the rule is a default. Undefined for user
    * rules — the user knows why they wrote it.
@@ -59,7 +60,15 @@ export interface ProjectCopyReport {
   /** Every excluded path, with the rule that excluded it. */
   excluded: ExcludedFile[];
   /** Excluded counts keyed by the rule that did it, for a short summary. */
-  excludedByRule: { rule: string; source: 'default' | '.noodlignore'; reason?: string; count: number }[];
+  excludedByRule: { rule: string; source: ExcludedFile['source']; reason?: string; count: number }[];
+  /**
+   * VIB-012 — why the stock-imagery prune declined to drop anything, when it declined.
+   *
+   * 🔴 Present is the interesting case, not absent: it means the project refers to the library in a
+   * way the planner could not resolve, so the deploy carries all of it deliberately rather than by
+   * omission. A silent "no savings" and a refusal look identical without this.
+   */
+  imageryPruneRefused?: string;
   /** Whether the project has a `.noodlignore`. */
   hasIgnoreFile: boolean;
   /**
@@ -160,6 +169,100 @@ async function walk(root: string, matcher: IgnoreMatcher): Promise<WalkResult> {
 interface ProjectScan extends WalkResult {
   root: string;
   hasIgnoreFile: boolean;
+  /** VIB-012 — set when the stock-imagery prune declined. */
+  imageryPruneRefused?: string;
+}
+
+/**
+ * File extensions read as project source when deciding which stock photographs are referenced.
+ *
+ * ⚠️ Text only, and it does not matter if this misses an exotic one: an unread file simply cannot
+ * *add* a reference, and the planner refuses to prune the moment it meets a `starter-imagery/`
+ * occurrence it cannot resolve. The failure direction is "ships too much", which is the safe one.
+ */
+const SOURCE_TEXT_EXTENSIONS = ['.json', '.js', '.jsx', '.ts', '.tsx', '.html', '.htm', '.css', '.md', '.txt'];
+
+/**
+ * VIB-012 — drop bundled photographs the project never mentions.
+ *
+ * 🔴 **The scan population is NOT the copy population, and that is the whole subtlety.** The files
+ * that name a picture are the project's own source — `components/**`, `nodegx.project.json` — and
+ * those are *excluded* from the deploy by the v2 source rules. So this reads the project directory,
+ * not the walk result.
+ *
+ * 🔴 And it must skip {@link STARTER_IMAGERY_DIR} itself, for a reason worth measuring rather than
+ * assuming: `LICENCES.json` turns out not to matter (bare basenames, no `starter-imagery/` anywhere),
+ * but `manifest.json`'s own documentation line — *"Reference any file as
+ * `noodl_modules/starter-imagery/<name>`"* — contains a placeholder that is not a filename, which
+ * makes the planner REFUSE and disables pruning permanently for every project. **A module's README
+ * prose can switch off a tool that reads the project as text.**
+ */
+async function readProjectSourceText(root: string): Promise<string> {
+  const chunks: string[] = [];
+
+  async function visit(absoluteDir: string, relativeDir: string, depth: number): Promise<void> {
+    if (depth > 12) return;
+    let entries: FileInfo[];
+    try {
+      entries = await filesystem.listDirectory(absoluteDir);
+    } catch {
+      return;
+    }
+
+    for (const entry of entries) {
+      const relativePath = relativeDir ? `${relativeDir}/${entry.name}` : entry.name;
+      if (entry.isDirectory) {
+        if (relativePath === STARTER_IMAGERY_DIR) continue;
+        if (entry.name === 'node_modules' || entry.name === '.git') continue;
+        await visit(`${absoluteDir}/${entry.name}`, relativePath, depth + 1);
+        continue;
+      }
+      const dot = entry.name.lastIndexOf('.');
+      if (dot === -1 || !SOURCE_TEXT_EXTENSIONS.includes(entry.name.substring(dot).toLowerCase())) continue;
+      try {
+        chunks.push(await filesystem.readFile(`${absoluteDir}/${entry.name}`));
+      } catch {
+        // Unreadable is not "unreferenced" — but it also cannot add a reference, and an occurrence
+        // this planner never sees cannot be resolved, so the refusal path stays correct.
+      }
+    }
+  }
+
+  await visit(root, '', 0);
+  return chunks.join('\n');
+}
+
+/** Moves unreferenced stock photographs out of the copy set and into the report. */
+async function pruneStarterImagery(scan: ProjectScan): Promise<ProjectScan> {
+  const prefix = `${STARTER_IMAGERY_DIR}/`;
+  const present = scan.files.filter((f) => f.relativePath.startsWith(prefix));
+  if (present.length === 0) return scan;
+
+  const plan = planStarterImageryPrune(
+    present.map((f) => f.relativePath.substring(prefix.length)),
+    await readProjectSourceText(scan.root)
+  );
+
+  if (plan.refusedReason) {
+    return { ...scan, imageryPruneRefused: plan.refusedReason };
+  }
+
+  const drop = new Set(plan.drop.map((name) => `${prefix}${name}`));
+  if (drop.size === 0) return scan;
+
+  return {
+    ...scan,
+    files: scan.files.filter((f) => !drop.has(f.relativePath)),
+    excluded: [
+      ...scan.excluded,
+      ...[...drop].sort().map((path) => ({
+        path,
+        rule: `${prefix}*`,
+        source: 'unreferenced-imagery' as const,
+        reason: `bundled stock photograph this project never references (${ALWAYS_KEPT.join(' and ')} always ship)`
+      }))
+    ]
+  };
 }
 
 /**
@@ -188,7 +291,7 @@ async function scanProject(projectPath: string): Promise<ProjectScan> {
   });
 
   const { files, excluded } = await walk(root, matcher);
-  return { root, hasIgnoreFile, files, excluded };
+  return pruneStarterImagery({ root, hasIgnoreFile, files, excluded });
 }
 
 function toReport(scan: ProjectScan, staleExclusions: string[] = []): ProjectCopyReport {
@@ -197,7 +300,8 @@ function toReport(scan: ProjectScan, staleExclusions: string[] = []): ProjectCop
     excluded: scan.excluded,
     excludedByRule: summarise(scan.excluded),
     hasIgnoreFile: scan.hasIgnoreFile,
-    staleExclusions
+    staleExclusions,
+    ...(scan.imageryPruneRefused ? { imageryPruneRefused: scan.imageryPruneRefused } : {})
   };
 }
 
