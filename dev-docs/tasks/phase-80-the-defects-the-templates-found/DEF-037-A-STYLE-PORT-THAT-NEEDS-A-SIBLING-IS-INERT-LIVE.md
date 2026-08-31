@@ -64,3 +64,88 @@ first `Text` style port of that kind**, which is why nothing caught this before.
   as "the fix does not work" would have reopened a correct row and hidden a real one.
 - 🔴 **A control from the same family is what separates "this port" from "all ports".** Without
   `wordBreak` applying live, this row would have been filed as a platform-wide defect it is not.
+
+---
+
+## 7. ✅ **AC4 — the sweep, taken (session 36)**
+
+### 7.1 🔴 The mechanism is not where §2 puts it, and the difference matters
+
+§2 says *"the live-preview path patches the port's own declaration onto the element"*. The patching
+is real; **"the live-preview path" is the wrong owner.** It is
+`packages/noodl-viewer-react/src/react-component-node.ts` → `setStyle()`, the setter the compiler
+generates for **every** `inputCss` port (`react-component-node.ts:1933-1985`). It writes the style
+object, then:
+
+- **force-updates React** only for a hard-coded allowlist — `opacity` crossing the zero boundary,
+  a margin change *while the size is a percentage*, or `position` / `flexDirection` / `clip`;
+- otherwise calls `setStylesOnDOMNode(...)`, patching **only the changed declaration** onto the
+  node and never re-running render.
+
+Its own comment says so, and carries a `TODO` proposing exactly the fix this row needs: *"move all
+these checks to the inputs themselves"*.
+
+🔴 **Consequence §4 should be corrected on:** the row currently reads as an editor feedback-loop
+defect ("not measured against the deployed/exported app at all"). `setStyle` is the runtime's
+generic path, so **a wire driving such a port at runtime hits this in a deployed app too.**
+`textOverflow` is a connectable input. Still not *measured* there — but it is no longer reasonable
+to assume the deployed app is unaffected.
+
+🔴 **A `styleTag` port skips the allowlist entirely.** The whole force-update block is inside
+`if (!styleTag)`. A port with a `styleTag` can therefore *only* re-render through its own
+`onChange` — which makes every styleTag'd derived port a candidate by construction.
+
+### 7.2 ✅ The fix already exists in the codebase, and is used on purpose
+
+`inputCss` ports may carry `onChange`, and the generated setter calls it. **Six ports already use
+it to force a re-render for precisely this reason** — a known-firing control for the whole class:
+
+| port | node | why |
+| --- | --- | --- |
+| `flexWrap` | Group | `onChange` comment: *"scroll direction needs to be recomputed"* |
+| `width`, `height` | **Radio Button** | render derives the wrapper's size from them |
+| `fontSize` | Button, Options, Text Input *(deprecated)* | — |
+
+### 7.3 The population — every `inputCss` port whose render derives a sibling
+
+34 distinct `inputCss` port names across 18 files were enumerated, then every render-time read of a
+style value was found (`props.style` / `props.styles.<tag>` in the components). The result:
+
+| port(s) | node | what render derives from it | status |
+| --- | --- | --- | --- |
+| `textOverflow` | Text | `whiteSpace`, `overflow`, `overflowWrap`; deletes itself | 🔴 **this row — driven** |
+| `width`, `height` | **Checkbox** | copied onto the inner `<input>`'s own style (`Checkbox.tsx:56-57`) | 🔴 **NEW — no `onChange`** |
+| `borderColor` | **Checkbox** | the tick glyph's `color` (`Checkbox.tsx:135`) | 🔴 **NEW — no `onChange`** |
+| `borderColor` | **Radio Button** | the dot's colour (`RadioButton.tsx:144`) | 🔴 **NEW — no `onChange`** |
+| `width`, `height` | Radio Button | wrapper size (`RadioButton.tsx:91,106,189`) | ✅ has `onChange` |
+| `flexWrap` | Group | inner iScroll child's style (`Group.tsx:257`) | ✅ has `onChange` |
+| `position`, `marginTop/Bottom/Left/Right` | all visual | `layout.ts` derives `flexGrow`/size-with-margins | ✅ allowlist covers it |
+
+🔴 **The sharpest finding is an asymmetry between two sibling nodes.** `Checkbox`'s `Width`/`Height`
+and `Radio Button`'s `Width`/`Height` are declared **the same way** — same index, same group, same
+`default: 32`, same `styleTag` mechanism, and both are read at render into a *different* element's
+style. Radio Button's carry `onChange(){ this.forceUpdate(); }`. Checkbox's do not. One of the two
+was fixed and the other was not, and nothing in either file says why.
+
+### 7.4 ⚠️ What this sweep is and is not
+
+- ✅ **The absence has a known-firing control beside it**, as AC4 requires: Radio Button's
+  `width`/`height` are the same shape *with* the fix, so "no `onChange` here" is a real difference
+  and not an artefact of how the search was written.
+- ⚠️ **The three NEW rows are read from source, not driven.** They are candidates of the same
+  class, not measured defects. Only `textOverflow` has been seen inert in a running preview.
+- ⚠️ **What the metric cannot see**: a derivation that reads a style value through a helper rather
+  than naming the property; anything reached only via `updateAdvancedStyle`; CSS-class toggles
+  keyed on a port; and the deprecated `nodes-deprecated/` components beyond the `fontSize` three.
+- ⚠️ The extractor that produced the 34-port list was **wrong on its first run** (it dropped the
+  first key of every object literal) and was caught only because two ports whose presence was known
+  by hand — `opacity` and the `textOverflow`/`wordBreak` pair — came back missing. The corrected run
+  reproduces both.
+
+### 7.5 What this suggests for the fix
+
+The `TODO` in `setStyle` and the six existing `onChange`s point the same way: **the per-port
+escape hatch is the shipped mechanism**, and AC3 (a control port that needs no sibling must still
+apply live) is satisfied for free by using it rather than by re-rendering on every style change.
+The open question is whether to hand-annotate the four remaining ports or to derive the answer —
+🧭 **a decision, and it should be taken with §7.3's table in front of whoever takes it.**

@@ -171,3 +171,81 @@ preview and watched `Files Dropped` fire, `Is Dragging Over` go true, or a rejec
 `Files Rejected` arm. That needs CDP's `Input.dispatchDragEvent` with a real `DataTransfer` —
 `scripts/devtools/cdp.js` does not expose it today, and a synthetic DOM event would bypass exactly
 the `preventDefault`-on-`dragover` behaviour this row is about.
+
+---
+
+## 7. The drive (session 36) — ✅ **the half that mattered is taken**
+
+A file was dragged onto a running preview and the ports moved. Real `Input.dispatchDragEvent`
+against the editor's embedded preview webview, project `DEF-029 Drop Drive` (a scratch copy of
+`SBR Hello Control`), viewer bundle rebuilt 13:41 and **verified to contain `acceptFileDrops`
+before the drive**, not assumed from its mtime.
+
+### 7.1 What was built to make it possible
+
+`scripts/devtools/cdp.js` gained **`dropfile`**, the subcommand §6 said was missing:
+
+```
+cdp dropfile "<selector|x,y>" <file>[,<file>...] [--probe=<expr>] [--leave-to=<selector|x,y>] [--no-drop]
+```
+
+🔴 **`drag` could never have done this, and not for want of trying.** A mouse drag is an *in-page*
+HTML5 drag begun by a mousedown on a `draggable` element; a file drag has no mousedown in the page
+at all and arrives with `dataTransfer.files` already populated by the browser process. Nothing
+built out of `Input.dispatchMouseEvent` can put a real `File` there.
+
+✅ **`--probe` exists because drag-over state cannot be read by a second command.** It evaluates an
+expression *while the drag is still hovering*, on the same connection, between the `dragOver` and
+the `drop`. A separate `cdp eval` arrives after the drag has ended, when the answer is always
+`false`.
+
+### 7.2 The readings
+
+The zone accepts `.png` only. Every row below is on-screen text produced by wires out of the
+node — `File Name`/`File Type`/`File Size In Bytes`/`Is Dragging Over` into `Text` nodes, and the
+two signals into a `States` node whose `At <state>` booleans are themselves wired to `Text`. No
+`_internal` was read.
+
+| run | zone | file | Is Dragging Over (during) | File Name | File Type | Size | Files Dropped | Files Rejected |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| baseline | — | — | `false` | `(unset)` | `(unset)` | `(unset)` | `false` | `false` |
+| **A accepted** | png | `drop-me.png` | **`true`** | `drop-me.png` | `image/png` | **`78`** | **`true`** | `false` |
+| **B rejected** | png | `reject-me.pdf` | — | *unchanged* | *unchanged* | *unchanged* | `false` | **`true`** |
+| **C control** | **off** | `drop-me.png` | **`false`** | *unchanged* | *unchanged* | *unchanged* | *unchanged* | *unchanged* |
+| **D drag-out** | png | `drop-me.png` | **`true`** → **`false`** after leaving | — | — | — | — | — |
+
+✅ **`78` is the file's real byte count on disk.** Chromium opened the file and built the `File`
+object; this is not a synthesised event carrying numbers the harness chose.
+
+✅ **B is the Failure-Contract clause driven.** A drop of nothing but rejected files fires
+`Files Rejected` *instead of* `Files Dropped` rather than going silent, and it leaves the value
+outputs alone — `File Name` still reads `drop-me.png` from run A, so the rejected path demonstrably
+did not populate them.
+
+🔴 **C is the control, and it was run *after* a known-firing signal, never before.** Same command,
+same file, same session — only the zone varies. A zone whose `Accept File Drops` is off reports
+`Is Dragging Over: false` during the hover and changes nothing on the drop, and `location.href` is
+unchanged, so the browser did not take its default action either. Read first, this reading would
+have been indistinguishable from "`dropfile` does not work".
+
+✅ **D drives the drag-depth counter.** The hover was taken over the zone's **child label** — the
+case §4 says a plain boolean gets wrong — and `Is Dragging Over` was `true` there.
+
+### 7.3 ⚠️ One thing this drive cannot say
+
+`Is Dragging Over` stayed **`true`** after a CDP `dragCancel`. **That is not reported as a defect,
+because the instrument cannot tell.** `dragCancel` ends the drag session without the pointer ever
+crossing the element's edge, so no `dragleave` DOM event is delivered at all — and when the drag
+was instead walked *out* of the element (`--leave-to`, run D), the counter decremented and the
+output went back to `false` correctly. Whether a real user pressing Escape mid-drag produces a
+`dragleave` is a question about Chromium that this harness does not answer. **Unmeasured, not
+clean and not broken.**
+
+Also still unmeasured: **directory drops**, **paste**, the `Files`/`droppedFiles` array output, and
+the `dataTypes`-carries-no-files arm (covered by a spec row, not driven).
+
+### 7.4 ⚠️ Still owed on this row
+
+The **property-panel half**. Nobody has read the rendered `File Drop` group out of the panel's DOM
+and confirmed whether it folds into **Advanced CSS**. s35 read the node library; a peer reported
+the fold; neither is the panel. Unchanged by this session.

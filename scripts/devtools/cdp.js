@@ -22,6 +22,7 @@
  *   node scripts/devtools/cdp.js wait "<selector>" [timeoutMs]
  *   node scripts/devtools/cdp.js click "<selector>"
  *   node scripts/devtools/cdp.js type "<selector>" "text"
+ *   node scripts/devtools/cdp.js dropfile "<selector|x,y>" <file>[,<file>...]
  *   node scripts/devtools/cdp.js reload
  *   node scripts/devtools/cdp.js network <offline|online>
  *   node scripts/devtools/cdp.js blockurl "<url-pattern>"
@@ -306,6 +307,82 @@ async function dragPoint(client, spec) {
   return elementCentre(client, spec);
 }
 
+/**
+ * A file drag from the desktop, which `dispatchDrag` above cannot produce.
+ *
+ * ⚠️ **These are two different gestures and only one of them carries files.**
+ * `Input.dispatchMouseEvent` starts an *in-page* HTML5 drag — a `draggable`
+ * element the pointer pressed on. A file drag has no mousedown inside the page
+ * at all: it originates in the OS, and the renderer is handed a `DataTransfer`
+ * already populated with `files`. Nothing built out of mouse events can put a
+ * real `File` into `dataTransfer.files`, so a drop handler that reads files is
+ * unreachable through `drag`.
+ *
+ * `Input.dispatchDragEvent` is the one that does. `data.files` is a list of
+ * absolute paths the *browser process* opens and turns into real `File`
+ * objects, so the page sees exactly what a desktop drop delivers — name, MIME
+ * type and size all filled in by Chromium rather than by us.
+ *
+ * 🔴 **Why this is not a synthetic DOM event.** Dispatching `new DragEvent(...)`
+ * from `eval` skips the browser's own drop machinery, which means the
+ * `preventDefault()`-on-`dragover` contract is never exercised: a synthetic
+ * `drop` arrives whether or not the page opted in. Half of what a drop-zone
+ * implementation has to get right is *becoming* droppable, and only a real
+ * drag event can tell a page that did it from one that did not.
+ */
+async function dispatchFileDrop(client, { x, y }, files, { steps = 3, probe = null, drop = true, leaveTo = null } = {}) {
+  const data = {
+    // `files` is what populates `dataTransfer.files`. `items` is what populates
+    // `dataTransfer.types`/`items` — a drop zone that checks for 'Files' before
+    // acting (the right thing to do, so a dragged text selection does not light
+    // it up) reads that list, so a payload without it looks like a non-file drag.
+    items: files.map((file) => ({
+      mimeType: 'application/octet-stream',
+      data: file,
+      title: path.basename(file)
+    })),
+    files,
+    dragOperationsMask: 1 // copy
+  };
+
+  await client.send('Input.dispatchDragEvent', { type: 'dragEnter', x, y, data });
+  for (let i = 0; i < steps; i++) {
+    await client.send('Input.dispatchDragEvent', { type: 'dragOver', x, y, data });
+    // Same reason the mouse drag paces itself: let the renderer run its handler
+    // before the next event, or the state the drop depends on is not there yet.
+    await new Promise((r) => setTimeout(r, 32));
+  }
+
+  // Read the page *while the drag is still hovering*. This has to happen on the
+  // same connection and inside the same sequence — a second `cdp eval` would
+  // arrive after the drag had ended, and "is the pointer over me" is precisely
+  // the state that does not survive that.
+  let hover;
+  if (probe) hover = await evaluate(client, probe);
+
+  // Walk the drag OUT of the element before ending it. `dragCancel` is not a
+  // substitute: it ends the drag session without the pointer ever crossing the
+  // element's edge, so the page gets no `dragleave` at all. Only a move to a
+  // point outside makes the browser fire one, which is the event any hover
+  // state has to be released by.
+  if (leaveTo) {
+    for (let i = 0; i < 3; i++) {
+      await client.send('Input.dispatchDragEvent', { type: 'dragOver', x: leaveTo.x, y: leaveTo.y, data });
+      await new Promise((r) => setTimeout(r, 32));
+    }
+  }
+
+  if (drop) {
+    await client.send('Input.dispatchDragEvent', { type: 'drop', x, y, data });
+  } else {
+    // The leave/cancel arm: proves the hover state is released, not just set.
+    await client.send('Input.dispatchDragEvent', { type: 'dragCancel', x, y, data });
+  }
+  // The drop handler is async in any implementation that reads the file.
+  await new Promise((r) => setTimeout(r, 250));
+  return hover;
+}
+
 function describeArg(a) {
   if (a.value !== undefined) return typeof a.value === 'string' ? a.value : JSON.stringify(a.value);
   return a.description || a.preview?.description || a.type;
@@ -492,6 +569,54 @@ const commands = {
     const b = await dragPoint(client, to);
     await dispatchDrag(client, a, b, steps ? Number(steps) : 12);
     console.log(`dragged ${Math.round(a.x)},${Math.round(a.y)} -> ${Math.round(b.x)},${Math.round(b.y)}`);
+    client.close();
+  },
+
+  /**
+   * Drop real files from the desktop onto a point in the page.
+   *
+   *   cdp dropfile ".DropZone" /abs/photo.png
+   *   cdp dropfile "640,400" /abs/a.png,/abs/b.pdf --target=viewer
+   *   cdp dropfile ".DropZone" /abs/photo.png --probe="Noodl.x" --no-drop
+   *
+   * `--probe=<expr>` is evaluated while the drag is still hovering and printed
+   * as `hover:` — the only way to observe drag-over state, which is gone by the
+   * time a separate `cdp eval` could run. `--no-drop` ends with `dragCancel`
+   * instead of `drop`, which is how you show hover state is *released* rather
+   * than merely set.
+   *
+   * See `dispatchFileDrop` for why `drag` cannot do this: a mouse drag carries
+   * no files, and a synthetic DOM event skips the opt-in this is testing.
+   */
+  async dropfile(target, fileList) {
+    if (!target || !fileList) {
+      throw new Error('usage: cdp.js dropfile "<selector|x,y>" <file>[,<file>...] [--probe=<expr>] [--no-drop]');
+    }
+    const probeArg = argv.find((a) => a.startsWith('--probe='));
+    const probe = probeArg ? probeArg.slice('--probe='.length) : null;
+    const drop = !argv.includes('--no-drop');
+    const leaveArg = argv.find((a) => a.startsWith('--leave-to='));
+
+    const files = String(fileList)
+      .split(',')
+      .map((f) => path.resolve(f.trim()))
+      .filter(Boolean);
+    // A path the browser process cannot open yields an empty `files` list in the
+    // page, which reads exactly like a drop zone that ignored the drag. Fail here
+    // instead, so that reading can never be produced by a typo.
+    for (const f of files) {
+      if (!fs.existsSync(f)) throw new Error(`no such file: ${f}`);
+    }
+
+    const client = await connect(await appTarget());
+    const point = await dragPoint(client, target);
+    const leaveTo = leaveArg ? await dragPoint(client, leaveArg.slice('--leave-to='.length)) : null;
+    const hover = await dispatchFileDrop(client, point, files, { probe, drop, leaveTo });
+    if (probe) console.log('hover: ' + JSON.stringify(hover));
+    console.log(
+      `${drop ? 'dropped' : 'cancelled'} ${files.length} file(s) at ` +
+        `${Math.round(point.x)},${Math.round(point.y)}: ${files.map((f) => path.basename(f)).join(', ')}`
+    );
     client.close();
   },
 

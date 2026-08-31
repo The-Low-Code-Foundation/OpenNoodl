@@ -265,3 +265,55 @@ widening its own scope.
 convert `nested-scroll-plugin.js` and its siblings to `.ts`.
 
 Owner: **NONE**. Gets a `DEF-0xx` id when someone measures the blast radius above.
+
+---
+
+## §7 — a `connections.json` with unknown field names is silently emptied and written back
+
+**Found by** DEF-029's drive (session 36), by accident: the drive's own hand-authored file used
+`sourceId`/`sourcePort`/`targetId`/`targetPort` where v2 wants
+`fromId`/`fromProperty`/`toId`/`toProperty`.
+
+**What happened, in order.**
+
+1. The component loaded with **no error, no warning, and no validation failure.** The editor opened
+   the project and drew it.
+2. `exportComponent` → `NodeGraphModel.getConnectionHealth` threw
+   `TypeError: Cannot read properties of undefined (reading 'id')`
+   (`const sourceId = c.sourceId ? c.sourceId : c.sourceNode.id`), the preview never mounted, and
+   the message named **neither the file nor the component nor the connection**.
+3. 🔴 **The editor then wrote the file back to disk as eight empty objects** — `{}` × 8. The
+   author's connection data was gone from disk, not merely ignored in memory.
+
+```json
+"connections": [ {}, {}, {}, {}, {}, {}, {}, {} ]
+```
+
+**Why it is worth a row even though a hand-written file caused it.** The product's own doors (the
+editor, the MCP author tools) would not produce these field names — but the *response* to an
+unrecognised connection is the defect, and it has three separate faults, any one of which would
+have been enough on its own:
+
+- the loader accepts fields it does not understand rather than refusing;
+- the failure surfaces as a `TypeError` deep in export, with nothing naming the input that caused
+  it — the preview simply never appears;
+- **the malformed input is normalised and persisted**, so the round-trip destroys the file. A
+  hand-edited or externally-generated project is silently damaged by being opened.
+
+There is a schema validator in the tree (`packages/noodl-editor/src/editor/src/schemas/validator.ts`)
+and `connections-v2.json` is a named schema, so the question is not "should this be checked" but
+**why the check did not run on this path.**
+
+**What to measure before fixing.**
+
+- Does `validator.ts` run on project *load*, or only on authoring writes? (Start here — if it runs,
+  this is a coverage hole in what it validates; if it does not, this is a missing call site.)
+- Is the empty-object write a normalisation step or a save of the in-memory model? Those are
+  different fixes.
+- ⚠️ **Whether an unresolvable id — a real field name pointing at a node that is not in the
+  component — takes the same crash.** That case *can* be produced by ordinary means (deleting a
+  node, a bad merge), which would make this reachable without hand-editing anything.
+  **Not measured. Measure this before ranking the row.**
+
+Owner: **NONE**. Gets a `DEF-0xx` id when the bullet above is measured. ⚠️ Next free id is
+`DEF-038`.
