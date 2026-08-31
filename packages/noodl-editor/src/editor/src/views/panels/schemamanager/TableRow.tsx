@@ -17,6 +17,7 @@ import { HStack } from '@noodl-core-ui/components/layout/Stack';
 import { Text, TextType } from '@noodl-core-ui/components/typography/Text';
 
 import { AddColumnForm, ColumnRenameInput } from './AddColumnForm';
+import { isServerOwnedColumn } from './serverOwnedColumns';
 import css from './TableRow.module.scss';
 
 /** Column definition from schema */
@@ -221,11 +222,20 @@ export function TableRow({
                 <td>✓</td>
                 <td>auto</td>
               </tr>
-              {/* User-defined columns */}
-              {table.columns.map((col) => (
-                <tr key={col.name}>
+              {/* User-defined columns.
+
+                  DEF-036 AC5 — except on the accounts table, where seven of them are not the
+                  author's. `serverOwned` drops the rename affordance and marks the row like the
+                  three above it, so `password` and `username` read as what they are: columns the
+                  backend owns. Renaming one on a live `_User` table is not an edit anybody
+                  recovers from by pressing Esc. */}
+              {table.columns.map((col) => {
+                const serverOwned = isServerOwnedColumn(table.name, col.name);
+
+                return (
+                <tr key={col.name} className={serverOwned ? css.SystemColumn : undefined}>
                   <td>
-                    {editing && renamingColumn === col.name ? (
+                    {editing && !serverOwned && renamingColumn === col.name ? (
                       <ColumnRenameInput
                         backendId={backendId}
                         tableName={table.name}
@@ -237,7 +247,7 @@ export function TableRow({
                         }}
                         onCancel={() => setRenamingColumn(null)}
                       />
-                    ) : editing ? (
+                    ) : editing && !serverOwned ? (
                       <button
                         type="button"
                         className={css.RenameTrigger}
@@ -257,7 +267,8 @@ export function TableRow({
                   <td>{col.required ? '✓' : ''}</td>
                   <td>{col.default !== undefined ? String(col.default) : '—'}</td>
                 </tr>
-              ))}
+                );
+              })}
               {table.columns.length === 0 && (
                 <tr>
                   <td colSpan={4} className={css.NoColumns}>

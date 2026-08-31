@@ -68,9 +68,66 @@
  *   reply we could not read. **The cache is left exactly as it was.**
  */
 export type SchemaFetchOutcome =
-  | { status: 'schema'; tables: unknown[] }
-  | { status: 'not-applicable'; reason: string }
-  | { status: 'unavailable'; reason: string };
+  | { status: 'schema'; tables: unknown[]; backend?: SchemaBackendRef }
+  | { status: 'not-applicable'; cause: NotApplicableCause; reason: string }
+  | { status: 'unavailable'; cause: UnavailableCause; reason: string };
+
+/**
+ * DEF-036 AC1 — why the schema could not be read, as a code rather than a sentence.
+ *
+ * `reason` is prose for a log line and always has been: it interpolates a backend id, it is
+ * written for a developer reading the console, and two of the strings differ only in a word.
+ * The panel has to *choose a sentence* from this, and choosing one by matching substrings of
+ * English is how `DELIVERED-B` came to match inside `NOT-DELIVERED-B`. So the discrimination
+ * the caller needs is carried as its own field, and {@link SchemaFetchOutcome} is the only
+ * place that decides it.
+ *
+ * ⚠️ Every arm here is a case the person meets differently:
+ * - `no-endpoint` — nothing attached at all. The next action is to attach a backend.
+ * - `external-endpoint` — attached, but a server we hold no key for (WF-007). There is no
+ *   schema editor to send anyone to, and Richard's DEF-036 rider puts it out of scope.
+ * - `not-running` — attached, and it is stopped. The next action is to start it.
+ * - `not-registered-yet` — attached and starting: the window DEF-035 measured a project
+ *   healing itself across. Nothing to do but wait, which is a different sentence from either.
+ * - `unreadable-reply` — running, and it answered with something that is not a table list.
+ * - `no-project` / `no-ipc` / `threw` — this editor could not ask. Not a fact about the
+ *   project, and the panel must not blame one.
+ */
+export type NotApplicableCause = 'no-endpoint' | 'external-endpoint';
+
+/**
+ * DEF-036 AC4 — which managed backend answered, kept so a panel can open its schema editor.
+ *
+ * 🔴 Carried on the outcome rather than resolved a second time. Working out which running
+ * process a project's endpoint belongs to is `matchEndpointToManaged` over an async
+ * `backend:list`, and the read that produced this schema has already done it. A button that
+ * re-derived it could send an author into a *different* backend's schema than the one their
+ * ports came from, and nothing on screen would say which they were looking at.
+ *
+ * Optional, because a `SchemaFetchOutcome` is also constructed in specs where no backend
+ * exists; a reader with no ref offers no jump rather than inventing an id.
+ */
+export interface SchemaBackendRef {
+  id: string;
+  name: string;
+}
+
+export type UnavailableCause =
+  | 'no-project'
+  | 'no-ipc'
+  | 'not-registered-yet'
+  | 'not-running'
+  | 'unreadable-reply'
+  | 'threw';
+
+/**
+ * DEF-036 AC1 — raised on `EventDispatcher` when the *answer* changes, not on every attempt.
+ *
+ * Declared in this leaf module rather than in `schemahandler.ts` so a panel can listen for it
+ * without importing the handler, its singletons and its IPC — the same split
+ * `backendSurfaces.tsx` records for `BACKEND_SERVICES_PANEL_ID`.
+ */
+export const SCHEMA_OUTCOME_CHANGED = 'SchemaHandler.outcomeChanged';
 
 /** The three metadata keys `SchemaHandler._store()` owns, as one write. */
 export interface SchemaCacheValue {

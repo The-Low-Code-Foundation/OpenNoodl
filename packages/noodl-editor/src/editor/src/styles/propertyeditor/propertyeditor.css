@@ -678,6 +678,63 @@
    The control is dimmed and inert; the sentence under it is the deliverable.
    Amber rather than red: phase 23's colour law reserves red for danger, and
    "this backend does not do that" is information, not an error. */
+/* DEF-036 AC1 — the panel-level note a data node shows when its schema could not be read.
+
+   Louder than `.property-capability-reason` and `.property-port-gate-reason` on purpose, and it
+   is the one place in this panel where that is right. Those two annotate a control that is on
+   screen: the control carries the weight and the sentence explains it. This one is drawn where
+   an author is looking for a list of fields that is not there, so there is nothing else on the
+   panel to notice — a 10px line beside a rule would be a second silence.
+
+   ⚠️ Same amber as both of them (`--theme-color-notice` aliases `--theme-color-warning` today),
+   because the language "coloured rule, short sentence, this is not doing what you expect" has
+   already shipped and been read in both themes. What separates this from them is size and
+   position, not hue. */
+.property-schema-notice {
+  margin: 8px;
+  padding: 8px 10px;
+  border-left: 2px solid var(--theme-color-notice);
+  background-color: var(--theme-color-bg-2);
+  color: var(--theme-color-fg-default);
+  line-height: 1.4;
+}
+
+.property-schema-notice-title {
+  font-size: 11px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.property-schema-notice-message {
+  font-size: 10px;
+  opacity: 0.85;
+}
+
+/* DEF-036 AC4 — the jump into the schema editor for the table this node names.
+
+   Quiet on purpose. It sits above a list of fields that is working, so it is a way out for the
+   author who cannot find one of them rather than an instruction to everybody else — the
+   opposite weighting from `.property-schema-notice`, which is drawn where nothing else is. */
+.property-schema-add-field {
+  margin: 6px 8px 0 8px;
+}
+
+.property-schema-add-field-button {
+  width: 100%;
+  padding: 5px 8px;
+  border: 1px solid var(--theme-color-bg-3);
+  border-radius: 2px;
+  background: transparent;
+  color: var(--theme-color-fg-default);
+  font-size: 10px;
+  text-align: center;
+  cursor: pointer;
+}
+
+.property-schema-add-field-button:hover {
+  background-color: var(--theme-color-bg-2);
+}
+
 .property-capability-gated {
   display: block;
 }

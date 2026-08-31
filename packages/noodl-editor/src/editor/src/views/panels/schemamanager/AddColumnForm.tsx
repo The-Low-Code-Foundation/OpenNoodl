@@ -16,6 +16,7 @@ import { PrimaryButton, PrimaryButtonSize, PrimaryButtonVariant } from '@noodl-c
 import { Text, TextType } from '@noodl-core-ui/components/typography/Text';
 
 import css from './AddColumnForm.module.scss';
+import { validateColumnName } from './serverOwnedColumns';
 
 const { ipcRenderer } = window.require('electron');
 
@@ -37,25 +38,6 @@ export interface AddColumnFormProps {
 }
 
 /**
- * Validate column name
- */
-function validateColumnName(name: string, existingNames: string[]): string | null {
-  if (!name.trim()) {
-    return 'Column name is required';
-  }
-  if (!/^[a-zA-Z][a-zA-Z0-9_]*$/.test(name)) {
-    return 'Must start with letter, alphanumeric and underscore only';
-  }
-  if (['objectId', 'createdAt', 'updatedAt', 'ACL'].includes(name)) {
-    return 'Reserved column name';
-  }
-  if (existingNames.includes(name)) {
-    return 'Column already exists';
-  }
-  return null;
-}
-
-/**
  * AddColumnForm component - inline form for adding columns
  */
 export function AddColumnForm({ backendId, tableName, existingColumns, onSuccess, onCancel }: AddColumnFormProps) {
@@ -69,7 +51,7 @@ export function AddColumnForm({ backendId, tableName, existingColumns, onSuccess
   const handleSubmit = useCallback(async () => {
     setError(null);
 
-    const nameError = validateColumnName(name, existingColumns);
+    const nameError = validateColumnName(name, existingColumns, tableName);
     if (nameError) {
       setError(nameError);
       return;

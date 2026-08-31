@@ -8,6 +8,15 @@ import { decoratePortElement } from '@noodl-utils/capability-gating/portDecorati
 import { describePortElement } from '@noodl-utils/portDescription';
 import { applyPortGate, revealGateTarget } from '@noodl-utils/portGate';
 import { applyPortHint, hintPortsOf, portNamesForView, HINT_PORTS_ATTRIBUTE } from '@noodl-utils/portHint';
+import { SCHEMA_OUTCOME_CHANGED } from '@noodl-utils/schemaCachePolicy';
+import {
+  addFieldTarget,
+  schemaFieldNotice,
+  schemaTableForNode,
+  type SchemaFieldNotice,
+  type SchemaFieldSubject
+} from '@noodl-utils/schemaFieldNotice';
+import SchemaHandler from '@noodl-utils/schemahandler';
 
 import { listPortTypeFor } from '@noodl-core-ui/components/json-editor/utils/listValueCodec';
 
@@ -17,6 +26,8 @@ import PopupLayer from '../../../popuplayer';
 import { CodeEditorType } from '../CodeEditor';
 import { PropertyFilterInput } from '../components/PropertyFilterInput';
 import { PropertyGroups, PropertyGroupModel } from '../components/PropertyGroups';
+import { SchemaAddFieldButton } from '../components/SchemaAddFieldButton';
+import { SchemaFieldNoticeView } from '../components/SchemaFieldNoticeView';
 import { ModelProxy } from '../models/modelProxy';
 import { PagesType } from '../Pages';
 import { countFilterableRows, filterGroups, isFilterActive, shouldOfferFilter } from '../propertyPanelFilter';
@@ -121,6 +132,18 @@ export class Ports extends View {
 
     // BCN-010: a probe settles asynchronously, so the panel has to be told.
     this._unsubscribeProbes = capabilityProbes().onChange(() => this.renderGroups());
+
+    // DEF-036 AC3 — and so does a schema read. `SchemaHandler` raises this only when the answer
+    // actually changed, so this is not a per-focus-event re-render. `EventDispatcher.instance.off(this)`
+    // in `dispose` already unsubscribes it.
+    EventDispatcher.instance.on(
+      SCHEMA_OUTCOME_CHANGED,
+      () => {
+        this._portsHash = undefined;
+        this.renderGroups();
+      },
+      this
+    );
   }
   showPopout(popout) {
     if (this.activePopout) {
@@ -276,6 +299,62 @@ export class Ports extends View {
       // `capabilityTarget` follows one method up.
       return new Map();
     }
+  }
+
+  /**
+   * DEF-036 — everything the two schema surfaces on this panel are decided from, read once.
+   *
+   * 🔴 One subject for the warning and the button, because AC2 is a claim about the *pair*: the
+   * button must not exist in the state the warning explains. Reading the outcome twice would
+   * make that a coincidence rather than a fact — `schemaFieldNotice` and `addFieldTarget` both
+   * refuse the same subject, and `tests-unit/def-036` asserts they do.
+   *
+   * 🔴 Reads `SchemaHandler.lastOutcome` and derives nothing. A second computation of "is there
+   * a backend" in this panel is the shape that gave us two palettes and two answers; the handler
+   * already asked, and its answer is the one the ports were minted from.
+   *
+   * The count is taken from the **node**, across both plugs, not from `_getPorts()`. Two reasons
+   * and both bite: `_getPorts()` is the input-side, property-row-bearing subset, and half this
+   * family — `Record` and `User` — publishes its `prop-*` ports as **outputs**, so counting the
+   * panel's own list would read zero for a node whose schema is perfectly healthy and put a
+   * warning on it.
+   */
+  private schemaFieldSubject(): (SchemaFieldSubject & { selectedTable?: string }) | undefined {
+    const node = this.model && this.model.model;
+    if (!node) return undefined;
+
+    try {
+      const typename = this.model.type && (this.model.type.name || this.model.type.localName);
+      const ports = node.getPorts ? node.getPorts() : [];
+      const getParameter = (name: string) => (this.model.getParameter ? this.model.getParameter(name) : undefined);
+
+      return {
+        typename,
+        outcome: SchemaHandler.instance ? SchemaHandler.instance.lastOutcome : undefined,
+        fieldPortCount: ports.filter((port) => port.name && port.name.startsWith('prop-')).length,
+        // BCN-004 step 5: a Record node aimed at its own backend is not described by the
+        // built-in backend's outcome at all. Passed raw — `namesOwnBackend` owns the judgement,
+        // and `_active_` is a value that looks like a backend and is not one.
+        backendIdParameter: getParameter('backendId'),
+        selectedTable: schemaTableForNode(typename, getParameter)
+      };
+    } catch (e) {
+      // A panel that cannot work out a notice must still render its ports — the same rule
+      // `capabilityTarget` and `structuralHints` both follow above.
+      return undefined;
+    }
+  }
+
+  /** DEF-036 AC1 — the warning, or nothing. */
+  private schemaNotice(): SchemaFieldNotice | undefined {
+    const subject = this.schemaFieldSubject();
+    return subject ? schemaFieldNotice(subject) : undefined;
+  }
+
+  /** DEF-036 AC4 — where an `Add a field` button would land, or nowhere. */
+  private schemaAddField(): { backend: { id: string; name: string }; table: string } | undefined {
+    const subject = this.schemaFieldSubject();
+    return subject ? addFieldTarget(subject) : undefined;
   }
 
   /**
@@ -563,6 +642,11 @@ export class Ports extends View {
       // Directus is exactly that case: it paints closed-because-unprobed and
       // then a real answer arrives ~200ms later.
       capabilities: this.capabilitySignature(),
+      // DEF-036 AC3 — the warning has to clear itself. Ports arriving already moves this hash,
+      // but the *reason* can change while the list stays empty (a backend that was not attached
+      // becomes one that is starting), and that transition would otherwise never be drawn.
+      schemaNotice: this.schemaNotice(),
+      schemaAddField: this.schemaAddField(),
       // 🔴 The RAW query, not whether it is active. The filter box is a controlled input rendered
       // from this very call, so a keystroke that does not change the hash is a keystroke that
       // never reaches the box — type a space and the panel would appear frozen.
@@ -619,10 +703,22 @@ export class Ports extends View {
       els: this.renderParams(g.views)
     });
 
+    const notice = this.schemaNotice();
+    const addField = this.schemaAddField();
+
     this.root.render(
       React.createElement(
         React.Fragment,
         null,
+        // Above the filter box, because it is the answer to "where are my fields" and the filter
+        // is a way of searching a list that in this state does not exist.
+        notice && React.createElement(SchemaFieldNoticeView, { notice }),
+        addField &&
+          React.createElement(SchemaAddFieldButton, {
+            backendId: addField.backend.id,
+            backendName: addField.backend.name,
+            table: addField.table
+          }),
         offerFilter &&
           React.createElement(PropertyFilterInput, {
             value: this._filterQuery,

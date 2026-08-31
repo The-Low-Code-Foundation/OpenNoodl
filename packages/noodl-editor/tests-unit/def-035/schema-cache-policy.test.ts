@@ -41,11 +41,11 @@ describe('DEF-035 — a backend we could not reach leaves the cache alone', () =
    * `fetchBuiltInSchema`, and `_store()` wiped the metadata on `undefined`.
    */
   const UNREACHABLE: SchemaFetchOutcome[] = [
-    { status: 'unavailable', reason: 'no project is open' },
-    { status: 'unavailable', reason: 'no ipcRenderer in this window' },
-    { status: 'unavailable', reason: 'no managed backend matches the endpoint yet' },
-    { status: 'unavailable', reason: 'backend b1 is not running' },
-    { status: 'unavailable', reason: 'backend b1 returned no readable table list' }
+    { status: 'unavailable', cause: 'no-project', reason: 'no project is open' },
+    { status: 'unavailable', cause: 'no-ipc', reason: 'no ipcRenderer in this window' },
+    { status: 'unavailable', cause: 'not-registered-yet', reason: 'no managed backend matches the endpoint yet' },
+    { status: 'unavailable', cause: 'not-running', reason: 'backend b1 is not running' },
+    { status: 'unavailable', cause: 'unreadable-reply', reason: 'backend b1 returned no readable table list' }
   ];
 
   it.each(UNREACHABLE)('writes nothing for: $reason', (outcome) => {
@@ -55,7 +55,7 @@ describe('DEF-035 — a backend we could not reach leaves the cache alone', () =
   });
 
   it('carries the reason on the no-write arm, so the decision is loggable', () => {
-    const decision = decideSchemaCache({ status: 'unavailable', reason: 'backend b1 is not running' });
+    const decision = decideSchemaCache({ status: 'unavailable', cause: 'not-running', reason: 'backend b1 is not running' });
 
     // An invisible decision not to write is how this defect stayed invisible.
     expect(decision.reason).toContain('backend b1 is not running');
@@ -108,8 +108,8 @@ describe('DEF-035 — a project with no built-in backend still clears', () => {
    * attribute another server's classes to this project — the WF-007 rule.
    */
   const NOT_APPLICABLE: SchemaFetchOutcome[] = [
-    { status: 'not-applicable', reason: 'the project has no backend endpoint' },
-    { status: 'not-applicable', reason: 'the endpoint is a parse server we hold no key for' }
+    { status: 'not-applicable', cause: 'no-endpoint', reason: 'the project has no backend endpoint' },
+    { status: 'not-applicable', cause: 'external-endpoint', reason: 'the endpoint is a parse server we hold no key for' }
   ];
 
   it.each(NOT_APPLICABLE)('clears the cache for: $reason', (outcome) => {
@@ -130,8 +130,8 @@ describe('DEF-035 — a project with no built-in backend still clears', () => {
       return d.write && d.value.dbCollections === undefined;
     };
 
-    expect(clears({ status: 'not-applicable', reason: 'x' })).toBe(true);
-    expect(clears({ status: 'unavailable', reason: 'x' })).toBe(false);
+    expect(clears({ status: 'not-applicable', cause: 'no-endpoint', reason: 'x' })).toBe(true);
+    expect(clears({ status: 'unavailable', cause: 'threw', reason: 'x' })).toBe(false);
     expect(clears({ status: 'schema', tables: [] })).toBe(false);
   });
 });

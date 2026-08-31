@@ -1,6 +1,9 @@
 # DEF-036 — the Record family keeps its wires without a schema; the User family does not
 
-**Status:** ⬜ **open — measured, unbuilt.** Owner: **phase 80**.
+**Status:** 🟡 **AC1–AC5 BUILT AND DRIVEN (s40). AC6 driven. AC7 at the floor.** Owner: **phase 80**.
+🔴 **What is left is part 3 alone, and it is a 🧭 question for Richard, not a build** — see §6's
+close and the handoff. Read **§9** for what shipped, what it was measured against, and the two
+things it deliberately does not do.
 **Found by:** DEF-035's AC5 drive (2026-08-31, s34), §6.3.
 **Who it bites:** every app whose sign-up or profile screen wires a custom column on the
 accounts table — **271 wires across 21 of the 118 corpus projects.**
@@ -354,3 +357,81 @@ the Option B criteria cannot tell what was weighed.
   to write the spec around.
 - **AC4** — driven: the `LearnBook` copy exports its 14 User wires with the cache cold.
 - **AC5** — `test:ci` returns to its known floor.
+
+
+---
+
+## 9. 🟢 Parts 1 and 2 built and driven — 2026-08-31, s40
+
+**Option B, as ruled.** No wire declares a column. What was added is the explanation the node
+never gave, and the way out from where the question gets asked.
+
+### What shipped
+
+| # | change | file |
+| --- | --- | --- |
+| 1 | `SchemaFetchOutcome` carries a `cause` **code**, and a `SchemaBackendRef` on a successful read | `utils/schemaCachePolicy.ts` |
+| 2 | `SchemaHandler.lastOutcome` retains it; `SCHEMA_OUTCOME_CHANGED` is raised **only when the answer changes** | `utils/schemahandler.ts` |
+| 3 | the judgement: which state gets which sentence, and where an **Add a field** button may point | `utils/schemaFieldNotice.ts` |
+| 4 | the panel-level note, and the button | `propertyeditor/components/SchemaFieldNoticeView.tsx`, `SchemaAddFieldButton.tsx` |
+| 5 | both drawn from **one subject**, so AC2 is structural rather than a coincidence | `propertyeditor/DataTypes/Ports.ts` |
+| 6 | `SchemaPanel` opens on a named table — `initialTable` + `openToken` | `schemamanager/SchemaPanel.tsx` |
+| 7 | AC5's ignore list, and the column-name validator moved somewhere a spec can reach | `schemamanager/serverOwnedColumns.ts` |
+
+🔴 **The change that made the rest possible was deleting nothing and adding one field.** §5 said
+the sentence AC1 wants *"is already computed and then thrown away"*, and it was: `_fetch` reduced
+a six-way outcome to `decision.write`, a boolean. Retaining it is the whole of AC1's mechanism.
+
+### The drive — real editor, `def036-dash-drive`, schema absent from disk
+
+| what | reading |
+| --- | --- |
+| the retained outcome | `{ status: 'unavailable', cause: 'not-registered-yet', reason: 'no managed backend matches the endpoint yet' }` |
+| **AC1** — a `net.noodl.user.User` node | draws **“This project’s backend is still starting … this node has no fields to read …”** |
+| **AC2** — same node, same moment | **0** Add-a-field buttons |
+| **AC3** — `setMetaData('dbCollections', …)` restored live | notice count **1 → 0**, `prop-*` ports **0 → 9** (`prop-firstName`, `prop-lastName`, …), **no reopen** |
+| **AC4** — button on the `User` node | reads **“Add a field to `_User`”**, `elementFromPoint` says it is the top element, click opens `backend-schema` with `panelProps.initialTable = '_User'` |
+| **AC4 landing** — surface opened on a real running backend | `Person` row **expanded, its columns drawn** |
+| **control** — stale schema present, backend unreachable | **0 notices, 0 buttons** — a working node is not warned about |
+
+⚠️ **The `status: 'schema'` arm of AC4 was driven with an injected outcome**, because no local
+backend was bound to that project. What that grades is the panel wiring — button → props →
+surface → expanded row. That `fetchBuiltInSchema` produces such an outcome is graded by
+`tests-unit/def-035` and by the live `not-registered-yet` reading above, not by this drive.
+
+### 🔴 Two defects the drive found in the work itself
+
+**1. `_active_` is not a backend, and the obvious boolean would have switched this off silently.**
+The `backendId` port is *declared* with `default: '_active_'`, and `schema-ports.ts:490` reads it
+and an absent parameter **on the same line** as the same thing. The first version asked
+`Boolean(getParameter('backendId'))` to mean *"this node names its own backend"* — which is
+**true for every Record node whose author has ever chosen the default**, so the whole feature
+would have been off for them, with nothing on screen to say so. ✅ The rule now lives in
+`namesOwnBackend` in the graded module, with a control asserting the `_active_` node still
+speaks.
+
+**2. A second press of the button landed on the first node's table.** `SidebarModel` reuses an
+already-mounted surface: the new props *do* arrive (the header changed to a marker name) but
+`useState(initialTable)` had already latched. Measured — opened on `Person`, re-opened for
+`Orders`, header updated, **`Person` still the expanded row**. That is AC4's own dead end,
+reintroduced on the second use of the button that removes it. ✅ Fixed with an effect keyed on
+`[initialTable, openToken]`, and re-driven: first open `Person` ✅, second open `Orders` ✅ with
+`Person` collapsed. 🔴 **The docblock that asserted the opposite was written from reading the
+code and was wrong.** A comment claiming a remount is not a measurement of one.
+
+### 🔴 Still owed — say this before quoting the row as done
+
+- ⚠️ **The rendering half of AC5 is graded by rule only.** `serverOwnedColumns.ts` decides that
+  `password`, `username`, `email`, `emailVerified`, `authData`, `createdAt`, `updatedAt` are the
+  backend's on `_User`, and `tests-unit/def-036/accounts-table-columns.test.ts` grades that
+  decision and the validator. **That `TableRow` applies it was not driven** — no backend
+  reachable in this session had a `_User` table, and `TableRow.tsx` imports `Icon`, so a spec
+  importing it fails *to run* rather than fails. What is unmeasured is whether the rename
+  affordance actually disappears.
+- ⚠️ **`SignUp` was not the node driven.** The panel code is family-blind — one subject, one
+  table of six type names — and `SignUp` is in it, but the node watched drawing the notice was
+  `net.noodl.user.User`. The same gap §6 records for the export.
+- ⚠️ **No external-backend arm was driven.** `external-endpoint` has a sentence and a test; no
+  project pointed at a foreign Parse server was opened.
+- 🔴 **The 271 wires still leave the build**, by design. §4's closing note is the ruling, not an
+  oversight.
