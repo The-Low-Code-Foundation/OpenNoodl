@@ -149,9 +149,17 @@ template nobody can open; warning matches the behaviour a person already gets fr
 
 1. **Name the seam.** A single documented answer to *"what does a project on disk mean?"* — and which
    of export / deploy / headless render / template generation apply the migrations and which do not.
-2. **(a)** Either apply the load-time migrations on the disk-reading paths too, **or** make template
-   generation write the explicit values so an artefact is correct as written. ⚠️ The second is what
-   phase 78 D14 chose for its own template and it is the cheaper, narrower option.
+2. ✅ **(a) DONE 2026-08-31 (s31) — the second option.** Template generation now writes the
+   explicit values (`pinRunOnValueChangeDefaults`, called from `toTemplateContent`), so the
+   artefact is correct as written. §6.2 records the measurement and the one decision inside it.
+   ⚠️ Done **for the site-builder generator only.** `tpl001Template.ts`'s `prepareArtefact` is the
+   other generator and has **not** been given the same pass — and it is **not** a one-line call,
+   because it writes a **v2 directory** (`components/*/nodes.json` + `nodegx.project.json`) rather
+   than one legacy `content.json`. `pinRunOnValueChangeDefaults` takes the legacy
+   `{components:[{graph:{roots,connections}}]}` shape, so TPL-001 needs its graph assembled into
+   that shape first — which `readAsLegacyProject` already does for site-builder, through
+   `ProjectImporter`. **Nobody has measured whether TPL-001 has a disagreement at all**; that
+   measurement is the first job, not the port.
 3. ~~**(b)** Give `PlatformTemplateProvider` the same `rootNodeId` resolution
    `EmbeddedTemplateProvider` already has — by **id lookup**, independent of the NodeLibrary.~~
    🔴 **Struck 2026-08-29 — see §2.1.** The curated path receives a real project's files, which
@@ -167,9 +175,9 @@ template nobody can open; warning matches the behaviour a person already gets fr
 3. (a) A generated artefact rendered **from disk** and the same project **loaded in the editor**
    agree about every `runOnChange-*` — asserted as a **pair**, because either one alone is the state
    this task exists to distinguish.
-   📊 **Measured 2026-08-29: they disagree in 56 places across 13 components** on the shipped
-   site-builder artefact — see §6.1. The pair is currently **red**, and that is the starting
-   number this criterion has to drive to zero.
+   ✅ **GREEN 2026-08-31 (s31).** Was 56 on 2026-08-29, re-derived at **65** two days later, now
+   **0** — the whole seam, both `applyPatches` passes, measured with the before artefact as a
+   red control. See §6.2. Gated by `DEF-007 AC3` in `sb007Template.test.ts`.
 4. The seam's documentation names each path and which side it is on.
 
 ## 5. Traps
@@ -249,3 +257,122 @@ small**, and that closing it by writing explicit values (the §3.2 half) is 56 d
 🔴 **Do not fix this by editing `site-builder.content.json` or its generator right now.** That
 artefact is **phase 77's active file** — mtime 12:44 today, moved by SBR-017 this session. The fix
 belongs with whoever owns the generator, sequenced after their work lands.
+
+
+## 6.2 ✅ §3.2 built — 2026-08-31, s31
+
+**65 → 0**, and the count is the first thing to say about it.
+
+### The number had decayed, and it decided the design
+
+§6.1 recorded **56**, anchored to md5 `56e03abf…` at `cdd842fc`. Re-derived at the point of
+relying on it: `cdd842fc` **56**, `HEAD` **65**, working tree **65**. The breakdown moved too —
+`/#__cloud__/reorderSection` appeared with 6, `/Admin/SectionRow` left, `/Pages/ThemeEditor` went
+6 → 14 — because phase 77 keeps authoring into this template.
+
+🔴 **That killed the obvious fix.** Settling 65 parameters by hand into a file a peer edits daily
+would have been stale before it committed. The fix had to be in the generator, which is where
+§3.2 already said to put it — but the *reason* it had to be there was only visible after
+re-measuring. **Fourth session running that a stale recorded quantity would have produced a
+defensible answer to the wrong question.**
+
+### And the artefact is generated, which the register never said
+
+🔴 `site-builder.content.json` **is generated** — `npm run template:site-builder` — and
+`sb007Template.test.ts` asserts byte equality, so a hand edit reddens rather than ships. The
+template's own header says so in capitals. §6.1's *"do not fix this by editing the artefact or its
+generator, it is phase 77's active file"* was half right: the artefact is theirs, and the fix was
+never an edit to it.
+
+### The value is `true`, and the authors had already decided that
+
+The migration writes `false` to preserve a **pre-§2** author's intent, and its only evidence such
+an author exists is **absence of the key** — there is no project-version guard anywhere in the
+pass, and there could not be. On a template minted after §2 it therefore rewrites parameters
+nobody wrote. So the pin writes the `true` the artefact **already means** unloaded (a declared
+default never runs its setter, so `runOnValueChange()` reads absent as ticked).
+
+✅ **This is not a new policy — it is a hand-run one, automated.** The component sources already
+carry **21 explicit `true`s and 27 `false`s**, pinned node by node as each breakage was found, and
+`sb006Components.ts:517` states the whole argument: *"An already-present key is never touched,
+whatever its value (the migration's idempotence clause), so writing `true` here is the one thing
+that survives the load. Absent does not."* The pin generalises that to the 65 nobody had reached.
+The 27 authored `false`s are preserved — idempotency is the migration's own rule and the pin
+obeys it.
+
+### Measured, with a control that reads red
+
+`applyPatches` is **two** passes, not one — the node-level `Patches` and then the migration — so
+the pair was measured through the whole call:
+
+| artefact | migration writes | total disk-vs-load differences |
+|---|---|---|
+| before the fix (control) | 65 | **65** |
+| after | 0 | **0** |
+
+⚠️ The node-level `Patches` contribute **zero** on this artefact, so the migration was the entire
+disagreement. That is a fact about *this* template and not about the seam in general.
+
+The regeneration changed **65 lines, every one a `runOnChange-*: true`, and nothing else** — which
+also proves phase 77's in-flight component edits were reproduced rather than swept.
+
+### 🔴 The one consequence that is a decision, not a fix
+
+The pin wrote `true` on **all six** of P77 **D33**'s unconfirmed same-collection rows on
+`/Pages/ThemeEditor`. What that does and does not change:
+
+- **Deployed, exported, headless-rendered: nothing.** Those paths already read absent as ticked.
+  If those six are a real write-back cycle, **the cycle is already live in the shipped product**
+  and always was.
+- **In the editor: they now run**, where the migration used to silence them. So the editor stops
+  masking a hazard the deployed site already has — and the editor is where the runtime's
+  `[runtime/cyclic-loop]` detector lives, which is how D31 was caught at all.
+
+🧭 **Richard's call whether that is the right trade**, and D33's owed drive is now much cheaper to
+take, because the editor will exhibit the behaviour instead of hiding it. The conservative
+alternative — pinning those six `false` — was rejected because two of them are `in-rows` on
+functions that read a collection, and `false` there is D5/D11's failure mode exactly: the screen
+never populates.
+
+### What the gates had to become
+
+Six specs went red, all of them grading **`plan.writes`** — *"the inputs the migration is about to
+silence"* — which the fix empties by design. That block's own control comment says an empty plan
+makes every assertion under it pass for free, so leaving them green-by-emptiness was not an option.
+
+Both passes now grade what the artefact **states**:
+
+| pass | question | population | was |
+|---|---|---|---|
+| `gradeMountTriggered` | does silencing this leave the node with no trigger? | 19 silenced | 65 |
+| `gradeWriteBackCycle` | is running on this the thing that loops? | 72 running | 65 |
+
+🔴 **An absent key is in both**, because absent means opposite things on the two sides of this
+seam — ticked to the runtime, `false` to the migration. That is the sharpest one-line statement of
+the whole defect, and it is why both mutants still work by deleting a key.
+
+✅ **The census survived intact** — the same six D33 rows, found from the new population — and both
+mutants and the discrimination control still pass, which is what says the re-aim preserved meaning
+rather than moved a goalpost.
+
+🔴 **And it found something.** `reached` went **29 → 30**. The 7 inputs that entered the population
+are exactly the ones an author had pinned `true` **by hand**, and the old pass could not see them
+*structurally*: it iterated `plan.writes`, and an already-present key is never written. **The seven
+inputs somebody had thought hard enough about to state explicitly were the seven the hazard check
+skipped.** The 30th, `/Pages/PageEditor sections-2.qp-pageId`, writes `Section` and is cleared —
+no new hazard, seven questions that were never asked.
+
+### Gates
+
+- `npx jest` in `packages/noodl-mcp` — **79 suites, 1043 tests, all green**, including phase 77's
+  then-uncommitted `sbr012RawColourGate.test.ts`.
+- `typecheck:editor`, `typecheck:mcp` — clean.
+- `test:ci` — **2909 specs, 4 failures, the floor exactly**, all four AIX-006 by name.
+
+  ⚠️ **The first run read 5, and the fifth was a flake.** `pending project saves survive the way
+  out — re-arms a held save when saving is switched back on` is a timing spec that polls the disk
+  after `SAVE_DEBOUNCE_MS + 500`, and it has **zero** references to anything this change touches.
+  Re-run on a different seed (70598 → 76055) it went away. Recorded rather than dropped, because
+  a lone red that a session quietly re-rolls until it is green is how a real regression gets
+  attributed to luck — the attribution here is the spec's content, and the re-run only confirmed
+  it.

@@ -45,8 +45,12 @@ import {
 import { SITE_URL_PATH } from './sb006Components';
 import { APP_COMPONENT, buildSiteTemplateProject, toTemplateContent } from './sb007Template';
 import {
+  governedInputsFor,
   planRunOnValueChangeMigration,
+  runOnChangePortName,
   RUN_ON_CHANGE_FAMILIES,
+  RUN_ON_CHANGE_PREFIX,
+  type MigrationNodeLike,
   type MigrationProjectLike
 } from '../../noodl-editor/src/editor/src/models/ProjectPatches/runOnValueChangeMigration';
 
@@ -492,6 +496,77 @@ describe('SB-007 — the NDA-017 migration cannot silence a mount-triggered node
     }))
   });
 
+  /**
+   * 🔴 **DEF-007 §3.2 moved the population these two passes grade, and the move is the point.**
+   *
+   * Both used to iterate `plan.writes` — *"the inputs the migration is about to silence"*. Since
+   * the template states its own `runOnChange-*` values (`pinRunOnValueChangeDefaults`), that list
+   * is **empty**, and this block's own control comment says what an empty plan does to every
+   * assertion below it: they pass for free.
+   *
+   * So the passes now grade what the artefact **states**, which is the thing that actually ships.
+   * The two questions were always different and are now asked of different sets:
+   *
+   * | pass | question | population |
+   * |---|---|---|
+   * | `gradeMountTriggered` | does silencing this input leave the node with no trigger? | silenced |
+   * | `gradeWriteBackCycle` | is running on this input the thing that loops? | runs |
+   *
+   * 🔴 **An ABSENT key is in BOTH, and that is not double-counting.** Absent means opposite things
+   * on the two sides of DEF-007's seam: `runOnValueChange()` reads it as **ticked**, so on disk —
+   * export, deploy, headless render — the node runs; and the NDA-017 migration writes **`false`**
+   * over it on every editor load, so in the editor the node is silent. An unstated input is
+   * therefore a candidate for *both* hazards depending on who is reading, which is the sharpest
+   * statement of why the template must state them and the reason both mutants below still work by
+   * simply deleting a key.
+   */
+  interface GovernedInput {
+    component: string;
+    nodeId: string;
+    nodeType: string;
+    input: string;
+    parameter: string;
+  }
+
+  /**
+   * Every governed input on a signal-driven node whose stated value satisfies `accept`.
+   *
+   * The population is derived through the migration module's own `governedInputsFor` and
+   * `RUN_ON_CHANGE_FAMILIES` rather than restated here, for the reason the mutants in this block
+   * exist: a grader that re-implements the rule proves the rule is writable, not that it runs.
+   */
+  function statedInputs(project: GradableProject, accept: (value: unknown) => boolean): GovernedInput[] {
+    const out: GovernedInput[] = [];
+    for (const component of project.components) {
+      const ids = new Set(component.graph.roots.map((n) => n.id));
+      const incoming = new Map<string, string[]>();
+      for (const wire of component.graph.connections) {
+        if (!ids.has(wire.fromId)) continue;
+        const ports = incoming.get(wire.toId);
+        if (ports) ports.push(wire.toProperty);
+        else incoming.set(wire.toId, [wire.toProperty]);
+      }
+      for (const node of component.graph.roots) {
+        const family = RUN_ON_CHANGE_FAMILIES[node.type];
+        if (!family) continue;
+        const ports = incoming.get(node.id) ?? [];
+        if (ports.indexOf(family.controlSignal) === -1) continue;
+        for (const input of governedInputsFor(node as MigrationNodeLike, family, ports)) {
+          const parameter = runOnChangePortName(input);
+          if (!accept(node.parameters?.[parameter])) continue;
+          out.push({ component: component.name, nodeId: node.id, nodeType: node.type, input, parameter });
+        }
+      }
+    }
+    return out;
+  }
+
+  /** Silent once the editor has loaded it: stated `false`, or absent and about to be migrated to `false`. */
+  const silenced = (project: GradableProject) => statedInputs(project, (v) => v === false || v === undefined);
+
+  /** Runs when a value lands: stated `true`, or absent — which `runOnValueChange()` reads as ticked. */
+  const runsOnValue = (project: GradableProject) => statedInputs(project, (v) => v !== false);
+
   /** The signals that fire on the page lifecycle rather than on a value. */
   const MOUNT_SIGNALS = ['didMount'];
 
@@ -501,11 +576,32 @@ describe('SB-007 — the NDA-017 migration cannot silence a mount-triggered node
    */
   const ORDERED_BEFORE_MOUNT = ['PageInputs'];
 
-  it('the migration really does fire on this template, in bulk', () => {
-    // 🔴 THE KNOWN-FIRING SIGNAL. Every absence asserted below passes for free on
-    // a plan that writes nothing, and a plan that writes nothing is what a broken
-    // import or a renamed family would produce.
-    const plan = planRunOnValueChangeMigration(migrationProject() as MigrationProjectLike);
+  /** Every `runOnChange-*: true` taken back out — the artefact as it stood before DEF-007 §3.2. */
+  function asIfUnstated(project: GradableProject): GradableProject {
+    for (const component of project.components) {
+      for (const node of component.graph.roots) {
+        const parameters = node.parameters;
+        if (!parameters) continue;
+        for (const key of Object.keys(parameters)) {
+          if (key.startsWith(RUN_ON_CHANGE_PREFIX) && parameters[key] === true) delete parameters[key];
+        }
+      }
+    }
+    return project;
+  }
+
+  it('the migration no longer fires on this template — and the instrument that says so still works', () => {
+    // 🟢 DEF-007 AC3. `toTemplateContent` states every governed value, and an already-present key
+    // is never touched, so there is nothing left for the load-time pass to write.
+    expect(planRunOnValueChangeMigration(migrationProject() as MigrationProjectLike).writes).toEqual([]);
+
+    // 🔴 THE KNOWN-FIRING SIGNAL, and it is needed MORE now than when the plan was expected to be
+    // full. A plan that writes nothing is also what a broken import, a renamed family or a
+    // planner that returns `emptyPlan()` early would produce — and every absence asserted in this
+    // block passes for free on one. So the same planner is shown firing in bulk on the same
+    // artefact with only the statements removed: what is quiet above is quiet because the
+    // template answered, not because nobody asked.
+    const plan = planRunOnValueChangeMigration(asIfUnstated(migrationProject()) as MigrationProjectLike);
     expect(plan.signalDrivenNodes).toBeGreaterThan(0);
     expect(plan.writes.length).toBeGreaterThan(0);
   });
@@ -516,7 +612,7 @@ describe('SB-007 — the NDA-017 migration cannot silence a mount-triggered node
    * the rule is writable, not that the check runs.
    */
   function gradeMountTriggered(project: GradableProject): { offenders: string[]; graded: string[] } {
-    const plan = planRunOnValueChangeMigration(project as MigrationProjectLike);
+    const population = silenced(project);
     const byComponent = new Map(project.components.map((c) => [c.name, c]));
     const nodeIndex = new Map<string, { id: string; type: string }>();
     for (const c of project.components) for (const n of c.graph.roots) nodeIndex.set(`${c.name}::${n.id}`, n);
@@ -524,7 +620,7 @@ describe('SB-007 — the NDA-017 migration cannot silence a mount-triggered node
     const offenders: string[] = [];
     const graded: string[] = [];
 
-    for (const write of plan.writes) {
+    for (const write of population) {
       const component = byComponent.get(write.component);
       if (!component) continue;
       const incoming = component.graph.connections.filter((w) => w.toId === write.nodeId);
@@ -572,15 +668,21 @@ describe('SB-007 — the NDA-017 migration cannot silence a mount-triggered node
    * ✅ *A pass whose first line is a `continue` is not coverage until you have
    * counted what it REACHED.*
    */
-  it('D32 — the mount pass reaches 1 of 65 writes, and the rest are graded below', () => {
+  it('D32 — the mount pass reaches 0 of the 19 silenced inputs, and the rest are graded below', () => {
     const project = migrationProject();
-    const plan = planRunOnValueChangeMigration(project as MigrationProjectLike);
     const { graded, offenders } = gradeMountTriggered(project);
 
-    expect(plan.writes.length).toBe(65);
-    // Cardinality: every write is either reached by the mount pass or skipped by
-    // it. Asserted where the two meet, so "graded" can never quietly mean "few".
-    expect(graded.length + offenders.length).toBe(1);
+    // 🔴 The population, asserted first, because the count below is ZERO and a zero read off an
+    // empty population is the vacuous pass this whole block is built to refuse. There are 19
+    // inputs the editor runs silent; none of them is on a node `didMount` triggers.
+    expect(silenced(project)).toHaveLength(19);
+
+    // ⚠️ Was `1 of 65` before DEF-007 §3.2. The one row it reached — `/Pages/PageEditor
+    // hold.in-pageId` — left this population by being stated `true`: it is no longer silenced, so
+    // there is no longer a question about what triggers it. The row moved out of the hazard, it
+    // was not stopped being looked for, and `MUTANT: the defect as it actually shipped` below is
+    // what proves this pass can still red.
+    expect(graded.length + offenders.length).toBe(0);
   });
 
   // ── D32's second pass: the failure mode nothing graded ──────────────────────
@@ -628,7 +730,7 @@ describe('SB-007 — the NDA-017 migration cannot silence a mount-triggered node
     cleared: string[];
     reached: number;
   } {
-    const plan = planRunOnValueChangeMigration(project as MigrationProjectLike);
+    const population = runsOnValue(project);
     const byComponent = new Map(project.components.map((c) => [c.name, c]));
 
     /** Every collection a node's output reaches a record write on, transitively. */
@@ -716,7 +818,7 @@ describe('SB-007 — the NDA-017 migration cannot silence a mount-triggered node
     const cleared: string[] = [];
     let reached = 0;
 
-    for (const write of plan.writes) {
+    for (const write of population) {
       const component = byComponent.get(write.component);
       if (!component) continue;
       const nodes = new Map(component.graph.roots.map((n) => [n.id, n]));
@@ -753,13 +855,26 @@ describe('SB-007 — the NDA-017 migration cannot silence a mount-triggered node
    * pass's **1**, and every one of the 29 is either named as a hazard or cleared
    * with a stated reason.
    */
-  it('D32 — the second pass reaches 29 of 65, and clears the rest by name', () => {
+  it('D32 — the second pass reaches 29 of the 72 running inputs, and clears the rest by name', () => {
     const project = migrationProject();
-    const plan = planRunOnValueChangeMigration(project as MigrationProjectLike);
     const { repeaterItem, sameCollection, cleared, reached } = gradeWriteBackCycle(project);
 
-    expect(plan.writes.length).toBe(65);
-    expect(reached).toBe(29);
+    // ⚠️ Was `29 of 65` — the 65 being what the migration was about to silence.
+    //
+    // 🔴 **The population grew by 7 and `reached` by 1, and the 7 are the finding.** They are the
+    // inputs an author had already pinned `true` BY HAND — `/Site/NavLink linkState.in-slug` and
+    // `.in-current`, `/Pages/Site resolveSlug.in-slug` and `.in-homeSlug`, `/Pages/Admin
+    // pages-2.collectionName` and `count.in-rows`, and `/Pages/PageEditor sections-2.qp-pageId`.
+    // The old pass could not see one of them, structurally: it iterated `plan.writes`, and a key
+    // that is already present is never written, *"the whole of idempotency"*. So the seven inputs
+    // somebody had thought hard enough about to state explicitly were the seven this hazard check
+    // skipped.
+    //
+    // The 30th reached row is `sections-2.qp-pageId`, which writes "Section" and is **cleared** —
+    // the collection it writes does not feed it. No new hazard; seven inputs that were never
+    // asked.
+    expect(runsOnValue(project)).toHaveLength(72);
+    expect(reached).toBe(30);
     // Cardinality where the three buckets meet: nothing reached is unaccounted for.
     expect(repeaterItem.length + sameCollection.length + cleared.length).toBe(reached);
   });
@@ -841,13 +956,19 @@ describe('SB-007 — the NDA-017 migration cannot silence a mount-triggered node
   it('no node the migration silences is triggered by mount off an unordered producer', () => {
     const { offenders, graded } = gradeMountTriggered(migrationProject());
 
-    // 🔴 The reason column is asserted, not just the emptiness. A grading pass that
-    // graded nothing satisfies `offenders == []` exactly as well as one that
-    // cleared every row for a stated reason, and those are not the same claim.
-    expect(graded).toEqual([
-      '/Pages/PageEditor JavaScriptFunction#hold.in-pageId <= PageInputs — set before addChild, router.tsx:586'
-    ]);
+    // 🔴 The reason column used to be asserted here rather than the emptiness, because a grading
+    // pass that graded nothing satisfies `offenders == []` exactly as well as one that cleared
+    // every row for a stated reason. Since DEF-007 §3.2 there is no row to give a reason for:
+    // the single input this pass ever reached is now stated `true`, so it is not silenced and
+    // not at risk. Both lists are empty because the hazard has no members, not because the pass
+    // stopped running — which is a claim that needs the two lines below rather than this one.
+    expect(graded).toEqual([]);
     expect(offenders).toEqual([]);
+
+    // The population is non-empty (19 silenced inputs, asserted by count above) and the pass is
+    // demonstrably able to name a row — `MUTANT: the defect as it actually shipped` restores the
+    // shipped defect and this same grader reddens on it.
+    expect(silenced(migrationProject()).length).toBeGreaterThan(0);
   });
 
   it('MUTANT: the defect as it actually shipped reddens the grader', () => {
@@ -874,6 +995,116 @@ describe('SB-007 — the NDA-017 migration cannot silence a mount-triggered node
     ]);
     expect(graded).toContain(
       `/Pages/Site JavaScriptFunction#${resolver.id}.in-slug <= PageInputs — set before addChild, router.tsx:586`
+    );
+  });
+});
+
+// ── 3b. DEF-007 AC3: the artefact means the same thing loaded as it does on disk ──
+
+/**
+ * 🔴 **DEF-007 AC3 — the disk half of the pair, as an invariant rather than a number.**
+ *
+ * A project means one thing on disk and another once loaded, and the whole seam is one call:
+ * `applyPatches(content)` immediately before `ProjectModel.fromJSON`. Every path that reaches
+ * `fromJSON` without it — export, deploy, headless render, MCP, and the template artefact itself,
+ * which is never loaded at all — sees the file as written. So *"does loading this change it?"*
+ * is answerable from the artefact alone, and this asks it.
+ *
+ * `toTemplateContent` now pins the explicit values (`pinRunOnValueChangeDefaults`), so the answer
+ * must be **nothing**.
+ *
+ * ## Why the byte gate above cannot stand in for this
+ *
+ * 🔴 `sb007Template.test.ts`'s regeneration check compares the committed artefact to a fresh run
+ * of the **same generator**. A field neither side writes is a field both sides agree about — it
+ * is a *drift* check and cannot see a defect present from the first run. DEF-007 §5 records it
+ * passing over phase 78 D9 in exactly that way. The reader this artefact disagreed with is a
+ * **third** one, `applyPatches`, which no generator runs and every editor open does.
+ *
+ * ## Why the count is not asserted
+ *
+ * It was **56** when DEF-007 §6.1 measured it, **65** two days later, and the breakdown moved
+ * underneath it — `/#__cloud__/reorderSection` appeared, `/Admin/SectionRow` went. Pinning a
+ * number here would make an ordinary component edit red this gate for no reason. **Zero is the
+ * only figure that is stable under authoring**, which is the argument for fixing it in the
+ * generator rather than by hand: a hand-settled artefact would have been stale before it landed.
+ */
+describe('DEF-007 AC3 — loading the shipped template changes nothing in it', () => {
+  it('plans no writes over the committed artefact', () => {
+    const plan = planRunOnValueChangeMigration(shipped as unknown as MigrationProjectLike);
+
+    // The failure message carries the work, because a bare `toEqual([])` on a regression here
+    // says "56 things are wrong" and names none of them.
+    expect(
+      plan.writes.map((w) => `${w.component} ${w.nodeType}#${w.nodeId} ${w.parameter}`)
+    ).toEqual([]);
+  });
+
+  /**
+   * 🔴 **The positive control, and it is not optional.**
+   *
+   * An empty `writes` is an absence, and this suite has already been bitten once by an absence
+   * that passed for the wrong reason: DEF-028's AC3 asserted `not.toContain` against a list whose
+   * every entry had been renamed to `undefined->undefined`, so it was satisfied by a list of the
+   * wrong *shape* rather than by the thing it was looking for being gone.
+   *
+   * `writes` would also be empty if `RUN_ON_CHANGE_FAMILIES` stopped matching the artefact's node
+   * types, if `shipped` failed to parse into the shape the planner walks, or if a refactor left
+   * the planner returning `emptyPlan()` early. All three are silent. So the population is asserted
+   * beside the zero: the planner must still be **finding** the nodes it declines to write to.
+   */
+  it('and the planner can still see the population it declines to write to', () => {
+    const plan = planRunOnValueChangeMigration(shipped as unknown as MigrationProjectLike);
+
+    expect(plan.familyNodes).toBeGreaterThan(0);
+    expect(plan.signalDrivenNodes).toBeGreaterThan(0);
+
+    // Every governed input the planner reached had a stored answer waiting. `preserved` is the
+    // counter it increments only on a node it walked into and a parameter it actually looked up,
+    // so a non-zero here is the one reading that cannot be produced by the planner giving up
+    // early — `emptyPlan()` returns zero for it, and so does a families table that matches
+    // nothing.
+    expect(plan.preserved).toBeGreaterThan(0);
+  });
+
+  /**
+   * 🔴 **A gate that cannot go red is not a gate.** The two tests above are both satisfied by a
+   * settled artefact *and* by a planner that has quietly stopped looking. This mutant separates
+   * them: remove one pinned answer and the exact node it was removed from must be named.
+   */
+  it('reds, naming the node, when one pinned answer is removed', () => {
+    const mutant = JSON.parse(JSON.stringify(shipped)) as unknown as MigrationProjectLike;
+
+    // Find any pinned checkbox in the artefact and take it back out, exactly as an unpinned
+    // generator would have left it.
+    let removed: { component: string; nodeId: string; parameter: string } | undefined;
+    for (const component of mutant.components ?? []) {
+      const walk = (nodes: MigrationNodeLike[] | undefined) => {
+        for (const node of nodes ?? []) {
+          if (removed) return;
+          const parameters = node.parameters ?? {};
+          for (const key of Object.keys(parameters)) {
+            if (key.startsWith(RUN_ON_CHANGE_PREFIX) && parameters[key] === true) {
+              delete parameters[key];
+              removed = { component: component.name ?? '', nodeId: node.id, parameter: key };
+              return;
+            }
+          }
+          walk(node.children);
+        }
+      };
+      walk(component.graph?.roots);
+      if (removed) break;
+    }
+
+    // 🔴 Read this first. If the artefact carries no pinned `true` at all, the mutant is a no-op
+    // and the assertion below would pass on an unpinned artefact — the exact defect this block
+    // exists to catch, reported as a pass.
+    expect(removed).toBeDefined();
+
+    const plan = planRunOnValueChangeMigration(mutant);
+    expect(plan.writes).toContainEqual(
+      expect.objectContaining({ nodeId: removed?.nodeId, parameter: removed?.parameter })
     );
   });
 });
@@ -1284,11 +1515,29 @@ describe('SBR-016 — every query can run before anybody has edited anything', (
     expect([...seen].sort()).toEqual(Object.keys(PARAMETER_CHECKBOX).sort());
   });
 
-  it('CONTROL: the migration really does rewrite this artefact before it is graded', () => {
-    // Every green below is a claim about the MIGRATED graph. If the migration
-    // wrote nothing, this gate would be the old one wearing a new name.
-    const before = flatProject();
-    const plan = planRunOnValueChangeMigration(before as MigrationProjectLike);
+  it('CONTROL: the migration has nothing left to rewrite here, and it is the template that stopped it', () => {
+    // ⚠️ This arm used to assert the opposite — that the migration rewrites `DbCollection2` nodes
+    // in bulk before they are graded — and it was right to: every green below is a claim about
+    // the graph that RUNS, and while the template left these flags unstated that graph was the
+    // migrated one. DEF-007 §3.2 made the artefact state them, so the migrated graph and the
+    // written one are now the same graph and `migrated()` below is an identity.
+    expect(planRunOnValueChangeMigration(flatProject() as MigrationProjectLike).writes).toEqual([]);
+
+    // 🔴 Which is exactly the reading that could also be produced by a broken import or a renamed
+    // family, so the same planner is shown firing on the same artefact with only the statements
+    // removed. `DbCollection2` specifically, because that is the family this block is about and
+    // an emptiness measured on some other family would not be about these queries at all.
+    const unstated = flatProject();
+    for (const component of unstated.components) {
+      for (const node of component.graph.roots) {
+        const parameters = node.parameters;
+        if (!parameters) continue;
+        for (const key of Object.keys(parameters)) {
+          if (key.startsWith('runOnChange-') && parameters[key] === true) delete parameters[key];
+        }
+      }
+    }
+    const plan = planRunOnValueChangeMigration(unstated as MigrationProjectLike);
     expect(plan.writes.filter((w) => w.nodeType === 'DbCollection2').length).toBeGreaterThan(0);
   });
 

@@ -444,6 +444,61 @@ export function planRunOnValueChangeMigration(project: MigrationProjectLike): Ru
 export function applyRunOnValueChangeMigration(
   project: MigrationProjectLike
 ): RunOnValueChangeMigrationPlan {
+  return writeGovernedCheckboxes(project, false);
+}
+
+/**
+ * DEF-007 §3.2 — state what a post-§2 artefact already means, so loading it changes nothing.
+ *
+ * Same population as {@link applyRunOnValueChangeMigration}, **opposite value**, and the
+ * opposition is the whole point rather than a variant spelling.
+ *
+ * The migration writes `false` because it is repairing a graph authored against the *old*
+ * contract: wiring the control signal used to silence the value setters, and §2 reversed that
+ * underneath an author who could not be asked. Its evidence that such an author exists is
+ * **absence of the key, and nothing else** — the module header says so, and there is no
+ * project-version guard anywhere in the pass because the format has nowhere to carry one.
+ *
+ * 🔴 **That makes it wrong on a graph minted after §2.** A generated template has no pre-§2
+ * author to preserve; it was authored, generated and driven against the *post*-§2 reading, where
+ * an absent key is a **ticked** box (a declared `default` never runs its setter, so
+ * `runOnValueChange()` reads absent as ticked). Loading such an artefact rewrites 65 parameters
+ * nobody wrote, and P77 D5 and D11 measured the bite: 37 nodes rewritten on a fresh load with
+ * zero `true`s, two deliberate load-time `DbCollection2` fetches silenced, and the site's root
+ * URL rendering no page at all.
+ *
+ * So this writes the `true` the artefact already means. Two things follow, and both are the
+ * reason to do it here rather than argue the migration down:
+ *
+ * 1. **It is behaviour-preserving for every path that does not load** — export, deploy, headless
+ *    render, MCP — because those already read absent as ticked. Nothing on the disk side moves.
+ * 2. **It disarms the migration by the migration's own rule.** A `runOnChange-*` key that is
+ *    already present is never touched, whatever its value — *"this single check is the whole of
+ *    idempotency"* — so a settled artefact makes the load-time pass a no-op, which is exactly
+ *    what DEF-007 AC3 asks of the pair.
+ *
+ * ⚠️ **Not for user projects.** The two are not interchangeable and the choice between them is
+ * evidence about who wrote the graph, which only the caller has. `applyPatches` must keep calling
+ * the migration; this belongs to template generation, where the answer is known because the
+ * generator is the author.
+ *
+ * ⚠️ **It writes `true` rather than deleting the question**, for the same reason the migration
+ * cannot write absence: `true` and absent mean the same thing to the runtime but opposite things
+ * to the migration, and it is the migration this has to be legible to.
+ */
+export function pinRunOnValueChangeDefaults(project: MigrationProjectLike): RunOnValueChangeMigrationPlan {
+  return writeGovernedCheckboxes(project, true);
+}
+
+/**
+ * The shared write half: put `value` on every governed checkbox the plan names.
+ *
+ * Key order is preserved from {@link applyRunOnValueChangeMigration}'s original — `runOnChange-*`
+ * first — for both values. It is only load-bearing for `false` (§3 of the header), but a settled
+ * artefact and a migrated one differing in key order would make the byte gate on the generated
+ * template report a difference that means nothing.
+ */
+function writeGovernedCheckboxes(project: MigrationProjectLike, value: boolean): RunOnValueChangeMigrationPlan {
   const plan = planRunOnValueChangeMigration(project);
   if (plan.writes.length === 0) return plan;
 
@@ -463,7 +518,7 @@ export function applyRunOnValueChangeMigration(
 
       const existing = node.parameters ?? {};
       const rebuilt: Record<string, unknown> = {};
-      for (const write of writes) rebuilt[write.parameter] = false;
+      for (const write of writes) rebuilt[write.parameter] = value;
       for (const name of Object.keys(existing)) {
         if (!Object.prototype.hasOwnProperty.call(rebuilt, name)) rebuilt[name] = existing[name];
       }

@@ -642,6 +642,10 @@
             "x": 350,
             "y": 280,
             "parameters": {
+              "runOnChange-in-name": true,
+              "runOnChange-in-email": true,
+              "runOnChange-in-message": true,
+              "runOnChange-in-pageSlug": true,
               "functionScript": "const name = Inputs.name || \"\";\nconst email = Inputs.email || \"\";\nconst message = Inputs.message || \"\";\nif (name === '' || email === '' || message === '') return;\nOutputs.name = name;\nOutputs.email = email;\nOutputs.message = message;\nOutputs.pageSlug = Inputs.pageSlug || '';\nOutputs.go();"
             },
             "ports": [
@@ -730,6 +734,7 @@
             "x": 350,
             "y": 760,
             "parameters": {
+              "runOnChange-condition": true,
               "condition": true
             },
             "ports": [],
@@ -743,6 +748,7 @@
             "x": 350,
             "y": 880,
             "parameters": {
+              "runOnChange-condition": true,
               "condition": true
             },
             "ports": [],
@@ -1318,6 +1324,7 @@
             "x": 530,
             "y": 640,
             "parameters": {
+              "runOnChange-in-rows": true,
               "functionScript": "const rows = Inputs.rows || [];\nconst first = rows[0] ? rows[0].data || rows[0] : {};\nOutputs.siteName = first.siteName || '';\nOutputs.claimed = rows.length > 0;\nOutputs.homeSlug = first.homeSlug || 'home';"
             },
             "ports": [
@@ -1427,6 +1434,7 @@
             "x": 530,
             "y": 760,
             "parameters": {
+              "runOnChange-in-rows": true,
               "functionScript": "if (Inputs.rows === undefined) return;\nconst rows = Inputs.rows || [];\nconst row = rows[0];\nconst d = row ? row.data || row : undefined;\nOutputs.missing = d === undefined;\nOutputs.title = d ? d.title || '' : '';\nOutputs.seoDescription = d ? d.seoDescription || '' : '';\nOutputs.slug = d ? d.slug || '' : '';\nif (d === undefined) return;\nOutputs.pageId = row.getId ? row.getId() : (d.objectId || '');\nOutputs.found();"
             },
             "ports": [
@@ -1519,6 +1527,7 @@
             "x": 530,
             "y": 1000,
             "parameters": {
+              "runOnChange-in-rows": true,
               "functionScript": "if (Inputs.rows === undefined) return;\nconst rows = Inputs.rows || [];\nOutputs.hasContact = rows.some(function (r) {\n  const d = r.data || r;\n  return d.kind === 'contact';\n});"
             },
             "ports": [
@@ -1560,6 +1569,7 @@
             "x": 530,
             "y": 2320,
             "parameters": {
+              "runOnChange-in-rows": true,
               "functionScript": "if (typeof document === 'undefined') return;\nconst rows = Inputs.rows || [];\nconst first = rows[0] ? rows[0].data || rows[0] : {};\nconst t = first.tokens || {};\nconst root = document.documentElement;\nif (t.colorPrimary) {\n  root.style.setProperty('--primary', t.colorPrimary);\n  root.style.setProperty('--primary-hover', 'color-mix(in srgb, ' + t.colorPrimary + ' 82%, black)');\n  root.style.setProperty('--ring', t.colorPrimary);\n  root.style.setProperty('--accent-foreground', t.colorPrimary);\n}\nif (t.colorOnPrimary) root.style.setProperty('--primary-foreground', t.colorOnPrimary);\nif (t.colorBackground) root.style.setProperty('--background', t.colorBackground);\nif (t.colorSurface) {\n  root.style.setProperty('--surface', t.colorSurface);\n  root.style.setProperty('--surface-raised', t.colorSurface);\n}\nif (t.colorText) root.style.setProperty('--foreground', t.colorText);\nif (t.colorTextSoft) root.style.setProperty('--muted-foreground', t.colorTextSoft);\nif (t.colorBorder) {\n  root.style.setProperty('--border', t.colorBorder);\n  root.style.setProperty('--border-subtle', 'color-mix(in srgb, ' + t.colorBorder + ' 45%, var(--background))');\n  root.style.setProperty('--border-strong', 'color-mix(in srgb, ' + t.colorBorder + ' 65%, var(--foreground))');\n}\nif (t.colorAccentSoft) root.style.setProperty('--accent', t.colorAccentSoft);\nif (t.radius) root.style.setProperty('--radius-md', t.radius);\nif (t.fontDisplay) root.style.setProperty('--font-serif', t.fontDisplay);\nif (t.fontUi) {\n  root.style.setProperty('--font-sans', t.fontUi);\n  root.style.fontFamily = t.fontUi;\n}\nif (t.measure) root.style.setProperty('--site-measure', t.measure);"
             },
             "ports": [
@@ -3335,6 +3345,7 @@
             "x": 590,
             "y": 40,
             "parameters": {
+              "runOnChange-in-pageId": true,
               "functionScript": "if (Inputs.pageId === undefined || Inputs.pageId === '') return;\nOutputs.pageId = Inputs.pageId;\nOutputs.ready();"
             },
             "ports": [
@@ -3368,6 +3379,8 @@
             "x": 590,
             "y": 1480,
             "parameters": {
+              "runOnChange-modelId": true,
+              "runOnChange-record": true,
               "collectionName": "Page",
               "idSource": "explicit"
             },
@@ -3397,6 +3410,8 @@
             "x": 590,
             "y": 3040,
             "parameters": {
+              "runOnChange-records": true,
+              "runOnChange-search": true,
               "runOnChange-collectionName": false,
               "runOnChange-querySettings": false,
               "runOnChange-qp-pageId": true,
@@ -5037,6 +5052,7 @@
             "x": 470,
             "y": 520,
             "parameters": {
+              "runOnChange-in-rows": true,
               "functionScript": "const rows = Inputs.rows || [];\nconst first = rows[0] ? rows[0].data || rows[0] : {};\nOutputs.siteName = first.siteName || '';\nOutputs.homeSlug = first.homeSlug || 'home';"
             },
             "ports": [
@@ -5072,6 +5088,7 @@
             "x": 470,
             "y": 1000,
             "parameters": {
+              "runOnChange-in-rows": true,
               "functionScript": "const rows = Inputs.rows || [];\nconst first = rows[0] ? rows[0].data || rows[0] : {};\nconst t = first.tokens || {};\nOutputs.primary = t.colorPrimary || '';\nOutputs.onPrimary = t.colorOnPrimary || '';\nOutputs.background = t.colorBackground || '';\nOutputs.surface = t.colorSurface || '';\nOutputs.text = t.colorText || '';\nOutputs.textSoft = t.colorTextSoft || '';\nOutputs.border = t.colorBorder || '';\nOutputs.accentSoft = t.colorAccentSoft || '';\nOutputs.radius = t.radius || '';\nOutputs.fontDisplay = t.fontDisplay || '';\nOutputs.fontUi = t.fontUi || '';\nOutputs.measure = t.measure || '';"
             },
             "ports": [
@@ -5177,6 +5194,18 @@
             "x": 470,
             "y": 1120,
             "parameters": {
+              "runOnChange-in-primary": true,
+              "runOnChange-in-background": true,
+              "runOnChange-in-text": true,
+              "runOnChange-in-fontDisplay": true,
+              "runOnChange-in-onPrimary": true,
+              "runOnChange-in-surface": true,
+              "runOnChange-in-textSoft": true,
+              "runOnChange-in-border": true,
+              "runOnChange-in-accentSoft": true,
+              "runOnChange-in-radius": true,
+              "runOnChange-in-fontUi": true,
+              "runOnChange-in-measure": true,
               "functionScript": "Outputs.tokens = {\n  colorPrimary: Inputs.primary || '',\n  colorOnPrimary: Inputs.onPrimary || '',\n  colorBackground: Inputs.background || '',\n  colorSurface: Inputs.surface || '',\n  colorText: Inputs.text || '',\n  colorTextSoft: Inputs.textSoft || '',\n  colorBorder: Inputs.border || '',\n  colorAccentSoft: Inputs.accentSoft || '',\n  radius: Inputs.radius || '',\n  fontDisplay: Inputs.fontDisplay || '',\n  fontUi: Inputs.fontUi || '',\n  measure: Inputs.measure || ''\n};\nOutputs.built();"
             },
             "ports": [
@@ -5807,6 +5836,9 @@
             "x": 530,
             "y": 1000,
             "parameters": {
+              "runOnChange-records": true,
+              "runOnChange-querySettings": true,
+              "runOnChange-search": true,
               "runOnChange-collectionName": true,
               "collectionName": "Page"
             },
@@ -6398,9 +6430,9 @@
                 "y": 160,
                 "parameters": {
                   "flexDirection": "column",
-                  "paddingTop": 24,
-                  "paddingLeft": 24,
-                  "paddingRight": 24
+                  "paddingTop": "var(--space-6)",
+                  "paddingLeft": "var(--space-6)",
+                  "paddingRight": "var(--space-6)"
                 },
                 "ports": [],
                 "dynamicports": []
@@ -6435,6 +6467,7 @@
             "x": 410,
             "y": 760,
             "parameters": {
+              "runOnChange-in-token": true,
               "functionScript": "if (Inputs.token === undefined || Inputs.token === null) return;\nOutputs.token = Inputs.token;\nOutputs.go();"
             },
             "ports": [
@@ -6481,6 +6514,7 @@
             "x": 410,
             "y": 1000,
             "parameters": {
+              "runOnChange-condition": true,
               "condition": true
             },
             "ports": [],
@@ -6494,6 +6528,7 @@
             "x": 410,
             "y": 1120,
             "parameters": {
+              "runOnChange-condition": true,
               "condition": true
             },
             "ports": [],
@@ -6787,6 +6822,7 @@
             "x": 40,
             "y": 160,
             "parameters": {
+              "runOnChange-in-newPageId": true,
               "functionScript": "Outputs.pageId = Inputs.newPageId;\nOutputs.built();"
             },
             "ports": [
@@ -6945,6 +6981,10 @@
             "x": 40,
             "y": 160,
             "parameters": {
+              "runOnChange-records": true,
+              "runOnChange-querySettings": true,
+              "runOnChange-collectionName": true,
+              "runOnChange-search": true,
               "collectionName": "SiteSettings"
             },
             "ports": [],
@@ -6971,6 +7011,8 @@
             "x": 40,
             "y": 400,
             "parameters": {
+              "runOnChange-in-rows": true,
+              "runOnChange-in-fallback": true,
               "functionScript": "if (Inputs.rows === undefined) return;\nconst rows = Inputs.rows || [];\nconst first = rows[0] ? rows[0].data || rows[0] : {};\nconst address = first.contactRecipient || Inputs.fallback;\nif (address) {\n  Outputs.recipient = address;\n  Outputs.ready();\n} else {\n  Outputs.failed();\n}"
             },
             "ports": [
@@ -7124,6 +7166,8 @@
             "x": 40,
             "y": 160,
             "parameters": {
+              "runOnChange-in-pageId": true,
+              "runOnChange-in-isPublic": true,
               "functionScript": "if (Inputs.pageId === undefined || Inputs.isPublic === undefined) return;\nOutputs.pageId = Inputs.pageId;\nOutputs.isPublic = Inputs.isPublic;\nOutputs.ready();"
             },
             "ports": [
@@ -7196,6 +7240,8 @@
             "x": 40,
             "y": 400,
             "parameters": {
+              "runOnChange-in-sections": true,
+              "runOnChange-in-isPublic": true,
               "functionScript": "if (Inputs.sections === undefined || Inputs.isPublic === undefined) return;\nconst flag = Inputs.isPublic;\nOutputs.tasks = (Inputs.sections || []).map((s) => ({ objectId: s.id, isPublic: flag }));\nOutputs.built();"
             },
             "ports": [
@@ -7465,6 +7511,7 @@
             "x": 40,
             "y": 160,
             "parameters": {
+              "runOnChange-in-pageId": true,
               "functionScript": "if (Inputs.pageId === undefined) return;\nOutputs.pageId = Inputs.pageId;\nOutputs.ready();"
             },
             "ports": [
@@ -7498,6 +7545,8 @@
             "x": 40,
             "y": 280,
             "parameters": {
+              "runOnChange-modelId": true,
+              "runOnChange-record": true,
               "collectionName": "Page",
               "idSource": "explicit"
             },
@@ -7594,6 +7643,8 @@
             "x": 40,
             "y": 640,
             "parameters": {
+              "runOnChange-in-sourcePageId": true,
+              "runOnChange-in-newPageId": true,
               "functionScript": "if (Inputs.sourcePageId === undefined || Inputs.newPageId === undefined) return;\nOutputs.sourcePageId = Inputs.sourcePageId;\nOutputs.newPageId = Inputs.newPageId;\nOutputs.ready();"
             },
             "ports": [
@@ -7666,6 +7717,8 @@
             "x": 40,
             "y": 880,
             "parameters": {
+              "runOnChange-in-sections": true,
+              "runOnChange-in-newPageId": true,
               "functionScript": "if (Inputs.sections === undefined || Inputs.newPageId === undefined) return;\nconst pageId = Inputs.newPageId;\nOutputs.tasks = (Inputs.sections || []).map((s) => {\n  const d = s.data || s;\n  return { kind: d.kind, order: d.order, data: d.data, newPageId: pageId };\n});\nOutputs.built();"
             },
             "ports": [
@@ -8005,6 +8058,10 @@
             "x": 40,
             "y": 400,
             "parameters": {
+              "runOnChange-in-name": true,
+              "runOnChange-in-email": true,
+              "runOnChange-in-message": true,
+              "runOnChange-in-pageSlug": true,
               "functionScript": "Outputs.subject = 'New enquiry from ' + (Inputs.name || 'a visitor');\nOutputs.text = [\n  'From: ' + (Inputs.name || '') + ' <' + (Inputs.email || '') + '>',\n  'Page: ' + (Inputs.pageSlug || '(unknown)'),\n  '',\n  Inputs.message || ''\n].join('\\n');\nOutputs.built();"
             },
             "ports": [
@@ -8283,6 +8340,8 @@
             "x": 40,
             "y": 280,
             "parameters": {
+              "runOnChange-records": true,
+              "runOnChange-search": true,
               "collectionName": "SiteSettings",
               "runOnChange-collectionName": false,
               "runOnChange-querySettings": false
@@ -8736,6 +8795,9 @@
             "x": 40,
             "y": 160,
             "parameters": {
+              "runOnChange-in-pageId": true,
+              "runOnChange-in-sectionId": true,
+              "runOnChange-in-toIndex": true,
               "functionScript": "if (Inputs.pageId === undefined || Inputs.sectionId === undefined) return;\nif (Inputs.toIndex === undefined) return;\nOutputs.pageId = Inputs.pageId;\nOutputs.sectionId = Inputs.sectionId;\nOutputs.toIndex = Inputs.toIndex;\nOutputs.ready();"
             },
             "ports": [
@@ -8822,6 +8884,9 @@
             "x": 40,
             "y": 400,
             "parameters": {
+              "runOnChange-in-sections": true,
+              "runOnChange-in-sectionId": true,
+              "runOnChange-in-toIndex": true,
               "functionScript": "if (Inputs.sections === undefined) return;\nif (Inputs.sectionId === undefined || Inputs.toIndex === undefined) return;\nconst rows = (Inputs.sections || []).map((s) => ({ id: s.id, order: (s.data || s).order }));\nrows.sort((a, b) => (a.order - b.order) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));\nconst from = rows.findIndex((r) => r.id === Inputs.sectionId);\nif (from < 0) throw new Error('That section is not on this page.');\nlet to = Math.round(Number(Inputs.toIndex));\nif (!isFinite(to)) to = from;\nto = Math.max(0, Math.min(rows.length - 1, to));\nconst moved = rows.splice(from, 1)[0];\nrows.splice(to, 0, moved);\nOutputs.tasks = rows\n  .map((r, i) => ({ objectId: r.id, order: i, was: r.order }))\n  .filter((t) => t.was !== t.order)\n  .map((t) => ({ objectId: t.objectId, order: t.order }));\nOutputs.movedTo = to;\nOutputs.built();"
             },
             "ports": [

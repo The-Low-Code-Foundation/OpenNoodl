@@ -60,6 +60,7 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 
 import { ProjectImporter } from '../../noodl-editor/src/editor/src/io/ProjectImporter';
+import { pinRunOnValueChangeDefaults } from '../../noodl-editor/src/editor/src/models/ProjectPatches/runOnValueChangeMigration';
 import type { LegacyProject } from '../../noodl-editor/src/editor/src/io/ProjectExporter';
 import { createServer } from '../src/server';
 
@@ -315,13 +316,33 @@ export function toTemplateContent(project: LegacyProject): Record<string, unknow
     return rest;
   });
 
-  return {
+  const content = {
     name: TEMPLATE_PROJECT_NAME,
     version: project.version,
     rootComponent: `/${APP_COMPONENT}`,
     components,
     ...(project.settings ? { settings: project.settings } : {})
   };
+
+  // DEF-007 §3.2 — write the explicit `runOnChange-*` values, so the artefact means the same
+  // thing on disk as it does once the editor has loaded it.
+  //
+  // 🔴 Without this the two readings differ in 65 stored parameters across 13 components, and
+  // `sb007Template.test.ts`'s byte gate cannot see it: that gate compares the committed artefact
+  // to a fresh run of *this* generator, so a field neither side writes is a field both sides
+  // agree about. The disagreement is with a *third* reader — `applyPatches`, which every editor
+  // open runs and no generator does. DEF-007 §5 records the same gate passing over D9 this way.
+  //
+  // The value is `true` because that is what the file already means unloaded, and this template
+  // was authored entirely after NDA-017 §2 — see `pinRunOnValueChangeDefaults`, which is where
+  // the argument for `true` over the migration's `false` is written down.
+  //
+  // ⚠️ Mutates the graphs it was handed: the component spread above is shallow, so `graph` is
+  // shared with `project`. Every caller passes a `readAsLegacyProject` result, which is a fresh
+  // parse of a temp directory, so nothing observes it — but it is not a pure function.
+  pinRunOnValueChangeDefaults(content);
+
+  return content;
 }
 
 /**
