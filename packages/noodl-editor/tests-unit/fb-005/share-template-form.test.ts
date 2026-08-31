@@ -282,6 +282,10 @@ describe('FB-005 T5 — why the send button is off', () => {
 const EVERY_OUTCOME: ShareAsTemplateOutcome[] = [
   { outcome: 'submitted', submissionId: 's1', excluded: [] },
   { outcome: 'no-manifest', looked: ['nodegx.project.json'] },
+  // DEF-007 — a project with no home page. Registered here so the exhaustive-headline assertion
+  // below reddens if it were ever given the same sentence as `no-manifest`, which is the mistake
+  // available: both are "your folder is wrong" shaped and they mean opposite things.
+  { outcome: 'no-home', manifest: 'nodegx.project.json' },
   // ❌ `binaries` was here. `0023` gave the transport a base64 map, so a project with a PNG in it
   // is shared rather than refused, and the arm was DELETED from the union rather than left
   // unreachable — see `ShareAsTemplateOutcome`. This list is what makes that deletion visible:
@@ -295,6 +299,19 @@ const EVERY_OUTCOME: ShareAsTemplateOutcome[] = [
 ];
 
 describe('FB-005 T5 — describeShareOutcome', () => {
+  it('🔴 DEF-007 — "no home page" says what to DO, and does not read as "wrong folder"', () => {
+    const sentence = describeShareOutcome({ outcome: 'no-home', manifest: 'nodegx.project.json' });
+    expect(sentence.tone).toBe('problem');
+
+    const words = `${sentence.headline} ${sentence.detail}`.toLowerCase();
+    // 🔴 It names the ACT that fixes it. A refusal that only states the rule leaves somebody at a
+    // dialog with nowhere to go, and "home page" is a term they may never have met.
+    expect(words).toMatch(/make home/);
+    // 🔴 And it must NOT tell them they picked the wrong folder — that is `no-manifest`'s
+    // sentence, and this person picked exactly the right one.
+    expect(words).not.toMatch(/not a nodegx project|wrong folder/);
+  });
+
   it('every arm has its OWN headline — none falls through to another’s', () => {
     // 🔴 The assertion a `switch` with a `default` needs. Without it, an arm somebody forgets to
     // write lands on the `unreachable` sentence and tells a person the network is down when their

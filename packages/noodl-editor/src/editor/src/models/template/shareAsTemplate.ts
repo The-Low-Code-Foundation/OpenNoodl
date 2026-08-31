@@ -329,6 +329,72 @@ export function hasProjectManifest(files: Record<string, string>): boolean {
 }
 
 /**
+ * The two manifests that can carry a home, in the order they are believed.
+ *
+ * ⚠️ **`components/_registry.json` is deliberately absent, and it is on {@link MANIFESTS}.** It
+ * is a manifest for the purpose of *"is this folder a project"* and carries no home field at all,
+ * so a project whose only manifest is the registry cannot be measured here — see
+ * {@link templateHomeStatus}'s `unreadable`.
+ */
+const HOME_MANIFESTS = ['nodegx.project.json', 'project.json'];
+
+/**
+ * Whether a project names a home page — DEF-007, and 🧭 **Richard's ruling, 2026-08-31**:
+ * *"Refuse at publish, make sure people define a home page, it's a very basic requirement."*
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * 🔴 **BOTH SPELLINGS COUNT, AND THE ASYMMETRY IS THE POINT.** `rootNodeId` is the v2 field (a
+ * node id) and `rootComponent` is the legacy one (a component *name*) which
+ * `project-v2.schema.json` forbids under `additionalProperties: false`. The editor's writer emits
+ * only `rootNodeId` (`projectmodel.ts:1435`), and over **340 real manifests** on this machine
+ * **exactly 2** carry `rootComponent` at all — both beside an id. So the legacy arm has an empty
+ * population today and is accepted anyway: `fromJSON` still resolves it (`:238-243`), which makes
+ * a project carrying only the name one that *does* open. **This function decides a refusal, so it
+ * must be wrong in the direction of letting a working project through.**
+ *
+ * 🔴 **WHY "NO `rootNodeId`" IS SAFE TO REFUSE *HERE* WHEN IT IS NOT SAFE IN GENERAL.** §2.1 of
+ * the row measured 63 of 340 manifests with no home and warned that the predicate cannot tell a
+ * broken project from a **module** — a bag of components with no home *by design*. That warning
+ * holds for any sweep over a disk. It does not apply to this door, and the reason is the door and
+ * not the predicate: this is *"Share as **template**"*, reached from a kebab on a launcher project
+ * row, and its category vocabulary is `starter | data-app | dashboard | site | form | integration`
+ * — **there is no module category and no module route onto this shelf.** A template is a thing
+ * somebody installs and opens. One that cannot open is broken whatever shape it has.
+ * ⚠️ **If a "share as module" door is ever added, it must not call this.**
+ * ═══════════════════════════════════════════════════════════════════════════════
+ *
+ * `unreadable` is its own answer rather than folded into either: a manifest that will not parse,
+ * or a project carrying only `components/_registry.json`, is a project this cannot measure — and
+ * **an unmeasured project is not refused.** Reporting "no home page" for a torn JSON file would
+ * be a confident sentence about the wrong problem, which is the failure `no-manifest`'s own
+ * header warns about one function up.
+ */
+export function templateHomeStatus(files: Record<string, string>): 'has-home' | 'no-home' | 'unreadable' {
+  for (const manifest of HOME_MANIFESTS) {
+    if (!Object.prototype.hasOwnProperty.call(files, manifest)) continue;
+
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(files[manifest]);
+    } catch {
+      return 'unreadable';
+    }
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return 'unreadable';
+
+    const project = parsed as Record<string, unknown>;
+    // ⚠️ Non-empty, not merely present. `rootNodeId: ''` and `rootNodeId: null` are both what a
+    // hand-written or agent-written manifest produces for "I did not set this", and both resolve
+    // to no root in `fromJSON` — so treating presence as an answer would pass exactly the
+    // externally-authored projects `loader.ts` says *"frequently do not"* carry one.
+    const declares = (key: string) => typeof project[key] === 'string' && (project[key] as string).length > 0;
+    if (declares('rootNodeId') || declares('rootComponent')) return 'has-home';
+    return 'no-home';
+  }
+
+  return 'unreadable';
+}
+
+/**
  * 8 MiB — `MAX_SUBMISSION_BYTES` on the route, and `0021`'s constraint.
  *
  * ⚠️ **A third copy of a number, and it is deliberate.** The alternative is discovering the cap
@@ -374,6 +440,13 @@ export function templatePayloadBytes(
 export type ShareAsTemplateOutcome =
   | { outcome: 'submitted'; submissionId: string; excluded: string[] }
   | { outcome: 'no-manifest'; looked: string[] }
+  /**
+   * DEF-007 — the project has no home page, so nobody who installs it can open it.
+   *
+   * ⚠️ **Carries the manifest it read**, because the fix is *"open it and set a home"* and the
+   * person is being told this about a folder rather than about the project in front of them.
+   */
+  | { outcome: 'no-home'; manifest: string }
   /**
    * ❌ **`binaries` IS GONE, AND THE DELETION IS THE FEATURE.** It meant *"this project contains a
    * file this transport cannot carry"*, and the transport now carries it. ⚠️ Removing the member
@@ -436,6 +509,21 @@ export async function shareAsTemplate(
   // fail the manifest check next, with the sentence about the wrong folder that it should get.
   if (Object.keys(files).length === 0) return { outcome: 'empty' };
   if (!hasProjectManifest(files)) return { outcome: 'no-manifest', looked: MANIFESTS };
+
+  // 🔴 **DEF-007 — AFTER `no-manifest` AND BEFORE `too-big`, and the position is the rule this
+  // function's header states.** A folder with no manifest is somebody's Downloads directory, and
+  // "this project has no home page" is a true sentence about the wrong problem when said to them.
+  // Above the size check because a template nobody can open should be refused before its 8 MiB
+  // are weighed — the size is fixable by deleting assets, and this is not.
+  //
+  // ⚠️ `unreadable` deliberately falls through to the platform rather than refusing here. See
+  // `templateHomeStatus`.
+  if (templateHomeStatus(files) === 'no-home') {
+    return {
+      outcome: 'no-home',
+      manifest: HOME_MANIFESTS.find((m) => Object.prototype.hasOwnProperty.call(files, m)) ?? MANIFESTS[0],
+    };
+  }
 
   const bytes = templatePayloadBytes(files, binaryFiles);
   if (bytes > MAX_TEMPLATE_BYTES) {

@@ -400,3 +400,125 @@ no new hazard, seven questions that were never asked.
   a lone red that a session quietly re-rolls until it is green is how a real regression gets
   attributed to luck — the attribution here is the spec's content, and the re-run only confirmed
   it.
+
+## 7. ✅ The two ruled items, built and driven — 2026-08-31, s38
+
+Richard's 2026-08-31 ruling carried **two separate items**, and neither substitutes for the other:
+publish catches a project that never had a home, deletion catches one that had a home and lost it.
+Both are now built. **AC2 remains open** and is untouched by this session — it still needs a
+curated template installed *through the picker*, which cannot be reached yet.
+
+### 7.1 Refuse at publish
+
+`templateHomeStatus(files)` in
+[`shareAsTemplate.ts`](../../../packages/noodl-editor/src/editor/src/models/template/shareAsTemplate.ts)
+answers `has-home | no-home | unreadable`, and `shareAsTemplate` refuses `no-home` **after
+`no-manifest` and before `too-big`**. The order is asserted, not assumed:
+
+- **After `no-manifest`** — somebody who picked their Downloads folder must not be told their
+  project has no home page. That is a true sentence about a problem that is not theirs.
+- **Before `too-big`** — a template nobody can open should be refused before its 8 MiB are
+  weighed. The size is fixable by deleting assets; this is not.
+
+🔴 **The module question from §2.1 is answered by the DOOR, not by the predicate.** §2.1 warned
+that *"has no `rootNodeId`" does not distinguish a broken project from a module* — 63 of 340
+manifests carry no home and most are modules and prefabs, which have none *by design*. That
+warning is correct for any sweep over a disk and **does not apply here**: this door is *"Share as
+**template**"*, reached from a kebab on a launcher project row, and its category vocabulary is
+`starter | data-app | dashboard | site | form | integration`. **There is no module category and no
+module route onto this shelf.** A template is a thing somebody installs and opens; one that cannot
+open is broken whatever shape it has. ⚠️ **Recorded in the function's own header: if a "share as
+module" door is ever added, it must not call this.**
+
+⚠️ **Both spellings count.** `rootComponent` is the legacy name field the v2 schema forbids, and
+its population here is empty (§2.1: 0 of 340 carry a name without an id) — it is accepted anyway,
+because `fromJSON` still resolves it, so a project carrying only the name is one that *does* open.
+**This function decides a refusal, so it must err towards letting a working project through.**
+
+⚠️ **`unreadable` is a third answer, not a fold into either.** Torn JSON, or a project whose only
+manifest is `components/_registry.json` (which carries no home field at all), is unmeasurable —
+and an unmeasured project is **passed to the platform, not refused**. Reporting "no home page" for
+a file that will not parse is a confident sentence about the wrong problem.
+
+### 7.2 Scream on deleting a home page
+
+🔴 **What was already protected, and what was not.** Deleting the home *component* from the
+Components panel was **already refused outright** — `ProjectModel.deleteComponentAllowed` answers
+*"Home component can't be deleted"*. That door was shut and is untouched.
+
+**The open door was the node canvas.** The home is a *node*, and selecting it and pressing Delete
+ran a module-scope listener in `projectmodel.ts:1457` that called `setRootNode(undefined)` with no
+dialog, no toast and nothing written anywhere a person looks. 🔴 **The panel's refusal made this
+worse rather than better, because it teaches that the home is protected.**
+
+Built as [`homeprotection.ts`](../../../packages/noodl-editor/src/editor/src/models/homeprotection.ts),
+a pure module mirroring `lessonprotection.ts`, wired into `EditorClipboard`:
+
+- 🔴 **`delete()` and `cut()` both.** **`cut()` had no guard of any kind** — not even FIX-025's
+  lesson one, which only ever wired `delete()`. Cutting the home node removes it exactly as Delete
+  does, and the clipboard is **not** a rescue: a paste mints new ids, so `rootNode` cannot be
+  restored by pasting the node back.
+- 🔴 **The removal set is FLATTENED.** `removeNode` notifies `nodeRemoved` only for the node it
+  was handed — its children are dropped from `nodeMap` in a `forEach` with **no notification
+  each** — so `projectmodel.ts`'s listener is blind to a home node sitting inside a selected
+  Group. This module walks the subtree and does not depend on that asymmetry.
+- ⚠️ **A confirm, never a refusal**, on `lessonprotection.ts`'s reasoning. The Components panel
+  already shows what a refusal costs: there is no way to delete a home component at all, even
+  deliberately — a second defect this is careful not to copy onto the canvas.
+- The two questions are **chained**, home first: a lesson step that stops completing is
+  recoverable, a project with no home does not open.
+
+### 7.3 Driven — real editor, `def007-drive`, 2026-08-31
+
+Fixture: a copy of `DEF-015 Card Drive` under `NodeGX test projects` (local, not iCloud), home
+node `650d423a-…` (`Group`, label `App`) with a `Router` child. Settled by
+`_retainedProjectDirectory`, never by the card title.
+
+| act | modal | node | `getRootNode()` |
+| --- | --- | --- | --- |
+| **control** — delete the `Router` (a *non-home descendant*) | **none** | deleted | unchanged |
+| delete the home `Group` | **"This is your home page"** | **kept** | unchanged |
+| … press **"Keep my home page"** | dismissed | **kept** | unchanged |
+| … press **"Delete it anyway"** | dismissed | deleted | **`null`** |
+| **cut** the home `Group` | **"This is your home page"** | **kept** | unchanged |
+
+🔴 **The control was run FIRST and it is from the searched population** — the Router is a
+descendant of the home, so it tests the predicate rather than the boundary. It raised **no** modal
+while the delete path plainly worked, so the guard is not blanket-firing and the harness is not
+broken. Screenshot captured of the rendered dialog.
+
+🔴 **And the confirm branch matters as much as the refusal branch**: pressing *"Delete it anyway"*
+really does delete it. This is a confirm, and a spec that only proved the dialog appears would
+pass equally against a refusal, which is the thing §7.2 says not to build.
+
+The publish gate was driven in the same running editor against this project's **real manifest**:
+`has-home`, and `no-home` for the same bytes with `rootNodeId` removed — a control pair varying
+exactly one field.
+
+### 7.4 🔴 A NEW finding the drive produced: undo does not restore the home
+
+**Undo after deleting the home node brings the NODE back and leaves the project with no home.**
+Measured: after *"Delete it anyway"* then `UndoQueue.undo()`, the `Group` was back in the graph and
+`getRootNode()` was still `null`.
+
+The node's undo action restores the node; nothing restores `ProjectModel.rootNode`, because
+`setRootNode(undefined)` is run by an event listener rather than as part of the undoable act. So
+the damage is **not** fully undoable, which is a direct argument for the confirm and is why
+Richard's *"you might not remember what you deleted"* applies here even more than in a lesson.
+
+⚠️ **Registered, not fixed** — it is a separate defect from the two items ruled, and fixing it
+means making the root-pointer change part of the undo group. Filed as a new row in
+[UNOWNED-ROWS-TO-MEASURE.md](UNOWNED-ROWS-TO-MEASURE.md).
+
+### 7.5 What is graded how, stated plainly
+
+- ✅ `templateHomeStatus`, the refusal and its ordering, and every sentence: unit-graded in
+  `tests-unit/fb-005/`, **4 mutants**, each reddening a different count.
+- ✅ `homeInDeletion` / `homeDeletionMessage`: `tests-unit/def-007/home-protection.test.ts`,
+  **3 mutants**.
+- ⚠️ **The WIRING is graded by the drive alone, not by a spec.** `EditorClipboard` **cannot be
+  imported under this jest** — it reaches `bugtracker.ts`, which calls `platform.getUserDataPath()`
+  at module scope. So a pure-module spec here would pass against a module nobody calls; the drive
+  in §7.3 is what excludes that, and it is the only thing that does.
+- ⚠️ **The shared `PROJECT` fixture in `template-submission.test.ts` now carries `rootNodeId`,
+  and it is load-bearing.** Deleting that field turns roughly half the file red.

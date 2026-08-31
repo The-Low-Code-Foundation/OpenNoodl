@@ -36,6 +36,7 @@ import {
   isNeverShared,
   shareAsTemplate,
   suggestedSlug,
+  templateHomeStatus,
   templatePayloadBytes,
   whyNeverShared,
   type ShareAsTemplateOutcome,
@@ -102,7 +103,14 @@ function fakeFs(tree: Record<string, string | Buffer>): TemplateReadFs {
 const PNG_BYTES = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 
 const PROJECT = {
-  'nodegx.project.json': '{"name":"A pricing page"}',
+  /**
+   * ⚠️ **`rootNodeId` IS LOAD-BEARING, NOT DECORATION — DEF-007.** A project with no home page is
+   * refused (`no-home`) before it is weighed or sent, so every spec below that expects a share to
+   * get *past* collection needs a fixture that has one. Deleting this field turns roughly half
+   * this file red, which is the point: it is what a project looks like after somebody has picked
+   * a home, and that is the only shape this door accepts.
+   */
+  'nodegx.project.json': '{"name":"A pricing page","rootNodeId":"node-home-1"}',
   'components/_registry.json': '{"components":["Pages/Home"]}',
   'components/Pages/Home/component.json': '{"name":"/Pages/Home"}'
 };
@@ -464,6 +472,108 @@ describe('refusals arrive before the upload, in the order a person can act on', 
     expect((result as Extract<ShareAsTemplateOutcome, { outcome: 'too-big' }>).limit).toBe(
       8 * 1024 * 1024
     );
+  });
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // DEF-007 — a template with no home page is refused before it is uploaded.
+  //
+  // 🧭 Richard, 2026-08-31: *"Refuse at publish, make sure people define a home page, it's a very
+  // basic requirement."*
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  it('🔴 refuses a project with NO HOME PAGE, and sends nothing', async () => {
+    // The defect in one sentence: today this uploads cleanly and lands on a public shelf as a
+    // template that opens on nothing. `hasProjectManifest` only ever asked whether a manifest
+    // EXISTS.
+    const homeless = { ...PROJECT, 'nodegx.project.json': '{"name":"A pricing page"}' };
+    const s = sink();
+    const result = await shareAsTemplate({ fs: fakeFs(homeless), sink: s }, META);
+
+    expect(result.outcome).toBe('no-home');
+    // 🔴 AND NOTHING WAS SENT — the same assertion `too-big` needs, for the same reason. Without
+    // it this passes on a module that uploads the broken template and then mentions the problem.
+    expect(s.sent).toHaveLength(0);
+
+    // 🔴 **THE CONTROL, AND IT IS RUN AGAINST THE SAME FIXTURE MINUS ONE FIELD.** An absence
+    // check whose subject was never accepted proves nothing: if `shareAsTemplate` were broken in
+    // some way that refused everything, the assertion above would still pass.
+    const ok = sink();
+    expect((await shareAsTemplate({ fs: fakeFs(PROJECT), sink: ok }, META)).outcome).toBe('submitted');
+    expect(ok.sent).toHaveLength(1);
+  });
+
+  it('🔴 refuses BEFORE the size check — a template nobody can open is not a size problem', async () => {
+    // Ordering is asserted rather than assumed, because both refusals are true of this fixture
+    // and a `switch` of independent `if`s has no order a reader can see.
+    const bigAndHomeless = {
+      ...PROJECT,
+      'nodegx.project.json': '{"name":"A pricing page"}',
+      'components/Pages/Big/c.json': 'x'.repeat(MAX_TEMPLATE_BYTES + 1)
+    };
+    expect((await shareAsTemplate({ fs: fakeFs(bigAndHomeless), sink: sink() }, META)).outcome).toBe('no-home');
+  });
+
+  it('🔴 ...but AFTER "no manifest" — the wrong folder is the likelier mistake', async () => {
+    // Somebody who picked their Downloads folder must not be told their project has no home page.
+    // That is a true sentence about a thing that is not their problem.
+    const fs = fakeFs({ 'photo.png': PNG_BYTES, 'notes.txt': 'hello' });
+    expect((await shareAsTemplate({ fs, sink: sink() }, META)).outcome).toBe('no-manifest');
+  });
+
+  it('the refusal names the manifest it read, so the sentence is about a real file', async () => {
+    const homeless = { ...PROJECT, 'nodegx.project.json': '{"name":"x"}' };
+    const result = await shareAsTemplate({ fs: fakeFs(homeless), sink: sink() }, META);
+    expect((result as Extract<ShareAsTemplateOutcome, { outcome: 'no-home' }>).manifest).toBe(
+      'nodegx.project.json'
+    );
+  });
+
+  describe('templateHomeStatus', () => {
+    it('takes rootNodeId, and the LEGACY rootComponent too', () => {
+      // 🔴 Both spellings, and the asymmetry is deliberate: `rootComponent` is the legacy NAME
+      // field which the v2 schema forbids, but `fromJSON` still resolves it — so a project
+      // carrying only the name is one that DOES open, and refusing it would be wrong. This
+      // function decides a refusal, so it must err towards letting a working project through.
+      expect(templateHomeStatus({ 'nodegx.project.json': '{"rootNodeId":"n1"}' })).toBe('has-home');
+      expect(templateHomeStatus({ 'project.json': '{"rootComponent":"App"}' })).toBe('has-home');
+      expect(templateHomeStatus({ 'nodegx.project.json': '{"name":"x"}' })).toBe('no-home');
+    });
+
+    it('🔴 an EMPTY or NULL rootNodeId is not a home', () => {
+      // The shape an agent-written or hand-written manifest actually produces for "I did not set
+      // this". `loader.ts` says of exactly this population: *"projects authored from outside …
+      // frequently do not"* carry one. Testing presence instead of content would pass them all.
+      expect(templateHomeStatus({ 'nodegx.project.json': '{"rootNodeId":""}' })).toBe('no-home');
+      expect(templateHomeStatus({ 'nodegx.project.json': '{"rootNodeId":null}' })).toBe('no-home');
+    });
+
+    it('🔴 prefers the V2 manifest when a project carries both', () => {
+      // A project mid-migration has both files. The v2 one is what the editor writes and what
+      // `fromJSON` reads first, so a stale legacy `project.json` must not decide this.
+      expect(
+        templateHomeStatus({
+          'nodegx.project.json': '{"rootNodeId":"n1"}',
+          'project.json': '{"name":"stale"}'
+        })
+      ).toBe('has-home');
+    });
+
+    it('🔴 an UNREADABLE manifest is not reported as "no home page"', () => {
+      // A confident sentence about the wrong problem is the failure `no-manifest`'s header warns
+      // about. Torn JSON, and a project whose only manifest is the registry (which carries no
+      // home field at all), are both unmeasurable — and an unmeasured project is NOT refused.
+      expect(templateHomeStatus({ 'nodegx.project.json': '{not json' })).toBe('unreadable');
+      expect(templateHomeStatus({ 'nodegx.project.json': '[]' })).toBe('unreadable');
+      expect(templateHomeStatus({ 'components/_registry.json': '{"components":[]}' })).toBe('unreadable');
+    });
+
+    it('an unreadable manifest is passed to the platform rather than refused here', async () => {
+      const torn = { ...PROJECT, 'nodegx.project.json': '{not json' };
+      const s = sink();
+      const result = await shareAsTemplate({ fs: fakeFs(torn), sink: s }, META);
+      expect(result.outcome).not.toBe('no-home');
+      expect(s.sent).toHaveLength(1);
+    });
   });
 
   it('accepts the three manifests the detector accepts, and refuses components/ alone', () => {

@@ -317,3 +317,50 @@ and `connections-v2.json` is a named schema, so the question is not "should this
 
 Owner: **NONE**. Gets a `DEF-0xx` id when the bullet above is measured. ⚠️ Next free id is
 `DEF-038`.
+
+---
+
+## 8. Undoing a home-page deletion restores the node and NOT the home
+
+## 🔴 MEASURED WHILE BUILDING — 2026-08-31, DEF-007 s38
+
+**Driven, not derived.** In a real editor on `def007-drive`: delete the home node, press *"Delete
+it anyway"*, then `UndoQueue.undo()`. The `Group` came back into the graph and
+`ProjectModel.getRootNode()` was **still `null`**.
+
+**The mechanism is visible and small.** `NodeGraphModel.removeNode` pushes an undo action that
+re-adds the node. The home pointer is cleared somewhere else entirely — a module-scope listener at
+[`projectmodel.ts:1457`](../../../packages/noodl-editor/src/editor/src/models/projectmodel.ts#L1457):
+
+```ts
+EventDispatcher.instance.on('Model.nodeRemoved', function (e) {
+  if (ProjectModel.instance && ProjectModel.instance.getRootNode() === e.args.model) {
+    ProjectModel.instance.setRootNode(undefined);
+  }
+});
+```
+
+`setRootNode(undefined)` is run as a **side effect of an event**, not as part of the undoable act,
+so nothing in the undo group knows to reverse it.
+
+🔴 **Why it matters beyond tidiness.** DEF-007 §7.2 built a confirm rather than a refusal, on the
+argument that a person may legitimately restructure their project and undo exists. **Undo does not
+in fact repair this**, which makes the confirm the only protection there is, and makes Richard's
+*"you might not remember what you deleted"* sharper here than in the lesson case FIX-025 addressed.
+
+**What to measure before fixing.**
+
+- Does the same hole exist for the **component** path (`removeComponent` → `setRootNode(null)` at
+  `projectmodel.ts:414`)? That path is refused from the Components panel today, but the import
+  engine (`utils/import-engine/apply.ts`) calls `removeComponent` directly and is not refused.
+- ⚠️ **Is the listener reachable for a node that is NOT the top of the removal set?** It reads
+  `e.args.model`, and `removeNode` notifies only for the node it was handed — children are dropped
+  from `nodeMap` with **no notification each**. So a home node inside a deleted Group is removed
+  from the graph while `rootNode` goes on pointing at it — **a dangling root rather than a null
+  one, which is the opposite failure and may be worse.** DEF-007's guard walks the subtree and so
+  asks first, but the underlying listener is still blind to this. **Not measured.**
+- Whether the fix belongs in the undo group or in making the root-pointer change an undoable act
+  in its own right. Those are different fixes with different blast radii.
+
+Owner: **NONE**. Gets a `DEF-0xx` id when the bullets above are measured. ⚠️ Next free id is
+`DEF-038`.

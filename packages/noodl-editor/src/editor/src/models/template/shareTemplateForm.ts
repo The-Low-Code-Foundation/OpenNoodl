@@ -231,6 +231,21 @@ export function describeShareOutcome(outcome: ShareAsTemplateOutcome): ShareSent
         withheld: []
       };
 
+    case 'no-home':
+      // 🔴 **DEF-007 — it says what to DO, and where.** Richard: *"make sure people define a home
+      // page, it's a very basic requirement."* A refusal that only names the rule leaves somebody
+      // at a dialog with no next step; the fix is two clicks away in a panel they already know,
+      // so the sentence spends its second half there rather than on restating the first.
+      return {
+        tone: 'problem',
+        headline: 'This project has no home page',
+        detail:
+          'A template opens on its home page, and this one has not picked yet — so nobody who installs it ' +
+          'would see anything. Open the project, right-click a component in the Components panel and choose ' +
+          '“Make home”, then share it again.',
+        withheld: []
+      };
+
     // ❌ `binaries` — *"Templates cannot carry images yet"* — HAS BEEN DELETED RATHER THAN LEFT
     // UNREACHABLE. The transport carries them now (`0023`), so the sentence was about a limit
     // that no longer exists, and a message for an outcome nothing can produce is a message
