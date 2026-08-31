@@ -250,6 +250,14 @@ export interface RuntimeNode extends NodeInstance {
   _getVisualStates?: () => string[];
   /** Present only on React-backed nodes. */
   _resetReactVirtualDOM?: () => void;
+  /**
+   * DEF-037. Present only on React-backed nodes: re-run render without remounting, so a
+   * component that derives properties from a style value recomputes them. Weaker than
+   * {@link _resetReactVirtualDOM}, which mints a new React key and discards DOM state.
+   */
+  _rerenderReactNode?: () => void;
+  /** DEF-037. One editor-driven re-render per update pass; see `_scheduleEditorDrivenRerender`. */
+  _editorRerenderScheduled?: boolean;
 
   /**
    * Set when the SSR server created this instance inert because its type is
@@ -277,6 +285,8 @@ export interface RuntimeNode extends NodeInstance {
   _hasInputBeenSetFromAConnection(inputName: string): boolean;
   _onNodeDeleted(): void;
   _onNodeModelParameterUpdated(event: NodeModelParameterUpdatedEvent): void;
+  /** DEF-037. Schedules a post-input re-render when the editor changed a parameter. */
+  _scheduleEditorDrivenRerender(): void;
   _onNodeModelVariantUpdated(variant: NodeVariant): void;
   setNodeModel(nodeModel: any): void;
 }

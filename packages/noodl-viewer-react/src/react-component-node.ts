@@ -1324,6 +1324,19 @@ function createNodeFromReactComponent(def: ReactNodeDefinition): ReactNodeModule
         });
         this.context.scheduleUpdate();
       },
+      /**
+       * DEF-037. The editor changed a parameter, so re-run render rather than trusting the
+       * declaration `setStyle` patched onto the DOM — a component that *derives* properties
+       * from a style value (Text's `textOverflow`, Checkbox's `width`/`height`) only recomputes
+       * them in render. `forceUpdate` is already frame-debounced, so a burst of parameter
+       * changes costs one render.
+       *
+       * ⚠️ Not `_resetReactVirtualDOM`: that remounts and would discard focus, scroll and
+       * video state on every keystroke in the property panel.
+       */
+      _rerenderReactNode() {
+        this.forceUpdate();
+      },
       _resetReactVirtualDOM() {
         //reset the react key to force a full re-render
         //this can be required since we're editing the DOM tree, without React knowing
@@ -1480,6 +1493,22 @@ function createNodeFromReactComponent(def: ReactNodeDefinition): ReactNodeModule
           if (newStyles.position || newStyles.flexDirection || newStyles.clip) {
             forceUpdate = true;
           }
+        } else {
+          /**
+           * DEF-037 — a tagged port has no safety net at all, so it gets a render.
+           *
+           * 🔴 **Every check above is inside `if (!styleTag)`.** A port carrying a `styleTag`
+           * could therefore only ever re-render through its own `onChange`, which made each
+           * one a defect waiting to be noticed by hand — and that is exactly what happened:
+           * Radio Button's `Width`/`Height` carry the `onChange` and **Checkbox's, declared
+           * identically, do not**.
+           *
+           * A tagged style is by construction one the *component* re-reads at render onto
+           * some inner element (`props.styles[tag]`), which is the whole derived-sibling
+           * class. The hot path the DOM patch was built for — a wire animating `opacity` or
+           * `transform` per frame — is untagged and keeps it.
+           */
+          forceUpdate = true;
         }
 
         if (forceUpdate) {

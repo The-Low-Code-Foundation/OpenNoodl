@@ -51,11 +51,22 @@ first `Text` style port of that kind**, which is why nothing caught this before.
 - **AC1** Setting a truncating `Text Overflow` in a running preview makes the label truncate
   without a reload.
 - **AC2** Setting it back to `Wrap` restores wrapping in a running preview without a reload.
-- **AC3** A control port that needs no sibling (`wordBreak`) still applies live — the fix must not
-  be "re-render the whole preview on every style change".
-- **AC4** The sweep in §4 is taken: every `inputCss` port whose effect depends on a property the
-  render derives is named, or the absence is measured with a known-firing control beside it.
+- **AC3** 🔁 **REWRITTEN 2026-08-31 (session 37), and the old text is kept below because
+  quoting it would now point the wrong way.** A control port that needs no sibling (`wordBreak`)
+  still applies live, **and no `inputCss` port anywhere is inert in a running preview** — the
+  panel and the preview agree for every style port, not for an enumerated list of them.
+  - 🚫 **The old AC3 read**: *"the fix must not be 're-render the whole preview on every
+    style change'."* 🔴 **That was a previous session's constraint, not Richard's, and the
+    ruling supersedes it** — *"the preview is supposed to be a true, live, auto updating view of
+    what's in the node canvas at all times."* **Do not try to satisfy both**; a fix that keeps a
+    port inert in order to avoid a re-render is the defect, not a trade-off.
+  - ✅ **Performance is still a constraint, but a narrower one**: it protects a **wire or
+    animation driving a style per frame**, not an author changing a parameter at human speed.
+- **AC4** ✅ **CLOSED s36** — the sweep in §4 is taken; see §7.
 - **AC5** Driven in a real editor, both directions, without a reload.
+- **AC6** 🆕 **The three instances §7.3 found by reading source are driven, or their
+  inertness is disproved.** ⚠️ They are candidates of the same class, **not measured
+  defects** — Radio Button's `width`/`height` are the known-firing control.
 
 ## 6. Traps this row paid for
 

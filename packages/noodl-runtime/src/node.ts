@@ -1306,6 +1306,46 @@ Node.prototype._onNodeDeleted = function () {
   }
 };
 
+/**
+ * DEF-037 — an **editor-driven** parameter change is reflected by a real render, not by
+ * patching one declaration onto the DOM.
+ *
+ * 🔴 **Why this is not a per-port fix.** `setStyle` in `react-component-node.ts` patches the
+ * changed declaration straight onto the DOM node and re-runs render only for a hard-coded
+ * allowlist. That is correct for a *value* — but a component whose render **derives** other
+ * properties from that value (Text's `textOverflow` decides `whiteSpace`/`overflow` and then
+ * deletes itself; Checkbox copies `width`/`height` onto its inner `<input>`) never recomputes
+ * them, so the port looks broken until the preview is reloaded. Annotating the ports one at a
+ * time is how Checkbox got missed while its sibling Radio Button was fixed.
+ *
+ * ✅ **The reset branch below has done exactly this since long before DEF-037**, and its comment
+ * describes the same bug ("Noodl will modify the original dom node, outside of React … won't see
+ * any delta in the virtual dom"). Only the *set* branch was missing it. This is the known-firing
+ * control for the whole change.
+ *
+ * ⚠️ **Deliberately weaker than `_resetReactVirtualDOM`.** That one mints a new React key and
+ * remounts the node, discarding DOM state — focus, scroll position, video playback. A re-render
+ * recomputes the derived properties without any of that, which is all this needs.
+ *
+ * ⚠️ **Editor-driven only, and that is the point.** This handler runs off the node *model*'s
+ * `parameterUpdated`, which only ever fires from the editor connection
+ * (`editormodeleventshandler.ts`). A deployed app never reaches here, so the DOM fast path that
+ * exists for a wire animating a style per frame is untouched.
+ */
+Node.prototype._scheduleEditorDrivenRerender = function (this: RuntimeNode) {
+  // Not a React-backed node — nothing renders, so there is nothing to recompute.
+  if (!this._rerenderReactNode) return;
+  if (this._editorRerenderScheduled) return;
+  this._editorRerenderScheduled = true;
+
+  // After, not now: `queueInput` only *queues*: the setter that writes the style object has not
+  // run yet, so a render taken here would draw the value the author just replaced.
+  this.scheduleAfterInputsHaveUpdated(function (this: RuntimeNode) {
+    this._editorRerenderScheduled = false;
+    this._rerenderReactNode && this._rerenderReactNode();
+  });
+};
+
 Node.prototype._onNodeModelParameterUpdated = function (event: NodeModelParameterUpdatedEvent) {
   this.registerInputIfNeeded(event.name);
 
@@ -1322,9 +1362,11 @@ Node.prototype._onNodeModelParameterUpdated = function (event: NodeModelParamete
       const states = this._getVisualStates();
       if (states.indexOf(event.state) !== -1) {
         this.queueInput(event.name, event.value);
+        this._scheduleEditorDrivenRerender();
       }
     } else {
       this.queueInput(event.name, event.value);
+      this._scheduleEditorDrivenRerender();
     }
   } else {
     //parameter is undefined, that means it has been removed and we should reset to default
