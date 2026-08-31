@@ -96,6 +96,7 @@ export type {
 // LAS-001 — an instance parameter that reaches a port that exists.
 export {
   checkComponentPortDirection,
+  checkUndeclaredComponentPorts,
   checkInstanceInterfaces,
   componentInterfaceIndex,
   COMPONENT_PORT_TYPES

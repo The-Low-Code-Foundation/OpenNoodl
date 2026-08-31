@@ -45,7 +45,7 @@
       "nodes": [
         { "id": "row", "type": "Group", "label": "Row", "parameters": { "flexDirection": "row" }, "children": ["label_text"] },
         { "id": "label_text", "type": "Text", "label": "Label", "parent": "row" },
-        { "id": "row_inputs", "type": "Component Inputs", "label": "Item in" }
+        { "id": "row_inputs", "type": "Component Inputs", "label": "Item in", "ports": [{ "name": "label", "plug": "output", "type": "*" }] }
       ],
       "connections": [
         { "fromId": "row_inputs", "fromProperty": "label", "toId": "label_text", "toProperty": "text" }

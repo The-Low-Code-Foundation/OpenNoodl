@@ -59,7 +59,8 @@
         {
           "id": "card_inputs",
           "type": "Component Inputs",
-          "label": "Record properties in"
+          "label": "Record properties in",
+          "ports": [{ "name": "title", "plug": "output", "type": "*" }]
         }
       ],
       "connections": [

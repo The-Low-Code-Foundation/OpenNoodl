@@ -416,6 +416,35 @@ export enum DiagnosticCode {
    */
   ComponentPortDirection = 'component-port-direction',
   /**
+   * VIB-007 / register V22 — a component-interface port that is WIRED but never
+   * DECLARED.
+   *
+   * The third member of the family, and the one that had 15 corpus hits while
+   * the other two had none left. `PortWithoutPlug` asks whether a port has a
+   * direction; {@link ComponentPortDirection} asks whether it has the right one;
+   * this asks whether the port **exists at all**. A `Component Inputs` node with
+   * no `ports` array and a connection drawn out of `row_inputs.title` names an
+   * endpoint that `componentmodel.getPorts()` cannot return, so the component
+   * has no input called `title` and nothing can ever set it.
+   *
+   * 🔴 **Ruled by a render, 2026-08-31, not by reading the source**
+   * (`packages/nodegx-backend/tests/vib007-v22.look.ts`). Two components
+   * identical but for the `ports` array, each drawn by a `For Each` over three
+   * records, on one page: the declared arm rendered its three records' values,
+   * the undeclared arm rendered its own placeholder three times. The repeater
+   * still creates the right NUMBER of instances, which is what makes this
+   * survivable-looking — the page keeps its shape and loses its content.
+   *
+   * That mattered because all 15 hits are repeater item components, and the open
+   * question was whether a `For Each` feeds item properties in by another route.
+   * It does not: `foreach.tsx:595` iterates `itemNode._inputs`, the *declared*
+   * inputs, so an undeclared port is never even offered the value.
+   *
+   * Error severity: unlike the other two this has no reading under which the
+   * graph works, and `catalog:examples` ran all 15 of them 67/67 strict.
+   */
+  UndeclaredComponentPort = 'undeclared-component-port',
+  /**
    * LAS-004 — a page component whose own graph is large enough that it has
    * almost certainly inlined sections that wanted to be components.
    *

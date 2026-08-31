@@ -56,6 +56,7 @@ import { checkConnectionTargets } from './connectionTargets';
 import { checkDerivedPortTargets, derivedPortIndex, type DerivedPortIndex } from './derivedPortTargets';
 import {
   checkComponentPortDirection,
+  checkUndeclaredComponentPorts,
   checkInstanceInterfaces,
   componentInterfaceIndex,
   type ComponentInterfaceIndex,
@@ -548,6 +549,14 @@ export function authoredPreconditionDiagnostics(options: AuthoredPreconditionOpt
     // reason as its neighbours — omitted means "do not check".
     ...(derived ? checkDerivedPortTargets(nodes, { component, derived, wires }) : []),
     ...checkComponentPortDirection(nodes, { component }),
+    // VIB-007 / register V22 — the third question in the interface family, and the one
+    // neither neighbour can ask: both read the ports a node DECLARES, so a node that
+    // declares none is silent to both while every connection drawn out of it names a port
+    // the component does not have. Ruled by a render rather than by reading the runtime
+    // (`vib007-v22.look.ts`): under a `For Each`, the undeclared arm draws the right NUMBER
+    // of rows and every one shows the component's own placeholder. Reads wires; omitted
+    // means "do not check", the same convention as its neighbours.
+    ...(wires ? checkUndeclaredComponentPorts(nodes, wires, { component }) : []),
     ...checkRepeaterTemplate(nodes, { component, components, connectedInputs: connections }),
     // DEF-010 (SB-009) — the other twelve of the catalog's thirteen
     // component-typed ports. `For Each.template` is skipped inside the check:

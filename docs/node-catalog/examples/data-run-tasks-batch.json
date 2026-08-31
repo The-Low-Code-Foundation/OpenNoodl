@@ -47,14 +47,14 @@
     {
       "name": "/Import Task",
       "nodes": [
-        { "id": "task_inputs", "type": "Component Inputs", "label": "Item in" },
+        { "id": "task_inputs", "type": "Component Inputs", "label": "Item in", "ports": [{ "name": "title", "plug": "output", "type": "*" }] },
         {
           "id": "process_item",
           "type": "JavaScriptFunction",
           "label": "Process one item",
           "parameters": { "functionScript": "const row = Inputs.title;\nOutputs.success();" }
         },
-        { "id": "task_outputs", "type": "Component Outputs", "label": "Task result" }
+        { "id": "task_outputs", "type": "Component Outputs", "label": "Task result", "ports": [{ "name": "success", "plug": "input", "type": "signal" }] }
       ],
       "connections": [
         { "fromId": "task_inputs", "fromProperty": "title", "toId": "process_item", "toProperty": "in-title" },

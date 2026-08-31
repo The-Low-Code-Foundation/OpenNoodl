@@ -85,7 +85,7 @@
       "nodes": [
         { "id": "row", "type": "Group", "label": "Row", "parameters": { "flexDirection": "row" }, "children": ["line_text"] },
         { "id": "line_text", "type": "Text", "label": "Line", "parent": "row" },
-        { "id": "row_inputs", "type": "Component Inputs", "label": "Line in" }
+        { "id": "row_inputs", "type": "Component Inputs", "label": "Line in", "ports": [{ "name": "message", "plug": "output", "type": "*" }] }
       ],
       "connections": [{ "fromId": "row_inputs", "fromProperty": "message", "toId": "line_text", "toProperty": "text" }]
     }

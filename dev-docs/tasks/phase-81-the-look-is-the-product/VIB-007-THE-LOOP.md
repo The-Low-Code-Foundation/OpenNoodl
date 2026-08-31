@@ -43,6 +43,11 @@ The claim was: *most register rows fall out to a mechanism rather than to a para
 
 **Retired by a mechanism: 25 of 41 (61%). Of the LIVE debt: 18 of 23 (78%).**
 
+⚠️ **The table above is the mapping as it was run, and is left as it was run.** Re-running
+`demo/map-register-to-mechanisms.py` after **V22 closed** (§6) reads **22 live, 17 of 22 (77%), M2 at
+10 live** — the movement of exactly one M2 row, which is the arithmetic working rather than a new
+finding. **Re-run the script; do not trust either copy of the numbers.**
+
 🔴 **The result that corrected the pitch: M5 retires five rows and NOT ONE of them is still open**
 (V8, V25, V27, V33, V39 are all closed). M5 is **prevention, not cleanup** — it would have stopped
 five defects that have each already been paid for by hand. That is a real argument for it and a real
@@ -129,3 +134,106 @@ most of this mechanism.** Retires **V4, V9, V10, V14, V15, V26**.
 - V1/V2/V14/V17/V21/V38 — **VIB-005**, same mechanism, different family.
 - V31 (unreachable shadow tokens) — a real vocabulary gap, not a procedure gap. Stays open, unowned by
   a mechanism.
+
+---
+
+## §6 🔴 V22 RULED, 2026-08-31 — the 14 examples were broken, and M2's first predicate ships
+
+AC2 named this task's first job: *"whether a `For Each` feeds item properties into ports that were
+never declared is a runtime question, and the answer decides whether these are 14 broken examples or
+14 that work by another route. It must be a render, not a reading."* It was a render.
+
+### The experiment
+
+`demo/build-vib007-v22.js` writes a two-arm project; `packages/nodegx-backend/tests/vib007-v22.look.ts`
+renders it. `/Rows/Declared` and `/Rows/Undeclared` are byte-identical but for the `ports` array on
+their `Component Inputs` node — asserted from disk, not asserted-to — and each is drawn by a `For Each`
+over three `Static Data` records through the same connection. Each row's `Text` carries its own
+placeholder as a parameter, so "the value was discarded" and "the value arrived empty" are different
+pictures rather than the same blank.
+
+🔴 **Arm A is the control and it is read first.** Without a known-firing arm, "arm B shows no value"
+is indistinguishable from "the repeater never ran", "the `Static Data` did not parse" and "the harness
+served the wrong page".
+
+### The reading, at all four widths
+
+| arm | `Component Inputs` | rows drawn | rows showing the record's value | rows showing the placeholder |
+|---|---|---|---|---|
+| A | `ports: [{ label, output, * }]` | 3 | **3** | 0 |
+| B | no `ports` array | **3** | **0** | **3** |
+
+**The answer is no: an undeclared port delivers nothing.** `verdicts/vib-007/2026-08-31/v22-door/`.
+
+🔴 **The repeater still creates the right NUMBER of instances.** That is what made this survivable for
+so long — the page keeps its shape and loses its content, so every structural check passes. It is the
+same class as VIB-003's lost band, where `textChars` was 606 and `unreachablePx` was 0.
+
+The mechanism, read afterwards to explain the picture rather than to predict it: `foreach.tsx:595`
+iterates `itemNode._inputs` — the **declared** inputs — so an undeclared port is never offered the
+value. `runtasks.ts:430` is the identical loop, which matters because one of the 14 is placed by
+`RunTasks`, the second `_forEachModel` producer named in `foreachitem.ts`'s own header.
+
+### ⚠️ The register row was right about the population and wrong about what it consists of
+
+V22 said *"every one a repeater/`For Each` item component"*. Re-derived from the placers:
+
+| how the component is placed | count |
+|---|---|
+| `For Each` template | 10 |
+| `RunTasks.taskTemplate` | 1 |
+| **direct instance** (`/Media Frame`, `vis-wrapper-component-children`) | **1** |
+| **placed by nothing at all in its own example** (`/Task Detail`, `/Project Membership`) | **2** |
+
+All four cases are repaired by the same edit, so nothing about the fix changes — but "all 14 are
+repeater rows" would have made the ruling look narrower than it is, and two of them are an example
+defining a component it never instantiates, which is a different (weaker) finding hiding inside this
+one. 🔴 **A relayed count decays more slowly than the sentence attached to it.**
+
+### What shipped
+
+1. **`DiagnosticCode.UndeclaredComponentPort`** (`undeclared-component-port`, **error**) and
+   `checkUndeclaredComponentPorts` — the third question in the interface family.
+   {@link checkInstancePorts} asks whether a port has a direction; `checkComponentPortDirection` asks
+   whether it has the right one; this asks whether it **exists**. Both neighbours read the ports a node
+   *declares*, so a node declaring none was silent to both.
+   ⚠️ The predicate is **wired − declared**, not "has no `ports` array": a node declaring two of the
+   three ports it wires is the same defect for the third. All 15 hits happened to declare nothing; the
+   check is not written to that accident.
+2. **On the corpus gate** (`scripts/validate-examples.ts`). Switched on, it found **16 undeclared ports
+   across 14 files** — 53/67 — matching an independent sweep exactly. That gate could not previously
+   have asked: its `toNormProject` maps ports to names only, so "declared" and "wired" were never in
+   the same place. **A hole shaped exactly like the defect**, again.
+3. **On the authoring door** (`authoredCandidate.ts`, guarded on `wires` like its neighbours), so
+   `create_component` / `update_component` / `validate_component` reject it with the line to add.
+   `packages/noodl-mcp/tests/vib007UndeclaredPortDoor.test.ts` pins the rejection, the message's
+   **Repeater clause** (all but two of the hits are placed by a repeater, and "an instance parameter is
+   discarded" reads as not-my-case to an author who places no instances by hand), and — the half a gate
+   family has got wrong before — that the **correct** component is still accepted.
+4. **The 14 examples repaired**: 16 ports declared. Surgical text insertion, not a JSON round-trip —
+   48 of the 67 files disagree with any single formatter, so re-emitting them would have buried a
+   16-line repair in a 67-file reflow. `data-run-tasks-batch`'s `success` is typed `signal`, not `*`,
+   because `Outputs.success()` is a signal.
+5. **Regenerated `node-catalog-enriched.json`** and verified **through the door**: `listExamples()` →
+   67, and a sweep over `getExample()` finds **80 interface wires, 0 undeclared**. ✅ V40's discipline
+   applied on its first opportunity — and `catalog:merge:check` **did red** on the corpus edit before
+   the regeneration, which is the gate working.
+
+### Gates (2026-08-31) — 🔴 every row is an EXIT STATUS
+
+| gate | reading |
+|---|---|
+| `vib007-v22.look.ts` | **exit 0** — 3/3, four viewports, `errors=0` on every shot |
+| `npm run catalog:examples` | **exit 0** — **67/67** strict (it read **53/67** the moment the check was switched on, before the repair) |
+| `npm run catalog:merge:check` | **exit 0** after regeneration; **exit 1 before it**, on this session's corpus edit |
+| `npx jest --config packages/noodl-mcp/jest.config.js` | **exit 0** — **80 suites / 1048 tests** (was 79/1045; this task adds one suite of three) |
+| `noodl-editor/tests-unit/vib-007/undeclaredComponentPort.test.ts` | **exit 0** — 8/8, including the corpus **mutation** |
+| 14 neighbouring editor validation specs | **exit 0** — 14 suites / 192 tests |
+| `npm run typecheck:editor` | **exit 0** |
+| `npm run typecheck:backend-tests` | ⚠️ **not run** — settled as un-runnable on this box (OOM, exit 134, even at two files). CI `pr.yml:39` covers it |
+
+### What AC2 still owes
+
+V22 is one of six predicates. **V23, V28, V29, V32, V33 are unbuilt.** V32 is the cheapest by a
+distance — it is *configuration only* (run `raw-color-literal` in `catalog:examples`) and it now has a
+worked precedent in this section for what switching a check on over an existing corpus costs.

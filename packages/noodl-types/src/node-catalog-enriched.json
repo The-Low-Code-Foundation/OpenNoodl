@@ -62836,7 +62836,14 @@
             {
               "id": "row_inputs",
               "type": "Component Inputs",
-              "label": "Line in"
+              "label": "Line in",
+              "ports": [
+                {
+                  "name": "message",
+                  "plug": "output",
+                  "type": "*"
+                }
+              ]
             }
           ],
           "connections": [
@@ -63542,7 +63549,14 @@
             {
               "id": "detail_inputs",
               "type": "Component Inputs",
-              "label": "Task id in"
+              "label": "Task id in",
+              "ports": [
+                {
+                  "name": "taskId",
+                  "plug": "output",
+                  "type": "*"
+                }
+              ]
             },
             {
               "id": "task_record",
@@ -63724,7 +63738,14 @@
             {
               "id": "line_inputs",
               "type": "Component Inputs",
-              "label": "Record in"
+              "label": "Record in",
+              "ports": [
+                {
+                  "name": "title",
+                  "plug": "output",
+                  "type": "*"
+                }
+              ]
             }
           ],
           "connections": [
@@ -63905,7 +63926,14 @@
             {
               "id": "row_inputs",
               "type": "Component Inputs",
-              "label": "Record in"
+              "label": "Record in",
+              "ports": [
+                {
+                  "name": "title",
+                  "plug": "output",
+                  "type": "*"
+                }
+              ]
             }
           ],
           "connections": [
@@ -64014,7 +64042,14 @@
             {
               "id": "row_inputs",
               "type": "Component Inputs",
-              "label": "Record in"
+              "label": "Record in",
+              "ports": [
+                {
+                  "name": "title",
+                  "plug": "output",
+                  "type": "*"
+                }
+              ]
             }
           ],
           "connections": [
@@ -64084,7 +64119,19 @@
             {
               "id": "ids_in",
               "type": "Component Inputs",
-              "label": "Project & member ids"
+              "label": "Project & member ids",
+              "ports": [
+                {
+                  "name": "memberId",
+                  "plug": "output",
+                  "type": "*"
+                },
+                {
+                  "name": "projectId",
+                  "plug": "output",
+                  "type": "*"
+                }
+              ]
             },
             {
               "id": "add_member",
@@ -64395,7 +64442,14 @@
             {
               "id": "row_inputs",
               "type": "Component Inputs",
-              "label": "Record in"
+              "label": "Record in",
+              "ports": [
+                {
+                  "name": "reference",
+                  "plug": "output",
+                  "type": "*"
+                }
+              ]
             }
           ],
           "connections": [
@@ -64724,7 +64778,14 @@
             {
               "id": "row_inputs",
               "type": "Component Inputs",
-              "label": "Item in"
+              "label": "Item in",
+              "ports": [
+                {
+                  "name": "title",
+                  "plug": "output",
+                  "type": "*"
+                }
+              ]
             }
           ],
           "connections": [
@@ -64898,7 +64959,14 @@
             {
               "id": "row_inputs",
               "type": "Component Inputs",
-              "label": "Row data"
+              "label": "Row data",
+              "ports": [
+                {
+                  "name": "title",
+                  "plug": "output",
+                  "type": "*"
+                }
+              ]
             },
             {
               "id": "this_item",
@@ -65376,7 +65444,14 @@
             {
               "id": "task_inputs",
               "type": "Component Inputs",
-              "label": "Item in"
+              "label": "Item in",
+              "ports": [
+                {
+                  "name": "title",
+                  "plug": "output",
+                  "type": "*"
+                }
+              ]
             },
             {
               "id": "process_item",
@@ -65389,7 +65464,14 @@
             {
               "id": "task_outputs",
               "type": "Component Outputs",
-              "label": "Task result"
+              "label": "Task result",
+              "ports": [
+                {
+                  "name": "success",
+                  "plug": "input",
+                  "type": "signal"
+                }
+              ]
             }
           ],
           "connections": [
@@ -65562,7 +65644,14 @@
             {
               "id": "row_inputs",
               "type": "Component Inputs",
-              "label": "Item properties"
+              "label": "Item properties",
+              "ports": [
+                {
+                  "name": "title",
+                  "plug": "output",
+                  "type": "*"
+                }
+              ]
             }
           ],
           "connections": [
@@ -65680,7 +65769,14 @@
             {
               "id": "row_inputs",
               "type": "Component Inputs",
-              "label": "Item in"
+              "label": "Item in",
+              "ports": [
+                {
+                  "name": "label",
+                  "plug": "output",
+                  "type": "*"
+                }
+              ]
             }
           ],
           "connections": [
@@ -67563,7 +67659,14 @@
             {
               "id": "card_inputs",
               "type": "Component Inputs",
-              "label": "Record properties in"
+              "label": "Record properties in",
+              "ports": [
+                {
+                  "name": "title",
+                  "plug": "output",
+                  "type": "*"
+                }
+              ]
             }
           ],
           "connections": [
@@ -76141,7 +76244,14 @@
             {
               "id": "frame_inputs",
               "type": "Component Inputs",
-              "label": "Frame props"
+              "label": "Frame props",
+              "ports": [
+                {
+                  "name": "title",
+                  "plug": "output",
+                  "type": "*"
+                }
+              ]
             }
           ],
           "connections": [

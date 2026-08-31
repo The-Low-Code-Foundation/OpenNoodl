@@ -26,6 +26,7 @@ import * as path from 'path';
 import {
   checkComponentPortDirection,
   checkInstanceInterfaces,
+  checkUndeclaredComponentPorts,
   checkInstancePorts,
   checkParameterValues,
   componentInterfaces,
@@ -128,6 +129,11 @@ function interfaceDiagnostics(example: ExampleFile): Diagnostic[] {
     diagnostics.push(
       ...checkInstancePorts(nodes, { component: c.name }),
       ...checkComponentPortDirection(nodes, { component: c.name }),
+      // VIB-007 / V22 — the third question in the interface family, and the one this gate
+      // was structurally unable to ask: `toNormProject` maps ports to names only, so
+      // "declared" and "wired" were never compared. 15 hits when it was switched on, all
+      // of which had passed this gate strict.
+      ...checkUndeclaredComponentPorts(nodes, c.connections ?? [], { component: c.name }),
       ...checkInstanceInterfaces(nodes, { component: c.name, interfaces })
     );
   }

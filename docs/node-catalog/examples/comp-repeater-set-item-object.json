@@ -78,7 +78,8 @@
         {
           "id": "row_inputs",
           "type": "Component Inputs",
-          "label": "Row data"
+          "label": "Row data",
+          "ports": [{ "name": "title", "plug": "output", "type": "*" }]
         },
         {
           "id": "this_item",

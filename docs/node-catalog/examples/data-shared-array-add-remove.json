@@ -67,7 +67,7 @@
           "children": ["title_text"]
         },
         { "id": "title_text", "type": "Text", "label": "Title", "parent": "row" },
-        { "id": "row_inputs", "type": "Component Inputs", "label": "Item properties" }
+        { "id": "row_inputs", "type": "Component Inputs", "label": "Item properties", "ports": [{ "name": "title", "plug": "output", "type": "*" }] }
       ],
       "connections": [
         { "fromId": "row_inputs", "fromProperty": "title", "toId": "title_text", "toProperty": "text" }

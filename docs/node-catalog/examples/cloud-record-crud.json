@@ -165,7 +165,8 @@
         {
           "id": "row_inputs",
           "type": "Component Inputs",
-          "label": "Record in"
+          "label": "Record in",
+          "ports": [{ "name": "title", "plug": "output", "type": "*" }]
         }
       ],
       "connections": [

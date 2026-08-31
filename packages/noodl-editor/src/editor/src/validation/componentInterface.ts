@@ -418,3 +418,96 @@ export function checkComponentPortDirection(
 
   return diagnostics;
 }
+
+export interface CheckUndeclaredComponentPortsOptions {
+  /** Component identifier for the diagnostics' location. */
+  component: string;
+  /** Severity for these findings. Defaults to `error`. */
+  severity?: Severity;
+}
+
+/** A connection as the example/authoring layers carry one. */
+export interface ConnectionLike {
+  fromId: string;
+  fromProperty: string;
+  toId: string;
+  toProperty: string;
+}
+
+/** Which end of a connection names a port on each interface node type. */
+const WIRED_END: Record<string, 'from' | 'to'> = {
+  'Component Inputs': 'from',
+  'Component Outputs': 'to'
+};
+
+/**
+ * VIB-007 / register V22 — a component-interface port that is wired and never declared.
+ *
+ * The third question in the family, and the only one with corpus hits left.
+ * {@link checkInstancePorts} asks whether a port has a direction;
+ * {@link checkComponentPortDirection} asks whether it has the right one; this asks
+ * whether the port **exists**. A `Component Inputs` node with no `ports` array and a
+ * connection out of `row_inputs.title` names an endpoint `componentmodel.getPorts()`
+ * cannot return, so the component has no input called `title` and no instance — and no
+ * repeater — can ever set it.
+ *
+ * 🔴 **Ruled by a render rather than by reading this file.** `vib007-v22.look.ts` draws
+ * two components identical but for the `ports` array, each under a `For Each` over three
+ * records: the declared arm renders its records' values, the undeclared arm renders its
+ * own placeholder three times, at all four widths. The repeater still creates the right
+ * NUMBER of instances — the page keeps its shape and loses its content, which is why 15
+ * of these survived `catalog:examples` at 67/67 strict.
+ *
+ * ⚠️ **The predicate is `wired − declared`, not "has no ports array".** A node that
+ * declares two of the three ports it wires is the same defect for the third, and the
+ * narrower form would call it clean. All 15 corpus hits happen to declare nothing at all;
+ * the check is not written to that accident.
+ *
+ * One diagnostic per undeclared port, not per node: each is a separate line to add, and
+ * the message names the plug the port needs, which is the half of the repair that
+ * {@link checkComponentPortDirection} exists because people get wrong.
+ */
+export function checkUndeclaredComponentPorts(
+  nodes: readonly { id: string; type: string; label?: string; ports?: readonly AuthoredPortLike[] | null }[],
+  connections: readonly ConnectionLike[],
+  options: CheckUndeclaredComponentPortsOptions
+): Diagnostic[] {
+  const { component, severity = 'error' } = options;
+  const diagnostics: Diagnostic[] = [];
+
+  for (const node of nodes) {
+    const end = WIRED_END[node.type];
+    if (!end) continue;
+
+    const required = REQUIRED_PLUG[node.type];
+    const declared = new Set(portNames(node.ports).map((p) => p.name));
+    const wired = new Set(
+      connections
+        .filter((c) => (end === 'from' ? c.fromId === node.id : c.toId === node.id))
+        .map((c) => (end === 'from' ? c.fromProperty : c.toProperty))
+    );
+
+    for (const name of wired) {
+      if (declared.has(name)) continue;
+      diagnostics.push({
+        code: DiagnosticCode.UndeclaredComponentPort,
+        severity,
+        message:
+          `${node.type} has a connection on port "${name}" but never declares it. ` +
+          `A component's interface is exactly the ports listed on this node — ` +
+          `componentmodel.getPorts() reads them and republishes them as the component's ` +
+          (required === 'output' ? 'inputs' : 'outputs') +
+          `, so "${name}" is not part of this component's interface and nothing outside can ` +
+          (required === 'output'
+            ? 'set it. An instance parameter of that name is discarded, and a Repeater feeding ' +
+              'this component as its item template cannot deliver the record property either — ' +
+              'it iterates the declared inputs. The component renders its own placeholder value.'
+            : 'read it. The connection into it goes nowhere.'),
+        location: { component, nodeId: node.id, nodeType: node.type, nodeLabel: node.label, port: name },
+        suggestion: `Add { "name": "${name}", "plug": "${required}", "type": "*" } to this node's "ports" array.`
+      });
+    }
+  }
+
+  return diagnostics;
+}
