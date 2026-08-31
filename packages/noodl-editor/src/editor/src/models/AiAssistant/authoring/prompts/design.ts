@@ -190,6 +190,13 @@ invent one:
 
 ### 6. Reuse recipes, do not re-decide
 
+🔴 **A band and a shell are one thing, not two.** Every full-width section is a \`band\` (or
+\`bandSurface\`) holding exactly ONE \`shell\` — \`maxWidth: 1200px\` with \`var(--space-6)\` either
+side — and everything else goes inside the shell. A band whose content is not in a shell runs edge
+to edge, and it is worse when the bands below it are inset: the reader sees three sections agree
+about the margin and one disagree, which reads as a bug rather than as a choice. **The gutter is
+the same on every band of a page or it is a mistake.**
+
 Before authoring, fix a handful of named parameter sets and reuse them verbatim: a \`card\`, a
 \`shell\`, a \`sectionHead\`, one \`primaryButton\`, one \`outlineButton\`, and a type ramp. A page whose
 cards disagree about their own radius reads as careless even when each card is defensible. Where a

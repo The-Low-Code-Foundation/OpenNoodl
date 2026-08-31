@@ -288,8 +288,52 @@ const cardBand = [
   }))
 ];
 
-const pageChildren = [...b1.roots, ...b2.roots, 'b3_band', ...b4.roots];
-const bodyNodes = [...b1.nodes, ...b2.nodes, ...cardBand, ...b4.nodes];
+// 🔴 The empty state is an ITEM component, and lifting it straight onto the page was this
+// script's bug rather than the recipe's. In `ui-empty-state` it sits inside `/Pages/Orders`'
+// band → shell; on its own it is `width: 100%` with a 24px gutter and no measure, so it spanned
+// the window while the three bands above it stopped at 1200. Measured at 25px against their 64.
+// It gets its page context back, from the same two compositions every other band here wears.
+const b4Band = [
+  {
+    id: 'b4_band',
+    type: 'Group',
+    label: 'Empty state band',
+    parameters: {
+      sizeMode: 'contentHeight',
+      width: { value: 100, unit: '%' },
+      flexDirection: 'column',
+      alignItems: 'center',
+      backgroundColor: 'var(--surface)',
+      paddingTop: 'var(--space-16)',
+      paddingBottom: 'var(--space-16)'
+    },
+    children: ['b4_shell']
+  },
+  {
+    id: 'b4_shell',
+    type: 'Group',
+    label: 'Shell',
+    parent: 'b4_band',
+    parameters: {
+      sizeMode: 'contentHeight',
+      width: { value: 100, unit: '%' },
+      maxWidth: { value: 1200, unit: 'px' },
+      flexDirection: 'column',
+      paddingLeft: 'var(--space-6)',
+      paddingRight: 'var(--space-6)'
+    },
+    children: b4.roots
+  }
+];
+
+const pageChildren = [...b1.roots, ...b2.roots, 'b3_band', 'b4_band'];
+const bodyNodes = [
+  ...b1.nodes,
+  ...b2.nodes,
+  ...cardBand,
+  ...b4Band,
+  ...b4.nodes.map((n) => (b4.roots.includes(n.id) ? { ...n, parent: 'b4_shell' } : n))
+];
 
 const nodes = [
   {

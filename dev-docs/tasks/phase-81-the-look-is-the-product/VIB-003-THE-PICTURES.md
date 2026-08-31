@@ -239,6 +239,8 @@ have not seen it, use the starter imagery.**
 
 ## §4 🔴 Five defects the rendering found, none of them findable from JSON
 
+*(a sixth, the gutter, came from Richard's own look — §4b)*
+
 Every one of these passed every gate. Four are in the shipped corpus and were found only by looking
 at a photograph of it.
 
@@ -279,6 +281,76 @@ render as nothing, under a section heading that still had its words. `textChars`
 generated with its light source at the bottom-right corner, which `objectFit: cover` crops out of a
 560px hero box: the first render was a black rectangle. **An asset has to be judged in the box it
 will be used in**, which is the same sentence as VIB-002 §4(b) about a gradient at 1900px.
+
+---
+
+## §4b 🔴 Richard's look, and the sixth defect — the gutter (V25)
+
+**2026-08-31, on the §5 verdict page:**
+
+> *"It's not bad but there's a habit so far with the MCP to create pages with no padding on the
+> left and right side of certain sections, for example in the hero section of the artifact you've
+> just showed me, the text is tight to the left and right of the window, not the whole thing but
+> just that one section weirdly."*
+
+**Exactly right, and "weirdly" is the whole finding.** A page with no gutter anywhere reads as a
+missing rule. A page where three bands are inset and one is not reads as a *mistake*, because the
+eye has the other three to compare against. The defect is not absence of padding — it is
+**disagreement between siblings about the same edge**.
+
+### What it was
+
+`ui-split-hero`'s band set `paddingTop`/`paddingBottom` and **no horizontal padding at all**, and
+put its `Columns` **straight in the band** — skipping the `shell` composition that every other band
+on the page wears. Measured on the rendered DOM at 1280: hero content at **x = 0**, the three bands
+below it at **64**.
+
+🔴 **And the vocabulary already said not to.** The `shell` composition's own description reads:
+*"The one centred container inside a band. Content that touches the viewport edge is the loudest
+sign nobody designed the page."* The rule existed; the **hero recipe** — the most-copied one, and
+the one that lands at the top of every page built from it — contradicted it. **The seam is CORPUS,
+not INSTRUCTION**, which is the shape register V8 exists for: a model imitating the corpus copies
+what the corpus does, not what the doctrine says.
+
+### What it is now
+
+Every band on every page agrees, left and right, at both widths:
+
+| page | 1280 | 1900 |
+|---|---|---|
+| VIB-003 demo, 4 bands from 4 recipes | **64 / 64** | **374 / 374** |
+| VIB-002 demo, 3 bands | 64 | 374 |
+| members-area template, as shipped | 284 | 594 |
+
+`ui-split-hero` wears the shell; `prompts/design.ts` §6 opens with *"a band and a shell are one
+thing, not two"*; the `band` composition's description now says a band is **half** a section. One
+demo-side fix too: the empty state is an *item* component and this builder had lifted it onto the
+page without its band+shell, which was the script's bug and not the recipe's.
+
+### 🔴 The instrument was wrong FOUR times, and three of the four nearly became filed defects
+
+Kept in full in `vib003-gutters.look.ts`, because it is the same error four times — **measuring *a*
+property rather than the one the eye reads**:
+
+1. **Text nodes only** — the feature strip read 96 against the card band's 64. Its leftmost text
+   sits past a 20px glyph: a fact about a row's internal layout, not the page's edge.
+   ⚠️ A class selector could not rescue it: the **font** branch of `IconGlyph` renders
+   `<span class="lucide icon-truck">` and, unlike the sprite and inline branches, emits **no**
+   `ndl-icon-glyph` — so no selector finds "an icon" across all three arms of the union.
+2. **Leaf elements** — the empty state read 89. Its panel edge is at 64 like everything else; the
+   extra 25 is the panel's own padding, which is what a bordered card should have.
+3. **Outermost box** — the hero and the strip read 16 against the others' 40, and this one was one
+   step from being filed as a `Columns` defect. **Probed rather than reasoned about**:
+   `columns-container` sets `margin-left: -48px` while every `column-item` sets
+   `padding-left: 48px`, so the content lands back exactly on its parent's edge and only a
+   **transparent wrapper** hangs outside. The bands had agreed the whole time.
+4. **Painted content only** — a background, a border, an image, or text of its own. A box that
+   draws nothing cannot be a gutter, however far out it sits.
+
+⚠️ And the *first* attempt was not a DOM measurement at all: a static sweep over the 64 examples
+reported **no defect on the band Richard was pointing at**, because `ui-split-hero`'s lead paragraph
+carries `maxWidth: 520px` — which insets one paragraph and satisfies a naive predicate. **Nothing
+anywhere measures a rendered gutter**, which is why this shipped. Filed as **V26**, owner VIB-007.
 
 ---
 

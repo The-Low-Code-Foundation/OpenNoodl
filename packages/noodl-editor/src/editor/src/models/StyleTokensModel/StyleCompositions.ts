@@ -97,7 +97,8 @@ export const STYLE_COMPOSITIONS: VocabComposition[] = [
     nodeType: 'Group',
     group: 'spine',
     description:
-      'A full-width section on the page background. Centres its shell; sections alternate band and bandSurface.',
+      'A full-width section on the page background. It is HALF a section: a band always holds exactly one shell, ' +
+      'and a band whose content is not inside one runs edge to edge. Sections alternate band and bandSurface.',
     parameters: {
       width: GROUP,
       flexDirection: 'column',

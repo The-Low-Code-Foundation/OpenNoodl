@@ -15,7 +15,7 @@
         "b1_band",
         "b2_band",
         "b3_band",
-        "b4_root"
+        "b4_band"
       ],
       "x": 40,
       "y": 40
@@ -43,6 +43,30 @@
     },
     {
       "id": "b1_shell",
+      "type": "Group",
+      "label": "Shell",
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "maxWidth": {
+          "value": 1200,
+          "unit": "px"
+        },
+        "flexDirection": "column",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)"
+      },
+      "parent": "b1_band",
+      "children": [
+        "b1_cols"
+      ],
+      "x": 120,
+      "y": 250
+    },
+    {
+      "id": "b1_cols",
       "type": "net.noodl.visual.columns",
       "label": "Shell (2-up, collapses)",
       "parameters": {
@@ -62,13 +86,13 @@
         },
         "smallLayout": "1"
       },
-      "parent": "b1_band",
+      "parent": "b1_shell",
       "children": [
         "b1_copy",
         "b1_media"
       ],
-      "x": 120,
-      "y": 250
+      "x": 180,
+      "y": 340
     },
     {
       "id": "b1_copy",
@@ -82,15 +106,15 @@
         "flexDirection": "column",
         "rowGap": "var(--space-6)"
       },
-      "parent": "b1_shell",
+      "parent": "b1_cols",
       "children": [
         "b1_eyebrow",
         "b1_headline",
         "b1_lead",
         "b1_actions"
       ],
-      "x": 180,
-      "y": 340
+      "x": 60,
+      "y": 430
     },
     {
       "id": "b1_eyebrow",
@@ -105,8 +129,8 @@
         "color": "var(--primary)"
       },
       "parent": "b1_copy",
-      "x": 60,
-      "y": 430
+      "x": 120,
+      "y": 520
     },
     {
       "id": "b1_headline",
@@ -121,8 +145,8 @@
         "color": "var(--foreground)"
       },
       "parent": "b1_copy",
-      "x": 120,
-      "y": 520
+      "x": 180,
+      "y": 610
     },
     {
       "id": "b1_lead",
@@ -139,8 +163,8 @@
         }
       },
       "parent": "b1_copy",
-      "x": 180,
-      "y": 610
+      "x": 60,
+      "y": 700
     },
     {
       "id": "b1_actions",
@@ -157,8 +181,8 @@
         "b1_cta",
         "b1_secondary"
       ],
-      "x": 60,
-      "y": 700
+      "x": 120,
+      "y": 790
     },
     {
       "id": "b1_cta",
@@ -179,8 +203,8 @@
         "sizeMode": "contentSize"
       },
       "parent": "b1_actions",
-      "x": 120,
-      "y": 790
+      "x": 180,
+      "y": 880
     },
     {
       "id": "b1_secondary",
@@ -203,8 +227,8 @@
         "sizeMode": "contentSize"
       },
       "parent": "b1_actions",
-      "x": 180,
-      "y": 880
+      "x": 60,
+      "y": 970
     },
     {
       "id": "b1_media",
@@ -217,12 +241,12 @@
         },
         "flexDirection": "column"
       },
-      "parent": "b1_shell",
+      "parent": "b1_cols",
       "children": [
         "b1_photo"
       ],
-      "x": 60,
-      "y": 970
+      "x": 120,
+      "y": 1060
     },
     {
       "id": "b1_photo",
@@ -244,8 +268,8 @@
         "alt": "Describe the photo — it is read aloud, and it is what shows if the image fails"
       },
       "parent": "b1_media",
-      "x": 120,
-      "y": 1060
+      "x": 180,
+      "y": 1150
     },
     {
       "id": "b2_band",
@@ -272,8 +296,8 @@
         "b2_shell"
       ],
       "parent": "page",
-      "x": 180,
-      "y": 1150
+      "x": 60,
+      "y": 1240
     },
     {
       "id": "b2_shell",
@@ -296,8 +320,8 @@
       "children": [
         "b2_cols"
       ],
-      "x": 60,
-      "y": 1240
+      "x": 120,
+      "y": 1330
     },
     {
       "id": "b2_cols",
@@ -321,8 +345,8 @@
         "b2_i2",
         "b2_i3"
       ],
-      "x": 120,
-      "y": 1330
+      "x": 180,
+      "y": 1420
     },
     {
       "id": "b2_i1",
@@ -338,8 +362,8 @@
         }
       },
       "parent": "b2_cols",
-      "x": 180,
-      "y": 1420
+      "x": 60,
+      "y": 1510
     },
     {
       "id": "b2_i2",
@@ -355,8 +379,8 @@
         }
       },
       "parent": "b2_cols",
-      "x": 60,
-      "y": 1510
+      "x": 120,
+      "y": 1600
     },
     {
       "id": "b2_i3",
@@ -372,8 +396,8 @@
         }
       },
       "parent": "b2_cols",
-      "x": 120,
-      "y": 1600
+      "x": 180,
+      "y": 1690
     },
     {
       "id": "b3_band",
@@ -395,8 +419,8 @@
         "b3_shell"
       ],
       "parent": "page",
-      "x": 180,
-      "y": 1690
+      "x": 60,
+      "y": 1780
     },
     {
       "id": "b3_shell",
@@ -422,8 +446,8 @@
         "b3_heading",
         "b3_cols"
       ],
-      "x": 60,
-      "y": 1780
+      "x": 120,
+      "y": 1870
     },
     {
       "id": "b3_heading",
@@ -438,8 +462,8 @@
         "letterSpacing": "var(--tracking-tight)",
         "color": "var(--foreground)"
       },
-      "x": 120,
-      "y": 1870
+      "x": 180,
+      "y": 1960
     },
     {
       "id": "b3_cols",
@@ -463,8 +487,8 @@
         "b3b",
         "b3c"
       ],
-      "x": 180,
-      "y": 1960
+      "x": 60,
+      "y": 2050
     },
     {
       "id": "b3a",
@@ -476,8 +500,8 @@
         "title": "Three pictures, not one",
         "statusColor": "var(--primary)"
       },
-      "x": 60,
-      "y": 2050
+      "x": 120,
+      "y": 2140
     },
     {
       "id": "b3b",
@@ -489,8 +513,8 @@
         "title": "A glyph inside the card",
         "statusColor": "var(--accent-foreground)"
       },
-      "x": 120,
-      "y": 2140
+      "x": 180,
+      "y": 2230
     },
     {
       "id": "b3c",
@@ -502,8 +526,56 @@
         "title": "Different by construction",
         "statusColor": "var(--muted-foreground)"
       },
+      "x": 60,
+      "y": 2320
+    },
+    {
+      "id": "b4_band",
+      "type": "Group",
+      "label": "Empty state band",
+      "parameters": {
+        "sizeMode": "contentHeight",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "flexDirection": "column",
+        "alignItems": "center",
+        "backgroundColor": "var(--surface)",
+        "paddingTop": "var(--space-16)",
+        "paddingBottom": "var(--space-16)"
+      },
+      "children": [
+        "b4_shell"
+      ],
+      "parent": "page",
+      "x": 120,
+      "y": 2410
+    },
+    {
+      "id": "b4_shell",
+      "type": "Group",
+      "label": "Shell",
+      "parent": "b4_band",
+      "parameters": {
+        "sizeMode": "contentHeight",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "maxWidth": {
+          "value": 1200,
+          "unit": "px"
+        },
+        "flexDirection": "column",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)"
+      },
+      "children": [
+        "b4_root"
+      ],
       "x": 180,
-      "y": 2230
+      "y": 2500
     },
     {
       "id": "b4_root",
@@ -533,9 +605,9 @@
         "b4_body",
         "b4_action"
       ],
-      "parent": "page",
+      "parent": "b4_shell",
       "x": 60,
-      "y": 2320
+      "y": 2590
     },
     {
       "id": "b4_disc",
@@ -555,7 +627,7 @@
         "b4_disc_icon"
       ],
       "x": 120,
-      "y": 2410
+      "y": 2680
     },
     {
       "id": "b4_disc_icon",
@@ -575,7 +647,7 @@
       },
       "parent": "b4_disc",
       "x": 180,
-      "y": 2500
+      "y": 2770
     },
     {
       "id": "b4_title",
@@ -590,7 +662,7 @@
       },
       "parent": "b4_root",
       "x": 60,
-      "y": 2590
+      "y": 2860
     },
     {
       "id": "b4_body",
@@ -609,7 +681,7 @@
       },
       "parent": "b4_root",
       "x": 120,
-      "y": 2680
+      "y": 2950
     },
     {
       "id": "b4_action",
@@ -631,7 +703,7 @@
       },
       "parent": "b4_root",
       "x": 180,
-      "y": 2770
+      "y": 3040
     }
   ],
   "visualRoots": [

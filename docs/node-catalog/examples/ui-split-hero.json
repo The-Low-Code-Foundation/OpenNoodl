@@ -32,6 +32,28 @@
         },
         {
           "id": "shell",
+          "type": "Group",
+          "label": "Shell",
+          "parameters": {
+            "width": {
+              "value": 100,
+              "unit": "%"
+            },
+            "maxWidth": {
+              "value": 1200,
+              "unit": "px"
+            },
+            "flexDirection": "column",
+            "paddingLeft": "var(--space-6)",
+            "paddingRight": "var(--space-6)"
+          },
+          "parent": "band",
+          "children": [
+            "cols"
+          ]
+        },
+        {
+          "id": "cols",
           "type": "net.noodl.visual.columns",
           "label": "Shell (2-up, collapses)",
           "parameters": {
@@ -51,7 +73,7 @@
             },
             "smallLayout": "1"
           },
-          "parent": "band",
+          "parent": "shell",
           "children": [
             "copy",
             "media"
@@ -69,7 +91,7 @@
             "flexDirection": "column",
             "rowGap": "var(--space-6)"
           },
-          "parent": "shell",
+          "parent": "cols",
           "children": [
             "eyebrow",
             "headline",
@@ -190,7 +212,7 @@
             },
             "flexDirection": "column"
           },
-          "parent": "shell",
+          "parent": "cols",
           "children": [
             "photo"
           ]
