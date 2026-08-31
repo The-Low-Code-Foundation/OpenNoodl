@@ -26,6 +26,14 @@
           "id": "cover_image",
           "type": "Image",
           "label": "Cover",
+          "parameters": {
+            "sizeMode": "explicit",
+            "objectFit": "cover",
+            "width": { "value": 100, "unit": "%" },
+            "height": { "value": 120, "unit": "px" },
+            "borderRadius": "var(--radius-md)",
+            "alt": "The thing this row is about"
+          },
           "parent": "columns"
         },
         {
@@ -49,9 +57,19 @@
           "type": "net.noodl.visual.icon",
           "label": "Favourite",
           "parent": "detail_group",
-          "parameters": { "iconSize": 16 }
+          "parameters": { "iconIconSource": { "class": "lucide", "code": "icon-heart", "codeAsClass": true },
+ "iconColor": "var(--muted-foreground)", "iconSize": 16 }
         },
-        { "id": "card_inputs", "type": "Component Inputs", "label": "Card data" }
+        {
+          "id": "card_inputs",
+          "type": "Component Inputs",
+          "label": "Card data",
+          "ports": [
+            { "name": "coverUrl", "plug": "output", "type": "*" },
+            { "name": "title", "plug": "output", "type": "*" },
+            { "name": "statusColor", "plug": "output", "type": "*" }
+          ]
+        }
       ],
       "connections": [
         { "fromId": "card_inputs", "fromProperty": "coverUrl", "toId": "cover_image", "toProperty": "src" },

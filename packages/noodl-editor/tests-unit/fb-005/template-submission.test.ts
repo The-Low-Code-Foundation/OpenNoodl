@@ -277,11 +277,18 @@ describe('🔴 what does NOT leave the machine', () => {
   // The modules left out because the editor puts them back
   // ───────────────────────────────────────────────────────────────────────────
 
-  it('control: there really are starter modules, and they are the two the editor ships', () => {
+  it('control: there really are starter modules, and they are the three the editor ships', () => {
     // 🔴 Read FIRST. Every assertion below is about what this list excludes, and an empty list
     // excludes nothing while satisfying most of them.
     expect(RESTORED_ON_INSTALL.length).toBeGreaterThan(0);
-    expect(RESTORED_ON_INSTALL).toEqual(['noodl_modules/inter', 'noodl_modules/lucide-icons']);
+    // ⚠️ A LITERAL, deliberately, and it did its job: adding VIB-003's `starter-imagery` to
+    // `STARTER_ASSETS` reddened exactly this row and nothing else, which is a starter module
+    // arriving with somebody deciding it should. A derived list would have grown in silence.
+    expect(RESTORED_ON_INSTALL).toEqual([
+      'noodl_modules/inter',
+      'noodl_modules/lucide-icons',
+      'noodl_modules/starter-imagery'
+    ]);
   });
 
   it('🔴 the list is DERIVED from STARTER_ASSETS, both directions', () => {

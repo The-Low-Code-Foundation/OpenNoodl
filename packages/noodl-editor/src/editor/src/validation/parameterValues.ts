@@ -351,14 +351,55 @@ const FORMATS: Record<string, (type: PortTypeShape) => WireFormat> = {
     }
   }),
 
+  /**
+   * VIB-003 (phase 81) — **this rule used to teach the two values that do not draw.**
+   *
+   * It accepted a bare string and its hint offered `{"class":"material-icons","code":"search"}`.
+   * Both are wrong for what ships, and the gate on one side of the product was recommending what
+   * the runtime on the other side had already been fixed to refuse:
+   *
+   * - **A bare string draws nothing.** FB-019 (P75) measured it — an empty, styled span that still
+   *   takes its `iconSize` in layout — and settled deliberately against coercing, because two of an
+   *   icon value's three fields come from the *installed set's manifest* and guessing them
+   *   *"renders a blank glyph again, having reported success"*. `defineRegularInputProp`'s icon
+   *   branch now reports and drops it. Accepting it here left the authoring loop free to write the
+   *   one value the renderer is on record as unable to use. ⚠️ Promoted to an error rather than a
+   *   warning because there is no reading on which it works, and it is **provably inert for what
+   *   ships**: of 102 `iconIconSource` parameters across every JSON artefact in this repository,
+   *   100 are `{class, code}` and 2 are `{class, code, codeAsClass}`. Not one is a string.
+   * - 🔴 **`{class, code}` is two thirds of a value and the missing third is visible.**
+   *   `IconGlyph.tsx` branches on `codeAsClass === true`: true puts the code among the element's
+   *   classes, anything else puts it in the element's **text**. The set every new project gets is
+   *   Lucide, whose manifest is `codeAsClass: true` — so the hint's own shape, applied to it,
+   *   renders the string `icon-check` set in the icon font. `material-icons` is the opposite
+   *   convention *and is not installed anywhere by default*; it is a library module a person adds.
+   *
+   * The check cannot verify the third field, and should not pretend to: whether `codeAsClass`
+   * belongs on a value depends on a manifest under `noodl_modules/`, which a pure value rule has no
+   * access to. So it enforces what is knowable here and the hint stops guessing — it names the
+   * field and sends the author to the surface that reads the project and answers exactly.
+   */
   icon: () => ({
-    hint: '{class, code}, e.g. {"class":"material-icons","code":"search"}',
+    hint:
+      '{class, code, codeAsClass} — copy the complete value from get_style_vocabulary\'s icons block ' +
+      'for a set this project actually has. The shape depends on the installed set: omitting ' +
+      'codeAsClass where the set needs it renders the glyph NAME as visible text.',
     check(value) {
-      if (typeof value === 'string') return null;
       if (isPlainObject(value) && typeof value.code === 'string') return null;
+      // A sprite set's value carries no `code` at all — see `Noodl.Icon`'s third arm.
+      if (isPlainObject(value) && value.kind === 'sprite' && typeof value.symbolId === 'string') return null;
+      if (typeof value === 'string') {
+        return {
+          severity: 'error',
+          message:
+            `an icon is an object, not the glyph's name. Got ${describeValue(value)}, which draws nothing — ` +
+            'the class and codeAsClass come from the installed set, not from the name. ' +
+            "Copy a complete value from get_style_vocabulary's icons block."
+        };
+      }
       return {
         severity: 'error',
-        message: `an icon is { "class", "code" } or an icon name. Got ${describeValue(value)}.`
+        message: `an icon is { "class", "code", "codeAsClass" }. Got ${describeValue(value)}.`
       };
     }
   }),

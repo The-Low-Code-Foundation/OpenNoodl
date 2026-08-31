@@ -90,7 +90,11 @@
           "parameters": {
             "title": "Free UK delivery",
             "body": "On every order over £75, sent next working day.",
-            "iconName": "truck"
+            "icon": {
+              "class": "lucide",
+              "code": "icon-truck",
+              "codeAsClass": true
+            }
           },
           "parent": "cols"
         },
@@ -101,7 +105,11 @@
           "parameters": {
             "title": "Made in small runs",
             "body": "Between 20 and 60 of a thing, then we move on.",
-            "iconName": "hammer"
+            "icon": {
+              "class": "lucide",
+              "code": "icon-hammer",
+              "codeAsClass": true
+            }
           },
           "parent": "cols"
         },
@@ -112,7 +120,11 @@
           "parameters": {
             "title": "30-day returns",
             "body": "Use it, live with it. Send it back if it is not right.",
-            "iconName": "rotate-ccw"
+            "icon": {
+              "class": "lucide",
+              "code": "icon-rotate-ccw",
+              "codeAsClass": true
+            }
           },
           "parent": "cols"
         }
@@ -218,7 +230,7 @@
               "type": "*"
             },
             {
-              "name": "iconName",
+              "name": "icon",
               "plug": "output",
               "type": "*"
             }
@@ -226,6 +238,12 @@
         }
       ],
       "connections": [
+        {
+          "fromId": "inputs",
+          "fromProperty": "icon",
+          "toId": "icon",
+          "toProperty": "iconIconSource"
+        },
         {
           "fromId": "inputs",
           "fromProperty": "title",

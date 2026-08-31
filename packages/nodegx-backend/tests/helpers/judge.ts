@@ -48,7 +48,10 @@
 import { execFileSync } from 'child_process';
 import * as crypto from 'crypto';
 import * as fs from 'fs';
+import * as os from 'os';
 import * as path from 'path';
+
+import { STARTER_ASSETS } from '../../../noodl-editor/src/editor/src/models/template/starterAssetList';
 
 import type { RenderedPage } from './site-drive';
 import { withRenderedPage } from './site-drive';
@@ -142,7 +145,102 @@ export interface JudgeRun {
   artefactMd5: string;
   /** The directory the PNGs and `manifest.json` landed in. */
   outDir: string;
+  /**
+   * What the run had to install to make the copy a project rather than a
+   * template directory. **Read this before believing a verdict about type or
+   * iconography** — a non-empty `failed` means the picture is of a project
+   * nobody has. See {@link placeStarterAssets}.
+   */
+  starterAssets: StarterAssetsPlaced;
   shots: JudgeShot[];
+}
+
+/**
+ * What `installStarterAssets` put into the served copy, recorded in the manifest.
+ *
+ * A count is not enough. `written: 0` and `skipped: 9` are opposite facts — the
+ * first means the app bundle was not where this thought it was, the second means
+ * the artefact already shipped its own — and a manifest that could not tell them
+ * apart would let a picture taken without a typeface look exactly like one taken
+ * with it.
+ */
+export interface StarterAssetsPlaced {
+  written: string[];
+  /** Already present in the artefact; left alone, as the editor leaves them. */
+  skipped: string[];
+  /** `path: reason`. Non-empty means the picture is of a project nobody has. */
+  failed: string[];
+}
+
+/** Where `STARTER_ASSETS`' `from` paths are rooted — the editor package, as `getAppPath()` resolves it. */
+const APP_ROOT = path.join(REPO, 'packages', 'noodl-editor');
+
+/**
+ * Give the served copy what `installStarterAssets` gives every real project.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 🔴 **VIB-003 / register V19. This is the opposite of the move README §4 bans,
+ * and the distinction is the whole justification.**
+ *
+ * The banned move makes a picture flattering — a taller viewport so a form
+ * clears the fold, a seeded backend labelled as the door. This makes a picture
+ * *the one a person gets*. `createFromTemplate.ts` calls `installStarterAssets`
+ * immediately after the template lands, on every creation path there is; a
+ * template directory is therefore **a real project minus these nine files**, and
+ * a state that has never existed on anybody's machine.
+ *
+ * Until this ran, the Judge photographed `templates/members-area/` — 91 JSON
+ * files, no `noodl_modules/`. Two consequences, both found by VIB-003 rather
+ * than by anything green:
+ *
+ * - **The nine baseline PNGs were rendered without Inter.** `--font-sans` is
+ *   `"Inter, ui-sans-serif, system-ui, …"` and the `@font-face` that resolves
+ *   the first name is in `noodl_modules/inter/styles.css`. The verdicts do not
+ *   move — a typeface is not what made them SHITTY — but they were taken in the
+ *   wrong one, and a later verdict *about* typography would have been void.
+ * - **No icon could appear in any photograph, whatever the artefact set.** The
+ *   renderer injects module stylesheets correctly; there was no module.
+ *   VIB-003's own close condition was unreachable by construction.
+ *
+ * ⚠️ **It cannot reach the door assertions.** Nothing here writes
+ * `nodegx.project.json`, so the md5 that AC2 checks against the shipped file is
+ * taken on bytes this never touches, and `metadata.cloudservices` stays absent.
+ * The state being restored is one the product installs itself, out of its own
+ * bundle, with no network and nothing for anybody to approve.
+ *
+ * ⚠️ It never overwrites — the same rule `installStarterAssets` enforces, for
+ * the same reason: *"a template that ships its own font or icon set keeps it"*.
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * 🔴 The list is IMPORTED, never restated. A second copy would be right the day
+ * it was written and silently wrong the first time a starter module is added —
+ * and its failure mode is a harness that installs four of five things and
+ * reports success. See `starterAssetList.ts`, which exists for this call.
+ */
+export function placeStarterAssets(projectDir: string): StarterAssetsPlaced {
+  const placed: StarterAssetsPlaced = { written: [], skipped: [], failed: [] };
+
+  for (const asset of STARTER_ASSETS) {
+    const target = path.join(projectDir, asset.to);
+    try {
+      if (fs.existsSync(target)) {
+        placed.skipped.push(asset.to);
+        continue;
+      }
+      const source = path.join(APP_ROOT, asset.from);
+      if (!fs.existsSync(source)) {
+        placed.failed.push(`${asset.to}: no such source ${asset.from}`);
+        continue;
+      }
+      fs.mkdirSync(path.dirname(target), { recursive: true });
+      fs.copyFileSync(source, target);
+      placed.written.push(asset.to);
+    } catch (error) {
+      placed.failed.push(`${asset.to}: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  return placed;
 }
 
 function md5(file: string): string {
@@ -312,6 +410,30 @@ export async function judge(options: {
     throw new Error('judge: a living run needs a backendPort — otherwise it is the door with a different name on it.');
   }
 
+  // ── VIB-003 / V19: what is SERVED is a copy, and it is a project ──────────
+  //
+  // 🔴 Two decisions in three lines, and the first was learnt the hard way.
+  //
+  // **A copy**, because `placeStarterAssets` writes files, and the first version of this wrote
+  // them into whatever directory the caller passed — which for the demonstration projects is a
+  // checked-in one under `dev-docs/`. A run left seventeen files behind in the repository, and the
+  // *second* run then reported `written: []` / `skipped: 17` and failed its own honesty assertion.
+  // An instrument whose reading depends on whether it has been run before is not an instrument.
+  // Serving a copy makes leaving nothing behind structural rather than remembered, and it is the
+  // discipline `copyTemplateProject` already applies to the template runs.
+  //
+  // **A project rather than a template directory**, because `createFromTemplate.ts:119` calls
+  // `installStarterAssets` on every creation path there is. A directory without them is a real
+  // project minus its font and its icon set — a state that has never existed on anybody's machine.
+  // See {@link placeStarterAssets} for what that cost the baseline.
+  //
+  // ⚠️ Neither reaches the door assertions above: they ran against the caller's directory, and the
+  // md5 below is taken on the copy of a file nothing here writes — so it still equals the shipped
+  // bytes, and `metadata.cloudservices` is still absent.
+  const servedDir = fs.mkdtempSync(path.join(os.tmpdir(), `judge-${subject}-${state}-`));
+  fs.cpSync(projectDir, servedDir, { recursive: true });
+  const starterAssets = placeStarterAssets(servedDir);
+
   const artefactMd5 = md5(projectFile);
   const sha = headSha();
   const outDir = path.join(VERDICTS_ROOT, task, options.date ?? today(), `${subject}-${state}`);
@@ -319,7 +441,7 @@ export async function judge(options: {
 
   const shots: JudgeShot[] = [];
 
-  await withRenderedPage({ projectDir, backendPort }, async (raw) => {
+  await withRenderedPage({ projectDir: servedDir, backendPort }, async (raw) => {
     const page = raw as CdpPage;
 
     if (prepare) {
@@ -436,7 +558,16 @@ export async function judge(options: {
     throw new Error(`judge: the project file changed during the run (${artefactMd5} -> ${after}).`);
   }
 
-  const run: JudgeRun = { task, subject, state, headSha: sha, artefactMd5, outDir: path.relative(REPO, outDir), shots };
+  const run: JudgeRun = {
+    task,
+    subject,
+    state,
+    headSha: sha,
+    artefactMd5,
+    outDir: path.relative(REPO, outDir),
+    starterAssets,
+    shots
+  };
   fs.writeFileSync(path.join(outDir, 'manifest.json'), JSON.stringify(run, null, 2) + '\n');
   return run;
 }

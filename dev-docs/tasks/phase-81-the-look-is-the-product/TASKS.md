@@ -9,7 +9,7 @@ from the task files at session open; do not trust a handoff's copy of it.
 |---|---|---|---|---|
 | VIB-001 | The Judge | 🟢 | — | **9 SHITTY / 0 PASSABLE / 0 WORTHY** — `VIB-001-BASELINE-VERDICTS.md`. All 5 ACs met; Richard ruled 2026-08-31 and the rubric was amended (README §2) |
 | VIB-002 | The Ceiling | 🟡 | VIB-001 | **PASSABLE — Richard ruled 2026-08-31** (`VIB-002-THE-CEILING.md` §9): *"very passable, nearly worthy, definitely night and day with the original"*. **The phase's first reading above SHITTY to survive his look.** Capability closed (V5 + V13), 5 ACs met; the WORTHY gap he did not dispute is icons→VIB-003, sections→VIB-004, measure→VIB-008 |
-| VIB-003 | The Pictures | ⬜ | VIB-001 | — |
+| VIB-003 | The Pictures | 🟡 | VIB-001 | **PASSABLE** — `VIB-003-THE-PICTURES.md` §5, PNGs in `verdicts/vib-003/2026-08-31/`. 🔴 **The first phase-81 page on which the imagery/iconography tell does NOT fire.** 5 ACs met; the WORTHY gap is content structure → VIB-004. ⚠️ Provisional until Richard looks. Closed V7, V19, V20; opened V21 (VIB-005), V22 (VIB-007), V23 (recorded) |
 | VIB-004 | The Marketing Kit | ⬜ | VIB-001, VIB-002 | — |
 | VIB-005 | The Ambush Defaults | ⬜ | VIB-001 | — |
 | VIB-006 | The Worked Page | ⬜ | VIB-002/003/004 | — |
@@ -32,12 +32,18 @@ hero headline responsibly look like here? **Close**: a demonstration page using 
 capability renders through the Judge and the capability itself is judged expressible-on-system —
 plus the doctrine/vocabulary text that teaches it.
 
-### VIB-003 — The Pictures (V7)
-Templates ship assets (the `noodl_modules/` mechanism exists; no template uses it); the curated
-delivery path (`readBundleDirectory`) must carry them. Fix the example corpus's `src:""` images.
-Decide the honest imagery source story for generated apps (bundled starter assets / a
-documented placeholder service / generated SVG). **Close**: a template page renders with a real
-image and real icons through the Judge.
+### VIB-003 — The Pictures (V7) — 🟡 PASSABLE, 2026-08-31
+Delivered: `noodl_modules/starter-imagery/` (6 generated SVGs, ~6 KB, in `STARTER_ASSETS`, so every
+project has pictures offline); `get_style_vocabulary` gains an `icons` block naming the installed
+sets and a complete copyable value; the authoring gate stops recommending the value that renders the
+glyph's *name*; `judge()` installs the starter assets it had never had, so a photograph can contain
+an icon at all. 🔴 **The imagery source story was decided as generated-and-abstract** — a shipped
+photograph is a licence claim this repo cannot check, and an `<img src>` SVG cannot read the page's
+tokens, so a *branded* picture would clash on the first preset change. The brand goes on top as
+`backgroundGradient`, which is a token and does re-theme.
+⚠️ **Bound on the close**: the page photographed is the recipe corpus, not a shipped template —
+`templates/members-area/` has zero `Image`/`Icon` nodes, and putting pictures in it is VIB-008's
+redesign, not this task's. Five defects were found by looking; four were in the shipped corpus.
 
 ### VIB-004 — The Marketing Kit (V6, V12)
 Compositions for hero, ctaBand, featureItem, statTile, testimonial, footer, badge/pill — sourced

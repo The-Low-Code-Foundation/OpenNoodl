@@ -1,0 +1,122 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "2be34465-a6da-534b-80cc-aa999ec2f55b",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "root",
+      "type": "Group",
+      "label": "Item",
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "flexDirection": "row",
+        "columnGap": "var(--space-3)",
+        "alignItems": "flex-start"
+      },
+      "children": [
+        "icon",
+        "copy"
+      ],
+      "x": 60,
+      "y": 60
+    },
+    {
+      "id": "icon",
+      "type": "net.noodl.visual.icon",
+      "label": "Icon",
+      "parameters": {
+        "iconIconSource": {
+          "class": "lucide",
+          "code": "icon-truck",
+          "codeAsClass": true
+        },
+        "iconSize": {
+          "value": 20,
+          "unit": "px"
+        },
+        "iconColor": "var(--primary)"
+      },
+      "parent": "root",
+      "x": 280,
+      "y": 150
+    },
+    {
+      "id": "copy",
+      "type": "Group",
+      "label": "Copy",
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "flexDirection": "column",
+        "rowGap": "var(--space-1)"
+      },
+      "parent": "root",
+      "children": [
+        "t",
+        "b"
+      ],
+      "x": 60,
+      "y": 240
+    },
+    {
+      "id": "t",
+      "type": "Text",
+      "label": "Title",
+      "parameters": {
+        "text": "Title",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "color": "var(--foreground)"
+      },
+      "parent": "copy",
+      "x": 280,
+      "y": 330
+    },
+    {
+      "id": "b",
+      "type": "Text",
+      "label": "Body",
+      "parameters": {
+        "text": "Body",
+        "fontSize": "var(--text-sm)",
+        "lineHeight": "var(--leading-normal)",
+        "color": "var(--muted-foreground)"
+      },
+      "parent": "copy",
+      "x": 60,
+      "y": 420
+    },
+    {
+      "id": "inputs",
+      "type": "Component Inputs",
+      "label": "What varies per item",
+      "x": 280,
+      "y": 510,
+      "ports": [
+        {
+          "name": "title",
+          "plug": "output",
+          "type": "*"
+        },
+        {
+          "name": "body",
+          "plug": "output",
+          "type": "*"
+        },
+        {
+          "name": "icon",
+          "plug": "output",
+          "type": "*"
+        }
+      ]
+    }
+  ],
+  "visualRoots": [
+    "root"
+  ]
+}

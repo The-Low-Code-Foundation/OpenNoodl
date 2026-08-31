@@ -25,6 +25,7 @@ import {
   type TokenCategory
 } from '../editor-deps';
 import { ToolError } from '../errors';
+import { readIconSets, renderIconSets } from '../iconSets';
 import type { ProjectBinding } from '../project/ProjectBinding';
 import type { ProjectStore } from '../project/ProjectStore';
 import { guarded, jsonResult } from './util';
@@ -90,7 +91,8 @@ export function registerStyleReadTools(server: McpServer, binding: ProjectBindin
         "This project's design system: design tokens by category (semantic colours, spacing, typography, " +
         'radius, borders, shadows), the legal variants/sizes per element type, and the named COMPOSITIONS — ' +
         'ready-made parameter sets for a card, a shell, a section head, the buttons and the type ramp, each ' +
-        'naming the recipe that shows it assembled. Reference a token in a node ' +
+        'naming the recipe that shows it assembled, and the icon sets installed here with a copyable ' +
+        'iconIconSource value. Reference a token in a node ' +
         'parameter as "var(--token-name)" (never a raw hex or px). Set detail: "prompt" for the compact ' +
         'prompt-shaped block, or "full" (default) for the structured JSON. Built-in presets are listed too.',
       inputSchema: {
@@ -98,11 +100,19 @@ export function registerStyleReadTools(server: McpServer, binding: ProjectBindin
       }
     },
     guarded((args: { detail?: 'full' | 'prompt' }) => {
-      const vocab = buildStyleVocabulary(binding.require().designTokenMetaSource());
+      const store = binding.require();
+      const vocab = buildStyleVocabulary(store.designTokenMetaSource());
+
+      // VIB-003. Read here rather than inside `buildStyleVocabulary`: that function is pure and
+      // takes a token source, while the installed sets are a fact about a directory on disk. The
+      // editor's own AI loop reaches the same fact through the doctrine (`prompts/design.ts` §5),
+      // which is where a shared function would have had to put it anyway.
+      const icons = readIconSets(store.projectDir);
+
       if (args.detail === 'prompt') {
-        return jsonResult({ vocabulary: renderStyleVocabulary(vocab) });
+        return jsonResult({ vocabulary: `${renderStyleVocabulary(vocab)}\n\n${renderIconSets(icons)}` });
       }
-      return jsonResult(vocab);
+      return jsonResult({ ...vocab, icons });
     })
   );
 }

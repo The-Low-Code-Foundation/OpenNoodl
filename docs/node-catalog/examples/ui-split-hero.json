@@ -211,7 +211,7 @@
               "unit": "px"
             },
             "borderRadius": "var(--radius-2xl)",
-            "src": "",
+            "src": "noodl_modules/starter-imagery/ground-ridge.svg",
             "alt": "Describe the photo — it is read aloud, and it is what shows if the image fails"
           },
           "parent": "media"

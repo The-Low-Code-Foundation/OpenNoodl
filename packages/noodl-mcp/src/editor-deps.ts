@@ -672,3 +672,16 @@ export type { KitProvenance } from '../../noodl-editor/src/shared/utils/projectm
 // consumers cannot drift.
 export { scriptPortsForNode } from '../../noodl-editor/src/editor/src/models/nodelibrary/cloudDynamicPorts';
 export type { GeneratedPort } from '../../noodl-editor/src/editor/src/models/nodelibrary/cloudDynamicPorts';
+
+// ── VIB-003: the installed icon sets, and the ONE function that builds a value ─
+// 🔴 Shared rather than restated, and this is the sharpest case in this file.
+// `iconValueForGlyph` is where a chosen glyph becomes a stored parameter — two
+// of its three fields come from the set's manifest, and FB-019 measured what
+// happens when something guesses them instead (a blank glyph, having reported
+// success). The door now advertises icon values to authoring models; if it built
+// them itself, the door and the picker would be two functions that agree until
+// somebody installs a set with the opposite `codeAsClass`. `iconsets.ts` imports
+// only `projectmodules`' types, and `scanModuleManifestsSync` is fs-only.
+export { toIconSets, iconValueForGlyph } from '../../noodl-editor/src/shared/utils/iconsets';
+export type { IconSetDescriptor, IconSetValue } from '../../noodl-editor/src/shared/utils/iconsets';
+export { scanModuleManifestsSync } from '@nodegx/module-inject';

@@ -90,6 +90,36 @@ describe('AIX-006 style MCP tools', () => {
    * detail "full" 36.8k chars (~9.2k tokens) — up from 5.1k/26.8k. The ceilings
    * are round numbers in the printed unit and exist to catch the next thing that
    * doubles the block, not to pin the current byte count.
+   *
+   * ═════════════════════════════════════════════════════════════════════════
+   * 🔴 **RAISED 2026-08-31 (VIB-003), and the first of the two reasons is that
+   * THIS GATE WAS ALREADY RED ON `main`.**
+   *
+   * Measured with VIB-003's own icon block removed entirely: prompt **3,161**
+   * against 3,000, full **11,720** against 11,000. The cause is VIB-002, which
+   * added ten decorative tokens (five gradients, two glass, three fluid display
+   * sizes) and three compositions to the vocabulary this tool renders — a
+   * legitimate growth, of exactly the kind this comment says to move the number
+   * for. What went wrong is that nobody moved it: VIB-002's gate table
+   * (`VIB-002-THE-CEILING.md` §8) ran the catalog gates, both typechecks, the
+   * viewer suite and its own look file, and **never ran the noodl-mcp suite** —
+   * so a red gate in another package shipped unnoticed. Filed as **V24**.
+   *
+   * ⚠️ The lesson is not "raise ceilings sooner". It is that a change to the
+   * design-token model is a change to an MCP response, and the two live in
+   * different packages with different suites. The vocabulary is rendered from
+   * `DEFAULT_TOKENS` and `STYLE_COMPOSITIONS`; anything that adds to either is
+   * billed here, on every turn, in a package its author may never run.
+   *
+   * VIB-003's own contribution is small by comparison — the `icons` block costs
+   * ~3 tokens on `full` and ~40 on `prompt` for a project with **no** icon set
+   * (the "none installed" sentence), and roughly 150 more for one that has
+   * Lucide, because the glyph list is capped at 36 with the remainder counted
+   * rather than listed (`iconSets.ts`, `GLYPH_SAMPLE`).
+   *
+   * New ceilings carry headroom for a project that actually has an icon set,
+   * which the fixture here does not.
+   * ═════════════════════════════════════════════════════════════════════════
    */
   it('stays inside its wire budget, in the shape the model is billed for', async () => {
     const promptResult = await session.client.callTool({
@@ -103,8 +133,8 @@ describe('AIX-006 style MCP tools', () => {
     const promptTokens = Math.round(wireChars(promptResult) / 4);
     const fullTokens = Math.round(wireChars(fullResult) / 4);
     expect({
-      prompt: promptTokens <= 3000 ? 'within budget' : promptTokens,
-      full: fullTokens <= 11_000 ? 'within budget' : fullTokens
+      prompt: promptTokens <= 3_500 ? 'within budget' : promptTokens,
+      full: fullTokens <= 12_500 ? 'within budget' : fullTokens
     }).toEqual({ prompt: 'within budget', full: 'within budget' });
   });
 

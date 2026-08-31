@@ -1,0 +1,25 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "23ed5da2-6c85-5739-8b73-4b5f83a8261c",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "card_inputs",
+      "fromProperty": "coverUrl",
+      "toId": "cover_image",
+      "toProperty": "src"
+    },
+    {
+      "fromId": "card_inputs",
+      "fromProperty": "title",
+      "toId": "title_text",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "card_inputs",
+      "fromProperty": "statusColor",
+      "toId": "status_dot",
+      "toProperty": "fillColor"
+    }
+  ]
+}

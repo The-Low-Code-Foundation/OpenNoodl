@@ -1,0 +1,141 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "23ed5da2-6c85-5739-8b73-4b5f83a8261c",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "card_root",
+      "type": "Group",
+      "label": "Card",
+      "parameters": {
+        "flexDirection": "column",
+        "paddingLeft": 12,
+        "paddingTop": 12
+      },
+      "children": [
+        "columns"
+      ],
+      "x": 60,
+      "y": 60
+    },
+    {
+      "id": "columns",
+      "type": "net.noodl.visual.columns",
+      "label": "1:2 columns",
+      "parent": "card_root",
+      "parameters": {
+        "layoutString": "1 2",
+        "marginX": 8
+      },
+      "children": [
+        "cover_image",
+        "detail_group"
+      ],
+      "x": 280,
+      "y": 150
+    },
+    {
+      "id": "cover_image",
+      "type": "Image",
+      "label": "Cover",
+      "parameters": {
+        "sizeMode": "explicit",
+        "objectFit": "cover",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "height": {
+          "value": 120,
+          "unit": "px"
+        },
+        "borderRadius": "var(--radius-md)",
+        "alt": "The thing this row is about"
+      },
+      "parent": "columns",
+      "x": 60,
+      "y": 240
+    },
+    {
+      "id": "detail_group",
+      "type": "Group",
+      "label": "Details",
+      "parent": "columns",
+      "parameters": {
+        "flexDirection": "row",
+        "alignItems": "center"
+      },
+      "children": [
+        "status_dot",
+        "title_text",
+        "fav_icon"
+      ],
+      "x": 280,
+      "y": 330
+    },
+    {
+      "id": "status_dot",
+      "type": "Circle",
+      "label": "Status dot",
+      "parent": "detail_group",
+      "parameters": {
+        "size": 10,
+        "fillEnabled": true
+      },
+      "x": 60,
+      "y": 420
+    },
+    {
+      "id": "title_text",
+      "type": "Text",
+      "label": "Title",
+      "parent": "detail_group",
+      "x": 280,
+      "y": 510
+    },
+    {
+      "id": "fav_icon",
+      "type": "net.noodl.visual.icon",
+      "label": "Favourite",
+      "parent": "detail_group",
+      "parameters": {
+        "iconIconSource": {
+          "class": "lucide",
+          "code": "icon-heart",
+          "codeAsClass": true
+        },
+        "iconColor": "var(--muted-foreground)",
+        "iconSize": 16
+      },
+      "x": 60,
+      "y": 600
+    },
+    {
+      "id": "card_inputs",
+      "type": "Component Inputs",
+      "label": "Card data",
+      "ports": [
+        {
+          "name": "coverUrl",
+          "plug": "output",
+          "type": "*"
+        },
+        {
+          "name": "title",
+          "plug": "output",
+          "type": "*"
+        },
+        {
+          "name": "statusColor",
+          "plug": "output",
+          "type": "*"
+        }
+      ],
+      "x": 280,
+      "y": 690
+    }
+  ],
+  "visualRoots": [
+    "card_root"
+  ]
+}

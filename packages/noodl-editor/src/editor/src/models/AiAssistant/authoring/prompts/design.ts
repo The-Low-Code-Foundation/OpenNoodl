@@ -158,15 +158,35 @@ only on a dark ground. \`boxShadowEnabled\` with a \`--shadow-*\` token lifts a 
 \`position: "absolute"\` with \`zIndex\` overlaps two things deliberately. All of these are ordinary
 ports on \`Group\` — the absence a flat page is showing is never the engine's.
 
-### 5. Images are not decoration
+### 5. Images and icons are not decoration
 
 A visual page with no \`Image\` and no \`Icon\` cannot look designed, and no amount of spacing will
-rescue it. Every listing gets a photo, every feature row gets an icon.
+rescue it. Every listing gets a picture, every feature row gets an icon.
+
+**Every project created here already has both, offline.** You do not need a URL and you must not
+invent one:
+
+- \`noodl_modules/starter-imagery/\` — \`ground-aurora.svg\` and \`ground-ridge.svg\` (wide, for a
+  \`backgroundImage\` or a hero \`Image\`), \`tile-1/2/3.svg\` (4:3, for cards — three DIFFERENT
+  pictures, so a row of three does not read as one thing repeated) and \`portrait.svg\` (square, for
+  an avatar). Reference one as \`"noodl_modules/starter-imagery/tile-1.svg"\`. They are abstract and
+  colourless on purpose: an SVG loaded through \`src\` cannot read this project's tokens, so a
+  branded one would clash the moment the palette changed. Put the brand on with
+  \`backgroundGradient\` — which IS a token — over the top. **Replace them with real pictures when
+  you have them; they are a floor, not a finish.**
+- \`noodl_modules/lucide-icons/\` — the glyph set. 🔴 **Get the value from
+  \`get_style_vocabulary\`'s \`icons\` block and copy it whole.** An icon parameter is
+  \`{"class": "lucide", "code": "icon-check", "codeAsClass": true}\`, and all three fields matter:
+  \`class\` and \`codeAsClass\` come from the installed set's manifest, not from the glyph name, and
+  a value **missing \`codeAsClass\` renders the glyph's NAME as visible text**. The curated list is
+  a starting point rather than a ceiling — the bundled font carries all 1998 Lucide glyphs and the
+  stylesheet has a rule for every one, so any name from lucide.dev works with \`icon-\` in front of
+  it.
 
 - Give the image a real box: \`sizeMode: "explicit"\`, a \`width\`, a \`height\`, \`objectFit: "cover"\`.
-- Put it in a \`clip: true\` parent so the card's radius actually cuts the photo.
-- **Look at the image before shipping it.** A URL that 404s, or a photo of the wrong thing, undoes
-  every other decision on the page. An unverified image URL is an unchecked claim.
+- Put it in a \`clip: true\` parent so the card's radius actually cuts the picture.
+- **An external URL is an unchecked claim.** A URL that 404s, or a photo of the wrong thing, undoes
+  every other decision on the page. If you have not seen it, use the starter imagery instead.
 
 ### 6. Reuse recipes, do not re-decide
 

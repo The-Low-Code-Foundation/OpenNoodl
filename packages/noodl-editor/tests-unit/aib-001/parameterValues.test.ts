@@ -87,7 +87,17 @@ describe('one legal and one illegal value per constrained port type', () => {
     ['number (units)', 'Group', 'paddingTop', { value: 16, unit: 'px' }, '16px'],
     ['dimension', 'Group', 'width', { value: 100, unit: '%' }, [100, '%']],
     ['color', 'Group', 'backgroundColor', 'var(--primary)', 0x3b82f6],
-    ['boolean', 'Group', 'scrollEnabled', true, 'false']
+    ['boolean', 'Group', 'scrollEnabled', true, 'false'],
+    // VIB-003. The illegal value is the glyph's NAME — the one FB-019 measured as an empty,
+    // styled span that still takes its size in layout, and which this rule used to ACCEPT while
+    // its own hint recommended it.
+    [
+      'icon',
+      'net.noodl.visual.icon',
+      'iconIconSource',
+      { class: 'lucide', code: 'icon-check', codeAsClass: true },
+      'icon-check'
+    ]
   ];
 
   it.each(CASES)('%s: accepts the legal value', (_label, type, port, legal) => {
@@ -251,6 +261,64 @@ describe('a parameter that names no port at all', () => {
       reportUnknownParameters: false
     });
     expect(found).toEqual([]);
+  });
+});
+
+/**
+ * VIB-003 — the icon port, which had no coverage here at all while its rule taught two values that
+ * do not draw.
+ *
+ * 🔴 The distinction every row below turns on: an icon value's `class` and `codeAsClass` come from
+ * the **installed set's manifest**, and only `code` comes from the glyph name. `IconGlyph.tsx`
+ * branches on `codeAsClass === true` — true puts the code among the element's classes, anything
+ * else puts it in the element's TEXT. So a value that looks two-thirds right renders the string
+ * `icon-check` in the icon font, at whatever `iconSize` says, and every gate in the product was
+ * green while the door's own hint recommended exactly that shape.
+ *
+ * ⚠️ What this rule deliberately CANNOT check is whether `codeAsClass` is right for the set: that
+ * depends on a manifest under `noodl_modules/`, which a pure value rule cannot see. The hint sends
+ * the author to `get_style_vocabulary`, which reads the project and answers exactly.
+ */
+describe('the icon port — a value assembled from a description does not draw', () => {
+  const icon = (value: unknown) => errors('net.noodl.visual.icon', { iconIconSource: value });
+
+  it('rejects the glyph name on its own, which is what a description of the format produces', () => {
+    const found = icon('icon-check');
+    expect(found).toHaveLength(1);
+    expect(found[0].message).toContain('draws nothing');
+    // Says where a correct value comes from, rather than only that this one is wrong.
+    expect(found[0].message).toContain('get_style_vocabulary');
+  });
+
+  it('accepts the complete font value, all three fields', () => {
+    expect(icon({ class: 'lucide', code: 'icon-check', codeAsClass: true })).toEqual([]);
+  });
+
+  it('accepts the two-field material-icons shape, because for THAT set it is complete', () => {
+    // 🔴 The reason the rule cannot simply require `codeAsClass`. Material Icons puts the glyph in
+    // the element's text and its manifest says so; Lucide is the opposite convention. Both are
+    // correct values, and which one is correct here is a fact about the project, not about the port.
+    expect(icon({ class: 'material-icons', code: 'search' })).toEqual([]);
+  });
+
+  it('accepts a sprite value, which carries no `code` at all', () => {
+    // ⚠️ Caught by writing this spec: the old rule tested `typeof value.code === 'string'` and would
+    // have rejected the third arm of `Noodl.Icon` outright. Nothing shipped one, so nothing noticed.
+    expect(icon({ kind: 'sprite', url: 'noodl_modules/my-icons/sprite.svg', symbolId: 'star' })).toEqual([]);
+  });
+
+  it('rejects a value with none of the union\'s fields', () => {
+    expect(icon({ name: 'check' })).toHaveLength(1);
+  });
+
+  it('the hint names the field whose absence is visible, and where to get a real value', () => {
+    const hint = wireFormatHint(catalog.getPort('net.noodl.visual.icon', 'input', 'iconIconSource'));
+    expect(hint).toContain('codeAsClass');
+    expect(hint).toContain('get_style_vocabulary');
+    // 🔴 The regression this row exists for: the hint used to offer
+    // `{"class":"material-icons","code":"search"}` — a set no project created here has, in a shape
+    // that renders the glyph's name for the set every project DOES have.
+    expect(hint).not.toContain('material-icons');
   });
 });
 
