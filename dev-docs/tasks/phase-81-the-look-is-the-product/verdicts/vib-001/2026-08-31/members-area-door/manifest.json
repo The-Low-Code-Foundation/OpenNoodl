@@ -1,0 +1,450 @@
+{
+  "task": "vib-001",
+  "subject": "members-area",
+  "state": "door",
+  "headSha": "d96a7cb49b0bf5be879decc72e29478ef632fc2f",
+  "artefactMd5": "ac1f0163bd77eef1871ac0b1d27d3197",
+  "outDir": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-08-31/members-area-door",
+  "shots": [
+    {
+      "task": "vib-001",
+      "subject": "members-area",
+      "state": "door",
+      "page": "landing",
+      "url": "/",
+      "as": "the first thing anyone sees",
+      "viewport": {
+        "id": "preview",
+        "width": 988,
+        "height": 313
+      },
+      "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-08-31/members-area-door/landing-preview-viewport.png",
+      "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-08-31/members-area-door/landing-preview-full.png",
+      "contentBottom": 220,
+      "canScroll": false,
+      "unreachablePx": 0,
+      "textChars": 41,
+      "headings": [],
+      "errors": [
+        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:64069/noodl.viewer.js:54000:61)\n    at xhr.onreadystatechange (http://127.0.0.1:64069/noodl.viewer.js:53875:33)"
+      ]
+    },
+    {
+      "task": "vib-001",
+      "subject": "members-area",
+      "state": "door",
+      "page": "landing",
+      "url": "/",
+      "as": "the first thing anyone sees",
+      "viewport": {
+        "id": "desktop",
+        "width": 1280,
+        "height": 900
+      },
+      "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-08-31/members-area-door/landing-desktop-viewport.png",
+      "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-08-31/members-area-door/landing-desktop-full.png",
+      "contentBottom": 220,
+      "canScroll": false,
+      "unreachablePx": 0,
+      "textChars": 41,
+      "headings": [],
+      "errors": [
+        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:64069/noodl.viewer.js:54000:61)\n    at xhr.onreadystatechange (http://127.0.0.1:64069/noodl.viewer.js:53875:33)"
+      ]
+    },
+    {
+      "task": "vib-001",
+      "subject": "members-area",
+      "state": "door",
+      "page": "landing",
+      "url": "/",
+      "as": "the first thing anyone sees",
+      "viewport": {
+        "id": "wide",
+        "width": 1900,
+        "height": 1080
+      },
+      "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-08-31/members-area-door/landing-wide-viewport.png",
+      "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-08-31/members-area-door/landing-wide-full.png",
+      "contentBottom": 220,
+      "canScroll": false,
+      "unreachablePx": 0,
+      "textChars": 41,
+      "headings": [],
+      "errors": [
+        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:64069/noodl.viewer.js:54000:61)\n    at xhr.onreadystatechange (http://127.0.0.1:64069/noodl.viewer.js:53875:33)"
+      ]
+    },
+    {
+      "task": "vib-001",
+      "subject": "members-area",
+      "state": "door",
+      "page": "landing",
+      "url": "/",
+      "as": "the first thing anyone sees",
+      "viewport": {
+        "id": "phone",
+        "width": 390,
+        "height": 844
+      },
+      "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-08-31/members-area-door/landing-phone-viewport.png",
+      "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-08-31/members-area-door/landing-phone-full.png",
+      "contentBottom": 220,
+      "canScroll": false,
+      "unreachablePx": 0,
+      "textChars": 41,
+      "headings": [],
+      "errors": [
+        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:64069/noodl.viewer.js:54000:61)\n    at xhr.onreadystatechange (http://127.0.0.1:64069/noodl.viewer.js:53875:33)"
+      ]
+    },
+    {
+      "task": "vib-001",
+      "subject": "members-area",
+      "state": "door",
+      "page": "sign-in",
+      "url": "/sign-in",
+      "as": "a member coming back",
+      "viewport": {
+        "id": "preview",
+        "width": 988,
+        "height": 313
+      },
+      "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-08-31/members-area-door/sign-in-preview-viewport.png",
+      "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-08-31/members-area-door/sign-in-preview-full.png",
+      "contentBottom": 524,
+      "canScroll": true,
+      "unreachablePx": 0,
+      "textChars": 82,
+      "headings": [],
+      "errors": []
+    },
+    {
+      "task": "vib-001",
+      "subject": "members-area",
+      "state": "door",
+      "page": "sign-in",
+      "url": "/sign-in",
+      "as": "a member coming back",
+      "viewport": {
+        "id": "desktop",
+        "width": 1280,
+        "height": 900
+      },
+      "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-08-31/members-area-door/sign-in-desktop-viewport.png",
+      "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-08-31/members-area-door/sign-in-desktop-full.png",
+      "contentBottom": 524,
+      "canScroll": false,
+      "unreachablePx": 0,
+      "textChars": 82,
+      "headings": [],
+      "errors": []
+    },
+    {
+      "task": "vib-001",
+      "subject": "members-area",
+      "state": "door",
+      "page": "sign-in",
+      "url": "/sign-in",
+      "as": "a member coming back",
+      "viewport": {
+        "id": "wide",
+        "width": 1900,
+        "height": 1080
+      },
+      "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-08-31/members-area-door/sign-in-wide-viewport.png",
+      "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-08-31/members-area-door/sign-in-wide-full.png",
+      "contentBottom": 524,
+      "canScroll": false,
+      "unreachablePx": 0,
+      "textChars": 82,
+      "headings": [],
+      "errors": []
+    },
+    {
+      "task": "vib-001",
+      "subject": "members-area",
+      "state": "door",
+      "page": "sign-in",
+      "url": "/sign-in",
+      "as": "a member coming back",
+      "viewport": {
+        "id": "phone",
+        "width": 390,
+        "height": 844
+      },
+      "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-08-31/members-area-door/sign-in-phone-viewport.png",
+      "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-08-31/members-area-door/sign-in-phone-full.png",
+      "contentBottom": 524,
+      "canScroll": false,
+      "unreachablePx": 0,
+      "textChars": 82,
+      "headings": [],
+      "errors": []
+    },
+    {
+      "task": "vib-001",
+      "subject": "members-area",
+      "state": "door",
+      "page": "join",
+      "url": "/join",
+      "as": "a stranger asking to join",
+      "viewport": {
+        "id": "preview",
+        "width": 988,
+        "height": 313
+      },
+      "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-08-31/members-area-door/join-preview-viewport.png",
+      "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-08-31/members-area-door/join-preview-full.png",
+      "contentBottom": 706,
+      "canScroll": true,
+      "unreachablePx": 0,
+      "textChars": 148,
+      "headings": [],
+      "errors": []
+    },
+    {
+      "task": "vib-001",
+      "subject": "members-area",
+      "state": "door",
+      "page": "join",
+      "url": "/join",
+      "as": "a stranger asking to join",
+      "viewport": {
+        "id": "desktop",
+        "width": 1280,
+        "height": 900
+      },
+      "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-08-31/members-area-door/join-desktop-viewport.png",
+      "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-08-31/members-area-door/join-desktop-full.png",
+      "contentBottom": 706,
+      "canScroll": false,
+      "unreachablePx": 0,
+      "textChars": 148,
+      "headings": [],
+      "errors": []
+    },
+    {
+      "task": "vib-001",
+      "subject": "members-area",
+      "state": "door",
+      "page": "join",
+      "url": "/join",
+      "as": "a stranger asking to join",
+      "viewport": {
+        "id": "wide",
+        "width": 1900,
+        "height": 1080
+      },
+      "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-08-31/members-area-door/join-wide-viewport.png",
+      "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-08-31/members-area-door/join-wide-full.png",
+      "contentBottom": 706,
+      "canScroll": false,
+      "unreachablePx": 0,
+      "textChars": 148,
+      "headings": [],
+      "errors": []
+    },
+    {
+      "task": "vib-001",
+      "subject": "members-area",
+      "state": "door",
+      "page": "join",
+      "url": "/join",
+      "as": "a stranger asking to join",
+      "viewport": {
+        "id": "phone",
+        "width": 390,
+        "height": 844
+      },
+      "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-08-31/members-area-door/join-phone-viewport.png",
+      "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-08-31/members-area-door/join-phone-full.png",
+      "contentBottom": 706,
+      "canScroll": false,
+      "unreachablePx": 0,
+      "textChars": 148,
+      "headings": [],
+      "errors": []
+    },
+    {
+      "task": "vib-001",
+      "subject": "members-area",
+      "state": "door",
+      "page": "setup",
+      "url": "/setup",
+      "as": "the owner, first run — the page P78 could not reach",
+      "viewport": {
+        "id": "preview",
+        "width": 988,
+        "height": 313
+      },
+      "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-08-31/members-area-door/setup-preview-viewport.png",
+      "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-08-31/members-area-door/setup-preview-full.png",
+      "contentBottom": 852,
+      "canScroll": true,
+      "unreachablePx": 0,
+      "textChars": 268,
+      "headings": [],
+      "errors": []
+    },
+    {
+      "task": "vib-001",
+      "subject": "members-area",
+      "state": "door",
+      "page": "setup",
+      "url": "/setup",
+      "as": "the owner, first run — the page P78 could not reach",
+      "viewport": {
+        "id": "desktop",
+        "width": 1280,
+        "height": 900
+      },
+      "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-08-31/members-area-door/setup-desktop-viewport.png",
+      "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-08-31/members-area-door/setup-desktop-full.png",
+      "contentBottom": 852,
+      "canScroll": false,
+      "unreachablePx": 0,
+      "textChars": 268,
+      "headings": [],
+      "errors": []
+    },
+    {
+      "task": "vib-001",
+      "subject": "members-area",
+      "state": "door",
+      "page": "setup",
+      "url": "/setup",
+      "as": "the owner, first run — the page P78 could not reach",
+      "viewport": {
+        "id": "wide",
+        "width": 1900,
+        "height": 1080
+      },
+      "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-08-31/members-area-door/setup-wide-viewport.png",
+      "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-08-31/members-area-door/setup-wide-full.png",
+      "contentBottom": 852,
+      "canScroll": false,
+      "unreachablePx": 0,
+      "textChars": 268,
+      "headings": [],
+      "errors": []
+    },
+    {
+      "task": "vib-001",
+      "subject": "members-area",
+      "state": "door",
+      "page": "setup",
+      "url": "/setup",
+      "as": "the owner, first run — the page P78 could not reach",
+      "viewport": {
+        "id": "phone",
+        "width": 390,
+        "height": 844
+      },
+      "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-08-31/members-area-door/setup-phone-viewport.png",
+      "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-08-31/members-area-door/setup-phone-full.png",
+      "contentBottom": 919,
+      "canScroll": true,
+      "unreachablePx": 0,
+      "textChars": 268,
+      "headings": [],
+      "errors": []
+    },
+    {
+      "task": "vib-001",
+      "subject": "members-area",
+      "state": "door",
+      "page": "members",
+      "url": "/members",
+      "as": "the gated area, unauthenticated (V3 says this fails open)",
+      "viewport": {
+        "id": "preview",
+        "width": 988,
+        "height": 313
+      },
+      "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-08-31/members-area-door/members-preview-viewport.png",
+      "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-08-31/members-area-door/members-preview-full.png",
+      "contentBottom": 371,
+      "canScroll": true,
+      "unreachablePx": 0,
+      "textChars": 159,
+      "headings": [],
+      "errors": [
+        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:64069/noodl.viewer.js:54000:61)\n    at xhr.onreadystatechange (http://127.0.0.1:64069/noodl.viewer.js:53875:33)",
+        "[noodl] CloudFunction2 (/Members/Standing): No cloud services defined in this project. [cloud-function/call-failed] Object"
+      ]
+    },
+    {
+      "task": "vib-001",
+      "subject": "members-area",
+      "state": "door",
+      "page": "members",
+      "url": "/members",
+      "as": "the gated area, unauthenticated (V3 says this fails open)",
+      "viewport": {
+        "id": "desktop",
+        "width": 1280,
+        "height": 900
+      },
+      "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-08-31/members-area-door/members-desktop-viewport.png",
+      "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-08-31/members-area-door/members-desktop-full.png",
+      "contentBottom": 371,
+      "canScroll": false,
+      "unreachablePx": 0,
+      "textChars": 159,
+      "headings": [],
+      "errors": [
+        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:64069/noodl.viewer.js:54000:61)\n    at xhr.onreadystatechange (http://127.0.0.1:64069/noodl.viewer.js:53875:33)",
+        "[noodl] CloudFunction2 (/Members/Standing): No cloud services defined in this project. [cloud-function/call-failed] Object"
+      ]
+    },
+    {
+      "task": "vib-001",
+      "subject": "members-area",
+      "state": "door",
+      "page": "members",
+      "url": "/members",
+      "as": "the gated area, unauthenticated (V3 says this fails open)",
+      "viewport": {
+        "id": "wide",
+        "width": 1900,
+        "height": 1080
+      },
+      "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-08-31/members-area-door/members-wide-viewport.png",
+      "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-08-31/members-area-door/members-wide-full.png",
+      "contentBottom": 371,
+      "canScroll": false,
+      "unreachablePx": 0,
+      "textChars": 159,
+      "headings": [],
+      "errors": [
+        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:64069/noodl.viewer.js:54000:61)\n    at xhr.onreadystatechange (http://127.0.0.1:64069/noodl.viewer.js:53875:33)",
+        "[noodl] CloudFunction2 (/Members/Standing): No cloud services defined in this project. [cloud-function/call-failed] Object"
+      ]
+    },
+    {
+      "task": "vib-001",
+      "subject": "members-area",
+      "state": "door",
+      "page": "members",
+      "url": "/members",
+      "as": "the gated area, unauthenticated (V3 says this fails open)",
+      "viewport": {
+        "id": "phone",
+        "width": 390,
+        "height": 844
+      },
+      "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-08-31/members-area-door/members-phone-viewport.png",
+      "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-08-31/members-area-door/members-phone-full.png",
+      "contentBottom": 445,
+      "canScroll": false,
+      "unreachablePx": 0,
+      "textChars": 159,
+      "headings": [],
+      "errors": [
+        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:64069/noodl.viewer.js:54000:61)\n    at xhr.onreadystatechange (http://127.0.0.1:64069/noodl.viewer.js:53875:33)",
+        "[noodl] CloudFunction2 (/Members/Standing): No cloud services defined in this project. [cloud-function/call-failed] Object"
+      ]
+    }
+  ]
+}
