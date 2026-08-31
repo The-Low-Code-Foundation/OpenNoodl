@@ -2,110 +2,88 @@
 
 ## The board, re-derived from TASKS.md this session
 
-**37 rows. 33 ✅ · DEF-007 🟡 partial · 3 open — DEF-033 (P18's), DEF-036, DEF-037 (new, s35's).**
+**37 rows. 33 ✅ · DEF-007 🟡 partial · 3 open — DEF-033 (P18's), DEF-036, DEF-037.**
 
-🔴 **Do not derive the board with `grep -av '✅'`.** The handoff has used that command for several
-sessions and it is now wrong: a row whose *prose* contains a ✅ is filtered out even when its
-status column says `⬜ open`. DEF-037 vanished from its own board the moment it was written.
-✅ **Read the status COLUMN:**
+🔴 **Do not derive the board with `grep -av '✅'`** — a row whose *prose* contains a ✅ is filtered
+out even when its status column says open. ✅ **Read the status COLUMN:**
 
 ```
 grep -aE '^\| DEF-0[0-9]{2} \|' TASKS.md | awk -F'|' '{gsub(/^ +| +$/,"",$2); print $2" :: "$3}'
 ```
 
-s35 closed **DEF-034's AC5**, drove **DEF-031**, half-drove **DEF-029**, and registered **DEF-037**.
-Commit `29a00c27`. **No source changed — no gate was run and none is claimed.**
+s36 drove **DEF-029**'s remaining half and closed **DEF-037 AC4**. Commit `048505d4`.
+**No product source changed — no gate was run and none is claimed.**
 
 ---
 
-## 🧭 IN FRONT OF RICHARD — still DEF-036, unchanged and unanswered
+## 🧭 IN FRONT OF RICHARD — still DEF-036, unchanged for three sessions
 
 **Should a wire be allowed to declare a column on the *accounts* table, the way it already can on
-an app table?** P77's SBR-008 accepted that cost for app tables (`recordWiredFieldPorts`: a
-mistyped `prop-titel` writes a `titel` column instead of warning). DEF-036 asks for the same net on
-`_User`. The alternative — what ships today — is a sign-up form that silently stops writing its
-custom fields whenever the schema is cold. **271 wires across 21 of 118 corpus projects.**
+an app table?** P77's SBR-008 accepted that cost for app tables. The alternative — what ships
+today — is a sign-up form that silently stops writing its custom fields whenever the schema is
+cold. **271 wires across 21 of 118 corpus projects.** Not a fix to be guessed at.
 
-s35 did not touch this. It remains a decision, not a fix to be guessed at.
+🧭 **Second, smaller decision, new this session:** DEF-037 §7.5 — whether to hand-annotate the four
+remaining derived style ports with `onChange`, or derive the answer. Take it with §7.3's table in
+front of you.
 
 ---
 
-## What s35 did
+## What s36 did
 
-### 1. ✅ DEF-034 AC5 — closed, with a control that actually varied the thing
+### 1. ✅ DEF-029 — a file was actually dropped on a running preview
 
-A copy of `LearnBook` in a real `dev:debug` editor; real
-`exportToJSON(project, {useBundles:false})`. **`Pretty button` exported 19 of 19 wires including
-`vertical gap -> rowGap`.**
+`scripts/devtools/cdp.js` gained **`dropfile`**, the subcommand the row said was missing:
 
-🔴 **Presence in the artefact is not proof the fix acted** — it is equally consistent with "the
-wire was never gated in this build". So both code paths ran over the same connections in the same
-loaded editor: `getConnectionHealth(ref, {levels:['error']})` (ships today) vs
-`getConnectionHealth(ref)` (exactly what shipped before DEF-034).
+```
+cdp dropfile "<selector|x,y>" <file>[,...] [--probe=<expr>] [--leave-to=<sel|x,y>] [--no-drop]
+```
 
-| | connections |
-| --- | ---: |
-| in the model | 2,719 |
-| kept by **fixed** | **2,587** |
-| kept by **pre-fix** | 2,577 |
-| **saved by the fix** | **10**, in 9 components |
-| dropped by **both** | **132** |
+🔴 **`drag` could never have done this.** A mouse drag is an in-page HTML5 drag begun by a
+mousedown on a `draggable` element. A file drag has **no mousedown in the page at all** and arrives
+with `dataTransfer.files` already populated by the browser process. `--probe` exists because
+drag-over state cannot be read by a second command — it evaluates *between* the `dragOver` and the
+`drop`, on the same connection.
 
-**Every saved wire is `level:'warning'`** (`con-target-port-gated` 5, `con-type-unconverted` 5 —
-both keys the row named). **Every dropped wire is `level:'error'`** (`con-no-source-port` 101,
-`con-no-target-port` 31), so **AC2 holds live**. ✅ **Two instruments, one number**: the export
-reported 2,587 and an independent health loop counted 2,587. ✅ **AC3 seen on canvas** — the
-`Vertical Gap` wire is still drawn dashed while the export keeps it.
+| run | zone | file | hover | File Name | Type | Size | Dropped | Rejected |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| accepted | png | `drop-me.png` | **true** | `drop-me.png` | `image/png` | **78** | **true** | false |
+| rejected | png | `reject-me.pdf` | — | *unchanged* | *unchanged* | *unchanged* | false | **true** |
+| **control** | **off** | `drop-me.png` | **false** | *unchanged* | *unchanged* | *unchanged* | — | — |
 
-Full readings: DEF-034 §6.
+**78 is the file's real byte count on disk** — Chromium opened it. Full readings: DEF-029 §7.
 
-### 2. ✅ DEF-031 driven — and it produced DEF-037
+### 2. ✅ DEF-037 AC4 — the sweep, and it moved the row's own mechanism
 
-On a genuine render the label goes **42px / 2 lines → 21px / 1 line**, computed
-`ellipsis` + `nowrap` + `hidden`, **`scrollWidth` 1419 vs `clientWidth` 893**. The wrap arm's
-computed `text-overflow` is `clip`, so **`wrap` never reaches the DOM** — AC3 in a browser.
+🔴 **The mechanism is not "the live-preview path".** It is `react-component-node.ts` `setStyle()`,
+generated for **every** `inputCss` port, which force-updates React only for a hard-coded allowlist
+and **skips that allowlist entirely when a `styleTag` is set**. So a **wire** driving such a port
+hits this in a **deployed app** too — §4's "editor feedback-loop, not correctness" needs correcting.
 
-### 3. 🔴 DEF-037 — the new row, and the reasoning that nearly went wrong
-
-Setting **Text Overflow → Ellipsis** in a **running preview** put `text-overflow: ellipsis` on the
-element and **left `white-space: pre-wrap`** — the label kept wrapping. That is character-for-character
-the "property arrives and does nothing" shape DEF-031 §2 says the fix prevents.
-
-⚠️ **It read as "the fix does not work."** It is not. `Text.tsx` cannot emit `ellipsis` beside
-`pre-wrap` — the wrapping arm *deletes* `style.textOverflow`. **The impossibility of the
-combination is what said the value had been patched on by a path that never ran the render.**
-
-✅ **The control that named it**: `wordBreak`, the pre-existing sibling `inputCss` port on the same
-node, set the same way in the same session, **applied live and immediately.** So it is not "style
-ports don't update live" — it is **derivation**. `textOverflow` is the first `Text` style port
-whose effect needs siblings (`white-space`, `overflow`, `overflow-wrap`) that only the render
-computes. Inert in **both** directions until reload.
+✅ **The fix already ships.** Six ports carry `onChange(){ this.forceUpdate(); }` for exactly this
+reason. **Three more are unfixed**, the sharpest being that **Checkbox's `Width`/`Height` are
+declared identically to Radio Button's — and only Radio Button carries the `onChange`.**
 
 ---
 
 ## The work, in the order it should be done
 
-### 1. Four rows are built and undriven — still the phase's largest debt
+### 1. Built-and-undriven is still the phase's largest debt — but it is shorter now
 
-DEF-034 and DEF-031 are off this list. What remains:
-
-- **DEF-029** — 🔴 **the half that matters is owed**: no file has been dragged onto a running
-  preview. Its ten ports **are** live in the editor's node library (s35 read them). ⚠️ Needs CDP
-  `Input.dispatchDragEvent` with a real `DataTransfer`; **`scripts/devtools/cdp.js` does not expose
-  it**, and a synthetic DOM event bypasses the `preventDefault`-on-`dragover` behaviour the row is
-  about. Adding that subcommand is the actual first job here. ⚠️ Ports fold into **Advanced CSS**.
 - **DEF-028** — its own AC5, the two-takes-differ measurement. s34 narrowed it, did not close it.
 - **DEF-031's panel half** — the rendered `Text Overflow` row has still not been read out of the
   property panel. ⚠️ **The graph is a single `<canvas>`**, so opening the panel needs a
   canvas-coordinate click; there is no DOM node to click and no `NodeGraphEditor.instance`.
+  **This blocks DEF-029's panel half too** (below) — solve it once and both close.
+- **DEF-029's panel half** — 🆕 small, and all that is left of this row: is the `File Drop` group
+  folded into **Advanced CSS** in the rendered panel DOM? s35 read the node library, a peer
+  reported the fold; neither is the panel.
 - **DEF-005's `Roles` output**, **DEF-009's default**, **DEF-025's editor half** — all undriven.
 
-### 2. DEF-037 — small, but sweep before fixing
+### 2. DEF-037 — the sweep is done, so this is now buildable
 
-AC4 is the one that matters: **the population is one port and unswept.** Whether any other
-`inputCss` port on any node derives a sibling in render has not been measured. Do that first —
-this row's own lesson is that a population named from an example is wrong three times out of three
-on this board.
+Three new instances named in §7.3 with file:line. ⚠️ **They are read from source, not driven** —
+drive one before fixing four. Radio Button's `width`/`height` are the known-firing control.
 
 ### 3. DEF-033 — do NOT take it without checking P18
 
@@ -115,12 +93,17 @@ and mtimes first — a peer may be doing your exact task.
 
 ### 4. The unowned rows
 
-[UNOWNED-ROWS-TO-MEASURE.md](UNOWNED-ROWS-TO-MEASURE.md) — six. §1 disproved; §6 measured.
-**Measure one fully before starting the next.** ⚠️ **Next free id is `DEF-038`.**
+[UNOWNED-ROWS-TO-MEASURE.md](UNOWNED-ROWS-TO-MEASURE.md) — now **seven**. §1 disproved; §6
+measured. 🆕 **§7 (new): a `connections.json` with unknown field names loads silently, crashes
+export with a `TypeError` naming nothing, and is written back to disk as eight empty objects.**
+⚠️ §7's first measurement is the one that decides its rank: *does an unresolvable id — a real
+field name pointing at a deleted node — take the same crash?* That case is reachable without
+hand-editing anything. **Measure one row fully before starting the next.** ⚠️ Next free id is
+`DEF-038`.
 
 ---
 
-## What DEF-007 still owes (unchanged from s34)
+## What DEF-007 still owes (unchanged since s34)
 
 - ⚠️ **AC2 and AC4 are open.** AC2 needs a template published before it can be driven. AC4 is §6's
   table, which exists — someone should decide whether that discharges it.
@@ -140,42 +123,48 @@ and mtimes first — a peer may be doing your exact task.
 
 ## Gates
 
-🔴 **None were run, and none is claimed.** This session changed **no source** — the only writes
-were to a disposable **copy** of `LearnBook` in the scratchpad. Floors carried forward from s33,
-unverified at this HEAD: `test:ci` **4** (all AIX-006, by name), 2916 specs; `test:main` **5
-pre-existing failures** (`sb-007`, `sb-018`, `aib-007`) that are **somebody's open work — do not
-read them as this phase's floor and do not "fix" them**.
+🔴 **None were run, and none is claimed.** The only source file changed is
+`scripts/devtools/cdp.js`, which is harness code — **no suite covers it** (checked), and
+`node --check` passes. Everything else this session was task documents and a disposable scratch
+project. Floors carried forward from s33, unverified at this HEAD: `test:ci` **4** (all AIX-006,
+by name), 2916 specs; `test:main` **5 pre-existing failures** (`sb-007`, `sb-018`, `aib-007`) that
+are **somebody's open work — do not read them as this phase's floor and do not "fix" them**.
 
 ---
 
-## The drive harness, which now works and is worth reusing
+## The drive harness — now with file drops, and one new landmine
 
+- 🆕 **`cdp dropfile`** — see above. `--probe` reads state mid-drag; `--leave-to` walks the drag out
+  of the element. ⚠️ **`--no-drop` (`dragCancel`) delivers NO `dragleave` to the page**, so hover
+  state stays set. That is the *instrument*, not a defect — use `--leave-to` to test release.
+- 🔴 **A hand-authored v2 `connections.json` uses `fromId`/`fromProperty`/`toId`/`toProperty`.**
+  Any other names load silently and then crash the export. See unowned §7.
+- 🔴 **`nodes.json` needs BOTH sides of every parent link** — `children` on the parent *and*
+  `parent` on the child. Writing only `children` gave a 16-root graph that loaded without complaint.
 - **The webpack seam**: `window.webpackChunknoodl_editor.push([['<UNIQUE-ID>'],{},r=>window.__req=r])`
-  then `__req.c['./src/editor/src/…'].exports`. ⚠️ **A reused chunk id returns `undefined`**, which
-  looks exactly like the seam being unavailable. ⚠️ **The seam is lost on a launcher→editor
-  navigation** — re-push with a new id.
+  then `__req.c['./src/editor/src/…'].exports`. ⚠️ A reused chunk id returns `undefined`. ⚠️ **The
+  seam is lost on every editor reload** — re-push with a new id.
 - **Opening a project**: `LocalProjectsModel.instance.openProjectFromFolder(dir)` loads the model
-  but **does not navigate** — `ProjectModel.instance` stays null. It *does* add the project to
-  recents, so the real door is then a `cdp click` on its launcher card (stamp
-  `[class*=LauncherProjectCard-module__Card]`, excluding `Ghost`).
-- **Which build is under the drive**: read the function itself in the renderer
-  (`exportComponent.toString()`), never the source file.
-- **Two targets**: `--target=viewer` is the embedded preview webview. 🔴 **`cdp reload
-  --target=viewer` destroyed the preview and dropped the editor back to the launcher** — reopen the
-  project instead; parameters persist to `project.json`, so a reopen gives a genuine fresh render.
+  but **does not navigate**. It adds the project to recents, so the real door is then a `cdp click`
+  on its launcher card (stamp `[class*=LauncherProjectCard-module__Card]`, excluding `Ghost`).
+  ⚠️ The card can be **7000px down the list** — `scrollIntoView({behavior:'instant'})`, then
+  re-measure in a **separate** eval before clicking.
 
 ## Traps carried
 
-- 🔴 **`grep -av '✅'` no longer derives this board.** Read the status column. (See top.)
-- 🔴 **An impossible DOM/state combination is a signal about the PATH, not about the fix.** Reading
-  it as "the fix is broken" would have reopened a correct row and hidden a real one.
-- 🔴 **A control from the same family separates "this one" from "all of them."** Without `wordBreak`
-  applying live, DEF-037 would have been filed as a platform-wide defect it is not.
-- 🔴 **Presence is not proof.** A wire in an artefact is consistent with the fix working *and* with
-  the defect never being present. Run both code paths over the same data in the same session.
-- 🔴 **The default `exportToJSON` bundles lazily** — 4 components / 57 connections, and the fixture
-  is not in it. `{useBundles:false}` is the whole-project arm.
-- ⚠️ **Appending to a TASKS.md row puts text OUTSIDE the last cell.** Split on `|` and write into
-  the description column, then check the column count is unchanged.
+- 🔴 **`grep -av '✅'` no longer derives this board.** Read the status column.
+- 🔴 **Run the control AFTER a known-firing signal, never before.** DEF-029's off-zone control reads
+  as "nothing happened" — which is exactly what a broken harness reads as. Only the accepted drop
+  running first made the zero mean anything.
+- 🔴 **Rule out your instrument before reporting a defect.** `Is Dragging Over` stuck true after
+  `dragCancel` looked like a real bug; a genuine drag-out released it correctly. The honest verdict
+  is **unmeasured**, not clean and not broken.
+- 🔴 **Validate an extractor against an answer you already know.** The `inputCss` port extractor
+  silently dropped the first key of every object literal. It was caught only because `opacity` and
+  the `textOverflow`/`wordBreak` pair were known by hand to exist and came back missing.
+- 🔴 **Two sibling nodes can carry opposite rules** — Checkbox and Radio Button declare the same
+  ports the same way and only one got the fix. Read the writer, not the sibling.
+- ⚠️ **`cd` persists between Bash calls.** A relative `git status <pathspec>` from the wrong
+  directory reports **nothing changed**, which reads exactly like a sibling having swept your work.
 - 🔴 **`git add` untracked files individually, then `git commit <pathspecs>`.** Never stage tracked
   files — a sibling's commit sweeps them.
