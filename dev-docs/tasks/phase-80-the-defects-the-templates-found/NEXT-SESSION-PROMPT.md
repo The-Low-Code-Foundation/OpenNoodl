@@ -1,117 +1,138 @@
 # Phase 80 — next session
 
-## State: **35 rows. 33 ✅ · DEF-007 🟡 partial · 1 open (DEF-033, a peer's).**
+## The board, re-derived from TASKS.md this session
 
-s33 closed **DEF-035** — the row the last handoff put first. Commit `e5b68d30`.
-
-🔴 **Read [TASKS.md](TASKS.md)'s table before you read this paragraph.** Eleventh time.
+**36 rows. 33 ✅ · DEF-007 🟡 partial · 2 open — DEF-033 (P18's) and DEF-036 (new, s34's).**
 
 ```
 grep -aE '^\| DEF-0[0-9]{2} \|' TASKS.md | grep -av '✅'
 ```
 
+s34 closed **DEF-035** by driving its owed AC5, and the drive produced a new row. Commit
+`7ec2a6cd`. **No source changed this session — no gate was re-run and none is claimed.**
+
 ---
 
 ## 🧭 THE ONE THING TO PUT IN FRONT OF RICHARD
 
-**Clicking the editor window while your backend was asleep deleted your record ports —
-to disk — and the next build shipped without those wires.**
+**A decision, not a fix: should a wire be allowed to declare a column on the *accounts*
+table, the way it already can on an app table?**
 
-`dbCollections` is project **metadata**, so it is saved to `project.json`, and it is the
-only home of a built-in backend's schema. `recordFieldPorts` mints one `prop-<column>`
-port per column of it. `SchemaHandler._store()` wrote `dbCollections = undefined` on
-**every** outcome that was not a successful read: a stopped backend, one mid-restart, one
-that had not registered yet, a window focused three seconds before the backend finished
-starting.
+P77's SBR-008 built `recordWiredFieldPorts` on the principle *"the wire is the
+declaration"* — with no schema to read, a Record node still offers a `prop-<field>` port
+for any field one of its own wires names, typed `'*'`. Its docblock states the price
+openly: **a mistyped `prop-titel` now writes a `titel` column instead of warning.**
 
-- 🔴 **What that costs.** A wire into a port that no longer exists is
-  `con-no-target-port` at **`level: 'error'`** — and DEF-034 established that an error is
-  exactly what still deletes a wire from an export. Measured across the 118-project
-  corpus: **3,783 schema-derived wires in 28 projects.** `emdashdev` alone holds 1,837;
-  `Resourceful` 358; `LearnBook` 174.
-- ✅ **Fixed and specced.** `schemaCachePolicy.ts` splits the fetch into three outcomes —
-  `schema`, `not-applicable`, `unavailable` — and only the first two write. A backend we
-  could not reach leaves the cache exactly as it was. `backend:statusChanged` is now a
-  trigger (it existed since WFA-005; nothing was listening), and the handler fetches on
-  construction, so the cache fills when the backend starts rather than when the window is
-  clicked.
-- ⚠️ **AC5 is owed: nobody has driven it.** Two exports of one real project, one with the
-  backend stopped and one running, diffed. `LearnBook` or `Resourceful` is the fixture.
-  Drive a **copy** — opening a project dirties every component.
+That was accepted for app tables. **DEF-036 asks for the same net on `_User`**, and a
+stray column on the accounts table is not obviously the same kind of accident. The
+alternative — leave it, and accept that a sign-up form silently stops writing its custom
+fields whenever the schema is cold — is what ships today.
+
+🔴 **This is not hypothetical.** 271 wires across 21 of the 118 corpus projects sit on
+the unprotected side.
 
 ---
 
-## The lesson s33 paid for: the PREFIX is not the POPULATION
+## What s34 did: the drive, and what the drive found out about its own row
 
-🔴 The first count said **9,051 `prop-*` wires across 56 projects**. That metric measured
-a *naming convention*. `Model2`, `NewModel` and `SetModelProperties` also spell their
-ports `prop-<name>`, but those come from a **`properties` string list saved in the node's
-own parameters** (`modelnode2.ts:505`) — no backend schema is involved and they are
-immune. Only the six types that go through `resolveSchemaPortContext` can exhibit this.
-The honest number is **3,783 across 28**; the prefix overstated it **2.4×**.
+### 1. AC5 is met — two exports, one project, no edit, different builds
 
-✅ **Ask what your metric would count if the defect were absent.** A `prop-` prefix would
-count exactly the same either way.
+A **copy** of `LearnBook` opened in a real `dev:debug` Electron editor, exported through
+the product's own path (`exportToJSON` → `exportComponent` → the health filter). The
+control arm is the pre-fix build, rebuilt from `e5b68d30^` and reloaded.
 
-This is the twin of s32's lesson, from the other side: s32 found a row that named an
-*example* and missed half its population; s33 found a metric that named a *superset* and
-would have inflated one. **Both are the same question — derive the population from the
-predicate, then check the predicate is the defect's and not a spelling's.**
+| | fixed (HEAD) | pre-fix |
+| --- | --- | --- |
+| export before the trigger | 2,587 conns · 176 schema wires | 2,587 · 176 |
+| `_fetch` calls the trigger drove | **2** | **1** |
+| what was written | **nothing** | `dbCollections=undefined`, `systemCollections=undefined`, `dbVersionMajor=undefined` |
+| export after | 2,587 · **176** | 2,573 · **162** |
+| `project.json` on disk | md5 unchanged | **the `dbCollections` key is gone from the file** |
 
-### The contract that was written and never honoured
+**14 wires lost, 0 gained, diffed by name.** Full readings and controls: DEF-035 §6.
 
-`fetchBuiltInSchema`'s own docblock already said the caller *"distinguishes 'there is
-nothing to cache' from 'the cache is empty', because the second wipes the ports of a
-project whose backend is merely asleep."* It returned `undefined` for both. Worse:
-**two other modules had each documented the wipe and worked around it downstream**
-(`projectCollections.ts`, `backendSummary.ts`, AAQ-011 F8's "unknown, not absent"
-branch) rather than fixing it. The port generator had no such workaround.
+### 2. 🔴 The lesson: THE POPULATION A PORT *COMES FROM* IS NOT THE POPULATION THAT *DIES*
 
-🔴 **A docblock describing a contract is not the contract.** When a comment says "the
-caller distinguishes X from Y", go and read whether the caller *can*.
+DEF-035's own §2.2 said **3,783 wires in 28 projects**. The drive lost **14 of 176** on a
+fixture that section ranked fifth. Both numbers were right about different things.
 
-### The instrument, if you need it again
+3,783 counts every wire on a `prop-*` port the **schema generates**. But
+`recordWiredFieldPorts` re-mints those ports from the node's own wires when the schema is
+gone — and **the Record family calls it while the User family does not**. So:
 
-esbuild-bundle `record-ports.ts` **from `src`** into CJS and `require` it from plain
-Node — it is import-free at runtime. Fixture in the backend's own `{name, columns}`
-shape, **not** the normalised one, because that is what `SchemaHandler` caches. Corpus:
-`~/vscode_projects/Noodl projects` (78 legacy `project.json`) and `NodeGX test projects`
-(40 v2 dirs, `components/**/{nodes,connections}.json`).
+| | wires | projects |
+| --- | ---: | ---: |
+| schema-generated (what §2.2 counted) | 3,783 | 28 |
+| Record — protected by SBR-008's net | 3,579 | — |
+| **User — actually vanishes** | **271** | **21** |
 
-✅ **The control pair**: `dbCollections: [Puppy]` ⇒ `prop-name/age/bio`;
-`dbCollections: undefined` ⇒ nothing. Run it *before* believing any count.
+✅ **The corroboration is the part to copy.** The re-derived predicate predicts **14** for
+`LearnBook`; the real editor lost **14**, every one `net.noodl.user.*`. Two instruments
+from opposite directions on one number.
+
+🔴 This is the **third** consecutive session to find a row whose population was named by a
+*derivation rule* rather than by the *failure*. s32: a row named an example and missed
+half its population. s33: a metric named a superset (`prop-*`, 2.4× over). s34: a
+population named where the ports **come from**, when the question was where they **are not
+replaced**. The question that catches all three is the same one: **ask what your metric
+would count if the defect were absent.**
+
+### 3. What the drive did NOT show — read before quoting it
+
+- ⚠️ **No arm had a running built-in backend.** No corpus project binds one; they all
+  point at remote Parse servers. The arm driven is the one the defect lives in — a
+  backend the editor *cannot reach*. The warm/cold pair was made by the trigger, which is
+  the variable D13 named.
+- ⚠️ **The fix does not heal an already-wiped project.** The pre-fix fixture is still
+  missing `dbCollections` on disk and the fixed build correctly leaves it alone.
+- ⚠️ **"The Record wires survive" is not "nothing is lost"** — `recordWiredFieldPorts`
+  types its ports `'*'`, so the narrowed column type and the Class dropdown are gone while
+  the cache is cold.
 
 ---
 
 ## The work, in the order it should be done
 
-### 1. This phase now owns nothing cheap and open — so DRIVE what is built
+### 1. DEF-036 — needs Richard's ruling first (see above), then it is small
 
-🔴 **Five rows are built and undriven, and that is now the phase's largest debt.**
-Ordered by what a drive would actually settle:
+Two code paths, and **fixing one leaves the other**:
+`userPropertyPorts` (`user-ports.ts:242`, serving `User` + `SetUserProperties`) and
+`SignUp`'s own inline loop in a **different package** keyed on a **different metadata
+key** (`noodl-viewer-react/…/signup.ts:215`, `systemCollections`). AC3 is the one to write
+the spec around: a wire naming `prop-password` must not resurrect that port.
 
-- **DEF-035 AC5** (new) — two exports of one project, backend stopped vs running.
+### 2. Five rows are built and undriven — that is still the phase's largest debt
+
+DEF-035 is now off this list. What remains, by what a drive would settle:
+
+- **DEF-028** — its own AC5. ⚠️ **s34 narrowed it but did not close it.** The drive spied
+  `flushEvaluateHealth` firing **211 times, once per component**, in one real export of a
+  2,228-node project — so the unconditional flush is affordable at scale. It is *not* the
+  two-takes-differ measurement DEF-028 asks for.
 - **DEF-034 AC5** — `LearnBook › Pretty button`, the gate driven by a wire.
-- **DEF-028** — two exports of one real project in a real editor, diffed. ⚠️ **DEF-035
-  narrows but does not close this**: DEF-028 is about a *settled verdict* differing
-  between two takes; DEF-035 was about the *port set* being a function of focus. One
-  drive can now measure both.
 - **DEF-029** — 🔴 a drive serves a **built bundle**; rebuild `noodl-viewer-react` first
   (~40s). ⚠️ The ports fold into **`Advanced CSS`**.
 - **DEF-031**, **DEF-005's `Roles` output**, **DEF-009's default**, **DEF-025's editor
   half** — all undriven.
 
-### 2. DEF-033 — do NOT take it without checking P18
+✅ **The drive harness is written and works.** `evalfile.js` + the `p0`–`p9` probes are in
+this session's scratchpad; the reusable parts are the launcher-card stamp
+(`window.__def035Label` → `[data-def035]` → a real `cdp click`), the webpack-require seam,
+and — the one that matters — `p7-which-build.js`, which reads
+`SchemaHandler.prototype._fetch.toString()` in the running renderer so an arm cannot
+silently run on the wrong bundle.
 
-`Substring`'s panel says `End = 0`, the node behaves as `End = -1`. **Registered by
-P18** at `6f91ae2a`, and its own text says the fix is **a decision, not a one-liner**.
-🔴 A peer may be doing your exact task — check `phase-18-code-export-v2/` files and
-mtimes before starting.
+### 3. DEF-033 — do NOT take it without checking P18
 
-### 3. The unowned rows
+`Substring`'s panel says `End = 0`, the node behaves as `End = -1`. **Registered by P18**
+at `6f91ae2a`; its own text says the fix is a **decision**. 🔴 Check
+`phase-18-code-export-v2/` files and mtimes first — a peer may be doing your exact task.
 
-[UNOWNED-ROWS-TO-MEASURE.md](UNOWNED-ROWS-TO-MEASURE.md) — six. §1 disproved; §6
-measured. **Measure one fully before starting the next.** `DEF-036`+ are free.
+### 4. The unowned rows
+
+[UNOWNED-ROWS-TO-MEASURE.md](UNOWNED-ROWS-TO-MEASURE.md) — six. §1 disproved; §6 measured.
+**Measure one fully before starting the next.** ⚠️ **`DEF-036` is taken; the next free id
+is `DEF-037`.**
 
 ---
 
@@ -119,72 +140,50 @@ measured. **Measure one fully before starting the next.** `DEF-036`+ are free.
 
 - ⚠️ **AC2 and AC4 are open.** AC2 (a curated template installed **through the picker**
   opens on its home) cannot be driven until a template is published. AC4 is §6's table,
-  which exists — someone should decide whether that discharges it or whether it owes a
-  real document.
+  which exists — someone should decide whether that discharges it.
 - 🔴 **The pin is on the site-builder generator ONLY.** `tpl001Template.ts` is the other
-  generator and is **unmeasured**. It writes a **v2 directory**, so its graph needs
+  generator and is **unmeasured**; it writes a **v2 directory**, so its graph needs
   assembling into the legacy shape first. **Measure whether TPL-001 disagrees at all
   before porting anything.**
-- 🔴 **§3.3's replacement is still undecided** — where a *missing* home is caught: refuse
-  at publish, or resolve-and-warn at install as `noodl-preview` already does. **6 of 97**
-  projects carry no home. 🧭 A decision, not a fix to be guessed at.
+- 🔴 **§3.3's replacement is still undecided** — refuse a missing home at publish, or
+  resolve-and-warn at install as `noodl-preview` already does. **6 of 97** projects carry
+  no home. 🧭 A decision, not a fix to be guessed at.
 
 ## Owed elsewhere
 
 - 🔴 **DEF-005 AC5 — TPL-001's member list**, a roster page on `List Users In Role`.
-- 🔴 **P77 D33 — the six `/Pages/ThemeEditor` rows** DEF-007 §3.2 armed. Still the
-  cheapest it has ever been to settle.
+- 🔴 **P77 D33 — the six `/Pages/ThemeEditor` rows** DEF-007 §3.2 armed. A peer reported
+  s31 set `true` on all six, so the editor now runs them where it used to silence them;
+  a `[runtime/cyclic-loop]` on the theme editor is **D33 surfacing, not a regression**.
 
 ---
 
-## The gate baselines, measured this session
+## Gates
 
-🔴 **`test:ci` floor is 4** — all four AIX-006, **BY NAME**. **2916** tests, unchanged:
-this session's 13 specs are jest (`tests-unit/`), not electron.
-
-| run | seed | specs | failures | |
-| --- | --- | --- | --- | --- |
-| `test:ci` | 82057 | **2916** | **4** | the floor |
-
-- `tests-unit/def-035`: **13/13**.
-- **mutant** (`unavailable` restored to wiping): **7 failed, 6 passed** — exactly the
-  wipe specs; the `schema` and `not-applicable` specs stay green. ✅ A partition, not one
-  broad assertion.
-- `test:main`: **6491 passed, 5 failed** — 🔴 **all 5 pre-existing.** Reproduced at HEAD
-  with this session's three source files reverted: `sb-007/site-template`,
-  `sb-018/the-list-refreshes-when-a-row-changes`, `aib-007/backendRequirement`. ⚠️ **They
-  are somebody's open work — do not read them as this phase's floor and do not "fix"
-  them without finding the owner.**
-- `typecheck:editor` clean, exit 0. `lint:ci` exit 0 (874 vs 3916 baseline).
-- **Not re-run**: `noodl-mcp`, `noodl-viewer-react`, `catalog:check`, `test:packages`.
-
----
+🔴 **None were run, and none is claimed.** This session changed **no source** — the only
+edit to `packages/` was a temporary revert of `schemahandler.ts` to take the control arm,
+restored before commit (`git status` clean for it). The floors carried forward from s33,
+unverified at this HEAD: `test:ci` **4** (all AIX-006, by name), 2916 specs;
+`test:main` **5 pre-existing failures** (`sb-007`, `sb-018`, `aib-007`) that are
+**somebody's open work — do not read them as this phase's floor and do not "fix" them**.
 
 ## Traps carried
 
-- 🔴 **The PREFIX is not the POPULATION.** `prop-*` counted 9,051; the defect's predicate
-  counted 3,783. Ask what your metric would count if the defect were absent.
-- 🔴 **A docblock describing a contract is not the contract.** Two modules documented this
-  wipe and worked around it; nobody checked whether the caller could do what its comment
-  claimed.
-- 🔴 **A failing `cd` breaks the `&&` chain and the command grades the WRONG TREE.** A
-  mutant "passed" this session because `cd packages/noodl-editor` ran from inside
-  `packages/noodl-editor`; later a handoff `cat >` silently never ran for the same
-  reason, and the `wc -l` after it reported the OLD file. ✅ **Use absolute paths**, and
-  verify the artefact on disk (`grep -c MUTANT`, `head -3`) before believing a result.
-- 🔴 **`npx prettier --write` reformats code you did not touch.** It pulled an unrelated
-  `.map()` into the diff. ✅ Check `git diff --stat` before and after, and revert what is
-  not yours.
-- 🔴 **Get a real baseline before blaming your change.** Three suites failed; reverting
-  the three source files and re-running reproduced all five failures at HEAD. ✅ Snapshot
-  with `cp`, restore with `git show HEAD:<path> > <path>`, never `git stash`.
-- 🔴 **A backgrounded command's exit code lies.** ✅ Read `tests/test-results.json`
-  (delete first, require a **fresh mtime**) and the log tail. `totalCount` is also the
-  proof your spec ran.
-- ⚠️ **This electron runner has no `toHaveLength`** — but **jest `tests-unit/` does**.
-- 🔴 **A spec absent from `tests/nodegraph/index.ts` never runs** (electron suite only;
-  jest discovers by `testMatch`).
-- 🔴 **`grep -a` always** — ugrep's `-I` skips source files as binary, silently.
-- 🔴 **Assert `count(anchor) == 1`** before every python heredoc replace.
-- 🔴 **`git add` untracked files individually, then `git commit <pathspecs>`.** Never
-  stage tracked files — a sibling's commit sweeps them.
+- 🔴 **The population a port COMES FROM is not the population that DIES.** Three sessions
+  running. Ask what your metric would count if the defect were absent.
+- 🔴 **An absence needs a known-firing signal beside it.** Arm A's headline was *nothing
+  was written*. Without the `_fetch` counter, "the fix declined to write" and "the trigger
+  never fired" are the same reading with opposite meanings.
+- 🔴 **Measure which build is under the drive, in the renderer.** `_fetch.toString()`.
+  A watcher that had not finished would have let the control arm run on the fixed bundle
+  and report *no defect* — the shape that closes a row wrongly.
+- 🔴 **An editor rebuild here is ~5 minutes, not seconds**, and a `cdp reload` issued
+  during one hangs on `wait until bundle finished` and reads as a dead renderer. Wait for
+  `"reactMounted": true`, and 🔴 **do not grep for `mounted` — it matches `reactMounted:
+  false`.** Grep the literal `"reactMounted": true`.
+- 🔴 **`wc -c` output carries leading whitespace**, which broke a `tail -c +$N` wait loop
+  into a spin. Wrap it or use `$(...)` arithmetic.
+- ⚠️ **A webpack chunk push needs a unique id** — reuse it and `req` comes back
+  `undefined`, which looks exactly like the seam being unavailable.
+- 🔴 **`git add` untracked files individually, then `git commit <pathspecs>`.** Never stage
+  tracked files — a sibling's commit sweeps them.
