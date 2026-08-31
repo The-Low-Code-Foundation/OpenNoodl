@@ -210,7 +210,13 @@
               "value": 100,
               "unit": "%"
             },
-            "flexDirection": "column"
+            "flexDirection": "column",
+            "justifyContent": "center",
+            "sizeMode": "explicit",
+            "height": {
+              "value": 100,
+              "unit": "%"
+            }
           },
           "parent": "cols",
           "children": [
@@ -233,7 +239,7 @@
               "unit": "px"
             },
             "borderRadius": "var(--radius-2xl)",
-            "src": "noodl_modules/starter-imagery/ground-ridge.svg",
+            "src": "noodl_modules/starter-imagery/tile-1.svg",
             "alt": "Describe the photo — it is read aloud, and it is what shows if the image fails"
           },
           "parent": "media"

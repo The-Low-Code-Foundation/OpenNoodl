@@ -1,0 +1,19 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "8e4b930f-bae2-5344-8a2b-1aa8be977e8d",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "b4_rows",
+      "fromProperty": "items",
+      "toId": "b4_quotes",
+      "toProperty": "items"
+    },
+    {
+      "fromId": "b6_nav",
+      "fromProperty": "items",
+      "toId": "b6_nav_repeater",
+      "toProperty": "items"
+    }
+  ]
+}

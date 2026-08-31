@@ -1,0 +1,223 @@
+{
+  "id": "ui-cta-band",
+  "title": "Closing CTA band: a designed ground, a badge, one measure centred inside it",
+  "description": "The band a landing page ends on, and the one section that is allowed to shout. Three things make it a section rather than a paragraph on a colour: a gradient ground (--gradient-brand) so it reads as a different surface from the bands above it; a pill badge above the headline, which is the smallest designed object a page can carry; and a measure that is CENTRED rather than left-anchored. That last one is a ruling, not a preference — on a wide window a headline with its own maxWidth inside a full-width band leaves all the empty space on one side, which reads as a mistake. Here the SHELL carries the measure (maxWidth 720) and the band centres it, so the white space is equal left and right at every width. Copy the ground onto any band you want to change the mood of; the layout does not change. Light text only: --primary-foreground throughout, and the secondary button borders on --border-glass rather than --border, which would vanish.",
+  "demonstrates": [
+    "Group",
+    "Text",
+    "net.noodl.visual.icon",
+    "net.noodl.controls.button"
+  ],
+  "components": [
+    {
+      "name": "/Components/CtaBand",
+      "nodes": [
+        {
+          "id": "band",
+          "type": "Group",
+          "label": "CTA band",
+          "parameters": {
+            "width": {
+              "value": 100,
+              "unit": "%"
+            },
+            "sizeMode": "contentHeight",
+            "flexDirection": "column",
+            "alignItems": "center",
+            "backgroundGradient": "var(--gradient-brand)",
+            "paddingTop": "var(--space-24)",
+            "paddingBottom": "var(--space-24)"
+          },
+          "children": [
+            "shell"
+          ]
+        },
+        {
+          "id": "shell",
+          "type": "Group",
+          "label": "Centred measure",
+          "parameters": {
+            "width": {
+              "value": 100,
+              "unit": "%"
+            },
+            "maxWidth": {
+              "value": 720,
+              "unit": "px"
+            },
+            "sizeMode": "contentHeight",
+            "flexDirection": "column",
+            "alignItems": "center",
+            "rowGap": "var(--space-5)",
+            "paddingLeft": "var(--space-6)",
+            "paddingRight": "var(--space-6)"
+          },
+          "parent": "band",
+          "children": [
+            "badge",
+            "headline",
+            "lead",
+            "actions"
+          ]
+        },
+        {
+          "id": "badge",
+          "type": "Group",
+          "label": "Pill badge",
+          "parameters": {
+            "sizeMode": "contentSize",
+            "flexDirection": "row",
+            "alignItems": "center",
+            "columnGap": "var(--space-2)",
+            "backgroundColor": "var(--surface-glass)",
+            "borderStyle": "solid",
+            "borderWidth": "var(--border-1)",
+            "borderColor": "var(--border-glass)",
+            "borderRadius": "var(--radius-full)",
+            "paddingLeft": "var(--space-4)",
+            "paddingRight": "var(--space-4)",
+            "paddingTop": "var(--space-2)",
+            "paddingBottom": "var(--space-2)"
+          },
+          "parent": "shell",
+          "children": [
+            "badge_icon",
+            "badge_text"
+          ]
+        },
+        {
+          "id": "badge_icon",
+          "type": "net.noodl.visual.icon",
+          "label": "Badge glyph",
+          "parameters": {
+            "iconIconSource": {
+              "class": "lucide",
+              "code": "icon-sparkles",
+              "codeAsClass": true
+            },
+            "iconSize": {
+              "value": 14,
+              "unit": "px"
+            },
+            "iconColor": "var(--primary-foreground)"
+          },
+          "parent": "badge"
+        },
+        {
+          "id": "badge_text",
+          "type": "Text",
+          "label": "Badge label",
+          "parameters": {
+            "text": "Now shipping v2",
+            "sizeMode": "contentSize",
+            "fontSize": "var(--text-xs)",
+            "fontWeight": "var(--font-semibold)",
+            "letterSpacing": "var(--tracking-widest)",
+            "textTransform": "uppercase",
+            "color": "var(--primary-foreground)"
+          },
+          "parent": "badge"
+        },
+        {
+          "id": "headline",
+          "type": "Text",
+          "label": "Closing headline",
+          "parameters": {
+            "text": "Start with the kiln already warm.",
+            "width": {
+              "value": 100,
+              "unit": "%"
+            },
+            "fontSize": "var(--display-sm)",
+            "fontWeight": "var(--font-bold)",
+            "lineHeight": "var(--leading-none)",
+            "letterSpacing": "var(--tracking-tighter)",
+            "textAlignX": "center",
+            "color": "var(--primary-foreground)"
+          },
+          "parent": "shell"
+        },
+        {
+          "id": "lead",
+          "type": "Text",
+          "label": "Closing lead",
+          "parameters": {
+            "text": "Everything on this page is a starter asset. Nothing was downloaded, nothing phones home, and the whole kit works with the network off.",
+            "width": {
+              "value": 100,
+              "unit": "%"
+            },
+            "fontSize": "var(--text-lg)",
+            "lineHeight": "var(--leading-relaxed)",
+            "textAlignX": "center",
+            "color": "var(--primary-foreground)"
+          },
+          "parent": "shell"
+        },
+        {
+          "id": "actions",
+          "type": "Group",
+          "label": "Action row",
+          "parameters": {
+            "sizeMode": "contentSize",
+            "flexDirection": "row",
+            "flexWrap": "wrap",
+            "justifyContent": "center",
+            "alignItems": "center",
+            "columnGap": "var(--space-3)",
+            "rowGap": "var(--space-3)",
+            "paddingTop": "var(--space-2)"
+          },
+          "parent": "shell",
+          "children": [
+            "cta",
+            "secondary"
+          ]
+        },
+        {
+          "id": "cta",
+          "type": "net.noodl.controls.button",
+          "label": "Primary action",
+          "parameters": {
+            "label": "Create a project",
+            "sizeMode": "contentSize",
+            "backgroundColor": "var(--primary-foreground)",
+            "color": "var(--primary)",
+            "borderRadius": "var(--radius-full)",
+            "borderStyle": "none",
+            "paddingLeft": "var(--space-6)",
+            "paddingRight": "var(--space-6)",
+            "paddingTop": "var(--space-3)",
+            "paddingBottom": "var(--space-3)",
+            "fontSize": "var(--text-sm)",
+            "fontWeight": "var(--font-semibold)"
+          },
+          "parent": "actions"
+        },
+        {
+          "id": "secondary",
+          "type": "net.noodl.controls.button",
+          "label": "Secondary action",
+          "parameters": {
+            "label": "Read the doctrine",
+            "sizeMode": "contentSize",
+            "backgroundColor": "transparent",
+            "color": "var(--primary-foreground)",
+            "borderRadius": "var(--radius-full)",
+            "borderStyle": "solid",
+            "borderWidth": "var(--border-1)",
+            "borderColor": "var(--border-glass)",
+            "paddingLeft": "var(--space-6)",
+            "paddingRight": "var(--space-6)",
+            "paddingTop": "var(--space-3)",
+            "paddingBottom": "var(--space-3)",
+            "fontSize": "var(--text-sm)",
+            "fontWeight": "var(--font-semibold)"
+          },
+          "parent": "actions"
+        }
+      ],
+      "connections": []
+    }
+  ]
+}

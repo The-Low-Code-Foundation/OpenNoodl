@@ -10,7 +10,7 @@ from the task files at session open; do not trust a handoff's copy of it.
 | VIB-001 | The Judge | 🟢 | — | **9 SHITTY / 0 PASSABLE / 0 WORTHY** — `VIB-001-BASELINE-VERDICTS.md`. All 5 ACs met; Richard ruled 2026-08-31 and the rubric was amended (README §2) |
 | VIB-002 | The Ceiling | 🟡 | VIB-001 | **PASSABLE — Richard ruled 2026-08-31** (`VIB-002-THE-CEILING.md` §9): *"very passable, nearly worthy, definitely night and day with the original"*. **The phase's first reading above SHITTY to survive his look.** Capability closed (V5 + V13), 5 ACs met; the WORTHY gap he did not dispute is icons→VIB-003, sections→VIB-004, measure→VIB-008 |
 | VIB-003 | The Pictures | 🟡 | VIB-001 | **PASSABLE — RICHARD RULED IT** 2026-08-31: *"nice, deffo passable and looking like a modern base template, good job"*. 🔴 **The first phase-81 page on which the imagery/iconography tell does NOT fire.** 5 ACs met; the WORTHY gap is content structure → VIB-004. Closed V7, V19, V20, V25; opened V21 (VIB-005), V22/V26/V28 (VIB-007), V27 (VIB-004), **V29 RULED** (VIB-004/008), V30 (VIB-011) |
-| VIB-004 | The Marketing Kit | ⬜ | VIB-001, VIB-002 | — |
+| VIB-004 | The Marketing Kit | 🟡 | VIB-001, VIB-002 | **PASSABLE 2026-08-31** (`VIB-004-THE-MARKETING-KIT.md` §3), provisional until Richard looks. Six grounds on one page, equal 374/374 measure at 1900. 🔴 **V6's premise was wrong**: five of the seven arrangements already shipped as recipes — what was missing was that none was a NAMED SET. Closed V12 (the rule cannot see a component instance; 3 spec rows + control); built V29 into `ctaBand`; V27 in three compositions. Opened **V31** (the 7 `--shadow-*` tokens are unreachable — no port takes a box-shadow string) and corrected **V22** to 14 examples. WORTHY gap = the pictures → **VIB-011** |
 | VIB-005 | The Ambush Defaults | ⬜ | VIB-001 | — |
 | VIB-006 | The Worked Page | ⬜ | VIB-002/003/004 | — |
 | VIB-007 | The Brief | ⬜ | VIB-001 | — |
@@ -46,12 +46,19 @@ tokens, so a *branded* picture would clash on the first preset change. The brand
 `templates/members-area/` has zero `Image`/`Icon` nodes, and putting pictures in it is VIB-008's
 redesign, not this task's. Five defects were found by looking; four were in the shipped corpus.
 
-### VIB-004 — The Marketing Kit (V6, V12)
-Compositions for hero, ctaBand, featureItem, statTile, testimonial, footer, badge/pill — sourced
-from designed recipes, not invented in the compositions file. Revisit `repeated-sibling-subtree`
-for *content-varied* siblings (V12): three different feature cards are not a repetition defect.
-**Close**: one page assembled purely from the new compositions judged ≥PASSABLE with the WORTHY
-gap named — this task builds vocabulary; VIB-006/008 prove WORTHY.
+### VIB-004 — The Marketing Kit (V6, V12) — 🟡 PASSABLE, 2026-08-31
+Delivered: seven compositions (`ctaBand`, `footerBand`, `statTile`, `testimonialCard`, `badge`,
+`featureItem`, `actionRow`), two new recipes (`ui-cta-band`, `ui-testimonial-row`), and a six-band
+landing page rendered at all four viewports in the door state.
+🔴 **The finding that shaped it: five of V6's seven arrangements already had a gated recipe.** The
+gap was never expressiveness — it was that `get_style_vocabulary` named none of them, so an agent
+had no evidence a stat tile was a thing this system has an opinion about. Fourth time in this phase
+that "can the kit do X" answered "yes, and nothing taught it".
+🔴 **V12's row was wrong**: the rule skips any subtree under three nodes, and a component instance is
+one node — so the factored form the warning *recommends* is invisible to it. Six specs existed and
+none covered that; three do now, one a control.
+⚠️ The WORTHY gap is one sentence: **every picture on the page is the same dark generated abstract**,
+which decorates without communicating. That is **VIB-011**, and this page is the argument for it.
 
 ### VIB-005 — The Ambush Defaults (V1, V2)
 The silent traps that produced the members-area screenshots: un-`sizeMode`d Group in a column

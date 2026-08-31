@@ -97,3 +97,56 @@ describe('repeatedSiblingSubtree', () => {
     expect(hits([...first, ...second])).toHaveLength(2);
   });
 });
+
+/**
+ * VIB-004 — register **V12**, measured instead of argued.
+ *
+ * The row read: *"`repeated-sibling-subtree` fires on structure alone at 3 — three DIFFERENT
+ * feature cards trip it; richness costs a component file."* Half of that is right and the half that
+ * decides the ruling is not, so the phase-81 marketing kit is built on the corrected reading.
+ *
+ * 🔴 **The rule cannot see a component instance at all.** An instance is ONE node with no children,
+ * so its structural signature has `size: 1`, which is below `MIN_SUBTREE_NODES` and skipped before
+ * any grouping happens. Three instances of `/Components/FeatureCard` are therefore invisible to it —
+ * and that matters because the rule's own message tells the author to *"make one component and
+ * instantiate it N times"*. A rule that then fired on the result would be teaching a fix it punishes,
+ * which is precisely the shape phase 81 was opened to find.
+ *
+ * So V12's true residue is narrower than the row: the warning fires on **hand-duplicated subtrees**,
+ * which is what it says it does, and the marketing kit's recipes all factor — `ui-icon-feature-strip`,
+ * `ui-stat-tile-row`, `ui-testimonial-row` and `ui-footer-columns` each ship an item component. A page
+ * assembled from the kit draws no warning at all.
+ *
+ * These two rows exist so that stays true. Without them nothing anywhere pins the behaviour the
+ * message promises, and the rule could regress into punishing the factored form with every spec green.
+ */
+describe('repeatedSiblingSubtree — the factored form is the fix, not a second defect (V12)', () => {
+  /** Three instances of one component under a row — what the warning asks the author to build. */
+  const rowOfInstances = (count: number, type = '/Components/FeatureCard'): NormNode[] => {
+    const ids = Array.from({ length: count }, (_, i) => `card${i}`);
+    return [
+      node('row', 'Group', ids),
+      ...ids.map((id, i) => ({
+        ...node(id, type, [], 'row'),
+        // Different content per placement — three DIFFERENT feature cards, which is the exact case
+        // the register row said would trip the rule.
+        parameters: { title: `Feature ${i}`, body: `Body ${i}` }
+      })) as NormNode[]
+    ];
+  };
+
+  it('stays silent on three instances of one component — the shape the message recommends', () => {
+    expect(hits(rowOfInstances(3))).toHaveLength(0);
+  });
+
+  it('stays silent however many placements there are', () => {
+    // Four stat tiles is `ui-stat-tile-row` exactly, and six is a footer link column.
+    expect(hits(rowOfInstances(4))).toHaveLength(0);
+    expect(hits(rowOfInstances(6))).toHaveLength(0);
+  });
+
+  it('⚠️ CONTROL — the same three cards written out by hand DO draw the warning', () => {
+    // Without this the two rows above would pass on a rule that had stopped working entirely.
+    expect(hits(rowOfRepeats(3))).toHaveLength(1);
+  });
+});

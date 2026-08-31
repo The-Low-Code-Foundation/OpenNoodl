@@ -1,0 +1,25 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "2be34465-a6da-534b-80cc-aa999ec2f55b",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "inputs",
+      "fromProperty": "icon",
+      "toId": "icon",
+      "toProperty": "iconIconSource"
+    },
+    {
+      "fromId": "inputs",
+      "fromProperty": "title",
+      "toId": "t",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "inputs",
+      "fromProperty": "body",
+      "toId": "b",
+      "toProperty": "text"
+    }
+  ]
+}

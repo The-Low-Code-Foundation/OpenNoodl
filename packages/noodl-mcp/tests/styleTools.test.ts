@@ -119,6 +119,32 @@ describe('AIX-006 style MCP tools', () => {
    *
    * New ceilings carry headroom for a project that actually has an icon set,
    * which the fixture here does not.
+   *
+   * ─────────────────────────────────────────────────────────────────────────
+   * **RAISED AGAIN 2026-08-31 (VIB-004), this time measured BEFORE the change
+   * and with the suite run — which is the whole of V24's lesson applied.**
+   *
+   * Baseline read on `main` immediately before the marketing kit landed: prompt
+   * **3,201** of 3,500, full **11,749** of 12,500. After VIB-004's seven
+   * compositions (`ctaBand`, `footerBand`, `statTile`, `testimonialCard`,
+   * `badge`, `featureItem`, `actionRow`): prompt **3,762**, full **13,323** —
+   * so the kit costs **+561** and **+1,574**, about 80 and 225 tokens each.
+   *
+   * ⚠️ **The cost is structural, not prose.** The `full` payload pretty-prints
+   * every parameter, and a dimension is a three-line `{value, unit}` object, so
+   * a composition's parameters outweigh its description several times over.
+   * Shortening the teaching to fit the budget would pay almost nothing and cost
+   * the thing the vocabulary exists to carry — phase 81's diagnosis is that a
+   * model copies the corpus and the instruction, and this block is both. If this
+   * ever has to come down, the lever is the SHAPE of the payload (eliding
+   * parameters at detail "prompt", say), not the sentences.
+   *
+   * 🔴 The trend is the part to watch: `full` has grown 26.8k chars → 11,749 →
+   * 13,323 tokens across three tasks in two weeks. The next task that adds to
+   * `DEFAULT_TOKENS` or `STYLE_COMPOSITIONS` should read this comment as "the
+   * per-call cost of the vocabulary is now the largest single MCP response in
+   * the server" and price its addition against that, rather than against the
+   * headroom the number below happens to leave.
    * ═════════════════════════════════════════════════════════════════════════
    */
   it('stays inside its wire budget, in the shape the model is billed for', async () => {
@@ -133,8 +159,8 @@ describe('AIX-006 style MCP tools', () => {
     const promptTokens = Math.round(wireChars(promptResult) / 4);
     const fullTokens = Math.round(wireChars(fullResult) / 4);
     expect({
-      prompt: promptTokens <= 3_500 ? 'within budget' : promptTokens,
-      full: fullTokens <= 12_500 ? 'within budget' : fullTokens
+      prompt: promptTokens <= 4_000 ? 'within budget' : promptTokens,
+      full: fullTokens <= 14_000 ? 'within budget' : fullTokens
     }).toEqual({ prompt: 'within budget', full: 'within budget' });
   });
 

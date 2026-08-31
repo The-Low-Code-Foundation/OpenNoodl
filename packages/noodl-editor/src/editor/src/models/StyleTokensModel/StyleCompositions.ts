@@ -295,6 +295,158 @@ export const STYLE_COMPOSITIONS: VocabComposition[] = [
     recipe: 'ui-empty-state'
   },
 
+  // ─── The marketing kit (VIB-004, register V6/V12/V27/V29) ─────────────────
+  //
+  // 🔴 **The recipes for most of these already shipped and none of them was a
+  // named set.** Measured at the door before writing anything: of the seven
+  // arrangements V6 asked for, five already had a gated recipe in
+  // `docs/node-catalog/examples/` — hero (`ui-split-hero`, `ui-gradient-hero`),
+  // featureItem (`ui-icon-feature-strip`), statTile (`ui-stat-tile-row`), footer
+  // (`ui-footer-columns`), and the grounds above. What was missing was never the
+  // ability to build a marketing section; it was that `get_style_vocabulary`
+  // named `card`, `shell` and `field` and stopped, so an agent reading the
+  // vocabulary had no evidence that a stat tile or a feature item was a thing
+  // this system has an opinion about. Two arrangements genuinely had no recipe
+  // and were written for this task: `ui-cta-band` and `ui-testimonial-row`.
+  //
+  // 🔴 **V29, ruled by Richard 2026-08-31, is built into `ctaBand` and it is the
+  // one rule here that is not a preference**: *"the wider you go … white space to
+  // the left and right **equally** … not just on one side, that's weird … the
+  // structural page divs have a max width and are centred."* So a measure belongs
+  // to the SHELL, which a band centres, and never to the text inside it. A
+  // headline carrying its own `maxWidth` inside a full-width band is left-anchored
+  // by construction: at 1900 the `ui-image-scrim-band` recipe measured 374px of
+  // space on the left and 766px on the right, and that asymmetry is a defect
+  // rather than negative space.
+  //
+  // ⚠️ **The `--shadow-*` tokens cannot be used by any of these.** `Group` exposes
+  // `boxShadowOffsetY`/`BlurRadius`/`Color` as separate ports and no port anywhere
+  // in the catalog takes a whole box-shadow string, so the seven shipped shadow
+  // tokens are unreachable through the sanctioned door — recorded as **V31**.
+  // `testimonialCard` therefore composes its shadow from parts and colours it with
+  // `var(--border)`, which is the only on-system way to get depth today.
+  {
+    id: 'ctaBand',
+    nodeType: 'Group',
+    group: 'spine',
+    description:
+      'The closing call-to-action band: a gradient ground so the page ends on a different surface, and a measure that is CENTRED rather than left-anchored. Put a shell with maxWidth 720 and alignItems center inside it, and set textAlignX center on the type — never a maxWidth on the headline, which strands the white space on one side. Light text only.',
+    parameters: {
+      width: GROUP,
+      sizeMode: 'contentHeight',
+      flexDirection: 'column',
+      alignItems: 'center',
+      backgroundGradient: 'var(--gradient-brand)',
+      paddingTop: 'var(--space-24)',
+      paddingBottom: 'var(--space-24)'
+    },
+    recipe: 'ui-cta-band'
+  },
+  {
+    id: 'footerBand',
+    nodeType: 'Group',
+    group: 'spine',
+    description:
+      'The band a page ends in: a muted ground with a hairline above it, and deliberately asymmetric padding — more air above the links than below the copyright line. A page whose last section is the same ground as its first has no ending.',
+    parameters: {
+      width: GROUP,
+      sizeMode: 'contentHeight',
+      flexDirection: 'column',
+      alignItems: 'center',
+      backgroundColor: 'var(--muted)',
+      borderTopStyle: 'solid',
+      borderTopWidth: 'var(--border-1)',
+      borderTopColor: 'var(--border)',
+      paddingTop: 'var(--space-16)',
+      paddingBottom: 'var(--space-10)'
+    },
+    recipe: 'ui-footer-columns'
+  },
+  {
+    id: 'statTile',
+    nodeType: 'Group',
+    group: 'surface',
+    description:
+      'A tile whose only large thing is the number. Pair with the type ramp: an uppercase --text-xs label in --muted-foreground, one --text-3xl value, a --text-sm delta. A tile whose label competes with its number reads as a form, not a dashboard.',
+    parameters: {
+      width: GROUP,
+      backgroundColor: 'var(--surface)',
+      borderRadius: 'var(--radius-xl)',
+      borderStyle: 'solid',
+      borderWidth: 'var(--border-1)',
+      borderColor: 'var(--border)',
+      clip: true,
+      flexDirection: 'column',
+      rowGap: 'var(--space-2)',
+      paddingTop: 'var(--space-5)',
+      paddingBottom: 'var(--space-5)',
+      paddingLeft: 'var(--space-5)',
+      paddingRight: 'var(--space-5)'
+    },
+    recipe: 'ui-stat-tile-row'
+  },
+  {
+    // 🔴 The shadow is what makes this a designed OBJECT rather than a paragraph
+    // with a border, and it is the tell Richard named on the VIB-003 page:
+    // *"nothing on the page is a designed object."* `card` above has a border and
+    // no depth; this is the same surface lifted off the band.
+    id: 'testimonialCard',
+    nodeType: 'Group',
+    group: 'surface',
+    description:
+      'A quote card that sits ABOVE its band rather than in it — the card surface plus a composed shadow, because no port takes a --shadow-* token. Hold the quote, then a ruled author row with a portrait, a name and a role.',
+    parameters: {
+      width: GROUP,
+      sizeMode: 'contentHeight',
+      flexDirection: 'column',
+      rowGap: 'var(--space-5)',
+      backgroundColor: 'var(--surface)',
+      borderRadius: 'var(--radius-xl)',
+      borderStyle: 'solid',
+      borderWidth: 'var(--border-1)',
+      borderColor: 'var(--border)',
+      boxShadowEnabled: true,
+      boxShadowOffsetY: { value: 1, unit: 'px' },
+      boxShadowBlurRadius: { value: 3, unit: 'px' },
+      boxShadowColor: 'var(--border)',
+      paddingTop: 'var(--space-6)',
+      paddingBottom: 'var(--space-6)',
+      paddingLeft: 'var(--space-6)',
+      paddingRight: 'var(--space-6)'
+    },
+    recipe: 'ui-testimonial-row'
+  },
+  {
+    // 🔴 Register **V27**, in one parameter set. Richard, on the VIB-003 page:
+    // *"still some spacing problems in the cards, for example between the circle
+    // and the start of the card text … spacing and padding seems to be a weak
+    // point with the MCP."* The sweep behind that sentence found **58** row and
+    // column Groups in the shipped corpus with two or more children and no gap of
+    // any kind. A row of an icon and some words is the shape it happens to most,
+    // so the gap is in the named set rather than left to be re-decided.
+    id: 'badge',
+    nodeType: 'Group',
+    group: 'surface',
+    description:
+      'A pill: the smallest designed object a page can carry, and the cheapest way to stop a hero reading as a bare heading. contentSize so it hugs its words, radius-full, and a columnGap so a glyph beside a label is not touching it. Over a gradient ground use it as written; on the page background swap the fill to var(--surface) and the border to var(--border).',
+    parameters: {
+      sizeMode: 'contentSize',
+      flexDirection: 'row',
+      alignItems: 'center',
+      columnGap: 'var(--space-2)',
+      backgroundColor: 'var(--surface-glass)',
+      borderStyle: 'solid',
+      borderWidth: 'var(--border-1)',
+      borderColor: 'var(--border-glass)',
+      borderRadius: 'var(--radius-full)',
+      paddingLeft: 'var(--space-4)',
+      paddingRight: 'var(--space-4)',
+      paddingTop: 'var(--space-2)',
+      paddingBottom: 'var(--space-2)'
+    },
+    recipe: 'ui-cta-band'
+  },
+
   // ─── Grounds (VIB-002, register V5/V13) ────────────────────────────────────
   //
   // 🔴 Why these are `spine` and not `surface`: they are what a BAND is made of.
@@ -520,6 +672,46 @@ export const STYLE_COMPOSITIONS: VocabComposition[] = [
   },
 
   // ─── Arrangement (doctrine §7 — Columns is the only thing that reflows) ────
+  {
+    // 🔴 The other half of **V27**. `featureItem` and `actionRow` are the two
+    // multi-child rows a marketing page is built out of, and both carry an
+    // explicit gap for the same reason: the corpus sweep found 58 row/column
+    // Groups with 2+ children and no gap, and a glyph touching its own label is
+    // what that looks like on screen. A gap is not a judgement call on a row of
+    // an icon and some words — it is the only correct value.
+    id: 'featureItem',
+    nodeType: 'Group',
+    group: 'arrangement',
+    description:
+      'One item of a feature or trust strip: a glyph, then a column of title and body, with the gap between them set rather than left at zero. alignItems flex-start keeps the glyph on the first line of the title instead of centring it against a two-line paragraph.',
+    parameters: {
+      width: GROUP,
+      flexDirection: 'row',
+      columnGap: 'var(--space-3)',
+      alignItems: 'flex-start'
+    },
+    recipe: 'ui-icon-feature-strip'
+  },
+  {
+    // ⚠️ `flexWrap` is what stops this being a 988px-viewport defect: two
+    // contentSize buttons in a row with no wrap push the second one off the
+    // measure at the editor preview's own default width.
+    id: 'actionRow',
+    nodeType: 'Group',
+    group: 'arrangement',
+    description:
+      'The button pair under a headline. contentSize so the row hugs the buttons, a columnGap so they are not touching, a rowGap and flexWrap so they stack instead of overflowing on a narrow viewport, and paddingTop for the air a primary action needs above it. Set justifyContent center inside a centred ctaBand; leave it out in a left-aligned hero.',
+    parameters: {
+      sizeMode: 'contentSize',
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      alignItems: 'center',
+      columnGap: 'var(--space-3)',
+      rowGap: 'var(--space-3)',
+      paddingTop: 'var(--space-2)'
+    },
+    recipe: 'ui-cta-band'
+  },
   {
     id: 'gridAutoFit',
     nodeType: 'net.noodl.visual.columns',

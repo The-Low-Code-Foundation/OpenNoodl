@@ -1,0 +1,1164 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "8e4b930f-bae2-5344-8a2b-1aa8be977e8d",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "page",
+      "type": "Page",
+      "label": "The marketing kit",
+      "parameters": {
+        "title": "The marketing kit",
+        "urlPath": ""
+      },
+      "children": [
+        "b1_band",
+        "b2_band",
+        "b3_band",
+        "b4_band",
+        "b5_band",
+        "b6_band"
+      ],
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "b1_band",
+      "type": "Group",
+      "label": "Hero band",
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "flexDirection": "column",
+        "alignItems": "center",
+        "paddingTop": "var(--space-20)",
+        "paddingBottom": "var(--space-20)"
+      },
+      "children": [
+        "b1_shell"
+      ],
+      "parent": "page",
+      "x": 60,
+      "y": 160
+    },
+    {
+      "id": "b1_shell",
+      "type": "Group",
+      "label": "Shell",
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "maxWidth": {
+          "value": 1200,
+          "unit": "px"
+        },
+        "flexDirection": "column",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)"
+      },
+      "parent": "b1_band",
+      "children": [
+        "b1_cols"
+      ],
+      "x": 120,
+      "y": 250
+    },
+    {
+      "id": "b1_cols",
+      "type": "net.noodl.visual.columns",
+      "label": "Shell (2-up, collapses)",
+      "parameters": {
+        "layoutString": "1 1",
+        "marginX": {
+          "value": 48,
+          "unit": "px"
+        },
+        "mediumBreakpoint": {
+          "value": 900,
+          "unit": "px"
+        },
+        "mediumLayout": "1",
+        "smallBreakpoint": {
+          "value": 640,
+          "unit": "px"
+        },
+        "smallLayout": "1"
+      },
+      "parent": "b1_shell",
+      "children": [
+        "b1_copy",
+        "b1_media"
+      ],
+      "x": 180,
+      "y": 340
+    },
+    {
+      "id": "b1_copy",
+      "type": "Group",
+      "label": "Copy column",
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "flexDirection": "column",
+        "rowGap": "var(--space-6)"
+      },
+      "parent": "b1_cols",
+      "children": [
+        "b1_eyebrow",
+        "b1_headline",
+        "b1_lead",
+        "b1_actions"
+      ],
+      "x": 60,
+      "y": 430
+    },
+    {
+      "id": "b1_eyebrow",
+      "type": "Text",
+      "label": "Eyebrow",
+      "parameters": {
+        "text": "The marketing kit",
+        "fontSize": "var(--text-xs)",
+        "fontWeight": "var(--font-semibold)",
+        "letterSpacing": "var(--tracking-widest)",
+        "textTransform": "uppercase",
+        "color": "var(--primary)"
+      },
+      "parent": "b1_copy",
+      "x": 120,
+      "y": 520
+    },
+    {
+      "id": "b1_headline",
+      "type": "Text",
+      "label": "Display headline",
+      "parameters": {
+        "text": "Sections that were already possible, finally named.",
+        "fontSize": "var(--display-lg)",
+        "fontWeight": "var(--font-bold)",
+        "lineHeight": "var(--leading-none)",
+        "letterSpacing": "var(--tracking-tighter)",
+        "color": "var(--foreground)"
+      },
+      "parent": "b1_copy",
+      "x": 180,
+      "y": 610
+    },
+    {
+      "id": "b1_lead",
+      "type": "Text",
+      "label": "Lead",
+      "parameters": {
+        "text": "Five of the seven arrangements this page is built from already shipped as recipes and none of them was a named parameter set. An agent reading the vocabulary saw a card, a shell and a field, and had no evidence a stat tile was a thing this system has an opinion about.",
+        "fontSize": "var(--text-lg)",
+        "lineHeight": "var(--leading-relaxed)",
+        "color": "var(--muted-foreground)",
+        "maxWidth": {
+          "value": 520,
+          "unit": "px"
+        }
+      },
+      "parent": "b1_copy",
+      "x": 60,
+      "y": 700
+    },
+    {
+      "id": "b1_actions",
+      "type": "Group",
+      "label": "Actions",
+      "parameters": {
+        "flexDirection": "row",
+        "columnGap": "var(--space-3)",
+        "sizeMode": "contentSize",
+        "paddingTop": "var(--space-2)"
+      },
+      "parent": "b1_copy",
+      "children": [
+        "b1_cta",
+        "b1_secondary"
+      ],
+      "x": 120,
+      "y": 790
+    },
+    {
+      "id": "b1_cta",
+      "type": "net.noodl.controls.button",
+      "label": "Primary CTA",
+      "parameters": {
+        "label": "Shop the collection",
+        "backgroundColor": "var(--primary)",
+        "color": "var(--primary-foreground)",
+        "borderRadius": "var(--radius-full)",
+        "borderStyle": "none",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "sizeMode": "contentSize"
+      },
+      "parent": "b1_actions",
+      "x": 180,
+      "y": 880
+    },
+    {
+      "id": "b1_secondary",
+      "type": "net.noodl.controls.button",
+      "label": "Secondary CTA",
+      "parameters": {
+        "label": "Our story",
+        "backgroundColor": "transparent",
+        "color": "var(--foreground)",
+        "borderRadius": "var(--radius-full)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-control)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "sizeMode": "contentSize"
+      },
+      "parent": "b1_actions",
+      "x": 60,
+      "y": 970
+    },
+    {
+      "id": "b1_media",
+      "type": "Group",
+      "label": "Media column",
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "flexDirection": "column",
+        "justifyContent": "center",
+        "sizeMode": "explicit",
+        "height": {
+          "value": 100,
+          "unit": "%"
+        }
+      },
+      "parent": "b1_cols",
+      "children": [
+        "b1_photo"
+      ],
+      "x": 120,
+      "y": 1060
+    },
+    {
+      "id": "b1_photo",
+      "type": "Image",
+      "label": "Hero photo",
+      "parameters": {
+        "sizeMode": "explicit",
+        "objectFit": "cover",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "height": {
+          "value": 560,
+          "unit": "px"
+        },
+        "borderRadius": "var(--radius-2xl)",
+        "src": "noodl_modules/starter-imagery/tile-1.svg",
+        "alt": "Describe the photo — it is read aloud, and it is what shows if the image fails"
+      },
+      "parent": "b1_media",
+      "x": 180,
+      "y": 1150
+    },
+    {
+      "id": "b2_band",
+      "type": "Group",
+      "label": "Strip band",
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "flexDirection": "column",
+        "alignItems": "center",
+        "backgroundColor": "var(--surface)",
+        "borderTopStyle": "solid",
+        "borderTopWidth": "var(--border-1)",
+        "borderTopColor": "var(--border)",
+        "borderBottomStyle": "solid",
+        "borderBottomWidth": "var(--border-1)",
+        "borderBottomColor": "var(--border)",
+        "paddingTop": "var(--space-8)",
+        "paddingBottom": "var(--space-8)"
+      },
+      "children": [
+        "b2_shell"
+      ],
+      "parent": "page",
+      "x": 60,
+      "y": 1240
+    },
+    {
+      "id": "b2_shell",
+      "type": "Group",
+      "label": "Shell",
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "maxWidth": {
+          "value": 1200,
+          "unit": "px"
+        },
+        "flexDirection": "column",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)"
+      },
+      "parent": "b2_band",
+      "children": [
+        "b2_cols"
+      ],
+      "x": 120,
+      "y": 1330
+    },
+    {
+      "id": "b2_cols",
+      "type": "net.noodl.visual.columns",
+      "label": "Three up, collapsing",
+      "parameters": {
+        "layoutString": "1 1 1",
+        "marginX": {
+          "value": 48,
+          "unit": "px"
+        },
+        "smallBreakpoint": {
+          "value": 700,
+          "unit": "px"
+        },
+        "smallLayout": "1"
+      },
+      "parent": "b2_shell",
+      "children": [
+        "b2_i1",
+        "b2_i2",
+        "b2_i3"
+      ],
+      "x": 180,
+      "y": 1420
+    },
+    {
+      "id": "b2_i1",
+      "type": "/Components/TrustItem",
+      "label": "Delivery",
+      "parameters": {
+        "title": "Free UK delivery",
+        "body": "On every order over £75, sent next working day.",
+        "icon": {
+          "class": "lucide",
+          "code": "icon-truck",
+          "codeAsClass": true
+        }
+      },
+      "parent": "b2_cols",
+      "x": 60,
+      "y": 1510
+    },
+    {
+      "id": "b2_i2",
+      "type": "/Components/TrustItem",
+      "label": "Small runs",
+      "parameters": {
+        "title": "Made in small runs",
+        "body": "Between 20 and 60 of a thing, then we move on.",
+        "icon": {
+          "class": "lucide",
+          "code": "icon-hammer",
+          "codeAsClass": true
+        }
+      },
+      "parent": "b2_cols",
+      "x": 120,
+      "y": 1600
+    },
+    {
+      "id": "b2_i3",
+      "type": "/Components/TrustItem",
+      "label": "Returns",
+      "parameters": {
+        "title": "30-day returns",
+        "body": "Use it, live with it. Send it back if it is not right.",
+        "icon": {
+          "class": "lucide",
+          "code": "icon-rotate-ccw",
+          "codeAsClass": true
+        }
+      },
+      "parent": "b2_cols",
+      "x": 180,
+      "y": 1690
+    },
+    {
+      "id": "b3_band",
+      "type": "Group",
+      "label": "Stats band",
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "alignItems": "center",
+        "backgroundColor": "var(--surface)",
+        "borderTopStyle": "solid",
+        "borderTopWidth": "var(--border-1)",
+        "borderTopColor": "var(--border)",
+        "borderBottomStyle": "solid",
+        "borderBottomWidth": "var(--border-1)",
+        "borderBottomColor": "var(--border)",
+        "paddingTop": "var(--space-20)",
+        "paddingBottom": "var(--space-20)"
+      },
+      "children": [
+        "b3_shell"
+      ],
+      "parent": "page",
+      "x": 60,
+      "y": 1780
+    },
+    {
+      "id": "b3_shell",
+      "type": "Group",
+      "label": "Shell",
+      "parent": "b3_band",
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "maxWidth": {
+          "value": 1200,
+          "unit": "px"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "rowGap": "var(--space-8)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)"
+      },
+      "children": [
+        "b3_head",
+        "b3_cols"
+      ],
+      "x": 120,
+      "y": 1870
+    },
+    {
+      "id": "b3_head",
+      "type": "Text",
+      "label": "Section heading",
+      "parent": "b3_shell",
+      "parameters": {
+        "text": "What the kit costs, measured.",
+        "fontSize": "var(--text-3xl)",
+        "fontWeight": "var(--font-semibold)",
+        "lineHeight": "var(--leading-tight)",
+        "letterSpacing": "var(--tracking-tight)",
+        "color": "var(--foreground)"
+      },
+      "x": 180,
+      "y": 1960
+    },
+    {
+      "id": "b3_cols",
+      "type": "net.noodl.visual.columns",
+      "label": "Four up, folding",
+      "parameters": {
+        "layoutString": "1 1 1 1",
+        "marginX": {
+          "value": 20,
+          "unit": "px"
+        },
+        "mediumBreakpoint": {
+          "value": 900,
+          "unit": "px"
+        },
+        "mediumLayout": "1 1",
+        "smallBreakpoint": {
+          "value": 560,
+          "unit": "px"
+        },
+        "smallLayout": "1"
+      },
+      "children": [
+        "b3_t1",
+        "b3_t2",
+        "b3_t3",
+        "b3_t4"
+      ],
+      "parent": "b3_shell",
+      "x": 60,
+      "y": 2050
+    },
+    {
+      "id": "b3_t1",
+      "type": "/Components/StatTile",
+      "label": "Revenue",
+      "parameters": {
+        "label": "Revenue, 30 days",
+        "value": "£548",
+        "delta": "+12% on last month"
+      },
+      "parent": "b3_cols",
+      "x": 120,
+      "y": 2140
+    },
+    {
+      "id": "b3_t2",
+      "type": "/Components/StatTile",
+      "label": "Orders",
+      "parameters": {
+        "label": "Orders",
+        "value": "6",
+        "delta": "2 awaiting packing"
+      },
+      "parent": "b3_cols",
+      "x": 180,
+      "y": 2230
+    },
+    {
+      "id": "b3_t3",
+      "type": "/Components/StatTile",
+      "label": "Live",
+      "parameters": {
+        "label": "Products live",
+        "value": "9",
+        "delta": "Across 3 categories"
+      },
+      "parent": "b3_cols",
+      "x": 60,
+      "y": 2320
+    },
+    {
+      "id": "b3_t4",
+      "type": "/Components/StatTile",
+      "label": "Low stock",
+      "parameters": {
+        "label": "Low stock",
+        "value": "2",
+        "delta": "Kettle, Ora vase"
+      },
+      "parent": "b3_cols",
+      "x": 120,
+      "y": 2410
+    },
+    {
+      "id": "b4_band",
+      "type": "Group",
+      "label": "Testimonial band",
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "alignItems": "center",
+        "backgroundGradient": "var(--gradient-surface)",
+        "borderTopStyle": "solid",
+        "borderTopWidth": "var(--border-1)",
+        "borderTopColor": "var(--border)",
+        "paddingTop": "var(--space-20)",
+        "paddingBottom": "var(--space-20)"
+      },
+      "children": [
+        "b4_shell"
+      ],
+      "parent": "page",
+      "x": 180,
+      "y": 2500
+    },
+    {
+      "id": "b4_shell",
+      "type": "Group",
+      "label": "Shell",
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "maxWidth": {
+          "value": 1200,
+          "unit": "px"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)"
+      },
+      "parent": "b4_band",
+      "children": [
+        "b4_head",
+        "b4_cols"
+      ],
+      "x": 60,
+      "y": 2590
+    },
+    {
+      "id": "b4_head",
+      "type": "Group",
+      "label": "Section head",
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "rowGap": "var(--space-3)",
+        "paddingBottom": "var(--space-10)"
+      },
+      "parent": "b4_shell",
+      "children": [
+        "b4_eyebrow",
+        "b4_heading"
+      ],
+      "x": 120,
+      "y": 2680
+    },
+    {
+      "id": "b4_eyebrow",
+      "type": "Text",
+      "label": "Eyebrow",
+      "parameters": {
+        "text": "What they said after a week",
+        "fontSize": "var(--text-xs)",
+        "fontWeight": "var(--font-semibold)",
+        "letterSpacing": "var(--tracking-widest)",
+        "textTransform": "uppercase",
+        "color": "var(--primary)"
+      },
+      "parent": "b4_head",
+      "x": 180,
+      "y": 2770
+    },
+    {
+      "id": "b4_heading",
+      "type": "Text",
+      "label": "Section heading",
+      "parameters": {
+        "text": "Nobody had to leave the editor.",
+        "fontSize": "var(--text-3xl)",
+        "fontWeight": "var(--font-semibold)",
+        "lineHeight": "var(--leading-tight)",
+        "letterSpacing": "var(--tracking-tight)",
+        "color": "var(--foreground)"
+      },
+      "parent": "b4_head",
+      "x": 60,
+      "y": 2860
+    },
+    {
+      "id": "b4_cols",
+      "type": "net.noodl.visual.columns",
+      "label": "Three up, folding to one",
+      "parameters": {
+        "layoutString": "1 1 1",
+        "marginX": {
+          "value": 24,
+          "unit": "px"
+        },
+        "marginY": {
+          "value": 24,
+          "unit": "px"
+        },
+        "mediumBreakpoint": {
+          "value": 900,
+          "unit": "px"
+        },
+        "mediumLayout": "1 1",
+        "smallBreakpoint": {
+          "value": 640,
+          "unit": "px"
+        },
+        "smallLayout": "1"
+      },
+      "parent": "b4_shell",
+      "children": [
+        "b4_quotes"
+      ],
+      "x": 120,
+      "y": 2950
+    },
+    {
+      "id": "b4_quotes",
+      "type": "For Each",
+      "label": "One card per quote",
+      "parameters": {
+        "template": "/Components/QuoteCard"
+      },
+      "parent": "b4_cols",
+      "x": 180,
+      "y": 3040
+    },
+    {
+      "id": "b4_rows",
+      "type": "Static Data",
+      "label": "The quotes",
+      "parameters": {
+        "type": "json",
+        "json": "[{\"id\":\"q1\",\"quote\":\"I stopped opening a browser to check what the page looked like. That is the whole review.\",\"name\":\"Priya Raman\",\"role\":\"Design lead, Kiln & Co.\",\"portrait\":\"noodl_modules/starter-imagery/portrait.svg\"},{\"id\":\"q2\",\"quote\":\"The first project already had a typeface, an icon set and six pictures in it. I built the page, not the scaffolding.\",\"name\":\"Tom Aldiss\",\"role\":\"Founder, two-person studio\",\"portrait\":\"noodl_modules/starter-imagery/portrait.svg\"},{\"id\":\"q3\",\"quote\":\"We ran the whole workshop on a train with no signal and nothing degraded.\",\"name\":\"Marguerite Osei\",\"role\":\"Training, NHS trust\",\"portrait\":\"noodl_modules/starter-imagery/portrait.svg\"}]"
+      },
+      "x": 60,
+      "y": 3130,
+      "parent": "page"
+    },
+    {
+      "id": "b5_band",
+      "type": "Group",
+      "label": "CTA band",
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "alignItems": "center",
+        "backgroundGradient": "var(--gradient-brand)",
+        "paddingTop": "var(--space-24)",
+        "paddingBottom": "var(--space-24)"
+      },
+      "children": [
+        "b5_shell"
+      ],
+      "parent": "page",
+      "x": 120,
+      "y": 3220
+    },
+    {
+      "id": "b5_shell",
+      "type": "Group",
+      "label": "Centred measure",
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "maxWidth": {
+          "value": 720,
+          "unit": "px"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "alignItems": "center",
+        "rowGap": "var(--space-5)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)"
+      },
+      "parent": "b5_band",
+      "children": [
+        "b5_badge",
+        "b5_headline",
+        "b5_lead",
+        "b5_actions"
+      ],
+      "x": 180,
+      "y": 3310
+    },
+    {
+      "id": "b5_badge",
+      "type": "Group",
+      "label": "Pill badge",
+      "parameters": {
+        "sizeMode": "contentSize",
+        "flexDirection": "row",
+        "alignItems": "center",
+        "columnGap": "var(--space-2)",
+        "backgroundColor": "var(--surface-glass)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-glass)",
+        "borderRadius": "var(--radius-full)",
+        "paddingLeft": "var(--space-4)",
+        "paddingRight": "var(--space-4)",
+        "paddingTop": "var(--space-2)",
+        "paddingBottom": "var(--space-2)"
+      },
+      "parent": "b5_shell",
+      "children": [
+        "b5_badge_icon",
+        "b5_badge_text"
+      ],
+      "x": 60,
+      "y": 3400
+    },
+    {
+      "id": "b5_badge_icon",
+      "type": "net.noodl.visual.icon",
+      "label": "Badge glyph",
+      "parameters": {
+        "iconIconSource": {
+          "class": "lucide",
+          "code": "icon-sparkles",
+          "codeAsClass": true
+        },
+        "iconSize": {
+          "value": 14,
+          "unit": "px"
+        },
+        "iconColor": "var(--primary-foreground)"
+      },
+      "parent": "b5_badge",
+      "x": 120,
+      "y": 3490
+    },
+    {
+      "id": "b5_badge_text",
+      "type": "Text",
+      "label": "Badge label",
+      "parameters": {
+        "text": "Now shipping v2",
+        "sizeMode": "contentSize",
+        "fontSize": "var(--text-xs)",
+        "fontWeight": "var(--font-semibold)",
+        "letterSpacing": "var(--tracking-widest)",
+        "textTransform": "uppercase",
+        "color": "var(--primary-foreground)"
+      },
+      "parent": "b5_badge",
+      "x": 180,
+      "y": 3580
+    },
+    {
+      "id": "b5_headline",
+      "type": "Text",
+      "label": "Closing headline",
+      "parameters": {
+        "text": "Start with the kiln already warm.",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "fontSize": "var(--display-sm)",
+        "fontWeight": "var(--font-bold)",
+        "lineHeight": "var(--leading-none)",
+        "letterSpacing": "var(--tracking-tighter)",
+        "textAlignX": "center",
+        "color": "var(--primary-foreground)"
+      },
+      "parent": "b5_shell",
+      "x": 60,
+      "y": 3670
+    },
+    {
+      "id": "b5_lead",
+      "type": "Text",
+      "label": "Closing lead",
+      "parameters": {
+        "text": "Everything on this page is a starter asset. Nothing was downloaded, nothing phones home, and the whole kit works with the network off.",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "fontSize": "var(--text-lg)",
+        "lineHeight": "var(--leading-relaxed)",
+        "textAlignX": "center",
+        "color": "var(--primary-foreground)"
+      },
+      "parent": "b5_shell",
+      "x": 120,
+      "y": 3760
+    },
+    {
+      "id": "b5_actions",
+      "type": "Group",
+      "label": "Action row",
+      "parameters": {
+        "sizeMode": "contentSize",
+        "flexDirection": "row",
+        "flexWrap": "wrap",
+        "justifyContent": "center",
+        "alignItems": "center",
+        "columnGap": "var(--space-3)",
+        "rowGap": "var(--space-3)",
+        "paddingTop": "var(--space-2)"
+      },
+      "parent": "b5_shell",
+      "children": [
+        "b5_cta",
+        "b5_secondary"
+      ],
+      "x": 180,
+      "y": 3850
+    },
+    {
+      "id": "b5_cta",
+      "type": "net.noodl.controls.button",
+      "label": "Primary action",
+      "parameters": {
+        "label": "Create a project",
+        "sizeMode": "contentSize",
+        "backgroundColor": "var(--primary-foreground)",
+        "color": "var(--primary)",
+        "borderRadius": "var(--radius-full)",
+        "borderStyle": "none",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)"
+      },
+      "parent": "b5_actions",
+      "x": 60,
+      "y": 3940
+    },
+    {
+      "id": "b5_secondary",
+      "type": "net.noodl.controls.button",
+      "label": "Secondary action",
+      "parameters": {
+        "label": "Read the doctrine",
+        "sizeMode": "contentSize",
+        "backgroundColor": "transparent",
+        "color": "var(--primary-foreground)",
+        "borderRadius": "var(--radius-full)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-glass)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)"
+      },
+      "parent": "b5_actions",
+      "x": 120,
+      "y": 4030
+    },
+    {
+      "id": "b6_band",
+      "type": "Group",
+      "label": "Footer band",
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "flexDirection": "column",
+        "alignItems": "center",
+        "backgroundColor": "var(--muted)",
+        "borderTopStyle": "solid",
+        "borderTopWidth": "var(--border-1)",
+        "borderTopColor": "var(--border)",
+        "paddingTop": "var(--space-16)",
+        "paddingBottom": "var(--space-10)"
+      },
+      "children": [
+        "b6_shell"
+      ],
+      "parent": "page",
+      "x": 180,
+      "y": 4120
+    },
+    {
+      "id": "b6_shell",
+      "type": "Group",
+      "label": "Shell",
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "maxWidth": {
+          "value": 1200,
+          "unit": "px"
+        },
+        "flexDirection": "column",
+        "rowGap": "var(--space-12)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)"
+      },
+      "parent": "b6_band",
+      "children": [
+        "b6_top",
+        "b6_legal"
+      ],
+      "x": 60,
+      "y": 4210
+    },
+    {
+      "id": "b6_top",
+      "type": "net.noodl.visual.columns",
+      "label": "Brand + nav, collapsing",
+      "parameters": {
+        "sizing": "layoutString",
+        "layoutString": "1.6 1 1 1",
+        "marginX": {
+          "value": 48,
+          "unit": "px"
+        },
+        "marginY": {
+          "value": 40,
+          "unit": "px"
+        },
+        "smallBreakpoint": {
+          "value": 760,
+          "unit": "px"
+        },
+        "smallLayout": "1"
+      },
+      "parent": "b6_shell",
+      "children": [
+        "b6_brand",
+        "b6_nav_repeater"
+      ],
+      "x": 120,
+      "y": 4300
+    },
+    {
+      "id": "b6_brand",
+      "type": "Group",
+      "label": "Brand",
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "flexDirection": "column",
+        "rowGap": "var(--space-3)"
+      },
+      "parent": "b6_top",
+      "children": [
+        "b6_wordmark",
+        "b6_blurb"
+      ],
+      "x": 180,
+      "y": 4390
+    },
+    {
+      "id": "b6_wordmark",
+      "type": "Text",
+      "label": "Wordmark",
+      "parameters": {
+        "text": "Kiln & Co.",
+        "fontSize": "var(--text-base)",
+        "fontWeight": "var(--font-bold)",
+        "letterSpacing": "var(--tracking-widest)",
+        "textTransform": "uppercase",
+        "color": "var(--foreground)"
+      },
+      "parent": "b6_brand",
+      "x": 60,
+      "y": 4480
+    },
+    {
+      "id": "b6_blurb",
+      "type": "Text",
+      "label": "Blurb",
+      "parameters": {
+        "text": "Small-batch ceramics, coffee and home goods. Made to be used, not admired.",
+        "fontSize": "var(--text-sm)",
+        "lineHeight": "var(--leading-normal)",
+        "color": "var(--muted-foreground)"
+      },
+      "parent": "b6_brand",
+      "x": 120,
+      "y": 4570
+    },
+    {
+      "id": "b6_nav_repeater",
+      "type": "For Each",
+      "label": "One column per nav section",
+      "parameters": {
+        "template": "/Components/FooterColumn"
+      },
+      "parent": "b6_top",
+      "x": 180,
+      "y": 4660
+    },
+    {
+      "id": "b6_nav",
+      "type": "Static Data",
+      "label": "Footer nav",
+      "x": 60,
+      "y": 4750,
+      "parameters": {
+        "type": "json",
+        "json": "[{\"id\":\"shop\",\"title\":\"Shop\",\"links\":[{\"id\":\"shop-ceramics\",\"label\":\"Ceramics\"},{\"id\":\"shop-coffee\",\"label\":\"Coffee\"},{\"id\":\"shop-table\",\"label\":\"Table\"},{\"id\":\"shop-gift\",\"label\":\"Gift cards\"}]},{\"id\":\"company\",\"title\":\"Company\",\"links\":[{\"id\":\"co-story\",\"label\":\"Our story\"},{\"id\":\"co-workshop\",\"label\":\"The workshop\"},{\"id\":\"co-stockists\",\"label\":\"Stockists\"},{\"id\":\"co-journal\",\"label\":\"Journal\"}]},{\"id\":\"help\",\"title\":\"Help\",\"links\":[{\"id\":\"help-delivery\",\"label\":\"Delivery\"},{\"id\":\"help-returns\",\"label\":\"Returns\"},{\"id\":\"help-care\",\"label\":\"Care guide\"},{\"id\":\"help-contact\",\"label\":\"Contact\"}]}]"
+      },
+      "parent": "page"
+    },
+    {
+      "id": "b6_legal",
+      "type": "Group",
+      "label": "Legal row",
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "flexDirection": "row",
+        "flexWrap": "wrap",
+        "justifyContent": "space-between",
+        "alignItems": "center",
+        "columnGap": "var(--space-6)",
+        "rowGap": "var(--space-2)",
+        "borderTopStyle": "solid",
+        "borderTopWidth": "var(--border-1)",
+        "borderTopColor": "var(--border)",
+        "paddingTop": "var(--space-6)"
+      },
+      "parent": "b6_shell",
+      "children": [
+        "b6_copyright",
+        "b6_policies"
+      ],
+      "x": 120,
+      "y": 4840
+    },
+    {
+      "id": "b6_copyright",
+      "type": "Text",
+      "label": "Copyright",
+      "parameters": {
+        "text": "© 2026 Kiln & Co. Built with NodeGX.",
+        "sizeMode": "contentSize",
+        "fontSize": "var(--text-xs)",
+        "color": "var(--muted-foreground)"
+      },
+      "parent": "b6_legal",
+      "x": 180,
+      "y": 4930
+    },
+    {
+      "id": "b6_policies",
+      "type": "Text",
+      "label": "Policies",
+      "parameters": {
+        "text": "Privacy · Terms",
+        "sizeMode": "contentSize",
+        "fontSize": "var(--text-xs)",
+        "color": "var(--muted-foreground)"
+      },
+      "parent": "b6_legal",
+      "x": 60,
+      "y": 5020
+    }
+  ],
+  "visualRoots": [
+    "page"
+  ]
+}

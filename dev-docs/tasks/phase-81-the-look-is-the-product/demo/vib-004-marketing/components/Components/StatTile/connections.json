@@ -1,0 +1,31 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "8419dd07-6998-54c6-8827-ce0313ea7aec",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "inputs",
+      "fromProperty": "label",
+      "toId": "l",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "inputs",
+      "fromProperty": "value",
+      "toId": "v",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "inputs",
+      "fromProperty": "delta",
+      "toId": "d",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "inputs",
+      "fromProperty": "delta",
+      "toId": "d",
+      "toProperty": "visible"
+    }
+  ]
+}

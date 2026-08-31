@@ -1,0 +1,100 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "8419dd07-6998-54c6-8827-ce0313ea7aec",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "tile",
+      "type": "Group",
+      "label": "Tile",
+      "parameters": {
+        "backgroundColor": "var(--surface)",
+        "borderRadius": "var(--radius-xl)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border)",
+        "clip": true,
+        "flexDirection": "column",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "rowGap": "var(--space-2)",
+        "paddingTop": "var(--space-5)",
+        "paddingBottom": "var(--space-5)",
+        "paddingLeft": "var(--space-5)",
+        "paddingRight": "var(--space-5)"
+      },
+      "children": [
+        "l",
+        "v",
+        "d"
+      ]
+    },
+    {
+      "id": "l",
+      "type": "Text",
+      "label": "Label",
+      "parameters": {
+        "text": "Label",
+        "fontSize": "var(--text-xs)",
+        "fontWeight": "var(--font-semibold)",
+        "letterSpacing": "var(--tracking-widest)",
+        "textTransform": "uppercase",
+        "color": "var(--muted-foreground)"
+      },
+      "parent": "tile"
+    },
+    {
+      "id": "v",
+      "type": "Text",
+      "label": "Value",
+      "parameters": {
+        "text": "0",
+        "fontSize": "var(--text-3xl)",
+        "fontWeight": "var(--font-semibold)",
+        "letterSpacing": "var(--tracking-tight)",
+        "color": "var(--foreground)"
+      },
+      "parent": "tile"
+    },
+    {
+      "id": "d",
+      "type": "Text",
+      "label": "Delta",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--muted-foreground)"
+      },
+      "parent": "tile"
+    },
+    {
+      "id": "inputs",
+      "type": "Component Inputs",
+      "label": "What varies per tile",
+      "x": 40,
+      "y": 40,
+      "ports": [
+        {
+          "name": "label",
+          "plug": "output",
+          "type": "*"
+        },
+        {
+          "name": "value",
+          "plug": "output",
+          "type": "*"
+        },
+        {
+          "name": "delta",
+          "plug": "output",
+          "type": "*"
+        }
+      ]
+    }
+  ],
+  "visualRoots": [
+    "tile"
+  ]
+}

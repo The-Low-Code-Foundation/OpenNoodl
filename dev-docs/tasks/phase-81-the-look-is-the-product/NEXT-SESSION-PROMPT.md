@@ -1,150 +1,145 @@
 # Phase 81 — next session
 
 **Read `README.md` §1–§4 first** — the ruling, the rubric, the protocol, the rules. Then
-`VIB-001-BASELINE-VERDICTS.md` §7 (Richard's calibration) and **`VIB-003-THE-PICTURES.md` §1(a)**,
-which corrects register V7 and shows how this session's own first measurement was wrong.
+`VIB-004-THE-MARKETING-KIT.md` §1 and §5, which are the two places this phase's register was
+found to be **materially wrong about its own premises** for the third and fourth time.
 Re-derive the board from `TASKS.md` + the task files; do not trust this file's copy of it.
 
-## Board, re-derived from the task files (2026-08-31, session 3)
+## Board, re-derived from the task files (2026-08-31, session 4)
 
 | id | status |
 |---|---|
-| VIB-001 The Judge | 🟢 **CLOSED**, all 5 ACs. Baseline 9 SHITTY / 0 / 0 after Richard's ruling |
+| VIB-001 The Judge | 🟢 **CLOSED**, all 5 ACs. Baseline 9 SHITTY / 0 / 0 |
 | VIB-002 The Ceiling | 🟡 **PASSABLE — RICHARD RULED IT**: *"very passable, nearly worthy, definitely night and day with the original"* |
-| VIB-003 The Pictures | 🟡 **PASSABLE — RICHARD RULED IT**: *"nice, deffo passable and looking like a modern base template, good job"*. The first phase-81 page on which the imagery/iconography tell does **not** fire |
-| VIB-011 The Stock Library | 🟡 **OPENED by his instruction.** Pipeline proven, source found, library unbuilt |
-| VIB-004/005/007 | ⬜ all three startable now, in parallel |
-| VIB-006 | ⬜ consumes 002/003/004 |
+| VIB-003 The Pictures | 🟡 **PASSABLE — RICHARD RULED IT**: *"nice, deffo passable and looking like a modern base template, good job"* |
+| VIB-004 The Marketing Kit | 🟡 **PASSABLE this session — NOT YET SEEN BY RICHARD.** 7 compositions, 2 new recipes, a six-band page shot at all four widths |
+| VIB-011 The Stock Library | 🟡 **Pipeline proven, library unbuilt.** 🔴 Now the named blocker on VIB-004's WORTHY |
+| VIB-005/007 | ⬜ startable now, in parallel |
+| VIB-006 | ⬜ consumes 002/003/004 — **the kit it was waiting for now exists** |
 | VIB-008/009 | ⬜ prove it on the shipped templates |
 | VIB-010 | ⬜ the exit exam |
 
-## ✅ All three sheet questions came back — read these before planning anything
+## 🔴 Two things to show Richard, in this order
 
-Sheet: https://claude.ai/code/artifact/bb77d21d-0770-484a-85da-ad5b1b30a273
+1. **The VIB-004 page.** `verdicts/vib-004/2026-08-31/marketing-door/marketing-desktop-full.png`
+   (and `marketing-wide-viewport.png`). This session judged it **PASSABLE**; his look supersedes.
+2. **The question that decides the next task.** VIB-004's own critique names one blocker and it is
+   the one he already asked for: *every picture on the page is the same dark generated abstract,
+   and three of them are the identical portrait.* The imagery tell does not fire — there IS
+   imagery — but nothing on the page communicates anything about the product. **That is VIB-011.**
+   If he agrees, VIB-011 is the next job and VIB-006 follows it.
 
-1. **PASSABLE confirmed** — *"nice, deffo passable and looking like a modern base template, good
-   job"*. The tier is not reopened; VIB-004 is the next job.
-2. 🔴 **THE MEASURE IS RULED (V29).** *"the wider you go… white space to the left and right
-   **equally**… not just on one side, that's weird… the structural page divs have a max width and
-   are centred."* **An empty half is a DEFECT, not defensible negative space.** V15 is answered.
-   ⚠️ The VIB-003 page already satisfies it (64/64 at 1280, 374/374 at 1900); **the VIB-002
-   image-scrim band does not** (374 left, **766** right at 1900). **VIB-004 builds sections that fill
-   or centre within the measure — never one-sided.**
-3. 🔴 **A BUNDLED STOCK LIBRARY IS WANTED (V30) → VIB-011 opened.** *"download some stock images and
-   keep them in the deployed editor… even for when the MCP is making custom apps for people it can
-   piocher in the image library."* This **supersedes** VIB-003's generated-abstract decision.
+## What this session settled
 
-## 🔴 And a fourth thing he named, which is VIB-004's first job (V27)
+- **Seven compositions**: `ctaBand`, `footerBand`, `statTile`, `testimonialCard`, `badge`,
+  `featureItem`, `actionRow` — every property lifted from a gated recipe, every one checked against
+  a real port.
+- **Two recipes**: `ui-cta-band`, `ui-testimonial-row`. The catalog is now **66 examples**.
+- **A six-band landing page**, `demo/build-vib004-marketing.js`, `DEMO_OVERRIDES` empty, plus
+  `packages/nodegx-backend/tests/vib004-marketing.look.ts` (4/4).
+- **`ui-split-hero` repaired twice** — see "the hero" below.
 
-> *"still some spacing problems in the cards… spacing and padding seems to be a weak point with the
-> MCP."*
+## 🔴 Where the handoff you were given was wrong, and where this one might be
 
-Swept over the 64 examples: **30 raw pixel numbers** where a token belongs, **20 asymmetric
-paddings** — **13 of them the identical `paddingLeft`+`paddingTop`-only signature**, padding on two
-sides and nothing on the other two — and **58 row/column Groups with 2+ children and no gap at all**.
+Three register rows have now been found to overstate or misstate their own finding. **Re-derive a
+row from its predicate before building on it.**
 
-✅ The 14 `LeftTop` nodes and the media card are fixed. 🔴 **The 58 no-gap containers are NOT** —
-deliberately, because many are logic examples where a gap is a judgement call and changing 58 nodes
-without looking at each render is the proxy this phase refuses. **That is VIB-004's, and it is the
-single highest-density source of "it looks unfinished" left in the corpus.**
+- **V6** said *"zero marketing compositions of 26."* True of the compositions file, and read as
+  "the kit cannot express a marketing page." **Five of the seven arrangements already shipped as
+  gated recipes.** The gap was that none of them was a NAMED SET.
+- **V12** said three *different* feature cards trip `repeated-sibling-subtree`. **The rule cannot
+  see a component instance at all** — one node, no children, `size: 1`, skipped below the 3-node
+  floor. The factored form the warning's own message recommends is invisible to it. Six specs
+  existed and none covered that case.
+- **V22** named `vis-columns-media-cards` and was read as the population. **It is 14 examples.**
+  ⚠️ And the correction is itself unfinished: whether a `For Each` feeds item properties into ports
+  that were never declared is a **runtime** question nobody has measured, and the answer decides
+  whether those 14 are broken or work by another route. **VIB-007's first job on V22, and it must
+  be a render, not a reading.**
 
-⚠️ `paddingLeft` accepts `var(--space-4)` (CSS pass-through) but a **units-typed** port like
-`Columns.marginX` needs `{value, unit}` and **silently drops a `var()` string** — and
-`catalog:examples` accepts the broken form. V28, VIB-007.
+## 🔴 The hero, and the reading that could not have found it
 
-**What VIB-003's verdict named as the whole remaining gap**, and it is one sentence: *nothing on the
-page is a designed object.* The card band is a two-column row inside a Group with 12px of padding —
-no surface, no border, no radius, no shadow — so it reads as a media **list**. `card` and `raised`
-exist in the vocabulary and the recipe uses neither. VIB-002 §1 also found `boxShadowEnabled`,
-`position: absolute`, `zIndex`, `opacity` and `mixBlendMode` **already ported and never taught**.
-So a large part of VIB-004 is again instruction, not engine — ask the door before assuming a wall.
+`ui-split-hero` pointed its media column at **`ground-ridge.svg`** — a *ground*, designed to be dark
+and empty so text stays readable on it, used as a *subject* picture in a 560px box. It rendered as a
+black rectangle at the top of the most-copied recipe in the corpus. Repointed at `tile-1.svg`.
 
-## What exists now that did not
+Then the right half was still dead below the image; fixed with `justifyContent: center` + explicit
+100% height on the media group.
 
-- **`noodl_modules/starter-imagery/`** — 6 generated SVGs (2 wide grounds, 3 tiles, 1 portrait),
-  ~6 KB total, in `STARTER_ASSETS`, so **every project has pictures, offline**. Regenerate with
-  `node scripts/library/make-starter-imagery.js`. Reference one as
-  `"noodl_modules/starter-imagery/tile-1.svg"`.
-- **`get_style_vocabulary` has an `icons` block** — installed sets, a **complete copyable
-  `iconIconSource` value** built by the picker's own `iconValueForGlyph`, and 36 glyph names with
-  the remainder counted (`iconSets.ts`, `GLYPH_SAMPLE`).
-- **`judge()` installs the starter assets and serves a COPY** — `run.starterAssets` is in every
-  manifest. Nothing a run does now lands in a checked-in directory.
-- **`starterAssetList.ts`** — the asset list, import-free, so anything outside Electron can read it.
-- **`vib003-pictures.look.ts`** + `demo/vib-003-pictures/` (built by `demo/build-vib003-pictures.js`
-  from the shipped recipes, **`DEMO_OVERRIDES` empty**).
+🔴 **`contentBottom` was 2840px before that fix and 2840px after it.** `textChars`, `unreachablePx`,
+`canScroll` and the content height were all identical across a change that visibly rebalances the
+top of the page — the band's height is set by the copy column either way. **Only the picture said
+so.** Third time this phase (V17; VIB-003's lost band; this).
 
-## 🔴 Richard's look landed mid-session — the gutter (V25), and what it taught
+## What is open, with owners
 
-> *"a habit so far with the MCP to create pages with no padding on the left and right side of
-> certain sections… the text is tight to the left and right of the window, not the whole thing but
-> just that one section weirdly."*
+- 🔴 **V31 (new)**: the seven `--shadow-*` tokens are **unreachable**. Every one is a complete CSS
+  `box-shadow` string; `Group` exposes only the six separate `boxShadow*` ports, and **no port in
+  any of the 176 catalog node types takes a whole box-shadow string**. Depth has to be composed from
+  parts and coloured with a non-shadow token. **V5's exact shape a third time.** Owner VIB-007.
+- ⚠️ **V32 (recorded)**: `catalog:examples` does **not** run `raw-color-literal`. A raw
+  `rgb(15 23 42 / 0.08)` written into a new recipe passed 66/66 strict; it was caught by reading the
+  gate's header, not by the gate. *"The gate is green"* and *"the corpus has no raw colours"* are
+  different claims. Cross-link V28 (the same sentence about spacing).
+- ⚠️ **V27's 58 no-gap containers are still not fixed**, deliberately — each needs a render.
+- ⚠️ **V29 is half closed.** The mechanism is named and built into `ctaBand` (**the defect is a
+  `maxWidth` on the TEXT**; a measure belongs to the shell, which a band centres). But
+  `ui-image-scrim-band` is **not** repaired — it is VIB-002's recipe and repairing it re-opens
+  VIB-002's verdict. That half is VIB-008's.
 
-`ui-split-hero`'s band skipped the `shell` composition, so its content sat at **x=0** while the
-three bands below it sat at 64. Fixed; every band now measures 64 at 1280 and 374 at 1900, verified
-by rendering (`vib003-gutters.look.ts`).
+## Gate readings taken this session (2026-08-31, on `e5b68d30` + this work)
 
-🔴 **The seam is CORPUS, not INSTRUCTION, and that is the transferable part.** The `shell`
-composition's own description already read *"content that touches the viewport edge is the loudest
-sign nobody designed the page"* — the rule existed, and the **hero recipe** contradicted it. **A
-model copies what the corpus DOES, not what the doctrine SAYS.** Before writing another doctrine
-paragraph in VIB-004 or VIB-007, check whether the corpus already disagrees with the one that is
-there — that is register V8's shape and it will keep firing.
+| gate | reading |
+|---|---|
+| `npm run catalog:examples` | **66/66 clean**, strict, warnings-as-errors |
+| `npx jest --config packages/noodl-mcp/jest.config.js` | **79 suites / 1043 tests pass**, 93s |
+| `styleVocabularyPorts.test.ts` | **13/13** |
+| `repeatedSiblingSubtree.test.ts` | **9/9** (6 + 3 new, one a control) |
+| `npm run typecheck:editor` | clean |
+| `vib004-marketing.look.ts` | **4/4**, four viewports, `starterAssets.failed: []` |
+| `npm run typecheck:backend-tests` | ⚠️ **see below — not a clean reading** |
 
-⚠️ **Nothing measures a rendered gutter** (V26, VIB-007). A static sweep cannot substitute: the
-first one written reported *no defect* on the exact band he pointed at, because the hero's lead
-paragraph carries `maxWidth: 520px` and satisfied a naive predicate.
+🔴 **`typecheck:backend-tests` did not complete, and the cause is contention, not this code.**
+First attempt died after ~10 min with a V8 fatal (a bare hex stack, **no `error TS` lines**); the
+second was still running at 15 min. Both overlapped P80 session 34's `npm run dev:debug` on this
+shared checkout — **three concurrent webpack processes, load average 19.35**. It is a CI gate
+(`.github/workflows/pr.yml:39`) and passes there, so the slowness is the machine, not the config.
 
-## 🔴 Traps this session paid for
+⚠️ **It still has to be re-run, because it is the ONLY gate that typechecks a `.look.ts` file** —
+the backend's ts-jest runs with `isolatedModules: true`, so **a green jest run does not typecheck
+it**. `tsconfig.tests.json` includes `tests/**/*.ts`, which covers look files.
+**First job for the next session, once the checkout is quiet**:
 
-- **My own first measurement of the corpus was wrong, and it pointed at a day of unnecessary work.**
-  The sweep filtered node parameters against a key list that did not contain `iconIconSource`, so
-  every icon read as unset. **Two of three already carried complete Lucide values.** `asked −
-  answered` is not `absent` — name the field you are looking for and check the filter contains it.
-- 🔴 **The instrument could not have shown the thing the task was about.** The Judge photographs a
-  template directory; a template directory is a real project minus what `installStarterAssets`
-  writes a second later. No photograph could ever have contained an icon, and every baseline PNG
-  was rendered without Inter. **Before opening a task, ask what the instrument is physically able
-  to see.**
-- 🔴 **`get_style_vocabulary`'s wire-budget gate was ALREADY RED on `main`** — 3,161/3,000 and
-  11,720/11,000 with this task's additions removed. VIB-002's ten tokens and three compositions grew
-  it legitimately; its gate table never ran the noodl-mcp suite. **A change to `DEFAULT_TOKENS` or
-  `STYLE_COMPOSITIONS` is a change to an MCP response billed every turn, in another package.**
-  ⚠️ **Any task touching tokens or compositions owes
-  `npx jest --config packages/noodl-mcp/jest.config.js`.** Filed as V24.
-- ⚠️ The **tool-surface budget is 8,280, not 8,200**, and headroom was ~26 tokens. A 228-character
-  addition to one tool description blew it. Measure before widening a description.
-- **A `Component Inputs` node with no `ports` passes `catalog:examples` 64/64 strict.** Every
-  instance parameter is discarded and the component renders its defaults. V22, open, VIB-007.
-- **An `Icon` with no `iconColor` is `#FFFFFF`** — invisible on any light page. V14's shape. V21,
-  open, VIB-005.
-- **A hard-coded `visualRoots` deleted a whole band** under a heading that still had its words:
-  `textChars` 606, `unreachablePx` 0, every look-file assertion green. Only the picture said so.
-- **An asset must be judged in the box it will be used in.** `ground-ridge.svg`'s light source was
-  at a corner, which `objectFit: cover` crops out of a 560px hero — it rendered as a black
-  rectangle. Same sentence as VIB-002 §4(b) about a gradient at 1900px.
-- 🔴 **The gutter instrument was wrong FOUR times and three readings nearly became filed product
-  defects** — text-only put a band at 96 (its text sits past a glyph); leaf-elements put one at 89
-  (a panel's own padding); outermost-box put two at 16 (`columns-container` has
-  `margin-left: -48px` while every track has `padding-left: 48px`, so only a **transparent** wrapper
-  hangs out — probed, not filed). **Painted content** is the definition that survives. Each time the
-  metric measured *a* property rather than the one the eye reads.
-- **No selector finds "an icon"**: the *font* branch of `IconGlyph` emits no `ndl-icon-glyph` while
-  the sprite and inline branches do. Recorded in V25.
+    npm run typecheck:backend-tests
 
-## Standing cautions
+If it reports errors, they are most likely in `packages/nodegx-backend/tests/vib004-marketing.look.ts`
+(this session's only backend file). Nothing else this session touched is in that gate's scope.
+
+⚠️ **Do not repeat this session's substitute.** Re-running the look file through an ad-hoc jest
+config with `isolatedModules: false` looks like a cheap typecheck and is **not a valid instrument
+here**: it reports
+`noodl-editor/.../authoring/candidate.ts:46 error TS2304: Cannot find name 'Crypto'` — a DOM lib
+type, in a file neither look file owns. **The control settles it**: the identical command on
+`vib003-pictures.look.ts`, which shipped last session, fails identically. The instrument resolves
+`lib` differently from `tsc -p` and cannot distinguish a good file from a bad one. Use the real
+gate.
+
+## Standing cautions (unchanged, all still true)
 
 - 🔴 **No proxy closes a task.** If you notice yourself grading JSON, stop and render.
 - 🔴 **Legible and operable is the floor, not a grade** (Richard, 2026-08-31).
 - 🔴 **Never raise a viewport to make content fit.**
-- 🔴 **Rebuild the viewer before a Judge run that depends on a runtime change**
-  (`npm run build:editor:_viewer`).
-- 🔴 **`render-from-disk` reads tokens BY REGEX — a comment between `name:` and `value:` deletes a
-  token from every Judge photograph** while it is perfectly present in the product.
-- 🔴 **`getGroupForToken` in `DesignTokensTab.tsx` is a second copy of the category→group map** and
-  fails closed. A new `TokenCategory` must be added in both places.
-- ⚠️ Shared checkout, busy: P80 landed DEF-028 and DEF-029 during this session. `node-catalog.json`
-  regenerates from the whole tree — whoever commits it must commit their node source in the same
-  commit. Commit by pathspec, `git add` untracked first, never stash, never `git checkout --`.
-- ⚠️ `test:ci` floor is **4, all AIX-006 by name**. Confirmed again this session.
-- ⚠️ P77 is active in site-builder files; P78 T6 owns D22/D23/D24; P80 owns door-correctness rows.
+- 🔴 **ASK THE DOOR WHETHER THE KIT ALREADY CAN.** Four for four this phase.
+- 🔴 **A change to `DEFAULT_TOKENS` or `STYLE_COMPOSITIONS` owes
+  `npx jest --config packages/noodl-mcp/jest.config.js`** (V24). This session measured the wire
+  budget **before and after**: prompt 3,201 → 3,762, full 11,749 → 13,323; ceilings raised to
+  4,000 / 14,000 with the numbers written into the spec. ⚠️ The cost is **structural** (pretty-
+  printed `{value, unit}` objects), not prose — shortening descriptions would pay almost nothing.
+- 🔴 **Rebuild the viewer before a Judge run that depends on a runtime change.**
+- 🔴 **`render-from-disk` reads tokens BY REGEX** — a comment between `name:` and `value:` deletes
+  a token from every Judge photograph.
+- ⚠️ Shared checkout, busy: P80 landed DEF-035 (`e5b68d30`) mid-session and was driving
+  `dev:debug` at close. Commit by pathspec, `git add` untracked first, never stash, never
+  `git checkout --`.
+- ⚠️ `test:ci` floor is **4, all AIX-006 by name**. Not re-run this session — nothing this session
+  touched is in it.
