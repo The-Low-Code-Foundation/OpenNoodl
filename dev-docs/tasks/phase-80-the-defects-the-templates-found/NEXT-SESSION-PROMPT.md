@@ -1,106 +1,87 @@
 # Phase 80 — next session
 
-## State: **35 rows. 32 ✅ · 3 open.**
+## State: **35 rows. 32 ✅ · DEF-007 🟡 partial · 2 open.**
 
-s31 closed **DEF-007 §3.2** — the row the last handoff put first. AC3 is **green**: the shipped
-template disagreed with itself in **65** places and now disagrees in **0**. Commit `e4b86fe9`.
+s32 closed **DEF-034** — the row the last handoff put first. Commit `8ade2c6e`.
 
-⚠️ **s31 also landed phase 77's SBR-012** (`d3b4d0c8`), which had sat complete and green in the
-tree since 23:27 the night before. Not authored here — see that commit's message for why it could
-not be left out.
-
-🔴 **Read [TASKS.md](TASKS.md)'s table before you read this paragraph.** Ninth time.
+🔴 **Read [TASKS.md](TASKS.md)'s table before you read this paragraph.** Tenth time.
 
 ```
 grep -aE '^\| DEF-0[0-9]{2} \|' TASKS.md | grep -av '✅'
 ```
 
-🔴 **[RICHARD-RULINGS-2026-08-30.md](RICHARD-RULINGS-2026-08-30.md) is the authority for DEF-007
-§3.2 only.** That section is now built; the file is spent unless §3.2 is reopened.
-
 ---
 
 ## 🧭 THE ONE THING TO PUT IN FRONT OF RICHARD
 
-**DEF-007 §3.2 armed six things, deliberately, and whether that was right is his call.**
+**313 wires were being deleted from every build, and both shipped templates said zero.**
 
-The fix writes `runOnChange-*: true` — the value the artefact already means unloaded — on 65
-inputs. Six of those are P77 **D33**'s unconfirmed same-collection rows on `/Pages/ThemeEditor`.
+`getWarnings` did not filter by level, so any warning key on a connection made the export drop the
+wire. Two of the seven keys are `level: 'warning'` on purpose — FB-021's gated port (*"valid and its
+value is ignored"*) and FIX-025's unconverted cast, **his own `string → number` report**.
 
-- ✅ **The deployed site does not change.** Export, deploy and headless render already read an
-  absent key as ticked. If those six cycle, **the cycle is already live in the product** and
-  always was.
-- 🔴 **The editor now matches.** It used to write `false` over them on every load. So the editor
-  stops masking a hazard the shipped product has — and the editor is where the runtime's
-  `[runtime/cyclic-loop]` detector lives, which is the only reason D31 was ever caught.
-
-Pinning those six `false` instead was **rejected, not overlooked**: two are `in-rows` on functions
-that read a collection, and `false` there is P77 D5/D11's failure mode exactly — the screen never
-populates.
-
-✅ **D33's owed drive is now much cheaper**, because the editor will exhibit the behaviour instead
-of hiding it. That drive is the cheapest way to settle this, and it is still owed.
+- ✅ **Fixed and specced.** `getWarnings(ref, {levels})` — the option this model already speaks in
+  three other methods. Only `exportComponent` opts in, with `['error']`. The canvas is untouched, so
+  FB-021's dash is exactly as he ruled it.
+- 🔴 **The 27 that make it his call to hear about.** The editor evaluates a gate against a **saved
+  parameter**. Where the gate is driven by a **wire** — a `States` node feeding `flexDirection`, a
+  Component Input feeding `useIcon` — the editor read the default, called the port switched off, and
+  the wire left the build. Those are **reusable components**: `Pretty button`, `Secondary Button`,
+  `Text Input`, `Toggle Switch`. A parameter arriving from outside is the entire point of them.
+- ⚠️ **AC5 is owed: nobody has driven it.** `LearnBook › Pretty button` is the named fixture.
 
 ---
 
-## The lesson s31 paid for: a count decays, and this one decided the *design*
+## The lesson s32 paid for: a row names an EXAMPLE, not its POPULATION
 
-🔴 §6.1 recorded **56**, anchored to an md5. Re-derived at the point of use: **56** at that commit,
-**65** at HEAD, **65** in the tree — and the *shape* had moved too.
+🔴 The register said `con-target-port-gated`. The **predicate** is `level: 'warning'`, and a second
+key was already sitting inside it. Half the defect was invisible because the row named one instance
+of it. ✅ **Re-derive the population from the predicate, never from the example the row happens to
+name.**
 
-**Fourth session running.** s28 a number, s29 a scope estimate, s30 a count of call sites, s31 a
-count of disagreements. ✅ **Re-derive any quantity where you rely on it.**
+### And a defect measured only against what SHIPS can read zero
 
-Here it changed the answer rather than the arithmetic: **settling 65 parameters by hand into a file
-a peer authors into daily would have been stale before it committed.** The fix had to be in the
-generator — which is what §3.2 always said, but the *reason* was only visible after re-measuring.
+Site Builder **0 of 412** connections. TPL-001 **0 of 273**. The register had therefore been saying
+*"it may cost nothing"* — truthfully, about the only population anyone had looked at. The corpus of
+179 real projects showed **313 wires across 35 projects**.
 
-### And the register never said the artefact was generated
+This is the **complement** of "rank by the product surface, not by a corpus", not a contradiction:
+**rank with the surface; measure a blast radius with the corpus, because it may be the only
+witness.** ✅ Before quoting a zero, ask which population could even exhibit the defect.
 
-🔴 `site-builder.content.json` **is generated** — `npm run template:site-builder` — and a
-byte-equality gate reddens on hand edits. Its own header says so in capitals. §6.1's *"do not edit
-the artefact or its generator, it is phase 77's file"* was half right: the artefact is theirs, and
-the fix was never an edit to it.
+### The instrument, if you need it again
 
-### The strongest evidence was in the code, not the register
+esbuild-bundle the **import-free** modules straight from `src` (`dynamicPortRules.ts`,
+`portGateReason.ts`, `connectionCoercion.ts`) into CJS and `require` them from plain Node; read
+`packages/noodl-types/src/node-catalog.json` for ports, defaults and types. `isConditionalPortValid`
+**cannot** be bundled — `NodeLibrary` drags in the renderer — so it is transcribed, and the task file
+says so. Corpus: `~/vscode_projects/Noodl projects` (legacy `project.json`) and `NodeGX test projects`
+(v2 `components/**/nodes.json` + `connections.json`, nodes **flat**, children are id refs).
 
-The component sources already carried **21 explicit `true`s and 27 `false`s**, hand-pinned node by
-node, and `sb006Components.ts:517` writes out the whole argument for `true`. **The fix automated a
-practice that was already running by hand.** ✅ Before designing a policy, check whether the
-codebase has already been applying one.
+✅ **A control pair was built after the zero and before believing it**: `Group` + `sizeMode:
+contentSize` + a wire into `width` ⇒ 1; the same graph at `sizeMode: explicit` ⇒ 0.
 
 ---
 
 ## The work, in the order it should be done
 
-### 1. DEF-034 — a `level: 'warning'` wire is deleted like an error one
+### 1. DEF-035 — the schema fetch still decides which ports exist
 
-Now the cheapest open row. `getWarnings` does not filter by level, so **any** warning key makes
-`getConnectionHealth` return `healthy: false` and the export filter drops the wire — including
-FB-021's `con-target-port-gated`, whose own comment says the wire *"is valid and its value is
-ignored"*.
+Now the cheapest open row this phase owns. `SchemaHandler` (`utils/schemahandler.ts:72`) fetches the
+backend schema on **`window-focused`**; `recordFieldPorts` mints one port per column. **A build taken
+with the schema cold still differs from one taken warm.** P77 s17 watched the census move **19
+unhealthy → 4** on its own with no edit.
 
-⚠️ **Blast radius UNMEASURED, and that is the first job.** FB-021 measured **328** `basic`-gated
-input ports against 21 `extended`, so the population is large; **whether any shipped template
-actually wires into one** is unknown. It may cost nothing — and "may cost nothing" is a
-measurement nobody has taken.
+🔴 **Do not read DEF-028's green specs as covering this** — they pin a static graph and the schema
+never enters them. 🔴 **Nor DEF-034's**: that settles which *verdicts* delete a wire; DEF-035 is about
+which ports **exist** in the first place.
 
-### 2. DEF-035 — the schema fetch still decides which ports exist
-
-`SchemaHandler` fetches the backend schema on **`window-focused`**; `recordFieldPorts` mints one
-port per column. **A build taken with the schema cold still differs from one taken warm.** P77 s17
-watched the census move **19 unhealthy → 4** on its own with no edit.
-
-🔴 **Do not read DEF-028's green specs as covering this.** They pin a static graph; the schema
-never enters them. 🔴 **Nor DEF-007's.** §3.2 settles `runOnChange-*`, which is a *parameter*
-question; DEF-035 is about which ports **exist**.
-
-### 3. DEF-033 — a peer's row
+### 2. DEF-033 — a peer's row
 
 `Substring`'s panel says `End = 0`, the node behaves as `End = -1`. Registered by **P18** at
 `6f91ae2a`. ⚠️ Its own text says the fix is **a decision, not a one-liner** — check with that lane.
 
-### 4. The unowned rows
+### 3. The unowned rows
 
 [UNOWNED-ROWS-TO-MEASURE.md](UNOWNED-ROWS-TO-MEASURE.md) — six. §1 disproved; §6 measured.
 **Measure one fully before starting the next.** `DEF-036`+ are free.
@@ -109,20 +90,19 @@ question; DEF-035 is about which ports **exist**.
 
 ## What DEF-007 still owes
 
-- ⚠️ **AC2 and AC4 are open.** AC2 (a curated template installed **through the picker** opens on
-  its home) cannot be driven until a template is published. AC4 (the seam's doc names each path and
-  which side it is on) is §6's table, which exists — someone should decide whether that discharges
-  it or whether it owes a real document.
-- 🔴 **The pin is on the site-builder generator ONLY.** `tpl001Template.ts` is the other generator
-  and is **unmeasured**. It is **not** a one-line port — it writes a **v2 directory**, so its graph
-  needs assembling into the legacy shape first (`readAsLegacyProject` does this for site-builder).
-  **Measure whether TPL-001 disagrees at all before porting anything.**
-- 🔴 **§3.3's replacement is still undecided** — where a *missing* home is caught: refuse at
-  publish, or resolve-and-warn at install as `noodl-preview` already does. **6 of 97** projects
-  carry no home. 🧭 A decision, not a fix to be guessed at.
+- ⚠️ **AC2 and AC4 are open.** AC2 (a curated template installed **through the picker** opens on its
+  home) cannot be driven until a template is published. AC4 is §6's table, which exists — someone
+  should decide whether that discharges it or whether it owes a real document.
+- 🔴 **The pin is on the site-builder generator ONLY.** `tpl001Template.ts` is the other generator and
+  is **unmeasured**. It writes a **v2 directory**, so its graph needs assembling into the legacy shape
+  first. **Measure whether TPL-001 disagrees at all before porting anything.**
+- 🔴 **§3.3's replacement is still undecided** — where a *missing* home is caught: refuse at publish,
+  or resolve-and-warn at install as `noodl-preview` already does. **6 of 97** projects carry no home.
+  🧭 A decision, not a fix to be guessed at.
 
 ## Owed elsewhere
 
+- 🔴 **DEF-034 AC5 is undriven** — see above. `LearnBook › Pretty button`.
 - 🔴 **DEF-028 is undriven.** Nobody has taken two exports of one real project in a real editor and
   diffed them.
 - 🔴 **DEF-029 is undriven in a real editor.** 🔴 A drive serves a **built bundle** — rebuild
@@ -130,52 +110,44 @@ question; DEF-035 is about which ports **exist**.
 - ⚠️ **DEF-031, DEF-005's `Roles` output, DEF-009's default and DEF-025's editor half are all
   undriven.**
 - 🔴 **DEF-005 AC5 — TPL-001's member list**, a roster page on `List Users In Role`.
-- 🔴 **P77 D33 — the six rows above.** Now the cheapest it has ever been to settle.
+- 🔴 **P77 D33 — the six `/Pages/ThemeEditor` rows** DEF-007 §3.2 armed. Still the cheapest it has
+  ever been to settle.
 
 ---
 
 ## The gate baselines, measured this session
 
-🔴 **`test:ci` floor is 4** — all four AIX-006, **BY NAME**. 2909 specs.
+🔴 **`test:ci` floor is 4** — all four AIX-006, **BY NAME**. **2916** tests (2909 + this session's 7).
 
-| run | seed | failures |
-| --- | --- | --- |
-| first | 70598 | **5** = 4 floor + 1 flake |
-| re-run | 76055 | **4** = the floor exactly |
+| run | seed | failures | |
+| --- | --- | --- | --- |
+| fix in place | 99853 | **4** | the floor |
+| **mutant** (fix disarmed) | 27341 | **6** | 4 floor + **exactly** the 2 export specs |
+| fix restored | 02214 | **4** | the floor |
 
-🔴 **The 5th was a flake, and the attribution was made from the spec's CONTENT before the re-run,
-not from the re-run.** `pending project saves survive the way out — re-arms a held save when saving
-is switched back on` polls the disk after `SAVE_DEBOUNCE_MS + 500` and has **zero** references to
-anything this change touches. ✅ **Re-rolling a seed until a red goes away is how a real regression
-gets attributed to luck** — read the spec first, then re-run to confirm.
+✅ **The mutant is the reading that matters.** It reddens exactly the two specs it should and leaves
+the three model-level ones and the dash spec green — so the gate is a partition, not one broad
+assertion that would pass on anything.
 
-- `noodl-mcp`: **79 suites, 1043 tests, all green.**
-- `typecheck:editor`, `typecheck:mcp`: clean.
-- **Not re-run**: `test:main`, `noodl-viewer-react`, `catalog:check`.
+- `noodl-preview`: **14/14** (it reaches `exportComponent` through `exportComponentBundle`).
+- `typecheck:editor` clean. ⚠️ `tsc -p noodl-editor` does **not** include `tests/` — the **webpack
+  test build** is that check, and it fails *before* any test runs.
+- **Not re-run**: `test:main`, `noodl-mcp`, `noodl-viewer-react`, `catalog:check`.
 
 ---
 
 ## Traps carried
 
-- 🔴 **A GENERATED artefact is not editable, and the register may not know it is generated.**
-  ✅ Read the consumer's own header before planning an edit to a data file.
-- 🔴 **A register's COUNTS decay like its numbers.** Fourth session running.
-- 🔴 **An absent key can mean OPPOSITE things to two readers.** `runOnChange-*` absent is *ticked*
-  to the runtime and *false* to the migration. Any gate over such a field must say which reader it
-  is speaking for.
-- 🔴 **A gate whose population is "what a pass would write" goes VACUOUS when you fix the pass.**
-  Six specs did. ✅ When a fix empties a gate's population, re-aim the gate at what the artefact
-  now *states* — and check whether the new population is LARGER, because it may contain rows the
-  old one could never see. Here it contained 7, and one of them reached a record write.
-- 🔴 **`applyPatches` is TWO passes**, not just the NDA-017 migration. Measure the pair through the
-  whole call or the reading is partial.
-- 🔴 **A peer's uncommitted work can be entangled with yours through a GENERATED file.** ✅ Check
-  mtimes to see whether the peer is live or the work is idle, and ask before landing it.
-- 🔴 **`test:ci` writes `packages/noodl-editor/tests/test-results.json`.** Delete it first and
-  require a **fresh mtime**; the exit code alone can lie.
+- 🔴 **A register row names an EXAMPLE, not its POPULATION.** Re-derive from the predicate.
+- 🔴 **A defect measured only against what SHIPS can read zero.** Ask which population could exhibit it.
+- 🔴 **A backgrounded command's exit code lies.** The harness reported **`exit code 0`** for a run
+  whose log ends `npm error code 1` with five TS errors and **no test executed** — then again on a
+  floor run. ✅ Read `tests/test-results.json` (delete first, require a **fresh mtime**) and the log
+  tail. ✅ **`totalCount` is also the proof your spec ran**: 2909 → 2916 is exactly 7 added.
+- 🔴 **`setWarning` normalises an absent level to `'warning'`, not `'error'`.** The model already
+  ruled on this phase's "absent key, two readers" question — assert it, don't re-decide it.
+- ⚠️ **This electron runner has no `toHaveLength`** — `expect(x.length).toBe(n)`.
 - 🔴 **A spec absent from `tests/nodegraph/index.ts` never runs.**
 - 🔴 **`grep -a` always** — ugrep's `-I` skips source files as binary, silently.
-- 🔴 **Assert `count(anchor) == 1`** before every python heredoc replace — and **write the file**;
-  s31 lost one edit to a script that asserted, printed, and never called `.write()`.
-- 🔴 **`git add` untracked files individually, then `git commit <pathspecs>`.** Never stage tracked
-  files.
+- 🔴 **Assert `count(anchor) == 1`** before every python heredoc replace — and **write the file**.
+- 🔴 **`git add` untracked files individually, then `git commit <pathspecs>`.** Never stage tracked files.
