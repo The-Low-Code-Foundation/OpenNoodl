@@ -15,6 +15,7 @@ file's copy of it.
 | VIB-003 The Pictures | 🟡 **PASSABLE — RICHARD RULED IT**: *"nice, deffo passable and looking like a modern base template, good job"* |
 | VIB-004 The Marketing Kit | 🟡 **PASSABLE, not yet seen by Richard.** ⚠️ Its named blocker (the pictures) is now CLOSED |
 | VIB-011 The Stock Library | 🟡 **PASSABLE — RICHARD RULED IT**: *"It's looking better and better, good job"*. 44 CC0 photographs shipped, taught, rendered |
+| VIB-012 Prune On Deploy | 🟢 **BUILT s5** — Richard chose prune-on-deploy; real project **3.35 MB → 92 KB (97.3%)**. ⚠️ A full Electron deploy was never run end-to-end |
 | VIB-006 The Worked Page | ⬜ **the next job — see below** |
 | VIB-005/007 | ⬜ startable now, in parallel |
 | VIB-008/009 | ⬜ prove it on the shipped templates |
@@ -106,7 +107,18 @@ rejection report and the contact sheets rather than by any assertion.
 
 ## What is open, with owners
 
-- 🔴 **V35 (new): the resident MCP tool surface has ONE token of headroom** (8,279 of 8,280). One
+- ⚠️ **VIB-012's one loose end**: AC5 was met by running the *planner* against the real project and
+  the real library, with the copy path covered by 12 specs through `copyProjectFilesToFolder`. **A
+  full Electron deploy-to-folder was never run end-to-end.** Worth 10 minutes for whoever is next in
+  the deploy path. Owner: **VIB-012**, reopened only for that.
+- 🔴 **V37 (new, closed): a module's own README prose disabled the pruner.** `manifest.json` says
+  *"Reference any file as `noodl_modules/starter-imagery/<name>`"*, and `<name>` is not a filename —
+  it tripped refuse-on-ambiguity and would have switched pruning off for every project, silently.
+  ⚠️ The first written explanation blamed `LICENCES.json` and was **measurably false** (it contains
+  `starter-imagery/` nowhere). **Documentation inside a scanned directory is indistinguishable from a
+  reference**, and the fixture now carries the real sentence — before it did, the control spec was
+  passing against a mutant.
+- 🔴 **V35: the resident MCP tool surface has ONE token of headroom** (8,279 of 8,280). One
   clause added to one tool description reds it; the trim is in. **The next task to touch any tool
   description will fail this gate.** Owner **VIB-007**. Cross-link V20, which recorded 26 tokens.
 - 🔴 **V31**: the seven `--shadow-*` tokens are unreachable — no port in 176 node types takes a whole
