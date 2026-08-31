@@ -148,14 +148,21 @@ clearly a person can read them.
 | VIB-004 | The Marketing Kit | Hero / ctaBand / featureItem / statTile / footer (and peers) exist as compositions and render as designed sections |
 | VIB-005 | The Ambush Defaults | The sizeMode/scroll/clip traps get door diagnostics + doctrine + a page-ground composition that scrolls; the members-area gap/no-scroll class becomes impossible to author silently |
 | VIB-006 | The Worked Page | At least one complete, designed landing page in the example corpus — the thing a model can imitate. 🟢 **CLOSED 2026-08-31, WORTHY, ruled by Richard** (*"it looks fucking pro… VIB 006 screens are amazing"*) — the phase's first close on the look |
-| VIB-007 | The Brief | Ambition moves into the per-turn instruction surfaces; render-measure gains poverty findings so gate pressure is two-directional |
+| VIB-007 | **The Loop** *(rescoped 2026-08-31, was "The Brief")* | The render becomes mandatory, the traps become authoring-time diagnostics, and the gates fire on poverty as well as excess. 🔴 Rescoped because instruction was **measured** and found not to be the lever: V17 is a session that shipped V1 after reading V1, and V35 leaves one token of surface to instruct with |
 | VIB-008 | The Members' Area, Redeemed | TPL-001's first-run degradation fixed (no-backend state designed, gating fails closed, layout/scroll fixed) and its landing judged WORTHY |
 | VIB-009 | The Site Builder, Redeemed | Same bar for the site-builder public site |
 | VIB-010 | The Cold Proof | A fresh app authored through the MCP door by an agent with no special coaching comes out WORTHY — the end-to-end proof that the pipeline, not heroics, produces the look |
+| VIB-013 | **The Altitude** *(new)* | A section-expansion tool so the model authors at the altitude it is good at, and a corpus generated from the compositions rather than hand-copied into them. 🔴 The answer to *"we are fighting the LLM wanting to build in React"*: the mismatch is one of **altitude**, not competence |
 
 Dependency order: VIB-001 first (it is the instrument everything else is judged by). VIB-002/003/
 004/005 are the capability tier and can proceed in parallel after it. VIB-006/007 consume the new
 capability. VIB-008/009 prove it on the shipped templates. VIB-010 is the phase's exit exam.
+
+🔴 **Amended 2026-08-31.** The tiers above are *capability* then *artefact*. VIB-007 (rescoped) and
+VIB-013 (new) are a third kind — **the PROCEDURE tier**: they do not add capability or artefacts, they
+change how an agent is made to work. The argument, and the mapping of all 41 register rows that tests
+it, is in `VIB-007-THE-LOOP.md` §2. Headline: **18 of the 23 live rows fall out to a mechanism rather
+than to a paragraph**, and the five that do not are named there rather than glossed.
 
 ## §6 The register
 
