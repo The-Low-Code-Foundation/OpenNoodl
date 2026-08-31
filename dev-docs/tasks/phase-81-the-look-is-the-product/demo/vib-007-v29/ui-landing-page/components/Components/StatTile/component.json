@@ -1,0 +1,10 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "544ea73b-c887-527d-80da-80ebf4831b09",
+  "name": "StatTile",
+  "path": "/Components/StatTile",
+  "type": "visual",
+  "created": "2026-08-31T00:00:00.000Z",
+  "modified": "2026-08-31T00:00:00.000Z",
+  "modifiedBy": "vib-007-v29"
+}

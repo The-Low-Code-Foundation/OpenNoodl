@@ -734,3 +734,134 @@ The **failing set moves between runs**: the full-suite run failed 4 (three in `p
 `projectOwnsBackend` green. And a peer session (P80 s41) announced and was running `dev:debug` plus a
 community dev server against this checkout for the whole session, which is a plausible holder of the
 durable backend state these two contend on. **This is the third handoff to record the same pair.**
+
+---
+
+## §10 🔴 AC2 CLOSED, 2026-08-31 — V29 built, and the row's shape was right about 1 case in 13
+
+§9.6 left AC2 owing one predicate. It is built, and **AC2 is complete: all six of M2's predicates
+ship.** The row came with a ruling already attached, so unlike V22 and V28 it did not need an
+experiment to decide *whether* there was a defect. It needed one to decide **who has it** — and the
+answer was not the node the row names.
+
+### 10.1 The measurement, which is the whole of this section
+
+`maxWidth` appears **42** times in the corpus: **29** on a `Group`, **13** on a `Text`. The row's
+literal shape — *"a `maxWidth` on a `Text`"* — is those 13. `vib007-v29.look.ts` materialises all
+**7** examples that carry one (`demo/build-vib007-v29.js`, which derives its subject list by sweeping
+the corpus rather than listing it) and renders each at 1280 and 1900, reading for every capped `Text`
+the painted extent of the band it sits in — `paints()` lifted verbatim from `vib003-gutters.look.ts`,
+which needed four iterations to get that definition right.
+
+| example | capped Texts | band content L / R @1900 | verdict |
+|---|---|---|---|
+| `ui-image-scrim-band` | 2 | **374 / 766** | 🔴 the defect |
+| `ui-landing-page` | 3 | 374 / 374 | ✅ correct |
+| `ui-gradient-hero` | 2 | 374 / 374 | ✅ correct |
+| `ui-sticky-nav` | 3 | 374 / 374 | ✅ correct |
+| `ui-page-shell-bands` | 1 | 374 / 374 | ✅ correct |
+| `ui-split-hero` | 1 | 374 / 374 | ✅ correct |
+| `ui-empty-state` | 1 | 614 / 614 | ✅ correct |
+
+🔴 **Twelve of thirteen render perfectly symmetric, and three of the twelve are on `ui-landing-page`**
+— the VIB-006 page Richard ruled *"it looks fucking pro"*. The single asymmetric one reproduces the
+register row's own numbers (374 left, 766 right) to the pixel. **A check written to the row's sentence
+would have condemned correct typography twelve times, including three times on the phase's only
+WORTHY artefact.** That is the fourth time in this phase — after V5, V6, V7, V12, V23 and V28 — and
+the second time running that the artefact it would have condemned is the page a person already ruled
+beautiful.
+
+A measure on body copy is *correct typography*. What Richard ruled against is not a cap, it is the
+white space landing on one side: *"to the left and right equally… not just on one side, that's weird."*
+
+### 10.2 🔴 The two shells that differ by one node, which is where the predicate came from
+
+`ui-gradient-hero` and `ui-image-scrim-band` are the same recipe: a `maxWidth: 1200` shell with
+`--space-6` either side, inside a full-width band that centres it, filled with capped `Text`. One
+renders symmetric and one does not.
+
+```
+  ui-gradient-hero    shell(1200) > eyebrow (NO cap), headline(900), lead(560), actions, stats
+  ui-image-scrim-band shell(1200) > heading(760)    , sub(560)
+```
+
+The uncapped `eyebrow` paints the shell's full 1152px inner width (1200 − 2×24), so the shell's
+measure is **realised** and the band's content is symmetric about it. `ui-image-scrim-band` contains
+nothing that can ever draw to 1200: the widest thing on it is 760, so 440px of the declared measure
+describes nothing and falls entirely on one side.
+
+🔴 **So the predicate is not about the `Text` at all — it is about the shell**, and that is why a
+per-`Text` rule cannot be narrowed into correctness. `ui-landing-page`'s `footer_blurb` is capped at
+**320** inside a 1900 band and is right, because its band draws to the measure elsewhere. The property
+that separates right from wrong is not on the node the row accuses.
+
+### 10.3 What shipped
+
+`DiagnosticCode.UnrealisedMeasure` (`unrealised-measure`, **warning**) and `checkUnrealisedMeasure` in
+`validation/unrealisedMeasure.ts`, wired into `authoredCandidate.ts` — the authoring door. It fires on
+a shell with a px `maxWidth` **every one of whose painting children carries a narrower px cap**, with
+four narrowings each taken from something read rather than assumed:
+
+- **Column layouts only.** `flexDirection` defaults to `column`, where `alignItems` is the horizontal
+  centring port. In a `row` the main axis is horizontal and `justifyContent` centres instead;
+  `none` positions absolutely. Both skipped rather than guessed at — they were not measured.
+- **Two ways to centre, and either exempts**: `alignItems: center` on the shell, `alignX: center` on
+  the child. `ui-empty-state` is the proof the exemption is real and not theoretical — every one of
+  its children is capped, and it renders **614 / 614**, the most symmetric reading in the population.
+- **px against px only.** The port's default unit is `%`, which is relative to the shell and says
+  nothing about being narrower than it. A cap arriving over a connection is unreadable. Neither can
+  complete an "every child is capped" verdict.
+- **A component instance is never capped**, because what it draws is inside it. One such child keeps
+  the check silent, which is the conservative direction.
+
+`tests-unit/vib-007/unrealisedMeasure.test.ts` — **18 tests**, and mostly silences, because twelve of
+the thirteen instances are controls that must stay quiet. The two hero shells are asserted **against
+each other**, and the control carries a **mutation**: give gradient-hero's uncapped `eyebrow` a cap and
+the correct page becomes the defect. Without that, *"silent on gradient-hero"* would be equally true of
+a check that never fires on anything.
+
+### 10.4 ⚠️ The corpus gate is NOT switched on, and that is an ownership boundary
+
+`catalog:examples` runs warnings-as-errors and the corpus's one hit is `ui-image-scrim-band`, whose
+repair register V29 assigns to **VIB-008**: it is VIB-002's shipped recipe and re-cutting its geometry
+re-opens a verdict Richard has already given on a rendered page. So the check ships at the door, where
+it costs an author nothing today, and the hit is **pinned by a spec** that asserts the band is still
+unrepaired — which makes the day it changes a day a spec reports rather than a silent drift.
+🔴 **Switching the gate on is one line and is owed the moment that band is repaired** → register **V45**.
+
+### 10.5 ✅ The door was probed, because a spec grades the function and not the wiring
+
+`unrealisedMeasure.test.ts` calls `checkUnrealisedMeasure` directly, which proves the predicate and
+says nothing about whether the door emits it — assembly, `dedupeDiagnostics` or a severity filter
+could each swallow it, and the neighbourhood passing would look identical either way. So
+`authoredPreconditionDiagnostics` (the function **both** doors call — `noodl-mcp/src/validate.ts:181`
+and the editor's assistant) was run on both arms:
+
+```
+  DEFECT  (scrim-band shell)     1 unrealised-measure   [warning]
+  CONTROL (gradient-hero shell)  0 unrealised-measure
+```
+
+### Gates (2026-08-31, session 11) — 🔴 every row is an EXIT STATUS
+
+| gate | reading |
+|---|---|
+| `vib007-v29.look.ts` (real Chrome, 7 projects × 2 widths) | **exit 0** — 7/7, `consoleErrors []` on every one |
+| `unrealisedMeasure.test.ts` | **exit 0** — 18/18 |
+| editor `validation\|parameterValue\|diagnostic\|vib-007\|def-003\|aib-001\|phase-55\|measure` | **exit 0** — **31 suites / 406 tests** |
+| **full `noodl-editor` jest** | ⚠️ **exit 1 — 5 failed / 6614 passed.** Exactly the P80 s40 floor (sb-007 ×2, sb-018 ×2, aib-007 ×1); passes rose 6596 → 6614, which is this session's 18 tests |
+| `npm run typecheck:editor` | **exit 0** |
+| `npm run typecheck:mcp` | **exit 0** |
+| **full `noodl-mcp` suite** | ✅ **exit 0 — 83 suites / 1085 tests, 0 failed** |
+| `npm run catalog:examples` | **exit 0** — 67/67 strict (the new check is deliberately not in it — §10.4) |
+| `npm run catalog:merge:check` | **exit 0** — up to date, nothing regenerated |
+| `npm run typecheck:backend-tests` | ⚠️ **not run** — OOMs on this box (exit 134). CI `pr.yml:39` covers it |
+| `npm run test:ci` | ⚠️ **exit 1 — 2928 specs, 4 failures, seed 92315.** All four are **AIX-006 style vocabulary, by name** = the recorded floor. Fresh readout, 22:21:21. First session in four to get a reading, because the box was finally quiet |
+
+🔴 **The `provision`/`projectOwnsBackend` red pair, recorded by three consecutive handoffs, is GREEN
+this session — and the cause is now known rather than argued.** The full `noodl-mcp` suite reads
+**83/83, 1085/1085, exit 0**. Every previous session ran it while a peer (P80 s41) had `dev:debug`
+plus a community dev server live against this checkout; that peer announced teardown at the start of
+this session, and the pair passed on the first run afterwards. **It was never anyone's code.** The
+diagnosis those handoffs reached by structure — neither file imports anything the sessions touched —
+was right, and the confirming experiment was simply to run it with the box quiet.

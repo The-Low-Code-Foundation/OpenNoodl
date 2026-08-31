@@ -1,0 +1,10 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "0be6dfca-6525-5af0-85c5-b50cc87a04ef",
+  "name": "Wrapper",
+  "path": "/Pages/Wrapper",
+  "type": "visual",
+  "created": "2026-08-31T00:00:00.000Z",
+  "modified": "2026-08-31T00:00:00.000Z",
+  "modifiedBy": "vib-007-v29"
+}

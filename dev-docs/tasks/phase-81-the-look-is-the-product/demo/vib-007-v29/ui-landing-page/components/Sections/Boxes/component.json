@@ -1,0 +1,10 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "e34ef86e-df1c-5c9b-8131-1f8bb899c900",
+  "name": "Boxes",
+  "path": "/Sections/Boxes",
+  "type": "visual",
+  "created": "2026-08-31T00:00:00.000Z",
+  "modified": "2026-08-31T00:00:00.000Z",
+  "modifiedBy": "vib-007-v29"
+}

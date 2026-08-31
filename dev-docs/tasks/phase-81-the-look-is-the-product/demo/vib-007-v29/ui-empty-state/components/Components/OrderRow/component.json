@@ -1,0 +1,10 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "98007a04-7282-5e9f-83ae-63cceb14de2a",
+  "name": "OrderRow",
+  "path": "/Components/OrderRow",
+  "type": "visual",
+  "created": "2026-08-31T00:00:00.000Z",
+  "modified": "2026-08-31T00:00:00.000Z",
+  "modifiedBy": "vib-007-v29"
+}

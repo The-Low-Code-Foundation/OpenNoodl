@@ -1,0 +1,19 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "98007a04-7282-5e9f-83ae-63cceb14de2a",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "row_inputs",
+      "fromProperty": "reference",
+      "toId": "row_reference",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "row_inputs",
+      "fromProperty": "total",
+      "toId": "row_total",
+      "toProperty": "text"
+    }
+  ]
+}

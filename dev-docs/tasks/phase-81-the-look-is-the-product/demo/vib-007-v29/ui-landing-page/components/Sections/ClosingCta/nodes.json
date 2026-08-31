@@ -1,0 +1,204 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "dbe4354c-524f-5867-868f-30ec47d6c011",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "cta_band",
+      "type": "Group",
+      "label": "Closing CTA",
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "alignItems": "center",
+        "backgroundGradient": "var(--gradient-brand)",
+        "paddingTop": "var(--space-24)",
+        "paddingBottom": "var(--space-24)"
+      },
+      "children": [
+        "cta_shell"
+      ]
+    },
+    {
+      "id": "cta_shell",
+      "type": "Group",
+      "label": "Shell",
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "maxWidth": {
+          "value": 720,
+          "unit": "px"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "alignItems": "center",
+        "rowGap": "var(--space-5)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)"
+      },
+      "parent": "cta_band",
+      "children": [
+        "cta_badge",
+        "cta_head",
+        "cta_sub",
+        "cta_actions"
+      ]
+    },
+    {
+      "id": "cta_badge",
+      "type": "Group",
+      "label": "Badge",
+      "parameters": {
+        "sizeMode": "contentSize",
+        "flexDirection": "row",
+        "alignItems": "center",
+        "columnGap": "var(--space-2)",
+        "backgroundColor": "var(--surface-glass)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-glass)",
+        "borderRadius": "var(--radius-full)",
+        "paddingLeft": "var(--space-4)",
+        "paddingRight": "var(--space-4)",
+        "paddingTop": "var(--space-2)",
+        "paddingBottom": "var(--space-2)"
+      },
+      "parent": "cta_shell",
+      "children": [
+        "cta_badgeicon",
+        "cta_badgetext"
+      ]
+    },
+    {
+      "id": "cta_badgeicon",
+      "type": "net.noodl.visual.icon",
+      "label": "Badge glyph",
+      "parameters": {
+        "iconIconSource": {
+          "class": "lucide",
+          "code": "icon-sprout",
+          "codeAsClass": true
+        },
+        "iconSize": {
+          "value": 14,
+          "unit": "px"
+        },
+        "iconColor": "var(--primary-foreground)"
+      },
+      "parent": "cta_badge"
+    },
+    {
+      "id": "cta_badgetext",
+      "type": "Text",
+      "label": "cta_badgetext",
+      "parameters": {
+        "fontSize": "var(--text-xs)",
+        "fontWeight": "var(--font-semibold)",
+        "letterSpacing": "var(--tracking-wide)",
+        "color": "var(--primary-foreground)",
+        "text": "Eleven boxes left on the spring round"
+      },
+      "parent": "cta_badge"
+    },
+    {
+      "id": "cta_head",
+      "type": "Text",
+      "label": "cta_head",
+      "parameters": {
+        "fontSize": "var(--display-md)",
+        "fontWeight": "var(--font-bold)",
+        "lineHeight": "var(--leading-none)",
+        "letterSpacing": "var(--tracking-tighter)",
+        "color": "var(--primary-foreground)",
+        "textAlignX": "center",
+        "text": "Start on Friday."
+      },
+      "parent": "cta_shell"
+    },
+    {
+      "id": "cta_sub",
+      "type": "Text",
+      "label": "cta_sub",
+      "parameters": {
+        "fontSize": "var(--text-lg)",
+        "lineHeight": "var(--leading-relaxed)",
+        "color": "var(--primary-foreground)",
+        "textAlignX": "center",
+        "text": "Pick a size, tell us where the crate goes, and cancel any week you like."
+      },
+      "parent": "cta_shell"
+    },
+    {
+      "id": "cta_actions",
+      "type": "Group",
+      "label": "Actions",
+      "parameters": {
+        "sizeMode": "contentSize",
+        "flexDirection": "row",
+        "flexWrap": "wrap",
+        "alignItems": "center",
+        "columnGap": "var(--space-3)",
+        "rowGap": "var(--space-3)",
+        "paddingTop": "var(--space-2)",
+        "justifyContent": "center"
+      },
+      "parent": "cta_shell",
+      "children": [
+        "cta_primary",
+        "cta_secondary"
+      ]
+    },
+    {
+      "id": "cta_primary",
+      "type": "net.noodl.controls.button",
+      "label": "Primary",
+      "parameters": {
+        "sizeMode": "contentSize",
+        "backgroundColor": "var(--primary-foreground)",
+        "color": "var(--primary)",
+        "borderRadius": "var(--radius-full)",
+        "borderStyle": "none",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "label": "Take a box"
+      },
+      "parent": "cta_actions"
+    },
+    {
+      "id": "cta_secondary",
+      "type": "net.noodl.controls.button",
+      "label": "Secondary",
+      "parameters": {
+        "sizeMode": "contentSize",
+        "backgroundColor": "transparent",
+        "color": "var(--primary-foreground)",
+        "borderRadius": "var(--radius-full)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-glass)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "label": "Check the delivery area"
+      },
+      "parent": "cta_actions"
+    }
+  ],
+  "visualRoots": [
+    "cta_band"
+  ]
+}

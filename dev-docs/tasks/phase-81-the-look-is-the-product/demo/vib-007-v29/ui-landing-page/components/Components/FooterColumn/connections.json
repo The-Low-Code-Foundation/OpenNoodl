@@ -1,0 +1,31 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "a0fd03ad-ada7-513c-86bb-422de8880314",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "fc_inputs",
+      "fromProperty": "heading",
+      "toId": "fc_heading",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "fc_inputs",
+      "fromProperty": "a",
+      "toId": "fc_a",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "fc_inputs",
+      "fromProperty": "b",
+      "toId": "fc_b",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "fc_inputs",
+      "fromProperty": "c",
+      "toId": "fc_c",
+      "toProperty": "text"
+    }
+  ]
+}

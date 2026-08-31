@@ -1,0 +1,171 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "56d6301f-fc6b-5518-808d-fb742516730d",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "stats_band",
+      "type": "Group",
+      "label": "The numbers",
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "alignItems": "center",
+        "backgroundGradient": "var(--gradient-deep)",
+        "paddingTop": "var(--space-20)",
+        "paddingBottom": "var(--space-20)"
+      },
+      "children": [
+        "stats_shell"
+      ]
+    },
+    {
+      "id": "stats_shell",
+      "type": "Group",
+      "label": "Shell",
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "maxWidth": {
+          "value": 1200,
+          "unit": "px"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)"
+      },
+      "parent": "stats_band",
+      "children": [
+        "stats_head",
+        "stats_cols"
+      ]
+    },
+    {
+      "id": "stats_head",
+      "type": "Group",
+      "label": "Section head",
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "rowGap": "var(--space-3)",
+        "paddingBottom": "var(--space-10)"
+      },
+      "parent": "stats_shell",
+      "children": [
+        "stats_eyebrow",
+        "stats_title"
+      ]
+    },
+    {
+      "id": "stats_eyebrow",
+      "type": "Text",
+      "label": "stats_eyebrow",
+      "parameters": {
+        "fontSize": "var(--text-xs)",
+        "fontWeight": "var(--font-semibold)",
+        "letterSpacing": "var(--tracking-widest)",
+        "textTransform": "uppercase",
+        "color": "var(--primary-foreground)",
+        "text": "Last season"
+      },
+      "parent": "stats_head"
+    },
+    {
+      "id": "stats_title",
+      "type": "Text",
+      "label": "stats_title",
+      "parameters": {
+        "fontSize": "var(--text-3xl)",
+        "fontWeight": "var(--font-semibold)",
+        "lineHeight": "var(--leading-tight)",
+        "letterSpacing": "var(--tracking-tight)",
+        "color": "var(--primary-foreground)",
+        "text": "The whole business, in four numbers."
+      },
+      "parent": "stats_head"
+    },
+    {
+      "id": "stats_cols",
+      "type": "net.noodl.visual.columns",
+      "label": "Four up",
+      "parameters": {
+        "layoutString": "1 1 1 1",
+        "marginX": {
+          "value": 20,
+          "unit": "px"
+        },
+        "mediumBreakpoint": {
+          "value": 900,
+          "unit": "px"
+        },
+        "mediumLayout": "1 1",
+        "smallBreakpoint": {
+          "value": 640,
+          "unit": "px"
+        },
+        "smallLayout": "1 1"
+      },
+      "parent": "stats_shell",
+      "children": [
+        "stats_t1",
+        "stats_t2",
+        "stats_t3",
+        "stats_t4"
+      ]
+    },
+    {
+      "id": "stats_t1",
+      "type": "/Components/StatTile",
+      "label": "Acres",
+      "parameters": {
+        "value": "11",
+        "label": "acres in cultivation"
+      },
+      "parent": "stats_cols"
+    },
+    {
+      "id": "stats_t2",
+      "type": "/Components/StatTile",
+      "label": "Crops",
+      "parameters": {
+        "value": "40",
+        "label": "crops through the year"
+      },
+      "parent": "stats_cols"
+    },
+    {
+      "id": "stats_t3",
+      "type": "/Components/StatTile",
+      "label": "Boxes",
+      "parameters": {
+        "value": "318",
+        "label": "boxes packed last week"
+      },
+      "parent": "stats_cols"
+    },
+    {
+      "id": "stats_t4",
+      "type": "/Components/StatTile",
+      "label": "Air miles",
+      "parameters": {
+        "value": "0",
+        "label": "air miles in the boxes"
+      },
+      "parent": "stats_cols"
+    }
+  ],
+  "visualRoots": [
+    "stats_band"
+  ]
+}

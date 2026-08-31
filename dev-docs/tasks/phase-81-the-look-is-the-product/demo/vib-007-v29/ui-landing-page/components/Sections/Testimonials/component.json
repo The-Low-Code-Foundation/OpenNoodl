@@ -1,0 +1,10 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "c75b7778-7ec7-5f29-88aa-911d8dedf7b8",
+  "name": "Testimonials",
+  "path": "/Sections/Testimonials",
+  "type": "visual",
+  "created": "2026-08-31T00:00:00.000Z",
+  "modified": "2026-08-31T00:00:00.000Z",
+  "modifiedBy": "vib-007-v29"
+}

@@ -1,0 +1,19 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "7cfcc2f4-ef6e-5386-85d0-b124e331b093",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "query",
+      "fromProperty": "items",
+      "toId": "list",
+      "toProperty": "items"
+    },
+    {
+      "fromId": "query",
+      "fromProperty": "isEmpty",
+      "toId": "empty",
+      "toProperty": "mounted"
+    }
+  ]
+}

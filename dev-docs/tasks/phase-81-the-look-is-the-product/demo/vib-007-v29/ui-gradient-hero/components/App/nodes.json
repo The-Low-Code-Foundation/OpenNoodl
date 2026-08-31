@@ -1,0 +1,48 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "65ec7c2b-d81e-5e04-8aa5-242c264ff34a",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "app_root",
+      "type": "Group",
+      "label": "App",
+      "children": [
+        "app_router"
+      ],
+      "parameters": {
+        "sizeMode": "explicit",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "height": {
+          "value": 100,
+          "unit": "%"
+        }
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "app_router",
+      "type": "Router",
+      "label": "Main router",
+      "parent": "app_root",
+      "parameters": {
+        "name": "Main",
+        "pages": {
+          "startPage": "/Pages/Example",
+          "routes": [
+            "/Pages/Example"
+          ]
+        }
+      },
+      "x": 100,
+      "y": 160
+    }
+  ],
+  "visualRoots": [
+    "app_root"
+  ]
+}

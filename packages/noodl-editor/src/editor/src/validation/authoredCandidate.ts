@@ -64,6 +64,7 @@ import {
 } from './componentInterface';
 import { DiagnosticCode, type Diagnostic } from './diagnostics';
 import { checkImageSources } from './imageSource';
+import { checkUnrealisedMeasure } from './unrealisedMeasure';
 import { checkFunctionNodePorts, checkScriptNodeRunnable, type FunctionWireLike } from './functionPorts';
 import { checkInstancePorts, type AuthoredPortLike } from './instancePorts';
 import { checkNavigation, checkPageShape, looksLikePageComponent, PAGE_NODE_TYPE } from './navigation';
@@ -564,6 +565,12 @@ export function authoredPreconditionDiagnostics(options: AuthoredPreconditionOpt
     // named for its image shipping without one. Reads `connections` rather than `wires` because
     // the question is "is this input fed", which is exactly what that set answers.
     ...checkImageSources(nodes, { component, catalog, connectedInputs: connections }),
+    // VIB-007 / register V29 — a shell whose declared measure no child can draw to. 🔴 The row
+    // names "a maxWidth on a Text"; the render says twelve of that shape's thirteen corpus
+    // instances are CORRECT, three of them on the WORTHY page, and the one defect is a property of
+    // the SHELL rather than the text. Reads `connections` because a maxWidth arriving over a wire
+    // is a value the predicate cannot read and must not count as a cap.
+    ...checkUnrealisedMeasure(nodes, { component, catalog, connectedInputs: connections }),
     ...checkRepeaterTemplate(nodes, { component, components, connectedInputs: connections }),
     // DEF-010 (SB-009) — the other twelve of the catalog's thirteen
     // component-typed ports. `For Each.template` is skipped inside the check:

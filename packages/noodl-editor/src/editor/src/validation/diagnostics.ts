@@ -288,6 +288,22 @@ export enum DiagnosticCode {
    */
   UnsourcedImage = 'unsourced-image',
   /**
+   * VIB-007 / register V29 — a shell declaring a `maxWidth` that none of its children can draw to,
+   * because every one of them carries a narrower cap of its own.
+   *
+   * 🔴 **The row this comes from names a shape with 13 corpus instances, of which ONE is the
+   * defect.** Richard ruled against white space landing on one side (*"to the left and right
+   * equally… not just on one side, that's weird"*), and `vib007-v29.look.ts` rendered all 13: twelve
+   * sit in a band measuring 374 left / 374 right, and three of those twelve are on the page he
+   * ruled *"fucking pro"*. Only `ui-image-scrim-band` renders 374 / 766. A cap on body copy is
+   * correct typography; a shell whose measure nothing realises is the finding.
+   *
+   * A warning, like the rest of the poverty family: content narrower than its shell is a judgement
+   * an author may have made deliberately, and `alignItems: center` is the one-word answer when they
+   * have. ⚠️ Whether this family should ever refuse is register V42.
+   */
+  UnrealisedMeasure = 'unrealised-measure',
+  /**
    * A bare number on a units-typed port that is read as a **percentage** —
    * `width`, `height`, `maxWidth`, `minWidth`. `{ value, unit }` is the form
    * real content uses: across the whole repository these ports are written in
