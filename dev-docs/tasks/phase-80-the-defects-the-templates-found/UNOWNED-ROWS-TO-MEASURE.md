@@ -1,4 +1,4 @@
-# The six unowned rows that need a measurement, not a re-read
+# The seven unowned rows that need a measurement, not a re-read
 
 > 🟢 **§1 is measured and DISPROVED (2026-08-30), by phase 77 s34.** The instrument is named in
 > the row.
@@ -268,7 +268,7 @@ Owner: **NONE**. Gets a `DEF-0xx` id when someone measures the blast radius abov
 
 ---
 
-## §7 — a `connections.json` with unknown field names is silently emptied and written back
+## 7. A `connections.json` with unknown field names is silently emptied and written back
 
 **Found by** DEF-029's drive (session 36), by accident: the drive's own hand-authored file used
 `sourceId`/`sourcePort`/`targetId`/`targetPort` where v2 wants

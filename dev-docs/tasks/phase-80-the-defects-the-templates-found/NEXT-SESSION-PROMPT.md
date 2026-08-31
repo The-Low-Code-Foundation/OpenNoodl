@@ -4,6 +4,11 @@
 
 **37 rows. 33 ✅ · DEF-007 🟡 partial · 3 open — DEF-033 (P18's), DEF-036, DEF-037.**
 
+🔴 **The phase is closer to done than previous handoffs implied** — see §1 below: three of the
+four rows carried as "built and undriven" are in fact **closed**. What is genuinely left is
+**two decisions for Richard, one buildable row (DEF-037), DEF-033 (check P18 first), and two
+small drives that share a single blocker.**
+
 🔴 **Do not derive the board with `grep -av '✅'`** — a row whose *prose* contains a ✅ is filtered
 out even when its status column says open. ✅ **Read the status COLUMN:**
 
@@ -68,17 +73,29 @@ declared identically to Radio Button's — and only Radio Button carries the `on
 
 ## The work, in the order it should be done
 
-### 1. Built-and-undriven is still the phase's largest debt — but it is shorter now
+### 1. Built-and-undriven — 🔴 **the inherited list was THREE-FIFTHS WRONG; re-derived s36**
 
-- **DEF-028** — its own AC5, the two-takes-differ measurement. s34 narrowed it, did not close it.
-- **DEF-031's panel half** — the rendered `Text Overflow` row has still not been read out of the
-  property panel. ⚠️ **The graph is a single `<canvas>`**, so opening the panel needs a
-  canvas-coordinate click; there is no DOM node to click and no `NodeGraphEditor.instance`.
-  **This blocks DEF-029's panel half too** (below) — solve it once and both close.
-- **DEF-029's panel half** — 🆕 small, and all that is left of this row: is the `File Drop` group
-  folded into **Advanced CSS** in the rendered panel DOM? s35 read the node library, a peer
-  reported the fold; neither is the panel.
-- **DEF-005's `Roles` output**, **DEF-009's default**, **DEF-025's editor half** — all undriven.
+The handoff has carried "**4 BUILT+UNDRIVEN**" for several sessions. Checked against the row files:
+
+| claimed owed | actually |
+| --- | --- |
+| DEF-028's AC5 | 🔴 **there is no AC5.** AC1–AC4 all ✅; §6 was discharged by registering DEF-034 + DEF-035, **both now closed**. Row owes nothing |
+| DEF-009's default | 🔴 **closed.** AC4 *was* the default question — **Richard ruled it 2026-08-30 and it was built the same day** (§6) |
+| DEF-025's editor half | 🔴 **closed.** Door half s17, default-flip half s25, both doors built. Status cell is a bare `✅` |
+| DEF-005's `Roles` output | ✅ **genuinely owed** — undriven in a real editor (file line 158) |
+| DEF-031's panel half | ✅ **genuinely owed** — *"That half of the AC is still owed"* (file line 136) |
+
+🔴 **Relayed conclusions decayed here for at least three sessions, and s36 relayed them once more
+before checking.** Re-derive an owed-list from the ROW FILES, never from the previous handoff.
+
+**So the real undriven debt is two items, and they share one blocker:**
+
+- **DEF-031's panel half** and **DEF-029's panel half** — both need the property panel read out of
+  the DOM. ⚠️ **The graph is a single `<canvas>`**, so opening the panel needs a canvas-coordinate
+  click; there is no DOM node to click and no `NodeGraphEditor.instance`. **Solve it once and both
+  close.** (DEF-029's question: is the `File Drop` group folded into **Advanced CSS**? s35 read the
+  node library, a peer reported the fold; neither is the panel.)
+- **DEF-005's `Roles` output** — undriven in a real editor.
 
 ### 2. DEF-037 — the sweep is done, so this is now buildable
 
