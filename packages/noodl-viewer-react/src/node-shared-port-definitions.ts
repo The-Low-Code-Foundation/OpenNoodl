@@ -168,6 +168,132 @@ function addOutputProps(definition: ReactNodeDefinition, values: Record<string, 
   mergeAttribute(definition, 'outputProps', values);
 }
 
+/**
+ * Plain outputs, whose value comes from a `get` rather than from a React prop.
+ *
+ * `outputProps` exists for ports a rendered element *pushes* to, and every one of them also
+ * installs a callback into `node.props`. A port that is only ever read — DEF-029's file
+ * metadata is the case — wants none of that, so it goes through `outputs` and reads
+ * `_internal`, which is how `Open File Picker` already exposes exactly this data.
+ */
+function addOutputs(definition: ReactNodeDefinition, values: Record<string, unknown>): void {
+  mergeAttribute(definition, 'outputs', values as Record<string, ReactInputDefinition>);
+}
+
+/**
+ * A conditional-port group that may gate outputs as well as inputs.
+ *
+ * `addDynamicInputPorts` covers the common case; this one exists because DEF-029 gates eight
+ * *outputs* behind one checkbox. The editor's filter keys purely by port name and its callers
+ * pass both plugs through it — `PortsTab.buildRows(model, direction)` and the connection
+ * popup's `ConnectionBar` — so an output listed here is hidden in every surface an author
+ * meets, not just the property panel.
+ */
+function addDynamicPorts(
+  definition: ReactNodeDefinition,
+  condition: string,
+  ports: { inputs?: string[]; outputs?: string[] }
+): void {
+  if (!definition.dynamicports) {
+    definition.dynamicports = [];
+  }
+
+  definition.dynamicports.push({ condition, ...ports });
+}
+
+/**
+ * The slice of a visual node the file-drop handlers touch.
+ *
+ * Deliberately structural rather than an import of the real node type: this file is a set of
+ * definition mutators and has never depended on the runtime's instance classes, and `_internal`
+ * is the same free-form per-instance bag every node in the runtime already uses.
+ */
+interface FileDropInstance {
+  _internal: {
+    acceptFileDrops?: boolean;
+    acceptedFileTypes?: string;
+    /** Enters minus leaves — see the note on `onDragEnter`. */
+    dragDepth?: number;
+    isDragOver?: boolean;
+    droppedFile?: File;
+    droppedFiles?: File[];
+    [extra: string]: unknown;
+  };
+  hasOutput(name: string): boolean;
+  flagOutputDirty(name: string): void;
+  sendSignalOnOutput(name: string): void;
+}
+
+/**
+ * Should this drag event be acted on at all?
+ *
+ * Two questions, and both have to be asked on every event. The author must have switched the
+ * feature on — the handlers are installed unconditionally, so this is what keeps a node that
+ * nobody enabled drops on behaving exactly as it did before. And the drag must actually carry
+ * files: `dataTransfer.types` lists `'Files'` only for a drag off the desktop, so dragging
+ * selected text or an image within the page no longer lights the zone up and no longer has its
+ * default suppressed.
+ */
+function fileDropArmed(node: FileDropInstance, e: DragEvent): boolean {
+  if (!node._internal.acceptFileDrops) return false;
+
+  const types = e.dataTransfer && e.dataTransfer.types;
+  if (!types) return false;
+
+  // A `DOMStringList` in older browsers, an array in current ones; `indexOf` is on both.
+  return Array.prototype.indexOf.call(types, 'Files') !== -1;
+}
+
+/** Publishes `Is Dragging Over`, and only when it actually changed. */
+function setDragOver(node: FileDropInstance, value: boolean): void {
+  if (!!node._internal.isDragOver === value) return;
+
+  node._internal.isDragOver = value;
+  node.flagOutputDirty('isDragOver');
+}
+
+/**
+ * Marks every value output dirty after a drop.
+ *
+ * `flagOutputDirty` throws for a port that was never registered, so each is asked for first —
+ * the guard `stopsClickPropagation` uses for the same reason. It matters here because these
+ * ports are conditional: a node whose `Accept File Drops` is off never registers them.
+ */
+function flagFileDropOutputs(node: FileDropInstance): void {
+  for (const name of ['droppedFile', 'droppedFiles', 'droppedFileName', 'droppedFileType', 'droppedFileSizeInBytes']) {
+    if (node.hasOutput(name)) node.flagOutputDirty(name);
+  }
+}
+
+/**
+ * Does a dropped file pass the author's "Accepted file types" filter?
+ *
+ * Same vocabulary as `<input accept>` and therefore as `Open File Picker`'s port of the same
+ * name — a comma-separated list of extensions (`.png`), wildcard MIME groups (`image/*`) or
+ * exact MIME types (`application/pdf`). An empty filter accepts everything, which is what a
+ * blank port must mean: the alternative is a drop zone that silently refuses every file until
+ * a field nobody filled in gets filled in.
+ */
+function fileMatchesAcceptedTypes(file: File, accept: string | undefined): boolean {
+  const patterns = (accept || '')
+    .split(',')
+    .map((entry) => entry.trim().toLowerCase())
+    .filter(Boolean);
+
+  if (patterns.length === 0) return true;
+
+  const name = (file.name || '').toLowerCase();
+  const mime = (file.type || '').toLowerCase();
+
+  return patterns.some((pattern) => {
+    if (pattern.startsWith('.')) return name.endsWith(pattern);
+    // `image/*` — compare against the group including its slash, so `image/*` does not match
+    // `imagex/png`.
+    if (pattern.endsWith('/*')) return mime.startsWith(pattern.slice(0, -1));
+    return mime === pattern;
+  });
+}
+
 export default {
   addInputProps,
   addInputs,
@@ -754,6 +880,222 @@ export default {
     });
 
     addPointerEventsTooltips(definition);
+  },
+
+  /**
+   * DEF-029 — file drop, which the runtime could not express at all.
+   *
+   * Registered from phase 77 D15, where SBR-007 AC3 asked for "drop an image here" and the
+   * answer was that no drop target was authorable: measured word-boundary, every one of
+   * `onDrop` / `onDragOver` / `onDragEnter` / `onDragLeave` / `dataTransfer` read **0** across
+   * the whole viewer, against known-firing controls of `onClick` = 37 and `onMouseDown` = 8.
+   * `draggable` = 7 is `react-draggable`, the `Drag` node's pointer gesture, which is a
+   * different feature and not a partial implementation of this one.
+   *
+   * ## What a dropped file is
+   *
+   * Not a new question. `Open File Picker` already emits a browser `File` on a `type: '*'`
+   * port and `Upload File`'s `File` input already documents itself as taking it — "as an Open
+   * File Picker node produces it". These ports emit that same shape under the same names, so a
+   * drop zone wires into the upload path that already exists rather than beside it.
+   *
+   * ## Why it is off by default
+   *
+   * `preventDefault` on `dragover` is what makes an element droppable at all, and it is also
+   * what stops the browser navigating away to the dropped file. Installing that unconditionally
+   * would change what every existing project does with a stray drop, so the handlers are live
+   * on every node but return immediately unless the author has switched `Accept File Drops` on.
+   * The check is at event time rather than render time for the reason `stopsClickPropagation`
+   * documents: a port set in the editor while the preview runs does not re-render the node, so
+   * a render-time answer would be stale exactly when someone is testing it.
+   *
+   * Everything except that one checkbox is a dynamic port, so a node nobody has enabled drops
+   * on shows one extra row and gains no output clutter at all.
+   */
+  addFileDropPorts(definition: ReactNodeDefinition) {
+    addInputs(definition, {
+      acceptFileDrops: {
+        index: 350,
+        group: 'File Drop',
+        displayName: 'Accept File Drops',
+        type: 'boolean',
+        default: false,
+        description:
+          'Lets a file dragged from the desktop be dropped onto this element, which reveals the File Drop outputs below',
+        set(this: FileDropInstance, value: boolean) {
+          this._internal.acceptFileDrops = !!value;
+        }
+      },
+      acceptedFileTypes: {
+        index: 351,
+        group: 'File Drop',
+        displayName: 'Accepted file types',
+        type: 'string',
+        description:
+          'Comma-separated extensions or MIME types this element will take — ".png, .jpg" or "image/*"; leave blank to accept every file. A drop of nothing but rejected files fires Files Rejected instead of Files Dropped',
+        set(this: FileDropInstance, value: string) {
+          this._internal.acceptedFileTypes = value;
+        }
+      }
+    });
+
+    // One checkbox reveals the accepted-types field and all eight outputs.
+    addDynamicPorts(definition, 'acceptFileDrops = true', {
+      inputs: ['acceptedFileTypes'],
+      outputs: [
+        'filesDropped',
+        'filesRejected',
+        'droppedFile',
+        'droppedFiles',
+        'droppedFileName',
+        'droppedFileType',
+        'droppedFileSizeInBytes',
+        'isDragOver'
+      ]
+    });
+
+    // `filesDropped` carries the four DOM handlers, the way `pointerDown` carries its two.
+    // Everything else the drop produces is a plain output read off `_internal`.
+    addOutputProps(definition, {
+      filesDropped: {
+        displayName: 'Files Dropped',
+        description: 'Fires when one or more accepted files are dropped here, after every File Drop output is up to date',
+        group: 'File Drop',
+        type: 'signal',
+        propPath: 'pointer',
+        props: {
+          onDragEnter(this: FileDropInstance, e: DragEvent) {
+            if (!fileDropArmed(this, e)) return;
+            e.preventDefault();
+
+            // Dragging onto a child fires `dragleave` on this element and `dragenter` on the
+            // child, so a plain boolean flickers off every time the pointer crosses an inner
+            // edge. Counting enters and leaves is the standard answer and the only one that
+            // survives a drop zone with content in it — which is every real drop zone, since
+            // the "Drop files here" label is itself a child.
+            this._internal.dragDepth = (this._internal.dragDepth || 0) + 1;
+            setDragOver(this, true);
+          },
+          onDragOver(this: FileDropInstance, e: DragEvent) {
+            if (!fileDropArmed(this, e)) return;
+            // The one line that makes the element droppable. Without it `drop` never fires,
+            // whatever else is wired.
+            e.preventDefault();
+
+            // Tells the browser to draw a copy cursor rather than the move-or-forbidden one.
+            if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+          },
+          onDragLeave(this: FileDropInstance, e: DragEvent) {
+            if (!fileDropArmed(this, e)) return;
+
+            this._internal.dragDepth = Math.max(0, (this._internal.dragDepth || 0) - 1);
+            if (this._internal.dragDepth === 0) setDragOver(this, false);
+          },
+          onDrop(this: FileDropInstance, e: DragEvent) {
+            if (!fileDropArmed(this, e)) return;
+
+            // Without this the browser leaves the app and renders the dropped file.
+            e.preventDefault();
+            // The innermost enabled drop zone owns the drop; an ancestor that also accepts
+            // files does not get a second copy of it. Same rule `clickBubbling` applies.
+            e.stopPropagation();
+
+            this._internal.dragDepth = 0;
+            setDragOver(this, false);
+
+            const dropped: File[] = e.dataTransfer ? Array.from(e.dataTransfer.files || []) : [];
+            const accepted = dropped.filter((file) =>
+              fileMatchesAcceptedTypes(file, this._internal.acceptedFileTypes)
+            );
+
+            if (accepted.length === 0) {
+              // A drop that produced nothing must not fire the completion signal — the same
+              // clause of the Failure Contract that made `Open File Picker` report `Unchanged`
+              // on an empty `FileList`. Silence is not an option either: an author who set
+              // "image/*" and dropped a PDF would have no way to tell the app from a broken
+              // one, so the refusal gets its own port.
+              this._internal.droppedFiles = [];
+              this._internal.droppedFile = undefined;
+              flagFileDropOutputs(this);
+              this.sendSignalOnOutput('filesRejected');
+              return;
+            }
+
+            this._internal.droppedFiles = accepted;
+            this._internal.droppedFile = accepted[0];
+            flagFileDropOutputs(this);
+            this.sendSignalOnOutput('filesDropped');
+          }
+        }
+      }
+    });
+
+    addOutputs(definition, {
+      filesRejected: {
+        displayName: 'Files Rejected',
+        description:
+          'Fires when a drop landed here but every file in it was excluded by Accepted file types',
+        group: 'File Drop',
+        type: 'signal'
+      },
+      droppedFile: {
+        displayName: 'File',
+        description: 'The first accepted file, in the form an Upload File node takes',
+        group: 'File Drop',
+        type: '*',
+        get(this: FileDropInstance) {
+          return this._internal.droppedFile;
+        }
+      },
+      droppedFiles: {
+        displayName: 'Files',
+        description: 'Every accepted file in the drop, as an array — a drop can carry more than one',
+        group: 'File Drop',
+        type: 'array',
+        get(this: FileDropInstance) {
+          return this._internal.droppedFiles;
+        }
+      },
+      droppedFileName: {
+        displayName: 'File Name',
+        description: 'Name of the first accepted file, extension included',
+        group: 'File Drop',
+        type: 'string',
+        get(this: FileDropInstance) {
+          return this._internal.droppedFile && this._internal.droppedFile.name;
+        }
+      },
+      droppedFileType: {
+        displayName: 'File Type',
+        description: 'MIME type the browser reports for the first accepted file, blank for one it does not recognise',
+        group: 'File Drop',
+        type: 'string',
+        get(this: FileDropInstance) {
+          return this._internal.droppedFile && this._internal.droppedFile.type;
+        }
+      },
+      droppedFileSizeInBytes: {
+        displayName: 'File Size In Bytes',
+        description: 'Size of the first accepted file, in bytes',
+        group: 'File Drop',
+        type: 'number',
+        get(this: FileDropInstance) {
+          return this._internal.droppedFile && this._internal.droppedFile.size;
+        }
+      },
+      isDragOver: {
+        displayName: 'Is Dragging Over',
+        description:
+          'True while a file is being dragged over this element — wire it to a border or background so the drop zone reacts',
+        group: 'File Drop',
+        type: 'boolean',
+        get(this: FileDropInstance) {
+          return !!this._internal.isDragOver;
+        }
+      }
+    });
+
+    addFileDropTooltips(definition);
   },
   addDimensions(
     definition: ReactNodeDefinition,
@@ -2118,6 +2460,26 @@ function addPointerEventsTooltips(definition: ReactNodeDefinition): void {
     body: [
       '- Enabled: This element will receive mouse and touch events',
       '- Disabled: No mouse or touch events will be captured by this element and the element below will receive it instead'
+    ]
+  });
+}
+
+function addFileDropTooltips(definition: ReactNodeDefinition): void {
+  definition.inputs.acceptFileDrops.tooltip = createTooltip({
+    title: 'Accept file drops',
+    body: [
+      'Lets a file dragged in from the desktop be dropped onto this element',
+      'The File Drop outputs appear once this is on — wire File to an Upload File node, and Is Dragging Over to a border or background so the zone reacts'
+    ]
+  });
+  definition.inputs.acceptedFileTypes.tooltip = createTooltip({
+    title: 'Accepted file types',
+    body: [
+      'Comma-separated extensions or MIME types this element will take',
+      '- ".png, .jpg" matches by file name',
+      '- "image/*" matches a whole MIME group',
+      '- Blank accepts every file',
+      'A drop carrying nothing acceptable fires Files Rejected rather than Files Dropped'
     ]
   });
 }

@@ -313,12 +313,17 @@ describe('FB-021 — over the shipped catalog, not a fixture', () => {
   // 354 = the 349 measured 2026-08-26 plus DEF-019's `labelfontVariantNumeric` on the five
   // controls whose label ramp sits behind `useLabel = true` (Button, Checkbox, Radio Button,
   // Text Input, Options) — all five explained, hence both counts moved by exactly 5.
-  it('finds all 354 conditionally-gated input ports', () => {
-    expect(all).toHaveLength(354);
+  //
+  // 359 = those 354 plus DEF-029's `acceptedFileTypes` on the five visual nodes that take file
+  // drops (Group, Text, Image, Circle, Video), gated behind `acceptFileDrops = true`. Both
+  // counts moved by exactly 5 again, which is the reading that matters: every one of the new
+  // gated ports is explained, so the unexplained remainder is untouched at 11.
+  it('finds all 359 conditionally-gated input ports', () => {
+    expect(all).toHaveLength(359);
   });
 
-  it('explains 343 of them', () => {
-    expect(all.filter((row) => row.explained)).toHaveLength(343);
+  it('explains 348 of them', () => {
+    expect(all.filter((row) => row.explained)).toHaveLength(348);
   });
 
   /*

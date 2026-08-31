@@ -3147,6 +3147,31 @@
       "useVariants": true,
       "inputs": [
         {
+          "name": "acceptFileDrops",
+          "displayName": "Accept File Drops",
+          "group": "File Drop",
+          "plug": "input",
+          "type": {
+            "name": "boolean"
+          },
+          "isSignal": false,
+          "default": false,
+          "description": "Lets a file dragged from the desktop be dropped onto this element, which reveals the File Drop outputs below",
+          "index": 350
+        },
+        {
+          "name": "acceptedFileTypes",
+          "displayName": "Accepted file types",
+          "group": "File Drop",
+          "plug": "input",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "Comma-separated extensions or MIME types this element will take — \".png, .jpg\" or \"image/*\"; leave blank to accept every file. A drop of nothing but rejected files fires Files Rejected instead of Files Dropped",
+          "index": 351
+        },
+        {
           "name": "alignX",
           "displayName": "Align X",
           "group": "Alignment",
@@ -3846,6 +3871,83 @@
           "description": "Fires once this element has been added to the page and can be measured"
         },
         {
+          "name": "droppedFile",
+          "displayName": "File",
+          "group": "File Drop",
+          "plug": "output",
+          "type": {
+            "name": "*"
+          },
+          "isSignal": false,
+          "description": "The first accepted file, in the form an Upload File node takes"
+        },
+        {
+          "name": "droppedFileName",
+          "displayName": "File Name",
+          "group": "File Drop",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "Name of the first accepted file, extension included"
+        },
+        {
+          "name": "droppedFileSizeInBytes",
+          "displayName": "File Size In Bytes",
+          "group": "File Drop",
+          "plug": "output",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false,
+          "description": "Size of the first accepted file, in bytes"
+        },
+        {
+          "name": "droppedFileType",
+          "displayName": "File Type",
+          "group": "File Drop",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "MIME type the browser reports for the first accepted file, blank for one it does not recognise"
+        },
+        {
+          "name": "droppedFiles",
+          "displayName": "Files",
+          "group": "File Drop",
+          "plug": "output",
+          "type": {
+            "name": "array"
+          },
+          "isSignal": false,
+          "description": "Every accepted file in the drop, as an array — a drop can carry more than one"
+        },
+        {
+          "name": "filesDropped",
+          "displayName": "Files Dropped",
+          "group": "File Drop",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when one or more accepted files are dropped here, after every File Drop output is up to date"
+        },
+        {
+          "name": "filesRejected",
+          "displayName": "Files Rejected",
+          "group": "File Drop",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when a drop landed here but every file in it was excluded by Accepted file types"
+        },
+        {
           "name": "hoverEnd",
           "displayName": "Hover End",
           "group": "Hover Events",
@@ -3866,6 +3968,17 @@
           },
           "isSignal": true,
           "description": "Fires when the pointer moves over this element or any of its children"
+        },
+        {
+          "name": "isDragOver",
+          "displayName": "Is Dragging Over",
+          "group": "File Drop",
+          "plug": "output",
+          "type": {
+            "name": "boolean"
+          },
+          "isSignal": false,
+          "description": "True while a file is being dragged over this element — wire it to a border or background so the drop zone reacts"
         },
         {
           "name": "onClick",
@@ -3966,6 +4079,22 @@
             "condition": "pointerEventsMode = explicit",
             "inputs": [
               "pointerEventsEnabled"
+            ]
+          },
+          {
+            "condition": "acceptFileDrops = true",
+            "inputs": [
+              "acceptedFileTypes"
+            ],
+            "outputs": [
+              "filesDropped",
+              "filesRejected",
+              "droppedFile",
+              "droppedFiles",
+              "droppedFileName",
+              "droppedFileType",
+              "droppedFileSizeInBytes",
+              "isDragOver"
             ]
           }
         ]
@@ -10501,6 +10630,31 @@
       ],
       "inputs": [
         {
+          "name": "acceptFileDrops",
+          "displayName": "Accept File Drops",
+          "group": "File Drop",
+          "plug": "input",
+          "type": {
+            "name": "boolean"
+          },
+          "isSignal": false,
+          "default": false,
+          "description": "Lets a file dragged from the desktop be dropped onto this element, which reveals the File Drop outputs below",
+          "index": 350
+        },
+        {
+          "name": "acceptedFileTypes",
+          "displayName": "Accepted file types",
+          "group": "File Drop",
+          "plug": "input",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "Comma-separated extensions or MIME types this element will take — \".png, .jpg\" or \"image/*\"; leave blank to accept every file. A drop of nothing but rejected files fires Files Rejected instead of Files Dropped",
+          "index": 351
+        },
+        {
           "name": "alignContent",
           "displayName": "Align Content",
           "group": "Layout",
@@ -12442,6 +12596,61 @@
           "description": "Fires once Focus, Scroll To Element or Scroll To Index has been carried out"
         },
         {
+          "name": "droppedFile",
+          "displayName": "File",
+          "group": "File Drop",
+          "plug": "output",
+          "type": {
+            "name": "*"
+          },
+          "isSignal": false,
+          "description": "The first accepted file, in the form an Upload File node takes"
+        },
+        {
+          "name": "droppedFileName",
+          "displayName": "File Name",
+          "group": "File Drop",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "Name of the first accepted file, extension included"
+        },
+        {
+          "name": "droppedFileSizeInBytes",
+          "displayName": "File Size In Bytes",
+          "group": "File Drop",
+          "plug": "output",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false,
+          "description": "Size of the first accepted file, in bytes"
+        },
+        {
+          "name": "droppedFileType",
+          "displayName": "File Type",
+          "group": "File Drop",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "MIME type the browser reports for the first accepted file, blank for one it does not recognise"
+        },
+        {
+          "name": "droppedFiles",
+          "displayName": "Files",
+          "group": "File Drop",
+          "plug": "output",
+          "type": {
+            "name": "array"
+          },
+          "isSignal": false,
+          "description": "Every accepted file in the drop, as an array — a drop can carry more than one"
+        },
+        {
           "name": "failure",
           "displayName": "Failure",
           "group": "Events",
@@ -12451,6 +12660,28 @@
           },
           "isSignal": true,
           "description": "Fires when the action did nothing and says why on Error — most often a scroll target that is not inside this group, or a group that has still not mounted"
+        },
+        {
+          "name": "filesDropped",
+          "displayName": "Files Dropped",
+          "group": "File Drop",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when one or more accepted files are dropped here, after every File Drop output is up to date"
+        },
+        {
+          "name": "filesRejected",
+          "displayName": "Files Rejected",
+          "group": "File Drop",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when a drop landed here but every file in it was excluded by Accepted file types"
         },
         {
           "name": "focusLost",
@@ -12495,6 +12726,17 @@
           },
           "isSignal": true,
           "description": "Fires when the pointer moves over this element or any of its children"
+        },
+        {
+          "name": "isDragOver",
+          "displayName": "Is Dragging Over",
+          "group": "File Drop",
+          "plug": "output",
+          "type": {
+            "name": "boolean"
+          },
+          "isSignal": false,
+          "description": "True while a file is being dragged over this element — wire it to a border or background so the drop zone reacts"
         },
         {
           "name": "onClick",
@@ -12699,6 +12941,22 @@
             ]
           },
           {
+            "condition": "acceptFileDrops = true",
+            "inputs": [
+              "acceptedFileTypes"
+            ],
+            "outputs": [
+              "filesDropped",
+              "filesRejected",
+              "droppedFile",
+              "droppedFiles",
+              "droppedFileName",
+              "droppedFileType",
+              "droppedFileSizeInBytes",
+              "isDragOver"
+            ]
+          },
+          {
             "condition": "borderStyle = solid OR borderStyle = dashed OR borderStyle = dotted ",
             "inputs": [
               "borderWidth",
@@ -12837,6 +13095,31 @@
         }
       ],
       "inputs": [
+        {
+          "name": "acceptFileDrops",
+          "displayName": "Accept File Drops",
+          "group": "File Drop",
+          "plug": "input",
+          "type": {
+            "name": "boolean"
+          },
+          "isSignal": false,
+          "default": false,
+          "description": "Lets a file dragged from the desktop be dropped onto this element, which reveals the File Drop outputs below",
+          "index": 350
+        },
+        {
+          "name": "acceptedFileTypes",
+          "displayName": "Accepted file types",
+          "group": "File Drop",
+          "plug": "input",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "Comma-separated extensions or MIME types this element will take — \".png, .jpg\" or \"image/*\"; leave blank to accept every file. A drop of nothing but rejected files fires Files Rejected instead of Files Dropped",
+          "index": 351
+        },
         {
           "name": "alignX",
           "displayName": "Align X",
@@ -14164,6 +14447,83 @@
           "description": "Fires once this element has been added to the page and can be measured"
         },
         {
+          "name": "droppedFile",
+          "displayName": "File",
+          "group": "File Drop",
+          "plug": "output",
+          "type": {
+            "name": "*"
+          },
+          "isSignal": false,
+          "description": "The first accepted file, in the form an Upload File node takes"
+        },
+        {
+          "name": "droppedFileName",
+          "displayName": "File Name",
+          "group": "File Drop",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "Name of the first accepted file, extension included"
+        },
+        {
+          "name": "droppedFileSizeInBytes",
+          "displayName": "File Size In Bytes",
+          "group": "File Drop",
+          "plug": "output",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false,
+          "description": "Size of the first accepted file, in bytes"
+        },
+        {
+          "name": "droppedFileType",
+          "displayName": "File Type",
+          "group": "File Drop",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "MIME type the browser reports for the first accepted file, blank for one it does not recognise"
+        },
+        {
+          "name": "droppedFiles",
+          "displayName": "Files",
+          "group": "File Drop",
+          "plug": "output",
+          "type": {
+            "name": "array"
+          },
+          "isSignal": false,
+          "description": "Every accepted file in the drop, as an array — a drop can carry more than one"
+        },
+        {
+          "name": "filesDropped",
+          "displayName": "Files Dropped",
+          "group": "File Drop",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when one or more accepted files are dropped here, after every File Drop output is up to date"
+        },
+        {
+          "name": "filesRejected",
+          "displayName": "Files Rejected",
+          "group": "File Drop",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when a drop landed here but every file in it was excluded by Accepted file types"
+        },
+        {
           "name": "hoverEnd",
           "displayName": "Hover End",
           "group": "Hover Events",
@@ -14195,6 +14555,17 @@
           },
           "isSignal": false,
           "description": "Why the image could not be loaded, naming the source that failed"
+        },
+        {
+          "name": "isDragOver",
+          "displayName": "Is Dragging Over",
+          "group": "File Drop",
+          "plug": "output",
+          "type": {
+            "name": "boolean"
+          },
+          "isSignal": false,
+          "description": "True while a file is being dragged over this element — wire it to a border or background so the drop zone reacts"
         },
         {
           "name": "onClick",
@@ -14335,6 +14706,22 @@
             "condition": "pointerEventsMode = explicit",
             "inputs": [
               "pointerEventsEnabled"
+            ]
+          },
+          {
+            "condition": "acceptFileDrops = true",
+            "inputs": [
+              "acceptedFileTypes"
+            ],
+            "outputs": [
+              "filesDropped",
+              "filesRejected",
+              "droppedFile",
+              "droppedFiles",
+              "droppedFileName",
+              "droppedFileType",
+              "droppedFileSizeInBytes",
+              "isDragOver"
             ]
           },
           {
@@ -27122,6 +27509,31 @@
       ],
       "inputs": [
         {
+          "name": "acceptFileDrops",
+          "displayName": "Accept File Drops",
+          "group": "File Drop",
+          "plug": "input",
+          "type": {
+            "name": "boolean"
+          },
+          "isSignal": false,
+          "default": false,
+          "description": "Lets a file dragged from the desktop be dropped onto this element, which reveals the File Drop outputs below",
+          "index": 350
+        },
+        {
+          "name": "acceptedFileTypes",
+          "displayName": "Accepted file types",
+          "group": "File Drop",
+          "plug": "input",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "Comma-separated extensions or MIME types this element will take — \".png, .jpg\" or \"image/*\"; leave blank to accept every file. A drop of nothing but rejected files fires Files Rejected instead of Files Dropped",
+          "index": 351
+        },
+        {
           "name": "alignX",
           "displayName": "Align X",
           "group": "Alignment",
@@ -28236,6 +28648,83 @@
           "description": "Fires once this element has been added to the page and can be measured"
         },
         {
+          "name": "droppedFile",
+          "displayName": "File",
+          "group": "File Drop",
+          "plug": "output",
+          "type": {
+            "name": "*"
+          },
+          "isSignal": false,
+          "description": "The first accepted file, in the form an Upload File node takes"
+        },
+        {
+          "name": "droppedFileName",
+          "displayName": "File Name",
+          "group": "File Drop",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "Name of the first accepted file, extension included"
+        },
+        {
+          "name": "droppedFileSizeInBytes",
+          "displayName": "File Size In Bytes",
+          "group": "File Drop",
+          "plug": "output",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false,
+          "description": "Size of the first accepted file, in bytes"
+        },
+        {
+          "name": "droppedFileType",
+          "displayName": "File Type",
+          "group": "File Drop",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "MIME type the browser reports for the first accepted file, blank for one it does not recognise"
+        },
+        {
+          "name": "droppedFiles",
+          "displayName": "Files",
+          "group": "File Drop",
+          "plug": "output",
+          "type": {
+            "name": "array"
+          },
+          "isSignal": false,
+          "description": "Every accepted file in the drop, as an array — a drop can carry more than one"
+        },
+        {
+          "name": "filesDropped",
+          "displayName": "Files Dropped",
+          "group": "File Drop",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when one or more accepted files are dropped here, after every File Drop output is up to date"
+        },
+        {
+          "name": "filesRejected",
+          "displayName": "Files Rejected",
+          "group": "File Drop",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when a drop landed here but every file in it was excluded by Accepted file types"
+        },
+        {
           "name": "hoverEnd",
           "displayName": "Hover End",
           "group": "Hover Events",
@@ -28256,6 +28745,17 @@
           },
           "isSignal": true,
           "description": "Fires when the pointer moves over this element or any of its children"
+        },
+        {
+          "name": "isDragOver",
+          "displayName": "Is Dragging Over",
+          "group": "File Drop",
+          "plug": "output",
+          "type": {
+            "name": "boolean"
+          },
+          "isSignal": false,
+          "description": "True while a file is being dragged over this element — wire it to a border or background so the drop zone reacts"
         },
         {
           "name": "onClick",
@@ -28368,6 +28868,22 @@
             "condition": "pointerEventsMode = explicit",
             "inputs": [
               "pointerEventsEnabled"
+            ]
+          },
+          {
+            "condition": "acceptFileDrops = true",
+            "inputs": [
+              "acceptedFileTypes"
+            ],
+            "outputs": [
+              "filesDropped",
+              "filesRejected",
+              "droppedFile",
+              "droppedFiles",
+              "droppedFileName",
+              "droppedFileType",
+              "droppedFileSizeInBytes",
+              "isDragOver"
             ]
           }
         ]
@@ -30621,6 +31137,31 @@
       "useVariants": true,
       "inputs": [
         {
+          "name": "acceptFileDrops",
+          "displayName": "Accept File Drops",
+          "group": "File Drop",
+          "plug": "input",
+          "type": {
+            "name": "boolean"
+          },
+          "isSignal": false,
+          "default": false,
+          "description": "Lets a file dragged from the desktop be dropped onto this element, which reveals the File Drop outputs below",
+          "index": 350
+        },
+        {
+          "name": "acceptedFileTypes",
+          "displayName": "Accepted file types",
+          "group": "File Drop",
+          "plug": "input",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "Comma-separated extensions or MIME types this element will take — \".png, .jpg\" or \"image/*\"; leave blank to accept every file. A drop of nothing but rejected files fires Files Rejected instead of Files Dropped",
+          "index": 351
+        },
+        {
           "name": "alignX",
           "displayName": "Align X",
           "group": "Alignment",
@@ -31983,6 +32524,61 @@
           "description": "Fires once a Video Action has been carried out by the element"
         },
         {
+          "name": "droppedFile",
+          "displayName": "File",
+          "group": "File Drop",
+          "plug": "output",
+          "type": {
+            "name": "*"
+          },
+          "isSignal": false,
+          "description": "The first accepted file, in the form an Upload File node takes"
+        },
+        {
+          "name": "droppedFileName",
+          "displayName": "File Name",
+          "group": "File Drop",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "Name of the first accepted file, extension included"
+        },
+        {
+          "name": "droppedFileSizeInBytes",
+          "displayName": "File Size In Bytes",
+          "group": "File Drop",
+          "plug": "output",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false,
+          "description": "Size of the first accepted file, in bytes"
+        },
+        {
+          "name": "droppedFileType",
+          "displayName": "File Type",
+          "group": "File Drop",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "MIME type the browser reports for the first accepted file, blank for one it does not recognise"
+        },
+        {
+          "name": "droppedFiles",
+          "displayName": "Files",
+          "group": "File Drop",
+          "plug": "output",
+          "type": {
+            "name": "array"
+          },
+          "isSignal": false,
+          "description": "Every accepted file in the drop, as an array — a drop can carry more than one"
+        },
+        {
           "name": "failure",
           "displayName": "Failure",
           "group": "Events",
@@ -31992,6 +32588,28 @@
           },
           "isSignal": true,
           "description": "Fires when the action never reached the element, because it has still not mounted"
+        },
+        {
+          "name": "filesDropped",
+          "displayName": "Files Dropped",
+          "group": "File Drop",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when one or more accepted files are dropped here, after every File Drop output is up to date"
+        },
+        {
+          "name": "filesRejected",
+          "displayName": "Files Rejected",
+          "group": "File Drop",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when a drop landed here but every file in it was excluded by Accepted file types"
         },
         {
           "name": "hoverEnd",
@@ -32014,6 +32632,17 @@
           },
           "isSignal": true,
           "description": "Fires when the pointer moves over this element or any of its children"
+        },
+        {
+          "name": "isDragOver",
+          "displayName": "Is Dragging Over",
+          "group": "File Drop",
+          "plug": "output",
+          "type": {
+            "name": "boolean"
+          },
+          "isSignal": false,
+          "description": "True while a file is being dragged over this element — wire it to a border or background so the drop zone reacts"
         },
         {
           "name": "onCanPlay",
@@ -32225,6 +32854,22 @@
             "condition": "pointerEventsMode = explicit",
             "inputs": [
               "pointerEventsEnabled"
+            ]
+          },
+          {
+            "condition": "acceptFileDrops = true",
+            "inputs": [
+              "acceptedFileTypes"
+            ],
+            "outputs": [
+              "filesDropped",
+              "filesRejected",
+              "droppedFile",
+              "droppedFiles",
+              "droppedFileName",
+              "droppedFileType",
+              "droppedFileSizeInBytes",
+              "isDragOver"
             ]
           },
           {

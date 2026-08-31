@@ -173,6 +173,8 @@ NodeSharedPortDefinitions.addTransformInputs(TextNode);
 NodeSharedPortDefinitions.addMarginInputs(TextNode);
 NodeSharedPortDefinitions.addSharedVisualInputs(TextNode);
 NodeSharedPortDefinitions.addPointerEventOutputs(TextNode);
+// DEF-029 — file drop, off until the author switches it on.
+NodeSharedPortDefinitions.addFileDropPorts(TextNode);
 
 function defineTooltips(node) {
   node.inputCss.wordBreak.tooltip = createTooltip({

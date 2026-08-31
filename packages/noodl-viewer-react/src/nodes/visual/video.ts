@@ -319,6 +319,8 @@ NodeSharedPortDefinitions.addMarginInputs(VideoNode);
 NodeSharedPortDefinitions.addSharedVisualInputs(VideoNode);
 NodeSharedPortDefinitions.addAlignInputs(VideoNode);
 NodeSharedPortDefinitions.addPointerEventOutputs(VideoNode);
+// DEF-029 — file drop, off until the author switches it on.
+NodeSharedPortDefinitions.addFileDropPorts(VideoNode);
 NodeSharedPortDefinitions.addBorderInputs(VideoNode);
 
 export default createNodeFromReactComponent(VideoNode);

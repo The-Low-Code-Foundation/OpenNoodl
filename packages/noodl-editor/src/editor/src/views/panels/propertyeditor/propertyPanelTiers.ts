@@ -92,6 +92,17 @@ export const ADVANCED_CSS_GROUPS: Readonly<Record<string, string>> = {
   Placement: 'plumbing: transform origin, rotation and scale — FB-016 makes these legible separately',
   'Dimension Constraints': 'plumbing: min/max width and height, set once on the layouts that need them',
   'Pointer Events': 'plumbing: hit-testing and click bubbling',
+  // DEF-029. Filed beside `Pointer Events` because it is the same kind of thing: shared DOM
+  // interaction machinery, off by default, reached deliberately when a screen needs it. It is
+  // emphatically not a node's subject — a Group is not a drop zone by nature — so
+  // SUBJECT_GROUPS, whose contract is "ports that name the thing the node IS", would be the
+  // wrong list and would say something untrue.
+  //
+  // ⚠️ An appearance judgement, and a one-line revert: deleting this entry puts `Accept File
+  // Drops` on the first screen of every Group, Text, Image, Circle and Video. It is here
+  // because that is five nodes' basic tier taxed permanently for a port most screens never
+  // set, which is the accumulation FB-017 exists to stop.
+  'File Drop': 'plumbing: drag-and-drop DOM machinery, opt-in per element',
   Focus: 'plumbing: whether the element takes focus',
   Scroll: 'plumbing: scroll behaviour on a container that already scrolls',
   'Scroll To Element': 'plumbing: an imperative scroll action and its parameters',

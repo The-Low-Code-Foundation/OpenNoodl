@@ -181,6 +181,8 @@ NodeSharedPortDefinitions.addMarginInputs(ImageNode);
 NodeSharedPortDefinitions.addSharedVisualInputs(ImageNode);
 NodeSharedPortDefinitions.addAlignInputs(ImageNode);
 NodeSharedPortDefinitions.addPointerEventOutputs(ImageNode);
+// DEF-029 — file drop, off until the author switches it on.
+NodeSharedPortDefinitions.addFileDropPorts(ImageNode);
 NodeSharedPortDefinitions.addBorderInputs(ImageNode);
 NodeSharedPortDefinitions.addShadowInputs(ImageNode);
 

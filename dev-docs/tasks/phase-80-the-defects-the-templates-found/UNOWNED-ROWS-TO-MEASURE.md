@@ -1,7 +1,10 @@
-# The five unowned rows that need a measurement, not a re-read
+# The six unowned rows that need a measurement, not a re-read
 
-> 🟢 **§1 is measured and DISPROVED (2026-08-30), by phase 77 s34 — four left.** The instrument
-> is named in the row.
+> 🟢 **§1 is measured and DISPROVED (2026-08-30), by phase 77 s34.** The instrument is named in
+> the row.
+>
+> 🆕 **§6 added s29 (2026-08-31) and it is already MEASURED** — it was found by being blocked by
+> it, not by a sweep. Five left to measure.
 
 **Written s23 (2026-08-30) at Richard's instruction.** The
 [unowned register](TASKS.md#findings-this-phase-raised-that-nobody-owns) holds twelve rows. Seven
@@ -214,3 +217,49 @@ and `seedNewNode` runs **after** (deliberately, for undo granularity), so foldin
 the write lands relative to the `create` undo entry.
 
 Owner: **NONE**. Gets a `DEF-0xx` id when someone measures it.
+
+---
+
+## 6. `group.ts` cannot be imported from a test, so the most-used visual node is ungraded
+
+## 🔴 MEASURED WHILE BUILDING — 2026-08-31, DEF-029 s29
+
+Not a suspicion. DEF-029's spec tried to import `Group` and could not, and the row exists because
+the workaround it forced is a permanent hole in every future spec.
+
+**Instrument:** any test in `packages/noodl-viewer-react/tests/` doing
+`import GroupNode from '../src/nodes/visual/group'`.
+
+```
+SyntaxError: Unexpected token 'export'
+  at src/components/visual/Group/scroll-plugins/nested-scroll-plugin.js:212
+Test Suites: 1 failed, 1 total
+Tests:       0 total
+```
+
+**Why.** `group.ts` → `Group.tsx` → `scroll-plugins/nested-scroll-plugin.js`, a plain `.js` file
+using ESM `export default`. This package's `jest.config.js` is bare `preset: 'ts-jest'`, which
+transforms `.ts`/`.tsx` only, so the `.js` reaches Node untransformed.
+
+Measured across the five interactive visual nodes: **`Group` is the only one that fails.** `Text`,
+`Image`, `Circle` and `Video` all import cleanly.
+
+🔴 **The failure mode is the dangerous part: `Tests: 0 total`.** That reads like a missing file or
+a bad path, not like a broken import — and it is the same reading a suite gives when a module
+touches the `Noodl` global too late. A spec written for Group and quietly reporting zero tests
+would look like it had been deleted, not like it had never run.
+
+**What it costs.** `Group` is the container every layout is built from and the node with the most
+ports in the library. Any future row about Group's runtime behaviour has to either grade a proxy
+(DEF-029 graded `addFileDropPorts` directly and said so) or not be graded at all.
+
+**What to measure before fixing.** Whether adding a `.js` transform to this package's jest config
+changes any existing suite's result — 86 suites currently pass, and several deliberately drive
+untransformed fixtures. ⚠️ The config is shared, so this is not a one-line change to make casually
+in a lane that is not about it; that is precisely why DEF-029 worked around it rather than
+widening its own scope.
+
+**Candidate fix, not a design**: give the package a `transform` mapping `.js` through babel, or
+convert `nested-scroll-plugin.js` and its siblings to `.ts`.
+
+Owner: **NONE**. Gets a `DEF-0xx` id when someone measures the blast radius above.

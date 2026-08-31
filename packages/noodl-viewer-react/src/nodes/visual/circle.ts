@@ -130,5 +130,7 @@ NodeSharedPortDefinitions.addMarginInputs(CircleNode);
 NodeSharedPortDefinitions.addSharedVisualInputs(CircleNode);
 NodeSharedPortDefinitions.addAlignInputs(CircleNode);
 NodeSharedPortDefinitions.addPointerEventOutputs(CircleNode);
+// DEF-029 — file drop, off until the author switches it on.
+NodeSharedPortDefinitions.addFileDropPorts(CircleNode);
 
 export default createNodeFromReactComponent(CircleNode);

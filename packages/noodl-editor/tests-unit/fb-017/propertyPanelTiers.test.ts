@@ -218,11 +218,15 @@ describe('the ruling, swept over the real node catalog', () => {
 
     const { basic, advanced } = orderPropertyGroups(groups);
 
-    // Measured, not quoted: a `Group` carries 87 input ports under 18 distinct headings, and the
-    // ruling folds 8 of those into `Advanced CSS`. FB-017's own ground-truth note says 19 — it
-    // counted one heading that is not there.
-    expect(groups.length).toBe(18);
-    expect(advanced.length).toBe(8);
+    // Measured, not quoted: a `Group` carries 89 input ports under 19 distinct headings, and the
+    // ruling folds 9 of those into `Advanced CSS`. FB-017's own ground-truth note says 19 for the
+    // pre-DEF-029 library — it counted one heading that was not there.
+    //
+    // 18 → 19 and 8 → 9 is DEF-029's `File Drop`, classified as plumbing beside `Pointer
+    // Events`. The basic tier is deliberately unmoved at 10: the whole point of filing it in the
+    // denylist is that the first screen of a Group is exactly what it was.
+    expect(groups.length).toBe(19);
+    expect(advanced.length).toBe(9);
     expect(basic.length).toBe(10);
     expect(namesOf(basic)[0]).toBe('General');
   });
