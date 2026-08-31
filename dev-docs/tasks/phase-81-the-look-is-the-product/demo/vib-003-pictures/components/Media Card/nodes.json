@@ -9,8 +9,10 @@
       "label": "Card",
       "parameters": {
         "flexDirection": "column",
-        "paddingLeft": 12,
-        "paddingTop": 12
+        "paddingLeft": "var(--space-3)",
+        "paddingRight": "var(--space-3)",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)"
       },
       "children": [
         "columns"
@@ -25,7 +27,10 @@
       "parent": "card_root",
       "parameters": {
         "layoutString": "1 2",
-        "marginX": 8
+        "marginX": {
+          "value": 12,
+          "unit": "px"
+        }
       },
       "children": [
         "cover_image",
@@ -63,7 +68,9 @@
       "parent": "columns",
       "parameters": {
         "flexDirection": "row",
-        "alignItems": "center"
+        "alignItems": "center",
+        "columnGap": "var(--space-3)",
+        "justifyContent": "space-between"
       },
       "children": [
         "status_dot",

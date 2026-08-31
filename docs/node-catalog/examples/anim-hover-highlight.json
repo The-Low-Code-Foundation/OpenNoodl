@@ -11,7 +11,7 @@
           "id": "card",
           "type": "Group",
           "label": "Card",
-          "parameters": { "flexDirection": "column", "paddingLeft": 16, "paddingTop": 16, "borderRadius": 8 },
+          "parameters": { "flexDirection": "column", "paddingLeft": "var(--space-4)", "paddingRight": "var(--space-4)", "paddingTop": "var(--space-4)", "paddingBottom": "var(--space-4)", "borderRadius": 8 },
           "children": ["card_text"]
         },
         { "id": "card_text", "type": "Text", "label": "Card label", "parent": "card", "parameters": { "text": "Hover me" } },

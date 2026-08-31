@@ -2,7 +2,7 @@
 
 **Register rows: V7 (closed, and the row was materially wrong — §1(a)), V19 (the instrument), V20 (the door). Opened here: V21, V22, V23.**
 
-Opened 2026-08-31, session 3. **Status: 🟡 PASSABLE — the first phase-81 page on which the imagery/iconography tell does not fire.** See §5 for the verdict, §4 for the five defects the rendering found, §7 for what this task deliberately does not fix. ⚠️ Provisional until Richard has looked (README §3.5).
+Opened 2026-08-31, session 3. **Status: 🟡 PASSABLE — RICHARD RULED IT (§4c): *"nice, deffo passable and looking like a modern base template, good job"*. The first phase-81 page on which the imagery/iconography tell does not fire.** See §5 for the verdict, §4 for the five defects the rendering found, §7 for what this task deliberately does not fix. ⚠️ Provisional until Richard has looked (README §3.5).
 
 VIB-002 closed PASSABLE and Richard ruled *"very passable, nearly worthy"*. §5 of that file named
 the remaining distance, and the first item on it is this task: **the page he looked at has one
@@ -351,6 +351,74 @@ property rather than the one the eye reads**:
 reported **no defect on the band Richard was pointing at**, because `ui-split-hero`'s lead paragraph
 carries `maxWidth: 520px` — which insets one paragraph and satisfies a naive predicate. **Nothing
 anywhere measures a rendered gutter**, which is why this shipped. Filed as **V26**, owner VIB-007.
+
+---
+
+## §4c ✅ Richard's ruling on the verdict, and two more findings from it
+
+**2026-08-31:** *"It's nice, deffo passable and looking like a modern base template, good job."*
+
+**PASSABLE stands, on his look.** The second phase-81 verdict to survive it above SHITTY, and the
+first page in the phase on which the imagery/iconography tell does not fire.
+
+Two things came with it, both now register rows.
+
+### (a) Spacing is the weak point, and the corpus has a signature (V27)
+
+> *"still some spacing problems in the cards for example between the circle and the start of the
+> card text, minor things but yeah spacing and padding seems to be a weak point with the MCP."*
+
+Swept across the 64 examples rather than fixed where he pointed:
+
+| reading | count |
+|---|---|
+| raw pixel numbers where a `--space` token belongs | **30** |
+| paddings set on an asymmetric subset of sides | **20** |
+| …of which the identical `paddingLeft` + `paddingTop` **only**, as bare numbers | **13** |
+| row/column Groups with 2+ children and **no gap of any kind** | **58** |
+
+🔴 **The `LeftTop`-only shape is not sloppiness, it is one mistake copied through the corpus** —
+padding on two sides and nothing on the other two, in thirteen unrelated examples. Fixed: all 14
+such nodes now carry four symmetric sides on `--space` tokens, and the media card gains
+`columnGap` and `justifyContent` so the dot is off the title and the glyph sits at the card's edge.
+
+⚠️ **The 58 no-gap containers are deliberately NOT fixed.** Many are logic and agent examples where
+a gap is a judgement call, and changing 58 nodes without looking at what each renders would be
+exactly the proxy this phase refuses. Owner: VIB-004.
+
+⚠️ And a smaller thing that cost a wrong fix first: `paddingLeft` accepts `var(--space-4)` because it
+is a CSS pass-through, while a **units-typed** port like `Columns.marginX` needs `{value, unit}` and
+**silently drops a `var()` string**. The doctrine's *"never emit a raw px when a token fits"* has an
+exception it does not state, and `catalog:examples` accepted the broken form. **V28**, VIB-007.
+
+### (b) 🔴 RULED — an empty half is a defect, not defensible negative space (V29)
+
+VIB-002 §9 left this open and the sheet re-asked it rather than reading the silence as agreement.
+His answer:
+
+> *"the wider you go the more the features stretch out in terms of column spacing up to a max and
+> then there's white space to the left and right **equally**… not just on one side, that's weird.
+> Even in the hero section I would have thought the standard is… the structural page divs have a max
+> width and are centred."*
+
+So V15's *"a max-width that is right at 1280 is not a decision about 1900"* now has an answer: the
+answer is **a centred measure with equal margins**, and a band that fills one side and leaves the
+other empty is wrong rather than restrained. Measured: **the VIB-003 page already satisfies it**
+(64/64 at 1280, 374/374 at 1900) — **the VIB-002 image-scrim band does not** (374 left, 766 right at
+1900). This decides what VIB-004 builds.
+
+### (c) And a third instruction, which became its own task
+
+> *"we should download some stock images and keep them in the deployed editor as a kind of stock
+> image library of basic shit… even for when the MCP is making custom apps for people it can piocher
+> in the image library."*
+
+**This supersedes §3(d)'s generated-abstract decision**, and the reason that decision gave — a
+licence a repository cannot check — turns out to be checkable per file. 🔴 But *free to use* is not
+*free to bundle*: this library is redistributed twice, and Unsplash and Pexels both restrict
+redistributing photographs **as a collection**. CC0 is the only class that survives, and
+`Category:Images from Pixabay` on Wikimedia Commons is the intersection that makes it possible.
+Pipeline proven, source found, library unbuilt — **VIB-011**, register **V30**.
 
 ---
 

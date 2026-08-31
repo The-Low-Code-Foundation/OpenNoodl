@@ -11,7 +11,7 @@
           "id": "root",
           "type": "Group",
           "label": "Layout",
-          "parameters": { "flexDirection": "column", "paddingLeft": 16, "paddingTop": 16 },
+          "parameters": { "flexDirection": "column", "paddingLeft": "var(--space-4)", "paddingRight": "var(--space-4)", "paddingTop": "var(--space-4)", "paddingBottom": "var(--space-4)" },
           "children": ["count_text", "add_button", "clicked_hint"]
         },
         {

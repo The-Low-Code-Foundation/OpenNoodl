@@ -9,7 +9,7 @@ from the task files at session open; do not trust a handoff's copy of it.
 |---|---|---|---|---|
 | VIB-001 | The Judge | 🟢 | — | **9 SHITTY / 0 PASSABLE / 0 WORTHY** — `VIB-001-BASELINE-VERDICTS.md`. All 5 ACs met; Richard ruled 2026-08-31 and the rubric was amended (README §2) |
 | VIB-002 | The Ceiling | 🟡 | VIB-001 | **PASSABLE — Richard ruled 2026-08-31** (`VIB-002-THE-CEILING.md` §9): *"very passable, nearly worthy, definitely night and day with the original"*. **The phase's first reading above SHITTY to survive his look.** Capability closed (V5 + V13), 5 ACs met; the WORTHY gap he did not dispute is icons→VIB-003, sections→VIB-004, measure→VIB-008 |
-| VIB-003 | The Pictures | 🟡 | VIB-001 | **PASSABLE** — `VIB-003-THE-PICTURES.md` §5, PNGs in `verdicts/vib-003/2026-08-31/`. 🔴 **The first phase-81 page on which the imagery/iconography tell does NOT fire.** 5 ACs met; the WORTHY gap is content structure → VIB-004. ⚠️ Provisional until Richard looks. Closed V7, V19, V20; opened V21 (VIB-005), V22 (VIB-007), V23 (recorded) |
+| VIB-003 | The Pictures | 🟡 | VIB-001 | **PASSABLE — RICHARD RULED IT** 2026-08-31: *"nice, deffo passable and looking like a modern base template, good job"*. 🔴 **The first phase-81 page on which the imagery/iconography tell does NOT fire.** 5 ACs met; the WORTHY gap is content structure → VIB-004. Closed V7, V19, V20, V25; opened V21 (VIB-005), V22/V26/V28 (VIB-007), V27 (VIB-004), **V29 RULED** (VIB-004/008), V30 (VIB-011) |
 | VIB-004 | The Marketing Kit | ⬜ | VIB-001, VIB-002 | — |
 | VIB-005 | The Ambush Defaults | ⬜ | VIB-001 | — |
 | VIB-006 | The Worked Page | ⬜ | VIB-002/003/004 | — |
@@ -17,6 +17,7 @@ from the task files at session open; do not trust a handoff's copy of it.
 | VIB-008 | The Members' Area, Redeemed | ⬜ | VIB-002/003/004/005 | — |
 | VIB-009 | The Site Builder, Redeemed | ⬜ | VIB-002/003/004/005 | — |
 | VIB-010 | The Cold Proof | ⬜ | VIB-006, VIB-007 | — |
+| VIB-011 | The Stock Library | 🟡 | VIB-003 | Opened 2026-08-31 by Richard's instruction (V30). Pipeline proven and source found (`Category:Images from Pixabay`, CC0 per file); **library unbuilt**. 🔴 Free-to-use is not free-to-bundle — Unsplash and Pexels both restrict redistributing photos as a collection, which is what bundling is |
 
 ## Task summaries
 

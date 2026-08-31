@@ -11,7 +11,7 @@
           "id": "form_root",
           "type": "Group",
           "label": "Form layout",
-          "parameters": { "flexDirection": "column", "paddingLeft": 16, "paddingTop": 16 },
+          "parameters": { "flexDirection": "column", "paddingLeft": "var(--space-4)", "paddingRight": "var(--space-4)", "paddingTop": "var(--space-4)", "paddingBottom": "var(--space-4)" },
           "children": ["name_input", "save_button"]
         },
         {
@@ -54,7 +54,7 @@
           "id": "header_root",
           "type": "Group",
           "label": "Header layout",
-          "parameters": { "paddingLeft": 16, "paddingTop": 16 },
+          "parameters": { "paddingLeft": "var(--space-4)", "paddingRight": "var(--space-4)", "paddingTop": "var(--space-4)", "paddingBottom": "var(--space-4)" },
           "children": ["greeting_text"]
         },
         {

@@ -11,7 +11,7 @@
           "id": "card_root",
           "type": "Group",
           "label": "Card",
-          "parameters": { "flexDirection": "column", "paddingLeft": 12, "paddingTop": 12 },
+          "parameters": { "flexDirection": "column", "paddingLeft": "var(--space-3)", "paddingRight": "var(--space-3)", "paddingTop": "var(--space-3)", "paddingBottom": "var(--space-3)" },
           "children": ["columns"]
         },
         {
@@ -19,7 +19,7 @@
           "type": "net.noodl.visual.columns",
           "label": "1:2 columns",
           "parent": "card_root",
-          "parameters": { "layoutString": "1 2", "marginX": 8 },
+          "parameters": { "layoutString": "1 2", "marginX": { "value": 12, "unit": "px" } },
           "children": ["cover_image", "detail_group"]
         },
         {
@@ -41,7 +41,12 @@
           "type": "Group",
           "label": "Details",
           "parent": "columns",
-          "parameters": { "flexDirection": "row", "alignItems": "center" },
+          "parameters": {
+            "flexDirection": "row",
+            "alignItems": "center",
+            "columnGap": "var(--space-3)",
+            "justifyContent": "space-between"
+          },
           "children": ["status_dot", "title_text", "fav_icon"]
         },
         {
