@@ -267,3 +267,68 @@ worth keeping, because the same judgement will have to be made again.
 ⚠️ *"A fine minimalist landing page"* is a description, not a promotion: VIB-011 stays **🟡 PASSABLE**.
 Its own recorded WORTHY gap — *the library ships and the page barely uses it* — is answered **by
 VIB-006's page**, not by the VIB-004 page VIB-011 was judged on, which is unchanged.
+
+## §15 🔴 V40 — the door could not see the worked page, and had not seen anything since VIB-002
+
+Found by asking a question that should have been asked four sessions ago: **does `get_example`
+actually return this?**
+
+`get_example` and `get_node_type` do **not** read `docs/node-catalog/examples/`. They answer from
+`packages/noodl-types/src/node-catalog-enriched.json`, which is **generated** from the corpus by
+`npm run catalog:merge`. That file had not been regenerated since **VIB-002** (`611fed28`).
+
+| layer | examples |
+|---|---|
+| `docs/node-catalog/examples/` (source, gated by `catalog:examples`) | **67** |
+| `node-catalog-enriched.json` (what the door answers from) | **64** |
+
+**Invisible to the door**: `ui-cta-band` and `ui-testimonial-row` — VIB-004's two new recipes, shipped
+**two sessions ago** — and `ui-landing-page`. Also missing: the `File Drop` ports on
+`Group`/`Image`/`Text`/`Circle`/`Video` from P80's DEF-029 (`f725d184`).
+
+🔴 **The gate for this exists and had been red for four commits.** `npm run catalog:merge:check` says
+*"Stale enriched catalog … run npm run catalog:merge and commit the result"*. **No phase-81 session
+ever ran it** — every one of us ran `catalog:examples`, which validates the corpus **files** and is
+structurally unable to see whether the door can reach them. ⚠️ **A hole shaped exactly like the
+defect**: this phase's entire premise is *the corpus is what a model imitates*, and for four sessions
+it was adding recipes to a corpus the model could not read.
+
+✅ **Fixed and verified through the door, not by inspection**: `listExamples()` → **67**,
+`getExample('ui-landing-page')` → 14 components, 9-node page.
+
+⚠️ **The regeneration reds `nodeDocBudget`, and the breach is not this task's.** `Group` came out at
+**13,689** against a 13,500 ceiling. Attributed by stripping the `File Drop`-grouped ports back out:
+they are **2,651 of the 2,880 bytes** `Group` grew — **92%** — and `Group` carries **no `examples`
+field at all**, so the three new examples contribute **nothing** to it. The breach is DEF-029's,
+latent since `f725d184` because its derived catalog was never regenerated. Ratchet moved to **14,300**
+with the numbers and the attribution written into the spec (~600 headroom, the existing convention).
+
+🔴 **The general shape, and it is the one to carry: a budget on a GENERATED file is only a budget on
+the last time it was generated.** The ports were in the product and unpriced by their own ceiling for
+four commits.
+
+## §16 🔴 V41 — and none of it is in a running server yet
+
+The layer below V40, measured on the bundle the live MCP server actually executes
+(`/Applications/NodeGX.app/Contents/Resources/noodl-mcp/noodl-mcp.cjs`, built **Aug 21**), which
+**inlines** the catalog rather than reading it from disk:
+
+| marker (task that added it) | repo `dist/` (Aug 20) | installed app (Aug 21) | source |
+|---|---|---|---|
+| `ui-split-hero` (pre-phase) | 10 | 10 | ✅ |
+| `ui-gradient-hero` (VIB-002) | **0** | **0** | ✅ |
+| `ui-cta-band` (VIB-004) | **0** | **0** | ✅ |
+| `ui-landing-page` (VIB-006) | **0** | **0** | ✅ |
+| `starter-imagery` (VIB-003/011) | **0** | **0** | ✅ 15 |
+| `gradient-scrim` (VIB-002) | **0** | **0** | ✅ 4 |
+
+**Not one thing this phase has built exists in either bundle.** An agent talking to the resident
+`nodegx-*` server today gets the pre-phase kit: no grounds, no marketing compositions, no photographs,
+no worked page.
+
+⚠️ **Scope this correctly — it is NOT a repo defect.** `packages/noodl-mcp/dist/` is gitignored and
+rebuilt by `npm run build:sidecars`; the installed app is a release artefact that predates the phase.
+This is the expected consequence of not having cut a build. **It is recorded because it is the
+difference between "the kit exists" and "the kit is in the product"**, and every verdict this phase
+has written is about the former. Owner: **NONE** — it discharges on the next release build, and the
+thing to do is *verify after that build*, not before.
