@@ -221,3 +221,49 @@ been `toBeGreaterThan(0)`, or written after reading the extractor's own output, 
 shipped with an image check blind to a third of its images. An enumerated port list is a claim about
 which ports exist; the honest predicate is *any parameter whose value is a path into the installed
 modules*, which is what the runtime resolves. It is now `toBe(8)`.
+
+## §13 🔴 Richard's ruling, 2026-08-31 — verbatim. **WORTHY. The phase's first close on the look.**
+
+He was shown the four viewports and answered:
+
+> *"It looks fucking pro, good job. VIB 006 screens are amazing. VIB 011 is passable, a fine
+> minimalist landing page"*
+
+**Recorded WORTHY**, and the reason it is read as a grade rather than as encouragement is **the
+contrast inside his own sentence**: he used the word *"passable"* for one page and *"fucking pro"* /
+*"amazing"* for the other, **in the same breath**. Three previous rulings in this phase were recorded
+PASSABLE precisely because they did not do that —
+
+| task | his words | recorded |
+|---|---|---|
+| VIB-002 | *"very passable, nearly worthy"* | PASSABLE |
+| VIB-003 | *"deffo passable and looking like a modern base template, good job"* | PASSABLE |
+| VIB-011 | *"It's looking better and better, good job"* | PASSABLE (a direction, not a verdict) |
+| **VIB-006** | *"fucking pro… amazing"*, **beside** *"VIB-011 is passable"* | **WORTHY** |
+
+🔴 **README §2's caution cuts both ways.** *"Approval is not a grade"* exists because the first
+baseline scored two pages PASSABLE for being merely legible — but **under-reading a ruling is the same
+class of error as over-reading one**. A session that recorded this as PASSABLE would be applying the
+caution as a reflex rather than as a measurement, and the measurement here is the deliberate
+distinction he drew between two artefacts he was shown together.
+
+**VIB-006 is 🟢 CLOSED** — README §3 satisfied end to end: rendered through the Judge in the honest
+state at four widths, looked at, verdict written with the tells named, and **Richard has seen it**.
+
+⚠️ **What this does and does not prove.** It closes the CORPUS seam (V8): the thing a model imitates
+now exists and is judged good. It does **not** prove the pipeline produces it — that is **VIB-010**,
+the cold proof, and it remains the phase's exit exam. A page assembled by a session that had read the
+whole phase is not evidence about a session that has read nothing.
+
+## §14 VIB-011, re-ruled in the same sentence — the cautious reading was right
+
+> *"VIB 011 is passable, a fine minimalist landing page"*
+
+VIB-011's session recorded *"It's looking better and better, good job"* as **PASSABLE** rather than
+WORTHY, over the objection that it sounded like approval. ✅ **That reading is now confirmed by
+Richard explicitly using the word.** The caution was correct, and this is the evidence for it —
+worth keeping, because the same judgement will have to be made again.
+
+⚠️ *"A fine minimalist landing page"* is a description, not a promotion: VIB-011 stays **🟡 PASSABLE**.
+Its own recorded WORTHY gap — *the library ships and the page barely uses it* — is answered **by
+VIB-006's page**, not by the VIB-004 page VIB-011 was judged on, which is unchanged.

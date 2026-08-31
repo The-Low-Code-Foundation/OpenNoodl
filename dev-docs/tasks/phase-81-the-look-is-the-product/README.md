@@ -147,7 +147,7 @@ clearly a person can read them.
 | VIB-003 | The Pictures | A template can ship image assets; icons and images appear in rendered output; the empty-`src` example corpus is fixed |
 | VIB-004 | The Marketing Kit | Hero / ctaBand / featureItem / statTile / footer (and peers) exist as compositions and render as designed sections |
 | VIB-005 | The Ambush Defaults | The sizeMode/scroll/clip traps get door diagnostics + doctrine + a page-ground composition that scrolls; the members-area gap/no-scroll class becomes impossible to author silently |
-| VIB-006 | The Worked Page | At least one complete, designed landing page in the example corpus — the thing a model can imitate |
+| VIB-006 | The Worked Page | At least one complete, designed landing page in the example corpus — the thing a model can imitate. 🟢 **CLOSED 2026-08-31, WORTHY, ruled by Richard** (*"it looks fucking pro… VIB 006 screens are amazing"*) — the phase's first close on the look |
 | VIB-007 | The Brief | Ambition moves into the per-turn instruction surfaces; render-measure gains poverty findings so gate pressure is two-directional |
 | VIB-008 | The Members' Area, Redeemed | TPL-001's first-run degradation fixed (no-backend state designed, gating fails closed, layout/scroll fixed) and its landing judged WORTHY |
 | VIB-009 | The Site Builder, Redeemed | Same bar for the site-builder public site |
