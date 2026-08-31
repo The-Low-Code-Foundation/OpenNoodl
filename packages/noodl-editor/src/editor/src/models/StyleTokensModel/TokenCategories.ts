@@ -19,6 +19,7 @@ export type TokenCategory =
   | 'border-radius'
   | 'border-width'
   | 'shadow'
+  | 'gradient'
   | 'animation-duration'
   | 'animation-easing';
 
@@ -79,6 +80,15 @@ export const TOKEN_CATEGORIES: Record<
   shadow: {
     label: 'Shadows',
     description: 'Box shadow scale',
+    group: 'Effects'
+  },
+  // VIB-002. Grouped under Effects beside shadows rather than under Colors,
+  // because a gradient is a decorative ground, not a colour a border or a label
+  // can be set to — and because every port that accepts one accepts a shadow's
+  // kind of value (a complete CSS declaration) rather than a colour's.
+  gradient: {
+    label: 'Gradients',
+    description: 'Decorative grounds for heroes, CTA bands and image scrims',
     group: 'Effects'
   },
   'animation-duration': {

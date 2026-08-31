@@ -84,7 +84,18 @@ export function DesignTokensTab() {
 
 /**
  * Determine the display group from a token's category.
- * Mirrors TOKEN_CATEGORIES group mappings without creating circular imports.
+ *
+ * 🔴 **This is a second copy of the mapping `TOKEN_CATEGORIES` already holds**,
+ * and it fails closed in the worst possible way: an unmapped category returns
+ * `null`, the token is dropped from `grouped`, and the panel renders as though it
+ * does not exist — while `get_style_vocabulary` lists it to the authoring model
+ * perfectly happily. VIB-002 hit exactly that adding the `gradient` category:
+ * the tokens were live in the rendered page and invisible in the editor.
+ *
+ * It is kept as a copy only because the comment below it is true — importing the
+ * table here would close a circular import — so the tripwire is the rule instead:
+ * **a new `TokenCategory` must be added in BOTH places**, and the `default`
+ * branch names the file to change.
  */
 function getGroupForToken(token: StyleTokenRecord): TokenCategoryGroup | null {
   const cat = token.category;
@@ -92,7 +103,7 @@ function getGroupForToken(token: StyleTokenRecord): TokenCategoryGroup | null {
   if (cat === 'spacing') return 'Spacing';
   if (cat.startsWith('typography')) return 'Typography';
   if (cat === 'border-radius' || cat === 'border-width') return 'Borders';
-  if (cat === 'shadow') return 'Effects';
+  if (cat === 'shadow' || cat === 'gradient') return 'Effects';
   if (cat.startsWith('animation')) return 'Animation';
   return null;
 }

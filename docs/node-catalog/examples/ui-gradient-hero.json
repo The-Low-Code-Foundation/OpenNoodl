@@ -1,0 +1,192 @@
+{
+  "id": "ui-gradient-hero",
+  "title": "Hero on a designed ground: a gradient band, fluid display type, glass panel",
+  "description": "The band a landing page opens with, and the thing a flat-colour page is missing. Three capabilities, all on ONE Group: `backgroundGradient` takes a gradient token (\"var(--gradient-spotlight)\") as the band's ground, so the section reads as a decision rather than a default; the headline uses `--display-lg`, a FLUID token whose value is a clamp() — 44px on a phone and 96px on a wide desktop, from one parameter and with no responsive port anywhere; and the stat strip is a translucent panel (`--surface-glass` fill, `--border-glass` hairline, `backdropBlur` 14px) which is how depth is expressed here — `opacity` on a Group would fade its own children, so translucency has to come from an alpha fill. Text on a dark ground is `--primary-foreground`, and the secondary button borders in `--border-glass` rather than `--border-control`, which is invisible on ink. Note what is NOT here: no absolutely-positioned overlay stack. A gradient ground plus a scrim is one node.",
+  "demonstrates": ["Group", "Text", "net.noodl.controls.button"],
+  "components": [
+    {
+      "name": "/Pages/Example",
+      "nodes": [
+        {
+          "id": "page",
+          "type": "Page",
+          "label": "Page",
+          "parameters": { "title": "Example", "urlPath": "example" },
+          "children": ["hero"]
+        },
+        {
+          "id": "hero",
+          "type": "Group",
+          "label": "Hero band — gradient ground",
+          "parameters": {
+            "width": { "value": 100, "unit": "%" },
+            "flexDirection": "column",
+            "alignItems": "center",
+            "backgroundGradient": "var(--gradient-spotlight)",
+            "paddingTop": "var(--space-24)",
+            "paddingBottom": "var(--space-24)"
+          },
+          "parent": "page",
+          "children": ["shell"]
+        },
+        {
+          "id": "shell",
+          "type": "Group",
+          "label": "Shell",
+          "parameters": {
+            "width": { "value": 100, "unit": "%" },
+            "maxWidth": { "value": 1200, "unit": "px" },
+            "flexDirection": "column",
+            "rowGap": "var(--space-6)",
+            "paddingLeft": "var(--space-6)",
+            "paddingRight": "var(--space-6)"
+          },
+          "parent": "hero",
+          "children": ["eyebrow", "headline", "lead", "actions", "stats"]
+        },
+        {
+          "id": "eyebrow",
+          "type": "Text",
+          "label": "Eyebrow",
+          "parameters": {
+            "text": "For independent studios",
+            "fontSize": "var(--text-xs)",
+            "fontWeight": "var(--font-semibold)",
+            "letterSpacing": "var(--tracking-widest)",
+            "textTransform": "uppercase",
+            "color": "var(--primary-foreground)"
+          },
+          "parent": "shell"
+        },
+        {
+          "id": "headline",
+          "type": "Text",
+          "label": "Display headline — fluid",
+          "parameters": {
+            "text": "Ship the site you sketched, not the one the template allowed.",
+            "fontSize": "var(--display-lg)",
+            "fontWeight": "var(--font-bold)",
+            "lineHeight": "var(--leading-none)",
+            "letterSpacing": "var(--tracking-tighter)",
+            "color": "var(--primary-foreground)",
+            "maxWidth": { "value": 900, "unit": "px" }
+          },
+          "parent": "shell"
+        },
+        {
+          "id": "lead",
+          "type": "Text",
+          "label": "Lead",
+          "parameters": {
+            "text": "Every band gets its own ground. Every headline sets itself to the width it is read at. Nothing here is a browser default with your words poured into it.",
+            "fontSize": "var(--text-lg)",
+            "lineHeight": "var(--leading-relaxed)",
+            "color": "var(--primary-foreground)",
+            "maxWidth": { "value": 560, "unit": "px" }
+          },
+          "parent": "shell"
+        },
+        {
+          "id": "actions",
+          "type": "Group",
+          "label": "Actions",
+          "parameters": {
+            "flexDirection": "row",
+            "columnGap": "var(--space-3)",
+            "sizeMode": "contentSize"
+          },
+          "parent": "shell",
+          "children": ["cta", "secondary"]
+        },
+        {
+          "id": "cta",
+          "type": "net.noodl.controls.button",
+          "label": "Primary CTA",
+          "parameters": {
+            "label": "Start building",
+            "backgroundColor": "var(--primary-foreground)",
+            "color": "var(--foreground)",
+            "borderRadius": "var(--radius-full)",
+            "borderStyle": "none",
+            "paddingLeft": "var(--space-6)",
+            "paddingRight": "var(--space-6)",
+            "paddingTop": "var(--space-3)",
+            "paddingBottom": "var(--space-3)",
+            "fontSize": "var(--text-sm)",
+            "fontWeight": "var(--font-semibold)",
+            "sizeMode": "contentSize"
+          },
+          "parent": "actions"
+        },
+        {
+          "id": "secondary",
+          "type": "net.noodl.controls.button",
+          "label": "Secondary CTA",
+          "parameters": {
+            "label": "See a worked page",
+            "backgroundColor": "transparent",
+            "color": "var(--primary-foreground)",
+            "borderRadius": "var(--radius-full)",
+            "borderStyle": "solid",
+            "borderWidth": "var(--border-1)",
+            "borderColor": "var(--border-glass)",
+            "paddingLeft": "var(--space-6)",
+            "paddingRight": "var(--space-6)",
+            "paddingTop": "var(--space-3)",
+            "paddingBottom": "var(--space-3)",
+            "fontSize": "var(--text-sm)",
+            "fontWeight": "var(--font-semibold)",
+            "sizeMode": "contentSize"
+          },
+          "parent": "actions"
+        },
+        {
+          "id": "stats",
+          "type": "Group",
+          "label": "Glass panel — translucent over the gradient",
+          "parameters": {
+            "width": { "value": 100, "unit": "%" },
+            "maxWidth": { "value": 620, "unit": "px" },
+            "flexDirection": "row",
+            "columnGap": "var(--space-10)",
+            "backgroundColor": "var(--surface-glass)",
+            "borderStyle": "solid",
+            "borderWidth": "var(--border-1)",
+            "borderColor": "var(--border-glass)",
+            "borderRadius": "var(--radius-2xl)",
+            "backdropBlur": { "value": 14, "unit": "px" },
+            "paddingLeft": "var(--space-6)",
+            "paddingRight": "var(--space-6)",
+            "paddingTop": "var(--space-5)",
+            "paddingBottom": "var(--space-5)",
+            "marginTop": "var(--space-6)"
+          },
+          "parent": "shell",
+          "children": ["stat_a", "stat_b"]
+        },
+        {
+          "id": "stat_a",
+          "type": "Text",
+          "label": "Stat A",
+          "parameters": {
+            "text": "9 of 9 pages judged",
+            "fontSize": "var(--text-sm)",
+            "color": "var(--primary-foreground)"
+          },
+          "parent": "stats"
+        },
+        {
+          "id": "stat_b",
+          "type": "Text",
+          "label": "Stat B",
+          "parameters": {
+            "text": "0 flat-colour bands",
+            "fontSize": "var(--text-sm)",
+            "color": "var(--primary-foreground)"
+          },
+          "parent": "stats"
+        }
+      ]
+    }
+  ]
+}

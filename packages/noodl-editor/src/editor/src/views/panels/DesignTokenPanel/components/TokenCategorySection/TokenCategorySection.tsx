@@ -92,6 +92,13 @@ function TokenPreview({ token }: { token: StyleTokenRecord }) {
     return <div className={css.RadiusPreview} style={{ borderRadius: token.value }} title={token.value} />;
   }
 
+  if (cat === 'gradient') {
+    // VIB-002. The swatch is the only readable preview a gradient has: its value
+    // is a whole `linear-gradient(...)` referencing other tokens, so the text
+    // column beside it shows a declaration nobody can picture.
+    return <div className={css.ShadowPreview} style={{ backgroundImage: token.value }} title={token.value} />;
+  }
+
   if (cat === 'shadow') {
     return (
       <div

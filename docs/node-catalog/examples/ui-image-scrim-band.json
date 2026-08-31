@@ -1,0 +1,116 @@
+{
+  "id": "ui-image-scrim-band",
+  "title": "A photograph as the ground, with a scrim that keeps the words readable",
+  "description": "The other half of `backgroundGradient`, and the reason it is a separate port from `backgroundColor`. `backgroundImage` and `backgroundGradient` compose into ONE css background-image declaration with the gradient FIRST — so \"var(--gradient-scrim)\" paints over the picture and text laid on top stays legible whatever the photograph happens to be. That is the whole hero-over-an-image problem solved on one node, instead of an Image with an absolutely-positioned Group on top of it that an authoring model gets subtly wrong. `backgroundSize` cover crops the picture to the box; `backgroundPosition` decides what survives the crop; height is explicit because a band whose only content is a heading would otherwise collapse to the heading. `justifyContent` flex-end puts the copy at the foot of the frame, where the scrim is darkest — the scrim is a vertical gradient for exactly that reason. ⚠️ The shell inside it MUST carry `sizeMode: \"contentHeight\"`. Without it the shell is the runtime's 100%×100% default, becomes `flexGrow:100` in a column, fills the whole 520px band, and the band's `justifyContent` has nothing left to justify — the copy silently sits at the TOP with the scrim's dark end below it, empty. That is register V1, and it bit this recipe on its first render. ⚠️ `backgroundImage` is EMPTY here, as in every shipped example (register V7, owner VIB-003): put a project asset or an https URL there. Empty means the gradient alone renders, which is a designed ground and not a broken one.",
+  "demonstrates": [
+    "Group",
+    "Text"
+  ],
+  "components": [
+    {
+      "name": "/Pages/Example",
+      "nodes": [
+        {
+          "id": "page",
+          "type": "Page",
+          "label": "Page",
+          "parameters": {
+            "title": "Example",
+            "urlPath": "example"
+          },
+          "children": [
+            "band"
+          ]
+        },
+        {
+          "id": "band",
+          "type": "Group",
+          "label": "Image band — picture ground under a scrim",
+          "parameters": {
+            "width": {
+              "value": 100,
+              "unit": "%"
+            },
+            "sizeMode": "explicit",
+            "height": {
+              "value": 520,
+              "unit": "px"
+            },
+            "flexDirection": "column",
+            "alignItems": "center",
+            "justifyContent": "flex-end",
+            "backgroundImage": "",
+            "backgroundGradient": "var(--gradient-scrim)",
+            "backgroundSize": "cover",
+            "backgroundPosition": "center",
+            "backgroundColor": "var(--foreground)",
+            "paddingBottom": "var(--space-12)"
+          },
+          "parent": "page",
+          "children": [
+            "shell"
+          ]
+        },
+        {
+          "id": "shell",
+          "type": "Group",
+          "label": "Shell",
+          "parameters": {
+            "width": {
+              "value": 100,
+              "unit": "%"
+            },
+            "maxWidth": {
+              "value": 1200,
+              "unit": "px"
+            },
+            "flexDirection": "column",
+            "rowGap": "var(--space-3)",
+            "paddingLeft": "var(--space-6)",
+            "paddingRight": "var(--space-6)",
+            "sizeMode": "contentHeight"
+          },
+          "parent": "band",
+          "children": [
+            "heading",
+            "sub"
+          ]
+        },
+        {
+          "id": "heading",
+          "type": "Text",
+          "label": "Heading over the picture",
+          "parameters": {
+            "text": "The workshop, on the morning of the first firing",
+            "fontSize": "var(--display-md)",
+            "fontWeight": "var(--font-bold)",
+            "lineHeight": "var(--leading-none)",
+            "letterSpacing": "var(--tracking-tight)",
+            "color": "var(--primary-foreground)",
+            "maxWidth": {
+              "value": 760,
+              "unit": "px"
+            }
+          },
+          "parent": "shell"
+        },
+        {
+          "id": "sub",
+          "type": "Text",
+          "label": "Sub-line",
+          "parameters": {
+            "text": "Six weeks of glazing tests, and one kiln that finally behaved.",
+            "fontSize": "var(--text-lg)",
+            "lineHeight": "var(--leading-relaxed)",
+            "color": "var(--primary-foreground)",
+            "maxWidth": {
+              "value": 560,
+              "unit": "px"
+            }
+          },
+          "parent": "shell"
+        }
+      ]
+    }
+  ]
+}

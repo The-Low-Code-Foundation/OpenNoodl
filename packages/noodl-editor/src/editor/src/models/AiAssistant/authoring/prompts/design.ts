@@ -111,9 +111,12 @@ Then \`var(--space-10)\` of air before the content. Vertical padding on a sectio
 
 ### 3. Typography: the whole scale, at least three weights
 
-- Exactly ONE display headline per page: \`--text-5xl\`/\`--text-6xl\`, \`--font-bold\`,
-  \`--leading-tight\`, \`--tracking-tighter\`. Tight tracking is what makes a large heading look set
-  rather than typed.
+- Exactly ONE display headline per page: \`--display-lg\`, \`--font-bold\`, \`--leading-none\`,
+  \`--tracking-tighter\`. Tight tracking and tight leading are what make a large heading look set
+  rather than typed. \`--display-*\` sizes are fluid (see §7) — a headline that is 96px on Richard's
+  monitor is 44px on a phone from the same parameter, so there is no reason left to pick a small one.
+- A headline at \`--text-4xl\` or \`--text-5xl\` on a landing page is a section heading that got
+  promoted. If the biggest thing on the page is 48px, nothing on the page is a hero.
 - Section headings \`--text-3xl\`/\`--font-semibold\`; card titles \`--text-xl\`/\`--font-semibold\`;
   body \`--text-base\`/\`--font-normal\`; secondary \`--text-sm\` in \`--muted-foreground\`.
 - **A page rendering at one font weight is not designed.** Aim for three or more distinct weights.
@@ -133,6 +136,27 @@ border — an input, an outline button — is the only thing telling the user wh
 it needs 3:1; a decorative card hairline is exempt and should stay subtle. One border token cannot
 be both: keep \`--border\` for hairlines and a distinct \`--border-control\` at 3:1 for controls.
 Trying to make one token do both is how a real project ended up with 143 controls at 1.00:1.
+
+**Every band on a landing page does not get the same ground.** A page where no section ever changes
+what is behind it is the WordPress-starter tell, whatever the type does. \`Group\` has four ways to
+carry a ground and you should use at least three of them on a marketing page:
+
+- \`backgroundColor\` — a flat fill. \`var(--background)\` and \`var(--surface)\` alternating.
+- \`backgroundGradient\` — a gradient token: \`var(--gradient-brand)\` (the brand wash),
+  \`var(--gradient-deep)\` (ink into brand), \`var(--gradient-spotlight)\` (an off-centre glow),
+  \`var(--gradient-surface)\` (a quiet mid-page wash). Put \`var(--primary-foreground)\` text on the
+  first three; they are dark.
+- \`backgroundImage\` — a picture as the ground, with \`backgroundSize: "cover"\`.
+- **Both together.** \`backgroundGradient\` paints ON TOP of \`backgroundImage\`, so
+  \`var(--gradient-scrim)\` over a photograph is what keeps a headline readable on a picture you
+  have not seen. This is one node — never an \`Image\` with an absolutely-positioned \`Group\` over it.
+
+**Depth is an alpha fill, not \`opacity\`.** \`opacity\` on a \`Group\` fades its own children, so a
+see-through panel comes from \`backgroundColor: "var(--surface-glass)"\` with
+\`borderColor: "var(--border-glass)"\` and \`backdropBlur\` — the \`glassPanel\` composition. It reads
+only on a dark ground. \`boxShadowEnabled\` with a \`--shadow-*\` token lifts a card off its surface;
+\`position: "absolute"\` with \`zIndex\` overlaps two things deliberately. All of these are ordinary
+ports on \`Group\` — the absence a flat page is showing is never the engine's.
 
 ### 5. Images are not decoration
 
@@ -172,9 +196,11 @@ page that is arranged in more than one column must therefore be a \`net.noodl.vi
 - Use \`marginX\` for the gutter between \`Columns\` tracks; a percentage gap on a wrapped Group is a
   desktop-only trick and stops being one the moment the layout must collapse.
 
-**Type does not scale.** \`fontSize\` has no responsive form, so a \`--text-6xl\` display headline is
-60px on a phone too. Pick the display size that still works at 390px — usually \`--text-4xl\` or
-\`--text-5xl\` — rather than the one that looks best at 1440px.
+**Type scales through the token, not the port.** \`fontSize\` still has no responsive form — but
+\`--display-sm\`/\`--display-md\`/\`--display-lg\` are \`clamp()\` values, so one parameter gives you
+44px at 390px and 96px at 1900px with no breakpoint anywhere. Use them for the display headline and
+for any heading over a picture. The fixed \`--text-*\` sizes stay fixed and stay right for body,
+labels and section headings, where scaling with the window is wrong.
 
 Check the narrow width before saying it is done: nothing should exceed the viewport
 (\`el.getBoundingClientRect().width > window.innerWidth\`), and a multi-column band should have

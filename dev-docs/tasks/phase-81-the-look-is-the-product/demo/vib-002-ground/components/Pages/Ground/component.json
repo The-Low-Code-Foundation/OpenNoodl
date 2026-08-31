@@ -1,0 +1,10 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "009e7907-1903-5cb9-89b3-e8b338a5ddb2",
+  "name": "Ground",
+  "path": "/Pages/Ground",
+  "type": "visual",
+  "created": "2026-08-31T00:00:00.000Z",
+  "modified": "2026-08-31T00:00:00.000Z",
+  "modifiedBy": "vib-002"
+}

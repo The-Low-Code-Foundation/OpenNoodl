@@ -11713,6 +11713,24 @@
           "index": 100000
         },
         {
+          "name": "backdropBlur",
+          "displayName": "Backdrop Blur",
+          "group": "Style",
+          "plug": "input",
+          "type": {
+            "name": "number",
+            "defaultUnit": "px",
+            "units": [
+              "px"
+            ]
+          },
+          "isSignal": false,
+          "default": 0,
+          "description": "Blurs whatever is painted BEHIND this element, so a translucent panel reads as frosted glass over the ground it sits on. Needs a see-through Background Color to show at all",
+          "index": 206,
+          "allowVisualStates": true
+        },
+        {
           "name": "backgroundColor",
           "displayName": "Background Color",
           "group": "Style",
@@ -11724,6 +11742,96 @@
           "default": "transparent",
           "description": "Fill colour behind the children",
           "index": 201,
+          "allowVisualStates": true
+        },
+        {
+          "name": "backgroundGradient",
+          "displayName": "Background Gradient",
+          "group": "Style",
+          "plug": "input",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "A CSS gradient painted as the ground — normally a design token such as \"var(--gradient-brand)\". It is drawn ON TOP of Background Image, which is what makes it usable as a legibility scrim",
+          "index": 203,
+          "allowVisualStates": true
+        },
+        {
+          "name": "backgroundImage",
+          "displayName": "Background Image",
+          "group": "Style",
+          "plug": "input",
+          "type": {
+            "name": "image"
+          },
+          "isSignal": false,
+          "description": "A picture painted behind the children. Combine it with Background Gradient to lay a scrim over the picture so text on top stays readable",
+          "index": 202,
+          "allowVisualStates": true
+        },
+        {
+          "name": "backgroundPosition",
+          "displayName": "Background Position",
+          "group": "Style",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Center",
+                "value": "center"
+              },
+              {
+                "label": "Top",
+                "value": "top center"
+              },
+              {
+                "label": "Bottom",
+                "value": "bottom center"
+              },
+              {
+                "label": "Left",
+                "value": "center left"
+              },
+              {
+                "label": "Right",
+                "value": "center right"
+              }
+            ]
+          },
+          "isSignal": false,
+          "default": "center",
+          "description": "Which part of the picture stays in view when Cover crops it",
+          "index": 205,
+          "allowVisualStates": true
+        },
+        {
+          "name": "backgroundSize",
+          "displayName": "Background Size",
+          "group": "Style",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Cover",
+                "value": "cover"
+              },
+              {
+                "label": "Contain",
+                "value": "contain"
+              },
+              {
+                "label": "Original Size",
+                "value": "auto"
+              }
+            ]
+          },
+          "isSignal": false,
+          "default": "cover",
+          "description": "How the background picture fills the box. Cover crops it to fill; contain fits it whole",
+          "index": 204,
           "allowVisualStates": true
         },
         {
@@ -30164,6 +30272,33 @@
           "default": "top",
           "description": "Aligns the text within its own box on the vertical axis, which is only visible when the box is taller than the text",
           "index": 14
+        },
+        {
+          "name": "textOverflow",
+          "displayName": "Text Overflow",
+          "group": "Text",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Wrap",
+                "value": "wrap"
+              },
+              {
+                "label": "Clip",
+                "value": "clip"
+              },
+              {
+                "label": "Ellipsis",
+                "value": "ellipsis"
+              }
+            ]
+          },
+          "isSignal": false,
+          "default": "wrap",
+          "description": "What a line too long for its box does. Needs a width the text can exceed, so it has no effect while the size mode is content-sized",
+          "index": 28
         },
         {
           "name": "textStyle",
@@ -68762,6 +68897,245 @@
       ]
     },
     {
+      "id": "ui-gradient-hero",
+      "title": "Hero on a designed ground: a gradient band, fluid display type, glass panel",
+      "description": "The band a landing page opens with, and the thing a flat-colour page is missing. Three capabilities, all on ONE Group: `backgroundGradient` takes a gradient token (\"var(--gradient-spotlight)\") as the band's ground, so the section reads as a decision rather than a default; the headline uses `--display-lg`, a FLUID token whose value is a clamp() — 44px on a phone and 96px on a wide desktop, from one parameter and with no responsive port anywhere; and the stat strip is a translucent panel (`--surface-glass` fill, `--border-glass` hairline, `backdropBlur` 14px) which is how depth is expressed here — `opacity` on a Group would fade its own children, so translucency has to come from an alpha fill. Text on a dark ground is `--primary-foreground`, and the secondary button borders in `--border-glass` rather than `--border-control`, which is invisible on ink. Note what is NOT here: no absolutely-positioned overlay stack. A gradient ground plus a scrim is one node.",
+      "demonstrates": [
+        "Group",
+        "Text",
+        "net.noodl.controls.button"
+      ],
+      "components": [
+        {
+          "name": "/Pages/Example",
+          "nodes": [
+            {
+              "id": "page",
+              "type": "Page",
+              "label": "Page",
+              "parameters": {
+                "title": "Example",
+                "urlPath": "example"
+              },
+              "children": [
+                "hero"
+              ]
+            },
+            {
+              "id": "hero",
+              "type": "Group",
+              "label": "Hero band — gradient ground",
+              "parameters": {
+                "width": {
+                  "value": 100,
+                  "unit": "%"
+                },
+                "flexDirection": "column",
+                "alignItems": "center",
+                "backgroundGradient": "var(--gradient-spotlight)",
+                "paddingTop": "var(--space-24)",
+                "paddingBottom": "var(--space-24)"
+              },
+              "parent": "page",
+              "children": [
+                "shell"
+              ]
+            },
+            {
+              "id": "shell",
+              "type": "Group",
+              "label": "Shell",
+              "parameters": {
+                "width": {
+                  "value": 100,
+                  "unit": "%"
+                },
+                "maxWidth": {
+                  "value": 1200,
+                  "unit": "px"
+                },
+                "flexDirection": "column",
+                "rowGap": "var(--space-6)",
+                "paddingLeft": "var(--space-6)",
+                "paddingRight": "var(--space-6)"
+              },
+              "parent": "hero",
+              "children": [
+                "eyebrow",
+                "headline",
+                "lead",
+                "actions",
+                "stats"
+              ]
+            },
+            {
+              "id": "eyebrow",
+              "type": "Text",
+              "label": "Eyebrow",
+              "parameters": {
+                "text": "For independent studios",
+                "fontSize": "var(--text-xs)",
+                "fontWeight": "var(--font-semibold)",
+                "letterSpacing": "var(--tracking-widest)",
+                "textTransform": "uppercase",
+                "color": "var(--primary-foreground)"
+              },
+              "parent": "shell"
+            },
+            {
+              "id": "headline",
+              "type": "Text",
+              "label": "Display headline — fluid",
+              "parameters": {
+                "text": "Ship the site you sketched, not the one the template allowed.",
+                "fontSize": "var(--display-lg)",
+                "fontWeight": "var(--font-bold)",
+                "lineHeight": "var(--leading-none)",
+                "letterSpacing": "var(--tracking-tighter)",
+                "color": "var(--primary-foreground)",
+                "maxWidth": {
+                  "value": 900,
+                  "unit": "px"
+                }
+              },
+              "parent": "shell"
+            },
+            {
+              "id": "lead",
+              "type": "Text",
+              "label": "Lead",
+              "parameters": {
+                "text": "Every band gets its own ground. Every headline sets itself to the width it is read at. Nothing here is a browser default with your words poured into it.",
+                "fontSize": "var(--text-lg)",
+                "lineHeight": "var(--leading-relaxed)",
+                "color": "var(--primary-foreground)",
+                "maxWidth": {
+                  "value": 560,
+                  "unit": "px"
+                }
+              },
+              "parent": "shell"
+            },
+            {
+              "id": "actions",
+              "type": "Group",
+              "label": "Actions",
+              "parameters": {
+                "flexDirection": "row",
+                "columnGap": "var(--space-3)",
+                "sizeMode": "contentSize"
+              },
+              "parent": "shell",
+              "children": [
+                "cta",
+                "secondary"
+              ]
+            },
+            {
+              "id": "cta",
+              "type": "net.noodl.controls.button",
+              "label": "Primary CTA",
+              "parameters": {
+                "label": "Start building",
+                "backgroundColor": "var(--primary-foreground)",
+                "color": "var(--foreground)",
+                "borderRadius": "var(--radius-full)",
+                "borderStyle": "none",
+                "paddingLeft": "var(--space-6)",
+                "paddingRight": "var(--space-6)",
+                "paddingTop": "var(--space-3)",
+                "paddingBottom": "var(--space-3)",
+                "fontSize": "var(--text-sm)",
+                "fontWeight": "var(--font-semibold)",
+                "sizeMode": "contentSize"
+              },
+              "parent": "actions"
+            },
+            {
+              "id": "secondary",
+              "type": "net.noodl.controls.button",
+              "label": "Secondary CTA",
+              "parameters": {
+                "label": "See a worked page",
+                "backgroundColor": "transparent",
+                "color": "var(--primary-foreground)",
+                "borderRadius": "var(--radius-full)",
+                "borderStyle": "solid",
+                "borderWidth": "var(--border-1)",
+                "borderColor": "var(--border-glass)",
+                "paddingLeft": "var(--space-6)",
+                "paddingRight": "var(--space-6)",
+                "paddingTop": "var(--space-3)",
+                "paddingBottom": "var(--space-3)",
+                "fontSize": "var(--text-sm)",
+                "fontWeight": "var(--font-semibold)",
+                "sizeMode": "contentSize"
+              },
+              "parent": "actions"
+            },
+            {
+              "id": "stats",
+              "type": "Group",
+              "label": "Glass panel — translucent over the gradient",
+              "parameters": {
+                "width": {
+                  "value": 100,
+                  "unit": "%"
+                },
+                "maxWidth": {
+                  "value": 620,
+                  "unit": "px"
+                },
+                "flexDirection": "row",
+                "columnGap": "var(--space-10)",
+                "backgroundColor": "var(--surface-glass)",
+                "borderStyle": "solid",
+                "borderWidth": "var(--border-1)",
+                "borderColor": "var(--border-glass)",
+                "borderRadius": "var(--radius-2xl)",
+                "backdropBlur": {
+                  "value": 14,
+                  "unit": "px"
+                },
+                "paddingLeft": "var(--space-6)",
+                "paddingRight": "var(--space-6)",
+                "paddingTop": "var(--space-5)",
+                "paddingBottom": "var(--space-5)",
+                "marginTop": "var(--space-6)"
+              },
+              "parent": "shell",
+              "children": [
+                "stat_a",
+                "stat_b"
+              ]
+            },
+            {
+              "id": "stat_a",
+              "type": "Text",
+              "label": "Stat A",
+              "parameters": {
+                "text": "9 of 9 pages judged",
+                "fontSize": "var(--text-sm)",
+                "color": "var(--primary-foreground)"
+              },
+              "parent": "stats"
+            },
+            {
+              "id": "stat_b",
+              "type": "Text",
+              "label": "Stat B",
+              "parameters": {
+                "text": "0 flat-colour bands",
+                "fontSize": "var(--text-sm)",
+                "color": "var(--primary-foreground)"
+              },
+              "parent": "stats"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "id": "ui-icon-feature-strip",
       "title": "Icon feature strip: one item component, instantiated three times inside a Columns",
       "description": "Three reassurances on a bordered band — and the shape this recipe is really about. The item is its OWN component with Component Inputs for its icon, title and body, instantiated three times; writing the subtree out three times is a `repeated-sibling-subtree` warning, not a style preference. The row is a Columns node so it collapses to one column under 700px: a Group row cannot, because no Group in the runtime has a breakpoint. The band sits on --surface with hairlines top and bottom so it reads as a rule across the page rather than another section.",
@@ -69000,6 +69374,122 @@
               "fromProperty": "body",
               "toId": "b",
               "toProperty": "text"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ui-image-scrim-band",
+      "title": "A photograph as the ground, with a scrim that keeps the words readable",
+      "description": "The other half of `backgroundGradient`, and the reason it is a separate port from `backgroundColor`. `backgroundImage` and `backgroundGradient` compose into ONE css background-image declaration with the gradient FIRST — so \"var(--gradient-scrim)\" paints over the picture and text laid on top stays legible whatever the photograph happens to be. That is the whole hero-over-an-image problem solved on one node, instead of an Image with an absolutely-positioned Group on top of it that an authoring model gets subtly wrong. `backgroundSize` cover crops the picture to the box; `backgroundPosition` decides what survives the crop; height is explicit because a band whose only content is a heading would otherwise collapse to the heading. `justifyContent` flex-end puts the copy at the foot of the frame, where the scrim is darkest — the scrim is a vertical gradient for exactly that reason. ⚠️ The shell inside it MUST carry `sizeMode: \"contentHeight\"`. Without it the shell is the runtime's 100%×100% default, becomes `flexGrow:100` in a column, fills the whole 520px band, and the band's `justifyContent` has nothing left to justify — the copy silently sits at the TOP with the scrim's dark end below it, empty. That is register V1, and it bit this recipe on its first render. ⚠️ `backgroundImage` is EMPTY here, as in every shipped example (register V7, owner VIB-003): put a project asset or an https URL there. Empty means the gradient alone renders, which is a designed ground and not a broken one.",
+      "demonstrates": [
+        "Group",
+        "Text"
+      ],
+      "components": [
+        {
+          "name": "/Pages/Example",
+          "nodes": [
+            {
+              "id": "page",
+              "type": "Page",
+              "label": "Page",
+              "parameters": {
+                "title": "Example",
+                "urlPath": "example"
+              },
+              "children": [
+                "band"
+              ]
+            },
+            {
+              "id": "band",
+              "type": "Group",
+              "label": "Image band — picture ground under a scrim",
+              "parameters": {
+                "width": {
+                  "value": 100,
+                  "unit": "%"
+                },
+                "sizeMode": "explicit",
+                "height": {
+                  "value": 520,
+                  "unit": "px"
+                },
+                "flexDirection": "column",
+                "alignItems": "center",
+                "justifyContent": "flex-end",
+                "backgroundImage": "",
+                "backgroundGradient": "var(--gradient-scrim)",
+                "backgroundSize": "cover",
+                "backgroundPosition": "center",
+                "backgroundColor": "var(--foreground)",
+                "paddingBottom": "var(--space-12)"
+              },
+              "parent": "page",
+              "children": [
+                "shell"
+              ]
+            },
+            {
+              "id": "shell",
+              "type": "Group",
+              "label": "Shell",
+              "parameters": {
+                "width": {
+                  "value": 100,
+                  "unit": "%"
+                },
+                "maxWidth": {
+                  "value": 1200,
+                  "unit": "px"
+                },
+                "flexDirection": "column",
+                "rowGap": "var(--space-3)",
+                "paddingLeft": "var(--space-6)",
+                "paddingRight": "var(--space-6)",
+                "sizeMode": "contentHeight"
+              },
+              "parent": "band",
+              "children": [
+                "heading",
+                "sub"
+              ]
+            },
+            {
+              "id": "heading",
+              "type": "Text",
+              "label": "Heading over the picture",
+              "parameters": {
+                "text": "The workshop, on the morning of the first firing",
+                "fontSize": "var(--display-md)",
+                "fontWeight": "var(--font-bold)",
+                "lineHeight": "var(--leading-none)",
+                "letterSpacing": "var(--tracking-tight)",
+                "color": "var(--primary-foreground)",
+                "maxWidth": {
+                  "value": 760,
+                  "unit": "px"
+                }
+              },
+              "parent": "shell"
+            },
+            {
+              "id": "sub",
+              "type": "Text",
+              "label": "Sub-line",
+              "parameters": {
+                "text": "Six weeks of glazing tests, and one kiln that finally behaved.",
+                "fontSize": "var(--text-lg)",
+                "lineHeight": "var(--leading-relaxed)",
+                "color": "var(--primary-foreground)",
+                "maxWidth": {
+                  "value": 560,
+                  "unit": "px"
+                }
+              },
+              "parent": "shell"
             }
           ]
         }
@@ -69791,7 +70281,7 @@
     {
       "id": "ui-split-hero",
       "title": "Split hero: copy column and image, with a display headline that looks set rather than typed",
-      "description": "Two columns inside the shell, each width 100% so an UNWRAPPED row shrinks them to half each — this is why a plain row works where a wrapped grid does not. The copy column carries the page's one display headline (--text-6xl, --font-bold, --leading-none and --tracking-tighter; tight tracking is what makes a large heading look set), an eyebrow above it, a lead paragraph capped at ~520px, and two buttons whose concrete parameters are copied from the style vocabulary because `variant` is a connection-only port. The image gets sizeMode \"explicit\" plus a width, a height and objectFit \"cover\" — without explicit sizing those three ports are inert and the photo renders at its natural size.",
+      "description": "Two columns inside the shell, each width 100% so an UNWRAPPED row shrinks them to half each — this is why a plain row works where a wrapped grid does not. The copy column carries the page's one display headline (--display-lg — a fluid clamp() that is 44px on a phone and 96px on a wide desktop — with --font-bold, --leading-none and --tracking-tighter; tight tracking is what makes a large heading look set), an eyebrow above it, a lead paragraph capped at ~520px, and two buttons whose concrete parameters are copied from the style vocabulary because `variant` is a connection-only port. The image gets sizeMode \"explicit\" plus a width, a height and objectFit \"cover\" — without explicit sizing those three ports are inert and the photo renders at its natural size.",
       "demonstrates": [
         "Group",
         "Text",
@@ -69887,7 +70377,7 @@
               "label": "Display headline",
               "parameters": {
                 "text": "Objects that earn their place.",
-                "fontSize": "var(--text-6xl)",
+                "fontSize": "var(--display-lg)",
                 "fontWeight": "var(--font-bold)",
                 "lineHeight": "var(--leading-none)",
                 "letterSpacing": "var(--tracking-tighter)",

@@ -10677,6 +10677,24 @@
           "index": 100000
         },
         {
+          "name": "backdropBlur",
+          "displayName": "Backdrop Blur",
+          "group": "Style",
+          "plug": "input",
+          "type": {
+            "name": "number",
+            "defaultUnit": "px",
+            "units": [
+              "px"
+            ]
+          },
+          "isSignal": false,
+          "default": 0,
+          "description": "Blurs whatever is painted BEHIND this element, so a translucent panel reads as frosted glass over the ground it sits on. Needs a see-through Background Color to show at all",
+          "index": 206,
+          "allowVisualStates": true
+        },
+        {
           "name": "backgroundColor",
           "displayName": "Background Color",
           "group": "Style",
@@ -10688,6 +10706,96 @@
           "default": "transparent",
           "description": "Fill colour behind the children",
           "index": 201,
+          "allowVisualStates": true
+        },
+        {
+          "name": "backgroundGradient",
+          "displayName": "Background Gradient",
+          "group": "Style",
+          "plug": "input",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "A CSS gradient painted as the ground — normally a design token such as \"var(--gradient-brand)\". It is drawn ON TOP of Background Image, which is what makes it usable as a legibility scrim",
+          "index": 203,
+          "allowVisualStates": true
+        },
+        {
+          "name": "backgroundImage",
+          "displayName": "Background Image",
+          "group": "Style",
+          "plug": "input",
+          "type": {
+            "name": "image"
+          },
+          "isSignal": false,
+          "description": "A picture painted behind the children. Combine it with Background Gradient to lay a scrim over the picture so text on top stays readable",
+          "index": 202,
+          "allowVisualStates": true
+        },
+        {
+          "name": "backgroundPosition",
+          "displayName": "Background Position",
+          "group": "Style",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Center",
+                "value": "center"
+              },
+              {
+                "label": "Top",
+                "value": "top center"
+              },
+              {
+                "label": "Bottom",
+                "value": "bottom center"
+              },
+              {
+                "label": "Left",
+                "value": "center left"
+              },
+              {
+                "label": "Right",
+                "value": "center right"
+              }
+            ]
+          },
+          "isSignal": false,
+          "default": "center",
+          "description": "Which part of the picture stays in view when Cover crops it",
+          "index": 205,
+          "allowVisualStates": true
+        },
+        {
+          "name": "backgroundSize",
+          "displayName": "Background Size",
+          "group": "Style",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Cover",
+                "value": "cover"
+              },
+              {
+                "label": "Contain",
+                "value": "contain"
+              },
+              {
+                "label": "Original Size",
+                "value": "auto"
+              }
+            ]
+          },
+          "isSignal": false,
+          "default": "cover",
+          "description": "How the background picture fills the box. Cover crops it to fill; contain fits it whole",
+          "index": 204,
           "allowVisualStates": true
         },
         {
@@ -27802,6 +27910,33 @@
           "default": "top",
           "description": "Aligns the text within its own box on the vertical axis, which is only visible when the box is taller than the text",
           "index": 14
+        },
+        {
+          "name": "textOverflow",
+          "displayName": "Text Overflow",
+          "group": "Text",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Wrap",
+                "value": "wrap"
+              },
+              {
+                "label": "Clip",
+                "value": "clip"
+              },
+              {
+                "label": "Ellipsis",
+                "value": "ellipsis"
+              }
+            ]
+          },
+          "isSignal": false,
+          "default": "wrap",
+          "description": "What a line too long for its box does. Needs a width the text can exceed, so it has no effect while the size mode is content-sized",
+          "index": 28
         },
         {
           "name": "textStyle",

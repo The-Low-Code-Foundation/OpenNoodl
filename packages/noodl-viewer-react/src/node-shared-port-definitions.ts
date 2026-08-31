@@ -8,6 +8,10 @@ import type {
   ReactOutputPropDefinition
 } from './react-component-node';
 import FontLoader from './fontloader';
+// VIB-002 — the background-image port needs the same empty-value handling the
+// Image node's `src` has: `null`/`undefined`/`''` must clear the layer rather
+// than resolve to `/null` and fire a request. `resolveMediaSource` is that rule.
+import { resolveMediaSource } from './nodes/visual/media-source';
 import { createTooltip } from './tooltips';
 
 /**
@@ -34,6 +38,7 @@ export interface PaddingInputsOptions extends StyleTagOption, DefaultsOption {}
 export interface CornerRadiusOptions extends StyleTagOption, DefaultsOption {}
 export interface BorderInputsOptions extends StyleTagOption, DefaultsOption {}
 export interface ShadowInputsOptions extends StyleTagOption {}
+export interface BackgroundInputsOptions extends StyleTagOption {}
 export interface IconInputsOptions extends StyleTagOption {
   [extra: string]: any;
 }
@@ -1274,6 +1279,184 @@ export default {
       this._internal.boxShadowBlurRadius = '5px';
       this._internal.boxShadowSpreadRadius = '2px';
       this._internal.boxShadowColor = '#00000033';
+    };
+  },
+  /**
+   * VIB-002 — the decorative ground.
+   *
+   * ## Why this exists
+   *
+   * The phase-81 baseline photographed both shipped templates and wrote the same
+   * sentence about every marketing surface: *one background colour end to end*.
+   * Measured at the door rather than reasoned about, the cause was narrower than
+   * the phase README's first diagnosis claimed. `opacity`, `mixBlendMode`,
+   * `zIndex`, `position` (including `absolute` and `sticky`) and the whole
+   * `boxShadow*` family were **already ports on Group** — layering and depth were
+   * expressible and simply never taught. What `get_node_type('Group')` answered
+   * `notFound` to was `backgroundImage`. There was no way, anywhere in the
+   * sanctioned vocabulary, to put a gradient or a picture behind anything.
+   *
+   * So this mixin adds exactly the missing half, and nothing that already worked.
+   *
+   * ## The one design decision worth knowing
+   *
+   * `backgroundGradient` and `backgroundImage` are separate ports that compose
+   * into **one** `background-image` declaration, gradient first:
+   *
+   *     background-image: <gradient>, url("<image>")
+   *
+   * That order is the CSS scrim idiom — the gradient paints *over* the picture.
+   * It is the whole reason a headline can sit on a photograph and stay legible,
+   * and expressing it as two ports on one node is what keeps a hero from needing
+   * a stack of absolutely-positioned Groups that an authoring model will not
+   * reliably build. A gradient alone is a designed colour field; an image alone
+   * is a picture ground; the two together are a hero.
+   *
+   * ⚠️ Both ports take a `var(--token)` reference happily — a gradient token's
+   * value is a complete `linear-gradient(...)`, and nested `var()`s inside it
+   * resolve against `:root`, so a themed gradient re-themes with the project.
+   * That is why the port is a plain string and not a structured gradient editor:
+   * the token layer is where a gradient should be decided once.
+   */
+  addBackgroundInputs(definition: ReactNodeDefinition, args?: BackgroundInputsOptions) {
+    const styleTag = args?.styleTag;
+
+    addInputs(definition, {
+      backgroundImage: {
+        index: 202,
+        group: 'Style',
+        displayName: 'Background Image',
+        description:
+          'A picture painted behind the children. Combine it with Background Gradient to lay a scrim over the ' +
+          'picture so text on top stays readable',
+        type: { name: 'image' },
+        allowVisualStates: true,
+        set(value) {
+          const internal = this._internal || (this._internal = {});
+          internal.backgroundImageUrl = resolveMediaSource(value);
+          this._updateBackgroundLayers();
+        }
+      },
+      backgroundGradient: {
+        index: 203,
+        group: 'Style',
+        displayName: 'Background Gradient',
+        description:
+          'A CSS gradient painted as the ground — normally a design token such as "var(--gradient-brand)". ' +
+          'It is drawn ON TOP of Background Image, which is what makes it usable as a legibility scrim',
+        type: { name: 'string' },
+        allowVisualStates: true,
+        set(value) {
+          const internal = this._internal || (this._internal = {});
+          const text = typeof value === 'string' ? value.trim() : '';
+          internal.backgroundGradient = text === '' ? undefined : text;
+          this._updateBackgroundLayers();
+        }
+      },
+      backgroundSize: {
+        index: 204,
+        group: 'Style',
+        displayName: 'Background Size',
+        description: 'How the background picture fills the box. Cover crops it to fill; contain fits it whole',
+        type: {
+          name: 'enum',
+          enums: [
+            { label: 'Cover', value: 'cover' },
+            { label: 'Contain', value: 'contain' },
+            { label: 'Original Size', value: 'auto' }
+          ]
+        },
+        default: 'cover',
+        allowVisualStates: true,
+        set(value) {
+          const internal = this._internal || (this._internal = {});
+          internal.backgroundSize = value;
+          this._updateBackgroundLayers();
+        }
+      },
+      backgroundPosition: {
+        index: 205,
+        group: 'Style',
+        displayName: 'Background Position',
+        description: 'Which part of the picture stays in view when Cover crops it',
+        type: {
+          name: 'enum',
+          enums: [
+            { label: 'Center', value: 'center' },
+            { label: 'Top', value: 'top center' },
+            { label: 'Bottom', value: 'bottom center' },
+            { label: 'Left', value: 'center left' },
+            { label: 'Right', value: 'center right' }
+          ]
+        },
+        default: 'center',
+        allowVisualStates: true,
+        set(value) {
+          const internal = this._internal || (this._internal = {});
+          internal.backgroundPosition = value;
+          this._updateBackgroundLayers();
+        }
+      },
+      backdropBlur: {
+        index: 206,
+        group: 'Style',
+        displayName: 'Backdrop Blur',
+        description:
+          'Blurs whatever is painted BEHIND this element, so a translucent panel reads as frosted glass over ' +
+          'the ground it sits on. Needs a see-through Background Color to show at all',
+        type: { name: 'number', units: ['px'], defaultUnit: 'px' },
+        default: 0,
+        allowVisualStates: true,
+        set(value) {
+          // A units port arrives as `{value, unit}` from the editor and as a bare
+          // number from a parameter the AIB-001 gate let through; `cssLength`
+          // normalises both. Zero removes the filter rather than painting
+          // `blur(0px)`, which would still promote the element to its own layer.
+          const length = cssLength(value);
+          const isZero = length === undefined || parseFloat(length) === 0;
+          if (isZero) {
+            this.removeStyle(['backdropFilter', 'WebkitBackdropFilter'], styleTag);
+          } else {
+            this.setStyle({ backdropFilter: `blur(${length})`, WebkitBackdropFilter: `blur(${length})` }, styleTag);
+          }
+        }
+      }
+    });
+
+    /**
+     * Compose whichever layers are set into one declaration.
+     *
+     * Written as one method rather than three independent `inputCss` ports
+     * because `background-image` is a single CSS property that both the gradient
+     * and the picture have to reach — the same reason `_updateBoxShadow` exists
+     * above. Setting them independently would mean whichever port was written
+     * last silently erased the other, and (per this file's own header) a later
+     * same-named write overwrites with no warning anywhere.
+     */
+    definition.methods._updateBackgroundLayers = function () {
+      const internal = this._internal || (this._internal = {});
+      const layers: string[] = [];
+      if (internal.backgroundGradient) layers.push(String(internal.backgroundGradient));
+      if (internal.backgroundImageUrl) layers.push(`url("${internal.backgroundImageUrl}")`);
+
+      if (layers.length === 0) {
+        this.removeStyle(['backgroundImage', 'backgroundSize', 'backgroundPosition', 'backgroundRepeat'], styleTag);
+        return;
+      }
+
+      this.setStyle(
+        {
+          backgroundImage: layers.join(', '),
+          // A single value applies to every layer, which is what is wanted: a
+          // gradient scrim should cover exactly what the picture covers.
+          backgroundSize: internal.backgroundSize || 'cover',
+          backgroundPosition: internal.backgroundPosition || 'center',
+          // Tiling a hero ground is never the intent and is the single ugliest
+          // default the browser has here, so it is not offered as a port.
+          backgroundRepeat: 'no-repeat'
+        },
+        styleTag
+      );
     };
   },
   addIconInputs(definition: ReactNodeDefinition, args?: IconInputsOptions) {

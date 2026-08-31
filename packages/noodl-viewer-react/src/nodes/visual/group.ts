@@ -498,6 +498,12 @@ NodeSharedPortDefinitions.addAlignInputs(GroupNode);
 NodeSharedPortDefinitions.addPointerEventOutputs(GroupNode);
 NodeSharedPortDefinitions.addBorderInputs(GroupNode);
 NodeSharedPortDefinitions.addShadowInputs(GroupNode);
+// VIB-002 — gradients and picture grounds. Group only, deliberately: it is the
+// page spine, every band and every card, and it is the node an authoring model
+// reaches for when it wants a section to look like anything. Widening the mixin
+// to all eighteen `addSharedVisualInputs` callers would put five ports on Text
+// for no gain and grow every one of their catalog entries.
+NodeSharedPortDefinitions.addBackgroundInputs(GroupNode);
 
 function defineTooltips(node) {
   node.inputProps.clip.tooltip = createTooltip({

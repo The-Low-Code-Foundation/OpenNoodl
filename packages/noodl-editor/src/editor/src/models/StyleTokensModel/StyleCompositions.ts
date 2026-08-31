@@ -294,6 +294,103 @@ export const STYLE_COMPOSITIONS: VocabComposition[] = [
     recipe: 'ui-empty-state'
   },
 
+  // ─── Grounds (VIB-002, register V5/V13) ────────────────────────────────────
+  //
+  // 🔴 Why these are `spine` and not `surface`: they are what a BAND is made of.
+  // The phase-81 baseline's single most repeated sentence about both shipped
+  // templates was *one background colour end to end*, and the reason was not
+  // taste — `get_node_type('Group')` answered `notFound` to `backgroundImage`,
+  // so there was no ground to reach for. `band` and `bandSurface` above are the
+  // only two grounds the vocabulary had, and both are flat fills.
+  //
+  // ⚠️ Every one of these puts light text on a dark ground, so pair them with
+  // `color: var(--primary-foreground)` on the type — the ramp compositions below
+  // all specify `--foreground`, which is ink on ink here.
+  {
+    id: 'heroGround',
+    nodeType: 'Group',
+    group: 'spine',
+    description:
+      'The band a landing page opens with: a gradient ground instead of a flat fill. Light text only — pair with var(--primary-foreground). Swap the token for var(--gradient-brand) or var(--gradient-deep) to change the mood without touching the layout.',
+    parameters: {
+      width: GROUP,
+      flexDirection: 'column',
+      alignItems: 'center',
+      backgroundGradient: 'var(--gradient-spotlight)',
+      paddingTop: 'var(--space-24)',
+      paddingBottom: 'var(--space-24)'
+    },
+    recipe: 'ui-gradient-hero'
+  },
+  {
+    // The two background ports compose into one `background-image`, gradient
+    // first — so the scrim paints OVER the picture. That ordering is the whole
+    // composition: it is what makes a headline readable on a photograph nobody
+    // has seen yet.
+    //
+    // ⚠️ `sizeMode: explicit` + `height` are load-bearing, not decoration. A band
+    // whose only child is a heading collapses to the heading's height and the
+    // picture becomes a stripe.
+    //
+    // 🔴 **And the `shell` you put inside it needs `sizeMode: 'contentHeight'`.**
+    // Measured, not predicted: the first render of `ui-image-scrim-band` put its
+    // copy at the TOP of the band with 250px of empty photograph below it, and
+    // `justifyContent: 'flex-end'` was set correctly the whole time. The default
+    // `shell` above carries no `sizeMode`, so it is the runtime's 100%×100%,
+    // becomes `flexGrow:100` in a column and fills the band — leaving
+    // `justifyContent` nothing to justify. That is register **V1** biting a
+    // brand-new, gate-clean recipe written by a session that had just read the
+    // diagnosis of it. VIB-005 owns the door diagnostic; this comment is the
+    // stopgap.
+    id: 'imageGround',
+    nodeType: 'Group',
+    group: 'spine',
+    description:
+      'A photograph as a section ground with a scrim over it, so text stays readable whatever the picture is. Set backgroundImage to a project asset; the gradient is drawn on top of it. backgroundColor is the fallback ground while the image loads or if it is empty.',
+    parameters: {
+      width: GROUP,
+      sizeMode: 'explicit',
+      height: { value: 520, unit: 'px' },
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'flex-end',
+      backgroundGradient: 'var(--gradient-scrim)',
+      backgroundSize: 'cover',
+      backgroundPosition: 'center',
+      backgroundColor: 'var(--foreground)',
+      paddingBottom: 'var(--space-12)'
+    },
+    recipe: 'ui-image-scrim-band'
+  },
+  {
+    // 🔴 The one way to express translucency here. `opacity` on a Group fades its
+    // own children, so a see-through panel has to come from an alpha FILL — and
+    // an alpha fill written inline (`rgb(255 255 255 / 0.12)`) draws
+    // `raw-color-literal`. Hence `--surface-glass`: the capability existed in the
+    // engine the whole time and was unreachable through the sanctioned door.
+    id: 'glassPanel',
+    nodeType: 'Group',
+    group: 'surface',
+    description:
+      'A translucent, frosted panel for sitting ON a gradient or image ground — a stat strip, a quote, a signup card over a hero. Only reads on a dark ground; on the page background it is invisible.',
+    parameters: {
+      width: GROUP,
+      flexDirection: 'row',
+      backgroundColor: 'var(--surface-glass)',
+      borderStyle: 'solid',
+      borderWidth: 'var(--border-1)',
+      borderColor: 'var(--border-glass)',
+      borderRadius: 'var(--radius-2xl)',
+      backdropBlur: { value: 14, unit: 'px' },
+      columnGap: 'var(--space-10)',
+      paddingLeft: 'var(--space-6)',
+      paddingRight: 'var(--space-6)',
+      paddingTop: 'var(--space-5)',
+      paddingBottom: 'var(--space-5)'
+    },
+    recipe: 'ui-gradient-hero'
+  },
+
   // ─── Controls (doctrine §6, and §4's two contrast rules) ───────────────────
   {
     id: 'primaryButton',
@@ -489,7 +586,13 @@ export const STYLE_COMPOSITIONS: VocabComposition[] = [
     description:
       'Exactly ONE per page. fontSize does not scale — pick --text-4xl/--text-5xl instead if the page must work at 390px.',
     parameters: {
-      fontSize: 'var(--text-6xl)',
+      // VIB-002 / V13. Was `--text-6xl` — a fixed 60px, which the doctrine then
+      // had to talk authors DOWN from ("pick the size that still works at 390px
+      // — usually --text-4xl or --text-5xl"), capping every headline in the
+      // product at 48px. `--display-lg` is a clamp(): 44px at 390 and 96px at
+      // 1900, from this one parameter. The advice it replaces is deleted from
+      // `prompts/design.ts` rather than left to contradict this.
+      fontSize: 'var(--display-lg)',
       fontWeight: 'var(--font-bold)',
       lineHeight: 'var(--leading-none)',
       letterSpacing: 'var(--tracking-tighter)',
