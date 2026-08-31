@@ -294,6 +294,12 @@ Four attempts, none of which produced a reading:
 | `npm run typecheck:backend-tests` | this session | SIGTERM at 10 min (load 13) |
 | `NODE_OPTIONS=--max-old-space-size=8192` | a third session | **FATAL: JS heap out of memory at 828s**, 8.0 GB |
 | single-file scope, 4 GB heap | this session | SIGTERM at 9 min, empty log |
+| `--max-old-space-size=8192`, attempt 5 | the same third session | still running when this was written, ~13 min in, `tc4.log` empty — the same shape |
+
+⚠️ **Two sessions re-ran this gate for the better part of an hour, each unaware of the other.** The
+cost was not the CPU; it was that neither had a way to see the other was already on it. The thing
+that eventually named the owner was an **artefact path**, not any process or directory listing —
+see the attribution note below.
 
 The machine is **16 GB**, with Firefox, CoreSimulator and a peer's node process live. A run asking
 for half the machine's RAM still died. Scoping the entry point to one file changed nothing, because
@@ -312,11 +318,29 @@ What is false is only the local promise: a session on this machine should not un
 green `typecheck:backend-tests` reading, and a handoff that says "must be re-run" is asking for
 something the hardware will not give.
 
-⚠️ **Read the log, never the error count.** The OOM run's log had **zero `error TS` lines**, and this
-session's own waiter script duly printed *"(none — no look-file errors)"* and *"0"*. Read carelessly
-that is a pass. It was a crash: `tsc` never reached the reporting stage. An absence of error lines
-is only evidence beside proof the compiler finished — the same shape as a timed-out `test:ci` run
-exiting 1 exactly like a clean floor.
+🔴 **GATE ON THE EXIT STATUS. An error-line count can only ever confirm a run that FINISHED.**
+
+The OOM run's log had **zero `error TS` lines**, and this session's own waiter script duly printed
+*"(none — no look-file errors)"* and *"0"*. Read carelessly that is a pass. It was a crash.
+
+⚠️ **A first version of this paragraph said the crash left no reportable signal, and that was wrong**
+— corrected by a peer, verified here. The signal existed and was sitting in a file beside the log
+the whole time: `tc3.exit` reads **134** = 128+6 = **SIGABRT**, V8's out-of-memory abort. Nothing was
+hidden. The waiter simply interrogated the wrong artefact.
+
+The structural reason it reached for the wrong one is worth keeping, because it generalises to every
+cross-session check in this repo:
+
+- **It was watching a process it did not spawn.** `$?` is only available to the parent, so the
+  waiter polled `kill -0 <pid>` — which yields **liveness only, never status**. Every one of this
+  session's *own* runs reported its exit code correctly (143, SIGTERM); the blind spot appeared the
+  moment the subject was somebody else's process.
+- ✅ **So: when watching another session's run, find its exit artefact** (`*.exit` beside the log
+  here), and if there isn't one, the honest reading is **"no result"** — never "no errors".
+
+Same family as the recorded trap that a timed-out `test:ci` run exits 1 exactly like a clean floor,
+and as `all([])` returning the answer you wanted. An absence is evidence only beside proof that the
+thing which would have produced a presence actually ran.
 
 ⚠️ **Original status note**: a `tsc -p .../tsconfig.tests.json` was found already running,
 so this session did not start a second one — a concurrent full-project `tsc` is how the first
