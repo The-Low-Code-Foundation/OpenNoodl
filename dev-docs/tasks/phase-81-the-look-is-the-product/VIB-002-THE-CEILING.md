@@ -3,8 +3,8 @@
 **Register rows: V5 (no decorative ground anywhere in the sanctioned vocabulary), V13 (display type
 capped at 48px, no responsive type story).**
 
-Built 2026-08-31. **Status: 🟡 PASSABLE recorded, capability closed, WORTHY gap named** — see §5 for
-the verdict and §6 for what this task deliberately does not fix.
+Built 2026-08-31. **Status: 🟡 PASSABLE — CONFIRMED BY RICHARD 2026-08-31 (§9), capability closed, WORTHY gap named.**
+See §5 for the verdict, §9 for his ruling, and §7 for what this task deliberately does not fix.
 
 ---
 
@@ -246,7 +246,7 @@ the border.
 4. ✅ **The doctrine and vocabulary text that teaches it** — `prompts/design.ts` §3, §4 and §7;
    `get_style_vocabulary` picks the compositions and tokens up from the tables it already renders.
 5. ✅ **A verdict recorded from the picture** — §5, PASSABLE, with the WORTHY gap named and owned.
-   ⚠️ Provisional until Richard has looked (README §3.5). Sheet sent 2026-08-31:
+   ✅ **No longer provisional: Richard looked and ruled the same way (§9).** Sheet sent 2026-08-31:
    **https://claude.ai/code/artifact/dac65b42-f8b6-430d-80a0-9c9ce7a4a6e1**
    — the three calibration questions on it are §5's verdict, the gradient ambition, and the empty
    right-hand half.
@@ -272,3 +272,42 @@ the border.
 | `styleVocabularyPorts.test.ts` + `design-token-contrast.test.ts` | 26 passed |
 | `packages/noodl-viewer-react` suite | 85 suites / 1107 tests passed |
 | `vib002-ground.look.ts` | 3 passed, 4 shots, `unreachablePx` 0 at every width |
+
+
+---
+
+## §9 ✅ Richard's ruling — 2026-08-31
+
+> *"I'd say very passable, nearly worthy, definitely night and day with the original, well done"*
+
+**PASSABLE stands.** This is the first verdict in phase 81 to survive his look above SHITTY — the
+baseline is nine of nine SHITTY and both of its PASSABLEs were struck out on 2026-08-31 for being
+awarded on legibility (`VIB-001-BASELINE-VERDICTS.md` §7).
+
+### What the ruling calibrates, beyond confirming the grade
+
+🔴 **"Nearly worthy" is a measurement of the remaining distance, and it says the gap named in §5 is
+the whole gap.** He did not ask for a rethink of the grounds, the type or the ambition — which is
+the reading that would have reopened the tier. So:
+
+- **The seam analysis in §5 holds.** Icons and communicative imagery (VIB-003) plus content
+  structure (VIB-004) are what stand between this and WORTHY. That is now a ruled position rather
+  than this session's estimate, and VIB-003/VIB-004 should be built expecting to *close* the gap
+  rather than to narrow it.
+- **The gradient ambition is not the problem.** The sheet's second calibration question asked
+  whether a deep gradient, very large type and a translucent strip read as "2021 SaaS" rather than
+  as modern work. *"Night and day with the original"* answers it: the tokens do not need
+  re-deciding before templates wear them, which was the one decision that would have got more
+  expensive later.
+- **This is the phase's first evidence that the diagnosis is right.** The argument that the *kit*
+  is the seam — rather than two badly-styled templates — rests on widening the kit producing a
+  visible jump with no template touched. It did, on his look.
+
+### ⚠️ Still unanswered, and it is VIB-004's to carry
+
+The sheet's third question — **the empty right-hand half of every band at ≥1280** — got no ruling.
+§5 records it as firing partly, and it is the same shape as **V15**. It is not blocking: VIB-004
+builds the content structure that would fill it either way, and VIB-008 owns the measure. But the
+question stays open, and the next session that has his attention should re-ask it rather than
+assume the silence is agreement — a hero can defend negative space and a feature band cannot, and
+which of those the answer is changes what VIB-004 builds.

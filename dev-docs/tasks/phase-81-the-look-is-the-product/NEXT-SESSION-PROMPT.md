@@ -10,7 +10,7 @@ trust this file's copy of it.
 | id | status |
 |---|---|
 | VIB-001 The Judge | 🟢 **CLOSED**, all 5 ACs. Baseline 9 SHITTY / 0 / 0 after Richard's ruling |
-| VIB-002 The Ceiling | 🟡 **PASSABLE recorded, capability closed** (V5 + V13), 5 ACs met. Sheet sent to Richard; his look supersedes |
+| VIB-002 The Ceiling | 🟡 **PASSABLE — RICHARD RULED IT** 2026-08-31: *"very passable, nearly worthy, definitely night and day with the original"*. Capability closed (V5 + V13), 5 ACs met. **The phase's first reading above SHITTY to survive his look** |
 | VIB-003/004/005/007 | ⬜ all four startable now, in parallel |
 | VIB-006 | ⬜ consumes 002/003/004 |
 | VIB-008/009 | ⬜ prove it on the shipped templates |
@@ -45,11 +45,21 @@ the door whether it already can. Two thirds of VIB-002 turned out to be instruct
 
 ## First job
 
-**VIB-003 (The Pictures) or VIB-004 (The Marketing Kit)** — they are what VIB-002's own verdict
-names as the WORTHY gap, in that order of leverage. VIB-003 is the sharper one: the page rendered
-above has **zero icons** and one decorative photograph, and *"no imagery and no iconography"* is a
-disqualifying tell that VIB-002 could not touch. Every one of the 62 shipped examples still carries
-`src: ""`.
+**VIB-003 (The Pictures), then VIB-004 (The Marketing Kit).**
+
+🔴 **Richard's *"nearly worthy"* is a measurement of the remaining distance, and it says the gap
+VIB-002 §5 named is the WHOLE gap** — he did not ask for a rethink of the grounds, the type or the
+ambition, which is the reading that would have reopened the tier. So build VIB-003 and VIB-004
+expecting to **close** the distance to WORTHY, not to narrow it.
+
+VIB-003 is the sharper of the two: the page he ruled on has **zero icons** and one decorative
+photograph, and *"no imagery and no iconography"* is a disqualifying tell VIB-002 could not touch.
+All 62 shipped examples still carry `src: ""`.
+
+⚠️ **One calibration question came back unanswered** and it is VIB-004's to carry: the **empty
+right-hand half of every band at ≥1280** (same shape as V15). Re-ask it rather than reading the
+silence as agreement — a hero can defend negative space and a feature band cannot, and which of
+those the answer is changes what VIB-004 builds.
 
 VIB-005 also gained its best evidence this session (V17 below) and is still fully startable.
 

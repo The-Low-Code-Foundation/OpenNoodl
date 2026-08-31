@@ -8,7 +8,7 @@ from the task files at session open; do not trust a handoff's copy of it.
 | id | task | status | depends on | verdicts recorded |
 |---|---|---|---|---|
 | VIB-001 | The Judge | 🟢 | — | **9 SHITTY / 0 PASSABLE / 0 WORTHY** — `VIB-001-BASELINE-VERDICTS.md`. All 5 ACs met; Richard ruled 2026-08-31 and the rubric was amended (README §2) |
-| VIB-002 | The Ceiling | 🟡 | VIB-001 | **PASSABLE** — `VIB-002-THE-CEILING.md` §5. Capability closed (V5 + V13), 5 ACs met, WORTHY gap named and owned (icons→VIB-003, sections→VIB-004, measure→VIB-008). ⚠️ Awaiting Richard's look |
+| VIB-002 | The Ceiling | 🟡 | VIB-001 | **PASSABLE — Richard ruled 2026-08-31** (`VIB-002-THE-CEILING.md` §9): *"very passable, nearly worthy, definitely night and day with the original"*. **The phase's first reading above SHITTY to survive his look.** Capability closed (V5 + V13), 5 ACs met; the WORTHY gap he did not dispute is icons→VIB-003, sections→VIB-004, measure→VIB-008 |
 | VIB-003 | The Pictures | ⬜ | VIB-001 | — |
 | VIB-004 | The Marketing Kit | ⬜ | VIB-001, VIB-002 | — |
 | VIB-005 | The Ambush Defaults | ⬜ | VIB-001 | — |
