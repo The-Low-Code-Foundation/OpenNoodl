@@ -709,6 +709,48 @@ export class NodeGraphModel extends Model {
   }
 
   /**
+   * Settle connection health NOW, so a caller about to *read* a health verdict
+   * reads the project rather than the clock.
+   *
+   * DEF-028 (phase 80) · P77 D13. `getConnectionHealth` reads no ports — it asks
+   * `WarningsModel` whether a warning is recorded, and "none recorded" is also
+   * what it answers when none has been *evaluated*. The pass that records them
+   * is debounced (~2 s lazy, ~50 ms urgent, above), and nothing forced it to
+   * land before an export. So two builds of a byte-identical project could
+   * differ in which wires they contained, with no diagnostic and nothing in the
+   * artefact saying which one you got.
+   *
+   * 🔴 **Unconditional, and that is the whole point.** "Run the pending pass if
+   * one is scheduled" would be a no-op in the window D13 is actually about: a
+   * freshly imported graph has never scheduled a pass at all, which is exactly
+   * what a build taken shortly after opening a project is made of. The measured
+   * flip went 32 healthy → 13 healthy on one project with no edit between the
+   * readings.
+   *
+   * Cost is one walk of this graph's nodes and connections — the same order as
+   * the export that is about to walk them anyway — and `setWarning` coalesces
+   * its listeners through `scheduleNotifyChanged`, so this does not fan out one
+   * notification per warning it writes.
+   *
+   * ⚠️ It inherits `evaluateHealth`'s own guards: with the node library
+   * unloaded, or this component's module unregistered, it is a no-op and the
+   * verdict stays whatever was last recorded. Those are states in which a build
+   * should not be taken at all, and this does not make them safe — it declines
+   * to invent an answer for them.
+   */
+  flushEvaluateHealth() {
+    // Drop any pending pass on the floor: it would recompute exactly what the
+    // call below is about to compute, and leaving the timer armed lets it land
+    // mid-export on a graph the caller has already read.
+    if (this.evaluatehealthTimer !== undefined) clearTimeout(this.evaluatehealthTimer);
+    this.evaluatehealthTimer = undefined;
+    this.evaluatehealthScheduled = false;
+    this.evaluatehealthDeadline = Infinity;
+
+    this.evaluateHealth();
+  }
+
+  /**
    * Does any wire touching this node currently carry a warning that the node's
    * ports arriving could clear?
    *

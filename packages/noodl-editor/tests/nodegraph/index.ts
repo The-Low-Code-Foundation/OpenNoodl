@@ -27,3 +27,7 @@ export * from './port-values.spec';
 // FIX-007 fix 4: ports arriving from the viewer clear a `con-no-*-port` warning
 // in ~50 ms instead of ~2 s, and only when there is one to clear.
 export * from './urgent-health-pass.spec';
+
+// DEF-028 (P77 D13): the export filter settles connection health before it reads
+// it, so two builds of one project cannot differ.
+export * from './def-028-build-determinism.spec';

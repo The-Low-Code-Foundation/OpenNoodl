@@ -59,6 +59,27 @@ export function exportNode(node: NodeGraphNode) {
 }
 
 export function exportComponent(comp: ComponentModel) {
+  /**
+   * DEF-028 (phase 80) · P77 D13 — settle connection health before reading it.
+   *
+   * The connection loop below drops every wire `getConnectionHealth` calls
+   * unhealthy, and that verdict comes from a debounced pass that nothing forced
+   * to land. Without this, what a build contains depends on when it was taken
+   * rather than on what the project says — silently, and in both directions.
+   *
+   * 🔴 Done here, in the filter, rather than at the call sites, because there
+   * are **eight** of them across seven entry points — component bundles
+   * (`editorapi`), incremental preview updates (`ViewerConnection`), the full
+   * export and deploy (`json.ts`, `deployer.ts`), cloud functions, and the AI
+   * authoring sandbox (`sandboxExport`, `componentBench`). One of them missing
+   * the call is the defect again, so no caller is trusted to make it. Anything
+   * added later gets it by construction.
+   *
+   * ⚠️ Deliberately NOT inside `getConnectionHealth`: its other caller is
+   * `NodeGraphEditorConnection`, which asks once per wire per repaint.
+   */
+  comp.graph.flushEvaluateHealth();
+
   const json: TSFixme = { name: comp.name };
 
   json.nodes = [];
