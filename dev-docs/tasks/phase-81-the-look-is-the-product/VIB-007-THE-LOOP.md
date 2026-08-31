@@ -664,6 +664,41 @@ The spacing scale table was also short by four tokens (`--space-20/24/28/32`), f
 of the spec that **derives** the scale from `DefaultTokens.ts` rather than restating it — the second
 copy of a palette drifts, so it is graded rather than trusted.
 
+### 9.5b 🔴 A THIRD defect, found by a peer's suite after the commit — and the caveat it exposed
+
+`03c327c8` reddened two rows in `tests-unit/def-003/threeAuthoringActs.test.ts` (a **P80** file),
+reported by the P80 session. Both are `expect(one(...)).toEqual([])` where `one()` is **unfiltered**,
+sitting inside describe blocks whose subjects are `unitless-dimension` and `unknown-parameter`. One
+carries an explicit anti-widening tripwire: *"Without this row the rule could be widened to every
+units port and still pass."*
+
+**The tripwire fired on a true statement and its stated concern was untouched.** It guards
+`unitless-dimension` — a rule about whether a bare number is *ambiguous* — from spreading to ports
+where it is not. `raw-spacing-literal` is a different code on a different axis saying the value
+duplicates a token, and it was **measured at the door before anything was edited**:
+`create_component` with `paddingLeft: 24` returns **`isError: false`** and carries the finding as a
+warning. That is exactly `raw-color-literal`'s relationship with a perfectly valid `#2563eb`.
+
+Both rows now assert the **set of codes** rather than total silence. ⚠️ **The guarantee is stronger
+in that form, not weaker**: `toEqual([])` could only say *nobody speaks*; the set says exactly **who
+may**, so a fourth rule arriving on that value still trips the row and names itself. A sweep for
+every other emptiness assertion over a spacing value found no further casualties — `aib-001`'s
+`errors()` filters to `severity === 'error'`, so a warning never reaches it.
+
+🔴 **The caveat this exposed, which the corpus could not have shown.** The rule's noise was estimated
+from the corpus — 402 spacing parameters, **401 tokenised** — and *the corpus is the most tokenised
+artefact set that exists*, so it was the wrong population for that question. `paddingLeft: 24` is
+ordinary, correct authoring and now draws a warning in every project. That is the deliberate
+`raw-color-literal` bargain (**553** corpus occurrences, warning-level, *"imported content is not
+wrong for being untokenised, it is just untokenised"*) and this rule sits inside it — but the
+estimate was made on a population that could not have revealed it, and the next rule aimed at a
+user-facing value should be priced against a real project, not against `docs/node-catalog/examples`.
+
+✅ **The mechanism worth keeping: a check landed in a shared loop is graded by suites in OTHER
+tasks' directories.** §9.5's downgrade was caught by `aib-001`; this was caught by `def-003` — after
+the commit, by a peer. ⚠️ And the shape the peer named: **`validation/` was CLEAN in the working
+tree, so a dirty-tree check said "not mine". It was committed.** `git log -- <path>` is what found it.
+
 ### 9.6 What AC2 still owes — one predicate
 
 **V29 is unbuilt.** *"A `maxWidth` on a `Text` inside a centred shell — the measure belongs to the

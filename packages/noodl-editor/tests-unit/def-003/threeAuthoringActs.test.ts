@@ -59,8 +59,23 @@ describe('(a) a bare number on a dimension port — already answered, and this i
 
   it('stays quiet where a bare number already means what it says', () => {
     // `paddingLeft` on a Group defaults to px, so `24` is exactly 24px and there is nothing to
-    // warn about. Without this row the rule could be widened to every units port and still pass.
-    expect(one('Group', { paddingLeft: 24 })).toEqual([]);
+    // warn about ON THIS AXIS. Without this row the rule could be widened to every units port and
+    // still pass.
+    //
+    // 🔴 **Written as a code SET rather than as `toEqual([])`, 2026-08-31 (P81 VIB-007 / V28).**
+    // The bare assertion was a proxy — its subject is `unitless-dimension`, and it stood in for
+    // "that rule does not reach here" by demanding total silence from every rule at once. So it
+    // reddened when `raw-spacing-literal` arrived: a different rule, on a different axis, saying
+    // `var(--space-6)` is exactly 24px. That finding is correct and non-blocking (measured at the
+    // door: `create_component` returns `isError: false` and carries it as a warning), and it is
+    // the same relationship `raw-color-literal` has with a perfectly valid `#2563eb`.
+    //
+    // ⚠️ The anti-widening guarantee is STRONGER in this form, not weaker. `toEqual([])` could
+    // only say "nobody speaks"; this says exactly WHO may, so a fourth rule appearing on this
+    // value still trips the row — and now names itself when it does.
+    const codes = one('Group', { paddingLeft: 24 }).map((d) => d.code).sort();
+    expect(codes).not.toContain(DiagnosticCode.UnitlessDimension);
+    expect(codes).toEqual([DiagnosticCode.RawSpacingLiteral]);
   });
 });
 
@@ -119,7 +134,16 @@ describe('(b) a box property on a node that has no box', () => {
   });
 
   it('leaves a node that really does have the port completely alone', () => {
-    expect(one('Group', { paddingLeft: { value: 24, unit: 'px' }, borderRadius: 8 })).toEqual([]);
+    // ⚠️ Same amendment as (a)'s third row, and for the same reason: this row's subject is
+    // `unknown-parameter`, and `toEqual([])` stood in for "it does not fire here". The object form
+    // is as tokenisable as the bare number, so `raw-spacing-literal` speaks about it too;
+    // `borderRadius: 8` is deliberately outside that rule's port set and stays silent, which is
+    // what makes this a control on the port set as well as on the code.
+    const codes = one('Group', { paddingLeft: { value: 24, unit: 'px' }, borderRadius: 8 })
+      .map((d) => d.code)
+      .sort();
+    expect(codes).not.toContain(DiagnosticCode.UnknownParameter);
+    expect(codes).toEqual([DiagnosticCode.RawSpacingLiteral]);
   });
 });
 
