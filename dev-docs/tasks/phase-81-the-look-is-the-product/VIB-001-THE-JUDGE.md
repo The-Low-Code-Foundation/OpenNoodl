@@ -71,7 +71,9 @@ page cannot scroll, THAT is the screenshot.
    failing.** The baseline is what VIB-008/009 are measured against.
 4. ✅ The banned moves are structurally hard: the harness takes no viewport override per call
    site; the state (door/living) is in the manifest so a verdict can't silently swap states.
-5. ⬜ **AWAITING RICHARD** — he has seen the baseline sheet (one artifact/page collating the PNGs + verdicts) and
+5. ⬜ **AWAITING RICHARD** — the baseline sheet is built and published:
+   **https://claude.ai/code/artifact/05e4edb4-ae93-4a88-b517-6b292d1e3434**
+   (nine pages, nine verdicts, the rubric, and the three calibration questions). He has seen it (one artifact/page collating the PNGs + verdicts) and
    agrees the rubric reads his bar correctly — this calibrates the Judge before anything is
    judged by it.
 
