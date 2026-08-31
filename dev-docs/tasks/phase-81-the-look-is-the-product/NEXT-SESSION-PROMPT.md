@@ -52,6 +52,27 @@ So a large part of VIB-004 is again instruction, not engine — ask the door bef
 - **`vib003-pictures.look.ts`** + `demo/vib-003-pictures/` (built by `demo/build-vib003-pictures.js`
   from the shipped recipes, **`DEMO_OVERRIDES` empty**).
 
+## 🔴 Richard's look landed mid-session — the gutter (V25), and what it taught
+
+> *"a habit so far with the MCP to create pages with no padding on the left and right side of
+> certain sections… the text is tight to the left and right of the window, not the whole thing but
+> just that one section weirdly."*
+
+`ui-split-hero`'s band skipped the `shell` composition, so its content sat at **x=0** while the
+three bands below it sat at 64. Fixed; every band now measures 64 at 1280 and 374 at 1900, verified
+by rendering (`vib003-gutters.look.ts`).
+
+🔴 **The seam is CORPUS, not INSTRUCTION, and that is the transferable part.** The `shell`
+composition's own description already read *"content that touches the viewport edge is the loudest
+sign nobody designed the page"* — the rule existed, and the **hero recipe** contradicted it. **A
+model copies what the corpus DOES, not what the doctrine SAYS.** Before writing another doctrine
+paragraph in VIB-004 or VIB-007, check whether the corpus already disagrees with the one that is
+there — that is register V8's shape and it will keep firing.
+
+⚠️ **Nothing measures a rendered gutter** (V26, VIB-007). A static sweep cannot substitute: the
+first one written reported *no defect* on the exact band he pointed at, because the hero's lead
+paragraph carries `maxWidth: 520px` and satisfied a naive predicate.
+
 ## 🔴 Traps this session paid for
 
 - **My own first measurement of the corpus was wrong, and it pointed at a day of unnecessary work.**
@@ -80,6 +101,14 @@ So a large part of VIB-004 is again instruction, not engine — ask the door bef
 - **An asset must be judged in the box it will be used in.** `ground-ridge.svg`'s light source was
   at a corner, which `objectFit: cover` crops out of a 560px hero — it rendered as a black
   rectangle. Same sentence as VIB-002 §4(b) about a gradient at 1900px.
+- 🔴 **The gutter instrument was wrong FOUR times and three readings nearly became filed product
+  defects** — text-only put a band at 96 (its text sits past a glyph); leaf-elements put one at 89
+  (a panel's own padding); outermost-box put two at 16 (`columns-container` has
+  `margin-left: -48px` while every track has `padding-left: 48px`, so only a **transparent** wrapper
+  hangs out — probed, not filed). **Painted content** is the definition that survives. Each time the
+  metric measured *a* property rather than the one the eye reads.
+- **No selector finds "an icon"**: the *font* branch of `IconGlyph` emits no `ndl-icon-glyph` while
+  the sprite and inline branches do. Recorded in V25.
 
 ## Standing cautions
 
