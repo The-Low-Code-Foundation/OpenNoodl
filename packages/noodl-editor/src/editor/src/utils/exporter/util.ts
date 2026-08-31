@@ -102,12 +102,25 @@ export function exportComponent(comp: ComponentModel) {
   for (const i in comp.graph.connections) {
     const c = comp.graph.connections[i];
 
-    const health = comp.graph.getConnectionHealth({
-      sourceId: c.fromId,
-      sourcePort: c.fromProperty,
-      targetId: c.toId,
-      targetPort: c.toProperty
-    });
+    /**
+     * DEF-034 (phase 80) — **only an `error` deletes a wire.**
+     *
+     * `getConnectionHealth` used to answer with any recorded warning, at any level, and this
+     * filter treated all of them as "cannot work". Two of the seven connection keys are
+     * deliberately `level: 'warning'` — `con-target-port-gated` says the wire *"is valid and its
+     * value is ignored"*, and `con-type-unconverted` says the value arrives, just unconverted.
+     * Deleting those wires is strictly worse than keeping them: a gate that flips at runtime, or
+     * a cast the author accepted, then has nothing delivering a value at all.
+     */
+    const health = comp.graph.getConnectionHealth(
+      {
+        sourceId: c.fromId,
+        sourcePort: c.fromProperty,
+        targetId: c.toId,
+        targetPort: c.toProperty
+      },
+      { levels: ['error'] }
+    );
     if (health.healthy) {
       json.connections.push(exportConnection(c));
     }

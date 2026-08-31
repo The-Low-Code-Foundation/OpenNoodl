@@ -87,21 +87,48 @@ export class WarningsModel extends Model {
     this.scheduleNotifyChanged();
   }
 
-  public getWarnings(ref) {
+  /**
+   * The warnings recorded against one ref, optionally narrowed to some levels.
+   *
+   * `args.levels` is the same option `forEachWarningInComponent`,
+   * `getAllWarningsForComponent` and `getNumberOfWarningsForComponent` already take, and it is
+   * spelled the same way on purpose: this method was the one reader of the store that could not
+   * ask the question, which is the whole of DEF-034 (phase 80).
+   *
+   * 🔴 **A caller that asks for no levels gets every level, exactly as before.** The narrowing
+   * is opt-in because the two callers want opposite things: `NodeGraphEditorConnection` dashes a
+   * wire for *any* verdict — FB-021's ruling, and a `warning` is precisely what the dash is for —
+   * while `exportComponent` deletes the wire, which only "this cannot work at all" earns.
+   *
+   * ⚠️ **`level` is never absent by the time it is read.** `setWarning` above normalises it to
+   * `'warning'`, so an unlabelled warning is a *warning* to this filter, not an error. That is
+   * this model's own ruling on the question and it is not re-decided here — a caller asking for
+   * `['error']` gets only what was explicitly labelled an error.
+   */
+  public getWarnings(ref, args?: { levels?: string[] }) {
     var w = this.getWarningsForRef(ref);
     if (!w) return;
 
     if (Object.keys(w).length === 0) return;
 
+    const levels = args && args.levels;
+
     // Create short message for hover
     var messages = [];
+    var matching = [];
     for (var k in w) {
+      if (levels && (!w[k].warning || levels.indexOf(w[k].warning.level) === -1)) continue;
+      matching.push(w[k]);
       if (w[k].warning) messages.push(w[k].warning.message);
     }
 
+    // Narrowed to nothing is the same answer as "nothing recorded" — the caller's `if (warnings)`
+    // is the shape every existing reader already uses, so this cannot mean "an empty verdict".
+    if (matching.length === 0) return;
+
     return {
       shortMessage: messages.join('<br>'),
-      warnings: toArray(w)
+      warnings: levels ? matching : toArray(w)
     };
   }
 

@@ -31,3 +31,7 @@ export * from './urgent-health-pass.spec';
 // DEF-028 (P77 D13): the export filter settles connection health before it reads
 // it, so two builds of one project cannot differ.
 export * from './def-028-build-determinism.spec';
+// DEF-034: only an `error` deletes a wire from the build. The two `level: 'warning'`
+// connection keys (FB-021's gated port, FIX-025's unconverted cast) describe wires that
+// work, and the export used to drop them exactly like a wire to a deleted port.
+export * from './def-034-warning-level-wires-survive-the-build.spec';

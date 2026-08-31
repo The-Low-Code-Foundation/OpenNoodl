@@ -659,19 +659,43 @@ export class NodeGraphModel extends Model {
     };
   }
 
-  getConnectionHealth(c) {
+  /**
+   * DEF-034 (phase 80) — `args.levels` narrows which verdicts count as unhealthy.
+   *
+   * 🔴 **Omitting it keeps every level, which is what the canvas wants.** A wire the editor calls
+   * merely questionable still gets FB-021's dash; that is the surface Richard asked for.
+   *
+   * 🔴 **`exportComponent` passes `['error']`, and the difference is a deleted wire.** Two of the
+   * seven keys this function can see are `level: 'warning'` — `con-target-port-gated` (a wire into
+   * a `basic`-gated port, *"valid and its value is ignored"*) and `con-type-unconverted`
+   * (FIX-025's `string → number`, which the runtime delivers verbatim). Both describe wires that
+   * **work**. Without the narrowing they left the build exactly like a wire to a deleted port.
+   *
+   * ⚠️ Measured before it was changed, over 179 projects on this machine: **290** gated wires and
+   * **23** unconverted ones were being dropped, across 34 projects. **27 of the 290 had the gate
+   * port itself driven by a wire** — a `States` node or a Component Input feeding `flexDirection`,
+   * `useIcon` or `useLabel` — so the condition the editor evaluated against a *saved parameter*
+   * was never the condition the running app would be in. Those are reusable components ("Pretty
+   * button", "Secondary Button", "Toggle Switch"), where a parameter arriving from outside is the
+   * entire point. ✅ Both shipped templates (Site Builder, TPL-001) measured **0**, so this was
+   * never visible from the templates alone.
+   */
+  getConnectionHealth(c, args?: { levels?: string[] }) {
     const sourceId = c.sourceId ? c.sourceId : c.sourceNode.id;
     const targetId = c.targetId ? c.targetId : c.targetNode.id;
 
-    const warnings = WarningsModel.instance.getWarnings({
-      component: this.owner,
-      connection: {
-        fromId: sourceId,
-        fromProperty: c.sourcePort,
-        toId: targetId,
-        toProperty: c.targetPort
-      }
-    });
+    const warnings = WarningsModel.instance.getWarnings(
+      {
+        component: this.owner,
+        connection: {
+          fromId: sourceId,
+          fromProperty: c.sourcePort,
+          toId: targetId,
+          toProperty: c.targetPort
+        }
+      },
+      args
+    );
 
     if (warnings) {
       return { healthy: false, message: warnings.shortMessage };

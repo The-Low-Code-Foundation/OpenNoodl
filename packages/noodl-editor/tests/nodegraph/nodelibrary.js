@@ -743,6 +743,59 @@ function createTestNodeLibrary() {
             ]
           }
         ]
+      },
+
+      /**
+       * DEF-034 (phase 80) — a node built so the two `level: 'warning'` connection keys can be
+       * raised by the REAL evaluator rather than written into `WarningsModel` by hand.
+       *
+       *   - `gatedNumber` sits in a `conditionalports/basic` group behind `useExtras = true`.
+       *     `basic` means the port still EXISTS and the wire stays valid — it is the property row
+       *     that is suppressed — which is why `con-target-port-gated` is a warning and not an
+       *     error (FB-021).
+       *   - `text` (output, `string`) into `plainNumber` (input, `number`) is the cast the
+       *     `typecasts` table above permits and the runtime does not perform, which is what
+       *     `con-type-unconverted` reports (FIX-025).
+       */
+      {
+        name: 'def034Node',
+        ports: [
+          {
+            name: 'useExtras',
+            type: 'boolean',
+            plug: 'input'
+          },
+          {
+            name: 'plainNumber',
+            type: 'number',
+            plug: 'input'
+          },
+          {
+            name: 'text',
+            type: 'string',
+            plug: 'output'
+          },
+          /*
+           * 🔴 Declared on the NODE, and only NAMED by the group below. `NodeGraphNode.getPorts`
+           * returns `type.ports` with no conditional filtering at all, so this is what makes
+           * `getPort('gatedNumber')` answer — and a gated port that `getPort` cannot find raises
+           * the `error`-level `con-no-target-port` instead, which is a different defect and would
+           * grade the wrong thing. The shipped catalog has the same shape: `Group.width` is a
+           * static input that a `declaredPortGroups` entry names.
+           */
+          {
+            name: 'gatedNumber',
+            type: 'number',
+            plug: 'input'
+          }
+        ],
+        dynamicports: [
+          {
+            name: 'conditionalports/basic',
+            condition: 'useExtras = true',
+            ports: [{ name: 'gatedNumber' }]
+          }
+        ]
       }
     ]
   };
