@@ -1,151 +1,147 @@
 # Phase 81 — next session
 
 **Read `README.md` §1–§4 first** — the ruling, the rubric, the protocol, the rules. Then
-`VIB-004-THE-MARKETING-KIT.md` §1 and §5, which are the two places this phase's register was
-found to be **materially wrong about its own premises** for the third and fourth time.
-Re-derive the board from `TASKS.md` + the task files; do not trust this file's copy of it.
+`VIB-011-THE-STOCK-LIBRARY.md` §7 and §11, which are where this phase's register was found to be
+materially wrong about its own premise for the **fourth** time, and where two instruments were found
+measuring the wrong thing. Re-derive the board from `TASKS.md` + the task files; do not trust this
+file's copy of it.
 
-## Board, re-derived from the task files (2026-08-31, session 4)
+## Board, re-derived from the task files (2026-08-31, session 5)
 
 | id | status |
 |---|---|
 | VIB-001 The Judge | 🟢 **CLOSED**, all 5 ACs. Baseline 9 SHITTY / 0 / 0 |
 | VIB-002 The Ceiling | 🟡 **PASSABLE — RICHARD RULED IT**: *"very passable, nearly worthy, definitely night and day with the original"* |
 | VIB-003 The Pictures | 🟡 **PASSABLE — RICHARD RULED IT**: *"nice, deffo passable and looking like a modern base template, good job"* |
-| VIB-004 The Marketing Kit | 🟡 **PASSABLE this session — NOT YET SEEN BY RICHARD.** 7 compositions, 2 new recipes, a six-band page shot at all four widths |
-| VIB-011 The Stock Library | 🟡 **Pipeline proven, library unbuilt.** 🔴 Now the named blocker on VIB-004's WORTHY |
+| VIB-004 The Marketing Kit | 🟡 **PASSABLE, not yet seen by Richard.** ⚠️ Its named blocker (the pictures) is now CLOSED |
+| VIB-011 The Stock Library | 🟡 **PASSABLE this session — NOT YET SEEN BY RICHARD.** 44 CC0 photographs shipped, taught, and rendered |
+| VIB-006 The Worked Page | ⬜ **the next job — see below** |
 | VIB-005/007 | ⬜ startable now, in parallel |
-| VIB-006 | ⬜ consumes 002/003/004 — **the kit it was waiting for now exists** |
 | VIB-008/009 | ⬜ prove it on the shipped templates |
 | VIB-010 | ⬜ the exit exam |
 
 ## 🔴 Two things to show Richard, in this order
 
-1. **The VIB-004 page.** `verdicts/vib-004/2026-08-31/marketing-door/marketing-desktop-full.png`
-   (and `marketing-wide-viewport.png`). This session judged it **PASSABLE**; his look supersedes.
-2. **The question that decides the next task.** VIB-004's own critique names one blocker and it is
-   the one he already asked for: *every picture on the page is the same dark generated abstract,
-   and three of them are the identical portrait.* The imagery tell does not fire — there IS
-   imagery — but nothing on the page communicates anything about the product. **That is VIB-011.**
-   If he agrees, VIB-011 is the next job and VIB-006 follows it.
+1. **The page with real pictures.**
+   `verdicts/vib-011/2026-08-31/marketing-with-photographs/marketing-desktop-full.png`
+   (and `marketing-wide-viewport.png`). The hero is a potter's hands on a wheel; the three
+   testimonials are three different faces. This session judged it **PASSABLE**; his look supersedes.
+2. **The library itself**, so he can say whether the 44 are the right 44 —
+   `packages/noodl-editor/src/assets/starter-project/noodl_modules/starter-imagery/`, 3.32 MB.
+   ⚠️ **`people` was the category his own instruction was most specific about** (*"people doing
+   shit"*) and it is the one that took a change of collection to fix. Worth his eye.
+
+## 🔴 The next task is VIB-006, and VIB-011 is the argument for it
+
+VIB-011's own verdict says it in one sentence: **the library ships and the page barely uses it.**
+One band of six carries a photograph, and the headline is still a bare heading on white — which is
+the rubric's *first* WordPress-starter tell. The capability tier is now done (VIB-002 grounds,
+VIB-003 icons, VIB-004 sections, VIB-011 pictures) and **nothing in the corpus assembles all of it
+into one page.** That is register **V8** and it is VIB-006.
+
+Concretely, and this is the strongest single piece of evidence available: **`ui-image-scrim-band` can
+now put display type over a real photograph with a scrim, and no page in the corpus places it.**
 
 ## What this session settled
 
-- **Seven compositions**: `ctaBand`, `footerBand`, `statTile`, `testimonialCard`, `badge`,
-  `featureItem`, `actionRow` — every property lifted from a gated recipe, every one checked against
-  a real port.
-- **Two recipes**: `ui-cta-band`, `ui-testimonial-row`. The catalog is now **66 examples**.
-- **A six-band landing page**, `demo/build-vib004-marketing.js`, `DEMO_OVERRIDES` empty, plus
-  `packages/nodegx-backend/tests/vib004-marketing.look.ts` (4/4).
-- **`ui-split-hero` repaired twice** — see "the hero" below.
+- **44 CC0 photographs, 3.32 MB**, in `noodl_modules/starter-imagery/` beside the six SVGs (which
+  stay — shipped recipes point at them, and an abstract ground is still the honest answer when no
+  photograph would be true about the subject). Grouped `hero` 8 / `work` 8 / `food` 7 / `texture` 6 /
+  `people` 5 / `avatar` 6 / `animals` 4, each **already cropped for the shape it is for**.
+- **`LICENCES.json` ships beside the pictures**, one row per image with `subject`, `role`, `says`,
+  title, author, licence and Commons URL. Licence tally: `{ CC0: 44 }`. The door reads the same file,
+  so there is no second catalogue to drift.
+- **`get_style_vocabulary` gains an `imagery` block**; `prompts/design.ts` §5 rewritten; the two
+  recipes that had pictures repointed at real ones.
+- `scripts/library/fetch-stock-imagery.js` (fetch + licence-check) and
+  `scripts/library/make-stock-library.js` (curate + crop + provenance) — the curation, including
+  **what was refused and why**, is written down in the second one.
 
-## 🔴 Where the handoff you were given was wrong, and where this one might be
+## 🔴 Where the handoff you were given was wrong — for the FOURTH time
 
-Three register rows have now been found to overstate or misstate their own finding. **Re-derive a
-row from its predicate before building on it.**
+- **V30's own licence table excluded Unsplash outright.** That restriction is in the **current**
+  Unsplash Licence (June 2017). Before it, Unsplash released under **CC0 1.0**, which is irrevocable
+  and carries no collection restriction, and Commons will not host the post-2017 licence — so
+  `Category:Images from Unsplash` (**31,004 files**) is the CC0 era. It is what fixed `people`, which
+  `Category:Images from Pixabay` (6,164) could not: `woman laptop` returned **one** file there.
+- After V6 ("zero marketing compositions" — five already shipped), V12 (a rule that cannot see a
+  component instance) and V22 (population 14, not 1), that is **four**. 🔴 **Re-derive a row from its
+  predicate before building on it**, and name which predicate — here it was *"which licence, on which
+  files"*, and the row had answered a different question.
 
-- **V6** said *"zero marketing compositions of 26."* True of the compositions file, and read as
-  "the kit cannot express a marketing page." **Five of the seven arrangements already shipped as
-  gated recipes.** The gap was that none of them was a NAMED SET.
-- **V12** said three *different* feature cards trip `repeated-sibling-subtree`. **The rule cannot
-  see a component instance at all** — one node, no children, `size: 1`, skipped below the 3-node
-  floor. The factored form the warning's own message recommends is invisible to it. Six specs
-  existed and none covered that case.
-- **V22** named `vis-columns-media-cards` and was read as the population. **It is 14 examples.**
-  ⚠️ And the correction is itself unfinished: whether a `For Each` feeds item properties into ports
-  that were never declared is a **runtime** question nobody has measured, and the answer decides
-  whether those 14 are broken or work by another route. **VIB-007's first job on V22, and it must
-  be a render, not a reading.**
+## 🔴 Two instruments caught measuring the wrong thing
 
-## 🔴 The hero, and the reading that could not have found it
+- **V34: the wire-budget gate priced a project nobody has.** `get_style_vocabulary`'s budget spec ran
+  on a bare fixture — no Inter, no Lucide, no imagery — so it measured the *"none installed"*
+  sentence at **+45 prompt / +31 full**, when the real cost on **every project the editor creates**
+  is **+225 / +515**. The icon block has the same two arms and the spec's own comment said so in
+  passing, so this has been pricing the cheap arm since VIB-003. **Now installs the library before
+  measuring**; ceilings set against the real reading (prompt **4,032**/4,400, full **13,869**/14,400).
+  ⚠️ **A budget measured on a fixture is a budget on the fixture.**
+- **My own tripwire was on the wrong population.** The fetcher's *"zero rejections is not
+  reassurance"* warning counted **all** rejections, so six `too small` refusals would have reported a
+  dead licence filter as healthy. It counts licence rejections now, and prints
+  `licence filter observed refusing 1 file(s) — it is live`.
 
-`ui-split-hero` pointed its media column at **`ground-ridge.svg`** — a *ground*, designed to be dark
-and empty so text stays readable on it, used as a *subject* picture in a 560px box. It rendered as a
-black rectangle at the top of the most-copied recipe in the corpus. Repointed at `tile-1.svg`.
+## 🔴 Two client bugs that each read as a fact about the source
 
-Then the right half was still dead below the image; fixed with `justifyContent: center` + explicit
-100% height on the media group.
+Both would have gone into a summary as a claim about 31,004 files, and both were caught by the
+rejection report and the contact sheets rather than by any assertion.
 
-🔴 **`contentBottom` was 2840px before that fix and 2840px after it.** `textChars`, `unreachablePx`,
-`canScroll` and the content height were all identical across a change that visibly rebalances the
-top of the page — the band's height is set by the copy column either way. **Only the picture said
-so.** Third time this phase (V17; VIB-003's lost band; this).
+1. **429 storm** — Wikimedia refused **553 of 569** thumbnail requests. Every subject but `hero` came
+   back empty. The reading that survives a count-only summary is *"Unsplash has no food, no portraits,
+   no workspaces"*.
+2. **The drained query list** — a flat "stop at N" let the first query fill every slot, so `hero` was
+   twenty near-identical foggy mountains and `food` twenty cups of coffee. 🔴 **Every printed number
+   was correct** — 20/20 kept, licences verified, rejections tallied — **and the set was useless.**
+   Only the contact sheet said so. This phase's method, applied to its own tooling.
 
 ## What is open, with owners
 
-- 🔴 **V31 (new)**: the seven `--shadow-*` tokens are **unreachable**. Every one is a complete CSS
-  `box-shadow` string; `Group` exposes only the six separate `boxShadow*` ports, and **no port in
-  any of the 176 catalog node types takes a whole box-shadow string**. Depth has to be composed from
-  parts and coloured with a non-shadow token. **V5's exact shape a third time.** Owner VIB-007.
-- ⚠️ **V32 (recorded)**: `catalog:examples` does **not** run `raw-color-literal`. A raw
-  `rgb(15 23 42 / 0.08)` written into a new recipe passed 66/66 strict; it was caught by reading the
-  gate's header, not by the gate. *"The gate is green"* and *"the corpus has no raw colours"* are
-  different claims. Cross-link V28 (the same sentence about spacing).
-- ⚠️ **V27's 58 no-gap containers are still not fixed**, deliberately — each needs a render.
-- ⚠️ **V29 is half closed.** The mechanism is named and built into `ctaBand` (**the defect is a
-  `maxWidth` on the TEXT**; a measure belongs to the shell, which a band centres). But
-  `ui-image-scrim-band` is **not** repaired — it is VIB-002's recipe and repairing it re-opens
-  VIB-002's verdict. That half is VIB-008's.
+- 🔴 **V35 (new): the resident MCP tool surface has ONE token of headroom** (8,279 of 8,280). One
+  clause added to one tool description reds it; the trim is in. **The next task to touch any tool
+  description will fail this gate.** Owner **VIB-007**. Cross-link V20, which recorded 26 tokens.
+- 🔴 **V31**: the seven `--shadow-*` tokens are unreachable — no port in 176 node types takes a whole
+  box-shadow string. Owner VIB-007.
+- ⚠️ **V32**: `catalog:examples` does not run `raw-color-literal`. Owner VIB-007, with V28.
+- ⚠️ **V22 is still unruled** and it must be a **render, not a reading**: whether a `For Each` feeds
+  item properties into ports never declared decides whether those **14** examples are broken or work
+  by another route. **VIB-007's first job.**
+- ⚠️ **V27's 58 no-gap containers** still not fixed, deliberately — each needs a render.
+- ⚠️ **V29 half open**: `ui-image-scrim-band` now has a picture (V33) but its **one-sided measure is
+  still VIB-008's**.
 
-## Gate readings taken this session (2026-08-31, on `e5b68d30` + this work)
+## Gate readings (2026-08-31, on `3e2cffae` + this work, committed `bec68191`)
+
+🔴 **Every row below is an EXIT STATUS.** A crashed `tsc` writes zero `error TS` lines, so a grep over
+its log reads `0` and is indistinguishable from a clean pass.
 
 | gate | reading |
 |---|---|
-| `npm run catalog:examples` | **66/66 clean**, strict, warnings-as-errors |
-| `npx jest --config packages/noodl-mcp/jest.config.js` | **79 suites / 1043 tests pass**, 93s |
-| `styleVocabularyPorts.test.ts` | **13/13** |
-| `repeatedSiblingSubtree.test.ts` | **9/9** (6 + 3 new, one a control) |
-| `npm run typecheck:editor` | clean |
-| `vib004-marketing.look.ts` | **4/4**, four viewports, `starterAssets.failed: []` |
-| `npm run typecheck:backend-tests` | ⚠️ **cannot run locally — OOMs at 8 GB. Control-proven pre-existing; CI covers it. See below** |
+| `npm run catalog:examples` | **exit 0** — 66/66 clean, strict, warnings-as-errors |
+| `npx jest --config packages/noodl-mcp/jest.config.js` | **exit 0** — 79 suites / **1045** tests |
+| `npm run typecheck:editor` | **exit 0** |
+| `npm run typecheck:mcp` | **exit 0** |
+| `vib004-marketing.look.ts` | **exit 0** — 4/4, four viewports, 62 starter assets written (44 `.webp`), `failed: []`, `unreachablePx: 0` everywhere |
+| `npm run typecheck:backend-tests` | ⚠️ **not run — CANNOT complete on this machine.** OOMs at 8 GB, control-proven pre-existing, CI (`pr.yml:39`) covers it. Nothing this task wrote is a `.look.ts` change. **Do not chase it again.** |
 
-✅ **`typecheck:backend-tests` is SETTLED — do not chase it again.** It **cannot complete on this
-machine**, and the reason has nothing to do with any look file:
-
-- `tc3`: **exit 134** (SIGABRT) — `FATAL ERROR: Ineffective mark-compacts near heap limit`, 828s of
-  GC against an explicit **8 GB** heap, on a **quiet** checkout (load 5.2, nothing else running).
-- 🔴 **CONTROL, run with `vib004-marketing.look.ts` MOVED ASIDE: exit 134, the identical OOM.** So
-  the OOM is a property of the gate's type graph, not of anything this session wrote.
-- A P81 peer in the VIB-002 lane reached the same conclusion independently and committed it as
-  **`8ad63c44`** — *"the gate OOMs locally, CI runs it, and zero errors was a crash"*. Scoping the
-  entry to one file changes nothing: every `*.look.ts` imports `helpers/judge.ts`, which reaches the
-  backend's whole `src/**`. **The entry is scopeable; the type graph is not.**
-
-✅ **It does not need to run locally.** `.github/workflows/pr.yml:39` runs it in the `typecheck` job,
-so every `.look.ts` is typed on PR. That is the coverage; local is not the gate.
-
-⚠️ **Still true and still load-bearing**: the backend's ts-jest runs `isolatedModules: true`, so **a
-green jest run does not typecheck a `.look.ts`.** CI is the only thing that does.
-
-🔴 **AND THE TRAP THIS ALMOST BECAME:** the crashed run wrote **zero `error TS` lines**, so a
-`grep -c 'error TS'` over its log reads **`0`** — indistinguishable from a clean pass. **Gate on the
-EXIT CODE, never on the absence of error lines.** A run that dies before the reporting stage
-produces an empty error list, which is the friendliest possible shape for a lie.
-
-⚠️ **Do not repeat this session's other dead end** either. Re-running a look file through an ad-hoc
-jest config with `isolatedModules: false` looks like a cheap substitute typecheck and is **not a
-valid instrument**: it reports
-`noodl-editor/.../authoring/candidate.ts:46 error TS2304: Cannot find name 'Crypto'` — a DOM lib
-type in a file neither look file owns. **The control settles it**: the identical command on
-`vib003-pictures.look.ts`, which shipped last session, fails identically. It resolves `lib`
-differently from `tsc -p` and cannot tell a good file from a bad one.
+✅ **Mutation-checked**: breaking `readImagery` reds `reports the installed stock imagery` and leaves
+the **budget** spec green — which is exactly why that control exists. An absent block is a cheap one.
 
 ## Standing cautions (unchanged, all still true)
 
 - 🔴 **No proxy closes a task.** If you notice yourself grading JSON, stop and render.
 - 🔴 **Legible and operable is the floor, not a grade** (Richard, 2026-08-31).
 - 🔴 **Never raise a viewport to make content fit.**
-- 🔴 **ASK THE DOOR WHETHER THE KIT ALREADY CAN.** Four for four this phase.
-- 🔴 **A change to `DEFAULT_TOKENS` or `STYLE_COMPOSITIONS` owes
-  `npx jest --config packages/noodl-mcp/jest.config.js`** (V24). This session measured the wire
-  budget **before and after**: prompt 3,201 → 3,762, full 11,749 → 13,323; ceilings raised to
-  4,000 / 14,000 with the numbers written into the spec. ⚠️ The cost is **structural** (pretty-
-  printed `{value, unit}` objects), not prose — shortening descriptions would pay almost nothing.
+- 🔴 **ASK THE DOOR WHETHER THE KIT ALREADY CAN.** Still four for four.
+- 🔴 **A change to `DEFAULT_TOKENS` or `STYLE_COMPOSITIONS` owes the noodl-mcp suite** (V24) — and now
+  **so does any change to a tool description or to what is installed in a project** (V34, V35).
 - 🔴 **Rebuild the viewer before a Judge run that depends on a runtime change.**
-- 🔴 **`render-from-disk` reads tokens BY REGEX** — a comment between `name:` and `value:` deletes
-  a token from every Judge photograph.
-- ⚠️ Shared checkout, busy: P80 landed DEF-035 (`e5b68d30`) mid-session and was driving
-  `dev:debug` at close. Commit by pathspec, `git add` untracked first, never stash, never
-  `git checkout --`.
-- ⚠️ `test:ci` floor is **4, all AIX-006 by name**. Not re-run this session — nothing this session
-  touched is in it.
+- 🔴 **`render-from-disk` reads tokens BY REGEX** — a comment between `name:` and `value:` deletes a
+  token from every Judge photograph.
+- ⚠️ Don't re-render into another task's verdict directory. This session's look file writes to
+  `verdicts/vib-004/…`; the renders were copied to `verdicts/vib-011/…` and VIB-004's committed PNGs
+  restored from git, so its verdict still has the evidence it was written against.
+- ⚠️ Shared checkout: P80 finished and ran `dev:stop` mid-session (clean at `3e2cffae`). Commit by
+  pathspec, `git add` untracked first, never stash, never `git checkout --` over live work.
+- ⚠️ `test:ci` floor is **4, all AIX-006 by name**. Not re-run — nothing this session touched is in it.
