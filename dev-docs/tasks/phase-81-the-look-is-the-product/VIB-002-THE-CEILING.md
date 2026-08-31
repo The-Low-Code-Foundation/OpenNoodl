@@ -272,7 +272,7 @@ the border.
 | `styleVocabularyPorts.test.ts` + `design-token-contrast.test.ts` | 26 passed |
 | `packages/noodl-viewer-react` suite | 85 suites / 1107 tests passed |
 | `vib002-ground.look.ts` | 3 passed, 4 shots, `unreachablePx` 0 at every width |
-| `npm run typecheck:backend-tests` | ⚠️ **not run by this session — see below** |
+| `npm run typecheck:backend-tests` | ⚠️ **no local reading obtainable — CI runs it on PR (`.github/workflows/pr.yml:39`); see below** |
 
 🔴 **A correction to this file's own §3, and to `VIB-001-THE-JUDGE.md` §8 which it inherited from.**
 Both said *"neither look file is type-checked by anything — the jest run is the typecheck."* **That
@@ -285,7 +285,40 @@ So this task shipped a `.look.ts` without running the one gate that types it, on
 that no such gate existed. The belief was an **absence claim made without the search that would
 have disproved it** — one `grep` of `package.json` for `typecheck:` finds it.
 
-⚠️ **Status when this was written**: a `tsc -p .../tsconfig.tests.json` was found already running,
+### 🔴 The gate does not complete on this machine, and that is not a finding about this code
+
+Four attempts, none of which produced a reading:
+
+| attempt | whose | outcome |
+|---|---|---|
+| `npm run typecheck:backend-tests` | this session | SIGTERM at 10 min (load 13) |
+| `NODE_OPTIONS=--max-old-space-size=8192` | a third session | **FATAL: JS heap out of memory at 828s**, 8.0 GB |
+| single-file scope, 4 GB heap | this session | SIGTERM at 9 min, empty log |
+
+The machine is **16 GB**, with Firefox, CoreSimulator and a peer's node process live. A run asking
+for half the machine's RAM still died. Scoping the entry point to one file changed nothing, because
+`vib002-ground.look.ts` imports `helpers/judge.ts`, which reaches the backend's whole `src/**` — the
+*entry* is scopeable, the *type graph* is not.
+
+🔴 **The OOM is not caused by anything this task added.** Measured rather than assumed: the gate
+resolves 255 files, the largest are the backend's own (`HttpServer.ts` at 99 KB), and the generated
+catalog `.d.ts` files this task regenerated are **10 KB and 1 KB, byte-identical in size to their
+pre-VIB-002 versions** — they are not even in the resolved set.
+
+✅ **And it is not an unwatched gate**, which is what this was about to be written up as.
+`.github/workflows/pr.yml:39` runs `npm run typecheck:backend-tests` in the `typecheck` job, on a
+runner with headroom and nothing competing. So every `.look.ts` in this package **is** typed, on PR.
+What is false is only the local promise: a session on this machine should not undertake to produce a
+green `typecheck:backend-tests` reading, and a handoff that says "must be re-run" is asking for
+something the hardware will not give.
+
+⚠️ **Read the log, never the error count.** The OOM run's log had **zero `error TS` lines**, and this
+session's own waiter script duly printed *"(none — no look-file errors)"* and *"0"*. Read carelessly
+that is a pass. It was a crash: `tsc` never reached the reporting stage. An absence of error lines
+is only evidence beside proof the compiler finished — the same shape as a timed-out `test:ci` run
+exiting 1 exactly like a clean floor.
+
+⚠️ **Original status note**: a `tsc -p .../tsconfig.tests.json` was found already running,
 so this session did not start a second one — a concurrent full-project `tsc` is how the first
 attempt got SIGTERM'd at 10 minutes on a load-13 machine. This row stays ⚠️ until a clean reading is
 recorded against it.
