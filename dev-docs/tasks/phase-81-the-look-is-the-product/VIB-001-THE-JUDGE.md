@@ -71,16 +71,21 @@ page cannot scroll, THAT is the screenshot.
    failing.** The baseline is what VIB-008/009 are measured against.
 4. ✅ The banned moves are structurally hard: the harness takes no viewport override per call
    site; the state (door/living) is in the manifest so a verdict can't silently swap states.
-5. ⬜ **AWAITING RICHARD** — the baseline sheet is built and published:
+5. ✅ **MET 2026-08-31 — and the calibration found the rubric wrong, which is what it was for.**
+   Richard ruled the two PASSABLE verdicts SHITTY (*"passable in terms of you can at least see the
+   elements clearly and interact, but they still look like original Wordpress default templates"*).
+   README §2 amended: legible-and-operable is the floor, not a grade; app chrome is exempt from the
+   marketing tells but not from the default-template test. Baseline is now **9 SHITTY / 0 / 0**.
+   Sheet:
    **https://claude.ai/code/artifact/05e4edb4-ae93-4a88-b517-6b292d1e3434**
    (nine pages, nine verdicts, the rubric, and the three calibration questions). He has seen it (one artifact/page collating the PNGs + verdicts) and
    agrees the rubric reads his bar correctly — this calibrates the Judge before anything is
    judged by it.
 
-**Status 2026-08-31**: AC1–AC4 met (§8 says how, and how each was made structurally hard rather
-than written down). AC3's verdicts are in `VIB-001-BASELINE-VERDICTS.md` — four SHITTY, two
-PASSABLE, zero WORTHY, which is the baseline this phase exists to move. AC5 is the only one left
-and it is Richard's, not a session's.
+**Status 2026-08-31: 🟢 CLOSED, all five ACs met.** The baseline is in
+`VIB-001-BASELINE-VERDICTS.md` — **nine SHITTY, zero PASSABLE, zero WORTHY** after Richard's
+ruling (§7 there), which is the baseline this phase exists to move. ⚠️ The Judge closing does not
+make its verdicts permanent: his look supersedes any of them, in both directions, at any point.
 
 ## §7 Explicitly out of scope
 

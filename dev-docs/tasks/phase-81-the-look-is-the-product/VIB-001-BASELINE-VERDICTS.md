@@ -8,7 +8,9 @@ state, the viewport, the artefact md5 and the HEAD sha.
 🔴 **The baseline is expected to be SHITTY. Recording that honestly is VIB-001 AC3 succeeding.**
 This is the number VIB-008 and VIB-009 are measured against, not a complaint.
 
-⚠️ Provisional until Richard has looked (README §3.5). His look supersedes in both directions.
+✅ **Richard has looked and ruled (§7, 2026-08-31).** The two PASSABLE verdicts are now **SHITTY**.
+**Final baseline: 9 SHITTY, 0 PASSABLE, 0 WORTHY.** The rubric was amended where his ruling found
+it wrong — that amendment is what AC5's calibration was for.
 
 ---
 
@@ -45,7 +47,7 @@ indistinguishable from membership. As a look: outlined pill buttons and one bord
 the entire structure, no imagery, and ~600px of dead white below a single error line at 1280.
 Seam: template (V3). Owner: **VIB-008**.
 
-### `/setup` — the owner's first run · **PASSABLE**
+### `/setup` — the owner's first run · **SHITTY** (was PASSABLE; Richard's ruling, §7)
 
 Judged as app chrome for designed clarity (README §2's last paragraph), not marketing flash.
 
@@ -55,7 +57,9 @@ comes from your backend configuration."* — and the form sits on a card rather 
 
 Against it: **all six fields say `Type here...`** (**V14**, new — see §4); the card is the only
 structure on the page; at 1900 the form occupies a ~710px column and the remaining ~1200px is
-white. Not embarrassing. Not WORTHY.
+white. **And every one of those fields is a full-width bordered input stacked in a single
+card with a label above it — the default output of every form library ever written. Nothing on
+this page is a decision.**
 
 ### `/join` — a stranger asking to join · **SHITTY**
 
@@ -90,7 +94,7 @@ Seam: VOCABULARY (V5 no ground, V6 no marketing compositions, V13 type ceiling) 
 nothing in the corpus shows what the alternative would be). Owner: **VIB-008**, consuming
 VIB-002/004/006.
 
-### `/members` — the announcements list, with rows · **PASSABLE**
+### `/members` — the announcements list, with rows · **SHITTY** (was PASSABLE; Richard's ruling, §7)
 
 The strongest surface in either template. Ruled rows, title + date + a `Read` action, a real
 hierarchy from eyebrow through 32px heading to row titles, and an honest `FOR MODERATORS` band at
@@ -99,7 +103,9 @@ the foot. As app chrome this is not embarrassing.
 Against it, at 1900 specifically: the nav **wraps to two rows** — `Your account` alone on the
 second line — while ~600px of viewport sits empty to the right, because the measure is capped
 independently of the width (**V15**, new). Every nav item and every row action is the same
-outlined pill, so nothing on the page signals primacy. No iconography anywhere. Not WORTHY.
+outlined pill, so nothing on the page signals primacy. No iconography anywhere. **Ruled rows and
+outline-secondary pills is Bootstrap's list-group with content poured into it; the row's state
+(read / unread / new) has no treatment at all.**
 
 ⚠️ **At 988×313 — the editor's own default preview — the entire first screen is chrome.** The
 eyebrow, the association name, `Sign out`, and a six-item nav that wraps onto a second row consume
@@ -235,3 +241,54 @@ does this look like at its best?"
 
 ⚠️ Stated so it is not assumed: the seeded `data.image` is a renderable `data:` URI, not a real
 uploaded `cloudfile` with a backend URL. Same render path, different URL source.
+
+
+---
+
+## §7 ✅ Richard's ruling — the calibration (2026-08-31)
+
+> I think the two passable ones are passable in terms of you can at least see the elements clearly
+> and interact, but they still look like original Wordpress default templates
+
+**Both PASSABLE verdicts become SHITTY. Final baseline: 9 SHITTY, 0 PASSABLE, 0 WORTHY.**
+
+### What the session got wrong, named so it does not recur
+
+README §2's last paragraph said app-chrome pages *"are judged for designed clarity rather than
+marketing flash."* The session read **"designed clarity"** as **"legible and operable"**, and both
+PASSABLE verdicts were awarded on exactly that: *"legible"*, *"a real hierarchy"*, *"not
+embarrassing"*.
+
+🔴 **Legible and operable is the floor, not a grade.** It is true of every WordPress default
+template ever shipped — that is the whole point of a default template. A verdict that rewards it is
+measuring the precondition for judging rather than the thing being judged. Same shape as
+[the recurring correct-vs-usable trap], one level up: the session proxied *"can a person use this"*
+for *"does this look designed"* because the first is the one it could check confidently.
+
+### The amended rule (now in README §2)
+
+App chrome is exempt from the **marketing** tells — a settings page needs no hero, no gradient
+ground, no 72px display type, and demanding one would be wrong. It is **not** exempt from the
+default-template test, which is the same for every surface:
+
+> **Does anything on this page show a decision?** A considered density; a real hierarchy of action
+> weight; iconography doing work; a treatment for state. Or is it the framework's defaults with
+> this app's content poured into them?
+
+Applied to the two flips, and both fail it in one sentence:
+
+- **`/setup`** — full-width bordered inputs stacked in a card, label above each, `Type here…` in
+  every one, one submit. That is what a form library emits before anyone designs anything.
+- **`/members`** — ruled rows plus outline-secondary pills is Bootstrap's list-group; six identical
+  nav pills carry no weight hierarchy, and row state has no treatment.
+
+### What this changes downstream
+
+🔴 **VIB-005 is no longer sufficient for app chrome.** Fixing the ambush defaults makes these pages
+*correct*; Richard's ruling says correct was never the question. Every app-chrome surface in
+VIB-008 and VIB-009 now needs design work of its own, drawing on the same widened kit as the
+marketing surfaces — which strengthens the case that the **kit** is the seam, since app chrome and
+landing pages fail on the same vocabulary.
+
+⚠️ It also removes the phase's only route to a soft close. PASSABLE was never a close condition;
+now nothing in the baseline is even near one.

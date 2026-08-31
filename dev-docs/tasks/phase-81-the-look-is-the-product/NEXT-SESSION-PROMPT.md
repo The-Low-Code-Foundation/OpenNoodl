@@ -8,7 +8,7 @@ the board from `TASKS.md` + the task files; do not trust this file's copy of it.
 
 | id | status |
 |---|---|
-| VIB-001 The Judge | 🟡 **AC1–AC4 met and committed** (`8a36f458`). AC5 is Richard's and is the only thing open. |
+| VIB-001 The Judge | 🟢 **CLOSED — all 5 ACs met.** Richard ruled the baseline 2026-08-31 and the rubric was amended. |
 | VIB-002/003/004/005 | ⬜ the capability tier — all four are startable now, in parallel |
 | VIB-006/007 | ⬜ consume the capability tier |
 | VIB-008/009 | ⬜ prove it on the shipped templates |
@@ -23,14 +23,22 @@ the board from `TASKS.md` + the task files; do not trust this file's copy of it.
 - The baseline sheet for Richard:
   https://claude.ai/code/artifact/05e4edb4-ae93-4a88-b517-6b292d1e3434
 
-**The baseline: 7 SHITTY, 2 PASSABLE, 0 WORTHY.**
+**The baseline: 9 SHITTY, 0 PASSABLE, 0 WORTHY**, after Richard's ruling.
+
+🔴 **Read `VIB-001-BASELINE-VERDICTS.md` §7 and README §2 before judging anything.** He ruled the
+two PASSABLE verdicts SHITTY: *"passable in terms of you can at least see the elements clearly and
+interact, but they still look like original Wordpress default templates."* **Legible and operable
+is the floor, not a grade.** App chrome is exempt from the marketing tells, never from the
+default-template test — *does anything here show a decision, or is it the framework's defaults with
+this app's content poured in?*
 
 ## First job
 
-🔴 **Check whether Richard has ruled on the baseline sheet before building anything.** If he has,
-his verdicts supersede and the capability tier gets scoped against *his* line, not the session's.
-If he has not, **do not block** — VIB-005 is the least rubric-sensitive task on the board (it fixes
-mechanical traps, not taste) and is the right thing to build meanwhile.
+**VIB-005, and VIB-002 beside it.** Richard's ruling moved the target: fixing the ambush defaults
+makes the app-chrome pages *correct*, and correct was never the question. So VIB-005 alone no
+longer redeems `/setup`, the lists or the admin panel — each needs design of its own, out of the
+widened kit VIB-002 builds. His ruling is the argument for doing the **vocabulary** work rather
+than restyling two templates: app chrome and landing pages are failing on the *same* poverty.
 
 ⚠️ If you build VIB-005, read `VIB-001-BASELINE-VERDICTS.md` §5 first — it **corrects** README
 §1(b). `scrollEnabled: 0` is confirmed, but `unreachablePx` was 0 on all 44 shots: the document

@@ -81,9 +81,26 @@ starter template, or something worthy of modern vibe coding pages?"*
 - Holds up at 390, 1280, **and ~1900** wide, and in the editor's default preview
 
 **Verdict scale: SHITTY / PASSABLE / WORTHY.** Only WORTHY closes a task. PASSABLE is recorded
-progress, never a close. App-chrome pages (forms, lists, settings) are judged for *designed
-clarity* rather than marketing flash — but the same three-verdict scale and the same "would a
-person be embarrassed to show this" bar applies.
+progress, never a close.
+
+🔴 **Legible and operable is the floor, not a grade** (Richard's ruling on the VIB-001 baseline,
+2026-08-31: *"passable in terms of you can at least see the elements clearly and interact, but they
+still look like original Wordpress default templates"*). Every WordPress default template is legible
+and operable — that is what a default template is for. A verdict awarded for it is measuring the
+precondition for judging, not the thing being judged. **This clause exists because the first
+baseline scored two pages PASSABLE on exactly that mistake; both are now SHITTY.**
+
+**App-chrome pages** (forms, lists, settings) are exempt from the *marketing* tells — a settings
+page needs no hero, no gradient ground, no 72px display type, and demanding one would be wrong.
+They are **not** exempt from the default-template test, which is the same for every surface:
+
+> **Does anything on this page show a decision?** A considered density; a real hierarchy of action
+> weight; iconography doing work; a treatment for state. Or is it the framework's defaults with this
+> app's content poured into them?
+
+Full-width bordered inputs stacked in a card, or ruled rows with outline-secondary pills, are what a
+form library and a list component emit before anyone has designed anything. They are SHITTY however
+clearly a person can read them.
 
 ## §3 The judgment protocol — how every task closes
 

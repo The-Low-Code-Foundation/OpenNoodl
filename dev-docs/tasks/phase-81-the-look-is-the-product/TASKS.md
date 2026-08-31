@@ -7,7 +7,7 @@ from the task files at session open; do not trust a handoff's copy of it.
 
 | id | task | status | depends on | verdicts recorded |
 |---|---|---|---|---|
-| VIB-001 | The Judge | 🟡 | — | baseline recorded 2026-08-31 — see `VIB-001-BASELINE-VERDICTS.md`; AC1–4 met, AC5 awaits Richard |
+| VIB-001 | The Judge | 🟢 | — | **9 SHITTY / 0 PASSABLE / 0 WORTHY** — `VIB-001-BASELINE-VERDICTS.md`. All 5 ACs met; Richard ruled 2026-08-31 and the rubric was amended (README §2) |
 | VIB-002 | The Ceiling | ⬜ | VIB-001 | — |
 | VIB-003 | The Pictures | ⬜ | VIB-001 | — |
 | VIB-004 | The Marketing Kit | ⬜ | VIB-001, VIB-002 | — |
