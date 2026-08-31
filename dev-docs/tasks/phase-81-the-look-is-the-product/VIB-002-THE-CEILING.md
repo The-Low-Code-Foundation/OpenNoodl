@@ -285,10 +285,31 @@ So this task shipped a `.look.ts` without running the one gate that types it, on
 that no such gate existed. The belief was an **absence claim made without the search that would
 have disproved it** — one `grep` of `package.json` for `typecheck:` finds it.
 
-⚠️ **Status when this was written**: a peer session (which built VIB-004) reported the same gate had
-not completed for them either, and was found already re-running it — so it is owned, and a second
-concurrent run would only have made both slower. The result belongs to whoever's run finishes; this
-row stays ⚠️ until a clean reading is recorded against it.
+⚠️ **Status when this was written**: a `tsc -p .../tsconfig.tests.json` was found already running,
+so this session did not start a second one — a concurrent full-project `tsc` is how the first
+attempt got SIGTERM'd at 10 minutes on a load-13 machine. This row stays ⚠️ until a clean reading is
+recorded against it.
+
+🔴 **And a correction to the sentence that used to be here, which said the gate was "owned".** It
+named the wrong session, on an assumption rather than a measurement, and a peer had to correct it.
+Three attribution errors in one move, all worth keeping:
+
+1. **The socket you are talking to is not the author of the commit you just read.** The VIB-004
+   commit mentioned the gate; the peer session that had just messaged about the checkout was a
+   *different* session (P80 s34), and this session addressed it as though it were the VIB-004 author.
+2. **A detached process cannot be attributed by `ps`.** The `tsc`'s PPID is **1** — its parent shell
+   is gone, so the process tree says nothing about who started it. Walking PPIDs, which is the rule
+   recorded for attributing a stack, silently returns no owner here rather than an error.
+3. 🔴 **The only thing that named an owner was the artefact it writes to.** The command's redirect
+   is `> /private/tmp/…/<session-uuid>/scratchpad/tc3.log`, and that UUID belongs to a **third**
+   session — neither this one nor the peer that was asked. **Attribute a detached process by the
+   path it writes, not by its parent and not by who is talking to you.**
+
+And the thing that mattered more than the ownership: *"someone else is running it"* is not the same
+claim as *"someone else is watching it"*, and only the second one makes it safe to stand down. The
+resolution here needed neither — the log is world-readable, so this session waits for that run to
+exit and reads its result, which answers the actual question (is `vib002-ground.look.ts` clean?)
+without duplicating the work or needing to know whose it is.
 
 
 ---
