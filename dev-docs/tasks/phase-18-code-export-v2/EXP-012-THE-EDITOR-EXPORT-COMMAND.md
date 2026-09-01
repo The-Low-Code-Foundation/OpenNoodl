@@ -1,6 +1,6 @@
 # EXP-012 — The editor export command
 
-**Status:** 🟢 **Built and driven, session 67 (2026-09-01).** Ready to ride 0.2.2 if Richard says so.
+**Status:** 🟢 **Built and driven, session 67 (2026-09-01). RULED: rides 0.2.2** (Richard, same day: *"I think it can ride 0.2.2"*). The editor-path export was then built — `npm run build` in the folder the button wrote, exit 0, `dist/assets/index-*.js` 235.64 kB — so AC7's caveat about the door is closed.
 **Owner:** P18. **Opened by:** Richard, 2026-09-01 — *"Let's continue phase-18, if we make good
 progress we can include it in the 0.2.2 launch."* A launch can only include what a user can reach,
 and until this task `@nodegx/export` had **no consumer anywhere in the product** (EXP-011 §21.1) —

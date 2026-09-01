@@ -45,6 +45,10 @@ The largest single workstream in this release — **53 feature and fix commits**
 `exp-004` and `exp-011`. Exported projects now carry their comments, keep the code of Functions
 the export could not translate, and preserve fields that earlier passes silently dropped.
 
+And the export is now **in the editor**: Settings → Project → **Export as React code…** shows you
+exactly what will and will not translate before anything is written, asks where to put it, and
+writes a Vite + React project with an `EXPORT-REPORT.md` that names every node it left out and why.
+
 ### 🩹 What real use found
 
 **29 defect commits** from driving the templates, **36** from the alpha feedback round, and **23**
