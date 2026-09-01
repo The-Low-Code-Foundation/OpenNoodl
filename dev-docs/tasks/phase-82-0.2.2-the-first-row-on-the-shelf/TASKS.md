@@ -16,7 +16,7 @@ task file on the day this phase opened.
 | REL-001 | The shelf's first row — publish the association template | ⬜ | REL-002 | P78 **T5**. Richard drives the publish. **No code blocker**: T6's three fixes are in at HEAD (README §1.3), and the publish path was driven end to end locally by P80/DEF-007 s41. Needs no app release (README §1.2) |
 | REL-002a | The ambush defaults the template sits on | 🟢 | — | **CLOSED s4** — [REL-002a](REL-002a-THE-AMBUSH-DEFAULTS.md). 🔴 **The scroll defect is `settings.bodyScroll`, not `sizeMode`/`scrollEnabled`/`clip`** — six rendered arms, one parameter apart, say so. The template went **0/7 and 0/6 reachable controls to 7/7 and 6/6**; `create_project` now writes it; `PageCannotScroll` ships in both gates; V14 fixed in **two** source copies. ⚠️ `render:report` could not see the defect at all until this session fixed its host page |
 | REL-002b | Fail closed, and a designed first run | 🟢 | REL-002a | **CLOSED s5** — [REL-002b](REL-002b-FAIL-CLOSED.md). 🔴 **V3's recorded mechanism was WRONG**: the content was never revealed (six `mounted: false` defaults were already there); the defect was that **nothing refused** — all six stayed on the protected URL wearing a `Sign out` band — and five of six said nothing. Built `Denied` (2 producers) + `isSignedIn`; **V4 was `actions`, the one group with no `mounted: false`**. Driven **37/37**, four arms, real enforcing backend. 2 defects registered, owner `NONE` |
-| REL-002c | The members' area, redeemed | ✅ | REL-002a, REL-002b | **CLOSED s10 BY RICHARD'S INSTRUCTION, ruled FINE — NOT WORTHY.** *"It looks fine (not worthy) but just push it as V1 of the template, we can't waste more time on this."* 🔴 **The close condition was not met; it was overridden**, deliberately and on cost. See §"The ruling that closed this row" |
+| REL-002c | Every page as good as the homepage | 🔴 | REL-002a, REL-002b | 🔴 **REOPENED s11 BY RICHARD — the s10 FINE close is REVERSED.** *"we're going back round and fixing that fucking template… I want all pages looking as good as the homepage."* The cost constraint that justified the override is gone. **Items 5 and 6 are UN-DECLINED**; item 6 widens to three pages. See the handoff §"the ruling that reopens row 6" |
 | REL-003 | The stale bundles the cut inherits | 🟢 | — | **CLOSED s3.** AC1 amended and met (rebuilt, reproducible, correctly NOT committed — REV-008). AC2 met for **MCP** (s2, live control pair), **DEF-023** (s3, pre-fix control bundle, `stale`→`fresh`) and **DEF-026** (s3, real browser, both halves, answering control). 🔴 **AC2's DEF-021 clause is RETIRED as unmeetable by a drive** — the coalescing branch is unreachable from a graph and pre-fix/HEAD are behaviourally identical (§ below, owner `NONE`). 🔴 `cloudruntime` names a **retired** artefact (WF-007) |
 | REL-004 | The cut — `0.2.2` | 🟡 | REL-003, REL-005 | **AC1 met s11** (`5c805978`). Notes + runbook drafted. 🔴 **Blocked: `cline-dev` `0 573` unpushed — Richard pushes** |
 | REL-005 | What rides and what rolls | 🟢 | — | **CLOSED s2.** All four open rows and all five phase-74 carry items are marked, in writing, in P75's own board — plus a triage section at its head. ⚠️ Re-counted: **22 done, 4 open of 26**, not 24/4 |
@@ -473,7 +473,24 @@ pre-existing notice.
 
 ---
 
-## 🔴 The ruling that closed this row — FINE, shipped anyway, on Richard's instruction
+## ⛔ SUPERSEDED 2026-09-01 (s11) — the ruling that closed this row, and the one that reopened it
+
+🔴 **Richard reopened the row the same day:** *"Anthropic just reset my weekly usage limit, so we're
+going back round and fixing that fucking template… I want all pages looking as good as the
+homepage."*
+
+**The close below was made ON COST — *"we can't waste more time on this"* — and the cost constraint
+is gone, so the override goes with it.** The AC is back in force, unchanged: every page WORTHY in
+both states at all three widths. **Items 5 and 6 of the change list are UN-DECLINED**, and item 6
+widens from `/setup` alone to `/setup`, `/sign-in` and `/unsubscribe`, which s11 measured to be in
+the same state.
+
+⚠️ **This section is kept, not deleted** — it is the honest record of what the template looked like
+at V1 and how far it was from the bar. Read it as the starting distance, not as a verdict.
+
+---
+
+### The superseded close
 
 **2026-09-01, session 10, after the items 1–4 renders:** *"It looks fine (not worthy) but just push
 it as V1 of the template, we can't waste more time on this."*

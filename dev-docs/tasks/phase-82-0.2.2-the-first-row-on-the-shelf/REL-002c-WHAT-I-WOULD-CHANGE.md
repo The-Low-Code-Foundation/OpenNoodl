@@ -12,6 +12,32 @@ Ordered by how much they cost against how much they change.
 
 ---
 
+## ⛔ SUPERSEDED 2026-09-01, s11 — items 5 and 6 are BACK ON, and 6 is BIGGER than written
+
+🔴 **Richard, the same day, after his usage limit reset:** *"we're going back round and fixing that
+fucking template… I want all pages looking as good as the homepage."*
+
+**Items 5 and 6 were declined on COST, not on merit.** That constraint is gone, so they are live
+work again. Two corrections to them before anyone starts:
+
+- **Item 6 named `/setup` and called itself optional taste. It is neither.** s11 read every page's
+  `nodes.json` and found **three** pages with no identity at all — `/setup`, **`/sign-in`** and
+  **`/unsubscribe`** all carry no `backgroundImage` and no band, against `/` and `/join` which do.
+  Two of the three are the highest-traffic doors in the template. **Richard has now explicitly asked
+  for it**, so the "I would ask first" caveat is answered.
+- ⚠️ **`/join` is the only page in the whole template with no footer.** Not noticed until s11.
+  Nothing recorded a decision either way; grade it against a render.
+
+✅ **The hero is a `backgroundImage` on a Group** — the template contains **zero** `Image` nodes —
+and there are **44 `.webp` files** under `noodl_modules/starter-imagery/` to draw on.
+
+⚠️ **The estimates below were written from the s9 renders and are left as they were.** Item 4 has
+already proved they can be wrong in mechanism as well as size.
+
+---
+
+### The superseded ruling
+
 ## 🔴 RULED 2026-09-01, s10 — items 1–4 BUILT, items 5 and 6 WILL NOT BE
 
 Richard, with the after-renders in hand: *"It looks fine (not worthy) but just push it as V1 of the
