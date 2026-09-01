@@ -5,7 +5,8 @@ associations, churches etc where users can log in and access restricted, curated
 the moderators or admins… a members-only website behind a simple landing page advertising their
 association."*
 
-Category **`data-app`** — see §7 on why not `site`.
+Category **`starter`** — 🔴 **amended by Richard's ruling of 2026-09-01**, see §7. It was
+`data-app` from 2026-08-28 until then.
 
 ## 1. The person sentence
 
@@ -97,7 +98,8 @@ for SBR-004's drives. Only the drive (§5) and the share need the editor, by app
    the first impression. (Seeding sample content stays open and additive.)
 7. Generation is deterministic and gated: committed JSON byte-identical to a fresh run; a
    component-set edit without regeneration reddens.
-8. The submission files with `category: 'data-app'`, a written summary, and an excluded-files
+8. The submission files with `category: 'starter'` (🔴 **amended 2026-09-01**, was
+   `data-app`), a written summary, and an excluded-files
    list that is **read and checked** — this project has a backend and auth, so the check is not a
    formality.
 
@@ -107,10 +109,17 @@ Nothing for TPL-001 — that is the point of the split. TPL-002's email needs SM
 the backend's own `secrets.json` (`email` namespace) and `email.json` config, neither of which is
 a project file and neither of which a template may carry. See TPL-002 §2.
 
-## 7. The category, and why not `site`
+## 7. The category
 
-`data-app`. It is arguably a `site`, and a reasonable person would file it either way — but the
-product is the restricted content, the roles and the approval flow; the landing page is one page.
+🔴 **`starter` — RULED BY RICHARD, 2026-09-01.** This section argued `data-app` from 2026-08-28,
+and the argument is kept below because it is still the right *reasoning*; the ruling simply weighs
+the shelf differently. On a shelf whose first row this is, the job of the category is to say *start
+here* to somebody who has not built anything yet — not to file the app by what it stores. Phase 82
+`REL-001` publishes with `starter`, and this AC8 was amended to match.
+
+**The superseded argument, kept:** `data-app`. It is arguably a `site`, and a reasonable person
+would file it either way — but the product is the restricted content, the roles and the approval
+flow; the landing page is one page.
 🔴 **The rule that decides it: this template must not need a new slug.** The vocabulary is ruled
 (`starter`, `data-app`, `dashboard`, `site`, `form`, `integration`) and lives in **four copies**;
 extending it is phase 78 **T3**, which is parked behind P77 because the vocabulary constant sits
@@ -295,8 +304,20 @@ for SBR-004 for the whole session.
   picker row to pick. What the drive does grade is every part that does not depend on
   publication — the directory boots, binds, and renders its landing page to a stranger with no
   white void. **The rest of AC1 belongs to T5.**
+
+  ✅ **UPDATE 2026-08-31 (phase 82, s1): AC1 now has a grader.** T5 is **`REL-001`** in
+  [phase 82](../phase-82-0.2.2-the-first-row-on-the-shelf/TASKS.md), whose AC2 is exactly this
+  criterion — a clean launcher picking "Members' area" through to a working landing page. 🔴 **And
+  the premise that blocked it was wrong**: publishing was assumed to need a live signed-in service,
+  but the shelf runs locally and publishing is a **database-credential act**
+  (`scripts/publish-project-template.ts`) — P80/DEF-007 s41 drove the whole path. What AC1 waits on
+  now is not a service, it is the template's **look** (phase 82 `REL-002a/b/c`).
 - **AC6** — the empty states were not measured this session: content is seeded before the first
   visit. Cheap to add and it is the only acceptance criterion with no reading against it.
+
+  ⚠️ **2026-08-31: grade it in phase 82's `REL-002c`, not here.** The designed empty state *is* the
+  first-run screen that task is redesigning (register **V4**), so measuring it twice would grade a
+  surface that is about to change.
 
 ### 🔴 The Post page was driven, because the door cannot check any of it
 

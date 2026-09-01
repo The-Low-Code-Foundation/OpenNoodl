@@ -33,9 +33,9 @@ Take the topmost row that is not ✅. Strike it here when it closes.
 | ~~3~~ | ~~**REL-003** rebuild the stale bundles~~ | ✅ **CLOSED, s3** — DEF-023 and DEF-026 observed through bundles with control pairs; DEF-021's clause RETIRED as unmeetable | — |
 | ~~4~~ | ~~**REL-002a** the ambush defaults~~ | ✅ **CLOSED, s4** — the defect was `settings.bodyScroll`; template 0/7 → 7/7 reachable controls | — |
 | ~~5~~ | ~~**REL-002b** fail closed + designed first run~~ | ✅ **CLOSED, s5** — `Denied` + `isSignedIn` + `waitingCard`; **37/37** on a real enforcing backend | — |
-| 6 | **REL-002c** the members' area, redeemed | the redesign; **the phase's close condition** | 🟢 **BUILT s8, all six ruled items** — §C, §D (hero + `/join` photograph + icons), §E (tagline, About band, `Start here`), §F, and the row family. **Waits ONLY on Richard's WORTHY ruling** |
-| 7 | **REL-001** publish + drive the install | shelf's first row; also closes P75's FB-005 | ✅ **metadata RULED s6** · **Richard drives the publish** |
-| 8 | **REL-004** cut, tag and publish `v0.2.2` | last | ✅ **number + notes shape RULED s6** · green floor, fresh readout |
+| 6 | **REL-002c** the members' area, redeemed | the redesign; **the phase's close condition** | 🟡 **BUILT, ruled FINE not WORTHY by Richard 09-01 (s9).** Six changes costed in [`REL-002c-WHAT-I-WOULD-CHANGE.md`](REL-002c-WHAT-I-WOULD-CHANGE.md) — **that is the next build** |
+| 7 | **REL-001** publish + drive the install | shelf's first row; also closes P75's FB-005 | 🟢 **PREPARED s9** — exact command, all four fields, AC8's excluded-files check performed: [`REL-001-SUBMISSION.md`](REL-001-SUBMISSION.md). **Richard runs it** |
+| 8 | **REL-004** cut, tag and publish `v0.2.2` | last | 🟡 **PREPARED s9** — [notes](../release-0.2.2/RELEASE-NOTES-0.2.2.md) + [runbook](../release-0.2.2/PUBLISH-0.2.2.md). 🔴 **BLOCKED: `cline-dev` is 569 commits unpushed** |
 
 🔴 **CORRECTED s6 — row 6 could never have been ruled at session open, because nothing was
 built.** The previous handoff said *"open by asking him for the ruling on 6"*; there was no redesign
@@ -53,78 +53,74 @@ row 8.**
 
 ## 🔴 The next job
 
-**Row 6 is BUILT. The next job is the two things only Richard can do, and then rows 7 and 8.**
+**Richard ruled row 6 FINE on 2026-09-01 (s9) and asked what I would change.** The answer is
+[`REL-002c-WHAT-I-WOULD-CHANGE.md`](REL-002c-WHAT-I-WOULD-CHANGE.md) — six items, each costed.
+🔴 **Building items 1–4 of that list IS the next job**, unless Richard's own verdict names
+different things, in which case his list wins.
 
-🔴 **Read [`TASKS.md`](TASKS.md) §"REL-002c — what session 8 built" FIRST**, and session 7's section
-above it. Between them they carry every reading and every reason.
+Rows 7 and 8 are both **prepared and both belong to Richard**. Neither needs another session first.
 
-### 🔴 1. THE SESSION'S OPENING MOVE IS TO PUT TWO THINGS TO RICHARD, TOGETHER
+### 1. Build the row 6 changes — items 1–4, then re-render
 
-There is now an artefact to rule on — which is exactly what session 6's handoff got wrong when it
-asked for a ruling on a page nobody had built. **Both of these are for him and neither blocks the
-other.**
+Items 1 (the door landing's void), 2 (`/members`' four duplicate buttons), 3 (`/join`'s doubled
+sign-in) and 4 (the eleven pages with no floor) are all small and 1 and 4 **share a render**, so do
+them together. Item 5 (the directory table) is medium; item 6 (a photograph on `/setup`) is taste
+and Richard should be asked before it is built.
 
-**(a) The WORTHY ruling — the phase's close condition.** He rules six pages, in **both** states, at
-**three widths**: `/` (both states), `/setup`, `/join`, `/members`, `/directory`. The photographs
-are in `verdicts/vib-001/2026-09-01/members-area-living/` and `…/members-area-door/`, freshly
-rendered at HEAD. The other seven are the Judge's, and 🔴 **any SHITTY escalates to him** — that
-escalation is the half that makes §A2a different from shipping seven pages nobody looked at.
+🔴 **Re-run the gate AFTER the last edit, not the one before it** — s7's stale 72/72 reading.
+The four gates the row owes are in the table below.
 
-**(b) The `FORM_GROUND` question, unchanged since s7 and still open.** Six of the thirteen pages
-carry a **720px centred** ground rather than §C's literal 1200: `Pages/{SignIn, Join, Setup, Post,
-Account, Unsubscribe}`. This was a deliberate departure made **after rendering the literal reading
-and finding it worse than the baseline** — at 1200 `/setup` is six stacked 1100px-wide text inputs,
-and a capped left-aligned form inside a 1200 shell puts ~480px of white on the right only, which is
-the *"weird"* he named. A 720 centred ground gives 280px either side. **The question**: is a centred
-720 form ground the right reading of §C, or does he want the literal 1200 — in which case the answer
-is a **two-up split** filling the shell, which is more work and a better page.
+### 2. Row 7 — REL-001, the publish. **Richard runs it.**
 
-⚠️ `/join` is already built as bands, so if he rules 1200 that page's structure is what a two-up
-would sit on and only the form half moves. The single line to change is `JOIN_GROUND`'s shell cap.
+Everything is derived and written down in [`REL-001-SUBMISSION.md`](REL-001-SUBMISSION.md): the
+exact command, the four ruled fields, and AC8's excluded-files check actually performed against the
+artefact rather than asserted.
 
-### 2. Then row 7 — REL-001, the publish
+🔴 **Two findings there change what the previous handoff said.** First, **no code literal has to
+move** — the claim that this touches `template-search.test.ts` and `template-install-over-http.test.ts`
+is wrong; those `data-app` literals are unrelated fixtures. Second, and more important:
+**`readBundleDirectory` has no skip list of any kind**, so **`templates/members-area` must NOT be
+opened in the editor before publishing** — opening writes `.mcp.json` (carrying absolute paths from
+the publishing machine), `CLAUDE.md` and a `.gitignore` block, and all three would ship. It is clean
+right now.
 
-Unblocked the moment he rules WORTHY. Publish as **`curated`**, **`category: 'starter'`** (🔴 **not
-`data-app`** — this amends TPL-001 AC8 and moves the literal in `template-search.test.ts` and
-`template-install-over-http.test.ts`), title **"Members' area"**, summary *"members only site for a
-club, charity or church"*. **Richard publishes** — it is a DB-credential act from the
-`nodegx-community` repo. ✅ **Do not wait for the cut**; G5a settled that they are two moments.
+✅ TPL-001's prose was amended this session: its header, AC8 and §7 said `data-app` and now say
+`starter`, with the superseded argument kept rather than deleted.
 
-⚠️ **New since s8: the artefact carries `docs/START-HERE.md`.** Checked in the community repo —
-`readBundleDirectory` walks the tree fully recursively, so it travels and installs. If the publish
-does anything surprising, that file is the one thing in the bundle that is new in shape.
+### 3. Row 8 — REL-004, the cut. **Blocked on a push only Richard can make.**
 
-### 3. Then row 8 — REL-004, the cut
+[`PUBLISH-0.2.2.md`](../release-0.2.2/PUBLISH-0.2.2.md) and
+[`RELEASE-NOTES-0.2.2.md`](../release-0.2.2/RELEASE-NOTES-0.2.2.md).
 
-`0.2.2`, and the notes carry the line that **0.2.1 was an internal cut held back as too buggy**.
-Notes split two ways — the
-[NodeGX 0.2.2 artefact](https://claude.ai/code/artifact/70d4e79e-78ce-44c8-b9f5-e06c6b0b6d11)
-becomes the **full log**, the GitHub release body carries **highlights + a link to it**.
-🔴 **The artefact's stat band is stale — it reads 559 commits; `git log v0.2.0..HEAD` counted 567 on
-09-01.** Its ship-gate section also still lists TPL-001 as unpublished. Re-read both against reality
-at tag time. ⚠️ Viewers are currently pinned to an earlier version, not the live one.
+🔴 **`git rev-list --left-right --count origin/cline-dev...cline-dev` reads `0 569`.** `origin/cline-dev`
+is at **2026-08-21**; the fetch ref is current, so this is real and not a stale remote. Eleven days
+of work have never been pushed and **CI has run on none of it**. The release workflow is triggered
+by a tag push, so nothing about row 8 can start until the branch goes up. That is Richard's call.
 
-### The four gates row 6 owes, and their readings at the end of s8
+⚠️ **`packages/noodl-editor/package.json` still reads `0.2.0`** and must become `0.2.2` before
+tagging — `artifactName` interpolates `${version}` into every asset filename.
+
+### The four gates row 6 owes
 
 | gate | reading (s8, HEAD `1f4d5547`) |
 |---|---|
-| `npm run template:members` | **exit 0**, **idempotent** — hash it before you edit and confirm a no-op, which is what makes your diff attributable. `27f127e9…`, 91 files |
+| `npm run template:members` | **exit 0**, **idempotent** — hash before editing and confirm a no-op, which is what makes your diff attributable. `27f127e9…`, 91 files |
 | `tpl001Template.test.ts` | **exit 0**, 72/72 |
-| full `noodl-mcp` suite | **exit 0** — **83/83 suites, 1085/1085 tests**, clean on the FIRST run. ⚠️ s7 saw a lone red on `projectOwnsBackend.test.ts` that passed on re-run — 🔴 **a lone red here is a FLAKE until re-run** |
+| full `noodl-mcp` suite | **exit 0** — 83/83 suites, 1085/1085 tests. ⚠️ **a lone red here is a FLAKE until re-run** |
 | `vib001-members.look.ts` | **exit 0**, both states, 44 shots, seeded backend asserted before any picture |
 
-✅ Also run, and not owed: `tpl001-members-drive` + `tpl001-empty-states` + `rel002b-fail-closed`,
-**110/110 on real enforcing backends** — because the row family changed the shape of two components
-a drive reads.
+✅ Also owed if the row family changes again: `tpl001-members-drive` + `tpl001-empty-states` +
+`rel002b-fail-closed`, 110/110 on real enforcing backends.
+
+✅ **`ci:build:editor` is green at `60fe7e16`** — run this session, exit 0, both webpack passes
+compiled successfully. It is the only gate that loads the production path.
 
 ### What is still WRONG, and is nobody's AC
 
-⚠️ **The gated pages have no bottom edge.** `PAGE_GROUND` carries an inert `height: 100%` (session 7
-item 3) and no floor, so `/directory` at 1900×1200 is four rows and then 600px of white. The landing
-and `/join` are fixed — they use `BAND_PAGE_GROUND`'s `minHeight: 100vh` + `space-between`. The
-other eleven are not. It is a one-constant change and it was **not** made this session because it
-touches every page and there was no render budget left to grade it. If Richard's verdict names it,
-that is the fix.
+⚠️ **Four of the thirteen pages have never been photographed** — `Announcement`, `Meeting`, `Post`,
+`Unsubscribe`. The harness asks for nine, so this is a fact about the request and **not** about how
+those pages look. If REL-002c means all thirteen, they need adding to `vib001-members.look.ts`
+before the row can honestly close. Registered, owner `NONE`.
 
 ## What session 5 did — row 5, REL-002b
 
@@ -326,31 +322,101 @@ the announcement row, and the directory row as a three-column table that folds t
    viewports with no backend, against ~4½ minutes for the both-states instrument. Three of this
    session's four visual corrections were found on it.
 
+## What session 9 did — the ruling, and rows 7 and 8 prepared
+
+**No row closed. Row 6 was ruled FINE, which is the answer that keeps it open.** Richard was put
+both open questions together with an artefact to rule on — a
+[proof sheet](https://claude.ai/code/artifact/137133e4-aa38-4f02-9251-bbc94124bef7) of all 44 shots,
+his six page-states marked and the Judge's five behind them — and answered all three asks.
+
+**What he ruled.**
+
+1. **Row 6 — FINE, not WORTHY**, with *"tell me what you'd change"*. The answer is
+   [`REL-002c-WHAT-I-WOULD-CHANGE.md`](REL-002c-WHAT-I-WOULD-CHANGE.md): six items, each costed,
+   derived from looking at the renders rather than from the task file.
+2. **`FORM_GROUND` — keep 720 centred.** ✅ **CLOSED**, open since s7. Nothing to build.
+3. **Rows 7 and 8 — prepare them, he executes.**
+
+**Then both rows were prepared**, and preparing them turned up two things that were not on the
+board and one relayed claim that was wrong.
+
+## 🔴 What to carry out of session 9
+
+1. 🔴🔴 **`cline-dev` IS 569 COMMITS UNPUSHED, AND NOTHING ON THE BOARD SAID SO.**
+   `git rev-list --left-right --count origin/cline-dev...cline-dev` reads `0 569`;
+   `origin/cline-dev` is at **2026-08-21**. The fetch ref was current, so it is not a stale remote.
+   **CI has run on eleven days of work exactly zero times**, and the release workflow triggers on a
+   tag push. Row 8 was described as needing "green floor, fresh readout"; what it actually needs
+   first is a push. ✅ **A release row owes a `rev-list` against its own remote before it owes
+   anything else** — the 0.2.0 runbook's first check is `0 0` and nobody had re-run it.
+2. 🔴 **A HANDOFF NAMED TWO TEST FILES THAT DO NOT CONTAIN THE LITERAL.** The board said the
+   `starter` ruling "moves the literal in `template-search.test.ts` and
+   `template-install-over-http.test.ts`". Both files' `data-app` values belong to unrelated
+   fixtures — `Starter CRM`, `Storefront`, `Membership Hub`, a `uni-007` intake answer. The members'
+   area has **no category literal anywhere in this repo**; the category is an argument typed at
+   publish time. ✅ **Editing them would have changed what those tests measure and published
+   nothing.** Grep for the SUBJECT, not for the literal.
+3. 🔴 **`readBundleDirectory` HAS NO SKIP LIST OF ANY KIND** — read in full, 72 lines. It walks
+   every file and every directory unconditionally, sorting only UTF-8-clean from binary. That is
+   why `docs/START-HERE.md` travels. It is also why **opening `templates/members-area` in the editor
+   before publishing would ship `.mcp.json` with absolute paths from the publishing machine**, plus
+   `CLAUDE.md` and a `.gitignore` block. ✅ **Verified absent right now**; publish before anyone
+   opens it. ⚠️ It would break AC7 too — byte-identical to a fresh generate, and three new files
+   are not.
+4. 🔴 **AC8's "read and checked" WAS PERFORMED, and the answer is "the list is empty TODAY".** No
+   `.env`, no key, no credential; every `secret`-shaped hit is a `noodl.cloud.secret` **node type**
+   that reads a backend secret at run time, a constant-time compare, or prose. ✅ **That is a fact
+   about this artefact on this day, not a property of the bundler** — see item 3 for what the list
+   exists to catch.
+5. 🔴 **A BACKGROUND TASK'S "completed (exit code 0)" IS THE WRAPPER, NOT THE COMMAND.** The
+   notification for `ci:build:editor` arrived within seconds saying exit 0 while the build was still
+   at the webpack alias stage with a 2.3KB log and no exit file. ✅ **Gate on the exit file you
+   wrote yourself**, and check the log's mtime and size — the real result came ten minutes later.
+   (It was genuinely **exit 0**, both webpack passes *compiled successfully*; the one `FAIL`-shaped
+   grep hit is a filename, `FailedStep.module.scss`.)
+6. 🔴 **A FIX THAT MOVES A HOLE IS NOT A FIX — THIRD TIME IN THIS ROW.** S7 added a footer so the
+   door landing would have a bottom edge; s8 found bare ground *below* the footer and fixed it with
+   `space-between`; s9 found the same void, now *above* the footer, 230px at 1280 and 330px at 1900.
+   ✅ **The page does not fill because it has nothing to fill it with** — the answer is content (the
+   already-built tiles band, which needs no backend), not another layout parameter. A layout
+   complaint with a content answer, exactly as s8 recorded.
+7. ⚠️ **A RENDER MANIFEST'S `headSha` IS THE LAST COMMIT AT RENDER TIME, NOT WHAT WAS RENDERED.**
+   The 09-01 manifests read `1f4d5547` because the renders ran at 17:02–17:06 and s8's work was
+   committed at 17:10. ✅ **Attribution came from the artefact's own content hash** — clean vs HEAD,
+   nothing newer than the shots, `27f127e9`, 91 files. Same class as s8's `artefactMd5` note.
+8. ✅ **A CONTACT SHEET IS THE RIGHT SHAPE FOR A LOOK RULING.** 44 shots as file paths is a request
+   to open two dozen files; as one scrollable sheet with the six that are his marked, it is a
+   decision. It also carried the two open questions and the four-unphotographed-pages caveat, so
+   everything he needed to rule was in one place.
+
 ## What did not get done
 
-**Row 6 is not CLOSED** — it closes on Richard's ruling, which needs him and not a session.
+**Row 6 is not CLOSED** — Richard ruled it **FINE**, so it stays open and now has a costed list of
+what would make it worthy. **Nothing from that list was built**, because he asked for the list
+rather than a guess at a fix; building items 1–4 is the next session's first job.
 
-**Two things were considered and deliberately not built**, both recorded above with their reasons:
-glyphs on the six nav pills (three pixels of overflow at the 988px preview), and a floor on the
-eleven pages that still carry `PAGE_GROUND`'s inert `height: 100%` (a one-constant change that
-touches every page, with no render budget left to grade it).
+**Rows 7 and 8 were prepared, not executed** — both are Richard's by nature. Row 7 is a
+database-credential act; row 8 is blocked on a 569-commit push only he can make.
 
-**One question is with Richard** — the `FORM_GROUND` departure — and it blocks neither the WORTHY
-ruling nor rows 7 and 8.
+**Item 6 of the change list was deliberately not proposed as work** — a photograph on `/setup` is
+taste rather than defect, and it is his call.
 
-✅ **s8's work is COMMITTED** — `42b501a4` (the row) and `72f0779a`.
+**The four unphotographed pages were not added to the harness.** `Announcement`, `Meeting`, `Post`
+and `Unsubscribe` are named in the register above with owner `NONE`; adding them is a change to
+`vib001-members.look.ts`'s two shot lists and a longer render.
 
-🔴 **`rel002b-fail-closed.test.ts` had NEVER BEEN COMMITTED**, three sessions after REL-002b closed on
-its 37 assertions — the same shape as the phase directory that was untracked for five. Read and
-re-run (green inside this session's 110/110), then committed at `72f0779a`. ✅ **A closed row's gate
-is worth a `grep '^??'` of its own.**
+✅ **s9's work is COMMITTED** — see the commit below.
 
-⚠️ **Three tracked files are still modified from s4/s5 and were NOT swept**, deliberately — their
-mtimes are 11:35, 11:55 and 22:07 on 08-31, their content was not read this session, and a pathspec
-commit would take an edit nobody attributed: `packages/noodl-mcp/tests/renderReportModule.test.ts`,
-`packages/noodl-mcp/tests/stagingDiagnostics.test.ts`, and `packages/noodl-mcp/tests/sb007Template.test.ts`
-(the last is P80's known orphan, Richard confirmed it is not his — see §"What to carry out of session
-6" item 2). **Read them before committing.**
+⚠️ **The three tracked files modified from s4/s5 were AGAIN not swept**, for the same reason: their
+mtimes are still 08-31, their content was not read this session, and a pathspec commit would take an
+edit nobody attributed — `packages/noodl-mcp/tests/renderReportModule.test.ts`,
+`packages/noodl-mcp/tests/stagingDiagnostics.test.ts`, `packages/noodl-mcp/tests/sb007Template.test.ts`
+(the last is P80's known orphan, Richard confirmed it is not his). **Read them before committing.**
+
+✅ **`TPL-001-THE-MEMBERS-AREA.md`'s s1 edit WAS swept**, deliberately and after reading it: it is
+phase 82 session 1's own work (dated 08-31 in its own text, +12 lines recording that REL-001 gives
+AC1 a grader), it had been uncommitted since, and this session edited the same file for the category
+amendment.
 
 🔴 **`git commit <pathspecs>`, never `git add`** — a sibling's commit sweeps staged files — and
 `git add` untracked paths first, because a pathspec commit **skips them silently**
