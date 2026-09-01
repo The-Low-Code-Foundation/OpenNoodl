@@ -12,6 +12,18 @@ Ordered by how much they cost against how much they change.
 
 ---
 
+## 🔴 RULED 2026-09-01, s10 — items 1–4 BUILT, items 5 and 6 WILL NOT BE
+
+Richard, with the after-renders in hand: *"It looks fine (not worthy) but just push it as V1 of the
+template, we can't waste more time on this."*
+
+**So this file stops being a plan and becomes the V2 brief.** Items 5 and 6 are not deferred
+pending anything — they were **declined on cost**, which is a different disposition and worth
+recording as one. If a later phase reopens the template's look, the two below are where it starts
+and the measurements in them were taken against the shipped artefact.
+
+---
+
 ## ✅ Session 10 built items 1–4. What it found while doing it
 
 **Items 1, 2 and 3 were what this file said they were** and cost what it said they would.

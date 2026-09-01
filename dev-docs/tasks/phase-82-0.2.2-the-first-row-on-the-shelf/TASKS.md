@@ -16,7 +16,7 @@ task file on the day this phase opened.
 | REL-001 | The shelf's first row — publish the association template | ⬜ | REL-002 | P78 **T5**. Richard drives the publish. **No code blocker**: T6's three fixes are in at HEAD (README §1.3), and the publish path was driven end to end locally by P80/DEF-007 s41. Needs no app release (README §1.2) |
 | REL-002a | The ambush defaults the template sits on | 🟢 | — | **CLOSED s4** — [REL-002a](REL-002a-THE-AMBUSH-DEFAULTS.md). 🔴 **The scroll defect is `settings.bodyScroll`, not `sizeMode`/`scrollEnabled`/`clip`** — six rendered arms, one parameter apart, say so. The template went **0/7 and 0/6 reachable controls to 7/7 and 6/6**; `create_project` now writes it; `PageCannotScroll` ships in both gates; V14 fixed in **two** source copies. ⚠️ `render:report` could not see the defect at all until this session fixed its host page |
 | REL-002b | Fail closed, and a designed first run | 🟢 | REL-002a | **CLOSED s5** — [REL-002b](REL-002b-FAIL-CLOSED.md). 🔴 **V3's recorded mechanism was WRONG**: the content was never revealed (six `mounted: false` defaults were already there); the defect was that **nothing refused** — all six stayed on the protected URL wearing a `Sign out` band — and five of six said nothing. Built `Denied` (2 producers) + `isSignedIn`; **V4 was `actions`, the one group with no `mounted: false`**. Driven **37/37**, four arms, real enforcing backend. 2 defects registered, owner `NONE` |
-| REL-002c | The members' area, redeemed | ⬜ | REL-002a, REL-002b | **Owned here.** Was P81 VIB-008. The redesign + the measure (V15/V29). **Closes only on Richard's WORTHY ruling** — protocol restated in §REL-002c, no need to open phase 81 |
+| REL-002c | The members' area, redeemed | ✅ | REL-002a, REL-002b | **CLOSED s10 BY RICHARD'S INSTRUCTION, ruled FINE — NOT WORTHY.** *"It looks fine (not worthy) but just push it as V1 of the template, we can't waste more time on this."* 🔴 **The close condition was not met; it was overridden**, deliberately and on cost. See §"The ruling that closed this row" |
 | REL-003 | The stale bundles the cut inherits | 🟢 | — | **CLOSED s3.** AC1 amended and met (rebuilt, reproducible, correctly NOT committed — REV-008). AC2 met for **MCP** (s2, live control pair), **DEF-023** (s3, pre-fix control bundle, `stale`→`fresh`) and **DEF-026** (s3, real browser, both halves, answering control). 🔴 **AC2's DEF-021 clause is RETIRED as unmeetable by a drive** — the coalescing branch is unreachable from a graph and pre-fix/HEAD are behaviourally identical (§ below, owner `NONE`). 🔴 `cloudruntime` names a **retired** artefact (WF-007) |
 | REL-004 | The cut — `0.2.2` | ⬜ | REL-003, REL-005 | Version bump, release notes, tag, publish. Model the process on `dev-docs/tasks/release-0.2.0/PUBLISH-0.2.0.md` |
 | REL-005 | What rides and what rolls | 🟢 | — | **CLOSED s2.** All four open rows and all five phase-74 carry items are marked, in writing, in P75's own board — plus a triage section at its head. ⚠️ Re-counted: **22 done, 4 open of 26**, not 24/4 |
@@ -472,6 +472,38 @@ pre-existing notice.
 | `vib001-members.look.ts` | **exit 0** — 44 shots, both states, seeded backend asserted before any picture |
 
 ---
+
+## 🔴 The ruling that closed this row — FINE, shipped anyway, on Richard's instruction
+
+**2026-09-01, session 10, after the items 1–4 renders:** *"It looks fine (not worthy) but just push
+it as V1 of the template, we can't waste more time on this."*
+
+🔴 **Recorded as what it is: the close condition was NOT met.** REL-002c's AC reads *"every page
+reads WORTHY in both states at all three widths, ruled by Richard"*. He ruled **FINE** and elected
+to ship regardless. The row is closed because **he decided the remaining distance is not worth its
+cost**, not because the template reached the bar this phase set for it.
+
+⚠️ **This matters for the next person, in two directions.** It is not a licence to treat FINE as the
+new bar — the bar is written above and the template is below it. And it is not an invitation to
+reopen the row: the decision was made with the renders in hand, by the person whose product it is.
+
+**What is knowably still short**, from the change list, so a later phase does not rediscover it at
+full price:
+
+- **Item 5 — `/directory` is a table with no headers.** Three columns at roughly x=36 / x=285 /
+  x=537 at 1200, so a name and its email are ~250px apart, and `Member · since 1 September 2026`
+  runs on with no column to say what it is. Costed: a header row (*Name · Email · Standing*) and
+  ~40/35/25 proportions, medium only because the header has to disappear at the 700px fold.
+- **Item 6 — `/setup` has no identity.** The owner's first ever screen of the product is a bare form
+  on white while `/` and `/join` both open on a photograph. Taste rather than defect; Richard's call
+  and he did not take it.
+- **Four of the thirteen pages have never been photographed** — `Announcement`, `Meeting`, `Post`,
+  `Unsubscribe`. The harness asks for nine. **So "every page" was never actually graded**, which is
+  a second reason this row did not meet its AC as written. Owner `NONE`.
+- **The `/directory` page still ends in ~200px of white above its footer** at 1280 with four rows.
+  Honest for a short page; it is what item 5 would absorb.
+
+**So V1 of this template ships FINE, knowingly.** The list above is the V2 brief.
 
 ## REL-002c — what session 10 built: items 1–4 of the change list Richard asked for
 

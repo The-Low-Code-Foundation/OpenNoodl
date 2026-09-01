@@ -34,45 +34,48 @@ Take the topmost row that is not ✅. Strike it here when it closes.
 | ~~3~~ | ~~**REL-003** rebuild the stale bundles~~ | ✅ **CLOSED, s3** — DEF-023 and DEF-026 observed through bundles with control pairs | — |
 | ~~4~~ | ~~**REL-002a** the ambush defaults~~ | ✅ **CLOSED, s4** — the defect was `settings.bodyScroll`; 0/7 → 7/7 reachable controls | — |
 | ~~5~~ | ~~**REL-002b** fail closed + designed first run~~ | ✅ **CLOSED, s5** — `Denied` + `isSignedIn` + `waitingCard`; **37/37** on a real enforcing backend | — |
-| 6 | **REL-002c** the members' area, redeemed | the redesign; **the phase's close condition** | 🟡 **REBUILT s10** — items 1–4 built; **1085/1085 mcp, 110/110 drives, 44 fresh shots**. **The ask is Richard's WORTHY ruling.** Items 5 and 6 are costed and unbuilt |
+| ~~6~~ | ~~**REL-002c** the members' area, redeemed~~ | ✅ **CLOSED s10 BY INSTRUCTION** — ruled **FINE, not WORTHY**, and shipped anyway: *"we can't waste more time on this."* 🔴 The AC was **overridden, not met**; items 5 and 6 **declined on cost**. See `TASKS.md` §"The ruling that closed this row" | — |
 | 7 | **REL-001** publish + drive the install | shelf's first row; also closes P75's FB-005 | 🟢 **PREPARED, refreshed s10** — [`REL-001-SUBMISSION.md`](REL-001-SUBMISSION.md). **Richard runs it** |
 | 8 | **REL-004** cut, tag and publish `v0.2.2` | last | 🟡 **PREPARED s9** — [notes](../release-0.2.2/RELEASE-NOTES-0.2.2.md) + [runbook](../release-0.2.2/PUBLISH-0.2.2.md). 🔴 **BLOCKED: `cline-dev` is 569 commits unpushed** |
 
-## 🔴 The next job
+## 🔴 The next job — row 7, the publish. **Richard runs it.**
 
-**Ask Richard to rule row 6.** There is an artefact to rule on this time: 44 fresh shots at
-`verdicts/vib-001/2026-09-01/` (door `md5=f969ad96`, living `md5=7164e4f6`), taken after the last
-edit. ✅ **s9's lesson holds — a contact sheet, not 44 file paths.** His six page-states are `/` in
-both states, `/setup`, `/join`, `/members`, `/directory`; the Judge grades the other seven and any
-SHITTY verdict escalates to him.
+Row 6 is closed. **The only thing standing between here and the shelf is one command with a
+credential in it**, and the credential is Richard's — the community `DATABASE_URL`. Everything
+around it is done and checked.
 
-**What changed since he last looked**, in one line each — this is what the ask should carry:
+```bash
+cd /Users/richardosborne/vscode_projects/nodegx-community
+DATABASE_URL=<the community DB url> \
+  npx tsx scripts/publish-project-template.ts \
+    members-area \
+    /Users/richardosborne/vscode_projects/OpenNoodl/templates/members-area \
+    starter \
+    "members only site for a club, charity or church" \
+    --title "Members' area" \
+    --publish
+```
 
-1. The **door landing has content instead of a void** — the "What members can see" band is ungated.
-2. **`/members` ends in one call to action**, not four buttons that were all nav pills.
-3. **`/join` makes its sign-in offer once.**
-4. **Every page has a foot** — eleven of thirteen ended in undifferentiated white and now place
-   `Members/Footer`.
+✅ **Verified immediately before handing this over** (2026-09-01, s10, at commit `ba6df3fd`):
 
-**If he rules WORTHY, row 6 closes and the phase's close condition is met.** If he rules FINE again,
-items 5 (the directory table's headers and column proportions) and 6 (a photograph on `/setup`) are
-already costed in the change list and are the next build. **Item 6 is taste, not defect — ask before
-building it.**
+- **The artefact is clean to publish.** No `.mcp.json`, no `CLAUDE.md`, no `.gitignore`, no `.env`
+  anywhere under `templates/members-area`. Top level is exactly `components/`, `docs/`,
+  `nodegx.project.json`, `nodegx.security.json`. **94 files, `8af2aeec`**, and the working tree
+  matches the commit.
+- 🔴 **`readBundleDirectory` HAS NO SKIP LIST OF ANY KIND** — 72 lines, read in full. It walks every
+  file and every directory unconditionally. **So `templates/members-area` must NOT be opened in the
+  editor before publishing**: opening writes `.mcp.json` carrying absolute paths from the publishing
+  machine, plus `CLAUDE.md` and a `.gitignore` block, and all three would ship. It would also break
+  AC7, which requires the artefact to be byte-identical to a fresh generate.
+- ⚠️ **`--publish` is opt-in.** Without it the row is written as a **draft** — which is the right
+  first run if you want to look at the row before it is visible.
 
-### Rows 7 and 8 are both Richard's, and neither needs another session first
+Full derivation, the four ruled fields and AC8's excluded-files check are in
+[`REL-001-SUBMISSION.md`](REL-001-SUBMISSION.md).
 
-**Row 7 — REL-001, the publish.** Everything is in
-[`REL-001-SUBMISSION.md`](REL-001-SUBMISSION.md): the exact command, the four ruled fields, and
-AC8's excluded-files check performed against the artefact — **re-performed this session** after the
-artefact changed (`8af2aeec`, **94 files**; the three new ones are `Members/Footer`'s and the bundle
-still contains only `components/`, `docs/START-HERE.md`, the project file and the policy).
+### Then row 8 — REL-004, the cut
 
-🔴 **`readBundleDirectory` has no skip list of any kind**, so **`templates/members-area` must NOT be
-opened in the editor before publishing** — opening writes `.mcp.json` (carrying absolute paths from
-the publishing machine), `CLAUDE.md` and a `.gitignore` block, and all three would ship. Verified
-clean right now.
-
-**Row 8 — REL-004, the cut. Blocked on a push only Richard can make.**
+**Blocked on a push only Richard can make.**
 `git rev-list --left-right --count origin/cline-dev...cline-dev` read `0 569` at s9 and this session
 added to it. `origin/cline-dev` is at **2026-08-21**; **CI has run on none of this**, and the release
 workflow triggers on a tag push. ⚠️ `packages/noodl-editor/package.json` still reads `0.2.0` and
@@ -140,16 +143,21 @@ what the change list said. **Item 4 did not**, and that is the session's finding
 
 ## What did not get done
 
-**Row 6 is not CLOSED** — it needs Richard's ruling, and there is now something to rule on.
+🔴 **Row 6 closed FINE, not WORTHY — the AC was overridden, not met.** Richard, with the renders in
+hand: *"It looks fine (not worthy) but just push it as V1 of the template, we can't waste more time
+on this."* ✅ **This is not a new bar.** The written bar is *"every page reads WORTHY in both states
+at all three widths"* and the template is below it; the row is closed because the remaining distance
+was judged not worth its cost. `TASKS.md` §"The ruling that closed this row" carries the V2 brief.
 
-**Items 5 and 6 of the change list were deliberately not built.** Item 5 (the `/directory` header row
-and column proportions) is medium and was not in the "build 1–4" scope; item 6 (a photograph on
-`/setup`) is taste rather than defect and is his call.
+**Items 5 and 6 were DECLINED, not deferred.** Item 5 — `/directory` has no header row and ~250px
+between a name and its email at 1200 — is the biggest single thing still wrong and is costed. Item 6
+(a photograph on `/setup`) is taste.
 
 **The four unphotographed pages are still unphotographed** — `Announcement`, `Meeting`, `Post`,
 `Unsubscribe`. `vib001-members.look.ts` asks for nine of thirteen, so this is a fact about the
 request, not about how those pages look. Registered, owner `NONE`; adding them is a change to two
-shot lists and a longer render.
+shot lists and a longer render. ⚠️ **So "every page" was never actually graded** — a second reason
+this row did not meet its AC as written.
 
 ⚠️ **The three tracked files modified from s4/s5 were AGAIN not swept** — their mtimes are still
 08-31, their content was not read this session, and a pathspec commit would take an edit nobody
