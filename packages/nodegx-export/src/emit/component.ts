@@ -34,6 +34,7 @@ import { KitBinding, tsTypeOf as kitPortTsType } from './kits';
 import { assignClassNames, ClassCandidate, partitionMergeGroup, pascalCase, propIdentifier, propIdentifiers } from './naming';
 import { tsLiteral } from './state';
 import { UTIL_HELPER_MAY_BE_UNDEFINED, UTIL_LIB_PATH } from './utilLib';
+import { TIMER_LIB_PATH } from './timerLib';
 import { ID_HELPERS_BY_FN, ID_LIB_PATH, IdHelper } from './idLib';
 import { computeNodeStyle, computeRoleCss, CONTENT_ATTR_ORDER, CONTENT_PARAMS, Decl, iconSourceOf, RoleCss, StyleRole } from './style';
 
@@ -112,6 +113,8 @@ export interface EmittedComponent {
   utilHelpers: Set<string>;
   /** EXP-011 §37 — which of `src/lib/id.ts`'s helpers this component calls. */
   idHelpers: Set<string>;
+  /** `src/lib/timer.ts` verbs this component calls (EXP-011 §39). */
+  timerHelpers: Set<string>;
 }
 
 export function emitComponent(
@@ -283,6 +286,8 @@ export function emitComponent(
    * list and the surviving rows are both known.
    */
   const usedIdHelpers = new Set<IdHelper>();
+  /** `src/lib/timer.ts`'s verbs (EXP-011 §39) — actions, gathered the id helpers' way. */
+  const usedTimerHelpers = new Set<string>();
   // Re-host wrappers (EXP-003 §4): only definitions that surviving expressions/actions
   // reference print — the plan registers every resolved definition, referenced or not.
   const jsFunByNode = plan.jsFunctions;
@@ -451,6 +456,20 @@ export function emitComponent(
       action.then.forEach(collectActionUse);
       action.failThen.forEach(collectActionUse);
     }
+    // EXP-011 §39. The message and data are expressions, the chain is a chain — and the same
+    // omission this function's own comments record three times would leave a Variable read only
+    // by a log line unimported.
+    if (action.kind === 'log') {
+      collectExprUse(action.message);
+      if (action.data !== undefined) collectExprUse(action.data);
+      action.then.forEach(collectActionUse);
+    }
+    // EXP-011 §39. Two numbers and four chains; the two timeout chains are chains like any other.
+    if (action.kind === 'delay') {
+      collectExprUse(action.startDelay);
+      collectExprUse(action.duration);
+      [...action.then, ...action.unchangedThen, ...action.startedThen, ...action.finishedThen].forEach(collectActionUse);
+    }
     /**
      * 🔴 **`Navigate To Path` was absent from this function entirely, and the emitted app named
      * an identifier it never declared** (EXP-011 §17.3). Neither its url expressions nor its
@@ -502,7 +521,9 @@ export function emitComponent(
     ...plan.receivers.flatMap((r) => r.actions),
     // A reactive Condition's branch earns imports, `navigate` and state references exactly as a
     // handler's does — it just runs from an effect instead of an event (LOGIC-TARGET §10).
-    ...plan.branchEffects.map((e) => e.action)
+    ...plan.branchEffects.map((e) => e.action),
+    // EXP-011 §39. A Value Changed's chain earns imports and references exactly as a handler's does.
+    ...plan.valueChangedEffects.flatMap((e) => e.actions)
   ];
   allActions.forEach(collectActionUse);
   /** Nested actions (branch arms, popup done-chains) flattened — the `usesNavigate` sweep. */
@@ -521,7 +542,18 @@ export function emitComponent(
             // opened from a UUID's Failure chain is a popup nothing here knows is attached.
             a.kind === 'id-new'
             ? [a, ...deepActions(a.then), ...deepActions(a.failThen)]
-            : a.kind === 'popup-show' ||
+            : // EXP-011 §39. Four chains — a popup opened from a Delay's Finished is the shape
+              // this node exists for, and it is nowhere without this line.
+              a.kind === 'delay'
+              ? [
+                  a,
+                  ...deepActions(a.then),
+                  ...deepActions(a.unchangedThen),
+                  ...deepActions(a.startedThen),
+                  ...deepActions(a.finishedThen)
+                ]
+            : a.kind === 'log' ||
+                a.kind === 'popup-show' ||
                 a.kind === 'popup-close' ||
                 a.kind === 'jsfun-run' ||
                 a.kind === 'api-call' ||
@@ -643,6 +675,8 @@ export function emitComponent(
   for (const effect of plan.branchEffects) {
     if (effect.action.kind === 'branch') hookExprSources(effect.action.cond);
   }
+  // EXP-011 §39. The watched Input is the effect's dependency and prints as the render local.
+  for (const effect of plan.valueChangedEffects) hookExprSources(effect.watch);
   // A rendered stateful control references its own row (value/checked + onChange), a sync
   // effect its target, a lifted callback its setter — whether or not any expression reads it.
   for (const stateVar of plan.stateVars) {
@@ -1507,7 +1541,10 @@ export function emitComponent(
       // `popup-show`'s treatment. That is also what keeps `notes.remove(item)` an expression:
       // an action that printed its own chain would have to become a block, and the commonest
       // shape by far is a delete button with nothing after it.
-      (a.kind === 'popup-show' || a.kind === 'collection-remove') && a.then.length > 0
+      // EXP-011 §39. A Log's write is synchronous with one outcome, so its Done chain is
+      // following statements too — and a Restart never branches, so its chain is the same.
+      (a.kind === 'popup-show' || a.kind === 'collection-remove' || a.kind === 'log' || (a.kind === 'delay' && a.verb === 'restart')) &&
+      a.then.length > 0
         ? [{ ...a, then: [] }, ...expandActions(a.then)]
         : // A jsfun-run is only its done-chain (EXP-003 §4 A2h): output reads inline the call
           // at their sinks, so the run itself needs no statement — unless it materializes its
@@ -1625,6 +1662,15 @@ export function emitComponent(
             a.failThen.some(inAction) ||
             a.completedThen.some(inAction)
           );
+        // EXP-011 §39. The message can be built from the very value being asked about.
+        case 'log':
+          return reads(a.message) || (a.data !== undefined && reads(a.data)) || a.then.some(inAction);
+        case 'delay':
+          return (
+            reads(a.startDelay) ||
+            reads(a.duration) ||
+            [...a.then, ...a.unchangedThen, ...a.startedThen, ...a.finishedThen].some(inAction)
+          );
         case 'popup-show':
         case 'popup-close':
         case 'jsfun-run':
@@ -1677,6 +1723,14 @@ export function emitComponent(
   const idNewIsBlock = (a: IdNewAction): boolean =>
     a.fn === 'randomUuid' &&
     (a.materialize !== undefined || a.errorMaterialize !== undefined || a.then.length > 0 || a.failThen.length > 0);
+
+  /**
+   * Whether a Delay verb prints an `if` over its answer (EXP-011 §39). Start and Stop branch on
+   * whether they changed anything, and only where a chain hangs off either outcome; a Restart
+   * never branches (its chain is lifted into following statements by `expandActions`).
+   */
+  const delayIsBlock = (a: Extract<HandlerAction, { kind: 'delay' }>): boolean =>
+    a.verb !== 'restart' && (a.then.length > 0 || a.unchangedThen.length > 0);
 
   const externalLinkIsStatement = (a: Extract<HandlerAction, { kind: 'external-link' }>): boolean =>
     a.guardLink ||
@@ -2407,6 +2461,65 @@ export function emitComponent(
        * touching `uuid`, so `Id` keeps the id it had. That is why a read of `Id` from the Failure
        * chain resolves to the row and not to this local, which has no id on it.
        */
+      /**
+       * `Log` (EXP-011 §39) — one call into `src/lib/util.ts`. The chain is not printed here:
+       * `expandActions` lifts it into following statements, `popup-show`'s treatment, so the
+       * call stays an expression and a button whose whole job is to log prints
+       * `onClick={() => log('info', 'Pressed')}`.
+       */
+      case 'log': {
+        const args = [tsLiteral(action.level), exprCode(action.message, 'handler')];
+        if (action.data !== undefined) args.push(exprCode(action.data, 'handler'));
+        return `log(${args.join(', ')})`;
+      }
+      /**
+       * `Delay` (EXP-011 §39) — a verb from `src/lib/timer.ts` over the node's ref.
+       *
+       * ```tsx
+       * if (startDelay(pollTimer, 0, 500, () => setStatus('Running'), () => setStatus('Done'))) {
+       *   …then                       // Done: a countdown began
+       * } else {
+       *   …unchangedThen              // one was already running
+       * }
+       * restartDelay(pollTimer, 0, 500, …);   // Restart: always Done, so no test
+       * if (stopDelay(pollTimer)) { …then } else { …unchangedThen }
+       * ```
+       *
+       * The two callbacks are the Started and Finished chains, printed with `handlerArrow` so a
+       * one-action chain stays an arrow expression and a longer one takes the block form. A
+       * Stop never passes them — a stopped countdown fires neither.
+       */
+      case 'delay': {
+        const at = pad(indent);
+        const inner = pad(indent + 2);
+        const callbacks: string[] = [];
+        if (action.verb !== 'stop') {
+          const started = action.startedThen.length > 0 ? handlerArrow(action.startedThen, '()', indent + 2) : undefined;
+          const finished = action.finishedThen.length > 0 ? handlerArrow(action.finishedThen, '()', indent + 2) : undefined;
+          if (finished !== undefined) callbacks.push(started ?? 'undefined', finished);
+          else if (started !== undefined) callbacks.push(started);
+        }
+        const call =
+          action.verb === 'stop'
+            ? `stopDelay(${action.ref})`
+            : `${action.verb === 'start' ? 'startDelay' : 'restartDelay'}(${[
+                action.ref,
+                exprCode(action.startDelay, 'handler'),
+                exprCode(action.duration, 'handler'),
+                ...callbacks
+              ].join(', ')})`;
+        if (!delayIsBlock(action)) return call;
+        const thenLines = expandActions(action.then).map((a) => `${inner}${actionCode(a, indent + 2)};`);
+        const elseLines = expandActions(action.unchangedThen).map((a) => `${inner}${actionCode(a, indent + 2)};`);
+        // Only the Unchanged chain: invert the test rather than print an empty success block.
+        if (thenLines.length === 0) return [`if (!${call}) {`, ...elseLines, `${at}}`].join('\n');
+        return [
+          `if (${call}) {`,
+          ...thenLines,
+          ...(elseLines.length > 0 ? [`${at}} else {`, ...elseLines] : []),
+          `${at}}`
+        ].join('\n');
+      }
       case 'id-new': {
         const at = pad(indent);
         const inner = pad(indent + 2);
@@ -2516,6 +2629,8 @@ export function emitComponent(
        * `navigate('/pricing')` is an expression and keeps its semicolon.
        */
       (a.kind === 'navigate-path' && navigatePathIsStatement(a)) ||
+      // EXP-011 §39, the eighth instance: a Delay verb with a chain on either outcome is an `if`.
+      (a.kind === 'delay' && delayIsBlock(a)) ||
       /**
        * EXP-011 §37, and the seventh instance of this file's oldest hazard. A `Unique Id`'s New
        * declares a `const` and a `UUID`'s prints an `if`; both are statements. A `UUID` whose id
@@ -2537,6 +2652,8 @@ export function emitComponent(
           a.kind === 'http-call' ||
           (a.kind === 'external-link' && externalLinkIsStatement(a)) ||
           (a.kind === 'navigate-path' && navigatePathIsStatement(a)) ||
+          // EXP-011 §39. The `if` form ends in `}` and must not take a terminator.
+          (a.kind === 'delay' && delayIsBlock(a)) ||
           // EXP-011 §37. The block form ends in `}` and must not take a terminator; the
           // `Unique Id` form is a run of statements and takes one, exactly as a Now Read does.
           (a.kind === 'id-new' && idNewIsBlock(a))
@@ -2551,6 +2668,17 @@ export function emitComponent(
     }
     return statements.length === 1 ? `${head} => ${statements[0]}` : `${head} => { ${statements.join('; ')}; }`;
   };
+
+  /**
+   * EXP-011 §39. One `useRef` per Delay node that attached, whichever of its verbs did — read
+   * off the actions rather than off the plan, for the id helpers' reason: `compiledOf` runs on
+   * every wired verb whether or not it attached, and a ref for a timer nothing fires would be a
+   * hook nothing reads.
+   */
+  const delayRefs = new Map<string, string>();
+  for (const a of deepActions(allActions)) {
+    if (a.kind === 'delay') delayRefs.set(a.nodeId, a.ref);
+  }
 
   // ---- imports ---------------------------------------------------------------------------
   // Both src/pages and src/components sit one level below src/, where api/ lives.
@@ -2569,12 +2697,19 @@ export function emitComponent(
   if (plan.popups.length > 0 && !reactImports.includes('useState')) reactImports.push('useState');
   if (referencedStateVars.length > 0 && !reactImports.includes('useState')) reactImports.push('useState');
   if (
-    (plan.syncEffects.length > 0 || plan.pushEffects.length > 0 || plan.branchEffects.length > 0) &&
+    (plan.syncEffects.length > 0 ||
+      plan.pushEffects.length > 0 ||
+      plan.branchEffects.length > 0 ||
+      // EXP-011 §39. A Value Changed is an effect; a Delay owes the unmount cleanup effect.
+      plan.valueChangedEffects.length > 0 ||
+      delayRefs.size > 0) &&
     !reactImports.includes('useEffect')
   ) {
     reactImports.push('useEffect');
   }
   if (radioNameLocals.size > 0) reactImports.push('useId');
+  // EXP-011 §39. The timer handle and the last value seen both live in refs.
+  if (delayRefs.size > 0 || plan.valueChangedEffects.length > 0) reactImports.push('useRef');
   if (reactImports.length > 0) externalImports.push(`import { ${reactImports.sort().join(', ')} } from 'react';`);
   if (plan.popups.length > 0) externalImports.push(`import { createPortal } from 'react-dom';`);
   // One import line for whichever router hooks survived, in a stable order — three separate
@@ -2642,6 +2777,23 @@ export function emitComponent(
     internalImports.set(specifier, `import { ${[...usedDateHelpers].sort().join(', ')} } from '${specifier}';`);
   }
   /** EXP-011 Tier 2.7 — the same clause for `src/lib/util.ts`, derived from its declared path. */
+  // EXP-011 §39. `log` and the timer verbs are actions, not expressions — neither expression
+  // walker sees them, so they are gathered here the id helpers' way.
+  for (const a of deepActions(allActions)) {
+    if (a.kind === 'log') usedUtilHelpers.add('log');
+    if (a.kind === 'delay') {
+      usedTimerHelpers.add(a.verb === 'start' ? 'startDelay' : a.verb === 'restart' ? 'restartDelay' : 'stopDelay');
+    }
+  }
+  // Every Delay owes the unmount cleanup, which is a `stopDelay` whether or not a Stop is wired.
+  if (delayRefs.size > 0) usedTimerHelpers.add('stopDelay');
+  if (usedTimerHelpers.size > 0) {
+    const specifier = `${relRoot}/${TIMER_LIB_PATH.replace(/^src\//, '').replace(/\.ts$/, '')}`;
+    internalImports.set(
+      specifier,
+      `import { ${[...usedTimerHelpers].sort().join(', ')}, type DelayHandle } from '${specifier}';`
+    );
+  }
   if (usedUtilHelpers.size > 0) {
     const specifier = `${relRoot}/${UTIL_LIB_PATH.replace(/^src\//, '').replace(/\.ts$/, '')}`;
     internalImports.set(specifier, `import { ${[...usedUtilHelpers].sort().join(', ')} } from '${specifier}';`);
@@ -4171,6 +4323,9 @@ export function emitComponent(
       });`
     );
   }
+  // EXP-011 §39. The refs: a Delay's timer handle, and a Value Changed's last value seen.
+  for (const [, ref] of delayRefs) body.push(`  const ${ref} = useRef<DelayHandle | null>(null);`);
+  for (const effect of plan.valueChangedEffects) body.push(`  const ${effect.lastLocal} = useRef<unknown>(undefined);`);
   for (const [id, local] of jsLocals) {
     const def = jsFunByNode[id]!;
     body.push(`  const ${local} = ${def.fnName}(${jsArgsObject(def, 'render')});`);
@@ -4295,6 +4450,28 @@ export function emitComponent(
       ''
     );
   }
+  // EXP-011 §39. A Delay's countdown dies with the component — `addDeleteListener` in timer.ts.
+  for (const [, ref] of delayRefs) {
+    body.push('  useEffect(() => () => {', `    stopDelay(${ref});`, '  }, []);', '');
+  }
+  // EXP-011 §39. Value Changed: the node's own `set` — return on the same value, else remember it
+  // and fire. `lastValue` boots `undefined` in `initialize`, so a first arrival of `undefined`
+  // fires nothing and a first arrival of anything else fires, exactly as the effect reads them.
+  for (const effect of plan.valueChangedEffects) {
+    const deps = effectDeps(effect.watch).join(', ');
+    body.push(
+      `  // ${effect.comment}`,
+      '  useEffect(() => {',
+      `    const arrival = ${exprCode(effect.watch, 'render')};`,
+      `    if (${effect.lastLocal}.current === arrival) return;`,
+      `    ${effect.lastLocal}.current = arrival;`,
+      ...expandActions(effect.actions).map(
+        (a) => `    ${actionCode(a, 4)}${a.kind === 'delay' && delayIsBlock(a) ? '' : ';'}`
+      ),
+      `  }, [${deps}]);`,
+      ''
+    );
+  }
   const actionExprsOf = (a: HandlerAction): ValueExpr[] => {
     switch (a.kind) {
       case 'emit':
@@ -4333,6 +4510,15 @@ export function emitComponent(
       // callback takes no argument and its body reads one.
       case 'id-new':
         return [...a.then.flatMap(actionExprsOf), ...a.failThen.flatMap(actionExprsOf)];
+      // EXP-011 §39. The message and data, then the chain; the two numbers, then all four chains.
+      case 'log':
+        return [a.message, ...(a.data !== undefined ? [a.data] : []), ...a.then.flatMap(actionExprsOf)];
+      case 'delay':
+        return [
+          a.startDelay,
+          a.duration,
+          ...[...a.then, ...a.unchangedThen, ...a.startedThen, ...a.finishedThen].flatMap(actionExprsOf)
+        ];
       // EXP-011 Tier 2.5. The link, the wired Open In New Tab, and both chains — `usesPayload`
       // walks this list, so a link built from a received event's payload is found here or the
       // emitted callback takes no argument and its body reads one.
@@ -4433,7 +4619,14 @@ export function emitComponent(
     files[`${baseDir}/${plan.file.fileBase}.module.css`] = GENERATED_CSS + '\n' + cssBlocks.join('\n\n') + '\n';
   }
 
-  return { files, notes, dateHelpers: usedDateHelpers, utilHelpers: usedUtilHelpers, idHelpers: usedIdHelpers };
+  return {
+    files,
+    notes,
+    dateHelpers: usedDateHelpers,
+    utilHelpers: usedUtilHelpers,
+    idHelpers: usedIdHelpers,
+    timerHelpers: usedTimerHelpers
+  };
 }
 
 /** Pre-order walk of the render tree, root first — CSS class order and naming order. */

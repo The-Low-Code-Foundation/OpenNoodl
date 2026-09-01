@@ -12,7 +12,7 @@ npm run export-ledger:picker
 node scripts/export-ledger/picker-coverage.js
 ```
 
-> **PICKER COVERAGE: 77 of 127 placeable nodes export (60.6%)** — 2026-09-01 (was 51 on 2026-08-28)
+> **PICKER COVERAGE: 80 of 127 placeable nodes export (63.0%)** — 2026-09-01 s68 (was 51 on 2026-08-28)
 
 **Do not report the corpus number as progress.** `coverage-audit.ts` reads 85.00% (93.38% over
 components a route reaches) across ~40 old drive fixtures. It is a **regression detector** and a
@@ -23,7 +23,7 @@ README §*What went wrong* has the mechanism.
 
 | ID | Title | Status |
 |---|---|---|
-| [EXP-001](./EXP-001-NODEGX-CORE.md) | `@nodegx/core` companion library | ✅ **Built** — `packages/nodegx-core`, 2.8 KB gzipped against an 8 KB budget, gated. No call sites: EXP-002 emits zero imports of it, by design |
+| [EXP-001](./EXP-001-NODEGX-CORE.md) | `@nodegx/core` companion library | ✅ **Built and PUBLISHED 2026-09-01** — `@nodegx/core@0.1.0` is on npm (MIT, no deps, React an optional peer), 2.8 KB gzipped against an 8 KB budget, gated. **The export's `npm install` instruction is now true**: `Deadline Desk` exported, installed from the public registry, `tsc -b && vite build` exit 0. ⚠️ The old note here — *"EXP-002 emits zero imports of it, by design"* — is **stale**: [`state.ts`](../../../packages/nodegx-export/src/emit/state.ts) imports `collection`/`store`/`value`/`channel` and [`component.ts:2693`](../../../packages/nodegx-export/src/emit/component.ts#L2693) imports the React hooks, so the dep is earned by real projects (`Deadline Desk` and `Reading Shelf` carry it; `members-area` and `Puppy test 3` do not). 🔴 Four `0.1.1` rows remain — LICENSE file, `repository`, `prepublishOnly`, and a CI gate that installs from the registry |
 | [EXP-002](./EXP-002-DETERMINISTIC-GENERATORS.md) | Deterministic generators | 🟡 **In progress, re-aimed.** 51 picker nodes translate. `packages/nodegx-export`: 504 tests, 40/40 corpus projects typecheck. Remaining work moved to EXP-011 |
 | [EXP-003](./EXP-003-AI-LOGIC-TRANSLATION.md) | AI logic translation + trace harness | ⚪ Not started. **Reconsider the sizing** — it was scoped against corpus JS-node counts, most of which are in the unplaced prefab kit |
 | [EXP-004](./EXP-004-EXPORT-REPORT-UX.md) | Export report & honesty UX | 🟡 **Every scope line an author can reach is built (§19–§22).** `EXPORT-REPORT.md` ships **inside the exported app** (§19); **in-code markers** put a `TODO(export)` on the element at whichever end of a dropped wire renders (§20); the **pre-flight** is exact, not estimated (§21); and the **exported `README.md`** now arrives with **every** export carrying EXP-004's **ordered next steps** — it used to be emitted for one project in seven (§22). 🔴 Left: the **in-editor report**, still **blocked** — `@nodegx/export` has **no consumer anywhere in the product**, so there is no post-export moment to attach it to. Owner **`NONE`**; see §21.1. ⚠️ Also unchecked and **not blocked**: the in-code marker does not carry the original node source, and the **comprehension test needs a person** who did not write the prose |
@@ -34,7 +34,7 @@ README §*What went wrong* has the mechanism.
 | [EXP-009](./EXP-009-BACKEND-CONNECTION.md) | **Exported app talks to its deployed backend** | 🔴 **Not started — do this first** |
 | [EXP-010](./EXP-010-CUSTOM-NODES-AND-MODULES.md) | **Custom nodes, modules and prefabs export** | 🔴 **Not started.** `parseProject` never opens `noodl_modules` |
 | [EXP-012](./EXP-012-THE-EDITOR-EXPORT-COMMAND.md) | **The editor export command** | 🟢 **BUILT + DRIVEN s67 (2026-09-01).** Settings → Project → *Export as React code…*: exact pre-flight modal, folder dialog, inside-project refusal, non-empty confirm, write + toast. Byte-identical to `emit-app.ts`. `@nodegx/export` has its **first product consumer**; EXP-004's §21.1 block is over. Rides 0.2.2 if Richard says so |
-| [EXP-011](./EXP-011-PICKER-COVERAGE.md) | **Close the picker gap, ranked by what apps need** | 🟡 **77/127 (60.6%) s67** — Tier 1 complete, Tier 2.5 and 2.7 complete, §38 built the two pure "small ordinary nodes" (`Boolean To String`, `Color Blend`). Next: the controlled-state gap §38.3 found (checkbox/slider → Variable), then `Log` / `Value Changed` / `Delay` (§38.5), then Cloud Services (9) |
+| [EXP-011](./EXP-011-PICKER-COVERAGE.md) | **Close the picker gap, ranked by what apps need** | 🟡 **80/127 (63.0%) s68** — §39 built `Log`, `Delay` and `Value Changed` (the first action-set, the first `useRef`, the first effect() slice), driven headlessly; §39.3 found the attach pass was wire-ORDER dependent. Before that: **77/127 s67** — Tier 1 complete, Tier 2.5 and 2.7 complete, §38 built the two pure "small ordinary nodes" (`Boolean To String`, `Color Blend`). Next: the controlled-state gap §38.3 found (checkbox/slider → Variable), then `Log` / `Value Changed` / `Delay` (§38.5), then Cloud Services (9) |
 
 ## What actually works today
 

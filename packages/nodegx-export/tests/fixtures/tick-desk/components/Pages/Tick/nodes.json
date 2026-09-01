@@ -1,0 +1,259 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "b7c2d9e1-0000-4000-8000-000000000022",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "page",
+      "type": "Page",
+      "label": "Tick",
+      "children": [
+        "shell"
+      ],
+      "parameters": {
+        "title": "Tick Desk",
+        "urlPath": "tick"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "shell",
+      "type": "Group",
+      "label": "Shell",
+      "parent": "page",
+      "children": [
+        "headline",
+        "statusText",
+        "noteText",
+        "echoText",
+        "startButton",
+        "stopButton",
+        "restartButton"
+      ],
+      "parameters": {
+        "flexDirection": "column",
+        "alignItems": "flex-start",
+        "rowGap": "var(--space-4)",
+        "paddingTop": "var(--space-10)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "headline",
+      "type": "Text",
+      "label": "Headline",
+      "parent": "shell",
+      "parameters": {
+        "text": "Tick Desk",
+        "fontSize": "var(--text-3xl)",
+        "fontWeight": "var(--font-semibold)",
+        "color": "var(--foreground)"
+      },
+      "x": 160,
+      "y": 280
+    },
+    {
+      "id": "statusText",
+      "type": "Text",
+      "label": "Status",
+      "parent": "shell",
+      "parameters": {
+        "fontSize": "var(--text-base)",
+        "color": "var(--foreground)"
+      },
+      "x": 160,
+      "y": 360
+    },
+    {
+      "id": "noteText",
+      "type": "Text",
+      "label": "Outcome",
+      "parent": "shell",
+      "parameters": {
+        "fontSize": "var(--text-sm)",
+        "color": "var(--muted-foreground)"
+      },
+      "x": 160,
+      "y": 400
+    },
+    {
+      "id": "echoText",
+      "type": "Text",
+      "label": "Echo",
+      "parent": "shell",
+      "parameters": {
+        "fontSize": "var(--text-sm)",
+        "color": "var(--muted-foreground)"
+      },
+      "x": 160,
+      "y": 440
+    },
+    {
+      "id": "startButton",
+      "type": "net.noodl.controls.button",
+      "label": "Start",
+      "parent": "shell",
+      "parameters": {
+        "label": "Start"
+      },
+      "x": 160,
+      "y": 520
+    },
+    {
+      "id": "stopButton",
+      "type": "net.noodl.controls.button",
+      "label": "Stop",
+      "parent": "shell",
+      "parameters": {
+        "label": "Stop"
+      },
+      "x": 160,
+      "y": 560
+    },
+    {
+      "id": "restartButton",
+      "type": "net.noodl.controls.button",
+      "label": "Restart",
+      "parent": "shell",
+      "parameters": {
+        "label": "Restart"
+      },
+      "x": 160,
+      "y": 600
+    },
+    {
+      "id": "poll",
+      "type": "Timer",
+      "label": "Poll",
+      "parameters": {
+        "startDelay": 100,
+        "duration": 400
+      },
+      "x": 400,
+      "y": 520
+    },
+    {
+      "id": "statusVar",
+      "type": "Variable2",
+      "label": "Status",
+      "parameters": {
+        "name": "status"
+      },
+      "x": 400,
+      "y": 360
+    },
+    {
+      "id": "noteVar",
+      "type": "Variable2",
+      "label": "Outcome",
+      "parameters": {
+        "name": "outcome"
+      },
+      "x": 400,
+      "y": 400
+    },
+    {
+      "id": "setRunning",
+      "type": "Set Variable",
+      "label": "Running",
+      "parameters": {
+        "name": "status"
+      },
+      "x": 640,
+      "y": 500
+    },
+    {
+      "id": "setFinished",
+      "type": "Set Variable",
+      "label": "Finished",
+      "parameters": {
+        "name": "status"
+      },
+      "x": 640,
+      "y": 540
+    },
+    {
+      "id": "setDone",
+      "type": "Set Variable",
+      "label": "Done",
+      "parameters": {
+        "name": "outcome"
+      },
+      "x": 640,
+      "y": 580
+    },
+    {
+      "id": "setUnchanged",
+      "type": "Set Variable",
+      "label": "Unchanged",
+      "parameters": {
+        "name": "outcome"
+      },
+      "x": 640,
+      "y": 620
+    },
+    {
+      "id": "runningConst",
+      "type": "String",
+      "label": "Running text",
+      "parameters": {
+        "value": "Running"
+      },
+      "x": 520,
+      "y": 500
+    },
+    {
+      "id": "finishedConst",
+      "type": "String",
+      "label": "Finished text",
+      "parameters": {
+        "value": "Finished"
+      },
+      "x": 520,
+      "y": 540
+    },
+    {
+      "id": "doneConst",
+      "type": "String",
+      "label": "Done text",
+      "parameters": {
+        "value": "Done"
+      },
+      "x": 520,
+      "y": 580
+    },
+    {
+      "id": "unchangedConst",
+      "type": "String",
+      "label": "Unchanged text",
+      "parameters": {
+        "value": "Unchanged"
+      },
+      "x": 520,
+      "y": 620
+    },
+    {
+      "id": "statusWatch",
+      "type": "Value Changed",
+      "label": "Status watch",
+      "parameters": {},
+      "x": 640,
+      "y": 360
+    },
+    {
+      "id": "statusLog",
+      "type": "net.noodl.Log",
+      "label": "Status log",
+      "parameters": {
+        "message": "Status changed",
+        "level": "info"
+      },
+      "x": 880,
+      "y": 360
+    }
+  ]
+}

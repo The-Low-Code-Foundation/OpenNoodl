@@ -1,54 +1,67 @@
-# Next session — the export RIDES 0.2.2 (ruled); coverage is 77/127 and the next row is the controlled-state gap
+# Next session — 80/127 (63.0%), three shapes the exporter did not have are built; next by the same rule is Cloud Services, or the controlled-state gap
 
 ## The board, re-derived from the task files
 
 | task | status |
 |---|---|
-| EXP-001 `@nodegx/core` | ✅ Built, gated, not consumed by the emitted code (by design) |
+| EXP-001 `@nodegx/core` | ✅ Built, gated, **PUBLISHED 2026-09-01 — `@nodegx/core@0.1.0` on npm**. An exported app installs it from the registry and builds (exit 0). ⚠️ "not consumed by the emitted code" was **stale** — `state.ts` and `component.ts` both emit imports. 4 rows left for `0.1.1` |
 | EXP-002 deterministic generators | 🟡 in progress, re-aimed at the picker |
 | EXP-003 AI logic translation | not started |
-| EXP-004 report & honesty UX | 🟡 built and driven; **in-editor pre-flight + toast now exist (EXP-012)**; the drill-down panel and the three lines that need Richard remain |
+| EXP-004 report & honesty UX | 🟡 built and driven; in-editor pre-flight + toast exist (EXP-012); the drill-down panel and the three lines that need Richard remain |
 | EXP-005 / 006 / 007 | not started (006/007 blocked on 002 having a generator to inject into) |
-| EXP-008 coverage ledger + gate | ✅ Built |
+| EXP-008 coverage ledger + gate | ✅ Built — ⚠️ `export-ledger:check` had been **red on committed code since `4e5e0fc0`** (a peer's catalog hunk added `noodl.cloud.listusersinrole` with no entry); fixed s68, §39.6 |
 | EXP-009 backend connection | 🟢 built + driven; AC4 waits on a Cloud Services node |
 | EXP-010 custom nodes & modules | 🟢 Route B built + driven; Route A not owed |
-| EXP-011 picker coverage | 🟡 **77/127 (60.6%)** — Tier 1, 2.5, 2.7 complete; **§38 built `Boolean To String` + `Color Blend` (s67)**; next rows in §38.3 and §38.5 |
-| **EXP-012 the editor export command** | 🟢 **BUILT + DRIVEN s67, RULED: RIDES 0.2.2**; editor-path build exit 0 — [EXP-012](EXP-012-THE-EDITOR-EXPORT-COMMAND.md) |
-| DEF-033 (Substring's declared End) | ✅ **BUILT s67** — §36.2 |
+| EXP-011 picker coverage | 🟡 **80/127 (63.0%)** — Tier 1, 2.5, 2.7 complete; **§39 built `Log`, `Delay`, `Value Changed` (s68)**, driven headlessly; next rows in §39.7 |
+| EXP-012 the editor export command | 🟢 built + driven s67, rides 0.2.2 |
 
-## 🔴 What session 67 did, and the one decision it left for Richard
+## 🔴 What session 68 did
 
-Richard opened the session with *"if we make good progress we can include it in the 0.2.2 launch."*
-A launch can only include what a user can reach, so the session built the thing §21.1 had listed as
-`NONE` for eighteen sessions: **the editor command.** Settings → Project → *Export as React code…*
-shows the exact pre-flight, takes a folder, refuses one inside the project, asks before overwriting a
-non-empty one, writes the app, and points at `EXPORT-REPORT.md`. Driven end to end over CDP on a
-renamed copy of `ticket-desk`; the written folder is **byte-identical** to `emit-app.ts`'s.
+Richard: *"continue phase 18 to try to attack the most common nodes to publish the maximum number
+we can with 0.2.2, at least to give people a taste."* §38.5 had left three shapes written down and
+the session built all three — **each the first of its kind in the exporter**:
 
-✅ **Richard ruled the same day: it rides 0.2.2** (*"I think it can ride 0.2.2"*). P82 row REL-008
-records it, the release notes carry the line, and the editor-path export was then built (`npm run
-build` exit 0). **Then, on "can we continue to push towards full node coverage?", §38 built the two
-pure small nodes — picker 75 → 77 — and found the row that should come next (below).**
+- **`Log`** — an action (`log(level, message, data)` into `src/lib/util.ts`, then the Done chain
+  as following statements), with `Value` passed straight through in `resolveExpr` *and* Pass 4c.
+- **`Delay`** — the first node whose action port is a **set** (Start/Restart/Stop), the first
+  **`useRef`**, and a fourth emitted library `src/lib/timer.ts` (two `setTimeout`s transcribing
+  `timerscheduler.ts`; verbs answer Done/Unchanged; Started/Finished are the callbacks; an unmount
+  cleanup is `addDeleteListener`).
+- **`Value Changed`** — the first **effect() slice** (§9.6 named it in session 38): a `useEffect`
+  over the Input with the last value in a ref, the node's own `set` line for line.
 
-Also built: **DEF-033** (Richard's ruling from P80 — Substring's panel now says `-1`, the number
-that runs; description rewritten; catalog regenerated; graded by declaration-vs-`initialize`, with
-`result` rows kept as controls).
+Graded by `tests/log-delay-value-changed.test.ts` (34 rows: two differentials against the
+interpreter's own `log.ts` and `timerscheduler.ts`, the latter driven frame by frame at the same
+instants; 17 translation rows; the fixture), **five mutant arms all killed by their own rows**, and
+the fixture `tests/fixtures/tick-desk` **built and driven** over CDP through twelve steps written
+down first (§39.5). Picker floor 77 → 80. ✅ **All gates green on the final source.**
 
 ## 🔴 Read this before planning anything
 
-1. 🔴 **The exporter is now compiled TWICE — under its own strict tsconfig and under the editor's
-   non-strict one.** Ten `x !== null && 'defer' in x` sites in `plan.ts` typed only under the first.
-   Fixed with an `isDefer()` predicate. **Run the editor's `tsc -p packages/noodl-editor/tsconfig.json
-   --noEmit` after any exporter edit** — the package's own `tsc` cannot see this class of error.
-2. 🔴 **A peer's edit hot-reloads your running editor mid-drive.** Two HMR updates from a P77 peer
-   re-rendered the settings panel and dropped a stamped attribute; re-stamp after any `[HMR]` line and
-   count the flow through a patched `chooseDirectory`. One phantom overwrite during an HMR update is
-   recorded in EXP-012 as **unexplained, not reproduced**.
-3. ⚠️ **`filesystem.js` is CommonJS**: `__req(...)` is the object, `.default` is undefined — a wrong
-   patch throws inside a one-line eval and the previous patch stays live.
-4. ⚠️ **Peer hunks share your catalog files.** `node-catalog.json` carried a peer's uncommitted Text
-   Input placeholder change; the enriched catalog carried *only* theirs. Commit the catalog by a
-   filtered patch, never by pathspec, while a peer's `text-input.ts` edit is uncommitted.
+1. 🔴 **The attach pass was wire-ORDER dependent** (§39.3). A chain wire listed *before* the wire
+   that fires its node was reported dropped and then emitted anyway — a false note about working
+   code, invisible to every hand-built test because `connect()` appends the trigger wire first.
+   Fixed for the three new nodes with the popup's `continue`. ⚠️ **Not measured for `External
+   Link`, `Now`, the id pair and `HTTP Request`** — one graph each with the chain wire first
+   settles it; the fix is one line per family. **Do this before trusting any fixture-found note.**
+2. 🔴 **A verdict sweep that runs before the effect passes names a translated node as "never
+   fired".** The Log/Delay sweep now runs after the reactive Condition and Value Changed passes.
+   ⚠️ The date/util/id sweep has the same hazard for a `Now`/`Unique Id` fired only from a
+   reactive Condition's arm — unmeasured.
+3. 🔴 **`toEqual` reads `['x', undefined]` as `['x']`.** A differential about whether a trailing
+   argument is passed passed trivially until `toStrictEqual`. Any row about argument lists owes it.
+4. ⚠️ **A control's mutation can be a deliberate redundancy.** Removing `clearTimeout` from
+   `stopDelay` survives because the finish callback's identity guard makes it a no-op; recorded in
+   the test file so nobody retries it. The Start-while-running guard is the control that works.
+5. ⚠️ **Drive margins are part of the instrument.** One row read `Finished` with ~50 ms of margin
+   against ~40 ms of CDP round-trips and could not tell the old countdown firing from the new one
+   finishing on time. Re-driven with `performance.now()` in the page: 405 ms after the restart,
+   the old Finished (due at 335 ms) had not fired. Read the clock in the page, not the driver.
+6. ⚠️ **A peer published `@nodegx/core@0.1.0` to npm mid-session** (22:29) and edited EXP-001,
+   PROGRESS, README and this file's EXP-001 row. Their row is preserved above; their EXP-001 edit
+   is theirs to commit. Re-derive from the FILES before believing this table.
+7. 🔴 **The exporter is compiled twice** (s67's rule, still true): run
+   `tsc -p packages/noodl-editor/tsconfig.json --noEmit` after any exporter edit — exit 0 s68.
 
 ## The objective, so it cannot drift
 
@@ -60,76 +73,92 @@ a deployed NodeGX backend — exports to a React repo that builds, runs, and sti
 ```
 cd packages/nodegx-export
 ../../node_modules/.bin/tsc --noEmit          # exit 0
-../../node_modules/.bin/jest                  # 1282/1282, 50 suites, 50 files on disk (16 are the readdirSync suites' rows for mood-desk)
-cd ../noodl-editor && ../../node_modules/.bin/tsc -p tsconfig.json --noEmit   # exit 0 — NEW gate, see above
-../../node_modules/.bin/jest tests-unit/exp-012                               # 9/9
-npm run export-ledger:picker                  # from the repo root — 77/127 (60.6%), floor 77
-npm run export-ledger:check                   # 175 types
+../../node_modules/.bin/jest                  # 1332/1332, 51 suites, 51 files on disk
+cd ../noodl-editor && ../../node_modules/.bin/tsc -p tsconfig.json --noEmit   # exit 0
+npm run export-ledger:picker                  # from the repo root — 80/127 (63.0%), floor 80
+npm run export-ledger:check                   # OK — 176 types (was red on HEAD before s68)
 ```
 
-🔴 The corpus audit is a regression net, never a priority oracle — **and it is 60 projects, not
-101**. ⚠️ `build-corpus.ts` reads **59/60** with a **pre-existing** red (TPL-001 `MemberRow.tsx`
-`TS7053` inside a preserved Function body), ~4 minutes, background it. Not re-run this session.
+🔴 The corpus audit is a regression net, never a priority oracle — 60 projects. `build-corpus.ts`
+was not re-run this session (⚠️ pre-existing red: TPL-001 `MemberRow.tsx` `TS7053`).
 
 ## Do this next — in the order they are worth doing
 
-### 0. 🔴 The controlled-state gap §38.3 found — a checkbox or slider writing a Variable
-*"A variable write is only translated from a rendered text input in step 5."* A checkbox's
-`checked` and a range's `value` into a Variable are the most ordinary graphs for the two nodes just
-built, and both export with the logic translated and the **input dropped**. Extend the
-controlled-state slice (CONTROLLED-STATE-TARGET) from text inputs to `checkbox.checked` and
-`range.value`; `mood-desk` is the fixture to re-wire once it works (its buttons are a workaround).
-Owner **P18**. Beside it, smaller: `Set Variable` with a **typed** value is refused (§38.3 #2, `NONE`).
+### 0. The order-dependence probe (item 1 above) — one graph per family, before anything else
+Cheap, and it decides whether four families' fixture notes can be believed.
 
-### 0b. The three non-pure small nodes — `Log`, `Value Changed`, `Delay` (§38.5)
-`Log` is an action on External Link's template; `Value Changed` is the first effect() slice; `Delay`
-is a timer with state. +3 → 80. Then **Cloud Services (9)**, mostly unblocked by EXP-009.
+### 1. Cloud Services (9) — the biggest unmeasured block, "mostly unblocked by EXP-009" since s35
+`Cloud Function` (3 corpus projects, 7 nodes — the commonest of the nine), `Record`, `Set User
+Properties`, `Sign In With`, `Request Magic Link`, `Subscribe To Changes`, `Upload File`, `Cloud
+File`, `Sign File URL`. Re-measure against the EXP-009 client before planning; several may fall
+out for free. Every one is +1 on the picker.
 
-### 1. 🔴 The row-owned write, with the question §34 sharpened *(carried, unstarted)*
-Not *"can a row write to itself"* — **does the write need an id at all?** `Collection.updateWhere`
-matches by predicate and the emitted row closes over its own `item`. ⚠️ `updateWhere` **replaces**
-the row object. Owner `NONE`. 1 independent graph exportable, 6 corpus-wide, 14 nodes, and 100% of
-every `Set Object Properties` anybody has authored.
+### 2. 🔴 The controlled-state gap §38.3 found — a checkbox or slider writing a Variable
+Extend the controlled-state slice from text inputs to `checkbox.checked` and `range.value`;
+`mood-desk` is the fixture to re-wire. Beside it: `Set Variable` with a **typed** value is refused
+(§38.3 #2, `NONE`) — three fixtures have now routed around it with `String`/`Number` constants.
 
-### 2. EXP-004's drill-down panel — now a UX decision, not a blocked one
-The pre-flight modal renders `PreflightSummary` as data; a post-export panel would render
-`ExportReportData` the same way. Decide whether a toast + the file is enough for 0.2.x.
+### 3. `Component Children` — Tier 3.10 on paper, a component library's commonest node in practice
 
-### 3. A launcher entry for the export
-`parseProject` reads disk, so a project need not be open. Three files (`ProjectsPage.tsx`, the
-core-ui `Projects.tsx` card menu, `LauncherContext`). Owner `NONE`.
+### 4. The animation pair — `States` (10 corpus projects, 27 nodes: the commonest unexported node
+in the corpus) and `Animate To Value`. Time-based and stateful; `Delay`'s ref + timer library is
+now the precedent for both.
 
-### 4. `Unique Id`'s `Completed` *(from §37.4)* — small, fully scoped; decide the both-wired case.
+### 5. The row-owned write (§34), EXP-004's drill-down panel, a launcher entry, `Unique Id`'s
+`Completed` (§37.4), the 36 the sweep could not reach (§35.6), children inside an instance (§34.5),
+the `dynamicports` fixture (§33.3), §31.1's limit #2, the three EXP-004 lines that need Richard —
+all carried, unstarted, as in s67's prompt.
 
-### 5. The 36 the sweep could not reach — a `report.ts` change *(§35.6)*, owner `NONE`.
+## 🔴 What session 68 would tell you if it could only say three things
 
-### 6. Children authored inside a component instance — instrument broken first *(§34.5)*, owner `NONE`.
+1. **Count the toll before paying it.** `grep -n "'date-now-read'"` gave sixteen sites a new
+   action kind owes; the compiler holds two. The other fourteen were each reached by a test row or a
+   mutant arm before the session believed it had paid.
+2. **A fixture's wire order is a test the hand-built graphs cannot run.** The connections file
+   listed the chains first, and that alone found a false note three sessions of tests had walked
+   past. Author fixtures with the trigger wire *last* on purpose.
+3. **Write the drive's margins down with its answers.** The one row that could not exclude was the
+   one whose timing was tighter than the transport; the re-drive read the page's own clock.
 
-### 7. The fixture with a `dynamicports` entry on a repeater *(§33.3)* — zero fixtures, 48/62 real projects.
+## Instruments
 
-### 8. §31.1's limit #2 — the target-port side. Still examined by nothing.
+s68 scratchpad `db5d35cd-…/scratchpad`:
+- **`mut.py`** — five arms (A–E, §39.4) plus `restore` from `snap-src-post/`; the loop that ran
+  them is in the session transcript (tsc → jest --verbose → restore → `diff -rq`).
+- **`harness/`** — s66's harness with `tick-desk` emitted, typechecked and built (`dist/`).
+- **`drive.mjs`** (the twelve steps), **`drive-restart.mjs`** (the re-drive with page timestamps),
+  **`EXPECTED.md`** (written before the app ran), `drive.log`, `drive-restart.log`.
+- **`edit-plan.py`**, **`edit-component.py`** — the anchored edit scripts, every anchor asserted unique.
+- `snap-src-pre/`, `snap-src-post/`, `jest-full.log`, `editor-tsc2.log`, `arm-*-jest.log`.
 
-### 9. Three EXP-004 lines still need Richard, not a session
-The README comprehension test, the external review of the verification wording, and whether the
-preserved source block helps.
+s66 `cae86ff3-…` — `mut.py`, `runmut.sh`, `arm.sh`, `harness/`, `corpus-harness/`, `drive.mjs`.
+s62 `898de7ef-…` — the five from-disk sweeps and the **`v2only/` / `classiconly/`** symlink farms.
 
-## What session 66 did (kept for the three things below)
+⚠️ `packages/nodegx-export/src/analyze/appState.ts` contains **four raw NUL bytes** — `grep -a`.
 
-Built **EXP-011 §37 — the id pair**, `Unique Id` and `net.noodl.UUID`, finishing Tier 2.7: picker
-73 → 75/127, `src/lib/id.ts`, fixture `badge-desk`. §37 has the long form.
+## The thirteen fixtures, and what each one already covers
 
-## 🔴 What session 66 would tell you if it could only say three things
+| Fixture | Covers |
+|---|---|
+| `cheer` | the base for most hand-built graphs; `GlobalStore.Set/Subscribe`, popups, component IO, `For Each` |
+| `note-desk` | a delete button in a list row — the relayed row signal, `Remove Object From Array`, a Done chain (§30) |
+| `relay-desk` | three wires an author drew wrong (§31, §32) |
+| `deadline-desk` | all six date nodes, plus `Now → Set Variable → Variable2 → Text` |
+| `quote-desk` | `net.noodl.HTTP` with response mappings, `error`, `failure`, `canceled` |
+| `reading-shelf` | `Collection2 → Filter Collection → Map Collection → For Each`, `Model2` prop minting |
+| `puppy-test-3` | the richest export; EXP-004 markers, the README comprehension test, §35's orphan-node graft |
+| `variable-dial` | variable typing |
+| `kits` | custom nodes / modules |
+| `ticket-desk` | the three small utilities — `Substring`, `String Mapper`, `Number Remapper` |
+| `badge-desk` | the id pair — both generators, both rows, both Done chains, `UUID`'s `Error` |
+| `mood-desk` | `Boolean To String` + `Color Blend` (§38) |
+| `tick-desk` | **`Delay` (all three verbs, all four chains), `Log` (with `Value` passed through to a Text), `Value Changed` watching a Variable — and the chain wires listed BEFORE their triggers (§39.3)** |
 
-1. **Read the writer, not the sibling.** Two nodes one file apart had opposite rules about the same
-   port, and the wrong one was the natural thing to copy. The clearing line in `_generate` is four
-   characters of difference and it inverts the whole `Error` design.
-2. **Predict which sabotage arms your instrument can see, before you run them.** One of three arms
-   was measured to move nothing — correctly — and the honest record is "the drive cannot grade
-   this", not "the drive passed". Then a test grades it.
-3. **Pin the entropy and compare exactly.** For anything random, the shape assertion is the
-   assertion that cannot fail. Seed the source, run the emitted artefact beside the interpreter's
-   own code, and require the same string — then break a copy on purpose to prove the comparison
-   can go red.
+**No fixture has**: a `PageInputs` node, a braced `urlPath`, an `External Link`, a `Navigate To
+Path`, an untyped store key, a wire into a port that already carries an authored value, a refused
+script on a node that is not a Function, a `dynamicports` entry on a repeater (§33.3), a child
+authored inside a component instance (§34.5), a deferred node with no wires at all (§35.5), **or a
+Delay driven from a reactive Condition or a Value Changed** (the §39.3 ordering hazard's other half).
 
 ## Standing practice
 
@@ -139,12 +168,12 @@ file or fixture is untracked, and `git commit <pathspec>` **errors** rather than
 `git add` it and commit in the same command so the staging window stays closed. ✅ s64, s65 and s66
 all did exactly this.
 ⚠️ **Delete scratch scripts from `scripts/` and probe specs from `tests/` before committing** — and
-**reconcile the suite count against disk** (`ls tests/*.test.ts | wc -l`). 49 files, 49 suites at
-the end of s66.
+**reconcile the suite count against disk** (`ls tests/*.test.ts | wc -l`). 51 files, 51 suites at
+the end of s68.
 ts-morph and Prettier stay uninstalled; `packages/nodegx-export` is not in root `test:packages`.
 
-🔴 **Check for a peer's suite before running yours** — `ps` for `jest`/`vitest`. s66's checkout was
-clear throughout. ⚠️ **A peer committed P77's and `noodl-mcp`'s dirty files mid-session** — that is
+🔴 **Check for a peer's suite before running yours** — `ps` for `jest`/`vitest`. s68's checkout carried a peer's
+uncommitted edits in P18's OWN docs (item 6 above) — `git log -5 -- <path>` before any doc write. ⚠️ **A peer committed P77's and `noodl-mcp`'s dirty files mid-session** — that is
 normal, and pathspec commits meant nothing of theirs was swept.
 ⚠️ **`test:ci` was not run by this session and was not needed** — nothing outside
 `packages/nodegx-export` and `dev-docs/` was touched.
@@ -155,31 +184,6 @@ anything you send in parallel. 🔴 **A glob stored in a shell variable does not
 ⚠️ **`timeout` is not on this machine** (BSD), and **`uniq -w` is not either**.
 ⚠️ **`sleep N` chained before another command is blocked by the harness** — background the command
 and poll, or use an until-loop.
-
-## Instruments
-
-s66 scratchpad `cae86ff3-…/scratchpad`:
-- **`mut.py`** (build-and-drive arms A/B/C) and **`mutants.py`** (the eight test-level mutants),
-  both anchor-asserting, both with `restore` restoring from `snap-src-post/`.
-- **`runmut.sh`** — mutate → tsc → jest → report killed rows by name, for a list of arms.
-  ⚠️ It checks `tsc` on every mutant, because **a mutant that breaks the typecheck reads as
-  `Tests: 0 total`, not as a kill.**
-- **`arm.sh`** — mutate → tsc → emit → build, for the drive arms.
-- **`snap-src-pre/`** and **`snap-src-post/`** — `src` either side of this session.
-- **`harness/`** and **`corpus-harness/`** — built export harnesses with `node_modules`.
-- **`drive.mjs`**, **`EXPECTED.md`** (written before the app ran), `drive-normal.log`,
-  `drive-A.log`, `drive-B.log`, `drive-C.log`, `corpus.log`, `jest-final.log`.
-
-s65 `ff4cafc5-…` — `mut.py`, `snap-src-{pre,post}/`, `harness/`, `corpus.log`, `ticket-out/`.
-s64 `a893227f-…` — **`reportreach.ts`**, `silentreason.ts`, `sweepfires.ts`, `oneid.ts`.
-s63 `da3e8895-…` — **`silenthole.ts`**, **`instkids.ts`** (⚠️ its split separates nothing — §34.5).
-s62 `898de7ef-…` — **five reusable from-disk sweeps**, plus 🔴 **`v2only/` and `classiconly/`**,
-symlink farms splitting the corpus by format. **s64, s65 and s66 all used `v2only`.**
-s61 `759e5e4b-…` — `probe.js`. s60 `3685c239-…` — `fallback_probe.py`.
-s59 `1d23bd1f-…` — `drive.mjs`, `app/`, `EXPECTED.md`.
-
-⚠️ `packages/nodegx-export/src/analyze/appState.ts` contains **four raw NUL bytes**. `grep` and `rg`
-treat the whole file as **binary and print nothing** — use `rg -a` / `grep -a`.
 
 ## Mutating to prove a checker's reach
 
@@ -242,26 +246,3 @@ The pattern that produced §26.3, §27.5, §29.4, §30.4, §31.3, §32.5, §35.5
   `webpackChunknoodl_editor.push([[Symbol()],{},r=>{window.__req=r}])`, then
   `__req('./src/editor/src/models/warningsmodel.ts')`. `nodelibrary` is at
   `models/nodelibrary/index.ts`, not `models/nodelibrary.ts`.
-
-## The twelve fixtures, and what each one already covers
-
-| Fixture | Covers |
-|---|---|
-| `cheer` | the base for most hand-built graphs; `GlobalStore.Set/Subscribe`, popups, component IO, `For Each` |
-| `note-desk` | **a delete button in a list row** — the relayed row signal, `Remove Object From Array`, a Done chain (§30) |
-| `relay-desk` | **three wires an author drew wrong** (§31, §32) |
-| `deadline-desk` | **all six date nodes**, plus `Now → Set Variable → Variable2 → Text` |
-| `quote-desk` | `net.noodl.HTTP` with response mappings, `error`, `failure`, `canceled` |
-| `reading-shelf` | `Collection2 → Filter Collection → Map Collection → For Each`, `Model2` prop minting |
-| `puppy-test-3` | the richest export; EXP-004 markers, the README comprehension test, §35's orphan-node graft |
-| `variable-dial` | variable typing |
-| `kits` | custom nodes / modules |
-| `ticket-desk` | **the three small utilities** — `Substring`, `String Mapper`, `Number Remapper` |
-| `badge-desk` | **the id pair** — both generators, both rows, both Done chains reading the chain-local, and `UUID`'s `Error` from the render *and* the Failure arm |
-| `mood-desk` | **`Boolean To String` + `Color Blend`** (§38) — Variables driven by buttons + `Set Variable` fed by `Boolean`/`Number` constants (the checkbox/slider → Variable write is the §38.3 gap) |
-
-**No fixture has**: a `PageInputs` node, a braced `urlPath`, an `External Link`, a
-`Navigate To Path`, an untyped store key, a wire into a port that already carries an authored
-value, a refused script on a node that is not a Function, **a `dynamicports` entry on a repeater**
-(§33.3 — the field 48 of 62 real projects carry), **a child authored inside a component instance**
-(§34.5), or **a deferred node with no wires at all** (§35.5 — grafted by the test rather than on disk).

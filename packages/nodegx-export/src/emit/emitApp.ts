@@ -12,6 +12,7 @@ import { emitComponent } from './component';
 import { DATE_LIB_PATH, dateLibSource } from './dateLib';
 import { UTIL_LIB_PATH, utilLibSource } from './utilLib';
 import { ID_LIB_PATH, idLibSource } from './idLib';
+import { TIMER_LIB_PATH, timerLibSource } from './timerLib';
 import { EmittedCopy, emitKits } from './kits';
 import { README_PATH, renderReadme } from './readme';
 import { ExportReportData, REPORT_PATH, ReportComponent, renderReport, stripScope } from './report';
@@ -102,6 +103,8 @@ export function emitApp(ir: ExportIR, catalog: Catalog): EmittedApp {
   const utilHelpersUsed = new Set<string>();
   /** The same gate for `src/lib/id.ts` (EXP-011 §37). */
   const idHelpersUsed = new Set<string>();
+  /** The same gate for `src/lib/timer.ts` (EXP-011 §39). */
+  const timerHelpersUsed = new Set<string>();
   const reportComponents: ReportComponent[] = [];
   for (const plan of project.plans) {
     if (plan.skipReason) {
@@ -143,6 +146,7 @@ export function emitApp(ir: ExportIR, catalog: Catalog): EmittedApp {
     for (const helper of emitted.dateHelpers) dateHelpersUsed.add(helper);
     for (const helper of emitted.utilHelpers) utilHelpersUsed.add(helper);
     for (const helper of emitted.idHelpers) idHelpersUsed.add(helper);
+    for (const helper of emitted.timerHelpers) timerHelpersUsed.add(helper);
   }
 
   /**
@@ -171,6 +175,10 @@ export function emitApp(ir: ExportIR, catalog: Catalog): EmittedApp {
    */
   if (idHelpersUsed.size > 0) {
     files[ID_LIB_PATH] = GENERATED_MODULE_TS + idLibSource();
+  }
+  /** `src/lib/timer.ts` (EXP-011 §39) — the fourth module, on the same rule as the other three. */
+  if (timerHelpersUsed.size > 0) {
+    files[TIMER_LIB_PATH] = GENERATED_MODULE_TS + timerLibSource();
   }
 
   const api = apiModules(ir, project);

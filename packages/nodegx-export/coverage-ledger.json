@@ -1,8 +1,8 @@
 {
   "$comment": "Every catalog node type, classified for code export (EXP-008). Gate: scripts/export-ledger/check.js (export-ledger:check) refuses an unclassified type; scripts/export-ledger/picker-coverage.js (export-ledger:picker) is the PHASE'S HEADLINE NUMBER and ratchets `pickerCoverageFloor`. Read EXP-008 before changing either: the corpus instance-coverage number this phase used to quote is a regression detector, not a priority oracle, and treating it as one cost twelve sessions.",
   "catalogFormatVersion": "1.1.0",
-  "pickerCoverageFloor": 77,
-  "$pickerCoverageFloorComment": "Placeable picker nodes (inNodePicker, not deprecated, browser-capable) that export. Ratchet: export-ledger:picker --check fails if it falls AND if it rises without this number moving, so every gain is held and every loss is a decision in the diff. 67 before Tier 2.5 added External Link (session 41), 60 of 127 at 2026-08-28 (51 before Tier 1.4 added the four value Variables, 55 before Tier 1.1 added the client-side data vocabulary, 59 before Tier 1.2 added HTTP Request); 66 before Tier 2.5 added Page Inputs. ⚠️ Tier 2.5 moved the number by one and fixed two nodes it does not count: the route table emitted `<Route path=\"/product/{id}\">`, which react-router matches against the literal text, and RouterNavigate emitted `navigate('/product/{id}')` to go with it. Both were already `translated` here, which is the ledger's known blind spot — it records whether a node is emitted, never whether what is emitted works. 68 before §15 added Navigate To Path (session 44). ⚠️ §15 also fixed a route the ledger cannot see, for the second time in this tier: a Page whose urlPath was authored with a leading slash emitted `<Route path=\"//note/:id\">`, which react-router matches against nothing, while the Router trims the page pattern before matching — so the project routed in the app it was exported from and nowhere else. Every fixture happens to author the path unslashed. 69 before §30 translated Remove Object From Array (session 59) — and that node is the ledger\u2019s blind spot in its sharpest form, because it counts as translated on ONE wire shape and refuses the rest by name; §30 lists the three gates. 73 before \u00a737 added the id pair \u2014 `Unique Id` and `UUID` (session 66); \u26a0\ufe0f they are two nodes and NOT two spellings of one, `Model.guid()` being ten characters of `Math.random()` where `UUID` is a v4 from the platform CSPRNG, so a slice that translated them to one generator would raise this number by two and be wrong about half of it.",
+  "pickerCoverageFloor": 80,
+  "$pickerCoverageFloorComment": "Placeable picker nodes (inNodePicker, not deprecated, browser-capable) that export. Ratchet: export-ledger:picker --check fails if it falls AND if it rises without this number moving, so every gain is held and every loss is a decision in the diff. 67 before Tier 2.5 added External Link (session 41), 60 of 127 at 2026-08-28 (51 before Tier 1.4 added the four value Variables, 55 before Tier 1.1 added the client-side data vocabulary, 59 before Tier 1.2 added HTTP Request); 66 before Tier 2.5 added Page Inputs. ⚠️ Tier 2.5 moved the number by one and fixed two nodes it does not count: the route table emitted `<Route path=\"/product/{id}\">`, which react-router matches against the literal text, and RouterNavigate emitted `navigate('/product/{id}')` to go with it. Both were already `translated` here, which is the ledger's known blind spot — it records whether a node is emitted, never whether what is emitted works. 68 before §15 added Navigate To Path (session 44). ⚠️ §15 also fixed a route the ledger cannot see, for the second time in this tier: a Page whose urlPath was authored with a leading slash emitted `<Route path=\"//note/:id\">`, which react-router matches against nothing, while the Router trims the page pattern before matching — so the project routed in the app it was exported from and nowhere else. Every fixture happens to author the path unslashed. 69 before §30 translated Remove Object From Array (session 59) — and that node is the ledger’s blind spot in its sharpest form, because it counts as translated on ONE wire shape and refuses the rest by name; §30 lists the three gates. 73 before §37 added the id pair — `Unique Id` and `UUID` (session 66); ⚠️ they are two nodes and NOT two spellings of one, `Model.guid()` being ten characters of `Math.random()` where `UUID` is a v4 from the platform CSPRNG, so a slice that translated them to one generator would raise this number by two and be wrong about half of it. 80 after §39 added Log, Delay and Value Changed (session 68).",
   "$customNodesComment": "EXP-010 AC6, settled 2026-08-28: custom nodes are DELIBERATELY not in this file and not in the picker number, and the statement about them is categorical rather than a percentage. A custom node type comes from a project's own noodl_modules/, so its population is per-project and unbounded — putting it in the numerator inflates a ratio, and putting it in both halves makes the denominator move with whichever project you point the tool at. That is precisely the instance-weighted corpus number this phase spent twelve sessions being misled by (see $comment). Adding these types as `entries` would also be a false claim about the catalog, which is what this file is a ledger OF. The claim instead: a kit's VISUAL nodes (`reactNodes`, i.e. a definition with getReactComponent) export and render; a kit's LOGIC nodes (`nodes`, e.g. tally-kit's whole vocabulary) do not, and every instance of one is named in the report. Both halves are graded by tests/custom-nodes.test.ts, which is the ratchet for this claim.",
   "entries": [
     {
@@ -28,7 +28,7 @@
     {
       "typeName": "Boolean To String",
       "status": "translated",
-      "note": "EXP-011 \u00a738 (session 67): one call into src/lib/util.ts \u2014 `currentInput ? trueString : falseString` by truthiness, with initialize's empty strings as the fallbacks. Its Selector Changed signal is not read: it fires from a value change, which is effect() work"
+      "note": "EXP-011 §38 (session 67): one call into src/lib/util.ts — `currentInput ? trueString : falseString` by truthiness, with initialize's empty strings as the fallbacks. Its Selector Changed signal is not read: it fires from a value change, which is effect() work"
     },
     {
       "typeName": "Button",
@@ -102,7 +102,7 @@
     {
       "typeName": "Color Blend",
       "status": "translated",
-      "note": "EXP-011 \u00a738 (session 67): one call into src/lib/util.ts, the numbered `color N` family passed as variadic arguments in index order with a hole printed as `undefined` \u2014 the interpreter's sparse array, positionally. A wired colour is an argument, not a deferral"
+      "note": "EXP-011 §38 (session 67): one call into src/lib/util.ts, the numbered `color N` family passed as variadic arguments in index order with a hole printed as `undefined` — the interpreter's sparse array, positionally. A wired colour is an argument, not a deferral"
     },
     {
       "typeName": "Component Children",
@@ -302,7 +302,7 @@
     {
       "typeName": "Number Remapper",
       "status": "translated",
-      "note": "EXP-011 Tier 2.7 (session 65): one call into src/lib/util.ts. The degenerate branch is reproduced rather than repaired \u2014 with the two input endpoints equal the answer is Output Minimum for every input, which is the interpreter's answer and the one NDA-012 already decided by moving the default off it. Unset ports export initialize's 0/1/0/1/true"
+      "note": "EXP-011 Tier 2.7 (session 65): one call into src/lib/util.ts. The degenerate branch is reproduced rather than repaired — with the two input endpoints equal the answer is Output Minimum for every input, which is the interpreter's answer and the one NDA-012 already decided by moving the default off it. Unset ports export initialize's 0/1/0/1/true"
     },
     {
       "typeName": "On App Error",
@@ -457,7 +457,7 @@
     {
       "typeName": "String Mapper",
       "status": "translated",
-      "note": "EXP-011 Tier 2.7 (session 65): one call into src/lib/util.ts with the numbered pairs as an object literal. Two rules the literal does not get for free and the planner supplies: first-wins on a repeated Input (indexOf finds the first, an object keeps the last), and a present key with an undefined value for an Input whose Mapping is empty (that publishes empty rather than falling through to Default). A wired numbered port defers \u2014 the table is read at generation time"
+      "note": "EXP-011 Tier 2.7 (session 65): one call into src/lib/util.ts with the numbered pairs as an object literal. Two rules the literal does not get for free and the planner supplies: first-wins on a repeated Input (indexOf finds the first, an object keeps the last), and a present key with an undefined value for an Input whose Mapping is empty (that publishes empty rather than falling through to Default). A wired numbered port defers — the table is read at generation time"
     },
     {
       "typeName": "String Selector",
@@ -472,7 +472,7 @@
     {
       "typeName": "Substring",
       "status": "translated",
-      "note": "EXP-011 Tier 2.7 (session 65): one call into src/lib/util.ts, transcribed from the node's own substr call. An untouched End exports as -1, the value initialize writes \u2014 and, since DEF-033 was fixed (session 67), the default the port declares as well; before that the panel said 0. A wired String that can be empty is translated with a note: the node's setter raises there rather than answering, and an export whose failure mode is an exception in a page is the trade the date family already refused"
+      "note": "EXP-011 Tier 2.7 (session 65): one call into src/lib/util.ts, transcribed from the node's own substr call. An untouched End exports as -1, the value initialize writes — and, since DEF-033 was fixed (session 67), the default the port declares as well; before that the panel said 0. A wired String that can be empty is translated with a note: the node's setter raises there rather than answering, and an export whose failure mode is an exception in a page is the trade the date family already refused"
     },
     {
       "typeName": "Switch",
@@ -491,8 +491,8 @@
     },
     {
       "typeName": "Timer",
-      "status": "deferred",
-      "exemption": "scheduled — EXP-011 Tier 2: scheduled Tier 2 in session 35 — §3’s ranking did not name it, and it is a small ordinary node with no design question standing in front of it"
+      "status": "translated",
+      "note": "EXP-011 §39 (session 68): `Delay` — three verbs from src/lib/timer.ts over a useRef the component declares per node: startDelay answers whether a countdown began (false while one runs, the node's own `_isRunning === false` test), restartDelay always begins again, stopDelay answers whether there was one to stop; each verb's Done/Unchanged chains are the two arms of an if over that answer, and Started/Finished are the two callbacks, fired by two setTimeouts where the interpreter fires them by frame. Restart's Unchanged chain is dropped with a note (Restart never reports it). ⚠️ One recorded divergence: the scheduler marks a timer running at the end of the NEXT frame, so a Stop in the same tick as a Start reads Unchanged there and Done here. Defers a consumed Completed and any unknown output; a Started/Finished chain on a timer only Stop drives is left for the wire sweep to name."
     },
     {
       "typeName": "Transition",
@@ -510,8 +510,8 @@
     },
     {
       "typeName": "Value Changed",
-      "status": "deferred",
-      "exemption": "scheduled — EXP-011 Tier 2: scheduled Tier 2 in session 35 — §3’s ranking did not name it, and it is a small ordinary node with no design question standing in front of it"
+      "status": "translated",
+      "note": "EXP-011 §39 (session 68): the effect() slice §9.6 named — a useEffect keyed on the Input's render-mode expression, with the last value seen in a useRef: return on the same value, else remember it and run the chain. `lastValue` boots undefined in `initialize`, so a first arrival of undefined fires nothing and a first arrival of anything else fires, exactly as the effect reads them. ⚠️ React compares dependencies with Object.is and the node with ===; they differ only on NaN. Defers an Input that only exists inside a handler (a text input's onTextChanged, a received payload), no Input, no consumer, and any other output, each by name."
     },
     {
       "typeName": "Variable",
@@ -600,8 +600,8 @@
     },
     {
       "typeName": "net.noodl.Log",
-      "status": "deferred",
-      "exemption": "scheduled — EXP-011 Tier 2: scheduled Tier 2 in session 35 — §3’s ranking did not name it, and it is a small ordinary node with no design question standing in front of it"
+      "status": "translated",
+      "note": "EXP-011 §39 (session 68): an action — `log(level, message, data)` into src/lib/util.ts, a transcription of log.ts's `_write` browser branch (the level is the console method, an absent message prints '', data is passed only when one arrived), then the Done chain as following statements. `Value` passes straight through, so a read of it is a read of whatever feeds the input. Defers a wired Level (an enum the setter validates on arrival), a consumed Completed (one outcome — wire Done instead) and any other output, each by name. The backend sink and its redaction are the cloud runtime's and never reach a browser bundle."
     },
     {
       "typeName": "net.noodl.Now",
@@ -834,6 +834,11 @@
     },
     {
       "typeName": "noodl.cloud.jwtverify",
+      "status": "backend-only",
+      "note": "runs only in the backend interpreter; frontend export never sees it"
+    },
+    {
+      "typeName": "noodl.cloud.listusersinrole",
       "status": "backend-only",
       "note": "runs only in the backend interpreter; frontend export never sees it"
     },

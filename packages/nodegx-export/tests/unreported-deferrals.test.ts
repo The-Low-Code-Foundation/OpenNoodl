@@ -40,7 +40,13 @@ const baseIr = parseProject(FIXTURE, catalog);
 
 /** A component that generates a file — the only place a per-component note renders. */
 const CARD = 'Components/PuppyCard';
-const ORPHAN = 'orphan-timer-row';
+/**
+ * ⚠️ Re-pointed in EXP-011 §39: the orphan was a `Timer`, and `Timer` is now `Delay`, translated —
+ * its own verdict sweep names it, which is exactly what this control must not have. `Hash` is
+ * deliberately out of scope (§3's "not a target"), so no pass will ever claim it.
+ */
+const ORPHAN = 'orphan-hash-row';
+const ORPHAN_TYPE = 'net.noodl.Hash';
 
 const cloneIr = (): ExportIR => structuredClone(baseIr);
 const componentOf = (source: ExportIR, componentPath: string): ComponentIR =>
@@ -53,7 +59,7 @@ const planOf = (source: ExportIR, componentPath: string) =>
  * A logic node wired to nothing at all. Wired to nothing is the point: a node with wires is
  * already named by the dropped-wire notes, which is why the corpus hides this defect so well.
  */
-const addOrphanLogic = (source: ExportIR, type = 'Timer', id = ORPHAN): NodeIR => {
+const addOrphanLogic = (source: ExportIR, type = ORPHAN_TYPE, id = ORPHAN): NodeIR => {
   const node: NodeIR = {
     id,
     type,
@@ -86,7 +92,7 @@ describe('a deferred node the report never mentioned', () => {
     const source = cloneIr();
     addOrphanLogic(source);
     const plan = planOf(source, CARD);
-    expect(plan.dispositions[ORPHAN]).toEqual({ kind: 'deferred', to: 'EXP-003', reason: 'logic node (Timer)' });
+    expect(plan.dispositions[ORPHAN]).toEqual({ kind: 'deferred', to: 'EXP-003', reason: `logic node (${ORPHAN_TYPE})` });
     const others = plan.notes.filter((n) => n.includes(ORPHAN));
     expect(others.length).toBe(1);
   });
@@ -97,7 +103,7 @@ describe('a deferred node the report never mentioned', () => {
     const report = reportOf(source);
     const lines = report.split('\n').filter((l) => l.includes(ORPHAN));
     expect(lines.length).toBe(1);
-    expect(lines[0]).toContain('(Timer) has no translation in this slice — it is not in the generated app');
+    expect(lines[0]).toContain(`(${ORPHAN_TYPE}) has no translation in this slice — it is not in the generated app`);
   });
 
   it('says it once, not once per pass — a node the report already names gains no second line', () => {
@@ -115,13 +121,13 @@ describe('a deferred node the report never mentioned', () => {
 
   it('does not stutter the reason back at the author', () => {
     /*
-     * `logic node (Timer)` is the catch-all's own reason and restates the type; rendered through
-     * the generic format it would read "node … (Timer) deferred: logic node (Timer)". The author
+     * `logic node (<type>)` is the catch-all's own reason and restates the type; rendered through
+     * the generic format it would read "node … (<type>) deferred: logic node (<type>)". The author
      * needs the fact, which is that it is not in the app.
      */
     const source = cloneIr();
     addOrphanLogic(source);
-    expect(reportOf(source)).not.toContain('deferred: logic node (Timer)');
+    expect(reportOf(source)).not.toContain(`deferred: logic node (${ORPHAN_TYPE})`);
   });
 
   it('a gate with a real sentence keeps that sentence — the generic format is for the rest', () => {

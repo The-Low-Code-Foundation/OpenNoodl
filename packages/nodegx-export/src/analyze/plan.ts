@@ -202,6 +202,27 @@ const ID_NODES: Record<
  */
 const EXTERNAL_LINK_OUTPUTS = ['done', 'failure', 'unchanged', 'completed', 'error'];
 
+/**
+ * EXP-011 §39 — the three small non-pure nodes: an action, a timer and an effect.
+ *
+ * `Log` is `console[level](message, data)` then Done, with `Value` passed straight through.
+ * `Timer` (displayed as "Delay") is three trigger ports over one scheduler timer, so it is the
+ * first node here whose action port is a *set* rather than one name — `TIMER_TRIGGERS` is what
+ * `isTriggerWire` and the compile-all loop both read. `Value Changed` has no trigger at all: it
+ * fires from a value arriving, which in the emitted component is a `useEffect` over the value.
+ */
+const LOG_TYPE = 'net.noodl.Log';
+const TIMER_TYPE = 'Timer';
+const VALUE_CHANGED_TYPE = 'Value Changed';
+const TIMER_TRIGGERS = ['start', 'restart', 'stop'] as const;
+type TimerTrigger = (typeof TIMER_TRIGGERS)[number];
+const isTimerTrigger = (port: string): port is TimerTrigger => (TIMER_TRIGGERS as readonly string[]).includes(port);
+/** The outputs a Delay publishes; anything else consumed defers the node, named. */
+const TIMER_OUTPUTS = ['done', 'unchanged', 'completed', 'timerStarted', 'timerFinished'];
+/** `log.ts`'s `LEVELS`, in its order — an authored level outside it falls back to `info` as the setter does. */
+const LOG_LEVELS = ['debug', 'info', 'warn', 'error'] as const;
+export type LogLevel = (typeof LOG_LEVELS)[number];
+
 /** `Navigate To Path` (EXP-011 Tier 2.5) — the Navigation node that routes without naming a page. */
 const NAVIGATE_TO_PATH_TYPE = 'PageStackNavigateToPath';
 const NAVIGATE_TO_PATH_OUTPUTS = ['done', 'failure', 'unchanged', 'completed', 'error'];
@@ -1167,7 +1188,58 @@ export type HandlerAction =
       materialize?: string;
       then: HandlerAction[];
     }
-  | IdNewAction;
+  | IdNewAction
+  | LogAction
+  | DelayAction;
+
+/**
+ * A `Log`'s `Log` (EXP-011 §39) — `log(level, message, data)` into `src/lib/util.ts`, then the
+ * Done chain as following statements (`popup-show`'s treatment: the write is synchronous and has
+ * one outcome, so the chain is not an arm).
+ *
+ * `message` is `undefined` where nothing is authored or wired — the helper prints `''` for it,
+ * as `_write` does. `data` is absent (not `undefined`) where the port is unset, because the
+ * runtime writes the data argument only when one arrived, and `console.info('x', undefined)`
+ * prints a trailing `undefined` the interpreter never prints.
+ */
+export type LogAction = {
+  kind: 'log';
+  nodeId: string;
+  level: LogLevel;
+  message: ValueExpr;
+  data?: ValueExpr;
+  then: HandlerAction[];
+};
+
+/**
+ * One of a `Delay`'s three actions (EXP-011 §39) — `startDelay`/`restartDelay`/`stopDelay` from
+ * `src/lib/timer.ts` over a `useRef` the component declares per node.
+ *
+ * Four chains, and which ones an arm prints depends on the verb:
+ *
+ * | verb | `then` (Done) | `unchangedThen` | `startedThen` / `finishedThen` |
+ * |---|---|---|---|
+ * | `start` | began a countdown | one was already running | passed as the two callbacks |
+ * | `restart` | always | never — Restart cannot no-op (timer.ts) | passed as the two callbacks |
+ * | `stop` | abandoned a running countdown | nothing was running | not this verb's — a stopped countdown never fires them |
+ *
+ * `startDelay` and `duration` are read where the handler is, so a `Set Variable` earlier in the
+ * chain reaches them (the snapshot rule). The two callback chains run *later*, in a timeout, and
+ * close over the same handler scope — the shape `http-call`'s continuations already have.
+ */
+export type DelayAction = {
+  kind: 'delay';
+  nodeId: string;
+  verb: TimerTrigger;
+  /** The `useRef` local this node's timer handle lives in — one per node, shared by its verbs. */
+  ref: string;
+  startDelay: ValueExpr;
+  duration: ValueExpr;
+  then: HandlerAction[];
+  unchangedThen: HandlerAction[];
+  startedThen: HandlerAction[];
+  finishedThen: HandlerAction[];
+};
 
 /**
  * A `Unique Id`'s or `UUID`'s `New` (EXP-011 §37) — `date-now-read`'s shape, with a failure arm
@@ -1381,6 +1453,26 @@ export interface BranchEffectPlan {
   nodeId: string;
   action: HandlerAction;
   /** The provenance comment above the effect — the node's authored label when it has one. */
+  comment: string;
+}
+
+/**
+ * A `Value Changed` (EXP-011 §39): the node fires whenever its Input becomes a different value,
+ * the first arrival included, and compares by identity — `useEffect` over the value, with the
+ * last value seen in a `useRef` so a re-render that delivers the same value fires nothing.
+ *
+ * ⚠️ React's dependency compare is `Object.is` and the node's is `===`; they differ only on
+ * `NaN` (the node fires on every `NaN` arrival, the effect never re-runs for one). Recorded in
+ * the ledger rather than reproduced — a value that is `NaN` on every arrival is not a change
+ * an author is watching for.
+ */
+export interface ValueChangedEffectPlan {
+  nodeId: string;
+  /** The Input, as the render-mode expression the effect watches. */
+  watch: ValueExpr;
+  /** The `useRef` local holding the last value the effect saw. */
+  lastLocal: string;
+  actions: HandlerAction[];
   comment: string;
 }
 
@@ -1748,6 +1840,8 @@ export interface ComponentPlan {
   pushEffects: PushEffectPlan[];
   /** Reactive Conditions (LOGIC-TARGET §10), compile order — one useEffect each. */
   branchEffects: BranchEffectPlan[];
+  /** Value Changed effects (EXP-011 §39), compile order — one useEffect + one useRef each. */
+  valueChangedEffects: ValueChangedEffectPlan[];
   /**
    * Value output ports this component lifts (§4d child side) — the parent side consults this
    * list off the target's plan, so parent and child agree by construction (the s10 rule).
@@ -1988,6 +2082,7 @@ function planComponent(
     syncEffects: [],
     pushEffects: [],
     branchEffects: [],
+    valueChangedEffects: [],
     liftedOutputProps: [],
     instanceLifted: {},
     pendingLifted: [],
@@ -3473,6 +3568,8 @@ function planComponent(
 
   /** External Link nodes whose `Do` attached to a handler — the record verbs' earning rule. */
   const attachedExternalLinks = new Set<string>();
+  /** EXP-011 §39. The `useRef` local a Value Changed keeps its last-seen value in. */
+  const valueChangedLocals = new Map<string, string>();
 
   /**
    * The chain being compiled for a node, while it is being compiled (EXP-011 §24).
@@ -4995,6 +5092,39 @@ function planComponent(
         return null;
       }
     }
+    /**
+     * `Log`'s `Value` (EXP-011 §39) — passed straight through: the setter stores what arrived
+     * and the getter hands it back, so the read *is* the read of whatever feeds the input. An
+     * unwired input is the authored value, or `undefined` where the panel was never opened.
+     */
+    if (fromNode.type === LOG_TYPE) {
+      if (fromProperty !== 'value') {
+        ctx.defer =
+          fromProperty === 'done' || fromProperty === 'completed'
+            ? `its ${fromProperty === 'done' ? 'Done' : 'Completed'} output is consumed as a value — a pulse carries nothing to read`
+            : `its ${fromProperty} output is not a port this slice reads`;
+        return null;
+      }
+      if (ctx.visited.has(fromNode.id)) {
+        ctx.defer = 'a wire cycle through logic nodes';
+        return null;
+      }
+      ctx.visited.add(fromNode.id);
+      const wires = component.connections.filter((c) => c.toId === fromNode.id && c.toProperty === 'value');
+      if (wires.length > 1) {
+        ctx.defer = 'two wires feed its Value input — last-writer-wins is not statically ordered';
+        return null;
+      }
+      ctx.logicNodeIds.push(fromNode.id);
+      if (wires.length === 0) {
+        const literal = literalParam(fromNode, 'value');
+        return literal === undefined ? { kind: 'undefined' } : { kind: 'literal', value: literal };
+      }
+      const expr = resolveExpr(nodeById.get(wires[0].fromId), wires[0].fromProperty, ctx);
+      if (expr === null) return null;
+      ctx.consumes.push(wires[0].key);
+      return expr;
+    }
     // The five pure date nodes (EXP-011 Tier 1.3) — each an ordinary function call.
     {
       const spec = DATE_NODES[fromNode.type];
@@ -5507,6 +5637,8 @@ function planComponent(
     [NOW_TYPE]: 'read',
     // EXP-011 Tier 2.5. `External Link`'s only action port.
     [EXTERNAL_LINK_TYPE]: 'do',
+    // EXP-011 §39. `Log`'s only action port. `Timer`'s three are a predicate in `isTriggerWire`.
+    [LOG_TYPE]: 'log',
     // EXP-011 §15. `Navigate To Path`'s only action port.
     [NAVIGATE_TO_PATH_TYPE]: 'navigate',
     /**
@@ -5534,7 +5666,9 @@ function planComponent(
     (jsNodeKindOf(type) !== null && toProperty === 'run') ||
     (isLatchType(type) && (LATCH_TRIGGERS[type] ?? []).includes(toProperty)) ||
     ((type === 'net.noodl.controls.checkbox' || type === 'Checkbox') && (toProperty === 'check' || toProperty === 'uncheck')) ||
-    (isTextInputType(type) && toProperty === 'clear');
+    (isTextInputType(type) && toProperty === 'clear') ||
+    // EXP-011 §39. A Delay's Start/Restart/Stop — one node, three action ports.
+    (type === TIMER_TYPE && isTimerTrigger(toProperty));
 
   // Which components open as popups anywhere in the project — the close side translates only
   // inside one; elsewhere the runtime resolves an enclosing popup by ancestor walk, which a
@@ -6897,6 +7031,167 @@ function planComponent(
   };
 
   /**
+   * `Log` (EXP-011 §39) — the write, then Done.
+   *
+   * The runtime's `_write` is one console call with the level as the method name, the message
+   * stringified (`''` for an absent one) and the data appended only when one arrived. That is
+   * `log()` in `src/lib/util.ts`, transcribed. The backend sink and its redaction are the cloud
+   * runtime's and never reach a browser bundle (log.ts, "what stops this node printing a
+   * secret") — so the exported app has exactly the console branch, which is the branch it ran.
+   *
+   * Three refusals: a wired `Level` (an enum the setter validates on arrival; a wire is not a
+   * value this generator can read), a consumed `Completed` (one outcome, so it is `Done` under
+   * another name — the id nodes' sentence), and any other output.
+   */
+  const compileLog = (node: NodeIR): CompiledSink => {
+    for (const wire of component.connections.filter((c) => c.fromId === node.id)) {
+      if (wire.fromProperty === 'done' || wire.fromProperty === 'value') continue;
+      if (wire.fromProperty === 'completed') {
+        return {
+          defer:
+            'its Completed output is consumed — this node has only one outcome, so Completed and Done always fire together; wire the chain to Done instead and it translates unchanged'
+        };
+      }
+      return { defer: `its ${wire.fromProperty} output is consumed, and this node publishes only Done, Completed and Value` };
+    }
+    if (wiredPorts.has(`${node.id}:level`)) {
+      return { defer: 'its Level is wired — the level is an enum the node validates on arrival, and a wired one is not statically known' };
+    }
+    const authoredLevel = literalParam(node, 'level');
+    // `LEVELS.indexOf(value) === -1 ? 'info' : value` — a cleared panel arrives as `''` and falls back.
+    const level: LogLevel = (LOG_LEVELS as readonly string[]).includes(String(authoredLevel)) ? (authoredLevel as LogLevel) : 'info';
+
+    const ctx = newCtx();
+    const consumes: string[] = [];
+    const valueOf = (port: 'message' | 'data'): ValueExpr | undefined | { defer: string } => {
+      const wires = component.connections.filter((c) => c.toId === node.id && c.toProperty === port);
+      if (wires.length > 1) return { defer: `two wires feed its ${port} input — last-writer-wins is not statically ordered` };
+      if (wires.length === 1) {
+        const expr = resolveExpr(nodeById.get(wires[0].fromId), wires[0].fromProperty, ctx);
+        if (expr === null) return { defer: ctx.defer ?? `its ${port} input has no statically known source` };
+        if (isBooleanExpr(expr)) {
+          return { defer: `its ${port} is fed a logic truth value — only truthiness sinks take one in this slice` };
+        }
+        consumes.push(wires[0].key);
+        return expr;
+      }
+      const literal = literalParam(node, port);
+      return literal === undefined ? undefined : { kind: 'literal', value: literal };
+    };
+    const message = valueOf('message');
+    if (isDefer(message)) return message;
+    const data = valueOf('data');
+    if (isDefer(data)) return data;
+
+    const done = doneChainOf(node, 'done');
+    if ('defer' in done) return { defer: done.defer };
+    return {
+      action: {
+        kind: 'log',
+        nodeId: node.id,
+        level,
+        message: message ?? { kind: 'undefined' },
+        ...(data !== undefined ? { data } : {}),
+        then: done.then
+      },
+      consumes: [...consumes, ...done.consumes, ...ctx.consumes],
+      collapses: [...ctx.logicNodeIds, ...done.collapses],
+      subscribes: [...ctx.subscriberIds, ...done.subscribes]
+    };
+  };
+
+  /** The `useRef` local a Delay's timer handle lives in — one per node, whichever verb asks. */
+  const delayLocals = new Map<string, string>();
+  const delayRefOf = (node: NodeIR): string => mintLocal(delayLocals, node, 'Delay', 'Timer');
+
+  /**
+   * `Delay` (EXP-011 §39) — one of its three verbs.
+   *
+   * The interpreter is a frame-driven scheduler (`timerscheduler.ts`): Start queues the timer,
+   * `Started` fires once Start Delay has elapsed, `Finished` once Duration has, and a stopped
+   * timer fires neither. `src/lib/timer.ts` is that contract over two `setTimeout`s and a ref:
+   * `startDelay` answers whether it began (false while one is running — `_isRunning === false`
+   * is Start's own test), `restartDelay` always begins again, `stopDelay` answers whether there
+   * was anything to stop. Each verb's Done/Unchanged arms are the two halves of an `if` over
+   * that answer — synchronous, exactly as `reportOutcome` is called in the same tick.
+   *
+   * ⚠️ **One divergence, recorded rather than reproduced.** The scheduler marks a timer running
+   * at the end of the *next frame*, so in the interpreter a Stop in the same tick as a Start
+   * reads Unchanged; here the handle exists from the call, so it reads Done. Both remove the
+   * countdown. Nothing an author draws fires two verbs in one tick without a chain between them.
+   *
+   * The two callback chains are compiled for Start and Restart only. A Stop never fires them —
+   * its whole job is to see they never fire — so wires off `Started`/`Finished` on a timer
+   * nothing starts are left for the wire sweep to name, which is the truthful answer.
+   */
+  const compileDelay = (node: NodeIR, port: TimerTrigger): CompiledSink => {
+    for (const wire of component.connections.filter((c) => c.fromId === node.id)) {
+      if (!TIMER_OUTPUTS.includes(wire.fromProperty)) {
+        return { defer: `its ${wire.fromProperty} output is consumed, and this node publishes only Started, Finished, Done, Unchanged and Completed` };
+      }
+      if (wire.fromProperty === 'completed') {
+        return { defer: 'its Completed output is consumed — it fires after every outcome, and this slice emits the outcome arms rather than a join beneath them' };
+      }
+    }
+    const ctx = newCtx();
+    const consumes: string[] = [];
+    const numberOf = (input: 'startDelay' | 'duration'): ValueExpr | { defer: string } => {
+      const wires = component.connections.filter((c) => c.toId === node.id && c.toProperty === input);
+      if (wires.length > 1) return { defer: `two wires feed its ${input} input — last-writer-wins is not statically ordered` };
+      if (wires.length === 1) {
+        const expr = resolveExpr(nodeById.get(wires[0].fromId), wires[0].fromProperty, ctx);
+        if (expr === null) return { defer: ctx.defer ?? `its ${input} input has no statically known source` };
+        if (isBooleanExpr(expr)) {
+          return { defer: `its ${input} is fed a logic truth value — only truthiness sinks take one in this slice` };
+        }
+        consumes.push(wires[0].key);
+        return expr;
+      }
+      // Both ports declare 0 and the scheduler's constructor writes 0 — declaration and boot agree.
+      const literal = literalParam(node, input);
+      return { kind: 'literal', value: typeof literal === 'number' ? literal : Number(literal ?? 0) || 0 };
+    };
+    const startDelay = numberOf('startDelay');
+    if (isDefer(startDelay)) return startDelay;
+    const duration = numberOf('duration');
+    if (isDefer(duration)) return duration;
+
+    const empty: DoneChain = { then: [], consumes: [], collapses: [], subscribes: [] };
+    const done = doneChainOf(node, 'done');
+    if ('defer' in done) return { defer: done.defer };
+    const unchanged = doneChainOf(node, 'unchanged');
+    if ('defer' in unchanged) return { defer: unchanged.defer };
+    // Restart cannot no-op (timer.ts) — its Unchanged chain is dead, and it is dropped with a
+    // note on `Clear Array`'s rule rather than emitted where it can never run. The wire is still
+    // consumed here, because a Start or Stop on the same node fires it for real.
+    if (port === 'restart' && unchanged.then.length > 0) {
+      notes.push(`node ${node.id}: Delay's Unchanged chain is not emitted for Restart — Restart begins again whether or not a countdown was running, so it never reports Unchanged (timer.ts)`);
+    }
+    const started = port === 'stop' ? empty : doneChainOf(node, 'timerStarted');
+    if ('defer' in started) return { defer: started.defer };
+    const finished = port === 'stop' ? empty : doneChainOf(node, 'timerFinished');
+    if ('defer' in finished) return { defer: finished.defer };
+    const chains = [done, unchanged, started, finished];
+    return {
+      action: {
+        kind: 'delay',
+        nodeId: node.id,
+        verb: port,
+        ref: delayRefOf(node),
+        startDelay,
+        duration,
+        then: done.then,
+        unchangedThen: port === 'restart' ? [] : unchanged.then,
+        startedThen: started.then,
+        finishedThen: finished.then
+      },
+      consumes: [...consumes, ...ctx.consumes, ...chains.flatMap((c) => c.consumes)],
+      collapses: [...ctx.logicNodeIds, ...chains.flatMap((c) => c.collapses)],
+      subscribes: [...ctx.subscriberIds, ...chains.flatMap((c) => c.subscribes)]
+    };
+  };
+
+  /**
    * `Navigate To Path` (EXP-011 §15, session 44) — the Navigation node that routes without
    * naming a page, transcribed from `navigate-to-path.ts` rather than from the Router.
    *
@@ -7212,6 +7507,8 @@ function planComponent(
       return compileControlAction(node, port);
     }
     if (node.type === EXTERNAL_LINK_TYPE) return compileExternalLink(node);
+    if (node.type === LOG_TYPE) return compileLog(node);
+    if (node.type === TIMER_TYPE && isTimerTrigger(port)) return compileDelay(node, port);
     if (node.type === NAVIGATE_TO_PATH_TYPE) return compileNavigateToPath(node);
     if (node.type === 'NavigationShowPopup') return compileShowPopup(node);
     if (node.type === 'NavigationClosePopup') return compileClosePopup(node, port);
@@ -7704,6 +8001,25 @@ function planComponent(
           );
         case 'output-signal':
           return true;
+        // EXP-011 §39. The message and data are read where the handler is; the chain runs there.
+        case 'log':
+          return (
+            exprValidIn(action.message, context, invokedScope) &&
+            (action.data === undefined || exprValidIn(action.data, context, invokedScope)) &&
+            actionsValidIn(action.then, context, invokedScope)
+          );
+        // EXP-011 §39. Both numbers are read at the call; all four chains close over the same
+        // scope — the two later ones through the timeout, `http-call`'s continuation shape.
+        case 'delay':
+          return (
+            exprValidIn(action.startDelay, context, invokedScope) &&
+            exprValidIn(action.duration, context, invokedScope) &&
+            actionsValidIn(
+              [...action.then, ...action.unchangedThen, ...action.startedThen, ...action.finishedThen],
+              context,
+              invokedScope
+            )
+          );
       }
     });
 
@@ -8463,6 +8779,38 @@ function planComponent(
         if (!Array.isArray(failThen)) return failThen;
         return { ...action, then, failThen };
       }
+      // EXP-011 §39. The message and data are read where the handler is, so a `Set Variable`
+      // earlier in the chain must reach them; the chain carries the map onward.
+      case 'log': {
+        const message = snapExpr(action.message, snap);
+        if ('defer' in message) return message;
+        let data: ValueExpr | undefined;
+        if (action.data !== undefined) {
+          const snapped = snapExpr(action.data, snap);
+          if ('defer' in snapped) return snapped;
+          data = snapped;
+        }
+        const then = snapActionList(action.then, snap);
+        if (!Array.isArray(then)) return then;
+        return { ...action, message, ...(data !== undefined ? { data } : {}), then };
+      }
+      // EXP-011 §39. The two numbers are read at the call; every chain carries the map onward,
+      // the two timeout chains included — they close over the same handler scope.
+      case 'delay': {
+        const startDelay = snapExpr(action.startDelay, snap);
+        if ('defer' in startDelay) return startDelay;
+        const duration = snapExpr(action.duration, snap);
+        if ('defer' in duration) return duration;
+        const then = snapActionList(action.then, snap);
+        if (!Array.isArray(then)) return then;
+        const unchangedThen = snapActionList(action.unchangedThen, snap);
+        if (!Array.isArray(unchangedThen)) return unchangedThen;
+        const startedThen = snapActionList(action.startedThen, snap);
+        if (!Array.isArray(startedThen)) return startedThen;
+        const finishedThen = snapActionList(action.finishedThen, snap);
+        if (!Array.isArray(finishedThen)) return finishedThen;
+        return { ...action, startDelay, duration, then, unchangedThen, startedThen, finishedThen };
+      }
       default:
         return action;
     }
@@ -8503,6 +8851,10 @@ function planComponent(
       }
     } else if (jsNodeKindOf(node.type) !== null && wiredPorts.has(`${node.id}:run`)) {
       compiledOf(node, 'run');
+    } else if (node.type === TIMER_TYPE) {
+      // EXP-011 §39. Only the wired verbs compile: an unwired Stop on a timer that starts is
+      // not a sink anything reports on, and compiling it would mint nothing useful.
+      for (const port of TIMER_TRIGGERS) if (wiredPorts.has(`${node.id}:${port}`)) compiledOf(node, port);
     }
   }
 
@@ -8668,6 +9020,14 @@ function planComponent(
     ) {
       continue;
     }
+    // EXP-011 §39. The chains a Log, a Delay and a Value Changed own are chain-internal exactly
+    // as a popup's `done`: the node's own compile consumes them on attach, and a node nothing
+    // attaches is named by its verdict sweep with the right sentence rather than this one.
+    // ⚠️ Without this the answer depended on wire ORDER — a chain wire listed before the wire
+    // that fires the node was reported dropped here and then emitted anyway.
+    if (fromNode?.type === LOG_TYPE && connection.fromProperty === 'done') continue;
+    if (fromNode?.type === TIMER_TYPE && TIMER_OUTPUTS.includes(connection.fromProperty)) continue;
+    if (fromNode?.type === VALUE_CHANGED_TYPE && connection.fromProperty === 'valueChanged') continue;
     // A JS node's `done` wires are its Run chain, chain-internal exactly as a popup's (the
     // compile consumes them on attach); with Run unwired, `done` never pulses — the JS sweep
     // drops the wire with that note.
@@ -8982,6 +9342,17 @@ function planComponent(
           attachedExternalLinks.add(action.nodeId);
           scanActions(action.then);
           scanActions(action.failThen);
+        } else if (action.kind === 'log') {
+          // EXP-011 §39. The chain is walked, which is what earns the popups, mutations and
+          // channels inside it.
+          scanActions(action.then);
+        } else if (action.kind === 'delay') {
+          // EXP-011 §39. All four chains — a popup opened from a Delay's Finished is the shape
+          // this node exists for.
+          scanActions(action.then);
+          scanActions(action.unchangedThen);
+          scanActions(action.startedThen);
+          scanActions(action.finishedThen);
         } else if (action.kind === 'navigate-path') {
           // EXP-011 §15. Every chain, or a popup opened from a Navigate To Path's Done is a
           // popup nothing here knows is attached. §17 added the Failure chain and a registry of
@@ -9166,7 +9537,9 @@ function planComponent(
     // EXP-011 Tier 2.7, and this is the **first** of the two opt-in sites the predicate below
     // warns about. Derived from `UTIL_NODES` rather than restated, so a fourth utility cannot be
     // taught to `resolveExpr` and left invisible here.
-    ...Object.fromEntries(Object.entries(UTIL_NODES).map(([type, spec]) => [type, spec.outputs]))
+    ...Object.fromEntries(Object.entries(UTIL_NODES).map(([type, spec]) => [type, spec.outputs])),
+    // EXP-011 §39. `Log`'s pass-through — the second opt-in site, opted into.
+    [LOG_TYPE]: ['value']
   };
   for (const connection of component.connections) {
     if (consumed.has(connection.key)) continue;
@@ -10013,6 +10386,78 @@ function planComponent(
     dispositions[node.id] = { kind: 'collapsed', into: `src/${plan.file!.dir}/${plan.file!.fileBase}.tsx` };
   }
 
+  // EXP-011 §39 — `Value Changed`: the effect() slice §9.6 named. The node has no trigger; it
+  // fires from a value arriving, so it is a `useEffect` keyed on the Input with the last value
+  // seen in a ref. Runs before the session sweep so a session read inside the chain is seen as
+  // surviving, and before the wire sweep so the wires it consumes are not reported as dropped.
+  for (const node of component.nodes) {
+    if (node.type !== VALUE_CHANGED_TYPE || dispositions[node.id] !== undefined) continue;
+    const defer = (reason: string): void => {
+      dispositions[node.id] = { kind: 'deferred', to: 'EXP-003', reason };
+      notes.push(`node ${node.id} (${node.type}) deferred: ${reason}`);
+    };
+    const stray = component.connections.find((c) => c.fromId === node.id && c.fromProperty !== 'valueChanged');
+    if (stray) {
+      defer(`its ${stray.fromProperty} output is consumed, and this node publishes only Value Changed`);
+      continue;
+    }
+    const inputs = component.connections.filter((c) => c.toId === node.id && c.toProperty === 'value');
+    if (inputs.length === 0) {
+      defer('nothing is wired into Input — the node never receives a value, so it never fires');
+      continue;
+    }
+    if (inputs.length > 1) {
+      defer('two wires feed its Input — last-writer-wins is not statically ordered');
+      continue;
+    }
+    if (!component.connections.some((c) => c.fromId === node.id && c.fromProperty === 'valueChanged')) {
+      defer('its Value Changed output drives nothing');
+      continue;
+    }
+    if (!plan.file) {
+      defer('component emits no file to host the effect');
+      continue;
+    }
+    const ctx = newCtx();
+    const watch = resolveExpr(nodeById.get(inputs[0].fromId), inputs[0].fromProperty, ctx);
+    if (watch === null) {
+      defer(ctx.defer ?? 'its Input has no statically known source');
+      continue;
+    }
+    // The effect reads the render closure, so an Input that only exists inside a handler (a
+    // text input's onTextChanged, a received payload) cannot be watched from here.
+    if (!exprValidIn(watch, { kind: 'render' })) {
+      defer('its Input reads a value that only exists inside a handler');
+      continue;
+    }
+    const chain = doneChainOf(node, 'valueChanged');
+    if ('defer' in chain) {
+      defer(chain.defer);
+      continue;
+    }
+    if (!actionsValidIn(chain.then, { kind: 'render' })) {
+      defer('its chain reads values that only exist inside a handler');
+      continue;
+    }
+    const snapped = snapActionList(chain.then, chainSnapshotFor(`effect:${node.id}`));
+    if (!Array.isArray(snapped)) {
+      defer(snapped.defer);
+      continue;
+    }
+    const into = `src/${plan.file.dir}/${plan.file.fileBase}.tsx`;
+    plan.valueChangedEffects.push({
+      nodeId: node.id,
+      watch,
+      lastLocal: mintLocal(valueChangedLocals, node, 'ValueChanged', 'Last'),
+      actions: snapped,
+      comment: `${node.authoredLabel ?? 'Value Changed'} — fires whenever its Input becomes a different value, the first arrival included (valuechanged.ts).`
+    });
+    dispositions[node.id] = { kind: 'collapsed', into };
+    for (const id of [...ctx.logicNodeIds, ...chain.collapses]) dispositions[id] = { kind: 'collapsed', into };
+    for (const key of [inputs[0].key, ...ctx.consumes, ...chain.consumes]) consumed.add(key);
+    for (const id of [...ctx.subscriberIds, ...chain.subscribes]) boundSubscribers.add(id);
+  }
+
   // Reactive Conditions (LOGIC-TARGET §10): the box is ticked and nothing drives `Evaluate`, so
   // the node re-tests whenever a value arrives on `condition` and fires exactly one arm. That is
   // a re-run keyed on the condition — a useEffect, not a handler. The Evaluate-only twin (§3) is
@@ -10064,6 +10509,48 @@ function planComponent(
     for (const id of compiled.subscribes ?? []) boundSubscribers.add(id);
   }
 
+  // EXP-011 §39 — the Log and Delay verdicts, on the date family's rule above — and AFTER the Value Changed and reactive Condition passes, because a Log fired from either is attached by them, not by a rendered element: a node whose every
+  // wire landed collapses into the file; one the passes did not rule defers with its own sink's
+  // reason, or the first unlanded wire's.
+  for (const node of component.nodes) {
+    const triggers: readonly string[] | null =
+      node.type === LOG_TYPE ? ['log'] : node.type === TIMER_TYPE ? TIMER_TRIGGERS : null;
+    if (triggers === null || dispositions[node.id] !== undefined) continue;
+    let verdict: string | null = null;
+    for (const c of component.connections) {
+      if (consumed.has(c.key)) continue;
+      if (c.toId === node.id && triggers.includes(c.toProperty)) {
+        const compiled = compiledSinks.get(`${node.id}:${c.toProperty}`);
+        verdict =
+          compiled !== undefined && 'defer' in compiled
+            ? compiled.defer
+            : `its ${c.toProperty} trigger is never fired by a translatable source`;
+        break;
+      }
+      if (c.fromId === node.id) {
+        const sink = nodeById.get(c.toId);
+        if (node.type === LOG_TYPE && c.fromProperty === 'value') {
+          const ctx = newCtx();
+          const reason = resolveExpr(node, 'value', ctx) === null ? ctx.defer : undefined;
+          verdict = reason ?? `its Value read feeds ${sink?.type ?? 'a missing node'}.${c.toProperty}, which has no static binding in this slice`;
+        } else {
+          verdict = `its ${c.fromProperty} chain hangs off a node nothing fires`;
+        }
+        break;
+      }
+    }
+    if (verdict === null && !component.connections.some((c) => c.toId === node.id && triggers.includes(c.toProperty))) {
+      verdict = node.type === LOG_TYPE ? 'its Log is never fired' : 'nothing starts, restarts or stops it';
+    }
+    if (verdict === null && !plan.file) verdict = 'component emits no file to host it';
+    if (verdict !== null) {
+      dispositions[node.id] = { kind: 'deferred', to: 'EXP-003', reason: verdict };
+      notes.push(`node ${node.id} (${node.type}) deferred: ${verdict}`);
+      continue;
+    }
+    dispositions[node.id] = { kind: 'collapsed', into: `src/${plan.file!.dir}/${plan.file!.fileBase}.tsx` };
+  }
+
   // The session read is earned by a surviving expression (USER-FAMILY-TARGET §4c), the same
   // discipline the popup slots and the api-stub mutations take: `resolveExpr` runs
   // speculatively, so a `User` node whose every read was dropped by a later pass must leave no
@@ -10107,6 +10594,20 @@ function planComponent(
             walkActions(action.then);
             walkActions(action.failThen);
             break;
+          // EXP-011 §39. A session read in a log line — the signed-in user's id — is ordinary.
+          case 'log':
+            walkExpr(action.message);
+            if (action.data !== undefined) walkExpr(action.data);
+            walkActions(action.then);
+            break;
+          case 'delay':
+            walkExpr(action.startDelay);
+            walkExpr(action.duration);
+            walkActions(action.then);
+            walkActions(action.unchangedThen);
+            walkActions(action.startedThen);
+            walkActions(action.finishedThen);
+            break;
           case 'branch':
             walkExpr(action.cond);
             walkActions(action.whenTrue);
@@ -10144,6 +10645,12 @@ function planComponent(
     // reads as unread: no `useSession` in `src/api/session.ts`, and the page imports a symbol
     // the module does not export.
     for (const effect of plan.branchEffects) walkActions([effect.action]);
+    // EXP-011 §39. A Value Changed watching the session, or reading it in its chain, is the
+    // same idiom one node over.
+    for (const effect of plan.valueChangedEffects) {
+      walkExpr(effect.watch);
+      walkActions(effect.actions);
+    }
     for (const nodeId of readNodeIds) {
       plan.sessionCalls.push({ nodeId, verb: 'read', fnName: 'useSession' });
     }
@@ -10411,6 +10918,17 @@ function planComponent(
            * by a read, so a `UUID` nobody asks a message from has none, and the success arm then
            * emits no clearing setter either.
            */
+          // EXP-011 §39. Neither node materialises anything of its own; a request or a `Now`
+          // nested in a chain does, and this switch's `default` would skip it.
+          case 'log':
+            fillMaterialize(action.then);
+            break;
+          case 'delay':
+            fillMaterialize(action.then);
+            fillMaterialize(action.unchangedThen);
+            fillMaterialize(action.startedThen);
+            fillMaterialize(action.finishedThen);
+            break;
           case 'id-new': {
             const row = idVars.get(action.nodeId);
             if (row !== undefined && plan.stateVars.includes(row)) action.materialize = row.name;
@@ -10497,6 +11015,7 @@ function planComponent(
     for (const actions of Object.values(plan.changeHandlers)) fillMaterialize(actions);
     for (const receiver of plan.receivers) fillMaterialize(receiver.actions);
     for (const effect of plan.branchEffects) fillMaterialize([effect.action]);
+    for (const effect of plan.valueChangedEffects) fillMaterialize(effect.actions);
   }
 
   // Whatever analysis has not classified yet is logic: EXP-003's, or unknown-type debris.

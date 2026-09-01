@@ -36,7 +36,7 @@
 export const UTIL_LIB_PATH = 'src/lib/util.ts';
 
 /** The exported helpers, one per translated node. Sorted — the import list is sorted too. */
-export const UTIL_HELPERS = ['blendColor', 'booleanToString', 'mapString', 'remapNumber', 'substring'] as const;
+export const UTIL_HELPERS = ['blendColor', 'booleanToString', 'log', 'mapString', 'remapNumber', 'substring'] as const;
 
 export type UtilHelper = (typeof UTIL_HELPERS)[number];
 
@@ -56,6 +56,8 @@ export const UTIL_HELPER_MAY_BE_UNDEFINED: Record<UtilHelper, boolean> = {
   // EXP-011 §38: a string from two coerced strings, and a hex string (or `#000000`) — never absent.
   blendColor: false,
   booleanToString: false,
+  // EXP-011 §39: a write, not a read — `log` returns nothing and no expression is ever built from it.
+  log: false,
   mapString: true,
   remapNumber: false,
   substring: false
@@ -188,6 +190,22 @@ export function utilLibSource(): string {
     "    return hex.length === 1 ? '0' + hex : hex;",
     '  };',
     "  return '#' + [0, 1, 2].map((i) => part(Math.floor(from[i] + (to[i] - from[i]) * t))).join('');",
+    '}',
+    '',
+    '/**',
+    ' * `Log` — one console line at the level the node was set to.',
+    ' *',
+    " * A transcription of log.ts's `_write`, browser branch: the level is the console method, an",
+    " * absent message prints as '', and `data` is passed only when one arrived — so a line with no",
+    " * data prints no trailing `undefined`. The backend sink and its redaction belong to the cloud",
+    ' * runtime and never reach a browser bundle; this is the branch the app already ran.',
+    ' */',
+    "export function log(level: 'debug' | 'info' | 'warn' | 'error', message: unknown, data?: unknown): void {",
+    "  const text = message === undefined || message === null ? '' : String(message);",
+    '  // eslint-disable-next-line no-console',
+    '  const write = (console[level] || console.log || function () {}) as (...args: unknown[]) => void;',
+    '  if (data !== undefined && data !== null) write.call(console, text, data);',
+    '  else write.call(console, text);',
     '}',
     ''
   ].join('\n');

@@ -4894,3 +4894,144 @@ a stale claim there is read by someone who cannot check it.
 | `Value Changed` | an **effect**: fires when its input changes identity, **including the first arrival** unless it is `undefined` | the effect() slice §9.6 named and nobody has built — `useEffect` on the value, skipping an `undefined` first render; ⚠️ React's deps compare with `Object.is`, the node with `===` (differ on `NaN`) |
 | `Delay` | a **timer** with state: Start/Restart/Stop with done/unchanged outcomes, Started after Start Delay, Finished after Duration, never for a stopped one | a handle in a ref, `setTimeout` chains fired later — HTTP's async continuations are the precedent; `timerStarted` fires **inside** the delayed callback, not on Start |
 
+
+## §39 The three non-pure small nodes — `Log`, `Delay`, `Value Changed` (session 68, 2026-09-01)
+
+**Picker 77 → 80 of 127 (63.0%)**, floor raised in the same commit. Richard: *"attack the most
+common nodes to publish the maximum number we can with 0.2.2, at least to give people a taste."*
+§38.5 had left the three shapes written down — an action, a timer with state, an effect — and each
+is the first of its kind in the exporter: the first node whose action port is a *set* (`Timer`'s
+Start/Restart/Stop), the first `useRef`, and the first effect() slice, which §9.6 named in session
+38 and nobody had built since.
+
+### §39.1 The build
+
+| node | what it became | where |
+|---|---|---|
+| `Log` | a `log` HandlerAction: `log(level, message, data)` into `src/lib/util.ts` (a transcription of `log.ts`'s `_write` browser branch), then the Done chain as **following statements** (`popup-show`'s treatment, so `onClick={() => log('info', 'Pressed')}` stays an expression). `Value` passes straight through: a read of it resolves to whatever feeds the input, in `resolveExpr` and in Pass 4c's whitelist (§14's two opt-in sites, both opted into) | `compileLog`, `LogAction` |
+| `Delay` (`Timer`) | a `delay` HandlerAction per **verb**, over a `useRef<DelayHandle \| null>` the component declares per node. `src/lib/timer.ts` is `timer.ts` over `timerscheduler.ts` in two `setTimeout`s: `startDelay` answers whether a countdown began (false while one runs — the node's `_isRunning === false`), `restartDelay` always begins again, `stopDelay` answers whether there was one to stop. Done/Unchanged are the two arms of an `if` over that answer; Started/Finished are the two callbacks, printed with `handlerArrow`. An unmount cleanup `useEffect(() => () => stopDelay(ref), [])` is `addDeleteListener` | `compileDelay`, `DelayAction`, `timerLib.ts` |
+| `Value Changed` | a `ValueChangedEffectPlan`: `useEffect` keyed on the Input's render-mode expression, the last value in a `useRef<unknown>(undefined)` — return on the same value, else remember and run the chain. `lastValue` boots `undefined` in `initialize`, so a first arrival of `undefined` fires nothing and anything else fires, which is what the effect reads too | the pass after the reactive Condition's |
+
+`TRIGGER_PORTS` is `Record<string, string>`, one port per type; `Delay` joined through the
+predicate in `isTriggerWire` and a branch in the compile-all loop, the checkbox's shape.
+
+### §39.2 What the toll was, counted
+
+A new HandlerAction kind owes every switch the file's own comments say it owes. Counted by
+`grep -n "'date-now-read'"` before starting: **6 sites in `plan.ts`, 10 in `component.ts`**, and
+two of the sixteen are held by the compiler (`actionCode`, `actionExprsOf` — both `TS2366`, both
+fired first). The other fourteen were carried by hand: `actionsValidIn`, `snapAction`, the attach
+scan, the session walker, `fillMaterialize`; `collectActionUse`, `deepActions`, the `inAction`
+reads walker, `expandActions`, `isStatement`, the no-terminator list, the helper collectors, the
+`react` import list, the body printer. ✅ Every one was reached by a test row or a mutant arm
+below before the session believed it.
+
+### §39.3 🔴 What building the fixture found — the answer depended on wire ORDER
+
+`tests/fixtures/tick-desk` lists the Delay's chain wires (`timerStarted → Set Variable` and three
+more) **before** the wires that fire the node. The attach pass walks connections in file order,
+and a chain wire whose target is a trigger port and whose source is not a rendered element fell
+to *"the trigger is not a rendered element event or a receiver"* — reported dropped, marked
+consumed, and then **emitted anyway** when the Delay attached (`doneChainOf` filters by port, not
+by `consumed`). A false note about working code, invisible to every hand-built test because
+`connect()` appends the trigger wire first.
+
+The popup nodes escape this with an explicit `continue` on their `done`; the reactive Condition on
+its arms. The same three lines now cover `Log`'s `done`, `Delay`'s five outputs and `Value
+Changed`'s `valueChanged`. ⚠️ **Not measured, owner P18 (next):** `External Link`, `Now`, the id
+pair and `HTTP Request` have no such skip, so their Done chains are order-dependent by the same
+reading. One graph with the chain wire first would settle it; the fix is one line per family.
+
+Two more ordering facts, both found by the smoke and both fixed before a test was written:
+
+- The Log/Delay **verdict sweep** first ran before the reactive Condition and Value Changed
+  passes, so a Log fired only from either was named *"never fired by a translatable source"* and
+  then translated. It now runs after both. ⚠️ **The date/util/id sweep has the same hazard** for a
+  `Now` or `Unique Id` fired only from a reactive Condition's arm — unmeasured, owner P18.
+- A `Value Changed` whose chain fires a Log: the wire was the first thing the attach pass reported.
+  Same fix.
+
+### §39.4 Graded — `tests/log-delay-value-changed.test.ts`, 34 rows, 51 files on disk
+
+- **§A, the differentials.** `log()` against `log.ts`'s `_write` with the console captured: 192
+  rows (4 levels × 8 messages × 6 datas) must produce the **same method with the same argument
+  list**. ⚠️ `toStrictEqual`, because `toEqual` reads `['x', undefined]` as `['x']` — which is
+  the very difference the row exists to see, and the first draft passed trivially. The timer verbs
+  against `timerscheduler.ts` **driven frame by frame at the same instants** (`runTimers(t)` at
+  50 ms steps, `timer.ts`'s own verb rules applied on top): eight scripts — start, start twice,
+  stop mid-run, stop after finish, restart mid-run, restart from idle, start after a finished run,
+  no start delay — same event names at the same times. A zero-length countdown fires Started then
+  Finished across two tasks, which is the scheduler's own shape (queued in one frame, finished in
+  the next). Both comparisons have a broken-copy control.
+- **§B, the translation** — 17 rows: the call, the level fallback (`''` and `shout` → `info`),
+  wired message/data, the chain as following statements, the pass-through, three Log deferrals by
+  name, the idle Log; Start over the ref with both callbacks and the cleanup, the bare call as an
+  expression body (⚠️ needs a button of its own — the Add button already carries an action, and
+  two actions are a block whatever the second is), Done/Unchanged arms and the inverted test,
+  Stop and Restart, wired numbers, three Delay deferrals; the Value Changed effect and four
+  deferrals; **and the order row from §39.3**.
+- **§C, AC3's project** `tests/fixtures/tick-desk` — whole but for the scaffold note and the one
+  Restart note the graph earns; all three nodes and both libraries present; typechecks.
+- **Five mutant arms**, each restored by `diff -rq` against a post-fix snapshot:
+
+  | arm | mutation | killed by |
+  |---|---|---|
+  | A | the three attach-loop skips removed | **4** — the order row, the Value Changed row, the idle-timer row, the fixture's whole-export row |
+  | B | Restart keeps its Unchanged chain | **1** — the Restart row |
+  | C | `log` never collected for import | **4** — including the fixture's `typechecks` row, so `typecheckEmittedApp` sees a missing import |
+  | D | the ref compare dropped from the effect | **2** |
+  | E | Start ignores a running countdown (emitted helper) | **2** — exactly the two start-twice rows |
+
+  ⚠️ **One survivor, deliberate:** removing `clearTimeout` from `stopDelay` changes nothing the
+  scheduler comparison can see, because the finish callback's `ref.current !== handle` guard makes
+  the cleared timeout a no-op anyway. Recorded in the test file so nobody retries it as a control.
+- 🔴 **A deleted affordance reddened a control** (the memory's rule, third instance).
+  `unreported-deferrals.test.ts` used a bare `Timer` as *"the orphan no pass names"*; the verdict
+  sweep now names it. Re-pointed to `net.noodl.Hash`, which §3 keeps out of scope for good.
+
+### §39.5 Built and driven — headless Chrome 151 over CDP, answers written first
+
+The fixture was emitted into s66's harness, typechecked (`tsc` exit 0) and built (`vite build`
+exit 0, 49 modules), served with `vite preview`, and driven through twelve steps written down in
+`EXPECTED.md` before the app ran. Four `<p>` rows read positionally against the headline.
+
+| step | status | outcome | echo | log lines |
+|---|---|---|---|---|
+| load | '' | '' | '' | 0 |
+| Start, read at once | '' | **Done** | '' | 0 — Started has not fired inside the 100 ms start delay |
+| +150 | **Running** | Done | Running | 1 |
+| Start again | Running | **Unchanged** | Running | 1 |
+| +500 | **Finished** | Unchanged | Finished | 2 |
+| Stop with nothing running | Finished | **Unchanged** | Finished | 2 |
+| Restart, +150 | Running | **Done** | Running | 3 |
+| Stop while running | Running | **Done** | Running | 3 |
+| +600 | **Running** — Finished never fired | Done | Running | 3 |
+
+Every `Status changed` line reached the console with **one** argument — no trailing `undefined`.
+Console errors `[]`. `echo` (the Log's pass-through of `status`) equalled `status` on every row.
+
+🔴 **One row could not exclude what it was for, and was re-driven.** The restart-while-running
+arm read `Finished` at a moment my timing table left ~50 ms of margin against ~40 ms of CDP
+round-trips — a reading that fit both "the old countdown fired" and "the new one finished on
+time". Re-driven with `performance.now()` read in the page: at **405 ms** after the Restart the
+old Finished (due at **335 ms**) had not fired and status was still `Running`; at 665 ms the new
+one had. *A reading that fits is not one that excludes* — the margin is part of the instrument.
+
+### §39.6 A gate that was red before this session, and is not any more
+
+`export-ledger:check` failed on the **committed** catalog: `4e5e0fc0` (s67) carried a peer's
+`node-catalog.json` hunk that added `noodl.cloud.listusersinrole` with no ledger entry. Measured on
+`git show HEAD:…` before assuming it was the working tree. Cloud-only ⇒ `backend-only`, one entry,
+gate green at 176 types. The s67 handoff's *"export-ledger:check # 175 types"* was true when
+written and false by the time it was committed — the catalog moved under it.
+
+### §39.7 What this leaves
+
+- **Next by the same rule** — the remaining ordinary nodes with no design question: **Cloud
+  Services (9)**, *"mostly unblocked by EXP-009"*, still unmeasured since session 35; the
+  controlled-state gap (§38.3, a checkbox/slider into a Variable); `Component Children` (Tier
+  3.10, but a component library's commonest node); the animation pair.
+- **The order-dependence probe** (§39.3), owner P18, one graph per family.
+- **The date/util/id verdict sweep vs the reactive Condition** (§39.3), owner P18.
+- `Set Variable` with a typed value is still refused (§38.3 #2) — the fixture again fed every
+  setter from a `String` constant's `savedValue`, the third fixture to route around it.
