@@ -762,6 +762,119 @@ built from — the artefact is pinned by its `md5`, which is the field to cite.
 
 ---
 
+## REL-002c — what session 14 did: the phone column read, and the seed that was inventing a defect
+
+Session 13 left row 6 with three things on it: **the phone shots of its own run, which nobody had
+opened**, `/join`, and then Richard's look. The first two are done. The third still cannot be done
+by a session.
+
+### 1. The phone column — all fifteen renders, and it broke nothing
+
+**15 phone renders cover the 13 pages** (`/` and `/members` are photographed in both states), and
+**every one has now been opened.** Naming the count matters here: s13's fault was that *"all three
+widths"* read as satisfied when 20 images had been viewed and **none of them was `phone`**.
+
+🟢 **Nothing is broken at 390.** The three caps this row added are all no-ops below their
+breakpoints and none of them misfires: `AT_FORM_MEASURE`'s 720 on `/post` and `/account`, and the
+`PROSE` 640 on `/announcements/{id}`. `MEMBER_ROW`'s `Columns` folds to `smallLayout: '1'` under
+700 and `/directory` reads correctly as name → email → `Member · since 1 September 2026`, with
+**s8's `ada@example.invali / d` mid-word break gone.** `/members` keeps its `Read` button beside
+each row rather than folding it under, which is right.
+
+⚠️ **`/join` was graded at all four widths, and the finding was a NON-finding.** At 1900 its footer
+sits on the 1200 measure while its hero and form sit on 720 — two left edges. **This is not the
+`/post` defect s13 fixed.** `/sign-in` does exactly the same thing, so it is consistent across the
+four door pages, and it is the same shape as the arrangement Richard ruled acceptable on 09-01
+(*"head on 1200, form panels capped at 720"*) with the roles swapped. **Priced and left alone** —
+recorded here precisely so it is not rediscovered a fifth time.
+
+### 2. 🔴 The `/requests` defect was the HARNESS's, not the product's — a seed can make a page look WORSE than it is
+
+`/requests` rendered the applicant's name as the card heading and then again as their own words:
+**“Sam Quiet” over “Sam Quiet would like to join.”**, at every one of the four widths.
+
+`RequestRow` is not at fault, and it is right not to be: it binds those two texts to `name` and
+`message`, and the entire point of the queue is that a moderator reads **why** somebody is asking.
+The duplication came from this line in `vib001-members.look.ts`:
+
+```ts
+message: `${name} would like to join.`
+```
+
+**The seed was inventing the applicant's reason out of the applicant's name.** No real install can
+produce that screen — a real joiner types a real sentence into `/join`'s *"Why you'd like to join"*
+box. `JOINERS` now carries a third column, the reason, with **deliberately differing lengths** so
+the card is photographed carrying a real range.
+
+🔴 **This is the known seed trap running the other way.** Hazard 10 in the handoff records that
+every `ANNOUNCEMENTS` body is one short sentence, so no render this harness takes can show a
+paragraph wrapping — a seed hiding a fix. This one **manufactured a defect on a page that was about
+to be graded by a person.** Both are the same mistake: **content invented to fill a field, then
+photographed as if it came from somebody.** ✅ **Read the seed beside the picture before filing what
+the picture shows.**
+
+### 3. The re-render reproduced 32 of 36 text dumps byte-for-byte
+
+The living arm was re-run and diffed against session 13's shots, which were preserved first.
+**Exactly the four `/requests` dumps differ; the other 32 are byte-identical.** That is the control:
+it bounds the change to the page that was meant to change, **and** it independently shows the
+harness is deterministic and s13's pictures were honest.
+
+### 4. 🔴 REGISTERED, not built: the living arm's `artefactMd5` is NOT a content fingerprint
+
+**This board states in writing that *"the artefact is pinned by its `md5`, which is the field to
+cite"*. That is true of the door arm and FALSE of the living one.**
+
+`bindProjectToBackend` writes `endpoint: http://127.0.0.1:${port}` into the copied project file
+**before** `judge()` hashes it, and the service is started on `port: 0` — an OS-assigned ephemeral
+port. **So the living `artefactMd5` changes on every run whether or not one byte of the template
+changed.** This session's re-render moved it `ed8a32db → e6bea8be` while editing **nothing but a
+test file**, which is how it was caught.
+
+⚠️ **Session 13's own citation inherits this.** It reads the progression *"`5474db3b` (detail pages)
+→ `ed8a32db` (the ruled `/post` + `/account` fix)"* as if the hashes tracked those edits. They would
+have differed anyway. The edits were real — the pictures show them — but **the hash was never the
+evidence.**
+
+✅ **The door arm is sound and was used as this session's real pin:** its `artefactMd5`
+`f969ad96…` matches `templates/members-area/nodegx.project.json` on disk **exactly**, which is what
+establishes that the door pictures are of the shipped bytes.
+
+**Owner: REL-002c, before the living arm's md5 is cited again.** The fix is to record a hash taken
+**before** binding, or of the shipped template file as the door arm already does. Not built here:
+it would need a further re-render to produce a manifest carrying the new field, and it blocks no
+acceptance criterion.
+
+### 5. ⚠️ REGISTERED: the announcement list does not clamp its body, so the seed cannot be lengthened freely
+
+Hazard 10's obvious repair — give an announcement a body long enough to photograph the `PROSE` 640
+measure — is **not free**, and the reason is a product fact worth having written down.
+`AnnouncementRow` has **no `maxLines`, `textOverflow`, `clamp` or `ellipsis`**, and `/members`
+renders each body in full as its summary. The detail page shoots `firstAnnouncementId`, which is
+**also the top row of that list**, so lengthening it to test the measure would bloat the first row
+of the page every member lands on.
+
+**That is a product question — should a list summary clamp? — not a seed question.** Owner: `NONE`.
+Until it is answered, hazard 10 stands as written: **say whether a measure is asserted from
+`nodes.json` or shown in a picture.**
+
+### The readings, with their exit statuses
+
+Gated on an **exit file the command wrote itself**, per this row's hazard 9.
+
+| gate | reading |
+|---|---|
+| `vib001-members.look.ts` (living arm) | **`EXIT=0`** — `Test Suites: 1 passed`, `Tests: 1 skipped, 1 passed`. The door arm was deliberately filtered out with `-t`: it seeds nothing, so a seed change cannot reach it. **36 shots, 72 PNGs on disk** — reconciled against the manifest, not assumed |
+| seeding assertion | `SEEDED {"Announcement":6,"Meeting":4,"MemberRequest":2,"Member":4}` — two left on the queue, three approved plus the moderator |
+| determinism control | **32 of 36 text dumps byte-identical** to session 13's; the 4 that differ are exactly `requests-{preview,desktop,wide,phone}` |
+| door arm `artefactMd5` | `f969ad96…`, **equal to `templates/members-area/nodegx.project.json` on disk** |
+
+⚠️ **A peer's jest suite was running when this session started** (phase 77's `sb007`/`sbr009`/
+`sbr012`). The re-render was **queued behind it** rather than run alongside — two package suites at
+once produce flakes that read as yours. It had finished by the time the wait loop polled.
+
+---
+
 ### REL-003 — The stale bundles the cut inherits
 
 Phase 80 closed several fixes whose effect a user cannot see, because the committed build output

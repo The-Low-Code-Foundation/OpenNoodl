@@ -69,12 +69,30 @@ const MEETINGS = [
   ['Fabric committee', '2099-02-19', 'The hall'],
   ['Annual meeting', '2099-03-30', 'The church']
 ];
+/**
+ * 🔴 **The third column is the REASON THEY TYPED, and it exists because the seed
+ * was manufacturing a defect the product does not have.** Until session 14 this
+ * was a pair and the request was posted with `message: `${name} would like to
+ * join.``, so `/requests` rendered the applicant's name as the heading and then
+ * again as their own words — *"Sam Quiet"* over *"Sam Quiet would like to
+ * join."*. `RequestRow` binds those two texts to `name` and `message`, and it is
+ * right to: the whole point of the queue is that a moderator reads why somebody
+ * is asking. **The duplication was the harness's, at every one of the four
+ * widths, on a page that was about to be graded by a person.**
+ *
+ * ⚠️ **A seed can make a page look WORSE than it is, not only better.** The
+ * known trap in this file is the inverse — every `ANNOUNCEMENTS` body is one
+ * short sentence, so no render it takes can show a paragraph wrapping. Both are
+ * the same mistake: **content invented to fill a field, then photographed as if
+ * it came from a person.** The lengths below deliberately differ, so the row is
+ * photographed carrying a real range rather than one tidy line.
+ */
 const JOINERS = [
-  ['Mo Joiner', 'mo@example.invalid'],
-  ['Pat Pending', 'pat@example.invalid'],
-  ['Ada Newcomer', 'ada@example.invalid'],
-  ['Sam Quiet', 'sam@example.invalid'],
-  ['Tom Waiting', 'tom@example.invalid']
+  ['Mo Joiner', 'mo@example.invalid', 'I sing with the choir on Thursdays and should probably be on the list.'],
+  ['Pat Pending', 'pat@example.invalid', 'We moved to the village in the spring and would like to come to the lunch club.'],
+  ['Ada Newcomer', 'ada@example.invalid', 'My neighbour mentioned the churchyard tidy and I would like to help.'],
+  ['Sam Quiet', 'sam@example.invalid', 'I have been coming on Sunday mornings for a while now and would like to join properly.'],
+  ['Tom Waiting', 'tom@example.invalid', 'I help with the fete every year and would like to be able to see the diary.']
 ];
 
 /** The date directory both states share, so one run is one folder. */
@@ -149,12 +167,12 @@ describe('VIB-001 — the members area, as a person meets it', () => {
       email: MODERATOR.email,
       password: MODERATOR.password
     });
-    for (const [name, email] of JOINERS) {
+    for (const [name, email, reason] of JOINERS) {
       await client.post('/functions/requestAccess', {
         name,
         email,
         password: 'pw-' + email,
-        message: `${name} would like to join.`
+        message: reason
       });
     }
     const login = await client.post<{ sessionToken: string }>('/login', {
