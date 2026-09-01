@@ -1,6 +1,7 @@
 # Phase 82 — next session
 
-_Opened 2026-08-31 (s1). Last updated **2026-09-01, session 5**, which closed run-sheet row 5 (REL-002b)._
+_Opened 2026-08-31 (s1). Last updated **2026-09-01, session 6**, which closed no row and ruled all
+fifteen open decisions on rows 6, 7 and 8 — see [`RICHARD-RULINGS-2026-09-01.md`](RICHARD-RULINGS-2026-09-01.md)._
 
 ## 🔴 Read this first: this is the only board you open
 
@@ -39,11 +40,11 @@ built.** The previous handoff said *"open by asking him for the ruling on 6"*; t
 and no render to rule on. What Richard actually had to decide was the **direction**, so a session
 did not build a guess he would then reject.
 
-✅ **He decided it, 2026-09-01 — fifteen questions, twelve settled.** Read
+✅ **He decided it, 2026-09-01 — fifteen questions, ALL FIFTEEN settled.** Read
 [`RICHARD-RULINGS-2026-09-01.md`](RICHARD-RULINGS-2026-09-01.md) **before touching rows 6, 7 or 8**.
 Two rulings **amend ACs on the board**: REL-002c is now **all thirteen pages**, and REL-001 publishes
-as **`starter`**, not `data-app`. Three items are **still open and must not be guessed** — §A2 (how
-78 renders get graded), §E (the mechanism that makes editable copy unmissable), §G4 (curated).
+as **`starter`**, not `data-app`. **Nothing in that file awaits him** — §A2, §E and §G4 were open at
+first pass and were ruled on the second.
 
 **So the sequence is: build row 6 from the rulings → Richard rules WORTHY on the renders → row 7 →
 row 8.**
@@ -54,25 +55,59 @@ row 8.**
 phase 81 widened (compositions, the stock library, the `ui-landing-page` example Richard called
 *"fucking pro"* — that page is the reference).
 
-- **V15** — at 1900 the nav wraps to two rows and the page uses ~37% of the width, the rest dead.
-- **V29 is RULED** (Richard, 2026-08-31): *"the structural page divs have a max width and are
-  centred… white space to the left and right **equally** — not just on one side, that's weird."*
-  🔴 **The mechanism is known: the defect is a `maxWidth` on the TEXT.** A measure belongs to the
-  **shell**, which a band centres. `ctaBand` is the worked example — shell carries `maxWidth: 720`
-  + `alignItems: center`, the type carries `textAlignX: center` and **no maxWidth at all**.
+🔴 **The direction is RULED. Build from
+[`RICHARD-RULINGS-2026-09-01.md`](RICHARD-RULINGS-2026-09-01.md), not from your own taste.** It
+answers scope, the measure, imagery, copy, the third state and how the result gets graded. Do not
+re-open any of it.
 
-**AC — the phase's close condition**: the **landing page and one members page** read **WORTHY** in
-**both states** at **all three widths**, ruled by Richard.
+### What was ruled, in one place
 
-⚠️ **The landing page now has a third state to design, not two.** REL-002b added `waitingCard` (the
-not-connected state). If REL-002c restyles that page, the card is part of what it restyles — and it
-is the one node in the template that is **mounted by default**.
+| | ruling |
+|---|---|
+| **scope** | 🔴 **ALL THIRTEEN pages** in `components/Pages/`, not the two the old AC named — *"shipping the first template that's only 1/3 usable would be pretty sad"* |
+| **the measure** | `maxWidth: 1200` + `--space-6` gutters + `alignItems: center` on every structural shell. 🔴 **On the SHELL, never on the text** |
+| **imagery** | Photographs on `/` and `/join`; **icons only** inside the gated area. **Zero template bytes** — `STARTER_ASSETS` already installs 44 CC0 photographs and 1,998 icons into every project |
+| **copy** | 🔴 **Make it DATA.** `/setup` collects name + tagline + landing blurb; pages read them from the record. What cannot be data is written *obviously* unfinished and its node named `EDIT — …`. Plus a `Start here` note page. **No invented copy** |
+| **the third state** | `waitingCard` gets a designed first-class treatment — it is the only node **mounted by default**, so it is the first frame of a fresh install |
+| **grading** | Richard rules **six** — `/` in both states, `/setup`, `/join`, `/members`, `/directory`. The **Judge grades the other seven**, and 🔴 **any SHITTY verdict escalates to him** |
+
+**AC — the phase's close condition**: all thirteen pages read **WORTHY** in **both states** at **all
+three widths**, graded by the split above.
+
+⚠️ **The build is not 13× the work.** Most of the look lives in the seven shared `Members/`
+components — `Chrome`, `AnnouncementRow`, `InsideTile`, `MeetingRow`, `MemberRow`, `RequestRow`,
+`Standing`. Fix the chrome and the row family and most of the thirteen move at once. **Start there**,
+not page by page.
+
+⚠️ **`.look.ts` files are NOT run by jest** (`testMatch` = `**/tests/**/*.test.ts`).
+`vib001-members.look.ts` and `tpl001-rows.look.ts` read this template and are exactly the files that
+should grade a look change. **This row is the one that changes the look** — run them deliberately.
 
 ⚠️ **Build it in the GENERATOR, never in `templates/members-area/` directly.** The artefact is
 regenerated from [`tpl001Components.ts`](../../../packages/noodl-mcp/tests/tpl001Components.ts) by
 `npm run template:members`, and `tpl001Template.test.ts`'s byte gate reddens if they disagree.
 ✅ **Run the regeneration BEFORE you edit and confirm it is a no-op** — that is what makes the diff
 afterwards attributable to you.
+
+🔴 **A TOKEN / COMPOSITION / TOOL-DESCRIPTION edit owes the `noodl-mcp` suite.** This redesign
+touches all three.
+
+### Then rows 7 and 8
+
+**Row 7 (REL-001)** is unblocked the moment Richard rules WORTHY: publish as **`curated`**,
+**`category: 'starter'`** (🔴 **not `data-app`** — this amends TPL-001 AC8 and moves the literal in
+`template-search.test.ts` and `template-install-over-http.test.ts`), title **"Members' area"**,
+summary *"members only site for a club, charity or church"*. **Richard publishes** — it is a
+DB-credential act from the `nodegx-community` repo. ✅ **Do not wait for the cut**; they are two
+moments, not one.
+
+**Row 8 (REL-004)**: `0.2.2`, and the notes carry the line that **0.2.1 was an internal cut held
+back as too buggy**. Notes split two ways — the
+[NodeGX 0.2.2 artefact](https://claude.ai/code/artifact/70d4e79e-78ce-44c8-b9f5-e06c6b0b6d11)
+becomes the **full log**, the GitHub release body carries **highlights + a link to it**.
+🔴 **The artefact's stat band is stale — it reads 559 commits; `git log v0.2.0..HEAD` counts 567.**
+Its ship-gate section also still lists TPL-001 as unpublished. Re-read both against reality at tag
+time. ⚠️ Viewers are currently pinned to an earlier version, not the live one.
 
 ## What session 5 did — row 5, REL-002b
 
@@ -132,14 +167,47 @@ Driven **37/37** across four arms on two real enforcing backends.
    so every `mounted: false` in this template is a decision somebody made — and a group *without*
    one is the thing that survives a query that never answers. That is the whole of V4.
 
+## What session 6 did
+
+**No row closed — s6 was the decision session, and that was the correct use of it.** Fifteen
+questions were derived from rows 6, 7 and 8, put to Richard, and all fifteen were ruled. They are in
+[`RICHARD-RULINGS-2026-09-01.md`](RICHARD-RULINGS-2026-09-01.md), which is now the build brief for
+every remaining row.
+
+🔴 **Two rulings AMEND ACs the board had already written**, so the board was corrected in place
+rather than left contradicting itself: REL-002c's scope (two pages → **thirteen**) and REL-001's
+category (`data-app` → **`starter`**, which also amends TPL-001 AC8).
+
+## 🔴 What to carry out of session 6
+
+1. 🔴 **THE PHASE-82 DIRECTORY WAS UNTRACKED FOR FIVE SESSIONS.** `git status --porcelain | wc -l`
+   read 82 and every handoff said *"nothing has been committed this session"* — which read as a
+   choice, and was not: **git had never seen the board, the handoff, or either task file.** A
+   directory shows as a single `?? path/` line, so a file-count check cannot see it. ✅ **`git status
+   --porcelain | grep '^??'` before believing a count**, and check whether a `??` is a **directory**.
+   Committed in full at `0c9ecad8`.
+2. ✅ **`sb007Template.test.ts` is resolved, and the previous handoff's description of it was wrong.**
+   It is **tracked and modified**, not untracked — `+23/−1`, **documentation only**: a comment block
+   recording that the DEF-007 AC3 gate reads one shipped artefact of two (TPL-001 disagrees in 57
+   places), plus a `describe` rename to *"the shipped SITE-BUILDER template"*. Richard confirmed it
+   is not his. It is an orphan from closed P80 work, its content is correct, and it belongs to P80's
+   Row 10 (`UNOWNED-ROWS-TO-MEASURE.md`, owner `NONE`). **Safe to commit.**
+3. 🔴 **An AC written before the evidence was in can be WRONG, not merely incomplete.** REL-002c's
+   *"the landing page and one members page"* was not a scoping decision — it was an artefact of only
+   four pages having been rendered when it was written. Asking Richard produced a **13-page** answer.
+   ✅ **When an AC's number matches how much had been measured at the time, re-derive it before
+   building to it.**
+4. ⚠️ **A handoff can instruct you to ask for a ruling that cannot exist.** The s5 handoff said to
+   open by asking Richard to rule row 6; nothing was built and there was no render to rule on. ✅ **A
+   WORTHY ruling needs an artefact — check one exists before making the ask the session's opening
+   move.**
+
 ## What did not get done
 
-Rows 6–8 of the run sheet. All three need Richard.
+Rows 6, 7 and 8 — but they are no longer blocked on a decision. **Row 6 is now buildable**, and its
+direction is fully ruled.
 
-⚠️ **`sb007Template.test.ts` is still uncommitted** and its author still unidentified — unchanged
-since 22:07 on 08-31, five sessions later. If it is still dirty next session, find the owner before
-anything sweeps it.
-
-⚠️ **Nothing has been committed this session.** The working tree carries s1–s5's doc edits plus the
-source changes from s4 and s5. `git commit <pathspecs>`, never `git add` — a sibling's commit sweeps
-staged files.
+⚠️ **81 files remain uncommitted**: s1–s5's source changes from the scroll fix (s4) and the
+fail-closed work (s5), plus other phases' docs. Richard has authorised committing them. 🔴 **`git
+commit <pathspecs>`, never `git add`** — a sibling's commit sweeps staged files — and `git add`
+untracked paths first, because a pathspec commit **skips them silently**.

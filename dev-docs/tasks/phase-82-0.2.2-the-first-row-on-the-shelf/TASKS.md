@@ -5,7 +5,7 @@
 🔴 **READ [`RICHARD-RULINGS-2026-09-01.md`](RICHARD-RULINGS-2026-09-01.md) BEFORE BUILDING ROWS
 6, 7 OR 8.** Richard ruled fifteen open questions on 2026-09-01. **Two of them amend ACs written on
 this board** — REL-002c's scope is now **all thirteen pages**, and REL-001's category is
-**`starter`**, not `data-app`. Three are still open and marked as such in that file (§A2, §E, §G4).
+**`starter`**, not `data-app`. ✅ **All fifteen are settled — nothing in that file awaits him.**
 
 Re-derive this board from the task files and the artefacts at session open. Do not trust a
 handoff's copy of it — §1 of the [README](README.md) records three readings that contradicted a
@@ -46,7 +46,10 @@ launcher. This is phase 78's **T5**, carried here because 0.2.2 is the release i
 
 **ACs**
 
-1. The template is published as `curated`, 🔴 **`category: 'starter'`** — **not `data-app`**;
+1. The template is published as **`curated`** (✅ ruled §G4 — the alternative would route NodeGX's
+   own flagship template through a submission queue Richard also operates; ⚠️ the picker badges it
+   *Community* either way, which is a fact about **which service serves it**, not provenance),
+   🔴 **`category: 'starter'`** — **not `data-app`**;
    Richard ruled 2026-09-01, *"data app sounds like it analyses data"*
    ([rulings §G1](RICHARD-RULINGS-2026-09-01.md)). This **amends TPL-001 AC8 too**, and any spec
    carrying the literal `data-app` for this template moves with it (`template-search.test.ts`,
@@ -207,13 +210,41 @@ written when only four pages had been ruled. It is now **all thirteen pages** in
 **all three widths**, ruled by Richard.
 
 ⚠️ The build is not 13× the work — most of the look lives in the seven shared `Members/` components
-— but the grading is 13 × 2 × 3 = **78 renders**. How those get graded (Richard rules a
-representative six, the Judge grades the rest) is **§A2 of the rulings file and still open**.
+(`Chrome`, `AnnouncementRow`, `InsideTile`, `MeetingRow`, `MemberRow`, `RequestRow`, `Standing`), so
+fixing the chrome and the row family lifts most of the thirteen at once. What scales linearly is the
+grading: 13 × 2 × 3 = **78 renders**.
 
-✅ **Also ruled**: the measure is `maxWidth: 1200` on every shell (§C) · photographs on the public
-pages, icons inside the gated area, at zero template bytes (§D) · no invented copy, but the editable
-text must be unmissable — the recommendation is to make it **data collected at `/setup`** rather than
-text nodes (§E, mechanism still open) · `waitingCard` is designed as a first-class state (§F).
+✅ **How they get graded — RULED (§A2a)**: **Richard personally rules six** — `/` in **both** states,
+`/setup`, `/join`, `/members`, `/directory` (the four he already ruled, plus the two richest row
+pages). **The VIB-001 Judge grades the other seven** against the written rubric, and 🔴 **any SHITTY
+verdict is escalated to him**. The escalation is the half that makes this different from shipping
+seven pages nobody looked at.
+
+✅ **Also ruled:**
+
+- **§C — the measure is `maxWidth: 1200`** on every structural shell, with `--space-6` gutters and
+  `alignItems: center`, matching `ui-landing-page`. 🔴 **On the SHELL, never on the text.**
+- **§D — photographs on the public pages** (`/` hero ground, `/join`), **icons only** inside the
+  gated area. Costs the template **zero bytes**: `STARTER_ASSETS` installs the 44 CC0 photographs
+  and 1,998 icons into every project, and the excluded-files list derives from that same constant.
+  The template contains **no images at all today**.
+- 🔴 **§E — the copy becomes DATA, not text nodes.** *"Ok good idea."* The failure mode Richard named
+  — publishing with generic copy on a page you forgot — exists only because copy lives in thirteen
+  places. So: **(i)** `/setup` collects the association name, tagline and landing blurb, and the
+  pages read them from the record; **(ii)** anything that genuinely cannot be data is written to be
+  *obviously* unfinished (*"Your association's name here"*, **never** a plausible fictional club) and
+  its node is named with an **`EDIT —`** prefix so the editor's tree lists them; **(iii)** a
+  `Start here` note page points at both. ⚠️ **No invented copy** — that was E3.
+- **§F — `waitingCard` is designed as a first-class state**, not hidden. It is the **only node in
+  the template mounted by default**, so it is the literal first frame of a fresh install, and it is
+  ruled with the rest.
+
+🧭 **Registered, not built — owner `NONE`, from §E.** *"A deploy-time gate that refuses to publish
+while placeholder strings remain."* It is the strongest answer to the forgotten-copy problem, and it
+is **product surface, not template work** — the template package ruled above (data + marked
+placeholders + a note page) is what ships in 0.2.2. Worth a row in a later phase; it gates nothing
+here. ⚠️ It needs a way to know which strings are placeholders, which the `EDIT —` naming convention
+from §E-ii would give it for free — so the convention is worth keeping even before the gate exists.
 
 ### REL-003 — The stale bundles the cut inherits
 

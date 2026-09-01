@@ -4,8 +4,8 @@ Taken in session 6, against the decision list derived from run-sheet rows 6, 7 a
 the decisions; the sessions that build rows 6–8 work from this file.** Where a ruling contradicts
 an AC as written in [`TASKS.md`](TASKS.md), the ruling wins and the AC is amended below it.
 
-🔴 **Two items are still open** — §E's mechanism and §G4 — and are marked **AWAITING RICHARD** at
-the point of decision. Do not guess them.
+✅ **ALL FIFTEEN ARE NOW SETTLED.** The three that were open at first pass — §A2, §E and §G4 — were
+ruled in the same session, on the second pass. Nothing in this file awaits him.
 
 ---
 
@@ -29,13 +29,13 @@ components — `Members/Chrome`, `AnnouncementRow`, `InsideTile`, `MeetingRow`, 
 at once. What scales linearly is the **close protocol**: 13 pages × 2 states × 3 widths = **78
 renders**. See §A2.
 
-### A2. How the thirteen get graded — ⏳ AWAITING RICHARD
+### A2. How the thirteen get graded — ✅ **A2a, ruled**
 
-Nobody should ask Richard to look at 78 PNGs. Proposed split, for confirmation:
+Nobody should ask Richard to look at 78 PNGs. **A2a is the ruling:**
 
 | | option | what it means |
 |---|---|---|
-| **A2a** | **Richard rules a representative six; the Judge grades the rest** | He personally rules `/` (landing, both states), `/setup`, `/join`, `/members`, `/directory` — the four he already ruled plus the two richest row pages. The other seven are graded by the VIB-001 Judge against the written rubric, and any SHITTY verdict is escalated to him. **Recommended** |
+| ✅ **A2a** | 🔴 **RULED — Richard rules a representative six; the Judge grades the rest** | He personally rules `/` (landing, both states), `/setup`, `/join`, `/members`, `/directory` — the four he already ruled plus the two richest row pages. The other seven are graded by the VIB-001 Judge against the written rubric, and 🔴 **any SHITTY verdict is escalated to him** — the escalation is the half that makes this different from shipping seven pages nobody looked at |
 | **A2b** | He rules all thirteen | Complete, and a lot of looking |
 | **A2c** | He rules the six, the other seven ship on the Judge alone | Same as A2a without the escalation — cheaper, and the failure mode is a page nobody looked at |
 
@@ -84,9 +84,13 @@ than signposted.
 | **E-iii** | **A `Start here` note** shipped in the project — one page listing what to change and where | Cheap, honest, read once and forgotten. Useful **beside** E-i, useless instead of it |
 | **E-iv** | A product-side gate that refuses to deploy while placeholder strings remain | Strongest, but it is **new product surface**, not template work — a separate task in a later phase |
 
-⏳ **AWAITING RICHARD: confirm E-i + E-ii + E-iii as the package** (data-driven where it varies,
-obviously-unfinished-and-named where it cannot be, one note page pointing at both), and whether
-E-iv is worth registering as a future product row.
+✅ **RULED 2026-09-01: E-i + E-ii + E-iii are the package** — *"Ok good idea. It all sounds good."*
+Data-driven where the copy varies by association, obviously-unfinished-and-`EDIT —`-named where it
+cannot be, one `Start here` note pointing at both.
+
+✅ **E-iv is REGISTERED as a future product row**, owner `NONE`, in [`TASKS.md`](TASKS.md) — it is
+product surface (a deploy-time gate on placeholder strings), not template work, and it does not
+gate 0.2.2.
 
 ### F. The "not connected yet" card — ✅ **F1, designed as a first-class state**
 
@@ -121,7 +125,7 @@ for the slug→label map, and `template-search.test.ts` for the constraint. ⚠�
 search document** — the search ORs terms over the two, nothing else. That is why the sentence
 carries the words a person would actually type and not the word *"template"*.
 
-### G4. Curated or community — ⏳ AWAITING RICHARD *(and it is nearly not a choice)*
+### G4. Curated or community — ✅ **`curated`**
 
 The distinction is **how the row gets onto the shelf**, not how it is badged in the picker:
 
@@ -132,7 +136,7 @@ The distinction is **how the row gets onto the shelf**, not how it is badged in 
   publishes nothing until somebody approves it.
 
 So "community" for this template would mean routing NodeGX's own flagship template through a
-submission queue Richard also operates. **Recommend `curated`**, as `TASKS.md` already assumes.
+submission queue Richard also operates. 🔴 **Ruled `curated`**, as `TASKS.md` already assumed.
 ⚠️ Both are served by `nodegx-community`, so the picker badge reads *Community* either way — that
 is a badge about the **source**, not about provenance, and it is what P80/DEF-007 s41 photographed.
 
