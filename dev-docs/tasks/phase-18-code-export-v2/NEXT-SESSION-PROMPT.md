@@ -1,4 +1,4 @@
-# Next session — 80/127 (63.0%), the chain-wire defect class is closed; next by the same rule is `Cloud Function`, then the rest of Cloud Services
+# Next session — 81/127 (63.8%): §40 closed the chain-wire defect class and §41 built `Cloud Function`; next by the same rule is the other eight Cloud Services, and the drive nobody has run
 
 ## The board, re-derived from the task files
 
@@ -10,12 +10,32 @@
 | EXP-004 report & honesty UX | 🟡 built and driven; drill-down panel + three lines that need Richard remain |
 | EXP-005 / 006 / 007 | not started |
 | EXP-008 coverage ledger + gate | ✅ Built — `export-ledger:check` OK, 176 types |
-| EXP-009 backend connection | 🟢 built + driven; AC4 waits on `Cloud Function` (next) |
+| EXP-009 backend connection | 🟢 built + driven; **AC4 built s69 (§41) — the client gained `callFunction()`; typechecked, NOT driven** |
 | EXP-010 custom nodes & modules | 🟢 Route B built + driven |
-| EXP-011 picker coverage | 🟡 **80/127 (63.0%)** — Tier 1, 2.5, 2.7 complete; §38–§39 the small non-pure nodes; **§40 (s69) built no node and fixed three defects under every translated node with a chain** |
+| EXP-011 picker coverage | 🟡 **81/127 (63.8%)** — Tier 1, 2.5, 2.7 complete; §38–§39 the small non-pure nodes; **§40 (s69) fixed three defects under every translated node with a chain; §41 (s69) built `Cloud Function`, the first of the nine Cloud Services** |
 | EXP-012 the editor export command | 🟢 built + driven s67, rides 0.2.2 |
 
-## 🔴 What session 69 did — §40
+## 🔴 What session 69 did — §40, then §41
+
+### §41 — `Cloud Function` (`CloudFunction2`) translates. Picker 80 → 81.
+One function per node in **`src/api/functions.ts`**: the declared `in-*` ports as parameters
+(wired ones passed as `params.x`, authored ones folded into the body), the declared `out-*` ports
+as a typed results object (`any` per port — they are `*`). **Connected**, it calls a new
+**`callFunction(name, params)` on the EXP-009 client** — `POST /functions/<name>`, app id, session
+token, JSON body, 200/201 carries `result`, anything else throws the backend's `error` or the
+runtime's own sentence (`cloudfunction2.ts`'s `_makeRequest`, line for line; the client golden was
+regenerated and the diff was exactly that block). **Unconnected**, the stub throws *"No cloud
+services defined in this project."* — the interpreter's own Failure. In the component: an `async`
+handler, `try { const answer = await callX({…}); [setXOut(answer)]; …done } catch (error) {
+const message = …; setXError(message); …failure }` — HTTP's shape one node over (`cloud-call`
+action, `cloud-out` expression, `cloudChainScope`, rows minted on first read, earned by attach).
+Six refusals by name (wired `Function`; no function name; consumed `Completed`; an unknown
+output; two wires into one parameter; a result read from the Failure chain). Graded by
+`tests/cloud-function.test.ts` (20 rows: module, component, refusals, the §40 class rows for this
+node, the fixture) and **`tests/fixtures/call-desk`** — the second fixture with a backend, chain
+wires listed first — exported whole and typechecked; nine mutant arms (§41.4).
+
+### §40 — the chain-wire defect class
 
 Took §39.7's first item, *the order-dependence probe*, as one loop over six families, and the
 false note turned out to be the visible end of **three defects, two of them in shipping code**:
@@ -43,6 +63,14 @@ write-up: EXP-011 §40. Memory filed: *a new producer owes every consumer of the
 
 ## 🔴 Read this before planning anything
 
+0. 🔴 **`Cloud Function` is typechecked, NOT driven.** Nobody has called a real backend function
+   from an exported app. The honest drive: start a local `nodegx-backend` with a project that
+   declares `publishPage` (the corpus has three: `SBR-015 AC1 Refusal`, `SBR-004 AC1AC2 Drive`,
+   `DEF-015 Card Drive`), export `call-desk` against its endpoint/appId, `vite build`, click
+   Publish, read `published`/`pageId`/`Error`. Two known divergences to write down before
+   driving: (a) a function that answers **no result** leaves the interpreter's previous results
+   untouched, while the export sets the row to `{}`; (b) the runtime sends `x-noodl-cloud-version`
+   when `deployVersion` is set — the client does not (the record verbs do not either).
 1. 🔴 **Typechecked, not driven.** §40's shapes are graded by `typecheckEmittedApp` and parse. The
    honest drive is a fixture whose reactive Condition fires an HTTP Request — needs a stub server.
 2. ⚠️ **A record verb (`api-call`) in a reactive arm inherits the earn fix and has no row** —
@@ -64,33 +92,24 @@ a deployed NodeGX backend — exports to a React repo that builds, runs, and sti
 ```
 cd packages/nodegx-export
 ../../node_modules/.bin/tsc --noEmit          # exit 0
-../../node_modules/.bin/jest                  # 1360/1360, 52 suites, 52 files on disk
+../../node_modules/.bin/jest                  # 1396/1396, 53 suites, 53 files on disk
 cd ../noodl-editor && ../../node_modules/.bin/tsc -p tsconfig.json --noEmit   # exit 0
-npm run export-ledger:picker                  # from the repo root — 80/127 (63.0%), floor 80
-npm run export-ledger:check                   # OK — 176 types
+npm run export-ledger:picker                  # from the repo root — 81/127 (63.8%), floor 81
+npm run export-ledger:check                   # OK — 176 types, 88 translated
 ```
 
 ## Do this next — in the order they are worth doing
 
-### 1. `Cloud Function` (`CloudFunction2`) — the commonest of the nine, and EXP-009 AC4
-Measured s69, not built: `Call` (signal), `function` parameter (a `#__cloud__/<name>` component
-ref), dynamic `in-<param>` inputs and `out-<result>` outputs (persisted under `dynamicports`, so
-`declaredPorts` has them), Done/Failure/Completed + `Error`. The runtime POSTs
-`/functions/<encodeURIComponent(name)>` with `{ ...params }` and maps `res.result[key]` onto
-`out-<key>`; no `Unchanged`. **Precedent line for line: `HTTP Request`** — the `http-call`
-action, `HttpCallPlan`, `httpModule()`/`httpFunction()` in `emitApp.ts`, `httpNamesOf`,
-`httpChainScope`, the answer/error state rows. The emitted function should go through the EXP-009
-client's `request<T>()` (`src/api/client.ts`, connected form) — the stub form (no backend) throws
-like the record verbs. Corpus: 3 projects (`SBR-015 AC1 Refusal`, `SBR-004 AC1AC2 Drive`,
-`DEF-015 Card Drive`), 7 nodes, functions `publishPage`/`duplicatePage`/`submitContactForm`/
-`claimSite`. Fixture with a backend: `puppy-test-3` (has `metadata.cloudservices` and a
-`components/__cloud__/` dir). ⚠️ Count the toll first: `grep -n "'http-call'"` gives every switch
-a new action kind owes; consider whether `http-call` can be reused with a `module` field rather
-than minting a kind.
+### 1. The `Cloud Function` drive (item 0 above) — before building on it
+Cheap if a local backend is up; it is the only thing that can find what the typecheck cannot.
 
-### 2. The rest of Cloud Services (8) — re-measure each against the EXP-009 client
-`Record`, `Set User Properties`, `Sign In With`, `Request Magic Link`, `Subscribe To Changes`,
-`Upload File`, `Cloud File`, `Sign File URL`. Several may fall out for free.
+### 2. The other eight Cloud Services — re-measure each against the EXP-009 client
+`Record` (a `DbModel2` read/write by id — the record verbs' client calls exist), `Set User
+Properties` (`PUT /users/me`?), `Sign In With` (provider auth — likely refused by name), `Request
+Magic Link`, `Subscribe To Changes` (realtime — refuse by name, EXP-009 §9), `Upload File` /
+`Cloud File` / `Sign File URL` (the `/files` wire). `compileCloudCall` + `functionsModule` are now
+the precedent for "a client call with a typed answer". Count the toll first: `grep -n "'cloud-call'"`
+lists the ten sites a new action kind owes in this package.
 
 ### 3. The controlled-state gap §38.3 found — a checkbox or slider writing a Variable
 ### 4. `Component Children` · 5. the animation pair (`States`, `Animate To Value`)
@@ -100,6 +119,9 @@ than minting a kind.
 
 ## 🔴 What session 69 would tell you if it could only say three things
 
+0. **A probe's console output carries jest's four display spaces.** Two rows in two suites were
+   written with the wrong column from a probe's printout; the real column is the file's. Read the
+   emitted file, not the log.
 1. **Measure the class, not the member.** One loop over six families cost less than one hand-built
    row and found that the fix already made could never have been sufficient.
 2. **A false note can hide a true one.** The dropped-wire note carried the node's id, and the
@@ -109,9 +131,12 @@ than minting a kind.
 
 ## Instruments
 
-s69 scratchpad `fd7c0048-…/scratchpad`: **`mut.py`** (arms A–G + `restore` from
-`snap-src-post/`), **`runmut.sh`** (tsc-gated loop, summary in `mut-summary.txt`), `runE.sh`,
-`snap-src-pre/`, `snap-src-post/`, `jest-final.log`, `arm-*-jest.log`, `editor-tsc.log`. The
+s69 scratchpad `fd7c0048-…/scratchpad`: **`mut.py`** (§40 arms A–G + `restore` from
+`snap-src-post/`), **`runmut.sh`** (tsc-gated loop, summary in `mut-summary.txt`), `runE.sh`;
+**`mut41.py`** (§41 arms A–I, `restore` from `snap41-post/`), **`runmut41.sh`**
+(`mut41-summary.txt`); `snap-src-pre/`, `snap-src-post/`, `snap41-pre/`, `snap41-post/`,
+`jest-final.log`, `jest-41.log`, `arm-*-jest.log`, `arm41-*-jest.log`, `editor-tsc*.log`,
+`client.new.ts` (the regenerated client golden). The
 two probe specs (`zz-order-probe`, `zz-branch-probe`) were deleted before commit; their rows live
 on in `tests/chain-wire-order.test.ts`.
 
@@ -137,12 +162,14 @@ s66 `cae86ff3-…` — `harness/`, `corpus-harness/`. s62 `898de7ef-…` — the
 | `badge-desk` | the id pair, both Done chains, `UUID`'s `Error` |
 | `mood-desk` | `Boolean To String` + `Color Blend` (§38) |
 | `tick-desk` | `Delay`, `Log`, `Value Changed`, chain wires listed BEFORE their triggers (§39.3) |
+| `call-desk` | **`Cloud Function`** (`publishPage`: a wired and an authored param, both results read, `Error` read, Done/Failure chains) with a backend declared; chain wires first (§41) |
 
 **No fixture has**: a `PageInputs` node, a braced `urlPath`, an `External Link`, a `Navigate To
 Path`, an untyped store key, a wire into a port that already carries an authored value, a refused
 script on a non-Function node, a `dynamicports` entry on a repeater (§33.3), a child authored inside
 a component instance (§34.5), a deferred node with no wires (§35.5), a Delay driven from a reactive
-Condition, **a reactive Condition firing an HTTP Request, or a `Cloud Function` at all**.
+Condition, **a reactive Condition firing an HTTP Request, a `Cloud Function` fired from a reactive
+Condition, or any of the other eight Cloud Services**.
 
 ## Standing practice
 
@@ -151,7 +178,9 @@ Work on `cline-dev`; commit by **exact file pathspecs** (never a directory, neve
 file is untracked and `git commit <pathspec>` **errors** on it — `git add` it and commit in the
 same command. ✅ s69 did exactly this.
 ⚠️ **Delete scratch scripts from `scripts/` and probe specs from `tests/` before committing** — and
-**reconcile the suite count against disk** (`ls tests/*.test.ts | wc -l`). 52 files, 52 suites.
+**reconcile the suite count against disk** (`ls tests/*.test.ts | wc -l`). 53 files, 53 suites.
+⚠️ **A new fixture directory is picked up by two on-disk sweeps** (`emitted-syntax`,
+`typecheck-emitted`) — the suite count grew by 36 rows for 20 written; that is why.
 ts-morph and Prettier stay uninstalled; `packages/nodegx-export` is not in root `test:packages`.
 
 🔴 **Check for a peer's suite before running yours** — `ps` for `jest`/`vitest`. 🔴 **`git log -5

@@ -201,3 +201,40 @@ export async function signUpRequest(data: {
   writeSession(session);
   return session;
 }
+
+/**
+ * `POST /functions/<name>` — the Cloud Function node's own request (EXP-011 §41), which is
+ * `cloudfunction2.ts`'s `_makeRequest`: the app id, the session token when someone is signed
+ * in, the params as the JSON body. 200/201 carries `result`; anything else is a failure whose
+ * message is the backend's `error` or the runtime's own sentence for it.
+ */
+export async function callFunction<T>(name: string, params: Record<string, unknown>): Promise<T> {
+  const headers: Record<string, string> = {
+    'X-Parse-Application-Id': APP_ID,
+    'Content-Type': 'application/json'
+  };
+  const sessionToken = readSession()?.sessionToken;
+  if (sessionToken !== undefined) headers['X-Parse-Session-Token'] = sessionToken;
+  let response: Response;
+  try {
+    response = await fetch(`${ENDPOINT}/functions/${encodeURIComponent(name)}`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(params)
+    });
+  } catch {
+    throw new Error(`Could not reach the backend at ${ENDPOINT}`);
+  }
+  const text = await response.text();
+  let json: { result?: T; error?: unknown } | undefined;
+  try {
+    json = text.length > 0 ? JSON.parse(text) : undefined;
+  } catch {
+    json = undefined;
+  }
+  if (response.status !== 200 && response.status !== 201) {
+    throw new Error(typeof json?.error === 'string' ? json.error : 'Failed running cloud function.');
+  }
+  // No result is still success: the node keeps its previous results and fires Done.
+  return (json?.result ?? {}) as T;
+}

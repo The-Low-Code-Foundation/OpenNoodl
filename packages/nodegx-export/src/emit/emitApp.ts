@@ -6,7 +6,8 @@
  */
 
 import { Catalog, CatalogIndex } from '../catalog';
-import { HttpCallPlan, HttpValuePlan, planProject, ProjectPlan, QueryPlan, SessionCallPlan } from '../analyze/plan';
+import { HttpCallPlan,
+  CloudCallPlan, HttpValuePlan, planProject, ProjectPlan, QueryPlan, SessionCallPlan } from '../analyze/plan';
 import { CloudServicesIR, ExportIR } from '../ir/types';
 import { emitComponent } from './component';
 import { DATE_LIB_PATH, dateLibSource } from './dateLib';
@@ -220,7 +221,8 @@ export function emitApp(ir: ExportIR, catalog: Catalog): EmittedApp {
     project: projectNotes,
     backendEndpoint: ir.project.cloudservices?.endpoint ?? null,
     usesBackend: api.usesBackend,
-    httpModule: api.files.some(([path]) => path === 'src/api/http.ts')
+    httpModule: api.files.some(([path]) => path === 'src/api/http.ts'),
+    functionsModule: api.files.some(([path]) => path === 'src/api/functions.ts')
   };
   files[REPORT_PATH] = renderReport(report);
   files[README_PATH] = renderReadme(report, ir.project.cloudservices ?? null);
@@ -342,7 +344,10 @@ function apiModules(
   }
 
   const hasSessionCalls = project.plans.some((plan) => plan.sessionCalls.length > 0);
-  const hasApi = byCollection.size > 0 || hasSessionCalls;
+  // EXP-011 §41. A Cloud Function call goes through the client too — it is the one api module
+  // whose *only* form is the connected one, because the function lives on the backend.
+  const hasCloudCalls = project.plans.some((plan) => plan.cloudCalls.length > 0);
+  const hasApi = byCollection.size > 0 || hasSessionCalls || hasCloudCalls;
   const notes: string[] = [];
   // No collection module can collide with `client.ts` (or `session.ts`): moduleBase is the
   // pluralized class name and every pluralize() result ends in "s"/"es"/"ies", while neither
@@ -458,6 +463,10 @@ function apiModules(
   // NodeGX backend of its own.
   const http = httpModule(project);
   if (http !== null) stubs.push(http);
+  // EXP-011 §41. One function per Cloud Function node — through the client where the project
+  // declares a backend, and a stub that answers the interpreter's own failure where it does not.
+  const functions = functionsModule(project, backend, siteLine);
+  if (functions !== null) stubs.push(functions);
 
   if (backend !== undefined && hasApi) {
     stubs.push(['src/api/client.ts', clientModule(backend)]);
@@ -513,6 +522,61 @@ function httpModule(project: ProjectPlan): [string, string] | null {
 
 /** A JS string literal for an emitted constant. */
 const lit = (value: string | number | boolean): string => JSON.stringify(value);
+
+/**
+ * `src/api/functions.ts` — one function per translated `Cloud Function` node (EXP-011 §41).
+ *
+ * Connected: `callFunction(name, params)` on the client, which POSTs `/functions/<name>` with the
+ * app id and the session token exactly as `cloudfunction2.ts`'s `_makeRequest` does, and throws
+ * the backend's own `error` (or the runtime's unreachable/failed sentences) where the node reports
+ * Failure. Stub: throws *"No cloud services defined in this project."* — the sentence the
+ * interpreter answers Failure with when the project declares no backend, so the exported app fails
+ * the same way the app it came from does rather than pretending a function ran.
+ */
+function functionsModule(
+  project: ProjectPlan,
+  backend: CloudServicesIR | undefined,
+  siteLine: (site: { componentPath: string; nodeId: string }, type: string) => string
+): [string, string] | null {
+  const calls: Array<{ componentPath: string; call: CloudCallPlan }> = [];
+  for (const plan of project.plans) {
+    for (const call of plan.cloudCalls) calls.push({ componentPath: plan.path, call });
+  }
+  if (calls.length === 0) return null;
+  const parts = calls.map(({ componentPath, call }) => {
+    const paramRows = call.params
+      .filter((v) => v.from.kind === 'param')
+      .map((v) => `${(v.from as { param: string }).param}?: ${(v.from as { tsType: string }).tsType}`);
+    const paramsType = paramRows.length > 0 ? `{ ${paramRows.join('; ')} }` : null;
+    // `any`, the port's own type: every result port is declared `*`, and a value bound to a sink
+    // has to compile whatever the function answered.
+    const resultRows = call.results.map((r) => `${tsKey(r)}: any`);
+    const bodyEntries = call.params.map((v) => {
+      const key = tsKey(v.name);
+      const code = v.from.kind === 'literal' ? lit(v.from.value) : `params.${v.from.param}`;
+      return key === code ? code : `${key}: ${code}`;
+    });
+    const body = bodyEntries.length > 0 ? `{ ${bodyEntries.join(', ')} }` : '{}';
+    const header = [
+      '/**',
+      ` * ${call.functionName} — from the Cloud Function node ${call.nodeId} in ${componentPath}.`,
+      siteLine({ componentPath, nodeId: call.nodeId }, 'CloudFunction2'),
+      ' */'
+    ];
+    const results = `export interface ${call.typeName} {${resultRows.length > 0 ? `\n  ${resultRows.join(';\n  ')};\n` : ''}}`;
+    const signature = `export async function ${call.fnName}(${paramsType === null ? '' : `params: ${paramsType}`}): Promise<${call.typeName}>`;
+    return backend !== undefined
+      ? `${header.join('\n')}\n${results}\n${signature} {\n  return callFunction<${call.typeName}>(${lit(call.functionName)}, ${body});\n}\n`
+      : `${header.join('\n')}\n${results}\n${signature} {\n  // The interpreter answers Failure with exactly this sentence when the project declares no backend.\n  throw new Error('No cloud services defined in this project.');\n}\n`;
+  });
+  return [
+    'src/api/functions.ts',
+    (backend !== undefined ? GENERATED_MODULE_TS + "import { callFunction } from './client';\n\n" : GENERATED_TS) +
+      '//\n// The cloud functions the graph calls. Each function is one Cloud Function node, with the\n' +
+      '// parameters it was wired for as arguments and the results it declares as the answer.\n\n' +
+      parts.join('\n')
+  ];
+}
 
 /**
  * One value the request sends, as the expression that reads it — a folded literal, or the
@@ -1156,6 +1220,43 @@ export async function signUpRequest(data: {
   if (data.email !== undefined) session.email = data.email;
   writeSession(session);
   return session;
+}
+
+/**
+ * \`POST /functions/<name>\` — the Cloud Function node's own request (EXP-011 §41), which is
+ * \`cloudfunction2.ts\`'s \`_makeRequest\`: the app id, the session token when someone is signed
+ * in, the params as the JSON body. 200/201 carries \`result\`; anything else is a failure whose
+ * message is the backend's \`error\` or the runtime's own sentence for it.
+ */
+export async function callFunction<T>(name: string, params: Record<string, unknown>): Promise<T> {
+  const headers: Record<string, string> = {
+    'X-Parse-Application-Id': APP_ID,
+    'Content-Type': 'application/json'
+  };
+  const sessionToken = readSession()?.sessionToken;
+  if (sessionToken !== undefined) headers['X-Parse-Session-Token'] = sessionToken;
+  let response: Response;
+  try {
+    response = await fetch(\`\${ENDPOINT}/functions/\${encodeURIComponent(name)}\`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(params)
+    });
+  } catch {
+    throw new Error(\`Could not reach the backend at \${ENDPOINT}\`);
+  }
+  const text = await response.text();
+  let json: { result?: T; error?: unknown } | undefined;
+  try {
+    json = text.length > 0 ? JSON.parse(text) : undefined;
+  } catch {
+    json = undefined;
+  }
+  if (response.status !== 200 && response.status !== 201) {
+    throw new Error(typeof json?.error === 'string' ? json.error : 'Failed running cloud function.');
+  }
+  // No result is still success: the node keeps its previous results and fires Done.
+  return (json?.result ?? {}) as T;
 }
 `
   );

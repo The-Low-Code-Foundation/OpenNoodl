@@ -102,6 +102,8 @@ export interface ExportReportData {
   usesBackend: boolean;
   /** Whether `src/api/http.ts` was emitted — generated `HTTP Request` calls, never stubs. */
   httpModule: boolean;
+  /** EXP-011 §41. Whether `src/api/functions.ts` was emitted — one function per `Cloud Function` node. Optional so a report built by hand before §41 still types. */
+  functionsModule?: boolean;
 }
 
 /**
@@ -217,6 +219,20 @@ export function renderReport(data: ExportReportData): string {
           : '**Data access** in `src/api/`, emitted as **stubs**: reads answer empty and writes throw. ' +
               'The project declares no backend, so there was nothing to point them at. Each stub names ' +
               'the node it came from, so you can wire it to your own service.'
+      )
+    );
+  }
+  if (data.functionsModule) {
+    // EXP-011 §41. Connected, the sentence is the client's; unconnected, the stub throws the
+    // interpreter's own failure, and that is the fact an author needs.
+    out.push(
+      bullet(
+        backendMode(data) === 'connected'
+          ? '**Your `Cloud Function` calls** in `src/api/functions.ts`, one function each — through ' +
+              '`src/api/client.ts` to the same backend functions the app calls today.'
+          : '**Your `Cloud Function` calls** in `src/api/functions.ts`, one function each — the project ' +
+              'declares no backend, so each one fails with the sentence the app itself answers: ' +
+              '"No cloud services defined in this project."'
       )
     );
   }

@@ -122,6 +122,8 @@ export interface PreflightSummary {
   backendEndpoint: string | null;
   /** `src/api/http.ts` — real generated calls to the addresses the author typed, never stubs. */
   httpModule: boolean;
+  /** EXP-011 §41. `src/api/functions.ts` — one function per `Cloud Function` node. */
+  functionsModule: boolean;
   /** Kits that will ship their files but contribute none of their nodes. */
   moduleFailures: number;
   /** Refusals about the project rather than any one component (cloud functions, chiefly). */
@@ -196,6 +198,7 @@ export function summarizePreflight(app: EmittedApp): PreflightSummary {
     backend: backendMode(data),
     backendEndpoint: data.backendEndpoint,
     httpModule: data.httpModule,
+    functionsModule: data.functionsModule ?? false,
     moduleFailures: data.modules.length,
     projectRefusals: data.project.length
   };
@@ -254,6 +257,13 @@ export function renderPreflight(s: PreflightSummary): string {
   }
   if (s.httpModule) {
     out.push('- **Your `HTTP Request` calls** in `src/api/http.ts` — real code, calling the addresses you typed');
+  }
+  if (s.functionsModule) {
+    out.push(
+      s.backend === 'connected'
+        ? '- **Your `Cloud Function` calls** in `src/api/functions.ts` — through the client to your backend'
+        : '- **Your `Cloud Function` calls** in `src/api/functions.ts` — no backend declared, so each fails as the app does'
+    );
   }
   const translated = s.whole.length;
   const totalGenerated = translated + s.attention.length;

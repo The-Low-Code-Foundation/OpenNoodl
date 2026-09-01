@@ -1,6 +1,6 @@
 # EXP-009 — The exported app talks to its deployed backend
 
-**Status:** 🟢 Built and driven, session 33 (2026-08-28) — AC1/2/3/5/6/7 verified, AC4 open.
+**Status:** 🟢 Built and driven, session 33 (2026-08-28) — AC1/2/3/5/6/7 verified. **AC4 built session 69 (EXP-011 §41): the `Cloud Function` node translates and the client gained `callFunction()`; typechecked, not yet driven against a live backend.**
 See [EXP-009-CLIENT-TARGET-OUTPUT.md](./EXP-009-CLIENT-TARGET-OUTPUT.md) for the design and
 §8 below for what the drive measured and what remains.
 **Depends on:** EXP-002 (the call sites already exist and are already typed)
@@ -169,9 +169,14 @@ note. Goldens: `tests/goldens/exp009/`; design: EXP-009-CLIENT-TARGET-OUTPUT.md.
   string is `X-Parse-Application-Id`. Also pinned as tests, including a parser test that a
   masterKey pasted into project metadata never reaches the IR.
 - **AC6 ✓** (`VITE_NODEGX_ENDPOINT` / `VITE_NODEGX_APP_ID`, defaults = the project's own).
-- **AC4 open.** The `Cloud Function` node is not *translated* yet — it is EXP-011 picker-gap
-  work; the client gains `/functions/<name>` (POST, session token, `{result}` envelope) when the
-  node does. Nothing in the seam precludes it.
+- **AC4 built, not driven (session 69, EXP-011 §41).** The `Cloud Function` node translates:
+  `src/api/functions.ts` holds one function per node, and `src/api/client.ts` gained
+  `callFunction(name, params)` — `POST /functions/<name>`, app id, session token, JSON body,
+  200/201 carries `result`, anything else throws the backend's `error` or the runtime's own
+  sentence (`cloudfunction2.ts`'s `_makeRequest`, line for line). Where the project declares no
+  backend the stub throws *"No cloud services defined in this project."*, the interpreter's own
+  Failure. `tests/fixtures/call-desk` exports whole and typechecks. ⚠️ **Nobody has called a real
+  function from an exported app yet** — the drive belongs with the DOM-level form drive above.
 
 Residue: the drive created user `exp009-drive` in the local backend's `_User` collection
 (its test puppy and session were cleaned up; the user row is inert).

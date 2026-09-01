@@ -1,0 +1,79 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "c0a11de5-3ea1-4b3e-9f2a-1a2b3c4d5e03",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "publishFn",
+      "fromProperty": "done",
+      "toId": "afterSet",
+      "toProperty": "do"
+    },
+    {
+      "fromId": "publishFn",
+      "fromProperty": "out-pageId",
+      "toId": "afterSet",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "publishFn",
+      "fromProperty": "failure",
+      "toId": "failSet",
+      "toProperty": "do"
+    },
+    {
+      "fromId": "publishFn",
+      "fromProperty": "error",
+      "toId": "failSet",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "pageIdInput",
+      "fromProperty": "onTextChanged",
+      "toId": "pageIdVar",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "pageIdVar",
+      "fromProperty": "value",
+      "toId": "publishFn",
+      "toProperty": "in-pageId"
+    },
+    {
+      "fromId": "publishFn",
+      "fromProperty": "out-published",
+      "toId": "publishedText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "publishFn",
+      "fromProperty": "out-pageId",
+      "toId": "idText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "publishFn",
+      "fromProperty": "error",
+      "toId": "errorText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "lastRead",
+      "fromProperty": "value",
+      "toId": "lastText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "failRead",
+      "fromProperty": "value",
+      "toId": "failText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "publishBtn",
+      "fromProperty": "onClick",
+      "toId": "publishFn",
+      "toProperty": "call"
+    }
+  ]
+}

@@ -228,6 +228,16 @@ const NAVIGATE_TO_PATH_TYPE = 'PageStackNavigateToPath';
 const NAVIGATE_TO_PATH_OUTPUTS = ['done', 'failure', 'unchanged', 'completed', 'error'];
 
 /**
+ * EXP-011 §41 — `Cloud Function` (`CloudFunction2`): `Call`, a `function` parameter naming the
+ * backend function, dynamic `in-<param>` inputs and `out-<result>` outputs (persisted under
+ * `dynamicports`, so they are the node's own `declaredPorts`), Done/Failure/Completed and `Error`.
+ * The runtime POSTs `/functions/<name>` with the params as the body and maps `result[key]` onto
+ * `out-<key>` (cloudfunction2.ts `doCall`). No `Unchanged`.
+ */
+const CLOUD_FUNCTION_TYPE = 'CloudFunction2';
+const CLOUD_FUNCTION_OUTPUTS = ['done', 'failure', 'completed', 'error'];
+
+/**
  * EXP-011 §40. The outputs each node's **own compile** consumes when the node attaches — its
  * Done/Failure chains and the sibling pulses it drops with a reason of its own.
  *
@@ -253,7 +263,8 @@ const OWN_CHAIN_OUTPUTS: Record<string, readonly string[]> = {
   [HTTP_TYPE]: ['done', 'failure', 'success', 'canceled', 'unchanged', 'completed'],
   [NOW_TYPE]: ['done'],
   [UNIQUE_ID_TYPE]: ['done', 'completed'],
-  [UUID_TYPE]: ['done', 'failure', 'completed']
+  [UUID_TYPE]: ['done', 'failure', 'completed'],
+  [CLOUD_FUNCTION_TYPE]: ['done', 'failure', 'completed']
 };
 /**
  * The node's **own** placeholder regex, and deliberately not the Router's.
@@ -733,6 +744,8 @@ export type ValueExpr =
    * them, so a mapping an author calls "response" is `out-response` and cannot collide).
    */
   | { kind: 'http-out'; nodeId: string; output: string; viaState?: string }
+  /** EXP-011 §41 — a `Cloud Function`'s `Error` or an `out-<result>`, the HTTP shape one node over. */
+  | { kind: 'cloud-out'; nodeId: string; output: string; viaState?: string }
   /**
    * A `Now` output (EXP-011 Tier 1.3) — the instant of the last Read.
    *
@@ -1191,6 +1204,36 @@ export type HandlerAction =
       failThen: HandlerAction[];
     }
   /**
+   * A `Cloud Function`'s `Call` (EXP-011 §41) — the request's shape one hop in: the function
+   * throws where the interpreter reports Failure (an answered error or an unreachable backend),
+   * so the two outcome chains are a try/catch's two arms.
+   *
+   * ```
+   * try {
+   *   const answer = await callPublishPage({ pageId });   // throws on any failure
+   *   setPublishOut(answer);                               // only where something outside the chain reads a result
+   *   …then
+   * } catch (error) {
+   *   const message = error instanceof Error ? error.message : String(error);
+   *   setPublishError(message); …failThen
+   * }
+   * ```
+   */
+  | {
+      kind: 'cloud-call';
+      nodeId: string;
+      /** `src/api/functions.ts`'s exported function for this node. */
+      fnName: string;
+      /** Wired parameters, in the emitted parameter order — `{ pageId: pageIdValue }` at the call. */
+      args: Array<{ param: string; expr: ValueExpr }>;
+      /** The results row, when anything outside the chain reads a result. */
+      materialize?: string;
+      /** The `Error` output's row — written on every failure, never cleared (the runtime's own). */
+      errorState: string;
+      then: HandlerAction[];
+      failThen: HandlerAction[];
+    }
+  /**
    * `Now`'s `Read` (EXP-011 Tier 1.3) — re-read the clock, then run the `done` chain.
    *
    * ```
@@ -1424,6 +1467,9 @@ export interface StateVarPlan {
     | 'variable'
     | 'http'
     | 'http-error'
+    /** EXP-011 §41 — a `Cloud Function`'s results row and its Error row. */
+    | 'cloud'
+    | 'cloud-error'
     | 'external-link-error'
     | 'navigate-path-error'
     | 'now'
@@ -1640,6 +1686,23 @@ export interface HttpCallPlan {
   fields: Array<{ name: string; steps: Array<string | number> | null }>;
 }
 
+/** One `Cloud Function` node's call (EXP-011 §41) — what `src/api/functions.ts` emits for it. */
+export interface CloudCallPlan {
+  nodeId: string;
+  /** The backend function's name, verbatim — the `function` parameter. */
+  functionName: string;
+  /** `callPublishPage` — from the node's authored label, else the function name. */
+  fnName: string;
+  /** `PublishPageResults` — the exported result type the component's state row is typed by. */
+  typeName: string;
+  answerLocal: string;
+  messageLocal: string;
+  /** The `in-*` parameters — a folded literal, or the parameter the call site fills. */
+  params: HttpValuePlan[];
+  /** The `out-*` result names the node declares, in port order. */
+  results: string[];
+}
+
 export interface RepeaterPlan {
   nodeId: string;
   /** Legacy component path of the template ("/Components/PuppyCard"), or null when unset. */
@@ -1834,6 +1897,8 @@ export interface ComponentPlan {
    * `src/api/http.ts` must export. Earned by attachment, exactly as the record verbs are.
    */
   httpCalls: HttpCallPlan[];
+  /** EXP-011 §41. */
+  cloudCalls: CloudCallPlan[];
   repeaters: Record<string, RepeaterPlan>;
   /** Static Data nodes hoisted to module constants (STATIC-DATA-TARGET §3), resolution order. */
   staticData: StaticDataPlan[];
@@ -2103,6 +2168,7 @@ function planComponent(
     mutations: [],
     sessionCalls: [],
     httpCalls: [],
+    cloudCalls: [],
     repeaters: {},
     staticData: [],
     jsFunctions: {},
@@ -3444,6 +3510,77 @@ function planComponent(
 
   /** HTTP nodes whose `Fetch` actually attached to a handler — the record verbs' rule (§4). */
   const attachedHttpNodes = new Set<string>();
+
+  // ---- Cloud Function (EXP-011 §41): names, state rows and the chain scope — HTTP's, one node over ----
+
+  const cloudChainScope = new Map<string, 'done' | 'failure'>();
+  const cloudNames = new Map<string, { fnName: string; typeName: string; answerLocal: string; messageLocal: string }>();
+  /** The four names one Cloud Function node contributes; `usedHttpNames` is shared so the two api modules cannot collide. */
+  const cloudNamesOf = (node: NodeIR) => {
+    let names = cloudNames.get(node.id);
+    if (names === undefined) {
+      const fn = literalParam(node, 'function');
+      const label = (node.authoredLabel ?? (typeof fn === 'string' ? fn : '')).replace(/[^A-Za-z0-9]+/g, ' ').trim();
+      const base = label.length > 0 ? pascalCase(label).replace(/[^A-Za-z0-9_$]/g, '') : 'Function';
+      let stem = base;
+      let counter = 2;
+      while (usedHttpNames.has(stem)) stem = `${base}${counter++}`;
+      usedHttpNames.add(stem);
+      const localBase = stem.charAt(0).toLowerCase() + stem.slice(1);
+      const local = (suffix: string) => {
+        let name = `${localBase}${suffix}`;
+        let n = 2;
+        while (stateNameTaken(name)) name = `${localBase}${suffix}${n++}`;
+        usedStateVarNames.add(name);
+        return name;
+      };
+      names = {
+        fnName: `call${stem}`,
+        typeName: `${stem}Results`,
+        answerLocal: local('Answer'),
+        messageLocal: local('Message')
+      };
+      cloudNames.set(node.id, names);
+    }
+    return names;
+  };
+  const cloudErrorVars = new Map<string, StateVarPlan>();
+  const cloudErrorStateOf = (node: NodeIR): StateVarPlan => {
+    let stateVar = cloudErrorVars.get(node.id);
+    if (stateVar === undefined) {
+      stateVar = allocStateVar(
+        node.authoredLabel === undefined ? undefined : `${node.authoredLabel} Error`,
+        'callError',
+        'string | undefined',
+        null,
+        node.id,
+        'cloud-error',
+        `The Error output of ${node.authoredLabel ? `"${node.authoredLabel}"` : 'the Cloud Function'} — why the last call failed, and never cleared by a later success (cloudfunction2.ts).`
+      );
+      cloudErrorVars.set(node.id, stateVar);
+    }
+    return stateVar;
+  };
+  const cloudAnswerVars = new Map<string, StateVarPlan>();
+  const cloudAnswerStateOf = (node: NodeIR): StateVarPlan => {
+    let stateVar = cloudAnswerVars.get(node.id);
+    if (stateVar === undefined) {
+      const names = cloudNamesOf(node);
+      stateVar = allocStateVar(
+        node.authoredLabel === undefined ? undefined : `${node.authoredLabel} Out`,
+        'callOut',
+        `${names.typeName} | undefined`,
+        null,
+        node.id,
+        'cloud',
+        `The results of the last ${names.fnName} — undefined until the first call, as the runtime's result outputs read before one has been made.`
+      );
+      cloudAnswerVars.set(node.id, stateVar);
+    }
+    return stateVar;
+  };
+  /** Cloud Function nodes whose `Call` actually attached — the HTTP rule one node over. */
+  const attachedCloudNodes = new Set<string>();
 
   // ---- `Now` (EXP-011 Tier 1.3) -----------------------------------------------------------
   //
@@ -5012,6 +5149,39 @@ function planComponent(
         : { kind: 'http-out', nodeId: fromNode.id, output: fromProperty, viaState: httpAnswerStateOf(fromNode).name };
     }
     /**
+     * A `Cloud Function`'s outputs (EXP-011 §41) — `HTTP Request`'s rules, one node over: the
+     * chain's local inside the Done chain, only `Error` inside the Failure chain (the arm runs
+     * where no result arrived, and the interpreter's `resultsValues` there are the previous
+     * call's), the state rows everywhere else.
+     */
+    if (fromNode.type === CLOUD_FUNCTION_TYPE) {
+      const scope = cloudChainScope.get(fromNode.id);
+      if (fromProperty !== 'error' && !fromProperty.startsWith('out-')) {
+        ctx.defer =
+          fromProperty === 'done' || fromProperty === 'failure' || fromProperty === 'completed'
+            ? `its ${fromProperty} output is consumed as a value — a pulse carries nothing to read`
+            : `its ${fromProperty} output is not a port this node publishes`;
+        return null;
+      }
+      if (scope === 'failure' && fromProperty !== 'error') {
+        ctx.defer = `its ${fromProperty} is read from the Failure chain — that arm runs where no result arrived, and the value the interpreter holds there is the previous call's`;
+        return null;
+      }
+      if (scope === undefined && !attachedCloudNodes.has(fromNode.id)) {
+        const compiled = compiledOf(fromNode, 'call');
+        ctx.defer = 'defer' in compiled ? compiled.defer : 'its Call is never fired by a translatable trigger';
+        return null;
+      }
+      if (fromProperty === 'error') {
+        return scope === 'failure'
+          ? { kind: 'cloud-out', nodeId: fromNode.id, output: 'error' }
+          : { kind: 'cloud-out', nodeId: fromNode.id, output: 'error', viaState: cloudErrorStateOf(fromNode).name };
+      }
+      return scope === 'done'
+        ? { kind: 'cloud-out', nodeId: fromNode.id, output: fromProperty }
+        : { kind: 'cloud-out', nodeId: fromNode.id, output: fromProperty, viaState: cloudAnswerStateOf(fromNode).name };
+    }
+    /**
      * `Now`'s outputs (EXP-011 Tier 1.3) — the instant of the last Read, in the chain-local form
      * inside the Read chain and through the state row everywhere else (§8.2's rule, second
      * construct). `setNow(...)` does not change `now` inside the closure that called it, so a
@@ -5286,6 +5456,9 @@ function planComponent(
        * path the body does not carry; and `error` is unwritten until something fails.
        */
       case 'http-out':
+      // EXP-011 §41. The row is undefined until the first call, and a result the function did
+      // not answer is undefined on the node too.
+      case 'cloud-out':
         return true;
       /**
        * Always, and every road there is one the interpreter takes too (EXP-011 Tier 1.3): a date
@@ -5581,6 +5754,9 @@ function planComponent(
        */
       case 'http-out':
         return expr.output === 'error' ? 'string' : expr.output === 'statusCode' ? 'number' : 'unknown';
+      // EXP-011 §41. `Error` is a string the runtime writes; every result port is `*`.
+      case 'cloud-out':
+        return expr.output === 'error' ? 'string' : 'unknown';
       /**
        * `unknown` for all five, `dateToString` included (EXP-011 Tier 1.3).
        *
@@ -5661,6 +5837,8 @@ function planComponent(
     CollectionRemove: 'remove',
     // EXP-011 Tier 1.2. `cancel` is the node's second action port and defers the node (§8).
     [HTTP_TYPE]: 'fetch',
+    // EXP-011 §41. `Cloud Function`'s only action port.
+    [CLOUD_FUNCTION_TYPE]: 'call',
     // EXP-011 Tier 1.3. `Now` is the date family's only action; the other five are pure and have
     // no trigger port at all — they recompute, which is not something a chain can fire.
     [NOW_TYPE]: 'read',
@@ -6756,6 +6934,124 @@ function planComponent(
    * The chain is compiled with this node in `nowChainScope`, so a read of `Timestamp` *inside* it
    * resolves to the bound local rather than to the state row.
    */
+  /**
+   * `Cloud Function`'s `Call` (EXP-011 §41) — `compileHttpFetch` with the request module's shape
+   * replaced by the backend client's: one function per node in `src/api/functions.ts`, taking the
+   * wired `in-*` parameters and answering the declared `out-*` results.
+   *
+   * Refused by name: a wired `Function` (which function runs is not statically knowable), no
+   * function name (the interpreter answers Failure "No function specified" and sends nothing), a
+   * consumed `Completed` (the join beneath both arms, HTTP's sentence), any other output, two wires
+   * into one parameter, a parameter fed a logic truth value, and a chain that defers.
+   */
+  const compileCloudCall = (node: NodeIR): CompiledSink => {
+    if (wiredPorts.has(`${node.id}:function`)) {
+      return { defer: 'its Function is wired — which cloud function is called is not statically knowable' };
+    }
+    const functionName = literalParam(node, 'function');
+    if (typeof functionName !== 'string' || functionName === '') {
+      return { defer: 'it names no function, so every Call answers Failure with "No function specified" and never sends a request' };
+    }
+    for (const wire of component.connections.filter((c) => c.fromId === node.id)) {
+      if (wire.fromProperty === 'completed') {
+        return {
+          defer:
+            'its Completed output is consumed — that pulse fires once however the call ended, and this slice emits the two arms rather than their join'
+        };
+      }
+      if (!CLOUD_FUNCTION_OUTPUTS.includes(wire.fromProperty) && !wire.fromProperty.startsWith('out-')) {
+        return { defer: `its ${wire.fromProperty} output is consumed, and this node publishes only Done, Failure, Completed, Error and its results` };
+      }
+    }
+
+    const ctx = newCtx();
+    const consumes: string[] = [];
+    const args: Array<{ param: string; expr: ValueExpr }> = [];
+    const takenParams = new Set<string>();
+    // The parameters are the node's declared `in-*` ports — the interface the editor drew from the
+    // function's own Request node — plus any `in-*` a parameter or a wire names that the
+    // declaration does not (an older declaration, kept rather than dropped). First-seen order.
+    const paramNames: string[] = [];
+    const addParam = (name: string) => {
+      if (!paramNames.includes(name)) paramNames.push(name);
+    };
+    for (const port of node.declaredPorts) if (port.plug === 'input' && port.name.startsWith('in-')) addParam(port.name.slice(3));
+    for (const param of node.parameters) if (param.name.startsWith('in-')) addParam(param.name.slice(3));
+    for (const c of component.connections) if (c.toId === node.id && c.toProperty.startsWith('in-')) addParam(c.toProperty.slice(3));
+    const params: HttpValuePlan[] = [];
+    for (const name of paramNames) {
+      const port = `in-${name}`;
+      const wires = component.connections.filter((c) => c.toId === node.id && c.toProperty === port);
+      if (wires.length > 1) return { defer: `two wires feed ${port} — last-writer-wins is not statically ordered` };
+      if (wires.length === 1) {
+        const expr = resolveExpr(nodeById.get(wires[0].fromId), wires[0].fromProperty, ctx);
+        if (expr === null) return { defer: ctx.defer ?? `${port} has no statically known source` };
+        if (isBooleanExpr(expr)) {
+          return { defer: `${port} is fed a logic truth value — only truthiness sinks take one in this slice` };
+        }
+        const pascal = pascalCase(name.replace(/[^A-Za-z0-9]+/g, ' ')).replace(/[^A-Za-z0-9_$]/g, '');
+        const paramBase = pascal.length > 0 ? pascal.charAt(0).toLowerCase() + pascal.slice(1) : 'param';
+        let param = paramBase;
+        let counter = 2;
+        while (takenParams.has(param)) param = `${paramBase}${counter++}`;
+        takenParams.add(param);
+        args.push({ param, expr });
+        consumes.push(wires[0].key);
+        const t = exprTsType(expr);
+        params.push({ name, from: { kind: 'param', param, tsType: t === 'undefined' ? 'unknown' : t } });
+        continue;
+      }
+      const literal = literalParam(node, port);
+      if (literal === undefined) continue; // unset is omitted from the body, as `paramsValues` omits it
+      params.push({ name, from: { kind: 'literal', value: literal } });
+    }
+    // The results are the declared `out-*` ports, in port order, plus any `out-*` a wire reads
+    // that the declaration does not — the same rule as the parameters.
+    const results: string[] = [];
+    for (const port of node.declaredPorts) {
+      if (port.plug === 'output' && port.name.startsWith('out-') && !results.includes(port.name.slice(4))) results.push(port.name.slice(4));
+    }
+    for (const c of component.connections) {
+      if (c.fromId === node.id && c.fromProperty.startsWith('out-') && !results.includes(c.fromProperty.slice(4))) results.push(c.fromProperty.slice(4));
+    }
+
+    cloudChainScope.set(node.id, 'done');
+    const chain = doneChainOf(node);
+    cloudChainScope.set(node.id, 'failure');
+    const failChain = doneChainOf(node, 'failure');
+    cloudChainScope.delete(node.id);
+    if ('defer' in chain) return chain;
+    if ('defer' in failChain) return failChain;
+
+    const names = cloudNamesOf(node);
+    const materialize = cloudAnswerVars.get(node.id)?.name;
+    plan.cloudCalls.push({
+      nodeId: node.id,
+      functionName,
+      fnName: names.fnName,
+      typeName: names.typeName,
+      answerLocal: names.answerLocal,
+      messageLocal: names.messageLocal,
+      params,
+      results
+    });
+    return {
+      action: {
+        kind: 'cloud-call',
+        nodeId: node.id,
+        fnName: names.fnName,
+        args,
+        ...(materialize !== undefined ? { materialize } : {}),
+        errorState: cloudErrorStateOf(node).name,
+        then: chain.then,
+        failThen: failChain.then
+      },
+      consumes: [...consumes, ...ctx.consumes, ...chain.consumes, ...failChain.consumes],
+      collapses: [...ctx.logicNodeIds, ...chain.collapses, ...failChain.collapses],
+      subscribes: [...ctx.subscriberIds, ...chain.subscribes, ...failChain.subscribes]
+    };
+  };
+
   const compileNowRead = (node: NodeIR): CompiledSink => {
     for (const wire of component.connections.filter((c) => c.fromId === node.id)) {
       if (wire.fromProperty === 'done' || NOW_OUTPUTS[wire.fromProperty] !== undefined) continue;
@@ -7637,6 +7933,7 @@ function planComponent(
     if (node.type === 'CollectionClear') return compileCollectionClear(node);
     if (node.type === 'CollectionRemove') return compileCollectionRemove(node);
     if (node.type === HTTP_TYPE) return compileHttpFetch(node);
+    if (node.type === CLOUD_FUNCTION_TYPE) return compileCloudCall(node);
     if (node.type === NOW_TYPE) return compileNowRead(node);
     if (ID_NODES[node.type] !== undefined) return compileIdNew(node);
     if (node.type === 'Condition') return compileCondition(node);
@@ -7854,6 +8151,8 @@ function planComponent(
        * local would first have to escape the action it lives in.
        */
       case 'http-out':
+      /** EXP-011 §41 — `cloud-out`, on the same footing and for the same reason. */
+      case 'cloud-out':
         return true;
       /** `Now`, on the same footing as `http-out` and for the same reason. */
       case 'now-out':
@@ -7953,6 +8252,8 @@ function planComponent(
         // too. The chain-local reads of the node's own answer are valid by construction — they
         // name a local this very action declares (exprValidIn's `http-out` case).
         case 'http-call':
+        // EXP-011 §41. The same, one node over.
+        case 'cloud-call':
           return (
             action.args.every((arg) => exprValidIn(arg.expr, context, invokedScope)) &&
             actionsValidIn(action.then, context, invokedScope) &&
@@ -8746,7 +9047,9 @@ function planComponent(
       // Same rule for a request (EXP-011 Tier 1.2): the values it sends are read where the
       // handler is, before the await, so a `Set Variable` earlier in the chain must reach them —
       // and both outcome chains carry the map onward, because they run in that same closure.
-      case 'http-call': {
+      case 'http-call':
+      // EXP-011 §41. The same rule, one node over.
+      case 'cloud-call': {
         const args: Array<{ param: string; expr: ValueExpr }> = [];
         for (const arg of action.args) {
           const e = snapExpr(arg.expr, snap);
@@ -9352,6 +9655,12 @@ function planComponent(
           attachedHttpNodes.add(action.nodeId);
           scanActions(action.then);
           scanActions(action.failThen);
+        } else if (action.kind === 'cloud-call') {
+          // EXP-011 §41. Earned exactly as a request is: the module export and the rows exist
+          // only for a Call that attached.
+          attachedCloudNodes.add(action.nodeId);
+          scanActions(action.then);
+          scanActions(action.failThen);
         } else if (action.kind === 'date-now-read') {
           attachedNowNodes.add(action.nodeId);
           scanActions(action.then);
@@ -9600,11 +9909,15 @@ function planComponent(
   // The HTTP sweep, the record-verb sweep's twin (EXP-011 Tier 1.2): a request the attachment
   // pass did not collapse defers with its *compiled* reason, so the audit reads as a map of the
   // next slices rather than as "logic node (net.noodl.HTTP)".
+  // EXP-011 §41: `Cloud Function` rides the same sweep — its `Call` is the HTTP `Fetch` one node over.
   for (const node of component.nodes) {
-    if (dispositions[node.id] !== undefined || node.type !== HTTP_TYPE) continue;
-    const compiled = compiledSinks.get(`${node.id}:fetch`);
+    const trigger = node.type === HTTP_TYPE ? 'fetch' : node.type === CLOUD_FUNCTION_TYPE ? 'call' : undefined;
+    if (trigger === undefined || dispositions[node.id] !== undefined) continue;
+    const compiled = compiledSinks.get(`${node.id}:${trigger}`);
     const reason =
-      compiled !== undefined && 'defer' in compiled ? compiled.defer : 'its Fetch is never fired by a translatable trigger';
+      compiled !== undefined && 'defer' in compiled
+        ? compiled.defer
+        : `its ${trigger === 'fetch' ? 'Fetch' : 'Call'} is never fired by a translatable trigger`;
     dispositions[node.id] = { kind: 'deferred', to: 'EXP-003', reason };
     notes.push(`node ${node.id} (${node.type}) deferred: ${reason}`);
   }
@@ -9914,6 +10227,9 @@ function planComponent(
       (HTTP_VALUE_OUTPUTS.includes(connection.fromProperty) ||
         connection.fromProperty === 'error' ||
         connection.fromProperty.startsWith('out-'));
+    /** EXP-011 §41 — a `Cloud Function`'s `Error` or result into a rendered sink, HTTP's clause one node over. */
+    const isCloudRead =
+      fromNode.type === CLOUD_FUNCTION_TYPE && (connection.fromProperty === 'error' || connection.fromProperty.startsWith('out-'));
     /**
      * The date family's value outputs into a rendered sink (EXP-011 Tier 1.3) — a formatted date
      * in a Text, a `Is Same` gating `visible`, a `Day Name` in a label. Same rationale as the
@@ -10010,6 +10326,7 @@ function planComponent(
       !isSessionRead &&
       !isValueVariableRead &&
       !isHttpRead &&
+      !isCloudRead &&
       !isDateRead &&
       !isNowRead &&
       !isExternalLinkErrorRead &&
@@ -10656,6 +10973,8 @@ function planComponent(
           // a path parameter, their token in a header. Missing it here would leave the page
           // importing a `useSession` the module was never asked to export.
           case 'http-call':
+          // EXP-011 §41. The same — the signed-in user's id is an ordinary parameter to send.
+          case 'cloud-call':
             for (const arg of action.args) walkExpr(arg.expr);
             walkActions(action.then);
             walkActions(action.failThen);
@@ -10944,6 +11263,15 @@ function planComponent(
         if (index >= 0) plan.stateVars.splice(index, 1);
       }
     }
+    // EXP-011 §41. The same earning, one node over.
+    plan.cloudCalls = plan.cloudCalls.filter((c) => attachedCloudNodes.has(c.nodeId));
+    for (const vars of [cloudErrorVars, cloudAnswerVars]) {
+      for (const [nodeId, stateVar] of vars) {
+        if (attachedCloudNodes.has(nodeId)) continue;
+        const index = plan.stateVars.indexOf(stateVar);
+        if (index >= 0) plan.stateVars.splice(index, 1);
+      }
+    }
     /**
      * `External Link`'s Error row on the same rule (EXP-011 §14). The read allocates it before
      * the attachment pass has run, so a row belonging to a node whose `Do` never attached is
@@ -10966,6 +11294,14 @@ function planComponent(
         switch (action.kind) {
           case 'http-call': {
             const answer = httpAnswerVars.get(action.nodeId);
+            if (answer !== undefined && plan.stateVars.includes(answer)) action.materialize = answer.name;
+            fillMaterialize(action.then);
+            fillMaterialize(action.failThen);
+            break;
+          }
+          // EXP-011 §41. The same rule for a Cloud Function's results row.
+          case 'cloud-call': {
+            const answer = cloudAnswerVars.get(action.nodeId);
             if (answer !== undefined && plan.stateVars.includes(answer)) action.materialize = answer.name;
             fillMaterialize(action.then);
             fillMaterialize(action.failThen);

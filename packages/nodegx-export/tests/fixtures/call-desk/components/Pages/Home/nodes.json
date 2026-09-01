@@ -1,0 +1,252 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "c0a11de5-3ea1-4b3e-9f2a-1a2b3c4d5e03",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "c0a11de5-3ea1-4b3e-9f2a-1a2b3c4d5e05",
+      "type": "Page",
+      "label": "Home",
+      "parameters": {
+        "title": "Call Desk",
+        "urlPath": "home"
+      },
+      "children": [
+        "shell"
+      ],
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "shell",
+      "type": "Group",
+      "label": "Desk",
+      "parent": "c0a11de5-3ea1-4b3e-9f2a-1a2b3c4d5e05",
+      "parameters": {
+        "flexDirection": "column",
+        "alignItems": "flex-start",
+        "rowGap": "var(--space-4)",
+        "paddingLeft": "var(--space-6)",
+        "paddingTop": "var(--space-6)"
+      },
+      "children": [
+        "heading",
+        "pageIdInput",
+        "publishBtn",
+        "publishedText",
+        "idText",
+        "errorText",
+        "lastText",
+        "failText"
+      ],
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "heading",
+      "type": "Text",
+      "label": "Heading",
+      "parent": "shell",
+      "parameters": {
+        "text": "Call Desk",
+        "fontSize": "var(--text-3xl)",
+        "fontWeight": "var(--font-semibold)"
+      },
+      "x": 160,
+      "y": 280
+    },
+    {
+      "id": "pageIdInput",
+      "type": "net.noodl.controls.textinput",
+      "label": "Page id",
+      "parent": "shell",
+      "parameters": {
+        "placeholder": "a page id"
+      },
+      "x": 160,
+      "y": 400
+    },
+    {
+      "id": "publishBtn",
+      "type": "net.noodl.controls.button",
+      "label": "Publish",
+      "parent": "shell",
+      "parameters": {
+        "label": "Publish"
+      },
+      "x": 160,
+      "y": 520
+    },
+    {
+      "id": "publishedText",
+      "type": "Text",
+      "label": "Published?",
+      "parent": "shell",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-xl)"
+      },
+      "x": 160,
+      "y": 640
+    },
+    {
+      "id": "idText",
+      "type": "Text",
+      "label": "The id it answered",
+      "parent": "shell",
+      "parameters": {
+        "text": ""
+      },
+      "x": 160,
+      "y": 760
+    },
+    {
+      "id": "errorText",
+      "type": "Text",
+      "label": "Why it failed",
+      "parent": "shell",
+      "parameters": {
+        "text": "",
+        "color": "var(--destructive)"
+      },
+      "x": 160,
+      "y": 880
+    },
+    {
+      "id": "lastText",
+      "type": "Text",
+      "label": "Last published",
+      "parent": "shell",
+      "parameters": {
+        "text": ""
+      },
+      "x": 160,
+      "y": 1000
+    },
+    {
+      "id": "failText",
+      "type": "Text",
+      "label": "Last failure",
+      "parent": "shell",
+      "parameters": {
+        "text": "",
+        "color": "var(--destructive)"
+      },
+      "x": 160,
+      "y": 1120
+    },
+    {
+      "id": "pageIdVar",
+      "type": "Variable2",
+      "label": "pageId variable",
+      "parameters": {
+        "name": "pageId"
+      },
+      "x": 410,
+      "y": 400
+    },
+    {
+      "id": "publishFn",
+      "type": "CloudFunction2",
+      "label": "Publish page",
+      "parameters": {
+        "function": "publishPage",
+        "in-publish": true
+      },
+      "x": 410,
+      "y": 640,
+      "dynamicports": [
+        {
+          "plug": "input",
+          "type": {
+            "name": "component",
+            "components": [
+              "/#__cloud__/publishPage"
+            ],
+            "ignoreSheetName": true,
+            "allowEditOnly": true
+          },
+          "group": "General",
+          "displayName": "Function",
+          "name": "function",
+          "index": 5
+        },
+        {
+          "name": "in-pageId",
+          "displayName": "pageId",
+          "type": "*",
+          "plug": "input",
+          "group": "Parameters",
+          "index": 6
+        },
+        {
+          "name": "in-publish",
+          "displayName": "publish",
+          "type": "*",
+          "plug": "input",
+          "group": "Parameters",
+          "index": 7
+        },
+        {
+          "name": "out-pageId",
+          "displayName": "pageId",
+          "type": "*",
+          "plug": "output",
+          "group": "Results",
+          "index": 8
+        },
+        {
+          "name": "out-published",
+          "displayName": "published",
+          "type": "*",
+          "plug": "output",
+          "group": "Results",
+          "index": 9
+        }
+      ]
+    },
+    {
+      "id": "afterSet",
+      "type": "Set Variable",
+      "label": "Remember the id",
+      "parameters": {
+        "name": "lastPublished"
+      },
+      "x": 660,
+      "y": 640
+    },
+    {
+      "id": "failSet",
+      "type": "Set Variable",
+      "label": "Remember the failure",
+      "parameters": {
+        "name": "lastError"
+      },
+      "x": 660,
+      "y": 880
+    },
+    {
+      "id": "lastRead",
+      "type": "Variable2",
+      "label": "lastPublished read",
+      "parameters": {
+        "name": "lastPublished"
+      },
+      "x": 410,
+      "y": 1000
+    },
+    {
+      "id": "failRead",
+      "type": "Variable2",
+      "label": "lastError read",
+      "parameters": {
+        "name": "lastError"
+      },
+      "x": 410,
+      "y": 1120
+    }
+  ],
+  "visualRoots": [
+    "c0a11de5-3ea1-4b3e-9f2a-1a2b3c4d5e05"
+  ]
+}

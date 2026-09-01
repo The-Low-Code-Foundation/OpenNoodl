@@ -1,6 +1,6 @@
 # EXP-011 — Close the picker gap, ranked by what apps need
 
-**Status:** 🟡 In progress — **Tier 1 COMPLETE; Tier 2.7 COMPLETE** (the three pure utilities, session 65; the id pair, session 66); §38–§39 the small non-pure nodes; **§40 (session 69) fixed the chain-wire / earn-scan / branch-arm defect class behind every translated node with a chain**. **80 of 127 (63.0%).** Tier 2's remainder is Cloud Services (9) and the component stack pair
+**Status:** 🟡 In progress — **Tier 1 COMPLETE; Tier 2.7 COMPLETE** (the three pure utilities, session 65; the id pair, session 66); §38–§39 the small non-pure nodes; **§40 (session 69) fixed the chain-wire / earn-scan / branch-arm defect class behind every translated node with a chain; §41 (session 69) built `Cloud Function`, the first of the nine Cloud Services**. **81 of 127 (63.8%).** Tier 2's remainder is Cloud Services (9) and the component stack pair
 **Depends on:** nothing — but sequenced after EXP-009 and EXP-010, which are worth more per hour
 **Replaces:** every "what to build next" list in this phase from sessions 20–31
 
@@ -21,7 +21,7 @@ node scripts/export-ledger/picker-coverage.js
 |---|---|
 | **Data** | 22 |
 | **Utilities** | 10 |
-| **Cloud Services** | 9 |
+| **Cloud Services** | 9 → **8** (`Cloud Function` translated, §41) |
 | **Navigation** | 5 |
 | Visual · Component Utilities | 3 · 3 |
 | CustomCode · Animation · String Manipulation | 2 · 2 · 2 |
@@ -76,7 +76,9 @@ Ranked by *"can you build a normal app without it"*, not by corpus frequency.
    they are a routing question rather than another url builder.
 6. **Cloud Services (9).** Mostly **unblocked by EXP-009**, and several may fall out of it for
    free — `Cloud Function`, `Record`, `Set User Properties`, `Sign In With`. Re-measure after
-   EXP-009 lands rather than planning against today's list.
+   EXP-009 lands rather than planning against today's list. ✅ **`Cloud Function` built in
+   session 69 — §41**; the other eight remain, and `Record`/`Set User Properties`/`Sign In With`
+   are the next to re-measure against the client.
 7. **String/Math utilities.** ✅ **`Substring`, `String Mapper` and `Number Remapper` built,
    driven and gated in session 65 — §36**, which also found DEF-033: `Substring`'s panel declares
    an `End` the node does not use. The remainder is the **id pair**, `Unique Id` and `UUID`, and
@@ -107,7 +109,7 @@ nobody will ever do. Most of the current 101 exemptions say the latter, verbatim
 
 1. ✅ **The picker number moves and holds.** Every slice raises `pickerCoverageFloor` in the same
    commit — `export-ledger:picker` fails if it does not.
-   *(51 → 55 → 59 → 60 → 66 → 67 → 68, sessions 35–41; → 70 by session 47; → 73 in session 65.)*
+   *(51 → 55 → 59 → 60 → 66 → 67 → 68, sessions 35–41; → 70 by session 47; → 73 in session 65; → 80 in session 68; → 81 in session 69.)*
 2. ✅ **Tier 1 complete ⇒ 66 of 127 (52.0%).** Tiers 1+2 ⇒ ≈87 (≈68%). Everything except the
    "not a target" list ⇒ ≈108 (≈85%).
    *(The original projection said ~72. Session 37 revised it to "nearer 66 than 72", because
@@ -118,7 +120,8 @@ nobody will ever do. Most of the current 101 exemptions say the latter, verbatim
    *(Tier 1.4's is `tests/fixtures/variable-dial` — §6.4; Tier 1.1's is
    `tests/fixtures/reading-shelf` — §7.4; Tier 1.2's is `tests/fixtures/quote-desk` — §8.6;
    Tier 1.3's is `tests/fixtures/deadline-desk` — §9.5; Tier 2.7's is
-   `tests/fixtures/ticket-desk` — §36.7.)*
+   `tests/fixtures/ticket-desk` — §36.7; `Cloud Function`'s is `tests/fixtures/call-desk` — §41.5,
+   exported and typechecked but not yet built and driven against a backend.)*
 4. ✅ **The exemption sentences get rewritten** so that "deferred" means one of *deliberately out of
    scope* (with the reason) or *scheduled* (with the tier), never "pre-gate backlog".
    *(All 97, session 35, and `export-ledger:check` now enforces the shape — §6.5.)*
@@ -5158,3 +5161,96 @@ comparison that compiles.
   nodes; the node is `CloudFunction2`: `Call`, `function` + `in-*` params, `out-*` results,
   Done/Failure/Completed + `Error`, `POST /functions/<name>` through the EXP-009 client's
   `request()`). The `http-call` action and `src/api/http.ts` are the precedent line for line.
+
+## §41 Tier 2.6 begins — `Cloud Function`, the first of the nine Cloud Services (session 69, 2026-09-01)
+
+**Picker 80 → 81 of 127 (63.8%)**, floor raised in the same commit. EXP-009's AC4, open since
+session 33 — *"the client gains `/functions/<name>` when the node does"* — and the node is
+`CloudFunction2`: `Call`, a `function` parameter naming the backend function, dynamic `in-<param>`
+inputs and `out-<result>` outputs persisted under `dynamicports` (so the parser already had them
+as `declaredPorts`), Done/Failure/Completed and `Error`, no `Unchanged`. The runtime POSTs
+`/functions/<encodeURIComponent(name)>` with the params as the body and maps `result[key]` onto
+`out-<key>` (`cloudfunction2.ts` `doCall`, `_makeRequest`). Corpus: 3 projects, 7 nodes, four
+functions (`publishPage`, `duplicatePage`, `submitContactForm`, `claimSite`).
+
+### §41.1 The build — `HTTP Request` one node over
+
+| piece | what it is | where |
+|---|---|---|
+| `src/api/functions.ts` | one function per node: the declared `in-*` ports as parameters (a wired one is `params.x`, an authored one is folded into the body, in declared order), the declared `out-*` ports as a typed results interface (`any` per port — they are `*`; a result a wire reads that the declaration lacks is added; an odd name is quoted). **Connected**: `return callFunction<T>("name", { … })`. **Stub**: `throw new Error('No cloud services defined in this project.')` — the sentence the interpreter answers Failure with when the project declares no backend | `functionsModule()` in `emitApp.ts` |
+| `callFunction(name, params)` on the client | `_makeRequest` line for line: the app id header, the session token when someone is signed in, JSON body, `fetch` failure → *"Could not reach the backend at ⟨endpoint⟩"*, a status other than 200/201 → the backend's `error` string else *"Failed running cloud function."*, `result ?? {}` on success | `clientModule()`; the golden `client.ts.golden` regenerated, and the diff was exactly this block |
+| `cloud-call` action | `try { const answer = await callX({…}); [setXOut(answer)]; …done } catch (error) { const message = …; setXError(message); …failure }` — the two outcome chains are one try/catch, because the function throws where the node reports Failure. The results row is written only where something outside the chain reads a result; the Error row always, as the runtime writes `_internal.error` | `compileCloudCall`, `actionCode` |
+| `cloud-out` expression | `Error` and `out-*`: the chain's local inside the Done chain, only `Error` inside the Failure chain (that arm runs where no result arrived, and `resultsValues` there are the previous call's), the state rows everywhere else — `httpChainScope`'s rules | `resolveExpr`, `exprCode` |
+| the toll | `TRIGGER_PORTS`, `OWN_CHAIN_OUTPUTS` (§40's table, so the chain wires are order-independent from birth), the earn scan (`attachedCloudNodes`), the HTTP sweep generalised to both types, Pass 4f's `isCloudRead`, the session walker, `fillMaterialize`, the late row filter, `deepActions`, the reads walker, the async predicate, the no-terminator list, the import collector, `actionExprsOf`, the report and pre-flight sentences | counted by `grep -n "'http-call'"`: 7 sites in `plan.ts`, 9 in `component.ts`; every one paid |
+
+Refused by name: a wired `Function` (*which cloud function is called is not statically knowable*),
+no function name (*every Call answers Failure with "No function specified" and never sends a
+request*), a consumed `Completed` (the join, HTTP's sentence), any other output, two wires into
+one parameter, a result read from the Failure chain — and a result bound in render when the Call
+never attached, or a node nothing fires, by the sweep (*its Call is never fired by a translatable
+trigger*).
+
+### §41.2 What building it found
+
+- ⚠️ **The report bullet was keyed on the wrong field.** `usesBackend` is *"does this project ask
+  anything of a backend"* — true for a cloud call whether or not a backend is declared — so the
+  stub form said its calls went *"through `src/api/client.ts`"*. Caught by the first probe;
+  keyed on `backendMode(data) === 'connected'` now, and §B's report row pins both sentences.
+- ⚠️ **A probe's console output carries jest's four display spaces.** Two rows in two suites this
+  session were first written with the wrong column, taken off a printout. The emitted file's own
+  column is the only one to copy.
+- ⚠️ **A second wire into a `Set Variable`'s `value` is silently ignored** (first wins). Three
+  rows were green-for-the-wrong-reason until their setters were built bare; the shared helper
+  wires the draft variable into `value` and that is invisible from the row.
+- ⚠️ `false && x` as a mutant breaks `tsc` (narrowing) — §40.4's lesson again, so `mut41.py`
+  mutates by deleting a line or returning a value, never by a constant guard.
+
+### §41.3 Two divergences, written down rather than hidden
+
+1. **A function that answers no result** leaves the interpreter's previous `resultsValues`
+   untouched and fires Done; the export sets the row to `{}`. Faithfulness here needs the previous
+   row merged in — one line in the handler — and it is left for the drive to decide whether it
+   matters, because no corpus function answers nothing.
+2. The runtime sends `x-noodl-cloud-version` when `deployVersion` is set; the client does not —
+   and the record verbs never did either (EXP-009). Same owner.
+
+### §41.4 Graded — `tests/cloud-function.test.ts`, 20 rows, 53 files on disk
+
+§A the module (connected, stub, absent, the union-of-declared-and-read results type with a quoted
+name, the all-authored signature). §B the component (the async handler and both arms; the row
+written only where a render read needs it and the type imported; `Error` in render and in the
+Failure arm; the report's two sentences). §C six refusals by their sentences. §D the §40 class
+rows for this node — wire order, a reactive Condition trigger (async IIFE, module earned), an
+idle node named with nothing left behind. §E `tests/fixtures/call-desk` — the second fixture
+with a backend, chain wires listed before the trigger — whole but for the scaffold note and the
+connected-api note, `client.ts` + `functions.ts` + `.env.example`, typechecks. ⚠️ The on-disk
+sweeps (`emitted-syntax`, `typecheck-emitted`) picked the fixture up too: 36 new rows for 20
+written.
+
+Nine mutant arms, each restored by `diff -rq` against `snap41-post/`:
+
+| arm | mutation | killed by |
+|---|---|---|
+| A | the node's chain outputs not skipped by the attach pass | **2** — the order row, the fixture's whole-export row |
+| B | never earned (`attachedCloudNodes` never added) | **11** — every row that reads a module, a row or the client |
+| C | the stub returns `{}` instead of throwing | **1** — the stub row |
+| D | authored parameters dropped from the body | **3** — the folded `publish: true` rows and the fixture |
+| E | results type from wires only, not the declaration | **2** — the interface rows |
+| F | the results row always written | **5** — "no row is written", the stub row, and three typecheck rows (a setter nothing declares) |
+| G | a result read from the Failure chain allowed | **1** — its refusal row |
+| H | the sweep no longer names the node | **2** — both idle rows |
+| I | `callFunction` sends no session token | **2** — ⚠️ **only the client golden's two pins.** No behavioural row here can see the header; that is the drive's job (§41.5) |
+
+### §41.5 What this leaves
+
+- 🔴 **Typechecked, not driven.** Nobody has called a real function from an exported app. The
+  drive: a local `nodegx-backend` with a project declaring `publishPage` (the corpus has three),
+  `call-desk` exported against its endpoint, `vite build`, click Publish, read `published` /
+  `pageId` / `Error`; then stop the backend and read *"Could not reach the backend at …"*. Arm I
+  says why it matters: the session token is pinned only by a golden.
+- The other **eight** Cloud Services — `Record`, `Set User Properties`, `Sign In With`, `Request
+  Magic Link`, `Subscribe To Changes`, `Upload File`, `Cloud File`, `Sign File URL` — each
+  re-measured against the client. `compileCloudCall` + `functionsModule` are the precedent for
+  *a client call with a typed answer*.
+- §41.3's two divergences, owner P18 with the drive.
+- The controlled-state gap (§38.3), `Component Children`, the animation pair — carried.

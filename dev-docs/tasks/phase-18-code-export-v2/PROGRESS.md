@@ -12,7 +12,7 @@ npm run export-ledger:picker
 node scripts/export-ledger/picker-coverage.js
 ```
 
-> **PICKER COVERAGE: 80 of 127 placeable nodes export (63.0%)** — 2026-09-01 s68 (was 51 on 2026-08-28)
+> **PICKER COVERAGE: 81 of 127 placeable nodes export (63.8%)** — 2026-09-01 s69 (was 51 on 2026-08-28)
 
 **Do not report the corpus number as progress.** `coverage-audit.ts` reads 85.00% (93.38% over
 components a route reaches) across ~40 old drive fixtures. It is a **regression detector** and a
@@ -31,10 +31,10 @@ README §*What went wrong* has the mechanism.
 | [EXP-006](./EXP-006-EXPORT-AUTHORING-INTENT.md) | Export carries authoring intent | ⚪ Not started |
 | [EXP-007](./EXP-007-EXPORT-PROVENANCE.md) | Export provenance & regeneration safety | ⚪ Not started |
 | [EXP-008](./EXP-008-EXPORT-COVERAGE-LEDGER.md) | Coverage ledger & contributor gate | ✅ **Built**, + picker ratchet 2026-08-28. ⚠️ 96 of 101 `deferred` entries share one auto-generated exemption sentence — EXP-011 §4 rewrites them |
-| [EXP-009](./EXP-009-BACKEND-CONNECTION.md) | **Exported app talks to its deployed backend** | 🔴 **Not started — do this first** |
+| [EXP-009](./EXP-009-BACKEND-CONNECTION.md) | **Exported app talks to its deployed backend** | 🟢 **Built + driven s33; AC4 (`Cloud Function`) built s69 via EXP-011 §41 — typechecked, not driven** |
 | [EXP-010](./EXP-010-CUSTOM-NODES-AND-MODULES.md) | **Custom nodes, modules and prefabs export** | 🔴 **Not started.** `parseProject` never opens `noodl_modules` |
 | [EXP-012](./EXP-012-THE-EDITOR-EXPORT-COMMAND.md) | **The editor export command** | 🟢 **BUILT + DRIVEN s67 (2026-09-01).** Settings → Project → *Export as React code…*: exact pre-flight modal, folder dialog, inside-project refusal, non-empty confirm, write + toast. Byte-identical to `emit-app.ts`. `@nodegx/export` has its **first product consumer**; EXP-004's §21.1 block is over. Rides 0.2.2 if Richard says so |
-| [EXP-011](./EXP-011-PICKER-COVERAGE.md) | **Close the picker gap, ranked by what apps need** | 🟡 **80/127 (63.0%) s68; s69 built no node — §40 fixed the chain-wire / earn-scan / branch-arm defect class under every translated node with a chain (28 rows, 8 arms)** — §39 built `Log`, `Delay` and `Value Changed` (the first action-set, the first `useRef`, the first effect() slice), driven headlessly; §39.3 found the attach pass was wire-ORDER dependent. Before that: **77/127 s67** — Tier 1 complete, Tier 2.5 and 2.7 complete, §38 built the two pure "small ordinary nodes" (`Boolean To String`, `Color Blend`). Next: the controlled-state gap §38.3 found (checkbox/slider → Variable), then `Log` / `Value Changed` / `Delay` (§38.5), then Cloud Services (9) |
+| [EXP-011](./EXP-011-PICKER-COVERAGE.md) | **Close the picker gap, ranked by what apps need** | 🟡 **81/127 (63.8%) s69 — §41 built `Cloud Function` (the first of the nine Cloud Services, EXP-009 AC4); §40 fixed the chain-wire / earn-scan / branch-arm defect class under every translated node with a chain (28 rows, 8 arms)** — §39 built `Log`, `Delay` and `Value Changed` (the first action-set, the first `useRef`, the first effect() slice), driven headlessly; §39.3 found the attach pass was wire-ORDER dependent. Before that: **77/127 s67** — Tier 1 complete, Tier 2.5 and 2.7 complete, §38 built the two pure "small ordinary nodes" (`Boolean To String`, `Color Blend`). Next: the controlled-state gap §38.3 found (checkbox/slider → Variable), then `Log` / `Value Changed` / `Delay` (§38.5), then Cloud Services (9) |
 
 ## What actually works today
 
@@ -383,3 +383,16 @@ by `tests/chain-wire-order.test.ts` (28 rows) and eight mutant arms (23/4/6/8/3/
 first-draft arm caught by the runner's tsc gate). Gates: pkg tsc 0 · editor tsc 0 · jest
 **1360/1360 in 52** · ledger OK 176 · picker 80 unchanged. Memory filed: *a new producer owes every
 consumer of the old one*. Left: typechecked not driven; a record verb in a reactive arm has no row.
+
+**Session 69, second half — EXP-011 §41: `Cloud Function` translates. Picker 80 → 81 (63.8%).**
+The first of the nine Cloud Services and EXP-009's AC4. One function per node in
+`src/api/functions.ts` — the declared `in-*` ports as parameters (wired ones passed, authored ones
+folded), the declared `out-*` ports as a typed results object — through a new `callFunction()` on
+the EXP-009 client (`POST /functions/<name>`, app id, session token, `result` envelope, the
+runtime's `_makeRequest` line for line) where the project declares a backend, and a stub that
+throws the interpreter's own *"No cloud services defined in this project."* where it does not.
+Done/Failure are a try/catch's two arms; `Error` is a row never cleared. Six refusals by name.
+`tests/cloud-function.test.ts` (20 rows) and the fixture `tests/fixtures/call-desk` — the second
+fixture with a backend, chain wires listed before the trigger — exported whole and typechecked;
+nine mutant arms (§41.4). Gates: pkg tsc 0 · editor tsc 0 · jest **1396/1396 in 53** · ledger OK
+176 (88 translated) · picker **81**, floor raised. ⚠️ Not driven against a live backend.

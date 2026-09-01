@@ -430,7 +430,7 @@ export function emitComponent(
       }
       action.then.forEach(collectActionUse);
     }
-    if (action.kind === 'http-call') {
+    if (action.kind === 'http-call' || action.kind === 'cloud-call') {
       action.args.forEach((a) => collectExprUse(a.expr));
       action.then.forEach(collectActionUse);
       action.failThen.forEach(collectActionUse);
@@ -531,7 +531,7 @@ export function emitComponent(
     actions.flatMap((a) =>
       a.kind === 'branch'
         ? [a, ...deepActions(a.whenTrue), ...deepActions(a.whenFalse)]
-        : a.kind === 'http-call' || a.kind === 'external-link'
+        : a.kind === 'http-call' || a.kind === 'cloud-call' || a.kind === 'external-link'
           ? [a, ...deepActions(a.then), ...deepActions(a.failThen)]
           : // EXP-011 §15. `Navigate To Path` carries two chains and neither is `failThen`;
             // without this line `usesNavigate` below cannot see a second navigation nested in
@@ -694,7 +694,7 @@ export function emitComponent(
     // EXP-011 Tier 1.2: both rows are written by the call itself. The Error row is the record
     // verbs' case exactly; the answer row is written only where something reads it, so it is
     // already earned — naming it here keeps the writer and the row inseparable either way.
-    if (action.kind === 'http-call') {
+    if (action.kind === 'http-call' || action.kind === 'cloud-call') {
       referencedStateNames.add(action.errorState);
       if (action.materialize !== undefined) referencedStateNames.add(action.materialize);
     }
@@ -1040,6 +1040,9 @@ export function emitComponent(
       // Always — before the first request, after a path that matched nothing, and for an Error
       // nothing has written. Must agree with plan.ts maybeUndefinedExpr (EXP-011 Tier 1.2).
       case 'http-out':
+      // EXP-011 §41. Must agree with plan.ts maybeUndefinedExpr: the row is undefined until the
+      // first call, and a result the function did not answer is undefined on the node too.
+      case 'cloud-out':
         return true;
       // Always — an unreadable date answers unset on all five, and Date To String is unset before
       // its first format. Must agree with plan.ts maybeUndefinedExpr (EXP-011 Tier 1.3).
@@ -1187,6 +1190,11 @@ export function emitComponent(
     // future path that breaks the invariant emits something a reader can find.
     return call ?? { answerLocal: 'answer', messageLocal: 'message', fnName: 'fetch', typeName: 'Answer' };
   };
+  /** EXP-011 §41 — `httpNamesOf` for a Cloud Function, off `plan.cloudCalls`, for the same reason. */
+  const cloudNamesOf = (nodeId: string) => {
+    const call = plan.cloudCalls.find((c) => c.nodeId === nodeId);
+    return call ?? { answerLocal: 'answer', messageLocal: 'message', fnName: 'call', typeName: 'Results' };
+  };
   /**
    * The chain-local one `Now` binds its instant to (EXP-011 Tier 1.3), read off the plan so the
    * expression side and the action side cannot disagree about a name — `httpNamesOf`'s rule.
@@ -1260,6 +1268,18 @@ export function emitComponent(
         return /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(field)
           ? `${base}fields.${field}`
           : `${base}fields[${JSON.stringify(field)}]`;
+      }
+      /**
+       * A `Cloud Function`'s output (EXP-011 §41) — HTTP's shape one node over. The results
+       * object IS the answer (there is no status or header beside it), so an `out-<name>` is a
+       * property of it directly.
+       */
+      case 'cloud-out': {
+        const names = cloudNamesOf(expr.nodeId);
+        if (expr.output === 'error') return expr.viaState ?? names.messageLocal;
+        const base = expr.viaState !== undefined ? `${expr.viaState}?.` : `${names.answerLocal}.`;
+        const field = expr.output.slice('out-'.length);
+        return /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(field) ? `${base}${field}` : `${base}[${JSON.stringify(field)}]`;
       }
       /**
        * A `Now` output (EXP-011 Tier 1.3) — the row anywhere, the chain's own local inside the
@@ -1490,6 +1510,8 @@ export function emitComponent(
         // An effect can only ever see the state form: the chain-local one is minted inside the
         // action that declares the local, and an effect is not that action (EXP-011 Tier 1.2).
         case 'http-out':
+        // EXP-011 §41, the same clause one node over.
+        case 'cloud-out':
         // EXP-011 §24, the same clause and the same reason one construct over.
         case 'outcome-error':
           if (e.viaState !== undefined) add(e.viaState);
@@ -1627,6 +1649,8 @@ export function emitComponent(
             a.then.some(inAction)
           );
         case 'http-call':
+        // EXP-011 §41. The same, one node over.
+        case 'cloud-call':
           return a.args.some((arg) => reads(arg.expr)) || a.then.some(inAction) || a.failThen.some(inAction);
         // EXP-011 Tier 2.5. ⚠️ The `default: false` below would answer "reads nothing" for a
         // link built out of the very value being asked about.
@@ -2173,6 +2197,31 @@ export function emitComponent(
        * Both failure arms bind `message` first, which is what makes the duplicated failure chain
        * two copies of one thing rather than two things.
        */
+      /**
+       * A `Cloud Function`'s Call (EXP-011 §41). The emitted function throws where the
+       * interpreter reports Failure — an answered error carries the backend's own message, an
+       * unreachable backend the runtime's sentence — so the two outcome chains are one try/catch.
+       * The results row is written only where something outside the chain reads a result.
+       */
+      case 'cloud-call': {
+        const names = cloudNamesOf(action.nodeId);
+        const inner = pad(indent + 2);
+        const argList = action.args.map((a) => {
+          const code = exprCode(a.expr, 'handler');
+          return code === a.param ? code : `${a.param}: ${code}`;
+        });
+        return [
+          'try {',
+          `${inner}const ${names.answerLocal} = await ${action.fnName}(${argList.length > 0 ? `{ ${argList.join(', ')} }` : ''});`,
+          ...(action.materialize !== undefined ? [`${inner}${stateSetterOf(action.materialize)}(${names.answerLocal});`] : []),
+          ...expandActions(action.then).map((a) => `${inner}${actionCode(a, indent + 2)};`),
+          `${pad(indent)}} catch (error) {`,
+          `${inner}const ${names.messageLocal} = error instanceof Error ? error.message : String(error);`,
+          `${inner}${stateSetterOf(action.errorState)}(${names.messageLocal});`,
+          ...expandActions(action.failThen).map((a) => `${inner}${actionCode(a, indent + 2)};`),
+          `${pad(indent)}}`
+        ].join('\n');
+      }
       case 'http-call': {
         const names = httpNamesOf(action.nodeId);
         const inner = pad(indent + 2);
@@ -2664,6 +2713,8 @@ export function emitComponent(
     return (
       a.kind === 'api-call' ||
       a.kind === 'http-call' ||
+      // EXP-011 §41. A try/catch, like the two above.
+      a.kind === 'cloud-call' ||
       (a.kind === 'external-link' && externalLinkIsStatement(a)) ||
       (a.kind === 'navigate-path' && navigatePathIsStatement(a)) ||
       // EXP-011 §39. The `if` form ends in `}` and must not take a terminator.
@@ -2675,7 +2726,7 @@ export function emitComponent(
   }
   /** Whether anything in these actions, at any depth, is awaited — the arrow around it is `async`. */
   function actionsAwait(actions: HandlerAction[]): boolean {
-    return deepActions(actions).some((a) => a.kind === 'api-call' || a.kind === 'http-call');
+    return deepActions(actions).some((a) => a.kind === 'api-call' || a.kind === 'http-call' || a.kind === 'cloud-call');
   }
   /**
    * The lines of a block body, one statement per line at `indent`. A `Now` Read, an id and a
@@ -2812,6 +2863,22 @@ export function emitComponent(
       ...new Set(
         plan.httpCalls
           .filter((c) => referencedStateVars.some((v) => v.originNodeId === c.nodeId && v.origin === 'http'))
+          .map((c) => c.typeName)
+      )
+    ].sort();
+    internalImports.set(
+      specifier,
+      `import { ${[...fnNames, ...typeNames.map((t) => `type ${t}`)].join(', ')} } from '${specifier}';`
+    );
+  }
+  // EXP-011 §41. The same clause for `src/api/functions.ts`.
+  if (plan.cloudCalls.length > 0) {
+    const specifier = `${relRoot}/api/functions`;
+    const fnNames = [...new Set(plan.cloudCalls.map((c) => c.fnName))].sort();
+    const typeNames = [
+      ...new Set(
+        plan.cloudCalls
+          .filter((c) => referencedStateVars.some((v) => v.originNodeId === c.nodeId && v.origin === 'cloud'))
           .map((c) => c.typeName)
       )
     ].sort();
@@ -4540,6 +4607,8 @@ export function emitComponent(
       case 'jsfun-run':
         return [...jsArgExprs(a.nodeId), ...a.then.flatMap(actionExprsOf)];
       case 'http-call':
+      // EXP-011 §41. The same, one node over.
+      case 'cloud-call':
         return [...a.args.map((arg) => arg.expr), ...a.then.flatMap(actionExprsOf), ...a.failThen.flatMap(actionExprsOf)];
       case 'api-call':
         return [

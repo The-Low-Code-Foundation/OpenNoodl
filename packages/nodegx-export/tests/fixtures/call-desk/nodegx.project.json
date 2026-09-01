@@ -1,0 +1,27 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/project-v2.json",
+  "name": "Call Desk",
+  "id": "c0a11de5-3ea1-4b3e-9f2a-1a2b3c4d5e01",
+  "version": "4",
+  "nodegxVersion": "0.1.0",
+  "runtimeVersion": "react19",
+  "created": "2026-09-01T23:30:00.000Z",
+  "modified": "2026-09-01T23:30:00.000Z",
+  "settings": {
+    "htmlTitle": "Call Desk",
+    "navigationPathType": "path"
+  },
+  "structure": {
+    "componentsDir": "components",
+    "assetsDir": "assets"
+  },
+  "metadata": {
+    "cloudservices": {
+      "instanceId": "backend_calldesk",
+      "endpoint": "http://localhost:8581",
+      "appId": "backend_calldesk",
+      "type": "nodegx"
+    }
+  },
+  "rootNodeId": "c0a11de5-3ea1-4b3e-9f2a-1a2b3c4d5e04"
+}
