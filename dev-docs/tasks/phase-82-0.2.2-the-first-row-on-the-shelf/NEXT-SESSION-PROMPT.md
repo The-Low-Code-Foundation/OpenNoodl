@@ -338,6 +338,20 @@ touches every page, with no render budget left to grade it).
 **One question is with Richard** — the `FORM_GROUND` departure — and it blocks neither the WORTHY
 ruling nor rows 7 and 8.
 
-⚠️ **The tree carries s1–s8's work.** 🔴 **`git commit <pathspecs>`, never `git add`** — a sibling's
-commit sweeps staged files — and `git add` untracked paths first, because a pathspec commit **skips
-them silently** (`git status --porcelain | grep '^??'`, and check whether a `??` is a **directory**).
+✅ **s8's work is COMMITTED** — `42b501a4` (the row) and `72f0779a`.
+
+🔴 **`rel002b-fail-closed.test.ts` had NEVER BEEN COMMITTED**, three sessions after REL-002b closed on
+its 37 assertions — the same shape as the phase directory that was untracked for five. Read and
+re-run (green inside this session's 110/110), then committed at `72f0779a`. ✅ **A closed row's gate
+is worth a `grep '^??'` of its own.**
+
+⚠️ **Three tracked files are still modified from s4/s5 and were NOT swept**, deliberately — their
+mtimes are 11:35, 11:55 and 22:07 on 08-31, their content was not read this session, and a pathspec
+commit would take an edit nobody attributed: `packages/noodl-mcp/tests/renderReportModule.test.ts`,
+`packages/noodl-mcp/tests/stagingDiagnostics.test.ts`, and `packages/noodl-mcp/tests/sb007Template.test.ts`
+(the last is P80's known orphan, Richard confirmed it is not his — see §"What to carry out of session
+6" item 2). **Read them before committing.**
+
+🔴 **`git commit <pathspecs>`, never `git add`** — a sibling's commit sweeps staged files — and
+`git add` untracked paths first, because a pathspec commit **skips them silently**
+(`git status --porcelain | grep '^??'`, and check whether a `??` is a **directory**).
