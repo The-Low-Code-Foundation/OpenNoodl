@@ -79,7 +79,7 @@
       "path": "Members/Standing",
       "type": "visual",
       "nodeCount": 5,
-      "connectionCount": 14,
+      "connectionCount": 17,
       "modified": "2026-08-28T00:00:00.000Z",
       "created": "2026-08-28T00:00:00.000Z"
     },
@@ -127,15 +127,15 @@
       "path": "Members/Chrome",
       "type": "visual",
       "nodeCount": 26,
-      "connectionCount": 22,
+      "connectionCount": 25,
       "modified": "2026-08-28T00:00:00.000Z",
       "created": "2026-08-28T00:00:00.000Z"
     },
     "Pages/Landing": {
       "path": "Pages/Landing",
       "type": "page",
-      "nodeCount": 23,
-      "connectionCount": 10,
+      "nodeCount": 37,
+      "connectionCount": 12,
       "modified": "2026-08-28T00:00:00.000Z",
       "created": "2026-08-28T00:00:00.000Z"
     },
@@ -238,7 +238,7 @@
   },
   "stats": {
     "totalComponents": 29,
-    "totalNodes": 431,
-    "totalConnections": 475
+    "totalNodes": 445,
+    "totalConnections": 483
   }
 }

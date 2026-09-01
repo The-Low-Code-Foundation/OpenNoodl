@@ -156,6 +156,23 @@ export const USED_COMPOSITIONS = [
   'gridAutoFit',
   'card',
   'cardBody',
+  // REL-002c §D. The hero stands on one of the 44 CC0 photographs every project
+  // is created with, under `--gradient-scrim` so the type stays legible whatever
+  // the picture is. The template shipped no imagery at all, which is a fired
+  // disqualifying tell on its own landing page.
+  'imageGround',
+  // REL-002c §F. The two states a stranger can meet on the hero — "nobody has
+  // set this up yet" and "not connected yet" — as panels ON the photograph
+  // rather than grey boxes on white. Glass is the kit's answer to a surface
+  // that sits on a picture.
+  'glassPanel',
+  // REL-002c. The one band on the landing page that is NOT gated on a query, so
+  // the page has a bottom edge in every state — including the two a stranger is
+  // most likely to meet, where everything else is unmounted.
+  'footerBand',
+  // REL-002c §C. The alternate ground, so the page is not one colour from the
+  // hero to the fold — the first thing README §2 lists as reading "template".
+  'bandSurface',
   // s12 (B3). The row that is NOT a card: a hairline under it and no fill at
   // all, so a noticeboard reads as one list of eight rather than as eight
   // objects. It only exists because P80 C1 added it — of eighteen compositions

@@ -513,7 +513,9 @@ describe('TPL-001 — the band is the navigation, and it goes somewhere', () => 
     expect(offenders).toEqual([]);
     // Beside a known-firing count, so `[]` is a reading of a populated sweep and
     // not a walk over no `Columns` at all.
-    expect(graded).toBe(9); // TPL-002: the sixth band button
+    // REL-002c: +3, the landing page's three "what members can see" tiles, which
+    // became a `gridAutoFit` when the page went to a 1200px shell.
+    expect(graded).toBe(12); // TPL-002: the sixth band button
   });
 
   it('control: no page ships a button whose only job was to go back', () => {
@@ -579,7 +581,20 @@ describe('TPL-001 — component-instance ports resolve, on disk', () => {
     const standing = declaredPorts(STANDING_COMPONENT);
     expect([...standing.inputs]).toEqual(['Check']);
     expect([...standing.outputs].sort()).toEqual(
-      ['Member', 'Moderator', 'Visitor', 'isMember', 'isModerator', 'isPending', 'isUnknown', 'standing'].sort()
+      // REL-002b added `Denied` (the refusal all six protected pages navigate
+      // on) and `isSignedIn` (which the band consumes and no page reads).
+      [
+        'Member',
+        'Moderator',
+        'Visitor',
+        'Denied',
+        'isMember',
+        'isModerator',
+        'isPending',
+        'isUnknown',
+        'isSignedIn',
+        'standing'
+      ].sort()
     );
   });
 
@@ -1022,7 +1037,19 @@ describe('TPL-001 — the states a person can be in all have a screen', () => {
     // clear, which makes the confirm step above no longer the only place with
     // that shape — it is the shape this template uses whenever one node answers
     // a question that has more than one answer.
-    expect(gates.length).toBe(49); // TPL-002: Account ×7, Unsubscribe ×2
+    //
+    // 52 since REL-002b: the band's own two (`topRow` and `nav`, gated on
+    // `isSignedIn`) and the landing page's waiting card. The first two are the
+    // template's only gates that close over the CHROME rather than over
+    // content — with no backend bound the band offered `Sign out` and a members'
+    // nav to a reader who had never signed in. The third is the inverse of every
+    // other gate here: `waitingCard` is the one node mounted by DEFAULT and
+    // taken down by an answer, because "the query has not answered" is the state
+    // the page starts in and no signal announces it.
+    // REL-002c: +1, `Pages/Landing`'s `hero`. It was mounted by default and
+    // painted an eyebrow over two empty `Text` nodes on every unanswered load;
+    // it is now closed until `hasAssociation` answers, like `actions` beside it.
+    expect(gates.length).toBe(53); // TPL-002: Account ×7, Unsubscribe ×2 · REL-002b: band ×2, waiting card
   });
 
   it('AC6 — every list ships an empty state, hidden until a query has answered', () => {
@@ -1399,7 +1426,7 @@ describe('TPL-001 — the design system is finished, not merely opened', () => {
     // that answer it. It was written with `notice()` first, which gave it a
     // notice's styling while a second child kept it out of this census — a spec
     // passing for a reason nobody had stated. It is a `PANEL` now.
-    expect(boxes.length).toBe(24); // TPL-002: 3 on Account, 2 on Unsubscribe
+    expect(boxes.length).toBe(24); // TPL-002: 3 on Account, 2 on Unsubscribe; REL-002c's footer shell holds two
     const unpainted = boxes
       .filter(({ node }) => {
         const p = node.parameters ?? {};

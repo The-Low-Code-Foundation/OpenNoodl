@@ -8,7 +8,7 @@
       "type": "Page",
       "label": "Set up",
       "children": [
-        "ground-8"
+        "ground-7"
       ],
       "parameters": {
         "title": "Set up this members’ area",
@@ -18,7 +18,7 @@
       "y": 40
     },
     {
-      "id": "ground-8",
+      "id": "ground-7",
       "type": "Group",
       "label": "Page ground",
       "parent": "page-8",
@@ -35,7 +35,7 @@
           "unit": "%"
         },
         "maxWidth": {
-          "value": 760,
+          "value": 720,
           "unit": "px"
         },
         "flexDirection": "column",
@@ -58,7 +58,7 @@
       "id": "headingHead-5",
       "type": "Group",
       "label": "Heading — the head",
-      "parent": "ground-8",
+      "parent": "ground-7",
       "children": [
         "headingEyebrow-5",
         "heading-6"
@@ -111,7 +111,7 @@
       "id": "blurb-2",
       "type": "Text",
       "label": "What this does",
-      "parent": "ground-8",
+      "parent": "ground-7",
       "parameters": {
         "text": "Name your association and create the first moderator account. The setup token comes from your backend configuration.",
         "fontSize": "var(--text-lg)",
@@ -129,7 +129,7 @@
       "id": "form-3",
       "type": "Group",
       "label": "The setup form",
-      "parent": "ground-8",
+      "parent": "ground-7",
       "children": [
         "nameField-2",
         "aboutField",
@@ -358,7 +358,7 @@
       "id": "refusal-4",
       "type": "Group",
       "label": "The one refusal",
-      "parent": "ground-8",
+      "parent": "ground-7",
       "children": [
         "refusalText-4"
       ],
@@ -401,7 +401,7 @@
       "id": "missing",
       "type": "Group",
       "label": "Which box is empty",
-      "parent": "ground-8",
+      "parent": "ground-7",
       "children": [
         "missingText"
       ],

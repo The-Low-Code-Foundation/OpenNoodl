@@ -95,6 +95,18 @@
     },
     {
       "fromId": "standing",
+      "fromProperty": "isSignedIn",
+      "toId": "topRow",
+      "toProperty": "mounted"
+    },
+    {
+      "fromId": "standing",
+      "fromProperty": "isSignedIn",
+      "toId": "nav",
+      "toProperty": "mounted"
+    },
+    {
+      "fromId": "standing",
       "fromProperty": "isMember",
       "toId": "outputs-3",
       "toProperty": "isMember"
@@ -134,6 +146,12 @@
       "fromProperty": "Visitor",
       "toId": "outputs-3",
       "toProperty": "Visitor"
+    },
+    {
+      "fromId": "standing",
+      "fromProperty": "Denied",
+      "toId": "outputs-3",
+      "toProperty": "Denied"
     }
   ]
 }

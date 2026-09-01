@@ -8,7 +8,7 @@
       "type": "Page",
       "label": "Landing",
       "children": [
-        "ground"
+        "landingGround"
       ],
       "parameters": {
         "title": "Welcome",
@@ -18,15 +18,73 @@
       "y": 40
     },
     {
-      "id": "ground",
+      "id": "landingGround",
       "type": "Group",
       "label": "Page ground",
       "parent": "page",
       "children": [
+        "heroBand",
+        "inside",
+        "footer"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "minHeight": {
+          "value": 100,
+          "unit": "vh"
+        },
+        "flexDirection": "column",
+        "justifyContent": "flex-start",
+        "backgroundColor": "var(--muted)"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "heroBand",
+      "type": "Group",
+      "label": "The hero — a photograph, and whichever of the three states is true",
+      "parent": "landingGround",
+      "children": [
+        "heroShell"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "explicit",
+        "height": {
+          "value": 560,
+          "unit": "px"
+        },
+        "flexDirection": "column",
+        "alignItems": "center",
+        "justifyContent": "flex-end",
+        "backgroundGradient": "var(--gradient-scrim)",
+        "backgroundSize": "cover",
+        "backgroundPosition": "center",
+        "backgroundColor": "var(--foreground)",
+        "paddingBottom": "var(--space-12)",
+        "backgroundImage": "noodl_modules/starter-imagery/people-coffee-shop.webp"
+      },
+      "x": 160,
+      "y": 280
+    },
+    {
+      "id": "heroShell",
+      "type": "Group",
+      "label": "Shell",
+      "parent": "heroBand",
+      "children": [
         "hero",
         "actions",
-        "inside",
-        "setupCard"
+        "setupCard",
+        "waitingCard"
       ],
       "parameters": {
         "width": {
@@ -34,30 +92,24 @@
           "unit": "%"
         },
         "maxWidth": {
-          "value": 760,
+          "value": 1200,
           "unit": "px"
         },
         "flexDirection": "column",
         "paddingLeft": "var(--space-6)",
         "paddingRight": "var(--space-6)",
-        "sizeMode": "explicit",
-        "height": {
-          "value": 100,
-          "unit": "%"
-        },
+        "sizeMode": "contentHeight",
         "alignX": "center",
-        "rowGap": "var(--space-5)",
-        "paddingTop": "var(--space-12)",
-        "paddingBottom": "var(--space-12)"
+        "rowGap": "var(--space-5)"
       },
-      "x": 100,
-      "y": 160
+      "x": 220,
+      "y": 400
     },
     {
       "id": "hero",
       "type": "Group",
       "label": "The hero",
-      "parent": "ground",
+      "parent": "heroShell",
       "children": [
         "eyebrow-2",
         "heading",
@@ -70,10 +122,11 @@
         },
         "flexDirection": "column",
         "rowGap": "var(--space-3)",
-        "paddingBottom": "var(--space-6)"
+        "paddingBottom": "var(--space-6)",
+        "mounted": false
       },
-      "x": 160,
-      "y": 280
+      "x": 280,
+      "y": 520
     },
     {
       "id": "eyebrow-2",
@@ -86,10 +139,10 @@
         "fontWeight": "var(--font-semibold)",
         "letterSpacing": "var(--tracking-widest)",
         "textTransform": "uppercase",
-        "color": "var(--primary)"
+        "color": "var(--primary-foreground)"
       },
-      "x": 220,
-      "y": 400
+      "x": 340,
+      "y": 640
     },
     {
       "id": "heading",
@@ -102,10 +155,10 @@
         "fontWeight": "var(--font-bold)",
         "lineHeight": "var(--leading-none)",
         "letterSpacing": "var(--tracking-tighter)",
-        "color": "var(--foreground)"
+        "color": "var(--primary-foreground)"
       },
-      "x": 220,
-      "y": 520
+      "x": 340,
+      "y": 760
     },
     {
       "id": "blurb",
@@ -116,20 +169,20 @@
         "text": "",
         "fontSize": "var(--text-lg)",
         "lineHeight": "var(--leading-relaxed)",
-        "color": "var(--muted-foreground)",
+        "color": "var(--primary-foreground)",
         "maxWidth": {
           "value": 560,
           "unit": "px"
         }
       },
-      "x": 220,
-      "y": 640
+      "x": 340,
+      "y": 880
     },
     {
       "id": "actions",
       "type": "Group",
       "label": "Ways in",
-      "parent": "ground",
+      "parent": "heroShell",
       "children": [
         "signInButton",
         "joinButton"
@@ -137,10 +190,11 @@
       "parameters": {
         "flexDirection": "row",
         "alignItems": "center",
-        "columnGap": "var(--space-3)"
+        "columnGap": "var(--space-3)",
+        "mounted": false
       },
-      "x": 160,
-      "y": 760
+      "x": 280,
+      "y": 1000
     },
     {
       "id": "signInButton",
@@ -161,8 +215,8 @@
         "fontWeight": "var(--font-semibold)",
         "sizeMode": "contentSize"
       },
-      "x": 220,
-      "y": 880
+      "x": 340,
+      "y": 1120
     },
     {
       "id": "joinButton",
@@ -171,12 +225,12 @@
       "parent": "actions",
       "parameters": {
         "label": "Ask to join",
-        "backgroundColor": "transparent",
-        "color": "var(--foreground)",
+        "backgroundColor": "var(--surface-glass)",
+        "color": "var(--primary-foreground)",
         "borderRadius": "var(--radius-full)",
         "borderStyle": "solid",
         "borderWidth": "var(--border-1)",
-        "borderColor": "var(--border-control)",
+        "borderColor": "var(--border-glass)",
         "paddingLeft": "var(--space-6)",
         "paddingRight": "var(--space-6)",
         "paddingTop": "var(--space-3)",
@@ -185,14 +239,43 @@
         "fontWeight": "var(--font-semibold)",
         "sizeMode": "contentSize"
       },
-      "x": 220,
-      "y": 1000
+      "x": 340,
+      "y": 1240
     },
     {
       "id": "inside",
       "type": "Group",
       "label": "What members can see",
-      "parent": "ground",
+      "parent": "landingGround",
+      "children": [
+        "insideShell"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "flexDirection": "column",
+        "alignItems": "center",
+        "backgroundColor": "var(--surface)",
+        "borderTopStyle": "solid",
+        "borderTopWidth": "var(--border-1)",
+        "borderTopColor": "var(--border)",
+        "borderBottomStyle": "solid",
+        "borderBottomWidth": "var(--border-1)",
+        "borderBottomColor": "var(--border)",
+        "paddingTop": "var(--space-20)",
+        "paddingBottom": "var(--space-20)",
+        "mounted": false
+      },
+      "x": 160,
+      "y": 2200
+    },
+    {
+      "id": "insideShell",
+      "type": "Group",
+      "label": "Shell",
+      "parent": "inside",
       "children": [
         "insideHeading",
         "insideList"
@@ -202,92 +285,240 @@
           "value": 100,
           "unit": "%"
         },
+        "maxWidth": {
+          "value": 1200,
+          "unit": "px"
+        },
         "flexDirection": "column",
-        "rowGap": "var(--space-4)",
-        "paddingTop": "var(--space-12)",
-        "mounted": false
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "sizeMode": "contentHeight",
+        "alignX": "center",
+        "rowGap": "var(--space-6)"
       },
-      "x": 160,
-      "y": 1120
+      "x": 220,
+      "y": 2320
     },
     {
       "id": "insideHeading",
       "type": "Text",
       "label": "What members can see — heading",
-      "parent": "inside",
+      "parent": "insideShell",
       "parameters": {
         "text": "What members can see",
-        "fontSize": "var(--text-xl)",
+        "fontSize": "var(--text-3xl)",
         "fontWeight": "var(--font-semibold)",
-        "lineHeight": "var(--leading-snug)",
+        "lineHeight": "var(--leading-tight)",
+        "letterSpacing": "var(--tracking-tight)",
         "color": "var(--foreground)"
       },
-      "x": 220,
-      "y": 1240
+      "x": 280,
+      "y": 2440
     },
     {
       "id": "insideList",
-      "type": "Group",
+      "type": "net.noodl.visual.columns",
       "label": "The three tiles",
-      "parent": "inside",
+      "parent": "insideShell",
       "children": [
-        "tileNews",
-        "tileDiary",
+        "cellNews",
+        "cellDiary",
+        "cellPeople"
+      ],
+      "parameters": {
+        "sizing": "autoFit",
+        "minWidth": {
+          "value": 300,
+          "unit": "px"
+        },
+        "marginX": {
+          "value": 12,
+          "unit": "px"
+        }
+      },
+      "x": 280,
+      "y": 2560
+    },
+    {
+      "id": "cellNews",
+      "type": "Group",
+      "label": "The news column",
+      "parent": "insideList",
+      "children": [
+        "tileNews"
+      ],
+      "parameters": {
+        "sizeMode": "contentHeight",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "flexDirection": "column"
+      },
+      "x": 340,
+      "y": 2680
+    },
+    {
+      "id": "cellDiary",
+      "type": "Group",
+      "label": "The diary column",
+      "parent": "insideList",
+      "children": [
+        "tileDiary"
+      ],
+      "parameters": {
+        "sizeMode": "contentHeight",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "flexDirection": "column"
+      },
+      "x": 340,
+      "y": 2920
+    },
+    {
+      "id": "cellPeople",
+      "type": "Group",
+      "label": "The people column",
+      "parent": "insideList",
+      "children": [
         "tilePeople"
+      ],
+      "parameters": {
+        "sizeMode": "contentHeight",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "flexDirection": "column"
+      },
+      "x": 340,
+      "y": 3160
+    },
+    {
+      "id": "tileNews",
+      "type": "/Members/InsideTile",
+      "label": "Announcements",
+      "parent": "cellNews",
+      "parameters": {
+        "title": "Announcements",
+        "line": "What the moderators have posted, newest first."
+      },
+      "x": 400,
+      "y": 2800
+    },
+    {
+      "id": "tileDiary",
+      "type": "/Members/InsideTile",
+      "label": "The diary",
+      "parent": "cellDiary",
+      "parameters": {
+        "title": "The diary",
+        "line": "Meetings and events, with the details and where to go."
+      },
+      "x": 400,
+      "y": 3040
+    },
+    {
+      "id": "tilePeople",
+      "type": "/Members/InsideTile",
+      "label": "The directory",
+      "parent": "cellPeople",
+      "parameters": {
+        "title": "The directory",
+        "line": "Who else is a member."
+      },
+      "x": 400,
+      "y": 3280
+    },
+    {
+      "id": "footer",
+      "type": "Group",
+      "label": "The foot of the page",
+      "parent": "landingGround",
+      "children": [
+        "footerShell"
       ],
       "parameters": {
         "width": {
           "value": 100,
           "unit": "%"
         },
+        "sizeMode": "contentHeight",
         "flexDirection": "column",
-        "rowGap": "var(--space-3)"
+        "alignItems": "center",
+        "backgroundColor": "var(--muted)",
+        "borderTopStyle": "solid",
+        "borderTopWidth": "var(--border-1)",
+        "borderTopColor": "var(--border)",
+        "paddingTop": "var(--space-16)",
+        "paddingBottom": "var(--space-10)"
+      },
+      "x": 160,
+      "y": 3400
+    },
+    {
+      "id": "footerShell",
+      "type": "Group",
+      "label": "Shell",
+      "parent": "footer",
+      "children": [
+        "footerEdit",
+        "footerEditSecond"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "maxWidth": {
+          "value": 1200,
+          "unit": "px"
+        },
+        "flexDirection": "column",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "sizeMode": "contentHeight",
+        "alignX": "center",
+        "rowGap": "var(--space-2)"
       },
       "x": 220,
-      "y": 1360
+      "y": 3520
     },
     {
-      "id": "tileNews",
-      "type": "/Members/InsideTile",
-      "label": "Announcements",
-      "parent": "insideList",
+      "id": "footerEdit",
+      "type": "Text",
+      "label": "EDIT — who to contact",
+      "parent": "footerShell",
       "parameters": {
-        "title": "Announcements",
-        "line": "What the moderators have posted, newest first."
+        "text": "EDIT ME — your association’s contact details go here.",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--muted-foreground)"
       },
       "x": 280,
-      "y": 1480
+      "y": 3640
     },
     {
-      "id": "tileDiary",
-      "type": "/Members/InsideTile",
-      "label": "The diary",
-      "parent": "insideList",
+      "id": "footerEditSecond",
+      "type": "Text",
+      "label": "EDIT — the small print",
+      "parent": "footerShell",
       "parameters": {
-        "title": "The diary",
-        "line": "Meetings and events, with the details and where to go."
+        "text": "EDIT ME — registered charity number, or delete this line.",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--muted-foreground)"
       },
       "x": 280,
-      "y": 1600
-    },
-    {
-      "id": "tilePeople",
-      "type": "/Members/InsideTile",
-      "label": "The directory",
-      "parent": "insideList",
-      "parameters": {
-        "title": "The directory",
-        "line": "Who else is a member."
-      },
-      "x": 280,
-      "y": 1720
+      "y": 3760
     },
     {
       "id": "setupCard",
       "type": "Group",
       "label": "Nobody has set this up yet",
-      "parent": "ground",
+      "parent": "heroShell",
       "children": [
+        "setupHeading",
         "setupText",
         "setupButton"
       ],
@@ -296,23 +527,113 @@
           "value": 100,
           "unit": "%"
         },
-        "backgroundColor": "var(--accent)",
-        "borderRadius": "var(--radius-xl)",
+        "flexDirection": "column",
+        "backgroundColor": "var(--surface-glass)",
         "borderStyle": "solid",
         "borderWidth": "var(--border-1)",
-        "borderColor": "var(--border)",
-        "clip": true,
-        "flexDirection": "column",
-        "paddingLeft": "var(--space-5)",
-        "paddingRight": "var(--space-5)",
-        "paddingTop": "var(--space-5)",
-        "paddingBottom": "var(--space-5)",
-        "rowGap": "var(--space-4)",
+        "borderColor": "var(--border-glass)",
+        "borderRadius": "var(--radius-xl)",
+        "backdropBlur": {
+          "value": 14,
+          "unit": "px"
+        },
+        "columnGap": "var(--space-10)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "paddingTop": "var(--space-6)",
+        "paddingBottom": "var(--space-6)",
         "alignItems": "flex-start",
+        "rowGap": "var(--space-3)",
+        "maxWidth": {
+          "value": 640,
+          "unit": "px"
+        },
         "mounted": false
       },
-      "x": 160,
+      "x": 280,
+      "y": 1360
+    },
+    {
+      "id": "waitingCard",
+      "type": "Group",
+      "label": "The association could not be read",
+      "parent": "heroShell",
+      "children": [
+        "waitingHeading",
+        "waitingText"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "flexDirection": "column",
+        "backgroundColor": "var(--surface-glass)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-glass)",
+        "borderRadius": "var(--radius-xl)",
+        "backdropBlur": {
+          "value": 14,
+          "unit": "px"
+        },
+        "columnGap": "var(--space-10)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "paddingTop": "var(--space-6)",
+        "paddingBottom": "var(--space-6)",
+        "alignItems": "flex-start",
+        "rowGap": "var(--space-3)",
+        "maxWidth": {
+          "value": 640,
+          "unit": "px"
+        }
+      },
+      "x": 280,
       "y": 1840
+    },
+    {
+      "id": "waitingHeading",
+      "type": "Text",
+      "label": "Could not be read — the heading",
+      "parent": "waitingCard",
+      "parameters": {
+        "text": "This members’ area is not connected yet",
+        "fontSize": "var(--text-xl)",
+        "fontWeight": "var(--font-semibold)",
+        "lineHeight": "var(--leading-snug)",
+        "color": "var(--primary-foreground)"
+      },
+      "x": 340,
+      "y": 1960
+    },
+    {
+      "id": "waitingText",
+      "type": "Text",
+      "label": "Could not be read — the words",
+      "parent": "waitingCard",
+      "parameters": {
+        "text": "The app cannot reach its backend, so it does not yet know which association this is or who you are. If you have just installed it, connect a backend and reload. If you are a member, this is usually temporary — please try again in a moment.",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--primary-foreground)"
+      },
+      "x": 340,
+      "y": 2080
+    },
+    {
+      "id": "setupHeading",
+      "type": "Text",
+      "label": "Not set up yet — the heading",
+      "parent": "setupCard",
+      "parameters": {
+        "text": "Nobody has set this up yet",
+        "fontSize": "var(--text-xl)",
+        "fontWeight": "var(--font-semibold)",
+        "lineHeight": "var(--leading-snug)",
+        "color": "var(--primary-foreground)"
+      },
+      "x": 340,
+      "y": 1480
     },
     {
       "id": "setupText",
@@ -320,12 +641,12 @@
       "label": "Setup notice",
       "parent": "setupCard",
       "parameters": {
-        "text": "This members’ area has not been set up yet.",
+        "text": "Name your association and create the first moderator account. It takes a minute, and nothing else on this site works until it is done.",
         "fontSize": "var(--text-sm)",
-        "color": "var(--accent-foreground)"
+        "color": "var(--primary-foreground)"
       },
-      "x": 220,
-      "y": 1960
+      "x": 340,
+      "y": 1600
     },
     {
       "id": "setupButton",
@@ -346,8 +667,8 @@
         "fontWeight": "var(--font-semibold)",
         "sizeMode": "contentSize"
       },
-      "x": 220,
-      "y": 2080
+      "x": 340,
+      "y": 1720
     },
     {
       "id": "association-2",
@@ -356,18 +677,18 @@
       "parameters": {
         "collectionName": "Association"
       },
-      "x": 530,
-      "y": 2200
+      "x": 650,
+      "y": 1840
     },
     {
       "id": "read-3",
       "type": "JavaScriptFunction",
       "label": "The association, or the invitation to set one up",
       "parameters": {
-        "functionScript": "if (Inputs.rows === undefined) return;\nconst rows = Inputs.rows || [];\nconst row = rows.length > 0 ? rows[0] : undefined;\nOutputs.name = row ? (row.name || '') : '';\nOutputs.blurb = row ? (row.blurb || '') : '';\nOutputs.hasAssociation = rows.length > 0;\nOutputs.needsSetup = rows.length === 0;"
+        "functionScript": "if (Inputs.rows === undefined) return;\nconst rows = Inputs.rows || [];\nconst row = rows.length > 0 ? rows[0] : undefined;\nOutputs.name = row ? (row.name || '') : '';\nOutputs.blurb = row ? (row.blurb || '') : '';\nOutputs.hasAssociation = rows.length > 0;\nOutputs.needsSetup = rows.length === 0;\n// REL-002b. Always `false`, and that is the point: this node runs\n// only when the query answered, so publishing \"the query has not\n// answered = false\" is what takes the waiting card down. There is\n// deliberately no path that sets it back to `true` — a page that\n// answered once has answered.\nOutputs.unanswered = false;"
       },
-      "x": 530,
-      "y": 520,
+      "x": 650,
+      "y": 760,
       "ports": [
         {
           "name": "in-rows",
@@ -403,6 +724,13 @@
           "plug": "output",
           "type": "*",
           "group": "Outputs"
+        },
+        {
+          "name": "out-unanswered",
+          "displayName": "unanswered",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
         }
       ]
     },
@@ -414,8 +742,8 @@
         "router": "Main",
         "target": "/Pages/SignIn"
       },
-      "x": 530,
-      "y": 880
+      "x": 650,
+      "y": 1120
     },
     {
       "id": "toJoin",
@@ -425,8 +753,8 @@
         "router": "Main",
         "target": "/Pages/Join"
       },
-      "x": 530,
-      "y": 1000
+      "x": 650,
+      "y": 1240
     },
     {
       "id": "toSetup",
@@ -436,8 +764,8 @@
         "router": "Main",
         "target": "/Pages/Setup"
       },
-      "x": 530,
-      "y": 2080
+      "x": 650,
+      "y": 1720
     }
   ],
   "visualRoots": [

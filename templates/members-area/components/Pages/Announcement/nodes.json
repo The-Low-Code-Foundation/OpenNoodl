@@ -9,7 +9,7 @@
       "label": "Announcement",
       "children": [
         "chrome-2",
-        "ground-4"
+        "ground-3"
       ],
       "parameters": {
         "title": "Announcement",
@@ -27,7 +27,7 @@
       "y": 160
     },
     {
-      "id": "ground-4",
+      "id": "ground-3",
       "type": "Group",
       "label": "Page ground",
       "parent": "page-4",
@@ -44,7 +44,7 @@
           "unit": "%"
         },
         "maxWidth": {
-          "value": 760,
+          "value": 1200,
           "unit": "px"
         },
         "flexDirection": "column",
@@ -67,7 +67,7 @@
       "id": "titleHead",
       "type": "Group",
       "label": "Title — the head",
-      "parent": "ground-4",
+      "parent": "ground-3",
       "children": [
         "titleEyebrow",
         "title"
@@ -120,7 +120,7 @@
       "id": "date",
       "type": "Text",
       "label": "Posted",
-      "parent": "ground-4",
+      "parent": "ground-3",
       "parameters": {
         "text": "",
         "fontSize": "var(--text-sm)",
@@ -133,7 +133,7 @@
       "id": "body",
       "type": "Text",
       "label": "Body",
-      "parent": "ground-4",
+      "parent": "ground-3",
       "parameters": {
         "text": "",
         "fontSize": "var(--text-base)",
@@ -146,7 +146,7 @@
       "id": "refusal",
       "type": "Group",
       "label": "Not available",
-      "parent": "ground-4",
+      "parent": "ground-3",
       "children": [
         "refusalText"
       ],
@@ -278,7 +278,7 @@
       "id": "removal",
       "type": "Group",
       "label": "Taking it down again",
-      "parent": "ground-4",
+      "parent": "ground-3",
       "children": [
         "removeButton",
         "confirm",

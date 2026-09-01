@@ -76,6 +76,18 @@
       "toProperty": "Visitor"
     },
     {
+      "fromId": "decide-2",
+      "fromProperty": "out-isSignedIn",
+      "toId": "outputs",
+      "toProperty": "isSignedIn"
+    },
+    {
+      "fromId": "decide-2",
+      "fromProperty": "out-denied",
+      "toId": "outputs",
+      "toProperty": "Denied"
+    },
+    {
       "fromId": "failed",
       "fromProperty": "out-standing",
       "toId": "outputs",
@@ -86,6 +98,12 @@
       "fromProperty": "out-isUnknown",
       "toId": "outputs",
       "toProperty": "isUnknown"
+    },
+    {
+      "fromId": "failed",
+      "fromProperty": "out-denied",
+      "toId": "outputs",
+      "toProperty": "Denied"
     }
   ]
 }

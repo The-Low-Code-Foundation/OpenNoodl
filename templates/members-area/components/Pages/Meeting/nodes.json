@@ -9,7 +9,7 @@
       "label": "Meeting",
       "children": [
         "chrome-4",
-        "ground-6"
+        "ground-5"
       ],
       "parameters": {
         "title": "Meeting",
@@ -27,7 +27,7 @@
       "y": 160
     },
     {
-      "id": "ground-6",
+      "id": "ground-5",
       "type": "Group",
       "label": "Page ground",
       "parent": "page-6",
@@ -45,7 +45,7 @@
           "unit": "%"
         },
         "maxWidth": {
-          "value": 760,
+          "value": 1200,
           "unit": "px"
         },
         "flexDirection": "column",
@@ -68,7 +68,7 @@
       "id": "titleHead-2",
       "type": "Group",
       "label": "Title — the head",
-      "parent": "ground-6",
+      "parent": "ground-5",
       "children": [
         "titleEyebrow-2",
         "title-2"
@@ -121,7 +121,7 @@
       "id": "when-3",
       "type": "Text",
       "label": "When",
-      "parent": "ground-6",
+      "parent": "ground-5",
       "parameters": {
         "text": "",
         "fontSize": "var(--text-sm)",
@@ -134,7 +134,7 @@
       "id": "place",
       "type": "Text",
       "label": "Where",
-      "parent": "ground-6",
+      "parent": "ground-5",
       "parameters": {
         "text": "",
         "fontSize": "var(--text-sm)",
@@ -147,7 +147,7 @@
       "id": "details",
       "type": "Text",
       "label": "Details",
-      "parent": "ground-6",
+      "parent": "ground-5",
       "parameters": {
         "text": "",
         "fontSize": "var(--text-base)",
@@ -160,7 +160,7 @@
       "id": "refusal-2",
       "type": "Group",
       "label": "Not available",
-      "parent": "ground-6",
+      "parent": "ground-5",
       "children": [
         "refusalText-2"
       ],
@@ -292,7 +292,7 @@
       "id": "removal-2",
       "type": "Group",
       "label": "Taking it down again",
-      "parent": "ground-6",
+      "parent": "ground-5",
       "children": [
         "removeButton-2",
         "confirm-2",

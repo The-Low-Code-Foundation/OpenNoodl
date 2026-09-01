@@ -9,7 +9,7 @@
       "label": "Members",
       "children": [
         "chrome",
-        "ground-3"
+        "ground-2"
       ],
       "parameters": {
         "title": "Members",
@@ -27,7 +27,7 @@
       "y": 160
     },
     {
-      "id": "ground-3",
+      "id": "ground-2",
       "type": "Group",
       "label": "Page ground",
       "parent": "page-3",
@@ -44,7 +44,7 @@
           "unit": "%"
         },
         "maxWidth": {
-          "value": 760,
+          "value": 1200,
           "unit": "px"
         },
         "flexDirection": "column",
@@ -67,7 +67,7 @@
       "id": "headingHead-2",
       "type": "Group",
       "label": "Heading — the head",
-      "parent": "ground-3",
+      "parent": "ground-2",
       "children": [
         "headingEyebrow-2",
         "heading-3"
@@ -120,7 +120,7 @@
       "id": "pendingNotice",
       "type": "Group",
       "label": "Waiting to be approved",
-      "parent": "ground-3",
+      "parent": "ground-2",
       "children": [
         "pendingNoticeText"
       ],
@@ -163,7 +163,7 @@
       "id": "unknownNotice",
       "type": "Group",
       "label": "Membership could not be checked",
-      "parent": "ground-3",
+      "parent": "ground-2",
       "children": [
         "unknownNoticeText"
       ],
@@ -206,7 +206,7 @@
       "id": "memberArea",
       "type": "Group",
       "label": "What a member sees",
-      "parent": "ground-3",
+      "parent": "ground-2",
       "children": [
         "list",
         "emptyState",
@@ -308,7 +308,7 @@
       "id": "moderatorTools",
       "type": "Group",
       "label": "What only a moderator sees",
-      "parent": "ground-3",
+      "parent": "ground-2",
       "children": [
         "moderatorEyebrow",
         "moderatorButtons"

@@ -1,7 +1,8 @@
 # Phase 82 — next session
 
-_Opened 2026-08-31 (s1). Last updated **2026-09-01, session 6**, which closed no row and ruled all
-fifteen open decisions on rows 6, 7 and 8 — see [`RICHARD-RULINGS-2026-09-01.md`](RICHARD-RULINGS-2026-09-01.md)._
+_Opened 2026-08-31 (s1). Last updated **2026-09-01, session 7**, which BUILT the spine of row 6 —
+the measure, the hero photograph and the three designed states — and left three of the six ruled
+items open. The decisions are still [`RICHARD-RULINGS-2026-09-01.md`](RICHARD-RULINGS-2026-09-01.md)._
 
 ## 🔴 Read this first: this is the only board you open
 
@@ -31,7 +32,7 @@ Take the topmost row that is not ✅. Strike it here when it closes.
 | ~~3~~ | ~~**REL-003** rebuild the stale bundles~~ | ✅ **CLOSED, s3** — DEF-023 and DEF-026 observed through bundles with control pairs; DEF-021's clause RETIRED as unmeetable | — |
 | ~~4~~ | ~~**REL-002a** the ambush defaults~~ | ✅ **CLOSED, s4** — the defect was `settings.bodyScroll`; template 0/7 → 7/7 reachable controls | — |
 | ~~5~~ | ~~**REL-002b** fail closed + designed first run~~ | ✅ **CLOSED, s5** — `Denied` + `isSignedIn` + `waitingCard`; **37/37** on a real enforcing backend | — |
-| 6 | **REL-002c** the members' area, redeemed | the redesign; **the phase's close condition** | ✅ **DIRECTION RULED s6** — build it, then his WORTHY ruling |
+| 6 | **REL-002c** the members' area, redeemed | the redesign; **the phase's close condition** | 🟡 **PART-BUILT s7** — §C, §D-hero and §F done and rendered; **§D-icons, §E-data and the row family OPEN**. Then his WORTHY ruling |
 | 7 | **REL-001** publish + drive the install | shelf's first row; also closes P75's FB-005 | ✅ **metadata RULED s6** · **Richard drives the publish** |
 | 8 | **REL-004** cut, tag and publish `v0.2.2` | last | ✅ **number + notes shape RULED s6** · green floor, fresh readout |
 
@@ -51,46 +52,82 @@ row 8.**
 
 ## 🔴 The next job
 
-**Row 6: REL-002c — the members' area, redeemed.** The redesign, on top of a and b, using the kit
-phase 81 widened (compositions, the stock library, the `ui-landing-page` example Richard called
-*"fucking pro"* — that page is the reference).
+**Row 6 continues: REL-002c.** Session 7 built the spine and rendered it in both states. **Three of
+the six ruled items are still open, and one needs Richard before it is safe to build further.**
 
-🔴 **The direction is RULED. Build from
-[`RICHARD-RULINGS-2026-09-01.md`](RICHARD-RULINGS-2026-09-01.md), not from your own taste.** It
-answers scope, the measure, imagery, copy, the third state and how the result gets graded. Do not
-re-open any of it.
+🔴 **Read [`TASKS.md`](TASKS.md) §"REL-002c — what session 7 built" FIRST.** It carries the readings,
+the photographs and the reasoning. This is the ordered list of what is left.
 
-### What was ruled, in one place
+### 🔴 0. ASK RICHARD ONE QUESTION BEFORE BUILDING — and it is not a blocker for the rest
 
-| | ruling |
+**Six of the thirteen pages do not carry `maxWidth: 1200`.** `Pages/{SignIn, Join, Setup, Post,
+Account, Unsubscribe}` carry a new `FORM_GROUND` — **720px, centred**.
+
+⚠️ **This is a real departure from §C as written, and it was made deliberately after rendering the
+literal reading and finding it worse than the baseline.** At 1200 `/setup` is six stacked
+**1100px-wide text inputs**. His stated criterion is *"white space to the left and right **equally**
+— not just on one side"*, and a 1200 shell holding a capped left-aligned form gives ~480px of white
+on the right only, which is the *"weird"* he named. A 720 centred ground gives 280px either side.
+
+**The question**: is a centred 720 form ground the right reading of §C, or does he want the literal
+1200 — in which case the answer is **a two-up split** filling the shell (form on one side, what the
+form is for on the other), which is more work and a better page?
+
+✅ **Do not wait on it for anything else.** The three items below are independent of the answer.
+
+### 1. §D — the `/join` photograph and the icons inside the gate
+
+The landing hero is done. Still open: a photograph on `/join` (the other public page), and
+**iconography inside the gated area** — *"no imagery and no iconography anywhere"* is one of the
+fired tells on the baseline verdict, and the gated pages are still entirely typographic.
+
+⚠️ **`STARTER_ASSETS` installs 1,998 lucide icons into every project**, so this costs zero template
+bytes exactly as the photograph did. The `featureItem` composition is the kit's shape for a glyph
+beside a title and a line.
+
+🔴 **Probe the DOM, do not infer it from the component that writes it.** P81 s9 recorded that
+`IconGlyph`'s font branch renders `span.lucide.icon-sprout` with **no `ndl-icon-glyph` class**, so a
+selector taken from the module's own constant counts 0 on a page with 10 glyphs.
+
+### 2. §E — the data half, which is the larger half
+
+Built: the `EDIT —` naming convention, with the landing footer as its worked example (two
+`EDIT ME —` lines, nodes named `EDIT — who to contact` and `EDIT — the small print`).
+
+**Not built**: `/setup` collecting a **tagline** and a **landing blurb**, the pages reading them from
+the record, and the **`Start here` note page**. ⚠️ `blurb` already exists on `Association` and
+`claimAssociation` already takes it — **tagline is the only new field**, so this is a smaller change
+than it reads. It touches [`tpl001Cloud.ts`](../../../packages/noodl-mcp/tests/tpl001Cloud.ts).
+
+### 3. The row family — the seven shared `Members/` components
+
+`Chrome` is done (its shell went to 1200, which is what closed V15). `AnnouncementRow`,
+`MeetingRow`, `MemberRow`, `RequestRow`, `InsideTile` and `Standing` have **not** been looked at
+since the measure changed. At 1200 the ruled rows put a `Read` button a long way from its title —
+see `verdicts/vib-001/2026-09-01/members-area-living/members-desktop-full.png`. That is the page
+Richard rules, so it is worth the pass.
+
+### 4. Then the grading
+
+**78 renders**, graded by the split Richard ruled (§A2a): he rules `/` in both states, `/setup`,
+`/join`, `/members`, `/directory`; the Judge grades the other seven and 🔴 **any SHITTY escalates to
+him**.
+
+✅ **The instrument exists and both halves were run this session.**
+
+- `vib001-members.look.ts` — both states, 44 shots, ~5 min. **This is the close protocol's instrument.**
+- 🆕 `rel002c-look.look.ts` — **door only, 16 shots, ~92s.** Written this session as the fast loop
+  while building. It is a working instrument, not a gate; it asserts only what would make the
+  pictures lie.
+
+### The four gates this row owes
+
+| gate | last reading (s7, HEAD `5f197e28`) |
 |---|---|
-| **scope** | 🔴 **ALL THIRTEEN pages** in `components/Pages/`, not the two the old AC named — *"shipping the first template that's only 1/3 usable would be pretty sad"* |
-| **the measure** | `maxWidth: 1200` + `--space-6` gutters + `alignItems: center` on every structural shell. 🔴 **On the SHELL, never on the text** |
-| **imagery** | Photographs on `/` and `/join`; **icons only** inside the gated area. **Zero template bytes** — `STARTER_ASSETS` already installs 44 CC0 photographs and 1,998 icons into every project |
-| **copy** | 🔴 **Make it DATA.** `/setup` collects name + tagline + landing blurb; pages read them from the record. What cannot be data is written *obviously* unfinished and its node named `EDIT — …`. Plus a `Start here` note page. **No invented copy** |
-| **the third state** | `waitingCard` gets a designed first-class treatment — it is the only node **mounted by default**, so it is the first frame of a fresh install |
-| **grading** | Richard rules **six** — `/` in both states, `/setup`, `/join`, `/members`, `/directory`. The **Judge grades the other seven**, and 🔴 **any SHITTY verdict escalates to him** |
-
-**AC — the phase's close condition**: all thirteen pages read **WORTHY** in **both states** at **all
-three widths**, graded by the split above.
-
-⚠️ **The build is not 13× the work.** Most of the look lives in the seven shared `Members/`
-components — `Chrome`, `AnnouncementRow`, `InsideTile`, `MeetingRow`, `MemberRow`, `RequestRow`,
-`Standing`. Fix the chrome and the row family and most of the thirteen move at once. **Start there**,
-not page by page.
-
-⚠️ **`.look.ts` files are NOT run by jest** (`testMatch` = `**/tests/**/*.test.ts`).
-`vib001-members.look.ts` and `tpl001-rows.look.ts` read this template and are exactly the files that
-should grade a look change. **This row is the one that changes the look** — run them deliberately.
-
-⚠️ **Build it in the GENERATOR, never in `templates/members-area/` directly.** The artefact is
-regenerated from [`tpl001Components.ts`](../../../packages/noodl-mcp/tests/tpl001Components.ts) by
-`npm run template:members`, and `tpl001Template.test.ts`'s byte gate reddens if they disagree.
-✅ **Run the regeneration BEFORE you edit and confirm it is a no-op** — that is what makes the diff
-afterwards attributable to you.
-
-🔴 **A TOKEN / COMPOSITION / TOOL-DESCRIPTION edit owes the `noodl-mcp` suite.** This redesign
-touches all three.
+| `npm run template:members` | **0**, and **idempotent** — hash it before you edit and confirm a no-op, which is what makes your diff attributable |
+| `tpl001Template.test.ts` | **0**, 72/72 |
+| full `noodl-mcp` suite | **0** — **83/83 suites, 1085/1085 tests**, on the second run. ⚠️ The FIRST run read `1` on `projectOwnsBackend.test.ts`; it passes **12/12 alone**, imports nothing this row touches, and passed in the second full run. That is the flake s9 of P81 already measured as *"the failing set MOVES between runs"* — 🔴 **so a lone red here is a FLAKE until re-run**, and re-running is what turned a 2-failure reading into a clean one |
+| `vib001-members.look.ts` | **0**, both states, seeded backend asserted before any picture |
 
 ### Then rows 7 and 8
 
@@ -202,12 +239,69 @@ category (`data-app` → **`starter`**, which also amends TPL-001 AC8).
    WORTHY ruling needs an artefact — check one exists before making the ask the session's opening
    move.**
 
+## What session 7 did — row 6, the spine of REL-002c
+
+**No row closed; the row is part-built and rendered.** Full account in
+[`TASKS.md`](TASKS.md) §"REL-002c — what session 7 built".
+
+Built and photographed in both states: **§C** the measure (`PAGE_GROUND` and the chrome shell 760 →
+**1200**), **§D** the hero photograph under a scrim on `/`, **§F** `waitingCard` and `setupCard` as
+glass panels standing on that photograph, a **footer band** so the page has a bottom edge in every
+state, the three landing tiles **3-up** in a `gridAutoFit`, and the Join page's second filled button
+demoted to the outline.
+
+✅ **V15 is CLOSED and the cause was not the nav.** At 760 the six `gridAutoFit` items at
+`minWidth: 132` fitted five across and folded the sixth, on every signed-in page at every viewport.
+The chrome cap was the whole mechanism; at 1200 they are one row of six.
+
+## 🔴 What to carry out of session 7
+
+1. 🔴 **A DEFAULT-CLOSED GROUP WITHOUT A WIRE IS NOT A GATE, IT IS A DELETION.** `hero` was given
+   `mounted: false` so it could not paint an eyebrow over two empty `Text` nodes — and the wire that
+   turns it back on was a separate edit that did not happen. The living landing page rendered a
+   photograph and two buttons and **no association name at all**, and every gate in the repository
+   was green over it. ✅ **The two edits are ONE edit.** Found by looking at the picture, which is
+   the only instrument that could have found it.
+2. 🔴 **A COMPONENT INSTANCE CARRIES NO LAYOUT PORTS AT ALL** — *"it has only the ports its
+   Component Inputs node declares"*, and the door **refuses the write** rather than discarding the
+   values. So a component instance can never satisfy the "every `Columns` child carries `sizeMode`
+   and `width`" sweep; it needs a **wrapper Group that owns the box**. ✅ The door's refusal is the
+   good outcome here — a silent discard would have shipped three tiles that ignore their columns.
+3. 🔴 **`height: 100%` IS INERT ON EVERY PAGE IN THIS TEMPLATE, AND ALWAYS HAS BEEN.** A percentage
+   height resolves against the parent, and the parent chain ends at a `Router`, which sizes itself
+   to its content — `APP_NODES`' own comment says so. `PAGE_GROUND` has carried `height: 100%` on
+   all thirteen pages and it has never done anything; it was invisible only because nothing painted
+   a background to show where the box ended. ✅ **`minHeight` is the one dimension port that takes
+   `vh`** (`units: ['%', 'px', 'vw', 'vh']`), so it floors a page at the viewport without asking
+   anybody.
+4. 🔴 **TWO COMMENTS IN THE GENERATOR WERE FACTUALLY WRONG AND BETWEEN THEM COST A LAYOUT.**
+   *"`Columns` … a node type this template does not use anywhere"* — it has used one since s8 — and
+   *"a Group row cannot collapse … there is no `flexWrap` on a Group"* — `flexWrap` is a real port
+   ([`group.ts:311`](../../../packages/noodl-viewer-react/src/nodes/visual/group.ts#L311)) and
+   `ui-landing-page` uses it. On the strength of those two the three landing tiles were stacked
+   full-width. ✅ **A confident comment in a file this well-documented is still a claim; check it.**
+5. 🔴 **RE-RUN THE GATE AFTER THE LAST EDIT, NOT AFTER THE ONE BEFORE IT.** `tpl001Template.test.ts`
+   was run green at 72/72, then the hero wire was added, then it was not re-run — so it showed up
+   red in the full-suite run and read for a moment like a suite-vs-alone discrepancy. It was neither:
+   it was a **stale reading**. ✅ The gate that matters is the one taken after the final edit.
+6. ⚠️ **RENDER THE LITERAL READING OF A RULING BEFORE ASSUMING IT IS RIGHT.** §C's *"maxWidth 1200 on
+   every structural shell"* produces a 1100px-wide password field on `/setup`. The ruling's own
+   stated criterion — equal white space either side — is what resolves it, and the two only disagree
+   on the form pages. ✅ **A ruling's CRITERION outranks its worked example when they part.** Flagged
+   for Richard rather than decided quietly; see §0 of the next job.
+7. ✅ **A 92-second door-only harness paid for itself many times over.** `rel002c-look.look.ts`
+   renders 4 pages × 4 viewports with no backend. The full both-states instrument is ~5 minutes and
+   needs a seeded backend; the fast one is what makes "change it and look" a loop rather than an
+   event.
+
 ## What did not get done
 
-Rows 6, 7 and 8 — but they are no longer blocked on a decision. **Row 6 is now buildable**, and its
-direction is fully ruled.
+**Row 6 is not closed**, and three of the six ruled items are open: §D's icons and the `/join`
+photograph, §E's data half (`/setup` tagline + blurb, the `Start here` page), and a pass over the
+row family now the measure has changed. **One question is with Richard** — the `FORM_GROUND`
+departure, §0 of the next job — and it blocks none of the three.
 
-⚠️ **81 files remain uncommitted**: s1–s5's source changes from the scroll fix (s4) and the
-fail-closed work (s5), plus other phases' docs. Richard has authorised committing them. 🔴 **`git
-commit <pathspecs>`, never `git add`** — a sibling's commit sweeps staged files — and `git add`
-untracked paths first, because a pathspec commit **skips them silently**.
+⚠️ **The tree carries s1–s7's uncommitted work.** 🔴 **`git commit <pathspecs>`, never `git add`** —
+a sibling's commit sweeps staged files — and `git add` untracked paths first, because a pathspec
+commit **skips them silently** (`git status --porcelain | grep '^??'`, and check whether a `??` is a
+**directory**).

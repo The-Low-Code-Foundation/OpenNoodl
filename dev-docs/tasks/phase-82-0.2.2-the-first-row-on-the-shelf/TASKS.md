@@ -246,6 +246,97 @@ placeholders + a note page) is what ships in 0.2.2. Worth a row in a later phase
 here. ⚠️ It needs a way to know which strings are placeholders, which the `EDIT —` naming convention
 from §E-ii would give it for free — so the convention is worth keeping even before the gate exists.
 
+---
+
+## REL-002c — what session 7 built, and the one place it departed from the ruling
+
+**Session 7, 2026-09-01, at HEAD `5f197e28`.** The row is **NOT closed** — it closes on Richard's
+WORTHY ruling over six pages, and three of the six ruled items are only partly built. What follows
+is what moved, what was measured, and what the next session picks up.
+
+### The spine — §C, the measure
+
+| | before | after |
+|---|---|---|
+| `PAGE_GROUND` (all 13 pages) | `maxWidth: 760` | **`maxWidth: 1200`** (the `shell` composition's own) |
+| `CHROME_NODES.inner` | `maxWidth: 760` | **`maxWidth: 1200`** |
+| the six form pages | 760 | **`FORM_GROUND` — 720, centred** (see the departure below) |
+
+✅ **V15 is CLOSED, and it was closed by the chrome cap rather than by anything about the nav.** At
+760 the six `gridAutoFit` items at `minWidth: 132` fitted five across and folded the sixth onto a
+second row, on every signed-in page at every viewport. At 1200 they are one row of six.
+**Photographed**: `verdicts/vib-001/2026-09-01/members-area-living/members-desktop-full.png`.
+
+### 🔴 The one departure from §C, flagged for Richard
+
+**Six of the thirteen pages do NOT carry `maxWidth: 1200`.** `Pages/{SignIn, Join, Setup, Post,
+Account, Unsubscribe}` carry `FORM_GROUND`, which is 720 and centred.
+
+**This was not a preference — the literal reading was rendered first and it was worse than the
+baseline it replaced.** At 1200, `/setup` is six stacked 1100px-wide text inputs. The three readings
+of the ruling disagree on a form page:
+
+| reading | at 1280 | equal white space? |
+|---|---|---|
+| shell 1200, form fills it | a 1100px password field | yes, and unusable |
+| shell 1200, form capped and left-aligned in it | ~480px of white on the right only | **no — this is the "weird" he named** |
+| **ground 720, centred** | a 720px form, 280px either side | **yes** |
+
+His stated criterion is *"white space to the left and right **equally** — not just on one side"*, and
+only the third reading satisfies it. ⚠️ **If he wants 1200 literally on all thirteen, the answer is
+not this constant** — it is a two-up split that fills 1200 with the form on one side and what the
+form is for on the other. That is more work and a better page, and it is the obvious next move on
+`/setup` and `/join` if he rules that way.
+
+### §D — imagery: done on `/`, not yet on `/join` or inside the gate
+
+The landing hero is `imageGround` + `noodl_modules/starter-imagery/people-coffee-shop.webp` under
+`--gradient-scrim`. **Zero template bytes** — `STARTER_ASSETS` installs it into every project.
+
+⚠️ **`people-meeting` was chosen first and rendered wrong.** Both are catalogued under subject
+`people`; the first is a room full of people sitting together, the second is a desk with a bag, a
+tablet and two pairs of hands. A members' area is a group of people who belong somewhere. **Graded
+by rendering both**, which is the only way this is gradeable.
+
+⚠️ **`justifyContent: center` was an override and it was wrong.** The scrim is a VERTICAL gradient,
+darkest at the foot — which is what `imageGround`'s own description says it is for. Copy centred in
+the frame sits in the weakest part of it. Reverted to the composition's `flex-end`.
+
+**NOT done**: the `/join` photograph, and icons inside the gated area. Both are still open §D work.
+
+### §F — the waiting card, ruled as a first-class state
+
+`waitingCard` and `setupCard` are now **glass panels standing on the hero photograph**, not grey and
+accent boxes in the middle of a white page. `waitingCard` keeps the default `mounted`, so the first
+frame of a fresh install is a designed screen. `setupCard` gained a heading it did not have.
+**Photographed**: `verdicts/rel-002c/2026-09-01/members-area-door/landing-desktop-full.png`.
+
+### §E — the `EDIT —` convention has its first worked example; the data half is NOT built
+
+The landing page gained a `footerBand` carrying two `EDIT ME —` lines, whose nodes are named
+`EDIT — who to contact` and `EDIT — the small print`. **NOT done**: `/setup` collecting a tagline
+and landing blurb, the pages reading them from the record, and the `Start here` note page. That is
+the larger half of §E and it touches `tpl001Cloud.ts`.
+
+### Also fixed, from the VIB-001 baseline
+
+- **The Join page's two equal primary buttons.** `Sign in` sat in `PRIMARY_LABELS` because it is the
+  submit of `Pages/SignIn`, and the footnote under the join form inherited the fill. This file
+  already states the rule that fixes it, on `navBtn`: *"emphasis is a property of the PLACE rather
+  than of the label."* It is the outline button now.
+- **The page had no bottom edge.** A footer band plus a `--muted` page ground, so the door state
+  does not end in a strip of bare white below a finished footer.
+
+### The readings, with their exit statuses
+
+| gate | reading |
+|---|---|
+| `template:members` regeneration | **0**, and **idempotent** — hashed before and after a second run, identical (`bbeb0b6f…`), so every diff after that point is attributable |
+| `tpl001Template.test.ts` | **0** — **72/72** |
+| `vib001-members.look.ts` | **0** — 44 shots, both states, seeded backend asserted before any picture |
+| `rel002c-look.look.ts` (new, door only) | **0** — 16 shots, ~92s, the fast loop while building |
+
+
 ### REL-003 — The stale bundles the cut inherits
 
 Phase 80 closed several fixes whose effect a user cannot see, because the committed build output

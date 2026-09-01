@@ -17,7 +17,7 @@
     },
     {
       "fromId": "chrome-8",
-      "fromProperty": "Visitor",
+      "fromProperty": "Denied",
       "toId": "toLanding-6",
       "toProperty": "navigate"
     },

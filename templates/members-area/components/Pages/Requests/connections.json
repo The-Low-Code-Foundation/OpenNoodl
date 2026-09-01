@@ -29,7 +29,7 @@
     },
     {
       "fromId": "chrome-6",
-      "fromProperty": "Visitor",
+      "fromProperty": "Denied",
       "toId": "toLanding-4",
       "toProperty": "navigate"
     },

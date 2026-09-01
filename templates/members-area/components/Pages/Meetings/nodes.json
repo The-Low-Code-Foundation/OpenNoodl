@@ -9,7 +9,7 @@
       "label": "Meetings",
       "children": [
         "chrome-3",
-        "ground-5"
+        "ground-4"
       ],
       "parameters": {
         "title": "What’s coming up",
@@ -27,7 +27,7 @@
       "y": 160
     },
     {
-      "id": "ground-5",
+      "id": "ground-4",
       "type": "Group",
       "label": "Page ground",
       "parent": "page-5",
@@ -42,7 +42,7 @@
           "unit": "%"
         },
         "maxWidth": {
-          "value": 760,
+          "value": 1200,
           "unit": "px"
         },
         "flexDirection": "column",
@@ -65,7 +65,7 @@
       "id": "headingHead-3",
       "type": "Group",
       "label": "Heading — the head",
-      "parent": "ground-5",
+      "parent": "ground-4",
       "children": [
         "headingEyebrow-3",
         "heading-4"
@@ -118,7 +118,7 @@
       "id": "pendingNotice-2",
       "type": "Group",
       "label": "Waiting to be approved",
-      "parent": "ground-5",
+      "parent": "ground-4",
       "children": [
         "pendingNoticeText-2"
       ],
@@ -161,7 +161,7 @@
       "id": "memberArea-2",
       "type": "Group",
       "label": "What a member sees",
-      "parent": "ground-5",
+      "parent": "ground-4",
       "children": [
         "list-2",
         "emptyState-2"

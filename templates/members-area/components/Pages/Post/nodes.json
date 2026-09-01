@@ -9,7 +9,7 @@
       "label": "Post",
       "children": [
         "chrome-5",
-        "ground-9"
+        "ground-8"
       ],
       "parameters": {
         "title": "Post something",
@@ -27,7 +27,7 @@
       "y": 160
     },
     {
-      "id": "ground-9",
+      "id": "ground-8",
       "type": "Group",
       "label": "Page ground",
       "parent": "page-9",
@@ -42,7 +42,7 @@
           "unit": "%"
         },
         "maxWidth": {
-          "value": 760,
+          "value": 720,
           "unit": "px"
         },
         "flexDirection": "column",
@@ -65,7 +65,7 @@
       "id": "headingHead-6",
       "type": "Group",
       "label": "Heading — the head",
-      "parent": "ground-9",
+      "parent": "ground-8",
       "children": [
         "headingEyebrow-6",
         "heading-7"
@@ -118,7 +118,7 @@
       "id": "notAllowed",
       "type": "Group",
       "label": "Not a moderator",
-      "parent": "ground-9",
+      "parent": "ground-8",
       "children": [
         "notAllowedText"
       ],
@@ -161,7 +161,7 @@
       "id": "tools",
       "type": "Group",
       "label": "The two forms",
-      "parent": "ground-9",
+      "parent": "ground-8",
       "children": [
         "announcementForm",
         "meetingForm"

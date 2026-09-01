@@ -9,7 +9,7 @@
       "label": "Requests",
       "children": [
         "chrome-6",
-        "ground-10"
+        "ground-9"
       ],
       "parameters": {
         "title": "Requests to join",
@@ -27,7 +27,7 @@
       "y": 160
     },
     {
-      "id": "ground-10",
+      "id": "ground-9",
       "type": "Group",
       "label": "Page ground",
       "parent": "page-10",
@@ -42,7 +42,7 @@
           "unit": "%"
         },
         "maxWidth": {
-          "value": 760,
+          "value": 1200,
           "unit": "px"
         },
         "flexDirection": "column",
@@ -65,7 +65,7 @@
       "id": "headingHead-7",
       "type": "Group",
       "label": "Heading — the head",
-      "parent": "ground-10",
+      "parent": "ground-9",
       "children": [
         "headingEyebrow-7",
         "heading-8"
@@ -118,7 +118,7 @@
       "id": "notAllowed-2",
       "type": "Group",
       "label": "Not a moderator",
-      "parent": "ground-10",
+      "parent": "ground-9",
       "children": [
         "notAllowedText-2"
       ],
@@ -161,7 +161,7 @@
       "id": "queue",
       "type": "Group",
       "label": "The queue",
-      "parent": "ground-10",
+      "parent": "ground-9",
       "children": [
         "list-3",
         "emptyState-3"

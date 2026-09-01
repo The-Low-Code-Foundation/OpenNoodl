@@ -8,7 +8,7 @@
       "type": "Page",
       "label": "Ask to join",
       "children": [
-        "ground-7"
+        "ground-6"
       ],
       "parameters": {
         "title": "Ask to join",
@@ -18,7 +18,7 @@
       "y": 40
     },
     {
-      "id": "ground-7",
+      "id": "ground-6",
       "type": "Group",
       "label": "Page ground",
       "parent": "page-7",
@@ -36,7 +36,7 @@
           "unit": "%"
         },
         "maxWidth": {
-          "value": 760,
+          "value": 720,
           "unit": "px"
         },
         "flexDirection": "column",
@@ -59,7 +59,7 @@
       "id": "headingHead-4",
       "type": "Group",
       "label": "Heading — the head",
-      "parent": "ground-7",
+      "parent": "ground-6",
       "children": [
         "headingEyebrow-4",
         "heading-5"
@@ -112,7 +112,7 @@
       "id": "form-2",
       "type": "Group",
       "label": "The request",
-      "parent": "ground-7",
+      "parent": "ground-6",
       "children": [
         "nameField",
         "emailField",
@@ -282,7 +282,7 @@
       "id": "sent-2",
       "type": "Group",
       "label": "Request received",
-      "parent": "ground-7",
+      "parent": "ground-6",
       "children": [
         "sentText"
       ],
@@ -325,7 +325,7 @@
       "id": "refusal-3",
       "type": "Group",
       "label": "The one refusal",
-      "parent": "ground-7",
+      "parent": "ground-6",
       "children": [
         "refusalText-3"
       ],
@@ -368,7 +368,7 @@
       "id": "hint",
       "type": "Text",
       "label": "Already a member",
-      "parent": "ground-7",
+      "parent": "ground-6",
       "parameters": {
         "text": "Already have an account? Sign in instead.",
         "fontSize": "var(--text-sm)",
@@ -381,13 +381,15 @@
       "id": "signInButton-2",
       "type": "net.noodl.controls.button",
       "label": "Sign in",
-      "parent": "ground-7",
+      "parent": "ground-6",
       "parameters": {
         "label": "Sign in",
-        "backgroundColor": "var(--primary)",
-        "color": "var(--primary-foreground)",
+        "backgroundColor": "transparent",
+        "color": "var(--foreground)",
         "borderRadius": "var(--radius-full)",
-        "borderStyle": "none",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-control)",
         "paddingLeft": "var(--space-6)",
         "paddingRight": "var(--space-6)",
         "paddingTop": "var(--space-3)",

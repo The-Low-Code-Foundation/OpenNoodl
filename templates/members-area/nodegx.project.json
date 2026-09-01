@@ -5,7 +5,8 @@
   "nodegxVersion": "1.1.0",
   "settings": {
     "htmlTitle": "Members' Area",
-    "navigationPathType": "path"
+    "navigationPathType": "path",
+    "bodyScroll": true
   },
   "structure": {
     "componentsDir": "components",

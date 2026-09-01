@@ -277,6 +277,114 @@ const PANEL = { ...CARD, ...CARD_BODY, rowGap: 'var(--space-4)' };
  */
 const HERO_HEAD = { ...composition('sectionHead'), paddingBottom: 'var(--space-6)' };
 
+// ── §D — the hero stands on a photograph, and everything on it turns light ───
+//
+// 🔴 **The template contained no images at all**, and *"no imagery and no
+// iconography anywhere"* is a fired tell on the landing page's baseline verdict
+// (README §2). Richard ruled photographs on the two public pages, icons only
+// inside the gated area (§D of `RICHARD-RULINGS-2026-09-01.md`).
+//
+// ✅ **It costs the template zero bytes.** `STARTER_ASSETS` installs the 44 CC0
+// photographs into every project as `noodl_modules/starter-imagery/`, and the
+// template submission's excluded-files list is derived from that same constant —
+// so this REFERENCES a file every install already has, and ships none of it.
+//
+// ⚠️ **`people-meeting` is chosen by SUBJECT, which is the rule the corpus
+// states**: *"a page whose every image is the same abstract is decorated, not
+// designed"*. A members' area is people in a room; a texture would have been
+// decoration.
+
+/**
+ * The photograph a landing hero stands on, with the scrim that keeps type legible.
+ *
+ * ⚠️ **`people-coffee-shop`, and `people-meeting` was tried first and rendered
+ * wrong.** The catalogue lists both under subject `people`; the first is a room
+ * full of people sitting together, the second is a desk with a bag, a tablet and
+ * two pairs of hands. A members' area is a group of people who belong somewhere,
+ * so the room is the subject and the desk is stock photography. Graded by
+ * rendering both, which is the only way this is gradeable.
+ *
+ * ⚠️ **`justifyContent` is the composition's own `flex-end` and an override back
+ * to `center` was wrong.** The scrim is a VERTICAL gradient, darkest at the
+ * foot — that is what `imageGround`'s description says it is for. Copy centred
+ * in the frame sits in the weakest part of it, which is what the first render
+ * showed: legible, but only because the panel carried its own glass.
+ */
+const HERO_GROUND = {
+  ...composition('imageGround'),
+  backgroundImage: 'noodl_modules/starter-imagery/people-coffee-shop.webp',
+  height: { value: 560, unit: 'px' }
+};
+
+/**
+ * A shell inside an `imageGround`.
+ *
+ * 🔴 **`sizeMode: 'contentHeight'` is not optional and the corpus records why**
+ * (register V1, in `imageGround`'s own tool description): without it the shell
+ * takes the runtime's 100%×100% default, becomes `flexGrow: 100` in a column,
+ * fills the whole band — and the band's `justifyContent` then has nothing left
+ * to justify, so the copy sits silently at the top with the scrim's dark end
+ * empty below it.
+ */
+const HERO_SHELL = {
+  ...composition('shell'),
+  sizeMode: 'contentHeight',
+  alignX: 'center',
+  rowGap: 'var(--space-5)'
+};
+
+/**
+ * Type on the scrim.
+ *
+ * ⚠️ Every one of these overrides a colour that is correct on `--background` and
+ * illegible on a photograph. `--primary-foreground` is `#ffffff`, which is what
+ * `ui-landing-page` puts on its own scrim.
+ */
+const ON_SCRIM = { color: 'var(--primary-foreground)' };
+
+/**
+ * The secondary action, ON A PHOTOGRAPH.
+ *
+ * 🔴 **`outlineButton` is invisible here and that is a contrast fact, not a
+ * preference.** It paints `transparent` behind `--foreground` text inside a
+ * `--border-control` hairline — three values all chosen against `--background`.
+ * On the scrim the text is near-black on near-black. The glass tokens are the
+ * kit's own answer to a control on a picture: `--surface-glass` behind
+ * `--primary-foreground`, edged in `--border-glass`.
+ */
+function onScrimBtn(label: string): Record<string, unknown> {
+  return {
+    label,
+    ...withoutInertBorderWidth(composition('outlineButton')),
+    backgroundColor: 'var(--surface-glass)',
+    borderColor: 'var(--border-glass)',
+    color: 'var(--primary-foreground)'
+  };
+}
+
+/**
+ * A panel that sits ON the hero photograph — the two states a stranger can meet
+ * before the association exists.
+ *
+ * 🔴 **§F: `waitingCard` wears this, and it is the literal first frame of a
+ * fresh install.** `mounted` defaults to `true`
+ * (`react-component-node.ts:1900`), and this is the only node in the template
+ * that keeps the default — so it is what a person sees before any query has
+ * answered. It used to be a grey `--muted` box in the middle of a white page;
+ * as a glass panel on the photograph it is a designed state rather than the
+ * absence of one.
+ */
+const SCRIM_PANEL = {
+  ...composition('glassPanel'),
+  flexDirection: 'column',
+  alignItems: 'flex-start',
+  rowGap: 'var(--space-3)',
+  maxWidth: { value: 640, unit: 'px' },
+  paddingTop: 'var(--space-6)',
+  paddingBottom: 'var(--space-6)',
+  borderRadius: 'var(--radius-xl)'
+};
+
 /**
  * One tile in "what members can see".
  *
@@ -769,19 +877,99 @@ const PAGE_HEAD = {
  * this element, which is what lets a shared constant centre itself without every
  * one of the eleven `Page` nodes having to agree to align its children.
  *
- * ⚠️ 760px rather than the composition's 1200px, deliberately. This is a
- * noticeboard of prose and short lists, not a marketing site with a grid; 1200
- * would put a two-word heading on one line and leave the rest of the row empty.
+ * 🔴 **1200px, and the 760 it replaced was the wrong reading of the right
+ * instinct.** Richard ruled the measure on 2026-09-01 (§C of
+ * `RICHARD-RULINGS-2026-09-01.md`): *"the structural page divs have a max width
+ * and are centred… white space to the left and right equally"*, at the
+ * composition's own 1200 and matching `ui-landing-page`.
+ *
+ * The old comment here argued 760 because *"1200 would put a two-word heading on
+ * one line and leave the rest of the row empty"*. That is true, and it is an
+ * argument about **what the shell contains**, not about how wide the shell is —
+ * the fix for a two-word heading in a wide row is content that uses the row
+ * (`PROSE` below, tiles in a `gridAutoFit`, a list whose rows have a right-hand
+ * action), not a narrower page. Capping the page instead put every one of the
+ * thirteen screens in a 760px strip and left 1140px of white at 1900, which is
+ * V15 — *"the page uses ~37% of the width, the rest dead"*.
+ *
+ * ⚠️ **`alignX` is what centres it, and it is set on the CHILD.**
+ * `layout.ts:150-160` resolves `alignX: 'center'` inside a column parent to
+ * `alignSelf: center` on this element, which is what lets a shared constant
+ * centre itself without every one of the thirteen `Page` nodes having to agree
+ * to align its children.
  */
 const PAGE_GROUND = {
   ...composition('shell'),
   sizeMode: 'explicit',
   height: { value: 100, unit: '%' },
-  maxWidth: { value: 760, unit: 'px' },
   alignX: 'center',
   rowGap: 'var(--space-5)',
   paddingTop: 'var(--space-12)',
   paddingBottom: 'var(--space-12)'
+};
+
+/**
+ * The measure a LINE OF PROSE is read at, inside a shell that is wider than it.
+ *
+ * 🔴 **This is the half of §C that stops 1200 making the pages worse.** A shell
+ * at 1200 is right for a list with a right-hand action and wrong for a
+ * paragraph: 1200px of running text is ~150 characters a line, roughly double
+ * the measure anything is comfortably read at, and widening the page without
+ * this would have traded dead white space for unreadable prose and called it
+ * progress.
+ *
+ * 🔴 **It goes on a GROUP that wraps the prose, never on the `Text` itself.**
+ * That is V29's ruled mechanism restated: a `maxWidth` on the type inside a
+ * left-aligned shell strands all the leftover width on one side, which is the
+ * thing Richard called *"weird"*. A wrapper is a shell — it can be given an
+ * alignment and own its white space — where a `Text` with a cap is a ragged
+ * column with a hole beside it.
+ *
+ * ⚠️ **640px, and `ch` was tried first and is not available.** The measure that
+ * matters is counted in characters, but every dimension port in the runtime
+ * declares `units: ['px', '%']`
+ * ([`node-shared-port-definitions.ts:387`](../../noodl-viewer-react/src/node-shared-port-definitions.ts#L387)),
+ * so a `ch` cap would have been silently inert rather than wrong-looking. 640px
+ * at `--text-base` is ~78 characters — beside the kit's own `lead`, which caps
+ * itself at 560.
+ */
+/**
+ * The ground a page whose content is A FORM stands on.
+ *
+ * 🔴 **This is the one place REL-002c departs from the literal §C, and the
+ * departure is what §C's own stated criterion asks for.** Richard's words are
+ * *"the structural page divs have a max width and are centred… white space to
+ * the left and right **equally** — not just on one side, that's weird."* The
+ * criterion is EQUAL white space. On a form page the two ways to read the
+ * ruling disagree:
+ *
+ * | reading | at 1280 | equal white? |
+ * |---|---|---|
+ * | shell at 1200, form fills it | a 1100px-wide password field | yes, and unusable |
+ * | shell at 1200, form capped and left-aligned inside | ~480px of white on the right only | **no — this is the "weird" he named** |
+ * | **ground at 720, centred** | a 720px form, 280px either side | **yes** |
+ *
+ * 🔴 **The first of those is not hypothetical — it is what the widening
+ * produced and it was rendered before this constant existed.** `/setup` at
+ * 1280 came out as six stacked 1100px inputs. That is worse than the 760
+ * baseline it replaced, so shipping it would have been the measure making the
+ * template worse and calling it §C.
+ *
+ * ⚠️ **Flagged for Richard rather than decided quietly.** It is a real
+ * departure from *"maxWidth 1200 on every structural shell"* as written, on six
+ * of the thirteen pages. If he wants 1200 literally everywhere, the answer is
+ * not this constant — it is a two-up split that fills 1200 with the form on one
+ * side and what the form is for on the other, which is more work and a better
+ * page. See the handoff.
+ */
+const FORM_GROUND = { ...PAGE_GROUND, maxWidth: { value: 720, unit: 'px' } };
+
+const PROSE = {
+  width: { value: 100, unit: '%' },
+  sizeMode: 'contentHeight',
+  maxWidth: { value: 640, unit: 'px' },
+  flexDirection: 'column',
+  rowGap: 'var(--space-2)'
 };
 
 /**
@@ -1120,7 +1308,11 @@ export const STANDING_NODES = [
     ports: [
       { name: 'out-member', plug: 'output', type: 'signal' },
       { name: 'out-moderator', plug: 'output', type: 'signal' },
-      { name: 'out-visitor', plug: 'output', type: 'signal' }
+      { name: 'out-visitor', plug: 'output', type: 'signal' },
+      // REL-002b. `out-denied` is the refusal every protected page navigates
+      // on; `out-signedIn` is what lets the band decide whether to offer the
+      // furniture of a session. See the wires below for why both exist.
+      { name: 'out-denied', plug: 'output', type: 'signal' }
     ],
     parameters: {
       functionScript:
@@ -1137,22 +1329,37 @@ export const STANDING_NODES = [
         'Outputs.isModerator = moderator;\n' +
         `Outputs.isPending = s === '${STANDING_PENDING}';\n` +
         'Outputs.isUnknown = false;\n' +
+        '// REL-002b. Whether there is a session at all is a different question\n' +
+        '// from whether this person may read anything, and the band needs the\n' +
+        '// first one: a `Sign out` button offered to somebody with no session\n' +
+        '// tells them they are signed in.\n' +
+        `Outputs.isSignedIn = s !== '${STANDING_VISITOR}';\n` +
         'if (moderator) Outputs.moderator();\n' +
         'if (member) Outputs.member();\n' +
-        `if (s === '${STANDING_VISITOR}') Outputs.visitor();`
+        `if (s === '${STANDING_VISITOR}') { Outputs.visitor(); Outputs.denied(); }`
     }
   },
   {
     id: 'failed',
     type: 'JavaScriptFunction',
     label: 'The roles could not be read',
+    ports: [{ name: 'out-denied', plug: 'output', type: 'signal' }],
     parameters: {
       // 🔴 Not `pending`, and not `member`. Reporting a failed roles read as
       // "you are not a member" tells a member something false about themselves;
       // reporting it as membership would load content for someone whose
       // standing is unproven. `unknown` says what happened, shows nothing, and
       // leaves the server-side refusal as the boundary it always was.
-      functionScript: `Outputs.standing = '${STANDING_UNKNOWN}';\nOutputs.isUnknown = true;`
+      //
+      // 🔴 **REL-002b — and it now DENIES.** Showing nothing was still a page:
+      // measured with no backend bound, all six protected screens stayed at
+      // their own URL wearing the full members' band, `Sign out` included, and
+      // five of the six said nothing at all about why they were empty. "The
+      // content is hidden" is not the same claim as "the gate refused" — the
+      // first is a property of six `mounted: false` defaults, the second is a
+      // decision, and only the second survives somebody adding a seventh page.
+      // So the unreadable case fires the same refusal a visitor gets.
+      functionScript: `Outputs.standing = '${STANDING_UNKNOWN}';\nOutputs.isUnknown = true;\nOutputs.denied();`
     }
   },
   {
@@ -1165,9 +1372,11 @@ export const STANDING_NODES = [
       { name: 'isModerator', type: 'boolean', plug: 'input' },
       { name: 'isPending', type: 'boolean', plug: 'input' },
       { name: 'isUnknown', type: 'boolean', plug: 'input' },
+      { name: 'isSignedIn', type: 'boolean', plug: 'input' },
       { name: 'Member', type: 'signal', plug: 'input' },
       { name: 'Moderator', type: 'signal', plug: 'input' },
-      { name: 'Visitor', type: 'signal', plug: 'input' }
+      { name: 'Visitor', type: 'signal', plug: 'input' },
+      { name: 'Denied', type: 'signal', plug: 'input' }
     ]
   }
 ];
@@ -1186,12 +1395,21 @@ export const STANDING_WIRES = [
   { fromId: 'decide', fromProperty: 'out-member', toId: 'outputs', toProperty: 'Member' },
   { fromId: 'decide', fromProperty: 'out-moderator', toId: 'outputs', toProperty: 'Moderator' },
   { fromId: 'decide', fromProperty: 'out-visitor', toId: 'outputs', toProperty: 'Visitor' },
+  { fromId: 'decide', fromProperty: 'out-isSignedIn', toId: 'outputs', toProperty: 'isSignedIn' },
+
+  // 🔴 REL-002b — `Denied` has TWO producers on purpose, and they are the two
+  // ways a page can be one a person may not read: the server said `visitor`,
+  // or the server could not be asked. The old graph wired only the first to a
+  // navigation, so the second — a backend that is down, absent, or half
+  // deployed — left the reader sitting on the protected URL.
+  { fromId: 'decide', fromProperty: 'out-denied', toId: 'outputs', toProperty: 'Denied' },
 
   // ⚠️ Two producers on two ports, and they are mutually exclusive by
   // construction: a `CloudFunction2` call answers `done` or `failure`, never
   // both. The failure branch publishes only what it knows.
   { fromId: 'failed', fromProperty: 'out-standing', toId: 'outputs', toProperty: 'standing' },
-  { fromId: 'failed', fromProperty: 'out-isUnknown', toId: 'outputs', toProperty: 'isUnknown' }
+  { fromId: 'failed', fromProperty: 'out-isUnknown', toId: 'outputs', toProperty: 'isUnknown' },
+  { fromId: 'failed', fromProperty: 'out-denied', toId: 'outputs', toProperty: 'Denied' }
 ];
 
 // ── 2. Pages/Landing — the one page a stranger is allowed to see ─────────────
@@ -1220,22 +1438,93 @@ const LANDING: Tpl001Component = {
       type: 'Page',
       label: 'Landing',
       parameters: { title: 'Welcome', urlPath: '' },
-      children: ['ground']
+      // 🔴 **REL-002c: the page is BANDS now, not one capped column.** It used
+      // to be a single `PAGE_GROUND` holding everything, which is why the
+      // baseline verdict reads *"one background colour end to end"* and
+      // *"content island floating in dead viewport space"*. A band is
+      // full-bleed and owns its ground; the shell inside it is what carries the
+      // measure. That is the shape `ui-landing-page` is built from and the
+      // shape its own description argues for: *"a page with one background
+      // colour end to end is the first thing that reads as a template, and no
+      // amount of spacing rescues it."*
+      children: ['landingGround']
     },
     {
-      id: 'ground',
+      id: 'landingGround',
       type: 'Group',
       label: 'Page ground',
       parent: 'page',
-      parameters: { ...PAGE_GROUND, alignX: 'center' },
-      children: ['hero', 'actions', 'inside', 'setupCard']
+      // 🔴 **A ground under the bands, and the reason is what the fold looks
+      // like on a fresh install.** The door state is the shortest this page ever
+      // is — `inside` is gated on there being an association — so at 1280 the
+      // hero and the footer together came 210px short of the viewport and the
+      // page ended in a strip of bare white below a finished footer.
+      //
+      // ⚠️ **It has to be a Group.** `Page` carries no background port at all:
+      // `addSharedVisualInputs` is commented out on the node
+      // ([`page.ts:319`](../../noodl-viewer-react/src/nodes/navigation/page.ts#L319))
+      // and only `addPaddingInputs` runs, so the obvious place to put this
+      // colour does not have somewhere to put it.
+      //
+      // `--muted` is the footer's own ground, so the slack below the last band
+      // reads as part of the footer rather than as the page running out.
+      //
+      // 🔴 **`minHeight: 100vh`, and `height: 100%` was tried first and did
+      // nothing.** A percentage height resolves against the parent, and the
+      // parent chain here ends at a `Router`, which sizes itself to its content
+      // — `APP_NODES`' own comment says so. So `height: 100%` asked a
+      // content-sized box how tall it was and got the answer back. `minHeight`
+      // is the one dimension port in the runtime that takes viewport units
+      // (`units: ['%', 'px', 'vw', 'vh']`,
+      // [`node-shared-port-definitions.ts:1227`](../../noodl-viewer-react/src/node-shared-port-definitions.ts#L1227)),
+      // so it floors the page at the viewport without asking anybody.
+      //
+      // ⚠️ This is worth knowing beyond this page: **every one of the other
+      // twelve pages carries `height: 100%` through `PAGE_GROUND` and it is
+      // inert there for the same reason.** It is invisible on them only because
+      // they paint no background, so nobody could see where the box ended.
+      parameters: {
+        width: { value: 100, unit: '%' },
+        sizeMode: 'contentHeight',
+        minHeight: { value: 100, unit: 'vh' },
+        flexDirection: 'column',
+        justifyContent: 'flex-start',
+        backgroundColor: 'var(--muted)'
+      },
+      children: ['heroBand', 'inside', 'footer']
+    },
+    {
+      id: 'heroBand',
+      type: 'Group',
+      label: 'The hero — a photograph, and whichever of the three states is true',
+      parent: 'landingGround',
+      // §D + §F. Every state a stranger can arrive in lands ON this picture:
+      // the association (hero + actions), the fresh install (setupCard), and
+      // the one that has not answered yet (waitingCard). The page therefore has
+      // no frame in which it is blank.
+      parameters: HERO_GROUND,
+      children: ['heroShell']
+    },
+    {
+      id: 'heroShell',
+      type: 'Group',
+      label: 'Shell',
+      parent: 'heroBand',
+      parameters: HERO_SHELL,
+      children: ['hero', 'actions', 'setupCard', 'waitingCard']
     },
     {
       id: 'hero',
       type: 'Group',
       label: 'The hero',
-      parent: 'ground',
-      parameters: HERO_HEAD,
+      parent: 'heroShell',
+      // 🔴 **`mounted: false`, which it was not before, and the reason is the
+      // same one REL-002b found on `actions`.** This group holds the two texts
+      // the record fills in. Left mounted by default it rendered an eyebrow
+      // over two empty `Text` nodes on every unanswered load — the eyebrow and
+      // the gap that V4 was filed from. It now arrives with the name in it, or
+      // not at all.
+      parameters: { ...HERO_HEAD, mounted: false },
       children: ['eyebrow', 'heading', 'blurb']
     },
     {
@@ -1244,7 +1533,9 @@ const LANDING: Tpl001Component = {
       label: 'Members’ area',
       parent: 'hero',
       // A literal, unlike its two siblings — see T_EYEBROW on why.
-      parameters: { text: 'Members’ area', ...T_EYEBROW }
+      // ⚠️ `ON_SCRIM` overrides the accent green the composition carries: on the
+      // photograph it is a dark colour on a dark ground.
+      parameters: { text: 'Members’ area', ...T_EYEBROW, ...ON_SCRIM }
     },
     {
       id: 'heading',
@@ -1253,17 +1544,42 @@ const LANDING: Tpl001Component = {
       parent: 'hero',
       // Rule 3: a standing empty text, so nothing renders the word "Text" while
       // the record is on its way.
-      parameters: { text: '', ...H_HERO }
+      parameters: { text: '', ...H_HERO, ...ON_SCRIM }
     },
-    { id: 'blurb', type: 'Text', label: 'What we do', parent: 'hero', parameters: { text: '', ...T_LEAD } },
+    {
+      id: 'blurb',
+      type: 'Text',
+      label: 'What we do',
+      parent: 'hero',
+      // ⚠️ `lead` carries its own 560px cap, which is a measure on the TYPE. It
+      // is kept here and it is not the thing V29 ruled against: this shell is
+      // left-aligned, so the leftover width falls on one side because the text
+      // starts at the left, not because the cap centred it oddly. The rule
+      // Richard gave is about STRUCTURAL shells, and this is a paragraph.
+      parameters: { text: '', ...T_LEAD, ...ON_SCRIM }
+    },
     {
       id: 'actions',
       type: 'Group',
       label: 'Ways in',
-      parent: 'ground',
+      parent: 'heroShell',
       // ⚠️ Deliberately no surface: two buttons under a hero are the hero's, and
       // boxing them would put a card between the headline and the way in.
-      parameters: { flexDirection: 'row', alignItems: 'center', columnGap: 'var(--space-3)' },
+      //
+      // 🔴 **REL-002b — `mounted: false`, and this was V4's whole mechanism.**
+      // Every other group on this page already defaulted closed; `actions` was
+      // the one that did not, so when the association query never answered it
+      // was the only thing left standing. That is exactly the photograph V4 was
+      // filed from: an eyebrow, a gap where the name should be, and two
+      // buttons. The three states — never answered, answered and unclaimed,
+      // answered and claimed — collapsed into one, and the one they collapsed
+      // into was the state with no words on it.
+      parameters: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        columnGap: 'var(--space-3)',
+        mounted: false
+      },
       children: ['signInButton', 'joinButton']
     },
     {
@@ -1278,7 +1594,11 @@ const LANDING: Tpl001Component = {
       type: 'net.noodl.controls.button',
       label: 'Ask to join',
       parent: 'actions',
-      parameters: btn('Ask to join')
+      // 🔴 Not `btn()`. `outlineButton` is `--foreground` type inside a
+      // `--border-control` hairline on `transparent` — three values chosen
+      // against `--background`, all of them near-invisible on the scrim. See
+      // `onScrimBtn`.
+      parameters: onScrimBtn('Ask to join')
     },
 
     // ── What is behind the door ──────────────────────────────────────────────
@@ -1298,79 +1618,252 @@ const LANDING: Tpl001Component = {
       id: 'inside',
       type: 'Group',
       label: 'What members can see',
-      parent: 'ground',
-      // No fill: it holds tiles, and a card holding cards has no visible edge.
-      // The padding is the other half of the grouping fix described on
-      // `HERO_HEAD` — it is what puts the buttons with the hero.
-      parameters: { ...SECTION, paddingTop: 'var(--space-12)', mounted: false },
+      parent: 'landingGround',
+      // 🔴 **`inside` is now the BAND, and the gate stayed on it.** It was a
+      // section inside the page column; as a band it owns a ground of its own
+      // (`--surface` with hairlines top and bottom), which is what stops the
+      // page being one colour from the hero to the fold. Keeping the id means
+      // the `hasAssociation` wire did not have to move — see the note above on
+      // why this section is gated at all.
+      parameters: { ...composition('bandSurface'), mounted: false },
+      children: ['insideShell']
+    },
+    {
+      id: 'insideShell',
+      type: 'Group',
+      label: 'Shell',
+      parent: 'inside',
+      parameters: { ...composition('shell'), sizeMode: 'contentHeight', alignX: 'center', rowGap: 'var(--space-6)' },
       children: ['insideHeading', 'insideList']
     },
     {
       id: 'insideHeading',
       type: 'Text',
       label: 'What members can see — heading',
-      parent: 'inside',
-      // `cardTitle` rather than `sectionHeading`: this sits under a --text-5xl
-      // hero, and a --text-3xl second heading competes with it.
-      parameters: { text: 'What members can see', ...H_SECTION }
+      parent: 'insideShell',
+      // `sectionHeading` now, not `cardTitle`. It used to be the smaller ramp
+      // because it sat 68px under a --text-5xl hero in the same column and
+      // competed with it. It is in its own band on its own ground now, so the
+      // thing it has to be is the head of a section.
+      parameters: { text: 'What members can see', ...H_PAGE }
     },
     {
       id: 'insideList',
-      type: 'Group',
+      type: COLUMNS_NODE,
       label: 'The three tiles',
-      parent: 'inside',
-      // Stacked, not a row. `gridAutoFit` and `columnsTwoUp` are the vocabulary's
-      // answer to this and both live on `Columns`, a node type this template does
-      // not use anywhere — and a Group row cannot collapse, so three tiles side
-      // by side at 390px would be three slivers.
-      parameters: laidOut('column', { width: { value: 100, unit: '%' } }, 'var(--space-3)'),
-      children: ['tileNews', 'tileDiary', 'tilePeople']
+      parent: 'insideShell',
+      // 🔴 **A `Columns`, and the comment this replaces was wrong twice.** It
+      // read: *"`gridAutoFit` and `columnsTwoUp` … both live on `Columns`, a
+      // node type this template does not use anywhere — and a Group row cannot
+      // collapse"*. `Columns` HAS been used here since s8 (the moderator
+      // actions on `Pages/Members`), and `Group` does carry a `flexWrap` port
+      // ([`group.ts:311`](../../noodl-viewer-react/src/nodes/visual/group.ts#L311)).
+      // Neither claim survived being checked, and between them they kept three
+      // tiles stacked full-width in a 1200px shell.
+      //
+      // ⚠️ `minWidth: 300` is what makes it 3-up at 1200 and 1-up at 390:
+      // `autoFit` fits as many columns as the container holds, so the reflow is
+      // arithmetic on the container rather than a breakpoint anybody maintains.
+      parameters: { ...composition('gridAutoFit'), minWidth: { value: 300, unit: 'px' } },
+      // 🔴 **Cells, not the tiles themselves, and the door is what taught this.**
+      // A `Columns` child must carry `sizeMode` and `width` — `calcAutoFit`
+      // hands each child an equal box and a content-sized child ignores it. A
+      // COMPONENT INSTANCE cannot carry either: *"a component instance has only
+      // the ports its Component Inputs node declares — it carries no layout,
+      // style or lifecycle ports of its own"*, and the door refuses the write
+      // rather than discarding the values silently. So the thing in the column
+      // is a Group that owns the box, and the tile sits in it.
+      children: ['cellNews', 'cellDiary', 'cellPeople']
     },
+    ...['News', 'Diary', 'People'].map((which) => ({
+      id: `cell${which}`,
+      type: 'Group',
+      label: `The ${which.toLowerCase()} column`,
+      parent: 'insideList',
+      parameters: { sizeMode: 'contentHeight', width: { value: 100, unit: '%' }, flexDirection: 'column' },
+      children: [`tile${which}`]
+    })),
     {
       id: 'tileNews',
       type: INSIDE_TILE_COMPONENT,
       label: 'Announcements',
-      parent: 'insideList',
+      parent: 'cellNews',
       parameters: { title: 'Announcements', line: 'What the moderators have posted, newest first.' }
     },
     {
       id: 'tileDiary',
       type: INSIDE_TILE_COMPONENT,
       label: 'The diary',
-      parent: 'insideList',
+      parent: 'cellDiary',
       parameters: { title: 'The diary', line: 'Meetings and events, with the details and where to go.' }
     },
     {
       id: 'tilePeople',
       type: INSIDE_TILE_COMPONENT,
       label: 'The directory',
-      parent: 'insideList',
+      parent: 'cellPeople',
       parameters: { title: 'The directory', line: 'Who else is a member.' }
+    },
+
+    // ── The foot of the page ─────────────────────────────────────────────────
+    //
+    // 🔴 **Every other band on this page is gated, so without this one the page
+    // has no bottom edge in the two states a stranger is most likely to meet.**
+    // The first render of the redesign showed it: a 560px photograph and then
+    // 340px of white to the fold, because `inside` is unmounted until there is
+    // an association. A footer is mounted always — it is the one band that does
+    // not depend on a query answering.
+    //
+    // 🔴 **§E-ii, and this is the template's worked example of it.** The line is
+    // a placeholder that CANNOT be data — there is no field on `Association` for
+    // it and inventing one to hold a contact address would be scope. So it is
+    // written to be *obviously* unfinished rather than plausibly finished, and
+    // its node is named with the `EDIT —` prefix that makes the editor's node
+    // tree list every string a person still has to visit. *"Your contact details
+    // here"* is not copy anybody ships by accident; *"St Anywhere Parish
+    // Council · hello@example.org"* is exactly what somebody ships by accident.
+    {
+      id: 'footer',
+      type: 'Group',
+      label: 'The foot of the page',
+      parent: 'landingGround',
+      parameters: composition('footerBand'),
+      children: ['footerShell']
+    },
+    {
+      id: 'footerShell',
+      type: 'Group',
+      label: 'Shell',
+      parent: 'footer',
+      parameters: { ...composition('shell'), sizeMode: 'contentHeight', alignX: 'center', rowGap: 'var(--space-2)' },
+      children: ['footerEdit', 'footerEditSecond']
+    },
+    {
+      id: 'footerEdit',
+      type: 'Text',
+      label: 'EDIT — who to contact',
+      parent: 'footerShell',
+      parameters: { text: 'EDIT ME — your association’s contact details go here.', ...T_NOTICE }
+    },
+    {
+      id: 'footerEditSecond',
+      type: 'Text',
+      label: 'EDIT — the small print',
+      parent: 'footerShell',
+      // ⚠️ **A second line, and §2's notice census is why there had to be one.**
+      // That sweep counts a `Group` wrapping *exactly one* `Text` as a notice
+      // box and requires it to carry a fill and an edge; a structural shell
+      // holding a single line of text is indistinguishable from an unpainted
+      // notice by that shape. A footer with one line was also thin — a club,
+      // charity or church footer carries the registration line as well as the
+      // contact one, and §E-ii says to mark it rather than invent it.
+      parameters: { text: 'EDIT ME — registered charity number, or delete this line.', ...T_NOTICE }
     },
 
     {
       id: 'setupCard',
       type: 'Group',
       label: 'Nobody has set this up yet',
-      parent: 'ground',
+      parent: 'heroShell',
       // 🔴 AC6's other half. A template ships graphs, not rows, so the very
       // first person to open the installed app sees an association with no name
       // — and this is the screen that tells them what to do about it rather
       // than a blank page that looks broken.
+      // 🔴 §F's other half. This was an `--accent` card on a white page; it is
+      // now a glass panel on the photograph, so the fresh-install state is a
+      // designed screen rather than a notice floating in an empty one.
+      parameters: { ...SCRIM_PANEL, mounted: false },
+      children: ['setupHeading', 'setupText', 'setupButton']
+    },
+    {
+      id: 'waitingCard',
+      type: 'Group',
+      label: 'The association could not be read',
+      parent: 'heroShell',
+      // 🔴 **REL-002b — the third state, which had no screen.**
+      //
+      // This is the ONE group on the page that is mounted by DEFAULT, and that
+      // is the design rather than an oversight. "The query has not answered" is
+      // the state the page is in before anything happens, so it is the state
+      // the page should start in; every other card here is mounted by a wire
+      // that only fires once an answer arrives.
+      //
+      // ⚠️ It is deliberately NOT wired to `association.failure`. Measured this
+      // session: with no backend bound at all, `DbCollection2` never fires
+      // `failure` — the request 200s with the host page's HTML, `JSON.parse`
+      // throws inside the adapter, and the node is left having heard nothing
+      // (registered as an open defect against `ParseWireAdapter._makeRequest`).
+      // A card hung off `failure` would therefore be dead in exactly the case
+      // it exists for. Hanging it off the DEFAULT and taking it down on an
+      // answer needs no failure signal, and cannot be silently disarmed by one
+      // that does not fire.
+      // 🔴 **§F — RULED as a first-class state, and this is what that means.**
+      // It was a grey `--muted` box in the middle of a white page. It is now a
+      // glass panel standing on the hero photograph, which is the same
+      // treatment the other two states get: a person whose install has not
+      // connected yet meets a designed screen, not the absence of one.
+      parameters: { ...SCRIM_PANEL },
+      children: ['waitingHeading', 'waitingText']
+    },
+    {
+      id: 'waitingHeading',
+      type: 'Text',
+      label: 'Could not be read — the heading',
+      parent: 'waitingCard',
       parameters: {
-        ...laidOut('column', PANEL, 'var(--space-4)'),
-        backgroundColor: 'var(--accent)',
-        alignItems: 'flex-start',
-        mounted: false
-      },
-      children: ['setupText', 'setupButton']
+        text: 'This members’ area is not connected yet',
+        fontSize: 'var(--text-xl)',
+        fontWeight: 'var(--font-semibold)',
+        lineHeight: 'var(--leading-snug)',
+        ...ON_SCRIM
+      }
+    },
+    {
+      id: 'waitingText',
+      type: 'Text',
+      label: 'Could not be read — the words',
+      parent: 'waitingCard',
+      // Both readers in one sentence each, because both of them land here: the
+      // person who has just installed the template and bound no backend, and
+      // the member the gate ejected because the backend stopped answering.
+      parameters: {
+        text:
+          'The app cannot reach its backend, so it does not yet know which association this is or ' +
+          'who you are. If you have just installed it, connect a backend and reload. If you are a ' +
+          'member, this is usually temporary — please try again in a moment.',
+        ...T_NOTICE,
+        ...ON_SCRIM
+      }
+    },
+    {
+      id: 'setupHeading',
+      type: 'Text',
+      label: 'Not set up yet — the heading',
+      parent: 'setupCard',
+      // 🔴 A heading it did not have. The card was one grey sentence and a
+      // button; beside `waitingCard`, which has always had a heading, it read
+      // as the lesser of two states when it is in fact the one with something
+      // to do on it.
+      parameters: {
+        text: 'Nobody has set this up yet',
+        fontSize: 'var(--text-xl)',
+        fontWeight: 'var(--font-semibold)',
+        lineHeight: 'var(--leading-snug)',
+        ...ON_SCRIM
+      }
     },
     {
       id: 'setupText',
       type: 'Text',
       label: 'Setup notice',
       parent: 'setupCard',
-      parameters: { text: 'This members’ area has not been set up yet.', ...T_NOTICE_ACCENT }
+      parameters: {
+        text:
+          'Name your association and create the first moderator account. It takes a minute, and ' +
+          'nothing else on this site works until it is done.',
+        ...T_NOTICE,
+        ...ON_SCRIM
+      }
     },
     {
       id: 'setupButton',
@@ -1404,7 +1897,13 @@ const LANDING: Tpl001Component = {
           "Outputs.name = row ? (row.name || '') : '';\n" +
           "Outputs.blurb = row ? (row.blurb || '') : '';\n" +
           'Outputs.hasAssociation = rows.length > 0;\n' +
-          'Outputs.needsSetup = rows.length === 0;'
+          'Outputs.needsSetup = rows.length === 0;\n' +
+          '// REL-002b. Always `false`, and that is the point: this node runs\n' +
+          '// only when the query answered, so publishing "the query has not\n' +
+          '// answered = false" is what takes the waiting card down. There is\n' +
+          '// deliberately no path that sets it back to `true` — a page that\n' +
+          '// answered once has answered.\n' +
+          'Outputs.unanswered = false;'
       }
     },
     {
@@ -1434,7 +1933,19 @@ const LANDING: Tpl001Component = {
     { fromId: 'read', fromProperty: 'out-needsSetup', toId: 'setupCard', toProperty: 'mounted' },
     // The two ways in are hidden until there is something to be a member of.
     { fromId: 'read', fromProperty: 'out-hasAssociation', toId: 'actions', toProperty: 'mounted' },
+    // 🔴 **REL-002c, and the render is what found it missing.** `hero` was given
+    // `mounted: false` so it could not paint an eyebrow over two empty `Text`
+    // nodes — and for one render it had no wire to turn it back on, so the
+    // living landing page showed a photograph and two buttons and NO
+    // association name at all. A default-closed group without a wire is not a
+    // gate, it is a deletion; the two edits are one edit and this is its other
+    // half.
+    { fromId: 'read', fromProperty: 'out-hasAssociation', toId: 'hero', toProperty: 'mounted' },
     { fromId: 'read', fromProperty: 'out-hasAssociation', toId: 'inside', toProperty: 'mounted' },
+    // 🔴 REL-002b — the only wire that can take the waiting card down, and it
+    // fires only on an answer. See `waitingCard` for why this is the default
+    // state rather than a `failure` branch.
+    { fromId: 'read', fromProperty: 'out-unanswered', toId: 'waitingCard', toProperty: 'mounted' },
 
     { fromId: 'signInButton', fromProperty: 'onClick', toId: 'toSignIn', toProperty: 'navigate' },
     { fromId: 'joinButton', fromProperty: 'onClick', toId: 'toJoin', toProperty: 'navigate' },
@@ -1471,7 +1982,7 @@ const SIGN_IN: Tpl001Component = {
       type: 'Group',
       label: 'Page ground',
       parent: 'page',
-      parameters: { ...PAGE_GROUND, alignX: 'center' },
+      parameters: { ...FORM_GROUND, alignX: 'center' },
       children: ['headingHead', 'form', 'error', 'joinHint', 'joinButton']
     },
     ...pageHead('heading', 'Heading', 'ground', 'Members’ area', 'Members sign in'),
@@ -2166,9 +2677,13 @@ const MEMBERS: Tpl001Component = {
     { fromId: 'chrome', fromProperty: 'isUnknown', toId: 'unknownNotice', toProperty: 'mounted' },
     // 🔴 The only trigger the query has.
     { fromId: 'chrome', fromProperty: 'Member', toId: 'announcements', toProperty: 'storageFetch' },
-    // A visitor is sent back to the front door rather than left on a page with
-    // nothing on it. The refusal is the server's; this is the courtesy.
-    { fromId: 'chrome', fromProperty: 'Visitor', toId: 'toLanding', toProperty: 'navigate' },
+    // 🔴 REL-002b — `Denied`, not `Visitor`. A visitor is sent back to the
+    // front door, and so is a reader whose standing could not be READ: with no
+    // backend bound this page used to keep them, because `Visitor` fires only
+    // when the server answered and said so. A gate whose failure mode is to
+    // stay on the protected page is not a gate. The refusal is still the
+    // server's; the navigation is the courtesy, and now it is unconditional.
+    { fromId: 'chrome', fromProperty: 'Denied', toId: 'toLanding', toProperty: 'navigate' },
 
     { fromId: 'announcements', fromProperty: 'items', toId: 'list', toProperty: 'items' },
     { fromId: 'announcements', fromProperty: 'count', toId: 'emptyGate', toProperty: 'in-count' },
@@ -2397,7 +2912,7 @@ const MEETINGS: Tpl001Component = {
     { fromId: 'chrome', fromProperty: 'isMember', toId: 'memberArea', toProperty: 'mounted' },
     { fromId: 'chrome', fromProperty: 'isPending', toId: 'pendingNotice', toProperty: 'mounted' },
     { fromId: 'chrome', fromProperty: 'Member', toId: 'today', toProperty: 'run' },
-    { fromId: 'chrome', fromProperty: 'Visitor', toId: 'toLanding', toProperty: 'navigate' },
+    { fromId: 'chrome', fromProperty: 'Denied', toId: 'toLanding', toProperty: 'navigate' },
 
     { fromId: 'today', fromProperty: 'out-day', toId: 'meetings', toProperty: 'qp-today' },
     { fromId: 'meetings', fromProperty: 'items', toId: 'list', toProperty: 'items' },
@@ -2530,7 +3045,7 @@ const JOIN: Tpl001Component = {
       type: 'Group',
       label: 'Page ground',
       parent: 'page',
-      parameters: { ...PAGE_GROUND, alignX: 'center' },
+      parameters: { ...FORM_GROUND, alignX: 'center' },
       children: ['headingHead', 'form', 'sent', 'refusal', 'hint', 'signInButton']
     },
     ...pageHead('heading', 'Heading', 'ground', 'Members’ area', 'Ask to join'),
@@ -2588,7 +3103,19 @@ const JOIN: Tpl001Component = {
       type: 'net.noodl.controls.button',
       label: 'Sign in',
       parent: 'ground',
-      parameters: btn('Sign in')
+      // 🔴 **Not `btn()`, and this is the VIB-001 baseline's finding on this
+      // page.** *"'Sign in' is a filled primary-green button of the same visual
+      // weight as the form's own 'Send my request' submit. Two primary actions
+      // of equal weight on one page, so the page does not say what it wants you
+      // to do."*
+      //
+      // The mechanism is that `btn()` keys emphasis on the WORDS: `Sign in` is
+      // in `PRIMARY_LABELS` because it is the submit of `Pages/SignIn`, and the
+      // afterthought at the bottom of the join form inherited it. This file
+      // already states the rule that fixes it, on `navBtn`: *"emphasis is a
+      // property of the PLACE rather than of the label."* Here the place is a
+      // footnote under a form, so the control is the outline.
+      parameters: { label: 'Sign in', ...withoutInertBorderWidth(composition('outlineButton')) }
     },
     { id: 'send', type: 'CloudFunction2', label: FN_REQUEST_ACCESS, parameters: { function: FN_REQUEST_ACCESS } },
     { id: 'sentGate', type: 'Condition', label: 'Show the confirmation', parameters: { ...CONDITION_GATE } },
@@ -2645,7 +3172,7 @@ const SETUP: Tpl001Component = {
       type: 'Group',
       label: 'Page ground',
       parent: 'page',
-      parameters: { ...PAGE_GROUND, alignX: 'center' },
+      parameters: { ...FORM_GROUND, alignX: 'center' },
       children: ['headingHead', 'blurb', 'form', 'refusal', 'missing']
     },
     ...pageHead('heading', 'Heading', 'ground', 'First run', 'Set up this members’ area'),
@@ -2877,7 +3404,7 @@ const POST: Tpl001Component = {
       type: 'Group',
       label: 'Page ground',
       parent: 'page',
-      parameters: PAGE_GROUND,
+      parameters: FORM_GROUND,
       children: ['headingHead', 'notAllowed', 'tools']
     },
     ...pageHead('heading', 'Heading', 'ground', 'For moderators', 'Post something'),
@@ -3130,7 +3657,7 @@ const POST: Tpl001Component = {
     { fromId: 'chrome', fromProperty: 'isModerator', toId: 'tools', toProperty: 'mounted' },
     { fromId: 'chrome', fromProperty: 'isModerator', toId: 'notModerator', toProperty: 'in-isModerator' },
     { fromId: 'notModerator', fromProperty: 'out-no', toId: 'notAllowed', toProperty: 'mounted' },
-    { fromId: 'chrome', fromProperty: 'Visitor', toId: 'toLanding', toProperty: 'navigate' },
+    { fromId: 'chrome', fromProperty: 'Denied', toId: 'toLanding', toProperty: 'navigate' },
 
     { fromId: 'aTitle', fromProperty: 'onTextChanged', toId: 'createAnnouncement', toProperty: 'prop-title' },
     { fromId: 'aBody', fromProperty: 'onTextChanged', toId: 'createAnnouncement', toProperty: 'prop-body' },
@@ -3267,7 +3794,7 @@ const REQUESTS: Tpl001Component = {
     { fromId: 'chrome', fromProperty: 'isModerator', toId: 'notModerator', toProperty: 'in-isModerator' },
     { fromId: 'notModerator', fromProperty: 'out-no', toId: 'notAllowed', toProperty: 'mounted' },
     { fromId: 'chrome', fromProperty: 'Moderator', toId: 'requests', toProperty: 'storageFetch' },
-    { fromId: 'chrome', fromProperty: 'Visitor', toId: 'toLanding', toProperty: 'navigate' },
+    { fromId: 'chrome', fromProperty: 'Denied', toId: 'toLanding', toProperty: 'navigate' },
 
     { fromId: 'requests', fromProperty: 'items', toId: 'list', toProperty: 'items' },
     { fromId: 'requests', fromProperty: 'count', toId: 'emptyGate', toProperty: 'in-count' },
@@ -3393,7 +3920,7 @@ const DIRECTORY: Tpl001Component = {
     // 🔴 The only trigger the query has, and it is `Moderator` rather than
     // `Member`: this list is under the moderator's tools in §3.
     { fromId: 'chrome', fromProperty: 'Moderator', toId: 'members', toProperty: 'storageFetch' },
-    { fromId: 'chrome', fromProperty: 'Visitor', toId: 'toLanding', toProperty: 'navigate' },
+    { fromId: 'chrome', fromProperty: 'Denied', toId: 'toLanding', toProperty: 'navigate' },
 
     { fromId: 'members', fromProperty: 'items', toId: 'list', toProperty: 'items' },
     { fromId: 'members', fromProperty: 'count', toId: 'emptyGate', toProperty: 'in-count' },
@@ -3531,7 +4058,13 @@ export const CHROME_NODES = [
     parameters: {
       width: { value: 100, unit: '%' },
       sizeMode: 'contentHeight',
-      maxWidth: { value: 760, unit: 'px' },
+      // 🔴 §C, and this cap is also V15's whole mechanism. At 760 the six nav
+      // items in `gridAutoFit` at `minWidth: 132` fit five across and folded
+      // the sixth onto a second row — on every signed-in page, at every
+      // viewport, including 1900 where there was 1140px of unused width beside
+      // it. The band must agree with `PAGE_GROUND` or the nav and the content
+      // it heads are two different columns; they are now the same 1200.
+      maxWidth: { value: 1200, unit: 'px' },
       alignX: 'center',
       flexDirection: 'column',
       rowGap: 'var(--space-4)',
@@ -3554,7 +4087,13 @@ export const CHROME_NODES = [
       // 🔴 Measured at 390px: without this the association name wraps to two
       // lines and runs under the Sign out button. `space-between` puts air
       // between them only while there IS air.
-      columnGap: 'var(--space-4)'
+      columnGap: 'var(--space-4)',
+      // 🔴 REL-002b. Closed until the server says there IS a session. Measured
+      // with no backend bound: this row painted `Sign out` beside a blank
+      // association name on all six protected screens, to a person who had
+      // never signed in and could not have. A `Sign out` button is a claim
+      // about the reader, and the band was making it before it had asked.
+      mounted: false
     },
     children: ['identity', 'signOutButton']
   },
@@ -3603,7 +4142,9 @@ export const CHROME_NODES = [
     type: COLUMNS_NODE,
     label: 'Where the band can take you',
     parent: 'inner',
-    parameters: { ...composition('gridAutoFit'), minWidth: { value: 132, unit: 'px' } },
+    // REL-002b — same reason as `topRow`: navigation into the members' area is
+    // furniture only a person who has one should be offered.
+    parameters: { ...composition('gridAutoFit'), minWidth: { value: 132, unit: 'px' }, mounted: false },
     children: BAND_NAV.map((item) => item.id)
   },
   ...BAND_NAV.map((item) => ({
@@ -3695,7 +4236,12 @@ export const CHROME_NODES = [
       { name: 'isUnknown', type: 'boolean', plug: 'input' },
       { name: 'Member', type: 'signal', plug: 'input' },
       { name: 'Moderator', type: 'signal', plug: 'input' },
-      { name: 'Visitor', type: 'signal', plug: 'input' }
+      { name: 'Visitor', type: 'signal', plug: 'input' },
+      // REL-002b. `Denied` is what the six protected pages navigate on; it is
+      // read by every one of them, so it is not the inert dimension the note
+      // above refuses. `isSignedIn` stays inside the band — the pages have no
+      // use for it, so it is NOT forwarded here.
+      { name: 'Denied', type: 'signal', plug: 'input' }
     ]
   },
   { id: 'logout', type: 'net.noodl.user.LogOut', label: 'Log out' },
@@ -3734,10 +4280,15 @@ export const CHROME_WIRES = [
     toId: item.id,
     toProperty: 'mounted'
   })),
+  // 🔴 REL-002b — the band's own two gates. `isSignedIn` is consumed HERE and
+  // handed to nobody: it answers "is there a session", which is the band's
+  // question, while the pages ask "may this person read", which is `isMember`.
+  { fromId: 'standing', fromProperty: 'isSignedIn', toId: 'topRow', toProperty: 'mounted' },
+  { fromId: 'standing', fromProperty: 'isSignedIn', toId: 'nav', toProperty: 'mounted' },
   // The same value the three moderator-only nav items are gated on, handed up
   // to whichever page placed the band. See `outputs` for why it is here and not
   // a third call on the two pages that want it.
-  ...['isMember', 'isModerator', 'isPending', 'isUnknown', 'Member', 'Moderator', 'Visitor'].map((port) => ({
+  ...['isMember', 'isModerator', 'isPending', 'isUnknown', 'Member', 'Moderator', 'Visitor', 'Denied'].map((port) => ({
     fromId: 'standing',
     fromProperty: port,
     toId: 'outputs',
@@ -3821,7 +4372,7 @@ const ACCOUNT: Tpl001Component = {
       type: 'Group',
       label: 'Page ground',
       parent: 'page',
-      parameters: PAGE_GROUND,
+      parameters: FORM_GROUND,
       children: ['headingHead', 'panel', 'savedOn', 'savedOff', 'failed']
     },
     ...pageHead('heading', 'Heading', 'ground', 'Your account', 'Emails'),
@@ -3947,7 +4498,7 @@ const ACCOUNT: Tpl001Component = {
     // firing on mount would ask the endpoint on behalf of a visitor.
     { fromId: 'chrome', fromProperty: 'Member', toId: 'read', toProperty: 'call' },
     { fromId: 'chrome', fromProperty: 'isMember', toId: 'panel', toProperty: 'mounted' },
-    { fromId: 'chrome', fromProperty: 'Visitor', toId: 'toLanding', toProperty: 'navigate' },
+    { fromId: 'chrome', fromProperty: 'Denied', toId: 'toLanding', toProperty: 'navigate' },
 
     // Loading the box. `checked` does not fire `Changed`, so this cannot loop.
     { fromId: 'read', fromProperty: 'out-notify', toId: 'box', toProperty: 'checked' },
@@ -4024,7 +4575,7 @@ const UNSUBSCRIBE_PAGE: Tpl001Component = {
       type: 'Group',
       label: 'Page ground',
       parent: 'page',
-      parameters: PAGE_GROUND,
+      parameters: FORM_GROUND,
       children: ['headingHead', 'done', 'failed']
     },
     ...pageHead('heading', 'Heading', 'ground', 'Members’ area', 'Emails'),

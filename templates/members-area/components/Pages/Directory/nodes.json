@@ -9,7 +9,7 @@
       "label": "Directory",
       "children": [
         "chrome-7",
-        "ground-11"
+        "ground-10"
       ],
       "parameters": {
         "title": "Who belongs",
@@ -27,7 +27,7 @@
       "y": 160
     },
     {
-      "id": "ground-11",
+      "id": "ground-10",
       "type": "Group",
       "label": "Page ground",
       "parent": "page-11",
@@ -42,7 +42,7 @@
           "unit": "%"
         },
         "maxWidth": {
-          "value": 760,
+          "value": 1200,
           "unit": "px"
         },
         "flexDirection": "column",
@@ -65,7 +65,7 @@
       "id": "headingHead-8",
       "type": "Group",
       "label": "Heading — the head",
-      "parent": "ground-11",
+      "parent": "ground-10",
       "children": [
         "headingEyebrow-8",
         "heading-9"
@@ -118,7 +118,7 @@
       "id": "notAllowed-3",
       "type": "Group",
       "label": "Not a moderator",
-      "parent": "ground-11",
+      "parent": "ground-10",
       "children": [
         "notAllowedText-3"
       ],
@@ -161,7 +161,7 @@
       "id": "directory",
       "type": "Group",
       "label": "The list",
-      "parent": "ground-11",
+      "parent": "ground-10",
       "children": [
         "projectionNote",
         "list-4",

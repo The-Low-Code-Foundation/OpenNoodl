@@ -9,7 +9,7 @@
       "label": "Your account",
       "children": [
         "chrome-8",
-        "ground-12"
+        "ground-11"
       ],
       "parameters": {
         "title": "Your account",
@@ -27,7 +27,7 @@
       "y": 160
     },
     {
-      "id": "ground-12",
+      "id": "ground-11",
       "type": "Group",
       "label": "Page ground",
       "parent": "page-12",
@@ -44,7 +44,7 @@
           "unit": "%"
         },
         "maxWidth": {
-          "value": 760,
+          "value": 720,
           "unit": "px"
         },
         "flexDirection": "column",
@@ -67,7 +67,7 @@
       "id": "headingHead-9",
       "type": "Group",
       "label": "Heading — the head",
-      "parent": "ground-12",
+      "parent": "ground-11",
       "children": [
         "headingEyebrow-9",
         "heading-10"
@@ -120,7 +120,7 @@
       "id": "panel",
       "type": "Group",
       "label": "The setting",
-      "parent": "ground-12",
+      "parent": "ground-11",
       "children": [
         "box",
         "note"
@@ -191,7 +191,7 @@
       "id": "savedOn",
       "type": "Group",
       "label": "Saved, on",
-      "parent": "ground-12",
+      "parent": "ground-11",
       "children": [
         "savedOnText"
       ],
@@ -234,7 +234,7 @@
       "id": "savedOff",
       "type": "Group",
       "label": "Saved, off",
-      "parent": "ground-12",
+      "parent": "ground-11",
       "children": [
         "savedOffText"
       ],
@@ -277,7 +277,7 @@
       "id": "failed-2",
       "type": "Group",
       "label": "Could not save",
-      "parent": "ground-12",
+      "parent": "ground-11",
       "children": [
         "failedText"
       ],

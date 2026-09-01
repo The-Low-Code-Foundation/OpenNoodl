@@ -8,7 +8,7 @@
       "type": "Page",
       "label": "Sign in",
       "children": [
-        "ground-2"
+        "ground"
       ],
       "parameters": {
         "title": "Sign in",
@@ -18,7 +18,7 @@
       "y": 40
     },
     {
-      "id": "ground-2",
+      "id": "ground",
       "type": "Group",
       "label": "Page ground",
       "parent": "page-2",
@@ -35,7 +35,7 @@
           "unit": "%"
         },
         "maxWidth": {
-          "value": 760,
+          "value": 720,
           "unit": "px"
         },
         "flexDirection": "column",
@@ -58,7 +58,7 @@
       "id": "headingHead",
       "type": "Group",
       "label": "Heading — the head",
-      "parent": "ground-2",
+      "parent": "ground",
       "children": [
         "headingEyebrow",
         "heading-2"
@@ -111,7 +111,7 @@
       "id": "form",
       "type": "Group",
       "label": "The sign-in form",
-      "parent": "ground-2",
+      "parent": "ground",
       "children": [
         "email",
         "password",
@@ -222,7 +222,7 @@
       "id": "error",
       "type": "Group",
       "label": "Sign-in error",
-      "parent": "ground-2",
+      "parent": "ground",
       "children": [
         "errorText"
       ],
@@ -265,7 +265,7 @@
       "id": "joinHint",
       "type": "Text",
       "label": "Not a member yet",
-      "parent": "ground-2",
+      "parent": "ground",
       "parameters": {
         "text": "Not a member yet?",
         "fontSize": "var(--text-sm)",
@@ -278,7 +278,7 @@
       "id": "joinButton-2",
       "type": "net.noodl.controls.button",
       "label": "Ask to join",
-      "parent": "ground-2",
+      "parent": "ground",
       "parameters": {
         "label": "Ask to join",
         "backgroundColor": "transparent",
