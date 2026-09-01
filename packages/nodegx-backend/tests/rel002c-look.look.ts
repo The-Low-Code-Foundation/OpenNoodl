@@ -34,10 +34,18 @@ describe('REL-002c — the door, while the redesign is being built', () => {
         { label: 'landing', url: '/', as: 'the first thing anyone sees' },
         { label: 'join', url: '/join', as: 'a stranger asking to join' },
         { label: 'setup', url: '/setup', as: 'the owner, first run' },
-        { label: 'sign-in', url: '/sign-in', as: 'a member coming back' }
+        { label: 'sign-in', url: '/sign-in', as: 'a member coming back' },
+        // 🔴 **The fifth door page, and it was missing from every shot list
+        // this template has ever had.** `/unsubscribe` is reached from a link in
+        // an email, by somebody who is not signed in and may never have been —
+        // which makes it a door page by the same test as the other four. Its
+        // absence here was a fact about the REQUEST, not about how it looks, and
+        // session 10 shipped a verdict reading *"every page"* while it and three
+        // others had never been rendered once.
+        { label: 'unsubscribe', url: '/unsubscribe', as: 'somebody who clicked "unsubscribe" in an email' }
       ]
     });
-    expect(run.shots.length).toBe(16);
+    expect(run.shots.length).toBe(20);
     // eslint-disable-next-line no-console
     console.log('DOOR MANIFEST ' + run.outDir + ' md5=' + run.artefactMd5 + ' head=' + run.headSha);
   });

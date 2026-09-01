@@ -23,8 +23,9 @@
       "label": "Page ground",
       "parent": "page-7",
       "children": [
-        "heroBand-2",
-        "formBand"
+        "heroBand-3",
+        "formBand",
+        "pageFooter-6"
       ],
       "parameters": {
         "width": {
@@ -44,12 +45,20 @@
       "y": 160
     },
     {
-      "id": "heroBand-2",
+      "id": "pageFooter-6",
+      "type": "/Members/Footer",
+      "label": "The foot of the page",
+      "parent": "joinGround",
+      "x": 160,
+      "y": 2560
+    },
+    {
+      "id": "heroBand-3",
       "type": "Group",
       "label": "The photograph, and what this page is",
       "parent": "joinGround",
       "children": [
-        "heroShell-2"
+        "heroShell-3"
       ],
       "parameters": {
         "width": {
@@ -75,10 +84,10 @@
       "y": 280
     },
     {
-      "id": "heroShell-2",
+      "id": "heroShell-3",
       "type": "Group",
       "label": "Shell",
-      "parent": "heroBand-2",
+      "parent": "heroBand-3",
       "children": [
         "headingHead-4"
       ],
@@ -105,7 +114,7 @@
       "id": "headingHead-4",
       "type": "Group",
       "label": "Heading — the head",
-      "parent": "heroShell-2",
+      "parent": "heroShell-3",
       "children": [
         "headingEyebrow-4",
         "heading-5"

@@ -150,7 +150,7 @@
     "Pages/SignIn": {
       "path": "Pages/SignIn",
       "type": "page",
-      "nodeCount": 20,
+      "nodeCount": 22,
       "connectionCount": 8,
       "modified": "2026-08-28T00:00:00.000Z",
       "created": "2026-08-28T00:00:00.000Z"
@@ -190,7 +190,7 @@
     "Pages/Join": {
       "path": "Pages/Join",
       "type": "page",
-      "nodeCount": 25,
+      "nodeCount": 26,
       "connectionCount": 10,
       "modified": "2026-08-28T00:00:00.000Z",
       "created": "2026-08-28T00:00:00.000Z"
@@ -198,7 +198,7 @@
     "Pages/Setup": {
       "path": "Pages/Setup",
       "type": "page",
-      "nodeCount": 28,
+      "nodeCount": 30,
       "connectionCount": 22,
       "modified": "2026-08-28T00:00:00.000Z",
       "created": "2026-08-28T00:00:00.000Z"
@@ -238,7 +238,7 @@
     "Pages/Unsubscribe": {
       "path": "Pages/Unsubscribe",
       "type": "page",
-      "nodeCount": 17,
+      "nodeCount": 19,
       "connectionCount": 10,
       "modified": "2026-08-28T00:00:00.000Z",
       "created": "2026-08-28T00:00:00.000Z"
@@ -246,7 +246,7 @@
   },
   "stats": {
     "totalComponents": 30,
-    "totalNodes": 512,
+    "totalNodes": 519,
     "totalConnections": 486
   }
 }

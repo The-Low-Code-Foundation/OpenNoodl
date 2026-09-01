@@ -1167,6 +1167,33 @@ const FORM_GROUND = { ...PAGE_GROUND, maxWidth: { value: 720, unit: 'px' } };
  * that takes `vh`"* overstates it. `minHeight` is still what this wants: a floor
  * that a long page grows past, not a height a long page has to scroll inside.
  */
+/**
+ * A DOOR page's band ground — REL-002c item 6, widened by Richard 2026-09-01.
+ *
+ * 🔴 **Three pages had no identity of any kind**, and item 6 named only
+ * `/setup`. Read out of the artefact in s11 and confirmed against renders in
+ * s12: `/setup`, `/sign-in` and `/unsubscribe` all carried no `backgroundImage`
+ * and no band, against `/` and `/join` which do. Two of the three are the
+ * highest-traffic doors in the template — the owner's first ever screen and the
+ * returning member's — and the pictures showed worse than the audit did:
+ * `/sign-in` had **~280px of dead white above its footer** and `/unsubscribe`
+ * **~530px**, which is the same void item 1 fixed on the landing page, still
+ * sitting on three pages nobody had photographed.
+ *
+ * ⚠️ **300px, and the reason is `JOIN_GROUND`'s, not a new one.** A
+ * half-viewport photograph over a form pushes the first field under the fold on
+ * the `preview` viewport, which is the shortest of the four.
+ *
+ * ⚠️ **The picture is per page and the pages must not share one.**
+ * `JOIN_GROUND` records why: a form page repeating the hero's own photograph
+ * reads as a page that failed to load its own.
+ */
+const bandGround = (image: string) => ({
+  ...composition('imageGround'),
+  backgroundImage: `noodl_modules/starter-imagery/${image}`,
+  height: { value: 300, unit: 'px' }
+});
+
 const PAGE_SHELL = {
   width: { value: 100, unit: '%' },
   sizeMode: 'contentHeight',
@@ -1193,11 +1220,17 @@ const PAGE_BODY = {
  *
  * ⚠️ **The two public band pages do not use it.** `Pages/Landing` and
  * `Pages/Join` are built from bands on `BAND_PAGE_GROUND`, which already floors
- * at `100vh`; the landing page places the footer component itself as its last
- * band, and `/join` ends on a form panel with `--muted` beneath it that is its
- * own bottom edge.
+ * at `100vh`, and both place the footer component themselves as their last band.
+ *
+ * 🔴 **This note used to end *"and `/join` ends on a form panel with `--muted`
+ * beneath it that is its own bottom edge"*, and the render disproved it.**
+ * `BAND_PAGE_GROUND`'s `space-between` over two children pins the form band to
+ * the foot, so the `--muted` that argument depends on never appears: `/join`
+ * simply stopped in white, and was the only page in the template with no footer
+ * at all. s12 gave it one. Recorded because the false half was load-bearing —
+ * it is the reason nobody added the footer for five sessions.
  */
-function pageShell(opts: { chrome?: boolean } = {}): unknown[] {
+function pageShell(opts: { chrome?: boolean; band?: string } = {}): unknown[] {
   const nodes: unknown[] = [
     {
       id: 'pageShell',
@@ -1213,11 +1246,44 @@ function pageShell(opts: { chrome?: boolean } = {}): unknown[] {
       label: 'Everything above the foot',
       parent: 'pageShell',
       parameters: PAGE_BODY,
-      children: [...(opts.chrome ? ['chrome'] : []), 'ground']
+      children: [...(opts.chrome ? ['chrome'] : []), ...(opts.band ? ['heroBand'] : []), 'ground']
     }
   ];
   if (opts.chrome) {
     nodes.push({ id: 'chrome', type: CHROME_COMPONENT, label: 'The band', parent: 'pageBody' });
+  }
+  // 🔴 **REL-002c item 6 — the band goes INSIDE `pageBody`, and that is the
+  // whole reason these three pages reuse this helper instead of `/join`'s
+  // shape.** `/join` is built on `BAND_PAGE_GROUND`, whose `space-between` over
+  // two children pins the form band to the foot — which is why `/join` has no
+  // footer and why the `--muted` bottom edge its own comment promises never
+  // renders. Putting the band in `pageBody` keeps `PAGE_SHELL`'s two-child
+  // `space-between` intact, so these pages get an identity AND keep the footer
+  // every other page in the template has.
+  if (opts.band) {
+    nodes.push(
+      {
+        id: 'heroBand',
+        type: 'Group',
+        label: 'The photograph, and what this page is',
+        parent: 'pageBody',
+        parameters: bandGround(opts.band),
+        children: ['heroShell']
+      },
+      {
+        id: 'heroShell',
+        type: 'Group',
+        label: 'Shell',
+        parent: 'heroBand',
+        // 🔴 `sizeMode: 'contentHeight'` is not optional inside an
+        // `imageGround` — register V1; `HERO_SHELL` carries the account.
+        // ⚠️ Capped at the FORM's 720 for `/join`'s measured reason: with
+        // `HERO_SHELL`'s 1200 the heading begins at x=64 and the panel beneath it
+        // at x=304, which reads as a page whose head belongs to another template.
+        parameters: { ...HERO_SHELL, maxWidth: { value: 720, unit: 'px' } },
+        children: ['headingHead']
+      }
+    );
   }
   nodes.push({ id: 'pageFooter', type: FOOTER_COMPONENT, label: 'The foot of the page', parent: 'pageShell' });
   return nodes;
@@ -2361,16 +2427,23 @@ const SIGN_IN: Tpl001Component = {
       parameters: { title: 'Sign in', urlPath: 'sign-in' },
       children: ['pageShell']
     },
-    ...pageShell(),
+    // ⚠️ **`people-desk`, and `Pages/Landing` argues against it — for a
+    // different page.** Session 7 rejected it as the HERO because *"a members'
+    // area is a group of people who belong somewhere, so the room is the subject
+    // and the desk is stock photography"*. That judgement is about a 560px hero
+    // whose job is to say what the association IS. This band's job is to say what
+    // THIS PAGE is, and the page is one person at their own machine coming back
+    // to somewhere they already belong — which is what the picture shows.
+    ...pageShell({ band: 'people-desk.webp' }),
     {
       id: 'ground',
       type: 'Group',
       label: 'Page ground',
       parent: 'pageBody',
       parameters: { ...FORM_GROUND, alignX: 'center' },
-      children: ['headingHead', 'form', 'error', 'joinHint', 'joinButton']
+      children: ['form', 'error', 'joinHint', 'joinButton']
     },
-    ...pageHead('heading', 'Heading', 'ground', 'Members’ area', 'Members sign in'),
+    ...pageHead('heading', 'Heading', 'heroShell', 'Members’ area', 'Members sign in', { onScrim: true }),
     {
       id: 'form',
       type: 'Group',
@@ -3496,7 +3569,27 @@ const JOIN: Tpl001Component = {
       label: 'Page ground',
       parent: 'page',
       parameters: BAND_PAGE_GROUND,
-      children: ['heroBand', 'formBand']
+      // 🔴 **`pageFooter`, and `/join` was the ONLY page in the template
+      // without one.** Not noticed until s11's audit and confirmed against a
+      // render in s12. `pageShell`'s own note recorded a decision here — *"`/join`
+      // ends on a form panel with `--muted` beneath it that is its own bottom
+      // edge"* — and the picture disproves it: `BAND_PAGE_GROUND`'s
+      // `space-between` over two children pins the form band to the foot, so the
+      // `--muted` that argument depends on never renders and the page simply
+      // stops in white.
+      //
+      // ⚠️ **A third child does not reopen the gap `PAGE_SHELL` warns about.**
+      // That warning is about slack splitting ABOVE the content and opening a gap
+      // under a header; here the two bands above are content-height and the
+      // footer is the last child, so `space-between` puts the slack between the
+      // form and the foot — which is where this page's slack already was.
+      children: ['heroBand', 'formBand', 'pageFooter']
+    },
+    {
+      id: 'pageFooter',
+      type: FOOTER_COMPONENT,
+      label: 'The foot of the page',
+      parent: 'joinGround'
     },
     {
       id: 'heroBand',
@@ -3685,16 +3778,27 @@ const SETUP: Tpl001Component = {
       parameters: { title: 'Set up this members’ area', urlPath: 'setup' },
       children: ['pageShell']
     },
-    ...pageShell(),
+    // ⚠️ **`work-carpenter` — marking out a board — and NOT a photograph of
+    // people, which every other band in this template is.** That is the one
+    // honest constraint this page has: on first run the association does not
+    // exist yet, has no members, and has not chosen anything. A picture of a room
+    // full of people over a form that creates the very first account would be
+    // showing the reader something that is not there. Somebody setting out a
+    // piece of work before building it is exactly what this screen is.
+    //
+    // ⚠️ The subject runs horizontally across the board, which is the property
+    // `JOIN_GROUND` records as the reason `people-meeting` survives a 300px crop
+    // and `people-market` does not.
+    ...pageShell({ band: 'work-carpenter.webp' }),
     {
       id: 'ground',
       type: 'Group',
       label: 'Page ground',
       parent: 'pageBody',
       parameters: { ...FORM_GROUND, alignX: 'center' },
-      children: ['headingHead', 'blurb', 'form', 'refusal', 'missing']
+      children: ['blurb', 'form', 'refusal', 'missing']
     },
-    ...pageHead('heading', 'Heading', 'ground', 'First run', 'Set up this members’ area'),
+    ...pageHead('heading', 'Heading', 'heroShell', 'First run', 'Set up this members’ area', { onScrim: true }),
     {
       id: 'blurb',
       type: 'Text',
@@ -5166,18 +5270,47 @@ const UNSUBSCRIBE_PAGE: Tpl001Component = {
       parameters: { title: 'Email settings', urlPath: 'unsubscribe' },
       children: ['pageShell']
     },
-    ...pageShell(),
+    // 🔴 **`ground-shore`, and it is the one band in this template that is
+    // deliberately NOT a photograph of people.** `pageHead`'s own note argued
+    // this page needs no decoration at all; the render is what overturned that —
+    // it was the emptiest page in the template, a red refusal box over ~530px of
+    // bare white. But the register matters as much as the fix: somebody reaches
+    // this page from a link in an email, often on their way OUT. A warm picture
+    // of people enjoying each other's company over a button that turns emails
+    // off would be the template arguing with the reader.
+    //
+    // ✅ **A `ground-*` file, and the module says why that is the right KIND.**
+    // The starter imagery manifest records that `ground-*` and `texture-*` are
+    // cropped as **16:9 band grounds** while everything else is a 4:3 tile — so
+    // this is the one band on the template whose picture is already the shape it
+    // is being asked to be, rather than a third of a tile.
+    ...pageShell({ band: 'ground-shore.webp' }),
     {
       id: 'ground',
       type: 'Group',
       label: 'Page ground',
       parent: 'pageBody',
       parameters: FORM_GROUND,
-      children: ['headingHead', 'done', 'failed']
+      children: ['done', 'failed']
     },
-    ...pageHead('heading', 'Heading', 'ground', 'Members’ area', 'Emails'),
+    ...pageHead('heading', 'Heading', 'heroShell', 'Members’ area', 'Emails', { onScrim: true }),
     ...notice('done', 'Turned off', 'ground', UNSUBSCRIBED_TEXT, { tone: 'accent' }),
     ...notice('failed', 'That link did not work', 'ground', UNSUBSCRIBE_FAILED_TEXT, { tone: 'refused' }),
+    // ⚠️ **REL-002c s12 tried to give this page a way out and a gate refused
+    // it, correctly.** The reasoning was this row's own hazard 3 — after the band
+    // went on, ~290px of void remained at 1280, and a layout complaint in this
+    // row has four times had a content answer. The content answer here looked
+    // obvious: both notices tell the reader to use their account and the page
+    // offered no route to one.
+    //
+    // 🔴 **It is ruled against.** Richard's D39, 2026-08-29: the page names no
+    // association and offers no way back. `tpl001Template.test.ts` §5 reads that
+    // place, and its own note predicted this session exactly — *"a link back is
+    // free… the cheap half is the one somebody adds without thinking about the
+    // ruling at all."* A `net.noodl.controls.button` and a `RouterNavigate` were
+    // added and removed again; the remaining slack below the notice is a
+    // CONSEQUENCE OF THE RULING, not an unfixed defect, and reversing it is
+    // Richard's call rather than a later session's.
     { id: 'pageInputs', type: 'PageInputs', label: 'The token', parameters: { queryParams: UNSUBSCRIBE_PARAM } },
     {
       id: 'hold',

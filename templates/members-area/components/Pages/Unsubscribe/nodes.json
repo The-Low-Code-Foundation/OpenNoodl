@@ -24,7 +24,7 @@
       "parent": "page-13",
       "children": [
         "pageBody-11",
-        "pageFooter-11"
+        "pageFooter-12"
       ],
       "parameters": {
         "width": {
@@ -48,6 +48,7 @@
       "label": "Everything above the foot",
       "parent": "pageShell-11",
       "children": [
+        "heroBand-5",
         "ground-12"
       ],
       "parameters": {
@@ -62,12 +63,70 @@
       "y": 280
     },
     {
-      "id": "pageFooter-11",
+      "id": "heroBand-5",
+      "type": "Group",
+      "label": "The photograph, and what this page is",
+      "parent": "pageBody-11",
+      "children": [
+        "heroShell-5"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "explicit",
+        "height": {
+          "value": 300,
+          "unit": "px"
+        },
+        "flexDirection": "column",
+        "alignItems": "center",
+        "justifyContent": "flex-end",
+        "backgroundGradient": "var(--gradient-scrim)",
+        "backgroundSize": "cover",
+        "backgroundPosition": "center",
+        "backgroundColor": "var(--foreground)",
+        "paddingBottom": "var(--space-12)",
+        "backgroundImage": "noodl_modules/starter-imagery/ground-shore.webp"
+      },
+      "x": 220,
+      "y": 400
+    },
+    {
+      "id": "heroShell-5",
+      "type": "Group",
+      "label": "Shell",
+      "parent": "heroBand-5",
+      "children": [
+        "headingHead-10"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "maxWidth": {
+          "value": 720,
+          "unit": "px"
+        },
+        "flexDirection": "column",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "sizeMode": "contentHeight",
+        "alignX": "center",
+        "rowGap": "var(--space-5)"
+      },
+      "x": 280,
+      "y": 520
+    },
+    {
+      "id": "pageFooter-12",
       "type": "/Members/Footer",
       "label": "The foot of the page",
       "parent": "pageShell-11",
       "x": 160,
-      "y": 1360
+      "y": 1600
     },
     {
       "id": "ground-12",
@@ -75,7 +134,6 @@
       "label": "Page ground",
       "parent": "pageBody-11",
       "children": [
-        "headingHead-10",
         "done",
         "failed-3"
       ],
@@ -98,13 +156,13 @@
         "paddingBottom": "var(--space-12)"
       },
       "x": 220,
-      "y": 400
+      "y": 1000
     },
     {
       "id": "headingHead-10",
       "type": "Group",
       "label": "Heading — the head",
-      "parent": "ground-12",
+      "parent": "heroShell-5",
       "children": [
         "headingEyebrow-10",
         "heading-11"
@@ -118,8 +176,8 @@
         "rowGap": "var(--space-1)",
         "paddingBottom": "var(--space-2)"
       },
-      "x": 280,
-      "y": 520
+      "x": 340,
+      "y": 640
     },
     {
       "id": "headingEyebrow-10",
@@ -132,10 +190,10 @@
         "fontWeight": "var(--font-semibold)",
         "letterSpacing": "var(--tracking-widest)",
         "textTransform": "uppercase",
-        "color": "var(--primary)"
+        "color": "var(--primary-foreground)"
       },
-      "x": 340,
-      "y": 640
+      "x": 400,
+      "y": 760
     },
     {
       "id": "heading-11",
@@ -148,10 +206,10 @@
         "fontWeight": "var(--font-semibold)",
         "lineHeight": "var(--leading-tight)",
         "letterSpacing": "var(--tracking-tight)",
-        "color": "var(--foreground)"
+        "color": "var(--primary-foreground)"
       },
-      "x": 340,
-      "y": 760
+      "x": 400,
+      "y": 880
     },
     {
       "id": "done",
@@ -181,7 +239,7 @@
         "mounted": false
       },
       "x": 280,
-      "y": 880
+      "y": 1120
     },
     {
       "id": "doneText",
@@ -194,7 +252,7 @@
         "color": "var(--accent-foreground)"
       },
       "x": 340,
-      "y": 1000
+      "y": 1240
     },
     {
       "id": "failed-3",
@@ -224,7 +282,7 @@
         "mounted": false
       },
       "x": 280,
-      "y": 1120
+      "y": 1360
     },
     {
       "id": "failedText-2",
@@ -237,7 +295,7 @@
         "color": "var(--destructive)"
       },
       "x": 340,
-      "y": 1240
+      "y": 1480
     },
     {
       "id": "pageInputs-3",
@@ -246,8 +304,8 @@
       "parameters": {
         "queryParams": "token"
       },
-      "x": 590,
-      "y": 1240
+      "x": 650,
+      "y": 1480
     },
     {
       "id": "hold-5",
@@ -282,7 +340,7 @@
           "group": "Outputs"
         }
       ],
-      "x": 590,
+      "x": 650,
       "y": 40
     },
     {
@@ -292,8 +350,8 @@
       "parameters": {
         "function": "unsubscribe"
       },
-      "x": 590,
-      "y": 1360
+      "x": 650,
+      "y": 1600
     },
     {
       "id": "doneGate",
@@ -303,8 +361,8 @@
         "condition": true,
         "runOnChange-condition": false
       },
-      "x": 590,
-      "y": 880
+      "x": 650,
+      "y": 1120
     },
     {
       "id": "failGate-2",
@@ -314,8 +372,8 @@
         "condition": true,
         "runOnChange-condition": false
       },
-      "x": 590,
-      "y": 1120
+      "x": 650,
+      "y": 1360
     }
   ],
   "visualRoots": [

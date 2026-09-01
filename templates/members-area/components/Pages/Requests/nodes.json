@@ -24,7 +24,7 @@
       "parent": "page-10",
       "children": [
         "pageBody-8",
-        "pageFooter-8"
+        "pageFooter-9"
       ],
       "parameters": {
         "width": {
@@ -71,7 +71,7 @@
       "y": 400
     },
     {
-      "id": "pageFooter-8",
+      "id": "pageFooter-9",
       "type": "/Members/Footer",
       "label": "The foot of the page",
       "parent": "pageShell-8",
