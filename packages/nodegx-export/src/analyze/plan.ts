@@ -315,13 +315,15 @@ const DATE_NODES: Record<string, { fn: DateHelper; args: DateArgSpec[]; outputs:
  * a table, so its `numbered` field names the two index-aligned families the interpreter pairs by
  * position and `args` covers only its two ordinary ports.
  *
- * 🔴 **Every fallback here is `initialize`'s, and one of them contradicts the port's declared
- * default.** `Substring`'s `end` declares 0 and `initialize` writes **-1**, which are opposite
- * answers — 0 yields the empty string, -1 yields the rest of the string — and the runtime uses
- * -1, because `registerInput` writes a declared default into `_inputValues` without calling the
- * setter (`node.ts:137-139`) and the getter reads `_internal.endIndex`. So an author who never
- * opened the panel has a node whose *panel says 0* and whose *answer is the whole string*, and
- * the export has to agree with the answer. Registered as DEF-018.
+ * 🔴 **Every fallback here is `initialize`'s, not the port's declared default.** `Substring`'s
+ * `end` used to declare 0 while `initialize` wrote **-1**, which are opposite answers — 0 yields
+ * the empty string, -1 yields the rest of the string — and the runtime used -1, because
+ * `registerInput` writes a declared default into `_inputValues` without calling the setter
+ * (`node.ts:137-139`) and the getter reads `_internal.endIndex`. So an author who never opened
+ * the panel had a node whose *panel said 0* and whose *answer was the whole string*, and the
+ * export had to agree with the answer. Registered as DEF-033 and fixed 2026-09-01 by aligning
+ * the declaration to -1 (Richard: "show the truth"); the fallback below was -1 before and after,
+ * because it was always read from `initialize`.
  *
  * ⚠️ `clamp` and `inputValue` are the editor-constrained pair on `Number Remapper`
  * (`allowEditOnly` and `allowConnectionOnly`), and neither constraint earns a deferral the way
@@ -1426,6 +1428,17 @@ export interface HttpValuePlan {
   from:
     | { kind: 'literal'; value: string | number | boolean }
     | { kind: 'param'; param: string; tsType: string };
+}
+
+/**
+ * A resolved value that is a deferral rather than a plan. A type predicate rather than the
+ * inline `x !== null && 'defer' in x`, because the editor compiles this package under its own
+ * tsconfig (EXP-012), which has no `strictNullChecks` — and there the `!== null` half narrows
+ * nothing, so the union survived into every consumer as a type error. A predicate's false branch
+ * removes the `{ defer }` member in both modes.
+ */
+function isDefer(value: unknown): value is { defer: string } {
+  return typeof value === 'object' && value !== null && 'defer' in value;
 }
 
 /**
@@ -6167,7 +6180,7 @@ function planComponent(
     ): { defer: string } | null => {
       for (const name of names) {
         const value = valueOf(`${portPrefix}${name}`, name, `${paramPrefix}${pascalCase(name.replace(/[^A-Za-z0-9]+/g, ' '))}`);
-        if (value !== null && 'defer' in value) return value;
+        if (isDefer(value)) return value;
         if (value !== null) into.push(value);
       }
       return null;
@@ -6195,7 +6208,7 @@ function planComponent(
       const bodyType = String(literalParam(node, 'bodyType') ?? 'json');
       if (bodyType === 'raw') {
         const raw = valueOf('body-raw', 'raw', 'bodyRaw');
-        if (raw !== null && 'defer' in raw) return raw;
+        if (isDefer(raw)) return raw;
         // `body-raw` unset sends `undefined`, which is the same request as no body at all.
         if (raw !== null) body = { type: 'raw', raw };
       } else if (bodyType === 'json' || bodyType === 'form' || bodyType === 'urlencoded') {
@@ -6215,19 +6228,19 @@ function planComponent(
     const authType = String(literalParam(node, 'authType') ?? 'none');
     if (authType === 'bearer') {
       const token = valueOf('auth-authToken', 'authToken', 'authToken');
-      if (token !== null && 'defer' in token) return token;
+      if (isDefer(token)) return token;
       if (token !== null) auth = { kind: 'bearer', token };
     } else if (authType === 'basic') {
       const username = valueOf('auth-authUsername', 'authUsername', 'authUsername');
-      if (username !== null && 'defer' in username) return username;
+      if (isDefer(username)) return username;
       const password = valueOf('auth-authPassword', 'authPassword', 'authPassword');
-      if (password !== null && 'defer' in password) return password;
+      if (isDefer(password)) return password;
       if (username !== null && password !== null) auth = { kind: 'basic', username, password };
     } else if (authType === 'apiKey') {
       const name = valueOf('auth-authApiKeyName', 'authApiKeyName', 'authKeyName');
-      if (name !== null && 'defer' in name) return name;
+      if (isDefer(name)) return name;
       const value = valueOf('auth-authApiKeyValue', 'authApiKeyValue', 'authKeyValue');
-      if (value !== null && 'defer' in value) return value;
+      if (isDefer(value)) return value;
       if (name !== null && value !== null) {
         auth = {
           kind: 'apiKey',
@@ -7026,7 +7039,7 @@ function planComponent(
       let expr = resolvedParams.get(name);
       if (expr === undefined) {
         const resolved = valueOf(`p-${name}`);
-        if (resolved !== undefined && 'defer' in resolved) return { defer: resolved.defer };
+        if (isDefer(resolved)) return { defer: resolved.defer };
         /**
          * 🔴 **An unset placeholder substitutes the empty string, and is not deferred.** One
          * node over it *is* deferred, because `getRelativeURL` leaves the literal `{id}` in the
@@ -7051,7 +7064,7 @@ function planComponent(
     if (typeof authoredQueryNames === 'string' && authoredQueryNames !== '') {
       for (const name of authoredQueryNames.split(',')) {
         const resolved = valueOf(`q-${name}`);
-        if (resolved !== undefined && 'defer' in resolved) return { defer: resolved.defer };
+        if (isDefer(resolved)) return { defer: resolved.defer };
         // A name with nothing on its port is absent from the url entirely, never `name=`.
         if (resolved === undefined) continue;
         query.push({ name, expr: resolved, omittable: maybeUndefinedExpr(resolved) });

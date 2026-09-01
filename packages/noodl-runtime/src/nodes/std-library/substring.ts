@@ -48,8 +48,14 @@ const SubStringNode: NodeDefinitionOptions = {
       group: 'Values',
       type: 'number',
       displayName: 'End',
-      description: 'Position to stop before; leave it unset to run to the end of the string, since setting it to 0 yields nothing',
-      default: 0,
+      // DEF-033: this declaration and `initialize` must say the same number. A declared default
+      // never runs its setter (`registerInput` writes it straight into `_inputValues`), so the
+      // getter answers from `_internal.endIndex` = -1 whatever the panel shows — and 0 is the
+      // opposite answer, the empty string for every input. The panel showed 0 for a node that
+      // was returning the rest of the string; `substring-declared-default.test.ts` pins them
+      // together.
+      description: 'Position to stop before; -1, the default, runs to the end of the string, and 0 yields an empty result',
+      default: -1,
       set: function (this: SubStringNodeInstance, value: number) {
         this._internal.endIndex = value;
         this._internal.resultDirty = true;

@@ -4480,6 +4480,18 @@ row changes.
 
 🔴 **Owner is now `P18` — P80 ruled it and handed it over; P80 does not build it.**
 
+✅ **BUILT 2026-09-01 (session 67).** `substring.ts` declares `default: -1` and its description reads
+*"-1, the default, runs to the end of the string, and 0 yields an empty result"*; the catalog was
+regenerated (`node-catalog.json` and `node-catalog-enriched.json` carry the new default and text).
+Graded by `packages/noodl-runtime/test/nodes/substring-declared-default.test.ts` — the declaration is
+asserted **equal to `_internal.endIndex` after `initialize`** and to `-1`, the description is
+asserted free of the old sentence, and three `result` rows are kept as **controls** that must not
+have moved (untouched `End` → rest of string; `End = 0` → `''`; `End = -1` sent → same as untouched).
+`string-math-utilities.test.ts`'s §A row, which had pinned the mismatch as the finding
+(`declaredEnd.default` **0**), now pins the fix (**-1**) — it went red on the catalog change, which is
+the row proving the catalog is what the panel reads. ⚠️ **Not driven in the property panel**; the
+panel renders the catalog's `default`, and the catalog row is what moved.
+
 **The change is one line.** [`packages/noodl-runtime/src/nodes/std-library/substring.ts:52`](../../../packages/noodl-runtime/src/nodes/std-library/substring.ts#L52)
 — the `end` port's `default: 0` becomes `default: -1`, matching `initialize`'s
 `internal.endIndex = -1` at [line 29](../../../packages/noodl-runtime/src/nodes/std-library/substring.ts#L29).

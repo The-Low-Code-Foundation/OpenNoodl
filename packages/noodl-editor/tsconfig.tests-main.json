@@ -231,6 +231,12 @@
     // spec in `tests/ai/` that needs a real Electron renderer to run, and `noodl-mcp`'s
     // `rejectionExamples.test.ts` over stdio. Neither asserted the node-choice copy, so session
     // 43's edit to it was, in its own words, caught by nothing.
-    "src/editor/src/models/AiAssistant/authoring/prompts"
+    "src/editor/src/models/AiAssistant/authoring/prompts",
+    // EXP-012: `utils/codeExport/writeExport.ts` is the same shape — the disk half of the
+    // editor's React code export, taking `fs` as an argument and typed against the emitted
+    // app's structure rather than importing `@nodegx/export`. The renderer flow beside it
+    // (`exportReactCode.ts`) reaches ProjectModel, the popup layer and Electron's dialog, and is
+    // deliberately not reached from here.
+    "src/editor/src/utils/codeExport/writeExport.ts"
   ]
 }

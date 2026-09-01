@@ -13,6 +13,7 @@ import View from '../../../../../shared/ListenableView';
 import { Frame } from '../../common/Frame';
 import { Ports } from '../propertyeditor/DataTypes/Ports';
 import { HTML_TITLE_PORT, ProjectSettingsModel } from './ProjectSettingsModel';
+import { CodeExportSection } from './sections/CodeExportSection';
 import { DeploySection } from './sections/DeploySection';
 import { IdentitySection } from './sections/IdentitySection';
 import { KitsSection } from './sections/KitsSection';
@@ -230,6 +231,7 @@ export function ProjectSettingsTab() {
       <RuntimeSection />
       <SitemapSection />
       <DeploySection />
+      <CodeExportSection />
 
       <Section hasGutter hasVisibleOverflow>
         <PrimaryButton

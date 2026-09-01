@@ -214,10 +214,14 @@ describe('EXP-011 Tier 2.7 §A — the emitted module against the interpreter', 
   /**
    * 🔴 The one that pays for the whole harness.
    *
-   * An untouched `End` port holds **-1**, not the `0` the catalog and the property panel both
-   * declare, because `registerInput` writes a declared default into `_inputValues` without ever
-   * calling the setter. The two answers are opposite — the whole string, or nothing at all — and
-   * an export that trusted the catalog would emit an app whose every `Substring` returned `''`.
+   * An untouched `End` port holds **-1**, because `registerInput` writes a declared default into
+   * `_inputValues` without ever calling the setter and the getter reads what `initialize` wrote.
+   * When this row was written the catalog and the property panel both declared `0` — the
+   * opposite answer, nothing at all instead of the whole string — and an export that trusted the
+   * catalog would have emitted an app whose every `Substring` returned `''`. That was DEF-033,
+   * fixed 2026-09-01 by aligning the declaration to -1 (Richard: "show the truth"). The last
+   * assertion now pins the declaration to the interpreter's answer, so a regression to `0`
+   * reddens here as well as in the runtime's own `substring-declared-default.test.ts`.
    */
   it('an untouched End is -1 in the interpreter, and -1 is what the export has to agree with', () => {
     for (const text of TEXTS) {
@@ -226,11 +230,11 @@ describe('EXP-011 Tier 2.7 §A — the emitted module against the interpreter', 
       }
     }
     expect(runtimeSubstring('hello', 0, undefined)).toBe('hello');
-    // What the declared default would have produced, had the setter ever run. It is not a
+    // What the old declared default would have produced, had the setter ever run. It is not a
     // near-miss: it is the empty string for every input the node can be given.
     expect(runtimeSubstring('hello', 0, 0)).toBe('');
     const declaredEnd = catalog.nodes.find((n) => n.typeName === 'Substring')!.inputs!.find((p) => p.name === 'end')!;
-    expect(declaredEnd.default).toBe(0);
+    expect(declaredEnd.default).toBe(-1);
   });
 
   it('an unset Start and an unset String are the interpreter’s own zero and empty string', () => {

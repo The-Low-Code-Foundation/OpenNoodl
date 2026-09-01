@@ -27287,8 +27287,8 @@
             "name": "number"
           },
           "isSignal": false,
-          "default": 0,
-          "description": "Position to stop before; leave it unset to run to the end of the string, since setting it to 0 yields nothing"
+          "default": -1,
+          "description": "Position to stop before; -1, the default, runs to the end of the string, and 0 yields an empty result"
         },
         {
           "name": "start",

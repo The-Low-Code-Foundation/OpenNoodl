@@ -9,6 +9,7 @@
       "@noodl/git": ["../noodl-git/src/index.ts"],
       "@noodl-viewer-cloud/execution-history": ["../noodl-viewer-cloud/src/execution-history/index.ts"],
       "@noodl-core-ui/*": ["../noodl-core-ui/src/*"],
+      "@nodegx/export": ["../nodegx-export/src/index.ts"],
       "@noodl-hooks/*": ["./src/editor/src/hooks/*"],
       "@noodl-utils/*": ["./src/editor/src/utils/*"],
       "@noodl-models/*": ["./src/editor/src/models/*"],

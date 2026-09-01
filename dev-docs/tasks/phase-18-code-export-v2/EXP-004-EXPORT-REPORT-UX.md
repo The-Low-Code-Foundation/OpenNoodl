@@ -51,7 +51,7 @@ There is a specific new risk this task must handle. EXP-003 uses AI translation 
 
 ### In Scope
 - [x] Pre-flight export estimate from project analysis — **exact, not estimated**; see §21.2
-- [x] Post-export report — ✅ **as a file in the exported project** (§19), now carrying the ordered next steps (§22); 🔴 **in-editor is BLOCKED**, see §21.1
+- [x] Post-export report — ✅ **as a file in the exported project** (§19), now carrying the ordered next steps (§22); ✅ **in-editor since EXP-012 (s67)**: the pre-flight modal before, a toast with the refusal count and *Show in folder* on `EXPORT-REPORT.md` after. ⚠️ **No drill-down panel** — that is the part still open, and it is a UX decision, not a wire (§21.1's block is over)
 - [x] Per-item detail: node, location in generated code, status, reason
 - [ ] Trace-coverage communication in plain language — **not applicable until EXP-003 exists**; there are no traces
 - [x] In-code markers (§20) — and since §23 a refused script node's **own code** is carried beside them
@@ -114,7 +114,7 @@ for the numbers and the control pair that now guards the layer.
 ## Success Criteria
 
 - [x] Pre-flight available before export — **exact**; `emit-app.ts --preflight`, writes nothing
-- [x] Post-export report — ✅ in the exported project, with next steps and file locations (§22); 🔴 **in-editor BLOCKED** (§21.1)
+- [x] Post-export report — ✅ in the exported project, with next steps and file locations (§22); ✅ in-editor pre-flight + post-export toast (EXP-012, s67); ⬜ drill-down panel
 - [ ] Trace-coverage caveat — **no traces exist**; both surfaces say nothing has been run
 - [x] In-code markers consistent and greppable — **with** the original source of a refused script node (§23)
 - [ ] Exported README enables an unfamiliar developer to proceed unaided — ⚠️ **the README is built (§22); the claim is not measured.** This criterion is a comprehension test with a person, and no person has read it

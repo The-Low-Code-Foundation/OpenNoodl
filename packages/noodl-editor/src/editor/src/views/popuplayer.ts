@@ -10,6 +10,7 @@ import { KeyCode } from '@noodl-utils/keyboard/KeyCode';
 import KeyboardHandler from '@noodl-utils/keyboardhandler';
 import { windowTitleBarHeight } from '@noodl-utils/utils';
 
+import { CodeExportModal, CodeExportModalProps } from './PopupLayer/CodeExportModal';
 import { ConfirmModal, ErrorModal } from './PopupLayer/ConfirmModal';
 import { StringInputPopup } from './PopupLayer/StringInputPopup';
 import { ToastLayer } from './ToastLayer/ToastLayer';
@@ -1067,6 +1068,27 @@ export class PopupLayer {
         onConfirm: () => {
           this.hideModal();
           onConfirm && onConfirm();
+        }
+      })
+    );
+  }
+
+  /**
+   * EXP-012: the code export's pre-flight. Same close discipline as `showConfirmModal` — the
+   * modal is hidden before either callback runs, so a confirm that opens the native folder
+   * dialog does not leave this one underneath it.
+   */
+  public showCodeExportModal({ summary, onConfirm, onCancel }: CodeExportModalProps) {
+    this.showReactModal(
+      React.createElement(CodeExportModal, {
+        summary,
+        onCancel: () => {
+          this.hideModal();
+          onCancel && onCancel();
+        },
+        onConfirm: () => {
+          this.hideModal();
+          onConfirm();
         }
       })
     );

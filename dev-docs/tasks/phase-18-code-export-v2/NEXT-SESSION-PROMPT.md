@@ -1,84 +1,57 @@
-# Next session — Tier 2.7 is finished, and Tier 2's remainder is two design questions
+# Next session — the export is IN THE PRODUCT; whether it rides 0.2.2 is Richard's call
 
 ## The board, re-derived from the task files
 
 | task | status |
 |---|---|
-| EXP-001 `@nodegx/core` | ✅ Built, gated, **not yet consumed by the product** (§21.1, and row 8 below) |
+| EXP-001 `@nodegx/core` | ✅ Built, gated, not consumed by the emitted code (by design) |
 | EXP-002 deterministic generators | 🟡 in progress, re-aimed at the picker |
 | EXP-003 AI logic translation | not started |
-| EXP-004 report & honesty UX | 🟡 built and driven; **three lines need Richard, not a session** |
+| EXP-004 report & honesty UX | 🟡 built and driven; **in-editor pre-flight + toast now exist (EXP-012)**; the drill-down panel and the three lines that need Richard remain |
 | EXP-005 / 006 / 007 | not started (006/007 blocked on 002 having a generator to inject into) |
 | EXP-008 coverage ledger + gate | ✅ Built |
 | EXP-009 backend connection | 🟢 built + driven; AC4 waits on a Cloud Services node |
 | EXP-010 custom nodes & modules | 🟢 Route B built + driven; Route A not owed |
-| **EXP-011 picker coverage** | 🟡 **Tier 1 COMPLETE, Tier 2.7 COMPLETE — 75/127 (59.1%)** |
+| EXP-011 picker coverage | 🟡 Tier 1 COMPLETE, Tier 2.7 COMPLETE — 75/127 (59.1%); the two Tier 2 leftovers each have a design question in front of them |
+| **EXP-012 the editor export command** | 🟢 **BUILT + DRIVEN s67** — [EXP-012](EXP-012-THE-EDITOR-EXPORT-COMMAND.md) |
+| DEF-033 (Substring's declared End) | ✅ **BUILT s67** — §36.2 |
 
-**Tier 2's open remainder is now two items, and both have a design question in front of them:**
-**Cloud Services (9)** and the **component stack pair** (§15.6 says that pair is a routing
-question). There is no longer a Tier 2 node with a clear run at it.
+## 🔴 What session 67 did, and the one decision it left for Richard
 
-## 🆕 Handed in from phase 80 on 2026-08-31 — DEF-033 is now P18's to build
+Richard opened the session with *"if we make good progress we can include it in the 0.2.2 launch."*
+A launch can only include what a user can reach, so the session built the thing §21.1 had listed as
+`NONE` for eighteen sessions: **the editor command.** Settings → Project → *Export as React code…*
+shows the exact pre-flight, takes a folder, refuses one inside the project, asks before overwriting a
+non-empty one, writes the app, and points at `EXPORT-REPORT.md`. Driven end to end over CDP on a
+renamed copy of `ticket-desk`; the written folder is **byte-identical** to `emit-app.ts`'s.
 
-**Richard ruled it, in P80's lane, and P80 does not build it.** *"Yeah just make it show the
-truth, that seems like a no brainer."*
+🔴 **Richard decides whether it rides 0.2.2.** Nothing in P82's board names it. The facts he needs:
+it touches four editor files plus one alias, its gates are green (editor `tsc` 0, export jest
+1248/1248, runtime jest 2615 passed, tests-unit 9/9), it changes nothing for a project that never
+presses the button, and the honest caveat is that **the exported app has been built and driven from
+the script path many times but not from the editor path** — the bytes are identical, so that is a
+statement about instruments, not about risk. If it rides: P82's run-sheet gets a row and the release
+notes a line (*"Export as React code — Settings → Project"*); if it holds: nothing to undo.
 
-`Substring`'s `End` port **declares** `default: 0` while `initialize` writes `-1` — the panel shows
-a number the node is not holding, and they are opposite answers, not a near-miss (`-1` returns the
-rest of the string, `0` returns `''` for every input). This is **P18's own finding**, registered
-from [§36.2](EXP-011-PICKER-COVERAGE.md) with owner `NONE`; the owner is now **P18**.
-
-**The build:** align the declared default to `-1` at
-[`substring.ts:52`](../../../packages/noodl-runtime/src/nodes/std-library/substring.ts#L52).
-**Node behaviour is unchanged**, the export already agrees with the node, and **no target-output
-row or emitted artefact moves.**
-
-⚠️ **Two things §36.2 now records that are easy to miss:**
-
-- The port's `description` currently explains the very mismatch being removed (*"setting it to 0
-  yields nothing"*). **Rewrite it in the same commit** or the panel contradicts itself.
-- 🔴 **`result` must NOT change.** A test that watches `result` passes identically before and after
-  — it cannot grade this fix. Grade the **declared default and the panel**.
-
----
-
-## What session 66 did
-
-Built **EXP-011 §37 — the id pair**, `Unique Id` and `net.noodl.UUID`, finishing Tier 2.7.
-**§37** has the long form.
-
-- ✅ **Picker 73 → 75 of 127 (59.1%)**, floor raised in the same commit.
-- ✅ New emitted module `src/lib/id.ts`, transcribed from `model.ts` and `crypto/{encoding,uuid}.ts`.
-- ✅ **AC3's project is `tests/fixtures/badge-desk`** — routed, built, driven, and picked up
-  automatically by the suites that enumerate `tests/fixtures`.
-- ✅ **`relation-verbs.test.ts`'s untranslated-feeder example was repointed** at
-  `net.noodl.ToCSV`; it was a `Unique Id`, and it had already lost `PageInputs` to Tier 2.5.
+Also built: **DEF-033** (Richard's ruling from P80 — Substring's panel now says `-1`, the number
+that runs; description rewritten; catalog regenerated; graded by declaration-vs-`initialize`, with
+`result` rows kept as controls).
 
 ## 🔴 Read this before planning anything
 
-1. 🔴 **Two nodes that look like one, and the picker number cannot tell.** `Unique Id` is ten
-   characters of `Math.random()`; `UUID` is a v4 from the platform CSPRNG. Translating both to one
-   generator raises the picker by two and is wrong about half of it, and **every shape check
-   anyone would think to write passes either way**. The instruments that can see it are an *exact*
-   differential — pin the entropy source, then compare character for character against the
-   interpreter's own code — and a sabotage arm.
-2. 🔴 **A neighbouring node's rule can be the exact opposite rule.** §24 established that
-   `External Link`'s `Error` is read as the **stale row** in the Done arm, because the runtime
-   never clears it. `UUID`'s `_generate` **does** clear it, so the same code here would print a
-   message the app had just erased. The two nodes are one file apart. ✅ **Read the writer, not
-   the sibling.**
-3. ⚠️ **A line no driven app can grade is not a line that passed.** Sabotaging the success arm's
-   `setRecordIdError(undefined)` changed **nothing** in the browser — the failure cannot fire
-   where there is a CSPRNG. It is recorded as ungradeable-by-drive and a test grades it. Predict
-   which arms your drive can see *before* you run them.
-4. 🔴 **§36.5's question, answered from the other side.** Pass 4f's clause kills 6 rows; adding
-   these nodes to Pass 4c's whitelist **as well** kills 0 — both passes bind the same row read, so
-   two sites leave one branch dead. ✅ The rule that survives both sessions: **a node needing a
-   state row goes in Pass 4f, a pure expression goes in Pass 4c, and never both.**
-5. ⚠️ **A claim was written and measured false, and the correction is kept.** The eager
-   `useState(randomId())` does **not** show a changing id — React discards the argument after
-   mount. The lazy form is right as the faithful transcription of `initialize`; the cost of the
-   eager one is a generator call per render, not a visible bug.
+1. 🔴 **The exporter is now compiled TWICE — under its own strict tsconfig and under the editor's
+   non-strict one.** Ten `x !== null && 'defer' in x` sites in `plan.ts` typed only under the first.
+   Fixed with an `isDefer()` predicate. **Run the editor's `tsc -p packages/noodl-editor/tsconfig.json
+   --noEmit` after any exporter edit** — the package's own `tsc` cannot see this class of error.
+2. 🔴 **A peer's edit hot-reloads your running editor mid-drive.** Two HMR updates from a P77 peer
+   re-rendered the settings panel and dropped a stamped attribute; re-stamp after any `[HMR]` line and
+   count the flow through a patched `chooseDirectory`. One phantom overwrite during an HMR update is
+   recorded in EXP-012 as **unexplained, not reproduced**.
+3. ⚠️ **`filesystem.js` is CommonJS**: `__req(...)` is the object, `.default` is undefined — a wrong
+   patch throws inside a one-line eval and the previous patch stays live.
+4. ⚠️ **Peer hunks share your catalog files.** `node-catalog.json` carried a peer's uncommitted Text
+   Input placeholder change; the enriched catalog carried *only* theirs. Commit the catalog by a
+   filtered patch, never by pathspec, while a peer's `text-input.ts` edit is uncommitted.
 
 ## The objective, so it cannot drift
 
@@ -91,93 +64,54 @@ a deployed NodeGX backend — exports to a React repo that builds, runs, and sti
 cd packages/nodegx-export
 ../../node_modules/.bin/tsc --noEmit          # exit 0
 ../../node_modules/.bin/jest                  # 1248/1248, 49 suites, 49 files on disk
+cd ../noodl-editor && ../../node_modules/.bin/tsc -p tsconfig.json --noEmit   # exit 0 — NEW gate, see above
+../../node_modules/.bin/jest tests-unit/exp-012                               # 9/9
 npm run export-ledger:picker                  # from the repo root — 75/127 (59.1%), floor 75
 npm run export-ledger:check                   # 175 types
 ```
 
 🔴 The corpus audit is a regression net, never a priority oracle — **and it is 60 projects, not
-101** (`parseProject` reads `nodegx.project.json` only; 40 are classic, 1 neither).
-🔴 Custom node types are **deliberately** outside the picker number — `$customNodesComment` in
-`packages/nodegx-export/coverage-ledger.json` says why.
-⚠️ `build-corpus.ts` reads **59/60**, and the red is **pre-existing**: `Members area (TPL-001)`,
-`MemberRow.tsx(16,15)`, `TS7053` on `LABELS[standing]` inside a **preserved Function body**.
-**Do not read it as a regression, and do not re-derive that.** Owner `NONE`.
-⚠️ It takes **~4 minutes** and exceeds the 120s tool timeout — background it.
+101**. ⚠️ `build-corpus.ts` reads **59/60** with a **pre-existing** red (TPL-001 `MemberRow.tsx`
+`TS7053` inside a preserved Function body), ~4 minutes, background it. Not re-run this session.
 
 ## Do this next — in the order they are worth doing
 
-### 1. 🔴 The row-owned write, with the question §34 sharpened *(carried, unstarted — now the top row on merit, not just by default)*
+### 0. If Richard says it rides: the two lines that make it visible
+A row on P82's `TASKS.md` and a release-notes line. Then **build and run one editor-path export**
+(`npm install && npm run build` in the folder the button wrote) so the caveat above closes.
 
-Not *"can a row write to itself"*. The measured question: **does the write need an id at all?**
-`Collection.updateWhere(match, update)` matches **by predicate**, and §29/§30 established the
-emitted row closes over its own `item` — so "the record this row is bound to" has a referent on
-this side that is not a string id. §5.3 refuses because a row has no *id*; the shape may never
-have needed one.
+### 1. 🔴 The row-owned write, with the question §34 sharpened *(carried, unstarted)*
+Not *"can a row write to itself"* — **does the write need an id at all?** `Collection.updateWhere`
+matches by predicate and the emitted row closes over its own `item`. ⚠️ `updateWhere` **replaces**
+the row object. Owner `NONE`. 1 independent graph exportable, 6 corpus-wide, 14 nodes, and 100% of
+every `Set Object Properties` anybody has authored.
 
-⚠️ Derive before building: `updateWhere` **replaces** the row object, so `item` goes stale for
-anything later in the same handler (a write then a removal removes nothing). Owner **`NONE`** — a
-design question. **1 independent graph exportable, 6 corpus-wide, 14 nodes, and 100% of every
-`Set Object Properties` anybody has authored.**
+### 2. EXP-004's drill-down panel — now a UX decision, not a blocked one
+The pre-flight modal renders `PreflightSummary` as data; a post-export panel would render
+`ExportReportData` the same way. Decide whether a toast + the file is enough for 0.2.x.
 
-### 2. 🟢 `Unique Id`'s `Completed` — a small, fully-scoped increment *(new, from §37.4)*
+### 3. A launcher entry for the export
+`parseProject` reads disk, so a project need not be open. Three files (`ProjectsPage.tsx`, the
+core-ui `Projects.tsx` card menu, `LauncherContext`). Owner `NONE`.
 
-The node has **one** outcome, and its own catalog description says so: *"it always fires together
-with Done, and wiring either one does the same thing."* So `completed` could compile as `done` for
-free. **The one thing to settle is the case where both ports are wired** — two chains whose
-relative order this file would be choosing rather than reading. Today it defers with a reason that
-names the one-move fix. Decide, or leave the deferral; either is defensible, and the deferral is
-already honest. `UUID`'s `Completed` stays deferred on §8.4's sentence.
+### 4. `Unique Id`'s `Completed` *(from §37.4)* — small, fully scoped; decide the both-wired case.
 
-### 3. ⚠️ The 36 the sweep could not reach — and it is a `report.ts` change
+### 5. The 36 the sweep could not reach — a `report.ts` change *(§35.6)*, owner `NONE`.
 
-Nodes beside the **router shell**. The App component has `file === null`, so `renderReport`'s
-`attention` filter drops all of its notes and no `plan.ts` push can surface them. `withPreserved`
-(§27.6) already rescues the script-bearing ones; a plain `Group` beside the Router is mentioned
-nowhere in the export. Decide whether the report grows a section for scaffolded components'
-dropped nodes, or whether being outside `src/App.tsx` is adequately implied. Owner **`NONE`**, §35.6.
+### 6. Children authored inside a component instance — instrument broken first *(§34.5)*, owner `NONE`.
 
-### 4. Children authored inside a component instance — unowned, instrument broken first
+### 7. The fixture with a `dynamicports` entry on a repeater *(§33.3)* — zero fixtures, 48/62 real projects.
 
-**19 instances in 8 projects, 217 nodes in those subtrees.** `walk` descends into them, but
-`renderInstance` emits `<Shell … />` self-closing, so anything below is unreachable and any marker
-is orphaned. ⚠️ **`instkids.ts`'s 96/217 split separates nothing** — `src.includes(id)` counts
-*rendered* and *named in a marker* alike. Split those before drawing any conclusion. Owner **`NONE`**.
+### 8. §31.1's limit #2 — the target-port side. Still examined by nothing.
 
-### 5. The fixture that exercises the branch real projects take first
+### 9. Three EXP-004 lines still need Richard, not a session
+The README comprehension test, the external review of the verification wording, and whether the
+preserved source block helps.
 
-One arm: give a fixture's `For Each` a `dynamicports` entry so `resolveSourcePortKind` answers from
-the file rather than falling through. **Zero** fixtures do; **48 of 62** real projects with a
-repeater do. Cheap, and it puts the real path under the corpus audit permanently. *(Carried from
-s62/s63 unstarted.)*
+## What session 66 did (kept for the three things below)
 
-### 6. §31.1's limit #2 — the target-port side
-
-Still examined by nothing. Limit #1 closed in §33.3. Cheap to scope, unknown to close.
-
-### 7. Three EXP-004 lines still need Richard, not a session
-
-None can be closed by whoever wrote the artefact: the **README comprehension test**
-(`tests/fixtures/puppy-test-3` exports the richest example), the **external review of the
-verification wording**, and **whether the preserved source block actually helps**.
-
-### 8. Decide whether the editor gets an export command at all — Richard's call
-
-`@nodegx/export` still has **no consumer anywhere in the product**; the only way to run an export
-is `ts-node scripts/emit-app.ts` by hand. Owned by **`NONE`**, §21.1 has the evidence.
-**Ask before building it.**
-
-### 9. Smaller, and each decidable on its own
-
-- The fixtures nothing reaches (§26.1): a `PageInputs` node, a braced `urlPath`, an `External
-  Link`, a `Navigate To Path`, an untyped store key, a wire into a port that already carries an
-  authored value, a refused script on a node that is not a Function.
-- `plan.ts`'s `For Each → Component Outputs` **value**-port branch — **left alone deliberately**
-  (0 exportable wires, 0 fixture wires, §33.4). Split it only if a real project lands there.
-- `Navigate To Path`'s `Completed` chain (§24.6) — **decide before starting; not obviously worth it.**
-- The date family's signals and the repeater's lifecycle pulses — one `effect()` slice (§9.6, §29.5).
-  ⚠️ §31's census found **zero** such wires anywhere.
-- EXP-009 leftovers — drive the exported login/admin forms; delete the drive-residue user
-  `exp009-drive` from the local Puppy backend's `_User`.
+Built **EXP-011 §37 — the id pair**, `Unique Id` and `net.noodl.UUID`, finishing Tier 2.7: picker
+73 → 75/127, `src/lib/id.ts`, fixture `badge-desk`. §37 has the long form.
 
 ## 🔴 What session 66 would tell you if it could only say three things
 

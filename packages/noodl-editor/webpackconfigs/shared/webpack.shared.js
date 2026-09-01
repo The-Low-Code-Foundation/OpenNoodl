@@ -14,6 +14,8 @@ const alias = {
   '@scss-mixins': path.join(editorDir, 'src/editor/src/styles/mixins'),
   '@scss-variables': path.join(editorDir, 'src/editor/src/styles/variables'),
   '@noodl-core-ui': path.join(packagesDir, 'noodl-core-ui/src'),
+  // EXP-012: the code exporter, aliased by path like core-ui — a TypeScript source package with no build step.
+  '@nodegx/export': path.join(packagesDir, 'nodegx-export/src'),
   '@noodl-viewer-cloud/execution-history': path.join(packagesDir, 'noodl-viewer-cloud/src/execution-history'),
   '@noodl-hooks': path.join(editorDir, 'src/editor/src/hooks'),
   '@noodl-utils': path.join(editorDir, 'src/editor/src/utils'),
