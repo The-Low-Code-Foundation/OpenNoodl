@@ -2,32 +2,27 @@
 
 ## ✅ No hold. Freeze cleared 2026-08-28 (s4): *"Freeze is off, go nuts."*
 
-## State: **s35 closed SBR-012 — all four ACs, and SBR-004's AC3 with it.**
+## State: **s37 built SBR-009 — AC2 driven in a browser, and the drive found a defect that would have shipped.**
 
-**Three tasks in three sessions.** s33 closed SBR-006, s34 closed SBR-015, s35 closed SBR-012.
-One defect row was filed in that span — [D35](DEFECTS-THE-SITE-BUILDER-FOUND.md#d35) — and it is
-already **fixed**, because the gate that found it left no other disposition open.
+**Five tasks in five sessions.** s33 SBR-006, s34 SBR-015, s35 SBR-012, s36 SBR-005, s37 SBR-009.
+🔴 **Three tasks have still never been started**, and the phase cannot close until they are.
 
-**`packages/noodl-mcp/tests/sbr012RawColourGate.test.ts` — 25 specs, ~0.7 s**, plus
-**`siteBuilderStyleScan.ts`**, the instrument, extracted so this gate and `sb006PublicSite.test.ts`
-scan from **one** definition of "colour".
-
-| arm | artefact (289 KB) | component sets (4 files) |
-|---|---|---|
-| raw colour — `#hex` / `rgb()` / `hsl()` | **0** | **0**, comments stripped |
-| unresolved `var(--x)` | **0** of 33 distinct, 284 uses | **0** of 33 distinct |
-| non-token dimensions | **12** → **9**, each named with a reason | — |
+`/Pages/ThemeEditor` was eleven controls in one flat column. It is now **54 nodes** (was 22): three
+titled cards, a presets row generated from `SITE_THEME_PRESETS`, and a live preview beside the
+fields. `/Admin/PresetChip` is a new component placed three times; `/Admin/Shell` reads the Theme
+record and runs the same applier the public site runs. The template regenerates at **31** components,
+from 30. Committed as `bc012147`.
 
 Read in this order:
 
-1. **[SBR-012 §5](SBR-012-THE-RAW-COLOUR-GATE.md)** — the two populations, the second hole in the
-   product's own regex, and the four AC verdicts.
-2. **[TASKS.md → s35](TASKS.md)** — the session log.
-3. **[D35](DEFECTS-THE-SITE-BUILDER-FOUND.md#d35)** — found and fixed in the same session.
+1. **[SBR-009 §5](SBR-009-THE-THEME-EDITOR-DEMOS-ITSELF.md)** — the shape, and **§5.5, the AC
+   verdicts**, one of them a browser reading and two of them honestly short.
+2. **[TASKS.md → s37](TASKS.md)** — the session log and the nine lessons.
+3. **[D36–D41](DEFECTS-THE-SITE-BUILDER-FOUND.md)** — unchanged; two still open.
 
 ---
 
-## 🔴 THE BOARD — this is the agenda. Build a task.
+## 🔴 THE BOARD — re-derived from the task FILES, 2026-09-01
 
 🔴 **Standing rule, set by Richard 2026-08-30 — read
 [`dev-docs/guidelines/PHASE-EXECUTION.md`](../../guidelines/PHASE-EXECUTION.md) first:**
@@ -35,262 +30,118 @@ Read in this order:
 > **A defect becomes the next session's first job ONLY if it blocks an acceptance criterion.**
 > Otherwise it is filed with an owner, and **the next session builds the next task.**
 
-**Where the ratchet stands:** s19 → s32 filed 19 rows in 14 sessions and closed one task.
-**s33–s35 closed three tasks and filed one row, already fixed.** Keep that shape.
-🔴 **Five tasks have still never been started**, and the phase cannot close until they are.
+**s37 filed no new defect rows.** The one it found (the picker running at mount) blocked AC2 and was
+fixed in the session, with the flag asserted twice — on the parameter and on the rendered screen.
 
-### 🟢 BUILD THIS: **SBR-005 — sections worth having**
+### 🟢 BUILD THIS: **SBR-010 / 011 / 013** — pick the top one and build it
 
-It is the top of the remaining order, it is **the largest unbuilt piece**, and it **owns SBR-004's
-AC3 gallery model**. Every other unbuilt task is smaller and none of them unblocks anything.
+| | what | note |
+|---|---|---|
+| **next** | **SBR-010 / 011 / 013** — never built | **SBR-010 is the cheapest and the most person-shaped**: the contact form has stored records since SB-004 and nothing has ever read them back. The sidebar already carries a **Messages** item with **no navigate wire** — `/Pages/Messages` is the component that does not exist, and the gap is recorded in `ADMIN_SHELL_WIRES` rather than papered over. **SBR-011 was ruled BUILD, not strike.** SBR-013 is doctrine text across three surfaces, and its AC2 wants a cold authoring session driven |
+| then | **SBR-003** — the `var(--token)` dimension-port probe, and nothing else | |
+| last | **SBR-014** — the gate on closing phase 77 | 🔴 **It now owes SBR-009's AC1 live half and AC3 as well** — both need a provisioned backend, and both are one session's work *together*, not two rows |
 
-**What it is:** five section kinds that render as five visibly different things — `hero` (image with
-overlaid heading), `gallery` (**>1 image in a grid**), `cta` (heading + body + a link that
-navigates), `richText` (current behaviour, restyled under tokens), `contact` (labelled fields in a
-card with a success state). Today `Site/SectionView` is **1 Image + 1 Text** and a script whose
-outputs are `showImage` / `showBody` / `weight` / `size`.
+---
 
-🔴 **The data model is the hard half, and it is called out in the task file.** A section stores a
-**single** image ref; a gallery needs an ordered multi-image shape, the section editor (SBR-007)
-needs to author it, and **the ACL treatment must match the existing image path** — AC5 asks for it
-end to end: authored in the panel → stored → rendered → anonymous reads only *published* pages'
-images.
+## 🔴 What s37 leaves for whoever picks up SBR-009's remainder
 
-**First concrete step:** open [SBR-005 §2](SBR-005-SECTIONS-WORTH-HAVING.md), then read
-`Site/SectionView` in `sb006Components.ts` **as it stands** before designing the dispatch — the four
-script outputs are the current contract and AC1 is measured against five renderings, not four.
+**AC1 is half-measured and AC3 is not met**, both behind the same door: `DbCollection2` fires
+**neither** `fetched` nor `failure` with no backend bound, so the record path does nothing in the
+`withRenderedPage` harness. What is already built and graded:
 
-⚠️ **AC4 is a mechanism, not a preference:** conditional section UI goes through **`mounted`**, not
-`visible`, and hidden kinds must be **absent from the DOM**, not stacked invisibly.
+- `/Admin/Shell` reads the Theme record and runs `buildThemeApplierScript()` — **asserted
+  byte-identical across all three placements**, so the derived companions cannot drift;
+- `saveTheme.done → theme.storageFetch → applyTheme`, so Save repaints the panel without a reload.
 
-### Then, in order
+**The arm that settles both** is one `withRenderedPage({ projectDir, backendPort })` run against a
+claimed site: read `--primary` off `documentElement` in the admin panel **and** on `/Pages/Site`
+before and after a save, then delete the Theme row and read it a third time (AC3's fallback to
+Studio, which SBR-003 AC4 already drove from the record side). No test in this repository drives with
+a backend yet — that is the cost, and it is SBR-014's to pay once for several ACs at the same time.
 
-| | what |
-|---|---|
-| 2 | **SBR-009 / 010 / 011 / 013** — never built. SBR-011 was **ruled BUILD, not strike** |
-| 3 | **SBR-003** — owes the `var(--token)` dimension-port probe, and nothing else |
-| last | **SBR-014** — re-verifies every person-sentence AC, so it **cannot run until the rest are built** |
+---
 
-### 🔴 The phase's end condition
+## 🔴 The two open register rows — unchanged, and one of them got HARDER to measure
+
+### [D40](DEFECTS-THE-SITE-BUILDER-FOUND.md#d40) — nothing on a published page scrolls. Owner SBR-002
+
+**Still the biggest thing s36 found, and still not settled.** The control that settles it is
+unchanged and takes minutes:
+
+> Render `templates/members-area/` through the **same** `withRenderedPage` and read the same four
+> numbers. If it scrolls, D40 is the site-builder's ground and SBR-002 owns a real defect. If it does
+> not, D40 is `render-from-disk.js` and the row is about the harness.
+
+⚠️ **s37 deliberately did NOT run it.** A peer session was writing `templates/members-area/` and
+`tpl001Components.ts` at 22:32 and 22:37 while this session's suites ran at 22:40 — the control would
+have measured a half-edited template, and a reading like that is worse than none. ✅ **`stat` the
+members-area tree before running it**, and re-check `tpl001Template` is green first: if it is red,
+the template on disk is mid-edit and the control is not measurable yet.
+
+⚠️ It still contradicts phase 81's VIB-001 (`unreachablePx: 0` on all 44 shots). **Two instruments
+disagree; neither reading is safe to relay until one is re-derived.**
+
+### [D38](DEFECTS-THE-SITE-BUILDER-FOUND.md#d38) — the hero's scrim vs `colorOnPrimary`. Owner SBR-003
+
+⚠️ **A hypothesis with a named test, not a finding.** Unchanged: `--gradient-scrim` is a fixed black
+wash and `night`'s `colorOnPrimary` is `#191713`. **Nobody has rendered it.** 🆕 s37 makes the arm
+cheaper: `sbr009ThemeEditorDrive` shows how to put a preset's tokens on a subtree and read the
+computed result, with no backend. The same shape points at the hero.
+
+---
+
+## 🔴 What s37 paid for, and would pay again
+
+- 🔴 **A GATE THAT LOOKS LIKE A BLOCKER MAY ALREADY HAVE RULED FOR YOU.** SBR-012's raw-colour gate
+  asserts `toEqual([])` over the whole artefact, and a presets row is three palettes — so the task
+  could not be built. That reads as a ruling collision, and the move for those is to **ask**. Before
+  asking: **SBR-012 §2 bullet 4 already names the `designTokens`/`preset-data` blocks as the one
+  allowed home for literals.** The gate shipped with an empty list because there was no preset-data
+  block yet. ✅ **Read the blocking task's own SCOPE, not only its code.**
+- 🔴 **AN EXEMPTION ON A COLOUR MUST BE PAIRED WITH A DERIVATION.** The row is exempt only because it
+  is *data*, and that is true only while the bytes are the source's — so
+  `presetHexesInArtefact() === presetHexesInSource()`, 24 hexes, in order. A drifted second copy of
+  the palette satisfies the exemption and fails the derivation.
+- 🔴 **THE DRIVE FOUND WHAT THE GRAPH COULD NOT.** Three chips publish `name` at MOUNT, so the picker
+  ran three times before anybody clicked: the screen booted wearing **Night**, five boxes pre-filled,
+  picked by nobody. **`run` is additive — wiring it does not stop a node running on its own.**
+- 🔴 **"UNSTATED" DOES NOT MEAN "UNSET" IN THIS TEMPLATE.** `pinRunOnValueChangeDefaults` (DEF-007
+  §3.2) writes `true` into the artefact for every governed checkbox the source leaves out — so
+  leaving a box unstated here is an *active choice to run on arrival*, and the only way to say "wait
+  for the signal" is to say `false`. ⚠️ This **corrects s36's lesson as it applies to this template**.
+- 🔴 **A CENSUS CAN LOSE A HAZARD WITHOUT THE HAZARD CHANGING.** `buildTokens`'s four write-back rows
+  left `sb007Template`'s census when Save stopped running it — that pass only reaches nodes whose
+  control signal is wired. The node still reads Theme and still writes it. ✅ **Name what the
+  instrument cannot see, in the spec, at the moment the number moves.**
+- 🔴 **A REPAIR REDDENS THE POSITIVE CONTROL THAT NAMED IT.** `/Pages/ThemeEditor` was
+  `templateAppearance`'s only bare page **and** the known-positive its CONTROL pointed at. The
+  cheapest green would have been to put the debt back. ✅ **Re-point at a constructed positive.**
+- 🔴 **A +1 AND A −1 THAT CANCEL ARE INVISIBLE TO A COUNT.** `sb005AdminPanel`'s declared-signal
+  census stayed at **9**: `presets` gained `out-picked`, `buildTokens` lost `Outputs.built()`.
+- ⚠️ **Two editor-side censuses were already wrong at HEAD**, measured by putting HEAD's artefact
+  back for one run: components **24** against a line saying 22, node ids **295** against 274.
+  `test:main` is still the unwatched runner D19 named. ✅ **Measure the baseline before attributing a
+  delta to your own diff.**
+- ⚠️ **A `CSS Definition`'s `style` is `allowEditOnly` in the catalog and takes a CONNECTION anyway.**
+  Measured in a browser; nothing in the repository said either way before.
+
+---
+
+## 🔴 The phase's end condition, unchanged
 
 **SBR-014 is the gate on closing phase 77**, and it re-verifies every person-sentence AC. It cannot
-start while five tasks are unbuilt. 🔴 **That is the distance to done — not the length of the
+start while three tasks are unbuilt. 🔴 **That is the distance to done — not the length of the
 register.**
 
 ⚠️ **AC3 of SBR-007 cannot be met at all** — **D15**, no drop-target capability in the runtime for a
-file arriving from outside the page (`dataTransfer`, `dragover`, `dragenter`, `DragEvent` all **0**
-against a **39**-hit `onClick` control over **369** files), re-measured at HEAD with a boundary
-control at s29. **Phase 77 must not close pretending AC3 is met.**
+file arriving from outside the page, re-measured at HEAD with a boundary control at s29.
+**Phase 77 must not close pretending AC3 is met.**
 
----
-
-## 🔴 What s35 paid for, and would pay again
-
-- 🔴 **THE TASK FILE'S CITED MECHANISM HAD MOVED, AND CARRIED A SECOND HOLE IT DID NOT NAME.**
-  `RawColorLiteral` is at `parameterValues.ts:1001`, not the `:976` the task file gave. Reading it
-  rather than trusting the citation turned up a hole nobody had written down: `RAW_COLOR` is
-  **anchored** `^\s*`, so `'1px solid #cdc5b6'` walks straight past the product's own check. ✅
-  **s34's lesson generalises past ACs — a citation is a claim about the product, and claims expire.**
-- 🔴 **ZERO EVERYWHERE IS ALSO WHAT A BROKEN CHECKER READS.** All three arms read zero on HEAD. So
-  the instrument's **reach** is asserted as a floor in the same run — 24 components, ≥500 parameter
-  rows, ≥30 script bodies including `applyTheme` **by name**, every source shrinking under
-  comment-stripping — and **every arm is paired with a planted defect that must red.** Calibration
-  came before the first assertion, exactly as the task's own trap demanded.
-- 🔴 **THE FIRST FINDING WAS REAL, AND THE OBVIOUS DIAGNOSIS WAS WRONG.** `/Pages/Setup`'s `Form`
-  set `padding{Top,Left,Right}: 24`. The tempting reading — *a bare number on these ports renders as
-  a percentage* — is `sb005Components.ts`'s own documented sentence, and it is about **`width`**.
-  `node-catalog.json` says `paddingTop` is **`px`-only**, so it rendered 24px and
-  `UnitlessDimension` was **right** to stay silent. ✅ **Read the port's own shape — a sibling port
-  one line away had the opposite rule.**
-- 🔴 **AND IT WAS A SURVIVOR.** The identical trio was fixed in `/Pages/PageEditor` during SBR-007.
-  This one lived because **nothing scanned it**: SB-006's gate reads SB-006's five components, and
-  Setup is SB-005's. ✅ **A gate whose population is narrower than the artefact reports a template
-  clean that it never looked at.**
-- 🔴 **A LABEL-ONLY EXEMPTION KEY WOULD HAVE SILENTLY WIDENED.** SB-006's four exemptions live where
-  `label` is unique; the template has **several** nodes labelled `Heading` and exactly one sets a raw
-  width. `TEMPLATE_DIMENSION_EXEMPTIONS` is keyed `component | label | port`, and the ambiguity is a
-  **spec**, not a comment. Equality is asserted **both directions** — an exemption matching nothing
-  reads exactly like a raw value that was never introduced.
-- ⚠️ **A REASON NAMED IN A COMMENT AND NEVER WRITTEN IS AN UNENFORCED REASON.**
-  `sb005Components.ts` pointed at **`ADMIN_RAW_DIMENSIONS`** for the admin rail's justification. That
-  constant **never existed**. It now names the list SBR-012 built.
-- 🔴 **AC4 NAMED A GATE THIS FILE IS NOT IN, AND ASSERTING IT WOULD HAVE PASSED.** The AC said
-  `test:ci` "(registered in the spec barrel)" — the **editor's** convention. This package has no
-  barrel, and **`test:ci` does not execute it at all**. AC4 is checked where it lives:
-  `jest.config.js`'s glob, `test:packages` scoping `@noodl/mcp`, `pr.yml` running `test:packages` —
-  all read from disk, confirmed independently with `jest --listTests`. ✅ **A spec written against
-  the wrong runner is green and measures nothing.**
-
----
-
-## Richard's, still small and still unanswered — carried from s26, untouched by s27–s35
-
-**D20's fix moved the actions.** The heading grows as well as shrinks — `layout.ts` assigns
-`flexGrow` and `flexShrink` in the same branch, so there is no third option — which puts
-`Preview`/`Save page` at the **right** of the header rather than clustered beside the title. Nothing
-is clipped at any width; the question is only whether that look is wanted. **Two parameters revert
-it** (`sizeMode: 'contentSize'`, drop `width`) at the cost of putting D20 back.
-
----
-
-## ✅ The instruments — NINE, and they answer different questions
-
-🔴 **Pick by what is being asked, not by which one you used last.**
-
-| question | tool |
-|---|---|
-| does it *lay out* / render correctly | `render-from-disk.js` + `withRenderedPage` (§20, §30) |
-| does the thing a person **deploys** work | `deploy-from-disk` + `drive-deployed.js` (§26) |
-| does a **cloud function** actually do what it claims | `sb004-publication-invariant.test.ts` (§31) |
-| does a **node's port** report what it declares | `d23GeometryDrive.test.ts` (§32) |
-| does a **gesture** do what it looks like it does | `ac2DragGestureDrive.test.ts` (§33) |
-| does **the shipped page editor** do it, against a real backend | `ac2-page-editor-drag-drive.test.ts` (§34–§35) |
-| does **a row action on the shipped admin list** do it | `sbr006-unpublish-drive.test.ts` (SBR-006 §5.14) |
-| **what did the backend WRITE DOWN** about a run that went wrong | `sbr015-execution-steps-drive.test.ts` (SBR-015 §4c) |
-| 🆕 **is the template still tokenised** — source AND shipped artefact | `sbr012RawColourGate.test.ts` (SBR-012 §5) |
-
-```
-# the token gate — 25 specs, ~0.7 s, no backend, no browser, no fixture
-cd packages/noodl-mcp && npx jest sbr012RawColourGate
-
-# the whole package gate CI runs — 79 suites, 1040 tests, ~90 s
-cd packages/noodl-mcp && npx jest          # and reconcile the file count against --listTests
-
-# the execution-record drive — 10 specs, ~3 s, two backends
-cd packages/nodegx-backend && npx jest sbr015-execution-steps-drive --runInBand
-
-# the row-action drive — 14 specs, ~68 s
-cd packages/nodegx-backend && npx jest sbr006-unpublish-drive --runInBand
-
-# the shipped-screen drive
-cd packages/nodegx-backend && npx jest ac2-page-editor-drag-drive     # 23 specs, ~6 min
-
-# the template gate — byte-identity with a fresh generation
-npm run template:site-builder && cd packages/noodl-mcp && npx jest sb007Template
-```
-
-- 🔴 **Read the stored rows, never the answer** — *and count them.*
-- 🔴 **Key any execution-record read on the PREVIOUS run id.** A call refused before the graph runs
-  writes no record, and an unkeyed reader hands you the last arm's row as this one's.
-- 🔴 **Seed through the product's own door, or write the ACL the product's own door writes.**
-- 🔴 **A page in the middle of a write storm refuses the reader too** — read stored rows BEFORE
-  opening a writing screen, not only after.
-- 🔴 **`buttons: 1` on every `mouseMoved`** or `react-draggable` ignores the move.
-- 🔴 **Vary something the store cannot fill back in.** `data: null` is not `undefined`.
-- ⚠️ **Count every mutant edit** — `removed:1`, `matched:1`, and the precondition on the keys.
-- 🆕 🔴 **A new checker that reads zero has not been calibrated.** Assert its **reach** as a floor in
-  the same run, and pair every arm with a plant that must red.
-- 🆕 ⚠️ **Read the port's own shape in `node-catalog.json`.** `width` is `%`-default; `paddingTop` is
-  `px`-only. A rule copied from a sibling port is a confident wrong reading.
-- 🔴 **A new endpoint owes a rule in `site-builder.security.json`** or SB-016's gate refuses a
-  public bind.
-- ✅ **`--sabotage` wires a connection to a port that does not exist.** If the census does not report
-  it dropped, the health filter did not run and **every other reading in that run is void**.
-- 🔴 **A headless export's health filter fails OPEN, silently** — `registerModule(project)` first.
-
-## Gates taken at s35
-
-- ✅ **`sbr012RawColourGate` — 25/25.**
-- ✅ **The full `@noodl/mcp` suite — 79 suites, 1040 tests, exit 0.** File count reconciled against
-  `jest --listTests` (**79**), so no suite silently failed to run.
-- ✅ **`sb007Template` — byte-identity holds** after the template fix; regeneration diffs by exactly
-  D35's three lines.
-- ✅ **`sb006PublicSite` / `sb005AdminPanel` / `sb004Authoring` — 106/106** after the two regexes
-  moved into the shared module.
-- ✅ **`tsc --noEmit` on `@noodl/mcp` — exit 0, zero output.** (jest runs with `diagnostics: false`,
-  so a type error here would otherwise never surface.)
-- ⬜ **Not run, deliberately:** `test:ci` (the editor runner — this session changed nothing it
-  executes) and the backend drives (no backend or runtime source changed).
-
-⚠️ **s35 is UNCOMMITTED at handoff.** Six files: two new
-(`packages/noodl-mcp/tests/sbr012RawColourGate.test.ts`, `siteBuilderStyleScan.ts` — **untracked, so
-`git add` them first or a pathspec commit skips them silently**), three modified
-(`sb005Components.ts`, `sb006Components.ts`, `sb006PublicSite.test.ts`), plus the regenerated
-`packages/noodl-editor/src/editor/src/models/template/templates/site-builder.content.json` and the
-three phase-77 docs.
-
-## The register — an APPENDIX, not the agenda
-
-🔴 **Every row below is `BACKLOG` unless it says `BLOCKS <AC>`.** Do not open a session on one of
-these while a task is unbuilt. **No open row `BLOCKS` an AC except D15.**
-
-## Where the phase now stands
-
-🔴 **Re-derived from the task FILES at s35.**
-
-| | verdict |
-|---|---|
-| **SBR-001 / SBR-002** | ✅ closed s2 / s4 |
-| **SBR-003** | 🟡 built, swept, driven — **owed: the `var(--token)` dimension-port probe** |
-| **SBR-004** | 🟢 **CLOSED s35** — AC1/2/4 driven; **AC3 met by SBR-012** |
-| **SBR-005** | ⬜ **OPEN, never built** — 47 lines — **the next build**; owns the gallery data model |
-| **SBR-006** | 🟢 CLOSED s33 — all five ACs |
-| **SBR-007** | 🟢 AC1 ✅, AC4 ✅, AC5 ✅ · **AC2 ✅ all three halves** · AC3 blocked by D15 alone |
-| **SBR-008** | ✅ all five, s18 |
-| **SBR-009** | ⬜ **OPEN, never built** — 40 lines — the theme editor demos itself |
-| **SBR-010** | ⬜ **OPEN, never built** — 35 lines — messages |
-| **SBR-011** | ⬜ **OPEN, never built** — 42 lines — live preview; **ruled BUILD, not strike** |
-| **SBR-012** | 🟢 **CLOSED s35 — ALL FOUR ACs**, two populations, six plants |
-| **SBR-013** | ⬜ **OPEN, never built** — 46 lines — the doctrine rule |
-| **SBR-014** | ⬜ **OPEN, and LAST** — re-verifies every person-sentence AC |
-| **SBR-015** | 🟢 CLOSED s34 — all four ACs |
-| **SBR-016** | ✅ s15, all four ACs |
-| **SBR-017** | ✅ s14 · AC1 🟡 half (SBR-016 owned the other half) |
-| **D13 / D16** | 🔴 open, `NONE` |
-| **D14** | 🟢 fixed s20, DRIVEN s22 — the **browser** deploy path is still exposed and `NONE` |
-| **D15** | 🔴 **`BLOCKS` SBR-007 AC3** · `NONE` — no drop target for a FILE. Stands at HEAD |
-| **D17 / D18 / D21** | 🟢 fixed and driven (s21/s24/s25) |
-| **D19** | 🟢 reds fixed s23 — 🔴 **`test:main` watched is still `NONE`** |
-| **D20** | 🟢 FIXED + DRIVEN s26; **the appearance half is Richard's** |
-| **D22** | 🔴 `NONE` — no `textOverflow` port on `Text` |
-| **D23** | 🟢 DISPROVED s29, kept |
-| **D24** | 🟢 FIXED + GATED s28 |
-| **D25 / D26 / D27** | 🔴 `NONE` — all three registered in phase 80 |
-| **D28** | 🟢 FIXED by a peer as phase 80 `DEF-027` during s32 |
-| **D29** | 🔴 `NONE` — one-way gate latches; a peer's row, from phase 80 s21 |
-| **D30 / D31** | 🟢 FIXED + DRIVEN s32 |
-| **D32** | 🟢 FIXED by a peer during s33 as phase 80 `DEF-032` (`ff6183cd`) |
-| **D33** | 🔴 `NONE` — six same-collection writes on the theme editor, **a candidate list, not a confirmed defect** |
-| **D34** | 🔴 `NONE` — publish of a missing page answers 200; **runtime, belongs in phase 80** |
-| **D35** | 🆕 🟢 **FIXED s35** — the setup page's bare `24` where `--space-6` is `24px` |
-
-## Standing context
-
-- ✅ **The template is generated, not authored.** Edit
-  `packages/noodl-mcp/tests/sb00{4,5,6}Components.ts` (and `sb007Template.ts` for the `App` shell),
-  then `npm run template:site-builder`. `sb007Template.test.ts` asserts the committed artefact is
-  byte-identical to a fresh generation.
-- 🆕 ✅ **The raw-colour / token rule is now enforced on BOTH populations.** A new component that
-  names a colour, a mis-spelled token, or an unexplained dimension reds `sbr012RawColourGate` —
-  which matters immediately for **SBR-005**, since five new section renderings is the largest batch
-  of new style parameters this template will ever take. 🔴 **A new raw dimension takes a reason in
-  `TEMPLATE_DIMENSION_EXEMPTIONS` (`siteBuilderStyleScan.ts`) or a token — and spacing, colour,
-  radius, face and font size may take NO exemption at all.**
-- 🔴 **`SECTION_SORT` lives in `sb005Components.ts`** and `sb006Components.ts` re-exports it. Do not
-  reintroduce a second copy. The same applies now to `RAW_COLOR_LITERAL` / `STYLE_VALUE_PORT`, which
-  live in `siteBuilderStyleScan.ts` and are imported by `sb006PublicSite.test.ts`.
-- ✅ **Older fixture, still on disk if wanted: `SBR-007 Page Editor Drive`**, backend
-  `backend_mterfnli74qwv`, port **8601**, `SITE_SETUP_TOKEN=drive-token-007`,
-  `owner@sbr007.test` / `drive-pass-007`. 🔴 **Drive a COPY.** ⚠️ Its `Section` table is EMPTY.
-- ✅ **The setup token is a file, not a UI step**: `~/.noodl/backends/<id>/secrets.json`, `functions`
-  namespace. `SecretsStore` re-reads on every call, so no restart.
-- 🔴 **A node's port description lives in FOUR generated copies.** Changing one owes
-  `catalog:generate` → `catalog:merge` → `docs:nodes` **and** `cloud-library:generate`.
-- 🔴 **A source change is not a drive until the bundle carries it** — the viewer
-  (`external/viewer/noodl.viewer.js`), the deploy runtime (`external/deploy/noodl.deploy.js`, a
-  *different file*), and `nodegx-backend/dist`. **A template change is different** — project data,
-  read from disk every boot, so no rebuild. **s35 changed no product source**, so no bundle is stale.
-- ⚠️ 🔴 **Peers were active in the shared checkout throughout s35, and one arrived LATE.** At the
-  final `git status` the tree also carried **six modified files under `packages/nodegx-backend/src/`**
-  (`security/model.ts`, `server/HttpServer.ts`, `server/admin-security.ts`, `service.ts`,
-  `workflow/WorkflowRunner.ts`, `workflow/functionDeclarations.ts`) plus
-  `tests/def009-public-write-default.test.ts`, and a border sweep in
-  `noodl-core-ui`/`noodl-editor` — **none of them s35's**. s35 touched only its own files and
-  checked `git status` per directory before each write. **Whoever commits must use pathspecs naming
-  s35's ten files and nothing else.**
-- Shared checkout: **pathspec commits only, never `git add` to stage** (except to make an untracked
-  file committable); `git status --porcelain | grep '^??'` before committing. Announce editor
-  launches **and** teardowns. `test:ci` alone.
-- Richard, 2026-08-28: **no short paths** — full six screens of
-  https://claude.ai/code/artifact/f1986b40-e827-4770-abb8-1dc8f17e1810 ; assessment:
-  https://claude.ai/code/artifact/f4b2077a-7a78-4c33-8bf7-8b7f343f0b0b .
+⚠️ **AC1 of SBR-005 has a second half nobody has ruled**, and **SBR-009 AC1 now has a companion
+question**: the five section kinds are five different *objects*, and the theme editor is now a
+screen with a preview — **whether either is worth looking at is Richard's**. Phase 81's whole premise
+is that a template can be structurally perfect and still read as a WordPress starter. The SBR-005
+pictures are in
+`dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/sbr-005/2026-09-01/site-builder-living/`;
+**no pictures were taken of the rebuilt theme editor** — the s37 drive measured computed styles, not
+screenshots, and a shot list for it is a cheap thing for the next session to add.
