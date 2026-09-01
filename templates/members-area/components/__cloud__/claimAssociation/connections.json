@@ -35,6 +35,12 @@
     },
     {
       "fromId": "req",
+      "fromProperty": "pm-tagline",
+      "toId": "gate",
+      "toProperty": "in-tagline"
+    },
+    {
+      "fromId": "req",
       "fromProperty": "pm-blurb",
       "toId": "gate",
       "toProperty": "in-blurb"
@@ -122,6 +128,12 @@
       "fromProperty": "out-name",
       "toId": "mark",
       "toProperty": "prop-name"
+    },
+    {
+      "fromId": "gate",
+      "fromProperty": "out-tagline",
+      "toId": "mark",
+      "toProperty": "prop-tagline"
     },
     {
       "fromId": "gate",

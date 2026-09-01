@@ -32,7 +32,7 @@
       "label": "Page ground",
       "parent": "page-5",
       "children": [
-        "headingHead-3",
+        "headingHeadRow-2",
         "pendingNotice-2",
         "memberArea-2"
       ],
@@ -62,10 +62,79 @@
       "y": 280
     },
     {
+      "id": "headingHeadRow-2",
+      "type": "Group",
+      "label": "Heading — the head, badged",
+      "parent": "ground-4",
+      "children": [
+        "headingBadge-2",
+        "headingHead-3"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "row",
+        "alignItems": "center",
+        "columnGap": "var(--space-4)"
+      },
+      "x": 160,
+      "y": 400
+    },
+    {
+      "id": "headingBadge-2",
+      "type": "Group",
+      "label": "Heading — the badge",
+      "parent": "headingHeadRow-2",
+      "children": [
+        "headingGlyph-2"
+      ],
+      "parameters": {
+        "sizeMode": "explicit",
+        "width": {
+          "value": 44,
+          "unit": "px"
+        },
+        "height": {
+          "value": 44,
+          "unit": "px"
+        },
+        "flexDirection": "column",
+        "alignItems": "center",
+        "justifyContent": "center",
+        "backgroundColor": "var(--accent)",
+        "borderRadius": "var(--radius-lg)"
+      },
+      "x": 220,
+      "y": 520
+    },
+    {
+      "id": "headingGlyph-2",
+      "type": "net.noodl.visual.icon",
+      "label": "Heading — the glyph",
+      "parent": "headingBadge-2",
+      "parameters": {
+        "iconIconSource": {
+          "class": "lucide",
+          "code": "icon-calendar-days",
+          "codeAsClass": true
+        },
+        "iconSize": {
+          "value": 22,
+          "unit": "px"
+        },
+        "iconColor": "var(--accent-foreground)"
+      },
+      "x": 280,
+      "y": 640
+    },
+    {
       "id": "headingHead-3",
       "type": "Group",
       "label": "Heading — the head",
-      "parent": "ground-4",
+      "parent": "headingHeadRow-2",
       "children": [
         "headingEyebrow-3",
         "heading-4"
@@ -79,8 +148,8 @@
         "rowGap": "var(--space-1)",
         "paddingBottom": "var(--space-2)"
       },
-      "x": 160,
-      "y": 400
+      "x": 220,
+      "y": 760
     },
     {
       "id": "headingEyebrow-3",
@@ -95,8 +164,8 @@
         "textTransform": "uppercase",
         "color": "var(--primary)"
       },
-      "x": 220,
-      "y": 520
+      "x": 280,
+      "y": 880
     },
     {
       "id": "heading-4",
@@ -111,8 +180,8 @@
         "letterSpacing": "var(--tracking-tight)",
         "color": "var(--foreground)"
       },
-      "x": 220,
-      "y": 640
+      "x": 280,
+      "y": 1000
     },
     {
       "id": "pendingNotice-2",
@@ -142,7 +211,7 @@
         "mounted": false
       },
       "x": 160,
-      "y": 760
+      "y": 1120
     },
     {
       "id": "pendingNoticeText-2",
@@ -155,7 +224,7 @@
         "color": "var(--accent-foreground)"
       },
       "x": 220,
-      "y": 880
+      "y": 1240
     },
     {
       "id": "memberArea-2",
@@ -176,7 +245,7 @@
         "mounted": false
       },
       "x": 160,
-      "y": 1000
+      "y": 1360
     },
     {
       "id": "list-2",
@@ -188,7 +257,7 @@
         "template": "/Members/MeetingRow"
       },
       "x": 220,
-      "y": 1120
+      "y": 1480
     },
     {
       "id": "emptyState-2",
@@ -218,7 +287,7 @@
         "mounted": false
       },
       "x": 220,
-      "y": 1240
+      "y": 1600
     },
     {
       "id": "emptyStateText-2",
@@ -231,7 +300,7 @@
         "color": "var(--muted-foreground)"
       },
       "x": 280,
-      "y": 1360
+      "y": 1720
     },
     {
       "id": "today",
@@ -278,7 +347,7 @@
         ]
       },
       "x": 530,
-      "y": 1120
+      "y": 1480
     },
     {
       "id": "emptyGate-2",
@@ -288,7 +357,7 @@
         "functionScript": "Outputs.empty = (Inputs.count || 0) === 0;"
       },
       "x": 530,
-      "y": 1240,
+      "y": 1600,
       "ports": [
         {
           "name": "in-count",

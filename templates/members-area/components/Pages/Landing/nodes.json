@@ -24,6 +24,7 @@
       "parent": "page",
       "children": [
         "heroBand",
+        "about",
         "inside",
         "footer"
       ],
@@ -38,7 +39,7 @@
           "unit": "vh"
         },
         "flexDirection": "column",
-        "justifyContent": "flex-start",
+        "justifyContent": "space-between",
         "backgroundColor": "var(--muted)"
       },
       "x": 100,
@@ -113,7 +114,7 @@
       "children": [
         "eyebrow-2",
         "heading",
-        "blurb"
+        "tagline"
       ],
       "parameters": {
         "width": {
@@ -161,9 +162,9 @@
       "y": 760
     },
     {
-      "id": "blurb",
+      "id": "tagline",
       "type": "Text",
-      "label": "What we do",
+      "label": "The tagline",
       "parent": "hero",
       "parameters": {
         "text": "",
@@ -243,6 +244,124 @@
       "y": 1240
     },
     {
+      "id": "about",
+      "type": "Group",
+      "label": "What this association is",
+      "parent": "landingGround",
+      "children": [
+        "aboutShell"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "flexDirection": "column",
+        "alignItems": "center",
+        "paddingTop": "var(--space-20)",
+        "paddingBottom": "var(--space-20)",
+        "backgroundColor": "var(--background)",
+        "mounted": false
+      },
+      "x": 160,
+      "y": 2200
+    },
+    {
+      "id": "aboutShell",
+      "type": "Group",
+      "label": "Shell",
+      "parent": "about",
+      "children": [
+        "aboutHeading",
+        "aboutProse"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "maxWidth": {
+          "value": 1200,
+          "unit": "px"
+        },
+        "flexDirection": "column",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "sizeMode": "contentHeight",
+        "alignX": "center",
+        "rowGap": "var(--space-4)"
+      },
+      "x": 220,
+      "y": 2320
+    },
+    {
+      "id": "aboutHeading",
+      "type": "Text",
+      "label": "About — heading",
+      "parent": "aboutShell",
+      "parameters": {
+        "text": "About us",
+        "fontSize": "var(--text-3xl)",
+        "fontWeight": "var(--font-semibold)",
+        "lineHeight": "var(--leading-tight)",
+        "letterSpacing": "var(--tracking-tight)",
+        "color": "var(--foreground)"
+      },
+      "x": 280,
+      "y": 2440
+    },
+    {
+      "id": "aboutProse",
+      "type": "Group",
+      "label": "About — the measure",
+      "parent": "aboutShell",
+      "children": [
+        "aboutText",
+        "aboutJoinHint"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "maxWidth": {
+          "value": 640,
+          "unit": "px"
+        },
+        "flexDirection": "column",
+        "rowGap": "var(--space-2)"
+      },
+      "x": 280,
+      "y": 2560
+    },
+    {
+      "id": "aboutText",
+      "type": "Text",
+      "label": "About — the association’s own words",
+      "parent": "aboutProse",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-base)",
+        "color": "var(--foreground)"
+      },
+      "x": 340,
+      "y": 2680
+    },
+    {
+      "id": "aboutJoinHint",
+      "type": "Text",
+      "label": "About — who may join",
+      "parent": "aboutProse",
+      "parameters": {
+        "text": "Membership is by request: ask to join and a moderator will approve you.",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--muted-foreground)"
+      },
+      "x": 340,
+      "y": 2800
+    },
+    {
       "id": "inside",
       "type": "Group",
       "label": "What members can see",
@@ -269,7 +388,7 @@
         "mounted": false
       },
       "x": 160,
-      "y": 2200
+      "y": 2920
     },
     {
       "id": "insideShell",
@@ -297,7 +416,7 @@
         "rowGap": "var(--space-6)"
       },
       "x": 220,
-      "y": 2320
+      "y": 3040
     },
     {
       "id": "insideHeading",
@@ -313,7 +432,7 @@
         "color": "var(--foreground)"
       },
       "x": 280,
-      "y": 2440
+      "y": 3160
     },
     {
       "id": "insideList",
@@ -337,7 +456,7 @@
         }
       },
       "x": 280,
-      "y": 2560
+      "y": 3280
     },
     {
       "id": "cellNews",
@@ -356,7 +475,7 @@
         "flexDirection": "column"
       },
       "x": 340,
-      "y": 2680
+      "y": 3400
     },
     {
       "id": "cellDiary",
@@ -375,7 +494,7 @@
         "flexDirection": "column"
       },
       "x": 340,
-      "y": 2920
+      "y": 3640
     },
     {
       "id": "cellPeople",
@@ -394,7 +513,7 @@
         "flexDirection": "column"
       },
       "x": 340,
-      "y": 3160
+      "y": 3880
     },
     {
       "id": "tileNews",
@@ -406,7 +525,7 @@
         "line": "What the moderators have posted, newest first."
       },
       "x": 400,
-      "y": 2800
+      "y": 3520
     },
     {
       "id": "tileDiary",
@@ -418,7 +537,7 @@
         "line": "Meetings and events, with the details and where to go."
       },
       "x": 400,
-      "y": 3040
+      "y": 3760
     },
     {
       "id": "tilePeople",
@@ -430,7 +549,7 @@
         "line": "Who else is a member."
       },
       "x": 400,
-      "y": 3280
+      "y": 4000
     },
     {
       "id": "footer",
@@ -456,7 +575,7 @@
         "paddingBottom": "var(--space-10)"
       },
       "x": 160,
-      "y": 3400
+      "y": 4120
     },
     {
       "id": "footerShell",
@@ -484,7 +603,7 @@
         "rowGap": "var(--space-2)"
       },
       "x": 220,
-      "y": 3520
+      "y": 4240
     },
     {
       "id": "footerEdit",
@@ -497,7 +616,7 @@
         "color": "var(--muted-foreground)"
       },
       "x": 280,
-      "y": 3640
+      "y": 4360
     },
     {
       "id": "footerEditSecond",
@@ -510,7 +629,7 @@
         "color": "var(--muted-foreground)"
       },
       "x": 280,
-      "y": 3760
+      "y": 4480
     },
     {
       "id": "setupCard",
@@ -685,7 +804,7 @@
       "type": "JavaScriptFunction",
       "label": "The association, or the invitation to set one up",
       "parameters": {
-        "functionScript": "if (Inputs.rows === undefined) return;\nconst rows = Inputs.rows || [];\nconst row = rows.length > 0 ? rows[0] : undefined;\nOutputs.name = row ? (row.name || '') : '';\nOutputs.blurb = row ? (row.blurb || '') : '';\nOutputs.hasAssociation = rows.length > 0;\nOutputs.needsSetup = rows.length === 0;\n// REL-002b. Always `false`, and that is the point: this node runs\n// only when the query answered, so publishing \"the query has not\n// answered = false\" is what takes the waiting card down. There is\n// deliberately no path that sets it back to `true` — a page that\n// answered once has answered.\nOutputs.unanswered = false;"
+        "functionScript": "if (Inputs.rows === undefined) return;\nconst rows = Inputs.rows || [];\nconst row = rows.length > 0 ? rows[0] : undefined;\nOutputs.name = row ? (row.name || '') : '';\nOutputs.tagline = row ? (row.tagline || '') : '';\nOutputs.blurb = row ? (row.blurb || '') : '';\nOutputs.hasAssociation = rows.length > 0;\nOutputs.needsSetup = rows.length === 0;\n// REL-002b. Always `false`, and that is the point: this node runs\n// only when the query answered, so publishing \"the query has not\n// answered = false\" is what takes the waiting card down. There is\n// deliberately no path that sets it back to `true` — a page that\n// answered once has answered.\nOutputs.unanswered = false;"
       },
       "x": 650,
       "y": 760,
@@ -700,6 +819,13 @@
         {
           "name": "out-name",
           "displayName": "name",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-tagline",
+          "displayName": "tagline",
           "plug": "output",
           "type": "*",
           "group": "Outputs"

@@ -11,6 +11,18 @@
     },
     {
       "fromId": "inputs-2",
+      "fromProperty": "body",
+      "toId": "firstLine",
+      "toProperty": "in-body"
+    },
+    {
+      "fromId": "firstLine",
+      "fromProperty": "out-line",
+      "toId": "rowExcerpt",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "inputs-2",
       "fromProperty": "postedAt",
       "toId": "when",
       "toProperty": "in-postedAt"

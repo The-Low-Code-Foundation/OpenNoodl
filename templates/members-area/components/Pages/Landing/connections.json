@@ -23,8 +23,14 @@
     },
     {
       "fromId": "read-3",
+      "fromProperty": "out-tagline",
+      "toId": "tagline",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "read-3",
       "fromProperty": "out-blurb",
-      "toId": "blurb",
+      "toId": "aboutText",
       "toProperty": "text"
     },
     {
@@ -43,6 +49,12 @@
       "fromId": "read-3",
       "fromProperty": "out-hasAssociation",
       "toId": "hero",
+      "toProperty": "mounted"
+    },
+    {
+      "fromId": "read-3",
+      "fromProperty": "out-hasAssociation",
+      "toId": "about",
       "toProperty": "mounted"
     },
     {

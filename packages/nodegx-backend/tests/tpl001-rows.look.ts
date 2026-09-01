@@ -103,6 +103,7 @@ describe('B3 — the four lists, with rows in them', () => {
     await client.post('/functions/claimAssociation', {
       setupToken: SETUP_TOKEN,
       associationName: 'St Anywhere',
+      tagline: 'Meeting on the green since 1894',
       blurb: 'A congregation that meets on Sundays.',
       moderatorName: MODERATOR.name,
       email: MODERATOR.email,

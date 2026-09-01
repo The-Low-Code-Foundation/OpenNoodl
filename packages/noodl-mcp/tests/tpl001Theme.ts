@@ -154,6 +154,12 @@ export const USED_COMPOSITIONS = [
   // no Group in the runtime has a breakpoint and three buttons in a row ran off
   // the right edge at 390px. First use of an `arrangement` composition here.
   'gridAutoFit',
+  // REL-002c, s8. `Members/MemberRow` — the directory row is three columns at a
+  // desktop measure and one stack under 700px. `columnsTwoUp` rather than
+  // `gridAutoFit` because a name, an address and a standing are not
+  // interchangeable cells: they have a fixed order and different natural widths,
+  // which is what a `layoutString` says and `autoFit` cannot.
+  'columnsTwoUp',
   'card',
   'cardBody',
   // REL-002c §D. The hero stands on one of the 44 CC0 photographs every project
@@ -173,6 +179,12 @@ export const USED_COMPOSITIONS = [
   // REL-002c §C. The alternate ground, so the page is not one colour from the
   // hero to the fold — the first thing README §2 lists as reading "template".
   'bandSurface',
+  // REL-002c §E-i, s8. The landing page's "About us" band — the association's
+  // own paragraph, which `/setup` now collects separately from the tagline the
+  // hero carries. `band` rather than `bandSurface` because the section above it
+  // is already `--surface`; two adjacent bands on the same ground is the "one
+  // background colour end to end" this phase is about.
+  'band',
   // s12 (B3). The row that is NOT a card: a hairline under it and no fill at
   // all, so a noticeboard reads as one list of eight rather than as eight
   // objects. It only exists because P80 C1 added it — of eighteen compositions

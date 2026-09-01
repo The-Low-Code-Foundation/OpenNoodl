@@ -32,7 +32,7 @@
       "label": "Page ground",
       "parent": "page-4",
       "children": [
-        "titleHead",
+        "titleHeadRow",
         "date",
         "body",
         "refusal",
@@ -64,10 +64,79 @@
       "y": 280
     },
     {
+      "id": "titleHeadRow",
+      "type": "Group",
+      "label": "Title — the head, badged",
+      "parent": "ground-3",
+      "children": [
+        "titleBadge",
+        "titleHead"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "row",
+        "alignItems": "center",
+        "columnGap": "var(--space-4)"
+      },
+      "x": 160,
+      "y": 400
+    },
+    {
+      "id": "titleBadge",
+      "type": "Group",
+      "label": "Title — the badge",
+      "parent": "titleHeadRow",
+      "children": [
+        "titleGlyph"
+      ],
+      "parameters": {
+        "sizeMode": "explicit",
+        "width": {
+          "value": 44,
+          "unit": "px"
+        },
+        "height": {
+          "value": 44,
+          "unit": "px"
+        },
+        "flexDirection": "column",
+        "alignItems": "center",
+        "justifyContent": "center",
+        "backgroundColor": "var(--accent)",
+        "borderRadius": "var(--radius-lg)"
+      },
+      "x": 220,
+      "y": 520
+    },
+    {
+      "id": "titleGlyph",
+      "type": "net.noodl.visual.icon",
+      "label": "Title — the glyph",
+      "parent": "titleBadge",
+      "parameters": {
+        "iconIconSource": {
+          "class": "lucide",
+          "code": "icon-newspaper",
+          "codeAsClass": true
+        },
+        "iconSize": {
+          "value": 22,
+          "unit": "px"
+        },
+        "iconColor": "var(--accent-foreground)"
+      },
+      "x": 280,
+      "y": 640
+    },
+    {
       "id": "titleHead",
       "type": "Group",
       "label": "Title — the head",
-      "parent": "ground-3",
+      "parent": "titleHeadRow",
       "children": [
         "titleEyebrow",
         "title"
@@ -81,8 +150,8 @@
         "rowGap": "var(--space-1)",
         "paddingBottom": "var(--space-2)"
       },
-      "x": 160,
-      "y": 400
+      "x": 220,
+      "y": 760
     },
     {
       "id": "titleEyebrow",
@@ -97,8 +166,8 @@
         "textTransform": "uppercase",
         "color": "var(--primary)"
       },
-      "x": 220,
-      "y": 520
+      "x": 280,
+      "y": 880
     },
     {
       "id": "title",
@@ -113,8 +182,8 @@
         "letterSpacing": "var(--tracking-tight)",
         "color": "var(--foreground)"
       },
-      "x": 220,
-      "y": 640
+      "x": 280,
+      "y": 1000
     },
     {
       "id": "date",
@@ -127,7 +196,7 @@
         "color": "var(--muted-foreground)"
       },
       "x": 160,
-      "y": 760
+      "y": 1120
     },
     {
       "id": "body",
@@ -140,7 +209,7 @@
         "color": "var(--foreground)"
       },
       "x": 160,
-      "y": 880
+      "y": 1240
     },
     {
       "id": "refusal",
@@ -170,7 +239,7 @@
         "mounted": false
       },
       "x": 160,
-      "y": 1000
+      "y": 1360
     },
     {
       "id": "refusalText",
@@ -183,7 +252,7 @@
         "color": "var(--destructive)"
       },
       "x": 220,
-      "y": 1120
+      "y": 1480
     },
     {
       "id": "pageInputs",
@@ -193,7 +262,7 @@
         "pathParams": "announcementId"
       },
       "x": 590,
-      "y": 2200
+      "y": 2560
     },
     {
       "id": "hold-3",
@@ -235,7 +304,7 @@
         "idSource": "explicit"
       },
       "x": 590,
-      "y": 640
+      "y": 1000
     },
     {
       "id": "when-2",
@@ -245,7 +314,7 @@
         "functionScript": "function humanDay(raw) {\n  if (raw === undefined || raw === null) return '';\n  var s = String(raw);\n  if (s === '') return '';\n  var m = /^(\\d{4})-(\\d{2})-(\\d{2})$/.exec(s);\n  var at = m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : new Date(s);\n  if (isNaN(at.getTime())) return '';\n  return at.toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' });\n}\nif (Inputs.postedAt === undefined) return;\nOutputs.label = humanDay(Inputs.postedAt);"
       },
       "x": 590,
-      "y": 760,
+      "y": 1120,
       "ports": [
         {
           "name": "in-postedAt",
@@ -272,7 +341,7 @@
         "runOnChange-condition": false
       },
       "x": 590,
-      "y": 1000
+      "y": 1360
     },
     {
       "id": "removal",
@@ -298,7 +367,7 @@
         "mounted": false
       },
       "x": 160,
-      "y": 1240
+      "y": 1600
     },
     {
       "id": "removeButton",
@@ -322,7 +391,7 @@
         "sizeMode": "contentSize"
       },
       "x": 220,
-      "y": 1360
+      "y": 1720
     },
     {
       "id": "confirm",
@@ -353,7 +422,7 @@
         "mounted": false
       },
       "x": 220,
-      "y": 1480
+      "y": 1840
     },
     {
       "id": "confirmText",
@@ -366,7 +435,7 @@
         "color": "var(--destructive)"
       },
       "x": 280,
-      "y": 1600
+      "y": 1960
     },
     {
       "id": "confirmRow",
@@ -383,7 +452,7 @@
         "columnGap": "var(--space-3)"
       },
       "x": 280,
-      "y": 1720
+      "y": 2080
     },
     {
       "id": "confirmYes",
@@ -407,7 +476,7 @@
         "sizeMode": "contentSize"
       },
       "x": 340,
-      "y": 1840
+      "y": 2200
     },
     {
       "id": "confirmNo",
@@ -431,7 +500,7 @@
         "sizeMode": "contentSize"
       },
       "x": 340,
-      "y": 1960
+      "y": 2320
     },
     {
       "id": "removeFailed",
@@ -461,7 +530,7 @@
         "mounted": false
       },
       "x": 220,
-      "y": 2080
+      "y": 2440
     },
     {
       "id": "removeFailedText",
@@ -474,7 +543,7 @@
         "color": "var(--destructive)"
       },
       "x": 280,
-      "y": 2200
+      "y": 2560
     },
     {
       "id": "confirmed",
@@ -506,7 +575,7 @@
         }
       ],
       "x": 590,
-      "y": 1840
+      "y": 2200
     },
     {
       "id": "del",
@@ -517,7 +586,7 @@
         "idSource": "explicit"
       },
       "x": 590,
-      "y": 2320
+      "y": 2680
     },
     {
       "id": "confirmGate",
@@ -528,7 +597,7 @@
         "runOnChange-condition": false
       },
       "x": 590,
-      "y": 1480
+      "y": 1840
     },
     {
       "id": "confirmClear",
@@ -539,7 +608,7 @@
         "runOnChange-condition": false
       },
       "x": 590,
-      "y": 1600
+      "y": 1960
     },
     {
       "id": "removeFailedGate",
@@ -550,7 +619,7 @@
         "runOnChange-condition": false
       },
       "x": 590,
-      "y": 2080
+      "y": 2440
     },
     {
       "id": "toList",
@@ -561,7 +630,7 @@
         "target": "/Pages/Members"
       },
       "x": 590,
-      "y": 2440
+      "y": 2800
     }
   ],
   "visualRoots": [

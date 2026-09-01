@@ -6,15 +6,17 @@
     {
       "id": "req",
       "type": "noodl.cloud.request",
-      "label": "claimAssociation(setupToken, associationName, blurb, moderatorName, email, password)",
+      "label": "claimAssociation(setupToken, associationName, tagline, blurb, moderatorName, email, password)",
       "parameters": {
-        "params": "setupToken,associationName,blurb,moderatorName,email,password",
+        "params": "setupToken,associationName,tagline,blurb,moderatorName,email,password",
         "ptype-setupToken": "string",
         "preq-setupToken": true,
         "ptype-associationName": "string",
         "preq-associationName": true,
         "ptype-moderatorName": "string",
         "preq-moderatorName": true,
+        "ptype-tagline": "string",
+        "preq-tagline": false,
         "ptype-blurb": "string",
         "preq-blurb": false,
         "ptype-email": "string",
@@ -58,10 +60,11 @@
         "runOnChange-in-unclaimed": false,
         "runOnChange-in-rows": false,
         "runOnChange-in-name": false,
+        "runOnChange-in-tagline": false,
         "runOnChange-in-blurb": false,
         "runOnChange-in-email": false,
         "runOnChange-in-password": false,
-        "functionScript": "if (Inputs.rows === undefined) return;\nif (Inputs.expected === undefined || Inputs.supplied === undefined) return;\nconst expected = Inputs.expected || '';\nconst supplied = Inputs.supplied || '';\n// Constant-time compare. A plain === leaks the matching prefix length\n// through timing, and this is the one door in the template that mints\n// a moderator — the three extra lines are cheaper than the argument.\nlet diff = expected.length ^ supplied.length;\nconst n = Math.max(expected.length, supplied.length);\nfor (let i = 0; i < n; i++) {\n  diff |= (expected.charCodeAt(i) || 0) ^ (supplied.charCodeAt(i) || 0);\n}\n// An unprovisioned secret is never a match: an empty expected token\n// must not let a caller in with an empty string.\nconst tokenOk = expected.length > 0 && diff === 0;\nif (!tokenOk || Inputs.unclaimed !== true) {\n  Outputs.denied();\n  return;\n}\n// Rule 2: everything the rest of the graph needs leaves from HERE, so\n// no node downstream can act on a value that is still in flight.\nOutputs.username = Inputs.email;\nOutputs.email = Inputs.email;\nOutputs.password = Inputs.password;\nOutputs.name = Inputs.name || 'Our association';\nOutputs.moderatorName = Inputs.moderatorName || '';\nOutputs.blurb = Inputs.blurb || '';\nOutputs.claimed = true;\nOutputs.ok();"
+        "functionScript": "if (Inputs.rows === undefined) return;\nif (Inputs.expected === undefined || Inputs.supplied === undefined) return;\nconst expected = Inputs.expected || '';\nconst supplied = Inputs.supplied || '';\n// Constant-time compare. A plain === leaks the matching prefix length\n// through timing, and this is the one door in the template that mints\n// a moderator — the three extra lines are cheaper than the argument.\nlet diff = expected.length ^ supplied.length;\nconst n = Math.max(expected.length, supplied.length);\nfor (let i = 0; i < n; i++) {\n  diff |= (expected.charCodeAt(i) || 0) ^ (supplied.charCodeAt(i) || 0);\n}\n// An unprovisioned secret is never a match: an empty expected token\n// must not let a caller in with an empty string.\nconst tokenOk = expected.length > 0 && diff === 0;\nif (!tokenOk || Inputs.unclaimed !== true) {\n  Outputs.denied();\n  return;\n}\n// Rule 2: everything the rest of the graph needs leaves from HERE, so\n// no node downstream can act on a value that is still in flight.\nOutputs.username = Inputs.email;\nOutputs.email = Inputs.email;\nOutputs.password = Inputs.password;\nOutputs.name = Inputs.name || 'Our association';\nOutputs.moderatorName = Inputs.moderatorName || '';\nOutputs.tagline = Inputs.tagline || '';\nOutputs.blurb = Inputs.blurb || '';\nOutputs.claimed = true;\nOutputs.ok();"
       },
       "ports": [
         {
@@ -131,6 +134,13 @@
           "group": "Inputs"
         },
         {
+          "name": "in-tagline",
+          "displayName": "tagline",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
           "name": "in-blurb",
           "displayName": "blurb",
           "plug": "input",
@@ -168,6 +178,13 @@
         {
           "name": "out-moderatorName",
           "displayName": "moderatorName",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-tagline",
+          "displayName": "tagline",
           "plug": "output",
           "type": "*",
           "group": "Outputs"

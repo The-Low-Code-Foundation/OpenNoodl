@@ -24,7 +24,7 @@
       "parent": "page-8",
       "children": [
         "headingHead-5",
-        "blurb-2",
+        "blurb",
         "form-3",
         "refusal-4",
         "missing"
@@ -108,7 +108,7 @@
       "y": 520
     },
     {
-      "id": "blurb-2",
+      "id": "blurb",
       "type": "Text",
       "label": "What this does",
       "parent": "ground-7",
@@ -132,6 +132,7 @@
       "parent": "ground-7",
       "children": [
         "nameField-2",
+        "taglineField",
         "aboutField",
         "yourNameField",
         "emailField-2",
@@ -189,6 +190,34 @@
       "y": 880
     },
     {
+      "id": "taglineField",
+      "type": "net.noodl.controls.textinput",
+      "label": "Tagline",
+      "parent": "form-3",
+      "parameters": {
+        "sizeMode": "contentHeight",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "backgroundColor": "var(--background)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-control)",
+        "borderRadius": "var(--radius-md)",
+        "paddingLeft": "var(--space-3)",
+        "paddingRight": "var(--space-3)",
+        "paddingTop": "var(--space-2)",
+        "paddingBottom": "var(--space-2)",
+        "fontSize": "var(--text-base)",
+        "color": "var(--foreground)",
+        "useLabel": true,
+        "label": "One line about the association (e.g. “Meeting on the green since 1894”)"
+      },
+      "x": 220,
+      "y": 1000
+    },
+    {
       "id": "aboutField",
       "type": "net.noodl.controls.textinput",
       "label": "About the association",
@@ -215,7 +244,7 @@
         "type": "textArea"
       },
       "x": 220,
-      "y": 1000
+      "y": 1120
     },
     {
       "id": "yourNameField",
@@ -243,7 +272,7 @@
         "label": "Your name"
       },
       "x": 220,
-      "y": 1120
+      "y": 1240
     },
     {
       "id": "emailField-2",
@@ -272,7 +301,7 @@
         "type": "email"
       },
       "x": 220,
-      "y": 1240
+      "y": 1360
     },
     {
       "id": "passwordField-2",
@@ -301,7 +330,7 @@
         "type": "password"
       },
       "x": 220,
-      "y": 1360
+      "y": 1480
     },
     {
       "id": "tokenField",
@@ -330,7 +359,7 @@
         "type": "password"
       },
       "x": 220,
-      "y": 1480
+      "y": 1600
     },
     {
       "id": "claimButton",
@@ -352,7 +381,7 @@
         "sizeMode": "contentSize"
       },
       "x": 220,
-      "y": 1600
+      "y": 1720
     },
     {
       "id": "refusal-4",
@@ -382,7 +411,7 @@
         "mounted": false
       },
       "x": 160,
-      "y": 1720
+      "y": 1840
     },
     {
       "id": "refusalText-4",
@@ -395,7 +424,7 @@
         "color": "var(--destructive)"
       },
       "x": 220,
-      "y": 1840
+      "y": 1960
     },
     {
       "id": "missing",
@@ -425,7 +454,7 @@
         "mounted": false
       },
       "x": 160,
-      "y": 1960
+      "y": 2080
     },
     {
       "id": "missingText",
@@ -438,7 +467,7 @@
         "color": "var(--destructive)"
       },
       "x": 220,
-      "y": 2080
+      "y": 2200
     },
     {
       "id": "claim",
@@ -517,7 +546,7 @@
         }
       ],
       "x": 470,
-      "y": 2200
+      "y": 2320
     },
     {
       "id": "refusalGate-4",
@@ -528,7 +557,7 @@
         "runOnChange-condition": false
       },
       "x": 470,
-      "y": 1720
+      "y": 1840
     },
     {
       "id": "missingGate",
@@ -539,7 +568,7 @@
         "runOnChange-condition": false
       },
       "x": 470,
-      "y": 1960
+      "y": 2080
     },
     {
       "id": "missingClear",
@@ -550,7 +579,7 @@
         "runOnChange-condition": false
       },
       "x": 470,
-      "y": 2080
+      "y": 2200
     },
     {
       "id": "toSignIn-2",
@@ -561,7 +590,7 @@
         "target": "/Pages/SignIn"
       },
       "x": 470,
-      "y": 2320
+      "y": 2440
     }
   ],
   "visualRoots": [

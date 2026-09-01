@@ -337,6 +337,142 @@ the larger half of §E and it touches `tpl001Cloud.ts`.
 | `rel002c-look.look.ts` (new, door only) | **0** — 16 shots, ~92s, the fast loop while building |
 
 
+## REL-002c — what session 8 built: §D's icons, §D's second photograph, and the whole of §E
+
+**Session 8, 2026-09-01, at HEAD `1f4d5547`.** The row is still **NOT closed** — it closes on
+Richard's WORTHY ruling — but **all six ruled items are now built**. What was open at the end of
+session 7 was §D's icons, §D's `/join` photograph, §E's data half and the row family; all four
+landed. The one departure flagged for Richard (`FORM_GROUND` at 720) is **unchanged and still
+open**, and nothing built this session depends on the answer.
+
+### §D — the icons, and where they went
+
+**A glyph badge on the head of all eight gated pages**, one distinct glyph each: `newspaper`
+(Announcements + the announcement detail), `calendar-days` (Meetings + the meeting detail),
+`pencil` (Post), `user-plus` (Requests), `users` (Who belongs), `mail` (Your account). A 44px
+`--accent` square holding a 22px `--accent-foreground` glyph — the pairing `tpl001Theme.ts` already
+measures at **6.45:1**, so the app has one accent idea rather than two.
+
+🔴 **A different glyph per screen is the whole difference between iconography and decoration.** The
+corpus states the rule for photographs — *"a page whose every image is the same abstract is
+decorated, not designed"* — and it holds identically for glyphs. That is why they are **NOT on the
+list rows**: eight announcements each wearing the same newspaper is the decorated case exactly.
+
+🔴 **The badge is a wrapper AROUND the head, never a third child inside it, and the GATE dictated
+that.** §5 of the ratchet reads a page's eyebrow as *the head Group's first child*. A glyph inserted
+into the head would have moved the eyebrow to index 1 and reported all eight badged pages as
+carrying the eyebrow `''` — against a hand-written table, so it would have read as eight pages
+losing their eyebrows rather than as one structural change. The wrapper's id ends in `Row`, which is
+not what `/Head(-\d+)?$/` matches.
+
+⚠️ **The nav pills were considered and rejected on arithmetic.** Six glyphs on the band's six
+buttons is the obvious app-chrome move and it is the tightest place in the template: at the 988px
+preview each `gridAutoFit` column is ~145px, `--space-3` sides leave ~121px, and "Announcements"
+plus a 16px glyph and its spacing is ~124px. Three pixels over is a wrap on somebody else's font.
+Not built, and recorded so the next session does not re-derive it.
+
+⚠️ **Every glyph name is in the CURATED 215, not merely in the font.** `icon-megaphone` and
+`icon-handshake` were the first two picks; both have rules in `styles.css` and both draw, because
+the manifest `_note` is right that the bundled font carries all 1,998. They are still wrong: the
+door validates against the manifest's list, so a name outside it is a refusal waiting for whoever
+regenerates next.
+
+### §D — `/join` is bands now, and it has its own photograph
+
+`Pages/Join` was one 720px column on white from the top of the viewport to the bottom of the form.
+It is now `BAND_PAGE_GROUND` holding a **300px `people-meeting` band** carrying the page head on the
+scrim, then the form band. This is the one transition in the template where two public pages are
+seen back to back, and Richard's §D names this page explicitly.
+
+⚠️ **`people-market` was built first and rendered wrong, and the shape of the band is what picked
+the picture.** Cropped to 300px it is a pair of hands and a heap of limes — the catalogue's `says`
+(*"a market seller weighing limes"*) describes the **full 4:3 tile**, and a third of a tile is a
+different photograph. `people-meeting`'s subject runs horizontally across a table, so a 300px band
+keeps all of it.
+
+⚠️ **Session 7's own comment argues AGAINST `people-meeting`, for a different page.** It was rejected
+as a *hero* because *"a members' area is a group of people who belong somewhere"*. That judgement is
+about a 560px band saying what the association IS. This band says what the PAGE is, and the page is
+one person asking two others to let them in.
+
+🔴 **The head was at 1200 and the form at 720 and the first render showed it.** The heading began at
+x=64 and the form panel at x=304 — two measures on one page, which reads as a head belonging to a
+different template. The join hero shell is capped at the form's own 720.
+
+### 🔴 §C's footer fix was one element short, and only a picture found it
+
+`landingGround` was `justifyContent: flex-start` with `minHeight: 100vh`. In the **door** state —
+where every band but the hero and the footer is unmounted — that stacked a 560px photograph and a
+footer directly under it and left **270px of bare `--muted` below a finished footer**. That is the
+exact defect session 7 added the footer band to end, **moved down the page by one element rather
+than fixed**, and every gate was green over it. `space-between` pins the last band to the foot
+whenever there is slack and is a no-op the moment content exceeds the viewport, which is every
+living state.
+
+### §E — the data half, all three parts
+
+**(i) `tagline` is the one new field, end to end.** `claimAssociation` takes it (`preq: false`, like
+`blurb`), `/setup` collects it under *"One line about the association (e.g. 'Meeting on the green
+since 1894')"*, and `Pages/Landing`'s hero renders it.
+
+🔴 **The hero used to render `blurb` — the association's whole paragraph — under a `--text-5xl`
+name.** They are different shapes of writing and the hero has room for one. So the blurb moved to a
+new **`about` band**: `composition('band')` on `--background`, an "About us" heading, the paragraph
+in a `PROSE` wrapper, gated on `hasAssociation` like everything else the record fills.
+
+**(ii) `EDIT —` is unchanged** — the footer's two lines are still the only strings that genuinely
+cannot be data, and that is the honest number.
+
+**(iii) `docs/START-HERE.md`, and it is GENERATED from the artefact rather than typed.**
+`writeStartHere` in `tpl001Template.ts` walks the components that were just written and builds the
+table of `EDIT —` nodes from their labels. A hand-written list is the failure `USED_COMPOSITIONS`
+already had in this repository — it claimed to be enforced, nothing read it, and two of thirteen
+entries named things that did not exist. **It refuses on zero rather than warning**: an empty list
+has two causes that look identical in the output (the convention was dropped, or the walk stopped
+finding it) and both ship a note whose central section is blank.
+
+⚠️ **`docs/`, not a `/start-here` route.** A route would be a public URL on a deployed members' area
+telling strangers which parts of the site are unfinished. `docs/` is the editor's folder for prose,
+it travels because `readBundleDirectory` walks the whole tree (**checked in the community repo, it
+is fully recursive**), and it is never served.
+
+### The row family at 1200 — a CONTENT answer to a LAYOUT complaint
+
+**`AnnouncementRow` gained a one-line excerpt.** At 760 a title and a date filled the row; at 1200
+they left ~900px of nothing between "The roof appeal" and its `Read` button. **The fix is not to
+move the button back** — `RULED_ROW_SPLIT` already measured what a content-sized right-hand child
+costs at 390px (`ada@example.invali / d`). A wide row wants something to be wide ABOUT, and every
+announcement already had a body nobody was showing. ✅ **Free at the door**: `For Each` sets every
+DECLARED input from the field of the same name, so declaring `body` is the whole mechanism — no
+query, no page and no policy rule changed. Truncated in a `JavaScriptFunction` at a word boundary,
+because a `Text` in this runtime has no line clamp.
+
+**`MemberRow` is a three-column table row.** `'3 3 2'` above 700px, one stack below it. 🔴 **A
+`Columns` is the ONLY node type in the runtime that could do this** — a Group row cannot reflow, and
+putting the standing at the far edge of a Group row is the 390px defect above. `'2 2 1'` was
+rendered first and wrapped every standing onto a second line: a fifth of 1200 is ~200px and
+`Member · since 1 September 2026` measures ~197px.
+
+🔴 **§2 of the ratchet counted the three cells as unpainted notice boxes, and the fix is to the
+CENSUS, not to the cells.** A `Columns` child must be a Group that declares `sizeMode` and `width`,
+so "a Group wrapping one Text" is now produced by two different intentions and only one is a notice.
+Painting them to satisfy §2 would put a fill and a radius behind every name in the directory. The
+exclusion reads the cell's **parent type** from the artefact rather than a list of ids. ✅ **The
+control is that the pin did not move**: 27 → 24, which is exactly the three new cells and no
+pre-existing notice.
+
+### The readings, with their exit statuses
+
+| gate | reading |
+|---|---|
+| `npm run template:members` | **exit 0**, and **idempotent** — hashed before and after a second run, identical (`27f127e9…`), so every diff is attributable. 91 files, +1 for `docs/START-HERE.md` |
+| `tpl001Template.test.ts` | **exit 0** — **72/72**, taken after the last edit |
+| full `noodl-mcp` suite | **exit 0** — **83/83 suites, 1085/1085 tests**, clean on the first run |
+| `tpl001-members-drive` + `tpl001-empty-states` + `rel002b-fail-closed` | **exit 0** — **110/110**, on real enforcing backends. Not one of the four owed gates; run because the row family changed the shape of two components a drive reads |
+| `vib001-members.look.ts` | **exit 0** — 44 shots, both states, seeded backend asserted before any picture |
+
+---
+
 ### REL-003 — The stale bundles the cut inherits
 
 Phase 80 closed several fixes whose effect a user cannot see, because the committed build output

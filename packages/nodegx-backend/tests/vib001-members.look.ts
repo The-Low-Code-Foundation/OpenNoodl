@@ -129,7 +129,17 @@ describe('VIB-001 — the members area, as a person meets it', () => {
     await client.post('/functions/claimAssociation', {
       setupToken: SETUP_TOKEN,
       associationName: 'St Anywhere',
-      blurb: 'A congregation that meets on Sundays, and quite a lot in between.',
+      // 🔴 **REL-002c §E-i — the copy is DATA now, so the seed has to supply BOTH
+      // fields or the photographs measure a screen no real install has.** `/setup`
+      // collects a short tagline and a longer paragraph; the hero renders the
+      // first and the landing's "About us" band renders the second. Seeding only
+      // `blurb` would leave the hero's second line empty and photograph it as a
+      // gap under the association's name.
+      tagline: 'Meeting on the green since 1894',
+      blurb:
+        'St Anywhere is a parish congregation of about ninety people. We meet on Sunday mornings, ' +
+        'run the Tuesday lunch club, keep the churchyard, and put on a summer fete that has not ' +
+        'been rained off since 2019. Everyone is welcome at anything on the diary.',
       moderatorName: MODERATOR.name,
       email: MODERATOR.email,
       password: MODERATOR.password

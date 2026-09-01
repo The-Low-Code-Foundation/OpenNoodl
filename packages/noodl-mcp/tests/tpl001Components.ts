@@ -334,6 +334,75 @@ const HERO_SHELL = {
 };
 
 /**
+ * The SECOND public page's photograph, and the band it stands in.
+ *
+ * 🔴 **`/join` is the other half of §D and it had nothing.** Richard's ruling is
+ * *"photographs on `/` (hero ground) and `/join`"*; session 7 built the first and
+ * left the second, so a stranger who clicked *Ask to join* went from a
+ * photographed hero to a bare white form — the one transition on this template
+ * where the two public pages are seen back to back.
+ *
+ * ⚠️ **`people-meeting`, and the landing's own comment argues AGAINST it — for
+ * a different page.** Session 7 rejected it as a hero because *"a members' area
+ * is a group of people who belong somewhere, so the room is the subject and the
+ * desk is stock photography"*. That judgement is about a 560px hero whose job is
+ * to say what the association IS. This band's job is to say what THIS PAGE is,
+ * and the page is one person asking two others to let them in: a notebook, two
+ * coffees and four hands across a table is that, exactly.
+ *
+ * ⚠️ **`people-market` was built first and rendered wrong, which is how the
+ * shape of the band picked the picture.** Cropped to 300px it is a pair of hands
+ * and a heap of limes with no readable subject at all — the catalogue's `says`
+ * (*"a market seller weighing limes"*) describes the FULL 4:3 tile, and a third
+ * of a tile is a different photograph. `people-meeting`'s subject runs
+ * horizontally across the table, so a 300px band keeps all of it.
+ *
+ * ⚠️ **The two public pages must not share a picture** — a form page repeating
+ * the hero's own photograph reads as a page that failed to load its own.
+ *
+ * ⚠️ **300px, not the hero's 560.** This band is the page's orientation and not
+ * its content: the content is the form below it, and a half-viewport photograph
+ * above a form pushes the first field under the fold at 900px tall — measured on
+ * the `preview` viewport, which is the shortest of the four.
+ */
+const JOIN_GROUND = {
+  ...composition('imageGround'),
+  backgroundImage: 'noodl_modules/starter-imagery/people-meeting.webp',
+  height: { value: 300, unit: 'px' }
+};
+
+/**
+ * The ground a PUBLIC page's bands stand on.
+ *
+ * 🔴 **Lifted from `Pages/Landing`'s `landingGround` rather than copied by
+ * hand**, and the reason is the third item in session 7's carry-out list:
+ * `height: 100%` is inert everywhere in this template because the parent chain
+ * ends at a `Router`, which sizes itself to its content. `minHeight` is the one
+ * dimension port that takes `vh`
+ * ([`node-shared-port-definitions.ts:1227`](../../noodl-viewer-react/src/node-shared-port-definitions.ts#L1227)),
+ * so it floors a page at the viewport without asking anybody. A `/join` built on
+ * `PAGE_GROUND` would have ended in a strip of bare white under the form for
+ * exactly the reason the landing page did.
+ */
+const BAND_PAGE_GROUND = {
+  width: { value: 100, unit: '%' },
+  sizeMode: 'contentHeight',
+  minHeight: { value: 100, unit: 'vh' },
+  flexDirection: 'column',
+  // 🔴 **`space-between`, and `flex-start` was rendered first and was wrong.**
+  // The floor is `minHeight: 100vh`, so in the DOOR state — where every band but
+  // the hero and the footer is unmounted — `flex-start` stacked a 560px
+  // photograph and a footer directly under it and left **270px of bare
+  // `--muted` below a finished footer**. That is the exact defect session 7's
+  // footer band was added to end, moved down the page by one element rather than
+  // fixed. `space-between` pins the last band to the foot whenever there is
+  // slack, and is a no-op the moment the content is taller than the viewport,
+  // which is every living state.
+  justifyContent: 'space-between',
+  backgroundColor: 'var(--muted)'
+};
+
+/**
  * Type on the scrim.
  *
  * ⚠️ Every one of these overrides a colour that is correct on `--background` and
@@ -628,6 +697,98 @@ const FIELD = {
 };
 
 const CONDITION_GATE = { condition: true, 'runOnChange-condition': false };
+
+// ── §D — iconography, and it lives INSIDE the gate ────────────────────────────
+//
+// 🔴 **Richard's §D ruling has two halves and only one of them was built.**
+// *"Photographs on the public pages, icons only inside the gated area."* Session
+// 7 put the photograph on `/`; the eight signed-in screens stayed entirely
+// typographic, which is *"no imagery and no iconography anywhere"* — a fired
+// disqualifying tell on the VIB-001 baseline — still true of two thirds of the
+// template.
+//
+// ✅ **Zero template bytes, exactly as the photograph was.** `STARTER_ASSETS`
+// installs `noodl_modules/lucide-icons/` into every project, and the submission's
+// excluded-files list derives from that same constant. This references a font
+// every install already has.
+//
+// 🔴 **Three fields, and the third is what makes it a glyph rather than the
+// glyph's NAME in 24px type.** `IconGlyph.tsx` branches on `codeAsClass`: true
+// puts the code among the element's classes, anything else puts it in the
+// element's *text*. VIB-003 filed the whole defect — `{class, code}` alone is
+// two thirds of a correct value and renders the string `icon-users`.
+//
+// ⚠️ **Every name below is in the CURATED 215**, not merely in the font. Lucide's
+// manifest `_note` is right that the bundled font carries all 1,998 and
+// `styles.css` has a rule for each — `icon-megaphone` and `icon-handshake` were
+// the first two picks and both draw — but the door validates against the
+// manifest's list, and a name outside it is a refusal waiting for the next
+// person who regenerates. Checked, name by name, against
+// `noodl_modules/lucide-icons/manifest.json`.
+function glyph(code: string): Record<string, unknown> {
+  return { class: 'lucide', code: `icon-${code}`, codeAsClass: true };
+}
+
+/**
+ * The glyph a page head wears, in the tinted square that stops it reading as a
+ * stray mark.
+ *
+ * 🔴 **Different glyph per screen, and that is the difference between
+ * iconography and decoration.** The corpus states the rule for photographs —
+ * *"a page whose every image is the same abstract is decorated, not designed"* —
+ * and it holds identically here: a newspaper repeated on eight screens says
+ * nothing, where eight distinct glyphs say which screen this is before the
+ * heading is read. That is also why the glyphs are NOT on the list rows: eight
+ * announcements each wearing the same mark is the decorated case exactly.
+ *
+ * ⚠️ `--accent` behind `--accent-foreground` measures **6.45:1** (`tpl001Theme.ts`),
+ * so the square is a legible pairing rather than a tint chosen by eye. It is the
+ * same pair the pending notice already wears, so the app has one accent idea and
+ * not two.
+ */
+const HEAD_BADGE = {
+  sizeMode: 'explicit',
+  width: { value: 44, unit: 'px' },
+  height: { value: 44, unit: 'px' },
+  flexDirection: 'column',
+  alignItems: 'center',
+  justifyContent: 'center',
+  backgroundColor: 'var(--accent)',
+  borderRadius: 'var(--radius-lg)'
+};
+
+/**
+ * The row a badged page head sits on.
+ *
+ * 🔴 **A wrapper AROUND `{id}Head`, never a third child INSIDE it, and the gate
+ * is what dictates that.** §5 of the ratchet reads a page's eyebrow as *the head
+ * Group's first child* — `component.nodes.find(n => n.type === 'Group' &&
+ * /Head(-\d+)?$/.test(n.id))`, then `children[0]`. A glyph inserted into the head
+ * would have moved the eyebrow to index 1 and reported all eight badged pages as
+ * carrying the eyebrow `''`, which the spec compares against a hand-written
+ * table. The wrapper's id ends in `Row`, so it is not what §5 matches, and the
+ * head it holds is unchanged.
+ *
+ * ⚠️ **`alignItems: center`, not `featureItem`'s `flex-start`.** That
+ * composition centres a glyph on the first line of a title because its body is a
+ * paragraph that can run to four lines. A page head is two short lines of known
+ * height, and a 44px square top-aligned against them sits above the eyebrow
+ * rather than beside the pair.
+ *
+ * ⚠️ **`paddingBottom` moves OUT of the head and onto this row**, because §6
+ * counts a Group as a "section" when it has no `paddingBottom`, more than one
+ * child and `flexDirection: column`. Leaving the padding on the inner head is
+ * correct for §6 (which excludes it) but leaves the row itself as a `row`, which
+ * §6 also excludes. Both are excluded either way; the padding stays on the head
+ * so an UNBADGED page and a badged one keep the same air under their heading.
+ */
+const HEAD_ROW = {
+  width: { value: 100, unit: '%' },
+  sizeMode: 'contentHeight',
+  flexDirection: 'row',
+  alignItems: 'center',
+  columnGap: 'var(--space-4)'
+};
 
 /**
  * DEF-006 (a) / AC5 — proof that {@link withoutInertBorderWidth} has nothing
@@ -1012,13 +1173,44 @@ const PROSE = {
  * identity block sets `--space-1` for the same eyebrow-over-title pairing. The
  * two eyebrow stacks in the app now agree.
  */
-function pageHead(id: string, label: string, parent: string, eyebrow: string, text: string): unknown[] {
-  return [
+function pageHead(
+  id: string,
+  label: string,
+  parent: string,
+  eyebrow: string,
+  text: string,
+  opts: {
+    /**
+     * §D. The lucide name, WITHOUT its `icon-` prefix, or nothing on the pages
+     * a person can reach without signing in.
+     *
+     * 🔴 **Absent on the public pages by ruling, not by omission.**
+     * *"Photographs on the public pages, icons only inside the gated area."*
+     * `/` and `/join` carry a photograph; a glyph badge on top of one would be
+     * two decorative systems on the same screen. `/unsubscribe` has neither —
+     * it is a page a mail client sends somebody to, and the eyebrow carrying
+     * the association's name is the only orientation it needs.
+     */
+    icon?: string;
+    /**
+     * The head stands ON a photograph, so both its lines turn light.
+     *
+     * ⚠️ It overrides two colours that are correct on `--background` and
+     * illegible on a picture: `T_EYEBROW`'s accent green and `H_PAGE`'s
+     * `--foreground`. Same override `Pages/Landing`'s hero carries and for the
+     * same reason — see `ON_SCRIM`.
+     */
+    onScrim?: boolean;
+  } = {}
+): unknown[] {
+  const { icon, onScrim } = opts;
+  const light = onScrim ? ON_SCRIM : {};
+  const head = [
     {
       id: `${id}Head`,
       type: 'Group',
       label: `${label} \u2014 the head`,
-      parent,
+      parent: icon ? `${id}HeadRow` : parent,
       parameters: PAGE_HEAD,
       children: [`${id}Eyebrow`, id]
     },
@@ -1027,9 +1219,44 @@ function pageHead(id: string, label: string, parent: string, eyebrow: string, te
       type: 'Text',
       label: eyebrow,
       parent: `${id}Head`,
-      parameters: { text: eyebrow, ...T_EYEBROW }
+      parameters: { text: eyebrow, ...T_EYEBROW, ...light }
     },
-    { id, type: 'Text', label, parent: `${id}Head`, parameters: { text, ...H_PAGE } }
+    { id, type: 'Text', label, parent: `${id}Head`, parameters: { text, ...H_PAGE, ...light } }
+  ];
+  if (!icon) return head;
+  return [
+    {
+      id: `${id}HeadRow`,
+      type: 'Group',
+      label: `${label} \u2014 the head, badged`,
+      parent,
+      parameters: HEAD_ROW,
+      children: [`${id}Badge`, `${id}Head`]
+    },
+    {
+      id: `${id}Badge`,
+      type: 'Group',
+      label: `${label} \u2014 the badge`,
+      parent: `${id}HeadRow`,
+      parameters: HEAD_BADGE,
+      children: [`${id}Glyph`]
+    },
+    {
+      id: `${id}Glyph`,
+      type: 'net.noodl.visual.icon',
+      label: `${label} \u2014 the glyph`,
+      parent: `${id}Badge`,
+      // ⚠️ `iconColor` and not `color`: the Icon node's colour arrives through
+      // `addIconInputs`, and a `color` here would be a parameter nothing reads.
+      // The glyph is 22px inside a 44px square, which is the half-and-half a
+      // badge wants — 24px in 44 crowds the corners at `--radius-lg`.
+      parameters: {
+        iconIconSource: glyph(icon),
+        iconSize: { value: 22, unit: 'px' },
+        iconColor: 'var(--accent-foreground)'
+      }
+    },
+    ...head
   ];
 }
 
@@ -1483,15 +1710,14 @@ const LANDING: Tpl001Component = {
       // twelve pages carries `height: 100%` through `PAGE_GROUND` and it is
       // inert there for the same reason.** It is invisible on them only because
       // they paint no background, so nobody could see where the box ended.
-      parameters: {
-        width: { value: 100, unit: '%' },
-        sizeMode: 'contentHeight',
-        minHeight: { value: 100, unit: 'vh' },
-        flexDirection: 'column',
-        justifyContent: 'flex-start',
-        backgroundColor: 'var(--muted)'
-      },
-      children: ['heroBand', 'inside', 'footer']
+      //
+      // ⚠️ **`BAND_PAGE_GROUND` now, and it used to be written out here.** The
+      // join page needed the identical shape, and the two were about to be two
+      // copies of a `minHeight: 100vh` argument that took a render to get right.
+      // The constant carries the account; `justifyContent` in particular is not
+      // what this page shipped in session 7 and the reason is recorded there.
+      parameters: BAND_PAGE_GROUND,
+      children: ['heroBand', 'about', 'inside', 'footer']
     },
     {
       id: 'heroBand',
@@ -1525,7 +1751,7 @@ const LANDING: Tpl001Component = {
       // the gap that V4 was filed from. It now arrives with the name in it, or
       // not at all.
       parameters: { ...HERO_HEAD, mounted: false },
-      children: ['eyebrow', 'heading', 'blurb']
+      children: ['eyebrow', 'heading', 'tagline']
     },
     {
       id: 'eyebrow',
@@ -1547,10 +1773,18 @@ const LANDING: Tpl001Component = {
       parameters: { text: '', ...H_HERO, ...ON_SCRIM }
     },
     {
-      id: 'blurb',
+      id: 'tagline',
       type: 'Text',
-      label: 'What we do',
+      label: 'The tagline',
       parent: 'hero',
+      // 🔴 **§E-i — this was `blurb`, the association's whole paragraph, set on
+      // a photograph directly under a `--text-5xl` name.** The two are different
+      // shapes of writing and the hero only has room for one: a headline's
+      // second line is a line, and "About the association" is prose. `/setup`
+      // now collects both, so the hero takes the short one and the band below
+      // takes the long one — and neither is a string somebody has to open the
+      // editor to change.
+      //
       // ⚠️ `lead` carries its own 560px cap, which is a measure on the TYPE. It
       // is kept here and it is not the thing V29 ruled against: this shell is
       // left-aligned, so the leftover width falls on one side because the text
@@ -1599,6 +1833,81 @@ const LANDING: Tpl001Component = {
       // against `--background`, all of them near-invisible on the scrim. See
       // `onScrimBtn`.
       parameters: onScrimBtn('Ask to join')
+    },
+
+    // ── §E-i — the association's own words, on a band of their own ───────────
+    //
+    // 🔴 **The blurb used to be the hero's second line and it was the wrong
+    // shape there.** "About the association" is a paragraph a churchwarden
+    // writes; a hero's second line is a line. Both are collected by `/setup`
+    // now, so the two can go where each belongs instead of one string being
+    // asked to do both jobs badly.
+    //
+    // ⚠️ **Gated on `hasAssociation`, like everything else the record fills.**
+    // On a fresh install it would otherwise be a `--background` band containing
+    // one empty `Text` — an unexplained white stripe between a photograph and a
+    // footer.
+    //
+    // ⚠️ **`PROSE` inside the 1200 shell, not a 1200 paragraph.** §C's measure is
+    // on the SHELL; 1200px of running text is ~150 characters a line, about
+    // double what anything is read at. `PROSE` is the wrapper `PAGE_GROUND`'s
+    // own note describes as the half of §C that stops 1200 making pages worse.
+    {
+      id: 'about',
+      type: 'Group',
+      label: 'What this association is',
+      parent: 'landingGround',
+      parameters: { ...composition('band'), backgroundColor: 'var(--background)', mounted: false },
+      children: ['aboutShell']
+    },
+    {
+      id: 'aboutShell',
+      type: 'Group',
+      label: 'Shell',
+      parent: 'about',
+      parameters: { ...composition('shell'), sizeMode: 'contentHeight', alignX: 'center', rowGap: 'var(--space-4)' },
+      children: ['aboutHeading', 'aboutProse']
+    },
+    {
+      id: 'aboutHeading',
+      type: 'Text',
+      label: 'About — heading',
+      // ⚠️ A literal, and the one place in this template where that is right for
+      // a heading: it names the SECTION rather than the association, so it is
+      // the same words for every association that installs this. §E-ii's marker
+      // is for strings that vary and were left generic; this one does not vary.
+      parent: 'aboutShell',
+      parameters: { text: 'About us', ...H_PAGE }
+    },
+    {
+      id: 'aboutProse',
+      type: 'Group',
+      label: 'About — the measure',
+      parent: 'aboutShell',
+      parameters: PROSE,
+      children: ['aboutText', 'aboutJoinHint']
+    },
+    {
+      id: 'aboutText',
+      type: 'Text',
+      label: 'About — the association’s own words',
+      parent: 'aboutProse',
+      // Rule 3: a standing empty text, so nothing renders the word "Text" while
+      // the record is on its way.
+      parameters: { text: '', ...T_BODY }
+    },
+    {
+      id: 'aboutJoinHint',
+      type: 'Text',
+      label: 'About — who may join',
+      // ⚠️ **A second `Text`, and §2 of the ratchet is why there has to be one.**
+      // That census counts a `Group` wrapping exactly one `Text` as a notice box
+      // and pins the total; a prose wrapper holding a single paragraph is
+      // indistinguishable from an unpainted notice by that shape. It is also the
+      // sentence the page was missing — a stranger who has just read what the
+      // association is has nowhere to be told what happens if they ask to join.
+      parent: 'aboutProse',
+      parameters: { text: 'Membership is by request: ask to join and a moderator will approve you.', ...T_META }
     },
 
     // ── What is behind the door ──────────────────────────────────────────────
@@ -1895,6 +2204,7 @@ const LANDING: Tpl001Component = {
           'const rows = Inputs.rows || [];\n' +
           'const row = rows.length > 0 ? rows[0] : undefined;\n' +
           "Outputs.name = row ? (row.name || '') : '';\n" +
+          "Outputs.tagline = row ? (row.tagline || '') : '';\n" +
           "Outputs.blurb = row ? (row.blurb || '') : '';\n" +
           'Outputs.hasAssociation = rows.length > 0;\n' +
           'Outputs.needsSetup = rows.length === 0;\n' +
@@ -1929,7 +2239,8 @@ const LANDING: Tpl001Component = {
     { fromId: 'association', fromProperty: 'items', toId: 'read', toProperty: 'in-rows' },
     { fromId: 'association', fromProperty: 'fetched', toId: 'read', toProperty: 'run' },
     { fromId: 'read', fromProperty: 'out-name', toId: 'heading', toProperty: 'text' },
-    { fromId: 'read', fromProperty: 'out-blurb', toId: 'blurb', toProperty: 'text' },
+    { fromId: 'read', fromProperty: 'out-tagline', toId: 'tagline', toProperty: 'text' },
+    { fromId: 'read', fromProperty: 'out-blurb', toId: 'aboutText', toProperty: 'text' },
     { fromId: 'read', fromProperty: 'out-needsSetup', toId: 'setupCard', toProperty: 'mounted' },
     // The two ways in are hidden until there is something to be a member of.
     { fromId: 'read', fromProperty: 'out-hasAssociation', toId: 'actions', toProperty: 'mounted' },
@@ -1941,6 +2252,7 @@ const LANDING: Tpl001Component = {
     // gate, it is a deletion; the two edits are one edit and this is its other
     // half.
     { fromId: 'read', fromProperty: 'out-hasAssociation', toId: 'hero', toProperty: 'mounted' },
+    { fromId: 'read', fromProperty: 'out-hasAssociation', toId: 'about', toProperty: 'mounted' },
     { fromId: 'read', fromProperty: 'out-hasAssociation', toId: 'inside', toProperty: 'mounted' },
     // 🔴 REL-002b — the only wire that can take the waiting card down, and it
     // fires only on an answer. See `waitingCard` for why this is the default
@@ -2089,10 +2401,10 @@ export const ANNOUNCEMENT_ROW_NODES = [
   {
     id: 'rowLines',
     type: 'Group',
-    label: 'What it is, and when',
+    label: 'What it is, when, and what it says',
     parent: 'row',
     parameters: { ...ROW_LINES },
-    children: ['rowTitle', 'rowDate']
+    children: ['rowTitle', 'rowExcerpt', 'rowDate']
   },
   {
     id: 'rowTitle',
@@ -2100,6 +2412,28 @@ export const ANNOUNCEMENT_ROW_NODES = [
     label: 'Title',
     parent: 'rowLines',
     parameters: { text: '', ...T_CARD_TITLE }
+  },
+  {
+    id: 'rowExcerpt',
+    type: 'Text',
+    label: 'The first line of it',
+    parent: 'rowLines',
+    // 🔴 **REL-002c, the row family at 1200, and it is a CONTENT answer to a
+    // LAYOUT complaint.** At `PAGE_GROUND`'s old 760 a title and a date filled
+    // the row; at §C's 1200 the same two lines left about 900px of nothing
+    // between "The roof appeal" and its `Read` button, which is what the handoff
+    // records as the button being "a long way from its title".
+    //
+    // ⚠️ **The fix is not to move the button back.** `RULED_ROW_SPLIT` already
+    // measured what a content-sized right-hand child costs at 390px
+    // (`ada@example.invali / d`), so the two obvious rearrangements are both
+    // regressions on a phone. What a wide row actually wants is something to be
+    // wide ABOUT — and every announcement already has a body nobody was showing.
+    //
+    // ✅ **Free at the door.** `For Each` sets every DECLARED input from the
+    // field of the same name (`foreach.tsx:586-597`), so declaring `body` below
+    // is the entire mechanism; no query, no page and no policy rule changes.
+    parameters: { text: '', ...T_BODY, color: 'var(--muted-foreground)' }
   },
   { id: 'rowDate', type: 'Text', label: 'Posted', parent: 'rowLines', parameters: { text: '', ...T_META } },
   {
@@ -2116,6 +2450,8 @@ export const ANNOUNCEMENT_ROW_NODES = [
     ports: [
       { name: 'id', type: 'string', plug: 'output' },
       { name: 'title', type: 'string', plug: 'output' },
+      // See `rowExcerpt`: declaring it here is what makes `For Each` deliver it.
+      { name: 'body', type: 'string', plug: 'output' },
       { name: 'postedAt', type: 'string', plug: 'output' }
     ]
   },
@@ -2132,6 +2468,33 @@ export const ANNOUNCEMENT_ROW_NODES = [
     }
   },
   {
+    id: 'firstLine',
+    type: 'JavaScriptFunction',
+    label: 'The first line of the body, and only the first',
+    parameters: {
+      // 🔴 **Truncated HERE rather than by CSS, because there is no CSS to reach
+      // for.** A `Text` in this runtime has no line clamp, so a five-paragraph
+      // announcement in an un-truncated row would draw five paragraphs and turn
+      // a scannable list into a page of essays — the exact failure `ruled`
+      // replaced `card` to end (§7, B3).
+      //
+      // ⚠️ **A word boundary, not `slice(0, 120)`.** Cutting mid-word reads as a
+      // rendering fault rather than as an excerpt, and it is three lines to do
+      // properly.
+      'runOnChange-in-body': false,
+      functionScript:
+        'if (Inputs.body === undefined) return;\n' +
+        "const flat = String(Inputs.body || '').replace(/\\s+/g, ' ').trim();\n" +
+        'if (flat.length <= 120) {\n' +
+        '  Outputs.line = flat;\n' +
+        '  return;\n' +
+        '}\n' +
+        'const cut = flat.slice(0, 120);\n' +
+        'const lastSpace = cut.lastIndexOf(" ");\n' +
+        "Outputs.line = (lastSpace > 60 ? cut.slice(0, lastSpace) : cut) + '\u2026';"
+    }
+  },
+  {
     id: 'goDetail',
     type: 'RouterNavigate',
     label: 'Open the announcement',
@@ -2144,6 +2507,8 @@ export const ANNOUNCEMENT_ROW_NODES = [
 
 export const ANNOUNCEMENT_ROW_WIRES = [
   { fromId: 'inputs', fromProperty: 'title', toId: 'rowTitle', toProperty: 'text' },
+  { fromId: 'inputs', fromProperty: 'body', toId: 'firstLine', toProperty: 'in-body' },
+  { fromId: 'firstLine', fromProperty: 'out-line', toId: 'rowExcerpt', toProperty: 'text' },
   { fromId: 'inputs', fromProperty: 'postedAt', toId: 'when', toProperty: 'in-postedAt' },
   { fromId: 'when', fromProperty: 'out-label', toId: 'rowDate', toProperty: 'text' },
   { fromId: 'inputs', fromProperty: 'id', toId: 'goDetail', toProperty: `pm-${ANNOUNCEMENT_PARAM}` },
@@ -2373,25 +2738,89 @@ export const MEMBER_ROW_NODES = [
   },
   {
     id: 'rowLines',
-    type: 'Group',
+    type: COLUMNS_NODE,
     label: 'Who they are, where to reach them, and what they are here',
     parent: 'row',
-    parameters: { ...ROW_LINES },
-    children: ['rowName', 'rowEmail', 'rowStanding']
+    // 🔴 **REL-002c, the row family at 1200 — and this is the ONE node type in
+    // the runtime that could fix it.** At 760 three stacked lines filled the
+    // row. At §C's 1200 the directory drew a 250px column of names down the left
+    // and left ~950px of nothing beside it: the page that most looked like it
+    // had not been designed for the measure it was given.
+    //
+    // 🔴 **A `Columns`, and the two obvious alternatives are both recorded
+    // failures.** A `Group` row cannot reflow — *"no Group in the runtime has a
+    // breakpoint"* — so a three-across Group would be three-across at 390 too;
+    // and `RULED_ROW_SPLIT`'s own note measured what putting the standing at the
+    // far edge of a Group row costs at 390px (`ada@example.invali / d`, because a
+    // content-sized right-hand child takes its width out of the row at every
+    // viewport). `smallBreakpoint` is the third answer neither of those has.
+    //
+    // ⚠️ **`layoutString` and not `autoFit`.** These three columns are not
+    // interchangeable cells — a name, an address and a standing have different
+    // natural widths and a fixed order — so `'2 2 1'` states the relationship.
+    // `autoFit` would give them equal boxes and reflow the ORDER at narrow
+    // widths, which for a directory row is nonsense.
+    //
+    // ⚠️ **700px is the same breakpoint `ui-icon-feature-strip` uses**, and it
+    // matters that it is above the phone width and below the desktop one: at 390
+    // and at the 988 editor preview this is one column and three columns
+    // respectively, which are the two shapes the row is designed as.
+    parameters: {
+      ...composition('columnsTwoUp'),
+      // ⚠️ **`'3 3 2'` and not `'2 2 1'`, which was rendered first.** At 1200 a
+      // fifth of the row is ~200px and `Member \u00b7 since 1 September 2026`
+      // measures ~197px, so every row in the directory wrapped its standing onto
+      // a second line while the two columns beside it sat half empty. A quarter
+      // is ~284px. Same measurement `RULED_ROW_SPLIT` records for this string,
+      // used here to size a column rather than to rule one out.
+      layoutString: '3 3 2',
+      smallBreakpoint: { value: 700, unit: 'px' },
+      smallLayout: '1'
+    },
+    children: ['cellName', 'cellEmail', 'cellStanding']
   },
+  // 🔴 **Cells, and the door is what taught this** — the same finding
+  // `Pages/Landing`'s three tiles carry. A `Columns` child must declare
+  // `sizeMode` and `width`: `calcAutoFit` hands each child an equal box and a
+  // content-sized child ignores it and draws across the next column. It is also
+  // a gate: *"no child of a `Columns` is content-sized, anywhere in the
+  // artefact"*.
+  //
+  // ⚠️ **`rowGap` on each cell, because at `smallLayout: '1'` the three cells
+  // stack and become the three lines this row used to be.** Without it the
+  // stacked form has no gap at all — the `ROW_LINES` gap it replaced lived on
+  // the parent, and a `Columns` spaces its COLUMNS, not the rows it folds them
+  // into.
+  ...[
+    { id: 'cellName', label: 'The name column', child: 'rowName' },
+    { id: 'cellEmail', label: 'The address column', child: 'rowEmail' },
+    { id: 'cellStanding', label: 'The standing column', child: 'rowStanding' }
+  ].map((cell) => ({
+    id: cell.id,
+    type: 'Group',
+    label: cell.label,
+    parent: 'rowLines',
+    parameters: {
+      sizeMode: 'contentHeight',
+      width: { value: 100, unit: '%' },
+      flexDirection: 'column',
+      rowGap: 'var(--space-1)'
+    },
+    children: [cell.child]
+  })),
   {
     id: 'rowName',
     type: 'Text',
     label: 'Who',
-    parent: 'rowLines',
+    parent: 'cellName',
     parameters: { text: '', ...T_CARD_TITLE }
   },
-  { id: 'rowEmail', type: 'Text', label: 'Where to reach them', parent: 'rowLines', parameters: { text: '', ...T_META } },
+  { id: 'rowEmail', type: 'Text', label: 'Where to reach them', parent: 'cellEmail', parameters: { text: '', ...T_META } },
   {
     id: 'rowStanding',
     type: 'Text',
     label: 'What they are here',
-    parent: 'rowLines',
+    parent: 'cellStanding',
     parameters: { text: '', ...T_META }
   },
   {
@@ -2479,7 +2908,7 @@ const MEMBERS: Tpl001Component = {
       label: 'Page ground',
       parent: 'page',
       parameters: PAGE_GROUND,
-      children: ['headingHead', 'pendingNotice', 'unknownNotice', 'memberArea', 'moderatorTools']
+      children: ['headingHeadRow', 'pendingNotice', 'unknownNotice', 'memberArea', 'moderatorTools']
     },
     // ⚠️ **"Announcements", not "Members", since s8.** The band above now says
     // whose members' area this is, so a page heading repeating the word
@@ -2489,7 +2918,7 @@ const MEMBERS: Tpl001Component = {
     // ⚠️ Its eyebrow reads "For members" against the "For moderators" one
     // further down: this is the one page in the app with a zone for each
     // audience, and the two eyebrows are what say so.
-    ...pageHead('heading', 'Heading', 'ground', 'For members', 'Announcements'),
+    ...pageHead('heading', 'Heading', 'ground', 'For members', 'Announcements', { icon: 'newspaper' }),
     // 🔴 AC3's screen. A pending member is refused exactly as a stranger is, and
     // this is the sentence that stops that refusal reading as a broken app — now
     // in the accent box the token was introduced for and nothing had ever read.
@@ -2751,9 +3180,9 @@ const ANNOUNCEMENT: Tpl001Component = {
       label: 'Page ground',
       parent: 'page',
       parameters: PAGE_GROUND,
-      children: ['titleHead', 'date', 'body', 'refusal', 'removal']
+      children: ['titleHeadRow', 'date', 'body', 'refusal', 'removal']
     },
-    ...pageHead('title', 'Title', 'ground', 'Announcement', ''),
+    ...pageHead('title', 'Title', 'ground', 'Announcement', '', { icon: 'newspaper' }),
     { id: 'date', type: 'Text', label: 'Posted', parent: 'ground', parameters: { text: '', ...T_META } },
     { id: 'body', type: 'Text', label: 'Body', parent: 'ground', parameters: { text: '', ...T_BODY } },
     ...notice('refusal', 'Not available', 'ground', 'This announcement is not available to you.', {
@@ -2852,9 +3281,9 @@ const MEETINGS: Tpl001Component = {
       label: 'Page ground',
       parent: 'page',
       parameters: PAGE_GROUND,
-      children: ['headingHead', 'pendingNotice', 'memberArea']
+      children: ['headingHeadRow', 'pendingNotice', 'memberArea']
     },
-    ...pageHead('heading', 'Heading', 'ground', 'For members', 'What’s coming up'),
+    ...pageHead('heading', 'Heading', 'ground', 'For members', 'What’s coming up', { icon: 'calendar-days' }),
     ...notice('pendingNotice', 'Waiting to be approved', 'ground', PENDING_TEXT, { tone: 'accent' }),
     {
       id: 'memberArea',
@@ -2955,9 +3384,9 @@ const MEETING: Tpl001Component = {
       label: 'Page ground',
       parent: 'page',
       parameters: PAGE_GROUND,
-      children: ['titleHead', 'when', 'place', 'details', 'refusal', 'removal']
+      children: ['titleHeadRow', 'when', 'place', 'details', 'refusal', 'removal']
     },
-    ...pageHead('title', 'Title', 'ground', 'Meeting', ''),
+    ...pageHead('title', 'Title', 'ground', 'Meeting', '', { icon: 'calendar-days' }),
     { id: 'when', type: 'Text', label: 'When', parent: 'ground', parameters: { text: '', ...T_META } },
     { id: 'place', type: 'Text', label: 'Where', parent: 'ground', parameters: { text: '', ...T_META } },
     { id: 'details', type: 'Text', label: 'Details', parent: 'ground', parameters: { text: '', ...T_BODY } },
@@ -3038,17 +3467,98 @@ const JOIN: Tpl001Component = {
       type: 'Page',
       label: 'Ask to join',
       parameters: { title: 'Ask to join', urlPath: 'join' },
+      children: ['joinGround']
+    },
+    // ── §D — the second public page gets its photograph ────────────────
+    //
+    // 🔴 **BANDS, like the landing page, and for the same measured reason.** The
+    // page was one 720px column on white from the top of the viewport to the
+    // bottom of the form. Richard's §D ruling names this page explicitly, and a
+    // stranger arrives here by clicking `Ask to join` on a photographed hero —
+    // so it is the one transition in the template where two public pages are
+    // seen one after the other.
+    //
+    // ⚠️ **The head moved ONTO the photograph and the form stayed at 720.** That
+    // keeps the flagged `FORM_GROUND` departure (§C) a decision about ONE
+    // constant: if Richard rules the literal 1200, this page's band structure is
+    // already what a two-up split would be built on and only the form half moves.
+    {
+      id: 'joinGround',
+      type: 'Group',
+      label: 'Page ground',
+      parent: 'page',
+      parameters: BAND_PAGE_GROUND,
+      children: ['heroBand', 'formBand']
+    },
+    {
+      id: 'heroBand',
+      type: 'Group',
+      label: 'The photograph, and what this page is',
+      parent: 'joinGround',
+      parameters: JOIN_GROUND,
+      children: ['heroShell']
+    },
+    {
+      id: 'heroShell',
+      type: 'Group',
+      label: 'Shell',
+      parent: 'heroBand',
+      // 🔴 `sizeMode: 'contentHeight'` is not optional inside an `imageGround`
+      // — register V1, and `HERO_SHELL` carries the whole account of why.
+      // 🔴 **Capped at the FORM's measure, not the hero's 1200, and the first
+      // render is what said so.** With `HERO_SHELL`'s 1200 the heading began at
+      // x=64 and the form panel beneath it at x=304 — two measures on one page,
+      // which reads as a page whose head belongs to a different template. The
+      // rule is that a page has ONE measure; §C puts it at 1200 and the flagged
+      // `FORM_GROUND` departure puts a form page at 720, so on this page the
+      // head takes 720 too.
+      //
+      // ⚠️ If Richard rules the literal 1200 (see the handoff), this line is
+      // where that page changes — the band structure below it is already what a
+      // two-up split would be built on.
+      parameters: { ...HERO_SHELL, maxWidth: { value: 720, unit: 'px' } },
+      children: ['headingHead']
+    },
+    // ⚠️ `onScrim`: the eyebrow's accent green and the heading's `--foreground`
+    // are both chosen against `--background` and both go dark-on-dark here.
+    ...pageHead('heading', 'Heading', 'heroShell', 'Members’ area', 'Ask to join', { onScrim: true }),
+    {
+      id: 'formBand',
+      type: 'Group',
+      label: 'The form band',
+      parent: 'joinGround',
+      // ⚠️ `alignItems: center` on the BAND and `alignX: center` on the ground
+      // inside it are not a duplicate: the first centres this band's own child,
+      // the second is what `layout.ts:150-160` reads to write `alignSelf` on the
+      // ground. Either alone leaves the 720 column against the left edge on one
+      // of the two axes — `PAGE_GROUND` documents the second half.
+      // ⚠️ **`--background`, so the `--surface` panel inside it has something to
+      // be a panel ON.** The ground under the bands is `--muted` (#eef1ee) and
+      // the form panel is `--surface` (#f4f6f4): 1.03:1, which is not a surface,
+      // it is the same colour. `--surface` on `--background` is the pairing
+      // every other card in this template is read by, and the `--muted` that is
+      // left below this band is what gives the page a bottom edge.
+      parameters: {
+        width: { value: 100, unit: '%' },
+        sizeMode: 'contentHeight',
+        flexDirection: 'column',
+        alignItems: 'center',
+        backgroundColor: 'var(--background)',
+        paddingBottom: 'var(--space-12)'
+      },
       children: ['ground']
     },
     {
       id: 'ground',
       type: 'Group',
-      label: 'Page ground',
-      parent: 'page',
-      parameters: { ...FORM_GROUND, alignX: 'center' },
-      children: ['headingHead', 'form', 'sent', 'refusal', 'hint', 'signInButton']
+      label: 'The form column',
+      parent: 'formBand',
+      // ⚠️ `paddingTop` cut from `PAGE_GROUND`'s `--space-12`: that 48px is the
+      // air under a band-less page's top edge, and here the photograph above is
+      // already the page's top edge.
+      parameters: { ...FORM_GROUND, alignX: 'center', paddingTop: 'var(--space-8)' },
+      children: ['form', 'sent', 'refusal', 'hint', 'signInButton']
     },
-    ...pageHead('heading', 'Heading', 'ground', 'Members’ area', 'Ask to join'),
     // 🔴 The fields were loose on the page ground, full-bleed down a single
     // column. A form is one thing a person fills in, and a panel is how a page
     // says so.
@@ -3194,6 +3704,7 @@ const SETUP: Tpl001Component = {
       parameters: PANEL,
       children: [
         'nameField',
+        'taglineField',
         'aboutField',
         'yourNameField',
         'emailField',
@@ -3208,6 +3719,24 @@ const SETUP: Tpl001Component = {
       label: 'Association name',
       parent: 'form',
       parameters: { ...FIELD, useLabel: true, label: 'Association name' }
+    },
+    {
+      id: 'taglineField',
+      type: 'net.noodl.controls.textinput',
+      // 🔴 **§E-i, and this is the field the whole ruling turns on.** The landing
+      // hero's one line under the association's name used to be the long
+      // `blurb`, which is the wrong shape for a headline's second line and the
+      // right shape for a paragraph. Splitting them is what lets the hero say
+      // one thing and the page below say the rest — and it means neither is a
+      // string somebody has to find in the editor.
+      //
+      // ⚠️ **The hint is the whole of §E-ii applied to a FORM.** A label reading
+      // "Tagline" gets a tagline from somebody who knows what one is; the
+      // parenthetical is for the churchwarden who does not, and it is an example
+      // of the SHAPE rather than a sentence anybody would keep.
+      label: 'Tagline',
+      parent: 'form',
+      parameters: { ...FIELD, useLabel: true, label: 'One line about the association (e.g. “Meeting on the green since 1894”)' }
     },
     {
       id: 'aboutField',
@@ -3284,9 +3813,9 @@ const SETUP: Tpl001Component = {
        * "You left the name box empty" leaks nothing at all — the person already
        * knows — so it is answered HERE, in the browser, before the call is made.
        *
-       * ⚠️ `blurb` is absent on purpose: `preq-blurb` is `false`, so it is the
-       * one optional field and demanding it would refuse a form the server
-       * accepts.
+       * ⚠️ `blurb` and `tagline` are absent on purpose: both are `preq: false`
+       * at the door, so they are the two optional fields and demanding either
+       * would refuse a form the server accepts.
        */
       ports: [
         { name: 'out-ready', plug: 'output', type: 'signal' },
@@ -3335,6 +3864,7 @@ const SETUP: Tpl001Component = {
   ],
   connections: [
     { fromId: 'nameField', fromProperty: 'onTextChanged', toId: 'claim', toProperty: 'in-associationName' },
+    { fromId: 'taglineField', fromProperty: 'onTextChanged', toId: 'claim', toProperty: 'in-tagline' },
     { fromId: 'aboutField', fromProperty: 'onTextChanged', toId: 'claim', toProperty: 'in-blurb' },
     { fromId: 'yourNameField', fromProperty: 'onTextChanged', toId: 'claim', toProperty: 'in-moderatorName' },
     { fromId: 'emailField', fromProperty: 'onTextChanged', toId: 'claim', toProperty: 'in-email' },
@@ -3405,9 +3935,9 @@ const POST: Tpl001Component = {
       label: 'Page ground',
       parent: 'page',
       parameters: FORM_GROUND,
-      children: ['headingHead', 'notAllowed', 'tools']
+      children: ['headingHeadRow', 'notAllowed', 'tools']
     },
-    ...pageHead('heading', 'Heading', 'ground', 'For moderators', 'Post something'),
+    ...pageHead('heading', 'Heading', 'ground', 'For moderators', 'Post something', { icon: 'pencil' }),
     ...notice('notAllowed', 'Not a moderator', 'ground', 'Only a moderator can post here.', {
       tone: 'refused'
     }),
@@ -3735,9 +4265,9 @@ const REQUESTS: Tpl001Component = {
       label: 'Page ground',
       parent: 'page',
       parameters: PAGE_GROUND,
-      children: ['headingHead', 'notAllowed', 'queue']
+      children: ['headingHeadRow', 'notAllowed', 'queue']
     },
-    ...pageHead('heading', 'Heading', 'ground', 'For moderators', 'Requests to join'),
+    ...pageHead('heading', 'Heading', 'ground', 'For moderators', 'Requests to join', { icon: 'user-plus' }),
     ...notice('notAllowed', 'Not a moderator', 'ground', 'Only a moderator can see who is waiting to join.', {
       tone: 'refused'
     }),
@@ -3850,9 +4380,9 @@ const DIRECTORY: Tpl001Component = {
       label: 'Page ground',
       parent: 'page',
       parameters: PAGE_GROUND,
-      children: ['headingHead', 'notAllowed', 'directory']
+      children: ['headingHeadRow', 'notAllowed', 'directory']
     },
-    ...pageHead('heading', 'Heading', 'ground', 'For moderators', 'Who belongs'),
+    ...pageHead('heading', 'Heading', 'ground', 'For moderators', 'Who belongs', { icon: 'users' }),
     ...notice('notAllowed', 'Not a moderator', 'ground', 'Only a moderator can see the member list.', {
       tone: 'refused'
     }),
@@ -4373,9 +4903,9 @@ const ACCOUNT: Tpl001Component = {
       label: 'Page ground',
       parent: 'page',
       parameters: FORM_GROUND,
-      children: ['headingHead', 'panel', 'savedOn', 'savedOff', 'failed']
+      children: ['headingHeadRow', 'panel', 'savedOn', 'savedOff', 'failed']
     },
-    ...pageHead('heading', 'Heading', 'ground', 'Your account', 'Emails'),
+    ...pageHead('heading', 'Heading', 'ground', 'Your account', 'Emails', { icon: 'mail' }),
     {
       id: 'panel',
       type: 'Group',

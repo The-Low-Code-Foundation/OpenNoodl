@@ -32,7 +32,7 @@
       "label": "Page ground",
       "parent": "page-12",
       "children": [
-        "headingHead-9",
+        "headingHeadRow-6",
         "panel",
         "savedOn",
         "savedOff",
@@ -64,10 +64,79 @@
       "y": 280
     },
     {
+      "id": "headingHeadRow-6",
+      "type": "Group",
+      "label": "Heading — the head, badged",
+      "parent": "ground-11",
+      "children": [
+        "headingBadge-6",
+        "headingHead-9"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "row",
+        "alignItems": "center",
+        "columnGap": "var(--space-4)"
+      },
+      "x": 160,
+      "y": 400
+    },
+    {
+      "id": "headingBadge-6",
+      "type": "Group",
+      "label": "Heading — the badge",
+      "parent": "headingHeadRow-6",
+      "children": [
+        "headingGlyph-6"
+      ],
+      "parameters": {
+        "sizeMode": "explicit",
+        "width": {
+          "value": 44,
+          "unit": "px"
+        },
+        "height": {
+          "value": 44,
+          "unit": "px"
+        },
+        "flexDirection": "column",
+        "alignItems": "center",
+        "justifyContent": "center",
+        "backgroundColor": "var(--accent)",
+        "borderRadius": "var(--radius-lg)"
+      },
+      "x": 220,
+      "y": 520
+    },
+    {
+      "id": "headingGlyph-6",
+      "type": "net.noodl.visual.icon",
+      "label": "Heading — the glyph",
+      "parent": "headingBadge-6",
+      "parameters": {
+        "iconIconSource": {
+          "class": "lucide",
+          "code": "icon-mail",
+          "codeAsClass": true
+        },
+        "iconSize": {
+          "value": 22,
+          "unit": "px"
+        },
+        "iconColor": "var(--accent-foreground)"
+      },
+      "x": 280,
+      "y": 640
+    },
+    {
       "id": "headingHead-9",
       "type": "Group",
       "label": "Heading — the head",
-      "parent": "ground-11",
+      "parent": "headingHeadRow-6",
       "children": [
         "headingEyebrow-9",
         "heading-10"
@@ -81,8 +150,8 @@
         "rowGap": "var(--space-1)",
         "paddingBottom": "var(--space-2)"
       },
-      "x": 160,
-      "y": 400
+      "x": 220,
+      "y": 760
     },
     {
       "id": "headingEyebrow-9",
@@ -97,8 +166,8 @@
         "textTransform": "uppercase",
         "color": "var(--primary)"
       },
-      "x": 220,
-      "y": 520
+      "x": 280,
+      "y": 880
     },
     {
       "id": "heading-10",
@@ -113,8 +182,8 @@
         "letterSpacing": "var(--tracking-tight)",
         "color": "var(--foreground)"
       },
-      "x": 220,
-      "y": 640
+      "x": 280,
+      "y": 1000
     },
     {
       "id": "panel",
@@ -145,7 +214,7 @@
         "mounted": false
       },
       "x": 160,
-      "y": 760
+      "y": 1120
     },
     {
       "id": "box",
@@ -172,7 +241,7 @@
         "labelcolor": "var(--foreground)"
       },
       "x": 220,
-      "y": 880
+      "y": 1240
     },
     {
       "id": "note",
@@ -185,7 +254,7 @@
         "color": "var(--muted-foreground)"
       },
       "x": 220,
-      "y": 1000
+      "y": 1360
     },
     {
       "id": "savedOn",
@@ -215,7 +284,7 @@
         "mounted": false
       },
       "x": 160,
-      "y": 1120
+      "y": 1480
     },
     {
       "id": "savedOnText",
@@ -228,7 +297,7 @@
         "color": "var(--accent-foreground)"
       },
       "x": 220,
-      "y": 1240
+      "y": 1600
     },
     {
       "id": "savedOff",
@@ -258,7 +327,7 @@
         "mounted": false
       },
       "x": 160,
-      "y": 1360
+      "y": 1720
     },
     {
       "id": "savedOffText",
@@ -271,7 +340,7 @@
         "color": "var(--accent-foreground)"
       },
       "x": 220,
-      "y": 1480
+      "y": 1840
     },
     {
       "id": "failed-2",
@@ -301,7 +370,7 @@
         "mounted": false
       },
       "x": 160,
-      "y": 1600
+      "y": 1960
     },
     {
       "id": "failedText",
@@ -314,7 +383,7 @@
         "color": "var(--destructive)"
       },
       "x": 220,
-      "y": 1720
+      "y": 2080
     },
     {
       "id": "read-4",
@@ -323,8 +392,8 @@
       "parameters": {
         "function": "myNotifySetting"
       },
-      "x": 470,
-      "y": 880
+      "x": 530,
+      "y": 1240
     },
     {
       "id": "write",
@@ -333,8 +402,8 @@
       "parameters": {
         "function": "setNotifySetting"
       },
-      "x": 470,
-      "y": 1000
+      "x": 530,
+      "y": 1360
     },
     {
       "id": "which",
@@ -363,8 +432,8 @@
           "group": "Inputs"
         }
       ],
-      "x": 470,
-      "y": 1840
+      "x": 530,
+      "y": 2200
     },
     {
       "id": "onGate",
@@ -374,8 +443,8 @@
         "condition": true,
         "runOnChange-condition": false
       },
-      "x": 470,
-      "y": 1120
+      "x": 530,
+      "y": 1480
     },
     {
       "id": "offGate",
@@ -385,8 +454,8 @@
         "condition": true,
         "runOnChange-condition": false
       },
-      "x": 470,
-      "y": 1360
+      "x": 530,
+      "y": 1720
     },
     {
       "id": "failGate",
@@ -396,8 +465,8 @@
         "condition": true,
         "runOnChange-condition": false
       },
-      "x": 470,
-      "y": 1600
+      "x": 530,
+      "y": 1960
     },
     {
       "id": "onClear",
@@ -407,8 +476,8 @@
         "condition": false,
         "runOnChange-condition": false
       },
-      "x": 470,
-      "y": 1240
+      "x": 530,
+      "y": 1600
     },
     {
       "id": "offClear",
@@ -418,8 +487,8 @@
         "condition": false,
         "runOnChange-condition": false
       },
-      "x": 470,
-      "y": 1480
+      "x": 530,
+      "y": 1840
     },
     {
       "id": "failClear",
@@ -429,8 +498,8 @@
         "condition": false,
         "runOnChange-condition": false
       },
-      "x": 470,
-      "y": 1720
+      "x": 530,
+      "y": 2080
     },
     {
       "id": "toLanding-6",
@@ -440,7 +509,7 @@
         "router": "Main",
         "target": "/Pages/Landing"
       },
-      "x": 470,
+      "x": 530,
       "y": 160
     }
   ],

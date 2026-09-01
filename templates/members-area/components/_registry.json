@@ -15,7 +15,7 @@
       "path": "__cloud__/claimAssociation",
       "type": "cloud",
       "nodeCount": 11,
-      "connectionCount": 47,
+      "connectionCount": 49,
       "modified": "2026-08-28T00:00:00.000Z",
       "created": "2026-08-28T00:00:00.000Z"
     },
@@ -86,8 +86,8 @@
     "Members/AnnouncementRow": {
       "path": "Members/AnnouncementRow",
       "type": "visual",
-      "nodeCount": 8,
-      "connectionCount": 5,
+      "nodeCount": 10,
+      "connectionCount": 7,
       "modified": "2026-08-28T00:00:00.000Z",
       "created": "2026-08-28T00:00:00.000Z"
     },
@@ -110,7 +110,7 @@
     "Members/MemberRow": {
       "path": "Members/MemberRow",
       "type": "visual",
-      "nodeCount": 7,
+      "nodeCount": 10,
       "connectionCount": 5,
       "modified": "2026-08-28T00:00:00.000Z",
       "created": "2026-08-28T00:00:00.000Z"
@@ -134,8 +134,8 @@
     "Pages/Landing": {
       "path": "Pages/Landing",
       "type": "page",
-      "nodeCount": 37,
-      "connectionCount": 12,
+      "nodeCount": 43,
+      "connectionCount": 14,
       "modified": "2026-08-28T00:00:00.000Z",
       "created": "2026-08-28T00:00:00.000Z"
     },
@@ -150,7 +150,7 @@
     "Pages/Members": {
       "path": "Pages/Members",
       "type": "page",
-      "nodeCount": 28,
+      "nodeCount": 31,
       "connectionCount": 14,
       "modified": "2026-08-28T00:00:00.000Z",
       "created": "2026-08-28T00:00:00.000Z"
@@ -158,7 +158,7 @@
     "Pages/Announcement": {
       "path": "Pages/Announcement",
       "type": "page",
-      "nodeCount": 30,
+      "nodeCount": 33,
       "connectionCount": 22,
       "modified": "2026-08-28T00:00:00.000Z",
       "created": "2026-08-28T00:00:00.000Z"
@@ -166,7 +166,7 @@
     "Pages/Meetings": {
       "path": "Pages/Meetings",
       "type": "page",
-      "nodeCount": 16,
+      "nodeCount": 19,
       "connectionCount": 9,
       "modified": "2026-08-28T00:00:00.000Z",
       "created": "2026-08-28T00:00:00.000Z"
@@ -174,7 +174,7 @@
     "Pages/Meeting": {
       "path": "Pages/Meeting",
       "type": "page",
-      "nodeCount": 31,
+      "nodeCount": 34,
       "connectionCount": 23,
       "modified": "2026-08-28T00:00:00.000Z",
       "created": "2026-08-28T00:00:00.000Z"
@@ -182,7 +182,7 @@
     "Pages/Join": {
       "path": "Pages/Join",
       "type": "page",
-      "nodeCount": 21,
+      "nodeCount": 25,
       "connectionCount": 10,
       "modified": "2026-08-28T00:00:00.000Z",
       "created": "2026-08-28T00:00:00.000Z"
@@ -190,15 +190,15 @@
     "Pages/Setup": {
       "path": "Pages/Setup",
       "type": "page",
-      "nodeCount": 24,
-      "connectionCount": 21,
+      "nodeCount": 25,
+      "connectionCount": 22,
       "modified": "2026-08-28T00:00:00.000Z",
       "created": "2026-08-28T00:00:00.000Z"
     },
     "Pages/Post": {
       "path": "Pages/Post",
       "type": "page",
-      "nodeCount": 34,
+      "nodeCount": 37,
       "connectionCount": 32,
       "modified": "2026-08-28T00:00:00.000Z",
       "created": "2026-08-28T00:00:00.000Z"
@@ -206,7 +206,7 @@
     "Pages/Requests": {
       "path": "Pages/Requests",
       "type": "page",
-      "nodeCount": 16,
+      "nodeCount": 19,
       "connectionCount": 10,
       "modified": "2026-08-28T00:00:00.000Z",
       "created": "2026-08-28T00:00:00.000Z"
@@ -214,7 +214,7 @@
     "Pages/Directory": {
       "path": "Pages/Directory",
       "type": "page",
-      "nodeCount": 17,
+      "nodeCount": 20,
       "connectionCount": 9,
       "modified": "2026-08-28T00:00:00.000Z",
       "created": "2026-08-28T00:00:00.000Z"
@@ -222,7 +222,7 @@
     "Pages/Account": {
       "path": "Pages/Account",
       "type": "page",
-      "nodeCount": 25,
+      "nodeCount": 28,
       "connectionCount": 25,
       "modified": "2026-08-28T00:00:00.000Z",
       "created": "2026-08-28T00:00:00.000Z"
@@ -238,7 +238,7 @@
   },
   "stats": {
     "totalComponents": 29,
-    "totalNodes": 445,
-    "totalConnections": 483
+    "totalNodes": 485,
+    "totalConnections": 490
   }
 }

@@ -32,10 +32,11 @@
     {
       "id": "rowLines",
       "type": "Group",
-      "label": "What it is, and when",
+      "label": "What it is, when, and what it says",
       "parent": "row-3",
       "children": [
         "rowTitle",
+        "rowExcerpt",
         "rowDate"
       ],
       "parameters": {
@@ -66,6 +67,19 @@
       "y": 280
     },
     {
+      "id": "rowExcerpt",
+      "type": "Text",
+      "label": "The first line of it",
+      "parent": "rowLines",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-base)",
+        "color": "var(--muted-foreground)"
+      },
+      "x": 160,
+      "y": 400
+    },
+    {
       "id": "rowDate",
       "type": "Text",
       "label": "Posted",
@@ -76,7 +90,7 @@
         "color": "var(--muted-foreground)"
       },
       "x": 160,
-      "y": 400
+      "y": 520
     },
     {
       "id": "readButton",
@@ -100,7 +114,7 @@
         "sizeMode": "contentSize"
       },
       "x": 100,
-      "y": 520
+      "y": 640
     },
     {
       "id": "inputs-2",
@@ -114,6 +128,11 @@
         },
         {
           "name": "title",
+          "plug": "output",
+          "type": "string"
+        },
+        {
+          "name": "body",
           "plug": "output",
           "type": "string"
         },
@@ -134,7 +153,7 @@
         "functionScript": "function humanDay(raw) {\n  if (raw === undefined || raw === null) return '';\n  var s = String(raw);\n  if (s === '') return '';\n  var m = /^(\\d{4})-(\\d{2})-(\\d{2})$/.exec(s);\n  var at = m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : new Date(s);\n  if (isNaN(at.getTime())) return '';\n  return at.toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' });\n}\nif (Inputs.postedAt === undefined) return;\nOutputs.label = humanDay(Inputs.postedAt);"
       },
       "x": 410,
-      "y": 400,
+      "y": 520,
       "ports": [
         {
           "name": "in-postedAt",
@@ -153,6 +172,33 @@
       ]
     },
     {
+      "id": "firstLine",
+      "type": "JavaScriptFunction",
+      "label": "The first line of the body, and only the first",
+      "parameters": {
+        "runOnChange-in-body": false,
+        "functionScript": "if (Inputs.body === undefined) return;\nconst flat = String(Inputs.body || '').replace(/\\s+/g, ' ').trim();\nif (flat.length <= 120) {\n  Outputs.line = flat;\n  return;\n}\nconst cut = flat.slice(0, 120);\nconst lastSpace = cut.lastIndexOf(\" \");\nOutputs.line = (lastSpace > 60 ? cut.slice(0, lastSpace) : cut) + '…';"
+      },
+      "x": 410,
+      "y": 400,
+      "ports": [
+        {
+          "name": "in-body",
+          "displayName": "body",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "out-line",
+          "displayName": "line",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        }
+      ]
+    },
+    {
       "id": "goDetail",
       "type": "RouterNavigate",
       "label": "Open the announcement",
@@ -161,7 +207,7 @@
         "target": "/Pages/Announcement"
       },
       "x": 410,
-      "y": 520
+      "y": 640
     }
   ],
   "visualRoots": [

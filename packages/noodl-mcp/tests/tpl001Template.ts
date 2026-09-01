@@ -120,7 +120,11 @@ function writeSkeleton(dir: string): void {
         name: TEMPLATE_PROJECT_NAME,
         version: '4',
         nodegxVersion: '1.1.0',
-        settings: { htmlTitle: TEMPLATE_PROJECT_NAME, navigationPathType: 'path' },
+        // REL-002a — `bodyScroll: true`, and it is not cosmetic. Without it the viewer pins the
+        // app to the viewport under `overflow: clip` and nothing below the fold can be reached:
+        // measured on this very template at 988x313, `/setup` had 0 of its 7 controls clickable
+        // and `/join` 0 of 6, submit buttons included.
+        settings: { htmlTitle: TEMPLATE_PROJECT_NAME, navigationPathType: 'path', bodyScroll: true },
         structure: { componentsDir: 'components', assetsDir: 'assets' }
       },
       null,
@@ -432,7 +436,132 @@ export function prepareArtefact(built: AuthoredTemplate, output: string, policyS
   }
   fs.copyFileSync(policySource, path.join(output, POLICY_FILE));
 
+  writeStartHere(output);
   pinRootNode(output);
+}
+
+/** Where the note lands. `docs/` is the editor's own folder for prose a person reads. */
+export const START_HERE_FILE = 'docs/START-HERE.md';
+
+/**
+ * §E-iii — **the one page that says what to change and where, and it is DERIVED
+ * rather than written.**
+ *
+ * Richard's §E ruling asked for three things and this is the third: *"make it
+ * obvious how to edit the texts and which ones need to be edited, so the user
+ * doesn't accidentally publish with some generic web dev copy on some page they
+ * forgot"*. §E-i answers most of it by making the copy DATA — there is nothing to
+ * forget on a page you never have to visit. §E-ii marks what genuinely cannot be
+ * data with an `EDIT — ` node label. This is the note that points at both.
+ *
+ * 🔴 **The list of marked strings is read out of the artefact that was just
+ * written, never typed here.** A hand-written list is the failure mode
+ * `USED_COMPOSITIONS` already had in this repository: it claimed to be enforced,
+ * nothing read it, and two of its thirteen entries named things that did not
+ * exist. A note listing four `EDIT —` nodes when the template ships five is
+ * worse than no note, because it is where the next person stops looking.
+ *
+ * ⚠️ **`docs/`, not a page component, and the difference is who can see it.** A
+ * `/start-here` route would be a public URL on a deployed members' area — a page
+ * telling strangers which parts of the site are unfinished. `docs/` is the
+ * editor's folder for prose (`docsText.ts`: *"Never inside `.noodl*` — humans
+ * read these"*), it travels with the bundle because `readBundleDirectory` walks
+ * the whole tree, and it is never served.
+ *
+ * ⚠️ **Front matter is `inject: pull`, which is the default anyway, and it is
+ * written out rather than left off.** An absent block means "take the default
+ * for this path" — a decision nobody made. `always` would append this note to
+ * every turn of every AI session in a project that has long since been set up.
+ */
+function writeStartHere(output: string): void {
+  const componentsDir = path.join(output, 'components');
+  const marked: Array<{ component: string; label: string; text: string }> = [];
+
+  const walk = (dir: string): void => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        walk(full);
+        continue;
+      }
+      if (entry.name !== 'nodes.json') continue;
+      const component = path.relative(componentsDir, path.dirname(full)).split(path.sep).join('/');
+      const parsed = JSON.parse(fs.readFileSync(full, 'utf-8')) as {
+        nodes?: Array<{ label?: string; parameters?: Record<string, unknown> }>;
+      };
+      for (const node of parsed.nodes ?? []) {
+        // The marker is the LABEL, because that is what the editor's node tree
+        // draws — §E-ii's whole mechanism is that a person scrolling the tree
+        // sees them without knowing to look.
+        if (typeof node.label === 'string' && node.label.startsWith('EDIT \u2014 ')) {
+          marked.push({ component, label: node.label, text: String(node.parameters?.text ?? '') });
+        }
+      }
+    }
+  };
+  walk(componentsDir);
+
+  // 🔴 Beside a known-firing signal, and it REFUSES rather than warns. An empty
+  // list here has two causes that look identical in the output — the convention
+  // was dropped, or the walk stopped finding it (a renamed file, an em dash that
+  // became a hyphen) — and both ship a note whose central section is blank.
+  if (marked.length === 0) {
+    throw new Error('refusing to write: no `EDIT \u2014 ` node found in the artefact, so \u00a7E-ii\u2019s convention is either gone or unreadable');
+  }
+  marked.sort((a, b) => (a.component + a.label).localeCompare(b.component + b.label));
+
+  const rows = marked.map((m) => `| \`${m.component}\` | **${m.label}** | ${m.text} |`).join('\n');
+  const body = `---
+title: Start here
+inject: pull
+when: copy, text, editing, setup, association name, placeholder
+---
+
+# Start here
+
+This members' area is ready to run. There are exactly **two** places its words
+come from, and this note is the whole list.
+
+## 1. Almost all of the copy is DATA, so there is nothing to edit
+
+Open the site and go to **/setup**. That form asks for the association's name, a
+one-line tagline and a paragraph about the association, and the pages read all
+three from the record: the landing hero shows the name and the tagline, the
+"About us" band below it shows the paragraph, and the band across the top of
+every signed-in page shows the name.
+
+**You do not need to open the editor to change any of them.** Sign in as the
+moderator and run \`/setup\` again on a fresh install, or edit the \`Association\`
+row in your backend.
+
+You will also need the setup token, which is a **backend secret** called
+\`ASSOCIATION_SETUP_TOKEN\` — it lives in your backend's configuration, never in
+this project, so that every association that installs this template does not
+share one.
+
+## 2. The strings that could not be data are marked \`EDIT —\`
+
+These are the ones with nowhere to live but the graph. Every one of them is
+written to look unfinished on purpose, and every one is **named with an
+\`EDIT —\` prefix so the editor's node tree lists them**. Search the tree for
+\`EDIT\` and this table is what you will find.
+
+| component | node | what it says today |
+|---|---|---|
+${rows}
+
+Change the text, or delete the node if it does not apply to you.
+
+---
+
+*This file is generated from the template itself — the table above is read out of
+the shipped graph rather than typed, so it cannot describe a node that is not
+there.*
+`;
+
+  const docsDir = path.join(output, path.dirname(START_HERE_FILE));
+  fs.mkdirSync(docsDir, { recursive: true });
+  fs.writeFileSync(path.join(output, START_HERE_FILE), body);
 }
 
 /**

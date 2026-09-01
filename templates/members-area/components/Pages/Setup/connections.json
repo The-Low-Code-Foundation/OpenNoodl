@@ -10,6 +10,12 @@
       "toProperty": "in-associationName"
     },
     {
+      "fromId": "taglineField",
+      "fromProperty": "onTextChanged",
+      "toId": "claim",
+      "toProperty": "in-tagline"
+    },
+    {
       "fromId": "aboutField",
       "fromProperty": "onTextChanged",
       "toId": "claim",

@@ -136,9 +136,9 @@ export const CLAIM_NODES = [
   {
     id: 'req',
     type: 'noodl.cloud.request',
-    label: 'claimAssociation(setupToken, associationName, blurb, moderatorName, email, password)',
+    label: 'claimAssociation(setupToken, associationName, tagline, blurb, moderatorName, email, password)',
     parameters: {
-      params: 'setupToken,associationName,blurb,moderatorName,email,password',
+      params: 'setupToken,associationName,tagline,blurb,moderatorName,email,password',
       'ptype-setupToken': 'string',
       'preq-setupToken': true,
       'ptype-associationName': 'string',
@@ -150,6 +150,19 @@ export const CLAIM_NODES = [
       // at the form, and an optional name would just restore the fallback.
       'ptype-moderatorName': 'string',
       'preq-moderatorName': true,
+      // 🔴 **§E-i. The ONE new field, and the reason it is a field rather than a
+      // string in the graph.** Richard's ruling: *"make it obvious how to edit
+      // the texts and which ones need to be edited, so the user doesn't
+      // accidentally publish with some generic web dev copy on some page they
+      // forgot"*. That failure mode exists because copy lives in thirteen places
+      // somebody has to remember to visit; it does not exist if the copy has one
+      // home, and this endpoint is already that home for `name` and `blurb`.
+      //
+      // ⚠️ **Optional, like `blurb`.** A required tagline would make the setup
+      // form refuse an association that has not thought of a line yet, and the
+      // page that reads it is written to render nothing rather than a gap.
+      'ptype-tagline': 'string',
+      'preq-tagline': false,
       'ptype-blurb': 'string',
       'preq-blurb': false,
       'ptype-email': 'string',
@@ -197,6 +210,7 @@ export const CLAIM_NODES = [
       'runOnChange-in-unclaimed': false,
       'runOnChange-in-rows': false,
       'runOnChange-in-name': false,
+      'runOnChange-in-tagline': false,
       'runOnChange-in-blurb': false,
       'runOnChange-in-email': false,
       'runOnChange-in-password': false,
@@ -234,6 +248,7 @@ export const CLAIM_NODES = [
         // way would make the founding row's name a third producer arriving on a
         // different schedule from the address beside it.
         "Outputs.moderatorName = Inputs.moderatorName || '';\n" +
+        "Outputs.tagline = Inputs.tagline || '';\n" +
         "Outputs.blurb = Inputs.blurb || '';\n" +
         'Outputs.claimed = true;\n' +
         'Outputs.ok();'
@@ -352,6 +367,7 @@ export const CLAIM_WIRES = [
 
   { fromId: 'req', fromProperty: 'pm-setupToken', toId: 'gate', toProperty: 'in-supplied' },
   { fromId: 'req', fromProperty: 'pm-associationName', toId: 'gate', toProperty: 'in-name' },
+  { fromId: 'req', fromProperty: 'pm-tagline', toId: 'gate', toProperty: 'in-tagline' },
   { fromId: 'req', fromProperty: 'pm-blurb', toId: 'gate', toProperty: 'in-blurb' },
   { fromId: 'req', fromProperty: 'pm-moderatorName', toId: 'gate', toProperty: 'in-moderatorName' },
   { fromId: 'req', fromProperty: 'pm-email', toId: 'gate', toProperty: 'in-email' },
@@ -375,6 +391,7 @@ export const CLAIM_WIRES = [
   { fromId: 'create', fromProperty: 'unchanged', toId: 'grant', toProperty: 'add' },
 
   { fromId: 'gate', fromProperty: 'out-name', toId: 'mark', toProperty: 'prop-name' },
+  { fromId: 'gate', fromProperty: 'out-tagline', toId: 'mark', toProperty: 'prop-tagline' },
   { fromId: 'gate', fromProperty: 'out-blurb', toId: 'mark', toProperty: 'prop-blurb' },
   { fromId: 'grant', fromProperty: 'done', toId: 'mark', toProperty: 'store' },
   { fromId: 'grant', fromProperty: 'unchanged', toId: 'mark', toProperty: 'store' },

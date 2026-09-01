@@ -51,7 +51,7 @@ import {
   STANDING_COMPONENT,
   withoutInertBorderWidth
 } from './tpl001Components';
-import { APP_COMPONENT, buildMembersTemplateProject, prepareArtefact, TEMPLATE_ID } from './tpl001Template';
+import { APP_COMPONENT, buildMembersTemplateProject, prepareArtefact, START_HERE_FILE, TEMPLATE_ID } from './tpl001Template';
 import { requestedCompositions, USED_COMPOSITIONS } from './tpl001Theme';
 import {
   COLLECTION_ANNOUNCEMENT,
@@ -264,10 +264,23 @@ describe('TPL-001 — the committed template is what the door writes today', () 
     // "what members can see" tile. It is a component and not three inline
     // subtrees because the door refused the inline form —
     // `repeated-sibling-subtree`, naming the remedy.
-    expect(committed.length).toBe(29 * 3 + 3); // TPL-002: +4 cloud functions, +2 pages
+    // REL-002c §E-iii, s8: +1 for `docs/START-HERE.md`. It is the one page that
+    // says what to change and where, and it is GENERATED from the artefact that
+    // was just written rather than typed — see `writeStartHere`. `docs/` rather
+    // than a `/start-here` route because a route would be a public URL telling
+    // strangers which parts of a deployed members' area are unfinished.
+    expect(committed.length).toBe(29 * 3 + 4); // TPL-002: +4 cloud functions, +2 pages
     expect(committed).toContain('nodegx.project.json');
     expect(committed).toContain('nodegx.security.json');
     expect(committed).toContain(path.join('components', '_registry.json'));
+    // 🔴 Named rather than only counted: a file count that goes up by one is
+    // satisfied by any file at all, including a stray one a failed run left
+    // behind, and the note is the deliverable.
+    expect(committed).toContain(path.join('docs', 'START-HERE.md'));
+    // And it has to have found the marked strings, or its central section is a
+    // heading with an empty table under it. `writeStartHere` refuses on zero;
+    // this is the reading on the other side of that refusal.
+    expect(fs.readFileSync(path.join(ARTEFACT, START_HERE_FILE), 'utf-8')).toContain('EDIT \u2014 who to contact');
     // The policy in the artefact IS the hand-authored file, byte for byte —
     // stated separately because it is the one file the door does not write.
     expect(fs.readFileSync(path.join(ARTEFACT, 'nodegx.security.json'), 'utf-8')).toBe(
@@ -515,7 +528,12 @@ describe('TPL-001 — the band is the navigation, and it goes somewhere', () => 
     // not a walk over no `Columns` at all.
     // REL-002c: +3, the landing page's three "what members can see" tiles, which
     // became a `gridAutoFit` when the page went to a 1200px shell.
-    expect(graded).toBe(12); // TPL-002: the sixth band button
+    // REL-002c s8: +3, `Members/MemberRow`'s three cells. The directory row is a
+    // `Columns` now — three across above 700px and one stack below it — because
+    // a Group row cannot reflow and a content-sized child at the far edge of one
+    // broke every address mid-word at 390px. Both alternatives are recorded on
+    // the node itself.
+    expect(graded).toBe(15); // TPL-002: the sixth band button
   });
 
   it('control: no page ships a button whose only job was to go back', () => {
@@ -1049,7 +1067,12 @@ describe('TPL-001 — the states a person can be in all have a screen', () => {
     // REL-002c: +1, `Pages/Landing`'s `hero`. It was mounted by default and
     // painted an eyebrow over two empty `Text` nodes on every unanswered load;
     // it is now closed until `hasAssociation` answers, like `actions` beside it.
-    expect(gates.length).toBe(53); // TPL-002: Account ×7, Unsubscribe ×2 · REL-002b: band ×2, waiting card
+    // REL-002c §E-i, s8: +1, `Pages/Landing`'s `about` band. It carries the
+    // association's own paragraph, which `/setup` collects and the record
+    // supplies — so on a fresh install it is a `--background` stripe holding one
+    // empty `Text` between a photograph and a footer unless it is gated on the
+    // same `hasAssociation` every other record-filled band here is.
+    expect(gates.length).toBe(54); // TPL-002: Account ×7, Unsubscribe ×2 · REL-002b: band ×2, waiting card · REL-002c: hero, about
   });
 
   it('AC6 — every list ships an empty state, hidden until a query has answered', () => {
@@ -1410,8 +1433,24 @@ describe('TPL-001 — the design system is finished, not merely opened', () => {
   it('§2 every notice box carries a fill and an edge', () => {
     const boxes = everyNode.filter(({ component, node }) => {
       if (node.type !== 'Group' || (node.children ?? []).length !== 1) return false;
-      const only = shipped.find((c) => c.path === component)?.nodes.find((n) => n.id === (node.children ?? [])[0]);
-      return only?.type === 'Text';
+      const nodes = shipped.find((c) => c.path === component)?.nodes ?? [];
+      const only = nodes.find((n) => n.id === (node.children ?? [])[0]);
+      if (only?.type !== 'Text') return false;
+      // 🔴 **A CHILD OF A `Columns` IS A LAYOUT CELL, NEVER A NOTICE — and this
+      // exclusion is a correction to the SHAPE this census matches, not a
+      // waiver.** REL-002c made `Members/MemberRow` a three-column table row,
+      // and a `Columns` child has to be a Group that declares `sizeMode` and
+      // `width` (the gate above this one is about exactly that: a content-sized
+      // child ignores the box `calcAutoFit` hands it). So "a Group wrapping one
+      // Text" is now produced by two different intentions, and only one of them
+      // is a notice. Painting the three cells to satisfy this would put a fill
+      // and a radius behind every name in the directory.
+      //
+      // ⚠️ Read from the artefact — the cell's PARENT type — rather than from a
+      // list of ids: an id here is not a name you may do arithmetic on (§5's
+      // finding), and a rule over the shape holds for the next row that reflows.
+      const parent = nodes.find((n) => (n.children ?? []).includes(node.id));
+      return parent?.type !== 'net.noodl.visual.columns';
     });
     // Pinned exactly, not as a floor: an all-passing census over nothing is not
     // a measurement, and a notice quietly lost is the failure this catches.
