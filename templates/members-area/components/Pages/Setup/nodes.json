@@ -8,7 +8,7 @@
       "type": "Page",
       "label": "Set up",
       "children": [
-        "ground-7"
+        "pageShell-6"
       ],
       "parameters": {
         "title": "Set up this members’ area",
@@ -18,10 +18,62 @@
       "y": 40
     },
     {
+      "id": "pageShell-6",
+      "type": "Group",
+      "label": "The page, floored at the viewport",
+      "parent": "page-8",
+      "children": [
+        "pageBody-6",
+        "pageFooter-6"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "minHeight": {
+          "value": 100,
+          "unit": "vh"
+        },
+        "flexDirection": "column",
+        "justifyContent": "space-between"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "pageBody-6",
+      "type": "Group",
+      "label": "Everything above the foot",
+      "parent": "pageShell-6",
+      "children": [
+        "ground-7"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column"
+      },
+      "x": 160,
+      "y": 280
+    },
+    {
+      "id": "pageFooter-6",
+      "type": "/Members/Footer",
+      "label": "The foot of the page",
+      "parent": "pageShell-6",
+      "x": 160,
+      "y": 2560
+    },
+    {
       "id": "ground-7",
       "type": "Group",
       "label": "Page ground",
-      "parent": "page-8",
+      "parent": "pageBody-6",
       "children": [
         "headingHead-5",
         "blurb",
@@ -41,18 +93,14 @@
         "flexDirection": "column",
         "paddingLeft": "var(--space-6)",
         "paddingRight": "var(--space-6)",
-        "sizeMode": "explicit",
-        "height": {
-          "value": 100,
-          "unit": "%"
-        },
+        "sizeMode": "contentHeight",
         "alignX": "center",
         "rowGap": "var(--space-5)",
         "paddingTop": "var(--space-12)",
         "paddingBottom": "var(--space-12)"
       },
-      "x": 100,
-      "y": 160
+      "x": 220,
+      "y": 400
     },
     {
       "id": "headingHead-5",
@@ -72,8 +120,8 @@
         "rowGap": "var(--space-1)",
         "paddingBottom": "var(--space-2)"
       },
-      "x": 160,
-      "y": 280
+      "x": 280,
+      "y": 520
     },
     {
       "id": "headingEyebrow-5",
@@ -88,8 +136,8 @@
         "textTransform": "uppercase",
         "color": "var(--primary)"
       },
-      "x": 220,
-      "y": 400
+      "x": 340,
+      "y": 640
     },
     {
       "id": "heading-6",
@@ -104,8 +152,8 @@
         "letterSpacing": "var(--tracking-tight)",
         "color": "var(--foreground)"
       },
-      "x": 220,
-      "y": 520
+      "x": 340,
+      "y": 760
     },
     {
       "id": "blurb",
@@ -122,8 +170,8 @@
           "unit": "px"
         }
       },
-      "x": 160,
-      "y": 640
+      "x": 280,
+      "y": 880
     },
     {
       "id": "form-3",
@@ -158,8 +206,8 @@
         "paddingTop": "var(--space-5)",
         "paddingBottom": "var(--space-5)"
       },
-      "x": 160,
-      "y": 760
+      "x": 280,
+      "y": 1000
     },
     {
       "id": "nameField-2",
@@ -186,8 +234,8 @@
         "useLabel": true,
         "label": "Association name"
       },
-      "x": 220,
-      "y": 880
+      "x": 340,
+      "y": 1120
     },
     {
       "id": "taglineField",
@@ -214,8 +262,8 @@
         "useLabel": true,
         "label": "One line about the association (e.g. “Meeting on the green since 1894”)"
       },
-      "x": 220,
-      "y": 1000
+      "x": 340,
+      "y": 1240
     },
     {
       "id": "aboutField",
@@ -243,8 +291,8 @@
         "label": "About the association",
         "type": "textArea"
       },
-      "x": 220,
-      "y": 1120
+      "x": 340,
+      "y": 1360
     },
     {
       "id": "yourNameField",
@@ -271,8 +319,8 @@
         "useLabel": true,
         "label": "Your name"
       },
-      "x": 220,
-      "y": 1240
+      "x": 340,
+      "y": 1480
     },
     {
       "id": "emailField-2",
@@ -300,8 +348,8 @@
         "label": "Your email",
         "type": "email"
       },
-      "x": 220,
-      "y": 1360
+      "x": 340,
+      "y": 1600
     },
     {
       "id": "passwordField-2",
@@ -329,8 +377,8 @@
         "label": "Choose a password",
         "type": "password"
       },
-      "x": 220,
-      "y": 1480
+      "x": 340,
+      "y": 1720
     },
     {
       "id": "tokenField",
@@ -358,8 +406,8 @@
         "label": "Setup token",
         "type": "password"
       },
-      "x": 220,
-      "y": 1600
+      "x": 340,
+      "y": 1840
     },
     {
       "id": "claimButton",
@@ -380,8 +428,8 @@
         "fontWeight": "var(--font-semibold)",
         "sizeMode": "contentSize"
       },
-      "x": 220,
-      "y": 1720
+      "x": 340,
+      "y": 1960
     },
     {
       "id": "refusal-4",
@@ -410,8 +458,8 @@
         "paddingBottom": "var(--space-5)",
         "mounted": false
       },
-      "x": 160,
-      "y": 1840
+      "x": 280,
+      "y": 2080
     },
     {
       "id": "refusalText-4",
@@ -423,8 +471,8 @@
         "fontSize": "var(--text-sm)",
         "color": "var(--destructive)"
       },
-      "x": 220,
-      "y": 1960
+      "x": 340,
+      "y": 2200
     },
     {
       "id": "missing",
@@ -453,8 +501,8 @@
         "paddingBottom": "var(--space-5)",
         "mounted": false
       },
-      "x": 160,
-      "y": 2080
+      "x": 280,
+      "y": 2320
     },
     {
       "id": "missingText",
@@ -466,8 +514,8 @@
         "fontSize": "var(--text-sm)",
         "color": "var(--destructive)"
       },
-      "x": 220,
-      "y": 2200
+      "x": 340,
+      "y": 2440
     },
     {
       "id": "claim",
@@ -476,8 +524,8 @@
       "parameters": {
         "function": "claimAssociation"
       },
-      "x": 470,
-      "y": 880
+      "x": 590,
+      "y": 1120
     },
     {
       "id": "check",
@@ -545,8 +593,8 @@
           "group": "Outputs"
         }
       ],
-      "x": 470,
-      "y": 2320
+      "x": 590,
+      "y": 2560
     },
     {
       "id": "refusalGate-4",
@@ -556,8 +604,8 @@
         "condition": true,
         "runOnChange-condition": false
       },
-      "x": 470,
-      "y": 1840
+      "x": 590,
+      "y": 2080
     },
     {
       "id": "missingGate",
@@ -567,8 +615,8 @@
         "condition": true,
         "runOnChange-condition": false
       },
-      "x": 470,
-      "y": 2080
+      "x": 590,
+      "y": 2320
     },
     {
       "id": "missingClear",
@@ -578,8 +626,8 @@
         "condition": false,
         "runOnChange-condition": false
       },
-      "x": 470,
-      "y": 2200
+      "x": 590,
+      "y": 2440
     },
     {
       "id": "toSignIn-2",
@@ -589,8 +637,8 @@
         "router": "Main",
         "target": "/Pages/SignIn"
       },
-      "x": 470,
-      "y": 2440
+      "x": 590,
+      "y": 2680
     }
   ],
   "visualRoots": [

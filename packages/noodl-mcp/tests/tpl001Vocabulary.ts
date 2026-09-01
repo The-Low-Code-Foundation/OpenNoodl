@@ -256,7 +256,14 @@ export const UPCOMING_FILTER = {
  */
 export const REQUEST_SENT_TEXT = 'Thank you. Your request has been passed to the moderators.';
 export const REQUEST_REFUSED_TEXT = 'That request could not be sent. Please check the form and try again.';
-export const ALREADY_A_MEMBER_HINT = 'Already have an account? Sign in instead.';
+/**
+ * ⚠️ **The offer is made ONCE, and it used to be made twice.** The sentence read
+ * *"Already have an account? Sign in instead."* — "Sign in instead" reads as a
+ * link, is not one, and sat immediately above a separate outline `Sign in`
+ * button that is the actual control. REL-002c item 3: one sentence, one
+ * control.
+ */
+export const ALREADY_A_MEMBER_HINT = 'Already have an account?';
 
 /** Setup, and the same one-refusal rule as `claimSite`. */
 export const CLAIM_REFUSED_TEXT = 'This members’ area cannot be set up with those details.';

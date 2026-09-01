@@ -8,8 +8,7 @@
       "type": "Page",
       "label": "Your account",
       "children": [
-        "chrome-8",
-        "ground-11"
+        "pageShell-10"
       ],
       "parameters": {
         "title": "Your account",
@@ -19,18 +18,71 @@
       "y": 40
     },
     {
+      "id": "pageShell-10",
+      "type": "Group",
+      "label": "The page, floored at the viewport",
+      "parent": "page-12",
+      "children": [
+        "pageBody-10",
+        "pageFooter-10"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "minHeight": {
+          "value": 100,
+          "unit": "vh"
+        },
+        "flexDirection": "column",
+        "justifyContent": "space-between"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "pageBody-10",
+      "type": "Group",
+      "label": "Everything above the foot",
+      "parent": "pageShell-10",
+      "children": [
+        "chrome-8",
+        "ground-11"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column"
+      },
+      "x": 160,
+      "y": 280
+    },
+    {
       "id": "chrome-8",
       "type": "/Members/Chrome",
       "label": "The band",
-      "parent": "page-12",
-      "x": 100,
-      "y": 160
+      "parent": "pageBody-10",
+      "x": 220,
+      "y": 400
+    },
+    {
+      "id": "pageFooter-10",
+      "type": "/Members/Footer",
+      "label": "The foot of the page",
+      "parent": "pageShell-10",
+      "x": 160,
+      "y": 2440
     },
     {
       "id": "ground-11",
       "type": "Group",
       "label": "Page ground",
-      "parent": "page-12",
+      "parent": "pageBody-10",
       "children": [
         "headingHeadRow-6",
         "panel",
@@ -50,18 +102,14 @@
         "flexDirection": "column",
         "paddingLeft": "var(--space-6)",
         "paddingRight": "var(--space-6)",
-        "sizeMode": "explicit",
-        "height": {
-          "value": 100,
-          "unit": "%"
-        },
+        "sizeMode": "contentHeight",
         "alignX": "center",
         "rowGap": "var(--space-5)",
         "paddingTop": "var(--space-12)",
         "paddingBottom": "var(--space-12)"
       },
-      "x": 100,
-      "y": 280
+      "x": 220,
+      "y": 520
     },
     {
       "id": "headingHeadRow-6",
@@ -82,8 +130,8 @@
         "alignItems": "center",
         "columnGap": "var(--space-4)"
       },
-      "x": 160,
-      "y": 400
+      "x": 280,
+      "y": 640
     },
     {
       "id": "headingBadge-6",
@@ -109,8 +157,8 @@
         "backgroundColor": "var(--accent)",
         "borderRadius": "var(--radius-lg)"
       },
-      "x": 220,
-      "y": 520
+      "x": 340,
+      "y": 760
     },
     {
       "id": "headingGlyph-6",
@@ -129,8 +177,8 @@
         },
         "iconColor": "var(--accent-foreground)"
       },
-      "x": 280,
-      "y": 640
+      "x": 400,
+      "y": 880
     },
     {
       "id": "headingHead-9",
@@ -150,8 +198,8 @@
         "rowGap": "var(--space-1)",
         "paddingBottom": "var(--space-2)"
       },
-      "x": 220,
-      "y": 760
+      "x": 340,
+      "y": 1000
     },
     {
       "id": "headingEyebrow-9",
@@ -166,8 +214,8 @@
         "textTransform": "uppercase",
         "color": "var(--primary)"
       },
-      "x": 280,
-      "y": 880
+      "x": 400,
+      "y": 1120
     },
     {
       "id": "heading-10",
@@ -182,8 +230,8 @@
         "letterSpacing": "var(--tracking-tight)",
         "color": "var(--foreground)"
       },
-      "x": 280,
-      "y": 1000
+      "x": 400,
+      "y": 1240
     },
     {
       "id": "panel",
@@ -213,8 +261,8 @@
         "paddingBottom": "var(--space-5)",
         "mounted": false
       },
-      "x": 160,
-      "y": 1120
+      "x": 280,
+      "y": 1360
     },
     {
       "id": "box",
@@ -240,8 +288,8 @@
         "labelfontSize": "var(--text-base)",
         "labelcolor": "var(--foreground)"
       },
-      "x": 220,
-      "y": 1240
+      "x": 340,
+      "y": 1480
     },
     {
       "id": "note",
@@ -253,8 +301,8 @@
         "fontSize": "var(--text-sm)",
         "color": "var(--muted-foreground)"
       },
-      "x": 220,
-      "y": 1360
+      "x": 340,
+      "y": 1600
     },
     {
       "id": "savedOn",
@@ -283,8 +331,8 @@
         "paddingBottom": "var(--space-5)",
         "mounted": false
       },
-      "x": 160,
-      "y": 1480
+      "x": 280,
+      "y": 1720
     },
     {
       "id": "savedOnText",
@@ -296,8 +344,8 @@
         "fontSize": "var(--text-sm)",
         "color": "var(--accent-foreground)"
       },
-      "x": 220,
-      "y": 1600
+      "x": 340,
+      "y": 1840
     },
     {
       "id": "savedOff",
@@ -326,8 +374,8 @@
         "paddingBottom": "var(--space-5)",
         "mounted": false
       },
-      "x": 160,
-      "y": 1720
+      "x": 280,
+      "y": 1960
     },
     {
       "id": "savedOffText",
@@ -339,8 +387,8 @@
         "fontSize": "var(--text-sm)",
         "color": "var(--accent-foreground)"
       },
-      "x": 220,
-      "y": 1840
+      "x": 340,
+      "y": 2080
     },
     {
       "id": "failed-2",
@@ -369,8 +417,8 @@
         "paddingBottom": "var(--space-5)",
         "mounted": false
       },
-      "x": 160,
-      "y": 1960
+      "x": 280,
+      "y": 2200
     },
     {
       "id": "failedText",
@@ -382,8 +430,8 @@
         "fontSize": "var(--text-sm)",
         "color": "var(--destructive)"
       },
-      "x": 220,
-      "y": 2080
+      "x": 340,
+      "y": 2320
     },
     {
       "id": "read-4",
@@ -392,8 +440,8 @@
       "parameters": {
         "function": "myNotifySetting"
       },
-      "x": 530,
-      "y": 1240
+      "x": 650,
+      "y": 1480
     },
     {
       "id": "write",
@@ -402,8 +450,8 @@
       "parameters": {
         "function": "setNotifySetting"
       },
-      "x": 530,
-      "y": 1360
+      "x": 650,
+      "y": 1600
     },
     {
       "id": "which",
@@ -432,8 +480,8 @@
           "group": "Inputs"
         }
       ],
-      "x": 530,
-      "y": 2200
+      "x": 650,
+      "y": 2440
     },
     {
       "id": "onGate",
@@ -443,8 +491,8 @@
         "condition": true,
         "runOnChange-condition": false
       },
-      "x": 530,
-      "y": 1480
+      "x": 650,
+      "y": 1720
     },
     {
       "id": "offGate",
@@ -454,8 +502,8 @@
         "condition": true,
         "runOnChange-condition": false
       },
-      "x": 530,
-      "y": 1720
+      "x": 650,
+      "y": 1960
     },
     {
       "id": "failGate",
@@ -465,8 +513,8 @@
         "condition": true,
         "runOnChange-condition": false
       },
-      "x": 530,
-      "y": 1960
+      "x": 650,
+      "y": 2200
     },
     {
       "id": "onClear",
@@ -476,8 +524,8 @@
         "condition": false,
         "runOnChange-condition": false
       },
-      "x": 530,
-      "y": 1600
+      "x": 650,
+      "y": 1840
     },
     {
       "id": "offClear",
@@ -487,8 +535,8 @@
         "condition": false,
         "runOnChange-condition": false
       },
-      "x": 530,
-      "y": 1840
+      "x": 650,
+      "y": 2080
     },
     {
       "id": "failClear",
@@ -498,8 +546,8 @@
         "condition": false,
         "runOnChange-condition": false
       },
-      "x": 530,
-      "y": 2080
+      "x": 650,
+      "y": 2320
     },
     {
       "id": "toLanding-6",
@@ -509,8 +557,8 @@
         "router": "Main",
         "target": "/Pages/Landing"
       },
-      "x": 530,
-      "y": 160
+      "x": 650,
+      "y": 400
     }
   ],
   "visualRoots": [

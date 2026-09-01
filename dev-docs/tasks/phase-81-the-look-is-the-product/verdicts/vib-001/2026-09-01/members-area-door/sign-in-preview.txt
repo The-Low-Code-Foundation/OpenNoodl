@@ -5,3 +5,5 @@ Password
 Sign in
 Not a member yet?
 Ask to join
+EDIT ME — your association’s contact details go here.
+EDIT ME — registered charity number, or delete this line.

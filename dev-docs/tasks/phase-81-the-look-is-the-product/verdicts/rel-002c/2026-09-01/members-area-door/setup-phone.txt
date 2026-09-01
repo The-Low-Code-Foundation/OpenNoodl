@@ -2,9 +2,12 @@ FIRST RUN
 Set up this members’ area
 Name your association and create the first moderator account. The setup token comes from your backend configuration.
 Association name
+One line about the association (e.g. “Meeting on the green since 1894”)
 About the association
 Your name
 Your email
 Choose a password
 Setup token
 Set up this members’ area
+EDIT ME — your association’s contact details go here.
+EDIT ME — registered charity number, or delete this line.

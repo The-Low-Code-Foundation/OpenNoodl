@@ -26,6 +26,7 @@
  * `raw-color-literal`, which is a warning everywhere and blocks nothing.
  */
 import * as fs from 'fs';
+import * as path from 'path';
 
 import { call, connect, copyFixture, TestSession } from './helpers';
 import type { CreateComponentResponse } from '../src/tools/responses';
@@ -158,6 +159,21 @@ describe('LAS-002 — every authoring door returns the warning text', () => {
   });
 
   it('stays silent on a clean candidate', async () => {
+    /**
+     * 🔴 REL-002a — the project has to have DECIDED about scrolling, or this candidate is not the
+     * only thing being judged. `page-cannot-scroll` is a fact about the project, not about these
+     * nodes: with `bodyScroll` unset the viewer pins the app to the viewport under `overflow: clip`
+     * and everything below the fold is unreachable, so every page write in such a project is told
+     * so. The demo fixture must stay unset — `planProjectEffects`' AAQ-003 arms exist to watch a
+     * plan write that very setting — so the decision is made here, in the one spec that means
+     * "nothing is wrong with THIS candidate".
+     */
+    const project = JSON.parse(fs.readFileSync(path.join(dir, 'nodegx.project.json'), 'utf8'));
+    fs.writeFileSync(
+      path.join(dir, 'nodegx.project.json'),
+      JSON.stringify({ ...project, settings: { ...project.settings, bodyScroll: true } }, null, 2)
+    );
+
     const plan = await planFor('Pages/Clean');
     const res = await call<StageResponse>(session, 'stage_plan_operation', {
       plan_id: plan.planId,

@@ -145,6 +145,17 @@ export const CHROME_COMPONENT = '/Members/Chrome';
 /** The one node in the runtime that reflows — see `moderatorButtons`. */
 const COLUMNS_NODE = 'net.noodl.visual.columns';
 export const INSIDE_TILE_COMPONENT = '/Members/InsideTile';
+/**
+ * The foot of every page — REL-002c item 4.
+ *
+ * 🔴 **A COMPONENT rather than four nodes repeated thirteen times, and the
+ * reason is §E-ii rather than tidiness.** The two lines in it are `EDIT ME —`
+ * placeholders that the association installing this template has to visit and
+ * replace. Written inline on each page they would be twenty-six strings to
+ * find; as one component they are two, and the editor's node tree lists them
+ * once.
+ */
+export const FOOTER_COMPONENT = '/Members/Footer';
 
 /** The repeater templates, named once so a page and its row cannot drift apart. */
 export const ANNOUNCEMENT_ROW = '/Members/AnnouncementRow';
@@ -887,25 +898,6 @@ const HUMAN_DAY_FN =
   "  return at.toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' });\n" +
   '}\n';
 
-/**
- * Give a sibling the air a ruled list needs under it.
- *
- * 🔴 **A ruled list ends with a rule, and the section gap that was enough after
- * a card is not enough after a line.** `Pages/Members` is the one page where
- * something follows a list — the "What's coming up" button — and at
- * `SECTION`'s own `--space-4` it landed **17px under the last row's hairline and
- * 24px above the moderator section's rule**, so it read as a ninth row of the
- * announcements rather than as the section's closing action. The card version
- * had no such problem: `ROW_CARD`'s own `marginBottom` was paying for this gap
- * as a side effect, and removing it took the air with it.
- *
- * Written as a rule over *following a list* rather than as a margin typed onto
- * the one button, so the next thing put below a repeater inherits the reason.
- */
-function afterRuledList(params: Record<string, unknown>): Record<string, unknown> {
-  return { ...params, marginTop: 'var(--space-4)' };
-}
-
 function btn(label: string): Record<string, unknown> {
   return {
     label,
@@ -1061,8 +1053,15 @@ const PAGE_HEAD = {
  */
 const PAGE_GROUND = {
   ...composition('shell'),
-  sizeMode: 'explicit',
-  height: { value: 100, unit: '%' },
+  // 🔴 **`contentHeight`, and it used to be `explicit` at `height: 100%`.** That
+  // was believed inert — see `PAGE_SHELL` — and it is not: a percentage height
+  // in a column parent becomes `flexGrow` (`layout.ts:98`). It did nothing only
+  // because nothing above it had a height to spare. The moment REL-002c item 4
+  // gave the page a floor, the slack went INTO the ground and was shared out
+  // among its children, which put 150px between `/sign-in`'s heading and its
+  // form and stretched the form panel by as much again. A page ground is as
+  // tall as what is on the page.
+  sizeMode: 'contentHeight',
   alignX: 'center',
   rowGap: 'var(--space-5)',
   paddingTop: 'var(--space-12)',
@@ -1124,6 +1123,105 @@ const PAGE_GROUND = {
  * page. See the handoff.
  */
 const FORM_GROUND = { ...PAGE_GROUND, maxWidth: { value: 720, unit: 'px' } };
+
+/**
+ * The full-height box a page's own ground stands in — REL-002c item 4.
+ *
+ * 🔴 **Eleven of the thirteen pages had no bottom edge, and the change list's
+ * proposed fix for it would have changed no pixel.** Item 4 said to put
+ * `minHeight: 100vh` on `PAGE_GROUND`, on the reading that its `height: 100%`
+ * is inert. Measured in the artefact, `ground` carries no `backgroundColor` at
+ * all — so growing that box paints nothing, and `/setup` would have ended in
+ * exactly the same white. A page has a bottom edge when something is AT the
+ * bottom; the landing page has had one since s7 and it is a footer.
+ *
+ * 🔴 **`height: 100%` is not inert, and knowing why is what makes this work.**
+ * `layout.ts:98-100` turns a percentage height inside a COLUMN parent into
+ * `flexGrow` — *"along the parent's flex direction it becomes `flexGrow` (so
+ * siblings share the space proportionally)"* — so `PAGE_GROUND`'s 100% has
+ * always meant `flex-grow: 100`, not a percentage of anything. It did nothing
+ * only because the parent chain ended at a `Router`, which sizes itself to its
+ * content, so there was never any free space to grow into. This shell is that
+ * free space: it floors the page at the viewport, `ground` grows into whatever
+ * is left, and the footer is pushed to the foot without a `justifyContent`
+ * anybody has to reason about.
+ *
+ * 🔴 **`space-between` over exactly TWO children, which is why `pageBody`
+ * exists.** With three — the band, the ground and the footer — the slack splits
+ * in two and opens a gap UNDER THE HEADER, which is the one place on these
+ * pages nothing may move. Wrapping the band and the ground in one
+ * content-height box makes it the two-band case `BAND_PAGE_GROUND` already
+ * solves: everything the page says at the top, the foot at the foot.
+ *
+ * ⚠️ **EVERY `Group` in this template without a `sizeMode` is
+ * `flex-grow: 100`.** `addDimensions` defaults `sizeMode` to `explicit` and
+ * `height` to `100%`, and the percentage becomes `flexGrow` — so any container
+ * given real slack shares it out among its unpinned children rather than
+ * keeping it at the bottom. That is a property of the runtime, not of this
+ * template, and it is why `pageBody` is pinned to `contentHeight` and why the
+ * ground below it now is too.
+ *
+ * ⚠️ **`vh` is available on `height` too** (`units: ['%', 'px', 'vw', 'vh']`,
+ * [`node-shared-port-definitions.ts:1183`](../../noodl-viewer-react/src/node-shared-port-definitions.ts#L1183)),
+ * so the note on `BAND_PAGE_GROUND` calling `minHeight` *"the one dimension port
+ * that takes `vh`"* overstates it. `minHeight` is still what this wants: a floor
+ * that a long page grows past, not a height a long page has to scroll inside.
+ */
+const PAGE_SHELL = {
+  width: { value: 100, unit: '%' },
+  sizeMode: 'contentHeight',
+  minHeight: { value: 100, unit: 'vh' },
+  flexDirection: 'column',
+  justifyContent: 'space-between'
+};
+
+/** Everything above the foot: the band if the page has one, and its ground. */
+const PAGE_BODY = {
+  width: { value: 100, unit: '%' },
+  sizeMode: 'contentHeight',
+  flexDirection: 'column'
+};
+
+/**
+ * A page's outer three: the band if it has one, the ground, and the foot.
+ *
+ * 🔴 **Written as a helper because it is eleven identical edits**, and the half
+ * that is easy to get wrong is invisible — a page that keeps `chrome` as a
+ * direct child of `Page` puts the band OUTSIDE the full-height box, so the
+ * shell overflows the viewport by the height of the band and every page gains a
+ * scrollbar with nothing under the fold.
+ *
+ * ⚠️ **The two public band pages do not use it.** `Pages/Landing` and
+ * `Pages/Join` are built from bands on `BAND_PAGE_GROUND`, which already floors
+ * at `100vh`; the landing page places the footer component itself as its last
+ * band, and `/join` ends on a form panel with `--muted` beneath it that is its
+ * own bottom edge.
+ */
+function pageShell(opts: { chrome?: boolean } = {}): unknown[] {
+  const nodes: unknown[] = [
+    {
+      id: 'pageShell',
+      type: 'Group',
+      label: 'The page, floored at the viewport',
+      parent: 'page',
+      parameters: PAGE_SHELL,
+      children: ['pageBody', 'pageFooter']
+    },
+    {
+      id: 'pageBody',
+      type: 'Group',
+      label: 'Everything above the foot',
+      parent: 'pageShell',
+      parameters: PAGE_BODY,
+      children: [...(opts.chrome ? ['chrome'] : []), 'ground']
+    }
+  ];
+  if (opts.chrome) {
+    nodes.push({ id: 'chrome', type: CHROME_COMPONENT, label: 'The band', parent: 'pageBody' });
+  }
+  nodes.push({ id: 'pageFooter', type: FOOTER_COMPONENT, label: 'The foot of the page', parent: 'pageShell' });
+  return nodes;
+}
 
 const PROSE = {
   width: { value: 100, unit: '%' },
@@ -1912,11 +2010,29 @@ const LANDING: Tpl001Component = {
 
     // ── What is behind the door ──────────────────────────────────────────────
     //
-    // 🔴 **Gated on `hasAssociation`, the same signal as the two buttons.** On a
-    // fresh install this section would otherwise sit above the "nobody has set
-    // this up yet" card promising a diary and a directory to a person whose
-    // first job is to create the association — an app describing itself in the
-    // present tense before it exists.
+    // 🔴 **UNGATED since REL-002c item 1, and the gate was answering the wrong
+    // question.** It used to ride `hasAssociation` on the argument that it would
+    // otherwise *"promise a diary and a directory to a person whose first job is
+    // to create the association"*. Two things are wrong with that. The band sits
+    // BELOW the hero, not above it, so it never sat over the setup card the way
+    // the comment described — that was true when it was a section inside the old
+    // single-column page and it stopped being true when it became a band. And
+    // the promise it makes is about the PRODUCT, not about this install's
+    // content: "Announcements / The diary / The directory" is true of every copy
+    // of this template on the day it is unzipped, which is exactly why the three
+    // sentences are literals rather than a query.
+    //
+    // 🔴 **What the gate actually did was leave a hole.** Photographed at HEAD
+    // `60fe7e16`: the unconnected landing is a 560px photograph, a notice on its
+    // scrim, then **190px of bare `--muted`** at 1280 and 330px at 1900, a
+    // hairline, and the footer. Every band that could have filled it was closed
+    // on a query that never answers. This one needs no backend and no
+    // association, so it is the one that opens.
+    //
+    // ⚠️ **Third time this page's bottom edge has been fixed by moving the
+    // hole** — s7 added the footer, s8 turned `flex-start` into `space-between`,
+    // and both times the void reappeared one element away. It is not a layout
+    // parameter: the page does not fill because it has nothing to fill it with.
     //
     // ⚠️ **The three sentences are literals on purpose, and they are claims this
     // template can keep**: `Pages/Members`, `Pages/Meetings` and
@@ -1928,13 +2044,11 @@ const LANDING: Tpl001Component = {
       type: 'Group',
       label: 'What members can see',
       parent: 'landingGround',
-      // 🔴 **`inside` is now the BAND, and the gate stayed on it.** It was a
-      // section inside the page column; as a band it owns a ground of its own
-      // (`--surface` with hairlines top and bottom), which is what stops the
-      // page being one colour from the hero to the fold. Keeping the id means
-      // the `hasAssociation` wire did not have to move — see the note above on
-      // why this section is gated at all.
-      parameters: { ...composition('bandSurface'), mounted: false },
+      // 🔴 **`inside` is the BAND.** It was a section inside the page column; as
+      // a band it owns a ground of its own (`--surface` with hairlines top and
+      // bottom), which is what stops the page being one colour from the hero to
+      // the fold. It carries no `mounted` at all now — see the note above.
+      parameters: composition('bandSurface'),
       children: ['insideShell']
     },
     {
@@ -2016,58 +2130,17 @@ const LANDING: Tpl001Component = {
 
     // ── The foot of the page ─────────────────────────────────────────────────
     //
-    // 🔴 **Every other band on this page is gated, so without this one the page
-    // has no bottom edge in the two states a stranger is most likely to meet.**
-    // The first render of the redesign showed it: a 560px photograph and then
-    // 340px of white to the fold, because `inside` is unmounted until there is
-    // an association. A footer is mounted always — it is the one band that does
-    // not depend on a query answering.
+    // 🔴 **A COMPONENT since REL-002c item 4, and it used to be four nodes
+    // written out here.** Eleven other pages ended in nothing at all; they place
+    // this now, and the two `EDIT ME —` lines an association has to replace are
+    // two strings in one place rather than twenty-six across thirteen pages.
+    // See `FOOTER_NODES` for what is in it and why the copy is written to look
+    // unfinished.
     //
-    // 🔴 **§E-ii, and this is the template's worked example of it.** The line is
-    // a placeholder that CANNOT be data — there is no field on `Association` for
-    // it and inventing one to hold a contact address would be scope. So it is
-    // written to be *obviously* unfinished rather than plausibly finished, and
-    // its node is named with the `EDIT —` prefix that makes the editor's node
-    // tree list every string a person still has to visit. *"Your contact details
-    // here"* is not copy anybody ships by accident; *"St Anywhere Parish
-    // Council · hello@example.org"* is exactly what somebody ships by accident.
-    {
-      id: 'footer',
-      type: 'Group',
-      label: 'The foot of the page',
-      parent: 'landingGround',
-      parameters: composition('footerBand'),
-      children: ['footerShell']
-    },
-    {
-      id: 'footerShell',
-      type: 'Group',
-      label: 'Shell',
-      parent: 'footer',
-      parameters: { ...composition('shell'), sizeMode: 'contentHeight', alignX: 'center', rowGap: 'var(--space-2)' },
-      children: ['footerEdit', 'footerEditSecond']
-    },
-    {
-      id: 'footerEdit',
-      type: 'Text',
-      label: 'EDIT — who to contact',
-      parent: 'footerShell',
-      parameters: { text: 'EDIT ME — your association’s contact details go here.', ...T_NOTICE }
-    },
-    {
-      id: 'footerEditSecond',
-      type: 'Text',
-      label: 'EDIT — the small print',
-      parent: 'footerShell',
-      // ⚠️ **A second line, and §2's notice census is why there had to be one.**
-      // That sweep counts a `Group` wrapping *exactly one* `Text` as a notice
-      // box and requires it to carry a fill and an edge; a structural shell
-      // holding a single line of text is indistinguishable from an unpainted
-      // notice by that shape. A footer with one line was also thin — a club,
-      // charity or church footer carries the registration line as well as the
-      // contact one, and §E-ii says to mark it rather than invent it.
-      parameters: { text: 'EDIT ME — registered charity number, or delete this line.', ...T_NOTICE }
-    },
+    // ⚠️ **It stays the last band on `landingGround`.** This page is bands on
+    // `BAND_PAGE_GROUND`, so it does not take `pageShell` — the ground already
+    // floors at `100vh` and `space-between` already pins this to the foot.
+    { id: 'footer', type: FOOTER_COMPONENT, label: 'The foot of the page', parent: 'landingGround' },
 
     {
       id: 'setupCard',
@@ -2253,7 +2326,6 @@ const LANDING: Tpl001Component = {
     // half.
     { fromId: 'read', fromProperty: 'out-hasAssociation', toId: 'hero', toProperty: 'mounted' },
     { fromId: 'read', fromProperty: 'out-hasAssociation', toId: 'about', toProperty: 'mounted' },
-    { fromId: 'read', fromProperty: 'out-hasAssociation', toId: 'inside', toProperty: 'mounted' },
     // 🔴 REL-002b — the only wire that can take the waiting card down, and it
     // fires only on an answer. See `waitingCard` for why this is the default
     // state rather than a `failure` branch.
@@ -2287,13 +2359,14 @@ const SIGN_IN: Tpl001Component = {
       type: 'Page',
       label: 'Sign in',
       parameters: { title: 'Sign in', urlPath: 'sign-in' },
-      children: ['ground']
+      children: ['pageShell']
     },
+    ...pageShell(),
     {
       id: 'ground',
       type: 'Group',
       label: 'Page ground',
-      parent: 'page',
+      parent: 'pageBody',
       parameters: { ...FORM_GROUND, alignX: 'center' },
       children: ['headingHead', 'form', 'error', 'joinHint', 'joinButton']
     },
@@ -2894,19 +2967,14 @@ const MEMBERS: Tpl001Component = {
       type: 'Page',
       label: 'Members',
       parameters: { title: 'Members', urlPath: 'members' },
-      children: ['chrome', 'ground']
+      children: ['pageShell']
     },
-    {
-      id: 'chrome',
-      type: CHROME_COMPONENT,
-      label: 'The band',
-      parent: 'page'
-    },
+    ...pageShell({ chrome: true }),
     {
       id: 'ground',
       type: 'Group',
       label: 'Page ground',
-      parent: 'page',
+      parent: 'pageBody',
       parameters: PAGE_GROUND,
       children: ['headingHeadRow', 'pendingNotice', 'unknownNotice', 'memberArea', 'moderatorTools']
     },
@@ -2936,7 +3004,10 @@ const MEMBERS: Tpl001Component = {
       // ⚠️ A SECTION, not a card: it holds the announcement cards, and a card
       // inside a card has no edge anybody can see (1.26:1 between the fills).
       parameters: { ...SECTION, mounted: false },
-      children: ['list', 'emptyState', 'meetingsButton']
+      // 🔴 **`meetingsButton` is gone since REL-002c item 2.** "What's coming
+      // up" was a whole button whose destination is a nav pill three inches
+      // above it, in the band, on this and every other signed-in page.
+      children: ['list', 'emptyState']
     },
     {
       id: 'list',
@@ -2956,13 +3027,6 @@ const MEMBERS: Tpl001Component = {
     // on their way.
     ...notice('emptyState', 'Nothing posted yet', 'memberArea', NO_ANNOUNCEMENTS_TEXT),
     {
-      id: 'meetingsButton',
-      type: 'net.noodl.controls.button',
-      label: 'What is coming up',
-      parent: 'memberArea',
-      parameters: afterRuledList(btn('What’s coming up'))
-    },
-    {
       id: 'moderatorTools',
       type: 'Group',
       label: 'What only a moderator sees',
@@ -2981,7 +3045,7 @@ const MEMBERS: Tpl001Component = {
       // is what makes it read as one. See that helper on why the rule belongs to
       // the PLACE rather than to this node.
       parameters: { ...afterSection(SECTION), mounted: false },
-      children: ['moderatorEyebrow', 'moderatorButtons']
+      children: ['moderatorEyebrow', 'postButton']
     },
     {
       id: 'moderatorEyebrow',
@@ -2991,49 +3055,24 @@ const MEMBERS: Tpl001Component = {
       parameters: { text: 'For moderators', ...T_EYEBROW }
     },
     {
-      id: 'moderatorButtons',
-      // 🔴 **A `Columns`, and it is the only node in the runtime that could be.**
-      // Measured at 390px: three buttons in a `Group` row ran off the right edge
-      // — "Who belongs" was a single visible letter — and no Group has a
-      // breakpoint, which the `columnsTwoUp` composition says in its own
-      // description. `gridAutoFit` reflows on the CONTAINER's width with no
-      // breakpoints to maintain.
-      //
-      // ⚠️ `minWidth` overridden from the composition's 280px: that is sized for
-      // cards, and at 280 three buttons would be two columns on a desktop that
-      // has room for three. 160 fits three across at 712px and two at 342px.
-      type: COLUMNS_NODE,
-      label: 'The three moderator actions',
-      parent: 'moderatorTools',
-      parameters: { ...composition('gridAutoFit'), minWidth: { value: 160, unit: 'px' } },
-      children: ['postButton', 'requestsButton', 'directoryButton']
-    },
-    {
       id: 'postButton',
       type: 'net.noodl.controls.button',
       label: 'Post something',
-      parent: 'moderatorButtons',
-      // ⚠️ `inColumn`: this button is a child of `moderatorButtons`, a `Columns`.
-      parameters: inColumn(btn('Post something'))
-    },
-    {
-      id: 'requestsButton',
-      type: 'net.noodl.controls.button',
-      label: 'Requests to join',
-      parent: 'moderatorButtons',
-      // ⚠️ `inColumn`: this button is a child of `moderatorButtons`, a `Columns`.
-      parameters: inColumn(btn('Requests to join'))
-    },
-    {
-      id: 'directoryButton',
-      type: 'net.noodl.controls.button',
-      label: 'Who belongs',
-      parent: 'moderatorButtons',
-      // ⚠️ Not "Members": this page is already called Members, and a button on
-      // it leading to another screen with the same name is the kind of label
-      // that only makes sense to whoever built it.
-      // ⚠️ `inColumn`: this button is a child of `moderatorButtons`, a `Columns`.
-      parameters: inColumn(btn('Who belongs'))
+      parent: 'moderatorTools',
+      // 🔴 **The page's ONE call to action, and it used to be one of four.**
+      // REL-002c item 2: `Requests to join` and `Who belongs` were deleted
+      // beside `What's coming up` above, because all three named a PLACE the
+      // band's nav already names in the same word, three inches higher, on
+      // every signed-in page. What is left under "For moderators" is the one
+      // control that is an ACTION rather than a second copy of the navigation —
+      // which is what makes that eyebrow mean something.
+      //
+      // ⚠️ **No longer `inColumn`, and no longer inside a `Columns`.** The
+      // `moderatorButtons` grid existed so three buttons would reflow instead of
+      // running off the right edge at 390px ("Who belongs" was one visible
+      // letter). One button needs no grid, and a `Columns` with a single child
+      // hands it the full container width — a full-bleed 1200px filled button.
+      parameters: btn('Post something')
     },
     // ⚠️ No `signOutButton` here since s8: it lives in `Members/Chrome`, at the
     // top of every signed-in page, where a person looks for it. This page used
@@ -3074,29 +3113,16 @@ const MEMBERS: Tpl001Component = {
       label: 'Back to the landing page',
       parameters: { router: ROUTER, target: '/Pages/Landing' }
     },
-    {
-      id: 'toMeetings',
-      type: 'RouterNavigate',
-      label: 'To the diary',
-      parameters: { router: ROUTER, target: '/Pages/Meetings' }
-    },
+    // 🔴 **Three navigators went with the three buttons (REL-002c item 2).**
+    // `toMeetings`, `toRequests` and `toDirectory` had exactly one driver each
+    // and it was the button that was deleted; leaving them would have shipped
+    // three `RouterNavigate` nodes nothing can ever fire, on the page a reader
+    // of this template is most likely to open first.
     {
       id: 'toPost',
       type: 'RouterNavigate',
       label: 'To the posting form',
       parameters: { router: ROUTER, target: '/Pages/Post' }
-    },
-    {
-      id: 'toRequests',
-      type: 'RouterNavigate',
-      label: 'To the queue',
-      parameters: { router: ROUTER, target: '/Pages/Requests' }
-    },
-    {
-      id: 'toDirectory',
-      type: 'RouterNavigate',
-      label: 'To the member list',
-      parameters: { router: ROUTER, target: '/Pages/Directory' }
     }
   ],
   connections: [
@@ -3119,15 +3145,12 @@ const MEMBERS: Tpl001Component = {
     { fromId: 'announcements', fromProperty: 'fetched', toId: 'emptyGate', toProperty: 'run' },
     { fromId: 'emptyGate', fromProperty: 'out-empty', toId: 'emptyState', toProperty: 'mounted' },
 
-    { fromId: 'meetingsButton', fromProperty: 'onClick', toId: 'toMeetings', toProperty: 'navigate' },
-    { fromId: 'postButton', fromProperty: 'onClick', toId: 'toPost', toProperty: 'navigate' },
-    { fromId: 'requestsButton', fromProperty: 'onClick', toId: 'toRequests', toProperty: 'navigate' },
-    { fromId: 'directoryButton', fromProperty: 'onClick', toId: 'toDirectory', toProperty: 'navigate' }
+    { fromId: 'postButton', fromProperty: 'onClick', toId: 'toPost', toProperty: 'navigate' }
     // ⚠️ Signing out moved to `Members/Chrome` in s8, and the Log Out node went
     // with the button that drove it. `toLanding` stays: it is still the
     // destination when the standing check answers `Visitor`.
   ],
-  deferred: ['toMeetings', 'toPost', 'toRequests', 'toDirectory']
+  deferred: ['toPost']
 };
 
 // ── 6. Pages/Announcement — one notice, in full ──────────────────────────────
@@ -3166,19 +3189,14 @@ const ANNOUNCEMENT: Tpl001Component = {
       // 🔴 Braces, not a colon (`router.tsx:614`, `:753`), and two segments so
       // no one-segment page can ever tie with it.
       parameters: { title: 'Announcement', urlPath: `announcements/{${ANNOUNCEMENT_PARAM}}` },
-      children: ['chrome', 'ground']
+      children: ['pageShell']
     },
-    {
-      id: 'chrome',
-      type: CHROME_COMPONENT,
-      label: 'The band',
-      parent: 'page'
-    },
+    ...pageShell({ chrome: true }),
     {
       id: 'ground',
       type: 'Group',
       label: 'Page ground',
-      parent: 'page',
+      parent: 'pageBody',
       parameters: PAGE_GROUND,
       children: ['titleHeadRow', 'date', 'body', 'refusal', 'removal']
     },
@@ -3267,19 +3285,14 @@ const MEETINGS: Tpl001Component = {
       type: 'Page',
       label: 'Meetings',
       parameters: { title: 'What’s coming up', urlPath: 'meetings' },
-      children: ['chrome', 'ground']
+      children: ['pageShell']
     },
-    {
-      id: 'chrome',
-      type: CHROME_COMPONENT,
-      label: 'The band',
-      parent: 'page'
-    },
+    ...pageShell({ chrome: true }),
     {
       id: 'ground',
       type: 'Group',
       label: 'Page ground',
-      parent: 'page',
+      parent: 'pageBody',
       parameters: PAGE_GROUND,
       children: ['headingHeadRow', 'pendingNotice', 'memberArea']
     },
@@ -3370,19 +3383,14 @@ const MEETING: Tpl001Component = {
       type: 'Page',
       label: 'Meeting',
       parameters: { title: 'Meeting', urlPath: `meetings/{${MEETING_PARAM}}` },
-      children: ['chrome', 'ground']
+      children: ['pageShell']
     },
-    {
-      id: 'chrome',
-      type: CHROME_COMPONENT,
-      label: 'The band',
-      parent: 'page'
-    },
+    ...pageShell({ chrome: true }),
     {
       id: 'ground',
       type: 'Group',
       label: 'Page ground',
-      parent: 'page',
+      parent: 'pageBody',
       parameters: PAGE_GROUND,
       children: ['titleHeadRow', 'when', 'place', 'details', 'refusal', 'removal']
     },
@@ -3675,13 +3683,14 @@ const SETUP: Tpl001Component = {
       type: 'Page',
       label: 'Set up',
       parameters: { title: 'Set up this members’ area', urlPath: 'setup' },
-      children: ['ground']
+      children: ['pageShell']
     },
+    ...pageShell(),
     {
       id: 'ground',
       type: 'Group',
       label: 'Page ground',
-      parent: 'page',
+      parent: 'pageBody',
       parameters: { ...FORM_GROUND, alignX: 'center' },
       children: ['headingHead', 'blurb', 'form', 'refusal', 'missing']
     },
@@ -3921,19 +3930,14 @@ const POST: Tpl001Component = {
       type: 'Page',
       label: 'Post',
       parameters: { title: 'Post something', urlPath: 'post' },
-      children: ['chrome', 'ground']
+      children: ['pageShell']
     },
-    {
-      id: 'chrome',
-      type: CHROME_COMPONENT,
-      label: 'The band',
-      parent: 'page'
-    },
+    ...pageShell({ chrome: true }),
     {
       id: 'ground',
       type: 'Group',
       label: 'Page ground',
-      parent: 'page',
+      parent: 'pageBody',
       parameters: FORM_GROUND,
       children: ['headingHeadRow', 'notAllowed', 'tools']
     },
@@ -4251,19 +4255,14 @@ const REQUESTS: Tpl001Component = {
       type: 'Page',
       label: 'Requests',
       parameters: { title: 'Requests to join', urlPath: 'requests' },
-      children: ['chrome', 'ground']
+      children: ['pageShell']
     },
-    {
-      id: 'chrome',
-      type: CHROME_COMPONENT,
-      label: 'The band',
-      parent: 'page'
-    },
+    ...pageShell({ chrome: true }),
     {
       id: 'ground',
       type: 'Group',
       label: 'Page ground',
-      parent: 'page',
+      parent: 'pageBody',
       parameters: PAGE_GROUND,
       children: ['headingHeadRow', 'notAllowed', 'queue']
     },
@@ -4366,19 +4365,14 @@ const DIRECTORY: Tpl001Component = {
       // browser tab and as the on-page heading. "Who belongs" is the wording
       // already on the button that opens it.
       parameters: { title: 'Who belongs', urlPath: 'directory' },
-      children: ['chrome', 'ground']
+      children: ['pageShell']
     },
-    {
-      id: 'chrome',
-      type: CHROME_COMPONENT,
-      label: 'The band',
-      parent: 'page'
-    },
+    ...pageShell({ chrome: true }),
     {
       id: 'ground',
       type: 'Group',
       label: 'Page ground',
-      parent: 'page',
+      parent: 'pageBody',
       parameters: PAGE_GROUND,
       children: ['headingHeadRow', 'notAllowed', 'directory']
     },
@@ -4518,6 +4512,68 @@ export const INSIDE_TILE_WIRES = [
 ];
 
 /**
+ * The foot of every page — REL-002c item 4.
+ *
+ * 🔴 **Eleven of the thirteen pages ended in undifferentiated white**, and the
+ * two that did not are the two the landing footer was written for in s7. The
+ * band is what gives a page a bottom edge: a `--muted` ground under a hairline,
+ * so the slack below the last thing on the page reads as the foot of the site
+ * rather than as the page running out. See `PAGE_SHELL` for the other half —
+ * what pushes it down when a page is shorter than the viewport.
+ *
+ * 🔴 **§E-ii, and this is the template's worked example of it.** Neither line
+ * can be data: there is no field on `Association` for a contact address and
+ * inventing one would be scope. So both are written to be *obviously*
+ * unfinished rather than plausibly finished, and their nodes carry the
+ * `EDIT —` prefix that makes the editor's node tree list every string a person
+ * still has to visit. *"Your contact details here"* is not copy anybody ships by
+ * accident; *"St Anywhere Parish Council · hello@example.org"* is exactly what
+ * somebody ships by accident.
+ *
+ * ⚠️ **Two lines, not one, and §2's notice census is why there has to be a
+ * second.** That sweep counts a `Group` wrapping exactly one `Text` as a notice
+ * box and requires it to carry a fill and an edge; a structural shell holding a
+ * single line is indistinguishable from an unpainted notice by that shape. A
+ * footer with one line was also thin — a club, charity or church footer carries
+ * the registration line as well as the contact one.
+ *
+ * ⚠️ **No `Component Inputs`.** Nothing about it varies per page, and a
+ * component without one *"renders identically however many times you place
+ * it"* — which is the whole point here.
+ */
+export const FOOTER_NODES = [
+  {
+    id: 'footer',
+    type: 'Group',
+    label: 'The foot of the page',
+    parameters: composition('footerBand'),
+    children: ['footerShell']
+  },
+  {
+    id: 'footerShell',
+    type: 'Group',
+    label: 'Shell',
+    parent: 'footer',
+    parameters: { ...composition('shell'), sizeMode: 'contentHeight', alignX: 'center', rowGap: 'var(--space-2)' },
+    children: ['footerEdit', 'footerEditSecond']
+  },
+  {
+    id: 'footerEdit',
+    type: 'Text',
+    label: 'EDIT — who to contact',
+    parent: 'footerShell',
+    parameters: { text: 'EDIT ME — your association’s contact details go here.', ...T_NOTICE }
+  },
+  {
+    id: 'footerEditSecond',
+    type: 'Text',
+    label: 'EDIT — the small print',
+    parent: 'footerShell',
+    parameters: { text: 'EDIT ME — registered charity number, or delete this line.', ...T_NOTICE }
+  }
+];
+
+/**
  * The band across the top of every signed-in page.
  *
  * 🔴 **Cause 5 of "it feels like Bootstrap": the association's name appeared on
@@ -4569,6 +4625,12 @@ export const CHROME_NODES = [
     label: 'The band',
     parameters: {
       width: { value: 100, unit: '%' },
+      // ⚠️ **Pinned, REL-002c item 4.** A `Group` with no `sizeMode` is
+      // `explicit` at `height: 100%`, which a column parent turns into
+      // `flex-grow: 100` — harmless while nothing above had height to spare, and
+      // a header that swells to half the viewport the moment `PAGE_SHELL` gives
+      // the page a floor. A band is as tall as what is in it.
+      sizeMode: 'contentHeight',
       flexDirection: 'column',
       alignItems: 'center',
       backgroundColor: 'var(--surface)',
@@ -4846,6 +4908,10 @@ export const TPL001_PARTS: Tpl001Component[] = [
   // here for the same reason the rows are: the page that places it is written
   // later, and a component must exist before something instantiates it.
   { path: 'Members/InsideTile', nodes: INSIDE_TILE_NODES, connections: INSIDE_TILE_WIRES },
+  // REL-002c item 4. Placed by all thirteen pages, so it is authored before any
+  // of them — a page naming a component that does not exist yet is refused at
+  // the door, which is the same rule the rows above are ordered by.
+  { path: 'Members/Footer', nodes: FOOTER_NODES, connections: [] },
   // The band across every signed-in page. `Pages/Landing` does not place it —
   // it has a hero carrying the same identity, and a stranger has nothing to
   // sign out of.
@@ -4894,14 +4960,14 @@ const ACCOUNT: Tpl001Component = {
       type: 'Page',
       label: 'Your account',
       parameters: { title: 'Your account', urlPath: 'account' },
-      children: ['chrome', 'ground']
+      children: ['pageShell']
     },
-    { id: 'chrome', type: CHROME_COMPONENT, label: 'The band', parent: 'page' },
+    ...pageShell({ chrome: true }),
     {
       id: 'ground',
       type: 'Group',
       label: 'Page ground',
-      parent: 'page',
+      parent: 'pageBody',
       parameters: FORM_GROUND,
       children: ['headingHeadRow', 'panel', 'savedOn', 'savedOff', 'failed']
     },
@@ -5098,13 +5164,14 @@ const UNSUBSCRIBE_PAGE: Tpl001Component = {
       type: 'Page',
       label: 'Unsubscribe',
       parameters: { title: 'Email settings', urlPath: 'unsubscribe' },
-      children: ['ground']
+      children: ['pageShell']
     },
+    ...pageShell(),
     {
       id: 'ground',
       type: 'Group',
       label: 'Page ground',
-      parent: 'page',
+      parent: 'pageBody',
       parameters: FORM_GROUND,
       children: ['headingHead', 'done', 'failed']
     },

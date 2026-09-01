@@ -2,7 +2,7 @@
   "task": "vib-001",
   "subject": "members-area",
   "state": "door",
-  "headSha": "1f4d5547c5af7b7e7b59c98a5b81bd2ffc52c6b8",
+  "headSha": "e39b6249160f162e052b48a1376887a9c815f04e",
   "artefactMd5": "f969ad963f5cbd25f1bcaa08d2951f47",
   "outDir": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-09-01/members-area-door",
   "starterAssets": {
@@ -88,13 +88,13 @@
       },
       "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-09-01/members-area-door/landing-preview-viewport.png",
       "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-09-01/members-area-door/landing-preview-full.png",
-      "contentBottom": 705,
+      "contentBottom": 1038,
       "canScroll": true,
       "unreachablePx": 0,
-      "textChars": 391,
+      "textChars": 574,
       "headings": [],
       "errors": [
-        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:61164/noodl.viewer.js:2:390794)\n    at i.onreadystatechange (http://127.0.0.1:61164/noodl.viewer.js:2:388795)"
+        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:64244/noodl.viewer.js:2:390794)\n    at i.onreadystatechange (http://127.0.0.1:64244/noodl.viewer.js:2:388795)"
       ]
     },
     {
@@ -111,13 +111,13 @@
       },
       "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-09-01/members-area-door/landing-desktop-viewport.png",
       "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-09-01/members-area-door/landing-desktop-full.png",
-      "contentBottom": 900,
-      "canScroll": false,
+      "contentBottom": 1038,
+      "canScroll": true,
       "unreachablePx": 0,
-      "textChars": 391,
+      "textChars": 574,
       "headings": [],
       "errors": [
-        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:61164/noodl.viewer.js:2:390794)\n    at i.onreadystatechange (http://127.0.0.1:61164/noodl.viewer.js:2:388795)"
+        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:64244/noodl.viewer.js:2:390794)\n    at i.onreadystatechange (http://127.0.0.1:64244/noodl.viewer.js:2:388795)"
       ]
     },
     {
@@ -137,10 +137,10 @@
       "contentBottom": 1080,
       "canScroll": false,
       "unreachablePx": 0,
-      "textChars": 391,
+      "textChars": 574,
       "headings": [],
       "errors": [
-        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:61164/noodl.viewer.js:2:390794)\n    at i.onreadystatechange (http://127.0.0.1:61164/noodl.viewer.js:2:388795)"
+        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:64244/noodl.viewer.js:2:390794)\n    at i.onreadystatechange (http://127.0.0.1:64244/noodl.viewer.js:2:388795)"
       ]
     },
     {
@@ -157,13 +157,13 @@
       },
       "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-09-01/members-area-door/landing-phone-viewport.png",
       "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-09-01/members-area-door/landing-phone-full.png",
-      "contentBottom": 844,
-      "canScroll": false,
+      "contentBottom": 1273,
+      "canScroll": true,
       "unreachablePx": 0,
-      "textChars": 391,
+      "textChars": 574,
       "headings": [],
       "errors": [
-        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:61164/noodl.viewer.js:2:390794)\n    at i.onreadystatechange (http://127.0.0.1:61164/noodl.viewer.js:2:388795)"
+        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:64244/noodl.viewer.js:2:390794)\n    at i.onreadystatechange (http://127.0.0.1:64244/noodl.viewer.js:2:388795)"
       ]
     },
     {
@@ -180,10 +180,10 @@
       },
       "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-09-01/members-area-door/sign-in-preview-viewport.png",
       "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-09-01/members-area-door/sign-in-preview-full.png",
-      "contentBottom": 524,
+      "contentBottom": 669,
       "canScroll": true,
       "unreachablePx": 0,
-      "textChars": 82,
+      "textChars": 194,
       "headings": [],
       "errors": []
     },
@@ -204,7 +204,7 @@
       "contentBottom": 900,
       "canScroll": false,
       "unreachablePx": 0,
-      "textChars": 82,
+      "textChars": 194,
       "headings": [],
       "errors": []
     },
@@ -225,7 +225,7 @@
       "contentBottom": 1080,
       "canScroll": false,
       "unreachablePx": 0,
-      "textChars": 82,
+      "textChars": 194,
       "headings": [],
       "errors": []
     },
@@ -246,7 +246,7 @@
       "contentBottom": 844,
       "canScroll": false,
       "unreachablePx": 0,
-      "textChars": 82,
+      "textChars": 194,
       "headings": [],
       "errors": []
     },
@@ -267,7 +267,7 @@
       "contentBottom": 956,
       "canScroll": true,
       "unreachablePx": 0,
-      "textChars": 148,
+      "textChars": 131,
       "headings": [],
       "errors": []
     },
@@ -288,7 +288,7 @@
       "contentBottom": 956,
       "canScroll": true,
       "unreachablePx": 0,
-      "textChars": 148,
+      "textChars": 131,
       "headings": [],
       "errors": []
     },
@@ -309,7 +309,7 @@
       "contentBottom": 1080,
       "canScroll": false,
       "unreachablePx": 0,
-      "textChars": 148,
+      "textChars": 131,
       "headings": [],
       "errors": []
     },
@@ -330,7 +330,7 @@
       "contentBottom": 956,
       "canScroll": true,
       "unreachablePx": 0,
-      "textChars": 148,
+      "textChars": 131,
       "headings": [],
       "errors": []
     },
@@ -348,10 +348,10 @@
       },
       "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-09-01/members-area-door/setup-preview-viewport.png",
       "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-09-01/members-area-door/setup-preview-full.png",
-      "contentBottom": 934,
+      "contentBottom": 1079,
       "canScroll": true,
       "unreachablePx": 0,
-      "textChars": 340,
+      "textChars": 452,
       "headings": [],
       "errors": []
     },
@@ -369,10 +369,10 @@
       },
       "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-09-01/members-area-door/setup-desktop-viewport.png",
       "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-09-01/members-area-door/setup-desktop-full.png",
-      "contentBottom": 934,
+      "contentBottom": 1079,
       "canScroll": true,
       "unreachablePx": 0,
-      "textChars": 340,
+      "textChars": 452,
       "headings": [],
       "errors": []
     },
@@ -393,7 +393,7 @@
       "contentBottom": 1080,
       "canScroll": false,
       "unreachablePx": 0,
-      "textChars": 340,
+      "textChars": 452,
       "headings": [],
       "errors": []
     },
@@ -411,10 +411,10 @@
       },
       "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-09-01/members-area-door/setup-phone-viewport.png",
       "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-09-01/members-area-door/setup-phone-full.png",
-      "contentBottom": 1019,
+      "contentBottom": 1180,
       "canScroll": true,
       "unreachablePx": 0,
-      "textChars": 340,
+      "textChars": 452,
       "headings": [],
       "errors": []
     },
@@ -432,15 +432,15 @@
       },
       "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-09-01/members-area-door/members-preview-viewport.png",
       "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-09-01/members-area-door/members-preview-full.png",
-      "contentBottom": 705,
+      "contentBottom": 1038,
       "canScroll": true,
       "unreachablePx": 0,
-      "textChars": 391,
+      "textChars": 574,
       "headings": [],
       "errors": [
-        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:61164/noodl.viewer.js:2:390794)\n    at i.onreadystatechange (http://127.0.0.1:61164/noodl.viewer.js:2:388795)",
+        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:64244/noodl.viewer.js:2:390794)\n    at i.onreadystatechange (http://127.0.0.1:64244/noodl.viewer.js:2:388795)",
         "[noodl] CloudFunction2 (/Members/Standing): No cloud services defined in this project. [cloud-function/call-failed] Object",
-        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:61164/noodl.viewer.js:2:390794)\n    at i.onreadystatechange (http://127.0.0.1:61164/noodl.viewer.js:2:388795)"
+        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:64244/noodl.viewer.js:2:390794)\n    at i.onreadystatechange (http://127.0.0.1:64244/noodl.viewer.js:2:388795)"
       ]
     },
     {
@@ -457,15 +457,15 @@
       },
       "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-09-01/members-area-door/members-desktop-viewport.png",
       "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-09-01/members-area-door/members-desktop-full.png",
-      "contentBottom": 900,
-      "canScroll": false,
+      "contentBottom": 1038,
+      "canScroll": true,
       "unreachablePx": 0,
-      "textChars": 391,
+      "textChars": 574,
       "headings": [],
       "errors": [
-        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:61164/noodl.viewer.js:2:390794)\n    at i.onreadystatechange (http://127.0.0.1:61164/noodl.viewer.js:2:388795)",
+        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:64244/noodl.viewer.js:2:390794)\n    at i.onreadystatechange (http://127.0.0.1:64244/noodl.viewer.js:2:388795)",
         "[noodl] CloudFunction2 (/Members/Standing): No cloud services defined in this project. [cloud-function/call-failed] Object",
-        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:61164/noodl.viewer.js:2:390794)\n    at i.onreadystatechange (http://127.0.0.1:61164/noodl.viewer.js:2:388795)"
+        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:64244/noodl.viewer.js:2:390794)\n    at i.onreadystatechange (http://127.0.0.1:64244/noodl.viewer.js:2:388795)"
       ]
     },
     {
@@ -485,12 +485,12 @@
       "contentBottom": 1080,
       "canScroll": false,
       "unreachablePx": 0,
-      "textChars": 391,
+      "textChars": 574,
       "headings": [],
       "errors": [
-        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:61164/noodl.viewer.js:2:390794)\n    at i.onreadystatechange (http://127.0.0.1:61164/noodl.viewer.js:2:388795)",
+        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:64244/noodl.viewer.js:2:390794)\n    at i.onreadystatechange (http://127.0.0.1:64244/noodl.viewer.js:2:388795)",
         "[noodl] CloudFunction2 (/Members/Standing): No cloud services defined in this project. [cloud-function/call-failed] Object",
-        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:61164/noodl.viewer.js:2:390794)\n    at i.onreadystatechange (http://127.0.0.1:61164/noodl.viewer.js:2:388795)"
+        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:64244/noodl.viewer.js:2:390794)\n    at i.onreadystatechange (http://127.0.0.1:64244/noodl.viewer.js:2:388795)"
       ]
     },
     {
@@ -507,15 +507,15 @@
       },
       "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-09-01/members-area-door/members-phone-viewport.png",
       "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-09-01/members-area-door/members-phone-full.png",
-      "contentBottom": 844,
-      "canScroll": false,
+      "contentBottom": 1273,
+      "canScroll": true,
       "unreachablePx": 0,
-      "textChars": 391,
+      "textChars": 574,
       "headings": [],
       "errors": [
-        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:61164/noodl.viewer.js:2:390794)\n    at i.onreadystatechange (http://127.0.0.1:61164/noodl.viewer.js:2:388795)",
+        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:64244/noodl.viewer.js:2:390794)\n    at i.onreadystatechange (http://127.0.0.1:64244/noodl.viewer.js:2:388795)",
         "[noodl] CloudFunction2 (/Members/Standing): No cloud services defined in this project. [cloud-function/call-failed] Object",
-        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:61164/noodl.viewer.js:2:390794)\n    at i.onreadystatechange (http://127.0.0.1:61164/noodl.viewer.js:2:388795)"
+        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:64244/noodl.viewer.js:2:390794)\n    at i.onreadystatechange (http://127.0.0.1:64244/noodl.viewer.js:2:388795)"
       ]
     }
   ]

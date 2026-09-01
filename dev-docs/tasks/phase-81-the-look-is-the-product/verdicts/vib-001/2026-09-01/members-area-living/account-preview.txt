@@ -11,3 +11,5 @@ YOUR ACCOUNT
 Emails
 Email me when a moderator posts an announcement
 Off unless you turn it on. Every email has a link that turns it off again, and you do not need to sign in to use it.
+EDIT ME — your association’s contact details go here.
+EDIT ME — registered charity number, or delete this line.

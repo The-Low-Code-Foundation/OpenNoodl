@@ -473,6 +473,89 @@ pre-existing notice.
 
 ---
 
+## REL-002c — what session 10 built: items 1–4 of the change list Richard asked for
+
+_Richard ruled the row **FINE** on 2026-09-01 and asked what I would change. The answer is
+[`REL-002c-WHAT-I-WOULD-CHANGE.md`](REL-002c-WHAT-I-WOULD-CHANGE.md); this section is what building
+its first four items actually took, which is not what that file estimated._
+
+### Items 1, 2 and 3 — small, and they cost what was estimated
+
+**Item 1 — the door landing had a void, and the band that fills it was closed by a gate.**
+`Pages/Landing`'s "What members can see" is ungated now: `mounted: false` gone from the node and the
+`hasAssociation` wire gone with it (the mounted-gate census moves 54 → 53). 🔴 **The s8 argument for
+gating it was about a page that no longer exists** — *"it would sit above the 'nobody has set this
+up yet' card"* was true when it was a section in the old single-column page and stopped being true
+when it became a band **below** the hero. And what it promises is the **product**, not this install's
+content: three literal sentences pinned by the page census, true of every copy on the day it is
+unzipped. What the gate actually did was leave **190px of bare `--muted`** between the photograph
+and the footer at 1280, and 330px at 1900.
+
+**Item 2 — `/members` ended in four buttons that were all already in the band.** `What's coming up`,
+`Requests to join` and `Who belongs` are gone; `Post something` stays and is the page's one filled
+button. 🔴 **This reverses a decision recorded in the generator at s9** (*"The three buttons below
+STAY… a nav and a call to action are not the same control"*) — the principle is right and the
+reading of these three was wrong: each named a **place** the nav names in the same word, three
+inches higher. Three `RouterNavigate` nodes went with them, because each had exactly one driver and
+it was the button that was deleted. The `moderatorButtons` `Columns` went too — a `Columns` with one
+child hands it the whole container, which is a 1200px filled button — and so did `afterRuledList`,
+whose only caller was the button above it.
+
+**Item 3 — one string.** *"Already have an account? Sign in instead."* → *"Already have an
+account?"*, above the outline `Sign in` button that is the actual control.
+
+### 🔴 Item 4 — the stated fix would have changed no pixel, and the mechanism was wrong twice
+
+The change list said: `PAGE_GROUND` carries an inert `height: 100%`, so give it `minHeight: 100vh`.
+**Both halves of that are wrong, and the second one is worth carrying out of this phase.**
+
+1. **The proposed fix paints nothing.** `ground` has no `backgroundColor` in the artefact — read out
+   of `components/Pages/Directory/nodes.json`, not reasoned about — so growing that box leaves
+   `/setup` ending in exactly the same white. **A page has a bottom edge when something is AT the
+   bottom.** The eleven pages now place `Members/Footer`, the band the landing page has had since
+   s7. A **component**, not four nodes copied thirteen times: the two `EDIT ME —` lines an
+   association has to replace stay two strings rather than becoming twenty-six.
+2. 🔴 **`height: 100%` was never inert.** [`layout.ts:98`](../../../packages/noodl-viewer-react/src/layout.ts#L98)
+   turns a percentage height inside a **column** parent into `flexGrow` — *"along the parent's flex
+   direction it becomes `flexGrow` (so siblings share the space proportionally)"*. So `PAGE_GROUND`
+   has always meant `flex-grow: 100`. It did nothing only because the chain above it ended at a
+   content-sized `Router`. **The moment the page got a floor, the slack went INTO the ground** and
+   was shared out among its children: 150px between `/sign-in`'s heading and its form, and the form
+   panel stretched by as much again. Found by rendering, not by predicting.
+3. 🔴 **Every `Group` in this template without a `sizeMode` is `flex-grow: 100`.** `addDimensions`
+   defaults `sizeMode` to `explicit` and `height` to `100%`
+   ([`node-shared-port-definitions.ts:1102`](../../../packages/noodl-viewer-react/src/node-shared-port-definitions.ts#L1102)).
+   That is a property of the runtime and it is the reason the shell is shaped the way it is.
+
+**So the built shape is two bands, not three.** `PAGE_SHELL` (`minHeight: 100vh`,
+`justifyContent: space-between`) holds exactly `pageBody` and `pageFooter`; `pageBody`
+(`contentHeight`) holds the band, if the page has one, and the ground. ⚠️ **`space-between` over
+three children is the wrong answer** — it splits the slack in two and opens a gap **under the
+header**, the one place on these pages nothing may move. `PAGE_GROUND` and the chrome band's `bar`
+are both pinned to `contentHeight`, which is what stops the slack being redistributed rather than
+kept at the foot.
+
+⚠️ **The two public band pages do not take `pageShell`.** `Pages/Landing` and `Pages/Join` are built
+on `BAND_PAGE_GROUND`, which already floors at `100vh`; the landing page places the footer component
+as its last band and `/join` ends on its form panel with `--muted` beneath it.
+
+**Cost, against the estimate.** The change list called item 4 *"one constant"*. It was a new
+component, a new shell, a new body wrapper, two pinned heights and eleven rewritten page roots — and
+one component count and one file count in the gate.
+
+### The readings, with their exit statuses
+
+| gate | reading |
+|---|---|
+| `npm run template:members` | **exit 0**, and **idempotent** — hashed before and after a second run, identical (`8af2aeec…`), so every diff this session is attributable. 30 components, 13 pages, 94 files |
+| `tpl001Template.test.ts` | **exit 0** — **72/72**, taken after the last edit |
+| full `noodl-mcp` suite | **exit 0** — **83/83 suites, 1085/1085 tests**, clean on the first run |
+| `rel002c-look.look.ts` | **exit 0** — the fast door-only harness, run three times across the session; two of the three corrections above were found on it |
+| `vib001-members.look.ts` | **exit 0** — **44 shots**, both states, seeded backend asserted before any picture. Door `md5=f969ad96`, living `md5=7164e4f6` |
+| `tpl001-members-drive` + `tpl001-empty-states` + `rel002b-fail-closed` | **109/110 on the first run**, and the one red was the deletion doing its job: `§5 AC4`'s control asserted the moderator is offered `Post something` **and `Requests to join`**, and the second of those no longer exists. 🔴 **The pair is what makes AC4 a measurement** — two arms assert a pending person and a plain member are NOT offered them — so the control was re-pointed at `Requests`, the band's moderator-only pill, rather than dropped. Re-run after the correction: **exit 0, 110/110** on real enforcing backends. ⚠️ The background task's notification said *completed (exit code 0)* on the FAILING run too — the exit file written by the command itself read `1` |
+
+---
+
 ### REL-003 — The stale bundles the cut inherits
 
 Phase 80 closed several fixes whose effect a user cannot see, because the committed build output

@@ -64,27 +64,9 @@
       "toProperty": "mounted"
     },
     {
-      "fromId": "meetingsButton",
-      "fromProperty": "onClick",
-      "toId": "toMeetings",
-      "toProperty": "navigate"
-    },
-    {
       "fromId": "postButton",
       "fromProperty": "onClick",
       "toId": "toPost",
-      "toProperty": "navigate"
-    },
-    {
-      "fromId": "requestsButton",
-      "fromProperty": "onClick",
-      "toId": "toRequests",
-      "toProperty": "navigate"
-    },
-    {
-      "fromId": "directoryButton",
-      "fromProperty": "onClick",
-      "toId": "toDirectory",
       "toProperty": "navigate"
     }
   ]

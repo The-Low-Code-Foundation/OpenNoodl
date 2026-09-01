@@ -53,10 +53,12 @@ altered what those tests measure and published nothing.
 
 TPL-001 AC8 asks for "an excluded-files list that is **read and checked** — this project has a
 backend and auth, so the check is not a formality." Performed 2026-09-01 against the artefact at
-HEAD (`27f127e9`, 91 files):
+HEAD (`27f127e9`, 91 files), and **re-performed 2026-09-01 session 10** after REL-002c items 1–4
+changed the artefact (`8af2aeec`, **94 files** — `Members/Footer`'s three, nothing else):
 
 **What is in the bundle.** Four things only: `components/`, `docs/START-HERE.md`,
-`nodegx.project.json`, `nodegx.security.json`. No `.env`, no `*.key`, no `*.pem`, no file with
+`nodegx.project.json`, `nodegx.security.json`. ✅ **Still four after session 10** — the three added
+files are `components/Members/Footer/{component,nodes,connections}.json`. No `.env`, no `*.key`, no `*.pem`, no file with
 `secret`, `credential` or `token` in its name.
 
 **Content scan.** Every `secret`-shaped hit is structural and correct: a `noodl.cloud.secret`

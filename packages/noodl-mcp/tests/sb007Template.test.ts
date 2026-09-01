@@ -1028,8 +1028,30 @@ describe('SB-007 — the NDA-017 migration cannot silence a mount-triggered node
  * number here would make an ordinary component edit red this gate for no reason. **Zero is the
  * only figure that is stable under authoring**, which is the argument for fixing it in the
  * generator rather than by hand: a hand-settled artefact would have been stale before it landed.
+ *
+ * ## 🔴 What this gate does NOT cover — read before treating AC3 as discharged
+ *
+ * **One artefact of two.** This block reads `shipped`, which is `site-builder.content.json`. The
+ * repository ships a second generated template — **TPL-001, `templates/members-area`**, written by
+ * `tpl001Template.ts`'s `prepareArtefact`, which does **not** pin its values.
+ *
+ * 📊 **Measured 2026-08-31: TPL-001 disagrees in 57 places** — `writes 57, familyNodes 105,
+ * signalDriven 76, preserved 77`, against this artefact's `writes 0, familyNodes 82`. Both arms
+ * report a non-zero `familyNodes`, which is what makes the 0 an absence and the 57 a presence
+ * rather than two readings of a dead instrument. First three:
+ * `/#__cloud__/claimAssociation` `DbCollection2` `runOnChange-records` / `runOnChange-search`,
+ * and `JavaScriptFunction runOnChange-in-moderatorName`.
+ *
+ * ⚠️ **So the name of this block is a scope, not a claim about AC3 as a whole**, and that is the
+ * correction: it was `loading the shipped template`, definite and singular, while two are shipped.
+ *
+ * 🔴 **The shape is the one AC4 exists to prevent** — a check that names the artefact it was
+ * written for, and silently declines to notice a second one. Whoever ports the pin should make the
+ * gate **enumerate the shipped generators** and assert each settles, rather than add a second
+ * hand-written block beside this one. Owned as **Row 10** in `UNOWNED-ROWS-TO-MEASURE.md`
+ * (owner `NONE`); the measurement above is already done, so what remains is the port and the gate.
  */
-describe('DEF-007 AC3 — loading the shipped template changes nothing in it', () => {
+describe('DEF-007 AC3 — loading the shipped SITE-BUILDER template changes nothing in it', () => {
   it('plans no writes over the committed artefact', () => {
     const plan = planRunOnValueChangeMigration(shipped as unknown as MigrationProjectLike);
 

@@ -59,12 +59,6 @@
     },
     {
       "fromId": "read-3",
-      "fromProperty": "out-hasAssociation",
-      "toId": "inside",
-      "toProperty": "mounted"
-    },
-    {
-      "fromId": "read-3",
       "fromProperty": "out-unanswered",
       "toId": "waitingCard",
       "toProperty": "mounted"

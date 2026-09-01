@@ -17,3 +17,5 @@ Tom Waiting
 Tom Waiting would like to join.
 Approve
 Decline
+EDIT ME — your association’s contact details go here.
+EDIT ME — registered charity number, or delete this line.

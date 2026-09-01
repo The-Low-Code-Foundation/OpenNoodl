@@ -8,7 +8,7 @@
       "type": "Page",
       "label": "Sign in",
       "children": [
-        "ground"
+        "pageShell"
       ],
       "parameters": {
         "title": "Sign in",
@@ -18,10 +18,62 @@
       "y": 40
     },
     {
+      "id": "pageShell",
+      "type": "Group",
+      "label": "The page, floored at the viewport",
+      "parent": "page-2",
+      "children": [
+        "pageBody",
+        "pageFooter"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "minHeight": {
+          "value": 100,
+          "unit": "vh"
+        },
+        "flexDirection": "column",
+        "justifyContent": "space-between"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "pageBody",
+      "type": "Group",
+      "label": "Everything above the foot",
+      "parent": "pageShell",
+      "children": [
+        "ground"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column"
+      },
+      "x": 160,
+      "y": 280
+    },
+    {
+      "id": "pageFooter",
+      "type": "/Members/Footer",
+      "label": "The foot of the page",
+      "parent": "pageShell",
+      "x": 160,
+      "y": 1840
+    },
+    {
       "id": "ground",
       "type": "Group",
       "label": "Page ground",
-      "parent": "page-2",
+      "parent": "pageBody",
       "children": [
         "headingHead",
         "form",
@@ -41,18 +93,14 @@
         "flexDirection": "column",
         "paddingLeft": "var(--space-6)",
         "paddingRight": "var(--space-6)",
-        "sizeMode": "explicit",
-        "height": {
-          "value": 100,
-          "unit": "%"
-        },
+        "sizeMode": "contentHeight",
         "alignX": "center",
         "rowGap": "var(--space-5)",
         "paddingTop": "var(--space-12)",
         "paddingBottom": "var(--space-12)"
       },
-      "x": 100,
-      "y": 160
+      "x": 220,
+      "y": 400
     },
     {
       "id": "headingHead",
@@ -72,8 +120,8 @@
         "rowGap": "var(--space-1)",
         "paddingBottom": "var(--space-2)"
       },
-      "x": 160,
-      "y": 280
+      "x": 280,
+      "y": 520
     },
     {
       "id": "headingEyebrow",
@@ -88,8 +136,8 @@
         "textTransform": "uppercase",
         "color": "var(--primary)"
       },
-      "x": 220,
-      "y": 400
+      "x": 340,
+      "y": 640
     },
     {
       "id": "heading-2",
@@ -104,8 +152,8 @@
         "letterSpacing": "var(--tracking-tight)",
         "color": "var(--foreground)"
       },
-      "x": 220,
-      "y": 520
+      "x": 340,
+      "y": 760
     },
     {
       "id": "form",
@@ -135,8 +183,8 @@
         "paddingTop": "var(--space-5)",
         "paddingBottom": "var(--space-5)"
       },
-      "x": 160,
-      "y": 640
+      "x": 280,
+      "y": 880
     },
     {
       "id": "email",
@@ -164,8 +212,8 @@
         "label": "Email",
         "type": "email"
       },
-      "x": 220,
-      "y": 760
+      "x": 340,
+      "y": 1000
     },
     {
       "id": "password",
@@ -193,8 +241,8 @@
         "label": "Password",
         "type": "password"
       },
-      "x": 220,
-      "y": 880
+      "x": 340,
+      "y": 1120
     },
     {
       "id": "submit",
@@ -215,8 +263,8 @@
         "fontWeight": "var(--font-semibold)",
         "sizeMode": "contentSize"
       },
-      "x": 220,
-      "y": 1000
+      "x": 340,
+      "y": 1240
     },
     {
       "id": "error",
@@ -245,8 +293,8 @@
         "paddingBottom": "var(--space-5)",
         "mounted": false
       },
-      "x": 160,
-      "y": 1120
+      "x": 280,
+      "y": 1360
     },
     {
       "id": "errorText",
@@ -258,8 +306,8 @@
         "fontSize": "var(--text-sm)",
         "color": "var(--destructive)"
       },
-      "x": 220,
-      "y": 1240
+      "x": 340,
+      "y": 1480
     },
     {
       "id": "joinHint",
@@ -271,8 +319,8 @@
         "fontSize": "var(--text-sm)",
         "color": "var(--muted-foreground)"
       },
-      "x": 160,
-      "y": 1360
+      "x": 280,
+      "y": 1600
     },
     {
       "id": "joinButton-2",
@@ -295,15 +343,15 @@
         "fontWeight": "var(--font-semibold)",
         "sizeMode": "contentSize"
       },
-      "x": 160,
-      "y": 1480
+      "x": 280,
+      "y": 1720
     },
     {
       "id": "login",
       "type": "net.noodl.user.LogIn",
       "label": "Log in",
-      "x": 470,
-      "y": 1240
+      "x": 590,
+      "y": 1480
     },
     {
       "id": "errorGate",
@@ -313,8 +361,8 @@
         "condition": true,
         "runOnChange-condition": false
       },
-      "x": 470,
-      "y": 1120
+      "x": 590,
+      "y": 1360
     },
     {
       "id": "toMembers",
@@ -324,8 +372,8 @@
         "router": "Main",
         "target": "/Pages/Members"
       },
-      "x": 470,
-      "y": 1600
+      "x": 590,
+      "y": 1840
     },
     {
       "id": "toJoin-2",
@@ -335,8 +383,8 @@
         "router": "Main",
         "target": "/Pages/Join"
       },
-      "x": 470,
-      "y": 1480
+      "x": 590,
+      "y": 1720
     }
   ],
   "visualRoots": [

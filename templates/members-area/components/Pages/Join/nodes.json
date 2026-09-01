@@ -200,11 +200,7 @@
         "flexDirection": "column",
         "paddingLeft": "var(--space-6)",
         "paddingRight": "var(--space-6)",
-        "sizeMode": "explicit",
-        "height": {
-          "value": 100,
-          "unit": "%"
-        },
+        "sizeMode": "contentHeight",
         "alignX": "center",
         "rowGap": "var(--space-5)",
         "paddingTop": "var(--space-8)",
@@ -475,7 +471,7 @@
       "label": "Already a member",
       "parent": "ground-6",
       "parameters": {
-        "text": "Already have an account? Sign in instead.",
+        "text": "Already have an account?",
         "fontSize": "var(--text-sm)",
         "color": "var(--muted-foreground)"
       },

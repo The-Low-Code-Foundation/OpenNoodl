@@ -12,6 +12,36 @@ Ordered by how much they cost against how much they change.
 
 ---
 
+## ✅ Session 10 built items 1–4. What it found while doing it
+
+**Items 1, 2 and 3 were what this file said they were** and cost what it said they would.
+
+🔴 **Item 4's stated fix would have changed no pixel, and its stated mechanism was wrong twice.**
+Both corrections are recorded on the constants themselves (`PAGE_SHELL`, `PAGE_GROUND`) and in the
+session's handoff; in short:
+
+1. **`minHeight: 100vh` on `PAGE_GROUND` paints nothing.** That Group carries no `backgroundColor`
+   in the artefact — checked in `components/Pages/Directory/nodes.json` rather than reasoned about —
+   so growing the box leaves `/setup` ending in exactly the same white. A page has a bottom edge
+   when something is **at** the bottom. The eleven pages got the footer the landing page has had
+   since s7, as `Members/Footer` — a component, so the two `EDIT ME —` lines stay two strings
+   rather than becoming twenty-six.
+2. **`height: 100%` was never inert.** `layout.ts:98` turns a percentage height inside a column
+   parent into `flexGrow`, so `PAGE_GROUND` has always meant `flex-grow: 100`. It did nothing only
+   because the chain above ended at a content-sized `Router`. The moment the page got a floor, the
+   slack went **into** the ground and was shared among its children — 150px between `/sign-in`'s
+   heading and its form, and the form panel stretched by as much again. Photographed, not predicted.
+3. 🔴 **Every `Group` in this template without a `sizeMode` is `flex-grow: 100`.**
+   `addDimensions` defaults `sizeMode` to `explicit` and `height` to `100%`. That is a fact about
+   the runtime, and it is why the fix is a two-band shell (`pageBody` + the footer, `space-between`)
+   with `PAGE_GROUND` and the chrome band both pinned to `contentHeight` — rather than a
+   `justifyContent` on a three-child shell, which opens a gap **under the header**.
+
+⚠️ **So item 4 cost a component, a shell and two pinned heights, not "one constant".** The estimate
+below was made from the renders and is left as it was written.
+
+---
+
 ## 1. The door landing is a photograph and then nothing — 🟢 small
 
 **The symptom.** At 1280 the unconnected landing is: photograph, the "not connected yet" notice on

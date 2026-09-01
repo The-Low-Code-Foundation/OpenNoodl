@@ -8,8 +8,7 @@
       "type": "Page",
       "label": "Meeting",
       "children": [
-        "chrome-4",
-        "ground-5"
+        "pageShell-5"
       ],
       "parameters": {
         "title": "Meeting",
@@ -19,18 +18,71 @@
       "y": 40
     },
     {
+      "id": "pageShell-5",
+      "type": "Group",
+      "label": "The page, floored at the viewport",
+      "parent": "page-6",
+      "children": [
+        "pageBody-5",
+        "pageFooter-5"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "minHeight": {
+          "value": 100,
+          "unit": "vh"
+        },
+        "flexDirection": "column",
+        "justifyContent": "space-between"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "pageBody-5",
+      "type": "Group",
+      "label": "Everything above the foot",
+      "parent": "pageShell-5",
+      "children": [
+        "chrome-4",
+        "ground-5"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column"
+      },
+      "x": 160,
+      "y": 280
+    },
+    {
       "id": "chrome-4",
       "type": "/Members/Chrome",
       "label": "The band",
-      "parent": "page-6",
-      "x": 100,
-      "y": 160
+      "parent": "pageBody-5",
+      "x": 220,
+      "y": 400
+    },
+    {
+      "id": "pageFooter-5",
+      "type": "/Members/Footer",
+      "label": "The foot of the page",
+      "parent": "pageShell-5",
+      "x": 160,
+      "y": 3040
     },
     {
       "id": "ground-5",
       "type": "Group",
       "label": "Page ground",
-      "parent": "page-6",
+      "parent": "pageBody-5",
       "children": [
         "titleHeadRow-2",
         "when-3",
@@ -51,18 +103,14 @@
         "flexDirection": "column",
         "paddingLeft": "var(--space-6)",
         "paddingRight": "var(--space-6)",
-        "sizeMode": "explicit",
-        "height": {
-          "value": 100,
-          "unit": "%"
-        },
+        "sizeMode": "contentHeight",
         "alignX": "center",
         "rowGap": "var(--space-5)",
         "paddingTop": "var(--space-12)",
         "paddingBottom": "var(--space-12)"
       },
-      "x": 100,
-      "y": 280
+      "x": 220,
+      "y": 520
     },
     {
       "id": "titleHeadRow-2",
@@ -83,8 +131,8 @@
         "alignItems": "center",
         "columnGap": "var(--space-4)"
       },
-      "x": 160,
-      "y": 400
+      "x": 280,
+      "y": 640
     },
     {
       "id": "titleBadge-2",
@@ -110,8 +158,8 @@
         "backgroundColor": "var(--accent)",
         "borderRadius": "var(--radius-lg)"
       },
-      "x": 220,
-      "y": 520
+      "x": 340,
+      "y": 760
     },
     {
       "id": "titleGlyph-2",
@@ -130,8 +178,8 @@
         },
         "iconColor": "var(--accent-foreground)"
       },
-      "x": 280,
-      "y": 640
+      "x": 400,
+      "y": 880
     },
     {
       "id": "titleHead-2",
@@ -151,8 +199,8 @@
         "rowGap": "var(--space-1)",
         "paddingBottom": "var(--space-2)"
       },
-      "x": 220,
-      "y": 760
+      "x": 340,
+      "y": 1000
     },
     {
       "id": "titleEyebrow-2",
@@ -167,8 +215,8 @@
         "textTransform": "uppercase",
         "color": "var(--primary)"
       },
-      "x": 280,
-      "y": 880
+      "x": 400,
+      "y": 1120
     },
     {
       "id": "title-2",
@@ -183,8 +231,8 @@
         "letterSpacing": "var(--tracking-tight)",
         "color": "var(--foreground)"
       },
-      "x": 280,
-      "y": 1000
+      "x": 400,
+      "y": 1240
     },
     {
       "id": "when-3",
@@ -196,8 +244,8 @@
         "fontSize": "var(--text-sm)",
         "color": "var(--muted-foreground)"
       },
-      "x": 160,
-      "y": 1120
+      "x": 280,
+      "y": 1360
     },
     {
       "id": "place",
@@ -209,8 +257,8 @@
         "fontSize": "var(--text-sm)",
         "color": "var(--muted-foreground)"
       },
-      "x": 160,
-      "y": 1240
+      "x": 280,
+      "y": 1480
     },
     {
       "id": "details",
@@ -222,8 +270,8 @@
         "fontSize": "var(--text-base)",
         "color": "var(--foreground)"
       },
-      "x": 160,
-      "y": 1360
+      "x": 280,
+      "y": 1600
     },
     {
       "id": "refusal-2",
@@ -252,8 +300,8 @@
         "paddingBottom": "var(--space-5)",
         "mounted": false
       },
-      "x": 160,
-      "y": 1480
+      "x": 280,
+      "y": 1720
     },
     {
       "id": "refusalText-2",
@@ -265,8 +313,8 @@
         "fontSize": "var(--text-sm)",
         "color": "var(--destructive)"
       },
-      "x": 220,
-      "y": 1600
+      "x": 340,
+      "y": 1840
     },
     {
       "id": "pageInputs-2",
@@ -275,8 +323,8 @@
       "parameters": {
         "pathParams": "meetingId"
       },
-      "x": 590,
-      "y": 2680
+      "x": 710,
+      "y": 2920
     },
     {
       "id": "hold-4",
@@ -306,7 +354,7 @@
           "group": "Outputs"
         }
       ],
-      "x": 590,
+      "x": 710,
       "y": 40
     },
     {
@@ -317,8 +365,8 @@
         "collectionName": "Meeting",
         "idSource": "explicit"
       },
-      "x": 590,
-      "y": 1000
+      "x": 710,
+      "y": 1240
     },
     {
       "id": "whenLabel-2",
@@ -327,8 +375,8 @@
       "parameters": {
         "functionScript": "function humanDay(raw) {\n  if (raw === undefined || raw === null) return '';\n  var s = String(raw);\n  if (s === '') return '';\n  var m = /^(\\d{4})-(\\d{2})-(\\d{2})$/.exec(s);\n  var at = m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : new Date(s);\n  if (isNaN(at.getTime())) return '';\n  return at.toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' });\n}\nif (Inputs.when === undefined) return;\nvar day = humanDay(Inputs.when);\nOutputs.label = day === '' ? String(Inputs.when || '') : day;"
       },
-      "x": 590,
-      "y": 1120,
+      "x": 710,
+      "y": 1360,
       "ports": [
         {
           "name": "in-when",
@@ -354,8 +402,8 @@
         "condition": true,
         "runOnChange-condition": false
       },
-      "x": 590,
-      "y": 1480
+      "x": 710,
+      "y": 1720
     },
     {
       "id": "removal-2",
@@ -380,8 +428,8 @@
         "paddingTop": "var(--space-6)",
         "mounted": false
       },
-      "x": 160,
-      "y": 1720
+      "x": 280,
+      "y": 1960
     },
     {
       "id": "removeButton-2",
@@ -404,8 +452,8 @@
         "fontWeight": "var(--font-semibold)",
         "sizeMode": "contentSize"
       },
-      "x": 220,
-      "y": 1840
+      "x": 340,
+      "y": 2080
     },
     {
       "id": "confirm-2",
@@ -435,8 +483,8 @@
         "paddingBottom": "var(--space-5)",
         "mounted": false
       },
-      "x": 220,
-      "y": 1960
+      "x": 340,
+      "y": 2200
     },
     {
       "id": "confirmText-2",
@@ -448,8 +496,8 @@
         "fontSize": "var(--text-sm)",
         "color": "var(--destructive)"
       },
-      "x": 280,
-      "y": 2080
+      "x": 400,
+      "y": 2320
     },
     {
       "id": "confirmRow-2",
@@ -465,8 +513,8 @@
         "flexDirection": "row",
         "columnGap": "var(--space-3)"
       },
-      "x": 280,
-      "y": 2200
+      "x": 400,
+      "y": 2440
     },
     {
       "id": "confirmYes-2",
@@ -489,8 +537,8 @@
         "fontWeight": "var(--font-semibold)",
         "sizeMode": "contentSize"
       },
-      "x": 340,
-      "y": 2320
+      "x": 460,
+      "y": 2560
     },
     {
       "id": "confirmNo-2",
@@ -513,8 +561,8 @@
         "fontWeight": "var(--font-semibold)",
         "sizeMode": "contentSize"
       },
-      "x": 340,
-      "y": 2440
+      "x": 460,
+      "y": 2680
     },
     {
       "id": "removeFailed-2",
@@ -543,8 +591,8 @@
         "paddingBottom": "var(--space-5)",
         "mounted": false
       },
-      "x": 220,
-      "y": 2560
+      "x": 340,
+      "y": 2800
     },
     {
       "id": "removeFailedText-2",
@@ -556,8 +604,8 @@
         "fontSize": "var(--text-sm)",
         "color": "var(--destructive)"
       },
-      "x": 280,
-      "y": 2680
+      "x": 400,
+      "y": 2920
     },
     {
       "id": "confirmed-2",
@@ -588,8 +636,8 @@
           "group": "Outputs"
         }
       ],
-      "x": 590,
-      "y": 2320
+      "x": 710,
+      "y": 2560
     },
     {
       "id": "del-2",
@@ -599,8 +647,8 @@
         "collectionName": "Meeting",
         "idSource": "explicit"
       },
-      "x": 590,
-      "y": 2800
+      "x": 710,
+      "y": 3040
     },
     {
       "id": "confirmGate-2",
@@ -610,8 +658,8 @@
         "condition": true,
         "runOnChange-condition": false
       },
-      "x": 590,
-      "y": 1960
+      "x": 710,
+      "y": 2200
     },
     {
       "id": "confirmClear-2",
@@ -621,8 +669,8 @@
         "condition": false,
         "runOnChange-condition": false
       },
-      "x": 590,
-      "y": 2080
+      "x": 710,
+      "y": 2320
     },
     {
       "id": "removeFailedGate-2",
@@ -632,8 +680,8 @@
         "condition": true,
         "runOnChange-condition": false
       },
-      "x": 590,
-      "y": 2560
+      "x": 710,
+      "y": 2800
     },
     {
       "id": "toList-2",
@@ -643,8 +691,8 @@
         "router": "Main",
         "target": "/Pages/Meetings"
       },
-      "x": 590,
-      "y": 2920
+      "x": 710,
+      "y": 3160
     }
   ],
   "visualRoots": [

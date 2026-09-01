@@ -1,0 +1,89 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "21bf3933-aa84-5c4b-8b68-48257431a6d2",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "footer",
+      "type": "Group",
+      "label": "The foot of the page",
+      "children": [
+        "footerShell"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "alignItems": "center",
+        "backgroundColor": "var(--muted)",
+        "borderTopStyle": "solid",
+        "borderTopWidth": "var(--border-1)",
+        "borderTopColor": "var(--border)",
+        "paddingTop": "var(--space-16)",
+        "paddingBottom": "var(--space-10)"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "footerShell",
+      "type": "Group",
+      "label": "Shell",
+      "parent": "footer",
+      "children": [
+        "footerEdit",
+        "footerEditSecond"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "maxWidth": {
+          "value": 1200,
+          "unit": "px"
+        },
+        "flexDirection": "column",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "sizeMode": "contentHeight",
+        "alignX": "center",
+        "rowGap": "var(--space-2)"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "footerEdit",
+      "type": "Text",
+      "label": "EDIT — who to contact",
+      "parent": "footerShell",
+      "parameters": {
+        "text": "EDIT ME — your association’s contact details go here.",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--muted-foreground)"
+      },
+      "x": 160,
+      "y": 280
+    },
+    {
+      "id": "footerEditSecond",
+      "type": "Text",
+      "label": "EDIT — the small print",
+      "parent": "footerShell",
+      "parameters": {
+        "text": "EDIT ME — registered charity number, or delete this line.",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--muted-foreground)"
+      },
+      "x": 160,
+      "y": 400
+    }
+  ],
+  "visualRoots": [
+    "footer"
+  ]
+}

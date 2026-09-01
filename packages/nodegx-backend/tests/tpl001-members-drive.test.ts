@@ -700,7 +700,13 @@ describe("TPL-001 — the members' area, driven", () => {
       // `offered` and not `present` — see below. The moderator control for this
       // pair is §5's first spec, taken in the same run with the same instrument.
       expect(buttons['pending.members']).not.toContain('Post something');
-      expect(buttons['pending.members']).not.toContain('Requests to join');
+      // 🔴 **`Requests`, the band's pill — `Requests to join` no longer exists.**
+      // REL-002c item 2 deleted that button and the two beside it: each named a
+      // PLACE the band's nav already names in the same word, three inches above
+      // it on the same page. The moderator-only affordances on `/members` are
+      // now the section's one call to action and the band's three gated pills,
+      // and this pair tests one of each.
+      expect(buttons['pending.members']).not.toContain('Requests');
     });
 
     it('is turned away from the moderator screens by name, not by a blank page', () => {
@@ -718,13 +724,16 @@ describe("TPL-001 — the members' area, driven", () => {
   describe('§5 AC4 — a member cannot post, in the UI and on the server', () => {
     it('the moderator IS offered the tools — the control for the two below', () => {
       expect(buttons['moderator.members']).toEqual(
-        expect.arrayContaining(['Post something', 'Requests to join'])
+        // See the note on the pending arm above: `Requests to join` was deleted
+        // by REL-002c item 2 and `Requests` is the band's moderator-only pill
+        // that replaced it as the way to that page.
+        expect.arrayContaining(['Post something', 'Requests'])
       );
     });
 
     it('the member is not offered them', () => {
       expect(buttons['member.members']).not.toContain('Post something');
-      expect(buttons['member.members']).not.toContain('Requests to join');
+      expect(buttons['member.members']).not.toContain('Requests');
     });
 
     it('and reaching the Post page by its URL is refused, not merely unlinked', () => {

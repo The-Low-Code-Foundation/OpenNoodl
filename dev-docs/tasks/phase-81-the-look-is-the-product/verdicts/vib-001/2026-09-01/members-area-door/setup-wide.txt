@@ -9,3 +9,5 @@ Your email
 Choose a password
 Setup token
 Set up this members’ area
+EDIT ME — your association’s contact details go here.
+EDIT ME — registered charity number, or delete this line.

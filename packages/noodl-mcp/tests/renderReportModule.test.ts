@@ -66,10 +66,16 @@ const codes = (findings: Finding[], severity?: string) =>
 
 describe('the placeholder strings come from the catalog, not from memory', () => {
   it('is exactly the visible-text defaults the node library ships', () => {
-    // Three, and each is a real port default: Text.text, six controls' `label`,
-    // two text inputs' `placeholder`. If a fourth appears, a node gained a
-    // visible default and the report should say so — this spec is the notice.
-    expect(placeholderStrings().sort()).toEqual(['Label', 'Text', 'Type here...']);
+    // Two, and each is a real port default: Text.text and six controls' `label`.
+    // If a third appears, a node gained a visible default and the report should
+    // say so — this spec is the notice.
+    //
+    // 🔴 It was three until REL-002a. `Type here...` was the two text inputs'
+    // `placeholder` default, and it SHIPPED: 17 of the members-area template's 18
+    // fields rendered it, under labels that already named them. The default is now
+    // empty, so the string the report used to hunt for is one the product no longer
+    // puts there. See `nodes/controls/text-input.ts`.
+    expect(placeholderStrings().sort()).toEqual(['Label', 'Text']);
   });
 
   it('bakes them into the expression the page evaluates', () => {

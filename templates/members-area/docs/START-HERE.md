@@ -35,8 +35,8 @@ written to look unfinished on purpose, and every one is **named with an
 
 | component | node | what it says today |
 |---|---|---|
-| `Pages/Landing` | **EDIT — the small print** | EDIT ME — registered charity number, or delete this line. |
-| `Pages/Landing` | **EDIT — who to contact** | EDIT ME — your association’s contact details go here. |
+| `Members/Footer` | **EDIT — the small print** | EDIT ME — registered charity number, or delete this line. |
+| `Members/Footer` | **EDIT — who to contact** | EDIT ME — your association’s contact details go here. |
 
 Change the text, or delete the node if it does not apply to you.
 

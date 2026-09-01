@@ -269,7 +269,11 @@ describe('TPL-001 — the committed template is what the door writes today', () 
     // was just written rather than typed — see `writeStartHere`. `docs/` rather
     // than a `/start-here` route because a route would be a public URL telling
     // strangers which parts of a deployed members' area are unfinished.
-    expect(committed.length).toBe(29 * 3 + 4); // TPL-002: +4 cloud functions, +2 pages
+    // REL-002c item 4: +1 component, `Members/Footer`. Eleven of the thirteen
+    // pages ended in undifferentiated white; they place this now, and the two
+    // `EDIT ME —` lines an association has to replace stayed two strings rather
+    // than becoming twenty-six.
+    expect(committed.length).toBe(30 * 3 + 4); // TPL-002: +4 cloud functions, +2 pages
     expect(committed).toContain('nodegx.project.json');
     expect(committed).toContain('nodegx.security.json');
     expect(committed).toContain(path.join('components', '_registry.json'));
@@ -292,9 +296,9 @@ describe('TPL-001 — the committed template is what the door writes today', () 
     // 🔴 Without this, the comparison above is satisfiable by two empty sets, and
     // a build that silently authored nothing would read as agreement.
     const built = await buildMembersTemplateProject();
-    expect(built.order).toHaveLength(29); // TPL-002: 8 endpoints, 13 pages
+    expect(built.order).toHaveLength(30); // TPL-002: 8 endpoints, 13 pages · REL-002c: Members/Footer
     expect(built.order[0]).toBe(APP_COMPONENT);
-    expect(shipped).toHaveLength(29); // TPL-002: +4 endpoints, +2 pages
+    expect(shipped).toHaveLength(30); // TPL-002: +4 endpoints, +2 pages · REL-002c: Members/Footer
   });
 });
 
@@ -533,7 +537,13 @@ describe('TPL-001 — the band is the navigation, and it goes somewhere', () => 
     // a Group row cannot reflow and a content-sized child at the far edge of one
     // broke every address mid-word at 390px. Both alternatives are recorded on
     // the node itself.
-    expect(graded).toBe(15); // TPL-002: the sixth band button
+    // REL-002c item 2: −3, `Pages/Members`' `moderatorButtons`. That `Columns`
+    // is gone with two of the three buttons in it, and the one that stayed
+    // (`Post something`) is a direct child of the section — a `Columns` with a
+    // single child hands it the whole container, which is a 1200px filled
+    // button. ⚠️ The sweep still grades 12, so the `[]` above is a reading of a
+    // populated population and the two remaining `Columns` still cover it.
+    expect(graded).toBe(12); // TPL-002: the sixth band button
   });
 
   it('control: no page ships a button whose only job was to go back', () => {
@@ -1025,12 +1035,16 @@ describe('TPL-001 — the states a person can be in all have a screen', () => {
     // missing gate only became visible when the notice was given a box, which
     // would otherwise have shipped as a permanently empty card under the form.
     //
-    // 29 since s8: `Pages/Landing`'s "what members can see" rides the same
-    // `hasAssociation` signal as the two buttons. Ungated it would promise a
-    // diary and a directory to the one person who cannot have them yet — the
-    // installer, whose first job is to create the association. Read on a fresh
-    // install before the fix was assumed: the page shows the eyebrow, the setup
-    // card and nothing else.
+    // 🔴 **s8 added `Pages/Landing`'s "what members can see" here and REL-002c
+    // item 1 took it out again — the count went 28 → 29 → 28.** The argument
+    // recorded at s8 was that ungated it would *"promise a diary and a directory
+    // to the one person who cannot have them yet"*. It does not: the band sits
+    // BELOW the hero rather than above it (it was a section in the old
+    // single-column page when that sentence was written), and its three
+    // sentences describe the TEMPLATE — they are literals, pinned by the page
+    // census below, not content a query fills. What the gate did do was leave
+    // 190px of bare ground between the photograph and the footer on the one
+    // state a stranger is most likely to meet, which is what the renders show.
     //
     // 32 since s9: the band's three moderator doors. They are the first gates in
     // the template that hide a way THROUGH rather than a piece of content, and
@@ -1072,7 +1086,7 @@ describe('TPL-001 — the states a person can be in all have a screen', () => {
     // supplies — so on a fresh install it is a `--background` stripe holding one
     // empty `Text` between a photograph and a footer unless it is gated on the
     // same `hasAssociation` every other record-filled band here is.
-    expect(gates.length).toBe(54); // TPL-002: Account ×7, Unsubscribe ×2 · REL-002b: band ×2, waiting card · REL-002c: hero, about
+    expect(gates.length).toBe(53); // TPL-002: Account ×7, Unsubscribe ×2 · REL-002b: band ×2, waiting card · REL-002c: hero, about, −`inside`
   });
 
   it('AC6 — every list ships an empty state, hidden until a query has answered', () => {
