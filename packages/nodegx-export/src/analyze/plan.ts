@@ -226,6 +226,35 @@ export type LogLevel = (typeof LOG_LEVELS)[number];
 /** `Navigate To Path` (EXP-011 Tier 2.5) — the Navigation node that routes without naming a page. */
 const NAVIGATE_TO_PATH_TYPE = 'PageStackNavigateToPath';
 const NAVIGATE_TO_PATH_OUTPUTS = ['done', 'failure', 'unchanged', 'completed', 'error'];
+
+/**
+ * EXP-011 §40. The outputs each node's **own compile** consumes when the node attaches — its
+ * Done/Failure chains and the sibling pulses it drops with a reason of its own.
+ *
+ * 🔴 **The attach pass must skip a wire off any of these, whatever order the file lists it in.**
+ * It walks connections in file order, and a chain wire listed *before* the wire that fires its
+ * node used to fall to *"the trigger is not a rendered element event or a receiver"* — reported
+ * dropped, marked consumed, and then emitted anyway when the node attached (`doneChainOf` filters
+ * by port, not by `consumed`). §39.3 found it on `Log`, `Delay` and `Value Changed` and measured
+ * the rest as unowned; §40.1 measured every family here order-dependent, and a node fired only
+ * from a reactive Condition or a Value Changed reported the same false note in *every* order,
+ * because that trigger wire is never the attach pass's to take.
+ *
+ * ⚠️ A port here must be one the node's compile answers for — consumed, deferred by name, or
+ * dropped with a reason — or the skip turns a false note into a silent one. Every entry below was
+ * read off the compile it names.
+ */
+const OWN_CHAIN_OUTPUTS: Record<string, readonly string[]> = {
+  [LOG_TYPE]: ['done'],
+  [TIMER_TYPE]: TIMER_OUTPUTS,
+  [VALUE_CHANGED_TYPE]: ['valueChanged'],
+  [EXTERNAL_LINK_TYPE]: ['done', 'failure', 'unchanged', 'completed'],
+  [NAVIGATE_TO_PATH_TYPE]: ['done', 'failure', 'unchanged', 'completed'],
+  [HTTP_TYPE]: ['done', 'failure', 'success', 'canceled', 'unchanged', 'completed'],
+  [NOW_TYPE]: ['done'],
+  [UNIQUE_ID_TYPE]: ['done', 'completed'],
+  [UUID_TYPE]: ['done', 'failure', 'completed']
+};
 /**
  * The node's **own** placeholder regex, and deliberately not the Router's.
  *
@@ -9020,14 +9049,12 @@ function planComponent(
     ) {
       continue;
     }
-    // EXP-011 §39. The chains a Log, a Delay and a Value Changed own are chain-internal exactly
-    // as a popup's `done`: the node's own compile consumes them on attach, and a node nothing
-    // attaches is named by its verdict sweep with the right sentence rather than this one.
-    // ⚠️ Without this the answer depended on wire ORDER — a chain wire listed before the wire
-    // that fires the node was reported dropped here and then emitted anyway.
-    if (fromNode?.type === LOG_TYPE && connection.fromProperty === 'done') continue;
-    if (fromNode?.type === TIMER_TYPE && TIMER_OUTPUTS.includes(connection.fromProperty)) continue;
-    if (fromNode?.type === VALUE_CHANGED_TYPE && connection.fromProperty === 'valueChanged') continue;
+    // EXP-011 §39/§40. The chains these nodes own are chain-internal exactly as a popup's
+    // `done`: the node's own compile consumes them on attach, and a node nothing attaches is
+    // named by its verdict sweep with the right sentence rather than this one.
+    // 🔴 Without this the answer depended on wire ORDER — a chain wire listed before the wire
+    // that fires the node was reported dropped here and then emitted anyway (§39.3, §40.1).
+    if (fromNode !== undefined && (OWN_CHAIN_OUTPUTS[fromNode.type] ?? []).includes(connection.fromProperty)) continue;
     // A JS node's `done` wires are its Run chain, chain-internal exactly as a popup's (the
     // compile consumes them on attach); with Run unwired, `done` never pulses — the JS sweep
     // drops the wire with that note.
@@ -9380,6 +9407,151 @@ function planComponent(
     for (const byPort of Object.values(plan.handlers)) for (const actions of Object.values(byPort)) scanActions(actions);
     for (const actions of Object.values(plan.changeHandlers)) scanActions(actions);
     for (const receiver of plan.receivers) scanActions(receiver.actions);
+
+    /**
+     * EXP-011 §40. The two producers that attach actions to something other than a rendered
+     * element or a receiver — a reactive Condition's arms and a Value Changed's chain — run
+     * HERE, before the filters below and before every verdict sweep, so what they attach is
+     * earned exactly as what a handler attaches.
+     *
+     * 🔴 They used to run after Pass 4f, and three things followed from that. The earn scan
+     * above never saw their actions, so a popup, a record verb, a request, a `Now` or an id
+     * fired only from either was filtered out of the plan while its call stayed in the effect
+     * — `fetchRequest` and `setrequestError` emitted with nothing declaring them, measured on
+     * `HTTP Request` (§40.2). The HTTP and date/util/id verdict sweeps ran before the node was
+     * attached and named it *"never fired by a translatable source"* while its code was being
+     * emitted (§39.3's second hazard, now measured). And Pass 4f's `attachedHttpNodes` read
+     * answered "nothing fires it" for a Response bound to a rendered element.
+     *
+     * The order inside is the order they had: Value Changed first, then the reactive Condition.
+     * Both still run before the session sweep (a session read inside an arm must be seen as
+     * surviving) and before the wire sweep (the wires they consume must not be reported).
+     */
+  // EXP-011 §39 — `Value Changed`: the effect() slice §9.6 named. The node has no trigger; it
+  // fires from a value arriving, so it is a `useEffect` keyed on the Input with the last value
+  // seen in a ref. Runs before the session sweep so a session read inside the chain is seen as
+  // surviving, and before the wire sweep so the wires it consumes are not reported as dropped.
+  for (const node of component.nodes) {
+    if (node.type !== VALUE_CHANGED_TYPE || dispositions[node.id] !== undefined) continue;
+    const defer = (reason: string): void => {
+      dispositions[node.id] = { kind: 'deferred', to: 'EXP-003', reason };
+      notes.push(`node ${node.id} (${node.type}) deferred: ${reason}`);
+    };
+    const stray = component.connections.find((c) => c.fromId === node.id && c.fromProperty !== 'valueChanged');
+    if (stray) {
+      defer(`its ${stray.fromProperty} output is consumed, and this node publishes only Value Changed`);
+      continue;
+    }
+    const inputs = component.connections.filter((c) => c.toId === node.id && c.toProperty === 'value');
+    if (inputs.length === 0) {
+      defer('nothing is wired into Input — the node never receives a value, so it never fires');
+      continue;
+    }
+    if (inputs.length > 1) {
+      defer('two wires feed its Input — last-writer-wins is not statically ordered');
+      continue;
+    }
+    if (!component.connections.some((c) => c.fromId === node.id && c.fromProperty === 'valueChanged')) {
+      defer('its Value Changed output drives nothing');
+      continue;
+    }
+    if (!plan.file) {
+      defer('component emits no file to host the effect');
+      continue;
+    }
+    const ctx = newCtx();
+    const watch = resolveExpr(nodeById.get(inputs[0].fromId), inputs[0].fromProperty, ctx);
+    if (watch === null) {
+      defer(ctx.defer ?? 'its Input has no statically known source');
+      continue;
+    }
+    // The effect reads the render closure, so an Input that only exists inside a handler (a
+    // text input's onTextChanged, a received payload) cannot be watched from here.
+    if (!exprValidIn(watch, { kind: 'render' })) {
+      defer('its Input reads a value that only exists inside a handler');
+      continue;
+    }
+    const chain = doneChainOf(node, 'valueChanged');
+    if ('defer' in chain) {
+      defer(chain.defer);
+      continue;
+    }
+    if (!actionsValidIn(chain.then, { kind: 'render' })) {
+      defer('its chain reads values that only exist inside a handler');
+      continue;
+    }
+    const snapped = snapActionList(chain.then, chainSnapshotFor(`effect:${node.id}`));
+    if (!Array.isArray(snapped)) {
+      defer(snapped.defer);
+      continue;
+    }
+    const into = `src/${plan.file.dir}/${plan.file.fileBase}.tsx`;
+    plan.valueChangedEffects.push({
+      nodeId: node.id,
+      watch,
+      lastLocal: mintLocal(valueChangedLocals, node, 'ValueChanged', 'Last'),
+      actions: snapped,
+      comment: `${node.authoredLabel ?? 'Value Changed'} — fires whenever its Input becomes a different value, the first arrival included (valuechanged.ts).`
+    });
+    dispositions[node.id] = { kind: 'collapsed', into };
+    for (const id of [...ctx.logicNodeIds, ...chain.collapses]) dispositions[id] = { kind: 'collapsed', into };
+    for (const key of [inputs[0].key, ...ctx.consumes, ...chain.consumes]) consumed.add(key);
+    for (const id of [...ctx.subscriberIds, ...chain.subscribes]) boundSubscribers.add(id);
+  }
+
+  // Reactive Conditions (LOGIC-TARGET §10): the box is ticked and nothing drives `Evaluate`, so
+  // the node re-tests whenever a value arrives on `condition` and fires exactly one arm. That is
+  // a re-run keyed on the condition — a useEffect, not a handler. The Evaluate-only twin (§3) is
+  // a `branch` inside whatever handler pulses it, and the two are mutually exclusive by
+  // construction: the same literal read decides which, and a node with both defers.
+  //
+  // Runs before the session sweep below so a session read inside an arm is seen as surviving,
+  // and before the wire sweep so the arms it consumes are not reported as dropped.
+  for (const node of component.nodes) {
+    if (node.type !== 'Condition' || dispositions[node.id] !== undefined) continue;
+    if (literalParam(node, 'runOnChange-condition') === false) continue;
+    if (wiredPorts.has(`${node.id}:eval`)) continue;
+    const arms = component.connections.filter(
+      (c) => c.fromId === node.id && (c.fromProperty === 'ontrue' || c.fromProperty === 'onfalse')
+    );
+    // No arm is the pure-comparator shape `conditionValueExprOf` owns — leave it to that pass.
+    if (arms.length === 0) continue;
+    if (!plan.file) {
+      reactiveConditionDefers.set(node.id, 'component emits no file to host the effect');
+      continue;
+    }
+    const compiled = compileConditionBranch(node);
+    if ('defer' in compiled) {
+      reactiveConditionDefers.set(node.id, compiled.defer);
+      continue;
+    }
+    // An effect body reads the render closure, so anything that only exists inside a specific
+    // DOM handler (an input's text, an event's value, a receiver's payload) cannot appear here.
+    if (!actionsValidIn([compiled.action], { kind: 'render' })) {
+      reactiveConditionDefers.set(node.id, 'its arms read values that only exist inside a handler');
+      continue;
+    }
+    // The effect body is a chain like any other: a later read of something the chain just set
+    // must see the set value, not the render closure's.
+    const snapped = snapAction(compiled.action, chainSnapshotFor(`effect:${node.id}`));
+    if ('defer' in snapped) {
+      reactiveConditionDefers.set(node.id, snapped.defer);
+      continue;
+    }
+    const into = `src/${plan.file.dir}/${plan.file.fileBase}.tsx`;
+    plan.branchEffects.push({
+      nodeId: node.id,
+      action: snapped,
+      comment: `${node.authoredLabel ?? 'Condition'} — re-tested whenever its condition changes (LOGIC-TARGET §10).`
+    });
+    dispositions[node.id] = { kind: 'collapsed', into };
+    for (const id of compiled.collapses ?? []) dispositions[id] = { kind: 'collapsed', into };
+    for (const key of compiled.consumes) consumed.add(key);
+    for (const id of compiled.subscribes ?? []) boundSubscribers.add(id);
+  }
+
+    for (const effect of plan.branchEffects) scanActions([effect.action]);
+    for (const effect of plan.valueChangedEffects) scanActions(effect.actions);
     plan.popups = slotRegistry.filter((s) => attachedSlotKeys.has(s.slotKey));
     plan.closesPopup = closeAttached;
     plan.mutations = plan.mutations.filter((m) => attachedMutations.has(m.nodeId));
@@ -9433,6 +9605,22 @@ function planComponent(
     const compiled = compiledSinks.get(`${node.id}:fetch`);
     const reason =
       compiled !== undefined && 'defer' in compiled ? compiled.defer : 'its Fetch is never fired by a translatable trigger';
+    dispositions[node.id] = { kind: 'deferred', to: 'EXP-003', reason };
+    notes.push(`node ${node.id} (${node.type}) deferred: ${reason}`);
+  }
+
+  // EXP-011 §40. `External Link` and `Navigate To Path`, the HTTP sweep's shape. Neither had a
+  // sweep: a node nothing fires fell to the catch-all `logic node (…)`, and even that line was
+  // suppressed, because the false wire note the attach pass used to write carried the node's id
+  // and `sweepUnreportedDeferrals` took that as the node having been named.
+  for (const node of component.nodes) {
+    const port = node.type === EXTERNAL_LINK_TYPE ? 'do' : node.type === NAVIGATE_TO_PATH_TYPE ? 'navigate' : undefined;
+    if (port === undefined || dispositions[node.id] !== undefined) continue;
+    const compiled = compiledSinks.get(`${node.id}:${port}`);
+    const reason =
+      compiled !== undefined && 'defer' in compiled
+        ? compiled.defer
+        : `its ${port === 'do' ? 'Do' : 'Navigate'} is never fired by a translatable trigger`;
     dispositions[node.id] = { kind: 'deferred', to: 'EXP-003', reason };
     notes.push(`node ${node.id} (${node.type}) deferred: ${reason}`);
   }
@@ -10363,6 +10551,18 @@ function planComponent(
         break;
       }
       if (c.fromId === node.id) {
+        // EXP-011 §40. A chain off a `Now` or an id nothing fires is not a read that failed to
+        // bind — the Log/Delay sweep's sentence, which is the true one. ⚠️ Only where the wire
+        // lands on a trigger port: a Done read *as a value* keeps `resolveExpr`'s own sentence.
+        const chainSink = nodeById.get(c.toId);
+        if (
+          (OWN_CHAIN_OUTPUTS[node.type] ?? []).includes(c.fromProperty) &&
+          chainSink !== undefined &&
+          (isTriggerWire(chainSink.type, c.toProperty) || chainSink.type === 'Component Outputs')
+        ) {
+          verdict = `its ${c.fromProperty} chain hangs off a node nothing fires`;
+          break;
+        }
         const ctx = newCtx();
         const reason = resolveExpr(node, c.fromProperty, ctx) === null ? ctx.defer : undefined;
         const sink = nodeById.get(c.toId);
@@ -10384,129 +10584,6 @@ function planComponent(
       continue;
     }
     dispositions[node.id] = { kind: 'collapsed', into: `src/${plan.file!.dir}/${plan.file!.fileBase}.tsx` };
-  }
-
-  // EXP-011 §39 — `Value Changed`: the effect() slice §9.6 named. The node has no trigger; it
-  // fires from a value arriving, so it is a `useEffect` keyed on the Input with the last value
-  // seen in a ref. Runs before the session sweep so a session read inside the chain is seen as
-  // surviving, and before the wire sweep so the wires it consumes are not reported as dropped.
-  for (const node of component.nodes) {
-    if (node.type !== VALUE_CHANGED_TYPE || dispositions[node.id] !== undefined) continue;
-    const defer = (reason: string): void => {
-      dispositions[node.id] = { kind: 'deferred', to: 'EXP-003', reason };
-      notes.push(`node ${node.id} (${node.type}) deferred: ${reason}`);
-    };
-    const stray = component.connections.find((c) => c.fromId === node.id && c.fromProperty !== 'valueChanged');
-    if (stray) {
-      defer(`its ${stray.fromProperty} output is consumed, and this node publishes only Value Changed`);
-      continue;
-    }
-    const inputs = component.connections.filter((c) => c.toId === node.id && c.toProperty === 'value');
-    if (inputs.length === 0) {
-      defer('nothing is wired into Input — the node never receives a value, so it never fires');
-      continue;
-    }
-    if (inputs.length > 1) {
-      defer('two wires feed its Input — last-writer-wins is not statically ordered');
-      continue;
-    }
-    if (!component.connections.some((c) => c.fromId === node.id && c.fromProperty === 'valueChanged')) {
-      defer('its Value Changed output drives nothing');
-      continue;
-    }
-    if (!plan.file) {
-      defer('component emits no file to host the effect');
-      continue;
-    }
-    const ctx = newCtx();
-    const watch = resolveExpr(nodeById.get(inputs[0].fromId), inputs[0].fromProperty, ctx);
-    if (watch === null) {
-      defer(ctx.defer ?? 'its Input has no statically known source');
-      continue;
-    }
-    // The effect reads the render closure, so an Input that only exists inside a handler (a
-    // text input's onTextChanged, a received payload) cannot be watched from here.
-    if (!exprValidIn(watch, { kind: 'render' })) {
-      defer('its Input reads a value that only exists inside a handler');
-      continue;
-    }
-    const chain = doneChainOf(node, 'valueChanged');
-    if ('defer' in chain) {
-      defer(chain.defer);
-      continue;
-    }
-    if (!actionsValidIn(chain.then, { kind: 'render' })) {
-      defer('its chain reads values that only exist inside a handler');
-      continue;
-    }
-    const snapped = snapActionList(chain.then, chainSnapshotFor(`effect:${node.id}`));
-    if (!Array.isArray(snapped)) {
-      defer(snapped.defer);
-      continue;
-    }
-    const into = `src/${plan.file.dir}/${plan.file.fileBase}.tsx`;
-    plan.valueChangedEffects.push({
-      nodeId: node.id,
-      watch,
-      lastLocal: mintLocal(valueChangedLocals, node, 'ValueChanged', 'Last'),
-      actions: snapped,
-      comment: `${node.authoredLabel ?? 'Value Changed'} — fires whenever its Input becomes a different value, the first arrival included (valuechanged.ts).`
-    });
-    dispositions[node.id] = { kind: 'collapsed', into };
-    for (const id of [...ctx.logicNodeIds, ...chain.collapses]) dispositions[id] = { kind: 'collapsed', into };
-    for (const key of [inputs[0].key, ...ctx.consumes, ...chain.consumes]) consumed.add(key);
-    for (const id of [...ctx.subscriberIds, ...chain.subscribes]) boundSubscribers.add(id);
-  }
-
-  // Reactive Conditions (LOGIC-TARGET §10): the box is ticked and nothing drives `Evaluate`, so
-  // the node re-tests whenever a value arrives on `condition` and fires exactly one arm. That is
-  // a re-run keyed on the condition — a useEffect, not a handler. The Evaluate-only twin (§3) is
-  // a `branch` inside whatever handler pulses it, and the two are mutually exclusive by
-  // construction: the same literal read decides which, and a node with both defers.
-  //
-  // Runs before the session sweep below so a session read inside an arm is seen as surviving,
-  // and before the wire sweep so the arms it consumes are not reported as dropped.
-  for (const node of component.nodes) {
-    if (node.type !== 'Condition' || dispositions[node.id] !== undefined) continue;
-    if (literalParam(node, 'runOnChange-condition') === false) continue;
-    if (wiredPorts.has(`${node.id}:eval`)) continue;
-    const arms = component.connections.filter(
-      (c) => c.fromId === node.id && (c.fromProperty === 'ontrue' || c.fromProperty === 'onfalse')
-    );
-    // No arm is the pure-comparator shape `conditionValueExprOf` owns — leave it to that pass.
-    if (arms.length === 0) continue;
-    if (!plan.file) {
-      reactiveConditionDefers.set(node.id, 'component emits no file to host the effect');
-      continue;
-    }
-    const compiled = compileConditionBranch(node);
-    if ('defer' in compiled) {
-      reactiveConditionDefers.set(node.id, compiled.defer);
-      continue;
-    }
-    // An effect body reads the render closure, so anything that only exists inside a specific
-    // DOM handler (an input's text, an event's value, a receiver's payload) cannot appear here.
-    if (!actionsValidIn([compiled.action], { kind: 'render' })) {
-      reactiveConditionDefers.set(node.id, 'its arms read values that only exist inside a handler');
-      continue;
-    }
-    // The effect body is a chain like any other: a later read of something the chain just set
-    // must see the set value, not the render closure's.
-    const snapped = snapAction(compiled.action, chainSnapshotFor(`effect:${node.id}`));
-    if ('defer' in snapped) {
-      reactiveConditionDefers.set(node.id, snapped.defer);
-      continue;
-    }
-    const into = `src/${plan.file.dir}/${plan.file.fileBase}.tsx`;
-    plan.branchEffects.push({
-      nodeId: node.id,
-      action: snapped,
-      comment: `${node.authoredLabel ?? 'Condition'} — re-tested whenever its condition changes (LOGIC-TARGET §10).`
-    });
-    dispositions[node.id] = { kind: 'collapsed', into };
-    for (const id of compiled.collapses ?? []) dispositions[id] = { kind: 'collapsed', into };
-    for (const key of compiled.consumes) consumed.add(key);
-    for (const id of compiled.subscribes ?? []) boundSubscribers.add(id);
   }
 
   // EXP-011 §39 — the Log and Delay verdicts, on the date family's rule above — and AFTER the Value Changed and reactive Condition passes, because a Log fired from either is attached by them, not by a rendered element: a node whose every

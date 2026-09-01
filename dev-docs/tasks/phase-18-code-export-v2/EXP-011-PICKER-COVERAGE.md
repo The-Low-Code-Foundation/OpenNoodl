@@ -1,6 +1,6 @@
 # EXP-011 — Close the picker gap, ranked by what apps need
 
-**Status:** 🟡 In progress — **Tier 1 COMPLETE; Tier 2.7 COMPLETE** (the three pure utilities, session 65; the id pair, session 66). **75 of 127 (59.1%).** Tier 2's remainder is Cloud Services (9) and the component stack pair
+**Status:** 🟡 In progress — **Tier 1 COMPLETE; Tier 2.7 COMPLETE** (the three pure utilities, session 65; the id pair, session 66); §38–§39 the small non-pure nodes; **§40 (session 69) fixed the chain-wire / earn-scan / branch-arm defect class behind every translated node with a chain**. **80 of 127 (63.0%).** Tier 2's remainder is Cloud Services (9) and the component stack pair
 **Depends on:** nothing — but sequenced after EXP-009 and EXP-010, which are worth more per hour
 **Replaces:** every "what to build next" list in this phase from sessions 20–31
 
@@ -5035,3 +5035,126 @@ written and false by the time it was committed — the catalog moved under it.
 - **The date/util/id verdict sweep vs the reactive Condition** (§39.3), owner P18.
 - `Set Variable` with a typed value is still refused (§38.3 #2) — the fixture again fed every
   setter from a `String` constant's `savedValue`, the third fixture to route around it.
+
+## §40 The chain a node owns, measured as a class — and the two defects standing behind the false note (session 69, 2026-09-01)
+
+**Picker unchanged at 80/127.** This session built no node. It took §39.7's first item — *"the
+order-dependence probe, one graph per family"* — and the probe found that the false note was the
+visible end of three defects, two of them in code that ships today. All three fixed, graded by a
+new suite (28 rows) and eight mutant arms, every gate green.
+
+### §40.1 The probe — six families, three triggers each
+
+One test file, one loop: for each of `External Link`, `Now`, `Unique Id`, `UUID`, `HTTP Request`
+and `Navigate To Path` (§39.3 named the first four; Navigate To Path shares the shape), the same
+graph three ways — trigger wire first, chain wire first, and no trigger at all — and then a fourth
+with a **reactive Condition's `On True`** as the only trigger. Read `app.notes` and the emitted page.
+
+| family | chain-first vs trigger-first | fired only from a reactive arm | nothing fires it |
+|---|---|---|---|
+| External Link | 🔴 notes differ; page identical | 🔴 both chain wires "dropped" | 🔴 node **not named at all** |
+| Now | 🔴 | 🔴 "dropped" **and** *"its Read is never fired"* — while the chain was emitted | 🔴 not named; **disposition `collapsed`** with nothing emitted |
+| Unique Id | 🔴 | 🔴 "dropped" + *"its New is never fired"* | 🔴 not named |
+| UUID | 🔴 | 🔴 same | 🔴 not named |
+| HTTP Request | 🔴 | 🔴 "dropped" + *"its Fetch is never fired"* — **and `fetchRequest`/`setrequestError` emitted with nothing declaring them** | named (the one family with a sweep) |
+| Navigate To Path | 🔴 | 🔴 "dropped" | 🔴 not named |
+
+Every family was order-dependent, exactly as §39.3 read it. But the reactive column is the one
+worth the session: a chain wire whose trigger is a reactive arm was reported dropped **in every
+order**, because that trigger wire is never the attach pass's to take — so the fix §39 made for
+three nodes (a `continue` per family) was necessary and could never have been sufficient.
+
+"Not named at all" has a mechanism of its own: an idle node fell to the catch-all `logic node (…)`,
+and `sweepUnreportedDeferrals` suppressed even that line, because the false wire note carried the
+node's id and the sweep reads "the id appears in a note" as "the node has been named". The false
+note was hiding the missing one.
+
+### §40.2 🔴 The earn scan ran before the two effect producers existed
+
+The block that decides what a component *earned* — which popup slots, record verbs, requests,
+`Now`s, ids and links actually attached, and therefore which modules, rows and `useState`s are
+emitted — walks `plan.handlers`, `plan.changeHandlers` and `plan.receivers`. The reactive
+Condition pass and the Value Changed pass, the two other producers of attached actions, ran
+**after** it (and after the HTTP and date/util/id sweeps, and after Pass 4f's `attachedHttpNodes`
+read). So a node fired only from either:
+
+- was **filtered out of the plan while its call stayed in the effect** — `await fetchRequest()`
+  with no `src/api/http.ts` export and no error row (`TS2304` ×3 on the emitted page), and a
+  `setOpenPopup('AboutDialog')` with no slot state behind it;
+- was named *"never fired by a translatable source"* by a sweep that ran before it attached
+  (§39.3's second hazard, now measured: `Now`, both ids, `HTTP Request`);
+- answered "nothing fires it" to a rendered `Response` binding in Pass 4f.
+
+s68 had moved **one** consumer (the Log/Delay sweep) below the producers and named the rest as the
+same hazard. The fix is the inverse and it is one move: the two passes now run **inside the earn
+block**, after the handler scan and before the filters, and their effects are scanned there. Every
+consumer downstream sees them; no sweep moved. Filed as a memory —
+*a new producer owes every consumer of the old one* — because the shape is general: consumers are
+written against the producer that exists, and a suite whose graphs all trigger from a button is
+green over the hole.
+
+### §40.3 🔴 A branch arm holding a *statement* printed `if (c) <statement>` — and the chain ran unconditionally
+
+The probe's page for a Condition-gated `External Link` with a Done chain, reactive or Evaluate:
+
+```
+if (noteDraft.get()) window.open('https://example.com/docs', '_self', '');
+afterdone.set(noteDraft.get());;
+```
+
+The arm printer emitted a one-action arm as `if (c) ${actionCode(a)}` whatever the action was.
+`External Link` and `Navigate To Path` print their Done chain as *following statements at column
+0*, so the chain landed **after the `if`** — run on every evaluation, true or false — and the `;;`
+was the printer's terminator on top of the action's own. That is not a note that lies; it is an
+export that does something the app does not, in the direction §11.3 forbids. Beside it, two more
+in the same printer: an `HTTP Request` in an arm was `await`ed inside a **non-async** arrow
+(`handlerArrow`'s `isAsync` looked one level deep; `TS1308`), and `useEffect`'s callback cannot
+be `async` at all; and a `Delay`'s `if` inside an arm printed its body at column 0.
+
+Fixed in `component.ts` by hoisting the "is this a statement" predicate out of `handlerArrow`
+(`actionIsStatement`, `actionTakesNoTerminator`), a shared `blockBody(expanded, indent)`, and an
+`effectBody` that wraps an awaited effect in `void (async () => { … })();`. An arm becomes a block
+whenever any of its actions is a statement, is awaited, or prints more than one line; the
+expression arms keep `if (c) x;` and `{ a; b; }` — the forms every older golden pins, which is the
+control. `ifElse`'s `startsWith('{')` join already handled a block before an `else`.
+
+### §40.4 Graded — `tests/chain-wire-order.test.ts`, 28 rows, 52 files on disk
+
+§A six order rows (notes equal, page identical, chain emitted). §B six reactive rows (no false
+note, no "never fired", the chain **inside** the effect's arm by brace-counting, typechecks) plus
+the HTTP async IIFE + module row and a Show Popup slot row. §C the arm block: External Link and
+Navigate To Path chains inside the arm once and no `;;`; HTTP `async` handler; Delay indented;
+a block arm beside an `else`; and the two one-line controls. §D six idle rows by sentence. §E a
+Value Changed firing a `Now` and an `HTTP Request`.
+
+Eight mutant arms, each restored by `diff -rq` against the post-fix snapshot:
+
+| arm | mutation | killed by |
+|---|---|---|
+| A | the `OWN_CHAIN_OUTPUTS` skip removed from the attach loop | **23** — all §A, §B, §D, the Now §E row, and four of s68's §39 rows |
+| B | the effects not scanned by the earn block | **4** — the HTTP module rows and the popup slot row |
+| B2 | the two passes moved back below Pass 4f | **6** — three reactive rows, both HTTP module rows, the slot row |
+| C | a statement arm printed inline | **8** — all five §C shape rows, plus UUID and both HTTP reactive rows (typecheck) |
+| D | no async IIFE around an awaited effect | **3** — the three HTTP effect rows |
+| E | the idle-chain clause removed from the date/util/id sweep | **3** — Now, Unique Id, UUID idle rows |
+| F | the link/navigate sweep removed | **2** — their idle rows |
+| G | `isAsync` shallow again | **1** — the HTTP-in-an-arm handler row |
+
+⚠️ Arm E's first mutation (`false &&`) **broke the typecheck** rather than the tests — `tsc` saw
+`chainSink` as possibly undefined once the guard was constant — and the runner's tsc gate caught
+it before jest could read `Tests: 0 total` as a kill (s66's rule, still paying). Re-run with a
+comparison that compiles.
+
+### §40.5 What this leaves
+
+- ⚠️ **Typechecked, not driven.** The emitted shapes are graded by `typecheckEmittedApp` and by
+  parse, not by a running app. The honest drive is a fixture with a reactive Condition firing an
+  `HTTP Request` — and that needs a backend or a stub server. Owner P18, beside Cloud Services.
+- ⚠️ A record verb (`api-call`) in a reactive arm inherits §40.2's fix and has **no row** —
+  `cheer` has no backend. The row belongs on `puppy-test-3`. Owner P18.
+- A named idle verdict now sits beside Pass 6's generic wire line for the same chain — a stutter,
+  and the same one Log/Delay have. Accepted.
+- **Next by the same rule:** Cloud Services (9) — `Cloud Function` first (3 corpus projects, 7
+  nodes; the node is `CloudFunction2`: `Call`, `function` + `in-*` params, `out-*` results,
+  Done/Failure/Completed + `Error`, `POST /functions/<name>` through the EXP-009 client's
+  `request()`). The `http-call` action and `src/api/http.ts` are the precedent line for line.

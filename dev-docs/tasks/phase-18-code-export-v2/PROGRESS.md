@@ -34,7 +34,7 @@ README §*What went wrong* has the mechanism.
 | [EXP-009](./EXP-009-BACKEND-CONNECTION.md) | **Exported app talks to its deployed backend** | 🔴 **Not started — do this first** |
 | [EXP-010](./EXP-010-CUSTOM-NODES-AND-MODULES.md) | **Custom nodes, modules and prefabs export** | 🔴 **Not started.** `parseProject` never opens `noodl_modules` |
 | [EXP-012](./EXP-012-THE-EDITOR-EXPORT-COMMAND.md) | **The editor export command** | 🟢 **BUILT + DRIVEN s67 (2026-09-01).** Settings → Project → *Export as React code…*: exact pre-flight modal, folder dialog, inside-project refusal, non-empty confirm, write + toast. Byte-identical to `emit-app.ts`. `@nodegx/export` has its **first product consumer**; EXP-004's §21.1 block is over. Rides 0.2.2 if Richard says so |
-| [EXP-011](./EXP-011-PICKER-COVERAGE.md) | **Close the picker gap, ranked by what apps need** | 🟡 **80/127 (63.0%) s68** — §39 built `Log`, `Delay` and `Value Changed` (the first action-set, the first `useRef`, the first effect() slice), driven headlessly; §39.3 found the attach pass was wire-ORDER dependent. Before that: **77/127 s67** — Tier 1 complete, Tier 2.5 and 2.7 complete, §38 built the two pure "small ordinary nodes" (`Boolean To String`, `Color Blend`). Next: the controlled-state gap §38.3 found (checkbox/slider → Variable), then `Log` / `Value Changed` / `Delay` (§38.5), then Cloud Services (9) |
+| [EXP-011](./EXP-011-PICKER-COVERAGE.md) | **Close the picker gap, ranked by what apps need** | 🟡 **80/127 (63.0%) s68; s69 built no node — §40 fixed the chain-wire / earn-scan / branch-arm defect class under every translated node with a chain (28 rows, 8 arms)** — §39 built `Log`, `Delay` and `Value Changed` (the first action-set, the first `useRef`, the first effect() slice), driven headlessly; §39.3 found the attach pass was wire-ORDER dependent. Before that: **77/127 s67** — Tier 1 complete, Tier 2.5 and 2.7 complete, §38 built the two pure "small ordinary nodes" (`Boolean To String`, `Color Blend`). Next: the controlled-state gap §38.3 found (checkbox/slider → Variable), then `Log` / `Value Changed` / `Delay` (§38.5), then Cloud Services (9) |
 
 ## What actually works today
 
@@ -365,3 +365,21 @@ guessed rather than read off the file — corrected, re-run, never counted as a 
 Gates: **1054/1054** · 42 suites · `tsc --noEmit` clean · `export-ledger:check` OK (175 types) ·
 picker ratchet **69/127 (54.3%)**, correctly unmoved — this is a fidelity increment on two nodes
 the picker already counts, not a new type.
+
+**Session 69 (2026-09-01) — EXP-011 §40: the order probe found three defects, two shipping.**
+Built no node. §39.7's first item — one graph per family, chain wire first — showed **all six**
+chain-owning families (External Link, Now, Unique Id, UUID, HTTP Request, Navigate To Path)
+order-dependent; and a node fired only from a **reactive Condition** reported the false note in
+*every* order. Behind it: (1) the **earn scan ran before the reactive-Condition and Value-Changed
+passes** — an HTTP Request fired from a reactive arm was emitted as `await fetchRequest()` with no
+module and no error row (`TS2304`), a Show Popup with no slot, and Now/ids/HTTP were named *"never
+fired"* while their code was emitted; (2) a **branch arm holding a statement printed `if (c)
+<statement>`** — an External Link's or Navigate To Path's Done chain landed *after* the `if` and
+ran unconditionally, an HTTP Request in an arm `await`ed in a non-async arrow. Fixes: an
+`OWN_CHAIN_OUTPUTS` table the attach pass skips; the two passes moved **into** the earn block with
+their effects scanned; idle sweeps for the link/navigate pair and an idle-chain clause for
+Now/ids; hoisted `actionIsStatement`/`blockBody`/`effectBody` (async IIFE) in the emitter. Graded
+by `tests/chain-wire-order.test.ts` (28 rows) and eight mutant arms (23/4/6/8/3/3/2/1 kills, one
+first-draft arm caught by the runner's tsc gate). Gates: pkg tsc 0 · editor tsc 0 · jest
+**1360/1360 in 52** · ledger OK 176 · picker 80 unchanged. Memory filed: *a new producer owes every
+consumer of the old one*. Left: typechecked not driven; a record verb in a reactive arm has no row.

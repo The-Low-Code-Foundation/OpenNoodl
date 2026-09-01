@@ -2569,9 +2569,21 @@ export function emitComponent(
         ].join('\n');
       }
       case 'branch': {
+        /**
+         * 🔴 EXP-011 §40. An arm that holds a *statement* takes the multi-line block form at the
+         * branch's own column. The one-action arm used to print `if (c) <code>` whatever the
+         * code was — and an `External Link` or `Navigate To Path` with a Done chain prints its
+         * chain as following statements at column 0, so the chain landed *after* the `if` and
+         * ran on every evaluation. An awaited call is a try/catch, which is a statement too. The
+         * expression arms keep the one-line forms the goldens pin.
+         */
         const armCode = (armActions: HandlerAction[]): string => {
           const list = expandActions(armActions);
-          return list.length === 1 ? actionCode(list[0]) : `{ ${list.map(actionCode).join('; ')}; }`;
+          const needsBlock = list.some((a) => actionIsStatement(a) || actionTakesNoTerminator(a) || actionCode(a).includes('\n'));
+          if (!needsBlock) {
+            return list.length === 1 ? actionCode(list[0]) : `{ ${list.map((a) => actionCode(a)).join('; ')}; }`;
+          }
+          return `{\n${blockBody(list, indent + 2).join('\n')}\n${pad(indent)}}`;
         };
         const cond = exprCode(action.cond, 'handler');
         if (action.whenTrue.length === 0) {
@@ -2588,83 +2600,124 @@ export function emitComponent(
    * indented at the attribute's own column. A gated popup close (`if (onClose) { … }`) is the
    * same statement shape.
    */
+  /**
+   * Whether an action prints as a statement rather than an expression — the file's oldest hazard,
+   * counted in the comments below. Hoisted out of `handlerArrow` (EXP-011 §40) because a branch
+   * arm has to ask the same question: `if (c) <statement>` parses, but a statement that prints
+   * its chain beside itself (an `External Link`'s Done, a `Navigate To Path`'s) escaped the `if`
+   * and ran unconditionally — the chain was emitted at the arm's column *after* the `if`.
+   */
+  function actionIsStatement(a: HandlerAction): boolean {
+    return (
+    a.kind === 'branch' ||
+    (a.kind === 'popup-close' && a.then.length > 0) ||
+    (a.kind === 'collection-clear' && (a.then.length > 0 || a.unchangedThen.length > 0)) ||
+    /**
+     * 🔴 `Now`'s Read declares a `const`, and a `const` is a statement (EXP-011 Tier 1.3).
+     * `() => const clockRead = new Date(); setClock(clockRead)` does not parse — the fourth
+     * instance of this file's oldest hazard, after the `}; else`, the gated popup close and the
+     * Clear Array `if`.
+     *
+     * ⚠️ It survived a suite that parses every emitted file, because every fixture that reached
+     * it wired the Read to a button **that already had another action** — two actions take the
+     * `{ a; b; }` form at the foot of this function and parse fine. Only a Read that is the
+     * *whole* handler reaches the expression body, and that is the shape a real project has.
+     * Found by building the exported app, not by the tests.
+     */
+    a.kind === 'date-now-read' ||
+    /**
+     * EXP-011 Tier 2.5, and the fifth instance of the same hazard. An `External Link` is a
+     * statement whenever it binds its link to a `const` or branches on the outcome; a bare
+     * `window.open(…)` with no guard and no chains is an expression and keeps its semicolon.
+     * Asking precisely is what keeps the commonest shape — a button that opens a literal url —
+     * emitting as `onClick={() => window.open(…)}` rather than a block.
+     */
+    (a.kind === 'external-link' && externalLinkIsStatement(a)) ||
+    /**
+     * EXP-011 §15, and the sixth instance of this file's oldest hazard. A `const` for the
+     * query collector, or a chain printed beside the call, is a statement; a bare
+     * `navigate('/pricing')` is an expression and keeps its semicolon.
+     */
+    (a.kind === 'navigate-path' && navigatePathIsStatement(a)) ||
+    // EXP-011 §39, the eighth instance: a Delay verb with a chain on either outcome is an `if`.
+    (a.kind === 'delay' && delayIsBlock(a)) ||
+    /**
+     * EXP-011 §37, and the seventh instance of this file's oldest hazard. A `Unique Id`'s New
+     * declares a `const` and a `UUID`'s prints an `if`; both are statements. A `UUID` whose id
+     * and outcomes nobody reads is the bare call and stays an expression.
+     *
+     * ⚠️ `a.fn === 'randomId' && …` is deliberately **not** written here: the `Unique Id` form
+     * emits a `const` only where something reads it, and asking `idNewIsBlock` alone would
+     * call that case an expression. The `materialize`/chain test is what actually decides, and
+     * it is the same test the emitter runs.
+     */
+    (a.kind === 'id-new' &&
+      (idNewIsBlock(a) || a.materialize !== undefined || a.then.length > 0 || chainReadsIdLocal(a.then, a.nodeId)))
+    );
+  }
+
+  /**
+   * Whether an action's code ends in `}` and takes no `;` — a try/catch, an `if`, a block. Every
+   * other action keeps the semicolon the existing goldens pin.
+   */
+  function actionTakesNoTerminator(a: HandlerAction): boolean {
+    return (
+      a.kind === 'api-call' ||
+      a.kind === 'http-call' ||
+      (a.kind === 'external-link' && externalLinkIsStatement(a)) ||
+      (a.kind === 'navigate-path' && navigatePathIsStatement(a)) ||
+      // EXP-011 §39. The `if` form ends in `}` and must not take a terminator.
+      (a.kind === 'delay' && delayIsBlock(a)) ||
+      // EXP-011 §37. The block form ends in `}` and must not take a terminator; the
+      // `Unique Id` form is a run of statements and takes one, exactly as a Now Read does.
+      (a.kind === 'id-new' && idNewIsBlock(a))
+    );
+  }
+  /** Whether anything in these actions, at any depth, is awaited — the arrow around it is `async`. */
+  function actionsAwait(actions: HandlerAction[]): boolean {
+    return deepActions(actions).some((a) => a.kind === 'api-call' || a.kind === 'http-call');
+  }
+  /**
+   * The lines of a block body, one statement per line at `indent`. A `Now` Read, an id and a
+   * branch print several lines and need the column too, or their second and third lines start
+   * at column 0 (EXP-011 Tier 1.3). Valid either way — this is about the emitted code being read
+   * by a person, which is EXP-002's whole standard.
+   */
+  function blockBody(expanded: HandlerAction[], indent: number): string[] {
+    return expanded.map((a) =>
+      actionTakesNoTerminator(a)
+        ? `${pad(indent)}${actionCode(a, indent)}`
+        : `${pad(indent)}${actionCode(a, a.kind === 'date-now-read' || a.kind === 'id-new' || a.kind === 'branch' ? indent : 0)};`
+    );
+  }
+  /**
+   * An effect's body (EXP-011 §40): the block form, and — where anything inside is awaited — an
+   * async IIFE, because `useEffect`'s own callback cannot be `async` (React reads its return as
+   * the cleanup). A reactive Condition whose arm fetched printed `await` in a plain arrow and the
+   * app did not typecheck; this is the handler's `async` rule, one hop in.
+   */
+  function effectBody(actions: HandlerAction[], indent: number): string[] {
+    const expanded = expandActions(actions);
+    if (!actionsAwait(expanded)) return blockBody(expanded, indent);
+    return [`${pad(indent)}void (async () => {`, ...blockBody(expanded, indent + 2), `${pad(indent)}})();`];
+  }
+  /**
+   * A branch statement cannot be an arrow's expression body, and Prettier never leaves a
+   * non-empty block on one line — so a handler containing one takes the multi-line block form,
+   * indented at the attribute's own column. A gated popup close (`if (onClose) { … }`) is the
+   * same statement shape.
+   */
   const handlerArrow = (actions: HandlerAction[], param: string, indent: number): string => {
     const expanded = expandActions(actions);
-    const statements = expanded.map(actionCode);
+    const statements = expanded.map((a) => actionCode(a));
     // A record verb's call is awaited, so the handler it lands in is `async` — and its try/catch
     // is a statement, which takes the same block form a branch does (RECORD-VERBS-TARGET §4a).
-    const isAsync = expanded.some((a) => a.kind === 'api-call' || a.kind === 'http-call');
+    // 🔴 At any depth (EXP-011 §40): a request inside a Condition's arm is awaited too, and the
+    // arrow it lands in was not `async` — the app did not typecheck.
+    const isAsync = actionsAwait(expanded);
     const head = isAsync ? `async ${param}` : param;
-    // A Clear Array that owes either outcome chain prints as an `if`, which is a statement for
-    // exactly the reason a branch is — an arrow with `=> if (…)` as its expression body does not
-    // parse. Without this the one-action case at the foot of this function emits a syntax error.
-    const isStatement = (a: HandlerAction) =>
-      a.kind === 'branch' ||
-      (a.kind === 'popup-close' && a.then.length > 0) ||
-      (a.kind === 'collection-clear' && (a.then.length > 0 || a.unchangedThen.length > 0)) ||
-      /**
-       * 🔴 `Now`'s Read declares a `const`, and a `const` is a statement (EXP-011 Tier 1.3).
-       * `() => const clockRead = new Date(); setClock(clockRead)` does not parse — the fourth
-       * instance of this file's oldest hazard, after the `}; else`, the gated popup close and the
-       * Clear Array `if`.
-       *
-       * ⚠️ It survived a suite that parses every emitted file, because every fixture that reached
-       * it wired the Read to a button **that already had another action** — two actions take the
-       * `{ a; b; }` form at the foot of this function and parse fine. Only a Read that is the
-       * *whole* handler reaches the expression body, and that is the shape a real project has.
-       * Found by building the exported app, not by the tests.
-       */
-      a.kind === 'date-now-read' ||
-      /**
-       * EXP-011 Tier 2.5, and the fifth instance of the same hazard. An `External Link` is a
-       * statement whenever it binds its link to a `const` or branches on the outcome; a bare
-       * `window.open(…)` with no guard and no chains is an expression and keeps its semicolon.
-       * Asking precisely is what keeps the commonest shape — a button that opens a literal url —
-       * emitting as `onClick={() => window.open(…)}` rather than a block.
-       */
-      (a.kind === 'external-link' && externalLinkIsStatement(a)) ||
-      /**
-       * EXP-011 §15, and the sixth instance of this file's oldest hazard. A `const` for the
-       * query collector, or a chain printed beside the call, is a statement; a bare
-       * `navigate('/pricing')` is an expression and keeps its semicolon.
-       */
-      (a.kind === 'navigate-path' && navigatePathIsStatement(a)) ||
-      // EXP-011 §39, the eighth instance: a Delay verb with a chain on either outcome is an `if`.
-      (a.kind === 'delay' && delayIsBlock(a)) ||
-      /**
-       * EXP-011 §37, and the seventh instance of this file's oldest hazard. A `Unique Id`'s New
-       * declares a `const` and a `UUID`'s prints an `if`; both are statements. A `UUID` whose id
-       * and outcomes nobody reads is the bare call and stays an expression.
-       *
-       * ⚠️ `a.fn === 'randomId' && …` is deliberately **not** written here: the `Unique Id` form
-       * emits a `const` only where something reads it, and asking `idNewIsBlock` alone would
-       * call that case an expression. The `materialize`/chain test is what actually decides, and
-       * it is the same test the emitter runs.
-       */
-      (a.kind === 'id-new' &&
-        (idNewIsBlock(a) || a.materialize !== undefined || a.then.length > 0 || chainReadsIdLocal(a.then, a.nodeId)));
-    if (isAsync || expanded.some(isStatement)) {
-      // A try/catch is a statement, not an expression: it prints at the handler's own column and
-      // takes no terminator. Every other action keeps the semicolon the existing goldens pin.
-      const body = expanded
-        .map((a) =>
-          a.kind === 'api-call' ||
-          a.kind === 'http-call' ||
-          (a.kind === 'external-link' && externalLinkIsStatement(a)) ||
-          (a.kind === 'navigate-path' && navigatePathIsStatement(a)) ||
-          // EXP-011 §39. The `if` form ends in `}` and must not take a terminator.
-          (a.kind === 'delay' && delayIsBlock(a)) ||
-          // EXP-011 §37. The block form ends in `}` and must not take a terminator; the
-          // `Unique Id` form is a run of statements and takes one, exactly as a Now Read does.
-          (a.kind === 'id-new' && idNewIsBlock(a))
-            ? `${pad(indent + 2)}${actionCode(a, indent + 2)}`
-            : // A `Now` Read prints several statements and needs the column too, or its second
-              // and third lines start at column 0 (EXP-011 Tier 1.3). Valid either way — this is
-              // about the emitted code being read by a person, which is EXP-002's whole standard.
-              `${pad(indent + 2)}${actionCode(a, a.kind === 'date-now-read' || a.kind === 'id-new' ? indent + 2 : 0)};`
-        )
-        .join('\n');
-      return `${head} => {\n${body}\n${pad(indent)}}`;
+    if (isAsync || expanded.some(actionIsStatement)) {
+      return `${head} => {\n${blockBody(expanded, indent + 2).join('\n')}\n${pad(indent)}}`;
     }
     return statements.length === 1 ? `${head} => ${statements[0]}` : `${head} => { ${statements.join('; ')}; }`;
   };
@@ -4442,13 +4495,7 @@ export function emitComponent(
   for (const effect of plan.branchEffects) {
     const action = effect.action as Extract<HandlerAction, { kind: 'branch' }>;
     const deps = effectDeps(action.cond).join(', ');
-    body.push(
-      `  // ${effect.comment}`,
-      '  useEffect(() => {',
-      `    ${actionCode(action, 4)};`,
-      `  }, [${deps}]);`,
-      ''
-    );
+    body.push(`  // ${effect.comment}`, '  useEffect(() => {', ...effectBody([action], 4), `  }, [${deps}]);`, '');
   }
   // EXP-011 §39. A Delay's countdown dies with the component — `addDeleteListener` in timer.ts.
   for (const [, ref] of delayRefs) {
@@ -4465,9 +4512,7 @@ export function emitComponent(
       `    const arrival = ${exprCode(effect.watch, 'render')};`,
       `    if (${effect.lastLocal}.current === arrival) return;`,
       `    ${effect.lastLocal}.current = arrival;`,
-      ...expandActions(effect.actions).map(
-        (a) => `    ${actionCode(a, 4)}${a.kind === 'delay' && delayIsBlock(a) ? '' : ';'}`
-      ),
+      ...effectBody(effect.actions, 4),
       `  }, [${deps}]);`,
       ''
     );
