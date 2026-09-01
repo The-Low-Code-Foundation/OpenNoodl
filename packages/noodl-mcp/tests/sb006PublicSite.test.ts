@@ -1209,13 +1209,33 @@ describe('SB-006: the public site, beside the panel it shares a router with', ()
     expect(() => expect(`site reads ${reads.join('|')}`).toBe(`site reads ${writes.join('|')}`)).toThrow();
   });
 
+  /**
+   * Every node in `Admin/SectionRow` that folds a change back into `data`.
+   *
+   * 🔴 **A `.find` here read one writer of three and passed, which is how this
+   * check would have gone quiet exactly when it mattered.** Until SBR-005 the
+   * row had a single `merge`; the gallery split the picture fold onto `absorb`
+   * (whose only trigger is the upload) and the undo onto `dropLast`, and a
+   * subset check whose "writes" set came from whichever node `find` reached
+   * first would have reported `image` and `images` as fields with no author
+   * while both were being written one node along.
+   *
+   * So it is a union AND a cardinality: a fourth writer must be added here
+   * deliberately rather than arriving unmeasured.
+   */
+  const sectionDataWriters = () => {
+    const rows = written['Admin/SectionRow'].graph.nodes.filter(
+      (n) => n.type === 'JavaScriptFunction' && scriptOf(n).includes('Outputs.data')
+    );
+    // `merge` (the words), `absorb` (an uploaded picture), `dropLast` (the undo).
+    expect(`data writers in Admin/SectionRow: ${rows.length}`).toBe('data writers in Admin/SectionRow: 3');
+    return new Set(rows.flatMap((n) => [...scriptOf(n).matchAll(/\bnext\.(\w+)\s*=/g)].map((m) => m[1])));
+  };
+
   it('the section fields the site renders are fields the panel can write (acceptance 5)', () => {
     // `Admin/SectionRow` folds the author's edits into `data`; whatever it can
     // set is the whole vocabulary a section view may read.
-    const merge = written['Admin/SectionRow'].graph.nodes.find(
-      (n) => n.type === 'JavaScriptFunction' && scriptOf(n).includes('Outputs.data')
-    )!;
-    const writes = new Set([...scriptOf(merge).matchAll(/\bnext\.(\w+)\s*=/g)].map((m) => m[1]));
+    const writes = sectionDataWriters();
 
     const unpack = written['Site/SectionView'].graph.nodes.find(
       (n) => n.type === 'JavaScriptFunction' && scriptOf(n).includes('Inputs.data')
@@ -1226,16 +1246,22 @@ describe('SB-006: the public site, beside the panel it shares a router with', ()
     // every spec, so this is a subset check with the offenders named.
     const orphans = reads.filter((k) => !writes.has(k));
     expect(`section fields with no author: ${orphans.join(', ')}`).toBe('section fields with no author: ');
-    expect(reads.length).toBeGreaterThan(0);
+    // 🔴 SBR-005 AC5's floor, and it is a cardinality rather than a `> 0`: the
+    // five kinds read six fields between them, and a dispatch that quietly
+    // stopped reading `images` would still satisfy "reads something".
+    expect(`section fields read: ${reads.join(', ')}`).toBe(
+      'section fields read: body, heading, image, images, linkLabel, linkTarget'
+    );
   });
 
   it('MUTANT: a section view reading a field the panel cannot write reddens', () => {
-    const merge = written['Admin/SectionRow'].graph.nodes.find(
-      (n) => n.type === 'JavaScriptFunction' && scriptOf(n).includes('Outputs.data')
-    )!;
-    const writes = new Set([...scriptOf(merge).matchAll(/\bnext\.(\w+)\s*=/g)].map((m) => m[1]));
-    // `heading` is the field a section view obviously wants and no control writes.
-    const reads = keysRead("const d = Inputs.data || {};\nOutputs.heading = d.heading || '';", 'd');
+    const writes = sectionDataWriters();
+    // 🔴 The old mutant used `heading`, and SBR-005 gave `heading` an author —
+    // a control that stops being a control is a spec that passes for the wrong
+    // reason. `caption` is the field a gallery obviously wants next and that no
+    // control writes today; if a later task adds one, this line must move again.
+    expect(`caption has an author: ${writes.has('caption')}`).toBe('caption has an author: false');
+    const reads = keysRead("const d = Inputs.data || {};\nOutputs.caption = d.caption || '';", 'd');
     const orphans = reads.filter((k) => !writes.has(k));
     expect(() =>
       expect(`section fields with no author: ${orphans.join(', ')}`).toBe('section fields with no author: ')
@@ -1253,8 +1279,16 @@ describe('SB-006: the public site, beside the panel it shares a router with', ()
     // mean the door never persisted `ports` and the check compared '' with ''.
     // 9 since SB-015 F27 added `diagnoseNotFound` to `Site`; 10 since SBR-004
     // added `linkState` to `NavLink`.
+    //
+    // SBR-005 moves it twice and lands back on 10: **+1** for `Site/CtaSection`'s
+    // `route` (the one code node in the five kinds, and the one that fires
+    // `Outputs.go()`), **−1** for `/Pages/Site`'s `readSections`, which went with
+    // the duplicate page-level contact form — see D37.
     expect(rows.length).toBe(10);
-    expect(rows.filter((r) => !r.endsWith('declared=')).length).toBe(3);
+    // The code nodes that DO emit a signal, and therefore must declare a port:
+    // `Site/ContactForm`'s `gather`, `/Pages/Site`'s two, and — SBR-005 —
+    // `Site/CtaSection`'s `route`.
+    expect(rows.filter((r) => !r.endsWith('declared=')).length).toBe(4);
   });
 
   it('MUTANT: dropping a declared signal port reddens', () => {
@@ -1472,9 +1506,36 @@ describe('SB-006: the public site, beside the panel it shares a router with', ()
     const mountedParams = siteEntries().flatMap(([key, w]) =>
       w.graph.nodes.filter((n) => n.parameters?.mounted === false).map((n) => `${key}/${n.label}`)
     );
-    // image, body, sent, refused, contactWrap, notFoundCard — six surfaces, each
-    // authored hidden AND wired to a decider.
-    expect(`${mountedParams.length} authored, ${mountedWires.length} wired`).toBe('6 authored, 6 wired');
+    // 🔴 SBR-005 took this from six surfaces to sixteen, so it is NAMED rather
+    // than counted. A count that only has to agree with itself passes when a
+    // wrapper loses its `mounted` and a different node gains one — which on a
+    // five-way dispatch is two kinds on screen at once, the exact defect AC4 is
+    // about. Every entry is a surface authored hidden AND wired to a decider.
+    expect(mountedParams.sort()).toEqual(
+      [
+        // The dispatch itself: exactly one of these five is mounted per row.
+        'Site/SectionView/Hero, when this section is one',
+        'Site/SectionView/Gallery, when this section is one',
+        'Site/SectionView/Call to action, when this section is one',
+        'Site/SectionView/Passage, when this section is one',
+        'Site/SectionView/Contact, when this section is one',
+        // Inside a kind: a field the record left empty draws nothing at all.
+        'Site/HeroSection/Hero sub-heading',
+        'Site/GallerySection/Gallery heading',
+        'Site/CtaSection/Call to action body',
+        'Site/CtaSection/Call to action button',
+        'Site/RichTextSection/Rich text heading',
+        'Site/ContactSection/Contact heading',
+        'Site/ContactSection/Contact intro',
+        // The three that predate SBR-005. `/Pages/Site`'s own contact wrapper is
+        // NOT here any more: D37 — it drew a second form on the identical
+        // predicate the section dispatches on.
+        'Site/ContactForm/The one confirmation',
+        'Site/ContactForm/The one refusal',
+        'Pages/Site/The empty-screen card'
+      ].sort()
+    );
+    expect(`${mountedParams.length} authored, ${mountedWires.length} wired`).toBe('15 authored, 15 wired');
   });
 
   it('MUTANT: a conditional surface back on `visible` reddens', () => {
@@ -1795,9 +1856,38 @@ describe('SB-006: the public site, beside the panel it shares a router with', ()
       'Pages/Site | Site name',
       'Pages/Site | Page title',
       'Site/SectionView | One section',
-      'Site/SectionView | Section image',
-      'Site/SectionView | Section body',
-      'Pages/Site | Contact form, when the page asked for one',
+      // 🔴 SBR-005's dispatch, in walk order: each wrapper, then the kind it
+      // holds. Naming them here is what makes AC1 a claim about the five kinds
+      // rather than about whatever the walk happened to reach.
+      'Site/SectionView | Hero, when this section is one',
+      'Site/HeroSection | Hero band',
+      'Site/HeroSection | Hero heading',
+      'Site/HeroSection | Hero sub-heading',
+      'Site/SectionView | Gallery, when this section is one',
+      'Site/GallerySection | Gallery band',
+      'Site/GallerySection | Gallery heading',
+      'Site/GallerySection | Gallery grid',
+      'Site/GalleryTile | Gallery tile',
+      'Site/SectionView | Call to action, when this section is one',
+      'Site/CtaSection | Call to action band',
+      'Site/CtaSection | Call to action heading',
+      'Site/CtaSection | Call to action body',
+      'Site/SectionView | Passage, when this section is one',
+      'Site/RichTextSection | Rich text band',
+      'Site/RichTextSection | Rich text heading',
+      'Site/RichTextSection | Rich text body',
+      'Site/SectionView | Contact, when this section is one',
+      'Site/ContactSection | Contact band',
+      'Site/ContactSection | Contact heading',
+      'Site/ContactSection | Contact intro',
+      // 🔴 **`Site/ContactForm` appears ONCE, and the fact that it appeared TWICE
+      // is D37.** The paragraph that used to stand here explained the second pass
+      // as expected behaviour — a page-level form beside a section-level one —
+      // and it was wrong: both were mounted from `rows.some(r => r.kind ===
+      // 'contact')`, the same predicate, so every contact section drew two forms.
+      // The browser is what said so (7 `<section>` elements on a five-section
+      // page). **An expected-value update is a claim; a session updating a census
+      // it did not cause is the moment to ask what changed.**
       'Site/ContactForm | Contact form',
       'Site/ContactForm | Contact heading',
       'Site/ContactForm | The one confirmation',
@@ -1872,17 +1962,26 @@ describe('SB-006: the public site, beside the panel it shares a router with', ()
       queries: 5,
       // `submitContactForm`, and nothing else — a visitor calls one endpoint.
       functions: 1,
-      // Sections, and nav links.
-      repeaters: 2,
+      // Sections, nav links, and — SBR-005 — a gallery's pictures.
+      repeaters: 3,
       // NavLink 1, SectionView 1, ContactForm 1, Nav 0, Site 7 — Site gained
       // `diagnoseNotFound` with SB-015 F27, and NavLink gained `linkState` with
       // SBR-004 (the current-page state, AC2).
+      //
+      // 🔴 **SBR-005 added five components and the code-node count went DOWN by
+      // nothing and up by nothing — +1 and −1.** Four of the five kinds are pure
+      // layout: everything conditional is decided once in `SectionView`'s dispatch
+      // and arrives as a port, so the only script the kinds needed is
+      // `Site/CtaSection`'s `route`, where "a slug or the open web" is a genuine
+      // branch. Against it, `/Pages/Site` lost `readSections` with the duplicate
+      // contact form (D37).
       code: 10,
       pages: 1,
-      // Two: the nav link, and SBR-004's footer link home. The site still never
-      // navigates away from ITSELF — both target the one catch-all component and
-      // differ only in the slug they carry.
-      navigations: 2,
+      // Three: the nav link, SBR-004's footer link home, and SBR-005's call to
+      // action. The site still never navigates away from ITSELF — all three
+      // target the one catch-all component and differ only in the slug they
+      // carry, which is what makes a CTA's page target expressible at all.
+      navigations: 3,
       pageInputs: 1,
       // SBR-002's answer deadline, and only that — a second Timer would be a
       // second writer racing the first onto the same watchdog port.

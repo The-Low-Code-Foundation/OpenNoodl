@@ -115,8 +115,11 @@
  * value onto the document element's inline `font-family` for any surface the
  * stamp never reached (a declared token default alone never runs a setter).
  */
-import { THEME_TOKEN_FIELDS } from '../../noodl-editor/src/editor/src/models/template/templates/siteTheme';
-import { ROUTER, SECTION_SORT } from './sb005Components';
+import {
+  THEME_TOKEN_FIELDS,
+  buildThemeApplierScript
+} from '../../noodl-editor/src/editor/src/models/template/templates/siteTheme';
+import { DEFAULT_SECTION_KIND, ROUTER, SECTION_KINDS, SECTION_SORT } from './sb005Components';
 
 export const THEME_KEYS = THEME_TOKEN_FIELDS;
 
@@ -172,15 +175,19 @@ export const SITE_CURRENT_SLUG_VAR = 'siteCurrentSlug';
  * rather than a gap.
  */
 export const RAW_DIMENSION_EXEMPTIONS: ReadonlyArray<{ label: string; port: string; why: string }> = [
+  // 🔴 SBR-005 retired `Section image`. The single 320px band is gone with the
+  // one-node section view; the two entries that named it are replaced by the two
+  // the gallery tile needs, because an exemption matching nothing reads exactly
+  // like a raw value that was never introduced (SBR-012's both-directions rule).
   {
-    label: 'Section image',
+    label: 'Gallery tile',
     port: 'height',
-    why: 'A section image band is a picture crop, not a rhythm step — the spacing scale tops out at 96px and this is 320px. No vocabulary token names a media height.'
+    why: 'A gallery tile is a picture crop, not a rhythm step — the spacing scale tops out at 96px and this is 180px. No vocabulary token names a media height.'
   },
   {
-    label: 'Section image',
+    label: 'Gallery tile',
     port: 'width',
-    why: '100% is a layout instruction ("fill the column"), not a measurement — there is no token for "all of it" and there should not be.'
+    why: '48% is a layout instruction ("two of these fit a row, one fits a phone"), not a measurement. There is no token for a fraction of a row and there should not be — a spacing token here would be a fixed width that stops being two-up the moment the measure changes.'
   },
   {
     label: 'Page ground',
@@ -597,38 +604,678 @@ export const NAV_LINK_WIRES = [
   { fromId: 'linkState', fromProperty: 'out-weight', toId: 'link', toProperty: 'fontWeight' }
 ];
 
-// ── 2. Site/SectionView — one section of the page being read ─────────────────
+// ── 2. The five section kinds — one component each ───────────────────────────
 
 /**
- * One section, of whichever of SB-004 §2's five kinds it is.
+ * SBR-005. **A gallery looks like a gallery, a hero looks like a poster, and the
+ * call-to-action button goes somewhere when clicked.**
  *
- * 🔴 **What it renders is bounded by what the panel can write, not by the kind
- * vocabulary.** `Admin/SectionRow` edits `data.body` and `data.image` and
- * nothing else, so a section view that read `data.heading` would be reading a
- * field with no author — a blank on every real page, and green in every spec.
- * The five kinds therefore differ in *which of those two show* and in how they
- * are set, not in what they carry:
+ * ## What was here before, and why one node could not become five things
  *
- *   | kind     | image | body | rendered as              |
- *   |----------|-------|------|--------------------------|
- *   | hero     | yes   | yes  | `h1`-scale band          |
- *   | richText | no    | yes  | body copy                |
- *   | gallery  | yes   | no   | image only               |
- *   | contact  | no    | yes  | the intro above the form |
- *   | cta      | no    | yes  | emphasised band          |
+ * `Site/SectionView` used to be **one `Image` + one `Text`** and a script whose
+ * whole vocabulary was `showImage` / `showBody` / `weight` / `size` / `family`.
+ * Phase 81 photographed the result and filed it as **register V16**: *the four
+ * section kinds are ONE layout — dispatch changes only fontWeight, fontSize,
+ * fontFamily and image visibility; `cta` emits no button.* That is the same
+ * finding as this task's §1, reached from the other side, and it is the reason
+ * the fix is five components rather than five more branches in one script.
  *
- * ⚠️ **`cta` has no destination, and cannot have one** — `data` has no link
- * field and the panel has no control that would write one. It renders as an
- * emphasised block of copy. Recorded in the task file as a gap with two named
- * fixes, neither of them ours to pick.
+ * 🔴 **The old comment blamed the wrong thing, and the phase's own rule says so.**
+ * It read: *"What it renders is bounded by what the panel can write"* — the panel
+ * edits `data.body` and `data.image`, so a section view reading `data.heading`
+ * would be reading a field with no author. True when written, and it is an
+ * [an AC parked on "why it cannot"] that expired the moment somebody was willing
+ * to change the panel. SBR-005 AC5 asks for exactly that, end to end, so
+ * `Admin/SectionRow` grows the fields and this file spends them.
  *
- * 🔴 **The contact FORM is not here**, and that is the second half of a
- * measurement rather than a layout preference: `submitContactForm` takes a
- * `pageSlug`, and a repeater item cannot be given a value that is constant
- * across items. `For Each` sets `id` and the model's own fields and nothing else
- * (`foreach.tsx:586-597`) — exactly the limit SB-004 §5 recorded for `Run
- * Tasks`. The form is a sibling of the list, in `Site/ContactForm`, where the
- * page can hand it the slug.
+ * ## The kinds, and what each one actually is on the page
+ *
+ *   | kind       | the object on the page                                       |
+ *   |------------|--------------------------------------------------------------|
+ *   | `hero`     | a photograph under `--gradient-scrim` with display type on it |
+ *   | `gallery`  | a wrapping grid of ≥2 crops, one row per pair                 |
+ *   | `cta`      | a `--gradient-brand` band ending in a button that navigates   |
+ *   | `richText` | body copy on the page ground — the old behaviour, restyled    |
+ *   | `contact`  | an intro and the form card, with its success and refusal      |
+ *
+ * ## Five components, not five branches
+ *
+ * 🔴 **A component instance has only the ports its `Component Inputs` node
+ * declares** — no layout, style or lifecycle ports of its own
+ * (`instance-unknown-parameter`, blocking: *"The value is discarded"*). It
+ * decides the shape here: **`mounted` cannot go on the instance**, so each kind
+ * is placed inside a one-child `Group` that carries it. Five wrappers is the
+ * price of the dispatch.
+ *
+ * ⚠️ `/Pages/Site` used to carry the same wrapper around `/Site/ContactForm` and
+ * was the place this rule was written down. SBR-005 removed it — see the note
+ * where it stood — so the rule lives here now.
+ *
+ * ⚠️ **`mounted`, never `visible`** (SBR-005 AC4, and the module header's rule).
+ * An unmounted kind is *absent from the DOM*; a `visible: false` one would still
+ * hold its band's height, which is the defect the header records `richText`
+ * reserving 320px for an image it never draws.
+ *
+ * 🔴 **Every item component declares its ports.** Phase 81 register **V22**,
+ * ruled by a render: a `Component Inputs` node with connections out of it but no
+ * `ports` array passes every gate and **delivers nothing** — `foreach.tsx:595`
+ * iterates `itemNode._inputs`, which is the *declared* inputs. The repeater still
+ * draws the right number of rows, so the page keeps its shape and loses its
+ * content. `Site/GalleryTile` is the node that would have been bitten.
+ *
+ * ## Where the look comes from
+ *
+ * Phase 81's kit, not a second palette. `backgroundImage` and
+ * `backgroundGradient` compose into **one** `background-image` declaration with
+ * the **gradient first** (`node-shared-port-definitions.ts:1645-1655`), which is
+ * the whole hero-over-a-photograph problem solved on one node instead of an
+ * absolutely-positioned stack. `--display-sm` is a `clamp()` token, so the hero
+ * headline scales with the viewport without a viewport-aware port existing.
+ *
+ * ⚠️ **`--gradient-scrim` is the one gradient token NOT written in terms of other
+ * tokens** — it is a fixed black wash, by design, because a scrim's job is to
+ * darken whatever photograph is under it. The corpus pairs it with
+ * `var(--primary-foreground)` for the text (`ui-image-scrim-band`), and this
+ * template follows the corpus rather than minting a rule of its own. But a site
+ * `Theme` record can set `colorOnPrimary` to a **dark** value — the shipped
+ * `night` preset does (`#191713`) — and dark text on a black scrim is
+ * unreadable. That is measured, not assumed: `sbr005-sections.look.ts` reads the
+ * rendered contrast at all three presets and the finding is filed where it lands.
+ */
+
+/**
+ * The five kinds, in the order a page most often uses them.
+ *
+ * 🔴 Single-sourced in `sb005Components.ts` and re-exported here, exactly as
+ * `SECTION_SORT` is and for the same reason: the panel's kind picker and this
+ * file's dispatch script must be the same list, or an author can create a kind
+ * the site cannot draw. `sbr005Sections.test.ts` asserts both name every member.
+ */
+export { SECTION_KINDS, DEFAULT_SECTION_KIND, SECTION_KIND_LABELS } from './sb005Components';
+export type { SectionKind } from './sb005Components';
+
+// ── 2a. Site/HeroSection — a photograph you can read words off ───────────────
+
+/**
+ * The poster.
+ *
+ * 🔴 **No code node here, and that is deliberate.** Everything conditional is
+ * computed once in `Site/SectionView`'s dispatch script and arrives as a port,
+ * so a kind component is a *layout* and nothing else. A second script per kind
+ * would be five more places for the `richText`-reserves-320px class of defect to
+ * live.
+ *
+ * ⚠️ **`sizeMode: contentHeight` and generous padding, rather than an explicit
+ * height with `justifyContent: flex-end`.** The corpus recipe uses the second
+ * form and phase 81 register **V17** is a session that shipped its failure mode
+ * *after reading the diagnosis of it*: a shell with no `sizeMode` becomes
+ * `flexGrow: 100`, fills the band, and the band's `justifyContent` has nothing
+ * left to justify — copy at the top, empty photograph beneath. A band sized by
+ * what is in it cannot have that defect at all, which is the cheaper answer
+ * inside a 44rem measure.
+ *
+ * ⚠️ `backgroundColor` is the ground for a hero whose record has **no** picture.
+ * Register **V33**'s exemption is the sanctioned reading: *a scrim over nothing
+ * is still a designed ground*, so an empty `backgroundImage` here is not the
+ * `unsourced-image` defect.
+ */
+export const HERO_SECTION_NODES = [
+  {
+    id: 'band',
+    type: 'Group',
+    label: 'Hero band',
+    parameters: {
+      ...STACKED_IN_A_COLUMN,
+      flexDirection: 'column',
+      rowGap: 'var(--space-3)',
+      paddingTop: 'var(--space-16)',
+      paddingBottom: 'var(--space-8)',
+      paddingLeft: 'var(--space-6)',
+      paddingRight: 'var(--space-6)',
+      // The gradient paints OVER the picture — one declaration, gradient first.
+      backgroundGradient: 'var(--gradient-scrim)',
+      backgroundSize: 'cover',
+      backgroundPosition: 'center',
+      // The ground under the scrim when the section carries no photograph.
+      backgroundColor: 'var(--foreground)',
+      borderRadius: 'var(--radius-md)'
+    },
+    children: ['heading', 'sub']
+  },
+  {
+    id: 'heading',
+    type: 'Text',
+    label: 'Hero heading',
+    parent: 'band',
+    // SB-018 (3): a standing `text`, because `Text` declares `default: 'Text'`
+    // and a node whose only `text` is a wire renders the literal word until that
+    // wire publishes.
+    //
+    // `--display-sm` is one of VIB-002's three fluid tokens — a `clamp()` whose
+    // value goes verbatim into `:root`, so the headline scales 30px→48px with
+    // the viewport and no responsive `fontSize` port has to exist.
+    parameters: {
+      as: 'h2',
+      text: '',
+      fontSize: 'var(--display-sm)',
+      fontFamily: 'var(--font-serif)',
+      fontWeight: 'var(--font-bold)',
+      lineHeight: 'var(--leading-tight)',
+      letterSpacing: 'var(--tracking-tight)',
+      color: 'var(--primary-foreground)'
+    }
+  },
+  {
+    id: 'sub',
+    type: 'Text',
+    label: 'Hero sub-heading',
+    parent: 'band',
+    parameters: {
+      as: 'p',
+      mounted: false,
+      text: '',
+      fontSize: 'var(--text-lg)',
+      lineHeight: 'var(--leading-relaxed)',
+      color: 'var(--primary-foreground)'
+    }
+  },
+  {
+    id: 'inputs',
+    type: 'Component Inputs',
+    label: 'What this hero shows',
+    ports: [
+      { name: 'heading', type: 'string', plug: 'output' },
+      { name: 'body', type: 'string', plug: 'output' },
+      { name: 'showBody', type: 'boolean', plug: 'output' },
+      { name: 'image', type: 'string', plug: 'output' }
+    ]
+  }
+];
+
+export const HERO_SECTION_WIRES = [
+  { fromId: 'inputs', fromProperty: 'heading', toId: 'heading', toProperty: 'text' },
+  { fromId: 'inputs', fromProperty: 'body', toId: 'sub', toProperty: 'text' },
+  { fromId: 'inputs', fromProperty: 'showBody', toId: 'sub', toProperty: 'mounted' },
+  { fromId: 'inputs', fromProperty: 'image', toId: 'band', toProperty: 'backgroundImage' }
+];
+
+// ── 2b. Site/GalleryTile — one crop in the grid ──────────────────────────────
+
+/**
+ * 🔴 **The port list below is the whole component.** Register **V22**: a
+ * `Component Inputs` with no `ports` array passes `catalog:examples` strict and
+ * every value an instance sets is discarded, because `foreach.tsx:595` iterates
+ * the node's **declared** inputs. A gallery built that way draws the right
+ * number of tiles and every one of them is empty — the shape survives and the
+ * content does not, which is why no structural check would have caught it.
+ *
+ * ⚠️ **The width lives here, not on the instance.** A component instance takes
+ * only its declared ports, so the tile's own root is the only node that can say
+ * how wide a tile is. 48% + 48% + a `--space-3` gutter is two per row inside the
+ * 44rem measure and one per row on a phone, with no media query and no
+ * `Columns` node (whose `marginX` silently drops a `var()` — register **V28**).
+ */
+export const GALLERY_TILE_NODES = [
+  {
+    id: 'tile',
+    type: 'Image',
+    label: 'Gallery tile',
+    // `sizeMode: 'explicit'` is not decoration: the door refuses `objectFit`
+    // without it (`inert-dimension`, blocking), and a bare number on a dimension
+    // port reads as a **percentage** (`unitless-dimension`).
+    parameters: {
+      sizeMode: 'explicit',
+      objectFit: 'cover',
+      width: { value: 48, unit: '%' },
+      height: { value: 180, unit: 'px' },
+      borderRadius: 'var(--radius-md)'
+    }
+  },
+  {
+    id: 'inputs',
+    type: 'Component Inputs',
+    label: 'One image of the gallery',
+    // The field name is the one `data.images` rows carry, because `For Each`
+    // matches a model's own field names against the declared port names
+    // (`foreach.tsx:595-597`).
+    ports: [{ name: 'url', type: 'string', plug: 'output' }]
+  }
+];
+
+export const GALLERY_TILE_WIRES = [{ fromId: 'inputs', fromProperty: 'url', toId: 'tile', toProperty: 'src' }];
+
+// ── 2c. Site/GallerySection — more than one picture, in a grid ───────────────
+
+/**
+ * The kind the old view could not be: `data.image` is **one** reference, and a
+ * gallery of one image is a photograph with a caption missing.
+ *
+ * 🔴 **The data-model half is `data.images`, an ordered array on the same
+ * record** — not a `SectionImage` class. SBR-005 AC5 asks that the ACL treatment
+ * *match the existing image path*, and the way to guarantee that is to put the
+ * new pictures **where the old one already is**: inside the `Section` record's
+ * own `data` column, under the `Section` row's own ACL. A second class would be
+ * a second policy to keep in step, and SB-004 §4's rules would have to grow a
+ * fourth entry that nothing but a gallery ever reads.
+ *
+ * ⚠️ A plain array is a legitimate `items` value — `foreach.tsx:137-140`, *"may
+ * be a plain array"* — so no `Static Data` node and no model plumbing is needed
+ * between the record and the grid.
+ */
+export const GALLERY_SECTION_NODES = [
+  {
+    id: 'band',
+    type: 'Group',
+    label: 'Gallery band',
+    parameters: { ...STACKED_IN_A_COLUMN, flexDirection: 'column', rowGap: 'var(--space-4)' },
+    children: ['heading', 'grid']
+  },
+  {
+    id: 'heading',
+    type: 'Text',
+    label: 'Gallery heading',
+    parent: 'band',
+    parameters: {
+      as: 'h2',
+      mounted: false,
+      text: '',
+      fontSize: 'var(--text-2xl)',
+      fontFamily: 'var(--font-serif)',
+      fontWeight: 'var(--font-bold)',
+      lineHeight: 'var(--leading-tight)',
+      color: 'var(--foreground)'
+    }
+  },
+  {
+    id: 'grid',
+    type: 'Group',
+    label: 'Gallery grid',
+    parent: 'band',
+    // A wrapping row rather than a column: the tiles are 48% wide, so the wrap
+    // IS the grid. `Site/Nav` lays its links out the same way and for the same
+    // reason — a row that must run onto a second line rather than off the screen.
+    parameters: {
+      ...STACKED_IN_A_COLUMN,
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      columnGap: 'var(--space-3)',
+      rowGap: 'var(--space-3)'
+    },
+    children: ['tiles']
+  },
+  {
+    id: 'tiles',
+    type: 'For Each',
+    label: 'One tile per image',
+    parent: 'grid',
+    parameters: { templateType: 'explicit', template: '/Site/GalleryTile' }
+  },
+  {
+    id: 'inputs',
+    type: 'Component Inputs',
+    label: 'What this gallery shows',
+    ports: [
+      { name: 'heading', type: 'string', plug: 'output' },
+      { name: 'showHeading', type: 'boolean', plug: 'output' },
+      { name: 'images', type: '*', plug: 'output' }
+    ]
+  }
+];
+
+export const GALLERY_SECTION_WIRES = [
+  { fromId: 'inputs', fromProperty: 'heading', toId: 'heading', toProperty: 'text' },
+  { fromId: 'inputs', fromProperty: 'showHeading', toId: 'heading', toProperty: 'mounted' },
+  { fromId: 'inputs', fromProperty: 'images', toId: 'tiles', toProperty: 'items' }
+];
+
+// ── 2d. Site/CtaSection — the band that goes somewhere ───────────────────────
+
+/**
+ * SBR-005 AC2, and the half of register **V16** that named a missing node
+ * outright: *`cta` emits no button.*
+ *
+ * 🔴 **The destination exists now, and the mechanism is the one the nav already
+ * uses.** `Site/NavLink` navigates with a `RouterNavigate` at `target:
+ * SITE_PAGE` carrying `pm-slug`, because the public site is one catch-all page
+ * component at `{slug}` — so "go to the about page" *is* "navigate to
+ * `/Pages/Site` with slug `about`". A CTA pointing at a slug is that same call
+ * with the slug coming out of the record instead of out of a nav row.
+ *
+ * ⚠️ **An external target is a different act and cannot use the router at all.**
+ * `RouterNavigate.target` names a component; an `https://` string is not one, and
+ * aiming it there is the `unresolved-navigation` refusal. So `route` below
+ * branches: an absolute URL leaves through `window.open`, anything else is a
+ * slug. That is the *only* code node in the five kinds, and it is here because
+ * the branch is genuinely a decision and not a style.
+ *
+ * 🔴 **The value is set before the signal fires, and that ordering is load-
+ * bearing.** `Outputs.slug = …` then `Outputs.go()`: both go through the
+ * receiver's input queue and `Node.update` drains one entry per input name in a
+ * single pass (`outputproperty.ts:141-210`, `node.ts:626-656`), so a `navigate`
+ * that arrived before its `pm-slug` would route to the *previous* slug. The
+ * module header records the same rule for `Query Records`, and `Admin/SectionRow`'s
+ * `merge` is built to it.
+ *
+ * ⚠️ **`window` is guarded.** This is the template most likely to be deployed
+ * server-rendered — it is the SEO surface — and an unguarded `window` in a code
+ * node takes the whole server render with it (`javascriptnodeparser.js:497-501`).
+ */
+export const CTA_SECTION_NODES = [
+  {
+    id: 'band',
+    type: 'Group',
+    label: 'Call to action band',
+    parameters: {
+      ...STACKED_IN_A_COLUMN,
+      flexDirection: 'column',
+      alignItems: 'flex-start',
+      rowGap: 'var(--space-4)',
+      paddingTop: 'var(--space-10)',
+      paddingBottom: 'var(--space-10)',
+      paddingLeft: 'var(--space-6)',
+      paddingRight: 'var(--space-6)',
+      // A themed gradient: every stop is another token, so the band follows the
+      // Theme record through every preset instead of freezing one palette.
+      backgroundGradient: 'var(--gradient-brand)',
+      backgroundColor: 'var(--primary)',
+      borderRadius: 'var(--radius-md)'
+    },
+    children: ['heading', 'body', 'button']
+  },
+  {
+    id: 'heading',
+    type: 'Text',
+    label: 'Call to action heading',
+    parent: 'band',
+    parameters: {
+      as: 'h2',
+      text: '',
+      fontSize: 'var(--text-3xl)',
+      fontFamily: 'var(--font-serif)',
+      fontWeight: 'var(--font-bold)',
+      lineHeight: 'var(--leading-tight)',
+      color: 'var(--primary-foreground)'
+    }
+  },
+  {
+    id: 'body',
+    type: 'Text',
+    label: 'Call to action body',
+    parent: 'band',
+    parameters: {
+      as: 'p',
+      mounted: false,
+      text: '',
+      fontSize: 'var(--text-base)',
+      lineHeight: 'var(--leading-relaxed)',
+      color: 'var(--primary-foreground)'
+    }
+  },
+  {
+    id: 'button',
+    type: 'net.noodl.controls.button',
+    label: 'Call to action button',
+    parent: 'band',
+    // The button is a visual node, so `mounted` is its own port — no wrapper
+    // Group is needed here. The five wrappers above need one each because they
+    // wrap a *component instance*, which has only its declared ports.
+    //
+    // The surface colours are the inverse of the band: a light chip on a brand
+    // gradient is the one thing on the band a visitor is meant to press.
+    parameters: {
+      mounted: false,
+      label: '',
+      backgroundColor: 'var(--primary-foreground)',
+      color: 'var(--primary)',
+      fontWeight: 'var(--font-semibold)',
+      borderRadius: 'var(--radius-md)'
+    }
+  },
+  {
+    id: 'inputs',
+    type: 'Component Inputs',
+    label: 'What this call to action says and where it goes',
+    ports: [
+      { name: 'heading', type: 'string', plug: 'output' },
+      { name: 'body', type: 'string', plug: 'output' },
+      { name: 'showBody', type: 'boolean', plug: 'output' },
+      { name: 'linkLabel', type: 'string', plug: 'output' },
+      { name: 'showLink', type: 'boolean', plug: 'output' },
+      { name: 'linkTarget', type: 'string', plug: 'output' }
+    ]
+  },
+  {
+    id: 'route',
+    type: 'JavaScriptFunction',
+    label: 'Slug or the open web',
+    // Rule 1: an undeclared signal output is dead once this bundle is served
+    // without an editor attached (SB-004 F10).
+    ports: [{ name: 'out-go', plug: 'output', type: 'signal' }],
+    parameters: {
+      // Rule 2's guard. `linkTarget` arrives on load and the click arrives
+      // later, so this node must not act on the value alone — `run` is the only
+      // trigger and the target is held until it comes.
+      'runOnChange-in-target': false,
+      functionScript:
+        "const target = (Inputs.target || '').trim();\n" +
+        "if (target === '') return;\n" +
+        "if (/^https?:\\/\\//i.test(target)) {\n" +
+        // A guarded `window`: the SSR/SSG entries render this bundle with no
+        // document, and an unguarded reference throws on the server.
+        "  if (typeof window !== 'undefined' && window.open) {\n" +
+        "    window.open(target, '_blank', 'noopener');\n" +
+        '  }\n' +
+        '  return;\n' +
+        '}\n' +
+        // The value first, then the signal — see the note above this node.
+        'Outputs.slug = target;\n' +
+        'Outputs.go();'
+    }
+  },
+  {
+    id: 'goPage',
+    type: 'RouterNavigate',
+    label: 'To that page',
+    parameters: { router: ROUTER, target: SITE_PAGE }
+  }
+];
+
+export const CTA_SECTION_WIRES = [
+  { fromId: 'inputs', fromProperty: 'heading', toId: 'heading', toProperty: 'text' },
+  { fromId: 'inputs', fromProperty: 'body', toId: 'body', toProperty: 'text' },
+  { fromId: 'inputs', fromProperty: 'showBody', toId: 'body', toProperty: 'mounted' },
+  { fromId: 'inputs', fromProperty: 'linkLabel', toId: 'button', toProperty: 'label' },
+  { fromId: 'inputs', fromProperty: 'showLink', toId: 'button', toProperty: 'mounted' },
+
+  { fromId: 'inputs', fromProperty: 'linkTarget', toId: 'route', toProperty: 'in-target' },
+  { fromId: 'button', fromProperty: 'onClick', toId: 'route', toProperty: 'run' },
+  { fromId: 'route', fromProperty: 'out-slug', toId: 'goPage', toProperty: 'pm-slug' },
+  { fromId: 'route', fromProperty: 'out-go', toId: 'goPage', toProperty: 'navigate' }
+];
+
+// ── 2e. Site/RichTextSection — the kind that was already right ───────────────
+
+/**
+ * The old behaviour, kept, and restyled under the tokens.
+ *
+ * ⚠️ **It gains a heading and loses nothing.** The old single view set
+ * `fontWeight` / `fontSize` / `fontFamily` from the dispatch script on one `Text`
+ * — which is register **V16**'s sentence exactly: *dispatch changes only
+ * fontWeight, fontSize and fontFamily.* Here the values are authored, because
+ * this kind's type ramp is a constant and a kind that no longer has to
+ * impersonate a hero has no reason to compute one.
+ */
+export const RICH_TEXT_SECTION_NODES = [
+  {
+    id: 'band',
+    type: 'Group',
+    label: 'Rich text band',
+    parameters: { ...STACKED_IN_A_COLUMN, flexDirection: 'column', rowGap: 'var(--space-3)' },
+    children: ['heading', 'body']
+  },
+  {
+    id: 'heading',
+    type: 'Text',
+    label: 'Rich text heading',
+    parent: 'band',
+    parameters: {
+      as: 'h2',
+      mounted: false,
+      text: '',
+      fontSize: 'var(--text-2xl)',
+      fontFamily: 'var(--font-serif)',
+      fontWeight: 'var(--font-bold)',
+      lineHeight: 'var(--leading-tight)',
+      color: 'var(--foreground)'
+    }
+  },
+  {
+    id: 'body',
+    type: 'Text',
+    label: 'Rich text body',
+    parent: 'band',
+    parameters: {
+      as: 'p',
+      text: '',
+      fontSize: 'var(--text-base)',
+      fontFamily: 'var(--font-sans)',
+      fontWeight: 'var(--font-normal)',
+      color: 'var(--foreground)',
+      lineHeight: 'var(--leading-relaxed)'
+    }
+  },
+  {
+    id: 'inputs',
+    type: 'Component Inputs',
+    label: 'What this passage shows',
+    ports: [
+      { name: 'heading', type: 'string', plug: 'output' },
+      { name: 'showHeading', type: 'boolean', plug: 'output' },
+      { name: 'body', type: 'string', plug: 'output' }
+    ]
+  }
+];
+
+export const RICH_TEXT_SECTION_WIRES = [
+  { fromId: 'inputs', fromProperty: 'heading', toId: 'heading', toProperty: 'text' },
+  { fromId: 'inputs', fromProperty: 'showHeading', toId: 'heading', toProperty: 'mounted' },
+  { fromId: 'inputs', fromProperty: 'body', toId: 'body', toProperty: 'text' }
+];
+
+// ── 2f. Site/ContactSection — the intro, and the form under it ───────────────
+
+/**
+ * 🔴 **This component exists because a documented "cannot" had expired, and the
+ * refutation was eleven nodes up its own file.**
+ *
+ * The old note on `Site/SectionView` said the contact form *"is not here, and
+ * that is the second half of a measurement rather than a layout preference:
+ * `submitContactForm` takes a `pageSlug`, and a repeater item cannot be given a
+ * value that is constant across items"* — `For Each` sets `id` and the model's
+ * own fields and nothing else (`foreach.tsx:586-597`). Every word of that is
+ * still true. What it does not follow from is *"so the form cannot live in a
+ * section"*, because **SBR-004 already solved the identical problem for
+ * `Site/NavLink`**: a value constant across repeated items reaches them through
+ * `Noodl.Variables`, not through a port. `SITE_CURRENT_SLUG_VAR` is written once
+ * by `/Pages/Site` and read by a `Variable2` node inside the repeated component.
+ *
+ * That is [an AC parked on "why it cannot" expires] with the fix sitting in the
+ * same file as the excuse. The `Variable2` below is the whole of it.
+ *
+ * ⚠️ **`/Pages/Site`'s page-level contact form stays.** It is SBR-006's artefact,
+ * driven by `Page.showContact`, and removing it is not this task's to do. An
+ * author who turns the page toggle on *and* adds a `contact` section gets two
+ * forms — a real wart, filed as a register row with an owner rather than fixed
+ * by reaching into a neighbouring task's component.
+ */
+export const CONTACT_SECTION_NODES = [
+  {
+    id: 'band',
+    type: 'Group',
+    label: 'Contact band',
+    parameters: { ...STACKED_IN_A_COLUMN, flexDirection: 'column', rowGap: 'var(--space-4)' },
+    children: ['heading', 'body', 'form']
+  },
+  {
+    id: 'heading',
+    type: 'Text',
+    label: 'Contact heading',
+    parent: 'band',
+    parameters: {
+      as: 'h2',
+      mounted: false,
+      text: '',
+      fontSize: 'var(--text-2xl)',
+      fontFamily: 'var(--font-serif)',
+      fontWeight: 'var(--font-bold)',
+      lineHeight: 'var(--leading-tight)',
+      color: 'var(--foreground)'
+    }
+  },
+  {
+    id: 'body',
+    type: 'Text',
+    label: 'Contact intro',
+    parent: 'band',
+    parameters: {
+      as: 'p',
+      mounted: false,
+      text: '',
+      fontSize: 'var(--text-base)',
+      color: 'var(--foreground)',
+      lineHeight: 'var(--leading-relaxed)'
+    }
+  },
+  { id: 'form', type: '/Site/ContactForm', label: 'The form itself', parent: 'band' },
+  {
+    id: 'inputs',
+    type: 'Component Inputs',
+    label: 'What this contact section says',
+    ports: [
+      { name: 'heading', type: 'string', plug: 'output' },
+      { name: 'showHeading', type: 'boolean', plug: 'output' },
+      { name: 'body', type: 'string', plug: 'output' },
+      { name: 'showBody', type: 'boolean', plug: 'output' }
+    ]
+  },
+  {
+    id: 'currentSlug',
+    type: 'Variable2',
+    label: 'Which slug this form is on',
+    // The value a repeater cannot carry as a port, read the way `Site/NavLink`
+    // reads it. `/Pages/Site` writes this variable when its page query answers.
+    parameters: { name: SITE_CURRENT_SLUG_VAR }
+  }
+];
+
+export const CONTACT_SECTION_WIRES = [
+  { fromId: 'inputs', fromProperty: 'heading', toId: 'heading', toProperty: 'text' },
+  { fromId: 'inputs', fromProperty: 'showHeading', toId: 'heading', toProperty: 'mounted' },
+  { fromId: 'inputs', fromProperty: 'body', toId: 'body', toProperty: 'text' },
+  { fromId: 'inputs', fromProperty: 'showBody', toId: 'body', toProperty: 'mounted' },
+  { fromId: 'currentSlug', fromProperty: 'value', toId: 'form', toProperty: 'pageSlug' }
+];
+
+// ── 2g. Site/SectionView — which of the five this row is ─────────────────────
+
+/**
+ * One section of the page being read, dispatched to one of the five kinds.
+ *
+ * 🔴 **What this component is now: a switch and five wrappers.** It draws
+ * nothing itself. `unpack` reads the record once and publishes both halves of
+ * the answer — *which kind* (five booleans onto five `mounted` ports) and *what
+ * that kind needs* (the fields, already defaulted and already emptiness-tested).
+ *
+ * ⚠️ **The five booleans are mutually exclusive by construction**, and the spec
+ * asserts it rather than trusting the script: exactly one is true for every kind
+ * in `SECTION_KINDS`, and exactly one is true for a kind nobody has heard of
+ * (`richText`, the documented fallback). Two true at once is two bands stacked
+ * where the author asked for one, which is a defect nothing else would catch.
+ *
+ * 🔴 **`data` is read defensively at every level.** A `Section` written before
+ * SBR-005 has no `heading`, no `images` and no `linkTarget`, and the site must
+ * render it as the `richText` it has always been rather than as a hole. Every
+ * new field is optional and every read has a floor.
  */
 export const SECTION_VIEW_NODES = [
   {
@@ -638,67 +1285,67 @@ export const SECTION_VIEW_NODES = [
     // `as: 'section'` — this is the public HTML, and a site made of `div`s is
     // the thing a client's SEO consultant will complain about first.
     // SBR-004: the rhythm between sections is two steps of the spacing scale.
-    // The values are the same 32/16 they were — what changed is where they come
-    // from, so the look is unmoved and the provenance is single.
     parameters: {
-      // AC1 half B — see `STACKED_IN_A_COLUMN`.
       ...STACKED_IN_A_COLUMN,
       as: 'section',
       flexDirection: 'column',
-      paddingTop: 'var(--space-8)',
-      paddingBottom: 'var(--space-8)',
-      rowGap: 'var(--space-4)'
+      paddingTop: 'var(--space-4)',
+      paddingBottom: 'var(--space-4)'
     },
-    children: ['image', 'body']
+    children: ['heroWrap', 'galleryWrap', 'ctaWrap', 'richWrap', 'contactWrap']
   },
+
+  // 🔴 The five wrappers. `mounted` cannot go on a component instance — an
+  // instance has only the ports its `Component Inputs` declares
+  // (`instance-unknown-parameter`, blocking) — so the switch lands on a Group
+  // holding one instance each — the rule is stated in full in this component's
+  // own header.
   {
-    id: 'image',
-    type: 'Image',
-    label: 'Section image',
+    id: 'heroWrap',
+    type: 'Group',
+    label: 'Hero, when this section is one',
     parent: 'section',
-    // ⚠️ `sizeMode: 'explicit'` is not decoration: the door refuses `objectFit`
-    // without it (`inert-dimension`, blocking) because the port is read in no
-    // other mode. And both dimensions carry a unit — a bare number on a
-    // dimension port is read as a **percentage** (`unitless-dimension`), so
-    // `height: 320` would have been 320% of the section.
-    //
-    // SBR-004: both dimensions stay raw and both are named in
-    // `RAW_DIMENSION_EXEMPTIONS` — a media crop is not a rhythm step. The
-    // corner radius is a token, because that one the vocabulary does name.
-    parameters: {
-      sizeMode: 'explicit',
-      objectFit: 'cover',
-      width: { value: 100, unit: '%' },
-      height: { value: 320, unit: 'px' },
-      borderRadius: 'var(--radius-md)',
-      mounted: false
-    }
+    parameters: { ...STACKED_IN_A_COLUMN, flexDirection: 'column', mounted: false },
+    children: ['hero']
   },
+  { id: 'hero', type: '/Site/HeroSection', label: 'Hero', parent: 'heroWrap' },
   {
-    id: 'body',
-    type: 'Text',
-    label: 'Section body',
+    id: 'galleryWrap',
+    type: 'Group',
+    label: 'Gallery, when this section is one',
     parent: 'section',
-    // 🔴 SB-018 (3). Standing `text`, for the reason spelled out on
-    // `/Pages/Site`'s headings: `Text` declares `default: 'Text'`, a default
-    // applies until the port is set, and a node whose only `text` is a wire
-    // renders the literal word **Text** until that wire publishes. Every other
-    // wired `Text` in this template already carried one (`link`, `rowStatus`,
-    // `notFound`); these were the four that did not, and s19's census over the
-    // shipped artefact is what found them rather than the one the drive saw.
-    //
-    // SBR-004: `color` and `lineHeight` are authored because they are the same
-    // for every kind. `fontSize`, `fontWeight` and `fontFamily` are NOT — the
-    // kind decides all three and `unpack` below owns them, so authoring one here
-    // would be a value that is overwritten on every row that renders.
-    parameters: {
-      as: 'p',
-      mounted: false,
-      text: '',
-      color: 'var(--foreground)',
-      lineHeight: 'var(--leading-relaxed)'
-    }
+    parameters: { ...STACKED_IN_A_COLUMN, flexDirection: 'column', mounted: false },
+    children: ['gallery']
   },
+  { id: 'gallery', type: '/Site/GallerySection', label: 'Gallery', parent: 'galleryWrap' },
+  {
+    id: 'ctaWrap',
+    type: 'Group',
+    label: 'Call to action, when this section is one',
+    parent: 'section',
+    parameters: { ...STACKED_IN_A_COLUMN, flexDirection: 'column', mounted: false },
+    children: ['cta']
+  },
+  { id: 'cta', type: '/Site/CtaSection', label: 'Call to action', parent: 'ctaWrap' },
+  {
+    id: 'richWrap',
+    type: 'Group',
+    label: 'Passage, when this section is one',
+    parent: 'section',
+    parameters: { ...STACKED_IN_A_COLUMN, flexDirection: 'column', mounted: false },
+    children: ['rich']
+  },
+  { id: 'rich', type: '/Site/RichTextSection', label: 'Passage', parent: 'richWrap' },
+  {
+    id: 'contactWrap',
+    type: 'Group',
+    label: 'Contact, when this section is one',
+    parent: 'section',
+    parameters: { ...STACKED_IN_A_COLUMN, flexDirection: 'column', mounted: false },
+    children: ['contact']
+  },
+  { id: 'contact', type: '/Site/ContactSection', label: 'Contact', parent: 'contactWrap' },
+
   {
     id: 'inputs',
     type: 'Component Inputs',
@@ -713,35 +1360,58 @@ export const SECTION_VIEW_NODES = [
   {
     id: 'unpack',
     type: 'JavaScriptFunction',
-    label: 'What this kind shows',
+    label: 'Which kind this is, and what it needs',
     parameters: {
       // No custom signal outputs, so rule 1 has nothing to declare here.
       //
-      // The two visibility booleans are computed rather than wired from
-      // `Condition` nodes because the answer depends on both `kind` and whether
-      // the field is actually filled — an empty `body` on a `hero` should leave
-      // no empty paragraph behind.
+      // The five `show*` booleans are computed rather than wired from `Condition`
+      // nodes because the answer depends on the kind AND on whether the field is
+      // filled — an empty `body` on a hero should leave no empty paragraph behind,
+      // and an empty `images` array should not draw a heading over nothing.
       //
       // A `cloudfile` renders through its `url`; an unset one must not reach an
-      // Image's `src` as the string "undefined".
+      // Image's `src`, or a Group's `backgroundImage`, as the string "undefined".
       functionScript:
-        "const kind = Inputs.kind || 'richText';\n" +
+        "const kind = Inputs.kind || " +
+        JSON.stringify(DEFAULT_SECTION_KIND) +
+        ';\n' +
         'const d = Inputs.data || {};\n' +
+        "const heading = d.heading || '';\n" +
         "const body = d.body || '';\n" +
         "const image = (d.image && d.image.url) || '';\n" +
-        "Outputs.showImage = image !== '' && (kind === 'hero' || kind === 'gallery');\n" +
-        "Outputs.showBody = body !== '' && kind !== 'gallery';\n" +
+        // Only rows carrying a usable url survive: a half-uploaded entry would
+        // otherwise draw an empty tile that looks exactly like a broken picture.
+        'const images = (Array.isArray(d.images) ? d.images : [])\n' +
+        "  .map(function (row) { return { url: (row && (row.url || (row.image && row.image.url))) || '' }; })\n" +
+        "  .filter(function (row) { return row.url !== ''; });\n" +
+        "const linkLabel = d.linkLabel || '';\n" +
+        "const linkTarget = d.linkTarget || '';\n" +
+        '\n' +
+        // 🔴 Exactly one of the five, always. An unknown kind falls back to the
+        // one that renders any record at all rather than to nothing.
+        "const known = " +
+        JSON.stringify(SECTION_KINDS as unknown as string[]) +
+        ';\n' +
+        'const k = known.indexOf(kind) === -1 ? ' +
+        JSON.stringify(DEFAULT_SECTION_KIND) +
+        ' : kind;\n' +
+        "Outputs.isHero = k === 'hero';\n" +
+        "Outputs.isGallery = k === 'gallery';\n" +
+        "Outputs.isCta = k === 'cta';\n" +
+        "Outputs.isRichText = k === 'richText';\n" +
+        "Outputs.isContact = k === 'contact';\n" +
+        '\n' +
+        'Outputs.heading = heading;\n' +
+        "Outputs.showHeading = heading !== '';\n" +
         'Outputs.body = body;\n' +
+        "Outputs.showBody = body !== '';\n" +
         'Outputs.image = image;\n' +
-        // The weight is what tells a hero from a paragraph, and the door's
-        // `monotone-typography` check is answered by setting one at all.
-        "Outputs.weight = (kind === 'hero' || kind === 'cta') ? 'var(--font-bold)' : 'var(--font-normal)';\n" +
-        "Outputs.size = kind === 'hero' ? 'var(--text-3xl)' : 'var(--text-base)';\n" +
-        // SBR-004: a hero is the display face, body copy is the interface face.
-        // Both are ROLE slots in the shipped vocabulary (siteTheme.ts's first
-        // deliberate wrinkle) — Night puts a sans stack in `--font-serif` and
-        // that is intended, so this reads "display" and not "serif".
-        "Outputs.family = kind === 'hero' ? 'var(--font-serif)' : 'var(--font-sans)';"
+        'Outputs.images = images;\n' +
+        'Outputs.linkLabel = linkLabel;\n' +
+        // The button is the CTA's whole point, so it needs both halves: a label
+        // to press and somewhere to land. Either one missing is no button.
+        "Outputs.showLink = linkLabel !== '' && linkTarget !== '';\n" +
+        'Outputs.linkTarget = linkTarget;'
     }
   }
 ];
@@ -750,13 +1420,42 @@ export const SECTION_VIEW_WIRES = [
   { fromId: 'inputs', fromProperty: 'kind', toId: 'unpack', toProperty: 'in-kind' },
   { fromId: 'inputs', fromProperty: 'data', toId: 'unpack', toProperty: 'in-data' },
 
-  { fromId: 'unpack', fromProperty: 'out-image', toId: 'image', toProperty: 'src' },
-  { fromId: 'unpack', fromProperty: 'out-showImage', toId: 'image', toProperty: 'mounted' },
-  { fromId: 'unpack', fromProperty: 'out-body', toId: 'body', toProperty: 'text' },
-  { fromId: 'unpack', fromProperty: 'out-showBody', toId: 'body', toProperty: 'mounted' },
-  { fromId: 'unpack', fromProperty: 'out-weight', toId: 'body', toProperty: 'fontWeight' },
-  { fromId: 'unpack', fromProperty: 'out-size', toId: 'body', toProperty: 'fontSize' },
-  { fromId: 'unpack', fromProperty: 'out-family', toId: 'body', toProperty: 'fontFamily' }
+  // The switch — five booleans onto five wrappers, never onto an instance.
+  { fromId: 'unpack', fromProperty: 'out-isHero', toId: 'heroWrap', toProperty: 'mounted' },
+  { fromId: 'unpack', fromProperty: 'out-isGallery', toId: 'galleryWrap', toProperty: 'mounted' },
+  { fromId: 'unpack', fromProperty: 'out-isCta', toId: 'ctaWrap', toProperty: 'mounted' },
+  { fromId: 'unpack', fromProperty: 'out-isRichText', toId: 'richWrap', toProperty: 'mounted' },
+  { fromId: 'unpack', fromProperty: 'out-isContact', toId: 'contactWrap', toProperty: 'mounted' },
+
+  // Hero
+  { fromId: 'unpack', fromProperty: 'out-heading', toId: 'hero', toProperty: 'heading' },
+  { fromId: 'unpack', fromProperty: 'out-body', toId: 'hero', toProperty: 'body' },
+  { fromId: 'unpack', fromProperty: 'out-showBody', toId: 'hero', toProperty: 'showBody' },
+  { fromId: 'unpack', fromProperty: 'out-image', toId: 'hero', toProperty: 'image' },
+
+  // Gallery
+  { fromId: 'unpack', fromProperty: 'out-heading', toId: 'gallery', toProperty: 'heading' },
+  { fromId: 'unpack', fromProperty: 'out-showHeading', toId: 'gallery', toProperty: 'showHeading' },
+  { fromId: 'unpack', fromProperty: 'out-images', toId: 'gallery', toProperty: 'images' },
+
+  // Call to action
+  { fromId: 'unpack', fromProperty: 'out-heading', toId: 'cta', toProperty: 'heading' },
+  { fromId: 'unpack', fromProperty: 'out-body', toId: 'cta', toProperty: 'body' },
+  { fromId: 'unpack', fromProperty: 'out-showBody', toId: 'cta', toProperty: 'showBody' },
+  { fromId: 'unpack', fromProperty: 'out-linkLabel', toId: 'cta', toProperty: 'linkLabel' },
+  { fromId: 'unpack', fromProperty: 'out-showLink', toId: 'cta', toProperty: 'showLink' },
+  { fromId: 'unpack', fromProperty: 'out-linkTarget', toId: 'cta', toProperty: 'linkTarget' },
+
+  // Passage
+  { fromId: 'unpack', fromProperty: 'out-heading', toId: 'rich', toProperty: 'heading' },
+  { fromId: 'unpack', fromProperty: 'out-showHeading', toId: 'rich', toProperty: 'showHeading' },
+  { fromId: 'unpack', fromProperty: 'out-body', toId: 'rich', toProperty: 'body' },
+
+  // Contact
+  { fromId: 'unpack', fromProperty: 'out-heading', toId: 'contact', toProperty: 'heading' },
+  { fromId: 'unpack', fromProperty: 'out-showHeading', toId: 'contact', toProperty: 'showHeading' },
+  { fromId: 'unpack', fromProperty: 'out-body', toId: 'contact', toProperty: 'body' },
+  { fromId: 'unpack', fromProperty: 'out-showBody', toId: 'contact', toProperty: 'showBody' }
 ];
 
 // ── 3. Site/ContactForm — the one surface a visitor writes through ───────────
@@ -893,10 +1592,38 @@ export const CONTACT_FORM_NODES = [
     // editor attached unless the port is declared (SB-004 F10).
     ports: [{ name: 'out-go', plug: 'output', type: 'signal' }],
     parameters: {
+      // 🔴 **D41. THE FORM USED TO SEND ITSELF, AND THE SENTENCE THAT STOOD HERE
+      // IS WHAT MADE IT.**
+      //
+      // It read: *"Returning is safe — `runOnValueChange` defaults to ticked, so
+      // a late value re-runs it."* Every word true, and it is an argument for
+      // re-running the **guard**, not for re-running the **send**. This node's
+      // last statement is `Outputs.go()`, wired to `send.call` — so the moment
+      // the third field stopped being empty, the cloud function was called with
+      // nobody having pressed anything, and every keystroke after that called it
+      // again. A visitor typing a forty-character message posts forty enquiries.
+      //
+      // Measured, anonymously, in a real browser (`sbr005-sections.look.ts`):
+      // three fields filled, **nothing clicked**, and the page already said
+      // *"Thanks — your message has been sent."*
+      //
+      // ⚠️ It is the third unstated-`runOnChange` defect in this template
+      // (**D31** on `/Admin/SectionRow`, **D39** two nodes below this one) and
+      // the second in THIS component. `sb007Template.test.ts` listed all four of
+      // these inputs in its `runsOnValue` population for five sessions; that
+      // census grades *write-back cycles*, and a node that calls a cloud function
+      // writes nothing it reads, so it was correctly silent.
+      //
+      // `sendButton.onClick` is the only trigger now, which is what a Send button
+      // is. The guard below is unchanged and still does its job: it runs on the
+      // press, and refuses an incomplete form.
+      'runOnChange-in-name': false,
+      'runOnChange-in-email': false,
+      'runOnChange-in-message': false,
+      'runOnChange-in-pageSlug': false,
       // Rule 2's guard, and here it is also the validation: five producers reach
       // this node (four fields and the page), and an empty submission is a row
-      // in someone's inbox that nobody meant to send. Returning is safe —
-      // `runOnValueChange` defaults to ticked, so a late value re-runs it.
+      // in someone's inbox that nobody meant to send.
       functionScript:
         'const name = Inputs.name || "";\n' +
         'const email = Inputs.email || "";\n' +
@@ -915,17 +1642,43 @@ export const CONTACT_FORM_NODES = [
     label: 'submitContactForm',
     parameters: { function: FN_CONTACT }
   },
+  // 🔴 **BOTH ANSWERS WERE ON THE PAGE BEFORE ANYBODY PRESSED SEND, AND ONLY A
+  // BROWSER COULD SAY SO — D39.**
+  //
+  // These two gates existed with `condition: true` and no `runOnChange-condition`
+  // key. Absent reads as **ticked** (`run-on-value-change.ts:178-181`), so the
+  // parameter's own value lands at load, the Condition evaluates, publishes
+  // `result: true`, and BOTH `mounted` wires fire. Every visitor to every page
+  // with a contact form read *"Thanks — your message has been sent."* and *"That
+  // message could not be sent."* stacked under the Send button, before typing a
+  // word.
+  //
+  // ⚠️ **Every gate in the repository was green**, and they are the gates that
+  // look like they cover exactly this: `sb006PublicSite.test.ts` asserts both
+  // Texts are authored `mounted: false` AND wired to a decider — true, and beside
+  // the point, because an authored default only stands *until something
+  // publishes*. The module header says so in its own words about `isEmpty`; what
+  // nothing checked was whether the decider publishes on load.
+  //
+  // 🔴 It is the same family as **D14** (a gate that fires on load rather than on
+  // the act) and the same family as **D31** three components away — an unstated
+  // `runOnChange-*` doing something nobody asked for — and it survived every
+  // session of this phase because **the contact form had never been driven**.
+  // SBR-005 AC3 is the first acceptance criterion that submits the form.
+  //
+  // `false` on both: `eval` is the only trigger, which is what the `send.done` /
+  // `send.failure` wires below already are.
   {
     id: 'sentGate',
     type: 'Condition',
     label: 'Show the confirmation',
-    parameters: { condition: true }
+    parameters: { condition: true, 'runOnChange-condition': false }
   },
   {
     id: 'refusedGate',
     type: 'Condition',
     label: 'Show the refusal',
-    parameters: { condition: true }
+    parameters: { condition: true, 'runOnChange-condition': false }
   }
 ];
 
@@ -1111,7 +1864,7 @@ export const SITE_NODES = [
       rowGap: 'var(--space-8)',
       paddingBottom: 'var(--space-12)'
     },
-    children: ['nav', 'header', 'sectionList', 'contactWrap', 'notFoundCard', 'footer']
+    children: ['nav', 'header', 'sectionList', 'notFoundCard', 'footer']
   },
   { id: 'nav', type: '/Site/Nav', label: 'Navigation', parent: 'shell' },
   {
@@ -1183,21 +1936,29 @@ export const SITE_NODES = [
     parent: 'shell',
     parameters: { templateType: 'explicit', template: '/Site/SectionView' }
   },
-  {
-    id: 'contactWrap',
-    type: 'Group',
-    label: 'Contact form, when the page asked for one',
-    parent: 'shell',
-    // 🔴 The wrapper is load-bearing, and the reason is a measurement the door
-    // made: **a component instance has only the ports its `Component Inputs`
-    // node declares** — no layout, style or lifecycle ports of its own
-    // (`instance-unknown-parameter`, blocking: *"The value is discarded"*). So
-    // `visible` cannot go on the instance, and a graph that put it there would
-    // have shown the contact form on every page.
-    parameters: { ...STACKED_IN_A_COLUMN, flexDirection: 'column', mounted: false },
-    children: ['contact']
-  },
-  { id: 'contact', type: '/Site/ContactForm', label: 'Contact form', parent: 'contactWrap' },
+  // 🔴 **SBR-005 removed the page-level contact form, and the reason is a
+  // measurement the drive made rather than a tidy-up.**
+  //
+  // This page used to place `/Site/ContactForm` in a `contactWrap` mounted from
+  // `readSections.out-hasContact` — which is `rows.some(r => r.kind ===
+  // 'contact')`. That WAS the contact kind's rendering: the section itself drew
+  // an intro and the page drew the form, because a repeater item could not be
+  // handed the page slug the form needs.
+  //
+  // SBR-005 gave the kind its own form (`/Site/ContactSection`, which reads the
+  // slug out of `SITE_CURRENT_SLUG_VAR` the way `Site/NavLink` always has). The
+  // page-level copy then fired **on the identical predicate**, so every page with
+  // a contact section drew the form TWICE — not "if an author turns on two
+  // switches", but always, because there was only ever one switch and both
+  // consumers read it.
+  //
+  // ⚠️ **No structural gate could see it and the first draft of this task's own
+  // register row got it wrong**, filing it as a two-switch hazard with an owner.
+  // The browser said 7 `<section>` elements on a five-section page, and the page
+  // text carried "Get in touch / Your name / Your email / Your message / Send"
+  // twice. `sb006PublicSite.test.ts`'s cross-component walk had been reporting
+  // `Site/ContactForm`'s four nodes twice all along, and reading that as expected
+  // is what a session does when it has not looked at the page.
   {
     id: 'notFoundCard',
     type: 'Group',
@@ -1562,23 +2323,9 @@ export const SITE_NODES = [
       visualSort: SECTION_SORT
     }
   },
-  {
-    id: 'readSections',
-    type: 'JavaScriptFunction',
-    label: 'Is there a contact section',
-    parameters: {
-      // The form is shown when the page asked for one. It is a page-level answer
-      // because the form is a page-level node — a repeater item cannot be handed
-      // the slug it needs (see `Site/SectionView`).
-      functionScript:
-        'if (Inputs.rows === undefined) return;\n' +
-        'const rows = Inputs.rows || [];\n' +
-        'Outputs.hasContact = rows.some(function (r) {\n' +
-        '  const d = r.data || r;\n' +
-        "  return d.kind === 'contact';\n" +
-        '});'
-    }
-  },
+  // SBR-005: `readSections` went with the page-level form. Its single output was
+  // `hasContact`, and a code node with no consumer is a node that runs on every
+  // fetch to answer a question nobody asks.
   {
     id: 'theme',
     type: 'DbCollection2',
@@ -1610,39 +2357,15 @@ export const SITE_NODES = [
       //
       // 🔴 Guarded for a server render. This bundle is the one most likely to be
       // deployed SSR or SSG, and `document` does not exist there.
-      functionScript:
-        "if (typeof document === 'undefined') return;\n" +
-        'const rows = Inputs.rows || [];\n' +
-        'const first = rows[0] ? rows[0].data || rows[0] : {};\n' +
-        'const t = first.tokens || {};\n' +
-        'const root = document.documentElement;\n' +
-        'if (t.colorPrimary) {\n' +
-        "  root.style.setProperty('--primary', t.colorPrimary);\n" +
-        "  root.style.setProperty('--primary-hover', 'color-mix(in srgb, ' + t.colorPrimary + ' 82%, black)');\n" +
-        "  root.style.setProperty('--ring', t.colorPrimary);\n" +
-        "  root.style.setProperty('--accent-foreground', t.colorPrimary);\n" +
-        '}\n' +
-        "if (t.colorOnPrimary) root.style.setProperty('--primary-foreground', t.colorOnPrimary);\n" +
-        "if (t.colorBackground) root.style.setProperty('--background', t.colorBackground);\n" +
-        'if (t.colorSurface) {\n' +
-        "  root.style.setProperty('--surface', t.colorSurface);\n" +
-        "  root.style.setProperty('--surface-raised', t.colorSurface);\n" +
-        '}\n' +
-        "if (t.colorText) root.style.setProperty('--foreground', t.colorText);\n" +
-        "if (t.colorTextSoft) root.style.setProperty('--muted-foreground', t.colorTextSoft);\n" +
-        'if (t.colorBorder) {\n' +
-        "  root.style.setProperty('--border', t.colorBorder);\n" +
-        "  root.style.setProperty('--border-subtle', 'color-mix(in srgb, ' + t.colorBorder + ' 45%, var(--background))');\n" +
-        "  root.style.setProperty('--border-strong', 'color-mix(in srgb, ' + t.colorBorder + ' 65%, var(--foreground))');\n" +
-        '}\n' +
-        "if (t.colorAccentSoft) root.style.setProperty('--accent', t.colorAccentSoft);\n" +
-        "if (t.radius) root.style.setProperty('--radius-md', t.radius);\n" +
-        "if (t.fontDisplay) root.style.setProperty('--font-serif', t.fontDisplay);\n" +
-        'if (t.fontUi) {\n' +
-        "  root.style.setProperty('--font-sans', t.fontUi);\n" +
-        '  root.style.fontFamily = t.fontUi;\n' +
-        '}\n' +
-        "if (t.measure) root.style.setProperty('--site-measure', t.measure);"
+      //
+      // 🔴 **The body moved to `siteTheme.ts` in SBR-009 and did not change.**
+      // `/Admin/Shell` runs the same script now (AC1: the admin panel wears the
+      // client's theme too), and two hand-written appliers are the
+      // second-copy-of-a-palette trap in an admin costume — the derivations
+      // above are exactly what would drift, because nobody edits two appliers on
+      // the same day. Byte-identity of the regenerated artefact is what proves
+      // the extraction changed nothing.
+      functionScript: buildThemeApplierScript()
     }
   },
   {
@@ -1716,11 +2439,6 @@ export const SITE_WIRES = [
   // and the filter leaves the same node as everything else about this page.
   { fromId: 'readPage', fromProperty: 'out-pageId', toId: 'sections', toProperty: 'qp-pageId' },
   { fromId: 'sections', fromProperty: 'items', toId: 'sectionList', toProperty: 'items' },
-  { fromId: 'sections', fromProperty: 'items', toId: 'readSections', toProperty: 'in-rows' },
-  { fromId: 'sections', fromProperty: 'fetched', toId: 'readSections', toProperty: 'run' },
-  { fromId: 'readSections', fromProperty: 'out-hasContact', toId: 'contactWrap', toProperty: 'mounted' },
-  // The value a repeater could not carry.
-  { fromId: 'readPage', fromProperty: 'out-slug', toId: 'contact', toProperty: 'pageSlug' },
 
   { fromId: 'theme', fromProperty: 'items', toId: 'applyTheme', toProperty: 'in-rows' },
   { fromId: 'theme', fromProperty: 'fetched', toId: 'applyTheme', toProperty: 'run' },
@@ -1781,13 +2499,41 @@ export const SB006_COMPONENTS: Sb006Component[] = [
     // needs this component.
     deferred: ['goPage']
   },
+  // SBR-005. The five kinds are authored BEFORE the view that dispatches to
+  // them, and `Site/GalleryTile` before the gallery that repeats it: both edges
+  // are checked at the door and both refusals block
+  // (`repeater-template-unresolved`, `instance-component-not-found`).
   {
-    path: 'Site/SectionView',
-    key: 'Site/SectionView',
-    legacyName: '/Site/SectionView',
+    path: 'Site/GalleryTile',
+    key: 'Site/GalleryTile',
+    legacyName: '/Site/GalleryTile',
     isPage: false,
-    nodes: SECTION_VIEW_NODES,
-    connections: SECTION_VIEW_WIRES
+    nodes: GALLERY_TILE_NODES,
+    connections: GALLERY_TILE_WIRES
+  },
+  {
+    path: 'Site/HeroSection',
+    key: 'Site/HeroSection',
+    legacyName: '/Site/HeroSection',
+    isPage: false,
+    nodes: HERO_SECTION_NODES,
+    connections: HERO_SECTION_WIRES
+  },
+  {
+    path: 'Site/GallerySection',
+    key: 'Site/GallerySection',
+    legacyName: '/Site/GallerySection',
+    isPage: false,
+    nodes: GALLERY_SECTION_NODES,
+    connections: GALLERY_SECTION_WIRES
+  },
+  {
+    path: 'Site/RichTextSection',
+    key: 'Site/RichTextSection',
+    legacyName: '/Site/RichTextSection',
+    isPage: false,
+    nodes: RICH_TEXT_SECTION_NODES,
+    connections: RICH_TEXT_SECTION_WIRES
   },
   {
     path: 'Site/ContactForm',
@@ -1796,6 +2542,34 @@ export const SB006_COMPONENTS: Sb006Component[] = [
     isPage: false,
     nodes: CONTACT_FORM_NODES,
     connections: CONTACT_FORM_WIRES
+  },
+  // Places `/Site/ContactForm`, so it follows it.
+  {
+    path: 'Site/ContactSection',
+    key: 'Site/ContactSection',
+    legacyName: '/Site/ContactSection',
+    isPage: false,
+    nodes: CONTACT_SECTION_NODES,
+    connections: CONTACT_SECTION_WIRES
+  },
+  // Its `RouterNavigate` names `/Pages/Site`, which cannot exist yet — the same
+  // deferred edge `Site/NavLink` carries, and the same second pass closes it.
+  {
+    path: 'Site/CtaSection',
+    key: 'Site/CtaSection',
+    legacyName: '/Site/CtaSection',
+    isPage: false,
+    nodes: CTA_SECTION_NODES,
+    connections: CTA_SECTION_WIRES,
+    deferred: ['goPage']
+  },
+  {
+    path: 'Site/SectionView',
+    key: 'Site/SectionView',
+    legacyName: '/Site/SectionView',
+    isPage: false,
+    nodes: SECTION_VIEW_NODES,
+    connections: SECTION_VIEW_WIRES
   },
   {
     path: 'Site/Nav',

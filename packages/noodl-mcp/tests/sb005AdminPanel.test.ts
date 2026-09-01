@@ -619,8 +619,29 @@ describe('SB-005: the admin panel, through the MCP door', () => {
     // see, because it counts nodes that declare something and not ports. The loop
     // above is what checks both are declared; a `snap` called and undeclared
     // would red there, naming the node.
-    expect(rows.length).toBe(16);
-    expect(rows.filter((r) => !r.endsWith('declared=')).length).toBe(7);
+    // 16 → 18 and 7 → 9: SBR-005 split `/Admin/SectionRow`'s single `merge` into
+    // three writers. `absorb` folds an uploaded picture into `data.image` or
+    // `data.images` depending on the kind, and `dropLast` takes the last gallery
+    // picture back — both emit `Outputs.built()`, so both move BOTH numbers.
+    //
+    // 🔴 The split is not tidying. `merge` runs on the save press *and* on
+    // `upload.done` and held the uploaded file on a value input: harmless while
+    // the fold was `next.image = file`, and a duplicate-append on every
+    // subsequent save the moment a gallery accumulates.
+    // 18 → 22 and 9 → **9**: SBR-009 adds four code nodes and the second number
+    // does not move, which is arithmetic rather than luck. `presets` emits
+    // `Outputs.picked()` and declares `out-picked` (+1); `buildTokens` LOST its
+    // `Outputs.built()` (−1), because Save no longer runs it — the button wires
+    // straight to the record write and the object is always current. `previewCss`
+    // emits a string, and the two appliers (one on `/Pages/ThemeEditor`, one on
+    // `/Admin/Shell`) end in `setProperty` calls and return nothing, so neither
+    // owes a declared port.
+    //
+    // 🔴 A +1/−1 that cancels is the shape a census cannot see, and it is exactly
+    // why the loop above names nodes rather than counting them: a `picked` called
+    // and undeclared would leave this pair of numbers untouched and red there.
+    expect(rows.length).toBe(22);
+    expect(rows.filter((r) => !r.endsWith('declared=')).length).toBe(9);
   });
 
   it('MUTANT: dropping a declared signal port reddens', () => {
@@ -708,7 +729,11 @@ describe('SB-005: the admin panel, through the MCP door', () => {
       updates: 4,
       deletes: 1,
       // Admin's page list, PageEditor's sections, ThemeEditor's two singletons.
-      queries: 4,
+      // 4 → 5: SBR-009 AC1 puts a Theme query in `/Admin/Shell`, so every admin
+      // screen wears the client's theme rather than the shipped Studio blue.
+      // 🔴 It is in the SHELL and not on each screen for the reason the sidebar
+      // is a component: one node cannot disagree with itself between two screens.
+      queries: 5,
       // publish, unpublish, duplicate, claim.
       // 4 → 5: SBR-007 AC2's `reorder` on the page editor.
       functions: 5,
@@ -721,7 +746,14 @@ describe('SB-005: the admin panel, through the MCP door', () => {
       // term of the breakdown above is 3, not 2. It is in the ROW because it is
       // the only place that can see the dropped card's element; the two planners
       // are on the editor because only the editor can see the sorted list.
-      code: 16,
+      // 18 → 22: SBR-009's four — `presets`, `previewCss` and an applier on
+      // `/Pages/ThemeEditor` (so the ThemeEditor term is 6, not 3), and a second
+      // applier on `/Admin/Shell`. The two appliers run ONE script,
+      // `buildThemeApplierScript()`, shared with the public site's.
+      // 16 → 18: SBR-005's `absorb` and `dropLast` on `/Admin/SectionRow`, so
+      // its term is 5. See the note on the signal-port count above for why the
+      // picture fold could not stay inside `merge`.
+      code: 22,
       // 4 → 5: SBR-017's `/Pages/SignIn`.
       pages: 5
     });

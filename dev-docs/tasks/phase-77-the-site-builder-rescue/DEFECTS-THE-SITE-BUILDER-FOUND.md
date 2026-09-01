@@ -1771,6 +1771,282 @@ population.
 
 ---
 
+## D36 — 🟢 FIXED IN THE SAME SESSION (s36). Three new `merge` inputs shipped without their D31 keys
+
+**Found by `sb007Template.test.ts`'s D32 write-back arm, on SBR-005's first regeneration.** It named
+all three by hand:
+
+> `/Admin/SectionRow JavaScriptFunction#merge.in-heading — writes "Section" and is fed it AS A
+> REPEATER ITEM` — and the same for `in-linkLabel` and `in-linkTarget`.
+
+SBR-005 gave `Admin/SectionRow` three new text fields. `merge` already carried
+`runOnChange-in-{data,body,image}: false` and the three new inputs arrived **unstated** — which
+`run-on-value-change.ts` reads as **ticked**. That is [D31](#d31) exactly, three new ways in: `merge`
+builds a fresh object every run, `save` writes it into the very model `For Each` feeds the row's
+`data` from, so the value always counts as changed and the node runs again. D31's own measurement of
+that cycle was **115,755 write errors in eleven seconds** with nobody touching the screen.
+
+### 🔴 The finding, which is not "somebody forgot"
+
+**A `runOnChange-*` key is a per-INPUT obligation, and nothing in the repository states it as one.**
+D31's fix is written up as a property of a *node* — *"the three keys are FIRST in the bag
+deliberately"* — and reads, correctly, as done. It is silent on what happens when the node grows a
+fourth input, which is the only way the defect can come back.
+
+⚠️ **And the only thing that caught it was a suite in another task's file, run because the artefact
+was regenerated.** `sb005AdminPanel.test.ts` — the panel's own suite, the one an author editing this
+component would run — was **green** through the entire defect. It counts code nodes and grades
+signal-port declarations; it does not know what a write-back cycle is.
+
+### 🟢 The fix
+
+`runOnChange-in-heading`, `runOnChange-in-linkLabel`, `runOnChange-in-linkTarget`, all `false`, and
+`runOnChange-in-image` **removed** — the picture fold left `merge` for `absorb` in the same change,
+and a key governing an input that is no longer wired is an exemption matching nothing.
+
+**The rule, now written where the next person will hit it** (`sb005Components.ts`, on `merge`):
+**a new value input on a repeater-item write-back node owes a key.** The population count in
+`sb007Template.test.ts` moved 19 → 26 with every one of the seven named, so the next arrival moves
+it again.
+
+---
+
+## D37 — 🟢 FIXED IN THE SAME SESSION (s36). Every contact section drew the form TWICE
+
+**Found by SBR-005's drive. Introduced by SBR-005, and the register row filed about it an hour
+earlier was WRONG about its own premise.**
+
+### What the first version of this row said, and why it was wrong
+
+It said: *the page offers two switches, and an author who turns both on gets two forms.* That reads
+as a hazard with a workaround, which is why it was filed with an owner (SBR-007) rather than fixed.
+
+**There is no second switch.** `/Pages/Site`'s `contactWrap` was mounted from
+`readSections.out-hasContact`, and that function is:
+
+```js
+Outputs.hasContact = rows.some(function (r) { return (r.data || r).kind === 'contact'; });
+```
+
+— **the identical predicate** the section view dispatches on. So the page-level form and the new
+`contact` section fire on the same fact about the same record. Not "if an author turns on two
+switches": **always**, for every page with a contact section, from the moment SBR-005 shipped.
+
+🔴 **The lesson is the one this phase keeps paying for.** The row was written from the *graph* — two
+nodes carrying `mounted`, therefore two independent conditions — and the graph was where the answer
+was NOT. The browser said `7` `<section>` elements on a five-section page, and the page's own text
+carried *"Get in touch / Your name / Your email / Your message / Send"* twice. See
+[[verify-the-consequence-not-just-the-mechanism]] and
+[[a-recorded-row-can-be-a-hypothesis]] — a row records what one session saw.
+
+⚠️ **`sb006PublicSite.test.ts` had been reporting it since the first green run.** Its cross-component
+walk listed `Site/ContactForm`'s four nodes **twice**, and the session that updated the expected list
+read the second pass as correct and wrote a paragraph explaining why. **An expected-value update is a
+claim, and a session updating a census it did not cause is the moment to ask what changed.**
+
+### 🟢 The fix
+
+The page-level form is **gone**, with `readSections` (whose only output was `hasContact`) and its
+three wires. It was never a page-level feature: it existed because *"a repeater item cannot be handed
+the page slug the form needs"*, and SBR-005 retired that constraint by reading the slug out of
+`SITE_CURRENT_SLUG_VAR` the way `Site/NavLink` always has. The kind renders itself; nothing else
+needs to.
+
+---
+
+## D38 — 🔴 The hero's scrim is a fixed black wash and its text colour is a THEME RECORD FIELD
+
+**Owner: SBR-003** (the twelve-field theme contract is that task's, and this is a constraint the
+contract does not express).
+
+`--gradient-scrim` is the one gradient token in `DefaultTokens.ts` **not** written in terms of other
+tokens — a literal `linear-gradient(180deg, rgb(0 0 0 / 0.15), rgb(0 0 0 / 0.78))`, deliberately,
+because a scrim's job is to darken whatever photograph is under it. The corpus pairs it with
+`var(--primary-foreground)` for the type (`ui-image-scrim-band`), and SBR-005's `Site/HeroSection`
+follows the corpus rather than minting a rule of its own.
+
+🔴 **But `--primary-foreground` is `colorOnPrimary`, a field the site owner edits in the theme
+editor — and the shipped `night` preset sets it to `#191713`.** Dark type on a black scrim is
+unreadable, and every gate in this repository would stay green: the value is a token, the token is
+in the contract, the parameter is not a raw colour.
+
+⚠️ **What is measured and what is not.** SBR-005's drive photographs the hero under the **Studio**
+preset only, which is what a new site wears. Whether `night` (or a hand-typed dark `colorOnPrimary`)
+actually renders unreadable is **not measured here** — the row records the mechanism and names the
+arm that would settle it: theme the site to each preset and read the computed contrast between the
+`h2` and the scrim's painted end. Until that runs, this is a **hypothesis with a named test**, not a
+finding, and it should be re-derived before anyone builds on it — three phase-81 register rows in one
+session were each wrong about their own premise.
+
+**Two candidate fixes, neither ours to pick:** a thirteenth theme field for "type over a picture", or
+a derived companion token the overlay computes from `colorBackground`'s luminance rather than from a
+field an author can set independently.
+
+---
+
+## D39 — 🟢 FIXED IN THE SAME SESSION (s36). The contact form showed BOTH its answers before anybody pressed Send
+
+**Pre-existing — `Site/ContactForm` is a component SBR-005 did not touch. Found because SBR-005 AC3
+is the first acceptance criterion in this phase that submits the form.**
+
+Every visitor to every page with a contact section read this, stacked under the Send button, before
+typing a word:
+
+> Send
+> **Thanks — your message has been sent.**
+> **That message could not be sent.**
+
+`sentGate` and `refusedGate` are `Condition` nodes carrying `condition: true` and **no**
+`runOnChange-condition` key. Absent reads as **ticked** (`run-on-value-change.ts:178-181`), so the
+parameter's own value lands at load, the Condition evaluates, publishes `result: true`, and both
+`mounted` wires fire.
+
+### 🔴 Why five sessions of gates never saw it
+
+`sb006PublicSite.test.ts` asserts both Texts are authored `mounted: false` **and** wired to a
+decider. Both true. Both beside the point: an authored default only stands *until something
+publishes*, and this file's own module header says exactly that about `isEmpty` two hundred lines
+above. **What nothing checked was whether the decider publishes on load** — which is the same
+question, one node upstream, and no gate in the repository asks it.
+
+⚠️ It is [D14](#d14)'s family (a gate that fires on the boot rather than on the act) and
+[D31](#d31)'s family (an unstated `runOnChange-*` doing something nobody asked for), in a third
+component, and it outlived both fixes.
+
+🔴 **`sb007Template.test.ts` listed both nodes in its `runsOnValue` population the whole time** —
+`/Site/ContactForm sentGate.condition` and `refusedGate.condition`, positions 7 and 8. That
+population is graded for *write-back cycles*, and these two write nothing, so they were correctly
+silent there. **A node can be in a hazard census, correctly cleared of that hazard, and carrying a
+different one.**
+
+### 🟢 The fix
+
+`'runOnChange-condition': false` on both. `eval` becomes the only trigger, which is what the
+`send.done` / `send.failure` wires already were.
+
+---
+
+## D40 — 🔴 A published page does not scroll, so every control below the first screen is unclickable
+
+**Owner: SBR-002** (the first-run/page-shape task — this is `/Pages/Site`'s ground, not a section
+kind). **Pre-existing.** Found by SBR-005's drive, which is the first thing in this phase to try to
+*press* something on a public page.
+
+### The measurement
+
+`clickButton` refused both the CTA and the pre-existing `Send`, saying they were *behind something*.
+They are not. The blocker probe answered `hits: "outside-viewport"` with an **empty ancestor chain** —
+`elementFromPoint` returns `null` for any coordinate outside the viewport, so *below the fold* and
+*behind a modal* are the same reading, which `members-drive.ts` warns about in its own source. So the
+question was never about the button:
+
+| | |
+|---|---|
+| `document.documentElement` | `scrollHeight 469 / clientHeight 469` — **equal** |
+| `document.body` | `scrollHeight 0 / clientHeight 0` — **zero tall** |
+| elements with a scrollable `overflow-y` | **none, anywhere on the page** |
+| `window.scrollTo(0, 1200)` then `scrollY` | **0** |
+| the CTA button | painted, correct, at `y = 1144` |
+
+The document believes it is exactly one screen tall while the content runs to ~1900px. Nothing
+scrolls, and nothing *can* be scrolled to.
+
+### 🔴 What is measured, and what is NOT
+
+✅ Measured, and **identical at both sizes**, so it is not a small-window artefact:
+
+```
+756x469  docHeight 469/469  bodyHeight 0/0  scrollers []  scrollY after scrollTo(0,1200) = 0
+1280x900 docHeight 900/900  bodyHeight 0/0  scrollers []  scrollY after scrollTo(0,1200) = 0
+```
+
+The document's scroll height tracks the **window**, not the content. The reading is printed by
+`sbr005-sections.look.ts` itself on every run, not only recorded here.
+
+⚠️ **A corroborating reading from a different instrument**: the judge's own per-shot line for this
+run says `scroll=NO unreachable=92px` on the gallery page at phone size — the same page phase 81's
+`unreachablePx` sweep would have called 0. **Two instruments, and they do not agree. That is the
+first thing to settle.**
+
+❌ **Not measured, and it must not be assumed:**
+- whether a real Electron/browser window behaves the same. This is `render-from-disk.js` serving the
+  deployed bundle through a headless Chrome; the container it mounts into may not be the container a
+  deploy uses.
+- whether the members-area template behaves the same in the same harness. **That control is the one
+  that would settle harness-vs-product and it has not been run.** Without it this row cannot say
+  which of the two it is.
+- ⚠️ **Phase 81's VIB-001 measured `unreachablePx` as 0 on all 44 shots and concluded "the document
+  scrolls regardless".** That is either about a different container or one of the two readings is
+  wrong. **Re-derive both before building on either** — this row is a hypothesis with named
+  arms until somebody runs the members control.
+
+### Why no gate could have found it
+
+A page's whole content is in the DOM, correct, styled and painted. `textChars` is right,
+`unreachablePx` reads 0, every structural assertion passes. The only thing wrong is that a person
+cannot get to two thirds of it, and the only instrument that can say so is one that tries to press
+a button.
+
+⚠️ **SBR-005's drive works around it and says so where it does**: AC2 and AC3 resize to a viewport
+tall enough to hold the whole page before clicking. They are about *where a link goes* and *what the
+form says*; **they are not a test that the page scrolls**, and this file must not be read as one.
+
+---
+
+## D41 — 🟢 FIXED IN THE SAME SESSION (s36). The contact form sent itself, with nobody pressing anything
+
+**Pre-existing. `Site/ContactForm` is a component SBR-005 did not open. Found because SBR-005 AC3 is
+the first acceptance criterion in this phase that fills the form in.**
+
+### The measurement
+
+Anonymous, real Chrome, `sbr005-sections.look.ts`. Three fields filled through the product's own
+inputs. **Nothing clicked.** Then the page was read:
+
+```
+answered before the press — sent: true, refused: false
+```
+
+*"Thanks — your message has been sent."* was already on the page, and a `ContactMessage` row was
+already in the backend.
+
+### The mechanism, and the sentence that caused it
+
+`gather` is the code node that folds the four fields and fires `Outputs.go()` → `send.call`. Its four
+value inputs carried **no** `runOnChange-*` key, which reads as **ticked**. So:
+
+- while any field is empty the guard returns — correct, and the reason nobody noticed;
+- **the instant the third field stops being empty**, `gather` runs to the end and calls the cloud
+  function;
+- **every keystroke after that calls it again.** A visitor typing a forty-character message posts
+  forty enquiries, and the owner gets forty emails.
+
+🔴 **The comment on the node argued for it.** *"Returning is safe — `runOnValueChange` defaults to
+ticked, so a late value re-runs it."* Every word is true, and it is an argument for re-running the
+**guard**, not for re-running the **send**. The node's last statement is a signal into a cloud call.
+**A guard that re-runs is safe; a guard whose last act is an effect is a trigger.**
+
+### 🔴 Why it survived, and what it says about the census that saw it
+
+`sb007Template.test.ts` has listed all four of these inputs in its `runsOnValue` population for five
+sessions. That census grades **write-back cycles** — a node that writes a collection which feeds it —
+and this node writes nothing it reads, so it was **correctly** silent. Third time in this session:
+**a node can sit in a hazard census, be rightly cleared of that hazard, and be carrying another one.**
+(D36 and D39 are the other two, and D39 is two nodes below this one in the same file.)
+
+⚠️ It is the **third** unstated-`runOnChange` defect in this template — [D31](#d31) on
+`/Admin/SectionRow`, [D39](#d39) on this component's gates, and this — and the pattern is now stable
+enough to state: **an unstated `runOnChange-*` on a node whose script ends in an effect is a defect,
+whatever the effect is.** Nothing in the repository checks that shape.
+
+### 🟢 The fix
+
+`runOnChange-in-{name,email,message,pageSlug}: false`. `sendButton.onClick` becomes the only trigger,
+which is what a Send button is. The guard is unchanged and still refuses an incomplete form on the
+press.
+
+---
+
 ## Where these rows were filed, and why not all of them went to the same place
 
 **s31, 2026-08-30.** Phase 80's `TASKS.md` came clean in the working tree while this session was

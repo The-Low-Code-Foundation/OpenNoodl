@@ -63,8 +63,11 @@ import {
   COMPONENT_SET_FILES,
   ParamRow,
   RAW_COLOR_LITERAL,
+  TEMPLATE_COLOUR_EXEMPTIONS,
   TEMPLATE_DIMENSION_EXEMPTIONS,
   artefactParams,
+  presetHexesInArtefact,
+  presetHexesInSource,
   rawColoursInArtefact,
   rawColoursInSource,
   rawDimensionsInArtefact,
@@ -121,8 +124,48 @@ describe('SBR-012 §0 — the instrument can see', () => {
 });
 
 describe('SBR-012 §1 — no raw colour, in either population', () => {
-  it('AC1: the generated artefact names no colour', () => {
-    expect(rawColoursInArtefact(rows)).toEqual([]);
+  it('AC1: the generated artefact names no colour outside the preset block', () => {
+    expect(rawColoursInArtefact(rows)).toEqual(
+      TEMPLATE_COLOUR_EXEMPTIONS.map((e) => templateExemptionKey(e.component, e.label, e.port)).sort()
+    );
+  });
+
+  /**
+   * 🔴 The exemption in both directions, and it matters more here than on the
+   * dimension list: an entry matching nothing reads exactly like a colour that
+   * was never introduced, which is how a stale carve-out becomes the hole the
+   * next hex walks through.
+   */
+  it('AC3: every colour exemption matches something, and carries a reason', () => {
+    const found = new Set(rawColoursInArtefact(rows));
+    for (const e of TEMPLATE_COLOUR_EXEMPTIONS) {
+      const key = templateExemptionKey(e.component, e.label, e.port);
+      expect(`${key} matched: ${found.has(key)}`).toBe(`${key} matched: true`);
+      expect(`${key} reasoned: ${e.why.length > 60}`).toBe(`${key} reasoned: true`);
+    }
+  });
+
+  /**
+   * 🔴 **The derivation, which is what makes a colour exemption survivable.**
+   *
+   * SBR-009's preset block is exempt because it is DATA — the three palettes a
+   * client picks from, serialised out of `siteTheme.ts`. That argument holds
+   * only while the bytes are those bytes. A hand-edited preset, a fourth palette
+   * pasted into the script, a value nudged one digit: all satisfy the exemption
+   * and all fail here.
+   *
+   * Order-sensitive on purpose. `JSON.stringify` walks both objects in insertion
+   * order, so a swapped pair of presets is a different list even though the set
+   * is the same — and a swapped pair is a real defect (the Night chip painting
+   * Press).
+   */
+  it('AC1: the exempt preset hexes ARE SITE_THEME_PRESETS, in order', () => {
+    const inArtefact = presetHexesInArtefact(rows);
+    // The floor first: a walker that found nothing would satisfy `toEqual` below
+    // if the source list were empty too, and neither is allowed to be.
+    expect(presetHexesInSource().length).toBe(24);
+    expect(inArtefact.length).toBe(24);
+    expect(inArtefact).toEqual(presetHexesInSource());
   });
 
   it('AC1: the component sets name no colour', () => {
@@ -136,18 +179,46 @@ describe('SBR-012 §1 — no raw colour, in either population', () => {
    * component-level field, a future `styles` block. The per-row scan names the
    * culprit; this one refuses to be surprised.
    *
-   * 🔴 The one allowed home for literals is the `designTokens` block, and it is
-   * NOT in this file — `buildSiteDesignTokens()` lives on the template object
-   * and is written into project metadata by `EmbeddedTemplateProvider.install`.
-   * So the artefact's budget is zero, with no carve-out to police.
+   * 🔴 SBR-012 §2 named two allowed homes for literals: the `designTokens` block
+   * — which is NOT in this file, since `buildSiteDesignTokens()` lives on the
+   * template object and reaches project metadata through
+   * `EmbeddedTemplateProvider.install` — and the **preset-data** block, which
+   * SBR-009 built. So the artefact's budget is no longer zero, and the way this
+   * arm stays useful is to subtract exactly the exempt parameter's text and
+   * refuse everything else. A hex anywhere else in 290 KB still reds, including
+   * in a place `artefactParams` does not model.
    */
-  it('AC1: the artefact text carries no colour literal at all', () => {
-    expect(artefactText).not.toMatch(RAW_COLOR_LITERAL);
-    expect(artefactText).not.toMatch(/#[0-9a-fA-F]{3}\b/);
+  it('AC1: the artefact text carries no colour literal outside the preset block', () => {
+    const exempt = rows
+      .filter((r) =>
+        TEMPLATE_COLOUR_EXEMPTIONS.some(
+          (e) => templateExemptionKey(e.component, e.label, e.port) === templateExemptionKey(r.component, r.label, r.port)
+        )
+      )
+      .map((r) => JSON.stringify(String(r.value)).slice(1, -1));
+    expect(exempt.length).toBe(TEMPLATE_COLOUR_EXEMPTIONS.length);
+
+    let rest = artefactText;
+    for (const text of exempt) {
+      expect(`exempt text present: ${rest.includes(text)}`).toBe('exempt text present: true');
+      rest = rest.split(text).join('');
+    }
+    expect(rest).not.toMatch(RAW_COLOR_LITERAL);
+    expect(rest).not.toMatch(/#[0-9a-fA-F]{3}\b/);
   });
 });
 
 describe('SBR-012 §1b — MUTANTS: the three ways a colour gets in', () => {
+  /**
+   * 🔴 The baseline is no longer empty — SBR-009's preset block is exempt — so
+   * every plant below asserts **the exemption PLUS the plant**, never a bare
+   * one-element list. A mutant spec whose expectation forgot the baseline would
+   * red at HEAD and be "fixed" by deleting the exemption, which is the exact
+   * direction a carve-out rots in.
+   */
+  const withBaseline = (...planted: string[]): string[] =>
+    [...planted, ...TEMPLATE_COLOUR_EXEMPTIONS.map((e) => templateExemptionKey(e.component, e.label, e.port))].sort();
+
   /**
    * (a) A colour port. This is the one the product's own `RawColorLiteral`
    * would also catch — planted anyway, because a gate that only finds what the
@@ -160,9 +231,9 @@ describe('SBR-012 §1b — MUTANTS: the three ways a colour gets in', () => {
     expect(target).toBeDefined();
     const edits = plant(mutant, target!, '#1e4d8c');
     expect(`edits: ${edits}`).toBe('edits: 1');
-    expect(rawColoursInArtefact(artefactParams(mutant))).toEqual([
-      templateExemptionKey(target!.component, target!.label, target!.port)
-    ]);
+    expect(rawColoursInArtefact(artefactParams(mutant))).toEqual(
+      withBaseline(templateExemptionKey(target!.component, target!.label, target!.port))
+    );
   });
 
   /**
@@ -180,9 +251,9 @@ describe('SBR-012 §1b — MUTANTS: the three ways a colour gets in', () => {
     expect(target).toBeDefined();
     const edits = plant(mutant, target!, String(target!.value).replace('t.colorPrimary)', "'#1e4d8c')"));
     expect(`edits: ${edits}`).toBe('edits: 1');
-    expect(rawColoursInArtefact(artefactParams(mutant))).toEqual([
-      templateExemptionKey(target!.component, target!.label, target!.port)
-    ]);
+    expect(rawColoursInArtefact(artefactParams(mutant))).toEqual(
+      withBaseline(templateExemptionKey(target!.component, target!.label, target!.port))
+    );
   });
 
   /**
@@ -197,7 +268,7 @@ describe('SBR-012 §1b — MUTANTS: the three ways a colour gets in', () => {
     const target = artefactParams(mutant).find((r) => r.port === 'color');
     expect(target).toBeDefined();
     plant(mutant, target!, 'rgba(30, 77, 140, 0.9)');
-    expect(rawColoursInArtefact(artefactParams(mutant)).length).toBe(1);
+    expect(rawColoursInArtefact(artefactParams(mutant)).length).toBe(1 + TEMPLATE_COLOUR_EXEMPTIONS.length);
     // The control half: the source population is untouched and still reads clean,
     // so the red above is attributable to the artefact and to nothing else.
     expect(sources.flatMap(([file, source]) => rawColoursInSource(file, source))).toEqual([]);

@@ -302,16 +302,16 @@ const BARE_PAGES_TODAY: Record<string, string[]> = {
   // not exist under that spelling — and the real one sets a `fontSize`, so it
   // was never bare either. Two ways for the same row to be vacuous.
   'hello-world': [],
-  // 🔴 **`/Pages/ThemeEditor` is real debt, surfaced by DEF-030's stricter rule.**
-  // Its own tree sets NOT ONE structural parameter: the only Group it owns
-  // (`shell-3`) carries `flexDirection`, `rowGap` and `sizeMode`, every one of
-  // which `STRUCTURE_PARAMS` excludes on purpose — they are the layout plumbing
-  // the members-area artefact had 125 of while still reading as one column.
-  // Everything that paints the screen belongs to `/Admin/Shell`, which the page
-  // merely places. Under the placement rule the shell answered for it.
-  // ⚠️ Template-side, so **phase 77 owns the repair** (its site-builder lane).
-  // Listed rather than exempted so paying it is a visible pending job.
-  'site-builder': ['/Pages/ThemeEditor'],
+  // 🔴 **`/Pages/ThemeEditor` was real debt and SBR-009 PAID it — the row is
+  // deleted rather than ticked.** DEF-030's stricter rule surfaced it: the page's
+  // own tree set not one structural parameter, because everything that painted
+  // the screen belonged to `/Admin/Shell`, which the page merely placed. The
+  // theme editor now owns three cards, a presets row and a live preview panel,
+  // all of it structure it authors itself.
+  // ⚠️ The floor asserts EQUALITY, so a row left here after the repair would red
+  // exactly as loudly as a new bare page — which is the whole point of a ratchet,
+  // and the reason this entry is gone rather than commented out.
+  'site-builder': [],
   'members-area': []
 };
 
@@ -390,14 +390,18 @@ describe('template appearance ratchet', () => {
       expect(BARE_PAGES_TODAY[id].filter((p) => !names.includes(p))).toEqual([]);
     });
 
-    it('MUTANT: a page stripped of its own structure reds — and did NOT before', () => {
-      const sabotaged = JSON.parse(
-        JSON.stringify(TEMPLATES.find((t) => t.id === 'site-builder'))
-      ) as CensusTemplate;
-      const page = sabotaged.components.find((c) => c.legacyName === '/Pages/PageEditor')!;
+    /** One page of one template, with every structural parameter of its OWN tree removed. */
+    const stripOwnStructure = (templateId: string, legacyName: string): CensusTemplate => {
+      const sabotaged = JSON.parse(JSON.stringify(TEMPLATES.find((t) => t.id === templateId))) as CensusTemplate;
+      const page = sabotaged.components.find((c) => c.legacyName === legacyName)!;
       for (const node of page.nodes) {
         for (const key of Object.keys(node.parameters)) if (STRUCTURE_PARAMS.has(key)) delete node.parameters[key];
       }
+      return sabotaged;
+    };
+
+    it('MUTANT: a page stripped of its own structure reds — and did NOT before', () => {
+      const sabotaged = stripOwnStructure('site-builder', '/Pages/PageEditor');
 
       // 🔴 The two halves together are the defect. The rule that shipped calls
       // the sabotaged page designed, because it still PLACES `/Admin/Shell`;
@@ -411,10 +415,22 @@ describe('template appearance ratchet', () => {
       // Not one page in any shipped template is bare by the old rule — so §4's
       // census was an empty set compared against its floor, in all three.
       for (const t of TEMPLATES) expect(barePagesByPlacement(t)).toEqual([]);
-      // And the new rule is not vacuous the other way: it finds a real one.
-      expect(barePages(TEMPLATES.find((t) => t.id === 'site-builder') as CensusTemplate)).toEqual([
-        '/Pages/ThemeEditor'
-      ]);
+
+      // 🔴 **The positive is CONSTRUCTED now, and that is a fact about the corpus
+      // rather than about the rule.** This arm used to point at the real
+      // `/Pages/ThemeEditor`, which was the last shipped page bare by the strict
+      // rule; SBR-009 paid it, every floor is `[]`, and there is no live example
+      // left. A control that kept naming the page that was FIXED would have gone
+      // red on the repair — and the cheapest way to make it green again would
+      // have been to put the debt back.
+      expect(Object.values(BARE_PAGES_TODAY).flat()).toEqual([]);
+
+      const sabotaged = stripOwnStructure('site-builder', '/Pages/ThemeEditor');
+      // The pair, on the same page, in the same run: the rule that shipped still
+      // calls it designed because it PLACES `/Admin/Shell`; the rule that
+      // replaced it names it.
+      expect(barePagesByPlacement(sabotaged)).toEqual([]);
+      expect(barePages(sabotaged)).toEqual(['/Pages/ThemeEditor']);
     });
   });
 });

@@ -180,7 +180,14 @@ describe('SB-007 — the committed template is a regeneration, not a copy', () =
     // 21 → 22: SBR-017 adds `/Pages/SignIn`.
     // 22 → 24: SBR-007 AC2 adds `/#__cloud__/reorderSection` and the worker it
     // runs, `/#__cloud__/site/SetSectionOrder`.
-    expect(built.project.components).toHaveLength(24);
+    // 24 → 30: SBR-005 gives every section kind a component of its own —
+    // `/Site/HeroSection`, `/Site/GallerySection`, `/Site/GalleryTile`,
+    // `/Site/CtaSection`, `/Site/RichTextSection`, `/Site/ContactSection` — and
+    // `/Site/SectionView` becomes the switch that mounts one of them.
+    // 30 → 31 with SBR-009's `/Admin/PresetChip` — one preset chip, placed three
+    // times with a different `name`, rather than three buttons and three
+    // one-line scripts that can disagree.
+    expect(built.project.components).toHaveLength(31);
     expect(built.order[0]).toBe(APP_COMPONENT);
   });
 });
@@ -216,7 +223,9 @@ describe('SB-007 — the App component is the difference between a router and no
     // 21 → 23 with AC2's endpoint and its worker — both cloud components, which
     // this arm writes exactly as the other one does. That they are here at all is
     // the point of the assertion below: written, and registered nowhere.
-    expect(built.project.components).toHaveLength(23);
+    // 23 → 29 with SBR-005's six section-kind components.
+    // 29 → 30 with SBR-009's `/Admin/PresetChip`.
+    expect(built.project.components).toHaveLength(30);
 
     // And not one of them landed in a router, with no diagnostic anywhere.
     expect(built.registrations).toEqual({});
@@ -673,9 +682,47 @@ describe('SB-007 — the NDA-017 migration cannot silence a mount-triggered node
     const { graded, offenders } = gradeMountTriggered(project);
 
     // 🔴 The population, asserted first, because the count below is ZERO and a zero read off an
-    // empty population is the vacuous pass this whole block is built to refuse. There are 19
+    // empty population is the vacuous pass this whole block is built to refuse. There are 26
     // inputs the editor runs silent; none of them is on a node `didMount` triggers.
-    expect(silenced(project)).toHaveLength(19);
+    //
+    // 🔴 **19 → 32 is SBR-005, and every one of the thirteen is a deliberate key.** They are three
+    // different defects, and the arithmetic is worth following because each block is one of them:
+    //
+    //   **+7, D36 — the write-back cycle.** Three new fields on `/Admin/SectionRow merge`
+    //   (`in-heading`, `in-linkLabel`, `in-linkTarget`), the whole of `absorb` (`in-data`,
+    //   `in-kind`, `in-image`), and `dropLast.in-data`; less `merge.in-image`, which left when the
+    //   picture fold moved to `absorb`. Plus `/Site/CtaSection route.in-target`, which is new and
+    //   correct rather than a repair. The three `merge` keys shipped **missing** for one run and
+    //   the write-back arm below named all three by hand.
+    //
+    //   **+2, D39 — both answers on load.** `/Site/ContactForm`'s `sentGate` and `refusedGate` are
+    //   `Condition` nodes that carried `condition: true` and no key, so the parameter's own value
+    //   landed at load, both gates published `result: true`, and every visitor read *"Thanks — your
+    //   message has been sent."* AND *"That message could not be sent."* before typing a word.
+    //
+    //   **+4, D41 — the form sent itself.** `/Site/ContactForm gather`'s four value inputs. Its
+    //   script's last statement is `Outputs.go()` into a cloud call, so the instant the third field
+    //   stopped being empty the function was called with nobody having pressed anything, and every
+    //   keystroke after that called it again. Measured anonymously in a real browser: three fields
+    //   filled, nothing clicked, and the page already said *"Thanks — your message has been sent."*
+    //
+    // 🔴 **All six of D39's and D41's inputs were in the `runsOnValue` population below for five
+    // sessions, and it was RIGHT to be silent about them** — that census grades write-back cycles,
+    // and none of these six writes anything it reads. **A node can sit in a hazard census, be
+    // correctly cleared of THAT hazard, and be carrying another one.**
+    //
+    // ✅ The shape all three share, and the one nothing in this repository checks: **an unstated
+    // `runOnChange-*` on a node whose script ends in an EFFECT is a defect, whatever the effect is.**
+    //
+    //   **+1, SBR-009 — the fourth instance of that shape, and it was found in a browser.**
+    //   `/Pages/ThemeEditor presets.in-name`. Three preset chips publish their `name` at MOUNT (a
+    //   `Component Inputs` constant per placement), so with the box ticked the picker ran three
+    //   times before anybody touched anything, last placement winning: the screen booted showing
+    //   the **Night** palette in its preview with all five boxes pre-filled, picked by nobody.
+    //   Measured on the rendered screen (`sbr009ThemeEditorDrive`), not reasoned — and it is the
+    //   same lesson one more time, that `run` is ADDITIVE and wiring it does not stop a node
+    //   running on its own.
+    expect(silenced(project)).toHaveLength(33);
 
     // ⚠️ Was `1 of 65` before DEF-007 §3.2. The one row it reached — `/Pages/PageEditor
     // hold.in-pageId` — left this population by being stated `true`: it is no longer silenced, so
@@ -873,8 +920,50 @@ describe('SB-007 — the NDA-017 migration cannot silence a mount-triggered node
     // The 30th reached row is `sections-2.qp-pageId`, which writes "Section" and is **cleared** —
     // the collection it writes does not feed it. No new hazard; seven inputs that were never
     // asked.
-    expect(runsOnValue(project)).toHaveLength(72);
-    expect(reached).toBe(30);
+    // ⚠️ **72 → 65, and not one of the seven is a section kind.** −2 for D39's two `Condition`
+    // gates, −4 for D41's four `gather` inputs, both moving into `silenced`; and −1 for
+    // `/Pages/Site readSections.in-rows`, which went with the duplicate page-level contact form
+    // (D37). **Every one of the seven is a defect leaving, not a feature arriving.**
+    //
+    // 🔴 **SBR-005 added six components and put NOTHING in this population.** Not luck:
+    // `statedInputs` only reaches a node whose control signal is WIRED (`:558`), so the five kinds
+    // are structurally outside it — `/Site/SectionView unpack` and `/Site/GallerySection`'s
+    // repeater run on value alone and have no `run`. The four SBR-005 nodes that DO have one —
+    // `merge`, `absorb`, `dropLast`, `route` — state every value input `false`, so all of them land
+    // in `silenced` (32) and none of them here.
+    //
+    // 🔴 **This number read 75 for one run, and the three were the defect.** `merge`'s new
+    // `in-heading`/`in-linkLabel`/`in-linkTarget` arrived unstated, which is what put them in this
+    // population and then in the write-back hazard below. **Name what the instrument cannot see:**
+    // an unwired-`run` node's value inputs are invisible to BOTH counts, so this pair of numbers
+    // says nothing about the five kinds either way — and D39 is the standing proof that a node
+    // present in this census can still be carrying a defect it does not grade.
+    // ⚠️ **30 → 28 with SBR-009, and the drop is not a repair.** Measured, both
+    // buckets, rather than derived: `sameCollection` swapped four rows for five
+    // (see the census below) and `cleared` moved 24 → 21, `theme-2`'s four stated
+    // query inputs and `presets.in-name` arriving among them.
+    //
+    // 🔴 **`buildTokens`'s four rows left this census and its read/write
+    // relationship did not change.** `statedInputs` reaches a node only when its
+    // control signal is WIRED (`:558`); SBR-009 took `run` off `buildTokens` —
+    // Save now wires the button straight to the record write and the object is
+    // always current — so the node fell out of the population this pass grades.
+    // It still reads "Theme" through `readTheme` and still writes it through
+    // `saveTheme`. **Name what the instrument cannot see:** this pass answers
+    // "what would the migration silence", and a node the migration no longer
+    // touches leaves it silently, whatever else is true of the node.
+    // ⚠️ 65 → 64, and it is the SAME row as the `+1` in the silenced census above:
+    // `presets.in-name` moved from "runs on value" to "waits for the signal" when
+    // SBR-009 stated its box `false`. A pair of counts moving one each in opposite
+    // directions is the whole of the change, and either alone would have looked
+    // like a population that had drifted.
+    expect(runsOnValue(project)).toHaveLength(64);
+    // …and `reached` follows it down, 28 → 27: `presets.in-name` was one of the
+    // `cleared` rows ("writes Theme, which does not feed it"), so silencing it
+    // takes it out of this pass as well. One statement, three numbers, all three
+    // asserted — which is what stops a later reader treating any one of them as
+    // an independent measurement.
+    expect(reached).toBe(27);
     // Cardinality where the three buckets meet: nothing reached is unaccounted for.
     expect(repeaterItem.length + sameCollection.length + cleared.length).toBe(reached);
   });
@@ -942,14 +1031,28 @@ describe('SB-007 — the NDA-017 migration cannot silence a mount-triggered node
    * The census is asserted exactly so a SEVENTH cannot appear quietly. A new
    * entry fails this arm and someone reads the reason.
    */
-  it('D32 — the unconfirmed same-collection census is exactly the six known rows', () => {
+  it('D32 — the unconfirmed same-collection census is exactly the seven known rows', () => {
+    // ⚠️ **SBR-009 swapped four rows for five, and the hazard is the same one
+    // wearing a different node's name.** `buildTokens`'s four left because Save
+    // stopped running it (see the reach spec above — the instrument's population
+    // changed, not the graph's read/write relationship). The five that arrived are
+    // the text fields themselves: `presets` now wires `set` on all five, which is
+    // what puts `startValue` in the migration's write set for the first time.
+    //
+    // The reading is the same one D33 is owed a drive for, and it is a little
+    // stronger now: `setText` flags `onTextChanged` on the way through, so the
+    // record → `startValue` → `onTextChanged` → `buildTokens` path DOES close —
+    // but it closes on `prop-tokens`, which `SetDbModelProperties` only stages.
+    // Nothing writes without `store`, and `store` is a button. **Plausible is
+    // still not measured**, and D33 still owns it.
     expect(gradeWriteBackCycle(migrationProject()).sameCollection).toEqual([
-      '/Pages/ThemeEditor JavaScriptFunction#buildTokens.in-background — reads and writes "Theme"',
-      '/Pages/ThemeEditor JavaScriptFunction#buildTokens.in-fontDisplay — reads and writes "Theme"',
-      '/Pages/ThemeEditor JavaScriptFunction#buildTokens.in-primary — reads and writes "Theme"',
-      '/Pages/ThemeEditor JavaScriptFunction#buildTokens.in-text — reads and writes "Theme"',
       '/Pages/ThemeEditor JavaScriptFunction#readSettings-2.in-rows — reads and writes "SiteSettings"',
-      '/Pages/ThemeEditor JavaScriptFunction#readTheme.in-rows — reads and writes "Theme"'
+      '/Pages/ThemeEditor JavaScriptFunction#readTheme.in-rows — reads and writes "Theme"',
+      '/Pages/ThemeEditor net.noodl.controls.textinput#backgroundField.startValue — reads and writes "Theme"',
+      '/Pages/ThemeEditor net.noodl.controls.textinput#fontField.startValue — reads and writes "Theme"',
+      '/Pages/ThemeEditor net.noodl.controls.textinput#primaryField.startValue — reads and writes "Theme"',
+      '/Pages/ThemeEditor net.noodl.controls.textinput#radiusField.startValue — reads and writes "Theme"',
+      '/Pages/ThemeEditor net.noodl.controls.textinput#textField.startValue — reads and writes "Theme"'
     ]);
   });
 
@@ -1518,7 +1621,17 @@ describe('SBR-016 — every query can run before anybody has edited anything', (
       .components.filter((c) => !isCloud(c))
       .filter((c) => c.graph.roots.some((n) => n.type === 'DbCollection2'))
       .map((c) => c.name);
-    expect(withQueries.sort()).toEqual(['/Pages/Admin', '/Pages/PageEditor', '/Pages/Site', '/Pages/ThemeEditor', '/Site/Nav']);
+    // `/Admin/Shell` joined the list with SBR-009 AC1: the admin panel reads the
+    // Theme record so it wears the client's colours too, and it reads it in the
+    // shell because every admin screen places one.
+    expect(withQueries.sort()).toEqual([
+      '/Admin/Shell',
+      '/Pages/Admin',
+      '/Pages/PageEditor',
+      '/Pages/Site',
+      '/Pages/ThemeEditor',
+      '/Site/Nav'
+    ]);
   });
 
   it('CONTROL: the mapping above covers every parameter a query in this artefact carries', () => {
@@ -1570,6 +1683,13 @@ describe('SBR-016 — every query can run before anybody has edited anything', (
     // that graded nothing, and the two are not the same claim — so the census is
     // the reason column itself.
     expect(graded).toEqual([
+      // SBR-009 AC1's Theme read in the admin shell. It is in this census on the
+      // same terms as the four below it — an unfiltered singleton whose only
+      // trigger is the load-time fetch — and it needed no explicit checkbox,
+      // because nothing in `/Admin/Shell` wires `storageFetch` and the migration
+      // therefore never reaches it. `/Pages/ThemeEditor`'s copy DOES wire one and
+      // states `true` out loud; the same node, correctly configured two ways.
+      '/Admin/Shell adminTheme — collectionName is stored and runOnChange-collectionName survived the migration',
       // 🔴 The two SBR-016 fixed. Neither is a wire into `storageFetch`, and that
       // is the finding the acceptance criterion's wording did not anticipate:
       // this template's queries run because a VALUE lands, and the migration is

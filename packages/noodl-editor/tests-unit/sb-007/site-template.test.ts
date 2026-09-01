@@ -139,7 +139,13 @@ describe('SB-007 — install writes a project that opens', () => {
     // commits: `test:main` is the unwatched runner (the phase's standing gate note
     // quotes `test:ci`, a different one), so nothing reported the drift. Recorded
     // as D19.
-    expect(project.components).toHaveLength(22);
+    // ⚠️ **It was wrong again, and by the same mechanism.** Measured at HEAD
+    // before this line was touched: the shipped template held **24** components
+    // while this said 22, so the row was already two behind — `test:main` is
+    // still the unwatched runner.
+    // 24 → 30: SBR-005's six section-kind components.
+    // 30 → 31: SBR-009's `/Admin/PresetChip`.
+    expect(project.components).toHaveLength(31);
   });
 
   it('🔴 resolves a concrete rootNodeId, so the project has a home component', async () => {
@@ -188,7 +194,17 @@ describe('SB-007 — install writes a project that opens', () => {
     // 259 → 274: SBR-007 s21's rebuilt page editor (`7a156972`), net of the nodes
     // that rebuild replaced: +16 on `/Pages/PageEditor` (the header row this task
     // later fixed for D18), +2 on `/Pages/Admin`, +2 on `/Admin/PageRow`.
-    expect(a.size).toBe(274);
+    // ⚠️ **Measured at HEAD before this line was touched: 295, against the 274
+    // here.** Twenty-one ids of drift — SBR-015's and SBR-016's later passes — on
+    // the same unwatched runner as the component count above. The two deltas
+    // below are from 295, which is the number that was actually shipping.
+    // 295 → 335: SBR-005, decomposed — `/Admin/SectionRow` +7, `/Site/SectionView`
+    // +8, `/Pages/Site` −3 (the duplicate page-level contact form, D37), and +28
+    // across the six new section components.
+    // 335 → 372: SBR-009, decomposed — `/Pages/ThemeEditor` +32 (three cards, a
+    // presets row, the live preview and its four logic nodes), `/Admin/Shell` +2
+    // (AC1's Theme query and applier) and `/Admin/PresetChip` +3.
+    expect(a.size).toBe(372);
     expect([...a].filter((id) => b.has(id))).toEqual([]);
   });
 
@@ -261,7 +277,12 @@ describe('SB-007 — the id rewrite reaches everything that carries an id', () =
     );
     // 12 → 14: both new components carry visual trees.
     // 14 → 15: SBR-017's `/Pages/SignIn`, which is a page and so carries one too.
-    expect(withVisualRoots).toHaveLength(15);
+    // 🔴 15 → 22, and unlike the two counts above this one was GREEN at HEAD —
+    // measured, not assumed. The seven are exactly the seven components added
+    // since: SBR-005's six section kinds and SBR-009's `/Admin/PresetChip`. Every
+    // one of them is drawn, so every one carries a visual tree; a new component
+    // that did not would leave this number alone and be worth asking about.
+    expect(withVisualRoots).toHaveLength(22);
     expect((project.components ?? []).flatMap((c) => c.graph?.connections ?? []).length).toBeGreaterThan(200);
   });
 });

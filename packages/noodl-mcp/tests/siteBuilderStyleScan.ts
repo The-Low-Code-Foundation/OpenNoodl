@@ -57,6 +57,7 @@ import * as path from 'path';
 
 import { DEFAULT_TOKENS } from '../../noodl-editor/src/editor/src/models/StyleTokensModel/DefaultTokens';
 import {
+  SITE_THEME_PRESETS,
   buildSiteDesignTokens,
   THEME_TOKEN_FIELDS
 } from '../../noodl-editor/src/editor/src/models/template/templates/siteTheme';
@@ -213,6 +214,57 @@ export function rawColoursInArtefact(rows: ParamRow[]): string[] {
   return found.sort();
 }
 
+/**
+ * SBR-009 — **the one allowed home for a colour literal**, and SBR-012's own
+ * scope is where the allowance comes from: *"the artefact-level scan is
+ * therefore textual over parameter values AND script sources, with the
+ * `designTokens`/**preset-data** blocks as the one allowed home for literals"*
+ * (SBR-012 §2, bullet 4). There was no preset-data block when the gate was
+ * built, so the list it asserted was empty; SBR-009 introduces the block the
+ * scope anticipated.
+ *
+ * 🔴 **An exemption on a colour is worth far less than an exemption on a
+ * dimension, and this one is not asked to carry the weight alone.** A raw width
+ * is exempted because there is no token for a proportion; a raw hex is exempted
+ * only because it is *data* — the seed values of a `Theme` record, the same
+ * thing a client types into the primary box. That argument is only true while
+ * the values are the ones in `siteTheme.ts`, so {@link presetHexesInArtefact}
+ * asserts exactly that and `sbr012RawColourGate` runs it in the same breath as
+ * this list. A drifted second copy of the palette would satisfy the exemption
+ * and fail the derivation, which is the property that makes the carve-out safe.
+ *
+ * ⚠️ The **source** population gains nothing: the script is
+ * `JSON.stringify(SITE_THEME_PRESETS)`, so `rawColoursInSource` still reads zero
+ * and the hexes are hand-written in exactly one file in the repository.
+ */
+export const TEMPLATE_COLOUR_EXEMPTIONS: ReadonlyArray<TemplateExemption> = [
+  {
+    component: '/Pages/ThemeEditor',
+    label: 'The three presets',
+    port: 'functionScript',
+    why: 'SBR-009 §2: a preset row is the answer to "a client never faces an empty colour picker", and a preset IS a palette — a component that named tokens here could not offer a choice between palettes at all. These are record VALUES, not styling: the same bytes the client would otherwise type into the primary box. Serialised from SITE_THEME_PRESETS, and presetHexesInArtefact asserts they still are.'
+  }
+];
+
+/**
+ * Every colour literal in the artefact's preset block, in the order they appear.
+ *
+ * The gate compares this against the same list read straight out of
+ * `SITE_THEME_PRESETS`, so the exemption above cannot quietly become the home of
+ * a palette nobody generated.
+ */
+export function presetHexesInArtefact(rows: ParamRow[]): string[] {
+  const key = templateExemptionKey('/Pages/ThemeEditor', 'The three presets', 'functionScript');
+  const row = rows.find((r) => templateExemptionKey(r.component, r.label, r.port) === key);
+  if (!row) return [];
+  return String(row.value).match(/#[0-9a-fA-F]{3,8}\b/g) ?? [];
+}
+
+/** The same list, derived from the single source rather than from the artefact. */
+export function presetHexesInSource(): string[] {
+  return JSON.stringify(SITE_THEME_PRESETS).match(/#[0-9a-fA-F]{3,8}\b/g) ?? [];
+}
+
 /** Every measurement in the artefact that is not a token. */
 export function rawDimensionsInArtefact(rows: ParamRow[]): string[] {
   const found: string[] = [];
@@ -346,17 +398,19 @@ export const TEMPLATE_DIMENSION_EXEMPTIONS: ReadonlyArray<TemplateExemption> = [
     port: 'width',
     why: 'A 60% column split in an editing screen is a proportion of the pane, not a distance. The vocabulary has no ratios, and inventing --editor-heading-width would be a token with exactly one consumer, which is a literal with extra indirection.'
   },
+  // SBR-005: the one-node section view is five components now, and its 320px
+  // image band went with it. The crop that remains is the gallery tile's.
   {
-    component: '/Site/SectionView',
-    label: 'Section image',
+    component: '/Site/GalleryTile',
+    label: 'Gallery tile',
     port: 'height',
-    why: sb006Why('Section image', 'height')
+    why: sb006Why('Gallery tile', 'height')
   },
   {
-    component: '/Site/SectionView',
-    label: 'Section image',
+    component: '/Site/GalleryTile',
+    label: 'Gallery tile',
     port: 'width',
-    why: sb006Why('Section image', 'width')
+    why: sb006Why('Gallery tile', 'width')
   },
   {
     component: '/Pages/Site',

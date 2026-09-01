@@ -76,6 +76,13 @@
  * cannot show, by a node whose author was only trying to save a title.
  */
 
+import {
+  SITE_THEME_PRESETS,
+  SITE_THEME_PRESET_LABELS,
+  THEME_TOKEN_FIELDS,
+  ThemeField,
+  buildThemeApplierScript
+} from '../../noodl-editor/src/editor/src/models/template/templates/siteTheme';
 import { ADMIN_ONLY_RULES } from './sb004Components';
 
 /**
@@ -195,6 +202,16 @@ export const ADMIN_FILL_EXEMPTIONS: ReadonlyArray<{ component: string; label: st
     component: 'Admin/PageRow',
     label: 'Name and slug',
     why: 'the name column takes the width the pill and the two buttons leave — the fixed cells state their size, this one absorbs the rest'
+  },
+  {
+    component: 'Pages/ThemeEditor',
+    label: 'Fields column',
+    why: 'SBR-009 puts the preview beside the fields, and two filling columns in a row are a half each — an authored width here would be a raw PERCENTAGE, a proportion of a pane rather than a distance, which is the one quantity the token vocabulary has no name for'
+  },
+  {
+    component: 'Pages/ThemeEditor',
+    label: 'Preview column',
+    why: 'the other half of the same split — it grows for the same reason and stating a width on one column and not the other would make the pair depend on which one was authored'
   }
 ];
 
@@ -288,6 +305,42 @@ export const SECTIONS_OF_PAGE_FILTER = {
  * same way it re-exports `ROUTER`, so its own consumers are unaffected.
  */
 export const SECTION_SORT = [{ property: 'order', order: 'ascending' }];
+
+/**
+ * SB-004 §2's discriminator vocabulary, in the order a page most often uses it.
+ *
+ * 🔴 **SBR-005 gave every one of these a component of its own, so the list stopped
+ * being a label and became a dispatch.** It lives here for the same reason
+ * `SECTION_SORT` does — `sb006Components.ts` already imports from this module and
+ * uses it at module-eval time, so the dependency cannot run the other way — and
+ * sb006 re-exports it. The panel's kind picker and the public site's dispatch
+ * script both read it, and `sbr005Sections.test.ts` asserts that both name every
+ * member: a sixth kind that reached only one of them is a section an author can
+ * create and the site cannot draw.
+ */
+export const SECTION_KINDS = ['hero', 'gallery', 'cta', 'richText', 'contact'] as const;
+
+export type SectionKind = (typeof SECTION_KINDS)[number];
+
+/**
+ * The kind a section falls back to when its record does not say one, or says one
+ * nothing has heard of.
+ *
+ * 🔴 It is `richText` and not "nothing", because a `Section` written before
+ * SBR-005 has no `kind` a dispatch would recognise and must still render as the
+ * body copy it has always been. A fallback of "draw nothing" would silently
+ * empty every page on the day the template shipped.
+ */
+export const DEFAULT_SECTION_KIND: SectionKind = 'richText';
+
+/** The picker's rows: the vocabulary above, with the words an author reads. */
+export const SECTION_KIND_LABELS: Record<SectionKind, string> = {
+  hero: 'Hero',
+  gallery: 'Gallery',
+  cta: 'Call to action',
+  richText: 'Rich text',
+  contact: 'Contact'
+};
 
 // ── 1. Admin/PageRow — one row of the page list ──────────────────────────────
 
@@ -744,7 +797,20 @@ export const SECTION_ROW_NODES = [
       paddingLeft: 'var(--space-4)',
       paddingRight: 'var(--space-4)'
     },
-    children: ['kindText', 'moveRow', 'bodyField', 'preview', 'pickButton', 'saveButton', 'deleteButton']
+    children: [
+      'kindText',
+      'moveRow',
+      'headingField',
+      'bodyField',
+      'linkLabelField',
+      'linkTargetField',
+      'preview',
+      'galleryCount',
+      'pickButton',
+      'removeImageButton',
+      'saveButton',
+      'deleteButton'
+    ]
   },
   // SB-018 (3), same standing `text` as `/Admin/PageRow`'s two — see the note there.
   {
@@ -805,6 +871,25 @@ export const SECTION_ROW_NODES = [
     parent: 'moveRow',
     parameters: { ...IN_A_ROW, label: 'Move down' }
   },
+  // ── SBR-005 AC5's authoring half ──────────────────────────────────────────
+  //
+  // 🔴 **The old comment on `Site/SectionView` said the five kinds could differ
+  // only in which of `body` and `image` they show, "because a section view that
+  // read `data.heading` would be reading a field with no author".** That was
+  // true and it was a statement about THIS component, not about the product.
+  // These four fields are the author it was missing.
+  //
+  // ⚠️ **Conditional through `mounted`, not `visible`** — the same rule the
+  // public site follows, and for the stronger reason here: a `visible: false`
+  // field still holds its row height, so a `richText` card would carry two empty
+  // bands where a CTA's link fields would go.
+  {
+    id: 'headingField',
+    type: 'net.noodl.controls.textinput',
+    label: 'Heading',
+    parent: 'row',
+    parameters: { useLabel: true, label: 'Heading' }
+  },
   {
     id: 'bodyField',
     type: 'net.noodl.controls.textinput',
@@ -812,13 +897,60 @@ export const SECTION_ROW_NODES = [
     parent: 'row',
     parameters: { useLabel: true, label: 'Body', type: 'textArea' }
   },
+  {
+    id: 'linkLabelField',
+    type: 'net.noodl.controls.textinput',
+    label: 'Button label',
+    parent: 'row',
+    // Only a `cta` has a button, so only a `cta` row offers the two fields that
+    // describe one. `unpack` publishes the boolean.
+    parameters: { useLabel: true, label: 'Button label', mounted: false }
+  },
+  {
+    id: 'linkTargetField',
+    type: 'net.noodl.controls.textinput',
+    label: 'Button goes to',
+    parent: 'row',
+    // The one control on this panel whose value is read by a *branch* rather
+    // than displayed: `Site/CtaSection`'s `route` treats an `https://` value as
+    // the open web and anything else as a page slug on this site.
+    parameters: {
+      useLabel: true,
+      label: 'Button goes to (a page slug, or an https:// address)',
+      mounted: false
+    }
+  },
   { id: 'preview', type: 'Image', label: 'Image preview', parent: 'row' },
+  {
+    id: 'galleryCount',
+    type: 'Text',
+    label: 'How many pictures',
+    parent: 'row',
+    // 🔴 SB-018 (3): a standing `text`. A `Text` whose only `text` is a wire
+    // renders the literal word "Text" until that wire publishes.
+    parameters: {
+      ...STACKED,
+      text: '',
+      mounted: false,
+      fontSize: 'var(--text-sm)',
+      color: 'var(--muted-foreground)'
+    }
+  },
   {
     id: 'pickButton',
     type: 'net.noodl.controls.button',
     label: 'Choose image',
     parent: 'row',
     parameters: { label: 'Choose image' }
+  },
+  {
+    id: 'removeImageButton',
+    type: 'net.noodl.controls.button',
+    label: 'Remove last picture',
+    parent: 'row',
+    // A gallery is the only kind that accumulates, so it is the only kind that
+    // needs an undo. For every other kind the next upload replaces the picture.
+    parameters: { label: 'Remove last picture', mounted: false }
   },
   { id: 'saveButton', type: 'net.noodl.controls.button', label: 'Save', parent: 'row', parameters: { label: 'Save' } },
   {
@@ -842,14 +974,38 @@ export const SECTION_ROW_NODES = [
   {
     id: 'unpack',
     type: 'JavaScriptFunction',
-    label: 'Read the body and image out of data',
+    label: 'Read this section out of data, and decide which controls it needs',
     parameters: {
+      // ⚠️ No `runOnChange-*` guards here, unlike `merge` below, and the
+      // difference is which direction the node points. This one only READS the
+      // record into the controls; it has to run when `data` arrives or the
+      // fields never get their starting values. `merge` writes back, which is
+      // what makes a load-time run a save loop (D31).
       functionScript:
         'const d = Inputs.data || {};\n' +
+        "const kind = Inputs.kind || 'richText';\n" +
+        "Outputs.heading = d.heading || '';\n" +
         "Outputs.body = d.body || '';\n" +
+        "Outputs.linkLabel = d.linkLabel || '';\n" +
+        "Outputs.linkTarget = d.linkTarget || '';\n" +
         // A `cloudfile` renders through its `url`; an unset one must not become
         // the string "undefined" on an Image's `src`.
-        "Outputs.image = (d.image && d.image.url) || '';"
+        "Outputs.image = (d.image && d.image.url) || '';\n" +
+        '\n' +
+        // SBR-005. The gallery's pictures live on the same record, in the same
+        // `data` column, under the same row ACL as the single `image` — which is
+        // the whole of AC5's "the ACL treatment must match the existing image
+        // path". There is no second class and no second policy.
+        'const images = Array.isArray(d.images) ? d.images : [];\n' +
+        "const isGallery = kind === 'gallery';\n" +
+        "const isCta = kind === 'cta';\n" +
+        'Outputs.isGallery = isGallery;\n' +
+        'Outputs.isCta = isCta;\n' +
+        // Only a gallery accumulates, so only a gallery can have a last picture
+        // to take back.
+        'Outputs.canRemove = isGallery && images.length > 0;\n' +
+        'Outputs.count =\n' +
+        "  images.length === 0 ? 'No pictures yet' : images.length === 1 ? '1 picture' : images.length + ' pictures';"
     }
   },
   { id: 'picker', type: 'Open File Picker', label: 'Choose an image', parameters: { acceptedFileTypes: 'image/*' } },
@@ -889,17 +1045,90 @@ export const SECTION_ROW_NODES = [
       // the two planners in this file make, and exactly what the editor's
       // NDA-017 migration writes onto this node the first time the project is
       // opened. The artefact used to ship without them.
+      // 🔴 **One key per value input, and SBR-005 is the session that proved the
+      // list has to grow with them.** The three fields it added — `heading`,
+      // `linkLabel`, `linkTarget` — shipped without their keys for one run and
+      // `sb007Template.test.ts`'s D32 write-back arm named all three: *"writes
+      // `Section` and is fed it AS A REPEATER ITEM"*. That is the 115,755-writes
+      // cycle below, three new ways in, and no other gate in the repository saw
+      // it. **A new value input on a repeater-item write-back node owes a key.**
       'runOnChange-in-data': false,
       'runOnChange-in-body': false,
-      'runOnChange-in-image': false,
+      'runOnChange-in-heading': false,
+      'runOnChange-in-linkLabel': false,
+      'runOnChange-in-linkTarget': false,
       // Two producers reach this node — the record's own `data` and whatever the
-      // author has changed since — so it guards, per rule 2. `body` and `image`
-      // are legitimately empty strings, so the test is `undefined`.
+      // author has changed since — so it guards, per rule 2. Every field is
+      // legitimately an empty string, so the test is `undefined`.
       functionScript:
         'if (Inputs.data === undefined) return;\n' +
         'const next = Object.assign({}, Inputs.data);\n' +
         "if (Inputs.body !== undefined) next.body = Inputs.body;\n" +
-        'if (Inputs.image !== undefined && Inputs.image !== null) next.image = Inputs.image;\n' +
+        "if (Inputs.heading !== undefined) next.heading = Inputs.heading;\n" +
+        "if (Inputs.linkLabel !== undefined) next.linkLabel = Inputs.linkLabel;\n" +
+        "if (Inputs.linkTarget !== undefined) next.linkTarget = Inputs.linkTarget;\n" +
+        'Outputs.data = next;\n' +
+        'Outputs.built();'
+    }
+  },
+  // ── SBR-005. The picture path, which is now two paths and one upload ───────
+  //
+  // 🔴 **The uploaded file is folded HERE and not in `merge`, and that is a
+  // defect avoided rather than a preference.** `merge` runs on the save press
+  // *and* on `upload.done`, and it held the uploaded `cloudFile` on a value
+  // input — which is harmless while the fold is `next.image = file` (idempotent)
+  // and is a bug the moment it becomes `images.push(file)`: every subsequent
+  // save would append the same picture again. Splitting the append onto a node
+  // whose only trigger IS the upload makes "a picture arrived" and "the author
+  // pressed Save" two different events again.
+  //
+  // ⚠️ Which of the two fields it lands in is the kind's decision, and it is
+  // made once, here. A `gallery` accumulates; every other kind replaces.
+  {
+    id: 'absorb',
+    type: 'JavaScriptFunction',
+    label: 'Fold an uploaded picture into this section',
+    ports: [{ name: 'out-built', plug: 'output', type: 'signal' }],
+    parameters: {
+      // D31, exactly as on `merge`: this node writes into the very model
+      // `For Each` feeds this row's `data` from, so a value-change run is a
+      // save loop. `upload.done` is the only trigger.
+      'runOnChange-in-data': false,
+      'runOnChange-in-kind': false,
+      'runOnChange-in-image': false,
+      functionScript:
+        'if (Inputs.data === undefined) return;\n' +
+        'const file = Inputs.image;\n' +
+        'if (file === undefined || file === null) return;\n' +
+        'const next = Object.assign({}, Inputs.data);\n' +
+        "if ((Inputs.kind || 'richText') === 'gallery') {\n" +
+        '  const images = Array.isArray(next.images) ? next.images.slice() : [];\n' +
+        // The row shape the gallery's `For Each` reads: a plain `{ url }`, so the
+        // tile's declared `url` port matches a model field by name
+        // (`foreach.tsx:595-597`).
+        "  images.push({ url: (file && file.url) || '' });\n" +
+        '  next.images = images;\n' +
+        '} else {\n' +
+        '  next.image = file;\n' +
+        '}\n' +
+        'Outputs.data = next;\n' +
+        'Outputs.built();'
+    }
+  },
+  {
+    id: 'dropLast',
+    type: 'JavaScriptFunction',
+    label: 'Take back the last picture',
+    ports: [{ name: 'out-built', plug: 'output', type: 'signal' }],
+    parameters: {
+      'runOnChange-in-data': false,
+      functionScript:
+        'if (Inputs.data === undefined) return;\n' +
+        'const next = Object.assign({}, Inputs.data);\n' +
+        'const images = Array.isArray(next.images) ? next.images.slice() : [];\n' +
+        'if (images.length === 0) return;\n' +
+        'images.pop();\n' +
+        'next.images = images;\n' +
         'Outputs.data = next;\n' +
         'Outputs.built();'
     }
@@ -1004,8 +1233,20 @@ export const SECTION_ROW_NODES = [
 export const SECTION_ROW_WIRES = [
   { fromId: 'inputs', fromProperty: 'kind', toId: 'kindText', toProperty: 'text' },
   { fromId: 'inputs', fromProperty: 'data', toId: 'unpack', toProperty: 'in-data' },
+  { fromId: 'inputs', fromProperty: 'kind', toId: 'unpack', toProperty: 'in-kind' },
+  { fromId: 'unpack', fromProperty: 'out-heading', toId: 'headingField', toProperty: 'startValue' },
   { fromId: 'unpack', fromProperty: 'out-body', toId: 'bodyField', toProperty: 'startValue' },
+  { fromId: 'unpack', fromProperty: 'out-linkLabel', toId: 'linkLabelField', toProperty: 'startValue' },
+  { fromId: 'unpack', fromProperty: 'out-linkTarget', toId: 'linkTargetField', toProperty: 'startValue' },
   { fromId: 'unpack', fromProperty: 'out-image', toId: 'preview', toProperty: 'src' },
+
+  // SBR-005. Which controls this kind actually has — `mounted`, so an absent
+  // control costs no row height and leaves nothing behind in the DOM.
+  { fromId: 'unpack', fromProperty: 'out-isCta', toId: 'linkLabelField', toProperty: 'mounted' },
+  { fromId: 'unpack', fromProperty: 'out-isCta', toId: 'linkTargetField', toProperty: 'mounted' },
+  { fromId: 'unpack', fromProperty: 'out-isGallery', toId: 'galleryCount', toProperty: 'mounted' },
+  { fromId: 'unpack', fromProperty: 'out-count', toId: 'galleryCount', toProperty: 'text' },
+  { fromId: 'unpack', fromProperty: 'out-canRemove', toId: 'removeImageButton', toProperty: 'mounted' },
 
   { fromId: 'pickButton', fromProperty: 'onClick', toId: 'picker', toProperty: 'open' },
   { fromId: 'picker', fromProperty: 'file', toId: 'upload', toProperty: 'file' },
@@ -1014,18 +1255,39 @@ export const SECTION_ROW_WIRES = [
   // wires leave the same node in the same pass and `file` is a value the picker
   // sets before it reports.
   { fromId: 'picker', fromProperty: 'done', toId: 'upload', toProperty: 'upload' },
-  { fromId: 'upload', fromProperty: 'cloudFile', toId: 'merge', toProperty: 'in-image' },
 
+  // The words the author typed. `merge` no longer sees the uploaded file at all
+  // — see the note on `absorb`.
   { fromId: 'inputs', fromProperty: 'data', toId: 'merge', toProperty: 'in-data' },
+  { fromId: 'headingField', fromProperty: 'onTextChanged', toId: 'merge', toProperty: 'in-heading' },
   { fromId: 'bodyField', fromProperty: 'onTextChanged', toId: 'merge', toProperty: 'in-body' },
+  { fromId: 'linkLabelField', fromProperty: 'onTextChanged', toId: 'merge', toProperty: 'in-linkLabel' },
+  { fromId: 'linkTargetField', fromProperty: 'onTextChanged', toId: 'merge', toProperty: 'in-linkTarget' },
   { fromId: 'saveButton', fromProperty: 'onClick', toId: 'merge', toProperty: 'run' },
-  // An upload is a change to the section, so it folds and saves without a second
-  // press — otherwise the picked image is lost the moment the row redraws.
-  { fromId: 'upload', fromProperty: 'done', toId: 'merge', toProperty: 'run' },
 
+  // The picture. An upload is a change to the section, so it folds and saves
+  // without a second press — otherwise the picked image is lost the moment the
+  // row redraws. `absorb` is the only node the upload triggers.
+  { fromId: 'inputs', fromProperty: 'data', toId: 'absorb', toProperty: 'in-data' },
+  { fromId: 'inputs', fromProperty: 'kind', toId: 'absorb', toProperty: 'in-kind' },
+  { fromId: 'upload', fromProperty: 'cloudFile', toId: 'absorb', toProperty: 'in-image' },
+  { fromId: 'upload', fromProperty: 'done', toId: 'absorb', toProperty: 'run' },
+
+  { fromId: 'inputs', fromProperty: 'data', toId: 'dropLast', toProperty: 'in-data' },
+  { fromId: 'removeImageButton', fromProperty: 'onClick', toId: 'dropLast', toProperty: 'run' },
+
+  // 🔴 Three producers, one record. Each sets `prop-data` and then fires
+  // `store`, in that order, because both arrive through the receiver's input
+  // queue and `Node.update` drains one entry per input name in a single pass
+  // (`node.ts:626-656`) — a `store` that arrived before its `prop-data` would
+  // write the PREVIOUS fold. The same rule the site's `route` node is built to.
   { fromId: 'inputs', fromProperty: 'id', toId: 'save', toProperty: 'modelId' },
   { fromId: 'merge', fromProperty: 'out-data', toId: 'save', toProperty: 'prop-data' },
   { fromId: 'merge', fromProperty: 'out-built', toId: 'save', toProperty: 'store' },
+  { fromId: 'absorb', fromProperty: 'out-data', toId: 'save', toProperty: 'prop-data' },
+  { fromId: 'absorb', fromProperty: 'out-built', toId: 'save', toProperty: 'store' },
+  { fromId: 'dropLast', fromProperty: 'out-data', toId: 'save', toProperty: 'prop-data' },
+  { fromId: 'dropLast', fromProperty: 'out-built', toId: 'save', toProperty: 'store' },
 
   { fromId: 'inputs', fromProperty: 'id', toId: 'remove', toProperty: 'modelId' },
   { fromId: 'deleteButton', fromProperty: 'onClick', toId: 'remove', toProperty: 'store' },
@@ -1971,13 +2233,11 @@ export const PAGE_EDITOR_NODES = [
     // globally (`collection.ts:436-458`), so either shape satisfies `Select`.
     parameters: {
       type: 'json',
-      json: JSON.stringify([
-        { Label: 'Hero', Value: 'hero' },
-        { Label: 'Rich text', Value: 'richText' },
-        { Label: 'Gallery', Value: 'gallery' },
-        { Label: 'Contact', Value: 'contact' },
-        { Label: 'Call to action', Value: 'cta' }
-      ])
+      // 🔴 Derived from {@link SECTION_KINDS}, not retyped beside it. The list
+      // and the site's dispatch are the same list now that each kind is a
+      // component, and a hand-written copy here would offer an author a kind the
+      // site cannot draw on the first day the two disagreed.
+      json: JSON.stringify(SECTION_KINDS.map((kind) => ({ Label: SECTION_KIND_LABELS[kind], Value: kind })))
     }
   },
   { id: 'pageInputs', type: 'PageInputs', label: 'Which page', parameters: { pathParams: 'pageId' } },
@@ -2403,21 +2663,226 @@ export const PAGE_EDITOR_WIRES = [
 // ── 6. Pages/ThemeEditor — the theme tokens and the site settings ────────────
 
 /**
- * §3 surface 4, plus the settings form it shares a screen with.
+ * §3 surface 4 — *"the demo the template exists to give"* — and the settings
+ * form it shares a screen with.
  *
- * The token set is **fixed and small** rather than a free JSON editor, so the
- * public site can rely on the keys existing. Four is the useful minimum: two
- * colours the eye reads as the brand, one for text, and the face it is set in.
+ * ## SBR-009 rebuilt this screen, and the reason is one sentence
+ *
+ * The phase's root person-sentence is **"a client can change their site's colour
+ * and see the site change"**, and until SBR-009 this screen was eleven controls
+ * in one flat column: four unlabelled colour boxes, no grouping, no starting
+ * point, and no way to see anything until you saved and navigated to the public
+ * site. Every part of it worked. None of it was a demo.
+ *
+ * Three things changed, and each is an acceptance criterion:
+ *
+ *  1. **Cards.** Site / Colour / Type & shape, each a titled card. A client
+ *     never faces eleven equal boxes again.
+ *  2. **A presets row.** Studio / Press / Night, from `SITE_THEME_PRESETS` —
+ *     the same three the floor and `docs/THEME.md` are generated from. Picking
+ *     one fills every field, including the seven this screen never shows
+ *     (`colorOnPrimary`, `colorAccentSoft`, `fontUi`, …), which is what SBR-003
+ *     §1 meant by *"the preset row writes the full record"*: a hand-editor
+ *     cannot keep the companions coherent and is not asked to.
+ *  3. **A live preview, beside the fields.** Edited-but-unsaved values, applied
+ *     to a mini site — hero, card, button — **without touching the record**.
+ *
+ * ## 🔴 The preview consumes token NAMES, not a copied palette
+ *
+ * SBR-009 §4's trap, and it has a mechanism rather than a promise. The preview's
+ * nodes are authored `var(--primary)`, `var(--surface)`, `var(--radius-md)` —
+ * exactly like every other component in this template. What makes them show the
+ * *edited* values is a **scope**: `previewScope` carries
+ * `cssClassName: PREVIEW_SCOPE_CLASS`, and `previewCss` writes one rule
+ * (`.ndl-theme-preview { --primary: …; … }`) into a `CSS Definition` node. A
+ * custom property set on an ancestor wins for its subtree, so the same token
+ * name resolves to the record inside the panel and to the floor outside it.
+ *
+ * The alternative — wiring the edited hexes straight into the preview's colour
+ * ports — would have been fewer nodes and a second palette: the preview would
+ * have shown *the fields*, not *the site*, and the day a component started
+ * reading `--accent` the two would have disagreed with nobody noticing.
+ *
+ * ⚠️ The rule text is built from `THEME_TOKEN_FIELDS`, so a thirteenth field is
+ * carried by the preview on the next regeneration and cannot be forgotten.
+ *
+ * ## 🔴 Where the preset hexes live, and the gate that allows exactly one
+ *
+ * `presets` carries the three preset objects serialised into its script. That is
+ * the **one** raw-colour literal in the shipped artefact, and it is named in
+ * `TEMPLATE_COLOUR_EXEMPTIONS` (`siteBuilderStyleScan.ts`) — which SBR-012's own
+ * scope anticipated: *"the `designTokens`/preset-data blocks as the one allowed
+ * home for literals"*. The exemption is not a relaxation: `sbr012RawColourGate`
+ * asserts the hexes in that script are **`SITE_THEME_PRESETS` exactly**, so the
+ * carve-out cannot hide a drifted second copy of the palette — which is the only
+ * thing a colour exemption could ever be hiding.
+ *
+ * 🔴 The **source** file stays clean: the script is
+ * `JSON.stringify(SITE_THEME_PRESETS)`, so `rawColoursInSource` still reads zero
+ * here and the hexes exist in exactly one hand-written place in the repository.
+ *
+ * ## Two things about the fields that are not style
+ *
+ * 🔴 **`runOnChange-startValue: true` is authored on all five** editable token
+ * fields. NDA-017's migration writes `runOnChange-<input>: false` on every value
+ * input of a node whose control signal is wired, on every project load — and
+ * `presets` wires `set` on all five. Without the explicit `true` the record's
+ * own values would stop reaching the fields on load, silently, the first time
+ * anyone opened the project (SBR-004 §9.2: an explicit `true` survives the
+ * migration, an absent key does not).
+ *
+ * 🔴 **`set` is wired anyway, and it is not redundant.** `startValue`'s setter
+ * returns early when the incoming text equals the one it last received
+ * (`text-input.ts:184`), and typing does **not** update that copy. Pick Night,
+ * type over the primary, pick Night again — without the `set` pulse the field
+ * would keep the typed value and quietly disagree with the record about to be
+ * saved.
+ *
+ * ⚠️ Both queries here are singletons and keep their load-time fetch, for the
+ * reason `site/ContactRecipient` records: with the boxes off and no filter
+ * parameter, nothing ever triggers them.
  *
  * ⚠️ **No `contactRecipient` field.** `SiteSettings` is world-readable (SB-004
  * §4 gives it `find`/`get: public`, because the public site reads `siteName`),
  * so the address cannot live in that row — SB-004 F8, which is Richard's and
  * blocks SB-006's contact section, not this form.
- *
- * ⚠️ Both queries here are singletons and keep their load-time fetch, for the
- * reason `site/ContactRecipient` records: with the boxes off and no filter
- * parameter, nothing ever triggers them.
  */
+
+/** The class the preview's token scope is keyed on — one name, two readers. */
+export const PREVIEW_SCOPE_CLASS = 'ndl-theme-preview';
+
+/**
+ * A titled card: the container's parameters, so the three groups cannot drift
+ * into three slightly different cards. Written once for the same reason
+ * {@link navItem} is.
+ */
+const CARD = {
+  ...STACKED,
+  flexDirection: 'column',
+  rowGap: 'var(--space-3)',
+  backgroundColor: 'var(--surface)',
+  borderStyle: 'solid',
+  borderWidth: 'var(--border-1)',
+  borderColor: 'var(--border)',
+  borderRadius: 'var(--radius-md)',
+  paddingTop: 'var(--space-5)',
+  paddingBottom: 'var(--space-5)',
+  paddingLeft: 'var(--space-5)',
+  paddingRight: 'var(--space-5)'
+} as const;
+
+/** The heading inside a card — the word that tells a client what the box is for. */
+const cardTitle = (id: string, parent: string, text: string) => ({
+  id,
+  type: 'Text',
+  label: text,
+  parent,
+  parameters: {
+    ...STACKED,
+    text,
+    fontFamily: 'var(--font-sans)',
+    fontSize: 'var(--text-sm)',
+    fontWeight: 'var(--font-bold)',
+    letterSpacing: 'var(--tracking-wide)',
+    textTransform: 'uppercase',
+    color: 'var(--muted-foreground)'
+  }
+});
+
+/** The five token fields a client edits by hand, and the label each carries. */
+export const THEME_EDITOR_FIELDS: ReadonlyArray<{ id: string; field: ThemeField; label: string }> = [
+  { id: 'primaryField', field: 'colorPrimary', label: 'Primary colour' },
+  { id: 'backgroundField', field: 'colorBackground', label: 'Background colour' },
+  { id: 'textField', field: 'colorText', label: 'Text colour' },
+  { id: 'fontField', field: 'fontDisplay', label: 'Heading font' },
+  { id: 'radiusField', field: 'radius', label: 'Corner rounding' }
+];
+
+/** `colorPrimary` → `primary`: the script/port name for a record field. */
+const portOf = (field: ThemeField): string => field.replace(/^color(.)/, (_, c: string) => c.toLowerCase());
+
+const themeField = (id: string, label: string, parent: string, placeholder: string) => ({
+  id,
+  type: 'net.noodl.controls.textinput',
+  label,
+  parent,
+  parameters: {
+    useLabel: true,
+    label,
+    placeholder,
+    // 🔴 See the module note above: `presets` wires `set`, and without this the
+    // NDA-017 migration silences the record's own load-time fill.
+    'runOnChange-startValue': true
+  }
+});
+
+/** One preset chip placement — three of these, from one component. */
+const presetChip = (id: string, name: keyof typeof SITE_THEME_PRESETS) => ({
+  id,
+  type: '/Admin/PresetChip',
+  label: SITE_THEME_PRESET_LABELS[name],
+  parent: 'presetsRow',
+  parameters: { name, label: SITE_THEME_PRESET_LABELS[name] }
+});
+
+/**
+ * The preset table, as the graph receives it.
+ *
+ * 🔴 `JSON.stringify(SITE_THEME_PRESETS)` and not a literal: this is the only
+ * copy of those values that reaches a person, and the gate asserts it parses
+ * back to the source object. `Outputs.picked()` is declared in `ports` (rule 1)
+ * and fires last, after all twelve values have been published.
+ */
+function buildPresetPickerScript(): string {
+  return [
+    'const P = ' + JSON.stringify(SITE_THEME_PRESETS) + ';',
+    "const t = P[Inputs.name] || P.studio;",
+    ...(Object.keys(THEME_TOKEN_FIELDS) as ThemeField[]).map(
+      (field) => 'Outputs.' + portOf(field) + " = t." + field + " || '';"
+    ),
+    'Outputs.picked();'
+  ].join('\n');
+}
+
+/**
+ * The working set, as one object — every field, whether or not a box shows it.
+ *
+ * Three producers reach these inputs and the last one wins, which is exactly the
+ * behaviour wanted: the record fills them on load, a preset replaces all twelve,
+ * and typing replaces one. `runOnChange-in-*: true` is authored on all twelve
+ * (see the module note) because this node has no control signal and must run as
+ * values arrive — the preview is downstream of it.
+ */
+function buildWorkingTokensScript(): string {
+  return [
+    'Outputs.tokens = {',
+    (Object.keys(THEME_TOKEN_FIELDS) as ThemeField[])
+      .map((field) => '  ' + field + ': Inputs.' + portOf(field) + " || ''")
+      .join(',\n'),
+    '};'
+  ].join('\n');
+}
+
+/**
+ * The preview's scope rule.
+ *
+ * ⚠️ Values are stripped of `;{}<>` before they are pasted into a stylesheet. A
+ * client typing `}` into the primary box would otherwise close the rule and
+ * restyle the admin panel from inside its own preview — their own screen only,
+ * but a surface that mangles on a keystroke is not a demo.
+ */
+function buildPreviewCssScript(): string {
+  return [
+    'const t = Inputs.tokens || {};',
+    'const F = ' + JSON.stringify(THEME_TOKEN_FIELDS) + ';',
+    'const decls = Object.keys(F)',
+    '  .filter(function (k) { return t[k]; })',
+    "  .map(function (k) { return F[k] + ': ' + String(t[k]).replace(/[;{}<>]/g, '') + ';'; })",
+    "  .join(' ');",
+    "Outputs.css = '." + PREVIEW_SCOPE_CLASS + " { ' + decls + ' }';"
+  ].join('\n');
+}
+
 export const THEME_EDITOR_NODES = [
   {
     id: 'page',
@@ -2447,88 +2912,364 @@ export const THEME_EDITOR_NODES = [
     // Child of the shell's content COLUMN now, so it stops assigning height —
     // and the paddings are gone because the shell supplies them; keeping both
     // would double the inset.
-    parameters: { ...STACKED, flexDirection: 'column', rowGap: 'var(--space-4)' },
-    children: ['heading', 'siteNameField', 'homeSlugField', 'settingsButton', 'tokensHeading', 'primaryField', 'backgroundField', 'textField', 'fontField', 'themeButton', 'backButton']
+    parameters: { ...STACKED, flexDirection: 'column', rowGap: 'var(--space-6)' },
+    children: ['heading', 'presetsCard', 'columns']
   },
   {
     id: 'heading',
     type: 'Text',
     label: 'Heading',
     parent: 'shell',
-    parameters: { text: 'Theme and settings', fontWeight: 'var(--font-bold)' }
+    parameters: {
+      ...STACKED,
+      text: 'Theme and settings',
+      fontFamily: 'var(--font-serif)',
+      fontSize: 'var(--text-2xl)',
+      fontWeight: 'var(--font-bold)',
+      color: 'var(--foreground)'
+    }
   },
+
+  // ── The presets row ────────────────────────────────────────────────────────
+  {
+    id: 'presetsCard',
+    type: 'Group',
+    label: 'Presets card',
+    parent: 'shell',
+    parameters: CARD,
+    children: ['presetsTitle', 'presetsHint', 'presetsRow']
+  },
+  cardTitle('presetsTitle', 'presetsCard', 'Start from a look'),
+  {
+    id: 'presetsHint',
+    type: 'Text',
+    label: 'Presets hint',
+    parent: 'presetsCard',
+    // The states rule: a surface that changes eleven values at once says so
+    // before it does it, and says what has NOT happened yet.
+    parameters: {
+      ...STACKED,
+      text: 'Picking one fills every field below, including the ones this screen does not show. Nothing is saved until you press Save theme.',
+      fontFamily: 'var(--font-sans)',
+      fontSize: 'var(--text-sm)',
+      lineHeight: 'var(--leading-relaxed)',
+      color: 'var(--muted-foreground)'
+    }
+  },
+  {
+    id: 'presetsRow',
+    type: 'Group',
+    label: 'Presets row',
+    parent: 'presetsCard',
+    parameters: { ...STACKED, flexDirection: 'row', columnGap: 'var(--space-3)' },
+    children: ['presetStudio', 'presetPress', 'presetNight']
+  },
+  presetChip('presetStudio', 'studio'),
+  presetChip('presetPress', 'press'),
+  presetChip('presetNight', 'night'),
+
+  // ── The two panes ──────────────────────────────────────────────────────────
+  {
+    id: 'columns',
+    type: 'Group',
+    label: 'Fields and preview',
+    parent: 'shell',
+    parameters: { ...STACKED, flexDirection: 'row', columnGap: 'var(--space-6)', alignItems: 'flex-start' },
+    children: ['fieldsCol', 'previewCol']
+  },
+  {
+    id: 'fieldsCol',
+    type: 'Group',
+    label: 'Fields column',
+    parent: 'columns',
+    // 🔴 No `sizeMode`, deliberately, and named in `ADMIN_FILL_EXEMPTIONS`: two
+    // filling columns in a row are a half each, which is the whole layout. An
+    // authored width here would be a raw percentage — a proportion of a pane
+    // rather than a distance, which is the one thing the token vocabulary has no
+    // name for and `/Pages/PageEditor`'s Heading already pays an exemption for.
+    parameters: { flexDirection: 'column', rowGap: 'var(--space-4)' },
+    children: ['siteCard', 'colourCard', 'typeCard', 'actions']
+  },
+
+  {
+    id: 'siteCard',
+    type: 'Group',
+    label: 'Site card',
+    parent: 'fieldsCol',
+    parameters: CARD,
+    children: ['siteTitle', 'siteNameField', 'homeSlugField', 'settingsButton']
+  },
+  cardTitle('siteTitle', 'siteCard', 'Site'),
   {
     id: 'siteNameField',
     type: 'net.noodl.controls.textinput',
     label: 'Site name',
-    parent: 'shell',
-    parameters: { useLabel: true, label: 'Site name' }
+    parent: 'siteCard',
+    parameters: { useLabel: true, label: 'Site name', placeholder: 'The name in the header and the tab' }
   },
   {
     id: 'homeSlugField',
     type: 'net.noodl.controls.textinput',
     label: 'Home slug',
-    parent: 'shell',
-    parameters: { useLabel: true, label: 'Home page slug' }
+    parent: 'siteCard',
+    parameters: { useLabel: true, label: 'Home page slug', placeholder: 'home' }
   },
   {
     id: 'settingsButton',
     type: 'net.noodl.controls.button',
     label: 'Save settings',
-    parent: 'shell',
+    parent: 'siteCard',
     parameters: { label: 'Save settings' }
   },
+
   {
-    id: 'tokensHeading',
-    type: 'Text',
-    label: 'Tokens heading',
-    parent: 'shell',
-    parameters: { text: 'Theme', fontWeight: 'var(--font-semibold)' }
+    id: 'colourCard',
+    type: 'Group',
+    label: 'Colour card',
+    parent: 'fieldsCol',
+    parameters: CARD,
+    children: ['colourTitle', 'primaryField', 'backgroundField', 'textField']
   },
+  cardTitle('colourTitle', 'colourCard', 'Colour'),
+  themeField('primaryField', 'Primary colour', 'colourCard', 'The brand colour — buttons, links, the hero'),
+  themeField('backgroundField', 'Background colour', 'colourCard', 'The page ground'),
+  themeField('textField', 'Text colour', 'colourCard', 'Body text'),
+
   {
-    id: 'primaryField',
-    type: 'net.noodl.controls.textinput',
-    label: 'Primary colour',
-    parent: 'shell',
-    parameters: { useLabel: true, label: 'Primary colour' }
+    id: 'typeCard',
+    type: 'Group',
+    label: 'Type and shape card',
+    parent: 'fieldsCol',
+    parameters: CARD,
+    children: ['typeTitle', 'fontField', 'radiusField']
   },
+  cardTitle('typeTitle', 'typeCard', 'Type & shape'),
+  themeField('fontField', 'Heading font', 'typeCard', 'Georgia, serif'),
+  themeField('radiusField', 'Corner rounding', 'typeCard', '6px'),
+
   {
-    id: 'backgroundField',
-    type: 'net.noodl.controls.textinput',
-    label: 'Background colour',
-    parent: 'shell',
-    parameters: { useLabel: true, label: 'Background colour' }
-  },
-  {
-    id: 'textField',
-    type: 'net.noodl.controls.textinput',
-    label: 'Text colour',
-    parent: 'shell',
-    parameters: { useLabel: true, label: 'Text colour' }
-  },
-  {
-    id: 'fontField',
-    type: 'net.noodl.controls.textinput',
-    label: 'Font family',
-    parent: 'shell',
-    parameters: { useLabel: true, label: 'Font family' }
+    id: 'actions',
+    type: 'Group',
+    label: 'Theme actions',
+    parent: 'fieldsCol',
+    parameters: { ...STACKED, flexDirection: 'row', columnGap: 'var(--space-3)' },
+    children: ['themeButton', 'backButton']
   },
   {
     id: 'themeButton',
     type: 'net.noodl.controls.button',
     label: 'Save theme',
-    parent: 'shell',
+    parent: 'actions',
     parameters: { label: 'Save theme' }
   },
   {
     id: 'backButton',
     type: 'net.noodl.controls.button',
     label: 'Back',
-    parent: 'shell',
+    parent: 'actions',
     parameters: { label: 'Back to pages' }
   },
+
+  // ── The live preview ───────────────────────────────────────────────────────
+  {
+    id: 'previewCol',
+    type: 'Group',
+    label: 'Preview column',
+    parent: 'columns',
+    // The other half. See `fieldsCol`.
+    parameters: { flexDirection: 'column', rowGap: 'var(--space-3)' },
+    children: ['previewTitle', 'previewScope', 'previewNote']
+  },
+  cardTitle('previewTitle', 'previewCol', 'Live preview'),
+  {
+    id: 'previewScope',
+    type: 'Group',
+    label: 'Preview scope',
+    parent: 'previewCol',
+    // 🔴 `cssClassName` is the whole mechanism. `previewCss` writes
+    // `.ndl-theme-preview { --primary: … }` into a `CSS Definition`, and every
+    // node below resolves the SAME token names against this element rather than
+    // against `:root`. Nothing here is wired to a colour.
+    parameters: {
+      ...STACKED,
+      cssClassName: PREVIEW_SCOPE_CLASS,
+      flexDirection: 'column',
+      rowGap: 'var(--space-4)',
+      backgroundColor: 'var(--background)',
+      borderStyle: 'solid',
+      borderWidth: 'var(--border-1)',
+      borderColor: 'var(--border)',
+      borderRadius: 'var(--radius-md)',
+      paddingTop: 'var(--space-5)',
+      paddingBottom: 'var(--space-5)',
+      paddingLeft: 'var(--space-5)',
+      paddingRight: 'var(--space-5)'
+    },
+    children: ['previewHero', 'previewCard']
+  },
+  {
+    id: 'previewHero',
+    type: 'Group',
+    label: 'Preview hero',
+    parent: 'previewScope',
+    parameters: {
+      ...STACKED,
+      flexDirection: 'column',
+      rowGap: 'var(--space-2)',
+      backgroundColor: 'var(--primary)',
+      borderRadius: 'var(--radius-md)',
+      paddingTop: 'var(--space-6)',
+      paddingBottom: 'var(--space-6)',
+      paddingLeft: 'var(--space-5)',
+      paddingRight: 'var(--space-5)'
+    },
+    children: ['previewHeroTitle', 'previewHeroSub']
+  },
+  {
+    id: 'previewHeroTitle',
+    type: 'Text',
+    label: 'Preview hero title',
+    parent: 'previewHero',
+    parameters: {
+      ...STACKED,
+      text: 'Your site, in this look',
+      fontFamily: 'var(--font-serif)',
+      fontSize: 'var(--text-xl)',
+      fontWeight: 'var(--font-bold)',
+      color: 'var(--primary-foreground)'
+    }
+  },
+  {
+    id: 'previewHeroSub',
+    type: 'Text',
+    label: 'Preview hero subtitle',
+    parent: 'previewHero',
+    parameters: {
+      ...STACKED,
+      text: 'The hero band, the type and the corners follow the fields on the left.',
+      fontFamily: 'var(--font-sans)',
+      fontSize: 'var(--text-sm)',
+      lineHeight: 'var(--leading-relaxed)',
+      color: 'var(--primary-foreground)'
+    }
+  },
+  {
+    id: 'previewCard',
+    type: 'Group',
+    label: 'Preview card',
+    parent: 'previewScope',
+    parameters: {
+      ...STACKED,
+      flexDirection: 'column',
+      rowGap: 'var(--space-3)',
+      backgroundColor: 'var(--surface)',
+      borderStyle: 'solid',
+      borderWidth: 'var(--border-1)',
+      borderColor: 'var(--border)',
+      borderRadius: 'var(--radius-md)',
+      paddingTop: 'var(--space-5)',
+      paddingBottom: 'var(--space-5)',
+      paddingLeft: 'var(--space-5)',
+      paddingRight: 'var(--space-5)'
+    },
+    children: ['previewCardTitle', 'previewCardBody', 'previewButton']
+  },
+  {
+    id: 'previewCardTitle',
+    type: 'Text',
+    label: 'Preview card title',
+    parent: 'previewCard',
+    parameters: {
+      ...STACKED,
+      text: 'A section on a page',
+      fontFamily: 'var(--font-serif)',
+      fontSize: 'var(--text-lg)',
+      fontWeight: 'var(--font-semibold)',
+      color: 'var(--foreground)'
+    }
+  },
+  {
+    id: 'previewCardBody',
+    type: 'Text',
+    label: 'Preview card body',
+    parent: 'previewCard',
+    parameters: {
+      ...STACKED,
+      text: 'Body text in the reading colour, on the surface colour, inside the border colour.',
+      fontFamily: 'var(--font-sans)',
+      fontSize: 'var(--text-base)',
+      lineHeight: 'var(--leading-relaxed)',
+      color: 'var(--muted-foreground)'
+    }
+  },
+  {
+    id: 'previewButton',
+    type: 'Group',
+    label: 'Preview button',
+    parent: 'previewCard',
+    // A Group and not a `net.noodl.controls.button`: this is a picture of a
+    // button, and a real one would be a control a client could press to no
+    // effect — the fourth state SBR-016 is about, in miniature.
+    parameters: {
+      ...IN_A_ROW,
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: 'var(--primary)',
+      borderRadius: 'var(--radius-md)',
+      paddingTop: 'var(--space-2)',
+      paddingBottom: 'var(--space-2)',
+      paddingLeft: 'var(--space-4)',
+      paddingRight: 'var(--space-4)'
+    },
+    children: ['previewButtonLabel']
+  },
+  {
+    id: 'previewButtonLabel',
+    type: 'Text',
+    label: 'Preview button label',
+    parent: 'previewButton',
+    parameters: {
+      ...IN_A_ROW,
+      text: 'Get in touch',
+      fontFamily: 'var(--font-sans)',
+      fontSize: 'var(--text-sm)',
+      fontWeight: 'var(--font-semibold)',
+      color: 'var(--primary-foreground)'
+    }
+  },
+  {
+    id: 'previewNote',
+    type: 'Text',
+    label: 'Preview note',
+    parent: 'previewCol',
+    parameters: {
+      ...STACKED,
+      text: 'Unsaved. The public site changes when you press Save theme.',
+      fontFamily: 'var(--font-sans)',
+      fontSize: 'var(--text-sm)',
+      color: 'var(--muted-foreground)'
+    }
+  },
+
+  // ── The logic ──────────────────────────────────────────────────────────────
   { id: 'settings', type: 'DbCollection2', label: 'SiteSettings (one row)', parameters: { collectionName: 'SiteSettings' } },
-  { id: 'theme', type: 'DbCollection2', label: 'Theme (one row)', parameters: { collectionName: 'Theme' } },
+  {
+    id: 'theme',
+    type: 'DbCollection2',
+    label: 'Theme (one row)',
+    parameters: {
+      // 🔴 **SBR-016's defect, one wire away from being re-introduced here.**
+      // SBR-009 wires `storageFetch` (from `saveTheme.done`, so the panel
+      // repaints on Save), and that alone makes NDA-017's migration write
+      // `runOnChange-collectionName: false` into this bag on every project load
+      // — which kills the LOAD-TIME fetch. The theme editor would then open with
+      // eleven empty boxes on a themed site, and only after saving would it know
+      // what the record said. The explicit `true` is what says "I meant the new
+      // default"; the migration never touches a key that is already present.
+      'runOnChange-collectionName': true,
+      collectionName: 'Theme'
+    }
+  },
   {
     id: 'readSettings',
     type: 'JavaScriptFunction',
@@ -2546,9 +3287,10 @@ export const THEME_EDITOR_NODES = [
     type: 'JavaScriptFunction',
     label: 'Read the theme tokens',
     parameters: {
-      // SBR-003: all twelve contract fields come back out, so SBR-009's grouped
-      // fields have a startValue to wire to as they land. Unread-by-any-field
-      // outputs are just unwired ports until then.
+      // SBR-003: all twelve contract fields come back out. Five reach a field
+      // and all twelve reach `buildTokens`, so opening this screen and pressing
+      // Save re-writes the record it read — including the seven the screen does
+      // not show. Before SBR-009 those seven were blanked on every save.
       functionScript:
         'const rows = Inputs.rows || [];\n' +
         'const first = rows[0] ? rows[0].data || rows[0] : {};\n' +
@@ -2568,35 +3310,100 @@ export const THEME_EDITOR_NODES = [
     }
   },
   {
+    id: 'presets',
+    type: 'JavaScriptFunction',
+    label: 'The three presets',
+    // Rule 1.
+    ports: [{ name: 'out-picked', plug: 'output', type: 'signal' }],
+    parameters: {
+      // 🔴 **`false`, and the drive is what found it.** Three chips publish their
+      // `name` at MOUNT — a `Component Inputs` constant per placement — and with
+      // the box ticked this node ran three times before anybody touched
+      // anything, last placement winning. The screen booted with the **Night**
+      // palette in the preview and all five boxes pre-filled with Night's
+      // values, having been picked by nobody. Measured in a browser
+      // (`sbr009ThemeEditorDrive`), not reasoned.
+      //
+      // ⚠️ It is authored rather than left out because the box is not absent
+      // here: DEF-007 §3.2's `pinRunOnValueChangeDefaults` writes `true` into the
+      // artefact for every governed checkbox the source leaves unstated. In this
+      // template "unstated" means `true`, so the only way to say "wait for the
+      // signal" is to say it.
+      //
+      // 🔴 And `run` is ADDITIVE — wiring it does not stop a node running on its
+      // own. The pair is the fix: `in-name` is a value that must have LANDED, and
+      // `run` is the moment a person chose.
+      'runOnChange-in-name': false,
+      functionScript: buildPresetPickerScript()
+    }
+  },
+  {
     id: 'buildTokens',
     type: 'JavaScriptFunction',
     label: 'The theme tokens, as one object',
-    // Rule 1.
-    ports: [{ name: 'out-built', plug: 'output', type: 'signal' }],
     parameters: {
+      // 🔴 All twelve `runOnChange-in-*` authored `true`. This node has no
+      // control signal wired — the preview downstream of it has to move on every
+      // keystroke — and an unstated box on a node whose value has to apply as it
+      // arrives is one wired signal away from silently freezing (SBR-004 §9.2,
+      // and three of s36's defects were this shape).
+      ...Object.fromEntries(
+        (Object.keys(THEME_TOKEN_FIELDS) as ThemeField[]).map((field) => [`runOnChange-in-${portOf(field)}`, true])
+      ),
       // The keys are SBR-003's contract with the public site (`THEME_KEYS` /
       // `siteTheme.ts`), so all twelve are written whether or not the author
       // filled every field — a missing key and an empty one are different
-      // things to a reader that does `tokens.colorText`. Fields the current
-      // screen does not yet expose arrive as `undefined` (an unconnected input
-      // has NO default) and save as '' — "no override" — until SBR-009 wires
-      // them and the preset row fills them.
-      functionScript:
-        'Outputs.tokens = {\n' +
-        "  colorPrimary: Inputs.primary || '',\n" +
-        "  colorOnPrimary: Inputs.onPrimary || '',\n" +
-        "  colorBackground: Inputs.background || '',\n" +
-        "  colorSurface: Inputs.surface || '',\n" +
-        "  colorText: Inputs.text || '',\n" +
-        "  colorTextSoft: Inputs.textSoft || '',\n" +
-        "  colorBorder: Inputs.border || '',\n" +
-        "  colorAccentSoft: Inputs.accentSoft || '',\n" +
-        "  radius: Inputs.radius || '',\n" +
-        "  fontDisplay: Inputs.fontDisplay || '',\n" +
-        "  fontUi: Inputs.fontUi || '',\n" +
-        "  measure: Inputs.measure || ''\n" +
-        '};\n' +
-        'Outputs.built();'
+      // things to a reader that does `tokens.colorText`.
+      //
+      // 🔴 No `Outputs.built()` any more, and the button no longer runs this
+      // node. `SetDbModelProperties` stages `prop-tokens` as it arrives and
+      // writes on `store`, so Save is one wire from the button to the write and
+      // the object is always current — which is also what lets the preview read
+      // it without a second builder.
+      functionScript: buildWorkingTokensScript()
+    }
+  },
+  {
+    id: 'previewCss',
+    type: 'JavaScriptFunction',
+    label: 'The edited tokens, as a scoped rule',
+    parameters: {
+      // Same reason as `buildTokens` above: no control signal, must run as the
+      // working set changes.
+      'runOnChange-in-tokens': true,
+      functionScript: buildPreviewCssScript()
+    }
+  },
+  {
+    id: 'previewStyle',
+    type: 'CSS Definition',
+    label: 'Preview token scope',
+    // The stylesheet exists for as long as this screen does and is removed with
+    // it — which is what makes the preview local in the sense that matters: the
+    // pages list, opened next, is not wearing an unsaved theme.
+    parameters: { style: '' }
+  },
+  {
+    id: 'applyTheme',
+    type: 'JavaScriptFunction',
+    label: 'The saved theme, on this document',
+    parameters: {
+      // 🔴 AC1's second half. `/Admin/Shell` runs this same script on every admin
+      // screen's load; this copy is what repaints the panel the moment Save
+      // lands, without a reload — `saveTheme.done` re-fetches the singleton and
+      // the fetch runs this. One script, `buildThemeApplierScript()`, shared with
+      // the public site's applier.
+      //
+      // ⚠️ **No `runOnChange-in-rows` here, and that is measured rather than
+      // forgotten.** s36's lesson — an unstated box on a script that ends in an
+      // effect is a defect — does not bite inside THIS template: DEF-007 §3.2's
+      // `pinRunOnValueChangeDefaults` writes every governed checkbox into the
+      // artefact at generation time, `true` for anything the source leaves
+      // unstated, and the migration never touches a key that is already there.
+      // The shipped node therefore states `true`, exactly like the public site's
+      // applier. An authored `false` here would have made this the one applier of
+      // three that behaved differently, on purpose, for no reason.
+      functionScript: buildThemeApplierScript()
     }
   },
   {
@@ -2631,12 +3438,69 @@ export const THEME_EDITOR_WIRES = [
 
   { fromId: 'theme', fromProperty: 'items', toId: 'readTheme', toProperty: 'in-rows' },
   { fromId: 'theme', fromProperty: 'fetched', toId: 'readTheme', toProperty: 'run' },
-  { fromId: 'readTheme', fromProperty: 'out-primary', toId: 'primaryField', toProperty: 'startValue' },
-  { fromId: 'readTheme', fromProperty: 'out-background', toId: 'backgroundField', toProperty: 'startValue' },
-  { fromId: 'readTheme', fromProperty: 'out-text', toId: 'textField', toProperty: 'startValue' },
-  // SBR-003: the existing font field edits the DISPLAY face (SBR-009 groups it
-  // as "heading font"); `fontUi` gets its own field there.
-  { fromId: 'readTheme', fromProperty: 'out-fontDisplay', toId: 'fontField', toProperty: 'startValue' },
+  // The applier rides the same fetch — including the one `saveTheme.done`
+  // triggers, which is what repaints the panel on Save.
+  { fromId: 'theme', fromProperty: 'items', toId: 'applyTheme', toProperty: 'in-rows' },
+  { fromId: 'theme', fromProperty: 'fetched', toId: 'applyTheme', toProperty: 'run' },
+
+  // The record → the five boxes a client edits by hand.
+  ...THEME_EDITOR_FIELDS.map((f) => ({
+    fromId: 'readTheme',
+    fromProperty: `out-${portOf(f.field)}`,
+    toId: f.id,
+    toProperty: 'startValue'
+  })),
+  // The record → all twelve of the working set. The seven with no box on this
+  // screen travel by this route alone, and it is why Save no longer blanks them.
+  ...(Object.keys(THEME_TOKEN_FIELDS) as ThemeField[]).map((field) => ({
+    fromId: 'readTheme',
+    fromProperty: `out-${portOf(field)}`,
+    toId: 'buildTokens',
+    toProperty: `in-${portOf(field)}`
+  })),
+
+  // A chip → the picker. The name is a constant the instance published at mount;
+  // the signal arrives on click, long after — one producer, two ports, in that
+  // order, which is the pairing SB-005's header says is safe.
+  ...['presetStudio', 'presetPress', 'presetNight'].flatMap((chip) => [
+    { fromId: chip, fromProperty: 'name', toId: 'presets', toProperty: 'in-name' },
+    { fromId: chip, fromProperty: 'Picked', toId: 'presets', toProperty: 'run' }
+  ]),
+
+  // The picker → all twelve of the working set …
+  ...(Object.keys(THEME_TOKEN_FIELDS) as ThemeField[]).map((field) => ({
+    fromId: 'presets',
+    fromProperty: `out-${portOf(field)}`,
+    toId: 'buildTokens',
+    toProperty: `in-${portOf(field)}`
+  })),
+  // … and → the five boxes, so a client sees what they picked.
+  ...THEME_EDITOR_FIELDS.map((f) => ({
+    fromId: 'presets',
+    fromProperty: `out-${portOf(f.field)}`,
+    toId: f.id,
+    toProperty: 'startValue'
+  })),
+  // The `Set` pulse. See the module note: without it, re-picking a preset after
+  // typing leaves the typed value in the box.
+  ...THEME_EDITOR_FIELDS.map((f) => ({
+    fromId: 'presets',
+    fromProperty: 'out-picked',
+    toId: f.id,
+    toProperty: 'set'
+  })),
+
+  // Typing → the working set.
+  ...THEME_EDITOR_FIELDS.map((f) => ({
+    fromId: f.id,
+    fromProperty: 'onTextChanged',
+    toId: 'buildTokens',
+    toProperty: `in-${portOf(f.field)}`
+  })),
+
+  // The working set → the preview, and → the write that is waiting for a click.
+  { fromId: 'buildTokens', fromProperty: 'out-tokens', toId: 'previewCss', toProperty: 'in-tokens' },
+  { fromId: 'previewCss', fromProperty: 'out-css', toId: 'previewStyle', toProperty: 'style' },
 
   // `firstItemId` is the singleton's id — the row `claimSite` wrote.
   { fromId: 'settings', fromProperty: 'firstItemId', toId: 'saveSettings', toProperty: 'modelId' },
@@ -2644,17 +3508,81 @@ export const THEME_EDITOR_WIRES = [
   { fromId: 'homeSlugField', fromProperty: 'onTextChanged', toId: 'saveSettings', toProperty: 'prop-homeSlug' },
   { fromId: 'settingsButton', fromProperty: 'onClick', toId: 'saveSettings', toProperty: 'store' },
 
-  { fromId: 'primaryField', fromProperty: 'onTextChanged', toId: 'buildTokens', toProperty: 'in-primary' },
-  { fromId: 'backgroundField', fromProperty: 'onTextChanged', toId: 'buildTokens', toProperty: 'in-background' },
-  { fromId: 'textField', fromProperty: 'onTextChanged', toId: 'buildTokens', toProperty: 'in-text' },
-  { fromId: 'fontField', fromProperty: 'onTextChanged', toId: 'buildTokens', toProperty: 'in-fontDisplay' },
-  { fromId: 'themeButton', fromProperty: 'onClick', toId: 'buildTokens', toProperty: 'run' },
   { fromId: 'theme', fromProperty: 'firstItemId', toId: 'saveTheme', toProperty: 'modelId' },
   { fromId: 'buildTokens', fromProperty: 'out-tokens', toId: 'saveTheme', toProperty: 'prop-tokens' },
-  { fromId: 'buildTokens', fromProperty: 'out-built', toId: 'saveTheme', toProperty: 'store' },
+  { fromId: 'themeButton', fromProperty: 'onClick', toId: 'saveTheme', toProperty: 'store' },
+  // The sanctioned refresh (module header, rule 3): a write's `done` re-fetching
+  // the collection it wrote. Here it also carries AC1 — the re-fetch is what runs
+  // `applyTheme` and repaints the admin panel the instant Save lands.
+  { fromId: 'saveTheme', fromProperty: 'done', toId: 'theme', toProperty: 'storageFetch' },
 
   { fromId: 'backButton', fromProperty: 'onClick', toId: 'goBack', toProperty: 'navigate' }
 ];
+
+// ── 6b. Admin/PresetChip — one preset, as a control ──────────────────────────
+
+/**
+ * A chip in the presets row: a button that knows which preset it is.
+ *
+ * 🔴 A component rather than three buttons and three one-line scripts, and the
+ * reason is the same one that made `/Admin/Shell` a component: three copies of a
+ * control are three controls that can disagree, and the `Component Inputs`
+ * interface is what makes one component render three different chips. `name` is
+ * a constant per placement, published at mount; `Picked` is the click. A page
+ * receives both from one producer, in that order.
+ */
+export const PRESET_CHIP_NODES = [
+  {
+    id: 'chip',
+    type: 'net.noodl.controls.button',
+    label: 'Preset chip',
+    parameters: {
+      ...IN_A_ROW,
+      // Authored as well as wired, SB-018 (3): a chip whose only label source is
+      // a component input renders the Button default until that input first
+      // publishes.
+      label: 'Preset',
+      backgroundColor: 'var(--surface)',
+      color: 'var(--foreground)',
+      fontFamily: 'var(--font-sans)',
+      fontSize: 'var(--text-sm)',
+      fontWeight: 'var(--font-semibold)',
+      borderStyle: 'solid',
+      borderWidth: 'var(--border-1)',
+      borderColor: 'var(--border)',
+      borderRadius: 'var(--radius-md)',
+      paddingTop: 'var(--space-2)',
+      paddingBottom: 'var(--space-2)',
+      paddingLeft: 'var(--space-4)',
+      paddingRight: 'var(--space-4)'
+    }
+  },
+  {
+    id: 'inputs',
+    type: 'Component Inputs',
+    label: 'Which preset this chip is',
+    ports: [
+      { name: 'name', type: 'string', plug: 'output' },
+      { name: 'label', type: 'string', plug: 'output' }
+    ]
+  },
+  {
+    id: 'outputs',
+    type: 'Component Outputs',
+    label: 'The pick',
+    ports: [
+      { name: 'name', type: 'string', plug: 'input' },
+      { name: 'Picked', type: 'signal', plug: 'input' }
+    ]
+  }
+];
+
+export const PRESET_CHIP_WIRES = [
+  { fromId: 'inputs', fromProperty: 'label', toId: 'chip', toProperty: 'label' },
+  { fromId: 'inputs', fromProperty: 'name', toId: 'outputs', toProperty: 'name' },
+  { fromId: 'chip', fromProperty: 'onClick', toId: 'outputs', toProperty: 'Picked' }
+];
+
 
 // ── 7. Admin/Shell — the frame every admin screen sits inside ────────────────
 
@@ -2932,10 +3860,50 @@ export const ADMIN_SHELL_NODES = [
     //
     // The empty slug IS the site root, which is the page SBR-004 §11 drove.
     parameters: { router: ROUTER, target: '/Pages/Site', 'pm-slug': '' }
+  },
+
+  // ── SBR-009 AC1: the admin panel wears the client's theme too ──────────────
+  {
+    id: 'adminTheme',
+    type: 'DbCollection2',
+    label: 'Theme (one row)',
+    // No `storageFetch` wire anywhere in this component, so the load-time fetch
+    // survives the NDA-017 migration untouched and no `runOnChange-*` key is
+    // owed here — unlike `/Pages/ThemeEditor`'s copy, which wires one and has to
+    // say so out loud. The difference is worth the two sentences: it is the same
+    // node, in the same template, correctly configured two different ways.
+    parameters: { collectionName: 'Theme' }
+  },
+  {
+    id: 'applyTheme',
+    type: 'JavaScriptFunction',
+    label: 'The saved theme, on this document',
+    parameters: {
+      // 🔴 **SBR-009 AC1, and the reason it lives in the SHELL.** Every admin
+      // screen places this component, so one node themes all of them and cannot
+      // disagree with itself between two — the same argument that made the
+      // sidebar a component. Without it a client changed their site's colour and
+      // the panel they changed it from stayed the shipped Studio blue, which
+      // reads as "it did not work".
+      //
+      // The script is `buildThemeApplierScript()` — the SAME body the public
+      // site's applier runs, extracted rather than retyped. Two appliers is the
+      // second-copy-of-a-palette trap: the derived companions
+      // (`--primary-hover`, `--ring`, the two border steps) are what would drift
+      // first, and nobody edits two appliers on the same day.
+      //
+      // ⚠️ `runOnChange-in-rows` is unstated on all three appliers, and the
+      // artefact still carries it — see `/Pages/ThemeEditor`'s copy for the
+      // measurement.
+      functionScript: buildThemeApplierScript()
+    }
   }
 ];
 
 export const ADMIN_SHELL_WIRES = [
+  { fromId: 'adminTheme', fromProperty: 'items', toId: 'applyTheme', toProperty: 'in-rows' },
+  { fromId: 'adminTheme', fromProperty: 'fetched', toId: 'applyTheme', toProperty: 'run' },
+
   { fromId: 'inputs', fromProperty: 'active', toId: 'navStyle', toProperty: 'in-active' },
 
   { fromId: 'navStyle', fromProperty: 'out-pagesColor', toId: 'navPages', toProperty: 'color' },
@@ -3386,6 +4354,15 @@ export const SB005_COMPONENTS: Sb005Component[] = [
     isPage: false,
     nodes: PAGE_ROW_NODES,
     connections: PAGE_ROW_WIRES
+  },
+  {
+    // Before `/Pages/ThemeEditor`, which places it three times.
+    path: 'Admin/PresetChip',
+    key: 'Admin/PresetChip',
+    legacyName: '/Admin/PresetChip',
+    isPage: false,
+    nodes: PRESET_CHIP_NODES,
+    connections: PRESET_CHIP_WIRES
   },
   {
     path: 'Pages/ThemeEditor',

@@ -278,3 +278,74 @@ record. Studio is also the floor.
 ${presetRows}
 `;
 }
+
+/**
+ * The label a person reads on each preset chip — SBR-009's presets row.
+ *
+ * Beside the values rather than in the graph for the same reason everything else
+ * here is: the row is generated from `SITE_THEME_PRESETS`, so a fourth preset is
+ * one entry in two objects and the screen grows a chip on the next regeneration.
+ */
+export const SITE_THEME_PRESET_LABELS: Record<keyof typeof SITE_THEME_PRESETS, string> = {
+  studio: 'Studio',
+  press: 'Press',
+  night: 'Night'
+};
+
+/**
+ * The theme applier, as one script — SBR-009 §4's trap, paid rather than
+ * repeated.
+ *
+ * 🔴 **Two graphs run this and there is one copy of it.** The public site's
+ * `applyTheme` (`sb006Components.ts`) has always written the record onto
+ * `document.documentElement`; SBR-009 AC1 asks the **admin panel** to wear the
+ * same theme, and `/Admin/Shell` is where every admin screen would get it. A
+ * second hand-written applier beside the first is the second-copy-of-a-palette
+ * trap wearing an admin costume — the derivations below (`--primary-hover`,
+ * `--ring`, `--accent-foreground`, `--surface-raised`, the two border steps and
+ * the mirrored base family) are exactly the values that would drift first,
+ * because nobody edits two appliers on the same day.
+ *
+ * The body is byte-identical to what SB-006 shipped: this function was extracted
+ * from that node, not rewritten, and `sb007Template.test.ts`'s byte-identity arm
+ * is what proves the extraction changed nothing.
+ *
+ * 🔴 Guarded for a server render — this bundle is the one most likely to be
+ * deployed SSR/SSG, and `document` does not exist there.
+ */
+export function buildThemeApplierScript(): string {
+  return [
+    "if (typeof document === 'undefined') return;",
+    'const rows = Inputs.rows || [];',
+    'const first = rows[0] ? rows[0].data || rows[0] : {};',
+    'const t = first.tokens || {};',
+    'const root = document.documentElement;',
+    'if (t.colorPrimary) {',
+    "  root.style.setProperty('--primary', t.colorPrimary);",
+    "  root.style.setProperty('--primary-hover', 'color-mix(in srgb, ' + t.colorPrimary + ' 82%, black)');",
+    "  root.style.setProperty('--ring', t.colorPrimary);",
+    "  root.style.setProperty('--accent-foreground', t.colorPrimary);",
+    '}',
+    "if (t.colorOnPrimary) root.style.setProperty('--primary-foreground', t.colorOnPrimary);",
+    "if (t.colorBackground) root.style.setProperty('--background', t.colorBackground);",
+    'if (t.colorSurface) {',
+    "  root.style.setProperty('--surface', t.colorSurface);",
+    "  root.style.setProperty('--surface-raised', t.colorSurface);",
+    '}',
+    "if (t.colorText) root.style.setProperty('--foreground', t.colorText);",
+    "if (t.colorTextSoft) root.style.setProperty('--muted-foreground', t.colorTextSoft);",
+    'if (t.colorBorder) {',
+    "  root.style.setProperty('--border', t.colorBorder);",
+    "  root.style.setProperty('--border-subtle', 'color-mix(in srgb, ' + t.colorBorder + ' 45%, var(--background))');",
+    "  root.style.setProperty('--border-strong', 'color-mix(in srgb, ' + t.colorBorder + ' 65%, var(--foreground))');",
+    '}',
+    "if (t.colorAccentSoft) root.style.setProperty('--accent', t.colorAccentSoft);",
+    "if (t.radius) root.style.setProperty('--radius-md', t.radius);",
+    "if (t.fontDisplay) root.style.setProperty('--font-serif', t.fontDisplay);",
+    'if (t.fontUi) {',
+    "  root.style.setProperty('--font-sans', t.fontUi);",
+    '  root.style.fontFamily = t.fontUi;',
+    '}',
+    "if (t.measure) root.style.setProperty('--site-measure', t.measure);"
+  ].join('\n');
+}

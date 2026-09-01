@@ -246,65 +246,28 @@
       }
     },
     {
-      "name": "/Site/SectionView",
+      "name": "/Site/GalleryTile",
       "graph": {
         "roots": [
           {
-            "id": "section",
-            "type": "Group",
-            "children": [
-              {
-                "id": "image",
-                "type": "Image",
-                "children": [],
-                "label": "Section image",
-                "x": 100,
-                "y": 160,
-                "parameters": {
-                  "sizeMode": "explicit",
-                  "objectFit": "cover",
-                  "width": {
-                    "value": 100,
-                    "unit": "%"
-                  },
-                  "height": {
-                    "value": 320,
-                    "unit": "px"
-                  },
-                  "borderRadius": "var(--radius-md)",
-                  "mounted": false
-                },
-                "ports": [],
-                "dynamicports": []
-              },
-              {
-                "id": "body",
-                "type": "Text",
-                "children": [],
-                "label": "Section body",
-                "x": 100,
-                "y": 280,
-                "parameters": {
-                  "as": "p",
-                  "mounted": false,
-                  "text": "",
-                  "color": "var(--foreground)",
-                  "lineHeight": "var(--leading-relaxed)"
-                },
-                "ports": [],
-                "dynamicports": []
-              }
-            ],
-            "label": "One section",
+            "id": "tile",
+            "type": "Image",
+            "children": [],
+            "label": "Gallery tile",
             "x": 40,
             "y": 40,
             "parameters": {
-              "sizeMode": "contentHeight",
-              "as": "section",
-              "flexDirection": "column",
-              "paddingTop": "var(--space-8)",
-              "paddingBottom": "var(--space-8)",
-              "rowGap": "var(--space-4)"
+              "sizeMode": "explicit",
+              "objectFit": "cover",
+              "width": {
+                "value": 48,
+                "unit": "%"
+              },
+              "height": {
+                "value": 180,
+                "unit": "px"
+              },
+              "borderRadius": "var(--radius-md)"
             },
             "ports": [],
             "dynamicports": []
@@ -313,107 +276,15 @@
             "id": "inputs-2",
             "type": "Component Inputs",
             "children": [],
-            "label": "The section record",
-            "x": 350,
-            "y": 280,
+            "label": "One image of the gallery",
+            "x": 290,
+            "y": 40,
             "parameters": {},
             "ports": [
               {
-                "name": "id",
+                "name": "url",
                 "plug": "output",
                 "type": "string"
-              },
-              {
-                "name": "kind",
-                "plug": "output",
-                "type": "string"
-              },
-              {
-                "name": "order",
-                "plug": "output",
-                "type": "number"
-              },
-              {
-                "name": "data",
-                "plug": "output",
-                "type": "*"
-              }
-            ],
-            "dynamicports": []
-          },
-          {
-            "id": "unpack",
-            "type": "JavaScriptFunction",
-            "children": [],
-            "label": "What this kind shows",
-            "x": 350,
-            "y": 160,
-            "parameters": {
-              "functionScript": "const kind = Inputs.kind || 'richText';\nconst d = Inputs.data || {};\nconst body = d.body || '';\nconst image = (d.image && d.image.url) || '';\nOutputs.showImage = image !== '' && (kind === 'hero' || kind === 'gallery');\nOutputs.showBody = body !== '' && kind !== 'gallery';\nOutputs.body = body;\nOutputs.image = image;\nOutputs.weight = (kind === 'hero' || kind === 'cta') ? 'var(--font-bold)' : 'var(--font-normal)';\nOutputs.size = kind === 'hero' ? 'var(--text-3xl)' : 'var(--text-base)';\nOutputs.family = kind === 'hero' ? 'var(--font-serif)' : 'var(--font-sans)';"
-            },
-            "ports": [
-              {
-                "name": "in-kind",
-                "displayName": "kind",
-                "plug": "input",
-                "type": "*",
-                "group": "Inputs"
-              },
-              {
-                "name": "in-data",
-                "displayName": "data",
-                "plug": "input",
-                "type": "*",
-                "group": "Inputs"
-              },
-              {
-                "name": "out-showImage",
-                "displayName": "showImage",
-                "plug": "output",
-                "type": "*",
-                "group": "Outputs"
-              },
-              {
-                "name": "out-showBody",
-                "displayName": "showBody",
-                "plug": "output",
-                "type": "*",
-                "group": "Outputs"
-              },
-              {
-                "name": "out-body",
-                "displayName": "body",
-                "plug": "output",
-                "type": "*",
-                "group": "Outputs"
-              },
-              {
-                "name": "out-image",
-                "displayName": "image",
-                "plug": "output",
-                "type": "*",
-                "group": "Outputs"
-              },
-              {
-                "name": "out-weight",
-                "displayName": "weight",
-                "plug": "output",
-                "type": "*",
-                "group": "Outputs"
-              },
-              {
-                "name": "out-size",
-                "displayName": "size",
-                "plug": "output",
-                "type": "*",
-                "group": "Outputs"
-              },
-              {
-                "name": "out-family",
-                "displayName": "family",
-                "plug": "output",
-                "type": "*",
-                "group": "Outputs"
               }
             ],
             "dynamicports": []
@@ -422,61 +293,381 @@
         "connections": [
           {
             "fromId": "inputs-2",
-            "fromProperty": "kind",
-            "toId": "unpack",
-            "toProperty": "in-kind"
-          },
-          {
-            "fromId": "inputs-2",
-            "fromProperty": "data",
-            "toId": "unpack",
-            "toProperty": "in-data"
-          },
-          {
-            "fromId": "unpack",
-            "fromProperty": "out-image",
-            "toId": "image",
+            "fromProperty": "url",
+            "toId": "tile",
             "toProperty": "src"
-          },
-          {
-            "fromId": "unpack",
-            "fromProperty": "out-showImage",
-            "toId": "image",
-            "toProperty": "mounted"
-          },
-          {
-            "fromId": "unpack",
-            "fromProperty": "out-body",
-            "toId": "body",
-            "toProperty": "text"
-          },
-          {
-            "fromId": "unpack",
-            "fromProperty": "out-showBody",
-            "toId": "body",
-            "toProperty": "mounted"
-          },
-          {
-            "fromId": "unpack",
-            "fromProperty": "out-weight",
-            "toId": "body",
-            "toProperty": "fontWeight"
-          },
-          {
-            "fromId": "unpack",
-            "fromProperty": "out-size",
-            "toId": "body",
-            "toProperty": "fontSize"
-          },
-          {
-            "fromId": "unpack",
-            "fromProperty": "out-family",
-            "toId": "body",
-            "toProperty": "fontFamily"
           }
         ],
         "visualRoots": [
-          "section"
+          "tile"
+        ]
+      }
+    },
+    {
+      "name": "/Site/HeroSection",
+      "graph": {
+        "roots": [
+          {
+            "id": "band",
+            "type": "Group",
+            "children": [
+              {
+                "id": "heading",
+                "type": "Text",
+                "children": [],
+                "label": "Hero heading",
+                "x": 100,
+                "y": 160,
+                "parameters": {
+                  "as": "h2",
+                  "text": "",
+                  "fontSize": "var(--display-sm)",
+                  "fontFamily": "var(--font-serif)",
+                  "fontWeight": "var(--font-bold)",
+                  "lineHeight": "var(--leading-tight)",
+                  "letterSpacing": "var(--tracking-tight)",
+                  "color": "var(--primary-foreground)"
+                },
+                "ports": [],
+                "dynamicports": []
+              },
+              {
+                "id": "sub",
+                "type": "Text",
+                "children": [],
+                "label": "Hero sub-heading",
+                "x": 100,
+                "y": 280,
+                "parameters": {
+                  "as": "p",
+                  "mounted": false,
+                  "text": "",
+                  "fontSize": "var(--text-lg)",
+                  "lineHeight": "var(--leading-relaxed)",
+                  "color": "var(--primary-foreground)"
+                },
+                "ports": [],
+                "dynamicports": []
+              }
+            ],
+            "label": "Hero band",
+            "x": 40,
+            "y": 40,
+            "parameters": {
+              "sizeMode": "contentHeight",
+              "flexDirection": "column",
+              "rowGap": "var(--space-3)",
+              "paddingTop": "var(--space-16)",
+              "paddingBottom": "var(--space-8)",
+              "paddingLeft": "var(--space-6)",
+              "paddingRight": "var(--space-6)",
+              "backgroundGradient": "var(--gradient-scrim)",
+              "backgroundSize": "cover",
+              "backgroundPosition": "center",
+              "backgroundColor": "var(--foreground)",
+              "borderRadius": "var(--radius-md)"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "inputs-3",
+            "type": "Component Inputs",
+            "children": [],
+            "label": "What this hero shows",
+            "x": 350,
+            "y": 160,
+            "parameters": {},
+            "ports": [
+              {
+                "name": "heading",
+                "plug": "output",
+                "type": "string"
+              },
+              {
+                "name": "body",
+                "plug": "output",
+                "type": "string"
+              },
+              {
+                "name": "showBody",
+                "plug": "output",
+                "type": "boolean"
+              },
+              {
+                "name": "image",
+                "plug": "output",
+                "type": "string"
+              }
+            ],
+            "dynamicports": []
+          }
+        ],
+        "connections": [
+          {
+            "fromId": "inputs-3",
+            "fromProperty": "heading",
+            "toId": "heading",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "inputs-3",
+            "fromProperty": "body",
+            "toId": "sub",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "inputs-3",
+            "fromProperty": "showBody",
+            "toId": "sub",
+            "toProperty": "mounted"
+          },
+          {
+            "fromId": "inputs-3",
+            "fromProperty": "image",
+            "toId": "band",
+            "toProperty": "backgroundImage"
+          }
+        ],
+        "visualRoots": [
+          "band"
+        ]
+      }
+    },
+    {
+      "name": "/Site/GallerySection",
+      "graph": {
+        "roots": [
+          {
+            "id": "band-2",
+            "type": "Group",
+            "children": [
+              {
+                "id": "heading-2",
+                "type": "Text",
+                "children": [],
+                "label": "Gallery heading",
+                "x": 100,
+                "y": 160,
+                "parameters": {
+                  "as": "h2",
+                  "mounted": false,
+                  "text": "",
+                  "fontSize": "var(--text-2xl)",
+                  "fontFamily": "var(--font-serif)",
+                  "fontWeight": "var(--font-bold)",
+                  "lineHeight": "var(--leading-tight)",
+                  "color": "var(--foreground)"
+                },
+                "ports": [],
+                "dynamicports": []
+              },
+              {
+                "id": "grid",
+                "type": "Group",
+                "children": [
+                  {
+                    "id": "tiles",
+                    "type": "For Each",
+                    "children": [],
+                    "label": "One tile per image",
+                    "x": 160,
+                    "y": 400,
+                    "parameters": {
+                      "templateType": "explicit",
+                      "template": "/Site/GalleryTile"
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  }
+                ],
+                "label": "Gallery grid",
+                "x": 100,
+                "y": 280,
+                "parameters": {
+                  "sizeMode": "contentHeight",
+                  "flexDirection": "row",
+                  "flexWrap": "wrap",
+                  "columnGap": "var(--space-3)",
+                  "rowGap": "var(--space-3)"
+                },
+                "ports": [],
+                "dynamicports": []
+              }
+            ],
+            "label": "Gallery band",
+            "x": 40,
+            "y": 40,
+            "parameters": {
+              "sizeMode": "contentHeight",
+              "flexDirection": "column",
+              "rowGap": "var(--space-4)"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "inputs-4",
+            "type": "Component Inputs",
+            "children": [],
+            "label": "What this gallery shows",
+            "x": 410,
+            "y": 160,
+            "parameters": {},
+            "ports": [
+              {
+                "name": "heading",
+                "plug": "output",
+                "type": "string"
+              },
+              {
+                "name": "showHeading",
+                "plug": "output",
+                "type": "boolean"
+              },
+              {
+                "name": "images",
+                "plug": "output",
+                "type": "*"
+              }
+            ],
+            "dynamicports": []
+          }
+        ],
+        "connections": [
+          {
+            "fromId": "inputs-4",
+            "fromProperty": "heading",
+            "toId": "heading-2",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "inputs-4",
+            "fromProperty": "showHeading",
+            "toId": "heading-2",
+            "toProperty": "mounted"
+          },
+          {
+            "fromId": "inputs-4",
+            "fromProperty": "images",
+            "toId": "tiles",
+            "toProperty": "items"
+          }
+        ],
+        "visualRoots": [
+          "band-2"
+        ]
+      }
+    },
+    {
+      "name": "/Site/RichTextSection",
+      "graph": {
+        "roots": [
+          {
+            "id": "band-3",
+            "type": "Group",
+            "children": [
+              {
+                "id": "heading-3",
+                "type": "Text",
+                "children": [],
+                "label": "Rich text heading",
+                "x": 100,
+                "y": 160,
+                "parameters": {
+                  "as": "h2",
+                  "mounted": false,
+                  "text": "",
+                  "fontSize": "var(--text-2xl)",
+                  "fontFamily": "var(--font-serif)",
+                  "fontWeight": "var(--font-bold)",
+                  "lineHeight": "var(--leading-tight)",
+                  "color": "var(--foreground)"
+                },
+                "ports": [],
+                "dynamicports": []
+              },
+              {
+                "id": "body",
+                "type": "Text",
+                "children": [],
+                "label": "Rich text body",
+                "x": 100,
+                "y": 280,
+                "parameters": {
+                  "as": "p",
+                  "text": "",
+                  "fontSize": "var(--text-base)",
+                  "fontFamily": "var(--font-sans)",
+                  "fontWeight": "var(--font-normal)",
+                  "color": "var(--foreground)",
+                  "lineHeight": "var(--leading-relaxed)"
+                },
+                "ports": [],
+                "dynamicports": []
+              }
+            ],
+            "label": "Rich text band",
+            "x": 40,
+            "y": 40,
+            "parameters": {
+              "sizeMode": "contentHeight",
+              "flexDirection": "column",
+              "rowGap": "var(--space-3)"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "inputs-5",
+            "type": "Component Inputs",
+            "children": [],
+            "label": "What this passage shows",
+            "x": 350,
+            "y": 160,
+            "parameters": {},
+            "ports": [
+              {
+                "name": "heading",
+                "plug": "output",
+                "type": "string"
+              },
+              {
+                "name": "showHeading",
+                "plug": "output",
+                "type": "boolean"
+              },
+              {
+                "name": "body",
+                "plug": "output",
+                "type": "string"
+              }
+            ],
+            "dynamicports": []
+          }
+        ],
+        "connections": [
+          {
+            "fromId": "inputs-5",
+            "fromProperty": "heading",
+            "toId": "heading-3",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "inputs-5",
+            "fromProperty": "showHeading",
+            "toId": "heading-3",
+            "toProperty": "mounted"
+          },
+          {
+            "fromId": "inputs-5",
+            "fromProperty": "body",
+            "toId": "body",
+            "toProperty": "text"
+          }
+        ],
+        "visualRoots": [
+          "band-3"
         ]
       }
     },
@@ -489,7 +680,7 @@
             "type": "Group",
             "children": [
               {
-                "id": "heading",
+                "id": "heading-4",
                 "type": "Text",
                 "children": [],
                 "label": "Contact heading",
@@ -618,7 +809,7 @@
             "dynamicports": []
           },
           {
-            "id": "inputs-3",
+            "id": "inputs-6",
             "type": "Component Inputs",
             "children": [],
             "label": "Which page this was sent from",
@@ -642,10 +833,10 @@
             "x": 350,
             "y": 280,
             "parameters": {
-              "runOnChange-in-name": true,
-              "runOnChange-in-email": true,
-              "runOnChange-in-message": true,
-              "runOnChange-in-pageSlug": true,
+              "runOnChange-in-name": false,
+              "runOnChange-in-email": false,
+              "runOnChange-in-message": false,
+              "runOnChange-in-pageSlug": false,
               "functionScript": "const name = Inputs.name || \"\";\nconst email = Inputs.email || \"\";\nconst message = Inputs.message || \"\";\nif (name === '' || email === '' || message === '') return;\nOutputs.name = name;\nOutputs.email = email;\nOutputs.message = message;\nOutputs.pageSlug = Inputs.pageSlug || '';\nOutputs.go();"
             },
             "ports": [
@@ -734,8 +925,8 @@
             "x": 350,
             "y": 760,
             "parameters": {
-              "runOnChange-condition": true,
-              "condition": true
+              "condition": true,
+              "runOnChange-condition": false
             },
             "ports": [],
             "dynamicports": []
@@ -748,8 +939,8 @@
             "x": 350,
             "y": 880,
             "parameters": {
-              "runOnChange-condition": true,
-              "condition": true
+              "condition": true,
+              "runOnChange-condition": false
             },
             "ports": [],
             "dynamicports": []
@@ -775,7 +966,7 @@
             "toProperty": "in-message"
           },
           {
-            "fromId": "inputs-3",
+            "fromId": "inputs-6",
             "fromProperty": "pageSlug",
             "toId": "gather",
             "toProperty": "in-pageSlug"
@@ -843,6 +1034,878 @@
         ],
         "visualRoots": [
           "form"
+        ]
+      }
+    },
+    {
+      "name": "/Site/ContactSection",
+      "graph": {
+        "roots": [
+          {
+            "id": "band-4",
+            "type": "Group",
+            "children": [
+              {
+                "id": "heading-5",
+                "type": "Text",
+                "children": [],
+                "label": "Contact heading",
+                "x": 100,
+                "y": 160,
+                "parameters": {
+                  "as": "h2",
+                  "mounted": false,
+                  "text": "",
+                  "fontSize": "var(--text-2xl)",
+                  "fontFamily": "var(--font-serif)",
+                  "fontWeight": "var(--font-bold)",
+                  "lineHeight": "var(--leading-tight)",
+                  "color": "var(--foreground)"
+                },
+                "ports": [],
+                "dynamicports": []
+              },
+              {
+                "id": "body-2",
+                "type": "Text",
+                "children": [],
+                "label": "Contact intro",
+                "x": 100,
+                "y": 280,
+                "parameters": {
+                  "as": "p",
+                  "mounted": false,
+                  "text": "",
+                  "fontSize": "var(--text-base)",
+                  "color": "var(--foreground)",
+                  "lineHeight": "var(--leading-relaxed)"
+                },
+                "ports": [],
+                "dynamicports": []
+              },
+              {
+                "id": "form-2",
+                "type": "/Site/ContactForm",
+                "children": [],
+                "label": "The form itself",
+                "x": 100,
+                "y": 400,
+                "parameters": {},
+                "ports": [],
+                "dynamicports": []
+              }
+            ],
+            "label": "Contact band",
+            "x": 40,
+            "y": 40,
+            "parameters": {
+              "sizeMode": "contentHeight",
+              "flexDirection": "column",
+              "rowGap": "var(--space-4)"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "inputs-7",
+            "type": "Component Inputs",
+            "children": [],
+            "label": "What this contact section says",
+            "x": 350,
+            "y": 160,
+            "parameters": {},
+            "ports": [
+              {
+                "name": "heading",
+                "plug": "output",
+                "type": "string"
+              },
+              {
+                "name": "showHeading",
+                "plug": "output",
+                "type": "boolean"
+              },
+              {
+                "name": "body",
+                "plug": "output",
+                "type": "string"
+              },
+              {
+                "name": "showBody",
+                "plug": "output",
+                "type": "boolean"
+              }
+            ],
+            "dynamicports": []
+          },
+          {
+            "id": "currentSlug-2",
+            "type": "Variable2",
+            "children": [],
+            "label": "Which slug this form is on",
+            "x": 350,
+            "y": 400,
+            "parameters": {
+              "name": "siteCurrentSlug"
+            },
+            "ports": [],
+            "dynamicports": []
+          }
+        ],
+        "connections": [
+          {
+            "fromId": "inputs-7",
+            "fromProperty": "heading",
+            "toId": "heading-5",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "inputs-7",
+            "fromProperty": "showHeading",
+            "toId": "heading-5",
+            "toProperty": "mounted"
+          },
+          {
+            "fromId": "inputs-7",
+            "fromProperty": "body",
+            "toId": "body-2",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "inputs-7",
+            "fromProperty": "showBody",
+            "toId": "body-2",
+            "toProperty": "mounted"
+          },
+          {
+            "fromId": "currentSlug-2",
+            "fromProperty": "value",
+            "toId": "form-2",
+            "toProperty": "pageSlug"
+          }
+        ],
+        "visualRoots": [
+          "band-4"
+        ]
+      }
+    },
+    {
+      "name": "/Site/CtaSection",
+      "graph": {
+        "roots": [
+          {
+            "id": "band-5",
+            "type": "Group",
+            "children": [
+              {
+                "id": "heading-6",
+                "type": "Text",
+                "children": [],
+                "label": "Call to action heading",
+                "x": 100,
+                "y": 160,
+                "parameters": {
+                  "as": "h2",
+                  "text": "",
+                  "fontSize": "var(--text-3xl)",
+                  "fontFamily": "var(--font-serif)",
+                  "fontWeight": "var(--font-bold)",
+                  "lineHeight": "var(--leading-tight)",
+                  "color": "var(--primary-foreground)"
+                },
+                "ports": [],
+                "dynamicports": []
+              },
+              {
+                "id": "body-3",
+                "type": "Text",
+                "children": [],
+                "label": "Call to action body",
+                "x": 100,
+                "y": 280,
+                "parameters": {
+                  "as": "p",
+                  "mounted": false,
+                  "text": "",
+                  "fontSize": "var(--text-base)",
+                  "lineHeight": "var(--leading-relaxed)",
+                  "color": "var(--primary-foreground)"
+                },
+                "ports": [],
+                "dynamicports": []
+              },
+              {
+                "id": "button",
+                "type": "net.noodl.controls.button",
+                "children": [],
+                "label": "Call to action button",
+                "x": 100,
+                "y": 400,
+                "parameters": {
+                  "mounted": false,
+                  "label": "",
+                  "backgroundColor": "var(--primary-foreground)",
+                  "color": "var(--primary)",
+                  "fontWeight": "var(--font-semibold)",
+                  "borderRadius": "var(--radius-md)"
+                },
+                "ports": [],
+                "dynamicports": []
+              }
+            ],
+            "label": "Call to action band",
+            "x": 40,
+            "y": 40,
+            "parameters": {
+              "sizeMode": "contentHeight",
+              "flexDirection": "column",
+              "alignItems": "flex-start",
+              "rowGap": "var(--space-4)",
+              "paddingTop": "var(--space-10)",
+              "paddingBottom": "var(--space-10)",
+              "paddingLeft": "var(--space-6)",
+              "paddingRight": "var(--space-6)",
+              "backgroundGradient": "var(--gradient-brand)",
+              "backgroundColor": "var(--primary)",
+              "borderRadius": "var(--radius-md)"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "inputs-8",
+            "type": "Component Inputs",
+            "children": [],
+            "label": "What this call to action says and where it goes",
+            "x": 350,
+            "y": 160,
+            "parameters": {},
+            "ports": [
+              {
+                "name": "heading",
+                "plug": "output",
+                "type": "string"
+              },
+              {
+                "name": "body",
+                "plug": "output",
+                "type": "string"
+              },
+              {
+                "name": "showBody",
+                "plug": "output",
+                "type": "boolean"
+              },
+              {
+                "name": "linkLabel",
+                "plug": "output",
+                "type": "string"
+              },
+              {
+                "name": "showLink",
+                "plug": "output",
+                "type": "boolean"
+              },
+              {
+                "name": "linkTarget",
+                "plug": "output",
+                "type": "string"
+              }
+            ],
+            "dynamicports": []
+          },
+          {
+            "id": "route",
+            "type": "JavaScriptFunction",
+            "children": [],
+            "label": "Slug or the open web",
+            "x": 350,
+            "y": 400,
+            "parameters": {
+              "runOnChange-in-target": false,
+              "functionScript": "const target = (Inputs.target || '').trim();\nif (target === '') return;\nif (/^https?:\\/\\//i.test(target)) {\n  if (typeof window !== 'undefined' && window.open) {\n    window.open(target, '_blank', 'noopener');\n  }\n  return;\n}\nOutputs.slug = target;\nOutputs.go();"
+            },
+            "ports": [
+              {
+                "name": "out-go",
+                "plug": "output",
+                "type": "signal"
+              },
+              {
+                "name": "in-target",
+                "displayName": "target",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "out-slug",
+                "displayName": "slug",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              }
+            ],
+            "dynamicports": []
+          },
+          {
+            "id": "goPage-2",
+            "type": "RouterNavigate",
+            "children": [],
+            "label": "To that page",
+            "x": 350,
+            "y": 520,
+            "parameters": {
+              "router": "Main",
+              "target": "/Pages/Site"
+            },
+            "ports": [],
+            "dynamicports": []
+          }
+        ],
+        "connections": [
+          {
+            "fromId": "inputs-8",
+            "fromProperty": "heading",
+            "toId": "heading-6",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "inputs-8",
+            "fromProperty": "body",
+            "toId": "body-3",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "inputs-8",
+            "fromProperty": "showBody",
+            "toId": "body-3",
+            "toProperty": "mounted"
+          },
+          {
+            "fromId": "inputs-8",
+            "fromProperty": "linkLabel",
+            "toId": "button",
+            "toProperty": "label"
+          },
+          {
+            "fromId": "inputs-8",
+            "fromProperty": "showLink",
+            "toId": "button",
+            "toProperty": "mounted"
+          },
+          {
+            "fromId": "inputs-8",
+            "fromProperty": "linkTarget",
+            "toId": "route",
+            "toProperty": "in-target"
+          },
+          {
+            "fromId": "button",
+            "fromProperty": "onClick",
+            "toId": "route",
+            "toProperty": "run"
+          },
+          {
+            "fromId": "route",
+            "fromProperty": "out-slug",
+            "toId": "goPage-2",
+            "toProperty": "pm-slug"
+          },
+          {
+            "fromId": "route",
+            "fromProperty": "out-go",
+            "toId": "goPage-2",
+            "toProperty": "navigate"
+          }
+        ],
+        "visualRoots": [
+          "band-5"
+        ]
+      }
+    },
+    {
+      "name": "/Site/SectionView",
+      "graph": {
+        "roots": [
+          {
+            "id": "section",
+            "type": "Group",
+            "children": [
+              {
+                "id": "heroWrap",
+                "type": "Group",
+                "children": [
+                  {
+                    "id": "hero",
+                    "type": "/Site/HeroSection",
+                    "children": [],
+                    "label": "Hero",
+                    "x": 160,
+                    "y": 280,
+                    "parameters": {},
+                    "ports": [],
+                    "dynamicports": []
+                  }
+                ],
+                "label": "Hero, when this section is one",
+                "x": 100,
+                "y": 160,
+                "parameters": {
+                  "sizeMode": "contentHeight",
+                  "flexDirection": "column",
+                  "mounted": false
+                },
+                "ports": [],
+                "dynamicports": []
+              },
+              {
+                "id": "galleryWrap",
+                "type": "Group",
+                "children": [
+                  {
+                    "id": "gallery",
+                    "type": "/Site/GallerySection",
+                    "children": [],
+                    "label": "Gallery",
+                    "x": 160,
+                    "y": 520,
+                    "parameters": {},
+                    "ports": [],
+                    "dynamicports": []
+                  }
+                ],
+                "label": "Gallery, when this section is one",
+                "x": 100,
+                "y": 400,
+                "parameters": {
+                  "sizeMode": "contentHeight",
+                  "flexDirection": "column",
+                  "mounted": false
+                },
+                "ports": [],
+                "dynamicports": []
+              },
+              {
+                "id": "ctaWrap",
+                "type": "Group",
+                "children": [
+                  {
+                    "id": "cta",
+                    "type": "/Site/CtaSection",
+                    "children": [],
+                    "label": "Call to action",
+                    "x": 160,
+                    "y": 760,
+                    "parameters": {},
+                    "ports": [],
+                    "dynamicports": []
+                  }
+                ],
+                "label": "Call to action, when this section is one",
+                "x": 100,
+                "y": 640,
+                "parameters": {
+                  "sizeMode": "contentHeight",
+                  "flexDirection": "column",
+                  "mounted": false
+                },
+                "ports": [],
+                "dynamicports": []
+              },
+              {
+                "id": "richWrap",
+                "type": "Group",
+                "children": [
+                  {
+                    "id": "rich",
+                    "type": "/Site/RichTextSection",
+                    "children": [],
+                    "label": "Passage",
+                    "x": 160,
+                    "y": 1000,
+                    "parameters": {},
+                    "ports": [],
+                    "dynamicports": []
+                  }
+                ],
+                "label": "Passage, when this section is one",
+                "x": 100,
+                "y": 880,
+                "parameters": {
+                  "sizeMode": "contentHeight",
+                  "flexDirection": "column",
+                  "mounted": false
+                },
+                "ports": [],
+                "dynamicports": []
+              },
+              {
+                "id": "contactWrap",
+                "type": "Group",
+                "children": [
+                  {
+                    "id": "contact",
+                    "type": "/Site/ContactSection",
+                    "children": [],
+                    "label": "Contact",
+                    "x": 160,
+                    "y": 1240,
+                    "parameters": {},
+                    "ports": [],
+                    "dynamicports": []
+                  }
+                ],
+                "label": "Contact, when this section is one",
+                "x": 100,
+                "y": 1120,
+                "parameters": {
+                  "sizeMode": "contentHeight",
+                  "flexDirection": "column",
+                  "mounted": false
+                },
+                "ports": [],
+                "dynamicports": []
+              }
+            ],
+            "label": "One section",
+            "x": 40,
+            "y": 40,
+            "parameters": {
+              "sizeMode": "contentHeight",
+              "as": "section",
+              "flexDirection": "column",
+              "paddingTop": "var(--space-4)",
+              "paddingBottom": "var(--space-4)"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "inputs-9",
+            "type": "Component Inputs",
+            "children": [],
+            "label": "The section record",
+            "x": 410,
+            "y": 280,
+            "parameters": {},
+            "ports": [
+              {
+                "name": "id",
+                "plug": "output",
+                "type": "string"
+              },
+              {
+                "name": "kind",
+                "plug": "output",
+                "type": "string"
+              },
+              {
+                "name": "order",
+                "plug": "output",
+                "type": "number"
+              },
+              {
+                "name": "data",
+                "plug": "output",
+                "type": "*"
+              }
+            ],
+            "dynamicports": []
+          },
+          {
+            "id": "unpack",
+            "type": "JavaScriptFunction",
+            "children": [],
+            "label": "Which kind this is, and what it needs",
+            "x": 410,
+            "y": 160,
+            "parameters": {
+              "functionScript": "const kind = Inputs.kind || \"richText\";\nconst d = Inputs.data || {};\nconst heading = d.heading || '';\nconst body = d.body || '';\nconst image = (d.image && d.image.url) || '';\nconst images = (Array.isArray(d.images) ? d.images : [])\n  .map(function (row) { return { url: (row && (row.url || (row.image && row.image.url))) || '' }; })\n  .filter(function (row) { return row.url !== ''; });\nconst linkLabel = d.linkLabel || '';\nconst linkTarget = d.linkTarget || '';\n\nconst known = [\"hero\",\"gallery\",\"cta\",\"richText\",\"contact\"];\nconst k = known.indexOf(kind) === -1 ? \"richText\" : kind;\nOutputs.isHero = k === 'hero';\nOutputs.isGallery = k === 'gallery';\nOutputs.isCta = k === 'cta';\nOutputs.isRichText = k === 'richText';\nOutputs.isContact = k === 'contact';\n\nOutputs.heading = heading;\nOutputs.showHeading = heading !== '';\nOutputs.body = body;\nOutputs.showBody = body !== '';\nOutputs.image = image;\nOutputs.images = images;\nOutputs.linkLabel = linkLabel;\nOutputs.showLink = linkLabel !== '' && linkTarget !== '';\nOutputs.linkTarget = linkTarget;"
+            },
+            "ports": [
+              {
+                "name": "in-kind",
+                "displayName": "kind",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "in-data",
+                "displayName": "data",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "out-isHero",
+                "displayName": "isHero",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              },
+              {
+                "name": "out-isGallery",
+                "displayName": "isGallery",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              },
+              {
+                "name": "out-isCta",
+                "displayName": "isCta",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              },
+              {
+                "name": "out-isRichText",
+                "displayName": "isRichText",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              },
+              {
+                "name": "out-isContact",
+                "displayName": "isContact",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              },
+              {
+                "name": "out-heading",
+                "displayName": "heading",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              },
+              {
+                "name": "out-showHeading",
+                "displayName": "showHeading",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              },
+              {
+                "name": "out-body",
+                "displayName": "body",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              },
+              {
+                "name": "out-showBody",
+                "displayName": "showBody",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              },
+              {
+                "name": "out-image",
+                "displayName": "image",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              },
+              {
+                "name": "out-images",
+                "displayName": "images",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              },
+              {
+                "name": "out-linkLabel",
+                "displayName": "linkLabel",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              },
+              {
+                "name": "out-showLink",
+                "displayName": "showLink",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              },
+              {
+                "name": "out-linkTarget",
+                "displayName": "linkTarget",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              }
+            ],
+            "dynamicports": []
+          }
+        ],
+        "connections": [
+          {
+            "fromId": "inputs-9",
+            "fromProperty": "kind",
+            "toId": "unpack",
+            "toProperty": "in-kind"
+          },
+          {
+            "fromId": "inputs-9",
+            "fromProperty": "data",
+            "toId": "unpack",
+            "toProperty": "in-data"
+          },
+          {
+            "fromId": "unpack",
+            "fromProperty": "out-isHero",
+            "toId": "heroWrap",
+            "toProperty": "mounted"
+          },
+          {
+            "fromId": "unpack",
+            "fromProperty": "out-isGallery",
+            "toId": "galleryWrap",
+            "toProperty": "mounted"
+          },
+          {
+            "fromId": "unpack",
+            "fromProperty": "out-isCta",
+            "toId": "ctaWrap",
+            "toProperty": "mounted"
+          },
+          {
+            "fromId": "unpack",
+            "fromProperty": "out-isRichText",
+            "toId": "richWrap",
+            "toProperty": "mounted"
+          },
+          {
+            "fromId": "unpack",
+            "fromProperty": "out-isContact",
+            "toId": "contactWrap",
+            "toProperty": "mounted"
+          },
+          {
+            "fromId": "unpack",
+            "fromProperty": "out-heading",
+            "toId": "hero",
+            "toProperty": "heading"
+          },
+          {
+            "fromId": "unpack",
+            "fromProperty": "out-body",
+            "toId": "hero",
+            "toProperty": "body"
+          },
+          {
+            "fromId": "unpack",
+            "fromProperty": "out-showBody",
+            "toId": "hero",
+            "toProperty": "showBody"
+          },
+          {
+            "fromId": "unpack",
+            "fromProperty": "out-image",
+            "toId": "hero",
+            "toProperty": "image"
+          },
+          {
+            "fromId": "unpack",
+            "fromProperty": "out-heading",
+            "toId": "gallery",
+            "toProperty": "heading"
+          },
+          {
+            "fromId": "unpack",
+            "fromProperty": "out-showHeading",
+            "toId": "gallery",
+            "toProperty": "showHeading"
+          },
+          {
+            "fromId": "unpack",
+            "fromProperty": "out-images",
+            "toId": "gallery",
+            "toProperty": "images"
+          },
+          {
+            "fromId": "unpack",
+            "fromProperty": "out-heading",
+            "toId": "cta",
+            "toProperty": "heading"
+          },
+          {
+            "fromId": "unpack",
+            "fromProperty": "out-body",
+            "toId": "cta",
+            "toProperty": "body"
+          },
+          {
+            "fromId": "unpack",
+            "fromProperty": "out-showBody",
+            "toId": "cta",
+            "toProperty": "showBody"
+          },
+          {
+            "fromId": "unpack",
+            "fromProperty": "out-linkLabel",
+            "toId": "cta",
+            "toProperty": "linkLabel"
+          },
+          {
+            "fromId": "unpack",
+            "fromProperty": "out-showLink",
+            "toId": "cta",
+            "toProperty": "showLink"
+          },
+          {
+            "fromId": "unpack",
+            "fromProperty": "out-linkTarget",
+            "toId": "cta",
+            "toProperty": "linkTarget"
+          },
+          {
+            "fromId": "unpack",
+            "fromProperty": "out-heading",
+            "toId": "rich",
+            "toProperty": "heading"
+          },
+          {
+            "fromId": "unpack",
+            "fromProperty": "out-showHeading",
+            "toId": "rich",
+            "toProperty": "showHeading"
+          },
+          {
+            "fromId": "unpack",
+            "fromProperty": "out-body",
+            "toId": "rich",
+            "toProperty": "body"
+          },
+          {
+            "fromId": "unpack",
+            "fromProperty": "out-heading",
+            "toId": "contact",
+            "toProperty": "heading"
+          },
+          {
+            "fromId": "unpack",
+            "fromProperty": "out-showHeading",
+            "toId": "contact",
+            "toProperty": "showHeading"
+          },
+          {
+            "fromId": "unpack",
+            "fromProperty": "out-body",
+            "toId": "contact",
+            "toProperty": "body"
+          },
+          {
+            "fromId": "unpack",
+            "fromProperty": "out-showBody",
+            "toId": "contact",
+            "toProperty": "showBody"
+          }
+        ],
+        "visualRoots": [
+          "section"
         ]
       }
     },
@@ -1028,33 +2091,6 @@
                         "dynamicports": []
                       },
                       {
-                        "id": "contactWrap",
-                        "type": "Group",
-                        "children": [
-                          {
-                            "id": "contact",
-                            "type": "/Site/ContactForm",
-                            "children": [],
-                            "label": "Contact form",
-                            "x": 280,
-                            "y": 1120,
-                            "parameters": {},
-                            "ports": [],
-                            "dynamicports": []
-                          }
-                        ],
-                        "label": "Contact form, when the page asked for one",
-                        "x": 220,
-                        "y": 1000,
-                        "parameters": {
-                          "sizeMode": "contentHeight",
-                          "flexDirection": "column",
-                          "mounted": false
-                        },
-                        "ports": [],
-                        "dynamicports": []
-                      },
-                      {
                         "id": "notFoundCard",
                         "type": "Group",
                         "children": [
@@ -1064,7 +2100,7 @@
                             "children": [],
                             "label": "Not found",
                             "x": 280,
-                            "y": 1360,
+                            "y": 1120,
                             "parameters": {
                               "as": "p",
                               "text": "That page could not be found.",
@@ -1079,7 +2115,7 @@
                         ],
                         "label": "The empty-screen card",
                         "x": 220,
-                        "y": 1240,
+                        "y": 1000,
                         "parameters": {
                           "sizeMode": "contentHeight",
                           "flexDirection": "column",
@@ -1108,7 +2144,7 @@
                             "children": [],
                             "label": "Footer site name",
                             "x": 280,
-                            "y": 1600,
+                            "y": 1360,
                             "parameters": {
                               "as": "span",
                               "text": "",
@@ -1125,7 +2161,7 @@
                             "children": [],
                             "label": "Back to home",
                             "x": 280,
-                            "y": 1720,
+                            "y": 1480,
                             "parameters": {
                               "as": "span",
                               "text": "Home",
@@ -1140,7 +2176,7 @@
                         ],
                         "label": "Footer",
                         "x": 220,
-                        "y": 1480,
+                        "y": 1240,
                         "parameters": {
                           "sizeMode": "contentHeight",
                           "as": "footer",
@@ -1206,7 +2242,7 @@
             "children": [],
             "label": "To the home page",
             "x": 530,
-            "y": 1720,
+            "y": 1480,
             "parameters": {
               "router": "Main",
               "target": "/Pages/Site"
@@ -1220,7 +2256,7 @@
             "children": [],
             "label": "Which of the three empty screens is this?",
             "x": 530,
-            "y": 1240,
+            "y": 1000,
             "parameters": {
               "functionScript": "const pageRefused = Inputs.error !== undefined && Inputs.error !== null && Inputs.error !== \"\";\nconst settingsRefused = Inputs.settingsError !== undefined && Inputs.settingsError !== null && Inputs.settingsError !== \"\";\nif (settingsRefused) {\n  Outputs.text = \"This site’s pages are not available right now.\";\n  Outputs.visible = true;\n  return;\n}\nif (Inputs.claimed === false) {\n  Outputs.text = \"This site has not been set up yet.\";\n  Outputs.visible = true;\n  return;\n}\nif (pageRefused) {\n  Outputs.text = \"This site’s pages are not available right now.\";\n  Outputs.visible = true;\n  return;\n}\nif (Inputs.watchdog !== undefined && Inputs.claimed === undefined && Inputs.missing === undefined) {\n  Outputs.text = \"No backend connected. This project needs a backend before it can store pages — add one from Backend Services.\";\n  Outputs.visible = true;\n  return;\n}\nif (Inputs.missing === undefined) return;\nif (!Inputs.missing) {\n  Outputs.visible = false;\n  return;\n}\nOutputs.text = \"That page could not be found.\";\nOutputs.visible = true;"
             },
@@ -1296,7 +2332,7 @@
             "children": [],
             "label": "The slug from the URL",
             "x": 530,
-            "y": 1840,
+            "y": 1600,
             "parameters": {
               "pathParams": "slug"
             },
@@ -1309,7 +2345,7 @@
             "children": [],
             "label": "SiteSettings (one row)",
             "x": 530,
-            "y": 1960,
+            "y": 1720,
             "parameters": {
               "collectionName": "SiteSettings"
             },
@@ -1407,7 +2443,7 @@
             "children": [],
             "label": "The page with this slug",
             "x": 530,
-            "y": 2080,
+            "y": 1840,
             "parameters": {
               "runOnChange-collectionName": false,
               "runOnChange-querySettings": false,
@@ -1520,41 +2556,12 @@
             "dynamicports": []
           },
           {
-            "id": "readSections",
-            "type": "JavaScriptFunction",
-            "children": [],
-            "label": "Is there a contact section",
-            "x": 530,
-            "y": 1000,
-            "parameters": {
-              "runOnChange-in-rows": true,
-              "functionScript": "if (Inputs.rows === undefined) return;\nconst rows = Inputs.rows || [];\nOutputs.hasContact = rows.some(function (r) {\n  const d = r.data || r;\n  return d.kind === 'contact';\n});"
-            },
-            "ports": [
-              {
-                "name": "in-rows",
-                "displayName": "rows",
-                "plug": "input",
-                "type": "*",
-                "group": "Inputs"
-              },
-              {
-                "name": "out-hasContact",
-                "displayName": "hasContact",
-                "plug": "output",
-                "type": "*",
-                "group": "Outputs"
-              }
-            ],
-            "dynamicports": []
-          },
-          {
             "id": "theme",
             "type": "DbCollection2",
             "children": [],
             "label": "Theme (one row)",
             "x": 530,
-            "y": 2200,
+            "y": 1960,
             "parameters": {
               "collectionName": "Theme"
             },
@@ -1567,7 +2574,7 @@
             "children": [],
             "label": "The theme record, as CSS variables",
             "x": 530,
-            "y": 2320,
+            "y": 2080,
             "parameters": {
               "runOnChange-in-rows": true,
               "functionScript": "if (typeof document === 'undefined') return;\nconst rows = Inputs.rows || [];\nconst first = rows[0] ? rows[0].data || rows[0] : {};\nconst t = first.tokens || {};\nconst root = document.documentElement;\nif (t.colorPrimary) {\n  root.style.setProperty('--primary', t.colorPrimary);\n  root.style.setProperty('--primary-hover', 'color-mix(in srgb, ' + t.colorPrimary + ' 82%, black)');\n  root.style.setProperty('--ring', t.colorPrimary);\n  root.style.setProperty('--accent-foreground', t.colorPrimary);\n}\nif (t.colorOnPrimary) root.style.setProperty('--primary-foreground', t.colorOnPrimary);\nif (t.colorBackground) root.style.setProperty('--background', t.colorBackground);\nif (t.colorSurface) {\n  root.style.setProperty('--surface', t.colorSurface);\n  root.style.setProperty('--surface-raised', t.colorSurface);\n}\nif (t.colorText) root.style.setProperty('--foreground', t.colorText);\nif (t.colorTextSoft) root.style.setProperty('--muted-foreground', t.colorTextSoft);\nif (t.colorBorder) {\n  root.style.setProperty('--border', t.colorBorder);\n  root.style.setProperty('--border-subtle', 'color-mix(in srgb, ' + t.colorBorder + ' 45%, var(--background))');\n  root.style.setProperty('--border-strong', 'color-mix(in srgb, ' + t.colorBorder + ' 65%, var(--foreground))');\n}\nif (t.colorAccentSoft) root.style.setProperty('--accent', t.colorAccentSoft);\nif (t.radius) root.style.setProperty('--radius-md', t.radius);\nif (t.fontDisplay) root.style.setProperty('--font-serif', t.fontDisplay);\nif (t.fontUi) {\n  root.style.setProperty('--font-sans', t.fontUi);\n  root.style.fontFamily = t.fontUi;\n}\nif (t.measure) root.style.setProperty('--site-measure', t.measure);"
@@ -1589,7 +2596,7 @@
             "children": [],
             "label": "The document title",
             "x": 530,
-            "y": 2440,
+            "y": 2200,
             "parameters": {
               "functionScript": "if (!Inputs.title) return;\nif (!Noodl || !Noodl.SEO) return;\nNoodl.SEO.setTitle(Inputs.title);"
             },
@@ -1737,30 +2744,6 @@
             "fromProperty": "items",
             "toId": "sectionList",
             "toProperty": "items"
-          },
-          {
-            "fromId": "sections",
-            "fromProperty": "items",
-            "toId": "readSections",
-            "toProperty": "in-rows"
-          },
-          {
-            "fromId": "sections",
-            "fromProperty": "fetched",
-            "toId": "readSections",
-            "toProperty": "run"
-          },
-          {
-            "fromId": "readSections",
-            "fromProperty": "out-hasContact",
-            "toId": "contactWrap",
-            "toProperty": "mounted"
-          },
-          {
-            "fromId": "readPage",
-            "fromProperty": "out-slug",
-            "toId": "contact",
-            "toProperty": "pageSlug"
           },
           {
             "fromId": "theme",
@@ -2011,7 +2994,7 @@
             "dynamicports": []
           },
           {
-            "id": "inputs-4",
+            "id": "inputs-10",
             "type": "Component Inputs",
             "children": [],
             "label": "Which item is current",
@@ -2180,11 +3163,58 @@
             },
             "ports": [],
             "dynamicports": []
+          },
+          {
+            "id": "adminTheme",
+            "type": "DbCollection2",
+            "children": [],
+            "label": "Theme (one row)",
+            "x": 410,
+            "y": 1480,
+            "parameters": {
+              "collectionName": "Theme"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "applyTheme-2",
+            "type": "JavaScriptFunction",
+            "children": [],
+            "label": "The saved theme, on this document",
+            "x": 410,
+            "y": 1600,
+            "parameters": {
+              "runOnChange-in-rows": true,
+              "functionScript": "if (typeof document === 'undefined') return;\nconst rows = Inputs.rows || [];\nconst first = rows[0] ? rows[0].data || rows[0] : {};\nconst t = first.tokens || {};\nconst root = document.documentElement;\nif (t.colorPrimary) {\n  root.style.setProperty('--primary', t.colorPrimary);\n  root.style.setProperty('--primary-hover', 'color-mix(in srgb, ' + t.colorPrimary + ' 82%, black)');\n  root.style.setProperty('--ring', t.colorPrimary);\n  root.style.setProperty('--accent-foreground', t.colorPrimary);\n}\nif (t.colorOnPrimary) root.style.setProperty('--primary-foreground', t.colorOnPrimary);\nif (t.colorBackground) root.style.setProperty('--background', t.colorBackground);\nif (t.colorSurface) {\n  root.style.setProperty('--surface', t.colorSurface);\n  root.style.setProperty('--surface-raised', t.colorSurface);\n}\nif (t.colorText) root.style.setProperty('--foreground', t.colorText);\nif (t.colorTextSoft) root.style.setProperty('--muted-foreground', t.colorTextSoft);\nif (t.colorBorder) {\n  root.style.setProperty('--border', t.colorBorder);\n  root.style.setProperty('--border-subtle', 'color-mix(in srgb, ' + t.colorBorder + ' 45%, var(--background))');\n  root.style.setProperty('--border-strong', 'color-mix(in srgb, ' + t.colorBorder + ' 65%, var(--foreground))');\n}\nif (t.colorAccentSoft) root.style.setProperty('--accent', t.colorAccentSoft);\nif (t.radius) root.style.setProperty('--radius-md', t.radius);\nif (t.fontDisplay) root.style.setProperty('--font-serif', t.fontDisplay);\nif (t.fontUi) {\n  root.style.setProperty('--font-sans', t.fontUi);\n  root.style.fontFamily = t.fontUi;\n}\nif (t.measure) root.style.setProperty('--site-measure', t.measure);"
+            },
+            "ports": [
+              {
+                "name": "in-rows",
+                "displayName": "rows",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              }
+            ],
+            "dynamicports": []
           }
         ],
         "connections": [
           {
-            "fromId": "inputs-4",
+            "fromId": "adminTheme",
+            "fromProperty": "items",
+            "toId": "applyTheme-2",
+            "toProperty": "in-rows"
+          },
+          {
+            "fromId": "adminTheme",
+            "fromProperty": "fetched",
+            "toId": "applyTheme-2",
+            "toProperty": "run"
+          },
+          {
+            "fromId": "inputs-10",
             "fromProperty": "active",
             "toId": "navStyle",
             "toProperty": "in-active"
@@ -2361,16 +3391,60 @@
                     "dynamicports": []
                   },
                   {
+                    "id": "headingField",
+                    "type": "net.noodl.controls.textinput",
+                    "children": [],
+                    "label": "Heading",
+                    "x": 160,
+                    "y": 760,
+                    "parameters": {
+                      "useLabel": true,
+                      "label": "Heading"
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  },
+                  {
                     "id": "bodyField",
                     "type": "net.noodl.controls.textinput",
                     "children": [],
                     "label": "Body",
                     "x": 160,
-                    "y": 760,
+                    "y": 880,
                     "parameters": {
                       "useLabel": true,
                       "label": "Body",
                       "type": "textArea"
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  },
+                  {
+                    "id": "linkLabelField",
+                    "type": "net.noodl.controls.textinput",
+                    "children": [],
+                    "label": "Button label",
+                    "x": 160,
+                    "y": 1000,
+                    "parameters": {
+                      "useLabel": true,
+                      "label": "Button label",
+                      "mounted": false
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  },
+                  {
+                    "id": "linkTargetField",
+                    "type": "net.noodl.controls.textinput",
+                    "children": [],
+                    "label": "Button goes to",
+                    "x": 160,
+                    "y": 1120,
+                    "parameters": {
+                      "useLabel": true,
+                      "label": "Button goes to (a page slug, or an https:// address)",
+                      "mounted": false
                     },
                     "ports": [],
                     "dynamicports": []
@@ -2381,8 +3455,25 @@
                     "children": [],
                     "label": "Image preview",
                     "x": 160,
-                    "y": 880,
+                    "y": 1240,
                     "parameters": {},
+                    "ports": [],
+                    "dynamicports": []
+                  },
+                  {
+                    "id": "galleryCount",
+                    "type": "Text",
+                    "children": [],
+                    "label": "How many pictures",
+                    "x": 160,
+                    "y": 1360,
+                    "parameters": {
+                      "sizeMode": "contentHeight",
+                      "text": "",
+                      "mounted": false,
+                      "fontSize": "var(--text-sm)",
+                      "color": "var(--muted-foreground)"
+                    },
                     "ports": [],
                     "dynamicports": []
                   },
@@ -2392,9 +3483,23 @@
                     "children": [],
                     "label": "Choose image",
                     "x": 160,
-                    "y": 1000,
+                    "y": 1480,
                     "parameters": {
                       "label": "Choose image"
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  },
+                  {
+                    "id": "removeImageButton",
+                    "type": "net.noodl.controls.button",
+                    "children": [],
+                    "label": "Remove last picture",
+                    "x": 160,
+                    "y": 1600,
+                    "parameters": {
+                      "label": "Remove last picture",
+                      "mounted": false
                     },
                     "ports": [],
                     "dynamicports": []
@@ -2405,7 +3510,7 @@
                     "children": [],
                     "label": "Save",
                     "x": 160,
-                    "y": 1120,
+                    "y": 1720,
                     "parameters": {
                       "label": "Save"
                     },
@@ -2418,7 +3523,7 @@
                     "children": [],
                     "label": "Delete",
                     "x": 160,
-                    "y": 1240,
+                    "y": 1840,
                     "parameters": {
                       "label": "Delete"
                     },
@@ -2458,7 +3563,7 @@
             "dynamicports": []
           },
           {
-            "id": "inputs-5",
+            "id": "inputs-11",
             "type": "Component Inputs",
             "children": [],
             "label": "The section record",
@@ -2493,11 +3598,11 @@
             "id": "unpack-2",
             "type": "JavaScriptFunction",
             "children": [],
-            "label": "Read the body and image out of data",
+            "label": "Read this section out of data, and decide which controls it needs",
             "x": 470,
             "y": 760,
             "parameters": {
-              "functionScript": "const d = Inputs.data || {};\nOutputs.body = d.body || '';\nOutputs.image = (d.image && d.image.url) || '';"
+              "functionScript": "const d = Inputs.data || {};\nconst kind = Inputs.kind || 'richText';\nOutputs.heading = d.heading || '';\nOutputs.body = d.body || '';\nOutputs.linkLabel = d.linkLabel || '';\nOutputs.linkTarget = d.linkTarget || '';\nOutputs.image = (d.image && d.image.url) || '';\n\nconst images = Array.isArray(d.images) ? d.images : [];\nconst isGallery = kind === 'gallery';\nconst isCta = kind === 'cta';\nOutputs.isGallery = isGallery;\nOutputs.isCta = isCta;\nOutputs.canRemove = isGallery && images.length > 0;\nOutputs.count =\n  images.length === 0 ? 'No pictures yet' : images.length === 1 ? '1 picture' : images.length + ' pictures';"
             },
             "ports": [
               {
@@ -2508,6 +3613,20 @@
                 "group": "Inputs"
               },
               {
+                "name": "in-kind",
+                "displayName": "kind",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "out-heading",
+                "displayName": "heading",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              },
+              {
                 "name": "out-body",
                 "displayName": "body",
                 "plug": "output",
@@ -2515,8 +3634,50 @@
                 "group": "Outputs"
               },
               {
+                "name": "out-linkLabel",
+                "displayName": "linkLabel",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              },
+              {
+                "name": "out-linkTarget",
+                "displayName": "linkTarget",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              },
+              {
                 "name": "out-image",
                 "displayName": "image",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              },
+              {
+                "name": "out-isGallery",
+                "displayName": "isGallery",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              },
+              {
+                "name": "out-isCta",
+                "displayName": "isCta",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              },
+              {
+                "name": "out-canRemove",
+                "displayName": "canRemove",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              },
+              {
+                "name": "out-count",
+                "displayName": "count",
                 "plug": "output",
                 "type": "*",
                 "group": "Outputs"
@@ -2530,7 +3691,7 @@
             "children": [],
             "label": "Choose an image",
             "x": 470,
-            "y": 1000,
+            "y": 1480,
             "parameters": {
               "acceptedFileTypes": "image/*"
             },
@@ -2543,7 +3704,7 @@
             "children": [],
             "label": "Upload it",
             "x": 470,
-            "y": 1360,
+            "y": 1960,
             "parameters": {},
             "ports": [],
             "dynamicports": []
@@ -2558,8 +3719,10 @@
             "parameters": {
               "runOnChange-in-data": false,
               "runOnChange-in-body": false,
-              "runOnChange-in-image": false,
-              "functionScript": "if (Inputs.data === undefined) return;\nconst next = Object.assign({}, Inputs.data);\nif (Inputs.body !== undefined) next.body = Inputs.body;\nif (Inputs.image !== undefined && Inputs.image !== null) next.image = Inputs.image;\nOutputs.data = next;\nOutputs.built();"
+              "runOnChange-in-heading": false,
+              "runOnChange-in-linkLabel": false,
+              "runOnChange-in-linkTarget": false,
+              "functionScript": "if (Inputs.data === undefined) return;\nconst next = Object.assign({}, Inputs.data);\nif (Inputs.body !== undefined) next.body = Inputs.body;\nif (Inputs.heading !== undefined) next.heading = Inputs.heading;\nif (Inputs.linkLabel !== undefined) next.linkLabel = Inputs.linkLabel;\nif (Inputs.linkTarget !== undefined) next.linkTarget = Inputs.linkTarget;\nOutputs.data = next;\nOutputs.built();"
             },
             "ports": [
               {
@@ -2582,8 +3745,106 @@
                 "group": "Inputs"
               },
               {
+                "name": "in-heading",
+                "displayName": "heading",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "in-linkLabel",
+                "displayName": "linkLabel",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "in-linkTarget",
+                "displayName": "linkTarget",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "out-data",
+                "displayName": "data",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              }
+            ],
+            "dynamicports": []
+          },
+          {
+            "id": "absorb",
+            "type": "JavaScriptFunction",
+            "children": [],
+            "label": "Fold an uploaded picture into this section",
+            "x": 470,
+            "y": 2080,
+            "parameters": {
+              "runOnChange-in-data": false,
+              "runOnChange-in-kind": false,
+              "runOnChange-in-image": false,
+              "functionScript": "if (Inputs.data === undefined) return;\nconst file = Inputs.image;\nif (file === undefined || file === null) return;\nconst next = Object.assign({}, Inputs.data);\nif ((Inputs.kind || 'richText') === 'gallery') {\n  const images = Array.isArray(next.images) ? next.images.slice() : [];\n  images.push({ url: (file && file.url) || '' });\n  next.images = images;\n} else {\n  next.image = file;\n}\nOutputs.data = next;\nOutputs.built();"
+            },
+            "ports": [
+              {
+                "name": "out-built",
+                "plug": "output",
+                "type": "signal"
+              },
+              {
+                "name": "in-data",
+                "displayName": "data",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
                 "name": "in-image",
                 "displayName": "image",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "in-kind",
+                "displayName": "kind",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "out-data",
+                "displayName": "data",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              }
+            ],
+            "dynamicports": []
+          },
+          {
+            "id": "dropLast",
+            "type": "JavaScriptFunction",
+            "children": [],
+            "label": "Take back the last picture",
+            "x": 470,
+            "y": 1600,
+            "parameters": {
+              "runOnChange-in-data": false,
+              "functionScript": "if (Inputs.data === undefined) return;\nconst next = Object.assign({}, Inputs.data);\nconst images = Array.isArray(next.images) ? next.images.slice() : [];\nif (images.length === 0) return;\nimages.pop();\nnext.images = images;\nOutputs.data = next;\nOutputs.built();"
+            },
+            "ports": [
+              {
+                "name": "out-built",
+                "plug": "output",
+                "type": "signal"
+              },
+              {
+                "name": "in-data",
+                "displayName": "data",
                 "plug": "input",
                 "type": "*",
                 "group": "Inputs"
@@ -2604,7 +3865,7 @@
             "children": [],
             "label": "Save this section",
             "x": 470,
-            "y": 1480,
+            "y": 2200,
             "parameters": {
               "collectionName": "Section",
               "idSource": "explicit",
@@ -2619,7 +3880,7 @@
             "children": [],
             "label": "Delete this section",
             "x": 470,
-            "y": 1240,
+            "y": 1840,
             "parameters": {
               "collectionName": "Section",
               "idSource": "explicit"
@@ -2706,16 +3967,28 @@
         ],
         "connections": [
           {
-            "fromId": "inputs-5",
+            "fromId": "inputs-11",
             "fromProperty": "kind",
             "toId": "kindText",
             "toProperty": "text"
           },
           {
-            "fromId": "inputs-5",
+            "fromId": "inputs-11",
             "fromProperty": "data",
             "toId": "unpack-2",
             "toProperty": "in-data"
+          },
+          {
+            "fromId": "inputs-11",
+            "fromProperty": "kind",
+            "toId": "unpack-2",
+            "toProperty": "in-kind"
+          },
+          {
+            "fromId": "unpack-2",
+            "fromProperty": "out-heading",
+            "toId": "headingField",
+            "toProperty": "startValue"
           },
           {
             "fromId": "unpack-2",
@@ -2725,9 +3998,51 @@
           },
           {
             "fromId": "unpack-2",
+            "fromProperty": "out-linkLabel",
+            "toId": "linkLabelField",
+            "toProperty": "startValue"
+          },
+          {
+            "fromId": "unpack-2",
+            "fromProperty": "out-linkTarget",
+            "toId": "linkTargetField",
+            "toProperty": "startValue"
+          },
+          {
+            "fromId": "unpack-2",
             "fromProperty": "out-image",
             "toId": "preview",
             "toProperty": "src"
+          },
+          {
+            "fromId": "unpack-2",
+            "fromProperty": "out-isCta",
+            "toId": "linkLabelField",
+            "toProperty": "mounted"
+          },
+          {
+            "fromId": "unpack-2",
+            "fromProperty": "out-isCta",
+            "toId": "linkTargetField",
+            "toProperty": "mounted"
+          },
+          {
+            "fromId": "unpack-2",
+            "fromProperty": "out-isGallery",
+            "toId": "galleryCount",
+            "toProperty": "mounted"
+          },
+          {
+            "fromId": "unpack-2",
+            "fromProperty": "out-count",
+            "toId": "galleryCount",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "unpack-2",
+            "fromProperty": "out-canRemove",
+            "toId": "removeImageButton",
+            "toProperty": "mounted"
           },
           {
             "fromId": "pickButton",
@@ -2748,16 +4063,16 @@
             "toProperty": "upload"
           },
           {
-            "fromId": "upload",
-            "fromProperty": "cloudFile",
-            "toId": "merge",
-            "toProperty": "in-image"
-          },
-          {
-            "fromId": "inputs-5",
+            "fromId": "inputs-11",
             "fromProperty": "data",
             "toId": "merge",
             "toProperty": "in-data"
+          },
+          {
+            "fromId": "headingField",
+            "fromProperty": "onTextChanged",
+            "toId": "merge",
+            "toProperty": "in-heading"
           },
           {
             "fromId": "bodyField",
@@ -2766,19 +4081,61 @@
             "toProperty": "in-body"
           },
           {
+            "fromId": "linkLabelField",
+            "fromProperty": "onTextChanged",
+            "toId": "merge",
+            "toProperty": "in-linkLabel"
+          },
+          {
+            "fromId": "linkTargetField",
+            "fromProperty": "onTextChanged",
+            "toId": "merge",
+            "toProperty": "in-linkTarget"
+          },
+          {
             "fromId": "saveButton",
             "fromProperty": "onClick",
             "toId": "merge",
             "toProperty": "run"
           },
           {
+            "fromId": "inputs-11",
+            "fromProperty": "data",
+            "toId": "absorb",
+            "toProperty": "in-data"
+          },
+          {
+            "fromId": "inputs-11",
+            "fromProperty": "kind",
+            "toId": "absorb",
+            "toProperty": "in-kind"
+          },
+          {
+            "fromId": "upload",
+            "fromProperty": "cloudFile",
+            "toId": "absorb",
+            "toProperty": "in-image"
+          },
+          {
             "fromId": "upload",
             "fromProperty": "done",
-            "toId": "merge",
+            "toId": "absorb",
             "toProperty": "run"
           },
           {
-            "fromId": "inputs-5",
+            "fromId": "inputs-11",
+            "fromProperty": "data",
+            "toId": "dropLast",
+            "toProperty": "in-data"
+          },
+          {
+            "fromId": "removeImageButton",
+            "fromProperty": "onClick",
+            "toId": "dropLast",
+            "toProperty": "run"
+          },
+          {
+            "fromId": "inputs-11",
             "fromProperty": "id",
             "toId": "save",
             "toProperty": "modelId"
@@ -2796,7 +4153,31 @@
             "toProperty": "store"
           },
           {
-            "fromId": "inputs-5",
+            "fromId": "absorb",
+            "fromProperty": "out-data",
+            "toId": "save",
+            "toProperty": "prop-data"
+          },
+          {
+            "fromId": "absorb",
+            "fromProperty": "out-built",
+            "toId": "save",
+            "toProperty": "store"
+          },
+          {
+            "fromId": "dropLast",
+            "fromProperty": "out-data",
+            "toId": "save",
+            "toProperty": "prop-data"
+          },
+          {
+            "fromId": "dropLast",
+            "fromProperty": "out-built",
+            "toId": "save",
+            "toProperty": "store"
+          },
+          {
+            "fromId": "inputs-11",
             "fromProperty": "id",
             "toId": "remove",
             "toProperty": "modelId"
@@ -2880,7 +4261,7 @@
                 "type": "/Admin/Shell",
                 "children": [
                   {
-                    "id": "body-2",
+                    "id": "body-4",
                     "type": "Group",
                     "children": [
                       {
@@ -2888,7 +4269,7 @@
                         "type": "Group",
                         "children": [
                           {
-                            "id": "heading-2",
+                            "id": "heading-7",
                             "type": "Text",
                             "children": [],
                             "label": "Heading",
@@ -3319,7 +4700,7 @@
             "y": 2560,
             "parameters": {
               "type": "json",
-              "json": "[{\"Label\":\"Hero\",\"Value\":\"hero\"},{\"Label\":\"Rich text\",\"Value\":\"richText\"},{\"Label\":\"Gallery\",\"Value\":\"gallery\"},{\"Label\":\"Contact\",\"Value\":\"contact\"},{\"Label\":\"Call to action\",\"Value\":\"cta\"}]"
+              "json": "[{\"Label\":\"Hero\",\"Value\":\"hero\"},{\"Label\":\"Gallery\",\"Value\":\"gallery\"},{\"Label\":\"Call to action\",\"Value\":\"cta\"},{\"Label\":\"Rich text\",\"Value\":\"richText\"},{\"Label\":\"Contact\",\"Value\":\"contact\"}]"
             },
             "ports": [],
             "dynamicports": []
@@ -4081,7 +5462,7 @@
           {
             "fromId": "headline",
             "fromProperty": "out-headline",
-            "toId": "heading-2",
+            "toId": "heading-7",
             "toProperty": "text"
           },
           {
@@ -4454,7 +5835,7 @@
             "dynamicports": []
           },
           {
-            "id": "inputs-6",
+            "id": "inputs-12",
             "type": "Component Inputs",
             "children": [],
             "label": "The page record",
@@ -4603,19 +5984,19 @@
         ],
         "connections": [
           {
-            "fromId": "inputs-6",
+            "fromId": "inputs-12",
             "fromProperty": "title",
             "toId": "rowTitle",
             "toProperty": "text"
           },
           {
-            "fromId": "inputs-6",
+            "fromId": "inputs-12",
             "fromProperty": "slug",
             "toId": "rowSlug",
             "toProperty": "text"
           },
           {
-            "fromId": "inputs-6",
+            "fromId": "inputs-12",
             "fromProperty": "published",
             "toId": "status-2",
             "toProperty": "in-published"
@@ -4639,25 +6020,25 @@
             "toProperty": "color"
           },
           {
-            "fromId": "inputs-6",
+            "fromId": "inputs-12",
             "fromProperty": "id",
             "toId": "publish",
             "toProperty": "in-pageId"
           },
           {
-            "fromId": "inputs-6",
+            "fromId": "inputs-12",
             "fromProperty": "id",
             "toId": "unpublish",
             "toProperty": "in-pageId"
           },
           {
-            "fromId": "inputs-6",
+            "fromId": "inputs-12",
             "fromProperty": "id",
             "toId": "duplicate",
             "toProperty": "in-pageId"
           },
           {
-            "fromId": "inputs-6",
+            "fromId": "inputs-12",
             "fromProperty": "id",
             "toId": "goEdit",
             "toProperty": "pm-pageId"
@@ -4819,6 +6200,107 @@
       }
     },
     {
+      "name": "/Admin/PresetChip",
+      "graph": {
+        "roots": [
+          {
+            "id": "chip",
+            "type": "net.noodl.controls.button",
+            "children": [],
+            "label": "Preset chip",
+            "x": 40,
+            "y": 40,
+            "parameters": {
+              "sizeMode": "contentSize",
+              "label": "Preset",
+              "backgroundColor": "var(--surface)",
+              "color": "var(--foreground)",
+              "fontFamily": "var(--font-sans)",
+              "fontSize": "var(--text-sm)",
+              "fontWeight": "var(--font-semibold)",
+              "borderStyle": "solid",
+              "borderWidth": "var(--border-1)",
+              "borderColor": "var(--border)",
+              "borderRadius": "var(--radius-md)",
+              "paddingTop": "var(--space-2)",
+              "paddingBottom": "var(--space-2)",
+              "paddingLeft": "var(--space-4)",
+              "paddingRight": "var(--space-4)"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "inputs-13",
+            "type": "Component Inputs",
+            "children": [],
+            "label": "Which preset this chip is",
+            "x": 290,
+            "y": 40,
+            "parameters": {},
+            "ports": [
+              {
+                "name": "name",
+                "plug": "output",
+                "type": "string"
+              },
+              {
+                "name": "label",
+                "plug": "output",
+                "type": "string"
+              }
+            ],
+            "dynamicports": []
+          },
+          {
+            "id": "outputs-3",
+            "type": "Component Outputs",
+            "children": [],
+            "label": "The pick",
+            "x": 290,
+            "y": 160,
+            "parameters": {},
+            "ports": [
+              {
+                "name": "name",
+                "plug": "input",
+                "type": "string"
+              },
+              {
+                "name": "Picked",
+                "plug": "input",
+                "type": "signal"
+              }
+            ],
+            "dynamicports": []
+          }
+        ],
+        "connections": [
+          {
+            "fromId": "inputs-13",
+            "fromProperty": "label",
+            "toId": "chip",
+            "toProperty": "label"
+          },
+          {
+            "fromId": "inputs-13",
+            "fromProperty": "name",
+            "toId": "outputs-3",
+            "toProperty": "name"
+          },
+          {
+            "fromId": "chip",
+            "fromProperty": "onClick",
+            "toId": "outputs-3",
+            "toProperty": "Picked"
+          }
+        ],
+        "visualRoots": [
+          "chip"
+        ]
+      }
+    },
+    {
       "name": "/Pages/ThemeEditor",
       "graph": {
         "roots": [
@@ -4835,152 +6317,709 @@
                     "type": "Group",
                     "children": [
                       {
-                        "id": "heading-3",
+                        "id": "heading-8",
                         "type": "Text",
                         "children": [],
                         "label": "Heading",
                         "x": 220,
                         "y": 400,
                         "parameters": {
+                          "sizeMode": "contentHeight",
                           "text": "Theme and settings",
-                          "fontWeight": "var(--font-bold)"
+                          "fontFamily": "var(--font-serif)",
+                          "fontSize": "var(--text-2xl)",
+                          "fontWeight": "var(--font-bold)",
+                          "color": "var(--foreground)"
                         },
                         "ports": [],
                         "dynamicports": []
                       },
                       {
-                        "id": "siteNameField",
-                        "type": "net.noodl.controls.textinput",
-                        "children": [],
-                        "label": "Site name",
+                        "id": "presetsCard",
+                        "type": "Group",
+                        "children": [
+                          {
+                            "id": "presetsTitle",
+                            "type": "Text",
+                            "children": [],
+                            "label": "Start from a look",
+                            "x": 280,
+                            "y": 640,
+                            "parameters": {
+                              "sizeMode": "contentHeight",
+                              "text": "Start from a look",
+                              "fontFamily": "var(--font-sans)",
+                              "fontSize": "var(--text-sm)",
+                              "fontWeight": "var(--font-bold)",
+                              "letterSpacing": "var(--tracking-wide)",
+                              "textTransform": "uppercase",
+                              "color": "var(--muted-foreground)"
+                            },
+                            "ports": [],
+                            "dynamicports": []
+                          },
+                          {
+                            "id": "presetsHint",
+                            "type": "Text",
+                            "children": [],
+                            "label": "Presets hint",
+                            "x": 280,
+                            "y": 760,
+                            "parameters": {
+                              "sizeMode": "contentHeight",
+                              "text": "Picking one fills every field below, including the ones this screen does not show. Nothing is saved until you press Save theme.",
+                              "fontFamily": "var(--font-sans)",
+                              "fontSize": "var(--text-sm)",
+                              "lineHeight": "var(--leading-relaxed)",
+                              "color": "var(--muted-foreground)"
+                            },
+                            "ports": [],
+                            "dynamicports": []
+                          },
+                          {
+                            "id": "presetsRow",
+                            "type": "Group",
+                            "children": [
+                              {
+                                "id": "presetStudio",
+                                "type": "/Admin/PresetChip",
+                                "children": [],
+                                "label": "Studio",
+                                "x": 340,
+                                "y": 1000,
+                                "parameters": {
+                                  "name": "studio",
+                                  "label": "Studio"
+                                },
+                                "ports": [],
+                                "dynamicports": []
+                              },
+                              {
+                                "id": "presetPress",
+                                "type": "/Admin/PresetChip",
+                                "children": [],
+                                "label": "Press",
+                                "x": 340,
+                                "y": 1120,
+                                "parameters": {
+                                  "name": "press",
+                                  "label": "Press"
+                                },
+                                "ports": [],
+                                "dynamicports": []
+                              },
+                              {
+                                "id": "presetNight",
+                                "type": "/Admin/PresetChip",
+                                "children": [],
+                                "label": "Night",
+                                "x": 340,
+                                "y": 1240,
+                                "parameters": {
+                                  "name": "night",
+                                  "label": "Night"
+                                },
+                                "ports": [],
+                                "dynamicports": []
+                              }
+                            ],
+                            "label": "Presets row",
+                            "x": 280,
+                            "y": 880,
+                            "parameters": {
+                              "sizeMode": "contentHeight",
+                              "flexDirection": "row",
+                              "columnGap": "var(--space-3)"
+                            },
+                            "ports": [],
+                            "dynamicports": []
+                          }
+                        ],
+                        "label": "Presets card",
                         "x": 220,
                         "y": 520,
                         "parameters": {
-                          "useLabel": true,
-                          "label": "Site name"
+                          "sizeMode": "contentHeight",
+                          "flexDirection": "column",
+                          "rowGap": "var(--space-3)",
+                          "backgroundColor": "var(--surface)",
+                          "borderStyle": "solid",
+                          "borderWidth": "var(--border-1)",
+                          "borderColor": "var(--border)",
+                          "borderRadius": "var(--radius-md)",
+                          "paddingTop": "var(--space-5)",
+                          "paddingBottom": "var(--space-5)",
+                          "paddingLeft": "var(--space-5)",
+                          "paddingRight": "var(--space-5)"
                         },
                         "ports": [],
                         "dynamicports": []
                       },
                       {
-                        "id": "homeSlugField",
-                        "type": "net.noodl.controls.textinput",
-                        "children": [],
-                        "label": "Home slug",
-                        "x": 220,
-                        "y": 640,
-                        "parameters": {
-                          "useLabel": true,
-                          "label": "Home page slug"
-                        },
-                        "ports": [],
-                        "dynamicports": []
-                      },
-                      {
-                        "id": "settingsButton",
-                        "type": "net.noodl.controls.button",
-                        "children": [],
-                        "label": "Save settings",
-                        "x": 220,
-                        "y": 760,
-                        "parameters": {
-                          "label": "Save settings"
-                        },
-                        "ports": [],
-                        "dynamicports": []
-                      },
-                      {
-                        "id": "tokensHeading",
-                        "type": "Text",
-                        "children": [],
-                        "label": "Tokens heading",
-                        "x": 220,
-                        "y": 880,
-                        "parameters": {
-                          "text": "Theme",
-                          "fontWeight": "var(--font-semibold)"
-                        },
-                        "ports": [],
-                        "dynamicports": []
-                      },
-                      {
-                        "id": "primaryField",
-                        "type": "net.noodl.controls.textinput",
-                        "children": [],
-                        "label": "Primary colour",
-                        "x": 220,
-                        "y": 1000,
-                        "parameters": {
-                          "useLabel": true,
-                          "label": "Primary colour"
-                        },
-                        "ports": [],
-                        "dynamicports": []
-                      },
-                      {
-                        "id": "backgroundField",
-                        "type": "net.noodl.controls.textinput",
-                        "children": [],
-                        "label": "Background colour",
-                        "x": 220,
-                        "y": 1120,
-                        "parameters": {
-                          "useLabel": true,
-                          "label": "Background colour"
-                        },
-                        "ports": [],
-                        "dynamicports": []
-                      },
-                      {
-                        "id": "textField",
-                        "type": "net.noodl.controls.textinput",
-                        "children": [],
-                        "label": "Text colour",
-                        "x": 220,
-                        "y": 1240,
-                        "parameters": {
-                          "useLabel": true,
-                          "label": "Text colour"
-                        },
-                        "ports": [],
-                        "dynamicports": []
-                      },
-                      {
-                        "id": "fontField",
-                        "type": "net.noodl.controls.textinput",
-                        "children": [],
-                        "label": "Font family",
+                        "id": "columns",
+                        "type": "Group",
+                        "children": [
+                          {
+                            "id": "fieldsCol",
+                            "type": "Group",
+                            "children": [
+                              {
+                                "id": "siteCard",
+                                "type": "Group",
+                                "children": [
+                                  {
+                                    "id": "siteTitle",
+                                    "type": "Text",
+                                    "children": [],
+                                    "label": "Site",
+                                    "x": 400,
+                                    "y": 1720,
+                                    "parameters": {
+                                      "sizeMode": "contentHeight",
+                                      "text": "Site",
+                                      "fontFamily": "var(--font-sans)",
+                                      "fontSize": "var(--text-sm)",
+                                      "fontWeight": "var(--font-bold)",
+                                      "letterSpacing": "var(--tracking-wide)",
+                                      "textTransform": "uppercase",
+                                      "color": "var(--muted-foreground)"
+                                    },
+                                    "ports": [],
+                                    "dynamicports": []
+                                  },
+                                  {
+                                    "id": "siteNameField",
+                                    "type": "net.noodl.controls.textinput",
+                                    "children": [],
+                                    "label": "Site name",
+                                    "x": 400,
+                                    "y": 1840,
+                                    "parameters": {
+                                      "useLabel": true,
+                                      "label": "Site name",
+                                      "placeholder": "The name in the header and the tab"
+                                    },
+                                    "ports": [],
+                                    "dynamicports": []
+                                  },
+                                  {
+                                    "id": "homeSlugField",
+                                    "type": "net.noodl.controls.textinput",
+                                    "children": [],
+                                    "label": "Home slug",
+                                    "x": 400,
+                                    "y": 1960,
+                                    "parameters": {
+                                      "useLabel": true,
+                                      "label": "Home page slug",
+                                      "placeholder": "home"
+                                    },
+                                    "ports": [],
+                                    "dynamicports": []
+                                  },
+                                  {
+                                    "id": "settingsButton",
+                                    "type": "net.noodl.controls.button",
+                                    "children": [],
+                                    "label": "Save settings",
+                                    "x": 400,
+                                    "y": 2080,
+                                    "parameters": {
+                                      "label": "Save settings"
+                                    },
+                                    "ports": [],
+                                    "dynamicports": []
+                                  }
+                                ],
+                                "label": "Site card",
+                                "x": 340,
+                                "y": 1600,
+                                "parameters": {
+                                  "sizeMode": "contentHeight",
+                                  "flexDirection": "column",
+                                  "rowGap": "var(--space-3)",
+                                  "backgroundColor": "var(--surface)",
+                                  "borderStyle": "solid",
+                                  "borderWidth": "var(--border-1)",
+                                  "borderColor": "var(--border)",
+                                  "borderRadius": "var(--radius-md)",
+                                  "paddingTop": "var(--space-5)",
+                                  "paddingBottom": "var(--space-5)",
+                                  "paddingLeft": "var(--space-5)",
+                                  "paddingRight": "var(--space-5)"
+                                },
+                                "ports": [],
+                                "dynamicports": []
+                              },
+                              {
+                                "id": "colourCard",
+                                "type": "Group",
+                                "children": [
+                                  {
+                                    "id": "colourTitle",
+                                    "type": "Text",
+                                    "children": [],
+                                    "label": "Colour",
+                                    "x": 400,
+                                    "y": 2320,
+                                    "parameters": {
+                                      "sizeMode": "contentHeight",
+                                      "text": "Colour",
+                                      "fontFamily": "var(--font-sans)",
+                                      "fontSize": "var(--text-sm)",
+                                      "fontWeight": "var(--font-bold)",
+                                      "letterSpacing": "var(--tracking-wide)",
+                                      "textTransform": "uppercase",
+                                      "color": "var(--muted-foreground)"
+                                    },
+                                    "ports": [],
+                                    "dynamicports": []
+                                  },
+                                  {
+                                    "id": "primaryField",
+                                    "type": "net.noodl.controls.textinput",
+                                    "children": [],
+                                    "label": "Primary colour",
+                                    "x": 400,
+                                    "y": 2440,
+                                    "parameters": {
+                                      "useLabel": true,
+                                      "label": "Primary colour",
+                                      "placeholder": "The brand colour — buttons, links, the hero",
+                                      "runOnChange-startValue": true
+                                    },
+                                    "ports": [],
+                                    "dynamicports": []
+                                  },
+                                  {
+                                    "id": "backgroundField",
+                                    "type": "net.noodl.controls.textinput",
+                                    "children": [],
+                                    "label": "Background colour",
+                                    "x": 400,
+                                    "y": 2560,
+                                    "parameters": {
+                                      "useLabel": true,
+                                      "label": "Background colour",
+                                      "placeholder": "The page ground",
+                                      "runOnChange-startValue": true
+                                    },
+                                    "ports": [],
+                                    "dynamicports": []
+                                  },
+                                  {
+                                    "id": "textField",
+                                    "type": "net.noodl.controls.textinput",
+                                    "children": [],
+                                    "label": "Text colour",
+                                    "x": 400,
+                                    "y": 2680,
+                                    "parameters": {
+                                      "useLabel": true,
+                                      "label": "Text colour",
+                                      "placeholder": "Body text",
+                                      "runOnChange-startValue": true
+                                    },
+                                    "ports": [],
+                                    "dynamicports": []
+                                  }
+                                ],
+                                "label": "Colour card",
+                                "x": 340,
+                                "y": 2200,
+                                "parameters": {
+                                  "sizeMode": "contentHeight",
+                                  "flexDirection": "column",
+                                  "rowGap": "var(--space-3)",
+                                  "backgroundColor": "var(--surface)",
+                                  "borderStyle": "solid",
+                                  "borderWidth": "var(--border-1)",
+                                  "borderColor": "var(--border)",
+                                  "borderRadius": "var(--radius-md)",
+                                  "paddingTop": "var(--space-5)",
+                                  "paddingBottom": "var(--space-5)",
+                                  "paddingLeft": "var(--space-5)",
+                                  "paddingRight": "var(--space-5)"
+                                },
+                                "ports": [],
+                                "dynamicports": []
+                              },
+                              {
+                                "id": "typeCard",
+                                "type": "Group",
+                                "children": [
+                                  {
+                                    "id": "typeTitle",
+                                    "type": "Text",
+                                    "children": [],
+                                    "label": "Type & shape",
+                                    "x": 400,
+                                    "y": 2920,
+                                    "parameters": {
+                                      "sizeMode": "contentHeight",
+                                      "text": "Type & shape",
+                                      "fontFamily": "var(--font-sans)",
+                                      "fontSize": "var(--text-sm)",
+                                      "fontWeight": "var(--font-bold)",
+                                      "letterSpacing": "var(--tracking-wide)",
+                                      "textTransform": "uppercase",
+                                      "color": "var(--muted-foreground)"
+                                    },
+                                    "ports": [],
+                                    "dynamicports": []
+                                  },
+                                  {
+                                    "id": "fontField",
+                                    "type": "net.noodl.controls.textinput",
+                                    "children": [],
+                                    "label": "Heading font",
+                                    "x": 400,
+                                    "y": 3040,
+                                    "parameters": {
+                                      "useLabel": true,
+                                      "label": "Heading font",
+                                      "placeholder": "Georgia, serif",
+                                      "runOnChange-startValue": true
+                                    },
+                                    "ports": [],
+                                    "dynamicports": []
+                                  },
+                                  {
+                                    "id": "radiusField",
+                                    "type": "net.noodl.controls.textinput",
+                                    "children": [],
+                                    "label": "Corner rounding",
+                                    "x": 400,
+                                    "y": 3160,
+                                    "parameters": {
+                                      "useLabel": true,
+                                      "label": "Corner rounding",
+                                      "placeholder": "6px",
+                                      "runOnChange-startValue": true
+                                    },
+                                    "ports": [],
+                                    "dynamicports": []
+                                  }
+                                ],
+                                "label": "Type and shape card",
+                                "x": 340,
+                                "y": 2800,
+                                "parameters": {
+                                  "sizeMode": "contentHeight",
+                                  "flexDirection": "column",
+                                  "rowGap": "var(--space-3)",
+                                  "backgroundColor": "var(--surface)",
+                                  "borderStyle": "solid",
+                                  "borderWidth": "var(--border-1)",
+                                  "borderColor": "var(--border)",
+                                  "borderRadius": "var(--radius-md)",
+                                  "paddingTop": "var(--space-5)",
+                                  "paddingBottom": "var(--space-5)",
+                                  "paddingLeft": "var(--space-5)",
+                                  "paddingRight": "var(--space-5)"
+                                },
+                                "ports": [],
+                                "dynamicports": []
+                              },
+                              {
+                                "id": "actions",
+                                "type": "Group",
+                                "children": [
+                                  {
+                                    "id": "themeButton",
+                                    "type": "net.noodl.controls.button",
+                                    "children": [],
+                                    "label": "Save theme",
+                                    "x": 400,
+                                    "y": 3400,
+                                    "parameters": {
+                                      "label": "Save theme"
+                                    },
+                                    "ports": [],
+                                    "dynamicports": []
+                                  },
+                                  {
+                                    "id": "backButton-2",
+                                    "type": "net.noodl.controls.button",
+                                    "children": [],
+                                    "label": "Back",
+                                    "x": 400,
+                                    "y": 3520,
+                                    "parameters": {
+                                      "label": "Back to pages"
+                                    },
+                                    "ports": [],
+                                    "dynamicports": []
+                                  }
+                                ],
+                                "label": "Theme actions",
+                                "x": 340,
+                                "y": 3280,
+                                "parameters": {
+                                  "sizeMode": "contentHeight",
+                                  "flexDirection": "row",
+                                  "columnGap": "var(--space-3)"
+                                },
+                                "ports": [],
+                                "dynamicports": []
+                              }
+                            ],
+                            "label": "Fields column",
+                            "x": 280,
+                            "y": 1480,
+                            "parameters": {
+                              "flexDirection": "column",
+                              "rowGap": "var(--space-4)"
+                            },
+                            "ports": [],
+                            "dynamicports": []
+                          },
+                          {
+                            "id": "previewCol",
+                            "type": "Group",
+                            "children": [
+                              {
+                                "id": "previewTitle",
+                                "type": "Text",
+                                "children": [],
+                                "label": "Live preview",
+                                "x": 340,
+                                "y": 3760,
+                                "parameters": {
+                                  "sizeMode": "contentHeight",
+                                  "text": "Live preview",
+                                  "fontFamily": "var(--font-sans)",
+                                  "fontSize": "var(--text-sm)",
+                                  "fontWeight": "var(--font-bold)",
+                                  "letterSpacing": "var(--tracking-wide)",
+                                  "textTransform": "uppercase",
+                                  "color": "var(--muted-foreground)"
+                                },
+                                "ports": [],
+                                "dynamicports": []
+                              },
+                              {
+                                "id": "previewScope",
+                                "type": "Group",
+                                "children": [
+                                  {
+                                    "id": "previewHero",
+                                    "type": "Group",
+                                    "children": [
+                                      {
+                                        "id": "previewHeroTitle",
+                                        "type": "Text",
+                                        "children": [],
+                                        "label": "Preview hero title",
+                                        "x": 460,
+                                        "y": 4120,
+                                        "parameters": {
+                                          "sizeMode": "contentHeight",
+                                          "text": "Your site, in this look",
+                                          "fontFamily": "var(--font-serif)",
+                                          "fontSize": "var(--text-xl)",
+                                          "fontWeight": "var(--font-bold)",
+                                          "color": "var(--primary-foreground)"
+                                        },
+                                        "ports": [],
+                                        "dynamicports": []
+                                      },
+                                      {
+                                        "id": "previewHeroSub",
+                                        "type": "Text",
+                                        "children": [],
+                                        "label": "Preview hero subtitle",
+                                        "x": 460,
+                                        "y": 4240,
+                                        "parameters": {
+                                          "sizeMode": "contentHeight",
+                                          "text": "The hero band, the type and the corners follow the fields on the left.",
+                                          "fontFamily": "var(--font-sans)",
+                                          "fontSize": "var(--text-sm)",
+                                          "lineHeight": "var(--leading-relaxed)",
+                                          "color": "var(--primary-foreground)"
+                                        },
+                                        "ports": [],
+                                        "dynamicports": []
+                                      }
+                                    ],
+                                    "label": "Preview hero",
+                                    "x": 400,
+                                    "y": 4000,
+                                    "parameters": {
+                                      "sizeMode": "contentHeight",
+                                      "flexDirection": "column",
+                                      "rowGap": "var(--space-2)",
+                                      "backgroundColor": "var(--primary)",
+                                      "borderRadius": "var(--radius-md)",
+                                      "paddingTop": "var(--space-6)",
+                                      "paddingBottom": "var(--space-6)",
+                                      "paddingLeft": "var(--space-5)",
+                                      "paddingRight": "var(--space-5)"
+                                    },
+                                    "ports": [],
+                                    "dynamicports": []
+                                  },
+                                  {
+                                    "id": "previewCard",
+                                    "type": "Group",
+                                    "children": [
+                                      {
+                                        "id": "previewCardTitle",
+                                        "type": "Text",
+                                        "children": [],
+                                        "label": "Preview card title",
+                                        "x": 460,
+                                        "y": 4480,
+                                        "parameters": {
+                                          "sizeMode": "contentHeight",
+                                          "text": "A section on a page",
+                                          "fontFamily": "var(--font-serif)",
+                                          "fontSize": "var(--text-lg)",
+                                          "fontWeight": "var(--font-semibold)",
+                                          "color": "var(--foreground)"
+                                        },
+                                        "ports": [],
+                                        "dynamicports": []
+                                      },
+                                      {
+                                        "id": "previewCardBody",
+                                        "type": "Text",
+                                        "children": [],
+                                        "label": "Preview card body",
+                                        "x": 460,
+                                        "y": 4600,
+                                        "parameters": {
+                                          "sizeMode": "contentHeight",
+                                          "text": "Body text in the reading colour, on the surface colour, inside the border colour.",
+                                          "fontFamily": "var(--font-sans)",
+                                          "fontSize": "var(--text-base)",
+                                          "lineHeight": "var(--leading-relaxed)",
+                                          "color": "var(--muted-foreground)"
+                                        },
+                                        "ports": [],
+                                        "dynamicports": []
+                                      },
+                                      {
+                                        "id": "previewButton-2",
+                                        "type": "Group",
+                                        "children": [
+                                          {
+                                            "id": "previewButtonLabel",
+                                            "type": "Text",
+                                            "children": [],
+                                            "label": "Preview button label",
+                                            "x": 520,
+                                            "y": 4840,
+                                            "parameters": {
+                                              "sizeMode": "contentSize",
+                                              "text": "Get in touch",
+                                              "fontFamily": "var(--font-sans)",
+                                              "fontSize": "var(--text-sm)",
+                                              "fontWeight": "var(--font-semibold)",
+                                              "color": "var(--primary-foreground)"
+                                            },
+                                            "ports": [],
+                                            "dynamicports": []
+                                          }
+                                        ],
+                                        "label": "Preview button",
+                                        "x": 460,
+                                        "y": 4720,
+                                        "parameters": {
+                                          "sizeMode": "contentSize",
+                                          "flexDirection": "row",
+                                          "alignItems": "center",
+                                          "backgroundColor": "var(--primary)",
+                                          "borderRadius": "var(--radius-md)",
+                                          "paddingTop": "var(--space-2)",
+                                          "paddingBottom": "var(--space-2)",
+                                          "paddingLeft": "var(--space-4)",
+                                          "paddingRight": "var(--space-4)"
+                                        },
+                                        "ports": [],
+                                        "dynamicports": []
+                                      }
+                                    ],
+                                    "label": "Preview card",
+                                    "x": 400,
+                                    "y": 4360,
+                                    "parameters": {
+                                      "sizeMode": "contentHeight",
+                                      "flexDirection": "column",
+                                      "rowGap": "var(--space-3)",
+                                      "backgroundColor": "var(--surface)",
+                                      "borderStyle": "solid",
+                                      "borderWidth": "var(--border-1)",
+                                      "borderColor": "var(--border)",
+                                      "borderRadius": "var(--radius-md)",
+                                      "paddingTop": "var(--space-5)",
+                                      "paddingBottom": "var(--space-5)",
+                                      "paddingLeft": "var(--space-5)",
+                                      "paddingRight": "var(--space-5)"
+                                    },
+                                    "ports": [],
+                                    "dynamicports": []
+                                  }
+                                ],
+                                "label": "Preview scope",
+                                "x": 340,
+                                "y": 3880,
+                                "parameters": {
+                                  "sizeMode": "contentHeight",
+                                  "cssClassName": "ndl-theme-preview",
+                                  "flexDirection": "column",
+                                  "rowGap": "var(--space-4)",
+                                  "backgroundColor": "var(--background)",
+                                  "borderStyle": "solid",
+                                  "borderWidth": "var(--border-1)",
+                                  "borderColor": "var(--border)",
+                                  "borderRadius": "var(--radius-md)",
+                                  "paddingTop": "var(--space-5)",
+                                  "paddingBottom": "var(--space-5)",
+                                  "paddingLeft": "var(--space-5)",
+                                  "paddingRight": "var(--space-5)"
+                                },
+                                "ports": [],
+                                "dynamicports": []
+                              },
+                              {
+                                "id": "previewNote",
+                                "type": "Text",
+                                "children": [],
+                                "label": "Preview note",
+                                "x": 340,
+                                "y": 4960,
+                                "parameters": {
+                                  "sizeMode": "contentHeight",
+                                  "text": "Unsaved. The public site changes when you press Save theme.",
+                                  "fontFamily": "var(--font-sans)",
+                                  "fontSize": "var(--text-sm)",
+                                  "color": "var(--muted-foreground)"
+                                },
+                                "ports": [],
+                                "dynamicports": []
+                              }
+                            ],
+                            "label": "Preview column",
+                            "x": 280,
+                            "y": 3640,
+                            "parameters": {
+                              "flexDirection": "column",
+                              "rowGap": "var(--space-3)"
+                            },
+                            "ports": [],
+                            "dynamicports": []
+                          }
+                        ],
+                        "label": "Fields and preview",
                         "x": 220,
                         "y": 1360,
                         "parameters": {
-                          "useLabel": true,
-                          "label": "Font family"
-                        },
-                        "ports": [],
-                        "dynamicports": []
-                      },
-                      {
-                        "id": "themeButton",
-                        "type": "net.noodl.controls.button",
-                        "children": [],
-                        "label": "Save theme",
-                        "x": 220,
-                        "y": 1480,
-                        "parameters": {
-                          "label": "Save theme"
-                        },
-                        "ports": [],
-                        "dynamicports": []
-                      },
-                      {
-                        "id": "backButton-2",
-                        "type": "net.noodl.controls.button",
-                        "children": [],
-                        "label": "Back",
-                        "x": 220,
-                        "y": 1600,
-                        "parameters": {
-                          "label": "Back to pages"
+                          "sizeMode": "contentHeight",
+                          "flexDirection": "row",
+                          "columnGap": "var(--space-6)",
+                          "alignItems": "flex-start"
                         },
                         "ports": [],
                         "dynamicports": []
@@ -4992,7 +7031,7 @@
                     "parameters": {
                       "sizeMode": "contentHeight",
                       "flexDirection": "column",
-                      "rowGap": "var(--space-4)"
+                      "rowGap": "var(--space-6)"
                     },
                     "ports": [],
                     "dynamicports": []
@@ -5023,8 +7062,8 @@
             "type": "DbCollection2",
             "children": [],
             "label": "SiteSettings (one row)",
-            "x": 470,
-            "y": 1720,
+            "x": 770,
+            "y": 3640,
             "parameters": {
               "collectionName": "SiteSettings"
             },
@@ -5036,9 +7075,13 @@
             "type": "DbCollection2",
             "children": [],
             "label": "Theme (one row)",
-            "x": 470,
-            "y": 1840,
+            "x": 770,
+            "y": 3760,
             "parameters": {
+              "runOnChange-records": true,
+              "runOnChange-querySettings": true,
+              "runOnChange-search": true,
+              "runOnChange-collectionName": true,
               "collectionName": "Theme"
             },
             "ports": [],
@@ -5049,8 +7092,8 @@
             "type": "JavaScriptFunction",
             "children": [],
             "label": "Read the settings row",
-            "x": 470,
-            "y": 520,
+            "x": 770,
+            "y": 1840,
             "parameters": {
               "runOnChange-in-rows": true,
               "functionScript": "const rows = Inputs.rows || [];\nconst first = rows[0] ? rows[0].data || rows[0] : {};\nOutputs.siteName = first.siteName || '';\nOutputs.homeSlug = first.homeSlug || 'home';"
@@ -5085,8 +7128,8 @@
             "type": "JavaScriptFunction",
             "children": [],
             "label": "Read the theme tokens",
-            "x": 470,
-            "y": 1000,
+            "x": 770,
+            "y": 2440,
             "parameters": {
               "runOnChange-in-rows": true,
               "functionScript": "const rows = Inputs.rows || [];\nconst first = rows[0] ? rows[0].data || rows[0] : {};\nconst t = first.tokens || {};\nOutputs.primary = t.colorPrimary || '';\nOutputs.onPrimary = t.colorOnPrimary || '';\nOutputs.background = t.colorBackground || '';\nOutputs.surface = t.colorSurface || '';\nOutputs.text = t.colorText || '';\nOutputs.textSoft = t.colorTextSoft || '';\nOutputs.border = t.colorBorder || '';\nOutputs.accentSoft = t.colorAccentSoft || '';\nOutputs.radius = t.radius || '';\nOutputs.fontDisplay = t.fontDisplay || '';\nOutputs.fontUi = t.fontUi || '';\nOutputs.measure = t.measure || '';"
@@ -5187,33 +7230,139 @@
             "dynamicports": []
           },
           {
+            "id": "presets",
+            "type": "JavaScriptFunction",
+            "children": [],
+            "label": "The three presets",
+            "x": 770,
+            "y": 2560,
+            "parameters": {
+              "runOnChange-in-name": false,
+              "functionScript": "const P = {\"studio\":{\"colorPrimary\":\"#1e4d8c\",\"colorOnPrimary\":\"#ffffff\",\"colorBackground\":\"#fbfaf8\",\"colorSurface\":\"#ffffff\",\"colorText\":\"#1b1a17\",\"colorTextSoft\":\"#56534c\",\"colorBorder\":\"#e3ded4\",\"colorAccentSoft\":\"#e7eef8\",\"radius\":\"6px\",\"fontDisplay\":\"\\\"Iowan Old Style\\\", Georgia, serif\",\"fontUi\":\"-apple-system, BlinkMacSystemFont, \\\"Segoe UI\\\", Roboto, sans-serif\",\"measure\":\"44rem\"},\"press\":{\"colorPrimary\":\"#8c2f22\",\"colorOnPrimary\":\"#fff8f2\",\"colorBackground\":\"#f5efe6\",\"colorSurface\":\"#fffdf9\",\"colorText\":\"#241a12\",\"colorTextSoft\":\"#5f5145\",\"colorBorder\":\"#e0d3c1\",\"colorAccentSoft\":\"#f6e5df\",\"radius\":\"2px\",\"fontDisplay\":\"\\\"Iowan Old Style\\\", Georgia, serif\",\"fontUi\":\"-apple-system, BlinkMacSystemFont, \\\"Segoe UI\\\", Roboto, sans-serif\",\"measure\":\"44rem\"},\"night\":{\"colorPrimary\":\"#d9a441\",\"colorOnPrimary\":\"#191713\",\"colorBackground\":\"#14161a\",\"colorSurface\":\"#1c1f25\",\"colorText\":\"#eceae5\",\"colorTextSoft\":\"#a7a49d\",\"colorBorder\":\"#2c3038\",\"colorAccentSoft\":\"#2a2418\",\"radius\":\"10px\",\"fontDisplay\":\"\\\"Helvetica Neue\\\", Arial, sans-serif\",\"fontUi\":\"-apple-system, BlinkMacSystemFont, \\\"Segoe UI\\\", Roboto, sans-serif\",\"measure\":\"44rem\"}};\nconst t = P[Inputs.name] || P.studio;\nOutputs.primary = t.colorPrimary || '';\nOutputs.onPrimary = t.colorOnPrimary || '';\nOutputs.background = t.colorBackground || '';\nOutputs.surface = t.colorSurface || '';\nOutputs.text = t.colorText || '';\nOutputs.textSoft = t.colorTextSoft || '';\nOutputs.border = t.colorBorder || '';\nOutputs.accentSoft = t.colorAccentSoft || '';\nOutputs.radius = t.radius || '';\nOutputs.fontDisplay = t.fontDisplay || '';\nOutputs.fontUi = t.fontUi || '';\nOutputs.measure = t.measure || '';\nOutputs.picked();"
+            },
+            "ports": [
+              {
+                "name": "out-picked",
+                "plug": "output",
+                "type": "signal"
+              },
+              {
+                "name": "in-name",
+                "displayName": "name",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "out-primary",
+                "displayName": "primary",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              },
+              {
+                "name": "out-onPrimary",
+                "displayName": "onPrimary",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              },
+              {
+                "name": "out-background",
+                "displayName": "background",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              },
+              {
+                "name": "out-surface",
+                "displayName": "surface",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              },
+              {
+                "name": "out-text",
+                "displayName": "text",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              },
+              {
+                "name": "out-textSoft",
+                "displayName": "textSoft",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              },
+              {
+                "name": "out-border",
+                "displayName": "border",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              },
+              {
+                "name": "out-accentSoft",
+                "displayName": "accentSoft",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              },
+              {
+                "name": "out-radius",
+                "displayName": "radius",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              },
+              {
+                "name": "out-fontDisplay",
+                "displayName": "fontDisplay",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              },
+              {
+                "name": "out-fontUi",
+                "displayName": "fontUi",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              },
+              {
+                "name": "out-measure",
+                "displayName": "measure",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              }
+            ],
+            "dynamicports": []
+          },
+          {
             "id": "buildTokens",
             "type": "JavaScriptFunction",
             "children": [],
             "label": "The theme tokens, as one object",
-            "x": 470,
-            "y": 1120,
+            "x": 770,
+            "y": 2680,
             "parameters": {
               "runOnChange-in-primary": true,
-              "runOnChange-in-background": true,
-              "runOnChange-in-text": true,
-              "runOnChange-in-fontDisplay": true,
               "runOnChange-in-onPrimary": true,
+              "runOnChange-in-background": true,
               "runOnChange-in-surface": true,
+              "runOnChange-in-text": true,
               "runOnChange-in-textSoft": true,
               "runOnChange-in-border": true,
               "runOnChange-in-accentSoft": true,
               "runOnChange-in-radius": true,
+              "runOnChange-in-fontDisplay": true,
               "runOnChange-in-fontUi": true,
               "runOnChange-in-measure": true,
-              "functionScript": "Outputs.tokens = {\n  colorPrimary: Inputs.primary || '',\n  colorOnPrimary: Inputs.onPrimary || '',\n  colorBackground: Inputs.background || '',\n  colorSurface: Inputs.surface || '',\n  colorText: Inputs.text || '',\n  colorTextSoft: Inputs.textSoft || '',\n  colorBorder: Inputs.border || '',\n  colorAccentSoft: Inputs.accentSoft || '',\n  radius: Inputs.radius || '',\n  fontDisplay: Inputs.fontDisplay || '',\n  fontUi: Inputs.fontUi || '',\n  measure: Inputs.measure || ''\n};\nOutputs.built();"
+              "functionScript": "Outputs.tokens = {\n  colorPrimary: Inputs.primary || '',\n  colorOnPrimary: Inputs.onPrimary || '',\n  colorBackground: Inputs.background || '',\n  colorSurface: Inputs.surface || '',\n  colorText: Inputs.text || '',\n  colorTextSoft: Inputs.textSoft || '',\n  colorBorder: Inputs.border || '',\n  colorAccentSoft: Inputs.accentSoft || '',\n  radius: Inputs.radius || '',\n  fontDisplay: Inputs.fontDisplay || '',\n  fontUi: Inputs.fontUi || '',\n  measure: Inputs.measure || ''\n};"
             },
             "ports": [
-              {
-                "name": "out-built",
-                "plug": "output",
-                "type": "signal"
-              },
               {
                 "name": "in-primary",
                 "displayName": "primary",
@@ -5309,12 +7458,76 @@
             "dynamicports": []
           },
           {
+            "id": "previewCss",
+            "type": "JavaScriptFunction",
+            "children": [],
+            "label": "The edited tokens, as a scoped rule",
+            "x": 770,
+            "y": 3880,
+            "parameters": {
+              "runOnChange-in-tokens": true,
+              "functionScript": "const t = Inputs.tokens || {};\nconst F = {\"colorPrimary\":\"--primary\",\"colorOnPrimary\":\"--primary-foreground\",\"colorBackground\":\"--background\",\"colorSurface\":\"--surface\",\"colorText\":\"--foreground\",\"colorTextSoft\":\"--muted-foreground\",\"colorBorder\":\"--border\",\"colorAccentSoft\":\"--accent\",\"radius\":\"--radius-md\",\"fontDisplay\":\"--font-serif\",\"fontUi\":\"--font-sans\",\"measure\":\"--site-measure\"};\nconst decls = Object.keys(F)\n  .filter(function (k) { return t[k]; })\n  .map(function (k) { return F[k] + ': ' + String(t[k]).replace(/[;{}<>]/g, '') + ';'; })\n  .join(' ');\nOutputs.css = '.ndl-theme-preview { ' + decls + ' }';"
+            },
+            "ports": [
+              {
+                "name": "in-tokens",
+                "displayName": "tokens",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "out-css",
+                "displayName": "css",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              }
+            ],
+            "dynamicports": []
+          },
+          {
+            "id": "previewStyle",
+            "type": "CSS Definition",
+            "children": [],
+            "label": "Preview token scope",
+            "x": 770,
+            "y": 4000,
+            "parameters": {
+              "style": ""
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "applyTheme-3",
+            "type": "JavaScriptFunction",
+            "children": [],
+            "label": "The saved theme, on this document",
+            "x": 770,
+            "y": 4120,
+            "parameters": {
+              "runOnChange-in-rows": true,
+              "functionScript": "if (typeof document === 'undefined') return;\nconst rows = Inputs.rows || [];\nconst first = rows[0] ? rows[0].data || rows[0] : {};\nconst t = first.tokens || {};\nconst root = document.documentElement;\nif (t.colorPrimary) {\n  root.style.setProperty('--primary', t.colorPrimary);\n  root.style.setProperty('--primary-hover', 'color-mix(in srgb, ' + t.colorPrimary + ' 82%, black)');\n  root.style.setProperty('--ring', t.colorPrimary);\n  root.style.setProperty('--accent-foreground', t.colorPrimary);\n}\nif (t.colorOnPrimary) root.style.setProperty('--primary-foreground', t.colorOnPrimary);\nif (t.colorBackground) root.style.setProperty('--background', t.colorBackground);\nif (t.colorSurface) {\n  root.style.setProperty('--surface', t.colorSurface);\n  root.style.setProperty('--surface-raised', t.colorSurface);\n}\nif (t.colorText) root.style.setProperty('--foreground', t.colorText);\nif (t.colorTextSoft) root.style.setProperty('--muted-foreground', t.colorTextSoft);\nif (t.colorBorder) {\n  root.style.setProperty('--border', t.colorBorder);\n  root.style.setProperty('--border-subtle', 'color-mix(in srgb, ' + t.colorBorder + ' 45%, var(--background))');\n  root.style.setProperty('--border-strong', 'color-mix(in srgb, ' + t.colorBorder + ' 65%, var(--foreground))');\n}\nif (t.colorAccentSoft) root.style.setProperty('--accent', t.colorAccentSoft);\nif (t.radius) root.style.setProperty('--radius-md', t.radius);\nif (t.fontDisplay) root.style.setProperty('--font-serif', t.fontDisplay);\nif (t.fontUi) {\n  root.style.setProperty('--font-sans', t.fontUi);\n  root.style.fontFamily = t.fontUi;\n}\nif (t.measure) root.style.setProperty('--site-measure', t.measure);"
+            },
+            "ports": [
+              {
+                "name": "in-rows",
+                "displayName": "rows",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              }
+            ],
+            "dynamicports": []
+          },
+          {
             "id": "saveSettings",
             "type": "SetDbModelProperties",
             "children": [],
             "label": "Save the settings row",
-            "x": 470,
-            "y": 640,
+            "x": 770,
+            "y": 1960,
             "parameters": {
               "collectionName": "SiteSettings",
               "idSource": "explicit",
@@ -5328,8 +7541,8 @@
             "type": "SetDbModelProperties",
             "children": [],
             "label": "Save the theme row",
-            "x": 470,
-            "y": 1960,
+            "x": 770,
+            "y": 3400,
             "parameters": {
               "collectionName": "Theme",
               "idSource": "explicit",
@@ -5343,8 +7556,8 @@
             "type": "RouterNavigate",
             "children": [],
             "label": "Back to the list",
-            "x": 470,
-            "y": 1600,
+            "x": 770,
+            "y": 3520,
             "parameters": {
               "router": "Main",
               "target": "/Pages/Admin"
@@ -5391,6 +7604,18 @@
             "toProperty": "run"
           },
           {
+            "fromId": "theme-2",
+            "fromProperty": "items",
+            "toId": "applyTheme-3",
+            "toProperty": "in-rows"
+          },
+          {
+            "fromId": "theme-2",
+            "fromProperty": "fetched",
+            "toId": "applyTheme-3",
+            "toProperty": "run"
+          },
+          {
             "fromId": "readTheme",
             "fromProperty": "out-primary",
             "toId": "primaryField",
@@ -5415,28 +7640,250 @@
             "toProperty": "startValue"
           },
           {
-            "fromId": "settings-2",
-            "fromProperty": "firstItemId",
-            "toId": "saveSettings",
-            "toProperty": "modelId"
+            "fromId": "readTheme",
+            "fromProperty": "out-radius",
+            "toId": "radiusField",
+            "toProperty": "startValue"
           },
           {
-            "fromId": "siteNameField",
-            "fromProperty": "onTextChanged",
-            "toId": "saveSettings",
-            "toProperty": "prop-siteName"
+            "fromId": "readTheme",
+            "fromProperty": "out-primary",
+            "toId": "buildTokens",
+            "toProperty": "in-primary"
           },
           {
-            "fromId": "homeSlugField",
-            "fromProperty": "onTextChanged",
-            "toId": "saveSettings",
-            "toProperty": "prop-homeSlug"
+            "fromId": "readTheme",
+            "fromProperty": "out-onPrimary",
+            "toId": "buildTokens",
+            "toProperty": "in-onPrimary"
           },
           {
-            "fromId": "settingsButton",
-            "fromProperty": "onClick",
-            "toId": "saveSettings",
-            "toProperty": "store"
+            "fromId": "readTheme",
+            "fromProperty": "out-background",
+            "toId": "buildTokens",
+            "toProperty": "in-background"
+          },
+          {
+            "fromId": "readTheme",
+            "fromProperty": "out-surface",
+            "toId": "buildTokens",
+            "toProperty": "in-surface"
+          },
+          {
+            "fromId": "readTheme",
+            "fromProperty": "out-text",
+            "toId": "buildTokens",
+            "toProperty": "in-text"
+          },
+          {
+            "fromId": "readTheme",
+            "fromProperty": "out-textSoft",
+            "toId": "buildTokens",
+            "toProperty": "in-textSoft"
+          },
+          {
+            "fromId": "readTheme",
+            "fromProperty": "out-border",
+            "toId": "buildTokens",
+            "toProperty": "in-border"
+          },
+          {
+            "fromId": "readTheme",
+            "fromProperty": "out-accentSoft",
+            "toId": "buildTokens",
+            "toProperty": "in-accentSoft"
+          },
+          {
+            "fromId": "readTheme",
+            "fromProperty": "out-radius",
+            "toId": "buildTokens",
+            "toProperty": "in-radius"
+          },
+          {
+            "fromId": "readTheme",
+            "fromProperty": "out-fontDisplay",
+            "toId": "buildTokens",
+            "toProperty": "in-fontDisplay"
+          },
+          {
+            "fromId": "readTheme",
+            "fromProperty": "out-fontUi",
+            "toId": "buildTokens",
+            "toProperty": "in-fontUi"
+          },
+          {
+            "fromId": "readTheme",
+            "fromProperty": "out-measure",
+            "toId": "buildTokens",
+            "toProperty": "in-measure"
+          },
+          {
+            "fromId": "presetStudio",
+            "fromProperty": "name",
+            "toId": "presets",
+            "toProperty": "in-name"
+          },
+          {
+            "fromId": "presetStudio",
+            "fromProperty": "Picked",
+            "toId": "presets",
+            "toProperty": "run"
+          },
+          {
+            "fromId": "presetPress",
+            "fromProperty": "name",
+            "toId": "presets",
+            "toProperty": "in-name"
+          },
+          {
+            "fromId": "presetPress",
+            "fromProperty": "Picked",
+            "toId": "presets",
+            "toProperty": "run"
+          },
+          {
+            "fromId": "presetNight",
+            "fromProperty": "name",
+            "toId": "presets",
+            "toProperty": "in-name"
+          },
+          {
+            "fromId": "presetNight",
+            "fromProperty": "Picked",
+            "toId": "presets",
+            "toProperty": "run"
+          },
+          {
+            "fromId": "presets",
+            "fromProperty": "out-primary",
+            "toId": "buildTokens",
+            "toProperty": "in-primary"
+          },
+          {
+            "fromId": "presets",
+            "fromProperty": "out-onPrimary",
+            "toId": "buildTokens",
+            "toProperty": "in-onPrimary"
+          },
+          {
+            "fromId": "presets",
+            "fromProperty": "out-background",
+            "toId": "buildTokens",
+            "toProperty": "in-background"
+          },
+          {
+            "fromId": "presets",
+            "fromProperty": "out-surface",
+            "toId": "buildTokens",
+            "toProperty": "in-surface"
+          },
+          {
+            "fromId": "presets",
+            "fromProperty": "out-text",
+            "toId": "buildTokens",
+            "toProperty": "in-text"
+          },
+          {
+            "fromId": "presets",
+            "fromProperty": "out-textSoft",
+            "toId": "buildTokens",
+            "toProperty": "in-textSoft"
+          },
+          {
+            "fromId": "presets",
+            "fromProperty": "out-border",
+            "toId": "buildTokens",
+            "toProperty": "in-border"
+          },
+          {
+            "fromId": "presets",
+            "fromProperty": "out-accentSoft",
+            "toId": "buildTokens",
+            "toProperty": "in-accentSoft"
+          },
+          {
+            "fromId": "presets",
+            "fromProperty": "out-radius",
+            "toId": "buildTokens",
+            "toProperty": "in-radius"
+          },
+          {
+            "fromId": "presets",
+            "fromProperty": "out-fontDisplay",
+            "toId": "buildTokens",
+            "toProperty": "in-fontDisplay"
+          },
+          {
+            "fromId": "presets",
+            "fromProperty": "out-fontUi",
+            "toId": "buildTokens",
+            "toProperty": "in-fontUi"
+          },
+          {
+            "fromId": "presets",
+            "fromProperty": "out-measure",
+            "toId": "buildTokens",
+            "toProperty": "in-measure"
+          },
+          {
+            "fromId": "presets",
+            "fromProperty": "out-primary",
+            "toId": "primaryField",
+            "toProperty": "startValue"
+          },
+          {
+            "fromId": "presets",
+            "fromProperty": "out-background",
+            "toId": "backgroundField",
+            "toProperty": "startValue"
+          },
+          {
+            "fromId": "presets",
+            "fromProperty": "out-text",
+            "toId": "textField",
+            "toProperty": "startValue"
+          },
+          {
+            "fromId": "presets",
+            "fromProperty": "out-fontDisplay",
+            "toId": "fontField",
+            "toProperty": "startValue"
+          },
+          {
+            "fromId": "presets",
+            "fromProperty": "out-radius",
+            "toId": "radiusField",
+            "toProperty": "startValue"
+          },
+          {
+            "fromId": "presets",
+            "fromProperty": "out-picked",
+            "toId": "primaryField",
+            "toProperty": "set"
+          },
+          {
+            "fromId": "presets",
+            "fromProperty": "out-picked",
+            "toId": "backgroundField",
+            "toProperty": "set"
+          },
+          {
+            "fromId": "presets",
+            "fromProperty": "out-picked",
+            "toId": "textField",
+            "toProperty": "set"
+          },
+          {
+            "fromId": "presets",
+            "fromProperty": "out-picked",
+            "toId": "fontField",
+            "toProperty": "set"
+          },
+          {
+            "fromId": "presets",
+            "fromProperty": "out-picked",
+            "toId": "radiusField",
+            "toProperty": "set"
           },
           {
             "fromId": "primaryField",
@@ -5463,10 +7910,46 @@
             "toProperty": "in-fontDisplay"
           },
           {
-            "fromId": "themeButton",
-            "fromProperty": "onClick",
+            "fromId": "radiusField",
+            "fromProperty": "onTextChanged",
             "toId": "buildTokens",
-            "toProperty": "run"
+            "toProperty": "in-radius"
+          },
+          {
+            "fromId": "buildTokens",
+            "fromProperty": "out-tokens",
+            "toId": "previewCss",
+            "toProperty": "in-tokens"
+          },
+          {
+            "fromId": "previewCss",
+            "fromProperty": "out-css",
+            "toId": "previewStyle",
+            "toProperty": "style"
+          },
+          {
+            "fromId": "settings-2",
+            "fromProperty": "firstItemId",
+            "toId": "saveSettings",
+            "toProperty": "modelId"
+          },
+          {
+            "fromId": "siteNameField",
+            "fromProperty": "onTextChanged",
+            "toId": "saveSettings",
+            "toProperty": "prop-siteName"
+          },
+          {
+            "fromId": "homeSlugField",
+            "fromProperty": "onTextChanged",
+            "toId": "saveSettings",
+            "toProperty": "prop-homeSlug"
+          },
+          {
+            "fromId": "settingsButton",
+            "fromProperty": "onClick",
+            "toId": "saveSettings",
+            "toProperty": "store"
           },
           {
             "fromId": "theme-2",
@@ -5481,10 +7964,16 @@
             "toProperty": "prop-tokens"
           },
           {
-            "fromId": "buildTokens",
-            "fromProperty": "out-built",
+            "fromId": "themeButton",
+            "fromProperty": "onClick",
             "toId": "saveTheme",
             "toProperty": "store"
+          },
+          {
+            "fromId": "saveTheme",
+            "fromProperty": "done",
+            "toId": "theme-2",
+            "toProperty": "storageFetch"
           },
           {
             "fromId": "backButton-2",
@@ -5557,7 +8046,7 @@
                     "dynamicports": []
                   },
                   {
-                    "id": "actions",
+                    "id": "actions-2",
                     "type": "Group",
                     "children": [
                       {
@@ -5695,7 +8184,7 @@
                 "type": "/Admin/Shell",
                 "children": [
                   {
-                    "id": "body-3",
+                    "id": "body-5",
                     "type": "Group",
                     "children": [
                       {
@@ -5703,7 +8192,7 @@
                         "type": "Group",
                         "children": [
                           {
-                            "id": "heading-4",
+                            "id": "heading-9",
                             "type": "Text",
                             "children": [],
                             "label": "Heading",
@@ -6029,7 +8518,7 @@
                 "type": "Group",
                 "children": [
                   {
-                    "id": "heading-5",
+                    "id": "heading-10",
                     "type": "Text",
                     "children": [],
                     "label": "Heading",
@@ -6294,7 +8783,7 @@
                 "type": "Group",
                 "children": [
                   {
-                    "id": "heading-6",
+                    "id": "heading-11",
                     "type": "Text",
                     "children": [],
                     "label": "Heading",
@@ -6659,7 +9148,7 @@
       "graph": {
         "roots": [
           {
-            "id": "inputs-7",
+            "id": "inputs-14",
             "type": "Component Inputs",
             "children": [],
             "label": "The section, and whether it goes public",
@@ -6717,7 +9206,7 @@
             "dynamicports": []
           },
           {
-            "id": "outputs-3",
+            "id": "outputs-4",
             "type": "Component Outputs",
             "children": [],
             "label": "Task result",
@@ -6741,19 +9230,19 @@
         ],
         "connections": [
           {
-            "fromId": "inputs-7",
+            "fromId": "inputs-14",
             "fromProperty": "objectId",
             "toId": "write",
             "toProperty": "modelId"
           },
           {
-            "fromId": "inputs-7",
+            "fromId": "inputs-14",
             "fromProperty": "isPublic",
             "toId": "write",
             "toProperty": "acl-world-read"
           },
           {
-            "fromId": "inputs-7",
+            "fromId": "inputs-14",
             "fromProperty": "Do",
             "toId": "write",
             "toProperty": "store"
@@ -6761,13 +9250,13 @@
           {
             "fromId": "write",
             "fromProperty": "done",
-            "toId": "outputs-3",
+            "toId": "outputs-4",
             "toProperty": "Success"
           },
           {
             "fromId": "write",
             "fromProperty": "failure",
-            "toId": "outputs-3",
+            "toId": "outputs-4",
             "toProperty": "Failure"
           }
         ]
@@ -6778,7 +9267,7 @@
       "graph": {
         "roots": [
           {
-            "id": "inputs-8",
+            "id": "inputs-15",
             "type": "Component Inputs",
             "children": [],
             "label": "One section, and the page it is being copied onto",
@@ -6872,7 +9361,7 @@
             "dynamicports": []
           },
           {
-            "id": "outputs-4",
+            "id": "outputs-5",
             "type": "Component Outputs",
             "children": [],
             "label": "Task result",
@@ -6896,13 +9385,13 @@
         ],
         "connections": [
           {
-            "fromId": "inputs-8",
+            "fromId": "inputs-15",
             "fromProperty": "newPageId",
             "toId": "link-2",
             "toProperty": "in-newPageId"
           },
           {
-            "fromId": "inputs-8",
+            "fromId": "inputs-15",
             "fromProperty": "Do",
             "toId": "link-2",
             "toProperty": "run"
@@ -6914,19 +9403,19 @@
             "toProperty": "prop-pageId"
           },
           {
-            "fromId": "inputs-8",
+            "fromId": "inputs-15",
             "fromProperty": "kind",
             "toId": "create-2",
             "toProperty": "prop-kind"
           },
           {
-            "fromId": "inputs-8",
+            "fromId": "inputs-15",
             "fromProperty": "order",
             "toId": "create-2",
             "toProperty": "prop-order"
           },
           {
-            "fromId": "inputs-8",
+            "fromId": "inputs-15",
             "fromProperty": "data",
             "toId": "create-2",
             "toProperty": "prop-data"
@@ -6940,13 +9429,13 @@
           {
             "fromId": "create-2",
             "fromProperty": "done",
-            "toId": "outputs-4",
+            "toId": "outputs-5",
             "toProperty": "Success"
           },
           {
             "fromId": "create-2",
             "fromProperty": "failure",
-            "toId": "outputs-4",
+            "toId": "outputs-5",
             "toProperty": "Failure"
           }
         ]
@@ -6957,7 +9446,7 @@
       "graph": {
         "roots": [
           {
-            "id": "inputs-9",
+            "id": "inputs-16",
             "type": "Component Inputs",
             "children": [],
             "label": "Ask for the address",
@@ -7051,7 +9540,7 @@
             "dynamicports": []
           },
           {
-            "id": "outputs-5",
+            "id": "outputs-6",
             "type": "Component Outputs",
             "children": [],
             "label": "The address",
@@ -7080,7 +9569,7 @@
         ],
         "connections": [
           {
-            "fromId": "inputs-9",
+            "fromId": "inputs-16",
             "fromProperty": "Fetch",
             "toId": "settings-3",
             "toProperty": "storageFetch"
@@ -7112,25 +9601,25 @@
           {
             "fromId": "settings-3",
             "fromProperty": "failure",
-            "toId": "outputs-5",
+            "toId": "outputs-6",
             "toProperty": "Failure"
           },
           {
             "fromId": "pick",
             "fromProperty": "out-recipient",
-            "toId": "outputs-5",
+            "toId": "outputs-6",
             "toProperty": "recipient"
           },
           {
             "fromId": "pick",
             "fromProperty": "out-ready",
-            "toId": "outputs-5",
+            "toId": "outputs-6",
             "toProperty": "Ready"
           },
           {
             "fromId": "pick",
             "fromProperty": "out-failed",
-            "toId": "outputs-5",
+            "toId": "outputs-6",
             "toProperty": "Failure"
           }
         ]
@@ -8665,7 +11154,7 @@
       "graph": {
         "roots": [
           {
-            "id": "inputs-10",
+            "id": "inputs-17",
             "type": "Component Inputs",
             "children": [],
             "label": "The section, and where it lands",
@@ -8707,7 +11196,7 @@
             "dynamicports": []
           },
           {
-            "id": "outputs-6",
+            "id": "outputs-7",
             "type": "Component Outputs",
             "children": [],
             "label": "Task result",
@@ -8731,19 +11220,19 @@
         ],
         "connections": [
           {
-            "fromId": "inputs-10",
+            "fromId": "inputs-17",
             "fromProperty": "objectId",
             "toId": "write-2",
             "toProperty": "modelId"
           },
           {
-            "fromId": "inputs-10",
+            "fromId": "inputs-17",
             "fromProperty": "order",
             "toId": "write-2",
             "toProperty": "prop-order"
           },
           {
-            "fromId": "inputs-10",
+            "fromId": "inputs-17",
             "fromProperty": "Do",
             "toId": "write-2",
             "toProperty": "store"
@@ -8751,13 +11240,13 @@
           {
             "fromId": "write-2",
             "fromProperty": "done",
-            "toId": "outputs-6",
+            "toId": "outputs-7",
             "toProperty": "Success"
           },
           {
             "fromId": "write-2",
             "fromProperty": "failure",
-            "toId": "outputs-6",
+            "toId": "outputs-7",
             "toProperty": "Failure"
           }
         ]
