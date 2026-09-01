@@ -36,8 +36,8 @@
     {
       "fromId": "record-3",
       "fromProperty": "prop-place",
-      "toId": "place",
-      "toProperty": "text"
+      "toId": "whenLabel-2",
+      "toProperty": "in-place"
     },
     {
       "fromId": "record-3",

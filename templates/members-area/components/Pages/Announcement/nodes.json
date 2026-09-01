@@ -76,7 +76,7 @@
       "label": "The foot of the page",
       "parent": "pageShell-3",
       "x": 160,
-      "y": 2920
+      "y": 3040
     },
     {
       "id": "ground-3",
@@ -85,8 +85,7 @@
       "parent": "pageBody-3",
       "children": [
         "titleHeadRow",
-        "date",
-        "body",
+        "readingBlock",
         "refusal",
         "removal"
       ],
@@ -234,30 +233,55 @@
       "y": 1240
     },
     {
-      "id": "date",
-      "type": "Text",
-      "label": "Posted",
+      "id": "readingBlock",
+      "type": "Group",
+      "label": "The announcement, at a reading measure",
       "parent": "ground-3",
+      "children": [
+        "date",
+        "body"
+      ],
       "parameters": {
-        "text": "",
-        "fontSize": "var(--text-sm)",
-        "color": "var(--muted-foreground)"
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "maxWidth": {
+          "value": 640,
+          "unit": "px"
+        },
+        "flexDirection": "column",
+        "rowGap": "var(--space-2)"
       },
       "x": 280,
       "y": 1360
     },
     {
+      "id": "date",
+      "type": "Text",
+      "label": "Posted",
+      "parent": "readingBlock",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--muted-foreground)"
+      },
+      "x": 340,
+      "y": 1480
+    },
+    {
       "id": "body",
       "type": "Text",
       "label": "Body",
-      "parent": "ground-3",
+      "parent": "readingBlock",
       "parameters": {
         "text": "",
         "fontSize": "var(--text-base)",
         "color": "var(--foreground)"
       },
-      "x": 280,
-      "y": 1480
+      "x": 340,
+      "y": 1600
     },
     {
       "id": "refusal",
@@ -287,7 +311,7 @@
         "mounted": false
       },
       "x": 280,
-      "y": 1600
+      "y": 1720
     },
     {
       "id": "refusalText",
@@ -300,7 +324,7 @@
         "color": "var(--destructive)"
       },
       "x": 340,
-      "y": 1720
+      "y": 1840
     },
     {
       "id": "pageInputs",
@@ -310,7 +334,7 @@
         "pathParams": "announcementId"
       },
       "x": 710,
-      "y": 2800
+      "y": 2920
     },
     {
       "id": "hold-3",
@@ -362,7 +386,7 @@
         "functionScript": "function humanDay(raw) {\n  if (raw === undefined || raw === null) return '';\n  var s = String(raw);\n  if (s === '') return '';\n  var m = /^(\\d{4})-(\\d{2})-(\\d{2})$/.exec(s);\n  var at = m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : new Date(s);\n  if (isNaN(at.getTime())) return '';\n  return at.toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' });\n}\nif (Inputs.postedAt === undefined) return;\nOutputs.label = humanDay(Inputs.postedAt);"
       },
       "x": 710,
-      "y": 1360,
+      "y": 1480,
       "ports": [
         {
           "name": "in-postedAt",
@@ -389,7 +413,7 @@
         "runOnChange-condition": false
       },
       "x": 710,
-      "y": 1600
+      "y": 1720
     },
     {
       "id": "removal",
@@ -415,7 +439,7 @@
         "mounted": false
       },
       "x": 280,
-      "y": 1840
+      "y": 1960
     },
     {
       "id": "removeButton",
@@ -439,7 +463,7 @@
         "sizeMode": "contentSize"
       },
       "x": 340,
-      "y": 1960
+      "y": 2080
     },
     {
       "id": "confirm",
@@ -470,7 +494,7 @@
         "mounted": false
       },
       "x": 340,
-      "y": 2080
+      "y": 2200
     },
     {
       "id": "confirmText",
@@ -483,7 +507,7 @@
         "color": "var(--destructive)"
       },
       "x": 400,
-      "y": 2200
+      "y": 2320
     },
     {
       "id": "confirmRow",
@@ -500,7 +524,7 @@
         "columnGap": "var(--space-3)"
       },
       "x": 400,
-      "y": 2320
+      "y": 2440
     },
     {
       "id": "confirmYes",
@@ -524,7 +548,7 @@
         "sizeMode": "contentSize"
       },
       "x": 460,
-      "y": 2440
+      "y": 2560
     },
     {
       "id": "confirmNo",
@@ -548,7 +572,7 @@
         "sizeMode": "contentSize"
       },
       "x": 460,
-      "y": 2560
+      "y": 2680
     },
     {
       "id": "removeFailed",
@@ -578,7 +602,7 @@
         "mounted": false
       },
       "x": 340,
-      "y": 2680
+      "y": 2800
     },
     {
       "id": "removeFailedText",
@@ -591,7 +615,7 @@
         "color": "var(--destructive)"
       },
       "x": 400,
-      "y": 2800
+      "y": 2920
     },
     {
       "id": "confirmed",
@@ -623,7 +647,7 @@
         }
       ],
       "x": 710,
-      "y": 2440
+      "y": 2560
     },
     {
       "id": "del",
@@ -634,7 +658,7 @@
         "idSource": "explicit"
       },
       "x": 710,
-      "y": 2920
+      "y": 3040
     },
     {
       "id": "confirmGate",
@@ -645,7 +669,7 @@
         "runOnChange-condition": false
       },
       "x": 710,
-      "y": 2080
+      "y": 2200
     },
     {
       "id": "confirmClear",
@@ -656,7 +680,7 @@
         "runOnChange-condition": false
       },
       "x": 710,
-      "y": 2200
+      "y": 2320
     },
     {
       "id": "removeFailedGate",
@@ -667,7 +691,7 @@
         "runOnChange-condition": false
       },
       "x": 710,
-      "y": 2680
+      "y": 2800
     },
     {
       "id": "toList",
@@ -678,7 +702,7 @@
         "target": "/Pages/Members"
       },
       "x": 710,
-      "y": 3040
+      "y": 3160
     }
   ],
   "visualRoots": [

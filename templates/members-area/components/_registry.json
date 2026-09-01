@@ -166,7 +166,7 @@
     "Pages/Announcement": {
       "path": "Pages/Announcement",
       "type": "page",
-      "nodeCount": 36,
+      "nodeCount": 37,
       "connectionCount": 22,
       "modified": "2026-08-28T00:00:00.000Z",
       "created": "2026-08-28T00:00:00.000Z"
@@ -246,7 +246,7 @@
   },
   "stats": {
     "totalComponents": 30,
-    "totalNodes": 519,
+    "totalNodes": 520,
     "totalConnections": 486
   }
 }

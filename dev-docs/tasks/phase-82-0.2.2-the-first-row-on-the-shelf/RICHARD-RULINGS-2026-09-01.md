@@ -101,6 +101,37 @@ proper panel that says what is happening and what to do next, and it is **ruled 
 
 ---
 
+### I. Session 13's two — 🔴 **ruled after the first render of all thirteen pages**
+
+Both came off `vib001-members.look.ts` once it was actually run over the thirteen-page shot list
+s12 built. Neither could be decided by a session, because each is a question about a ruling.
+
+**I1. `/unsubscribe` versus D39 — ✅ *"D39 stands, accept the slack."***
+
+The page carries ~290px of dead white at 1280 and ~470px at 1900 below a single notice. The obvious
+fix — a *Sign in to your account* button — was built by s12 and refused by `tpl001Template.test.ts`
+§5, which enforces **D39 (2026-08-29)**: the page names no association and offers no way back.
+*"Every page as good as the homepage"* and D39 pull against each other on exactly this page and
+nowhere else.
+
+🔴 **The slack on `/unsubscribe` is now a RECORDED CONSEQUENCE, not open work.** It has been
+"discovered" and re-argued four times. A session that finds it again should read this line.
+
+**I2. `/post` and `/account` — ✅ *"head on 1200, form panels capped at 720."***
+
+`Members/Chrome` states *"the band must agree with `PAGE_GROUND`… they are now the same 1200"* — and
+it was not true of these two, which carried `FORM_GROUND` (720) under a 1200 band and a 1200 footer:
+**three left edges on one page** (1280: 64 / 304 / 64; at 988: 24 / 160 / 24). This is §C's flagged
+departure landing where the flag did not reach — that table weighed the four DOOR pages, which have
+no band above them.
+
+✅ **Built the same session** as `AT_FORM_MEASURE`, on the form-carrying children rather than as a
+wrapper (a wrapper would be a §6 SECTION and would make `/post`'s `tools` owe a hairline). Verified
+in the render at all four widths. ⚠️ **This does not reopen §C's departure on the four door pages** —
+`/sign-in`, `/join`, `/setup` and `/unsubscribe` keep `FORM_GROUND` at 720 centred.
+
+---
+
 ## Row 7 — REL-001, the publish
 
 ### G1. Category — 🔴 **`starter`, NOT `data-app`** *(overrules TASKS.md and TPL-001 AC8)*

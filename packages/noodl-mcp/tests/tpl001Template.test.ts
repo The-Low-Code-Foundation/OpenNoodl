@@ -1810,8 +1810,23 @@ describe('TPL-001 — the design system is finished, not merely opened', () => {
       }
     }
     // Beside a known-firing signal: `[]` below has to be a reading rather than
-    // an empty population, and today exactly one page stacks two sections.
-    expect(seconds).toBe(1);
+    // an empty population.
+    //
+    // 🔴 **3 since REL-002c s13, and the ARGUMENT moved, not just the number.**
+    // It used to read *"today exactly one page stacks two sections"*. The two
+    // detail pages now do as well: giving `/announcements/{id}` and
+    // `/meetings/{id}` a `PROSE` measure turned their date-and-body into a
+    // second full-width column `Group` above the removal zone, where before
+    // they were two bare `Text` children of the ground and the removal was the
+    // only section on the page.
+    //
+    // ✅ **This spec is what said so, and it read the structure correctly.** The
+    // record IS a zone, `removal` IS the zone after it, and `removal` already
+    // carried the hairline — which is why `missing` below stayed empty through
+    // the change. A pin that had merely been incremented would have hidden the
+    // one thing worth knowing: the shape this rule is about now occurs on three
+    // pages rather than one.
+    expect(seconds).toBe(3);
     expect(missing).toEqual([]);
   });
 

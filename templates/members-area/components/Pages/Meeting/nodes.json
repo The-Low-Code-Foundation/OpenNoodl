@@ -85,9 +85,7 @@
       "parent": "pageBody-5",
       "children": [
         "titleHeadRow-2",
-        "when-3",
-        "place",
-        "details",
+        "readingBlock-2",
         "refusal-2",
         "removal-2"
       ],
@@ -235,42 +233,54 @@
       "y": 1240
     },
     {
-      "id": "when-3",
-      "type": "Text",
-      "label": "When",
+      "id": "readingBlock-2",
+      "type": "Group",
+      "label": "The meeting, at a reading measure",
       "parent": "ground-5",
+      "children": [
+        "when-3",
+        "details"
+      ],
       "parameters": {
-        "text": "",
-        "fontSize": "var(--text-sm)",
-        "color": "var(--muted-foreground)"
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "maxWidth": {
+          "value": 640,
+          "unit": "px"
+        },
+        "flexDirection": "column",
+        "rowGap": "var(--space-2)"
       },
       "x": 280,
       "y": 1360
     },
     {
-      "id": "place",
+      "id": "when-3",
       "type": "Text",
-      "label": "Where",
-      "parent": "ground-5",
+      "label": "When and where",
+      "parent": "readingBlock-2",
       "parameters": {
         "text": "",
         "fontSize": "var(--text-sm)",
         "color": "var(--muted-foreground)"
       },
-      "x": 280,
+      "x": 340,
       "y": 1480
     },
     {
       "id": "details",
       "type": "Text",
       "label": "Details",
-      "parent": "ground-5",
+      "parent": "readingBlock-2",
       "parameters": {
         "text": "",
         "fontSize": "var(--text-base)",
         "color": "var(--foreground)"
       },
-      "x": 280,
+      "x": 340,
       "y": 1600
     },
     {
@@ -371,16 +381,23 @@
     {
       "id": "whenLabel-2",
       "type": "JavaScriptFunction",
-      "label": "The date, as a person writes it",
+      "label": "When and where, as a person writes it",
       "parameters": {
-        "functionScript": "function humanDay(raw) {\n  if (raw === undefined || raw === null) return '';\n  var s = String(raw);\n  if (s === '') return '';\n  var m = /^(\\d{4})-(\\d{2})-(\\d{2})$/.exec(s);\n  var at = m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : new Date(s);\n  if (isNaN(at.getTime())) return '';\n  return at.toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' });\n}\nif (Inputs.when === undefined) return;\nvar day = humanDay(Inputs.when);\nOutputs.label = day === '' ? String(Inputs.when || '') : day;"
+        "functionScript": "function humanDay(raw) {\n  if (raw === undefined || raw === null) return '';\n  var s = String(raw);\n  if (s === '') return '';\n  var m = /^(\\d{4})-(\\d{2})-(\\d{2})$/.exec(s);\n  var at = m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : new Date(s);\n  if (isNaN(at.getTime())) return '';\n  return at.toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' });\n}\nif (Inputs.when === undefined) return;\nvar day = humanDay(Inputs.when);\nvar said = day === '' ? String(Inputs.when || '') : day;\nvar where = Inputs.place === undefined || Inputs.place === null ? '' : String(Inputs.place);\nOutputs.label = where === '' ? said : said + ' · ' + where;"
       },
       "x": 710,
-      "y": 1360,
+      "y": 1480,
       "ports": [
         {
           "name": "in-when",
           "displayName": "when",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "in-place",
+          "displayName": "place",
           "plug": "input",
           "type": "*",
           "group": "Inputs"

@@ -606,6 +606,162 @@ one component count and one file count in the gate.
 
 ---
 
+## REL-002c — what session 13 did: the twelve pictures nobody had seen, and the two rulings they forced
+
+**The forced first job from s12's handoff, taken.** `vib001-members.look.ts` had been *extended* to
+thirteen pages but never *run* since; twelve of its living shots had never existed. They exist now,
+and they moved this row twice — once into a defect that was a decision nobody carried across, and
+once into a question only Richard could answer, which he has.
+
+⚠️ **Every reading below was taken with `scripts/devtools/render-from-disk.js` in its UNCOMMITTED
+working-tree state** (`md5=1557f527…`, mtime 09-01 11:38 — REL-002a's own fix, still unswept). That
+change makes the harness serve **the product's host stylesheet** rather than a bare reset, which is
+what makes `unreachable=0px` a statement about the product instead of about the harness. **If that
+file is reverted, every fold reading in this session is void.**
+
+### 1. The grading — each page beside `/` at the same width, which is what Richard's phrasing asks
+
+| page | as photographed | what a stranger would have noticed |
+|---|---|---|
+| `/post` | **PASSABLE** | Composed: chrome, badged head, two `--surface` panels, one primary action each. 🔴 **Three left edges on one page** — §3 |
+| `/announcements/{id}` | **PASSABLE** | Right family, right badge, correctly ruled above its removal zone. 🔴 Body ran the full §C measure — ~210 characters a line at 1900 |
+| `/meetings/{id}` | 🔴 **the weakest page in the gate** | Same, **plus** the two facts that are the entire point of the page — when and where — were two unlabelled grey lines |
+
+🔴 **The `/meetings/{id}` finding is the sharp one, and it is a fact about a DECISION THAT HAD
+ALREADY BEEN MADE.** `Members/MeetingRow` carries a written ruling on this exact pair — *"one meta
+line, not two… a diary is scanned down its dates, so the row keeps the date leading and hangs the
+place off it with the `·` the directory row already uses"* — and composes `12 January 2099 · The
+hall`. The detail page stacked the same two facts as two separate `T_META` lines: **the shape that
+ruling was written against.** A member who pressed `Details` arrived at a *less* composed version of
+what they had just read. The row and the page it opens were never compared because the page had
+never been rendered, by anything, in either state.
+
+### 2. What was built
+
+**Both detail pages** (`tpl001Components.ts`):
+
+- `/meetings/{id}` — `whenLabel` now joins `place`, using `MeetingRow`'s script **including its
+  guard** (the separator appears only with something on both sides, or a meeting with no place
+  recorded renders a dangling `·` that reads as a field which failed to load). The orphan `place`
+  `Text` is **deleted rather than emptied** — a `Text` wired to nothing still takes its line-height.
+- Both — the record sits in a `PROSE` measure (640) inside the §C 1200 shell. `PAGE_GROUND`'s own
+  note already calls `PROSE` *"the half of §C that stops 1200 making pages worse"*; the landing
+  applies it and the two pages nobody had rendered did not.
+
+✅ **The `PROSE` wrapper holds the date AND the body, and that is not a dodge of a gate.** §2's
+notice census counts *a `Group` wrapping exactly one `Text`* and demands a fill and an edge of it, so
+a measure around the body alone would have been a notice that forgot to be one. Holding both is also
+the better composition — `--space-2` makes the date and the words it stamps one record, rather than
+two items `PAGE_GROUND` spaced 20px apart.
+
+⚠️ **The 640 measure is asserted from the ARTEFACT, not from the picture, and the reason is the
+seed.** Every `ANNOUNCEMENTS` body in `vib001-members.look.ts` is one short sentence, so **no render
+this harness can take will show a paragraph wrapping.** The cap is in
+`Pages/Announcement/nodes.json` (`readingBlock.maxWidth = 640px`); the photograph shows the
+composition change and cannot show the measure. Lengthening a seeded body would make it visible —
+and would also change `/members`, which is Richard's page to rule, so it was not done.
+
+### 3. 🔴 §C's flagged departure had a consequence INSIDE the gate — RULED, and BUILT
+
+`Members/Chrome`'s own note states the rule and states it as satisfied:
+
+> *"The band must agree with `PAGE_GROUND` or the nav and the content it heads are two different
+> columns; they are now the same 1200."*
+
+**They were not, on two of the eight signed-in pages.** `Pages/Post` and `Pages/Account` carried
+`FORM_GROUND` (720) under a Chrome and a Footer that are both 1200. At 1280 the association's name
+sat at x=64, the page's own heading at x=304, the footer back at x=64 — **three left edges**; at
+988, the editor preview's default and the first render of every project, 24 / 160 / 24.
+
+⚠️ **This was not a bug to fix quietly — it is the §C departure already flagged for Richard, landing
+somewhere the flag did not reach.** That table weighed 720-centred against 1200 on the four DOOR
+pages, which carry no band above them and are self-consistent at any measure. `/post` and `/account`
+are different in kind.
+
+🔴 **RULED, Richard, 2026-09-01: *"head on 1200, form panels capped at 720."*** Built as
+`AT_FORM_MEASURE`, spread onto the form-carrying **children** — `tools` and `notAllowed` on
+`/post`, `panel` and the three notices on `/account` — with both grounds moved to `PAGE_GROUND`.
+
+✅ **On the children rather than as a wrapper, and the gate is why.** A wrapper would be a full-width
+column `Group` with no fill and more than one child — **a SECTION by §6's own stated shape** — and on
+`/post` it would enclose `tools`, which is already one, making `tools` a second section that owes a
+hairline it should not have. Capping the children moves no census.
+
+### 4. 🔴 The `/unsubscribe` tension — RULED, and it closes as a CONSEQUENCE, not a defect
+
+s12 left one question: *"every page as good as the homepage"* versus **D39** (2026-08-29 — the page
+names no association and offers no way back), which pull against each other on exactly this page.
+It carries ~290px of dead white at 1280 and ~470px at 1900, and the obvious fix — a *Sign in to your
+account* button — was built by s12 and correctly refused by `tpl001Template.test.ts` §5.
+
+🔴 **RULED, Richard, 2026-09-01: D39 stands, accept the slack.** So `/unsubscribe` ships as it is.
+**The remaining space on that page is not open work and is not a defect** — it is the recorded
+consequence of a ruling, and the next session that finds it should read this paragraph rather than
+re-derive it for a fifth time.
+
+⚠️ The same *shape* — a short record under a floored page — remains on `/announcements/{id}` and
+`/meetings/{id}` at 1900. It was **not** built against, deliberately: this row's hazard 3 says to ask
+what is *missing* before what is *mis-sized*, and the honest answer is that a short record is short.
+Every candidate (related rows, a back link, a next-meeting strip) is new product surface on pages
+whose data model holds nothing more.
+
+### 5. Item 5's header row — decided **NO**, and decided from the render
+
+s12 priced this and recommended no; graded here against `/directory` at **1900**, the width the
+original complaint was about. The three columns read **`Ada Newcomer` · `ada@example.invalid` ·
+`Member · since 1 September 2026`**. A name is a name, an address is an address, and the standing
+column already labels itself in words: **a header would restate three things the data says.** Below
+700px the `Columns` folds to `smallLayout: '1'` with no runtime rule that can hide it, so it would
+stack into three stray words on a phone. The change list's actual symptom — ~250px between a name
+and its email at 1200 — **was fixed by s10**'s `layoutString: '3 3 2'`, which is the 40/35/25 item 5
+proposed.
+
+### 6. The gate that moved, and the argument that moved with it
+
+`tpl001Template.test.ts` §6 pins *"the second section on a page carries a rule above it"* with
+`seconds === 1`. The `PROSE` wrapper made each detail page's record a full-width column `Group` with
+no fill and more than one child — **a section by this spec's own stated shape** — above the removal
+zone, so the count is now **3**.
+
+✅ **The spec read the structure correctly and its `missing` list stayed empty**, because `removal`
+already carried the hairline. Per this row's hazard 7 the **argument** above the number was
+rewritten rather than the number incremented: it used to read *"today exactly one page stacks two
+sections"*, which is now false, and a silent increment would have hidden the one thing worth
+knowing — the shape this rule is about now occurs on three pages.
+
+### 7. ⚠️ Two housekeeping facts about this tree
+
+- Two **orphaned headless Chromes from 2026-08-30** (pids 50059 and 93389, ~230MB and ~10 helper
+  processes between them) were reaped before the first render. Both were `PPID=1`, holding
+  `nodegx-render-*` temp dirs two days old, with no render in flight — s12 had flagged them as worth
+  reaping if a render started timing out.
+- 🔴 **The 09-01 11:35–11:50 cluster of modified tracked files that s11 and s12 both recorded as
+  *"another session's in-flight work"* contains at least one file that is THIS PHASE'S OWN.**
+  `scripts/devtools/render-from-disk.js`'s uncommitted diff documents itself as **REL-002a**. It is
+  still uncommitted, it is load-bearing for every fold reading taken since, and *"a peer's"* was a
+  relayed conclusion nobody re-derived. It has been left alone here — but it should be **read**,
+  not inherited, before the cut.
+
+### The readings, with their exit statuses
+
+Every one gated on an **exit file the command wrote itself**, never on the wrapper's notification —
+this row's hazard 9, which has now disagreed with reality in three consecutive sessions.
+
+| gate | reading |
+|---|---|
+| `npm run template:members` | **exit 0**, and **idempotent** — `Pages/Post/nodes.json` hashed before and after a second run, identical. 30 components, 13 pages, **94 files**, and the door raised the **same 110 diagnostics** before and after the change |
+| `tpl001Template.test.ts` | **exit 0 — 72/72**, taken after the last edit. Its §6 pin moved 1 → 3 and the **argument above it was rewritten**, not the number incremented |
+| full `noodl-mcp` suite | **exit 0 — 85/85 suites, 1117/1117 tests**, clean on the first run |
+| `tpl001-members-drive` + `tpl001-empty-states` + `tpl001-refused-query` | **exit 0 — 3/3 suites, 79/79**, on real enforcing backends. This is what grades the `prop-place → whenLabel` rewire |
+| `vib001-members.look.ts` | **exit 0**, three times — 60 shots each (24 door + 36 living), seeded backend asserted before any picture. Living `md5`: `5474db3b` (detail pages) → `ed8a32db` (the ruled `/post` + `/account` fix). Door unchanged at `f969ad96` throughout |
+
+⚠️ **`head=` differs between the door and living manifests of the last run** (`538e3691` vs
+`bc012147`, neither of them the `b35f929d` the run started at). **A peer committed twice while the
+render was in flight.** The manifests' `headSha` is a **read time**, not the sha the artefact was
+built from — the artefact is pinned by its `md5`, which is the field to cite.
+
+---
+
 ### REL-003 — The stale bundles the cut inherits
 
 Phase 80 closed several fixes whose effect a user cannot see, because the committed build output

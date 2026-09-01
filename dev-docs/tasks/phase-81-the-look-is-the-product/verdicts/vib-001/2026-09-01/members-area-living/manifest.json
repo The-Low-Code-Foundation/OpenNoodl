@@ -2,8 +2,8 @@
   "task": "vib-001",
   "subject": "members-area",
   "state": "living",
-  "headSha": "e39b6249160f162e052b48a1376887a9c815f04e",
-  "artefactMd5": "7164e4f6df539edd8ff643c268ef3a60",
+  "headSha": "bc01214725b1bf6847c4d919df53761001a830ef",
+  "artefactMd5": "ed8a32db14b9230828718addd9d79cd0",
   "outDir": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-09-01/members-area-living",
   "starterAssets": {
     "written": [
@@ -508,7 +508,7 @@
       },
       "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-09-01/members-area-living/account-preview-viewport.png",
       "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-09-01/members-area-living/account-preview-full.png",
-      "contentBottom": 575,
+      "contentBottom": 559,
       "canScroll": true,
       "unreachablePx": 0,
       "textChars": 393,
@@ -575,6 +575,258 @@
       "canScroll": false,
       "unreachablePx": 0,
       "textChars": 393,
+      "headings": [],
+      "errors": []
+    },
+    {
+      "task": "vib-001",
+      "subject": "members-area",
+      "state": "living",
+      "page": "post",
+      "url": "/post",
+      "as": "the moderator writing an announcement",
+      "viewport": {
+        "id": "preview",
+        "width": 988,
+        "height": 313
+      },
+      "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-09-01/members-area-living/post-preview-viewport.png",
+      "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-09-01/members-area-living/post-preview-full.png",
+      "contentBottom": 1268,
+      "canScroll": true,
+      "unreachablePx": 0,
+      "textChars": 353,
+      "headings": [],
+      "errors": []
+    },
+    {
+      "task": "vib-001",
+      "subject": "members-area",
+      "state": "living",
+      "page": "post",
+      "url": "/post",
+      "as": "the moderator writing an announcement",
+      "viewport": {
+        "id": "desktop",
+        "width": 1280,
+        "height": 900
+      },
+      "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-09-01/members-area-living/post-desktop-viewport.png",
+      "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-09-01/members-area-living/post-desktop-full.png",
+      "contentBottom": 1268,
+      "canScroll": true,
+      "unreachablePx": 0,
+      "textChars": 353,
+      "headings": [],
+      "errors": []
+    },
+    {
+      "task": "vib-001",
+      "subject": "members-area",
+      "state": "living",
+      "page": "post",
+      "url": "/post",
+      "as": "the moderator writing an announcement",
+      "viewport": {
+        "id": "wide",
+        "width": 1900,
+        "height": 1080
+      },
+      "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-09-01/members-area-living/post-wide-viewport.png",
+      "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-09-01/members-area-living/post-wide-full.png",
+      "contentBottom": 1268,
+      "canScroll": true,
+      "unreachablePx": 0,
+      "textChars": 353,
+      "headings": [],
+      "errors": []
+    },
+    {
+      "task": "vib-001",
+      "subject": "members-area",
+      "state": "living",
+      "page": "post",
+      "url": "/post",
+      "as": "the moderator writing an announcement",
+      "viewport": {
+        "id": "phone",
+        "width": 390,
+        "height": 844
+      },
+      "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-09-01/members-area-living/post-phone-viewport.png",
+      "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-09-01/members-area-living/post-phone-full.png",
+      "contentBottom": 1400,
+      "canScroll": true,
+      "unreachablePx": 0,
+      "textChars": 353,
+      "headings": [],
+      "errors": []
+    },
+    {
+      "task": "vib-001",
+      "subject": "members-area",
+      "state": "living",
+      "page": "announcement",
+      "url": "/announcements/8d7672ab-d0be-4bb1-938c-58e22f6f146e",
+      "as": "a member reading the newest announcement — the top row of /members",
+      "viewport": {
+        "id": "preview",
+        "width": 988,
+        "height": 313
+      },
+      "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-09-01/members-area-living/announcement-preview-viewport.png",
+      "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-09-01/members-area-living/announcement-preview-full.png",
+      "contentBottom": 590,
+      "canScroll": true,
+      "unreachablePx": 0,
+      "textChars": 347,
+      "headings": [],
+      "errors": []
+    },
+    {
+      "task": "vib-001",
+      "subject": "members-area",
+      "state": "living",
+      "page": "announcement",
+      "url": "/announcements/8d7672ab-d0be-4bb1-938c-58e22f6f146e",
+      "as": "a member reading the newest announcement — the top row of /members",
+      "viewport": {
+        "id": "desktop",
+        "width": 1280,
+        "height": 900
+      },
+      "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-09-01/members-area-living/announcement-desktop-viewport.png",
+      "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-09-01/members-area-living/announcement-desktop-full.png",
+      "contentBottom": 900,
+      "canScroll": false,
+      "unreachablePx": 0,
+      "textChars": 347,
+      "headings": [],
+      "errors": []
+    },
+    {
+      "task": "vib-001",
+      "subject": "members-area",
+      "state": "living",
+      "page": "announcement",
+      "url": "/announcements/8d7672ab-d0be-4bb1-938c-58e22f6f146e",
+      "as": "a member reading the newest announcement — the top row of /members",
+      "viewport": {
+        "id": "wide",
+        "width": 1900,
+        "height": 1080
+      },
+      "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-09-01/members-area-living/announcement-wide-viewport.png",
+      "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-09-01/members-area-living/announcement-wide-full.png",
+      "contentBottom": 1080,
+      "canScroll": false,
+      "unreachablePx": 0,
+      "textChars": 347,
+      "headings": [],
+      "errors": []
+    },
+    {
+      "task": "vib-001",
+      "subject": "members-area",
+      "state": "living",
+      "page": "announcement",
+      "url": "/announcements/8d7672ab-d0be-4bb1-938c-58e22f6f146e",
+      "as": "a member reading the newest announcement — the top row of /members",
+      "viewport": {
+        "id": "phone",
+        "width": 390,
+        "height": 844
+      },
+      "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-09-01/members-area-living/announcement-phone-viewport.png",
+      "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-09-01/members-area-living/announcement-phone-full.png",
+      "contentBottom": 844,
+      "canScroll": false,
+      "unreachablePx": 0,
+      "textChars": 347,
+      "headings": [],
+      "errors": []
+    },
+    {
+      "task": "vib-001",
+      "subject": "members-area",
+      "state": "living",
+      "page": "meeting",
+      "url": "/meetings/a848d47d-c36a-4194-9f16-4aa08e8539a0",
+      "as": "a member opening the soonest meeting — the top row of /meetings",
+      "viewport": {
+        "id": "preview",
+        "width": 988,
+        "height": 313
+      },
+      "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-09-01/members-area-living/meeting-preview-viewport.png",
+      "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-09-01/members-area-living/meeting-preview-full.png",
+      "contentBottom": 590,
+      "canScroll": true,
+      "unreachablePx": 0,
+      "textChars": 291,
+      "headings": [],
+      "errors": []
+    },
+    {
+      "task": "vib-001",
+      "subject": "members-area",
+      "state": "living",
+      "page": "meeting",
+      "url": "/meetings/a848d47d-c36a-4194-9f16-4aa08e8539a0",
+      "as": "a member opening the soonest meeting — the top row of /meetings",
+      "viewport": {
+        "id": "desktop",
+        "width": 1280,
+        "height": 900
+      },
+      "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-09-01/members-area-living/meeting-desktop-viewport.png",
+      "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-09-01/members-area-living/meeting-desktop-full.png",
+      "contentBottom": 900,
+      "canScroll": false,
+      "unreachablePx": 0,
+      "textChars": 291,
+      "headings": [],
+      "errors": []
+    },
+    {
+      "task": "vib-001",
+      "subject": "members-area",
+      "state": "living",
+      "page": "meeting",
+      "url": "/meetings/a848d47d-c36a-4194-9f16-4aa08e8539a0",
+      "as": "a member opening the soonest meeting — the top row of /meetings",
+      "viewport": {
+        "id": "wide",
+        "width": 1900,
+        "height": 1080
+      },
+      "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-09-01/members-area-living/meeting-wide-viewport.png",
+      "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-09-01/members-area-living/meeting-wide-full.png",
+      "contentBottom": 1080,
+      "canScroll": false,
+      "unreachablePx": 0,
+      "textChars": 291,
+      "headings": [],
+      "errors": []
+    },
+    {
+      "task": "vib-001",
+      "subject": "members-area",
+      "state": "living",
+      "page": "meeting",
+      "url": "/meetings/a848d47d-c36a-4194-9f16-4aa08e8539a0",
+      "as": "a member opening the soonest meeting — the top row of /meetings",
+      "viewport": {
+        "id": "phone",
+        "width": 390,
+        "height": 844
+      },
+      "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-09-01/members-area-living/meeting-phone-viewport.png",
+      "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-09-01/members-area-living/meeting-phone-full.png",
+      "contentBottom": 844,
+      "canScroll": false,
+      "unreachablePx": 0,
+      "textChars": 291,
       "headings": [],
       "errors": []
     }

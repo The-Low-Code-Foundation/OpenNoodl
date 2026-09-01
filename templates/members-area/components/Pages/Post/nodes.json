@@ -94,7 +94,7 @@
           "unit": "%"
         },
         "maxWidth": {
-          "value": 720,
+          "value": 1200,
           "unit": "px"
         },
         "flexDirection": "column",
@@ -256,7 +256,11 @@
         "paddingRight": "var(--space-5)",
         "paddingTop": "var(--space-5)",
         "paddingBottom": "var(--space-5)",
-        "mounted": false
+        "mounted": false,
+        "maxWidth": {
+          "value": 720,
+          "unit": "px"
+        }
       },
       "x": 280,
       "y": 1360
@@ -290,6 +294,10 @@
         },
         "flexDirection": "column",
         "rowGap": "var(--space-6)",
+        "maxWidth": {
+          "value": 720,
+          "unit": "px"
+        },
         "mounted": false
       },
       "x": 280,

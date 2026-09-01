@@ -987,11 +987,15 @@ function notice(
   label: string,
   parent: string,
   text: string,
-  opts: { tone?: 'neutral' | 'accent' | 'refused'; gated?: boolean } = {}
+  opts: { tone?: 'neutral' | 'accent' | 'refused'; gated?: boolean; atFormMeasure?: boolean } = {}
 ): unknown[] {
   const tone = opts.tone ?? 'neutral';
   const box: Record<string, unknown> = { ...(tone === 'accent' ? NOTICE_ACCENT : NOTICE) };
   if (opts.gated !== false) box.mounted = false;
+  // REL-002c s13: a notice that belongs to a form column keeps the form's
+  // measure rather than the §C 1200 the page ground now carries. See
+  // `AT_FORM_MEASURE` for the ruling and for why this is on the children.
+  if (opts.atFormMeasure) Object.assign(box, AT_FORM_MEASURE);
   const words = tone === 'accent' ? T_NOTICE_ACCENT : tone === 'refused' ? T_REFUSED : T_NOTICE;
   return [
     { id, type: 'Group', label, parent, parameters: box, children: [`${id}Text`] },
@@ -1123,6 +1127,49 @@ const PAGE_GROUND = {
  * page. See the handoff.
  */
 const FORM_GROUND = { ...PAGE_GROUND, maxWidth: { value: 720, unit: 'px' } };
+
+/**
+ * REL-002c s13 — **the form's own measure, on a page that already has a band.**
+ * 🔴 **RULED BY RICHARD, 2026-09-01**: *"head on 1200, form panels capped at 720."*
+ *
+ * The §C departure (`TASKS.md`) weighed 720-centred against 1200 and chose 720
+ * — but it weighed it on the four DOOR pages, which carry no `Members/Chrome`
+ * above them and are therefore self-consistent at any measure. `Pages/Post` and
+ * `Pages/Account` are not door pages. They sit under a band and above a footer
+ * that are both the §C 1200, and `FORM_GROUND` on the ground between them put
+ * **three different left edges on one page**: at 1280 the association's name at
+ * x=64, the page's own heading at x=304, the footer back at x=64. At 988 — the
+ * editor preview's default, the first render of every project — 24 / 160 / 24.
+ *
+ * 🔴 **`Members/Chrome` had already stated the rule and stated it as satisfied**:
+ * *"the band must agree with `PAGE_GROUND` or the nav and the content it heads
+ * are two different columns; they are now the same 1200."* It was true of six of
+ * the eight signed-in pages and nobody had rendered the other two.
+ *
+ * ✅ **Applied to the form CHILDREN, not by wrapping them.** A wrapper would be a
+ * full-width column `Group` with no fill and more than one child — a SECTION by
+ * §6's stated shape — and on `Pages/Post` it would enclose `tools`, which is
+ * already one, making `tools` a second section that owes a hairline it should
+ * not have. Capping the children moves no census.
+ *
+ * ⚠️ **No `sizeMode`, and that is checked rather than assumed.** `FIELD`'s note
+ * records the door refusing `width` on a `net.noodl.controls.textinput` without
+ * one — but that is a fact about that node type, not a rule about `Group`s:
+ * `SECTION` has carried `width: 100%` and no `sizeMode` since it was written and
+ * the panels it lays out are full-bleed in every render. Adding one here would
+ * be `explicit`/`contentHeight` guesswork over a working default. **Verified in
+ * the render, not from this comment** — the door raised the same 110
+ * diagnostics before and after, and `/post` and `/account` were re-photographed
+ * at all four widths.
+ *
+ * ⚠️ The neighbouring hazard still applies and is why this is only a WIDTH: a
+ * `Group` with no `sizeMode` is `flex-grow: 100`, which does nothing here only
+ * because `PAGE_GROUND` is `contentHeight` and has no slack to share out.
+ */
+const AT_FORM_MEASURE = {
+  width: { value: 100, unit: '%' },
+  maxWidth: { value: 720, unit: 'px' }
+};
 
 /**
  * The full-height box a page's own ground stands in — REL-002c item 4.
@@ -3271,11 +3318,37 @@ const ANNOUNCEMENT: Tpl001Component = {
       label: 'Page ground',
       parent: 'pageBody',
       parameters: PAGE_GROUND,
-      children: ['titleHeadRow', 'date', 'body', 'refusal', 'removal']
+      children: ['titleHeadRow', 'readingBlock', 'refusal', 'removal']
     },
     ...pageHead('title', 'Title', 'ground', 'Announcement', '', { icon: 'newspaper' }),
-    { id: 'date', type: 'Text', label: 'Posted', parent: 'ground', parameters: { text: '', ...T_META } },
-    { id: 'body', type: 'Text', label: 'Body', parent: 'ground', parameters: { text: '', ...T_BODY } },
+    /**
+     * 🔴 **REL-002c s13 — `PROSE`, and this page is the reason the constant
+     * exists.** The first render of this page ever taken (s13; it had never been
+     * photographed in either state) put the announcement's body across the full
+     * §C measure: at 1900 that is one line of about 210 characters. `PAGE_GROUND`'s
+     * own note already says §C's 1200 is *"on the SHELL"* and that `PROSE` is
+     * *"the half of §C that stops 1200 making pages worse"* — the landing's
+     * `aboutProse` applies it and the two detail pages, which nothing had ever
+     * rendered, did not. The decision was made once and never carried across.
+     *
+     * ⚠️ **It holds the date AND the body, and that is not an accident of the
+     * gate.** §2 of `tpl001Template.test.ts` counts *a `Group` wrapping exactly
+     * one `Text`* as a notice and demands a fill and an edge of it — a measure
+     * wrapper around the body alone would be a notice that forgot to be one.
+     * Holding both is also the better composition: `--space-2` between them
+     * makes the posting date and the words it stamps read as one record rather
+     * than two items `PAGE_GROUND` spaced 20px apart.
+     */
+    {
+      id: 'readingBlock',
+      type: 'Group',
+      label: 'The announcement, at a reading measure',
+      parent: 'ground',
+      parameters: PROSE,
+      children: ['date', 'body']
+    },
+    { id: 'date', type: 'Text', label: 'Posted', parent: 'readingBlock', parameters: { text: '', ...T_META } },
+    { id: 'body', type: 'Text', label: 'Body', parent: 'readingBlock', parameters: { text: '', ...T_BODY } },
     ...notice('refusal', 'Not available', 'ground', 'This announcement is not available to you.', {
       tone: 'refused'
     }),
@@ -3465,12 +3538,43 @@ const MEETING: Tpl001Component = {
       label: 'Page ground',
       parent: 'pageBody',
       parameters: PAGE_GROUND,
-      children: ['titleHeadRow', 'when', 'place', 'details', 'refusal', 'removal']
+      children: ['titleHeadRow', 'readingBlock', 'refusal', 'removal']
     },
     ...pageHead('title', 'Title', 'ground', 'Meeting', '', { icon: 'calendar-days' }),
-    { id: 'when', type: 'Text', label: 'When', parent: 'ground', parameters: { text: '', ...T_META } },
-    { id: 'place', type: 'Text', label: 'Where', parent: 'ground', parameters: { text: '', ...T_META } },
-    { id: 'details', type: 'Text', label: 'Details', parent: 'ground', parameters: { text: '', ...T_BODY } },
+    /**
+     * 🔴 **REL-002c s13 — the detail page showed LESS than the row that links
+     * to it, and only the first render of it ever taken said so.** `MeetingRow`
+     * already rules this exact pair: *"one meta line, not two… a diary is
+     * scanned down its dates, so the row keeps the date leading and hangs the
+     * place off it with the `·` the directory row already uses"*. This page
+     * stacked `when` and `place` as two separate unlabelled `T_META` lines —
+     * the shape that ruling was written against — so a member who clicked
+     * `Details` arrived at a **less** composed version of the two facts they
+     * had just read.
+     *
+     * ✅ **The join moves into `whenLabel`, which is where the row does it**,
+     * including the row's guard: the separator appears only with something on
+     * both sides of it, or a meeting with no place recorded renders a date with
+     * a dangling `·` that reads as a field which failed to load.
+     *
+     * ⚠️ **`place` is deleted, not emptied** — `MeetingRow`'s own note again: a
+     * `Text` wired to nothing still renders an empty box and takes its
+     * line-height. Nothing asserts on this node; the drive's `place` assertion
+     * (`tpl001-members-drive.test.ts` §8) reads `member.meetings`, the LIST,
+     * whose joined line still carries it.
+     */
+    {
+      id: 'readingBlock',
+      type: 'Group',
+      label: 'The meeting, at a reading measure',
+      parent: 'ground',
+      // See `Pages/Announcement`'s twin: `PROSE` is §C's other half, and it
+      // holds two children so §2's notice census does not match it.
+      parameters: PROSE,
+      children: ['when', 'details']
+    },
+    { id: 'when', type: 'Text', label: 'When and where', parent: 'readingBlock', parameters: { text: '', ...T_META } },
+    { id: 'details', type: 'Text', label: 'Details', parent: 'readingBlock', parameters: { text: '', ...T_BODY } },
     ...notice('refusal', 'Not available', 'ground', 'This meeting is not available to you.', {
       tone: 'refused'
     }),
@@ -3496,13 +3600,19 @@ const MEETING: Tpl001Component = {
     {
       id: 'whenLabel',
       type: 'JavaScriptFunction',
-      label: 'The date, as a person writes it',
+      label: 'When and where, as a person writes it',
       parameters: {
+        // 🔴 The same script as `Members/MeetingRow`'s, for the reason recorded
+        // on `readingBlock` above: the row and the page it opens are the same two
+        // facts and were composing them two different ways.
         functionScript:
           HUMAN_DAY_FN +
           'if (Inputs.when === undefined) return;\n' +
           "var day = humanDay(Inputs.when);\n" +
-          "Outputs.label = day === '' ? String(Inputs.when || '') : day;"
+          "var said = day === '' ? String(Inputs.when || '') : day;\n" +
+          // The separator only when there is something on both sides of it.
+          "var where = Inputs.place === undefined || Inputs.place === null ? '' : String(Inputs.place);\n" +
+          "Outputs.label = where === '' ? said : said + ' · ' + where;"
       }
     },
     { id: 'refusalGate', type: 'Condition', label: 'Show the refusal', parameters: { ...CONDITION_GATE } },
@@ -3515,7 +3625,9 @@ const MEETING: Tpl001Component = {
     { fromId: 'hold', fromProperty: 'out-ready', toId: 'record', toProperty: 'fetch' },
 
     { fromId: 'record', fromProperty: 'prop-title', toId: 'title', toProperty: 'text' },
-    { fromId: 'record', fromProperty: 'prop-place', toId: 'place', toProperty: 'text' },
+    // `prop-place` reaches the reader through `whenLabel` now, not through a
+    // second grey line of its own — see the note on the `readingBlock` Group.
+    { fromId: 'record', fromProperty: 'prop-place', toId: 'whenLabel', toProperty: 'in-place' },
     { fromId: 'record', fromProperty: 'prop-details', toId: 'details', toProperty: 'text' },
     { fromId: 'record', fromProperty: 'prop-when', toId: 'whenLabel', toProperty: 'in-when' },
     { fromId: 'whenLabel', fromProperty: 'out-label', toId: 'when', toProperty: 'text' },
@@ -4042,12 +4154,17 @@ const POST: Tpl001Component = {
       type: 'Group',
       label: 'Page ground',
       parent: 'pageBody',
-      parameters: FORM_GROUND,
+      // 🔴 `PAGE_GROUND`, not `FORM_GROUND`, and `AT_FORM_MEASURE` on the two
+      // children below — Richard's ruling of 2026-09-01. The head now lines up
+      // with the association's name in the band and with the footer; only the
+      // forms are capped. See `AT_FORM_MEASURE`.
+      parameters: PAGE_GROUND,
       children: ['headingHeadRow', 'notAllowed', 'tools']
     },
     ...pageHead('heading', 'Heading', 'ground', 'For moderators', 'Post something', { icon: 'pencil' }),
     ...notice('notAllowed', 'Not a moderator', 'ground', 'Only a moderator can post here.', {
-      tone: 'refused'
+      tone: 'refused',
+      atFormMeasure: true
     }),
     {
       id: 'tools',
@@ -4057,7 +4174,7 @@ const POST: Tpl001Component = {
       // A SECTION: it holds the two form panels, and a panel inside a panel has
       // no edge. This is also the node D7/D16 hang on — it is what leaves the
       // document entirely when the reader is not a moderator.
-      parameters: { ...laidOut('column', SECTION, 'var(--space-6)'), mounted: false },
+      parameters: { ...laidOut('column', SECTION, 'var(--space-6)'), ...AT_FORM_MEASURE, mounted: false },
       children: ['announcementForm', 'meetingForm']
     },
     {
@@ -5072,7 +5189,9 @@ const ACCOUNT: Tpl001Component = {
       type: 'Group',
       label: 'Page ground',
       parent: 'pageBody',
-      parameters: FORM_GROUND,
+      // 🔴 `PAGE_GROUND` + `AT_FORM_MEASURE` on the panel and the three notices —
+      // the same ruling as `Pages/Post`. See `AT_FORM_MEASURE`.
+      parameters: PAGE_GROUND,
       children: ['headingHeadRow', 'panel', 'savedOn', 'savedOff', 'failed']
     },
     ...pageHead('heading', 'Heading', 'ground', 'Your account', 'Emails', { icon: 'mail' }),
@@ -5084,7 +5203,7 @@ const ACCOUNT: Tpl001Component = {
       // 🔴 Mounted only for a member. A pending person has no `Member` row and
       // no setting to change, and `mounted` leaves the subtree out of the
       // document entirely rather than hiding it — the s8 finding, unchanged.
-      parameters: { ...PANEL, mounted: false },
+      parameters: { ...PANEL, ...AT_FORM_MEASURE, mounted: false },
       children: ['box', 'note']
     },
     {
@@ -5135,9 +5254,12 @@ const ACCOUNT: Tpl001Component = {
       parent: 'panel',
       parameters: { text: NOTIFY_OPT_IN_NOTE, ...T_META }
     },
-    ...notice('savedOn', 'Saved, on', 'ground', NOTIFY_SAVED_ON_TEXT, { tone: 'accent' }),
-    ...notice('savedOff', 'Saved, off', 'ground', NOTIFY_SAVED_OFF_TEXT, { tone: 'accent' }),
-    ...notice('failed', 'Could not save', 'ground', NOTIFY_SAVE_FAILED_TEXT, { tone: 'refused' }),
+    ...notice('savedOn', 'Saved, on', 'ground', NOTIFY_SAVED_ON_TEXT, { tone: 'accent', atFormMeasure: true }),
+    ...notice('savedOff', 'Saved, off', 'ground', NOTIFY_SAVED_OFF_TEXT, { tone: 'accent', atFormMeasure: true }),
+    ...notice('failed', 'Could not save', 'ground', NOTIFY_SAVE_FAILED_TEXT, {
+      tone: 'refused',
+      atFormMeasure: true
+    }),
     { id: 'read', type: 'CloudFunction2', label: FN_MY_NOTIFY, parameters: { function: FN_MY_NOTIFY } },
     { id: 'write', type: 'CloudFunction2', label: FN_SET_NOTIFY, parameters: { function: FN_SET_NOTIFY } },
     {
