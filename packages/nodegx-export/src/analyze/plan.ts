@@ -339,6 +339,13 @@ const UTIL_NODES: Record<
     outputs: string[];
     /** `String Mapper` only — the numbered families, in `input`/`mapping` order. */
     numbered?: { match: string; to: string };
+    /**
+     * `Color Blend` only (EXP-011 §38) — a numbered family passed as **variadic arguments** after
+     * `args`, index-aligned and with a hole printed as `undefined`. Unlike `numbered`, a wired
+     * entry is fine here: the family is a list of values the call receives at run time, not a
+     * table the generator has to read.
+     */
+    numberedList?: string;
   }
 > = {
   Substring: {
@@ -357,6 +364,28 @@ const UTIL_NODES: Record<
       { port: 'clamp', fallback: true }
     ],
     outputs: ['remappedValue']
+  },
+  /**
+   * EXP-011 §38 (session 67). `Boolean To String` is `currentInput ? trueString : falseString`
+   * with the fallbacks `initialize` writes (`''` for both strings; an unset Selector is falsy).
+   * Its `inputChanged` signal is not read here — it fires from a value change, which is effect()
+   * work, and a wire off it gets "not a port this slice reads".
+   */
+  'Boolean To String': {
+    fn: 'booleanToString',
+    args: [{ port: 'input' }, { port: 'trueString', fallback: '' }, { port: 'falseString', fallback: '' }],
+    outputs: ['currentValue']
+  },
+  /**
+   * EXP-011 §38 (session 67). `Color Blend`'s colours are a numbered family — `color 0`,
+   * `color 1`, … — passed to `blendColor(blend, ...colors)` in index order. `blendValue` declares
+   * 0 and `initialize` writes 0, so the fallback and the declaration agree.
+   */
+  'Color Blend': {
+    fn: 'blendColor',
+    args: [{ port: 'blendValue', fallback: 0 }],
+    outputs: ['result'],
+    numberedList: 'color'
   },
   'String Mapper': {
     fn: 'mapString',
@@ -4449,6 +4478,49 @@ function planComponent(
       const table = numberedMappingOf(node, spec.numbered, ctx);
       if (table === null) return null;
       cases = table;
+    }
+
+    /**
+     * EXP-011 §38 — a numbered family as variadic arguments. The interpreter keeps
+     * `colors[index] = value` in a sparse array, so `length` is the highest index plus one and a
+     * hole reads `undefined` (which the helper turns into `#000000`, as `getColor` does). The
+     * emitted call reproduces the sparse array positionally: every index up to the highest
+     * authored or wired one is printed, holes as `undefined`.
+     */
+    if (spec.numberedList !== undefined) {
+      const base = spec.numberedList;
+      const indexOf = (name: string): number | null => {
+        if (!name.startsWith(base + ' ')) return null;
+        const index = Number(name.slice(base.length + 1));
+        return Number.isInteger(index) && index >= 0 ? index : null;
+      };
+      const entries = new Map<number, ValueExpr>();
+      for (const parameter of node.parameters) {
+        const index = indexOf(parameter.name);
+        if (index === null || parameter.value.kind !== 'literal') continue;
+        entries.set(index, { kind: 'literal', value: parameter.value.value });
+      }
+      for (const c of component.connections) {
+        if (c.toId !== node.id) continue;
+        const index = indexOf(c.toProperty);
+        if (index === null) continue;
+        const twice = component.connections.filter((o) => o.toId === node.id && o.toProperty === c.toProperty);
+        if (twice.length > 1) {
+          ctx.defer = `two wires feed its ${c.toProperty} input — last-writer-wins is not statically ordered`;
+          return null;
+        }
+        const expr = resolveExpr(nodeById.get(c.fromId), c.fromProperty, ctx);
+        if (expr === null) {
+          if (ctx.defer === undefined) ctx.defer = `its ${c.toProperty} input has no statically known source`;
+          return null;
+        }
+        ctx.consumes.push(c.key);
+        entries.set(index, expr);
+      }
+      const highest = Math.max(-1, ...entries.keys());
+      for (let index = 0; index <= highest; index++) {
+        args.push(entries.get(index) ?? { kind: 'undefined' });
+      }
     }
 
     ctx.logicNodeIds.push(node.id);

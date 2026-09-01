@@ -36,7 +36,7 @@
 export const UTIL_LIB_PATH = 'src/lib/util.ts';
 
 /** The exported helpers, one per translated node. Sorted — the import list is sorted too. */
-export const UTIL_HELPERS = ['mapString', 'remapNumber', 'substring'] as const;
+export const UTIL_HELPERS = ['blendColor', 'booleanToString', 'mapString', 'remapNumber', 'substring'] as const;
 
 export type UtilHelper = (typeof UTIL_HELPERS)[number];
 
@@ -53,6 +53,9 @@ export type UtilHelper = (typeof UTIL_HELPERS)[number];
  * copies of one fact cannot drift.
  */
 export const UTIL_HELPER_MAY_BE_UNDEFINED: Record<UtilHelper, boolean> = {
+  // EXP-011 §38: a string from two coerced strings, and a hex string (or `#000000`) — never absent.
+  blendColor: false,
+  booleanToString: false,
   mapString: true,
   remapNumber: false,
   substring: false
@@ -81,9 +84,8 @@ export function utilLibSource(): string {
     ' * `Substring` — the section of `input` between Start and End.',
     ' *',
     ' * 🔴 `end === -1` means "to the end of the string", not "one before the end". It is the value',
-    ' * the node\'s own `initialize` writes, so it is what an untouched End port holds — the port',
-    ' * *declares* a default of 0, which would yield nothing, and a declared default never runs its',
-    ' * setter.',
+    ' * the node\'s own `initialize` writes and, since DEF-033, the default the port declares too;',
+    ' * 0 would yield nothing.',
     ' *',
     ' * The two branches are `substr(start)` and `substr(start, end - start)` written out: a',
     ' * negative Start counts back from the end, a length of zero or less is empty, and the length',
@@ -147,6 +149,45 @@ export function utilLibSource(): string {
     '  const key = input === undefined ? undefined : String(input);',
     '  if (key !== undefined && Object.prototype.hasOwnProperty.call(cases, key)) return cases[key];',
     '  return fallback === undefined ? undefined : String(fallback);',
+    '}',
+    '',
+    '/**',
+    ' * `Boolean To String` — String for true while Selector is truthy, String for false otherwise.',
+    ' *',
+    ' * Truthiness, not `=== true`: the node\'s getter is `currentInput ? trueString : falseString`,',
+    ' * so a wired 1 or "yes" picks the true string in the interpreter and here. An unset string is',
+    ' * the empty string `initialize` writes.',
+    ' */',
+    'export function booleanToString(selector: unknown, whenTrue: unknown, whenFalse: unknown): string {',
+    '  const picked = selector ? whenTrue : whenFalse;',
+    "  return picked === undefined || picked === null ? '' : String(picked);",
+    '}',
+    '',
+    '/**',
+    ' * `Color Blend` — the colour at `blend` along the list, where 1 is exactly the second colour',
+    ' * and 1.5 is halfway to the third.',
+    ' *',
+    ' * A transcription of colorblend.ts, holes and all: the interpreter keeps the colours in a',
+    ' * sparse array, a missing entry reads `#000000`, the blend is clamped to the list, and each',
+    ' * channel is `Math.floor` of a linear mix. An empty list answers `#000000`, the value',
+    ' * `initialize` writes. Inputs must be 6-digit hex — anything else yields the same nonsense',
+    ' * the node yields, which its own port description warns about.',
+    ' */',
+    'export function blendColor(blend: unknown, ...colors: unknown[]): string {',
+    "  if (colors.length === 0) return '#000000';",
+    "  const colorAt = (index: number): string => (colors[index] ? String(colors[index]) : '#000000');",
+    '  const clamped = Math.max(0, Math.min(colors.length - 1, Number(blend)));',
+    '  const index = Math.floor(clamped);',
+    '  const t = clamped - index;',
+    '  if (t === 0) return colorAt(index);',
+    '  const channels = (hex: string): number[] => [1, 3, 5].map((at) => parseInt(hex.substring(at, at + 2), 16));',
+    '  const from = channels(colorAt(index));',
+    '  const to = channels(colorAt(index + 1));',
+    '  const part = (c: number): string => {',
+    '    const hex = c.toString(16);',
+    "    return hex.length === 1 ? '0' + hex : hex;",
+    '  };',
+    "  return '#' + [0, 1, 2].map((i) => part(Math.floor(from[i] + (to[i] - from[i]) * t))).join('');",
     '}',
     ''
   ].join('\n');

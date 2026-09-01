@@ -1,4 +1,4 @@
-# Next session — the export is IN THE PRODUCT; whether it rides 0.2.2 is Richard's call
+# Next session — the export RIDES 0.2.2 (ruled); coverage is 77/127 and the next row is the controlled-state gap
 
 ## The board, re-derived from the task files
 
@@ -12,8 +12,8 @@
 | EXP-008 coverage ledger + gate | ✅ Built |
 | EXP-009 backend connection | 🟢 built + driven; AC4 waits on a Cloud Services node |
 | EXP-010 custom nodes & modules | 🟢 Route B built + driven; Route A not owed |
-| EXP-011 picker coverage | 🟡 Tier 1 COMPLETE, Tier 2.7 COMPLETE — 75/127 (59.1%); the two Tier 2 leftovers each have a design question in front of them |
-| **EXP-012 the editor export command** | 🟢 **BUILT + DRIVEN s67** — [EXP-012](EXP-012-THE-EDITOR-EXPORT-COMMAND.md) |
+| EXP-011 picker coverage | 🟡 **77/127 (60.6%)** — Tier 1, 2.5, 2.7 complete; **§38 built `Boolean To String` + `Color Blend` (s67)**; next rows in §38.3 and §38.5 |
+| **EXP-012 the editor export command** | 🟢 **BUILT + DRIVEN s67, RULED: RIDES 0.2.2**; editor-path build exit 0 — [EXP-012](EXP-012-THE-EDITOR-EXPORT-COMMAND.md) |
 | DEF-033 (Substring's declared End) | ✅ **BUILT s67** — §36.2 |
 
 ## 🔴 What session 67 did, and the one decision it left for Richard
@@ -25,13 +25,10 @@ shows the exact pre-flight, takes a folder, refuses one inside the project, asks
 non-empty one, writes the app, and points at `EXPORT-REPORT.md`. Driven end to end over CDP on a
 renamed copy of `ticket-desk`; the written folder is **byte-identical** to `emit-app.ts`'s.
 
-🔴 **Richard decides whether it rides 0.2.2.** Nothing in P82's board names it. The facts he needs:
-it touches four editor files plus one alias, its gates are green (editor `tsc` 0, export jest
-1248/1248, runtime jest 2615 passed, tests-unit 9/9), it changes nothing for a project that never
-presses the button, and the honest caveat is that **the exported app has been built and driven from
-the script path many times but not from the editor path** — the bytes are identical, so that is a
-statement about instruments, not about risk. If it rides: P82's run-sheet gets a row and the release
-notes a line (*"Export as React code — Settings → Project"*); if it holds: nothing to undo.
+✅ **Richard ruled the same day: it rides 0.2.2** (*"I think it can ride 0.2.2"*). P82 row REL-008
+records it, the release notes carry the line, and the editor-path export was then built (`npm run
+build` exit 0). **Then, on "can we continue to push towards full node coverage?", §38 built the two
+pure small nodes — picker 75 → 77 — and found the row that should come next (below).**
 
 Also built: **DEF-033** (Richard's ruling from P80 — Substring's panel now says `-1`, the number
 that runs; description rewritten; catalog regenerated; graded by declaration-vs-`initialize`, with
@@ -63,10 +60,10 @@ a deployed NodeGX backend — exports to a React repo that builds, runs, and sti
 ```
 cd packages/nodegx-export
 ../../node_modules/.bin/tsc --noEmit          # exit 0
-../../node_modules/.bin/jest                  # 1248/1248, 49 suites, 49 files on disk
+../../node_modules/.bin/jest                  # 1282/1282, 50 suites, 50 files on disk (16 are the readdirSync suites' rows for mood-desk)
 cd ../noodl-editor && ../../node_modules/.bin/tsc -p tsconfig.json --noEmit   # exit 0 — NEW gate, see above
 ../../node_modules/.bin/jest tests-unit/exp-012                               # 9/9
-npm run export-ledger:picker                  # from the repo root — 75/127 (59.1%), floor 75
+npm run export-ledger:picker                  # from the repo root — 77/127 (60.6%), floor 77
 npm run export-ledger:check                   # 175 types
 ```
 
@@ -76,9 +73,17 @@ npm run export-ledger:check                   # 175 types
 
 ## Do this next — in the order they are worth doing
 
-### 0. If Richard says it rides: the two lines that make it visible
-A row on P82's `TASKS.md` and a release-notes line. Then **build and run one editor-path export**
-(`npm install && npm run build` in the folder the button wrote) so the caveat above closes.
+### 0. 🔴 The controlled-state gap §38.3 found — a checkbox or slider writing a Variable
+*"A variable write is only translated from a rendered text input in step 5."* A checkbox's
+`checked` and a range's `value` into a Variable are the most ordinary graphs for the two nodes just
+built, and both export with the logic translated and the **input dropped**. Extend the
+controlled-state slice (CONTROLLED-STATE-TARGET) from text inputs to `checkbox.checked` and
+`range.value`; `mood-desk` is the fixture to re-wire once it works (its buttons are a workaround).
+Owner **P18**. Beside it, smaller: `Set Variable` with a **typed** value is refused (§38.3 #2, `NONE`).
+
+### 0b. The three non-pure small nodes — `Log`, `Value Changed`, `Delay` (§38.5)
+`Log` is an action on External Link's template; `Value Changed` is the first effect() slice; `Delay`
+is a timer with state. +3 → 80. Then **Cloud Services (9)**, mostly unblocked by EXP-009.
 
 ### 1. 🔴 The row-owned write, with the question §34 sharpened *(carried, unstarted)*
 Not *"can a row write to itself"* — **does the write need an id at all?** `Collection.updateWhere`
@@ -238,7 +243,7 @@ The pattern that produced §26.3, §27.5, §29.4, §30.4, §31.3, §32.5, §35.5
   `__req('./src/editor/src/models/warningsmodel.ts')`. `nodelibrary` is at
   `models/nodelibrary/index.ts`, not `models/nodelibrary.ts`.
 
-## The eleven fixtures, and what each one already covers
+## The twelve fixtures, and what each one already covers
 
 | Fixture | Covers |
 |---|---|
@@ -253,6 +258,7 @@ The pattern that produced §26.3, §27.5, §29.4, §30.4, §31.3, §32.5, §35.5
 | `kits` | custom nodes / modules |
 | `ticket-desk` | **the three small utilities** — `Substring`, `String Mapper`, `Number Remapper` |
 | `badge-desk` | **the id pair** — both generators, both rows, both Done chains reading the chain-local, and `UUID`'s `Error` from the render *and* the Failure arm |
+| `mood-desk` | **`Boolean To String` + `Color Blend`** (§38) — Variables driven by buttons + `Set Variable` fed by `Boolean`/`Number` constants (the checkbox/slider → Variable write is the §38.3 gap) |
 
 **No fixture has**: a `PageInputs` node, a braced `urlPath`, an `External Link`, a
 `Navigate To Path`, an untyped store key, a wire into a port that already carries an authored

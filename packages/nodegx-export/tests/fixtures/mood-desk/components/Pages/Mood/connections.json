@@ -1,0 +1,79 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "b7c2d9e1-0000-4000-8000-000000000002",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "openButton",
+      "fromProperty": "onClick",
+      "toId": "setOpen",
+      "toProperty": "do"
+    },
+    {
+      "fromId": "closeButton",
+      "fromProperty": "onClick",
+      "toId": "setClosed",
+      "toProperty": "do"
+    },
+    {
+      "fromId": "openVar",
+      "fromProperty": "value",
+      "toId": "openLabel",
+      "toProperty": "input"
+    },
+    {
+      "fromId": "openLabel",
+      "fromProperty": "currentValue",
+      "toId": "openText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "calmButton",
+      "fromProperty": "onClick",
+      "toId": "setCalm",
+      "toProperty": "do"
+    },
+    {
+      "fromId": "angryButton",
+      "fromProperty": "onClick",
+      "toId": "setAngry",
+      "toProperty": "do"
+    },
+    {
+      "fromId": "moodVar",
+      "fromProperty": "value",
+      "toId": "moodBlend",
+      "toProperty": "blendValue"
+    },
+    {
+      "fromId": "moodBlend",
+      "fromProperty": "result",
+      "toId": "moodText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "trueConst",
+      "fromProperty": "savedValue",
+      "toId": "setOpen",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "falseConst",
+      "fromProperty": "savedValue",
+      "toId": "setClosed",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "calmConst",
+      "fromProperty": "savedValue",
+      "toId": "setCalm",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "angryConst",
+      "fromProperty": "savedValue",
+      "toId": "setAngry",
+      "toProperty": "value"
+    }
+  ]
+}

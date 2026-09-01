@@ -4808,3 +4808,89 @@ fixture was the only possible instrument, and the corpus is the regression net.
 - **`Unique Id`'s `Completed`** is a translatable increment — §37.4 has the whole argument and the
   one thing to settle, which is the order of two chains when both ports are wired.
 - ⚠️ **The row-owned write is still the top row** and is still untouched.
+
+## §38 The two small ordinary nodes — `Boolean To String` and `Color Blend` (session 67, 2026-09-01)
+
+**Picker 75 → 77 of 127 (60.6%)**, floor raised in the same commit. Richard, after ruling that the
+export rides 0.2.2: *"can we continue to push towards full node coverage?"* The ledger had five
+rows scheduled since session 35 as *"a small ordinary node with no design question standing in
+front of it"* — `Boolean To String`, `Color Blend`, `Value Changed`, `Delay`, `Log`. The first two
+are **pure reads**, Tier 2.7's exact shape, and are built here; the other three are an effect, a
+timer and an action, and are §38.6.
+
+### §38.1 The build
+
+One call each into the emitted `src/lib/util.ts`, through `UTIL_NODES` — so Pass 4c's whitelist,
+the import clause and the module's presence in the app all followed without a second edit:
+
+| node | emitted call | transcribed from |
+|---|---|---|
+| `Boolean To String` | `booleanToString(selector, whenTrue, whenFalse)` — **truthiness**, as the getter is `currentInput ? trueString : falseString`; unset strings are `initialize`'s `''` | `noodl-runtime/…/booleantostring.ts` |
+| `Color Blend` | `blendColor(blend, ...colors)` — the numbered `color N` family as **variadic arguments**, index-aligned, a hole printed as `undefined` | `noodl-viewer-react/…/colorblend.ts` |
+
+`UTIL_NODES` grew a `numberedList` field for the second. It is deliberately **not** `numbered`:
+String Mapper's table is read at generation time and a wired entry defers the node (§36); a colour
+is a value the call receives at run time, so **a wired colour is an argument**, and the
+interpreter's sparse array (`colors[index] = value`, `length` = highest index + 1, a hole reading
+`#000000` through `getColor`) is reproduced positionally.
+
+### §38.2 Graded — `tests/small-utilities.test.ts`, 18 rows, 50 files on disk
+
+- **§A, the differential**: both helpers against the interpreter's own node code, loaded from
+  source. `colorblend.ts` lives in `noodl-viewer-react` and imports `easecurves`, stubbed to the
+  two-line `linear` that file exports. 40 selector × string pairs, **72** list × blend pairs —
+  holes, a single colour, a blend of `NaN` and out-of-range blends included — plus the empty list
+  (`#000000` in both) and a non-hex colour (`#NaNNaNNaN` in both: **transcribed, not repaired**,
+  as the port description already warns). A control row sabotages `floor` → `round` and requires
+  the disagreement.
+- **§B, the translation**: the panel's strings, the unopened panel (`booleanToString(undefined, '',
+  '')`), the unread `inputChanged` signal, index-ordered colours, a hole, no colours, a wired colour
+  (an argument, and the note list stays empty), two wires into one colour port (deferred with the
+  family's shared reason).
+- **§C, AC3's project** `tests/fixtures/mood-desk` — whole (the only note is the scaffold's), both
+  calls present, typechecks; picked up by the five `readdirSync` suites automatically.
+- **Mutants**, each restored by `md5`: holes skipped instead of printed → **1** row killed; the
+  `Boolean To String` entry removed → **5**; truthiness → strict `=== true` in the helper → **1**.
+- **Built and driven** — headless Chrome 151 over CDP on the built fixture, answers written down
+  first: initial `Closed` / `#NaNNaNNaN`; *Open up* → `Open`; *Calm* → **`#7f7f00`**; *Angry* →
+  **`#007f7f`**; *Close down* → `Closed`; console errors `[]`. `#7f7f00` is the measurement —
+  `floor(127.5)`; a helper that rounded would read `#808000`.
+
+### §38.3 🔴 What the fixture found upstream — two ordinary wires that do not translate
+
+Building the picker-exercising project took four shapes before one was whole, and two of the three
+refusals are **not this slice's**:
+
+1. 🔴 **A checkbox's `checked` or a slider's `value` writing a Variable is refused** — *"a variable
+   write is only translated from a rendered text input in step 5"*. A control's value output wired
+   straight into a logic node is refused too (*"no deterministic translation in step 5"*). So the
+   most ordinary graph for these two nodes — **a checkbox feeding Boolean To String, a slider
+   feeding Color Blend** — exports with the logic translated and the *input* dropped. Owner
+   **P18, next**: extend the controlled-state slice from text inputs to `checkbox.checked` and
+   `range.value`. It is the thing that makes these two nodes useful in a real app.
+2. ⚠️ **`Set Variable` with a value typed in the panel is refused** — *"nothing is wired into
+   value"*. `value` is a dynamic port typed by `setWith`, and an author can type it; the exporter
+   only translates a wired one. Owner **`NONE`**; cheap-looking, unmeasured.
+3. ✅ The value nodes publish on **`savedValue`**, not `value` — the port ticket-desk already wires.
+   A wire from `value` defers as *"feeds … which has no static binding in this slice"*, and reads
+   exactly like a planner bug until you look at the port list.
+
+The fixture therefore drives its Variables from **buttons and Set Variable fed by Boolean/Number
+constants**, which is whole, and its initial colour is `#NaNNaNNaN` because a Variable nobody has
+set is `undefined` in the interpreter too — §A's grid agreed on the `NaN` blend before the drive did.
+
+### §38.4 Two comments corrected on the way
+
+`utilLib.ts`'s emitted `substring` comment and the ledger's Substring note both still said the
+port *declares* 0. DEF-033 was fixed earlier this session (§36.2), so both now say the declaration
+and `initialize` agree at -1. ⚠️ The emitted comment ships in every app that calls `substring` —
+a stale claim there is read by someone who cannot check it.
+
+### §38.5 The three that are not pure — §38.6's shapes, for whoever builds them
+
+| node | shape | what it needs |
+|---|---|---|
+| `Log` | an **action**: `console[level](message, data)` then `Done`; `Value` passes through | the action machinery (`TRIGGER_PORTS`, a `HandlerAction` kind, the emitter case, `actionsValidIn`, the reads sweep) — External Link is the template |
+| `Value Changed` | an **effect**: fires when its input changes identity, **including the first arrival** unless it is `undefined` | the effect() slice §9.6 named and nobody has built — `useEffect` on the value, skipping an `undefined` first render; ⚠️ React's deps compare with `Object.is`, the node with `===` (differ on `NaN`) |
+| `Delay` | a **timer** with state: Start/Restart/Stop with done/unchanged outcomes, Started after Start Delay, Finished after Duration, never for a stopped one | a handle in a ref, `setTimeout` chains fired later — HTTP's async continuations are the precedent; `timerStarted` fires **inside** the delayed callback, not on Start |
+
