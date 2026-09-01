@@ -1,6 +1,6 @@
 # Phase 82 — next session
 
-_Opened 2026-08-31 (s1). Last updated **2026-09-01, session 11**. 🔴 **Row 6 is REOPENED** on
+_Opened 2026-08-31 (s1). Last updated **2026-09-01, session 12**. 🔴 **Row 6 is REOPENED** on
 Richard's instruction — the FINE close is reversed and the template's look is the next job again.
 Session 11 also bumped the version for row 8 (`5c805978`). The decisions are
 [`RICHARD-RULINGS-2026-09-01.md`](RICHARD-RULINGS-2026-09-01.md); the change list is
@@ -52,6 +52,91 @@ type**. "As good as the homepage" means *shows the same amount of decision*, not
 landing page*. A directory that is beautifully dense and clearly ruled is as good as the homepage. A
 directory with no header row is not.
 
+## ✅ SESSION 12 — the instrument now sees all thirteen pages, and three of them have an identity
+
+**Committed `5dd25a24`.** Gates: `npm run template:members` **exit 0 and idempotent**
+(`ca62a5b8`, 94 files, 30 components); `tpl001Template.test.ts` **PASS**; `rel002c-look`
+**exit 0, 20/20 shots**.
+
+### 1. The instrument — this was the forced first job and it is DONE
+
+`vib001-members.look.ts` asked for **9 of 13** pages. It now asks for **13**:
+
+| harness | was | now |
+|---|---|---|
+| `rel002c-look` (door, fast) | 4 pages / 16 shots | **5 / 20** — `+/unsubscribe` |
+| `vib001-members` door | 5 / 20 | **6 / 24** — `+/unsubscribe` |
+| `vib001-members` living | 6 / 24 | **9 / 36** — `+/post`, `+/announcements/{id}`, `+/meetings/{id}` |
+
+✅ **The two detail pages needed no new seeding** — only the `objectId`s the seed was already
+creating and throwing away. They are captured and asserted non-empty beside the existing
+known-firing `seeded` signal, because an empty id builds `/announcements/` and photographs an
+empty state as though it were a design fault.
+
+⚠️ **The living run has NOT been taken since.** It is ~9 minutes and the 12 new shots have never
+been looked at. **That is the next session's first job** — see the run sheet.
+
+### 2. What the renders showed, which was worse than s11's audit
+
+| page | before | after |
+|---|---|---|
+| `/sign-in` | no band, **~280px of dead white** above the footer | band, footer, **void gone** |
+| `/unsubscribe` | no band, **~530px** — the emptiest page in the template | band, footer, ~200px left |
+| `/setup` | no band, but a long form, so **no void** | band |
+| `/join` | **no footer at all** — confirmed | footer |
+
+🔴 **`/setup` — the page item 6 actually named — was the LEAST broken of the three.** The two
+nobody had named were the two with the void, and they are the returning member's screen and the
+one a mail client sends people to.
+
+### 3. 🔴🔴 A GATE REFUSED HALF OF THIS AND IT WAS RIGHT — read before touching `/unsubscribe`
+
+After the band, `/unsubscribe` still had ~290px of void, so this row's own **hazard 3** was applied
+(*a layout complaint here has had a content answer four times*): the page got a hint and a
+*Sign in to your account* button. Both notices tell the reader to use their account and the page
+offered no route to one.
+
+**`tpl001Template.test.ts` §5 reddened.** Richard's **D39, 2026-08-29**: the page names no
+association and offers no way back. The spec's own docstring had predicted this session exactly:
+
+> *"A link back is free, a static route with no data behind it. The ruling declines both; the check
+> therefore covers both, **because the cheap half is the one somebody adds without thinking about
+> the ruling at all.**"*
+
+✅ **Reverted, and the reasoning is recorded on the page so the next session does not re-derive it.**
+
+⚠️ **THE ONE THING TO PUT TO RICHARD.** *"Every page as good as the homepage"* and **D39** pull
+against each other on exactly one page. The remaining slack on `/unsubscribe` is a **consequence of
+a ruling**, not an unfixed defect. **Do not reverse D39 to close row 6** — ask him.
+
+### 4. 🔴 Item 5 is HALF ALREADY BUILT — re-measure before building
+
+The change list's symptom (*"~250px of nothing between a name and its email"*) **was fixed by s10**:
+`MEMBER_ROW` carries `layoutString: '3 3 2'` at a 700px breakpoint, which IS the *"roughly
+40/35/25"* item 5 proposed. **Only the header row is left**, and it has an unpriced cost: below
+700px the `Columns` folds to `smallLayout: '1'`, so a header stacks into three stray words and
+**the runtime has no rule that can hide it**. Graded against the living render, the rows are
+self-describing — a name, an address, a standing sentence — which is why nobody missed the header
+for eight sessions. **A defensible `NO`, but it is a judgement, so it is on the run sheet.**
+
+### 5. A docstring that was false AND load-bearing
+
+`pageShell`'s note said `/join` *"ends on a form panel with `--muted` beneath it that is its own
+bottom edge"*. `BAND_PAGE_GROUND`'s `space-between` pins the form band to the foot, so that
+`--muted` **never renders** — the page stopped in white. **That false half is why nobody added the
+footer for five sessions.** Corrected in place. 🔴 This is hazard 4 landing for the second time in
+one row: *re-derive a recorded decision against the picture before inheriting it.*
+
+### 6. ⚠️ Two things about this tree
+
+- 🔴 **Six reds in `sb006`/`sb007` on a full `noodl-mcp` run are NOT this row's.** `sb006PublicSite`
+  was edited at **21:32** while the suite ran and `sb006Components` at **21:29** — a peer's
+  in-flight site-builder work. ✅ **`tpl001Template.test.ts` PASSES.** Attribute by **mtime**
+  before believing a red.
+- ⚠️ **A headless Chrome from 2026-08-30 (pid 50059) is still alive** holding a
+  `nodegx-render-*` temp dir, ~5 helper processes, on a 16GB box. Orphaned, not a peer's live run.
+  Left alone deliberately; worth reaping if a render starts timing out.
+
 ## 🔴 What the homepage actually has that the others do not — measured s11, from the artefact
 
 Read out of `templates/members-area/components/Pages/*/nodes.json` this session, not from the task
@@ -88,7 +173,7 @@ Take the topmost row that is not ✅.
 | # | row | why here | needs |
 |---|---|---|---|
 | ~~1–5~~ | ~~REL-007/006, REL-005, REL-003, REL-002a, REL-002b~~ | ✅ **CLOSED s1–s5** | — |
-| **6** | **REL-002c — every page as good as the homepage** | 🔴 **REOPENED s11 by Richard.** The FINE close is reversed | **THE NEXT JOB** |
+| **6** | **REL-002c — every page as good as the homepage** | 🔴 **REOPENED s11.** s12 built item 6 + the `/join` footer + the instrument | 🟡 **STILL THE JOB — 3 things left, below** |
 | 7 | **REL-001** publish + drive the install | shelf's first row; also closes P75's FB-005 | ⏸️ **HOLD** — see below |
 | 8 | **REL-004** cut, tag and publish `v0.2.2` | last | 🟡 **AC1 done s11** (`5c805978`). 🔴 Blocked: `cline-dev` `0 573` unpushed |
 
@@ -102,6 +187,21 @@ row leaves visibility where it was, so this is not a one-shot. **So it is genuin
 call**, and the recommendation is: **fix first, publish once.** He has not been asked; ask when the
 look work is close, not now.
 
+## 🔴 What is LEFT on row 6, in order — s12
+
+1. 🔴 **TAKE THE LIVING RUN.** `vib001-members.look.ts`, ~9 minutes, now **36 living shots**.
+   **Twelve of them have never been looked at** (`/post` and the two detail pages, at four widths
+   each). Until that is done "every page" is still a claim about pictures nobody has seen — which
+   is the exact fault s10 shipped. **Grade each against `/` at the same width, in writing.**
+2. ⚠️ **Put the D39 tension to Richard** (§3 above). One question, not a redesign.
+3. 🟡 **Decide item 5's header row** (§4 above). The recommendation is **no** — priced, not skipped.
+
+⚠️ **The three door pages have only been graded in the DOOR state.** The living state was not
+re-rendered after the band went on; `/setup` and `/sign-in` look the same in both, but that is a
+prediction, not a reading.
+
+### The old order-of-work note, kept for the instrument argument
+
 ## 🔴 The order of work for row 6 — grade before you build
 
 **Session 10 shipped a row whose AC said "every page" while four pages had never been photographed.**
@@ -109,10 +209,15 @@ Do not repeat that. The order is forced:
 
 ### First: make the instrument able to see all thirteen pages
 
-🔴 **`Announcement`, `Meeting`, `Post` and `Unsubscribe` have never been rendered — not once.**
+✅ **DONE s12 — all four are in the shot lists and the harness asks for all thirteen.** The
+paragraph below is kept for its argument, which is still the right one; the fact it asserts is no
+longer true. ⚠️ **`/unsubscribe` has been rendered; the other three have not been LOOKED at** —
+they are in the living run, which has not been taken since.
+
+~~🔴 `Announcement`, `Meeting`, `Post` and `Unsubscribe` have never been rendered — not once.
 `vib001-members.look.ts` asks for **nine of thirteen** (five door + six living, `landing` and
 `members` appearing in both). Their absence is a fact about the **request**, not about how they
-look.
+look.~~
 
 ✅ **Add them to the shot lists before grading anything.** Until that is done, "every page" cannot be
 said honestly, and any verdict is a verdict about nine pages wearing a claim about thirteen.

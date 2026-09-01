@@ -187,9 +187,46 @@ association has chosen anything is arguable in both directions. **Richard's call
   it is not worth reopening.
 - ⚠️ **`FORM_GROUND` stays at 720 centred** — ruled by Richard, 2026-09-01, this session.
 
+## ✅ SESSION 12 — what was built, and the half a gate refused
+
+**Item 6 is BUILT for all three pages, and `/join`'s missing footer with it.** A `band` option on
+`pageShell()`; the band goes inside `pageBody` so `PAGE_SHELL`'s two-child `space-between` survives
+and the pages keep the footer. Pictures: `/setup` `work-carpenter`, `/sign-in` `people-desk`,
+`/unsubscribe` `ground-shore` — the reasoning for each is on the page in `tpl001Components.ts`.
+
+🔴 **The renders were worse than this file's audit.** `/sign-in` carried **~280px** of dead
+white above its footer and `/unsubscribe` **~530px** — the same void item 1 fixed on the landing
+page, sitting unphotographed on two of the highest-traffic doors in the template. `/setup`, the page
+item 6 actually named, was the *least* broken of the three: its long form fills the page.
+
+🔴 **Item 5 is HALF ALREADY BUILT, and this file did not know.** The stated symptom —
+*"columns at x=36, x=285 and x=537… ~250px of nothing"* — was fixed by s10's `Columns` work:
+`MEMBER_ROW` now carries `layoutString: '3 3 2'` with a 700px breakpoint, which IS the *"roughly
+40/35/25"* this file proposed. **Only the header row remains**, and it has a real cost nobody had
+priced: below 700px the `Columns` folds to `smallLayout: '1'`, so a header would stack into three
+stray words with no rule in the runtime to hide it. ✅ **Re-measure item 5 against the artefact
+before building it** — `MEASURE THE ARTEFACT, not the task file`.
+
+🔴 **A gate refused half of the `/unsubscribe` work, and it was right.** After the band,
+~290px of void remained, so the page got a hint and a *Sign in to your account* button — this
+row's hazard 3 applied (*a layout complaint here has had a content answer four times*). That is
+**ruled against**: Richard's **D39**, 2026-08-29, is that the page names no association and offers no
+way back, and `tpl001Template.test.ts` §5 reads that place. The spec's own note predicted the
+session exactly: *"a link back is free… the cheap half is the one somebody adds without thinking
+about the ruling at all."* Reverted.
+
+⚠️ **So the remaining slack on `/unsubscribe` is a CONSEQUENCE OF A RULING, not an unfixed
+defect.** It is the one place where *"as good as the homepage"* and D39 pull against each other, and
+**that is Richard's to settle, not a session's.** See the handoff.
+
 ## What is still unmeasured
 
-🔴 **Four of the thirteen pages have never been photographed** — `Announcement`, `Meeting`, `Post`,
-`Unsubscribe`. The harness asks for nine (`vib001-members.look.ts`, two shot lists), so their
+✅ **CLOSED s12 — all four are now in the shot lists.** `/unsubscribe` went into both door runs,
+and `/post` plus the two detail pages into the living run, the latter on `objectId`s the seed now
+captures instead of discarding. The harness asks for **all thirteen pages**, so *"every page"* is a
+claim the instrument can support for the first time.
+
+~~🔴 **Four of the thirteen pages have never been photographed** — `Announcement`, `Meeting`, `Post`,
+`Unsubscribe`.~~ The harness asks for nine (`vib001-members.look.ts`, two shot lists), so their
 absence is a fact about the request, **not** about how they look. If REL-002c is to mean all
 thirteen pages, they need adding to the harness before the row can honestly close.
