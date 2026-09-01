@@ -18,7 +18,7 @@ task file on the day this phase opened.
 | REL-002b | Fail closed, and a designed first run | 🟢 | REL-002a | **CLOSED s5** — [REL-002b](REL-002b-FAIL-CLOSED.md). 🔴 **V3's recorded mechanism was WRONG**: the content was never revealed (six `mounted: false` defaults were already there); the defect was that **nothing refused** — all six stayed on the protected URL wearing a `Sign out` band — and five of six said nothing. Built `Denied` (2 producers) + `isSignedIn`; **V4 was `actions`, the one group with no `mounted: false`**. Driven **37/37**, four arms, real enforcing backend. 2 defects registered, owner `NONE` |
 | REL-002c | The members' area, redeemed | ✅ | REL-002a, REL-002b | **CLOSED s10 BY RICHARD'S INSTRUCTION, ruled FINE — NOT WORTHY.** *"It looks fine (not worthy) but just push it as V1 of the template, we can't waste more time on this."* 🔴 **The close condition was not met; it was overridden**, deliberately and on cost. See §"The ruling that closed this row" |
 | REL-003 | The stale bundles the cut inherits | 🟢 | — | **CLOSED s3.** AC1 amended and met (rebuilt, reproducible, correctly NOT committed — REV-008). AC2 met for **MCP** (s2, live control pair), **DEF-023** (s3, pre-fix control bundle, `stale`→`fresh`) and **DEF-026** (s3, real browser, both halves, answering control). 🔴 **AC2's DEF-021 clause is RETIRED as unmeetable by a drive** — the coalescing branch is unreachable from a graph and pre-fix/HEAD are behaviourally identical (§ below, owner `NONE`). 🔴 `cloudruntime` names a **retired** artefact (WF-007) |
-| REL-004 | The cut — `0.2.2` | ⬜ | REL-003, REL-005 | Version bump, release notes, tag, publish. Model the process on `dev-docs/tasks/release-0.2.0/PUBLISH-0.2.0.md` |
+| REL-004 | The cut — `0.2.2` | 🟡 | REL-003, REL-005 | **AC1 met s11** (`5c805978`). Notes + runbook drafted. 🔴 **Blocked: `cline-dev` `0 573` unpushed — Richard pushes** |
 | REL-005 | What rides and what rolls | 🟢 | — | **CLOSED s2.** All four open rows and all five phase-74 carry items are marked, in writing, in P75's own board — plus a triage section at its head. ⚠️ Re-counted: **22 done, 4 open of 26**, not 24/4 |
 | REL-006 | The hold list, and two stale files | 🟢 | — | Record the site-builder hold with a named owner; correct P78's handoff (T6 reads open, is done) and P78's `TPL-001` **AC1** (it waits on T5, which is now unblocked) |
 | REL-007 | The price that goes stale tomorrow | 🟢 | — | `models.ts:229` reads `$2/$10`. Sonnet 5's introductory pricing ends **2026-08-31** — from 1 September the standard rate is **$3/$15**, and the app's default model is Sonnet 5. One line; cost reporting misreports until it lands |
@@ -845,7 +845,13 @@ this session.
 
 **ACs**
 
-1. `packages/noodl-editor/package.json` reads `0.2.2`; the bump is its own commit.
+1. ✅ **MET, session 11 — `5c805978`.** `packages/noodl-editor/package.json` reads `0.2.2`, and the
+   bump is its own commit: one file, one line, committed by pathspec so no peer edit rode with it.
+   Gated on `npm run ci:build:editor` **exit 0** after the change — the production-only path that
+   `test:ci`, `typecheck`, `lint` and `test:main` never load. See
+   [the runbook §2](../release-0.2.2/PUBLISH-0.2.2.md) for the two findings behind it: the nine
+   `library/prefabs/*/library.json` files that also read `0.2.0` and must **not** move, and why the
+   `package-lock.json` copy is **not** a gate despite CI running `npm ci`.
 2. Release notes written from the **commits since `v0.2.0`**, not from task files — a task file
    says what was intended, the log says what shipped.
 3. Tagged `v0.2.2` and published, following `dev-docs/tasks/release-0.2.0/PUBLISH-0.2.0.md`.
