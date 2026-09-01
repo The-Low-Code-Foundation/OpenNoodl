@@ -187,7 +187,9 @@ describe('SB-007 — the committed template is a regeneration, not a copy', () =
     // 30 → 31 with SBR-009's `/Admin/PresetChip` — one preset chip, placed three
     // times with a different `name`, rather than three buttons and three
     // one-line scripts that can disagree.
-    expect(built.project.components).toHaveLength(31);
+    // 31 → 33 with SBR-010's `/Admin/MessageRow` and `/Pages/Messages` — the
+    // screen that reads a `ContactMessage` back, and the row it repeats.
+    expect(built.project.components).toHaveLength(33);
     expect(built.order[0]).toBe(APP_COMPONENT);
   });
 });
@@ -217,7 +219,8 @@ describe('SB-007 — the App component is the difference between a router and no
     const built = await buildSiteTemplateProject({ omitApp: true });
 
     // The pages were written. This is not a run that fell over.
-    expect(built.order.filter((key) => key.startsWith('Pages/'))).toHaveLength(6);
+    // 6 → 7 with SBR-010's `/Pages/Messages`.
+    expect(built.order.filter((key) => key.startsWith('Pages/'))).toHaveLength(7);
     // 18 → 20, same two components, minus the App this arm deliberately omits.
     // 20 → 21 with SBR-017's sign-in page.
     // 21 → 23 with AC2's endpoint and its worker — both cloud components, which
@@ -225,7 +228,8 @@ describe('SB-007 — the App component is the difference between a router and no
     // the point of the assertion below: written, and registered nowhere.
     // 23 → 29 with SBR-005's six section-kind components.
     // 29 → 30 with SBR-009's `/Admin/PresetChip`.
-    expect(built.project.components).toHaveLength(30);
+    // 30 → 32 with SBR-010's two.
+    expect(built.project.components).toHaveLength(32);
 
     // And not one of them landed in a router, with no diagnostic anywhere.
     expect(built.registrations).toEqual({});
@@ -236,8 +240,13 @@ describe('SB-007 — the App component is the difference between a router and no
     // `registrations === {}` is consistent with a builder that never populates
     // that map at all — which is the same reading, and the opposite fix.
     const built = await buildSiteTemplateProject();
+    // 🟢 SBR-010's `/Pages/Messages` is the seventh, and it registered itself:
+    // the generator never states a `pages` list, so this set IS the door's own
+    // registration and a page that failed to register would be missing here
+    // rather than reported anywhere.
     expect(Object.keys(built.registrations).sort()).toEqual([
       'Pages/Admin',
+      'Pages/Messages',
       'Pages/PageEditor',
       'Pages/Setup',
       'Pages/SignIn',
@@ -722,7 +731,14 @@ describe('SB-007 — the NDA-017 migration cannot silence a mount-triggered node
     //   Measured on the rendered screen (`sbr009ThemeEditorDrive`), not reasoned — and it is the
     //   same lesson one more time, that `run` is ADDITIVE and wiring it does not stop a node
     //   running on its own.
-    expect(silenced(project)).toHaveLength(33);
+    // ⚠️ **33 → 36 with SBR-010, and all three are the same lesson twice over.**
+    // +1 is `/Pages/Messages tally.in-rows`, stated `false` after the drive read
+    // the count sentence running on a REFUSED query; +2 are
+    // `/#__cloud__/site/ContactRecipient settings`'s two query checkboxes, which
+    // is **D42** — the load-time fetch beside a `storageFetch` wire that stored
+    // every enquiry twice. `run` is additive, and a second trigger nobody meant
+    // is what both rows are.
+    expect(silenced(project)).toHaveLength(36);
 
     // ⚠️ Was `1 of 65` before DEF-007 §3.2. The one row it reached — `/Pages/PageEditor
     // hold.in-pageId` — left this population by being stated `true`: it is no longer silenced, so
@@ -957,7 +973,18 @@ describe('SB-007 — the NDA-017 migration cannot silence a mount-triggered node
     // SBR-009 stated its box `false`. A pair of counts moving one each in opposite
     // directions is the whole of the change, and either alone would have looked
     // like a population that had drifted.
-    expect(runsOnValue(project)).toHaveLength(64);
+    // ⚠️ 64 → 65 with SBR-010, and exactly one row: `/Pages/Messages tally.in-rows`.
+    // 🔴 The row's OTHER code node, `/Admin/MessageRow stamp`, is invisible to
+    // both buckets and that is structural rather than an omission —
+    // `statedInputs` reaches a node only when its control signal is WIRED
+    // (`:558`), and `stamp` has no `run`. **Name what the instrument cannot
+    // see:** its three `runOnChange-in-*: true` keys are authored against a
+    // future `run` wire and no pass in this file grades them today.
+    // ⚠️ 65 → 62, and it is the SAME three rows as the `+3` in the silenced
+    // census above, moving the other way. A pair of counts moving three each in
+    // opposite directions is the whole of the change; either alone would have
+    // looked like a population that had drifted.
+    expect(runsOnValue(project)).toHaveLength(62);
     // …and `reached` follows it down, 28 → 27: `presets.in-name` was one of the
     // `cleared` rows ("writes Theme, which does not feed it"), so silencing it
     // takes it out of this pass as well. One statement, three numbers, all three
@@ -1624,9 +1651,13 @@ describe('SBR-016 — every query can run before anybody has edited anything', (
     // `/Admin/Shell` joined the list with SBR-009 AC1: the admin panel reads the
     // Theme record so it wears the client's colours too, and it reads it in the
     // shell because every admin screen places one.
+    // `/Pages/Messages` joined it with SBR-010: the screen that reads a
+    // `ContactMessage` back, which is the first thing in this template that ever
+    // has.
     expect(withQueries.sort()).toEqual([
       '/Admin/Shell',
       '/Pages/Admin',
+      '/Pages/Messages',
       '/Pages/PageEditor',
       '/Pages/Site',
       '/Pages/ThemeEditor',
@@ -1695,6 +1726,15 @@ describe('SBR-016 — every query can run before anybody has edited anything', (
       // this template's queries run because a VALUE lands, and the migration is
       // what takes those values away.
       '/Pages/Admin pages-2 — collectionName is stored and runOnChange-collectionName survived the migration',
+      // 🔴 SBR-010's message list, and it is in this census on `/Admin/Shell`'s
+      // terms rather than `/Pages/Admin`'s — which is the distinction this whole
+      // block exists to keep straight. Nothing on `/Pages/Messages` writes a
+      // record, so nothing wires `storageFetch`, so the migration's population
+      // does not include this node and the absent checkbox keeps its ticked
+      // default. `/Pages/Admin`'s page list is the same KIND of query — unfiltered,
+      // load-time — and has to state `true` out loud only because a create and a
+      // row edit refresh it.
+      '/Pages/Messages messages — collectionName is stored and runOnChange-collectionName survived the migration',
       '/Pages/PageEditor sections-2 — qp-pageId <= JavaScriptFunction.out-pageId <= JavaScriptFunction run by Page.didMount — the page mounted',
       // The seven that were already right, and why — three hops deep on the last
       // one, which is the chain a list of forgiven node names would never have said.

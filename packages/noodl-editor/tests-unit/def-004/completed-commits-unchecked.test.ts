@@ -112,10 +112,20 @@ describe('DEF-004 AC4 — the pair, one wire apart', () => {
     expect(found.map((d) => d.code)).toEqual([DiagnosticCode.CompletedCommitsUnchecked]);
     expect(found[0].location.nodeId).toBe('tasks');
     expect(found[0].location.port).toBe('completed');
+    // 🔴 **The write's id is DERIVED, and it used to be typed.** This assertion
+    // read `toId: 'page-7'` and went red when SBR-010 added two components to
+    // the template — not because anything about this rule or this graph moved,
+    // but because the door reallocates ids to be unique across the PROJECT
+    // (SB-004 F9), so a `page` node three components away renumbered this one to
+    // `page-8`. A spec that pins a reallocated id is a spec that reddens on
+    // somebody else's unrelated screen, and this file already knows the node by
+    // the name it asserts in the message two lines below.
+    const write = before.nodes.find((n) => n.label === 'Write the page: mirror + access rules');
+    expect(write).toBeDefined();
     expect(found[0].location.connection).toEqual({
       fromId: 'tasks',
       fromProperty: 'completed',
-      toId: 'page-7',
+      toId: write!.id,
       toProperty: 'store'
     });
     // Refused BY NAME, which is what AC4 asks for — and the name is the

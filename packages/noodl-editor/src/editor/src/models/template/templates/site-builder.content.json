@@ -26,6 +26,7 @@
                       "/Pages/Site",
                       "/Pages/PageEditor",
                       "/Pages/ThemeEditor",
+                      "/Pages/Messages",
                       "/Pages/Admin",
                       "/Pages/SignIn",
                       "/Pages/Setup"
@@ -2999,7 +3000,7 @@
             "children": [],
             "label": "Which item is current",
             "x": 410,
-            "y": 1360,
+            "y": 1480,
             "parameters": {},
             "ports": [
               {
@@ -3103,12 +3104,26 @@
             "dynamicports": []
           },
           {
+            "id": "goMessages",
+            "type": "RouterNavigate",
+            "children": [],
+            "label": "To the messages list",
+            "x": 410,
+            "y": 760,
+            "parameters": {
+              "router": "Main",
+              "target": "/Pages/Messages"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
             "id": "user",
             "type": "net.noodl.user.User",
             "children": [],
             "label": "Who is signed in",
             "x": 410,
-            "y": 880,
+            "y": 1000,
             "parameters": {},
             "ports": [],
             "dynamicports": []
@@ -3119,7 +3134,7 @@
             "children": [],
             "label": "Nobody is signed in",
             "x": 410,
-            "y": 1120,
+            "y": 1240,
             "parameters": {},
             "ports": [],
             "dynamicports": []
@@ -3130,7 +3145,7 @@
             "children": [],
             "label": "End the session",
             "x": 410,
-            "y": 1000,
+            "y": 1120,
             "parameters": {},
             "ports": [],
             "dynamicports": []
@@ -3141,7 +3156,7 @@
             "children": [],
             "label": "To the sign-in screen",
             "x": 410,
-            "y": 1240,
+            "y": 1360,
             "parameters": {
               "router": "Main",
               "target": "/Pages/SignIn"
@@ -3155,7 +3170,7 @@
             "children": [],
             "label": "To the public site",
             "x": 410,
-            "y": 760,
+            "y": 880,
             "parameters": {
               "router": "Main",
               "target": "/Pages/Site",
@@ -3170,7 +3185,7 @@
             "children": [],
             "label": "Theme (one row)",
             "x": 410,
-            "y": 1480,
+            "y": 1600,
             "parameters": {
               "collectionName": "Theme"
             },
@@ -3183,7 +3198,7 @@
             "children": [],
             "label": "The saved theme, on this document",
             "x": 410,
-            "y": 1600,
+            "y": 1720,
             "parameters": {
               "runOnChange-in-rows": true,
               "functionScript": "if (typeof document === 'undefined') return;\nconst rows = Inputs.rows || [];\nconst first = rows[0] ? rows[0].data || rows[0] : {};\nconst t = first.tokens || {};\nconst root = document.documentElement;\nif (t.colorPrimary) {\n  root.style.setProperty('--primary', t.colorPrimary);\n  root.style.setProperty('--primary-hover', 'color-mix(in srgb, ' + t.colorPrimary + ' 82%, black)');\n  root.style.setProperty('--ring', t.colorPrimary);\n  root.style.setProperty('--accent-foreground', t.colorPrimary);\n}\nif (t.colorOnPrimary) root.style.setProperty('--primary-foreground', t.colorOnPrimary);\nif (t.colorBackground) root.style.setProperty('--background', t.colorBackground);\nif (t.colorSurface) {\n  root.style.setProperty('--surface', t.colorSurface);\n  root.style.setProperty('--surface-raised', t.colorSurface);\n}\nif (t.colorText) root.style.setProperty('--foreground', t.colorText);\nif (t.colorTextSoft) root.style.setProperty('--muted-foreground', t.colorTextSoft);\nif (t.colorBorder) {\n  root.style.setProperty('--border', t.colorBorder);\n  root.style.setProperty('--border-subtle', 'color-mix(in srgb, ' + t.colorBorder + ' 45%, var(--background))');\n  root.style.setProperty('--border-strong', 'color-mix(in srgb, ' + t.colorBorder + ' 65%, var(--foreground))');\n}\nif (t.colorAccentSoft) root.style.setProperty('--accent', t.colorAccentSoft);\nif (t.radius) root.style.setProperty('--radius-md', t.radius);\nif (t.fontDisplay) root.style.setProperty('--font-serif', t.fontDisplay);\nif (t.fontUi) {\n  root.style.setProperty('--font-sans', t.fontUi);\n  root.style.fontFamily = t.fontUi;\n}\nif (t.measure) root.style.setProperty('--site-measure', t.measure);"
@@ -3265,6 +3280,12 @@
             "fromId": "navTheme",
             "fromProperty": "onClick",
             "toId": "goTheme",
+            "toProperty": "navigate"
+          },
+          {
+            "fromId": "navMessages",
+            "fromProperty": "onClick",
+            "toId": "goMessages",
             "toProperty": "navigate"
           },
           {
@@ -8172,7 +8193,308 @@
       }
     },
     {
-      "name": "/Pages/Admin",
+      "name": "/Admin/MessageRow",
+      "graph": {
+        "roots": [
+          {
+            "id": "row-3",
+            "type": "Group",
+            "children": [
+              {
+                "id": "head",
+                "type": "Group",
+                "children": [
+                  {
+                    "id": "who",
+                    "type": "Text",
+                    "children": [],
+                    "label": "Sender",
+                    "x": 160,
+                    "y": 280,
+                    "parameters": {
+                      "sizeMode": "contentSize",
+                      "text": "",
+                      "fontFamily": "var(--font-sans)",
+                      "fontSize": "var(--text-base)",
+                      "fontWeight": "var(--font-semibold)",
+                      "color": "var(--foreground)"
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  },
+                  {
+                    "id": "when",
+                    "type": "Text",
+                    "children": [],
+                    "label": "Received",
+                    "x": 160,
+                    "y": 400,
+                    "parameters": {
+                      "sizeMode": "contentSize",
+                      "text": "",
+                      "fontFamily": "var(--font-sans)",
+                      "fontSize": "var(--text-sm)",
+                      "color": "var(--muted-foreground)"
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  }
+                ],
+                "label": "Who and when",
+                "x": 100,
+                "y": 160,
+                "parameters": {
+                  "sizeMode": "contentHeight",
+                  "flexDirection": "row",
+                  "alignItems": "center",
+                  "columnGap": "var(--space-3)"
+                },
+                "ports": [],
+                "dynamicports": []
+              },
+              {
+                "id": "addr",
+                "type": "Text",
+                "children": [],
+                "label": "Reply address",
+                "x": 100,
+                "y": 520,
+                "parameters": {
+                  "sizeMode": "contentHeight",
+                  "text": "",
+                  "fontFamily": "var(--font-sans)",
+                  "fontSize": "var(--text-sm)",
+                  "color": "var(--primary)"
+                },
+                "ports": [],
+                "dynamicports": []
+              },
+              {
+                "id": "bodyText",
+                "type": "Text",
+                "children": [],
+                "label": "The message",
+                "x": 100,
+                "y": 640,
+                "parameters": {
+                  "sizeMode": "contentHeight",
+                  "text": "",
+                  "fontFamily": "var(--font-sans)",
+                  "fontSize": "var(--text-base)",
+                  "lineHeight": "var(--leading-relaxed)",
+                  "color": "var(--foreground)",
+                  "marginTop": "var(--space-2)"
+                },
+                "ports": [],
+                "dynamicports": []
+              },
+              {
+                "id": "source",
+                "type": "Text",
+                "children": [],
+                "label": "Which page it came from",
+                "x": 100,
+                "y": 760,
+                "parameters": {
+                  "sizeMode": "contentHeight",
+                  "mounted": false,
+                  "text": "",
+                  "fontFamily": "var(--font-sans)",
+                  "fontSize": "var(--text-xs)",
+                  "color": "var(--muted-foreground)"
+                },
+                "ports": [],
+                "dynamicports": []
+              }
+            ],
+            "label": "One message",
+            "x": 40,
+            "y": 40,
+            "parameters": {
+              "sizeMode": "contentHeight",
+              "flexDirection": "column",
+              "rowGap": "var(--space-1)",
+              "paddingTop": "var(--space-4)",
+              "paddingBottom": "var(--space-4)",
+              "borderBottomStyle": "solid",
+              "borderBottomWidth": "var(--border-1)",
+              "borderBottomColor": "var(--border)"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "inputs-14",
+            "type": "Component Inputs",
+            "children": [],
+            "label": "The stored message",
+            "x": 410,
+            "y": 520,
+            "parameters": {},
+            "ports": [
+              {
+                "name": "id",
+                "plug": "output",
+                "type": "string"
+              },
+              {
+                "name": "name",
+                "plug": "output",
+                "type": "string"
+              },
+              {
+                "name": "email",
+                "plug": "output",
+                "type": "string"
+              },
+              {
+                "name": "message",
+                "plug": "output",
+                "type": "string"
+              },
+              {
+                "name": "pageSlug",
+                "plug": "output",
+                "type": "string"
+              },
+              {
+                "name": "createdAt",
+                "plug": "output",
+                "type": "*"
+              }
+            ],
+            "dynamicports": []
+          },
+          {
+            "id": "stamp",
+            "type": "JavaScriptFunction",
+            "children": [],
+            "label": "The two derived sentences",
+            "x": 410,
+            "y": 280,
+            "parameters": {
+              "runOnChange-in-name": true,
+              "runOnChange-in-createdAt": true,
+              "runOnChange-in-pageSlug": true,
+              "functionScript": "const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];\nconst pad = (n) => (n < 10 ? '0' + n : String(n));\nconst raw = Inputs.createdAt;\nconst at = raw instanceof Date ? raw : typeof raw === 'string' && raw !== '' ? new Date(raw) : null;\nconst known = at !== null && !isNaN(at.getTime());\nOutputs.when = known\n  ? at.getDate() + ' ' + MONTHS[at.getMonth()] + ' ' + at.getFullYear() + ', ' + pad(at.getHours()) + ':' + pad(at.getMinutes())\n  : 'Received at an unknown time';\nconst name = typeof Inputs.name === 'string' ? Inputs.name.trim() : '';\nOutputs.who = name !== '' ? name : \"A visitor\";\nconst hasSlug = typeof Inputs.pageSlug === 'string';\nconst slug = hasSlug ? Inputs.pageSlug.trim() : '';\nOutputs.hasSource = hasSlug;\nOutputs.source = slug === '' ? 'Sent from the home page' : 'Sent from the ' + slug + ' page';"
+            },
+            "ports": [
+              {
+                "name": "in-createdAt",
+                "displayName": "createdAt",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "in-name",
+                "displayName": "name",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "in-pageSlug",
+                "displayName": "pageSlug",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "out-when",
+                "displayName": "when",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              },
+              {
+                "name": "out-who",
+                "displayName": "who",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              },
+              {
+                "name": "out-hasSource",
+                "displayName": "hasSource",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              },
+              {
+                "name": "out-source",
+                "displayName": "source",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              }
+            ],
+            "dynamicports": []
+          }
+        ],
+        "connections": [
+          {
+            "fromId": "inputs-14",
+            "fromProperty": "name",
+            "toId": "stamp",
+            "toProperty": "in-name"
+          },
+          {
+            "fromId": "inputs-14",
+            "fromProperty": "createdAt",
+            "toId": "stamp",
+            "toProperty": "in-createdAt"
+          },
+          {
+            "fromId": "inputs-14",
+            "fromProperty": "pageSlug",
+            "toId": "stamp",
+            "toProperty": "in-pageSlug"
+          },
+          {
+            "fromId": "stamp",
+            "fromProperty": "out-who",
+            "toId": "who",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "stamp",
+            "fromProperty": "out-when",
+            "toId": "when",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "stamp",
+            "fromProperty": "out-source",
+            "toId": "source",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "stamp",
+            "fromProperty": "out-hasSource",
+            "toId": "source",
+            "toProperty": "mounted"
+          },
+          {
+            "fromId": "inputs-14",
+            "fromProperty": "email",
+            "toId": "addr",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "inputs-14",
+            "fromProperty": "message",
+            "toId": "bodyText",
+            "toProperty": "text"
+          }
+        ],
+        "visualRoots": [
+          "row-3"
+        ]
+      }
+    },
+    {
+      "name": "/Pages/Messages",
       "graph": {
         "roots": [
           {
@@ -8180,7 +8502,7 @@
             "type": "Page",
             "children": [
               {
-                "id": "shell-4",
+                "id": "adminShell-2",
                 "type": "/Admin/Shell",
                 "children": [
                   {
@@ -8188,11 +8510,260 @@
                     "type": "Group",
                     "children": [
                       {
+                        "id": "heading-9",
+                        "type": "Text",
+                        "children": [],
+                        "label": "Heading",
+                        "x": 220,
+                        "y": 400,
+                        "parameters": {
+                          "sizeMode": "contentHeight",
+                          "text": "Messages",
+                          "fontFamily": "var(--font-serif)",
+                          "fontSize": "var(--text-2xl)",
+                          "fontWeight": "var(--font-bold)",
+                          "color": "var(--foreground)"
+                        },
+                        "ports": [],
+                        "dynamicports": []
+                      },
+                      {
+                        "id": "readOnlyNote",
+                        "type": "Text",
+                        "children": [],
+                        "label": "What this screen does not do",
+                        "x": 220,
+                        "y": 520,
+                        "parameters": {
+                          "sizeMode": "contentHeight",
+                          "text": "Messages are read to here, not answered from here — reply from your own email using the address on the message.",
+                          "fontFamily": "var(--font-sans)",
+                          "fontSize": "var(--text-sm)",
+                          "lineHeight": "var(--leading-relaxed)",
+                          "color": "var(--muted-foreground)"
+                        },
+                        "ports": [],
+                        "dynamicports": []
+                      },
+                      {
+                        "id": "tallyLine",
+                        "type": "Text",
+                        "children": [],
+                        "label": "How many messages",
+                        "x": 220,
+                        "y": 640,
+                        "parameters": {
+                          "sizeMode": "contentHeight",
+                          "text": "",
+                          "fontFamily": "var(--font-sans)",
+                          "fontSize": "var(--text-sm)",
+                          "color": "var(--muted-foreground)"
+                        },
+                        "ports": [],
+                        "dynamicports": []
+                      },
+                      {
+                        "id": "listError",
+                        "type": "Text",
+                        "children": [],
+                        "label": "The message list was refused",
+                        "x": 220,
+                        "y": 760,
+                        "parameters": {
+                          "sizeMode": "contentHeight",
+                          "mounted": false,
+                          "text": "Your messages could not be loaded. You may not have permission to manage this site.",
+                          "fontFamily": "var(--font-sans)",
+                          "fontSize": "var(--text-sm)",
+                          "color": "var(--destructive)"
+                        },
+                        "ports": [],
+                        "dynamicports": []
+                      },
+                      {
+                        "id": "list",
+                        "type": "For Each",
+                        "children": [],
+                        "label": "One row per message",
+                        "x": 220,
+                        "y": 880,
+                        "parameters": {
+                          "templateType": "explicit",
+                          "template": "/Admin/MessageRow"
+                        },
+                        "ports": [],
+                        "dynamicports": []
+                      }
+                    ],
+                    "label": "Messages body",
+                    "x": 160,
+                    "y": 280,
+                    "parameters": {
+                      "sizeMode": "contentHeight",
+                      "flexDirection": "column",
+                      "rowGap": "var(--space-4)"
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  }
+                ],
+                "label": "Admin shell",
+                "x": 100,
+                "y": 160,
+                "parameters": {
+                  "active": "messages"
+                },
+                "ports": [],
+                "dynamicports": []
+              }
+            ],
+            "label": "Messages",
+            "x": 40,
+            "y": 40,
+            "parameters": {
+              "title": "Messages",
+              "urlPath": "admin/messages"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "messages",
+            "type": "DbCollection2",
+            "children": [],
+            "label": "Every message, newest first",
+            "x": 470,
+            "y": 880,
+            "parameters": {
+              "collectionName": "ContactMessage",
+              "visualSort": [
+                {
+                  "property": "createdAt",
+                  "order": "descending"
+                }
+              ]
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "tally",
+            "type": "JavaScriptFunction",
+            "children": [],
+            "label": "The row-count sentence",
+            "x": 470,
+            "y": 640,
+            "parameters": {
+              "runOnChange-in-rows": false,
+              "functionScript": "const rows = Array.isArray(Inputs.rows) ? Inputs.rows : [];\nconst WORDS = ['No', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten'];\nconst word = (n) => (n < WORDS.length ? WORDS[n] : String(n));\nif (rows.length === 0) {\n  Outputs.sentence = \"No messages yet. When somebody sends the contact form on your site, their message arrives here.\";\n} else {\n  Outputs.sentence = word(rows.length) + (rows.length === 1 ? ' message' : ' messages');\n}"
+            },
+            "ports": [
+              {
+                "name": "in-rows",
+                "displayName": "rows",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "out-sentence",
+                "displayName": "sentence",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              }
+            ],
+            "dynamicports": []
+          },
+          {
+            "id": "queryState",
+            "type": "States",
+            "children": [],
+            "label": "Did the last query refuse?",
+            "x": 470,
+            "y": 760,
+            "parameters": {
+              "states": "Quiet,Refused",
+              "values": "refused",
+              "type-refused": "boolean",
+              "value-Quiet-refused": false,
+              "value-Refused-refused": true
+            },
+            "ports": [],
+            "dynamicports": []
+          }
+        ],
+        "connections": [
+          {
+            "fromId": "messages",
+            "fromProperty": "items",
+            "toId": "list",
+            "toProperty": "items"
+          },
+          {
+            "fromId": "messages",
+            "fromProperty": "items",
+            "toId": "tally",
+            "toProperty": "in-rows"
+          },
+          {
+            "fromId": "messages",
+            "fromProperty": "fetched",
+            "toId": "tally",
+            "toProperty": "run"
+          },
+          {
+            "fromId": "tally",
+            "fromProperty": "out-sentence",
+            "toId": "tallyLine",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "messages",
+            "fromProperty": "failure",
+            "toId": "queryState",
+            "toProperty": "to-Refused"
+          },
+          {
+            "fromId": "messages",
+            "fromProperty": "fetched",
+            "toId": "queryState",
+            "toProperty": "to-Quiet"
+          },
+          {
+            "fromId": "queryState",
+            "fromProperty": "refused",
+            "toId": "listError",
+            "toProperty": "mounted"
+          }
+        ],
+        "visualRoots": [
+          "page-4"
+        ]
+      }
+    },
+    {
+      "name": "/Pages/Admin",
+      "graph": {
+        "roots": [
+          {
+            "id": "page-5",
+            "type": "Page",
+            "children": [
+              {
+                "id": "shell-4",
+                "type": "/Admin/Shell",
+                "children": [
+                  {
+                    "id": "body-6",
+                    "type": "Group",
+                    "children": [
+                      {
                         "id": "headerRow-2",
                         "type": "Group",
                         "children": [
                           {
-                            "id": "heading-9",
+                            "id": "heading-10",
                             "type": "Text",
                             "children": [],
                             "label": "Heading",
@@ -8253,7 +8824,7 @@
                         "dynamicports": []
                       },
                       {
-                        "id": "listError",
+                        "id": "listError-2",
                         "type": "Text",
                         "children": [],
                         "label": "The page list was refused",
@@ -8271,7 +8842,7 @@
                         "dynamicports": []
                       },
                       {
-                        "id": "list",
+                        "id": "list-2",
                         "type": "For Each",
                         "children": [],
                         "label": "One row per page",
@@ -8403,7 +8974,7 @@
             "dynamicports": []
           },
           {
-            "id": "queryState",
+            "id": "queryState-2",
             "type": "States",
             "children": [],
             "label": "Did the last query refuse?",
@@ -8424,7 +8995,7 @@
           {
             "fromId": "pages-2",
             "fromProperty": "items",
-            "toId": "list",
+            "toId": "list-2",
             "toProperty": "items"
           },
           {
@@ -8476,7 +9047,7 @@
             "toProperty": "storageFetch"
           },
           {
-            "fromId": "list",
+            "fromId": "list-2",
             "fromProperty": "itemOutputSignal-Changed",
             "toId": "pages-2",
             "toProperty": "storageFetch"
@@ -8484,24 +9055,24 @@
           {
             "fromId": "pages-2",
             "fromProperty": "failure",
-            "toId": "queryState",
+            "toId": "queryState-2",
             "toProperty": "to-Refused"
           },
           {
             "fromId": "pages-2",
             "fromProperty": "fetched",
-            "toId": "queryState",
+            "toId": "queryState-2",
             "toProperty": "to-Quiet"
           },
           {
-            "fromId": "queryState",
+            "fromId": "queryState-2",
             "fromProperty": "refused",
-            "toId": "listError",
+            "toId": "listError-2",
             "toProperty": "mounted"
           }
         ],
         "visualRoots": [
-          "page-4"
+          "page-5"
         ]
       }
     },
@@ -8510,7 +9081,7 @@
       "graph": {
         "roots": [
           {
-            "id": "page-5",
+            "id": "page-6",
             "type": "Page",
             "children": [
               {
@@ -8518,7 +9089,7 @@
                 "type": "Group",
                 "children": [
                   {
-                    "id": "heading-10",
+                    "id": "heading-11",
                     "type": "Text",
                     "children": [],
                     "label": "Heading",
@@ -8766,7 +9337,7 @@
           }
         ],
         "visualRoots": [
-          "page-5"
+          "page-6"
         ]
       }
     },
@@ -8775,7 +9346,7 @@
       "graph": {
         "roots": [
           {
-            "id": "page-6",
+            "id": "page-7",
             "type": "Page",
             "children": [
               {
@@ -8783,7 +9354,7 @@
                 "type": "Group",
                 "children": [
                   {
-                    "id": "heading-11",
+                    "id": "heading-12",
                     "type": "Text",
                     "children": [],
                     "label": "Heading",
@@ -9139,7 +9710,7 @@
           }
         ],
         "visualRoots": [
-          "page-6"
+          "page-7"
         ]
       }
     },
@@ -9148,7 +9719,7 @@
       "graph": {
         "roots": [
           {
-            "id": "inputs-14",
+            "id": "inputs-15",
             "type": "Component Inputs",
             "children": [],
             "label": "The section, and whether it goes public",
@@ -9230,19 +9801,19 @@
         ],
         "connections": [
           {
-            "fromId": "inputs-14",
+            "fromId": "inputs-15",
             "fromProperty": "objectId",
             "toId": "write",
             "toProperty": "modelId"
           },
           {
-            "fromId": "inputs-14",
+            "fromId": "inputs-15",
             "fromProperty": "isPublic",
             "toId": "write",
             "toProperty": "acl-world-read"
           },
           {
-            "fromId": "inputs-14",
+            "fromId": "inputs-15",
             "fromProperty": "Do",
             "toId": "write",
             "toProperty": "store"
@@ -9267,7 +9838,7 @@
       "graph": {
         "roots": [
           {
-            "id": "inputs-15",
+            "id": "inputs-16",
             "type": "Component Inputs",
             "children": [],
             "label": "One section, and the page it is being copied onto",
@@ -9385,13 +9956,13 @@
         ],
         "connections": [
           {
-            "fromId": "inputs-15",
+            "fromId": "inputs-16",
             "fromProperty": "newPageId",
             "toId": "link-2",
             "toProperty": "in-newPageId"
           },
           {
-            "fromId": "inputs-15",
+            "fromId": "inputs-16",
             "fromProperty": "Do",
             "toId": "link-2",
             "toProperty": "run"
@@ -9403,19 +9974,19 @@
             "toProperty": "prop-pageId"
           },
           {
-            "fromId": "inputs-15",
+            "fromId": "inputs-16",
             "fromProperty": "kind",
             "toId": "create-2",
             "toProperty": "prop-kind"
           },
           {
-            "fromId": "inputs-15",
+            "fromId": "inputs-16",
             "fromProperty": "order",
             "toId": "create-2",
             "toProperty": "prop-order"
           },
           {
-            "fromId": "inputs-15",
+            "fromId": "inputs-16",
             "fromProperty": "data",
             "toId": "create-2",
             "toProperty": "prop-data"
@@ -9446,7 +10017,7 @@
       "graph": {
         "roots": [
           {
-            "id": "inputs-16",
+            "id": "inputs-17",
             "type": "Component Inputs",
             "children": [],
             "label": "Ask for the address",
@@ -9471,10 +10042,10 @@
             "y": 160,
             "parameters": {
               "runOnChange-records": true,
-              "runOnChange-querySettings": true,
-              "runOnChange-collectionName": true,
               "runOnChange-search": true,
-              "collectionName": "SiteSettings"
+              "collectionName": "SiteSettings",
+              "runOnChange-collectionName": false,
+              "runOnChange-querySettings": false
             },
             "ports": [],
             "dynamicports": []
@@ -9569,7 +10140,7 @@
         ],
         "connections": [
           {
-            "fromId": "inputs-16",
+            "fromId": "inputs-17",
             "fromProperty": "Fetch",
             "toId": "settings-3",
             "toProperty": "storageFetch"
@@ -9778,7 +10349,7 @@
             "dynamicports": []
           },
           {
-            "id": "page-7",
+            "id": "page-8",
             "type": "SetDbModelProperties",
             "children": [],
             "label": "Write the page: mirror + access rules",
@@ -9894,25 +10465,25 @@
           {
             "fromId": "tasks",
             "fromProperty": "done",
-            "toId": "page-7",
+            "toId": "page-8",
             "toProperty": "store"
           },
           {
             "fromId": "prep",
             "fromProperty": "out-pageId",
-            "toId": "page-7",
+            "toId": "page-8",
             "toProperty": "modelId"
           },
           {
             "fromId": "prep",
             "fromProperty": "out-isPublic",
-            "toId": "page-7",
+            "toId": "page-8",
             "toProperty": "prop-published"
           },
           {
             "fromId": "prep",
             "fromProperty": "out-isPublic",
-            "toId": "page-7",
+            "toId": "page-8",
             "toProperty": "acl-world-read"
           },
           {
@@ -9928,7 +10499,7 @@
             "toProperty": "pm-published"
           },
           {
-            "fromId": "page-7",
+            "fromId": "page-8",
             "fromProperty": "done",
             "toId": "res",
             "toProperty": "send"
@@ -9964,7 +10535,7 @@
             "toProperty": "send"
           },
           {
-            "fromId": "page-7",
+            "fromId": "page-8",
             "fromProperty": "failure",
             "toId": "deny",
             "toProperty": "send"
@@ -10027,7 +10598,7 @@
             "dynamicports": []
           },
           {
-            "id": "source",
+            "id": "source-2",
             "type": "DbModel2",
             "children": [],
             "label": "The page being copied",
@@ -10298,35 +10869,35 @@
           {
             "fromId": "prep-2",
             "fromProperty": "out-pageId",
-            "toId": "source",
+            "toId": "source-2",
             "toProperty": "modelId"
           },
           {
             "fromId": "prep-2",
             "fromProperty": "out-ready",
-            "toId": "source",
+            "toId": "source-2",
             "toProperty": "fetch"
           },
           {
-            "fromId": "source",
+            "fromId": "source-2",
             "fromProperty": "prop-title",
             "toId": "newProps",
             "toProperty": "in-title"
           },
           {
-            "fromId": "source",
+            "fromId": "source-2",
             "fromProperty": "prop-slug",
             "toId": "newProps",
             "toProperty": "in-slug"
           },
           {
-            "fromId": "source",
+            "fromId": "source-2",
             "fromProperty": "id",
             "toId": "newProps",
             "toProperty": "in-sourceId"
           },
           {
-            "fromId": "source",
+            "fromId": "source-2",
             "fromProperty": "done",
             "toId": "newProps",
             "toProperty": "run"
@@ -10428,7 +10999,7 @@
             "toProperty": "send"
           },
           {
-            "fromId": "source",
+            "fromId": "source-2",
             "fromProperty": "failure",
             "toId": "deny-2",
             "toProperty": "send"
@@ -11154,7 +11725,7 @@
       "graph": {
         "roots": [
           {
-            "id": "inputs-17",
+            "id": "inputs-18",
             "type": "Component Inputs",
             "children": [],
             "label": "The section, and where it lands",
@@ -11220,19 +11791,19 @@
         ],
         "connections": [
           {
-            "fromId": "inputs-17",
+            "fromId": "inputs-18",
             "fromProperty": "objectId",
             "toId": "write-2",
             "toProperty": "modelId"
           },
           {
-            "fromId": "inputs-17",
+            "fromId": "inputs-18",
             "fromProperty": "order",
             "toId": "write-2",
             "toProperty": "prop-order"
           },
           {
-            "fromId": "inputs-17",
+            "fromId": "inputs-18",
             "fromProperty": "Do",
             "toId": "write-2",
             "toProperty": "store"

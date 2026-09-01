@@ -429,10 +429,14 @@ describe('SB-005: the admin panel, through the MCP door', () => {
     // screen's two (into the panel, back to the claim screen) and the claim
     // screen's link forward to it.
     // 13 → 14: SBR-007's Preview button, which navigates to `/Pages/Site`.
+    // 14 → 16: SBR-010's two, and they are one of each KIND, which is why the
+    // number moves by two for one screen: `/Admin/Shell`'s `goMessages` — the
+    // navigate the Messages rail item never had — and `/Pages/Messages`'s
+    // `For Each.template`, pointing at `/Admin/MessageRow`.
     // ⚠️ This counts `For Each.template` and `RouterNavigate.target` only — the
     // page editor's new `/Admin/Shell` PLACEMENT is not a reference by this
     // definition and moves this number not at all. AC5's test is what covers it.
-    expect(refs.length).toBe(14);
+    expect(refs.length).toBe(16);
     for (const r of refs) expect(`${r}:${known.has(r)}`).toBe(`${r}:true`);
   });
 
@@ -640,7 +644,12 @@ describe('SB-005: the admin panel, through the MCP door', () => {
     // 🔴 A +1/−1 that cancels is the shape a census cannot see, and it is exactly
     // why the loop above names nodes rather than counting them: a `picked` called
     // and undeclared would leave this pair of numbers untouched and red there.
-    expect(rows.length).toBe(22);
+    // 22 → 24 and 9 → **9**: SBR-010's `stamp` (the row's date and sender
+    // sentences) and `tally` (the count/empty sentence). Neither calls a signal
+    // out, so both are `declared=` rows and the second number is unmoved —
+    // which is the arithmetic, not the luck: a screen that only READS records
+    // has nothing to announce.
+    expect(rows.length).toBe(24);
     expect(rows.filter((r) => !r.endsWith('declared=')).length).toBe(9);
   });
 
@@ -728,16 +737,25 @@ describe('SB-005: the admin panel, through the MCP door', () => {
       // PageEditor's page save, SectionRow's section save, ThemeEditor's two.
       updates: 4,
       deletes: 1,
+      // 🔴 **SBR-010 moves four of these numbers and none of the top three.**
+      // `creates`, `updates` and `deletes` are unmoved, and that is the task's
+      // scope asserted as arithmetic rather than as prose: a read-only screen
+      // writes nothing, so a Reply, a Delete or a mark-as-read arriving later
+      // reddens HERE first, whoever adds it and whatever they call it.
       // Admin's page list, PageEditor's sections, ThemeEditor's two singletons.
       // 4 → 5: SBR-009 AC1 puts a Theme query in `/Admin/Shell`, so every admin
       // screen wears the client's theme rather than the shipped Studio blue.
       // 🔴 It is in the SHELL and not on each screen for the reason the sidebar
       // is a component: one node cannot disagree with itself between two screens.
-      queries: 5,
+      // 5 → 6: SBR-010's `ContactMessage` query on `/Pages/Messages` — the
+      // unfiltered kind, like `/Pages/Admin`'s page list, and it wants the
+      // load-time fetch for the same reason.
+      queries: 6,
       // publish, unpublish, duplicate, claim.
       // 4 → 5: SBR-007 AC2's `reorder` on the page editor.
       functions: 5,
-      repeaters: 2,
+      // 2 → 3: SBR-010's message list. A `For Each` over `/Admin/MessageRow`.
+      repeaters: 3,
       // PageRow 1, SectionRow 2, Setup 1, PageEditor 4, ThemeEditor 3.
       // 10 → 13: SBR-007's `headline`, `status` and `dirty` on the page editor.
       // 13 → 15: AC2's `moveUp` and `moveDown`, also on the page editor — two
@@ -753,9 +771,13 @@ describe('SB-005: the admin panel, through the MCP door', () => {
       // 16 → 18: SBR-005's `absorb` and `dropLast` on `/Admin/SectionRow`, so
       // its term is 5. See the note on the signal-port count above for why the
       // picture fold could not stay inside `merge`.
-      code: 22,
+      // 22 → 24: SBR-010's `stamp` on `/Admin/MessageRow` (the date and the
+      // sender fallback, both derived rather than wired straight through) and
+      // `tally` on `/Pages/Messages` (the count-or-empty sentence).
+      code: 24,
       // 4 → 5: SBR-017's `/Pages/SignIn`.
-      pages: 5
+      // 5 → 6: SBR-010's `/Pages/Messages`.
+      pages: 6
     });
   });
 
@@ -939,7 +961,8 @@ describe('SB-005: the admin panel, through the MCP door', () => {
     // only two.** `/Pages/PageEditor` is an admin screen and did not wear the
     // shell, so the rail, "Theme and settings" and `Sign out` disappeared on the
     // one screen a client spends their time in and came back when they left.
-    expect(placements.sort()).toEqual(['Pages/Admin', 'Pages/PageEditor', 'Pages/ThemeEditor']);
+    // 🟢 SBR-010 adds the fourth, and the FOURTH DISTINCT `active` — see below.
+    expect(placements.sort()).toEqual(['Pages/Admin', 'Pages/Messages', 'Pages/PageEditor', 'Pages/ThemeEditor']);
 
     // 🔴 The half a shell fails silently: the MCP guidance's ghost is a component
     // that "renders identically however many times you place it". The interface
@@ -947,7 +970,10 @@ describe('SB-005: the admin panel, through the MCP door', () => {
     const active = placements.map(
       (k) => written[k].graph.nodes.find((n) => n.type === '/Admin/Shell')!.parameters?.active
     );
-    expect(active).toEqual(['pages', 'pages', 'theme']);
+    // ⚠️ Two `'pages'` and not three: `/Pages/PageEditor` is a page's editor and
+    // belongs under the Pages item, so the rail stays lit where the person came
+    // from. `'messages'` is the third distinct value and `navStyle` reads it.
+    expect(active).toEqual(['pages', 'messages', 'pages', 'theme']);
 
     // ⚠️ **The invariant is "the interface is load-bearing", NOT "every placement
     // is unique"** — and the difference only became visible at the third
@@ -1072,7 +1098,15 @@ describe('SB-005: the admin panel, through the MCP door', () => {
     const targets = byType(shell, 'RouterNavigate').map((n) => n.parameters?.target);
     // `/Pages/SignIn` is SBR-017's: the rail can end a session, so it must have
     // somewhere to put the person it just signed out.
-    expect(targets.sort()).toEqual(['/Pages/Admin', '/Pages/SignIn', '/Pages/Site', '/Pages/ThemeEditor']);
+    // `/Pages/Messages` is SBR-010's, and it closes the same shape SBR-006 named
+    // for the theme editor: the rail item existed and led nowhere.
+    expect(targets.sort()).toEqual([
+      '/Pages/Admin',
+      '/Pages/Messages',
+      '/Pages/SignIn',
+      '/Pages/Site',
+      '/Pages/ThemeEditor'
+    ]);
   });
 
   it('MUTANT: rendering the cloud function error reddens', () => {

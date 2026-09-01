@@ -772,7 +772,12 @@ describe('SB-006: the public site, beside the panel it shares a router with', ()
     // the kind of page this check exists for: a NEW page is the only way the
     // catch-all can start tying with something, and `assertUnambiguousRouting`
     // below is what says it does not.
-    expect(pages.length).toBe(6);
+    // 🔴 6 → 7 is SBR-010's `/Pages/Messages` at `admin/messages`, and it is the
+    // second page to arrive since this arm was written — which is the arm doing
+    // its job rather than a number being maintained. A new page is the only way
+    // the catch-all can start tying, and the resolution below is what says it
+    // does not.
+    expect(pages.length).toBe(7);
     expect(pages.filter((p) => p.pattern === SITE_URL_PATH).map((p) => p.component)).toEqual(['/Pages/Site']);
     expect(pages.filter((p) => p.component !== '/Pages/Site').every((p) => p.pattern.split('/').length >= 2)).toBe(true);
 
@@ -784,6 +789,9 @@ describe('SB-006: the public site, beside the panel it shares a router with', ()
     expect(resolve('/about', pages).winners).toEqual(['/Pages/Site']);
     // The admin landing, which is the one that used to tie.
     expect(resolve(`/${ADMIN_PATH_PREFIX}/pages`, pages).winners).toEqual(['/Pages/Admin']);
+    // …and SBR-010's, which is the one this run is about: two segments, so it
+    // cannot tie with the site, and it resolves to exactly one component.
+    expect(resolve(`/${ADMIN_PATH_PREFIX}/messages`, pages).winners).toEqual(['/Pages/Messages']);
   });
 
   it("MUTANT: an admin page back at one segment ties with the site's catch-all", () => {

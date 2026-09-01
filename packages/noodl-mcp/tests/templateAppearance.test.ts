@@ -276,7 +276,11 @@ const EXPECTED_PAGE_COUNT: Record<string, number> = {
   // reddened when the template grew a page, and the page then had to answer §4
   // below. It answers it by NOT being bare: the sign-in screen carries the
   // template's own tokens, so the floor set does not grow with it.
-  'site-builder': 6,
+  // 6 → 7: SBR-010's `/Pages/Messages`. The pin did what it is for a third
+  // time, and the page answers §4 by NOT being bare: it sets `fontSize` on its
+  // heading, its read-only note, its count line and its refusal — four of its
+  // own nodes carry a structural parameter, so the floor below does not grow.
+  'site-builder': 7,
   // 11 → 13: TPL-002's `/Pages/Account` and `/Pages/Unsubscribe`. The pin did
   // what it is for again — both pages then had to answer §4, and both do: they
   // are built from `PAGE_GROUND`, `PANEL`, `notice` and `pageHead`, which is the

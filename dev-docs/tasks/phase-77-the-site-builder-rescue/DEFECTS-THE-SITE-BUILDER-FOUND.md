@@ -2047,6 +2047,113 @@ press.
 
 ---
 
+## D42 — 🟢 FIXED IN THE SAME SESSION (s38). The template's ONE public endpoint stored every enquiry TWICE
+
+**Template. Owner: SBR-010 (fixed there). Pre-existing since SB-004.** Found because SBR-010 is the
+first thing in eleven sessions that ever **reads a `ContactMessage` back**.
+
+### The measurement
+
+`sbr010-messages-drive.test.ts`, real Chrome with no session, against a real `BackendService` with
+the shipped policy and enforcement on. Three visitors filled the template's own public contact form
+and pressed **Send** once each. The owner then read the store:
+
+```
+GET /classes/ContactMessage  →  6 rows
+```
+
+Two rows per submission, ~10 ms apart, identical in every field and different only in `objectId`.
+
+🔴 **The browser was never at fault**, which is the reading that matters and the one a screen alone
+could not have given. The backend's execution history recorded **three** runs of
+`submitContactForm` — one per click — and each run's step list read:
+
+```
+compose → fallback → pick → save-3 → fallback → pick → save-3 → stored → mail → res-3
+```
+
+One `compose`, one `res`, **two** `fallback → pick → save`. So the visitor was told once, correctly,
+and the owner got two of everything.
+
+### The mechanism, and the sentence that caused it
+
+`/#__cloud__/site/ContactRecipient`'s `settings` node is an unfiltered `DbCollection2` over
+`SiteSettings`. It had its `runOnChange-*` checkboxes **ticked** *and* a `storageFetch` wire
+(`RECIPIENT_WIRES`' first entry, `inputs.Fetch → settings.storageFetch`). Two triggers, two
+`fetched` pulses, and everything downstream ran twice.
+
+🔴 **The comment on the node argued for it, from a premise that was false eight lines below.** It
+read: *"The `runOnChange-*` checkboxes are left TICKED here — measured, not assumed… **because this
+node has no `storageFetch` wire**."* It has one, and it is the first wire in the list. And the very
+next paragraph of the same comment stated the consequence exactly:
+
+> *"Boxes on with a `storageFetch` wire fetches twice and runs everything downstream twice (SB-013).
+> The two settings are alternatives, never a belt and braces."*
+
+⚠️ **This is D41's shape a second time in the same file, and the fourth unstated/mis-stated
+`runOnChange` defect in this template** (D31, D39, D41, this). It is also the *second* time SB-013's
+rule has been broken by the node it was written for: `claimSite`'s copy of this query carries the
+correct settings and a comment recording that one claim once left **two** identical `SiteSettings`
+rows — the identical failure, in the identical shape, one component away.
+
+### 🔴 Why it survived eleven sessions
+
+Nothing had ever read the collection. `submitContactForm` was driven for its **response** (SB-017
+§10.5, SB-018 (5)) and the response is correct on both paths; the duplicate lived only in a table no
+screen opened and no spec listed. **A write nobody reads is a write nobody grades** — which is
+SBR-010's thesis, arrived at as a measurement rather than as an argument.
+
+### 🟢 The fix, and the arm that holds it
+
+`runOnChange-collectionName: false` and `runOnChange-querySettings: false` on `settings`, so the
+`storageFetch` wire is the only fetch. `pick`'s existing `if (Inputs.rows === undefined) return;`
+is what makes that safe, exactly as `claimSite`'s gate guard does.
+
+Re-measured on the same instrument: `stores: 1` on all three runs, one `fallback`, one `pick`, three
+rows. `sbr010-messages-drive.test.ts` asserts the count **exactly**, both ways round — a regression
+that stores twice reddens, and so does a repair that stops storing at all.
+
+---
+
+## D43 — 🔴 A REFUSED page list says "No pages yet", so *not allowed* renders as *nothing here*
+
+**Template. Owner: `NONE` — needs a session that may re-drive `/Pages/Admin`.**
+Measured on the twin, not on the subject: **nobody has driven `/Pages/Admin` in this state.**
+
+### What was measured, and where
+
+SBR-010's first browser run put a signed-out visitor on `/admin/messages`. The screen said **three**
+things at once:
+
+```
+You are not signed in. Sign in to manage this site.
+No messages yet. When somebody sends the contact form on your site, their message arrives here.
+Your messages could not be loaded. You may not have permission to manage this site.
+```
+
+The middle sentence is a lie told to somebody who was never allowed to ask.
+
+`run` is **additive**: `tally.run` was wired to `messages.fetched`, but `runOnChange-in-rows` was
+`true`, so `messages.items` publishing an empty collection ran the count script with **no successful
+query behind it**. Fixed on `/Pages/Messages` in the same session by stating the box `false` —
+`fetched` is then the only trigger and the line stays at its standing `''`.
+
+### 🔴 Why this is a row and not a closed fix
+
+**`/Pages/Admin`'s `count` node is wired identically and still states `true`.** The page list is
+expected to render the same three-sentence screen to a signed-in non-admin, and the reason it was
+NOT changed here is that `/Pages/Admin` carries verified acceptance criteria from SBR-006, SBR-015
+and SBR-016 — editing it blind would be a change to driven work without re-driving it.
+
+⚠️ **It is SBR-016's own defect, one state further along.** That task made *empty* distinguishable
+from *never asked*; **refused** had quietly re-joined *empty*, on the screen SBR-016 repaired.
+
+`sbr010Messages.test.ts` carries the row as a **measurement**: it asserts `/Pages/Admin`'s flag is
+still `true`, so the day somebody fixes it this arm reddens and the row gets closed rather than
+forgotten.
+
+---
+
 ## Where these rows were filed, and why not all of them went to the same place
 
 **s31, 2026-08-30.** Phase 80's `TASKS.md` came clean in the working tree while this session was

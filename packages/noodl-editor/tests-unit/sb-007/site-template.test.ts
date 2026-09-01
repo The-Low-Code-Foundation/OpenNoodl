@@ -118,7 +118,7 @@ describe('SB-007 — install writes a project that opens', () => {
     madeDirectories.length = 0;
   });
 
-  it('writes a project.json holding all twenty-one components, and its policy, and nothing else', async () => {
+  it('writes a project.json holding every component, and its policy, and nothing else', async () => {
     const project = await installOnce('/projects/a');
     // 🔴 The list is EXHAUSTIVE on purpose, and it earned that in s12: SB-015
     // added a second write (`nodegx.security.json`, the backend policy the
@@ -145,7 +145,8 @@ describe('SB-007 — install writes a project that opens', () => {
     // still the unwatched runner.
     // 24 → 30: SBR-005's six section-kind components.
     // 30 → 31: SBR-009's `/Admin/PresetChip`.
-    expect(project.components).toHaveLength(31);
+    // 31 → 33: SBR-010's `/Admin/MessageRow` and `/Pages/Messages`.
+    expect(project.components).toHaveLength(33);
   });
 
   it('🔴 resolves a concrete rootNodeId, so the project has a home component', async () => {
@@ -204,7 +205,10 @@ describe('SB-007 — install writes a project that opens', () => {
     // 335 → 372: SBR-009, decomposed — `/Pages/ThemeEditor` +32 (three cards, a
     // presets row, the live preview and its four logic nodes), `/Admin/Shell` +2
     // (AC1's Theme query and applier) and `/Admin/PresetChip` +3.
-    expect(a.size).toBe(372);
+    // 372 → 393, and the arithmetic is +21 rather than +20: SBR-010's two
+    // components carry 9 and 11 nodes, and `/Admin/Shell` gains the twenty-first
+    // — `goMessages`, the RouterNavigate the rail item never had.
+    expect(a.size).toBe(393);
     expect([...a].filter((id) => b.has(id))).toEqual([]);
   });
 
@@ -282,7 +286,8 @@ describe('SB-007 — the id rewrite reaches everything that carries an id', () =
     // since: SBR-005's six section kinds and SBR-009's `/Admin/PresetChip`. Every
     // one of them is drawn, so every one carries a visual tree; a new component
     // that did not would leave this number alone and be worth asking about.
-    expect(withVisualRoots).toHaveLength(22);
+    // 22 → 24: both of SBR-010's are drawn — the screen and the row it repeats.
+    expect(withVisualRoots).toHaveLength(24);
     expect((project.components ?? []).flatMap((c) => c.graph?.connections ?? []).length).toBeGreaterThan(200);
   });
 });

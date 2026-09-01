@@ -389,7 +389,20 @@ describe('SB-017: the editor deploy path ships every connection the template hol
     // than on a screen, which is worth naming because the line below is about
     // what the cloud adapters wrote onto it: an item template is authored once
     // and instantiated N times, and the adapters walk components, not instances.
-    expect(browserFunctions.length).toBe(26);
+    // 🔴 **26 → 34, and SIX of those eight were already owed at HEAD.** Measured
+    // rather than derived: counting `JavaScriptFunction` nodes in the non-cloud
+    // components of the committed artefact reads **32** before SBR-010's two and
+    // **34** after, against a literal that still said 26. SBR-005's section kinds
+    // and SBR-009's theme editor both moved this population and neither session
+    // ran `test:ci` — the same failure the paragraph above records for SBR-006's,
+    // now three sessions deep. **A literal gate only works if somebody runs it,
+    // and this one is in the runner D19 named as unwatched.**
+    //
+    // +2 is SBR-010's: `/Admin/MessageRow stamp` (the row's date and sender
+    // sentences) and `/Pages/Messages tally` (the count-or-empty sentence).
+    // ⚠️ The count is the POPULATION; the line below is the CLAIM — and while
+    // this literal was stale that claim did not run at all, for three sessions.
+    expect(browserFunctions.length).toBe(34);
     expect(browserFunctions.filter((node) => (node.dynamicports || []).length > 0)).toEqual([]);
 
     // …and the same sweep on the cloud side did write ports, so the assertion

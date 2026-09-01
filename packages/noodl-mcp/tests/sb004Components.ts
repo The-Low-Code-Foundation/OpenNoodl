@@ -1075,20 +1075,49 @@ export const RECIPIENT_NODES = [
     // Records is exactly the defect F5 records on publishPage — the difference
     // is intent, and intent has to be visible.
     //
-    // ⚠️ The `runOnChange-*` checkboxes are left TICKED here — measured, not
-    // assumed. Switching them off left this node reporting `isEmpty: true` for
-    // a collection that had a row in it, because **this node has no
-    // `storageFetch` wire**: with the boxes off and nothing triggering it by
-    // hand, it never fetches at all. On a FILTERED node the same setting is
-    // what stops a query running before its filter exists; here there is no
-    // filter to be early for.
+    // 🔴 **D42, found by SBR-010's drive and fixed here. THE SENTENCE THAT USED
+    // TO STAND HERE NAMED THE RULE THIS NODE WAS BREAKING.**
     //
-    // 🔴 That is the whole rule, and `claimSite`'s copy of this node is the
-    // other half of it: boxes OFF *and* `storageFetch` wired, which fetches
-    // exactly once and in an order. Boxes on with a `storageFetch` wire fetches
-    // twice and runs everything downstream twice (SB-013). The two settings are
-    // alternatives, never a belt and braces.
-    parameters: { collectionName: 'SiteSettings' }
+    // It read: *"The `runOnChange-*` checkboxes are left TICKED here — measured,
+    // not assumed. Switching them off left this node reporting `isEmpty: true`
+    // for a collection that had a row in it, **because this node has no
+    // `storageFetch` wire**."* Every word of that is an argument from a premise
+    // that is false eight lines below: `RECIPIENT_WIRES`' FIRST entry is
+    // `inputs.Fetch → settings.storageFetch`. And the paragraph that followed it
+    // stated the consequence exactly — *"Boxes on with a `storageFetch` wire
+    // fetches twice and runs everything downstream twice (SB-013). The two
+    // settings are alternatives, never a belt and braces"* — about the very node
+    // it was written on.
+    //
+    // 🔴 The consequence, measured in `sbr010-messages-drive.test.ts` against a
+    // real backend: **every enquiry was stored TWICE.** Three clicks on the
+    // public contact form produced three `submitContactForm` runs — the browser
+    // was never at fault — and each run's step list read
+    // `fallback → pick → save-3` **twice**: the query's load-time fetch and its
+    // `storageFetch` wire each produced a `fetched` pulse, and the whole
+    // downstream chain ran on both. The response is unaffected (`compose` and
+    // `res` appear once), so the visitor was told once and the owner got two
+    // rows.
+    //
+    // ⚠️ **It could not be seen until this session, and that is SBR-010's whole
+    // thesis.** Nothing had ever read a `ContactMessage` back, so the only place
+    // the duplicate existed was a table no screen opened.
+    //
+    // The fix is `claimSite`'s, which had the identical defect and the identical
+    // repair: boxes OFF and the `storageFetch` wire is then the only fetch — one
+    // pulse, one run of the chain, one row. `pick`'s `if (Inputs.rows ===
+    // undefined) return;` is what makes that safe, exactly as the gate's guard
+    // does over there.
+    //
+    // ⚠️ The two keys are written out rather than imported: `NO_LOAD_TIME_FETCH`
+    // lives in `sb005Components.ts`, which already imports `ADMIN_ONLY_RULES`
+    // from this module, so the dependency cannot run the other way. `claimSite`
+    // below states them literally for the same reason.
+    parameters: {
+      collectionName: 'SiteSettings',
+      'runOnChange-collectionName': false,
+      'runOnChange-querySettings': false
+    }
   },
   {
     id: 'fallback',

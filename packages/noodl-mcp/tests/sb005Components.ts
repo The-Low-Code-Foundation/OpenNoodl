@@ -307,6 +307,20 @@ export const SECTIONS_OF_PAGE_FILTER = {
 export const SECTION_SORT = [{ property: 'order', order: 'ascending' }];
 
 /**
+ * Messages come back newest first — SBR-010 AC4.
+ *
+ * `createdAt` is a field no component writes: Parse mints it on every row and
+ * `_fromJSON` copies it onto the model like any other key. Sorting on it is
+ * therefore free, and it is the only ordering a list of enquiries can have that
+ * does not depend on the owner maintaining something.
+ *
+ * ⚠️ Held here beside {@link SECTION_SORT} rather than inline for the same
+ * reason that one is: a sort a second reader copies is a sort that drifts. There
+ * is one reader today and the constant is what keeps a second one honest.
+ */
+export const MESSAGE_SORT = [{ property: 'createdAt', order: 'descending' }];
+
+/**
  * SB-004 §2's discriminator vocabulary, in the order a page most often uses it.
  *
  * 🔴 **SBR-005 gave every one of these a component of its own, so the list stopped
@@ -3785,6 +3799,24 @@ export const ADMIN_SHELL_NODES = [
     parameters: { router: ROUTER, target: '/Pages/ThemeEditor' }
   },
   {
+    id: 'goMessages',
+    type: 'RouterNavigate',
+    label: 'To the messages list',
+    // 🔴 **SBR-010.** This node is the thing the sidebar item has been missing
+    // since SBR-006 built the rail: `navMessages` rendered, took the current-item
+    // styling like its siblings, and went nowhere. The gap was recorded in this
+    // file rather than papered over, and the comment at the foot of
+    // `ADMIN_SHELL_WIRES` is what has just been paid.
+    //
+    // `deferred`, like `goPages` and `goTheme`: `/Admin/Shell` is written FIRST
+    // and `/Pages/Messages` does not exist until the SB-005 create pass reaches
+    // it. A `RouterNavigate.target` is resolved AT THE DOOR — measured, s6:
+    // `unresolved-navigation`, blocking, with a *did you mean* — so this is not
+    // a precaution, it is the difference between the component being written and
+    // being refused.
+    parameters: { router: ROUTER, target: '/Pages/Messages' }
+  },
+  {
     id: 'signOut',
     type: 'Text',
     label: 'Sign out',
@@ -3915,6 +3947,11 @@ export const ADMIN_SHELL_WIRES = [
 
   { fromId: 'navPages', fromProperty: 'onClick', toId: 'goPages', toProperty: 'navigate' },
   { fromId: 'navTheme', fromProperty: 'onClick', toId: 'goTheme', toProperty: 'navigate' },
+  // 🔴 SBR-010. The third rail item finally goes somewhere. Every other wire in
+  // this block predates it; this one is the whole of the shell's share of the
+  // task, and `sbr010Messages.test.ts` asserts it by name because "the item is
+  // in the sidebar" was true throughout the eleven sessions it did nothing.
+  { fromId: 'navMessages', fromProperty: 'onClick', toId: 'goMessages', toProperty: 'navigate' },
   { fromId: 'viewSite', fromProperty: 'onClick', toId: 'goSite', toProperty: 'navigate' },
 
   // SBR-017. One reading of "is anybody signed in", two opposite consequences.
@@ -3928,13 +3965,6 @@ export const ADMIN_SHELL_WIRES = [
   { fromId: 'signOut', fromProperty: 'onClick', toId: 'logOut', toProperty: 'login' },
   { fromId: 'logOut', fromProperty: 'done', toId: 'goSignIn', toProperty: 'navigate' },
   { fromId: 'signedOutNotice', fromProperty: 'onClick', toId: 'goSignIn', toProperty: 'navigate' }
-
-  // 🔴 `navMessages` has NO navigate wire, and the gap is recorded rather than
-  // papered over: `/Pages/Messages` is SBR-010's component and does not exist
-  // yet, and `RouterNavigate.target` takes a component legacyName — aiming it at
-  // an invented URL path is the mistake the MCP guidance names outright. The
-  // item renders and takes the current-item styling like its siblings; SBR-010
-  // adds the one wire and the `deferred` entry that carries it.
 ];
 
 // ── 8. Admin/NewPageDialog — "New page", as a dialog ────────────────────────
@@ -4267,6 +4297,532 @@ export const SIGN_IN_WIRES = [
 // ── The set, in an order the door will accept ────────────────────────────────
 
 /** One component: what to send, and where it lands. */
+// ── 10. Admin/MessageRow — one stored enquiry ───────────────────────────────
+
+/**
+ * SBR-010's repeater item, and the first thing in this template that ever reads
+ * a `ContactMessage` back.
+ *
+ * 🔴 **The record shape is not invented here.** SB-004's `submitContactForm`
+ * writes exactly four fields — `name`, `email`, `message`, `pageSlug` — plus
+ * `handled: false` and `ADMIN_ONLY_RULES`, and the ports below are that list
+ * (§4's first trap: read the cloud component, do not author a parallel class).
+ * `createdAt` is the fifth thing a row carries and the one nobody wrote: Parse
+ * mints it, `cloudstore.js`'s `_fromJSON` copies every key that is not
+ * `objectId` or `ACL` onto the model, and `For Each` delivers any declared input
+ * whose name matches a field (`foreach.tsx:594-596`). So "received-at" costs a
+ * port and no schema change.
+ *
+ * ⚠️ **`createdAt` is typed `*` on purpose, because its runtime type is not one
+ * thing.** `_deserializeJSON` turns it into a `Date` when the class schema has
+ * been loaded and declares it `Date`, and leaves it the ISO **string** the wire
+ * carried when it has not (`cloudstore.js:345-356` — the branch is keyed on the
+ * schema, not on the value). A row rendered before the schema arrives and the
+ * same row rendered after it would otherwise be two different types on the same
+ * port. {@link buildReceivedStampScript} accepts both and is the only place that
+ * has to know.
+ *
+ * 🔴 **No write node lives here**, and that is the scope rather than an
+ * oversight: reply, delete and mark-read are named in {@link MESSAGES_DEFERRED}
+ * and the screen says so out loud. `handled` is written once, by the cloud
+ * function, and read by nothing — which is a promise this task deliberately does
+ * not make.
+ */
+
+/**
+ * The name a message is filed under when the visitor left the box empty.
+ *
+ * 🔴 The SAME words `submitContactForm`'s `compose` uses (`sb004Components.ts`:
+ * *"New enquiry from " + (Inputs.name || "a visitor")*), because the owner reads
+ * both: the mail that arrived in their inbox and the row on this screen are the
+ * same event, and two different fallbacks would make them look like two.
+ */
+export const ANONYMOUS_SENDER = 'A visitor';
+
+/**
+ * `createdAt` and `pageSlug`, turned into the two sentences a person reads.
+ *
+ * 🔴 **The date is formatted here rather than by `toLocaleString()`**, and the
+ * reason is that this screen is graded in a headless browser: `toLocaleString`
+ * answers whatever the host's locale and time zone say, so the assertion would
+ * be about the machine that ran it. `1 Sep 2026, 22:41` is the same string
+ * everywhere and is still a date a person reads without decoding it.
+ *
+ * ⚠️ It is deliberately NOT relative ("2 hours ago"). A relative stamp is
+ * computed once, at mount, and then quietly rots on a screen somebody leaves
+ * open — the list has no clock and nothing re-runs this.
+ */
+export function buildReceivedStampScript(): string {
+  return [
+    "const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];",
+    "const pad = (n) => (n < 10 ? '0' + n : String(n));",
+    // Both shapes `createdAt` legitimately arrives in — see the module note.
+    'const raw = Inputs.createdAt;',
+    "const at = raw instanceof Date ? raw : typeof raw === 'string' && raw !== '' ? new Date(raw) : null;",
+    'const known = at !== null && !isNaN(at.getTime());',
+    "Outputs.when = known",
+    "  ? at.getDate() + ' ' + MONTHS[at.getMonth()] + ' ' + at.getFullYear() + ', ' + pad(at.getHours()) + ':' + pad(at.getMinutes())",
+    // 🔴 A time that is not known says so, rather than rendering an empty cell
+    // that reads as "just now". SBR-016's rule, applied to one field.
+    "  : 'Received at an unknown time';",
+    "const name = typeof Inputs.name === 'string' ? Inputs.name.trim() : '';",
+    `Outputs.who = name !== '' ? name : ${JSON.stringify(ANONYMOUS_SENDER)};`,
+    // `pageSlug` is the ONE optional parameter of the four (`preq-pageSlug:
+    // false`), so absent and empty are different facts about the request and
+    // only the first hides the line.
+    "const hasSlug = typeof Inputs.pageSlug === 'string';",
+    "const slug = hasSlug ? Inputs.pageSlug.trim() : '';",
+    'Outputs.hasSource = hasSlug;',
+    // The empty slug IS the site root — the same fact `/Admin/Shell`'s `goSite`
+    // encodes as `pm-slug: ''`.
+    "Outputs.source = slug === '' ? 'Sent from the home page' : 'Sent from the ' + slug + ' page';"
+  ].join('\n');
+}
+
+export const MESSAGE_ROW_NODES = [
+  {
+    id: 'row',
+    type: 'Group',
+    label: 'One message',
+    // Child of the list's COLUMN, so `STACKED` — without it every row is
+    // `height: 100%` along that column and N messages divide the screen between
+    // them instead of stacking. `/Admin/PageRow` records the same trap.
+    parameters: {
+      ...STACKED,
+      flexDirection: 'column',
+      rowGap: 'var(--space-1)',
+      paddingTop: 'var(--space-4)',
+      paddingBottom: 'var(--space-4)',
+      borderBottomStyle: 'solid',
+      borderBottomWidth: 'var(--border-1)',
+      borderBottomColor: 'var(--border)'
+    },
+    children: ['head', 'addr', 'bodyText', 'source']
+  },
+  {
+    id: 'head',
+    type: 'Group',
+    label: 'Who and when',
+    parent: 'row',
+    // ⚠️ `alignItems: 'center'` and not `'baseline'`, which is what was authored
+    // first: the door refused it — `invalid-parameter-value`, with the four
+    // options listed (`flex-start`, `flex-end`, `center`, `stretch`). The port is
+    // an enum over Noodl's own alignment vocabulary, not CSS's.
+    parameters: { ...STACKED, flexDirection: 'row', alignItems: 'center', columnGap: 'var(--space-3)' },
+    children: ['who', 'when']
+  },
+  // 🔴 SB-018 (3) on all four: a `Text` whose only `text` is a wire renders the
+  // literal word **Text** until that wire first publishes, because the node
+  // declares `default: 'Text'` and a default applies until the port is set.
+  {
+    id: 'who',
+    type: 'Text',
+    label: 'Sender',
+    parent: 'head',
+    // Child of a ROW ⇒ `IN_A_ROW`, not `STACKED`: `contentHeight` still assigns
+    // width, and the name would push the time off the row.
+    parameters: {
+      ...IN_A_ROW,
+      text: '',
+      fontFamily: 'var(--font-sans)',
+      fontSize: 'var(--text-base)',
+      fontWeight: 'var(--font-semibold)',
+      color: 'var(--foreground)'
+    }
+  },
+  {
+    id: 'when',
+    type: 'Text',
+    label: 'Received',
+    parent: 'head',
+    parameters: {
+      ...IN_A_ROW,
+      text: '',
+      fontFamily: 'var(--font-sans)',
+      fontSize: 'var(--text-sm)',
+      color: 'var(--muted-foreground)'
+    }
+  },
+  {
+    id: 'addr',
+    type: 'Text',
+    label: 'Reply address',
+    parent: 'row',
+    // The one field that makes the read-only list useful: the owner replies from
+    // their own mail client, which is what {@link MESSAGES_READ_ONLY_TEXT} says.
+    parameters: {
+      ...STACKED,
+      text: '',
+      fontFamily: 'var(--font-sans)',
+      fontSize: 'var(--text-sm)',
+      color: 'var(--primary)'
+    }
+  },
+  {
+    id: 'bodyText',
+    type: 'Text',
+    label: 'The message',
+    parent: 'row',
+    parameters: {
+      ...STACKED,
+      text: '',
+      fontFamily: 'var(--font-sans)',
+      fontSize: 'var(--text-base)',
+      lineHeight: 'var(--leading-relaxed)',
+      color: 'var(--foreground)',
+      marginTop: 'var(--space-2)'
+    }
+  },
+  {
+    id: 'source',
+    type: 'Text',
+    label: 'Which page it came from',
+    parent: 'row',
+    // 🔴 `mounted`, never `visible`: a message whose request carried no
+    // `pageSlug` must take no space, not leave a blank line. P78 D16 was exactly
+    // that bug in this template.
+    parameters: {
+      ...STACKED,
+      mounted: false,
+      text: '',
+      fontFamily: 'var(--font-sans)',
+      fontSize: 'var(--text-xs)',
+      color: 'var(--muted-foreground)'
+    }
+  },
+  {
+    id: 'inputs',
+    type: 'Component Inputs',
+    label: 'The stored message',
+    // `For Each` sets `id` to `model.getId()` and every OTHER declared input to
+    // the field of the same name; an undeclared field is simply not delivered.
+    // So this list is exactly what a row can see, and it is the shape
+    // `submitContactForm` writes plus the two Parse mints.
+    ports: [
+      { name: 'id', type: 'string', plug: 'output' },
+      { name: 'name', type: 'string', plug: 'output' },
+      { name: 'email', type: 'string', plug: 'output' },
+      { name: 'message', type: 'string', plug: 'output' },
+      { name: 'pageSlug', type: 'string', plug: 'output' },
+      // `*` — see the module note: `Date` or ISO string, depending on whether
+      // the class schema had loaded when the row was deserialised.
+      { name: 'createdAt', type: '*', plug: 'output' }
+    ]
+  },
+  {
+    id: 'stamp',
+    type: 'JavaScriptFunction',
+    label: 'The two derived sentences',
+    parameters: {
+      // 🔴 Authored `true`, and the reason is `/Admin/Shell`'s `navStyle`'s: this
+      // node has NO wired control signal today, so the NDA-017 migration does not
+      // reach it and `pinRunOnValueChangeDefaults` writes nothing here either.
+      // The keys are present so that wiring a `run` later cannot silently stop
+      // three component inputs from redrawing the row.
+      'runOnChange-in-name': true,
+      'runOnChange-in-createdAt': true,
+      'runOnChange-in-pageSlug': true,
+      functionScript: buildReceivedStampScript()
+    }
+  }
+];
+
+export const MESSAGE_ROW_WIRES = [
+  { fromId: 'inputs', fromProperty: 'name', toId: 'stamp', toProperty: 'in-name' },
+  { fromId: 'inputs', fromProperty: 'createdAt', toId: 'stamp', toProperty: 'in-createdAt' },
+  { fromId: 'inputs', fromProperty: 'pageSlug', toId: 'stamp', toProperty: 'in-pageSlug' },
+
+  { fromId: 'stamp', fromProperty: 'out-who', toId: 'who', toProperty: 'text' },
+  { fromId: 'stamp', fromProperty: 'out-when', toId: 'when', toProperty: 'text' },
+  { fromId: 'stamp', fromProperty: 'out-source', toId: 'source', toProperty: 'text' },
+  { fromId: 'stamp', fromProperty: 'out-hasSource', toId: 'source', toProperty: 'mounted' },
+
+  // The two fields that need no derivation, straight off the record.
+  { fromId: 'inputs', fromProperty: 'email', toId: 'addr', toProperty: 'text' },
+  { fromId: 'inputs', fromProperty: 'message', toId: 'bodyText', toProperty: 'text' }
+];
+
+// ── 11. Pages/Messages — the loop the product left open ─────────────────────
+
+/**
+ * SBR-010's person sentence: *"a visitor's message reaches the owner's eyes."*
+ *
+ * The contact form has stored rows since SB-004 and nothing has ever read one
+ * back. The sidebar has carried a **Messages** item since SBR-006 and it went
+ * nowhere. This is the screen at the other end of both.
+ *
+ * 🔴 **The query is unfiltered and wants its load-time fetch — the same case as
+ * `/Pages/Admin`'s `pages`, with one difference that matters.** `pages` has to
+ * author `runOnChange-collectionName: true` because it ALSO wires
+ * `storageFetch` (a create and a row edit refresh it), and a wired control
+ * signal is what puts a node in the NDA-017 migration's population. Nothing on
+ * this screen writes a record, so nothing wires `storageFetch`, so the migration
+ * never reaches this node and the absent key keeps its ticked default. The same
+ * node, in the same template, correctly configured two different ways — exactly
+ * as `/Admin/Shell`'s `adminTheme` is against `/Pages/ThemeEditor`'s copy.
+ *
+ * ⚠️ That is a real difference in behaviour and not only in bookkeeping: this
+ * list does not refresh itself. A message that arrives while the owner is
+ * looking at the screen appears on the next visit. Recorded in
+ * {@link MESSAGES_DEFERRED} rather than left as a surprise.
+ */
+
+/**
+ * What the list says when the query came back with nothing.
+ *
+ * 🔴 SBR-016's rule, and this screen is the one where it bites hardest: *nobody
+ * has written to you yet* and *your form is broken* produce the same empty
+ * column, and the owner of a new site has no way to tell which they are looking
+ * at. The sentence says which, and says what would change it.
+ */
+export const EMPTY_MESSAGE_LIST_TEXT =
+  'No messages yet. When somebody sends the contact form on your site, their message arrives here.';
+
+/**
+ * What the list says when the query was refused.
+ *
+ * `ContactMessage.find` is `role:admin` in `site-builder.security.json`, so a
+ * signed-in principal who is not an admin gets a refusal — and until this
+ * existed that refusal rendered pixel-identical to a site nobody has written to.
+ * SBR-016 §2.2's third state, on the collection where the two are most different.
+ */
+export const MESSAGE_LIST_ERROR_TEXT =
+  'Your messages could not be loaded. You may not have permission to manage this site.';
+
+/**
+ * What the screen tells the owner they can and cannot do here.
+ *
+ * 🔴 **§2's third bullet, on the screen rather than only in this file.** The
+ * live-preview lesson is that undocumented dropping is the one state a promise
+ * must not be in — and a list of enquiries with no Reply button is a promise
+ * being dropped silently unless the screen says what to do instead. It names the
+ * thing that DOES work: every row shows the sender's address.
+ */
+export const MESSAGES_READ_ONLY_TEXT =
+  'Messages are read to here, not answered from here — reply from your own email using the address on the message.';
+
+/**
+ * What SBR-010 deliberately does not build, with the reason for each.
+ *
+ * 🔴 An exported list rather than a paragraph, because a deferral nobody can
+ * enumerate is indistinguishable from an omission nobody noticed —
+ * `sbr010Messages.test.ts` asserts the screen carries no node that would
+ * implement one of these, so the list cannot quietly stop being true.
+ */
+export const MESSAGES_DEFERRED: ReadonlyArray<{ what: string; why: string }> = [
+  {
+    what: 'reply',
+    why: 'a reply is an outbound email, which is a cloud function and a second recipient contract — SB-004 F8 has the address question open with Richard, and a Reply box that mailed from the site owner’s own server is a bigger promise than this task'
+  },
+  {
+    what: 'delete',
+    why: '`ContactMessage.delete` is `nobody` in site-builder.security.json — the policy already refuses it, and a button that could only ever fail is worse than no button'
+  },
+  {
+    what: 'mark as read',
+    why: '`handled: false` is written by submitContactForm and read by nothing; making it mean something needs a write from the panel, which is the ACL question this read-only screen deliberately does not open'
+  },
+  {
+    what: 'live refresh',
+    why: 'nothing on this screen writes a record, so nothing wires storageFetch — a message arriving while the owner watches appears on the next visit. SBR-011’s realtime hub is where that belongs, not here'
+  }
+];
+
+export const MESSAGES_NODES = [
+  {
+    id: 'page',
+    type: 'Page',
+    label: 'Messages',
+    parameters: { title: 'Messages', urlPath: `${ADMIN_PATH_PREFIX}/messages` },
+    children: ['adminShell']
+  },
+  {
+    id: 'adminShell',
+    type: '/Admin/Shell',
+    label: 'Admin shell',
+    parent: 'page',
+    // The THIRD placement of `/Admin/Shell`, and the third distinct `active`.
+    // A shell with a hard-coded current item would render identically on all
+    // three and nobody would notice until a person used it.
+    parameters: { active: 'messages' },
+    children: ['body']
+  },
+  {
+    id: 'body',
+    type: 'Group',
+    label: 'Messages body',
+    parent: 'adminShell',
+    parameters: { ...STACKED, flexDirection: 'column', rowGap: 'var(--space-4)' },
+    children: ['heading', 'readOnlyNote', 'tallyLine', 'listError', 'list']
+  },
+  {
+    id: 'heading',
+    type: 'Text',
+    label: 'Heading',
+    parent: 'body',
+    parameters: {
+      ...STACKED,
+      text: 'Messages',
+      fontFamily: 'var(--font-serif)',
+      fontSize: 'var(--text-2xl)',
+      fontWeight: 'var(--font-bold)',
+      color: 'var(--foreground)'
+    }
+  },
+  {
+    id: 'readOnlyNote',
+    type: 'Text',
+    label: 'What this screen does not do',
+    parent: 'body',
+    parameters: {
+      ...STACKED,
+      text: MESSAGES_READ_ONLY_TEXT,
+      fontFamily: 'var(--font-sans)',
+      fontSize: 'var(--text-sm)',
+      lineHeight: 'var(--leading-relaxed)',
+      color: 'var(--muted-foreground)'
+    }
+  },
+  {
+    id: 'tallyLine',
+    type: 'Text',
+    label: 'How many messages',
+    parent: 'body',
+    // Standing `text` per SB-018 (3), and empty rather than a guess: the two
+    // things this line can say are both answers to a query that has returned,
+    // and neither is true before it does.
+    parameters: {
+      ...STACKED,
+      text: '',
+      fontFamily: 'var(--font-sans)',
+      fontSize: 'var(--text-sm)',
+      color: 'var(--muted-foreground)'
+    }
+  },
+  {
+    id: 'listError',
+    type: 'Text',
+    label: 'The message list was refused',
+    parent: 'body',
+    parameters: {
+      ...STACKED,
+      mounted: false,
+      text: MESSAGE_LIST_ERROR_TEXT,
+      fontFamily: 'var(--font-sans)',
+      fontSize: 'var(--text-sm)',
+      color: 'var(--destructive)'
+    }
+  },
+  {
+    id: 'list',
+    type: 'For Each',
+    label: 'One row per message',
+    parent: 'body',
+    parameters: { templateType: 'explicit', template: '/Admin/MessageRow' }
+  },
+  {
+    id: 'messages',
+    type: 'DbCollection2',
+    label: 'Every message, newest first',
+    parameters: {
+      collectionName: 'ContactMessage',
+      // 🔴 **AC4's first half, and it is a parameter rather than a sort in the
+      // script.** `convertVisualSorting` lowers this to Parse's `-createdAt`
+      // (`queryutils.ts:440`) and the BACKEND orders the page, so the order is
+      // the same whatever subset comes back. A list sorted after the fetch would
+      // be right only while every row fitted in one response.
+      visualSort: MESSAGE_SORT
+      // 🔴 No `runOnChange-collectionName` key, and the absence is the decision —
+      // see the module note. Nothing here wires `storageFetch`, so the NDA-017
+      // migration's population does not include this node and absent keeps the
+      // ticked default that gives an unfiltered query its load-time fetch.
+    }
+  },
+  {
+    id: 'tally',
+    type: 'JavaScriptFunction',
+    label: 'The row-count sentence',
+    parameters: {
+      // 🔴 **`false`, and the browser is what settled it.** This started as
+      // `true` — copied from `/Pages/Admin`'s `count`, where the reasoning is
+      // that the NDA-017 migration would otherwise rewrite an absent key — and
+      // the drive read the consequence on a signed-out visitor's screen:
+      //
+      //     You are not signed in. Sign in to manage this site.
+      //     No messages yet. When somebody sends the contact form…
+      //     Your messages could not be loaded. You may not have permission…
+      //
+      // **Three sentences, one of them a lie.** `run` is ADDITIVE — wiring it
+      // does not stop a node running on its own — so `items` publishing an empty
+      // collection ran this script with no successful query behind it, and the
+      // screen told somebody who was never allowed to ask that they had no
+      // messages. That is SBR-016's defect exactly, one state further along: the
+      // task made *empty* distinguishable from *never asked*, and *refused* had
+      // quietly joined them again.
+      //
+      // With the box off, `messages.fetched` is the only trigger and the line
+      // stays at its standing `''` until a query has actually answered. The
+      // value still ARRIVES — the `items` wire is untouched, and `Node.update`
+      // drains one queued value from every input before running the callbacks
+      // `fetched` scheduled, so the run that `fetched` triggers has the rows.
+      // `/Pages/PageEditor`'s two planners are the same idiom for the same
+      // reason.
+      //
+      // ⚠️ `/Pages/Admin`'s `count` is wired identically and states `true`, so
+      // the page list is expected to carry the same defect. It is NOT changed
+      // here: that screen is driven by three other tasks' acceptance criteria
+      // and a blind edit to it would be a change to work that was verified
+      // without re-verifying it. Registered as **D43**.
+      'runOnChange-in-rows': false,
+      functionScript: [
+        'const rows = Array.isArray(Inputs.rows) ? Inputs.rows : [];',
+        "const WORDS = ['No', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten'];",
+        'const word = (n) => (n < WORDS.length ? WORDS[n] : String(n));',
+        // 🔴 AC3's pair, in one node. Zero is a different SENTENCE, not the count
+        // sentence with a zero in it — and it only ever runs because `fetched`
+        // fires on a successful query whatever the row count
+        // (`dbcollectionnode2.ts:895`), which is the half SBR-016 had to fix
+        // before an empty state could be told from a query that never asked.
+        'if (rows.length === 0) {',
+        `  Outputs.sentence = ${JSON.stringify(EMPTY_MESSAGE_LIST_TEXT)};`,
+        '} else {',
+        "  Outputs.sentence = word(rows.length) + (rows.length === 1 ? ' message' : ' messages');",
+        '}'
+      ].join('\n')
+    }
+  },
+  {
+    id: 'queryState',
+    type: 'States',
+    label: 'Did the last query refuse?',
+    // `States` rather than a boolean for the reason `/Pages/Admin`'s copy is one:
+    // it RESETS, so a refusal cannot outlive a later good fetch and stand beside
+    // a populated list.
+    parameters: {
+      states: 'Quiet,Refused',
+      values: 'refused',
+      'type-refused': 'boolean',
+      'value-Quiet-refused': false,
+      'value-Refused-refused': true
+    }
+  }
+];
+
+export const MESSAGES_WIRES = [
+  { fromId: 'messages', fromProperty: 'items', toId: 'list', toProperty: 'items' },
+
+  { fromId: 'messages', fromProperty: 'items', toId: 'tally', toProperty: 'in-rows' },
+  { fromId: 'messages', fromProperty: 'fetched', toId: 'tally', toProperty: 'run' },
+  { fromId: 'tally', fromProperty: 'out-sentence', toId: 'tallyLine', toProperty: 'text' },
+
+  // 🔴 The two outcomes drive the two states, so a refusal cannot be raised by a
+  // successful query and cannot survive one either. `failure`, never `error`
+  // as a trigger, and never `fetched` for both arms.
+  { fromId: 'messages', fromProperty: 'failure', toId: 'queryState', toProperty: 'to-Refused' },
+  { fromId: 'messages', fromProperty: 'fetched', toId: 'queryState', toProperty: 'to-Quiet' },
+  { fromId: 'queryState', fromProperty: 'refused', toId: 'listError', toProperty: 'mounted' }
+];
+
 export interface Sb005Component {
   /** `create_component`'s `path` argument. */
   path: string;
@@ -4326,7 +4882,7 @@ export const SB005_COMPONENTS: Sb005Component[] = [
     connections: ADMIN_SHELL_WIRES,
     // `goSite` is NOT deferred: `/Pages/Site` belongs to the SB-006 set, which
     // `buildSiteTemplateProject` writes before this one.
-    deferred: ['goPages', 'goTheme', 'goSignIn']
+    deferred: ['goPages', 'goTheme', 'goMessages', 'goSignIn']
   },
   {
     path: 'Admin/SectionRow',
@@ -4381,6 +4937,31 @@ export const SB005_COMPONENTS: Sb005Component[] = [
     isPage: false,
     nodes: NEW_PAGE_DIALOG_NODES,
     connections: NEW_PAGE_DIALOG_WIRES
+  },
+  {
+    // Before `/Pages/Messages`, which names it as a `For Each` template — and
+    // that reference IS resolved at the door (`repeater-template-unresolved`,
+    // blocking, measured s6), so this is an ordering the create pass enforces
+    // rather than a convention.
+    path: 'Admin/MessageRow',
+    key: 'Admin/MessageRow',
+    legacyName: '/Admin/MessageRow',
+    isPage: false,
+    nodes: MESSAGE_ROW_NODES,
+    connections: MESSAGE_ROW_WIRES
+  },
+  {
+    // 🔴 SBR-010. Nothing on this screen navigates anywhere, so unlike its three
+    // sibling pages it has NO `deferred` list: the only names it uses are
+    // `/Admin/MessageRow` above and `/Admin/Shell`, both already on disk. The
+    // back-edge this page needs runs the OTHER way — `/Admin/Shell`'s
+    // `goMessages`, which is why that component's `deferred` grew by one.
+    path: 'Pages/Messages',
+    key: 'Pages/Messages',
+    legacyName: '/Pages/Messages',
+    isPage: true,
+    nodes: MESSAGES_NODES,
+    connections: MESSAGES_WIRES
   },
   {
     path: 'Pages/Admin',
