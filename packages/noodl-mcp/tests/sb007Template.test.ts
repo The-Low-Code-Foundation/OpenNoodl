@@ -1390,6 +1390,34 @@ describe('SBR-016 — every query can run before anybody has edited anything', (
   };
 
   /**
+   * The other half of the same population: a stored parameter that is **not** a
+   * trigger, and why not.
+   *
+   * 🔴 SBR-011 is what forced this to exist, and the shape of the near-miss is
+   * worth keeping. `realtime` arrived on three queries, the control below went
+   * red because the mapping no longer covered every parameter, and the cheap fix
+   * -- adding `realtime: 'records'` to `PARAMETER_CHECKBOX` -- would have been
+   * **wrong in the one direction this gate cannot afford**. Shape 2 reads that
+   * mapping as *"this parameter is stored, so the query runs with nobody
+   * involved"*, so `sections` -- which carries `NO_LOAD_TIME_FETCH` precisely so
+   * it CANNOT run before its `pageId` filter exists -- would have been graded
+   * free, and the rule protecting it would have started passing because of the
+   * one parameter that does not trigger it.
+   *
+   * `realtime` cannot fetch at load, and that is a code path rather than an
+   * opinion: the subscription's confirmation frame is `init`, and
+   * `handleRealtimeChange` returns on `init` **before** `scheduleFetch`
+   * (`dbcollectionnode2.ts:760`) -- *"firing `created` for every row already in
+   * the collection would make a subscription look like a burst of writes the
+   * moment it connects"*. `handleRealtimeStatus` fetches nothing either. So it
+   * belongs in the population and outside the mapping, which is the distinction
+   * a single list could not carry.
+   */
+  const NOT_A_TRIGGER: Record<string, string> = {
+    realtime: 'the subscription confirms with `init`, and handleRealtimeChange returns on `init` before scheduleFetch'
+  };
+
+  /**
    * The population, derived twice and cross-checked.
    *
    * 🔴 **A cloud component is invoked, not arrived at**, and the difference is not
@@ -1678,7 +1706,13 @@ describe('SBR-016 — every query can run before anybody has edited anything', (
         }
       }
     }
-    expect([...seen].sort()).toEqual(Object.keys(PARAMETER_CHECKBOX).sort());
+    expect([...seen].sort()).toEqual([...Object.keys(PARAMETER_CHECKBOX), ...Object.keys(NOT_A_TRIGGER)].sort());
+
+    // 🔴 And the two halves are disjoint, because the whole point of splitting
+    // them is that shape 2 reads one and not the other. A parameter in both
+    // would be graded as a trigger, which is the mistake the split exists to
+    // stop rather than merely to describe.
+    expect(Object.keys(NOT_A_TRIGGER).filter((k) => k in PARAMETER_CHECKBOX)).toEqual([]);
   });
 
   it('CONTROL: the migration has nothing left to rewrite here, and it is the template that stopped it', () => {

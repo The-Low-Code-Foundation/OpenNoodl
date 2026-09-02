@@ -536,3 +536,188 @@ and discarded `seoDescription` with no column to write it to.
 | **AC3** | ✅ **un-widened**, and the AC named a constant that does not exist (§7.6) |
 | **AC4** | ✅ **met** — two copies graded, mutants both directions (§7.4) |
 | **AC5** | ✅ **met** — §8.2 holds the health pass constant by forcing it, which is what §6.5 said the pair had to do |
+
+---
+
+## 9. 🔴 s45 (2026-09-02) — AC1 was met on a fixture that had already healed. On a fresh site the fix could not reach, and now it can
+
+s44's acceptance drive (SBR-014) stopped at step 3 because a page created through the panel on a
+**wizard-fresh** site had no title and no slug. Its hand-off named this task's AC1 as the cause and
+quoted §6.5's *"nothing yet fixes it"*.
+
+🔴 **That quote is s17's, and §8 superseded it three sections later.** `TASKS.md` has recorded this
+row as *"s18: BUILT + DRIVEN — AC1–AC5 all ✅"* since 2026-08-29. So the first job was not to build
+the fix again. **The symptom was real; its named cause was not.**
+
+### 9.1 What was measured, before anything was changed
+
+Every static candidate was excluded first, and each reading has its control.
+
+| asked | answer |
+|---|---|
+| Did the `prop-` path change since the s18 fix? | **No commit** touched `record-ports.ts`, `dbmodelcrudbase.ts` or `dbmodelnode2.ts` since 08-29 |
+| Does the fresh project differ from the template? | **No** — `/Pages/Admin` on disk is the template's 13 connections, `closeResult-title → prop-title` included |
+| Does the dialog produce the values? | **Yes** — `NavigationClosePopup` declares `results: "title,slug"` and both are wired from `onTextChanged` |
+| Does the **runtime** announce the ports for this exact node? | ✅ **Yes** — `prop-title` and `prop-slug`, in both schema states |
+| Was the viewer bundle current when s44 drove? | **Yes** — built 21:50, minutes before the drive |
+
+🔴 **So "the export drops the wire as unhealthy" was excluded at its source, and the hand-off's
+first job would have been a fix to a non-defect.** The port probe ran the **real runtime modules**
+over the failing project on disk, and it discriminates in both directions: `prop-neverWiredNoColumn`
+**absent**, `prop-seoDescription` (a real `Page` field, wired on *another* component) **absent**, and
+a mutant with the `prop-` wires stripped announces only the three parameter-derived ports. Three
+`yes`es beside two `no`s and a killed mutant, which is what makes the `yes`es mean anything.
+
+### 9.2 The editor and the runtime disagreed, and the editor is what the exporter asks
+
+Driven in the live editor on `sbr014-drive`, with `flushEvaluateHealth()` forced so D13 is held
+constant rather than raced:
+
+```
+closeResult-title -> prop-title    healthy: false   "Target port doesn't exist."
+closeResult-slug  -> prop-slug     healthy: false   "Target port doesn't exist."
+```
+
+And the create node's ports, as the **editor** holds them:
+
+```
+prop-published, prop-showInNav, prop-navOrder          ← exactly its three saved parameters
+```
+
+**`prop-title` and `prop-slug` are absent — and they are exactly the two that exist only as wire
+endpoints.** The census over the whole project: **43 `prop-` wires, 19 unhealthy** — the same 19
+this task's header has named since it was written.
+
+⚠️ **The 19 account for both of s44's symptoms, and the second one this task's story never
+covered.** `/Pages/PageEditor` loses `onTextChanged → prop-title` *and* `prop-title → startValue`,
+in both directions — so the page editor's form cannot be filled from the record and its save writes
+**nothing at all**, which is what s44 measured (`updatedAt` did not move) and what "a field is
+silently lost" does not describe.
+
+### 9.3 🔴 The loop, and why §8's drive could not have seen it
+
+`recordWiredFieldPorts` mints `prop-<field>` from `component.getConnectionsTo(node.id)` — the wires
+of the component the **runtime** holds. That component reached the runtime through
+`exportComponent`, which drops every wire the editor called unhealthy. So:
+
+```
+editor health  →  exported wires  →  runtime ports  →  editor health
+```
+
+The wire is dropped, the runtime never sees it, the port is never minted, and the verdict stays
+true **for ever**. The wire half could only ever recover fields that are *also* saved parameters —
+which is precisely the three ports the editor had.
+
+✅ **`NodeGraphModel.ts`'s own `URGENT_EVALUATE_HEALTH_DEBOUNCE_MS` docblock already describes this
+verdict as *"correct and temporary — the ports do not exist until the running viewer mints them and
+pushes them back."*** It is temporary in every case but this one, and nobody had noticed the case
+where the pushing back can never happen.
+
+🔴 **Why §8 read green.** Re-reading §8's own recorded numbers rather than re-measuring: §8.1 states
+the introspected schema at that moment was `Page:[navOrder, published, showInNav, slug, title]`. So
+the **schema** half minted `prop-title` and `prop-slug`, those wires were healthy, the component
+exported intact — and the runtime therefore saw *every* wire on the node, including the
+`prop-seoDescription` one. The wire half worked because the bootstrap had already happened by other
+means. **§8 graded the fix on a fixture that had healed itself (§6.3), so the one case the fix
+exists for was never exercised.** That is this phase's own budget-on-a-fixture lesson, and §8 is
+where it bit.
+
+### 9.4 The fix — one break in the loop, at the verdict
+
+The loop has to be broken exactly once, and two of the three places were already ruled out by this
+task: not in `exportComponent`'s filter (**§4's trap** — it keeps meaning what it says) and not by
+minting the port in the editor (**§2** — `setDynamicPorts` replaces, so a second writer erases the
+runtime's). What is left is the **verdict**, which is also the only one of the three that is simply
+*wrong*: a wire into a `prop-` port is the author declaring the field, which is this task's whole
+ruling.
+
+| | |
+|---|---|
+| `dbmodelcrudbase.ts` | the write family declares `wireDeclaredPortPrefix = 'prop-'`, beside `_hasInputProperties` |
+| `dbmodelnode2.ts` | the Record node declares the same, for its `prop-*` **outputs** |
+| `nodedefinition.ts` | carries it into `metadata` |
+| `nodelibraryexport.ts` | carries it into the library the editor receives |
+| `@noodl/types` | the field, documented on both declaration sites |
+| `NodeGraphModel.ts` | `isWireDeclaredPort` — `con-no-source-port` / `con-no-target-port` are not raised for such a port |
+
+**The runtime stays the only thing that mints a port.** This only stops the editor calling the wire
+broken before it can.
+
+⚠️ **The stated cost, which is the ruling's own.** A mistyped `prop-titel` no longer reddens.
+`record-ports.ts`'s docblock accepts exactly this for the runtime half — *"the wire does register
+the port at run time"* — and the warning was only ever correct while the port set came from the
+schema alone. Scoped by prefix **and** by node type, so nothing else on the canvas loses a warning.
+
+### 9.5 🟢 AC1 driven on a wizard-fresh site — the case that was deadlocked
+
+Same fixture, same wizard-created project, through the panel's UI.
+
+✅ **The input path was proved with a known-firing signal first**: signing in through the same
+`cdp type` mechanism succeeded, so the typed text reaches the graph. Without that, "the value never
+arrived" and "the harness never typed it" are the same reading — and s44's two input methods shared
+one failure mode.
+
+| | before the fix | after |
+|---|---|---|
+| create node's `prop-` ports | 3 (its parameters) | **5** — `prop-title`, `prop-slug` minted from wires |
+| `prop-` wires unhealthy | **19** of 43 | **0** of 43 |
+| page created through the dialog | no title, no slug | ✅ `title: "Bootstrap Proof"`, `slug: "bootstrap-proof"` |
+| `Page` columns | 7 | **9** — `title` and `slug` *created by that write* |
+| page editor's save | `updatedAt` did not move | ✅ moved `20:59:42.785Z` → `21:01:10.063Z` |
+| `seoDescription` (no column) | discarded silently | ✅ **saved**, column **created by that save** (9 → 10) |
+
+✅ **The two rows s44 created are still in the table, `title` and `slug` `null`** — the same product
+path, the same class, before the fix. A before/after control that needed no constructing.
+
+✅ **The second control is the rest of the database**: `_Schema.Page` moved to the second of the
+save (`21:01:10`) while `SiteSettings`, `Theme`, `Section` and `_User` did **not** move. So `Page`
+growing is the write, not the backend introspecting or migrating on its own.
+
+Picture: `notes/sbr008/sbr008-ac1-bootstrap-named-row.png` — two blank rows above a named one, in
+one frame. ⚠️ 988×313 css px; the preview window cannot be resized from this tooling, so it is
+evidence, not a look verdict.
+
+### 9.6 How the fix is graded, and the two controls that failed first
+
+`test/nodelibraryexport.wire-declared-ports.test.ts` (3 specs) grades the **runtime → editor hop**,
+which is where this field was silently swallowed **twice** while being built — once by
+`defineNode`'s metadata whitelist and once by `generateNodeLibrary`'s. That is the same hole
+`nodelibraryexport.port-descriptions.test.ts` exists for.
+
+**Mutants, run:**
+
+| mutant | reddens |
+|---|---|
+| dropped from `defineNode`'s whitelist | **2 of 3** (the negative control correctly stays green) |
+| dropped from `generateNodeLibrary`'s copy | **2 of 3** |
+| dropped from the crud mixin only | **1 of 3** — and it names which, discriminating the mixin from the Record node's own declaration |
+
+🔴 **Two controls read wrong before they read right, and both are the same mistake in different
+clothes:**
+
+1. **Fabricated wires read "healthy".** Asking `getConnectionHealth` about connections that are not
+   in the graph returned `healthy: true` for three deliberately-broken descriptors — it reads a
+   `WarningsModel` keyed by real connections, so an absent wire has no warning. **A control that
+   reads zero for its own reasons**; it would have read as "the fix suppresses everything."
+2. **The live mutant killed nothing, and that is not a failure.** Stripping the flag from the node
+   types in the running editor left all 43 wires healthy — because by then the runtime **had**
+   minted the ports, so the wires are healthy on their own merits. The flag is load-bearing only
+   during the bootstrap, and **a healed fixture cannot grade it.** This is §6.3's over-determination
+   in a new guise, and it is why the grading is a spec and not a live mutant.
+
+### 9.7 Acceptance criteria, restated honestly
+
+| | verdict |
+|---|---|
+| **AC1** | ✅ **met** — and now met in the bootstrap case, which §8 could not have exercised (§9.3). §8's reading was true of its fixture and is left standing as such |
+| **AC2** | ✅ unchanged — 19 → 0 in the harness; and the *project* census moved 19 → 0 for the first time on a fresh site (§9.5) |
+| **AC3** | ✅ unchanged |
+| **AC4** | ✅ unchanged, and extended — the runtime → editor hop is now graded too, with three mutants (§9.6) |
+| **AC5** | ✅ unchanged — the health pass was forced for every reading here, as §6.5 requires |
+
+⚠️ **What is NOT claimed.** This is the **preview** caller again, not a deploy-to-folder; §5.3's
+one-filter-three-callers argument is what carries it to the deploy, unchanged and still an
+inference. Suites: `noodl-runtime` **149 suites / 2632 tests, exit 0**; `tsc` clean on
+`noodl-runtime` and `noodl-editor`, both gated on exit status. `tests-unit/sb-018` has **3
+pre-existing failures** — verified identical with these six files reverted to HEAD, so they are
+**not this change** and belong to whoever owns that template's standing values.

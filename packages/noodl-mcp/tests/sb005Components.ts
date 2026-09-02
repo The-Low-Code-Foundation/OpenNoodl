@@ -1074,9 +1074,23 @@ export const SECTION_ROW_NODES = [
       // Two producers reach this node — the record's own `data` and whatever the
       // author has changed since — so it guards, per rule 2. Every field is
       // legitimately an empty string, so the test is `undefined`.
+      //
+      // 🔴 **A MISSING `data` IS NOT A RECORD THAT HAS NOT ARRIVED — it is the
+      // normal state of a section nobody has typed into yet, and the two were
+      // the same test until SBR-014's drive (s46).** A `Section` row created by
+      // the panel carries `order`, `pageId` and `kind` and nothing else, so
+      // `Inputs.data` is `undefined`, the script returned before
+      // `Outputs.built()`, and `store` never fired. The field that would create
+      // the column was only ever written by the save that refused to run: five
+      // sections, five `Save` clicks, **zero requests** — measured against the
+      // same button firing a PUT the moment a `data` object existed.
+      //
+      // Every input here is only ever reached by the `run` signal
+      // (`runOnChange-*` is false on all five), so there is no init pass to
+      // guard against: treating an absent record as an empty one is safe and is
+      // what lets the first save bootstrap the column.
       functionScript:
-        'if (Inputs.data === undefined) return;\n' +
-        'const next = Object.assign({}, Inputs.data);\n' +
+        'const next = Object.assign({}, Inputs.data || {});\n' +
         "if (Inputs.body !== undefined) next.body = Inputs.body;\n" +
         "if (Inputs.heading !== undefined) next.heading = Inputs.heading;\n" +
         "if (Inputs.linkLabel !== undefined) next.linkLabel = Inputs.linkLabel;\n" +
@@ -1111,10 +1125,12 @@ export const SECTION_ROW_NODES = [
       'runOnChange-in-kind': false,
       'runOnChange-in-image': false,
       functionScript:
-        'if (Inputs.data === undefined) return;\n' +
+        // Same bootstrap as the text builder above: a section that has never
+        // been saved has no `data`, and refusing to run here made the first
+        // picture unaddable for the same reason the first heading was.
         'const file = Inputs.image;\n' +
         'if (file === undefined || file === null) return;\n' +
-        'const next = Object.assign({}, Inputs.data);\n' +
+        'const next = Object.assign({}, Inputs.data || {});\n' +
         "if ((Inputs.kind || 'richText') === 'gallery') {\n" +
         '  const images = Array.isArray(next.images) ? next.images.slice() : [];\n' +
         // The row shape the gallery's `For Each` reads: a plain `{ url }`, so the

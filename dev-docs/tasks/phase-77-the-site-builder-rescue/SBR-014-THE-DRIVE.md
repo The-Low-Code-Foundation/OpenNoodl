@@ -87,3 +87,53 @@ dropped.
 
 **Steps 3–8 cannot be driven until SBR-008 AC1 is met.** That makes it this phase's real distance
 to done, ahead of SBR-014 itself.
+
+---
+
+## 5. Run 2 — 2026-09-02 (s46). 🟡 Reached step 6 of 8; steps 7–8 ⬜
+
+**Full record: [`notes/sbr014/SBR-014-DRIVE-2026-09-02-s46.md`](notes/sbr014/SBR-014-DRIVE-2026-09-02-s46.md).**
+Same wizard-created project, driven against the editor's live preview server on `:8574`.
+
+| # | step | owner | state |
+|---|---|---|---|
+| 1 | wizard → Site Builder → opens on `Pages/Setup` | SBR-001/002 | ✅ driven s44 |
+| 2 | claim → admin shell | SBR-006 | 🟡 driven s44, not by the person's path — ⬜ **SBR-001** (D50) |
+| 3 | create page, five kinds, reorder, save, publish | SBR-005/007 | 🟡 **driven**, two exceptions below |
+| 4 | public site anonymously | SBR-004 | ✅ **driven** |
+| 5 | theme → Night → live repaint | SBR-009/011/003 | 🟡 **driven except the live half** — ⬜ **SBR-011** |
+| 6 | contact form → Messages | SBR-005/010 | ✅ **driven** |
+| 7 | deploy → retitle → save | SBR-008 | ⬜ **not reached** |
+| 8 | negative arcs | SBR-002/011 | ⬜ **not reached** |
+
+**Step 3's exceptions, ⬜ by name:** ⬜ **SBR-007 AC3** — no picture was added (`Choose image` opens
+a native file picker; `DOM.setFileInputFiles` was not built this run), so **SBR-005 AC1 is 4 of 5**
+and the gallery renders as a bare heading. ⚠️ **SBR-007 AC2** met by drag but see **D53**.
+**Also ⬜:** SBR-005 AC3's failure-line negative control.
+
+### AC status
+
+- **AC1 — not met.** Six of eight steps driven.
+- **AC2 — met**, and still the only one fully met. Nothing rounded off.
+- **AC3 — 🟡 partly met for the first time.** Steps 4 and 5 have pictures at 1440×900/1700, with
+  fonts and icons present. **Step 7's does not exist** — step 7 was not reached.
+
+### 🔴 The blocker was real, and it was not the one the hand-off named
+
+s44 named SBR-008 AC1; s45 fixed that and drove it green. Step 3 was **still** blocked, by a second
+closed loop one layer up: `SectionRow`'s own script returned before `Outputs.built()` whenever the
+section had no `data` field — which is every section the panel has ever created. Five sections,
+five `Save` presses, **zero requests**, against the same button firing a `PUT` the moment a `data`
+object existed. Registered and **fixed** as [D52](DEFECTS-THE-SITE-BUILDER-FOUND.md#d52); the
+template's byte-equality gate passes (62/62).
+
+🔴 **Three blockers, three closed loops, and each half looked correct alone.** The arm that found
+all three was the same one: press the button, then read the **record** — never the input's echo.
+
+### ⚠️ What still bounds this task
+
+- **[D40](DEFECTS-THE-SITE-BUILDER-FOUND.md#d40) now bounds the drive itself.** The page editor does
+  not scroll; at 1440×900, 3 of 5 section `Save` buttons are unreachable. This run continued at
+  **1440×2600**, which a person cannot do. **A person on a laptop cannot author a five-section
+  page.** s46 settled D40's harness-vs-product arm — it is the product.
+- **SBR-007 AC3** ⬜ unchanged (D15), and now also the picker path.

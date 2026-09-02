@@ -240,6 +240,51 @@ export const NO_LOAD_TIME_FETCH = {
 };
 
 /**
+ * 🔴 **SBR-011 — the three queries that hold a subscription open, and the two
+ * that deliberately do not.**
+ *
+ * `realtime` is `Query Records`' own checkbox (`dbcollectionnode2.ts:1264`,
+ * displayed as *Subscribe To Changes*), and its documented behaviour is the one
+ * this task needs: on a server-pushed create/update/delete it **re-runs the
+ * query** (`handleRealtimeChange:772`). That is a different node from
+ * `SubscribeToChanges`, which fires signals and publishes the changed row but
+ * states in its own header that it does **not** re-query — *"Query Records'
+ * checkbox stays as the query-refreshing form and the two are not
+ * alternatives"* (`subscribetochanges.ts:14-16`). README §2 promises "live
+ * preview via `Subscribe to Changes`" and the port carrying that name is this
+ * one; wiring the standalone node here would have been the name matching and
+ * the mechanism not.
+ *
+ * ⚠️ **`runOnChange-records` is stated rather than left to its default.** The
+ * default is `true` (`run-on-value-change.ts:188` — `state[inputName] !== false`),
+ * so ticking `realtime` alone would work today. It is written out because this
+ * phase has already registered an unstated `runOnChange-*` with an effect as a
+ * defect: the box is the difference between "re-queries" and "fires signals
+ * only", and a template should not leave the load-bearing half implicit.
+ *
+ * ## 🔴 Why three queries and not five — this is a budget, not an oversight
+ *
+ * `SseTransport` opens **one `EventSource` per subscription, deliberately**
+ * (`SseTransport.ts:38-44`): both servers' subscription POST *replaces* the set
+ * for a `clientId`, so two subscriptions sharing a stream would clobber each
+ * other. The cost is one HTTP connection per subscribing node, and a browser
+ * gives an HTTP/1.1 origin about six — shared with every `fetch` the page still
+ * has to make. Five subscribing queries on one page would spend the whole pool
+ * on streams that are idle by design and leave the queries themselves queued.
+ *
+ * So the three that earn a stream are the three an acceptance criterion names:
+ * `sections` (AC2), `theme` (AC3), and the nav's `pages` (AC1). `pageQuery` and
+ * `settings` are left static: a visitor whose *current* page record or site
+ * settings change sees it on their next navigation, which is the pre-SBR-011
+ * behaviour and not a regression. `sbr011LivePreview.test.ts` asserts the count
+ * is exactly three, so a fourth is a decision somebody has to make on purpose.
+ */
+export const LIVE_QUERY = {
+  realtime: true,
+  'runOnChange-records': true
+};
+
+/**
  * 🔴 **SBR-004 AC1, half B — what every band stacked down this page has to say
  * out loud, because the platform's default is against it.**
  *
@@ -1764,6 +1809,8 @@ export const NAV_NODES = [
     type: 'DbCollection2',
     label: 'Pages in the navigation',
     parameters: {
+      // SBR-011 AC1: the owner publishes a page and the open site grows the link.
+      ...LIVE_QUERY,
       collectionName: 'Page',
       visualFilter: NAV_FILTER,
       visualSort: NAV_SORT
@@ -2316,6 +2363,8 @@ export const SITE_NODES = [
     label: "This page's sections",
     parameters: {
       ...NO_LOAD_TIME_FETCH,
+      // SBR-011 AC2: an owner's section edit reaches an open site without a reload.
+      ...LIVE_QUERY,
       collectionName: 'Section',
       visualFilter: SECTIONS_OF_PAGE_FILTER,
       // Without this a page's sections come back in whatever order the backend
@@ -2331,7 +2380,9 @@ export const SITE_NODES = [
     type: 'DbCollection2',
     label: 'Theme (one row)',
     // Unfiltered singleton: boxes ON, same reason as `settings`.
-    parameters: { collectionName: 'Theme' }
+    // SBR-011 AC3: a theme save repaints every open site, which is what makes
+    // SBR-009's editor a demo of itself rather than a form with a save button.
+    parameters: { ...LIVE_QUERY, collectionName: 'Theme' }
   },
   {
     id: 'applyTheme',

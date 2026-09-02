@@ -1926,6 +1926,37 @@ different one.**
 
 ---
 
+### 🟢 s46 — the named test has been run, and the hypothesis is CONFIRMED
+
+This row was *"a hypothesis with a named test"* and asked for exactly this: **theme the site to each
+preset and read the computed contrast between the heading and the scrim's painted end.** SBR-014's
+s46 drive themed a real site to `night` through the theme editor, saved it, and read the public page
+as an anonymous visitor.
+
+**Every predicted value came back as predicted.** The row said `night` sets `colorOnPrimary` to
+`#191713`; the heading's resolved colour is `rgb(25, 23, 19)` — the same colour. The scrim is the
+literal token, unchanged: `linear-gradient(rgba(0, 0, 0, 0.15) 0%, rgba(0, 0, 0, 0.78) 100%)`.
+
+| where on the band | effective background | contrast with `#191713` |
+|---|---|---|
+| scrim top (`0.15`) | `rgb(201, 199, 195)` | **10.60 : 1** ✅ |
+| scrim bottom (`0.78`) | `rgb(52, 51, 50)` | 🔴 **1.42 : 1** |
+
+WCAG asks 4.5:1 for body text and 3:1 for large text. **The bottom of the band is 1.42:1 — not
+"low contrast", but text and background of nearly the same luminance.**
+
+⚠️ **One thing the row did not anticipate, and it makes the reading worse rather than better.** With
+no photograph in the hero the band's base is not an image but `#eceae5` — the theme's own
+`colorText` — so the scrim darkens a *near-white* panel from 15% to 78%. The heading survives
+because it sits near the top; **the sub-heading sits lower, where the wash is nearly opaque.** A
+hero *with* a photograph would sit somewhere between these two numbers, unpredictably, because the
+photograph's own luminance is the third term nobody controls.
+
+📷 `notes/sbr014/s46-step5-public-night-full.png` — the first render of this row's subject.
+
+⚠️ **Measured with no image in the hero.** The image path is unmeasured (D52 blocked the upload
+until s46, and no picture was placed in this run), so the with-photograph case still needs a run.
+
 ## D40 — 🔴 A published page does not scroll, so every control below the first screen is unclickable
 
 **Owner: SBR-002** (the first-run/page-shape task — this is `/Pages/Site`'s ground, not a section
@@ -1992,6 +2023,43 @@ tall enough to hold the whole page before clicking. They are about *where a link
 form says*; **they are not a test that the page scrolls**, and this file must not be read as one.
 
 ---
+
+### 🟢 s46 — the harness-vs-product arm is settled, and it is the product
+
+This row asked for a control that *"would settle harness-vs-product and it has not been run"*, and
+named the doubt precisely: whether *"a real Electron/browser window behaves the same"*, given the
+reading came from `render-from-disk.js` serving a **deployed bundle** through headless Chrome.
+
+SBR-014's s46 drive measured the same behaviour through **a different server, a different harness
+and a different app surface**, which removes that arm:
+
+| | |
+|---|---|
+| what was rendering | the **editor's own live preview server** on `:8574` — not `render-from-disk` |
+| what was measured | the **admin page editor** (`/admin/page/<id>`), not a published page |
+| viewport | 1440×900, a plain headless Chrome with its own profile |
+| content height vs document | content to **2393px**, `document.scrollingElement.scrollHeight` = **900** |
+| the inner container | `overflow-y: visible`, `scrollTop` stays **0** after being written |
+| a real `Input.dispatchMouseEvent` wheel of 900px | **nothing moved** — `scrollY` 0→0, every element's `top` unchanged |
+
+🔴 **The known-firing control, in the same browser, on the same connection, with the same verb**: a
+tall `file://` page scrolled `scrollY` 0 → 900 and moved both its inputs. **So the wheel works and
+the NodeGX page does not scroll.** That is what makes the absence a measurement rather than a
+silence — and it is the control this row said was missing.
+
+**Therefore it is the product, not `render-from-disk`'s container.** Two servers, two harnesses,
+two app surfaces, one behaviour.
+
+⚠️ **Still not settled**: phase 81 VIB-001's contradicting `unreachablePx = 0`. Nothing here
+touches it, and it remains this row's open question. ⚠️ Also unmeasured: whether a **packaged**
+Electron window behaves the same — every reading so far is a browser.
+
+### What it cost the drive it was found in
+
+At 1440×900 the page editor puts **9 of 16 fields and 3 of the 5 section `Save` buttons** below the
+fold, and no gesture reaches them. SBR-014's s46 run continued only by driving at a **1440×2600**
+viewport — an instrument workaround a person does not have, recorded as such in the drive record.
+🔴 **A person on a laptop cannot author a five-section page at all.**
 
 ## D41 — 🟢 FIXED IN THE SAME SESSION (s36). The contact form sent itself, with nobody pressing anything
 
@@ -2666,3 +2734,127 @@ the person's story**, so here it is ⬜ against step 2 rather than a setup line.
 sound and is what s44 used to continue.
 
 **Blocks SBR-014 step 2 for the person's path only** — not the drive, which can hand-provision.
+
+## D51
+
+**`authorSiteTemplate` builds its project with no starter assets, so every site-builder drive
+suite has been rendering a project nobody receives.** Owner: **SBR-014** (the task that owes
+pictures). Registered s45; the general defect was found by the phase-82 session in the
+*members-area* twin and relayed.
+
+`tests/helpers/site-drive.ts:77` copies the `demo-app` fixture and authors through the real MCP
+server, and **never calls `placeStarterAssets`** — unlike `members-drive.ts:150`, which does. So the
+drives run without Inter, without the Lucide glyphs and without the CC0 photographs.
+
+The site-builder template does reference assets — `backgroundImage` ×1 and `Image` ×2 in
+`site-builder.content.json` — so this is not hypothetical. ⚠️ **It is invisible by construction:**
+a CSS `backgroundImage` that 404s renders as no image and says nothing, which is exactly why the
+peer's suites carried it undetected until a real `<img>` made it audible.
+
+**Not blocking an acceptance criterion**, so by the standing rule it is filed rather than made a
+first job.
+
+🔴 **Scoped s45, after the row first over-claimed.** It bounds **suite renders only** — not
+pictures shot through the editor. Measured on `sbr014-drive` by the SBR-014 driver and confirmed
+here: a **wizard-created** project carries `noodl_modules/inter/`, `lucide-icons/lucide.woff2` and
+`starter-imagery/` — **49 asset files**. The wizard's own create path places them; only
+`site-drive.ts` does not. The row's original line — *"bounds every site-builder picture, including
+SBR-014 AC3's"* — was an inference from the helper to the product, and it is **wrong**: SBR-014's
+AC3 screenshots are taken through the editor on a wizard-created project and are unaffected.
+
+⚠️ What it still bounds is real: anything rendered from a project built by `authorSiteTemplate` —
+the site-builder drive *suites* — has no fonts, no icons and no photographs, and says nothing when
+it doesn't.
+
+✅ The fix is already written next door: `placeStarterAssets` is imported from `judge.ts` and
+throws on failure. Copying that call into `authorSiteTemplate` is the whole change.
+
+## D52 — 🔴 A section created through the panel could never be given any content. **FIXED s46**
+
+**Owner: SBR-005 / SBR-007** (the section kinds and the page editor). **Template**, and it is the
+template's own script — but it blocked SBR-014 step 3, SBR-005 AC1 and SBR-007 AC4, so by the
+standing rule it was the first job rather than a filed row. Found and fixed 2026-09-02 (s46).
+
+### The person sentence it broke
+
+**A person adds a section, types a heading and a body, presses Save — and nothing happens. No
+error, no confirmation, and the text is gone when the screen is reloaded.** Driven five times
+across five section kinds before it was believed.
+
+### The measurement, with the control that makes it mean something
+
+`SectionRow`'s `Fold the edits back into data` (a `JavaScriptFunction`) opened with:
+
+```js
+if (Inputs.data === undefined) return;          // ← before Outputs.built()
+const next = Object.assign({}, Inputs.data);
+```
+
+`Inputs.data` is the section record's `data` field. A `Section` row created by the panel carries
+`order`, `pageId` and `kind` **and nothing else** — those three are the create node's literal
+parameters — so `data` is `undefined`, the script returned **before `Outputs.built()`**, and the
+`store` signal into `SetDbModelProperties` never fired.
+
+| | requests the `Save` button made |
+|---|---|
+| five sections, `data` absent | 🔴 **0** — measured by patching `fetch`/`XMLHttpRequest` in the page |
+| the same button, after one `data` object was PUT onto the row | ✅ **1** — `PUT /classes/Section/<id>` carrying `heading` and `body` |
+
+✅ **The capture instrument was proved firing first**: with the same patch armed, `Save page`
+produced its `PUT /classes/Page/<id>` with `title`, `slug` and `seoDescription`. Without that
+control, *"the save sends nothing"* and *"my patch records nothing"* are the same reading.
+
+🔴 **It is a closed loop, and the second one this phase has found.** The `data` column exists only
+once something has written it; the only thing that writes it is the save that refuses to run until
+it exists. [SBR-008 §9.3](SBR-008-THE-DEPLOY-KEEPS-THE-PANELS-WIRES.md) is the same shape one layer
+down — there the loop ran through the editor's health verdict, here it runs through a guard in the
+template's own script. **Neither could be seen from inside its own arm.**
+
+⚠️ **Why it survived every gate.** The graph is correct: the wires exist, the ports exist, the node
+types are right, and s45's runtime fix had already made the `prop-` ports healthy. Nothing is
+missing — a guard is simply true when it should be false. A structural checker cannot see it, and
+a drive only sees it if it presses the button *and then reads the record* rather than the input's
+echo.
+
+### The fix
+
+`packages/noodl-mcp/tests/sb005Components.ts` (the generator; `site-builder.content.json` is
+generated and byte-gated, so the fix could not go in the artefact):
+
+```js
+const next = Object.assign({}, Inputs.data || {});   // and the early return removed
+```
+
+Applied to **two** of the three scripts that carried the guard — `Fold the edits back into data`
+and `Fold an uploaded picture into this section`. The third, `Take back the last picture`, keeps
+its early return: its own `if (images.length === 0) return;` already means the same thing there.
+
+✅ Safe because every input on these nodes is `runOnChange-*: false` — they run **only** on the
+`run` signal a person's click sends, so there is no init pass for the guard to protect against.
+
+✅ **Verified on the un-bootstrapped case**, which is the one the phase keeps getting wrong: a
+`gallery` section that had never had a `data` field saved on the first press, and the column was
+created by that save. Then all five kinds saved their heading and body, read back from the stored
+rows rather than the screen.
+
+⚠️ **Regenerated with `npm run template:site-builder`**, which preserved the peer's three
+uncommitted `realtime: true` lines (they live in `sb006Components.ts` and come back out of the
+generator). Guard count in the artefact: **3 → 1**.
+
+## D53 — ⚠️ A dragged section cannot be dropped into first position
+
+**Owner: SBR-007** (the page editor owns the reorder). **Template.** Not blocking — `Move up`
+reaches position 1 — found 2026-09-02 (s46) while driving SBR-007 AC2.
+
+Dragging the `cta` row from position 3 onto the first row moved it to position **2**, and a second
+drag from 2 onto the first row moved it **nowhere**. Both drags fired `reorderSection` and both
+persisted what they claimed; the request carried `toIndex: 1`, so the drop index is computed one
+short rather than the write being lost.
+
+✅ **Position 0 is reachable**, so this is a drag-drop-target arithmetic bug and not a floor in the
+reorder itself: the `Move up` button on the same row moved it to index 0 immediately, confirmed in
+the stored rows.
+
+⚠️ **A second observation from the same gesture, not yet chased**: one drag produced **two**
+`POST /functions/reorderSection` calls. SBR-010's commit message names *"a double write shipping
+since SB-004"* — these may be the same thing, and if so this is where it is visible.

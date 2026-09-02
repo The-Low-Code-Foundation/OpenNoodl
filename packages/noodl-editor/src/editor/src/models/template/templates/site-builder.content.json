@@ -1959,6 +1959,8 @@
             "x": 350,
             "y": 160,
             "parameters": {
+              "realtime": true,
+              "runOnChange-records": true,
               "collectionName": "Page",
               "visualFilter": {
                 "combinator": "and",
@@ -2535,6 +2537,8 @@
             "parameters": {
               "runOnChange-collectionName": false,
               "runOnChange-querySettings": false,
+              "realtime": true,
+              "runOnChange-records": true,
               "collectionName": "Section",
               "visualFilter": {
                 "combinator": "and",
@@ -2564,6 +2568,8 @@
             "x": 530,
             "y": 1960,
             "parameters": {
+              "realtime": true,
+              "runOnChange-records": true,
               "collectionName": "Theme"
             },
             "ports": [],
@@ -3743,7 +3749,7 @@
               "runOnChange-in-heading": false,
               "runOnChange-in-linkLabel": false,
               "runOnChange-in-linkTarget": false,
-              "functionScript": "if (Inputs.data === undefined) return;\nconst next = Object.assign({}, Inputs.data);\nif (Inputs.body !== undefined) next.body = Inputs.body;\nif (Inputs.heading !== undefined) next.heading = Inputs.heading;\nif (Inputs.linkLabel !== undefined) next.linkLabel = Inputs.linkLabel;\nif (Inputs.linkTarget !== undefined) next.linkTarget = Inputs.linkTarget;\nOutputs.data = next;\nOutputs.built();"
+              "functionScript": "const next = Object.assign({}, Inputs.data || {});\nif (Inputs.body !== undefined) next.body = Inputs.body;\nif (Inputs.heading !== undefined) next.heading = Inputs.heading;\nif (Inputs.linkLabel !== undefined) next.linkLabel = Inputs.linkLabel;\nif (Inputs.linkTarget !== undefined) next.linkTarget = Inputs.linkTarget;\nOutputs.data = next;\nOutputs.built();"
             },
             "ports": [
               {
@@ -3807,7 +3813,7 @@
               "runOnChange-in-data": false,
               "runOnChange-in-kind": false,
               "runOnChange-in-image": false,
-              "functionScript": "if (Inputs.data === undefined) return;\nconst file = Inputs.image;\nif (file === undefined || file === null) return;\nconst next = Object.assign({}, Inputs.data);\nif ((Inputs.kind || 'richText') === 'gallery') {\n  const images = Array.isArray(next.images) ? next.images.slice() : [];\n  images.push({ url: (file && file.url) || '' });\n  next.images = images;\n} else {\n  next.image = file;\n}\nOutputs.data = next;\nOutputs.built();"
+              "functionScript": "const file = Inputs.image;\nif (file === undefined || file === null) return;\nconst next = Object.assign({}, Inputs.data || {});\nif ((Inputs.kind || 'richText') === 'gallery') {\n  const images = Array.isArray(next.images) ? next.images.slice() : [];\n  images.push({ url: (file && file.url) || '' });\n  next.images = images;\n} else {\n  next.image = file;\n}\nOutputs.data = next;\nOutputs.built();"
             },
             "ports": [
               {
@@ -3816,15 +3822,15 @@
                 "type": "signal"
               },
               {
-                "name": "in-data",
-                "displayName": "data",
+                "name": "in-image",
+                "displayName": "image",
                 "plug": "input",
                 "type": "*",
                 "group": "Inputs"
               },
               {
-                "name": "in-image",
-                "displayName": "image",
+                "name": "in-data",
+                "displayName": "data",
                 "plug": "input",
                 "type": "*",
                 "group": "Inputs"
