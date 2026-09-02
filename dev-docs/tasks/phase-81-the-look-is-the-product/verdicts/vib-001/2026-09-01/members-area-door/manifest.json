@@ -2,7 +2,7 @@
   "task": "vib-001",
   "subject": "members-area",
   "state": "door",
-  "headSha": "538e3691ed3e02fdbbfbc5296c3307a61d3f66eb",
+  "headSha": "9537db4b169f4aa178e07d6ec96d3d63c52b999e",
   "artefactMd5": "f969ad963f5cbd25f1bcaa08d2951f47",
   "outDir": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-09-01/members-area-door",
   "starterAssets": {
@@ -94,7 +94,7 @@
       "textChars": 574,
       "headings": [],
       "errors": [
-        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:61189/noodl.viewer.js:54634:61)\n    at xhr.onreadystatechange (http://127.0.0.1:61189/noodl.viewer.js:54509:33)"
+        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:64734/noodl.viewer.js:54634:61)\n    at xhr.onreadystatechange (http://127.0.0.1:64734/noodl.viewer.js:54509:33)"
       ]
     },
     {
@@ -117,7 +117,7 @@
       "textChars": 574,
       "headings": [],
       "errors": [
-        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:61189/noodl.viewer.js:54634:61)\n    at xhr.onreadystatechange (http://127.0.0.1:61189/noodl.viewer.js:54509:33)"
+        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:64734/noodl.viewer.js:54634:61)\n    at xhr.onreadystatechange (http://127.0.0.1:64734/noodl.viewer.js:54509:33)"
       ]
     },
     {
@@ -140,7 +140,7 @@
       "textChars": 574,
       "headings": [],
       "errors": [
-        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:61189/noodl.viewer.js:54634:61)\n    at xhr.onreadystatechange (http://127.0.0.1:61189/noodl.viewer.js:54509:33)"
+        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:64734/noodl.viewer.js:54634:61)\n    at xhr.onreadystatechange (http://127.0.0.1:64734/noodl.viewer.js:54509:33)"
       ]
     },
     {
@@ -163,7 +163,7 @@
       "textChars": 574,
       "headings": [],
       "errors": [
-        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:61189/noodl.viewer.js:54634:61)\n    at xhr.onreadystatechange (http://127.0.0.1:61189/noodl.viewer.js:54509:33)"
+        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:64734/noodl.viewer.js:54634:61)\n    at xhr.onreadystatechange (http://127.0.0.1:64734/noodl.viewer.js:54509:33)"
       ]
     },
     {
@@ -438,9 +438,9 @@
       "textChars": 574,
       "headings": [],
       "errors": [
-        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:61189/noodl.viewer.js:54634:61)\n    at xhr.onreadystatechange (http://127.0.0.1:61189/noodl.viewer.js:54509:33)",
+        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:64734/noodl.viewer.js:54634:61)\n    at xhr.onreadystatechange (http://127.0.0.1:64734/noodl.viewer.js:54509:33)",
         "[noodl] CloudFunction2 (/Members/Standing): No cloud services defined in this project. [cloud-function/call-failed] Object",
-        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:61189/noodl.viewer.js:54634:61)\n    at xhr.onreadystatechange (http://127.0.0.1:61189/noodl.viewer.js:54509:33)"
+        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:64734/noodl.viewer.js:54634:61)\n    at xhr.onreadystatechange (http://127.0.0.1:64734/noodl.viewer.js:54509:33)"
       ]
     },
     {
@@ -463,9 +463,9 @@
       "textChars": 574,
       "headings": [],
       "errors": [
-        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:61189/noodl.viewer.js:54634:61)\n    at xhr.onreadystatechange (http://127.0.0.1:61189/noodl.viewer.js:54509:33)",
+        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:64734/noodl.viewer.js:54634:61)\n    at xhr.onreadystatechange (http://127.0.0.1:64734/noodl.viewer.js:54509:33)",
         "[noodl] CloudFunction2 (/Members/Standing): No cloud services defined in this project. [cloud-function/call-failed] Object",
-        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:61189/noodl.viewer.js:54634:61)\n    at xhr.onreadystatechange (http://127.0.0.1:61189/noodl.viewer.js:54509:33)"
+        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:64734/noodl.viewer.js:54634:61)\n    at xhr.onreadystatechange (http://127.0.0.1:64734/noodl.viewer.js:54509:33)"
       ]
     },
     {
@@ -488,9 +488,9 @@
       "textChars": 574,
       "headings": [],
       "errors": [
-        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:61189/noodl.viewer.js:54634:61)\n    at xhr.onreadystatechange (http://127.0.0.1:61189/noodl.viewer.js:54509:33)",
+        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:64734/noodl.viewer.js:54634:61)\n    at xhr.onreadystatechange (http://127.0.0.1:64734/noodl.viewer.js:54509:33)",
         "[noodl] CloudFunction2 (/Members/Standing): No cloud services defined in this project. [cloud-function/call-failed] Object",
-        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:61189/noodl.viewer.js:54634:61)\n    at xhr.onreadystatechange (http://127.0.0.1:61189/noodl.viewer.js:54509:33)"
+        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:64734/noodl.viewer.js:54634:61)\n    at xhr.onreadystatechange (http://127.0.0.1:64734/noodl.viewer.js:54509:33)"
       ]
     },
     {
@@ -513,9 +513,9 @@
       "textChars": 574,
       "headings": [],
       "errors": [
-        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:61189/noodl.viewer.js:54634:61)\n    at xhr.onreadystatechange (http://127.0.0.1:61189/noodl.viewer.js:54509:33)",
+        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:64734/noodl.viewer.js:54634:61)\n    at xhr.onreadystatechange (http://127.0.0.1:64734/noodl.viewer.js:54509:33)",
         "[noodl] CloudFunction2 (/Members/Standing): No cloud services defined in this project. [cloud-function/call-failed] Object",
-        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:61189/noodl.viewer.js:54634:61)\n    at xhr.onreadystatechange (http://127.0.0.1:61189/noodl.viewer.js:54509:33)"
+        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:64734/noodl.viewer.js:54634:61)\n    at xhr.onreadystatechange (http://127.0.0.1:64734/noodl.viewer.js:54509:33)"
       ]
     },
     {
