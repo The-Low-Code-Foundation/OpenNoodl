@@ -2942,6 +2942,26 @@ hit is a sentence asserting exactly the thing that is not true. Every argument i
 including two of this session's own — was built on "the project has/needs Inter" without anyone
 resolving the token.
 
-⚠️ **Owner: `NONE`.** It is a one-line description fix in `templates/members-area/nodegx.project.json`
-and it belongs to whoever owns that template, not to SBR-014. Recorded here because this is where
-the thread is, and because the next person to grep for a font will be misled the same way.
+⚠️ 🔴 **Corrected — it is NOT a template typo and NOT unowned.** This row first called it a one-line
+description fix with owner `NONE`. A peer traced it and re-measurement here agrees:
+
+```
+StyleTokensModel.ts:161   description: existing?.description ?? defaultToken?.description
+```
+
+**`setToken` writes a new VALUE and inherits the DEFAULT's DESCRIPTION.** The template never wrote
+that sentence — the **editor** carried it across the preset override. So it is a product defect,
+reproducible in any project, and *"fix the string in the template"* would have patched one symptom
+of it while leaving every other project to mint the same contradiction.
+
+⚠️ **And the obvious fix is wrong too**: 11 of the 45 described default tokens state a **value**
+(`--font-sans`, `--space-xs..3xl`, `--display-sm/md/lg`); the other 34 describe the token's **job**
+(*"Main brand and action color"*) and stay true under an override. Dropping the description on
+override would discard the 34 good ones.
+
+➡️ **Owned as [REL-010 §6.12 R8](../phase-82-0.2.2-the-first-row-on-the-shelf/REL-010-AS-GOOD-AS-THE-PAGE-HE-RATED.md),
+owner phase 81** (it owns the design system; VIB-002 authored these tokens). Scope recorded there:
+`--font-sans` is overridden by **4 of the 5 shipped presets**, so most new projects ship a
+`--font-sans` description naming a font they do not use — `Modern` is the default and keeps Inter,
+which is why nobody hit it. **D51 does not carry this**; it points at it. An unowned row gets
+rediscovered at full price, and an editor defect has no business living in a starter-assets row.
