@@ -2746,10 +2746,29 @@ pictures). Registered s45; the general defect was found by the phase-82 session 
 server, and **never calls `placeStarterAssets`** — unlike `members-drive.ts:150`, which does. So the
 drives run without Inter, without the Lucide glyphs and without the CC0 photographs.
 
-The site-builder template does reference assets — `backgroundImage` ×1 and `Image` ×2 in
-`site-builder.content.json` — so this is not hypothetical. ⚠️ **It is invisible by construction:**
-a CSS `backgroundImage` that 404s renders as no image and says nothing, which is exactly why the
-peer's suites carried it undetected until a real `<img>` made it audible.
+🔴 **The failure mode was wrong in this row's first two versions and is corrected here — the third
+time in one session that a measurement of one thing was written up as a claim about another.**
+
+**What actually bites, measured:** `fixtures/demo-app` has **no `noodl_modules/` at all** (it holds
+`components` and `nodegx.project.json`, nothing else), and `starterAssetList.ts:36` says the four
+Inter weights are *"what the shipped element defaults reference"*. So **every site-builder suite
+render is in a fallback typeface** — silently, because a missing font substitutes rather than errors.
+
+**What does NOT bite, and was this row's original justification:** photographs and icons.
+`grep -c starter-imagery packages/noodl-mcp/tests/sb006Components.ts` = **0**, `.webp` across every
+`sb*`/`sbr*` drive test = **0**, and SB006 has **0 icon nodes**, so Lucide is moot. The template's
+`Image` node and its `backgroundImage` are wired **from record fields**, not from a starter path.
+
+⚠️ **The original evidence — *"`backgroundImage` ×1 and `Image` ×2 in the template, so this is not
+hypothetical"* — was a raw substring count over the artefact's JSON read as a fact about node
+wiring.** Those strings are port and type names; no node parameter points at a starter asset. The
+defect was real and the reasoning for it was not.
+
+🔴 **Why the distinction matters more than the row does: a row that says "missing photographs" gets
+closed by checking photographs, and stays broken.** Same defect, same one-line fix, different
+failure mode — and only the typeface one is observable in a site-builder render.
+
+Found and corrected by the phase-82 session, which checked rather than accepting the row.
 
 **Not blocking an acceptance criterion**, so by the standing rule it is filed rather than made a
 first job.
@@ -2858,3 +2877,39 @@ the stored rows.
 ⚠️ **A second observation from the same gesture, not yet chased**: one drag produced **two**
 `POST /functions/reorderSection` calls. SBR-010's commit message names *"a double write shipping
 since SB-004"* — these may be the same thing, and if so this is where it is visible.
+
+### 🔴 s46 — D51's font arm is INERT for the site builder, and this row has now been narrowed twice
+
+A third session read this row and reached a third conclusion — that the missing `noodl_modules/inter/`
+means *"every site-builder screenshot rendered in a fallback typeface, not the one a real project
+uses"*. **It does not, and the reason is upstream of every argument made so far.**
+
+| asked | answer |
+|---|---|
+| does `site-builder.content.json` name Inter? | **no — 0 occurrences** |
+| what do its text nodes ask for? | `var(--font-sans)` ×51, `var(--font-serif)` ×11 |
+| what writes those two tokens? | **`siteTheme.ts` itself** — `THEME_TOKEN_FIELDS` maps `fontUi → --font-sans` and `fontDisplay → --font-serif` |
+| to what? | `FONT_UI = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'` and `FONT_SERIF = '"Iowan Old Style", Georgia, serif'` — **every preset sets `fontUi: FONT_UI`** |
+
+🔴 **So the site-builder theme overrides `--font-sans` before Inter could ever be reached.** The
+`inter` module's own manifest says it *"is what makes `var(--font-sans)` resolve to Inter"* — true
+for a project on the **shipped default tokens**, and this template is not one. Installed or absent,
+Inter is never requested here.
+
+✅ **Confirmed empirically by a control pair already in the phase folder**, not by reading alone:
+`s46-step4-public-studio-full.png` renders its headings in a **serif** face and
+`s46-step5-public-night-full.png` renders them in a **Helvetica-like sans** — which is exactly
+`siteTheme.ts:126`, the `night` preset's `fontDisplay: '"Helvetica Neue", Arial, sans-serif'`. The
+type on screen follows the **theme**, observed changing when the theme changed.
+
+⚠️ **This also corrects s45's scoping in the section above, and s46's own first answer.** s45
+narrowed the row to "suite renders only" and s46 agreed on the grounds that a **wizard-created**
+project carries the assets. Both are true and both are the *weaker* reason: the decisive one is that
+this template never asks for the asset. **The font arm is inert for site-builder renders whether the
+project has the module or not — including the suites'.**
+
+⚠️ **What is still real, and unchanged**: for a project on the **shipped default tokens**,
+`placeStarterAssets` genuinely does change what renders, which is why `members-drive.ts` calls it.
+The hole in `authorSiteTemplate` is real — `noodl-mcp/tests/fixtures/demo-app` has **no
+`noodl_modules/` directory at all** — it just does not bound anything the site builder photographs.
+**Owner unchanged (SBR-014); still not blocking, and now not bounding either.**
