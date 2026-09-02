@@ -319,7 +319,37 @@ arm."* Four drive suites share the helper and all four now render what a person 
 
 ⚠️ **Worth stating because it changes what those four suites have been measuring**, not only what
 they measure now: every members-area drive reading taken before 2026-09-02 was taken on a project
-with **no typeface, no glyphs and no photographs installed**.
+with **no photographs installed**, which is why the three `<img>` nodes 404ed.
+
+### 🔴 …and the first draft of that sentence said "no typeface, no glyphs and no photographs", which
+was measured on the WRONG THING
+
+**Corrected the same day, by a peer, after I had corrected a different peer for the same error.**
+`STARTER_ASSETS` does install Inter and 1,998 Lucide glyphs, so "the files are absent" was true — but
+absent files only matter if something asks for them, and **this template never asks for Inter**. The
+artefact sets `--font-sans` as a **custom token**:
+
+```
+"--font-sans": "\"Source Sans Pro\", \"Segoe UI\", ui-sans-serif, sans-serif"   (isCustom: true)
+```
+
+The `inter` starter module makes `--font-sans` resolve to Inter **for a project on the shipped
+default tokens**. This one overrides that token before Inter can be reached, so the typeface is the
+same installed or absent — and the renders in `verdicts/vib-001/2026-09-02/` are **faithful to what a
+real install shows**, which is the thing AC6 is read from and is now checked rather than assumed.
+
+🔴 **The error has a name and it is the one this row keeps meeting: I measured a HELPER and wrote a
+claim about a RENDER.** *"The asset files are not copied"* is a fact about `copyTemplateProject`.
+*"Every screenshot is in the wrong typeface"* is a fact about token resolution, which I had not
+looked at. The photographs half was checked — three `image/load-failed` lines, observed — and the
+typeface half was inferred from the same list of files and never checked at all. **Two claims, one
+piece of evidence, and only one of them was entitled to it.**
+
+⚠️ **Recorded rather than quietly edited, because of who caught it.** One message earlier I had
+corrected a peer for reading a substring count as a fact about node wiring; one message later I read
+a file list as a fact about rendering. ✅ **Write the claim at the width of the evidence**, and when a
+finding has two halves, check whether the evidence covers both — the unchecked half is the one that
+travels, because it rides on the checked one's credibility.
 
 ## §6.10 The readings, with their exit statuses
 
