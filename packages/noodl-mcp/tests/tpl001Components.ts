@@ -5227,8 +5227,27 @@ export const PROMPT_NODES = [
     type: 'Group',
     label: 'Shell',
     parent: 'prompt',
+    // 🔴 **Capped at 720 and the type is CENTRED, and the first render is what
+    // found it.** `alignItems: 'center'` centres a content-sized child and does
+    // nothing to a full-width one — a `Text` fills its column and a `Button` does
+    // not. So the band rendered with its heading and its line hard against the
+    // shell's left edge and its button in the middle: **two alignments inside one
+    // band**, which is the "three left edges" defect this row has already fixed
+    // twice, at a smaller scale.
+    //
+    // ✅ **`textAlignX`, and it is NOT `textAlign`.** The runtime's port is
+    // `textAlignX`; `textAlign` would have been a parameter nothing reads, which
+    // is indistinguishable from a style that did not apply. Read off
+    // `ui-landing-page`'s own `ClosingCta`, which is this band's ancestor and
+    // does exactly this: a 720 shell, `alignItems: center`, and `textAlignX` on
+    // the type.
+    //
+    // ⚠️ **720 rather than the shell's 1200** for the same reason `PROSE` exists:
+    // a centred sentence set across 1200px is two alignments' worth of eye
+    // travel between the end of one line and the start of the next.
     parameters: {
       ...composition('shell'),
+      maxWidth: { value: 720, unit: 'px' },
       sizeMode: 'contentHeight',
       alignX: 'center',
       alignItems: 'center',
@@ -5241,14 +5260,14 @@ export const PROMPT_NODES = [
     type: 'Text',
     label: 'The question',
     parent: 'promptShell',
-    parameters: { text: '', ...H_SECTION, color: 'var(--accent-foreground)' }
+    parameters: { text: '', ...H_SECTION, color: 'var(--accent-foreground)', textAlignX: 'center' }
   },
   {
     id: 'promptLine',
     type: 'Text',
     label: 'The context',
     parent: 'promptShell',
-    parameters: { text: '', ...T_META, color: 'var(--accent-foreground)' }
+    parameters: { text: '', ...T_META, color: 'var(--accent-foreground)', textAlignX: 'center' }
   },
   {
     id: 'promptButton',

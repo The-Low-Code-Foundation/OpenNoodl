@@ -347,3 +347,29 @@ text path; the numbers agree with them, and neither claim rests on the other.
 
 ⚠️ **This does NOT retire R3 or hazard 13.** It says these three bundles did not move these numbers.
 A bundle that changed layout would, and nothing here would have caught it except the same discipline.
+
+## §6.11 🔴 The pictures found a defect the numbers could not — and it was mine, one hour old
+
+§5 step 4 ends *"re-run `vib001-members.look.ts` for pictures, then AC6"*. **120 PNGs, and the very
+first door page showed a defect every one of the four ACs read as clean.**
+
+`Members/Prompt` rendered with its heading and its line **hard against the shell's left edge** and
+its button **in the middle**. Two alignments inside one band — the *"three left edges"* defect this
+row has already fixed twice, at a smaller scale, reintroduced by the band that fixed the last one.
+
+🔴 **`alignItems: 'center'` centres a content-sized child and does nothing to a full-width one.** A
+`Text` fills its column; a `Button` does not. One parameter, correct for two of the three children.
+
+✅ **Fixed by reading the ancestor rather than guessing**: `ui-landing-page`'s own `ClosingCta` caps
+its shell at **720** and sets **`textAlignX`** on the type. ⚠️ **`textAlignX`, and `textAlign` is not
+a port** — checked against the catalog before trusting it, because a parameter nothing reads is
+indistinguishable from a style that did not apply. That check is the same one this file's §6.5
+refuses edits for.
+
+**Re-rendered and re-measured after the fix: `EXIT=0`, 13 of 13 still clean, every number identical.**
+
+⚠️ **The lesson is the ORDER, and this row's §5 already had it right.** The four ACs are all
+*presence* readings — how big, how many, how varied. **Not one of them can see an alignment**, so a
+page can satisfy every number in this file and still look like nobody laid it out. **The pictures are
+not the write-up of the measurement; they are a separate instrument, and they are the one AC6 is
+read from.**

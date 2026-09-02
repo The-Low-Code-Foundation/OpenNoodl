@@ -44,7 +44,7 @@
           "unit": "%"
         },
         "maxWidth": {
-          "value": 1200,
+          "value": 720,
           "unit": "px"
         },
         "flexDirection": "column",
@@ -68,7 +68,8 @@
         "fontSize": "var(--text-xl)",
         "fontWeight": "var(--font-semibold)",
         "lineHeight": "var(--leading-snug)",
-        "color": "var(--accent-foreground)"
+        "color": "var(--accent-foreground)",
+        "textAlignX": "center"
       },
       "x": 160,
       "y": 280
@@ -81,7 +82,8 @@
       "parameters": {
         "text": "",
         "fontSize": "var(--text-sm)",
-        "color": "var(--accent-foreground)"
+        "color": "var(--accent-foreground)",
+        "textAlignX": "center"
       },
       "x": 160,
       "y": 400
