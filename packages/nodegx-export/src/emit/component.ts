@@ -27,7 +27,8 @@ import {
   MutationPlan,
   ProjectPlan,
   QueryPlan,
-  ValueExpr
+  ValueExpr,
+  RecordReadPlan
 } from '../analyze/plan';
 import { ExportIR, ITEM_OUTPUT_SIGNAL, NodeIR } from '../ir/types';
 import { KitBinding, tsTypeOf as kitPortTsType } from './kits';
@@ -435,6 +436,12 @@ export function emitComponent(
       action.then.forEach(collectActionUse);
       action.failThen.forEach(collectActionUse);
     }
+    // EXP-011 §43. The Id is the one argument; both chains earn as a call's do.
+    if (action.kind === 'record-fetch') {
+      collectExprUse(action.id);
+      action.then.forEach(collectActionUse);
+      action.failThen.forEach(collectActionUse);
+    }
     // EXP-011 Tier 1.3. The Read reads nothing itself; its chain does, and the row it writes is
     // a reference whether or not anything reads it — the record verbs' rule for a written row.
     if (action.kind === 'date-now-read') {
@@ -523,7 +530,9 @@ export function emitComponent(
     // handler's does — it just runs from an effect instead of an event (LOGIC-TARGET §10).
     ...plan.branchEffects.map((e) => e.action),
     // EXP-011 §39. A Value Changed's chain earns imports and references exactly as a handler's does.
-    ...plan.valueChangedEffects.flatMap((e) => e.actions)
+    ...plan.valueChangedEffects.flatMap((e) => e.actions),
+    // EXP-011 §43. A Record's Id effect is a read chain run from an effect.
+    ...plan.recordEffects.map((e) => e.action)
   ];
   allActions.forEach(collectActionUse);
   /** Nested actions (branch arms, popup done-chains) flattened — the `usesNavigate` sweep. */
@@ -531,7 +540,7 @@ export function emitComponent(
     actions.flatMap((a) =>
       a.kind === 'branch'
         ? [a, ...deepActions(a.whenTrue), ...deepActions(a.whenFalse)]
-        : a.kind === 'http-call' || a.kind === 'cloud-call' || a.kind === 'external-link'
+        : a.kind === 'http-call' || a.kind === 'cloud-call' || a.kind === 'record-fetch' || a.kind === 'external-link'
           ? [a, ...deepActions(a.then), ...deepActions(a.failThen)]
           : // EXP-011 §15. `Navigate To Path` carries two chains and neither is `failThen`;
             // without this line `usesNavigate` below cannot see a second navigation nested in
@@ -677,6 +686,10 @@ export function emitComponent(
   }
   // EXP-011 §39. The watched Input is the effect's dependency and prints as the render local.
   for (const effect of plan.valueChangedEffects) hookExprSources(effect.watch);
+  // EXP-011 §43. The Id is the effect's dependency and prints as the render local.
+  for (const effect of plan.recordEffects) {
+    if (effect.action.kind === 'record-fetch') hookExprSources(effect.action.id);
+  }
   // A rendered stateful control references its own row (value/checked + onChange), a sync
   // effect its target, a lifted callback its setter — whether or not any expression reads it.
   for (const stateVar of plan.stateVars) {
@@ -694,7 +707,7 @@ export function emitComponent(
     // EXP-011 Tier 1.2: both rows are written by the call itself. The Error row is the record
     // verbs' case exactly; the answer row is written only where something reads it, so it is
     // already earned — naming it here keeps the writer and the row inseparable either way.
-    if (action.kind === 'http-call' || action.kind === 'cloud-call') {
+    if (action.kind === 'http-call' || action.kind === 'cloud-call' || action.kind === 'record-fetch') {
       referencedStateNames.add(action.errorState);
       if (action.materialize !== undefined) referencedStateNames.add(action.materialize);
     }
@@ -1043,6 +1056,9 @@ export function emitComponent(
       // EXP-011 §41. Must agree with plan.ts maybeUndefinedExpr: the row is undefined until the
       // first call, and a result the function did not answer is undefined on the node too.
       case 'cloud-out':
+      // EXP-011 §43. Must agree with plan.ts maybeUndefinedExpr: the row is undefined until the
+      // first read, and a column the record does not carry is undefined on the node too.
+      case 'record-out':
         return true;
       // Always — an unreadable date answers unset on all five, and Date To String is unset before
       // its first format. Must agree with plan.ts maybeUndefinedExpr (EXP-011 Tier 1.3).
@@ -1195,6 +1211,11 @@ export function emitComponent(
     const call = plan.cloudCalls.find((c) => c.nodeId === nodeId);
     return call ?? { answerLocal: 'answer', messageLocal: 'message', fnName: 'call', typeName: 'Results' };
   };
+  /** EXP-011 §43 — the same off `plan.recordReads`, for the same reason. */
+  const recordNamesOf = (nodeId: string) => {
+    const read = plan.recordReads.find((r) => r.nodeId === nodeId);
+    return read ?? { answerLocal: 'record', messageLocal: 'message', idLocal: 'recordId', fnName: 'fetchById', typeName: 'Record' };
+  };
   /**
    * The chain-local one `Now` binds its instant to (EXP-011 Tier 1.3), read off the plan so the
    * expression side and the action side cannot disagree about a name — `httpNamesOf`'s rule.
@@ -1279,6 +1300,14 @@ export function emitComponent(
         if (expr.output === 'error') return expr.viaState ?? names.messageLocal;
         const base = expr.viaState !== undefined ? `${expr.viaState}?.` : `${names.answerLocal}.`;
         const field = expr.output.slice('out-'.length);
+        return /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(field) ? `${base}${field}` : `${base}[${JSON.stringify(field)}]`;
+      }
+      // EXP-011 §43. The same, one node over: a column off the row or off the Done chain's local.
+      case 'record-out': {
+        const names = recordNamesOf(expr.nodeId);
+        if (expr.output === 'error') return expr.viaState ?? names.messageLocal;
+        const base = expr.viaState !== undefined ? `${expr.viaState}?.` : `${names.answerLocal}.`;
+        const field = expr.output.slice('prop-'.length);
         return /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(field) ? `${base}${field}` : `${base}[${JSON.stringify(field)}]`;
       }
       /**
@@ -1512,6 +1541,8 @@ export function emitComponent(
         case 'http-out':
         // EXP-011 §41, the same clause one node over.
         case 'cloud-out':
+        // EXP-011 §43, the same clause one node over.
+        case 'record-out':
         // EXP-011 §24, the same clause and the same reason one construct over.
         case 'outcome-error':
           if (e.viaState !== undefined) add(e.viaState);
@@ -1652,6 +1683,9 @@ export function emitComponent(
         // EXP-011 §41. The same, one node over.
         case 'cloud-call':
           return a.args.some((arg) => reads(arg.expr)) || a.then.some(inAction) || a.failThen.some(inAction);
+        // EXP-011 §43. The Id, then both chains.
+        case 'record-fetch':
+          return reads(a.id) || a.then.some(inAction) || a.failThen.some(inAction);
         // EXP-011 Tier 2.5. ⚠️ The `default: false` below would answer "reads nothing" for a
         // link built out of the very value being asked about.
         case 'external-link':
@@ -2235,6 +2269,48 @@ export function emitComponent(
           `${pad(indent)}}`
         ].join('\n');
       }
+      /**
+       * A `Record`'s Fetch (EXP-011 §43). One argument, the Id; the runtime's own `Missing Id.`
+       * thrown inside the try where the Id is empty — `scheduleFetch` reports it as Failure before
+       * any request, so the catch is exactly the arm it belongs in. The row is replaced, not
+       * merged: `setModelID` binds a fresh model per Id, so a column the answer lacks reads
+       * undefined, as the node's output does for a record that never carried it.
+       */
+      case 'record-fetch': {
+        const names = recordNamesOf(action.nodeId);
+        const inner = pad(indent + 2);
+        const idCode = exprCode(action.id, 'handler');
+        const idLocal = names.idLocal;
+        // A literal Id was refused empty by the planner, and a guard on a string literal is a
+        // TS2367 (no overlap) — so the guard is emitted only where the Id is read from something.
+        // The effect form (§43.2) returns silently where the handler form throws: the runtime binds
+        // nothing on an empty Id and reads nothing, and reports `Missing Id.` only to a Fetch.
+        const empty = `${idLocal} === undefined || ${idLocal} === null || ${idLocal} === ''`;
+        const guard =
+          action.id.kind === 'literal'
+            ? []
+            : action.viaEffect
+              ? [`${inner}if (${empty}) return;`]
+              : [`${inner}if (${empty}) throw new Error('Missing Id.');`];
+        // The effect form clears the row before it reads: a new Id rebinds the node to a fresh
+        // model, whose outputs read undefined until the read answers (dbmodelnode2.ts setModelID).
+        const clear =
+          action.viaEffect && action.materialize !== undefined ? [`${inner}${stateSetterOf(action.materialize)}(undefined);`] : [];
+        return [
+          'try {',
+          ...clear,
+          `${inner}const ${idLocal} = ${idCode};`,
+          ...guard,
+          `${inner}const ${names.answerLocal} = await ${action.fnName}(${idLocal});`,
+          ...(action.materialize !== undefined ? [`${inner}${stateSetterOf(action.materialize)}(${names.answerLocal});`] : []),
+          ...expandActions(action.then).map((a) => `${inner}${actionCode(a, indent + 2)};`),
+          `${pad(indent)}} catch (error) {`,
+          `${inner}const ${names.messageLocal} = error instanceof Error ? error.message : String(error);`,
+          `${inner}${stateSetterOf(action.errorState)}(${names.messageLocal});`,
+          ...expandActions(action.failThen).map((a) => `${inner}${actionCode(a, indent + 2)};`),
+          `${pad(indent)}}`
+        ].join('\n');
+      }
       case 'http-call': {
         const names = httpNamesOf(action.nodeId);
         const inner = pad(indent + 2);
@@ -2728,6 +2804,8 @@ export function emitComponent(
       a.kind === 'http-call' ||
       // EXP-011 §41. A try/catch, like the two above.
       a.kind === 'cloud-call' ||
+      // EXP-011 §43. A try/catch, like the three above.
+      a.kind === 'record-fetch' ||
       (a.kind === 'external-link' && externalLinkIsStatement(a)) ||
       (a.kind === 'navigate-path' && navigatePathIsStatement(a)) ||
       // EXP-011 §39. The `if` form ends in `}` and must not take a terminator.
@@ -2739,7 +2817,9 @@ export function emitComponent(
   }
   /** Whether anything in these actions, at any depth, is awaited — the arrow around it is `async`. */
   function actionsAwait(actions: HandlerAction[]): boolean {
-    return deepActions(actions).some((a) => a.kind === 'api-call' || a.kind === 'http-call' || a.kind === 'cloud-call');
+    return deepActions(actions).some(
+      (a) => a.kind === 'api-call' || a.kind === 'http-call' || a.kind === 'cloud-call' || a.kind === 'record-fetch'
+    );
   }
   /**
    * The lines of a block body, one statement per line at `indent`. A `Now` Read, an id and a
@@ -2819,6 +2899,8 @@ export function emitComponent(
       plan.branchEffects.length > 0 ||
       // EXP-011 §39. A Value Changed is an effect; a Delay owes the unmount cleanup effect.
       plan.valueChangedEffects.length > 0 ||
+      // EXP-011 §43. A Record with Fetch unwired is an effect keyed on its Id.
+      plan.recordEffects.length > 0 ||
       delayRefs.size > 0) &&
     !reactImports.includes('useEffect')
   ) {
@@ -2841,19 +2923,28 @@ export function emitComponent(
   // One import per api module, carrying the reads and the writes together — the record verbs
   // land in the same module as the query on the same class (RECORD-VERBS-TARGET §4d). Only the
   // fetch needs its item type imported; a mutation's argument type is inferred from the call.
-  const stubModules = new Map<string, { queries: QueryPlan[]; mutations: MutationPlan[] }>();
+  const stubModules = new Map<string, { queries: QueryPlan[]; mutations: MutationPlan[]; reads: RecordReadPlan[] }>();
   const stubModule = (moduleBase: string) => {
     let entry = stubModules.get(moduleBase);
-    if (entry === undefined) stubModules.set(moduleBase, (entry = { queries: [], mutations: [] }));
+    if (entry === undefined) stubModules.set(moduleBase, (entry = { queries: [], mutations: [], reads: [] }));
     return entry;
   };
   for (const query of plan.queries) stubModule(query.moduleBase).queries.push(query);
   for (const mutation of plan.mutations) stubModule(mutation.moduleBase).mutations.push(mutation);
-  for (const [moduleBase, { queries, mutations }] of stubModules) {
+  // EXP-011 §43. A Record's read lands in its class's module; the type is imported only where a row is typed by it.
+  for (const read of plan.recordReads) stubModule(read.moduleBase).reads.push(read);
+  for (const [moduleBase, { queries, mutations, reads }] of stubModules) {
     const specifier = `${relRoot}/api/${moduleBase}`;
-    const fetchNames = [...new Set(queries.map((q) => q.fetchName))].sort();
+    const fetchNames = [...new Set([...queries.map((q) => q.fetchName), ...reads.map((r) => r.fnName)])].sort();
     const fnNames = [...new Set(mutations.map((m) => m.fnName))].sort();
-    const typeNames = [...new Set(queries.map((q) => q.typeName))].sort();
+    const typeNames = [
+      ...new Set([
+        ...queries.map((q) => q.typeName),
+        ...reads
+          .filter((r) => referencedStateVars.some((v) => v.originNodeId === r.nodeId && v.origin === 'record-row'))
+          .map((r) => r.typeName)
+      ])
+    ].sort();
     internalImports.set(
       specifier,
       `import { ${[...fetchNames, ...fnNames, ...typeNames.map((t) => `type ${t}`)].join(', ')} } from '${specifier}';`
@@ -3096,7 +3187,13 @@ export function emitComponent(
     // §10.5. A `boolean`/`unknown` store key is the same `unknown` at the sink as an untyped
     // Variable, and it lands in the same JSX positions — so it takes the same table rather than
     // a second one that could drift from it.
-    if (untypedVariableOf(source) === null && untypedStoreKeyOf(source) === null) return base;
+    // EXP-011 §43. A Record column that is not a string — a number, a boolean, a column the
+    // schema does not declare — lands at a sink exactly as an untyped Variable does, and takes
+    // the same table: the runtime's Text node and a string attribute both `String()` it, and
+    // `enabled` and its kin coerce `!!value`. A string column is already what every sink takes.
+    const nonStringRecordColumn =
+      source.kind === 'computed' && source.expr.kind === 'record-out' && source.expr.output !== 'error' && source.expr.tsType !== 'string';
+    if (untypedVariableOf(source) === null && untypedStoreKeyOf(source) === null && !nonStringRecordColumn) return base;
     switch (sink) {
       // The runtime's Text node puts whatever the variable holds through `String()` on its way
       // to the DOM, and a string attribute reaches the DOM the same way (§8.2's coercion).
@@ -3383,6 +3480,17 @@ export function emitComponent(
       if (bound.kind === 'computed' && bound.expr.kind === 'cloud-out' && bound.expr.output !== 'error') {
         const code = bindingExpr(bound, 'text');
         if (code !== null) return `{String(${code} ?? '')}`;
+      }
+      /**
+       * A `Record` column in a text sink (EXP-011 §43): a string column folds like the
+       * string-typed reads above; a number, a boolean or a column the schema does not declare
+       * takes the `String(…)` the runtime's Text node applies — §42's boolean lesson, decided
+       * here by the declared type rather than found by a drive.
+       */
+      if (bound.kind === 'computed' && bound.expr.kind === 'record-out' && bound.expr.output !== 'error') {
+        // `bindingExpr` already coerces a non-string column for the text sink (§10's table).
+        const code = bindingExpr(bound, 'text');
+        if (code !== null) return bound.expr.tsType === 'string' ? `{${code} ?? ''}` : `{${code}}`;
       }
       const expr = bindingExpr(bound, 'text');
       if (expr !== null) return `{${expr}}`;
@@ -4589,6 +4697,13 @@ export function emitComponent(
     const deps = effectDeps(action.cond).join(', ');
     body.push(`  // ${effect.comment}`, '  useEffect(() => {', ...effectBody([action], 4), `  }, [${deps}]);`, '');
   }
+  // EXP-011 §43. A Record with Fetch unwired: the read re-runs whenever its Id changes — an
+  // effect keyed on the Id, with the read's own try/catch as the body (an async IIFE, §40.3).
+  for (const effect of plan.recordEffects) {
+    const action = effect.action as Extract<HandlerAction, { kind: 'record-fetch' }>;
+    const deps = effectDeps(action.id).join(', ');
+    body.push(`  // ${effect.comment}`, '  useEffect(() => {', ...effectBody([action], 4), `  }, [${deps}]);`, '');
+  }
   // EXP-011 §39. A Delay's countdown dies with the component — `addDeleteListener` in timer.ts.
   for (const [, ref] of delayRefs) {
     body.push('  useEffect(() => () => {', `    stopDelay(${ref});`, '  }, []);', '');
@@ -4635,6 +4750,9 @@ export function emitComponent(
       // EXP-011 §41. The same, one node over.
       case 'cloud-call':
         return [...a.args.map((arg) => arg.expr), ...a.then.flatMap(actionExprsOf), ...a.failThen.flatMap(actionExprsOf)];
+      // EXP-011 §43. The Id, then both chains.
+      case 'record-fetch':
+        return [a.id, ...a.then.flatMap(actionExprsOf), ...a.failThen.flatMap(actionExprsOf)];
       case 'api-call':
         return [
           ...a.args.flatMap((arg) => (arg.kind === 'expr' ? [arg.expr] : arg.props.map((p) => p.expr))),

@@ -186,3 +186,15 @@ note. Goldens: `tests/goldens/exp009/`; design: EXP-009-CLIENT-TARGET-OUTPUT.md.
 
 Residue: the drive created user `exp009-drive` in the local backend's `_User` collection
 (its test puppy and session were cleaned up; the user row is inert).
+
+### Session 71 (2026-09-02) — `request()` now wraps a network failure like `callFunction()` does
+
+EXP-011 §43.6: the client had two `fetch` sites and one wrap. `callFunction()` (§41) threw
+*"Could not reach the backend at <endpoint>"* on a failed `fetch`; `request()` — every query,
+record, session and user verb — let the browser's own sentence through (Chrome: *"Failed to
+fetch"*, observed in a `Record`'s Error with the backend down). Fixed in `emitApp.ts`'s client
+template, `client.ts.golden` regenerated (the diff exactly the `try/catch`), and a row in
+`backend-client.test.ts` pins two sites, two wraps, one sentence. The target-output document
+(`EXP-009-CLIENT-TARGET-OUTPUT.md`) describes `request()` without the wrap; the golden is the
+byte-level truth and now carries it.
+

@@ -101,11 +101,19 @@ async function request<T>(path: string, options: { method?: string; body?: unkno
   const sessionToken = readSession()?.sessionToken;
   if (sessionToken !== undefined) headers['X-Parse-Session-Token'] = sessionToken;
 
-  const response = await fetch(ENDPOINT + path, {
-    method: options.method ?? 'GET',
-    headers,
-    body: options.body === undefined ? undefined : JSON.stringify(options.body)
-  });
+  let response: Response;
+  try {
+    response = await fetch(ENDPOINT + path, {
+      method: options.method ?? 'GET',
+      headers,
+      body: options.body === undefined ? undefined : JSON.stringify(options.body)
+    });
+  } catch {
+    // A backend that cannot be reached is one sentence, the same one callFunction() throws — not
+    // the browser's own (Chrome says "Failed to fetch", Firefox "NetworkError when attempting to
+    // fetch resource"). The §43 drive read the browser's through a Record's Error (D8).
+    throw new Error(`Could not reach the backend at ${ENDPOINT}`);
+  }
   const text = await response.text();
   let json: { error?: unknown } | undefined;
   try {
@@ -146,6 +154,12 @@ export async function query<T extends { id: string }>(collection: string, params
     }
   });
   return response.results.map((record) => fromWire<T>(record));
+}
+
+/** One record by Id — the runtime's own `GET /classes/<collection>/<id>` (ParseWireAdapter.fetch). */
+export async function fetchOne<T extends { id: string }>(collection: string, id: string): Promise<T> {
+  const response = await request<Record<string, unknown>>(`/classes/${collection}/${encodeURIComponent(id)}`);
+  return fromWire<T>(response);
 }
 
 export async function create<T extends { id: string }>(collection: string, data: Partial<T>): Promise<T> {

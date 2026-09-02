@@ -98,6 +98,19 @@ describe('the connected export, byte-for-byte against the hand-written target', 
     expect(app.files['src/api/client.ts']).toBe(golden('client.ts'));
   });
 
+  test('a backend that cannot be reached is one sentence at both fetch sites — never the browser\u2019s own', () => {
+    // EXP-011 §43 D8: callFunction() wrapped the network failure since §41; request() — every
+    // query, record, session and user verb — let Chrome's "Failed to fetch" through, and a
+    // Record's Error read it in the drive. Two fetch calls, two wraps, one sentence.
+    const client = app.files['src/api/client.ts'];
+    expect(client.match(/await fetch\(/g)).toHaveLength(2);
+    expect(client.match(/throw new Error\(`Could not reach the backend at \$\{ENDPOINT\}`\);/g)).toHaveLength(2);
+    // (the browser's sentence appears once, in the comment that names it — the assertion is on the throws)
+    for (const site of client.split('await fetch(').slice(1)) {
+      expect(site.indexOf('} catch {')).toBeLessThan(site.indexOf('await response.text()'));
+    }
+  });
+
   test('src/api/puppies.ts is the target output', () => {
     expect(app.files['src/api/puppies.ts']).toBe(golden('puppies.ts'));
   });

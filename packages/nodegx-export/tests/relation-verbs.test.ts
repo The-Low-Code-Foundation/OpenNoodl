@@ -18,6 +18,7 @@ import * as path from 'path';
 
 import { Catalog, CatalogIndex } from '../src/catalog';
 import { planProject } from '../src/analyze/plan';
+import { emitApp } from '../src/emit/emitApp';
 import { parseProject } from '../src/parse/parseProject';
 import { ComponentIR, ExportIR, NodeIR, ParamValue } from '../src/ir/types';
 
@@ -236,9 +237,11 @@ describe('§17 — the Record node', () => {
       idSource: lit('explicit')
     });
     wire(source, ADMIN, 'pageInputs', 'pm-id', 'puppyModel', 'modelId');
-    expect(reasonFor(source, ADMIN, 'puppyModel')).toBe(
-      'a single-record read by Id has no shape in the api stub — a collection query is the only read this slice emits'
-    );
+    // EXP-011 §43 built the single-record read: with `Fetch` unwired the node is an effect keyed
+    // on the page parameter, so there is no reason left to give — the row below pins that the
+    // module export exists, which is the positive half of what this test used to pin negatively.
+    expect(reasonFor(source, ADMIN, 'puppyModel')).toBeUndefined();
+    expect(emitApp(source, catalog).files['src/api/puppies.ts']).toContain('export async function fetchPuppyById(id: string): Promise<Puppy>');
   });
 
   it('a Record bound to the enclosing repeater row hits the row-identity wall by name', () => {
@@ -268,10 +271,10 @@ describe('§17 — the Record node', () => {
     expect(reasonFor(source, ADMIN, 'puppyModel')).toBe('two wires feed its Id — last-writer-wins is not statically ordered');
   });
 
-  it('a well-formed Record reaches the designed-not-built reason', () => {
-    expect(reasonFor(withRelationGraph(), ADMIN, 'puppyModel')).toBe(
-      'a single-record read by Id has no shape in the api stub — a collection query is the only read this slice emits'
-    );
+  it('a well-formed Record translates (EXP-011 §43) — the reason this row used to pin is gone, and the read is in the module', () => {
+    const source = withRelationGraph();
+    expect(reasonFor(source, ADMIN, 'puppyModel')).toBeUndefined();
+    expect(emitApp(source, catalog).files['src/api/puppies.ts']).toContain('export async function fetchPuppyById(id: string): Promise<Puppy>');
   });
 });
 

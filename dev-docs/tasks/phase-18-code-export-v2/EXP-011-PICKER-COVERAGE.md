@@ -1,6 +1,6 @@
 # EXP-011 — Close the picker gap, ranked by what apps need
 
-**Status:** 🟡 In progress — **Tier 1 COMPLETE; Tier 2.7 COMPLETE** (the three pure utilities, session 65; the id pair, session 66); §38–§39 the small non-pure nodes; **§40 (session 69) fixed the chain-wire / earn-scan / branch-arm defect class behind every translated node with a chain; §41 (session 69) built `Cloud Function`, the first of the nine Cloud Services**. **81 of 127 (63.8%).** Tier 2's remainder is Cloud Services (9) and the component stack pair
+**Status:** 🟡 In progress — **Tier 1 COMPLETE; Tier 2.7 COMPLETE** (the three pure utilities, session 65; the id pair, session 66); §38–§39 the small non-pure nodes; **§40 (session 69) fixed the chain-wire / earn-scan / branch-arm defect class behind every translated node with a chain; §41 (session 69) built `Cloud Function`, the first of the nine Cloud Services; §42 (session 70) DROVE it against a live `nodegx-backend` — the session token measured on the receiving end — and fixed the two cells that disagreed (a boolean result rendered as nothing; an empty answer replaced the row); §43 (session 70) BUILT `Record` in both forms — 🔴 gates NOT run, NOT committed (the box ran out of memory; see §43.4)**. **82 of 127 (64.6%) on disk, 81 committed.** Tier 2's remainder is Cloud Services (9) and the component stack pair
 **Depends on:** nothing — but sequenced after EXP-009 and EXP-010, which are worth more per hour
 **Replaces:** every "what to build next" list in this phase from sessions 20–31
 
@@ -5358,3 +5358,163 @@ Gates: package `tsc` 0, editor `tsc` 0, jest **1400/1400 in 53** (53 files on di
   controlled-state gap sits right behind it) is first; `Upload File` (17, but its only source is
   the untranslated `Open File Picker`) and the rest are 0 in the corpus.
 - The record-verb row for `puppy-test-3` (§40.5) and the reactive-Condition HTTP drive — carried.
+
+## §43 Tier 2.6 continues — `Record`, the read by Id, in both of its forms (session 70, 2026-09-02)
+
+**Picker 81 → 82 of 127 (64.6%)**, floor raised in the same commit. The most used of the eight
+Cloud Services left — 22 corpus nodes, every one `idSource: explicit`, the Id fed by a Function
+node's output in 21 and by `PageInputs` in 1, `Fetch` fired by that Function's `out-ready` in 21
+and by an Update Record's `done` in 4, the outputs into text inputs' `startValue` (68), checkboxes'
+`checked` (17) and Texts (12). Ranked by the product surface rather than that census (the memory's
+rule): a Record fed from a Page Inputs parameter or a Variable, with `Fetch` wired to a button or
+left unwired, is the detail page every app has.
+
+### §43.1 What the runtime does (dbmodelnode2.ts), and what that decides
+
+- `setModelID(id)` binds the node to the process-wide `Model` for that id **the moment the Id
+  arrives** — `id` reads it at once, every `prop-<key>` the model already holds is flagged, and
+  `fetched` fires — *before* any read. `scheduleFetch` (the `Fetch` port) then GETs
+  `/classes/<class>/<id>` and flags every `prop-<key>` the answer carries; an empty Id is
+  `setError('Missing Id.')` → Failure without a request.
+- `runOnValueChange: { controlSignal: 'fetch', inputs: ['modelId'] }` (NDA-017): with `Fetch`
+  **wired**, the node reads only on the signal; **unwired**, it reads on every change of its Id.
+  That is the whole reason there are two forms.
+- `changed` and `changed-<column>` fire from the shared model whenever *any* node writes it — a
+  pub/sub with no static shape. `fetched` is two events on one port.
+
+### §43.2 The build — the Cloud Function shape, with the collection module where the functions module was
+
+| piece | what it is |
+|---|---|
+| `fetch<Type>ById(id)` in `src/api/<plural>.ts` | joins the class's query and record verbs — **one module per class**, the query's rule. Connected: `return fetchOne<Page>('Page', id)`. Stub: **throws** (`'fetchPageById is not connected to a backend yet'`) — unlike the query's `[]`, because a record that does not exist is a Failure in the interpreter too and the graph's Failure path is already drawn |
+| the interface | the schema snapshot first (`tsColumnType`, now **exported from `plan.ts`** and read by the module and by every column read, so the two cannot disagree), then the columns the graph *writes* (RECORD-VERBS §10a), then the columns a Record *reads* that neither carries — as `unknown` |
+| `fetchOne<T>(collection, id)` on the client | `GET /classes/<collection>/<encodeURIComponent(id)>` → `fromWire` (`objectId` → `id`); the golden regenerated, the diff exactly that block |
+| `record-fetch` action | wired form: `try { const pageRecordId = <id>; if (empty) throw new Error('Missing Id.'); const pageRecord = await fetchPageById(pageRecordId); [setPageRow(pageRecord);] …done } catch (error) { …message; setPageError(message); …failure }`. The row is **replaced**, not merged (§42's merge is the Cloud Function's — `setModelID` binds a fresh model per Id). No guard on a literal Id: the planner refused an empty one, and `'home' === ''` is a TS2367 |
+| the effect form | `Fetch` unwired ⇒ `useEffect(() => { void (async () => { <the same body> })(); }, [<the Id's render local>])` — a literal Id runs once at mount (`[]`). Planned beside the reactive Conditions, inside the earn block, so a render read sees the node attached |
+| `record-out` expression | `Error` and `prop-<column>`, carrying the column's **declared type**: the row (`pageRow?.title`) everywhere, the chain's local inside the Done chain; `Error` only, inside the Failure chain. `Id` resolves to the **feeder** — it is bound before any read |
+| sinks | a string column folds like every string-typed read (`{pageRow?.title ?? ''}`); a boolean, a number or an undeclared column takes the untyped Variable's table — `String(… ?? '')` in a Text or a string attribute, `!!` at a boolean sink — **§42's boolean lesson decided by the declared type rather than found by a drive**, and coerced once (the first draft coerced twice) |
+| the toll | `RECORD_TYPE` + `RECORD_OUTPUTS`, `OWN_CHAIN_OUTPUTS`, `TRIGGER_PORTS`, the dispatch, names (`fetch<Type>ById`, `<stem>Record`/`Message`/`RecordId` — a trailing "record" in the label is stripped, and the Id local is `RecordId` because `pageId` is the ordinary feeder and `const pageId = pageId.get()` is a TS2448), two state-var origins, `resolveExpr`, `maybeUndefined`, `exprTsType`, `exprValidIn`, `actionsValidIn`, `snapAction`, the earn scan, the session walker, the late row filter, `fillMaterialize` (**and its effect list** — the first draft left the effect's row unset, TS2552), the render pass's `isRecordRead` (**the second consumer** §7.5 named — the first draft resolved a column and dropped the wire), the idle sweep; in the emitter `collectExprUse`, `allActions`, `deepActions`, `hookExprSources`, `referencedStateNames`, names, `exprCode`, effect deps, reads, `actionCode`, the no-terminator and await lists, the `useEffect` gate, the module imports, `childText`, `bindingExpr`, the effects loop, `actionExprsOf`; in `emitApp` the module type, the loops, the emission, the client import, `fetchOne` |
+
+Refused by name: no class; a wired class; a second backend (`backendId` other than `_active_`);
+a repeater-bound Id (`idSource: foreach` / `repeaterComponent`); two wires into the Id; no Id at
+all; a consumed `Fetched` (*fires when an Id is bound and again after every read*); a consumed
+`Changed` / `changed-<column>` (*the in-process record store's pub/sub*); a consumed `Completed`;
+any other output; a column read from the Failure chain. Two older rows re-pinned: the relation
+verbs' §17 used to pin *"a single-record read by Id has no shape in the api stub"* twice, and
+both now pin the positive half — the reason is gone and `fetchPuppyById` is in the module.
+
+### §43.3 What building it found, and what is written down rather than fixed
+
+- ⚠️ **The corpus's Records are fired by a Function node's signal output** (`out-ready`, 21 of
+  22), and a JS Function's signal outputs are no-op callables in this export (EXP-003 §4) — so
+  the attach pass drops that trigger wire with the *trigger's* reason, not this node's. The
+  product-surface forms translate; the corpus form waits on EXP-003's signal chains.
+- ⚠️ **A wire from an untranslatable trigger disposes its sink with the trigger's reason and no
+  node line** — for every node type. The §D row pins that, because the first draft expected the
+  idle sentence and the class rule is the honest one.
+- 🔴 **Residual, wired form:** the runtime rebinds on every Id change (`setModelID`) so its outputs
+  read undefined the moment a new Id arrives; the export's row is written only by `Fetch`, so it
+  holds the previous record until the next Load. A row effect keyed on the Id would close it.
+
+### §43.4 Graded — `tests/record.test.ts`, 29 rows, 54 files on disk (the gates: §43.6)
+
+§A the module (connected through `fetchOne`, the stub that throws, the undeclared column as
+`unknown`). §B the component (the handler with the `Missing Id.` guard; the row only where a
+render read needs it; a string column bare, a boolean/number/undeclared column coerced once; `Id`
+resolving to the feeder; `Error` in render and in the Failure arm; the effect form keyed on the
+Id's render local; a literal Id with no guard and `[]`; the effect form's silent return and row
+clear; the wired form keeping its throw). §C ten refusals by their sentences. §D wire order (the
+cloud row's shape) and a Fetch wired from an untranslatable trigger (the class rule: the trigger's
+reason, no node line). §E `tests/fixtures/page-desk` — both forms on one page — whole,
+typechecked. Two rows in `relation-verbs.test.ts` §17 re-pinned to the positive half.
+
+**Status at the end of session 70:** the rows before the effect-form fix passed 27/27; the file
+with it (29 rows on disk — the handoff's "30" was a miscount), the whole suite, the mutant arms
+and the drive were not run: every attempt from 15:05 died with exit 137 under the box's memory
+pressure, and Richard stopped the session — *one heavy job at a time*. Session 71 ran them, one
+at a time (§43.6).
+
+### §43.5 What this leaves
+
+- §43.3's residual (the wired form's row on an Id change) and §41.3's `x-noodl-cloud-version`.
+- The other seven Cloud Services, surveyed in s70's handoff.
+
+### §43.6 The gates, the arms and the drive — and the sentence that belonged to a different helper (session 71, 2026-09-02)
+
+Run one at a time, `vm_stat` and `ps` read before each, every server torn down by the runner's
+own `trap` the moment the drive ended (`drive43-run.sh`, s71 scratchpad) — 0 listeners left on
+:8591/:5392/:9342 after both runs.
+
+**The gates as built.** Package `tsc` 0; `tests/record.test.ts` 29/29; the whole suite 54 files,
+1445/1445, exit 0 in 166 s; the editor's `tsc` 0. **The arms** (`mut43b.py` / `runmut43b.sh`,
+s71 scratchpad — s70's `mut43.py` re-anchored after the effect-form fix, `snap43-post` retaken
+from the gate-green source first, and two arms added for the fix itself), each tsc-gated,
+each restored `diff -rq` clean:
+
+| arm | what it removes | killed | by |
+|---|---|---|---|
+| A | `RECORD_TYPE` from `OWN_CHAIN_OUTPUTS` | 2 | the §D wire-order row, the fixture |
+| B | the earn scan's `attachedRecordNodes.add` | 19 | nearly every row |
+| C | the wired form's `Missing Id.` throw | **12** | the guard rows *and every emitted-typecheck row* — the guard is also the **narrowing**: without it the Id local is `string \| undefined` and `fetchPageById(id)` is a TS2345 |
+| D | the effect pass (`viaEffect`) | 7 | the effect rows, the fixture |
+| E | the declared-type coercion | 4 | the coercion rows |
+| F | `fillMaterialize` over the effects | 5 | the effect materialize rows, the fixture (TS2552) |
+| G | the render pass's `isRecordRead` (`id` only) | 7 | the render reads |
+| H | `encodeURIComponent` in `fetchOne` | 2 | the client golden — read by two rows |
+| I | the effect's silent `return` on an empty Id | 4 | the two effect-form rows + two typecheck rows |
+| J | the effect's `set…Row(undefined)` clear | 1 | the row-clear row |
+
+⚠️ Arm J's first shape (`const clear = [];`) was **not a kill — it was a TS7034**, an untyped
+empty literal, and the tsc gate reported "not a kill" while measuring nothing; re-shaped to
+`const clear: string[] = []` it killed its one row. A mutant that deletes an initialiser must
+keep the declared type or the arm is a blank.
+
+**The drive**, `EXPECTED43.md` written by s70 before any run; harness re-emitted and rebuilt
+after the effect-form fix (`.env` → :8591, the bundle carrying the string once); the two `Page`
+records from `control43.mjs`; `localStorage.clear()` after the first load.
+
+🔴 **First run: D1–D7 as predicted, D8 timed out.** The drive waited 8 s for the live Error to
+start *"Could not reach"* and threw — and, throwing, lost its snapshot of D1–D7 (the `out`
+object printed only at the end; the backend's own log had to stand in: six GETs at exactly the
+steps predicted — D2, D3, D4, D5, D7 ×2 — and none at D1 or D6; SIGTERM at D8 "stopped cleanly").
+The cell was then **observed**, not inferred: the pre-fix bundle served with no backend, an Id
+typed — `[9]` read **`Failed to fetch`** in 58 ms, and Load put the same two words in `[5]` and
+`[7]`. Chrome's own sentence.
+
+**The defect is older than §43.** `client.ts` has two `fetch` sites: `callFunction()` (§41)
+wraps a network failure as *"Could not reach the backend at <endpoint>"*; `request()` — which
+every query, record, session and user verb rides — did not, so an exported app answered the
+**same condition with two sentences** depending on which verb met it, and the Cloud Function
+drive's D7 measured only the wrapped one. `EXPECTED43.md` copied §42's sentence onto a node that
+rode the other helper — [[a-predicted-sentence-belongs-to-one-code-path]]: a prediction is a
+claim about a *producer*, and nobody had named which helper the Record called. **Fix:** `request()`
+wraps its `fetch` in the same `try/catch` with the same sentence (`emitApp.ts`); the client golden
+regenerated, the diff exactly that block; a row in `backend-client.test.ts` pins **two `fetch`
+sites, two wraps, one sentence, each `catch` before `response.text()`** — the cardinality, not a
+substring (a `not.toContain('Failed to fetch')` matched the comment that names it, and was
+dropped for that reason). The interpreter's Record reports whatever its store passes to
+`setError`; the export's client owns its own sentence, and now has exactly one.
+
+**Second run, fixed client: 72 cells, 0 diffs** (`drive43.log`, compared programmatically
+against the table in `EXPECTED43.md`, `backendStoppedBeforeD8: true`). Read out of it:
+
+- D1 quiet — the effect ran at mount with an empty Id and printed nothing, made no request.
+- D2 the effect read on the Id alone (`[8]` Welcome) while the wired row stayed empty.
+- D4 the live row **cleared** on the new Id and its Error read `Object not found.` (the
+  backend's sentence, carried through `request()`); the wired row kept Welcome — §43.3's
+  residual, still written down, still not fixed.
+- D6 an empty Id: the wired form's `Missing Id.` in `[5]` and `[7]`, the effect silent, `[9]`
+  keeping the old `Object not found.` (never cleared — `dbmodelnode2.ts`).
+- D7 both forms read B; every earlier Error kept its last sentence.
+- D8 the backend down: `[5]`, `[7]`, `[9]` all *"Could not reach the backend at
+  http://localhost:8591"* — the sentence, from both helpers, one. Console errors: `[]` (the
+  harness listens to `Runtime.consoleAPICalled`/`exceptionThrown`, not `Log.entryAdded`, so
+  Chrome's `net::ERR_CONNECTION_REFUSED` lines are not in that list — the cells are the
+  measurement, the empty list is not).
+
+**The gates after the wrap** (each alone on the box): package `tsc` 0 · `backend-client.test.ts`
+17/17 · the whole suite **54 files, 1446/1446, exit 0** · the editor's `tsc` 0 ·
+`export-ledger:check` OK (176 types, 89 translated) · picker **holds at 82/127** — the wrap is a
+client fix under a node already counted. Committed by pathspec with §43; the README's one
+uncommitted line is a peer's EXP-001 publish note and stays theirs.
+

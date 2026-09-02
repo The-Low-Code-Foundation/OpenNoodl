@@ -1,0 +1,47 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/project-v2.json",
+  "name": "Page Desk",
+  "id": "c0a11de5-3ea1-4b3e-9f2a-1a2b3c4d6e01",
+  "version": "4",
+  "nodegxVersion": "0.1.0",
+  "runtimeVersion": "react19",
+  "created": "2026-09-02T14:40:00.000Z",
+  "modified": "2026-09-02T14:40:00.000Z",
+  "settings": {
+    "htmlTitle": "Page Desk",
+    "navigationPathType": "path"
+  },
+  "structure": {
+    "componentsDir": "components",
+    "assetsDir": "assets"
+  },
+  "metadata": {
+    "cloudservices": {
+      "instanceId": "backend_pagedesk",
+      "endpoint": "http://localhost:8581",
+      "appId": "backend_pagedesk",
+      "type": "nodegx"
+    },
+    "dbCollections": [
+      {
+        "name": "Page",
+        "columns": [
+          {
+            "name": "title",
+            "type": "String"
+          },
+          {
+            "name": "published",
+            "type": "Boolean"
+          },
+          {
+            "name": "navOrder",
+            "type": "Number"
+          }
+        ],
+        "createdAt": null
+      }
+    ]
+  },
+  "rootNodeId": "c0a11de5-3ea1-4b3e-9f2a-1a2b3c4d6e04"
+}

@@ -238,6 +238,19 @@ const CLOUD_FUNCTION_TYPE = 'CloudFunction2';
 const CLOUD_FUNCTION_OUTPUTS = ['done', 'failure', 'completed', 'error'];
 
 /**
+ * EXP-011 §43 — `Record` (`DbModel2`): `Fetch`, an `Id` (`modelId`) and a class (`collectionName`),
+ * one `prop-<column>` output per column of the class, `id`, Done/Failure/Completed and `Error`.
+ * The runtime GETs `/classes/<class>/<id>` (`scheduleFetch` → `cloudstore.fetch`, dbmodelnode2.ts)
+ * and flags every `prop-<key>` the answer carries. Two output families are refused by name:
+ * `fetched` fires when an Id is *bound* and again after every read (two events on one port), and
+ * `changed` / `changed-<column>` fire from the in-process record store whenever any node writes
+ * the record — a pub/sub with no static shape. With `Fetch` unwired the node reads on every
+ * change of its Id (`runOnValueChange`, `controlSignal: 'fetch'`), which is the effect form.
+ */
+const RECORD_TYPE = 'DbModel2';
+const RECORD_OUTPUTS = ['done', 'failure', 'completed', 'error', 'id'];
+
+/**
  * EXP-011 §40. The outputs each node's **own compile** consumes when the node attaches — its
  * Done/Failure chains and the sibling pulses it drops with a reason of its own.
  *
@@ -264,7 +277,8 @@ const OWN_CHAIN_OUTPUTS: Record<string, readonly string[]> = {
   [NOW_TYPE]: ['done'],
   [UNIQUE_ID_TYPE]: ['done', 'completed'],
   [UUID_TYPE]: ['done', 'failure', 'completed'],
-  [CLOUD_FUNCTION_TYPE]: ['done', 'failure', 'completed']
+  [CLOUD_FUNCTION_TYPE]: ['done', 'failure', 'completed'],
+  [RECORD_TYPE]: ['done', 'failure', 'completed']
 };
 /**
  * The node's **own** placeholder regex, and deliberately not the Router's.
@@ -746,6 +760,12 @@ export type ValueExpr =
   | { kind: 'http-out'; nodeId: string; output: string; viaState?: string }
   /** EXP-011 §41 — a `Cloud Function`'s `Error` or an `out-<result>`, the HTTP shape one node over. */
   | { kind: 'cloud-out'; nodeId: string; output: string; viaState?: string }
+  /**
+   * EXP-011 §43 — a `Record`'s `Error` or a `prop-<column>`. `tsType` is the column's declared
+   * type off the project's schema snapshot (`tsColumnType`), `unknown` for a column the snapshot
+   * does not carry — the sink decides what an `unknown` needs, as it does for an untyped Variable.
+   */
+  | { kind: 'record-out'; nodeId: string; output: string; tsType: string; viaState?: string }
   /**
    * A `Now` output (EXP-011 Tier 1.3) — the instant of the last Read.
    *
@@ -1234,6 +1254,42 @@ export type HandlerAction =
       failThen: HandlerAction[];
     }
   /**
+   * A `Record`'s `Fetch` (EXP-011 §43) — the Cloud Function shape with one argument, the Id:
+   *
+   * ```
+   * try {
+   *   const pageRecord = await fetchPageById(pageId.get());
+   *   setPageRow(pageRecord);          // only where something outside the chain reads a column
+   *   …then
+   * } catch (error) {
+   *   const message = error instanceof Error ? error.message : String(error);
+   *   setPageError(message); …failThen
+   * }
+   * ```
+   * An empty Id throws `Missing Id.` inside the try — the runtime's own sentence, reported as
+   * Failure before any request (`scheduleFetch`) — so it lands in the catch like every other failure.
+   */
+  | {
+      kind: 'record-fetch';
+      nodeId: string;
+      /** The collection module's exported `fetch<Type>ById`. */
+      fnName: string;
+      id: ValueExpr;
+      /** The record row, when anything outside the chain reads a column. */
+      materialize?: string;
+      /** The `Error` output's row — written on every failure, never cleared (the runtime's own). */
+      errorState: string;
+      /**
+       * §43.2 — the effect form. `setModelID` rebinds the node to a fresh model the moment a new
+       * Id arrives (its outputs read undefined before any read) and binds *nothing* on an empty
+       * one, reading nothing and reporting nothing — so the effect clears the row first and
+       * returns silently on an empty Id, where the wired form's Fetch throws `Missing Id.`.
+       */
+      viaEffect?: true;
+      then: HandlerAction[];
+      failThen: HandlerAction[];
+    }
+  /**
    * `Now`'s `Read` (EXP-011 Tier 1.3) — re-read the clock, then run the `done` chain.
    *
    * ```
@@ -1470,6 +1526,9 @@ export interface StateVarPlan {
     /** EXP-011 §41 — a `Cloud Function`'s results row and its Error row. */
     | 'cloud'
     | 'cloud-error'
+    /** EXP-011 §43 — a `Record`'s row and its Error row. */
+    | 'record-row'
+    | 'record-row-error'
     | 'external-link-error'
     | 'navigate-path-error'
     | 'now'
@@ -1703,6 +1762,30 @@ export interface CloudCallPlan {
   results: string[];
 }
 
+/** One `Record` node's read (EXP-011 §43) — what its collection module has to export for it. */
+export interface RecordReadPlan {
+  nodeId: string;
+  collectionName: string;
+  /** `Page` — the collection module's interface, the row's type. */
+  typeName: string;
+  moduleBase: string;
+  /** `fetchPageById`. */
+  fnName: string;
+  answerLocal: string;
+  messageLocal: string;
+  /** The Id, bound before the guard so the emitted `Missing Id.` test and the call read one value. */
+  idLocal: string;
+  /** Columns the graph reads off this node that the schema snapshot does not carry — `unknown` in the interface. */
+  reads: Array<{ name: string; tsType: string }>;
+}
+
+/** A `Record` whose `Fetch` is unwired (EXP-011 §43): the read, run from an effect keyed on its Id. */
+export interface RecordEffectPlan {
+  nodeId: string;
+  action: HandlerAction;
+  comment: string;
+}
+
 export interface RepeaterPlan {
   nodeId: string;
   /** Legacy component path of the template ("/Components/PuppyCard"), or null when unset. */
@@ -1899,6 +1982,8 @@ export interface ComponentPlan {
   httpCalls: HttpCallPlan[];
   /** EXP-011 §41. */
   cloudCalls: CloudCallPlan[];
+  /** EXP-011 §43. */
+  recordReads: RecordReadPlan[];
   repeaters: Record<string, RepeaterPlan>;
   /** Static Data nodes hoisted to module constants (STATIC-DATA-TARGET §3), resolution order. */
   staticData: StaticDataPlan[];
@@ -1936,6 +2021,8 @@ export interface ComponentPlan {
   branchEffects: BranchEffectPlan[];
   /** Value Changed effects (EXP-011 §39), compile order — one useEffect + one useRef each. */
   valueChangedEffects: ValueChangedEffectPlan[];
+  /** EXP-011 §43. Records whose Fetch is unwired, compile order — one useEffect keyed on the Id each. */
+  recordEffects: RecordEffectPlan[];
   /**
    * Value output ports this component lifts (§4d child side) — the parent side consults this
    * list off the target's plan, so parent and child agree by construction (the s10 rule).
@@ -2169,6 +2256,7 @@ function planComponent(
     sessionCalls: [],
     httpCalls: [],
     cloudCalls: [],
+    recordReads: [],
     repeaters: {},
     staticData: [],
     jsFunctions: {},
@@ -2177,6 +2265,7 @@ function planComponent(
     syncEffects: [],
     pushEffects: [],
     branchEffects: [],
+    recordEffects: [],
     valueChangedEffects: [],
     liftedOutputProps: [],
     instanceLifted: {},
@@ -3581,6 +3670,93 @@ function planComponent(
   };
   /** Cloud Function nodes whose `Call` actually attached — the HTTP rule one node over. */
   const attachedCloudNodes = new Set<string>();
+
+  // ---- `Record` (EXP-011 §43) --------------------------------------------------------------
+  //
+  // The Cloud Function shape with the collection module where the functions module was: the
+  // read is `fetch<Type>ById` beside the class's query and verbs, the row is typed by the
+  // class's interface, and a chain reads the local while everything else reads the row.
+  const recordChainScope = new Map<string, 'done' | 'failure'>();
+  const recordNames = new Map<
+    string,
+    { fnName: string; typeName: string; moduleBase: string; collectionName: string; answerLocal: string; messageLocal: string; idLocal: string }
+  >();
+  const recordNamesOf = (node: NodeIR) => {
+    let names = recordNames.get(node.id);
+    if (names === undefined) {
+      const collectionName = String(literalParam(node, 'collectionName') ?? 'Record');
+      const { typeName, moduleBase } = collectionModuleNames(collectionName);
+      // "Page record" → `page…`: a trailing "record" in the label would double with the local's own suffix.
+      const label = (node.authoredLabel ?? collectionName).replace(/[^A-Za-z0-9]+/g, ' ').trim().replace(/\s*record$/i, '');
+      const base = label.length > 0 ? pascalCase(label).replace(/[^A-Za-z0-9_$]/g, '') : 'Record';
+      let stem = base;
+      let counter = 2;
+      while (usedHttpNames.has(stem)) stem = `${base}${counter++}`;
+      usedHttpNames.add(stem);
+      const localBase = stem.charAt(0).toLowerCase() + stem.slice(1);
+      const local = (suffix: string) => {
+        let name = `${localBase}${suffix}`;
+        let n = 2;
+        while (stateNameTaken(name)) name = `${localBase}${suffix}${n++}`;
+        usedStateVarNames.add(name);
+        return name;
+      };
+      names = {
+        fnName: `fetch${typeName}ById`,
+        typeName,
+        moduleBase,
+        collectionName,
+        answerLocal: local('Record'),
+        messageLocal: local('Message'),
+        // `RecordId`, not `Id`: a Variable named `pageId` is the ordinary feeder, and `pageId.get()` must not be assigned to a `pageId`.
+        idLocal: local('RecordId')
+      };
+      recordNames.set(node.id, names);
+    }
+    return names;
+  };
+  /** A column's declared type off the schema snapshot, `unknown` where the snapshot has no such column. */
+  const recordColumnType = (collectionName: string, column: string): string => {
+    const col = ir.project.collections.find((c) => c.name === collectionName)?.columns.find((c) => c.name === column);
+    return col === undefined ? 'unknown' : tsColumnType(col.type);
+  };
+  const recordErrorVars = new Map<string, StateVarPlan>();
+  const recordErrorStateOf = (node: NodeIR): StateVarPlan => {
+    let stateVar = recordErrorVars.get(node.id);
+    if (stateVar === undefined) {
+      stateVar = allocStateVar(
+        node.authoredLabel === undefined ? undefined : `${node.authoredLabel} Error`,
+        'recordError',
+        'string | undefined',
+        null,
+        node.id,
+        'record-row-error',
+        `The Error output of ${node.authoredLabel ? `"${node.authoredLabel}"` : 'the Record'} — why the last read failed, and never cleared by a later success (dbmodelnode2.ts).`
+      );
+      recordErrorVars.set(node.id, stateVar);
+    }
+    return stateVar;
+  };
+  const recordAnswerVars = new Map<string, StateVarPlan>();
+  const recordAnswerStateOf = (node: NodeIR): StateVarPlan => {
+    let stateVar = recordAnswerVars.get(node.id);
+    if (stateVar === undefined) {
+      const names = recordNamesOf(node);
+      stateVar = allocStateVar(
+        node.authoredLabel === undefined ? undefined : `${node.authoredLabel} Row`,
+        'recordRow',
+        `${names.typeName} | undefined`,
+        null,
+        node.id,
+        'record-row',
+        `The record the last ${names.fnName} read — undefined until the first read, as the node's property outputs read before one has been made.`
+      );
+      recordAnswerVars.set(node.id, stateVar);
+    }
+    return stateVar;
+  };
+  /** Record nodes whose `Fetch` attached — from a trigger, or from the Id effect (§43.2). */
+  const attachedRecordNodes = new Set<string>();
 
   // ---- `Now` (EXP-011 Tier 1.3) -----------------------------------------------------------
   //
@@ -5182,6 +5358,48 @@ function planComponent(
         : { kind: 'cloud-out', nodeId: fromNode.id, output: fromProperty, viaState: cloudAnswerStateOf(fromNode).name };
     }
     /**
+     * A `Record`'s outputs (EXP-011 §43) — the Cloud Function rules with the column types the
+     * schema declares. `Id` is the Id the node was given: `setModelID` binds it the moment it
+     * arrives, before any read, so it resolves to the feeder rather than to the row.
+     */
+    if (fromNode.type === RECORD_TYPE) {
+      const scope = recordChainScope.get(fromNode.id);
+      if (fromProperty === 'done' || fromProperty === 'failure' || fromProperty === 'completed' || fromProperty === 'fetched') {
+        ctx.defer = `its ${fromProperty} output is consumed as a value — a pulse carries nothing to read`;
+        return null;
+      }
+      if (!RECORD_OUTPUTS.includes(fromProperty) && !fromProperty.startsWith('prop-')) {
+        ctx.defer = fromProperty === 'changed' || fromProperty.startsWith('changed-')
+          ? `its ${fromProperty} output fires from the in-process record store whenever any node writes this record — a pub/sub with no static shape`
+          : `its ${fromProperty} output is not a port this node publishes`;
+        return null;
+      }
+      if (scope === 'failure' && fromProperty !== 'error' && fromProperty !== 'id') {
+        ctx.defer = `its ${fromProperty} is read from the Failure chain — that arm runs where no record arrived, and the value the interpreter holds there is the previous read's`;
+        return null;
+      }
+      if (scope === undefined && !attachedRecordNodes.has(fromNode.id)) {
+        const compiled = compiledOf(fromNode, 'fetch');
+        ctx.defer = 'defer' in compiled ? compiled.defer : 'its Fetch is never fired by a translatable trigger';
+        return null;
+      }
+      if (fromProperty === 'id') {
+        const idWire = component.connections.find((c) => c.toId === fromNode.id && c.toProperty === 'modelId');
+        if (idWire !== undefined) return resolveExpr(nodeById.get(idWire.fromId), idWire.fromProperty, ctx);
+        const literal = literalParam(fromNode, 'modelId');
+        return { kind: 'literal', value: typeof literal === 'string' ? literal : '' };
+      }
+      if (fromProperty === 'error') {
+        return scope === 'failure'
+          ? { kind: 'record-out', nodeId: fromNode.id, output: 'error', tsType: 'string' }
+          : { kind: 'record-out', nodeId: fromNode.id, output: 'error', tsType: 'string', viaState: recordErrorStateOf(fromNode).name };
+      }
+      const tsType = recordColumnType(recordNamesOf(fromNode).collectionName, fromProperty.slice('prop-'.length));
+      return scope === 'done'
+        ? { kind: 'record-out', nodeId: fromNode.id, output: fromProperty, tsType }
+        : { kind: 'record-out', nodeId: fromNode.id, output: fromProperty, tsType, viaState: recordAnswerStateOf(fromNode).name };
+    }
+    /**
      * `Now`'s outputs (EXP-011 Tier 1.3) — the instant of the last Read, in the chain-local form
      * inside the Read chain and through the state row everywhere else (§8.2's rule, second
      * construct). `setNow(...)` does not change `now` inside the closure that called it, so a
@@ -5459,6 +5677,10 @@ function planComponent(
       // EXP-011 §41. The row is undefined until the first call, and a result the function did
       // not answer is undefined on the node too.
       case 'cloud-out':
+        return true;
+      // EXP-011 §43. The row is undefined until the first read, and a column the record does not
+      // carry is undefined on the node too.
+      case 'record-out':
         return true;
       /**
        * Always, and every road there is one the interpreter takes too (EXP-011 Tier 1.3): a date
@@ -5757,6 +5979,9 @@ function planComponent(
       // EXP-011 §41. `Error` is a string the runtime writes; every result port is `*`.
       case 'cloud-out':
         return expr.output === 'error' ? 'string' : 'unknown';
+      // EXP-011 §43. `Error` is a string the runtime writes; a column is what the schema declares.
+      case 'record-out':
+        return expr.output === 'error' ? 'string' : expr.tsType;
       /**
        * `unknown` for all five, `dateToString` included (EXP-011 Tier 1.3).
        *
@@ -5839,6 +6064,8 @@ function planComponent(
     [HTTP_TYPE]: 'fetch',
     // EXP-011 §41. `Cloud Function`'s only action port.
     [CLOUD_FUNCTION_TYPE]: 'call',
+    // EXP-011 §43. `Record`'s only action port; with it unwired the node is an effect (§43.2).
+    [RECORD_TYPE]: 'fetch',
     // EXP-011 Tier 1.3. `Now` is the date family's only action; the other five are pure and have
     // no trigger port at all — they recompute, which is not something a chain can fire.
     [NOW_TYPE]: 'read',
@@ -7052,6 +7279,111 @@ function planComponent(
     };
   };
 
+  /**
+   * A `Record`'s `Fetch` (EXP-011 §43) — `compileCloudCall` with one argument, the Id, and the
+   * collection module in place of the functions module. Refused by name: no class, a wired class,
+   * a second backend, a repeater-bound Id, two wires into the Id, no Id at all, a consumed
+   * `Fetched` / `Changed` / `Completed`, any other output, and a chain that defers.
+   */
+  const compileRecordFetch = (node: NodeIR): CompiledSink => {
+    const collectionName = literalParam(node, 'collectionName');
+    if (typeof collectionName !== 'string' || collectionName === '') {
+      return { defer: 'no class is named, so the node has no collection to read a record from' };
+    }
+    if (wiredPorts.has(`${node.id}:collectionName`)) {
+      return { defer: 'its Class is wired — which collection is read is not statically knowable' };
+    }
+    const backendId = literalParam(node, 'backendId');
+    if (typeof backendId === 'string' && backendId !== '' && backendId !== '_active_') {
+      return { defer: `it reads from the backend "${backendId}" rather than the project's active one — a second backend is not in this slice` };
+    }
+    if (literalParam(node, 'idSource') === 'foreach' || wiredPorts.has(`${node.id}:repeaterComponent`) || node.parameters.some((p) => p.name === 'repeaterComponent')) {
+      return { defer: "its Id Source is the enclosing repeater's row — row identity is not statically knowable in this slice" };
+    }
+    for (const wire of component.connections.filter((c) => c.fromId === node.id)) {
+      if (wire.fromProperty === 'completed') {
+        return {
+          defer:
+            'its Completed output is consumed — that pulse fires once however the read ended, and this slice emits the two arms rather than their join'
+        };
+      }
+      if (wire.fromProperty === 'fetched') {
+        return { defer: 'its Fetched output is consumed — that pulse fires when an Id is bound and again after every read, and this slice emits only the read' };
+      }
+      if (wire.fromProperty === 'changed' || wire.fromProperty.startsWith('changed-')) {
+        return { defer: `its ${wire.fromProperty} output is consumed — it fires from the in-process record store whenever any node writes this record, which has no static shape` };
+      }
+      if (!RECORD_OUTPUTS.includes(wire.fromProperty) && !wire.fromProperty.startsWith('prop-')) {
+        return { defer: `its ${wire.fromProperty} output is consumed, and this node publishes only Done, Failure, Completed, Error, Id and its properties` };
+      }
+    }
+    const idWires = component.connections.filter((c) => c.toId === node.id && c.toProperty === 'modelId');
+    if (idWires.length > 1) return { defer: 'two wires feed its Id — last-writer-wins is not statically ordered' };
+    const ctx = newCtx();
+    const consumes: string[] = [];
+    let id: ValueExpr;
+    if (idWires.length === 1) {
+      const source = nodeById.get(idWires[0].fromId);
+      const expr = resolveExpr(source, idWires[0].fromProperty, ctx);
+      if (expr === null) return { defer: ctx.defer ?? `its Id is fed by ${source?.type ?? 'nothing'}, which has no statically known source` };
+      if (isBooleanExpr(expr)) return { defer: 'its Id is fed a logic truth value — only truthiness sinks take one in this slice' };
+      id = expr;
+      consumes.push(idWires[0].key);
+    } else {
+      const literal = literalParam(node, 'modelId');
+      if (typeof literal !== 'string' || literal === '') {
+        return { defer: 'it names no record, so the runtime binds to nothing and never reads one' };
+      }
+      id = { kind: 'literal', value: literal };
+    }
+    // The columns the graph reads that the schema snapshot does not declare go into the interface
+    // as `unknown` — the record verbs' rule for a written column the snapshot lacks (§10a).
+    const names = recordNamesOf(node);
+    const reads: Array<{ name: string; tsType: string }> = [];
+    for (const c of component.connections) {
+      if (c.fromId !== node.id || !c.fromProperty.startsWith('prop-')) continue;
+      const column = c.fromProperty.slice('prop-'.length);
+      if (column === 'id' || reads.some((r) => r.name === column)) continue;
+      if (recordColumnType(names.collectionName, column) === 'unknown') reads.push({ name: column, tsType: 'unknown' });
+    }
+
+    recordChainScope.set(node.id, 'done');
+    const chain = doneChainOf(node);
+    recordChainScope.set(node.id, 'failure');
+    const failChain = doneChainOf(node, 'failure');
+    recordChainScope.delete(node.id);
+    if ('defer' in chain) return chain;
+    if ('defer' in failChain) return failChain;
+
+    const materialize = recordAnswerVars.get(node.id)?.name;
+    plan.recordReads.push({
+      nodeId: node.id,
+      collectionName: names.collectionName,
+      typeName: names.typeName,
+      moduleBase: names.moduleBase,
+      fnName: names.fnName,
+      answerLocal: names.answerLocal,
+      messageLocal: names.messageLocal,
+      idLocal: names.idLocal,
+      reads
+    });
+    return {
+      action: {
+        kind: 'record-fetch',
+        nodeId: node.id,
+        fnName: names.fnName,
+        id,
+        ...(materialize !== undefined ? { materialize } : {}),
+        errorState: recordErrorStateOf(node).name,
+        then: chain.then,
+        failThen: failChain.then
+      },
+      consumes: [...consumes, ...ctx.consumes, ...chain.consumes, ...failChain.consumes],
+      collapses: [...ctx.logicNodeIds, ...chain.collapses, ...failChain.collapses],
+      subscribes: [...ctx.subscriberIds, ...chain.subscribes, ...failChain.subscribes]
+    };
+  };
+
   const compileNowRead = (node: NodeIR): CompiledSink => {
     for (const wire of component.connections.filter((c) => c.fromId === node.id)) {
       if (wire.fromProperty === 'done' || NOW_OUTPUTS[wire.fromProperty] !== undefined) continue;
@@ -7934,6 +8266,7 @@ function planComponent(
     if (node.type === 'CollectionRemove') return compileCollectionRemove(node);
     if (node.type === HTTP_TYPE) return compileHttpFetch(node);
     if (node.type === CLOUD_FUNCTION_TYPE) return compileCloudCall(node);
+    if (node.type === RECORD_TYPE) return compileRecordFetch(node);
     if (node.type === NOW_TYPE) return compileNowRead(node);
     if (ID_NODES[node.type] !== undefined) return compileIdNew(node);
     if (node.type === 'Condition') return compileCondition(node);
@@ -8069,6 +8402,8 @@ function planComponent(
    * "the box is ticked", which is the gate the effect pass has already passed.
    */
   const reactiveConditionDefers = new Map<string, string>();
+  /** EXP-011 §43. Why a Record with `Fetch` unwired could not become an Id effect. */
+  const recordEffectDefers = new Map<string, string>();
   const compiling = new Set<string>();
   const compiledOf = (node: NodeIR, port: string): CompiledSink => {
     const key = `${node.id}:${port}`;
@@ -8153,6 +8488,8 @@ function planComponent(
       case 'http-out':
       /** EXP-011 §41 — `cloud-out`, on the same footing and for the same reason. */
       case 'cloud-out':
+      /** EXP-011 §43 — `record-out`, the same. */
+      case 'record-out':
         return true;
       /** `Now`, on the same footing as `http-out` and for the same reason. */
       case 'now-out':
@@ -8256,6 +8593,13 @@ function planComponent(
         case 'cloud-call':
           return (
             action.args.every((arg) => exprValidIn(arg.expr, context, invokedScope)) &&
+            actionsValidIn(action.then, context, invokedScope) &&
+            actionsValidIn(action.failThen, context, invokedScope)
+          );
+        // EXP-011 §43. The Id is read where the handler is; both chains run there too.
+        case 'record-fetch':
+          return (
+            exprValidIn(action.id, context, invokedScope) &&
             actionsValidIn(action.then, context, invokedScope) &&
             actionsValidIn(action.failThen, context, invokedScope)
           );
@@ -9062,6 +9406,16 @@ function planComponent(
         if (!Array.isArray(failThen)) return failThen;
         return { ...action, args, then, failThen };
       }
+      // EXP-011 §43. The Id is read before the await, so an earlier Set Variable must reach it.
+      case 'record-fetch': {
+        const id = snapExpr(action.id, snap);
+        if ('defer' in id) return id;
+        const then = snapActionList(action.then, snap);
+        if (!Array.isArray(then)) return then;
+        const failThen = snapActionList(action.failThen, snap);
+        if (!Array.isArray(failThen)) return failThen;
+        return { ...action, id, then, failThen };
+      }
       case 'jsfun-run': {
         if ((plan.jsFunctions[action.nodeId]?.inputs ?? []).some((i) => i.expr !== undefined && exprTouchesSnap(i.expr, snap))) {
           return { defer: 'a Function argument reads state written earlier in this chain — not translated in this slice' };
@@ -9661,6 +10015,12 @@ function planComponent(
           attachedCloudNodes.add(action.nodeId);
           scanActions(action.then);
           scanActions(action.failThen);
+        } else if (action.kind === 'record-fetch') {
+          // EXP-011 §43. Earned as a Cloud Function call is: the module export and the rows exist
+          // only for a Fetch that attached — from a trigger or from the Id effect.
+          attachedRecordNodes.add(action.nodeId);
+          scanActions(action.then);
+          scanActions(action.failThen);
         } else if (action.kind === 'date-now-read') {
           attachedNowNodes.add(action.nodeId);
           scanActions(action.then);
@@ -9859,8 +10219,46 @@ function planComponent(
     for (const id of compiled.subscribes ?? []) boundSubscribers.add(id);
   }
 
+  // EXP-011 §43. A `Record` whose `Fetch` is unwired reads on every change of its Id
+  // (`runOnValueChange`, `controlSignal: 'fetch'`, dbmodelnode2.ts) — a re-run keyed on the Id,
+  // which is a useEffect, not a handler. The reactive Condition's shape, for the same reason;
+  // a Record with `Fetch` wired is a handler action and never reaches here.
+  for (const node of component.nodes) {
+    if (node.type !== RECORD_TYPE || dispositions[node.id] !== undefined) continue;
+    if (wiredPorts.has(`${node.id}:fetch`)) continue;
+    if (!plan.file) {
+      recordEffectDefers.set(node.id, 'component emits no file to host the effect');
+      continue;
+    }
+    const compiled = compiledOf(node, 'fetch');
+    if ('defer' in compiled) {
+      recordEffectDefers.set(node.id, compiled.defer);
+      continue;
+    }
+    if (!actionsValidIn([compiled.action], { kind: 'render' })) {
+      recordEffectDefers.set(node.id, 'its Id or its chains read values that only exist inside a handler');
+      continue;
+    }
+    const snapped = snapAction(compiled.action, chainSnapshotFor(`effect:${node.id}`));
+    if ('defer' in snapped) {
+      recordEffectDefers.set(node.id, snapped.defer);
+      continue;
+    }
+    const into = `src/${plan.file.dir}/${plan.file.fileBase}.tsx`;
+    plan.recordEffects.push({
+      nodeId: node.id,
+      action: snapped.kind === 'record-fetch' ? { ...snapped, viaEffect: true } : snapped,
+      comment: `${node.authoredLabel ?? 'Record'} — read again whenever its Id changes (dbmodelnode2.ts runOnValueChange).`
+    });
+    dispositions[node.id] = { kind: 'collapsed', into };
+    for (const id of compiled.collapses ?? []) dispositions[id] = { kind: 'collapsed', into };
+    for (const key of compiled.consumes) consumed.add(key);
+    for (const id of compiled.subscribes ?? []) boundSubscribers.add(id);
+  }
+
     for (const effect of plan.branchEffects) scanActions([effect.action]);
     for (const effect of plan.valueChangedEffects) scanActions(effect.actions);
+    for (const effect of plan.recordEffects) scanActions([effect.action]);
     plan.popups = slotRegistry.filter((s) => attachedSlotKeys.has(s.slotKey));
     plan.closesPopup = closeAttached;
     plan.mutations = plan.mutations.filter((m) => attachedMutations.has(m.nodeId));
@@ -9910,14 +10308,18 @@ function planComponent(
   // pass did not collapse defers with its *compiled* reason, so the audit reads as a map of the
   // next slices rather than as "logic node (net.noodl.HTTP)".
   // EXP-011 §41: `Cloud Function` rides the same sweep — its `Call` is the HTTP `Fetch` one node over.
+  // EXP-011 §43: `Record` rides it too — with `Fetch` unwired, the reason is the Id effect's.
   for (const node of component.nodes) {
-    const trigger = node.type === HTTP_TYPE ? 'fetch' : node.type === CLOUD_FUNCTION_TYPE ? 'call' : undefined;
+    const trigger =
+      node.type === HTTP_TYPE || node.type === RECORD_TYPE ? 'fetch' : node.type === CLOUD_FUNCTION_TYPE ? 'call' : undefined;
     if (trigger === undefined || dispositions[node.id] !== undefined) continue;
     const compiled = compiledSinks.get(`${node.id}:${trigger}`);
     const reason =
-      compiled !== undefined && 'defer' in compiled
-        ? compiled.defer
-        : `its ${trigger === 'fetch' ? 'Fetch' : 'Call'} is never fired by a translatable trigger`;
+      node.type === RECORD_TYPE && recordEffectDefers.has(node.id)
+        ? recordEffectDefers.get(node.id)!
+        : compiled !== undefined && 'defer' in compiled
+          ? compiled.defer
+          : `its ${trigger === 'fetch' ? 'Fetch' : 'Call'} is never fired by a translatable trigger`;
     dispositions[node.id] = { kind: 'deferred', to: 'EXP-003', reason };
     notes.push(`node ${node.id} (${node.type}) deferred: ${reason}`);
   }
@@ -10230,6 +10632,10 @@ function planComponent(
     /** EXP-011 §41 — a `Cloud Function`'s `Error` or result into a rendered sink, HTTP's clause one node over. */
     const isCloudRead =
       fromNode.type === CLOUD_FUNCTION_TYPE && (connection.fromProperty === 'error' || connection.fromProperty.startsWith('out-'));
+    /** EXP-011 §43 — a `Record`'s `Error`, `Id` or a column into a rendered sink, the same clause one node over. */
+    const isRecordRead =
+      fromNode.type === RECORD_TYPE &&
+      (connection.fromProperty === 'error' || connection.fromProperty === 'id' || connection.fromProperty.startsWith('prop-'));
     /**
      * The date family's value outputs into a rendered sink (EXP-011 Tier 1.3) — a formatted date
      * in a Text, a `Is Same` gating `visible`, a `Day Name` in a label. Same rationale as the
@@ -10327,6 +10733,7 @@ function planComponent(
       !isValueVariableRead &&
       !isHttpRead &&
       !isCloudRead &&
+      !isRecordRead &&
       !isDateRead &&
       !isNowRead &&
       !isExternalLinkErrorRead &&
@@ -10979,6 +11386,12 @@ function planComponent(
             walkActions(action.then);
             walkActions(action.failThen);
             break;
+          // EXP-011 §43. The signed-in user's id is an ordinary Id to read a record by.
+          case 'record-fetch':
+            walkExpr(action.id);
+            walkActions(action.then);
+            walkActions(action.failThen);
+            break;
           /**
            * EXP-011 Tier 2.5. ⚠️ The `default: break` below is why this case is written out: a
            * link built from the signed-in user's id is an ordinary thing to author, and missing
@@ -11272,6 +11685,15 @@ function planComponent(
         if (index >= 0) plan.stateVars.splice(index, 1);
       }
     }
+    // EXP-011 §43. The same earning, one node over.
+    plan.recordReads = plan.recordReads.filter((r) => attachedRecordNodes.has(r.nodeId));
+    for (const vars of [recordErrorVars, recordAnswerVars]) {
+      for (const [nodeId, stateVar] of vars) {
+        if (attachedRecordNodes.has(nodeId)) continue;
+        const index = plan.stateVars.indexOf(stateVar);
+        if (index >= 0) plan.stateVars.splice(index, 1);
+      }
+    }
     /**
      * `External Link`'s Error row on the same rule (EXP-011 §14). The read allocates it before
      * the attachment pass has run, so a row belonging to a node whose `Do` never attached is
@@ -11302,6 +11724,14 @@ function planComponent(
           // EXP-011 §41. The same rule for a Cloud Function's results row.
           case 'cloud-call': {
             const answer = cloudAnswerVars.get(action.nodeId);
+            if (answer !== undefined && plan.stateVars.includes(answer)) action.materialize = answer.name;
+            fillMaterialize(action.then);
+            fillMaterialize(action.failThen);
+            break;
+          }
+          // EXP-011 §43. The same rule for a Record's row.
+          case 'record-fetch': {
+            const answer = recordAnswerVars.get(action.nodeId);
             if (answer !== undefined && plan.stateVars.includes(answer)) action.materialize = answer.name;
             fillMaterialize(action.then);
             fillMaterialize(action.failThen);
@@ -11429,6 +11859,8 @@ function planComponent(
     for (const receiver of plan.receivers) fillMaterialize(receiver.actions);
     for (const effect of plan.branchEffects) fillMaterialize([effect.action]);
     for (const effect of plan.valueChangedEffects) fillMaterialize(effect.actions);
+    // EXP-011 §43. A Record's Id effect writes its row exactly as a handler's Fetch does.
+    for (const effect of plan.recordEffects) fillMaterialize([effect.action]);
   }
 
   // Whatever analysis has not classified yet is logic: EXP-003's, or unknown-type debris.
@@ -12086,6 +12518,21 @@ function pluralize(word: string): string {
  * §4d). Queries and mutations both derive from this, so a project that reads *and* writes one
  * collection lands both in a single module rather than two that disagree about the type name.
  */
+/**
+ * A schema column's declared type as TS (EXP-002 §10a) — the one mapping, read by the collection
+ * module's interface and by a `Record`'s column reads (EXP-011 §43), so the two cannot disagree.
+ */
+export function tsColumnType(columnType: string): string {
+  switch (columnType) {
+    case 'Boolean':
+      return 'boolean';
+    case 'Number':
+      return 'number';
+    default:
+      return 'string';
+  }
+}
+
 export function collectionModuleNames(collectionName: string): {
   typeName: string;
   plural: string;

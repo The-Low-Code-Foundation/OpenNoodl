@@ -6,8 +6,16 @@
  */
 
 import { Catalog, CatalogIndex } from '../catalog';
-import { HttpCallPlan,
-  CloudCallPlan, HttpValuePlan, planProject, ProjectPlan, QueryPlan, SessionCallPlan } from '../analyze/plan';
+import {
+  HttpCallPlan,
+  CloudCallPlan,
+  HttpValuePlan,
+  planProject,
+  ProjectPlan,
+  QueryPlan,
+  SessionCallPlan,
+  tsColumnType
+} from '../analyze/plan';
 import { CloudServicesIR, ExportIR } from '../ir/types';
 import { emitComponent } from './component';
 import { DATE_LIB_PATH, dateLibSource } from './dateLib';
@@ -310,10 +318,15 @@ function apiModules(
     moduleBase: string;
     fetchName?: string;
     querySites: Site[];
+    /** EXP-011 §43. `fetch<Type>ById` and the Record nodes that read through it. */
+    fetchOneName?: string;
+    readSites: Site[];
     /** Mutation function name → its call sites, first-use order (RECORD-VERBS-TARGET §4d). */
     mutations: Map<string, { verb: 'create' | 'update' | 'delete'; sites: Site[] }>;
     /** Column → type, from the graph's writes; first-use order, first writer wins. */
     writes: Map<string, string>;
+    /** Column → type, from a Record's reads the snapshot does not declare (EXP-011 §43). */
+    reads: Map<string, string>;
   };
   const byCollection = new Map<string, Module>();
   const moduleFor = (collectionName: string, typeName: string, moduleBase: string): Module => {
@@ -321,7 +334,7 @@ function apiModules(
     if (entry === undefined) {
       byCollection.set(
         collectionName,
-        (entry = { typeName, moduleBase, querySites: [], mutations: new Map(), writes: new Map() })
+        (entry = { typeName, moduleBase, querySites: [], readSites: [], mutations: new Map(), writes: new Map(), reads: new Map() })
       );
     }
     return entry;
@@ -331,6 +344,15 @@ function apiModules(
       const entry = moduleFor(query.collectionName, query.typeName, query.moduleBase);
       entry.fetchName = query.fetchName;
       entry.querySites.push({ componentPath: plan.path, nodeId: query.nodeId });
+    }
+    // EXP-011 §43. A Record's read joins its class's module — one module per class, the query's rule.
+    for (const read of plan.recordReads) {
+      const entry = moduleFor(read.collectionName, read.typeName, read.moduleBase);
+      entry.fetchOneName = read.fnName;
+      entry.readSites.push({ componentPath: plan.path, nodeId: read.nodeId });
+      for (const column of read.reads) {
+        if (!entry.reads.has(column.name)) entry.reads.set(column.name, column.tsType);
+      }
     }
     for (const mutation of plan.mutations) {
       const entry = moduleFor(mutation.collectionName, mutation.typeName, mutation.moduleBase);
@@ -376,7 +398,7 @@ function apiModules(
   const stubs: Array<[string, string]> = [];
   for (const [collectionName, module] of byCollection) {
     const schema = ir.project.collections.find((c) => c.name === collectionName);
-    const { typeName, moduleBase, fetchName, querySites, mutations, writes } = module;
+    const { typeName, moduleBase, fetchName, querySites, fetchOneName, readSites, mutations, writes, reads } = module;
 
     // The schema snapshot is the authority on a column's declared type, and the graph's writes
     // are evidence of columns the snapshot does not carry — most of the corpus has no snapshot
@@ -385,6 +407,7 @@ function apiModules(
     const columns = new Map<string, string>();
     for (const col of schema?.columns ?? []) columns.set(col.name, tsColumnType(col.type));
     for (const [name, tsType] of writes) if (!columns.has(name)) columns.set(name, tsType);
+    for (const [name, tsType] of reads) if (!columns.has(name)) columns.set(name, tsType);
     columns.delete('id');
     const fields = [...columns].map(([name, tsType]) => `  ${tsFieldKey(name)}?: ${tsType};`);
     const parts: string[] = [
@@ -402,6 +425,24 @@ function apiModules(
               ` * fetched the \`${collectionName}\` collection from the project's NodeGX backend. Connect this to your\n` +
               ` * own data source; the export report lists every call site.\n */\n` +
               `export async function ${fetchName}(): Promise<${typeName}[]> {\n  return [];\n}\n`
+      );
+    }
+
+    // EXP-011 §43. A Record's read by Id. Connected: the client's `fetchOne` — the runtime's own
+    // `GET /classes/<class>/<id>`. The stub **throws**, unlike the query's: an empty list is a
+    // plausible state of a collection, but a record that does not exist is a Failure in the
+    // interpreter too ("Failed to fetch."), and the graph's Failure path is already drawn for it.
+    if (fetchOneName !== undefined) {
+      parts.push(
+        backend !== undefined
+          ? `/**\n${readSites.map((s) => siteLine(s, 'DbModel2')).join('\n')}\n` +
+              ` * Reads one \`${collectionName}\` record by Id from the project's NodeGX backend\n` +
+              ` * (src/api/client.ts); the export report lists every call site.\n */\n` +
+              `export async function ${fetchOneName}(id: string): Promise<${typeName}> {\n  return fetchOne<${typeName}>(${tsStringLiteral(collectionName)}, id);\n}\n`
+          : `/**\n${readSites.map((s) => siteLine(s, 'DbModel2')).join('\n')}\n` +
+              ` * read one \`${collectionName}\` record by Id from the project's NodeGX backend. Connect this to your\n` +
+              ` * own data source; until you do it throws, which is what the graph's Failure path already handles.\n */\n` +
+              `export async function ${fetchOneName}(id: string): Promise<${typeName}> {\n  throw new Error('${fetchOneName} is not connected to a backend yet');\n}\n`
       );
     }
 
@@ -445,6 +486,7 @@ function apiModules(
     if (backend !== undefined) {
       const clientImports = new Set<string>();
       if (fetchName !== undefined) clientImports.add('query');
+      if (fetchOneName !== undefined) clientImports.add('fetchOne');
       for (const { verb } of mutations.values()) {
         clientImports.add(verb === 'create' ? 'create' : verb === 'update' ? 'update' : 'remove');
       }
@@ -980,17 +1022,6 @@ function tsFieldKey(name: string): string {
   return /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(name) ? name : JSON.stringify(name);
 }
 
-function tsColumnType(columnType: string): string {
-  switch (columnType) {
-    case 'Boolean':
-      return 'boolean';
-    case 'Number':
-      return 'number';
-    default:
-      return 'string';
-  }
-}
-
 /** A collection name / endpoint / appId is user text; it lands in generated code only escaped. */
 function tsStringLiteral(text: string): string {
   return `'${text.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`;
@@ -1121,11 +1152,19 @@ async function request<T>(path: string, options: { method?: string; body?: unkno
   const sessionToken = readSession()?.sessionToken;
   if (sessionToken !== undefined) headers['X-Parse-Session-Token'] = sessionToken;
 
-  const response = await fetch(ENDPOINT + path, {
-    method: options.method ?? 'GET',
-    headers,
-    body: options.body === undefined ? undefined : JSON.stringify(options.body)
-  });
+  let response: Response;
+  try {
+    response = await fetch(ENDPOINT + path, {
+      method: options.method ?? 'GET',
+      headers,
+      body: options.body === undefined ? undefined : JSON.stringify(options.body)
+    });
+  } catch {
+    // A backend that cannot be reached is one sentence, the same one callFunction() throws — not
+    // the browser's own (Chrome says "Failed to fetch", Firefox "NetworkError when attempting to
+    // fetch resource"). The §43 drive read the browser's through a Record's Error (D8).
+    throw new Error(\`Could not reach the backend at \${ENDPOINT}\`);
+  }
   const text = await response.text();
   let json: { error?: unknown } | undefined;
   try {
@@ -1166,6 +1205,12 @@ export async function query<T extends { id: string }>(collection: string, params
     }
   });
   return response.results.map((record) => fromWire<T>(record));
+}
+
+/** One record by Id — the runtime's own \`GET /classes/<collection>/<id>\` (ParseWireAdapter.fetch). */
+export async function fetchOne<T extends { id: string }>(collection: string, id: string): Promise<T> {
+  const response = await request<Record<string, unknown>>(\`/classes/\${collection}/\${encodeURIComponent(id)}\`);
+  return fromWire<T>(response);
 }
 
 export async function create<T extends { id: string }>(collection: string, data: Partial<T>): Promise<T> {

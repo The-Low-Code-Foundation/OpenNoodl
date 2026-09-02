@@ -1,14 +1,14 @@
 {
   "$comment": "Every catalog node type, classified for code export (EXP-008). Gate: scripts/export-ledger/check.js (export-ledger:check) refuses an unclassified type; scripts/export-ledger/picker-coverage.js (export-ledger:picker) is the PHASE'S HEADLINE NUMBER and ratchets `pickerCoverageFloor`. Read EXP-008 before changing either: the corpus instance-coverage number this phase used to quote is a regression detector, not a priority oracle, and treating it as one cost twelve sessions.",
   "catalogFormatVersion": "1.1.0",
-  "pickerCoverageFloor": 81,
-  "$pickerCoverageFloorComment": "Placeable picker nodes (inNodePicker, not deprecated, browser-capable) that export. Ratchet: export-ledger:picker --check fails if it falls AND if it rises without this number moving, so every gain is held and every loss is a decision in the diff. 67 before Tier 2.5 added External Link (session 41), 60 of 127 at 2026-08-28 (51 before Tier 1.4 added the four value Variables, 55 before Tier 1.1 added the client-side data vocabulary, 59 before Tier 1.2 added HTTP Request); 66 before Tier 2.5 added Page Inputs. ⚠️ Tier 2.5 moved the number by one and fixed two nodes it does not count: the route table emitted `<Route path=\"/product/{id}\">`, which react-router matches against the literal text, and RouterNavigate emitted `navigate('/product/{id}')` to go with it. Both were already `translated` here, which is the ledger's known blind spot — it records whether a node is emitted, never whether what is emitted works. 68 before §15 added Navigate To Path (session 44). ⚠️ §15 also fixed a route the ledger cannot see, for the second time in this tier: a Page whose urlPath was authored with a leading slash emitted `<Route path=\"//note/:id\">`, which react-router matches against nothing, while the Router trims the page pattern before matching — so the project routed in the app it was exported from and nowhere else. Every fixture happens to author the path unslashed. 69 before §30 translated Remove Object From Array (session 59) — and that node is the ledger’s blind spot in its sharpest form, because it counts as translated on ONE wire shape and refuses the rest by name; §30 lists the three gates. 73 before §37 added the id pair — `Unique Id` and `UUID` (session 66); ⚠️ they are two nodes and NOT two spellings of one, `Model.guid()` being ten characters of `Math.random()` where `UUID` is a v4 from the platform CSPRNG, so a slice that translated them to one generator would raise this number by two and be wrong about half of it. 80 after §39 added Log, Delay and Value Changed (session 68). 81 after §41 added Cloud Function (session 69) — the first of the nine Cloud Services, and EXP-009 AC4.",
-  "$customNodesComment": "EXP-010 AC6, settled 2026-08-28: custom nodes are DELIBERATELY not in this file and not in the picker number, and the statement about them is categorical rather than a percentage. A custom node type comes from a project's own noodl_modules/, so its population is per-project and unbounded — putting it in the numerator inflates a ratio, and putting it in both halves makes the denominator move with whichever project you point the tool at. That is precisely the instance-weighted corpus number this phase spent twelve sessions being misled by (see $comment). Adding these types as `entries` would also be a false claim about the catalog, which is what this file is a ledger OF. The claim instead: a kit's VISUAL nodes (`reactNodes`, i.e. a definition with getReactComponent) export and render; a kit's LOGIC nodes (`nodes`, e.g. tally-kit's whole vocabulary) do not, and every instance of one is named in the report. Both halves are graded by tests/custom-nodes.test.ts, which is the ratchet for this claim.",
+  "pickerCoverageFloor": 82,
+  "$pickerCoverageFloorComment": "Placeable picker nodes (inNodePicker, not deprecated, browser-capable) that export. Ratchet: export-ledger:picker --check fails if it falls AND if it rises without this number moving, so every gain is held and every loss is a decision in the diff. 67 before Tier 2.5 added External Link (session 41), 60 of 127 at 2026-08-28 (51 before Tier 1.4 added the four value Variables, 55 before Tier 1.1 added the client-side data vocabulary, 59 before Tier 1.2 added HTTP Request); 66 before Tier 2.5 added Page Inputs. \u26a0\ufe0f Tier 2.5 moved the number by one and fixed two nodes it does not count: the route table emitted `<Route path=\"/product/{id}\">`, which react-router matches against the literal text, and RouterNavigate emitted `navigate('/product/{id}')` to go with it. Both were already `translated` here, which is the ledger's known blind spot \u2014 it records whether a node is emitted, never whether what is emitted works. 68 before \u00a715 added Navigate To Path (session 44). \u26a0\ufe0f \u00a715 also fixed a route the ledger cannot see, for the second time in this tier: a Page whose urlPath was authored with a leading slash emitted `<Route path=\"//note/:id\">`, which react-router matches against nothing, while the Router trims the page pattern before matching \u2014 so the project routed in the app it was exported from and nowhere else. Every fixture happens to author the path unslashed. 69 before \u00a730 translated Remove Object From Array (session 59) \u2014 and that node is the ledger\u2019s blind spot in its sharpest form, because it counts as translated on ONE wire shape and refuses the rest by name; \u00a730 lists the three gates. 73 before \u00a737 added the id pair \u2014 `Unique Id` and `UUID` (session 66); \u26a0\ufe0f they are two nodes and NOT two spellings of one, `Model.guid()` being ten characters of `Math.random()` where `UUID` is a v4 from the platform CSPRNG, so a slice that translated them to one generator would raise this number by two and be wrong about half of it. 80 after \u00a739 added Log, Delay and Value Changed (session 68). 81 after \u00a741 added Cloud Function (session 69) \u2014 the first of the nine Cloud Services, and EXP-009 AC4.",
+  "$customNodesComment": "EXP-010 AC6, settled 2026-08-28: custom nodes are DELIBERATELY not in this file and not in the picker number, and the statement about them is categorical rather than a percentage. A custom node type comes from a project's own noodl_modules/, so its population is per-project and unbounded \u2014 putting it in the numerator inflates a ratio, and putting it in both halves makes the denominator move with whichever project you point the tool at. That is precisely the instance-weighted corpus number this phase spent twelve sessions being misled by (see $comment). Adding these types as `entries` would also be a false claim about the catalog, which is what this file is a ledger OF. The claim instead: a kit's VISUAL nodes (`reactNodes`, i.e. a definition with getReactComponent) export and render; a kit's LOGIC nodes (`nodes`, e.g. tally-kit's whole vocabulary) do not, and every instance of one is named in the report. Both halves are graded by tests/custom-nodes.test.ts, which is the ratchet for this claim.",
   "entries": [
     {
       "typeName": "AddDbModelRelation",
       "status": "deferred",
-      "exemption": "scheduled — EXP-011 Tier 2: the record verbs’ backend neighbours — §3 did not name them; grouped with Tier 2.6 in session 35 because they are the same backend work and land with it or not at all"
+      "exemption": "scheduled \u2014 EXP-011 Tier 2: the record verbs\u2019 backend neighbours \u2014 \u00a73 did not name them; grouped with Tier 2.6 in session 35 because they are the same backend work and land with it or not at all"
     },
     {
       "typeName": "And",
@@ -18,7 +18,7 @@
     {
       "typeName": "Animation",
       "status": "deferred",
-      "exemption": "deliberately out of scope — the type is deprecated in the catalog, so nobody building today is offered one. A project that still holds one exports it as a named deferral, which is the right answer for a node its own editor has retired"
+      "exemption": "deliberately out of scope \u2014 the type is deprecated in the catalog, so nobody building today is offered one. A project that still holds one exports it as a named deferral, which is the right answer for a node its own editor has retired"
     },
     {
       "typeName": "Boolean",
@@ -28,7 +28,7 @@
     {
       "typeName": "Boolean To String",
       "status": "translated",
-      "note": "EXP-011 §38 (session 67): one call into src/lib/util.ts — `currentInput ? trueString : falseString` by truthiness, with initialize's empty strings as the fallbacks. Its Selector Changed signal is not read: it fires from a value change, which is effect() work"
+      "note": "EXP-011 \u00a738 (session 67): one call into src/lib/util.ts \u2014 `currentInput ? trueString : falseString` by truthiness, with initialize's empty strings as the fallbacks. Its Selector Changed signal is not read: it fires from a value change, which is effect() work"
     },
     {
       "typeName": "Button",
@@ -38,37 +38,37 @@
     {
       "typeName": "CSS Definition",
       "status": "deferred",
-      "exemption": "scheduled — EXP-011 Tier 3: global CSS (§3 Tier 3.9). ⚠️ Every instance in the corpus is the empty stub \".group1 \", so it would buy nothing measurable there — build it against a real project"
+      "exemption": "scheduled \u2014 EXP-011 Tier 3: global CSS (\u00a73 Tier 3.9). \u26a0\ufe0f Every instance in the corpus is the empty stub \".group1 \", so it would buy nothing measurable there \u2014 build it against a real project"
     },
     {
       "typeName": "Checkbox",
       "status": "translated",
-      "note": "legacy alias of net.noodl.controls.checkbox — same appearance:none translation"
+      "note": "legacy alias of net.noodl.controls.checkbox \u2014 same appearance:none translation"
     },
     {
       "typeName": "Circle",
       "status": "translated",
-      "note": "inline SVG with the runtime arc paths computed at generation time (VISUALS-TARGET §7)"
+      "note": "inline SVG with the runtime arc paths computed at generation time (VISUALS-TARGET \u00a77)"
     },
     {
       "typeName": "Cloud File",
       "status": "deferred",
-      "exemption": "scheduled — EXP-011 Tier 2: Cloud Services (§3 Tier 2.6), mostly unblocked by EXP-009 — re-measure after it lands rather than planning against today’s list"
+      "exemption": "scheduled \u2014 EXP-011 Tier 2: Cloud Services (\u00a73 Tier 2.6), mostly unblocked by EXP-009 \u2014 re-measure after it lands rather than planning against today\u2019s list"
     },
     {
       "typeName": "Cloud Function",
       "status": "deferred",
-      "exemption": "deliberately out of scope — the type is deprecated in the catalog, so nobody building today is offered one. A project that still holds one exports it as a named deferral, which is the right answer for a node its own editor has retired"
+      "exemption": "deliberately out of scope \u2014 the type is deprecated in the catalog, so nobody building today is offered one. A project that still holds one exports it as a named deferral, which is the right answer for a node its own editor has retired"
     },
     {
       "typeName": "CloudFunction2",
       "status": "translated",
-      "note": "EXP-011 §41 (session 69): one function per node in src/api/functions.ts — the declared in-* ports as parameters (wired ones passed, authored ones folded), the declared out-* ports as a typed results object — through the EXP-009 client's callFunction() (POST /functions/<name>, app id + session token, 200/201 carries result) where the project declares a backend, and a stub that throws the interpreter's own \"No cloud services defined in this project.\" where it does not. Done/Failure are a try/catch's two arms; Error is a row never cleared. Defers by name: a wired Function, no function name, a consumed Completed, any other output, two wires into one parameter, a result read from the Failure chain."
+      "note": "EXP-011 \u00a741 (session 69): one function per node in src/api/functions.ts \u2014 the declared in-* ports as parameters (wired ones passed, authored ones folded), the declared out-* ports as a typed results object \u2014 through the EXP-009 client's callFunction() (POST /functions/<name>, app id + session token, 200/201 carries result) where the project declares a backend, and a stub that throws the interpreter's own \"No cloud services defined in this project.\" where it does not. Done/Failure are a try/catch's two arms; Error is a row never cleared. Defers by name: a wired Function, no function name, a consumed Completed, any other output, two wires into one parameter, a result read from the Failure chain."
     },
     {
       "typeName": "Collection",
       "status": "deferred",
-      "exemption": "deliberately out of scope — the type is deprecated in the catalog, so nobody building today is offered one. A project that still holds one exports it as a named deferral, which is the right answer for a node its own editor has retired"
+      "exemption": "deliberately out of scope \u2014 the type is deprecated in the catalog, so nobody building today is offered one. A project that still holds one exports it as a named deferral, which is the right answer for a node its own editor has retired"
     },
     {
       "typeName": "Collection2",
@@ -87,12 +87,12 @@
     {
       "typeName": "CollectionNew",
       "status": "deferred",
-      "exemption": "deliberately out of scope — it mints an anonymous array with a generated Id, and the only consumer of that Id is another node’s Array Id input, delivered by wire. A wired Array Id is precisely what has no emitted module (the named-array model keys on a literal name), so translating this node would create an array nothing in the exported app could ever name. EXP-011 Tier 1.1, session 36"
+      "exemption": "deliberately out of scope \u2014 it mints an anonymous array with a generated Id, and the only consumer of that Id is another node\u2019s Array Id input, delivered by wire. A wired Array Id is precisely what has no emitted module (the named-array model keys on a literal name), so translating this node would create an array nothing in the exported app could ever name. EXP-011 Tier 1.1, session 36"
     },
     {
       "typeName": "CollectionRemove",
       "status": "translated",
-      "note": "EXP-011 §30 (session 59): `notes.remove(item)` inside the row's own callback. The Object Id is a For Each's Item Id, which `foreach.tsx` sets to the firing row before pulsing `itemOutputSignal-<name>` — so the id names the row the emitted callback already closes over, and no id is spelled. ⚠️ Translated for ONE wire shape and refused by name for every other: the Do must be a relayed row signal of the same repeater whose Item Id feeds the Object Id, and that repeater must repeat the very array being written (Collection.remove is indexOf, so a mapped row is a different object). The 2026-08-28 exemption said a row's outputs could not reach the page; §29 disproved that sentence."
+      "note": "EXP-011 \u00a730 (session 59): `notes.remove(item)` inside the row's own callback. The Object Id is a For Each's Item Id, which `foreach.tsx` sets to the firing row before pulsing `itemOutputSignal-<name>` \u2014 so the id names the row the emitted callback already closes over, and no id is spelled. \u26a0\ufe0f Translated for ONE wire shape and refused by name for every other: the Do must be a relayed row signal of the same repeater whose Item Id feeds the Object Id, and that repeater must repeat the very array being written (Collection.remove is indexOf, so a mapped row is a different object). The 2026-08-28 exemption said a row's outputs could not reach the page; \u00a729 disproved that sentence."
     },
     {
       "typeName": "Color",
@@ -102,12 +102,12 @@
     {
       "typeName": "Color Blend",
       "status": "translated",
-      "note": "EXP-011 §38 (session 67): one call into src/lib/util.ts, the numbered `color N` family passed as variadic arguments in index order with a hole printed as `undefined` — the interpreter's sparse array, positionally. A wired colour is an argument, not a deferral"
+      "note": "EXP-011 \u00a738 (session 67): one call into src/lib/util.ts, the numbered `color N` family passed as variadic arguments in index order with a hole printed as `undefined` \u2014 the interpreter's sparse array, positionally. A wired colour is an argument, not a deferral"
     },
     {
       "typeName": "Component Children",
       "status": "deferred",
-      "exemption": "scheduled — EXP-011 Tier 3: the component-tree family (§3 Tier 3.10) — real, but a smaller audience"
+      "exemption": "scheduled \u2014 EXP-011 Tier 3: the component-tree family (\u00a73 Tier 3.10) \u2014 real, but a smaller audience"
     },
     {
       "typeName": "Component Inputs",
@@ -122,7 +122,7 @@
     {
       "typeName": "Component State",
       "status": "deferred",
-      "exemption": "deliberately out of scope — the type is deprecated in the catalog, so nobody building today is offered one. A project that still holds one exports it as a named deferral, which is the right answer for a node its own editor has retired"
+      "exemption": "deliberately out of scope \u2014 the type is deprecated in the catalog, so nobody building today is offered one. A project that still holds one exports it as a named deferral, which is the right answer for a node its own editor has retired"
     },
     {
       "typeName": "Condition",
@@ -137,37 +137,37 @@
     {
       "typeName": "Date To String",
       "status": "translated",
-      "note": "EXP-011 Tier 1.3 (§9) — a date rendered through its format template, timezone included. Emitted as a call into src/lib/date.ts, a transcription of the interpreter’s own datemath.ts."
+      "note": "EXP-011 Tier 1.3 (\u00a79) \u2014 a date rendered through its format template, timezone included. Emitted as a call into src/lib/date.ts, a transcription of the interpreter\u2019s own datemath.ts."
     },
     {
       "typeName": "DbCollection",
       "status": "deferred",
-      "exemption": "deliberately out of scope — the type is deprecated in the catalog, so nobody building today is offered one. A project that still holds one exports it as a named deferral, which is the right answer for a node its own editor has retired"
+      "exemption": "deliberately out of scope \u2014 the type is deprecated in the catalog, so nobody building today is offered one. A project that still holds one exports it as a named deferral, which is the right answer for a node its own editor has retired"
     },
     {
       "typeName": "DbCollection2",
       "status": "stubbed",
-      "exemption": "typed api stub + useState/useEffect — the backend seam, by design (phase README: no backend code export)"
+      "exemption": "typed api stub + useState/useEffect \u2014 the backend seam, by design (phase README: no backend code export)"
     },
     {
       "typeName": "DbModel",
       "status": "deferred",
-      "exemption": "deliberately out of scope — the type is deprecated in the catalog, so nobody building today is offered one. A project that still holds one exports it as a named deferral, which is the right answer for a node its own editor has retired"
+      "exemption": "deliberately out of scope \u2014 the type is deprecated in the catalog, so nobody building today is offered one. A project that still holds one exports it as a named deferral, which is the right answer for a node its own editor has retired"
     },
     {
       "typeName": "DbModel2",
-      "status": "deferred",
-      "exemption": "scheduled — EXP-011 Tier 2: Cloud Services (§3 Tier 2.6), mostly unblocked by EXP-009 — re-measure after it lands rather than planning against today’s list"
+      "status": "translated",
+      "note": "EXP-011 \u00a743 (session 70): a read by Id through the class's collection module \u2014 fetch<Type>ById(id) beside the query and the record verbs, the row typed by the class's interface (schema snapshot first, then the columns the graph reads as unknown) \u2014 through the EXP-009 client's fetchOne() (GET /classes/<class>/<id>, app id + session token) where the project declares a backend, and a stub that throws where it does not. Fetch wired: a handler action, the Cloud Function's try/catch with the runtime's own \"Missing Id.\" thrown for an empty Id. Fetch unwired: a useEffect keyed on the Id (runOnValueChange, controlSignal fetch). Done/Failure are the two arms; Error is a row never cleared; Id resolves to the feeder. Defers by name: no class, a wired class, a second backend, a repeater-bound Id, two wires into the Id, no Id, a consumed Fetched (fires on bind AND after a read), Changed / changed-<column> (the in-process record store's pub/sub), Completed, any other output, a column read from the Failure chain."
     },
     {
       "typeName": "DeleteDbModelProperties",
       "status": "translated",
-      "note": "RECORD-VERBS-TARGET (session 20): an awaited delete taking the record id alone, on the same shape as Create; a Delete with no class name defers, because the runtime answers Failure with “No class name specified” and never reaches the backend"
+      "note": "RECORD-VERBS-TARGET (session 20): an awaited delete taking the record id alone, on the same shape as Create; a Delete with no class name defers, because the runtime answers Failure with \u201cNo class name specified\u201d and never reaches the backend"
     },
     {
       "typeName": "Drag",
       "status": "deferred",
-      "exemption": "scheduled — EXP-011 Tier 3: the component-tree family (§3 Tier 3.10) — real, but a smaller audience"
+      "exemption": "scheduled \u2014 EXP-011 Tier 3: the component-tree family (\u00a73 Tier 3.10) \u2014 real, but a smaller audience"
     },
     {
       "typeName": "Event Receiver",
@@ -186,7 +186,7 @@
     {
       "typeName": "Field Set",
       "status": "deferred",
-      "exemption": "deliberately out of scope — the type is deprecated in the catalog, so nobody building today is offered one. A project that still holds one exports it as a named deferral, which is the right answer for a node its own editor has retired"
+      "exemption": "deliberately out of scope \u2014 the type is deprecated in the catalog, so nobody building today is offered one. A project that still holds one exports it as a named deferral, which is the right answer for a node its own editor has retired"
     },
     {
       "typeName": "Filter Collection",
@@ -195,37 +195,37 @@
     {
       "typeName": "FilterDBModels",
       "status": "deferred",
-      "exemption": "scheduled — EXP-011 Tier 2: the record verbs’ backend neighbours — §3 did not name them; grouped with Tier 2.6 in session 35 because they are the same backend work and land with it or not at all"
+      "exemption": "scheduled \u2014 EXP-011 Tier 2: the record verbs\u2019 backend neighbours \u2014 \u00a73 did not name them; grouped with Tier 2.6 in session 35 because they are the same backend work and land with it or not at all"
     },
     {
       "typeName": "For Each",
       "status": "translated",
-      "note": "repeater → .map() (identity/template-inputs mapping only; script mappings defer)"
+      "note": "repeater \u2192 .map() (identity/template-inputs mapping only; script mappings defer)"
     },
     {
       "typeName": "For Each Actions",
       "status": "deferred",
-      "exemption": "deliberately out of scope — its Item Id is the runtime record id of a repeater row, and the emitted app has no counterpart: rows are plain objects the export never mints ids for. Its remaining ports (Try Remove / Remove Completed / Added) are the Repeater’s removal handshake, which is lifecycle signalling and therefore effect() work. EXP-011 Tier 1.1, session 36"
+      "exemption": "deliberately out of scope \u2014 its Item Id is the runtime record id of a repeater row, and the emitted app has no counterpart: rows are plain objects the export never mints ids for. Its remaining ports (Try Remove / Remove Completed / Added) are the Repeater\u2019s removal handshake, which is lifecycle signalling and therefore effect() work. EXP-011 Tier 1.1, session 36"
     },
     {
       "typeName": "Form",
       "status": "deferred",
-      "exemption": "deliberately out of scope — the type is deprecated in the catalog, so nobody building today is offered one. A project that still holds one exports it as a named deferral, which is the right answer for a node its own editor has retired"
+      "exemption": "deliberately out of scope \u2014 the type is deprecated in the catalog, so nobody building today is offered one. A project that still holds one exports it as a named deferral, which is the right answer for a node its own editor has retired"
     },
     {
       "typeName": "Globals",
       "status": "deferred",
-      "exemption": "deliberately out of scope — the type is deprecated in the catalog, so nobody building today is offered one. A project that still holds one exports it as a named deferral, which is the right answer for a node its own editor has retired"
+      "exemption": "deliberately out of scope \u2014 the type is deprecated in the catalog, so nobody building today is offered one. A project that still holds one exports it as a named deferral, which is the right answer for a node its own editor has retired"
     },
     {
       "typeName": "Group",
       "status": "translated",
-      "note": "flex group → div"
+      "note": "flex group \u2192 div"
     },
     {
       "typeName": "Gyroscope",
       "status": "deferred",
-      "exemption": "deliberately out of scope — the type is deprecated in the catalog, so nobody building today is offered one. A project that still holds one exports it as a named deferral, which is the right answer for a node its own editor has retired"
+      "exemption": "deliberately out of scope \u2014 the type is deprecated in the catalog, so nobody building today is offered one. A project that still holds one exports it as a named deferral, which is the right answer for a node its own editor has retired"
     },
     {
       "typeName": "Image",
@@ -244,7 +244,7 @@
     {
       "typeName": "Javascript2",
       "status": "deferred",
-      "exemption": "scheduled — EXP-011 Tier 3 (§3 Tier 3.9, \"CSS Definition and Script\"): a hand-written node definition (three generations of define/script/Node.* DSL, lifecycle methods, an external-URL mode), not a function — its faithful target is a hand-written React component, the export-side twin of P69 custom nodes (EXP-003-JS-TARGET-OUTPUT §1); the corpus is browser-coupled date-picker code and junk, zero cost"
+      "exemption": "scheduled \u2014 EXP-011 Tier 3 (\u00a73 Tier 3.9, \"CSS Definition and Script\"): a hand-written node definition (three generations of define/script/Node.* DSL, lifecycle methods, an external-URL mode), not a function \u2014 its faithful target is a hand-written React component, the export-side twin of P69 custom nodes (EXP-003-JS-TARGET-OUTPUT \u00a71); the corpus is browser-coupled date-picker code and junk, zero cost"
     },
     {
       "typeName": "Label",
@@ -263,7 +263,7 @@
     {
       "typeName": "Model",
       "status": "deferred",
-      "exemption": "deliberately out of scope — the type is deprecated in the catalog, so nobody building today is offered one. A project that still holds one exports it as a named deferral, which is the right answer for a node its own editor has retired"
+      "exemption": "deliberately out of scope \u2014 the type is deprecated in the catalog, so nobody building today is offered one. A project that still holds one exports it as a named deferral, which is the right answer for a node its own editor has retired"
     },
     {
       "typeName": "Model2",
@@ -297,27 +297,27 @@
     {
       "typeName": "Number Blend",
       "status": "deferred",
-      "exemption": "deliberately out of scope — the type is deprecated in the catalog, so nobody building today is offered one. A project that still holds one exports it as a named deferral, which is the right answer for a node its own editor has retired"
+      "exemption": "deliberately out of scope \u2014 the type is deprecated in the catalog, so nobody building today is offered one. A project that still holds one exports it as a named deferral, which is the right answer for a node its own editor has retired"
     },
     {
       "typeName": "Number Remapper",
       "status": "translated",
-      "note": "EXP-011 Tier 2.7 (session 65): one call into src/lib/util.ts. The degenerate branch is reproduced rather than repaired — with the two input endpoints equal the answer is Output Minimum for every input, which is the interpreter's answer and the one NDA-012 already decided by moving the default off it. Unset ports export initialize's 0/1/0/1/true"
+      "note": "EXP-011 Tier 2.7 (session 65): one call into src/lib/util.ts. The degenerate branch is reproduced rather than repaired \u2014 with the two input endpoints equal the answer is Output Minimum for every input, which is the interpreter's answer and the one NDA-012 already decided by moving the default off it. Unset ports export initialize's 0/1/0/1/true"
     },
     {
       "typeName": "On App Error",
       "status": "deferred",
-      "exemption": "deliberately out of scope — EXP-011 §3 \"Not a target\": a global error hook — an app-shell concern the scaffold owns, not a page-level node. A real node and some of them excellent; this says nobody is waiting on it, not that it is bad"
+      "exemption": "deliberately out of scope \u2014 EXP-011 \u00a73 \"Not a target\": a global error hook \u2014 an app-shell concern the scaffold owns, not a page-level node. A real node and some of them excellent; this says nobody is waiting on it, not that it is bad"
     },
     {
       "typeName": "Open File Picker",
       "status": "deferred",
-      "exemption": "deliberately out of scope — EXP-011 §3 \"Not a target\": a browser file dialog; specialist. A real node and some of them excellent; this says nobody is waiting on it, not that it is bad"
+      "exemption": "deliberately out of scope \u2014 EXP-011 \u00a73 \"Not a target\": a browser file dialog; specialist. A real node and some of them excellent; this says nobody is waiting on it, not that it is bad"
     },
     {
       "typeName": "Options",
       "status": "translated",
-      "note": "legacy alias of net.noodl.controls.options — same translation"
+      "note": "legacy alias of net.noodl.controls.options \u2014 same translation"
     },
     {
       "typeName": "Or",
@@ -332,62 +332,62 @@
     {
       "typeName": "Page Stack",
       "status": "deferred",
-      "exemption": "scheduled — EXP-011 Tier 3: the component-tree family (§3 Tier 3.10) — real, but a smaller audience"
+      "exemption": "scheduled \u2014 EXP-011 Tier 3: the component-tree family (\u00a73 Tier 3.10) \u2014 real, but a smaller audience"
     },
     {
       "typeName": "PageInputs",
       "status": "translated",
-      "note": "EXP-011 Tier 2.5 (session 40): every `pm-` output reads the url as `pageQuery.get(\"name\") ?? pageParams.name` — the query first, because the Router merges `Object.assign({}, match.params, urlQuery)` and a query key of the same name wins. Gated on the component being a routed page: off a route the Router never calls the node, and `useParams()` would read the enclosing route and work better than the app it came from"
+      "note": "EXP-011 Tier 2.5 (session 40): every `pm-` output reads the url as `pageQuery.get(\"name\") ?? pageParams.name` \u2014 the query first, because the Router merges `Object.assign({}, match.params, urlQuery)` and a query key of the same name wins. Gated on the component being a routed page: off a route the Router never calls the node, and `useParams()` would read the enclosing route and work better than the app it came from"
     },
     {
       "typeName": "PageStackNavigate",
       "status": "deferred",
-      "exemption": "scheduled — EXP-011 Tier 3: the component-tree family (§3 Tier 3.10), re-tiered out of Tier 2.5 in session 45 to sit with the `Page Stack` it drives, because a pusher with no stack has nothing to push onto and the export emits no stack construct at all. ⚠️ The Tier 2.5 sentence this replaces was wrong twice over. `_setPageParams` does have two callers and BOTH are the Router (`router.tsx:604` and `:926`; that file defines exactly one node, `RouterNode`, lines 124-957). A Component Stack never touches Page Inputs at all — it pushes a component and sets that component's own Component Inputs (`navigation-stack.tsx:550`, `:862`, `:976` — three paths, all `setInputValue`), the `pm-` ports being derived from `component.inputPorts` (`navigate.ts:335`). The only `_setPageParams` string in navigation-stack.tsx is a comment at :983 drawing an analogy to it, which is the likeliest origin of the claim. So these two owe their container, not a routing story: the back channel hands values and signals BACKWARDS to the pusher (`backResult-*`, `backAction-*`), both components stay mounted through the pop transition, and stacks are named, nestable and sync the url only when `useRoutes` is set — none of which a `BrowserRouter` route expresses."
+      "exemption": "scheduled \u2014 EXP-011 Tier 3: the component-tree family (\u00a73 Tier 3.10), re-tiered out of Tier 2.5 in session 45 to sit with the `Page Stack` it drives, because a pusher with no stack has nothing to push onto and the export emits no stack construct at all. \u26a0\ufe0f The Tier 2.5 sentence this replaces was wrong twice over. `_setPageParams` does have two callers and BOTH are the Router (`router.tsx:604` and `:926`; that file defines exactly one node, `RouterNode`, lines 124-957). A Component Stack never touches Page Inputs at all \u2014 it pushes a component and sets that component's own Component Inputs (`navigation-stack.tsx:550`, `:862`, `:976` \u2014 three paths, all `setInputValue`), the `pm-` ports being derived from `component.inputPorts` (`navigate.ts:335`). The only `_setPageParams` string in navigation-stack.tsx is a comment at :983 drawing an analogy to it, which is the likeliest origin of the claim. So these two owe their container, not a routing story: the back channel hands values and signals BACKWARDS to the pusher (`backResult-*`, `backAction-*`), both components stay mounted through the pop transition, and stacks are named, nestable and sync the url only when `useRoutes` is set \u2014 none of which a `BrowserRouter` route expresses."
     },
     {
       "typeName": "PageStackNavigateBack",
       "status": "deferred",
-      "exemption": "scheduled — EXP-011 Tier 3: the component-tree family (§3 Tier 3.10), re-tiered out of Tier 2.5 in session 45 to sit with the `Page Stack` it drives, because a pusher with no stack has nothing to push onto and the export emits no stack construct at all. ⚠️ The Tier 2.5 sentence this replaces was wrong twice over. `_setPageParams` does have two callers and BOTH are the Router (`router.tsx:604` and `:926`; that file defines exactly one node, `RouterNode`, lines 124-957). A Component Stack never touches Page Inputs at all — it pushes a component and sets that component's own Component Inputs (`navigation-stack.tsx:550`, `:862`, `:976` — three paths, all `setInputValue`), the `pm-` ports being derived from `component.inputPorts` (`navigate.ts:335`). The only `_setPageParams` string in navigation-stack.tsx is a comment at :983 drawing an analogy to it, which is the likeliest origin of the claim. So these two owe their container, not a routing story: the back channel hands values and signals BACKWARDS to the pusher (`backResult-*`, `backAction-*`), both components stay mounted through the pop transition, and stacks are named, nestable and sync the url only when `useRoutes` is set — none of which a `BrowserRouter` route expresses."
+      "exemption": "scheduled \u2014 EXP-011 Tier 3: the component-tree family (\u00a73 Tier 3.10), re-tiered out of Tier 2.5 in session 45 to sit with the `Page Stack` it drives, because a pusher with no stack has nothing to push onto and the export emits no stack construct at all. \u26a0\ufe0f The Tier 2.5 sentence this replaces was wrong twice over. `_setPageParams` does have two callers and BOTH are the Router (`router.tsx:604` and `:926`; that file defines exactly one node, `RouterNode`, lines 124-957). A Component Stack never touches Page Inputs at all \u2014 it pushes a component and sets that component's own Component Inputs (`navigation-stack.tsx:550`, `:862`, `:976` \u2014 three paths, all `setInputValue`), the `pm-` ports being derived from `component.inputPorts` (`navigate.ts:335`). The only `_setPageParams` string in navigation-stack.tsx is a comment at :983 drawing an analogy to it, which is the likeliest origin of the claim. So these two owe their container, not a routing story: the back channel hands values and signals BACKWARDS to the pusher (`backResult-*`, `backAction-*`), both components stay mounted through the pop transition, and stacks are named, nestable and sync the url only when `useRoutes` is set \u2014 none of which a `BrowserRouter` route expresses."
     },
     {
       "typeName": "PageStackNavigateToPath",
       "status": "translated",
-      "note": "EXP-011 §15 (session 44): the node's own url builder, which disagrees with the Router's in four places — an unset placeholder substitutes `''` here and is deferred one node over, neither half is percent-encoded, the query list is authored rather than left over, and an unset query value is omitted from the url. Emitted as `navigate(...)` with exactly one leading slash, because the runtime compares trimmed paths while react-router reads an unslashed path as relative. ⚠️ navigationPathType is deliberately not consulted: `_getLocationPath` returns the same bare path in both modes and `_getSearchParams` reads `location.search` in both, so the setting chooses only where the same path string is written. §17 (session 46) opened the Open In New Tab arm: `window.open(url, '_blank')` with NO features string, which is the runtime's own call — so its `if (!opened)` return-value test is faithful and works. ⚠️ §15.4 deferred this arm saying the success test was `navigator.userActivation`; that sentence was inherited from External Link and false here — the activation read exists on that node ONLY because it passes `noopener`, which makes `window.open` return null on success as much as on failure (DEF-016). Measured in Chrome 151: the `noopener` call returns null beside a tab that opened, the bare call returns a Window under a gesture and null without one. With the arm on, Failure becomes live, Error becomes writable (one static message — the Path gate makes the missing-path write unreachable), and Completed becomes a JOIN beneath both arms rather than a continuation of Done. §18 (session 47) opened the WIRED port too, so Open In New Tab translates in all three of its states — off (`navigate`), on (`window.open`), wired (both). The wired form is the runtime's own `if (this._internal.openInNewTab) { open } else { pushState }` with the outcomes hoisted out from under it: ONE url build above the branch, ONE success flag (`let goOpened = true`, an initialiser that is a claim about the same-tab arm — pushState cannot fail and the Path gate excludes the node's other failure), ONE Done chain and ONE Completed beneath it, never a copy per arm. The port is a TRUTHINESS SINK — the runtime coerces it once with `!!` and the emitted read is the `if` test itself — so a logic truth value lands here where a `p-`/`q-` value still defers. ⚠️ §15.4's stale sentence about the transient user activation had ALSO survived §17 in compileNavigateToPath's own header comment, twenty lines above the block refuting it; §18 removed it. A wired Path and an in-tab read of Error still defer, each named."
+      "note": "EXP-011 \u00a715 (session 44): the node's own url builder, which disagrees with the Router's in four places \u2014 an unset placeholder substitutes `''` here and is deferred one node over, neither half is percent-encoded, the query list is authored rather than left over, and an unset query value is omitted from the url. Emitted as `navigate(...)` with exactly one leading slash, because the runtime compares trimmed paths while react-router reads an unslashed path as relative. \u26a0\ufe0f navigationPathType is deliberately not consulted: `_getLocationPath` returns the same bare path in both modes and `_getSearchParams` reads `location.search` in both, so the setting chooses only where the same path string is written. \u00a717 (session 46) opened the Open In New Tab arm: `window.open(url, '_blank')` with NO features string, which is the runtime's own call \u2014 so its `if (!opened)` return-value test is faithful and works. \u26a0\ufe0f \u00a715.4 deferred this arm saying the success test was `navigator.userActivation`; that sentence was inherited from External Link and false here \u2014 the activation read exists on that node ONLY because it passes `noopener`, which makes `window.open` return null on success as much as on failure (DEF-016). Measured in Chrome 151: the `noopener` call returns null beside a tab that opened, the bare call returns a Window under a gesture and null without one. With the arm on, Failure becomes live, Error becomes writable (one static message \u2014 the Path gate makes the missing-path write unreachable), and Completed becomes a JOIN beneath both arms rather than a continuation of Done. \u00a718 (session 47) opened the WIRED port too, so Open In New Tab translates in all three of its states \u2014 off (`navigate`), on (`window.open`), wired (both). The wired form is the runtime's own `if (this._internal.openInNewTab) { open } else { pushState }` with the outcomes hoisted out from under it: ONE url build above the branch, ONE success flag (`let goOpened = true`, an initialiser that is a claim about the same-tab arm \u2014 pushState cannot fail and the Path gate excludes the node's other failure), ONE Done chain and ONE Completed beneath it, never a copy per arm. The port is a TRUTHINESS SINK \u2014 the runtime coerces it once with `!!` and the emitted read is the `if` test itself \u2014 so a logic truth value lands here where a `p-`/`q-` value still defers. \u26a0\ufe0f \u00a715.4's stale sentence about the transient user activation had ALSO survived \u00a717 in compileNavigateToPath's own header comment, twenty lines above the block refuting it; \u00a718 removed it. A wired Path and an in-tab read of Error still defer, each named."
     },
     {
       "typeName": "Parent Component State",
       "status": "deferred",
-      "exemption": "deliberately out of scope — the type is deprecated in the catalog, so nobody building today is offered one. A project that still holds one exports it as a named deferral, which is the right answer for a node its own editor has retired"
+      "exemption": "deliberately out of scope \u2014 the type is deprecated in the catalog, so nobody building today is offered one. A project that still holds one exports it as a named deferral, which is the right answer for a node its own editor has retired"
     },
     {
       "typeName": "REST2",
       "status": "deferred",
-      "exemption": "deliberately out of scope — the type is deprecated in the catalog, so nobody building today is offered one. A project that still holds one exports it as a named deferral, which is the right answer for a node its own editor has retired"
+      "exemption": "deliberately out of scope \u2014 the type is deprecated in the catalog, so nobody building today is offered one. A project that still holds one exports it as a named deferral, which is the right answer for a node its own editor has retired"
     },
     {
       "typeName": "Radio Button",
       "status": "translated",
-      "note": "legacy alias of net.noodl.controls.radiobutton — same translation"
+      "note": "legacy alias of net.noodl.controls.radiobutton \u2014 same translation"
     },
     {
       "typeName": "Radio Button Group",
       "status": "translated",
-      "note": "flex container providing the instance-scoped radio name via useId(); literal value marks defaultChecked (VISUALS-TARGET §3)"
+      "note": "flex container providing the instance-scoped radio name via useId(); literal value marks defaultChecked (VISUALS-TARGET \u00a73)"
     },
     {
       "typeName": "Range",
       "status": "translated",
-      "note": "legacy alias of net.noodl.controls.range — same translation"
+      "note": "legacy alias of net.noodl.controls.range \u2014 same translation"
     },
     {
       "typeName": "RemoveDbModelRelation",
       "status": "deferred",
-      "exemption": "scheduled — EXP-011 Tier 2: the record verbs’ backend neighbours — §3 did not name them; grouped with Tier 2.6 in session 35 because they are the same backend work and land with it or not at all"
+      "exemption": "scheduled \u2014 EXP-011 Tier 2: the record verbs\u2019 backend neighbours \u2014 \u00a73 did not name them; grouped with Tier 2.6 in session 35 because they are the same backend work and land with it or not at all"
     },
     {
       "typeName": "Router",
       "status": "translated",
-      "note": "router shell → src/App.tsx routes"
+      "note": "router shell \u2192 src/App.tsx routes"
     },
     {
       "typeName": "RouterNavigate",
@@ -397,17 +397,17 @@
     {
       "typeName": "RunTasks",
       "status": "deferred",
-      "exemption": "deliberately out of scope — EXP-011 §3 \"Not a target\": a parallel task runner — control flow the emitted app expresses as ordinary async code, not as a node. A real node and some of them excellent; this says nobody is waiting on it, not that it is bad"
+      "exemption": "deliberately out of scope \u2014 EXP-011 \u00a73 \"Not a target\": a parallel task runner \u2014 control flow the emitted app expresses as ordinary async code, not as a node. A real node and some of them excellent; this says nobody is waiting on it, not that it is bad"
     },
     {
       "typeName": "Screen Resolution",
       "status": "deferred",
-      "exemption": "deliberately out of scope — EXP-011 §3 \"Not a target\": ambient device measurement; specialist. A real node and some of them excellent; this says nobody is waiting on it, not that it is bad"
+      "exemption": "deliberately out of scope \u2014 EXP-011 \u00a73 \"Not a target\": ambient device measurement; specialist. A real node and some of them excellent; this says nobody is waiting on it, not that it is bad"
     },
     {
       "typeName": "Script Downloader",
       "status": "deferred",
-      "exemption": "deliberately out of scope — the type is deprecated in the catalog, so nobody building today is offered one. A project that still holds one exports it as a named deferral, which is the right answer for a node its own editor has retired"
+      "exemption": "deliberately out of scope \u2014 the type is deprecated in the catalog, so nobody building today is offered one. A project that still holds one exports it as a named deferral, which is the right answer for a node its own editor has retired"
     },
     {
       "typeName": "Set Variable",
@@ -422,22 +422,22 @@
     {
       "typeName": "SetModelProperties",
       "status": "deferred",
-      "exemption": "scheduled — the collection-state slice. EXP-011 Tier 1.1 translated the read side of Object (a foreach-mode row compiles away into the template’s props); the write side does not, because a row written from inside the row is state the enclosing list owns rather than a prop the parent passes down — EXP-002-MODEL2-TARGET-OUTPUT §4 draws that line and §5.4 is the gate. Session 36. ⚠️ Re-derived in EXP-011 §30.2 (session 59) against the code, because §29 had just disproved the sentence beside it: the line above still holds for the in-row shape, but from the PAGE the id now resolves (that is what §30 built for Remove Object From Array) and what does not is the VALUE — the new value comes from a control inside the row, and a row's value reaches the page only as itemOutput-<name>, a continuous read of whichever row fired last. The blocker moved from identity to value; it did not go away"
+      "exemption": "scheduled \u2014 the collection-state slice. EXP-011 Tier 1.1 translated the read side of Object (a foreach-mode row compiles away into the template\u2019s props); the write side does not, because a row written from inside the row is state the enclosing list owns rather than a prop the parent passes down \u2014 EXP-002-MODEL2-TARGET-OUTPUT \u00a74 draws that line and \u00a75.4 is the gate. Session 36. \u26a0\ufe0f Re-derived in EXP-011 \u00a730.2 (session 59) against the code, because \u00a729 had just disproved the sentence beside it: the line above still holds for the in-row shape, but from the PAGE the id now resolves (that is what \u00a730 built for Remove Object From Array) and what does not is the VALUE \u2014 the new value comes from a control inside the row, and a row's value reaches the page only as itemOutput-<name>, a continuous read of whichever row fired last. The blocker moved from identity to value; it did not go away"
     },
     {
       "typeName": "Sign File URL",
       "status": "deferred",
-      "exemption": "scheduled — EXP-011 Tier 2: Cloud Services (§3 Tier 2.6), mostly unblocked by EXP-009 — re-measure after it lands rather than planning against today’s list"
+      "exemption": "scheduled \u2014 EXP-011 Tier 2: Cloud Services (\u00a73 Tier 2.6), mostly unblocked by EXP-009 \u2014 re-measure after it lands rather than planning against today\u2019s list"
     },
     {
       "typeName": "Signal To Index",
       "status": "deferred",
-      "exemption": "deliberately out of scope — the type is deprecated in the catalog, so nobody building today is offered one. A project that still holds one exports it as a named deferral, which is the right answer for a node its own editor has retired"
+      "exemption": "deliberately out of scope \u2014 the type is deprecated in the catalog, so nobody building today is offered one. A project that still holds one exports it as a named deferral, which is the right answer for a node its own editor has retired"
     },
     {
       "typeName": "States",
       "status": "deferred",
-      "exemption": "scheduled — EXP-011 Tier 3: the animation pair (§3 Tier 3.8) — time-based and stateful, worth doing properly rather than early"
+      "exemption": "scheduled \u2014 EXP-011 Tier 3: the animation pair (\u00a73 Tier 3.8) \u2014 time-based and stateful, worth doing properly rather than early"
     },
     {
       "typeName": "Static Data",
@@ -457,22 +457,22 @@
     {
       "typeName": "String Mapper",
       "status": "translated",
-      "note": "EXP-011 Tier 2.7 (session 65): one call into src/lib/util.ts with the numbered pairs as an object literal. Two rules the literal does not get for free and the planner supplies: first-wins on a repeated Input (indexOf finds the first, an object keeps the last), and a present key with an undefined value for an Input whose Mapping is empty (that publishes empty rather than falling through to Default). A wired numbered port defers — the table is read at generation time"
+      "note": "EXP-011 Tier 2.7 (session 65): one call into src/lib/util.ts with the numbered pairs as an object literal. Two rules the literal does not get for free and the planner supplies: first-wins on a repeated Input (indexOf finds the first, an object keeps the last), and a present key with an undefined value for an Input whose Mapping is empty (that publishes empty rather than falling through to Default). A wired numbered port defers \u2014 the table is read at generation time"
     },
     {
       "typeName": "String Selector",
       "status": "deferred",
-      "exemption": "deliberately out of scope — the type is deprecated in the catalog, so nobody building today is offered one. A project that still holds one exports it as a named deferral, which is the right answer for a node its own editor has retired"
+      "exemption": "deliberately out of scope \u2014 the type is deprecated in the catalog, so nobody building today is offered one. A project that still holds one exports it as a named deferral, which is the right answer for a node its own editor has retired"
     },
     {
       "typeName": "SubscribeToChanges",
       "status": "deferred",
-      "exemption": "scheduled — EXP-011 Tier 2: Cloud Services (§3 Tier 2.6), mostly unblocked by EXP-009 — re-measure after it lands rather than planning against today’s list"
+      "exemption": "scheduled \u2014 EXP-011 Tier 2: Cloud Services (\u00a73 Tier 2.6), mostly unblocked by EXP-009 \u2014 re-measure after it lands rather than planning against today\u2019s list"
     },
     {
       "typeName": "Substring",
       "status": "translated",
-      "note": "EXP-011 Tier 2.7 (session 65): one call into src/lib/util.ts, transcribed from the node's own substr call. An untouched End exports as -1, the value initialize writes — and, since DEF-033 was fixed (session 67), the default the port declares as well; before that the panel said 0. A wired String that can be empty is translated with a note: the node's setter raises there rather than answering, and an export whose failure mode is an exception in a page is the trade the date family already refused"
+      "note": "EXP-011 Tier 2.7 (session 65): one call into src/lib/util.ts, transcribed from the node's own substr call. An untouched End exports as -1, the value initialize writes \u2014 and, since DEF-033 was fixed (session 67), the default the port declares as well; before that the panel said 0. A wired String that can be empty is translated with a note: the node's setter raises there rather than answering, and an export whose failure mode is an exception in a page is the trade the date family already refused"
     },
     {
       "typeName": "Switch",
@@ -492,12 +492,12 @@
     {
       "typeName": "Timer",
       "status": "translated",
-      "note": "EXP-011 §39 (session 68): `Delay` — three verbs from src/lib/timer.ts over a useRef the component declares per node: startDelay answers whether a countdown began (false while one runs, the node's own `_isRunning === false` test), restartDelay always begins again, stopDelay answers whether there was one to stop; each verb's Done/Unchanged chains are the two arms of an if over that answer, and Started/Finished are the two callbacks, fired by two setTimeouts where the interpreter fires them by frame. Restart's Unchanged chain is dropped with a note (Restart never reports it). ⚠️ One recorded divergence: the scheduler marks a timer running at the end of the NEXT frame, so a Stop in the same tick as a Start reads Unchanged there and Done here. Defers a consumed Completed and any unknown output; a Started/Finished chain on a timer only Stop drives is left for the wire sweep to name."
+      "note": "EXP-011 \u00a739 (session 68): `Delay` \u2014 three verbs from src/lib/timer.ts over a useRef the component declares per node: startDelay answers whether a countdown began (false while one runs, the node's own `_isRunning === false` test), restartDelay always begins again, stopDelay answers whether there was one to stop; each verb's Done/Unchanged chains are the two arms of an if over that answer, and Started/Finished are the two callbacks, fired by two setTimeouts where the interpreter fires them by frame. Restart's Unchanged chain is dropped with a note (Restart never reports it). \u26a0\ufe0f One recorded divergence: the scheduler marks a timer running at the end of the NEXT frame, so a Stop in the same tick as a Start reads Unchanged there and Done here. Defers a consumed Completed and any unknown output; a Started/Finished chain on a timer only Stop drives is left for the wire sweep to name."
     },
     {
       "typeName": "Transition",
       "status": "deferred",
-      "exemption": "deliberately out of scope — the type is deprecated in the catalog, so nobody building today is offered one. A project that still holds one exports it as a named deferral, which is the right answer for a node its own editor has retired"
+      "exemption": "deliberately out of scope \u2014 the type is deprecated in the catalog, so nobody building today is offered one. A project that still holds one exports it as a named deferral, which is the right answer for a node its own editor has retired"
     },
     {
       "typeName": "Unique Id",
@@ -506,17 +506,17 @@
     {
       "typeName": "Upload File",
       "status": "deferred",
-      "exemption": "scheduled — EXP-011 Tier 2: Cloud Services (§3 Tier 2.6), mostly unblocked by EXP-009 — re-measure after it lands rather than planning against today’s list"
+      "exemption": "scheduled \u2014 EXP-011 Tier 2: Cloud Services (\u00a73 Tier 2.6), mostly unblocked by EXP-009 \u2014 re-measure after it lands rather than planning against today\u2019s list"
     },
     {
       "typeName": "Value Changed",
       "status": "translated",
-      "note": "EXP-011 §39 (session 68): the effect() slice §9.6 named — a useEffect keyed on the Input's render-mode expression, with the last value seen in a useRef: return on the same value, else remember it and run the chain. `lastValue` boots undefined in `initialize`, so a first arrival of undefined fires nothing and a first arrival of anything else fires, exactly as the effect reads them. ⚠️ React compares dependencies with Object.is and the node with ===; they differ only on NaN. Defers an Input that only exists inside a handler (a text input's onTextChanged, a received payload), no Input, no consumer, and any other output, each by name."
+      "note": "EXP-011 \u00a739 (session 68): the effect() slice \u00a79.6 named \u2014 a useEffect keyed on the Input's render-mode expression, with the last value seen in a useRef: return on the same value, else remember it and run the chain. `lastValue` boots undefined in `initialize`, so a first arrival of undefined fires nothing and a first arrival of anything else fires, exactly as the effect reads them. \u26a0\ufe0f React compares dependencies with Object.is and the node with ===; they differ only on NaN. Defers an Input that only exists inside a handler (a text input's onTextChanged, a received payload), no Input, no consumer, and any other output, each by name."
     },
     {
       "typeName": "Variable",
       "status": "deferred",
-      "exemption": "deliberately out of scope — the type is deprecated in the catalog, so nobody building today is offered one. A project that still holds one exports it as a named deferral, which is the right answer for a node its own editor has retired"
+      "exemption": "deliberately out of scope \u2014 the type is deprecated in the catalog, so nobody building today is offered one. A project that still holds one exports it as a named deferral, which is the right answer for a node its own editor has retired"
     },
     {
       "typeName": "Variable2",
@@ -526,22 +526,22 @@
     {
       "typeName": "Video",
       "status": "translated",
-      "note": "native video element: src/poster/flags pass through, object-fit always stated (VISUALS-TARGET §6)"
+      "note": "native video element: src/poster/flags pass through, object-fit always stated (VISUALS-TARGET \u00a76)"
     },
     {
       "typeName": "net.noodl.ActionDispatcher",
       "status": "deferred",
-      "exemption": "deliberately out of scope — EXP-011 §3 \"Not a target\": an app-wide action bus — a routing indirection whose faithful translation is a design decision about the emitted app’s architecture, not a node translation. A real node and some of them excellent; this says nobody is waiting on it, not that it is bad"
+      "exemption": "deliberately out of scope \u2014 EXP-011 \u00a73 \"Not a target\": an app-wide action bus \u2014 a routing indirection whose faithful translation is a design decision about the emitted app\u2019s architecture, not a node translation. A real node and some of them excellent; this says nobody is waiting on it, not that it is bad"
     },
     {
       "typeName": "net.noodl.ActionHandler",
       "status": "deferred",
-      "exemption": "deliberately out of scope — EXP-011 §3 \"Not a target\": the receiving half of the action bus, and out of scope for the same reason. A real node and some of them excellent; this says nobody is waiting on it, not that it is bad"
+      "exemption": "deliberately out of scope \u2014 EXP-011 \u00a73 \"Not a target\": the receiving half of the action bus, and out of scope for the same reason. A real node and some of them excellent; this says nobody is waiting on it, not that it is bad"
     },
     {
       "typeName": "net.noodl.ArrayChanged",
       "status": "deferred",
-      "exemption": "deliberately out of scope — not offered in the node picker, so it cannot be placed. It exists for graphs that already have one, and those export as named deferrals"
+      "exemption": "deliberately out of scope \u2014 not offered in the node picker, so it cannot be placed. It exists for graphs that already have one, and those export as named deferrals"
     },
     {
       "typeName": "net.noodl.ComponentObject",
@@ -551,22 +551,22 @@
     {
       "typeName": "net.noodl.DateAdd",
       "status": "translated",
-      "note": "EXP-011 Tier 1.3 (§9) — a date shifted by an amount of a unit, months and years clamping. Emitted as a call into src/lib/date.ts, a transcription of the interpreter’s own datemath.ts."
+      "note": "EXP-011 Tier 1.3 (\u00a79) \u2014 a date shifted by an amount of a unit, months and years clamping. Emitted as a call into src/lib/date.ts, a transcription of the interpreter\u2019s own datemath.ts."
     },
     {
       "typeName": "net.noodl.DateCompare",
       "status": "translated",
-      "note": "EXP-011 Tier 1.3 (§9) — two instants compared at a granularity, one call per answer. Emitted as a call into src/lib/date.ts, a transcription of the interpreter’s own datemath.ts."
+      "note": "EXP-011 Tier 1.3 (\u00a79) \u2014 two instants compared at a granularity, one call per answer. Emitted as a call into src/lib/date.ts, a transcription of the interpreter\u2019s own datemath.ts."
     },
     {
       "typeName": "net.noodl.DateDifference",
       "status": "translated",
-      "note": "EXP-011 Tier 1.3 (§9) — the signed distance between two instants, counted in a unit. Emitted as a call into src/lib/date.ts, a transcription of the interpreter’s own datemath.ts."
+      "note": "EXP-011 Tier 1.3 (\u00a79) \u2014 the signed distance between two instants, counted in a unit. Emitted as a call into src/lib/date.ts, a transcription of the interpreter\u2019s own datemath.ts."
     },
     {
       "typeName": "net.noodl.DateParts",
       "status": "translated",
-      "note": "EXP-011 Tier 1.3 (§9) — one field of an instant, in the local zone. Emitted as a call into src/lib/date.ts, a transcription of the interpreter’s own datemath.ts."
+      "note": "EXP-011 Tier 1.3 (\u00a79) \u2014 one field of an instant, in the local zone. Emitted as a call into src/lib/date.ts, a transcription of the interpreter\u2019s own datemath.ts."
     },
     {
       "typeName": "net.noodl.GlobalStore",
@@ -586,102 +586,102 @@
     {
       "typeName": "net.noodl.HTTP",
       "status": "translated",
-      "note": "one function per node in src/api/http.ts, built from the configuration the editor settled; the two outcome arms and the Error value translate. A wired Cancel, a wired configuration input and a consumed Completed defer, each with its reason (EXP-011 §8)"
+      "note": "one function per node in src/api/http.ts, built from the configuration the editor settled; the two outcome arms and the Error value translate. A wired Cancel, a wired configuration input and a consumed Completed defer, each with its reason (EXP-011 \u00a78)"
     },
     {
       "typeName": "net.noodl.Hash",
       "status": "deferred",
-      "exemption": "deliberately out of scope — EXP-011 §3 \"Not a target\": hashing; specialist. A real node and some of them excellent; this says nobody is waiting on it, not that it is bad"
+      "exemption": "deliberately out of scope \u2014 EXP-011 \u00a73 \"Not a target\": hashing; specialist. A real node and some of them excellent; this says nobody is waiting on it, not that it is bad"
     },
     {
       "typeName": "net.noodl.JSONStreamParser",
       "status": "deferred",
-      "exemption": "deliberately out of scope — EXP-011 §3 \"Not a target\": incremental JSON over a stream; specialist. A real node and some of them excellent; this says nobody is waiting on it, not that it is bad"
+      "exemption": "deliberately out of scope \u2014 EXP-011 \u00a73 \"Not a target\": incremental JSON over a stream; specialist. A real node and some of them excellent; this says nobody is waiting on it, not that it is bad"
     },
     {
       "typeName": "net.noodl.Log",
       "status": "translated",
-      "note": "EXP-011 §39 (session 68): an action — `log(level, message, data)` into src/lib/util.ts, a transcription of log.ts's `_write` browser branch (the level is the console method, an absent message prints '', data is passed only when one arrived), then the Done chain as following statements. `Value` passes straight through, so a read of it is a read of whatever feeds the input. Defers a wired Level (an enum the setter validates on arrival), a consumed Completed (one outcome — wire Done instead) and any other output, each by name. The backend sink and its redaction are the cloud runtime's and never reach a browser bundle."
+      "note": "EXP-011 \u00a739 (session 68): an action \u2014 `log(level, message, data)` into src/lib/util.ts, a transcription of log.ts's `_write` browser branch (the level is the console method, an absent message prints '', data is passed only when one arrived), then the Done chain as following statements. `Value` passes straight through, so a read of it is a read of whatever feeds the input. Defers a wired Level (an enum the setter validates on arrival), a consumed Completed (one outcome \u2014 wire Done instead) and any other output, each by name. The backend sink and its redaction are the cloud runtime's and never reach a browser bundle."
     },
     {
       "typeName": "net.noodl.Now",
       "status": "translated",
-      "note": "EXP-011 Tier 1.3 (§9) — the clock, read once at mount and again on every Read — a lazy useState seed plus a bound instant per press. Emitted as a call into src/lib/date.ts, a transcription of the interpreter’s own datemath.ts."
+      "note": "EXP-011 Tier 1.3 (\u00a79) \u2014 the clock, read once at mount and again on every Read \u2014 a lazy useState seed plus a bound instant per press. Emitted as a call into src/lib/date.ts, a transcription of the interpreter\u2019s own datemath.ts."
     },
     {
       "typeName": "net.noodl.ObjectChanged",
       "status": "deferred",
-      "exemption": "deliberately out of scope — not offered in the node picker, so it cannot be placed. It exists for graphs that already have one, and those export as named deferrals"
+      "exemption": "deliberately out of scope \u2014 not offered in the node picker, so it cannot be placed. It exists for graphs that already have one, and those export as named deferrals"
     },
     {
       "typeName": "net.noodl.OptimisticUpdate",
       "status": "deferred",
-      "exemption": "deliberately out of scope — EXP-011 §3 \"Not a target\": optimistic mutation with rollback — a data-layer policy, not a value the graph computes. A real node and some of them excellent; this says nobody is waiting on it, not that it is bad"
+      "exemption": "deliberately out of scope \u2014 EXP-011 \u00a73 \"Not a target\": optimistic mutation with rollback \u2014 a data-layer policy, not a value the graph computes. A real node and some of them excellent; this says nobody is waiting on it, not that it is bad"
     },
     {
       "typeName": "net.noodl.ParentComponentObject",
       "status": "deferred",
-      "exemption": "scheduled — EXP-011 Tier 3: the component-tree family (§3 Tier 3.10) — real, but a smaller audience"
+      "exemption": "scheduled \u2014 EXP-011 Tier 3: the component-tree family (\u00a73 Tier 3.10) \u2014 real, but a smaller audience"
     },
     {
       "typeName": "net.noodl.ParseCSV",
       "status": "deferred",
-      "exemption": "deliberately out of scope — EXP-011 §3 \"Not a target\": CSV import; specialist. A real node and some of them excellent; this says nobody is waiting on it, not that it is bad"
+      "exemption": "deliberately out of scope \u2014 EXP-011 \u00a73 \"Not a target\": CSV import; specialist. A real node and some of them excellent; this says nobody is waiting on it, not that it is bad"
     },
     {
       "typeName": "net.noodl.PatternExtractor",
       "status": "deferred",
-      "exemption": "deliberately out of scope — EXP-011 §3 \"Not a target\": regex-shaped extraction; specialist. A real node and some of them excellent; this says nobody is waiting on it, not that it is bad"
+      "exemption": "deliberately out of scope \u2014 EXP-011 \u00a73 \"Not a target\": regex-shaped extraction; specialist. A real node and some of them excellent; this says nobody is waiting on it, not that it is bad"
     },
     {
       "typeName": "net.noodl.RandomBytes",
       "status": "deferred",
-      "exemption": "deliberately out of scope — EXP-011 §3 \"Not a target\": cryptographic randomness; specialist. A real node and some of them excellent; this says nobody is waiting on it, not that it is bad"
+      "exemption": "deliberately out of scope \u2014 EXP-011 \u00a73 \"Not a target\": cryptographic randomness; specialist. A real node and some of them excellent; this says nobody is waiting on it, not that it is bad"
     },
     {
       "typeName": "net.noodl.SSE",
       "status": "deferred",
-      "exemption": "deliberately out of scope — EXP-011 §3 \"Not a target\": a live server connection; specialist, and nothing in the emitted app holds one. A real node and some of them excellent; this says nobody is waiting on it, not that it is bad"
+      "exemption": "deliberately out of scope \u2014 EXP-011 \u00a73 \"Not a target\": a live server connection; specialist, and nothing in the emitted app holds one. A real node and some of them excellent; this says nobody is waiting on it, not that it is bad"
     },
     {
       "typeName": "net.noodl.SetComponentObjectProperties",
       "status": "deferred",
-      "exemption": "scheduled — EXP-011 Tier 3: the component-tree family (§3 Tier 3.10) — real, but a smaller audience"
+      "exemption": "scheduled \u2014 EXP-011 Tier 3: the component-tree family (\u00a73 Tier 3.10) \u2014 real, but a smaller audience"
     },
     {
       "typeName": "net.noodl.SetParentComponentObjectProperties",
       "status": "deferred",
-      "exemption": "scheduled — EXP-011 Tier 3: the component-tree family (§3 Tier 3.10) — real, but a smaller audience"
+      "exemption": "scheduled \u2014 EXP-011 Tier 3: the component-tree family (\u00a73 Tier 3.10) \u2014 real, but a smaller audience"
     },
     {
       "typeName": "net.noodl.StateHistory",
       "status": "deferred",
-      "exemption": "deliberately out of scope — EXP-011 §3 \"Not a target\": undo/redo history — a whole state architecture rather than a node. A real node and some of them excellent; this says nobody is waiting on it, not that it is bad"
+      "exemption": "deliberately out of scope \u2014 EXP-011 \u00a73 \"Not a target\": undo/redo history \u2014 a whole state architecture rather than a node. A real node and some of them excellent; this says nobody is waiting on it, not that it is bad"
     },
     {
       "typeName": "net.noodl.StateHistory.Undo",
       "status": "deferred",
-      "exemption": "deliberately out of scope — EXP-011 §3 \"Not a target\": the verb half of undo/redo, out of scope with it. A real node and some of them excellent; this says nobody is waiting on it, not that it is bad"
+      "exemption": "deliberately out of scope \u2014 EXP-011 \u00a73 \"Not a target\": the verb half of undo/redo, out of scope with it. A real node and some of them excellent; this says nobody is waiting on it, not that it is bad"
     },
     {
       "typeName": "net.noodl.StateSnapshot",
       "status": "deferred",
-      "exemption": "deliberately out of scope — EXP-011 §3 \"Not a target\": the snapshot half of undo/redo; §3 named the family and this is its third member. A real node and some of them excellent; this says nobody is waiting on it, not that it is bad"
+      "exemption": "deliberately out of scope \u2014 EXP-011 \u00a73 \"Not a target\": the snapshot half of undo/redo; \u00a73 named the family and this is its third member. A real node and some of them excellent; this says nobody is waiting on it, not that it is bad"
     },
     {
       "typeName": "net.noodl.StreamBuffer",
       "status": "deferred",
-      "exemption": "deliberately out of scope — EXP-011 §3 \"Not a target\": streaming plumbing — specialist, and the emitted app has no stream vocabulary to put it in. A real node and some of them excellent; this says nobody is waiting on it, not that it is bad"
+      "exemption": "deliberately out of scope \u2014 EXP-011 \u00a73 \"Not a target\": streaming plumbing \u2014 specialist, and the emitted app has no stream vocabulary to put it in. A real node and some of them excellent; this says nobody is waiting on it, not that it is bad"
     },
     {
       "typeName": "net.noodl.TextAccumulator",
       "status": "deferred",
-      "exemption": "deliberately out of scope — EXP-011 §3 \"Not a target\": token accumulation for streamed text; specialist. A real node and some of them excellent; this says nobody is waiting on it, not that it is bad"
+      "exemption": "deliberately out of scope \u2014 EXP-011 \u00a73 \"Not a target\": token accumulation for streamed text; specialist. A real node and some of them excellent; this says nobody is waiting on it, not that it is bad"
     },
     {
       "typeName": "net.noodl.ToCSV",
       "status": "deferred",
-      "exemption": "deliberately out of scope — EXP-011 §3 \"Not a target\": CSV export; specialist. A real node and some of them excellent; this says nobody is waiting on it, not that it is bad"
+      "exemption": "deliberately out of scope \u2014 EXP-011 \u00a73 \"Not a target\": CSV export; specialist. A real node and some of them excellent; this says nobody is waiting on it, not that it is bad"
     },
     {
       "typeName": "net.noodl.UUID",
@@ -690,12 +690,12 @@
     {
       "typeName": "net.noodl.WebSocket",
       "status": "deferred",
-      "exemption": "deliberately out of scope — EXP-011 §3 \"Not a target\": a live socket; specialist, same reason. A real node and some of them excellent; this says nobody is waiting on it, not that it is bad"
+      "exemption": "deliberately out of scope \u2014 EXP-011 \u00a73 \"Not a target\": a live socket; specialist, same reason. A real node and some of them excellent; this says nobody is waiting on it, not that it is bad"
     },
     {
       "typeName": "net.noodl.animatetovalue",
       "status": "deferred",
-      "exemption": "scheduled — EXP-011 Tier 3: the animation pair (§3 Tier 3.8) — time-based and stateful, worth doing properly rather than early"
+      "exemption": "scheduled \u2014 EXP-011 Tier 3: the animation pair (\u00a73 Tier 3.8) \u2014 time-based and stateful, worth doing properly rather than early"
     },
     {
       "typeName": "net.noodl.controls.button",
@@ -705,22 +705,22 @@
     {
       "typeName": "net.noodl.controls.checkbox",
       "status": "translated",
-      "note": "appearance:none input with the runtime box defaults and a masked default tick; label wrapper (VISUALS-TARGET §3)"
+      "note": "appearance:none input with the runtime box defaults and a masked default tick; label wrapper (VISUALS-TARGET \u00a73)"
     },
     {
       "typeName": "net.noodl.controls.options",
       "status": "translated",
-      "note": "native select: literal items become options, placeholder the hidden disabled option; wired items defer (VISUALS-TARGET §5)"
+      "note": "native select: literal items become options, placeholder the hidden disabled option; wired items defer (VISUALS-TARGET \u00a75)"
     },
     {
       "typeName": "net.noodl.controls.radiobutton",
       "status": "translated",
-      "note": "appearance:none radio inside a Radio Button Group, ::before dot with the FB-020 colour fallback (VISUALS-TARGET §3)"
+      "note": "appearance:none radio inside a Radio Button Group, ::before dot with the FB-020 colour fallback (VISUALS-TARGET \u00a73)"
     },
     {
       "typeName": "net.noodl.controls.range",
       "status": "translated",
-      "note": "native input[type=range] with authored bounds; thumbColor becomes accent-color (VISUALS-TARGET §4)"
+      "note": "native input[type=range] with authored bounds; thumbColor becomes accent-color (VISUALS-TARGET \u00a74)"
     },
     {
       "typeName": "net.noodl.controls.textinput",
@@ -730,7 +730,7 @@
     {
       "typeName": "net.noodl.externallink",
       "status": "translated",
-      "note": "EXP-011 Tier 2.5 (session 41): `window.open(link, target, params)` with the interpreter own two guards — the empty-link refusal, which is emitted because `window.open(\"\")` opens a blank tab, and the blocked-new-tab test, which the runtime reads only for `_blank`. `Open In New Tab` unset is `true` (the port declared default, materialised by `registerInput`), so the unwired port and an authored `true` are one case. Defers a wired `Open In New Tab` (the runtime reads that port two ways in two adjacent lines and they disagree for any truthy value that is not `true`), and a Link that is absent, empty or not a string. `Error` is a state row (§14, session 43) — both messages are static, so the failure arm re-tests the link to pick between them; the row is allocated by the read, so a link nothing asks about still emits no state. A read of `Error` from inside the node own outcome chains still defers, on the closure rule. §14 also moved the blocked-tab read to BEFORE the `window.open` call, where the runtime has it: the call CONSUMES the transient activation, so read after it the test is false on every tab the app successfully opens. `Unchanged` is dropped with a note: it fires only during a server-side render, and the scaffold mounts with createRoot."
+      "note": "EXP-011 Tier 2.5 (session 41): `window.open(link, target, params)` with the interpreter own two guards \u2014 the empty-link refusal, which is emitted because `window.open(\"\")` opens a blank tab, and the blocked-new-tab test, which the runtime reads only for `_blank`. `Open In New Tab` unset is `true` (the port declared default, materialised by `registerInput`), so the unwired port and an authored `true` are one case. Defers a wired `Open In New Tab` (the runtime reads that port two ways in two adjacent lines and they disagree for any truthy value that is not `true`), and a Link that is absent, empty or not a string. `Error` is a state row (\u00a714, session 43) \u2014 both messages are static, so the failure arm re-tests the link to pick between them; the row is allocated by the read, so a link nothing asks about still emits no state. A read of `Error` from inside the node own outcome chains still defers, on the closure rule. \u00a714 also moved the blocked-tab read to BEFORE the `window.open` call, where the runtime has it: the call CONSUMES the transient activation, so read after it the test is false on every tab the app successfully opens. `Unchanged` is dropped with a note: it fires only during a server-side render, and the scaffold mounts with createRoot."
     },
     {
       "typeName": "net.noodl.user.LogIn",
@@ -745,32 +745,32 @@
     {
       "typeName": "net.noodl.user.RequestMagicLink",
       "status": "deferred",
-      "exemption": "scheduled — EXP-011 Tier 2: Cloud Services (§3 Tier 2.6), mostly unblocked by EXP-009 — re-measure after it lands rather than planning against today’s list"
+      "exemption": "scheduled \u2014 EXP-011 Tier 2: Cloud Services (\u00a73 Tier 2.6), mostly unblocked by EXP-009 \u2014 re-measure after it lands rather than planning against today\u2019s list"
     },
     {
       "typeName": "net.noodl.user.RequestPasswordReset",
       "status": "deferred",
-      "exemption": "deliberately out of scope — the type is deprecated in the catalog, so nobody building today is offered one. A project that still holds one exports it as a named deferral, which is the right answer for a node its own editor has retired"
+      "exemption": "deliberately out of scope \u2014 the type is deprecated in the catalog, so nobody building today is offered one. A project that still holds one exports it as a named deferral, which is the right answer for a node its own editor has retired"
     },
     {
       "typeName": "net.noodl.user.ResetPassword",
       "status": "deferred",
-      "exemption": "deliberately out of scope — the type is deprecated in the catalog, so nobody building today is offered one. A project that still holds one exports it as a named deferral, which is the right answer for a node its own editor has retired"
+      "exemption": "deliberately out of scope \u2014 the type is deprecated in the catalog, so nobody building today is offered one. A project that still holds one exports it as a named deferral, which is the right answer for a node its own editor has retired"
     },
     {
       "typeName": "net.noodl.user.SendEmailVerification",
       "status": "deferred",
-      "exemption": "deliberately out of scope — the type is deprecated in the catalog, so nobody building today is offered one. A project that still holds one exports it as a named deferral, which is the right answer for a node its own editor has retired"
+      "exemption": "deliberately out of scope \u2014 the type is deprecated in the catalog, so nobody building today is offered one. A project that still holds one exports it as a named deferral, which is the right answer for a node its own editor has retired"
     },
     {
       "typeName": "net.noodl.user.SetUserProperties",
       "status": "deferred",
-      "exemption": "scheduled — EXP-011 Tier 2: Cloud Services (§3 Tier 2.6), mostly unblocked by EXP-009 — re-measure after it lands rather than planning against today’s list"
+      "exemption": "scheduled \u2014 EXP-011 Tier 2: Cloud Services (\u00a73 Tier 2.6), mostly unblocked by EXP-009 \u2014 re-measure after it lands rather than planning against today\u2019s list"
     },
     {
       "typeName": "net.noodl.user.SignInWith",
       "status": "deferred",
-      "exemption": "scheduled — EXP-011 Tier 2: Cloud Services (§3 Tier 2.6), mostly unblocked by EXP-009 — re-measure after it lands rather than planning against today’s list"
+      "exemption": "scheduled \u2014 EXP-011 Tier 2: Cloud Services (\u00a73 Tier 2.6), mostly unblocked by EXP-009 \u2014 re-measure after it lands rather than planning against today\u2019s list"
     },
     {
       "typeName": "net.noodl.user.SignUp",
@@ -785,17 +785,17 @@
     {
       "typeName": "net.noodl.user.VerifyEmail",
       "status": "deferred",
-      "exemption": "deliberately out of scope — the type is deprecated in the catalog, so nobody building today is offered one. A project that still holds one exports it as a named deferral, which is the right answer for a node its own editor has retired"
+      "exemption": "deliberately out of scope \u2014 the type is deprecated in the catalog, so nobody building today is offered one. A project that still holds one exports it as a named deferral, which is the right answer for a node its own editor has retired"
     },
     {
       "typeName": "net.noodl.visual.columns",
       "status": "translated",
-      "note": "CSS Grid: fr tracks from the layout string, gap gutters, repeat(auto-fit) for Auto Fit, @container breakpoints (VISUALS-TARGET §1)"
+      "note": "CSS Grid: fr tracks from the layout string, gap gutters, repeat(auto-fit) for Auto Fit, @container breakpoints (VISUALS-TARGET \u00a71)"
     },
     {
       "typeName": "net.noodl.visual.icon",
       "status": "translated",
-      "note": "one element per source kind: font span, sprite svg use, img (VISUALS-TARGET §2); inline sources defer"
+      "note": "one element per source kind: font span, sprite svg use, img (VISUALS-TARGET \u00a72); inline sources defer"
     },
     {
       "typeName": "noodl.cloud.addusertorole",
