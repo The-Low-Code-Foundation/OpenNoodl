@@ -42,3 +42,48 @@ end to end. It runs LAST and it re-verifies every person sentence in the phase.
   one; opening a project writes three files and dirties every component.
 - 🔴 Verify the consequence, not the mechanism: a drive can pass on a broken feature if you
   assert the call rather than the screen.
+
+---
+
+## 4. Run 1 — 2026-09-02 (s44). 🔴 Reached step 3 of 8; steps 3–8 ⬜
+
+**Full record: [`notes/sbr014/SBR-014-DRIVE-2026-09-02.md`](notes/sbr014/SBR-014-DRIVE-2026-09-02.md).**
+Driven through the panel's UI on a wizard-created project (`sbr014-drive`, backend on 8604).
+
+| # | step | owner | state |
+|---|---|---|---|
+| 1 | wizard → Site Builder → opens on `Pages/Setup` | SBR-001/002 | ✅ driven |
+| 2 | claim → admin shell | SBR-006 | 🟡 driven, **not by the person's path** — ⬜ **SBR-001** (D50) |
+| 3 | create page, five kinds, reorder, save, publish | SBR-005/007 | 🔴 ⬜ **BLOCKED — SBR-008 AC1** |
+| 4 | public site anonymously | SBR-004 | ⬜ not reached |
+| 5 | theme → live repaint | SBR-009/011/003 | ⬜ not reached |
+| 6 | contact form → Messages | SBR-005/010 | ⬜ not reached |
+| 7 | deploy → retitle → save | SBR-008 | ⬜ not reached |
+| 8 | negative arcs | SBR-002/011 | ⬜ not reached |
+
+Unchanged and pre-known: **SBR-007 AC3** ⬜ (D15, no runtime drop-target capability).
+
+### AC status
+
+- **AC1 — not met.** Five of eight steps were never reached.
+- **AC2 — met, and it is the only one.** Every unreached step is ⬜ against its task by name above;
+  nothing was rounded off. This is the criterion the run exists to protect.
+- **AC3 — not met.** Steps 4, 5 and 7 were never reached, so their screenshots do not exist. Four
+  other pictures were taken (backend attached, admin shell, and two defects) — see the record.
+  ⚠️ The preview window is **456×313 css px**; resize it before any run that owes a look.
+
+### 🔴 The blocker, stated once
+
+A page created through the New page dialog persists **no title and no slug**, and the page editor's
+save then writes nothing (`updatedAt` did not move). Driven twice through two different input
+methods. The `Page` table never gains the columns.
+
+This is **not a new defect — it is [SBR-008](SBR-008-THE-DEPLOY-KEEPS-THE-PANELS-WIRES.md) AC1**,
+already recorded unmet, in its worst form: in SBR-008's own drive `Title` saved because that
+fixture already had the column, and only `seoDescription` was lost. On a wizard-fresh site there is
+no column for anything, so the loss reaches the primary fields and there is no way out through the
+UI — the only way to create the column is to write it, and the wire that writes it is the one being
+dropped.
+
+**Steps 3–8 cannot be driven until SBR-008 AC1 is met.** That makes it this phase's real distance
+to done, ahead of SBR-014 itself.

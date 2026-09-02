@@ -2323,10 +2323,20 @@ visible; a longer one would only make the same wait silent.
 
 ---
 
-## D46 — 🔴 SIX realtime subscriptions on one origin SILENCE the app. Owner `NONE`
+## D46 — 🟡 SIX realtime subscriptions on one origin SILENCE the app. FIXED s42, drive owed
 
 **Product, `packages/noodl-runtime/src/api/backends/realtime/SseTransport.ts`.** The delay half of
 [D45](#d45), measured, and it is larger than the row it came out of.
+
+> ✅ **Fixed 2026-09-02 (s42): `packages/noodl-runtime/src/api/backends/realtime/SseConnectionPool.ts`.**
+> Every unfiltered subscription on one backend now shares one `EventSource` and registers in one
+> POST of the union. **11 new arms** in `realtime-transports.test.ts` (`describe('D46 …')`), and the
+> reverted control is the reading that matters: **10 of the 11 go red against committed HEAD**, the
+> one that stays green being the deliberate known-firing twin (*two subscriptions on DIFFERENT
+> backends still open two streams*). Whole `noodl-runtime` suite green beside it — **148 suites,
+> 2,629 tests**. ⬜ **Still owed: the browser reading.** `sbr011-live-preview-drive` has not been
+> re-run against the fix, so AC3 is not settled and the six-stream ceiling has not been re-measured
+> from a real page. See "What was NOT closed" at the foot of this row.
 
 ### What was measured
 
@@ -2402,11 +2412,57 @@ a shared stream needs listeners added and removed as the registry changes.
 number is what made the failure visible, and a longer one only makes the same wait silent. A
 deadline long enough to survive the race would also be long enough to hide a real refusal.
 
-🔴 **It blocks SBR-011 AC3**, and it is the only thing that does.
+🔴 **It blocks SBR-011 AC3**, and it is the only thing that does. ⚠️ Since the s41 handoff it also
+blocks **SBR-014 step 5** — *"pick Night, watch the local preview, save, watch the open site repaint
+live"* is the same behaviour, on the last unbuilt task in the phase.
+
+### What was built, s42
+
+`SseConnectionPool.ts` — a registry keyed on **host, dialect, base URL, token and filter**. The
+three things the row said made it smaller than it looks all held: `parseChange` already filtered by
+`payload.collection`, the hub's POST already took an array, and "the POST replaces the set" turned
+out to be the argument *for* a registry rather than against one. Three things the row did **not**
+name, each of which is an arm:
+
+- 🔴 **A verdict is only about the members that were in the request.** A subscription that joins
+  while a POST is in flight is not named in that body, so our backend's `accepted[]` cannot name it
+  either — settling it from that answer reports `SUBSCRIPTION_REJECTED` for a subscription the
+  server has never been told about and tears it down before its own POST is sent. Found while
+  writing the arm for it, not by reasoning about the design.
+- 🔴 **`readVerdict` had to become per-collection.** `RealtimeHub.setSubscriptions` gates each entry
+  on that collection's own `find` CLP, so a union POST is answered with some accepted and some
+  rejected; one verdict per response would take down whichever subscriptions happened to share.
+- 🔴 **`RealtimeDeps` is the key, not decoration.** Two subscriptions given different `EventSource`
+  and `fetch` implementations are not on the same wire whatever their URL says. Production passes
+  none and shares one pool; a test passing its own doubles is isolated by construction, which is why
+  no `reset()` exists and why the 77 pre-existing arms needed no `beforeEach`.
+
+### The boundary that was deliberately NOT crossed
+
+⚠️ **A subscription with a `where` still gets its own connection.** The row's own warning is the
+reason: a shared stream delivers the union and a consumer here filters only by collection name, so a
+filtered subscriber sharing with an unfiltered one would silently receive rows it asked not to see.
+Client-side evaluation of the Parse-style `$` grammar is the only alternative and it is a second
+filter engine to keep in step with `nodegx-backend/src/realtime/filter.ts`. Subscriptions with the
+**same** `(collection, filter)` do share. 🔴 **So an app with six *differently filtered*
+subscriptions on one origin still reaches the ceiling** — recorded here rather than papered over,
+and it is the shape of any future report that looks like D46 and is not fixed by this.
+
+### What was NOT closed
+
+⬜ **The drive.** `sbr011-live-preview-drive` has not been run against the fix. Until it is, AC3 is
+open and **this row is not closed**. Two of its instruments were re-pointed for the fix and both are
+now unread: the drive's `expect(openStreams).toBeGreaterThanOrEqual(3)` was inverted to `< 3` —
+🔴 **it is the arm the un-fixed code cannot satisfy, so it is the drive's own reading of D46** — and
+`sbr011LivePreview.test.ts`'s header, one arm title and two comments claimed a *connection* budget
+that is now a *re-query* budget. ⚠️ **A drive needs the viewer rebuilt**: it renders from
+`packages/noodl-editor/src/external/`, which is a built artefact, so an unrebuilt bundle measures the
+old transport twice and reports it as a control. Grep the built bundle for `uncomparable` — the one
+string literal unique to `SseConnectionPool` that survives minification — before believing an arm.
 
 ---
 
-## D47 — ⚠️ Two drives are RED in the working tree, and it is not D45's fix. Owner `NONE`
+## D47 — ✅ CLOSED s43. Two drives were red; both are green, and the variable was the built bundle
 
 **Measured s40, and filed as a fact rather than a diagnosis.** Run while checking D45's fix had not
 downgraded a neighbour:
@@ -2430,6 +2486,60 @@ nothing here has been run against a bundle built without those edits.
 
 🔴 **Whoever owns this must re-derive it rather than relay it.** The one thing worth carrying
 forward is the control: it is *not* the D45 proxy fix, and that has been measured twice.
+
+---
+
+### ✅ CLOSED s43 — re-derived, and both drives are GREEN. The variable was the BUILT BUNDLE
+
+**Re-run at the working tree, 2026-09-02 21:35–21:50:**
+
+| suite | s40 | **s43** |
+|---|---|---|
+| `sbr010-messages-drive` | 🔴 17/17 fail | ✅ **17/17 pass**, exit 0, 118s |
+| `sb008-public-site-drive` | 🔴 7 fail | ✅ **20/20 pass**, exit 0, 27s |
+
+`absent:` and `no input` appear **zero times** across both logs. Neither log carries
+`[render] WARNING: no noodl.viewer.js`.
+
+✅ **The REL-002a lead is EXONERATED, and not by argument.** Both edits the row named are *still in
+the working tree, unchanged since before s40*, and the drives pass **with them present**:
+`text-input.ts` (mtime 09-01 11:34, `Placeholder` default still `''`, `grep 'Type here'` in the
+served bundle → **0**) and `render-from-disk.js` (mtime 09-02 16:47, i.e. its s40 state). A green arm
+with the suspect edits installed is the control the row was owed.
+
+🔴 **What actually varied — and it is the one thing s40's two controls could not vary.** Nothing on
+the drive side moved: `sbr010-messages-drive.test.ts` (09-01 23:35), `sb008-public-site-drive.test.ts`
+(08-28 16:20) and `helpers/members-drive.ts` (08-29 18:49) are all clean in git and older than s40.
+The single artefact that changed is the **viewer bundle the harness serves** —
+`packages/noodl-editor/src/external/viewer/noodl.viewer.js`, which `HARNESS_PATHS.VIEWER_DIR`
+resolves to in a checkout:
+
+- `noodl.viewer.js` — rebuilt **09-02 21:28**
+- `noodl.viewer.js.LICENSE.txt` — still **09-02 14:39** (webpack leaves it when it is unchanged)
+
+s40 ran between those two timestamps, so it drove the **14:39** build; s43 drove the **21:28** one.
+
+⚠️ **What this does NOT establish.** The 14:39 bundle is overwritten and the path is gitignored
+(`.gitignore:200` — `packages/noodl-editor/src/external`), so it has no history and cannot be
+rebuilt to prove it was broken. "The old bundle was bad" is the surviving explanation, not a
+measured one. What *is* measured is that every source input to these drives is unchanged and the
+result flipped, which leaves the build artefact as the only remaining variable.
+
+🔴 **The lesson, and it is a repeat.** s40 controlled by **reverting source** — D45's fix, then
+`render-from-disk.js` to committed HEAD — and neither control rebuilt the bundle, so all three arms
+re-measured the *same 14:39 artefact* and agreed with each other for a reason that had nothing to do
+with what was being varied. A source-side revert is not a control over a system that serves a
+gitignored build. ✅ **Rebuild between arms, or grep the built artefact for the changed string** —
+the same trap SBR-013 hit at s41 with a two-day-stale `noodl-mcp.cjs`.
+
+⚠️ **Standing caveat for SBR-014.** One green run does not disprove an intermittent fault, and 24
+simultaneous failures look systematic rather than flaky. If either drive reddens again, **check the
+bundle's mtime before anything else** and rebuild `packages/noodl-viewer-react` before treating it
+as a product defect.
+
+**D46's fix is NOT the explanation.** The peer's in-flight `SseConnectionPool.ts` is in the tree at
+s43, but the served bundle does not carry it — `SharedSseConnection` → 0, `openConnectionCount` → 0.
+These drives went green without it.
 
 ---
 
@@ -2493,3 +2603,66 @@ exact split phase 78 recorded and phase 80 refused. Phase 77 owns the site-build
 ✅ **s32 fixed both, which is what that decision was for.** The routing call took one session to
 pay off: the rows stayed where the hands were, and the mutant arms s31 left behind meant the
 repair was not a proposal but an arm that had already run.
+
+---
+
+## D49
+
+**The claim screen shows both of its failure sentences before anything has been attempted.**
+Owner: **SBR-001** (its person sentence is *"lands on a working claim screen … and no white void"*).
+Found by the SBR-014 drive, s44.
+
+On first render of `/admin/setup`, **both** *"This site cannot be claimed."* and *"That account
+could not be created."* are visible — measured, not inferred: `display:flex`,
+`visibility:visible`, `opacity:1`, 708×19px, and on top per `elementFromPoint`. Picture:
+`notes/sbr014/d49-claim-screen-preloaded-errors.png`.
+
+**Cause, read off the artefact.** Each `Text` node ships `"visible": false`, but that parameter is
+**inert**: a connection drives the port from a `Condition` node's `result`. Both `Condition` nodes
+carry `runOnChange-condition: true` *and* a literal `condition: true`, so they evaluate at init and
+push `true` into `visible` long before any `failure` signal reaches their `eval` port.
+
+🔴 **Confirmed at HEAD**, not in the working tree — `git show HEAD:…/site-builder.content.json`
+carries both gates, named `claimGate` and `signupGate`. The template's uncommitted `+6` lines are
+the D46 realtime work and are unrelated. So this shipped.
+
+🔴 **Not cosmetic.** Because the sentences are always on, a *real* failure is indistinguishable
+from the initial state. When the claim genuinely failed during the s44 drive, the screen looked
+exactly as it had before the attempt — the person is told the site cannot be claimed on arrival,
+and told nothing new when it actually cannot be.
+
+Same family as the phase's `Run`-is-additive lesson: **wiring `eval` does not stop a `Condition`
+running on its own.** The fix is `runOnChange-condition: false` on both gates; it is a template
+edit, so it wants a regenerate rather than a hand edit of the generated JSON.
+
+⚠️ **Does not block an acceptance criterion** — the claim itself still works once the token exists,
+so by the standing rule this is filed with an owner rather than made a first job.
+
+## D50
+
+**A person who finishes the wizard cannot claim their site: `claimSite` needs a
+`SITE_SETUP_TOKEN` that provisioning never writes.** Owner: **SBR-001**. Registered by the SBR-014
+drive, s44.
+
+Measured on a freshly wizard-created backend (`backend_mtkip2rjf20ct`): `secrets.json` held
+`adminToken` only. **Control:** ten *other* backends on this machine do carry
+`functions.SITE_SETUP_TOKEN`, so the probe fires and the absence is real. In source the name
+appears exactly twice outside the template — the *placeholder text* in `SecretsPanel.tsx:250` and
+a comment in `projectPolicy.ts:76` that states the cost outright: *"a `SITE_SETUP_TOKEN` secret
+that provisioning does not write."*
+
+Driven as a person: the claim fails and leaves **an account with no admin role and no site**
+(`_User` 1, `_Role` 0, `SiteSettings` 0). The claim screen's instruction — *"enter the setup token
+from your backend configuration"* — points at configuration that does not exist.
+
+✅ **One half already works and is recorded as working:** re-claiming with the correct token
+**adopts** the orphan account rather than failing on "account already exists" (`_User` stayed 1,
+and the admin role joined it). The failed attempt does not lock the person out.
+
+⚠️ **This is not a new discovery, and the row says so.** SB-015 §6 states the cost, and every prior
+drive in this phase (SBR-004, SBR-006, SBR-007, SBR-015, SBR-017) hand-provisioned the same secret
+through the ··· → Secrets panel. What is new is only that **SBR-014 is the task whose subject is
+the person's story**, so here it is ⬜ against step 2 rather than a setup line. The workaround is
+sound and is what s44 used to continue.
+
+**Blocks SBR-014 step 2 for the person's path only** — not the drive, which can hand-provision.
