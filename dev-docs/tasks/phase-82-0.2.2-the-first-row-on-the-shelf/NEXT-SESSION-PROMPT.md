@@ -148,6 +148,28 @@ avatars on `/directory` would be a claim about what real members look like.
 **Everything below about row 6 being nearly done was written before this and is superseded.** Rows 7
 and 8 stay behind **AC6, which is Richard's look and nothing else**.
 
+### 🔴 Two things landed AFTER the build, late in s15 — read them before quoting §6
+
+1. **§6.9's typeface claim was CORRECTED, by a peer, and the correction is the useful part.** The
+   starter-assets fix is sound and its evidence is the **photographs** (three observed
+   `image/load-failed` lines). The first draft also claimed every earlier drive rendered *"with no
+   typeface"* — **false**: this template sets `--font-sans` as a **custom token**
+   (`"Source Sans Pro", "Segoe UI", …`), so Inter is never requested, installed or absent. ✅ **The
+   committed renders are therefore FAITHFUL to a real install**, which is what AC6 is read from.
+   🔴 The error shape, because this row keeps meeting it: **a finding with two halves, evidence for
+   one.** The photographs half was observed; the typeface half was inferred from the same file list
+   and rode on its credibility. **Write the claim at the width of the evidence.**
+2. 🔴 **R8 is a PRODUCT defect and it is why (1) happened.** `templates/members-area` ships
+   `--font-sans` whose **description** says *"Inter, falling back to…"* while its **value** contains
+   no Inter — and that string is the **only** occurrence of `Inter` in the artefact, so a grep
+   returns one hit and the hit is untrue. Authored by
+   [`StyleTokensModel.ts:161`](../../../packages/noodl-editor/src/editor/src/models/StyleTokensModel/StyleTokensModel.ts#L161),
+   which inherits the DEFAULT's description when a preset overrides the VALUE. **11 of 45 described
+   tokens state a value; `--font-sans` is overridden by 4 of the 5 shipped presets**, so most new
+   projects carry it. ⚠️ **Do not "fix" it by dropping the description on override** — that discards
+   the 34 role descriptions, which are the ones worth keeping. **Owner: phase 81. Not this row's, and
+   it blocks no AC here.**
+
 ## The run sheet
 
 Take the topmost row that is not ✅.
