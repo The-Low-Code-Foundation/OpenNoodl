@@ -555,7 +555,24 @@ const LOADED_RECORD_SOURCES = new Set(['DbModel2', 'DbCollection2']);
  */
 const USER_VERBS: Record<
   string,
-  { verb: 'login' | 'logout' | 'signup'; trigger: string; fnName: string; inputs: string[] }
+  {
+    verb: UserVerb;
+    trigger: string;
+    fnName: string;
+    inputs: string[];
+    /**
+     * EXP-011 §44 — `Request Magic Link` is the one member of the family whose success **clears**
+     * its Error (`requestmagiclink.ts`: `this._internal.error = undefined` before `done`); the
+     * other five leave it as the last refusal wrote it. Absent means "never cleared".
+     */
+    clearsErrorOnDone?: true;
+    /**
+     * EXP-011 §44 — `Set User Properties` takes the `_User` class's own columns as `prop-<key>`
+     * inputs (runtime-discovered, one per writable column) beside its two static ports. Absent
+     * means a `prop-*` on the node is refused (Sign Up, §5.5).
+     */
+    columns?: true;
+  }
 > = {
   'net.noodl.user.LogIn': { verb: 'login', trigger: 'login', fnName: 'logIn', inputs: ['username', 'password'] },
   'net.noodl.user.LogOut': { verb: 'logout', trigger: 'login', fnName: 'logOut', inputs: [] },
@@ -564,8 +581,31 @@ const USER_VERBS: Record<
     trigger: 'signup',
     fnName: 'signUp',
     inputs: ['username', 'password', 'email']
+  },
+  // EXP-011 §44 — the two session verbs that ride the same `api-call` machinery: a `PUT
+  // /users/<objectId>` with the stored session rewritten (`ParseAuthAdapter.setUserProperties`)
+  // and a `POST /auth/magic-link {email, redirect}` (`requestMagicLink`).
+  'net.noodl.user.SetUserProperties': {
+    verb: 'update-user',
+    trigger: 'store',
+    fnName: 'setUserProperties',
+    inputs: ['username', 'email'],
+    columns: true
+  },
+  'net.noodl.user.RequestMagicLink': {
+    verb: 'magic-link',
+    trigger: 'send',
+    fnName: 'requestMagicLink',
+    inputs: ['email', 'redirect'],
+    clearsErrorOnDone: true
   }
 };
+
+/**
+ * The user family's verbs, as the `api-call` action and the session module name them.
+ * `update-user` and `magic-link` are EXP-011 §44.
+ */
+export type UserVerb = 'login' | 'logout' | 'signup' | 'update-user' | 'magic-link';
 
 /** The `User` node's outputs this slice reads off the session stub (USER-FAMILY-TARGET §4c). */
 const SESSION_READS: Record<string, { field: 'id' | 'username' | 'email'; maybeUndefined: boolean } | 'authenticated'> =
@@ -1157,7 +1197,7 @@ export type HandlerAction =
       kind: 'api-call';
       nodeId: string;
       /** What produced the call — for notes and the stub's provenance line. */
-      verb: 'create' | 'update' | 'delete' | 'login' | 'logout' | 'signup';
+      verb: 'create' | 'update' | 'delete' | UserVerb;
       /** The api module's exported function: `createPuppy` / `updatePuppy` / `logIn` / `logOut`. */
       fnName: string;
       /**
@@ -1178,6 +1218,12 @@ export type HandlerAction =
        */
       guardId: boolean;
       errorState: string;
+      /**
+       * EXP-011 §44 — write `undefined` to the Error row the moment the call answers, before the
+       * done chain: `Request Magic Link` is the one verb whose success clears its Error. Every
+       * other `api-call` keeps the runtime's "never cleared" (RECORD-VERBS-TARGET §1).
+       */
+      clearErrorOnDone?: true;
       then: HandlerAction[];
     }
   /**
@@ -1661,9 +1707,16 @@ export interface MutationPlan {
  */
 export interface SessionCallPlan {
   nodeId: string;
-  verb: 'login' | 'logout' | 'signup' | 'read';
-  /** `logIn` / `logOut` / `signUp` / `useSession`. */
+  verb: UserVerb | 'read';
+  /** `logIn` / `logOut` / `signUp` / `useSession` / `setUserProperties` / `requestMagicLink`. */
   fnName: string;
+  /**
+   * EXP-011 §44 — the `_User` columns a `Set User Properties` writes (its `prop-*` inputs, the
+   * prefix stripped), typed the record verbs' way: the wire's type where it is one of the three
+   * JSON scalars, else `unknown`. The session module's `UserProperties` interface is the union
+   * over every site — a project has one `_User` class, as it has one session.
+   */
+  writes?: Array<{ name: string; tsType: string }>;
 }
 
 /**
@@ -6089,7 +6142,10 @@ function planComponent(
     // node, so the runtime could not correct it (USER-FAMILY-TARGET §1).
     'net.noodl.user.LogIn': 'login',
     'net.noodl.user.LogOut': 'login',
-    'net.noodl.user.SignUp': 'signup'
+    'net.noodl.user.SignUp': 'signup',
+    // EXP-011 §44.
+    'net.noodl.user.SetUserProperties': 'store',
+    'net.noodl.user.RequestMagicLink': 'send'
   };
 
   /** The popup nodes' trigger ports are dynamic (`closeAction-*`), so membership is a predicate. */
@@ -6609,6 +6665,18 @@ function planComponent(
       }
     }
 
+    // EXP-011 §44 — the `Backend` picker (BCN-009). Every verb in the family resolves it through
+    // `UserService.forScope(…)._resolved(backendId)`, and the emitted session module talks to the
+    // project's active backend and no other — the `User` read's own gate (§5.9), applied to the
+    // writes it was always meant to cover. `_active_` and an empty string both mean the default.
+    const backendId = literalParam(node, 'backendId');
+    if (
+      wiredPorts.has(`${node.id}:backendId`) ||
+      (typeof backendId === 'string' && backendId !== '' && backendId !== '_active_')
+    ) {
+      return { defer: 'it names a specific Backend — one session module is all this slice emits' };
+    }
+
     // The credentials. Like `prop-*` these accumulate rather than trigger (§1), so the request
     // carries whatever has arrived when the trigger fires — and a control's state boots `''`,
     // which is §6's named divergence from the runtime's absent input.
@@ -6632,14 +6700,43 @@ function planComponent(
       if (literal !== undefined) props.push({ key, expr: { kind: 'literal', value: literal } });
     }
 
-    // Sign Up's extra `_User` columns: the export's session stub carries no user schema to type
-    // them against, and the corpus has none — designed and deferred on §4c/§4e's precedent
-    // rather than built with nothing to test it (§5.5).
-    if (
-      spec.verb === 'signup' &&
-      (component.connections.some((c) => c.toId === node.id && c.toProperty.startsWith('prop-')) ||
-        node.parameters.some((p) => p.name.startsWith('prop-')))
-    ) {
+    // The `_User` class's own columns, `prop-<key>` (EXP-011 §44). `Set User Properties` takes
+    // them the record verbs' way — wire order first, then authored literals the wires do not
+    // cover — and the session module types each by its wire (`string`/`number`/`boolean`, else
+    // `unknown`), which is §43's answer for a column the project's snapshot does not carry: the
+    // IR has no `_User` schema (`metadata.systemCollections` is not parsed), and a write's type
+    // is its source's. Sign Up keeps §5.5's refusal: its columns would ride `POST /users`, whose
+    // answer the client merges into the stored session, and that merge is not built here.
+    const columns: Array<{ key: string; expr: ValueExpr }> = [];
+    const columnWires = component.connections.filter((c) => c.toId === node.id && c.toProperty.startsWith('prop-'));
+    const columnParams = node.parameters.filter((p) => p.name.startsWith('prop-'));
+    if (spec.columns === true) {
+      const seen = new Set<string>();
+      for (const wire of columnWires) {
+        const key = wire.toProperty.slice('prop-'.length);
+        if (seen.has(key)) {
+          return { defer: `two wires feed prop-${key} — last-writer-wins is not statically ordered` };
+        }
+        seen.add(key);
+        const expr = resolveExpr(nodeById.get(wire.fromId), wire.fromProperty, ctx);
+        if (expr === null) return { defer: ctx.defer ?? `property "${key}" has no statically known source` };
+        if (isBooleanExpr(expr)) {
+          return { defer: `property "${key}" is fed a logic truth value — only truthiness sinks take one in this slice` };
+        }
+        columns.push({ key, expr });
+        consumes.push(wire.key);
+      }
+      for (const param of columnParams) {
+        const key = param.name.slice('prop-'.length);
+        if (seen.has(key)) continue;
+        const literal = literalParam(node, param.name);
+        if (literal === undefined) return { defer: `property "${key}" is authored as something other than a literal` };
+        columns.push({ key, expr: { kind: 'literal', value: literal } });
+      }
+    } else if (spec.verb === 'signup' && (columnWires.length > 0 || columnParams.length > 0)) {
+      // Sign Up's extra `_User` columns: the export's session stub carries no user schema to type
+      // them against, and the corpus has none — designed and deferred on §4c/§4e's precedent
+      // rather than built with nothing to test it (§5.5).
       return {
         defer: 'it sets extra _User columns at sign-up — the export\'s session stub carries no user schema to type them against'
       };
@@ -6648,7 +6745,32 @@ function planComponent(
     const chain = doneChainOf(node);
     if ('defer' in chain) return { defer: chain.defer };
 
-    plan.sessionCalls.push({ nodeId: node.id, verb: spec.verb, fnName: spec.fnName });
+    const call: SessionCallPlan = { nodeId: node.id, verb: spec.verb, fnName: spec.fnName };
+    if (spec.columns === true) {
+      call.writes = columns.map(({ key, expr }) => {
+        const t = exprTsType(expr);
+        return { name: key, tsType: t === 'string' || t === 'number' || t === 'boolean' ? t : 'unknown' };
+      });
+    }
+    plan.sessionCalls.push(call);
+
+    // `logIn(username, password)` / `signUp({…})` / `logOut()` — Log In reads better
+    // positionally, Sign Up carries a widening field set, and Log Out takes nothing.
+    // §44: `setUserProperties({ username, email, …columns })` is Sign Up's shape with the class's
+    // columns after the two static ports, and `requestMagicLink(email[, redirect])` is Log In's
+    // — with `redirect` **omitted** rather than passed as `''` when nothing feeds it, because the
+    // client substitutes the current page for a blank one and the call should read that way.
+    const positional = (keys: string[]): ApiCallArg[] =>
+      keys.map((key) => ({
+        kind: 'expr' as const,
+        expr: props.find((p) => p.key === key)?.expr ?? { kind: 'literal' as const, value: '' }
+      }));
+    const args: ApiCallArg[] =
+      spec.verb === 'signup' || spec.verb === 'update-user'
+        ? [{ kind: 'data' as const, props: [...props, ...columns] }]
+        : spec.verb === 'magic-link'
+          ? positional(props.some((p) => p.key === 'redirect') ? spec.inputs : ['email'])
+          : positional(spec.inputs);
 
     return {
       action: {
@@ -6656,18 +6778,11 @@ function planComponent(
         nodeId: node.id,
         verb: spec.verb,
         fnName: spec.fnName,
-        // `logIn(username, password)` / `signUp({…})` / `logOut()` — Log In reads better
-        // positionally, Sign Up carries a widening field set, and Log Out takes nothing.
-        args:
-          spec.verb === 'signup'
-            ? [{ kind: 'data' as const, props }]
-            : spec.inputs.map((key) => ({
-                kind: 'expr' as const,
-                expr: props.find((p) => p.key === key)?.expr ?? { kind: 'literal' as const, value: '' }
-              })),
+        args,
         // No leading id argument: the user verbs act on the session, not on a record.
         guardId: false,
         errorState: verbErrorStateOf(node).name,
+        ...(spec.clearsErrorOnDone === true ? { clearErrorOnDone: true as const } : {}),
         then: chain.then
       },
       consumes: [...consumes, ...chain.consumes, ...ctx.consumes],
@@ -8836,7 +8951,13 @@ function planComponent(
       // reader (the User nodes' credentials, HTTP's body) earns control state by the same
       // clause". The credentials are read from the *button's* handler, exactly as the five form
       // fields were, so the clause holds unchanged.
-      if (USER_VERBS[sink.type] !== undefined) return USER_VERBS[sink.type].inputs.includes(c.toProperty);
+      if (USER_VERBS[sink.type] !== undefined) {
+        // §44: Set User Properties reads the `_User` columns' inputs from the same handler.
+        return (
+          USER_VERBS[sink.type].inputs.includes(c.toProperty) ||
+          (USER_VERBS[sink.type].columns === true && c.toProperty.startsWith('prop-'))
+        );
+      }
       return rendered.has(sink.id) && !isTriggerWire(sink.type, c.toProperty);
     });
     if (!stateWired && !actionWired && !outputRead) continue;

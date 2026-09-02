@@ -2209,6 +2209,9 @@ export function emitComponent(
               ]
             : []),
           `${inner}await ${action.fnName}(${args.join(', ')});`,
+          // EXP-011 §44 — Request Magic Link clears its Error on success, before `done`
+          // (`requestmagiclink.ts`); no other verb in either family does.
+          ...(action.clearErrorOnDone === true ? [`${inner}${stateSetterOf(action.errorState)}(undefined);`] : []),
           ...expandActions(action.then).map((a) => `${inner}${actionCode(a, indent + 2)};`)
         ];
         return [

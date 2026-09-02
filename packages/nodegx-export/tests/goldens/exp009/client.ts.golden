@@ -217,6 +217,52 @@ export async function signUpRequest(data: {
 }
 
 /**
+ * `PUT /users/<objectId>` — the Set User Properties node's own request (EXP-011 §44), which is
+ * `ParseAuthAdapter.setUserProperties`: refused with this sentence before any request when
+ * nobody is signed in, the fields written to the signed-in user's own row (the backend accepts
+ * no other id), and the stored session rewritten with them so a User read re-renders. Email and
+ * Username left blank keep their current value — the node's own contract — and a column is
+ * sent as given.
+ */
+export async function updateUserRequest(data: Record<string, unknown>): Promise<WireSession> {
+  const session = readSession();
+  if (session === undefined) throw new Error('Nobody is signed in.');
+  const body: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(data)) {
+    if (value === undefined) continue;
+    if ((key === 'username' || key === 'email') && value === '') continue;
+    body[key] = value;
+  }
+  await request<{ updatedAt?: string }>(`/users/${encodeURIComponent(session.objectId)}`, {
+    method: 'PUT',
+    body
+  });
+  const next: WireSession = { ...session, ...body };
+  writeSession(next);
+  return next;
+}
+
+/**
+ * `POST /auth/magic-link` — the Request Magic Link node's own request (EXP-011 §44). The
+ * backend answers 200 for a known and an unknown address alike, deliberately, so resolving
+ * never means an account exists. A blank redirect is the current page minus the sign-in
+ * return parameters, exactly as the runtime fills it (`_currentUrlWithoutAuthParams`).
+ */
+export async function requestMagicLinkRequest(email: string, redirect?: string): Promise<void> {
+  await request<unknown>('/auth/magic-link', {
+    method: 'POST',
+    body: { email, redirect: redirect || currentUrlWithoutAuthParams() }
+  });
+}
+
+function currentUrlWithoutAuthParams(): string {
+  const url = new URL(window.location.href);
+  url.searchParams.delete('nodegx_auth');
+  url.searchParams.delete('nodegx_auth_error');
+  return url.toString();
+}
+
+/**
  * `POST /functions/<name>` — the Cloud Function node's own request (EXP-011 §41), which is
  * `cloudfunction2.ts`'s `_makeRequest`: the app id, the session token when someone is signed
  * in, the params as the JSON body. 200/201 carries `result`; anything else is a failure whose

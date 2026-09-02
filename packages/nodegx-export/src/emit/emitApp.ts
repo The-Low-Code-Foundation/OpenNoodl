@@ -14,6 +14,7 @@ import {
   ProjectPlan,
   QueryPlan,
   SessionCallPlan,
+  UserVerb,
   tsColumnType
 } from '../analyze/plan';
 import { CloudServicesIR, ExportIR } from '../ir/types';
@@ -925,13 +926,51 @@ function sessionModule(ir: ExportIR, project: ProjectPlan, backend: CloudService
       signature:
         '(data: { username?: string; password?: string; email?: string }): Promise<SessionUser>'
     },
-    read: { nodeType: 'net.noodl.user.User', past: '', signature: '' }
+    read: { nodeType: 'net.noodl.user.User', past: '', signature: '' },
+    // EXP-011 §44.
+    'update-user': {
+      nodeType: 'net.noodl.user.SetUserProperties',
+      past: 'wrote the signed-in user on',
+      signature: '(data: UserProperties): Promise<void>'
+    },
+    'magic-link': {
+      nodeType: 'net.noodl.user.RequestMagicLink',
+      past: 'requested a sign-in link from',
+      signature: '(email: string, redirect?: string): Promise<void>'
+    }
   };
 
   const verbs = new Set([...byFn.values()].map((entry) => entry.verb));
   const needsUserMapping = verbs.has('login') || verbs.has('signup') || verbs.has('read');
 
   const parts: string[] = ['export interface SessionUser {\n  id: string;\n  username?: string;\n  email?: string;\n}\n'];
+  if (verbs.has('update-user')) {
+    // EXP-011 §44 — what a `Set User Properties` may send: the two static ports, then the `_User`
+    // columns any site writes, each typed by its wire (the record verbs' rule). One interface for
+    // the project, as there is one `_User` class; a column two sites write with different types
+    // is `unknown`, which both satisfy.
+    const columns = new Map<string, string>();
+    for (const plan of project.plans) {
+      for (const call of plan.sessionCalls) {
+        for (const write of call.writes ?? []) {
+          const seen = columns.get(write.name);
+          columns.set(write.name, seen === undefined || seen === write.tsType ? write.tsType : 'unknown');
+        }
+      }
+    }
+    const lines = ['  username?: string;', '  email?: string;'];
+    for (const [name, tsType] of columns) {
+      if (name === 'username' || name === 'email') continue;
+      lines.push(`  ${/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(name) ? name : JSON.stringify(name)}?: ${tsType};`);
+    }
+    // A `type`, not an `interface`: the client's `updateUserRequest` takes `Record<string,
+    // unknown>`, and an interface has no implicit index signature (TS2345 — the fixture's
+    // typecheck found it), while an object type literal is assignable to one.
+    parts.push(
+      '/** The fields a Set User Properties writes to the signed-in user (EXP-011 §44). */\n' +
+        `export type UserProperties = {\n${lines.join('\n')}\n};\n`
+    );
+  }
   if (backend !== undefined && needsUserMapping) {
     parts.push(
       'function toSessionUser(session: WireSession): SessionUser {\n' +
@@ -970,7 +1009,7 @@ function sessionModule(ir: ExportIR, project: ProjectPlan, backend: CloudService
       continue;
     }
     if (backend !== undefined) {
-      const connected: Record<'login' | 'logout' | 'signup', { comment: string; body: string }> = {
+      const connected: Record<UserVerb, { comment: string; body: string }> = {
         login: {
           comment: ' * Signs in against the project\'s NodeGX backend and stores the session.',
           body: '  return toSessionUser(await logInRequest(username, password));'
@@ -982,6 +1021,18 @@ function sessionModule(ir: ExportIR, project: ProjectPlan, backend: CloudService
         signup: {
           comment: " * Creates an account on the project's NodeGX backend and stores the session.",
           body: '  return toSessionUser(await signUpRequest(data));'
+        },
+        'update-user': {
+          comment:
+            " * Writes the fields to the signed-in user on the project's NodeGX backend and rewrites the\n" +
+            ' * stored session with them, so a User read re-renders. Refuses when nobody is signed in.',
+          body: '  await updateUserRequest(data);'
+        },
+        'magic-link': {
+          comment:
+            " * Asks the project's NodeGX backend to email a one-click sign-in link. Resolving never means\n" +
+            ' * an account exists for the address — the backend answers alike for every address.',
+          body: '  await requestMagicLinkRequest(email, redirect);'
         }
       };
       const { comment, body } = connected[verb];
@@ -1011,6 +1062,8 @@ function sessionModule(ir: ExportIR, project: ProjectPlan, backend: CloudService
   if (verbs.has('logout')) clientNames.push('logOutRequest');
   if (verbs.has('read')) clientNames.push('readSession', 'readSessionRaw', 'subscribeSession');
   if (verbs.has('signup')) clientNames.push('signUpRequest');
+  if (verbs.has('update-user')) clientNames.push('updateUserRequest');
+  if (verbs.has('magic-link')) clientNames.push('requestMagicLinkRequest');
   clientNames.sort();
   const importNames = needsUserMapping ? [...clientNames, 'type WireSession'] : clientNames;
   const clientImport = `import { ${importNames.join(', ')} } from './client';\n\n`;
@@ -1265,6 +1318,52 @@ export async function signUpRequest(data: {
   if (data.email !== undefined) session.email = data.email;
   writeSession(session);
   return session;
+}
+
+/**
+ * \`PUT /users/<objectId>\` — the Set User Properties node's own request (EXP-011 §44), which is
+ * \`ParseAuthAdapter.setUserProperties\`: refused with this sentence before any request when
+ * nobody is signed in, the fields written to the signed-in user's own row (the backend accepts
+ * no other id), and the stored session rewritten with them so a User read re-renders. Email and
+ * Username left blank keep their current value — the node's own contract — and a column is
+ * sent as given.
+ */
+export async function updateUserRequest(data: Record<string, unknown>): Promise<WireSession> {
+  const session = readSession();
+  if (session === undefined) throw new Error('Nobody is signed in.');
+  const body: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(data)) {
+    if (value === undefined) continue;
+    if ((key === 'username' || key === 'email') && value === '') continue;
+    body[key] = value;
+  }
+  await request<{ updatedAt?: string }>(\`/users/\${encodeURIComponent(session.objectId)}\`, {
+    method: 'PUT',
+    body
+  });
+  const next: WireSession = { ...session, ...body };
+  writeSession(next);
+  return next;
+}
+
+/**
+ * \`POST /auth/magic-link\` — the Request Magic Link node's own request (EXP-011 §44). The
+ * backend answers 200 for a known and an unknown address alike, deliberately, so resolving
+ * never means an account exists. A blank redirect is the current page minus the sign-in
+ * return parameters, exactly as the runtime fills it (\`_currentUrlWithoutAuthParams\`).
+ */
+export async function requestMagicLinkRequest(email: string, redirect?: string): Promise<void> {
+  await request<unknown>('/auth/magic-link', {
+    method: 'POST',
+    body: { email, redirect: redirect || currentUrlWithoutAuthParams() }
+  });
+}
+
+function currentUrlWithoutAuthParams(): string {
+  const url = new URL(window.location.href);
+  url.searchParams.delete('nodegx_auth');
+  url.searchParams.delete('nodegx_auth_error');
+  return url.toString();
 }
 
 /**

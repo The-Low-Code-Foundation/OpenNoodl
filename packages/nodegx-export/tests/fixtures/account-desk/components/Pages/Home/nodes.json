@@ -1,0 +1,292 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "acc0de5c-4e1a-4b3e-9f2a-1a2b3c4d6e03",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "acc0de5c-4e1a-4b3e-9f2a-1a2b3c4d6e05",
+      "type": "Page",
+      "label": "Home",
+      "parameters": {
+        "title": "Account Desk",
+        "urlPath": "home"
+      },
+      "children": [
+        "shell"
+      ],
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "shell",
+      "type": "Group",
+      "label": "Desk",
+      "parent": "acc0de5c-4e1a-4b3e-9f2a-1a2b3c4d6e05",
+      "parameters": {
+        "flexDirection": "column",
+        "alignItems": "flex-start",
+        "rowGap": "var(--space-4)",
+        "paddingLeft": "var(--space-6)",
+        "paddingTop": "var(--space-6)"
+      },
+      "children": [
+        "heading",
+        "usernameInput",
+        "passwordInput",
+        "loginBtn",
+        "loginErrorText",
+        "whoText",
+        "newNameInput",
+        "nicknameInput",
+        "saveBtn",
+        "savedText",
+        "saveErrorText",
+        "magicEmailInput",
+        "sendBtn",
+        "sentText",
+        "sendErrorText"
+      ],
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "heading",
+      "type": "Text",
+      "label": "Heading",
+      "parent": "shell",
+      "parameters": {
+        "text": "Account Desk",
+        "fontSize": "var(--text-3xl)",
+        "fontWeight": "var(--font-semibold)"
+      },
+      "x": 100,
+      "y": 220
+    },
+    {
+      "id": "usernameInput",
+      "type": "net.noodl.controls.textinput",
+      "label": "Username",
+      "parent": "shell",
+      "parameters": {
+        "placeholder": "Username"
+      },
+      "x": 100,
+      "y": 300
+    },
+    {
+      "id": "passwordInput",
+      "type": "net.noodl.controls.textinput",
+      "label": "Password",
+      "parent": "shell",
+      "parameters": {
+        "placeholder": "Password",
+        "type": "password"
+      },
+      "x": 100,
+      "y": 360
+    },
+    {
+      "id": "loginBtn",
+      "type": "net.noodl.controls.button",
+      "label": "Log In",
+      "parent": "shell",
+      "parameters": {
+        "label": "Log In"
+      },
+      "x": 100,
+      "y": 420
+    },
+    {
+      "id": "loginErrorText",
+      "type": "Text",
+      "label": "Login error",
+      "parent": "shell",
+      "parameters": {
+        "text": "",
+        "color": "var(--destructive)"
+      },
+      "x": 100,
+      "y": 480
+    },
+    {
+      "id": "whoText",
+      "type": "Text",
+      "label": "Signed in as",
+      "parent": "shell",
+      "parameters": {
+        "text": ""
+      },
+      "x": 100,
+      "y": 540
+    },
+    {
+      "id": "newNameInput",
+      "type": "net.noodl.controls.textinput",
+      "label": "New username",
+      "parent": "shell",
+      "parameters": {
+        "placeholder": "New username"
+      },
+      "x": 100,
+      "y": 620
+    },
+    {
+      "id": "nicknameInput",
+      "type": "net.noodl.controls.textinput",
+      "label": "Nickname",
+      "parent": "shell",
+      "parameters": {
+        "placeholder": "Nickname"
+      },
+      "x": 100,
+      "y": 680
+    },
+    {
+      "id": "saveBtn",
+      "type": "net.noodl.controls.button",
+      "label": "Save",
+      "parent": "shell",
+      "parameters": {
+        "label": "Save"
+      },
+      "x": 100,
+      "y": 740
+    },
+    {
+      "id": "savedText",
+      "type": "Text",
+      "label": "Saved",
+      "parent": "shell",
+      "parameters": {
+        "text": ""
+      },
+      "x": 100,
+      "y": 800
+    },
+    {
+      "id": "saveErrorText",
+      "type": "Text",
+      "label": "Save error",
+      "parent": "shell",
+      "parameters": {
+        "text": "",
+        "color": "var(--destructive)"
+      },
+      "x": 100,
+      "y": 860
+    },
+    {
+      "id": "magicEmailInput",
+      "type": "net.noodl.controls.textinput",
+      "label": "Email",
+      "parent": "shell",
+      "parameters": {
+        "placeholder": "Email"
+      },
+      "x": 100,
+      "y": 940
+    },
+    {
+      "id": "sendBtn",
+      "type": "net.noodl.controls.button",
+      "label": "Send link",
+      "parent": "shell",
+      "parameters": {
+        "label": "Send link"
+      },
+      "x": 100,
+      "y": 1000
+    },
+    {
+      "id": "sentText",
+      "type": "Text",
+      "label": "Sent",
+      "parent": "shell",
+      "parameters": {
+        "text": ""
+      },
+      "x": 100,
+      "y": 1060
+    },
+    {
+      "id": "sendErrorText",
+      "type": "Text",
+      "label": "Send error",
+      "parent": "shell",
+      "parameters": {
+        "text": "",
+        "color": "var(--destructive)"
+      },
+      "x": 100,
+      "y": 1120
+    },
+    {
+      "id": "login",
+      "type": "net.noodl.user.LogIn",
+      "label": "Log In Action",
+      "x": 600,
+      "y": 420
+    },
+    {
+      "id": "me",
+      "type": "net.noodl.user.User",
+      "label": "Current User",
+      "x": 600,
+      "y": 540
+    },
+    {
+      "id": "setProps",
+      "type": "net.noodl.user.SetUserProperties",
+      "label": "Save profile",
+      "x": 600,
+      "y": 740
+    },
+    {
+      "id": "savedSet",
+      "type": "Set Variable",
+      "label": "Remember the saved name",
+      "parameters": {
+        "name": "savedName"
+      },
+      "x": 900,
+      "y": 740
+    },
+    {
+      "id": "savedRead",
+      "type": "Variable2",
+      "label": "Saved name",
+      "parameters": {
+        "name": "savedName"
+      },
+      "x": 600,
+      "y": 800
+    },
+    {
+      "id": "magic",
+      "type": "net.noodl.user.RequestMagicLink",
+      "label": "Send sign-in link",
+      "x": 600,
+      "y": 1000
+    },
+    {
+      "id": "sentSet",
+      "type": "Set Variable",
+      "label": "Remember the address",
+      "parameters": {
+        "name": "sentTo"
+      },
+      "x": 900,
+      "y": 1000
+    },
+    {
+      "id": "sentRead",
+      "type": "Variable2",
+      "label": "Sent to",
+      "parameters": {
+        "name": "sentTo"
+      },
+      "x": 600,
+      "y": 1060
+    }
+  ]
+}

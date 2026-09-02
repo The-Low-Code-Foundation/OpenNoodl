@@ -1,91 +1,100 @@
-# Next session — 82/127 committed: §43 `Record` gated, mutated (10 arms), driven 72/72 and committed, with the client's `request()` wrap it found; next is the next Cloud Service
+# Next session — 84/127 committed: §44 `Set User Properties` + `Request Magic Link` built, gated, mutated (12 arms), driven 63/63 and committed; next is the files trio or the two refusals
 
 ## 🔴 Read this first — Richard, 2026-09-02: *"Stop fucking up the CPU."*
 
-Session 70 was stopped for piling a suite, a tsc, Chrome, a backend and a preview on a 16 GB box
-beside two peers. Session 71 ran everything **one job at a time** (`vm_stat` + `ps` first; the
-drive runner tears its three servers down in a `trap`) and nothing died. Keep it that way.
-Memory: `do-not-pile-cpu-work-on-a-shared-box`.
+One heavy job at a time on this 16 GB box. Session 72 ran every gate alone (`vm_stat` before
+each), the drive runner tore its three servers down in a `trap`, the arms ran in the background
+with nothing beside them. Memory: `do-not-pile-cpu-work-on-a-shared-box`.
 
 ## The board, re-derived from the task files
 
 | task | status |
 |---|---|
-| EXP-001 `@nodegx/core` | ✅ Published `0.1.0`; a peer's EXP-001 + README rows still uncommitted (theirs, 22:29 09-01) |
+| EXP-001 `@nodegx/core` | ✅ Published `0.1.0`; a peer's EXP-001 + README rows still uncommitted (theirs) |
 | EXP-002 / 003 / 005 / 006 / 007 | unchanged |
 | EXP-004 | 🟡 built + driven; drill-down panel + three lines for Richard remain |
-| EXP-008 | ✅ `export-ledger:check` OK — 176 types, 89 translated |
-| EXP-009 backend connection | 🟢 AC4 driven (§42); **s71: `request()` wraps network failure** (note appended) |
+| EXP-008 | ✅ `export-ledger:check` OK — 176 types, 91 translated |
+| EXP-009 backend connection | 🟢 AC4 driven (§42); `request()` wraps network failure (s71) |
 | EXP-010 | 🟢 |
-| EXP-011 picker coverage | 🟡 **82/127 committed** — §43 `Record` complete (§43.6) |
+| EXP-011 picker coverage | 🟡 **84/127 committed** — §44 complete |
 | EXP-012 | 🟢 |
 
-## What session 71 did (all in EXP-011 §43.6)
+## What session 72 did (EXP-011 §44)
 
-1. **Gates, one at a time:** package tsc 0; `record.test.ts` 29/29 (the handoff's "30" was a
-   miscount — 29 `it(` on disk); whole suite 54 files 1445/1445; editor tsc 0.
-2. **Ten mutant arms, all kill** (`mut43b.py`/`runmut43b.sh`, s71 scratchpad): A2 B19 C12 D7 E4
-   F5 G7 H2 I4 J1. C's 12 is the guard doubling as the TS narrowing. J's first shape was a TS7034
-   ("not a kill" = measured nothing) — keep the declared type when deleting an initialiser.
-3. **The drive:** first run D1–D7 as predicted, **D8 timed out** — and lost its D1–D7 snapshot.
-   Observed pre-fix: with the backend down the Record's Error read Chrome's **"Failed to fetch"**.
-   `callFunction()` wrapped that since §41; `request()` (every other verb) never did. **Fixed**
-   in the client template, golden regenerated, a cardinality row added (2 sites, 2 wraps, 1
-   sentence). Re-drive: **72 cells, 0 diffs**; six GETs at exactly the predicted steps.
-4. **After the wrap:** suite 54 files **1446/1446**, editor tsc 0, ledger OK, picker holds 82.
-5. Committed by pathspec (README left to its peer). Memory:
-   `a-predicted-sentence-belongs-to-one-code-path`.
+1. **Built** the two session verbs on the user family's `api-call`: `USER_VERBS` +2 rows (a named
+   `UserVerb` union replaces three spelled-out unions), `TRIGGER_PORTS`, the control-mint
+   predicate (columns mint state), `compileUserOp` (family-wide `Backend` gate, `prop-*` columns
+   the record verbs' way, per-verb args with the redirect omitted when unfed, `clearErrorOnDone`),
+   `SessionCallPlan.writes`; emitter: the clear line; `emitApp`: `UserProperties` **type**,
+   `setUserProperties`/`requestMagicLink`, client `updateUserRequest` (refuses `Nobody is signed
+   in.` before any request, blank keeps for username/email, PUT, session rewritten) and
+   `requestMagicLinkRequest` (+ `currentUrlWithoutAuthParams`). Golden diff = exactly those.
+2. **Two defects the build found:** the mint predicate enumerated the family by `spec.inputs`
+   (the column input rendered stateless, Save dropped); an `interface` is not assignable to
+   `Record<string, unknown>` — only the fixture's whole-app typecheck said so.
+3. **Fixture** `tests/fixtures/account-desk` (Log In, User, both verbs on one page — nothing
+   refused). **Spec** `tests/set-user-properties-magic-link.test.ts`, 24 rows.
+4. **Gates one at a time:** tsc 0; 24/24; suite 55 files 1486/1486; editor tsc 0; ledger OK;
+   picker 84 (floor raised). **Twelve arms, all kill** (A7 B10 C1 D1 E1 F3 G3 H2 I4 J3 K5 L3).
+5. **Drive** (`EXPECTED44.md` first): run 1 63 cells / 4 diffs — all four my seed's probe (+1
+   on every count) and a verify logging in under the pre-rename name; run 2 **63/63, 0 diffs**,
+   verify reads `alicia` + `nickname: Zed` + email untouched. Two memories written.
+6. Committed by pathspec (README left to its peer).
 
-## 🔴 Do this next — BUILD (the defect farm is empty; 2 sessions have built §43, now build §44)
+## 🔴 Do this next — BUILD (the defect farm is empty; §44 was one session, build-to-commit)
 
-The next Cloud Service. s70's survey (§43.5 + its handoff):
-- **`Set User Properties`** and **`Request Magic Link`** — session verbs on the user family's
-  `api-call` machinery (`PUT /users/<objectId>` with the stored session rewritten;
-  `POST /auth/magic-link {email, redirect}`). Cheapest, both ride the now-wrapped `request()`.
-- `Cloud File` / `Sign File URL` need a `CloudFile` value type; `Upload File` needs the
-  untranslated `Open File Picker`.
-- `Subscribe To Changes` (SSE — the backend has no WebSocket) and `Sign In With` (a full-page
-  redirect, the return leg in the client's constructor) — refuse-by-name candidates.
-- Corpus: Record 22, Upload File 17, the rest 0 — rank by the product surface, not the corpus.
+Five Cloud Services left. Rank by the product surface, not the corpus (0 for all five):
+- **Files trio** — `Upload File` (needs `Open File Picker`, untranslated: a `<input type=file>`
+  and a click), `Cloud File` and `Sign File URL` (a `CloudFile` value type: `{ name, url }` on
+  the wire). Probably one session together; check the backend's `/files` routes first
+  (`HttpServer.ts`, `security.json` `files.upload: authenticated`).
+- **Two refusals by name** — `Sign In With` (full-page redirect; the return leg is the client's
+  constructor, `_consumeAuthReturn`) and `Subscribe To Changes` (SSE; §43.1's pub/sub). A
+  refusal row each with the sentence naming the mechanism, and the ledger exemption saying
+  which kind of "not yet" it is (`check.js` enforces the shape).
 
-Same shape as §41–§43: the runtime file first, the expected answers written before any run,
-the toll table, refusals by name, a fixture on disk, the mutant arms, the drive with a `trap`
-teardown, then commit by pathspec.
+Same shape as §41–§44: the runtime file first, the expected answers written before any run, the
+toll table, refusals by name, a fixture on disk, the arms, the drive with a `trap` teardown,
+then commit by pathspec.
 
 ## Open residuals (registered, none blocks an AC)
 
-- §43.3: the wired form's row is kept on an Id change (the runtime rebinds to an empty model).
-- §41.3: `x-noodl-cloud-version` header.
-- `EXP-009-CLIENT-TARGET-OUTPUT.md` describes `request()` without the wrap; the golden is truth.
+- §44.3: `ParseAuthAdapter.setUserProperties` copies `undefined` email/username into the stored
+  session (`Object.assign`) — owner NONE, read not measured.
+- §44.6: Sign Up's §5.5 gate could lift on `UserProperties`.
+- §43.3: the wired Record's row is kept on an Id change. §41.3: `x-noodl-cloud-version`.
+- `EXP-009-CLIENT-TARGET-OUTPUT.md` describes the client without the wrap or the two new
+  functions; the golden is truth.
 
-## The numbers (last honest readings, s71)
+## The numbers (last honest readings, s72)
 
 ```
-packages/nodegx-export: tsc 0 · jest 54 files, 1446/1446, exit 0 · 10/10 arms kill
+packages/nodegx-export: tsc 0 · jest 55 files, 1486/1486, exit 0 (72 s) · 12/12 arms kill
 noodl-editor tsc: 0
-export-ledger:check OK — 176 types, 89 translated · picker 82/127 (64.6%), floor 82
-drive: 72/72 cells (EXPECTED43.md), 0 listeners left after teardown
+export-ledger:check OK — 176 types, 91 translated · picker 84/127 (66.1%), floor 84
+drive: 63/63 cells (EXPECTED44.md), 0 listeners left after teardown
 ```
 
-## Instruments (s71 scratchpad `f7c7c982-10f0-4275-baf3-b4fea27cb602/scratchpad`)
+## Instruments (s72 scratchpad `423323ce-cd60-41e8-add7-91a9a36731fe/scratchpad`)
 
-`mut43b.py`, `runmut43b.sh`, `mut43-summary.txt`, `arm43-*-{tsc,jest}.log`, `drive43-run.sh`
-(emit → build → backend → Chrome → preview → drive → trap teardown), `drive43.log` (the 72 cells),
-`drive43-prefix-run.log` (the timeout), `d8only.{sh,mjs}` (the pre-fix cell, "Failed to fetch"),
-`backend43*.log`, `regold.ts` (client golden regeneration), `jest-full*-s71.log`, `editor-tsc*-s71.log`.
-s70's `EXPECTED43.md`, `control43.mjs`/`.log`, `backend-data43/`, `harness43/`, `drive43.mjs`
-are in `144aedad-2384-404c-9007-e502f9633b8f/scratchpad` and still used by the runner.
+`EXPECTED44.md`, `control44.mjs` (seed / verify / probe), `drive44.mjs` (prints the snapshot
+before every `until`; restarts the backend itself at D9), `drive44-run.sh` (emit → build →
+backend → seed → Chrome → preview → drive → verify → trap teardown), `drive44.log` + `*-run1.log`
+(the control), `backend44.log` (per-request, with principals), `mut44.py`/`runmut44.sh`/
+`mut44-summary.txt`, `arm44-*-{tsc,jest}.log`, `jest-full-s72.log`, `editor-tsc-s72.log`,
+`harness44/` (node_modules symlinked to s70's `harness43`), `backend-data44/`, `probe44.ts`.
 
-## 🔴 What session 71 would tell you if it could only say three things
+## 🔴 What session 72 would tell you if it could only say three things
 
-1. **Name the helper the driven node calls before writing its expected cell.** The sentence was
-   real — for a different producer. Two `fetch` sites, one wrap, 1445 green rows around it.
-2. **Print the snapshot before every `until`.** A timeout at D8 cost D1–D7; the backend's log
-   had to stand in for them.
-3. **A tsc-gated arm that fails tsc measured nothing** — re-shape it; "not a kill" is not a kill.
+1. **Count the instrument.** Every diff in run 1 was my own probe; the backend's per-request log
+   named it by principal. Preserve run 1, then re-run — run 2 is a control, not a retry.
+2. **A post-drive control must read the state the drive LEAVES.** The 404 was the rename working.
+3. **The whole-app typecheck row grades what no substring can** — it found the `interface`, and
+   arm K shows it is the only row that would.
 
 ## Standing practice
 
-`cline-dev`; commit by exact pathspecs; `git status | grep '^??'` first; delete probe specs
-before committing; reconcile the suite count against disk (54); `grep -a`; absolute paths;
-**`vm_stat` + `ps` before any suite, never more than one of mine, tear servers down in a `trap`.**
+`cline-dev`; commit by exact pathspecs; `git status | grep '^??'` first (`git add` untracked
+before a pathspec commit or they are skipped silently); delete probe specs before committing;
+reconcile the suite count against disk (55); `grep -a`; absolute paths; **`vm_stat` + `ps`
+before any suite, never more than one of mine, tear servers down in a `trap`.**

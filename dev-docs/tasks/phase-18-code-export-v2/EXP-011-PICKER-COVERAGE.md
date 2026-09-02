@@ -77,8 +77,10 @@ Ranked by *"can you build a normal app without it"*, not by corpus frequency.
 6. **Cloud Services (9).** Mostly **unblocked by EXP-009**, and several may fall out of it for
    free — `Cloud Function`, `Record`, `Set User Properties`, `Sign In With`. Re-measure after
    EXP-009 lands rather than planning against today's list. ✅ **`Cloud Function` built in
-   session 69 — §41**; the other eight remain, and `Record`/`Set User Properties`/`Sign In With`
-   are the next to re-measure against the client.
+   session 69 — §41**, driven in 70 — §42; ✅ **`Record` in sessions 70–71 — §43**; ✅ **`Set User
+   Properties` and `Request Magic Link` in session 72 — §44**. The other five remain — `Sign In
+   With`, `Subscribe To Changes`, `Upload File`, `Cloud File`, `Sign File URL` — and §44.6 says
+   which of them are refuse-by-name candidates rather than builds.
 7. **String/Math utilities.** ✅ **`Substring`, `String Mapper` and `Number Remapper` built,
    driven and gated in session 65 — §36**, which also found DEF-033: `Substring`'s panel declares
    an `End` the node does not use. The remainder is the **id pair**, `Unique Id` and `UUID`, and
@@ -5518,3 +5520,166 @@ against the table in `EXPECTED43.md`, `backendStoppedBeforeD8: true`). Read out 
 client fix under a node already counted. Committed by pathspec with §43; the README's one
 uncommitted line is a peer's EXP-001 publish note and stays theirs.
 
+
+## §44 Tier 2.6 continues — `Set User Properties` and `Request Magic Link`, the two session verbs (session 72, 2026-09-02)
+
+**Picker 82 → 84 of 127 (66.1%)**, floor raised in the same commit. The two Cloud Services that
+ride the user family's own machinery (s70's survey, §43.5): a `PUT /users/<objectId>` with the
+stored session rewritten, and a `POST /auth/magic-link {email, redirect}`. Corpus: 0 of either —
+ranked by the product surface (the memory's rule): a profile page that lets the signed-in person
+change their name, and a sign-in page with "email me a link", are two of the four forms every
+app with accounts has.
+
+### §44.1 What the runtime does, and what that decides
+
+- **Set User Properties** (`setuserproperties.ts` → `UserService.setUserProperties` →
+  `ParseAuthAdapter.setUserProperties`): with nobody signed in, `error('Nobody is signed in.')`
+  **before any request** (ERG-001 §4 closed the dead chain); else `PUT /users/<objectId>` with
+  `{ email, username, …props }` (the backend accepts no id but the caller's own — `users.ts`
+  answers 403 for any other), and on success `Object.assign(_cu, _content)` + `setSession` — the
+  stored session is rewritten, which is what makes a `User` node re-render. The Error is never
+  cleared. Ports: `email` and `username` static ("leave blank to keep the current one" — the
+  node's own sentence), `prop-<key>` **runtime-discovered** per writable `_User` column
+  (`user-ports.ts`), `backendId`.
+- **Request Magic Link** (`requestmagiclink.ts` → `requestMagicLink`): `POST /auth/magic-link`
+  with `{ email, redirect: redirect || _currentUrlWithoutAuthParams() }` — a blank redirect is the
+  current page minus `nodegx_auth`/`nodegx_auth_error`. On success it **clears the Error and then
+  fires Done** — the one verb in the family that does (`login.ts` and the rest leave the last
+  refusal). The backend answers `200 {}` for a known and an unknown address alike (`oauth-routes.ts`
+  — not an account-existence oracle), so Done never means an account exists; Failure is the
+  request itself failing.
+
+### §44.2 The build — the user family's `api-call`, two rows longer
+
+| piece | what it is |
+|---|---|
+| `USER_VERBS` | two rows: `update-user` (trigger `store`, `setUserProperties`, inputs `username`/`email`, **`columns`**) and `magic-link` (trigger `send`, `requestMagicLink`, inputs `email`/`redirect`, **`clearsErrorOnDone`**). `UserVerb` is now a named union, and the three places that spelled it out (`api-call.verb`, `SessionCallPlan.verb`, the session module's `connected` record) read it |
+| the columns | `Set User Properties` takes `prop-<key>` the record verbs' way — wire order, then authored literals the wires do not cover, two wires into one column refused — and `SessionCallPlan.writes` carries them typed by the wire (`string`/`number`/`boolean`, else `unknown`). The IR has no `_User` schema (`metadata.systemCollections` is not parsed, and every real project's is `[]`), and a *write's* type is its source's — §43's answer for a column the snapshot does not carry. Sign Up keeps §5.5's refusal (its columns would ride `POST /users`, whose answer the client merges into the session — not built) |
+| `UserProperties` | one `type` per project in `session.ts`: `username?`, `email?`, then the union of every site's columns; a column two sites write with different types is `unknown`. A **`type`, not an `interface`** — the fixture's typecheck found TS2345: an interface has no implicit index signature, so it cannot pass to the client's `Record<string, unknown>` |
+| `setUserProperties(data: UserProperties)` | `await updateUserRequest(data)`. Stub: throws the family's sentence |
+| `requestMagicLink(email: string, redirect?: string)` | `await requestMagicLinkRequest(email, redirect)`. The call site **omits** the redirect when nothing feeds it (`requestMagicLink(email)`) rather than passing `''` — the client substitutes the current page for a blank one and the call should read that way; wired or authored, it is the second argument |
+| `updateUserRequest(data)` on the client | `readSession()`; none → `throw new Error('Nobody is signed in.')` before any request; the body drops `undefined`, and drops `''` for `username`/`email` only (the node's contract); `PUT /users/<encodeURIComponent(objectId)>` through `request()`; then `writeSession({ …session, …body })` — the rewrite a `useSession` read re-renders on |
+| `requestMagicLinkRequest(email, redirect?)` on the client | `POST /auth/magic-link` through `request()` with `redirect \|\| currentUrlWithoutAuthParams()`, the runtime's two parameters stripped |
+| `clearErrorOnDone` on `api-call` | the emitter prints `set<Stem>Error(undefined);` right after the `await`, before the done chain — for the magic link only. Every other `api-call` keeps "never cleared" |
+| the mint predicate | a control wired into a **column** earns local state, as one wired into a credential does (§44.3) |
+| the `Backend` gate | a named `backendId` (anything but `_active_`/blank, or wired) refuses **every verb in the family** with the `User` read's sentence (§5.9) |
+| the toll | `USER_VERBS` (+ `UserVerb`), `TRIGGER_PORTS`, the control-mint predicate, `compileUserOp` (the backend gate, the column loop, the per-verb args, the clear flag, `writes`), `SessionCallPlan`, the `api-call` action; in the emitter the clear line; in `emitApp` the `SPEC`/`connected` rows, the `UserProperties` type, the client import list, the two request functions + `currentUrlWithoutAuthParams`; the client golden (diff = exactly those three functions); the ledger (two rows, floor 84) |
+
+Refused by name: a consumed `Failure`/`Completed` (the family's sentence); two wires into a
+static input or into one column; a named `Backend`; an unfired `Do` (and the session export
+leaves with it — earned by attachment); a column authored as something other than a literal;
+Sign Up's columns (§5.5, unchanged).
+
+### §44.3 What building it found, and what is written down rather than fixed
+
+- 🔴 **The control-mint predicate enumerated the family by `spec.inputs`** — the Nickname input
+  wired into `prop-nickname` rendered with no state, and the Save trigger was dropped with *"the
+  action reads values that only exist in another handler"* — a true sentence about a state row
+  nothing minted. s19's rule, third family: when a vocabulary grows a member, audit every site
+  that enumerates it; this one was the sink-membership test, not the dispatcher.
+- 🔴 **`interface` is not `Record<string, unknown>`** — the first `UserProperties` was an interface,
+  and only the fixture's whole-app typecheck (§D2) said so. The row that grades the emitted app
+  as a program caught what every substring row passed.
+- ⚠️ **Read, not measured — a runtime residual, owner NONE:** `ParseAuthAdapter.setUserProperties`
+  builds `_content` with `email: options.email, username: options.username` even when both are
+  `undefined`, and `Object.assign(_cu, _content)` copies the `undefined`s into the stored session
+  — after a username-only write, the `User` node's `email` reads empty until the next login or
+  fetch (the wire body is unaffected: `JSON.stringify` drops the keys). The export's client merges
+  only what it sent. Registered here because no open phase owns the user family's runtime.
+- ⚠️ **Blank keeps, by whose rule:** a control's state boots `''` (§6's divergence), so an
+  untouched Username input would send `username: ''` and blank the name. The export honours the
+  node's own sentence for the two static ports and sends nothing; a column is sent as given, the
+  record verbs' rule. Whether the *interpreter's* untouched input delivers `''` or nothing to the
+  adapter was not measured here.
+- ⚠️ The `Backend` gate now covers Log In / Log Out / Sign Up too — three nodes counted since
+  USER-FAMILY that, naming a second backend, exported against the active one silently. One
+  project on this machine mentions the parameter at all (an old-format `project.json`), so the
+  corpus number cannot move.
+
+### §44.4 Graded — `tests/set-user-properties-magic-link.test.ts`, 24 rows, 55 files on disk
+
+§A the session module and the client (the `UserProperties` type; the two exports and their
+import; `updateUserRequest`'s refusal *before* the request, the PUT to the session's own id, the
+rewrite after; blank-keeps for the two static ports only; the magic link's body and the URL
+helper; **the §43 cardinality as a control** — two `fetch` sites, two wraps, and both new
+functions inside `request()`; the stub form; a column typed by its wire, two sites disagreeing
+`unknown`). §B the component (the data object and the done chain; Save never clears, Send clears
+before the chain, exactly one clear in the page; the column wire minting state; the redirect
+omitted / wired / authored; an authored Email between the username and the columns; the `User`
+read beside). §C six refusals by their sentences, with `_active_`/blank as the control and Sign
+Up's gate re-pinned. §D the fixture whole: the report's own *"refused none of them"* sentence
+(a `not.toContain('refusal')` matched the boilerplate — presence, not absence), typechecked,
+parsed, the two sites counted.
+
+### §44.5 The gates, the arms and the drive — and the two readings that were about the instrument
+
+Run one at a time, `vm_stat` read before each, every server torn down by the runner's own `trap`
+(`drive44-run.sh`, s72 scratchpad `423323ce-…`) — 0 listeners left on :8582/:5393/:9343 after
+both runs.
+
+**The gates.** Package `tsc` 0 · the new file 24/24 · the whole suite **55 files, 1486/1486, exit 0**
+in 72 s (1446 + 24 + the fixture-enumerating specs picking up `account-desk`) · the editor's `tsc`
+0 · `export-ledger:check` OK (176 types, 91 translated) · picker **84/127 (66.1%)**, floor 84.
+
+**The arms** (`mut44.py` / `runmut44.sh`, twelve, each tsc-gated, each restored `diff -rq` clean
+against a snapshot of the gate-green source):
+
+| arm | what it removes | killed | by |
+|---|---|---|---|
+| A | the magic link's `TRIGGER_PORTS` row | 7 | §B/§C/§D — the node is never a sink |
+| B | the mint predicate's column clause | 10 | the Nickname state, and Save with it (§44.3's defect, re-made) |
+| C | the emitter's clear line | 1 | B2 |
+| D | the magic-link row's `clearsErrorOnDone` | 1 | B2 |
+| E | the family's `Backend` gate | 1 | C3 |
+| F | `'Nobody is signed in.'` before the request | 3 | A3 + the client golden ×2 |
+| G | blank-keeps for the two static ports | 3 | A4 + the golden |
+| H | the redirect omitted when nothing feeds it | 2 | B4 + the D4 count |
+| I | `writes` never reaching the session module | 4 | A1, A8, and the fixture's **typecheck** (`nickname` not in the type) |
+| J | the current page for a blank redirect | 3 | A5 + the golden |
+| K | `type` back to `interface` | 5 | A1/A7/A8 and **D2 — the row that found it** |
+| L | the session not rewritten after the PUT | 3 | A3 + the golden |
+
+**The drive**, `EXPECTED44.md` written before any run: `account-desk` emitted to `harness44`
+(the s70 harness's `node_modules` symlinked — the export's dependency list is unchanged), a fresh
+backend on :8582, one seeded user, nine steps, **63 cells**. The helpers were named first:
+Save → `updateUserRequest` → `request()`, Send → `requestMagicLinkRequest` → `request()` —
+neither rides `callFunction()`, so one sentence for both when the backend is down.
+
+🔴 **Run 1: 63 cells, 4 diffs — all four the same +1 on the magic-link count, and all four
+mine.** The seed script sent one `POST /auth/magic-link` of its own to prove the route answered
+200, and the expectation table had not counted the instrument
+([[a-url-filtered-capture-attributes-nothing-to-a-producer]], second instance — a count this
+time, not a capture). The backend's per-request log settled it by principal: the probe
+`anonymous`, the app's three `user`. And the post-drive verify read **`404` on `/login`** — for a
+moment "the restarted backend lost its users"; it had logged in as `alice`, and the drive had
+renamed the account to `alicia` at D4, which is the feature
+([[a-post-drive-control-reads-the-state-the-drive-leaves]]). Run 1 preserved as the control
+(`*-run1.log`); the probe moved to its own mode; the verify reads the name the drive leaves.
+
+**Run 2: 63 cells, 0 diffs**, `backendStoppedBeforeD8: true`, `backendRestartedBeforeD9: true`,
+console errors `[]`. The verify after it: `login 200 … username: alicia, email: alice@example.test,
+nickname: Zed` — the column stored on an undeclared `_User` field (prediction (a) held), the
+email never sent (blank kept it). Read out of the cells:
+
+- D2 `Nobody is signed in.` with **no PUT** — refused on the client, the adapter's own order.
+- D4 `who` re-rendered to `alicia` on the session rewrite; the row on the backend agreed.
+- D5 a blank Username **kept** `alicia` (the node's contract), the column `Al` written; the done
+  chain set the Variable to `''` — the export's own wire, correct and worth seeing.
+- D7 an unknown address answered exactly as a known one — no oracle, as the backend intends.
+- D8 both Errors `Could not reach the backend at http://localhost:8582`, `who` **not** rewritten.
+- D9 the backend back: Send's Error **cleared** to `''`, Save's **kept** the sentence — two nodes,
+  one recovery, opposite Error behaviour, each the runtime's own.
+
+### §44.6 What this leaves
+
+- §44.3's runtime residual (`Object.assign(_cu, _content)` copying `undefined`s into the stored
+  session) — owner NONE, read not measured.
+- Sign Up's §5.5 gate could now lift on the same `UserProperties`: its columns ride `POST /users`,
+  and the client already merges the identity into the session — the remaining piece is merging
+  the columns too. Not built; nothing in the corpus asks.
+- The five Cloud Services left. `Sign In With` (a full-page redirect whose return leg is picked
+  up in the client's constructor — `_consumeAuthReturn`) and `Subscribe To Changes` (SSE, and a
+  pub/sub with no static shape, §43.1's `changed`) are **refuse-by-name** candidates: each names a
+  mechanism the emitted vocabulary has no shape for. `Upload File` needs the untranslated `Open
+  File Picker`; `Cloud File` / `Sign File URL` need a `CloudFile` value type — a build, one
+  session, if the product surface wants files before it wants sign-in providers.
