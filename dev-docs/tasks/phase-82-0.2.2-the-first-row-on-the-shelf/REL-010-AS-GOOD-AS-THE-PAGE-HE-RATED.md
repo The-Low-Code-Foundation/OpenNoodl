@@ -403,3 +403,50 @@ refuses edits for.
 page can satisfy every number in this file and still look like nobody laid it out. **The pictures are
 not the write-up of the measurement; they are a separate instrument, and they are the one AC6 is
 read from.**
+
+## §6.12 🔴 R8 — a token's DESCRIPTION survives an override of its VALUE (product defect)
+
+Found by `opennoodl-71` in this template's artefact, and **it is not this template's defect.**
+`templates/members-area/nodegx.project.json`:
+
+```
+"--font-sans": value       "Source Sans Pro", "Segoe UI", ui-sans-serif, sans-serif
+               description "Inter, falling back to the system sans-serif stack"
+```
+
+The description names a font the value does not contain, and it is **the only occurrence of the
+string `Inter` in the whole artefact** — so anyone grepping the template for Inter gets exactly one
+hit, and the hit asserts the untrue thing. That is a fair account of how §6.9's typeface claim got
+written, and it will mislead the next reader identically.
+
+🔴 **The mechanism is one line, in the editor, and it is not template-specific.**
+[`StyleTokensModel.ts:161`](../../../packages/noodl-editor/src/editor/src/models/StyleTokensModel/StyleTokensModel.ts#L161):
+
+```ts
+description: existing?.description ?? defaultToken?.description
+```
+
+`setToken` writes a new **value** and inherits the **default's description**. For a token whose
+description states a *role* (*"Main brand and action color"*) that is correct and desirable. For one
+that states a *value* it manufactures a contradiction.
+
+**Measured over `DefaultTokens.ts`: 45 described default tokens, of which 11 state a value** —
+`--font-sans`, `--space-xs/sm/md/lg/xl/2xl/3xl`, `--display-sm/md/lg`.
+
+🔴 **And `--font-sans` is overridden by FOUR OF THE FIVE SHIPPED PRESETS** — Enterprise, Minimal,
+Playful and Soft. So this is not one template's typo: **every project created on four of the five
+presets carries a `--font-sans` description that names a font it does not use.** Modern, the
+default, keeps Inter — which is exactly why nobody had seen it. The other ten go stale only on a
+user's own edit in the token editor, which is quieter but real, and lands in the UI where a person
+is choosing.
+
+⚠️ **The fix is NOT "delete the description on override"** — that would throw away the 34 role
+descriptions, which are the ones worth keeping. It is a distinction the data does not currently
+carry: a description that describes the token versus one that describes its current value.
+
+| row | what | owner |
+|---|---|---|
+| **R8** | A token's description survives an override of its value (`StyleTokensModel.ts:161`). 11 of 45 default tokens state a value; `--font-sans` is overridden by 4 of 5 shipped presets, so most new projects ship a description that contradicts itself. | 🔴 **phase 81** — it owns the design system and VIB-002 authored these tokens. **NOT REL-010**: it blocks no AC here, and this row does not close on it |
+
+⚠️ **Registered, not built** — this row's phase rule: *a defect is the next first job only if it
+blocks an AC*. It blocks none of AC1–AC6, and the renders are faithful either way.
