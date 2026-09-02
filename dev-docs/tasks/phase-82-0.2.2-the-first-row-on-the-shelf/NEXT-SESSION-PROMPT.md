@@ -1,6 +1,6 @@
 # Phase 82 — next session
 
-_Opened 2026-08-31 (s1). Last updated **2026-09-01, session 14**. Row 6 has **no building left on
+_Opened 2026-08-31 (s1). Last updated **2026-09-02, session 14**. 🔴 **ROW 6 IS REOPENED — see the section below before reading anything else.** Row 6 has **no building left on
 it**: every one of the thirteen pages has been photographed and graded at **all four widths**, both
 of s13's queued questions are answered and built, and s14 found that the one apparent defect left in
 the pictures belonged to the **test harness**, not the product. What remains is **Richard's own
@@ -90,22 +90,38 @@ between a name and its email — **was fixed by s10**. Priced, not skipped.
 4. ✅ **Re-render control: 32 of 36 text dumps byte-identical** to s13's, the 4 that differ being
    exactly the `/requests` ones. The harness is deterministic and s13's pictures were honest.
 
-## 🔴 What is LEFT on row 6: only Richard's look
+## 🔴 ROW 6 IS REOPENED — read this before believing anything above it
 
-**There is no building left on this row that a session can identify.** Both remaining questions from
-s13 are answered, the phone column is read, and every page has been graded at every width.
+**2026-09-02. Richard, shown the artifact of all thirteen pages, pointed at a DIFFERENT page:**
 
-Per §A2a **Richard personally rules six**: `/` in **both** states, `/setup`, `/join`, `/members`,
-`/directory`. The Judge grades the rest, and **no page is SHITTY**, so nothing escalates.
+> *"This is the one where I said 'this is fucking pro'... all the other ones that you're showing me
+> in the artifact were the ones I said looked like oldschool Wordpress templates, passable but
+> nowhere near this."* — `verdicts/vib-006/2026-08-31/landing-door/landing-desktop-full.png`
 
-🔴 **A session's WORTHY is provisional until he has seen it** (close protocol #5), and **PASSABLE
-never closes.** The reading to hand him:
+🔴 **The benchmark this board gave every session was circular.** *"Grade each page beside `/` at the
+same width"* pointed at the members-area's **own** landing page — which he puts in the *passable*
+bucket. Twelve pages were certified *"as good as the homepage"* against a homepage he does not rate.
+**The comparison could not fail, and it did not.**
 
-- **Provisionally WORTHY:** the twelve pages other than `/unsubscribe`.
-- **PASSABLE, and ruled to ship that way:** `/unsubscribe` — its ~290px/~470px of space is a
-  **recorded consequence** of D39, re-argued four times now. **Do not fix it, do not re-derive it.**
+🔴 **The "chrome exemption" below is a SESSION'S SENTENCE, not his ruling.** It is what licensed the
+gap. Do not quote it as the bar until §3.1 of [REL-010](REL-010-AS-GOOD-AS-THE-PAGE-HE-RATED.md) is
+ruled.
 
-**Row 6 closes when he looks. Ask when that is booked** — and note row 7 waits on the same answer.
+**Measured, not argued** — [`vib001-members.poverty.look.ts`](../../../packages/nodegx-backend/tests/vib001-members.poverty.look.ts),
+VIB-006 as a known-silent control in the same run:
+
+| arm | headline | `<img>` | icons | grounds | tells |
+|---|---|---|---|---|---|
+| **CONTROL — VIB-006** | **94px** | **7** | **20** | **6** | **none** |
+| members, door ×4 | 30px | 0 | 0 | 2–3 | `no-display-type` `no-imagery` |
+| `/` living | 48px | 0 | 0 | 4 | `no-imagery` |
+| members, signed-in ×8 | 30px | 0 | 2 | 2 | `no-display-type` |
+
+**0 of 13 read clean.** ⚠️ `no-imagery` is blind to CSS backgrounds — don't quote it on the hero
+pages; the real fact is **zero `Image` nodes in the whole template**, photography only ever a scrim.
+
+**Everything below about row 6 being nearly done was written before this and is superseded.** Rows 7
+and 8 stay behind it.
 
 ## The run sheet
 
@@ -114,7 +130,8 @@ Take the topmost row that is not ✅.
 | # | row | why here | needs |
 |---|---|---|---|
 | ~~1–5~~ | ~~REL-007/006, REL-005, REL-003, REL-002a, REL-002b~~ | ✅ **CLOSED s1–s5** | — |
-| **6** | **REL-002c — every page as good as the homepage** | s14 read the phone column, graded `/join`, and fixed the seed that was faking a `/requests` defect | 🟡 **RICHARD'S LOOK — nothing else. A session cannot close this row** |
+| **6** | **REL-002c — every page as good as the homepage** | 🔴 **REOPENED 09-02** — graded for 14 sessions against the members-area's OWN `/`, a page Richard puts in the *passable* bucket | ⛔ **BLOCKED on REL-010** |
+| **6b** | 🔴 **[REL-010](REL-010-AS-GOOD-AS-THE-PAGE-HE-RATED.md) — as good as the page he actually rated** | The benchmark is **VIB-006**, not this template's landing page. **0 of 13 pages read clean**; 13 carry a WordPress tell | 🔴 **§3.1 needs one ruling, then BUILD** |
 | 7 | **REL-001** publish + drive the install | shelf's first row; also closes P75's FB-005 | ⏸️ **HOLD** — see below |
 | 8 | **REL-004** cut, tag and publish `v0.2.2` | last | 🟡 **AC1 done s11** (`5c805978`). 🔴 Blocked: `cline-dev` unpushed |
 
