@@ -49,6 +49,7 @@
       "parent": "pageShell-3",
       "children": [
         "chrome-2",
+        "headBand-2",
         "ground-3"
       ],
       "parameters": {
@@ -71,12 +72,64 @@
       "y": 400
     },
     {
+      "id": "headBand-2",
+      "type": "Group",
+      "label": "What this page is",
+      "parent": "pageBody-3",
+      "children": [
+        "headBandShell-2"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "alignItems": "center",
+        "backgroundColor": "var(--accent)",
+        "borderBottomStyle": "solid",
+        "borderBottomWidth": "var(--border-1)",
+        "borderBottomColor": "var(--border)",
+        "paddingTop": "var(--space-8)",
+        "paddingBottom": "var(--space-8)"
+      },
+      "x": 220,
+      "y": 520
+    },
+    {
+      "id": "headBandShell-2",
+      "type": "Group",
+      "label": "Shell",
+      "parent": "headBand-2",
+      "children": [
+        "titleHeadRow"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "maxWidth": {
+          "value": 1200,
+          "unit": "px"
+        },
+        "flexDirection": "column",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "sizeMode": "contentHeight",
+        "alignX": "center"
+      },
+      "x": 280,
+      "y": 640
+    },
+    {
       "id": "pageFooter-3",
       "type": "/Members/Footer",
       "label": "The foot of the page",
       "parent": "pageShell-3",
       "x": 160,
-      "y": 3040
+      "y": 3280
     },
     {
       "id": "ground-3",
@@ -84,7 +137,6 @@
       "label": "Page ground",
       "parent": "pageBody-3",
       "children": [
-        "titleHeadRow",
         "readingBlock",
         "refusal",
         "removal"
@@ -108,13 +160,13 @@
         "paddingBottom": "var(--space-12)"
       },
       "x": 220,
-      "y": 520
+      "y": 1480
     },
     {
       "id": "titleHeadRow",
       "type": "Group",
       "label": "Title — the head, badged",
-      "parent": "ground-3",
+      "parent": "headBandShell-2",
       "children": [
         "titleBadge",
         "titleHead"
@@ -129,8 +181,8 @@
         "alignItems": "center",
         "columnGap": "var(--space-4)"
       },
-      "x": 280,
-      "y": 640
+      "x": 340,
+      "y": 760
     },
     {
       "id": "titleBadge",
@@ -156,8 +208,8 @@
         "backgroundColor": "var(--accent)",
         "borderRadius": "var(--radius-lg)"
       },
-      "x": 340,
-      "y": 760
+      "x": 400,
+      "y": 880
     },
     {
       "id": "titleGlyph",
@@ -176,8 +228,8 @@
         },
         "iconColor": "var(--accent-foreground)"
       },
-      "x": 400,
-      "y": 880
+      "x": 460,
+      "y": 1000
     },
     {
       "id": "titleHead",
@@ -197,8 +249,8 @@
         "rowGap": "var(--space-1)",
         "paddingBottom": "var(--space-2)"
       },
-      "x": 340,
-      "y": 1000
+      "x": 400,
+      "y": 1120
     },
     {
       "id": "titleEyebrow",
@@ -213,8 +265,8 @@
         "textTransform": "uppercase",
         "color": "var(--primary)"
       },
-      "x": 400,
-      "y": 1120
+      "x": 460,
+      "y": 1240
     },
     {
       "id": "title",
@@ -223,14 +275,14 @@
       "parent": "titleHead",
       "parameters": {
         "text": "",
-        "fontSize": "var(--text-3xl)",
+        "fontSize": "var(--display-sm)",
         "fontWeight": "var(--font-semibold)",
-        "lineHeight": "var(--leading-tight)",
+        "lineHeight": "var(--leading-none)",
         "letterSpacing": "var(--tracking-tight)",
         "color": "var(--foreground)"
       },
-      "x": 400,
-      "y": 1240
+      "x": 460,
+      "y": 1360
     },
     {
       "id": "readingBlock",
@@ -255,7 +307,7 @@
         "rowGap": "var(--space-2)"
       },
       "x": 280,
-      "y": 1360
+      "y": 1600
     },
     {
       "id": "date",
@@ -268,7 +320,7 @@
         "color": "var(--muted-foreground)"
       },
       "x": 340,
-      "y": 1480
+      "y": 1720
     },
     {
       "id": "body",
@@ -281,7 +333,7 @@
         "color": "var(--foreground)"
       },
       "x": 340,
-      "y": 1600
+      "y": 1840
     },
     {
       "id": "refusal",
@@ -311,7 +363,7 @@
         "mounted": false
       },
       "x": 280,
-      "y": 1720
+      "y": 1960
     },
     {
       "id": "refusalText",
@@ -324,7 +376,7 @@
         "color": "var(--destructive)"
       },
       "x": 340,
-      "y": 1840
+      "y": 2080
     },
     {
       "id": "pageInputs",
@@ -334,7 +386,7 @@
         "pathParams": "announcementId"
       },
       "x": 710,
-      "y": 2920
+      "y": 3160
     },
     {
       "id": "hold-3",
@@ -376,7 +428,7 @@
         "idSource": "explicit"
       },
       "x": 710,
-      "y": 1240
+      "y": 1360
     },
     {
       "id": "when-2",
@@ -386,7 +438,7 @@
         "functionScript": "function humanDay(raw) {\n  if (raw === undefined || raw === null) return '';\n  var s = String(raw);\n  if (s === '') return '';\n  var m = /^(\\d{4})-(\\d{2})-(\\d{2})$/.exec(s);\n  var at = m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : new Date(s);\n  if (isNaN(at.getTime())) return '';\n  return at.toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' });\n}\nif (Inputs.postedAt === undefined) return;\nOutputs.label = humanDay(Inputs.postedAt);"
       },
       "x": 710,
-      "y": 1480,
+      "y": 1720,
       "ports": [
         {
           "name": "in-postedAt",
@@ -413,7 +465,7 @@
         "runOnChange-condition": false
       },
       "x": 710,
-      "y": 1720
+      "y": 1960
     },
     {
       "id": "removal",
@@ -439,7 +491,7 @@
         "mounted": false
       },
       "x": 280,
-      "y": 1960
+      "y": 2200
     },
     {
       "id": "removeButton",
@@ -463,7 +515,7 @@
         "sizeMode": "contentSize"
       },
       "x": 340,
-      "y": 2080
+      "y": 2320
     },
     {
       "id": "confirm",
@@ -494,7 +546,7 @@
         "mounted": false
       },
       "x": 340,
-      "y": 2200
+      "y": 2440
     },
     {
       "id": "confirmText",
@@ -507,7 +559,7 @@
         "color": "var(--destructive)"
       },
       "x": 400,
-      "y": 2320
+      "y": 2560
     },
     {
       "id": "confirmRow",
@@ -524,7 +576,7 @@
         "columnGap": "var(--space-3)"
       },
       "x": 400,
-      "y": 2440
+      "y": 2680
     },
     {
       "id": "confirmYes",
@@ -548,7 +600,7 @@
         "sizeMode": "contentSize"
       },
       "x": 460,
-      "y": 2560
+      "y": 2800
     },
     {
       "id": "confirmNo",
@@ -572,7 +624,7 @@
         "sizeMode": "contentSize"
       },
       "x": 460,
-      "y": 2680
+      "y": 2920
     },
     {
       "id": "removeFailed",
@@ -602,7 +654,7 @@
         "mounted": false
       },
       "x": 340,
-      "y": 2800
+      "y": 3040
     },
     {
       "id": "removeFailedText",
@@ -615,7 +667,7 @@
         "color": "var(--destructive)"
       },
       "x": 400,
-      "y": 2920
+      "y": 3160
     },
     {
       "id": "confirmed",
@@ -647,7 +699,7 @@
         }
       ],
       "x": 710,
-      "y": 2560
+      "y": 2800
     },
     {
       "id": "del",
@@ -658,7 +710,7 @@
         "idSource": "explicit"
       },
       "x": 710,
-      "y": 3040
+      "y": 3280
     },
     {
       "id": "confirmGate",
@@ -669,7 +721,7 @@
         "runOnChange-condition": false
       },
       "x": 710,
-      "y": 2200
+      "y": 2440
     },
     {
       "id": "confirmClear",
@@ -680,7 +732,7 @@
         "runOnChange-condition": false
       },
       "x": 710,
-      "y": 2320
+      "y": 2560
     },
     {
       "id": "removeFailedGate",
@@ -691,7 +743,7 @@
         "runOnChange-condition": false
       },
       "x": 710,
-      "y": 2800
+      "y": 3040
     },
     {
       "id": "toList",
@@ -702,7 +754,7 @@
         "target": "/Pages/Members"
       },
       "x": 710,
-      "y": 3160
+      "y": 3400
     }
   ],
   "visualRoots": [

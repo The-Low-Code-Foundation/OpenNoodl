@@ -22,16 +22,28 @@ and finishes inside phase 82.** The verdict scale and close protocol are restate
 row with an owner**, not this session's job — see
 [`../../guidelines/PHASE-EXECUTION.md`](../../guidelines/PHASE-EXECUTION.md).
 
-## The bar for row 6, unchanged since s11
+## The bar for row 6 — 🔴 REWRITTEN 2026-09-02 (s15). The old one was circular.
 
-Richard, 2026-09-01: *"I want all pages looking as good as the homepage."* Grade each page **beside
-`/` at the same width** and answer in writing: *would a stranger think these two pages came from the
-same designer?* That is harder to fudge than a three-word verdict.
+**The benchmark is `docs/node-catalog/examples/ui-landing-page.json` (VIB-006)** — the page Richard
+called *"fucking pro"* — **not the members-area's own `/`**, which he puts in the *passable,
+old-school WordPress template* bucket. The previous instruction on this board said to grade each page
+beside `/`, and twelve pages were certified *"as good as the homepage"* against a homepage he does
+not rate. **The comparison could not fail, and for fourteen sessions it did not.**
 
-⚠️ **The chrome exemption still holds and is not a loophole.** These are mostly app-chrome pages;
-*"as good as the homepage"* means **shows the same amount of decision**, not *looks like a landing
-page*. A directory that is beautifully dense and clearly ruled is as good as the homepage. A
-directory with no header row is not.
+✅ **The chrome exemption is now RULED and its author is named — this was register row R2.** It used
+to read as the bar and was a *session's sentence*. Richard ruled it as **§3.1 of
+[REL-010](REL-010-AS-GOOD-AS-THE-PAGE-HE-RATED.md) on 2026-09-02**, choosing *"§3.1 as proposed —
+density, not billboards"* from three options:
+
+> All thirteen clear AC2/AC4/AC5. The **public four** (`/`, `/join`, `/sign-in`, `/setup`)
+> additionally take the VIB-006 section vocabulary. The **signed-in nine** get the display tier,
+> imagery where a row or card can honestly hold one, and a second and third ground —
+> **density and decision, not billboards.**
+
+⚠️ **What that does NOT license.** It is a ruling about how much *marketing* an app-chrome page
+carries. It is not an exemption from being designed: the nine still owe a display tier, three
+grounds and a page-identity zone, and s15 measured all three onto them. A page that "shows decision"
+is now a **measured** claim (`vib001-members.poverty.look.ts`), not a verdict somebody types.
 
 ## ✅ SESSION 13 — the run was taken, and it changed the row twice
 
@@ -108,20 +120,33 @@ gap. Do not quote it as the bar until §3.1 of [REL-010](REL-010-AS-GOOD-AS-THE-
 ruled.
 
 **Measured, not argued** — [`vib001-members.poverty.look.ts`](../../../packages/nodegx-backend/tests/vib001-members.poverty.look.ts),
-VIB-006 as a known-silent control in the same run:
+VIB-006 as a known-silent control in the same run. ✅ **s15 BUILT the fix; both columns are on one
+runtime** (the baseline was re-taken after a peer's webpack rebuilt `noodl.viewer.js` mid-session,
+and it reproduced exactly):
 
 | arm | headline | `<img>` | icons | grounds | tells |
 |---|---|---|---|---|---|
 | **CONTROL — VIB-006** | **94px** | **7** | **20** | **6** | **none** |
-| members, door ×4 | 30px | 0 | 0 | 2–3 | `no-display-type` `no-imagery` |
-| `/` living | 48px | 0 | 0 | 4 | `no-imagery` |
-| members, signed-in ×8 | 30px | 0 | 2 | 2 | `no-display-type` |
+| members, door ×4 | 30 → **72** (`/unsubscribe` **48**) | 0 → **3** (`/unsubscribe` 0) | 0 → **2** | 2–3 → **4–5** (`/unsubscribe` 2) | **none** |
+| `/` living | 48 → **94** | 0 → **3** | 0 → **2** | **4** | **none** |
+| members, signed-in ×8 | 30 → **48** | 0 | 2 → **4** | 2 → **3** | **none** |
 
-**0 of 13 read clean.** ⚠️ `no-imagery` is blind to CSS backgrounds — don't quote it on the hero
-pages; the real fact is **zero `Image` nodes in the whole template**, photography only ever a scrim.
+🟢 **13 of 13 read clean, from 0 of 13.**
+
+🔴 **The root cause of the type gap was ONE PARAMETER and it was an override of the product's own
+fix.** `displayHeadline` already carried `--display-lg`; VIB-002 put it there *because* the
+members-area hero was stuck at 48px. `tpl001Components.ts` then overrode it back to `--text-5xl`.
+
+⚠️ `no-imagery` is blind to CSS backgrounds — **never quote it on the hero pages**. The real fact was
+**zero `Image` nodes in thirty components**; there are now real ones, and the four public pages carry
+three rendered photographs each.
+
+⚠️ **Two cheap wins were REFUSED as instrument-gaming and the refusals are the useful part** — see
+REL-010 §6.5. Painting `PAGE_GROUND` would have moved the ground count and changed no pixel; stock
+avatars on `/directory` would be a claim about what real members look like.
 
 **Everything below about row 6 being nearly done was written before this and is superseded.** Rows 7
-and 8 stay behind it.
+and 8 stay behind **AC6, which is Richard's look and nothing else**.
 
 ## The run sheet
 
@@ -130,8 +155,8 @@ Take the topmost row that is not ✅.
 | # | row | why here | needs |
 |---|---|---|---|
 | ~~1–5~~ | ~~REL-007/006, REL-005, REL-003, REL-002a, REL-002b~~ | ✅ **CLOSED s1–s5** | — |
-| **6** | **REL-002c — every page as good as the homepage** | 🔴 **REOPENED 09-02** — graded for 14 sessions against the members-area's OWN `/`, a page Richard puts in the *passable* bucket | ⛔ **BLOCKED on REL-010** |
-| **6b** | 🔴 **[REL-010](REL-010-AS-GOOD-AS-THE-PAGE-HE-RATED.md) — as good as the page he actually rated** | The benchmark is **VIB-006**, not this template's landing page. **0 of 13 pages read clean**; 13 carry a WordPress tell | 🔴 **§3.1 needs one ruling, then BUILD** |
+| **6** | **REL-002c — every page as good as the homepage** | 🔴 **REOPENED 09-02** — graded for 14 sessions against the members-area's OWN `/`, a page Richard puts in the *passable* bucket | ⏳ **REL-010's building is DONE; both wait on the same look** |
+| **6b** | 🟢 **[REL-010](REL-010-AS-GOOD-AS-THE-PAGE-HE-RATED.md) — as good as the page he actually rated** | §3.1 RULED and BUILT s15. **13 of 13 pages now read clean**, from 0 of 13. AC1–AC5 met (AC3 declined on the nine, in writing; AC4 has a hole at `/unsubscribe`) | ⏳ **AC6 — RICHARD'S LOOK. A session cannot close it** |
 | 7 | **REL-001** publish + drive the install | shelf's first row; also closes P75's FB-005 | ⏸️ **HOLD** — see below |
 | 8 | **REL-004** cut, tag and publish `v0.2.2` | last | 🟡 **AC1 done s11** (`5c805978`). 🔴 Blocked: `cline-dev` unpushed |
 
@@ -198,6 +223,28 @@ the recommendation is unchanged: **fix first, publish once.** Ask when his look 
     (`f969ad96…` equals the template on disk, which is the pin to cite). ⚠️ **s13's citation of a
     living-md5 progression as evidence of its edits is void** — the edits were real, the hash was
     never the evidence. Registered in [`TASKS.md`](TASKS.md) §4; owner REL-002c.
+
+13. 🔴🔴 **A PEER'S WEBPACK REBUILT `noodl.viewer.js` BETWEEN A BASELINE AND ITS AFTER-RUN — R3, live
+    rather than historical.** s15 measured the baseline on md5 `8c0ad51b…` at 22:25; the bundle became
+    `e35ea918…` at 22:42, mid-session, and a peer had announced twenty minutes earlier that the watch
+    was torn down and the bundle static. **It was not.** ✅ **Record the md5 BEFORE AND AFTER every
+    run** — a pin read once cannot tell you a rebuild landed inside the window. ✅ **And a baseline is
+    re-takeable**: `TPL001_TEMPLATE_DIR` points a run at a `git archive` of the committed artefact, so
+    the artefact can be rolled back while the runtime stays current. s15's re-take reproduced the
+    original baseline exactly, which is what made the before/after admissible.
+14. 🔴 **THE CHEAPEST WAY TO MOVE A MEASUREMENT IS USUALLY AN EDIT TO THE INSTRUMENT'S VIEW, NOT TO
+    THE PAGE.** Two were available and refused in s15, in writing, in
+    [REL-010](REL-010-AS-GOOD-AS-THE-PAGE-HE-RATED.md) §6.5: painting `PAGE_GROUND` with
+    `--background` would have taken all nine app-chrome pages from 2 distinct grounds to 3 **and
+    changed no pixel**, because that is the colour the ground already appears to be. ✅ **Ask what a
+    person would SEE differently.** If the answer is nothing, the number moved and the page did not.
+15. ⚠️ **A COMPOSITION CAN ALREADY CARRY THE FIX AND THE TEMPLATE CAN BE OVERRIDING IT.** The whole of
+    the `no-display-type` finding on twelve pages was `{ ...composition('displayHeadline'), fontSize:
+    'var(--text-5xl)' }` — the composition shipped `--display-lg`, VIB-002 having put it there *for
+    this exact page*. ✅ **Before designing a fix, diff what the composition gives against what the
+    template kept.** ✅ **And census the BENCHMARK before promoting a ramp**: VIB-006's section
+    headings are 30px, the same as this template's, so promoting those too would have re-flattened
+    the ramp one tier higher and moved the number the wrong way for the right-looking reason.
 
 ## Row 8 — done and blocked parts
 

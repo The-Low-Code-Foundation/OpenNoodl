@@ -49,6 +49,7 @@
       "parent": "pageShell-2",
       "children": [
         "chrome",
+        "headBand",
         "ground-2"
       ],
       "parameters": {
@@ -71,12 +72,64 @@
       "y": 400
     },
     {
+      "id": "headBand",
+      "type": "Group",
+      "label": "What this page is",
+      "parent": "pageBody-2",
+      "children": [
+        "headBandShell"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "alignItems": "center",
+        "backgroundColor": "var(--accent)",
+        "borderBottomStyle": "solid",
+        "borderBottomWidth": "var(--border-1)",
+        "borderBottomColor": "var(--border)",
+        "paddingTop": "var(--space-8)",
+        "paddingBottom": "var(--space-8)"
+      },
+      "x": 220,
+      "y": 520
+    },
+    {
+      "id": "headBandShell",
+      "type": "Group",
+      "label": "Shell",
+      "parent": "headBand",
+      "children": [
+        "headingHeadRow"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "maxWidth": {
+          "value": 1200,
+          "unit": "px"
+        },
+        "flexDirection": "column",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "sizeMode": "contentHeight",
+        "alignX": "center"
+      },
+      "x": 280,
+      "y": 640
+    },
+    {
       "id": "pageFooter-2",
       "type": "/Members/Footer",
       "label": "The foot of the page",
       "parent": "pageShell-2",
       "x": 160,
-      "y": 2680
+      "y": 2920
     },
     {
       "id": "ground-2",
@@ -84,7 +137,6 @@
       "label": "Page ground",
       "parent": "pageBody-2",
       "children": [
-        "headingHeadRow",
         "pendingNotice",
         "unknownNotice",
         "memberArea",
@@ -109,13 +161,13 @@
         "paddingBottom": "var(--space-12)"
       },
       "x": 220,
-      "y": 520
+      "y": 1480
     },
     {
       "id": "headingHeadRow",
       "type": "Group",
       "label": "Heading — the head, badged",
-      "parent": "ground-2",
+      "parent": "headBandShell",
       "children": [
         "headingBadge",
         "headingHead-2"
@@ -130,8 +182,8 @@
         "alignItems": "center",
         "columnGap": "var(--space-4)"
       },
-      "x": 280,
-      "y": 640
+      "x": 340,
+      "y": 760
     },
     {
       "id": "headingBadge",
@@ -157,8 +209,8 @@
         "backgroundColor": "var(--accent)",
         "borderRadius": "var(--radius-lg)"
       },
-      "x": 340,
-      "y": 760
+      "x": 400,
+      "y": 880
     },
     {
       "id": "headingGlyph",
@@ -177,8 +229,8 @@
         },
         "iconColor": "var(--accent-foreground)"
       },
-      "x": 400,
-      "y": 880
+      "x": 460,
+      "y": 1000
     },
     {
       "id": "headingHead-2",
@@ -198,8 +250,8 @@
         "rowGap": "var(--space-1)",
         "paddingBottom": "var(--space-2)"
       },
-      "x": 340,
-      "y": 1000
+      "x": 400,
+      "y": 1120
     },
     {
       "id": "headingEyebrow-2",
@@ -214,8 +266,8 @@
         "textTransform": "uppercase",
         "color": "var(--primary)"
       },
-      "x": 400,
-      "y": 1120
+      "x": 460,
+      "y": 1240
     },
     {
       "id": "heading-3",
@@ -224,14 +276,14 @@
       "parent": "headingHead-2",
       "parameters": {
         "text": "Announcements",
-        "fontSize": "var(--text-3xl)",
+        "fontSize": "var(--display-sm)",
         "fontWeight": "var(--font-semibold)",
-        "lineHeight": "var(--leading-tight)",
+        "lineHeight": "var(--leading-none)",
         "letterSpacing": "var(--tracking-tight)",
         "color": "var(--foreground)"
       },
-      "x": 400,
-      "y": 1240
+      "x": 460,
+      "y": 1360
     },
     {
       "id": "pendingNotice",
@@ -261,7 +313,7 @@
         "mounted": false
       },
       "x": 280,
-      "y": 1360
+      "y": 1600
     },
     {
       "id": "pendingNoticeText",
@@ -274,7 +326,7 @@
         "color": "var(--accent-foreground)"
       },
       "x": 340,
-      "y": 1480
+      "y": 1720
     },
     {
       "id": "unknownNotice",
@@ -304,7 +356,7 @@
         "mounted": false
       },
       "x": 280,
-      "y": 1600
+      "y": 1840
     },
     {
       "id": "unknownNoticeText",
@@ -317,7 +369,7 @@
         "color": "var(--destructive)"
       },
       "x": 340,
-      "y": 1720
+      "y": 1960
     },
     {
       "id": "memberArea",
@@ -338,7 +390,7 @@
         "mounted": false
       },
       "x": 280,
-      "y": 1840
+      "y": 2080
     },
     {
       "id": "list",
@@ -350,7 +402,7 @@
         "template": "/Members/AnnouncementRow"
       },
       "x": 340,
-      "y": 1960
+      "y": 2200
     },
     {
       "id": "emptyState",
@@ -380,7 +432,7 @@
         "mounted": false
       },
       "x": 340,
-      "y": 2080
+      "y": 2320
     },
     {
       "id": "emptyStateText",
@@ -393,7 +445,7 @@
         "color": "var(--muted-foreground)"
       },
       "x": 400,
-      "y": 2200
+      "y": 2440
     },
     {
       "id": "moderatorTools",
@@ -418,7 +470,7 @@
         "mounted": false
       },
       "x": 280,
-      "y": 2320
+      "y": 2560
     },
     {
       "id": "moderatorEyebrow",
@@ -434,7 +486,7 @@
         "color": "var(--primary)"
       },
       "x": 340,
-      "y": 2440
+      "y": 2680
     },
     {
       "id": "postButton",
@@ -456,7 +508,7 @@
         "sizeMode": "contentSize"
       },
       "x": 340,
-      "y": 2560
+      "y": 2800
     },
     {
       "id": "announcements",
@@ -473,8 +525,8 @@
           }
         ]
       },
-      "x": 650,
-      "y": 1960
+      "x": 710,
+      "y": 2200
     },
     {
       "id": "emptyGate",
@@ -483,8 +535,8 @@
       "parameters": {
         "functionScript": "Outputs.empty = (Inputs.count || 0) === 0;"
       },
-      "x": 650,
-      "y": 2080,
+      "x": 710,
+      "y": 2320,
       "ports": [
         {
           "name": "in-count",
@@ -510,7 +562,7 @@
         "router": "Main",
         "target": "/Pages/Landing"
       },
-      "x": 650,
+      "x": 710,
       "y": 400
     },
     {
@@ -521,8 +573,8 @@
         "router": "Main",
         "target": "/Pages/Post"
       },
-      "x": 650,
-      "y": 2560
+      "x": 710,
+      "y": 2800
     }
   ],
   "visualRoots": [

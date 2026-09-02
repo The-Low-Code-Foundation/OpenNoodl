@@ -146,6 +146,49 @@ export const CHROME_COMPONENT = '/Members/Chrome';
 const COLUMNS_NODE = 'net.noodl.visual.columns';
 export const INSIDE_TILE_COMPONENT = '/Members/InsideTile';
 /**
+ * The *"what members can see"* band — three photographed tiles on `--surface`.
+ *
+ * 🔴 **A component since REL-010, and it used to be nine nodes inline on
+ * `Pages/Landing`.** The reason is the row's own §2.2, which is VIB-013's
+ * finding about the page Richard rated: that page *"is good partly because 129
+ * nodes were not hand-written — the compositions were declared once and
+ * composed, and every defect its renders caught was in the ~10% written outside
+ * that vocabulary."* **The lift is a composition job, not a hand-styling job.**
+ *
+ * The measurement said the same thing from the other end. After the display
+ * tier landed, nine of the thirteen pages read clean and the four that did not
+ * were the four doors, all four for `no-imagery` — and the template's only
+ * photographed band was sitting on one page, unable to be placed on another
+ * because it was not a thing that could be placed.
+ *
+ * ⚠️ **No `Component Inputs`, deliberately, and the rule is the one
+ * `Members/Footer` states**: a component without one *"renders identically
+ * however many times you place it"*, which is correct here — the three tiles
+ * name three screens that every copy of this template ships, so nothing about
+ * them varies per install or per page. The moment one of them did, this would
+ * need ports.
+ */
+export const INSIDE_BAND_COMPONENT = '/Members/InsideBand';
+/**
+ * The closing prompt — one line and one button on the accent, as a full band.
+ *
+ * 🔴 **It is the fourth ground on a door page, and it is a real band rather
+ * than a repaint.** REL-010 AC4 asks the four public pages for four distinct
+ * grounds. Measured after the display tier, `/sign-in` and `/setup` read **2**
+ * (the hero's scrim and the footer's `--muted`) and the cheap way to a third
+ * was to paint `PAGE_GROUND` with `--background` — which is the colour that
+ * ground already appears to be, so it would have moved the number and **changed
+ * no pixel**. That is the board's own hazard 2 run backwards, and it is the
+ * definition of designing for the instrument.
+ *
+ * So the fourth ground has to be something a person can see, and there was one
+ * already owed: `/sign-in` ended in *"Not a member yet?"* and a button sitting
+ * loose on the page ground under the form, which is the weakest way a page can
+ * end. `ui-landing-page` closes on a `ClosingCta` band and this is that, at the
+ * scale a door page deserves.
+ */
+export const PROMPT_COMPONENT = '/Members/Prompt';
+/**
  * The foot of every page — REL-002c item 4.
  *
  * 🔴 **A COMPONENT rather than four nodes repeated thirteen times, and the
@@ -187,9 +230,81 @@ const UNSUBSCRIBE_PARAM = 'token';
 const CARD = composition('card');
 const CARD_BODY = composition('cardBody');
 
-/** The type ramp. One `H_HERO` in the whole app, on the landing page. */
-const H_HERO = { ...composition('displayHeadline'), fontSize: 'var(--text-5xl)' };
-const H_PAGE = composition('sectionHeading');
+/**
+ * The type ramp. One `H_HERO` in the whole app, on the landing page.
+ *
+ * ──────────────────────────────────────────────────────────────────────────────
+ * ## 🔴 REL-010 — the display tier, and the template had been OVERRIDING the fix
+ *
+ * Measured 2026-09-02 on `vib001-members.poverty.look.ts`: **twelve of the
+ * thirteen pages topped out at 30px and the thirteenth at 48**, against the
+ * VIB-006 page Richard called *"fucking pro"* at **94px**. `no-display-type`
+ * fired on twelve of them. It is README §2's tell verbatim and the single
+ * biggest measured gap in the row.
+ *
+ * 🔴 **And the cause was one parameter, in this file.** `displayHeadline`
+ * already carries `fontSize: 'var(--display-lg)'` — VIB-002 / register V13
+ * replaced the fixed `--text-6xl` with a `clamp()` precisely because *"the
+ * members-area hero is 48px, exactly the ceiling, and reads as a paragraph that
+ * got bigger rather than as a hero"*. The product was fixed. **This line then
+ * overrode the fix back down to the ceiling it was written to lift**, and every
+ * session since graded the result against a page carrying the same override.
+ *
+ * The three tiers below are the three fluid tokens, and nothing else:
+ *
+ * | | token | 390px | 1280px | worn by |
+ * |---|---|---|---|---|
+ * | `H_HERO` | `--display-lg` | 44px | **94px** | `/` — the one hero |
+ * | `H_DOOR` | `--display-md` | 36px | **72px** | `/sign-in` `/join` `/setup` |
+ * | `H_PAGE` | `--display-sm` | 30px | **48px** | the nine app-chrome pages |
+ *
+ * ⚠️ **Three tiers rather than one, because "as good as the homepage" is not
+ * "looks like the homepage".** Richard ruled §3.1 on 2026-09-02 — *density and
+ * decision, not billboards* — so a settings page gets a heading that operates
+ * as display type and not a heading that operates as a marketing hero.
+ *
+ * ⚠️ **`--display-sm` lands on exactly 48px at 1280 and the floor is `< 48`**
+ * ([`nodegx-render-measure/src/index.js:945`](../../nodegx-render-measure/src/index.js#L945)),
+ * so it clears by nothing at all. That is deliberate and it is a statement about
+ * the TOKEN, not a number fitted to the gate: `--display-sm`'s ceiling is
+ * `3rem`, the rubric's threshold is the same 48px, and both were chosen from
+ * README §2 independently. A tier picked to beat the gate by a margin would be
+ * a tier picked by the gate.
+ */
+const H_HERO = composition('displayHeadline');
+const H_DOOR = { ...composition('displayHeadline'), fontSize: 'var(--display-md)' };
+const H_PAGE = {
+  ...composition('sectionHeading'),
+  fontSize: 'var(--display-sm)',
+  // ⚠️ The pair `DefaultTokens.ts` says to pair a display token with, and the
+  // reason is in its own comment: *"at 96px the normal line height and tracking
+  // are what make large type look like enlarged body copy instead of set display
+  // type."* `sectionHeading` ships `--leading-tight`, which is right for 30px
+  // and slack at 48.
+  lineHeight: 'var(--leading-none)'
+};
+/**
+ * The heading of a BAND on the landing page — *"About us"*, *"What members can
+ * see"*. Deliberately **not** promoted with the three tiers above.
+ *
+ * 🔴 **Measured on the benchmark rather than reasoned about.** A font-size
+ * census of the VIB-006 page (`docs/node-catalog/examples/ui-landing-page.json`,
+ * the artefact Richard rated) reads: **one `--display-lg`, one `--display-md`,
+ * four `--text-3xl`, one `--text-xl`, and eighteen `--text-sm`.** Its section
+ * headings are 30px — the *same size the members-area's already were*.
+ *
+ * So the gap this row is closing is the **top of the ramp, not the ramp**. Both
+ * pages set their sections at 30px; VIB-006 then runs to **94**, and the
+ * members-area ran to **30**. A ramp with a range of 1:1 is what README §2 means
+ * by *"type ramp reading as two sizes"*, and promoting the section heads too
+ * would have flattened it again one tier higher up — an edit that moves the
+ * measured number and makes the page worse.
+ *
+ * ⚠️ **This is the reading that stopped `H_PAGE` being applied here by
+ * accident.** These two nodes wore `H_PAGE`, because a landing band's heading
+ * and a page's heading had never needed telling apart. They do now.
+ */
+const H_BAND = composition('sectionHeading');
 const H_SECTION = composition('cardTitle');
 const T_CARD_TITLE = composition('cardTitle');
 const T_LEAD = composition('lead');
@@ -1277,7 +1392,42 @@ const PAGE_BODY = {
  * at all. s12 gave it one. Recorded because the false half was load-bearing —
  * it is the reason nobody added the footer for five sessions.
  */
-function pageShell(opts: { chrome?: boolean; band?: string } = {}): unknown[] {
+function pageShell(
+  opts: {
+    chrome?: boolean;
+    band?: string;
+    /**
+     * The id of the head node `pageHead()` roots, so the identity band can list
+     * it as a child.
+     *
+     * ⚠️ **`headingHeadRow` on seven of the nine and `titleHeadRow` on two**, and
+     * the difference is not cosmetic: `pageHead` roots at `${id}HeadRow` when it
+     * is badged and at `${id}Head` when it is not, and the two record pages call
+     * it with `title` because their heading is WIRED from the record — its own
+     * note records why the id stays on the `Text` rather than on the wrapper.
+     * Defaulting this would have silently put an empty band on those two pages.
+     */
+    headChild?: string;
+    /**
+     * REL-010. The *"what members can see"* band, under the page's own content
+     * and above the foot. **Public pages only** — §3.1, ruled 2026-09-02.
+     */
+    inside?: boolean;
+    /**
+     * REL-010. The closing prompt band: what to do if this page is not the one
+     * you wanted. `action` is the button's label; the click arrives back on the
+     * page as `prompt`'s `clicked` output, which the page wires to its own
+     * navigator.
+     */
+    prompt?: { heading: string; line: string; action: string };
+  } = {}
+): unknown[] {
+  // 🔴 **Order is the reading order and it is stated here rather than at four
+  // call sites.** Content first, then what else this page could be, then what
+  // is behind the door, then the foot. `inside` last of the three because it is
+  // the least specific to the page: a stranger who has decided is served by the
+  // prompt, and a stranger who has not is served by the tiles.
+  const tail = [...(opts.prompt ? ['prompt'] : []), ...(opts.inside ? ['inside'] : [])];
   const nodes: unknown[] = [
     {
       id: 'pageShell',
@@ -1293,11 +1443,99 @@ function pageShell(opts: { chrome?: boolean; band?: string } = {}): unknown[] {
       label: 'Everything above the foot',
       parent: 'pageShell',
       parameters: PAGE_BODY,
-      children: [...(opts.chrome ? ['chrome'] : []), ...(opts.band ? ['heroBand'] : []), 'ground']
+      children: [
+        ...(opts.chrome ? ['chrome', 'headBand'] : []),
+        ...(opts.band ? ['heroBand'] : []),
+        'ground',
+        ...tail
+      ]
     }
   ];
+  if (opts.prompt) {
+    nodes.push({
+      id: 'prompt',
+      type: PROMPT_COMPONENT,
+      label: 'The closing prompt',
+      parent: 'pageBody',
+      parameters: { ...opts.prompt }
+    });
+  }
+  if (opts.inside) {
+    nodes.push({
+      id: 'inside',
+      type: INSIDE_BAND_COMPONENT,
+      label: 'What members can see',
+      parent: 'pageBody'
+    });
+  }
   if (opts.chrome) {
     nodes.push({ id: 'chrome', type: CHROME_COMPONENT, label: 'The band', parent: 'pageBody' });
+  }
+  // 🔴 **REL-010 AC4 — the page-identity band, on the nine app-chrome pages.**
+  //
+  // Measured after the display tier landed, every one of the nine read **exactly
+  // two distinct grounds**: `--surface` (the chrome bar) and `--muted` (the
+  // foot). Everything between them — the head, the notices, the lists, the forms
+  // — stood on unpainted page. AC4 asks these pages for three.
+  //
+  // 🔴 **The cheap third ground was available and is refused here in writing.**
+  // `PAGE_GROUND` could have been given `backgroundColor: 'var(--background)'`,
+  // which is the colour that ground already appears to be, and the count would
+  // have gone 2 → 3 while **not one pixel changed**. That is the board's hazard
+  // 2 run backwards — *a fix's stated mechanism can paint nothing* — and it is
+  // the definition of building for the instrument rather than for the page.
+  //
+  // So it is a band that does something: the eyebrow, the badge and the heading
+  // move out of the content column into a zone of their own, and a page stops
+  // being one undivided scroll from the nav to the foot. That is what §3.1's
+  // *"density and decision, not billboards"* buys on a tool screen — the same
+  // amount of structure the landing page gets, spent on hierarchy instead of on
+  // marketing.
+  //
+  // ⚠️ **`--accent` is the THIRD thing this template spends the accent on**, and
+  // `tpl001Theme.ts` names the other two — *"the primary at a whisper, for the
+  // eyebrow and the pending notice"*. It is the same kind of use: the
+  // association's own colour marking the part of the screen addressed to the
+  // reader. Contrast is already on file — `--accent-foreground` on `--accent` is
+  // **6.45:1**, and `--foreground` on `--accent` is higher.
+  if (opts.chrome) {
+    nodes.push(
+      {
+        id: 'headBand',
+        type: 'Group',
+        label: 'What this page is',
+        parent: 'pageBody',
+        parameters: {
+          width: { value: 100, unit: '%' },
+          // Pinned — hazard 1. A band is as tall as what is in it, and this one
+          // sits inside `PAGE_SHELL`'s floored column beside a `ground` that is
+          // also pinned.
+          sizeMode: 'contentHeight',
+          flexDirection: 'column',
+          alignItems: 'center',
+          backgroundColor: 'var(--accent)',
+          borderBottomStyle: 'solid',
+          borderBottomWidth: 'var(--border-1)',
+          borderBottomColor: 'var(--border)',
+          paddingTop: 'var(--space-8)',
+          paddingBottom: 'var(--space-8)'
+        },
+        children: ['headBandShell']
+      },
+      {
+        id: 'headBandShell',
+        type: 'Group',
+        label: 'Shell',
+        parent: 'headBand',
+        // ⚠️ **The same 1200 the chrome bar and `PAGE_GROUND` are capped at.**
+        // `CHROME_NODES` records what happens when they disagree — *"the band
+        // must agree with `PAGE_GROUND` or the nav and the content it heads are
+        // two different columns"*. This band sits between the two of them, so it
+        // is the one place a disagreement would be visible twice.
+        parameters: { ...composition('shell'), sizeMode: 'contentHeight', alignX: 'center' },
+        children: [opts.headChild ?? 'headingHeadRow']
+      }
+    );
   }
   // 🔴 **REL-002c item 6 — the band goes INSIDE `pageBody`, and that is the
   // whole reason these three pages reuse this helper instead of `/join`'s
@@ -1412,10 +1650,26 @@ function pageHead(
      * same reason — see `ON_SCRIM`.
      */
     onScrim?: boolean;
+    /**
+     * REL-010 AC2. `door` takes `H_DOOR` (`--display-md`, 72px at 1280) instead
+     * of `H_PAGE` (`--display-sm`, 48px).
+     *
+     * 🔴 **Three pages, named rather than derived, and the distinction is
+     * Richard's not the instrument's.** `onScrim` is nearly the same set and it
+     * is NOT the same question: `/unsubscribe` also stands on a photograph and
+     * is deliberately NOT a door — it is a page a mail client sends somebody to
+     * once, and REL-010 AC2 asks `≥ 72px` of *"the four public pages"*, which
+     * are `/`, `/join`, `/sign-in` and `/setup`. Keying the tier off `onScrim`
+     * would have put a 72px headline on `/unsubscribe` because it happens to
+     * share a background treatment, which is a layout fact standing in for an
+     * audience one.
+     */
+    tier?: 'door';
   } = {}
 ): unknown[] {
-  const { icon, onScrim } = opts;
+  const { icon, onScrim, tier } = opts;
   const light = onScrim ? ON_SCRIM : {};
+  const heading = tier === 'door' ? H_DOOR : H_PAGE;
   const head = [
     {
       id: `${id}Head`,
@@ -1432,7 +1686,7 @@ function pageHead(
       parent: `${id}Head`,
       parameters: { text: eyebrow, ...T_EYEBROW, ...light }
     },
-    { id, type: 'Text', label, parent: `${id}Head`, parameters: { text, ...H_PAGE, ...light } }
+    { id, type: 'Text', label, parent: `${id}Head`, parameters: { text, ...heading, ...light } }
   ];
   if (!icon) return head;
   return [
@@ -2088,7 +2342,7 @@ const LANDING: Tpl001Component = {
       // the same words for every association that installs this. §E-ii's marker
       // is for strings that vary and were left generic; this one does not vary.
       parent: 'aboutShell',
-      parameters: { text: 'About us', ...H_PAGE }
+      parameters: { text: 'About us', ...H_BAND }
     },
     {
       id: 'aboutProse',
@@ -2152,94 +2406,7 @@ const LANDING: Tpl001Component = {
     // `Pages/Directory` are all shipped, so nothing here describes a screen that
     // is not in the artefact. `tpl001Template.test.ts` pins the page list, which
     // is what stops this becoming a promise a later edit quietly breaks.
-    {
-      id: 'inside',
-      type: 'Group',
-      label: 'What members can see',
-      parent: 'landingGround',
-      // 🔴 **`inside` is the BAND.** It was a section inside the page column; as
-      // a band it owns a ground of its own (`--surface` with hairlines top and
-      // bottom), which is what stops the page being one colour from the hero to
-      // the fold. It carries no `mounted` at all now — see the note above.
-      parameters: composition('bandSurface'),
-      children: ['insideShell']
-    },
-    {
-      id: 'insideShell',
-      type: 'Group',
-      label: 'Shell',
-      parent: 'inside',
-      parameters: { ...composition('shell'), sizeMode: 'contentHeight', alignX: 'center', rowGap: 'var(--space-6)' },
-      children: ['insideHeading', 'insideList']
-    },
-    {
-      id: 'insideHeading',
-      type: 'Text',
-      label: 'What members can see — heading',
-      parent: 'insideShell',
-      // `sectionHeading` now, not `cardTitle`. It used to be the smaller ramp
-      // because it sat 68px under a --text-5xl hero in the same column and
-      // competed with it. It is in its own band on its own ground now, so the
-      // thing it has to be is the head of a section.
-      parameters: { text: 'What members can see', ...H_PAGE }
-    },
-    {
-      id: 'insideList',
-      type: COLUMNS_NODE,
-      label: 'The three tiles',
-      parent: 'insideShell',
-      // 🔴 **A `Columns`, and the comment this replaces was wrong twice.** It
-      // read: *"`gridAutoFit` and `columnsTwoUp` … both live on `Columns`, a
-      // node type this template does not use anywhere — and a Group row cannot
-      // collapse"*. `Columns` HAS been used here since s8 (the moderator
-      // actions on `Pages/Members`), and `Group` does carry a `flexWrap` port
-      // ([`group.ts:311`](../../noodl-viewer-react/src/nodes/visual/group.ts#L311)).
-      // Neither claim survived being checked, and between them they kept three
-      // tiles stacked full-width in a 1200px shell.
-      //
-      // ⚠️ `minWidth: 300` is what makes it 3-up at 1200 and 1-up at 390:
-      // `autoFit` fits as many columns as the container holds, so the reflow is
-      // arithmetic on the container rather than a breakpoint anybody maintains.
-      parameters: { ...composition('gridAutoFit'), minWidth: { value: 300, unit: 'px' } },
-      // 🔴 **Cells, not the tiles themselves, and the door is what taught this.**
-      // A `Columns` child must carry `sizeMode` and `width` — `calcAutoFit`
-      // hands each child an equal box and a content-sized child ignores it. A
-      // COMPONENT INSTANCE cannot carry either: *"a component instance has only
-      // the ports its Component Inputs node declares — it carries no layout,
-      // style or lifecycle ports of its own"*, and the door refuses the write
-      // rather than discarding the values silently. So the thing in the column
-      // is a Group that owns the box, and the tile sits in it.
-      children: ['cellNews', 'cellDiary', 'cellPeople']
-    },
-    ...['News', 'Diary', 'People'].map((which) => ({
-      id: `cell${which}`,
-      type: 'Group',
-      label: `The ${which.toLowerCase()} column`,
-      parent: 'insideList',
-      parameters: { sizeMode: 'contentHeight', width: { value: 100, unit: '%' }, flexDirection: 'column' },
-      children: [`tile${which}`]
-    })),
-    {
-      id: 'tileNews',
-      type: INSIDE_TILE_COMPONENT,
-      label: 'Announcements',
-      parent: 'cellNews',
-      parameters: { title: 'Announcements', line: 'What the moderators have posted, newest first.' }
-    },
-    {
-      id: 'tileDiary',
-      type: INSIDE_TILE_COMPONENT,
-      label: 'The diary',
-      parent: 'cellDiary',
-      parameters: { title: 'The diary', line: 'Meetings and events, with the details and where to go.' }
-    },
-    {
-      id: 'tilePeople',
-      type: INSIDE_TILE_COMPONENT,
-      label: 'The directory',
-      parent: 'cellPeople',
-      parameters: { title: 'The directory', line: 'Who else is a member.' }
-    },
+    { id: 'inside', type: INSIDE_BAND_COMPONENT, label: 'What members can see', parent: 'landingGround' },
 
     // ── The foot of the page ─────────────────────────────────────────────────
     //
@@ -2481,16 +2648,35 @@ const SIGN_IN: Tpl001Component = {
     // whose job is to say what the association IS. This band's job is to say what
     // THIS PAGE is, and the page is one person at their own machine coming back
     // to somewhere they already belong — which is what the picture shows.
-    ...pageShell({ band: 'people-desk.webp' }),
+    // 🔴 **REL-010 — the two bands, and what they replaced.** This page ended in
+    // a `Text` reading *"Not a member yet?"* and a button, both sitting loose on
+    // the page ground under the form. Measured, it read **2 distinct grounds**
+    // (the hero's scrim, the footer's `--muted`) against AC4's four and against
+    // the VIB-006 page's six, and **0 images and 0 icons** — the exact pair that
+    // fires `no-imagery`.
+    //
+    // The two loose nodes ARE the prompt, so this is not a band bolted on: it is
+    // the page's own last sentence given the ground it was always making a claim
+    // about. `inside` then answers the question the prompt asks — a stranger
+    // told to ask to join can see what they would be joining without leaving.
+    ...pageShell({
+      band: 'people-desk.webp',
+      prompt: {
+        heading: 'Not a member yet?',
+        line: 'Membership is by request. Ask to join and a moderator will approve you.',
+        action: 'Ask to join'
+      },
+      inside: true
+    }),
     {
       id: 'ground',
       type: 'Group',
       label: 'Page ground',
       parent: 'pageBody',
       parameters: { ...FORM_GROUND, alignX: 'center' },
-      children: ['form', 'error', 'joinHint', 'joinButton']
+      children: ['form', 'error']
     },
-    ...pageHead('heading', 'Heading', 'heroShell', 'Members’ area', 'Members sign in', { onScrim: true }),
+    ...pageHead('heading', 'Heading', 'heroShell', 'Members’ area', 'Members sign in', { onScrim: true, tier: 'door' }),
     {
       id: 'form',
       type: 'Group',
@@ -2531,20 +2717,6 @@ const SIGN_IN: Tpl001Component = {
     // ⚠️ Its `text` is WIRED, so that connection names `errorText` while the new
     // `mounted` connection names `error`, which is the box.
     ...notice('error', 'Sign-in error', 'ground', '', { tone: 'refused' }),
-    {
-      id: 'joinHint',
-      type: 'Text',
-      label: 'Not a member yet',
-      parent: 'ground',
-      parameters: { text: 'Not a member yet?', ...T_META }
-    },
-    {
-      id: 'joinButton',
-      type: 'net.noodl.controls.button',
-      label: 'Ask to join',
-      parent: 'ground',
-      parameters: btn('Ask to join')
-    },
     { id: 'login', type: 'net.noodl.user.LogIn', label: 'Log in' },
     { id: 'errorGate', type: 'Condition', label: 'Show the sign-in refusal', parameters: { ...CONDITION_GATE } },
     {
@@ -2568,7 +2740,12 @@ const SIGN_IN: Tpl001Component = {
     { fromId: 'login', fromProperty: 'failure', toId: 'errorGate', toProperty: 'eval' },
     { fromId: 'errorGate', fromProperty: 'result', toId: 'error', toProperty: 'mounted' },
     { fromId: 'login', fromProperty: 'done', toId: 'toMembers', toProperty: 'navigate' },
-    { fromId: 'joinButton', fromProperty: 'onClick', toId: 'toJoin', toProperty: 'navigate' }
+    // 🔴 **REL-010 — off the BAND's output, not off a button on this page.**
+    // The button lives inside `Members/Prompt` now, and a component's click
+    // reaches its host through a `Component Outputs` port. The navigator stays
+    // here, which is what keeps every `RouterNavigate` in the template on the
+    // page whose router it targets.
+    { fromId: 'prompt', fromProperty: 'clicked', toId: 'toJoin', toProperty: 'navigate' }
   ],
   deferred: ['toMembers', 'toJoin']
 };
@@ -3096,7 +3273,7 @@ const MEMBERS: Tpl001Component = {
       label: 'Page ground',
       parent: 'pageBody',
       parameters: PAGE_GROUND,
-      children: ['headingHeadRow', 'pendingNotice', 'unknownNotice', 'memberArea', 'moderatorTools']
+      children: ['pendingNotice', 'unknownNotice', 'memberArea', 'moderatorTools']
     },
     // ⚠️ **"Announcements", not "Members", since s8.** The band above now says
     // whose members' area this is, so a page heading repeating the word
@@ -3106,7 +3283,7 @@ const MEMBERS: Tpl001Component = {
     // ⚠️ Its eyebrow reads "For members" against the "For moderators" one
     // further down: this is the one page in the app with a zone for each
     // audience, and the two eyebrows are what say so.
-    ...pageHead('heading', 'Heading', 'ground', 'For members', 'Announcements', { icon: 'newspaper' }),
+    ...pageHead('heading', 'Heading', 'headBandShell', 'For members', 'Announcements', { icon: 'newspaper' }),
     // 🔴 AC3's screen. A pending member is refused exactly as a stranger is, and
     // this is the sentence that stops that refusal reading as a broken app — now
     // in the accent box the token was introduced for and nothing had ever read.
@@ -3311,16 +3488,16 @@ const ANNOUNCEMENT: Tpl001Component = {
       parameters: { title: 'Announcement', urlPath: `announcements/{${ANNOUNCEMENT_PARAM}}` },
       children: ['pageShell']
     },
-    ...pageShell({ chrome: true }),
+    ...pageShell({ chrome: true, headChild: 'titleHeadRow' }),
     {
       id: 'ground',
       type: 'Group',
       label: 'Page ground',
       parent: 'pageBody',
       parameters: PAGE_GROUND,
-      children: ['titleHeadRow', 'readingBlock', 'refusal', 'removal']
+      children: ['readingBlock', 'refusal', 'removal']
     },
-    ...pageHead('title', 'Title', 'ground', 'Announcement', '', { icon: 'newspaper' }),
+    ...pageHead('title', 'Title', 'headBandShell', 'Announcement', '', { icon: 'newspaper' }),
     /**
      * 🔴 **REL-002c s13 — `PROSE`, and this page is the reason the constant
      * exists.** The first render of this page ever taken (s13; it had never been
@@ -3440,9 +3617,9 @@ const MEETINGS: Tpl001Component = {
       label: 'Page ground',
       parent: 'pageBody',
       parameters: PAGE_GROUND,
-      children: ['headingHeadRow', 'pendingNotice', 'memberArea']
+      children: ['pendingNotice', 'memberArea']
     },
-    ...pageHead('heading', 'Heading', 'ground', 'For members', 'What’s coming up', { icon: 'calendar-days' }),
+    ...pageHead('heading', 'Heading', 'headBandShell', 'For members', 'What’s coming up', { icon: 'calendar-days' }),
     ...notice('pendingNotice', 'Waiting to be approved', 'ground', PENDING_TEXT, { tone: 'accent' }),
     {
       id: 'memberArea',
@@ -3531,16 +3708,16 @@ const MEETING: Tpl001Component = {
       parameters: { title: 'Meeting', urlPath: `meetings/{${MEETING_PARAM}}` },
       children: ['pageShell']
     },
-    ...pageShell({ chrome: true }),
+    ...pageShell({ chrome: true, headChild: 'titleHeadRow' }),
     {
       id: 'ground',
       type: 'Group',
       label: 'Page ground',
       parent: 'pageBody',
       parameters: PAGE_GROUND,
-      children: ['titleHeadRow', 'readingBlock', 'refusal', 'removal']
+      children: ['readingBlock', 'refusal', 'removal']
     },
-    ...pageHead('title', 'Title', 'ground', 'Meeting', '', { icon: 'calendar-days' }),
+    ...pageHead('title', 'Title', 'headBandShell', 'Meeting', '', { icon: 'calendar-days' }),
     /**
      * 🔴 **REL-002c s13 — the detail page showed LESS than the row that links
      * to it, and only the first render of it ever taken said so.** `MeetingRow`
@@ -3695,7 +3872,13 @@ const JOIN: Tpl001Component = {
       // under a header; here the two bands above are content-height and the
       // footer is the last child, so `space-between` puts the slack between the
       // form and the foot — which is where this page's slack already was.
-      children: ['heroBand', 'formBand', 'pageFooter']
+      // 🔴 **REL-010 — two bands between the form and the foot, and the
+      // `space-between` note above still holds.** That note says the slack lands
+      // between the last band and the footer because the footer is last; it
+      // still is. What changed is that there is far less slack to place: this
+      // page was a hero, a form and a foot, and it is now a hero, a form, what
+      // to do if this is the wrong page, and what is behind the door.
+      children: ['heroBand', 'formBand', 'prompt', 'inside', 'pageFooter']
     },
     {
       id: 'pageFooter',
@@ -3734,7 +3917,7 @@ const JOIN: Tpl001Component = {
     },
     // ⚠️ `onScrim`: the eyebrow's accent green and the heading's `--foreground`
     // are both chosen against `--background` and both go dark-on-dark here.
-    ...pageHead('heading', 'Heading', 'heroShell', 'Members’ area', 'Ask to join', { onScrim: true }),
+    ...pageHead('heading', 'Heading', 'heroShell', 'Members’ area', 'Ask to join', { onScrim: true, tier: 'door' }),
     {
       id: 'formBand',
       type: 'Group',
@@ -3770,7 +3953,7 @@ const JOIN: Tpl001Component = {
       // air under a band-less page's top edge, and here the photograph above is
       // already the page's top edge.
       parameters: { ...FORM_GROUND, alignX: 'center', paddingTop: 'var(--space-8)' },
-      children: ['form', 'sent', 'refusal', 'hint', 'signInButton']
+      children: ['form', 'sent', 'refusal']
     },
     // 🔴 The fields were loose on the page ground, full-bleed down a single
     // column. A form is one thing a person fills in, and a panel is how a page
@@ -3820,26 +4003,35 @@ const JOIN: Tpl001Component = {
     },
     ...notice('sent', 'Request received', 'ground', REQUEST_SENT_TEXT, { tone: 'accent' }),
     ...notice('refusal', 'The one refusal', 'ground', REQUEST_REFUSED_TEXT, { tone: 'refused' }),
-    { id: 'hint', type: 'Text', label: 'Already a member', parent: 'ground', parameters: { text: ALREADY_A_MEMBER_HINT, ...T_META } },
+
+    // 🔴 **REL-010 — the footnote became the band, and the VIB-001 finding it
+    // was written against still holds.** The node this replaces was an outline
+    // `Sign in` under the form, and its comment records why it is an outline
+    // rather than a `btn()`: *"two primary actions of equal weight on one page,
+    // so the page does not say what it wants you to do"*, fixed by keying
+    // emphasis on the PLACE rather than on the label.
+    //
+    // That reasoning is what makes the band correct rather than a promotion. The
+    // place changed — a footnote under a form became the page's closing band —
+    // and `Members/Prompt` keys its button off `outlineButton` for the same
+    // reason the footnote did. The `Send my request` submit is still the only
+    // filled control on the page.
+    //
+    // ⚠️ `ALREADY_A_MEMBER_HINT` stays the words. It is in `tpl001Vocabulary.ts`
+    // because the spec holds the graphs and the policy to one spelling; moving
+    // the node it sits on must not quietly fork the string.
     {
-      id: 'signInButton',
-      type: 'net.noodl.controls.button',
-      label: 'Sign in',
-      parent: 'ground',
-      // 🔴 **Not `btn()`, and this is the VIB-001 baseline's finding on this
-      // page.** *"'Sign in' is a filled primary-green button of the same visual
-      // weight as the form's own 'Send my request' submit. Two primary actions
-      // of equal weight on one page, so the page does not say what it wants you
-      // to do."*
-      //
-      // The mechanism is that `btn()` keys emphasis on the WORDS: `Sign in` is
-      // in `PRIMARY_LABELS` because it is the submit of `Pages/SignIn`, and the
-      // afterthought at the bottom of the join form inherited it. This file
-      // already states the rule that fixes it, on `navBtn`: *"emphasis is a
-      // property of the PLACE rather than of the label."* Here the place is a
-      // footnote under a form, so the control is the outline.
-      parameters: { label: 'Sign in', ...withoutInertBorderWidth(composition('outlineButton')) }
+      id: 'prompt',
+      type: PROMPT_COMPONENT,
+      label: 'The closing prompt',
+      parent: 'joinGround',
+      parameters: {
+        heading: ALREADY_A_MEMBER_HINT,
+        line: 'Members sign in with the email and password they joined with.',
+        action: 'Sign in'
+      }
     },
+    { id: 'inside', type: INSIDE_BAND_COMPONENT, label: 'What members can see', parent: 'joinGround' },
     { id: 'send', type: 'CloudFunction2', label: FN_REQUEST_ACCESS, parameters: { function: FN_REQUEST_ACCESS } },
     { id: 'sentGate', type: 'Condition', label: 'Show the confirmation', parameters: { ...CONDITION_GATE } },
     { id: 'refusalGate', type: 'Condition', label: 'Show the refusal', parameters: { ...CONDITION_GATE } },
@@ -3862,7 +4054,7 @@ const JOIN: Tpl001Component = {
     { fromId: 'send', fromProperty: 'failure', toId: 'refusalGate', toProperty: 'eval' },
     { fromId: 'refusalGate', fromProperty: 'result', toId: 'refusal', toProperty: 'mounted' },
 
-    { fromId: 'signInButton', fromProperty: 'onClick', toId: 'toSignIn', toProperty: 'navigate' }
+    { fromId: 'prompt', fromProperty: 'clicked', toId: 'toSignIn', toProperty: 'navigate' }
   ]
 };
 
@@ -3901,7 +4093,30 @@ const SETUP: Tpl001Component = {
     // ⚠️ The subject runs horizontally across the board, which is the property
     // `JOIN_GROUND` records as the reason `people-meeting` survives a 300px crop
     // and `people-market` does not.
-    ...pageShell({ band: 'work-carpenter.webp' }),
+    // 🔴 **REL-010 — the same two bands `/sign-in` takes, and `/setup` needed
+    // them for a reason of its own.** This is the owner's first ever screen, and
+    // it measured `2 grounds, 0 images, 0 icons`: the page that has to convince
+    // somebody this template was worth installing was the emptiest in it.
+    //
+    // ⚠️ **`inside` is not marketing here, it is the specification.** The three
+    // tiles name the three screens the owner is about to create. A person part
+    // way through a setup form has exactly one question — *what do I get when
+    // this finishes* — and the answer was on a page they had already left.
+    //
+    // ⚠️ **The prompt is for the person who is on the WRONG page**, which on a
+    // first-run screen is the commonest way to arrive: a member who followed an
+    // old link, or the owner coming back to an association they already made.
+    // Its click joins `claim.done` on `toSignIn` — two signals into one
+    // navigator, both meaning the same thing.
+    ...pageShell({
+      band: 'work-carpenter.webp',
+      prompt: {
+        heading: 'Already set up?',
+        line: 'If this association has been created, this page is not the one you want.',
+        action: 'Sign in'
+      },
+      inside: true
+    }),
     {
       id: 'ground',
       type: 'Group',
@@ -3910,7 +4125,7 @@ const SETUP: Tpl001Component = {
       parameters: { ...FORM_GROUND, alignX: 'center' },
       children: ['blurb', 'form', 'refusal', 'missing']
     },
-    ...pageHead('heading', 'Heading', 'heroShell', 'First run', 'Set up this members’ area', { onScrim: true }),
+    ...pageHead('heading', 'Heading', 'heroShell', 'First run', 'Set up this members’ area', { onScrim: true, tier: 'door' }),
     {
       id: 'blurb',
       type: 'Text',
@@ -4118,6 +4333,8 @@ const SETUP: Tpl001Component = {
     // server-side node and sets no browser session — so setup ends at the door
     // rather than inside.
     { fromId: 'claim', fromProperty: 'done', toId: 'toSignIn', toProperty: 'navigate' },
+    // REL-010. The second producer of the same signal — see the prompt above.
+    { fromId: 'prompt', fromProperty: 'clicked', toId: 'toSignIn', toProperty: 'navigate' },
     { fromId: 'claim', fromProperty: 'failure', toId: 'refusalGate', toProperty: 'eval' },
     { fromId: 'refusalGate', fromProperty: 'result', toId: 'refusal', toProperty: 'mounted' }
   ]
@@ -4159,9 +4376,9 @@ const POST: Tpl001Component = {
       // with the association's name in the band and with the footer; only the
       // forms are capped. See `AT_FORM_MEASURE`.
       parameters: PAGE_GROUND,
-      children: ['headingHeadRow', 'notAllowed', 'tools']
+      children: ['notAllowed', 'tools']
     },
-    ...pageHead('heading', 'Heading', 'ground', 'For moderators', 'Post something', { icon: 'pencil' }),
+    ...pageHead('heading', 'Heading', 'headBandShell', 'For moderators', 'Post something', { icon: 'pencil' }),
     ...notice('notAllowed', 'Not a moderator', 'ground', 'Only a moderator can post here.', {
       tone: 'refused',
       atFormMeasure: true
@@ -4485,9 +4702,9 @@ const REQUESTS: Tpl001Component = {
       label: 'Page ground',
       parent: 'pageBody',
       parameters: PAGE_GROUND,
-      children: ['headingHeadRow', 'notAllowed', 'queue']
+      children: ['notAllowed', 'queue']
     },
-    ...pageHead('heading', 'Heading', 'ground', 'For moderators', 'Requests to join', { icon: 'user-plus' }),
+    ...pageHead('heading', 'Heading', 'headBandShell', 'For moderators', 'Requests to join', { icon: 'user-plus' }),
     ...notice('notAllowed', 'Not a moderator', 'ground', 'Only a moderator can see who is waiting to join.', {
       tone: 'refused'
     }),
@@ -4595,9 +4812,9 @@ const DIRECTORY: Tpl001Component = {
       label: 'Page ground',
       parent: 'pageBody',
       parameters: PAGE_GROUND,
-      children: ['headingHeadRow', 'notAllowed', 'directory']
+      children: ['notAllowed', 'directory']
     },
-    ...pageHead('heading', 'Heading', 'ground', 'For moderators', 'Who belongs', { icon: 'users' }),
+    ...pageHead('heading', 'Heading', 'headBandShell', 'For moderators', 'Who belongs', { icon: 'users' }),
     ...notice('notAllowed', 'Not a moderator', 'ground', 'Only a moderator can see the member list.', {
       tone: 'refused'
     }),
@@ -4711,25 +4928,366 @@ export const INSIDE_TILE_NODES = [
     id: 'tile',
     type: 'Group',
     label: 'One tile',
-    parameters: { ...TILE },
+    // 🔴 **REL-010 AC3 — `CARD` alone now, and it used to be `TILE`.**
+    // `TILE` is `{ ...CARD, ...CARD_BODY }`: the card's fill and edge and the
+    // body's 20px padding merged onto ONE Group. That is right for a box of
+    // text and wrong the moment a photograph goes in it — a full-bleed image
+    // inside a padded box is an image with a 20px frame of `--surface` around
+    // it, which reads as a mistake rather than as a card.
+    //
+    // So the two halves separate, exactly as `Components/BoxCard` on the
+    // VIB-006 page does: the CARD owns the fill, the edge and `clip: true`, and
+    // a BODY inside it owns the padding. `clip` is what rounds the photograph's
+    // top corners to the card's `--radius-xl` — it comes from the `card`
+    // composition and is the reason this split costs no new parameter.
+    parameters: { ...CARD },
+    children: ['tilePhoto', 'tileBody']
+  },
+  {
+    id: 'tilePhoto',
+    type: 'Image',
+    label: 'The photograph',
+    parent: 'tile',
+    // 🔴 **The first real `Image` node in this template**, and REL-010 §2.1 is
+    // why that sentence had to be checked rather than trusted. The row's
+    // measured finding was `no-imagery` on five pages that *visibly show a
+    // photograph* — `render-measure` counts `visible.filter(el => el.tagName
+    // === 'IMG')` and cannot see a CSS `background-image`, so the hero's scrim
+    // was invisible to it. The finding's wording was misleading and **the fact
+    // underneath was worse than the finding**: across all thirty components the
+    // template contained **zero `Image` nodes**, and its only photography was a
+    // `backgroundImage` parameter on a hero Group. Photography was never
+    // content here, only ground.
+    //
+    // ⚠️ **`sizeMode: 'explicit'` with a fixed height, and it is not
+    // decoration.** Three tiles in a `gridAutoFit` are three columns of
+    // different natural heights; a content-sized image makes the three cards
+    // three different heights, which is the "nobody designed this" tell one
+    // level down from the one this row is closing. 200px against `BoxCard`'s
+    // 240 because these tiles carry two lines of text where a box card carries
+    // three.
+    //
+    // ⚠️ `objectFit: 'cover'` — the starter photographs are 900×675 and these
+    // boxes are ~360×200, so without it every one of them distorts.
+    parameters: {
+      sizeMode: 'explicit',
+      objectFit: 'cover',
+      width: { value: 100, unit: '%' },
+      height: { value: 200, unit: 'px' },
+      src: '',
+      alt: ''
+    }
+  },
+  {
+    id: 'tileBody',
+    type: 'Group',
+    label: 'The words',
+    parent: 'tile',
+    parameters: { ...CARD_BODY, sizeMode: 'contentHeight' },
     children: ['tileTitle', 'tileLine']
   },
-  { id: 'tileTitle', type: 'Text', label: 'What it is', parent: 'tile', parameters: { text: '', ...T_CARD_TITLE } },
-  { id: 'tileLine', type: 'Text', label: 'What it holds', parent: 'tile', parameters: { text: '', ...T_NOTICE } },
+  { id: 'tileTitle', type: 'Text', label: 'What it is', parent: 'tileBody', parameters: { text: '', ...T_CARD_TITLE } },
+  { id: 'tileLine', type: 'Text', label: 'What it holds', parent: 'tileBody', parameters: { text: '', ...T_NOTICE } },
   {
     id: 'inputs',
     type: 'Component Inputs',
     label: 'The tile',
     ports: [
       { name: 'title', type: 'string', plug: 'output' },
-      { name: 'line', type: 'string', plug: 'output' }
+      { name: 'line', type: 'string', plug: 'output' },
+      // ⚠️ **`picture`, not `image`.** `Image` is a node type name in this
+      // project and a port called `image` on an instance that contains one is
+      // the kind of collision the door renames rather than refuses — see the
+      // `record`/`DbModel2` id collision hazard on this row's board.
+      { name: 'picture', type: 'string', plug: 'output' },
+      // 🔴 **A separate port rather than a derived string.** An `alt` computed
+      // from the filename would be `people-meeting` read aloud to somebody
+      // using a screen reader. It is the one thing on a decorative photograph
+      // that is not decorative.
+      { name: 'alt', type: 'string', plug: 'output' }
     ]
   }
 ];
 
 export const INSIDE_TILE_WIRES = [
   { fromId: 'inputs', fromProperty: 'title', toId: 'tileTitle', toProperty: 'text' },
-  { fromId: 'inputs', fromProperty: 'line', toId: 'tileLine', toProperty: 'text' }
+  { fromId: 'inputs', fromProperty: 'line', toId: 'tileLine', toProperty: 'text' },
+  { fromId: 'inputs', fromProperty: 'picture', toId: 'tilePhoto', toProperty: 'src' },
+  { fromId: 'inputs', fromProperty: 'alt', toId: 'tilePhoto', toProperty: 'alt' }
+];
+
+/**
+ * The *"what members can see"* band, as a component — REL-010 AC3/AC4.
+ *
+ * 🔴 **Placed by the four PUBLIC pages, and by none of the nine gated ones.**
+ * That split is Richard's §3.1 ruling of 2026-09-02 — *the public four take the
+ * full VIB-006 section vocabulary; the signed-in nine get density and decision,
+ * not billboards* — and it is also just true: a member reading `/account` does
+ * not need to be told a directory exists, and a band promising one there would
+ * be marketing shown to somebody who has already bought.
+ *
+ * 🔴 **The three photographs are what closed `no-imagery` on the doors.**
+ * Measured after the display tier landed: the four door pages read
+ * `images 0, icons 0`, which is the ONLY shape that fires the finding
+ * ([`nodegx-render-measure/src/index.js:932`](../../nodegx-render-measure/src/index.js#L932)
+ * — it needs BOTH to be zero). The gated nine never fired it, because
+ * `pageHead`'s icon badge gives them one glyph each. So this band is not
+ * decoration bolted on to move a number: it is the one photographed thing the
+ * template owned, made placeable.
+ *
+ * ⚠️ **The band keeps the id `inside` on the pages that place it**, so the
+ * landing page's `landingGround` children list is unchanged and no wire moved.
+ */
+export const INSIDE_BAND_NODES = [
+  {
+    id: 'inside',
+    type: 'Group',
+    label: 'What members can see',
+    // 🔴 **`inside` is the BAND.** It was a section inside the page column; as
+    // a band it owns a ground of its own (`--surface` with hairlines top and
+    // bottom), which is what stops the page being one colour from the hero to
+    // the fold. It carries no `mounted` at all now — see the note above.
+    // 🔴 **Pinned, and the board's hazard 1 is why it had to be.** `bandSurface`
+    // carries no `sizeMode`, and `addDimensions` defaults one to `explicit` at
+    // `height: 100%`, which `layout.ts:98` turns into `flex-grow: 100` inside a
+    // column parent. That was harmless while this band lived on `Pages/Landing`,
+    // whose ground is always taller than the viewport. It stops being harmless
+    // the moment the band is placed on `/sign-in` and `/setup`, which are short
+    // pages inside `PAGE_SHELL`'s `minHeight: 100vh` — there the band would have
+    // eaten every pixel of slack the floor created and rendered as a 400px-tall
+    // strip of `--surface` with three tiles floating in the middle of it.
+    parameters: { ...composition('bandSurface'), sizeMode: 'contentHeight' },
+    children: ['insideShell']
+  },
+  {
+    id: 'insideShell',
+    type: 'Group',
+    label: 'Shell',
+    parent: 'inside',
+    parameters: { ...composition('shell'), sizeMode: 'contentHeight', alignX: 'center', rowGap: 'var(--space-6)' },
+    children: ['insideHeading', 'insideList']
+  },
+  {
+    id: 'insideHeading',
+    type: 'Text',
+    label: 'What members can see — heading',
+    parent: 'insideShell',
+    // `sectionHeading` now, not `cardTitle`. It used to be the smaller ramp
+    // because it sat 68px under a --text-5xl hero in the same column and
+    // competed with it. It is in its own band on its own ground now, so the
+    // thing it has to be is the head of a section.
+    parameters: { text: 'What members can see', ...H_BAND }
+  },
+  {
+    id: 'insideList',
+    type: COLUMNS_NODE,
+    label: 'The three tiles',
+    parent: 'insideShell',
+    // 🔴 **A `Columns`, and the comment this replaces was wrong twice.** It
+    // read: *"`gridAutoFit` and `columnsTwoUp` … both live on `Columns`, a
+    // node type this template does not use anywhere — and a Group row cannot
+    // collapse"*. `Columns` HAS been used here since s8 (the moderator
+    // actions on `Pages/Members`), and `Group` does carry a `flexWrap` port
+    // ([`group.ts:311`](../../noodl-viewer-react/src/nodes/visual/group.ts#L311)).
+    // Neither claim survived being checked, and between them they kept three
+    // tiles stacked full-width in a 1200px shell.
+    //
+    // ⚠️ `minWidth: 300` is what makes it 3-up at 1200 and 1-up at 390:
+    // `autoFit` fits as many columns as the container holds, so the reflow is
+    // arithmetic on the container rather than a breakpoint anybody maintains.
+    parameters: { ...composition('gridAutoFit'), minWidth: { value: 300, unit: 'px' } },
+    // 🔴 **Cells, not the tiles themselves, and the door is what taught this.**
+    // A `Columns` child must carry `sizeMode` and `width` — `calcAutoFit`
+    // hands each child an equal box and a content-sized child ignores it. A
+    // COMPONENT INSTANCE cannot carry either: *"a component instance has only
+    // the ports its Component Inputs node declares — it carries no layout,
+    // style or lifecycle ports of its own"*, and the door refuses the write
+    // rather than discarding the values silently. So the thing in the column
+    // is a Group that owns the box, and the tile sits in it.
+    children: ['cellNews', 'cellDiary', 'cellPeople']
+  },
+  ...['News', 'Diary', 'People'].map((which) => ({
+    id: `cell${which}`,
+    type: 'Group',
+    label: `The ${which.toLowerCase()} column`,
+    parent: 'insideList',
+    parameters: { sizeMode: 'contentHeight', width: { value: 100, unit: '%' }, flexDirection: 'column' },
+    children: [`tile${which}`]
+  })),
+  // 🔴 **REL-010 AC3 — three photographs, and the choice of them is the
+  // argument.** The starter library ships 44 CC0 photographs in six roles
+  // (`starterAssetList.ts`), and the `people-*` role is described there as
+  // *"people at work and in places"*. A members' area belongs to a church, a
+  // club or a charity, so the three pictures are three rooms with people in
+  // them rather than three abstractions — which is the same reasoning the
+  // library's own `work-*` note gives: *"the category that stops a feature row
+  // looking like a theme demo."*
+  //
+  // ⚠️ **Three DIFFERENT photographs, and none of them the hero's.**
+  // `JOIN_GROUND` already records why a page must not repeat the hero's
+  // picture — *"a form page repeating the hero's own photograph reads as a
+  // page that failed to load its own"* — and three tiles wearing one picture
+  // is that defect three times on one band. The hero is `people-coffee-shop`;
+  // none of these is.
+  //
+  // ⚠️ **The `alt` text describes the PHOTOGRAPH, not the tile.** *"What the
+  // moderators have posted"* is the tile's job and it is already on the screen
+  // as text; a screen reader that heard it twice would learn nothing and lose
+  // the picture.
+  {
+    id: 'tileNews',
+    type: INSIDE_TILE_COMPONENT,
+    label: 'Announcements',
+    parent: 'cellNews',
+    parameters: {
+      title: 'Announcements',
+      line: 'What the moderators have posted, newest first.',
+      picture: 'noodl_modules/starter-imagery/people-cafe.webp',
+      alt: 'Two people talking over a table in a cafe'
+    }
+  },
+  {
+    id: 'tileDiary',
+    type: INSIDE_TILE_COMPONENT,
+    label: 'The diary',
+    parent: 'cellDiary',
+    parameters: {
+      title: 'The diary',
+      line: 'Meetings and events, with the details and where to go.',
+      picture: 'noodl_modules/starter-imagery/people-market.webp',
+      alt: 'A busy market stall on a weekend morning'
+    }
+  },
+  {
+    id: 'tilePeople',
+    type: INSIDE_TILE_COMPONENT,
+    label: 'The directory',
+    parent: 'cellPeople',
+    parameters: {
+      title: 'The directory',
+      line: 'Who else is a member.',
+      picture: 'noodl_modules/starter-imagery/work-potter.webp',
+      alt: 'A member at work at the pottery bench'
+    }
+  }
+];
+
+/**
+ * The closing prompt — REL-010 AC4, and the page's bottom edge before the foot.
+ *
+ * 🔴 **`--accent`, which is the third thing this template spends the accent
+ * on**, and `tpl001Theme.ts` names the first two: *"the primary at a whisper,
+ * for the eyebrow and the pending notice."* A third use needs saying out loud
+ * rather than adding quietly. It earns it by being the same KIND of thing as
+ * the other two — a moment where the association's own colour marks something
+ * addressed to the person reading, not a decoration applied to a surface.
+ *
+ * Contrast, measured and already on file in `tpl001Theme.ts`:
+ * `--accent-foreground` on `--accent` is **6.45:1** against a 4.5 floor, and
+ * `--foreground` on `--accent` is higher still. The button keeps
+ * `outlineButton`, whose edge reaches for `--muted-foreground` rather than
+ * `--border` for the contrast reason that composition states itself.
+ *
+ * ⚠️ **Two `Text` nodes and not one**, for the reason `FOOTER_NODES` and
+ * `aboutProse` both record: §2's notice census counts a `Group` wrapping exactly
+ * one `Text` as a notice box and requires it to carry a fill and an edge. It is
+ * also the better band — a prompt with a line of context under it reads as an
+ * invitation, and a prompt with only a question reads as a form validation.
+ *
+ * ⚠️ **The line is a LITERAL and it varies per page**, so unlike
+ * `INSIDE_BAND_NODES` this one does carry ports. `/sign-in` asks a stranger to
+ * join and `/join` asks a member to sign in; the same band with the same words
+ * on both would send each reader to the page they are already on.
+ */
+export const PROMPT_NODES = [
+  {
+    id: 'prompt',
+    type: 'Group',
+    label: 'The closing prompt',
+    parameters: {
+      ...composition('band'),
+      backgroundColor: 'var(--accent)',
+      // Pinned for the same reason `INSIDE_BAND_NODES`' root is — `band` carries
+      // no `sizeMode` either, and this one lands on three floored pages.
+      sizeMode: 'contentHeight',
+      // ⚠️ `band` ships `--space-20` top and bottom, which is a full marketing
+      // band. This one holds two lines and a button and sits directly above the
+      // footer; at 80px either side it read as a second footer rather than as a
+      // last invitation.
+      paddingTop: 'var(--space-12)',
+      paddingBottom: 'var(--space-12)',
+      borderTopStyle: 'solid',
+      borderTopWidth: 'var(--border-1)',
+      borderTopColor: 'var(--border)'
+    },
+    children: ['promptShell']
+  },
+  {
+    id: 'promptShell',
+    type: 'Group',
+    label: 'Shell',
+    parent: 'prompt',
+    parameters: {
+      ...composition('shell'),
+      sizeMode: 'contentHeight',
+      alignX: 'center',
+      alignItems: 'center',
+      rowGap: 'var(--space-3)'
+    },
+    children: ['promptHeading', 'promptLine', 'promptButton']
+  },
+  {
+    id: 'promptHeading',
+    type: 'Text',
+    label: 'The question',
+    parent: 'promptShell',
+    parameters: { text: '', ...H_SECTION, color: 'var(--accent-foreground)' }
+  },
+  {
+    id: 'promptLine',
+    type: 'Text',
+    label: 'The context',
+    parent: 'promptShell',
+    parameters: { text: '', ...T_META, color: 'var(--accent-foreground)' }
+  },
+  {
+    id: 'promptButton',
+    type: 'net.noodl.controls.button',
+    label: 'The way on',
+    parent: 'promptShell',
+    parameters: { ...composition('outlineButton'), label: '' }
+  },
+  {
+    id: 'inputs',
+    type: 'Component Inputs',
+    label: 'What the prompt says',
+    ports: [
+      { name: 'heading', type: 'string', plug: 'output' },
+      { name: 'line', type: 'string', plug: 'output' },
+      { name: 'action', type: 'string', plug: 'output' }
+    ]
+  },
+  /**
+   * 🔴 **The click has to leave the component, and a `Component Outputs` is the
+   * only way out.** A `RouterNavigate` inside this band would have to name a
+   * page, and this band is placed on three pages that each go somewhere
+   * different — so the navigation stays on the page and the band publishes the
+   * signal. That also keeps every one of the template's navigators on the page
+   * whose router they target, which is what the deferred pass is ordered by.
+   */
+  {
+    id: 'outputs',
+    type: 'Component Outputs',
+    label: 'The click',
+    ports: [{ name: 'clicked', type: 'signal', plug: 'input' }]
+  }
+];
+
+export const PROMPT_WIRES = [
+  { fromId: 'inputs', fromProperty: 'heading', toId: 'promptHeading', toProperty: 'text' },
+  { fromId: 'inputs', fromProperty: 'line', toId: 'promptLine', toProperty: 'text' },
+  { fromId: 'inputs', fromProperty: 'action', toId: 'promptButton', toProperty: 'label' },
+  { fromId: 'promptButton', fromProperty: 'onClick', toId: 'outputs', toProperty: 'clicked' }
 ];
 
 /**
@@ -4776,7 +5334,78 @@ export const FOOTER_NODES = [
     label: 'Shell',
     parent: 'footer',
     parameters: { ...composition('shell'), sizeMode: 'contentHeight', alignX: 'center', rowGap: 'var(--space-2)' },
-    children: ['footerEdit', 'footerEditSecond']
+    children: ['footerMark', 'footerEdit', 'footerEditSecond']
+  },
+  /**
+   * REL-010 — **the wordmark, and it is what gives `/unsubscribe` a bottom edge
+   * that is not two lines of `EDIT ME`.**
+   *
+   * 🔴 **It is also the honest fix for the last `no-imagery`.** After the tiles
+   * band landed on the four public pages, twelve of thirteen read clean and the
+   * survivor was `/unsubscribe` — measured `0 images, 0 icons`, the only pair
+   * that fires the finding. That page is deliberately austere: Richard ruled
+   * D39 on its slack (*"D39 stands, accept the slack"*), a person arrives on it
+   * once from a mail client, and a *"what members can see"* band on a page
+   * somebody reached in order to LEAVE would be the worst sentence in the
+   * template.
+   *
+   * So the imagery had to come from something every page already carries, and be
+   * worth carrying for its own sake. `ui-landing-page`'s `SiteFooter` opens with
+   * exactly this — a glyph and a wordmark above the small print — and §3.1's
+   * list for the public four names *"a real footer"* as one of the six things
+   * the VIB-006 vocabulary has. This template's footer had no identity of any
+   * kind on any page.
+   *
+   * ⚠️ **This means the door pages would now clear `no-imagery` from the footer
+   * alone**, and the tiles band is therefore NOT what closes AC5 on them. It is
+   * what closes **AC3** (two content images on each public page) and **AC4**
+   * (four distinct grounds). Said plainly because the opposite claim — *"the
+   * photographs fixed the imagery finding"* — is the one a later reader would
+   * assume from the order the work was done in, and it is false.
+   *
+   * ⚠️ **`users` rather than a mark nobody chose.** The 212-glyph curated Lucide
+   * manifest ships with every project; this is the members' area, and its own
+   * `/directory` page already spends the same glyph on *"Who belongs"*.
+   */
+  {
+    id: 'footerMark',
+    type: 'Group',
+    label: 'The wordmark',
+    parent: 'footerShell',
+    parameters: {
+      sizeMode: 'contentSize',
+      flexDirection: 'row',
+      alignItems: 'center',
+      columnGap: 'var(--space-2)',
+      paddingBottom: 'var(--space-2)'
+    },
+    children: ['footerMarkGlyph', 'footerMarkText']
+  },
+  {
+    id: 'footerMarkGlyph',
+    type: 'net.noodl.visual.icon',
+    label: 'The mark',
+    parent: 'footerMark',
+    // ⚠️ `iconColor`, not `color` — the Icon node's colour arrives through
+    // `addIconInputs` and a `color` here would be a parameter nothing reads.
+    // `--primary` on `--muted` is the same green the eyebrow is measured at.
+    parameters: {
+      iconIconSource: glyph('users'),
+      iconSize: { value: 20, unit: 'px' },
+      iconColor: 'var(--primary)'
+    }
+  },
+  {
+    id: 'footerMarkText',
+    type: 'Text',
+    label: 'The wordmark',
+    parent: 'footerMark',
+    // A literal, and the same one the hero's eyebrow carries — `T_EYEBROW`'s
+    // note argues it: *"Members' area" is a fact about this TEMPLATE*, true of
+    // every install, where the association's name is a fact about the recipient
+    // and comes out of a row. The footer has no query on it and must not gain
+    // one to say a thing that does not vary.
+    parameters: { text: 'Members’ area', ...T_EYEBROW }
   },
   {
     id: 'footerEdit',
@@ -5129,6 +5758,16 @@ export const TPL001_PARTS: Tpl001Component[] = [
   // here for the same reason the rows are: the page that places it is written
   // later, and a component must exist before something instantiates it.
   { path: 'Members/InsideTile', nodes: INSIDE_TILE_NODES, connections: INSIDE_TILE_WIRES },
+  // 🔴 **After `Members/InsideTile` and before any page**, and the ordering is
+  // the door's rule rather than a preference: this band INSTANTIATES the tile
+  // three times, so the tile must exist first, and the four public pages
+  // instantiate this, so it must exist before them. One component deeper than
+  // anything else in the template, and the only place the order is transitive.
+  { path: 'Members/InsideBand', nodes: INSIDE_BAND_NODES, connections: [] },
+  // Placed by `/sign-in`, `/join` and `/setup`. Its click leaves through a
+  // `Component Outputs` rather than a navigator, so it names no page and needs
+  // no deferred pass — see `PROMPT_NODES`.
+  { path: 'Members/Prompt', nodes: PROMPT_NODES, connections: PROMPT_WIRES },
   // REL-002c item 4. Placed by all thirteen pages, so it is authored before any
   // of them — a page naming a component that does not exist yet is refused at
   // the door, which is the same rule the rows above are ordered by.
@@ -5192,9 +5831,9 @@ const ACCOUNT: Tpl001Component = {
       // 🔴 `PAGE_GROUND` + `AT_FORM_MEASURE` on the panel and the three notices —
       // the same ruling as `Pages/Post`. See `AT_FORM_MEASURE`.
       parameters: PAGE_GROUND,
-      children: ['headingHeadRow', 'panel', 'savedOn', 'savedOff', 'failed']
+      children: ['panel', 'savedOn', 'savedOff', 'failed']
     },
-    ...pageHead('heading', 'Heading', 'ground', 'Your account', 'Emails', { icon: 'mail' }),
+    ...pageHead('heading', 'Heading', 'headBandShell', 'Your account', 'Emails', { icon: 'mail' }),
     {
       id: 'panel',
       type: 'Group',

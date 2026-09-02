@@ -124,6 +124,12 @@
       "toProperty": "navigate"
     },
     {
+      "fromId": "prompt-4",
+      "fromProperty": "clicked",
+      "toId": "toSignIn-2",
+      "toProperty": "navigate"
+    },
+    {
       "fromId": "claim",
       "fromProperty": "failure",
       "toId": "refusalGate-4",

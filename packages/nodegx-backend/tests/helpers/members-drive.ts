@@ -47,13 +47,36 @@ import * as os from 'os';
 import * as path from 'path';
 
 import { bundleAuthoredComponents, WorkflowBundle } from './authored-bundle';
+import { placeStarterAssets } from './judge';
 import type { RenderedPage } from './site-drive';
 
 /** The repo root, from `packages/nodegx-backend/tests/helpers`. */
 const REPO = path.join(__dirname, '..', '..', '..', '..');
 
 /** The prepared directory a person receives. */
-export const TEMPLATE_DIR = path.join(REPO, 'templates', 'members-area');
+/**
+ * The artefact every members-area drive renders.
+ *
+ * 🔴 **`TPL001_TEMPLATE_DIR` overrides it, and REL-010 is why it exists.** That
+ * row's before/after is read off one harness, and §3 of the task requires
+ * *"before/after on one instrument, or it does not count"*. On 2026-09-02 the
+ * baseline was taken on `noodl.viewer.js` md5 `8c0ad51b…` and a peer's webpack
+ * rebuilt the bundle to `e35ea918…` **between the two runs** — the register row
+ * R3 exactly (*"nothing in a vib-001 render manifest pins the runtime"*), only
+ * live rather than historical.
+ *
+ * Re-taking the baseline needs the artefact as it was AND the runtime as it is,
+ * and those two live in different places: the artefact is in git, the runtime is
+ * on disk. So the override points a run at a `git archive` of the committed
+ * template while the viewer stays whatever it currently is.
+ *
+ * ⚠️ **Unset, this is exactly what it always was.** Every other drive suite
+ * reads the same constant and none of them passes the variable, so the default
+ * path is not a new code path — it is the only one they take.
+ */
+export const TEMPLATE_DIR = process.env.TPL001_TEMPLATE_DIR
+  ? path.resolve(process.env.TPL001_TEMPLATE_DIR)
+  : path.join(REPO, 'templates', 'members-area');
 
 /**
  * The shipped policy — read from the **source** file the generator copies in,
@@ -93,10 +116,42 @@ export const CLOUD_KEYS = fs
 /** The secret the setup flow compares against. Machine-local, never a project file. */
 export const SETUP_TOKEN = 'tpl001-setup-token-4f1ac9';
 
-/** A copy of the shipped artefact, which is what gets served. */
+/**
+ * A copy of the shipped artefact **plus the assets a real install has**, which
+ * is what gets served.
+ *
+ * 🔴 **The starter assets were NOT placed here until REL-010, and the drive was
+ * therefore rendering a project nobody receives.** A template directory is not a
+ * project: `STARTER_ASSETS` — Inter, the 1,998 Lucide glyphs and the 44 CC0
+ * photographs — is put into every project by the installer, and the template
+ * submission's excluded-files list is *derived from that same constant*, so the
+ * artefact **references** `noodl_modules/starter-imagery/…` and deliberately
+ * ships none of the bytes. Copy the directory alone and every one of those
+ * references 404s.
+ *
+ * 🔴 **It was invisible for six sessions because of WHICH KIND of reference the
+ * template had.** Its only asset reference was a `backgroundImage` on the hero
+ * Group, and a CSS background that fails to load **logs nothing**. REL-010 added
+ * the template's first real `Image` nodes, an `<img>` that 404s **does** log,
+ * and §1's *"logged nothing"* assertion went red with three
+ * `image/load-failed` lines — for a defect in this helper that predates them.
+ *
+ * ⚠️ **This is the same reading, from the other side, as REL-010 §2.1**: the
+ * poverty instrument cannot SEE a CSS background, and this drive cannot HEAR
+ * one. A photograph carried as a background is invisible to both, and the
+ * template carried all of its photography that way.
+ *
+ * ✅ `placeStarterAssets` is imported rather than reimplemented — `judge.ts`
+ * owns the one copy, and `starterAssetList.ts` exists precisely so that a second
+ * list cannot drift. **`failed` throws**: a harness that quietly installed four
+ * of the five things a real project has would photograph a project nobody owns
+ * and report nothing.
+ */
 export function copyTemplateProject(label: string): string {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), `${label}-project-`));
   fs.cpSync(TEMPLATE_DIR, dir, { recursive: true });
+  const placed = placeStarterAssets(dir);
+  if (placed.failed.length) throw new Error(`starter assets failed: ${placed.failed.join(', ')}`);
   return dir;
 }
 

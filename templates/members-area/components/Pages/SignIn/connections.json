@@ -46,8 +46,8 @@
       "toProperty": "navigate"
     },
     {
-      "fromId": "joinButton-2",
-      "fromProperty": "onClick",
+      "fromId": "prompt-2",
+      "fromProperty": "clicked",
       "toId": "toJoin-2",
       "toProperty": "navigate"
     }

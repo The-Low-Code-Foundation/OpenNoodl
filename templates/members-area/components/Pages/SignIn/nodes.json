@@ -49,7 +49,9 @@
       "parent": "pageShell",
       "children": [
         "heroBand-2",
-        "ground"
+        "ground",
+        "prompt-2",
+        "inside-3"
       ],
       "parameters": {
         "width": {
@@ -61,6 +63,27 @@
       },
       "x": 160,
       "y": 280
+    },
+    {
+      "id": "prompt-2",
+      "type": "/Members/Prompt",
+      "label": "The closing prompt",
+      "parent": "pageBody",
+      "parameters": {
+        "heading": "Not a member yet?",
+        "line": "Membership is by request. Ask to join and a moderator will approve you.",
+        "action": "Ask to join"
+      },
+      "x": 220,
+      "y": 1840
+    },
+    {
+      "id": "inside-3",
+      "type": "/Members/InsideBand",
+      "label": "What members can see",
+      "parent": "pageBody",
+      "x": 220,
+      "y": 1960
     },
     {
       "id": "heroBand-2",
@@ -135,9 +158,7 @@
       "parent": "pageBody",
       "children": [
         "form",
-        "error",
-        "joinHint",
-        "joinButton-2"
+        "error"
       ],
       "parameters": {
         "width": {
@@ -204,10 +225,10 @@
       "parent": "headingHead",
       "parameters": {
         "text": "Members sign in",
-        "fontSize": "var(--text-3xl)",
-        "fontWeight": "var(--font-semibold)",
-        "lineHeight": "var(--leading-tight)",
-        "letterSpacing": "var(--tracking-tight)",
+        "fontSize": "var(--display-md)",
+        "fontWeight": "var(--font-bold)",
+        "lineHeight": "var(--leading-none)",
+        "letterSpacing": "var(--tracking-tighter)",
         "color": "var(--primary-foreground)"
       },
       "x": 400,
@@ -368,43 +389,6 @@
       "y": 1720
     },
     {
-      "id": "joinHint",
-      "type": "Text",
-      "label": "Not a member yet",
-      "parent": "ground",
-      "parameters": {
-        "text": "Not a member yet?",
-        "fontSize": "var(--text-sm)",
-        "color": "var(--muted-foreground)"
-      },
-      "x": 280,
-      "y": 1840
-    },
-    {
-      "id": "joinButton-2",
-      "type": "net.noodl.controls.button",
-      "label": "Ask to join",
-      "parent": "ground",
-      "parameters": {
-        "label": "Ask to join",
-        "backgroundColor": "transparent",
-        "color": "var(--foreground)",
-        "borderRadius": "var(--radius-full)",
-        "borderStyle": "solid",
-        "borderWidth": "var(--border-1)",
-        "borderColor": "var(--border-control)",
-        "paddingLeft": "var(--space-6)",
-        "paddingRight": "var(--space-6)",
-        "paddingTop": "var(--space-3)",
-        "paddingBottom": "var(--space-3)",
-        "fontSize": "var(--text-sm)",
-        "fontWeight": "var(--font-semibold)",
-        "sizeMode": "contentSize"
-      },
-      "x": 280,
-      "y": 1960
-    },
-    {
       "id": "login",
       "type": "net.noodl.user.LogIn",
       "label": "Log in",
@@ -431,7 +415,7 @@
         "target": "/Pages/Members"
       },
       "x": 650,
-      "y": 2080
+      "y": 1960
     },
     {
       "id": "toJoin-2",
@@ -442,7 +426,7 @@
         "target": "/Pages/Join"
       },
       "x": 650,
-      "y": 1960
+      "y": 1840
     }
   ],
   "visualRoots": [

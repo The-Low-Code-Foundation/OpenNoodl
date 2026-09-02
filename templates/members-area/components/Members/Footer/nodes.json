@@ -34,6 +34,7 @@
       "label": "Shell",
       "parent": "footer",
       "children": [
+        "footerMark",
         "footerEdit",
         "footerEditSecond"
       ],
@@ -57,6 +58,61 @@
       "y": 160
     },
     {
+      "id": "footerMark",
+      "type": "Group",
+      "label": "The wordmark",
+      "parent": "footerShell",
+      "children": [
+        "footerMarkGlyph",
+        "footerMarkText"
+      ],
+      "parameters": {
+        "sizeMode": "contentSize",
+        "flexDirection": "row",
+        "alignItems": "center",
+        "columnGap": "var(--space-2)",
+        "paddingBottom": "var(--space-2)"
+      },
+      "x": 160,
+      "y": 280
+    },
+    {
+      "id": "footerMarkGlyph",
+      "type": "net.noodl.visual.icon",
+      "label": "The mark",
+      "parent": "footerMark",
+      "parameters": {
+        "iconIconSource": {
+          "class": "lucide",
+          "code": "icon-users",
+          "codeAsClass": true
+        },
+        "iconSize": {
+          "value": 20,
+          "unit": "px"
+        },
+        "iconColor": "var(--primary)"
+      },
+      "x": 220,
+      "y": 400
+    },
+    {
+      "id": "footerMarkText",
+      "type": "Text",
+      "label": "The wordmark",
+      "parent": "footerMark",
+      "parameters": {
+        "text": "Members’ area",
+        "fontSize": "var(--text-xs)",
+        "fontWeight": "var(--font-semibold)",
+        "letterSpacing": "var(--tracking-widest)",
+        "textTransform": "uppercase",
+        "color": "var(--primary)"
+      },
+      "x": 220,
+      "y": 520
+    },
+    {
       "id": "footerEdit",
       "type": "Text",
       "label": "EDIT — who to contact",
@@ -67,7 +123,7 @@
         "color": "var(--muted-foreground)"
       },
       "x": 160,
-      "y": 280
+      "y": 640
     },
     {
       "id": "footerEditSecond",
@@ -80,7 +136,7 @@
         "color": "var(--muted-foreground)"
       },
       "x": 160,
-      "y": 400
+      "y": 760
     }
   ],
   "visualRoots": [

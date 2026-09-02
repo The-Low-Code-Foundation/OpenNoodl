@@ -273,7 +273,27 @@ describe('TPL-001 — the committed template is what the door writes today', () 
     // pages ended in undifferentiated white; they place this now, and the two
     // `EDIT ME —` lines an association has to replace stayed two strings rather
     // than becoming twenty-six.
-    expect(committed.length).toBe(30 * 3 + 4); // TPL-002: +4 cloud functions, +2 pages
+    //
+    // 🔴 **REL-010: 32 rather than 30, and both new components exist because
+    // something had to be placed on more than one page.** The row's §2.2 is the
+    // reason, quoting VIB-013 on the page Richard rated: it is good *"partly
+    // because 129 nodes were not hand-written — the compositions were declared
+    // once and composed"*, and **the lift is a composition job, not a
+    // hand-styling job**.
+    //
+    // - `Members/InsideBand` — the *"what members can see"* band. It was nine
+    //   nodes inline on `Pages/Landing`, which is why the template's only
+    //   photographed band could not be put on the door pages that measured
+    //   `0 images`.
+    // - `Members/Prompt` — the closing band. `/sign-in` and `/join` each ended
+    //   in a loose line and a button sitting on the page ground; those two nodes
+    //   ARE this band, and giving them a ground is what took `/sign-in` from two
+    //   distinct grounds to four.
+    //
+    // ⚠️ **The count is not the check and never was** — the named assertions
+    // below are. This number going up by two is satisfied by any two files at
+    // all, which is exactly why the paragraph above it says which two and why.
+    expect(committed.length).toBe(32 * 3 + 4); // TPL-002: +4 cloud functions, +2 pages
     expect(committed).toContain('nodegx.project.json');
     expect(committed).toContain('nodegx.security.json');
     expect(committed).toContain(path.join('components', '_registry.json'));
@@ -292,13 +312,38 @@ describe('TPL-001 — the committed template is what the door writes today', () 
     );
   });
 
-  it('control: the generation really ran — twenty-three components, App first', async () => {
+  it('control: the generation really ran — thirty-two components, App first', async () => {
     // 🔴 Without this, the comparison above is satisfiable by two empty sets, and
     // a build that silently authored nothing would read as agreement.
+    //
+    // 🔴 **REL-010: 32, and it is the SECOND hard count this row moved.** The file
+    // count in §1 is the other. Both are written out here rather than bumped,
+    // because this row's board carries the hazard by name: *"a gate can be a hard
+    // count in several places, and the argument above it is the part that
+    // matters"* — a silent increment hides the finding it was supposed to make.
+    //
+    // The two are `Members/InsideBand` and `Members/Prompt`, and neither is a
+    // new feature. Both are things that already existed on ONE page, made
+    // placeable so the other three public pages could carry them:
+    //
+    // - the *"what members can see"* band was nine nodes inline on
+    //   `Pages/Landing`, which is why the template's only photographed band
+    //   could not go on the door pages that measured `0 images`;
+    // - the closing prompt was a loose `Text` and a button on the page ground of
+    //   `/sign-in` and `/join` — the two weakest endings in the template.
+    //
+    // ⚠️ **The name in this test's title is part of the assertion.** It read
+    // *"twenty-three components"* while the number said 30, because a previous
+    // change moved the digit and not the words. A title that disagrees with its
+    // own expectation is where the next reader stops trusting the file.
     const built = await buildMembersTemplateProject();
-    expect(built.order).toHaveLength(30); // TPL-002: 8 endpoints, 13 pages · REL-002c: Members/Footer
+    expect(built.order).toHaveLength(32); // TPL-002: 8 endpoints, 13 pages · REL-002c: Footer · REL-010: InsideBand, Prompt
     expect(built.order[0]).toBe(APP_COMPONENT);
-    expect(shipped).toHaveLength(30); // TPL-002: +4 endpoints, +2 pages · REL-002c: Members/Footer
+    expect(shipped).toHaveLength(32);
+    // 🔴 Named, not only counted — a count of 32 is satisfied by any two
+    // components at all, including two the door invented from a bad merge.
+    expect(built.order).toContain('Members/InsideBand');
+    expect(built.order).toContain('Members/Prompt');
   });
 });
 

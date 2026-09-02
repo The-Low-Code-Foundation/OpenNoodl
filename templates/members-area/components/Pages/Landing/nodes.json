@@ -25,7 +25,7 @@
       "children": [
         "heroBand",
         "about",
-        "inside",
+        "inside-2",
         "footer-2"
       ],
       "parameters": {
@@ -152,7 +152,7 @@
       "parent": "hero",
       "parameters": {
         "text": "",
-        "fontSize": "var(--text-5xl)",
+        "fontSize": "var(--display-lg)",
         "fontWeight": "var(--font-bold)",
         "lineHeight": "var(--leading-none)",
         "letterSpacing": "var(--tracking-tighter)",
@@ -362,193 +362,12 @@
       "y": 2800
     },
     {
-      "id": "inside",
-      "type": "Group",
+      "id": "inside-2",
+      "type": "/Members/InsideBand",
       "label": "What members can see",
       "parent": "landingGround",
-      "children": [
-        "insideShell"
-      ],
-      "parameters": {
-        "width": {
-          "value": 100,
-          "unit": "%"
-        },
-        "flexDirection": "column",
-        "alignItems": "center",
-        "backgroundColor": "var(--surface)",
-        "borderTopStyle": "solid",
-        "borderTopWidth": "var(--border-1)",
-        "borderTopColor": "var(--border)",
-        "borderBottomStyle": "solid",
-        "borderBottomWidth": "var(--border-1)",
-        "borderBottomColor": "var(--border)",
-        "paddingTop": "var(--space-20)",
-        "paddingBottom": "var(--space-20)"
-      },
       "x": 160,
       "y": 2920
-    },
-    {
-      "id": "insideShell",
-      "type": "Group",
-      "label": "Shell",
-      "parent": "inside",
-      "children": [
-        "insideHeading",
-        "insideList"
-      ],
-      "parameters": {
-        "width": {
-          "value": 100,
-          "unit": "%"
-        },
-        "maxWidth": {
-          "value": 1200,
-          "unit": "px"
-        },
-        "flexDirection": "column",
-        "paddingLeft": "var(--space-6)",
-        "paddingRight": "var(--space-6)",
-        "sizeMode": "contentHeight",
-        "alignX": "center",
-        "rowGap": "var(--space-6)"
-      },
-      "x": 220,
-      "y": 3040
-    },
-    {
-      "id": "insideHeading",
-      "type": "Text",
-      "label": "What members can see — heading",
-      "parent": "insideShell",
-      "parameters": {
-        "text": "What members can see",
-        "fontSize": "var(--text-3xl)",
-        "fontWeight": "var(--font-semibold)",
-        "lineHeight": "var(--leading-tight)",
-        "letterSpacing": "var(--tracking-tight)",
-        "color": "var(--foreground)"
-      },
-      "x": 280,
-      "y": 3160
-    },
-    {
-      "id": "insideList",
-      "type": "net.noodl.visual.columns",
-      "label": "The three tiles",
-      "parent": "insideShell",
-      "children": [
-        "cellNews",
-        "cellDiary",
-        "cellPeople"
-      ],
-      "parameters": {
-        "sizing": "autoFit",
-        "minWidth": {
-          "value": 300,
-          "unit": "px"
-        },
-        "marginX": {
-          "value": 12,
-          "unit": "px"
-        }
-      },
-      "x": 280,
-      "y": 3280
-    },
-    {
-      "id": "cellNews",
-      "type": "Group",
-      "label": "The news column",
-      "parent": "insideList",
-      "children": [
-        "tileNews"
-      ],
-      "parameters": {
-        "sizeMode": "contentHeight",
-        "width": {
-          "value": 100,
-          "unit": "%"
-        },
-        "flexDirection": "column"
-      },
-      "x": 340,
-      "y": 3400
-    },
-    {
-      "id": "cellDiary",
-      "type": "Group",
-      "label": "The diary column",
-      "parent": "insideList",
-      "children": [
-        "tileDiary"
-      ],
-      "parameters": {
-        "sizeMode": "contentHeight",
-        "width": {
-          "value": 100,
-          "unit": "%"
-        },
-        "flexDirection": "column"
-      },
-      "x": 340,
-      "y": 3640
-    },
-    {
-      "id": "cellPeople",
-      "type": "Group",
-      "label": "The people column",
-      "parent": "insideList",
-      "children": [
-        "tilePeople"
-      ],
-      "parameters": {
-        "sizeMode": "contentHeight",
-        "width": {
-          "value": 100,
-          "unit": "%"
-        },
-        "flexDirection": "column"
-      },
-      "x": 340,
-      "y": 3880
-    },
-    {
-      "id": "tileNews",
-      "type": "/Members/InsideTile",
-      "label": "Announcements",
-      "parent": "cellNews",
-      "parameters": {
-        "title": "Announcements",
-        "line": "What the moderators have posted, newest first."
-      },
-      "x": 400,
-      "y": 3520
-    },
-    {
-      "id": "tileDiary",
-      "type": "/Members/InsideTile",
-      "label": "The diary",
-      "parent": "cellDiary",
-      "parameters": {
-        "title": "The diary",
-        "line": "Meetings and events, with the details and where to go."
-      },
-      "x": 400,
-      "y": 3760
-    },
-    {
-      "id": "tilePeople",
-      "type": "/Members/InsideTile",
-      "label": "The directory",
-      "parent": "cellPeople",
-      "parameters": {
-        "title": "The directory",
-        "line": "Who else is a member."
-      },
-      "x": 400,
-      "y": 4000
     },
     {
       "id": "footer-2",
@@ -556,7 +375,7 @@
       "label": "The foot of the page",
       "parent": "landingGround",
       "x": 160,
-      "y": 4120
+      "y": 3040
     },
     {
       "id": "setupCard",
@@ -723,7 +542,7 @@
       "parameters": {
         "collectionName": "Association"
       },
-      "x": 650,
+      "x": 590,
       "y": 1840
     },
     {
@@ -733,7 +552,7 @@
       "parameters": {
         "functionScript": "if (Inputs.rows === undefined) return;\nconst rows = Inputs.rows || [];\nconst row = rows.length > 0 ? rows[0] : undefined;\nOutputs.name = row ? (row.name || '') : '';\nOutputs.tagline = row ? (row.tagline || '') : '';\nOutputs.blurb = row ? (row.blurb || '') : '';\nOutputs.hasAssociation = rows.length > 0;\nOutputs.needsSetup = rows.length === 0;\n// REL-002b. Always `false`, and that is the point: this node runs\n// only when the query answered, so publishing \"the query has not\n// answered = false\" is what takes the waiting card down. There is\n// deliberately no path that sets it back to `true` — a page that\n// answered once has answered.\nOutputs.unanswered = false;"
       },
-      "x": 650,
+      "x": 590,
       "y": 760,
       "ports": [
         {
@@ -795,7 +614,7 @@
         "router": "Main",
         "target": "/Pages/SignIn"
       },
-      "x": 650,
+      "x": 590,
       "y": 1120
     },
     {
@@ -806,7 +625,7 @@
         "router": "Main",
         "target": "/Pages/Join"
       },
-      "x": 650,
+      "x": 590,
       "y": 1240
     },
     {
@@ -817,7 +636,7 @@
         "router": "Main",
         "target": "/Pages/Setup"
       },
-      "x": 650,
+      "x": 590,
       "y": 1720
     }
   ],

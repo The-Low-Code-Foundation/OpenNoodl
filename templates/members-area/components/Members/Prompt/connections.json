@@ -1,0 +1,31 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "677c223a-626d-5916-8fe7-484f55237dfe",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "inputs-7",
+      "fromProperty": "heading",
+      "toId": "promptHeading",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "inputs-7",
+      "fromProperty": "line",
+      "toId": "promptLine",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "inputs-7",
+      "fromProperty": "action",
+      "toId": "promptButton",
+      "toProperty": "label"
+    },
+    {
+      "fromId": "promptButton",
+      "fromProperty": "onClick",
+      "toId": "outputs-3",
+      "toProperty": "clicked"
+    }
+  ]
+}

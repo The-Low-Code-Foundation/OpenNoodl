@@ -1,0 +1,155 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "677c223a-626d-5916-8fe7-484f55237dfe",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "prompt",
+      "type": "Group",
+      "label": "The closing prompt",
+      "children": [
+        "promptShell"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "flexDirection": "column",
+        "alignItems": "center",
+        "paddingTop": "var(--space-12)",
+        "paddingBottom": "var(--space-12)",
+        "backgroundColor": "var(--accent)",
+        "sizeMode": "contentHeight",
+        "borderTopStyle": "solid",
+        "borderTopWidth": "var(--border-1)",
+        "borderTopColor": "var(--border)"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "promptShell",
+      "type": "Group",
+      "label": "Shell",
+      "parent": "prompt",
+      "children": [
+        "promptHeading",
+        "promptLine",
+        "promptButton"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "maxWidth": {
+          "value": 1200,
+          "unit": "px"
+        },
+        "flexDirection": "column",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "sizeMode": "contentHeight",
+        "alignX": "center",
+        "alignItems": "center",
+        "rowGap": "var(--space-3)"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "promptHeading",
+      "type": "Text",
+      "label": "The question",
+      "parent": "promptShell",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-xl)",
+        "fontWeight": "var(--font-semibold)",
+        "lineHeight": "var(--leading-snug)",
+        "color": "var(--accent-foreground)"
+      },
+      "x": 160,
+      "y": 280
+    },
+    {
+      "id": "promptLine",
+      "type": "Text",
+      "label": "The context",
+      "parent": "promptShell",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--accent-foreground)"
+      },
+      "x": 160,
+      "y": 400
+    },
+    {
+      "id": "promptButton",
+      "type": "net.noodl.controls.button",
+      "label": "The way on",
+      "parent": "promptShell",
+      "parameters": {
+        "backgroundColor": "transparent",
+        "color": "var(--foreground)",
+        "borderRadius": "var(--radius-full)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-control)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "sizeMode": "contentSize",
+        "label": ""
+      },
+      "x": 160,
+      "y": 520
+    },
+    {
+      "id": "inputs-7",
+      "type": "Component Inputs",
+      "label": "What the prompt says",
+      "ports": [
+        {
+          "name": "heading",
+          "plug": "output",
+          "type": "string"
+        },
+        {
+          "name": "line",
+          "plug": "output",
+          "type": "string"
+        },
+        {
+          "name": "action",
+          "plug": "output",
+          "type": "string"
+        }
+      ],
+      "x": 410,
+      "y": 280
+    },
+    {
+      "id": "outputs-3",
+      "type": "Component Outputs",
+      "label": "The click",
+      "ports": [
+        {
+          "name": "clicked",
+          "plug": "input",
+          "type": "signal"
+        }
+      ],
+      "x": 410,
+      "y": 520
+    }
+  ],
+  "visualRoots": [
+    "prompt"
+  ]
+}

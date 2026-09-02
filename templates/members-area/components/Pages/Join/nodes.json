@@ -25,6 +25,8 @@
       "children": [
         "heroBand-3",
         "formBand",
+        "prompt-3",
+        "inside-4",
         "pageFooter-6"
       ],
       "parameters": {
@@ -154,10 +156,10 @@
       "parent": "headingHead-4",
       "parameters": {
         "text": "Ask to join",
-        "fontSize": "var(--text-3xl)",
-        "fontWeight": "var(--font-semibold)",
-        "lineHeight": "var(--leading-tight)",
-        "letterSpacing": "var(--tracking-tight)",
+        "fontSize": "var(--display-md)",
+        "fontWeight": "var(--font-bold)",
+        "lineHeight": "var(--leading-none)",
+        "letterSpacing": "var(--tracking-tighter)",
         "color": "var(--primary-foreground)"
       },
       "x": 340,
@@ -193,9 +195,7 @@
       "children": [
         "form-2",
         "sent-2",
-        "refusal-3",
-        "hint",
-        "signInButton-2"
+        "refusal-3"
       ],
       "parameters": {
         "width": {
@@ -475,40 +475,24 @@
       "y": 2200
     },
     {
-      "id": "hint",
-      "type": "Text",
-      "label": "Already a member",
-      "parent": "ground-6",
+      "id": "prompt-3",
+      "type": "/Members/Prompt",
+      "label": "The closing prompt",
+      "parent": "joinGround",
       "parameters": {
-        "text": "Already have an account?",
-        "fontSize": "var(--text-sm)",
-        "color": "var(--muted-foreground)"
+        "heading": "Already have an account?",
+        "line": "Members sign in with the email and password they joined with.",
+        "action": "Sign in"
       },
-      "x": 280,
+      "x": 160,
       "y": 2320
     },
     {
-      "id": "signInButton-2",
-      "type": "net.noodl.controls.button",
-      "label": "Sign in",
-      "parent": "ground-6",
-      "parameters": {
-        "label": "Sign in",
-        "backgroundColor": "transparent",
-        "color": "var(--foreground)",
-        "borderRadius": "var(--radius-full)",
-        "borderStyle": "solid",
-        "borderWidth": "var(--border-1)",
-        "borderColor": "var(--border-control)",
-        "paddingLeft": "var(--space-6)",
-        "paddingRight": "var(--space-6)",
-        "paddingTop": "var(--space-3)",
-        "paddingBottom": "var(--space-3)",
-        "fontSize": "var(--text-sm)",
-        "fontWeight": "var(--font-semibold)",
-        "sizeMode": "contentSize"
-      },
-      "x": 280,
+      "id": "inside-4",
+      "type": "/Members/InsideBand",
+      "label": "What members can see",
+      "parent": "joinGround",
+      "x": 160,
       "y": 2440
     },
     {
@@ -552,7 +536,7 @@
         "target": "/Pages/SignIn"
       },
       "x": 590,
-      "y": 2440
+      "y": 2320
     }
   ],
   "visualRoots": [

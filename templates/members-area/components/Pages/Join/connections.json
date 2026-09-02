@@ -58,8 +58,8 @@
       "toProperty": "mounted"
     },
     {
-      "fromId": "signInButton-2",
-      "fromProperty": "onClick",
+      "fromId": "prompt-3",
+      "fromProperty": "clicked",
       "toId": "toSignIn",
       "toProperty": "navigate"
     }

@@ -23,6 +23,8 @@ task file on the day this phase opened.
 | REL-006 | The hold list, and two stale files | 🟢 | — | Record the site-builder hold with a named owner; correct P78's handoff (T6 reads open, is done) and P78's `TPL-001` **AC1** (it waits on T5, which is now unblocked) |
 | REL-007 | The price that goes stale tomorrow | 🟢 | — | `models.ts:229` reads `$2/$10`. Sonnet 5's introductory pricing ends **2026-08-31** — from 1 September the standard rate is **$3/$15**, and the app's default model is Sonnet 5. One line; cost reporting misreports until it lands |
 | REL-008 | **Code export rides 0.2.2** — P18's EXP-012 | 🟢 **RULED 2026-09-01, rides** (*"I think it can ride 0.2.2"*). Editor-path export built: `npm run build` exit 0, 235 kB JS. Release-notes line added | REL-004 | Settings → Project → *Export as React code…* was built and driven by P18 s67 (2026-09-01) on Richard's *"if we make good progress we can include it"*. Four editor files + one webpack alias; editor `tsc` 0, export jest 1248/1248, runtime 2615 passed. Owner **P18**; the facts and the caveat are in [EXP-012](../phase-18-code-export-v2/EXP-012-THE-EDITOR-EXPORT-COMMAND.md). If it rides: a release-notes line. If it holds: nothing to undo |
+| REL-009a | Does a quit eat the agent's work? | ⬜ | — | 🔴 **A MEASUREMENT FIRST, and it may correctly build nothing.** [REL-009](REL-009-THE-WRITE-THE-EDITOR-CANNOT-SEE.md) §2. The clobber-on-quit claim in **five** P55 handoff files is **WRONG for v2**: `saveProject` is incremental and hash-baselined, so an untouched component is never rewritten and `updateRegistry` re-reads from disk. The real exposure is narrower — a component **both** sides edit, silently last-writer-wins — plus the legacy full-write path. Drive four arms; **arms A/B/D are presence controls, read them first** |
+| REL-009b | The editor sees the write | ⬜ | REL-009a | [REL-009](REL-009-THE-WRITE-THE-EDITOR-CANNOT-SEE.md) §3. **No filesystem watcher exists anywhere in the editor** (measured, both processes, bundles excluded), and `ProjectModel.reloadComponentFromDisk()` — the seam built for exactly this in `ac1908bc`, 2026-07-23 — has **zero callers**. So the work is the watcher plus the path→component mapping; everything below the seam, including `noteExternalWrite` rebaselining, is already done. 🔴 **The AC is a canvas screenshot, not a model assertion** |
 | — | **The site builder** | ⏸️ | — | **Held by Richard's decision.** VIB-009, the three site-builder SHITTY verdicts, and P77's five unbuilt tasks are out of 0.2.2. README §3 |
 
 ---
@@ -875,6 +877,113 @@ once produce flakes that read as yours. It had finished by the time the wait loo
 
 ---
 
+## 🔴 REL-010 — row 6 was graded against a benchmark Richard rejects (opened 2026-09-02)
+
+**Full task: [`REL-010-AS-GOOD-AS-THE-PAGE-HE-RATED.md`](REL-010-AS-GOOD-AS-THE-PAGE-HE-RATED.md).
+It GATES 0.2.2 and blocks REL-002c, REL-001 and REL-004.**
+
+Richard, shown all thirteen pages and then `verdicts/vib-006/.../landing-desktop-full.png`:
+*"This is the one where I said 'this is fucking pro'... all the other ones ... looked like oldschool
+Wordpress templates, passable but nowhere near this."*
+
+🔴 **The root cause is this board's own instruction.** *"Grade each page beside `/` at the same
+width"* named the members-area's **own** landing page — which is itself in the *passable* bucket. For
+fourteen sessions the comparison could not fail. Phase 81 had both his words on file since
+2026-08-31 (VIB-006 *"fucking pro"*, its only WORTHY close; VIB-011 *"passable"*) and nobody carried
+them across. **The chrome exemption is a session's sentence, not his ruling**, and it licensed the
+rest.
+
+**Measured 2026-09-02, VIB-006 as a known-silent control in the same run: 0 of 13 pages read clean,
+13 carry a tell.** Twelve top out at **30px** against the rubric's 48 and VIB-006's **94**; the
+template holds **zero `Image` nodes** and uses photography only as a background scrim, against
+VIB-006's seven content photographs.
+
+⚠️ **Do not quote `no-imagery` on the five hero pages** — the instrument counts only
+`tagName === 'IMG'` and cannot see a CSS background. Registered as R1, owned by **phase 81 VIB-007**,
+because it is that task's finding.
+
+**Scope ruled by Richard: all thirteen pages.** §3.1 carries the one question still open — how far
+the app chrome goes — with a proposal that must not be inferred either way.
+
+## ✅ REL-010 — what session 15 built: §3.1 ruled, and 0 of 13 became 13 of 13
+
+**Full write-up: [`REL-010`](REL-010-AS-GOOD-AS-THE-PAGE-HE-RATED.md) §6.**
+
+**§3.1 was ruled first**, as §5 requires. Richard, from three options: ✅ *"§3.1 as proposed — density,
+not billboards."* The public four take the VIB-006 section vocabulary; the signed-in nine get the
+display tier, imagery where a row or card can honestly hold one, and a second and third ground. That
+also **discharges R2** — the chrome exemption is now a dated ruling with an author, and
+`NEXT-SESSION-PROMPT.md` states it as one.
+
+| | before | after |
+|---|---|---|
+| pages reading clean | **0 of 13** | 🟢 **13 of 13** |
+| door four | 30px · 0 img · 0 ico · 2–3 gnd | **72px** (`/unsubscribe` 48) · **3 img** · **2 ico** · **4–5 gnd** |
+| `/` living | 48px · 0 · 0 · 4 | **94px** · **3** · **2** · 4 |
+| signed-in eight | 30px · 0 · 2 · 2 | **48px** · 0 · **4** · **3** |
+| control (VIB-006) | 94 · 7 · 20 · 6 · silent | **identical, silent** |
+
+### 1. 🔴 The type finding was ONE PARAMETER, and it was an override of the product's own fix
+
+`displayHeadline` already carried `--display-lg`. VIB-002 / register V13 put it there **naming this
+page**: *"the members-area hero is 48px, exactly the ceiling, and reads as a paragraph that got
+bigger rather than as a hero."* `tpl001Components.ts` then had
+`{ ...composition('displayHeadline'), fontSize: 'var(--text-5xl)' }` — the fix, overridden back to
+the ceiling it was written to lift. Fourteen sessions graded the result against a page carrying the
+same override.
+
+🔴 **A census of the BENCHMARK stopped the obvious over-correction.** VIB-006 reads one
+`--display-lg`, one `--display-md`, **four `--text-3xl`**. Its section headings are **30px — the size
+this template's already were**. The gap was the *top* of the ramp, not the ramp. Two landing band
+headings were wearing `H_PAGE` and would have been promoted by accident; they are pinned at 30.
+
+### 2. The composition work — 30 components became 32
+
+`Members/InsideBand` (the photographed tiles band, lifted out of `Pages/Landing` so the door pages
+could place it) and `Members/Prompt` (the closing band — which is `/sign-in`'s and `/join`'s own
+loose hint and button given a ground, not new surface). Plus the template's **first real `Image`
+node**, a footer **wordmark**, and a page-identity band on `--accent` across the nine app-chrome
+pages.
+
+### 3. 🔴 Two cheap wins were REFUSED, and the refusals are the transferable part
+
+- **`PAGE_GROUND` was not painted `--background`.** It would have taken all nine app-chrome pages
+  from 2 grounds to 3 and **changed no pixel** — that colour is what the ground already appears to
+  be. Hazard 2 run backwards. Now hazard 14 on the board.
+- **No stock avatars on `/directory`.** AC3 says imagery *"wherever a row or card can **honestly**
+  hold one"*. A `Member` row has no photograph field; a stock face beside a real name and real email
+  is a claim about what somebody looks like. **The honest route is a product change (an avatar
+  members upload), not a picture the template invents.**
+
+### 4. 🔴 R3 happened LIVE — the baseline had to be re-taken
+
+A peer's webpack rebuilt `noodl.viewer.js` (`8c0ad51b…` → `e35ea918…`) **between the baseline and the
+after-run**, twenty minutes after that peer announced the watch was down and the bundle static.
+`TPL001_TEMPLATE_DIR` (new, in `helpers/members-drive.ts`) points a run at a `git archive` of the
+committed artefact, so the artefact rolls back while the runtime stays current. ✅ **The re-taken
+baseline reproduced the original exactly**, all fourteen rows, which is what makes the before/after
+admissible. Every run now records the viewer md5 **before and after** itself.
+
+### 5. Acceptance criteria
+
+**AC1 🟢 · AC2 🟢 · AC3 🟡 · AC4 🟡 · AC5 🟢 · AC6 ⏳ Richard's look, which a session cannot close.**
+
+- **AC3** is met on the public four (3 rendered photographs each, from 0) and **declined in writing
+  on the nine** — see item 3.
+- **AC4** is met as written (public four 4/5/4/4; signed-in nine 3). ⚠️ **`/unsubscribe` reads 2 and
+  AC4 names neither group it is in** — registered as **R6**, a hole in the AC rather than a defect
+  it found, and D39 may already make 2 the right answer there.
+
+### 6. New register rows
+
+| row | what | owner |
+|---|---|---|
+| **R5** | A pin read once cannot tell you a rebuild landed inside the measurement window. Record the runtime md5 **at both ends** of every run. | **REL-010**, done |
+| **R6** | AC4 names *"the four public pages"* and *"signed-in pages"*; `/unsubscribe` is in neither and reads 2 grounds. | **REL-010** — one word from Richard, with AC6 |
+| **R7** | The harness's `shortGround()` collapses every scrim to the string `gradient`, so two bands over *different* photographs print identically. The `distinct` COUNT is unaffected. | **REL-002c** — diagnostic only |
+
+---
+
 ### REL-003 — The stale bundles the cut inherits
 
 Phase 80 closed several fixes whose effect a user cannot see, because the committed build output
@@ -1248,3 +1357,40 @@ Anthropic entry only, and remove the `MAINTENANCE` comment with it.
 **AC**: line 229 reads `{ inputPerMTok: 3.0, outputPerMTok: 15.0 }`, the stale comment is gone, and
 any spec asserting the old figure moves with it. A stale price does not break requests — it only
 misreports cost — so this is a one-line fix, not a first job.
+
+### REL-009 — The write the editor cannot see (a, b)
+
+**Full task: [`REL-009-THE-WRITE-THE-EDITOR-CANNOT-SEE.md`](REL-009-THE-WRITE-THE-EDITOR-CANNOT-SEE.md).**
+Added 2026-09-01 on Richard's *"can we roll the tasks needed to fix this into 0.2.2 phase please?"*,
+after asking whether the MCP-writes-while-the-editor-is-open bug had been fixed. It had not, and
+nothing had ever been built for it.
+
+🔴 **It RIDES 0.2.2, it does not GATE it.** README §4's close condition names four things and this is
+none of them; it is carried on the REL-008 precedent so a launch session can build it without opening
+another phase — **and drop it without debate if the cut is ready first.** Flipping it to gating is
+Richard's call and a one-line edit here; do not infer it.
+
+⚠️ **This row widens the container, which README §2 tells you to resist.** It is here because Richard
+asked for it by name, and the note above is what keeps the widening honest: a row that does not gate
+the close condition cannot silently become a blocker.
+
+**The two readings that shape it** (both measured at HEAD 2026-09-01, neither relayed):
+
+- **The invisibility is total and the fix's seam is dead code.** No `chokidar`/`fs.watch`/`watchFile`
+  anywhere in `packages/noodl-editor/src` or `packages/noodl-platform*/src` once the pre-built viewer
+  bundles are excluded — the nine hits are all a DOM `watch(node)` helper. The only watcher in the
+  repo is `noodl-preview`'s, and SUB-009 put driving the *editor's* preview from disk explicitly out
+  of scope. Meanwhile `reloadComponentFromDisk` has been complete and uncalled since 2026-07-23.
+- 🔴 **The clobber warning we have relayed five times is wrong for v2.** `saveProject` writes only
+  components whose in-memory hash differs from the load-time baseline, `updateRegistry` re-reads
+  `registry.json` from disk, and MCP-added components are never proposed for deletion. Had REL-009a
+  been built to the warning instead of measuring, it would have built conflict machinery the product
+  does not need. **Read the presence controls before believing the finding.**
+
+**Not covered, and named so it is not rediscovered**: whether MCP can author into a legacy project at
+all (U1 — decides whether the real full-clobber path is even reachable), whether `routes.json` /
+`styles.json` clobber (U2 — the likeliest second finding, since registering a page writes routes),
+and whether the canvas survives a model swap on the component it is showing (U3 — the likeliest place
+for REL-009b to get expensive). `chokidar` vs recursive `fs.watch` is **unruled** (D1); the builder
+picks and records why, and **does not extend `IFileSystem`** — it has no watch API, and AIX-009
+already paid for finding that out.

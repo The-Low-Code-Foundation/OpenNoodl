@@ -49,7 +49,9 @@
       "parent": "pageShell-6",
       "children": [
         "heroBand-4",
-        "ground-7"
+        "ground-7",
+        "prompt-4",
+        "inside-5"
       ],
       "parameters": {
         "width": {
@@ -61,6 +63,27 @@
       },
       "x": 160,
       "y": 280
+    },
+    {
+      "id": "prompt-4",
+      "type": "/Members/Prompt",
+      "label": "The closing prompt",
+      "parent": "pageBody-6",
+      "parameters": {
+        "heading": "Already set up?",
+        "line": "If this association has been created, this page is not the one you want.",
+        "action": "Sign in"
+      },
+      "x": 220,
+      "y": 2800
+    },
+    {
+      "id": "inside-5",
+      "type": "/Members/InsideBand",
+      "label": "What members can see",
+      "parent": "pageBody-6",
+      "x": 220,
+      "y": 2920
     },
     {
       "id": "heroBand-4",
@@ -126,7 +149,7 @@
       "label": "The foot of the page",
       "parent": "pageShell-6",
       "x": 160,
-      "y": 2800
+      "y": 3040
     },
     {
       "id": "ground-7",
@@ -204,10 +227,10 @@
       "parent": "headingHead-5",
       "parameters": {
         "text": "Set up this members’ area",
-        "fontSize": "var(--text-3xl)",
-        "fontWeight": "var(--font-semibold)",
-        "lineHeight": "var(--leading-tight)",
-        "letterSpacing": "var(--tracking-tight)",
+        "fontSize": "var(--display-md)",
+        "fontWeight": "var(--font-bold)",
+        "lineHeight": "var(--leading-none)",
+        "letterSpacing": "var(--tracking-tighter)",
         "color": "var(--primary-foreground)"
       },
       "x": 400,

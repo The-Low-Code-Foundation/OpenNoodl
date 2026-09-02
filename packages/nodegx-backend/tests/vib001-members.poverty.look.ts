@@ -47,7 +47,8 @@ import {
   copyTemplateProject,
   makeMembersDataDir,
   SETUP_TOKEN,
-  signIn
+  signIn,
+  TEMPLATE_DIR
 } from './helpers/members-drive';
 import { bindProjectToBackend } from './helpers/site-drive';
 
@@ -78,7 +79,29 @@ type Row = {
   icons: number;
   grounds: number;
   tells: string;
+  /**
+   * REL-010 — **what the grounds actually are**, not just how many.
+   *
+   * 🔴 The count alone cannot be designed against. AC4 asks the four public
+   * pages for four distinct grounds and the signed-in pages for three, and a
+   * session reading `2` has no way to know whether the third band it is about
+   * to add is a ground the page already paints — in which case the count does
+   * not move and the edit looks like it failed. This is a diagnostic column, it
+   * changes no predicate, and the four numbers above it are read exactly as
+   * before.
+   */
+  groundList: string;
 };
+
+/** `rgb(252, 252, 251)` → `fcfcfb`; a gradient or a photograph → its own short name. */
+function shortGround(ground: string): string {
+  const rgb = ground.match(/^rgb\((\d+), (\d+), (\d+)\)$/);
+  if (rgb) return [1, 2, 3].map((i) => Number(rgb[i]).toString(16).padStart(2, '0')).join('');
+  const url = ground.match(/starter-imagery\/([\w.-]+)/);
+  if (url) return `img:${url[1]}`;
+  if (ground.startsWith('linear-gradient')) return 'gradient';
+  return ground.slice(0, 28);
+}
 const rows: Row[] = [];
 
 /** A copy with the assets a real project has — measuring without them prices the empty arm. */
@@ -129,7 +152,8 @@ async function measureArm(
         images: v?.images?.total ?? -1,
         icons: v?.images?.icons ?? -1,
         grounds: v?.grounds?.distinct ?? -1,
-        tells: poverty.map((f: any) => f.code).sort().join(' ') || '—'
+        tells: poverty.map((f: any) => f.code).sort().join(' ') || '—',
+        groundList: (v?.grounds?.values ?? []).map((g: any) => shortGround(String(g.ground))).join(',')
       });
       // eslint-disable-next-line no-console
       console.log(`POV ${arm} ${spec.label} ` + JSON.stringify(rows[rows.length - 1]));
@@ -154,7 +178,12 @@ describe('REL-002c — the WordPress tells, on all thirteen members-area pages',
   });
 
   it('measures the four door pages a stranger meets before any backend exists', async () => {
-    const dir = servedCopy(path.join(REPO, 'templates', 'members-area'), 'door');
+    // REL-010. `TEMPLATE_DIR` rather than the path spelled again, so the door
+    // arm and the living arm read the SAME artefact — including when
+    // `TPL001_TEMPLATE_DIR` points both at a `git archive` of the committed one
+    // to re-take a baseline on the current runtime. Two arms disagreeing about
+    // which artefact they measured is the one way this table can lie silently.
+    const dir = servedCopy(TEMPLATE_DIR, 'door');
     await measureArm('members door', dir, [
       { label: '/sign-in', url: '/sign-in' },
       { label: '/join', url: '/join' },
@@ -260,10 +289,10 @@ describe('REL-002c — the WordPress tells, on all thirteen members-area pages',
     // eslint-disable-next-line no-console
     console.log('\n=== REL-002c — THE WORDPRESS TELLS, PAGE BY PAGE (desktop 1280) ===');
     // eslint-disable-next-line no-console
-    console.log('arm|page|largestPx|images|icons|grounds|tells');
+    console.log('arm|page|largestPx|images|icons|grounds|tells|groundList');
     for (const r of rows) {
       // eslint-disable-next-line no-console
-      console.log([r.arm, r.page, r.largestPx, r.images, r.icons, r.grounds, r.tells].join('|'));
+      console.log([r.arm, r.page, r.largestPx, r.images, r.icons, r.grounds, r.tells, r.groundList].join('|'));
     }
     const subject = rows.filter((r) => !r.arm.startsWith('CONTROL'));
     const clean = subject.filter((r) => r.tells === '—').length;
