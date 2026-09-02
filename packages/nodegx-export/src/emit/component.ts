@@ -409,6 +409,12 @@ export function emitComponent(
       usedStoreNames.add(action.storeName);
       collectExprUse(action.expr);
     }
+    // EXP-011 §47. One patch over N keys, then its Done chain.
+    if (action.kind === 'object-set') {
+      usedStoreNames.add(action.storeName);
+      action.entries.forEach((e) => collectExprUse(e.expr));
+      action.then.forEach(collectActionUse);
+    }
     if (action.kind === 'collection-add') {
       usedCollectionNames.add(action.collectionName);
       action.entries.forEach((e) => collectExprUse(e.expr));
@@ -1706,7 +1712,10 @@ export function emitComponent(
       // shape by far is a delete button with nothing after it.
       // EXP-011 §39. A Log's write is synchronous with one outcome, so its Done chain is
       // following statements too — and a Restart never branches, so its chain is the same.
-      (a.kind === 'popup-show' || a.kind === 'collection-remove' || a.kind === 'log' || (a.kind === 'delay' && a.verb === 'restart')) &&
+      // EXP-011 §47. A Set Object Properties with a literal Id has one outcome — `Model.get` creates
+      // on read, so the runtime's no-object Failure is unreachable — and `store.set()` is
+      // synchronous, so its Done chain is following statements too.
+      (a.kind === 'popup-show' || a.kind === 'collection-remove' || a.kind === 'log' || a.kind === 'object-set' || (a.kind === 'delay' && a.verb === 'restart')) &&
       a.then.length > 0
         ? [{ ...a, then: [] }, ...expandActions(a.then)]
         : // A jsfun-run is only its done-chain (EXP-003 §4 A2h): output reads inline the call
@@ -1784,6 +1793,9 @@ export function emitComponent(
         case 'store-set':
         case 'globalstore-set':
           return reads(a.expr);
+        // EXP-011 §47. Any of the patch's values, or anything in the chain after it.
+        case 'object-set':
+          return a.entries.some((e) => reads(e.expr)) || a.then.some(inAction);
         case 'state-set':
           return a.expr !== undefined && reads(a.expr);
         case 'emit':
@@ -2233,6 +2245,24 @@ export function emitComponent(
         const store = storeByName.get(action.storeName)!;
         const key = /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(action.key) ? action.key : JSON.stringify(action.key);
         return `${store.exportName}.set({ ${key}: ${exprCode(action.expr, 'handler')} })`;
+      }
+      /**
+       * `Set Object Properties` (EXP-011 §47) — one patch carrying every wired property, in the
+       * node's own list order: `profile.set({ name: nameValue, city: cityValue })`. The runtime
+       * writes the keys one `model.set` at a time and notifies per key; React batches the
+       * re-renders of one handler either way, so one patch is the same page one frame later,
+       * and it is what a developer would write. Its Done chain is following statements
+       * (`expandActions`).
+       */
+      case 'object-set': {
+        const store = storeByName.get(action.storeName)!;
+        const entries = action.entries
+          .map(
+            (e) =>
+              `${/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(e.key) ? e.key : JSON.stringify(e.key)}: ${exprCode(e.expr, 'handler')}`
+          )
+          .join(', ');
+        return `${store.exportName}.set({ ${entries} })`;
       }
       case 'collection-add': {
         const collection = collectionByName.get(action.collectionName)!;
@@ -5004,6 +5034,9 @@ export function emitComponent(
       case 'store-set':
       case 'globalstore-set':
         return [a.expr];
+      // EXP-011 §47. The patch's values, then the chain.
+      case 'object-set':
+        return [...a.entries.map((e) => e.expr), ...a.then.flatMap(actionExprsOf)];
       case 'state-set':
         return a.expr !== undefined ? [a.expr] : [];
       case 'collection-add':

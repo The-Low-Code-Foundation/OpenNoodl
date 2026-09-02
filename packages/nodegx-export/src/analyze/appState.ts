@@ -71,6 +71,15 @@ export interface StorePlan {
   deferred?: string;
   /** Merged initial states, ignored storageKeys — surfaced through the component notes. */
   notes: string[];
+  /**
+   * EXP-011 §47. Present when the store is a named **Object** — an `Object` node in "Specify
+   * explicitly" mode with a literal Id, and the `Set Object Properties` nodes naming the same
+   * Id — rather than a Global Store. The two are one construct in the exported app (`store()`
+   * in `@nodegx/core` says so in its own doc comment) and two records in the runtime, where a
+   * Global Store is the Model keyed `--ndl--global-store--<name>` and an Object is the Model
+   * keyed by its Id; `objectCollisions` is where that difference is kept honest.
+   */
+  origin?: 'object';
 }
 
 export const GLOBAL_STORE = 'net.noodl.GlobalStore';
@@ -79,6 +88,42 @@ export const GLOBAL_STORE_SUBSCRIBE = 'net.noodl.GlobalStore.Subscribe';
 
 export function isGlobalStoreFamily(type: string): boolean {
   return type === GLOBAL_STORE || type === GLOBAL_STORE_SET || type === GLOBAL_STORE_SUBSCRIBE;
+}
+
+/** `Object` — displayed "Object", stored as `Model2` (modelnode2.ts). */
+export const OBJECT_TYPE = 'Model2';
+/** `Set Object Properties` (setmodelpropertiesnode.ts, over modelcrudbase.ts). */
+export const SET_OBJECT_PROPERTIES_TYPE = 'SetModelProperties';
+
+/**
+ * EXP-011 §47. The Id an `Object` or `Set Object Properties` names **statically**, or undefined.
+ *
+ * Three facts of the runtime decide the shape: `idSource` defaults to `explicit` (an unset one
+ * is explicit — `modelcrudbase.ts` declares the default, and the §5.1 gate has read it so since
+ * Tier 1.1); in that mode the record is `Model.get(modelId)`, create-on-read, keyed by the Id
+ * verbatim; and a wired Id is a runtime value (a Model, a plain object, or a string from
+ * anywhere), which is exactly what no module can name. So: explicit or unset, an unwired
+ * `modelId`, a non-empty literal string — else undefined, and the caller says which.
+ */
+export function objectIdOf(node: NodeIR, wiredPorts: Set<string>): string | undefined {
+  const idSource = node.parameters.find((p) => p.name === 'idSource')?.value;
+  if (idSource !== undefined && !(idSource.kind === 'literal' && idSource.value === 'explicit')) return undefined;
+  if (wiredPorts.has(`${node.id}:modelId`)) return undefined;
+  return literalString(node, 'modelId');
+}
+
+/**
+ * A `Set Object Properties`' authored property list, split as the runtime splits it. The list
+ * is load-bearing on the write side: `_pushInputValues` filters the keys it writes by this list
+ * (`validProperties`), so a wired `prop-<x>` whose `x` is not listed is silently not written.
+ */
+export function setPropertiesOf(node: NodeIR): string[] {
+  const raw = node.parameters.find((p) => p.name === 'properties')?.value;
+  if (raw?.kind !== 'literal' || typeof raw.value !== 'string') return [];
+  return raw.value
+    .split(',')
+    .map((key) => key.trim())
+    .filter((key) => key.length > 0);
 }
 
 /** One translated `NewModel → CollectionInsert` chain — the write side of a named array. */
@@ -234,6 +279,13 @@ export interface AppStateRegistry {
   channels: Map<string, ChannelPlan>;
   stores: Map<string, StorePlan>;
   collections: Map<string, CollectionPlan>;
+  /**
+   * EXP-011 §47. Object Ids that are also Global Store names. In the runtime those are two
+   * records (`--ndl--global-store--x` and `x`); in the exported app both would be `store('x')`,
+   * one registry entry — so the Object side is refused by name rather than merged into the
+   * Global Store's module, and the Global Store keeps translating as it did.
+   */
+  objectCollisions: Set<string>;
 }
 
 /** A value wire's source, kept as raw references for the type resolver. */
@@ -293,6 +345,28 @@ export function collectAppState(ir: ExportIR): AppStateRegistry {
       plan = { name, exportName: '', interfaceName: '', keys: [], declarers: [], writers: [], notes: [] };
       stores.set(name, plan);
     }
+    return plan;
+  };
+  // EXP-011 §47. Which names the two families claim, read over the whole project before either
+  // family registers anything — so the answer does not depend on which component D1 sorts first.
+  const globalStoreNames = new Set<string>();
+  const objectIds = new Set<string>();
+  for (const component of ir.components) {
+    for (const node of component.nodes) {
+      if (isGlobalStoreFamily(node.type)) {
+        const name = storeNameOf(node, wiredPortsOf(component));
+        if (name !== undefined) globalStoreNames.add(name);
+      }
+      if (node.type === OBJECT_TYPE || node.type === SET_OBJECT_PROPERTIES_TYPE) {
+        const id = objectIdOf(node, wiredPortsOf(component));
+        if (id !== undefined) objectIds.add(id);
+      }
+    }
+  }
+  const objectCollisions = new Set([...objectIds].filter((id) => globalStoreNames.has(id)));
+  const ensureObjectStore = (id: string): StorePlan => {
+    const plan = ensureStore(id);
+    plan.origin = 'object';
     return plan;
   };
   const ensureStoreKey = (plan: StorePlan, key: string): StoreKeyPlan => {
@@ -403,6 +477,36 @@ export function collectAppState(ir: ExportIR): AppStateRegistry {
           }
         }
       }
+      /**
+       * EXP-011 §47 — the named Object. An `Object` with a literal Id is the store's reader
+       * (`declarers`, printed "Read by"); a `Set Object Properties` with the same Id is a writer.
+       * Keys: every `prop-<key>` output wire off the Object (the runtime registers any `prop-*`
+       * a wire asks for, `registerOutputIfNeeded`, so the `properties` stringlist does not gate a
+       * read), and every wired `prop-<key>` the Set's own list admits. An Id that collides with
+       * a Global Store name registers nothing here — plan.ts refuses those nodes by name.
+       */
+      if (node.type === OBJECT_TYPE || node.type === SET_OBJECT_PROPERTIES_TYPE) {
+        const id = objectIdOf(node, wiredPortsOf(component));
+        if (id !== undefined && !objectCollisions.has(id)) {
+          const plan = ensureObjectStore(id);
+          if (node.type === OBJECT_TYPE) {
+            plan.declarers.push(writerRef(component, node));
+            for (const wire of component.connections) {
+              if (wire.fromId === node.id && wire.fromProperty.startsWith('prop-')) {
+                ensureStoreKey(plan, wire.fromProperty.slice('prop-'.length));
+              }
+            }
+          } else {
+            plan.writers.push(writerRef(component, node));
+            const listed = setPropertiesOf(node);
+            for (const wire of component.connections) {
+              if (wire.toId !== node.id || !wire.toProperty.startsWith('prop-')) continue;
+              const key = wire.toProperty.slice('prop-'.length);
+              if (listed.includes(key)) ensureStoreKey(plan, key);
+            }
+          }
+        }
+      }
       if (node.type === 'Collection2') {
         const name = collectionNameOf(node, wiredPortsOf(component));
         if (name !== undefined) ensureCollection(name).readers.push(writerRef(component, node));
@@ -483,6 +587,18 @@ export function collectAppState(ir: ExportIR): AppStateRegistry {
           storeKeySources.set(mapKey, [...(storeKeySources.get(mapKey) ?? []), fromRef]);
         }
       }
+      // EXP-011 §47. A Set Object Properties' wired property is a writer of that key — typed
+      // over its sources exactly as a Global Store key is, and only for a key the node's own
+      // list admits (the runtime writes no other).
+      if (toNode.type === SET_OBJECT_PROPERTIES_TYPE && connection.toProperty.startsWith('prop-')) {
+        const id = objectIdOf(toNode, wiredPortsOf(component));
+        const key = connection.toProperty.slice('prop-'.length);
+        if (id !== undefined && !objectCollisions.has(id) && setPropertiesOf(toNode).includes(key)) {
+          ensureStoreKey(ensureObjectStore(id), key);
+          const mapKey = `${id}\u0000${key}`;
+          storeKeySources.set(mapKey, [...(storeKeySources.get(mapKey) ?? []), fromRef]);
+        }
+      }
       if (toNode.type === 'Event Sender') {
         const channelName = literalString(toNode, 'channelName');
         if (channelName === undefined || !payloadKeysOf(toNode).includes(connection.toProperty)) continue;
@@ -532,7 +648,15 @@ export function collectAppState(ir: ExportIR): AppStateRegistry {
     if (visiting.has(guard)) return 'unknown';
     visiting.add(guard);
     const sources = storeKeySources.get(mapKey) ?? [];
-    const resolved = sources.every((ref) => typeOfSource(ref, visiting) === 'string') ? 'string' : 'unknown';
+    // EXP-011 §47. An Object key exists because a wire *reads* it, so it can have no writer at
+    // all — and `[].every(…)` is true, which would type "nothing wrote this" as `string`. A key
+    // with zero statically-known writers is `unknown`: the honest type, and the one whose read
+    // is coerced at the sink rather than printed as a string the graph never promised.
+    const origin = stores.get(storeName)?.origin;
+    const resolved =
+      (origin !== 'object' || sources.length > 0) && sources.every((ref) => typeOfSource(ref, visiting) === 'string')
+        ? 'string'
+        : 'unknown';
     visiting.delete(guard);
     storeKeyTypes.set(mapKey, resolved);
     return resolved;
@@ -550,6 +674,13 @@ export function collectAppState(ir: ExportIR): AppStateRegistry {
       const keys = subscribeKeysOf(node);
       if (storeName === undefined || keys.length !== 1) return 'unknown';
       return typeOfStoreKey(storeName, keys[0], visiting) === 'string' ? 'string' : 'unknown';
+    }
+    // EXP-011 §47. An Object's `prop-<key>` read carries the key's writer-inferred type — the
+    // Subscribe rule one construct over, so an Object read into a Set Variable types the variable.
+    if (node.type === OBJECT_TYPE && ref.fromProperty.startsWith('prop-')) {
+      const id = objectIdOf(node, wiredPortsOf(ref.component));
+      if (id === undefined || objectCollisions.has(id)) return 'unknown';
+      return typeOfStoreKey(id, ref.fromProperty.slice('prop-'.length), visiting) === 'string' ? 'string' : 'unknown';
     }
     if (node.type === 'Event Receiver' && ref.fromProperty !== 'eventReceived') {
       const channelName = literalString(node, 'channelName');
@@ -660,7 +791,7 @@ export function collectAppState(ir: ExportIR): AppStateRegistry {
     plan.interfaceName = dedupe(`${pascalCase(plan.name)}Item`, usedInterfaces);
   }
 
-  return { variables, channels, stores, collections };
+  return { variables, channels, stores, collections, objectCollisions };
 }
 
 /** The sender's `payload` stringlist parameter, split — the payload port set, statically. */

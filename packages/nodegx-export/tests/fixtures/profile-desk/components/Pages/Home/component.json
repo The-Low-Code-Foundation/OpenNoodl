@@ -1,0 +1,9 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "pr0f11e5-4e1a-4b3e-9f2a-1a2b3c4d6e02",
+  "name": "Home",
+  "path": "/Pages/Home",
+  "type": "page",
+  "modified": "2026-09-03T09:00:00.000Z",
+  "description": "EXP-011 \u00a747 fixture: an Object with a literal Id (\"profile\") read into Texts, a Set Object Properties with the same Id written from two inputs on a button, its Done into a Set Variable; the badge component reads the same object in a second file."
+}

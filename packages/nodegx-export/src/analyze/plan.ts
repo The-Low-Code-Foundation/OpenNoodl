@@ -74,12 +74,28 @@ import {
   InsertChain,
   insertChainOf,
   isTextInputType,
+  OBJECT_TYPE,
+  objectIdOf,
   payloadKeysOf,
+  SET_OBJECT_PROPERTIES_TYPE,
+  setPropertiesOf,
   StorePlan,
   storeNameOf,
   subscribeKeysOf,
   VariablePlan
 } from './appState';
+
+/**
+ * EXP-011 §47 — the three refusals a `Set Object Properties` meets before its Id is a store, spelled
+ * once because two sites answer them: `compileSetObjectProperties` (a component with a render tree)
+ * and `recordNeighbourDefer` (one without, which dispositions every node before the sweeps run).
+ */
+const SET_OBJECT_IN_ROW_REASON =
+  "it writes properties onto the enclosing repeater's row; inside a row that is state the enclosing list owns (EXP-002-MODEL2-TARGET-OUTPUT §4), and a row's value reaches the page only as the repeater's \"last row that fired\" read";
+const SET_OBJECT_WIRED_ID_REASON =
+  'its Id is wired, so which object it writes is a runtime value — only a literal Id names a store module (EXP-011 §47)';
+const SET_OBJECT_NO_ID_REASON =
+  'it names no object: Id Source is "Specify explicitly" and the Id is blank, so every Do answers Failure ("no object is bound") and writes nothing';
 
 export type {
   ChannelPlan,
@@ -1193,6 +1209,13 @@ export type HandlerAction =
   | { kind: 'emit'; channelName: string; payload: Array<{ key: string; expr: ValueExpr }> }
   | { kind: 'store-set'; variableName: string; expr: ValueExpr }
   | { kind: 'globalstore-set'; storeName: string; key: string; expr: ValueExpr }
+  /**
+   * `Set Object Properties` on a named Object (EXP-011 §47): one patch over every wired property
+   * the node's list admits — `profile.set({ name: …, city: … })` — then its Done chain as
+   * following statements. No failure arm: with a literal Id the runtime's only failure (no
+   * object bound) is unreachable, because `Model.get` creates the object on read.
+   */
+  | { kind: 'object-set'; storeName: string; entries: Array<{ key: string; expr: ValueExpr }>; then: HandlerAction[] }
   | { kind: 'collection-add'; collectionName: string; entries: Array<{ key: string; expr: ValueExpr }> }
   /**
    * `Clear Array` (EXP-011 Tier 1.1) — `notes.clear()`, plus the two chains the runtime's own
@@ -2850,9 +2873,12 @@ function planComponent(
     // repeater row behind it at all.
     const idSource = literalParam(node, 'idSource');
     if (idSource !== 'foreach') {
-      return idSource === undefined
-        ? 'its Id Source is unset, which the runtime reads as "explicit" — an id-addressed record in the global store, not a repeater row'
-        : `its Id Source is "${String(idSource)}", not "From repeater"`;
+      // EXP-011 §47 translated the literal-Id form (`objectStoreOf` answered before this gate was
+      // asked), so what reaches here in explicit mode is a wired Id or no Id at all.
+      if (wiredPorts.has(`${node.id}:modelId`)) {
+        return 'its Id is wired, so which object it reads is a runtime value — only a literal Id names a store module (EXP-011 §47)';
+      }
+      return `it names no object: Id Source is ${idSource === undefined ? 'unset, which the runtime reads as ' : ''}"Specify explicitly" and the Id is blank, so the runtime binds nothing and every property reads undefined`;
     }
     if (wiredPorts.has(`${node.id}:modelId`)) return 'its Object Id is wired, so the record is chosen at runtime';
     // §5.6. An explicit target names *which* repeater, which the props model — nearest-wins —
@@ -2939,9 +2965,77 @@ function planComponent(
    * the emitted app has for "the row this instance is rendering". The parent binds it in the
    * same pass that renders the repeater, so both sides always agree.
    */
+  /**
+   * EXP-011 §47 — the named Object. An `Object` in "Specify explicitly" mode with a literal Id is
+   * the Global Store shape one construct over: the runtime's record is `Model.get(id)`, one
+   * app-wide record every node naming that Id shares, and `@nodegx/core`'s `store()` names itself
+   * "the exported equivalent of a Global Store or an Object node". So the node collapses into
+   * `src/stores/<id>.ts`, its `prop-<key>` reads are that store's key reads (`store-key` in
+   * render, `store-key-get` in a handler), and a `Set Object Properties` with the same Id is the
+   * writer. What the node itself carries beyond the reads — a write through its own `prop-*`
+   * inputs, a wired Fetch, its signals, the `object` port — is refused by name here, so the
+   * module's state has exactly one writer kind and the report names what did not translate.
+   */
+  const objectStoreNodes = new Map<string, StorePlan>();
+  const objectStoreOf = (node: NodeIR): StorePlan | { defer: string } | undefined => {
+    const id = objectIdOf(node, wiredPorts);
+    if (id === undefined) return undefined;
+    if (registry.objectCollisions.has(id)) {
+      return {
+        defer: `its Id "${id}" is also a Global Store's name — two records in the runtime (the store is the Model "--ndl--global-store--${id}", the object the Model "${id}") and one store() in the export, so the Object side is refused rather than merged into the store's module`
+      };
+    }
+    const plan = registry.stores.get(id);
+    return plan !== undefined && plan.origin === 'object' ? plan : undefined;
+  };
+  const objectNodeGate = (node: NodeIR, store: StorePlan): string | null => {
+    const propInput = component.connections.find((c) => c.toId === node.id && c.toProperty.startsWith('prop-'));
+    if (propInput !== undefined) {
+      return `its "${propInput.toProperty.slice('prop-'.length)}" property input is wired — a write through the Object node itself is not translated in this slice; a Set Object Properties naming "${store.name}" is`;
+    }
+    if (wiredPorts.has(`${node.id}:fetch`)) {
+      return 'its Fetch is wired — the exported store is live, so a re-read has nothing to read, and the Done and Fetched it would fire are a signal chain this slice does not carry';
+    }
+    const consumed = component.connections.find((c) => c.fromId === node.id && !c.fromProperty.startsWith('prop-'));
+    if (consumed !== undefined) {
+      return `its "${consumed.fromProperty}" output is consumed — only its property reads translate in this slice (the Id is the literal "${store.name}"; its signals are effect() work; the Object port is the runtime's Model)`;
+    }
+    return null;
+  };
+  /**
+   * `storeKeyReadOf`'s tail for a key the plan already carries: an `unknown` key — read, never
+   * written by anything statically typed — defers in an expression position and binds, marked,
+   * at a render sink where the sink coerces (EXP-011 §10.5, the same two modes).
+   */
+  const objectKeyReadOf = (
+    store: StorePlan,
+    key: string,
+    mode: 'expr' | 'binding'
+  ): { storeName: string; key: string; untyped?: true } | { defer: string } => {
+    const entry = store.keys.find((k) => k.key === key);
+    if (entry === undefined) return { defer: `key "${key}" is not a key of the object "${store.name}"` };
+    if (entry.tsType === 'string' || entry.tsType === 'number') return { storeName: store.name, key };
+    if (mode === 'expr') {
+      return { defer: `property "${key}" of the object "${store.name}" has no statically-typed writer` };
+    }
+    return { storeName: store.name, key, untyped: true };
+  };
+
   const model2Props = new Map<string, Map<string, string>>();
   for (const node of component.nodes) {
     if (node.type !== 'Model2') continue;
+    const objectStore = objectStoreOf(node);
+    if (objectStore !== undefined) {
+      const reason = 'defer' in objectStore ? objectStore.defer : objectNodeGate(node, objectStore);
+      if (reason !== null) {
+        dispositions[node.id] = { kind: 'deferred', to: 'EXP-003', reason: `Object ${node.id}: ${reason}` };
+        notes.push(`node ${node.id} (${node.type}) deferred: ${reason}`);
+        continue;
+      }
+      objectStoreNodes.set(node.id, objectStore as StorePlan);
+      dispositions[node.id] = { kind: 'collapsed', into: `src/stores/${(objectStore as StorePlan).exportName}.ts` };
+      continue;
+    }
     const gate = model2ForeachGate(node);
     if (gate !== null) {
       dispositions[node.id] = { kind: 'deferred', to: 'EXP-003', reason: `Object ${node.id}: ${gate}` };
@@ -5444,6 +5538,16 @@ function planComponent(
      * The prop was minted in the pre-pass above; a node that failed a §5 gate has no entry and
      * falls through to the deferral its disposition already names.
      */
+    // EXP-011 §47. A named Object's property is that store's key — the Subscribe branch above,
+    // one construct over, and the strict (expression) mode for the same reason it is strict there.
+    if (fromNode.type === OBJECT_TYPE && fromProperty.startsWith('prop-') && objectStoreNodes.has(fromNode.id)) {
+      const read = objectKeyReadOf(objectStoreNodes.get(fromNode.id)!, fromProperty.slice('prop-'.length), 'expr');
+      if ('defer' in read) {
+        ctx.defer = read.defer;
+        return null;
+      }
+      return { kind: 'store-key-get', storeName: read.storeName, key: read.key };
+    }
     if (fromNode.type === 'Model2' && fromProperty.startsWith('prop-')) {
       const name = model2Props.get(fromNode.id)?.get(fromProperty);
       if (name === undefined) {
@@ -6591,6 +6695,8 @@ function planComponent(
     'Event Sender': 'sendEvent',
     'Set Variable': 'do',
     [GLOBAL_STORE_SET]: 'set',
+    // EXP-011 §47. The port is `store`; its display name is "Do".
+    [SET_OBJECT_PROPERTIES_TYPE]: 'store',
     NewModel: 'new',
     // EXP-011 Tier 1.1. The port is `clear`; its display name is "Do".
     CollectionClear: 'clear',
@@ -9098,6 +9204,7 @@ function planComponent(
     if (node.type === NOW_TYPE) return compileNowRead(node);
     if (ID_NODES[node.type] !== undefined) return compileIdNew(node);
     if (node.type === 'Condition') return compileCondition(node);
+    if (node.type === SET_OBJECT_PROPERTIES_TYPE) return compileSetObjectProperties(node);
     /**
      * ⚠️ **Everything below this line is the Set Variable case, and there is no `default`.**
      *
@@ -9127,6 +9234,80 @@ function planComponent(
       consumes: [wire.key, ...ctx.consumes],
       collapses: ctx.logicNodeIds,
       subscribes: ctx.subscriberIds
+    };
+  };
+
+  /**
+   * `Set Object Properties` with a literal Id (EXP-011 §47) — one patch on the named object's
+   * store, then its Done chain.
+   *
+   * What the runtime does on `Do` (`scheduleStore` → `_pushInputValues`, modelcrudbase.ts):
+   * `Model.get(id)` is create-on-read, so with a literal Id the no-object Failure is unreachable
+   * (its wire is dropped with a note, the `Clear Array` precedent — a gate answers the cause);
+   * each key in the node's own `properties` list whose input is not `undefined` is written with
+   * `model.set` (`undefined` abstains, so an unwired property is simply absent from the patch); a
+   * wired `prop-<x>` the list does not admit is filtered out and never written, so it is dropped
+   * here with a note rather than translated into a write the interpreter never made; the two
+   * type selectors that *act* — Array (a string is `eval`led as code) and Object (a string is
+   * dereferenced as an object Id) — refuse by name, and the others are inert on the write path
+   * (`_pushInputValues` coerces nothing else), so they are ignored as the runtime ignores them.
+   */
+  const compileSetObjectProperties = (node: NodeIR): CompiledSink => {
+    if (
+      literalParam(node, 'idSource') === 'foreach' ||
+      wiredPorts.has(`${node.id}:repeaterComponent`) ||
+      node.parameters.some((p) => p.name === 'repeaterComponent')
+    ) {
+      return { defer: SET_OBJECT_IN_ROW_REASON };
+    }
+    if (wiredPorts.has(`${node.id}:modelId`)) return { defer: SET_OBJECT_WIRED_ID_REASON };
+    const store = objectStoreOf(node);
+    if (store === undefined) return { defer: SET_OBJECT_NO_ID_REASON };
+    if ('defer' in store) return store;
+    const listed = setPropertiesOf(node);
+    if (listed.length === 0) return { defer: 'its Properties list is empty, so Do writes nothing' };
+    const ctx = newCtx();
+    const consumes: string[] = [];
+    const entries: Array<{ key: string; expr: ValueExpr }> = [];
+    for (const key of listed) {
+      const wires = component.connections.filter((c) => c.toId === node.id && c.toProperty === `prop-${key}`);
+      if (wires.length === 0) continue; // `undefined` abstains — the key is left as it is (EMPTY-VALUE-CONTRACT)
+      if (wires.length > 1) return { defer: `two wires feed its "${key}" — last-writer-wins is not statically ordered` };
+      const selector = literalParam(node, `type-${key}`);
+      if (selector === 'array' || selector === 'object') {
+        return {
+          defer: `its "${key}" is typed ${selector === 'array' ? 'Array, which the runtime reads by evaluating a string as code' : 'Object, which the runtime reads by dereferencing a string as an object Id'} — not translated in this slice`
+        };
+      }
+      const expr = resolveExpr(nodeById.get(wires[0].fromId), wires[0].fromProperty, ctx);
+      if (expr === null) return { defer: ctx.defer ?? `its "${key}" has no statically known source` };
+      if (isBooleanExpr(expr)) {
+        return { defer: `its "${key}" is fed a logic truth value — only truthiness sinks take one in this slice` };
+      }
+      entries.push({ key, expr });
+      consumes.push(wires[0].key);
+    }
+    if (entries.length === 0) return { defer: 'nothing is wired into any of its properties, so Do writes nothing' };
+    const done = doneChainOf(node, 'done');
+    if ('defer' in done) return { defer: done.defer };
+    // The two drops, written only once the node translates (compiledOf caches this answer).
+    for (const wire of component.connections) {
+      if (wire.toId === node.id && wire.toProperty.startsWith('prop-')) {
+        const key = wire.toProperty.slice('prop-'.length);
+        if (listed.includes(key)) continue;
+        notes.push(wireNote(wire, `"${key}" is not in the node's Properties list, so the runtime never writes it (_pushInputValues filters by the list) — dropped`));
+        consumes.push(wire.key);
+      }
+      if (wire.fromId === node.id && wire.fromProperty === 'failure') {
+        notes.push(wireNote(wire, `Failure cannot fire: the Id is the literal "${store.name}" and Model.get creates the object on read, so there is never no object to write to — dropped`));
+        consumes.push(wire.key);
+      }
+    }
+    return {
+      action: { kind: 'object-set', storeName: store.name, entries, then: done.then },
+      consumes: [...consumes, ...done.consumes, ...ctx.consumes],
+      collapses: [...ctx.logicNodeIds, ...done.collapses],
+      subscribes: [...ctx.subscriberIds, ...done.subscribes]
     };
   };
 
@@ -9390,6 +9571,12 @@ function planComponent(
         case 'store-set':
         case 'globalstore-set':
           return exprValidIn(action.expr, context, invokedScope);
+        // EXP-011 §47. Every value in the patch, then the chain.
+        case 'object-set':
+          return (
+            action.entries.every((e) => exprValidIn(e.expr, context, invokedScope)) &&
+            actionsValidIn(action.then, context, invokedScope)
+          );
         case 'state-set':
           return action.expr === undefined || exprValidIn(action.expr, context, invokedScope);
         case 'branch':
@@ -9704,6 +9891,10 @@ function planComponent(
       // rule, fourth family: the sink-membership test grows with the vocabulary or a control
       // renders stateless and the trigger is dropped with a true sentence about a row nothing minted.
       if (fileFamilyOf(sink.type) !== undefined) return !isTriggerWire(sink.type, c.toProperty);
+      // EXP-011 §47 — a Set Object Properties reads its property inputs from the button's
+      // handler, the record verbs' form idiom on a client-side object. Fifth family on s19's
+      // rule; found the same way (the first emit dropped the Save wire with a true sentence).
+      if (sink.type === SET_OBJECT_PROPERTIES_TYPE) return c.toProperty.startsWith('prop-');
       return rendered.has(sink.id) && !isTriggerWire(sink.type, c.toProperty);
     });
     if (!stateWired && !actionWired && !outputRead) continue;
@@ -10179,6 +10370,19 @@ function planComponent(
         const e = snapExpr(action.expr, snap);
         if ('defer' in e) return e;
         return { ...action, expr: e };
+      }
+      // EXP-011 §47. The patch's values are read where the handler is; one arm, always taken, so
+      // the chain carries the map onward — `popup-show`'s treatment.
+      case 'object-set': {
+        const entries: Array<{ key: string; expr: ValueExpr }> = [];
+        for (const entry of action.entries) {
+          const e = snapExpr(entry.expr, snap);
+          if ('defer' in e) return e;
+          entries.push({ key: entry.key, expr: e });
+        }
+        const then = snapActionList(action.then, snap);
+        if (!Array.isArray(then)) return then;
+        return { ...action, entries, then };
       }
       case 'emit': {
         const payload: Array<{ key: string; expr: ValueExpr }> = [];
@@ -11243,6 +11447,16 @@ function planComponent(
     notes.push(`node ${node.id} (${node.type}) deferred: ${reason}`);
   }
 
+  // EXP-011 §47. A Set Object Properties nothing attached, the files sweep's shape: the compiled
+  // refusal where the compiler ran, else the trigger sentence.
+  for (const node of component.nodes) {
+    if (node.type !== SET_OBJECT_PROPERTIES_TYPE || dispositions[node.id] !== undefined) continue;
+    const compiled = compiledSinks.get(`${node.id}:store`);
+    const reason = compiled !== undefined && 'defer' in compiled ? compiled.defer : 'its Do is never fired by a translatable trigger';
+    dispositions[node.id] = { kind: 'deferred', to: 'EXP-003', reason };
+    notes.push(`node ${node.id} (${node.type}) deferred: ${reason}`);
+  }
+
   // EXP-011 §45. The three files nodes, the HTTP sweep's shape; `Cloud File` is a read and defers
   // through the wire off it, as a date node does.
   for (const node of component.nodes) {
@@ -11771,6 +11985,22 @@ function planComponent(
       (contentRole !== undefined && contentRole.startsWith('attr:'));
     if (!bindable) continue;
     if (connection.toProperty === 'mounted' && toNode.id === plan.rootId) continue;
+    // EXP-011 §47. A named Object's read is a store-key binding — Pass 4b's shape in the widened
+    // (binding) mode, so an `unknown` key binds and is coerced at the sink rather than dropped.
+    const objectStore = objectStoreNodes.get(fromNode.id);
+    if (objectStore !== undefined) {
+      consumed.add(connection.key);
+      const read = objectKeyReadOf(objectStore, connection.fromProperty.slice('prop-'.length), 'binding');
+      if ('defer' in read) {
+        notes.push(wireNote(connection, `${read.defer}`));
+        continue;
+      }
+      plan.bindings[toNode.id] = plan.bindings[toNode.id] ?? {};
+      plan.bindings[toNode.id][connection.toProperty] = read.untyped
+        ? { kind: 'store-key', storeName: read.storeName, key: read.key, untyped: true }
+        : { kind: 'store-key', storeName: read.storeName, key: read.key };
+      continue;
+    }
     const ctx = newCtx();
     const expr = resolveExpr(fromNode, connection.fromProperty, ctx);
     if (expr === null) {
@@ -12363,6 +12593,12 @@ function planComponent(
            * it here would leave the page importing a `useSession` the module was never asked to
            * export — the same failure the request case above names.
            */
+          // EXP-011 §47. A session read in a patch value — the signed-in user's name onto the
+          // profile — is ordinary, and this walker's `default: break` would skip the chain.
+          case 'object-set':
+            action.entries.forEach((e) => walkExpr(e.expr));
+            walkActions(action.then);
+            break;
           case 'external-link':
             walkExpr(action.link);
             walkActions(action.then);
@@ -12820,6 +13056,10 @@ function planComponent(
            * §17's Error row is wired here for the reason the cases above give: the read that
            * allocates it is a render binding, which resolves passes after this action compiled.
            */
+          // EXP-011 §47. Nothing of its own to materialise; a request or a `Now` in its chain does.
+          case 'object-set':
+            fillMaterialize(action.then);
+            break;
           case 'navigate-path': {
             const row = navigatePathErrorVars.get(action.nodeId);
             if (row !== undefined && plan.stateVars.includes(row)) action.errorState = row.name;
@@ -13375,7 +13615,12 @@ function recordNeighbourDefer(
    *   one, and it belongs to whoever builds this.
    */
   if (node.type === 'SetModelProperties') {
-    return 'it writes properties onto a record; inside a row that is state the enclosing list owns (EXP-002-MODEL2-TARGET-OUTPUT §4), and from the page the row’s id resolves but the value it would write does not — a row’s value reaches the page only as the repeater’s "last row that fired" read';
+    // EXP-011 §47 translated the literal-Id form; these are the three refusals before it, and
+    // the fourth is a component with no render tree, where nothing can fire a Do at all.
+    if (literalParam(node, 'idSource') === 'foreach' || authoredOrWired('repeaterComponent')) return SET_OBJECT_IN_ROW_REASON;
+    if (wiredIn('modelId')) return SET_OBJECT_WIRED_ID_REASON;
+    if (!authoredOrWired('modelId')) return SET_OBJECT_NO_ID_REASON;
+    return 'its Do is never fired by a translatable trigger';
   }
   if (node.type === 'For Each Actions') {
     return 'its Item Id is the runtime record id of a repeater row, which the emitted app has no counterpart for, and its other ports are the Repeater’s removal handshake — lifecycle signals, which are effect() work';

@@ -79,6 +79,10 @@ function collectionModule(collection: CollectionPlan): string {
  * One module per named store (NAMED-STORES-TARGET §1): the state interface from the initial
  * state first and the writers second, the initial-state literal transcribed in shipped key
  * order, and the declarer/writer list as the doc comment.
+ *
+ * EXP-011 §47: a named **Object** is the same module. It has no initial state — `Model.get(id)`
+ * starts `{}` — so every key is optional and typed over its Set Object Properties writers, and
+ * the comment reads "Read by" where a Global Store's reads "Declared by".
  */
 function storeModule(store: StorePlan): string {
   const fields = store.keys.map(
@@ -102,16 +106,19 @@ function storeModule(store: StorePlan): string {
 }
 
 function declarersComment(store: StorePlan): string {
+  const verb = store.origin === 'object' ? 'Read by' : 'Declared by';
   const lines = [
     ...store.declarers.map(
-      (d) => `Declared by ${d.label !== undefined ? `"${d.label}" ` : ''}(${d.nodeType} \`${d.nodeId}\` on /${d.componentPath}).`
+      (d) => `${verb} ${d.label !== undefined ? `"${d.label}" ` : ''}(${d.nodeType} \`${d.nodeId}\` on /${d.componentPath}).`
     ),
     ...store.writers.map(
       (w) => `Written by ${w.label !== undefined ? `"${w.label}" ` : ''}(${w.nodeType} \`${w.nodeId}\` on /${w.componentPath}).`
     )
   ];
   if (lines.length === 0) {
-    return '/** No statically-known declarer — the store exists because Subscribe nodes name it. */';
+    return store.origin === 'object'
+      ? '/** No statically-known reader or writer — the object exists because nodes name it. */'
+      : '/** No statically-known declarer — the store exists because Subscribe nodes name it. */';
   }
   if (lines.length === 1) return `/** ${lines[0]} */`;
   return `/**\n${lines.map((line) => ` * ${line}`).join('\n')}\n */`;

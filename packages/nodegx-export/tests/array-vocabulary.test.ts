@@ -427,12 +427,14 @@ describe('Object in From-repeater mode → props', () => {
   it('defers an unset Id Source, naming the runtime default', () => {
     const app = emit(withRowObject({ params: { properties: 'mood' } }).ir);
     expect(rowFile(app)).not.toContain('mood2');
-    expect(rowReport(app)).toContain('the runtime reads as "explicit"');
+    // EXP-011 §47 re-sentenced this: an unset Id Source with a literal Id is a store module now, so
+    // what is left to refuse here is the blank Id.
+    expect(rowReport(app)).toContain('Id Source is unset, which the runtime reads as "Specify explicitly" and the Id is blank');
   });
 
   it('defers an explicit Id Source', () => {
     const app = emit(withRowObject({ params: { idSource: 'explicit', properties: 'mood' } }).ir);
-    expect(rowReport(app)).toContain('not "From repeater"');
+    expect(rowReport(app)).toContain('Id Source is "Specify explicitly" and the Id is blank');
   });
 
   it('defers when no For Each names the component as its template', () => {

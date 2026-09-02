@@ -1,0 +1,9 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "pr0f11e5-4e1a-4b3e-9f2a-1a2b3c4d6e03",
+  "name": "ProfileBadge",
+  "path": "/Components/ProfileBadge",
+  "type": "visual",
+  "modified": "2026-09-03T09:00:00.000Z",
+  "description": "EXP-011 \u00a747 fixture: a second component reading the same named object \u2014 the module is shared, the hook is local."
+}

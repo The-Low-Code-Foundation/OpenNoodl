@@ -6038,3 +6038,182 @@ mode are marked as such (D2, the anonymous create by principal `anonymous`).
 - The remaining picker gaps are Tier 2.6's two refusals by name and the Data bucket; §45.6's list
   stands. Next by the surface: `Set Object Properties` / `Create New Array` (an ordinary page
   reaches them), or `Sign In With` once a project asks for provider sign-in.
+
+## §47 The named Object — `Set Object Properties`, and the half of `Object` the picker offers first (session 75, 2026-09-03)
+
+**Picker 88 → 89 of 127 (70.1%)** — `Set Object Properties` translates, and with it the "Specify
+explicitly" form of `Object`, which the ledger cannot count because `Object` was already `translated`
+on its repeater half (Tier 1.1). The picker's `Object` **defaults** to "Specify explicitly"; until this
+slice a person who placed one, typed an Id and read a property got *"its Id Source is unset, which
+the runtime reads as explicit — an id-addressed record in the global store"* — a refusal on the
+first thing the node does out of the box. Corpus: **0** explicit-mode Objects, **0** `Create New
+Array`, and all **8** `Set Object Properties` inside one kit's repeater row (`Filters/Multi
+Choice/Item`, the same graph in eight projects) — the same population §33.1 counted. Ranked by the
+product surface, as §41–§46 were: "a settings object every page reads and one page writes" is the
+first shared state a beginner builds, and the handoff named it.
+
+`Create New Array`, the handoff's other name, was re-derived and **stays refused** (§47.3).
+
+### §47.1 What the runtime does, and what that decides
+
+- **`Object` (modelnode2.ts) in explicit mode** is `Model.get(id)` — create-on-read against the
+  app-wide `Model` store, keyed by the Id verbatim; `prop-<p>` outputs read `model.get(p)` and
+  `registerOutputIfNeeded` registers *any* `prop-*` a wire asks for, so the `properties` stringlist
+  gates nothing on the read side. `prop-<p>` **inputs** on the Object write through it
+  (`scheduleStore` at frame end); `Fetch` rebinds and fires Fetched/Done; `changed`/`changed-<p>`
+  fire off the Model's `change` event; `object` is the Model itself.
+- **`Set Object Properties` (setmodelpropertiesnode.ts over modelcrudbase.ts)** on `Do`:
+  `scheduleStore` → no model bound ⇒ `_failNoModel` (Failure, `set-object-properties/no-object`);
+  else `_pushInputValues`: for each key in the node's **own `properties` list** whose input is not
+  `undefined`, `model.set(key, value)` — `undefined` abstains, `''` and `null` write; a wired
+  `prop-<x>` the list does not name is filtered out (`validProperties`) and never written; the
+  `type-<p>` selector acts in exactly two cases — `array` evals a string as code, `object`
+  dereferences a string through `Model.get` — and is inert for every other type.
+- **Global Store is a layer over the same store** (globalstore.ts: *"a named store here is one
+  `Model`, keyed `'--ndl--global-store--<name>'`"*), and `@nodegx/core`'s `store()` doc comment
+  reads *"The exported equivalent of a Global Store or an Object node"* — the design was drawn when
+  the core package was, and only the Global Store half had been built.
+- **What that decides.** (1) An explicit Object with a literal Id **is a store module** —
+  `src/stores/<id>.ts`, `store<IdState>('<id>', {})` — the Global Store machinery with a second
+  declarer kind: `prop-<key>` reads are `useStore(profile, (s) => s.key)` in render and
+  `profile.get().key` in a handler; the Set is one patch, `profile.set({ name, city })`, then its
+  Done chain. (2) The two families are **two records in the runtime** (the prefix) and would be
+  **one `store('x')`** in the export, so an Id that is also a Global Store's name refuses the
+  Object side by name and the store keeps its module. (3) The keys: every `prop-*` read wire off
+  an Object and every wired `prop-*` a Set's list admits; typed over the Set's sources exactly as
+  a Global Store key is — with one correction: a key **nothing writes** is `unknown`, because
+  `[].every(...)` is true and would have typed "nothing wrote this" as `string`. (4) Refused by
+  name on the Object: a `prop-*` input wire (a write through the node itself), a wired Fetch, any
+  consumed signal or the `object` port, a wired Id; on the Set: a wired Id, "From repeater"
+  (§4's line, unchanged), a blank Id, an empty list, nothing wired into any listed property, the
+  Array/Object selectors. (5) Dropped **with a note**: a wired `prop-<x>` the list does not admit
+  (the runtime never writes it) and a `Failure` wire (with a literal Id, `Model.get` creates on
+  read — there is never no object to write to; `Clear Array`'s precedent, a gate answers the cause).
+
+### §47.2 The build
+
+| piece | what it is |
+|---|---|
+| discovery (appState.ts) | `objectIdOf` (explicit or unset `idSource`, unwired `modelId`, non-empty literal), `setPropertiesOf`; a pre-pass over the whole project collects Global Store names and Object Ids and their intersection is `registry.objectCollisions`; an Object is a `declarer` (printed **"Read by"**), a Set a `writer`; a Set's wired listed `prop-*` is a `storeKeySources` entry; `StorePlan.origin: 'object'`; `typeOfSource` answers an Object's `prop-<key>` read with the key's type (the Subscribe rule one construct over — an Object read into a Set Variable types the variable) |
+| the module (state.ts) | the store module unchanged but for the comment verb and the no-reader sentence |
+| the reads (plan.ts) | `objectStoreOf` / `objectNodeGate` / `objectKeyReadOf` beside the Model2 pre-pass — the explicit-literal branch runs **before** `model2ForeachGate` and collapses the node into its module; `resolveExpr` answers `store-key-get` in the strict mode; Pass 4g answers a `store-key` binding in the widened mode (an `unknown` key binds and is coerced at the sink — `String(motto ?? '')`) |
+| the write (plan.ts) | `compileSetObjectProperties`: the gates above, the patch in the **list's** order, `doneChainOf`; a new action **`object-set`** `{ storeName, entries, then }` — the toll: `actionsValidIn`, `snapAction` (popup-show's single-chain treatment), the session walker, `fillMaterialize`; `TRIGGER_PORTS[SetModelProperties] = 'store'`; the §45-shaped sweep gives a Set nothing fired the compiled reason or the trigger sentence |
+| the emit (component.ts) | `collectActionUse` (the write earns the import on its own — B12), `expandActions` (the Done chain as following statements), `inAction`, `actionCode` → `profile.set({ name: name, city: city })`, `actionExprsOf` |
+| the mint rule | `Set Object Properties` joined the `outputRead` sink-membership test — the fifth family on s19's rule, found the same way: the first emit dropped the Save wire with *"the action reads values that only exist in another handler"* |
+| the sentences | `model2ForeachGate`'s explicit branch re-sentenced (a wired Id / a blank Id — the old *"id-addressed record in the global store"* sentence described the case this slice built); `recordNeighbourDefer`'s Set branch split into the three module-level constants the compiler also uses |
+| the ledger | `SetModelProperties` translated; `Model2`'s note names both forms; floor 88 → 89 |
+
+### §47.3 What building it found, and what is written down rather than fixed
+
+- 🔴 **The vacuous `every`, in the store typing this slice inherited.** `typeOfStoreKey` types a
+  key `string` when every statically-known writer is string-typed — and `[].every` is `true`, so a
+  key with **no** writer typed `string`. A Global Store key only exists because a Set names it, so
+  its source list is empty only when the Set's value is unwired (and that Set defers); an Object
+  key exists because a **read** names it, so the empty list is the ordinary case. Fixed for
+  `origin: 'object'` keys (A3 pins both directions); the Global Store half is left as it was —
+  a Subscribe reading a key whose only Set has no value wire renders as a typed string — and
+  registered here, owner **EXP-011**. Memory's own trap (`all([])` = the answer you wanted), met
+  in code this time.
+- 🔴 **`Set Global Store` is not on the control-mint list either.** The membership test that made
+  the Save wire drop lists record verbs, user verbs, files nodes and now this Set; a text input
+  read from a *button* into a `Set Global Store`'s value would drop the same way (the mood fixture
+  writes from the input's own `textChanged`, which is why nobody met it). Registered, owner
+  **EXP-011** — one line, the same clause, when a fixture asks.
+- ⚠️ **One patch where the runtime writes N keys.** `_pushInputValues` calls `model.set` per key
+  and the Object's `changed`/`changed-<p>` fire per key; the emitted `profile.set({ … })` is one
+  commit. Invisible on the page (React batches a handler's renders either way) and only a signal
+  chain could observe it — signal outputs are refused by name, so nothing translated can.
+- ⚠️ **`type-<p>` other than Array/Object is ignored, as the runtime ignores it on the write
+  path** — `Number` on a text input's string writes the string in both worlds (B11). The editor's
+  port typing may cast on the *wire* for a typed port; `_pushInputValues` does not, and the
+  written value is what the record holds.
+- ⚠️ **`Create New Array` stays refused, re-derived.** Its `Id` is a generated string whose only
+  consumer is a wired `Array`/mutator Id, and `Collection2` with a wired Id is not translated
+  (*"collection module (literal id only)"*): the node would mint an array nothing exported could
+  name. The consumer side is what would have to move first (a wired Array Id from a statically
+  known minter), and the corpus holds zero instances to design against. The ledger's sentence is
+  unchanged and C11 pins it.
+- ⚠️ The Object's `id` output (the literal itself) and the Set's `id`/`error` outputs are not
+  read by this slice — a Text showing the Id it already knows is rare, and the catch-all names
+  the wire. Refused by the node gate when consumed (the `"id" output is consumed` sentence).
+- ⚠️ A `Set Object Properties` in a component with **no render tree** reaches
+  `recordNeighbourDefer`, which answers the same three sentences and *"its Do is never fired by a
+  translatable trigger"* for the rest — nothing there can fire a Do.
+
+### §47.4 Graded — `tests/object-store.test.ts`, 34 rows, 58 files on disk
+
+§A the module (the golden text; the plan's origin, readers, writer and the two collapses; the
+writer-less key `unknown` and `string` the moment an input writes it, `unknown` again under a
+`Number` writer; Id Source unset on both nodes; the `variables` reservation). §B the component
+(four selector hooks across two files importing one module; the patch in list order with the Done
+chain following — and reordered; the inputs controlled *because* the Set reads them, uncontrolled
+without it; the untyped sink; `.get().key` in a handler and the writer-less key's refusal there; the
+unlisted wire dropped with the runtime's reason; the Failure wire dropped with its line of source;
+an unfed listed key absent; no chain ⇒ the patch alone; the Object's list not gating a read; the
+inert selectors; **B12** the write earning the import alone — arm L's row, written before the arm
+this time). §C eleven refusals by their sentences: Fetch, a property input, a signal / the Object
+port, a wired Id on either node, "From repeater" on either, the two acting selectors, the
+collision (the store keeps its module and its "Declared by"), a blank Id on either, nothing wired /
+an empty list, nothing fires, and **Create New Array's refusal pinned**. §D the fixture whole:
+refused none (the only note is the router shell), typechecked, parsed, the sites counted,
+deterministic, the ledger's three rows and the floor.
+
+The fixture, `tests/fixtures/profile-desk` (16 nodes, 9 wires, and a badge component of 3):
+two inputs → a Save into `profile { name, city }`, Done → Set Variable `status` ← "Saved."; three
+Texts off the page's Object (`name`, `city`, `motto` — the last written by nothing) and a
+`ProfileBadge` component whose own Object reads `name` from a second file.
+
+### §47.5 The gates, the arms and the drive — and the instrument that read a shape it did not know
+
+**The gates, one at a time** (a peer's look-test jest idled on the box for the first hour and the
+suite was queued behind it; a peer's editor stack came up mid-session on ports this slice never
+touches). Package `tsc` 0 on the first pass · the new file 33/33 after two instrument fixes (the
+handler extractor assumed the multi-line button; a short handler prints on one line — brace-matched
+now) · the whole suite **58 files: 1632/1634 on the first run — the two reds a neighbour's**
+(`array-vocabulary.test.ts` pinned the *sentence* this slice deliberately re-wrote: an unset Id
+Source with a literal Id is a module now, and what is left to refuse is the blank Id; both rows
+re-sentenced, behaviour unchanged) · the final run **58 files, 1635/1635, exit 0** · the editor's `tsc` 0 ·
+ledger `OK — 176 types, 96 translated` · picker **89**, floor 89.
+
+**The arms** (`mut47.py` / `runmut47.sh`, thirteen, each tsc-gated, graded by the new file plus its
+three store neighbours — 96 rows — and every arm restored `diff -q` and md5-identical after): A the
+origin never set (24 rows), B the strict mode admits an unknown key (4), C the vacuous `every` back
+(5 — A1 and A3), D the patch iterates the wires not the list (3 — B2's reordering and B6), E the Set
+off the control-mint list (15 — the first emit's own failure, reproduced), F the Fetch gate gone (1 —
+C1 alone, by design), G the collision check gone (1 — C7), H the Done chain not expanded — silently
+lost (7), **I the sweep loses the compiled reason — SURVIVED**, J the Set's wires do not type the
+key (5), K Pass 4g asks in the strict mode (4 — B4), L the write does not earn the import (1 —
+**B12, written before the arm this time**), M the Object's reads do not register keys (8).
+**Arm I was reachable code with no row**: every §C row has a trigger wire, so the attach pass
+records the refusal before the sweep sees the node, and the sweep's "ask the compiler first" branch
+is met only by a Set nothing fires whose compile still refused. Not dead code (a blank-Id Set
+nobody wired is an ordinary half-built graph) — **C12** written, arm I re-run alone, killed by
+exactly that row: 13/13.
+
+**The drive** (`EXPECTED47.md` first, seven steps, fifty-seven cells, no backend — the object is
+client-side state in both worlds). Run 1: **57/57, 0 diffs, `consoleErrors []`, 0 listeners after
+the `trap`**. D4 is the consequence cell — a retyped city reads `Malmö` in the input and **`Lund`**
+in the store until Save, which is what separates "the input is controlled" from "the store was
+written" (the Object's own `prop-*` input shape, refused by name, would have written on every
+keystroke). D6 separates abstain from write: a cleared name writes `''`, the badge follows. D7
+reloads to `{}` — nothing persists, as `Model` does not. **The control**: the arm-H build driven
+through the same instrument read **53/57** — D3, D4, D5 and D6's `status` all `''` and nothing
+else; the prediction named three cells and the fourth (D4, the status *persisting* from D3) is
+the one the prediction forgot, the instrument did not.
+
+### §47.6 What this leaves
+
+- **`Set Global Store` off the control-mint list** — an input read from a button into a store
+  Set drops as this slice's Save did on its first emit; one clause when a fixture asks (EXP-011).
+- **The vacuous `every` on Global Store keys** — a Set with no value wire types its key `string`
+  for every Subscribe reading it (EXP-011; the Object half is fixed and pinned).
+- The Object's `id` output and the Set's `id`/`error` outputs — refused by the gate when consumed;
+  a literal the page already knows, built when a graph reads it.
+- `Create New Array` — refused by decision, re-derived (§47.3); the consumer side (a wired Array
+  Id from a static minter) is the slice that would move it, and the corpus has nothing to design
+  against.
+- The Object's own `prop-*` **inputs** (a write through the node — the interpreter's
+  `scheduleStore` at frame end), a wired Fetch, the `changed`/`changed-<p>` signals — effect and
+  write-through work, refused by name with the sentence that says which.
+- Next by the surface: `Sign In With` (the client's return leg first, `_consumeAuthReturn`); the
+  `Date` column (§46.6); or the two Global Store gaps above, which are one clause each.

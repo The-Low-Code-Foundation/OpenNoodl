@@ -1,0 +1,61 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "pr0f11e5-4e1a-4b3e-9f2a-1a2b3c4d6e02",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "nameInput",
+      "fromProperty": "onTextChanged",
+      "toId": "saveProfile",
+      "toProperty": "prop-name"
+    },
+    {
+      "fromId": "cityInput",
+      "fromProperty": "onTextChanged",
+      "toId": "saveProfile",
+      "toProperty": "prop-city"
+    },
+    {
+      "fromId": "saveButton",
+      "fromProperty": "onClick",
+      "toId": "saveProfile",
+      "toProperty": "store"
+    },
+    {
+      "fromId": "saveProfile",
+      "fromProperty": "done",
+      "toId": "setStatus",
+      "toProperty": "do"
+    },
+    {
+      "fromId": "savedString",
+      "fromProperty": "savedValue",
+      "toId": "setStatus",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "statusVar",
+      "fromProperty": "value",
+      "toId": "statusText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "profile",
+      "fromProperty": "prop-name",
+      "toId": "nameText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "profile",
+      "fromProperty": "prop-city",
+      "toId": "cityText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "profile",
+      "fromProperty": "prop-motto",
+      "toId": "mottoText",
+      "toProperty": "text"
+    }
+  ]
+}
