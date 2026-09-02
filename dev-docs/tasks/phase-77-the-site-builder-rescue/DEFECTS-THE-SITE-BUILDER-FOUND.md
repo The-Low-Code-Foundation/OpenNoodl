@@ -2913,3 +2913,35 @@ project has the module or not — including the suites'.**
 The hole in `authorSiteTemplate` is real — `noodl-mcp/tests/fixtures/demo-app` has **no
 `noodl_modules/` directory at all** — it just does not bound anything the site builder photographs.
 **Owner unchanged (SBR-014); still not blocking, and now not bounding either.**
+
+#### ✅ Confirmed on the members-area template too — it is not a site-builder fact
+
+Re-measured here rather than relayed, after a peer reported the same override on their side:
+
+```
+templates/members-area/nodegx.project.json
+  "name":        "--font-sans"
+  "value":       "\"Source Sans Pro\", \"Segoe UI\", ui-sans-serif, sans-serif"
+  "isCustom":    true
+```
+
+**Both shipped templates override `--font-sans` with their own stack**, so `placeStarterAssets`'s
+Inter arm is inert for either one's renders. The helper hole only changes what a project on the
+**shipped default tokens** renders.
+
+🔴 **And the token's own description is wrong, which is probably why this took three sessions.**
+That same entry reads:
+
+```
+  "description": "Inter, falling back to the system sans-serif stack"
+```
+
+**It documents a font its own value does not contain**, and it is the **only** occurrence of the
+string `Inter` in the whole file. So a reader who greps the template for `Inter` gets a hit, and the
+hit is a sentence asserting exactly the thing that is not true. Every argument in this thread —
+including two of this session's own — was built on "the project has/needs Inter" without anyone
+resolving the token.
+
+⚠️ **Owner: `NONE`.** It is a one-line description fix in `templates/members-area/nodegx.project.json`
+and it belongs to whoever owns that template, not to SBR-014. Recorded here because this is where
+the thread is, and because the next person to grep for a font will be misled the same way.
