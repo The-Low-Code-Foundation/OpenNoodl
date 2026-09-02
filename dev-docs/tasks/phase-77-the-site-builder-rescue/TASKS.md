@@ -19,7 +19,7 @@ per-task status and the session log.
 | SBR-010 | 🟢 **s38: BUILT — ALL FOUR ACs DRIVEN** | `/Pages/Messages` + `/Admin/MessageRow`, and the one wire the rail item never had. The whole loop driven on a real enforcing backend: three anonymous visitors filled the template's own public form, the owner signed in, clicked **Messages** in the rail and read all three — sender, address, body, `Sent from the hello page`, three timestamps. 🔴 **The drive found two defects the graph could not**: [D42](DEFECTS-THE-SITE-BUILDER-FOUND.md#d42) — the template's ONE public endpoint stored **every enquiry twice** and had since SB-004 (three clicks, three runs, six rows; `fallback → pick → save` ran twice per run), invisible because nothing had ever read a `ContactMessage` back; and [D43](DEFECTS-THE-SITE-BUILDER-FOUND.md#d43) — a **refused** query rendered *"No messages yet"* beside its own refusal. Both fixed for this screen; D43's twin on `/Pages/Admin` is registered and deliberately untouched |
 | SBR-011 | ⬜ open | ruled BUILD, not strike |
 | SBR-012 | ⬜ open | |
-| SBR-013 | ⬜ open | |
+| SBR-013 | ✅ closed s41 | **All three ACs.** Six doctrine strings reach a model; **exactly one** (`DESIGN_PLANNING`, in-editor) already stated the order — the five an EXTERNAL agent reads did not. AC1: the change is a MOVE not an addition, **8,274/6 free → 8,273/7 free**, briefing six characters shorter. AC2: two-arm cold drive; 🔴 **AC2 as written was green in BOTH arms** — the discriminator is `metadata.designTokens` **absent (control) vs 34 tokens (shipped)**. AC3: `TASK-TEMPLATE.md` requires a person sentence; SBR-003 and SBR-012 were the two files missing one. 22 specs, both mutant-graded against HEAD. Filed [D48](DEFECTS-THE-SITE-BUILDER-FOUND.md#d48) — 7 tokens of surface headroom left |
 | SBR-015 | 🟢 **s34: CLOSED — ALL FOUR ACs.** AC4 driven, two arms, one variable: a failing publish records `withFlag:JavaScriptFunction:error — Outputs.built is not a function` **by name and with its reason**, `tasks`/`page-8`/`res` **absent**, while the control records all seven; `sbr015-execution-steps-drive.test.ts`, 10 specs, ~3 s. 🔴 **The AC moved because the MECHANISM did, not because anything here changed** — phase 80's DEF-004 put the recorder on `beginOutcome`, so the *"zero `Log` nodes"* explanation is now history, and four handoffs re-asserted 🟡 on it. Three natural failures were tried first and **all three succeeded** (a `pageId` naming nothing → **200 `published:true`**, nothing written = **D34**; an ACL-locked Section → published, a cloud function is not ACL-bound; a non-admin → **403 at the gate**, graph never ran, **no record at all**), which is why the failure arm is a mutant of the deployed bundle. Settled a phase-80 unowned row on the way past (**§4d**): a refused publish leaves the page `published:false` with **no `*` ACL rule** — the *"refusal after making it public"* reading is **disproved at HEAD**, bounded to the one write edge. s13: **AC1 ✅ DRIVEN, AC3 ✅, AC2 ✅ gate green** | **s13 (2026-08-29) paid the drive `379f4dec` owed.** A project minted *after* the fix (a project is a COPY of the template at mint time — re-driving the old fixture would have re-measured the old defect), fresh wizard backend 8598, `Section` table absent entirely. **Both arms, same button, same page, one variable** (`Section.pageId` present or absent, created against a *different* page so the page under test had zero sections either way): refusal renders `This page could not be published.` at **29 ms** with the menu closed, `rgb(220,38,38)`=`--destructive`, 210×33 px; success arm **31 ms** (menu closed *and refusal cleared* — `done → to-Quiet` observed, not just asserted) and **48 ms** (`Published`). Backend `error 11ms · success 12ms · error 11ms`. 🔴 **A measurement error worth keeping: the first refusal reading was 5,827 ms and was the CLI, not the app** — the clock started in one `npm run cdp` process and the click arrived from another; anchoring `t0` in a capture-phase listener inside the page gave 29 ms. **AC4 🟡 re-confirmed**: `execution_steps` 0 rows across all four executions, exactly as AC4 predicted. Independently reproduced on the fresh backend: **DEF-014** (500 `no such column: "pageId"`), **DEF-015** (three workers warned undeployed while the card read "pushed just now"), **SBR-008** (`Page` row has no `title`/`slug`). ⚠️ Fixture `SBR-015 AC1 Drive` left in the refusal arm — `Section.pageId` renamed to `pageId_hidden`. **s12:** **drive done 2026-08-29.** The 30s hang is gone: zero-section publish answers **`HTTP 400 This page could not be published.` in 12–19 ms**, which is `deny`'s own message — SBR-015's wiring is what made it speak. 🔴 **The node is `sections-3`, measured not inferred**: `GET /classes/Section?where={"pageId":…}` → **500 `no such column: "pageId"`**; the auto-created `Section` class holds only `objectId/createdAt/updatedAt/ACL`. **Control pair, one variable** — add the column (via a Section row on a *different* page, so the page under test still has zero) and the identical publish returns **200 in 24 ms**. So RunTasks on an empty list fires `done` not `unchanged`, the guards pass, and **a zero-section page is legitimately publishable**. 🔴 **AC1 still fails**: `/Admin/PageRow`'s three `CloudFunction2` nodes wire `done` and **no `failure`**, so the admin sees **nothing for 47 s observed** — while the success arm through the same button closes the menu at **211 ms**. The fix landed on the cloud half only. Two rows carried out: SBR-016 and phase 80 **s10 (build):** **found by SBR-006 s9, built s10.** Neither `publishPage` nor `duplicatePage` wires a single `failure` edge — every node's only exit is the happy path, so any error is a 30s 504 with no status and no node named. `claimSite` (same file, same author, 5 failure wires → 7 send edges) answers in **29ms** and is the control. 🔴 **The two do NOT disagree**: both stall at the same kind of point and differ only in where their write sits relative to it — duplicate creates its copy *before* the barrier, publish writes *after* it. Three tempting causes were each REFUTED (undeclared signal ports — the artefact declares all six; RunTasks on an empty list — NDA-012 §B3 ends it `done`; an empty query not publishing `items` — `setCollection` flags it unconditionally). Which node broke is deliberately still OPEN: wiring the failures is what makes the backend able to say. 🔴 `execution_steps` is EMPTY for all three executions — the table exists and nothing writes to it |
 | SBR-014 | ⬜ open | last; re-verifies every person-sentence AC |
 | SBR-016 | 🟢 **s15: FIXED + DRIVEN — all four ACs met** (this row read `⬜ open` until s32; the task file has carried the 🟢 banner since s15 and the status column was never updated) | **found by SBR-015's drive s12.** [The list that never asks](SBR-016-THE-LIST-THAT-NEVER-ASKS.md) — arriving at `/admin/pages` renders no rows and no count sentence while `GET /classes/Page` on the same session returns two. 🔴 **Not a refused query: 0 requests to `:8597` after load**, control 5 to `:8574`. `pages-2` fetches only on `create.done` or a row's `Changed`, so any drive that creates a page first cannot see it. Adds a **third** state to SBR-006 §5.8's pair |
@@ -1223,3 +1223,97 @@ filter exists — as free. A second, disjoint `NOT_A_TRIGGER` map now holds `rea
 the D44 fix had to reach it. It went from a **14.5MB** artefact to the **1.5MB** production build.
 Every render drive in the repo now runs against a minified viewer; nothing measured here suggests a
 problem, but it is a shared artefact and the change is stated rather than left to be discovered.
+
+---
+
+## s41 (2026-09-02) — 🟢 **SBR-013 BUILT, all three ACs. The last never-started task in the phase**
+
+**First job followed the standing rule**, not the register: two sessions had gone to defects (s39 →
+D44, s40 → D45), so the rule's own arithmetic — *2 sessions, 0 ACs ⇒ the next MUST build* — pointed
+at SBR-013, the one task nobody had ever started. D46 blocks SBR-011 AC3 and is still open; it was
+not touched.
+
+Verdict, measurements and the seam table live in
+[SBR-013 §5](SBR-013-THE-DOCTRINE-RULE.md). What is worth carrying out of the session:
+
+### 🔴 The rule existed. It existed in ONE of six places, and not the one that mattered
+
+The task's trap says *"an instruction added in one of three surfaces is a third of a rule."* Counted
+before touching anything: six doctrine strings reach a model, and **exactly one already stated the
+order** — `DESIGN_PLANNING`, the in-editor planner's, shipped in phase 54 saying *"Decide the
+project's identity ONCE, before the pages."*
+
+The five an EXTERNAL agent reads did not, and the bound MCP `instructions` said the opposite in so
+many words: *"THE ORDER … decide the component tree FIRST with create_plan"*, with
+`get_style_vocabulary` named only in the per-component sentence three clauses later — the design
+system met for the first time while writing the first leaf.
+
+✅ **So "the repo teaches design-first" was TRUE and "the product teaches design-first" was FALSE**,
+and reading the editor's own prompts would have confirmed the wrong one. **Grep the seam the
+consumer reads, not the seam you remember writing.**
+
+### 🔴 SIX TOKENS of headroom, and the fix was a MOVE
+
+`toolDisclosure.test.ts` prints its margin on a passing run (CN-006 added that line for exactly this
+reason). It read **8,274 against the 8,280 bar — 6 free**, and a paragraph costs ~30. The gate's own
+header forbids a third renegotiation.
+
+✅ The instruction change spends nothing because it is a **move**: `get_style_vocabulary` came out of
+the per-component sentence and went to the front of THE ORDER. Same fact, earlier, one place.
+**8,273 / 7 free** — a token given back, and the briefing is six characters shorter.
+
+⚠️ The reasons ride in `get_project_info`'s `designDoctrine` instead, which is outside the budget —
+**and that is not a workaround, it is where they had to go anyway**: `set_style_preset` and
+`set_project_tokens` are in the DEFERRED `theme` group, so an instruction naming them would point at
+tools absent from `tools/list`. The doctrine names them *and* the `find_tools({group:"theme"})` door.
+The shipped drive walked exactly that path.
+
+### 🔴 The acceptance criterion was green before the work. Two arms said so
+
+AC2 asked that a cold session's "first tool calls include the style vocabulary before the first
+`create_component`". **The control arm, built from committed HEAD, did that** — third call — and so
+did the phase-55 haiku baseline in August. One arm would have certified the change by measuring
+something the change did not cause.
+
+The discriminator is not what was READ, it is what was **written down**:
+
+| | control (HEAD) | shipped |
+|---|---|---|
+| `find_tools({group:"theme"})` | ❌ never called | ✅ |
+| `set_style_preset` / `set_project_tokens` | ❌ neither, ever | ✅ both, before `create_plan` |
+| **`metadata.designTokens` on disk** | **absent** | **present, 34 tokens** |
+
+✅ **The criterion that works is the doctrine's own person sentence** — *somebody can read back the
+accent, the surface ramp and the page list before a single component exists.* Full record:
+[`measurements/SBR-013-COLD-DRIVE-2026-09-02.md`](measurements/SBR-013-COLD-DRIVE-2026-09-02.md).
+
+### ⚠️ A cold-drive control has to be built, not just reverted
+
+The drive loads `packages/noodl-mcp/dist/noodl-mcp.cjs`, which was **two days stale**. Reverting the
+source and running would have measured the shipped build twice and reported it as a control. Both
+arms were verified by grepping the built `.cjs` before the run (`decide the component tree FIRST` = 1
+and `LOOK FIRST` = 0 for the control; the reverse after).
+
+### ⚠️ zsh does not word-split an unquoted variable — a backup/restore loop ran ONCE on the whole string
+
+`FILES="a b c"; for f in $FILES` iterates once with `f` set to the entire string. The `cp` and the
+redirect both failed on a nonexistent path, so nothing was lost — but the same shape with a
+`>` redirect that *does* resolve would have truncated a file with no error. `FILES=(a b c)` and
+`"${FILES[@]}"`. Same family as the memory already carrying `-- $FILES` reads EMPTY in zsh.
+
+### Suites
+
+| suite | result |
+|---|---|
+| `noodl-mcp` (full, 88 files) | **1164 / 1165**, one flake — `projectOwnsBackend` provision race under parallelism, **green alone on re-run** |
+| `sbr013Doctrine.test.ts` (new, 10) | ✅ — **8 red** with every seam reverted to HEAD |
+| `tests-unit/sbr-013/doctrineOrder.test.ts` (new, 12) | ✅ — **10 red** at HEAD; the one that stayed green is `DESIGN_PLANNING`, which is the finding above |
+| `phase-55/designAuthoringPrompt`, `phase-66/planDoctrineArm` | ✅ 34/34 — the neighbours that pin these same strings |
+| `typecheck:mcp`, `typecheck:editor` | ✅ exit 0, 0 errors |
+
+### Filed
+
+- **[D48](DEFECTS-THE-SITE-BUILDER-FOUND.md#d48)** — owner `NONE`. The resident surface has **7
+  tokens** free. The `$ref`ed node schema the gate's header names is now due, and it already blocks
+  a real thing: `create_plan`'s description still says nothing about what must precede a plan. The
+  row carries one measured, undriven way to buy ~39 tokens back.

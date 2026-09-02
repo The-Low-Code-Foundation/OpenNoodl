@@ -28,6 +28,17 @@
  * `noodl-mcp/src/editor-deps.ts` re-export it under the same containment rule as
  * `docsText`.
  *
+ * ## SBR-013 — the order in front of the doctrine
+ *
+ * Phase 77 measured the thing this file could not prevent on its own: eighteen
+ * honest tasks, every acceptance criterion met, and a template nobody would
+ * ship. Decomposition was not the failure — the ORDER was. A component tree was
+ * decided before anyone had written down what the screens were, and the look was
+ * chosen by whichever leaf happened to be authored first. All three strings
+ * below now open with that ordering, and the reasons for it live in
+ * `design.ts`'s §"The order" so there is one statement of it rather than two
+ * dialects (the AAQ-005 rule this module already exists to serve).
+ *
  * ## The threshold is numeric on purpose
  *
  * "Prefer components" without a trigger produces either no change or a project
@@ -47,6 +58,9 @@
  * multi-component decision, and only the planner can act on it.
  */
 export const DECOMPOSITION_PLANNING = `COMPONENTS ARE THE UNIT OF GOOD WORK
+BEFORE THE TREE: the LOOK and the SCREEN LIST are settled first — see DESIGN. A component tree is a
+decomposition of a list of screens; decided before there is one, it is a guess, and a look decided
+after the components is a repaint of all of them that nobody ever performs.
 A page assembled from named section components is easier to read, edit, review and extend than the
 same page as one long column of nodes. Factoring is the default, not an optimisation you reach for
 when a graph gets uncomfortable — by then the wires are already crossed.
@@ -94,6 +108,11 @@ export const DECOMPOSITION_AUTHORING = `COMPOSITION
 You author one component, so you cannot create its siblings — but three of these are yours alone,
 and the fourth is a thing you must say rather than do.
 
+- THE LOOK IS NOT YOURS TO INVENT. Read the project's settled tokens (get_style_vocabulary) and use
+  them. If the project has not settled an identity, say so in your response — do not pick one here.
+  Whatever this component chooses becomes the app's look by default, because nobody repaints a
+  component that is already correct.
+
 - REPETITION IS DATA. Two or more structurally identical siblings is a mistake, always. Build ONE
   subtree and drive it with a Repeater over an Array (sample data when there is no backend, a query
   when there is). Three hand-copied cards is the single most common defect in authored output.
@@ -122,6 +141,12 @@ components — it is the same work, harder to read, and harder for the next pers
  * (`authoring.ts`, PROJECT CONVENTIONS) — so a stale copy here silently wins.
  */
 export const DECOMPOSITION_DOCTRINE_MD = `## Components are the unit of good work
+
+**The order comes first.** Settle the look and the screen list before you decide what the components
+are — the design doctrine's §"The order" says how, and it is not optional sequencing advice. A
+component tree is a decomposition of a list of screens, so a tree decided before that list exists is
+a guess; and a look decided after the components is a repaint of every one of them, which is a thing
+nobody ever actually does.
 
 Factoring is the default. A page assembled from named section components is easier to read, review
 and change than the same page as one long column of nodes.

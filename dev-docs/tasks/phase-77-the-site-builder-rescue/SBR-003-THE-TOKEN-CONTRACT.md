@@ -5,6 +5,14 @@ depends on. **Settled at scoping (s1) — this task implements and verifies it.*
 question "where do defaults live when a fresh site has no `Theme` row" is answered by the
 platform, not by new machinery.
 
+**The person sentence** — added by [SBR-013](SBR-013-THE-DOCTRINE-RULE.md) AC3, which requires this
+phase to comply with the rule it wrote. Unnumbered on purpose: `SBR-003 §2` is cited from
+[SBR-004](SBR-004-THE-PUBLIC-SITE-WEARS-THE-THEME.md#L136) and the sections must not renumber.
+
+> **Someone who publishes a site and then wants it to look different changes the colour in ONE
+> place and the whole site follows** — the theme editor, the public pages and the admin shell
+> together — because every colour and every measure on it names a token rather than a value.
+
 ## 1. The contract, as ruled
 
 1. 🧭 **The shipped 182-token vocabulary IS the contract**

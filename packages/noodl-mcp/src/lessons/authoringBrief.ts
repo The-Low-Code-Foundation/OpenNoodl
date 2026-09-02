@@ -147,6 +147,13 @@ refuses to install a bundle whose author is a model and whose answer is missing.
 Build both projects with the ordinary authoring tools, then call \`create_lesson\`
 with the two directories.
 
+🔴 **The solution is an app, so build it in the app order: the look, then the
+screens, then the components.** Read \`get_style_vocabulary\` and settle the
+project's tokens before you author the first node of the solution — a learner
+spends the whole lesson looking at this project, and a starter derived from a
+solution that picked its colours one node at a time teaches that as the way to
+work. \`get_project_info\`'s \`designDoctrine\` states the order and why it is one.
+
 ## The manifest
 
 ${JSON.stringify(EXAMPLE_MANIFEST, null, 2)}

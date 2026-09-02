@@ -35,6 +35,21 @@ tasks/phase-N/TASK-XXX-short-name/
 
 [One clear sentence describing what this task accomplishes]
 
+## The person sentence — REQUIRED
+
+[One sentence, in the present tense, naming a PERSON and what is now true for them. It must be
+something someone could sit down and check without reading the diff.]
+
+> ✅ "The next person who builds an app through the door is told to settle the tokens and the screens
+> before authoring components."
+> ❌ "The MCP instructions gain design-first guidance." — that is the change, not the consequence.
+
+🔴 **This section is not decoration and it is not the Objective again.** Phase 77 wrote eighteen
+honest tasks, met every acceptance criterion on all of them, and produced a template nobody would
+ship — because no criterion was ever written from the user's side of the screen. Every criterion
+under **Success Criteria** below is checked against this sentence: a criterion that can be met while
+the sentence stays false is measuring the implementation instead of the outcome.
+
 ## Background
 
 [2-3 paragraphs explaining:
@@ -121,7 +136,12 @@ updating the fixture is part of the change.
 
 ## Success Criteria
 
-- [ ] Criterion 1
+🔴 **At least one criterion must be verifiable by a person, not by a test** — the person sentence
+above, restated as something to do and look at. Name what they open, what they do, and what they
+should see. A task whose every criterion is a green suite has been graded by the thing that was
+written to agree with it.
+
+- [ ] **Person-verifiable:** [what someone opens, does, and sees — no code reading]
 - [ ] Criterion 2
 - [ ] All tests pass
 - [ ] No TypeScript errors

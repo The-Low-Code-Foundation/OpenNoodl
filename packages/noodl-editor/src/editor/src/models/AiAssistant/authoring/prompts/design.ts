@@ -33,6 +33,21 @@
  * have been found by reading the graph — the cards that were all 1152px wide,
  * the thirteen empty text boxes, the page that computed to Times.
  *
+ * §"The order" was added by SBR-013 (phase 77) and it is the only section here
+ * that is about a SEQUENCE rather than about a page. It exists because phase 77
+ * measured what the rest of this file cannot prevent: eighteen honest tasks,
+ * every acceptance criterion met, and a template nobody would ship — because the
+ * look and the screen list were decided after the components that had to carry
+ * them, one leaf at a time. Every rule below was already true and none of them
+ * fired, because by the time a model reads §4 it has already chosen a colour.
+ *
+ * ⚠️ It names \`set_style_preset\` / \`set_project_tokens\` **and the `find_tools`
+ * door they sit behind**, which the budgeted `instructions` string cannot afford
+ * to do — that is the division of labour SBR-013 settled: `instructions` carries
+ * the ORDER (three clauses, net six characters cheaper than what it replaced),
+ * this file carries the REASONS and the tool names, and it rides free because a
+ * result field is outside the resident-surface budget.
+ *
  * §0 and §7 were added after Richard reviewed the reference build and found the
  * two things this file had missed. §0 because the page he was shown was 66
  * nodes of inlined sections — the decomposition doctrine broken three commits
@@ -68,6 +83,30 @@ export const DESIGN_DOCTRINE_MD = `## What a designed page is made of
 
 A page that looks designed is not a styled version of a page that does not. It has a different
 STRUCTURE. Build the structure first and the styling has somewhere to land.
+
+### The order: the look, then the screens, then the components
+
+Two things are settled BEFORE the first component exists, and in this order:
+
+1. **The look.** Read \`get_style_vocabulary\`, pick ONE accent and a surface ramp, and write the
+   choice into the project rather than carrying it in your head — \`set_style_preset\` adopts a whole
+   coherent identity, \`set_project_tokens\` overrides individual values. Both sit in the deferred
+   \`theme\` group: call \`find_tools({group:"theme"})\` and they arrive in your next tool list.
+2. **The screens.** Name every page the app has and say, in one sentence each, what a person does on
+   it. That list is what the component tree is a decomposition OF.
+
+Then plan the components, and only then author them.
+
+**Why this is an order and not just two more rules.** A look decided after the components is a
+repaint of every one of them, so it never actually happens: each component is already correct on its
+own terms, nobody wants to reopen it, and the app ships wearing whatever the first leaf authored
+happened to choose. The same is true of a screen list — a component tree invented before anyone said
+what the screens are is a guess that later screens have to be bent around.
+
+**What "settled" means, stated so a person can check it:** somebody can open the project and read
+back the accent, the surface ramp and the page list before a single component has been authored. If
+they cannot, it is not settled — it is being decided one leaf at a time, which is the failure this
+section exists to stop.
 
 ### 0. A page is an assembly of components, not a graph of nodes
 
@@ -293,11 +332,15 @@ before saying it is done. Three checks catch most of what goes wrong:
  * a page as a single operation with no shared parts.
  */
 export const DESIGN_PLANNING = `DESIGN
+THE ORDER: the LOOK, then the SCREEN LIST, then the components. Decide the project's identity ONCE,
+before any of the pages: read get_style_vocabulary and set the design tokens (one accent, a neutral
+surface ramp) with set_style_preset or set_project_tokens, so every later operation can reference
+var(--token) only. Then name every screen and what a person does on it — the component tree is a
+decomposition of THAT list. A look chosen after the components is a repaint of all of them, which is
+why it never happens: the app ships wearing whatever the first component authored picked.
 A page is bands (full-width, alternating background) each holding one centred max-width shell. Plan
 the shared visual parts as their own components — a site header, a footer, and one card component
 per repeated row — because a page that inlines them cannot keep them consistent with the next page.
-Decide the project's identity ONCE, before the pages: set the design tokens (one accent, a neutral
-surface ramp) with set_project_tokens, and every later operation references var(--token) only.
 Anything repeated from a data source is one component plus a Repeater, never duplicated subtrees.`;
 
 /**

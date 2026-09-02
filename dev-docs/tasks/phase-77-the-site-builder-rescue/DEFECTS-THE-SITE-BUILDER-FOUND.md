@@ -2433,6 +2433,43 @@ forward is the control: it is *not* the D45 proxy fix, and that has been measure
 
 ---
 
+## D48 — 🔴 The MCP resident surface has SEVEN tokens free, and the sanctioned fix is now due. Owner `NONE`
+
+**Measured s41 while building SBR-013**, on a passing run — which is the only reason anyone knows.
+
+| when | tokens | free |
+|---|---|---|
+| P81 / VIB-003, 2026-08-31 | 8,254 | 26 |
+| **before SBR-013, 2026-09-02** | **8,274** | **6** |
+| after SBR-013 | 8,273 | **7** |
+
+`packages/noodl-mcp/tests/toolDisclosure.test.ts`'s bar is 8,280 and the gate's own header says, in
+so many words, that **8,280 was the second renegotiation and there must not be a third** — the
+honest fix when it next breaks is *"a `$ref`ed node schema, not a shorter sentence in front of a
+model."* Seven tokens is ~28 characters. **The next clause anyone adds to any tool description
+breaks it**, and VIB-003 already proved that: a 228-character clause on ONE description cost 57.
+
+⚠️ **This is not SBR-013's doing.** SBR-013 gave a token back (its instruction change is a move, not
+an addition, and measured net −6 characters). It is filed here because SBR-013 is what MEASURED it,
+and because a one-sided `<=` assertion reports the crossing and never the approach — the same
+property that let 56 of LEG-001's 58 banked tokens be spent by work that never knew it was spending
+them. The `[surface]` console line CN-006 added is why this row exists at all.
+
+**What it already blocks, concretely.** SBR-013 wanted the design-first order in `create_plan`'s
+tool description as well — the description of the tool that *starts* a multi-component build says
+nothing about what must precede one. It was not done, because a description is billed wherever the
+tool is listed and there is no room. That is a real hole and it is this row's, not SBR-013's.
+
+✅ **One measured way to buy ~39 tokens back, for whoever takes this.** The bound `instructions`
+open with *"Component identifiers accept path form ("Pages/Home") or legacy name ("/Pages/Home"); a
+node instantiating a project component uses the legacyName as its node type."* — ~155 characters,
+and `get_project_info`'s `note` field says the same thing in the same session, on a tool the same
+sentence tells the agent to call FIRST. That is a duplicate across a budgeted channel and a free
+one. ⚠️ **It has not been driven** — nothing here has measured what a model does when the clause is
+only in the result — so it is a candidate with a price attached, not a ruling.
+
+---
+
 ## Where these rows were filed, and why not all of them went to the same place
 
 **s31, 2026-08-30.** Phase 80's `TASKS.md` came clean in the working tree while this session was

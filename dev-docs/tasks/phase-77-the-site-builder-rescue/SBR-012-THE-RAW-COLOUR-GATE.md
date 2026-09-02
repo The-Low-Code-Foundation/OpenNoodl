@@ -5,6 +5,15 @@
 stated) to what a gate can actually hold: **no raw colour anywhere in the template, and every
 consumed token resolves** — plus a named-exemption audit for non-token dimensions.
 
+**The person sentence** — added by [SBR-013](SBR-013-THE-DOCTRINE-RULE.md) AC3, which requires this
+phase to comply with the rule it wrote. Unnumbered on purpose: `SBR-012 §1`–`§4` are cited from
+`packages/noodl-mcp/tests/sbr012RawColourGate.test.ts` and from `TASKS.md`, so the sections must not
+renumber.
+
+> **A person who changes their site's accent colour finds NOTHING left behind** — no button, no
+> border, no hero scrim still wearing the old one — and the next person who adds a section that
+> would break that is told so before it ships, by name.
+
 ## 1. What exists to build on
 
 - `DiagnosticCode.RawColorLiteral` (`validation/parameterValues.ts:976`, regex at `:578`) —

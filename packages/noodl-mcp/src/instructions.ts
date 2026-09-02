@@ -66,7 +66,23 @@ export function projectInstructions(options: ProjectInstructionOptions): string 
     // states the order as the workflow, and names the two primitives nobody
     // finds — haiku found neither `Static Data` nor `Component Inputs` in 42
     // turns; sonnet needed 75 exploration calls to find both.
-    'THE ORDER, FOR ANYTHING BIGGER THAN A TWO-NODE FIX: decide the component tree FIRST with create_plan — ' +
+    //
+    // 🔴 SBR-013. LAS-006's order started at the component tree, and phase 77 is
+    // what that costs: eighteen honest tasks produced a template nobody would
+    // ship, because the look and the screen list were decided AFTER the graphs
+    // that had to carry them, one component at a time. `get_style_vocabulary`
+    // used to be named only in the per-component sentence below — a step inside
+    // authoring rather than a step before it — so a model met the design system
+    // for the first time while writing its first leaf. It now leads the order,
+    // and the sentence below no longer names it, which is why this paragraph is
+    // SIX CHARACTERS SHORTER than the one it replaces rather than longer: the
+    // resident surface had **6 tokens of headroom** (measured 8,274/8,280) and
+    // an ordering change must not be the thing that spends them. The rule's
+    // reasons, and the deferred `theme` tools that actually SET the identity,
+    // ride in `get_project_info`'s `designDoctrine` — a result field, outside
+    // this budget entirely. See `dev-docs/.../SBR-013-THE-DOCTRINE-RULE.md`.
+    'THE ORDER, FOR ANYTHING BIGGER THAN A TWO-NODE FIX: the LOOK FIRST (get_style_vocabulary), then the ' +
+    'SCREEN LIST, then the component tree with create_plan — ' +
     'one operation per component, and on every component another one will place, fill its `inputs` with the ' +
     'port names the instances will set (and `repeats` where it draws a row per item). Then author leaves, ' +
     'then the sections that place them, then the page. A component\'s interface is a `Component Inputs` node ' +
@@ -75,8 +91,14 @@ export function projectInstructions(options: ProjectInstructionOptions): string 
     '`Static Data` node (a JSON array), fed to a `For Each`. Both are easy to miss and there is no ' +
     'substitute for either. ' +
     'When authoring one component: read the parent/pattern component, fetch the node types you need with ' +
-    'get_node_type, call get_style_vocabulary for the on-system tokens/variants (set colour/spacing params as ' +
-    '"var(--token)", never raw hex/px), then create_component / update_component — every write is ' +
+    // 🔴 SBR-013 — `get_style_vocabulary` moved OUT of this sentence and into
+    // THE ORDER above. It was the only mention, and reading the design system
+    // as a per-component step is component-first doctrine stated as a workflow:
+    // whichever leaf happened to be authored first chose the look for the app.
+    // The rule it carried — token, never a literal — stays here, because it is
+    // a rule about the parameter you are about to write.
+    'get_node_type, set colour/spacing params as "var(--token)" and never raw hex/px, then ' +
+    'create_component / update_component — every write is ' +
     'validated and rejections return diagnostics with suggested fixes. ' +
     // FIX-014. The only placement guidance anywhere in the product was one
     // editor prompt line specifying, in effect, a single column — this server

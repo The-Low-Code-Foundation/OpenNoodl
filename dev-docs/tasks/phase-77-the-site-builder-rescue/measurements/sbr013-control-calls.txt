@@ -1,0 +1,40 @@
+# success turns=30 costUsd=1.41 durS=394
+ToolSearch
+mcp__nodegx__create_project
+ToolSearch
+ToolSearch
+mcp__nodegx__get_project_info
+mcp__nodegx__get_style_vocabulary
+mcp__nodegx__get_component
+mcp__nodegx__get_node_type
+mcp__nodegx__get_node_type
+mcp__nodegx__get_example
+mcp__nodegx__get_example
+mcp__nodegx__get_example
+mcp__nodegx__get_example
+mcp__nodegx__get_component
+mcp__nodegx__create_plan
+mcp__nodegx__stage_plan_operation
+mcp__nodegx__stage_plan_operation
+mcp__nodegx__stage_plan_operation
+mcp__nodegx__stage_plan_operation
+mcp__nodegx__stage_plan_operation
+mcp__nodegx__stage_plan_operation
+mcp__nodegx__stage_plan_operation
+mcp__nodegx__stage_plan_operation
+mcp__nodegx__create_component
+mcp__nodegx__stage_plan_operation
+mcp__nodegx__apply_plan
+mcp__nodegx__update_component
+mcp__nodegx__render_report
+mcp__nodegx__render_report
+
+# --- rejections: 1 of 29 calls (1 carried a LAS-007 recipe) ---
+1	mcp__nodegx__stage_plan_operation
+
+# --- diagnostic codes seen by the model ---
+6	inactive-conditional-parameter
+3	repeated-sibling-subtree
+
+# --- what each rejection actually said ---
+[mcp__nodegx__stage_plan_operation] validation-failed · stage_plan_operation "Pages/Contact" rejected — nothing was staged. · 1 diag: WARN [repeated-sibling-subtree] /Pages/Contact › node info_email_group "Studio details" (Group): 4 sibling subtrees here are structurally identical (3 · +1 recipe(s)
