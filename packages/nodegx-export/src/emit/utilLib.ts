@@ -36,7 +36,7 @@
 export const UTIL_LIB_PATH = 'src/lib/util.ts';
 
 /** The exported helpers, one per translated node. Sorted — the import list is sorted too. */
-export const UTIL_HELPERS = ['blendColor', 'booleanToString', 'log', 'mapString', 'remapNumber', 'substring'] as const;
+export const UTIL_HELPERS = ['blendColor', 'booleanToString', 'log', 'mapString', 'pickFile', 'remapNumber', 'substring'] as const;
 
 export type UtilHelper = (typeof UTIL_HELPERS)[number];
 
@@ -59,6 +59,8 @@ export const UTIL_HELPER_MAY_BE_UNDEFINED: Record<UtilHelper, boolean> = {
   // EXP-011 §39: a write, not a read — `log` returns nothing and no expression is ever built from it.
   log: false,
   mapString: true,
+  // EXP-011 §45: an action, not a read — its promise is awaited and tested by the emitted arm, never bound as a value.
+  pickFile: false,
   remapNumber: false,
   substring: false
 };
@@ -206,6 +208,43 @@ export function utilLibSource(): string {
     '  const write = (console[level] || console.log || function () {}) as (...args: unknown[]) => void;',
     '  if (data !== undefined && data !== null) write.call(console, text, data);',
     '  else write.call(console, text);',
+    '}',
+    '',
+    '/**',
+    " * The Open File Picker node's dialog (EXP-011 §45; openfilepicker.ts) as one promise: an",
+    ' * <input type=file> is created, given the accept / capture settings, clicked, and answers',
+    ' * exactly once — the chosen File on `change` (Done); undefined on `change` with nothing',
+    ' * chosen or on `cancel` (the node\'s Unchanged); a rejection where click() itself threw,',
+    ' * which a sandboxed frame without allow-modals does (Failure), with the node\'s own sentence.',
+    ' *',
+    ' * The input is attached, hidden, for the length of the dialog and removed as it settles, so',
+    ' * every browser fires its events against a live element and nothing is left in the page.',
+    ' */',
+    'export function pickFile(options: { accept?: unknown; capture?: unknown } = {}): Promise<File | undefined> {',
+    '  return new Promise((resolve, reject) => {',
+    "    const input = document.createElement('input');",
+    "    input.type = 'file';",
+    '    if (options.accept !== undefined && options.accept !== null && options.accept !== \'\') input.accept = String(options.accept);',
+    '    if (options.capture !== undefined && options.capture !== null && options.capture !== \'\') input.capture = String(options.capture);',
+    "    input.style.display = 'none';",
+    '    const settle = (file: File | undefined) => {',
+    '      input.onchange = null;',
+    '      input.oncancel = null;',
+    '      input.remove();',
+    '      resolve(file);',
+    '    };',
+    '    input.onchange = () => settle(input.files && input.files.length > 0 ? input.files[0] : undefined);',
+    '    input.oncancel = () => settle(undefined);',
+    '    document.body.appendChild(input);',
+    '    try {',
+    '      input.click();',
+    '    } catch (e) {',
+    '      input.onchange = null;',
+    '      input.oncancel = null;',
+    '      input.remove();',
+    "      reject(new Error('Could not open the file picker: ' + (e instanceof Error && e.message ? e.message : String(e))));",
+    '    }',
+    '  });',
     '}',
     ''
   ].join('\n');

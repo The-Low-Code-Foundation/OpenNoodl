@@ -5683,3 +5683,204 @@ email never sent (blank kept it). Read out of the cells:
   mechanism the emitted vocabulary has no shape for. `Upload File` needs the untranslated `Open
   File Picker`; `Cloud File` / `Sign File URL` need a `CloudFile` value type — a build, one
   session, if the product surface wants files before it wants sign-in providers.
+
+## §45 Tier 2.6 continues — the files: `Open File Picker`, `Upload File`, `Cloud File` and `Sign File URL` (session 73, 2026-09-02)
+
+**Picker 84 → 88 of 127 (69.3%)**, floor raised in the same commit. Four nodes and one value
+through them: the picker's `File` into the upload, the upload's stored file into a read or a sign.
+Corpus: 0 of all four (`Open File Picker` was even ledgered *deliberately out of scope* as a
+"specialist" node) — ranked by the product surface: an avatar on a profile page and an attachment
+on a form are the two file features every app with accounts grows first, and both are exactly
+pick → upload → show, with a private upload and a signed link the moment the file is personal.
+
+### §45.1 What the runtime does, and what that decides
+
+- **Open File Picker** (`openfilepicker.ts`): one `<input type=file>` created at initialize and
+  reused; `Open` sets `accept`/`capture`, arms `onchange` and `oncancel`, and calls `click()`.
+  `change` with a file is **Done** (the five outputs flagged); `change` with an empty list or a
+  `cancel` is **Unchanged** (every output as it was — the port's own definition, and a superseded
+  `Open` is settled the same way); a `click()` the browser refused is **Failure** with `Could not
+  open the file picker: <message>`. `Path` is Electron's addition to `File` — the port's own
+  description says it is blank in a browser.
+- **Upload File** (`uploadfile.ts` → `CloudStore.forBackend(...).uploadFile` →
+  `ParseWireAdapter.uploadFile`): `No file specified` before any request when `File` is unset;
+  else `POST /files/<file.name>` with the `File` as the body (`xhr.send(file)`, no JSON content
+  type — the backend sniffs), `X-NodeGX-File-Private: true` where `Private` is on, progress off
+  the XHR's upload events. The 201 body is `{ url, name, size, contentType }`, `name` the
+  **stored** name (`<random8>_<sanitised original>`); `new CloudFile(response)` and Done. The
+  five `File Location` inputs address Supabase (bucket/path) and PocketBase (collection/record/
+  field) and are inert on this wire.
+- **Cloud File** (`cloudfilenode.ts`): a pure holder — `file` set only when the value is a
+  `CloudFile`; `URL`/`Content Type`/`Size` are the object's getters and `Name` strips the prefix
+  (`split('_')`, `length === 1 ? [0] : slice(1).join('_')`).
+- **Sign File URL** (`signfileurl.ts`): `No file specified` when unset; `GET /files/<name>/sign`
+  → `{ url: <url>?exp=&sig=, expiresAt, ttlSeconds }`; `URL Kind` is `signed` **unconditionally on
+  this wire** (ParseWireAdapter — the only server reaching that callback is the one that signs,
+  measured), so `Safe To Share` (`kind !== 'token'`) is true once a link exists. The backend's
+  `assertReadable` gates the sign on real read access; the TTL is `signedUrlTtlSeconds`, 300 by default.
+
+### §45.2 The build
+
+| piece | what it is |
+|---|---|
+| the value | one `ValueExpr` kind, `file-out`, with a `family` (`pick`/`upload`/`sign`), the field as `output`, `tsType` by the wire, `viaState` off the chain. The Record rules: the chain's local inside its own Done, only `Error` inside Failure, the row everywhere else — **and the picker's Unchanged arm reads the row**, because that arm changes nothing (`fileChainScope` has a third value) |
+| `Cloud File` | compiled away like a date node: `uploadFeeding` finds the one wire from an Upload File's `Cloud File`, the read is the upload's row/local, the wire is consumed and the node collapses; `Name` is `cloudFileName(...)`. It rides the pure-node deferral sweep with the date family, so its own sentence names it when nothing feeds it |
+| three actions | `file-pick` (`pickFile({ accept, capture })` from `src/lib/util.ts`, three arms: `=== undefined` is Unchanged, else the row is written and Done runs, the catch is Failure), `file-upload` (`uploadFile(file, { private })` from `src/api/files.ts`), `file-sign` (`signFileUrl(file)`); the two with a file throw `No file specified` inside the try where the file expression is maybe-undefined — the row form — and emit no guard on the chain-local form, which is a `File` by type (a guard there is TS2367) |
+| `src/api/files.ts` | one module per project: `CloudFile` (`name`, `url`, `contentType?`, `size?`), `SignedFileUrl` (`url`, `kind: 'signed' \| 'token' \| 'public'`, `isShareable`, `expiresAt?`, `ttlSeconds?` — the runtime's vocabulary, not this exporter's narrowing), `cloudFileName`, and `uploadFile`/`signFileUrl` over the client (`{ ...signed, kind: 'signed', isShareable: true }`), each with its site lines; the stub throws `is not connected to a backend yet` (a fabricated stored file is a success report for bytes nobody stored). An upload or a sign makes the project *use a backend* (`hasApi`), so the client is emitted with no session call or query beside it |
+| the client | `request()` grows `file?: Blob` (sent as the body itself, no JSON content type) and `headers?`; `uploadFileRequest(file, isPrivate)` → `POST /files/${encodeURIComponent(file.name)}` with the private header; `signFileUrlRequest(name)` → `GET /files/<name>/sign`. Still **two** `fetch` sites and two wraps — the §43 cardinality row is the control. Golden diff = the `request()` change + the two functions |
+| `pickFile` | in the util library, earned as an *action* (the walker over `deepActions`, like `log`): the input is appended hidden for the length of the dialog and removed as it settles, so every browser fires its events against a live element and a drive can reach it; `oncancel` is the Unchanged the runtime added in ERG-001 |
+| the mint predicate | a control wired into any non-trigger input of a files node earns state (a checkbox into `Private`, a text input into `Accepted file types`) — s19's rule, fourth family |
+| the toll | `plan.ts`: 4 type constants + 3 field tables + the location/progress lists, `OWN_CHAIN_OUTPUTS` ×3, the `file-out` kind, 3 actions, `FileOpPlan` + `ComponentPlan.fileOps`, `StateVarPlan.origin` ×2, the scope/names/rows/attached block, `fileAnswerExpr` + `uploadFeeding`, 4 `resolveExpr` cases, `maybeUndefinedExpr`/`exprTsType`/`exprValidIn`, `TRIGGER_PORTS` ×3, `fileOutputsRefusal` + 3 compiles, the dispatch, `actionsValidIn`, `snapAction`, the attach pass, the sweep, `isFileRead`, `fillMaterialize`, the session walker, the late filter, the mint clause, the pure-node sweep, the reserved-word guard; `component.ts`: `collectActionUse`, `deepActions`, `referencedStateNames`, `maybeUndefined` + `FILE_OUT_OPTIONAL_FIELDS`, `fileNamesOf`, `exprCode`, the effect-deps walker, `chainReadsChainLocal`, 3 `actionCode` cases, `actionTakesNoTerminator`, `actionsAwait`, the files import, the util earn, the coercion table, the text sink, `actionExprsOf`, both expression walkers; `emitApp.ts`: `hasFileOps`, `filesModule`, the client; `utilLib.ts`: `pickFile`; `naming.ts`: `isReservedWord`; the ledger (4 rows, floor 88); the client golden |
+
+Refused by name: `Path`; a consumed `Completed` (all three); the progress family (`XMLHttpRequest`'s
+upload events, which `fetch()` does not publish); `Error Status Code` (the client's one sentence
+carries no status); `Cloud File` wired into anything but a Cloud File / Sign File URL; a named
+`Backend`; any `File Location` input set or wired; the upload's `File` fed by anything but a
+picker's `File`, or by nothing; the sign's / the Cloud File's `File` fed by anything but an
+upload's `Cloud File`, by nothing, or by two wires; two wires into a dialog setting; a value read
+from a Failure chain; a picker nobody fires (and the upload that reads it, with the same reason).
+
+### §45.3 What building it found, and what is written down rather than fixed
+
+- 🔴 **A sibling handler reading another node's row is compiled before the attach pass has run.**
+  The upload button reads the file the pick button chose — the whole product surface — and the
+  HTTP / Cloud Function / Record families' "is the source attached?" test in `resolveExpr` has no
+  answer yet at that moment (their handler-argument readers were always in the *same* handler).
+  `fileAnswerExpr` asks the question that can be answered at compile time — does the source
+  compile, and is its trigger wired at all — and takes the row form; the late sweep keeps a wired
+  files node's rows, and the emitter prints only what something reads. A wired trigger whose
+  source later defers leaves the row unwritten, booted `undefined` — exactly the interpreter's
+  state when the picker never fires, so the upload throws `No file specified` as the node would.
+- 🔴 **A checkbox labelled "Private" minted `const [private, setPrivate]`** — a reserved word in a
+  strict module, found by the fixture's own typecheck row; `naming.ts` had the list all along
+  (`propIdentifier` uses it) and the state allocator never asked. `isReservedWord` is exported and
+  the row takes `privateChecked` (label kept, fallback appended). Older than this slice: any
+  control labelled `class`, `static`, `public`, `default`… did the same.
+- 🔴 **`Cannot find name 'cloudFileName'`** — the helper's import was earned in `exprCode`, which
+  runs after the import lines are decided; every other library helper is earned in the two
+  expression walkers, and this one had to be too (both of them — B15 is the row where only a
+  handler reads the Name, and it is what killed arm L). And its `Set` was first declared beside
+  `fileNamesOf`, hundreds of lines below the walker that fills it: the §7.2 TDZ trap, again.
+- 🔴 **The Cloud File's own sentences died in a `ctx` nobody read** until the node joined the
+  pure-node deferral sweep (the date family's; "nothing feeds its Cloud File input" was reported
+  as *no deterministic translation in step 5*).
+- ⚠️ **`encodeURIComponent(file.name)` where the runtime sends the raw name** — XHR percent-
+  encodes a space in a URL itself; the backend decodes the route parameter either way and
+  `sanitizeName` replaces the space with `_`. Recorded, not a divergence an author can see.
+- ⚠️ **The interpreter's `Set Variable` needs a wire** — an authored `value` literal on it defers
+  with *nothing is wired into value*, so the fixture's cancel note rides a `String` node. Not a
+  files finding; noted because it is the first thing a picker's Unchanged chain wants to do.
+- ⚠️ **A dev-open backend admits an anonymous upload** (`checkAccess` returns before the files
+  gate, `HttpServer.ts:1749`) while `files.upload` is declared `authenticated`; the private-file
+  gate (`assertReadable`) is inside the handler and holds. The drive reads it (D6); the platform
+  owns it (loopback dev mode is by design), owner NONE.
+- ⚠️ **An `Image` bound to a private file's url cannot render it** — the browser's own fetch
+  carries no session header, so a private upload's preview is a 403 in the export *and* in the
+  interpreter's Image node. The signed url is the answer, and the drive measures both (D9/D10).
+
+### §45.4 Graded — `tests/files.test.ts`, 40 rows, 56 files on disk
+
+§A the module, the client and the util helper (the two types and the two functions; `cloudFileName`
+**run** through `ts.transpileModule` on three names, not read; the stub throws and the page is
+unchanged; the two requests; `request()`'s file body and the §43 cardinality as a control;
+`pickFile`'s three answers and the attached/removed input; the util library earned only by a
+picker). §B the component (the three arms in the node's order; the row reads; the sibling-handler
+guard and the chain-local `cloudFileName`; Cloud File collapsed and the Image's `src`; the sign's
+guard, chain read and five typed outputs; the reserved word; `private` authored / unset; the
+upload inside the picker's Done — no guard; an upload nothing reads — no row; the Failure arms;
+a picker nobody fires; a wired setting; **B15** a Name read only from a handler earns the import;
+**B16** an upload with no session call earns the client). §C twelve refusals by their sentences,
+with `_active_`/blank as the control. §D the fixture whole: refused none, typechecked (also with
+no backend), parsed, the sites counted.
+
+### §45.5 The gates, the arms and the drive — and the header the backend never allowed
+
+Run one at a time, `vm_stat`/`ps` read before each, a peer's suite and a peer's webpack waited
+out, every server torn down by the runner's own `trap` (`drive45-run.sh`, s73 scratchpad
+`23187039-…`) — 0 listeners left on :8583/:5394/:9344 after both runs.
+
+**The gates.** Package `tsc` 0 · the new file 40/40 · the whole suite **56 files, 1540/1540,
+exit 0** in 80 s (1486 + 38 + the fixture-enumerating specs picking up `photo-desk`; B15/B16
+came after the run, graded alone) · the editor's `tsc` 0 — after two narrowings it wanted and
+this package's `tsc` did not (the editor's TypeScript keeps a `{ defer }` arm on a variable an
+`in` test has excluded; narrowed by assignment) · `export-ledger:check` OK (176 types, 95
+translated) · picker **88/127 (69.3%)**, floor 88 · `nodegx-backend` `sbr007-auth-preflight`
+3/3 with the new row.
+
+**The arms** (`mut45.py` / `runmut45.sh`, fifteen, each tsc-gated, each restored `diff -q`
+clean against a snapshot of the gate-green source):
+
+| arm | what it removes | killed | by |
+|---|---|---|---|
+| A | the picker's `TRIGGER_PORTS` row | 22 | the node is never a sink |
+| B | the mint clause for the files sinks | 15 | the checkbox stateless, Upload dropped |
+| C | the picker's Unchanged arm | 1 | B1 |
+| D | the `No file specified` guard | 5 | B3, B5, D2/D5 (**typecheck**: `File \| undefined` into `File`) |
+| E | the reserved-word guard | 7 | B7 and every typecheck row (`const [private,`) |
+| F | the compile-time row form for a sibling handler | 13 | B3 and everything downstream of the upload |
+| G | the Name projection through `cloudFileName` | 3 | B3, B4, B15 |
+| H | the private header on the client | 1 | A4 |
+| I | the file body in `request()` | 1 | A5 |
+| J | Cloud File in the pure-node sweep | 1 | C10 — the sentence back to *step 5* |
+| K | maybe-undefined per field | 1 | B9 — a guard on a `File` |
+| L | the helper import earned in the action walker | **0 → 1** | survived on the fixture (the render walker also earns it); **B15** was written for it |
+| M | the `isFileRead` render predicate | 6 | B2/B4/B6/B9/D1 — the §7.5 gap, caught by rows |
+| N | `isShareable: true` for a signed link | 1 | A1 |
+| O | the files module earning the client | **0 → 1** | survived on the fixture (Log In earns it too); **B16** was written for it |
+
+Two survivors, both because the fixture had a second earner; both closed by a row that removes it.
+
+**The drive**, `EXPECTED45.md` written before any run: `photo-desk` emitted to `harness45`, a
+fresh dev-open backend on :8583, one seeded user, headless Chrome with
+`Page.setInterceptFileChooserDialog` on (so the picker's click raises `fileChooserOpened` and the
+drive answers it with `DOM.setFileInputFiles`, or dispatches `cancel` on the attached input),
+twelve steps, **88 cells**. The helpers named first: Upload → `uploadFile` → `uploadFileRequest`
+→ `request()`, Sign → `signFileUrl` → `signFileUrlRequest` → `request()`.
+
+🔴 **Run 1: D1–D8 exactly as written, then D9 timed out — the private upload read
+`Could not reach the backend at http://localhost:8583` while the backend was up.** The backend's
+per-request log settled it: an `OPTIONS /files/photo%20two.png` **204, and no POST after it**.
+The one new thing in that request was `X-NodeGX-File-Private: true`, and the backend's CORS
+`Access-Control-Allow-Headers` (`ops/headers.ts`) did not list it — Chrome refused the request
+after a successful preflight, and `fetch()` threw the browser's network error, which the client
+maps to its one sentence. **A product defect, not an export one:** `ParseWireAdapter.uploadFile`
+sets the same header, so a private upload from any cross-origin browser app — the normal deployed
+shape — has failed the same way since BAK-006, and every same-origin preview was green because a
+same-origin request never preflights. SBR-007 D21 found the identical hole for
+`X-Parse-Installation-Id` and its own comment says why nothing noticed. Fixed in the backend (one
+header on the list, `dist` rebuilt), a row added beside D21's (`tests/sbr007-auth-preflight.test.ts`,
+3/3 with its wildcard control), run 1 preserved as the control (`*-run1.log`).
+
+**Run 2: 88 cells, 0 diffs**, `VERIFY OK`, console errors `[]`. Read out of the cells:
+
+- D2/D3 `No file specified` with **no request** — refused on the client, the node's own order.
+- D4 cancel: `pickNote` `nothing chosen`, the row untouched, the hidden input **removed**
+  (`inputLeft 0`); D5 `photo one.png`, 73 bytes, the Done chain read the chain-local's `name`.
+- D6 an anonymous upload **201** (dev-open; principal `anonymous` in the log) — url
+  `…/files/<16 hex>_photo_one.png`, Name `photo_one.png` (the space sanitised away by the
+  backend, the prefix stripped by `cloudFileName`), type `image/png` **sniffed**, size 73; the
+  `img` loaded (`naturalWidth 2`); `uploadErr` **kept** `No file specified` — never cleared.
+- D7 the public sign: `url?exp=&sig=`, kind `signed`, share `true`, expires 300 s ahead, ttl 300.
+- D9 private as alice (principal `user`): the row rewritten (url2, `photo_two.png`, 70) and the
+  **`img` did not load** (`naturalWidth 0`) — the browser's own fetch carries no session header;
+  the verify read the same url `403 This file is private.` anonymously and 200 with the token.
+- D10 the private file signed: the verify read the signed url **200 anonymously** — the pair's
+  whole point, measured.
+- D11 backend down: both Errors the one sentence; every value cell **unchanged**.
+- D12 back: a new signature and a new upload with both Error rows **still holding the sentence**.
+
+### §45.6 What this leaves
+
+- **Two refusals by name written into the ledger this session, no picker change:** `Sign In With`
+  is *scheduled* — a full-page redirect whose Done arrives on a later page load, consumed by the
+  runtime client's constructor (`_consumeAuthReturn`); the exported client needs a return leg
+  first, then the node is a launcher plus a mount-time receiver — one session, when a project asks
+  for provider sign-in. `Subscribe To Changes` is *deliberately out of scope* — SSE pub/sub with no
+  static shape, §43.1's `changed` at node scale. That empties Tier 2.6's buildable list.
+- A stored file into a **record property** (an avatar on a `_User` column, a file on a record verb's
+  `prop-*`) and a Cloud File fed **from** a record's column — both refused by name; the wire
+  serialises a file as `{ __type: 'File', name, url }`, and the next files session is that pair.
+- The picker's Failure arm (a refused `click()`) is graded by the spec and not driven.
+- The dev-open anonymous upload (§45.3) — owner NONE, the platform's loopback mode by design.
+- `Error Status Code` on the upload and the sign, and the progress family — refused by name; a
+  `status` on the client's thrown error would lift the first, `XMLHttpRequest` the second.

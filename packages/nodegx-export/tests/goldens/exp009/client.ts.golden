@@ -92,11 +92,18 @@ function clearSession(): void {
 /**
  * One request on the wire. A failed request throws an Error carrying the
  * backend's own message, which is what every generated Failure path handles.
+ *
+ * A `file` is sent as the body itself, with no JSON content type — the upload
+ * route reads raw bytes and sniffs the type (the runtime's own `xhr.send(file)`).
  */
-async function request<T>(path: string, options: { method?: string; body?: unknown } = {}): Promise<T> {
+async function request<T>(
+  path: string,
+  options: { method?: string; body?: unknown; file?: Blob; headers?: Record<string, string> } = {}
+): Promise<T> {
   const headers: Record<string, string> = {
     'X-Parse-Application-Id': APP_ID,
-    'Content-Type': 'application/json'
+    ...(options.file === undefined ? { 'Content-Type': 'application/json' } : {}),
+    ...(options.headers ?? {})
   };
   const sessionToken = readSession()?.sessionToken;
   if (sessionToken !== undefined) headers['X-Parse-Session-Token'] = sessionToken;
@@ -106,7 +113,7 @@ async function request<T>(path: string, options: { method?: string; body?: unkno
     response = await fetch(ENDPOINT + path, {
       method: options.method ?? 'GET',
       headers,
-      body: options.body === undefined ? undefined : JSON.stringify(options.body)
+      body: options.file !== undefined ? options.file : options.body === undefined ? undefined : JSON.stringify(options.body)
     });
   } catch {
     // A backend that cannot be reached is one sentence, the same one callFunction() throws — not
@@ -260,6 +267,34 @@ function currentUrlWithoutAuthParams(): string {
   url.searchParams.delete('nodegx_auth');
   url.searchParams.delete('nodegx_auth_error');
   return url.toString();
+}
+
+/**
+ * `POST /files/<name>` — the Upload File node's own request (EXP-011 §45), which is
+ * `ParseWireAdapter.uploadFile`: the bytes as the body (the backend sniffs the type itself
+ * and ignores any declared one), the app id and the session token, and
+ * `X-NodeGX-File-Private: true` where the node's Private is on — the header the backend reads
+ * to restrict the stored file to its uploader. The 201 body is the stored file: its STORED
+ * name, its url, and the size and type the backend recorded.
+ */
+export async function uploadFileRequest(
+  file: File,
+  isPrivate: boolean
+): Promise<{ name: string; url: string; contentType?: string; size?: number }> {
+  return request(`/files/${encodeURIComponent(file.name)}`, {
+    method: 'POST',
+    file,
+    headers: isPrivate ? { 'X-NodeGX-File-Private': 'true' } : undefined
+  });
+}
+
+/**
+ * `GET /files/<name>/sign` — the Sign File URL node's own request (EXP-011 §45): a fresh
+ * `?exp=&sig=` link, minted only for a caller who could read the file directly (a private file
+ * answers 403 "This file is private." to anyone else, exactly as reading it would).
+ */
+export async function signFileUrlRequest(name: string): Promise<{ url: string; expiresAt: string; ttlSeconds: number }> {
+  return request(`/files/${encodeURIComponent(name)}/sign`);
 }
 
 /**

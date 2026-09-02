@@ -45,6 +45,8 @@ const PRINT_WIDTH = 100;
 
 /** A bare reference (`name`, `visitorName.get()`) that negates without parentheses. */
 const SIMPLE_REF = /^[A-Za-z_$][A-Za-z0-9_$.]*(\(\))?$/;
+/** EXP-011 §45. The fields of a files answer that are optional even in the chain-local form — must agree with plan.ts. */
+const FILE_OUT_OPTIONAL_FIELDS = new Set(['upload.contentType', 'upload.size', 'sign.expiresAt', 'sign.ttlSeconds']);
 /**
  * The `useSession()` render local (USER-FAMILY-TARGET §4c). One per component whatever the graph
  * reads off it, and reserved so no hook local can take the name out from under it.
@@ -276,6 +278,8 @@ export function emitComponent(
   /** Which `src/lib/date.ts` helpers this component calls — the import list (EXP-011 Tier 1.3). */
   const usedDateHelpers = new Set<string>();
   const usedUtilHelpers = new Set<string>();
+  /** EXP-011 §45. The files-module helpers this component calls — `cloudFileName`, earned by an upload's Name read. Declared here, above the walkers that fill it (the §7.2 TDZ trap). */
+  const usedFileHelpers = new Set<string>();
   /**
    * `src/lib/id.ts`'s helpers (EXP-011 §37).
    *
@@ -345,6 +349,13 @@ export function emitComponent(
     // A read through the row earns that row; the chain-local form names a local the enclosing
     // action declares and earns nothing (the `http-out` rule).
     if (expr.kind === 'now-out' && expr.viaState !== undefined) referencedStateNames.add(expr.viaState);
+    // EXP-011 §45. The row on the same rule — and the upload's Name earns the helper's import
+    // here, where every other library helper is earned, rather than in `exprCode`, which runs
+    // after the import lines are decided (the fixture's typecheck: `Cannot find name 'cloudFileName'`).
+    if (expr.kind === 'file-out') {
+      if (expr.viaState !== undefined) referencedStateNames.add(expr.viaState);
+      if (expr.family === 'upload' && expr.output === 'name') usedFileHelpers.add('cloudFileName');
+    }
     // EXP-011 §37, the same clause for the two id nodes. 🔴 Opt-in and silent when missing, on
     // the `outcome-error` note below: the row would be written by the action, read by the sink,
     // then dropped as unreferenced — a component naming an identifier it never declares.
@@ -439,6 +450,20 @@ export function emitComponent(
     // EXP-011 §43. The Id is the one argument; both chains earn as a call's do.
     if (action.kind === 'record-fetch') {
       collectExprUse(action.id);
+      action.then.forEach(collectActionUse);
+      action.failThen.forEach(collectActionUse);
+    }
+    // EXP-011 §45. The dialog's settings / the file, then every arm — three for the picker.
+    if (action.kind === 'file-pick') {
+      if (action.accept !== undefined) collectExprUse(action.accept);
+      if (action.capture !== undefined) collectExprUse(action.capture);
+      action.then.forEach(collectActionUse);
+      action.unchangedThen.forEach(collectActionUse);
+      action.failThen.forEach(collectActionUse);
+    }
+    if (action.kind === 'file-upload' || action.kind === 'file-sign') {
+      collectExprUse(action.file);
+      if (action.kind === 'file-upload' && action.isPrivate !== undefined) collectExprUse(action.isPrivate);
       action.then.forEach(collectActionUse);
       action.failThen.forEach(collectActionUse);
     }
@@ -542,6 +567,11 @@ export function emitComponent(
         ? [a, ...deepActions(a.whenTrue), ...deepActions(a.whenFalse)]
         : a.kind === 'http-call' || a.kind === 'cloud-call' || a.kind === 'record-fetch' || a.kind === 'external-link'
           ? [a, ...deepActions(a.then), ...deepActions(a.failThen)]
+          : // EXP-011 §45. The two-arm files actions ride the line above's shape; the picker has a third arm.
+            a.kind === 'file-upload' || a.kind === 'file-sign'
+            ? [a, ...deepActions(a.then), ...deepActions(a.failThen)]
+          : a.kind === 'file-pick'
+            ? [a, ...deepActions(a.then), ...deepActions(a.unchangedThen), ...deepActions(a.failThen)]
           : // EXP-011 §15. `Navigate To Path` carries two chains and neither is `failThen`;
             // without this line `usesNavigate` below cannot see a second navigation nested in
             // the first one's Done, and the `useNavigate()` hook it needs goes undeclared.
@@ -619,6 +649,12 @@ export function emitComponent(
     // The second walker, per the warning above: a render binding on an HTTP output reads the
     // state row the request writes, and the row has to survive the `referencedStateNames` filter.
     if (expr.kind === 'http-out' && expr.viaState !== undefined) referencedStateNames.add(expr.viaState);
+    // EXP-011 §45. The second walker, per the warning above: a render read of a files answer is
+    // always the row form, and the upload's Name earns `cloudFileName` here as well.
+    if (expr.kind === 'file-out') {
+      if (expr.viaState !== undefined) referencedStateNames.add(expr.viaState);
+      if (expr.family === 'upload' && expr.output === 'name') usedFileHelpers.add('cloudFileName');
+    }
     // EXP-011 §24. A render read of an Error output is *always* the row form — the failure arm's
     // `const` exists only inside that arm — so this clause earns every row render can see.
     if (expr.kind === 'outcome-error' && expr.viaState !== undefined) referencedStateNames.add(expr.viaState);
@@ -708,6 +744,11 @@ export function emitComponent(
     // verbs' case exactly; the answer row is written only where something reads it, so it is
     // already earned — naming it here keeps the writer and the row inseparable either way.
     if (action.kind === 'http-call' || action.kind === 'cloud-call' || action.kind === 'record-fetch') {
+      referencedStateNames.add(action.errorState);
+      if (action.materialize !== undefined) referencedStateNames.add(action.materialize);
+    }
+    // EXP-011 §45. The same: the Error row is written by the catch whether or not anything reads it.
+    if (action.kind === 'file-pick' || action.kind === 'file-upload' || action.kind === 'file-sign') {
       referencedStateNames.add(action.errorState);
       if (action.materialize !== undefined) referencedStateNames.add(action.materialize);
     }
@@ -1060,6 +1101,11 @@ export function emitComponent(
       // first read, and a column the record does not carry is undefined on the node too.
       case 'record-out':
         return true;
+      // EXP-011 §45. Must agree with plan.ts maybeUndefinedExpr: the row is undefined until the
+      // first Done; the chain-local form is the answer itself, whose optional fields (the wire's
+      // `contentType`/`size`, a link's `expiresAt`/`ttlSeconds`) are the only maybe-undefined reads.
+      case 'file-out':
+        return expr.viaState !== undefined || FILE_OUT_OPTIONAL_FIELDS.has(`${expr.family}.${expr.output}`);
       // Always — an unreadable date answers unset on all five, and Date To String is unset before
       // its first format. Must agree with plan.ts maybeUndefinedExpr (EXP-011 Tier 1.3).
       case 'date-call':
@@ -1216,6 +1262,12 @@ export function emitComponent(
     const read = plan.recordReads.find((r) => r.nodeId === nodeId);
     return read ?? { answerLocal: 'record', messageLocal: 'message', idLocal: 'recordId', fnName: 'fetchById', typeName: 'Record' };
   };
+  /** EXP-011 §45 — the same off `plan.fileOps`, for the same reason. */
+  const fileNamesOf = (nodeId: string) => {
+    const op = plan.fileOps.find((o) => o.nodeId === nodeId);
+    return op ?? { family: 'pick' as const, answerLocal: 'picked', messageLocal: 'message' };
+  };
+
   /**
    * The chain-local one `Now` binds its instant to (EXP-011 Tier 1.3), read off the plan so the
    * expression side and the action side cannot disagree about a name — `httpNamesOf`'s rule.
@@ -1309,6 +1361,23 @@ export function emitComponent(
         const base = expr.viaState !== undefined ? `${expr.viaState}?.` : `${names.answerLocal}.`;
         const field = expr.output.slice('prop-'.length);
         return /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(field) ? `${base}${field}` : `${base}[${JSON.stringify(field)}]`;
+      }
+      /**
+       * A files node's answer (EXP-011 §45) — the Record shape. `file` and `cloudFile` are the
+       * object itself (the argument an Upload / a Sign takes); the upload's `name` goes through
+       * `cloudFileName()`, which strips the wire's storage prefix exactly as the Cloud File
+       * node's getter does, and is guarded in the row form because the row may be undefined.
+       */
+      case 'file-out': {
+        const names = fileNamesOf(expr.nodeId);
+        if (expr.output === 'error') return expr.viaState ?? names.messageLocal;
+        const whole = expr.viaState ?? names.answerLocal;
+        if (expr.output === 'file' || expr.output === 'cloudFile') return whole;
+        if (expr.family === 'upload' && expr.output === 'name') {
+          usedFileHelpers.add('cloudFileName');
+          return expr.viaState !== undefined ? `(${whole} === undefined ? undefined : cloudFileName(${whole}))` : `cloudFileName(${whole})`;
+        }
+        return expr.viaState !== undefined ? `${whole}?.${expr.output}` : `${whole}.${expr.output}`;
       }
       /**
        * A `Now` output (EXP-011 Tier 1.3) — the row anywhere, the chain's own local inside the
@@ -1543,6 +1612,8 @@ export function emitComponent(
         case 'cloud-out':
         // EXP-011 §43, the same clause one node over.
         case 'record-out':
+        // EXP-011 §45, the same clause three nodes over.
+        case 'file-out':
         // EXP-011 §24, the same clause and the same reason one construct over.
         case 'outcome-error':
           if (e.viaState !== undefined) add(e.viaState);
@@ -1686,6 +1757,19 @@ export function emitComponent(
         // EXP-011 §43. The Id, then both chains.
         case 'record-fetch':
           return reads(a.id) || a.then.some(inAction) || a.failThen.some(inAction);
+        // EXP-011 §45. The settings / the file, then every arm.
+        case 'file-pick':
+          return (
+            (a.accept !== undefined && reads(a.accept)) ||
+            (a.capture !== undefined && reads(a.capture)) ||
+            a.then.some(inAction) ||
+            a.unchangedThen.some(inAction) ||
+            a.failThen.some(inAction)
+          );
+        case 'file-upload':
+          return reads(a.file) || (a.isPrivate !== undefined && reads(a.isPrivate)) || a.then.some(inAction) || a.failThen.some(inAction);
+        case 'file-sign':
+          return reads(a.file) || a.then.some(inAction) || a.failThen.some(inAction);
         // EXP-011 Tier 2.5. ⚠️ The `default: false` below would answer "reads nothing" for a
         // link built out of the very value being asked about.
         case 'external-link':
@@ -2314,6 +2398,85 @@ export function emitComponent(
           `${pad(indent)}}`
         ].join('\n');
       }
+      /**
+       * `Open File Picker`'s Open (EXP-011 §45). `pickFile()` is the node's `<input type=file>` as
+       * one promise — a `File` for Done, `undefined` for Unchanged (cancel / nothing chosen), a
+       * rejection where `click()` threw. The row is written on Done only: Unchanged leaves every
+       * output as it was, Failure writes the Error (openfilepicker.ts).
+       */
+      case 'file-pick': {
+        const names = fileNamesOf(action.nodeId);
+        const at = pad(indent);
+        const inner = pad(indent + 2);
+        const deeper = pad(indent + 4);
+        const settings: string[] = [];
+        if (action.accept !== undefined) settings.push(`accept: ${exprCode(action.accept, 'handler')}`);
+        if (action.capture !== undefined) settings.push(`capture: ${exprCode(action.capture, 'handler')}`);
+        const call = `await pickFile(${settings.length > 0 ? `{ ${settings.join(', ')} }` : ''})`;
+        const doneArm = [
+          ...(action.materialize !== undefined ? [`${stateSetterOf(action.materialize)}(${names.answerLocal});`] : []),
+          ...expandActions(action.then).map((a) => `${actionCode(a, indent + 4)};`)
+        ];
+        const unchangedArm = expandActions(action.unchangedThen).map((a) => `${actionCode(a, indent + 4)};`);
+        const arms: string[] =
+          doneArm.length > 0 && unchangedArm.length > 0
+            ? [
+                `${inner}if (${names.answerLocal} === undefined) {`,
+                ...unchangedArm.map((l) => `${deeper}${l}`),
+                `${inner}} else {`,
+                ...doneArm.map((l) => `${deeper}${l}`),
+                `${inner}}`
+              ]
+            : doneArm.length > 0
+              ? [`${inner}if (${names.answerLocal} !== undefined) {`, ...doneArm.map((l) => `${deeper}${l}`), `${inner}}`]
+              : unchangedArm.length > 0
+                ? [`${inner}if (${names.answerLocal} === undefined) {`, ...unchangedArm.map((l) => `${deeper}${l}`), `${inner}}`]
+                : [];
+        return [
+          'try {',
+          arms.length > 0 ? `${inner}const ${names.answerLocal} = ${call};` : `${inner}${call};`,
+          ...arms,
+          `${at}} catch (error) {`,
+          `${inner}const ${names.messageLocal} = error instanceof Error ? error.message : String(error);`,
+          `${inner}${stateSetterOf(action.errorState)}(${names.messageLocal});`,
+          ...expandActions(action.failThen).map((a) => `${inner}${actionCode(a, indent + 2)};`),
+          `${at}}`
+        ].join('\n');
+      }
+      /**
+       * `Upload File`'s Upload and `Sign File URL`'s Sign (EXP-011 §45) — the Record shape with
+       * the file as the one argument, and the node's own `No file specified` thrown inside the
+       * try where the file is unset (the row form; the chain-local form is a `File` by type and
+       * needs no guard — a guard on it would be TS2367). The row is replaced, as the node's is.
+       */
+      case 'file-upload':
+      case 'file-sign': {
+        const names = fileNamesOf(action.nodeId);
+        const at = pad(indent);
+        const inner = pad(indent + 2);
+        const fileCode = exprCode(action.file, 'handler');
+        const fileMaybeUndefined = maybeUndefined(action.file);
+        const fileLocal = `${names.answerLocal}Input`;
+        const bindFile = !SIMPLE_REF.test(fileCode);
+        const ref = bindFile ? fileLocal : fileCode;
+        const guard = fileMaybeUndefined ? [`${inner}if (${ref} === undefined) throw new Error('No file specified');`] : [];
+        const privateArg =
+          action.kind === 'file-upload' && action.isPrivate !== undefined ? `, { private: ${exprCode(action.isPrivate, 'handler')} }` : '';
+        const call = action.kind === 'file-upload' ? `await uploadFile(${ref}${privateArg})` : `await signFileUrl(${ref})`;
+        return [
+          'try {',
+          ...(bindFile ? [`${inner}const ${fileLocal} = ${fileCode};`] : []),
+          ...guard,
+          `${inner}const ${names.answerLocal} = ${call};`,
+          ...(action.materialize !== undefined ? [`${inner}${stateSetterOf(action.materialize)}(${names.answerLocal});`] : []),
+          ...expandActions(action.then).map((a) => `${inner}${actionCode(a, indent + 2)};`),
+          `${at}} catch (error) {`,
+          `${inner}const ${names.messageLocal} = error instanceof Error ? error.message : String(error);`,
+          `${inner}${stateSetterOf(action.errorState)}(${names.messageLocal});`,
+          ...expandActions(action.failThen).map((a) => `${inner}${actionCode(a, indent + 2)};`),
+          `${at}}`
+        ].join('\n');
+      }
       case 'http-call': {
         const names = httpNamesOf(action.nodeId);
         const inner = pad(indent + 2);
@@ -2809,6 +2972,10 @@ export function emitComponent(
       a.kind === 'cloud-call' ||
       // EXP-011 §43. A try/catch, like the three above.
       a.kind === 'record-fetch' ||
+      // EXP-011 §45. Three more try/catches.
+      a.kind === 'file-pick' ||
+      a.kind === 'file-upload' ||
+      a.kind === 'file-sign' ||
       (a.kind === 'external-link' && externalLinkIsStatement(a)) ||
       (a.kind === 'navigate-path' && navigatePathIsStatement(a)) ||
       // EXP-011 §39. The `if` form ends in `}` and must not take a terminator.
@@ -2821,7 +2988,15 @@ export function emitComponent(
   /** Whether anything in these actions, at any depth, is awaited — the arrow around it is `async`. */
   function actionsAwait(actions: HandlerAction[]): boolean {
     return deepActions(actions).some(
-      (a) => a.kind === 'api-call' || a.kind === 'http-call' || a.kind === 'cloud-call' || a.kind === 'record-fetch'
+      (a) =>
+        a.kind === 'api-call' ||
+        a.kind === 'http-call' ||
+        a.kind === 'cloud-call' ||
+        a.kind === 'record-fetch' ||
+        // EXP-011 §45. All three await.
+        a.kind === 'file-pick' ||
+        a.kind === 'file-upload' ||
+        a.kind === 'file-sign'
     );
   }
   /**
@@ -2995,6 +3170,32 @@ export function emitComponent(
     );
   }
   /**
+   * EXP-011 §45. `src/api/files.ts` — one module for the project, the HTTP clause's shape: the
+   * two request helpers where an Upload / a Sign attached, `cloudFileName` where a Name is read,
+   * the two types where a row is typed by them. A picker alone imports nothing from here — its
+   * `pickFile` rides the util library below.
+   */
+  {
+    const fileFns = new Set<string>();
+    if (plan.fileOps.some((o) => o.family === 'upload')) fileFns.add('uploadFile');
+    if (plan.fileOps.some((o) => o.family === 'sign')) fileFns.add('signFileUrl');
+    for (const helper of usedFileHelpers) fileFns.add(helper);
+    const fileTypes = new Set<string>();
+    for (const v of referencedStateVars) {
+      if (v.origin !== 'file') continue;
+      const op = plan.fileOps.find((o) => o.nodeId === v.originNodeId);
+      if (op?.family === 'upload') fileTypes.add('CloudFile');
+      if (op?.family === 'sign') fileTypes.add('SignedFileUrl');
+    }
+    if (fileFns.size > 0 || fileTypes.size > 0) {
+      const specifier = `${relRoot}/api/files`;
+      internalImports.set(
+        specifier,
+        `import { ${[...[...fileFns].sort(), ...[...fileTypes].sort().map((t) => `type ${t}`)].join(', ')} } from '${specifier}';`
+      );
+    }
+  }
+  /**
    * EXP-011 Tier 1.3. One module for the whole project, like the session's and HTTP's — but
    * unlike those two it is the *same text* everywhere, so only the helpers this component
    * actually calls are named in the import.
@@ -3008,6 +3209,8 @@ export function emitComponent(
   // walker sees them, so they are gathered here the id helpers' way.
   for (const a of deepActions(allActions)) {
     if (a.kind === 'log') usedUtilHelpers.add('log');
+    // EXP-011 §45. The picker is an action too, and the dialog helper is earned here.
+    if (a.kind === 'file-pick') usedUtilHelpers.add('pickFile');
     if (a.kind === 'delay') {
       usedTimerHelpers.add(a.verb === 'start' ? 'startDelay' : a.verb === 'restart' ? 'restartDelay' : 'stopDelay');
     }
@@ -3196,7 +3399,10 @@ export function emitComponent(
     // `enabled` and its kin coerce `!!value`. A string column is already what every sink takes.
     const nonStringRecordColumn =
       source.kind === 'computed' && source.expr.kind === 'record-out' && source.expr.output !== 'error' && source.expr.tsType !== 'string';
-    if (untypedVariableOf(source) === null && untypedStoreKeyOf(source) === null && !nonStringRecordColumn) return base;
+    // EXP-011 §45. A files node's number or boolean (a size, Safe To Share) at a sink — the same table.
+    const nonStringFileField =
+      source.kind === 'computed' && source.expr.kind === 'file-out' && source.expr.output !== 'error' && source.expr.tsType !== 'string';
+    if (untypedVariableOf(source) === null && untypedStoreKeyOf(source) === null && !nonStringRecordColumn && !nonStringFileField) return base;
     switch (sink) {
       // The runtime's Text node puts whatever the variable holds through `String()` on its way
       // to the DOM, and a string attribute reaches the DOM the same way (§8.2's coercion).
@@ -3492,6 +3698,11 @@ export function emitComponent(
        */
       if (bound.kind === 'computed' && bound.expr.kind === 'record-out' && bound.expr.output !== 'error') {
         // `bindingExpr` already coerces a non-string column for the text sink (§10's table).
+        const code = bindingExpr(bound, 'text');
+        if (code !== null) return bound.expr.tsType === 'string' ? `{${code} ?? ''}` : `{${code}}`;
+      }
+      // EXP-011 §45. A files node's field in a text sink — the Record clause, three nodes over.
+      if (bound.kind === 'computed' && bound.expr.kind === 'file-out' && bound.expr.output !== 'error') {
         const code = bindingExpr(bound, 'text');
         if (code !== null) return bound.expr.tsType === 'string' ? `{${code} ?? ''}` : `{${code}}`;
       }
@@ -4756,6 +4967,19 @@ export function emitComponent(
       // EXP-011 §43. The Id, then both chains.
       case 'record-fetch':
         return [a.id, ...a.then.flatMap(actionExprsOf), ...a.failThen.flatMap(actionExprsOf)];
+      // EXP-011 §45. The settings / the file, then every arm.
+      case 'file-pick':
+        return [
+          ...(a.accept !== undefined ? [a.accept] : []),
+          ...(a.capture !== undefined ? [a.capture] : []),
+          ...a.then.flatMap(actionExprsOf),
+          ...a.unchangedThen.flatMap(actionExprsOf),
+          ...a.failThen.flatMap(actionExprsOf)
+        ];
+      case 'file-upload':
+        return [a.file, ...(a.isPrivate !== undefined ? [a.isPrivate] : []), ...a.then.flatMap(actionExprsOf), ...a.failThen.flatMap(actionExprsOf)];
+      case 'file-sign':
+        return [a.file, ...a.then.flatMap(actionExprsOf), ...a.failThen.flatMap(actionExprsOf)];
       case 'api-call':
         return [
           ...a.args.flatMap((arg) => (arg.kind === 'expr' ? [arg.expr] : arg.props.map((p) => p.expr))),

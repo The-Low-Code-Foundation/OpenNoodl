@@ -38,7 +38,7 @@ import {
 } from '../ir/types';
 import { componentReachability, Reachability } from './reach';
 import { ScaffoldPage, routedPages } from '../emit/scaffold';
-import { pascalCase } from '../emit/naming';
+import { isReservedWord, pascalCase } from '../emit/naming';
 import { DateHelper } from '../emit/dateLib';
 import { UtilHelper, UTIL_HELPER_MAY_BE_UNDEFINED } from '../emit/utilLib';
 import { ID_HELPERS_BY_FN, IdHelper } from '../emit/idLib';
@@ -251,6 +251,54 @@ const RECORD_TYPE = 'DbModel2';
 const RECORD_OUTPUTS = ['done', 'failure', 'completed', 'error', 'id'];
 
 /**
+ * EXP-011 §45 — the files: `Open File Picker` (Utilities), `Upload File`, `Cloud File` and
+ * `Sign File URL` (Cloud Services). One value flows through them: the picker's `File` (a browser
+ * `File`) into the upload, and the upload's `Cloud File` (`{ name, url, contentType?, size? }` —
+ * the 201 body of `POST /files/<name>`, `cloudfile.ts`) into a `Cloud File` read or a `Sign File
+ * URL`'s `GET /files/<name>/sign`. The picker is `openfilepicker.ts`: an `<input type=file>`
+ * clicked, `change` with a file is Done, `change` with none or `cancel` is Unchanged, a refused
+ * `click()` is Failure. `Cloud File` is a pure projection of the upload's answer — it compiles
+ * away, the way a date node does — and its `Name` strips the wire's `<random8>_` prefix
+ * (`cloudfilenode.ts`). `Sign File URL`'s `URL Kind` is `signed` on this wire unconditionally
+ * (ParseWireAdapter.signFileUrl, measured), so `Safe To Share` is true once a link exists.
+ */
+const FILE_PICKER_TYPE = 'Open File Picker';
+const UPLOAD_FILE_TYPE = 'Upload File';
+const CLOUD_FILE_TYPE = 'Cloud File';
+const SIGN_FILE_URL_TYPE = 'Sign File URL';
+/** Output port → field of the answer each family's row/local holds. `error` is the message. */
+const FILE_PICKER_FIELDS: Record<string, { field: string; tsType: string }> = {
+  file: { field: 'file', tsType: 'File' },
+  name: { field: 'name', tsType: 'string' },
+  sizeInBytes: { field: 'size', tsType: 'number' },
+  type: { field: 'type', tsType: 'string' }
+};
+const CLOUD_FILE_FIELDS: Record<string, { field: string; tsType: string }> = {
+  url: { field: 'url', tsType: 'string' },
+  name: { field: 'name', tsType: 'string' },
+  contentType: { field: 'contentType', tsType: 'string' },
+  size: { field: 'size', tsType: 'number' }
+};
+const SIGN_FILE_URL_FIELDS: Record<string, { field: string; tsType: string }> = {
+  url: { field: 'url', tsType: 'string' },
+  urlKind: { field: 'kind', tsType: 'string' },
+  isShareable: { field: 'isShareable', tsType: 'boolean' },
+  expiresAt: { field: 'expiresAt', tsType: 'string' },
+  ttlSeconds: { field: 'ttlSeconds', tsType: 'number' }
+};
+/** The five `File Location` inputs — Supabase's and PocketBase's, inert on the NodeGX wire (uploadfile.ts). */
+const UPLOAD_FILE_LOCATION_PORTS: Record<string, string> = {
+  bucket: 'Bucket (Supabase)',
+  path: 'Path (Supabase)',
+  collection: 'Collection (PocketBase)',
+  recordId: 'Record ID (PocketBase)',
+  field: 'Field (PocketBase)'
+};
+const UPLOAD_PROGRESS_PORTS = ['progressChanged', 'progressLoadedBytes', 'progressLoadedPercent', 'progressTotalBytes'];
+/** The fields optional even in the chain-local form — must agree with component.ts. */
+const FILE_OUT_OPTIONAL_FIELDS = new Set(['upload.contentType', 'upload.size', 'sign.expiresAt', 'sign.ttlSeconds']);
+
+/**
  * EXP-011 §40. The outputs each node's **own compile** consumes when the node attaches — its
  * Done/Failure chains and the sibling pulses it drops with a reason of its own.
  *
@@ -278,7 +326,11 @@ const OWN_CHAIN_OUTPUTS: Record<string, readonly string[]> = {
   [UNIQUE_ID_TYPE]: ['done', 'completed'],
   [UUID_TYPE]: ['done', 'failure', 'completed'],
   [CLOUD_FUNCTION_TYPE]: ['done', 'failure', 'completed'],
-  [RECORD_TYPE]: ['done', 'failure', 'completed']
+  [RECORD_TYPE]: ['done', 'failure', 'completed'],
+  // EXP-011 §45. The picker owns an Unchanged arm (cancel / nothing chosen / superseded).
+  [FILE_PICKER_TYPE]: ['done', 'unchanged', 'failure', 'completed'],
+  [UPLOAD_FILE_TYPE]: ['done', 'failure', 'completed'],
+  [SIGN_FILE_URL_TYPE]: ['done', 'failure', 'completed']
 };
 /**
  * The node's **own** placeholder regex, and deliberately not the Router's.
@@ -806,6 +858,16 @@ export type ValueExpr =
    * does not carry — the sink decides what an `unknown` needs, as it does for an untyped Variable.
    */
   | { kind: 'record-out'; nodeId: string; output: string; tsType: string; viaState?: string }
+  /**
+   * EXP-011 §45 — a files node's answer, the Record shape with three families behind one kind:
+   * `pick` reads the chosen `File` (`file` is the object itself; `name`/`size`/`type` its
+   * members), `upload` reads the stored file (`cloudFile` the object; `url`/`name`/`contentType`
+   * /`size` its members — and `name` is `cloudFileName(...)`, the prefix stripped as the Cloud
+   * File node strips it), `sign` reads the minted link (`url`/`kind`/`isShareable`/`expiresAt`/
+   * `ttlSeconds`). `error` is the message in every family. A `Cloud File` node resolves to the
+   * `upload` family of the Upload File that feeds it — it holds nothing of its own.
+   */
+  | { kind: 'file-out'; family: 'pick' | 'upload' | 'sign'; nodeId: string; output: string; tsType: string; viaState?: string }
   /**
    * A `Now` output (EXP-011 Tier 1.3) — the instant of the last Read.
    *
@@ -1336,6 +1398,67 @@ export type HandlerAction =
       failThen: HandlerAction[];
     }
   /**
+   * `Open File Picker`'s `Open` (EXP-011 §45) — `pickFile()` from `src/lib/util.ts`, which is the
+   * node's `<input type=file>` and its two listeners as one promise: a `File` on `change` with a
+   * file, `undefined` on `change` with none or on `cancel`, a rejection where `click()` threw.
+   *
+   * ```
+   * try {
+   *   const picked = await pickFile({ accept: 'image/*' });
+   *   if (picked === undefined) { …unchangedThen }
+   *   else { setPickedFile(picked); …then }
+   * } catch (error) {
+   *   const message = error instanceof Error ? error.message : String(error);
+   *   setPickError(message); …failThen
+   * }
+   * ```
+   * The row is written only on Done — Unchanged leaves every output exactly as it was, which is
+   * the port's definition, and Failure writes only the Error (openfilepicker.ts).
+   */
+  | {
+      kind: 'file-pick';
+      nodeId: string;
+      accept?: ValueExpr;
+      capture?: ValueExpr;
+      /** The chosen-file row, when anything outside the Done chain reads the file or its metadata. */
+      materialize?: string;
+      errorState: string;
+      then: HandlerAction[];
+      unchangedThen: HandlerAction[];
+      failThen: HandlerAction[];
+    }
+  /**
+   * `Upload File`'s `Upload` (EXP-011 §45) — the Cloud Function shape with the file as the one
+   * argument: `uploadFile(file, { private })` from `src/api/files.ts`, which is the client's
+   * `POST /files/<name>` with the bytes as the body and `X-NodeGX-File-Private` where asked.
+   * `No file specified` is thrown inside the try where the file is unset — the node's own
+   * sentence, reported as Failure before any request (uploadfile.ts).
+   */
+  | {
+      kind: 'file-upload';
+      nodeId: string;
+      file: ValueExpr;
+      /** `Private` — absent where unset or authored false; a literal `true` or the wired expression otherwise. */
+      isPrivate?: ValueExpr;
+      materialize?: string;
+      errorState: string;
+      then: HandlerAction[];
+      failThen: HandlerAction[];
+    }
+  /**
+   * `Sign File URL`'s `Sign` (EXP-011 §45) — `signFileUrl(file)` from `src/api/files.ts`, the
+   * client's `GET /files/<name>/sign`; `No file specified` thrown for an unset file, as above.
+   */
+  | {
+      kind: 'file-sign';
+      nodeId: string;
+      file: ValueExpr;
+      materialize?: string;
+      errorState: string;
+      then: HandlerAction[];
+      failThen: HandlerAction[];
+    }
+  /**
    * `Now`'s `Read` (EXP-011 Tier 1.3) — re-read the clock, then run the `done` chain.
    *
    * ```
@@ -1575,6 +1698,9 @@ export interface StateVarPlan {
     /** EXP-011 §43 — a `Record`'s row and its Error row. */
     | 'record-row'
     | 'record-row-error'
+    /** EXP-011 §45 — a files node's answer row (a `File`, a `CloudFile`, a `SignedFileUrl`) and its Error row. */
+    | 'file'
+    | 'file-error'
     | 'external-link-error'
     | 'navigate-path-error'
     | 'now'
@@ -1832,6 +1958,18 @@ export interface RecordReadPlan {
   reads: Array<{ name: string; tsType: string }>;
 }
 
+/**
+ * One files node that translated (EXP-011 §45) — what `src/api/files.ts` must export (`upload` and
+ * `sign`; a `pick` needs only `pickFile` from the util library) and the chain-locals its two arms
+ * bind, read off the plan so the expression side and the action side cannot disagree about a name.
+ */
+export interface FileOpPlan {
+  nodeId: string;
+  family: 'pick' | 'upload' | 'sign';
+  answerLocal: string;
+  messageLocal: string;
+}
+
 /** A `Record` whose `Fetch` is unwired (EXP-011 §43): the read, run from an effect keyed on its Id. */
 export interface RecordEffectPlan {
   nodeId: string;
@@ -2037,6 +2175,8 @@ export interface ComponentPlan {
   cloudCalls: CloudCallPlan[];
   /** EXP-011 §43. */
   recordReads: RecordReadPlan[];
+  /** EXP-011 §45. The files nodes that translated, compile order — earned by attachment. */
+  fileOps: FileOpPlan[];
   repeaters: Record<string, RepeaterPlan>;
   /** Static Data nodes hoisted to module constants (STATIC-DATA-TARGET §3), resolution order. */
   staticData: StaticDataPlan[];
@@ -2310,6 +2450,7 @@ function planComponent(
     httpCalls: [],
     cloudCalls: [],
     recordReads: [],
+    fileOps: [],
     repeaters: {},
     staticData: [],
     jsFunctions: {},
@@ -3492,6 +3633,9 @@ function planComponent(
     const cleaned = trimmedLabel.length > 0 ? pascalCase(trimmedLabel).replace(/[^A-Za-z0-9_$]/g, '') : '';
     let base = cleaned.length > 0 ? cleaned.charAt(0).toLowerCase() + cleaned.slice(1) : fallback;
     if (/^[0-9]/.test(base)) base = `_${base}`;
+    // EXP-011 §45. "Private" on a checkbox is `private`, a reserved word — the row takes the
+    // fallback's shape with the label kept (`privateChecked`), the way a prop takes `…Prop`.
+    if (isReservedWord(base)) base = `${base}${fallback.charAt(0).toUpperCase()}${fallback.slice(1)}`;
     let name = base;
     let counter = 2;
     while (stateNameTaken(name) || stateNameTaken(setterNameOf(name))) name = `${base}${counter++}`;
@@ -3810,6 +3954,162 @@ function planComponent(
   };
   /** Record nodes whose `Fetch` attached — from a trigger, or from the Id effect (§43.2). */
   const attachedRecordNodes = new Set<string>();
+
+  // ---- The files (EXP-011 §45) --------------------------------------------------------------
+  //
+  // The Record shape for three nodes at once: a chain reads the local, everything else reads the
+  // row, and `Cloud File` is a projection of an Upload File's row rather than a node of its own.
+  // `unchanged` is a scope of its own for the picker — that arm leaves every output as it was,
+  // so a read there is the row, not a local nothing bound.
+  const fileChainScope = new Map<string, 'done' | 'unchanged' | 'failure'>();
+  const fileNames = new Map<string, { answerLocal: string; messageLocal: string }>();
+  const fileFamilyOf = (type: string): 'pick' | 'upload' | 'sign' | undefined =>
+    type === FILE_PICKER_TYPE ? 'pick' : type === UPLOAD_FILE_TYPE ? 'upload' : type === SIGN_FILE_URL_TYPE ? 'sign' : undefined;
+  /** The two chain-locals a files node binds — `pickedFile`/`pickMessage`, `uploadedFile`/…, `signedLink`/…. */
+  const fileNamesOf = (node: NodeIR) => {
+    let names = fileNames.get(node.id);
+    if (names === undefined) {
+      const family = fileFamilyOf(node.type) ?? 'pick';
+      const fallback = family === 'pick' ? 'Picker' : family === 'upload' ? 'Upload' : 'Sign';
+      const label = (node.authoredLabel ?? '').replace(/[^A-Za-z0-9]+/g, ' ').trim();
+      const base = label.length > 0 ? pascalCase(label).replace(/[^A-Za-z0-9_$]/g, '') : fallback;
+      let stem = base;
+      let counter = 2;
+      while (usedHttpNames.has(stem)) stem = `${base}${counter++}`;
+      usedHttpNames.add(stem);
+      const localBase = stem.charAt(0).toLowerCase() + stem.slice(1);
+      const local = (suffix: string) => {
+        let name = `${localBase}${suffix}`;
+        let n = 2;
+        while (stateNameTaken(name)) name = `${localBase}${suffix}${n++}`;
+        usedStateVarNames.add(name);
+        return name;
+      };
+      names = {
+        // `Signed`, not `Link`: the sign's row is `<label> Url` and a local called `<label>Link`
+        // would not collide, but reads as the same thing — three families, three distinct pairs.
+        answerLocal: local(family === 'pick' ? 'Picked' : family === 'upload' ? 'Stored' : 'Signed'),
+        messageLocal: local('Message')
+      };
+      fileNames.set(node.id, names);
+    }
+    return names;
+  };
+  const fileErrorVars = new Map<string, StateVarPlan>();
+  const fileErrorStateOf = (node: NodeIR): StateVarPlan => {
+    let stateVar = fileErrorVars.get(node.id);
+    if (stateVar === undefined) {
+      const family = fileFamilyOf(node.type) ?? 'pick';
+      const what = family === 'pick' ? 'the file dialog could not open' : family === 'upload' ? 'the last upload failed' : 'the last signing failed';
+      stateVar = allocStateVar(
+        node.authoredLabel === undefined ? undefined : `${node.authoredLabel} Error`,
+        family === 'pick' ? 'pickError' : family === 'upload' ? 'uploadError' : 'signError',
+        'string | undefined',
+        null,
+        node.id,
+        'file-error',
+        `The Error output of ${node.authoredLabel ? `"${node.authoredLabel}"` : `the ${node.type}`} — why ${what}, and never cleared by a later success.`
+      );
+      fileErrorVars.set(node.id, stateVar);
+    }
+    return stateVar;
+  };
+  const fileAnswerVars = new Map<string, StateVarPlan>();
+  const fileAnswerStateOf = (node: NodeIR): StateVarPlan => {
+    let stateVar = fileAnswerVars.get(node.id);
+    if (stateVar === undefined) {
+      const family = fileFamilyOf(node.type) ?? 'pick';
+      const [suffix, fallback, tsType, comment] =
+        family === 'pick'
+          ? ['File', 'pickedFile', 'File | undefined', 'The file the picker last chose — undefined until one is, as the node\'s outputs read before then; Unchanged and Failure leave it as it was.']
+          : family === 'upload'
+            ? ['File', 'storedFile', 'CloudFile | undefined', 'The stored file the last upload produced — undefined until the first succeeds, as the Cloud File output reads before then.']
+            : ['Url', 'signedUrl', 'SignedFileUrl | undefined', 'The link the last Sign minted — undefined until the first succeeds, as the node\'s outputs read before then.'];
+      stateVar = allocStateVar(
+        node.authoredLabel === undefined ? undefined : `${node.authoredLabel} ${suffix}`,
+        fallback,
+        tsType,
+        null,
+        node.id,
+        'file',
+        comment
+      );
+      fileAnswerVars.set(node.id, stateVar);
+    }
+    return stateVar;
+  };
+  /** Files nodes whose trigger attached — the HTTP rule, three nodes over. */
+  const attachedFileNodes = new Set<string>();
+  /**
+   * The read of a files node's answer, in whichever form the read's position takes (§45): the
+   * chain's local inside its own Done arm, only `Error` inside its Failure arm, the row everywhere
+   * else — the picker's Unchanged arm included, because that arm changes nothing. `output` is
+   * already the field name. Null with `ctx.defer` set where the node never attached.
+   */
+  const fileAnswerExpr = (
+    node: NodeIR,
+    trigger: string,
+    family: 'pick' | 'upload' | 'sign',
+    output: string,
+    tsType: string,
+    ctx: ResolveCtx
+  ): ValueExpr | null => {
+    const scope = fileChainScope.get(node.id);
+    if (scope === 'failure' && output !== 'error') {
+      ctx.defer = `its ${output} is read from the Failure chain — that arm runs where nothing arrived, and the value the interpreter holds there is the previous ${family === 'pick' ? 'choice' : family === 'upload' ? 'upload' : 'link'}'s`;
+      return null;
+    }
+    if (scope === undefined && !attachedFileNodes.has(node.id)) {
+      /**
+       * 🔴 A read from ANOTHER handler — the upload button reading the file the pick button
+       * chose, which is the whole product surface of this family — is compiled before the attach
+       * pass has run, so "attached" cannot be asked yet (the HTTP / Cloud Function / Record
+       * families never had a handler-argument reader of a sibling row, so they never met this).
+       * The compile-time question is the one that can be answered: does the node compile, and is
+       * its trigger wired at all. A wired trigger whose source later defers leaves this row
+       * unwritten — booted undefined, exactly the state the interpreter is in when the picker
+       * never fires — so the late sweep keeps a wired files node's rows and the emitter's
+       * reference filter drops any nothing reads. A render read arrives after attachment and
+       * takes the exact test.
+       */
+      const compiled = compiledOf(node, trigger);
+      if ('defer' in compiled) {
+        ctx.defer = compiled.defer;
+        return null;
+      }
+      if (!wiredPorts.has(`${node.id}:${trigger}`)) {
+        ctx.defer = `its ${trigger === 'open' ? 'Open' : trigger === 'upload' ? 'Upload' : 'Sign'} is never fired by a translatable trigger`;
+        return null;
+      }
+    }
+    if (output === 'error') {
+      return scope === 'failure'
+        ? { kind: 'file-out', family, nodeId: node.id, output: 'error', tsType: 'string' }
+        : { kind: 'file-out', family, nodeId: node.id, output: 'error', tsType: 'string', viaState: fileErrorStateOf(node).name };
+    }
+    return scope === 'done'
+      ? { kind: 'file-out', family, nodeId: node.id, output, tsType }
+      : { kind: 'file-out', family, nodeId: node.id, output, tsType, viaState: fileAnswerStateOf(node).name };
+  };
+  /**
+   * The Upload File behind a `file` input — a `Cloud File`'s or a `Sign File URL`'s. Exactly one
+   * wire, from an Upload File's `Cloud File` output; the wire is consumed by the caller. Returns
+   * the source node, or a sentence.
+   */
+  const uploadFeeding = (node: NodeIR, port: string): { upload: NodeIR; key: string } | { defer: string } => {
+    const wires = component.connections.filter((c) => c.toId === node.id && c.toProperty === port);
+    if (wires.length === 0) {
+      return { defer: `nothing feeds its ${port === 'file' && node.type === CLOUD_FILE_TYPE ? 'Cloud File' : 'File'} input — ${node.type === CLOUD_FILE_TYPE ? 'every output reads empty' : 'every Sign answers Failure with "No file specified" and never sends a request'}` };
+    }
+    if (wires.length > 1) return { defer: `two wires feed its ${node.type === CLOUD_FILE_TYPE ? 'Cloud File' : 'File'} — last-writer-wins is not statically ordered` };
+    const source = nodeById.get(wires[0].fromId);
+    if (source === undefined || source.type !== UPLOAD_FILE_TYPE || wires[0].fromProperty !== 'cloudFile') {
+      return {
+        defer: `its ${node.type === CLOUD_FILE_TYPE ? 'Cloud File' : 'File'} is fed by ${source?.type ?? 'nothing'}${source !== undefined ? `.${wires[0].fromProperty}` : ''} — this slice reads a stored file only from an Upload File node's Cloud File output`
+      };
+    }
+    return { upload: source, key: wires[0].key };
+  };
 
   // ---- `Now` (EXP-011 Tier 1.3) -----------------------------------------------------------
   //
@@ -5411,6 +5711,103 @@ function planComponent(
         : { kind: 'cloud-out', nodeId: fromNode.id, output: fromProperty, viaState: cloudAnswerStateOf(fromNode).name };
     }
     /**
+     * `Open File Picker`'s outputs (EXP-011 §45) — the Record rules: the local inside Done, the
+     * row everywhere else (Unchanged included: that arm changes nothing), only `Error` inside
+     * Failure. `Path` is refused by name: it is Electron's addition to `File`, and the node's
+     * own description says it is blank in a browser, which the exported app is.
+     */
+    if (fromNode.type === FILE_PICKER_TYPE) {
+      if (fromProperty === 'done' || fromProperty === 'unchanged' || fromProperty === 'failure' || fromProperty === 'completed') {
+        ctx.defer = `its ${fromProperty} output is consumed as a value — a pulse carries nothing to read`;
+        return null;
+      }
+      if (fromProperty === 'path') {
+        ctx.defer = "its Path output is the desktop app's — a browser never supplies a file's path, and the exported app is a browser";
+        return null;
+      }
+      if (fromProperty !== 'error' && FILE_PICKER_FIELDS[fromProperty] === undefined) {
+        ctx.defer = `its ${fromProperty} output is not a port this node publishes`;
+        return null;
+      }
+      const spec = FILE_PICKER_FIELDS[fromProperty];
+      return fileAnswerExpr(fromNode, 'open', 'pick', spec === undefined ? 'error' : spec.field, spec === undefined ? 'string' : spec.tsType, ctx);
+    }
+    /**
+     * `Upload File`'s outputs (EXP-011 §45). `Cloud File` is a stored-file reference and this
+     * slice reads it only through a `Cloud File` node or a `Sign File URL` — both resolve the
+     * upload themselves (`uploadFeeding`), so a read that reaches here is some other sink and
+     * defers by name. The progress family rides `XMLHttpRequest`'s upload events, which
+     * `fetch()` does not publish; `Error Status Code` is a status the client's one sentence does
+     * not carry.
+     */
+    if (fromNode.type === UPLOAD_FILE_TYPE) {
+      if (fromProperty === 'done' || fromProperty === 'failure' || fromProperty === 'completed') {
+        ctx.defer = `its ${fromProperty} output is consumed as a value — a pulse carries nothing to read`;
+        return null;
+      }
+      if (fromProperty === 'cloudFile') {
+        ctx.defer = 'its Cloud File output is a stored-file reference — this slice reads it through a Cloud File or a Sign File URL node, and nothing else takes one';
+        return null;
+      }
+      if (UPLOAD_PROGRESS_PORTS.includes(fromProperty)) {
+        ctx.defer = `its ${fromProperty} output rides XMLHttpRequest's upload progress events, which fetch() does not publish — this slice sends the file in one request`;
+        return null;
+      }
+      if (fromProperty === 'errorStatus') {
+        ctx.defer = 'its Error Status Code is the HTTP status the backend refused with — the client throws one sentence and does not carry the status';
+        return null;
+      }
+      if (fromProperty !== 'error') {
+        ctx.defer = `its ${fromProperty} output is not a port this node publishes`;
+        return null;
+      }
+      return fileAnswerExpr(fromNode, 'upload', 'upload', 'error', 'string', ctx);
+    }
+    /**
+     * `Cloud File`'s outputs (EXP-011 §45) — a projection of the Upload File that feeds it,
+     * compiled away like a date node: the read is the upload's row (or its Done-chain local),
+     * the node collapses, and its one wire is consumed. `Name` strips the wire's `<random8>_`
+     * prefix, which the emitter does through `cloudFileName()`.
+     */
+    if (fromNode.type === CLOUD_FILE_TYPE) {
+      const spec = CLOUD_FILE_FIELDS[fromProperty];
+      if (spec === undefined) {
+        ctx.defer = `its ${fromProperty} output is not a port this node publishes`;
+        return null;
+      }
+      const fed = uploadFeeding(fromNode, 'file');
+      if ('defer' in fed) {
+        ctx.defer = fed.defer;
+        return null;
+      }
+      const expr = fileAnswerExpr(fed.upload, 'upload', 'upload', spec.field, spec.tsType, ctx);
+      if (expr === null) return null;
+      ctx.consumes.push(fed.key);
+      ctx.logicNodeIds.push(fromNode.id);
+      return expr;
+    }
+    /**
+     * `Sign File URL`'s outputs (EXP-011 §45) — the Record rules. `URL Kind` is `signed` on this
+     * wire and `Safe To Share` therefore true, both computed once in `src/api/files.ts` rather
+     * than at every read; `Error Status Code` defers as the upload's does.
+     */
+    if (fromNode.type === SIGN_FILE_URL_TYPE) {
+      if (fromProperty === 'done' || fromProperty === 'failure' || fromProperty === 'completed') {
+        ctx.defer = `its ${fromProperty} output is consumed as a value — a pulse carries nothing to read`;
+        return null;
+      }
+      if (fromProperty === 'errorStatus') {
+        ctx.defer = 'its Error Status Code is the HTTP status the backend refused with — the client throws one sentence and does not carry the status';
+        return null;
+      }
+      if (fromProperty !== 'error' && SIGN_FILE_URL_FIELDS[fromProperty] === undefined) {
+        ctx.defer = `its ${fromProperty} output is not a port this node publishes`;
+        return null;
+      }
+      const spec = SIGN_FILE_URL_FIELDS[fromProperty];
+      return fileAnswerExpr(fromNode, 'sign', 'sign', spec === undefined ? 'error' : spec.field, spec === undefined ? 'string' : spec.tsType, ctx);
+    }
+    /**
      * A `Record`'s outputs (EXP-011 §43) — the Cloud Function rules with the column types the
      * schema declares. `Id` is the Id the node was given: `setModelID` binds it the moment it
      * arrives, before any read, so it resolves to the feeder rather than to the row.
@@ -5735,6 +6132,12 @@ function planComponent(
       // carry is undefined on the node too.
       case 'record-out':
         return true;
+      // EXP-011 §45. The row is undefined until the first Done; the chain-local form is the answer
+      // itself, and only its optional fields — the wire's `contentType`/`size` (cloudfile.ts:
+      // absent is the honest answer, not 0), a link's `expiresAt`/`ttlSeconds` — can be absent.
+      // Must agree with component.ts `FILE_OUT_OPTIONAL_FIELDS`.
+      case 'file-out':
+        return expr.viaState !== undefined || FILE_OUT_OPTIONAL_FIELDS.has(`${expr.family}.${expr.output}`);
       /**
        * Always, and every road there is one the interpreter takes too (EXP-011 Tier 1.3): a date
        * that could not be read answers unset on all five nodes, `Date To String` is unset before
@@ -6035,6 +6438,9 @@ function planComponent(
       // EXP-011 §43. `Error` is a string the runtime writes; a column is what the schema declares.
       case 'record-out':
         return expr.output === 'error' ? 'string' : expr.tsType;
+      // EXP-011 §45. Each field's type is the wire's (`FILE_PICKER_FIELDS` and its two siblings).
+      case 'file-out':
+        return expr.tsType;
       /**
        * `unknown` for all five, `dateToString` included (EXP-011 Tier 1.3).
        *
@@ -6119,6 +6525,10 @@ function planComponent(
     [CLOUD_FUNCTION_TYPE]: 'call',
     // EXP-011 §43. `Record`'s only action port; with it unwired the node is an effect (§43.2).
     [RECORD_TYPE]: 'fetch',
+    // EXP-011 §45. The three files nodes' only action ports (`Cloud File` has none — it is a read).
+    [FILE_PICKER_TYPE]: 'open',
+    [UPLOAD_FILE_TYPE]: 'upload',
+    [SIGN_FILE_URL_TYPE]: 'sign',
     // EXP-011 Tier 1.3. `Now` is the date family's only action; the other five are pure and have
     // no trigger port at all — they recompute, which is not something a chain can fire.
     [NOW_TYPE]: 'read',
@@ -7499,6 +7909,217 @@ function planComponent(
     };
   };
 
+  /**
+   * The outputs a files node may have consumed, checked by name before anything compiles (EXP-011
+   * §45) — one function for the three, because the refusals are the same sentences.
+   */
+  const fileOutputsRefusal = (node: NodeIR, valueOutputs: Record<string, unknown>, unchanged: boolean): string | undefined => {
+    for (const wire of component.connections.filter((c) => c.fromId === node.id)) {
+      const p = wire.fromProperty;
+      if (p === 'done' || p === 'failure' || p === 'error' || (unchanged && p === 'unchanged') || valueOutputs[p] !== undefined) continue;
+      if (p === 'completed') {
+        return 'its Completed output is consumed — that pulse fires once however the action ended, and this slice emits the arms rather than their join';
+      }
+      if (node.type === FILE_PICKER_TYPE && p === 'path') {
+        return "its Path output is consumed — it is the desktop app's, and a browser never supplies a file's path";
+      }
+      if (node.type === UPLOAD_FILE_TYPE && p === 'cloudFile') {
+        // A Cloud File or a Sign File URL resolves the upload itself and consumes this wire when
+        // its own read compiles; anything else has no way to hold a stored-file reference.
+        const sink = nodeById.get(wire.toId);
+        if (sink !== undefined && (sink.type === CLOUD_FILE_TYPE || sink.type === SIGN_FILE_URL_TYPE) && wire.toProperty === 'file') continue;
+        return `its Cloud File output is wired into ${sink?.type ?? 'nothing'} — a stored-file reference is read only by a Cloud File or a Sign File URL node in this slice`;
+      }
+      if (UPLOAD_PROGRESS_PORTS.includes(p)) {
+        return `its ${p} output is consumed — the progress family rides XMLHttpRequest's upload events, which fetch() does not publish`;
+      }
+      if (p === 'errorStatus') {
+        return 'its Error Status Code is consumed — the HTTP status the backend refused with, which the client\'s one sentence does not carry';
+      }
+      return `its ${p} output is consumed, and this node publishes only ${node.type === FILE_PICKER_TYPE ? 'Done, Unchanged, Failure, Completed, Error, File, Name, Size and Type' : node.type === UPLOAD_FILE_TYPE ? 'Done, Failure, Completed, Error and Cloud File' : 'Done, Failure, Completed, Error, Signed URL, URL Kind, Safe To Share, Expires At and TTL'}`;
+    }
+    return undefined;
+  };
+
+  /**
+   * `Open File Picker`'s `Open` (EXP-011 §45) — three arms: Done binds the chosen file, Unchanged
+   * (cancel, an empty change, a superseded Open) binds nothing, Failure is a `click()` the browser
+   * refused. `Accepted file types` and `Capture` are the dialog's two settings, wired or authored.
+   */
+  const compileFilePick = (node: NodeIR): CompiledSink => {
+    const refusal = fileOutputsRefusal(node, FILE_PICKER_FIELDS, true);
+    if (refusal !== undefined) return { defer: refusal };
+    const ctx = newCtx();
+    const consumes: string[] = [];
+    const setting = (port: string): ValueExpr | undefined | { defer: string } => {
+      const wires = component.connections.filter((c) => c.toId === node.id && c.toProperty === port);
+      if (wires.length > 1) return { defer: `two wires feed ${port} — last-writer-wins is not statically ordered` };
+      if (wires.length === 1) {
+        const expr = resolveExpr(nodeById.get(wires[0].fromId), wires[0].fromProperty, ctx);
+        if (expr === null) return { defer: ctx.defer ?? `${port} has no statically known source` };
+        if (isBooleanExpr(expr)) return { defer: `${port} is fed a logic truth value — only truthiness sinks take one in this slice` };
+        consumes.push(wires[0].key);
+        return expr;
+      }
+      const literal = literalParam(node, port);
+      return typeof literal === 'string' && literal !== '' ? { kind: 'literal', value: literal } : undefined;
+    };
+    // Narrowed by assignment rather than by the `in` test alone: the editor's TypeScript (a
+    // different version from this package's) keeps the `{ defer }` arm on the variable after it.
+    const acceptRaw = setting('acceptedFileTypes');
+    if (acceptRaw !== undefined && 'defer' in acceptRaw) return acceptRaw;
+    const accept = acceptRaw as ValueExpr | undefined;
+    const captureRaw = setting('capture');
+    if (captureRaw !== undefined && 'defer' in captureRaw) return captureRaw;
+    const capture = captureRaw as ValueExpr | undefined;
+
+    fileChainScope.set(node.id, 'done');
+    const done = doneChainOf(node, 'done');
+    fileChainScope.set(node.id, 'unchanged');
+    const unchanged = 'defer' in done ? done : doneChainOf(node, 'unchanged');
+    fileChainScope.set(node.id, 'failure');
+    const fail = 'defer' in unchanged ? unchanged : doneChainOf(node, 'failure');
+    fileChainScope.delete(node.id);
+    if ('defer' in done) return { defer: done.defer };
+    if ('defer' in unchanged) return { defer: unchanged.defer };
+    if ('defer' in fail) return { defer: fail.defer };
+
+    const names = fileNamesOf(node);
+    const materialize = fileAnswerVars.get(node.id)?.name;
+    plan.fileOps.push({ nodeId: node.id, family: 'pick', answerLocal: names.answerLocal, messageLocal: names.messageLocal });
+    return {
+      action: {
+        kind: 'file-pick',
+        nodeId: node.id,
+        ...(accept !== undefined ? { accept } : {}),
+        ...(capture !== undefined ? { capture } : {}),
+        ...(materialize !== undefined ? { materialize } : {}),
+        errorState: fileErrorStateOf(node).name,
+        then: done.then,
+        unchangedThen: unchanged.then,
+        failThen: fail.then
+      },
+      consumes: [...consumes, ...ctx.consumes, ...done.consumes, ...unchanged.consumes, ...fail.consumes],
+      collapses: [...ctx.logicNodeIds, ...done.collapses, ...unchanged.collapses, ...fail.collapses],
+      subscribes: [...ctx.subscriberIds, ...done.subscribes, ...unchanged.subscribes, ...fail.subscribes]
+    };
+  };
+
+  /**
+   * `Upload File`'s `Upload` (EXP-011 §45). Refused by name: a named Backend (the family gate);
+   * any File Location input set or wired (they address Supabase and PocketBase, and are inert
+   * on the NodeGX wire this export targets — an author who filled one in is not building for
+   * this backend); a `File` fed by anything but an Open File Picker's `File`; no `File` at all.
+   */
+  const compileFileUpload = (node: NodeIR): CompiledSink => {
+    const backendId = literalParam(node, 'backendId');
+    if (wiredPorts.has(`${node.id}:backendId`) || (typeof backendId === 'string' && backendId !== '' && backendId !== '_active_')) {
+      return { defer: `it uploads to the backend "${wiredPorts.has(`${node.id}:backendId`) ? '(wired)' : backendId}" rather than the project's active one — a second backend is not in this slice` };
+    }
+    for (const [port, display] of Object.entries(UPLOAD_FILE_LOCATION_PORTS)) {
+      const literal = literalParam(node, port);
+      if (wiredPorts.has(`${node.id}:${port}`) || (typeof literal === 'string' && literal !== '')) {
+        return { defer: `its ${display} is set — the File Location group addresses Supabase and PocketBase, and the project's NodeGX backend stores files independently and never reads it` };
+      }
+    }
+    const refusal = fileOutputsRefusal(node, {}, false);
+    if (refusal !== undefined) return { defer: refusal };
+    const fileWires = component.connections.filter((c) => c.toId === node.id && c.toProperty === 'file');
+    if (fileWires.length === 0) return { defer: 'nothing feeds its File — every Upload answers Failure with "No file specified" and never sends a request' };
+    if (fileWires.length > 1) return { defer: 'two wires feed its File — last-writer-wins is not statically ordered' };
+    const ctx = newCtx();
+    const consumes: string[] = [];
+    const source = nodeById.get(fileWires[0].fromId);
+    if (source === undefined || source.type !== FILE_PICKER_TYPE || fileWires[0].fromProperty !== 'file') {
+      return { defer: `its File is fed by ${source?.type ?? 'nothing'}${source !== undefined ? `.${fileWires[0].fromProperty}` : ''} — this slice uploads the file an Open File Picker chose` };
+    }
+    const file = resolveExpr(source, 'file', ctx);
+    if (file === null) return { defer: ctx.defer ?? 'its File has no statically known source' };
+    consumes.push(fileWires[0].key);
+    let isPrivate: ValueExpr | undefined;
+    const privateWires = component.connections.filter((c) => c.toId === node.id && c.toProperty === 'private');
+    if (privateWires.length > 1) return { defer: 'two wires feed its Private — last-writer-wins is not statically ordered' };
+    if (privateWires.length === 1) {
+      // A truthiness sink: the adapter tests `options.private ?` (ParseWireAdapter.uploadFile),
+      // so a logic truth value lands here as it does on `enabled`.
+      const expr = resolveExpr(nodeById.get(privateWires[0].fromId), privateWires[0].fromProperty, ctx);
+      if (expr === null) return { defer: ctx.defer ?? 'its Private has no statically known source' };
+      isPrivate = expr;
+      consumes.push(privateWires[0].key);
+    } else if (literalParam(node, 'private') === true) {
+      isPrivate = { kind: 'literal', value: true };
+    }
+
+    fileChainScope.set(node.id, 'done');
+    const done = doneChainOf(node, 'done');
+    fileChainScope.set(node.id, 'failure');
+    const fail = 'defer' in done ? done : doneChainOf(node, 'failure');
+    fileChainScope.delete(node.id);
+    if ('defer' in done) return { defer: done.defer };
+    if ('defer' in fail) return { defer: fail.defer };
+
+    const names = fileNamesOf(node);
+    const materialize = fileAnswerVars.get(node.id)?.name;
+    plan.fileOps.push({ nodeId: node.id, family: 'upload', answerLocal: names.answerLocal, messageLocal: names.messageLocal });
+    return {
+      action: {
+        kind: 'file-upload',
+        nodeId: node.id,
+        file,
+        ...(isPrivate !== undefined ? { isPrivate } : {}),
+        ...(materialize !== undefined ? { materialize } : {}),
+        errorState: fileErrorStateOf(node).name,
+        then: done.then,
+        failThen: fail.then
+      },
+      consumes: [...consumes, ...ctx.consumes, ...done.consumes, ...fail.consumes],
+      collapses: [...ctx.logicNodeIds, ...done.collapses, ...fail.collapses],
+      subscribes: [...ctx.subscriberIds, ...done.subscribes, ...fail.subscribes]
+    };
+  };
+
+  /** `Sign File URL`'s `Sign` (EXP-011 §45) — the upload's shape with the stored file as the argument. */
+  const compileFileSign = (node: NodeIR): CompiledSink => {
+    const backendId = literalParam(node, 'backendId');
+    if (wiredPorts.has(`${node.id}:backendId`) || (typeof backendId === 'string' && backendId !== '' && backendId !== '_active_')) {
+      return { defer: `it signs on the backend "${wiredPorts.has(`${node.id}:backendId`) ? '(wired)' : backendId}" rather than the project's active one — a second backend is not in this slice` };
+    }
+    const refusal = fileOutputsRefusal(node, SIGN_FILE_URL_FIELDS, false);
+    if (refusal !== undefined) return { defer: refusal };
+    const fed = uploadFeeding(node, 'file');
+    if ('defer' in fed) return { defer: fed.defer };
+    const ctx = newCtx();
+    const file = fileAnswerExpr(fed.upload, 'upload', 'upload', 'cloudFile', 'CloudFile', ctx);
+    if (file === null) return { defer: ctx.defer ?? 'its File has no statically known source' };
+    const consumes: string[] = [fed.key];
+
+    fileChainScope.set(node.id, 'done');
+    const done = doneChainOf(node, 'done');
+    fileChainScope.set(node.id, 'failure');
+    const fail = 'defer' in done ? done : doneChainOf(node, 'failure');
+    fileChainScope.delete(node.id);
+    if ('defer' in done) return { defer: done.defer };
+    if ('defer' in fail) return { defer: fail.defer };
+
+    const names = fileNamesOf(node);
+    const materialize = fileAnswerVars.get(node.id)?.name;
+    plan.fileOps.push({ nodeId: node.id, family: 'sign', answerLocal: names.answerLocal, messageLocal: names.messageLocal });
+    return {
+      action: {
+        kind: 'file-sign',
+        nodeId: node.id,
+        file,
+        ...(materialize !== undefined ? { materialize } : {}),
+        errorState: fileErrorStateOf(node).name,
+        then: done.then,
+        failThen: fail.then
+      },
+      consumes: [...consumes, ...ctx.consumes, ...done.consumes, ...fail.consumes],
+      collapses: [...ctx.logicNodeIds, ...done.collapses, ...fail.collapses],
+      subscribes: [...ctx.subscriberIds, ...done.subscribes, ...fail.subscribes]
+    };
+  };
+
   const compileNowRead = (node: NodeIR): CompiledSink => {
     for (const wire of component.connections.filter((c) => c.fromId === node.id)) {
       if (wire.fromProperty === 'done' || NOW_OUTPUTS[wire.fromProperty] !== undefined) continue;
@@ -8382,6 +9003,10 @@ function planComponent(
     if (node.type === HTTP_TYPE) return compileHttpFetch(node);
     if (node.type === CLOUD_FUNCTION_TYPE) return compileCloudCall(node);
     if (node.type === RECORD_TYPE) return compileRecordFetch(node);
+    // EXP-011 §45.
+    if (node.type === FILE_PICKER_TYPE) return compileFilePick(node);
+    if (node.type === UPLOAD_FILE_TYPE) return compileFileUpload(node);
+    if (node.type === SIGN_FILE_URL_TYPE) return compileFileSign(node);
     if (node.type === NOW_TYPE) return compileNowRead(node);
     if (ID_NODES[node.type] !== undefined) return compileIdNew(node);
     if (node.type === 'Condition') return compileCondition(node);
@@ -8606,6 +9231,9 @@ function planComponent(
       /** EXP-011 §43 — `record-out`, the same. */
       case 'record-out':
         return true;
+      /** EXP-011 §45 — `file-out`, the same. */
+      case 'file-out':
+        return true;
       /** `Now`, on the same footing as `http-out` and for the same reason. */
       case 'now-out':
         return true;
@@ -8715,6 +9343,28 @@ function planComponent(
         case 'record-fetch':
           return (
             exprValidIn(action.id, context, invokedScope) &&
+            actionsValidIn(action.then, context, invokedScope) &&
+            actionsValidIn(action.failThen, context, invokedScope)
+          );
+        // EXP-011 §45. The dialog's settings are read where the handler is; all three arms run there.
+        case 'file-pick':
+          return (
+            (action.accept === undefined || exprValidIn(action.accept, context, invokedScope)) &&
+            (action.capture === undefined || exprValidIn(action.capture, context, invokedScope)) &&
+            actionsValidIn(action.then, context, invokedScope) &&
+            actionsValidIn(action.unchangedThen, context, invokedScope) &&
+            actionsValidIn(action.failThen, context, invokedScope)
+          );
+        case 'file-upload':
+          return (
+            exprValidIn(action.file, context, invokedScope) &&
+            (action.isPrivate === undefined || exprValidIn(action.isPrivate, context, invokedScope)) &&
+            actionsValidIn(action.then, context, invokedScope) &&
+            actionsValidIn(action.failThen, context, invokedScope)
+          );
+        case 'file-sign':
+          return (
+            exprValidIn(action.file, context, invokedScope) &&
             actionsValidIn(action.then, context, invokedScope) &&
             actionsValidIn(action.failThen, context, invokedScope)
           );
@@ -8958,6 +9608,11 @@ function planComponent(
           (USER_VERBS[sink.type].columns === true && c.toProperty.startsWith('prop-'))
         );
       }
+      // EXP-011 §45 — the files nodes read their inputs from the button's handler too: a checkbox
+      // into Upload File's Private, a text input into the picker's Accepted file types. s19's
+      // rule, fourth family: the sink-membership test grows with the vocabulary or a control
+      // renders stateless and the trigger is dropped with a true sentence about a row nothing minted.
+      if (fileFamilyOf(sink.type) !== undefined) return !isTriggerWire(sink.type, c.toProperty);
       return rendered.has(sink.id) && !isTriggerWire(sink.type, c.toProperty);
     });
     if (!stateWired && !actionWired && !outputRead) continue;
@@ -9526,6 +10181,38 @@ function planComponent(
         const failThen = snapActionList(action.failThen, snap);
         if (!Array.isArray(failThen)) return failThen;
         return { ...action, args, then, failThen };
+      }
+      // EXP-011 §45. The settings / the file are read before the await; every arm carries the map on.
+      case 'file-pick': {
+        // Narrowed by assignment, for the editor's TypeScript (see compileFilePick).
+        const acceptRaw = action.accept === undefined ? undefined : snapExpr(action.accept, snap);
+        if (acceptRaw !== undefined && 'defer' in acceptRaw) return acceptRaw;
+        const accept = acceptRaw as ValueExpr | undefined;
+        const captureRaw = action.capture === undefined ? undefined : snapExpr(action.capture, snap);
+        if (captureRaw !== undefined && 'defer' in captureRaw) return captureRaw;
+        const capture = captureRaw as ValueExpr | undefined;
+        const then = snapActionList(action.then, snap);
+        if (!Array.isArray(then)) return then;
+        const unchangedThen = snapActionList(action.unchangedThen, snap);
+        if (!Array.isArray(unchangedThen)) return unchangedThen;
+        const failThen = snapActionList(action.failThen, snap);
+        if (!Array.isArray(failThen)) return failThen;
+        return { ...action, ...(accept !== undefined ? { accept } : {}), ...(capture !== undefined ? { capture } : {}), then, unchangedThen, failThen };
+      }
+      case 'file-upload':
+      case 'file-sign': {
+        const file = snapExpr(action.file, snap);
+        if ('defer' in file) return file;
+        const isPrivateRaw = action.kind === 'file-upload' && action.isPrivate !== undefined ? snapExpr(action.isPrivate, snap) : undefined;
+        if (isPrivateRaw !== undefined && 'defer' in isPrivateRaw) return isPrivateRaw;
+        const isPrivate = isPrivateRaw as ValueExpr | undefined;
+        const then = snapActionList(action.then, snap);
+        if (!Array.isArray(then)) return then;
+        const failThen = snapActionList(action.failThen, snap);
+        if (!Array.isArray(failThen)) return failThen;
+        return action.kind === 'file-upload'
+          ? { ...action, file, ...(isPrivate !== undefined ? { isPrivate } : {}), then, failThen }
+          : { ...action, file, then, failThen };
       }
       // EXP-011 §43. The Id is read before the await, so an earlier Set Variable must reach it.
       case 'record-fetch': {
@@ -10142,6 +10829,17 @@ function planComponent(
           attachedRecordNodes.add(action.nodeId);
           scanActions(action.then);
           scanActions(action.failThen);
+        } else if (action.kind === 'file-pick') {
+          // EXP-011 §45. Three arms, every one walked — a popup opened from a cancelled dialog is
+          // a popup nothing here knows is attached otherwise.
+          attachedFileNodes.add(action.nodeId);
+          scanActions(action.then);
+          scanActions(action.unchangedThen);
+          scanActions(action.failThen);
+        } else if (action.kind === 'file-upload' || action.kind === 'file-sign') {
+          attachedFileNodes.add(action.nodeId);
+          scanActions(action.then);
+          scanActions(action.failThen);
         } else if (action.kind === 'date-now-read') {
           attachedNowNodes.add(action.nodeId);
           scanActions(action.then);
@@ -10441,6 +11139,20 @@ function planComponent(
         : compiled !== undefined && 'defer' in compiled
           ? compiled.defer
           : `its ${trigger === 'fetch' ? 'Fetch' : 'Call'} is never fired by a translatable trigger`;
+    dispositions[node.id] = { kind: 'deferred', to: 'EXP-003', reason };
+    notes.push(`node ${node.id} (${node.type}) deferred: ${reason}`);
+  }
+
+  // EXP-011 §45. The three files nodes, the HTTP sweep's shape; `Cloud File` is a read and defers
+  // through the wire off it, as a date node does.
+  for (const node of component.nodes) {
+    const trigger = TRIGGER_PORTS[node.type];
+    if (fileFamilyOf(node.type) === undefined || trigger === undefined || dispositions[node.id] !== undefined) continue;
+    const compiled = compiledSinks.get(`${node.id}:${trigger}`);
+    const reason =
+      compiled !== undefined && 'defer' in compiled
+        ? compiled.defer
+        : `its ${trigger === 'open' ? 'Open' : trigger === 'upload' ? 'Upload' : 'Sign'} is never fired by a translatable trigger`;
     dispositions[node.id] = { kind: 'deferred', to: 'EXP-003', reason };
     notes.push(`node ${node.id} (${node.type}) deferred: ${reason}`);
   }
@@ -10758,6 +11470,16 @@ function planComponent(
       fromNode.type === RECORD_TYPE &&
       (connection.fromProperty === 'error' || connection.fromProperty === 'id' || connection.fromProperty.startsWith('prop-'));
     /**
+     * EXP-011 §45 — a files node's value into a rendered sink: the chosen name in a Text, the
+     * stored url in an Image, the signed link in a Text. Derived from the same tables
+     * `resolveExpr` dispatches on, for the date family's reason.
+     */
+    const isFileRead =
+      (fromNode.type === FILE_PICKER_TYPE && (connection.fromProperty === 'error' || FILE_PICKER_FIELDS[connection.fromProperty] !== undefined)) ||
+      (fromNode.type === UPLOAD_FILE_TYPE && connection.fromProperty === 'error') ||
+      (fromNode.type === CLOUD_FILE_TYPE && CLOUD_FILE_FIELDS[connection.fromProperty] !== undefined) ||
+      (fromNode.type === SIGN_FILE_URL_TYPE && (connection.fromProperty === 'error' || SIGN_FILE_URL_FIELDS[connection.fromProperty] !== undefined));
+    /**
      * The date family's value outputs into a rendered sink (EXP-011 Tier 1.3) — a formatted date
      * in a Text, a `Is Same` gating `visible`, a `Day Name` in a label. Same rationale as the
      * three predicates above: `resolveExpr` decides what the read *is*, and this decides only
@@ -10855,6 +11577,7 @@ function planComponent(
       !isHttpRead &&
       !isCloudRead &&
       !isRecordRead &&
+      !isFileRead &&
       !isDateRead &&
       !isNowRead &&
       !isExternalLinkErrorRead &&
@@ -11367,11 +12090,17 @@ function planComponent(
      * shape the loop below already handles. The `New` trigger is read from `ID_NODES` rather
      * than spelled here, because the two nodes spell that port differently.
      */
+    /**
+     * ⚠️ `Cloud File` (EXP-011 §45) rides it for the same reason: a pure projection with no
+     * trigger port, whose every reason — nothing wired, two wires, a source that is not an
+     * Upload File, an upload that never attached — comes out of `resolveExpr`.
+     */
     const isDateNode =
       DATE_NODES[node.type] !== undefined ||
       node.type === NOW_TYPE ||
       UTIL_NODES[node.type] !== undefined ||
-      ID_NODES[node.type] !== undefined;
+      ID_NODES[node.type] !== undefined ||
+      node.type === CLOUD_FILE_TYPE;
     if (!isDateNode || dispositions[node.id] !== undefined) continue;
     const idTrigger = ID_NODES[node.type]?.trigger;
     let verdict: string | null = null;
@@ -11510,6 +12239,21 @@ function planComponent(
           // EXP-011 §43. The signed-in user's id is an ordinary Id to read a record by.
           case 'record-fetch':
             walkExpr(action.id);
+            walkActions(action.then);
+            walkActions(action.failThen);
+            break;
+          // EXP-011 §45. A session read inside any arm — the signed-in user's name in a Set Variable after an upload.
+          case 'file-pick':
+            if (action.accept !== undefined) walkExpr(action.accept);
+            if (action.capture !== undefined) walkExpr(action.capture);
+            walkActions(action.then);
+            walkActions(action.unchangedThen);
+            walkActions(action.failThen);
+            break;
+          case 'file-upload':
+          case 'file-sign':
+            walkExpr(action.file);
+            if (action.kind === 'file-upload' && action.isPrivate !== undefined) walkExpr(action.isPrivate);
             walkActions(action.then);
             walkActions(action.failThen);
             break;
@@ -11815,6 +12559,19 @@ function planComponent(
         if (index >= 0) plan.stateVars.splice(index, 1);
       }
     }
+    // EXP-011 §45. The same earning, three nodes over — except that a node whose trigger is
+    // wired keeps its rows even when it did not attach: a sibling handler may already read them
+    // (`fileAnswerExpr`'s compile-time form), and the emitter prints only the rows something reads.
+    plan.fileOps = plan.fileOps.filter((op) => attachedFileNodes.has(op.nodeId));
+    for (const vars of [fileErrorVars, fileAnswerVars]) {
+      for (const [nodeId, stateVar] of vars) {
+        if (attachedFileNodes.has(nodeId)) continue;
+        const node = nodeById.get(nodeId);
+        if (node !== undefined && wiredPorts.has(`${nodeId}:${TRIGGER_PORTS[node.type]}`)) continue;
+        const index = plan.stateVars.indexOf(stateVar);
+        if (index >= 0) plan.stateVars.splice(index, 1);
+      }
+    }
     /**
      * `External Link`'s Error row on the same rule (EXP-011 §14). The read allocates it before
      * the attachment pass has run, so a row belonging to a node whose `Do` never attached is
@@ -11855,6 +12612,17 @@ function planComponent(
             const answer = recordAnswerVars.get(action.nodeId);
             if (answer !== undefined && plan.stateVars.includes(answer)) action.materialize = answer.name;
             fillMaterialize(action.then);
+            fillMaterialize(action.failThen);
+            break;
+          }
+          // EXP-011 §45. The same rule for a files node's row, all its arms walked.
+          case 'file-pick':
+          case 'file-upload':
+          case 'file-sign': {
+            const answer = fileAnswerVars.get(action.nodeId);
+            if (answer !== undefined && plan.stateVars.includes(answer)) action.materialize = answer.name;
+            fillMaterialize(action.then);
+            if (action.kind === 'file-pick') fillMaterialize(action.unchangedThen);
             fillMaterialize(action.failThen);
             break;
           }

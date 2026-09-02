@@ -370,7 +370,9 @@ function apiModules(
   // EXP-011 §41. A Cloud Function call goes through the client too — it is the one api module
   // whose *only* form is the connected one, because the function lives on the backend.
   const hasCloudCalls = project.plans.some((plan) => plan.cloudCalls.length > 0);
-  const hasApi = byCollection.size > 0 || hasSessionCalls || hasCloudCalls;
+  // EXP-011 §45. An upload or a sign is a request to the backend; a picker alone is not.
+  const hasFileOps = project.plans.some((plan) => plan.fileOps.some((op) => op.family !== 'pick'));
+  const hasApi = byCollection.size > 0 || hasSessionCalls || hasCloudCalls || hasFileOps;
   const notes: string[] = [];
   // No collection module can collide with `client.ts` (or `session.ts`): moduleBase is the
   // pluralized class name and every pluralize() result ends in "s"/"es"/"ies", while neither
@@ -510,6 +512,9 @@ function apiModules(
   // declares a backend, and a stub that answers the interpreter's own failure where it does not.
   const functions = functionsModule(project, backend, siteLine);
   if (functions !== null) stubs.push(functions);
+  // EXP-011 §45. One module for every Upload File / Sign File URL that attached.
+  const files = filesModule(project, backend, siteLine);
+  if (files !== null) stubs.push(files);
 
   if (backend !== undefined && hasApi) {
     stubs.push(['src/api/client.ts', clientModule(backend)]);
@@ -617,6 +622,112 @@ function functionsModule(
     (backend !== undefined ? GENERATED_MODULE_TS + "import { callFunction } from './client';\n\n" : GENERATED_TS) +
       '//\n// The cloud functions the graph calls. Each function is one Cloud Function node, with the\n' +
       '// parameters it was wired for as arguments and the results it declares as the answer.\n\n' +
+      parts.join('\n')
+  ];
+}
+
+/**
+ * `src/api/files.ts` — the stored-file vocabulary (EXP-011 §45): the `CloudFile` the runtime's
+ * `cloudfile.ts` holds (`name` is the STORED name, `<random8>_<original>`, and the handle a sign
+ * is addressed by), the `SignedFileUrl` a Sign publishes, `uploadFile` / `signFileUrl` over the
+ * client's two requests, and `cloudFileName`, the Cloud File node's prefix-stripping `Name`.
+ *
+ * `kind` is `signed` unconditionally and `isShareable` therefore true: the NodeGX wire mints
+ * `?exp=&sig=` and nothing else reaches this success path (ParseWireAdapter.signFileUrl,
+ * measured). The type still names the runtime's three kinds so a reader of the exported app
+ * sees the vocabulary the node has, not a narrowing this exporter invented.
+ *
+ * Stub (no backend): both **throw**, the collection module's rule for a write — a fabricated
+ * stored file would be a success report for bytes nobody stored.
+ */
+function filesModule(
+  project: ProjectPlan,
+  backend: CloudServicesIR | undefined,
+  siteLine: (site: { componentPath: string; nodeId: string }, type: string) => string
+): [string, string] | null {
+  const uploads: Array<{ componentPath: string; nodeId: string }> = [];
+  const signs: Array<{ componentPath: string; nodeId: string }> = [];
+  for (const plan of project.plans) {
+    for (const op of plan.fileOps) {
+      if (op.family === 'upload') uploads.push({ componentPath: plan.path, nodeId: op.nodeId });
+      if (op.family === 'sign') signs.push({ componentPath: plan.path, nodeId: op.nodeId });
+    }
+  }
+  if (uploads.length === 0 && signs.length === 0) return null;
+  const parts: string[] = [
+    `/**
+ * A file stored in the project's backend, as \`POST /files/<name>\` answers it and as the running
+ * app holds it (noodl-runtime's CloudFile): \`name\` is the STORED name — the wire's
+ * \`<random8>_<original>\` — and the handle a later sign is addressed by; \`url\` serves the bytes;
+ * \`contentType\` and \`size\` are what the backend reported, and absent on a wire that reports neither.
+ */
+export interface CloudFile {
+  name: string;
+  url: string;
+  contentType?: string;
+  size?: number;
+}
+`,
+    `/**
+ * A link a Sign File URL minted. \`kind\` says how it is protected — "signed" carries its own proof
+ * and stops working at \`expiresAt\`; "token" carries the caller's own credential; "public" needs
+ * nothing — and \`isShareable\` is false only for a token link. On the NodeGX backend every link is
+ * signed.
+ */
+export interface SignedFileUrl {
+  url: string;
+  kind: 'signed' | 'token' | 'public';
+  isShareable: boolean;
+  expiresAt?: string;
+  ttlSeconds?: number;
+}
+`,
+    `/** The original file name, the storage prefix stripped — the Cloud File node's Name (cloudfilenode.ts). */
+export function cloudFileName(file: CloudFile): string {
+  const parts = file.name.split('_');
+  return parts.length === 1 ? parts[0] : parts.slice(1).join('_');
+}
+`
+  ];
+  if (uploads.length > 0) {
+    parts.push(
+      backend !== undefined
+        ? `/**\n${uploads.map((s) => siteLine(s, 'Upload File')).join('\n')}\n` +
+            ` * Stores a file on the project's NodeGX backend (src/api/client.ts) — private where asked,\n` +
+            ` * so that reading it back needs a signed link. A failed upload throws, which is what the\n` +
+            ` * graph's Failure path already handles.\n */\n` +
+            `export async function uploadFile(file: File, options: { private?: unknown } = {}): Promise<CloudFile> {\n` +
+            `  return uploadFileRequest(file, Boolean(options.private));\n}\n`
+        : `/**\n${uploads.map((s) => siteLine(s, 'Upload File')).join('\n')}\n` +
+            ` * stored a file on the project's NodeGX backend. Connect this to your own storage; until you\n` +
+            ` * do it throws, which is what the graph's Failure path already handles.\n */\n` +
+            `export async function uploadFile(file: File, options: { private?: unknown } = {}): Promise<CloudFile> {\n` +
+            `  throw new Error('uploadFile is not connected to a backend yet');\n}\n`
+    );
+  }
+  if (signs.length > 0) {
+    parts.push(
+      backend !== undefined
+        ? `/**\n${signs.map((s) => siteLine(s, 'Sign File URL')).join('\n')}\n` +
+            ` * Mints a fresh, time-limited link to a stored file from the project's NodeGX backend\n` +
+            ` * (src/api/client.ts); refused for a caller who could not read the file directly.\n */\n` +
+            `export async function signFileUrl(file: CloudFile): Promise<SignedFileUrl> {\n` +
+            `  const signed = await signFileUrlRequest(file.name);\n` +
+            `  // Every link the NodeGX backend mints is a real signature (?exp=&sig=), so it is safe to hand on.\n` +
+            `  return { ...signed, kind: 'signed', isShareable: true };\n}\n`
+        : `/**\n${signs.map((s) => siteLine(s, 'Sign File URL')).join('\n')}\n` +
+            ` * minted a time-limited link to a stored file on the project's NodeGX backend. Connect this to\n` +
+            ` * your own storage; until you do it throws, which is what the graph's Failure path already handles.\n */\n` +
+            `export async function signFileUrl(file: CloudFile): Promise<SignedFileUrl> {\n` +
+            `  throw new Error('signFileUrl is not connected to a backend yet');\n}\n`
+    );
+  }
+  const imports = [...(signs.length > 0 ? ['signFileUrlRequest'] : []), ...(uploads.length > 0 ? ['uploadFileRequest'] : [])];
+  return [
+    'src/api/files.ts',
+    (backend !== undefined ? GENERATED_MODULE_TS + `import { ${imports.join(', ')} } from './client';\n\n` : GENERATED_TS) +
+      '//\n// The files the graph stores and signs. A stored file is a name and a url; the Upload File and\n' +
+      '// Sign File URL nodes are one function each, and Cloud File is a read of the upload\'s answer.\n\n' +
       parts.join('\n')
   ];
 }
@@ -1196,11 +1307,18 @@ function clearSession(): void {
 /**
  * One request on the wire. A failed request throws an Error carrying the
  * backend's own message, which is what every generated Failure path handles.
+ *
+ * A \`file\` is sent as the body itself, with no JSON content type — the upload
+ * route reads raw bytes and sniffs the type (the runtime's own \`xhr.send(file)\`).
  */
-async function request<T>(path: string, options: { method?: string; body?: unknown } = {}): Promise<T> {
+async function request<T>(
+  path: string,
+  options: { method?: string; body?: unknown; file?: Blob; headers?: Record<string, string> } = {}
+): Promise<T> {
   const headers: Record<string, string> = {
     'X-Parse-Application-Id': APP_ID,
-    'Content-Type': 'application/json'
+    ...(options.file === undefined ? { 'Content-Type': 'application/json' } : {}),
+    ...(options.headers ?? {})
   };
   const sessionToken = readSession()?.sessionToken;
   if (sessionToken !== undefined) headers['X-Parse-Session-Token'] = sessionToken;
@@ -1210,7 +1328,7 @@ async function request<T>(path: string, options: { method?: string; body?: unkno
     response = await fetch(ENDPOINT + path, {
       method: options.method ?? 'GET',
       headers,
-      body: options.body === undefined ? undefined : JSON.stringify(options.body)
+      body: options.file !== undefined ? options.file : options.body === undefined ? undefined : JSON.stringify(options.body)
     });
   } catch {
     // A backend that cannot be reached is one sentence, the same one callFunction() throws — not
@@ -1364,6 +1482,34 @@ function currentUrlWithoutAuthParams(): string {
   url.searchParams.delete('nodegx_auth');
   url.searchParams.delete('nodegx_auth_error');
   return url.toString();
+}
+
+/**
+ * \`POST /files/<name>\` — the Upload File node's own request (EXP-011 §45), which is
+ * \`ParseWireAdapter.uploadFile\`: the bytes as the body (the backend sniffs the type itself
+ * and ignores any declared one), the app id and the session token, and
+ * \`X-NodeGX-File-Private: true\` where the node's Private is on — the header the backend reads
+ * to restrict the stored file to its uploader. The 201 body is the stored file: its STORED
+ * name, its url, and the size and type the backend recorded.
+ */
+export async function uploadFileRequest(
+  file: File,
+  isPrivate: boolean
+): Promise<{ name: string; url: string; contentType?: string; size?: number }> {
+  return request(\`/files/\${encodeURIComponent(file.name)}\`, {
+    method: 'POST',
+    file,
+    headers: isPrivate ? { 'X-NodeGX-File-Private': 'true' } : undefined
+  });
+}
+
+/**
+ * \`GET /files/<name>/sign\` — the Sign File URL node's own request (EXP-011 §45): a fresh
+ * \`?exp=&sig=\` link, minted only for a caller who could read the file directly (a private file
+ * answers 403 "This file is private." to anyone else, exactly as reading it would).
+ */
+export async function signFileUrlRequest(name: string): Promise<{ url: string; expiresAt: string; ttlSeconds: number }> {
+  return request(\`/files/\${encodeURIComponent(name)}/sign\`);
 }
 
 /**

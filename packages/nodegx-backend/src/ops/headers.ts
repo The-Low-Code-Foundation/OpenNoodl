@@ -39,7 +39,13 @@ const ALLOW_METHODS = 'GET, POST, PUT, DELETE, OPTIONS';
  */
 const ALLOW_HEADERS =
   'Content-Type, Authorization, X-Request-Id, X-Parse-Application-Id, X-Parse-Session-Token, ' +
-  'X-Parse-Installation-Id, X-Parse-Master-Key, X-Parse-REST-API-Key, X-NodeGX-Api-Key, Last-Event-ID';
+  'X-Parse-Installation-Id, X-Parse-Master-Key, X-Parse-REST-API-Key, X-NodeGX-Api-Key, Last-Event-ID, ' +
+  // EXP-011 §45 (session 73): the Upload File node's Private input is this header, and it was
+  // not here — so a private upload from any cross-origin browser app failed its preflight and
+  // the node reported a network failure, while the same upload without Private succeeded. The
+  // SBR-007 finding above, one header over: same-origin previews never preflight, which is why
+  // nothing had noticed. Found by an exported app driving a live backend.
+  'X-NodeGX-File-Private';
 
 /**
  * Which `Access-Control-Allow-Origin` to send, or null for none.

@@ -42,6 +42,14 @@ const RESERVED_WORDS = new Set([
 ]);
 
 /**
+ * Whether a bindable-looking identifier is in fact reserved (EXP-011 §45). The state allocator
+ * asks it: a checkbox labelled "Private" minted `const [private, setPrivate]`, which is a syntax
+ * error in a strict module — the fixture's own typecheck found it, and the sanitiser above had
+ * the list all along.
+ */
+export const isReservedWord = (name: string): boolean => RESERVED_WORDS.has(name);
+
+/**
  * One port name → the identifier it prints as, before per-component collision resolution.
  * A name that is already a bindable identifier is returned untouched — the emitted interface is
  * the author's vocabulary wherever it legally can be.

@@ -79,6 +79,16 @@ describe('SBR-007 D21 — auth preflight', () => {
     }
   });
 
+  it('EXP-011 §45: allows the Upload File node’s Private header — a private upload is a cross-origin request too', async () => {
+    // `ParseWireAdapter.uploadFile` sets `X-NodeGX-File-Private: true` when the node's Private is
+    // on, and an exported app driving a live backend (photo-desk, session 73) read the browser's
+    // refused preflight as "Could not reach the backend" while the same upload without Private
+    // succeeded. The header is asked for beside the auth set, the D21 way, and the control below
+    // still runs against the same call shape.
+    const allowed = await preflight([...AUTH_HEADERS, 'x-nodegx-file-private']);
+    expect(allowed).toContain('x-nodegx-file-private');
+  });
+
   it('🔴 control: still refuses a header nothing sends', async () => {
     // Asked for in the same call, so this is the same instrument answering
     // about two headers rather than two runs answering about one.

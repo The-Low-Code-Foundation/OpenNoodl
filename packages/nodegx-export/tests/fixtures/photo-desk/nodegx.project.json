@@ -1,0 +1,29 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/project-v2.json",
+  "name": "Photo Desk",
+  "id": "ph0t0de5c-4e1a-4b3e-9f2a-1a2b3c4d6e01",
+  "version": "4",
+  "nodegxVersion": "0.1.0",
+  "runtimeVersion": "react19",
+  "created": "2026-09-02T22:10:00.000Z",
+  "modified": "2026-09-02T22:10:00.000Z",
+  "settings": {
+    "htmlTitle": "Photo Desk",
+    "navigationPathType": "path"
+  },
+  "structure": {
+    "componentsDir": "components",
+    "assetsDir": "assets"
+  },
+  "metadata": {
+    "cloudservices": {
+      "instanceId": "backend_photodesk",
+      "endpoint": "http://localhost:8583",
+      "appId": "backend_photodesk",
+      "type": "nodegx"
+    },
+    "dbCollections": [],
+    "systemCollections": []
+  },
+  "rootNodeId": "ph0t0de5c-4e1a-4b3e-9f2a-1a2b3c4d6e04"
+}
