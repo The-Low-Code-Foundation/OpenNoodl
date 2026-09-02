@@ -1,0 +1,241 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "ga11ery5c-4e1a-4b3e-9f2a-1a2b3c4d6e03",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "usernameInput",
+      "fromProperty": "onTextChanged",
+      "toId": "login",
+      "toProperty": "username"
+    },
+    {
+      "fromId": "passwordInput",
+      "fromProperty": "onTextChanged",
+      "toId": "login",
+      "toProperty": "password"
+    },
+    {
+      "fromId": "loginBtn",
+      "fromProperty": "onClick",
+      "toId": "login",
+      "toProperty": "login"
+    },
+    {
+      "fromId": "login",
+      "fromProperty": "error",
+      "toId": "loginErrorText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "me",
+      "fromProperty": "username",
+      "toId": "whoText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "pickBtn",
+      "fromProperty": "onClick",
+      "toId": "picker",
+      "toProperty": "open"
+    },
+    {
+      "fromId": "picker",
+      "fromProperty": "file",
+      "toId": "upload",
+      "toProperty": "file"
+    },
+    {
+      "fromId": "uploadBtn",
+      "fromProperty": "onClick",
+      "toId": "upload",
+      "toProperty": "upload"
+    },
+    {
+      "fromId": "upload",
+      "fromProperty": "error",
+      "toId": "uploadErrorText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "upload",
+      "fromProperty": "cloudFile",
+      "toId": "cloud",
+      "toProperty": "file"
+    },
+    {
+      "fromId": "cloud",
+      "fromProperty": "url",
+      "toId": "urlText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "cloud",
+      "fromProperty": "url",
+      "toId": "preview",
+      "toProperty": "src"
+    },
+    {
+      "fromId": "upload",
+      "fromProperty": "cloudFile",
+      "toId": "create",
+      "toProperty": "prop-image"
+    },
+    {
+      "fromId": "captionInput",
+      "fromProperty": "onTextChanged",
+      "toId": "create",
+      "toProperty": "prop-caption"
+    },
+    {
+      "fromId": "saveBtn",
+      "fromProperty": "onClick",
+      "toId": "create",
+      "toProperty": "store"
+    },
+    {
+      "fromId": "create",
+      "fromProperty": "error",
+      "toId": "saveErrorText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "create",
+      "fromProperty": "done",
+      "toId": "lastSavedSet",
+      "toProperty": "do"
+    },
+    {
+      "fromId": "cloud",
+      "fromProperty": "name",
+      "toId": "lastSavedSet",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "lastSavedRead",
+      "fromProperty": "value",
+      "toId": "savedText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "upload",
+      "fromProperty": "cloudFile",
+      "toId": "setProps",
+      "toProperty": "prop-avatar"
+    },
+    {
+      "fromId": "avatarBtn",
+      "fromProperty": "onClick",
+      "toId": "setProps",
+      "toProperty": "store"
+    },
+    {
+      "fromId": "setProps",
+      "fromProperty": "error",
+      "toId": "avatarErrorText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "setProps",
+      "fromProperty": "done",
+      "toId": "avatarNoteSet",
+      "toProperty": "do"
+    },
+    {
+      "fromId": "avatarWord",
+      "fromProperty": "savedValue",
+      "toId": "avatarNoteSet",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "avatarNoteRead",
+      "fromProperty": "value",
+      "toId": "avatarNoteText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "idInput",
+      "fromProperty": "onTextChanged",
+      "toId": "photoIdVar",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "photoIdVar",
+      "fromProperty": "value",
+      "toId": "record",
+      "toProperty": "modelId"
+    },
+    {
+      "fromId": "record",
+      "fromProperty": "error",
+      "toId": "loadErrorText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "record",
+      "fromProperty": "prop-caption",
+      "toId": "captionText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "record",
+      "fromProperty": "prop-image",
+      "toId": "cloud2",
+      "toProperty": "file"
+    },
+    {
+      "fromId": "cloud2",
+      "fromProperty": "url",
+      "toId": "storedUrlText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "cloud2",
+      "fromProperty": "name",
+      "toId": "storedNameText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "cloud2",
+      "fromProperty": "contentType",
+      "toId": "storedTypeText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "cloud2",
+      "fromProperty": "size",
+      "toId": "storedSizeText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "cloud2",
+      "fromProperty": "url",
+      "toId": "storedImg",
+      "toProperty": "src"
+    },
+    {
+      "fromId": "record",
+      "fromProperty": "prop-image",
+      "toId": "sign",
+      "toProperty": "file"
+    },
+    {
+      "fromId": "signBtn",
+      "fromProperty": "onClick",
+      "toId": "sign",
+      "toProperty": "sign"
+    },
+    {
+      "fromId": "sign",
+      "fromProperty": "url",
+      "toId": "signedUrlText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "sign",
+      "fromProperty": "error",
+      "toId": "signErrorText",
+      "toProperty": "text"
+    }
+  ]
+}

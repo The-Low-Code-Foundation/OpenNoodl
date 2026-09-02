@@ -356,6 +356,11 @@ export function emitComponent(
       if (expr.viaState !== undefined) referencedStateNames.add(expr.viaState);
       if (expr.family === 'upload' && expr.output === 'name') usedFileHelpers.add('cloudFileName');
     }
+    // EXP-011 §46. The handler half of the same clause; `fileRef` is earned by `collectActionUse`.
+    if (expr.kind === 'file-field') {
+      collectExprUse(expr.source);
+      if (expr.field === 'name') usedFileHelpers.add('cloudFileName');
+    }
     // EXP-011 §37, the same clause for the two id nodes. 🔴 Opt-in and silent when missing, on
     // the `outcome-error` note below: the row would be written by the action, read by the sink,
     // then dropped as unreferenced — a component naming an identifier it never declares.
@@ -438,7 +443,12 @@ export function emitComponent(
     if (action.kind === 'api-call') {
       for (const arg of action.args) {
         if (arg.kind === 'expr') collectExprUse(arg.expr);
-        else arg.props.forEach((p) => collectExprUse(p.expr));
+        else {
+          arg.props.forEach((p) => collectExprUse(p.expr));
+          // EXP-011 §46. A stored file into a column rides the wire as `fileRef(file)` — the import
+          // is earned here, where the argument is walked, not in `recordDataObject` (the §45 rule).
+          if (arg.props.some((p) => isCloudFileExpr(p.expr))) usedFileHelpers.add('fileRef');
+        }
       }
       action.then.forEach(collectActionUse);
     }
@@ -654,6 +664,12 @@ export function emitComponent(
     if (expr.kind === 'file-out') {
       if (expr.viaState !== undefined) referencedStateNames.add(expr.viaState);
       if (expr.family === 'upload' && expr.output === 'name') usedFileHelpers.add('cloudFileName');
+    }
+    // EXP-011 §46. A member of a column read: whatever the column read earns, and `cloudFileName`
+    // for the Name — earned here, in the walker, per the §45 rule.
+    if (expr.kind === 'file-field') {
+      hookExprSources(expr.source);
+      if (expr.field === 'name') usedFileHelpers.add('cloudFileName');
     }
     // EXP-011 §24. A render read of an Error output is *always* the row form — the failure arm's
     // `const` exists only inside that arm — so this clause earns every row render can see.
@@ -1106,6 +1122,10 @@ export function emitComponent(
       // `contentType`/`size`, a link's `expiresAt`/`ttlSeconds`) are the only maybe-undefined reads.
       case 'file-out':
         return expr.viaState !== undefined || FILE_OUT_OPTIONAL_FIELDS.has(`${expr.family}.${expr.output}`);
+      // EXP-011 §46. Must agree with plan.ts maybeUndefinedExpr: undefined whenever the column
+      // read is, and the two optional members always (a file read back from a column has neither).
+      case 'file-field':
+        return maybeUndefined(expr.source) || expr.field === 'contentType' || expr.field === 'size';
       // Always — an unreadable date answers unset on all five, and Date To String is unset before
       // its first format. Must agree with plan.ts maybeUndefinedExpr (EXP-011 Tier 1.3).
       case 'date-call':
@@ -1380,6 +1400,21 @@ export function emitComponent(
         return expr.viaState !== undefined ? `${whole}?.${expr.output}` : `${whole}.${expr.output}`;
       }
       /**
+       * EXP-011 §46. A member of a stored file read from a Record's column — the column read in
+       * whichever form it takes, then the member off it; optional chaining exactly where the
+       * column read may be undefined, and `cloudFileName()` for the Name as the upload family's.
+       */
+      case 'file-field': {
+        const source = exprCode(expr.source, mode);
+        const optional = maybeUndefined(expr.source);
+        // A member chain needs no parentheses; anything else (`a ?? b`) does.
+        const base = /^[A-Za-z_$][A-Za-z0-9_$]*(\??\.[A-Za-z_$][A-Za-z0-9_$]*)*$/.test(source) ? source : `(${source})`;
+        if (expr.field === 'name') {
+          return optional ? `(${base} === undefined ? undefined : cloudFileName(${base}))` : `cloudFileName(${base})`;
+        }
+        return optional ? `${base}?.${expr.field}` : `${base}.${expr.field}`;
+      }
+      /**
        * A `Now` output (EXP-011 Tier 1.3) — the row anywhere, the chain's own local inside the
        * Read chain. The two derived outputs are member reads off whichever one it is, and they
        * need no optional chaining: the row is seeded at mount and the local is a fresh `Date`.
@@ -1618,6 +1653,10 @@ export function emitComponent(
         case 'outcome-error':
           if (e.viaState !== undefined) add(e.viaState);
           break;
+        // EXP-011 §46. A member depends on whatever its column read depends on.
+        case 'file-field':
+          walk(e.source);
+          break;
         // EXP-011 Tier 1.3, same clause: an effect reading `Now` reads the row, so the row is
         // the dependency. A pure date call depends on whatever its arguments depend on — it
         // holds nothing of its own, so it adds no dep of its own either.
@@ -1680,9 +1719,19 @@ export function emitComponent(
           : [a]
     );
   /** The `prop-*` record a record verb sends — the runtime's `_internal.inputValues`, by value. */
+  /**
+   * EXP-011 §46. A value that is a stored file — an upload's Cloud File, or a File column read
+   * back from a Record — and so rides the wire as the File envelope (`fileRef`), exactly as the
+   * runtime's `_serializeObject` wraps a CloudFile in a File-typed column (cloudstore.js).
+   */
+  // A `function`, not a `const`: `collectActionUse` runs before this line is reached (§7.2's TDZ).
+  function isCloudFileExpr(e: ValueExpr): boolean {
+    return (e.kind === 'file-out' && e.family === 'upload' && e.output === 'cloudFile') || (e.kind === 'record-out' && e.tsType === 'CloudFile');
+  }
   const recordDataObject = (props: Array<{ key: string; expr: ValueExpr }>): string => {
     const entries = props.map((p) => {
-      const code = exprCode(p.expr, 'handler');
+      const raw = exprCode(p.expr, 'handler');
+      const code = isCloudFileExpr(p.expr) ? `fileRef(${raw})` : raw;
       const key = /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(p.key) ? p.key : JSON.stringify(p.key);
       return key === code ? code : `${key}: ${code}`;
     });
@@ -1726,6 +1775,8 @@ export function emitComponent(
       if (e.kind === 'logical') return e.operands.some(reads);
       if (e.kind === 'not' || e.kind === 'truthy') return reads(e.operand);
       if (e.kind === 'list-map' || e.kind === 'list-filter') return reads(e.source);
+      // EXP-011 §46. A member reads the local exactly when its column read does.
+      if (e.kind === 'file-field') return reads(e.source);
       return false;
     };
     const inAction = (a: HandlerAction): boolean => {
@@ -3401,7 +3452,10 @@ export function emitComponent(
       source.kind === 'computed' && source.expr.kind === 'record-out' && source.expr.output !== 'error' && source.expr.tsType !== 'string';
     // EXP-011 §45. A files node's number or boolean (a size, Safe To Share) at a sink — the same table.
     const nonStringFileField =
-      source.kind === 'computed' && source.expr.kind === 'file-out' && source.expr.output !== 'error' && source.expr.tsType !== 'string';
+      source.kind === 'computed' &&
+      ((source.expr.kind === 'file-out' && source.expr.output !== 'error' && source.expr.tsType !== 'string') ||
+        // EXP-011 §46. A stored file's Size off a record's column — the same table.
+        (source.expr.kind === 'file-field' && source.expr.tsType !== 'string'));
     if (untypedVariableOf(source) === null && untypedStoreKeyOf(source) === null && !nonStringRecordColumn && !nonStringFileField) return base;
     switch (sink) {
       // The runtime's Text node puts whatever the variable holds through `String()` on its way
@@ -3703,6 +3757,11 @@ export function emitComponent(
       }
       // EXP-011 §45. A files node's field in a text sink — the Record clause, three nodes over.
       if (bound.kind === 'computed' && bound.expr.kind === 'file-out' && bound.expr.output !== 'error') {
+        const code = bindingExpr(bound, 'text');
+        if (code !== null) return bound.expr.tsType === 'string' ? `{${code} ?? ''}` : `{${code}}`;
+      }
+      // EXP-011 §46. A member of a column-read file in a text sink — the same clause.
+      if (bound.kind === 'computed' && bound.expr.kind === 'file-field') {
         const code = bindingExpr(bound, 'text');
         if (code !== null) return bound.expr.tsType === 'string' ? `{${code} ?? ''}` : `{${code}}`;
       }

@@ -53,7 +53,7 @@
     {
       "typeName": "Cloud File",
       "status": "translated",
-      "note": "a projection of the Upload File that feeds it (EXP-011 \u00a745), compiled away like a date node: URL/Content Type/Size read the upload's row (or its Done-chain local) and Name is cloudFileName(row), the storage prefix stripped as cloudfilenode.ts strips it; the one wire is consumed and the node collapses. Defers by name: no Cloud File wired, two wires, a source that is not an Upload File's Cloud File output (a record property holding a file is not in this slice), an upload that never attached."
+      "note": "a projection of the Upload File that feeds it (EXP-011 \u00a745), compiled away like a date node: URL/Content Type/Size read the upload's row (or its Done-chain local) and Name is cloudFileName(row), the storage prefix stripped as cloudfilenode.ts strips it; the one wire is consumed and the node collapses. Defers by name: no Cloud File wired, two wires, a source that is not an Upload File's Cloud File output or a Record's File-typed column, an upload that never attached. EXP-011 \u00a746 (session 74): fed from a Record's column the project's schema snapshot declares a File, it is a projection of the record's row instead (file-field: row?.column?.url, cloudFileName(row?.column), contentType/size \u2014 both empty on a file read back from a column, as cloudfilenode.ts says); a column the snapshot does not declare, or declares as something other than File, defers by name, because the interpreter makes a CloudFile only of a column the snapshot types so."
     },
     {
       "typeName": "Cloud Function",
@@ -157,7 +157,7 @@
     {
       "typeName": "DbModel2",
       "status": "translated",
-      "note": "EXP-011 \u00a743 (session 70): a read by Id through the class's collection module \u2014 fetch<Type>ById(id) beside the query and the record verbs, the row typed by the class's interface (schema snapshot first, then the columns the graph reads as unknown) \u2014 through the EXP-009 client's fetchOne() (GET /classes/<class>/<id>, app id + session token) where the project declares a backend, and a stub that throws where it does not. Fetch wired: a handler action, the Cloud Function's try/catch with the runtime's own \"Missing Id.\" thrown for an empty Id. Fetch unwired: a useEffect keyed on the Id (runOnValueChange, controlSignal fetch). Done/Failure are the two arms; Error is a row never cleared; Id resolves to the feeder. Defers by name: no class, a wired class, a second backend, a repeater-bound Id, two wires into the Id, no Id, a consumed Fetched (fires on bind AND after a read), Changed / changed-<column> (the in-process record store's pub/sub), Completed, any other output, a column read from the Failure chain."
+      "note": "EXP-011 \u00a743 (session 70): a read by Id through the class's collection module \u2014 fetch<Type>ById(id) beside the query and the record verbs, the row typed by the class's interface (schema snapshot first, then the columns the graph reads as unknown) \u2014 through the EXP-009 client's fetchOne() (GET /classes/<class>/<id>, app id + session token) where the project declares a backend, and a stub that throws where it does not. Fetch wired: a handler action, the Cloud Function's try/catch with the runtime's own \"Missing Id.\" thrown for an empty Id. Fetch unwired: a useEffect keyed on the Id (runOnValueChange, controlSignal fetch). Done/Failure are the two arms; Error is a row never cleared; Id resolves to the feeder. Defers by name: no class, a wired class, a second backend, a repeater-bound Id, two wires into the Id, no Id, a consumed Fetched (fires on bind AND after a read), Changed / changed-<column> (the in-process record store's pub/sub), Completed, any other output, a column read from the Failure chain. EXP-011 \u00a746 (session 74): a File column types CloudFile (tsColumnType), the collection module importing it from src/api/files.ts; the column feeds a Cloud File or a Sign File URL; a sibling handler may read the Id-effect form's row before the effect pass has attached it (recordWillFire asks the effect's own order-independent preconditions, and the late sweep keeps a fired node's rows). Registered, measured: a record fetched by a wired Fetch is NOT readable by a sibling handler in either wire order \u2014 attachment is recorded after every handler has compiled, and \u00a743's contract (a Fetch wired from nothing translatable leaves no row) keeps the trigger form out of recordWillFire."
     },
     {
       "typeName": "DeleteDbModelProperties",
@@ -282,7 +282,7 @@
     {
       "typeName": "NewDbModelProperties",
       "status": "translated",
-      "note": "RECORD-VERBS-TARGET (session 20): an awaited create in the handler its Do is wired from, the prop-* record built from the form fields the enabling control-state clause makes readable, the done chain following the await and the Error output landing in component state that nothing clears; a missing class name (the runtime answers Failure and never calls the backend), access-control rules, a named Backend, a Source Object Id seed, two wires into one property, a consumed Id or Failure and a done chain that drives nothing translatable each defer with a named reason"
+      "note": "RECORD-VERBS-TARGET (session 20): an awaited create in the handler its Do is wired from, the prop-* record built from the form fields the enabling control-state clause makes readable, the done chain following the await and the Error output landing in component state that nothing clears; a missing class name (the runtime answers Failure and never calls the backend), access-control rules, a named Backend, a Source Object Id seed, two wires into one property, a consumed Id or Failure and a done chain that drives nothing translatable each defer with a named reason EXP-011 \u00a746 (session 74): a prop-* fed a stored file \u2014 an Upload File's Cloud File or a Record's File column \u2014 is sent as the wire's File envelope, fileRef(file) from src/api/files.ts, and types CloudFile in the class's interface (snapshot-declared or graph-written alike)."
     },
     {
       "typeName": "NewModel",
@@ -417,7 +417,7 @@
     {
       "typeName": "SetDbModelProperties",
       "status": "translated",
-      "note": "RECORD-VERBS-TARGET (session 20): an awaited update taking the record id then the property record, on the same shape as Create; additionally Store to = Local only, Properties to store = All, an Id Source from the enclosing repeater and an unnamed record defer with a named reason"
+      "note": "RECORD-VERBS-TARGET (session 20): an awaited update taking the record id then the property record, on the same shape as Create; additionally Store to = Local only, Properties to store = All, an Id Source from the enclosing repeater and an unnamed record defer with a named reason EXP-011 \u00a746 (session 74): a prop-* fed a stored file rides the wire as fileRef(file), as Create's does."
     },
     {
       "typeName": "SetModelProperties",
@@ -427,7 +427,7 @@
     {
       "typeName": "Sign File URL",
       "status": "translated",
-      "note": "await signFileUrl(file) into src/api/files.ts (EXP-011 \u00a745) \u2014 the client's GET /files/<name>/sign; the answer carries kind 'signed' and isShareable true (the NodeGX wire mints ?exp=&sig= unconditionally, measured), Signed URL/URL Kind/Safe To Share/Expires At/TTL read the row or the Done chain's local, Error a row never cleared; a stub that throws with no backend. Defers by name: a File fed by anything but an Upload File's Cloud File, no File, a named Backend, Error Status Code, a consumed Completed."
+      "note": "await signFileUrl(file) into src/api/files.ts (EXP-011 \u00a745) \u2014 the client's GET /files/<name>/sign; the answer carries kind 'signed' and isShareable true (the NodeGX wire mints ?exp=&sig= unconditionally, measured), Signed URL/URL Kind/Safe To Share/Expires At/TTL read the row or the Done chain's local, Error a row never cleared; a stub that throws with no backend. EXP-011 \u00a746 (session 74): also a File fed from a Record's File-typed column \u2014 the column read is the argument, the row form guarded by 'No file specified'. Defers by name: a File fed by anything but an Upload File's Cloud File or a Record's File-typed column, no File, a named Backend, Error Status Code, a consumed Completed."
     },
     {
       "typeName": "Signal To Index",
@@ -506,7 +506,7 @@
     {
       "typeName": "Upload File",
       "status": "translated",
-      "note": "await uploadFile(file, { private }) into src/api/files.ts (EXP-011 \u00a745) \u2014 the client's POST /files/<name> with the bytes as the body, app id + session token, X-NodeGX-File-Private where Private is on (authored true or wired); 'No file specified' thrown inside the try where the picker's row is empty; the 201 body is the CloudFile row. Done/Failure are the try/catch's arms; Error a row never cleared; a stub that throws where the project declares no backend. Defers by name: a File fed by anything but an Open File Picker's File, no File, a named Backend, any File Location input set (Supabase/PocketBase, inert on this wire), the progress family (XHR upload events), Error Status Code, Cloud File wired into anything but a Cloud File / Sign File URL, a consumed Completed."
+      "note": "await uploadFile(file, { private }) into src/api/files.ts (EXP-011 \u00a745) \u2014 the client's POST /files/<name> with the bytes as the body, app id + session token, X-NodeGX-File-Private where Private is on (authored true or wired); 'No file specified' thrown inside the try where the picker's row is empty; the 201 body is the CloudFile row. Done/Failure are the try/catch's arms; Error a row never cleared; a stub that throws where the project declares no backend. Defers by name: a File fed by anything but an Open File Picker's File, no File, a named Backend, any File Location input set (Supabase/PocketBase, inert on this wire), the progress family (XHR upload events), Error Status Code, Cloud File wired into anything but a Cloud File / Sign File URL / a record verb's prop-* / a Set User Properties' prop-* (EXP-011 \u00a746: into a column the stored file rides the wire as fileRef(file) = { __type: 'File', name, url }, the envelope cloudstore.js _serializeObject writes and the backend infers a File column from), a consumed Completed."
     },
     {
       "typeName": "Value Changed",
@@ -765,7 +765,7 @@
     {
       "typeName": "net.noodl.user.SetUserProperties",
       "status": "translated",
-      "note": "await setUserProperties({ username, email, ...columns }) into src/api/session.ts (EXP-011 \u00a744) \u2014 PUT /users/<objectId> through the client with the stored session rewritten; prop-* columns typed by their wires (UserProperties); 'Nobody is signed in.' thrown before any request; failure/completed consumed, a named Backend, two wires into an input defer by name"
+      "note": "await setUserProperties({ username, email, ...columns }) into src/api/session.ts (EXP-011 \u00a744) \u2014 PUT /users/<objectId> through the client with the stored session rewritten; prop-* columns typed by their wires (UserProperties); 'Nobody is signed in.' thrown before any request; failure/completed consumed, a named Backend, two wires into an input defer by name EXP-011 \u00a746 (session 74): a prop-* fed a stored file (an avatar) is sent as fileRef(file), the _User column typed CloudFile in UserProperties \u2014 the session module imports the type from src/api/files.ts."
     },
     {
       "typeName": "net.noodl.user.SignInWith",

@@ -5884,3 +5884,157 @@ header on the list, `dist` rebuilt), a row added beside D21's (`tests/sbr007-aut
 - The dev-open anonymous upload (§45.3) — owner NONE, the platform's loopback mode by design.
 - `Error Status Code` on the upload and the sign, and the progress family — refused by name; a
   `status` on the client's thrown error would lift the first, `XMLHttpRequest` the second.
+
+## §46 The file ↔ record pair — a stored file into a column, and a column back into a stored file (session 74, 2026-09-03)
+
+**Picker 88 of 127, unchanged** — no node was added; two refusals by name were lifted, on both
+sides of one wire. A stored file goes **into** a record: an Upload File's Cloud File wired into a
+record verb's `prop-<column>` or a Set User Properties' `prop-<column>` (an avatar). And a stored
+file comes **out of** a record: a `Cloud File` or a `Sign File URL` fed from a `Record`'s column.
+Corpus: 0 of either shape. Ranked by the product surface, as §45 was: every app that lets a
+signed-in person upload something eventually saves *which* thing on a row and shows it again later
+— a profile photo, an attachment on a ticket — and until this slice that second half was refused.
+
+### §46.1 What the runtime does, and what that decides
+
+- **The write.** `_serializeObject` (cloudstore.js) turns a `CloudFile` in a column the project's
+  schema snapshot declares `File` into `{ __type: 'File', url, name }` — url and name, nothing else
+  — and `ParseWireAdapter.create/save` and `ParseAuthAdapter.setUserProperties` all go through it.
+  A CloudFile in a column the snapshot does **not** declare falls to `_toJSON`, which returns the
+  object as it is: `{ name, url, contentType?, size? }` with no tag. The backend's SQL adapter types
+  a new column from the first value it sees (`_inferType`: `__type === 'File'` → `File`, a bare
+  object → `Object`), and `toWire` hands a File/Object column's stored JSON back unchanged.
+- **The read.** `_deserializeJSON(data, 'File')` makes a `CloudFile` only where the snapshot types
+  the column File **and** the value carries `__type: 'File'`; the `Cloud File` node's input takes
+  `instanceof CloudFile` and ignores anything else, keeping the previous file (cloudfilenode.ts).
+  A file read back from a column has no `contentType` and no `size` — the port descriptions say so.
+- **What that decides.** (1) The envelope is the contract between an exported app and every other
+  reader of the same table, the interpreter included: a write without the tag is a column the
+  interpreter can never read as a file again. So the exported app writes the envelope wherever the
+  **value's own type** is a stored file — the graph is the evidence, the record verbs' rule for an
+  undeclared column — which is *more* right than the interpreter, whose write depends on the
+  snapshot (§46.3). (2) A read is lifted only for a column the snapshot declares `File`, because
+  that is the interpreter's own condition; any other column defers with a sentence naming it.
+  (3) A File column's TypeScript type is the files module's `CloudFile`, not `string` —
+  `tsColumnType('File')` had read `string` since EXP-002, a Text on such a column would have
+  printed `[object Object]` while typechecking clean.
+
+### §46.2 The build
+
+| piece | what it is |
+|---|---|
+| the type | `tsColumnType('File')` → `CloudFile`; the collection module and the session module `import type { CloudFile } from './files'` when a column needs it, and `src/api/files.ts` is emitted **for the types alone** when a project has a File column and no files node (`anyFileColumn`) |
+| the envelope | `fileRef(file)` in `src/api/files.ts`: `undefined` stays `undefined`, else `{ __type: 'File', name, url }` — the runtime's literal; `CloudFile` gains `__type?: 'File'` so the object literal typechecks and a file read back from a column is honestly described. The emitter wraps a column argument whose expression is a stored file (`isCloudFileExpr`: an upload's `cloudFile`, or a `record-out` typed `CloudFile`) in `recordDataObject`; the import is earned in `collectActionUse`, where the argument is walked — not in `recordDataObject` (the §45 rule, again) |
+| the write | the upload's `cloudFile` output resolves (`fileAnswerExpr`, `CloudFile`) where it used to defer by name; `fileOutputsRefusal` lets the wire land on a create/update verb's `prop-*` or a Set User Properties' `prop-*`; both verbs' `writes` keep `CloudFile` as a typed column |
+| the read | `uploadFeeding` became `storedFileFeeding`: an Upload File's `cloudFile`, or a `Record`'s `prop-<column>` where `recordColumnType` answers `CloudFile` — two new sentences for a column the snapshot does not declare / declares as something else. The `Cloud File` branch then resolves the record's column read and returns a new `ValueExpr` kind, **`file-field`** (`source`, `field`, `tsType`) — a member off whichever form the record read takes; `compileFileSign` takes the column read itself as the argument, the row form guarded by `No file specified` as the upload's row is |
+| `file-field`'s toll | plan.ts: `exprTsType`, `maybeUndefinedExpr` (the source's, plus the two optional members), `exprValidIn`, `exprTouchesSnap`, `snapExpr`; component.ts: `maybeUndefined`, `exprCode` (a member chain needs no parentheses, anything else gets them; `name` through `cloudFileName`, guarded where the source may be undefined), both walkers (recurse into the source; `name` earns `cloudFileName`), the effect-deps walker, `chainReadsChainLocal`, the text coercion table and the text sink |
+| the attach order | `recordWillFire`: a sibling handler (the Sign button) compiles in Pass 2, before the Id-effect pass has attached the Record, and the `record-out` branch's "is it attached?" could not answer — §45.3's trap on the record family. The effect form's own preconditions are order-independent (`Fetch` unwired, a file to host it, a compiled action valid in render), so they are asked at read time; the late sweep keeps a fired node's rows. A wired `Fetch` stays out of it on §43's contract (§46.3) |
+| the rest | `SET_USER_PROPERTIES_TYPE`; `isCloudFileExpr` is a `function`, not a `const` (§7.2's TDZ, found on the first emit); the ledger's seven notes; `tests/files.test.ts` four rows re-sentenced (A1's interface text, C5, C9, C10 — the last now the "does not declare" sentence, because photo-desk carries no snapshot) |
+
+Refused by name: a Cloud File / Sign fed from a column the snapshot does not declare, or declares
+as something other than `File`; an upload's Cloud File into a Delete verb's `prop-*` (a delete
+writes nothing) or into anything but the four sinks; everything §45 refused, unchanged.
+
+### §46.3 What building it found, and what is written down rather than fixed
+
+- 🔴 **A File column read as `string` for fourteen sessions** — `tsColumnType`'s default, since
+  EXP-002's schema mapping; nothing wired one until this slice. **`Date` still reads `string`**,
+  and the wire's value is `{ __type: 'Date', iso }` (AdapterFacade `toWire`): a Text on a Date
+  column prints `[object Object]` in the exported app where the interpreter prints a date.
+  Registered here, owner **EXP-011 (a later slice: the Date column, `fromWire` unwrapping)**; the
+  §46 spec pins today's answer (A5) so the row reddens when it is fixed.
+- 🔴 **The attach-order trap, second family.** The Sign's handler reading the Record's row deferred
+  with *"its Fetch is never fired by a translatable trigger"* on the first emit — false: the Id
+  effect fires it, one pass later. `recordWillFire` asks what can be answered in Pass 2.
+  **Measured, not designed, and registered:** a record fetched by a *wired* `Fetch` is not readable
+  by a sibling handler in **either** wire order — `attachedRecordNodes` is filled by the earn scan
+  after every handler has compiled, so the sibling sees an unattached node whichever wire comes
+  first (spec C5, both orders). §43's contract (*a Fetch wired from nothing translatable leaves no
+  row*) is what keeps the trigger form out of `recordWillFire`; lifting it means asking whether
+  the trigger's source is translatable, which is Pass 2's own question. Owner: **EXP-011**.
+- 🔴 **§7.2's TDZ, again** — `isCloudFileExpr` as a `const` beside `recordDataObject`, read by
+  `collectActionUse` which runs first: `Cannot access 'isCloudFileExpr' before initialization` on
+  the first emit of the fixture. A `function` declaration hoists. Third time in this file.
+- ⚠️ **The interpreter's write depends on the snapshot; the export's does not.** A CloudFile into
+  a column the project never declared reaches the backend from the interpreter as a bare object
+  (no `__type`), is typed `Object`, and is never a CloudFile again on any read; from the exported
+  app it reaches the backend as the envelope. Documented divergence, in the export's favour — the
+  value's type is known statically and the graph is the evidence (RECORD-VERBS §4d's rule).
+  Owner of the interpreter half: NONE (a runtime that reads the wire is an editor-side question).
+- ⚠️ `fileRef` drops `contentType` and `size`, exactly as `_serializeObject` does — a file read
+  back from a column has neither, and the Cloud File node's own port descriptions say so. Not a
+  loss the export introduced; the drive's D8 reads both as `''`.
+- ⚠️ A record verb's `Id` output is still refused (§5.11), so a page that saves a photo and wants
+  to show *that* row reads an id the person types, as the fixture does — the corpus shape for
+  "show what I just saved" is a query, not a read by Id.
+
+### §46.4 Graded — `tests/file-record.test.ts`, 26 rows, 57 files on disk
+
+§A the modules and the types (the collection module's `CloudFile` column and import, connected and
+stub; **`fileRef` run** through `ts.transpileModule` — undefined stays undefined, and of a file with
+four members exactly `__type`/`name`/`url` survive, the runtime's literal; the session module's
+`avatar?: CloudFile`; a File column with **no files node at all** still gets the types module with no
+functions and no client import, and typechecks both ways; `tsColumnType` on the five names, Date's
+`string` pinned as the registered residual). §B the component (Save wrapped and the helper imported;
+the avatar wrapped; the Cloud File fed from the record collapsed into four reads off the row and the
+Image's src; the Sign's guard on the column read — a sibling handler of the Id effect; the row and
+the effect both present; the chain-local inside the Record's own Done chain; a File column straight
+into a Text through `String()`; a record's File column into another record's column, wrapped; an
+undeclared column written from an upload typed `CloudFile`; **the envelope built in exactly one
+place** — the client untouched, one literal in one file; **B11**, a Name read only in render earns the import alone — the row arm L asked for). §C four refusals by their sentences with
+a declared-File control, the order probe (the sign's wires first, and the whole list reversed), and
+**C5, the registered residual measured in both orders** with the record's own attachment as the
+control. §D the fixture whole: refused none, typechecked, parsed, the sites counted (two `fileRef`,
+one sign, two `cloudFileName`, two guards, two functions in the collection module), no-backend too.
+
+The fixture, `tests/fixtures/gallery-desk` (47 nodes, 39 wires, a `Photo { caption: String, image:
+File }` snapshot): Log In, User, pick → upload → a Cloud File on the upload (url, an Image) → Save
+into `Photo.image` + `caption`, Use as avatar into `_User.avatar`; a photo id typed into a Variable →
+a Record in the Id-effect form → a second Cloud File (four Texts, an Image) and a Sign File URL.
+
+### §46.5 The gates, the arms and the drive — and the four diffs that were all the instrument's
+
+**The gates, one at a time** (a peer's webpack watch was on the box; each of mine waited for the
+last). Package `tsc` 0 · the new file 26/26 · the whole suite **57 files, 1584/1584, exit 0** (run
+twice: after the build and after the sweep-clause removal) · the editor's `tsc` 0, twice · ledger
+`OK — 176 types, 95 translated` · picker 88, unchanged, the floor untouched · the four §45 rows
+re-sentenced and green (69/69 with §43's).
+
+**The arms** (`mut46.py` / `runmut46.sh`, twelve, each tsc-gated, each restored `diff -q` and the
+sources md5-identical after): A `File` → `string` again (17 rows), B no `fileRef` wrap (5), C the
+envelope without its tag (2 — A2 *runs* it), D the snapshot check dropped (3 — **first armed as
+`=== 'never'`, killed by tsc alone, which is not a kill; re-armed as `.length === 0`**), E
+`recordWillFire` always false (6), F true for a wired Fetch (2 — C5 and §43's row), G Name without
+`cloudFileName` (2), H the member's optionality ignored (8), I `CloudFile` dropped from the writes
+(1 — B9/A3), J the verbs not admitted as sinks (9), L walker two's earn (**survived on the first
+round — two earners; B11 written, killed**), M the types-only module (1 — A4). **Arm K survived
+and was not re-armed**: the late sweep's "keep a fired node's rows" clause was unreachable on every
+fixture because `recordWillFire` asks the effect pass's own questions, so the clause was deleted and
+its one gap registered (§46.3).
+
+**The drive** (`EXPECTED46.md` first, twelve steps, eighty-five cells). Run 1: **81/85** — every
+diff the instrument's: the fetch count keyed on a guessed route name (`classes/:collection/:objectId`
+where the backend spells `:id`; the routes-seen reconciliation showed the three GETs exactly where
+predicted), D7's avatar error predicted `''` where it reads D3's `Nobody is signed in.` — the
+Error row's own never-cleared contract, §45's D6 rule, which the expected file forgot — and a verify
+that ran against a backend the drive had killed for D12 (`BACKEND NOT UP`). Run 1 preserved as the
+control. Run 2, with the route named, the row's contract restated and the backend brought back on
+its data dir before the verify: **85/85, 0 diffs, VERIFY OK** — the record's `image` and the user's
+`avatar` both exactly `{ __type: 'File', name, url }` (keys asserted, no others), both signed urls
+200 anonymously, `consoleErrors []`, 0 listeners after the `trap`. Cells about the backend's dev
+mode are marked as such (D2, the anonymous create by principal `anonymous`).
+
+### §46.6 What this leaves
+
+- **`Date` columns** — `{ __type: 'Date', iso }` on the wire, typed `string` by `tsColumnType`,
+  never unwrapped by `fromWire`; a Text on one prints `[object Object]`. A5 pins today's answer.
+- **A sibling handler reading a button-fetched Record** — not readable in either wire order (C5);
+  lifting it means `recordWillFire` asking whether a trigger wire's source is translatable, Pass 2's
+  own question. The effect form carries the surface today.
+- **The sweep's one gap** — an Id effect whose chain snapshot defers after a sibling took the row
+  form: unconstructed; loud (the export fails to typecheck), not silent.
+- The interpreter's own write of a CloudFile into an undeclared column (no tag, never a file
+  again) — a runtime question, owner NONE.
+- The remaining picker gaps are Tier 2.6's two refusals by name and the Data bucket; §45.6's list
+  stands. Next by the surface: `Set Object Properties` / `Create New Array` (an ordinary page
+  reaches them), or `Sign In With` once a project asks for provider sign-in.

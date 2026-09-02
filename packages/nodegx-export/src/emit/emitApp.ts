@@ -399,6 +399,9 @@ function apiModules(
     ` * ${marker}${nodeLabel(site)}(${type} \`${site.nodeId}\` on /${site.componentPath})`;
 
   const stubs: Array<[string, string]> = [];
+  // EXP-011 §46. Any api module that names `CloudFile` needs `src/api/files.ts` to exist — even a
+  // project with no files node at all, whose schema snapshot declares a File column.
+  let anyFileColumn = false;
   for (const [collectionName, module] of byCollection) {
     const schema = ir.project.collections.find((c) => c.name === collectionName);
     const { typeName, moduleBase, fetchName, querySites, fetchOneName, readSites, mutations, writes, reads } = module;
@@ -412,6 +415,9 @@ function apiModules(
     for (const [name, tsType] of writes) if (!columns.has(name)) columns.set(name, tsType);
     for (const [name, tsType] of reads) if (!columns.has(name)) columns.set(name, tsType);
     columns.delete('id');
+    const usesCloudFile = [...columns.values()].includes('CloudFile');
+    if (usesCloudFile) anyFileColumn = true;
+    const filesImport = usesCloudFile ? "import type { CloudFile } from './files';\n" : '';
     const fields = [...columns].map(([name, tsType]) => `  ${tsFieldKey(name)}?: ${tsType};`);
     const parts: string[] = [
       `export interface ${typeName} {\n  id: string;\n${fields.join('\n')}${fields.length > 0 ? '\n' : ''}}\n`
@@ -494,14 +500,17 @@ function apiModules(
         clientImports.add(verb === 'create' ? 'create' : verb === 'update' ? 'update' : 'remove');
       }
       const importLine = `import { ${[...clientImports].sort().join(', ')} } from './client';\n`;
-      stubs.push([`src/api/${moduleBase}.ts`, GENERATED_MODULE_TS + importLine + '\n' + parts.join('\n')]);
+      stubs.push([`src/api/${moduleBase}.ts`, GENERATED_MODULE_TS + importLine + filesImport + '\n' + parts.join('\n')]);
     } else {
-      stubs.push([`src/api/${moduleBase}.ts`, GENERATED_TS + parts.join('\n')]);
+      stubs.push([`src/api/${moduleBase}.ts`, GENERATED_TS + (filesImport === '' ? '' : filesImport + '\n') + parts.join('\n')]);
     }
   }
 
   const session = sessionModule(ir, project, backend);
   if (session !== null) stubs.push(session);
+  if (project.plans.some((plan) => plan.sessionCalls.some((call) => (call.writes ?? []).some((w) => w.tsType === 'CloudFile')))) {
+    anyFileColumn = true;
+  }
 
   // EXP-011 Tier 1.2. Not a stub and not keyed on the backend: an HTTP Request talks to whatever
   // address the author typed, so this module is real code whether or not the project declares a
@@ -513,7 +522,7 @@ function apiModules(
   const functions = functionsModule(project, backend, siteLine);
   if (functions !== null) stubs.push(functions);
   // EXP-011 §45. One module for every Upload File / Sign File URL that attached.
-  const files = filesModule(project, backend, siteLine);
+  const files = filesModule(project, backend, siteLine, anyFileColumn);
   if (files !== null) stubs.push(files);
 
   if (backend !== undefined && hasApi) {
@@ -643,7 +652,9 @@ function functionsModule(
 function filesModule(
   project: ProjectPlan,
   backend: CloudServicesIR | undefined,
-  siteLine: (site: { componentPath: string; nodeId: string }, type: string) => string
+  siteLine: (site: { componentPath: string; nodeId: string }, type: string) => string,
+  /** EXP-011 §46 — an api module names `CloudFile` (a File column), so the types must exist with or without a files node. */
+  fileColumns: boolean
 ): [string, string] | null {
   const uploads: Array<{ componentPath: string; nodeId: string }> = [];
   const signs: Array<{ componentPath: string; nodeId: string }> = [];
@@ -653,7 +664,7 @@ function filesModule(
       if (op.family === 'sign') signs.push({ componentPath: plan.path, nodeId: op.nodeId });
     }
   }
-  if (uploads.length === 0 && signs.length === 0) return null;
+  if (uploads.length === 0 && signs.length === 0 && !fileColumns) return null;
   const parts: string[] = [
     `/**
  * A file stored in the project's backend, as \`POST /files/<name>\` answers it and as the running
@@ -666,6 +677,8 @@ export interface CloudFile {
   url: string;
   contentType?: string;
   size?: number;
+  /** The wire's tag on a file read back from a record column, and what \`fileRef()\` writes. */
+  __type?: 'File';
 }
 `,
     `/**
@@ -686,6 +699,15 @@ export interface SignedFileUrl {
 export function cloudFileName(file: CloudFile): string {
   const parts = file.name.split('_');
   return parts.length === 1 ? parts[0] : parts.slice(1).join('_');
+}
+`,
+    `/**
+ * A stored file as a record column carries it — the wire's File envelope (cloudstore.js
+ * \`_serializeObject\`: \`{ __type: 'File', url, name }\`), which is what makes the column a File on
+ * the backend and a stored file again when the interpreter reads it back. Undefined stays undefined.
+ */
+export function fileRef(file: CloudFile | undefined): CloudFile | undefined {
+  return file === undefined ? undefined : { __type: 'File', name: file.name, url: file.url };
 }
 `
   ];
@@ -725,9 +747,10 @@ export function cloudFileName(file: CloudFile): string {
   const imports = [...(signs.length > 0 ? ['signFileUrlRequest'] : []), ...(uploads.length > 0 ? ['uploadFileRequest'] : [])];
   return [
     'src/api/files.ts',
-    (backend !== undefined ? GENERATED_MODULE_TS + `import { ${imports.join(', ')} } from './client';\n\n` : GENERATED_TS) +
+    (backend !== undefined && imports.length > 0 ? GENERATED_MODULE_TS + `import { ${imports.join(', ')} } from './client';\n\n` : backend !== undefined ? GENERATED_MODULE_TS : GENERATED_TS) +
       '//\n// The files the graph stores and signs. A stored file is a name and a url; the Upload File and\n' +
-      '// Sign File URL nodes are one function each, and Cloud File is a read of the upload\'s answer.\n\n' +
+      '// Sign File URL nodes are one function each, Cloud File is a read of the upload\'s answer or of a\n' +
+      '// record\'s File column, and a record column takes a stored file as the wire\'s File envelope.\n\n' +
       parts.join('\n')
   ];
 }
@@ -1055,6 +1078,7 @@ function sessionModule(ir: ExportIR, project: ProjectPlan, backend: CloudService
   const needsUserMapping = verbs.has('login') || verbs.has('signup') || verbs.has('read');
 
   const parts: string[] = ['export interface SessionUser {\n  id: string;\n  username?: string;\n  email?: string;\n}\n'];
+  let sessionFilesImport = '';
   if (verbs.has('update-user')) {
     // EXP-011 §44 — what a `Set User Properties` may send: the two static ports, then the `_User`
     // columns any site writes, each typed by its wire (the record verbs' rule). One interface for
@@ -1074,6 +1098,8 @@ function sessionModule(ir: ExportIR, project: ProjectPlan, backend: CloudService
       if (name === 'username' || name === 'email') continue;
       lines.push(`  ${/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(name) ? name : JSON.stringify(name)}?: ${tsType};`);
     }
+    // EXP-011 §46. An avatar: the column's type is the files module's.
+    if ([...columns.values()].includes('CloudFile')) sessionFilesImport = "import type { CloudFile } from './files';\n\n";
     // A `type`, not an `interface`: the client's `updateUserRequest` takes `Record<string,
     // unknown>`, and an interface has no implicit index signature (TS2345 — the fixture's
     // typecheck found it), while an object type literal is assignable to one.
@@ -1165,7 +1191,7 @@ function sessionModule(ir: ExportIR, project: ProjectPlan, backend: CloudService
   }
 
   if (backend === undefined) {
-    return ['src/api/session.ts', GENERATED_TS + parts.join('\n')];
+    return ['src/api/session.ts', GENERATED_TS + sessionFilesImport + parts.join('\n')];
   }
   const reactImport = verbs.has('read') ? "import { useMemo, useSyncExternalStore } from 'react';\n\n" : '';
   const clientNames: string[] = [];
@@ -1178,7 +1204,7 @@ function sessionModule(ir: ExportIR, project: ProjectPlan, backend: CloudService
   clientNames.sort();
   const importNames = needsUserMapping ? [...clientNames, 'type WireSession'] : clientNames;
   const clientImport = `import { ${importNames.join(', ')} } from './client';\n\n`;
-  return ['src/api/session.ts', GENERATED_MODULE_TS + reactImport + clientImport + parts.join('\n')];
+  return ['src/api/session.ts', GENERATED_MODULE_TS + reactImport + clientImport + sessionFilesImport + parts.join('\n')];
 }
 
 /** A column name is user text; only an identifier can be a bare interface key. */

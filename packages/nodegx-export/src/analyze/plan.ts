@@ -266,6 +266,8 @@ const FILE_PICKER_TYPE = 'Open File Picker';
 const UPLOAD_FILE_TYPE = 'Upload File';
 const CLOUD_FILE_TYPE = 'Cloud File';
 const SIGN_FILE_URL_TYPE = 'Sign File URL';
+/** EXP-011 §46 — the one user verb whose `prop-*` columns take a stored file. */
+const SET_USER_PROPERTIES_TYPE = 'net.noodl.user.SetUserProperties';
 /** Output port → field of the answer each family's row/local holds. `error` is the message. */
 const FILE_PICKER_FIELDS: Record<string, { field: string; tsType: string }> = {
   file: { field: 'file', tsType: 'File' },
@@ -868,6 +870,14 @@ export type ValueExpr =
    * `upload` family of the Upload File that feeds it — it holds nothing of its own.
    */
   | { kind: 'file-out'; family: 'pick' | 'upload' | 'sign'; nodeId: string; output: string; tsType: string; viaState?: string }
+  /**
+   * EXP-011 §46 — a member of a stored file that is *not* a files node's own answer: a `Cloud
+   * File` fed from a `Record`'s File-typed column reads `source.url` / `cloudFileName(source)` /
+   * `source.contentType` / `source.size`, where `source` is the record's column read (a
+   * `record-out` typed `CloudFile`, in either of its forms). `name` goes through `cloudFileName()`
+   * as the upload family's does; the two optional members are optional here too.
+   */
+  | { kind: 'file-field'; source: ValueExpr; field: 'url' | 'name' | 'contentType' | 'size'; tsType: string }
   /**
    * A `Now` output (EXP-011 Tier 1.3) — the instant of the last Read.
    *
@@ -3954,6 +3964,25 @@ function planComponent(
   };
   /** Record nodes whose `Fetch` attached — from a trigger, or from the Id effect (§43.2). */
   const attachedRecordNodes = new Set<string>();
+  /**
+   * EXP-011 §46 — the compile-time answer to "is this Record fired at all?", for a read compiled
+   * before the attach pass has run (§45.3's rule, one family over). A sibling handler — a Sign
+   * File URL button reading the record's File column — compiles in Pass 2, before the Id effect
+   * pass has attached the effect form, so `attachedRecordNodes` cannot answer yet. The effect
+   * form's own preconditions are order-independent (its `Fetch` unwired, a file to host it, a
+   * compiled action valid in render), so they are asked here — and because they are the effect
+   * pass's own, a node this answers yes for attaches, and the late sweep needs no clause for it.
+   * A wired `Fetch` is a trigger whose
+   * own attachment is Pass 2's to decide, and §43's contract stands for it: a Fetch wired from
+   * nothing translatable leaves no row behind — so a sibling handler reading a button-fetched
+   * record stays wire-order dependent, as it was (registered in §46.3).
+   */
+  const recordWillFire = (node: NodeIR): boolean => {
+    if (wiredPorts.has(`${node.id}:fetch`)) return false;
+    if (!plan.file) return false;
+    const compiled = compiledOf(node, 'fetch');
+    return !('defer' in compiled) && actionsValidIn([compiled.action], { kind: 'render' });
+  };
 
   // ---- The files (EXP-011 §45) --------------------------------------------------------------
   //
@@ -4096,19 +4125,36 @@ function planComponent(
    * wire, from an Upload File's `Cloud File` output; the wire is consumed by the caller. Returns
    * the source node, or a sentence.
    */
-  const uploadFeeding = (node: NodeIR, port: string): { upload: NodeIR; key: string } | { defer: string } => {
+  const storedFileFeeding = (
+    node: NodeIR,
+    port: string
+  ): { upload: NodeIR; key: string } | { record: NodeIR; column: string; key: string } | { defer: string } => {
     const wires = component.connections.filter((c) => c.toId === node.id && c.toProperty === port);
     if (wires.length === 0) {
       return { defer: `nothing feeds its ${port === 'file' && node.type === CLOUD_FILE_TYPE ? 'Cloud File' : 'File'} input — ${node.type === CLOUD_FILE_TYPE ? 'every output reads empty' : 'every Sign answers Failure with "No file specified" and never sends a request'}` };
     }
     if (wires.length > 1) return { defer: `two wires feed its ${node.type === CLOUD_FILE_TYPE ? 'Cloud File' : 'File'} — last-writer-wins is not statically ordered` };
     const source = nodeById.get(wires[0].fromId);
-    if (source === undefined || source.type !== UPLOAD_FILE_TYPE || wires[0].fromProperty !== 'cloudFile') {
-      return {
-        defer: `its ${node.type === CLOUD_FILE_TYPE ? 'Cloud File' : 'File'} is fed by ${source?.type ?? 'nothing'}${source !== undefined ? `.${wires[0].fromProperty}` : ''} — this slice reads a stored file only from an Upload File node's Cloud File output`
-      };
+    if (source !== undefined && source.type === UPLOAD_FILE_TYPE && wires[0].fromProperty === 'cloudFile') {
+      return { upload: source, key: wires[0].key };
     }
-    return { upload: source, key: wires[0].key };
+    // EXP-011 §46. A Record's column — only one the project's schema snapshot declares a File:
+    // the interpreter makes a CloudFile of a column's value only where the snapshot types it so
+    // (`_deserializeJSON(data, 'File')`), and the Cloud File node ignores any other value
+    // (`cloudfilenode.ts`: `instanceof CloudFile === false` leaves the previous file in place).
+    if (source !== undefined && source.type === RECORD_TYPE && wires[0].fromProperty.startsWith('prop-')) {
+      const column = wires[0].fromProperty.slice('prop-'.length);
+      const tsType = recordColumnType(recordNamesOf(source).collectionName, column);
+      if (tsType !== 'CloudFile') {
+        return {
+          defer: `its ${node.type === CLOUD_FILE_TYPE ? 'Cloud File' : 'File'} is fed by a Record's "${column}" column, which the project's schema snapshot ${tsType === 'unknown' ? 'does not declare' : 'declares as something other than a File'} — the interpreter turns a column into a stored file only where the snapshot types it File`
+        };
+      }
+      return { record: source, column, key: wires[0].key };
+    }
+    return {
+      defer: `its ${node.type === CLOUD_FILE_TYPE ? 'Cloud File' : 'File'} is fed by ${source?.type ?? 'nothing'}${source !== undefined ? `.${wires[0].fromProperty}` : ''} — this slice reads a stored file only from an Upload File node's Cloud File output or a Record's File-typed column`
+    };
   };
 
   // ---- `Now` (EXP-011 Tier 1.3) -----------------------------------------------------------
@@ -5735,7 +5781,7 @@ function planComponent(
     /**
      * `Upload File`'s outputs (EXP-011 §45). `Cloud File` is a stored-file reference and this
      * slice reads it only through a `Cloud File` node or a `Sign File URL` — both resolve the
-     * upload themselves (`uploadFeeding`), so a read that reaches here is some other sink and
+     * upload themselves (`storedFileFeeding`), so a read that reaches here is some other sink and
      * defers by name. The progress family rides `XMLHttpRequest`'s upload events, which
      * `fetch()` does not publish; `Error Status Code` is a status the client's one sentence does
      * not carry.
@@ -5745,9 +5791,13 @@ function planComponent(
         ctx.defer = `its ${fromProperty} output is consumed as a value — a pulse carries nothing to read`;
         return null;
       }
+      // EXP-011 §46. The stored file itself — read by a record verb's or a Set User Properties'
+      // column (the emitter wraps it as the wire's `{ __type: 'File', name, url }`); a Cloud File
+      // and a Sign File URL take theirs through `storedFileFeeding` and never reach here. Any
+      // other sink is refused at the upload by `fileOutputsRefusal`, which makes this node
+      // uncompiled and this read deferred with the upload's own sentence.
       if (fromProperty === 'cloudFile') {
-        ctx.defer = 'its Cloud File output is a stored-file reference — this slice reads it through a Cloud File or a Sign File URL node, and nothing else takes one';
-        return null;
+        return fileAnswerExpr(fromNode, 'upload', 'upload', 'cloudFile', 'CloudFile', ctx);
       }
       if (UPLOAD_PROGRESS_PORTS.includes(fromProperty)) {
         ctx.defer = `its ${fromProperty} output rides XMLHttpRequest's upload progress events, which fetch() does not publish — this slice sends the file in one request`;
@@ -5775,10 +5825,19 @@ function planComponent(
         ctx.defer = `its ${fromProperty} output is not a port this node publishes`;
         return null;
       }
-      const fed = uploadFeeding(fromNode, 'file');
+      const fed = storedFileFeeding(fromNode, 'file');
       if ('defer' in fed) {
         ctx.defer = fed.defer;
         return null;
+      }
+      if ('record' in fed) {
+        // EXP-011 §46. A projection of the record's column instead — the column read in whichever
+        // form the Record rules give it, and the member off that.
+        const source = resolveExpr(fed.record, `prop-${fed.column}`, ctx);
+        if (source === null) return null;
+        ctx.consumes.push(fed.key);
+        ctx.logicNodeIds.push(fromNode.id);
+        return { kind: 'file-field', source, field: spec.field as 'url' | 'name' | 'contentType' | 'size', tsType: spec.tsType };
       }
       const expr = fileAnswerExpr(fed.upload, 'upload', 'upload', spec.field, spec.tsType, ctx);
       if (expr === null) return null;
@@ -5829,9 +5888,18 @@ function planComponent(
         return null;
       }
       if (scope === undefined && !attachedRecordNodes.has(fromNode.id)) {
+        // EXP-011 §46. Not attached *yet* is not the same as never fired — a handler compiled in
+        // Pass 2 reads the row of a Record whose Id effect attaches later. Ask what can be
+        // answered now (`recordWillFire`); the late sweep keeps a fired node's rows.
         const compiled = compiledOf(fromNode, 'fetch');
-        ctx.defer = 'defer' in compiled ? compiled.defer : 'its Fetch is never fired by a translatable trigger';
-        return null;
+        if ('defer' in compiled) {
+          ctx.defer = compiled.defer;
+          return null;
+        }
+        if (!recordWillFire(fromNode)) {
+          ctx.defer = 'its Fetch is never fired by a translatable trigger';
+          return null;
+        }
       }
       if (fromProperty === 'id') {
         const idWire = component.connections.find((c) => c.toId === fromNode.id && c.toProperty === 'modelId');
@@ -6138,6 +6206,12 @@ function planComponent(
       // Must agree with component.ts `FILE_OUT_OPTIONAL_FIELDS`.
       case 'file-out':
         return expr.viaState !== undefined || FILE_OUT_OPTIONAL_FIELDS.has(`${expr.family}.${expr.output}`);
+      // EXP-011 §46. Undefined whenever the column read is (the row before its first read, a
+      // record without the column), and the two optional members are optional on a stored file
+      // read back from a column even when the file is there (cloudfilenode.ts). Must agree with
+      // component.ts.
+      case 'file-field':
+        return maybeUndefinedExpr(expr.source) || expr.field === 'contentType' || expr.field === 'size';
       /**
        * Always, and every road there is one the interpreter takes too (EXP-011 Tier 1.3): a date
        * that could not be read answers unset on all five nodes, `Date To String` is unset before
@@ -6440,6 +6514,9 @@ function planComponent(
         return expr.output === 'error' ? 'string' : expr.tsType;
       // EXP-011 §45. Each field's type is the wire's (`FILE_PICKER_FIELDS` and its two siblings).
       case 'file-out':
+        return expr.tsType;
+      // EXP-011 §46. Each member's type is the wire's, as the Cloud File node declares it.
+      case 'file-field':
         return expr.tsType;
       /**
        * `unknown` for all five, `dateToString` included (EXP-011 Tier 1.3).
@@ -7026,8 +7103,10 @@ function planComponent(
       writes: props.map(({ key, expr }) => {
         // `unknown` where the argument's type is not statically known: honest, and still
         // assignable from whatever the call passes because every field is optional.
+        // EXP-011 §46. `CloudFile` too: a stored file into a column is a typed write, and the
+        // module imports the type from `src/api/files.ts`.
         const t = exprTsType(expr);
-        return { name: key, tsType: t === 'string' || t === 'number' || t === 'boolean' ? t : 'unknown' };
+        return { name: key, tsType: t === 'string' || t === 'number' || t === 'boolean' || t === 'CloudFile' ? t : 'unknown' };
       })
     });
 
@@ -7159,7 +7238,8 @@ function planComponent(
     if (spec.columns === true) {
       call.writes = columns.map(({ key, expr }) => {
         const t = exprTsType(expr);
-        return { name: key, tsType: t === 'string' || t === 'number' || t === 'boolean' ? t : 'unknown' };
+        // EXP-011 §46. `CloudFile` too — an avatar on the `_User` row.
+        return { name: key, tsType: t === 'string' || t === 'number' || t === 'boolean' || t === 'CloudFile' ? t : 'unknown' };
       });
     }
     plan.sessionCalls.push(call);
@@ -7928,7 +8008,10 @@ function planComponent(
         // its own read compiles; anything else has no way to hold a stored-file reference.
         const sink = nodeById.get(wire.toId);
         if (sink !== undefined && (sink.type === CLOUD_FILE_TYPE || sink.type === SIGN_FILE_URL_TYPE) && wire.toProperty === 'file') continue;
-        return `its Cloud File output is wired into ${sink?.type ?? 'nothing'} — a stored-file reference is read only by a Cloud File or a Sign File URL node in this slice`;
+        // EXP-011 §46. A record verb's column (create/update — a delete writes nothing) or a Set
+        // User Properties' `_User` column takes the stored file as the wire's File envelope.
+        if (sink !== undefined && wire.toProperty.startsWith('prop-') && (RECORD_VERBS[sink.type] === 'create' || RECORD_VERBS[sink.type] === 'update' || sink.type === SET_USER_PROPERTIES_TYPE)) continue;
+        return `its Cloud File output is wired into ${sink?.type ?? 'nothing'} — a stored-file reference is read only by a Cloud File, a Sign File URL, a record verb's column or a Set User Properties' column in this slice`;
       }
       if (UPLOAD_PROGRESS_PORTS.includes(p)) {
         return `its ${p} output is consumed — the progress family rides XMLHttpRequest's upload events, which fetch() does not publish`;
@@ -8086,10 +8169,15 @@ function planComponent(
     }
     const refusal = fileOutputsRefusal(node, SIGN_FILE_URL_FIELDS, false);
     if (refusal !== undefined) return { defer: refusal };
-    const fed = uploadFeeding(node, 'file');
+    const fed = storedFileFeeding(node, 'file');
     if ('defer' in fed) return { defer: fed.defer };
     const ctx = newCtx();
-    const file = fileAnswerExpr(fed.upload, 'upload', 'upload', 'cloudFile', 'CloudFile', ctx);
+    // EXP-011 §46. From a Record's File column, the column read itself is the argument — the row
+    // form is `CloudFile | undefined` and earns the `No file specified` guard as the upload's row does.
+    const file =
+      'record' in fed
+        ? resolveExpr(fed.record, `prop-${fed.column}`, ctx)
+        : fileAnswerExpr(fed.upload, 'upload', 'upload', 'cloudFile', 'CloudFile', ctx);
     if (file === null) return { defer: ctx.defer ?? 'its File has no statically known source' };
     const consumes: string[] = [fed.key];
 
@@ -9234,6 +9322,9 @@ function planComponent(
       /** EXP-011 §45 — `file-out`, the same. */
       case 'file-out':
         return true;
+      /** EXP-011 §46 — a member of a column read is valid wherever the column read is. */
+      case 'file-field':
+        return exprValidIn(expr.source, context, invokedScope);
       /** `Now`, on the same footing as `http-out` and for the same reason. */
       case 'now-out':
         return true;
@@ -9982,6 +10073,9 @@ function planComponent(
       case 'date-call':
       case 'util-call':
         return e.args.some((a) => exprTouchesSnap(a, snap));
+      // EXP-011 §46. A member touches the snapshot exactly when its column read does.
+      case 'file-field':
+        return exprTouchesSnap(e.source, snap);
       default:
         return false;
     }
@@ -10048,6 +10142,12 @@ function planComponent(
           args.push(r);
         }
         return { ...expr, args };
+      }
+      // EXP-011 §46. The same, one member deep.
+      case 'file-field': {
+        const r = snapExpr(expr.source, snap);
+        if ('defer' in r) return r;
+        return { ...expr, source: r };
       }
       default:
         return expr;
@@ -12555,6 +12655,13 @@ function planComponent(
     for (const vars of [recordErrorVars, recordAnswerVars]) {
       for (const [nodeId, stateVar] of vars) {
         if (attachedRecordNodes.has(nodeId)) continue;
+        // EXP-011 §46. No "keep a fired node's rows" clause here, unlike the files family below:
+        // `recordWillFire` asks the Id-effect pass's own preconditions, so a node it answers yes
+        // for has attached by the time this runs on every fixture (a mutant deleting such a
+        // clause survived — it was unmeasured code). The one way the two could disagree is the
+        // effect's chain snapshot (`snapAction`), unconstructed; a project that hits it emits a
+        // handler reading a row this sweep removed, which fails the export's typecheck loudly.
+        // Registered in §46.3.
         const index = plan.stateVars.indexOf(stateVar);
         if (index >= 0) plan.stateVars.splice(index, 1);
       }
@@ -13417,6 +13524,12 @@ export function tsColumnType(columnType: string): string {
       return 'boolean';
     case 'Number':
       return 'number';
+    // EXP-011 §46. A File column is `{ __type: 'File', name, url }` on the wire (cloudstore.js
+    // `_serializeObject`, AdapterFacade `toWire`) — the `CloudFile` shape of `src/api/files.ts`, not
+    // a string. Before this slice it read `string`, and a Text on the column would have printed
+    // `[object Object]` while typechecking clean.
+    case 'File':
+      return 'CloudFile';
     default:
       return 'string';
   }

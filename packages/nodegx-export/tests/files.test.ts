@@ -139,7 +139,8 @@ describe('§A — the files module, the client and the util helper', () => {
   test('A1 connected: the two types, cloudFileName, and the two functions over the client’s requests', () => {
     const api = filesApi(app);
     expect(api).toContain("import { signFileUrlRequest, uploadFileRequest } from './client';");
-    expect(api).toContain('export interface CloudFile {\n  name: string;\n  url: string;\n  contentType?: string;\n  size?: number;\n}');
+    // §46 added the wire's tag as an optional member — a file read back from a record column carries it.
+    expect(api).toContain("export interface CloudFile {\n  name: string;\n  url: string;\n  contentType?: string;\n  size?: number;\n  /** The wire's tag on a file read back from a record column, and what `fileRef()` writes. */\n  __type?: 'File';\n}");
     expect(api).toContain(
       "export interface SignedFileUrl {\n  url: string;\n  kind: 'signed' | 'token' | 'public';\n  isShareable: boolean;\n  expiresAt?: string;\n  ttlSeconds?: number;\n}"
     );
@@ -447,7 +448,7 @@ describe('§C — refused by name', () => {
     const ir = cloneIr();
     wire(ir, HOME, 'upload', 'cloudFile', 'urlText', 'text');
     expect(reasonFor(ir, HOME, 'upload')).toBe(
-      'its Cloud File output is wired into Text — a stored-file reference is read only by a Cloud File or a Sign File URL node in this slice'
+      "its Cloud File output is wired into Text — a stored-file reference is read only by a Cloud File, a Sign File URL, a record verb's column or a Set User Properties' column in this slice"
     );
   });
 
@@ -505,7 +506,7 @@ describe('§C — refused by name', () => {
     unwire(variable, HOME, 'upload:cloudFile->sign:file');
     wire(variable, HOME, 'lastUploadRead', 'value', 'sign', 'file');
     expect(reasonFor(variable, HOME, 'sign')).toBe(
-      "its File is fed by Variable2.value — this slice reads a stored file only from an Upload File node's Cloud File output"
+      "its File is fed by Variable2.value — this slice reads a stored file only from an Upload File node's Cloud File output or a Record's File-typed column"
     );
     const two = cloneIr();
     wire(two, HOME, 'lastUploadRead', 'value', 'sign', 'file');
@@ -522,8 +523,9 @@ describe('§C — refused by name', () => {
     unwire(record, HOME, 'upload:cloudFile->cloud:file');
     addNode(componentOf(record, HOME), { id: 'rec', type: 'DbModel2', parameters: [{ name: 'collectionName', value: lit('Photos') }] });
     wire(record, HOME, 'rec', 'prop-avatar', 'cloud', 'file');
+    // §46 lifted this for a column the snapshot declares a File; this fixture's snapshot is empty, so the sentence names that.
     expect(reasonFor(record, HOME, 'cloud')).toBe(
-      "its Cloud File is fed by DbModel2.prop-avatar — this slice reads a stored file only from an Upload File node's Cloud File output"
+      'its Cloud File is fed by a Record\'s "avatar" column, which the project\'s schema snapshot does not declare — the interpreter turns a column into a stored file only where the snapshot types it File'
     );
   });
 
