@@ -119,8 +119,14 @@ gone** — they are ~150 lines each and worth rewriting, or promote them into `s
   first position (`Move up` can). Owner SBR-007. ⚠️ One drag also fired **two** `reorderSection`
   calls — possibly SBR-010's *"double write shipping since SB-004"*, visible here.
 - **[D52](DEFECTS-THE-SITE-BUILDER-FOUND.md#d52)** — ✅ **FIXED s46** (see below).
-- **[D51](DEFECTS-THE-SITE-BUILDER-FOUND.md#d51)** — re-scoped s45: **suite renders only**. It does
-  **not** bound editor-driven pictures. Owner SBR-014.
+- **[D51](DEFECTS-THE-SITE-BUILDER-FOUND.md#d51)** — 🔴 **narrowed twice more in s46; do not
+  re-derive it.** The **font arm is inert for both shipped templates**: neither asks for Inter —
+  they use `var(--font-sans)`/`var(--font-serif)`, and `siteTheme.ts` (site builder) and the
+  members-area's own custom token both overwrite those with platform stacks. Confirmed by this
+  run's Studio/Night control pair. Owner SBR-014; **not blocking and no longer bounding.** The
+  description that made three sessions believe otherwise is a **product** defect in
+  `StyleTokensModel.ts:161`, now **[REL-010 §6.12 R8](../phase-82-0.2.2-the-first-row-on-the-shelf/REL-010-AS-GOOD-AS-THE-PAGE-HE-RATED.md),
+  owner phase 81** — D51 points at it and does not carry it.
 - **[D49](DEFECTS-THE-SITE-BUILDER-FOUND.md#d49)** / **[D50](DEFECTS-THE-SITE-BUILDER-FOUND.md#d50)**
   — owner SBR-001, unchanged. D50 still means the claim needs a hand-provisioned secret.
 - **[D48](DEFECTS-THE-SITE-BUILDER-FOUND.md#d48)** — owner `NONE`. **[D45](DEFECTS-THE-SITE-BUILDER-FOUND.md#d45)** — 🟡 half closed.
