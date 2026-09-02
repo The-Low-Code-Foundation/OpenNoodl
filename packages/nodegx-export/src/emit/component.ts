@@ -2210,9 +2210,22 @@ export function emitComponent(
           const code = exprCode(a.expr, 'handler');
           return code === a.param ? code : `${a.param}: ${code}`;
         });
+        const call = `await ${action.fnName}(${argList.length > 0 ? `{ ${argList.join(', ')} }` : ''})`;
+        /**
+         * EXP-011 §42 — the answer is merged over the row where there is one, because that is
+         * what the runtime does: `doCall` writes `resultsValues[key]` per key the function
+         * answered and leaves every other key as the previous call left it (cloudfunction2.ts).
+         * The drive measured the replace: a Response with no params answered `{}`, the
+         * interpreter kept `p-2 by …` in every read, the export blanked three cells. The chain's
+         * own reads go through the same merged local, so a Set Variable fed by a result the
+         * function did not answer this time reads the previous value, as its node does.
+         * ⚠️ With no row (nothing outside the chain reads a result) there is nothing to merge
+         * over, and a chain read of an unanswered result reads `undefined` — §42.3 names it.
+         */
+        const answer = action.materialize !== undefined ? `{ ...${action.materialize}, ...(${call}) }` : call;
         return [
           'try {',
-          `${inner}const ${names.answerLocal} = await ${action.fnName}(${argList.length > 0 ? `{ ${argList.join(', ')} }` : ''});`,
+          `${inner}const ${names.answerLocal} = ${answer};`,
           ...(action.materialize !== undefined ? [`${inner}${stateSetterOf(action.materialize)}(${names.answerLocal});`] : []),
           ...expandActions(action.then).map((a) => `${inner}${actionCode(a, indent + 2)};`),
           `${pad(indent)}} catch (error) {`,
@@ -3356,6 +3369,18 @@ export function emitComponent(
        * handed an object and throws where the interpreted app prints `[object Object]`.
        */
       if (bound.kind === 'computed' && bound.expr.kind === 'http-out') {
+        const code = bindingExpr(bound, 'text');
+        if (code !== null) return `{String(${code} ?? '')}`;
+      }
+      /**
+       * A `Cloud Function` result in a text sink (EXP-011 §42) takes the same coercion, and the
+       * drive is why: `publishPage` answered `published: true`, the interpreter's Text printed
+       * `true` (`renderableText` is `String(value)` for anything but null/undefined), and the
+       * exported `{publishPageOut?.published}` printed **nothing** — React renders a boolean child
+       * as empty. The results are `*`-typed, so any of them can be a boolean or a number. The
+       * `Error` output is the one string this emitter writes itself and stays on the bare path.
+       */
+      if (bound.kind === 'computed' && bound.expr.kind === 'cloud-out' && bound.expr.output !== 'error') {
         const code = bindingExpr(bound, 'text');
         if (code !== null) return `{String(${code} ?? '')}`;
       }

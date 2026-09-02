@@ -173,7 +173,7 @@ describe('EXP-011 §41 §A — the functions module', () => {
       connect(notes, 'pub', 'out-page-id', 'notesHeading', 'text');
     });
     expect(functionsFile(app)).toContain('export interface PublishPageResults {\n  pageId: any;\n  published: any;\n  "page-id": any;\n}');
-    expect(notesFile(app)).toContain('{publishPageOut?.["page-id"]}');
+    expect(notesFile(app)).toContain('{String(publishPageOut?.["page-id"] ?? \'\')}');
     expect(typecheckEmittedApp(app)).toEqual([]);
   });
 
@@ -219,7 +219,8 @@ describe('EXP-011 §41 §B — the component', () => {
     const page = notesFile(app);
     expect(page).toContain('const [publishPageOut, setPublishPageOut] = useState<PublishPageResults | undefined>();');
     expect(page).toContain('setPublishPageOut(publishPageAnswer);');
-    expect(page).toContain('{publishPageOut?.published}');
+    // §42: a `*`-typed result in a text sink is coerced — see §F for why.
+    expect(page).toContain("{String(publishPageOut?.published ?? '')}");
     expect(page).toContain("import { callPublishPage, type PublishPageResults } from '../api/functions';");
     expect(typecheckEmittedApp(app)).toEqual([]);
   });
@@ -361,10 +362,74 @@ describe('EXP-011 §41 §E — the fixture, exported whole', () => {
     expect(app.files['.env.example']).toContain('VITE_NODEGX_ENDPOINT=http://localhost:8581');
     expect(functionsFile(app)).toContain('return callFunction<PublishPageResults>("publishPage", { pageId: params.pageId, publish: true });');
     const home = app.files['src/pages/Home.tsx'];
-    expect(home).toContain('{publishPageOut?.published}');
+    expect(home).toContain("{String(publishPageOut?.published ?? '')}");
     expect(home).toContain('{publishPageError}');
+    // §42: the row exists (two render reads), so the answer is merged over it.
+    expect(home).toContain('const publishPageAnswer = { ...publishPageOut, ...(await callPublishPage({ pageId: pageId.get() })) };');
     expect(home).toContain('lastPublished.set(publishPageAnswer.pageId);');
     expectParses(app);
+    expect(typecheckEmittedApp(app)).toEqual([]);
+  });
+});
+
+/**
+ * §F — what the drive found (EXP-011 §42, session 70). `call-desk` was exported against a local
+ * `nodegx-backend` on :8591 whose `publishPage` answered `{ pageId: "<id> by <userId>", published:
+ * true }`, and two cells disagreed with the interpreter, both predicted in EXPECTED.md before the
+ * app ran:
+ * 1. `published: true` printed **nothing** — `{publishPageOut?.published}` is a boolean in a JSX
+ *    child position, and React renders that as empty, where the runtime's Text node prints
+ *    `String(true)`. Fix: a `cloud-out` result in a text sink is coerced like an `http-out`.
+ * 2. A Response with no params answered `{}` and the export blanked `pageId`, `published` and the
+ *    Variable fed by `pageId`; the runtime writes `resultsValues[key]` per answered key and leaves
+ *    the rest. Fix: the answer is merged over the row where a row exists.
+ */
+describe('§F the drive — a result in a text sink is coerced, and an answer merges over the row', () => {
+  it('a result read in a Text is coerced with String(… ?? \'\'), so a boolean prints as the interpreter prints it', () => {
+    const app = withGraph((notes) => {
+      base(notes);
+      connect(notes, 'pub', 'out-published', 'notesHeading', 'text');
+    }, { connected: true });
+    const page = notesFile(app);
+    expect(page).toContain("{String(publishPageOut?.published ?? '')}");
+    expect(page).not.toContain('{publishPageOut?.published}');
+    expect(typecheckEmittedApp(app)).toEqual([]);
+  });
+
+  it('the Error output in a Text stays bare — it is the one string this emitter writes itself', () => {
+    const app = withGraph((notes) => {
+      base(notes);
+      connect(notes, 'pub', 'error', 'notesHeading', 'text');
+    }, { connected: true });
+    const page = notesFile(app);
+    expect(page).toContain('{publishPageError}');
+    expect(page).not.toContain("String(publishPageError");
+    expect(typecheckEmittedApp(app)).toEqual([]);
+  });
+
+  it('with a results row, the call merges its answer over the row, and the chain reads the merged local', () => {
+    const app = withGraph((notes) => {
+      baseBare(notes);
+      connect(notes, 'pub', 'out-pageId', 'after', 'value');
+      connect(notes, 'pub', 'error', 'onFail', 'value');
+      connect(notes, 'pub', 'out-published', 'notesHeading', 'text');
+    }, { connected: true });
+    const page = notesFile(app);
+    expect(page).toContain(
+      '            const publishPageAnswer = { ...publishPageOut, ...(await callPublishPage({ pageId: noteDraft.get() })) };\n            setPublishPageOut(publishPageAnswer);\n            lastPublished.set(publishPageAnswer.pageId);'
+    );
+    expect(typecheckEmittedApp(app)).toEqual([]);
+  });
+
+  it('with no row there is nothing to merge over, and the call stays bare — the §42.3 residual, by name', () => {
+    const app = withGraph((notes) => {
+      baseBare(notes);
+      connect(notes, 'pub', 'out-pageId', 'after', 'value');
+      connect(notes, 'pub', 'error', 'onFail', 'value');
+    }, { connected: true });
+    const page = notesFile(app);
+    expect(page).toContain('const publishPageAnswer = await callPublishPage({ pageId: noteDraft.get() });');
+    expect(page).not.toContain('...publishPageOut');
     expect(typecheckEmittedApp(app)).toEqual([]);
   });
 });

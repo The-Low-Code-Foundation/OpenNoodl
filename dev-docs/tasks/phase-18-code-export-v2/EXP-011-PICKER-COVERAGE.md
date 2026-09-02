@@ -5254,3 +5254,107 @@ Nine mutant arms, each restored by `diff -rq` against `snap41-post/`:
   *a client call with a typed answer*.
 - §41.3's two divergences, owner P18 with the drive.
 - The controlled-state gap (§38.3), `Component Children`, the animation pair — carried.
+
+## §42 The `Cloud Function` drive — a real function called from an exported app, and the two cells that disagreed (session 70, 2026-09-02)
+
+**Picker 81 unchanged.** §41.5's first item: nobody had called a real function from an exported
+app, and arm I (the session token) was pinned only by the client golden. This section is the
+drive, and what it found. Instruments in the s70 scratchpad: `control.mjs` (the curl-level
+control), `EXPECTED.md` and `EXPECTED-POSTFIX.md` (both written before their drive ran — the
+mtimes say so), `drive.mjs` (CDP, headless Chrome 151), `backend-data/workflows/calldesk.workflow.json`
+(the drive-only function), `backend.log` / `backend2.log` (the backend's own request log, one line
+per call with the principal), `harness/` (the exported app, built), `mut42.py` + `runmut42.sh`.
+
+### §42.1 The rig
+
+- A local `nodegx-backend` (`node bin/nodegx-backend.js serve --data-dir … --port 8591`) with one
+  bundle in `<dataDir>/workflows/`: `publishPage`, a Request node (`params: pageId,publish`,
+  `allowNoAuth: false`) → a Function node → three Response nodes: `{ pageId: "<pageId> by
+  <userId>", published: <publish> }`, a failure *"This page could not be published."* for `bad`,
+  and a Response with no params for `empty` (answers `{ result: {} }`). ⚠️ **A Function node in a
+  bundle needs its signal outputs declared as `ports`** (`out-ok`, `out-fail`, `out-empty`) — the
+  first bundle carried only the script, and `Outputs.fail is not a function` sat behind a 30 s
+  *"did not send a response"* timeout. The corpus's own `__cloud__/publishPage` (SBR-015) needs
+  `Page`/`Section` collections, an admin role and a `RunTasks` worker, so the drive function is
+  the corpus function's contract without its dependencies.
+- `call-desk` exported by `scripts/emit-app.ts` into a copy of s68's prepared harness, `.env`
+  pointing `VITE_NODEGX_ENDPOINT` at :8591 (the built bundle carries the string once, checked),
+  `vite build`, `vite preview` on :5391.
+- The session: `POST /users` once (user `driver`), then the `WireSession` seeded into
+  `localStorage['Parse/backend_calldesk/currentUser']` — the runtime's own key, which is why an
+  exported app and its interpreter agree about who is signed in. ⚠️ **The Chrome profile persists
+  localStorage across drives**: the second drive's D2 succeeded instead of being refused until
+  `localStorage.clear()` was added after the first load. The backend log has the failed attempt
+  as a `200 user` line at 12:24:04, before the real run.
+- The control (`control.log`) before the browser: anonymous → `500 "Unauthenticated requests not
+  accepted."` (enforced even with `devOpen: true`); token → `200 { result: { pageId: "p-1 by
+  055b2080-…", published: true } }`; `bad` → 400; `empty` → `200 { result: {} }`; a missing
+  `publish` → `400 function/bad-request` (the authored parameter is folded, so the export never
+  sends that one).
+
+### §42.2 Seven steps, written down first, every cell as predicted — including the two wrong ones
+
+| step | action | what the export showed |
+|---|---|---|
+| D1 | load, no session | every readout empty; **0** calls to `/functions` on mount |
+| D2 | `p-1`, Publish, no session | `Error` and the Failure chain's Variable: *Unauthenticated requests not accepted.* |
+| D3 | session seeded, reload, `p-1`, Publish | `pageId` = `p-1 by 055b2080-…` (the user id — the token was sent), `lastPublished` the same, `Error` empty; **`published` = `''`** where the interpreter prints `true` 🔴 |
+| D4 | `bad` | `Error` and `lastError` = *This page could not be published.*; the results untouched (the catch arm never writes the row — matches) |
+| D5 | `p-2` | results move to `p-2 by …`; **`Error` still holds D4's sentence** — never cleared on success, as `cloudfunction2.ts` never clears `_internal.error` |
+| D6 | `empty` | **`pageId` → `''`, `lastPublished` → `''`** where the interpreter keeps `p-2 by …` 🔴 (§41.3's first divergence, measured) |
+| D7 | backend stopped, `p-3` | *Could not reach the backend at http://localhost:8591* — the client's own sentence |
+
+The backend's log for the drive: `500 anonymous`, then `200 user`, `400 user`, `200 user`,
+`200 user`. **That line is arm I measured behaviourally** — the header the mutant could only
+reach through a golden pin, read off the receiving end.
+
+### §42.3 The two defects, and their fixes
+
+1. 🔴 **A `*`-typed result in a text sink dropped booleans.** `{publishPageOut?.published}` is a
+   boolean in a JSX child position and React renders that as nothing; the runtime's Text node
+   prints `String(true)` (`renderableText`, Text.tsx — `null`/`undefined` clear, everything else
+   is stringified). Tier 1.2 had already made this decision for `http-out` and the cloud results
+   are the same `any`; `childText` now coerces `cloud-out` results with `String(… ?? '')` and
+   leaves the `Error` output on the bare path (it is the one string this emitter writes itself).
+2. 🔴 **An answer replaced the row; the runtime merges it.** `doCall` writes `resultsValues[key]`
+   per key the function answered and leaves the rest as the previous call left them; the export
+   did `setPublishPageOut(answer)`. Now, where a row exists: `const publishPageAnswer =
+   { ...publishPageOut, ...(await callPublishPage({ … })) };` — the chain's own reads go through
+   the merged local, so a Set Variable fed by an unanswered result reads the previous value, as
+   its node does. ⚠️ **Residual, by name:** with no row (nothing outside the chain reads a result)
+   there is nothing to merge over, and a chain read of a result the function did not answer reads
+   `undefined` where the interpreter reads the previous call's. A row is minted only for render
+   reads (§41.4 arm F's rule) and this session did not change that; the row that pins the bare
+   call names the residual so the next reader knows it was chosen, not missed.
+
+Post-fix drive (`drive2.log`, `EXPECTED-POSTFIX.md` first): D3 `published` = `true`; D6 all three
+cells unchanged; everything else identical. Re-emitted, rebuilt, re-driven — not re-read.
+
+### §42.4 Graded — `tests/cloud-function.test.ts` 20 → 24 rows; 53 files on disk
+
+§F: a result in a Text is coerced (and the bare form is absent); the `Error` output stays bare;
+with a row the call merges and the chain reads the merged local; with no row the call stays bare
+— the residual pinned by name. Three older rows re-pinned to the coerced shape (the odd-name row,
+the render-read row, the fixture's whole-export row, which also pins the merge line).
+
+| arm | mutation | killed by |
+|---|---|---|
+| J | `cloud-out` results no longer coerced in a text sink | **4** — the odd-name row, the render-read row, the fixture row, §F's coercion row |
+| K | the answer replaces the row again | **2** — §F's merge row, the fixture row |
+
+Gates: package `tsc` 0, editor `tsc` 0, jest **1400/1400 in 53** (53 files on disk), the picker
+81/127 unchanged. Arms restored by `diff -rq` against `snap-src-post/`.
+
+### §42.5 What this leaves
+
+- §41.3's second divergence (`x-noodl-cloud-version` when `deployVersion` is set) — still open,
+  still shared with the record verbs, owner P18.
+- The §42.3(2) residual — a row minted for a chain-only read would close it; not worth the
+  emitted surface until a corpus graph reads an unanswered result in a chain.
+- The other eight Cloud Services, now surveyed against the client (s70's survey is in the
+  handoff): by corpus count `Record` (22 nodes, every one `idSource: explicit`, the id fed by a
+  Function node's output in 21 and by `PageInputs` in 1, `Fetch` fired by that Function's
+  `out-ready`, outputs mostly into text inputs' `startValue` and checkboxes' `checked` — §38.3's
+  controlled-state gap sits right behind it) is first; `Upload File` (17, but its only source is
+  the untranslated `Open File Picker`) and the rest are 0 in the corpus.
+- The record-verb row for `puppy-test-3` (§40.5) and the reactive-Condition HTTP drive — carried.

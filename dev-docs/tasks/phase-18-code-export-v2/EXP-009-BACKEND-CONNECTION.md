@@ -1,6 +1,6 @@
 # EXP-009 — The exported app talks to its deployed backend
 
-**Status:** 🟢 Built and driven, session 33 (2026-08-28) — AC1/2/3/5/6/7 verified. **AC4 built session 69 (EXP-011 §41): the `Cloud Function` node translates and the client gained `callFunction()`; typechecked, not yet driven against a live backend.**
+**Status:** 🟢 Built and driven, session 33 (2026-08-28) — AC1/2/3/5/6/7 verified. **AC4 built session 69 (EXP-011 §41) and DRIVEN session 70 (EXP-011 §42): the `Cloud Function` node translates, the client gained `callFunction()`, and `call-desk` exported against a local `nodegx-backend` called a real function — the session token proved by the backend's own log (anonymous refused, signed-in answered with the caller's id). The drive found two divergences and both are fixed.**
 See [EXP-009-CLIENT-TARGET-OUTPUT.md](./EXP-009-CLIENT-TARGET-OUTPUT.md) for the design and
 §8 below for what the drive measured and what remains.
 **Depends on:** EXP-002 (the call sites already exist and are already typed)
@@ -169,14 +169,20 @@ note. Goldens: `tests/goldens/exp009/`; design: EXP-009-CLIENT-TARGET-OUTPUT.md.
   string is `X-Parse-Application-Id`. Also pinned as tests, including a parser test that a
   masterKey pasted into project metadata never reaches the IR.
 - **AC6 ✓** (`VITE_NODEGX_ENDPOINT` / `VITE_NODEGX_APP_ID`, defaults = the project's own).
-- **AC4 built, not driven (session 69, EXP-011 §41).** The `Cloud Function` node translates:
+- **AC4 ✓ built (session 69, EXP-011 §41) and driven (session 70, EXP-011 §42).** The `Cloud Function` node translates:
   `src/api/functions.ts` holds one function per node, and `src/api/client.ts` gained
   `callFunction(name, params)` — `POST /functions/<name>`, app id, session token, JSON body,
   200/201 carries `result`, anything else throws the backend's `error` or the runtime's own
   sentence (`cloudfunction2.ts`'s `_makeRequest`, line for line). Where the project declares no
   backend the stub throws *"No cloud services defined in this project."*, the interpreter's own
-  Failure. `tests/fixtures/call-desk` exports whole and typechecks. ⚠️ **Nobody has called a real
-  function from an exported app yet** — the drive belongs with the DOM-level form drive above.
+  Failure. `tests/fixtures/call-desk` exports whole and typechecks. **Driven s70 (EXP-011 §42):**
+  a local `nodegx-backend` on :8591 serving a drive-only `publishPage` (`allowNoAuth: false`), the
+  export built with `.env` pointing at it, seven steps written down first. The anonymous click was
+  refused with the backend's own sentence, the four signed-in clicks (session seeded in
+  `Parse/<appId>/currentUser`) reached the function as `principal: user` and the answer carried the
+  caller's user id — the header §41.4's arm I could only pin by golden, measured. Two divergences
+  the drive found (a boolean result rendered as nothing; an empty answer blanked the row) are fixed
+  in §42. ⚠️ The DOM-level login/admin form drive above is still not run.
 
 Residue: the drive created user `exp009-drive` in the local backend's `_User` collection
 (its test puppy and session were cleaned up; the user row is inert).
