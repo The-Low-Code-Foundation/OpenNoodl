@@ -2154,6 +2154,285 @@ forgotten.
 
 ---
 
+## D44 — 🟢 FIXED IN THE SAME SESSION (s39). Realtime never connected for the built-in backend, because the app id was sent as a session token
+
+**Product — `noodl-runtime`. Not the template, and not the hub.** Found by SBR-011, which is the
+first thing ever built that asks the shipped runtime to hold a subscription open against our own
+backend.
+
+### The symptom, and how long it hid
+
+A published site with three subscribing queries opened **three** `EventSource` connections, exactly
+as designed — and the hub's `connectionCount` was **0**. Nothing was logged. The page rendered
+perfectly, every query answered, and the only observable difference between "realtime is on" and
+"realtime is off" was that nothing ever updated.
+
+### The chain, end to end
+
+| | |
+|---|---|
+| 1 | `endpointBackendEntry` fills the endpoint entry's `auth.publicToken` from **`cloudservices.appId`** (`resolveBackend.pure.ts:160`) |
+| 2 | `RealtimeSubscription.token` returned `sessionToken \|\| publicToken` — so for an anonymous visitor, the **app id** |
+| 3 | `SseTransport`'s nodegx dialect puts that in the URL: `GET /realtime?token=<app id>` |
+| 4 | `HttpServer.resolveSSEPrincipal` reads `?token=` as an **`x-parse-session-token`** |
+| 5 | Parse semantics: an unknown session token is a **refusal**, not a fallback to anonymous |
+
+Measured against a real `BackendService`, no browser involved:
+
+```
+GET /realtime                              → 200  event: connected {"clientId":…}
+GET /realtime?token=myapp        (app id)  → 400  {"error":"Invalid session token","code":209}
+GET /realtime?token=not-a-session-token    → 400  {"error":"Invalid session token","code":209}
+```
+
+🔴 **`publicToken` means two different things and only one of them is a token.** On Directus,
+PocketBase and Supabase it is a genuine public auth token (`byob-utils.ts:113` uses it as one). On
+`nodegx`/`parse` it carries the Parse **Application Id**, deliberately — `ParseWireAdapter` sends it
+as `X-Parse-Application-Id`. The fallback treated the two as the same kind of thing.
+
+### The fix, and its shape
+
+One predicate, in `RealtimeSubscription.token`: on a Parse-wire backend, the session token or
+**nothing**. The empty string is the correct answer rather than a tolerated one — an anonymous
+subscriber *is* anonymous, the hub accepts it, and delivery is still gated per event on the row ACL,
+so a public site is live and a draft still cannot leak. It narrows **by type** rather than dropping
+the fallback, because on the BYOB backends the fallback is right.
+
+### 🔴 Why no gate caught it, and what now does
+
+`realtime-transports.test.ts` had **357 green arms** across five transports and stayed green through
+the whole defect: every fixture carried either a real `sessionToken` or no auth at all, and **not one
+of them asserted what ends up in the URL.** A hole shaped exactly like the defect.
+
+Three arms now read the URL, and the mutation confirms them: with the predicate removed, *"sends NO
+token when a nodegx handle carries only an app id"* reddens with the literal
+`http://nodegx.test:8593/realtime?token=myapp`, while the session-token arm and the PocketBase
+control stay green — so they are grading the change and not merely reflecting it.
+
+⚠️ **The control had to be re-pointed to be a control at all.** Its first version asserted the
+public token was in PocketBase's stream URL and went red: that dialect deliberately puts no token
+there and sends it as an `authorization` header on the subscribe POST. A control aimed at the wrong
+surface grades the dialect, not the change.
+
+---
+
+## D45 — 🟡 SPLIT AND HALF FIXED (s40). Subscriptions are not confirmed and retry forever, LEAKING A STREAM EACH TIME
+
+**Owner: the leak half is CLOSED; the delay half moved to [D46](#d46), owner `NONE`.**
+
+### 🔴 s40 — the discriminating test was run, and the row was TWO defects with two different owners
+
+The register named the test — *time the hello frame through the `/__backend` proxy against direct,
+in one run* — and refused to attribute anything until it had been run. It has been, in
+`packages/nodegx-backend/tests/d45-realtime-proxy-timing.test.ts`, and it separates the row cleanly:
+
+| the half | verdict | what settled it |
+|---|---|---|
+| **the abandoned stream stays open** | **HARNESS**, `render-from-disk.js`. ✅ **FIXED s40.** | §2: a proxied stream's close left the hub's `connectionCount` unmoved for ten seconds, while the **direct control on the same counter in the same run** reaped immediately. |
+| **confirmation times out at 15s** | **PRODUCT**, `SseTransport`. → **[D46](#d46)** | §1: the hello frame through the proxy is **8ms** against direct's **9ms**. Nothing here was ever holding a frame. |
+
+✅ **The leak was `up.pipe(res)` not destroying its source.** A proxied `GET /realtime` outlived the
+browser that opened it: the upstream response stayed writable, so `RealtimeHub` never saw the `close`
+it reaps a connection on, and the entry sat in its map forever. One line —
+`res.on('close', () => p.destroy())` — and the arm that grades it reddens when that line is removed
+and the direct control stays green.
+
+✅ **Measured end to end on the real drive, which is the reading that matters**: SBR-011's
+`openStreams` went **15 → 3**. Three streams for three subscriptions, which is what the transport
+says it opens.
+
+🔴 **What that did NOT fix, and the register should not have expected it to**: every subscription
+still times out at 15s and still retries. The leak was spending
+`rateLimit.realtimeMaxConnections` on dead connections — a real cost with a real blast radius —
+but it was never the reason confirmation failed. Two defects that produced one symptom.
+
+### 🔴 The AC3 isolation the row asked for — settled, and it is NOT Theme
+
+> *"the two runs cannot tell apart 'the `Theme` subscription specifically does not deliver' from
+> 'AC3's window lost the same race the others won'. Isolating that is the first job of whoever
+> takes this row."*
+
+`liveCollections` on the s40 run reads **`{Page: false, Section: false, Theme: false}`**. All three
+collections are equally dead inside the warm-up window, so **there is nothing `Theme`-specific and
+AC3 is not blocked by a `Theme` defect**. AC1, AC2 and AC4 pass because their windows fall after a
+retry cycle happens to land; AC3's does not. The blocker is [D46](#d46) and nothing else.
+
+---
+
+### The original row, as filed at s39
+
+⚠️ **It was not yet known whether this was the product or the harness**, and the row said so rather
+than picking. The discriminating test is named below.
+
+### What was measured
+
+SBR-011's drive, on the run immediately after [D44](#d44) was fixed. The page opened its streams —
+the hub's `connectionCount` went from **0** to **6** — and the browser logged three of these:
+
+```
+[noodl] DbCollection2 (/Site/Nav):    The realtime subscription to "Page" was not confirmed within 15000ms.
+[noodl] DbCollection2 (/Pages/Site):  The realtime subscription to "Section" was not confirmed within 15000ms.
+[noodl] DbCollection2 (/Pages/Site):  The realtime subscription to "Theme" was not confirmed within 15000ms.
+```
+
+**Six streams for three subscriptions** on that run: each attempt times out and **leaves its stream
+behind**, the transport retries, and eventually one lands. In the same run the nav had gained every
+published link by the time the later arms read it, so the page really does go live.
+
+🔴 **The next run made it much worse, and that variability is itself the finding.** Same code, same
+harness, one run later: **fifteen streams for three subscriptions**, the same three messages
+repeating (the readout caps at eight), and a 120-second warm-up window in which **not one of the
+three collections ever went live** — while AC1, AC2 and AC4, measured later in the same run, all
+passed. So the subscriptions do connect in the end; how long that takes is **unpredictable between
+runs of the identical code**.
+
+⚠️ **The leak is the part with a blast radius.** A retry that opens a stream without the old one
+being reaped costs a connection per attempt, and the realtime tier is capped by exactly that
+(`rateLimit.realtimeMaxConnections`, default 500). A handful of visitors on a slow link would spend
+the cap on dead streams. Two separate questions live here and both need answering: **why
+confirmation fails**, and **why the abandoned stream is still open**.
+
+🔴 **This is why the first post-D44 run read AC1, AC2 and AC3 as failing.** Their windows fell
+inside the dead period. The drive now establishes liveness with throwaway rows in **all three**
+collections before it measures anything — an honest fix on the instrument side that says nothing
+about the cause, and one that cannot make the drive a stable gate while this row is open.
+
+🔴 **AC3 is the criterion this actually blocks.** AC1, AC2 and AC4 passed in both post-D44 runs;
+AC3 passed in neither, and the two runs cannot tell apart *"the `Theme` subscription specifically
+does not deliver"* from *"AC3's window lost the same race the others won"*. **Isolating that is the
+first job of whoever takes this row** — and it is cheap now that `liveCollections` names which of
+the three went live.
+
+### The discriminating test, and why neither answer is safe to assert yet
+
+The drive reaches the backend through `render-from-disk.js`'s `/__backend` proxy, which pipes the
+upstream response (`up.pipe(res)`). A proxy that holds the hello frame until something flushes it
+would produce exactly this: the transport cannot POST its subscription until it has the `clientId`
+the hello frame carries, so a delayed hello frame *is* an unconfirmed subscription.
+
+Against that: an anonymous `openStream` **straight to the backend**, in the same test file and the
+same run, gets its `connected` frame immediately.
+
+✅ **So the test is a timing comparison, not an inspection**: time the hello frame through the proxy
+and direct, in one run. If the proxy is slow, this is the harness — the same shape as
+[D40](#d40) — and `render-from-disk.js` owes an explicit flush. If both are fast, the delay is in
+`RealtimeSubscription`'s POST and the row is the product's.
+
+⚠️ **Do not close it by raising the 15-second deadline.** That is the number that made the failure
+visible; a longer one would only make the same wait silent.
+
+---
+
+## D46 — 🔴 SIX realtime subscriptions on one origin SILENCE the app. Owner `NONE`
+
+**Product, `packages/noodl-runtime/src/api/backends/realtime/SseTransport.ts`.** The delay half of
+[D45](#d45), measured, and it is larger than the row it came out of.
+
+### What was measured
+
+**The browser's own clock, on SBR-011's drive.** Resource Timing for every `/realtime` request the
+open page made, read after the warm-up window:
+
+| url | start | **queued** | wait | duration |
+|---|---:|---:|---:|---:|
+| `/__backend/realtime` ×3 | 125ms | 2ms | 1ms | 15008ms |
+| `/__backend/realtime/subscriptions` ×3 | 128ms | **15007ms** | **5ms** | 15011ms |
+| `/__backend/realtime` ×3 | 16136ms | 1ms | 2ms | 15005ms |
+| `/__backend/realtime/subscriptions` ×3 | 16141ms | **15001ms** | **6ms** | 15008ms |
+| …and again at 33143ms, identically | | | | |
+
+🔴 **`queued 15007ms, waited 5ms`.** The subscription POST was not slow and the backend was not
+slow — **the request was never sent**. It sat in the browser's queue for exactly the confirmation
+deadline, and the queue drained at the instant that deadline closed the streams. Three cycles of
+that, then a fourth.
+
+### The mechanism, priced
+
+`SseTransport` opens **one never-ending stream per subscription** — its own header calls this "the
+honest trade" and notes the cost is "one connection per subscribing node". The registration POST
+that every one of those streams *requires* competes for the same per-origin connection pool the
+streams are *holding*.
+
+✅ **The pool is six, measured in the product's own browser** (`d45-realtime-proxy-timing.test.ts`
+§4 — streams opened one at a time, an ordinary same-origin request timed after each):
+
+| streams open | 1 | 2 | 3 | 4 | 5 | **6** |
+|---|---:|---:|---:|---:|---:|---:|
+| an ordinary request | 6ms | 3ms | 2ms | 2ms | 2ms | **never sent** |
+
+⚠️ **Every stream still opens.** The starvation is of *other* requests, not of the streams — which
+is exactly why it presents as "the subscription was not confirmed" and not as "the connection
+failed", and why nothing in any log names the cause.
+
+🔴 **So the ceiling is a product limit, not a harness artefact: an app with six realtime
+subscriptions on one origin cannot make any other request to its backend.** Not its queries, not
+its writes, not the registration POSTs for those very subscriptions. It is not a slow app, it is a
+stopped one. The site-builder template reaches this with **three** subscriptions, because the page's
+own boot traffic occupies the rest of the pool while the POSTs wait.
+
+### Why it self-heals, and why that is worse than failing
+
+The deadline fires, `transportDownFrom` closes the stream, the freed slot lets the POST out, the
+backend answers `200` in 5ms — and `RealtimeSubscription` discards it, because `this._clientId !==
+clientId` for a generation that has already been replaced. A new stream opens and the same thing
+happens. **A page goes live only when a retry cycle happens to win the race**, which is why the
+same code read 6 streams on one run and 15 on the next: the timing is genuinely unpredictable, and
+that unpredictability was the finding all along.
+
+### The fix, named and sized
+
+🔴 **One SSE connection per backend, shared across subscriptions, with a registry that POSTs the
+union.** The transport's header rejected this — *"the alternative is a shared registry that has to
+be right about ordering"* — but the measurement above is the argument the header did not have.
+Three things make it smaller than it looks:
+
+- `parseChange` **already** filters by `payload.collection`, so the shared-stream receive path is
+  the one that is written.
+- The hub's `POST /realtime/subscriptions` takes an **array**, so the union is one request.
+- The subscription POST *replaces* the set for a `clientId` — which is the reason a registry is
+  mandatory rather than an optimisation, not a reason to avoid one.
+
+⚠️ **Two things that must not be got wrong.** Two subscriptions on the same collection with
+*different* filters would share a stream that delivers the union, and today each consumer filters
+only by collection name — so a filtered subscriber would see rows it did not ask for. And the
+**PocketBase** dialect has to come along: its change event name is the *collection's* own name, so
+a shared stream needs listeners added and removed as the registry changes.
+
+⚠️ **Do not close this by raising the 15-second deadline**, for the reason [D45](#d45) gave: that
+number is what made the failure visible, and a longer one only makes the same wait silent. A
+deadline long enough to survive the race would also be long enough to hide a real refusal.
+
+🔴 **It blocks SBR-011 AC3**, and it is the only thing that does.
+
+---
+
+## D47 — ⚠️ Two drives are RED in the working tree, and it is not D45's fix. Owner `NONE`
+
+**Measured s40, and filed as a fact rather than a diagnosis.** Run while checking D45's fix had not
+downgraded a neighbour:
+
+| suite | result |
+|---|---|
+| `sbr011-hub-unreachable-drive` | ✅ 3/3 pass |
+| `sbr010-messages-drive` | 🔴 **17/17 fail** |
+| `sb008-public-site-drive` | 🔴 **7 fail** |
+
+✅ **Not D45's fix, established by two controls, not by argument**: the identical 24 failures occur
+with the fix reverted, **and** with `render-from-disk.js` restored to its committed HEAD version.
+
+⚠️ **The shape.** `sbr010` fails at `fill()` with `absent:0:[]` — `document.querySelectorAll('input,
+textarea')` returns the **empty array**, so the page draws no text input at all. `sb008` fails
+differently, on page text equality. The working tree carries phase 82's in-flight REL-002a edits to
+`noodl-viewer-react/src/nodes/controls/text-input.ts` (the `Placeholder` default, `'Type here...'` →
+`''`) and to `render-from-disk.js`'s host stylesheet, and **the built viewer bundle contains them**
+(`grep 'Type here' → 0`). That is a lead and not a finding: a default is not a rendering break, and
+nothing here has been run against a bundle built without those edits.
+
+🔴 **Whoever owns this must re-derive it rather than relay it.** The one thing worth carrying
+forward is the control: it is *not* the D45 proxy fix, and that has been measured twice.
+
+---
+
 ## Where these rows were filed, and why not all of them went to the same place
 
 **s31, 2026-08-30.** Phase 80's `TASKS.md` came clean in the working tree while this session was

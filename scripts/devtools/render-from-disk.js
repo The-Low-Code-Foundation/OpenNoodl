@@ -488,7 +488,31 @@ if (PRINT_PROJECT) {
           },
           (up) => { res.writeHead(up.statusCode, up.headers); up.pipe(res); }
         );
-        p.on('error', (e) => { res.writeHead(502); res.end(e.message); });
+        /**
+         * D45 — a client that goes away must take its UPSTREAM with it.
+         *
+         * `up.pipe(res)` does not destroy the source when the destination
+         * closes, so a proxied `GET /realtime` outlived the browser that opened
+         * it: the SSE response upstream stayed writable, `RealtimeHub` never saw
+         * the `close` it reaps a connection on, and the entry sat in its map
+         * forever. Measured on this server before the fix — three subscriptions
+         * closed, `connectionCount` unchanged after ten seconds — which is
+         * SBR-011's "fifteen streams for three subscriptions" exactly: every
+         * confirmation timeout retried, and every abandoned attempt was billed
+         * to `rateLimit.realtimeMaxConnections` and never refunded.
+         *
+         * 🔴 This is the LEAK half of D45 and not the DELAY half. Timed in one
+         * run against a direct client, the hello frame through this proxy is
+         * 8ms to direct's 9ms, so nothing here was ever holding a frame.
+         */
+        res.on('close', () => p.destroy());
+        p.on('error', (e) => {
+          // `p.destroy()` above lands here as ECONNRESET on a response already
+          // sent or already gone; writing a 502 into it would throw.
+          if (res.headersSent || res.writableEnded) return res.destroy();
+          res.writeHead(502);
+          res.end(e.message);
+        });
         req.pipe(p);
         return;
       }

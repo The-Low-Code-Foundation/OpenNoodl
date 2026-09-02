@@ -1059,3 +1059,167 @@ Baseline taken by putting **HEAD's artefact** back for one run (md5-checked in a
 | `aib-007` — `noodl.cloud.listusersinrole` unclassified | 🔴 **yes**, and it reads no template at all |
 
 `test:main` is still the unwatched runner **D19** named. Owner: `NONE`.
+
+
+---
+
+## s40 (2026-09-02) — 🟢 **D45 RUN TO GROUND. It was two defects: the leak is the harness (fixed), the delay is the product (D46), and AC3 is isolated**
+
+**First job per the standing rule** — D45 blocked SBR-011 AC3, so it was the job rather than a row
+to file. It is now answered, and the answer is that the row was **two defects producing one
+symptom**, with two different owners.
+
+### The register named a test. It was run, and it discriminated.
+
+> *time the hello frame through the `/__backend` proxy against direct, in one run.*
+
+`packages/nodegx-backend/tests/d45-realtime-proxy-timing.test.ts`, five arms, ~20 seconds:
+
+| | reading |
+|---|---|
+| **§1** hello frame, one run | proxied **8ms**, direct **9ms** — the proxy was never holding a frame |
+| **§2** close a proxied stream | `connectionCount` **unmoved for 10s**; the direct control on the same counter reaped at once |
+| **§3** subscribe with 3 streams open, from Node | 200, `accepted: 1`, **22ms** |
+| **§4** the browser's connection pool | 1–5 streams: an ordinary request in 2–6ms. **6 streams: never sent.** |
+
+### ✅ FIXED — the leak, and it was the harness
+
+`render-from-disk.js`'s `/__backend` proxy did `up.pipe(res)` and never destroyed its source, so a
+proxied `GET /realtime` outlived the browser that opened it. `RealtimeHub` reaps on its response's
+`close`; that close never came. One line — `res.on('close', () => p.destroy())`.
+
+🔴 **Graded by mutation, not by the green**: removing that line reddens §2's proxied arm and leaves
+§2's direct control green. And measured on the real thing — SBR-011's `openStreams` went **15 → 3**.
+
+### 🔴 D46 — the delay is the product, and it is bigger than D45 was
+
+Instrumenting the drive with **Resource Timing** was the reading that ended the argument. The
+subscription POST: **`queued 15007ms, waited 5ms`**. Not slow — *never sent*, released at the exact
+instant the deadline closed the streams. Three cycles, identically.
+
+`SseTransport` opens one never-ending stream per subscription; the registration POST every one of
+them requires competes for the same per-origin pool those streams are holding. **§4 prices that pool
+at six.** So an app with six realtime subscriptions on one origin cannot make **any** other request
+to its backend — not its queries, not its writes, not the POSTs for those subscriptions. Filed as
+[D46](DEFECTS-THE-SITE-BUILDER-FOUND.md#d46) with the fix named and sized (one shared connection per
+backend, a registry POSTing the union) and the two traps that fix must not walk into.
+
+### ✅ AC3 isolated — it is not `Theme`
+
+`liveCollections` reads `{Page: false, Section: false, Theme: false}`. All three equally dead in the
+warm-up window, so the s39 pair's open question — *"is `Theme` specifically broken, or did AC3 lose
+the race?"* — is settled as the race. AC3 stays **NOT MET**, blocked by D46 and nothing else.
+
+### What this session learned that the next one needs
+
+- 🔴 **A `queued` field is a different defect from a `wait` field, and only one instrument shows
+  both.** Three sessions read "the subscription was not confirmed" and reasoned about the server and
+  the proxy. `performance.getEntriesByType('resource')` said in one number that the request had
+  never left the browser. **When a client-side timeout has no server-side counterpart, read the
+  browser's own clock before theorising about the wire.**
+- 🔴 **A symptom with two causes is closed by neither fix alone.** The leak fix took 15 streams to 3
+  and changed the confirmation behaviour *not at all*. Had the drive only counted streams, the row
+  would have been closed on a real fix that was not the fix.
+- 🔴 **A neighbourhood check needs its own control.** Running D45's fix against the sibling drives
+  found **24 red tests** — and the identical 24 are red with the fix reverted *and* with
+  `render-from-disk.js` at committed HEAD. Filed as [D47](DEFECTS-THE-SITE-BUILDER-FOUND.md#d47).
+  ⚠️ Without running those two controls this session would have reported a regression it did not
+  cause, or worse, reverted a good fix.
+- ⚠️ **`§4`'s first version had no cap and sat 174 seconds on the sixth stream**, killing the suite
+  on its own timeout. A starved request is not slow; it is not sent, and an instrument measuring it
+  must record the cap as the reading rather than wait it out.
+
+## s39 (2026-09-02) — 🟡 **SBR-011 BUILT, AC1/AC2/AC4 DRIVEN. The template change is six lines; the work was a product defect that had made the feature impossible**
+
+**Built:** three public-site queries hold a subscription open — `/Site/Nav pages` (AC1),
+`/Pages/Site sections` (AC2), `/Pages/Site theme` (AC3). Query Records' own **Subscribe To Changes**
+checkbox, not the standalone node: `subscribetochanges.ts` states in its own header that it does not
+re-query and that the checkbox *"stays as the query-refreshing form"*. Template regenerates at 33
+components — no new nodes, six new lines of parameters.
+
+### 🔴 D44 — realtime had NEVER connected for the built-in backend. Fixed.
+
+The first drive read every AC as failing. The reading that settled what was actually wrong was the
+**hub's own `connectionCount`, taken in-process while the page sat open**: the browser had opened
+**three** `EventSource`s and the hub held **zero**. *Never subscribed* and *subscribed and refused*
+are the same picture from a browser and have opposite fixes.
+
+`endpointBackendEntry` puts the Parse **Application Id** in `auth.publicToken`;
+`RealtimeSubscription.token` returned `sessionToken || publicToken`; `SseTransport` puts that in
+`?token=`; the server reads `?token=` as an `x-parse-session-token`. Measured with no browser:
+
+```
+GET /realtime                 → 200  event: connected
+GET /realtime?token=<appId>   → 400  {"error":"Invalid session token","code":209}
+```
+
+Fixed by narrowing **by type** in `RealtimeSubscription.token` — on a Parse-wire backend, the
+session token or nothing. BYOB backends keep the fallback, where `publicToken` genuinely is a token.
+
+⚠️ **`realtime-transports.test.ts` had 357 green arms across five transports throughout**, because
+not one asserted what ends up in the URL. Three arms now do; the mutation check reddens one with the
+literal `?token=myapp` while the session arm and the PocketBase control stay green.
+
+### 🔴 D45 — subscriptions retry forever and LEAK A STREAM EACH TIME. **AC3 is blocked on it.**
+
+Run A: **six** streams for three subscriptions, three `not confirmed within 15000ms`, and it warmed
+up in seconds. Run B, same code one run later: **fifteen** streams, the same messages repeating, and
+**not one of the three collections live inside a 120-second window** — while AC1, AC2 and AC4 passed
+later in the same run. The timing is unpredictable between runs of identical code, and the abandoned
+streams are never reaped, which spends `realtimeMaxConnections` on dead connections.
+
+Owner `NONE`; the discriminating test (time the hello frame through the `/__backend` proxy against
+direct, in one run) is in the register. ⚠️ **It must not be closed by raising the deadline** — that
+number is what made the failure visible.
+
+### The AC verdicts, reported as a PAIR of runs
+
+| | run A | run B | |
+|---|---|---|---|
+| AC1 publish → nav link | 🟢 | 🟢 | **MET** |
+| AC2 section edit → open page | 🟢 | 🟢 | **MET** |
+| AC3 theme save → repaint | 🔴 | 🔴 | **NOT MET** |
+| AC4 draft silent, twin fires | 🟢 | 🟢 | **MET** |
+
+🔴 **A criterion is called met only where both runs agree, and the drive is NOT yet a stable gate.**
+AC3's cause is **not isolated**: the runs cannot separate *"the `Theme` subscription does not
+deliver"* from *"AC3's window lost the race AC1 and AC2 won"*. Saying which is the first job of
+whoever takes D45 — cheap now that the drive reports `liveCollections` by name.
+
+### The lessons
+
+- 🔴 **Read the SERVER's own count, not the client's silence.** One line
+  (`service.realtime.connectionCount`) settled in seconds what an hour of reading the runtime source
+  could not, because the failure path is silent by design — `raiseRuntimeError` goes to an error bus,
+  not to the page.
+- 🔴 **Arm the instrument before measuring with it.** A subscription is not live when the page
+  renders. The drive now publishes a throwaway row and waits for it to appear **before** the first
+  assertion; without that, three correct acceptance criteria read as failing.
+- 🔴 **One warm-up per SUBSCRIPTION, not per page.** Warming up on `Page` alone still read AC3 as
+  failing — AC3 is about `Theme`, a different node holding a different stream. The warm-up now names
+  which of the three proved live, so a partial failure says **which**.
+- 🔴 **The control needs the SAME budget as the subject.** The mutant gets the identical 90s; given
+  less, it would come back empty because of the timeout and read as if it had proved something.
+- 🔴 **A field that means two things breaks on `||`.** `publicToken` is an auth token on three
+  backends and an application id on two.
+- ⚠️ **`packages/nodegx-backend/tsconfig.json` excludes `**/*.test.ts`.** `npx tsc -p` over it
+  typechecks **none** of the drives — two "typecheck clean" readings this session were vacuous, and a
+  syntax error inside a template literal reached the runner. **The jest run is the typecheck.**
+- ⚠️ **A JS comment inside a TS template literal must not contain backticks.** They close the
+  literal; the error surfaces as `TS1005` fifty lines away.
+
+### The gate that had to be widened, and the wrong way to widen it
+
+`sb007Template.test.ts`'s SBR-016 control asserts every query parameter is in `PARAMETER_CHECKBOX`.
+`realtime` was not, so it went red. **Adding it to that map would have been wrong**: shape 2 reads
+that map as *"this parameter is stored, so the query runs with nobody involved"*, which would have
+graded `sections` — the query carrying `NO_LOAD_TIME_FETCH` precisely so it cannot run before its
+filter exists — as free. A second, disjoint `NOT_A_TRIGGER` map now holds `realtime`, because
+`handleRealtimeChange` returns on the `init` frame **before** `scheduleFetch`.
+
+### ⚠️ The viewer bundle was rebuilt
+
+`npm run build:editor:_viewer`, because the drive serves `src/external/viewer/noodl.viewer.js` and
+the D44 fix had to reach it. It went from a **14.5MB** artefact to the **1.5MB** production build.
+Every render drive in the repo now runs against a minified viewer; nothing measured here suggests a
+problem, but it is a shared artefact and the change is stated rather than left to be discovered.
