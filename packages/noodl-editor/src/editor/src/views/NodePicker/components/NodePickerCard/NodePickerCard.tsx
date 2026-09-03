@@ -3,6 +3,7 @@ import React, { useEffect, useRef } from 'react';
 
 import { Icon, IconName } from '@noodl-core-ui/components/common/Icon';
 
+import { ExportBadge } from '../../../common/ExportBadge';
 import { nodeIconName } from '../../NodePicker.icons';
 import { PickerItem } from '../../NodePicker.search';
 import css from './NodePickerCard.module.scss';
@@ -74,6 +75,11 @@ export function NodePickerCard({ item, isCursored, onHover, onLeave, onClick }: 
         <span className={css['Unavailable']} aria-label="Not available on this backend">
           <Icon icon={IconName.WarningTriangle} />
         </span>
+      ) : item.exportBadge ? (
+        // EXP-013 AC1 — the card's right-hand slot, as a dot: the name line is ellipsised on a
+        // ~150px card, so words there were clipped before they were read (drive13-03-picker.png).
+        // The words ride on `title`, and the preview pane beside the grid prints the reason.
+        <ExportBadge badge={item.exportBadge} variant="dot" />
       ) : (
         <span className={css['Enter']}>⏎</span>
       )}

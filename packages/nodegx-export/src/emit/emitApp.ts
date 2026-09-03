@@ -135,6 +135,9 @@ export function emitApp(ir: ExportIR, catalog: Catalog): EmittedApp {
           // set at the two sites in `plan.ts` that know. Defaulting it here would put a
           // logic-only component under "handled by the app shell" the day a third skip appears.
           skipped: { kind: plan.skipKind ?? 'deferred', reason: plan.skipReason },
+          // EXP-013. A component with no file still names the nodes it refused: a logic-only
+          // component is exactly where an `On App Error` or a `Run Tasks` tends to live.
+          refusals: plan.refusals,
           // EXP-011 §27.6 — this component has no module, so the report is the only place its
           // authored scripts can survive. The emitting branch below deliberately does not set
           // this: there, `refusedScriptLines` has already written them into the file.
@@ -156,7 +159,10 @@ export function emitApp(ir: ExportIR, catalog: Catalog): EmittedApp {
       // and a second copy here would be right until the day it was not.
       file: Object.keys(emitted.files).find((f) => f.endsWith('.tsx')) ?? Object.keys(emitted.files)[0] ?? null,
       notes: [...emitted.notes.map((note) => stripScope(plan.path, note)), ...plan.notes],
-      unreachable: unreachable.has(plan.path)
+      unreachable: unreachable.has(plan.path),
+      // EXP-013. Plan-layer refusals only: an emit-layer refusal is a parameter or a wire on a
+      // node that *was* emitted, and it stays a note. The rows are about nodes that are not there.
+      refusals: plan.refusals
     });
     for (const helper of emitted.dateHelpers) dateHelpersUsed.add(helper);
     for (const helper of emitted.utilHelpers) utilHelpersUsed.add(helper);

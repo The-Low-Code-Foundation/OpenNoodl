@@ -15,7 +15,10 @@ import { IconButton, IconButtonVariant } from '@noodl-core-ui/components/inputs/
 import { TextInput } from '@noodl-core-ui/components/inputs/TextInput';
 import { Tooltip } from '@noodl-core-ui/components/popups/Tooltip';
 
+import { exportBadgeFor } from '@noodl-utils/codeExport/exportBadge';
+
 import { describeKitOrigin, listNodeKits } from '../../../../../../../shared/utils/projectmodules';
+import { ExportBadge } from '../../../../common/ExportBadge';
 import { NodeGraphNodeDelete, NodeGraphNodeRename } from '../..';
 import { getNodeProvenance } from '../../provenance';
 import { getNodeTypeChipInfo } from '../../utils';
@@ -457,6 +460,13 @@ export function NodeLabel({ model, showHelp = true }: NodeLabelProps) {
           {chip.label}
         </span>
       )}
+
+      {/*
+        EXP-013 AC1 — the same mark the picker card carries, on the placed node. Beside the type
+        chip because it is a fact about the *type*: every node of this type is left out of an
+        export, and every node it fires with it. The full reason is the hover.
+      */}
+      <ExportBadge badge={exportBadgeFor(model.type?.name)} variant="header" />
 
       {/*
         CN-006b AC2 — the provenance row.

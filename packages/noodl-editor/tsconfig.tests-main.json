@@ -237,6 +237,15 @@
     // app's structure rather than importing `@nodegx/export`. The renderer flow beside it
     // (`exportReactCode.ts`) reaches ProjectModel, the popup layer and Electron's dialog, and is
     // deliberately not reached from here.
-    "src/editor/src/utils/codeExport/writeExport.ts"
+    "src/editor/src/utils/codeExport/writeExport.ts",
+    // EXP-013: the "Not exportable yet" decision (`exportBadge.ts`, whose only import is the
+    // exporter's ledger reader — a JSON read), the badge component it feeds (no hooks, no `Icon`,
+    // so `renderElements` can evaluate it), and the pre-flight modal (no hooks either; graded on
+    // both fixtures' summaries). The picker card and the property header that place the badge are
+    // not reached — both import `Icon`, which this runner cannot load — so their use of it is one
+    // source-level assertion in `tests-unit/exp-013/`.
+    "src/editor/src/utils/codeExport/exportBadge.ts",
+    "src/editor/src/views/common/ExportBadge",
+    "src/editor/src/views/PopupLayer/CodeExportModal.tsx"
   ]
 }

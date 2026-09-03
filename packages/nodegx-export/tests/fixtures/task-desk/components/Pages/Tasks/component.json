@@ -1,0 +1,9 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "e1a7c3d9-4f2b-4c8e-9a1d-000000000061",
+  "name": "Tasks",
+  "path": "/Pages/Tasks",
+  "type": "page",
+  "modified": "2026-09-03T16:00:00.000Z",
+  "description": "EXP-013 fixture: a button runs a Run Tasks node (which the export has no rule for); its Done calls a Cloud Function whose Done navigates, and its Completed sets a status Variable shown in a Text. One root refusal, three nodes silenced by it, and the cascade holds a backend verb and a navigation."
+}

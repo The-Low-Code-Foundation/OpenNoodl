@@ -1,0 +1,43 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "e1a7c3d9-4f2b-4c8e-9a1d-000000000061",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "runBtn",
+      "fromProperty": "onClick",
+      "toId": "tasks",
+      "toProperty": "run"
+    },
+    {
+      "fromId": "tasks",
+      "fromProperty": "done",
+      "toId": "sync",
+      "toProperty": "call"
+    },
+    {
+      "fromId": "sync",
+      "fromProperty": "done",
+      "toId": "goHome",
+      "toProperty": "navigate"
+    },
+    {
+      "fromId": "tasks",
+      "fromProperty": "completed",
+      "toId": "setStatus",
+      "toProperty": "do"
+    },
+    {
+      "fromId": "doneStr",
+      "fromProperty": "savedValue",
+      "toId": "setStatus",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "statusVar",
+      "fromProperty": "value",
+      "toId": "statusText",
+      "toProperty": "text"
+    }
+  ]
+}

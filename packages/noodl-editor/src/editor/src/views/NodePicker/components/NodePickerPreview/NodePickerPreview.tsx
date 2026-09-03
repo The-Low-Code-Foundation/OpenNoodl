@@ -8,6 +8,7 @@ import { tracker } from '@noodl-utils/tracker';
 import { HtmlRenderer } from '@noodl-core-ui/components/common/HtmlRenderer';
 import { Icon, IconName } from '@noodl-core-ui/components/common/Icon';
 
+import { ExportBadge } from '../../../common/ExportBadge';
 import { getChooserNote } from '../../NodePicker.chooser';
 import { getPreviewPorts, NodeDocs } from '../../NodePicker.hooks';
 import { nodeIconName } from '../../NodePicker.icons';
@@ -56,6 +57,24 @@ export function NodePickerPreview({ item, docs }: NodePickerPreviewProps) {
         </div>
         <span className={css['Chip']}>{item.subCategoryName ? `${item.categoryName} · ${item.subCategoryName}` : item.categoryName}</span>
       </header>
+
+      {/* EXP-013 AC1 — the "expand" of the card's badge: the ledger's own sentence in full, above
+          the docs, because "will this survive an export" is decided before "what does it do"
+          for someone who intends to export. The same `Chooser` frame LGC-001 uses for a note
+          that is about this node's place in the product rather than about the node itself. */}
+      {item.exportBadge && (
+        <div className={css['Chooser']} data-test="export-badge-reason">
+          <p className={css['ChooserHeadline']}>
+            <ExportBadge badge={item.exportBadge} variant="header" />
+          </p>
+          <p className={css['ChooserDetail']}>
+            {item.exportBadge.kind === 'scheduled'
+              ? 'You can place and run it, but "Export as React code" leaves it out — and every node it fires — until a release translates it. '
+              : 'You can place and run it, but "Export as React code" leaves it out — and every node it fires. '}
+            {item.exportBadge.reason}
+          </p>
+        </div>
+      )}
 
       {/* LGC-001 §2 — above the reference prose, not inside it. The docs below
           answer "what does this node do"; this answers "why this one and not

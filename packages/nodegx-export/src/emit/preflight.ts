@@ -53,9 +53,9 @@
  */
 
 import { Catalog } from '../catalog';
-import { ExportIR } from '../ir/types';
+import { ExportIR, RefusedNode } from '../ir/types';
 import { emitApp, EmittedApp } from './emitApp';
-import { BackendMode, backendMode, REPORT_PATH } from './report';
+import { BackendMode, backendMode, cascadeOf, describeNode, ExportCascade, pathwayVerdict, plainReason, refusedNodeLines, REPORT_PATH } from './report';
 
 /** A component that will emit a file, but with refusals recorded against it. */
 export interface PreflightAttention {
@@ -64,6 +64,11 @@ export interface PreflightAttention {
   /** How many nodes, wires or parameters the export will leave out of this component. */
   refusals: number;
   unreachable: boolean;
+  /**
+   * EXP-013 AC2 — the refused nodes themselves, by type and label, with the root that starves each
+   * silenced one. The same rows `EXPORT-REPORT.md` prints under the component.
+   */
+  nodes: RefusedNode[];
 }
 
 /** A component that will emit no file at all. */
@@ -76,10 +81,25 @@ export interface PreflightNoFile {
    * the sentence.
    */
   kind: 'scaffolded' | 'deferred';
+  /** EXP-013 AC2. The nodes the plan refused in a component that emits no file. */
+  nodes: RefusedNode[];
 }
 
 export interface PreflightSummary {
   projectName: string;
+  /**
+   * EXP-013 AC3 — the refusals split into the nodes the export has no rule for and the nodes only
+   * refused because of them, with the roots named. `cascade.silenced + cascade.unsilenced` is the
+   * number of refused nodes; {@link refusals} below is the number of *lines* (nodes, wires,
+   * parameters, whole components) and stays the length of the report's list.
+   */
+  cascade: ExportCascade;
+  /**
+   * EXP-013 AC4 — the plain sentence that leads when a cascade costs a pathway (a backend verb, a
+   * navigation, an `On App Error`), or `null` when the loss is nodes rather than a pathway. The
+   * modal's button changes with it.
+   */
+  verdict: string | null;
   /**
    * Files the export will generate, `EXPORT-REPORT.md` included — the number the author will see
    * in the folder afterwards.
@@ -152,7 +172,8 @@ export function summarizePreflight(app: EmittedApp): PreflightSummary {
       // widening `file` to `string | null` across the whole summary.
       file: c.file as string,
       refusals: c.notes.length,
-      unreachable: c.unreachable
+      unreachable: c.unreachable,
+      nodes: c.refusals ?? []
     }))
     /*
      * Worst first, then by path.
@@ -180,12 +201,17 @@ export function summarizePreflight(app: EmittedApp): PreflightSummary {
     .map((c) => ({
       path: c.path,
       reason: (c.skipped as { reason: string }).reason,
-      kind: (c.skipped as { kind: 'scaffolded' | 'deferred' }).kind
+      kind: (c.skipped as { kind: 'scaffolded' | 'deferred' }).kind,
+      nodes: c.refusals ?? []
     }));
   const noFileDeferred = noFile.filter((c) => c.kind === 'deferred').length;
+  // EXP-013 — one computation, read here and by `renderReport`; never a second walk of the rows.
+  const cascade = cascadeOf(data);
 
   return {
     projectName: data.projectName,
+    cascade,
+    verdict: pathwayVerdict(cascade),
     generatedFiles: data.files.length,
     copiedAssets: app.copies.length,
     pages: generated.filter((c) => c.role === 'page').length,
@@ -293,6 +319,30 @@ export function renderPreflight(s: PreflightSummary): string {
   } else {
     out.push(`## What will not translate (${s.refusals})`);
     out.push('');
+    // EXP-013 AC4 — the verdict leads, before any count, because it is the sentence that changes
+    // the decision: a missing pathway is a reason not to export yet; a missing node is not.
+    if (s.verdict !== null) {
+      out.push(`🔴 **${s.verdict}**`);
+      out.push('');
+    }
+    // EXP-013 AC3 — the two numbers, separated, and the roots named.
+    if (s.cascade.roots.length > 0) {
+      out.push(
+        `**${plural(s.cascade.unsilenced, 'node')} the export has no rule for, and ${s.cascade.silenced} more ` +
+          `left out only because ${s.cascade.unsilenced === 1 ? 'it fires' : 'they fire'} them.**`
+      );
+      out.push('');
+      for (const root of s.cascade.roots) {
+        out.push(`- ${describeNode(root.node)} in \`${root.path}\` — ${plainReason(root.node)}`);
+        if (root.silences.length > 0) {
+          out.push(
+            `  …and ${root.silences.length === 1 ? 'one node is' : `${root.silences.length} nodes are`} left out only because this one fires ` +
+              `${root.silences.length === 1 ? 'it' : 'them'}: ${root.silences.map((r) => describeNode(r.node)).join(', ')}`
+          );
+        }
+      }
+      out.push('');
+    }
     out.push(
       // ⚠️ "or a whole component" is load-bearing. The list can contain an entry that is not a
       // node, wire or parameter at all, and a sentence that promised only those three would be
@@ -303,13 +353,18 @@ export function renderPreflight(s: PreflightSummary): string {
     );
     out.push('');
     if (deferred.length > 0) {
-      for (const c of deferred) out.push(`- \`${c.path}\` — **no file at all**: ${c.reason}`);
+      for (const c of deferred) {
+        out.push(`- \`${c.path}\` — **no file at all**: ${c.reason}`);
+        out.push(...refusedNodeLines(c.nodes, '  '));
+      }
     }
     for (const c of s.attention) {
       out.push(
         `- \`${c.path}\` — ${plural(c.refusals, 'refusal')}` +
           (c.unreachable ? ', and no route reaches this component' : '')
       );
+      // EXP-013 AC2 — the nodes by name, under the component that holds them.
+      out.push(...refusedNodeLines(c.nodes, '  '));
     }
     if (s.moduleFailures > 0) {
       out.push(

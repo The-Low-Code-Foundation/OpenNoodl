@@ -1,0 +1,9 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "e1a7c3d9-4f2b-4c8e-9a1d-000000000063",
+  "name": "Quiet",
+  "path": "/Pages/Quiet",
+  "type": "page",
+  "modified": "2026-09-03T16:00:00.000Z",
+  "description": "EXP-013 control fixture: a button runs a Run Tasks node whose Completed sets a status Variable shown in a Text. One root refusal, one node silenced by it, and nothing in the cascade is a pathway — no verdict."
+}

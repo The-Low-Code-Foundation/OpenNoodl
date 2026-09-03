@@ -348,6 +348,39 @@ export type Disposition =
   | { kind: 'stubbed'; reason: string }
   | { kind: 'unknown-type'; reason: string };
 
+/**
+ * EXP-013 — one node the export left out, as a row rather than a sentence.
+ *
+ * `ComponentPlan.notes` is prose, and the report renders it. Two things the prose could not say
+ * were measured on `tests/fixtures/task-desk` (§50.2, then EXP-013): a refused node that only
+ * ever appears inside dropped-wire keys is never *named* as a node — `sweepUnreportedDeferrals`
+ * counts a mention inside `wire a:b->c:d` as the node having been reported — and a node refused
+ * only because the node that fires it was refused carries no pointer back to that node. This row
+ * is built from `dispositions` (which every gate writes) rather than from `notes` (which only
+ * some do), so a refused node is here whether or not any sentence mentions it.
+ */
+export interface RefusedNode {
+  nodeId: string;
+  /** The catalog typeName, or the component path for an instance. */
+  type: string;
+  /** The picker's name for the type, when the catalog knows it; `type` otherwise. */
+  displayName: string;
+  /** The author's own label, only when nodes.json carried one. */
+  label?: string;
+  /** The exporter's reason, in its own words — the same text `notes` carries when it carries one. */
+  reason: string;
+  /**
+   * The refused node(s) whose refusal is the only reason this one is refused — the **roots** of the
+   * cascade, never an intermediate. Absent on a node the export has no rule for in its own right.
+   */
+  causedBy?: string[];
+  /**
+   * The node is a pathway rather than a feature: a backend verb, a navigation, an `On App Error`.
+   * Losing one of these to a cascade is what EXP-013's verdict is about.
+   */
+  pathway: boolean;
+}
+
 /** The durable sidecar emitted beside the code — see EXP-002-IR-DESIGN.md "The manifest". */
 export interface ExportManifest {
   exporterVersion: string;

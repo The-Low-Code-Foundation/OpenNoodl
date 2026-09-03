@@ -34,7 +34,8 @@ import {
   ITEM_OUTPUT_VALUE,
   KitNodeIR,
   ModuleIR,
-  NodeIR
+  NodeIR,
+  RefusedNode
 } from '../ir/types';
 import { componentReachability, Reachability } from './reach';
 import { ScaffoldPage, routedPages } from '../emit/scaffold';
@@ -2441,6 +2442,11 @@ export interface ComponentPlan {
   dispositions: Record<string, Disposition>;
   /** Dropped wires, unhandled constructs — EXP-004's report feed. Nothing silently dropped. */
   notes: string[];
+  /**
+   * EXP-013. Every node `dispositions` refused, as a row with the refused node that starves it.
+   * Built from `dispositions` at each exit, after the sweeps — see {@link RefusedNode}.
+   */
+  refusals: RefusedNode[];
 }
 
 export interface ProjectPlan {
@@ -2657,6 +2663,7 @@ function planComponent(
     staticData: [],
     jsFunctions: {},
     refusedScripts: [],
+    refusals: [],
     stateVars: [],
     syncEffects: [],
     pushEffects: [],
@@ -2739,6 +2746,101 @@ function planComponent(
     }
   };
 
+  /**
+   * EXP-013 AC3 — every refused node as a row, and the refused node that starves it.
+   *
+   * 🔴 **Built from `dispositions`, not from `notes`, because the notes cannot see the root.**
+   * Measured on `tests/fixtures/task-desk` before this existed: a `Run Tasks` fed by a button and
+   * feeding a `Cloud Function`, a `Navigate` and a `Set Variable` produced seven notes and **not
+   * one named the Run Tasks node** — its id appeared only inside dropped-wire keys, which
+   * `sweepUnreportedDeferrals` takes as the node having been reported. The three nodes behind it
+   * were refused as *"the trigger is not a rendered element event or a receiver"* (a sentence about
+   * the wire), as the catch-all *"logic node (RouterNavigate)"* (because the wire into it was
+   * never attached), and the constant feeding the setter as *"no static binding"*. Three different
+   * sentences, one cause, and no sentence said so.
+   *
+   * ## The rule, by graph rather than by sentence
+   *
+   * A refused node is **silenced** by the refused nodes upstream of it when:
+   *
+   * 1. it has incoming signal wires and **every** one of them comes from a refused node (the
+   *    trigger cascade — the sink was never fired by anything the export could translate);
+   * 2. it has no incoming signal wire, and every wire *out* of it lands on a refused node (a
+   *    constant or a read whose only consumer is gone);
+   * 3. it is a `Variable` with at least one `Set Variable` of the same name in the component, and
+   *    every one of those setters is refused (the store was never minted because nothing
+   *    translatable writes it).
+   *
+   * The cause is resolved to the **roots** — a node silenced by a silenced node names the node at
+   * the top, never the intermediate — with a visiting set so a cycle makes a node its own root.
+   * ⚠️ A node refused for a reason of its own that *also* sits behind a refused trigger gets both:
+   * its reason, and `causedBy`. Replacing the root would still leave its own refusal, which the
+   * reason text states; the row does not pretend otherwise.
+   *
+   * ⚠️ **Deliberately not keyed on reason text.** The measurement above is exactly why: the
+   * cascade arrives as three different sentences, and any rewording of any of them would make a
+   * text-keyed rule miss a victim silently. The reason text is carried on the row; the attribution
+   * is derived from wires and dispositions, which every gate writes.
+   */
+  const collectRefusals = (): void => {
+    const refused = (id: string): boolean => {
+      const disposition = dispositions[id];
+      return disposition !== undefined && (disposition.kind === 'deferred' || disposition.kind === 'unknown-type');
+    };
+    const signalInto = (node: NodeIR): string[] => {
+      const catalogInputs = catalog.get(node.type)?.inputs;
+      return component.connections
+        .filter(
+          (c) =>
+            c.toId === node.id &&
+            (c.kind === 'signal' || catalogInputs?.some((input) => input.name === c.toProperty && input.isSignal === true) === true)
+        )
+        .map((c) => c.fromId);
+    };
+    // `null` marks a node whose roots are being resolved: reaching it again is a cycle.
+    const rootsMemo = new Map<string, string[] | null>();
+    const rootsOf = (id: string): string[] => {
+      const known = rootsMemo.get(id);
+      if (known === null) return [id];
+      if (known !== undefined) return known;
+      rootsMemo.set(id, null);
+      const node = nodeById.get(id);
+      let upstream: string[] = [];
+      if (node !== undefined) {
+        const triggers = [...new Set(signalInto(node))].filter((from) => from !== id);
+        if (triggers.length > 0) {
+          if (triggers.every(refused)) upstream = triggers;
+        } else {
+          const fed = [...new Set(component.connections.filter((c) => c.fromId === id && c.toId !== id).map((c) => c.toId))];
+          if (fed.length > 0 && fed.every(refused)) {
+            upstream = fed;
+          } else if (node.type === 'Variable') {
+            const name = literalParam(node, 'name');
+            const setters = component.nodes.filter((n) => n.type === 'Set Variable' && literalParam(n, 'name') === name).map((n) => n.id);
+            if (name !== undefined && setters.length > 0 && setters.every(refused)) upstream = setters;
+          }
+        }
+      }
+      const roots = upstream.length === 0 ? [id] : [...new Set(upstream.flatMap(rootsOf))];
+      rootsMemo.set(id, roots);
+      return roots;
+    };
+    for (const node of component.nodes) {
+      if (!refused(node.id)) continue;
+      const disposition = dispositions[node.id] as { reason: string };
+      const roots = rootsOf(node.id).filter((root) => root !== node.id);
+      plan.refusals.push({
+        nodeId: node.id,
+        type: node.type || 'untyped',
+        displayName: catalog.get(node.type)?.displayName ?? node.type ?? 'untyped',
+        ...(node.authoredLabel !== undefined ? { label: node.authoredLabel } : {}),
+        reason: disposition.reason,
+        ...(roots.length > 0 ? { causedBy: roots } : {}),
+        pathway: isPathwayType(node.type)
+      });
+    }
+  };
+
   const sweepRefusedScripts = (): void => {
     for (const node of component.nodes) {
       if (node.sourceText === undefined) continue;
@@ -2772,6 +2874,7 @@ function planComponent(
     plan.skipKind = 'scaffolded';
     sweepRefusedScripts();
     sweepUnreportedDeferrals();
+    collectRefusals();
     return plan;
   }
 
@@ -2832,6 +2935,7 @@ function planComponent(
     plan.skipKind = 'deferred';
     sweepRefusedScripts();
     sweepUnreportedDeferrals();
+    collectRefusals();
     return plan;
   }
   if (roots.length > 1) {
@@ -9087,7 +9191,9 @@ function planComponent(
         if (authored === undefined) return refuse(`its value "${name}" has no authored value in state "${state}"`);
         byState[state] = authored;
         const curve = curveParam(node, `transition-${state}-${name}`);
-        if (curve !== undefined && 'defer' in curve) return refuse(curve.defer);
+        // `isDefer`, not `'defer' in curve`: the editor compiles this file non-strict (EXP-012's
+        // trap), where the `in` check narrows nothing in its false branch.
+        if (isDefer(curve)) return refuse(curve.defer);
         if (curve !== undefined) transitions[state] = curve;
       }
       values.push({ name, type, tsType: type === 'color' ? 'string' : type, byState, transitions });
@@ -9095,7 +9201,7 @@ function planComponent(
     const transitions: Record<string, StatesCurve> = {};
     for (const state of states) {
       const curve = curveParam(node, `transitiondef-${state}`);
-      if (curve !== undefined && 'defer' in curve) return refuse(curve.defer);
+      if (isDefer(curve)) return refuse(curve.defer);
       if (curve !== undefined) transitions[state] = curve;
     }
     const useTransitionsParam = literalParam(node, 'useTransitions');
@@ -13772,6 +13878,7 @@ function planComponent(
 
   sweepRefusedScripts();
   sweepUnreportedDeferrals();
+  collectRefusals();
 
   return plan;
 }
@@ -14297,6 +14404,36 @@ function pageInputsUnroutedReason(node: NodeIR): string {
   return declared === ''
     ? 'it is a Page Inputs on a component no Router routes, so there is no URL to read from'
     : `it reads the page parameters "${declared}", but no Router routes this component, so there is no URL to read them from`;
+}
+
+/**
+ * EXP-013 AC4 — is losing this node losing a **pathway** rather than a feature?
+ *
+ * Three families, from Richard's ruling (EXP-011 §50): a backend verb (the record verbs, the
+ * relation verbs, `Record`, `Query Records`, the user verbs, `Cloud Function`, `HTTP Request`,
+ * the files), a navigation (`Navigate`, `Navigate To Path`, `External Link`), and `On App Error`,
+ * whose refusal removes the app's whole error pathway. A `Set Variable` behind a refused trigger
+ * is a missing feature; a `Cloud Function` behind one is the app no longer talking to its backend
+ * — the verdict in the pre-flight turns on this distinction, so it lives beside the tables that
+ * define the families rather than in a second list the report would keep.
+ */
+export function isPathwayType(type: string): boolean {
+  return (
+    RECORD_VERBS[type] !== undefined ||
+    RELATION_VERBS[type] !== undefined ||
+    USER_VERBS[type] !== undefined ||
+    LOADED_RECORD_SOURCES.has(type) ||
+    type === HTTP_TYPE ||
+    type === CLOUD_FUNCTION_TYPE ||
+    type === FILE_PICKER_TYPE ||
+    type === UPLOAD_FILE_TYPE ||
+    type === CLOUD_FILE_TYPE ||
+    type === SIGN_FILE_URL_TYPE ||
+    type === 'RouterNavigate' ||
+    type === NAVIGATE_TO_PATH_TYPE ||
+    type === EXTERNAL_LINK_TYPE ||
+    type === 'On App Error'
+  );
 }
 
 function dispositionForLogic(node: NodeIR, kits: KitIndex): Disposition {

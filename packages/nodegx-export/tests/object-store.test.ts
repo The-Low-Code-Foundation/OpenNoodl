@@ -477,13 +477,15 @@ describe('§D — the fixture, whole', () => {
     expect(emitApp(cloneIr(), catalog).files).toEqual(app.files);
   });
 
-  test('D6 the ledger says so: Set Object Properties translated, Object translated, Create New Array still deferred by decision', () => {
+  test('D6 the ledger says so: Set Object Properties translated, Object translated, Create New Array still deferred — now scheduled (§50)', () => {
     const ledger = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'coverage-ledger.json'), 'utf8'));
     const status = (name: string) => ledger.entries.find((e: { typeName: string }) => e.typeName === name);
     expect(status('SetModelProperties').status).toBe('translated');
     expect(status('Model2').status).toBe('translated');
     expect(status('CollectionNew').status).toBe('deferred');
-    expect(status('CollectionNew').exemption).toMatch(/^deliberately out of scope/);
+    // EXP-011 §50 (Richard, 2026-09-03) reversed §7.3: Create New Array is Tier 2.8 row 5, a
+    // schedule rather than a decision. The row asserts the phrase the checker enforces.
+    expect(status('CollectionNew').exemption).toMatch(/^scheduled — EXP-011 Tier 2\.8/);
     expect(ledger.pickerCoverageFloor).toBe(92); // 90 after §48; §49 added States and Animate To Value
   });
 });

@@ -396,3 +396,19 @@ Done/Failure are a try/catch's two arms; `Error` is a row never cleared. Six ref
 fixture with a backend, chain wires listed before the trigger — exported whole and typechecked;
 nine mutant arms (§41.4). Gates: pkg tsc 0 · editor tsc 0 · jest **1396/1396 in 53** · ledger OK
 176 (88 translated) · picker **81**, floor raised. ⚠️ Not driven against a live backend.
+
+**Session 78, second half — EXP-013: "Not exportable yet", said where the node is placed. Picker 92, unchanged.**
+Richard's ruling (§50) put this before any node. Measured first on a new fixture (`task-desk`: a
+button → `Run Tasks` → `Cloud Function` → `Navigate`, and `Run Tasks` → `Set Variable` ← `String`,
+read by a `Text` through a `Variable`): the committed exporter wrote seven notes and **none named the
+Run Tasks node** — its id sat only inside wire keys, which the unreported-deferral sweep takes as
+"reported" — and the five nodes behind it were refused as three different sentences, the `Variable`
+and its `Text` binding among them. So the attribution is by graph, not by sentence: `RefusedNode`
+rows built from `dispositions` at every plan exit, `causedBy` resolved to the roots through
+intermediates; `cascadeOf`/`pathwayVerdict` read once by the pre-flight, the report, the README's
+first step and the modal; `src/ledger.ts` reads the coverage ledger for the badge; the editor gets
+the badge on the picker card (a dot — words were clipped on the first drive frame), the preview pane,
+the property header, and a modal that leads with the verdict and *"1 node … and 5 more"*. Gates:
+pkg tsc 0 · jest 62 files 1850 green (+ the 2 rows red on HEAD, fixed) · editor tsc 0 (**was red on
+HEAD** — §49's `'defer' in x` narrowings, `isDefer()` now) · tests-unit/exp-013 147/147 · ledger OK ·
+picker holds 92 · 6/6 arms killed. Driven on all three surfaces, screenshots in the s78 scratchpad.

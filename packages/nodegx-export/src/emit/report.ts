@@ -44,6 +44,8 @@
  * @module emit/report
  */
 
+import { RefusedNode } from '../ir/types';
+
 export const REPORT_PATH = 'EXPORT-REPORT.md';
 
 /** One component, as the report talks about it. */
@@ -77,6 +79,12 @@ export interface ReportComponent {
    * the two carriers holds a script is decided by whether a file exists, not by a filter.
    */
   preservedScripts?: Array<{ nodeId: string; typeName: string; label?: string; source: string }>;
+  /**
+   * EXP-013. The nodes the plan refused in this component, each with the refused node that starves
+   * it when the refusal is a cascade. Optional so a report built by hand before EXP-013 still
+   * types; `emitApp` always sets it.
+   */
+  refusals?: RefusedNode[];
 }
 
 export interface ExportReportData {
@@ -154,6 +162,148 @@ const longestBacktickRun = (text: string): number => {
  * same facts differently. Three-space continuation indent is what keeps the detail and locations
  * inside their numbered item rather than starting a new block after it.
  */
+/** A refused node the way a person names it: their label first, the picker's type name beside it. */
+export function describeNode(node: Pick<RefusedNode, 'displayName' | 'label' | 'nodeId'>): string {
+  return node.label !== undefined && node.label !== '' ? `"${node.label}" (${node.displayName})` : `${node.displayName} \`${node.nodeId}\``;
+}
+
+/**
+ * The reason as a person reads it. The planner's catch-all is `logic node (<typeName>)` — the
+ * exporter talking to itself, and the sentence `sweepUnreportedDeferrals` already refuses to
+ * stutter back at the author. Every other reason is a gate's own sentence and is kept verbatim.
+ */
+export function plainReason(node: Pick<RefusedNode, 'type' | 'reason'>): string {
+  return node.reason === `logic node (${node.type})` ? 'the export has no rule for this node yet' : node.reason;
+}
+
+/** One root refusal and everything it silences, across the whole export. */
+export interface CascadeRoot {
+  /** The component the root sits in. */
+  path: string;
+  node: RefusedNode;
+  /** Every node whose `causedBy` resolves to this root, in report order. */
+  silences: Array<{ path: string; node: RefusedNode }>;
+}
+
+/**
+ * EXP-013 AC3/AC4 — the refusals of an export, split into the ones the export has no rule for
+ * and the ones that are only refused because of them.
+ */
+export interface ExportCascade {
+  /** Refused nodes with no `causedBy`, that at least one other node names as its cause. Worst first. */
+  roots: CascadeRoot[];
+  /** Refused nodes with no `causedBy` — the roots above plus every independent refusal. */
+  unsilenced: number;
+  /** Refused nodes with a `causedBy` — the sum of every root's `silences`. */
+  silenced: number;
+  /**
+   * Nodes whose loss is a pathway rather than a feature (see `isPathwayType`) and that are lost to
+   * a cascade — as a silenced node, or as a root that is itself a pathway (an `On App Error` the
+   * export has no rule for takes the error pathway with it whether or not anything hangs off it).
+   */
+  pathway: Array<{ path: string; node: RefusedNode }>;
+}
+
+/**
+ * The cascade, from the report data and nothing else.
+ *
+ * 🔴 **`silenced` + `unsilenced` is the number of refused nodes, and `silenced` is the sum of the
+ * roots' lists — asserted rather than assumed** (`tests/cascade.test.ts`), because the headline the
+ * modal prints is *"N the export has no rule for, M more silenced by them"*, and the cheap mistake
+ * is to count a silenced node on both sides. A node with two roots is listed under both and counted
+ * once.
+ */
+export function cascadeOf(data: Pick<ExportReportData, 'components'>): ExportCascade {
+  const rows = data.components.flatMap((c) => (c.refusals ?? []).map((node) => ({ path: c.path, node })));
+  const byId = new Map(rows.map((row) => [`${row.path}:${row.node.nodeId}`, row]));
+  const rootRows = new Map<string, CascadeRoot>();
+  let silenced = 0;
+  for (const row of rows) {
+    if (row.node.causedBy === undefined) continue;
+    silenced += 1;
+    for (const rootId of row.node.causedBy) {
+      const key = `${row.path}:${rootId}`;
+      const rootRow = byId.get(key);
+      // A cause the plan named that is not itself a refused row would be a defect in the plan; the
+      // node is still counted as silenced, and the root is simply not listed.
+      if (rootRow === undefined) continue;
+      const existing = rootRows.get(key) ?? { path: rootRow.path, node: rootRow.node, silences: [] };
+      existing.silences.push(row);
+      rootRows.set(key, existing);
+    }
+  }
+  // An `On App Error` the export has no rule for is a root whether or not anything hangs off it:
+  // its refusal removes the app's whole error pathway, which is EXP-011 §50.2's second reading
+  // and the one Richard's ruling quotes. It is listed as a root with an empty cascade.
+  for (const row of rows) {
+    if (row.node.causedBy !== undefined || row.node.type !== 'On App Error') continue;
+    const key = `${row.path}:${row.node.nodeId}`;
+    if (!rootRows.has(key)) rootRows.set(key, { path: row.path, node: row.node, silences: [] });
+  }
+  const roots = [...rootRows.values()].sort(
+    (a, b) => b.silences.length - a.silences.length || (a.path < b.path ? -1 : a.path > b.path ? 1 : 0)
+  );
+  const pathway = [
+    ...roots.filter((root) => root.node.pathway).map((root) => ({ path: root.path, node: root.node })),
+    ...rows.filter((row) => row.node.causedBy !== undefined && row.node.pathway)
+  ];
+  return {
+    roots,
+    unsilenced: rows.filter((row) => row.node.causedBy === undefined).length,
+    silenced,
+    pathway
+  };
+}
+
+/**
+ * EXP-013 AC4 — the sentence that leads when a cascade costs a pathway, or `null`.
+ *
+ * Plain, and the same words on the modal and in the report: *this export would be missing a
+ * pathway, not a node*. It names the roots, because the roots are what a person can act on.
+ */
+export function pathwayVerdict(cascade: ExportCascade): string | null {
+  if (cascade.pathway.length === 0) return null;
+  // The roots worth naming: a root that is itself a pathway, or one that silences a pathway node.
+  const rootsNamed = cascade.roots
+    .filter((root) => root.node.pathway || root.silences.some((s) => s.node.pathway))
+    .map((root) => `${describeNode(root.node)} in \`${root.path}\``);
+  const lost = cascade.pathway.filter((p) => p.node.causedBy !== undefined).map((p) => describeNode(p.node));
+  const one = rootsNamed.length === 1;
+  const consequence =
+    lost.length > 0
+      ? `Without ${one ? 'it' : 'them'}, ${lost.join(', ')} ${lost.length === 1 ? 'never runs' : 'never run'}.`
+      : `Without ${one ? 'it' : 'them'}, the app has no error pathway.`;
+  return (
+    `This export would be missing a pathway, not a node: ${rootsNamed.join('; ')}. ${consequence} ` +
+    `Replace ${one ? 'it' : 'them'} or wait for a release that translates ${one ? 'it' : 'them'}.`
+  );
+}
+
+/** The lines under a component that name the nodes the plan refused, roots and their cascades first. */
+export function refusedNodeLines(refusals: RefusedNode[] | undefined, indent = ''): string[] {
+  if (refusals === undefined || refusals.length === 0) return [];
+  const byId = new Map(refusals.map((r) => [r.nodeId, r]));
+  const out: string[] = [];
+  for (const node of refusals) {
+    if (node.causedBy !== undefined) continue;
+    out.push(`${indent}- ${describeNode(node)} — ${plainReason(node)}`);
+    const silenced = refusals.filter((r) => r.causedBy?.includes(node.nodeId));
+    if (silenced.length > 0) {
+      out.push(
+        `${indent}  …and ${silenced.length === 1 ? 'one node is' : `${silenced.length} nodes are`} left out only because this one fires ` +
+          `${silenced.length === 1 ? 'it' : 'them'}: ${silenced.map((r) => describeNode(r)).join(', ')}`
+      );
+    }
+  }
+  // A silenced node whose root sits in another component, or whose root row the plan did not
+  // produce, still gets a line — nothing is dropped for being awkward to group.
+  for (const node of refusals) {
+    if (node.causedBy === undefined || node.causedBy.some((id) => byId.has(id))) continue;
+    out.push(`${indent}- ${describeNode(node)} — ${plainReason(node)} (fired only by ${node.causedBy.map((id) => `\`${id}\``).join(', ')})`);
+  }
+  return out;
+}
+
 export function renderSteps(steps: NextStep[]): string[] {
   const out: string[] = [];
   steps.forEach((step, i) => {
@@ -300,10 +450,45 @@ export function renderReport(data: ExportReportData): string {
     );
     out.push('');
 
+    /*
+     * EXP-013 AC3/AC4/AC5 — the same two numbers and the same verdict the pre-flight modal shows,
+     * from the same rows. The modal is read before the export and this file after it; a person who
+     * proceeded on "1 node the export has no rule for, 5 more silenced by it" has to find that
+     * sentence here, not a different accounting of the same graph.
+     */
+    const cascade = cascadeOf(data);
+    if (cascade.roots.length > 0) {
+      const verdict = pathwayVerdict(cascade);
+      if (verdict !== null) {
+        out.push(`🔴 **${verdict}**`);
+        out.push('');
+      }
+      out.push(
+        `**${cascade.unsilenced === 1 ? '1 node' : `${cascade.unsilenced} nodes`} the export has no rule for, and ` +
+          `${cascade.silenced === 1 ? '1 more' : `${cascade.silenced} more`} left out only because ` +
+          `${cascade.unsilenced === 1 ? 'it fires' : 'they fire'} them.** Fixing a root fixes its cascade, so the ` +
+          'roots come first:'
+      );
+      out.push('');
+      for (const root of cascade.roots) {
+        out.push(bullet(`${describeNode(root.node)} in \`${root.path}\` — ${plainReason(root.node)}`));
+        if (root.silences.length > 0) {
+          out.push(
+            `  …and ${root.silences.length === 1 ? 'one node is' : `${root.silences.length} nodes are`} left out only because this one fires ` +
+              `${root.silences.length === 1 ? 'it' : 'them'}: ${root.silences.map((s) => describeNode(s.node)).join(', ')}`
+          );
+        }
+      }
+      out.push('');
+    }
+
     if (deferred.length > 0) {
       out.push('### Components with no generated file');
       out.push('');
-      for (const c of deferred) out.push(bullet(`\`${c.path}\` — ${c.skipped?.reason}`));
+      for (const c of deferred) {
+        out.push(bullet(`\`${c.path}\` — ${c.skipped?.reason}`));
+        out.push(...refusedNodeLines(c.refusals, '  '));
+      }
       out.push('');
     }
 
@@ -344,6 +529,18 @@ export function renderReport(data: ExportReportData): string {
       }
       out.push(`Generated as \`${c.file}\`.`);
       out.push('');
+      // EXP-013 AC2 — the nodes, by label and type, before the notes. A note is about a wire or a
+      // parameter as often as a node, and a refused node can go unnamed by every note (the
+      // measurement in `plan.ts`'s `collectRefusals`); this list is built from the rows instead.
+      const nodeLines = refusedNodeLines(c.refusals);
+      if (nodeLines.length > 0) {
+        out.push('Nodes left out:');
+        out.push('');
+        out.push(...nodeLines);
+        out.push('');
+        out.push('Every line the exporter wrote about this component:');
+        out.push('');
+      }
       for (const note of c.notes) out.push(bullet(note));
       out.push('');
     }
@@ -527,6 +724,31 @@ export function nextSteps(data: ExportReportData): NextStep[] {
   // generate" is what the obvious version produces, and it is the sentence a reader trips on.
   const many = (n: number, one: string, rest = `${one}s`): string =>
     n === 1 ? `one ${one}` : `${n} ${rest}`;
+
+  /*
+   * EXP-013 AC5 — the root refusals first, because fixing a root fixes its cascade.
+   *
+   * ⚠️ Above "components with no file" on purpose, and this is the one place the ordering
+   * criterion above ("how much of the running app is missing") is read *per fix* rather than
+   * *per gap*: one root can be the reason for a component's whole behaviour and for a pathway,
+   * and it is one node to replace. The step names the roots and where they are; the cascade
+   * itself is itemised in the report's attention section.
+   */
+  const cascade = cascadeOf(data);
+  if (cascade.roots.length > 0) {
+    const verdict = pathwayVerdict(cascade);
+    steps.push({
+      title: `Replace the ${many(cascade.roots.length, 'node')} the export has no rule for that ${
+        cascade.roots.length === 1 ? 'silences' : 'silence'
+      } ${many(cascade.silenced, 'more', 'more')}.`,
+      detail:
+        (verdict !== null ? `${verdict} ` : '') +
+        `${cascade.roots.map((root) => `${describeNode(root.node)} in \`${root.path}\``).join('; ')}. ` +
+        'Every node behind each of these is left out only because this one fires it — replace the root ' +
+        'with nodes the export translates, and its cascade translates with it.',
+      where: [...new Set(cascade.roots.map((root) => root.path))]
+    });
+  }
 
   if (deferred.length > 0) {
     steps.push({

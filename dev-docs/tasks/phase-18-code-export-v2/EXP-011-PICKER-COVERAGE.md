@@ -6686,7 +6686,7 @@ untouched because no translation changed.
 
 ### §50.4 What this leaves
 
-- EXP-013, the warning — the next first job, and a product surface rather than an export row.
+- ✅ EXP-013, the warning — **built, gated and driven in session 78 (2026-09-03)**; the record is in the task file. Measured on the way: the cascade is not one sentence but three, the root was never named as a node at all, and it reaches a `Variable` and the `Text` bound to it — five nodes behind one `Run Tasks`, not three.
 - Then Tier 2.8 row 1. Same shape as §41–§49.
 - `Create New Array` (row 5) needs the anonymous-store design before a session opens it: an array
   minted with a generated Id whose only consumer is another node's Array Id **by wire** — the

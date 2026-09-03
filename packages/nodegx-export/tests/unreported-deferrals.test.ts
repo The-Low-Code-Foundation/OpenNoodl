@@ -102,8 +102,13 @@ describe('a deferred node the report never mentioned', () => {
     addOrphanLogic(source);
     const report = reportOf(source);
     const lines = report.split('\n').filter((l) => l.includes(ORPHAN));
-    expect(lines.length).toBe(1);
-    expect(lines[0]).toContain(`(${ORPHAN_TYPE}) has no translation in this slice — it is not in the generated app`);
+    // EXP-013: the report names a refused node twice, on purpose — once as a *node row* under
+    // "Nodes left out" (built from `dispositions`, which is the list this sweep exists to keep
+    // honest) and once as the sweep's own note. Two lines, each asserted by shape.
+    expect(lines.length).toBe(2);
+    // The row carries the picker's name for the type ("Hash"), the note the catalog typeName.
+    expect(lines[0]).toContain(`Hash \`${ORPHAN}\` — the export has no rule for this node yet`);
+    expect(lines[1]).toContain(`(${ORPHAN_TYPE}) has no translation in this slice — it is not in the generated app`);
   });
 
   it('says it once, not once per pass — a node the report already names gains no second line', () => {

@@ -18,6 +18,7 @@
  */
 import { INodeType } from '@noodl-types/nodeTypes';
 import { pickerCapabilityReason } from '@noodl-utils/capability-gating/pickerReason';
+import { exportBadgeFor, type ExportBadge } from '@noodl-utils/codeExport/exportBadge';
 
 import { INodeIndex, INodeIndexCategory } from '@noodl-utils/createnodeindex';
 
@@ -81,6 +82,15 @@ export interface PickerItem {
    * "supported here".
    */
   unavailableReason?: string;
+  /**
+   * EXP-013 — the code export has no rule for this type, and the ledger's word on it.
+   *
+   * ⚠️ The row stays in the list, exactly as `unavailableReason` does and for the same reason
+   * (Richard's ruling, EXP-011 §50: *warn*, not *hide*). The node works in the running app; what
+   * it does not do is export, and a person finds that out here rather than at the pre-flight.
+   * `undefined` is both "exports" and "not the ledger's to say" (a kit node, a component).
+   */
+  exportBadge?: ExportBadge;
 }
 
 export interface PickerGroup {
@@ -321,7 +331,8 @@ function toItem(node: FlatNode, match: Match | null, isSearching: boolean): Pick
     reason,
     rank: match?.rank ?? -1,
     highlight: match?.highlight ?? null,
-    unavailableReason: pickerCapabilityReason(node.type.name)
+    unavailableReason: pickerCapabilityReason(node.type.name),
+    exportBadge: exportBadgeFor(node.type.name)
   };
 }
 
