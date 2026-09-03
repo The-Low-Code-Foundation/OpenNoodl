@@ -14,6 +14,42 @@ it wrong — that amendment is what AC5's calibration was for.
 
 ---
 
+## 🔴 2026-09-03 — the SITE-BUILDER rows below were photographed on a page that could not scroll
+
+Filed by P77 s48. Full record and the control pair:
+**[`verdicts/sbr-005/2026-09-03/RUN-RECORD.md`](verdicts/sbr-005/2026-09-03/RUN-RECORD.md)**.
+
+`authorSiteTemplate` copies the generic `demo-app` fixture, whose settings are
+`{ htmlTitle, navigationPathType }` — **it never applied the site-builder template's own
+`bodyScroll: true`**. So `#root` stayed `overflow: clip; position: fixed`, and a full-page capture,
+which expands the viewport to the content height, then stretched that fixed root to fill it. The
+site-builder full-page shots show the header, hero and gallery, **1,100–1,400px of white**, then the
+footer — while the `.txt` beside each proves every section is in the DOM.
+
+Same harness, same page, one variable, and the reverted arm reproduces the recorded numbers exactly:
+
+| `all-five` | preview 988 | desktop 1280 |
+|---|---|---|
+| `bodyScroll` absent (as recorded) | `scroll=NO unreachable=1719px` | `scroll=NO unreachable=1139px` |
+| `bodyScroll: true` (as the template ships) | `scroll=yes unreachable=0px` | `scroll=yes unreachable=0px` |
+
+Fixed at the source: `TEMPLATE_SETTINGS` is exported from `sb007Template.ts` and imported by
+`helpers/site-drive.ts`, so the harness and the artefact cannot drift. Byte-neutral on the shipped
+template (`sb007Template.test.ts` 62/62, md5 unchanged).
+
+⚠️ **What this does and does not change.** It does not overturn a single verdict — Richard's ruling
+stands and no row below is re-graded here. What it changes is **what a future reader is looking at**:
+the site-builder pictures in `verdicts/sbr-005/2026-09-01/` and the site-builder rows of
+`verdicts/vib-001/2026-08-31/` show D40 as well as the design, and **re-photographing is owed before
+VIB-009 is scoped from them**. A fresh set is in `verdicts/sbr-005/2026-09-03/`.
+
+🔴 **It also excludes s47's account of the VIB-001-vs-D40 contradiction.** Both look files call the
+same `authorSiteTemplate` on the same fixture, so *"a corpus mixing both create paths"* cannot be
+what separates VIB-001's `unreachablePx: 0` from SBR-005's `1139`. See the run record's §3 — the row
+is **still open**, with narrower candidates.
+
+---
+
 ## §1 The members' area (TPL-001) — the door
 
 Served bytes md5 `ac1f0163bd77eef1871ac0b1d27d3197`, identical to

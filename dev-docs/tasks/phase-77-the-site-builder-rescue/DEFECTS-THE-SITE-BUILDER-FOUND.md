@@ -3055,7 +3055,25 @@ artefact, **exactly that test reddens and its sibling settings control stays gre
 🔴 **What is still NOT settled, and must not be read as settled:** phase 81 **VIB-001's
 `unreachablePx = 0`**. That sweep was **not re-run** — the instrument above is a different one, and
 s47's account of the contradiction (a corpus mixing two create paths yields both readings) is an
-*explanation*, not a measurement. ⚠️ A **packaged** Electron window is also still unmeasured; every
+*explanation*, not a measurement.
+
+> 🔴 **s48, later the same day: that explanation is now EXCLUDED, and the row is narrower rather
+> than closed.** Re-running phase 81's own judge found that its harness never applied this setting
+> at all — `authorSiteTemplate` copies the generic `demo-app` fixture — so **every** phase-81
+> verdict on this template was rendered with `bodyScroll` absent, VIB-001's and SBR-005's alike.
+> Both look files call the **same** `authorSiteTemplate` on the **same** fixture, so the create path
+> cannot be what separates VIB-001's `canScroll: true / unreachablePx: 0` (2026-08-31, `d96a7cb4`,
+> `public-home`, content 1594 vs 900) from SBR-005's `canScroll: false / unreachablePx: 1139`
+> (2026-09-01, `5ac3e72a`, `all-five`, content 2039 vs 900). What is left: the **89 commits between
+> those SHAs** (four touching `noodl-viewer-react/src`), or a real difference between the two pages.
+> **Neither is measured.** Record and the control pair:
+> [`../phase-81-the-look-is-the-product/verdicts/sbr-005/2026-09-03/RUN-RECORD.md`](../phase-81-the-look-is-the-product/verdicts/sbr-005/2026-09-03/RUN-RECORD.md).
+>
+> ✅ The fixture is fixed — `TEMPLATE_SETTINGS` is exported from `sb007Template.ts` and imported by
+> `helpers/site-drive.ts` rather than retyped, and with it the same shots read
+> `scroll=yes unreachable=0px` at all four widths while the reverted arm reproduces `1719`/`1139`
+> exactly. 🔴 **So D40 bounded the phase-81 baseline as well as the product**, and the site-builder
+> pictures behind that baseline show the defect as much as the design. ⚠️ A **packaged** Electron window is also still unmeasured; every
 reading in this row's history, s48's included, is a browser. ⚠️ And the propagation fact this drive
 established is narrow: **the settings-panel route reaches a running preview over `ViewerConnection`
 with no reload**. Editing `nodegx.project.json` under a live editor is untested, not disproved.

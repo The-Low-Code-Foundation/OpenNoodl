@@ -24,6 +24,7 @@ import { createServer } from '../../../noodl-mcp/src/server';
 import { SB004_COMPONENTS } from '../../../noodl-mcp/tests/sb004Components';
 import { SB005_COMPONENTS, createPass as createPass005 } from '../../../noodl-mcp/tests/sb005Components';
 import { SB006_COMPONENTS, createPass as createPass006 } from '../../../noodl-mcp/tests/sb006Components';
+import { TEMPLATE_SETTINGS } from '../../../noodl-mcp/tests/sb007Template';
 
 /**
  * SB-004 §4's policy — **imported from the artefact the template ships**, not
@@ -64,6 +65,38 @@ interface ToolResult {
 }
 
 /**
+ * Give the fixture the settings the SITE-BUILDER TEMPLATE ships, before a single
+ * component is authored into it.
+ *
+ * 🔴 **Without this the Judge photographs a project no person receives.** The
+ * fixture is `demo-app`, a generic v2 skeleton whose settings block is
+ * `{ htmlTitle, navigationPathType }` — the same two the site-builder template
+ * itself carried until D40 was fixed. So every phase-81 verdict on this template
+ * was rendered with `bodyScroll` absent, which means `#root` was
+ * `overflow: clip; position: fixed` and the page was **not a scroll container at
+ * all**. Two consequences, both visible in the recorded verdicts:
+ *
+ * - `canScroll: false` and `unreachablePx` of **1139 (desktop) / 1385 (phone)**
+ *   on the 2026-09-01 `all-five` shots, against `unreachablePx: 0` on VIB-001's
+ *   own run — the contradiction D40's row records as open.
+ * - A full-page capture expands the viewport to the content height, and a
+ *   `position: fixed` root then stretches to fill it: those shots show the header,
+ *   hero and gallery, **~1100-1400px of white**, then the footer pinned at the
+ *   bottom, while the text dump proves the CTA, passage and contact sections are
+ *   all present. That void is the defect, not the design.
+ *
+ * ⚠️ **The object is IMPORTED, never retyped.** A second literal here would drift
+ * from the template exactly as the template drifted from `createProject.ts` — the
+ * two-create-paths shape that cost D40 fourteen sessions.
+ */
+function applyTemplateSettings(dir: string): void {
+  const file = path.join(dir, 'nodegx.project.json');
+  const project = JSON.parse(fs.readFileSync(file, 'utf-8')) as Record<string, unknown>;
+  project.settings = { ...(project.settings as Record<string, unknown>), ...TEMPLATE_SETTINGS };
+  fs.writeFileSync(file, JSON.stringify(project, null, 2));
+}
+
+/**
  * The whole template, through the real MCP server, into one project directory.
  *
  * `createServer` from `src` and not the built dist: the dist on this machine is
@@ -79,6 +112,7 @@ export async function authorSiteTemplate(label: string): Promise<string> {
   const fixture = path.join(__dirname, '..', '..', '..', 'noodl-mcp', 'tests', 'fixtures', 'demo-app');
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), `${label}-project-`));
   fs.cpSync(fixture, dir, { recursive: true });
+  applyTemplateSettings(dir);
 
   const { server } = createServer({ projectDir: dir, allowWrites: true });
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
