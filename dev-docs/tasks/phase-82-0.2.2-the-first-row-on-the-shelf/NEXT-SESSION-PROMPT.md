@@ -1,6 +1,6 @@
 # Phase 82 — next session
 
-_Opened 2026-08-31 (s1). Last updated **2026-09-02, session 14**. 🔴 **ROW 6 IS REOPENED — see the section below before reading anything else.** Row 6 has **no building left on
+_Opened 2026-08-31 (s1). Last updated **2026-09-03, session 16**. 🔴 **ROW 6 IS REOPENED — see the section below before reading anything else.** Row 6 has **no building left on
 it**: every one of the thirteen pages has been photographed and graded at **all four widths**, both
 of s13's queued questions are answered and built, and s14 found that the one apparent defect left in
 the pictures belonged to the **test harness**, not the product. What remains is **Richard's own
@@ -170,6 +170,46 @@ and 8 stay behind **AC6, which is Richard's look and nothing else**.
    the 34 role descriptions, which are the ones worth keeping. **Owner: phase 81. Not this row's, and
    it blocks no AC here.**
 
+## 🔴 SESSION 16 — the whole run sheet is now RICHARD'S, and a session took the one row it could
+
+**Read this before taking a row.** Session 16 re-derived the board from the task files and found
+that **rows 6, 6b, 7 and 8 all wait on Richard and a session cannot advance any of them**:
+
+| row | what it is waiting for |
+|---|---|
+| **6 / 6b** | **AC6 — his look**, against `verdicts/vib-006/…/landing-desktop-full.png`. AC1–AC5 are met and re-measured; a session cannot close a person |
+| **6b, R6** | one word from him on `/unsubscribe`'s 2 grounds, which **AC4 names neither group of** |
+| **7** | his call on **when to publish** — the recommendation is unchanged, *fix first, publish once* |
+| **8** | `cline-dev` is **613 commits** ahead of `origin/cline-dev` (re-derived 09-03; it was 580 at s13). CI has run on none of it |
+
+🔴 **So do not open row 6 again looking for building to do — there is none, and s15 already said so.**
+
+**What session 16 built instead: [REL-009a](REL-009-THE-WRITE-THE-EDITOR-CANNOT-SEE.md), which is on
+this board (TASKS.md row REL-009a) and which [the README §2](README.md) says a launch session may
+build without asking.** It is 🟢 **CLOSED** — measured, then fixed, then driven again. Commit
+`40a80bf5`.
+
+- 🔴 **The clobber-on-quit warning in four phase-55 handoffs was WRONG and is now corrected in
+  place.** A quit with nothing pending wrote **nothing at all**. Arms A, B, D all passed.
+- 🔴 **Arm C is real: two writers on the SAME component is silent last-writer-wins.** And on `/App`
+  it costs a whole page — dropped from the router, files and registry entry left behind, so
+  **nothing on any surface looks wrong**.
+- ✅ **Fixed and verified in the running app**, negative control first.
+- 🔴 **A PRE-EXISTING spec caught a regression in the fix's first draft.** The guard could not tell
+  *"an agent wrote this"* from *"we wrote this and rewound our own bookkeeping"*. **A new check does
+  not have to be wrong to be dangerous — it has to be unable to tell two situations apart.**
+
+### The next buildable row is REL-009b, and it is the real fix
+
+`reloadComponentFromDisk` still has **zero callers** and there is still **no filesystem watcher
+anywhere in the editor** (re-derived at HEAD, 09-03). REL-009a's guard makes the loss visible;
+**REL-009b makes it not happen**, because the watcher advances the baseline as the write lands.
+🔴 **Its known cost is on the board: once a component is refused it stays refused until the project is
+reopened.** Do not close REL-009b believing REL-009a already solved it. Read
+[REL-009 §3 and §4 U3](REL-009-THE-WRITE-THE-EDITOR-CANNOT-SEE.md) first — **U3, whether the canvas
+survives a model swap underneath it, is where that task gets expensive**, and D1 (`fs.watch` vs
+`chokidar`) is **unruled**.
+
 ## The run sheet
 
 Take the topmost row that is not ✅.
@@ -177,10 +217,10 @@ Take the topmost row that is not ✅.
 | # | row | why here | needs |
 |---|---|---|---|
 | ~~1–5~~ | ~~REL-007/006, REL-005, REL-003, REL-002a, REL-002b~~ | ✅ **CLOSED s1–s5** | — |
-| **6** | **REL-002c — every page as good as the homepage** | 🔴 **REOPENED 09-02** — graded for 14 sessions against the members-area's OWN `/`, a page Richard puts in the *passable* bucket | ⏳ **REL-010's building is DONE; both wait on the same look** |
+| **6** | **REL-002c — every page as good as the homepage** ⏳ **RICHARD** | 🔴 **REOPENED 09-02** — graded for 14 sessions against the members-area's OWN `/`, a page Richard puts in the *passable* bucket | ⏳ **REL-010's building is DONE; both wait on the same look** |
 | **6b** | 🟢 **[REL-010](REL-010-AS-GOOD-AS-THE-PAGE-HE-RATED.md) — as good as the page he actually rated** | §3.1 RULED and BUILT s15. **13 of 13 pages now read clean**, from 0 of 13. AC1–AC5 met (AC3 declined on the nine, in writing; AC4 has a hole at `/unsubscribe`) | ⏳ **AC6 — RICHARD'S LOOK. A session cannot close it** |
-| 7 | **REL-001** publish + drive the install | shelf's first row; also closes P75's FB-005 | ⏸️ **HOLD** — see below |
-| 8 | **REL-004** cut, tag and publish `v0.2.2` | last | 🟡 **AC1 done s11** (`5c805978`). 🔴 Blocked: `cline-dev` unpushed |
+| 7 | **REL-001** publish + drive the install ⏳ **RICHARD** | shelf's first row; also closes P75's FB-005 | ⏸️ **HOLD** — see below |
+| 8 | **REL-004** cut, tag and publish `v0.2.2` ⏳ **RICHARD** | last | 🟡 **AC1 done s11** (`5c805978`). 🔴 Blocked: `cline-dev` unpushed |
 
 ### ⏸️ Why row 7 still waits
 
@@ -275,8 +315,7 @@ the recommendation is unchanged: **fix first, publish once.** Ask when his look 
 [the runbook §2](../release-0.2.2/PUBLISH-0.2.2.md): the nine `library/prefabs/*/library.json` files
 that also read `0.2.0` and must **not** move, and why the `package-lock.json` copy is **not** a gate.
 
-🔴 **Still blocked on Richard:** `cline-dev` is a long way ahead of `origin/cline-dev` (**580
-unpushed at the start of s13, and peers committed twice during it**), `origin/cline-dev` is at
+🔴 **Still blocked on Richard:** `cline-dev` is a long way ahead of `origin/cline-dev` (**613 unpushed, re-derived 2026-09-03; 580 at s13**), `origin/cline-dev` is at
 2026-08-21, CI has run on none of it. **Derive the count again at cut time.** ✅ **Tag at `5c805978`
 or later** — anything earlier carries `0.2.0` in `artifactName`.
 
