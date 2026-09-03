@@ -3554,7 +3554,14 @@ export const THEME_EDITOR_NODES = [
     parent: 'previewHero',
     parameters: {
       ...STACKED,
-      text: 'The hero band, the type and the corners follow the fields on the left.',
+      // 🔴 REL-011c residual 1: the sentence must not name a DIRECTION. A9 gives
+      // the theme editor a breakpoint, so below 760 the fields sit ABOVE this
+      // preview rather than to its left — the old wording ("on the left") was
+      // true at 1900 and false at 390, in the same artefact, and a screen that
+      // says something false about itself is not PASSABLE. Neutral at both
+      // widths instead of width-aware, because a width-aware string would need a
+      // second consumer of the breakpoint for one sentence.
+      text: 'The hero band, the type and the corners follow the fields you are editing.',
       fontFamily: 'var(--font-sans)',
       fontSize: 'var(--text-sm)',
       lineHeight: 'var(--leading-relaxed)',

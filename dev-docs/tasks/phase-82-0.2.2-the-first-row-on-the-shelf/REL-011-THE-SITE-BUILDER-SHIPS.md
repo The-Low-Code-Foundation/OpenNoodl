@@ -773,7 +773,7 @@ pair. 🔴 **Nothing in the numbers said this**: `unreachablePx` is vertical, `c
 **Only looking at the picture said it** — which is the close protocol's rule 4, and it earned its
 keep twice in one session.
 
-#### ⚠️ Two residuals, registered rather than built — owner: this row, for his look
+#### 🟢 Two residuals, BUILT s23 (2026-09-03) — they were registered here first
 
 1. **The theme editor's live preview says *"follow the fields on the left"*** — true at 1900 and
    false at 390, where A9 now stacks the fields ABOVE it. One string, and it should be neutral at
@@ -781,6 +781,59 @@ keep twice in one session.
 2. **`/contact-only` draws the words *"Get in touch"* twice** — once as the section's own heading and
    again as the form card's, one above the other. Visible in
    `sbr-005/2026-09-03/site-builder-living/kind-contact-*`.
+
+🟢 **Both are built.** One string each, as recorded, and the second one is a node removed rather
+than a word changed:
+
+1. The theme editor's preview note now reads *"The hero band, the type and the corners follow the
+   fields you are editing."* — neutral at both widths rather than width-aware. ⚠️ **A width-aware
+   string was deliberately NOT built**: it would need a second consumer of A9's breakpoint for one
+   sentence, and a sentence that names a direction is a thing to stop saying, not a thing to compute.
+2. `/Site/ContactForm`'s fixed `h2` is **gone**. 🔴 **The defect was not "two headings" but "a
+   heading the author cannot edit"**: `/Site/ContactSection` already carries a heading slot, wired to
+   the record and mounted on `showHeading` (which is `heading !== ''`), so the card's job is the
+   fields. A person who types "Get in touch" into the panel — the natural thing — got it twice. A
+   contact section left without a heading now shows the card with no title, which is what "no
+   heading" asks for.
+
+**Gates**: `typecheck:mcp` **0**; `template:site-builder` exit 0 (`6a4adc05… → 9fb0e5ea…`); full
+`noodl-mcp` **92 suites, 1226 passed, exit 0** (1224 + this row's two new arms); `sb007Template`
+green, so the committed JSON is byte-identical to what the door writes. The artefact diff is exactly
+**one node and one string** — 24 insertions, 42 deletions, and the only `label`/`text`/`as` values
+that move are `Contact heading`, `as: h2`, `Get in touch` and the preview note.
+
+🔴 **The claim is pinned by a shared predicate and graded on the reverted source.** A new arm in
+`sb006PublicSite.test.ts` says the card holds no `h1`–`h6` and the section holds exactly one, WIRED
+rather than authored and `mounted: false` until it has a value. With the heading node put back,
+**two arms redden — the claim and SBR-004 AC1's node census — measured, not predicted.** ⚠️ The
+mutant beside it deliberately does NOT redden there: it asserts *one more than the card really has*,
+so it grades the predicate (`toEqual([])` is also what a matcher that matches nothing returns) and
+stays green whatever the artefact does.
+
+#### 🔴 Five literal gates were RED AT HEAD, and four of them were not this phase's
+
+Found by running the editor's two runners while landing the above. **None was caused by these two
+fixes** — the baseline was re-measured with the committed artefact copied back over the working one,
+and it read the same five.
+
+| gate | read | since |
+|---|---|---|
+| `tests/cloud/sb017-…acceptance 6` — browser Function nodes | 38 vs **35** | REL-011c s22 (`86fcbcc6`) |
+| `tests-unit/sb-007` — disjoint node ids | 401 vs **393** | REL-011b s19 (`3f95a804`), then s22 |
+| `tests-unit/sb-018 (3)` — the six named standing `text`s | `/Site/SectionView body` **undefined** | SBR-005, when `SectionView` became a switch that draws nothing |
+| `tests-unit/sb-018 (1)` — the row's output ports, and the repeater-wire census | `DropAt`/`DropIndex` and three wires unlisted | **P77 AC2's drag gesture, `12cc718a`, 2026-08-30** |
+| `tests-unit/aib-007` — the backend-requirement table is complete | `noodl.cloud.listusersinrole` unclassified | **P80/DEF-005, `ab677258`, 2026-08-31**, and that phase is CLOSED |
+
+All five are fixed with the decomposition measured at each commit rather than inferred. 🔴 **The
+lesson is the one SB-017's own header already records four times and nobody had generalised: a
+literal count gate only works if somebody runs it, and the two runners that can see these
+(`test:main`, `test:ci`) are not the ones a template session reaches for.** `template:site-builder`,
+the full `noodl-mcp` suite and both look harnesses are all green with every one of these red.
+
+⚠️ **`sb-018 (3)`'s row is re-pointed, not deleted.** The rule-level arm beside it (*every* `Text`
+carries a standing `text`) stayed green through the whole drift, which is exactly why the named list
+exists — it says WHICH node lost its parameter, and a row that is deleted instead of re-pointed
+cannot say anything.
 
 ⚠️ **And a fact about the before-arm that changes what the sbr-005 pictures are of:** the committed
 `sbr-005/2026-09-03` run was taken at **`2696c850` (10:14)**, which is *before* REL-011a landed

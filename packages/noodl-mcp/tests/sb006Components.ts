@@ -1562,21 +1562,17 @@ export const CONTACT_FORM_NODES = [
       borderColor: 'var(--border)',
       borderRadius: 'var(--radius-md)'
     },
-    children: ['heading', 'nameField', 'emailField', 'messageField', 'sendButton', 'sent', 'refused']
-  },
-  {
-    id: 'heading',
-    type: 'Text',
-    label: 'Contact heading',
-    parent: 'form',
-    parameters: {
-      as: 'h2',
-      text: 'Get in touch',
-      fontWeight: 'var(--font-bold)',
-      fontFamily: 'var(--font-serif)',
-      fontSize: 'var(--text-xl)',
-      color: 'var(--foreground)'
-    }
+    // 🔴 REL-011c residual 2: no `heading` here. The card used to open with a
+    // fixed `h2` reading "Get in touch", one line below `Site/ContactSection`'s
+    // own heading — which is the one the AUTHOR writes, and which a person
+    // naturally fills in with those same three words. The photograph of
+    // `/contact-only` showed them stacked
+    // (`sbr-005/2026-09-03/site-builder-living/kind-contact-*`). An unauthorable
+    // second heading is the defect: the section already carries a heading slot,
+    // mounted on `showHeading` when the record has one, so the card's job is the
+    // fields. A contact section left without a heading now shows the card with
+    // no title, which is what "no heading" asks for.
+    children: ['nameField', 'emailField', 'messageField', 'sendButton', 'sent', 'refused']
   },
   {
     id: 'nameField',

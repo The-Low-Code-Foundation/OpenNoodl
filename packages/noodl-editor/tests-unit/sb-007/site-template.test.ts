@@ -243,7 +243,28 @@ describe('SB-007 — install writes a project that opens', () => {
     // 372 → 393, and the arithmetic is +21 rather than +20: SBR-010's two
     // components carry 9 and 11 nodes, and `/Admin/Shell` gains the twenty-first
     // — `goMessages`, the RouterNavigate the rail item never had.
-    expect(a.size).toBe(393);
+    // 🔴 **393 → 400, and the literal had been stale for FOUR sessions.** Read
+    // as red by P82 s23 while running this suite for a different reason; the
+    // decomposition is measured by counting nodes in the artefact at each
+    // commit, not derived:
+    //   393 → 394  REL-011b AC1 (`3f95a804`) — `/Admin/PresetChip`'s first
+    //              Function node, the one that publishes `{ name }` at the press
+    //              so three chips stop wiring a constant into one port.
+    //              ⚠️ REL-011a (`d88368c5`) moved 53 controls onto the palette
+    //              and added NO node, which is why it is not a step here.
+    //   394 → 401  REL-011c (`86fcbcc6`) — three breakpoints, each a
+    //              `Screen Resolution` plus the function that reads it:
+    //              `/Admin/Shell` +2, `/Pages/ThemeEditor` +2, and
+    //              `/Pages/PageEditor` +3 (its third is the `Pick a kind and add
+    //              it` Group).
+    //   401 → 400  REL-011c residual 2, this session — `/Site/ContactForm`'s
+    //              fixed `h2` is gone. The card sat one line below
+    //              `/Site/ContactSection`'s own heading, which is the one the
+    //              author writes, and `/contact-only` drew "Get in touch" twice.
+    // ⚠️ The literal is still the point, for the reason four lines up: it is the
+    // only thing standing between a rewrite that RENAMED ids and a disjointness
+    // assertion that would stay green on a set that had shrunk.
+    expect(a.size).toBe(400);
     expect([...a].filter((id) => b.has(id))).toEqual([]);
   });
 

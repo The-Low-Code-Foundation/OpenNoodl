@@ -681,30 +681,12 @@
             "type": "Group",
             "children": [
               {
-                "id": "heading-4",
-                "type": "Text",
-                "children": [],
-                "label": "Contact heading",
-                "x": 100,
-                "y": 160,
-                "parameters": {
-                  "as": "h2",
-                  "text": "Get in touch",
-                  "fontWeight": "var(--font-bold)",
-                  "fontFamily": "var(--font-serif)",
-                  "fontSize": "var(--text-xl)",
-                  "color": "var(--foreground)"
-                },
-                "ports": [],
-                "dynamicports": []
-              },
-              {
                 "id": "nameField",
                 "type": "net.noodl.controls.textinput",
                 "children": [],
                 "label": "Your name",
                 "x": 100,
-                "y": 280,
+                "y": 160,
                 "parameters": {
                   "sizeMode": "contentHeight",
                   "backgroundColor": "var(--background)",
@@ -730,7 +712,7 @@
                 "children": [],
                 "label": "Your email",
                 "x": 100,
-                "y": 400,
+                "y": 280,
                 "parameters": {
                   "sizeMode": "contentHeight",
                   "backgroundColor": "var(--background)",
@@ -757,7 +739,7 @@
                 "children": [],
                 "label": "Your message",
                 "x": 100,
-                "y": 520,
+                "y": 400,
                 "parameters": {
                   "sizeMode": "contentHeight",
                   "backgroundColor": "var(--background)",
@@ -784,7 +766,7 @@
                 "children": [],
                 "label": "Send",
                 "x": 100,
-                "y": 640,
+                "y": 520,
                 "parameters": {
                   "backgroundColor": "var(--primary)",
                   "color": "var(--primary-foreground)",
@@ -802,7 +784,7 @@
                 "children": [],
                 "label": "The one confirmation",
                 "x": 100,
-                "y": 760,
+                "y": 640,
                 "parameters": {
                   "text": "Thanks — your message has been sent.",
                   "mounted": false,
@@ -818,7 +800,7 @@
                 "children": [],
                 "label": "The one refusal",
                 "x": 100,
-                "y": 880,
+                "y": 760,
                 "parameters": {
                   "text": "That message could not be sent.",
                   "mounted": false,
@@ -856,7 +838,7 @@
             "children": [],
             "label": "Which page this was sent from",
             "x": 350,
-            "y": 1000,
+            "y": 880,
             "parameters": {},
             "ports": [
               {
@@ -873,7 +855,7 @@
             "children": [],
             "label": "Hold the message until it is complete",
             "x": 350,
-            "y": 280,
+            "y": 160,
             "parameters": {
               "runOnChange-in-name": false,
               "runOnChange-in-email": false,
@@ -952,7 +934,7 @@
             "children": [],
             "label": "submitContactForm",
             "x": 350,
-            "y": 1120,
+            "y": 1000,
             "parameters": {
               "function": "submitContactForm"
             },
@@ -965,7 +947,7 @@
             "children": [],
             "label": "Show the confirmation",
             "x": 350,
-            "y": 760,
+            "y": 640,
             "parameters": {
               "condition": true,
               "runOnChange-condition": false
@@ -979,7 +961,7 @@
             "children": [],
             "label": "Show the refusal",
             "x": 350,
-            "y": 880,
+            "y": 760,
             "parameters": {
               "condition": true,
               "runOnChange-condition": false
@@ -1088,7 +1070,7 @@
             "type": "Group",
             "children": [
               {
-                "id": "heading-5",
+                "id": "heading-4",
                 "type": "Text",
                 "children": [],
                 "label": "Contact heading",
@@ -1198,13 +1180,13 @@
           {
             "fromId": "inputs-7",
             "fromProperty": "heading",
-            "toId": "heading-5",
+            "toId": "heading-4",
             "toProperty": "text"
           },
           {
             "fromId": "inputs-7",
             "fromProperty": "showHeading",
-            "toId": "heading-5",
+            "toId": "heading-4",
             "toProperty": "mounted"
           },
           {
@@ -1240,7 +1222,7 @@
             "type": "Group",
             "children": [
               {
-                "id": "heading-6",
+                "id": "heading-5",
                 "type": "Text",
                 "children": [],
                 "label": "Call to action heading",
@@ -1410,7 +1392,7 @@
           {
             "fromId": "inputs-8",
             "fromProperty": "heading",
-            "toId": "heading-6",
+            "toId": "heading-5",
             "toProperty": "text"
           },
           {
@@ -4555,7 +4537,7 @@
                         "type": "Group",
                         "children": [
                           {
-                            "id": "heading-7",
+                            "id": "heading-6",
                             "type": "Text",
                             "children": [],
                             "label": "Heading",
@@ -5922,7 +5904,7 @@
           {
             "fromId": "headline",
             "fromProperty": "out-headline",
-            "toId": "heading-7",
+            "toId": "heading-6",
             "toProperty": "text"
           },
           {
@@ -6860,7 +6842,7 @@
                     "type": "Group",
                     "children": [
                       {
-                        "id": "heading-8",
+                        "id": "heading-7",
                         "type": "Text",
                         "children": [],
                         "label": "Heading",
@@ -7479,7 +7461,7 @@
                                         "y": 4240,
                                         "parameters": {
                                           "sizeMode": "contentHeight",
-                                          "text": "The hero band, the type and the corners follow the fields on the left.",
+                                          "text": "The hero band, the type and the corners follow the fields you are editing.",
                                           "fontFamily": "var(--font-sans)",
                                           "fontSize": "var(--text-sm)",
                                           "lineHeight": "var(--leading-relaxed)",
@@ -9239,7 +9221,7 @@
                     "type": "Group",
                     "children": [
                       {
-                        "id": "heading-9",
+                        "id": "heading-8",
                         "type": "Text",
                         "children": [],
                         "label": "Heading",
@@ -9493,7 +9475,7 @@
                         "type": "Group",
                         "children": [
                           {
-                            "id": "heading-10",
+                            "id": "heading-9",
                             "type": "Text",
                             "children": [],
                             "label": "Heading",
@@ -9825,7 +9807,7 @@
                 "type": "Group",
                 "children": [
                   {
-                    "id": "heading-11",
+                    "id": "heading-10",
                     "type": "Text",
                     "children": [],
                     "label": "Heading",
@@ -10120,7 +10102,7 @@
                 "type": "Group",
                 "children": [
                   {
-                    "id": "heading-12",
+                    "id": "heading-11",
                     "type": "Text",
                     "children": [],
                     "label": "Heading",

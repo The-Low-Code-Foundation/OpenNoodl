@@ -139,7 +139,22 @@ describe('SB-018 (3): a wired `Text` never shows the runtime default', () => {
 
     expect(standing['/Pages/Site pageTitle']).toBe('');
     expect(standing['/Pages/Site siteName']).toBe('');
-    expect(standing['/Site/SectionView body']).toBe('');
+    // 🔴 **`/Site/SectionView body` is GONE and this row named a node that no
+    // longer exists** — read as red by P82 s23. SBR-005 turned `SectionView`
+    // into a switch that draws nothing (five wrappers, one per kind), and the
+    // body it used to own became one Text per kind. `/Site/SectionView` now
+    // carries no `Text` at all, so `standing[…]` was `undefined` rather than
+    // `''` and this arm had been red since that task landed.
+    // ⚠️ The successors are named INDIVIDUALLY rather than the row being
+    // deleted: a rule-level check ("every Text carries a standing text", above)
+    // stayed green through all of it, which is exactly why the named list
+    // exists — it says WHICH node lost its parameter, and one that is deleted
+    // instead of re-pointed cannot say anything.
+    // ⚠️ The ids carry `-2`/`-3` suffixes because node ids are made unique
+    // across the PROJECT (SB-004 F9), not because there are three of anything.
+    expect(standing['/Site/RichTextSection body']).toBe('');
+    expect(standing['/Site/ContactSection body-2']).toBe('');
+    expect(standing['/Site/CtaSection body-3']).toBe('');
     expect(standing['/Admin/PageRow rowTitle']).toBe('');
     expect(standing['/Admin/PageRow rowSlug']).toBe('');
     expect(standing['/Admin/SectionRow kindText']).toBe('');

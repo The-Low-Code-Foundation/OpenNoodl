@@ -135,6 +135,14 @@ function byLabel(w: Written, type: string, label: string): GraphNode {
 }
 const scriptOf = (n: GraphNode): string => String(n.parameters?.functionScript ?? '');
 
+/**
+ * Every node a browser would render as a heading. One function, used by the
+ * claim and by its mutant — a mutant that re-implements the predicate grades a
+ * copy of it and can be green while the shipped one matches nothing.
+ */
+const headingsOf = (w: Written): GraphNode[] =>
+  w.graph.nodes.filter((n) => /^h[1-6]$/.test(String(n.parameters?.as ?? '')));
+
 // ── The Router's own matching rule, re-implemented ───────────────────────────
 
 /**
@@ -1324,6 +1332,57 @@ describe('SB-006: the public site, beside the panel it shares a router with', ()
     expect(errorReads).toEqual([]);
   });
 
+  /**
+   * REL-011c residual 2 — the contact kind draws ONE heading, and the author
+   * writes it.
+   *
+   * 🔴 **The census above is the population; this is the claim.** Deleting
+   * `Site/ContactForm | Contact heading` from the expected list would pass on
+   * its own the moment somebody re-adds the node and updates the literal — the
+   * same failure mode SB-017 acceptance 6 records four times over. What has to
+   * stay true is the shape: the card holds no heading of its own, and the
+   * section's single heading is WIRED rather than authored, so it says what the
+   * person typed into the panel and nothing when they typed nothing.
+   */
+  it("REL-011c: a contact section draws one heading, and it is the author's", () => {
+    const form = written['Site/ContactForm'];
+    const section = written['Site/ContactSection'];
+
+    // Half one: the card opens with a field, not a title.
+    expect(headingsOf(form)).toEqual([]);
+
+    // Half two: the section has exactly one, and its text arrives on a wire.
+    const headings = headingsOf(section);
+    expect(headings.map((n) => n.label)).toEqual(['Contact heading']);
+    expect(section.wires.some((c) => c.toId === headings[0].id && c.toProperty === 'text')).toBe(true);
+    // …and it is hidden until it has one — `showHeading` is `heading !== ''`,
+    // so an author who writes no heading gets no empty line above the card.
+    expect(headings[0].parameters?.mounted).toBe(false);
+    expect(section.wires.some((c) => c.toId === headings[0].id && c.toProperty === 'mounted')).toBe(true);
+  });
+
+  it('MUTANT: a fixed heading back inside the card reddens', () => {
+    // The state the photograph caught, and the control on half one: `toEqual([])`
+    // is also what a predicate that matches nothing returns, so the same
+    // `headingsOf` must find the planted node.
+    //
+    // ⚠️ Stated as "one MORE than the card really has" rather than as a literal,
+    // so this arm grades the PREDICATE and stays green whatever the artefact
+    // does. On the reverted source it is the claim above and the AC1 census that
+    // redden — measured, both of them — and a mutant that reddened with them
+    // would be reporting the same fact a third time.
+    const form = written['Site/ContactForm'];
+    const mutant = clone(form);
+    mutant.graph.nodes.push({
+      id: 'planted',
+      type: 'Text',
+      label: 'Contact heading',
+      parameters: { as: 'h2', text: 'Get in touch' }
+    });
+
+    expect(headingsOf(mutant).length).toBe(headingsOf(form).length + 1);
+  });
+
   // ── SBR-004: the public site wears the theme ──────────────────────────────
 
   /**
@@ -1897,7 +1956,15 @@ describe('SB-006: the public site, beside the panel it shares a router with', ()
       // page). **An expected-value update is a claim; a session updating a census
       // it did not cause is the moment to ask what changed.**
       'Site/ContactForm | Contact form',
-      'Site/ContactForm | Contact heading',
+      // 🔴 **`Site/ContactForm | Contact heading` is GONE, and its absence is
+      // REL-011c residual 2.** The card opened with a fixed `h2` reading "Get in
+      // touch" one line below `Site/ContactSection | Contact heading` — the one
+      // the author writes, and the one a person naturally fills in with those
+      // same three words. `/contact-only` drew them stacked
+      // (`phase-81/verdicts/sbr-005/2026-09-03/site-builder-living/kind-contact-*`).
+      // ⚠️ The two entries below it are the confirmation and the refusal, which
+      // are NOT headings and must stay: this is the removal of a second heading,
+      // not of the card's copy.
       'Site/ContactForm | The one confirmation',
       'Site/ContactForm | The one refusal',
       'Pages/Site | The empty-screen card',

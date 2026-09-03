@@ -184,8 +184,17 @@ describe('SB-018 (1): the row tells the list, and the list refreshes', () => {
     // knows its own `order` and nothing about its siblings'.
     const expected: Record<string, Record<string, { type: string }>> = {
       '/Admin/PageRow': { Changed: { type: 'signal' } },
+      // 🔴 **`DropAt` and `DropIndex` are P77 AC2's drag gesture (`12cc718a`,
+      // 2026-08-30), and this arm had been red from that commit until P82 s23
+      // read it.** The exact-set assertion is doing its job — it is *supposed*
+      // to fail when the row grows a port — and what it costs is that nobody
+      // learns so until somebody runs this suite. ⚠️ `DropIndex` is a NUMBER,
+      // not a signal: a row knows where it was dropped, and the page editor
+      // knows the order, which is the same split as `MoveUp`/`MoveDown`.
       '/Admin/SectionRow': {
         Changed: { type: 'signal' },
+        DropAt: { type: 'signal' },
+        DropIndex: { type: 'number' },
         MoveDown: { type: 'signal' },
         MoveUp: { type: 'signal' }
       }
@@ -209,10 +218,11 @@ describe('SB-018 (1): the row tells the list, and the list refreshes', () => {
     const wires = refreshWiresFromRepeaters();
 
     // 🔴 Every wire *out of* a repeater in this template, in artefact order. Two
-    // are the refreshes this item is about; the other four are SBR-007 AC2's
-    // reorder path, and they are here rather than excluded because that is what
-    // keeps this a census — a rule that skipped what it did not recognise would
-    // stop being able to say a `Changed` wire had come back.
+    // are the refreshes this item is about; the other seven are the reorder path
+    // — SBR-007 AC2's two buttons and P77 AC2's drag — and they are here rather
+    // than excluded because that is what keeps this a census: a rule that
+    // skipped what it did not recognise would stop being able to say a `Changed`
+    // wire had come back.
     //
     // ⚠️ `itemActionItemId` appears TWICE, once per planner, and that is the
     // shape rather than a duplicate: the id and the signal must leave the SAME
@@ -223,6 +233,15 @@ describe('SB-018 (1): the row tells the list, and the list refreshes', () => {
       { component: '/Pages/PageEditor', port: 'itemOutputSignal-MoveUp', template: '/Admin/SectionRow' },
       { component: '/Pages/PageEditor', port: 'itemActionItemId', template: '/Admin/SectionRow' },
       { component: '/Pages/PageEditor', port: 'itemOutputSignal-MoveDown', template: '/Admin/SectionRow' },
+      // The drop planner, and it is a THIRD `itemActionItemId` for the reason
+      // the note above gives: the id and the signal must leave the same node.
+      // ⚠️ `itemOutput-DropIndex` is the one entry here that is not a signal —
+      // `itemOutput-` rather than `itemOutputSignal-` — which is what a value
+      // leaving a repeated item looks like, and it is why the census reads the
+      // port name rather than assuming a prefix.
+      { component: '/Pages/PageEditor', port: 'itemActionItemId', template: '/Admin/SectionRow' },
+      { component: '/Pages/PageEditor', port: 'itemOutput-DropIndex', template: '/Admin/SectionRow' },
+      { component: '/Pages/PageEditor', port: 'itemOutputSignal-DropAt', template: '/Admin/SectionRow' },
       { component: '/Pages/Admin', port: 'itemOutputSignal-Changed', template: '/Admin/PageRow' }
     ]);
 
