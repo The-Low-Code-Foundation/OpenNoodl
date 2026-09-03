@@ -27,8 +27,7 @@ was read. Memory: `do-not-pile-cpu-work-on-a-shared-box`, `the-editor-test-ci-we
    read `pickerCoverageFloor` + a new `pickerCoverageTotal` off the ledger — both held by `export-ledger:picker
    --check`, so the sentence is the gate's own number, percent rounded DOWN. The pre-flight modal leads with it
    (warning colour), the settings section carries it, the emitted README opens on it as a blockquote, the 0.2.2
-   release notes say *97 of 127 (76%)… do not ship a production app from it yet* — **update that paragraph to 98/77%
-   before the release cut** (`dev-docs/tasks/release-0.2.2/RELEASE-NOTES-0.2.2.md`).
+   release notes say *98 of 127 (77%)… do not ship a production app from it yet* (updated in-session, commit c5745fab).
 2. **EXP-011 §56 `Filter Records`** (commit `e2774f5b`) — read §56 in `EXP-011-PICKER-COVERAGE.md`. The design in one
    line: Array Filter's twin takes Array Filter's shape (a derived list) and gates; the saved filter tree is read
    statically, the matcher (`queryutils.ts`) is transcribed into `src/lib/filterRecords.ts`. New expression kinds
