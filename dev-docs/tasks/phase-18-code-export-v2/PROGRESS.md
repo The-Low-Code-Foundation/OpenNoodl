@@ -12,7 +12,7 @@ npm run export-ledger:picker
 node scripts/export-ledger/picker-coverage.js
 ```
 
-> **PICKER COVERAGE: 92 of 127 placeable nodes export (72.4%)** — 2026-09-03 s77 (was 51 on 2026-08-28, 81 on 2026-09-01 s69, 90 on 2026-09-03 s76)
+> **PICKER COVERAGE: 93 of 127 placeable nodes export (73.2%)** — 2026-09-03 s79 (was 51 on 2026-08-28, 81 on 2026-09-01 s69, 90 on 2026-09-03 s76, 92 on 2026-09-03 s77)
 
 **Do not report the corpus number as progress.** `coverage-audit.ts` reads 85.00% (93.38% over
 components a route reaches) across ~40 old drive fixtures. It is a **regression detector** and a
@@ -34,7 +34,7 @@ README §*What went wrong* has the mechanism.
 | [EXP-009](./EXP-009-BACKEND-CONNECTION.md) | **Exported app talks to its deployed backend** | 🟢 **Built + driven s33; AC4 (`Cloud Function`) built s69 via EXP-011 §41 — typechecked, not driven** |
 | [EXP-010](./EXP-010-CUSTOM-NODES-AND-MODULES.md) | **Custom nodes, modules and prefabs export** | 🔴 **Not started.** `parseProject` never opens `noodl_modules` |
 | [EXP-012](./EXP-012-THE-EDITOR-EXPORT-COMMAND.md) | **The editor export command** | 🟢 **BUILT + DRIVEN s67 (2026-09-01).** Settings → Project → *Export as React code…*: exact pre-flight modal, folder dialog, inside-project refusal, non-empty confirm, write + toast. Byte-identical to `emit-app.ts`. `@nodegx/export` has its **first product consumer**; EXP-004's §21.1 block is over. Rides 0.2.2 if Richard says so |
-| [EXP-011](./EXP-011-PICKER-COVERAGE.md) | **Close the picker gap, ranked by what apps need** | 🟡 **92/127 (72.4%) s77 — §49 built the animation pair, `States` and `Animate To Value` (Tier 3.8): `src/lib/animate.ts` (the scheduler's frame engine, the ease curves, the bezier solver, `useAnimatedValue`) and `src/lib/states.ts` (the whole node as a machine plus `useStates`), graded frame by frame against the interpreter's own files, and the wired style sink (`opacity`/`color`/`backgroundColor` inline) that no wire could reach before**. §48 `CSS Definition` + the CSS Class fold + the `Date` column (90); §47 the named Object (89); §45–§46 the files (88); §41–§44 Cloud Services (81→84). Next: `Sign In With` once provider sign-in is wanted; the component stack pair; `Script` |
+| [EXP-011](./EXP-011-PICKER-COVERAGE.md) | **Close the picker gap, ranked by what apps need** | 🟡 **93/127 (73.2%) s79 — §51 built `Component Children` (Tier 2.8 row 1): the wrapper declares `children?: ReactNode` and renders `{children}` where the marker sits; an instance passes its placed children as JSX children, in order; a target with no marker drops them with a note and an in-file marker, as the runtime never draws them. Measured first: the placed children were dispositioned `static` and silently never emitted.** s77 — §49 built the animation pair, `States` and `Animate To Value` (Tier 3.8): `src/lib/animate.ts` (the scheduler's frame engine, the ease curves, the bezier solver, `useAnimatedValue`) and `src/lib/states.ts` (the whole node as a machine plus `useStates`), graded frame by frame against the interpreter's own files, and the wired style sink (`opacity`/`color`/`backgroundColor` inline) that no wire could reach before**. §48 `CSS Definition` + the CSS Class fold + the `Date` column (90); §47 the named Object (89); §45–§46 the files (88); §41–§44 Cloud Services (81→84). Next (§50's order): `Script`, `Run Tasks`, `On App Error`, … |
 
 ## What actually works today
 
@@ -412,3 +412,16 @@ the property header, and a modal that leads with the verdict and *"1 node … an
 pkg tsc 0 · jest 62 files 1850 green (+ the 2 rows red on HEAD, fixed) · editor tsc 0 (**was red on
 HEAD** — §49's `'defer' in x` narrowings, `isDefer()` now) · tests-unit/exp-013 147/147 · ledger OK ·
 picker holds 92 · 6/6 arms killed. Driven on all three surfaces, screenshots in the s78 scratchpad.
+
+**Session 79 (2026-09-03) — EXP-011 §51, Tier 2.8 row 1 `Component Children`, picker 92 → 93.** Read from the
+runtime first: the marker is not a node (`nodescope.ts:217` sets its parent as the instance's child root),
+and `setChildRoot` inserts the instance's placed children into that parent at the marker's index, in order —
+React's `children`, rendered where the marker sits. Measured before building on `tests/fixtures/slot-desk`: the
+placed children were dispositioned **`static`** and never emitted, no note, *0 refusals* — a vanish no
+`dispositions`-based instrument can see. Built: role `slot`, `chooseChildSlot` (the runtime's last-marker /
+first-position rule, one pure function read by BOTH sides so the wrapper declares `children` exactly when an
+instance passes them), `{children}` at the marker, the instance's children as JSX children, a marker-less
+target dropping them with a note and an in-element marker. Gates: pkg tsc 0 · jest 63 files 1889 · editor
+tsc 0 · ledger OK (100 translated) · picker 93 floor 93 · 7/7 arms. Driven: the badge gone from the card by
+itself, the pre-flight's 1 refusal named, the real write path through the dialog seam, `Panel.tsx` on disk
+byte-identical to the golden.

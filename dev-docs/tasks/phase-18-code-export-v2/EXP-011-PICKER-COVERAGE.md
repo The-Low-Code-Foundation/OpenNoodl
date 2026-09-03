@@ -111,7 +111,7 @@ place. The order is by *what a refusal silences*, since §50.2 measured that a r
 
 | row | nodes | why here |
 |---|---|---|
-| 1 | `Component Children` | a wrapper's children vanish from the export — a working component becomes a blank one |
+| 1 | ✅ `Component Children` | **built s79 (§51)** — was: a wrapper's children vanish from the export — a working component becomes a blank one |
 | 2 | `Script` | the escape hatch the MCP reaches for when the picker has no node; ten in one MCP-built project |
 | 3 | `Run Tasks` | *"I use this all the time"* — and everything it fires is refused with it |
 | 4 | `On App Error` | an error pathway that is left out is the exact case where exporting is worse than not |
@@ -6687,9 +6687,148 @@ untouched because no translation changed.
 ### §50.4 What this leaves
 
 - ✅ EXP-013, the warning — **built, gated and driven in session 78 (2026-09-03)**; the record is in the task file. Measured on the way: the cascade is not one sentence but three, the root was never named as a node at all, and it reaches a `Variable` and the `Text` bound to it — five nodes behind one `Run Tasks`, not three.
-- Then Tier 2.8 row 1. Same shape as §41–§49.
+- ✅ Tier 2.8 row 1, `Component Children` — **built, gated, driven in session 79 (§51)**; picker 93. Next row 2, `Script`.
 - `Create New Array` (row 5) needs the anonymous-store design before a session opens it: an array
   minted with a generated Id whose only consumer is another node's Array Id **by wire** — the
   named-array model keys on a literal name. §7.3 measured that minting ids buys nothing on its own.
 - The honest ceiling is now **117 of 127**; the ten out-of-scope rows stay out only while the badge
   says so where the node is placed.
+
+## §51 Tier 2.8 row 1 — `Component Children`: the wrapper's `children` prop, rendered where the marker sits (session 79, 2026-09-03)
+
+The first row of the list Richard reinstated in §50, taken in §50's order. Picker **92 → 93 of 127
+(73.2%)**, floor 93, `export-ledger:check` OK (100 translated).
+
+### §51.1 What the runtime does, and what that decides
+
+- **The marker is not a node.** `nodescope.ts:217` `createNodeFromModel` creates nothing for a
+  `Component Children`; if the marker has a parent it calls `componentOwner.setChildRoot(parent)` and
+  returns. A parentless marker does nothing at all. The node library seeds it rather than
+  registering it (`nodelibraryexport.ts:384`: *"a marker `NodeScope` interprets structurally"*).
+- **The instance's placed children are inserted into that parent, at the marker's index, in
+  order.** `componentinstance.ts:250` `setChildRoot` takes every child of the *instance* node
+  (minus markers), and `addChild` puts each at `indexOf(child among its siblings) +
+  getChildRootIndex()`, where `getChildRootIndex` is the index of the **first** marker among the
+  child root's children. Contiguous, ordered, at the marker's position — which is exactly what
+  React's `children` prop rendered at that position does. No marker with a parent ⇒ `childRoot`
+  stays null ⇒ the placed children are never drawn.
+- **Two markers.** `createNodeFromModel` runs per node in file order and each marker with a parent
+  calls `setChildRoot`, so the **last** marker's parent wins; inside that parent the position is
+  the **first** marker. Both rules are one pure function in the export, `chooseChildSlot`
+  (plan.ts), read by the wrapper side and the instance side alike.
+
+So the translation is: the wrapper declares `children?: ReactNode` and renders `{children}` where
+the marker sits; an instance renders its placed children as JSX children; a target with no marker
+drops them — with a disposition, a note and the AC3 in-file marker inside the element, since the
+running app never draws them either.
+
+### §51.2 What was measured before anything was built (`probe14-reverted.log`, HEAD da055635)
+
+Fixture `tests/fixtures/slot-desk`: `Components/Panel` (a Group holding a Text bound to the `Title`
+input, the marker, and a footer Text), `Components/Plain` (no marker), and `Pages/Home` placing a
+`Panel` with two children (a Text and a Button) and a `Plain` with one.
+
+- The wrapper's marker fell to `catalog.isVisual` → `'unsupported'` → *"visual child of panel-root
+  with no deterministic generator (Component Children)"*, and the AC3 marker for it was printed
+  **after the footer**, not where the node sat — `droppedChildMarkers` appends after the rendered
+  children (its own comment says why: "rendered first, marked second").
+- 🔴 **The three placed children were dispositioned `static`, listed under their instance in
+  `childrenOf`, and never emitted** — `renderCore`'s instance branch passed `null` children. No
+  note, no marker, nothing in the pre-flight: *"Pages/Home — 0 refusals"*. §3's row said *"the
+  placed children vanish"*; measured, they vanish **with a disposition that says they rendered.**
+  A sweep over `dispositions` (EXP-013's `collectRefusals`) cannot see this class: the node is
+  `static` and absent.
+- No other fixture in the corpus places children under an instance or carries a marker
+  (`probe14.ts corpus`: 0 and 0 outside slot-desk), so no golden could move.
+
+### §51.3 The build
+
+- **plan.ts**: `RenderRole` gains `'slot'`; `renderRole` maps the type to it; `chooseChildSlot` /
+  `parentMapOf` / `CHILD_SLOT_TYPE` exported. `ComponentPlan.childSlot` is set **before the walk**
+  from the pure rule, so the wrapper declares the prop exactly when an instance passes children —
+  the two sides cannot disagree. In the walk: the honoured marker is `static`, role `slot`, in its
+  parent's `childrenOf`; any other marker is refused naming the honoured one; an instance whose
+  target has no marker inside its tree (or cannot be resolved) has its placed children dropped by
+  `dropSubtree` — disposition, note, `markDroppedChild`, and every descendant named so the sweep
+  does not call a Text a logic node. A marker the walk never reached (parentless, or below a node
+  that did not draw) is named after the walk.
+- **component.ts**: role `slot` renders `{children}`; the instance branch renders
+  `renderChildBlocks(id, childrenOf[id])` as the element's JSX children — so a dropped child's
+  marker lands **inside** `<Plain>…</Plain>`, where the node sat (an expression container holding
+  only a comment passes no `children`, and the typecheck helper confirms `PlainProps` needs none).
+  `children?: ReactNode` on the interface whenever `childSlot` is set; destructured only when the
+  marker rendered; `ReactNode` joins the React import; `children` joins the reserved locals.
+- **Ledger**: `translated`, floor 93, the floor comment carries the vanish the number cannot see.
+  The two rows that pin the floor (`animation-pair` B18, `object-store` D6) moved with it.
+
+### §51.4 What building it found
+
+1. 🔴 **A property decided by two rules on two sides disagrees at the corner.** The first cut set
+   `childSlot` only when the walk *reached* the marker, while the instance side asked the pure
+   rule. A marker under a detached second root (the runtime *does* insert into that undrawn root)
+   would have had the page pass children to a component declaring none — a typecheck failure in
+   the exported app, on a shape no fixture had. Fixed by making the declaration pure on both sides
+   and only the *rendering* the walk's answer (§G in the spec is that shape).
+2. ⚠️ A `static` disposition on a node that is never emitted is invisible to every instrument
+   built on `dispositions`, including EXP-013's cascade rows. The emitted file is the only readout
+   that could have caught §51.2 — which is what `typecheck-emitted` and the goldens are for.
+3. ⚠️ `droppedChildMarkers` prints markers after the rendered siblings, so the AC3 comment does not
+   say *where* a dropped child sat when it has rendered siblings. Not changed here (it would move
+   goldens across the suite); registered, owner NONE.
+
+### §51.5 Graded — `tests/component-children.test.ts` (19 rows), the gates, the arms
+
+§A the wrapper (golden `Panel.tsx`, `{children}` once between title and footer, the plan's
+`childSlot`/role/disposition, the marker-less control) · §B the instance (golden `Home.tsx`, order
+and cardinality, order reversed ⇒ emitted reversed) · §C the marker-less target (the orphan's
+disposition, note and in-element marker; a nested subtree named down to the leaf with one marker;
+an unresolvable target) · §D a parentless marker · §E two markers under one parent (the first is
+the position) · §F two markers under different parents (the last one's parent wins) · §G the
+honoured marker below a detached root (prop declared, nothing rendered, the instance still passes;
+and a wrapper with no inputs) · §H the ledger row and the pre-flight's 1 refusal · §I the whole
+fixture typechecks. Six of the rows build the emitted app as a real `ts.Program`.
+
+```
+nodegx-export: tsc 0 · jest 63 files (63 on disk) 1889 rows — 1887 + the 2 floor pins moved to 93 (animation-pair B18, object-store D6), rerun 92/92
+noodl-editor: tsc -p tsconfig.json --noEmit 0 (the working tree, which carries peers' uncommitted editor edits)
+export-ledger:check OK — 176 types, 100 translated · export-ledger:picker --check: holds at 93/127 (73.2%), exit 0
+arms 7/7 red, all restored: M1 instance passes no children (8) · M2 children reversed (3) · M3 slot renders nothing (5)
+  · M4 marker-less target drops silently (5) · M5 children off the Props (6) · M6 first marker's parent instead of the last (2)
+  · M7 last marker's position instead of the first (1)
+```
+
+### §51.6 The drive (`run-editor`, `dev:debug`, a copy of slot-desk registered in recents, torn down after)
+
+- **Picker**: `Component Children` searched — the card carries **no** export-badge dot; the control,
+  `Run Tasks`, carries its 14×14 dot, reachable, titled *"Not exportable yet — EXP-011 Tier 2.8 ro…"*.
+  The ledger is the only list, so the badge left by itself (`drive14-01-picker-slot.png`,
+  `drive14-02-picker-control.png`).
+- **Pre-flight**: Settings → Project → *Export as React code…* → *16 files — 1 page, 2 components* ·
+  *1 thing will not translate* · *Pages/Home — 1 refusal* · *"Orphan" (Text) — placed under instance
+  bare of /Components/Plain, which has no Component Children node inside its tree — the running app
+  never draws it either* · no verdict (nothing in the cascade is a pathway) · the button reads *Choose
+  folder and export…* (`drive14-03-modal.png`).
+- **The write, through the real path**: the native folder dialog was routed to a scratchpad
+  directory through the `FileSystem.instance.chooseDirectory` seam, so `checkTarget` → `writeExport`
+  → the toast all ran: *"Exported EXP-011 Slot Desk Drive — 16 files written … 1 thing is left out —
+  read EXPORT-REPORT.md first"* (`drive14-04-toast.png`). On disk: `src/components/Panel.tsx` is
+  **byte-identical to the spec's golden** (md5 `cd03c445…`), `src/pages/Home.tsx` passes the two
+  children inside `<Panel Title="Today">…</Panel>` and holds the orphan's marker inside `<Plain>`,
+  and `EXPORT-REPORT.md` lists the orphan under *Nodes left out*.
+- Observed, not measured: the preview pane on this fixture copy showed *"No HOME component
+  selected"* while the router declares `/Pages/Home` as its start page. The s78 task-desk copy was
+  built by the same generator; whether this is the generator's project.json shape or the preview is
+  unmeasured — owner NONE, registered here.
+
+### §51.7 What this leaves
+
+- **Next, in §50's order: row 2 `Script`** (ten in one MCP-built project), then `Run Tasks`, `On App
+  Error`, `Create New Array` (design session first), … `Sign In With` stays out.
+- `droppedChildMarkers` appends after the rendered siblings (§51.4 item 3) — the AC3 comment loses
+  the dropped child's *position* whenever it had rendered siblings. Owner NONE.
+- The `_props: XProps` signature branch (a component with no inputs whose only marker never rendered)
+  is written and typechecks by construction but no row drives it; §G's second row covers the
+  rendered case. Small, registered.
+- A `Component Children` inside a `For Each` template component: the repeater's row component takes
+  the prop like any other, but nothing places children under a repeater instance in the editor.
+  Untested, and probably unplaceable — noted so nobody measures it twice.

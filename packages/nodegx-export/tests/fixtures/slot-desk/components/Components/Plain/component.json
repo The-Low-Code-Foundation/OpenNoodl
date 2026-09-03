@@ -1,0 +1,9 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "e1a7c3d9-4f2b-4c8e-9a1d-000000000066",
+  "name": "Plain",
+  "path": "/Components/Plain",
+  "type": "visual",
+  "modified": "2026-09-03T18:00:00.000Z",
+  "description": "EXP-011 §51 control: a wrapper with NO Component Children marker — children placed under an instance of it are never drawn by the runtime."
+}

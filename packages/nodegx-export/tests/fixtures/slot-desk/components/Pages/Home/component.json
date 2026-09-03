@@ -1,0 +1,9 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "e1a7c3d9-4f2b-4c8e-9a1d-000000000067",
+  "name": "Home",
+  "path": "/Pages/Home",
+  "type": "page",
+  "modified": "2026-09-03T18:00:00.000Z",
+  "description": "EXP-011 §51 fixture page: places a Panel with two children (a Text and a Button) and a Plain with one child that the runtime never draws."
+}

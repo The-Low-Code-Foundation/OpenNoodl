@@ -118,7 +118,44 @@ export type {
  * node carries a `width`, a `margin` or a `backgroundColor`), so the style tables have nothing to
  * say about it and `computeNodeStyle` must not be asked.
  */
-export type RenderRole = StyleRole | 'instance' | 'repeater' | 'custom';
+export type RenderRole = StyleRole | 'instance' | 'repeater' | 'custom' | 'slot';
+
+/**
+ * EXP-011 §51. The marker the runtime reads structurally rather than as a node: `nodescope.ts:217`
+ * creates nothing for it and, when it has a parent, makes that parent the instance's child root
+ * (`componentinstance.ts` `setChildRoot`). The placed children of an instance are inserted into
+ * that parent at the marker's index, in order, contiguously — React's `children`, rendered where
+ * the marker sits.
+ */
+export const CHILD_SLOT_TYPE = 'Component Children';
+
+/** Parent of every node, read from both `parent` fields and `children` arrays (two corpus files carry only the latter). */
+export function parentMapOf(component: ComponentIR): Map<string, string> {
+  const parentOf = new Map<string, string>();
+  for (const node of component.nodes) {
+    if (node.parent !== undefined) parentOf.set(node.id, node.parent);
+    for (const childId of node.children ?? []) parentOf.set(childId, node.id);
+  }
+  return parentOf;
+}
+
+/**
+ * Which `Component Children` receives an instance's children, by the runtime's own two rules:
+ * `createNodeFromModel` runs per node in file order and every marker with a parent calls
+ * `setChildRoot(parent)`, so the LAST marker's parent wins; then `getChildRootIndex` inserts at the
+ * FIRST marker among that parent's children. A parentless marker sets nothing. Null when no marker
+ * has a parent — an instance's children are then never drawn.
+ */
+export function chooseChildSlot(component: ComponentIR): { nodeId: string; parentId: string } | null {
+  const parentOf = parentMapOf(component);
+  const markers = component.nodes.filter((n) => n.type === CHILD_SLOT_TYPE && parentOf.has(n.id));
+  if (markers.length === 0) return null;
+  const parentId = parentOf.get(markers[markers.length - 1].id)!;
+  const parent = component.nodes.find((n) => n.id === parentId);
+  const order = parent?.children ?? component.nodes.filter((n) => parentOf.get(n.id) === parentId).map((n) => n.id);
+  const first = order.find((id) => markers.some((m) => m.id === id));
+  return { nodeId: first ?? markers[markers.length - 1].id, parentId };
+}
 
 /** The per-component-instance record node (COMPONENT-OBJECT-TARGET; componentobject.ts). */
 const COMPONENT_OBJECT = 'net.noodl.ComponentObject';
@@ -2305,6 +2342,14 @@ export interface ComponentPlan {
   childrenOf: Record<string, string[]>;
   roleOf: Record<string, RenderRole>;
   /**
+   * EXP-011 §51. The `Component Children` the runtime honours (chooseChildSlot), when one exists —
+   * the component then declares a `children` prop, and every instance passes its placed children.
+   * Decided by the pure rule on BOTH sides so they cannot disagree; whether the marker also
+   * RENDERS (`roleOf[childSlot] === 'slot'`) is the walk's answer — a marker below a node that did
+   * not draw declares the prop and renders nothing, which is what the running app does.
+   */
+  childSlot?: string;
+  /**
    * EXP-010. The kit node definition behind each rendered `'custom'` node, plus the module it came
    * from. Carried on the plan rather than looked up again at emit time so there is one answer to
    * "which kit owns this node" — the emitted wrapper's import path is derived from it.
@@ -2887,7 +2932,7 @@ function planComponent(
   const deferReasons = new Map<string, string>();
   const roleOf = (node: NodeIR): RenderRole | 'unsupported' | null => {
     const role = renderRole(node, catalog, kits);
-    if (role === null || role === 'unsupported' || role === 'instance' || role === 'repeater') return role;
+    if (role === null || role === 'unsupported' || role === 'instance' || role === 'repeater' || role === 'slot') return role;
     // EXP-010: the structure/content walls are statements about *built-in* ports — a wired
     // `layoutString`, a wire-fed icon source. A kit node has none of those ports; every port it
     // has is one the kit declared, and whether a wire into it is translatable is decided by the
@@ -2915,7 +2960,7 @@ function planComponent(
   // is now derived from the field that decides it rather than from source order happening to
   // put the real root first.
   const rootable = (n: NodeIR) =>
-    roleOf(n) !== null && roleOf(n) !== 'unsupported' && roleOf(n) !== 'radio';
+    roleOf(n) !== null && roleOf(n) !== 'unsupported' && roleOf(n) !== 'radio' && roleOf(n) !== 'slot';
   const declaredRoots = component.visualRoots
     ?.map((id) => nodeById.get(id))
     .filter((n): n is NodeIR => n !== undefined);
@@ -2992,6 +3037,32 @@ function planComponent(
     });
   };
 
+  /**
+   * EXP-011 §51. A visual child (and everything below it) that the running app never draws — an
+   * instance's placed children when the target has no `Component Children`. Dispositioned, noted,
+   * and marked in the JSX where it sat; the descendants are named too, so the sweep does not call
+   * a Text inside it a logic node.
+   */
+  const dropSubtree = (parentId: string, child: NodeIR, reason: string): void => {
+    dispositions[child.id] = { kind: 'deferred', to: 'EXP-003', reason };
+    notes.push(`node ${child.id} (${child.type || 'untyped'}) deferred: ${reason}`);
+    markDroppedChild(parentId, child, reason);
+    const below = (id: string): void => {
+      for (const grandId of nodeById.get(id)?.children ?? []) {
+        const grand = nodeById.get(grandId);
+        if (grand === undefined || dispositions[grand.id] !== undefined) continue;
+        const inside = `inside ${child.id}, which is not drawn`;
+        dispositions[grand.id] = { kind: 'deferred', to: 'EXP-003', reason: inside };
+        notes.push(`node ${grand.id} (${grand.type || 'untyped'}) deferred: ${inside}`);
+        below(grand.id);
+      }
+    };
+    below(child.id);
+  };
+  // EXP-011 §51. Decided once, before the walk, by the runtime's rule (chooseChildSlot).
+  const slot = chooseChildSlot(component);
+  if (slot !== null) plan.childSlot = slot.nodeId;
+
   const walk = (node: NodeIR, inRadioGroup: boolean) => {
     const role = roleOf(node);
     if (role === null || role === 'unsupported') return;
@@ -3011,12 +3082,45 @@ function planComponent(
       .map((id) => nodeById.get(id))
       .filter((c): c is NodeIR => c !== undefined);
     plan.childrenOf[node.id] = [];
+    // EXP-011 §51. An instance's placed children render where the target's marker sits. A target
+    // with no marker never sets a child root (componentinstance.ts `setChildRoot` is only called
+    // from a marker with a parent), so the runtime never draws them — nor does the export, marked.
+    if (role === 'instance' && children.length > 0) {
+      const target = ir.components.find((c) => `/${c.path}` === node.type);
+      if (target === undefined || chooseChildSlot(target) === null) {
+        const reason =
+          target === undefined
+            ? `placed under instance ${node.id} of ${node.type}, which could not be resolved`
+            : `placed under instance ${node.id} of ${node.type}, which has no Component Children node inside its tree — the running app never draws it either`;
+        for (const child of children) dropSubtree(node.id, child, reason);
+        return;
+      }
+    }
     const childInGroup = inRadioGroup || role === 'radiogroup';
     for (const child of children) {
       const childRole = roleOf(child);
       if (childRole === 'radio' && !childInGroup) {
         const reason =
           'a Radio Button outside a Radio Button Group cannot be selected (the runtime raises radio-button/no-group)';
+        dispositions[child.id] = { kind: 'deferred', to: 'EXP-003', reason };
+        notes.push(`node ${child.id} (${child.type}) deferred: ${reason}`);
+        markDroppedChild(node.id, child, reason);
+        continue;
+      }
+      // EXP-011 §51. The one marker the runtime honours renders as `{children}`; any other is inert.
+      if (childRole === 'slot') {
+        if (slot !== null && child.id === slot.nodeId) {
+          rendered.add(child.id);
+          plan.roleOf[child.id] = 'slot';
+          dispositions[child.id] = { kind: 'static' };
+          plan.childrenOf[child.id] = [];
+          plan.childrenOf[node.id].push(child.id);
+          continue;
+        }
+        const reason =
+          slot === null
+            ? 'a Component Children with no parent has nowhere to insert an instance\'s children — the runtime ignores it'
+            : `the runtime inserts an instance's children at one Component Children only — here that is ${slot.nodeId} in ${slot.parentId}, so this one draws nothing`;
         dispositions[child.id] = { kind: 'deferred', to: 'EXP-003', reason };
         notes.push(`node ${child.id} (${child.type}) deferred: ${reason}`);
         markDroppedChild(node.id, child, reason);
@@ -3077,6 +3181,20 @@ function planComponent(
     // The slice stays because it says which roots are the discarded ones; the guard is what makes
     // that safe.
     for (const discarded of roots.slice(1)) markDetached(discarded);
+  }
+  // EXP-011 §51. A marker the walk never reached: parentless (nodescope.ts:217 sets no child root
+  // for it — an instance's children are then never drawn) or below a node that did not render.
+  // Named here so the catch-all does not call it a logic node.
+  {
+    const parentOf = parentMapOf(component);
+    for (const node of component.nodes) {
+      if (node.type !== CHILD_SLOT_TYPE || dispositions[node.id] !== undefined) continue;
+      const reason = parentOf.has(node.id)
+        ? 'inside a node that did not render, so nothing is inserted at it'
+        : 'a Component Children with no parent has nowhere to insert an instance\'s children — the runtime ignores it';
+      dispositions[node.id] = { kind: 'deferred', to: 'EXP-003', reason };
+      notes.push(`node ${node.id} (${node.type}) deferred: ${reason}`);
+    }
   }
 
   // TARGET-OUTPUT §2's page shape: a Page whose sole visual child is a Group merges that Group
@@ -14119,6 +14237,9 @@ function renderRole(node: NodeIR, catalog: CatalogIndex, kits: KitIndex): Render
       return 'repeater';
     case 'Router':
       return null;
+    // EXP-011 §51. Rendered as `{children}` where it sits; see CHILD_SLOT_TYPE.
+    case CHILD_SLOT_TYPE:
+      return 'slot';
     default:
       return catalog.isVisual(node.type) ? 'unsupported' : null;
   }

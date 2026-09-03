@@ -1,0 +1,9 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "e1a7c3d9-4f2b-4c8e-9a1d-000000000065",
+  "name": "Panel",
+  "path": "/Components/Panel",
+  "type": "visual",
+  "modified": "2026-09-03T18:00:00.000Z",
+  "description": "EXP-011 §51 fixture: a wrapper with a title (Component Input) above a Component Children marker and a footer below it — the children an instance places render between the two."
+}

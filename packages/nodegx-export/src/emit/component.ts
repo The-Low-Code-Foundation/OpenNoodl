@@ -1018,6 +1018,7 @@ export function emitComponent(
   plan.outputProps.forEach((o) => reserved.add(o.prop));
   plan.liftedOutputProps.forEach((l) => reserved.add(l.prop));
   if (plan.closesPopup) reserved.add('onClose');
+  if (plan.childSlot !== undefined) reserved.add('children'); // EXP-011 §51: the slot prop
   // Wrapper names are module scope — locals must yield to them, so they reserve first.
   for (const id of referencedJsIds) {
     const def = jsFunByNode[id];
@@ -3239,6 +3240,8 @@ export function emitComponent(
   if (radioNameLocals.size > 0) reactImports.push('useId');
   // EXP-011 §39. The timer handle and the last value seen both live in refs.
   if (delayRefs.size > 0 || plan.valueChangedEffects.length > 0) reactImports.push('useRef');
+  // EXP-011 §51. The slot prop's type.
+  if (plan.childSlot !== undefined) reactImports.push('ReactNode');
   if (reactImports.length > 0) externalImports.push(`import { ${reactImports.sort().join(', ')} } from 'react';`);
   if (plan.popups.length > 0) externalImports.push(`import { createPortal } from 'react-dom';`);
   // One import line for whichever router hooks survived, in a stable order — three separate
@@ -4040,11 +4043,16 @@ export function emitComponent(
 
     if (role === 'repeater') return renderRepeater(node, indent);
     if (role === 'custom') return renderCustom(node, indent);
+    // EXP-011 §51. The marker: the instance's children, where the runtime inserts them.
+    if (role === 'slot') return [`${pad(indent)}{children}`];
     if (role === 'instance') {
       const target = requireInstance(node.type, `instance ${id}`);
       if (!target) return [`${pad(indent)}{/* TODO(export): component instance ${id} could not be resolved */}`];
       const attrs = [...instanceAttrs(node), ...instanceHandlerAttrs(node, indent + 2)];
-      return element(target.symbol, attrs, null, indent, false);
+      // EXP-011 §51. The placed children ride as JSX children (the plan kept them only when the
+      // target has a marker); a child that did not render leaves its marker here, inside the element.
+      const blocks = renderChildBlocks(id, plan.childrenOf[id] ?? [], indent + 2, radioCtx).flat();
+      return element(target.symbol, attrs, blocks.length > 0 ? blocks : null, indent, blocks.length > 0);
     }
 
     const tag = TAGS[role];
@@ -4991,7 +4999,11 @@ export function emitComponent(
     ...plan.liftedOutputProps.map((l) => l.prop)
   ];
   if (plan.closesPopup) allPropNames.push('onClose');
-  if (allPropNames.length > 0) {
+  // EXP-011 §51. Destructured only where `{children}` renders; the interface declares it whenever
+  // the component has a marker at all, so every instance may pass children (see ComponentPlan.childSlot).
+  const rendersChildren = plan.childSlot !== undefined && plan.roleOf[plan.childSlot] === 'slot';
+  if (rendersChildren) allPropNames.push('children');
+  if (allPropNames.length > 0 || plan.childSlot !== undefined) {
     body.push(`export interface ${symbol}Props {`);
     // The port name rides along as a doc comment wherever the identifier had to differ — the
     // graph's own vocabulary is what the author will search for.
@@ -5005,6 +5017,8 @@ export function emitComponent(
     for (const lifted of plan.liftedOutputProps) body.push(`  ${lifted.prop}?: (value: ${lifted.tsType}) => void;`);
     // The popup boundary's reserved prop (POPUPS-TARGET §4), after the declared interface.
     if (plan.closesPopup) body.push('  onClose?: (action?: string) => void;');
+    // EXP-011 §51. The nodes placed under an instance, rendered where the Component Children node sits.
+    if (plan.childSlot !== undefined) body.push('  children?: ReactNode;');
     body.push('}', '');
   }
   if (plan.docComment) {
@@ -5013,7 +5027,9 @@ export function emitComponent(
   const signature =
     allPropNames.length > 0
       ? `export function ${symbol}({ ${allPropNames.join(', ')} }: ${symbol}Props) {`
-      : `export function ${symbol}() {`;
+      : plan.childSlot !== undefined
+        ? `export function ${symbol}(_props: ${symbol}Props) {`
+        : `export function ${symbol}() {`;
   body.push(signature);
   if (usesNavigate) body.push('  const navigate = useNavigate();');
   // EXP-011 Tier 2.5. `useSearchParams` returns a tuple whose setter this slice never uses —

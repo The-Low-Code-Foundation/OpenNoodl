@@ -1,107 +1,106 @@
-# Next session — EXP-013 is 🟢 (session 78, 2026-09-03): the badge, the cascade, the verdict — built, gated, driven. Next = EXP-011 Tier 2.8 row 1, `Component Children`, in §3's order
+# Next session — §51 `Component Children` is 🟢 (session 79, 2026-09-03): picker 93/127. Next = EXP-011 Tier 2.8 row 2, `Script`, in §50's order
 
 ## 🔴 Read this first — Richard, 2026-09-02: *"Stop fucking up the CPU."*
 
-One heavy job at a time on this 16 GB box. Session 78 ran every gate alone (the full suite in the
-background while only files were written; the arms sequential; the dev stack only after every suite
-had exited, and `dev:stop` the moment the third screenshot was read). Memory:
-`do-not-pile-cpu-work-on-a-shared-box`.
+One heavy job at a time on this 16 GB box. Session 79 ran every gate alone: the full suite in the
+background while only files were written; then the two pinned files → the editor tsc → the seven
+arms as one sequential chain; the dev stack only after every suite had exited, `dev:stop` the
+moment the toast and the files were read. Eight other Claude sessions held this checkout the whole
+time. Memory: `do-not-pile-cpu-work-on-a-shared-box`.
 
 ## The board, re-derived from the task files
 
 | task | status |
 |---|---|
-| EXP-001 `@nodegx/core` | ✅ Published `0.1.0` |
+| EXP-001 `@nodegx/core` | ✅ Published `0.1.0` (its file carries an uncommitted 09-01 note listing four `0.1.1` rows — not this session's, left in place) |
 | EXP-002 / 003 / 005 / 006 / 007 | unchanged |
 | EXP-004 | 🟡 built + driven; drill-down panel + three lines for Richard remain |
-| EXP-008 | ✅ `export-ledger:check` OK — 176 types, 99 translated |
+| EXP-008 | ✅ `export-ledger:check` OK — 176 types, 100 translated |
 | EXP-009 backend connection | 🟢 |
 | EXP-010 | 🟢 |
-| EXP-011 picker coverage | 🟡 **92/127** — §50 re-ruled the list; **Tier 2.8 row 1 is next** |
+| EXP-011 picker coverage | 🟡 **93/127 (73.2%)** — §51 built Tier 2.8 row 1; **row 2 `Script` is next** |
 | EXP-012 | 🟢 |
-| EXP-013 "Not exportable yet" | 🟢 **s78 — all 7 ACs, 6/6 arms, driven on the picker card, the property header and the pre-flight** |
+| EXP-013 "Not exportable yet" | 🟢 s78 |
 
-## What session 78 did (EXP-013)
+## What session 79 did (EXP-011 §51 — `Component Children`)
 
-1. **Measured before building** (`EXPECTED13.md`, then `probe13-reverted.log`): on
-   `tests/fixtures/task-desk` (button → `Run Tasks` → `Cloud Function` → `Navigate`; `Run Tasks` →
-   `Set Variable` ← `String`; `Variable` → `Text`) the committed exporter wrote seven notes and
-   **never named the Run Tasks node** — its id lived only inside wire keys, which
-   `sweepUnreportedDeferrals` counts as "reported". The five nodes behind it were refused as **three
-   different sentences**, and the `Variable` nothing translatable writes was one of them, so the
-   `Text` bound to it goes blank in the exported page. The task file's "three dependants" was five.
-2. **`RefusedNode` rows from `dispositions`** (`collectRefusals`, all three plan exits), `causedBy`
-   resolved **by graph** to the roots (trigger wires; a constant's consumers; a Variable's setters),
-   `pathway` from the verb tables (`isPathwayType`). `cascadeOf` / `pathwayVerdict` /
-   `refusedNodeLines` / `plainReason` in report.ts, read by the pre-flight, the report, the README's
-   first step, and the modal. `src/ledger.ts` reads the coverage ledger for the badge.
-3. **Editor**: `utils/codeExport/exportBadge.ts`, `views/common/ExportBadge` (no hooks, no `Icon`),
-   `PickerItem.exportBadge`, the card (a dot in the ⏎ slot), the preview pane, the property header,
-   and `CodeExportModal` (verdict first, "1 node … and 5 more", roots with cascades, nodes per
-   component, *Export anyway — choose folder…*). `tsconfig` paths + jest mapper for
-   `@nodegx/export/*`.
-4. **Gates alone**: pkg tsc 0; jest 62 files 1850 green + the two rows that were **red on HEAD**
-   fixed (object-store D6 asserted the sentence §50 rewrote; unreported-deferrals counted one report
-   line); editor tsc 0 — **it was red on HEAD** (two `'defer' in curve` narrowings from §49, now
-   `isDefer()`); tests-unit/exp-013 147/147; ledger OK; picker 92 holds; 6/6 arms killed.
-5. **Driven** (`run-editor`, copy of task-desk in recents): panel badge, picker dot + preview reason,
-   the modal's verdict and numbers — `drive13-02-panel.png`, `drive13-05-picker-dot.png`,
-   `drive13-04-modal.png`. Stack torn down, recents restored.
+1. **Read the runtime, then predicted** (`EXPECTED14.md`): `nodescope.ts:217` creates no node for
+   the marker and sets its parent as the instance's child root; `componentinstance.ts:250`
+   `setChildRoot` inserts the placed children at the marker's index, in order; the last marker's
+   parent wins, the first marker in it is the position; a parentless marker does nothing.
+2. **Measured the reverted arm** (`probe14-reverted.log`): the placed children were dispositioned
+   `static`, listed in `childrenOf[instance]`, and never emitted — no note, *0 refusals*. The
+   wrapper's marker was refused as a visual with no generator, its AC3 marker printed after the
+   footer rather than where it sat.
+3. **Built**: `RenderRole 'slot'`, `chooseChildSlot`/`parentMapOf`/`CHILD_SLOT_TYPE` (plan.ts),
+   `ComponentPlan.childSlot` set from the pure rule *before* the walk; `dropSubtree` for a
+   marker-less or unresolvable target; markers the walk never reached named after it.
+   component.ts: `{children}` at the slot, the instance's `renderChildBlocks` as JSX children
+   (a dropped child's marker lands inside the element), `children?: ReactNode` on the interface,
+   destructured only when rendered, `ReactNode` in the React import, `children` reserved. Ledger
+   `translated`, floor 93, the two floor pins moved.
+4. **Gates alone**: pkg tsc 0 · jest 63 files (63 on disk) 1889 · editor tsc 0 · ledger OK · picker
+   93 `--check` exit 0 · arms M1–M7 all red, all restored.
+5. **Driven**: badge gone from the `Component Children` card by itself (Run Tasks still dotted),
+   the pre-flight's one refusal named, the real `writeExport` path through the
+   `FileSystem.instance.chooseDirectory` seam, 16 files, `Panel.tsx` byte-identical to the golden.
+   Stack torn down, recents restored.
 
-## 🔴 Do this next — EXP-011 Tier 2.8, row 1: `Component Children`
+## 🔴 Do this next — EXP-011 Tier 2.8, row 2: `Script`
 
-Read **EXP-011 §3 Tier 2.8** and **§50** first. Then row 1, same shape as §41–§49: runtime file first
-(`componentchildren` in the runtime's node library), `EXPECTEDnn.md` before any run, refusals by
-name, a fixture on disk (a wrapper component placing `Component Children`, an instance with visual
-children), the reverted arm measured, the arms, the drive with a `trap` teardown, commit by pathspec.
-Then `Script` (ten in one MCP-built project), `Run Tasks`, `On App Error`, `Create New Array` (design
-session first — §7.3's anonymous-Id-by-wire), … in §3's order. `Sign In With` stays OUT.
+Read **EXP-011 §3 Tier 2.8**, **§50** and **§51** first. Then `Script` in the same shape: the
+runtime file first (`grep -rna "'Script'" packages/noodl-runtime/src/nodes` — it is the escape
+hatch, so read what it can reach: inputs/outputs declared by the script, `this.setOutputs`,
+signals), `EXPECTEDnn.md` before any run, a fixture on disk with two or three of the shapes an
+MCP-built project actually uses (ten `Script` nodes sit in one drive project on disk — read them
+for the real shapes before inventing any), the reverted arm measured, the arms, the drive with
+a `dev:stop` teardown, commit by pathspec. Then `Run Tasks`, `On App Error`, `Create New Array`
+(design session first — §7.3's anonymous-Id-by-wire), … `Sign In With` stays OUT.
 
-🔴 **Every exporter change owes the editor `tsc` too** — the package's strict `tsc` cannot see a
-narrowing that only types under `strictNullChecks`; s77's did not run it and HEAD was red for a
-session. And when a node moves to `translated`, the badge disappears from the picker by itself (the
-ledger is the only list) — but the row that asserts `exportBadgeFor('RunTasks')` is scheduled
-(`tests-unit/exp-013/exportBadge.test.tsx`) will need its example moved to a node still deferred.
+🔴 **Every exporter change owes the editor `tsc` too** (EXP-012's trap, recurred in s78).
+🔴 **A contract decided by two rules on two sides disagrees at the corner** (§51.4): if the wrapper
+and the instance ever read the marker differently, the exported app fails its own typecheck on a
+shape no fixture has. Keep both on `chooseChildSlot`.
 
 ## Open residuals (registered, none blocks an AC)
 
-- EXP-013: no canvas mark (property panel + picker only; a `WarningsModel` triangle per node would
-  mark every project that never exports — owner NONE). The report names a refused node twice (row +
-  note) on purpose.
-- §49.3 / §48.6 / §47.3 / §46.6 / §45.3 / §44.3 / §43.3 / §41.3 unchanged. String-only Variable
-  typing; the HTTP body on the control-mint clause; the transform family — still open, still small.
+- §51.7: `droppedChildMarkers` loses a dropped child's position among rendered siblings (owner
+  NONE); the `_props:` signature branch has no driving row; the preview said *"No HOME component
+  selected"* on the generated fixture copy — unmeasured whether generator or preview.
+- EXP-013: no canvas mark. §49.3 / §48.6 / §47.3 / §46.6 / §45.3 / §44.3 / §43.3 / §41.3 unchanged.
 
-## The numbers (last honest readings, s78)
+## The numbers (last honest readings, s79)
 
 ```
-packages/nodegx-export: tsc 0 · jest 62 files 1852 rows (1850 + 2 fixed, rerun green) · cascade.test.ts 35
-noodl-editor: tsc 0 · tests-unit/exp-013 147/147 (2 files)
-export-ledger:check OK — 176 types, 99 translated · picker 92/127 (72.4%), floor 92, --check exit 0
-arms: M1 8 · M2 8 · M3 4 · M6 2 · M4 13 · M5 1 — all red as intended, all reverted (no .mutbak left)
+packages/nodegx-export: tsc 0 · jest 63 files 1889 rows · component-children.test.ts 19
+noodl-editor: tsc 0 (the working tree, holding peers' uncommitted editor edits)
+export-ledger:check OK — 176 types, 100 translated · picker 93/127 (73.2%), floor 93, --check exit 0
+arms: M1 8 · M2 3 · M3 5 · M4 5 · M5 6 · M6 2 · M7 1 — all red as intended, all reverted (no .mutbak left)
 ```
 
-## Instruments (s78 scratchpad `a33b955f-d378-49f6-9963-6dd571050ec2/scratchpad`)
+## Instruments (s79 scratchpad `15960aae-035b-4940-b382-c240405a9d2c/scratchpad`)
 
-`EXPECTED13.md` (+ the measured corrections), `mkfixture13.js`, `probe13.ts` + `probe13-reverted.log`
-/ `probe13-after.log`, `tsc13-*.log`, `jest13-*.log`, `mut13.py` / `runmut13.sh` / `mut13-summary.txt`
-/ `arm13-*.log`, `cdpeval.js`, `open13.js` / `seam13.js` / `switch13.js` / `select13.js` /
-`readpanel13.js` / `plus13.js` / `stampsearch13.js` / `readcards13.js` / `settings13.js` /
-`readmodal13.js` / `esc13.js` / `restore13.js`, `drive13-0{1..5}-*.png`, `drive13-project/`,
-`recents.backup.json`.
+`EXPECTED14.md`, `mkfixture14.js`, `probe14.ts` + `probe14-reverted.log` / `probe14-after.log`,
+`tsn.sh` (ts-node with the compiler options the repo's tsconfig chain refuses), `tsc14-*.log`,
+`jest14-*.log`, `mut14.py` / `runmut14.sh` / `mut14-summary.txt` / `arm14-*.log`, `cdpeval.js`,
+`patchfs14.js` (the folder-dialog seam), `open14.js` / `settings14.js` / `readmodal14.js` /
+`readpicker14.js`, `reg14.sh` (recents, with `restore`), `drive14-0{1..4}-*.png`,
+`drive14-project/`, `drive14-out/` (the written export), `recents.backup.json`.
 
-## 🔴 What session 78 would tell you if it could only say three things
+## 🔴 What session 79 would tell you if it could only say three things
 
-1. **A sweep's "does any note mention this node" counts a wire key as a mention.** The root of a
-   cascade was the one node the report never named. Build the list from the table every gate writes
-   (`dispositions`), not from the prose only some gates write.
-2. **Attribute by graph, never by sentence.** One cause arrived as three different reasons; a
-   text-keyed rule would have missed two silently on the day one was reworded.
-3. **Read the first drive frame before believing the DOM.** The card's badge was in the DOM,
-   reachable-by-query, and clipped to nothing behind an ellipsis. The dot is what a person sees.
+1. **A `static` disposition on a node that is never emitted is invisible to every instrument
+   built on `dispositions`** — including EXP-013's cascade rows. Read the emitted file.
+2. **Decide a two-sided contract with one function.** The wrapper's prop and the instance's
+   children must come from the same rule; the corner where two rules disagree is exactly the one
+   no fixture has.
+3. **Two clicks on a toggle is open-then-close.** The "click twice" rule is for the Modal ghost,
+   not the picker's plus; the picker opened on one click.
 
 ## Standing practice
 
 `cline-dev`; commit by exact pathspecs; `git status | grep '^??'` first (`git add` untracked before
 a pathspec commit or they are skipped silently); delete probe specs before committing; reconcile
-the suite count against disk (62); `grep -a`; absolute paths; **`vm_stat` + `ps` before any
-suite, never more than one of mine, tear servers down the moment the drive is read.**
+the suite count against disk (63); `grep -a`; absolute paths; a `$VAR` holding a command with
+spaces is NOT word-split in zsh — put it in a script; **`vm_stat` + `ps` before any suite, never
+more than one of mine, tear servers down the moment the drive is read.**
