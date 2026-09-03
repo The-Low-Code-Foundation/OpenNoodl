@@ -652,11 +652,11 @@ export function collectAppState(ir: ExportIR): AppStateRegistry {
     // all — and `[].every(…)` is true, which would type "nothing wrote this" as `string`. A key
     // with zero statically-known writers is `unknown`: the honest type, and the one whose read
     // is coerced at the sink rather than printed as a string the graph never promised.
-    const origin = stores.get(storeName)?.origin;
+    // EXP-011 §48. The same for a Global Store key: it exists because a Set names it, and a Set
+    // whose `value` is unwired (the Set defers, the key stays) is exactly the zero-writer case
+    // §47 fixed one origin over and registered for this one.
     const resolved =
-      (origin !== 'object' || sources.length > 0) && sources.every((ref) => typeOfSource(ref, visiting) === 'string')
-        ? 'string'
-        : 'unknown';
+      sources.length > 0 && sources.every((ref) => typeOfSource(ref, visiting) === 'string') ? 'string' : 'unknown';
     visiting.delete(guard);
     storeKeyTypes.set(mapKey, resolved);
     return resolved;

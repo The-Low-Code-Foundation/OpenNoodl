@@ -70,7 +70,7 @@ here line-for-line.
 
 Shape: header comment → `ENDPOINT`/`APP_ID` consts → `SESSION_KEY` → `WireSession` →
 storage read/write/clear + listener set + `subscribeSession` → `request()` (headers, throw
-on `!ok` with the backend's message) → `fromWire` (objectId→id) → `QueryParams` +
+on `!ok` with the backend's message) → `fromWireValue` (EXP-011 §48: the wire's `{ __type: 'Date', iso }` on any field → a `Date`, as the interpreter's `_deserializeJSON` reads it) → `fromWire` (objectId→id, every field through `fromWireValue`) → `QueryParams` +
 `query`/`create`/`update`/`remove` → `logInRequest`/`logOutRequest`/`signUpRequest`.
 
 ### `src/api/puppies.ts` (connected form)

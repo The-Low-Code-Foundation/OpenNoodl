@@ -233,3 +233,106 @@ describe('determinism and dependencies', () => {
     expect(again.files).toEqual(app.files);
   });
 });
+
+// ---------------------------------------------------------------------------------------------
+// EXP-011 §48 — the two gaps §47.3 registered, and the families the control-mint clause was
+// missing. Every row here is built by surgery on the Cheer Mood page: `noteInput` is the text
+// input, `themeButton` the button whose click already runs the visitor Condition.
+// ---------------------------------------------------------------------------------------------
+
+describe('EXP-011 §48 — the Global Store gaps §47.3 registered', () => {
+  type Built = ReturnType<typeof emitApp>;
+  const MOOD = 'Pages/Mood';
+  const componentOf48 = (source: ExportIR) => source.components.find((c) => c.path === MOOD)!;
+  const lit48 = (value: string | number | boolean): ParamValue => ({ kind: 'literal', value });
+  const add48 = (source: ExportIR, node: Partial<NodeIR> & { id: string; type: string }): NodeIR => {
+    const full = { catalogRef: node.type, parameters: [], declaredPorts: [], portKnowledge: 'complete', ...node } as NodeIR;
+    componentOf48(source).nodes.push(full);
+    return full;
+  };
+  const wire48 = (source: ExportIR, from: string, fromProperty: string, to: string, toProperty: string, kind: 'value' | 'signal' = 'value') => {
+    componentOf48(source).connections.push({ key: `${from}:${fromProperty}->${to}:${toProperty}`, fromId: from, fromProperty, toId: to, toProperty, kind });
+  };
+  const mood48 = (built: Built): string => built.files['src/pages/Mood.tsx'];
+  const DROPPED = 'the action reads values that only exist in another handler';
+  /** A Set of `quote` — a key the initialState does not carry, so its type is inferred over its writers. */
+  const withQuoteSet = (source: ExportIR, trigger: 'button' | 'own-change' | 'none', valueWired: boolean): ExportIR => {
+    add48(source, { id: 'saveQuote', type: 'net.noodl.GlobalStore.Set', authoredLabel: 'Save quote', parameters: [{ name: 'storeName', value: lit48('mood') }, { name: 'key', value: lit48('quote') }] });
+    add48(source, { id: 'subQuote', type: 'net.noodl.GlobalStore.Subscribe', authoredLabel: 'Quote', parameters: [{ name: 'storeName', value: lit48('mood') }, { name: 'keys', value: lit48('quote') }] });
+    // themeText's own binding (the String Format) makes way — two wires into one text would drop both.
+    const mood = componentOf48(source);
+    mood.connections = mood.connections.filter((c) => !(c.toId === 'themeText' && c.toProperty === 'text'));
+    wire48(source, 'subQuote', 'value', 'themeText', 'text');
+    if (valueWired) wire48(source, 'noteInput', 'onTextChanged', 'saveQuote', 'value');
+    if (trigger === 'button') wire48(source, 'themeButton', 'onClick', 'saveQuote', 'set', 'signal');
+    if (trigger === 'own-change') wire48(source, 'noteInput', 'textChanged', 'saveQuote', 'set', 'signal');
+    return source;
+  };
+
+  test('G1 the vacuous `every`: a key whose only Set has no value wire is `unknown`, and its read is coerced at the sink', () => {
+    const built = emitApp(withQuoteSet(cloneIr(), 'button', false), catalog);
+    expect(built.files['src/stores/mood.ts']).toContain('quote?: unknown;');
+    expect(mood48(built)).toContain("{String(quote ?? '')}");
+    expect(built.notes.join('\n')).toContain('wire themeButton:onClick->saveQuote:set dropped: nothing is wired into value');
+  });
+
+  test('G1 CONTROL — the same key with a string-typed writer is `string`, read bare', () => {
+    const built = emitApp(withQuoteSet(cloneIr(), 'own-change', true), catalog);
+    expect(built.files['src/stores/mood.ts']).toContain('quote?: string;');
+    expect(mood48(built)).toContain('{quote}');
+    expect(mood48(built)).not.toContain('String(quote');
+  });
+
+  test('G2 the control-mint clause: a text input into a Set fired from a button earns its state, and the click is kept', () => {
+    const built = emitApp(withQuoteSet(cloneIr(), 'button', true), catalog);
+    expect(built.notes.join('\n')).not.toContain(DROPPED);
+    expect(mood48(built)).toContain('useState<string>');
+    expect(mood48(built)).toMatch(/onClick=\{[\s\S]*mood\.set\(\{ quote: \w+ \}\)/);
+    expect(mood48(built)).not.toContain('mood.set({ quote: event.target.value })');
+  });
+
+  test('G2 CONTROL — the write-through idiom is untouched: the input’s own textChanged fires the Set, onChange only, no useState', () => {
+    const built = emitApp(withQuoteSet(cloneIr(), 'own-change', true), catalog);
+    expect(mood48(built)).toContain('mood.set({ quote: event.target.value })');
+    expect(mood48(built)).not.toContain('useState');
+    // And the fixture's own `note` write-through, as the §2 golden pins it.
+    expect(mood48(app)).toContain('mood.set({ note: event.target.value })');
+    expect(mood48(app)).not.toContain('useState');
+  });
+
+  test('G3 the same clause for Set Variable — the plainest form idiom: an input, a button, a variable', () => {
+    const ir = cloneIr();
+    add48(ir, { id: 'sv', type: 'Set Variable', authoredLabel: 'Keep note', parameters: [{ name: 'name', value: lit48('keptNote') }] });
+    wire48(ir, 'noteInput', 'onTextChanged', 'sv', 'value');
+    wire48(ir, 'themeButton', 'onClick', 'sv', 'do', 'signal');
+    const built = emitApp(ir, catalog);
+    expect(built.notes.join('\n')).not.toContain(DROPPED);
+    expect(mood48(built)).toContain('useState<string>');
+    expect(mood48(built)).toMatch(/onClick=\{[\s\S]*keptNote\.set\(\w+\)/);
+    // CONTROL — the same Set Variable fired by the input's own change: write-through, no state.
+    const own = cloneIr();
+    add48(own, { id: 'sv', type: 'Set Variable', authoredLabel: 'Keep note', parameters: [{ name: 'name', value: lit48('keptNote') }] });
+    wire48(own, 'noteInput', 'onTextChanged', 'sv', 'value');
+    wire48(own, 'noteInput', 'textChanged', 'sv', 'do', 'signal');
+    const builtOwn = emitApp(own, catalog);
+    expect(mood48(builtOwn)).toContain('keptNote.set(event.target.value)');
+    expect(mood48(builtOwn)).not.toContain('useState');
+  });
+
+  test('G4 the same clause for Cloud Function arguments and Event Sender payloads', () => {
+    const cf = cloneIr();
+    add48(cf, { id: 'cf', type: 'CloudFunction2', authoredLabel: 'Probe', parameters: [{ name: 'function', value: lit48('probe') }], portKnowledge: 'partial' });
+    wire48(cf, 'noteInput', 'onTextChanged', 'cf', 'in-note');
+    wire48(cf, 'themeButton', 'onClick', 'cf', 'call', 'signal');
+    const builtCf = emitApp(cf, catalog);
+    expect(builtCf.notes.join('\n')).not.toContain(DROPPED);
+    expect(mood48(builtCf)).toContain('useState<string>');
+    const es = cloneIr();
+    add48(es, { id: 'es', type: 'Event Sender', authoredLabel: 'Tell', parameters: [{ name: 'channelName', value: lit48('told') }, { name: 'payload', value: lit48('note') }] });
+    wire48(es, 'noteInput', 'onTextChanged', 'es', 'note');
+    wire48(es, 'themeButton', 'onClick', 'es', 'sendEvent', 'signal');
+    const builtEs = emitApp(es, catalog);
+    expect(builtEs.notes.join('\n')).not.toContain(DROPPED);
+    expect(mood48(builtEs)).toContain('useState<string>');
+  });
+});

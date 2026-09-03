@@ -6217,3 +6217,177 @@ the one the prediction forgot, the instrument did not.
   write-through work, refused by name with the sentence that says which.
 - Next by the surface: `Sign In With` (the client's return leg first, `_consumeAuthReturn`); the
   `Date` column (§46.6); or the two Global Store gaps above, which are one clause each.
+
+## §48 Tier 3.9 — `CSS Definition`, the CSS Class it targets, the `Date` column, and the clause that was missing four families (session 76, 2026-09-03)
+
+Session 75 left three named next steps and a Data bucket. The Data bucket's two named pairs
+(`Action Dispatcher`/`Action Handler`, `Repeater Item`) are **"not a target"** and *"deliberately
+out of scope"* by §3 and §7.3's own rulings — the handoff named them against the ledger, and the
+ledger wins. `Sign In With` needs a provider to drive (a full-page redirect whose Done arrives on a
+later load) and a decision about whether provider sign-in is wanted, which a session cannot make.
+So this session took the smallest *scheduled* picker node by the product surface — `CSS
+Definition` (Tier 3.9, the one §3 said to build "against a real project, not the corpus") — and
+the two registered debts that were one clause each, and found the debts were bigger than a clause.
+
+### §48.1 What the runtime does, and what that decides
+
+- **`CSS Definition`** (css-definition.ts) has one input, `style` (`allowEditOnly`, a CSS code
+  editor, which the parser carries as `{ kind: 'script', source }`), and no outputs. `updateStyle`
+  appends a `<style id="style_<nodeId>">` to `document.head` and rewrites its text on every set;
+  the delete listener ref-counts per node id and removes the element when the last instance goes.
+  So the node is a **mount effect with a cleanup** — the `Delay` teardown's shape (§39) with a
+  body — and its text is a build-time constant in the runtime's own terms. The export: a module
+  constant above the component holding the CSS **verbatim** (a template literal, the three
+  sequences a template literal would read as its own escaped, nothing else touched) and
+  `useEffect(() => { const style = document.createElement('style'); style.textContent = X;
+  document.head.appendChild(style); return () => { style.remove(); }; }, [])`. One visible
+  divergence, which is invisible: N instances of one component are N identical `<style>`
+  elements where the runtime shares one; the cascade is the same.
+- **A stylesheet targets class names, and the export was dropping every one of them.** Every
+  visual node carries `cssClassName` ("CSS Class", react-component-node.ts: `this.props.className
+  = value`, joined after the node's own class — Text.tsx `['ndl-visual-text', props.className]`),
+  and `style.ts` returned it as `unhandled`, so a project that authored `.hero { … }` in a CSS
+  Definition and `hero` on a Group exported a stylesheet that matched nothing, with a note per
+  node. So the second half of the slice: an authored literal class joins the element's
+  `className` after the module class and before the visibility toggle —
+  `className={joinClasses(styles.heading, 'due-title')}` — and the collapsed Group's class lands
+  on the page div, which is where its parameters render. A wired CSS Class stays reported.
+- **The `Date` column** (§46.3 registered, A5 pinned). On the wire a Date column is `{ __type:
+  'Date', iso }` — the backend's `AdapterFacade.toWire` wraps the stored ISO string, cloudstore.js
+  `_serializeObject` sends the same envelope — and once read, a JS `Date` (`_deserializeJSON(data,
+  'Date')` → `new Date(data.iso)`). `tsColumnType('Date')` is now `Date`; the client's `fromWire`
+  runs every field through `fromWireValue`, which turns that envelope and only that envelope into
+  a `Date` (by shape: the client has no schema, and the envelope is unambiguous — a File envelope
+  IS the `CloudFile` the column declares, §46); a Text on the column takes the §43 non-string
+  table (`String(x ?? '')` — the runtime Text's own cast, so it prints `Date.prototype.toString`
+  in both worlds); `Date To String` reads it bare (`toDate` takes a Date); a `Now` into the column
+  writes the `Date` local and the wire serialises it as its ISO string, which `toWire` wraps on
+  the way back.
+- **The Global Store gaps, and what the probe found beside them.** §47.3's vacuous `every` is now
+  `sources.length > 0 && every` for every origin (a Global Store key whose only Set has no value
+  wire is `unknown`, its Subscribe read coerced). And the control-mint `outputRead` clause got
+  `Set Global Store` — then a four-case probe over the Cheer Mood page (a text input's value into
+  the sink, its trigger on a button) measured **`Set Variable`, `Cloud Function` and `Event
+  Sender` dropping the click with the same true sentence** — *"the action reads values that only
+  exist in another handler"*. A text input, a button and a variable is the plainest form idiom
+  there is, and it exported as a button that does nothing. All four are on the clause now, with
+  one exception spelled out: a sink whose trigger is the input's **own** `textChanged` is the
+  write-through idiom, which NAMED-STORES-TARGET §2's golden pins as uncontrolled — the first emit
+  broke that golden before the exception existed.
+
+### §48.2 The build
+
+- `plan.ts`: `CSS_DEFINITION_TYPE`, `StyleSheetPlan`, `ComponentPlan.styleSheets`, a pass beside
+  the Value Changed producer (wired Style refused by name; empty Style `static` with a note; the
+  constant named like a Static Data constant, deduped; disposition `collapsed` into the page
+  file); `tsColumnType('Date') → 'Date'`; four sinks on the control-mint clause with the
+  own-change exception.
+- `component.ts`: the constant after the Static Data constants, the effect after the Delay
+  cleanups, `useEffect` earned; `authoredClassName`, the `cssClassName` note skipped where one is
+  folded, `classAttrOf` rebuilt around a class list (single-quoted where the name is a plain class
+  list, JSON-quoted otherwise).
+- `emitApp.ts`: `fromWireValue` + `fromWire` over every field; the EXP-009 client golden and its
+  target doc carry it.
+- `appState.ts`: the one-line `every` fix. Ledger: `CSS Definition` translated; floor 89 → 90.
+- Fixture `tests/fixtures/due-desk` (20 nodes, 13 wires): a `Task` schema with `due: Date`, a
+  Record reading it into a Text and a Date To String, a Create writing it from `Now`, a CSS
+  Definition with two rules, `cssClassName` on the shell Group (collapsed into the page div) and
+  the heading Text.
+
+### §48.3 What building it found, and what is written down rather than fixed
+
+- 🔴 **A note can be a shape a slice never fixtured.** Four sinks dropped the plainest form idiom
+  with a true sentence, for as long as each has existed; the mood fixture writes from the input's
+  own change and the record verbs had their own line. The probe (`probe48.ts`) is the instrument
+  the clause owed since s19: one fixture, every handler-argument reader, the trigger on a button.
+  **HTTP Request's body is NOT on the clause and was not reached by the probe** (its body ports
+  need `bodyFields` configuration the probe did not build) — registered, owner **EXP-011**.
+- 🔴 **The first emit broke a golden, and the golden was right.** `Set Global Store` on the clause
+  minted state for cheer's `noteInput`, whose own `textChanged` fires the Set — the write-through
+  idiom. The exception is the clause's own condition made explicit; G2 CONTROL and G3's control
+  pin both shapes per sink.
+- 🔴 **A byte-for-byte golden is a design conversation, and this slice had one.** The EXP-009
+  client golden changed for the first time since it was typed: `fromWire` now unwraps the Date
+  envelope. Updated with the target doc, on purpose.
+- ⚠️ **A `Date` into a String column is loud, not silent.** The interpreter would send the ISO
+  string; the export fails to typecheck (`Type 'Date' is not assignable to type 'string'`). B4
+  pins that it is loud. A string-typed write into a Date column is the mirror (a text input's text
+  into `prop-due` — the runtime wraps the string as `iso` verbatim) and is the same typecheck
+  refusal; neither is wrapped at the argument this slice. Owner **EXP-011**, when a fixture asks.
+- ⚠️ **A Date column read by a Cloud File, a Sign, or copied into another class's undeclared
+  column** — `exprTsType` answers `Date` only for a `record-out`; the write-gate admits
+  `string|number|boolean|CloudFile` and types the rest `unknown`. Two lines that would have
+  admitted `Date` there were written and reverted as dead code (nothing in the vocabulary reaches
+  them); registered rather than pinned.
+- ⚠️ **`fromWireValue` is shape-based.** A String column holding a literal `{ __type: 'Date', iso }`
+  object would read as a Date. The interpreter reads by schema and would not. Named, not fixed —
+  the client has no schema, and a String column holding that literal is not a shape any node writes.
+- ⚠️ **N instances = N `<style>` elements** (the runtime shares one by node id). Invisible on the page.
+- ⚠️ **A wired `style`** refused by name; a wired `cssClassName` still reported as unmapped. Both are
+  one effect / one binding when a fixture asks.
+- ⚠️ **`update()` does not go through `fromWire`** — it answers the caller's own data plus the wire's
+  `updatedAt`, so a Date the caller passed stays a Date; A3 in `date-column.test.ts` counts three
+  sites, not four, and says why.
+- ⚠️ **The ledger's blind spot, again:** the picker number moved by one (CSS Definition) and cannot
+  see the class-name fold or the Date column, both of which change what every exported page does.
+
+### §48.4 Graded — `tests/css-definition.test.ts` (15 rows), `tests/date-column.test.ts` (12 rows), six §48 rows in `tests/global-store.test.ts`; 60 files on disk
+
+- **css-definition §A** the stylesheet: the constant verbatim under its comment, above the component
+  (A1); the effect, the import (A2); the disposition and the vanished note (A3); the three escapes
+  and a typecheck (A4); naming and dedupe across four sheets (A5); a wired Style by sentence (A6);
+  empty and whitespace Style static with the note, a plain literal read too (A7); the catalog's
+  own port list (A8). **§B** the class names: page div (B1), Text (B2), notes gone and a sibling
+  untouched (B3), CONTROL with the params removed (B4), wired and blank stay reported (B5), the
+  toggle order and JSON-quoting (B6). **§C** typecheck with and without a backend.
+- **date-column §A** `tsColumnType` (A1), the interface (A2), `fromWire`'s three sites and the one
+  `__type` test (A3), **the emitted helper evaluated as written** over six shapes (A4). **§B** the
+  Text coercion (B1), Date To String bare (B2), the Now write and typecheck (B3), CONTROL as a
+  String column — bare Text, and the Now write **loud** (B4), CONTROL undeclared — `unknown`,
+  coerced, typechecks (B5). **§C** the two wire sources quoted (backend `toWire`, cloudstore.js
+  both directions). **§D** the schema fact and the typecheck.
+- **global-store §48** G1 + CONTROL (the `every`), G2 + CONTROL (the clause and the write-through
+  exception), G3 (Set Variable, both shapes), G4 (Cloud Function, Event Sender).
+- Re-sentenced beside them: `file-record` A5 (Date is Date) and B10 (the client's one `__type`
+  read is the Date unwrap), `object-store` D6 (floor 90), the EXP-009 client golden.
+
+### §48.5 The gates, the arms and the drive — and the instrument that miscounted its own rows
+
+- Gates, one at a time, the peer's webpack watch left alone: `tsc` 0 (three passes); the full
+  suite **60 files, 1684 rows** — first run 1681/1684 (the client golden, D6's floor 89, both
+  §48's own consequences), the two files re-run 52/52; `export-ledger:check` OK — 176 types, 97
+  translated; picker **90/127 (70.9%)**, floor 90, `--check` exit 0. No editor change, no editor tsc.
+- **Fifteen arms, 15/15 killed by rows** (`mut48.py`, `runmut48.sh`): A disposition, B cleanup, C
+  deps, D escaping, E wired gate, F trim, G the own-change exception (four killers incl. the
+  NAMED-STORES golden), H Set Variable, I the `every`, J `tsColumnType`, K the unwrap (killed by
+  the evaluated helper AND the text), L own class, M collapsed-group class, N quoting, O the two
+  families. 🔴 **O took three arms.** Twice tsc alone killed it (TS2367 — narrowing made the
+  later comparisons "unintentional") and jest ran 0 rows; a mutant only tsc kills is not killed
+  (§46.5's rule), so the third arm flipped the `reads` branches to `false` — type-valid, killed by G4.
+- **Drive** (`EXPECTED48.md` first; `drive48-run.sh`: emit → build → backend on :8587 → seed →
+  headless Chrome → preview → drive → REST verify → `trap` teardown): run 1 **44/44, 0 diffs,
+  consoleErrors [], VERIFY OK, 0 listeners left**. The page div carries `.due-desk` (border-left
+  `6px` `rgb(0, 128, 0)` computed), the heading `.due-title` (`underline`), exactly one `<style>`
+  in `head` through every re-render, the seeded task's Date prints `Date.prototype.toString`
+  (`Thu Dec 24 2026 10:00:00 GMT+0100 …`) and formats `2026-12-24`, the Save stores `{ __type:
+  'Date', iso }` at the page's load instant. The seed also read back BOTH storage shapes — an
+  envelope stored by the interpreter's wire shape and a bare ISO string — as the envelope.
+- **The sabotage control** (`arm48-ctl.sh`: the stylesheet effect and the Date unwrap cut out of the
+  EMITTED app, exporter untouched): **21/44, 23 diffs — every style cell and every Date cell,
+  nothing else, VERIFY still OK.** The prediction said 24: it counted a D3 `dueFmt` row the grader
+  never had. The cell read blank in the log as predicted; the instrument had one row fewer than
+  its author remembered. Counted, not corrected — the arithmetic error was the prediction's.
+
+### §48.6 What this leaves
+
+- **HTTP Request's body on the control-mint clause** — unmeasured (the probe did not build a body
+  configuration); the ninth family or the tenth, when a fixture asks. Owner EXP-011.
+- **A Date written into a String column, a string into a Date column** — loud typecheck refusals,
+  not wrapped at the argument (§48.3). Owner EXP-011.
+- **A wired `style`, a wired `cssClassName`** — refused / reported by name.
+- **`exprTsType` never answers `Date` except for a record column** — a Now's instant or a date
+  node's answer into an undeclared column types `unknown`. Registered.
+- Next by the surface: `Sign In With` once provider sign-in is wanted (the client's return leg
+  first, `_consumeAuthReturn`); `States` / `Animate To Value` (Tier 3.8, "worth doing properly");
+  the component stack pair (§16.2 says what a Component Stack is not); `Script`. The Data bucket's
+  remaining rows are "not a target" by §3 and stay so.

@@ -183,12 +183,12 @@ describe('§A — the modules and the types', () => {
     expect(typecheckEmittedApp(stub)).toEqual([]);
   });
 
-  test('A5 `tsColumnType`: File is CloudFile; the three scalars unchanged; Date still reads string (registered, §46.3)', () => {
+  test('A5 `tsColumnType`: File is CloudFile; the three scalars unchanged; Date is Date since §48 (registered by §46.3, built by §48)', () => {
     expect(tsColumnType('File')).toBe('CloudFile');
     expect(tsColumnType('String')).toBe('string');
     expect(tsColumnType('Number')).toBe('number');
     expect(tsColumnType('Boolean')).toBe('boolean');
-    expect(tsColumnType('Date')).toBe('string');
+    expect(tsColumnType('Date')).toBe('Date');
   });
 });
 
@@ -271,8 +271,10 @@ describe('§B — the component', () => {
     expect(typecheckEmittedApp(built)).toEqual([]);
   });
 
-  test('B10 the envelope is built in exactly one place — the client is untouched by this slice', () => {
-    expect(client(app)).not.toContain('__type');
+  test('B10 the envelope is built in exactly one place — the client never builds a File envelope (its one `__type` read is §48’s Date unwrap)', () => {
+    expect(client(app)).not.toContain("__type: 'File'");
+    expect(client(app).match(/__type/g)).toHaveLength(3); // the Date unwrap: its doc line, the cast, the test — nothing else
+    expect(client(app)).toContain(".__type === 'Date'");
     const sites = Object.entries(app.files).filter(([, source]) => source.includes("__type: 'File'"));
     expect(sites.map(([name]) => name)).toEqual(['src/api/files.ts']);
     // Once in code (the doc comment above it quotes the runtime's literal, which is not a site).

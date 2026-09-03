@@ -12,7 +12,7 @@ npm run export-ledger:picker
 node scripts/export-ledger/picker-coverage.js
 ```
 
-> **PICKER COVERAGE: 81 of 127 placeable nodes export (63.8%)** — 2026-09-01 s69 (was 51 on 2026-08-28)
+> **PICKER COVERAGE: 90 of 127 placeable nodes export (70.9%)** — 2026-09-03 s76 (was 51 on 2026-08-28, 81 on 2026-09-01 s69)
 
 **Do not report the corpus number as progress.** `coverage-audit.ts` reads 85.00% (93.38% over
 components a route reaches) across ~40 old drive fixtures. It is a **regression detector** and a
@@ -34,7 +34,7 @@ README §*What went wrong* has the mechanism.
 | [EXP-009](./EXP-009-BACKEND-CONNECTION.md) | **Exported app talks to its deployed backend** | 🟢 **Built + driven s33; AC4 (`Cloud Function`) built s69 via EXP-011 §41 — typechecked, not driven** |
 | [EXP-010](./EXP-010-CUSTOM-NODES-AND-MODULES.md) | **Custom nodes, modules and prefabs export** | 🔴 **Not started.** `parseProject` never opens `noodl_modules` |
 | [EXP-012](./EXP-012-THE-EDITOR-EXPORT-COMMAND.md) | **The editor export command** | 🟢 **BUILT + DRIVEN s67 (2026-09-01).** Settings → Project → *Export as React code…*: exact pre-flight modal, folder dialog, inside-project refusal, non-empty confirm, write + toast. Byte-identical to `emit-app.ts`. `@nodegx/export` has its **first product consumer**; EXP-004's §21.1 block is over. Rides 0.2.2 if Richard says so |
-| [EXP-011](./EXP-011-PICKER-COVERAGE.md) | **Close the picker gap, ranked by what apps need** | 🟡 **81/127 (63.8%) s69 — §41 built `Cloud Function` (the first of the nine Cloud Services, EXP-009 AC4); §40 fixed the chain-wire / earn-scan / branch-arm defect class under every translated node with a chain (28 rows, 8 arms)** — §39 built `Log`, `Delay` and `Value Changed` (the first action-set, the first `useRef`, the first effect() slice), driven headlessly; §39.3 found the attach pass was wire-ORDER dependent. Before that: **77/127 s67** — Tier 1 complete, Tier 2.5 and 2.7 complete, §38 built the two pure "small ordinary nodes" (`Boolean To String`, `Color Blend`). Next: the controlled-state gap §38.3 found (checkbox/slider → Variable), then `Log` / `Value Changed` / `Delay` (§38.5), then Cloud Services (9) |
+| [EXP-011](./EXP-011-PICKER-COVERAGE.md) | **Close the picker gap, ranked by what apps need** | 🟡 **90/127 (70.9%) s76 — §48 built `CSS Definition` (Tier 3.9) and, beside it, the authored CSS Class on every visual node, the `Date` column (§46.3's debt) and four handler-argument readers the control-mint clause was missing — a text input, a button and a `Set Variable` exported as a button that does nothing until §48**. §47 the named Object (89); §45–§46 the files and the file↔record pair (88); §41–§44 `Cloud Function`, `Record`, the two session verbs (81→84). Next: `Sign In With` once provider sign-in is wanted; `States`/`Animate To Value`; the component stack pair; `Script` |
 
 ## What actually works today
 

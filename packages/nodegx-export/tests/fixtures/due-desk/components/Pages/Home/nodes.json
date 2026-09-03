@@ -1,0 +1,209 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "d0e5de5c-4e1a-4b3e-9f2a-1a2b3c4d6e02",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "page",
+      "type": "Page",
+      "label": "Home",
+      "children": [
+        "shell"
+      ],
+      "parameters": {
+        "title": "Due Desk",
+        "urlPath": "home"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "shell",
+      "type": "Group",
+      "label": "Shell",
+      "parent": "page",
+      "children": [
+        "heading",
+        "idInput",
+        "titleInput",
+        "saveButton",
+        "savedText",
+        "titleText",
+        "dueText",
+        "dueFmtText",
+        "errorText"
+      ],
+      "parameters": {
+        "flexDirection": "column",
+        "alignItems": "flex-start",
+        "rowGap": "var(--space-4)",
+        "paddingTop": "var(--space-10)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "cssClassName": "due-desk"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "heading",
+      "type": "Text",
+      "label": "Heading",
+      "parent": "shell",
+      "parameters": {
+        "text": "Due Desk",
+        "fontSize": "var(--text-3xl)",
+        "fontWeight": "var(--font-semibold)",
+        "cssClassName": "due-title"
+      }
+    },
+    {
+      "id": "idInput",
+      "type": "net.noodl.controls.textinput",
+      "label": "Task id",
+      "parent": "shell",
+      "parameters": {
+        "placeholder": "a task id"
+      }
+    },
+    {
+      "id": "titleInput",
+      "type": "net.noodl.controls.textinput",
+      "label": "Title",
+      "parent": "shell",
+      "parameters": {
+        "placeholder": "What is due"
+      }
+    },
+    {
+      "id": "saveButton",
+      "type": "net.noodl.controls.button",
+      "label": "Save",
+      "parent": "shell",
+      "parameters": {
+        "label": "Save"
+      }
+    },
+    {
+      "id": "savedText",
+      "type": "Text",
+      "label": "Saved",
+      "parent": "shell",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-base)"
+      }
+    },
+    {
+      "id": "titleText",
+      "type": "Text",
+      "label": "Title",
+      "parent": "shell",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-base)"
+      }
+    },
+    {
+      "id": "dueText",
+      "type": "Text",
+      "label": "Due",
+      "parent": "shell",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-base)"
+      }
+    },
+    {
+      "id": "dueFmtText",
+      "type": "Text",
+      "label": "Due formatted",
+      "parent": "shell",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-base)"
+      }
+    },
+    {
+      "id": "errorText",
+      "type": "Text",
+      "label": "Error",
+      "parent": "shell",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-base)",
+        "color": "var(--destructive)"
+      }
+    },
+    {
+      "id": "deskStyles",
+      "type": "CSS Definition",
+      "label": "Desk styles",
+      "parameters": {
+        "style": ".due-desk {\n  border-left: 6px solid rgb(0, 128, 0);\n}\n.due-title {\n  text-decoration: underline;\n}"
+      }
+    },
+    {
+      "id": "taskIdVar",
+      "type": "Variable2",
+      "label": "Task id variable",
+      "parameters": {
+        "name": "taskId"
+      }
+    },
+    {
+      "id": "taskRec",
+      "type": "DbModel2",
+      "label": "Task",
+      "parameters": {
+        "collectionName": "Task",
+        "idSource": "explicit"
+      }
+    },
+    {
+      "id": "dueFmt",
+      "type": "Date To String",
+      "label": "Due formatted",
+      "parameters": {
+        "formatString": "{year}-{month}-{date}"
+      }
+    },
+    {
+      "id": "clock",
+      "type": "net.noodl.Now",
+      "label": "Clock"
+    },
+    {
+      "id": "create",
+      "type": "NewDbModelProperties",
+      "label": "Create task",
+      "parameters": {
+        "collectionName": "Task"
+      }
+    },
+    {
+      "id": "savedSet",
+      "type": "Set Variable",
+      "label": "Remember saved",
+      "parameters": {
+        "name": "lastSaved"
+      }
+    },
+    {
+      "id": "savedString",
+      "type": "String",
+      "label": "Saved sentence",
+      "parameters": {
+        "value": "Saved."
+      }
+    },
+    {
+      "id": "savedVar",
+      "type": "Variable2",
+      "label": "Last saved",
+      "parameters": {
+        "name": "lastSaved"
+      }
+    }
+  ]
+}

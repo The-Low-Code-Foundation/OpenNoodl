@@ -149,12 +149,25 @@ export function emitComponent(
    * helpers are in scope.
    */
   const unmappedParams: Array<{ id: string; name: string }> = [];
+  /**
+   * EXP-011 §48. The authored `cssClassName` (every visual node's "CSS Class", react-component-node.ts:
+   * `this.props.className = value`, joined onto the element's own classes) — a literal, trimmed,
+   * or undefined. A wired one stays an unmapped parameter, reported as before: the runtime sets
+   * it live and this slice folds only what the panel authored.
+   */
+  const authoredClassName = (node: NodeIR): string | undefined => {
+    const value = node.parameters.find((param) => param.name === 'cssClassName')?.value;
+    if (value?.kind !== 'literal' || typeof value.value !== 'string') return undefined;
+    const trimmed = value.value.trim();
+    return trimmed.length > 0 ? trimmed : undefined;
+  };
   for (const id of styledIds) {
     const node = nodeById.get(id)!;
     const role = plan.roleOf[id] as StyleRole;
     const style = computeNodeStyle(node, role, catalog);
     for (const name of style.unhandled) {
       if (name === 'visible' || name === 'mounted') continue; // §4b: handled by the render wrap / class toggle
+      if (name === 'cssClassName' && authoredClassName(node) !== undefined) continue; // §48: folded into className
       notes.push(`${plan.path}: parameter ${name} on ${id} has no style/content mapping — dropped, reported`);
       unmappedParams.push({ id, name });
     }
@@ -170,6 +183,7 @@ export function emitComponent(
       const groupStyle = computeNodeStyle(group, 'group', catalog);
       for (const name of groupStyle.unhandled) {
         if (name === 'visible' || name === 'mounted') continue;
+        if (name === 'cssClassName' && authoredClassName(group) !== undefined) continue; // §48: onto the page div
         notes.push(`${plan.path}: parameter ${name} on ${plan.collapsedGroupId} has no style/content mapping — dropped, reported`);
         // The collapsed Group's parameter is the *page div's* loss — `id` is the element that renders.
         unmappedParams.push({ id, name });
@@ -3160,6 +3174,8 @@ export function emitComponent(
       plan.valueChangedEffects.length > 0 ||
       // EXP-011 §43. A Record with Fetch unwired is an effect keyed on its Id.
       plan.recordEffects.length > 0 ||
+      // EXP-011 §48. A CSS Definition is a mount effect.
+      plan.styleSheets.length > 0 ||
       delayRefs.size > 0) &&
     !reactImports.includes('useEffect')
   ) {
@@ -3693,26 +3709,45 @@ export function emitComponent(
     } else if (visibleLiteralFalse(id)) {
       mode = 'hidden';
     }
-    if (mode === 'normal') return className ? `className={styles.${className}}` : null;
+    /**
+     * EXP-011 §48. The module class first, then the authored "CSS Class" verbatim (the runtime
+     * joins its own class and the author's the same way round: Text.tsx `['ndl-visual-text',
+     * props.className]`), then the visibility toggle. The page div carries the collapsed Group's
+     * authored class too — that div is where the Group's parameters render (§4b's page collapse).
+     */
+    const authored: string[] = [];
+    const own = authoredClassName(nodeById.get(id)!);
+    if (own !== undefined) authored.push(own);
+    if (id === plan.rootId && plan.collapsedGroupId) {
+      const groupClass = authoredClassName(nodeById.get(plan.collapsedGroupId)!);
+      if (groupClass !== undefined && !authored.includes(groupClass)) authored.push(groupClass);
+    }
+    // Single-quoted where the name is a plain class list; JSON-quoted (double, escaped) otherwise.
+    const classLiteral = (cls: string): string => (/^[A-Za-z0-9_\- ]+$/.test(cls) ? `'${cls}'` : JSON.stringify(cls));
+    const fixed: string[] = [...(className ? [`styles.${className}`] : []), ...authored.map(classLiteral)];
+    /** One class prints bare; two or more go through `joinClasses`, as the toggle already does. */
+    const joined = (parts: string[]): string | null => {
+      if (parts.length === 0) return null;
+      if (parts.length === 1) return `className={${parts[0]}}`;
+      usesJoinClasses = true;
+      return `className={joinClasses(${parts.join(', ')})}`;
+    };
+    if (mode === 'normal') return joined(fixed);
     const hidden = `styles.${hiddenKeepSpaceClass}`;
     if (mode === 'hidden') {
       notes.push(
         `${plan.path}: node ${id} is statically invisible — hidden but keeping its layout space (authored state, not dead code)`
       );
-      if (!className) return `className={${hidden}}`;
-      usesJoinClasses = true;
-      return `className={joinClasses(styles.${className}, ${hidden})}`;
+      return joined([...fixed, hidden]);
     }
     const negated = negatedVisibleCode(bound!);
     if (negated === null) {
       notes.push(`${plan.path}: wire into ${id}.visible has no statically known source — dropped, reported`);
       defer(id, 'the wire into "visible"', 'has no statically known source', bound);
-      return className ? `className={styles.${className}}` : null;
+      return joined(fixed);
     }
     usesJoinClasses = true;
-    return className
-      ? `className={joinClasses(styles.${className}, ${negated} && ${hidden})}`
-      : `className={joinClasses(${negated} && ${hidden})}`;
+    return `className={joinClasses(${[...fixed, `${negated} && ${hidden}`].join(', ')})}`;
   };
 
   const childText = (node: NodeIR, paramName: string): string | null => {
@@ -4806,6 +4841,18 @@ export function emitComponent(
     body.push('};', '');
     body.push(`const ${sd.constName}: readonly ${sd.typeName}[] = Object.freeze(${staticRowsLiteral(sd.rows, 0)});`, '');
   }
+  // EXP-011 §48. A CSS Definition's authored stylesheet, verbatim, as a module constant above the
+  // component — `allowEditOnly` in the runtime too, so a build-time constant is what it already was.
+  // A template literal rather than a `.css` import so the text is the page's own to append and
+  // remove (the node's mount/unmount semantics); the three sequences a template literal would read
+  // as its own are escaped, and nothing else is touched.
+  for (const sheet of plan.styleSheets) {
+    body.push(
+      `/** ${commentSafe(sheet.comment)} */`,
+      `const ${sheet.constName} = \`${sheet.css.replace(/\\/g, '\\\\').replace(/\`/g, '\\`').replace(/\$\{/g, '\\${')}\`;`,
+      ''
+    );
+  }
   const allPropNames = [
     ...plan.props.map((p) => propName(p.name)),
     ...plan.outputProps.map((o) => o.prop),
@@ -5010,6 +5057,22 @@ export function emitComponent(
   // EXP-011 §39. A Delay's countdown dies with the component — `addDeleteListener` in timer.ts.
   for (const [, ref] of delayRefs) {
     body.push('  useEffect(() => () => {', `    stopDelay(${ref});`, '  }, []);', '');
+  }
+  // EXP-011 §48. A CSS Definition: appended to `document.head` on mount, removed on unmount —
+  // `updateStyle` and `removeStyleDeclaration` in css-definition.ts, per instance.
+  for (const sheet of plan.styleSheets) {
+    body.push(
+      `  // ${sheet.comment}`,
+      '  useEffect(() => {',
+      "    const style = document.createElement('style');",
+      `    style.textContent = ${sheet.constName};`,
+      '    document.head.appendChild(style);',
+      '    return () => {',
+      '      style.remove();',
+      '    };',
+      '  }, []);',
+      ''
+    );
   }
   // EXP-011 §39. Value Changed: the node's own `set` — return on the same value, else remember it
   // and fire. `lastValue` boots `undefined` in `initialize`, so a first arrival of `undefined`

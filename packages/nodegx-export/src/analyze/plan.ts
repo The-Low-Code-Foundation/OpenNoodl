@@ -230,6 +230,13 @@ const EXTERNAL_LINK_OUTPUTS = ['done', 'failure', 'unchanged', 'completed', 'err
 const LOG_TYPE = 'net.noodl.Log';
 const TIMER_TYPE = 'Timer';
 const VALUE_CHANGED_TYPE = 'Value Changed';
+/**
+ * `CSS Definition` (EXP-011 §48, Tier 3.9) — authored CSS appended to the document for as long as
+ * the node exists and removed with it (css-definition.ts: a `<style>` in `document.head`, keyed by
+ * the node id, ref-counted across instances). Its one input, `style`, is `allowEditOnly` with a
+ * CSS code editor — author content, never code, so `NodeIR.sourceText` does not carry it.
+ */
+const CSS_DEFINITION_TYPE = 'CSS Definition';
 const TIMER_TRIGGERS = ['start', 'restart', 'stop'] as const;
 type TimerTrigger = (typeof TIMER_TRIGGERS)[number];
 const isTimerTrigger = (port: string): port is TimerTrigger => (TIMER_TRIGGERS as readonly string[]).includes(port);
@@ -1815,6 +1822,24 @@ export interface ValueChangedEffectPlan {
   comment: string;
 }
 
+/**
+ * A `CSS Definition`'s stylesheet (EXP-011 §48): a module constant holding the authored CSS
+ * verbatim, and a mount effect that appends it to `document.head` in a `<style>` and removes it
+ * on unmount — the node's own `updateStyle`/`removeStyleDeclaration`, per instance.
+ *
+ * ⚠️ One difference, invisible on the page: the runtime keys the element by *node id* and
+ * ref-counts it, so N mounted instances of one component share one `<style>`; the export appends
+ * one per instance. Identical text N times has the same cascade as once.
+ */
+export interface StyleSheetPlan {
+  nodeId: string;
+  /** `DESK_STYLES` — SCREAMING_SNAKE of the authored label, deduped like a Static Data constant. */
+  constName: string;
+  /** The authored CSS, verbatim — never trimmed, never reformatted. */
+  css: string;
+  comment: string;
+}
+
 export interface PropPlan {
   name: string;
   tsType: string;
@@ -2249,6 +2274,8 @@ export interface ComponentPlan {
   valueChangedEffects: ValueChangedEffectPlan[];
   /** EXP-011 §43. Records whose Fetch is unwired, compile order — one useEffect keyed on the Id each. */
   recordEffects: RecordEffectPlan[];
+  /** EXP-011 §48. CSS Definitions, node order — one module constant + one mount effect each. */
+  styleSheets: StyleSheetPlan[];
   /**
    * Value output ports this component lifts (§4d child side) — the parent side consults this
    * list off the target's plan, so parent and child agree by construction (the s10 rule).
@@ -2494,6 +2521,7 @@ function planComponent(
     branchEffects: [],
     recordEffects: [],
     valueChangedEffects: [],
+    styleSheets: [],
     liftedOutputProps: [],
     instanceLifted: {},
     pendingLifted: [],
@@ -9895,6 +9923,40 @@ function planComponent(
       // handler, the record verbs' form idiom on a client-side object. Fifth family on s19's
       // rule; found the same way (the first emit dropped the Save wire with a true sentence).
       if (sink.type === SET_OBJECT_PROPERTIES_TYPE) return c.toProperty.startsWith('prop-');
+      // EXP-011 §48. A Set Global Store reads its `value` from the button's handler too — §47.3
+      // registered it as the clause's sixth family, met by the same first-emit symptom (a text
+      // input into the Set's value from a button drops the trigger with a true sentence).
+      // ⚠️ Not the write-through idiom: an input whose OWN `textChanged` fires the Set reads
+      // `input-text` inside its own DOM handler, which NAMED-STORES-TARGET §2 pins as
+      // uncontrolled (`onChange` only, no `useState`). Only a Set some other handler fires earns
+      // the control its state — the §47 clause's own condition, spelled out because this node
+      // has both shapes in one fixture.
+      // §48 measured `Set Variable` beside it (the probe over the same fixture): a text input into
+      // a Set Variable's value, its Do on a button, dropped the click with the same sentence —
+      // the seventh family, and the plainest form idiom there is. Same clause, same exception.
+      // And `Cloud Function` (the eighth, same probe): its `in-*` arguments from a text input, its
+      // Call on a button — dropped with the same sentence until this line. And `Event Sender`
+      // (the ninth): a payload key from a text input, Send on a button.
+      if (
+        sink.type === GLOBAL_STORE_SET ||
+        sink.type === 'Set Variable' ||
+        sink.type === CLOUD_FUNCTION_TYPE ||
+        sink.type === 'Event Sender'
+      ) {
+        const reads =
+          sink.type === CLOUD_FUNCTION_TYPE
+            ? c.toProperty.startsWith('in-')
+            : sink.type === 'Event Sender'
+              ? payloadKeysOf(sink).includes(c.toProperty)
+              : c.toProperty === 'value';
+        if (!reads) return false;
+        const trigger =
+          sink.type === GLOBAL_STORE_SET ? 'set' : sink.type === CLOUD_FUNCTION_TYPE ? 'call' : sink.type === 'Event Sender' ? 'sendEvent' : 'do';
+        const firedByOwnChange = component.connections.some(
+          (w) => w.toId === sink.id && w.toProperty === trigger && w.fromId === node.id
+        );
+        return !firedByOwnChange;
+      }
       return rendered.has(sink.id) && !isTriggerWire(sink.type, c.toProperty);
     });
     if (!stateWired && !actionWired && !outputRead) continue;
@@ -11219,6 +11281,53 @@ function planComponent(
      * Both still run before the session sweep (a session read inside an arm must be seen as
      * surviving) and before the wire sweep (the wires they consume must not be reported).
      */
+  // EXP-011 §48 — `CSS Definition`: the authored stylesheet, appended to the document while the
+  // component is mounted and removed with it (css-definition.ts). No ports but `style`, so the
+  // only questions are whether the text is authored and whether there is a file to host the
+  // effect. Runs beside the other effect producers so its disposition is set before the sweeps.
+  for (const node of component.nodes) {
+    if (node.type !== CSS_DEFINITION_TYPE || dispositions[node.id] !== undefined) continue;
+    const defer = (reason: string): void => {
+      dispositions[node.id] = { kind: 'deferred', to: 'EXP-003', reason };
+      notes.push(`node ${node.id} (${node.type}) deferred: ${reason}`);
+    };
+    if (wiredPorts.has(`${node.id}:style`)) {
+      defer('its Style is wired — only an authored stylesheet translates in this slice');
+      continue;
+    }
+    // The parser carries a codeeditor port as `{ kind: 'script', source }` (parseProject's
+    // `scriptParamNames`, every codeeditor type); a plain literal is accepted too.
+    const styleParam = node.parameters.find((param) => param.name === 'style')?.value;
+    const css =
+      styleParam?.kind === 'script' ? styleParam.source : styleParam?.kind === 'literal' && typeof styleParam.value === 'string' ? styleParam.value : undefined;
+    if (typeof css !== 'string' || css.trim() === '') {
+      // The runtime appends an empty `<style>` — nothing on the page, nothing to emit. Static,
+      // not deferred: the node asked nothing of the translation (§40's rule for an inert node).
+      dispositions[node.id] = { kind: 'static' };
+      notes.push(`node ${node.id} (${node.type}) has an empty Style — the runtime appends an empty stylesheet, so nothing is emitted`);
+      continue;
+    }
+    if (!plan.file) {
+      defer('component emits no file to host the effect');
+      continue;
+    }
+    const label = (node.authoredLabel ?? '').replace(/[^A-Za-z0-9]+/g, ' ').trim();
+    let constName = (label.length > 0 ? label : 'styles').replace(/[^A-Za-z0-9]+/g, '_').toUpperCase();
+    if (/^[0-9]/.test(constName)) constName = `_${constName}`;
+    let counter = 2;
+    const base = constName;
+    while (usedStaticNames.has(constName) || stateNameTaken(constName)) constName = `${base}_${counter++}`;
+    usedStaticNames.add(constName);
+    const into = `src/${plan.file.dir}/${plan.file.fileBase}.tsx`;
+    plan.styleSheets.push({
+      nodeId: node.id,
+      constName,
+      css,
+      comment: `${node.authoredLabel ?? 'CSS Definition'} — added to the page while this component is mounted and removed with it (css-definition.ts).`
+    });
+    dispositions[node.id] = { kind: 'collapsed', into };
+  }
+
   // EXP-011 §39 — `Value Changed`: the effect() slice §9.6 named. The node has no trigger; it
   // fires from a value arriving, so it is a `useEffect` keyed on the Input with the last value
   // seen in a ref. Runs before the session sweep so a session read inside the chain is seen as
@@ -13775,6 +13884,13 @@ export function tsColumnType(columnType: string): string {
     // `[object Object]` while typechecking clean.
     case 'File':
       return 'CloudFile';
+    // EXP-011 §48. A Date column is `{ __type: 'Date', iso }` on the wire (AdapterFacade `toWire`,
+    // cloudstore.js `_serializeObject`) and a JS `Date` once the interpreter has read it
+    // (`_deserializeJSON(data, 'Date')` → `new Date(data.iso)`); the client's `fromWire` unwraps
+    // the envelope the same way. Before this slice it read `string`, and a Text on the column
+    // printed `[object Object]` while typechecking clean (§46.3 registered it; A5 pinned it).
+    case 'Date':
+      return 'Date';
     default:
       return 'string';
   }

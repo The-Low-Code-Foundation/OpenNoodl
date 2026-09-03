@@ -1375,10 +1375,21 @@ async function request<T>(
   return json as T;
 }
 
+/** The wire's Date envelope (\`{ __type: 'Date', iso }\`) on any field, as the interpreter reads it: a Date. */
+function fromWireValue(value: unknown): unknown {
+  if (value !== null && typeof value === 'object' && (value as { __type?: unknown }).__type === 'Date') {
+    const iso = (value as { iso?: unknown }).iso;
+    if (typeof iso === 'string') return new Date(iso);
+  }
+  return value;
+}
+
 /** The wire calls a record's identity \`objectId\`; the generated interfaces say \`id\`. */
 function fromWire<T extends { id: string }>(record: Record<string, unknown>): T {
   const { objectId, ...fields } = record;
-  return { id: String(objectId), ...fields } as unknown as T;
+  const row: Record<string, unknown> = { id: String(objectId) };
+  for (const [key, value] of Object.entries(fields)) row[key] = fromWireValue(value);
+  return row as unknown as T;
 }
 
 export interface QueryParams {
