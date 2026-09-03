@@ -162,8 +162,21 @@ reasons — check WHICH job before reading a red run as yours.
   found exactly one population and it was session 1's own specs, asserting that a door accepts a
   hand-laid trio. Corrected to pin the text arriving in the *rejection*.
 - **Do not write to a project while a human has the editor open.** The editor holds the project in
-  memory and pushes that to its preview; an MCP write reaches disk and is invisible to it, and
-  quitting the editor can flush its stale copy back over your work.
+  memory and pushes that to its preview; an MCP write reaches disk and is invisible to it.
+- 🔴 **CORRECTED 2026-09-03 — the old wording of this bullet was WRONG, and it was relayed four times.**
+  It said *"quitting the editor can flush its stale copy back over your work."* **A quit does not do
+  that.** Driven in
+  [REL-009 §2.1](../phase-82-0.2.2-the-first-row-on-the-shelf/REL-009-THE-WRITE-THE-EDITOR-CANNOT-SEE.md):
+  on a v2 project the save is incremental and hash-baselined, so a real `app.quit()` with no pending
+  human edit wrote **nothing at all** — 21/21 files byte-identical — and a component the human never
+  touched is never in the change set. An MCP-**added** component survives, registry entry included.
+  **The real exposure is narrower and it is about the COMPONENT, not the quit:** if the human edits
+  *the same component* an agent wrote, the editor writes its whole in-memory copy over the file and
+  the agent's change is gone — no conflict, no prompt, no diagnostic. The worst shape of it is a page
+  the agent added being silently dropped from the router while its files and registry entry stay,
+  so nothing on any surface looks wrong. ✅ **The practical rule is unchanged and the reason is now
+  right: do not have both sides editing the same component. `render_report` is read-only and safe at
+  any time, and an MCP write is still invisible to a running editor until the project is reopened.**
 - Serialise register edits across parallel sessions — a pathspec commit can sweep a sibling's edit.
 
 ## Also live, in parallel

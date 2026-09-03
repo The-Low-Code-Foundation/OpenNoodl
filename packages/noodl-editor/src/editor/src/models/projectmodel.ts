@@ -700,6 +700,21 @@ export class ProjectModel extends Model {
         .saveProject(retainedProjectDirectory, this.toJSON())
         .then((res) => {
           if (res.result === 'success') {
+            // REL-009a arm C. The saver left these alone because their files
+            // moved under us — an agent, a git checkout, another editor. Saying
+            // nothing here is the defect this row exists for: the user's edit to
+            // that component is still only in memory, and they must be told.
+            if (res.refused && res.refused.length > 0) {
+              console.warn(
+                'Project save skipped ' +
+                  res.refused.length +
+                  ' component(s) changed on disk by something else: ' +
+                  res.refused.join(', ')
+              );
+              EventDispatcher.instance.emit('ProjectModel.saveRefusedExternalChange', {
+                components: res.refused
+              });
+            }
             callback && callback({ result: 'success' });
           } else {
             callback && callback({ result: 'failure', message: res.message || 'Error writing project files.' });

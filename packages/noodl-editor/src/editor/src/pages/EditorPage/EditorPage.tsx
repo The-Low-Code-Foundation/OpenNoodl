@@ -196,6 +196,23 @@ export function EditorPage({ route }: EditorPageProps) {
       eventGroup
     );
 
+    // REL-009a arm C — a component was changed on disk by something else (an
+    // agent authoring over MCP, a git checkout) while we held it open, so the
+    // saver refused to write our copy over it. The edit is still in memory and
+    // the user has to know, or this is the silent data loss with a nicer name.
+    EventDispatcher.instance.on(
+      'ProjectModel.saveRefusedExternalChange',
+      (args: { components: string[] }) => {
+        const names = (args?.components ?? []).join(', ');
+        ToastLayer.showError(
+          `Not saved: ${names} changed on disk outside the editor. Your changes to it are still ` +
+            `open here — reopen the project to see the other version.`,
+          10000
+        );
+      },
+      eventGroup
+    );
+
     setIsLoading(false);
 
     return function () {

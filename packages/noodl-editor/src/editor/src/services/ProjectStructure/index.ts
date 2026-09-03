@@ -40,7 +40,8 @@ import type {
 
 import { ProjectStructureFilesystem, V2_FILES } from './types';
 import { ComponentLoader } from './ComponentLoader';
-import { ComponentSaver, stableStringify, hashString } from './ComponentSaver';
+import { ComponentSaver, stableStringify, hashString, hashComponent } from './ComponentSaver';
+import type { ComponentChangeSet } from './ComponentSaver';
 import { ProjectMigrator, type MigratorFilesystem } from './ProjectMigrator';
 
 export interface LoadResult {
@@ -54,6 +55,12 @@ export interface SaveResult {
   /** Registry paths written this save (diagnostics). */
   changed?: string[];
   removed?: string[];
+  /**
+   * Registry paths that were in the change set but NOT written, because their
+   * files on disk no longer match the baseline this editor recorded — someone
+   * else wrote them while we held the project. See {@link findExternallyChanged}.
+   */
+  refused?: string[];
 }
 
 /** Project-level file identities tracked for change detection. */
@@ -160,7 +167,20 @@ export class ProjectStructureService {
    * last load/save, atomically, with an incremental registry update.
    */
   async saveProject(projectDir: string, project: LegacyProject): Promise<SaveResult> {
-    const changeSet = this.saver.getChangedComponents(project);
+    const fullChangeSet = this.saver.getChangedComponents(project);
+
+    // REL-009a arm C. `getChangedComponents` diffs memory against `diskHashes`,
+    // which is a memory of what THIS editor last read or wrote — not a statement
+    // about the file. When an agent writes a component underneath us, that
+    // baseline is stale, and writing our copy over it is a silent last-writer-wins
+    // with no conflict, no prompt and no diagnostic (measured 2026-09-03).
+    // So: re-read the ones we are about to write and leave alone any whose file
+    // has moved. Their baselines are untouched, so the next save retries.
+    const refused = await this.findExternallyChanged(projectDir, fullChangeSet);
+    const changeSet: ComponentChangeSet = {
+      changed: fullChangeSet.changed.filter((c) => !refused.has(c.path)),
+      removed: fullChangeSet.removed
+    };
 
     // Snapshot baselines so a mid-save failure rolls everything back — a retry
     // then recomputes the identical change set and redoes every write (including
@@ -184,7 +204,8 @@ export class ProjectStructureService {
       return {
         result: 'success',
         changed: changeSet.changed.map((c) => c.path),
-        removed: changeSet.removed
+        removed: changeSet.removed,
+        refused: refused.size > 0 ? [...refused].sort() : undefined
       };
     } catch (err) {
       this.saver.restoreBaselines(baselineSnapshot);
@@ -195,6 +216,62 @@ export class ProjectStructureService {
         message: err instanceof Error ? err.message : String(err)
       };
     }
+  }
+
+  /**
+   * Of the components this save is about to write, which ones have moved on disk
+   * since we last read or wrote them?
+   *
+   * The check is deliberately narrow. It re-reads **only** the components already
+   * in the change set — usually one — so a save costs three extra file reads, not
+   * a pass over the project. It compares the freshly-loaded content against the
+   * saver's own baseline hash, which is the same quantity `getChangedComponents`
+   * compares against, so a match means "the file is exactly what we last put
+   * there" and a mismatch means someone else wrote it.
+   *
+   * A component that cannot be read is NOT reported: it is either new in this
+   * editor (nothing on disk to overwrite) or unreadable, and in both cases
+   * refusing the write would lose the user's edit to protect nothing.
+   */
+  private async findExternallyChanged(
+    projectDir: string,
+    changeSet: ComponentChangeSet
+  ): Promise<Set<string>> {
+    const moved = new Set<string>();
+
+    for (const { path, component } of changeSet.changed) {
+      const baseline = this.saver.getDiskHash(path);
+      // No baseline means the saver has never seen this path on disk — a
+      // component created in this editor since the load. Nothing to clobber.
+      if (baseline === undefined) continue;
+
+      try {
+        this.loader.invalidate(path);
+        const onDisk = hashComponent(await this.loader.loadComponent(projectDir, path));
+
+        // Still exactly what we last put there: nobody else has written it.
+        if (onDisk === baseline) continue;
+
+        // 🔴 Or it is already exactly what this save would write. That is not an
+        // external writer — it is US, one save ago, whose registry commit failed
+        // and whose baselines were deliberately rewound so the retry would redo
+        // the write (see `saveProject`'s rollback). Refusing here would strand
+        // that retry forever and leave the registry stale, which the mid-save
+        // rollback spec catches. Either way there is nothing to lose: the bytes
+        // on disk and the bytes we would write are the same.
+        if (onDisk === hashComponent(component)) continue;
+
+        moved.add(path);
+      } catch {
+        // Unreadable or absent — see the note above.
+      } finally {
+        // Leave the cache as we found it. This read is a probe, and a save that
+        // proceeds is about to make whatever it cached wrong.
+        this.loader.invalidate(path);
+      }
+    }
+
+    return moved;
   }
 
   // ── Project-level files ────────────────────────────────────────────────────────
