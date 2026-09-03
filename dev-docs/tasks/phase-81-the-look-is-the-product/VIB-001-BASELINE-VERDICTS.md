@@ -43,6 +43,13 @@ the site-builder pictures in `verdicts/sbr-005/2026-09-01/` and the site-builder
 `verdicts/vib-001/2026-08-31/` show D40 as well as the design, and **re-photographing is owed before
 VIB-009 is scoped from them**. A fresh set is in `verdicts/sbr-005/2026-09-03/`.
 
+🔴 **VIB-009 no longer owns the site-builder look for 0.2.2.** Richard lifted the site-builder hold
+on 2026-09-03 and set the bar at **literally `PASSABLE`** — a deliberate relaxation of README §83,
+for that template only. The work is
+[`phase-82/REL-011`](../phase-82-0.2.2-the-first-row-on-the-shelf/REL-011-THE-SITE-BUILDER-SHIPS.md),
+a/b/c, the same carry VIB-008 took to REL-002c. ⚠️ **This phase keeps the WORTHY bar everywhere
+else** — do not read the relaxation across to VIB-006, VIB-011 or anything the members' area owns.
+
 🔴 **It also excludes s47's account of the VIB-001-vs-D40 contradiction.** Both look files call the
 same `authorSiteTemplate` on the same fixture, so *"a corpus mixing both create paths"* cannot be
 what separates VIB-001's `unreachablePx: 0` from SBR-005's `1139`. See the run record's §3 — the row
