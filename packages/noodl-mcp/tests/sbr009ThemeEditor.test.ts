@@ -117,7 +117,9 @@ describe('SBR-009 §0 — the instrument can see', () => {
   it('the walker reaches the three components this file is about', () => {
     expect(nodesOf(EDITOR).length).toBeGreaterThanOrEqual(50);
     expect(nodesOf(SHELL).length).toBeGreaterThanOrEqual(20);
-    expect(nodesOf(CHIP)).toHaveLength(3);
+    // 3 → 4 with D54: the chip gained the `pick` script that republishes its own
+    // name at the press. See §1's block below.
+    expect(nodesOf(CHIP)).toHaveLength(4);
     expect(wiresOf(EDITOR).length).toBeGreaterThanOrEqual(60);
   });
 
@@ -158,15 +160,44 @@ describe('SBR-009 §1 — the presets row is generated, not typed', () => {
     expect(new Set(chips().map((c) => c.parameters?.name)).size).toBe(3);
   });
 
-  it('every chip is wired to the picker: the name as a value, the click as a signal', () => {
+  it('every chip is wired to the picker: the press as a value, the click as a signal', () => {
     const wires = wiresOf(EDITOR);
     const picker = byLabel(EDITOR, 'The three presets');
     for (const chip of chips()) {
       const mine = wires.filter((w) => w.fromId === chip.id && w.toId === picker.id);
       expect(`${String(chip.parameters?.name)}: ${mine.map((w) => `${w.fromProperty}->${w.toProperty}`).sort().join(',')}`).toBe(
-        `${String(chip.parameters?.name)}: Picked->run,name->in-name`
+        `${String(chip.parameters?.name)}: Picked->run,pick->in-pick`
       );
     }
+  });
+
+  /**
+   * 🔴 **D54 — the wire above was here all along and said nothing about WHICH.**
+   *
+   * `name->in-name` was this block's pin for the life of the template, and it was
+   * true: every chip did wire its name into the picker. All three wired it into
+   * the **same** port, as a `Component Inputs` constant published at MOUNT, so the
+   * last placement — `night` — is what sat there, and `run` carries no payload. A
+   * person pressing `Studio` got Night, on every surface, for the life of the
+   * screen. It read as *"the presets are dead on the deploy"* because the screen it
+   * was measured on already held Night.
+   *
+   * ⚠️ **A structural pin cannot see this and this one is kept anyway** — it is what
+   * says the wires exist. The behaviour is graded in `d54ThemePresetIdentity.test.ts`,
+   * which instantiates the shipped chip in the real runtime, presses each of the
+   * three, and carries the pre-fix pair beside it as the arm that answers `night`
+   * whichever chip is pressed.
+   */
+  it('the chip publishes the press itself, so the picker can tell the three apart', () => {
+    const pick = byLabel(CHIP, 'This chip, at the moment it is pressed');
+    // An object, not a name: a Function publishes an output only when it CHANGES,
+    // so a re-pressed chip republishing its own string sends nothing.
+    expect(String(pick.parameters?.functionScript)).toContain('Outputs.pick = { name: Inputs.name };');
+    // And it waits for the click, exactly as the picker does.
+    expect(pick.parameters?.['runOnChange-in-name']).toBe(false);
+    const chipWires = wiresOf(CHIP);
+    expect(chipWires.some((w) => w.toId === pick.id && w.toProperty === 'run')).toBe(true);
+    expect(chipWires.some((w) => w.fromId === pick.id && w.fromProperty === 'out-pick')).toBe(true);
   });
 
   /**
@@ -188,7 +219,7 @@ describe('SBR-009 §1 — the presets row is generated, not typed', () => {
    */
   it('the picker waits for the signal — it does not run when a chip mounts', () => {
     const picker = byLabel(EDITOR, 'The three presets');
-    expect(picker.parameters?.['runOnChange-in-name']).toBe(false);
+    expect(picker.parameters?.['runOnChange-in-pick']).toBe(false);
     // The pair: `run` IS wired, so the node is not simply switched off.
     expect(wiresOf(EDITOR).some((w) => w.toId === picker.id && w.toProperty === 'run')).toBe(true);
   });

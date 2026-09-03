@@ -649,8 +649,14 @@ describe('SB-005: the admin panel, through the MCP door', () => {
     // out, so both are `declared=` rows and the second number is unmoved —
     // which is the arithmetic, not the luck: a screen that only READS records
     // has nothing to announce.
-    expect(rows.length).toBe(24);
-    expect(rows.filter((r) => !r.endsWith('declared=')).length).toBe(9);
+    // 24 → 25 and 9 → **10**: D54's `pick` on `/Admin/PresetChip`. It calls
+    // `Outputs.picked()` and declares `out-picked`, so it moves BOTH — the shape
+    // this pair is built to see. The chip publishes its own name at the press
+    // because three placements sharing one mount-time value made every press
+    // answer with the LAST placement; the picker's `run` says *now* and never
+    // *which*.
+    expect(rows.length).toBe(25);
+    expect(rows.filter((r) => !r.endsWith('declared=')).length).toBe(10);
   });
 
   it('MUTANT: dropping a declared signal port reddens', () => {
@@ -774,7 +780,10 @@ describe('SB-005: the admin panel, through the MCP door', () => {
       // 22 → 24: SBR-010's `stamp` on `/Admin/MessageRow` (the date and the
       // sender fallback, both derived rather than wired straight through) and
       // `tally` on `/Pages/Messages` (the count-or-empty sentence).
-      code: 24,
+      // 24 → 25: D54's `pick` on `/Admin/PresetChip` — the first code node in
+      // that component, and the smallest one here: it republishes this chip's
+      // own name at the press so the picker can tell three placements apart.
+      code: 25,
       // 4 → 5: SBR-017's `/Pages/SignIn`.
       // 5 → 6: SBR-010's `/Pages/Messages`.
       pages: 6

@@ -3091,7 +3091,7 @@ on day one is *read the artefact the person receives* — the answer was in a CS
 
 ---
 
-## D54 — 🔴 The theme presets do nothing on the DEPLOYED site. Owner **SBR-009**
+## D54 — 🟢 **DIAGNOSED AND FIXED 2026-09-03** (P82 REL-011b AC1). Every preset chip published `night`. Owner **SBR-009**
 
 **Found s47**, driving SBR-014 step 7 on the deployed artefact.
 
@@ -3125,3 +3125,91 @@ proved that filter alive (it drops exactly 1 when a wire is sabotaged), so the e
 **Consequence for a person**: the one affordance on the theme screen built for someone who is not
 a designer — pick a look, get a whole coherent palette — does nothing on their published site.
 They must type six hex values and a font stack by hand, or never change the look at all.
+
+---
+
+# 🟢 The diagnosis, 2026-09-03 — **the headline above is wrong in both halves**
+
+*Everything above this line is the row as it was filed. It is kept because the reading that
+overturned it is the reading it recorded.*
+
+## What it actually is
+
+**The presets were never dead. They fire on every click and publish the WRONG PRESET — always
+`night`.**
+
+Driven on the artefact a person deploys (`deploy-from-disk` → `drive-deployed`, `/admin/theme`,
+1280×900), from an **empty** form so a change cannot hide inside a value that was already there:
+
+| pressed | the five token fields immediately afterwards |
+|---|---|
+| `Studio` | `#d9a441` `#14161a` `#eceae5` `"Helvetica Neue"…` `10px` |
+| `Press` | the same |
+| `Night` | the same |
+| `Studio` again | the same |
+| `Press` again | the same |
+
+Those five values are **`night`**, read out of the shipped picker's own script. So D54's
+*"0 of 7 fields changed — `#d9a441 / #14161a / #eceae5 / "Helvetica Neue"… / 10px` before and
+after"* was **the right preset arriving twice**: the screen it was measured on already held Night,
+and a correct answer that matches what is on screen is indistinguishable from no answer at all.
+
+🔴 **And there is no preview-versus-deploy difference to explain.** s46 drove the preview and
+picked **`Night`** — the one chip that was ever right, because it is the last one placed. Both
+readings are of the same graph behaving the same way.
+
+## The mechanism
+
+All three chip placements wire their `name` — a `Component Inputs` **constant, published at
+MOUNT** — into the **same** `presets.in-name` port. Three producers, one input, **last placement
+wins**, and `night` is the third. The picker runs on `run`, which carries no payload: the press says
+*now* and never *which*.
+
+⚠️ **SBR-009's `runOnChange-in-name: false` was a correct fix to the half a screenshot could
+see.** With the box ticked the picker ran three times at mount and the screen *booted* wearing
+Night; the checkbox stopped that. It said nothing about the **value** mount had left in the port.
+🔴 *A `runOnChange` census asks WHEN a node runs and never asks WHAT it will read.*
+
+## The fix
+
+[`/Admin/PresetChip`](../../../packages/noodl-mcp/tests/sb005Components.ts) gains one script,
+`pick`: it publishes **`{ name }` — this chip's own — at the moment of the press**, and fires
+`Picked` after it, in one run. The picker reads `in-pick` and stores it without running; `run` then
+runs it against the chip that was actually pressed.
+
+🔴 **An object, and not the bare name, and the first draft is why.** A Function's `Outputs` proxy
+publishes an output **only when it changes** (`simplejavascript.ts`: *"Some Noodl projects rely on
+this behavior"*). The first version of this fix sent `Outputs.name = Inputs.name`, which is correct
+about *which* chip and silent on a **re-press**: measured on the deployed bundle as
+**Studio → Press → Night → Studio again reading NIGHT**. A fresh object literal is never `===`
+its predecessor, so a press always lands. That arm is kept as a MUTANT.
+
+## The gates
+
+| gate | reading |
+|---|---|
+| [`d54ThemePresetIdentity.test.ts`](../../../packages/noodl-mcp/tests/d54ThemePresetIdentity.test.ts) | **10/10.** The shipped chip instantiated in the **real runtime**; three arms — shipped (each press gives its own palette), the first-draft MUTANT (swallowed on the re-press), and the **REVERTED pair** (every press answers `night`) |
+| [`sbr009ThemeEditorDrive.test.ts`](../../../packages/noodl-mcp/tests/sbr009ThemeEditorDrive.test.ts) | **9/9** in a real browser, from 6. 🔴 **Exactly the three new arms are RED on the reverted source**, the six that predate them green in both |
+| `npm run template:site-builder` | exit 0 |
+| full `noodl-mcp` | **91 suites, 1196/1196, exit 0** |
+| `typecheck:mcp` | exit 0, 0 errors |
+| deployed drive, after | `Studio Press Night Studio Press` → **five presses, five correct palettes**, including two re-presses |
+
+## 🔴 Why this survived eleven sessions, and what to take from it
+
+1. **The drive that existed only ever clicked the chip that was right.** `sbr009ThemeEditorDrive`
+   has pressed `Night` since the day it was written. Night is the last placement, so it is the one
+   press that could never have caught this. ✅ **When several instances of one control feed one
+   consumer, press a NON-DEFAULT one.**
+2. **The structural spec was true and blind.** `every chip is wired to the picker: the name as a
+   value, the click as a signal` was green throughout and correct: every chip *was* wired. It had
+   no way to say that all three wired into **the same** port. ✅ **A wiring pin cannot see
+   cardinality at the target.**
+3. **"0 of 7 changed" fits two opposite diagnoses.** Nothing fired, or the right thing fired and
+   agreed with the screen. ✅ **Measure a change from a state you set** — the empty form is what
+   separated them, and it took one drive.
+4. **A relayed absence became a fact about the wrong thing.** *"Works in preview, inert on the
+   deploy"* sent this row to `SBR-008`'s family (*the deploy keeps the panel's wires*) and cost a
+   session's worth of export forensics: the health filter, the exported `ports`, the bundle
+   contents — all checked, all clean, none of them the defect. The two readings differed by
+   **which chip was pressed**, not by which surface it was on.

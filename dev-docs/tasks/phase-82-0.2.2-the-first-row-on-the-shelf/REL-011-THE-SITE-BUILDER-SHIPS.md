@@ -286,13 +286,11 @@ a control arm, or measured and ruled out of 0.2.2 by Richard — **but not left 
 
 **ACs**
 
-1. 🔴 **[D54](../phase-77-the-site-builder-rescue/DEFECTS-THE-SITE-BUILDER-FOUND.md#d54) — the theme
-   presets are dead on the deploy.** `Studio` / `Press` / `Night` each clicked: **0 of 7 fields
-   changed, 0 requests**, on enabled buttons with `onclick`, while `Save theme` on the same screen
-   fires its `PUT`. It works in the editor's preview and is inert in the deployed bundle.
-   **The screen's own first block promises *"Picking one fills every field below"*.** Undiagnosed;
-   `droppedByHealthFilter` was 0 and the `--sabotage` control proved that filter alive, so the export
-   filter is excluded and nothing else is.
+1. 🟢 **[D54](../phase-77-the-site-builder-rescue/DEFECTS-THE-SITE-BUILDER-FOUND.md#d54) — CLOSED
+   2026-09-03 (s19), and the row's own description was wrong.** It read: *"the theme presets are
+   dead on the deploy — 0 of 7 fields changed, 0 requests, while `Save theme` fires its `PUT`; works
+   in the editor's preview and inert in the deployed bundle."* **They were never dead.** They fire on
+   every click and publish `night`, whichever chip is pressed, on every surface. See §AC1 below.
 2. **The page keeps its buttons when its backend goes away.** SBR-005's AC3 failure arm reports
    `no button labelled "Send". Buttons on the page: []` — **zero buttons anywhere** after
    `service.stop()`. Measured 2026-09-03 in **both** arms of the `bodyScroll` control pair, so it is
@@ -450,6 +448,75 @@ one before it is rediscovered at full price.**
 ⚠️ **Adjacent, and worth linking rather than merging**: P80 **DEF-026** is `CloudFunction2`'s dead
 failure path on an unreachable backend. Same trigger (the backend is gone), different node, different
 defect — noted by the P80 session working beside this one.
+
+### 🟢 AC1 — D54 SETTLED, AND THE ROW DESCRIBED THE WRONG DEFECT. Fixed 2026-09-03 (s19)
+
+Full write-up in [D54](../phase-77-the-site-builder-rescue/DEFECTS-THE-SITE-BUILDER-FOUND.md#d54).
+The row said *"diagnose before fixing"*, and the diagnosis is the part worth reading: it is not the
+defect the row names.
+
+#### The measurement that settled it
+
+The deployed bundle (`deploy-from-disk` → `drive-deployed`, `/admin/theme`, 1280×900), driven from
+an **empty** form so a change cannot hide inside a value already on screen:
+
+| pressed | the five token fields immediately afterwards |
+|---|---|
+| `Studio` | `#d9a441` `#14161a` `#eceae5` `"Helvetica Neue"…` `10px` |
+| `Press` | the same |
+| `Night` | the same |
+| `Studio` again | the same |
+
+Those are **`night`'s** values, read out of the shipped picker's own script. So the chain was
+never dead: **it published the wrong preset, and D54's screen already held that preset**, which is
+why *"0 of 7 changed"* looked like nothing happening. 🔴 **Two opposite diagnoses fit that
+reading and only a set starting state separates them.**
+
+⚠️ **There is no preview/deploy difference either.** s46's preview drive picked **`Night`** — the
+last chip placed, and the only one that was ever right.
+
+#### The mechanism, and why SBR-009's fix was necessary and not sufficient
+
+All three chips wire their `name` — a `Component Inputs` constant published at **MOUNT** — into the
+**same** `presets.in-name` port. Three producers, one input, last placement wins; `run` carries no
+payload, so a press says *now* and never *which*. SBR-009's `runOnChange-in-name: false` stopped the
+picker **running** at mount (the screen used to boot wearing Night) and said nothing about the
+**value** mount had left in the port. 🔴 *A `runOnChange` census asks WHEN a node runs, never WHAT
+it will read.*
+
+The fix is one script inside `/Admin/PresetChip`: it publishes **`{ name }` — its own — at the
+press**, then fires `Picked`. ⚠️ **An object rather than the name, and the first draft is why**: a
+Function's `Outputs` proxy publishes only on change, so `Outputs.name = Inputs.name` is right about
+*which* chip and silent on a **re-press** — measured on the deploy as Studio, Press, Night, then
+**Studio again reading Night**. Kept as a MUTANT arm.
+
+#### The gates
+
+| gate | reading |
+|---|---|
+| [`d54ThemePresetIdentity.test.ts`](../../../packages/noodl-mcp/tests/d54ThemePresetIdentity.test.ts) (new) | **10/10** — the shipped chip in the real runtime, with the first-draft MUTANT and the **REVERTED pair** (every press answers `night`) beside it |
+| `sbr009ThemeEditorDrive.test.ts` | **9/9** in a real browser, from 6. 🔴 **exactly the three new arms are RED on the reverted source**; the six older ones green in both |
+| `npm run template:site-builder` | exit 0 |
+| full `noodl-mcp` | **91 suites, 1196/1196, exit 0** |
+| `typecheck:mcp` | exit 0 |
+| the deployed drive, after the fix | `Studio Press Night Studio Press` → **five presses, five correct palettes** |
+
+#### 🔴 Four things that cost this session time, and are worth carrying
+
+1. **The drive that existed only ever pressed the chip that was right.** `sbr009ThemeEditorDrive`
+   has clicked `Night` since it was written, and Night is the last placement. ✅ **Where several
+   instances of one control feed one consumer, press a NON-DEFAULT one.**
+2. **The structural spec was true and blind.** *"every chip is wired to the picker: the name as a
+   value, the click as a signal"* was green and correct — it cannot see that all three wire into
+   **one** port. ✅ **A wiring pin says nothing about cardinality at the target.**
+3. **A relayed conclusion sent the diagnosis to the wrong package.** *"Works in preview, inert on
+   the deploy"* filed this under `SBR-008`'s family and bought a full pass over the export — the
+   health filter, the exported `ports`, the bundle's own JSON, all clean, none of them it. The two
+   readings differed by **which chip was pressed**, not by which surface.
+4. ⚠️ **A content grep does not find a file.** This session recorded *"`sbr009ThemeEditorDrive`
+   does not exist"* from a `grep` for that string in code; it is
+   `packages/noodl-mcp/tests/sbr009ThemeEditorDrive.test.ts`, and it is the drive the new arms were
+   added to. ✅ **Look for the FILE before concluding a cited spec is imaginary.**
 
 ### ⚠️ AC3 — the route count on this row is wrong, and it is FOUR, not nine
 

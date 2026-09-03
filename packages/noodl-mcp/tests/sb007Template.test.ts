@@ -724,13 +724,21 @@ describe('SB-007 — the NDA-017 migration cannot silence a mount-triggered node
     // `runOnChange-*` on a node whose script ends in an EFFECT is a defect, whatever the effect is.**
     //
     //   **+1, SBR-009 — the fourth instance of that shape, and it was found in a browser.**
-    //   `/Pages/ThemeEditor presets.in-name`. Three preset chips publish their `name` at MOUNT (a
-    //   `Component Inputs` constant per placement), so with the box ticked the picker ran three
-    //   times before anybody touched anything, last placement winning: the screen booted showing
-    //   the **Night** palette in its preview with all five boxes pre-filled, picked by nobody.
-    //   Measured on the rendered screen (`sbr009ThemeEditorDrive`), not reasoned — and it is the
-    //   same lesson one more time, that `run` is ADDITIVE and wiring it does not stop a node
-    //   running on its own.
+    //   `/Pages/ThemeEditor presets.in-pick` (`in-name` until D54 renamed the port). Three preset
+    //   chips publish their `name` at MOUNT (a `Component Inputs` constant per placement), so with
+    //   the box ticked the picker ran three times before anybody touched anything, last placement
+    //   winning: the screen booted showing the **Night** palette in its preview with all five
+    //   boxes pre-filled, picked by nobody. Measured on the rendered screen
+    //   (`sbr009ThemeEditorDrive`), not reasoned — and it is the same lesson one more time, that
+    //   `run` is ADDITIVE and wiring it does not stop a node running on its own.
+    //
+    //   🔴 **And silencing it was necessary and NOT sufficient — D54.** The checkbox stopped the
+    //   picker running at mount; it did nothing about the *value* that mount had left in the port.
+    //   All three chips still wrote into one `in-name`, last placement won, and every press
+    //   thereafter answered `night` — so the row above was a correct fix to the half of the defect
+    //   a screenshot could see. 🔴 **A `runOnChange` census asks WHEN a node runs and never asks
+    //   WHAT it will read**, and this is the second population in this file to be correctly
+    //   cleared of one hazard while carrying another.
     // ⚠️ **33 → 36 with SBR-010, and all three are the same lesson twice over.**
     // +1 is `/Pages/Messages tally.in-rows`, stated `false` after the drive read
     // the count sentence running on a REFUSED query; +2 are
@@ -738,7 +746,14 @@ describe('SB-007 — the NDA-017 migration cannot silence a mount-triggered node
     // is **D42** — the load-time fetch beside a `storageFetch` wire that stored
     // every enquiry twice. `run` is additive, and a second trigger nobody meant
     // is what both rows are.
-    expect(silenced(project)).toHaveLength(36);
+    //
+    // ⚠️ **36 → 37 with D54, and the new row is the fix, not a new hazard.**
+    // `/Admin/PresetChip pick.in-name` is the script that republishes a chip's own
+    // name at the moment it is pressed; the chip's `Component Inputs` constant
+    // arrives at MOUNT, so an unstated box would fire `Picked` on all three chips
+    // before anybody pressed one — the same shape as `presets` above, one level
+    // down. Counted here rather than exempted, because it belongs in this census.
+    expect(silenced(project)).toHaveLength(37);
 
     // ⚠️ Was `1 of 65` before DEF-007 §3.2. The one row it reached — `/Pages/PageEditor
     // hold.in-pageId` — left this population by being stated `true`: it is no longer silenced, so

@@ -3007,7 +3007,9 @@ const presetChip = (id: string, name: keyof typeof SITE_THEME_PRESETS) => ({
 function buildPresetPickerScript(): string {
   return [
     'const P = ' + JSON.stringify(SITE_THEME_PRESETS) + ';',
-    "const t = P[Inputs.name] || P.studio;",
+    // D54: the press arrives as `{ name }` from the chip that was pressed — see
+    // the `/Admin/PresetChip` module note for why it is an object and not a name.
+    "const t = P[(Inputs.pick || {}).name] || P.studio;",
     ...(Object.keys(THEME_TOKEN_FIELDS) as ThemeField[]).map(
       (field) => 'Outputs.' + portOf(field) + " = t." + field + " || '';"
     ),
@@ -3502,9 +3504,14 @@ export const THEME_EDITOR_NODES = [
       // signal" is to say it.
       //
       // 🔴 And `run` is ADDITIVE — wiring it does not stop a node running on its
-      // own. The pair is the fix: `in-name` is a value that must have LANDED, and
+      // own. The pair is the fix: `in-pick` is a value that must have LANDED, and
       // `run` is the moment a person chose.
-      'runOnChange-in-name': false,
+      //
+      // 🔴 D54: that pair was necessary and not sufficient. Three chips wired
+      // a MOUNT-time constant into this one port, so the value that had landed
+      // was always the last placement's — `night` — and the press only said
+      // *now*, never *which*. The chip now publishes `{ name }` at the press.
+      'runOnChange-in-pick': false,
       functionScript: buildPresetPickerScript()
     }
   },
@@ -3634,7 +3641,7 @@ export const THEME_EDITOR_WIRES = [
   // the signal arrives on click, long after — one producer, two ports, in that
   // order, which is the pairing SB-005's header says is safe.
   ...['presetStudio', 'presetPress', 'presetNight'].flatMap((chip) => [
-    { fromId: chip, fromProperty: 'name', toId: 'presets', toProperty: 'in-name' },
+    { fromId: chip, fromProperty: 'pick', toId: 'presets', toProperty: 'in-pick' },
     { fromId: chip, fromProperty: 'Picked', toId: 'presets', toProperty: 'run' }
   ]),
 
@@ -3698,9 +3705,47 @@ export const THEME_EDITOR_WIRES = [
  * 🔴 A component rather than three buttons and three one-line scripts, and the
  * reason is the same one that made `/Admin/Shell` a component: three copies of a
  * control are three controls that can disagree, and the `Component Inputs`
- * interface is what makes one component render three different chips. `name` is
- * a constant per placement, published at mount; `Picked` is the click. A page
- * receives both from one producer, in that order.
+ * interface is what makes one component render three different chips.
+ *
+ * ## 🔴 D54: the name is published AT THE CLICK, and the mount-time version was wrong
+ *
+ * This component used to wire `inputs.name` straight to `outputs.name` and
+ * `chip.onClick` straight to `outputs.Picked`, on the reasoning that a page
+ * *"receives both from one producer, in that order"*. That is true of **one**
+ * placement and false of three: all three chips publish their constant into the
+ * SAME `presets.in-name` port at mount, **last placement wins**, and the picker
+ * — which runs on the `run` signal, carrying no payload — then answered with
+ * whatever landed last no matter which chip a person pressed. It was always
+ * `night`, the third placement.
+ *
+ * That is what D54 recorded as *"the theme presets are dead on the deployed
+ * site"*: they were never dead. They fired on every click and published the
+ * wrong palette, and the screen it was measured on already held `night`'s
+ * values — so *"0 of 7 fields changed"* was **the right preset arriving
+ * twice**, not a chain that never ran. ⚠️ `runOnChange-in-name: false` on the
+ * picker (SBR-009) removed the visible half of this — the screen no longer
+ * *booted* wearing Night — and left the cause untouched.
+ *
+ * So `pick` publishes **the press itself** — `{ name }`, this chip's own — and
+ * fires `Picked` after it, in one script run. The value goes first and the pulse
+ * second, in the same invocation: the ordering contract the page's own picker
+ * already relies on when it writes twelve values and then pulses the five boxes'
+ * `set`.
+ *
+ * 🔴 **An OBJECT, and not the bare name, and the reason is a documented
+ * runtime behaviour.** A Function's `Outputs` proxy publishes an output *only
+ * when it changes* (`simplejavascript.ts`: *"Some Noodl projects rely on this
+ * behavior"*). A chip republishing the string `'studio'` it last published sends
+ * nothing, so the picker keeps whatever the chip pressed in between left in
+ * `in-pick` — measured on the deployed bundle: Studio, Press, Night read
+ * correctly and then **Studio again read Night**. A fresh object literal is
+ * never `===` its predecessor, so a press always lands. ⚠️ This is the same
+ * trap in a second costume: the first version of this fix was correct about
+ * *which* chip and still wrong on the fourth press.
+ *
+ * ⚠️ `runOnChange-in-name: false` here for the same reason it is on the picker:
+ * without it the constant arriving at mount would fire `Picked` on all three
+ * chips before anybody pressed anything.
  */
 export const PRESET_CHIP_NODES = [
   {
@@ -3738,11 +3783,29 @@ export const PRESET_CHIP_NODES = [
     ]
   },
   {
+    id: 'pick',
+    type: 'JavaScriptFunction',
+    label: 'This chip, at the moment it is pressed',
+    // Rule 1: a signal an author calls rather than assigns is declared, because
+    // `Outputs.picked()` is a call and the script parser reads assignments.
+    ports: [{ name: 'out-picked', plug: 'output', type: 'signal' }],
+    parameters: {
+      // See the module note above — the constant arrives at MOUNT, and a run on
+      // arrival would fire all three chips' `Picked` before anybody pressed one.
+      'runOnChange-in-name': false,
+      // The value first, the pulse second — and the value is a fresh object so a
+      // re-press of the same chip is not swallowed by the proxy's change check.
+      functionScript: ['Outputs.pick = { name: Inputs.name };', 'Outputs.picked();'].join('\n')
+    }
+  },
+  {
     id: 'outputs',
     type: 'Component Outputs',
     label: 'The pick',
     ports: [
-      { name: 'name', type: 'string', plug: 'input' },
+      // `*` and not `string`: this carries `{ name }`, for the reason in the
+      // module note above.
+      { name: 'pick', type: '*', plug: 'input' },
       { name: 'Picked', type: 'signal', plug: 'input' }
     ]
   }
@@ -3750,8 +3813,14 @@ export const PRESET_CHIP_NODES = [
 
 export const PRESET_CHIP_WIRES = [
   { fromId: 'inputs', fromProperty: 'label', toId: 'chip', toProperty: 'label' },
-  { fromId: 'inputs', fromProperty: 'name', toId: 'outputs', toProperty: 'name' },
-  { fromId: 'chip', fromProperty: 'onClick', toId: 'outputs', toProperty: 'Picked' }
+  // D54. The name goes to `pick`, not to `outputs` — a constant published at
+  // mount is the value that made every chip answer `night`.
+  { fromId: 'inputs', fromProperty: 'name', toId: 'pick', toProperty: 'in-name' },
+  { fromId: 'chip', fromProperty: 'onClick', toId: 'pick', toProperty: 'run' },
+  // Value first, signal second, out of one run — the picker downstream stores
+  // `in-pick` without running and then runs on `run`, so it reads THIS chip.
+  { fromId: 'pick', fromProperty: 'out-pick', toId: 'outputs', toProperty: 'pick' },
+  { fromId: 'pick', fromProperty: 'out-picked', toId: 'outputs', toProperty: 'Picked' }
 ];
 
 

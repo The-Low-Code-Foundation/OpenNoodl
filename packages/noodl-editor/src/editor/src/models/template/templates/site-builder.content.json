@@ -6541,18 +6541,52 @@
             "dynamicports": []
           },
           {
+            "id": "pick",
+            "type": "JavaScriptFunction",
+            "children": [],
+            "label": "This chip, at the moment it is pressed",
+            "x": 290,
+            "y": 160,
+            "parameters": {
+              "runOnChange-in-name": false,
+              "functionScript": "Outputs.pick = { name: Inputs.name };\nOutputs.picked();"
+            },
+            "ports": [
+              {
+                "name": "out-picked",
+                "plug": "output",
+                "type": "signal"
+              },
+              {
+                "name": "in-name",
+                "displayName": "name",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "out-pick",
+                "displayName": "pick",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              }
+            ],
+            "dynamicports": []
+          },
+          {
             "id": "outputs-3",
             "type": "Component Outputs",
             "children": [],
             "label": "The pick",
             "x": 290,
-            "y": 160,
+            "y": 280,
             "parameters": {},
             "ports": [
               {
-                "name": "name",
+                "name": "pick",
                 "plug": "input",
-                "type": "string"
+                "type": "*"
               },
               {
                 "name": "Picked",
@@ -6573,12 +6607,24 @@
           {
             "fromId": "inputs-13",
             "fromProperty": "name",
-            "toId": "outputs-3",
-            "toProperty": "name"
+            "toId": "pick",
+            "toProperty": "in-name"
           },
           {
             "fromId": "chip",
             "fromProperty": "onClick",
+            "toId": "pick",
+            "toProperty": "run"
+          },
+          {
+            "fromId": "pick",
+            "fromProperty": "out-pick",
+            "toId": "outputs-3",
+            "toProperty": "pick"
+          },
+          {
+            "fromId": "pick",
+            "fromProperty": "out-picked",
             "toId": "outputs-3",
             "toProperty": "Picked"
           }
@@ -7627,8 +7673,8 @@
             "x": 770,
             "y": 2560,
             "parameters": {
-              "runOnChange-in-name": false,
-              "functionScript": "const P = {\"studio\":{\"colorPrimary\":\"#1e4d8c\",\"colorOnPrimary\":\"#ffffff\",\"colorBackground\":\"#fbfaf8\",\"colorSurface\":\"#ffffff\",\"colorText\":\"#1b1a17\",\"colorTextSoft\":\"#56534c\",\"colorBorder\":\"#e3ded4\",\"colorAccentSoft\":\"#e7eef8\",\"radius\":\"6px\",\"fontDisplay\":\"\\\"Iowan Old Style\\\", Georgia, serif\",\"fontUi\":\"-apple-system, BlinkMacSystemFont, \\\"Segoe UI\\\", Roboto, sans-serif\",\"measure\":\"44rem\"},\"press\":{\"colorPrimary\":\"#8c2f22\",\"colorOnPrimary\":\"#fff8f2\",\"colorBackground\":\"#f5efe6\",\"colorSurface\":\"#fffdf9\",\"colorText\":\"#241a12\",\"colorTextSoft\":\"#5f5145\",\"colorBorder\":\"#e0d3c1\",\"colorAccentSoft\":\"#f6e5df\",\"radius\":\"2px\",\"fontDisplay\":\"\\\"Iowan Old Style\\\", Georgia, serif\",\"fontUi\":\"-apple-system, BlinkMacSystemFont, \\\"Segoe UI\\\", Roboto, sans-serif\",\"measure\":\"44rem\"},\"night\":{\"colorPrimary\":\"#d9a441\",\"colorOnPrimary\":\"#191713\",\"colorBackground\":\"#14161a\",\"colorSurface\":\"#1c1f25\",\"colorText\":\"#eceae5\",\"colorTextSoft\":\"#a7a49d\",\"colorBorder\":\"#2c3038\",\"colorAccentSoft\":\"#2a2418\",\"radius\":\"10px\",\"fontDisplay\":\"\\\"Helvetica Neue\\\", Arial, sans-serif\",\"fontUi\":\"-apple-system, BlinkMacSystemFont, \\\"Segoe UI\\\", Roboto, sans-serif\",\"measure\":\"44rem\"}};\nconst t = P[Inputs.name] || P.studio;\nOutputs.primary = t.colorPrimary || '';\nOutputs.onPrimary = t.colorOnPrimary || '';\nOutputs.background = t.colorBackground || '';\nOutputs.surface = t.colorSurface || '';\nOutputs.text = t.colorText || '';\nOutputs.textSoft = t.colorTextSoft || '';\nOutputs.border = t.colorBorder || '';\nOutputs.accentSoft = t.colorAccentSoft || '';\nOutputs.radius = t.radius || '';\nOutputs.fontDisplay = t.fontDisplay || '';\nOutputs.fontUi = t.fontUi || '';\nOutputs.measure = t.measure || '';\nOutputs.picked();"
+              "runOnChange-in-pick": false,
+              "functionScript": "const P = {\"studio\":{\"colorPrimary\":\"#1e4d8c\",\"colorOnPrimary\":\"#ffffff\",\"colorBackground\":\"#fbfaf8\",\"colorSurface\":\"#ffffff\",\"colorText\":\"#1b1a17\",\"colorTextSoft\":\"#56534c\",\"colorBorder\":\"#e3ded4\",\"colorAccentSoft\":\"#e7eef8\",\"radius\":\"6px\",\"fontDisplay\":\"\\\"Iowan Old Style\\\", Georgia, serif\",\"fontUi\":\"-apple-system, BlinkMacSystemFont, \\\"Segoe UI\\\", Roboto, sans-serif\",\"measure\":\"44rem\"},\"press\":{\"colorPrimary\":\"#8c2f22\",\"colorOnPrimary\":\"#fff8f2\",\"colorBackground\":\"#f5efe6\",\"colorSurface\":\"#fffdf9\",\"colorText\":\"#241a12\",\"colorTextSoft\":\"#5f5145\",\"colorBorder\":\"#e0d3c1\",\"colorAccentSoft\":\"#f6e5df\",\"radius\":\"2px\",\"fontDisplay\":\"\\\"Iowan Old Style\\\", Georgia, serif\",\"fontUi\":\"-apple-system, BlinkMacSystemFont, \\\"Segoe UI\\\", Roboto, sans-serif\",\"measure\":\"44rem\"},\"night\":{\"colorPrimary\":\"#d9a441\",\"colorOnPrimary\":\"#191713\",\"colorBackground\":\"#14161a\",\"colorSurface\":\"#1c1f25\",\"colorText\":\"#eceae5\",\"colorTextSoft\":\"#a7a49d\",\"colorBorder\":\"#2c3038\",\"colorAccentSoft\":\"#2a2418\",\"radius\":\"10px\",\"fontDisplay\":\"\\\"Helvetica Neue\\\", Arial, sans-serif\",\"fontUi\":\"-apple-system, BlinkMacSystemFont, \\\"Segoe UI\\\", Roboto, sans-serif\",\"measure\":\"44rem\"}};\nconst t = P[(Inputs.pick || {}).name] || P.studio;\nOutputs.primary = t.colorPrimary || '';\nOutputs.onPrimary = t.colorOnPrimary || '';\nOutputs.background = t.colorBackground || '';\nOutputs.surface = t.colorSurface || '';\nOutputs.text = t.colorText || '';\nOutputs.textSoft = t.colorTextSoft || '';\nOutputs.border = t.colorBorder || '';\nOutputs.accentSoft = t.colorAccentSoft || '';\nOutputs.radius = t.radius || '';\nOutputs.fontDisplay = t.fontDisplay || '';\nOutputs.fontUi = t.fontUi || '';\nOutputs.measure = t.measure || '';\nOutputs.picked();"
             },
             "ports": [
               {
@@ -7637,8 +7683,8 @@
                 "type": "signal"
               },
               {
-                "name": "in-name",
-                "displayName": "name",
+                "name": "in-pick",
+                "displayName": "pick",
                 "plug": "input",
                 "type": "*",
                 "group": "Inputs"
@@ -8109,9 +8155,9 @@
           },
           {
             "fromId": "presetStudio",
-            "fromProperty": "name",
+            "fromProperty": "pick",
             "toId": "presets",
-            "toProperty": "in-name"
+            "toProperty": "in-pick"
           },
           {
             "fromId": "presetStudio",
@@ -8121,9 +8167,9 @@
           },
           {
             "fromId": "presetPress",
-            "fromProperty": "name",
+            "fromProperty": "pick",
             "toId": "presets",
-            "toProperty": "in-name"
+            "toProperty": "in-pick"
           },
           {
             "fromId": "presetPress",
@@ -8133,9 +8179,9 @@
           },
           {
             "fromId": "presetNight",
-            "fromProperty": "name",
+            "fromProperty": "pick",
             "toId": "presets",
-            "toProperty": "in-name"
+            "toProperty": "in-pick"
           },
           {
             "fromId": "presetNight",
@@ -10545,7 +10591,7 @@
             "dynamicports": []
           },
           {
-            "id": "pick",
+            "id": "pick-2",
             "type": "JavaScriptFunction",
             "children": [],
             "label": "Settings first, then the secret",
@@ -10635,19 +10681,19 @@
           {
             "fromId": "settings-3",
             "fromProperty": "items",
-            "toId": "pick",
+            "toId": "pick-2",
             "toProperty": "in-rows"
           },
           {
             "fromId": "fallback",
             "fromProperty": "value",
-            "toId": "pick",
+            "toId": "pick-2",
             "toProperty": "in-fallback"
           },
           {
             "fromId": "fallback",
             "fromProperty": "completed",
-            "toId": "pick",
+            "toId": "pick-2",
             "toProperty": "run"
           },
           {
@@ -10657,19 +10703,19 @@
             "toProperty": "Failure"
           },
           {
-            "fromId": "pick",
+            "fromId": "pick-2",
             "fromProperty": "out-recipient",
             "toId": "outputs-6",
             "toProperty": "recipient"
           },
           {
-            "fromId": "pick",
+            "fromId": "pick-2",
             "fromProperty": "out-ready",
             "toId": "outputs-6",
             "toProperty": "Ready"
           },
           {
-            "fromId": "pick",
+            "fromId": "pick-2",
             "fromProperty": "out-failed",
             "toId": "outputs-6",
             "toProperty": "Failure"

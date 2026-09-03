@@ -104,18 +104,23 @@ const READ = `(function () {
   });
 })()`;
 
-const CLICK_NIGHT = `(function () {
-  var b = [].slice.call(document.querySelectorAll('button')).filter(function (x) { return x.textContent.trim() === 'Night'; })[0];
-  if (!b) return 'no Night chip';
+const CLICK = (label: string) => `(function () {
+  var b = [].slice.call(document.querySelectorAll('button')).filter(function (x) { return x.textContent.trim() === '${label}'; })[0];
+  if (!b) return 'no ${label} chip';
   b.click();
   return 'clicked';
 })()`;
+const CLICK_NIGHT = CLICK('Night');
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 let before: Reading;
 let after: Reading;
 let clickResult: string;
+/** D54's readings: a chip that is NOT the last placement, and then a re-press. */
+let afterStudio: Reading;
+let afterNightAgain: Reading;
+let afterStudioAgain: Reading;
 
 describe('SBR-009 AC2 — the preset restyles the preview and nothing else, driven at 1280×900', () => {
   beforeAll(async () => {
@@ -126,6 +131,19 @@ describe('SBR-009 AC2 — the preset restyles the preview and nothing else, driv
       clickResult = await page.evaluate(CLICK_NIGHT);
       await wait(600);
       after = JSON.parse(await page.evaluate(READ)) as Reading;
+
+      // D54. Three more presses on the same screen, in this order deliberately:
+      // Studio after Night is *which chip*, and Studio after Night again is
+      // *the same chip twice*. They are different defects with different fixes.
+      await page.evaluate(CLICK('Studio'));
+      await wait(600);
+      afterStudio = JSON.parse(await page.evaluate(READ)) as Reading;
+      await page.evaluate(CLICK('Night'));
+      await wait(600);
+      afterNightAgain = JSON.parse(await page.evaluate(READ)) as Reading;
+      await page.evaluate(CLICK('Studio'));
+      await wait(600);
+      afterStudioAgain = JSON.parse(await page.evaluate(READ)) as Reading;
     });
     // eslint-disable-next-line no-console
     console.log('        before:', JSON.stringify({ ...before, rule: before.rule }, null, 0));
@@ -243,5 +261,56 @@ describe('SBR-009 AC2 — the preset restyles the preview and nothing else, driv
     // They were empty before, with no backend to read a record from — so the
     // fill is the pick's and not the record's (asserted in its own arm above,
     // where the defect it guards is written down).
+  });
+
+  /**
+   * 🔴 **D54 — and this file is why it survived eleven sessions.**
+   *
+   * Every arm above clicks **Night**, which is the THIRD and last chip placed.
+   * All three chips wired their `name` into the same `presets.in-name` port as a
+   * mount-time constant, so `night` is what sat in it, and `run` carries no
+   * payload: the picker answered `night` whichever chip a person pressed. Night
+   * is the one press this drive could never have caught.
+   *
+   * It surfaced as *"the theme presets are dead on the deployed site"* — 0 of 7
+   * fields changed — because the screen it was measured on already held Night's
+   * values, so the right preset arriving twice read as nothing arriving at all.
+   * There was never a preview-versus-deploy difference.
+   *
+   * ⚠️ The chip now publishes `{ name }` at the press; the object matters and is
+   * graded in `d54ThemePresetIdentity.test.ts` §MUTANT.
+   */
+  it('D54: pressing Studio after Night gives STUDIO, not the last chip placed', () => {
+    const studio = SITE_THEME_PRESETS.studio;
+    expect(afterStudio.rule).toContain(`--primary: ${studio.colorPrimary}`);
+    expect(afterStudio.scopePrimary).toBe(studio.colorPrimary);
+    expect(afterStudio.scopeBackground).toBe(studio.colorBackground);
+    expect(afterStudio.scopeRadius).toBe(studio.radius);
+    // It MOVED off Night — the reading that separates "Studio arrived" from
+    // "the screen was already Studio".
+    expect(afterStudio.scopePrimary).not.toBe(after.scopePrimary);
+  });
+
+  /**
+   * 🔴 **The second half, and the first draft of the D54 fix passed everything
+   * above and failed this.** A Function publishes an output only when it
+   * CHANGES, so a chip republishing the string it last published sends nothing
+   * and the picker keeps whatever the chip pressed in between left behind.
+   */
+  it('D54: a chip pressed a SECOND time still answers with itself', () => {
+    expect(afterNightAgain.scopePrimary).toBe(SITE_THEME_PRESETS.night.colorPrimary);
+    expect(afterStudioAgain.scopePrimary).toBe(SITE_THEME_PRESETS.studio.colorPrimary);
+    expect(afterStudioAgain.scopeRadius).toBe(SITE_THEME_PRESETS.studio.radius);
+  });
+
+  /**
+   * The boxes follow the last press too — the person sentence for both arms
+   * above, since the boxes are what a client edits and then saves.
+   */
+  it('D54: the five boxes hold the LAST preset pressed, not the last one placed', () => {
+    const values = new Set(afterStudioAgain.boxes);
+    for (const f of THEME_EDITOR_FIELDS) {
+      expect(`${f.field}: ${values.has(SITE_THEME_PRESETS.studio[f.field])}`).toBe(`${f.field}: true`);
+    }
   });
 });
