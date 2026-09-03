@@ -180,7 +180,7 @@ that **rows 6, 6b, 7 and 8 all wait on Richard and a session cannot advance any 
 | **6 / 6b** | **AC6 — his look**, against `verdicts/vib-006/…/landing-desktop-full.png`. AC1–AC5 are met and re-measured; a session cannot close a person |
 | **6b, R6** | one word from him on `/unsubscribe`'s 2 grounds, which **AC4 names neither group of** |
 | **7** | his call on **when to publish** — the recommendation is unchanged, *fix first, publish once* |
-| **8** | `cline-dev` is **613 commits** ahead of `origin/cline-dev` (re-derived 09-03; it was 580 at s13). CI has run on none of it |
+| **8** | `cline-dev` is far ahead of `origin/cline-dev` — **613 at the start of s16, 618 by the end of it** (580 at s13). Peers commit *during* sessions, so 🔴 **re-derive at cut time, never quote a number from this board.** CI has run on none of it |
 
 🔴 **So do not open row 6 again looking for building to do — there is none, and s15 already said so.**
 
@@ -315,7 +315,7 @@ the recommendation is unchanged: **fix first, publish once.** Ask when his look 
 [the runbook §2](../release-0.2.2/PUBLISH-0.2.2.md): the nine `library/prefabs/*/library.json` files
 that also read `0.2.0` and must **not** move, and why the `package-lock.json` copy is **not** a gate.
 
-🔴 **Still blocked on Richard:** `cline-dev` is a long way ahead of `origin/cline-dev` (**613 unpushed, re-derived 2026-09-03; 580 at s13**), `origin/cline-dev` is at
+🔴 **Still blocked on Richard:** `cline-dev` is a long way ahead of `origin/cline-dev` (**618 at 2026-09-03 08:0x; 613 four hours earlier, 580 at s13 — it moves while you work**), `origin/cline-dev` is at
 2026-08-21, CI has run on none of it. **Derive the count again at cut time.** ✅ **Tag at `5c805978`
 or later** — anything earlier carries `0.2.0` in `artifactName`.
 
