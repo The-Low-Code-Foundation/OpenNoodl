@@ -3008,10 +3008,57 @@ only in that setting:
 Gate `sb007Template.test.ts` **62/62, `EXIT=0`**; the neighbourhood (`tests/sb0*`, `tests/sbr*`)
 **14 suites / 294 tests, `EXIT=0`**.
 
-⚠️ **What this does NOT prove.** The runtime consequence was measured on a **deploy built from a
+⚠️ **What s47 did NOT prove.** The runtime consequence was measured on a **deploy built from a
 patched project directory**, and the template artefact was verified to carry the setting. A
 **wizard-created project driven in the editor** was not re-driven — that is the confirming arm and
 it is cheap, but it was not run.
+
+### 🟢 s48 — that arm has now run, and it reverses
+
+Full record: **[`notes/d40/D40-CONFIRMING-ARM-2026-09-03-s48.md`](notes/d40/D40-CONFIRMING-ARM-2026-09-03-s48.md)**.
+
+The editor's **create wizard** was clicked through end to end (`New project` → `Start from a
+Template` → the **Site Builder** card, verified selected before `Next` → `Create Project`), and the
+project it wrote — `NodeGX test projects/d40-wizard-drive` — was served by the **editor's own live
+preview server** on `:8574`. One browser, held across three readings, at **1440×313**: a window
+short enough that the public site's 387px of content does not fit in it.
+
+One variable: the **Body Scroll** checkbox in the product's own project-settings panel.
+
+| at 1440×313, `http://127.0.0.1:8574/` | **ON** (as the wizard made it) | **OFF** | **ON again** |
+|---|---|---|---|
+| `body.className` | `body-scroll` | `""` | `body-scroll` |
+| `#root` overflow / position | `visible` / `static` | **`clip` / `fixed`** | `visible` / `static` |
+| `scrollingElement.scrollHeight` vs `clientHeight` | **387 > 313** | 313 = 313 | **387 > 313** |
+| `scrollTop` after scrolling to the bottom | **74** | **0 — did not move** | **74** |
+| the `Home` button's `top`, before → after | 322 → **248** | 322 → **322** | 322 → **248** |
+| `elementFromPoint` at its centre | **`SPAN\|Home`** | **`null`** | **`SPAN\|Home`** |
+
+🔴 **The middle column is what makes this a measurement rather than a green.** It reproduces this
+row's original signature exactly — a document that believes it is one screen tall, a `scrollTop`
+that will not move, and a real control below the fold whose `elementFromPoint` is `null` — and it is
+produced by one setting, in the same browser, on the same page, with the same verb. The third
+column rules out drift between two readings taken minutes apart.
+
+**Two further readings on the same project**: on disk, `nodegx.project.json` → `settings` reads
+`bodyScroll: true` (⚠️ **note the filename** — a wizard-created project is written in the **v2
+format**, so a check that greps `project.json` finds nothing there), and it still does after the
+OFF→ON round trip; and in the settings UI the Body Scroll row arrives `checked` /
+`aria-checked="true"`.
+
+✅ **The headless half is now a gate.** `tests-unit/sb-007/site-template.test.ts` asserts
+`bodyScroll: true` on the `project.json` that `EmbeddedTemplateProvider.install` actually writes —
+not on `site-builder.content.json`, because `instantiateContent` stands between the two. Checked
+against its reverted arm rather than trusted for being green: with the field deleted from the
+artefact, **exactly that test reddens and its sibling settings control stays green**.
+
+🔴 **What is still NOT settled, and must not be read as settled:** phase 81 **VIB-001's
+`unreachablePx = 0`**. That sweep was **not re-run** — the instrument above is a different one, and
+s47's account of the contradiction (a corpus mixing two create paths yields both readings) is an
+*explanation*, not a measurement. ⚠️ A **packaged** Electron window is also still unmeasured; every
+reading in this row's history, s48's included, is a browser. ⚠️ And the propagation fact this drive
+established is narrow: **the settings-panel route reaches a running preview over `ViewerConnection`
+with no reload**. Editing `nodegx.project.json` under a live editor is untested, not disproved.
 
 ⚠️ **Phase 81 VIB-001's contradicting `unreachablePx = 0` is now explicable** rather than
 unreconciled: any project whose settings carry `bodyScroll` scrolls normally, so a corpus mixing

@@ -149,6 +149,41 @@ describe('SB-007 — install writes a project that opens', () => {
     expect(project.components).toHaveLength(33);
   });
 
+  it('🔴 writes `bodyScroll: true` into the project a person receives (D40)', async () => {
+    // 🔴 **This is not a preference, it is whether the app can be used** — the
+    // sentence is `createProject.ts`'s own, where the MCP door has written this
+    // setting for every project it makes since REL-002a. The site-builder
+    // template's `settings` block said `{ htmlTitle, navigationPathType }` and
+    // stopped, and that single absence is D40: `viewer.jsx` adds `body-scroll`
+    // only when the setting is truthy, and without the class `#root` keeps
+    // `overflow: clip` / `position: fixed`, which — per NDA-008's own comment —
+    // *creates no scroll container at all*. Fourteen sessions read that as
+    // "nothing scrolls": not the wheel, not `scrollTop`, not `scrollIntoView`,
+    // because the page was never a scroll container. A person on a laptop could
+    // not reach 9 of the page editor's 16 fields.
+    //
+    // ⚠️ It is asserted **here**, on the installed `project.json`, and not only
+    // on `site-builder.content.json`. The artefact carrying the setting and the
+    // project carrying it are two claims: `instantiateContent` stands between
+    // them, and it is the code that has to understand the content. This is the
+    // half that says what the wizard actually wrote to disk.
+    const project = await installOnce('/projects/a');
+    expect((project as unknown as { settings?: Record<string, unknown> }).settings).toMatchObject({
+      bodyScroll: true
+    });
+  });
+
+  it('control: the other settings survived instantiation too', async () => {
+    // Without this, the assertion above is satisfied by an install that wrote a
+    // `settings` block containing nothing else — which would be a different
+    // regression wearing the same green.
+    const project = await installOnce('/projects/a');
+    expect((project as unknown as { settings?: Record<string, unknown> }).settings).toMatchObject({
+      htmlTitle: 'Site Builder',
+      navigationPathType: 'path'
+    });
+  });
+
   it('🔴 resolves a concrete rootNodeId, so the project has a home component', async () => {
     // 🔴 `instantiateContent`'s own header records why this is not decoration:
     // `ProjectModel.fromJSON` honours the `rootComponent` *name* only by calling
