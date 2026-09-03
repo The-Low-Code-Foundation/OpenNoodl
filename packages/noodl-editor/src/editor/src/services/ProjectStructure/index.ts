@@ -154,10 +154,48 @@ export class ProjectStructureService {
    * components' unsaved state, and without the local autosave echoing it back.
    */
   async reloadComponent(projectDir: string, componentPath: string): Promise<LegacyComponent> {
+    const { component } = await this.readComponentFromDisk(projectDir, componentPath);
+    this.markComponentBaseline(componentPath, component);
+    return component;
+  }
+
+  /**
+   * Reads one component off disk, bypassing any stale cache, and reports it
+   * alongside the two hashes a caller needs to decide what the change means —
+   * **without advancing the save baseline.**
+   *
+   * REL-009b split this out of {@link reloadComponent} for one reason. The
+   * watcher has to decide whether to apply a change *before* the baseline moves:
+   * a reload refused because the human has unsaved edits must leave the baseline
+   * describing the version the editor loaded, or REL-009a's `findExternallyChanged`
+   * stops seeing the conflict and the very next autosave clobbers the file the
+   * reload just declined to apply. Advancing the baseline and then refusing would
+   * disarm the guard that makes the refusal worth anything.
+   *
+   * It also means the decision and the application share ONE read. Reading twice
+   * — once to decide, once to apply — leaves a window in which the two reads
+   * disagree, and the thing applied is not the thing that was judged.
+   */
+  async readComponentFromDisk(
+    projectDir: string,
+    componentPath: string
+  ): Promise<{ component: LegacyComponent; diskHash: string; baselineHash: string | undefined }> {
     this.loader.invalidate(componentPath);
     const component = await this.loader.loadComponent(projectDir, componentPath);
+    return {
+      component,
+      diskHash: hashComponent(component),
+      baselineHash: this.saver.getDiskHash(componentPath)
+    };
+  }
+
+  /**
+   * Marks a component's on-disk baseline as matching `component`, so the local
+   * autosave neither clobbers nor echoes an external change we have applied.
+   * The apply half of {@link readComponentFromDisk}.
+   */
+  markComponentBaseline(componentPath: string, component: LegacyComponent): void {
     this.saver.noteExternalWrite(componentPath, component);
-    return component;
   }
 
   // ── Save ─────────────────────────────────────────────────────────────────────

@@ -320,3 +320,118 @@ describe('ProjectStructureService.saveProject — the guard vs our own rolled-ba
     expect(retry.changed).toEqual(['Pages/Home']);
   });
 });
+
+/**
+ * REL-009b — the read/apply split, and the one property that makes a refused
+ * reload worth anything.
+ *
+ * The watcher has to decide whether to apply an external change BEFORE the save
+ * baseline moves. If reading advanced the baseline, then a reload refused
+ * because the human has unsaved edits would leave the saver believing the disk
+ * holds what the editor loaded — and REL-009a's `findExternallyChanged` would
+ * stop seeing the conflict, so the very next autosave would clobber the file the
+ * reload had just declined to apply. The refusal would have DISARMED the guard
+ * that makes refusing worthwhile.
+ */
+describe('ProjectStructureService — reading a component without advancing the baseline (REL-009b)', () => {
+  /** Another writer changes Pages/Home on disk, the way an agent over MCP would. */
+  async function writeExternally(fs: MemFs, text: string) {
+    const other = new ProjectStructureService(fs);
+    const { project } = await other.loadProject(DIR);
+    const home = project.components.find((c) => c.name === '/Pages/Home')!;
+    home.graph.roots.push(makeNode(text, 'Text'));
+    const res = await other.saveProject(DIR, project);
+    expect(res.result).toBe('success');
+  }
+
+  it('reports the disk hash and the baseline, and leaves the baseline where it was', async () => {
+    const { fs, service } = setup();
+    await service.loadProject(DIR);
+
+    const baselineAtLoad = service.saver.getDiskHash('Pages/Home');
+    await writeExternally(fs, 'from-the-agent');
+
+    const read = await service.readComponentFromDisk(DIR, 'Pages/Home');
+
+    expect(read.baselineHash).toBe(baselineAtLoad);
+    expect(read.diskHash).not.toBe(baselineAtLoad);
+    // The read is a question, not a decision.
+    expect(service.saver.getDiskHash('Pages/Home')).toBe(baselineAtLoad);
+  });
+
+  it('advances the baseline only when the change is actually applied', async () => {
+    const { fs, service } = setup();
+    await service.loadProject(DIR);
+    const baselineAtLoad = service.saver.getDiskHash('Pages/Home');
+
+    await writeExternally(fs, 'from-the-agent');
+    const read = await service.readComponentFromDisk(DIR, 'Pages/Home');
+    service.markComponentBaseline('Pages/Home', read.component);
+
+    expect(service.saver.getDiskHash('Pages/Home')).toBe(read.diskHash);
+    expect(service.saver.getDiskHash('Pages/Home')).not.toBe(baselineAtLoad);
+  });
+
+  it('reloadComponent still reads and applies in one call, unchanged', async () => {
+    const { fs, service } = setup();
+    await service.loadProject(DIR);
+    await writeExternally(fs, 'from-the-agent');
+
+    const component = await service.reloadComponent(DIR, 'Pages/Home');
+
+    expect(JSON.stringify(component)).toContain('from-the-agent');
+    expect(service.saver.getDiskHash('Pages/Home')).toBe(
+      (await service.readComponentFromDisk(DIR, 'Pages/Home')).diskHash
+    );
+  });
+
+  /**
+   * 🔴 The pair that matters. Same external write, same dirty in-memory
+   * component; the ONLY difference is whether the reload was applied.
+   */
+  it('a REFUSED reload leaves REL-009a\'s guard armed — the next save still refuses', async () => {
+    const { fs, service } = setup();
+    const { project } = await service.loadProject(DIR);
+
+    // The human has unsaved edits to Pages/Home.
+    const home = project.components.find((c) => c.name === '/Pages/Home')!;
+    home.graph.roots.push(makeNode('the-humans-edit', 'Text'));
+
+    await writeExternally(fs, 'from-the-agent');
+
+    // The watcher reads, decides "refuse-dirty", and applies nothing.
+    await service.readComponentFromDisk(DIR, 'Pages/Home');
+
+    const res = await service.saveProject(DIR, project);
+
+    expect(res.refused).toEqual(['Pages/Home']);
+    expect(res.changed).not.toContain('Pages/Home');
+    // The agent's work is still on disk, untouched.
+    expect(fs.files.get(`${DIR}/components/Pages/Home/nodes.json`)).toContain('from-the-agent');
+    expect(fs.files.get(`${DIR}/components/Pages/Home/nodes.json`)).not.toContain('the-humans-edit');
+  });
+
+  it('the control: an APPLIED reload disarms it, because there is no longer a conflict', async () => {
+    const { fs, service } = setup();
+    const { project } = await service.loadProject(DIR);
+
+    await writeExternally(fs, 'from-the-agent');
+
+    const read = await service.readComponentFromDisk(DIR, 'Pages/Home');
+    service.markComponentBaseline('Pages/Home', read.component);
+
+    // Applying the reload means the in-memory project takes the disk copy too.
+    const idx = project.components.findIndex((c) => c.name === '/Pages/Home');
+    project.components[idx] = read.component;
+    // ...and then the human edits it.
+    project.components[idx].graph.roots.push(makeNode('edited-after-reload', 'Text'));
+
+    const res = await service.saveProject(DIR, project);
+
+    expect(res.refused).toBeUndefined();
+    expect(res.changed).toEqual(['Pages/Home']);
+    expect(fs.files.get(`${DIR}/components/Pages/Home/nodes.json`)).toContain('edited-after-reload');
+    // And the agent's work survived, because the reload took it into memory first.
+    expect(fs.files.get(`${DIR}/components/Pages/Home/nodes.json`)).toContain('from-the-agent');
+  });
+});

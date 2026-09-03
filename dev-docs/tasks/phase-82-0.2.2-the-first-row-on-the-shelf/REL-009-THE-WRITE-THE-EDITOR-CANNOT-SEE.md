@@ -362,6 +362,144 @@ defect is that the model and the disk disagree, and only a render can see that.
 
 ---
 
+---
+
+## §3.1 ✅ BUILT AND DRIVEN — 2026-09-03 (session 20). Four of five ACs met; AC3 is unmeasured, and the control is why
+
+**Fixture**: `NodeGX test projects/REL-009b Watcher Drive`, a **copy** of the REL-009a drive project
+(itself a copy of `Deadline Desk`), renamed on disk to `REL009B Watcher Drive` so its launcher card
+could not be confused with the original's — there were two cards reading `Deadline Desk` and nothing
+in the DOM distinguished them. **Agent side**: the real `noodl-mcp.cjs` over stdio (`get_component` →
+`update_component`), spawned against the copy. **Human side**: `npm run dev:debug -- --quiet`, project
+opened through the product's own door (`openProjectFromFolder`, then a real `cdp click` on its
+launcher card, hit-tested with `elementFromPoint` first because the card sat at y=7572 in a 76-project
+list). **The canvas is a `<canvas>`** — node labels are painted, not DOM — so a screenshot is not a
+convenience here, it is the only instrument that can see the AC.
+
+| AC | verdict | how it was read |
+|---|---|---|
+| **1** — watcher, debounced, ignores `.tmp`/`.git`, suppresses our own writes | 🟢 **MET** | 16/16 specs incl. a real-filesystem arm; **and driven**: the editor's own save moved `Fourth/nodes.json` (`5f52219a…` → `06ee7eda…`) and fired **0 reload events** |
+| **2** — the canvas shows it, without reopening | 🟢 **MET** | **Photographed.** `Second page` → `Marker` → `WATCHERPROOF` → `SECONDPROOF` → `CANVASPROOF`, tab still on `Second` |
+| **3** — the preview shows it | 🔴 **NOT ESTABLISHED** | the preview went blank mid-session **and the positive control failed too** — see below |
+| **4** — unsaved editor edits are not silently discarded | 🟢 **MET** | refused, photographed toast, human's copy intact in memory, agent's intact on disk |
+| **5** — the dead seam has a caller and a spec | 🟢 **MET** | `EditorPage.tsx` drives it; 5 new service specs, mutation-checked |
+
+### 🔴 U3 is answered, and the answer was NO — three listeners, on two event buses
+
+**The first build of this was wrong, and only the drive said so.** `reloadComponentFromDisk` swaps a
+component by `removeComponent` then `addComponent`, and **three** separate listeners treat that
+removal as a deletion:
+
+| # | listener | what it did to a reload |
+|---|---|---|
+| 1 | `UseSetupNodeGraph.useSwitchComponentAfterActiveComponentDeleted` (`componentRemoved`) | navigated the person to the **default component** |
+| 2 | `ModelBindings` → `navigationHistory.onComponentRemoved` (`componentRemoved`) | ran `discardInvalidEntries()` **between** the remove and the add, when the name resolves to nothing — punching a hole in back/forward |
+| 3 | `EditorEventBindings` (**`NodeLibrary`'s `typeRemoved` — a different bus**) | called `switchToComponent()` with **nothing** |
+
+🔴 **A flag on one event reaches only the listeners on that event.** Guarding `componentRemoved`
+alone left (3) untouched, and the canvas still went blank. That is not a thing this session reasoned
+out: an instrumented drive logged the sequence, and the middle line is the whole finding —
+
+```
+componentRemoved /Pages/Second reloadingFromDisk=true
+switchToComponent(UNDEFINED)          ← listener 3, on the other bus
+componentAdded   /Pages/Second reloadingFromDisk=true
+componentReloadedFromDisk new=/Pages/Second previous=/Pages/Second
+```
+
+After guarding all three, the same log reads `componentRemoved → componentAdded →
+switchToComponent(/Pages/Second)`, and a **stack trace** attributes that switch to
+`UseSetupNodeGraph.ts:128` ← `ProjectModel.reloadComponentFromDisk` ← `EditorPage.tsx:242`, i.e. to
+the hook this row added rather than to something incidental that was already there. **Worth taking the
+stack**: the first log made the switch look like it fired *before* `componentReloadedFromDisk`, which
+would have meant something else was doing the work and this row could claim no credit. It was a
+logging artefact — two listeners on one event, mine registered first.
+
+⚠️ **And the follow-hook no longer asks the question it cannot trust.** It answers *"were we showing
+it?"* at **removal** time and stores it, rather than reading `nodeGraph.activeComponent` at reload
+time — because that is live state any of these listeners may have moved first, which is exactly how
+the first draft failed. Listener (3) is guarded now; **reading a value another listener may have
+changed is the fragility, not the particular listener that changed it.**
+
+### 🔴 AC3 — the preview: the reading and the control BOTH read zero, so neither means anything
+
+MCP added `PREVIEWPROOF` to `Pages/Home`, the route the preview was showing. The **model took it**
+(`"/Pages/Home":[…,"PREVIEWPROOF"]`) and the **preview did not** — which looks exactly like
+*"a model swap does not propagate to the viewer"*, the thing §3 AC3 told us to verify rather than
+assume.
+
+**It is not that, and one more reading is what stopped it being filed.** An ordinary **editor** edit
+to the same component (`CONTROLEDITFROMEDITOR`) *also* never reached the preview, and the viewer
+target's `document.body.innerText.length` was **0**: the preview had gone blank at some point in the
+session, with a `⚠ 1` in the toolbar, and clicking its refresh did not bring it back. **A dead preview
+and a preview that ignores reloads are the same photograph.** So AC3 is **unmeasured**, not failed.
+
+✅ **What the next session should do**: a fresh stack, confirm the preview renders the control edit
+**first**, and only then write through MCP. The order matters — the control has to be known-firing
+*before* the absence is read, not after. ⚠️ Do not record a finding against `ViewerConnection` from
+this run; nothing here licenses one.
+
+### What was built
+
+| file | what |
+|---|---|
+| `services/ProjectFileWatcher/decide.ts` | the two pure judgements — path→component mapping, and the reload decision. **No imports**, so it is gradeable in plain jest |
+| `services/ProjectFileWatcher/index.ts` | the `fs.watch` driver, debounced, injectable. **D1 ruled here** |
+| `ProjectStructure/index.ts` | `readComponentFromDisk` / `markComponentBaseline` split out of `reloadComponent` |
+| `models/projectmodel.ts` | `reloadComponentFromDisk` returns a four-way outcome; `reloadingFromDisk` on both buses |
+| `views/documents/EditorDocument/hooks/UseSetupNodeGraph.ts` | guard + `useFollowComponentReloadedFromDisk` |
+| `views/nodegrapheditor/ModelBindings.ts`, `views/nodegrapheditor/EditorEventBindings.ts` | the other two guards |
+| `pages/EditorPage/EditorPage.tsx` | starts/stops the watcher; the refusal toast |
+
+**D1 — RULED: node `fs.watch`, not `chokidar`.** Recorded in the module's own docstring with its
+reasons and its one weakness (Linux recursion needs node ≥ 20), and `watchFactory` is injectable so
+the swap is a line rather than a rewrite. No dependency added to `noodl-editor`.
+
+### 🔴 The decision that makes a refusal worth anything, and the spec pair that pins it
+
+`reloadComponent` used to read **and** advance the baseline in one call. It is split because the
+watcher must decide **before** the baseline moves: a reload refused for unsaved edits that had
+already advanced the baseline would leave REL-009a's `findExternallyChanged` unable to see the
+conflict, so **the very next autosave would clobber the file the reload had just declined to apply.**
+The refusal would have disarmed the guard that makes refusing worthwhile.
+
+Graded as a pair — same external write, same dirty component, differing only in whether the reload
+was applied — and **verified in the running product**: with the reload refused, `Pages/Third` on disk
+stayed byte-identical (`afa79b59…`) across a real autosave, the agent's `AGENTWROTETHIRD` survived,
+and the human's edit reached disk **0 times** while staying intact in memory. Both people's work
+survived and both were told.
+
+⚠️ The split also means the decision and the application share **one** read. Reading twice — once to
+decide, once to apply — leaves a window in which the thing applied is not the thing that was judged.
+
+### 🔴 The ordering inside `decideComponentReload`, which is not interchangeable
+
+Unchanged-vs-baseline is tested **before** dirty. Sequence that forces it: the editor saves X
+(baseline := what it wrote), the human edits X again, and only then does the watcher event for that
+save arrive. Testing dirtiness first answers `refuse-dirty` and puts *"changed on disk outside the
+editor"* in front of a person about a file **the editor itself just wrote**. One spec pins this, and
+a mutant that swaps the two clauses reddens **that spec and no other**.
+
+### Gates
+
+- `tests-unit/rel-009b/projectFileWatcher.test.ts` — **16/16**, incl. a real-filesystem arm doing a
+  genuine two-phase `.tmp`+rename save. **Mutation-checked twice**: weakening the `.tmp` guard reddens
+  exactly the 2 `.tmp` arms; swapping the decision order reddens exactly the 1 ordering arm.
+- `tests/services/ProjectStructure/ProjectStructureService.test.ts` — **19/19** (5 new; REL-009a's 6
+  pre-existing arms still green). **Mutant**: making the read advance the baseline reddens exactly
+  the 2 arms that pin it, and leaves the applied-path control green.
+- `typecheck:editor` **exit 0, 0 errors**; `typecheck:editor-tests` **exit 0, 0 errors**.
+- `npm run test:ci` — see the session's handoff for the number; floor is 4, all AIX-006 by name.
+
+### ⚠️ Registered, owner `NONE`
+
+**`NavigationHistory.onComponentRemoved` can never match.** It stores `component.name` **strings**
+(`push` does `this.history.push(component.name)`) and filters with
+`this.history.filter((componentName) => componentName !== component)` — comparing a string to a
+`ComponentModel`, so the filter removes nothing, ever. The real work is done by the
+`discardInvalidEntries()` call underneath it. Pre-existing, unrelated to this row, and it blocks no AC
+here — but it is a dead line that reads as live, and the next person to trust it will be wrong.
+
 ## §4 Registered, unmeasured — do not build on these without reading them first
 
 | id | the question | why it is not answered here |

@@ -387,6 +387,11 @@ export class ModelBindings {
     ProjectModel.instance.on(
       'componentRemoved',
       (e) => {
+        // REL-009b: a reload swaps one model for another under the same name, so
+        // the removal is not a deletion. Purging the history here would punch a
+        // hole in back/forward for a component that is still there — and the
+        // entry is repointed by the switch that follows the swap.
+        if (e.reloadingFromDisk) return;
         _this.navigationHistory.onComponentRemoved(e.model);
       },
       this.editor

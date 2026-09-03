@@ -13,6 +13,9 @@ import Utils from '../utils/utils';
 import { ComponentModel } from './componentmodel';
 import LessonModel from './lessonmodel';
 import { NodeGraphModel, NodeGraphNode } from './nodegraphmodel';
+// DEF-040: one definition of "is the home inside this removed subtree", shared with
+// `NodeGraphModel.removeNode`. It imports nothing, so it adds no cycle here.
+import { isRootWithinRemoved } from './nodegraphmodel/rootNodeRemoval';
 import { NodeLibrary } from './nodelibrary';
 import {
   listProjectIconSets,
@@ -24,10 +27,19 @@ import {
 import { VariantModel } from './VariantModel';
 import { projectStructureService, projectMigrator } from '../services/ProjectStructure';
 import type { PreflightReport, MigrationResult } from '../services/ProjectStructure';
+import { hashComponent } from '../services/ProjectStructure/ComponentSaver';
 import { isV2FormatEnabled } from '../services/ProjectStructure/featureFlags';
+import { decideComponentReload } from '../services/ProjectFileWatcher/decide';
 
 /** Which on-disk format a loaded project uses. Set at load; drives the save path. */
 export type ProjectFormatKind = 'legacy' | 'v2';
+
+/**
+ * REL-009b — what {@link ProjectModel.reloadComponentFromDisk} did about a
+ * component whose files changed underneath the editor. A boolean could not say
+ * the thing a caller most needs to act on: *why* nothing was applied.
+ */
+export type ReloadFromDiskOutcome = 'reloaded' | 'unchanged' | 'refused-dirty' | 'not-applicable';
 
 /**
  * WF-007: discriminates whether the endpoint this pointer targets is known
@@ -329,11 +341,15 @@ export class ProjectModel extends Model {
     this.components.push(component);
     this.notifyListeners('componentAdded', {
       model: component,
-      undo: args ? args.undo : undefined
+      undo: args ? args.undo : undefined,
+      // REL-009b — see the matching note in `removeComponent`.
+      reloadingFromDisk: args?.reloadingFromDisk === true
     });
 
     NodeLibrary.instance.notifyListeners('typeAdded', {
-      model: component
+      model: component,
+      // REL-009b — see the matching note in `removeComponent`.
+      reloadingFromDisk: args?.reloadingFromDisk === true
     });
 
     // Undo
@@ -410,18 +426,41 @@ export class ProjectModel extends Model {
       component.owner = undefined;
       this.components.splice(idx, 1);
 
-      //reset the root node if we're deleting the root component
-      if (this.rootNode?.owner?.owner === component) {
+      /**
+       * Reset the root node if we're deleting the root component.
+       *
+       * DEF-040 (phase 80) — **the same hole as `removeNode`, on a path that is not refused.**
+       * Deleting the root component from the Components panel is refused today, but
+       * `utils/import-engine/apply.ts` calls `removeComponent` directly and is not, so this
+       * branch is reachable by an import that replaces the component holding the home. The undo
+       * pushed below re-adds the component and — until DEF-040 — left the project with no home.
+       */
+      const rootNodeBefore = this.rootNode;
+      const removingTheRootComponent = this.rootNode?.owner?.owner === component;
+      if (removingTheRootComponent) {
         this.setRootNode(null);
       }
 
       this.notifyListeners('componentRemoved', {
         model: component,
-        undo: args ? args.undo : undefined
+        undo: args ? args.undo : undefined,
+        // REL-009b: this removal is half of a swap, not a deletion. A view that
+        // reacts to a component disappearing — the node graph navigates away
+        // from it — must be able to tell the two apart, or reloading the
+        // component someone is looking at throws them off it.
+        reloadingFromDisk: args?.reloadingFromDisk === true
       });
 
+      // 🔴 REL-009b: the removal fans out onto TWO event buses, and a flag on one
+      // of them reaches only half the listeners. Guarding `componentRemoved`
+      // alone left `EditorEventBindings`' `typeRemoved` handler — a different
+      // bus, the same question — calling `switchToComponent()` with nothing, so
+      // the canvas still went blank on a reload. Measured, not reasoned: the
+      // instrumented drive logged `switchToComponent(UNDEFINED)` between the
+      // remove and the add.
       NodeLibrary.instance.notifyListeners('typeRemoved', {
-        model: component
+        model: component,
+        reloadingFromDisk: args?.reloadingFromDisk === true
       });
       component.off(this);
 
@@ -436,6 +475,12 @@ export class ProjectModel extends Model {
           },
           undo: function () {
             _this.addComponent(component);
+
+            // DEF-040: the component is back; the home has to come back with it, and only after
+            // the re-add so the project never points at a node no component contains.
+            if (removingTheRootComponent) {
+              _this.setRootNode(rootNodeBefore);
+            }
           }
         });
 
@@ -792,33 +837,71 @@ export class ProjectModel extends Model {
    * save baseline for the component, so the next autosave neither clobbers nor
    * echoes the external change.
    *
-   * v2 projects only; a no-op (resolves false) otherwise. Autosave is suspended
-   * during the swap so the reload itself does not schedule a save-back.
+   * v2 projects only; `'not-applicable'` otherwise. Autosave is suspended during
+   * the swap so the reload itself does not schedule a save-back.
+   *
+   * REL-009b gave it the three judgements a file watcher needs it to make, all
+   * of them in `decideComponentReload`:
+   *
+   * - `'unchanged'` — the disk already matches our baseline, so this is the
+   *   editor's own save coming back through the watcher. Applying it would be
+   *   harmless but it would still churn the canvas, and at autosave frequency
+   *   that is every few seconds.
+   * - `'refused-dirty'` — the human has unsaved edits to this component.
+   *   Reloading would discard them silently, which is REL-009a arm C wearing
+   *   its other face; those two rows must not answer it differently.
+   * - `'reloaded'` — swapped in, and `componentReloadedFromDisk` carries both the
+   *   new model and the one it replaced, so a view holding the old reference can
+   *   follow it rather than discover it is showing a detached model.
    *
    * @param componentPath Registry path of the component (e.g. "Pages/Home").
-   * @returns true if a component was reloaded and swapped in.
    */
-  async reloadComponentFromDisk(componentPath: string): Promise<boolean> {
-    if (this._projectFormat !== 'v2' || !this._retainedProjectDirectory) return false;
+  async reloadComponentFromDisk(componentPath: string): Promise<ReloadFromDiskOutcome> {
+    if (this._projectFormat !== 'v2' || !this._retainedProjectDirectory) return 'not-applicable';
 
-    const legacyComponent = await projectStructureService.reloadComponent(
-      this._retainedProjectDirectory,
-      componentPath
-    );
-    const newModel = ComponentModel.fromJSON(legacyComponent);
+    const { component: legacyComponent, diskHash, baselineHash } =
+      await projectStructureService.readComponentFromDisk(this._retainedProjectDirectory, componentPath);
+
     const existing = this.getComponentWithName(legacyComponent.name);
+    const decision = decideComponentReload({
+      baselineHash,
+      inMemoryHash: existing ? hashComponent(existing.toJSON()) : undefined,
+      diskHash
+    });
+
+    if (decision.action === 'skip-unchanged') return 'unchanged';
+
+    if (decision.action === 'refuse-dirty') {
+      // 🔴 The baseline is deliberately NOT advanced here. It still describes the
+      // version this editor loaded, which is what keeps REL-009a's
+      // `findExternallyChanged` able to see that the file has moved underneath
+      // us — so the next autosave refuses to write over the external change
+      // rather than clobbering it. Telling the person is the other half; a
+      // refusal nobody is told about is the same data loss with a nicer name.
+      this.notifyListeners('componentReloadRefused', { componentPath, component: existing });
+      EventDispatcher.instance.notifyListeners('ProjectModel.componentReloadRefused', { componentPath });
+      return 'refused-dirty';
+    }
+
+    projectStructureService.markComponentBaseline(componentPath, legacyComponent);
+    const newModel = ComponentModel.fromJSON(legacyComponent);
 
     const wasSaving = saveOnModelChange;
     ProjectModel.setSaveOnModelChange(false);
     try {
-      if (existing) this.removeComponent(existing);
-      this.addComponent(newModel);
+      // `reloadingFromDisk` rides on the removal so the views that treat a
+      // `componentRemoved` as a deletion can tell this apart from one. Without
+      // it the node graph, whose active component is the model being swapped
+      // out, navigates the person away to the default component mid-reload —
+      // REL-009b §4 U3, and the reason this is not a two-line change.
+      if (existing) this.removeComponent(existing, { reloadingFromDisk: true });
+      this.addComponent(newModel, { reloadingFromDisk: true });
     } finally {
       ProjectModel.setSaveOnModelChange(wasSaving);
     }
 
-    this.notifyListeners('componentReloadedFromDisk', { component: newModel });
-    return true;
+    this.notifyListeners('componentReloadedFromDisk', { component: newModel, previous: existing });
+    return 'reloaded';
   }
 
   // ── v2 migration (SUB-003) ──────────────────────────────────────────────────
@@ -1467,11 +1550,31 @@ export class ProjectModel extends Model {
   }
 }
 
-// Watch if the project root is removed
+/**
+ * Watch if the project root is removed.
+ *
+ * DEF-040 (phase 80) — **the whole removed subtree counts, not just its top.**
+ *
+ * `NodeGraphModel.removeNode` drops every descendant from `nodeMap` but notifies for the node it
+ * was handed and **nothing else**. So a home node sitting *inside* a deleted Group left this test
+ * reading `false`: the home was gone from the graph while `rootNode` went on pointing at it — a
+ * **dangling** root rather than a null one, which is the opposite failure and the worse of the
+ * two. `getRootNode()` then answers a node no component contains, and `toJSON` writes its id into
+ * `rootNodeId` for a node that is not in the file.
+ *
+ * ⚠️ `NodeGraphNode.forEach` visits the node itself first and **stops on the first truthy
+ * return** — it is a `find`, not a `forEach`. That is exactly what is wanted here, and it is why
+ * this covers the `=== e.args.model` case too.
+ */
 EventDispatcher.instance.on(
   'Model.nodeRemoved',
   function (e) {
-    if (ProjectModel.instance && ProjectModel.instance.getRootNode() === e.args.model) {
+    if (!ProjectModel.instance) return;
+
+    const rootNode = ProjectModel.instance.getRootNode();
+    if (!rootNode) return;
+
+    if (isRootWithinRemoved(rootNode, e.args.model)) {
       ProjectModel.instance.setRootNode(undefined);
     }
   },

@@ -24,6 +24,8 @@ import ProjectValidator from '@noodl-utils/projectvalidator';
 import SchemaHandler from '@noodl-utils/schemahandler';
 import { guid } from '@noodl-utils/utils';
 
+import { ProjectFileWatcher } from '../../services/ProjectFileWatcher';
+
 import { ActivityIndicator } from '@noodl-core-ui/components/common/ActivityIndicator';
 import { ErrorBoundary } from '@noodl-core-ui/components/common/ErrorBoundary';
 import { FrameDivider } from '@noodl-core-ui/components/layout/FrameDivider';
@@ -213,9 +215,55 @@ export function EditorPage({ route }: EditorPageProps) {
       eventGroup
     );
 
+    // REL-009b — the same collision seen from the other side. The reload was
+    // refused because this component has unsaved edits here, so the person is
+    // holding one version and the disk holds another. REL-009a's message covers
+    // the moment a save is refused; this covers the moment the write lands, which
+    // is earlier and is the first point at which anyone could act.
+    EventDispatcher.instance.on(
+      'ProjectModel.componentReloadRefused',
+      (args: { componentPath: string }) => {
+        ToastLayer.showError(
+          `${args?.componentPath} changed on disk outside the editor, but you have unsaved changes ` +
+            `to it here. Your version is untouched and was not overwritten — reopen the project to ` +
+            `take the other one.`,
+          10000
+        );
+      },
+      eventGroup
+    );
+
+    // REL-009b — watch the open project's component files so an agent's write
+    // reaches the canvas without reopening the project. v2 projects only; the
+    // watcher is a no-op without a retained directory (i.e. off Electron).
+    const fileWatcher = new ProjectFileWatcher();
+    const projectDirectory = ProjectModel.instance?._retainedProjectDirectory;
+    if (projectDirectory) {
+      fileWatcher.start(projectDirectory, (componentPaths) => {
+        // Sequential, not `Promise.all`: each reload swaps a model in and out of
+        // the project, and letting several interleave means one reload's
+        // `componentRemoved` can land inside another's swap.
+        void componentPaths.reduce(
+          (chain, componentPath) =>
+            chain.then(async () => {
+              try {
+                await ProjectModel.instance?.reloadComponentFromDisk(componentPath);
+              } catch (error) {
+                // A component mid-write, or deleted between the event and the
+                // read. The next event for it will find it settled; taking the
+                // renderer down over it would be far worse than missing it.
+                console.warn(`[REL-009b] could not reload ${componentPath} from disk`, error);
+              }
+            }),
+          Promise.resolve()
+        );
+      });
+    }
+
     setIsLoading(false);
 
     return function () {
+      fileWatcher.stop();
       EventDispatcher.instance.off(eventGroup);
 
       if (SchemaHandler.instance) {

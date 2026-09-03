@@ -402,7 +402,27 @@ describe('SB-017: the editor deploy path ships every connection the template hol
     // sentences) and `/Pages/Messages tally` (the count-or-empty sentence).
     // ⚠️ The count is the POPULATION; the line below is the CLAIM — and while
     // this literal was stale that claim did not run at all, for three sessions.
-    expect(browserFunctions.length).toBe(34);
+    //
+    // 🔴 **34 → 35 is REL-011b AC1's, and this is the FOURTH session in a row to
+    // move this population without running the gate that counts it.** The one
+    // component that changed is `/Admin/PresetChip`, which gained its first
+    // Function node when P82 s19 fixed D54: three theme chips wired a
+    // `Component Inputs` constant into the SAME `presets.in-name`, so last
+    // placement won and every press published `night`. The chip now publishes
+    // `{ name }` — its own — at the press. That session ran the full `noodl-mcp`
+    // suite and `template:site-builder` and neither can see this literal; the
+    // editor's `test:ci` is the only runner that can, and P82 s20 is the session
+    // that ran it. Attributed by counting the artefact either side of
+    // `3f95a804`, not by inference: 34 before, 35 after, `/Admin/PresetChip`
+    // the sole mover.
+    //
+    // ⚠️ The increment is NOT the point and must not be made silently. What has
+    // to stay true is the line below: the cloud adapters must have written no
+    // ports onto that new browser Function node either, or the ruling's scope
+    // has leaked. It is a browser component's Function, the viewer pushes its
+    // ports over `sendDynamicPorts`, and a cloud adapter that also wrote them
+    // would be a second writer on the same `setDynamicPorts`.
+    expect(browserFunctions.length).toBe(35);
     expect(browserFunctions.filter((node) => (node.dynamicports || []).length > 0)).toEqual([]);
 
     // …and the same sweep on the cloud side did write ports, so the assertion

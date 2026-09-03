@@ -96,6 +96,13 @@ export function registerRenderEventBindings(editor: NodeGraphEditor): void {
   NodeLibrary.instance.on(
     'typeRemoved',
     (args) => {
+      // REL-009b: a reload from disk removes the old model and adds a new one
+      // under the same name. Letting go of the canvas here would blank it
+      // mid-swap — and, worse, would leave `activeComponent` undefined, so the
+      // hook that puts the new model back cannot tell it was ever showing.
+      // `useFollowComponentReloadedFromDisk` does the re-point.
+      if (args.reloadingFromDisk) return;
+
       if (editor.model && args.model === editor.model.owner) {
         editor.switchToComponent();
       }
