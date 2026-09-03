@@ -1,283 +1,212 @@
 # Phase 80 — next session
 
-🟢 **PHASE 80 IS COMPLETE. All 38 rows are ✅.** Session 41 closed the last two of the original 37 on
-Richard's rulings. **Session 42 (2026-09-03) added a 38th and closed it**: DEF-038, promoted out of
-[UNOWNED-ROWS-TO-MEASURE.md §10](UNOWNED-ROWS-TO-MEASURE.md) — a row that had been measured on
-2026-08-31 and left unowned.
+🟡 **44 of 45 rows in the table are ✅. The one that is open needs Richard, not a session.**
 
-🔴 **A closed phase is not a sealed one.** §10 sat measured-and-unowned for three days beside a
-banner saying the phase was done. **Nine of that file's ten rows are still unowned**, and the same
-is true of every one of them.
+Session 44 (2026-09-03) answered Richard's *"are there defects recorded but not scoped for 0.2.2?
+I'd like to tackle them"* — thirteen were, he picked three, and all three are built and gated as
+**DEF-044 / DEF-045 / DEF-046**.
 
-🔴 **The next session's first job is NOT in this phase** — the board has nothing open. It is to pick
-up another phase's board (**P82** and **P81** are the current ones), or one of the nine remaining
-unowned rows. ⚠️ **Next free id is now `DEF-039`.**
-
----
-
-## What session 42 did — DEF-038
-
-**The row:** DEF-007 §3.2 settled the site builder's generator (`toTemplateContent`) against
-NDA-017's load-time migration and gated it in `sb007Template.test.ts`. `prepareArtefact` — TPL-001,
-the members' area — was never touched, and its shipped artefact disagreed with its own editor load
-in **57 stored parameters**. A person who installs it and opens it loses load-time fetches, having
-changed nothing.
-
-**Re-measured at HEAD before building** (the row was three days old): still **57 writes / 107 family
-nodes**, control still **0 / 97**. `familyNodes` had moved 105 → 107; `writes` had not.
-
-**Built:** `pinRunOnValueChangeDefaultsInDirectory` in a new `templateArtefact.ts`, one call in
-`prepareArtefact`, artefact regenerated (57 insertions, 0 deletions, nothing else moved), and a gate
-that **derives** its population across both generators rather than listing them. 2 mutants, each
-killed by its own arm; the second regenerates an artefact byte-identical to pre-fix HEAD, which is
-what proves the fix is in the generator.
-
-🔴 **Two things worth carrying, neither about this row:**
-
-1. **`Tests: 0 total` from a peer's half-saved file.** The gate's first run died on `FIELD is not
-   defined` in `sb006Components.ts` — a lane with nothing to do with this one — because
-   `readAsLegacyProject` lived in a module that imports the whole site-builder authoring surface at
-   module scope. **The extraction into `templateArtefact.ts` is part of the fix**, and it was proved
-   by the gate then running green while that file was still broken.
-2. **The known hole is stated rather than closed.** A third template written as a `.ts` module (like
-   `hello-world.template.ts`) escapes the derived sweep. It has no family nodes today, so there is
-   nothing to settle — but the sweep would not say so if there were.
-
-Read [DEF-038](DEF-038-THE-OTHER-GENERATOR-DISAGREES.md) §*Bounds*, not this summary.
-
----
-
-## The board
-
-**38 rows. 38 ✅.**
-
-🔴 **Derive it from the STATUS COLUMN, never `grep -av '✅'`** (a ✅ in prose filters the row out):
+🔴 **Derive the board from the STATUS COLUMN, never `grep -av '✅'`** (a ✅ in prose filters the row
+out):
 
 ```
 grep -aE '^\| DEF-0[0-9]{2} \|' TASKS.md | awk -F'|' '{gsub(/^ +| +$/,"",$3); print ($3 ~ /^✅/) ? "done" : "open"}' | sort | uniq -c
 ```
+Reads **44 done / 1 open** over **45 rows** at the time of writing.
 
-🔴 **Closed is not fully measured, and a closing session is exactly when that gets forgotten.**
-The boundaries below outlive the phase. **Say them whenever you quote a row.**
+⚠️ **Next free id is `DEF-047`.** 🔴 **`DEF-043` is CLAIMED BY PHASE 82 and has no row here** — the
+deprecated `DbCollection`'s copy of the failed-fetch defect, measured but unwritten. **Read the
+claim line in the header of [UNOWNED-ROWS-TO-MEASURE.md](UNOWNED-ROWS-TO-MEASURE.md), not the
+highest number in the table** — s44 took an id, and a peer had claimed the next one **while s44 was
+building in another repository**.
 
 ---
 
-## What session 41 did
+## 🔴 FIRST: NOTHING IS COMMITTED, AND TWO SESSIONS' WORK IS IN THE TREE
 
-### 1. DEF-036 — closed on a ruling, with nothing built
+**s44's changes span two repositories and neither is committed:**
 
-🧭 **Richard ruled part 3 means THE CANVAS.** His sentence — *"it would remain … but be a dotted
-line, and the errors would flag that the port doesn't exist anymore"* — describes three things
-that **already ship**, measured at HEAD in s38 and driven in a real editor in s39. The only other
-reading was *"and it should survive the export too"*, which reverses DEF-034.
-
-**Nothing was built. DEF-034 stands. The 271 wires still leave the build, by design.** See
-[DEF-036 §10](DEF-036-THE-USER-FAMILY-HAS-NO-NET.md) and
-[RICHARD-RULINGS-2026-08-31.md](RICHARD-RULINGS-2026-08-31.md) §6.
-
-### 2. DEF-007 AC2 — closed on a drive, and the blocker was a wrong assumption
-
-🧭 **Richard ruled: publish one now, then drive it.**
-
-🔴 **The thing that had blocked AC2 since s38 was not true.** The row said *"the picker cannot
-reach a curated template until one is published"*, and publishing was assumed to need a signed-in
-session on the live `community.nodegx.io`. It does not. The shelf is served by `nodegx-community`,
-which **runs locally**, and publishing a curated template is a **database-credential act** —
-`scripts/publish-project-template.ts`. `0021`'s own header says it: *"Share as template files a
-SUBMISSION. It does not publish."*
-
-**So the whole path was driven locally, over a real socket, against the real route handlers, and
-nothing was published to the live service.** Full account in
-[DEF-007 §8](DEF-007-DISK-AND-LOAD-DISAGREE.md).
-
-| AC2 | reading |
+| repo | files |
 | --- | --- |
-| the picker | drew **`DEF-007 Home Check` … `Starter` … `Community`** beside the two built-ins |
-| install | real install through the wizard to `def007-ac2-drive` |
-| **the result** | `rootNode.id` = the published id; **`activeComponent` = `App`** |
+| `nodegx-community` (`/Users/richardosborne/vscode_projects/nodegx-community`, on `2bce720`) | `src/lib/projecttemplates.ts` + 5 spec files — **DEF-044** |
+| `OpenNoodl` | `nodegx-backend/src/server/HttpServer.ts`, `tests/ops-{request-id,rate-limit}.test.ts`, new `tests/def045-nested-function-address.test.ts`, `noodl-editor/tests/cloud/cloudFunctions.test.ts` — **DEF-045** |
+| `OpenNoodl` | `noodl-runtime/src/{node.ts,run-on-value-change.ts}`, 10 node files, `test/corpus/nda-012-…`, new `test/corpus/def046-unchanged-value-reruns.test.ts`, `noodl-types/src/runtime/node-definition.d.ts`, `nodegx-node-kit-types/src/index.d.ts` — **DEF-046** |
 
-🔴 **The control is what makes that a measurement.** `App` is **index 3 of 4** and alphabetically
-last in the fixture — chosen for exactly that reason, because on a one-component template
-*"opened on the home"* and *"opened on the first component"* give the same answer and a pass
-proves nothing. The identical template with **only `rootNodeId` deleted** lands on
-`/#__page__/Acme Legal Client Portal`, **index 0**.
+🔴 **AND s43's cluster is still uncommitted and unowned** — a phase-82 session named it in
+`7d651798` and had to carry two of its files in `eff946c6` because the hunks interleaved.
+Reportedly: `NodeGraphModel.ts`, `NodeOperations.ts`, `NodeGraphEditorConnection.ts`,
+`ComponentLoader.ts`, `projectmodel.editor.ts`, `io/Project{Ex,Im}porter.ts`,
+`nodegraphmodel/connectionEnds.ts`, `tests/models/index.ts`, plus untracked
+`tests/models/RootNodeUndo.test.ts` and `tests-unit/def-039..041`. ⚠️ **That set came from mtime
+clustering — a heuristic, not a measurement. Confirm before committing.** TASKS.md records
+DEF-039/040/041 as BUILT, so **the register and the tree disagree**, and they will keep disagreeing
+until somebody lands it.
 
-### 3. A stale number in shipped source, corrected in TWO files
-
-A peer flagged that `applypatches.js:5`'s *"differ in **56 stored parameters**"* is false at HEAD.
-**Verified independently before acting on it** — `writes: 0, familyNodes: 82, signalDrivenNodes:
-40, preserved: 91`. ✅ **The 82 and the 91 are the known-firing signals that make the 0 a measured
-absence rather than a dead read.**
-
-⚠️ **The peer knew about one file; the number was in two.** `projectLoadSeam.ts:14` carried
-*"56 writes across 13 components"* as well. Both now state the figure is zero **and why a zero
-does not mean the seam closed** — s31 made `toTemplateContent` state the values itself, so
-site-builder stopped exercising it; any template that leaves a governed input unstated still
-differs.
+✅ Use `git commit <pathspecs>`, **never stage** — a sibling's commit sweeps staged files, and this
+checkout has live peers. ⚠️ `git add` untracked files first; a pathspec commit **skips them
+silently**.
 
 ---
 
-## 🔴 Owed on rows marked ✅ — say this before quoting them
+## 🧭 THE ONE OPEN ROW IS RICHARD'S — DEF-042
 
-- **DEF-036 §10's four boundaries.** AC5's **rendering** half is graded **by rule only** (no
-  reachable `_User` table; `TableRow.tsx` imports `Icon`, so a spec importing it fails *to run*) —
-  whether the rename affordance disappears is **unmeasured**. `SignUp` was **never the node
-  driven**. **No external-backend arm was driven.** AC4's `status:'schema'` arm used an
-  **injected** outcome, so it grades the panel wiring, not the fetch.
-- **DEF-007's wiring is graded by the DRIVE ALONE** — `EditorClipboard` cannot be imported under
-  this jest (`bugtracker.ts` calls `platform.getUserDataPath()` at module scope).
-- **DEF-007: the publish refusal was never driven through the real share UI.**
-- **DEF-007 AC4's scan cannot see a reader that never constructs a `ProjectModel`** — code export,
-  the MCP server, template generation.
-- **DEF-037's deployed-app arm is untested end to end**; `borderColor` on Checkbox and Radio
-  Button were not driven.
-- ⬜ **DEF-031's and DEF-029's panel halves** both still need the property panel read out of the
-  DOM. ✅ `cdp click` takes a SELECTOR — stamp an id first.
-- ⬜ **DEF-005's `Roles` output has still not been driven** in a real editor.
+[DEF-042](DEF-042-A-THROWING-LISTENER-KILLS-THE-BACKEND.md) is **measured, diagnosed and
+deliberately unbuilt**. A session cannot advance it; it needs a decision about blast radius.
 
----
+**Reproduced at HEAD** against the committed `dist/cli.js`, no editor: two `PUT`s declaring the
+same cloud component name → PUT 1 **200**, PUT 2 **no response at all**, status **refused**,
+`EXIT=1`.
 
-## Gates — final reading at `138374f4`
+🔴 **The row's own recommendation measured WRONG.** It called *"catch the rejection so the PUT
+answers 400"* small, clearly right and ruling-free. **That try/catch has been in `loadWorkflow`
+since WFA-001** — verified in the built bundle — and **never runs**. `EventSender.emit` is `async`;
+`GraphModel.addComponent` calls it **without awaiting**; the listener's throw rejects a promise
+nobody holds, so it never joins the chain the catch is watching and Node exits instead.
 
-| gate | result | exit |
-| --- | --- | --- |
-| `npx jest` in `packages/noodl-editor` | **6596 passed, 5 failed** | 1 |
-| `npx tsc --noEmit -p packages/noodl-editor` | **0 `error TS`** | 0 |
+**The decision:** awaiting the emit makes `addComponent` async and ripples into **`noodl-runtime`,
+shared with the viewer**. A backend-local `unhandledRejection` guard is cheap and *wrong alone* —
+it returns `{success:true}` for a half-written component registry, replacing a loud failure with a
+quiet one on the one code path whose whole design is *"only a complete success swaps it in."*
 
-**The 5 are `sb-007` (2), `sb-018` (2), `aib-007` (1) — the floor exactly, somebody else's open
-work. Do not read them as this phase's and do not "fix" them.**
-
-### 🔴 The floor moved to 7 mid-session and came back — the episode is worth more than the number
-
-The first run read **7 failed**, the two extra being `def-003/threeAuthoringActs.test.ts`, from
-**`03c327c8` (P81 VIB-007 AC2 tail)** — committed at 21:47, *after* s40's reading at `ac28160d`
-(21:11). The failing row was `expect(one('Group', { paddingLeft: 24 })).toEqual([])`, newly getting
-a `raw-spacing-literal` warning, and that row exists to prevent precisely that widening: *"Without
-this row the rule could be widened to every units port and still pass."*
-
-**Reported to the P81 session with the measurement rather than fixed here** — their row, and it
-blocked no AC of ours. They fixed it in `c83eb13b` / `138374f4`, and **the 5-failure floor above is
-this session re-running the suite to check that claim, not a relay of theirs.**
-
-⚠️ **Their fix changed the assertion, not only the rule**, and the change is worth knowing about:
-`one()` is unfiltered, so `toEqual([])` was demanding silence *from every rule at once*. Both rows
-now assert the **set of codes**, which still trips when a fourth rule speaks — but a future session
-reading def-003 should know its control rows changed shape.
-
-🔴 **Two traps came out of this, and they are the durable part.**
-1. **`validation/` was CLEAN in the working tree**, so "is this red mine?" answered by `git status`
-   said no. It was in **HEAD**. ✅ **`git log -- <path>`, and compare the commit time to the last
-   known-good gate reading.**
-2. **A peer priced the new rule's noise off the node corpus, which is 401/402 tokenised** — the most
-   tokenised artefact set that exists, and therefore the wrong population for *"how often does this
-   fire on ordinary work"*. Same shape as [[rank-by-the-product-surface-not-by-a-corpus]].
-
-⚠️ `typecheck:backend-tests` cannot complete on this box (OOM, exit 134, **zero `error TS` lines —
-it reads as a pass**). CI runs it.
+⚠️ `graphmodel.ts` has **15** un-awaited `this.emit(...)` calls. `componentAdded` is only the one a
+person has met. ⚠️ s43 left a spec at `nodegx-backend/tests/def-042-detached-emit.test.ts`.
 
 ---
 
-## Two new unowned rows — and row 10 is already MEASURED
+## What session 44 did, and 🔴 the lesson that outranks all three fixes
 
-🔴 **A curated template with NO home publishes, lists, installs and opens — silently.** Found while
-building AC2's control, so it is **measured, not read**. [Row 9](UNOWNED-ROWS-TO-MEASURE.md).
-
-**Two doors are both called "publish" and only one is gated:**
-
-| door | home gate? |
+| row | outcome |
 | --- | --- |
-| `shareAsTemplate.ts:342-390` — a **person** sharing from the editor | ✅ refuses, built s38 on Richard's ruling |
-| `nodegx-community/scripts/publish-project-template.ts` — a **curator** with a DB credential | 🔴 **none** |
+| §9 → [DEF-044](DEF-044-A-TEMPLATE-WITH-NO-HOME-REACHES-THE-SHELF.md) | ✅ built — the home gate at **both curated doors**, in the `nodegx-community` repo |
+| folder-404 → [DEF-045](DEF-045-A-CLOUD-FUNCTION-IN-A-FOLDER-HAS-TWO-ADDRESSES.md) | ✅ built — 🔴 **the row's headline claim was FALSE** |
+| RoVC → [DEF-046](DEF-046-AN-UNCHANGED-VALUE-RE-RUNS-THE-NODE.md) | ✅ built — 🔴 **the row's SIZING was wrong by 3×** |
 
-No install-side rescue either: `Project created successfully`, no toast, and the person lands on a
-**page-scoped internal component**. ✅ The rescue exists one package away —
-`noodl-preview/src/loader.ts:131-156` `resolveRootNode` guesses **and says it guessed**.
+Read each row's own file, not this table.
 
-⚠️ **Do not just add the predicate.** §2.1's warning stands: 63 of 340 manifests have no home and
-most are **modules**, which have none by design. And only the *person's* door has been ruled on —
-refuse-at-publish vs warn-at-install is 🧭 **a decision**, not a coin flip.
+### 🔴 ALL THREE DEFECTS WERE REAL AND TWO ROWS WERE WRONG ABOUT THEMSELVES
 
----
+**A staleness check would have confirmed every one of them and shipped the wrong fix.** This is the
+fourth session running to find that a register row decays in a way *"is this still true?"* cannot
+detect.
 
-### 🔴 Row 10 — the OTHER template generator disagrees, and it is **57**, not zero
+1. **DEF-045 — the row said *"unreachable over HTTP"*. It was reachable.**
+   `POST /functions/site%2FpublishPage` answered **200** at HEAD, and every in-product caller
+   percent-encodes. Only the **raw-slash** address 404'd. 🔴 **A second file in the same repo had
+   already measured the other half** — `newFunctionFromStep.ts:44-52` (SB-003) records *"nested
+   names are shipped practice … and work on every call path"* — **and neither row knew the other
+   existed.** Two half-measurements, each reading as a verdict on the other's question.
+   ✅ **Before believing a register row, grep the SOURCE for a second measurement of the same
+   mechanism.**
 
-Raised by a peer as an orphan of closing DEF-007: §3.2's ⚠️ that `tpl001Template.ts` was never
-measured for the same seam would be lost inside a ✅ row. **They were right that it needed a home,
-and wrong that it might be zero** — so it was measured rather than registered as a question.
+2. **DEF-046 — the row was real and mis-SIZED.** *"Four lines per family, twelve families"*
+   re-derives as **39 call sites across 15 files in three shapes**, and **nine are event handlers
+   with no previous value to compare** (`cloudStoreEvents`, `onModelChangedCallback`,
+   `collectionChangedCallback`). Building it as one idiom would have broken the data nodes.
+   ✅ **Re-derive a row's SIZE, not just its truth — the size is what decides the design.**
 
-| artefact | `writes` | `familyNodes` |
-| --- | --- | --- |
-| **`templates/members-area` (TPL-001)** | **57** | **105** |
-| `site-builder.content.json` (control) | **0** | **82** |
-
-Same function, two inputs, and **both arms have a non-zero `familyNodes`** — which is what makes
-the 0 an absence and the 57 a presence rather than two readings of a dead instrument. Read through
-the editor's own reader (`readAsLegacyProject` → `ProjectImporter`, pure plain-node).
-
-⚠️ **This does not make DEF-007 AC3's green wrong — it makes its SCOPE explicit.** AC3 is genuinely
-0 and its gate covers **site-builder only**; TPL-001 is a second artefact the gate never looks at.
-🔴 Which is the same decaying-hand-list shape AC4 exists to prevent. **Gate any fix across both
-generators**, or this recurs with a third template.
-
-## The harness this session added
-
-### Running the community platform locally — this is the reusable part
-
-```bash
-cd ~/vscode_projects/nodegx-community
-npm run db:up                       # docker postgres on 55432 — NOT 5432
-export DATABASE_URL='postgres://nodegx:nodegx@127.0.0.1:55432/nodegx_p80_s41'
-npm run dev                         # localhost:3000
-```
-
-- ✅ **`nodegx_p80_s41` already exists and is migrated** (24 migrations, 57 tables). It was created
-  **beside** the existing `nodegx_community`, which had all its tables but an **empty
-  `schema_migrations`** — an unknown state that was left untouched rather than repaired.
-- ⚠️ **The container is still running.** `npm run db:down` was refused by the permission classifier,
-  so it was left up rather than worked around. Stop it if you want the box as it was.
-- 🔴 **`COMMUNITY_URL` is a hardcoded constant with no env override**, and
-  `uni-001/composer-offers-signin.test.ts` asserts its exact literal. Editing it is the only way to
-  point the editor at a local platform. ✅ **`cp` the file to a scratchpad first and restore by
-  `cp`** — verified by md5 and an empty `git diff`, because an unstaged edit to a tracked file on
-  this shared checkout is precisely what a peer's pathspec commit sweeps.
-- The two published templates and both fixtures are still there: `def007-curated-src` (home),
-  `def007-nohome-src` (control), `def007-ac2-drive`, `def007-nohome-drive`.
-
-### Driving the launcher's create wizard
-
-- The wizard is **four steps**: mode → Project Basics (name) → Choose a Template → Review →
-  `Create Project`. The gallery is **not** the first screen after picking "Start from a Template".
-- ✅ **Cards are `[class*=TemplateCard--]`** and select on click, confirmed by a `--selected` class
-  landing on the same element.
-- ⚠️ **A `cdp eval` that throws can dismiss the modal**, losing the whole flow. Stamp an id, assert
-  it exists, *then* click — and re-read the modal text after each step rather than assuming.
-- ✅ **Settle which project the editor ended up on by `_retainedProjectDirectory`**, and read the
-  landing component from `NodeGraphContextTmp.nodeGraph.activeComponent` — never from body text.
-- ⚠️ A project installed from a template is saved as **v2** — read `nodegx.project.json`, not
-  `project.json`.
+3. **DEF-044 — the row waited three days for a ruling it already had.** It recorded the choice as
+   🧭 *a decision*, noting *"only the person's door has been ruled on"*. Richard's **2026-08-31**
+   words are unqualified: *"A project with no home page must not publish as a template."*
+   ✅ **When a row says *needs a ruling*, check whether the ruling exists and is BROADER than the
+   row that prompted it.**
 
 ---
 
-## Traps this session added
+## 🔴 The harness fact that will cost you an hour if nobody tells you
 
-- 🔴 **A BLOCKER CAN BE AN ASSUMPTION THAT NOBODY RE-DERIVED.** AC2 sat parked for three sessions
-  on *"needs a signed-in community session and a live route"*. Neither was true: publishing is a
-  **DB credential**, and the platform **runs locally**. The row had been re-quoted several times
-  and the sentence was never re-measured. ✅ **Before accepting "blocked", ask what the block is
-  made of and go and look at that thing** — one `find` in a sibling repo answered it.
-- 🔴 **A ONE-COMPONENT FIXTURE CANNOT GRADE "OPENS ON ITS HOME".** With one component, *the home*
-  and *the first component* are the same element, and the test passes on a build that resolves
-  neither. ✅ **Choose the fixture so the two candidate explanations give DIFFERENT answers** —
-  here, home at index 3 of 4 and alphabetically last — **then vary only the field under test.**
-- 🔴 **THE CONTROL IS WHERE THE FINDING WAS.** The no-home arm existed only to make AC2 honest, and
-  it is what exposed row 9. A control run to protect a positive reading is a second experiment,
-  and it is worth looking at what it says on its own terms.
-- 🔴 **VERIFY A PEER'S CORRECTION, THEN CHECK ITS SCOPE.** The relayed claim was true — and named
-  one file when the number lived in two. ✅ **`grep` for the value, not for the file you were
-  pointed at.**
-- 🔴 **A MEASURED ZERO NEEDS A KNOWN-FIRING SIGNAL BESIDE IT.** `writes: 0` alone is
-  indistinguishable from an instrument that found nothing; `familyNodes: 82` is what makes it an
-  absence. Both docblocks now quote them together, and say so.
-- 🔴 **CLEAN-IN-THE-TREE ANSWERED "IS THIS RED MINE?" WITH A CONFIDENT NO.** `validation/` had no
-  uncommitted changes; the regression was **committed** 36 minutes before the gate ran.
-  ✅ **`git log -- <path>`, and compare the commit time against the last known-good reading.**
+**`better-sqlite3` is not installed on this machine and Node is 20.11.1** (no usable `node:sqlite`,
+which wants ≥ 22.13). Measured 2026-09-03:
+
+- **Every `nodegx-backend` spec that constructs a `BackendService` dies in `beforeAll`.** Six
+  route-table suites read **59 failed / 40 passed** and *all 59* are that one error.
+  `cloud-csv-nodes`, `cloud-secret-node`, `sb008-public-site-drive`, `ops-request-id`,
+  `ops-rate-limit`, `service-http` — **none of them can run here.**
+- **`noodl-runtime`'s floor on this box is 146 passed / 5 failed** — `LocalSQLAdapter.*`,
+  `QueryBuilder`, `SchemaManager.changeColumnType`, all *"No SQLite engine available"*. **That is
+  the floor, not a regression.**
+- ✅ **`new BackendService({ …, allowEphemeral: true })` runs a test that needs no database.** No
+  shipped spec passes it, which is exactly why none of them run.
+- ⚠️ `tsc -p packages/nodegx-backend/tsconfig.tests.json` **cannot complete here** — OOM at the 4 GB
+  default (**exit 134**) and SIGTERM at 9 GB after 10 minutes (**exit 143**), with **0 `error TS`
+  lines either way**. CI runs it. Gate on the exit status, never the error count.
+
+🔴 **A fix whose own gate cannot run is verified by nothing.** DEF-045 renames a route pattern that
+`ops-request-id` and `ops-rate-limit` assert; both are unrunnable, so **both assertions are re-made
+inside `def045-nested-function-address.test.ts`**, which does run. Do the same, or say plainly that
+the gate was not taken.
+
+---
+
+## Gate readings actually taken by s44 (2026-09-03, on top of `7d651798`)
+
+| gate | reading |
+| --- | --- |
+| `nodegx-community` — the two target suites | **96 passed (96), exit 0** |
+| `nodegx-community` — 4 neighbouring publish suites | **92 passed (92), exit 0** |
+| **DEF-044 reverted arm** (guard disabled with `false &&`) | **exit 1 — exactly 4 refusal specs red, 92 controls green** |
+| `tsc` community | exit 0 |
+| `def045-…test.ts` before / after | **exit 1 (1 red of 4)** / **exit 0 (6/6)** |
+| `tsc -p packages/nodegx-backend` | exit 0 |
+| `def046-…test.ts` before / after | **exit 1 (3 red of 7, every control green)** / **exit 0 (7/7)** |
+| full `noodl-runtime` suite | **146 suites, 2566 passed**, 5 red = the SQLite floor above |
+| `tsc -p packages/noodl-runtime` · `packages/noodl-viewer-react` | exit 0 · exit 0 |
+| `nodegx-node-kit-types` | 77 passed, **5 failed — identical before and after**: pre-existing mirror drift on `placeholder` (added to `noodl-types` 2026-08-24, `06520033`) |
+
+🔴 **`test:ci` was NOT run by s44.** The last reading is s43's: **2938 specs, 4 failures, seed 60967,
+HEAD `da055635`**, all four the known **`AIX-006 style vocabulary`** floor checked **BY NAME**. A
+phase-82 peer reported **2943 specs / 4 AIX-006** later the same day with s43's pile present.
+**s44 changed `noodl-runtime`, `noodl-types` and `nodegx-backend`, and none of that is covered by
+either reading. Run it.**
+
+---
+
+## What is left, in the order a session should take it
+
+### An agent can do these alone
+
+1. **§3 — the backend card cannot see a backend-side change.** Never re-measured (needs a screen).
+   The `missing` row can only ever render after a *failed* push. ⚠️ Not a defect in DEF-015's fix
+   and the header is honest; **the rows overclaim**. The cheapest candidate — *reword to say “at
+   last push”* — may simply be right.
+2. **A stale cloud function renders twice** — a green ✓ and a warning triangle, one line apart.
+   `CloudFunctionsSection.tsx:138` maps the unfiltered list above `:162`'s `stale.map`. **Trivially
+   fixed**; the only reason it is not done is that it is a rendering choice DEF-015 did not touch.
+3. **§6 — `group.ts` cannot be imported from a test**, so the most-used visual node is ungraded and
+   the failure mode reads as `Tests: 0 total`. Already measured. ⚠️ **Measure the blast radius
+   first**: whether a `.js` transform in that package's jest config moves any of its 86 suites.
+4. **§5 — the `domelement` port cannot reach the destination its own description names.** ⚠️ **Four
+   generated copies of the description.** 🔴 And the wire would not have worked if it had connected
+   (`Group.tsx:113` wants the node, `Video.tsx:217` sends the element).
+5. **The configured site address is unreachable from a graph** — DEF-022's broader half; wants a
+   read-only `Site Address` node on the same seam `Secret` uses.
+6. **Nothing gives an auto-created class the columns its project has already declared.** It is the
+   only route to a real *typo vs unwritten* distinction.
+7. **A workflow step pointing at a cloud *helper* is told to deploy it**, and deploying can never
+   help. The honest answer is a **sixth state**, not a rewording.
+
+### These need Richard
+
+- **DEF-042** — above. The first thing to put in front of him.
+- **§4 — `Record.Fetched` fires when the `Id` merely binds.** The description half is fixed. The
+  behaviour half needs **a corpus count of graphs relying on the bind-time firing** — get the
+  number, *then* ask him. The number is the decision.
+- **No semantic token for error TEXT.** `--destructive` is **4.38:1** as 14px type on `--surface`;
+  `fieldError` ships `--red-700`, which **no preset re-themes**. Needs a value in `DefaultTokens.ts`
+  **and in all five presets**, each chosen against the contrast floor.
+
+### 🆕 Four rows s44 registered at `NONE` (all small, none blocking)
+
+- **`ComponentItem.tsx:188` refuses a cloud function inside a cloud function and its stated reason
+  is now FALSE** — *"a name the backend's `/functions/:name` route cannot address"*. It can now.
+  The **behaviour** was deliberately left alone (SPR-005 made it a visible disabled row); the
+  comment is what is stale.
+- **The `/functions` 404 body still cannot tell *"no such function"* from *"wrong address"*.**
+- **`variablenode2.ts`'s `name` setter** was excluded from DEF-046 because its `else` branch does
+  real work — a comparison there would change *which branch runs*, which is a behaviour question.
+- **The missing SQLite engine** blinds every backend HTTP drive on this box. An environment row.
+
+---
+
+🔴 **A closed phase is not a sealed one.** This is the **fourth** session in a row to find real work
+behind a DONE banner — and the second to find that the work was not shaped like the row describing
+it.

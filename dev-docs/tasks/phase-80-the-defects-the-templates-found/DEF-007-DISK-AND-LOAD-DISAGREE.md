@@ -170,14 +170,29 @@ template nobody can open; warning matches the behaviour a person already gets fr
 ## 4. Acceptance criteria
 
 1. **A person's sentence:** *I pick a template from the shelf, press preview, and the app is there.*
-2. (b) A curated template installed **through the picker** opens on its home component. Driven, once
-   the picker can reach it.
+2. (b) A curated template installed **through the picker** opens on its home component.
+   ✅ **GREEN 2026-08-31 (s41) — DRIVEN, with a control that discriminates.** Richard ruled
+   *publish one now, then drive it*, and the blocker turned out to be a wrong assumption: the shelf
+   is served by `nodegx-community`, which **runs locally**, and publishing is a **database
+   credential** act rather than a session-token one. A curated template was published to a local
+   instance of the real platform, drawn by the picker over real HTTP (badge **Community**),
+   installed, and the editor opened on **`App`** — the home, at **index 3 of 4** and alphabetically
+   last. 🔴 **The control is what makes it a measurement**: the same template with `rootNodeId`
+   deleted lands on `/#__page__/Acme Legal Client Portal`, index **0**. Only that field was varied.
+   See §8. ⚠️ Nothing was published to the live service.
 3. (a) A generated artefact rendered **from disk** and the same project **loaded in the editor**
    agree about every `runOnChange-*` — asserted as a **pair**, because either one alone is the state
    this task exists to distinguish.
    ✅ **GREEN 2026-08-31 (s31).** Was 56 on 2026-08-29, re-derived at **65** two days later, now
    **0** — the whole seam, both `applyPatches` passes, measured with the before artefact as a
    red control. See §6.2. Gated by `DEF-007 AC3` in `sb007Template.test.ts`.
+   🔴 **SCOPED TO SITE-BUILDER, and the second artefact is NOT green.** Measured 2026-08-31:
+   **TPL-001 (`templates/members-area`) disagrees in 57 places** (`writes 57, familyNodes 105`,
+   against site-builder's `0, 82` — both arms non-zero, so the 0 is an absence and the 57 a
+   presence). AC3's sentence says *"a generated artefact"* and one is green; **the row is not
+   discharged for every shipped template.** Owned as **Row 10**, owner `NONE`. ⚠️ The port should
+   make the gate **enumerate the generators**, not gain a second hand-written block — that is the
+   decaying-hand-list shape AC4 exists to prevent.
 4. ✅ **CLOSED s37 — the seam's documentation names each path and which side it is on, and a test
    keeps it honest.** Richard ruled *both* steps, not the cheap half:
    - The table now lives in the codebase as
@@ -522,3 +537,115 @@ means making the root-pointer change part of the undo group. Filed as a new row 
   in §7.3 is what excludes that, and it is the only thing that does.
 - ⚠️ **The shared `PROJECT` fixture in `template-submission.test.ts` now carries `rootNodeId`,
   and it is load-bearing.** Deleting that field turns roughly half the file red.
+
+## 8. 🟢 AC2 DRIVEN — a curated template, published and installed through the picker — 2026-08-31, s41
+
+🧭 **Richard ruled: publish one now, then drive it.** AC2 had been parked since s38 on the
+grounds that *"the picker cannot reach a curated template until one is published"*. It can now,
+and it did.
+
+🔴 **Nothing was published to the live service.** §2's blocker assumed publishing meant
+`community.nodegx.io`. It does not: the shelf is served by `nodegx-community`, which **runs
+locally**, and publishing a curated template is a **database-credential act**, not a session-token
+one — `scripts/publish-project-template.ts`, exactly as `0021`'s header says (*"Share as template"
+files a SUBMISSION. It does not publish*). So the whole path was driven against a local instance
+of the same platform code, over a real socket, with the real route handlers.
+
+### What the two halves were
+
+| half | what ran |
+| --- | --- |
+| the platform | `nodegx-community` at `localhost:3000`, `next dev`, own database `nodegx_p80_s41` created beside the existing one and migrated from scratch (24 migrations, 57 tables) |
+| the editor | a real `dev:debug` editor with `COMMUNITY_URL` **temporarily** pointed at `http://localhost:3000` — reverted at the end of the session, md5-identical to HEAD |
+
+⚠️ **The origin edit is the one thing that could not be avoided.** `communityorigin.ts` is a
+single hardcoded constant and `uni-001/composer-offers-signin.test.ts` asserts its exact literal,
+so there is no env override to use. It was copied to a scratchpad before the edit and restored by
+`cp` — `git diff` on that file is empty and the md5 matches the pre-edit capture.
+
+### The fixture, and why it is the one that discriminates
+
+`def007-curated-src`, a copy of `uni011-ac3-drive`. Its four components are, in manifest order:
+
+```
+0  /#__page__/Acme Legal Client Portal
+1  /Acme Legal Client Portal/Invoice Row
+2  Acme Legal Client Portal
+3  App                                  ← the home lives here
+```
+
+🔴 **The home is index 3 of 4 and alphabetically last.** That is the whole point of choosing this
+project: on a one-component template — or on any template whose home is first — *"opened on the
+home"* and *"opened on the first component"* give the **same answer**, and a pass would prove
+nothing. Here they differ.
+
+### The drive
+
+| step | reading |
+| --- | --- |
+| publish | `published: "DEF-007 Home Check" at /templates/def007-home-check — version 1, 1 files, 9 KiB` |
+| the shelf over real HTTP | `GET /api/v1/community/templates` → **200**, one row, signed-out |
+| the bundle over real HTTP | `GET …/def007-home-check/bundle` → **200**, and it carries `rootNodeId: 4cbaae71-…` verbatim |
+| **the picker** | the wizard's gallery drew **`DEF-007 Home Check` … `Starter` … `Community`** beside the two built-in templates — `All (3)`, the badge naming `PlatformTemplateProvider` as its source |
+| install | selected the card, `Create Project`, real install to `NodeGX test projects/def007-ac2-drive` |
+| **AC2** | `_retainedProjectDirectory` = the new project; `rootNode.id` = **`4cbaae71-…`**, the published id; **`activeComponent` = `App`** |
+| on disk | the installed project saved as v2 and `nodegx.project.json` carries `rootNodeId: 4cbaae71-…` |
+
+✅ **So a curated template installed through the picker opens on its home component.** Identity
+settled by `_retainedProjectDirectory`, never the card title.
+
+### 🔴 The control, and it discriminates
+
+A second curated template, `def007-nohome-check`, **identical bytes but for `rootNodeId`, which
+was deleted from the manifest**, published to the same shelf and installed the same way through
+the same picker.
+
+| arm | `rootNodeId` | the editor opened on |
+| --- | --- | --- |
+| home present | `4cbaae71-…` | **`App`** — index **3** of 4 |
+| home absent (control) | `null` | **`/#__page__/Acme Legal Client Portal`** — index **0** |
+
+**Only `rootNodeId` was varied.** With it, the editor lands on the home; without it, it falls
+through to the first component in the manifest. So the positive reading is caused by the home and
+not by manifest order, alphabetical order, or anything else about this project — the explanation
+a one-component fixture could not have excluded.
+
+## 8.1 🔴 What the control exposed — a curated template with NO home installs silently
+
+The control was built to make AC2 honest. It also measured a real hole, and this is a **finding,
+not a fix**:
+
+- **The curator's publish script has no home gate.** `publish-project-template.ts` accepted a
+  manifest with no `rootNodeId` and put it on the shelf — *"published … 1 files, 9 KiB"*, no
+  warning, no refusal.
+- **s38's refusal does not cover this path.** It lives in
+  [`shareAsTemplate.ts`](../../../packages/noodl-editor/src/editor/src/models/template/shareAsTemplate.ts)
+  `:342-390`, which is the **person's** submission door (*"Refuse at publish, make sure people
+  define a home page"*). A curator publishing directly with a database credential never passes
+  through it. **Both doors were called "publish" and only one is gated.**
+- **There is no install-side rescue either.** `createFromTemplate.ts` does not mention the field,
+  and the install logged only `Project created successfully`. **No toast, no warning, nothing.**
+- **The landing place is worse than arbitrary.** `/#__page__/Acme Legal Client Portal` is a
+  page-scoped internal component, not a page anybody authored to be opened.
+- ✅ **And the rescue already exists, one package away** — `noodl-preview/src/loader.ts:131-156`
+  `resolveRootNode` guesses a root **and tells the user it guessed**. §2.1 already noted this;
+  what is new is that the picker path has now been *watched* not using it.
+
+⚠️ **Registered as a row, not built.** It is a `nodegx-community` change (the same predicate on
+the curator's script) and arguably an editor one (warn at install). Owner **`NONE`** — see
+[UNOWNED-ROWS-TO-MEASURE.md](UNOWNED-ROWS-TO-MEASURE.md) row 9. 🔴 **It does not block AC2**,
+which is about a template that *has* a home, and which passes.
+
+### Reproducing this
+
+```bash
+cd ~/vscode_projects/nodegx-community
+npm run db:up
+export DATABASE_URL='postgres://nodegx:nodegx@127.0.0.1:55432/nodegx_p80_s41'   # already migrated
+npm run dev          # localhost:3000
+```
+Then point `COMMUNITY_URL` at `http://localhost:3000`, launch `dev:debug`, and the two templates
+are already on the shelf. ⚠️ **The database `nodegx_p80_s41` and the container are still there** —
+the container was left running because `db:down` is not a permitted command in that session.
+Fixtures: `def007-curated-src` (home) and `def007-nohome-src` (control) under `NodeGX test
+projects`, plus the two installed projects `def007-ac2-drive` and `def007-nohome-drive`.

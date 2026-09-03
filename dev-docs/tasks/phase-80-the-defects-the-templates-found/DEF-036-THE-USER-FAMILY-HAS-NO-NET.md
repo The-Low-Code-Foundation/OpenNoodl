@@ -435,3 +435,34 @@ code and was wrong.** A comment claiming a remount is not a measurement of one.
   project pointed at a foreign Parse server was opened.
 - 🔴 **The 271 wires still leave the build**, by design. §4's closing note is the ruling, not an
   oversight.
+
+## 10. ✅ CLOSED — part 3 ruled to be the canvas, 2026-08-31 (s41)
+
+🧭 **Richard ruled: the canvas.** Put to him exactly as §6 framed it — his sentence is about what
+a wire looks like on the canvas, all three clauses of it already ship, and the only remaining
+reading (*"and it should survive the export too"*) reverses DEF-034. He chose the canvas.
+
+**So part 3 is satisfied by what already ships, nothing is built for it, and DEF-034 stands.** The
+271 wires still leave the build, by design — see §4's closing note and
+[RICHARD-RULINGS-2026-08-31.md](RICHARD-RULINGS-2026-08-31.md) §6.
+
+**The row closes on:** AC1–AC5 built and driven in s40 (§9), part 3 measured in s38 and driven in
+s39 (§6).
+
+### 🔴 What closing does NOT discharge — say this whenever the row is quoted
+
+A closed row is not a fully measured one. Four boundaries survive it, all recorded in §9:
+
+- **AC5's rendering half is graded by rule only.** `serverOwnedColumns.ts` decides which columns
+  are the backend's on `_User`, and a unit test grades that decision. **That `TableRow` applies
+  it was never driven** — no reachable backend in s40 had a `_User` table, and `TableRow.tsx`
+  imports `Icon`, so a spec importing it fails *to run* rather than fails. Whether the rename
+  affordance actually disappears is **unmeasured**.
+- **`SignUp` was not the node driven.** The panel code is family-blind and `SignUp` is in its
+  table of six type names, but the node watched drawing the notice was `net.noodl.user.User`.
+- **No external-backend arm was driven.** `external-endpoint` has a sentence and a test; no
+  project pointed at a foreign Parse server was opened.
+- **The `status: 'schema'` arm of AC4 was driven with an INJECTED outcome**, so what it grades is
+  the panel wiring, not the fetch.
+
+⚠️ Each is a candidate row for a later phase, not a defect in this one.

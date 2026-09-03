@@ -128,3 +128,46 @@ Ruled: take **both** steps, not the cheap half.
 hand-maintained list of "which things need the special treatment" — exactly the kind that decayed
 until Checkbox was missed while Radio Button was fixed. Without the test it is a snapshot that
 looks authoritative and goes quietly wrong the first time someone adds a seventh load path.
+
+---
+
+# Later the same day — session 41
+
+Two more rulings, both on the **only two open rows**. Neither was a build question; both were put
+to Richard because the answer changes what the row means, not how it is implemented.
+
+---
+
+## 6. DEF-036 part 3 — ✅ **Ruled: THE CANVAS. The row closes.**
+
+Asked as §6 framed it: his sentence was *"it would remain … but be a dotted line, and the errors
+would flag that the port doesn't exist anymore"* — all three of those already ship, measured at
+HEAD in s38 and **driven in a real editor in s39**. The only reading left was *"and it should also
+survive the export"*, which reverses DEF-034.
+
+**Ruled: the canvas.** Part 3 is already satisfied. **Nothing is built for it, and DEF-034 stands
+unchanged** — an `error` still means *this cannot work at all* and the wire still leaves the build.
+
+🔴 **Do not re-open this as "the 271 wires are still dropped".** They are dropped by design, under
+Ruling 1 above plus this one. A wire whose column does not exist would deliver a value to a port
+the runtime does not have.
+
+⚠️ **What closing does NOT do** is discharge §9's owed list — AC5's rendering half is graded by
+rule only, `SignUp` was never the node driven, and no external-backend arm was driven. Those are
+boundaries on a closed row, and they must be said whenever the row is quoted.
+
+---
+
+## 7. DEF-007 AC2 — 🔴 **Ruled: PUBLISH ONE NOW, THEN DRIVE IT.**
+
+AC2 — *a curated template installed **through the picker** opens on its home component* — has been
+parked since s38 on the grounds that the picker cannot reach a curated template until one is
+published, and publishing needs a signed-in community session and a live route.
+
+Offered three ways: close it as out-of-lane, keep it open indefinitely, or publish one and drive
+it. **Ruled: publish one.** That is the explicit go-ahead the option named.
+
+🔴 **This is an outward-facing action on a live service**, so the ruling authorises the *goal*, not
+every step to it. Anything that would put a template in front of other people — an upload that
+lands publicly, a listing other users see — **is confirmed with Richard at the moment it happens**,
+with the exact target named. A ruling to publish is not a ruling to publish anywhere.
