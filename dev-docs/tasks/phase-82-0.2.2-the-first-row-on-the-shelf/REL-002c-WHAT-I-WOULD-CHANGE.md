@@ -230,3 +230,150 @@ claim the instrument can support for the first time.
 `Unsubscribe`.~~ The harness asks for nine (`vib001-members.look.ts`, two shot lists), so their
 absence is a fact about the request, **not** about how they look. If REL-002c is to mean all
 thirteen pages, they need adding to the harness before the row can honestly close.
+
+# §7 SESSION 24 — the phone column, read at last, and what reading it cost
+
+This row's remaining line was *"the PHONE column of that run is UNREAD, `/join` was never
+opened."* Both are now discharged: **all thirteen pages re-photographed at HEAD and all thirteen
+phone shots looked at**, `/join` included. Run: `vib-001/2026-09-03/members-area-{door,living}`,
+`vib001-members.look.ts`, **`EXIT=0`, 2/2, 60 shots**.
+
+## §7.1 🔴 The manifest could not say what the old pictures were OF, in three ways at once
+
+Before reading the column I checked whether the 2026-09-02 shots were still of the shipping
+artefact. They were not obviously either way, and **none of the manifest's three provenance fields
+could settle it**:
+
+| field | what it recorded | why it could not answer |
+|---|---|---|
+| `artefactMd5` | `f969ad96…` | md5 of `nodegx.project.json` **only** — 8K of settings and tokens against **648K in 97 `components/**` files**, where every drawn thing lives |
+| `headSha` | `6383ee30` | the last *commit*; the tree at render time held an **uncommitted** fix (below), so it matched no commit at all |
+| — | — | nothing recorded the components |
+
+Measured through `git archive` of both commits, same script both sides:
+
+```
+template at 6383ee30 (when the shots were taken)   at HEAD
+  project.json   f969ad96…                          f969ad96…   ← IDENTICAL
+  components/    f6c34e1c…                          d92d1972…   ← 19 files differ
+```
+
+The nineteen are `0e294dd9`'s alignment fix (`Members/Prompt`) and `9ab6c701`'s 57 settled
+parameters from **P80/DEF-038, a closed phase** — including `Members/Chrome`, which is on every
+signed-in page. **A field that reads identical across that cannot say what a picture is of, which is
+the only job it has.**
+
+✅ **Built.** `md5Tree()` in [`judge.ts`](../../../packages/nodegx-backend/tests/helpers/judge.ts),
+path-ordered over every file (the path is hashed with the bytes, so a rename is a change and two
+files swapping names do not cancel); a new **`artefactTreeMd5`** in every manifest; the during-run
+mutation check extended from 1 file to all 98; and the door test's claim *"the served bytes are the
+shipped bytes"* — which asserted **one** file — now asserts `components/` against `TEMPLATE_DIR`.
+
+⚠️ **`artefactMd5` was kept beside it, unchanged.** Callers assert it and that assertion is still
+worth making. It was never the wrong file; it was never the whole artefact.
+
+## §7.2 ✅ …and the pictures Richard has were fine, which is now MEASURED rather than assumed
+
+The obvious inference from §7.1 — *"his look is invalidated, he would be ruling on superseded
+pictures"* — **is wrong, and the re-run is what says so.** Of 120 PNGs:
+
+- **113 byte-identical** to 2026-09-02;
+- **7 moved, and all 7 are one page**, `/directory`;
+- the only text change in the whole run is `since 2 September` → `since 3 September`, ×4.
+
+🔴 **`/directory` seeds member join dates from the current date, so its four shots differ from every
+other day's run and always will.** Know that before reading a future diff of that page — the same
+trap `admin-messages-*` carries on the site-builder side, for the same reason.
+
+🔴 **And the 2026-09-02 shots already contained `0e294dd9`'s fix.** `Members/Prompt` renders on
+`/join`, `/setup` and `/sign-in`; all three are byte-identical across the two runs, and HEAD still
+carries that commit's version of the node. So the pictures were taken from a working tree holding a
+change that was committed seven minutes later — which is exactly why `headSha` could not describe
+them. **The nineteen-file drift is visually inert at all four widths.**
+
+⚠️ **The general shape, and it is the reason this row exists**: every numeric in the phone column —
+`contentBottom`, `textChars`, `unreachablePx`, error counts — read **identical on all thirteen pages
+across a nineteen-file artefact change**. The numbers cannot see the artefact move. Only the bytes
+of the pictures could, and only a hash of the right files could say whether they should have.
+
+## §7.3 The phone column, read
+
+**No breakage anywhere.** Thirteen pages, `unreachable=0` on every one, nothing overlapping, nothing
+clipped, no overflow, no unreadable type. `/join` opens correctly. The living landing — the page the
+whole row benchmarks against — holds up at 390 as well as it does at 1280. What the column shows is
+four things that are judgements, not faults, and they are Richard's:
+
+1. 🔴 **44.2% of the first phone screen is chrome, on eight of the thirteen pages.** Measured off
+   the PNGs by scanning for the page-head band, uniform to the pixel:
+
+   | | content starts at | of the first screen |
+   |---|---|---|
+   | phone, 390×844 | **y=373** | **44.2%** |
+   | desktop, 1280×900 | y=275 | 30.6% |
+
+   The band is 121px at both widths; the difference is entirely the navigation, which is **one row
+   of six pills on desktop and a 2×3 grid on a phone**. On `/requests` the first request card begins
+   below the halfway line of the phone.
+
+2. ⚠️ **The "What members can see" block — three cards, three photographs, ~1100px of phone scroll —
+   is on 6 of the 13 pages**: five of the six door pages plus the living landing. A stranger going
+   `/` → `/join` → `/sign-in` meets the identical block three times. **On `/setup` it is the odd one
+   out**: that is the owner's first-run admin task, and below the seven-field form it sells them the
+   product they are installing.
+
+3. ⚠️ **`/unsubscribe` carries ~190px of void above its footer**, and the phone makes it starker
+   than the desktop shot did. **This is §"SESSION 12"'s ruled consequence, not a new defect** — D39
+   says the page names no association and offers no way back. Named here only because it is the one
+   place where D39 and *"as good as the homepage"* pull against each other, and Richard is about to
+   look at it.
+
+4. ⚠️ **`/` and `/members` unauthenticated are byte-identical** — fail-closed working as REL-002b
+   built it. A person who followed a deep link to `/members` is shown the landing page with no
+   acknowledgement they were moved.
+
+## §7.4 🔴 The template has no headings and no landmarks — 0 tags in 100 files
+
+Found while reading the column, and it is the one thing here that is not a judgement.
+
+`Text` carries an `as` port (displayName **Tag**, group *Advanced HTML*) with `h1`…`h6`, `nav`,
+`header`, `footer`, `section`, `p`, `span`. Same recursive command over both shipped artefacts, the
+control firing:
+
+| artefact | files | `as` tags |
+|---|---|---|
+| `site-builder.content.json` | 1 | **26** — 7 `h1`, 5 `h2`, plus `nav`, `header`, `footer`, `section`, `p`, `span` |
+| `templates/members-area/` | 100 | **0** |
+
+Confirmed at render time by the harness's own reading: **0 of 60 members-area shots carry an
+`h1` or `h2`**, against **24 of 24** for the site-builder. So the members' area — the row the shelf
+opens with — ships as an undifferentiated pile of `<div>`s: no document outline for a screen
+reader, and nothing structural on `/`, `/join` or `/sign-in`, which are public.
+
+🔴 **The sibling template shipped in the same release does it properly**, which is what makes this a
+defect rather than a limitation of the runtime. The generator builds every page's heading in exactly
+one place — `pageHead()` in `tpl001Components.ts` — and sets no tag there. No validator covers it;
+`typographyHierarchy.ts` is the nearest precedent and it is about `fontWeight`.
+
+⚠️ **Registered, NOT built** — this phase's rule: *a defect is the next first job only if it blocks
+an AC*. It blocks none of REL-002c's, and building it would change the artefact under the pictures
+this session just took. **It is named for Richard in the same breath as REL-001 because it is a
+property of the thing he is about to publish**, and the fix is one seam, not a sweep.
+
+## §7.5 ✅ The change was controlled on the OTHER caller, and it cost s23's evidence nothing
+
+`md5Tree` now **throws** where nothing threw before, so a harness that writes into its own project
+directory mid-run would redden for whoever ran it next. Every importer of `judge.ts` is a `.look.ts`
+and therefore outside `testMatch` — **no routine suite can go red** — but that is an argument, not a
+reading. So `vib001-site.look.ts`, the heaviest caller (a bound backend, a signed-in admin, 24
+shots), was re-run: **`EXIT=0`, 2/2**, both arms recording an `artefactTreeMd5`.
+
+⚠️ **It also reproduced the pictures.** Of the site-builder's shots, everything was byte-identical
+except `admin-messages` — **the page s23's handoff already flagged as carrying a real clock.** The
+control therefore says two things at once: the tree check does not throw, and the harness renders
+identically under it.
+
+🔴 **And it overwrote s23's committed AC3 evidence in place**, because `judge()` keys its output by
+`today()` and both harnesses write into `vib-001/2026-09-03/`. **All sixteen files were restored
+from `HEAD`** — s23's pictures are the AC3 record and a control run is not entitled to replace them.
+The control's own manifests are kept out of the tree. ✅ **Before running any `.look.ts`, check
+whether its date directory already holds somebody else's committed verdict.**

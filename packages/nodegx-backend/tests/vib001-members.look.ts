@@ -32,7 +32,7 @@
 import { BackendService } from '../src/service';
 
 import { httpClient } from './helpers/http';
-import { judge, today } from './helpers/judge';
+import { judge, md5Tree, today } from './helpers/judge';
 import {
   bundleMembersCloud,
   copyTemplateProject,
@@ -129,8 +129,18 @@ describe('VIB-001 — the members area, as a person meets it', () => {
     expect(run.artefactMd5).toBe(
       require('crypto').createHash('md5').update(require('fs').readFileSync(SHIPPED_PROJECT)).digest('hex')
     );
+    // 🔴 *"the served bytes are the shipped bytes"* is a claim about 98 files and
+    // the line above reads 1 of them — 8K of settings against 648K of drawing.
+    // `md5Tree` over the components is the same claim, made where the pictures
+    // come from. See {@link md5Tree}: on 2026-09-02 the line above read identical
+    // across two commits that rewrote thirteen component files.
+    expect(md5Tree(path.join(projectDir, 'components'))).toBe(
+      md5Tree(path.join(TEMPLATE_DIR, 'components'))
+    );
     // eslint-disable-next-line no-console
-    console.log('DOOR MANIFEST ' + run.outDir + ' md5=' + run.artefactMd5 + ' head=' + run.headSha);
+    console.log(
+      'DOOR MANIFEST ' + run.outDir + ' md5=' + run.artefactMd5 + ' tree=' + run.artefactTreeMd5 + ' head=' + run.headSha
+    );
   });
 
   it('photographs the living state: claimed, seeded, moderator signed in', async () => {
@@ -276,7 +286,7 @@ describe('VIB-001 — the members area, as a person meets it', () => {
       });
       expect(run.shots.length).toBe(36);
       // eslint-disable-next-line no-console
-      console.log('LIVING MANIFEST ' + run.outDir + ' md5=' + run.artefactMd5 + ' head=' + run.headSha);
+      console.log('LIVING MANIFEST ' + run.outDir + ' md5=' + run.artefactMd5 + ' tree=' + run.artefactTreeMd5 + ' head=' + run.headSha);
     } finally {
       await service.stop();
     }

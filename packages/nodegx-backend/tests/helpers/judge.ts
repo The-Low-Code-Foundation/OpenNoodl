@@ -143,6 +143,12 @@ export interface JudgeRun {
   headSha: string;
   /** md5 of the served `nodegx.project.json`, before any page was rendered. */
   artefactMd5: string;
+  /**
+   * md5 of EVERY file in the served project, before any page was rendered —
+   * the one field that says what these pictures are OF. See {@link md5Tree}
+   * for the run whose `artefactMd5` did not move while its subject did.
+   */
+  artefactTreeMd5: string;
   /** The directory the PNGs and `manifest.json` landed in. */
   outDir: string;
   /**
@@ -245,6 +251,50 @@ export function placeStarterAssets(projectDir: string): StarterAssetsPlaced {
 
 function md5(file: string): string {
   return crypto.createHash('md5').update(fs.readFileSync(file)).digest('hex');
+}
+
+/**
+ * md5 over EVERY file in the project directory, path-ordered.
+ *
+ * 🔴 **`artefactMd5` pins one file of ninety-eight, and it read IDENTICAL across
+ * a change that moved the pictures.** The members-area template is a directory:
+ * `nodegx.project.json` is 8K of settings, tokens and router, and the drawing
+ * lives in 97 `components/**` files totalling 648K. On 2026-09-02 a run recorded
+ * `artefactMd5 f969ad96…`; `0e294dd9` then rewrote `Members/Prompt/nodes.json`
+ * (the alignment fix those very pictures had found) and `9ab6c701` rewrote
+ * twelve more — and the field still reads `f969ad96…` at HEAD today. A manifest
+ * that cannot tell those two artefacts apart cannot say what a picture is OF,
+ * which is the only job it has.
+ *
+ * ⚠️ **`artefactMd5` is kept, unchanged, beside this.** Callers assert it against
+ * `md5(SHIPPED_PROJECT)` and that assertion is still worth making — the point is
+ * that it was never the whole artefact, not that it was the wrong file.
+ *
+ * Sorted relative paths, and the path is hashed with the bytes: a file that moves
+ * without changing content changes the tree, and two files swapping names do not
+ * cancel out.
+ */
+export function md5Tree(dir: string): string {
+  const hash = crypto.createHash('md5');
+
+  const walk = (rel: string): void => {
+    const entries = fs.readdirSync(path.join(dir, rel), { withFileTypes: true });
+    // Path order, not readdir order: `readdir` is filesystem order and would
+    // make the reading depend on the machine that took it.
+    entries.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+    for (const entry of entries) {
+      const next = rel ? `${rel}/${entry.name}` : entry.name;
+      if (entry.isDirectory()) {
+        walk(next);
+      } else if (entry.isFile()) {
+        hash.update(next);
+        hash.update(fs.readFileSync(path.join(dir, next)));
+      }
+    }
+  };
+
+  walk('');
+  return hash.digest('hex');
 }
 
 function headSha(): string {
@@ -435,6 +485,17 @@ export async function judge(options: {
   const starterAssets = placeStarterAssets(servedDir);
 
   const artefactMd5 = md5(projectFile);
+  // Taken on `projectDir`, not `servedDir`. Both already carry the starter
+  // assets — `copyTemplateProject` places them — so this is "the project as it
+  // was handed to the harness", assets included, which is what a picture is of.
+  // `servedDir` would additionally fold in whatever `placeStarterAssets` did on
+  // THIS run, making the field depend on the harness rather than the subject.
+  //
+  // ⚠️ It is therefore NOT comparable to a hash of `templates/<name>/` alone.
+  // The claim that the served components ARE the shipped components is a
+  // separate assertion, and it belongs to the caller: see the door test in
+  // `vib001-members.look.ts`.
+  const artefactTreeMd5 = md5Tree(projectDir);
   const sha = headSha();
   const outDir = path.join(VERDICTS_ROOT, task, options.date ?? today(), `${subject}-${state}`);
   fs.mkdirSync(outDir, { recursive: true });
@@ -557,6 +618,12 @@ export async function judge(options: {
   if (after !== artefactMd5) {
     throw new Error(`judge: the project file changed during the run (${artefactMd5} -> ${after}).`);
   }
+  // The same check over the other ninety-seven files. A render that rewrote a
+  // component and left `nodegx.project.json` alone passed the line above.
+  const afterTree = md5Tree(projectDir);
+  if (afterTree !== artefactTreeMd5) {
+    throw new Error(`judge: the project tree changed during the run (${artefactTreeMd5} -> ${afterTree}).`);
+  }
 
   const run: JudgeRun = {
     task,
@@ -564,6 +631,7 @@ export async function judge(options: {
     state,
     headSha: sha,
     artefactMd5,
+    artefactTreeMd5,
     outDir: path.relative(REPO, outDir),
     starterAssets,
     shots
