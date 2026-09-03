@@ -8,7 +8,7 @@
     {
       "typeName": "AddDbModelRelation",
       "status": "deferred",
-      "exemption": "scheduled \u2014 EXP-011 Tier 2: the record verbs\u2019 backend neighbours \u2014 \u00a73 did not name them; grouped with Tier 2.6 in session 35 because they are the same backend work and land with it or not at all"
+      "exemption": "scheduled \u2014 EXP-011 Tier 2.8 row 12 (\u00a750, Richard's ruling 2026-09-03; was grouped with Tier 2.6): a relation column written through the EXP-009 client \u2014 a small increment on the record verbs; only apps with relation columns notice"
     },
     {
       "typeName": "And",
@@ -87,7 +87,7 @@
     {
       "typeName": "CollectionNew",
       "status": "deferred",
-      "exemption": "deliberately out of scope \u2014 it mints an anonymous array with a generated Id, and the only consumer of that Id is another node\u2019s Array Id input, delivered by wire. A wired Array Id is precisely what has no emitted module (the named-array model keys on a literal name), so translating this node would create an array nothing in the exported app could ever name. EXP-011 Tier 1.1, session 36"
+      "exemption": "scheduled \u2014 EXP-011 Tier 2.8 row 5 (\u00a750, Richard's ruling 2026-09-03: \"I use this all the time\"; reversed from \u00a77.3): mints an anonymous array whose generated Id travels by wire to another node's Array Id \u2014 which the named-array model cannot key. A design session on anonymous stores before a row, not a row; \u00a77.3 measured that minting ids alone buys nothing"
     },
     {
       "typeName": "CollectionRemove",
@@ -107,7 +107,7 @@
     {
       "typeName": "Component Children",
       "status": "deferred",
-      "exemption": "scheduled \u2014 EXP-011 Tier 3: the component-tree family (\u00a73 Tier 3.10) \u2014 real, but a smaller audience"
+      "exemption": "scheduled \u2014 EXP-011 Tier 2.8 row 1 (\u00a750, Richard's ruling 2026-09-03; was Tier 3.10): the children slot of a reusable wrapper \u2014 React's `children` prop. Today the placed children vanish from the export, which turns a working component into a blank one"
     },
     {
       "typeName": "Component Inputs",
@@ -167,7 +167,7 @@
     {
       "typeName": "Drag",
       "status": "deferred",
-      "exemption": "scheduled \u2014 EXP-011 Tier 3: the component-tree family (\u00a73 Tier 3.10) \u2014 real, but a smaller audience"
+      "exemption": "scheduled \u2014 EXP-011 Tier 2.8 row 13 (\u00a750, Richard's ruling 2026-09-03; was Tier 3.10): pointer-gesture handling \u2014 the smallest audience of the buildable rows"
     },
     {
       "typeName": "Event Receiver",
@@ -195,7 +195,7 @@
     {
       "typeName": "FilterDBModels",
       "status": "deferred",
-      "exemption": "scheduled \u2014 EXP-011 Tier 2: the record verbs\u2019 backend neighbours \u2014 \u00a73 did not name them; grouped with Tier 2.6 in session 35 because they are the same backend work and land with it or not at all"
+      "exemption": "scheduled \u2014 EXP-011 Tier 2.8 row 6 (\u00a750, Richard's ruling 2026-09-03; was grouped with Tier 2.6): a client-side filter over fetched records \u2014 the search box over a list. Array Filter's shape, with the record filter grammar transcribed for the client"
     },
     {
       "typeName": "For Each",
@@ -205,7 +205,7 @@
     {
       "typeName": "For Each Actions",
       "status": "deferred",
-      "exemption": "deliberately out of scope \u2014 its Item Id is the runtime record id of a repeater row, and the emitted app has no counterpart: rows are plain objects the export never mints ids for. Its remaining ports (Try Remove / Remove Completed / Added) are the Repeater\u2019s removal handshake, which is lifecycle signalling and therefore effect() work. EXP-011 Tier 1.1, session 36"
+      "exemption": "scheduled \u2014 EXP-011 Tier 2.8 row 7 (\u00a750, Richard's ruling 2026-09-03: \"now that it works properly, people will start using it\"; reversed from \u00a77.3): the repeater row's Item Id and its removal handshake \u2014 the emitted row needs an id of its own and the For Each a removal channel"
     },
     {
       "typeName": "Form",
@@ -244,7 +244,7 @@
     {
       "typeName": "Javascript2",
       "status": "deferred",
-      "exemption": "scheduled \u2014 EXP-011 Tier 3 (\u00a73 Tier 3.9, \"CSS Definition and Script\"): a hand-written node definition (three generations of define/script/Node.* DSL, lifecycle methods, an external-URL mode), not a function \u2014 its faithful target is a hand-written React component, the export-side twin of P69 custom nodes (EXP-003-JS-TARGET-OUTPUT \u00a71); the corpus is browser-coupled date-picker code and junk, zero cost"
+      "exemption": "scheduled \u2014 EXP-011 Tier 2.8 row 2 (\u00a750, Richard's ruling 2026-09-03; was Tier 3.9): the escape hatch the MCP reaches for when the picker has no node \u2014 ten in one MCP-built project. A hand-written node definition (three generations of define/script/Node.* DSL, lifecycle methods, an external-URL mode), whose faithful target is a hand-written React component per instance, the export-side twin of EXP-010; today its source survives only as a comment (\u00a728)"
     },
     {
       "typeName": "Label",
@@ -308,7 +308,7 @@
     {
       "typeName": "On App Error",
       "status": "deferred",
-      "exemption": "deliberately out of scope \u2014 EXP-011 \u00a73 \"Not a target\": a global error hook \u2014 an app-shell concern the scaffold owns, not a page-level node. A real node and some of them excellent; this says nobody is waiting on it, not that it is bad"
+      "exemption": "scheduled \u2014 EXP-011 Tier 2.8 row 4 (\u00a750, Richard's ruling 2026-09-03; reversed from not-a-target): the app-wide error boundary, fired on any node's reported failure with code/message/node. An error pathway that is left out is the exact case where exporting is worse than not; the emitted app needs an error bus the verbs' Failure arms report into"
     },
     {
       "typeName": "Open File Picker",
@@ -333,7 +333,7 @@
     {
       "typeName": "Page Stack",
       "status": "deferred",
-      "exemption": "scheduled \u2014 EXP-011 Tier 3: the component-tree family (\u00a73 Tier 3.10) \u2014 real, but a smaller audience"
+      "exemption": "scheduled \u2014 EXP-011 Tier 2.8 row 11, the component-stack trio (\u00a750, Richard's ruling 2026-09-03; was Tier 3.10): the in-page router for wizards and tabbed flows \u2014 \u00a716.2 says what it is not (not a route); the pusher and popper land with the stack they drive or not at all"
     },
     {
       "typeName": "PageInputs",
@@ -343,12 +343,12 @@
     {
       "typeName": "PageStackNavigate",
       "status": "deferred",
-      "exemption": "scheduled \u2014 EXP-011 Tier 3: the component-tree family (\u00a73 Tier 3.10), re-tiered out of Tier 2.5 in session 45 to sit with the `Page Stack` it drives, because a pusher with no stack has nothing to push onto and the export emits no stack construct at all. \u26a0\ufe0f The Tier 2.5 sentence this replaces was wrong twice over. `_setPageParams` does have two callers and BOTH are the Router (`router.tsx:604` and `:926`; that file defines exactly one node, `RouterNode`, lines 124-957). A Component Stack never touches Page Inputs at all \u2014 it pushes a component and sets that component's own Component Inputs (`navigation-stack.tsx:550`, `:862`, `:976` \u2014 three paths, all `setInputValue`), the `pm-` ports being derived from `component.inputPorts` (`navigate.ts:335`). The only `_setPageParams` string in navigation-stack.tsx is a comment at :983 drawing an analogy to it, which is the likeliest origin of the claim. So these two owe their container, not a routing story: the back channel hands values and signals BACKWARDS to the pusher (`backResult-*`, `backAction-*`), both components stay mounted through the pop transition, and stacks are named, nestable and sync the url only when `useRoutes` is set \u2014 none of which a `BrowserRouter` route expresses."
+      "exemption": "scheduled \u2014 EXP-011 Tier 2.8 row 11, the component-stack trio (\u00a750, Richard's ruling 2026-09-03; was Tier 3.10): lands with the `Page Stack` it drives or not at all \u2014 a pusher with no stack has nothing to push onto. \u26a0\ufe0f The Tier 2.5 sentence this replaces was wrong twice over. `_setPageParams` does have two callers and BOTH are the Router (`router.tsx:604` and `:926`; that file defines exactly one node, `RouterNode`, lines 124-957). A Component Stack never touches Page Inputs at all \u2014 it pushes a component and sets that component's own Component Inputs (`navigation-stack.tsx:550`, `:862`, `:976` \u2014 three paths, all `setInputValue`), the `pm-` ports being derived from `component.inputPorts` (`navigate.ts:335`). The only `_setPageParams` string in navigation-stack.tsx is a comment at :983 drawing an analogy to it, which is the likeliest origin of the claim. So these two owe their container, not a routing story: the back channel hands values and signals BACKWARDS to the pusher (`backResult-*`, `backAction-*`), both components stay mounted through the pop transition, and stacks are named, nestable and sync the url only when `useRoutes` is set \u2014 none of which a `BrowserRouter` route expresses."
     },
     {
       "typeName": "PageStackNavigateBack",
       "status": "deferred",
-      "exemption": "scheduled \u2014 EXP-011 Tier 3: the component-tree family (\u00a73 Tier 3.10), re-tiered out of Tier 2.5 in session 45 to sit with the `Page Stack` it drives, because a pusher with no stack has nothing to push onto and the export emits no stack construct at all. \u26a0\ufe0f The Tier 2.5 sentence this replaces was wrong twice over. `_setPageParams` does have two callers and BOTH are the Router (`router.tsx:604` and `:926`; that file defines exactly one node, `RouterNode`, lines 124-957). A Component Stack never touches Page Inputs at all \u2014 it pushes a component and sets that component's own Component Inputs (`navigation-stack.tsx:550`, `:862`, `:976` \u2014 three paths, all `setInputValue`), the `pm-` ports being derived from `component.inputPorts` (`navigate.ts:335`). The only `_setPageParams` string in navigation-stack.tsx is a comment at :983 drawing an analogy to it, which is the likeliest origin of the claim. So these two owe their container, not a routing story: the back channel hands values and signals BACKWARDS to the pusher (`backResult-*`, `backAction-*`), both components stay mounted through the pop transition, and stacks are named, nestable and sync the url only when `useRoutes` is set \u2014 none of which a `BrowserRouter` route expresses."
+      "exemption": "scheduled \u2014 EXP-011 Tier 2.8 row 11, the component-stack trio (\u00a750, Richard's ruling 2026-09-03; was Tier 3.10): lands with the `Page Stack` it drives or not at all \u2014 a pusher with no stack has nothing to push onto. \u26a0\ufe0f The Tier 2.5 sentence this replaces was wrong twice over. `_setPageParams` does have two callers and BOTH are the Router (`router.tsx:604` and `:926`; that file defines exactly one node, `RouterNode`, lines 124-957). A Component Stack never touches Page Inputs at all \u2014 it pushes a component and sets that component's own Component Inputs (`navigation-stack.tsx:550`, `:862`, `:976` \u2014 three paths, all `setInputValue`), the `pm-` ports being derived from `component.inputPorts` (`navigate.ts:335`). The only `_setPageParams` string in navigation-stack.tsx is a comment at :983 drawing an analogy to it, which is the likeliest origin of the claim. So these two owe their container, not a routing story: the back channel hands values and signals BACKWARDS to the pusher (`backResult-*`, `backAction-*`), both components stay mounted through the pop transition, and stacks are named, nestable and sync the url only when `useRoutes` is set \u2014 none of which a `BrowserRouter` route expresses."
     },
     {
       "typeName": "PageStackNavigateToPath",
@@ -383,7 +383,7 @@
     {
       "typeName": "RemoveDbModelRelation",
       "status": "deferred",
-      "exemption": "scheduled \u2014 EXP-011 Tier 2: the record verbs\u2019 backend neighbours \u2014 \u00a73 did not name them; grouped with Tier 2.6 in session 35 because they are the same backend work and land with it or not at all"
+      "exemption": "scheduled \u2014 EXP-011 Tier 2.8 row 12 (\u00a750, Richard's ruling 2026-09-03; was grouped with Tier 2.6): a relation column cleared through the EXP-009 client \u2014 a small increment on the record verbs; only apps with relation columns notice"
     },
     {
       "typeName": "Router",
@@ -398,12 +398,12 @@
     {
       "typeName": "RunTasks",
       "status": "deferred",
-      "exemption": "deliberately out of scope \u2014 EXP-011 \u00a73 \"Not a target\": a parallel task runner \u2014 control flow the emitted app expresses as ordinary async code, not as a node. A real node and some of them excellent; this says nobody is waiting on it, not that it is bad"
+      "exemption": "scheduled \u2014 EXP-011 Tier 2.8 row 3 (\u00a750, Richard's ruling 2026-09-03: \"I use this all the time\"; reversed from not-a-target): a worker component instantiated once per array item with bounded concurrency, waiting on the worker's success/failure Component Outputs \u2014 an async loop in the emitted app. A refusal here silences every node it fires"
     },
     {
       "typeName": "Screen Resolution",
       "status": "deferred",
-      "exemption": "deliberately out of scope \u2014 EXP-011 \u00a73 \"Not a target\": ambient device measurement; specialist. A real node and some of them excellent; this says nobody is waiting on it, not that it is bad"
+      "exemption": "scheduled \u2014 EXP-011 Tier 2.8 row 9 (\u00a750, Richard's ruling 2026-09-03; reversed from not-a-target): width/height/aspect from `window.innerWidth`/`innerHeight` on every resize \u2014 a hook over one listener, one session for the three utilities"
     },
     {
       "typeName": "Script Downloader",
@@ -468,7 +468,7 @@
     {
       "typeName": "SubscribeToChanges",
       "status": "deferred",
-      "exemption": "deliberately out of scope \u2014 a live SSE subscription (/realtime) publishing rows as they change, i.e. a pub/sub with no static shape (\u00a743.1 refused Record's `changed` on the same sentence, \u00a745.6 names this node); the export emits request/response calls and rows read at a moment, and a translation would be a second runtime rather than a transcription. Revisit only if the export grows a live-data layer"
+      "exemption": "scheduled \u2014 EXP-011 Tier 3.11, the transports (\u00a750, Richard's ruling 2026-09-03; reversed from \"deliberately out of scope\"): a live subscription to one backend class \u2014 a `useEffect` around EventSource on GET /realtime plus one POST /realtime/subscriptions, firing created/updated/deleted with the record. A hook, not a pub/sub the vocabulary lacks a shape for"
     },
     {
       "typeName": "Substring",
@@ -532,12 +532,12 @@
     {
       "typeName": "net.noodl.ActionDispatcher",
       "status": "deferred",
-      "exemption": "deliberately out of scope \u2014 EXP-011 \u00a73 \"Not a target\": an app-wide action bus \u2014 a routing indirection whose faithful translation is a design decision about the emitted app\u2019s architecture, not a node translation. A real node and some of them excellent; this says nobody is waiting on it, not that it is bad"
+      "exemption": "deliberately out of scope \u2014 EXP-011 \u00a73 not-a-target, re-ruled \u00a750, Richard's ruling 2026-09-03: an app-wide action bus driven by a backend agent against a registered vocabulary \u2014 niche today. \u26a0\ufe0f EXP-013: the editor must badge it \"not exportable yet\" where it is placed, and the pre-flight must name what its refusal silences downstream \u2014 a refusal cascades (\u00a750.2)."
     },
     {
       "typeName": "net.noodl.ActionHandler",
       "status": "deferred",
-      "exemption": "deliberately out of scope \u2014 EXP-011 \u00a73 \"Not a target\": the receiving half of the action bus, and out of scope for the same reason. A real node and some of them excellent; this says nobody is waiting on it, not that it is bad"
+      "exemption": "deliberately out of scope \u2014 EXP-011 \u00a73 not-a-target, re-ruled \u00a750, Richard's ruling 2026-09-03: the receiving half of the action bus, out of scope with it. \u26a0\ufe0f EXP-013: the editor must badge it \"not exportable yet\" where it is placed, and the pre-flight must name what its refusal silences downstream \u2014 a refusal cascades (\u00a750.2)."
     },
     {
       "typeName": "net.noodl.ArrayChanged",
@@ -592,12 +592,12 @@
     {
       "typeName": "net.noodl.Hash",
       "status": "deferred",
-      "exemption": "deliberately out of scope \u2014 EXP-011 \u00a73 \"Not a target\": hashing; specialist. A real node and some of them excellent; this says nobody is waiting on it, not that it is bad"
+      "exemption": "scheduled \u2014 EXP-011 Tier 2.8 row 9 (\u00a750, Richard's ruling 2026-09-03: \"probably important\"; reversed from not-a-target): SHA-256/384/512 of a UTF-8 string \u2014 one `crypto.subtle.digest` call, one session for the three utilities"
     },
     {
       "typeName": "net.noodl.JSONStreamParser",
       "status": "deferred",
-      "exemption": "deliberately out of scope \u2014 EXP-011 \u00a73 \"Not a target\": incremental JSON over a stream; specialist. A real node and some of them excellent; this says nobody is waiting on it, not that it is bad"
+      "exemption": "scheduled \u2014 EXP-011 Tier 2.8 row 8, the streaming trio (\u00a750, Richard's ruling 2026-09-03; reversed from not-a-target): NDJSON / concatenated / single-document parsing across chunk boundaries \u2014 a pure function over chunks, a transcription of agent/stream-parsers.ts into src/lib. The streaming-LLM app is the one every new user builds first"
     },
     {
       "typeName": "net.noodl.Log",
@@ -617,72 +617,72 @@
     {
       "typeName": "net.noodl.OptimisticUpdate",
       "status": "deferred",
-      "exemption": "deliberately out of scope \u2014 EXP-011 \u00a73 \"Not a target\": optimistic mutation with rollback \u2014 a data-layer policy, not a value the graph computes. A real node and some of them excellent; this says nobody is waiting on it, not that it is bad"
+      "exemption": "deliberately out of scope \u2014 EXP-011 \u00a73 not-a-target, re-ruled \u00a750, Richard's ruling 2026-09-03: a provisional store write with commit/rollback \u2014 a data-layer policy, and new enough that nobody is waiting on it. \u26a0\ufe0f EXP-013: the editor must badge it \"not exportable yet\" where it is placed, and the pre-flight must name what its refusal silences downstream \u2014 a refusal cascades (\u00a750.2)."
     },
     {
       "typeName": "net.noodl.ParentComponentObject",
       "status": "deferred",
-      "exemption": "scheduled \u2014 EXP-011 Tier 3: the component-tree family (\u00a73 Tier 3.10) \u2014 real, but a smaller audience"
+      "exemption": "scheduled \u2014 EXP-011 Tier 2.8 row 10, the component-object family (\u00a750, Richard's ruling 2026-09-03; was Tier 3.10): the parent's store read from a descendant \u2014 React context; one build for the three"
     },
     {
       "typeName": "net.noodl.ParseCSV",
       "status": "deferred",
-      "exemption": "deliberately out of scope \u2014 EXP-011 \u00a73 \"Not a target\": CSV import; specialist. A real node and some of them excellent; this says nobody is waiting on it, not that it is bad"
+      "exemption": "deliberately out of scope \u2014 EXP-011 \u00a73 not-a-target, re-ruled \u00a750, Richard's ruling 2026-09-03: CSV import \u2014 unlikely to be popular. \u26a0\ufe0f EXP-013: the editor must badge it \"not exportable yet\" where it is placed, and the pre-flight must name what its refusal silences downstream \u2014 a refusal cascades (\u00a750.2)."
     },
     {
       "typeName": "net.noodl.PatternExtractor",
       "status": "deferred",
-      "exemption": "deliberately out of scope \u2014 EXP-011 \u00a73 \"Not a target\": regex-shaped extraction; specialist. A real node and some of them excellent; this says nobody is waiting on it, not that it is bad"
+      "exemption": "deliberately out of scope \u2014 EXP-011 \u00a73 not-a-target, re-ruled \u00a750, Richard's ruling 2026-09-03: regex extraction \u2014 unlikely to be popular. \u26a0\ufe0f EXP-013: the editor must badge it \"not exportable yet\" where it is placed, and the pre-flight must name what its refusal silences downstream \u2014 a refusal cascades (\u00a750.2)."
     },
     {
       "typeName": "net.noodl.RandomBytes",
       "status": "deferred",
-      "exemption": "deliberately out of scope \u2014 EXP-011 \u00a73 \"Not a target\": cryptographic randomness; specialist. A real node and some of them excellent; this says nobody is waiting on it, not that it is bad"
+      "exemption": "scheduled \u2014 EXP-011 Tier 2.8 row 9 (\u00a750, Richard's ruling 2026-09-03; reversed from not-a-target): `crypto.getRandomValues` as hex/base64/base64url \u2014 one call, one session for the three utilities"
     },
     {
       "typeName": "net.noodl.SSE",
       "status": "deferred",
-      "exemption": "deliberately out of scope \u2014 EXP-011 \u00a73 \"Not a target\": a live server connection; specialist, and nothing in the emitted app holds one. A real node and some of them excellent; this says nobody is waiting on it, not that it is bad"
+      "exemption": "scheduled \u2014 EXP-011 Tier 3.11, the transports (\u00a750, Richard's ruling 2026-09-03: \"a new one that will excite a lot of people, danger zone\"; reversed from not-a-target): EventSource in a hook \u2014 the streaming-LLM app's transport"
     },
     {
       "typeName": "net.noodl.SetComponentObjectProperties",
       "status": "deferred",
-      "exemption": "scheduled \u2014 EXP-011 Tier 3: the component-tree family (\u00a73 Tier 3.10) \u2014 real, but a smaller audience"
+      "exemption": "scheduled \u2014 EXP-011 Tier 2.8 row 10, the component-object family (\u00a750, Richard's ruling 2026-09-03; was Tier 3.10): a component writing its own object store is ordinary local state \u2014 one build for the three"
     },
     {
       "typeName": "net.noodl.SetParentComponentObjectProperties",
       "status": "deferred",
-      "exemption": "scheduled \u2014 EXP-011 Tier 3: the component-tree family (\u00a73 Tier 3.10) \u2014 real, but a smaller audience"
+      "exemption": "scheduled \u2014 EXP-011 Tier 2.8 row 10, the component-object family (\u00a750, Richard's ruling 2026-09-03; was Tier 3.10): the parent's store written from a descendant \u2014 React context; one build for the three"
     },
     {
       "typeName": "net.noodl.StateHistory",
       "status": "deferred",
-      "exemption": "deliberately out of scope \u2014 EXP-011 \u00a73 \"Not a target\": undo/redo history \u2014 a whole state architecture rather than a node. A real node and some of them excellent; this says nobody is waiting on it, not that it is bad"
+      "exemption": "deliberately out of scope \u2014 EXP-011 \u00a73 not-a-target, re-ruled \u00a750, Richard's ruling 2026-09-03: a bounded undo history of a store \u2014 a whole state architecture rather than a node. \u26a0\ufe0f EXP-013: the editor must badge it \"not exportable yet\" where it is placed, and the pre-flight must name what its refusal silences downstream \u2014 a refusal cascades (\u00a750.2)."
     },
     {
       "typeName": "net.noodl.StateHistory.Undo",
       "status": "deferred",
-      "exemption": "deliberately out of scope \u2014 EXP-011 \u00a73 \"Not a target\": the verb half of undo/redo, out of scope with it. A real node and some of them excellent; this says nobody is waiting on it, not that it is bad"
+      "exemption": "deliberately out of scope \u2014 EXP-011 \u00a73 not-a-target, re-ruled \u00a750, Richard's ruling 2026-09-03: the verb half of undo/redo, out of scope with it. \u26a0\ufe0f EXP-013: the editor must badge it \"not exportable yet\" where it is placed, and the pre-flight must name what its refusal silences downstream \u2014 a refusal cascades (\u00a750.2)."
     },
     {
       "typeName": "net.noodl.StateSnapshot",
       "status": "deferred",
-      "exemption": "deliberately out of scope \u2014 EXP-011 \u00a73 \"Not a target\": the snapshot half of undo/redo; \u00a73 named the family and this is its third member. A real node and some of them excellent; this says nobody is waiting on it, not that it is bad"
+      "exemption": "deliberately out of scope \u2014 EXP-011 \u00a73 not-a-target, re-ruled \u00a750, Richard's ruling 2026-09-03: the snapshot half of undo/redo, out of scope with it. \u26a0\ufe0f EXP-013: the editor must badge it \"not exportable yet\" where it is placed, and the pre-flight must name what its refusal silences downstream \u2014 a refusal cascades (\u00a750.2)."
     },
     {
       "typeName": "net.noodl.StreamBuffer",
       "status": "deferred",
-      "exemption": "deliberately out of scope \u2014 EXP-011 \u00a73 \"Not a target\": streaming plumbing \u2014 specialist, and the emitted app has no stream vocabulary to put it in. A real node and some of them excellent; this says nobody is waiting on it, not that it is bad"
+      "exemption": "scheduled \u2014 EXP-011 Tier 2.8 row 8, the streaming trio (\u00a750, Richard's ruling 2026-09-03; reversed from not-a-target): batches fast-arriving items and flushes on size, interval or demand \u2014 a hook over a ref and one timer; the streaming-LLM app's plumbing"
     },
     {
       "typeName": "net.noodl.TextAccumulator",
       "status": "deferred",
-      "exemption": "deliberately out of scope \u2014 EXP-011 \u00a73 \"Not a target\": token accumulation for streamed text; specialist. A real node and some of them excellent; this says nobody is waiting on it, not that it is bad"
+      "exemption": "scheduled \u2014 EXP-011 Tier 2.8 row 8, the streaming trio (\u00a750, Richard's ruling 2026-09-03; reversed from not-a-target): appends chunks into text and splits messages on a delimiter, bounded \u2014 a pure function over chunks; the streamed-answer display of every LLM app"
     },
     {
       "typeName": "net.noodl.ToCSV",
       "status": "deferred",
-      "exemption": "deliberately out of scope \u2014 EXP-011 \u00a73 \"Not a target\": CSV export; specialist. A real node and some of them excellent; this says nobody is waiting on it, not that it is bad"
+      "exemption": "deliberately out of scope \u2014 EXP-011 \u00a73 not-a-target, re-ruled \u00a750, Richard's ruling 2026-09-03: CSV export \u2014 unlikely to be popular. \u26a0\ufe0f EXP-013: the editor must badge it \"not exportable yet\" where it is placed, and the pre-flight must name what its refusal silences downstream \u2014 a refusal cascades (\u00a750.2)."
     },
     {
       "typeName": "net.noodl.UUID",
@@ -691,7 +691,7 @@
     {
       "typeName": "net.noodl.WebSocket",
       "status": "deferred",
-      "exemption": "deliberately out of scope \u2014 EXP-011 \u00a73 \"Not a target\": a live socket; specialist, same reason. A real node and some of them excellent; this says nobody is waiting on it, not that it is bad"
+      "exemption": "scheduled \u2014 EXP-011 Tier 3.11, the transports (\u00a750, Richard's ruling 2026-09-03: \"a lot of people will want to use this, danger zone\"; reversed from not-a-target): WebSocket in a hook with reconnect"
     },
     {
       "typeName": "net.noodl.animatetovalue",
@@ -771,7 +771,7 @@
     {
       "typeName": "net.noodl.user.SignInWith",
       "status": "deferred",
-      "exemption": "scheduled \u2014 EXP-011 Tier 2.6's tail (\u00a745.6, session 73): Do is a full-page redirect to the backend's /oauth/<provider>/start and the outcome arrives on a LATER page load, picked up by the runtime client's constructor (UserService._consumeAuthReturn) \u2014 the exported client has no return leg yet, and the emitted vocabulary has no shape for an action whose Done fires in a different document. One session when a project asks for provider sign-in: the client's return leg first (the session written from the ?nodegx_auth exchange), then the node as a launcher plus a mount-time receiver"
+      "exemption": "deliberately out of scope \u2014 until provider sign-in is a product decision (\u00a750, Richard's ruling 2026-09-03: not recognised in the editor); Do is a full-page redirect to the backend's /oauth/<provider>/start and the outcome arrives on a LATER page load, picked up by the runtime client's constructor (UserService._consumeAuthReturn) \u2014 the exported client has no return leg (\u00a745.6). \u26a0\ufe0f EXP-013: the editor must badge it \"not exportable yet\" where it is placed, and the pre-flight must name what its refusal silences downstream \u2014 a refusal cascades (\u00a750.2)."
     },
     {
       "typeName": "net.noodl.user.SignUp",

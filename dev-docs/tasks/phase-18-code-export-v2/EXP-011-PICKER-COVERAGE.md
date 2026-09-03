@@ -65,7 +65,7 @@ Ranked by *"can you build a normal app without it"*, not by corpus frequency.
 4. ✅ **`String` / `Number` / `Boolean` / `Color` (Variables, 4).** The plain value nodes. Cheap, and
    embarrassing to be missing. **Built, driven and gated in session 35 — §6.**
 
-### Tier 2 — common, not universal  🟡 **2.5 down to the component stack pair, session 44**
+### Tier 2 — common, not universal  🟡 **2.6's tail and the new 2.8 remain — §50**
 
 5. **Navigation (5).** ✅ **`Page Inputs` built, driven and gated in session 40 — §11**, along
    with the route patterns and the Navigate url builder, which were both recorded `translated`
@@ -92,22 +92,53 @@ Ranked by *"can you build a normal app without it"*, not by corpus frequency.
    and stateful) and worth doing properly rather than early. **Built, graded frame by frame against
    the interpreter's own files, and driven in session 77 — §49**, together with the wired style sink
    (`opacity`/`color`/`backgroundColor`) neither could do without.
-9. **`CSS Definition` and `Script`** — global CSS and arbitrary script. `CSS Definition` looks
-   trivial and ⚠️ **every instance in the current corpus is the empty stub `".group1 "`, so it
-   would buy nothing measurable there** — build it against a real project, not the corpus.
-10. **`Component Children`, `Drag`, `Component Stack`, the parent-object family.**
+9. ✅ **`CSS Definition`** — built in session 76 (§48). `Script` moved to **Tier 2.8 row 2** by
+    the 2026-09-03 ruling (§50): it is the escape hatch the MCP reaches for, not a niche.
+10. **`Drag`, the component-tree family** — `Component Children`, `Component Stack` and its pair, the
+    parent-object family all moved to **Tier 2.8** by §50; `Drag` stays here as its row 13.
+11. **The transports** — `Subscribe To Changes`, `Server-Sent Events`, `WebSocket`. **Added by §50**
+    (they were "not a target"). Each is a browser API in a `useEffect`: EventSource on
+    `/realtime` plus one subscribe POST; EventSource; WebSocket with reconnect. Real, buildable, and
+    the streaming-LLM app is the one every new user builds first.
 
-### Not a target
+### Tier 2.8 — the rows Richard reinstated, in the order to build them  🆕 **ruled 2026-09-03, §50**
 
-`Action Dispatcher` / `Action Handler`, `Optimistic Update`, `State History` / `Undo / Redo`,
-`Stream Buffer`, `SSE`, `WebSocket`, `JSON Stream Parser`, `Parse CSV` / `To CSV`,
-`Pattern Extractor`, `Text Accumulator`, `Run Tasks`, `On App Error`, `Screen Resolution`,
-`Gyroscope`, `Open File Picker`, `Random Bytes`, `Hash`.
+The 2026-08-28 "not a target" list below was written from an old picker and read as an
+exclusion nobody could argue with. Richard re-read it on 2026-09-03 and reversed most of it —
+*"these are much loved and used nodes"* — and the phase's own first commitment (README: *every
+node in the picker exports, or the picker stops offering it*) never allowed the list in the first
+place. The order is by *what a refusal silences*, since §50.2 measured that a refusal cascades:
 
-These are real nodes and some are excellent, but they are specialist. **Say so in the ledger's
-exemption sentence** rather than leaving them looking like a backlog — an exemption that names a
-node as deliberately out of scope is a decision; one that says "pre-gate backlog" is a to-do
-nobody will ever do. Most of the current 101 exemptions say the latter, verbatim.
+| row | nodes | why here |
+|---|---|---|
+| 1 | `Component Children` | a wrapper's children vanish from the export — a working component becomes a blank one |
+| 2 | `Script` | the escape hatch the MCP reaches for when the picker has no node; ten in one MCP-built project |
+| 3 | `Run Tasks` | *"I use this all the time"* — and everything it fires is refused with it |
+| 4 | `On App Error` | an error pathway that is left out is the exact case where exporting is worse than not |
+| 5 | `Create New Array` | *"I use this all the time"* — the anonymous-Id-by-wire mechanism (§7.3) needs a design session first |
+| 6 | `Filter Records` | the search box over a fetched list |
+| 7 | `Repeater Item` | now that the node works, people will use it (§7.3 reversed) |
+| 8 | `JSON Stream Parser` · `Stream Buffer` · `Text Accumulator` | the streaming trio — pure functions over chunks, one build |
+| 9 | `Hash` · `Random Bytes` · `Screen Resolution` | one browser API each, one session for the three |
+| 10 | `Set Component Object Properties` · `Parent Component Object` · `Set Parent Component Object Properties` | own store = local state; the parent pair = context |
+| 11 | `Component Stack` · `Push Component To Stack` · `Pop Component Stack` | the in-page router — §16.2 says what it is not |
+| 12 | `Add Record Relation` · `Remove Record Relation` | a relation column through the EXP-009 client |
+| 13 | `Drag` | the smallest audience of the buildable rows |
+
+Twenty-two nodes. With Tier 3.11's three: **25 scheduled ⇒ ceiling 117 of 127 (92.1%)**.
+
+### Not a target — re-ruled 2026-09-03 (§50), and every one of them must now be **badged**
+
+`Action Dispatcher` / `Action Handler`, `Optimistic Update`, `State History` / `State Snapshot` /
+`Undo / Redo`, `Parse CSV` / `To CSV`, `Pattern Extractor`, and `Sign In With` (until provider
+sign-in is a product decision).
+
+Ten nodes. The original list held twenty-two; the other twelve are in Tier 2.8 and 3.11 above.
+🔴 **An exclusion is only honest if the person placing the node is told.** Nothing in the editor
+reads the ledger today (§50.2): the first a person hears is the pre-flight modal at export, which
+lists components with counts, not nodes. That is **EXP-013**, and it is the next first job — before
+row 1 above — because the ruling that reinstated these rows was made by someone reading the list,
+and a person building an app never sees the list.
 
 ## §4 Acceptance criteria
 
@@ -6583,3 +6614,82 @@ Variable into a Group's opacity dropped with the same catch-all sentence before 
 - Next by the surface: `Sign In With` once provider sign-in is wanted (the client's return leg
   first); the component stack pair (§16.2 says what a Component Stack is not); `Script`. The
   Data bucket's remaining rows are "not a target" by §3 and stay so.
+
+## §50 Richard's ruling, 2026-09-03 — the "not a target" list was wrong, and the danger is the cascade nobody is told about
+
+**No node built. Picker 92, unchanged.** A read of the board with Richard, who did not recognise
+the shape of the remaining list and was right not to.
+
+### §50.1 What was measured before the ruling
+
+- **The picker report said 35 left; the task file had already ruled 22 of them out**, all in the
+  §3 "Not a target" list written on 2026-08-28. Only 13 were being treated as buildable, and the
+  hand-off put `Sign In With` first — a node Richard has never placed and that waits on a provider
+  decision. Session 77 wrote it as conditional; read as an instruction it was the wrong first pick.
+- **Every one of the 22 exists and is placeable** (`node-catalog.json`: `inNodePicker: true`, none
+  deprecated). Their definitions, read from source rather than from the list: `Run Tasks` runs a
+  worker component per array item; `On App Error` is the app-wide error boundary; `Subscribe To
+  Changes` is the realtime subscription over SSE (`GET /realtime` + `POST /realtime/subscriptions`);
+  the streaming trio are pure functions over chunks; `Hash`/`Random Bytes` are WebCrypto;
+  `Screen Resolution` is `window.innerWidth` on resize. Nothing on the list is impossible. It was
+  excluded for being *specialist*, and Richard's reading of who uses what is the better instrument:
+  *"Create New Array — I use this all the time. Run Tasks — I use this all the time. Server-Sent
+  Events — a new one that will excite a lot of people, danger zone. WebSocket — danger zone."*
+- **The shipped template places none of the 35** (`templates/members-area`, 0 instances of every
+  one), so the product-surface ranking cannot come from templates. One MCP-built drive project on
+  disk holds **ten `Script` nodes** — the escape hatch is what the AI reaches for.
+- **The list contradicted the README's first commitment** — *every node in the picker exports, or
+  the picker stops offering it.* An exclusion list does neither.
+
+### §50.2 🔴 The danger, measured: a refusal cascades, and nobody is told at authoring time
+
+Richard's question: *"wtf happens to the person's app if they try to export anyway and this node is
+used a lot?"* Three readings:
+
+1. **A refusal takes its downstream pathway with it.** `plan.ts` refuses any node whose only
+   trigger is a refused node, with the reason *"its Do is never fired by a translatable trigger"*
+   (the record verbs, `Navigate`, `HTTP Request`'s Fetch, `Cloud Function`'s Call, the files —
+   lines ~5917–6215). A `Run Tasks` in the middle of a flow silences every Cloud Function, Navigate
+   and HTTP Request behind it. An `On App Error` refusal means the entire error pathway does not
+   exist in the exported app. The pre-flight's sentence — *"left out, never translated wrongly"* —
+   is true of the node and silent about the pathway.
+2. **Nothing in the editor reads the ledger.** No badge in the node picker, nothing in the property
+   panel (`grep -rlai` over `noodl-editor/src/editor/src` for any export-status text: four hits,
+   all unrelated). The first a person hears is the pre-flight modal, which lists **components with
+   refusal counts**, not node names; names and reasons arrive in `EXPORT-REPORT.md` after the
+   write.
+3. **The ledger already carries the sentence per type** — 60 `deferred` rows, each with an
+   exemption the checker enforces the shape of. Showing it is a wire, not research.
+
+### §50.3 The ruling
+
+Richard, 2026-09-03: *"Let's do it"*, on this split —
+
+- **Build, Tier 2.8, in the order §3 lists** (22 nodes, 13 rows): Component Children; Script;
+  Run Tasks; On App Error; Create New Array; Filter Records; Repeater Item; the streaming trio;
+  Hash/Random Bytes/Screen Resolution; the component-object family; the component-stack trio; the
+  relation pair; Drag.
+- **Build, Tier 3.11, the transports**: Subscribe To Changes, Server-Sent Events, WebSocket.
+- **Out of scope, and badged**: Action Dispatcher, Action Handler, Optimistic Update, State History,
+  State Snapshot, Undo / Redo, Parse CSV, To CSV, Pattern Extractor, Sign In With.
+- **EXP-013 before row 1**: *"we need to be super clear when someone is doing code export which
+  nodes can't be exported and what will happen"* — a badge where the node is placed, the pre-flight
+  naming nodes and what each refusal silences, and a plain verdict when the cascade is large:
+  change these nodes, or wait.
+
+Reversals of earlier sections, by name: §7.3's `Create New Array` and `Repeater Item` (both
+"deliberately out of scope" for mechanism reasons — the mechanisms are real and are now the work,
+not the excuse); §44.6's `Subscribe To Changes` as refuse-by-name; §45.6's `Sign In With` as a
+scheduled tail (now out of scope until a provider decision). The ledger's 25 sentences were
+rewritten in this commit; `export-ledger:check` enforces the shape and read OK; the picker floor is
+untouched because no translation changed.
+
+### §50.4 What this leaves
+
+- EXP-013, the warning — the next first job, and a product surface rather than an export row.
+- Then Tier 2.8 row 1. Same shape as §41–§49.
+- `Create New Array` (row 5) needs the anonymous-store design before a session opens it: an array
+  minted with a generated Id whose only consumer is another node's Array Id **by wire** — the
+  named-array model keys on a literal name. §7.3 measured that minting ids buys nothing on its own.
+- The honest ceiling is now **117 of 127**; the ten out-of-scope rows stay out only while the badge
+  says so where the node is placed.

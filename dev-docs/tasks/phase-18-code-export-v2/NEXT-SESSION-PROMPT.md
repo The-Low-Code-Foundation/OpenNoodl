@@ -1,4 +1,4 @@
-# Next session — §49 built the animation pair (`States` + `Animate To Value`) as two emitted modules graded frame by frame against the interpreter's own files, and the wired style sink; gated, 17/17 arms, driven 51/51 + a sabotage control (5 diffs, the two mid-tween steps); picker 90 → 92/127
+# Next session — 🔴 RE-RULED 2026-09-03 (§50): EXP-013 first, then Tier 2.8 · §49 built the animation pair (`States` + `Animate To Value`) as two emitted modules graded frame by frame against the interpreter's own files, and the wired style sink; gated, 17/17 arms, driven 51/51 + a sabotage control (5 diffs, the two mid-tween steps); picker 90 → 92/127
 
 ## 🔴 Read this first — Richard, 2026-09-02: *"Stop fucking up the CPU."*
 
@@ -46,21 +46,29 @@ up and went down mid-session — nothing of mine ran beside it. Memory:
    floor 92. **17/17 arms** (A needed a row; E was TS2367 first). **Drive 51/51**, control 46/51.
 6. Committed by pathspec.
 
-## 🔴 Do this next — BUILD
+## 🔴 Do this next — EXP-013 first, then EXP-011 Tier 2.8 row 1 (Richard's ruling, 2026-09-03 — §50)
 
-By the product surface (`node scripts/export-ledger/picker-coverage.js`), the scheduled rows left:
-- **`Sign In With`** if provider sign-in is wanted — the client's return leg (`_consumeAuthReturn`)
-  first; needs a decision Richard makes, so a session without one builds the next row instead.
-- **The component stack pair** (`Push Component To Stack` / `Pop Component Stack` /
-  `Component Stack`) — §16.2 says what it is not (not a route).
-- **`Script`** — arbitrary code; today its source is preserved as a comment (§28).
-- Small, one table row each: **only a String constant types a Variable** (§49.3 — `level`
-  written by two Number constants is `value<unknown>`); the HTTP body on the control-mint
-  clause (§48.6, `probe48.ts` reused); the transform family as style sinks when a fixture asks.
+Richard re-read the remaining list on 2026-09-03 and reversed the "not a target" list: *"these are
+much loved and used nodes."* Read **EXP-011 §50** and **§3 Tier 2.8** before anything else. The
+board you inherit is not session 77's:
 
-Same shape as §41–§49: runtime file first, `EXPECTEDnn.md` before any run, refusals by name, a
-fixture on disk, the reverted arm measured, the arms, the drive with a `trap` teardown, commit by
-pathspec.
+1. **EXP-013 — "Not exportable yet", said where the node is placed.** The next first job, before
+   any node. Measured (§50.2): a refusal **cascades** — every node fired only by a refused node is
+   refused as *"never fired by a translatable trigger"* — and **nothing in the editor reads the
+   ledger** until the pre-flight, which lists components by count, not nodes. The task file has
+   seven ACs; the attribution (AC3, naming the root of a cascade in `plan.ts`) is the code, the badge
+   is a wire. Product surface: `run-editor`, one heavy job at a time.
+2. **Then Tier 2.8 in the order §3 lists**: `Component Children` (a wrapper's children vanish),
+   `Script` (ten in one MCP-built project), `Run Tasks`, `On App Error`, `Create New Array` (design
+   session first — §7.3's anonymous-Id-by-wire mechanism is the work now), `Filter Records`,
+   `Repeater Item`, the streaming trio, the three utilities, the component-object family, the
+   component-stack trio, the relation pair, `Drag`. Then Tier 3.11, the transports.
+3. **`Sign In With` is OUT** until provider sign-in is a product decision — do not build it.
+
+Same shape as §41–§49 for every row: runtime file first, `EXPECTEDnn.md` before any run, refusals
+by name, a fixture on disk, the reverted arm measured, the arms, the drive with a `trap` teardown,
+commit by pathspec. The small rows session 77 listed (String-only Variable typing §49.3, the HTTP
+body on the control-mint clause §48.6, the transform family) are still open and still small.
 
 ## Open residuals (registered, none blocks an AC)
 

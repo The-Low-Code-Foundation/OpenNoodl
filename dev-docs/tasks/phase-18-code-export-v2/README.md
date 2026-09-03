@@ -20,7 +20,7 @@ a picture of the app.
 
 | | commitment |
 |---|---|
-| **Nodes** | Every node in the picker exports, or the picker stops offering it. New nodes ship exportable. |
+| **Nodes** | Every node in the picker exports, or the picker stops offering it. New nodes ship exportable. 🔴 *Re-read 2026-09-03: EXP-011's "not a target" list did neither for 22 nodes — reversed in §50; the ten that stay out are **badged** (EXP-013), which is the nearest honest thing to "stops offering it".* |
 | **Custom nodes** | Nodes from `noodl_modules` — MCP-written, module, prefab — export as the React they already are. |
 | **Backend** | The exported frontend talks to the **project's existing deployed NodeGX backend**: its database, its cloud functions, its auth. Not a stub. Not a TODO. |
 | **Honesty** | Anything that cannot export says so **in the artefact**, not only in a console log nobody keeps. |
@@ -104,7 +104,7 @@ where export means *taking your app with its backend*. Everything downstream fol
 
 | Task | Name | Status |
 |------|------|--------|
-| [EXP-001](./EXP-001-NODEGX-CORE.md) | `@nodegx/core` companion library | ✅ Built |
+| [EXP-001](./EXP-001-NODEGX-CORE.md) | `@nodegx/core` companion library | ✅ Built — **published to npm 2026-09-01 as `@nodegx/core@0.1.0`**; 4 metadata/CI rows carried to `0.1.1` |
 | [EXP-002](./EXP-002-DETERMINISTIC-GENERATORS.md) | Deterministic generators | 🟡 In progress — **re-aimed at the picker** |
 | [EXP-003](./EXP-003-AI-LOGIC-TRANSLATION.md) | AI logic translation + trace harness | Not started |
 | [EXP-004](./EXP-004-EXPORT-REPORT-UX.md) | Export report & honesty UX | 🔴 **Promoted** — the report exists only as stdout today |
@@ -114,7 +114,9 @@ where export means *taking your app with its backend*. Everything downstream fol
 | [EXP-008](./EXP-008-EXPORT-COVERAGE-LEDGER.md) | Coverage ledger & contributor gate | ✅ Built — **picker ratchet added 2026-08-28** |
 | [EXP-009](./EXP-009-BACKEND-CONNECTION.md) | **The exported app talks to its deployed backend** | 🟢 **Built + driven s33** — AC4 (cloud functions) waits on EXP-011's node |
 | [EXP-010](./EXP-010-CUSTOM-NODES-AND-MODULES.md) | **Custom nodes, modules and prefabs export** | 🔴 **NEW** |
-| [EXP-011](./EXP-011-PICKER-COVERAGE.md) | **Close the picker gap, ranked by what apps need** | 🟡 **92/127 (72.4%) s77** — §49 built the animation pair, `States` and `Animate To Value` (Tier 3.8), as two emitted modules transcribed from `states.ts`, `animate-to-value.ts`, `timerscheduler.ts`, `easecurves.ts` and `bezier-easing`, graded frame by frame against those files, and the **wired style sink** (`opacity`/`color`/`backgroundColor` as an inline `style`) neither could do without; §48 `CSS Definition` + the CSS Class fold + the `Date` column; §47 the named Object; §41–§46 Cloud Services. Left: `Sign In With` (needs a provider), the stack pair, the parent-object family, `Script`, and the Data bucket's not-a-target rows |
+| [EXP-011](./EXP-011-PICKER-COVERAGE.md) | **Close the picker gap, ranked by what apps need** | 🟡 **92/127 (72.4%) s77** — §49 built the animation pair, `States` and `Animate To Value` (Tier 3.8), as two emitted modules transcribed from `states.ts`, `animate-to-value.ts`, `timerscheduler.ts`, `easecurves.ts` and `bezier-easing`, graded frame by frame against those files, and the **wired style sink** (`opacity`/`color`/`backgroundColor` as an inline `style`) neither could do without; §48 `CSS Definition` + the CSS Class fold + the `Date` column; §47 the named Object; §41–§46 Cloud Services. 🔴 **Re-ruled 2026-09-03 (§50)**: the "not a target" list was wrong — 22 of its rows are now **Tier 2.8**, in the build order §3 lists (Component Children, Script, Run Tasks, On App Error, Create New Array, …), the three transports are Tier 3.11, ten stay out **and must be badged (EXP-013)**. Ceiling 117/127 |
+| [EXP-012](./EXP-012-THE-EDITOR-EXPORT-COMMAND.md) | The editor export command | 🟢 Built + driven s67; rides 0.2.2 |
+| [EXP-013](./EXP-013-NOT-EXPORTABLE-SAID-WHERE-THE-NODE-IS-PLACED.md) | **"Not exportable yet", said where the node is placed** | 🔴 **NEW 2026-09-03 — the next first job.** A refusal cascades (every node it fires is refused with it) and nothing in the editor says so until export; Richard: *"if it's 'your whole error pathway will just not work', there's no point in exporting"* |
 
 ### Order, and why
 
@@ -128,6 +130,9 @@ where export means *taking your app with its backend*. Everything downstream fol
 3. **EXP-011 — the picker gap**, ranked by what an app needs: the `Object`/array vocabulary,
    `HTTP Request`, the date family, `Page Inputs`.
 4. **EXP-004 — the honesty UX**, promoted because today a deferral is *invisible in the output*.
+5. **EXP-013 — the warning where the node is placed**, opened 2026-09-03 and put **ahead of the next
+   EXP-011 row**: an exclusion is only honest if the person placing the node is told, and today they
+   are told at export, by component count, after the pathway behind the node has already been dropped.
 
 ---
 
