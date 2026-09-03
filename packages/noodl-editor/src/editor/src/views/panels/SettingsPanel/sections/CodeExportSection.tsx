@@ -1,5 +1,7 @@
 import React from 'react';
 
+import { alphaNotice } from '@nodegx/export';
+
 import { exportProjectAsReactCode } from '@noodl-utils/codeExport/exportReactCode';
 
 import { IconName } from '@noodl-core-ui/components/common/Icon';
@@ -20,6 +22,9 @@ export function CodeExportSection() {
           Generate a React project from this app that builds and runs on its own, talking to the same backend. You
           see exactly what will and will not translate before anything is written.
         </Text>
+      </Box>
+      <Box hasBottomSpacing>
+        <Text>{alphaNotice()}</Text>
       </Box>
       <PrimaryButton
         icon={IconName.Code}

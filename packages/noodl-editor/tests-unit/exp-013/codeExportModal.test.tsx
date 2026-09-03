@@ -26,6 +26,7 @@ import { parseProject } from '../../../nodegx-export/src/parse/parseProject';
 import { emitApp } from '../../../nodegx-export/src/emit/emitApp';
 import { summarizePreflight } from '../../../nodegx-export/src/emit/preflight';
 import { CodeExportModal, confirmLabel } from '../../src/editor/src/views/PopupLayer/CodeExportModal';
+import { alphaNotice } from '../../../nodegx-export/src/ledger';
 import { render, text, walk } from '../support/renderElements';
 
 import type { Catalog } from '../../../nodegx-export/src/catalog';
@@ -55,6 +56,29 @@ describe('the fixtures are the shapes the file claims (asserted, not assumed)', 
     expect(quiet.cascade.silenced).toBe(3);
     expect(quiet.cascade.pathway).toEqual([]);
     expect(quiet.verdict).toBeNull();
+  });
+});
+
+describe('the alpha notice (0.2.2) — on every pre-flight, whatever the summary says', () => {
+  test('both fixtures and the clean summary carry the one sentence, with the ledger\'s number', () => {
+    const clean: PreflightSummary = {
+      ...quiet,
+      refusals: 0,
+      attention: [],
+      noFile: [],
+      cascade: { roots: [], unsilenced: 0, silenced: 0, pathway: [] },
+      verdict: null
+    };
+    for (const s of [trips, quiet, clean]) {
+      const tree = render(<CodeExportModal summary={s} onConfirm={noop} onCancel={noop} />);
+      const alpha = byTest(tree, 'code-export-alpha');
+      expect(alpha).toHaveLength(1);
+      expect(text(alpha[0])).toBe(alphaNotice());
+      expect(text(alpha[0])).toMatch(/Code export is in alpha\. \d+ of the \d+ nodes you can place export today \(\d+%\)/);
+      // Above the verdict and the counts: it is the first thing said after "nothing written yet".
+      const all = text(tree);
+      expect(all.indexOf('Code export is in alpha')).toBeLessThan(all.indexOf('will not translate') === -1 ? all.length : all.indexOf('will not translate'));
+    }
   });
 });
 
@@ -123,7 +147,8 @@ describe('AC2 — the nodes by type and label, under their component', () => {
     const rows = byTest(tree, 'code-export-node').map(text);
     // One row per node the export has no rule for; the silenced ones ride on its row.
     expect(rows).toHaveLength(1);
-    expect(rows[0]).toContain('"Run the batch" (Run Tasks) — the export has no rule for this node yet');
+    // §53 translated Run Tasks; the fixture's one names no Template, which is now the refusal's own sentence.
+    expect(rows[0]).toContain('"Run the batch" (Run Tasks) — it names no Template component');
     for (const name of ['"Sync tasks" (Cloud Function)', '"Go home" (Navigate)', '"Mark finished" (Set Variable)', '"finished" (String)', '"status" (Variable)']) {
       expect(rows[0]).toContain(name);
     }

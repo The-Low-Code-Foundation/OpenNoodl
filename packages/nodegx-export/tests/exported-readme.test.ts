@@ -38,6 +38,7 @@ import * as path from 'path';
 import { Catalog } from '../src/catalog';
 import { emitApp } from '../src/emit/emitApp';
 import { README_PATH, renderReadme } from '../src/emit/readme';
+import { alphaNotice, exportCoverage } from '../src/ledger';
 import { ExportReportData, REPORT_PATH, nextSteps, renderSteps } from '../src/emit/report';
 import { parseProject } from '../src/parse/parseProject';
 
@@ -84,6 +85,26 @@ describe('the README reaches every exported app, which is the regression', () =>
     expect(readmeOf('puppy-test-3')).toBe(readmeOf('puppy-test-3'));
     expect(readmeOf('puppy-test-3')).not.toMatch(/\b20\d\d-\d\d-\d\d\b/);
     expect(readmeOf('puppy-test-3')).not.toContain(__dirname);
+  });
+});
+
+describe('the alpha notice (0.2.2) — the same sentence the editor shows, with the ledger\'s number', () => {
+  test('every README carries it, as a blockquote above the run instructions', () => {
+    for (const fixture of FIXTURES) {
+      const readme = readmeOf(fixture);
+      expect(readme).toContain(`> **${alphaNotice()}**`);
+      expect(readme.indexOf('Code export is in alpha')).toBeLessThan(readme.indexOf('## Run it'));
+    }
+  });
+
+  test('the number in it is the picker reading the gate holds, rounded down', () => {
+    const c = exportCoverage();
+    const ledger = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'coverage-ledger.json'), 'utf8'));
+    expect(c.exportable).toBe(ledger.pickerCoverageFloor);
+    expect(c.placeable).toBe(ledger.pickerCoverageTotal);
+    expect(c.percent).toBe(Math.floor((100 * c.exportable) / c.placeable));
+    expect(alphaNotice()).toContain(`${c.exportable} of the ${c.placeable} nodes you can place export today (${c.percent}%)`);
+    expect(alphaNotice()).toContain('do not ship a production app from it yet');
   });
 });
 

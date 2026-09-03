@@ -1,6 +1,6 @@
 import React from 'react';
 
-import { plainReason } from '@nodegx/export';
+import { alphaNotice, plainReason } from '@nodegx/export';
 import type { CascadeRoot, PreflightSummary, RefusedNode } from '@nodegx/export';
 
 /**
@@ -103,6 +103,11 @@ export function CodeExportModal({ summary, onConfirm, onCancel }: CodeExportModa
 
       <p>
         <strong>Nothing has been written yet.</strong> This is what the export will produce.
+      </p>
+
+      {/* 0.2.2 — the alpha notice: the picker number from the ledger, the same sentence the README carries. */}
+      <p data-test="code-export-alpha" style={{ color: 'var(--theme-color-warning)' }}>
+        <strong>{alphaNotice()}</strong>
       </p>
 
       <p>

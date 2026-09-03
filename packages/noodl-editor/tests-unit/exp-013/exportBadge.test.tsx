@@ -69,8 +69,11 @@ describe('the decision, over the real ledger', () => {
   });
 
   test('the nodes Richard named (EXP-011 §50) read as scheduled, and Sign In With as out of scope', () => {
-    expect(exportBadgeFor('RunTasks')).toMatchObject({ kind: 'scheduled' });
-    expect(exportBadgeFor('On App Error')).toMatchObject({ kind: 'scheduled' });
+    // `RunTasks` and `On App Error` stood here until sessions 81 and 82 translated them (§53, §54);
+    // this row is pinned to the LAST scheduled row, and the control below it is the ledger itself.
+    expect(exportBadgeFor('Drag')).toMatchObject({ kind: 'scheduled' });
+    expect(exportBadgeFor('RunTasks')).toBeUndefined();
+    expect(exportBadgeFor('On App Error')).toBeUndefined();
     expect(exportBadgeFor('net.noodl.user.SignInWith')).toMatchObject({ kind: 'out-of-scope' });
   });
 
@@ -85,7 +88,7 @@ describe('the decision, over the real ledger', () => {
 });
 
 describe('the badge, as drawn', () => {
-  const scheduled = exportBadgeFor('RunTasks');
+  const scheduled = exportBadgeFor('Drag');
   const outOfScope = exportBadgeFor('net.noodl.user.SignInWith');
 
   test('one of each status, and the translated control draws nothing', () => {

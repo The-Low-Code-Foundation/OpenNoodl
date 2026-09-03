@@ -34,7 +34,7 @@ export {
   refusedNodeLines
 } from './emit/report';
 export { isPathwayType } from './analyze/plan';
-export { exportBadgeOf, ledgerEntryOf, ExportBadge, ExportStatus, LedgerEntry } from './ledger';
+export { exportBadgeOf, ledgerEntryOf, exportCoverage, alphaNotice, ExportBadge, ExportCoverage, ExportStatus, LedgerEntry } from './ledger';
 export { README_PATH, renderReadme, ReadmeBackend } from './emit/readme';
 export { emitKits, EmittedCopy, EmittedKits, KitBinding } from './emit/kits';
 export { parseModules } from './parse/parseModules';

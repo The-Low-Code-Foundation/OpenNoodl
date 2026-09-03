@@ -67,3 +67,42 @@ export function exportBadgeOf(typeName: string): ExportBadge | undefined {
   }
   return { kind: 'scheduled', label: 'Not exportable yet', reason: exemption.replace(SCHEDULED, '') };
 }
+
+/** How much of the node picker exports — the headline number the alpha warning prints. */
+export interface ExportCoverage {
+  /** Placeable picker nodes with a translation (`pickerCoverageFloor`, held by `export-ledger:picker --check`). */
+  exportable: number;
+  /** Placeable picker nodes in all (`pickerCoverageTotal`, held by the same check). */
+  placeable: number;
+  /** Whole percent, rounded down — 97 of 127 reads "76%", never "77%". */
+  percent: number;
+}
+
+/**
+ * The picker-coverage reading, as the ledger records it.
+ *
+ * 🔴 Both numbers are the gate's own: `export-ledger:picker --check` fails when either drifts
+ * from what `picker-coverage.js` counts off the catalog, so the sentence the editor prints beside
+ * its alpha warning ("97 of the 127 nodes you can place export") is the phase's headline number
+ * and not a second copy of it. Rounded DOWN so the product never claims a percent it has not reached.
+ */
+export function exportCoverage(): ExportCoverage {
+  const { pickerCoverageFloor, pickerCoverageTotal } = ledgerJson as { pickerCoverageFloor: number; pickerCoverageTotal: number };
+  return {
+    exportable: pickerCoverageFloor,
+    placeable: pickerCoverageTotal,
+    percent: pickerCoverageTotal > 0 ? Math.floor((100 * pickerCoverageFloor) / pickerCoverageTotal) : 0
+  };
+}
+
+/**
+ * The alpha sentence, shared by the pre-flight modal, the settings section and the emitted README —
+ * one wording, three readers, so it cannot say three different things.
+ */
+export function alphaNotice(): string {
+  const c = exportCoverage();
+  return (
+    `Code export is in alpha. ${c.exportable} of the ${c.placeable} nodes you can place export today (${c.percent}%); ` +
+    'the rest are left out by name. Explore the code and build on it, but do not ship a production app from it yet.'
+  );
+}

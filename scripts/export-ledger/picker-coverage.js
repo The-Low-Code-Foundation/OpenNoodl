@@ -124,5 +124,16 @@ if (args.includes('--check')) {
     );
     process.exit(1);
   }
+  // The denominator the product prints beside its alpha warning (src/ledger.ts `exportCoverage`)
+  // is held the same way, so "97 of 127" in the editor is this script's reading and not a copy.
+  if (ledger.pickerCoverageTotal !== picker.length) {
+    console.error(
+      `\nexport-ledger: the picker holds ${picker.length} placeable nodes, but \`pickerCoverageTotal\` says ${ledger.pickerCoverageTotal}.\n` +
+        '  → Set `pickerCoverageTotal` to ' +
+        picker.length +
+        ' in this commit — the editor prints it beside the alpha warning.\n'
+    );
+    process.exit(1);
+  }
   console.log(`export-ledger: picker coverage holds at ${exports_.length}/${picker.length} (${pct.toFixed(1)}%).`);
 }

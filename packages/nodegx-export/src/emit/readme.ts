@@ -35,6 +35,7 @@
  * @module emit/readme
  */
 
+import { alphaNotice } from '../ledger';
 import { ExportReportData, backendMode, nextSteps, renderSteps } from './report';
 
 export const README_PATH = 'README.md';
@@ -63,6 +64,12 @@ export function renderReadme(data: ExportReportData, backend: ReadmeBackend | nu
       'React + TypeScript repository: there is no NodeGX runtime in it, nothing to register and ' +
       'nothing to install beyond what `package.json` already lists. It is yours now.'
   );
+  out.push('');
+
+  // The alpha notice — the same sentence the editor shows before the export, with the picker
+  // number read from the ledger. It moves when a slice lands, which is the point: the README
+  // says how far along the export was on the day it was written.
+  out.push(`> **${alphaNotice()}**`);
   out.push('');
 
   out.push('## Run it');
