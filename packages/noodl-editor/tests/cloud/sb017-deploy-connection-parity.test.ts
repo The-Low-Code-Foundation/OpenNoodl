@@ -416,13 +416,35 @@ describe('SB-017: the editor deploy path ships every connection the template hol
     // `3f95a804`, not by inference: 34 before, 35 after, `/Admin/PresetChip`
     // the sole mover.
     //
+    // 🔴 **35 → 38 is REL-011c's, and this time the gate was red for one hour,
+    // not four sessions.** P82 s22 built the six admin-surface findings and ran
+    // `template:site-builder`, the full `noodl-mcp` suite and both look
+    // harnesses — none of which can see this literal — and P18 s83 read the red
+    // in the editor `test:ci` the same evening and registered it here. Attributed
+    // by counting `JavaScriptFunction` nodes in the non-cloud components of the
+    // artefact either side of `86fcbcc6`, not by inference: 35 before, 38 after,
+    // and the three new ones are named for what they answer —
+    // `/Admin/Shell` *"Is there room for the rail beside the content?"* (A1: the
+    // shell had no breakpoint of any kind, so `Screen Resolution` plus one
+    // function moves four ports together below 760), `/Pages/PageEditor` *"Is
+    // there room for two fields side by side?"* and `/Pages/ThemeEditor` *"Is
+    // there room for the preview beside the fields?"* (the pair that carry
+    // `flexWrap` with the direction, after a first build authored `wrap`
+    // statically to unlock `rowGap` and unstacked the two-up at **every** width).
+    //
+    // ⚠️ All three are functions that decide a LAYOUT, which is new for this
+    // population: every earlier entry computed a string or a colour. It changes
+    // nothing about the claim below — a cloud adapter must still have written no
+    // ports onto them — but it is why the count moved by three in one session
+    // and will move again the next time a breakpoint is authored.
+    //
     // ⚠️ The increment is NOT the point and must not be made silently. What has
     // to stay true is the line below: the cloud adapters must have written no
     // ports onto that new browser Function node either, or the ruling's scope
     // has leaked. It is a browser component's Function, the viewer pushes its
     // ports over `sendDynamicPorts`, and a cloud adapter that also wrote them
     // would be a second writer on the same `setDynamicPorts`.
-    expect(browserFunctions.length).toBe(35);
+    expect(browserFunctions.length).toBe(38);
     expect(browserFunctions.filter((node) => (node.dynamicports || []).length > 0)).toEqual([]);
 
     // …and the same sweep on the cloud side did write ports, so the assertion
