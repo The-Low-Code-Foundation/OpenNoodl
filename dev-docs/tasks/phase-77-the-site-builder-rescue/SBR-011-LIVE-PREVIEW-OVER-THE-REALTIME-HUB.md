@@ -207,3 +207,66 @@ stored `realtime` means *"this query runs with nobody involved"* — which would
 exists, as **free**. The rule protecting it would have started passing because of a parameter that
 does not trigger it. There is now a second, disjoint `NOT_A_TRIGGER` map, and `realtime` is in it
 because `handleRealtimeChange` returns on the `init` frame **before** `scheduleFetch`.
+
+---
+
+## 🟢 s47, 2026-09-03 — AC1, AC3 and AC4 DRIVEN, all three on the DEPLOYED artefact
+
+Driven inside SBR-014 run 3 — full record:
+[`notes/sbr014/SBR-014-DRIVE-2026-09-03-s47.md`](notes/sbr014/SBR-014-DRIVE-2026-09-03-s47.md).
+
+The instrument was two headless Chromes on the deployed folder (served statically, backend 8604):
+one signed in as owner, one anonymous with a fresh profile and an empty `localStorage`. The
+anonymous page was stamped with a `window` property and a MutationObserver.
+
+✅ **The subscription was proved alive first** — `POST /realtime/subscriptions`, principal
+`anonymous`, in the backend log for *that* page load, beside an open `/realtime` stream. Without
+that, every silence below would be a fact about a dead subscription (§4's own trap).
+
+### AC1 — met, including the no-reload half
+
+Published a page the person's way: titled `The Bindery Journal`, slug, `Show in navigation`,
+`Save page`, then **`More → Publish`** on the panel (`POST /functions/publishPage`).
+
+The anonymous site's nav went `PUBLISHED CANARY S47 | Our Studio` →
+**`The Bindery Journal | PUBLISHED CANARY S47 | Our Studio`**, with the stamped property
+**unchanged** across the update. That is AC1's *"no-reload half proven (e.g. a stamped window
+property surviving the update)"*, verbatim.
+
+### AC3 — met
+
+Primary colour changed to `#3ba55d` on the deployed panel, `Save theme` pressed. The anonymous
+site's resolved `--primary` moved `#d9a441` → `#3ba55d`, **one transition, same stamp, no reload**.
+Restoring it repainted back — the arc runs both ways.
+
+### AC4 — met, with the firing twin beside it
+
+Back to back, same page, same stamp:
+
+| owner edits | changes seen | nav | canary on page |
+|---|---|---|---|
+| a **draft** | **0** | unchanged | absent |
+| a **published** page | **1** | changed | present |
+
+The draft's canary never appeared even after the published event, so its payload was not late. The
+stamp survived both, so the silence is a reading and not a wiped instrument. **Exactly one** change
+per event — §4's cardinality trap held.
+
+### 🔴 A trap this run paid for — and the product was right, the instrument was wrong
+
+The first attempt published by writing `published: true` over REST. The nav did **not** gain the
+link, and that was **not** a propagation defect. The ACLs say why:
+
+| published via | ACL |
+|---|---|
+| the panel's `Publish` | `{"role:admin": …, "*": {"read": true}}` |
+| a bare REST write | `{"role:admin": …}` — **admin only** |
+
+`published` is a flag; the **ACL** is the gate, and `publishPage` sets both. ✅ **Drive the
+product's own path before calling a difference a defect.**
+
+### ⬜ Still open
+
+- **AC2** — a section edit on the currently-viewed page updating live was not separately driven.
+- **AC5** — the hub-unreachable degradation arc is undriven.
+- **D46**'s drive is still owed.

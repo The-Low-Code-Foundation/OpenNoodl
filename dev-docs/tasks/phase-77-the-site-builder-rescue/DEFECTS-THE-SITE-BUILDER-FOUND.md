@@ -1957,7 +1957,7 @@ photograph's own luminance is the third term nobody controls.
 ⚠️ **Measured with no image in the hero.** The image path is unmeasured (D52 blocked the upload
 until s46, and no picture was placed in this run), so the with-photograph case still needs a run.
 
-## D40 — 🔴 A published page does not scroll, so every control below the first screen is unclickable
+## D40 — 🟢 **FIXED s47.** A published page does not scroll, so every control below the first screen is unclickable
 
 **Owner: SBR-002** (the first-run/page-shape task — this is `/Pages/Site`'s ground, not a section
 kind). **Pre-existing.** Found by SBR-005's drive, which is the first thing in this phase to try to
@@ -2965,3 +2965,98 @@ owner phase 81** (it owns the design system; VIB-002 authored these tokens). Sco
 `--font-sans` description naming a font they do not use — `Modern` is the default and keeps Inter,
 which is why nobody hit it. **D51 does not carry this**; it points at it. An unowned row gets
 rediscovered at full price, and an editor defect has no business living in a starter-assets row.
+
+---
+
+### 🟢 D40 — FIXED s47. The cause was one absent project setting, and the product already carried the fix
+
+Fourteen sessions described this as *"nothing scrolls"*. It is one line, and the mechanism was
+visible in the **deployed artefact's own `index.html`** the whole time.
+
+**The mechanism.** `index.html` ships two states for the app root:
+
+```css
+#root            { overflow: hidden; overflow: clip; position: fixed; }   /* NDA-008 */
+.body-scroll > #root { height: auto; min-height: 100vh; overflow: initial; position: initial; }
+```
+
+`viewer.jsx:255-263` adds `body-scroll` **only when the project setting `bodyScroll` is truthy**.
+`overflow: clip` — deliberately, per NDA-008's own comment — *"creates no scroll container at
+all"*, which is exactly why every previous attempt failed: not the wheel, not `scrollTop`, not
+`scrollIntoView`. The page was never a scroll container.
+
+🔴 **The site-builder template shipped without `bodyScroll`.** `createProject.ts:199` writes
+`bodyScroll: true` for **every** MCP-created project and says why in its own comment — *"It is not
+a preference, it is whether the app can be used"* (REL-002a). `sb007Template.ts:159` wrote
+`settings: { htmlTitle, navigationPathType }` and stopped. Two create paths, one of them knowing
+the rule and the other not.
+
+**Measured before and after, same deployed bundle, same page, same 1440×900 viewport**, differing
+only in that setting:
+
+| at 1440×900, `/admin/theme` | shipped (`bodyScroll` absent) | `bodyScroll: true` |
+|---|---|---|
+| `body.className` | `""` | `body-scroll` |
+| `#root` overflow / position | `clip` / `fixed` | `visible` / `static` |
+| `scrollingElement.scrollHeight` vs `clientHeight` | 900 = 900 | **1011 > 900** |
+| `scrollTop` after scrolling to the bottom | **0 — did not move** | **111** |
+| `Save theme` y | 932 | **855** |
+| `Save theme` per `elementFromPoint` | **unreachable, `at: null`** | **reachable, `BUTTON\|Save theme`** |
+
+**The fix**: `bodyScroll: true` in `sb007Template.ts:159`, template regenerated
+(`npm run template:site-builder` — the artefact diff is exactly those two lines and nothing else).
+Gate `sb007Template.test.ts` **62/62, `EXIT=0`**; the neighbourhood (`tests/sb0*`, `tests/sbr*`)
+**14 suites / 294 tests, `EXIT=0`**.
+
+⚠️ **What this does NOT prove.** The runtime consequence was measured on a **deploy built from a
+patched project directory**, and the template artefact was verified to carry the setting. A
+**wizard-created project driven in the editor** was not re-driven — that is the confirming arm and
+it is cheap, but it was not run.
+
+⚠️ **Phase 81 VIB-001's contradicting `unreachablePx = 0` is now explicable** rather than
+unreconciled: any project whose settings carry `bodyScroll` scrolls normally, so a corpus mixing
+both create paths gives both readings. **Re-derive VIB-001's population before trusting either
+number** — it is a fact about which create path made each project, not about layout.
+
+🔴 **The lesson, and it is the fourth of its kind in this phase.** Every blocker here has been two
+halves that each look correct alone. This one adds: **the product had already written the fix, and
+the defect was that one of two create paths did not ask for it.** The arm that would have found it
+on day one is *read the artefact the person receives* — the answer was in a CSS comment in
+`index.html`, in the deploy folder, next to the class that turns it off.
+
+---
+
+## D54 — 🔴 The theme presets do nothing on the DEPLOYED site. Owner **SBR-009**
+
+**Found s47**, driving SBR-014 step 7 on the deployed artefact.
+
+The theme editor's first block is headed **"START FROM A LOOK"** and tells the person:
+
+> *"Picking one fills every field below, including the ones this screen does not show."*
+
+On the deployed site it fills nothing. `Studio`, `Press` and `Night` were each clicked; **not one
+of the seven fields changed**.
+
+### The measurement, and why it is not the instrument
+
+| | |
+|---|---|
+| click lands? | `elementFromPoint` at the button's centre returns **`BUTTON\|Studio`** |
+| button state | `disabled: false`, `onclick: true`, class `ndl-controls-button` |
+| fields changed | **0 of 7** — `#d9a441 / #14161a / #eceae5 / "Helvetica Neue"… / 10px` before and after |
+| requests fired | **0** |
+| 🔴 **the control, on the same screen, same driver, same call** | **`Save theme` fires its `PUT`** and `Save settings` is reachable — so clicks on this page work |
+| the fields *can* change | typing `#3ba55d` into Primary and pressing `Save theme` propagated all the way to the anonymous public site |
+
+s46 drove this same screen through the **editor's preview server** and recorded that picking
+`Night` *"filled every field"*. So the presets work in preview and are inert in the deployed
+bundle — which makes this **SBR-008's family** (*the deploy keeps the panel's wires*), not a
+styling defect.
+
+⚠️ **Not diagnosed.** `droppedByHealthFilter` was **0** on this deploy and the sabotage control
+proved that filter alive (it drops exactly 1 when a wire is sabotaged), so the export filter is
+**not** the cause. Where the preset chain actually breaks between preview and deploy is unmeasured.
+
+**Consequence for a person**: the one affordance on the theme screen built for someone who is not
+a designer — pick a look, get a whole coherent palette — does nothing on their published site.
+They must type six hex values and a font stack by hand, or never change the look at all.

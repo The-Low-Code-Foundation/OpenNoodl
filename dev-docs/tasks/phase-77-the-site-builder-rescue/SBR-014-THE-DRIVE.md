@@ -137,3 +137,49 @@ all three was the same one: press the button, then read the **record** — never
   **1440×2600**, which a person cannot do. **A person on a laptop cannot author a five-section
   page.** s46 settled D40's harness-vs-product arm — it is the product.
 - **SBR-007 AC3** ⬜ unchanged (D15), and now also the picker path.
+
+---
+
+## 6. Run 3 — 2026-09-03 (s47). 🟢 **ALL EIGHT STEPS DRIVEN. AC1, AC2, AC3 ALL MET**
+
+**Full record: [`notes/sbr014/SBR-014-DRIVE-2026-09-03-s47.md`](notes/sbr014/SBR-014-DRIVE-2026-09-03-s47.md).**
+
+🔴 **Driven against the DEPLOYED ARTEFACT** — the folder `deployToFolder` produces, served
+statically against the same backend on 8604. Nothing in this run went through the editor.
+
+| # | step | owner | state |
+|---|---|---|---|
+| 1 | wizard → Site Builder → opens on `Pages/Setup` | SBR-001/002 | ✅ driven s44 |
+| 2 | claim → admin shell | SBR-006 | 🟡 driven s44, not by the person's path — ⬜ **SBR-001** (D50) |
+| 3 | create page, five kinds, reorder, save, publish | SBR-005/007 | 🟡 driven s46, two exceptions |
+| 4 | public site anonymously | SBR-004 | ✅ driven s46, re-driven s47 on the deploy |
+| 5 | theme → Night → live repaint | SBR-009/011/003 | ✅ **COMPLETE s47** — the live half is driven |
+| 6 | contact form → Messages | SBR-005/010 | ✅ driven s46 |
+| 7 | deploy → retitle → save | SBR-008 | ✅ **DRIVEN s47** |
+| 8 | negative arcs | SBR-002/011 | ✅ **DRIVEN s47** |
+
+### AC status — the task's own end condition is met
+
+- **AC1 — 🟢 MET.** Eight of eight steps driven by consequence on screen.
+- **AC2 — 🟢 MET.** Every exception recorded ⬜ against its task by name, nothing rounded off:
+  **SBR-007 AC3** (gallery has no pictures — D15 and the undriven picker path), **SBR-001** (D50),
+  and **SBR-005 AC3**'s failure-line control.
+- **AC3 — 🟢 MET.** Steps 4, 5 **and 7** have pictures. Step 7's was the last one missing.
+
+### What run 3 collected beyond its own ACs
+
+- **SBR-011 AC1, AC3 and AC4 all driven** — on the deployed artefact, with the no-reload half
+  proven by a stamped window property surviving each update.
+- **SBR-002 AC4's no-backend state re-driven on the deploy**, reachable, with both controls —
+  ⚠️ **not** a newly-met AC: s4b met all three states in the preview. A new population, not a new AC.
+- 🟢 **[D40](DEFECTS-THE-SITE-BUILDER-FOUND.md#d40) diagnosed and FIXED** — one absent project
+  setting (`bodyScroll`), which the product already knew about and the other create path already
+  wrote. Verified before/after at an identical viewport.
+- 🔴 **[D54](DEFECTS-THE-SITE-BUILDER-FOUND.md#d54) filed** — the theme presets are inert on the
+  deployed site. Owner SBR-009.
+
+### ⚠️ What still bounds this task
+
+Only the two looks **Richard** owes, which no session can substitute: the five section kinds
+(SBR-005 AC1 — still **4 of 5**, the gallery is empty) and the rebuilt theme editor (SBR-009 AC1).
+Both now have pictures.

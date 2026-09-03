@@ -65,3 +65,41 @@ no claim — never a white void.
 - 🔴 RENDERED ≠ REACHABLE — the hidden not-found panel was *in the DOM* the whole time.
   Measure visibility, not presence.
 - The template edit ⇒ regenerate the artefact (two populations; id count 194 moves).
+
+---
+
+## 🟢 s47, 2026-09-03 — AC4's no-backend state RE-DRIVEN on the DEPLOYED artefact
+
+⚠️ **AC4 was already met at s4b** — all three states, each with its negative control, on a
+wizard-fresh project. **This does not newly meet it.** What is new is the *population*: s4b drove
+the editor's preview, and this drove the **deployed folder**, which is a different code path (the
+one SBR-008 exists because of). It also removes `cloudservices` outright rather than relying on
+the deadline watchdog s4b had just fixed, so it exercises "never configured" rather than
+"configured and silent".
+
+Driven inside SBR-014 run 3 — full record:
+[`notes/sbr014/SBR-014-DRIVE-2026-09-03-s47.md`](notes/sbr014/SBR-014-DRIVE-2026-09-03-s47.md).
+
+A deploy was built from a project copy with `metadata.cloudservices` **removed** — the state a
+person is in before adding a backend, not a broken URL. The bundle contains **zero** references to
+any backend origin. Served statically and opened anonymously, it shows:
+
+> **"No backend connected. This project needs a backend before it can store pages — add one from
+> Backend Services."**
+
+Verbatim the sentence §3 specifies.
+
+✅ **Reachable, not merely present** — the trap §5 names. It is a `<P>` of 654×36 and
+`elementFromPoint` at its centre returns it, `blockedBy: null`.
+
+✅ **Both controls, as §3 instructs:**
+- The **same query on the live-backend deploy matches 0 elements** — the panel is not an always-on
+  div that happens to be styled away.
+- The query instrument **fires on that same live site** for a different sentence (`Ink & Timber`,
+  reachable) — so the 0 is a measured absence, not a broken query.
+
+📷 `notes/sbr014/s47-step8-no-backend-sentence.png`.
+
+⚠️ **The other two states were NOT re-driven on the deploy** — backend + no claim, and backend +
+claim + no rows. Both are ✅ **against the preview** from s4b; neither has been shown on the
+deployed artefact. That is a gap in coverage, **not an unmet AC**.

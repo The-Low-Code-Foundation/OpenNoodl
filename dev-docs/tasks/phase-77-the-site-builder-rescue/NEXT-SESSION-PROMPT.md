@@ -10,138 +10,180 @@
 
 ---
 
-## 🟢 THE BOARD — re-derived from the task FILES, 2026-09-02 (s46)
+## 🟢 THE BOARD — re-derived from the task FILES, 2026-09-03 (s47)
 
 | task | state, read off its own file |
 |---|---|
 | SBR-001 | ✅ closed s2 — owns **D49** and **D50** (neither blocking) |
-| SBR-002 | ✅ closed s4 — owns **D40**, which s46 escalated (see below) |
-| SBR-003 | 🟡 built s4 — owes the `var(--token)` dimension-port probe; owns **D38**, now **confirmed** |
-| SBR-004 | ✅ built s5, driven s8b — **and rendered anonymously s46** |
+| SBR-002 | ✅ closed s4 — AC4 met s4b (all three states); s47 re-drove the no-backend state on the **deploy**. Owns **D40**, now **FIXED** |
+| SBR-003 | 🟡 built s4 — owes the `var(--token)` dimension-port probe; owns **D38**, confirmed s46 |
+| SBR-004 | ✅ built s5, driven s8b, rendered anonymously s46, re-driven on the deploy s47 |
 | SBR-005 | 🟡 built s36 — **AC1 is 4 of 5** (no gallery pictures); AC3's failure control ⬜ |
 | SBR-006 | ✅ closed s33 |
-| SBR-007 | 🟡 **AC3 ⬜** (D15, and now also the picker path); AC2 met by drag with **D53** |
-| SBR-008 | ✅ AC1–AC5 met; s45 fixed the health loop, s46 confirmed the page save end to end |
-| SBR-009 | 🟢 **AC1 and AC2 driven s46**; AC1's live half ⬜ to SBR-011 |
-| SBR-010 | ✅ built s38, **driven s46** — the owner read a stranger's message |
-| SBR-011 | 🟡 built s39 — **AC3 open; D46 fixed s42, drive still owed**; owns step 5's live half |
+| SBR-007 | 🟡 **AC3 ⬜** (D15, and the picker path); AC2 met by drag with **D53** |
+| SBR-008 | ✅ AC1–AC5 met; **driven end to end on the DEPLOYED artefact s47** |
+| SBR-009 | 🟡 built s37 — **AC1's live half is now driven** (s47, on the deploy). Owns the new **D54** |
+| SBR-010 | ✅ built s38, driven s46 |
+| SBR-011 | 🟢 **AC1, AC3, AC4 all DRIVEN s47.** ⬜ **AC2 and AC5**; **D46**'s drive still owed |
 | SBR-012 | ✅ built s35 |
 | SBR-013 | ✅ closed s41 |
-| **SBR-014** | 🟡 **step 6 of 8. Steps 7 and 8 are the job** |
-| SBR-015 | ✅ built s13 |
+| **SBR-014** | 🟢 **CLOSED s47 — all 8 steps, AC1+AC2+AC3 all met** |
+| SBR-015 | ✅ closed s34 |
 | SBR-016 | ✅ fixed and driven s15 |
 | SBR-017 | ✅ built and driven s14 |
 
 ---
 
-## 🔴 FIRST JOB: **SBR-014 steps 7 and 8.** Nothing blocks them
+## 🔴 THE PHASE'S GATE IS MET. Read this before picking anything up
 
-Read **[`notes/sbr014/SBR-014-DRIVE-2026-09-02-s46.md`](notes/sbr014/SBR-014-DRIVE-2026-09-02-s46.md)**
-before starting — it carries the instrument, the traps and what each step actually measured.
+**SBR-014 was the end condition and it is green.** Its own AC1/AC2/AC3 are all met, driven against
+the **deployed artefact** rather than the editor's preview. Record:
+**[`notes/sbr014/SBR-014-DRIVE-2026-09-03-s47.md`](notes/sbr014/SBR-014-DRIVE-2026-09-03-s47.md)**.
 
-- **Step 7 — deploy → retitle on the deployed panel → the deployed site shows it (SBR-008).**
-  This also owes **AC3's third screenshot**, the only one still missing. `scripts/devtools/drive-deployed.js`
-  and `build-deploy-from-disk.mjs` exist and were not used this run.
-- **Step 8 — the negative arcs (SBR-002 / SBR-011).** Anonymous cannot see a draft; the no-backend
-  sentence; unsubscribe silence beside the firing twin. ⚠️ s44 recorded that anonymous reads of
-  `Section`/`Page`/`SiteSettings` returned `{"results":[]}` **HTTP 200 on an empty database**, so
-  *refused* and *empty* were indistinguishable. **The database is no longer empty** — there are now
-  published pages, five sections with content, a theme and a contact message — so this arc is
-  finally measurable, and it was not before.
+⚠️ **What is left is not a task. It is two LOOKS that only Richard can give**, and no session can
+substitute for either:
 
-**Collect on the way:** SBR-011 AC3 and the D46 drive; SBR-005 AC3's failure-line negative control;
-SBR-007 AC3 via `DOM.setFileInputFiles` (see below).
+1. **The five section kinds** (SBR-005 AC1) — still **4 of 5**: the gallery is empty, because
+   `Choose image` opens a native file picker and `DOM.setFileInputFiles` has never been built.
+2. **The rebuilt theme editor** (SBR-009 AC1).
+
+Both now have pictures: `s47-step7-deployed-public-retitled-full.png`,
+`s46-step4-public-studio-full.png`, `s46-step5-theme-night-unsaved.png`,
+`s47-step8-deployed-theme-editor.png`.
 
 ---
 
-## ✅ The fixture is READY and much richer than s45 left it — do not rebuild it
+## 🔴 FIRST JOB — pick ONE, in this order
+
+### 1. Confirm D40's fix on a WIZARD-CREATED project (small, and it closes a loop)
+
+**[D40](DEFECTS-THE-SITE-BUILDER-FOUND.md#d40) is FIXED and the fix is verified — but on the wrong
+population.** The runtime before/after was measured on a deploy built from a **patched project
+directory**, and the **template artefact** was verified to carry `bodyScroll: true`. What was NOT
+re-driven is a project the **wizard** creates, opened in the editor.
+
+That is the confirming arm, it is cheap, and until it runs the claim is *"the template now carries
+the setting"*, not *"a new project scrolls"*. **Do not restate it more strongly than that.**
+
+### 2. **[D54](DEFECTS-THE-SITE-BUILDER-FOUND.md#d54)** — the theme presets are dead on the deploy
+
+Owner **SBR-009**. `Studio` / `Press` / `Night` each clicked on the deployed theme editor;
+**0 of 7 fields changed, 0 requests**, on enabled buttons with `onclick`, with `elementFromPoint`
+returning the button itself — while **`Save theme` on the same screen fires its `PUT`**. s46 drove
+this same screen through the editor's preview and recorded `Night` *"filled every field"*.
+
+**So it works in preview and is inert in the deploy — SBR-008's family.** ⚠️ **Not diagnosed**, and
+the obvious suspect is already excluded: `droppedByHealthFilter` was **0** and the `--sabotage`
+control proved that filter alive.
+
+⚠️ **This is a real hole in the phase's own story.** The theme screen's first block tells the person
+*"Picking one fills every field below"* — on their published site, it fills nothing.
+
+### 3. The remaining ⬜ rows, none blocking
+
+**SBR-011 AC2** (section edit live) and **AC5** (hub unreachable) · **D46**'s owed drive ·
+**SBR-005 AC3**'s failure-line control · **SBR-007 AC3** via `DOM.setFileInputFiles` ·
+**SBR-003**'s `var(--token)` dimension-port probe · SBR-002 AC4's other two states on a *deploy*
+(they are ✅ against the preview — a coverage gap, not an unmet AC).
+
+---
+
+## ✅ THE INSTRUMENT IS NOW IN THE REPO — do not write it a third time
+
+**`scripts/devtools/drive-page.js`** — s46 wrote these scripts, lost them to a scratchpad, and s47
+wrote them again. They are now committed.
+
+```
+DRIVE_STATE=/tmp/a.json node scripts/devtools/drive-page.js start http://127.0.0.1:8791/ --width 1440 --height 900
+DRIVE_STATE=/tmp/a.json node scripts/devtools/drive-page.js click 'Save page' --button
+DRIVE_STATE=/tmp/a.json node scripts/devtools/drive-page.js stop
+```
+
+Verbs: `start goto look dom click clickish clickat fill eval shot resize requests errors stop`.
+`DRIVE_STATE` gives you **independent browsers** — s47 held four at once.
+
+**Traps built in, each one paid for:**
+
+- 🔴 **`--button`, always, for anything you mean to press.** `Sign in` matched the **heading** and
+  the button, heading first, and the click reported reachable, successful, and did nothing. Same
+  family as s46's `Published` winning a query for `Publish`.
+- 🔴 **`document.body.scrollHeight` is `0` on a viewer page** (`#root` is `position: fixed`).
+  Taking page height from it **crops every full-page shot to one viewport, silently** — s47's first
+  step-7 picture was cropped at 813 of 1604px and looked perfectly fine. The tool measures the
+  tallest `scrollHeight` in the tree instead.
+- 🔴 Inputs by **DOM order**, never by id (the viewer mints a fresh `input-<uuid>` per re-render).
+- ⚠️ **A request captured in a later invocation is a different attachment and sees nothing** — the
+  action verbs report the requests *they* caused, in their own call.
+- ⚠️ `resize` exists **only** to get past D40 so the thing behind it can be measured, and says so
+  in its own source. It is a workaround a person does not have.
+
+**The deploy side:** `scripts/devtools/build-deploy-from-disk.mjs` → `deploy-from-disk.cjs`, then
+`drive-deployed.js <dir> --port N --hold` serves it.
+
+🔴 **Run the deploy from `packages/noodl-editor` as cwd.** `getAppPath()` is `process.cwd()`
+(`platform-node.ts:8`), so from the repo root it looks for `<repo>/src/external/deploy/index.json`
+and dies. No symlink needed — just the cwd.
+
+🔴 **Always pair a deploy with `--sabotage`.** A health pass that never ran and one that found
+nothing produce byte-identical bundles; the sabotage arm drops exactly 1 wire and names it.
+
+---
+
+## ✅ The fixture, and what s47 left in it
 
 `sbr014-drive` (in `NodeGX test projects/`), backend `backend_mtkip2rjf20ct` on port **8604**,
-owner `owner@sbr014.test` / `DriveMe123!`. Sign in at `/admin/signin`.
+owner `owner@sbr014.test` / `DriveMe123!`.
 
-It now holds **four** pages and a working site:
-- `Our Studio` / **`home`** — **published**, five sections with real content, in the order
-  hero → cta → gallery → richText → contact. This is what `/` serves.
-- `Bootstrap Proof` / `bootstrap-proof` — **published** (the CTA's destination).
-- 🔴 **The two nameless rows from s44 are still there. Keep them** — they are the before-arm of
-  SBR-008's control and cost a whole drive to produce.
-- `Theme` is saved as **Night**; `ContactMessage` holds one message from `Ada Kessler`.
+Start the backend standalone — **no editor needed**:
 
-⚠️ **The fixture's `SectionRow` is hand-patched to match the regenerated template** (D52). A newly
-created project gets the same graph from the template; this one was patched in place so the drive
-could continue. If you need a pristine arm, make a new project rather than trusting this one.
+```
+node packages/nodegx-backend/bin/nodegx-backend.js serve \
+  --data-dir ~/.noodl/backends/backend_mtkip2rjf20ct --port 8604
+```
 
----
+⚠️ `serve --help` **hangs** (it starts a server); read `src/cli.ts` for the flags instead.
 
-## 🔴 The instrument — build on it, do not repeat its dead end
+**Pages now:** `Our Studio`/`home` (published, 5 sections), `PUBLISHED CANARY S47`/`bootstrap-proof`
+(published — this is the old `Bootstrap Proof`, retitled twice by the step-7 drive),
+`The Bindery Journal`/`bindery-journal` (**published by s47 through the panel**, so it carries a
+real public-read ACL), and **one** nameless draft.
 
-🔴 **`Emulation.setDeviceMetricsOverride` on the preview webview DOES NOT WORK, despite being the
-documented route.** It moves `innerWidth`/`innerHeight` to 1440×900 and then
-`Page.captureScreenshot` returns the **old 988×313 surface tiled** across the bigger frame — every
-number reads correct and the picture is an artefact. `captureBeyondViewport: true` is byte-identical.
-**Do not spend the session on it again.**
+⚠️ **s47 consumed one of the two nameless draft rows** to drive SBR-011 AC1 the person's way. One
+remains. ⚠️ s47 also found `bootstrap-proof`'s title reading `Bootstrap P EDITEDroof` on arrival —
+an **unrecorded s46 edit** (`updatedAt` 21:48Z, mid-s46), not caused by s47.
 
-✅ **What works**: a plain headless Chrome on its own CDP port with its own profile, pointed at the
-same `:8574` the editor serves. Three scripts in s46's scratchpad — `drive.js` (persistent,
-signed-in, verbs `goto/look/click/clickat/clicknth/fill/fillnth/drag/dragxy/wheel/eval/dom`),
-`anon.js` and `contact.js` (one-shot, no session). **They are in a session scratchpad and will be
-gone** — they are ~150 lines each and worth rewriting, or promote them into `scripts/devtools/`.
-
-**Traps s46 paid for:**
-- 🔴 **The viewer mints a fresh `input-<uuid>` on every re-render** — an id read before adding a
-  section is stale by the time the section exists. **Address inputs by DOM order.**
-- 🔴 **A substring text-match clicked `Published` when asked for `Publish`** — the status label, not
-  the action button, and it reported a reachable, successful click on the wrong element. **Match
-  button text exactly.** Same family as `onDrop` matching `onDropped`.
-- 🔴 **`<title>` matches every text query and has zero area** — it won a "smallest element"
-  tie-break and then reported itself unreachable. Filter to rendered `body` elements.
-- 🔴 **Assert nothing from a silence without a control that fires.** Both of s46's key findings
-  needed one: the wheel (proved on a tall `file://` page) and the request capture (proved by
-  `Save page`'s own `PUT`). Without them, "nothing scrolls" and "nothing sends" were unmeasured.
-- ✅ **Read the record, not the input's echo.** This is the arm that found all three of this phase's
-  blockers, and the only one that would have.
+Theme is back to **Night** (`--primary #d9a441`) — s47 changed it to `#3ba55d` to drive AC3 and
+restored it.
 
 ---
 
-## 🔴 The register's open rows
+## 🔴 The trap s47 paid for, and it is the one worth carrying
 
-- **[D40](DEFECTS-THE-SITE-BUILDER-FOUND.md#d40)** — 🔴 **ESCALATED s46.** Nothing scrolls, and it is
-  **the product, not the harness** — s46 measured it through a different server, a different harness
-  and a different app surface, with a wheel proved firing on a control page. **It now bounds the
-  admin panel too**: at 1440×900, 3 of 5 section `Save` buttons are unreachable, so **a person on a
-  laptop cannot author a five-section page.** Owner SBR-002. ⚠️ Phase 81 VIB-001's contradicting
-  `unreachablePx = 0` is still unreconciled, and a **packaged** Electron window is still unmeasured.
-  🔴 **This is the strongest candidate for the next thing to fix after the drive.**
-- **[D38](DEFECTS-THE-SITE-BUILDER-FOUND.md#d38)** — 🟢 **CONFIRMED s46**, every predicted value.
-  Night's `colorOnPrimary` is `#191713` on the fixed black scrim: **10.60:1** at the top of the band,
-  **1.42:1** at the bottom. Owner SBR-003. ⚠️ Measured with **no image** in the hero.
-- **[D53](DEFECTS-THE-SITE-BUILDER-FOUND.md#d53)** — 🆕 s46. A dragged section cannot be dropped into
-  first position (`Move up` can). Owner SBR-007. ⚠️ One drag also fired **two** `reorderSection`
-  calls — possibly SBR-010's *"double write shipping since SB-004"*, visible here.
-- **[D52](DEFECTS-THE-SITE-BUILDER-FOUND.md#d52)** — ✅ **FIXED s46** (see below).
-- **[D51](DEFECTS-THE-SITE-BUILDER-FOUND.md#d51)** — 🔴 **narrowed twice more in s46; do not
-  re-derive it.** The **font arm is inert for both shipped templates**: neither asks for Inter —
-  they use `var(--font-sans)`/`var(--font-serif)`, and `siteTheme.ts` (site builder) and the
-  members-area's own custom token both overwrite those with platform stacks. Confirmed by this
-  run's Studio/Night control pair. Owner SBR-014; **not blocking and no longer bounding.** The
-  description that made three sessions believe otherwise is a **product** defect in
-  `StyleTokensModel.ts:161`, now **[REL-010 §6.12 R8](../phase-82-0.2.2-the-first-row-on-the-shelf/REL-010-AS-GOOD-AS-THE-PAGE-HE-RATED.md),
-  owner phase 81** — D51 points at it and does not carry it.
-- **[D49](DEFECTS-THE-SITE-BUILDER-FOUND.md#d49)** / **[D50](DEFECTS-THE-SITE-BUILDER-FOUND.md#d50)**
-  — owner SBR-001, unchanged. D50 still means the claim needs a hand-provisioned secret.
-- **[D48](DEFECTS-THE-SITE-BUILDER-FOUND.md#d48)** — owner `NONE`. **[D45](DEFECTS-THE-SITE-BUILDER-FOUND.md#d45)** — 🟡 half closed.
-  **[D43](DEFECTS-THE-SITE-BUILDER-FOUND.md#d43)** — owner `NONE`.
+**The instrument was wrong and the product was right, and it looked exactly like a defect.**
+
+Publishing a page by writing `published: true` over REST did **not** add it to the open site's nav —
+not live, and not after a reload. Every reading fitted *"live propagation is broken"*.
+
+It was not. Reading the **ACLs** settled it:
+
+| published via | ACL |
+|---|---|
+| the panel's `Publish` (`POST /functions/publishPage`) | `{"role:admin": …, "*": {"read": true}}` |
+| a bare REST write | `{"role:admin": …}` — **admin only** |
+
+`published` is a flag; the **ACL** is the gate, and `publishPage` sets both. ✅ **Drive the
+product's own path before calling a difference a defect** — and when a negative result fits your
+hypothesis, ask what else it fits.
+
+The same shape bit twice more in one session: a `Save theme` that produced **0** repaints (the
+`PUT` carried the *unchanged* palette, because the preset click had done nothing — **D54**), and a
+`--full` screenshot that cropped at one viewport while every number read correct.
 
 ---
 
-## ⚠️ Uncommitted work
+## ⚠️ Uncommitted work that is NOT this lane's
 
-**s46 committed its own work** (the D52 generator fix, the regenerated template, and this phase's
-docs) — see the tip of `cline-dev`. ⚠️ The regenerate **preserved a peer's three uncommitted
-`realtime: true` lines**, which live in `sb006Components.ts`; that peer's lane still owns them.
-
-🔴 **s45's six product files were still uncommitted when s46 started and s46 did NOT commit them** —
-they are another lane's to land:
+🔴 **s45's six product files were still uncommitted at s47 and s47 did NOT commit them:**
 
 ```
 packages/noodl-runtime/src/nodedefinition.ts
@@ -153,20 +195,6 @@ packages/noodl-editor/src/editor/src/models/nodegraphmodel/NodeGraphModel.ts
 ```
 
 plus the untracked spec `packages/noodl-runtime/test/nodelibraryexport.wire-declared-ports.test.ts`
-(**`git add` it explicitly — a pathspec commit skips untracked files silently**). **The drive above
-depends on them being present**; if title/slug ever go missing again, check these six first.
-
----
-
-## 🔴 The phase's end condition
-
-**SBR-014 is still the gate.** The distance is now **steps 7 and 8**, plus SBR-011's owed D46 drive.
-That is the distance — not the length of the register.
-
-⚠️ **SBR-007 AC3 cannot be met by file drop** (D15), and s46 adds that the **picker** path is also
-undriven — `DOM.setFileInputFiles` is the route and it was not built.
-
-⚠️ **Richard still owes two looks**, and no session can substitute: the five section kinds
-(SBR-005 AC1) and the rebuilt theme editor (SBR-009 AC1). 🟢 **Both now have pictures for the first
-time** — `notes/sbr014/s46-step4-public-studio-full.png`, `s46-step5-theme-night-unsaved.png` and
-`s46-step5-public-night-full.png`. ⚠️ The section-kinds look is **4 of 5**: the gallery is empty.
+(**`git add` it explicitly — a pathspec commit skips untracked files silently**). **Every drive
+since s45 depends on them being present**; if title/slug ever go missing again, check these six
+first.

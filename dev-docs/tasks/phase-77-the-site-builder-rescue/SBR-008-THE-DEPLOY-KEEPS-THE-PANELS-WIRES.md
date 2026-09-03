@@ -721,3 +721,59 @@ inference. Suites: `noodl-runtime` **149 suites / 2632 tests, exit 0**; `tsc` cl
 `noodl-runtime` and `noodl-editor`, both gated on exit status. `tests-unit/sb-018` has **3
 pre-existing failures** — verified identical with these six files reverted to HEAD, so they are
 **not this change** and belong to whoever owns that template's standing values.
+
+### 9.8 ⚠️ s45's fix was necessary and NOT sufficient — and the second blocker had the same shape
+
+s45's hand-off said *"step 3 is unblocked — the blocker is fixed and driven"*. 🔴 **That was an
+overreach and the record should say so.** What was fixed and driven is this task's AC1: the create
+and the save keep their `prop-` wires, measured end to end (§9.5). **Step 3 also authors five
+section kinds**, and s45 drove neither of those halves before calling the step unblocked — it
+generalised from the blocker it had measured to the step as a whole.
+
+s46 found the rest: `/Admin/SectionRow`'s script returned **before `Outputs.built()`** whenever the
+section had no `data`, which is every section the panel creates. Fixed there; the drive reached
+**step 6 of 8**.
+
+🔴 **Worth more than the correction: it is the same shape, one layer up.** A step is gated on a
+value; the thing that would produce the value is skipped precisely in the state where it is needed;
+so the state can never leave itself. §9.3's loop is that shape in the port derivation, and this one
+is that shape in the template's own script. **Two independent instances in one day, in one
+feature** — see the memory note `a-derivation-fed-by-its-own-gate-cannot-bootstrap`. When one is
+found, look one layer up and one layer down before declaring the path clear.
+
+✅ **The right claim for a fix like this**: *"the blocker I measured is gone, measured this way"* —
+never *"the step is unblocked"*, unless the step was driven to its end.
+
+---
+
+## 🟢 s47, 2026-09-03 — driven on the DEPLOYED artefact, end to end
+
+Driven inside SBR-014 step 7 — full record:
+[`notes/sbr014/SBR-014-DRIVE-2026-09-03-s47.md`](notes/sbr014/SBR-014-DRIVE-2026-09-03-s47.md).
+
+The artefact was the folder `deployToFolder` produces (`deploy-from-disk.cjs`, endpoint 8604),
+served statically. **Nothing in this run went through the editor.**
+
+1. `/admin/signin` on the deployed bundle → `POST /login` → `/admin/pages`, *"Four pages, two
+   published"*. **The deployed panel is live.**
+2. The page editor's Title field **arrived populated from the stored row** — the panel reads the
+   record, not a cached echo.
+3. Retitle + `Save page` → **one `PUT`** carrying `title`, `slug`, `seoDescription`, `navOrder` and
+   `showInNav` **together**. Zero console errors.
+4. **Read back from the row**: the new title landed and `seoDescription` still reads
+   `SEO-CANARY-S45`. **Nothing was dropped** — the exact loss this task exists to prevent.
+5. A **separate anonymous Chrome** (fresh profile, empty `localStorage`, verified) shows the new
+   title in the deployed site's nav. Before and after on the same instrument.
+
+✅ **The deploy's health filter was proved alive, not merely green.** `droppedByHealthFilter: 0` on
+the real deploy, and the `--sabotage` control drops **exactly 1** connection and names it
+(`/Admin/MessageRow`). A zero from a filter that never ran and a zero from a filter that found
+nothing are byte-identical otherwise.
+
+📷 `notes/sbr014/s47-step7-deployed-public-retitled-full.png`,
+`s47-step7-deployed-panel-retitled.png`, `s47-step7-deployed-admin-pages.png`.
+
+⚠️ **But the deploy does NOT keep every wire** — see
+**[D54](DEFECTS-THE-SITE-BUILDER-FOUND.md#d54)**: the theme editor's preset buttons fire in the
+editor preview and do nothing in the deployed bundle, while `Save theme` on the same screen works.
+That is this task's family, and it is not diagnosed.
