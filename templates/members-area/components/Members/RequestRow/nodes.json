@@ -44,7 +44,8 @@
         "fontSize": "var(--text-xl)",
         "fontWeight": "var(--font-semibold)",
         "lineHeight": "var(--leading-snug)",
-        "color": "var(--foreground)"
+        "color": "var(--foreground)",
+        "as": "h2"
       },
       "x": 100,
       "y": 160

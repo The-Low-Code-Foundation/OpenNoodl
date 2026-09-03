@@ -11,6 +11,7 @@
         "inner"
       ],
       "parameters": {
+        "as": "header",
         "width": {
           "value": 100,
           "unit": "%"
@@ -35,7 +36,7 @@
       "parent": "bar",
       "children": [
         "topRow",
-        "nav"
+        "navWrap"
       ],
       "parameters": {
         "width": {
@@ -55,6 +56,27 @@
       },
       "x": 100,
       "y": 160
+    },
+    {
+      "id": "navWrap",
+      "type": "Group",
+      "label": "Where the band can take you",
+      "parent": "inner",
+      "children": [
+        "nav"
+      ],
+      "parameters": {
+        "as": "nav",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "mounted": false
+      },
+      "x": 160,
+      "y": 880
     },
     {
       "id": "topRow",
@@ -107,7 +129,8 @@
         "fontWeight": "var(--font-semibold)",
         "letterSpacing": "var(--tracking-widest)",
         "textTransform": "uppercase",
-        "color": "var(--primary)"
+        "color": "var(--primary)",
+        "as": "span"
       },
       "x": 280,
       "y": 520
@@ -122,7 +145,8 @@
         "fontSize": "var(--text-xl)",
         "fontWeight": "var(--font-semibold)",
         "lineHeight": "var(--leading-snug)",
-        "color": "var(--foreground)"
+        "color": "var(--foreground)",
+        "as": "span"
       },
       "x": 280,
       "y": 640
@@ -154,8 +178,8 @@
     {
       "id": "nav",
       "type": "net.noodl.visual.columns",
-      "label": "Where the band can take you",
-      "parent": "inner",
+      "label": "The five ways on",
+      "parent": "navWrap",
       "children": [
         "navAnnouncements",
         "navMeetings",
@@ -173,11 +197,10 @@
         "marginX": {
           "value": 12,
           "unit": "px"
-        },
-        "mounted": false
+        }
       },
-      "x": 160,
-      "y": 880
+      "x": 220,
+      "y": 1000
     },
     {
       "id": "navAnnouncements",
@@ -204,8 +227,8 @@
           "unit": "%"
         }
       },
-      "x": 220,
-      "y": 1000
+      "x": 280,
+      "y": 1120
     },
     {
       "id": "navMeetings",
@@ -232,8 +255,8 @@
           "unit": "%"
         }
       },
-      "x": 220,
-      "y": 1120
+      "x": 280,
+      "y": 1240
     },
     {
       "id": "navPost",
@@ -261,8 +284,8 @@
         },
         "mounted": false
       },
-      "x": 220,
-      "y": 1240
+      "x": 280,
+      "y": 1360
     },
     {
       "id": "navRequests",
@@ -290,8 +313,8 @@
         },
         "mounted": false
       },
-      "x": 220,
-      "y": 1360
+      "x": 280,
+      "y": 1480
     },
     {
       "id": "navDirectory",
@@ -319,8 +342,8 @@
         },
         "mounted": false
       },
-      "x": 220,
-      "y": 1480
+      "x": 280,
+      "y": 1600
     },
     {
       "id": "navAccount",
@@ -347,8 +370,8 @@
           "unit": "%"
         }
       },
-      "x": 220,
-      "y": 1600
+      "x": 280,
+      "y": 1720
     },
     {
       "id": "toAnnouncements",
@@ -359,7 +382,7 @@
         "target": "/Pages/Members"
       },
       "x": 530,
-      "y": 1000
+      "y": 1120
     },
     {
       "id": "toMeetingsNav",
@@ -370,7 +393,7 @@
         "target": "/Pages/Meetings"
       },
       "x": 530,
-      "y": 1120
+      "y": 1240
     },
     {
       "id": "toPostNav",
@@ -381,7 +404,7 @@
         "target": "/Pages/Post"
       },
       "x": 530,
-      "y": 1240
+      "y": 1360
     },
     {
       "id": "toRequestsNav",
@@ -392,7 +415,7 @@
         "target": "/Pages/Requests"
       },
       "x": 530,
-      "y": 1480
+      "y": 1600
     },
     {
       "id": "toDirectoryNav",
@@ -403,7 +426,7 @@
         "target": "/Pages/Directory"
       },
       "x": 530,
-      "y": 1600
+      "y": 1720
     },
     {
       "id": "toAccountNav",
@@ -414,7 +437,7 @@
         "target": "/Pages/Account"
       },
       "x": 530,
-      "y": 1720
+      "y": 1840
     },
     {
       "id": "association",
@@ -424,7 +447,7 @@
         "collectionName": "Association"
       },
       "x": 530,
-      "y": 1840
+      "y": 1960
     },
     {
       "id": "read-2",
@@ -458,7 +481,7 @@
       "type": "/Members/Standing",
       "label": "Who is this?",
       "x": 530,
-      "y": 1360
+      "y": 1480
     },
     {
       "id": "outputs-4",
@@ -507,7 +530,7 @@
         }
       ],
       "x": 530,
-      "y": 1960
+      "y": 2080
     },
     {
       "id": "logout",
@@ -525,7 +548,7 @@
         "target": "/Pages/Landing"
       },
       "x": 530,
-      "y": 2080
+      "y": 2200
     }
   ],
   "visualRoots": [

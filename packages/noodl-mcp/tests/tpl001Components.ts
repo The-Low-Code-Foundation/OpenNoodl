@@ -271,10 +271,11 @@ const CARD_BODY = composition('cardBody');
  * README §2 independently. A tier picked to beat the gate by a margin would be
  * a tier picked by the gate.
  */
-const H_HERO = composition('displayHeadline');
-const H_DOOR = { ...composition('displayHeadline'), fontSize: 'var(--display-md)' };
+const H_HERO = { ...composition('displayHeadline'), as: 'h1' };
+const H_DOOR = { ...composition('displayHeadline'), fontSize: 'var(--display-md)', as: 'h1' };
 const H_PAGE = {
   ...composition('sectionHeading'),
+  as: 'h1',
   fontSize: 'var(--display-sm)',
   // ⚠️ The pair `DefaultTokens.ts` says to pair a display token with, and the
   // reason is in its own comment: *"at 96px the normal line height and tracking
@@ -304,9 +305,9 @@ const H_PAGE = {
  * accident.** These two nodes wore `H_PAGE`, because a landing band's heading
  * and a page's heading had never needed telling apart. They do now.
  */
-const H_BAND = composition('sectionHeading');
-const H_SECTION = composition('cardTitle');
-const T_CARD_TITLE = composition('cardTitle');
+const H_BAND = { ...composition('sectionHeading'), as: 'h2' };
+const H_SECTION = { ...composition('cardTitle'), as: 'h2' };
+const T_CARD_TITLE = { ...composition('cardTitle'), as: 'h2' };
 const T_LEAD = composition('lead');
 const T_META = composition('meta');
 const T_BODY = composition('body');
@@ -323,7 +324,7 @@ const T_BODY = composition('body');
  * editor. A template that hard-codes the first is honest; one that hard-codes
  * the second needs a developer to rename a church.
  */
-const T_EYEBROW = composition('eyebrow');
+const T_EYEBROW = { ...composition('eyebrow'), as: 'span' };
 
 /**
  * The words inside a notice, toned to the box they sit in.
@@ -603,6 +604,7 @@ const TILE = { ...CARD, ...CARD_BODY };
  * See the note above on why a card inside a card has no visible edge.
  */
 const SECTION = {
+  as: 'section',
   width: { value: 100, unit: '%' },
   flexDirection: 'column',
   rowGap: 'var(--space-4)'
@@ -1172,6 +1174,11 @@ const PAGE_HEAD = {
  */
 const PAGE_GROUND = {
   ...composition('shell'),
+  // 🔴 **The page's `main`.** `FORM_GROUND` spreads this, so the twelve pages
+  // that root their content in a `ground` node get exactly one between them —
+  // `Pages/Landing` and `Pages/Join` are the two that do not, and the note on
+  // `BAND_PAGE_GROUND` says why they cannot have one written here.
+  as: 'main',
   // 🔴 **`contentHeight`, and it used to be `explicit` at `height: 100%`.** That
   // was believed inert — see `PAGE_SHELL` — and it is not: a percentage height
   // in a column parent becomes `flexGrow` (`layout.ts:98`). It did nothing only
@@ -2182,13 +2189,48 @@ const LANDING: Tpl001Component = {
       // The constant carries the account; `justifyContent` in particular is not
       // what this page shipped in session 7 and the reason is recorded there.
       parameters: BAND_PAGE_GROUND,
-      children: ['heroBand', 'about', 'inside', 'footer']
+      children: ['landingMain', 'footer']
+    },
+    /**
+     * 🔴 **The `main` this page could not get from `PAGE_GROUND`.** `/` and
+     * `/join` are the two pages built on `BAND_PAGE_GROUND` rather than on
+     * `pageShell`, so neither has a `ground` node to carry the landmark; `/join`
+     * gets one anyway because its form band roots a `FORM_GROUND`, and this page
+     * had nothing. Without it every word on the landing page — the hero, the
+     * `h1`, `About us`, the tiles — sits in no landmark at all, which is the one
+     * page a stranger meets first.
+     *
+     * ⚠️ **It re-parents four children into one, and `BAND_PAGE_GROUND`'s
+     * `justifyContent: space-between` is why that needs saying.** The
+     * distribution is unchanged in both states the page has: in the DOOR state
+     * only the hero and the foot are mounted, so the ground had two children
+     * before this wrapper and has two after; in every living state the content
+     * is taller than the `100vh` floor and `space-between` has no slack to
+     * share out at all — which is the ground's own recorded account of itself.
+     * The pictures are the check, not this paragraph.
+     */
+    {
+      id: 'landingMain',
+      type: 'Group',
+      label: 'The page',
+      parent: 'landingGround',
+      parameters: {
+        as: 'main',
+        width: { value: 100, unit: '%' },
+        // Pinned — hazard 1, the same pin `bar` and `headBand` carry. A `Group`
+        // with no `sizeMode` is `explicit` at `height: 100%`, which a column
+        // parent turns into `flex-grow: 100`, and this one sits directly inside
+        // a ground floored at `100vh`.
+        sizeMode: 'contentHeight',
+        flexDirection: 'column'
+      },
+      children: ['heroBand', 'about', 'inside']
     },
     {
       id: 'heroBand',
       type: 'Group',
       label: 'The hero — a photograph, and whichever of the three states is true',
-      parent: 'landingGround',
+      parent: 'landingMain',
       // §D + §F. Every state a stranger can arrive in lands ON this picture:
       // the association (hero + actions), the fresh install (setupCard), and
       // the one that has not answered yet (waitingCard). The page therefore has
@@ -2321,7 +2363,7 @@ const LANDING: Tpl001Component = {
       id: 'about',
       type: 'Group',
       label: 'What this association is',
-      parent: 'landingGround',
+      parent: 'landingMain',
       parameters: { ...composition('band'), backgroundColor: 'var(--background)', mounted: false },
       children: ['aboutShell']
     },
@@ -2406,7 +2448,7 @@ const LANDING: Tpl001Component = {
     // `Pages/Directory` are all shipped, so nothing here describes a screen that
     // is not in the artefact. `tpl001Template.test.ts` pins the page list, which
     // is what stops this becoming a promise a later edit quietly breaks.
-    { id: 'inside', type: INSIDE_BAND_COMPONENT, label: 'What members can see', parent: 'landingGround' },
+    { id: 'inside', type: INSIDE_BAND_COMPONENT, label: 'What members can see', parent: 'landingMain' },
 
     // ── The foot of the page ─────────────────────────────────────────────────
     //
@@ -4986,7 +5028,17 @@ export const INSIDE_TILE_NODES = [
     parameters: { ...CARD_BODY, sizeMode: 'contentHeight' },
     children: ['tileTitle', 'tileLine']
   },
-  { id: 'tileTitle', type: 'Text', label: 'What it is', parent: 'tileBody', parameters: { text: '', ...T_CARD_TITLE } },
+  // ⚠️ **`h3`, overriding `T_CARD_TITLE`'s `h2`.** A tile sits under the
+  // `What members can see` band, whose own heading is `H_BAND`'s `h2`; the list
+  // rows that share this style sit directly under a page `h1` and are `h2`
+  // there. Same size, one level apart, because the two live at different depths.
+  {
+    id: 'tileTitle',
+    type: 'Text',
+    label: 'What it is',
+    parent: 'tileBody',
+    parameters: { text: '', ...T_CARD_TITLE, as: 'h3' }
+  },
   { id: 'tileLine', type: 'Text', label: 'What it holds', parent: 'tileBody', parameters: { text: '', ...T_NOTICE } },
   {
     id: 'inputs',
@@ -5344,7 +5396,7 @@ export const FOOTER_NODES = [
     id: 'footer',
     type: 'Group',
     label: 'The foot of the page',
-    parameters: composition('footerBand'),
+    parameters: { ...composition('footerBand'), as: 'footer' },
     children: ['footerShell']
   },
   {
@@ -5493,6 +5545,7 @@ export const CHROME_NODES = [
     type: 'Group',
     label: 'The band',
     parameters: {
+      as: 'header',
       width: { value: 100, unit: '%' },
       // ⚠️ **Pinned, REL-002c item 4.** A `Group` with no `sizeMode` is
       // `explicit` at `height: 100%`, which a column parent turns into
@@ -5532,7 +5585,37 @@ export const CHROME_NODES = [
       paddingLeft: 'var(--space-6)',
       paddingRight: 'var(--space-6)'
     },
-    children: ['topRow', 'nav']
+    children: ['topRow', 'navWrap']
+  },
+  /**
+   * 🔴 **A wrapper that exists for one parameter, because `Columns` has no
+   * `as` port.** Only `Group` and `Text` carry one (`group.ts`, `text.ts`);
+   * `net.noodl.visual.columns` does not, and the nav has to be a `Columns` for
+   * the breakpoint reason its own note gives. So the landmark goes on a Group
+   * around it rather than on the node that draws the row.
+   *
+   * 🔴 **The `isSignedIn` gate moved UP here, it was not duplicated.** Leaving
+   * `mounted` on the `Columns` would have rendered an empty `<nav>` landmark on
+   * every page a signed-out stranger can reach — a landmark that announces
+   * navigation and contains none. The wrapper leaves the tree with its
+   * contents, which is what REL-002b asked for in the first place.
+   */
+  {
+    id: 'navWrap',
+    type: 'Group',
+    label: 'Where the band can take you',
+    parent: 'inner',
+    parameters: {
+      as: 'nav',
+      width: { value: 100, unit: '%' },
+      // Pinned — a `Group` with no `sizeMode` is `explicit` at `height: 100%`,
+      // which a column parent turns into `flex-grow: 100`. `bar` carries the
+      // same pin and the same note.
+      sizeMode: 'contentHeight',
+      flexDirection: 'column',
+      mounted: false
+    },
+    children: ['nav']
   },
   {
     id: 'topRow',
@@ -5580,7 +5663,14 @@ export const CHROME_NODES = [
     parent: 'identity',
     // Rule 3: a standing empty text, so nothing renders the word "Text" while
     // the record is on its way.
-    parameters: { text: '', ...T_CARD_TITLE }
+    //
+    // 🔴 **`as: 'span'`, overriding `T_CARD_TITLE`'s `h2`.** This wears the card
+    // title's SIZE and is not a heading: it is the association's name in the
+    // band, on all nine chrome pages, above the page's own `h1`. As an `h2` it
+    // would open every one of those pages with a heading that belongs to the
+    // furniture rather than to the screen, and it would come BEFORE the `h1` in
+    // the outline.
+    parameters: { text: '', ...T_CARD_TITLE, as: 'span' }
   },
   {
     id: 'signOutButton',
@@ -5601,11 +5691,11 @@ export const CHROME_NODES = [
     // two columns at 390px. A tokenised `minWidth` would disable `autoFit`
     // entirely (`Columns.tsx`), so it stays a literal `px` pair.
     type: COLUMNS_NODE,
-    label: 'Where the band can take you',
-    parent: 'inner',
-    // REL-002b — same reason as `topRow`: navigation into the members' area is
-    // furniture only a person who has one should be offered.
-    parameters: { ...composition('gridAutoFit'), minWidth: { value: 132, unit: 'px' }, mounted: false },
+    label: 'The five ways on',
+    parent: 'navWrap',
+    // REL-002b's gate is on `navWrap` now, which is this node's parent — see
+    // its note. A second `mounted` here would be a twin of that gate.
+    parameters: { ...composition('gridAutoFit'), minWidth: { value: 132, unit: 'px' } },
     children: BAND_NAV.map((item) => item.id)
   },
   ...BAND_NAV.map((item) => ({
@@ -5745,7 +5835,7 @@ export const CHROME_WIRES = [
   // handed to nobody: it answers "is there a session", which is the band's
   // question, while the pages ask "may this person read", which is `isMember`.
   { fromId: 'standing', fromProperty: 'isSignedIn', toId: 'topRow', toProperty: 'mounted' },
-  { fromId: 'standing', fromProperty: 'isSignedIn', toId: 'nav', toProperty: 'mounted' },
+  { fromId: 'standing', fromProperty: 'isSignedIn', toId: 'navWrap', toProperty: 'mounted' },
   // The same value the three moderator-only nav items are gated on, handed up
   // to whichever page placed the band. See `outputs` for why it is here and not
   // a third call on the two pages that want it.

@@ -144,7 +144,8 @@
         "fontWeight": "var(--font-semibold)",
         "letterSpacing": "var(--tracking-widest)",
         "textTransform": "uppercase",
-        "color": "var(--primary-foreground)"
+        "color": "var(--primary-foreground)",
+        "as": "span"
       },
       "x": 340,
       "y": 640
@@ -160,7 +161,8 @@
         "fontWeight": "var(--font-bold)",
         "lineHeight": "var(--leading-none)",
         "letterSpacing": "var(--tracking-tighter)",
-        "color": "var(--primary-foreground)"
+        "color": "var(--primary-foreground)",
+        "as": "h1"
       },
       "x": 340,
       "y": 760
@@ -209,6 +211,7 @@
         "flexDirection": "column",
         "paddingLeft": "var(--space-6)",
         "paddingRight": "var(--space-6)",
+        "as": "main",
         "sizeMode": "contentHeight",
         "alignX": "center",
         "rowGap": "var(--space-5)",

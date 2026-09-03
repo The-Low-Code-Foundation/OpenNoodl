@@ -2,9 +2,9 @@
   "task": "vib-001",
   "subject": "members-area",
   "state": "door",
-  "headSha": "d27ad85584e3a7326435d04a4468c496d3b3a47a",
+  "headSha": "a013697d9861b52d8df46f009ae93d78b27c677d",
   "artefactMd5": "f969ad963f5cbd25f1bcaa08d2951f47",
-  "artefactTreeMd5": "32c42a43d02fb6dfab01a2365a10ec90",
+  "artefactTreeMd5": "eeb3b2f0c245ae1943d1d25cae5b64ce",
   "outDir": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-09-03/members-area-door",
   "starterAssets": {
     "written": [],
@@ -93,9 +93,11 @@
       "canScroll": true,
       "unreachablePx": 0,
       "textChars": 588,
-      "headings": [],
+      "headings": [
+        "What members can see"
+      ],
       "errors": [
-        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:61403/noodl.viewer.js:54634:61)\n    at xhr.onreadystatechange (http://127.0.0.1:61403/noodl.viewer.js:54509:33)"
+        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:49273/noodl.viewer.js:54634:61)\n    at xhr.onreadystatechange (http://127.0.0.1:49273/noodl.viewer.js:54509:33)"
       ]
     },
     {
@@ -116,9 +118,11 @@
       "canScroll": true,
       "unreachablePx": 0,
       "textChars": 588,
-      "headings": [],
+      "headings": [
+        "What members can see"
+      ],
       "errors": [
-        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:61403/noodl.viewer.js:54634:61)\n    at xhr.onreadystatechange (http://127.0.0.1:61403/noodl.viewer.js:54509:33)"
+        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:49273/noodl.viewer.js:54634:61)\n    at xhr.onreadystatechange (http://127.0.0.1:49273/noodl.viewer.js:54509:33)"
       ]
     },
     {
@@ -139,9 +143,11 @@
       "canScroll": true,
       "unreachablePx": 0,
       "textChars": 588,
-      "headings": [],
+      "headings": [
+        "What members can see"
+      ],
       "errors": [
-        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:61403/noodl.viewer.js:54634:61)\n    at xhr.onreadystatechange (http://127.0.0.1:61403/noodl.viewer.js:54509:33)"
+        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:49273/noodl.viewer.js:54634:61)\n    at xhr.onreadystatechange (http://127.0.0.1:49273/noodl.viewer.js:54509:33)"
       ]
     },
     {
@@ -162,9 +168,11 @@
       "canScroll": true,
       "unreachablePx": 0,
       "textChars": 588,
-      "headings": [],
+      "headings": [
+        "What members can see"
+      ],
       "errors": [
-        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:61403/noodl.viewer.js:54634:61)\n    at xhr.onreadystatechange (http://127.0.0.1:61403/noodl.viewer.js:54509:33)"
+        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:49273/noodl.viewer.js:54634:61)\n    at xhr.onreadystatechange (http://127.0.0.1:49273/noodl.viewer.js:54509:33)"
       ]
     },
     {
@@ -185,7 +193,11 @@
       "canScroll": true,
       "unreachablePx": 0,
       "textChars": 463,
-      "headings": [],
+      "headings": [
+        "Members sign in",
+        "Not a member yet?",
+        "What members can see"
+      ],
       "errors": []
     },
     {
@@ -206,7 +218,11 @@
       "canScroll": true,
       "unreachablePx": 0,
       "textChars": 463,
-      "headings": [],
+      "headings": [
+        "Members sign in",
+        "Not a member yet?",
+        "What members can see"
+      ],
       "errors": []
     },
     {
@@ -227,7 +243,11 @@
       "canScroll": true,
       "unreachablePx": 0,
       "textChars": 463,
-      "headings": [],
+      "headings": [
+        "Members sign in",
+        "Not a member yet?",
+        "What members can see"
+      ],
       "errors": []
     },
     {
@@ -248,7 +268,11 @@
       "canScroll": true,
       "unreachablePx": 0,
       "textChars": 463,
-      "headings": [],
+      "headings": [
+        "Members sign in",
+        "Not a member yet?",
+        "What members can see"
+      ],
       "errors": []
     },
     {
@@ -269,7 +293,11 @@
       "canScroll": true,
       "unreachablePx": 0,
       "textChars": 502,
-      "headings": [],
+      "headings": [
+        "Ask to join",
+        "Already have an account?",
+        "What members can see"
+      ],
       "errors": []
     },
     {
@@ -290,7 +318,11 @@
       "canScroll": true,
       "unreachablePx": 0,
       "textChars": 502,
-      "headings": [],
+      "headings": [
+        "Ask to join",
+        "Already have an account?",
+        "What members can see"
+      ],
       "errors": []
     },
     {
@@ -311,7 +343,11 @@
       "canScroll": true,
       "unreachablePx": 0,
       "textChars": 502,
-      "headings": [],
+      "headings": [
+        "Ask to join",
+        "Already have an account?",
+        "What members can see"
+      ],
       "errors": []
     },
     {
@@ -332,7 +368,11 @@
       "canScroll": true,
       "unreachablePx": 0,
       "textChars": 502,
-      "headings": [],
+      "headings": [
+        "Ask to join",
+        "Already have an account?",
+        "What members can see"
+      ],
       "errors": []
     },
     {
@@ -353,7 +393,11 @@
       "canScroll": true,
       "unreachablePx": 0,
       "textChars": 746,
-      "headings": [],
+      "headings": [
+        "Set up this members’ area",
+        "Already set up?",
+        "What members can see"
+      ],
       "errors": []
     },
     {
@@ -374,7 +418,11 @@
       "canScroll": true,
       "unreachablePx": 0,
       "textChars": 746,
-      "headings": [],
+      "headings": [
+        "Set up this members’ area",
+        "Already set up?",
+        "What members can see"
+      ],
       "errors": []
     },
     {
@@ -395,7 +443,11 @@
       "canScroll": true,
       "unreachablePx": 0,
       "textChars": 746,
-      "headings": [],
+      "headings": [
+        "Set up this members’ area",
+        "Already set up?",
+        "What members can see"
+      ],
       "errors": []
     },
     {
@@ -416,7 +468,11 @@
       "canScroll": true,
       "unreachablePx": 0,
       "textChars": 746,
-      "headings": [],
+      "headings": [
+        "Set up this members’ area",
+        "Already set up?",
+        "What members can see"
+      ],
       "errors": []
     },
     {
@@ -437,11 +493,13 @@
       "canScroll": true,
       "unreachablePx": 0,
       "textChars": 588,
-      "headings": [],
+      "headings": [
+        "What members can see"
+      ],
       "errors": [
-        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:61403/noodl.viewer.js:54634:61)\n    at xhr.onreadystatechange (http://127.0.0.1:61403/noodl.viewer.js:54509:33)",
+        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:49273/noodl.viewer.js:54634:61)\n    at xhr.onreadystatechange (http://127.0.0.1:49273/noodl.viewer.js:54509:33)",
         "[noodl] CloudFunction2 (/Members/Standing): No cloud services defined in this project. [cloud-function/call-failed] Object",
-        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:61403/noodl.viewer.js:54634:61)\n    at xhr.onreadystatechange (http://127.0.0.1:61403/noodl.viewer.js:54509:33)"
+        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:49273/noodl.viewer.js:54634:61)\n    at xhr.onreadystatechange (http://127.0.0.1:49273/noodl.viewer.js:54509:33)"
       ]
     },
     {
@@ -462,11 +520,13 @@
       "canScroll": true,
       "unreachablePx": 0,
       "textChars": 588,
-      "headings": [],
+      "headings": [
+        "What members can see"
+      ],
       "errors": [
-        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:61403/noodl.viewer.js:54634:61)\n    at xhr.onreadystatechange (http://127.0.0.1:61403/noodl.viewer.js:54509:33)",
+        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:49273/noodl.viewer.js:54634:61)\n    at xhr.onreadystatechange (http://127.0.0.1:49273/noodl.viewer.js:54509:33)",
         "[noodl] CloudFunction2 (/Members/Standing): No cloud services defined in this project. [cloud-function/call-failed] Object",
-        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:61403/noodl.viewer.js:54634:61)\n    at xhr.onreadystatechange (http://127.0.0.1:61403/noodl.viewer.js:54509:33)"
+        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:49273/noodl.viewer.js:54634:61)\n    at xhr.onreadystatechange (http://127.0.0.1:49273/noodl.viewer.js:54509:33)"
       ]
     },
     {
@@ -487,11 +547,13 @@
       "canScroll": true,
       "unreachablePx": 0,
       "textChars": 588,
-      "headings": [],
+      "headings": [
+        "What members can see"
+      ],
       "errors": [
-        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:61403/noodl.viewer.js:54634:61)\n    at xhr.onreadystatechange (http://127.0.0.1:61403/noodl.viewer.js:54509:33)",
+        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:49273/noodl.viewer.js:54634:61)\n    at xhr.onreadystatechange (http://127.0.0.1:49273/noodl.viewer.js:54509:33)",
         "[noodl] CloudFunction2 (/Members/Standing): No cloud services defined in this project. [cloud-function/call-failed] Object",
-        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:61403/noodl.viewer.js:54634:61)\n    at xhr.onreadystatechange (http://127.0.0.1:61403/noodl.viewer.js:54509:33)"
+        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:49273/noodl.viewer.js:54634:61)\n    at xhr.onreadystatechange (http://127.0.0.1:49273/noodl.viewer.js:54509:33)"
       ]
     },
     {
@@ -512,11 +574,13 @@
       "canScroll": true,
       "unreachablePx": 0,
       "textChars": 588,
-      "headings": [],
+      "headings": [
+        "What members can see"
+      ],
       "errors": [
-        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:61403/noodl.viewer.js:54634:61)\n    at xhr.onreadystatechange (http://127.0.0.1:61403/noodl.viewer.js:54509:33)",
+        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:49273/noodl.viewer.js:54634:61)\n    at xhr.onreadystatechange (http://127.0.0.1:49273/noodl.viewer.js:54509:33)",
         "[noodl] CloudFunction2 (/Members/Standing): No cloud services defined in this project. [cloud-function/call-failed] Object",
-        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:61403/noodl.viewer.js:54634:61)\n    at xhr.onreadystatechange (http://127.0.0.1:61403/noodl.viewer.js:54509:33)"
+        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:49273/noodl.viewer.js:54634:61)\n    at xhr.onreadystatechange (http://127.0.0.1:49273/noodl.viewer.js:54509:33)"
       ]
     },
     {
@@ -537,7 +601,9 @@
       "canScroll": true,
       "unreachablePx": 0,
       "textChars": 287,
-      "headings": [],
+      "headings": [
+        "Emails"
+      ],
       "errors": []
     },
     {
@@ -558,7 +624,9 @@
       "canScroll": false,
       "unreachablePx": 0,
       "textChars": 287,
-      "headings": [],
+      "headings": [
+        "Emails"
+      ],
       "errors": []
     },
     {
@@ -579,7 +647,9 @@
       "canScroll": false,
       "unreachablePx": 0,
       "textChars": 287,
-      "headings": [],
+      "headings": [
+        "Emails"
+      ],
       "errors": []
     },
     {
@@ -600,7 +670,9 @@
       "canScroll": false,
       "unreachablePx": 0,
       "textChars": 287,
-      "headings": [],
+      "headings": [
+        "Emails"
+      ],
       "errors": []
     }
   ]

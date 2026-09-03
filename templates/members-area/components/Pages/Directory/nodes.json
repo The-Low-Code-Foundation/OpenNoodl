@@ -152,6 +152,7 @@
         "flexDirection": "column",
         "paddingLeft": "var(--space-6)",
         "paddingRight": "var(--space-6)",
+        "as": "main",
         "sizeMode": "contentHeight",
         "alignX": "center",
         "rowGap": "var(--space-5)",
@@ -262,7 +263,8 @@
         "fontWeight": "var(--font-semibold)",
         "letterSpacing": "var(--tracking-widest)",
         "textTransform": "uppercase",
-        "color": "var(--primary)"
+        "color": "var(--primary)",
+        "as": "span"
       },
       "x": 460,
       "y": 1240
@@ -278,7 +280,8 @@
         "fontWeight": "var(--font-semibold)",
         "lineHeight": "var(--leading-none)",
         "letterSpacing": "var(--tracking-tight)",
-        "color": "var(--foreground)"
+        "color": "var(--foreground)",
+        "as": "h1"
       },
       "x": 460,
       "y": 1360
@@ -337,6 +340,7 @@
         "emptyState-4"
       ],
       "parameters": {
+        "as": "section",
         "width": {
           "value": 100,
           "unit": "%"

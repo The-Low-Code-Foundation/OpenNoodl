@@ -102,7 +102,7 @@
     {
       "fromId": "standing",
       "fromProperty": "isSignedIn",
-      "toId": "nav",
+      "toId": "navWrap",
       "toProperty": "mounted"
     },
     {

@@ -23,7 +23,8 @@
         "borderTopWidth": "var(--border-1)",
         "borderTopColor": "var(--border)",
         "paddingTop": "var(--space-16)",
-        "paddingBottom": "var(--space-10)"
+        "paddingBottom": "var(--space-10)",
+        "as": "footer"
       },
       "x": 40,
       "y": 40
@@ -107,7 +108,8 @@
         "fontWeight": "var(--font-semibold)",
         "letterSpacing": "var(--tracking-widest)",
         "textTransform": "uppercase",
-        "color": "var(--primary)"
+        "color": "var(--primary)",
+        "as": "span"
       },
       "x": 220,
       "y": 520

@@ -2,9 +2,9 @@
   "task": "vib-001",
   "subject": "members-area",
   "state": "living",
-  "headSha": "e4dc7904bd34fa15de3021f85c2cbcd28cfbfd95",
-  "artefactMd5": "de859daf74562b5a513c52dd4f4b80e9",
-  "artefactTreeMd5": "3c77126a49efd09bed50569eec5adb1c",
+  "headSha": "a013697d9861b52d8df46f009ae93d78b27c677d",
+  "artefactMd5": "e8a11d9a737ff2a872f91e5a64f62046",
+  "artefactTreeMd5": "bf0e9ac3896484cf4c13d6b6e0aa54f8",
   "outDir": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-09-03/members-area-living",
   "starterAssets": {
     "written": [],
@@ -93,7 +93,11 @@
       "canScroll": true,
       "unreachablePx": 0,
       "textChars": 725,
-      "headings": [],
+      "headings": [
+        "St Anywhere",
+        "About us",
+        "What members can see"
+      ],
       "errors": []
     },
     {
@@ -114,7 +118,11 @@
       "canScroll": true,
       "unreachablePx": 0,
       "textChars": 725,
-      "headings": [],
+      "headings": [
+        "St Anywhere",
+        "About us",
+        "What members can see"
+      ],
       "errors": []
     },
     {
@@ -135,7 +143,11 @@
       "canScroll": true,
       "unreachablePx": 0,
       "textChars": 725,
-      "headings": [],
+      "headings": [
+        "St Anywhere",
+        "About us",
+        "What members can see"
+      ],
       "errors": []
     },
     {
@@ -156,7 +168,11 @@
       "canScroll": true,
       "unreachablePx": 0,
       "textChars": 725,
-      "headings": [],
+      "headings": [
+        "St Anywhere",
+        "About us",
+        "What members can see"
+      ],
       "errors": []
     },
     {
@@ -177,7 +193,15 @@
       "canScroll": true,
       "unreachablePx": 0,
       "textChars": 785,
-      "headings": [],
+      "headings": [
+        "Announcements",
+        "The roof appeal",
+        "The harvest supper",
+        "Choir practice moves",
+        "Churchyard tidy",
+        "New hall bookings",
+        "Summer fete thanks"
+      ],
       "errors": []
     },
     {
@@ -198,7 +222,15 @@
       "canScroll": true,
       "unreachablePx": 0,
       "textChars": 785,
-      "headings": [],
+      "headings": [
+        "Announcements",
+        "The roof appeal",
+        "The harvest supper",
+        "Choir practice moves",
+        "Churchyard tidy",
+        "New hall bookings",
+        "Summer fete thanks"
+      ],
       "errors": []
     },
     {
@@ -219,7 +251,15 @@
       "canScroll": true,
       "unreachablePx": 0,
       "textChars": 785,
-      "headings": [],
+      "headings": [
+        "Announcements",
+        "The roof appeal",
+        "The harvest supper",
+        "Choir practice moves",
+        "Churchyard tidy",
+        "New hall bookings",
+        "Summer fete thanks"
+      ],
       "errors": []
     },
     {
@@ -240,7 +280,15 @@
       "canScroll": true,
       "unreachablePx": 0,
       "textChars": 785,
-      "headings": [],
+      "headings": [
+        "Announcements",
+        "The roof appeal",
+        "The harvest supper",
+        "Choir practice moves",
+        "Churchyard tidy",
+        "New hall bookings",
+        "Summer fete thanks"
+      ],
       "errors": []
     },
     {
@@ -261,7 +309,13 @@
       "canScroll": true,
       "unreachablePx": 0,
       "textChars": 460,
-      "headings": [],
+      "headings": [
+        "What’s coming up",
+        "Parish council",
+        "Standing committee",
+        "Fabric committee",
+        "Annual meeting"
+      ],
       "errors": []
     },
     {
@@ -282,7 +336,13 @@
       "canScroll": false,
       "unreachablePx": 0,
       "textChars": 460,
-      "headings": [],
+      "headings": [
+        "What’s coming up",
+        "Parish council",
+        "Standing committee",
+        "Fabric committee",
+        "Annual meeting"
+      ],
       "errors": []
     },
     {
@@ -303,7 +363,13 @@
       "canScroll": false,
       "unreachablePx": 0,
       "textChars": 460,
-      "headings": [],
+      "headings": [
+        "What’s coming up",
+        "Parish council",
+        "Standing committee",
+        "Fabric committee",
+        "Annual meeting"
+      ],
       "errors": []
     },
     {
@@ -324,7 +390,13 @@
       "canScroll": true,
       "unreachablePx": 0,
       "textChars": 460,
-      "headings": [],
+      "headings": [
+        "What’s coming up",
+        "Parish council",
+        "Standing committee",
+        "Fabric committee",
+        "Annual meeting"
+      ],
       "errors": []
     },
     {
@@ -345,7 +417,13 @@
       "canScroll": true,
       "unreachablePx": 0,
       "textChars": 612,
-      "headings": [],
+      "headings": [
+        "Who belongs",
+        "Ada Newcomer",
+        "Mo Joiner",
+        "Pat Pending",
+        "Ruth Bramley"
+      ],
       "errors": []
     },
     {
@@ -366,7 +444,13 @@
       "canScroll": false,
       "unreachablePx": 0,
       "textChars": 612,
-      "headings": [],
+      "headings": [
+        "Who belongs",
+        "Ada Newcomer",
+        "Mo Joiner",
+        "Pat Pending",
+        "Ruth Bramley"
+      ],
       "errors": []
     },
     {
@@ -387,7 +471,13 @@
       "canScroll": false,
       "unreachablePx": 0,
       "textChars": 612,
-      "headings": [],
+      "headings": [
+        "Who belongs",
+        "Ada Newcomer",
+        "Mo Joiner",
+        "Pat Pending",
+        "Ruth Bramley"
+      ],
       "errors": []
     },
     {
@@ -408,7 +498,13 @@
       "canScroll": true,
       "unreachablePx": 0,
       "textChars": 612,
-      "headings": [],
+      "headings": [
+        "Who belongs",
+        "Ada Newcomer",
+        "Mo Joiner",
+        "Pat Pending",
+        "Ruth Bramley"
+      ],
       "errors": []
     },
     {
@@ -429,7 +525,11 @@
       "canScroll": true,
       "unreachablePx": 0,
       "textChars": 471,
-      "headings": [],
+      "headings": [
+        "Requests to join",
+        "Sam Quiet",
+        "Tom Waiting"
+      ],
       "errors": []
     },
     {
@@ -450,7 +550,11 @@
       "canScroll": false,
       "unreachablePx": 0,
       "textChars": 471,
-      "headings": [],
+      "headings": [
+        "Requests to join",
+        "Sam Quiet",
+        "Tom Waiting"
+      ],
       "errors": []
     },
     {
@@ -471,7 +575,11 @@
       "canScroll": false,
       "unreachablePx": 0,
       "textChars": 471,
-      "headings": [],
+      "headings": [
+        "Requests to join",
+        "Sam Quiet",
+        "Tom Waiting"
+      ],
       "errors": []
     },
     {
@@ -492,7 +600,11 @@
       "canScroll": true,
       "unreachablePx": 0,
       "textChars": 471,
-      "headings": [],
+      "headings": [
+        "Requests to join",
+        "Sam Quiet",
+        "Tom Waiting"
+      ],
       "errors": []
     },
     {
@@ -513,7 +625,9 @@
       "canScroll": true,
       "unreachablePx": 0,
       "textChars": 407,
-      "headings": [],
+      "headings": [
+        "Emails"
+      ],
       "errors": []
     },
     {
@@ -534,7 +648,9 @@
       "canScroll": false,
       "unreachablePx": 0,
       "textChars": 407,
-      "headings": [],
+      "headings": [
+        "Emails"
+      ],
       "errors": []
     },
     {
@@ -555,7 +671,9 @@
       "canScroll": false,
       "unreachablePx": 0,
       "textChars": 407,
-      "headings": [],
+      "headings": [
+        "Emails"
+      ],
       "errors": []
     },
     {
@@ -576,7 +694,9 @@
       "canScroll": false,
       "unreachablePx": 0,
       "textChars": 407,
-      "headings": [],
+      "headings": [
+        "Emails"
+      ],
       "errors": []
     },
     {
@@ -597,7 +717,11 @@
       "canScroll": true,
       "unreachablePx": 0,
       "textChars": 367,
-      "headings": [],
+      "headings": [
+        "Post something",
+        "Post an announcement",
+        "Add a meeting"
+      ],
       "errors": []
     },
     {
@@ -618,7 +742,11 @@
       "canScroll": true,
       "unreachablePx": 0,
       "textChars": 367,
-      "headings": [],
+      "headings": [
+        "Post something",
+        "Post an announcement",
+        "Add a meeting"
+      ],
       "errors": []
     },
     {
@@ -639,7 +767,11 @@
       "canScroll": true,
       "unreachablePx": 0,
       "textChars": 367,
-      "headings": [],
+      "headings": [
+        "Post something",
+        "Post an announcement",
+        "Add a meeting"
+      ],
       "errors": []
     },
     {
@@ -660,7 +792,11 @@
       "canScroll": true,
       "unreachablePx": 0,
       "textChars": 367,
-      "headings": [],
+      "headings": [
+        "Post something",
+        "Post an announcement",
+        "Add a meeting"
+      ],
       "errors": []
     },
     {
@@ -668,7 +804,7 @@
       "subject": "members-area",
       "state": "living",
       "page": "announcement",
-      "url": "/announcements/de35e722-600d-4314-a6a3-09b7c90d587b",
+      "url": "/announcements/90b08c92-b29f-4b0e-a05d-edf3d3443aff",
       "as": "a member reading the newest announcement — the top row of /members",
       "viewport": {
         "id": "preview",
@@ -681,7 +817,9 @@
       "canScroll": true,
       "unreachablePx": 0,
       "textChars": 361,
-      "headings": [],
+      "headings": [
+        "The roof appeal"
+      ],
       "errors": []
     },
     {
@@ -689,7 +827,7 @@
       "subject": "members-area",
       "state": "living",
       "page": "announcement",
-      "url": "/announcements/de35e722-600d-4314-a6a3-09b7c90d587b",
+      "url": "/announcements/90b08c92-b29f-4b0e-a05d-edf3d3443aff",
       "as": "a member reading the newest announcement — the top row of /members",
       "viewport": {
         "id": "desktop",
@@ -702,7 +840,9 @@
       "canScroll": false,
       "unreachablePx": 0,
       "textChars": 361,
-      "headings": [],
+      "headings": [
+        "The roof appeal"
+      ],
       "errors": []
     },
     {
@@ -710,7 +850,7 @@
       "subject": "members-area",
       "state": "living",
       "page": "announcement",
-      "url": "/announcements/de35e722-600d-4314-a6a3-09b7c90d587b",
+      "url": "/announcements/90b08c92-b29f-4b0e-a05d-edf3d3443aff",
       "as": "a member reading the newest announcement — the top row of /members",
       "viewport": {
         "id": "wide",
@@ -723,7 +863,9 @@
       "canScroll": false,
       "unreachablePx": 0,
       "textChars": 361,
-      "headings": [],
+      "headings": [
+        "The roof appeal"
+      ],
       "errors": []
     },
     {
@@ -731,7 +873,7 @@
       "subject": "members-area",
       "state": "living",
       "page": "announcement",
-      "url": "/announcements/de35e722-600d-4314-a6a3-09b7c90d587b",
+      "url": "/announcements/90b08c92-b29f-4b0e-a05d-edf3d3443aff",
       "as": "a member reading the newest announcement — the top row of /members",
       "viewport": {
         "id": "phone",
@@ -744,7 +886,9 @@
       "canScroll": false,
       "unreachablePx": 0,
       "textChars": 361,
-      "headings": [],
+      "headings": [
+        "The roof appeal"
+      ],
       "errors": []
     },
     {
@@ -752,7 +896,7 @@
       "subject": "members-area",
       "state": "living",
       "page": "meeting",
-      "url": "/meetings/08876a40-84a9-40d4-a406-6cd8789e4670",
+      "url": "/meetings/ede9a372-b8cd-40c7-b56b-718d6a49cb24",
       "as": "a member opening the soonest meeting — the top row of /meetings",
       "viewport": {
         "id": "preview",
@@ -765,7 +909,9 @@
       "canScroll": true,
       "unreachablePx": 0,
       "textChars": 305,
-      "headings": [],
+      "headings": [
+        "Parish council"
+      ],
       "errors": []
     },
     {
@@ -773,7 +919,7 @@
       "subject": "members-area",
       "state": "living",
       "page": "meeting",
-      "url": "/meetings/08876a40-84a9-40d4-a406-6cd8789e4670",
+      "url": "/meetings/ede9a372-b8cd-40c7-b56b-718d6a49cb24",
       "as": "a member opening the soonest meeting — the top row of /meetings",
       "viewport": {
         "id": "desktop",
@@ -786,7 +932,9 @@
       "canScroll": false,
       "unreachablePx": 0,
       "textChars": 305,
-      "headings": [],
+      "headings": [
+        "Parish council"
+      ],
       "errors": []
     },
     {
@@ -794,7 +942,7 @@
       "subject": "members-area",
       "state": "living",
       "page": "meeting",
-      "url": "/meetings/08876a40-84a9-40d4-a406-6cd8789e4670",
+      "url": "/meetings/ede9a372-b8cd-40c7-b56b-718d6a49cb24",
       "as": "a member opening the soonest meeting — the top row of /meetings",
       "viewport": {
         "id": "wide",
@@ -807,7 +955,9 @@
       "canScroll": false,
       "unreachablePx": 0,
       "textChars": 305,
-      "headings": [],
+      "headings": [
+        "Parish council"
+      ],
       "errors": []
     },
     {
@@ -815,7 +965,7 @@
       "subject": "members-area",
       "state": "living",
       "page": "meeting",
-      "url": "/meetings/08876a40-84a9-40d4-a406-6cd8789e4670",
+      "url": "/meetings/ede9a372-b8cd-40c7-b56b-718d6a49cb24",
       "as": "a member opening the soonest meeting — the top row of /meetings",
       "viewport": {
         "id": "phone",
@@ -828,7 +978,9 @@
       "canScroll": false,
       "unreachablePx": 0,
       "textChars": 305,
-      "headings": [],
+      "headings": [
+        "Parish council"
+      ],
       "errors": []
     }
   ]

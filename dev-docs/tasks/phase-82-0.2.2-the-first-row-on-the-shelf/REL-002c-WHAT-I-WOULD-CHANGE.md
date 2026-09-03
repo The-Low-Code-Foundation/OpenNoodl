@@ -377,3 +377,125 @@ identically under it.
 from `HEAD`** — s23's pictures are the AC3 record and a control run is not entitled to replace them.
 The control's own manifests are kept out of the tree. ✅ **Before running any `.look.ts`, check
 whether its date directory already holds somebody else's committed verdict.**
+---
+
+# §8 SESSION 25 — the tags, built. 0 → 63, and 120 of 120 pictures unmoved
+
+§7.4 registered *"the template ships zero semantic tags"* and named it the strongest candidate for
+this session's first job. It was built. **Every reading below is from a run taken today at
+`a013697d` + this working tree**, and the two that matter are taken from the *same* run so that
+neither can be true without the other.
+
+## §8.1 What was built
+
+One source file — `packages/noodl-mcp/tests/tpl001Components.ts` — and `npm run template:members`
+to regenerate. **24 of the artefact's 100 files changed; two nodes were added (551 → 553) and no
+connection was (493 both sides).**
+
+| where | tag | how many | what it is |
+|---|---|---|---|
+| `H_HERO`, `H_DOOR`, `H_PAGE` | `h1` | **13** | the page heading, and there are thirteen pages |
+| `H_BAND`, `H_SECTION`, `T_CARD_TITLE` | `h2` | 9 | band heads, the two `/post` forms, the four repeater rows |
+| `InsideTile`'s title | `h3` | 1 | a tile under a band that is already an `h2` |
+| `T_EYEBROW`, the band's name | `span` | 17 | the lines that wear a heading's SIZE and are not headings |
+| `PAGE_GROUND` (and `FORM_GROUND` through it), `landingMain` | `main` | **13** | one per page |
+| `SECTION` | `section` | 8 | |
+| chrome `bar` / `navWrap` / `Footer` | `header` / `nav` / `footer` | 1 each | one component apiece, placed on every page that has chrome |
+
+🔴 **Corrigendum to §7.4: `nav`, `header`, `footer` and `section` are NOT on `Text`.** `Text`'s `as`
+enum is `div|h1…h6|p|span`; the landmark names are on **`Group`** (`div|section|article|aside|nav|
+header|footer|main|span`). Only those two node types have an `as` port at all — `Columns`, `Image`,
+`Icon`, `Circle` and the rest have none. The §7.4 table read the two enums as one, which is why the
+fix below needed a wrapper it did not predict.
+
+## §8.2 The two structural nodes, and why each exists
+
+**`navWrap`** — the band's nav is a `Columns` (for the breakpoint reason its own note gives) and
+`Columns` has **no `as` port**, so the landmark goes on a `Group` around it. REL-002b's
+`isSignedIn → mounted` gate **moved up onto the wrapper rather than being duplicated**: left on the
+`Columns`, a signed-out stranger would get an empty `<nav>` on `/`, `/join` and `/sign-in` — a
+landmark announcing navigation that contains none.
+
+**`landingMain`** — `/` and `/join` are the two pages built on `BAND_PAGE_GROUND` instead of
+`pageShell`, so neither has a `ground` node to carry `main`. `/join` gets one anyway through its
+form band; `/` had nothing, and it is the page a stranger meets first. The wrapper re-parents three
+of the ground's four children, and `BAND_PAGE_GROUND`'s `justifyContent: space-between` is why that
+needed a check rather than an argument: in the door state only the hero and the foot are mounted,
+so the ground had two children before and has two after; in every living state the content exceeds
+the `100vh` floor and there is no slack to distribute. **The pictures are what settled it.**
+
+## §8.3 The readings
+
+| gate | reading |
+|---|---|
+| `tpl001Template.test.ts` (the drift gate, +§8's five) | **77/77, EXIT=0** (72 before §8) |
+| `noodl-mcp` full jest | **92 suites / 1231 tests, EXIT=0** (1226 before §8) |
+| `tsc --noEmit -p packages/noodl-mcp` | **0 errors, EXIT=0** |
+| `tpl001-members-drive.test.ts` (real backend) | **59/59, EXIT=0** |
+| `packages/noodl-editor` `test:main` | **412 suites / 6847 tests, EXIT=0** |
+| `packages/noodl-editor` `test:ci` | **2943 specs, 4 failures, seed 23116, HEAD `a013697d`** — the documented floor, and all four are `AIX-006 style vocabulary`, by name |
+| `vib001-members.look.ts` | **EXIT=0, 2/2, 60 shots** |
+
+**At render time, through the harness's own `document.querySelectorAll('h1,h2')`:**
+
+| | s24 | s25 |
+|---|---|---|
+| members-area shots carrying a heading | **0 of 60** | **60 of 60** |
+| headings counted, door arm | 0 | 48 |
+| headings counted, living arm | 0 | 116 |
+
+**And the pictures did not move: 120 of 120 PNGs byte-identical to s24's committed run**, both arms,
+both viewports, viewport and full.
+
+## §8.4 🔴 The two readings are each other's control, and that is the point
+
+*"120 of 120 identical"* is the shape of a run that photographed the **old** artefact — a stale
+copy, a server holding a cached bundle, a drive pointed at the wrong directory. It is exactly the
+null result that would fit both a working change and a broken instrument, and this board has been
+caught by that shape before.
+
+It is excluded **from inside the same run**: the shots that are byte-identical are the shots whose
+manifests record 116 headings where s24's recorded none. An old artefact cannot produce both. So the
+pair says the thing neither says alone — **the tags are being served, and they change nothing a
+person sees**, which is what a semantic tag is supposed to do.
+
+✅ **s24's `artefactTreeMd5` earned its keep on the very next change, and the field it replaced
+failed in the predicted way.** Door arm: `artefactTreeMd5` `32c42a43` → `eeb3b2f0`, while the old
+single-file `artefactMd5` read **`f969ad96` on both sides** — unchanged, across 22 component files
+gaining tags. The pin s24 built for exactly this case is the only one of the two that could see it.
+
+## §8.5 ⚠️ What is NOT built, and is named rather than left to be found
+
+1. ~~No gate holds the tags in place.~~ ✅ **Built — §8.6.**
+2. **The `h1` sits outside `<main>` on the nine chrome pages** — `pageHead()` roots in `headBand`,
+   which is `ground`'s sibling. Common, legal, and not ideal; fixing it means wrapping in
+   `pageShell` and re-photographing.
+3. **The four judgements of §7.3 are untouched** — they were always Richard's.
+
+## §8.6 ✅ The gate, and it was driven RED before it was believed
+
+Five specs in `tpl001Template.test.ts`, in the `design system is finished` describe: every page
+declares **exactly one `h1`** (and there are thirteen pages), every page declares **exactly one
+`main`**, the chrome and the foot carry the three landmarks a page cannot own itself, **no node
+carries an `as` its type has no port for**, and a **control**.
+
+🔴 **A green census over a tree is worth nothing until it has been shown to go red**, and this one
+was the most obviously vacuous kind: one session ago the same three specs would have read clean
+against an artefact with zero tags in it, had they counted the wrong field. So the artefact was
+sabotaged and the gate re-run:
+
+| mutant | result |
+|---|---|
+| `/directory` loses its `h1` and its `main` (`"h1"` → `"div"`) | **§8.1, §8.2 and the CONTROL red** |
+| the chrome's `navWrap` and `bar` lose theirs | **§8.3 red** |
+| an `as: 'nav'` put on the nav `Columns`, a type with no such port | **§8.4 red** |
+
+Four of the five reddened on the first mutant pair and the fifth on its own, which is the right
+answer: §8.4 is about the **type**, not the value, so a mutant that only changes values on `Group`s
+must leave it green. **Both files were restored and md5-checked** (`dc59b483…`, `0a08cc8e…`) and the
+suite re-read **77/77, EXIT=0**.
+
+⚠️ **The control grades the PREDICATE, not the artefact.** `tagsIn` is run over a hand-built mutant
+holding the two near-misses that would make the census a tautology — a node whose *id* is `main`,
+and a `Text` whose *content* is the word `main` — and must return neither.
+

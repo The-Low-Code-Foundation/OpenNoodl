@@ -2066,4 +2066,115 @@ describe('TPL-001 — the design system is finished, not merely opened', () => {
     expect(splits).toBe(2);
     expect(wrong).toEqual([]);
   });
+
+  // ── §8 The document outline ──────────────────────────────────────────────
+  //
+  // 🔴 **Written because the tags had no gate at all, and the absence was not
+  // visible from any suite.** REL-002c §7.4 measured the shipped artefact at
+  // **0 semantic tags in 100 files** while every spec above it was green, and
+  // the harness's own render-time reading agreed: 0 of 60 shots carried an `h1`
+  // or an `h2`. §8 built them. Nothing here would have failed before that
+  // change EXCEPT these four, which is the whole reason they exist — a later
+  // edit to `pageHead()` or to the type ramp can return this template to a pile
+  // of `<div>`s in one line, and the pictures cannot see it: **120 of 120 PNGs
+  // were byte-identical across the change that added the tags.** A landmark is
+  // invisible by design, so a picture is the wrong instrument and a census is
+  // the right one.
+  //
+  // ⚠️ **Only `Group` and `Text` have an `as` port** (`group.ts`, `text.ts`);
+  // `Columns`, `Image`, `Icon` and the rest have none, and `Text`'s enum is
+  // `div|h1…h6|p|span` — the landmark names live on `Group` alone. §8.4 is what
+  // holds that, because an `as` on any other type is a parameter nothing reads.
+
+  /**
+   * The predicate §8.1–§8.3 are all written in terms of, so a mutant can grade
+   * the CHECK rather than the artefact — see §8.5.
+   */
+  const tagsIn = (nodes: readonly StoredNode[], tag: string): string[] =>
+    nodes.filter((n) => (n.parameters ?? {}).as === tag).map((n) => n.id);
+
+  const pages = shipped.filter((c) => c.path.startsWith('/Pages/')).sort((a, b) => a.path.localeCompare(b.path));
+
+  it('§8 every page declares exactly one h1, and there are thirteen pages', () => {
+    expect(pages.length).toBe(13);
+    const wrong = pages
+      .map((c) => ({ page: c.path, h1: tagsIn(c.nodes, 'h1') }))
+      .filter((r) => r.h1.length !== 1)
+      .map((r) => `${r.page}: ${r.h1.length} h1 (${r.h1.join(', ') || 'none'})`);
+    expect(wrong).toEqual([]);
+  });
+
+  /**
+   * 🔴 **`/` needed a node of its own for this and `/join` did not**, which is
+   * the one asymmetry in the outline. Both are built on `BAND_PAGE_GROUND`
+   * rather than on `pageShell`, so neither has a `ground` to carry the landmark;
+   * `/join`'s form band roots a `FORM_GROUND` and gets one anyway, and `/` had
+   * nothing at all until `landingMain` was added. Without it the page a stranger
+   * meets first put every word on it in no landmark.
+   */
+  it('§8 every page declares exactly one main', () => {
+    const wrong = pages
+      .map((c) => ({ page: c.path, main: tagsIn(c.nodes, 'main') }))
+      .filter((r) => r.main.length !== 1)
+      .map((r) => `${r.page}: ${r.main.length} main (${r.main.join(', ') || 'none'})`);
+    expect(wrong).toEqual([]);
+  });
+
+  /**
+   * The three landmarks a page does not own itself: they arrive with the parts
+   * it places, so they are asserted where they are authored.
+   *
+   * ⚠️ **`nav` is on a wrapper Group, not on the node that draws the row.** The
+   * band's nav is a `Columns`, which has no `as` port; REL-002b's `isSignedIn`
+   * gate moved up onto that wrapper rather than being duplicated, so a
+   * signed-out stranger gets no `<nav>` at all instead of an empty one.
+   */
+  it('§8 the chrome and the foot carry the three landmarks a page cannot own', () => {
+    const chrome = byLegacyName.get('/Members/Chrome') as StoredComponent;
+    const foot = byLegacyName.get('/Members/Footer') as StoredComponent;
+    expect(tagsIn(chrome.nodes, 'header')).toEqual(['bar']);
+    expect(tagsIn(chrome.nodes, 'nav')).toEqual(['navWrap']);
+    expect(tagsIn(foot.nodes, 'footer')).toEqual(['footer']);
+
+    // The gate the wrapper exists for: the landmark leaves the tree with its
+    // contents rather than announcing navigation that is not there.
+    const navWrap = chrome.nodes.find((n) => n.id === 'navWrap');
+    expect(navWrap?.parameters?.mounted).toBe(false);
+    expect(
+      chrome.connections.some((w) => w.toId === 'navWrap' && w.toProperty === 'mounted')
+    ).toBe(true);
+  });
+
+  it('§8 no node carries an `as` its type has no port for', () => {
+    const stray = shipped
+      .flatMap((c) => c.nodes.map((n) => ({ component: c.path, node: n })))
+      .filter(({ node }) => 'as' in (node.parameters ?? {}))
+      .filter(({ node }) => node.type !== 'Group' && node.type !== 'Text')
+      .map(({ component, node }) => `${component} › ${node.id} (${node.type})`);
+    expect(stray).toEqual([]);
+  });
+
+  /**
+   * 🔴 **CONTROL — it grades the PREDICATE, not the artefact.** The three specs
+   * above are censuses over a shipped tree, and a census that counted the wrong
+   * field would read clean on a template with no tags in it at all — which is
+   * precisely the state this artefact was in one session ago. So `tagsIn` is run
+   * against a hand-built mutant whose answer is known: it must find the tag that
+   * is there, and must NOT find one that is merely spelled somewhere nearby.
+   */
+  it('§8 CONTROL — the census reads the `as` parameter, not a name that looks like one', () => {
+    const mutant = [
+      { id: 'real', type: 'Group', parameters: { as: 'main' } },
+      // The two near-misses that would make the census a tautology: a node whose
+      // ID is the tag name, and a node with the tag as some other parameter.
+      { id: 'main', type: 'Group', parameters: { flexDirection: 'column' } },
+      { id: 'decoy', type: 'Text', parameters: { text: 'main', label: 'main' } }
+    ] as unknown as StoredNode[];
+    expect(tagsIn(mutant, 'main')).toEqual(['real']);
+    expect(tagsIn(mutant, 'h1')).toEqual([]);
+
+    // And the same predicate, run over the artefact as the specs above run it,
+    // is not vacuous: it finds one per page and thirteen in all.
+    expect(pages.flatMap((c) => tagsIn(c.nodes, 'h1')).length).toBe(13);
+  });
 });

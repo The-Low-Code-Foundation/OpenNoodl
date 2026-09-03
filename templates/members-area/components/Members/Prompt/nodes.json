@@ -69,6 +69,7 @@
         "fontWeight": "var(--font-semibold)",
         "lineHeight": "var(--leading-snug)",
         "color": "var(--accent-foreground)",
+        "as": "h2",
         "textAlignX": "center"
       },
       "x": 160,

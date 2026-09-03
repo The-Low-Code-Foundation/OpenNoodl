@@ -150,7 +150,7 @@
     "Members/Chrome": {
       "path": "Members/Chrome",
       "type": "visual",
-      "nodeCount": 26,
+      "nodeCount": 27,
       "connectionCount": 25,
       "modified": "2026-08-28T00:00:00.000Z",
       "created": "2026-08-28T00:00:00.000Z"
@@ -158,7 +158,7 @@
     "Pages/Landing": {
       "path": "Pages/Landing",
       "type": "page",
-      "nodeCount": 31,
+      "nodeCount": 32,
       "connectionCount": 13,
       "modified": "2026-08-28T00:00:00.000Z",
       "created": "2026-08-28T00:00:00.000Z"
@@ -262,7 +262,7 @@
   },
   "stats": {
     "totalComponents": 32,
-    "totalNodes": 551,
+    "totalNodes": 553,
     "totalConnections": 493
   }
 }
