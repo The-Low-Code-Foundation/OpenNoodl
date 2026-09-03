@@ -18,6 +18,7 @@
       "type": "JavaScriptFunction",
       "label": "Is anybody signed in?",
       "parameters": {
+        "runOnChange-in-userId": true,
         "functionScript": "// `userId` is blank for an unauthenticated request — the Request node’s\n// own contract — and a blank id is a Failure on the roles node, so the\n// two cases are separated here rather than through an error branch.\nconst id = Inputs.userId === undefined || Inputs.userId === null ? '' : String(Inputs.userId);\nif (id.length === 0) {\n  Outputs.standing = 'visitor';\n  Outputs.anonymous();\n  return;\n}\nOutputs.userId = id;\nOutputs.known();"
       },
       "ports": [
@@ -69,6 +70,7 @@
       "type": "JavaScriptFunction",
       "label": "Moderator, member, or still waiting",
       "parameters": {
+        "runOnChange-in-roles": true,
         "functionScript": "const roles = Inputs.roles || [];\n// A moderator is not implicitly a member: the roles are flat and\n// separate, so the check is by name and `admin` is reported first\n// because it is the standing that unlocks more.\nOutputs.standing = roles.indexOf('admin') !== -1\n  ? 'moderator'\n  : roles.indexOf('member') !== -1\n    ? 'member'\n    : 'pending';\nOutputs.answered();"
       },
       "ports": [

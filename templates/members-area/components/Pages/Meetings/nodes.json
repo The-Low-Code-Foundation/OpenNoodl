@@ -454,6 +454,7 @@
       "type": "JavaScriptFunction",
       "label": "Is the diary really empty?",
       "parameters": {
+        "runOnChange-in-count": true,
         "functionScript": "Outputs.empty = (Inputs.count || 0) === 0;"
       },
       "x": 710,

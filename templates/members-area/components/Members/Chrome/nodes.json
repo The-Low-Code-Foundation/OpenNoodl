@@ -431,6 +431,7 @@
       "type": "JavaScriptFunction",
       "label": "Its name, once there is one",
       "parameters": {
+        "runOnChange-in-rows": true,
         "functionScript": "if (Inputs.rows === undefined) return;\nconst rows = Inputs.rows || [];\nOutputs.name = rows.length > 0 ? (rows[0].name || '') : '';"
       },
       "x": 530,

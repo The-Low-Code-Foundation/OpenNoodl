@@ -312,6 +312,7 @@
       "type": "JavaScriptFunction",
       "label": "Hold the token until the router has set it",
       "parameters": {
+        "runOnChange-in-token": true,
         "functionScript": "const token = Inputs.token === undefined || Inputs.token === null\n  ? '' : String(Inputs.token).trim();\n// A link with no token at all never reaches the endpoint: the refusal\n// is the same one either way, and not calling is one fewer public\n// request from a URL somebody mistyped.\nif (token.length === 0) {\n  Outputs.missing();\n  return;\n}\nOutputs.token = token;\nOutputs.ready();"
       },
       "ports": [

@@ -32,6 +32,7 @@
       "type": "JavaScriptFunction",
       "label": "Turn the standing into what each screen needs",
       "parameters": {
+        "runOnChange-in-standing": true,
         "functionScript": "if (Inputs.standing === undefined) return;\nconst s = String(Inputs.standing);\nconst moderator = s === 'moderator';\nconst member = moderator || s === 'member';\nOutputs.standing = s;\n// 🔴 A moderator IS shown the members’ content. The roles are flat and\n// a moderator need not hold `member`, so every screen that asks \"may\n// this person read?\" has to ask for both — in the graph here, and in\n// the policy as a two-atom rule.\nOutputs.isMember = member;\nOutputs.isModerator = moderator;\nOutputs.isPending = s === 'pending';\nOutputs.isUnknown = false;\n// REL-002b. Whether there is a session at all is a different question\n// from whether this person may read anything, and the band needs the\n// first one: a `Sign out` button offered to somebody with no session\n// tells them they are signed in.\nOutputs.isSignedIn = s !== 'visitor';\nif (moderator) Outputs.moderator();\nif (member) Outputs.member();\nif (s === 'visitor') { Outputs.visitor(); Outputs.denied(); }"
       },
       "ports": [

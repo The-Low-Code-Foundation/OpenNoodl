@@ -515,6 +515,8 @@
       "type": "DbCollection2",
       "label": "The announcements",
       "parameters": {
+        "runOnChange-records": true,
+        "runOnChange-search": true,
         "collectionName": "Announcement",
         "runOnChange-collectionName": false,
         "runOnChange-querySettings": false,
@@ -533,6 +535,7 @@
       "type": "JavaScriptFunction",
       "label": "Is the noticeboard really empty?",
       "parameters": {
+        "runOnChange-in-count": true,
         "functionScript": "Outputs.empty = (Inputs.count || 0) === 0;"
       },
       "x": 710,

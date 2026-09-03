@@ -27,6 +27,10 @@
       "type": "JavaScriptFunction",
       "label": "Hold the request until every field is here",
       "parameters": {
+        "runOnChange-in-name": true,
+        "runOnChange-in-email": true,
+        "runOnChange-in-password": true,
+        "runOnChange-in-message": true,
         "functionScript": "if (Inputs.email === undefined || Inputs.password === undefined) return;\nconst email = (Inputs.email || '').trim();\nconst password = Inputs.password || '';\nif (email.length === 0 || password.length === 0) {\n  Outputs.refuse();\n  return;\n}\nOutputs.username = email;\nOutputs.email = email;\nOutputs.password = password;\nOutputs.name = (Inputs.name || '').trim() || email;\nOutputs.message = Inputs.message || '';\nOutputs.ready();"
       },
       "ports": [
@@ -120,6 +124,10 @@
       "type": "JavaScriptFunction",
       "label": "Everything the request row needs, from one node",
       "parameters": {
+        "runOnChange-in-userId": true,
+        "runOnChange-in-email": true,
+        "runOnChange-in-name": true,
+        "runOnChange-in-message": true,
         "functionScript": "if (Inputs.userId === undefined || Inputs.email === undefined) return;\nOutputs.userId = Inputs.userId;\nOutputs.email = Inputs.email;\nOutputs.name = Inputs.name || '';\nOutputs.message = Inputs.message || '';\n// Written here rather than by the backend: an ISO day string sorts and\n// compares lexicographically, which is what the moderators’ queue orders by.\nOutputs.requestedAt = new Date().toISOString();\nOutputs.file();"
       },
       "ports": [

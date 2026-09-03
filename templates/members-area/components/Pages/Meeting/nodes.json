@@ -393,6 +393,7 @@
       "type": "JavaScriptFunction",
       "label": "Hold the id",
       "parameters": {
+        "runOnChange-in-meetingId": true,
         "functionScript": "if (Inputs.meetingId === undefined || Inputs.meetingId === '') return;\nOutputs.meetingId = Inputs.meetingId;\nOutputs.ready();"
       },
       "ports": [
@@ -424,6 +425,8 @@
       "type": "DbModel2",
       "label": "The meeting",
       "parameters": {
+        "runOnChange-modelId": true,
+        "runOnChange-record": true,
         "collectionName": "Meeting",
         "idSource": "explicit"
       },

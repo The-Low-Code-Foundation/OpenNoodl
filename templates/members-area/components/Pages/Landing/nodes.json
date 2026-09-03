@@ -550,6 +550,7 @@
       "type": "JavaScriptFunction",
       "label": "The association, or the invitation to set one up",
       "parameters": {
+        "runOnChange-in-rows": true,
         "functionScript": "if (Inputs.rows === undefined) return;\nconst rows = Inputs.rows || [];\nconst row = rows.length > 0 ? rows[0] : undefined;\nOutputs.name = row ? (row.name || '') : '';\nOutputs.tagline = row ? (row.tagline || '') : '';\nOutputs.blurb = row ? (row.blurb || '') : '';\nOutputs.hasAssociation = rows.length > 0;\nOutputs.needsSetup = rows.length === 0;\n// REL-002b. Always `false`, and that is the point: this node runs\n// only when the query answered, so publishing \"the query has not\n// answered = false\" is what takes the waiting card down. There is\n// deliberately no path that sets it back to `true` — a page that\n// answered once has answered.\nOutputs.unanswered = false;"
       },
       "x": 590,

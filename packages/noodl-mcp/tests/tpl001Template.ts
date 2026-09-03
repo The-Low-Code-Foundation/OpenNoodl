@@ -25,7 +25,7 @@
  *
  * ## What is imported and what is copied, and why that split
  *
- * `readAsLegacyProject` is **imported** from `sb007Template.ts`: it is the
+ * `readAsLegacyProject` is **imported** from `templateArtefact.ts`: it is the
  * mechanism (the editor's own `ProjectImporter`, driven the way a template
  * generator must drive it), and a second copy would agree with the original
  * until the first edit that reached one of them.
@@ -49,7 +49,7 @@ import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import type { LegacyProject } from '../../noodl-editor/src/editor/src/io/ProjectExporter';
 import { createServer } from '../src/server';
 
-import { readAsLegacyProject } from './sb007Template';
+import { pinRunOnValueChangeDefaultsInDirectory, readAsLegacyProject } from './templateArtefact';
 import { TPL001_CLOUD_COMPONENTS } from './tpl001Cloud';
 import { TPL002_CLOUD_COMPONENTS } from './tpl002Cloud';
 import { APP_NODES, APP_WIRES, TPL001_COMPONENTS, createPass } from './tpl001Components';
@@ -415,6 +415,19 @@ export function prepareArtefact(built: AuthoredTemplate, output: string, policyS
   if (Object.keys(built.registrations).length === 0) {
     throw new Error('refusing to write: no page registered into a router — the app would open on nothing');
   }
+
+  // DEF-038 — settle the governed checkboxes BEFORE the id pinning reads the
+  // files, so the artefact means the same thing on disk as it does once the
+  // editor has loaded it. `toTemplateContent` does this for the site builder and
+  // this generator did not: measured 57 stored parameters against the control's
+  // 0, both arms carrying real family nodes. See
+  // `pinRunOnValueChangeDefaultsInDirectory`, where the measurement is recorded.
+  //
+  // ⚠️ Runs on `built.projectDir`, so `built.project` — read before this — is a
+  // pre-settling snapshot. Nothing reads it afterwards, and the gate reads the
+  // written artefact rather than that field, which is what makes the byte
+  // comparison a check on what ships.
+  pinRunOnValueChangeDefaultsInDirectory(built.projectDir);
 
   pinComponentFiles(built.projectDir);
   pinRegistry(built.projectDir);

@@ -21,6 +21,7 @@
       "type": "JavaScriptFunction",
       "label": "Hold the token",
       "parameters": {
+        "runOnChange-in-token": true,
         "functionScript": "const token = Inputs.token === undefined || Inputs.token === null ? '' : String(Inputs.token).trim();\n// A blank token must never reach the query: `unsubscribeToken equal to\n// \"\"` would match every row that never had one.\nif (token.length === 0) {\n  Outputs.blank();\n  return;\n}\nOutputs.token = token;\nOutputs.ok();"
       },
       "ports": [
@@ -57,6 +58,9 @@
       "type": "DbCollection2",
       "label": "Whose link is this?",
       "parameters": {
+        "runOnChange-records": true,
+        "runOnChange-search": true,
+        "runOnChange-qp-token": true,
         "collectionName": "Member",
         "runOnChange-collectionName": false,
         "runOnChange-querySettings": false,

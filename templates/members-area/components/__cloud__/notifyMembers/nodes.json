@@ -23,6 +23,8 @@
       "type": "JavaScriptFunction",
       "label": "Hold the id and the address of this site",
       "parameters": {
+        "runOnChange-in-announcementId": true,
+        "runOnChange-in-siteUrl": true,
         "functionScript": "if (Inputs.announcementId === undefined || String(Inputs.announcementId).length === 0) return;\nOutputs.announcementId = String(Inputs.announcementId);\n// 🔴 Scheme and host only. This string reaches every opted-in inbox, so\n// a caller must not be able to put a path, a query or a fragment in it —\n// and `new URL` throwing on rubbish is a `failure`, which is wired.\nlet origin = '';\ntry {\n  const u = new URL(String(Inputs.siteUrl || ''));\n  if (u.protocol === 'http:' || u.protocol === 'https:') origin = u.protocol + '//' + u.host;\n} catch (e) {\n  origin = '';\n}\nOutputs.origin = origin;\nOutputs.ok();"
       },
       "ports": [
@@ -68,6 +70,8 @@
       "type": "DbModel2",
       "label": "The announcement being mailed",
       "parameters": {
+        "runOnChange-modelId": true,
+        "runOnChange-record": true,
         "collectionName": "Announcement",
         "idSource": "explicit"
       },
@@ -79,6 +83,8 @@
       "type": "DbCollection2",
       "label": "Members who asked to be told",
       "parameters": {
+        "runOnChange-records": true,
+        "runOnChange-search": true,
         "collectionName": "Member",
         "runOnChange-collectionName": false,
         "runOnChange-querySettings": false,

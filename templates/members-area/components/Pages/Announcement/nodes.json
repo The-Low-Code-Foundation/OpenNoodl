@@ -393,6 +393,7 @@
       "type": "JavaScriptFunction",
       "label": "Hold the id",
       "parameters": {
+        "runOnChange-in-announcementId": true,
         "functionScript": "if (Inputs.announcementId === undefined || Inputs.announcementId === '') return;\nOutputs.announcementId = Inputs.announcementId;\nOutputs.ready();"
       },
       "ports": [
@@ -424,6 +425,8 @@
       "type": "DbModel2",
       "label": "The announcement",
       "parameters": {
+        "runOnChange-modelId": true,
+        "runOnChange-record": true,
         "collectionName": "Announcement",
         "idSource": "explicit"
       },

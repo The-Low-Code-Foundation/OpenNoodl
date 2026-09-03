@@ -23,6 +23,8 @@
       "type": "JavaScriptFunction",
       "label": "Hold the decision until both parameters are here",
       "parameters": {
+        "runOnChange-in-requestId": true,
+        "runOnChange-in-approve": true,
         "functionScript": "// `approve: false` is a real answer, so the guard tests `undefined`\n// and never falsiness — a decline read as \"not ready yet\" is a queue\n// entry nothing ever removes.\nif (Inputs.requestId === undefined || Inputs.approve === undefined) return;\nif (String(Inputs.requestId).length === 0) return;\nOutputs.requestId = Inputs.requestId;\nOutputs.approve = Inputs.approve === true;\nOutputs.ready();"
       },
       "ports": [
@@ -68,6 +70,8 @@
       "type": "DbModel2",
       "label": "The request being decided",
       "parameters": {
+        "runOnChange-modelId": true,
+        "runOnChange-record": true,
         "collectionName": "MemberRequest",
         "idSource": "explicit"
       },

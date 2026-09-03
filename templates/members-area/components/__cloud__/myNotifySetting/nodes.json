@@ -18,6 +18,7 @@
       "type": "JavaScriptFunction",
       "label": "Whose setting is this?",
       "parameters": {
+        "runOnChange-in-userId": true,
         "functionScript": "// A blank id is an unauthenticated request. The policy already refuses\n// one, so this branch is the belt to that braces — and it answers\n// `false` rather than an error, because \"not signed up\" is true.\nconst id = Inputs.userId === undefined || Inputs.userId === null ? '' : String(Inputs.userId);\nif (id.length === 0) {\n  Outputs.notify = false;\n  Outputs.nobody();\n  return;\n}\nOutputs.userId = id;\nOutputs.ok();"
       },
       "ports": [
@@ -61,6 +62,9 @@
       "type": "DbCollection2",
       "label": "My directory row",
       "parameters": {
+        "runOnChange-records": true,
+        "runOnChange-search": true,
+        "runOnChange-qp-userId": true,
         "collectionName": "Member",
         "runOnChange-collectionName": false,
         "runOnChange-querySettings": false,

@@ -59,10 +59,11 @@ import * as path from 'path';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 
-import { ProjectImporter } from '../../noodl-editor/src/editor/src/io/ProjectImporter';
 import { pinRunOnValueChangeDefaults } from '../../noodl-editor/src/editor/src/models/ProjectPatches/runOnValueChangeMigration';
 import type { LegacyProject } from '../../noodl-editor/src/editor/src/io/ProjectExporter';
 import { createServer } from '../src/server';
+
+import { readAsLegacyProject } from './templateArtefact';
 
 import { SB004_COMPONENTS } from './sb004Components';
 import { ROUTER, SB005_COMPONENTS, createPass as createPass005 } from './sb005Components';
@@ -371,44 +372,4 @@ export function toTemplateContent(project: LegacyProject): Record<string, unknow
   pinRunOnValueChangeDefaults(content);
 
   return content;
-}
-
-/**
- * The v2 directory as one legacy project, through **the editor's own reader**.
- *
- * `ProjectImporter` is pure — types and `ProjectExporter`'s types, nothing else,
- * no `ProjectModel`, no `NodeLibrary`, no Electron — which is what lets a plain
- * node process call the same class the editor calls when it opens a v2 project.
- *
- * ⚠️ It emits no component-level `ports` array, and that is correct rather than
- * a gap: v2 projects do not carry one either, and the editor derives a
- * component's interface from its `Component Inputs`/`Outputs` nodes when the
- * NodeLibrary loads. `authored-bundle.ts` derives ports by hand because the
- * *runtime* export shape does need them; a `project.json` does not.
- */
-export function readAsLegacyProject(projectDir: string): LegacyProject {
-  const read = <T>(...parts: string[]): T => JSON.parse(fs.readFileSync(path.join(projectDir, ...parts), 'utf-8')) as T;
-
-  const registry = read<{ components: Record<string, { path: string }> }>('components', '_registry.json');
-  const components: Record<string, { component: unknown; nodes: unknown; connections: unknown }> = {};
-
-  for (const [key, row] of Object.entries(registry.components)) {
-    components[key] = {
-      component: read('components', row.path, 'component.json'),
-      nodes: read('components', row.path, 'nodes.json'),
-      connections: read('components', row.path, 'connections.json')
-    };
-  }
-
-  const result = new ProjectImporter().import({
-    project: read('nodegx.project.json'),
-    registry: registry as never,
-    components: components as never
-  });
-
-  if (result.warnings.length > 0) {
-    throw new Error(`the importer could not reconstruct the project:\n  ${result.warnings.join('\n  ')}`);
-  }
-
-  return result.project;
 }
