@@ -442,8 +442,16 @@ carries the identical unguarded `error: … setCollection(_c)`, and both branche
 bundle — the substring search that confirmed the fix found the guarded v2 branch **and** the
 unguarded v1 one. The site-builder template uses `DbCollection2`, so this AC is unaffected; a
 project carrying the **deprecated** node still empties on a failed re-fetch. Not fixed here because
-it is outside this row and outside 0.2.2's scope as written. 🔴 **It has no owner — give it
-one before it is rediscovered at full price.**
+it is outside this row and outside 0.2.2's scope as written.
+
+🟢 **Owner assigned 2026-09-03 (s19): phase 80, as `DEF-043`.** P80 is *the defects the
+templates found*, it is open (41 of 42, DEF-042 waiting on Richard), and its own handoff and
+`UNOWNED-ROWS-TO-MEASURE.md` both record `DEF-043` as the next free id. ⚠️ **The id is a
+recommendation, not a claim** — a P80 session was active while this was written and a peer taking
+an id is invisible until it lands, so whoever writes the row re-derives the next free id from
+P80's board first. The measurement is done and is above; what is owed is the same one-line guard
+in `nodes-deprecated/std-library/data/dbcollectionnode.ts:384-387` and a spec, or a ruling that a
+deprecated node does not get fixed.
 
 ⚠️ **Adjacent, and worth linking rather than merging**: P80 **DEF-026** is `CloudFunction2`'s dead
 failure path on an unreachable backend. Same trigger (the backend is gone), different node, different
@@ -527,6 +535,53 @@ components, **six** of them under `admin/` — `/admin/setup`, `/admin/signin`, 
 `/admin/pages` and `/admin/theme`, so **four routes remain**, not nine, and *"eleven admin pages"*
 above counts something other than routes. ✅ The AC is unchanged in substance — photograph every
 `/admin/*` route — only its arithmetic was inherited without being checked.
+
+#### 🟢 The pictures exist — 24 shots, 2026-09-03 (s19)
+
+`vib001-site.look.ts`'s **living** arm, extended by two routes and re-run on the fixed artefact:
+**24 shots (from 16), exit 0**, `md5=5e8dfaf9762198143251111cae7d0863`,
+`head=3f95a804`. In
+[`phase-81/verdicts/vib-001/2026-09-03/site-builder-living/`](../phase-81-the-look-is-the-product/verdicts/vib-001/2026-09-03/site-builder-living/).
+It is a **superset** of s17's run in the same directory (16 shots, `md5=1eeb5277`, `head=f0ba5635`):
+the eight older shots are re-taken, the eight new ones are `admin-page` and `admin-messages` at four
+widths each. ⚠️ `judge()` keys by `today()`, so this overwrote s17's — deliberately, and s17's is
+recoverable from `d88368c5`.
+
+⚠️ **The route count on this row was wrong a second time, and the door arm is why.** The AC said
+nine, s18 re-derived four, and the answer is **two**: `vib001-site.look.ts`'s **door** arm has
+photographed `/admin/setup` and `/admin/signin` at four widths since it was written — signed-out and
+unclaimed, which is the only state those two have. `/admin/pages` and `/admin/theme` were s17's.
+**`/admin/page/{pageId}` and `/admin/messages` had never been photographed on any date, in any
+state.** ✅ **Count from the verdict directories, not from the row.**
+
+Two enquiries are seeded through `submitContactForm` as an anonymous visitor, so `/admin/messages`
+is photographed holding something. 🔴 Through the product's own door and not by POSTing rows:
+`ContactMessage.create` is `nobody` for everyone (SB-004 §4), so a seeded row would be a picture of
+a state the product cannot reach — and the POST would fail, which is the point.
+
+#### 🟢 `/admin/messages` reads well, and 🔴 `/admin/page/{pageId}` is the worst screen in the template
+
+`/admin/messages` is composed: a title, one sentence of guidance, a count, then name · date ·
+address · message · which page it came from, ruled between records. Nothing is registered against
+it beyond the shell finding below.
+
+`/admin/page/{pageId}` — the screen a client actually spends their time in — is a different matter.
+**Registered, not fixed here**; this is a discovery AC and the row says so.
+
+| # | what the pictures show | owner |
+|---|---|---|
+| **A1** | 🔴 **The admin shell does not fold.** `/Admin/Shell`'s `frame` is a `row`, `sidebar` is `width: 240px, sizeMode: explicit`, and **no node in it carries a `smallLayout`**. At 390 the sidebar keeps all 240px and every admin screen gets ~150px of content: `/admin/messages` clips mid-word (*"read to here"* → *"reac"*, `ted@example.inval`), `/admin/theme` reports **362px unreachable**, `/admin/page` **2379px**. Statically derivable from the artefact and visible in four phone shots. ⚠️ **This is not new to the two routes added here** — `/admin/pages` and `/admin/theme` phone shots have existed since s17 and show the same shell | **REL-011c** |
+| **A2** | 🔴 **The page editor overflows horizontally below ~1900.** At **1900** every control is in the photograph. At **1280** — the width this AC names — `Preview`, `Save page`, the whole `Slug` field, `Show in navigation` and `Add section` are **outside the picture**. A client on a laptop cannot see the button that saves their page. ⚠️ **The mechanism is unmeasured**: the fields DO narrow between the two widths (~763px → ~573px), so it is not a fixed width, and no node on `/Pages/PageEditor` carries a `width`, `minWidth` or `maxWidth` at all | **REL-011c** |
+| **A3** | 🔴 **The judge has no horizontal reachability metric, and that is why A1 and A2 were invisible.** `unreachablePx` is a **vertical** measure; every one of the twelve desktop and wide admin shots reads `unreachable=0` while `Save page` is off the right edge. A run can look clean in its manifest and be photographing a screen a person cannot operate | **phase 81** (`VIB-001`, the judge) |
+| **A4** | ⚠️ `Sections` and `Kind` share one line, with the `Kind` label sitting to the right of the `Sections` heading rather than over its own control, and `Add section` at the far right of the same row | **REL-011c** |
+| **A5** | ⚠️ The `gallery` section card shows a rendered picture **and** the words **“No pictures yet”** underneath it, at the same moment | **REL-011c** |
+| **A6** | ⚠️ Section cards are headed by the raw kind slug — `hero`, `richText`, `cta` — while the `Kind` picker two lines above offers the human words (`Hero`, `Rich text`, `Call to action`). Two vocabularies for one thing, on one screen | **REL-011c** |
+| **A7** | ⚠️ **No admin page has an `h1`.** All twelve admin shots record `headings: []`; the public pages record `Welcome`. The words are drawn by `Text` nodes, so the screens have titles and the document has no heading structure | **REL-011c** |
+
+🔴 **A1 and A2 are the reason this AC was written.** REL-011c asks Richard to rule three surfaces
+`PASSABLE`, and until today two of the six admin routes had no pictures at all and the shell's
+behaviour below 1280 had never been read off one. **A ruling taken on the pictures that existed
+would have been a ruling about four screens out of six.**
 
 **Close**: AC1 and AC2 each end in a fix with a before/after arm **or** a written measurement and
 Richard's ruling that it rides; AC3's pictures exist and anything in them is registered.

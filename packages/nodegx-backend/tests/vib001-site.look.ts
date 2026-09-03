@@ -266,6 +266,36 @@ describe('VIB-001 — the site builder, as a person meets it', () => {
       expect(res.status).toBe(200);
     }
 
+    /**
+     * REL-011b AC3 — two enquiries, so `/admin/messages` is photographed holding
+     * something.
+     *
+     * 🔴 Through `submitContactForm` as an anonymous visitor, which is the only
+     * door to that class (`ContactMessage.create` is `nobody` for everyone,
+     * SB-004 §4). Seeding rows by POSTing them would be a picture of a state the
+     * product cannot reach — and would fail, which is the point.
+     *
+     * ⚠️ The empty state of that screen is not lost by this: it is what the DOOR
+     * arm's `/admin/pages` is of, and `sbr010Messages` grades the words.
+     */
+    for (const enquiry of [
+      {
+        name: 'Marion Ackroyd',
+        email: 'marion@example.invalid',
+        message: 'Could you re-hang a sash window that has dropped about an inch on one side?',
+        pageSlug: 'home'
+      },
+      {
+        name: 'Ted Whitlow',
+        email: 'ted@example.invalid',
+        message: 'Do you take on small jobs? I have one internal door that will not close.',
+        pageSlug: 'about'
+      }
+    ]) {
+      const res = await client.post('/functions/submitContactForm', enquiry);
+      expect(res.status).toBe(200);
+    }
+
     try {
       const run = await judge({
         task: 'vib-001',
@@ -278,7 +308,14 @@ describe('VIB-001 — the site builder, as a person meets it', () => {
           { label: 'public-home', url: '/', as: 'the published home page, as a visitor' },
           { label: 'public-about', url: '/about', as: 'a second published page' },
           { label: 'admin-pages', url: '/admin/pages', as: 'the panel (recorded debt: judge for clarity)' },
-          { label: 'admin-theme', url: '/admin/theme', as: 'the theme editor' }
+          { label: 'admin-theme', url: '/admin/theme', as: 'the theme editor' },
+          // 🔴 REL-011b AC3. These two routes had NEVER been photographed, on any
+          // date, in any state — and `/admin/page/{pageId}` is the screen a client
+          // spends their time in. D40 hid whatever is below the first screen for
+          // the life of this template, so REL-011c could not be scoped without
+          // them.
+          { label: 'admin-page', url: `/admin/page/${home}`, as: 'the page editor, on a published page with four sections' },
+          { label: 'admin-messages', url: '/admin/messages', as: 'the enquiries, with two in the list' }
         ],
         prepare: async (page) => {
           // 🔴 Through the page's own form, never by writing a token into the
@@ -301,7 +338,8 @@ describe('VIB-001 — the site builder, as a person meets it', () => {
           }
         }
       });
-      expect(run.shots.length).toBe(16);
+      // 16 → 24 with REL-011b AC3's two routes, at the same four widths.
+      expect(run.shots.length).toBe(24);
       // eslint-disable-next-line no-console
       console.log('SITE LIVING MANIFEST ' + run.outDir + ' md5=' + run.artefactMd5 + ' head=' + run.headSha);
     } finally {

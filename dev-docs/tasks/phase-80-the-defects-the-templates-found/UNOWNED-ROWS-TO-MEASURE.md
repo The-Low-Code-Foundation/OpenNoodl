@@ -6,7 +6,19 @@
 > 🆕 **§6 added s29 (2026-08-31) and it is already MEASURED** — it was found by being blocked by
 > it, not by a sweep. Five left to measure.
 >
-> ⚠️ **`DEF-036` is taken (s34).** The next free id is **`DEF-039`**.
+> ⚠️ **`DEF-039` (§7), `DEF-040` (§8), `DEF-041` (drag door) and `DEF-042` (§2) are taken (s43).** Next free id: **`DEF-043`**.
+>
+> 🆕 **`DEF-043` is CLAIMED by phase 82 (2026-09-03) and the measurement is already done** — it needs
+> writing up here, not measuring. **A failed re-fetch on the DEPRECATED `DbCollection` empties the
+> collection it had already delivered**:
+> [`packages/noodl-viewer-react/src/nodes-deprecated/std-library/data/dbcollectionnode.ts:384-387`](../../../packages/noodl-viewer-react/src/nodes-deprecated/std-library/data/dbcollectionnode.ts#L384)
+> carries the identical unguarded `error: … setCollection(_c)` that P82 REL-011b AC2 fixed in
+> `dbcollectionnode2.ts` (`f9a3d301`), and **both branches are in the shipped bundle**. Consequence:
+> a project using the deprecated node loses every row a `For Each` below it draws on any backend
+> blip, until the visitor reloads. Not fixed there because it was outside that row and outside
+> 0.2.2's scope. What is owed: the same one-line guard plus a spec, or a ruling that a deprecated
+> node does not get fixed. Write-up:
+> [REL-011 §AC2](../phase-82-0.2.2-the-first-row-on-the-shelf/REL-011-THE-SITE-BUILDER-SHIPS.md).
 
 **Written s23 (2026-08-30) at Richard's instruction.** The
 [unowned register](TASKS.md#findings-this-phase-raised-that-nobody-owns) holds twelve rows. Seven
@@ -68,7 +80,27 @@ telling phase 77 where it lives.
 
 ---
 
-## 2. A second project deploying to a shared local backend kills the backend process
+## 2. 🟡 OWNED AND DIAGNOSED — a second project deploying to a shared backend kills the process
+
+## 🟡 MEASURED 2026-09-03 (s43) — [DEF-042](DEF-042-A-THROWING-LISTENER-KILLS-THE-BACKEND.md). 🧭 **THE FIX NEEDS A RULING.**
+
+**Reproduced at HEAD** against the committed `dist/cli.js`: PUT 1 → 200, PUT 2 → **no response**,
+status → refused, `EXIT=1`. 🔴 **But this row's central recommendation is WRONG.** It called
+*"catch the rejection so the PUT answers 400"* small, clearly right and ruling-free — and that
+try/catch **has been in `loadWorkflow` since WFA-001** (verified in the built bundle) and **never
+runs**: no `Failed to load workflow` line precedes the crash. `EventSender.emit` is **async** and
+`GraphModel.addComponent` calls it **without awaiting**, so the listener's throw rejects a promise
+nobody holds — it never joins the chain the catch is watching. ⚠️ `graphmodel.ts` has **15**
+un-awaited `this.emit(...)` calls; `componentAdded` is just the one a person has met.
+
+🧭 **The proposed split does not exist.** Making the throw reachable means `addComponent` awaits
+`emit` → it becomes async → the ripple is in **`noodl-runtime`, shared with the viewer**. A
+backend-local `unhandledRejection` guard is wrong alone: it returns `{success:true}` for a
+half-written registry, trading a loud failure for a quiet one on the one path whose design is
+*"only a complete success swaps it in"*. ⚠️ Next free id is `DEF-043`.
+
+*The original row, kept:*
+
 
 **Needs:** two projects and one backend. **Reproducible outside the editor entirely**, with `curl`
 against the committed `nodegx-backend/dist/cli.js` — so no editor code is implicated.
@@ -185,7 +217,26 @@ was written.**
 
 ---
 
-## The drag door skips STYLE-002's defaults entirely — found s25 (2026-08-30)
+## ✅ CLOSED — the drag door skips STYLE-002's defaults, and it bites nobody
+
+## 🟢 DRIVEN AND DISPROVED AS A LIVE DEFECT 2026-09-03 (s43) — [DEF-041](DEF-041-THE-DRAG-DOOR-AND-THE-DEFAULTS.md)
+
+The call-site count re-derives **exactly** at HEAD. The sentence about a person does not.
+**A built-in node type cannot be dragged onto the canvas at all**: the only drag source that
+reaches `createNewNode` is the Components panel, which carries a project component, and
+`ElementConfigRegistry.has('/Site/Nav')` is `false`. `DragItem.nodeType` is declared, read by
+`getDragItemComponent`, and **assigned by nothing**. Driven: the Checkbox card drag created
+nothing **beside a control drag that created `/Site/Nav`** — and the first attempt had BOTH arms
+at zero, because `dispatchDrag`'s default 12 steps never cross the panel's 5px threshold. 🔴 **A
+control that reads zero would have confirmed this row by accident.**
+
+`applyDefaults` was added to the drag door anyway — one line, a **latent** trap closed, proved
+live by a presence control (checkbox → all 8 defaults) and a no-regression control (`/Site/Nav` →
+`{}`). ⚠️ Next free id is `DEF-042`.
+
+*The original row, kept:*
+
+## The original claim — found s25 (2026-08-30)
 
 **Not measured looking for it.** DEF-025 needed to know which creation seam reaches *both* editor
 doors, and the answer turned out to be that one of the two existing mechanisms reaches only one.
@@ -268,7 +319,20 @@ Owner: **NONE**. Gets a `DEF-0xx` id when someone measures the blast radius abov
 
 ---
 
-## 7. A `connections.json` with unknown field names is silently emptied and written back
+## 7. ✅ CLOSED — a `connections.json` with unknown field names was silently emptied and written back
+
+## 🟢 OWNED, MEASURED, BUILT AND GATED 2026-09-03 (s43) — [DEF-039](DEF-039-A-FILE-THE-EDITOR-CANNOT-READ-IS-A-FILE-IT-DESTROYS.md)
+
+All three bullets measured against a control that behaves, and **the third one flipped**: an
+unresolvable id does *not* take the same crash — `getConnectionHealth`'s two callers hand it
+**opposite shapes**, so the export path is safe from arm C and the **canvas** is not, and the
+canvas throws even earlier, in `createFromModel`, taking every later wire in the component with
+it. That half is reachable by ordinary means, so **the row's rank went up, not down.**
+Validator: **one call site in the whole editor**, and not on the load path. The write-back: a
+save of a model that was already empty at load. ⚠️ Next free id is now `DEF-041`.
+
+*The original row, kept:*
+
 
 **Found by** DEF-029's drive (session 36), by accident: the drive's own hand-authored file used
 `sourceId`/`sourcePort`/`targetId`/`targetPort` where v2 wants
@@ -320,7 +384,20 @@ Owner: **NONE**. Gets a `DEF-0xx` id when the bullet above is measured. ⚠️ N
 
 ---
 
-## 8. Undoing a home-page deletion restores the node and NOT the home
+## 8. ✅ CLOSED — undoing a home-page deletion restored the node and NOT the home
+
+## 🟢 OWNED, MEASURED, BUILT AND GATED 2026-09-03 (s43) — [DEF-040](DEF-040-UNDO-BRINGS-THE-NODE-BACK-BUT-NOT-THE-HOME.md)
+
+All three bullets answered. **Bullet 1: yes** — `removeComponent` has the identical hole, and
+`import-engine/apply.ts` reaches it unrefused. **Bullet 2: the listener is NOT reachable for a
+nested node, and that is the defect** — `removeNode` drops every descendant from `nodeMap` and
+notifies only for the top, so a home inside a deleted Group left a **dangling root rather than a
+null one**, which the row guessed *"may be worse"* and is. **Bullet 3: neither** — a globally
+undoable `setRootNode` would put a second writer on a pointer four other paths set deliberately;
+each remover restores the home in the undo action it already pushes. ⚠️ Next free id is `DEF-041`.
+🔴 `test:ci` OWED — the integration spec can only run inside Electron.
+
+*The original row, kept:*
 
 ## 🔴 MEASURED WHILE BUILDING — 2026-08-31, DEF-007 s38
 
