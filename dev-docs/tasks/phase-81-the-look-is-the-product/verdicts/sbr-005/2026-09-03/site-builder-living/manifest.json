@@ -2,8 +2,8 @@
   "task": "sbr-005",
   "subject": "site-builder",
   "state": "living",
-  "headSha": "0b857902c7d70591eb7cc9e0e357c6929ab658ea",
-  "artefactMd5": "d0677c2f685e394093f9513ffb00a72c",
+  "headSha": "1784396c1e3a88097b5a9e13aefd93a174d9a18a",
+  "artefactMd5": "1cf235eb70a90d5fdfc1f8dc54beaba7",
   "outDir": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/sbr-005/2026-09-03/site-builder-living",
   "starterAssets": {
     "written": [
@@ -88,17 +88,16 @@
       },
       "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/sbr-005/2026-09-03/site-builder-living/all-five-preview-viewport.png",
       "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/sbr-005/2026-09-03/site-builder-living/all-five-preview-full.png",
-      "contentBottom": 2098,
+      "contentBottom": 2058,
       "canScroll": true,
       "unreachablePx": 0,
-      "textChars": 661,
+      "textChars": 648,
       "headings": [
         "Welcome",
         "Kestrel Joinery",
         "Work from the last year",
         "Come and see the workshop",
         "How we work",
-        "Get in touch",
         "Get in touch"
       ],
       "errors": []
@@ -117,17 +116,16 @@
       },
       "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/sbr-005/2026-09-03/site-builder-living/all-five-desktop-viewport.png",
       "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/sbr-005/2026-09-03/site-builder-living/all-five-desktop-full.png",
-      "contentBottom": 2105,
+      "contentBottom": 2065,
       "canScroll": true,
       "unreachablePx": 0,
-      "textChars": 661,
+      "textChars": 648,
       "headings": [
         "Welcome",
         "Kestrel Joinery",
         "Work from the last year",
         "Come and see the workshop",
         "How we work",
-        "Get in touch",
         "Get in touch"
       ],
       "errors": []
@@ -146,17 +144,16 @@
       },
       "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/sbr-005/2026-09-03/site-builder-living/all-five-wide-viewport.png",
       "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/sbr-005/2026-09-03/site-builder-living/all-five-wide-full.png",
-      "contentBottom": 2105,
+      "contentBottom": 2065,
       "canScroll": true,
       "unreachablePx": 0,
-      "textChars": 661,
+      "textChars": 648,
       "headings": [
         "Welcome",
         "Kestrel Joinery",
         "Work from the last year",
         "Come and see the workshop",
         "How we work",
-        "Get in touch",
         "Get in touch"
       ],
       "errors": []
@@ -175,17 +172,16 @@
       },
       "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/sbr-005/2026-09-03/site-builder-living/all-five-phone-viewport.png",
       "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/sbr-005/2026-09-03/site-builder-living/all-five-phone-full.png",
-      "contentBottom": 2295,
+      "contentBottom": 2255,
       "canScroll": true,
       "unreachablePx": 0,
-      "textChars": 661,
+      "textChars": 648,
       "headings": [
         "Welcome",
         "Kestrel Joinery",
         "Work from the last year",
         "Come and see the workshop",
         "How we work",
-        "Get in touch",
         "Get in touch"
       ],
       "errors": []
@@ -588,13 +584,12 @@
       },
       "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/sbr-005/2026-09-03/site-builder-living/kind-contact-preview-viewport.png",
       "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/sbr-005/2026-09-03/site-builder-living/kind-contact-preview-full.png",
-      "contentBottom": 910,
+      "contentBottom": 870,
       "canScroll": true,
       "unreachablePx": 0,
-      "textChars": 266,
+      "textChars": 253,
       "headings": [
         "Contact only",
-        "Get in touch",
         "Get in touch"
       ],
       "errors": []
@@ -613,13 +608,12 @@
       },
       "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/sbr-005/2026-09-03/site-builder-living/kind-contact-desktop-viewport.png",
       "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/sbr-005/2026-09-03/site-builder-living/kind-contact-desktop-full.png",
-      "contentBottom": 910,
-      "canScroll": true,
+      "contentBottom": 900,
+      "canScroll": false,
       "unreachablePx": 0,
-      "textChars": 266,
+      "textChars": 253,
       "headings": [
         "Contact only",
-        "Get in touch",
         "Get in touch"
       ],
       "errors": []
@@ -641,10 +635,9 @@
       "contentBottom": 1080,
       "canScroll": false,
       "unreachablePx": 0,
-      "textChars": 266,
+      "textChars": 253,
       "headings": [
         "Contact only",
-        "Get in touch",
         "Get in touch"
       ],
       "errors": []
@@ -663,13 +656,12 @@
       },
       "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/sbr-005/2026-09-03/site-builder-living/kind-contact-phone-viewport.png",
       "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/sbr-005/2026-09-03/site-builder-living/kind-contact-phone-full.png",
-      "contentBottom": 1004,
+      "contentBottom": 964,
       "canScroll": true,
       "unreachablePx": 0,
-      "textChars": 266,
+      "textChars": 253,
       "headings": [
         "Contact only",
-        "Get in touch",
         "Get in touch"
       ],
       "errors": []

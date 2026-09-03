@@ -2,7 +2,7 @@
   "task": "vib-001",
   "subject": "site-builder",
   "state": "door",
-  "headSha": "0b857902c7d70591eb7cc9e0e357c6929ab658ea",
+  "headSha": "1784396c1e3a88097b5a9e13aefd93a174d9a18a",
   "artefactMd5": "70d81f2775f1141f1f23f5c40b89cd13",
   "outDir": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-09-03/site-builder-door",
   "starterAssets": {
@@ -97,9 +97,9 @@
         "[noodl] DbCollection2 (/Site/Nav): The backend this node is set to (\"undefined\") is not configured in this project. [query-records/realtime-failed] Object",
         "[noodl] DbCollection2 (/Pages/Site): The backend this node is set to (\"undefined\") is not configured in this project. [query-records/realtime-failed] Object",
         "[noodl] DbCollection2 (/Pages/Site): The backend this node is set to (\"undefined\") is not configured in this project. [query-records/realtime-failed] Object",
-        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:51713/noodl.viewer.js:54634:61)\n    at xhr.onreadystatechange (http://127.0.0.1:51713/noodl.viewer.js:54509:33)",
-        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:51713/noodl.viewer.js:54634:61)\n    at xhr.onreadystatechange (http://127.0.0.1:51713/noodl.viewer.js:54509:33)",
-        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:51713/noodl.viewer.js:54634:61)\n    at xhr.onreadystatechange (http://127.0.0.1:51713/noodl.viewer.js:54509:33)"
+        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:59237/noodl.viewer.js:54634:61)\n    at xhr.onreadystatechange (http://127.0.0.1:59237/noodl.viewer.js:54509:33)",
+        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:59237/noodl.viewer.js:54634:61)\n    at xhr.onreadystatechange (http://127.0.0.1:59237/noodl.viewer.js:54509:33)",
+        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:59237/noodl.viewer.js:54634:61)\n    at xhr.onreadystatechange (http://127.0.0.1:59237/noodl.viewer.js:54509:33)"
       ]
     },
     {
@@ -125,9 +125,9 @@
         "[noodl] DbCollection2 (/Site/Nav): The backend this node is set to (\"undefined\") is not configured in this project. [query-records/realtime-failed] Object",
         "[noodl] DbCollection2 (/Pages/Site): The backend this node is set to (\"undefined\") is not configured in this project. [query-records/realtime-failed] Object",
         "[noodl] DbCollection2 (/Pages/Site): The backend this node is set to (\"undefined\") is not configured in this project. [query-records/realtime-failed] Object",
-        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:51713/noodl.viewer.js:54634:61)\n    at xhr.onreadystatechange (http://127.0.0.1:51713/noodl.viewer.js:54509:33)",
-        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:51713/noodl.viewer.js:54634:61)\n    at xhr.onreadystatechange (http://127.0.0.1:51713/noodl.viewer.js:54509:33)",
-        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:51713/noodl.viewer.js:54634:61)\n    at xhr.onreadystatechange (http://127.0.0.1:51713/noodl.viewer.js:54509:33)"
+        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:59237/noodl.viewer.js:54634:61)\n    at xhr.onreadystatechange (http://127.0.0.1:59237/noodl.viewer.js:54509:33)",
+        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:59237/noodl.viewer.js:54634:61)\n    at xhr.onreadystatechange (http://127.0.0.1:59237/noodl.viewer.js:54509:33)",
+        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:59237/noodl.viewer.js:54634:61)\n    at xhr.onreadystatechange (http://127.0.0.1:59237/noodl.viewer.js:54509:33)"
       ]
     },
     {
@@ -153,9 +153,9 @@
         "[noodl] DbCollection2 (/Site/Nav): The backend this node is set to (\"undefined\") is not configured in this project. [query-records/realtime-failed] Object",
         "[noodl] DbCollection2 (/Pages/Site): The backend this node is set to (\"undefined\") is not configured in this project. [query-records/realtime-failed] Object",
         "[noodl] DbCollection2 (/Pages/Site): The backend this node is set to (\"undefined\") is not configured in this project. [query-records/realtime-failed] Object",
-        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:51713/noodl.viewer.js:54634:61)\n    at xhr.onreadystatechange (http://127.0.0.1:51713/noodl.viewer.js:54509:33)",
-        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:51713/noodl.viewer.js:54634:61)\n    at xhr.onreadystatechange (http://127.0.0.1:51713/noodl.viewer.js:54509:33)",
-        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:51713/noodl.viewer.js:54634:61)\n    at xhr.onreadystatechange (http://127.0.0.1:51713/noodl.viewer.js:54509:33)"
+        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:59237/noodl.viewer.js:54634:61)\n    at xhr.onreadystatechange (http://127.0.0.1:59237/noodl.viewer.js:54509:33)",
+        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:59237/noodl.viewer.js:54634:61)\n    at xhr.onreadystatechange (http://127.0.0.1:59237/noodl.viewer.js:54509:33)",
+        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:59237/noodl.viewer.js:54634:61)\n    at xhr.onreadystatechange (http://127.0.0.1:59237/noodl.viewer.js:54509:33)"
       ]
     },
     {
@@ -181,9 +181,9 @@
         "[noodl] DbCollection2 (/Site/Nav): The backend this node is set to (\"undefined\") is not configured in this project. [query-records/realtime-failed] Object",
         "[noodl] DbCollection2 (/Pages/Site): The backend this node is set to (\"undefined\") is not configured in this project. [query-records/realtime-failed] Object",
         "[noodl] DbCollection2 (/Pages/Site): The backend this node is set to (\"undefined\") is not configured in this project. [query-records/realtime-failed] Object",
-        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:51713/noodl.viewer.js:54634:61)\n    at xhr.onreadystatechange (http://127.0.0.1:51713/noodl.viewer.js:54509:33)",
-        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:51713/noodl.viewer.js:54634:61)\n    at xhr.onreadystatechange (http://127.0.0.1:51713/noodl.viewer.js:54509:33)",
-        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:51713/noodl.viewer.js:54634:61)\n    at xhr.onreadystatechange (http://127.0.0.1:51713/noodl.viewer.js:54509:33)"
+        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:59237/noodl.viewer.js:54634:61)\n    at xhr.onreadystatechange (http://127.0.0.1:59237/noodl.viewer.js:54509:33)",
+        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:59237/noodl.viewer.js:54634:61)\n    at xhr.onreadystatechange (http://127.0.0.1:59237/noodl.viewer.js:54509:33)",
+        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:59237/noodl.viewer.js:54634:61)\n    at xhr.onreadystatechange (http://127.0.0.1:59237/noodl.viewer.js:54509:33)"
       ]
     },
     {
@@ -400,8 +400,8 @@
         "Pages"
       ],
       "errors": [
-        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:51713/noodl.viewer.js:54634:61)\n    at xhr.onreadystatechange (http://127.0.0.1:51713/noodl.viewer.js:54509:33)",
-        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:51713/noodl.viewer.js:54634:61)\n    at xhr.onreadystatechange (http://127.0.0.1:51713/noodl.viewer.js:54509:33)"
+        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:59237/noodl.viewer.js:54634:61)\n    at xhr.onreadystatechange (http://127.0.0.1:59237/noodl.viewer.js:54509:33)",
+        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:59237/noodl.viewer.js:54634:61)\n    at xhr.onreadystatechange (http://127.0.0.1:59237/noodl.viewer.js:54509:33)"
       ]
     },
     {
@@ -426,8 +426,8 @@
         "Pages"
       ],
       "errors": [
-        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:51713/noodl.viewer.js:54634:61)\n    at xhr.onreadystatechange (http://127.0.0.1:51713/noodl.viewer.js:54509:33)",
-        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:51713/noodl.viewer.js:54634:61)\n    at xhr.onreadystatechange (http://127.0.0.1:51713/noodl.viewer.js:54509:33)"
+        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:59237/noodl.viewer.js:54634:61)\n    at xhr.onreadystatechange (http://127.0.0.1:59237/noodl.viewer.js:54509:33)",
+        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:59237/noodl.viewer.js:54634:61)\n    at xhr.onreadystatechange (http://127.0.0.1:59237/noodl.viewer.js:54509:33)"
       ]
     },
     {
@@ -452,8 +452,8 @@
         "Pages"
       ],
       "errors": [
-        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:51713/noodl.viewer.js:54634:61)\n    at xhr.onreadystatechange (http://127.0.0.1:51713/noodl.viewer.js:54509:33)",
-        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:51713/noodl.viewer.js:54634:61)\n    at xhr.onreadystatechange (http://127.0.0.1:51713/noodl.viewer.js:54509:33)"
+        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:59237/noodl.viewer.js:54634:61)\n    at xhr.onreadystatechange (http://127.0.0.1:59237/noodl.viewer.js:54509:33)",
+        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:59237/noodl.viewer.js:54634:61)\n    at xhr.onreadystatechange (http://127.0.0.1:59237/noodl.viewer.js:54509:33)"
       ]
     },
     {
@@ -478,8 +478,8 @@
         "Pages"
       ],
       "errors": [
-        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:51713/noodl.viewer.js:54634:61)\n    at xhr.onreadystatechange (http://127.0.0.1:51713/noodl.viewer.js:54509:33)",
-        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:51713/noodl.viewer.js:54634:61)\n    at xhr.onreadystatechange (http://127.0.0.1:51713/noodl.viewer.js:54509:33)"
+        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:59237/noodl.viewer.js:54634:61)\n    at xhr.onreadystatechange (http://127.0.0.1:59237/noodl.viewer.js:54509:33)",
+        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:59237/noodl.viewer.js:54634:61)\n    at xhr.onreadystatechange (http://127.0.0.1:59237/noodl.viewer.js:54509:33)"
       ]
     }
   ]

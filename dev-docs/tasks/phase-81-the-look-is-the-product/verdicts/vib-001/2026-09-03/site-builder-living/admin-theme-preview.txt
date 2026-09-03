@@ -25,7 +25,7 @@ Save theme
 Back to pages
 LIVE PREVIEW
 Your site, in this look
-The hero band, the type and the corners follow the fields on the left.
+The hero band, the type and the corners follow the fields you are editing.
 A section on a page
 Body text in the reading colour, on the surface colour, inside the border colour.
 Get in touch

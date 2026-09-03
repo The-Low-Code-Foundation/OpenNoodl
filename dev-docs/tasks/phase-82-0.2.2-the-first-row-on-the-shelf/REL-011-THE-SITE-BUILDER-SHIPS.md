@@ -810,6 +810,20 @@ mutant beside it deliberately does NOT redden there: it asserts *one more than t
 so it grades the predicate (`toEqual([])` is also what a matcher that matches nothing returns) and
 stays green whatever the artefact does.
 
+🟢 **Both look harnesses were re-run, so AC3's pictures are of the artefact that ships.**
+`sbr005-sections` 3/3 exit 0, `vib001-site` 2/2 exit 0, and the two verdict directories are updated
+in place (`judge()` keys by `today()`, and the run s22 committed is preserved at `86fcbcc6`).
+
+🔴 **The diff over the pictures is its own control, and it is narrow:** of sbr-005's 36 living
+shots, only `kind-contact-*` and `all-five-*-full` moved — every other kind is **byte-identical**,
+and the `all-five` VIEWPORT shots did not move because the contact section is below the fold.
+`all-five-desktop.txt` differs from the committed one by exactly **one line: `Get in touch`**. On the
+vib-001 side, `admin-theme-*` moved by exactly the one sentence, `admin-page-*` and `admin-pages-*`
+did not move at all, and the **door arm's PNGs are unchanged** — its manifest differs only in
+`headSha` and the ephemeral port. ⚠️ `admin-messages-*` moved too and it is **not** this change:
+the seeded enquiries carry a real clock (`3 Sep 2026, 18:27` → `20:15`), which is worth knowing
+before reading a future diff of that page as a regression.
+
 #### 🔴 Five literal gates were RED AT HEAD, and four of them were not this phase's
 
 Found by running the editor's two runners while landing the above. **None was caused by these two
