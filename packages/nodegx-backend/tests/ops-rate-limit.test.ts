@@ -114,7 +114,7 @@ describe('BAK-009 route classification', () => {
   it('classifies the rest from the access declaration the route already carries', () => {
     expect(classifyRoute('api/:table', 'data')).toBe('data');
     expect(classifyRoute('api/_batch', 'data-perOp')).toBe('data');
-    expect(classifyRoute('functions/:name', 'function')).toBe('functions');
+    expect(classifyRoute('functions/*name', 'function')).toBe('functions');
     expect(classifyRoute('files/:name', 'files')).toBe('files');
     expect(classifyRoute('hooks/:backendId/:slug', 'webhook')).toBe('hooks');
     expect(classifyRoute('realtime', 'public')).toBe('realtime');

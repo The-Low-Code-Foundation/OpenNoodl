@@ -83,6 +83,11 @@ describe('WFA-001 cloud function export — partition with the frontend deploy',
   it('names functions the way the backend addresses them', () => {
     const project = makeProject([`${CLOUD_COMPONENT_PREFIX}orders/save`, `${CLOUD_COMPONENT_PREFIX}charge`]);
     // POST /functions/<name> — the prefix is stripped, nesting is not.
+    // ⚠️ That sentence was a promise the backend did not keep until DEF-045: `functions/:name`
+    // matched one segment, so the RAW address of a nested function answered 404 (in-product
+    // callers percent-encode and always worked). The route is `functions/*name` now, so both
+    // addresses reach the same graph — see
+    // `nodegx-backend/tests/def045-nested-function-address.test.ts`.
     expect(getCloudFunctionNames(project)).toEqual(['charge', 'orders/save']);
   });
 });
