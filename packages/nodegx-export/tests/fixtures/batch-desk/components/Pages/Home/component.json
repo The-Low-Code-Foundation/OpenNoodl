@@ -1,0 +1,9 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "c4d7e2a1-6b3f-4e8d-9c1a-000000000081",
+  "name": "Home",
+  "path": "/Pages/Home",
+  "type": "page",
+  "modified": "2026-09-03T22:00:00.000Z",
+  "description": "EXP-011 §53 fixture: a Run Tasks host — a Function maps a comma-separated string to guest objects, Send all runs the Notify template once per guest two at a time stopping on the first failure, Stop aborts, and the three outcomes write a status Variable the page shows."
+}

@@ -889,7 +889,7 @@ describe('§B the translation — the fixture, then graphs mutated one fact at a
     expect(typecheckEmittedApp(built)).toEqual([]);
   });
 
-  test('B18 the ledger: both nodes translated, the floor raised to 92 (94 since §52)', () => {
+  test('B18 the ledger: both nodes translated, the floor raised to 92 (95 since §53)', () => {
     const ledger = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'coverage-ledger.json'), 'utf8')) as {
       pickerCoverageFloor: number;
       entries: Array<{ typeName: string; status: string; note?: string }>;
@@ -899,7 +899,7 @@ describe('§B the translation — the fixture, then graphs mutated one fact at a
       expect(entry.status).toBe('translated');
       expect(entry.note).toContain('EXP-011 §49');
     }
-    expect(ledger.pickerCoverageFloor).toBe(94); // §51 added Component Children (session 79); §52 Script (session 80)
+    expect(ledger.pickerCoverageFloor).toBe(95); // §51 added Component Children (session 79); §52 Script (session 80); §53 Run Tasks (session 81)
   });
 });
 

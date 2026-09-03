@@ -752,11 +752,11 @@ describe('§G the graph gates', () => {
 // ---------------------------------------------------------------------------------------------
 
 describe('§H the ledger and the pre-flight', () => {
-  test('Javascript2 is translated; the badge is gone; the floor is 94', () => {
+  test('Javascript2 is translated; the badge is gone; the floor is 95 (since §53)', () => {
     expect(ledgerEntryOf('Javascript2')).toEqual({ typeName: 'Javascript2', status: 'translated' });
     expect(exportBadgeOf('Javascript2')).toBeUndefined();
     const ledger = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'coverage-ledger.json'), 'utf8'));
-    expect(ledger.pickerCoverageFloor).toBe(94);
+    expect(ledger.pickerCoverageFloor).toBe(95);
   });
   test('the clean fixture pre-flights with nothing to attend to', () => {
     const summary = summarizePreflight(app);

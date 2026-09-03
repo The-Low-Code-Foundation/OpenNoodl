@@ -67,12 +67,15 @@ describe('task-desk — one root, five silenced, and the root is the one named',
   test('the root has no cause, and carries the picker name and the author’s label', () => {
     const root = rowOf(rows, 'tasks');
     expect(root.causedBy).toBeUndefined();
-    expect(root).toMatchObject({ type: 'RunTasks', displayName: 'Run Tasks', label: 'Run the batch', reason: 'logic node (RunTasks)' });
+    // EXP-011 §53: the node is refused BY NAME now (no template), and stays the root — the cascade is about the graph, not the sentence.
+    expect(root).toMatchObject({ type: 'RunTasks', displayName: 'Run Tasks', label: 'Run the batch', reason: 'it names no Template component, so every Do answers Failure with "No task template is selected" and never runs a task' });
   });
 
   test('the three trigger cascades name the root — through three different reason sentences', () => {
     expect(rowOf(rows, 'sync').causedBy).toEqual(['tasks']);
-    expect(rowOf(rows, 'sync').reason).toContain('is not a rendered element event or a receiver');
+    // EXP-011 §53: `tasks.done` is a chain output the Run Tasks registration owns now, so the wire is no longer a
+    // trigger wire and `sync` falls to the verdict sweep's sentence — still a sentence about `sync`, not about the root.
+    expect(rowOf(rows, 'sync').reason).toBe('its Call is never fired by a translatable trigger');
     expect(rowOf(rows, 'setStatus').causedBy).toEqual(['tasks']);
     // 🔴 `goHome` is fired by `sync`, not by `tasks`. Its cause is still `tasks`: the root, never
     // the intermediate. A one-hop attribution reads `['sync']` here.
@@ -110,8 +113,10 @@ describe('task-desk — one root, five silenced, and the root is the one named',
         'Without it, "Sync tasks" (Cloud Function), "Go home" (Navigate) never run. ' +
         'Replace it or wait for a release that translates it.'
     );
-    // The reverted arm read 7 (probe13-reverted.log); the rows add no line to the list.
-    expect(summary.refusals).toBe(7);
+    // The reverted arm read 7 (probe13-reverted.log); the rows add no line to the list. EXP-011 §53 moved it to 8: the
+    // Run Tasks is refused BY NAME now, so the wire into its Do carries that sentence and `sync` (no longer named by a
+    // dropped trigger wire) gets its own verdict note — one more line, both about the same root (probe16-after2.log).
+    expect(summary.refusals).toBe(8);
     expect(summary.attention[0].nodes).toHaveLength(6);
   });
 });
@@ -185,7 +190,7 @@ describe('AC5 — two readers, one set of rows', () => {
   test('the report names the root as a node under its component, with its cascade', () => {
     const report = app.files[REPORT_PATH];
     expect(report).toContain('Nodes left out:');
-    expect(report).toContain('- "Run the batch" (Run Tasks) — the export has no rule for this node yet');
+    expect(report).toContain('- "Run the batch" (Run Tasks) — it names no Template component, so every Do answers Failure with "No task template is selected" and never runs a task');
     expect(report).toContain('…and 5 nodes are left out only because this one fires them: "Sync tasks" (Cloud Function), "Go home" (Navigate)');
     expect(report).toContain('**1 node the export has no rule for, and 5 more left out only because it fires them.**');
   });

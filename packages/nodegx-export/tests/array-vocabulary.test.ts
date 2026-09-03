@@ -463,8 +463,12 @@ describe('Object in From-repeater mode → props', () => {
   it('defers a Run Tasks template, whose item is a task input rather than a rendered row', () => {
     const { ir } = withRowObject();
     const list = notesOf(ir).nodes.find((n) => n.id === 'notesList')!;
-    list.type = 'Run Tasks';
-    list.catalogRef = 'Run Tasks';
+    // EXP-011 §53: the type id on disk is `RunTasks` and the template parameter `taskTemplate` — the display-name
+    // spelling this row used to carry matched nothing in the planner (§5.7's branch was unreachable until session 81).
+    list.type = 'RunTasks';
+    list.catalogRef = 'RunTasks';
+    setParam(list, 'taskTemplate', list.parameters.find((p) => p.name === 'template')!.value);
+    list.parameters = list.parameters.filter((p) => p.name !== 'template');
     expect(rowReport(emit(ir))).toContain('Run Tasks template');
   });
 

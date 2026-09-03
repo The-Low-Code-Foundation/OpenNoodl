@@ -486,6 +486,6 @@ describe('§D — the fixture, whole', () => {
     // EXP-011 §50 (Richard, 2026-09-03) reversed §7.3: Create New Array is Tier 2.8 row 5, a
     // schedule rather than a decision. The row asserts the phrase the checker enforces.
     expect(status('CollectionNew').exemption).toMatch(/^scheduled — EXP-011 Tier 2\.8/);
-    expect(ledger.pickerCoverageFloor).toBe(94); // 90 after §48; §49 added States and Animate To Value; §51 Component Children; §52 Script
+    expect(ledger.pickerCoverageFloor).toBe(95); // 90 after §48; §49 added States and Animate To Value; §51 Component Children; §52 Script; §53 Run Tasks
   });
 });

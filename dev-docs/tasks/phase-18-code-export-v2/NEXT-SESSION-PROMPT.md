@@ -1,113 +1,121 @@
-# Next session — §52 `Script` is 🟢 (session 80, 2026-09-03): picker 94/127. Next = EXP-011 Tier 2.8 row 3, `Run Tasks`, in §50's order
+# Next session — §53 `Run Tasks` is 🟢 (session 81, 2026-09-03): picker 95/127. Next = EXP-011 Tier 2.8 row 4, `On App Error`, in §50's order
 
 ## 🔴 Read this first — Richard, 2026-09-02: *"Stop fucking up the CPU."*
 
-One heavy job at a time on this 16 GB box. Session 80 ran every gate behind a wait-for-quiet loop
-(`waitrun15.sh` / `gates15.sh`: no start while any webpack/tsc/jest is above 30% CPU for three
-consecutive checks), one chain at a time: the arms, then the editor tsc, then the full suite. A peer's
-`dev:debug` stack (opennoodl-71, P82 REL-009b) held port 9222 and the webpack for the whole
-afternoon. Memory: `do-not-pile-cpu-work-on-a-shared-box`.
+One heavy job at a time on this 16 GB box. Session 81 ran every gate behind a wait-for-quiet loop
+(`waitrun16.sh` / `gates16.sh`), one chain at a time, and **handed the box back and forth by message**
+with a peer (opennoodl-de) running the editor's `test:ci`. Two things that peer measured for us:
+🔴 **a spec under `packages/nodegx-export/tests/` is typechecked by the editor's `test:ci` webpack**
+(through `CodeExportModal.tsx` → `nodegx-export/src/index.ts`) while `tsc -p noodl-editor` and
+`tsc -p nodegx-export` both read 0 — two strict-null lines in the new spec reddened their run, and a
+**mutant written into `src/` mid-flight killed it** (the arms chain must not run while
+`webpack.test-ci` is up); 🔴 a red leaves a **poisoned `packages/noodl-editor/.webpack-cache`**
+("TypeScript emitted no output" with no error above it) — `rm -rf` it. Memory:
+`the-editor-test-ci-webpack-typechecks-a-sibling-packages-tests`, `do-not-pile-cpu-work-on-a-shared-box`.
 
 ## The board, re-derived from the task files
 
 | task | status |
 |---|---|
-| EXP-001 `@nodegx/core` | ✅ Published `0.1.0` (its file carries an uncommitted 09-01 note listing four `0.1.1` rows — a peer's, left in place, **not in this commit**) |
+| EXP-001 `@nodegx/core` | ✅ Published `0.1.0` (its file carries an uncommitted peer note — not in this commit) |
 | EXP-002 / 003 / 005 / 006 / 007 | unchanged |
 | EXP-004 | 🟡 built + driven; drill-down panel + three lines for Richard remain |
-| EXP-008 | ✅ `export-ledger:check` OK — 176 types, 101 translated |
+| EXP-008 | ✅ `export-ledger:check` OK — 176 types, 102 translated |
 | EXP-009 backend connection | 🟢 |
 | EXP-010 | 🟢 |
-| EXP-011 picker coverage | 🟡 **94/127 (74.0%)** — §52 built Tier 2.8 row 2; **row 3 `Run Tasks` is next** |
+| EXP-011 picker coverage | 🟡 **95/127 (74.8%)** — §53 built Tier 2.8 row 3; **row 4 `On App Error` is next** |
 | EXP-012 | 🟢 |
 | EXP-013 "Not exportable yet" | 🟢 s78 |
 
-## What session 80 did (EXP-011 §52 — `Script`, type id `Javascript2`)
+## What session 81 did (EXP-011 §53 — `Run Tasks`, type id `RunTasks`)
 
-1. **Read the runtime, then predicted** (`EXPECTED15.md`): `javascriptnodeparser.js` compiles the
-   code once as `new Function('define','script','Node','Component', prefix + code)` and calls it once;
-   three DSL generations declare a lifecycle object; `javascript.ts` registers output accessors only
-   for the ports on disk, runs setup then change (every boot input marked changed), coalesces a
-   signal's function per pass, destroys on delete. `strictprobe.js`: 15 distinct bodies on disk, all
-   compile sloppy and strict, 13 gen-3, every real one stateful and browser-coupled.
-2. **Measured the reverted arm** (`probe15-reverted.log`): five `logic node (Javascript2)`, every
-   wire dropped, the constants attributed by graph to their Script, five comment blocks.
-3. **Built** the host, not a wrapper: `src/analyze/script.ts` (the gate: only `Noodl.`,
-   `Component.`, createComponent, `import()`, Use External File, ports-undiscovered), plan.ts
-   (`script-out`, `script-signal`, `ScriptPlan`, `scriptPlanOf` in `statesPlanOf`'s shape,
-   `isTriggerInto`), component.ts (the hook, the imports, `scriptFileSource` with `// @ts-nocheck`),
-   `src/emit/scriptLib.ts` (`src/lib/script.ts`: `defineScript`, `useScript`, the three DSLs and the
-   lifecycle transcribed). Ledger `translated`, floor 94, both pins moved.
-4. **Gates alone**: pkg tsc 0 · jest 64 files (64 on disk) 1981 · editor tsc 0 (2,815 files) ·
-   ledger OK · picker 94 `--check` exit 0 · arms 9/9 red on behaviour rows, all restored.
-5. **Driven** (§52.6): badge gone from the `Script` card by itself (`Run Tasks` still dotted), the
-   pre-flight's one refusal named with no verdict, the real `writeExport` path through the
-   `FileSystem.instance.chooseDirectory` seam, 18 files, **all 18 byte-identical to `emitApp`**
-   (`compare15.ts`). Stack torn down, recents restored. ⚠️ Settings' export button is found by
-   its *section* (`Export as code`) now — s79's text lookup returned nothing.
+1. **Read the runtime, then predicted** (`EXPECTED16.md`, graded at its foot): `runtasks.ts` makes a
+   component instance per item, pulses the template's start input once, matches success/failure by
+   STRING, runs at most Max Running Tasks, `_endRun` fires outcome + Completed **per token**. Found that
+   §5.7's `foreachTemplateHosts` matched the display name `'Run Tasks'` and read `template` (the node
+   carries `taskTemplate`) — never fired; fixed and pinned.
+2. **Measured the reverted arm** (`probe16-reverted.log`): one root, eight silenced, the template
+   skipped as logic-only with four refusals of its own.
+3. **Built both sides**: `planProject` plans templates BEFORE hosts (deepest first; cycles refused); a
+   logic-only component a Run Tasks names statically gets a file and renders `null`, its start chain a
+   once-guarded mount effect; the host gets `useRunTasks(label, config, listeners)` from
+   `src/lib/runTasks.ts` (`src/emit/runTasksLib.ts`, the state machine transcribed) and renders one
+   template element per task in flight as the root container's last child; `runTasksPlanOf` refuses
+   in `run()`'s own order (§53 table of sentences); a verdict sweep for an unfired node. Ledger
+   `translated`, floor 95, the three floor pins moved, cascade's task-desk count 7 → 8.
+4. **Gates alone**: pkg tsc 0 · jest 65 files (65 on disk) 2066 · editor tsc 0 (11.6 s — s80 read
+   14 s, the normal reading) · ledger OK · picker 95 `--check` exit 0 · arms 10/10 red (M8b dropped
+   as an equivalent mutant; one arm re-armed after a compiler kill).
+5. **Driven** (§53.6): the Run Tasks card's dot gone (Sign In With still dotted), pre-flight "16
+   files — 1 page, 1 component… Everything translates", the real write path, **16 files all
+   byte-identical to `emitApp`** (`compare16.ts`). Stack torn down, recents restored. ⚠️ the Settings
+   export button is found by its SECTION text, and `patchfs16.js` must run BEFORE `settings16b.js`.
 
-## 🔴 Do this next — EXP-011 Tier 2.8, row 3: `Run Tasks`
+## 🔴 Do this next — EXP-011 Tier 2.8, row 4: `On App Error`
 
-Read **EXP-011 §3 Tier 2.8**, **§50**, **§51**, **§52** first. Then `Run Tasks` in the same shape: the
-runtime file first (`grep -rna "'Run Tasks'" packages/noodl-runtime/src packages/noodl-viewer-react/src`
-— it runs a worker component per array item; read how it instantiates the worker, what it passes
-in, how it collects Done/Failure, whether it runs items in parallel or in sequence), the ports as
-the catalog declares them, `EXPECTEDnn.md` before any run, a fixture on disk with the shape an
-MCP-built project uses (grep the test projects for `"Run Tasks"` first — §50 measured that a
-refused one silences everything behind it, so this row is the cascade's headline), the reverted
-arm measured, the arms, the drive with a `dev:stop` teardown, commit by pathspec. Then `On App
-Error`, `Create New Array` (design session first — §7.3's anonymous-Id-by-wire), … `Sign In With`
-stays OUT.
+Read **EXP-011 §3 Tier 2.8**, **§50**, **§52**, **§53** first. Then `On App Error` in the same shape:
+the runtime file first (`grep -rna "'On App Error'" packages/noodl-runtime/src packages/noodl-viewer-react/src`
+— it is the app-wide error boundary: read what it catches (`raiseRuntimeError`? uncaught throws?
+the error bus the Run Tasks host now writes to with `console.error`), what it publishes (message,
+stack, source node?), whether more than one may exist), the ports as the catalog declares them,
+`EXPECTEDnn.md` before any run, a fixture on disk, the reverted arm measured, the arms, the drive
+with a `dev:stop` teardown, commit by pathspec. It is an `isPathwayType` — a refused one removes the
+error pathway, so the pre-flight verdict already names it (cascade.test.ts has a synthetic row). Then
+`Create New Array` (design session first — §7.3's anonymous-Id-by-wire), `Filter Records`, … `Sign In
+With` stays OUT.
 
-🔴 **Every exporter change owes the editor `tsc` too** (EXP-012's trap; s80 ran it: 0).
-🔴 **The port set of a runtime-discovered node is the one ON DISK** (§52.1) — never run user code to
-find ports; a node the editor has not opened has none, in the running app too.
-🔴 **A refusal's sentence depends on which side asks first** (§52.4): predict the sentence, not just
-the disposition kind, and check the sink's port kind before the chain compile speaks.
+🔴 **Every exporter change owes the editor `tsc` — and the editor `test:ci` webpack** (§53.4.5).
+🔴 **A new chain owner must be added to BOTH walkers**: the trigger/registration side AND
+`scanActions` (the attachment sweep that earns api exports and Error rows) — §53.4.1; `component.ts`
+still walks `plan.scripts` in neither `allActions` nor `hookExprSources` (owner P18, §53.7).
+🔴 **A refusal's sentence depends on which side asks first** (§52.4) — predict the sentence.
 
 ## Open residuals (registered, none blocks an AC)
 
-- P80 `UNOWNED-ROWS-TO-MEASURE.md` **§10**: the MCP's script-port backstop is `JavaScriptFunction`
-  only — an MCP-authored Script has no ports on disk until the editor opens the project (owner NONE,
-  source-read not driven).
-- §52.7: a `Noodl.Files` facade in the host (three of def036's ten bodies); a Text Input's `text` into
-  a Script input (controlled-state seam); Use External File; Script not an `isPathwayType`.
-- §51.7 / EXP-013 / §49.3 … unchanged.
+- §53.7: the template's error VALUE output unread (the console report carries the index only);
+  `*`-typed contract ports (every corpus instance — the MCP writes `*`) refused with the fix named;
+  a non-container host root untested; nested Run Tasks in a template untested beyond the cycle row;
+  Run Tasks not an `isPathwayType`. All owner NONE except the Script walkers (P18).
+- P80 `UNOWNED-ROWS-TO-MEASURE.md` §10 (MCP script-port backstop), §52.7 rows — unchanged.
 
-## The numbers (last honest readings, s80)
+## The numbers (last honest readings, s81)
 
 ```
-packages/nodegx-export: tsc 0 · jest 64 files (64 on disk) 1981 rows · script.test.ts 74
-noodl-editor: tsc -p tsconfig.json --noEmit 0 (2,815 files; the working tree holds peers' uncommitted editor edits)
-export-ledger:check OK — 176 types, 101 translated · picker 94/127 (74.0%), floor 94, --check exit 0
-arms: M1 3(+5 typing) · M2 3 · M3 1 · M4 5 · M5 5 · M6 1(+5) · M7 1+5 typecheck · M8 3 · M9 2 — all restored, md5 unchanged
+packages/nodegx-export: tsc 0 · jest 65 files (65 on disk) 2066 rows · run-tasks.test.ts 67
+noodl-editor: tsc -p tsconfig.json --noEmit 0 (11.6 s real; empty log; s80 read 14 s)
+export-ledger:check OK — 176 types, 102 translated · picker 95/127 (74.8%), floor 95, --check exit 0
+arms: M1 4 · M2 2 · M3 2 · M4 8 · M5 1 · M6 1 · M7 5 · M8 1 · M9 1 · M9b 1 — all restored, md5 unchanged
+drive: 16 files, 16 same, 0 diff (compare16.ts)
 ```
 
-## Instruments (s80 scratchpad `7a8f3b73-0360-4c47-89b5-200b42ca2d75/scratchpad`)
+## Instruments (s81 scratchpad `68353a21-61bd-41b6-a78d-829c9b8f88e2/scratchpad`)
 
-`EXPECTED15.md` (with a graded section), `strictprobe.js` (the corpus compile probe), `mkfixture15.js`
-(`--uploader` adds the refused node; `--root=` for a drive copy; `--print-uploader`), `probe15.ts` +
-`probe15-reverted.log` / `probe15-after.log`, `tsn.sh`, `patch15-plan.py` / `patch15-emit.py` (the
-anchored edits, re-runnable against HEAD e1a92d95), `mut15.py` / `runmut15.sh` / `waitrun15.sh` /
-`mut15-summary.txt` / `arm15-*.log`, `gates15.sh` / `gates15.log` / `tsc15-editor.log` /
-`jest15-full.log`, the drive scripts `open15.js` / `settings15.js` / `readmodal15.js` /
-`readpicker15.js` / `patchfs15.js` / `reg15.sh` / `cdpeval.js`, `drive15-project/` (with the uploader).
+`EXPECTED16.md` (graded), `mkfixture16.js` (`--root=` for a drive copy; `--star` types the contract ports
+`*`), `probe16.ts` + `probe16-reverted.log` / `probe16-after2.log`, `tsn16.sh`, `patch16-plan.py` /
+`patch16-emit.py` (the anchored edits, re-runnable against HEAD 7d651798 — plus the two later
+one-line patches recorded in §53.3), `mut16.py` / `runmut16.sh` (`ARMS="M3 M7" …` runs a subset) /
+`waitrun16.sh` / `mut16-summary*.txt` / `arm16-*.log`, `gates16.sh` / `gates16.log` / `jest16-full2.log`
+/ `tsc16-editor.log`, the drive scripts `drive16.sh` / `drive16b.sh` / `open16.js` / `settings16b.js`
+/ `readmodal16.js` / `patchfs16.js` / `readtoast16.js` / `reg16.sh` / `compare16.ts`, `drive16-project/`,
+`drive16-out/`, `drive16-0N-*.png`.
 
-## 🔴 What session 80 would tell you if it could only say three things
+## 🔴 What session 81 would tell you if it could only say three things
 
-1. **Read the corpus before choosing the target.** Every real Script body reaches a timer, the DOM or
-   a media device; the Function node's purity gate would have refused all of them and the ledger
-   would have read "translated" over a node that never exports. The host is the honest target.
-2. **A mutant the compiler kills is not killed.** `|| true` is TS2872 now; ts-jest reports it as
-   "Tests: 0 total", which reads as a pass to a tally and as a kill to nobody. Arm at the value level.
-3. **The corpus control is a contract on fixtures.** A fixture may not carry a refused script-bearing
-   node; the refused shape lives in the spec by mutation.
+1. **Two walkers, both owe every new chain owner.** The registration compiled the template's chain
+   perfectly and the emitted file still lacked its import and its state row, because the attachment
+   sweep is a separate enumeration of where chains live. Read `scanActions`'s caller list before
+   adding an owner.
+2. **The transcription corrects the prediction, not the other way round.** "Completed twice" was the
+   prediction; the harness read `done, completed, done, completed`, and the runtime agrees — per
+   token. Grade the prediction file; do not bend the lib to it.
+3. **Your package's tests are someone else's gate.** Save specs whole, run them at once, and never
+   write a mutant into `src/` while a peer's editor webpack is compiling.
 
 ## Standing practice
 
 `cline-dev`; commit by exact pathspecs; `git status | grep '^??'` first (`git add` untracked before
 a pathspec commit or they are skipped silently); delete probe specs before committing; reconcile
-the suite count against disk (64); `grep -a`; absolute paths — **the shell cwd resets between
-calls, and a relative `cat >>` appends nowhere**; a `$VAR` holding a command with spaces is NOT
-word-split in zsh — put it in a script; **`vm_stat` + `ps` before any suite, never more than one of
-mine, wait for a peer's webpack to idle, tear servers down the moment the drive is read.**
+the suite count against disk (65); `grep -a`; absolute paths — **the shell cwd resets between
+calls**; BSD `sed` has no `\|` — a copy step that renames files with it silently leaves the old
+names in the script; **`vm_stat` + `ps` before any suite, never more than one of mine, wait for a
+peer's webpack to idle, tear servers down the moment the drive is read.**

@@ -25,6 +25,7 @@ import { ID_LIB_PATH, idLibSource } from './idLib';
 import { TIMER_LIB_PATH, timerLibSource } from './timerLib';
 import { ANIMATE_LIB_PATH, animateLibSource } from './animateLib';
 import { STATES_LIB_PATH, statesLibSource } from './statesLib';
+import { RUN_TASKS_LIB_PATH, runTasksLibSource } from './runTasksLib';
 import { SCRIPT_LIB_PATH, scriptLibSource } from './scriptLib';
 import { EmittedCopy, emitKits } from './kits';
 import { README_PATH, renderReadme } from './readme';
@@ -123,6 +124,7 @@ export function emitApp(ir: ExportIR, catalog: Catalog): EmittedApp {
   let statesLibUsed = false;
   // EXP-011 §52. The Script host — earned by a component whose plan kept a Script node.
   let scriptLibUsed = false;
+  let runTasksLibUsed = false;
   const reportComponents: ReportComponent[] = [];
   for (const plan of project.plans) {
     if (plan.skipReason) {
@@ -174,6 +176,7 @@ export function emitApp(ir: ExportIR, catalog: Catalog): EmittedApp {
     if (emitted.animateLib) animateLibUsed = true;
     if (emitted.statesLib) statesLibUsed = true;
     if (emitted.scriptLib) scriptLibUsed = true;
+    if (emitted.runTasksLib) runTasksLibUsed = true;
   }
 
   /**
@@ -221,6 +224,10 @@ export function emitApp(ir: ExportIR, catalog: Catalog): EmittedApp {
   /** `src/lib/script.ts` (EXP-011 §52) — the Script node's host, the seventh module, on the same rule. */
   if (scriptLibUsed) {
     files[SCRIPT_LIB_PATH] = GENERATED_MODULE_TS + scriptLibSource();
+  }
+  // EXP-011 §53.
+  if (runTasksLibUsed) {
+    files[RUN_TASKS_LIB_PATH] = GENERATED_MODULE_TS + runTasksLibSource();
   }
 
   const api = apiModules(ir, project);

@@ -411,7 +411,25 @@ const FILE_OUT_OPTIONAL_FIELDS = new Set(['upload.contentType', 'upload.size', '
  * dropped with a reason — or the skip turns a false note into a silent one. Every entry below was
  * read off the compile it names.
  */
+/**
+ * EXP-011 §53 — `Run Tasks` (type id `RunTasks`; `Run Tasks` is its display name, and a match on the
+ * display name never fires — §5.7's `runtasks` branch was unreachable until this row spelled it right).
+ * The five signal outputs are the node's whole output set (`outcomeOutputs` + `aborted`); the four
+ * contract names are `runtasks-template-contract.ts`'s defaults, applied when the parameter is absent
+ * or empty (`resolveTemplateContract`: "an empty name falls back rather than being honoured").
+ */
+export const RUN_TASKS_TYPE = 'RunTasks';
+export const RUN_TASKS_OUTPUTS: readonly string[] = ['done', 'failure', 'unchanged', 'completed', 'aborted'];
+export const RUN_TASKS_CONTRACT_TEMPLATE_PARAM = 'taskTemplate';
+export const RUN_TASKS_CONTRACT = {
+  start: { parameter: 'taskStartInput', default: 'Do' },
+  success: { parameter: 'taskSuccessOutput', default: 'Success' },
+  failure: { parameter: 'taskFailureOutput', default: 'Failure' },
+  error: { parameter: 'taskErrorOutput', default: 'Error' }
+} as const;
+
 const OWN_CHAIN_OUTPUTS: Record<string, readonly string[]> = {
+  [RUN_TASKS_TYPE]: RUN_TASKS_OUTPUTS,
   [LOG_TYPE]: ['done'],
   [TIMER_TYPE]: TIMER_OUTPUTS,
   [VALUE_CHANGED_TYPE]: ['valueChanged'],
@@ -1119,6 +1137,16 @@ export type ValueExpr =
  * where `scheduleSignal` puts it in the runtime; nothing rides on the action, and the node's signal
  * outputs are its listeners ({@link ScriptPlan.listeners}), passed once to the hook.
  */
+/**
+ * A `Run Tasks` node's two action ports (EXP-011 §53) — `Do` is `<local>.run(<items>)`, the list read at
+ * the pulse (the runtime reads `internal.items`, the last value delivered, at `run()`); `Abort` is
+ * `<local>.abort()`. Neither awaits: `run()` schedules its work through the node's own serial queue and
+ * answers through the listeners ({@link RunTasksPlan.listeners}), passed once to the hook.
+ */
+export type RunTasksAction =
+  | { kind: 'runtasks-run'; nodeId: string; local: string; items: ValueExpr }
+  | { kind: 'runtasks-abort'; nodeId: string; local: string };
+
 export type ScriptSignalAction = {
   kind: 'script-signal';
   nodeId: string;
@@ -1644,7 +1672,8 @@ export type HandlerAction =
   | LogAction
   | DelayAction
   | StatesGoAction
-  | ScriptSignalAction;
+  | ScriptSignalAction
+  | RunTasksAction;
 
 /**
  * A `States` node's `Toggle` or `To <state>` (EXP-011 §49) — one call on the `useStates` handle:
@@ -2057,6 +2086,62 @@ export interface ScriptPlan {
   ports: { inputs: Record<string, string>; outputs: Record<string, string> };
   /** The signal outputs, as the chains wired off them. */
   listeners: Record<string, HandlerAction[]>;
+  comment: string;
+}
+
+/**
+ * A `Run Tasks` node (EXP-011 §53): `const <local> = useRunTasks(<label>, { maxRunningTasks, stopOnFailure },
+ * { <listeners> })` in the host, and the active task instances rendered as the last child of the host's
+ * root container — `{<local>.tasks.map((task) => <Template key={task.key} <inputs from task.item>
+ * onSuccess={task.succeed} onFailure={task.fail} />)}`. The template is a project component with no
+ * visual root, emitted as a null-rendering component whose start-input chain runs on mount
+ * ({@link TaskPlan}). The contract between the two is by NAME, as the runtime's is (`runtasks.ts`
+ * matches the template's outputs by string; there is no wire between host and template).
+ */
+export interface RunTasksPlan {
+  nodeId: string;
+  /** The authored label, or `Run Tasks`. */
+  label: string;
+  /** The `useRunTasks` local — `sendAll`. */
+  local: string;
+  /** The template's legacy path — `/Notify`. The symbol and file are read off its plan at emit. */
+  templateLegacy: string;
+  /** The resolved contract names (defaults applied). */
+  contract: { start: string; success: string; failure: string; error: string };
+  /** The list, read at the pulse. */
+  items: ValueExpr;
+  /** Literal or wired (a render read); the hook reads both live, as the runtime reads `_internal`. */
+  maxRunningTasks: ValueExpr;
+  stopOnFailure: ValueExpr;
+  /**
+   * The template's value inputs the host binds from the item, by identity (`runtasks.ts`:
+   * `for (const inputKey in itemNode._inputs) if (model.data[inputKey] !== undefined) setInputValue`).
+   * `prop` is the template's prop identifier for the port; `field` the item key (the port name).
+   */
+  inputs: Array<{ port: string; field: string }>;
+  /** The template's `Id` / `id` inputs, fed the task's model id (`item.id`, else a generated one). */
+  idInputs: string[];
+  /** The template's callback props for the contract's success and failure outputs. */
+  onSuccess?: string;
+  onFailure?: string;
+  /** The signal outputs, as the chains wired off them. */
+  listeners: Partial<Record<'done' | 'failure' | 'unchanged' | 'completed' | 'aborted', HandlerAction[]>>;
+  comment: string;
+}
+
+/**
+ * A component that a `Run Tasks` names as its template (EXP-011 §53) — logic-only, emitted anyway,
+ * rendering `null`; the chain wired off its start input runs once in a mount effect, which is exactly
+ * when `startTask` pulses it (right after `createNode`). Every other signal input stays as before
+ * (declared, unconsumed — COMPONENT-OUTPUTS-TARGET §6). Set only when every host names the same
+ * start input and the chain compiled; otherwise the component keeps no file and
+ * {@link ComponentPlan.taskRefusal} says why, for the hosts to repeat.
+ */
+export interface TaskPlan {
+  startPort: string;
+  actions: HandlerAction[];
+  /** The Run Tasks nodes that name this component, for the doc comment. */
+  hosts: Array<{ componentPath: string; nodeId: string }>;
   comment: string;
 }
 
@@ -2528,6 +2613,12 @@ export interface ComponentPlan {
   animations: AnimationPlan[];
   /** EXP-011 §52. The Script nodes that translated, registration order. */
   scripts: ScriptPlan[];
+  /** EXP-011 §53. The Run Tasks nodes hosted here, registration order. */
+  runTasks: RunTasksPlan[];
+  /** EXP-011 §53. Set when this component is a Run Tasks template whose start chain translated. */
+  task?: TaskPlan;
+  /** EXP-011 §53. Why a component named as a template is not one — repeated by every host that names it. */
+  taskRefusal?: string;
   /**
    * Value output ports this component lifts (§4d child side) — the parent side consults this
    * list off the target's plan, so parent and child agree by construction (the s10 rule).
@@ -2613,20 +2704,62 @@ export function planProject(ir: ExportIR, catalog: CatalogIndex): ProjectPlan {
   // per component that happens to use one.
   const { index: kits, duplicates: kitDuplicates } = indexKitNodes(ir.project.modules);
 
-  const plans = ir.components.map((component) =>
-    planComponent(
-      component,
-      ir,
-      catalog,
-      registry,
-      pageByLegacy,
-      pageFileByPath,
-      usedPageNames,
-      usedComponentNames,
-      kits,
-      usedHttpNames
-    )
-  );
+  // EXP-011 §53. A Run Tasks host reads facts off its template's plan (did the start chain compile,
+  // does it emit a file), so templates are planned BEFORE the components that name them — deepest
+  // first, since a template may host a Run Tasks of its own (the corpus does). A template that leads
+  // back to itself, at any depth, is a task that runs itself and never finishes; every component on
+  // such a cycle is named here and every Run Tasks that points into it refuses.
+  const templatesOf = new Map<string, string[]>();
+  for (const component of ir.components) {
+    const named: string[] = [];
+    for (const node of component.nodes) {
+      if (node.type !== RUN_TASKS_TYPE) continue;
+      const template = literalParam(node, RUN_TASKS_CONTRACT_TEMPLATE_PARAM);
+      if (typeof template === 'string' && template !== '' && !named.includes(template)) named.push(template);
+    }
+    templatesOf.set(`/${component.path}`, named);
+  }
+  const templateCycle = new Set<string>();
+  const order: string[] = [];
+  const visiting = new Set<string>();
+  const done = new Set<string>();
+  const visit = (legacy: string, trail: string[]) => {
+    if (done.has(legacy)) return;
+    if (visiting.has(legacy)) {
+      for (const on of trail.slice(trail.indexOf(legacy))) templateCycle.add(on);
+      return;
+    }
+    if (!templatesOf.has(legacy)) return;
+    visiting.add(legacy);
+    for (const template of templatesOf.get(legacy) ?? []) visit(template, [...trail, legacy]);
+    visiting.delete(legacy);
+    done.add(legacy);
+    order.push(legacy);
+  };
+  for (const component of ir.components) visit(`/${component.path}`, []);
+  const plannedByLegacy = new Map<string, ComponentPlan>();
+  for (const legacy of order) {
+    const component = ir.components.find((c) => `/${c.path}` === legacy)!;
+    plannedByLegacy.set(
+      legacy,
+      planComponent(
+        component,
+        ir,
+        catalog,
+        registry,
+        pageByLegacy,
+        pageFileByPath,
+        usedPageNames,
+        usedComponentNames,
+        kits,
+        usedHttpNames,
+        plannedByLegacy,
+        templateCycle
+      )
+    );
+  }
+  // The plans keep the project's own component order, whatever order they were computed in.
+  const plans = ir.components.map((component) => plannedByLegacy.get(`/${component.path}`)!);
 
   const byLegacyPath = new Map(plans.map((p) => [p.legacyPath, p]));
 
@@ -2712,7 +2845,11 @@ function planComponent(
    * not per component — two pages each holding a node labelled "Get Quote" would otherwise emit
    * two different `fetchGetQuote`s into one module.
    */
-  usedHttpNames: Set<string>
+  usedHttpNames: Set<string>,
+  /** EXP-011 §53. The plans computed so far — every template this component names is already here. */
+  plannedByLegacy: ReadonlyMap<string, ComponentPlan>,
+  /** EXP-011 §53. The components on a template cycle (a task that runs itself). */
+  templateCycle: ReadonlySet<string>
 ): ComponentPlan {
   const nodeById = new Map(component.nodes.map((n) => [n.id, n]));
   const dispositions: Record<string, Disposition> = {};
@@ -2783,6 +2920,7 @@ function planComponent(
     statesMachines: [],
     animations: [],
     scripts: [],
+    runTasks: [],
     liftedOutputProps: [],
     instanceLifted: {},
     pendingLifted: [],
@@ -3031,29 +3169,66 @@ function planComponent(
     .filter((n): n is NodeIR => n !== undefined);
   const roots = (declaredRoots ?? component.nodes.filter((n) => n.parent === undefined)).filter(rootable);
   const rendered = new Set<string>();
-  if (roots.length === 0) {
+  // EXP-011 §53. The Run Tasks nodes anywhere in the project that name this component as their
+  // template, statically. With no visual root this component is then a task template: it goes on to
+  // a file that renders null, and its start chain becomes a mount effect (the template compile below).
+  const taskHosts: TaskPlan['hosts'] = [];
+  const taskStarts = new Set<string>();
+  for (const comp of ir.components) {
+    for (const n of comp.nodes) {
+      if (n.type !== RUN_TASKS_TYPE || literalParam(n, RUN_TASKS_CONTRACT_TEMPLATE_PARAM) !== plan.legacyPath) continue;
+      taskHosts.push({ componentPath: comp.path, nodeId: n.id });
+      const authored = literalParam(n, RUN_TASKS_CONTRACT.start.parameter);
+      taskStarts.add(typeof authored === 'string' && authored.length > 0 ? authored : RUN_TASKS_CONTRACT.start.default);
+    }
+  }
+  const bailAsLogicOnly = (skipReason: string): ComponentPlan => {
     // The record-neighbour sweep reaches here too (§17). This path returns before the sweep at
     // the bottom of the function ever runs, so without this line a relation verb in a logic-only
     // component would still fall to `logic node (…)` — a hole the sweep's own mutation check
-    // found, and exactly the shape the gate it names exists to close.
+    // found, and exactly the shape the gate it names exists to close. Nodes already classified
+    // (a template whose start chain failed reaches here mid-way) keep their disposition.
     for (const node of component.nodes) {
+      if (dispositions[node.id] !== undefined) continue;
       const named = recordNeighbourDefer(node, component, nodeById, pageFileByPath.has(component.path), null);
       dispositions[node.id] =
         named !== undefined ? { kind: 'deferred', to: 'EXP-003', reason: named } : dispositionForLogic(node, kits);
     }
-    plan.skipReason = 'no visual root — logic-only components defer to EXP-003';
+    plan.file = null;
+    plan.rootId = null;
+    plan.task = undefined;
+    plan.skipReason = skipReason;
     plan.skipKind = 'deferred';
     sweepRefusedScripts();
     sweepUnreportedDeferrals();
     collectRefusals();
     return plan;
+  };
+  if (roots.length === 0 && taskHosts.length === 0) {
+    return bailAsLogicOnly('no visual root — logic-only components defer to EXP-003');
+  }
+  if (roots.length === 0 && taskStarts.size > 1) {
+    plan.taskRefusal = `it is named by Run Tasks nodes with different Start Inputs (${[...taskStarts].map((s) => `"${s}"`).join(', ')}) — one template has one start`;
+    return bailAsLogicOnly(`no visual root — named as a Run Tasks template, but ${plan.taskRefusal}`);
   }
   if (roots.length > 1) {
     notes.push(`component has ${roots.length} visual roots; only the first renders in step 4`);
   }
-  const root = roots[0];
-  plan.rootId = root.id;
-  if (root.authoredLabel) plan.docComment = root.authoredLabel;
+  const root: NodeIR | undefined = roots[0];
+  if (root !== undefined) {
+    plan.rootId = root.id;
+    if (root.authoredLabel) plan.docComment = root.authoredLabel;
+  } else {
+    // EXP-011 §53. A task template: no root, a file all the same (assigned below), the start chain
+    // compiled before the trigger pass. Provisional until that compile answers.
+    const startPort = [...taskStarts][0];
+    plan.task = {
+      startPort,
+      actions: [],
+      hosts: taskHosts,
+      comment: `A Run Tasks template (run by ${taskHosts.map((h) => `${h.componentPath} › ${h.nodeId}`).join(', ')}): draws nothing; its "${startPort}" chain runs once on mount, which is when startTask pulses it (runtasks.ts).`
+    };
+  }
 
   // File identity: routed pages keep the scaffold's names so the page file replaces its
   // placeholder exactly; everything else allocates within its directory (D5). A routed
@@ -3208,7 +3383,7 @@ function planComponent(
       walk(child, childInGroup);
     }
   };
-  walk(root, false);
+  if (root !== undefined) walk(root, false);
 
   // Everything hanging off a root the runtime discards. `componentinstance.ts:326` renders
   // `roots[0]` alone, and the editor already tells the author so — graph-warnings.ts sends
@@ -3264,7 +3439,7 @@ function planComponent(
 
   // TARGET-OUTPUT §2's page shape: a Page whose sole visual child is a Group merges that Group
   // into the page div — one wrapper, classed after the Page node, styled by both.
-  if (plan.roleOf[root.id] === 'page') {
+  if (root !== undefined && plan.roleOf[root.id] === 'page') {
     const title = literalParam(root, 'title');
     const description = literalParam(root, 'description');
     plan.head = {
@@ -3311,10 +3486,12 @@ function planComponent(
   const foreachTemplateHosts = new Map<string, Array<{ nodeId: string; componentPath: string; kind: 'foreach' | 'runtasks' }>>();
   for (const comp of ir.components) {
     for (const n of comp.nodes) {
-      const kind = n.type === 'For Each' ? 'foreach' : n.type === 'Run Tasks' ? 'runtasks' : null;
+      const kind = n.type === 'For Each' ? 'foreach' : n.type === RUN_TASKS_TYPE ? 'runtasks' : null;
       if (kind === null) continue;
       if (kind === 'foreach' && literalParam(n, 'templateType') === 'dynamic') continue;
-      const template = literalParam(n, 'template');
+      // EXP-011 §53. `RunTasks` names its template under `taskTemplate`; a read of `template` on it
+      // answered nothing, which is why the `runtasks` branch below never fired before this row.
+      const template = literalParam(n, kind === 'runtasks' ? RUN_TASKS_CONTRACT_TEMPLATE_PARAM : 'template');
       if (typeof template !== 'string' || template === '') continue;
       const list = foreachTemplateHosts.get(template) ?? [];
       list.push({ nodeId: n.id, componentPath: comp.path, kind });
@@ -7302,7 +7479,9 @@ function planComponent(
     // EXP-011 §39. A Delay's Start/Restart/Stop — one node, three action ports.
     (type === TIMER_TYPE && isTimerTrigger(toProperty)) ||
     // EXP-011 §49. A States' Toggle and its `to-<state>` family.
-    (type === STATES_TYPE && isStatesTrigger(toProperty));
+    (type === STATES_TYPE && isStatesTrigger(toProperty)) ||
+    // EXP-011 §53. A Run Tasks' Do and Abort — one node, two action ports.
+    (type === RUN_TASKS_TYPE && (toProperty === 'run' || toProperty === 'abort'));
 
   /**
    * `isTriggerWire` with the node in hand — a `Script` node's trigger ports are the signal inputs its
@@ -9711,6 +9890,207 @@ function planComponent(
     return { action: { kind: 'script-signal', nodeId: node.id, local: registered.local, port }, consumes: [], collapses: [], subscribes: [] };
   };
 
+  /**
+   * EXP-011 §53 — a `Run Tasks` node, registered once (memoised), `scriptPlanOf`'s shape: a provisional
+   * entry before the listeners compile, `refuse` unwinding the entry and the node's compiled sinks.
+   * The checks run in `run()`'s own order (template, then items, then concurrency), so the sentence a
+   * person reads names the first thing the running node would have failed on.
+   */
+  const runTasksPlans = new Map<string, RunTasksPlan | { defer: string }>();
+  const runTasksLocals = new Map<string, string>();
+  const runTasksItemsCtx = new Map<string, { consumes: string[]; collapses: string[]; subscribes: string[] }>();
+  const runTasksPlanOf = (node: NodeIR): RunTasksPlan | { defer: string } => {
+    const cached = runTasksPlans.get(node.id);
+    if (cached !== undefined) return cached;
+    const refuse = (defer: string): { defer: string } => {
+      const reason = { defer };
+      runTasksPlans.set(node.id, reason);
+      const index = plan.runTasks.findIndex((r) => r.nodeId === node.id);
+      if (index !== -1) plan.runTasks.splice(index, 1);
+      for (const key of [...compiledSinks.keys()]) if (key.startsWith(`${node.id}:`)) compiledSinks.delete(key);
+      return reason;
+    };
+    if (!plan.file) return refuse('component emits no file to host the run');
+    if (!wiredPorts.has(`${node.id}:run`)) return refuse('nothing fires its Do, so no run could ever start');
+    if (wiredPorts.has(`${node.id}:${RUN_TASKS_CONTRACT_TEMPLATE_PARAM}`)) {
+      return refuse('its Template is wired — which component runs per item is not statically knowable');
+    }
+    const template = literalParam(node, RUN_TASKS_CONTRACT_TEMPLATE_PARAM);
+    if (typeof template !== 'string' || template === '') {
+      return refuse('it names no Template component, so every Do answers Failure with "No task template is selected" and never runs a task');
+    }
+    const templateComp = ir.components.find((c) => `/${c.path}` === template);
+    if (templateComp === undefined) return refuse(`its Template ${template} is not in the project`);
+    if (template === plan.legacyPath || templateCycle.has(template) || templateCycle.has(plan.legacyPath)) {
+      return refuse(`its Template ${template} runs a template that leads back to this component — a task that runs itself never finishes`);
+    }
+    for (const spec of Object.values(RUN_TASKS_CONTRACT)) {
+      if (wiredPorts.has(`${node.id}:${spec.parameter}`)) {
+        return refuse(`its ${spec.parameter} is wired — the template contract is authored, never wired (the port is allowEditOnly)`);
+      }
+    }
+    const pick = (spec: { parameter: string; default: string }): string => {
+      const value = literalParam(node, spec.parameter);
+      return typeof value === 'string' && value.length > 0 ? value : spec.default;
+    };
+    const contract = {
+      start: pick(RUN_TASKS_CONTRACT.start),
+      success: pick(RUN_TASKS_CONTRACT.success),
+      failure: pick(RUN_TASKS_CONTRACT.failure),
+      error: pick(RUN_TASKS_CONTRACT.error)
+    };
+    const templatePlan = plannedByLegacy.get(template);
+    if (templatePlan === undefined) {
+      return refuse(`its Template ${template} runs a template that leads back to this component — a task that runs itself never finishes`);
+    }
+    if (templatePlan.rootId !== null) {
+      return refuse(`its Template ${template} has a visual root — Run Tasks runs a template without drawing it, and this slice hosts logic-only templates only`);
+    }
+    const kindWord = (p: { type?: string }): string => (p.type === undefined || p.type === '*' ? 'untyped (*)' : p.type);
+    const inputPorts = templateComp.nodes.filter((n) => n.type === 'Component Inputs').flatMap((n) => n.declaredPorts.filter((p) => p.plug === 'output'));
+    const outputPorts = templateComp.nodes.filter((n) => n.type === 'Component Outputs').flatMap((n) => n.declaredPorts.filter((p) => p.plug === 'input'));
+    const startPort = inputPorts.find((p) => p.name === contract.start);
+    if (startPort === undefined) {
+      return refuse(`its Template ${template} declares no "${contract.start}" input on Component Inputs, so no task would ever start — the run hangs`);
+    }
+    if (startPort.kind !== 'signal') {
+      return refuse(`its Template ${template} declares "${contract.start}" as ${kindWord(startPort)} rather than signal — set the port type to signal so the export can tell a pulse from a value`);
+    }
+    const successPort = outputPorts.find((p) => p.name === contract.success);
+    const failurePort = outputPorts.find((p) => p.name === contract.failure);
+    if (successPort === undefined && failurePort === undefined) {
+      return refuse(`its Template ${template} has no "${contract.success}" or "${contract.failure}" output, so a task can never report completion (the runtime's run-tasks/no-completion-output)`);
+    }
+    for (const port of [successPort, failurePort]) {
+      if (port !== undefined && port.kind !== 'signal') {
+        return refuse(`its Template ${template} declares "${port.name}" as ${kindWord(port)} rather than signal — set the port type to signal so the export can tell a pulse from a value`);
+      }
+    }
+    if (templatePlan.task === undefined || !templatePlan.file) {
+      return refuse(`its Template ${template} exports no task component — ${templatePlan.taskRefusal ?? 'it has no visual root and no start chain'}`);
+    }
+    if (templatePlan.task.startPort !== contract.start) {
+      return refuse(`its Template ${template} compiled its "${templatePlan.task.startPort}" chain, and this node starts tasks with "${contract.start}"`);
+    }
+    if (plan.rootId !== null && plan.roleOf[plan.rootId] !== 'group' && plan.roleOf[plan.rootId] !== 'page') {
+      return refuse(`its host's root is a ${plan.roleOf[plan.rootId] ?? 'node'}, not a container — the task instances need a container to mount in (the popups rule)`);
+    }
+    const itemsWires = component.connections.filter((c) => c.toId === node.id && c.toProperty === 'items');
+    if (itemsWires.length === 0) return refuse('nothing is wired into Items, so every Do answers Failure with "No Items list was provided"');
+    if (itemsWires.length > 1) return refuse('two wires feed Items — last-writer-wins is not statically ordered');
+    const itemsCtx = newCtx();
+    const from = nodeById.get(itemsWires[0].fromId);
+    const items = resolveExpr(from, itemsWires[0].fromProperty, itemsCtx);
+    if (items === null) {
+      return refuse(`its Items input is fed by ${from?.type ?? 'a missing node'} — ${itemsCtx.defer ?? 'no statically known source in the emit vocabulary'}`);
+    }
+    const itemsType = exprTsType(items);
+    if (itemsType !== 'unknown' && itemsType !== 'any' && itemsType !== 'undefined' && !itemsType.endsWith('[]')) {
+      return refuse(`its Items input is fed by a source not statically typed as a list (${itemsType})`);
+    }
+    const configCtx = newCtx();
+    const configOf = (port: string, fallback: number | boolean): ValueExpr | { defer: string } => {
+      const wires = component.connections.filter((c) => c.toId === node.id && c.toProperty === port);
+      if (wires.length > 1) return { defer: `two wires feed ${port} — last-writer-wins is not statically ordered` };
+      if (wires.length === 1) {
+        const expr = resolveExpr(nodeById.get(wires[0].fromId), wires[0].fromProperty, configCtx);
+        if (expr === null) return { defer: configCtx.defer ?? `${port} has no statically known source` };
+        if (!exprValidIn(expr, { kind: 'render' })) return { defer: `its ${port} reads a value that only exists inside a handler` };
+        configCtx.consumes.push(wires[0].key);
+        return expr;
+      }
+      const literal = literalParam(node, port);
+      return { kind: 'literal', value: typeof literal === 'number' || typeof literal === 'boolean' ? literal : fallback };
+    };
+    const maxRunningTasks = configOf('maxRunningTasks', 10);
+    if ('defer' in maxRunningTasks) return refuse(maxRunningTasks.defer);
+    if (maxRunningTasks.kind === 'literal' && !(Number(maxRunningTasks.value) >= 1)) {
+      return refuse(`Max Running Tasks is ${String(maxRunningTasks.value)}, so no task could ever start (the runtime's run-tasks/invalid-concurrency)`);
+    }
+    const stopOnFailure = configOf('stopOnFailure', false);
+    if ('defer' in stopOnFailure) return refuse(stopOnFailure.defer);
+    for (const wire of component.connections.filter((c) => c.fromId === node.id)) {
+      if (!RUN_TASKS_OUTPUTS.includes(wire.fromProperty)) {
+        return refuse(`its ${wire.fromProperty} output is consumed, and this node publishes only Done, Failure, Unchanged, Completed and Aborted`);
+      }
+    }
+    const label = node.authoredLabel ?? 'Run Tasks';
+    const local = mintLocal(runTasksLocals, node, 'RunTasks', '');
+    const inputs: RunTasksPlan['inputs'] = [];
+    const idInputs: string[] = [];
+    for (const port of inputPorts) {
+      if (port.kind === 'signal') continue;
+      if (port.name === 'Id' || port.name === 'id') idInputs.push(port.name);
+      else inputs.push({ port: port.name, field: port.name });
+    }
+    const outputPropByPort = new Map(templatePlan.outputProps.map((o) => [o.port, o.prop]));
+    const onSuccess = outputPropByPort.get(contract.success);
+    const onFailure = outputPropByPort.get(contract.failure);
+    const core: RunTasksPlan = {
+      nodeId: node.id,
+      label,
+      local,
+      templateLegacy: template,
+      contract,
+      items,
+      maxRunningTasks,
+      stopOnFailure,
+      inputs,
+      idInputs,
+      ...(onSuccess !== undefined ? { onSuccess } : {}),
+      ...(onFailure !== undefined ? { onFailure } : {}),
+      listeners: {},
+      comment: `${label} — a Run Tasks node, hosted by runTasks.ts: one ${templatePlan.file.symbol} per item of the list, at most Max Running Tasks at a time; Do runs the list read at the pulse, Abort ends the run once the tasks in flight finish.`
+    };
+    runTasksPlans.set(node.id, core);
+    plan.runTasks.push(core);
+    runTasksItemsCtx.set(node.id, { consumes: [itemsWires[0].key, ...itemsCtx.consumes], collapses: [...itemsCtx.logicNodeIds], subscribes: [...itemsCtx.subscriberIds] });
+    const consumes: string[] = [...configCtx.consumes];
+    const collapses: string[] = [...configCtx.logicNodeIds];
+    const subscribes: string[] = [...configCtx.subscriberIds];
+    for (const port of RUN_TASKS_OUTPUTS as Array<keyof RunTasksPlan['listeners']>) {
+      const wires = component.connections.filter((c) => c.fromId === node.id && c.fromProperty === port);
+      if (wires.length === 0) continue;
+      for (const wireOut of wires) {
+        const target = nodeById.get(wireOut.toId);
+        if (target === undefined || target.type === 'Component Outputs') continue;
+        const sinkKind =
+          target.declaredPorts.find((p) => p.plug === 'input' && p.name === wireOut.toProperty)?.kind ??
+          catalog.portKind(target.type, wireOut.toProperty, 'input');
+        if (sinkKind === 'value') return refuse(`its ${port} output is consumed as a value — a pulse carries nothing to read`);
+      }
+      const chain = doneChainOf(node, port);
+      if ('defer' in chain) return refuse(chain.defer);
+      if (!actionsValidIn(chain.then, { kind: 'render' })) return refuse(`its ${port} chain reads values that only exist inside a handler`);
+      const snapped = snapActionList(chain.then, chainSnapshotFor(`runtasks:${node.id}:${port}`));
+      if (!Array.isArray(snapped)) return refuse(snapped.defer);
+      core.listeners[port] = snapped;
+      consumes.push(...chain.consumes);
+      collapses.push(...chain.collapses);
+      subscribes.push(...chain.subscribes);
+    }
+    const into = `src/${plan.file.dir}/${plan.file.fileBase}.tsx`;
+    for (const key of consumes) consumed.add(key);
+    for (const id of collapses) dispositions[id] = { kind: 'collapsed', into };
+    for (const id of subscribes) boundSubscribers.add(id);
+    return core;
+  };
+
+  const compileRunTasks = (node: NodeIR, port: string): CompiledSink => {
+    const registered = runTasksPlanOf(node);
+    if ('defer' in registered) return registered;
+    if (port === 'abort') {
+      return { action: { kind: 'runtasks-abort', nodeId: node.id, local: registered.local }, consumes: [], collapses: [], subscribes: [] };
+    }
+    const itemsCtx = runTasksItemsCtx.get(node.id) ?? { consumes: [], collapses: [], subscribes: [] };
+    return {
+      action: { kind: 'runtasks-run', nodeId: node.id, local: registered.local, items: registered.items },
+      consumes: itemsCtx.consumes,
+      collapses: itemsCtx.collapses,
+      subscribes: itemsCtx.subscribes
+    };
+  };
+
   const animationPlans = new Map<string, AnimationPlan | { defer: string }>();
   const animateLocals = new Map<string, string>();
   /** An `Animate To Value`, registered on first use and memoized — `statesPlanOf`'s shape, with nothing that can re-enter. */
@@ -10104,6 +10484,7 @@ function planComponent(
     if (node.type === STATES_TYPE && isStatesTrigger(port)) return compileStatesGo(node, port);
     // EXP-011 §52. A Script node's signal inputs, as its own code declared them.
     if (node.type === SCRIPT_TYPE) return compileScriptSignal(node, port);
+    if (node.type === RUN_TASKS_TYPE) return compileRunTasks(node, port);
     if (node.type === NAVIGATE_TO_PATH_TYPE) return compileNavigateToPath(node);
     if (node.type === 'NavigationShowPopup') return compileShowPopup(node);
     if (node.type === 'NavigationClosePopup') return compileClosePopup(node, port);
@@ -10761,6 +11142,11 @@ function planComponent(
           return true;
         // EXP-011 §52. A call on the handle; the node's listeners are validated where they compile.
         case 'script-signal':
+          return true;
+        // EXP-011 §53. The list is read at the pulse, in the handler that pulses; the listeners are validated where they compile.
+        case 'runtasks-run':
+          return exprValidIn(action.items, context, invokedScope);
+        case 'runtasks-abort':
           return true;
       }
     });
@@ -11596,6 +11982,14 @@ function planComponent(
       }
       case 'script-signal':
         return action;
+      // EXP-011 §53. The list read at the pulse sees what the chain wrote before it, as a payload would.
+      case 'runtasks-run': {
+        const items = snapExpr(action.items, snap);
+        if ('defer' in items) return items;
+        return { ...action, items };
+      }
+      case 'runtasks-abort':
+        return action;
       case 'jsfun-run': {
         if ((plan.jsFunctions[action.nodeId]?.inputs ?? []).some((i) => i.expr !== undefined && exprTouchesSnap(i.expr, snap))) {
           return { defer: 'a Function argument reads state written earlier in this chain — not translated in this slice' };
@@ -11724,6 +12118,10 @@ function planComponent(
       // EXP-011 §39. Only the wired verbs compile: an unwired Stop on a timer that starts is
       // not a sink anything reports on, and compiling it would mint nothing useful.
       for (const port of TIMER_TRIGGERS) if (wiredPorts.has(`${node.id}:${port}`)) compiledOf(node, port);
+    } else if (node.type === RUN_TASKS_TYPE) {
+      // EXP-011 §53. Both action ports, when wired; an unfired Run Tasks falls to logic as a Cloud
+      // Function nothing calls does, and the verdict sweep names its dangling chains.
+      for (const port of ['run', 'abort']) if (wiredPorts.has(`${node.id}:${port}`)) compiledOf(node, port);
     }
   }
 
@@ -11871,6 +12269,44 @@ function planComponent(
     }
     return undefined;
   };
+
+  // EXP-011 §53. A task template's start chain — every wire off the start input, as one chain, in the
+  // render context (props, stores and states read there; a text input's live value or a receiver's
+  // payload does not exist on mount). All-or-nothing: a chain that does not translate leaves the
+  // template with no file, and every host repeats the reason.
+  if (plan.task !== undefined) {
+    const task = plan.task;
+    const inputsNode = component.nodes.find(
+      (n) => n.type === 'Component Inputs' && n.declaredPorts.some((p) => p.plug === 'output' && p.name === task.startPort)
+    );
+    const startPort = inputsNode?.declaredPorts.find((p) => p.plug === 'output' && p.name === task.startPort);
+    let taskRefusal: string | undefined;
+    if (inputsNode === undefined || startPort === undefined) {
+      taskRefusal = `no Component Inputs declares its "${task.startPort}" input, so no task would ever start`;
+    } else if (startPort.kind !== 'signal') {
+      taskRefusal = `"${task.startPort}" is declared as ${startPort.type === undefined || startPort.type === '*' ? 'untyped (*)' : startPort.type} rather than signal — set the port type to signal so the export can tell a pulse from a value`;
+    } else {
+      const chain = doneChainOf(inputsNode, task.startPort);
+      if ('defer' in chain) taskRefusal = `its "${task.startPort}" chain did not translate — ${chain.defer}`;
+      else if (chain.then.length === 0) taskRefusal = `its "${task.startPort}" input drives nothing, so a task never reports completion`;
+      else if (!actionsValidIn(chain.then, { kind: 'render' })) taskRefusal = `its "${task.startPort}" chain reads values that only exist inside a handler`;
+      else {
+        const snapped = snapActionList(chain.then, chainSnapshotFor(`task:${task.startPort}`));
+        if (!Array.isArray(snapped)) taskRefusal = `its "${task.startPort}" chain did not translate — ${snapped.defer}`;
+        else {
+          task.actions = snapped;
+          for (const key of chain.consumes) consumed.add(key);
+          for (const id of chain.collapses) dispositions[id] = { kind: 'collapsed', into: inputsNode.id };
+          for (const id of chain.subscribes) boundSubscribers.add(id);
+        }
+      }
+    }
+    if (taskRefusal !== undefined) {
+      plan.taskRefusal = taskRefusal;
+      notes.push(`named as a Run Tasks template, but ${taskRefusal} — the template exports no component`);
+      return bailAsLogicOnly(`no visual root — named as a Run Tasks template, but ${taskRefusal}`);
+    }
+  }
 
   const receiverActions = new Map<string, HandlerAction[]>();
   for (const connection of component.connections) {
@@ -12272,6 +12708,10 @@ function planComponent(
     for (const byPort of Object.values(plan.handlers)) for (const actions of Object.values(byPort)) scanActions(actions);
     for (const actions of Object.values(plan.changeHandlers)) scanActions(actions);
     for (const receiver of plan.receivers) scanActions(receiver.actions);
+    // EXP-011 §53. A Run Tasks' listener chains and a template's start chain attach exactly as a handler's
+    // chains do — a Cloud Function called only from a task's start chain earns its export and its rows here.
+    for (const run of plan.runTasks) for (const chain of Object.values(run.listeners)) if (chain !== undefined) scanActions(chain);
+    if (plan.task !== undefined) scanActions(plan.task.actions);
 
     /**
      * EXP-011 §40. The two producers that attach actions to something other than a rendered
@@ -13801,6 +14241,12 @@ function planComponent(
           // EXP-011 §52. The same: the inputs and listeners are walked off the plan below.
           case 'script-signal':
             break;
+          // EXP-011 §53. The list read at the pulse; the config and listeners are walked off the plan below.
+          case 'runtasks-run':
+            walkExpr(action.items);
+            break;
+          case 'runtasks-abort':
+            break;
           case 'branch':
             walkExpr(action.cond);
             walkActions(action.whenTrue);
@@ -13855,6 +14301,13 @@ function planComponent(
       walkExpr(animation.delay);
       if (animation.arrive !== undefined) walkActions(animation.arrive);
     }
+    // EXP-011 §53. The two config reads, every listener chain, and a template's start chain.
+    for (const run of plan.runTasks) {
+      walkExpr(run.maxRunningTasks);
+      walkExpr(run.stopOnFailure);
+      for (const chain of Object.values(run.listeners)) if (chain !== undefined) walkActions(chain);
+    }
+    if (plan.task !== undefined) walkActions(plan.task.actions);
     // EXP-011 §52. Every fed input and every listener chain.
     for (const script of plan.scripts) {
       for (const input of script.inputs) if (input.expr !== undefined) walkExpr(input.expr);
@@ -14208,6 +14661,10 @@ function planComponent(
             break;
           case 'script-signal':
             break;
+          // EXP-011 §53. Nothing nested on the action; the listeners are filled off the plan below.
+          case 'runtasks-run':
+          case 'runtasks-abort':
+            break;
           case 'id-new': {
             const row = idVars.get(action.nodeId);
             if (row !== undefined && plan.stateVars.includes(row)) action.materialize = row.name;
@@ -14306,6 +14763,21 @@ function planComponent(
     for (const animation of plan.animations) if (animation.arrive !== undefined) fillMaterialize(animation.arrive);
     // EXP-011 §52. A listener chain materializes as a handler's would.
     for (const script of plan.scripts) for (const chain of Object.values(script.listeners)) fillMaterialize(chain);
+    // EXP-011 §53. A request inside a listener chain, or inside a template's start chain, materializes as a handler's would.
+    for (const run of plan.runTasks) for (const chain of Object.values(run.listeners)) if (chain !== undefined) fillMaterialize(chain);
+    if (plan.task !== undefined) fillMaterialize(plan.task.actions);
+  }
+
+  // EXP-011 §53. A Run Tasks nothing fires: named as a Cloud Function nothing calls is, by what hangs off it,
+  // rather than left to the catch-all's "no rule" — there is a rule, and nothing reached it.
+  for (const node of component.nodes) {
+    if (node.type !== RUN_TASKS_TYPE || dispositions[node.id] !== undefined) continue;
+    const dangling = component.connections.find((c) => c.fromId === node.id && RUN_TASKS_OUTPUTS.includes(c.fromProperty));
+    dispositions[node.id] = {
+      kind: 'deferred',
+      to: 'EXP-003',
+      reason: dangling !== undefined ? `its ${dangling.fromProperty} chain hangs off a node nothing fires` : 'nothing fires its Do, so no run could ever start'
+    };
   }
 
   // Whatever analysis has not classified yet is logic: EXP-003's, or unknown-type debris.

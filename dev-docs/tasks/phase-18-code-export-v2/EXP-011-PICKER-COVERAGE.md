@@ -113,7 +113,7 @@ place. The order is by *what a refusal silences*, since §50.2 measured that a r
 |---|---|---|
 | 1 | ✅ `Component Children` | **built s79 (§51)** — was: a wrapper's children vanish from the export — a working component becomes a blank one |
 | 2 | ✅ `Script` | **built s80 (§52)** — was: the escape hatch the MCP reaches for when the picker has no node; ten in one MCP-built project |
-| 3 | `Run Tasks` | *"I use this all the time"* — and everything it fires is refused with it |
+| 3 | ✅ `Run Tasks` | **built s81 (§53)** — was: *"I use this all the time"* — and everything it fires is refused with it |
 | 4 | `On App Error` | an error pathway that is left out is the exact case where exporting is worse than not |
 | 5 | `Create New Array` | *"I use this all the time"* — the anonymous-Id-by-wire mechanism (§7.3) needs a design session first |
 | 6 | `Filter Records` | the search box over a fetched list |
@@ -7043,3 +7043,202 @@ arms 9/9 red, all restored (md5 of the four sources unchanged after each):
 - A `Script` is not an `isPathwayType`, so a refused one produces no cascade verdict even when it
   silences a pathway behind it (the uploader shape: its `Done` chain into a record verb). Whether the
   escape hatch should count as a pathway is a §50.2 question; owner NONE.
+
+## §53 Tier 2.8 row 3 — `Run Tasks`: hosted on both sides, the way the runtime runs it (session 81, 2026-09-03)
+
+The third row of §50's list. Picker **94 → 95 of 127 (74.8%)**, floor 95, `export-ledger:check` OK
+(102 translated). The type id is `RunTasks`; `Run Tasks` is its display name — and §5.7's
+`foreachTemplateHosts` branch matched the *display* name and read a `template` parameter the node
+never carries (`taskTemplate`), so that branch had never fired. Fixed and pinned here (M9).
+
+### §53.1 What the runtime does, and what that decides
+
+- **A component instance per item, a contract by name, no wire.** `runtasks.ts` `run()` (through a
+  serial operation queue): a `Do` while running is `Unchanged`; no template, no items, or Max Running
+  Tasks below 1 is `Failure` (raised on the error channel — `run-tasks/no-template`, `no-items`,
+  `invalid-concurrency`); an empty list is `Done`; otherwise up to Max Running Tasks start.
+  `startTask` → `createTaskComponent`: `modelScope.create(item)` (`Model.get(item.id)`, so the model id
+  is the item's own `id` when it has one), `createNode(template, guid(), {_forEachModel, _forEachNode})`,
+  `Id`/`id` inputs set to the model id when declared, every template input whose `model.data[key] !==
+  undefined` set, `creatorCallbacks.onOutputChanged` watching for a false→true edge on the template's
+  outputs, then the start input pulsed once. A template with neither success nor failure output ends
+  the run as failed (`run-tasks/no-completion-output`). `itemOutputSignalTriggered` matches the success
+  and failure names as strings; `checkDone` is the six terminal paths (aborted → `aborted` then
+  `Done`; all completed → `Done`/`Failure`; stop-on-failure → `aborted` then `Failure`; else the next
+  queued task). `abort()` with nothing running is `Unchanged` and sends no `aborted`. `_endRun` sends
+  the outcome then `Completed` **per token** — the run's `Do` pulses, then the `Abort` pulses it
+  honoured, which are `Done` however the run ended — so an honoured abort reads `aborted, done,
+  completed, done, completed`.
+- **The contract names are parameters** (`runtasks-template-contract.ts`): `taskStartInput` /
+  `taskSuccessOutput` / `taskFailureOutput` / `taskErrorOutput`, `allowEditOnly`, defaults
+  `Do`/`Success`/`Failure`/`Error`, an empty name falling back to the default.
+- **The template is a logic-only component** — `Component Inputs` declaring the start port and the
+  item fields, `Component Outputs` declaring the two signals — and before this row a logic-only
+  component emitted **no file** (`plan.ts`'s early return, "no visual root — logic-only components defer
+  to EXP-003"), a `Component Inputs` signal port was a declared prop nothing consumed
+  (COMPONENT-OUTPUTS-TARGET §6), and a wire off it into a trigger was dropped as "the trigger is not a
+  rendered element event or a receiver".
+- **The corpus**: three instances, all inside `__cloud__` components of def036-dash-drive (cloud
+  functions, not this exporter's surface): a Function's `out-MappedArray` into `items`, a template of
+  record verbs and cloud calls with a nested Run Tasks of its own, and **every contract port typed `*`**
+  (the MCP's spelling), which parse reads as kind `value`. Frontend instances: none — the ranking is
+  Richard's, the corpus the regression net.
+
+So the faithful target hosts **both sides**: the template becomes a React component that renders
+`null` and runs its start-input chain **once, in a mount effect** (that is exactly `startTask`'s pulse,
+right after `createNode`; a ref guards StrictMode's second mount), with its Component Outputs as the
+callback props it already had; the host calls `useRunTasks(label, { maxRunningTasks, stopOnFailure },
+listeners)` from `src/lib/runTasks.ts` (a transcription of the state machine above) and renders one
+template element per task in flight as the last child of its root container — `<Notify key={task.key}
+name={task.item.name} onSuccess={task.succeed} onFailure={task.fail} />`. The contract stays by name, as
+the runtime's is.
+
+### §53.2 What was measured before anything was built (`probe16-reverted.log`, HEAD 7d651798)
+
+Fixture `tests/fixtures/batch-desk`: `Pages/Home` (a String → a pure Function mapping names to
+`{ name }` objects → `items`; two buttons into `Do` and `Abort`; `done`/`failure`/`aborted` into three
+`Set Variable`s of `status`, two Texts on the `status` and `lastSent` Variables) and `Notify` (Component
+Inputs `Do`: signal, `name`: string; Component Outputs `Success`, `Failure`: signal; `Do` → a Cloud
+Function `notify` with `in-name`; `done` → `Success` and a `Set Variable lastSent ← name`; `failure` →
+`Failure`).
+
+- `sendAll` fell to `logic node (RunTasks)`; **one root, eight silenced** (the three setters, their three
+  constants, the Function and its constant — all `causedBy: ['sendAll']`); the two click wires read
+  "no deterministic translation in step 5", the three chain wires "the trigger is not a rendered element
+  event or a receiver". `Notify` skipped as logic-only with four refusals of its own (its Component
+  Inputs a second root; the Cloud Function `pathway: true`, so the pre-flight carried a verdict about it).
+- Emitted: `Home.tsx` with two handler-less buttons and the Function's body preserved as a comment; no
+  `Notify.tsx`, no `functions.ts`.
+
+### §53.3 The build
+
+- **`plan.ts`**: `RUN_TASKS_TYPE`, `RUN_TASKS_OUTPUTS`, `RUN_TASKS_CONTRACT` (+ `OWN_CHAIN_OUTPUTS`);
+  `RunTasksAction` (`runtasks-run` carrying the items expression, read **at the pulse** — the runtime
+  reads the last delivered `items` at `run()` — and `runtasks-abort`); `RunTasksPlan` and `TaskPlan`
+  (`ComponentPlan.runTasks`, `.task`, `.taskRefusal`); **`planProject` orders the plans** — every
+  template before the components that name it, deepest first, a template cycle named and every Run
+  Tasks pointing into it refused; `planComponent` takes `plannedByLegacy` + `templateCycle`; the
+  logic-only early return became `bailAsLogicOnly`, and a component some Run Tasks names statically goes
+  on **without a root** to a file in `components/` (`plan.task` provisional, hosts disagreeing on the
+  start name refused there); the template compile before the trigger pass — `doneChainOf(inputsNode,
+  start)`, all-or-nothing, validated in the render context, snapshotted, collapsed into the Component
+  Inputs node; on refusal the component bails with the reason on `taskRefusal` for every host to repeat;
+  `isTriggerWire` (run/abort), the pre-compile loop, `compileSink` → `compileRunTasks`;
+  `runTasksPlanOf` in `scriptPlanOf`'s shape (memoised, `refuse` unwinds), its checks **in `run()`'s
+  own order** — Do wired, Template wired / missing / not in the project / on a cycle, a wired contract
+  name, the template's root, the start port declared and signal-kind, success/failure declared and
+  signal-kind, the template's chain, the host's root a container, Items wired once and list-typed, the
+  config (literal or a render read; a literal Max below 1 refused), every consumed output one of the
+  five, then the listeners (a pulse into a value port refused before the chain compile, §52.4's rule);
+  the four action switches; the session walker and `fillMaterialize` over the config, the listeners
+  and the start chain; the **attachment sweep** over the same (§53.4.1); a verdict sweep for an unfired
+  Run Tasks; the `foreachTemplateHosts` fix.
+- **`component.ts`**: the gate admits a file without a root when `plan.task` is set; `collectActionUse`,
+  `allActions`, `hookExprSources`, `chainReadsChainLocal`, `actionCode`, `actionExprsOf`; the lib import;
+  the hook line after the Script hooks; the mount effect (`started` ref, `effectBody`, empty deps with
+  the eslint note); `runTasksJsx` (the template through `requireInstance`, props by identity from
+  `task.item` — a field the list is statically known not to carry dropped and named, as the repeater
+  does — `Id`/`id` from `task.id`, the two callbacks) rendered after the root's children beside the popup
+  slots, or as a fragment when the host is itself a rootless template; `return null` for a template
+  with nothing to render.
+- **`src/emit/runTasksLib.ts`** (new): `src/lib/runTasks.ts`, shipped when any component keeps a Run
+  Tasks — `useRunTasks<Item = Record<string, any>>(label, config, on)`: a ref-held instance, a reducer
+  bump on every change of the tasks in flight, listeners and config in refs (read live, as `_internal`
+  is), `run`/`abort`/`tasks` on a stable handle; `TaskInstance` = `key`, `id` (the item's own `id`, else
+  generated — `Model.create`), `index`, `item`, `succeed`, `fail`; unmount kills the run.
+- **`emitApp.ts`**: the lib file. **Ledger** `translated`, floor 95.
+- **Moved rows**: `cascade.test.ts` — the task-desk root's reason is the no-template sentence now
+  (the root, the 1 + 5, the verdict and the README step are unchanged), and `sync` reads "its Call is
+  never fired by a translatable trigger" (its wire is a chain output the registration owns);
+  `array-vocabulary.test.ts` — the §5.7 row spells `RunTasks` + `taskTemplate`, and is the M9 pin.
+
+### §53.4 What building it found
+
+1. 🔴 **The attachment sweep is a second walker, and it did not see the new owners.** The first
+   `Notify.tsx` printed `await callNotifyGuest(…)` with no import and `setnotifyGuestError(…)` with
+   no row: `scanActions` walks handlers, change handlers, receivers, the effects and the States/animate
+   listeners to decide which requests keep their api export and their rows, and a template's start
+   chain — or a Run Tasks' listener chains — was in none of them. §40.2's shape exactly, one owner over.
+   Fixed; the §B row pins `cloudCalls` and the `cloud-error` row on the template plan.
+2. ⚠️ **An honoured abort fires `Done` twice**, not only `Completed` twice — `_endRun` sends the
+   outcome then Completed per token, and the abort token's outcome is `Done`. The prediction said
+   "Completed ×2"; the transcription was right and the spec row moved to what the runtime does.
+3. ⚠️ **Two roots, not one, once the template is skipped.** With the host refused, the template is an
+   ordinary logic-only skip again, and its Component Inputs is a root of its own with three silenced
+   nodes and a pathway verdict (the Cloud Function). Predicted 1 root and no verdict; the reverted probe
+   already showed both. The refused-shape rows assert what the export actually says.
+4. ⚠️ `component.ts` walks `plan.scripts` in neither `allActions` nor `hookExprSources` (found while
+   adding the Run Tasks walks); the fixture's Script inputs are constants, so §52's rows never tripped it.
+   Registered in §53.7, not fixed here.
+5. 🔴 **The editor's `test:ci` webpack typechecks this package's tests.** A peer's run went red on two
+   TS2532/TS18048 lines in the new spec while both editor `tsc` runs read 0 — `tsc -p noodl-editor`
+   excludes a sibling's tests, the test-CI webpack reaches them through `CodeExportModal.tsx` →
+   `nodegx-export/src/index.ts`. A half-written spec in this package reddens the editor gate for everyone.
+
+### §53.5 Graded — `tests/run-tasks.test.ts` (67 rows), the gates, the arms
+
+§A the host plan · §B the template plan (incl. the attachment sweep) · §C the emitted page (the golden
+tasks block, last child) · §D the emitted template (`return null`, the once-guarded mount effect, the
+try/catch, the Error row, the export) · §E **the library under a hook harness** — bounded concurrency,
+keys and ids, Do-while-running, the empty list, the items setter's three cases, Max below 1,
+stop-on-failure, failure without it, abort idle / in flight / while aborting, a late or double report,
+the config read live, unmount, the stable handle · §F twenty refused shapes by mutation, each sentence
+exact, the root and the cascade · §G the pre-flight and the report · §H the ledger · §I three variants as
+real `ts.Program`s (the fixture; `Id`/`id` inputs and a wired Max; the refused shape) · §J the controls.
+
+```
+packages/nodegx-export: tsc 0 · run-tasks.test.ts 67/67 · export-ledger:check OK (102 translated) · picker 95/127, --check exit 0
+arms 10/10 red, all restored (md5 of the three sources unchanged after each):
+  M1 the lib starts every task at once — 4 · M2 stop-on-failure never stops — 2 · M3 `aborted` after the outcome — 2
+  M4 `completed` never fires — 8 · M5 the mount effect never runs the chain — 1 · M6 the host binds no item fields — 1
+  M7 the no-template refusal reads the items sentence — 5 (incl. cascade.test.ts; the first arm, a type-narrowing mutation,
+     was a COMPILER kill: "Tests: 0 total", re-armed at the sentence level) · M8 an abort-only node is hosted — 1
+  M9 `foreachTemplateHosts` reads `template` — 1 · M9b it matches the display name `'Run Tasks'` — 1
+  (an unconditional pre-compile of unfired nodes, M8b, is an EQUIVALENT mutant — the refusal sets no disposition and the
+   verdict sweep names the node either way — dropped, not counted)
+gates (one at a time, behind a wait-for-quiet loop): pkg tsc 0 · jest 65 files (65 on disk) 2066 rows, exit 0 · editor tsc -p noodl-editor --noEmit 0 (11.6 s real — s80 read 14 s; NOT the gate that saw the spec's two type errors, see §53.4.5) · export-ledger:check OK 102 translated · picker 95/127 --check exit 0 · three floor pins moved (animation-pair B18, object-store D6, script §H) and cascade's task-desk list length 7 → 8 (the named refusal's wire note + sync's own verdict note)
+```
+
+### §53.6 The drive
+
+(`run-editor`, `dev:debug`, a copy of batch-desk registered in recents, torn down after — `drive16.sh`, `drive16b.sh`)
+
+- **Picker**: `Run Tasks` searched — the `RunTasks` card carries **no** export-badge dot (`dot: null`); the control search
+  `Sign In With` shows its 14×14 dot, reachable, titled *"Not exportable — until provider sign-in …"*
+  (`drive16-01-picker-runtasks.png`, `drive16-02-picker-control.png`). The ledger is the only list, so the badge left
+  the card by itself.
+- **Pre-flight**: Settings → Project → *Export as React code…* (found by its section this time — the text lookup s80 kept
+  in `settings15.js` returned nothing, the seam `window.__drv.route` must be installed by `patchfs` FIRST) → *16 files —
+  1 page, 1 component, plus the app shell, styles and build config* · *Everything translates. No node, wire or parameter is
+  left out.* · *Choose folder and export…* reachable (`drive16-03-modal.png`). No cascade, no verdict, no rows.
+- **The write, through the real path**: the folder dialog routed through the `FileSystem.instance.chooseDirectory` seam, so
+  `checkTarget` → `writeExport` → the toast ran: *"Exported EXP-011 Batch Desk Drive — 16 files written to …/drive16-out.
+  Everything translated — EXPORT-REPORT.md says how to build and run it"* (`drive16-04-toast.png`). On disk: **16 files,
+  every one byte-identical to `emitApp` over the same copy** (`compare16.ts`: same 16, diff 0) — `src/lib/runTasks.ts`,
+  `src/components/Notify.tsx`, `src/api/functions.ts`, `Home.tsx` with one `useRunTasks` and the tasks block.
+- Not driven: the exported app running in a browser (the cloud function has no backend here — it answers the interpreter's
+  own "No cloud services defined" failure, so a real run would mount three `Notify`s two at a time, each reporting Failure,
+  `aborted` then `failure` under Stop On Failure). The library's behaviour is graded under the hook harness (§E), not in
+  a browser. Owner NONE.
+- ⚠️ The drive ran while a peer's editor `test:ci` was in flight earlier in the session — the first mutant of the arms chain
+  killed their webpack once (§53.4.5); the box was handed back and forth by message after that, and every gate above ran
+  alone.
+
+### §53.7 What this leaves
+
+- **Next, in §50's order: row 4 `On App Error`**, then `Create New Array` (design session first — §7.3's
+  anonymous-Id-by-wire), `Filter Records`, `Repeater Item`, … `Sign In With` stays out.
+- A template's **error value output** (the contract's `taskErrorOutput`) is not read: the runtime reads
+  it off the dying node into `run-tasks/task-failed`; the host has no value channel from the element, so
+  the console report carries the index only. The lifted-value-output rail (CONTROLLED-STATE §4d) is where
+  it would land. Owner NONE.
+- **A contract port typed `*`** (every corpus instance — the MCP writes `*`) is refused with the fix
+  named; the MCP could write `signal` for a Component Inputs/Outputs port that only signal wires touch.
+  Owner NONE (P82/MCP).
+- A Run Tasks whose **host root is not a container** (a Text root) is refused with the popups rule; a
+  fragment root would serve both. Untested row — no fixture has such a host. Owner NONE.
+- `component.ts` does not walk `plan.scripts` in `allActions`/`hookExprSources` (§53.4.4). Owner P18.
+- A `Run Tasks` is not an `isPathwayType` (§52.7's question, one node over): a refused one silences its
+  chains without a verdict of its own; the verdict comes from what it silences. Owner NONE.
+- The nested shape the corpus uses (a Run Tasks inside a template) is planned and rendered as a fragment
+  of tasks; untested beyond the cycle row. Owner NONE.

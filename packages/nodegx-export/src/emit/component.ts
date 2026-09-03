@@ -39,6 +39,7 @@ import { UTIL_HELPER_MAY_BE_UNDEFINED, UTIL_LIB_PATH } from './utilLib';
 import { TIMER_LIB_PATH } from './timerLib';
 import { ANIMATE_LIB_PATH } from './animateLib';
 import { STATES_LIB_PATH } from './statesLib';
+import { RUN_TASKS_LIB_PATH } from './runTasksLib';
 import { SCRIPT_LIB_PATH } from './scriptLib';
 import { SCRIPT_CODE_PREFIX } from '../analyze/script';
 import { ID_HELPERS_BY_FN, ID_LIB_PATH, IdHelper } from './idLib';
@@ -128,6 +129,8 @@ export interface EmittedComponent {
   statesLib: boolean;
   /** EXP-011 §52. Whether this component imports `src/lib/script.ts`. */
   scriptLib: boolean;
+  /** EXP-011 §53. `src/lib/runTasks.ts` is owed when any component keeps a Run Tasks node. */
+  runTasksLib: boolean;
 }
 
 export function emitComponent(
@@ -142,7 +145,8 @@ export function emitComponent(
    */
   kitBindings: Map<string, KitBinding> = new Map()
 ): EmittedComponent | null {
-  if (!plan.file || !plan.rootId) return null;
+  // EXP-011 §53. A Run Tasks template has a file and no root — it renders null and runs its start chain on mount.
+  if (!plan.file || (!plan.rootId && plan.task === undefined)) return null;
   const component = ir.components.find((c) => c.path === plan.path)!;
   const nodeById = new Map(component.nodes.map((n) => [n.id, n]));
   const notes: string[] = [];
@@ -414,6 +418,8 @@ export function emitComponent(
     }
   };
   const collectActionUse = (action: HandlerAction) => {
+    // EXP-011 §53. The list read at the pulse earns whatever its sources earn.
+    if (action.kind === 'runtasks-run') collectExprUse(action.items);
     if (action.kind === 'state-set') {
       referencedStateNames.add(action.name);
       if (action.expr !== undefined) collectExprUse(action.expr);
@@ -603,7 +609,10 @@ export function emitComponent(
     ),
     ...plan.animations.flatMap((a) => a.arrive ?? []),
     // EXP-011 §43. A Record's Id effect is a read chain run from an effect.
-    ...plan.recordEffects.map((e) => e.action)
+    ...plan.recordEffects.map((e) => e.action),
+    // EXP-011 §53. A Run Tasks' listener chains, and a template's start chain (a mount effect), are chains like any other.
+    ...plan.runTasks.flatMap((r) => Object.values(r.listeners).flatMap((chain) => chain ?? [])),
+    ...(plan.task?.actions ?? [])
   ];
   allActions.forEach(collectActionUse);
   /** Nested actions (branch arms, popup done-chains) flattened — the `usesNavigate` sweep. */
@@ -783,6 +792,11 @@ export function emitComponent(
     hookExprSources(animation.delay);
   }
   for (const machine of plan.statesMachines) if (machine.follow !== undefined) hookExprSources(machine.follow);
+  // EXP-011 §53. The two config reads are render reads.
+  for (const run of plan.runTasks) {
+    hookExprSources(run.maxRunningTasks);
+    hookExprSources(run.stopOnFailure);
+  }
   // EXP-011 §43. The Id is the effect's dependency and prints as the render local.
   for (const effect of plan.recordEffects) {
     if (effect.action.kind === 'record-fetch') hookExprSources(effect.action.id);
@@ -1956,6 +1970,11 @@ export function emitComponent(
         // EXP-011 §52. A call on the handle reads nothing.
         case 'script-signal':
           return false;
+        // EXP-011 §53. The list is read at the pulse.
+        case 'runtasks-run':
+          return reads(a.items);
+        case 'runtasks-abort':
+          return false;
         case 'popup-show':
         case 'popup-close':
         case 'jsfun-run':
@@ -2419,6 +2438,11 @@ export function emitComponent(
       /** A Script's signal input (EXP-011 §52) — one call on the handle; the code's function runs after this handler. */
       case 'script-signal':
         return `${memberExpr(`${action.local}.signals`, action.port)}()`;
+      /** A Run Tasks' Do (EXP-011 §53) — the list read at the pulse, as the runtime reads the last delivered `items` at run(). */
+      case 'runtasks-run':
+        return `${action.local}.run(${exprCode(action.items, 'handler')})`;
+      case 'runtasks-abort':
+        return `${action.local}.abort()`;
       case 'jsfun-run': {
         if (action.materialize !== undefined) {
           const def = jsFunByNode[action.nodeId]!;
@@ -3261,6 +3285,11 @@ export function emitComponent(
   if (radioNameLocals.size > 0) reactImports.push('useId');
   // EXP-011 §39. The timer handle and the last value seen both live in refs.
   if (delayRefs.size > 0 || plan.valueChangedEffects.length > 0) reactImports.push('useRef');
+  // EXP-011 §53. A task template's mount effect and its once-guard (StrictMode mounts twice; startTask pulses once).
+  if (plan.task !== undefined) {
+    if (!reactImports.includes('useEffect')) reactImports.push('useEffect');
+    if (!reactImports.includes('useRef')) reactImports.push('useRef');
+  }
   // EXP-011 §51. The slot prop's type.
   if (plan.childSlot !== undefined) reactImports.push('ReactNode');
   if (reactImports.length > 0) externalImports.push(`import { ${reactImports.sort().join(', ')} } from 'react';`);
@@ -3418,6 +3447,11 @@ export function emitComponent(
       const from = `${relRoot}/${script.file.replace(/^src\//, '').replace(/\.ts$/, '')}`;
       internalImports.set(from, `import { ${script.defName} } from '${from}';`);
     }
+  }
+  // EXP-011 §53. The host; the template component's import is earned where its element renders (requireInstance).
+  if (plan.runTasks.length > 0) {
+    const specifier = `${relRoot}/${RUN_TASKS_LIB_PATH.replace(/^src\//, '').replace(/\.ts$/, '')}`;
+    internalImports.set(specifier, `import { useRunTasks } from '${specifier}';`);
   }
   if (usedUtilHelpers.size > 0) {
     const specifier = `${relRoot}/${UTIL_LIB_PATH.replace(/^src\//, '').replace(/\.ts$/, '')}`;
@@ -4182,6 +4216,8 @@ export function emitComponent(
     const blocks = renderChildBlocks(id, childIds, indent + 2, radioCtx);
     // Popup slots render after the root's own children (POPUPS-TARGET §5).
     if (id === plan.rootId && plan.popups.length > 0) blocks.push(...popupJsx(indent + 2));
+    // EXP-011 §53. The tasks in flight, after the root's own children.
+    if (id === plan.rootId && plan.runTasks.length > 0) blocks.push(...runTasksJsx(indent + 2));
     if (role === 'page') {
       const headLines: string[] = [];
       if (plan.head?.title !== undefined) headLines.push(`${pad(indent + 2)}<title>${plan.head.title}</title>`);
@@ -4679,6 +4715,40 @@ export function emitComponent(
    * siblings after the app root, painting above by DOM order — `createPortal(…, document.body)`
    * keeps that true from anywhere in the tree.
    */
+  // EXP-011 §53. One template element per task in flight, after the root's own children (as popups render).
+  // The item's fields feed the template's inputs by name (runtasks.ts: every template input whose
+  // `model.data[key] !== undefined`); a field the list is statically known not to carry is dropped and named.
+  const runTasksJsx = (indent: number): string[][] =>
+    plan.runTasks.map((run) => {
+      const target = requireInstance(run.templateLegacy, `Run Tasks ${run.nodeId}`);
+      if (!target) {
+        return [`${pad(indent)}{/* TODO(export): Run Tasks ${run.nodeId} — its template ${run.templateLegacy} exports no component */}`];
+      }
+      const templatePlan = project.byLegacyPath.get(run.templateLegacy);
+      const idents = templatePlan ? propIdentifiers(templatePlan) : new Map<string, string>();
+      const known = listExprFields(run.items);
+      const attrs = ['key={task.key}'];
+      for (const input of run.inputs) {
+        const attr = idents.get(input.port);
+        if (attr === undefined) continue;
+        if (known !== null && !known.has(input.field)) {
+          notes.push(
+            `${plan.path}: Run Tasks ${run.nodeId} feeds "${input.port}" from field "${input.field}", which the list it runs does not carry — dropped, reported`
+          );
+          continue;
+        }
+        attrs.push(`${attr}={${memberExpr('task.item', input.field)}}`);
+      }
+      for (const idInput of run.idInputs) {
+        const attr = idents.get(idInput);
+        if (attr !== undefined) attrs.push(`${attr}={task.id}`);
+      }
+      if (run.onSuccess !== undefined) attrs.push(`${run.onSuccess}={task.succeed}`);
+      if (run.onFailure !== undefined) attrs.push(`${run.onFailure}={task.fail}`);
+      const lines = element(target.symbol, attrs, null, indent + 2, false);
+      return [`${pad(indent)}{${run.local}.tasks.map((task) => (`, ...lines, `${pad(indent)}))}`];
+    });
+
   const popupJsx = (indent: number): string[][] =>
     plan.popups.map((slot) => {
       const target = requireInstance(slot.targetLegacy, `popup ${slot.slotKey}`);
@@ -4930,7 +5000,13 @@ export function emitComponent(
     return out;
   };
 
-  const jsxLines = render(plan.rootId, 4);
+  // EXP-011 §53. A task template draws nothing: `null`, or a fragment of its own tasks in flight.
+  const jsxLines =
+    plan.rootId !== null
+      ? render(plan.rootId, 4)
+      : plan.runTasks.length > 0
+        ? ['    <>', ...runTasksJsx(6).flat(), '    </>']
+        : ['    null'];
   /**
    * The markers that cannot be siblings, as line comments above the `return`.
    *
@@ -4944,7 +5020,7 @@ export function emitComponent(
    *   would be **silently dropped**, which is precisely the failure this task exists to close:
    *   the report would list the refusal and the grep it recommends would still find nothing.
    */
-  const preReturnMarkers: string[] = [...markerText(plan.rootId)];
+  const preReturnMarkers: string[] = plan.rootId !== null ? [...markerText(plan.rootId)] : [];
   for (const nodeId of deferralsByNode.keys()) {
     if (flushed.has(nodeId)) continue;
     preReturnMarkers.push(...markerText(nodeId));
@@ -5167,6 +5243,33 @@ export function emitComponent(
     if (listenerLines.length === 0) body.push(`  const ${script.local} = useScript(${script.defName}, ${inputsArg});`);
     else body.push(`  const ${script.local} = useScript(${script.defName}, ${inputsArg}, {`, listenerLines.join(',\n'), '  });');
   }
+  // EXP-011 §53. The Run Tasks hooks — after the render locals a config read may use, before the effects.
+  // The listeners print inline so each closes over this render; the config is read live by the hook.
+  for (const run of plan.runTasks) {
+    const config = `{ maxRunningTasks: ${exprCode(run.maxRunningTasks, 'render')}, stopOnFailure: ${exprCode(run.stopOnFailure, 'render')} }`;
+    const listenerLines = (['done', 'failure', 'unchanged', 'completed', 'aborted'] as const)
+      .filter((port) => run.listeners[port] !== undefined)
+      .map((port) => `    ${port}: ${handlerArrow(run.listeners[port]!, '()', 4)}`);
+    body.push(`  // ${run.comment}`);
+    if (listenerLines.length === 0) body.push(`  const ${run.local} = useRunTasks(${tsLiteral(run.label)}, ${config});`);
+    else body.push(`  const ${run.local} = useRunTasks(${tsLiteral(run.label)}, ${config}, {`, listenerLines.join(',\n'), '  });');
+  }
+  // EXP-011 §53. A task template's start chain: once, on mount — startTask pulses the start input right after
+  // createNode, and never again for that task. The ref guards StrictMode's second mount in development.
+  if (plan.task !== undefined) {
+    const started = dedupeLocal('started');
+    body.push(
+      `  // ${plan.task.comment}`,
+      `  const ${started} = useRef(false);`,
+      '  useEffect(() => {',
+      `    if (${started}.current) return;`,
+      `    ${started}.current = true;`,
+      ...effectBody(plan.task.actions, 4),
+      "    // eslint-disable-next-line react-hooks/exhaustive-deps -- once, like the task's own start pulse",
+      '  }, []);',
+      ''
+    );
+  }
   if (
     usesNavigate ||
     usesPageParams ||
@@ -5364,6 +5467,11 @@ export function emitComponent(
       // EXP-011 §52. A call on the handle reads nothing; the inputs and listeners are walked off the plan.
       case 'script-signal':
         return [];
+      // EXP-011 §53. The list; the config and listeners are walked off the plan.
+      case 'runtasks-run':
+        return [a.items];
+      case 'runtasks-abort':
+        return [];
       case 'jsfun-run':
         return [...jsArgExprs(a.nodeId), ...a.then.flatMap(actionExprsOf)];
       case 'http-call':
@@ -5472,7 +5580,8 @@ export function emitComponent(
     for (const action of expandActions(receiver.actions)) body.push(`    ${actionCode(action)};`);
     body.push('  });', '');
   }
-  body.push(...preReturnComment, '  return (', ...jsxLines, '  );', '}');
+  if (jsxLines.length === 1 && jsxLines[0] === '    null') body.push(...preReturnComment, '  return null;', '}');
+  else body.push(...preReturnComment, '  return (', ...jsxLines, '  );', '}');
 
   const tsx = GENERATED_TS + importLines.join('\n') + '\n\n' + body.join('\n') + '\n';
 
@@ -5526,7 +5635,9 @@ export function emitComponent(
     animateLib: plan.animations.length > 0 || plan.statesMachines.length > 0,
     statesLib: plan.statesMachines.length > 0,
     // EXP-011 §52.
-    scriptLib: plan.scripts.length > 0
+    scriptLib: plan.scripts.length > 0,
+    // EXP-011 §53.
+    runTasksLib: plan.runTasks.length > 0
   };
 }
 
