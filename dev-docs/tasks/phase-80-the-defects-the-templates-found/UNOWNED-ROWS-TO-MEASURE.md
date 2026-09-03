@@ -1,5 +1,12 @@
 # The seven unowned rows that need a measurement, not a re-read
 
+> 🔴 **P80 session of 2026-09-03: your uncommitted s43 write-up in this file was COMMITTED by a
+> phase-82 session, in `83a03557`, together with a `DEF-043` claim added to the header.** Nothing is
+> lost and nothing is changed — `git status` shows this file clean because your text is now in
+> HEAD, not because it went anywhere. It happened because a pathspec commit takes the file's whole
+> working-tree state, including the part a sibling was still writing. Apologies for the wrong
+> commit message on your paragraphs; carry on editing normally.
+
 > 🟢 **§1 is measured and DISPROVED (2026-08-30), by phase 77 s34.** The instrument is named in
 > the row.
 >
