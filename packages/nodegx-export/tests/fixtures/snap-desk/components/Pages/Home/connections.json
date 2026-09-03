@@ -1,0 +1,181 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "f2b8d1c3-6a4e-4f9b-8d2c-000000000097",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "draftInput",
+      "fromProperty": "onTextChanged",
+      "toId": "draftVar",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "draftVar",
+      "fromProperty": "value",
+      "toId": "makeNote",
+      "toProperty": "prop-text"
+    },
+    {
+      "fromId": "addBtn",
+      "fromProperty": "onClick",
+      "toId": "makeNote",
+      "toProperty": "new"
+    },
+    {
+      "fromId": "makeNote",
+      "fromProperty": "id",
+      "toId": "insertNote",
+      "toProperty": "modifyId"
+    },
+    {
+      "fromId": "makeNote",
+      "fromProperty": "done",
+      "toId": "insertNote",
+      "toProperty": "add"
+    },
+    {
+      "fromId": "notesArray",
+      "fromProperty": "items",
+      "toId": "notesList",
+      "toProperty": "items"
+    },
+    {
+      "fromId": "notesList",
+      "fromProperty": "itemActionItemId",
+      "toId": "removeNote",
+      "toProperty": "modifyId"
+    },
+    {
+      "fromId": "notesList",
+      "fromProperty": "itemOutputSignal-removed",
+      "toId": "removeNote",
+      "toProperty": "remove"
+    },
+    {
+      "fromId": "snapBtn",
+      "fromProperty": "onClick",
+      "toId": "mint",
+      "toProperty": "new"
+    },
+    {
+      "fromId": "notesArray",
+      "fromProperty": "items",
+      "toId": "mint",
+      "toProperty": "items"
+    },
+    {
+      "fromId": "mint",
+      "fromProperty": "done",
+      "toId": "setTaken",
+      "toProperty": "do"
+    },
+    {
+      "fromId": "takenStr",
+      "fromProperty": "savedValue",
+      "toId": "setTaken",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "mint",
+      "fromProperty": "id",
+      "toId": "snapArray",
+      "toProperty": "collectionId"
+    },
+    {
+      "fromId": "snapArray",
+      "fromProperty": "items",
+      "toId": "snapList",
+      "toProperty": "items"
+    },
+    {
+      "fromId": "draftVar",
+      "fromProperty": "value",
+      "toId": "makeSnapNote",
+      "toProperty": "prop-text"
+    },
+    {
+      "fromId": "addSnapBtn",
+      "fromProperty": "onClick",
+      "toId": "makeSnapNote",
+      "toProperty": "new"
+    },
+    {
+      "fromId": "makeSnapNote",
+      "fromProperty": "id",
+      "toId": "insertSnap",
+      "toProperty": "modifyId"
+    },
+    {
+      "fromId": "makeSnapNote",
+      "fromProperty": "done",
+      "toId": "insertSnap",
+      "toProperty": "add"
+    },
+    {
+      "fromId": "mint",
+      "fromProperty": "id",
+      "toId": "insertSnap",
+      "toProperty": "collectionId"
+    },
+    {
+      "fromId": "clearBtn",
+      "fromProperty": "onClick",
+      "toId": "clearSnap",
+      "toProperty": "clear"
+    },
+    {
+      "fromId": "mint",
+      "fromProperty": "id",
+      "toId": "clearSnap",
+      "toProperty": "collectionId"
+    },
+    {
+      "fromId": "clearSnap",
+      "fromProperty": "done",
+      "toId": "setCleared",
+      "toProperty": "do"
+    },
+    {
+      "fromId": "clearedStr",
+      "fromProperty": "savedValue",
+      "toId": "setCleared",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "clearSnap",
+      "fromProperty": "failure",
+      "toId": "setNoSnap",
+      "toProperty": "do"
+    },
+    {
+      "fromId": "noSnapStr",
+      "fromProperty": "savedValue",
+      "toId": "setNoSnap",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "snapList",
+      "fromProperty": "itemActionItemId",
+      "toId": "removeSnap",
+      "toProperty": "modifyId"
+    },
+    {
+      "fromId": "snapList",
+      "fromProperty": "itemOutputSignal-removed",
+      "toId": "removeSnap",
+      "toProperty": "remove"
+    },
+    {
+      "fromId": "mint",
+      "fromProperty": "id",
+      "toId": "removeSnap",
+      "toProperty": "collectionId"
+    },
+    {
+      "fromId": "statusVar",
+      "fromProperty": "value",
+      "toId": "statusText",
+      "toProperty": "text"
+    }
+  ]
+}

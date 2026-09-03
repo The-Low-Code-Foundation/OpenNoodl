@@ -76,8 +76,11 @@ import {
 import {
   AppStateRegistry,
   ChannelPlan,
+  arrayTargetOf,
+  ArrayTarget,
   collectAppState,
   collectionNameOf,
+  COLLECTION_NEW_TYPE,
   CollectionPlan,
   GLOBAL_STORE,
   GLOBAL_STORE_SET,
@@ -215,6 +218,8 @@ const EXTERNAL_LINK_TYPE = 'net.noodl.externallink';
 
 /** `Unique Id` (EXP-011 §37). Ten characters of `Math.random()`, and it cannot fail. */
 const UNIQUE_ID_TYPE = 'Unique Id';
+/** EXP-011 §55. The nodes whose `collectionId` port a `Create New Array`'s `id` may feed. */
+const ARRAY_ID_CONSUMERS = new Set(['Collection2', 'CollectionInsert', 'CollectionRemove', 'CollectionClear']);
 
 /** `UUID` (EXP-011 §37). A version-4 UUID from the platform CSPRNG, and it can. */
 const UUID_TYPE = 'net.noodl.UUID';
@@ -446,6 +451,8 @@ const OWN_CHAIN_OUTPUTS: Record<string, readonly string[]> = {
   [HTTP_TYPE]: ['done', 'failure', 'success', 'canceled', 'unchanged', 'completed'],
   [NOW_TYPE]: ['done'],
   [UNIQUE_ID_TYPE]: ['done', 'completed'],
+  // EXP-011 §55. The mint's one outcome; `completed` is refused by its compile, on Unique Id's sentence.
+  [COLLECTION_NEW_TYPE]: ['done', 'completed'],
   [UUID_TYPE]: ['done', 'failure', 'completed'],
   [CLOUD_FUNCTION_TYPE]: ['done', 'failure', 'completed'],
   [RECORD_TYPE]: ['done', 'failure', 'completed'],
@@ -936,6 +943,14 @@ export type ValueExpr =
    */
   | { kind: 'collection-get'; collectionName: string }
   /**
+   * EXP-011 §55. A `Create New Array`'s array, read through an `Array` node bound to it **by wire** — the
+   * handle in the minting component's state row. In render it is the `useCollection` hook local over
+   * `<row> ?? noArray`; in a handler `(<row>?.peek() ?? [])`; inside the mint's own Done chain the
+   * chain-local (`viaLocal`) — `setX` does not change `x` in that closure, and the chain must see the array
+   * it just made (the id nodes' Done-arm rule, §37). Type `any[]`, exactly as `collection-get` answers.
+   */
+  | { kind: 'minted-array-get'; nodeId: string; viaLocal?: string }
+  /**
    * `Array Map` over a list (EXP-011 Tier 1.1) — `mapcollectionnode.ts`'s `map({…})` with every
    * mapping a **property name**, which is `m.set(key, model.get(mapping))` in the runtime and
    * `{ key: row.mapping }` here.
@@ -1382,7 +1397,7 @@ export type HandlerAction =
    * object bound) is unreachable, because `Model.get` creates the object on read.
    */
   | { kind: 'object-set'; storeName: string; entries: Array<{ key: string; expr: ValueExpr }>; then: HandlerAction[] }
-  | { kind: 'collection-add'; collectionName: string; entries: Array<{ key: string; expr: ValueExpr }> }
+  | { kind: 'collection-add'; collectionName: string; entries: Array<{ key: string; expr: ValueExpr }>; minted?: MintedTarget }
   /**
    * `Clear Array` (EXP-011 Tier 1.1) — `notes.clear()`, plus the two chains the runtime's own
    * outcome fork owes.
@@ -1394,7 +1409,7 @@ export type HandlerAction =
    * than merely close: `Collection.clear()` is itself `if (length === 0) return`, so skipping
    * the call on the empty arm is the same no-op the guard would have made.
    */
-  | { kind: 'collection-clear'; collectionName: string; then: HandlerAction[]; unchangedThen: HandlerAction[] }
+  | { kind: 'collection-clear'; collectionName: string; then: HandlerAction[]; unchangedThen: HandlerAction[]; minted?: MintedTarget }
   /**
    * `Remove Object From Array` (EXP-011 §30) — `notes.remove(item)`, inside the row callback of
    * the repeater named by {@link repeaterId}.
@@ -1409,7 +1424,7 @@ export type HandlerAction =
    * There is no `unchangedThen` and no failure arm because in this shape neither can fire, and
    * the compile proves it rather than assuming it: see `compileCollectionRemove`.
    */
-  | { kind: 'collection-remove'; collectionName: string; repeaterId: string; then: HandlerAction[] }
+  | { kind: 'collection-remove'; collectionName: string; repeaterId: string; then: HandlerAction[]; minted?: MintedTarget }
   /** A Condition in a handler chain: `if (cond) whenTrue; else whenFalse;` (LOGIC-TARGET §3). */
   | { kind: 'branch'; cond: ValueExpr; whenTrue: HandlerAction[]; whenFalse: HandlerAction[] }
   /** Fires the component's own signal output: `onWaved?.()` (COMPONENT-OUTPUTS-TARGET §4). */
@@ -1685,6 +1700,7 @@ export type HandlerAction =
       then: HandlerAction[];
     }
   | IdNewAction
+  | ArrayNewAction
   | LogAction
   | DelayAction
   | StatesGoAction
@@ -1774,6 +1790,53 @@ export type DelayAction = {
  * never at compile time — a render read of `Id` resolves passes later, so asking "does anything
  * read this" here answers *no* for every render read there is (§8.3's allocation-order rule).
  */
+/**
+ * EXP-011 §55. A mutator's Array Id fed by a `Create New Array`'s `id` — the handle, never a string.
+ *
+ * `stateName` is the minting component's row; `viaLocal` is set when the mutator sits inside the mint's own
+ * Done chain (the chain-local is the array just made). Outside that chain the handle can be `null` — no Do
+ * has fired — which is the runtime's `<prefix>/no-array` Failure: the emitter prints the guard, the raise on
+ * the error channel (§54) with the node's own message, and `failThen`. `Remove` never guards: its row exists
+ * only because the handle did (§30's gate 3, restated over the handle).
+ */
+export type MintedTarget = {
+  /** The `Create New Array` node. */
+  nodeId: string;
+  stateName: string;
+  viaLocal?: string;
+  /** The mutator node — the raise's provenance. */
+  sinkId: string;
+  action: 'insert' | 'clear' | 'remove';
+  failThen: HandlerAction[];
+};
+
+/**
+ * EXP-011 §55. `Create New Array`'s Do: `const <local> = collection<T>([...<source>]); set<Row>(<local>);`
+ * then the Done chain. `source` absent is the empty literal (`items` never received). Every Do mints another
+ * array, exactly as `Collection.get()` with no name does.
+ */
+export type ArrayNewAction = {
+  kind: 'array-new';
+  nodeId: string;
+  local: string;
+  stateName: string;
+  rowType: string;
+  source?: ValueExpr;
+  /** Whether `source` is statically a list; an untyped source is copied when it is an array and empty otherwise. */
+  sourceIsList?: boolean;
+  then: HandlerAction[];
+};
+
+/** EXP-011 §55. One `Create New Array`'s handle row, and the row type the emitter spells it with. */
+export interface MintedArrayPlan {
+  nodeId: string;
+  stateName: string;
+  /** `any`, or a named array's interface when the snapshot source is that array (or a filter over it) and nothing inserts. */
+  rowType: string;
+  /** The named array whose interface `rowType` names, for the import. */
+  rowCollection?: string;
+}
+
 export type IdNewAction = {
   kind: 'id-new';
   nodeId: string;
@@ -1929,6 +1992,7 @@ export interface StateVarPlan {
     | 'now'
     /** EXP-011 §37 — the id a `Unique Id` or a `UUID` holds. */
     | 'id'
+    | 'array'
     /** EXP-011 §37 — a `UUID`'s Error. `Unique Id` has no Failure port and never allocates one. */
     | 'id-error';
   /** The provenance comment above the row. */
@@ -2657,6 +2721,8 @@ export interface ComponentPlan {
   taskRefusal?: string;
   /** EXP-011 §54. The On App Error boundaries hosted here, registration order. */
   appErrors: AppErrorPlan[];
+  /** EXP-011 §55. The `Create New Array` handles this component holds, allocation order. */
+  mintedArrays: MintedArrayPlan[];
   /**
    * EXP-011 §54. Set when this is the router shell kept as a file for the logic beside its Router — a
    * null-rendering component the scaffold's `App.tsx` renders inside the router, for the app's life. The
@@ -2966,6 +3032,7 @@ function planComponent(
     scripts: [],
     runTasks: [],
     appErrors: [],
+    mintedArrays: [],
     liftedOutputProps: [],
     instanceLifted: {},
     pendingLifted: [],
@@ -5279,6 +5346,92 @@ function planComponent(
    */
   const idChainScope = new Map<string, 'done' | 'failure'>();
 
+  // ---- EXP-011 §55: Create New Array — the handle row, the chain-local, the array target ----------
+  /** Mints whose Done chain is being compiled — a read of the handle inside it is the chain-local. */
+  const mintChainScope = new Set<string>();
+  const mintLocals = new Map<string, string>();
+  const mintLocalOf = (node: NodeIR): string => mintLocal(mintLocals, node, 'NewArray', 'New');
+  /**
+   * The row type: a named array's interface when the snapshot source is that array (or a filter over it)
+   * and nothing inserts into the minted array; otherwise `any`. An insert chain's keys have no static home
+   * in a component-local array (the registry types keys per named module), so a minted array anything
+   * writes is `Collection<any>` — the emitted app typechecks either way.
+   */
+  const mintRowTypeOf = (node: NodeIR): { tsType: string; collectionName?: string } => {
+    const inserted = component.nodes.some((n) => {
+      if (n.type !== 'CollectionInsert') return false;
+      const target = arrayTargetOf(n, component);
+      return !('defer' in target) && target.kind === 'minted' && target.nodeId === node.id;
+    });
+    if (inserted) return { tsType: 'any' };
+    const feeds = component.connections.filter((c) => c.toId === node.id && c.toProperty === 'items');
+    if (feeds.length !== 1) return { tsType: 'any' };
+    const source = resolveExpr(nodeById.get(feeds[0].fromId), feeds[0].fromProperty, newCtx());
+    const namedOf = (e: ValueExpr | null): string | undefined =>
+      e === null ? undefined : e.kind === 'collection-get' ? e.collectionName : e.kind === 'list-filter' ? namedOf(e.source) : undefined;
+    const name = namedOf(source);
+    const collectionPlan = name === undefined ? undefined : registry.collections.get(name);
+    return collectionPlan === undefined ? { tsType: 'any' } : { tsType: collectionPlan.interfaceName, collectionName: name };
+  };
+  const mintVars = new Map<string, StateVarPlan>();
+  /** The handle row — `null` until the first Do, as the node's `id` is `undefined` until then. */
+  const mintStateOf = (node: NodeIR): StateVarPlan => {
+    let stateVar = mintVars.get(node.id);
+    if (stateVar === undefined) {
+      const row = mintRowTypeOf(node);
+      stateVar = allocStateVar(
+        node.authoredLabel,
+        'newArray',
+        `Collection<${row.tsType}> | null`,
+        null,
+        node.id,
+        'array',
+        `The array ${node.authoredLabel ? `"${node.authoredLabel}"` : 'Create New Array'} minted: null until its Do fires, as the node's Id is empty until then; every Do mints another.`
+      );
+      stateVar.bootCode = 'null';
+      mintVars.set(node.id, stateVar);
+      plan.mintedArrays.push({ nodeId: node.id, stateName: stateVar.name, rowType: row.tsType, ...(row.collectionName !== undefined ? { rowCollection: row.collectionName } : {}) });
+    }
+    return stateVar;
+  };
+  /**
+   * The array a node's Array Id names, with the named model's module check. A minted target needs no
+   * "attached" check: the row boots `null` and stays `null` while the mint never fires, which is exactly the
+   * interpreter's unbound `Array` — empty reads, and a mutator's `no-array` Failure.
+   */
+  const arrayTargetIn = (node: NodeIR): ArrayTarget | { defer: string } => {
+    const target = arrayTargetOf(node, component);
+    if ('defer' in target) return target;
+    if (target.kind === 'named' && !registry.collections.has(target.collectionName)) {
+      return { defer: `no emitted module names the array "${target.collectionName}"` };
+    }
+    return target;
+  };
+  const mintedTargetFor = (target: ArrayTarget & { kind: 'minted' }, sinkId: string, action: MintedTarget['action'], failThen: HandlerAction[]): MintedTarget => {
+    const mint = nodeById.get(target.nodeId)!;
+    return {
+      nodeId: target.nodeId,
+      stateName: mintStateOf(mint).name,
+      ...(mintChainScope.has(target.nodeId) ? { viaLocal: mintLocalOf(mint) } : {}),
+      sinkId,
+      action,
+      failThen
+    };
+  };
+  /**
+   * A mutator bound to a mint and compiled inside the mint's own Done chain spells the array as the chain-local;
+   * the same node fired from anywhere else would need the row. `compiledOf` caches one action per node and port,
+   * so a node with both triggers cannot spell both — refused by name rather than emitted wrong for one of them.
+   */
+  const mintScopeConflict = (sink: NodeIR, port: string, target: ArrayTarget): string | undefined => {
+    if (target.kind !== 'minted' || !mintChainScope.has(target.nodeId)) return undefined;
+    const triggers = component.connections.filter((c) => c.toId === sink.id && c.toProperty === port);
+    if (triggers.length <= 1) return undefined;
+    return `its Do is fired both from the Create New Array's Done and from elsewhere — inside that chain the array is the one just made, outside it the handle, and one node cannot spell both; give it one trigger`;
+  };
+  const sameArrayTarget = (a: ArrayTarget, b: ArrayTarget): boolean =>
+    a.kind === 'named' ? b.kind === 'named' && a.collectionName === b.collectionName : b.kind === 'minted' && a.nodeId === b.nodeId;
+
   /** Id nodes whose `New` attached to a handler. `attachedNowNodes`'s twin, and the same rule. */
   const attachedIdNodes = new Set<string>();
 
@@ -5755,17 +5908,21 @@ function planComponent(
    * not translate, and still says so.
    */
   const collectionReadEligible = (node: NodeIR): true | string => {
-    if (component.connections.some((c) => c.toId === node.id)) {
+    // EXP-011 §55. The Array Id wire itself is the binding, not a seeding or a fetch.
+    if (component.connections.some((c) => c.toId === node.id && c.toProperty !== 'collectionId')) {
       return 'the array node has wired inputs (seeding or fetch) — not translated in this slice';
     }
+    /**
+     * EXP-011 §55.2 measured the old predicate silencing a NAMED list: the array also fed a `Create New
+     * Array`'s Items, and that consumer read as "drives logic this slice does not translate" — so the named
+     * list, its insert target and its Remove all fell with the one untranslated node. An `items` wire into
+     * anything that reads a list through `resolveExpr` is a read, not a stray: the two transforms, a
+     * repeater, a mint's snapshot source, a Run Tasks' items.
+     */
+    const listReader = (type: string | undefined): boolean =>
+      type === 'For Each' || LIST_PRODUCERS.has(type ?? '') || type === COLLECTION_NEW_TYPE || type === RUN_TASKS_TYPE;
     const stray = component.connections.find(
-      (c) =>
-        c.fromId === node.id &&
-        !(
-          c.fromProperty === 'items' &&
-          c.toProperty === 'items' &&
-          (nodeById.get(c.toId)?.type === 'For Each' || LIST_PRODUCERS.has(nodeById.get(c.toId)?.type ?? ''))
-        )
+      (c) => c.fromId === node.id && !(c.fromProperty === 'items' && c.toProperty === 'items' && listReader(nodeById.get(c.toId)?.type))
     );
     if (stray) return `its ${stray.fromProperty} output drives logic this slice does not translate`;
     return true;
@@ -5787,13 +5944,9 @@ function planComponent(
     ctx.visited.add(node.id);
 
     if (node.type === 'Collection2') {
-      const collectionName = collectionNameOf(node, wiredPorts);
-      if (collectionName === undefined) {
-        ctx.defer = 'its Array Id is not a literal name — a runtime-addressed array has no emitted module';
-        return null;
-      }
-      if (!registry.collections.has(collectionName)) {
-        ctx.defer = `no emitted module names the array "${collectionName}"`;
+      const target = arrayTargetIn(node);
+      if ('defer' in target) {
+        ctx.defer = target.defer;
         return null;
       }
       const eligible = collectionReadEligible(node);
@@ -5801,8 +5954,26 @@ function planComponent(
         ctx.defer = eligible;
         return null;
       }
+      if (target.kind === 'minted') {
+        // EXP-011 §55. The runtime rebinds on every new id through `shouldRunOnValueChanged('collectionId', …)`;
+        // with the checkbox off it keeps the previous array until a Fetch, which this slice does not translate.
+        if (literalParam(node, 'runOnChange-collectionId') === false) {
+          ctx.defer = "its Array Id's Run On Value Change is off — it would keep the previous array until a Fetch, which this slice does not translate";
+          return null;
+        }
+        const mint = nodeById.get(target.nodeId)!;
+        // The row exists because something reads it — allocated here, before the read is spelled.
+        mintStateOf(mint);
+        ctx.consumes.push(target.wireKey);
+        ctx.logicNodeIds.push(node.id);
+        return {
+          kind: 'minted-array-get',
+          nodeId: target.nodeId,
+          ...(mintChainScope.has(target.nodeId) ? { viaLocal: mintLocalOf(mint) } : {})
+        };
+      }
       ctx.logicNodeIds.push(node.id);
-      return { kind: 'collection-get', collectionName };
+      return { kind: 'collection-get', collectionName: target.collectionName };
     }
 
     // Both transforms take their source from a single `items` wire. Two wires is last-writer-wins
@@ -7176,6 +7347,7 @@ function planComponent(
       // from module load, and both transforms return a fresh array on every run
       // (`Collection.create(...)` in the runtime, `.map`/`.filter` here).
       case 'collection-get':
+      case 'minted-array-get':
       case 'list-map':
       case 'list-filter':
       case 'input-text':
@@ -7499,6 +7671,7 @@ function planComponent(
        * prove the row carries, which is the §10 ruling in reverse.
        */
       case 'collection-get':
+      case 'minted-array-get':
       case 'list-map':
       case 'list-filter':
         return 'any[]';
@@ -7521,6 +7694,8 @@ function planComponent(
     CollectionClear: 'clear',
     // EXP-011 §30. The port is `remove`; its display name is "Do", like every mutator here.
     CollectionRemove: 'remove',
+    // EXP-011 §55. `Create New Array`'s Do — the port is `new`.
+    [COLLECTION_NEW_TYPE]: 'new',
     // EXP-011 Tier 1.2. `cancel` is the node's second action port and defers the node (§8).
     [HTTP_TYPE]: 'fetch',
     // EXP-011 §41. `Cloud Function`'s only action port.
@@ -8507,23 +8682,22 @@ function planComponent(
    * page at all yet ("which row fired is not statically expressible", the relay gate below).
    */
   const compileCollectionClear = (node: NodeIR): CompiledSink => {
-    const collectionName = collectionNameOf(node, wiredPorts);
-    if (collectionName === undefined) {
-      return {
-        defer: 'its Array Id is not a literal name — a runtime-addressed array has no emitted module'
-      };
-    }
-    if (!registry.collections.has(collectionName)) {
-      return { defer: `no emitted module names the array "${collectionName}"` };
-    }
+    const target = arrayTargetIn(node);
+    if ('defer' in target) return { defer: target.defer };
+    const conflict = mintScopeConflict(node, 'clear', target);
+    if (conflict !== undefined) return { defer: conflict };
+    const collectionName = target.kind === 'named' ? target.collectionName : '';
 
-    const consumes: string[] = [];
+    const consumes: string[] = target.kind === 'minted' ? [target.wireKey] : [];
     for (const wire of component.connections.filter((c) => c.fromId === node.id)) {
       if (wire.fromProperty === 'completed') {
         return {
           defer: 'its Completed output is consumed — this slice translates the Done and Unchanged chains only'
         };
       }
+      // EXP-011 §55. Bound by wire, the array can be unbound — no Do has fired — so the Failure arm is LIVE
+      // and compiles below, where the named model's is dead and dropped with the note.
+      if (wire.fromProperty === 'failure' && target.kind === 'minted') continue;
       /**
        * 🔴 Dropped, not deferred, and the difference is a measured fact about the runtime.
        *
@@ -8547,17 +8721,20 @@ function planComponent(
     if ('defer' in done) return { defer: done.defer };
     const unchanged = doneChainOf(node, 'unchanged');
     if ('defer' in unchanged) return { defer: unchanged.defer };
+    const fail = target.kind === 'minted' ? doneChainOf(node, 'failure') : { then: [], consumes: [], collapses: [], subscribes: [] };
+    if ('defer' in fail) return { defer: fail.defer };
 
     return {
       action: {
         kind: 'collection-clear',
         collectionName,
         then: done.then,
-        unchangedThen: unchanged.then
+        unchangedThen: unchanged.then,
+        ...(target.kind === 'minted' ? { minted: mintedTargetFor(target, node.id, 'clear', fail.then) } : {})
       },
-      consumes: [...consumes, ...done.consumes, ...unchanged.consumes],
-      collapses: [...done.collapses, ...unchanged.collapses],
-      subscribes: [...done.subscribes, ...unchanged.subscribes]
+      consumes: [...consumes, ...done.consumes, ...unchanged.consumes, ...fail.consumes],
+      collapses: [...done.collapses, ...unchanged.collapses, ...fail.collapses],
+      subscribes: [...done.subscribes, ...unchanged.subscribes, ...fail.subscribes]
     };
   };
 
@@ -8571,7 +8748,7 @@ function planComponent(
    * purpose: what matters is that the two agree, and the only way to be sure of that is to ask
    * the same three questions of the same wire.
    */
-  const repeaterCollectionFeed = (repeaterId: string): string | undefined => {
+  const repeaterCollectionFeed = (repeaterId: string): ArrayTarget | undefined => {
     const wire = component.connections.find(
       (c) => c.toId === repeaterId && c.toProperty === 'items' && c.fromProperty === 'items'
     );
@@ -8579,7 +8756,9 @@ function planComponent(
     const source = nodeById.get(wire.fromId);
     if (source === undefined || source.type !== 'Collection2') return undefined;
     if (collectionReadEligible(source) !== true) return undefined;
-    return collectionNameOf(source, wiredPorts);
+    // EXP-011 §55. Named or minted — the same three questions, now answered as a target.
+    const target = arrayTargetIn(source);
+    return 'defer' in target ? undefined : target;
   };
 
   /**
@@ -8625,13 +8804,12 @@ function planComponent(
    * fire reaches it. Recorded rather than papered over.
    */
   const compileCollectionRemove = (node: NodeIR): CompiledSink => {
-    const collectionName = collectionNameOf(node, wiredPorts);
-    if (collectionName === undefined) {
-      return { defer: 'its Array Id is not a literal name — a runtime-addressed array has no emitted module' };
-    }
-    if (!registry.collections.has(collectionName)) {
-      return { defer: `no emitted module names the array "${collectionName}"` };
-    }
+    const target = arrayTargetIn(node);
+    if ('defer' in target) return { defer: target.defer };
+    const conflict = mintScopeConflict(node, 'remove', target);
+    if (conflict !== undefined) return { defer: conflict };
+    const collectionName = target.kind === 'named' ? target.collectionName : '';
+    const describe = (t: ArrayTarget): string => (t.kind === 'named' ? `"${t.collectionName}"` : `the array "${nodeById.get(t.nodeId)?.authoredLabel ?? t.nodeId}" mints`);
 
     const idWires = component.connections.filter((c) => c.toId === node.id && c.toProperty === 'modifyId');
     if (idWires.length === 0) {
@@ -8652,16 +8830,16 @@ function planComponent(
     }
     const repeaterId = idSource.id;
     const feed = repeaterCollectionFeed(repeaterId);
-    if (feed !== collectionName) {
+    if (feed === undefined || !sameArrayTarget(feed, target)) {
       return {
         defer:
           feed === undefined
             ? `the repeater its Object Id comes from is not fed by a named array, so the row it names is not an object this array holds — removal is by identity (Collection.remove is indexOf), and a derived row is a different object`
-            : `the repeater its Object Id comes from repeats "${feed}" while this node removes from "${collectionName}" — the row it names is not a member of the array being written`
+            : `the repeater its Object Id comes from repeats ${describe(feed)} while this node removes from ${describe(target)} — the row it names is not a member of the array being written`
       };
     }
 
-    const consumes: string[] = [idWire.key];
+    const consumes: string[] = target.kind === 'minted' ? [idWire.key, target.wireKey] : [idWire.key];
     for (const wire of component.connections.filter((c) => c.fromId === node.id)) {
       if (wire.fromProperty === 'completed') {
         return { defer: 'its Completed output is consumed — this slice translates the Done chain only' };
@@ -8683,10 +8861,83 @@ function planComponent(
     if ('defer' in done) return { defer: done.defer };
 
     return {
-      action: { kind: 'collection-remove', collectionName, repeaterId, then: done.then },
+      action: {
+        kind: 'collection-remove',
+        collectionName,
+        repeaterId,
+        then: done.then,
+        ...(target.kind === 'minted' ? { minted: mintedTargetFor(target, node.id, 'remove', []) } : {})
+      },
       consumes: [...consumes, ...done.consumes],
       collapses: done.collapses,
       subscribes: done.subscribes
+    };
+  };
+
+  /**
+   * `Create New Array`'s Do (EXP-011 §55) — `const <local> = collection<T>([...<items>]); set<Row>(<local>);`
+   * then the Done chain, compiled with the mint in `mintChainScope` so a read of the handle inside it — an
+   * `Array` bound to this mint, a mutator bound to it — resolves to the chain-local rather than the row.
+   *
+   * Refused by name: two wires on Items (last-writer-wins), an Items source that is not statically a list, an
+   * `id` consumed by anything but an Array Id port (the export keeps the minted array as a handle, not a
+   * string — the "store its id on an object" pattern is §55.7's), a consumed `Completed` (Unique Id's
+   * one-outcome sentence, verbatim: the node has no Failure and no Unchanged), and a Done chain that defers.
+   * No `Failure`, no `Unchanged` — `collectionnode-new.ts` says a port that cannot fire is worse than none.
+   */
+  const compileCollectionNew = (node: NodeIR): CompiledSink => {
+    const consumes: string[] = [];
+    const ctx = newCtx();
+    let source: ValueExpr | undefined;
+    let sourceIsList = false;
+    const feeds = component.connections.filter((c) => c.toId === node.id && c.toProperty === 'items');
+    if (feeds.length > 1) return { defer: 'two wires feed its Items input — last-writer-wins is not statically ordered' };
+    if (feeds.length === 1) {
+      const from = nodeById.get(feeds[0].fromId);
+      const expr = resolveExpr(from, feeds[0].fromProperty, ctx);
+      if (expr === null) {
+        return { defer: `its Items input is fed by ${from?.type ?? 'a missing node'} — ${ctx.defer ?? 'no statically known source in the emit vocabulary'}` };
+      }
+      const tsType = exprTsType(expr);
+      // Run Tasks' rule for its Items: a list, or a source with no static type (a Function's output) — the
+      // emitter copies what is an array and starts empty otherwise, which is `Collection.set`'s own reading
+      // of a non-array source (`src.length` undefined ⇒ no rows).
+      if (tsType !== 'unknown' && tsType !== 'any' && tsType !== 'undefined' && !tsType.endsWith('[]')) {
+        return { defer: `its Items input is fed by a source not statically typed as a list (${tsType})` };
+      }
+      source = expr;
+      sourceIsList = tsType.endsWith('[]');
+      consumes.push(feeds[0].key);
+    }
+    for (const wire of component.connections.filter((c) => c.fromId === node.id)) {
+      if (wire.fromProperty === 'done') continue;
+      if (wire.fromProperty === 'id') {
+        const to = nodeById.get(wire.toId);
+        const takesArrayId = to !== undefined && ARRAY_ID_CONSUMERS.has(to.type) && wire.toProperty === 'collectionId';
+        if (takesArrayId) continue;
+        return {
+          defer: `its Id is consumed as a value by ${to === undefined ? 'a missing node' : `${to.type}'s ${wire.toProperty}`} — the export keeps the minted array as a handle, not a string, and only an Array Id port can take it`
+        };
+      }
+      if (wire.fromProperty === 'completed') {
+        return {
+          defer: 'its Completed output is consumed — this node has only one outcome, so Completed and Done always fire together; wire the chain to Done instead and it translates unchanged'
+        };
+      }
+      return { defer: `its ${wire.fromProperty} output is consumed, and this node publishes only Id, Done and Completed` };
+    }
+    const stateVar = mintStateOf(node);
+    const local = mintLocalOf(node);
+    mintChainScope.add(node.id);
+    const done = doneChainOf(node, 'done');
+    mintChainScope.delete(node.id);
+    if ('defer' in done) return { defer: done.defer };
+    const row = plan.mintedArrays.find((m) => m.nodeId === node.id)!;
+    return {
+      action: { kind: 'array-new', nodeId: node.id, local, stateName: stateVar.name, rowType: row.rowType, ...(source !== undefined ? { source, sourceIsList } : {}), then: done.then },
+      consumes: [...consumes, ...ctx.consumes, ...done.consumes],
+      collapses: [...ctx.logicNodeIds, ...done.collapses],
+      subscribes: [...ctx.subscriberIds, ...done.subscribes]
     };
   };
 
@@ -10768,6 +11019,25 @@ function planComponent(
           entries.push({ key: property.key, expr: { kind: 'literal', value: property.literal } });
         }
       }
+      // EXP-011 §55. Into a minted array: the target is the handle, and the insert's Failure arm is live.
+      if (chain.minted !== undefined) {
+        const insertNode = nodeById.get(chain.insertId)!;
+        const conflict = mintScopeConflict(node, 'new', { kind: 'minted', nodeId: chain.minted, wireKey: '' });
+        if (conflict !== undefined) return { defer: conflict };
+        for (const wire of component.connections.filter((c) => c.fromId === insertNode.id)) {
+          if (wire.fromProperty === 'failure') continue;
+          return { defer: `the insert's ${wire.fromProperty} output is consumed — into a minted array this slice translates the Failure chain only` };
+        }
+        const fail = doneChainOf(insertNode, 'failure');
+        if ('defer' in fail) return { defer: fail.defer };
+        const target: ArrayTarget & { kind: 'minted' } = { kind: 'minted', nodeId: chain.minted, wireKey: '' };
+        return {
+          action: { kind: 'collection-add', collectionName: '', entries, minted: mintedTargetFor(target, chain.insertId, 'insert', fail.then) },
+          consumes: [...chain.consumes, ...ctx.consumes, ...fail.consumes],
+          collapses: [chain.insertId, ...ctx.logicNodeIds, ...fail.collapses],
+          subscribes: [...ctx.subscriberIds, ...fail.subscribes]
+        };
+      }
       return {
         action: { kind: 'collection-add', collectionName: chain.collectionName, entries },
         consumes: [...chain.consumes, ...ctx.consumes],
@@ -10777,6 +11047,8 @@ function planComponent(
     }
     if (node.type === 'CollectionClear') return compileCollectionClear(node);
     if (node.type === 'CollectionRemove') return compileCollectionRemove(node);
+    // EXP-011 §55.
+    if (node.type === COLLECTION_NEW_TYPE) return compileCollectionNew(node);
     if (node.type === HTTP_TYPE) return compileHttpFetch(node);
     if (node.type === CLOUD_FUNCTION_TYPE) return compileCloudCall(node);
     if (node.type === RECORD_TYPE) return compileRecordFetch(node);
@@ -11050,6 +11322,10 @@ function planComponent(
       // wherever their source is.
       case 'collection-get':
         return true;
+      // EXP-011 §55. The row form is an ordinary state read of this component; the local form is only ever
+      // minted while the mint's own Done chain is being compiled (the id nodes' argument).
+      case 'minted-array-get':
+        return true;
       case 'list-map':
       case 'list-filter':
         return exprValidIn(expr.source, context, invokedScope);
@@ -11141,12 +11417,19 @@ function planComponent(
         case 'emit':
           return action.payload.every((p) => exprValidIn(p.expr, context, invokedScope));
         case 'collection-add':
-          return action.entries.every((e) => exprValidIn(e.expr, context, invokedScope));
+          return (
+            action.entries.every((e) => exprValidIn(e.expr, context, invokedScope)) &&
+            actionsValidIn(action.minted?.failThen ?? [], context, invokedScope)
+          );
         case 'collection-clear':
           return (
             actionsValidIn(action.then, context, invokedScope) &&
-            actionsValidIn(action.unchangedThen, context, invokedScope)
+            actionsValidIn(action.unchangedThen, context, invokedScope) &&
+            actionsValidIn(action.minted?.failThen ?? [], context, invokedScope)
           );
+        // EXP-011 §55. The snapshot source is read where the handler is; the chain follows.
+        case 'array-new':
+          return (action.source === undefined || exprValidIn(action.source, context, invokedScope)) && actionsValidIn(action.then, context, invokedScope);
         /**
          * 🔴 **The one action in this union that is legal in a single place** (EXP-011 §30). It
          * removes "the row that fired", and the only place that phrase has a referent is inside
@@ -12051,7 +12334,24 @@ function planComponent(
           if ('defer' in e) return e;
           entries.push({ key: entry.key, expr: e });
         }
+        if (action.minted !== undefined) {
+          const failThen = snapActionList(action.minted.failThen, new Map(snap));
+          if (!Array.isArray(failThen)) return failThen;
+          return { ...action, entries, minted: { ...action.minted, failThen } };
+        }
         return { ...action, entries };
+      }
+      // EXP-011 §55. The source is read where the handler is; one arm, always taken.
+      case 'array-new': {
+        let source: ValueExpr | undefined;
+        if (action.source !== undefined) {
+          const e = snapExpr(action.source, snap);
+          if ('defer' in e) return e;
+          source = e;
+        }
+        const then = snapActionList(action.then, snap);
+        if (!Array.isArray(then)) return then;
+        return { ...action, ...(source !== undefined ? { source } : {}), then };
       }
       case 'branch': {
         const cond = snapExpr(action.cond, snap);
@@ -12081,6 +12381,13 @@ function planComponent(
         if (!Array.isArray(unchangedThen)) return unchangedThen;
         for (const [k, v] of doneSnap) if (snap.get(k) !== v) snap.set(k, 'op');
         for (const [k, v] of unchangedSnap) if (snap.get(k) !== v) snap.set(k, 'op');
+        if (action.minted !== undefined) {
+          const failSnap = new Map(snap);
+          const failThen = snapActionList(action.minted.failThen, failSnap);
+          if (!Array.isArray(failThen)) return failThen;
+          for (const [k, v] of failSnap) if (snap.get(k) !== v) snap.set(k, 'op');
+          return { ...action, then, unchangedThen, minted: { ...action.minted, failThen } };
+        }
         return { ...action, then, unchangedThen };
       }
       /**
@@ -12907,7 +13214,14 @@ function planComponent(
           // walking. Found while adding the case below, which would have had the identical hole.
           scanActions(action.then);
           scanActions(action.unchangedThen);
+          scanActions(action.minted?.failThen ?? []);
         } else if (action.kind === 'collection-remove') {
+          scanActions(action.then);
+        } else if (action.kind === 'collection-add') {
+          // EXP-011 §55. Into a minted array the insert owns a Failure chain.
+          scanActions(action.minted?.failThen ?? []);
+        } else if (action.kind === 'array-new') {
+          // EXP-011 §55. The mint's Done chain — a popup opened there, a record verb called there.
           scanActions(action.then);
         }
       }
@@ -13918,7 +14232,8 @@ function planComponent(
       plan.repeaters[toNode.id] &&
       fromNode !== undefined &&
       fromNode.type !== 'DbCollection2' &&
-      fromNode.type !== 'Collection2' &&
+      // EXP-011 §55. An `Array` bound by wire is a minted read — the untyped path; a named one keeps the typed branch below.
+      (fromNode.type !== 'Collection2' || wiredPorts.has(`${fromNode.id}:collectionId`)) &&
       // Static Data has a statically-known item shape, so it takes the typed branch below
       // rather than this one, whose contract is "untyped list, fields read as `any`".
       fromNode.type !== 'Static Data'
@@ -13999,6 +14314,7 @@ function planComponent(
       toNode?.type === 'For Each' &&
       connection.toProperty === 'items' &&
       fromNode?.type === 'Collection2' &&
+      !wiredPorts.has(`${fromNode.id}:collectionId`) &&
       connection.fromProperty === 'items' &&
       plan.repeaters[toNode.id]
     ) {
@@ -14865,6 +15181,18 @@ function planComponent(
             fillMaterialize(action.then);
             break;
           }
+          // EXP-011 §55. The mint's chain and the minted mutators' Failure chains are walked for what they hold.
+          case 'array-new':
+            fillMaterialize(action.then);
+            break;
+          case 'collection-add':
+            fillMaterialize(action.minted?.failThen ?? []);
+            break;
+          case 'collection-clear':
+            fillMaterialize(action.then);
+            fillMaterialize(action.unchangedThen);
+            fillMaterialize(action.minted?.failThen ?? []);
+            break;
           /**
            * EXP-011 §37, on the same rule and for the same reason: a render read of `Id`
            * resolves passes after the `New` compiled, so asking here whether anything reads the
@@ -15494,8 +15822,12 @@ function recordNeighbourDefer(
    * cannot reach the page knows what shape of app to build instead — and knows which other slice
    * would unblock it.
    */
-  if (node.type === 'CollectionNew') {
-    return 'it mints an array with a generated Id, and the only thing that Id can feed is another node’s Array Id — which, being a wire rather than a literal name, is exactly what has no emitted module';
+  /**
+   * EXP-011 §55. The node translates now (`compileCollectionNew`), so reaching here means nothing fired it —
+   * a mint with a wired Do that refused files its own reason on the wire.
+   */
+  if (node.type === COLLECTION_NEW_TYPE) {
+    return 'nothing is wired to its Do, so no array is ever created';
   }
   /**
    * 🔴 EXP-011 §30. This used to read *"a row's outputs cannot reach the page at all yet"*, and

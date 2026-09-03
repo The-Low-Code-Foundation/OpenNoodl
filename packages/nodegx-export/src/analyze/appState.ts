@@ -177,6 +177,36 @@ export function collectionNameOf(node: NodeIR, wiredPorts: Set<string>): string 
   return literalString(node, 'collectionId');
 }
 
+/** EXP-011 §55. `Create New Array` — the node whose `id` output is the only wire an Array Id port takes. */
+export const COLLECTION_NEW_TYPE = 'CollectionNew';
+/**
+ * EXP-011 §55. Where a node's Array Id points: a literal name (a module, the named-array model) or a
+ * `Create New Array`'s `id` **by wire** (a handle in the minting component's state — the id is never a
+ * string in the emitted app; the wire is the name). One answer for every consumer of an Array Id —
+ * `Array`, the three mutators, the repeater feed — so the two models cannot disagree about a wire.
+ */
+export type ArrayTarget =
+  | { kind: 'named'; collectionName: string }
+  | { kind: 'minted'; nodeId: string; wireKey: string };
+
+export function arrayTargetOf(node: NodeIR, component: ComponentIR): ArrayTarget | { defer: string } {
+  const wires = component.connections.filter((c) => c.toId === node.id && c.toProperty === 'collectionId');
+  if (wires.length > 1) return { defer: 'two wires feed its Array Id — last-writer-wins is not statically ordered' };
+  if (wires.length === 1) {
+    const wire = wires[0];
+    const from = component.nodes.find((n) => n.id === wire.fromId);
+    if (from?.type === COLLECTION_NEW_TYPE && wire.fromProperty === 'id') return { kind: 'minted', nodeId: from.id, wireKey: wire.key };
+    return {
+      defer: `its Array Id is wired from ${from?.type ?? 'a missing node'}'s ${wire.fromProperty} — only a Create New Array's Id binds by wire; any other source is a runtime string this slice cannot resolve to an array`
+    };
+  }
+  const collectionName = literalString(node, 'collectionId');
+  if (collectionName === undefined) {
+    return { defer: 'its Array Id is not a literal name — a runtime-addressed array has no emitted module' };
+  }
+  return { kind: 'named', collectionName };
+}
+
 /** One property of a translated insert chain: an authored literal, a wire, or (absent both) omitted. */
 export interface InsertChainProperty {
   key: string;
@@ -185,7 +215,10 @@ export interface InsertChainProperty {
 }
 
 export interface InsertChain {
+  /** The named array, or `''` when {@link minted} is set. */
   collectionName: string;
+  /** EXP-011 §55. The `Create New Array` whose handle the insert writes — the chain is component-local then. */
+  minted?: string;
   insertId: string;
   newModelId: string;
   /** The NewModel's `properties` list in authored order, omitted keys filtered out. */
@@ -206,8 +239,10 @@ export function insertChainOf(
   nodeById: Map<string, NodeIR>,
   wiredPorts: Set<string>
 ): { chain: InsertChain } | { defer: string } {
-  const collectionName = collectionNameOf(insertNode, wiredPorts);
-  if (collectionName === undefined) return { defer: 'array id is not a literal' };
+  const target = arrayTargetOf(insertNode, component);
+  // EXP-011 §55. An unwired, unnamed id keeps its sentence; a wire that is not a mint's `id` names its source.
+  if ('defer' in target) return { defer: wiredPorts.has(`${insertNode.id}:collectionId`) ? target.defer : 'array id is not a literal' };
+  const collectionName = target.kind === 'named' ? target.collectionName : '';
 
   const intoAdd = component.connections.filter((c) => c.toId === insertNode.id && c.toProperty === 'add');
   const intoModify = component.connections.filter((c) => c.toId === insertNode.id && c.toProperty === 'modifyId');
@@ -255,8 +290,16 @@ export function insertChainOf(
       // Absent both: the key is omitted — the runtime's per-key abstain (undefined never writes).
     }
   }
+  if (target.kind === 'minted') consumes.push(target.wireKey);
   return {
-    chain: { collectionName, insertId: insertNode.id, newModelId: newModel.id, properties, consumes }
+    chain: {
+      collectionName,
+      ...(target.kind === 'minted' ? { minted: target.nodeId } : {}),
+      insertId: insertNode.id,
+      newModelId: newModel.id,
+      properties,
+      consumes
+    }
   };
 }
 
@@ -525,7 +568,8 @@ export function collectAppState(ir: ExportIR): AppStateRegistry {
         const name = collectionNameOf(node, wiredPortsOf(component));
         if (name !== undefined) ensureCollection(name); // the module exists; keys only from chains
         const result = insertChainOf(component, node, nodeById, wiredPortsOf(component));
-        if ('chain' in result) {
+        // EXP-011 §55. A chain into a minted array has no module — its keys live nowhere static.
+        if ('chain' in result && result.chain.minted === undefined) {
           const chain = result.chain;
           const plan = ensureCollection(chain.collectionName);
           const newModel = nodeById.get(chain.newModelId)!;

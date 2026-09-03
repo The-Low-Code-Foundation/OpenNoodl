@@ -768,7 +768,7 @@ describe('§H the ledger', () => {
     expect(ledgerEntryOf('RunTasks')?.status).toBe('translated');
     expect(exportBadgeOf('RunTasks')).toBeUndefined();
     const ledger = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'coverage-ledger.json'), 'utf8'));
-    expect(ledger.pickerCoverageFloor).toBe(96);
+    expect(ledger.pickerCoverageFloor).toBe(97);
   });
 });
 

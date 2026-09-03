@@ -436,13 +436,15 @@ describe('§C — refused by name', () => {
     );
   });
 
-  test('C11 Create New Array — the ledger’s refusal re-derived and pinned: its Id can feed only a wired Array Id, which has no module', () => {
+  test('C11 Create New Array — translated since §55 (the handle is the id); a mint nothing fires falls to logic with its own sentence', () => {
     const ir = cloneIr();
     addNode(componentOf(ir, HOME), { id: 'newArr', type: 'CollectionNew' });
+    // EXP-011 §55 reversed §7.3: a fired mint is `const <local> = collection<any>([]); set<Row>(<local>)`.
+    expect(reasonFor(ir, HOME, 'newArr')).toBe('nothing is wired to its Do, so no array is ever created');
     addButton(ir, 'mintBtn', 'Mint', 'newArr', 'new');
-    expect(reasonFor(ir, HOME, 'newArr')).toBe(
-      'it mints an array with a generated Id, and the only thing that Id can feed is another node’s Array Id — which, being a wire rather than a literal name, is exactly what has no emitted module'
-    );
+    const home = emitApp(ir, catalog).files['src/pages/Home.tsx'];
+    expect(home).toContain('collection<any>([])');
+    expect(home).toContain('useState<Collection<any> | null>(null)');
   });
 });
 
@@ -477,15 +479,14 @@ describe('§D — the fixture, whole', () => {
     expect(emitApp(cloneIr(), catalog).files).toEqual(app.files);
   });
 
-  test('D6 the ledger says so: Set Object Properties translated, Object translated, Create New Array still deferred — now scheduled (§50)', () => {
+  test('D6 the ledger says so: Set Object Properties translated, Object translated, Create New Array translated (§55)', () => {
     const ledger = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'coverage-ledger.json'), 'utf8'));
     const status = (name: string) => ledger.entries.find((e: { typeName: string }) => e.typeName === name);
     expect(status('SetModelProperties').status).toBe('translated');
     expect(status('Model2').status).toBe('translated');
-    expect(status('CollectionNew').status).toBe('deferred');
-    // EXP-011 §50 (Richard, 2026-09-03) reversed §7.3: Create New Array is Tier 2.8 row 5, a
-    // schedule rather than a decision. The row asserts the phrase the checker enforces.
-    expect(status('CollectionNew').exemption).toMatch(/^scheduled — EXP-011 Tier 2\.8/);
-    expect(ledger.pickerCoverageFloor).toBe(96); // 90 after §48; §49 added States and Animate To Value; §51 Component Children; §52 Script; §53 Run Tasks; §54 On App Error
+    // EXP-011 §50 (Richard, 2026-09-03) reversed §7.3 and scheduled the row; §55 built it.
+    expect(status('CollectionNew').status).toBe('translated');
+    expect(status('CollectionNew').note).toMatch(/^EXP-011 §55/);
+    expect(ledger.pickerCoverageFloor).toBe(97); // 90 after §48; §49 added States and Animate To Value; §51 Component Children; §52 Script; §53 Run Tasks; §54 On App Error; §55 Create New Array
   });
 });

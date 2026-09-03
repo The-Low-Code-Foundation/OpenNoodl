@@ -201,16 +201,28 @@ describe('Clear Array → collection.clear()', () => {
     expect(notesReport(app)).toContain('its Completed output is consumed');
   });
 
-  it('defers a wired Array Id, naming the runtime-addressed array', () => {
+  it('defers a wired Array Id, naming its source — only a Create New Array binds by wire (EXP-011 §55)', () => {
     const ir: ExportIR = structuredClone(baseIr);
     const notes = notesOf(ir);
     const clear = addNode(notes, { id: 'clearNotes', type: 'CollectionClear' });
     connect(notes, 'addButton', 'onClick', 'clearNotes', 'clear');
-    // A wire into collectionId is what `collectionNameOf` refuses — the array is named at runtime.
+    // A wire into collectionId from anything but a mint's `id` is a runtime string — `arrayTargetOf` names the source.
     connect(notes, 'noteDraftVar', 'value', 'clearNotes', 'collectionId', 'value');
     const app = emit(ir);
     expect(notesFile(app)).not.toContain('.clear()');
-    expect(notesReport(app)).toContain('its Array Id is not a literal name');
+    expect(notesReport(app)).toContain(
+      "its Array Id is wired from Variable2's value — only a Create New Array's Id binds by wire; any other source is a runtime string this slice cannot resolve to an array"
+    );
+  });
+
+  it('keeps the sentence for an unwired, unnamed Array Id', () => {
+    const ir: ExportIR = structuredClone(baseIr);
+    const notes = notesOf(ir);
+    addNode(notes, { id: 'clearNotes', type: 'CollectionClear' });
+    connect(notes, 'addButton', 'onClick', 'clearNotes', 'clear');
+    const app = emit(ir);
+    expect(notesFile(app)).not.toContain('.clear()');
+    expect(notesReport(app)).toContain('its Array Id is not a literal name — a runtime-addressed array has no emitted module');
   });
 });
 

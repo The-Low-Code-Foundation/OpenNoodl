@@ -22,6 +22,7 @@ import {
   ComponentPlan,
   HandlerAction,
   IdNewAction,
+  MintedTarget,
   JsFunctionPlan,
   RefusedScriptPlan,
   MutationPlan,
@@ -329,6 +330,9 @@ export function emitComponent(
   const channelByName = new Map(project.channels.map((c) => [c.name, c]));
   const storeByName = new Map(project.stores.map((s) => [s.name, s]));
   const collectionByName = new Map(project.collections.map((c) => [c.name, c]));
+  // EXP-011 §55. The `Create New Array` handles this component holds, by node.
+  const mintByNode = new Map(plan.mintedArrays.map((m) => [m.nodeId, m]));
+  const mintStateName = (nodeId: string): string => mintByNode.get(nodeId)?.stateName ?? 'newArray';
   const usedVariableNames = new Set<string>();
   const usedChannelNames = new Set<string>();
   const usedStoreNames = new Set<string>();
@@ -388,6 +392,8 @@ export function emitComponent(
     // and not a hook — the render half of the same rule is in `hookExprSources` above, which is
     // the walker this one's comment warns must be kept in step.
     if (expr.kind === 'collection-get') usedCollectionNames.add(expr.collectionName);
+    // EXP-011 §55. A handler read of the handle is a state read of this component's row.
+    if (expr.kind === 'minted-array-get' && expr.viaLocal === undefined) referencedStateNames.add(mintStateName(expr.nodeId));
     if (expr.kind === 'list-map' || expr.kind === 'list-filter') collectExprUse(expr.source);
     /**
      * EXP-011 Tier 1.3. A date call earns the helper's import, and its arguments earn whatever
@@ -476,16 +482,31 @@ export function emitComponent(
       action.then.forEach(collectActionUse);
     }
     if (action.kind === 'collection-add') {
-      usedCollectionNames.add(action.collectionName);
+      if (action.minted === undefined) usedCollectionNames.add(action.collectionName);
+      else {
+        referencedStateNames.add(action.minted.stateName);
+        action.minted.failThen.forEach(collectActionUse);
+      }
       action.entries.forEach((e) => collectExprUse(e.expr));
     }
     if (action.kind === 'collection-clear') {
-      usedCollectionNames.add(action.collectionName);
+      if (action.minted === undefined) usedCollectionNames.add(action.collectionName);
+      else {
+        referencedStateNames.add(action.minted.stateName);
+        action.minted.failThen.forEach(collectActionUse);
+      }
       action.then.forEach(collectActionUse);
       action.unchangedThen.forEach(collectActionUse);
     }
     if (action.kind === 'collection-remove') {
-      usedCollectionNames.add(action.collectionName);
+      if (action.minted === undefined) usedCollectionNames.add(action.collectionName);
+      else referencedStateNames.add(action.minted.stateName);
+      action.then.forEach(collectActionUse);
+    }
+    // EXP-011 §55. The mint writes its row whether or not anything reads it; the source and the chain read.
+    if (action.kind === 'array-new') {
+      referencedStateNames.add(action.stateName);
+      if (action.source !== undefined) collectExprUse(action.source);
       action.then.forEach(collectActionUse);
     }
     if (action.kind === 'branch') {
@@ -678,12 +699,20 @@ export function emitComponent(
                   ...deepActions(a.startedThen),
                   ...deepActions(a.finishedThen)
                 ]
+            : // EXP-011 §55. The array mutators own chains too (§30.3's walker had the same hole): a Clear's
+              // two outcome arms and its minted Failure arm, an Insert's minted Failure arm, a Remove's Done.
+              a.kind === 'collection-clear'
+              ? [a, ...deepActions(a.then), ...deepActions(a.unchangedThen), ...deepActions(a.minted?.failThen ?? [])]
+            : a.kind === 'collection-add'
+              ? [a, ...deepActions(a.minted?.failThen ?? [])]
             : a.kind === 'log' ||
                 a.kind === 'popup-show' ||
                 a.kind === 'popup-close' ||
                 a.kind === 'jsfun-run' ||
                 a.kind === 'api-call' ||
-                a.kind === 'date-now-read'
+                a.kind === 'date-now-read' ||
+                a.kind === 'collection-remove' ||
+                a.kind === 'array-new'
               ? [a, ...deepActions(a.then)]
               : [a]
     );
@@ -694,6 +723,8 @@ export function emitComponent(
   const hookVariables: string[] = [];
   const hookStoreKeys: Array<{ storeName: string; key: string }> = [];
   const hookCollections: string[] = [];
+  /** EXP-011 §55. Minted arrays read in render — `Create New Array` node ids, first-encounter order. */
+  const hookMinted: string[] = [];
   /** Reactive JS nodes read from render bindings, first-encounter order — each earns one
    * render local (`const formatShoutOut = formatShout({ name });`) plus its args' hooks. */
   const renderJsIds: string[] = [];
@@ -717,6 +748,11 @@ export function emitComponent(
     if (expr.kind === 'collection-get' && collectionByName.has(expr.collectionName) && !hookCollections.includes(expr.collectionName)) {
       hookCollections.push(expr.collectionName);
       usedCollectionNames.add(expr.collectionName);
+    }
+    // EXP-011 §55. A render read of a minted array is the `useCollection` hook over `<row> ?? noArray`.
+    if (expr.kind === 'minted-array-get' && expr.viaLocal === undefined) {
+      referencedStateNames.add(mintStateName(expr.nodeId));
+      if (!hookMinted.includes(expr.nodeId)) hookMinted.push(expr.nodeId);
     }
     if (expr.kind === 'list-map' || expr.kind === 'list-filter') hookExprSources(expr.source);
     if (expr.kind === 'format') {
@@ -882,7 +918,7 @@ export function emitComponent(
   // kind is the shape that silently emits a call to an undeclared identifier.
   const usesNavigate = deepActions(allActions).some((a) => a.kind === 'navigate' || a.kind === 'navigate-path');
   // EXP-011 §54. The failure arms that raise on the error channel — each earns the `raiseAppError` import.
-  const raisesAppErrors = deepActions(allActions).some((a) => RAISING_ACTION_KINDS.has(a.kind));
+  const raisesAppErrors = deepActions(allActions).some((a) => RAISING_ACTION_KINDS.has(a.kind) || mintedGuards(a));
 
   // The hook's local name is the variable's last camelCase word (`visitorName` → `name`),
   // deduplicated against everything else in scope, falling back to `<export>Value`.
@@ -898,6 +934,7 @@ export function emitComponent(
     'styles',
     'joinClasses',
     SESSION_LOCAL,
+    NO_ARRAY,
     plan.file.symbol
   ]);
   // Port names are user text (`Align X`, `Margin Bottom`): a prop prints as the identifier the
@@ -1135,6 +1172,16 @@ export function emitComponent(
     reserved.add(candidate);
     collectionLocals.set(collectionName, candidate);
   }
+  // EXP-011 §55. A minted array's hook local is `<row>Items`, on the named rule.
+  const mintedLocals = new Map<string, string>();
+  for (const nodeId of hookMinted) {
+    const base = `${mintStateName(nodeId)}Items`;
+    let candidate = base;
+    let counter = 2;
+    while (reserved.has(candidate)) candidate = `${base}${counter++}`;
+    reserved.add(candidate);
+    mintedLocals.set(nodeId, candidate);
+  }
   const dedupeLocal = (base: string): string => {
     let candidate = base;
     let counter = 2;
@@ -1260,7 +1307,9 @@ export function emitComponent(
         return expr.maybeUndefined === true;
       // A list is always an array — the module-scope `collection([])` exists from module load,
       // and both transforms return a fresh array. Must agree with plan.ts maybeUndefinedExpr.
+      // EXP-011 §55. A minted read is `?? noArray` / `?? []` at every spelling.
       case 'collection-get':
+      case 'minted-array-get':
       case 'list-map':
       case 'list-filter':
       case 'input-text':
@@ -1313,6 +1362,12 @@ export function emitComponent(
   const listExprFields = (expr: ValueExpr): Set<string> | null => {
     if (expr.kind === 'collection-get') {
       const plan = collectionByName.get(expr.collectionName);
+      return plan === undefined ? null : new Set(plan.keys.map((k) => k.key));
+    }
+    // EXP-011 §55. Known exactly when the handle is typed by a named array's interface; `any` otherwise.
+    if (expr.kind === 'minted-array-get') {
+      const rowCollection = mintByNode.get(expr.nodeId)?.rowCollection;
+      const plan = rowCollection === undefined ? undefined : collectionByName.get(rowCollection);
       return plan === undefined ? null : new Set(plan.keys.map((k) => k.key));
     }
     // A map REPLACES the row: whatever the source carried, the emitted object literal has
@@ -1642,6 +1697,15 @@ export function emitComponent(
         return mode === 'render'
           ? (collectionLocals.get(expr.collectionName) ?? collectionByName.get(expr.collectionName)!.exportName)
           : `${collectionByName.get(expr.collectionName)!.exportName}.peek()`;
+      /**
+       * EXP-011 §55. The minted array: the chain-local inside the mint's Done chain; the hook local in render;
+       * the row's `.peek()` in a handler, `?? []` where no Do has fired — the interpreter's unbound `Array`.
+       */
+      case 'minted-array-get':
+        if (expr.viaLocal !== undefined) return `${expr.viaLocal}.peek()`;
+        return mode === 'render'
+          ? (mintedLocals.get(expr.nodeId) ?? `(${mintStateName(expr.nodeId)}?.peek() ?? [])`)
+          : `(${mintStateName(expr.nodeId)}?.peek() ?? [])`;
       /** `Array Map` — one object literal per row, keys in the script's own order. */
       case 'list-map': {
         const source = listSourceCode(expr.source, mode);
@@ -1793,6 +1857,10 @@ export function emitComponent(
         case 'id-out':
           if (e.viaState !== undefined) add(e.viaState);
           break;
+        // EXP-011 §55. The row is the dependency; the chain-local cannot reach an effect.
+        case 'minted-array-get':
+          if (e.viaLocal === undefined) add(mintStateName(e.nodeId));
+          break;
         // EXP-011 §49. The read itself is the dependency — `panel.state`, `panel.values.opacity`
         // — never the handle, which is a fresh object every render and would re-run the effect
         // on every frame of a tween; `fade` is a number and is its own dependency.
@@ -1933,11 +2001,14 @@ export function emitComponent(
         case 'emit':
           return a.payload.some((p) => reads(p.expr));
         case 'collection-add':
-          return a.entries.some((e) => reads(e.expr));
+          return a.entries.some((e) => reads(e.expr)) || (a.minted?.failThen ?? []).some(inAction);
         case 'collection-clear':
-          return a.then.some(inAction) || a.unchangedThen.some(inAction);
+          return a.then.some(inAction) || a.unchangedThen.some(inAction) || (a.minted?.failThen ?? []).some(inAction);
         case 'collection-remove':
           return a.then.some(inAction);
+        // EXP-011 §55. The source, then the chain.
+        case 'array-new':
+          return (a.source !== undefined && reads(a.source)) || a.then.some(inAction);
         case 'branch':
           return reads(a.cond) || a.whenTrue.some(inAction) || a.whenFalse.some(inAction);
         case 'api-call':
@@ -2103,6 +2174,24 @@ export function emitComponent(
     // and it is the one case where the answer does not depend on a single thing being read.
     a.newTabExpr !== undefined;
 
+  /**
+   * EXP-011 §55. A mutator bound by wire, outside the mint's own chain: the handle can be `null` (no Do has
+   * fired), which is the runtime's `<prefix>/no-array` Failure — raised on the channel with the node's own
+   * message (collection-failure.ts `_failNoCollection`), then the Failure chain; else the mutation.
+   */
+  const mintedGuard = (m: MintedTarget, elseLines: string[], indent: number): string => {
+    const at = pad(indent);
+    const inner = pad(indent + 2);
+    const message = `Nothing to ${m.action} — no array is bound. Set the Array Id input, or connect one, before triggering this node.`;
+    const guard = [
+      `${inner}${raiseLine(m.sinkId, tsLiteral(`${MINTED_CODE_PREFIX[m.action]}/no-array`), tsLiteral(message))}`,
+      ...blockBody(expandActions(m.failThen), indent + 2)
+    ];
+    if (elseLines.length === 1 && /^if \(/.test(elseLines[0])) {
+      return [`if (${m.stateName} === null) {`, ...guard, `${at}} else ${elseLines[0]}`].join('\n');
+    }
+    return [`if (${m.stateName} === null) {`, ...guard, `${at}} else {`, ...elseLines.map((l) => `${inner}${l}`), `${at}}`].join('\n');
+  };
   const actionCode = (action: HandlerAction, indent = 0): string => {
     switch (action.kind) {
       /**
@@ -2405,14 +2494,39 @@ export function emitComponent(
         return `${store.exportName}.set({ ${entries} })`;
       }
       case 'collection-add': {
-        const collection = collectionByName.get(action.collectionName)!;
         const entries = action.entries
           .map(
             (e) =>
               `${/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(e.key) ? e.key : JSON.stringify(e.key)}: ${exprCode(e.expr, 'handler')}`
           )
           .join(', ');
-        return `${collection.exportName}.add({${entries.length > 0 ? ` ${entries} ` : ''}})`;
+        const literal = `{${entries.length > 0 ? ` ${entries} ` : ''}}`;
+        // EXP-011 §55. Into a minted array: the chain-local inside the mint's chain, else the guarded row.
+        if (action.minted !== undefined) {
+          if (action.minted.viaLocal !== undefined) return `${action.minted.viaLocal}.add(${literal})`;
+          return mintedGuard(action.minted, [`${action.minted.stateName}.add(${literal});`], indent);
+        }
+        const collection = collectionByName.get(action.collectionName)!;
+        return `${collection.exportName}.add(${literal})`;
+      }
+      /**
+       * EXP-011 §55. `Create New Array`'s Do — `const <local> = collection<T>([...<items>]); set<Row>(<local>);`
+       * then the Done chain, which reads the array through the local (`setX` does not change `x` in this
+       * closure). The spread copies: `Collection` slices its initial list, but a later `.add` on the source's own
+       * array must not reach the source, and `Collection.set` in the runtime copies too. No items wired is `[]`.
+       */
+      case 'array-new': {
+        const at = pad(indent);
+        const sourceCode = action.source === undefined ? undefined : exprCode(action.source, 'handler');
+        // An untyped source (a Function's output) is copied when it is an array and empty otherwise — `Collection.set`'s own reading.
+        const initial =
+          sourceCode === undefined ? '[]' : action.sourceIsList ? `[...${sourceCode}]` : `Array.isArray(${sourceCode}) ? [...${sourceCode}] : []`;
+        const statements = [
+          `const ${action.local} = collection<${action.rowType}>(${initial})`,
+          `${stateSetterOf(action.stateName)}(${action.local})`,
+          ...expandActions(action.then).map((a) => actionCode(a, indent))
+        ];
+        return statements.join(`;\n${at}`);
       }
       /**
        * `Clear Array` (EXP-011 Tier 1.1). With neither outcome consumed this is the bare
@@ -2424,19 +2538,29 @@ export function emitComponent(
        * change nothing. Leaving it out is the same program, one statement shorter.
        */
       case 'collection-clear': {
-        const collection = collectionByName.get(action.collectionName)!;
-        const call = `${collection.exportName}.clear()`;
+        // EXP-011 §55. The subject is the module export, the mint's chain-local, or the guarded row.
+        const subject =
+          action.minted !== undefined ? (action.minted.viaLocal ?? action.minted.stateName) : collectionByName.get(action.collectionName)!.exportName;
+        const call = `${subject}.clear()`;
         const hasDone = action.then.length > 0;
         const hasUnchanged = action.unchangedThen.length > 0;
-        if (!hasDone && !hasUnchanged) return call;
         const armCode = (armActions: HandlerAction[], lead?: string): string => {
           const list = [...(lead === undefined ? [] : [lead]), ...expandActions(armActions).map(actionCode)];
           return list.length === 1 ? list[0] : `{ ${list.join('; ')}; }`;
         };
-        const test = `${collection.exportName}.peek().length > 0`;
-        if (!hasUnchanged) return ifElse(test, armCode(action.then, call), null);
-        if (!hasDone) return ifElse(test, call, armCode(action.unchangedThen));
-        return ifElse(test, armCode(action.then, call), armCode(action.unchangedThen));
+        const test = `${subject}.peek().length > 0`;
+        const fork =
+          !hasDone && !hasUnchanged
+            ? call
+            : !hasUnchanged
+              ? ifElse(test, armCode(action.then, call), null)
+              : !hasDone
+                ? ifElse(test, call, armCode(action.unchangedThen))
+                : ifElse(test, armCode(action.then, call), armCode(action.unchangedThen));
+        if (action.minted !== undefined && action.minted.viaLocal === undefined) {
+          return mintedGuard(action.minted, [/^if \(/.test(fork) ? fork : `${fork};`], indent);
+        }
+        return fork;
       }
       /**
        * `Remove Object From Array` (EXP-011 §30) — `notes.remove(item)`.
@@ -2453,6 +2577,8 @@ export function emitComponent(
        * static-data feed never reaches here.
        */
       case 'collection-remove': {
+        // EXP-011 §55. A minted array's row exists only because the handle did — `?.` states the same fact.
+        if (action.minted !== undefined) return `${action.minted.viaLocal ?? `${action.minted.stateName}?`}.remove(${itemLocal})`;
         const collection = collectionByName.get(action.collectionName)!;
         return `${collection.exportName}.remove(${itemLocal})`;
       }
@@ -3162,6 +3288,9 @@ export function emitComponent(
     a.kind === 'branch' ||
     (a.kind === 'popup-close' && a.then.length > 0) ||
     (a.kind === 'collection-clear' && (a.then.length > 0 || a.unchangedThen.length > 0)) ||
+    // EXP-011 §55. The mint is statements; a guarded mutator is an `if`/`else`.
+    a.kind === 'array-new' ||
+    mintedGuards(a) ||
     /**
      * 🔴 `Now`'s Read declares a `const`, and a `const` is a statement (EXP-011 Tier 1.3).
      * `() => const clockRead = new Date(); setClock(clockRead)` does not parse — the fourth
@@ -3226,6 +3355,8 @@ export function emitComponent(
       (a.kind === 'navigate-path' && navigatePathIsStatement(a)) ||
       // EXP-011 §39. The `if` form ends in `}` and must not take a terminator.
       (a.kind === 'delay' && delayIsBlock(a)) ||
+      // EXP-011 §55. The guarded mutator ends in `}` too.
+      mintedGuards(a) ||
       // EXP-011 §37. The block form ends in `}` and must not take a terminator; the
       // `Unique Id` form is a run of statements and takes one, exactly as a Now Read does.
       (a.kind === 'id-new' && idNewIsBlock(a))
@@ -3255,7 +3386,7 @@ export function emitComponent(
     return expanded.map((a) =>
       actionTakesNoTerminator(a)
         ? `${pad(indent)}${actionCode(a, indent)}`
-        : `${pad(indent)}${actionCode(a, a.kind === 'date-now-read' || a.kind === 'id-new' || a.kind === 'branch' ? indent : 0)};`
+        : `${pad(indent)}${actionCode(a, a.kind === 'date-now-read' || a.kind === 'id-new' || a.kind === 'branch' || a.kind === 'array-new' ? indent : 0)};`
     );
   }
   /**
@@ -3308,8 +3439,15 @@ export function emitComponent(
   const coreHooks: string[] = [];
   if (hookLocals.size > 0) coreHooks.push('useValue');
   if (storeKeyLocals.size > 0) coreHooks.push('useStore');
-  if (collectionLocals.size > 0) coreHooks.push('useCollection');
+  if (collectionLocals.size > 0 || hookMinted.length > 0) coreHooks.push('useCollection');
   if (plan.receivers.length > 0) coreHooks.push('useSignal');
+  // EXP-011 §55. The mint calls `collection()` (so does the stand-in); a referenced handle row names `Collection`.
+  const usesCollectionFn = hookMinted.length > 0 || deepActions(allActions).some((a) => a.kind === 'array-new');
+  const usesCollectionType = referencedStateVars.some((v) => v.origin === 'array');
+  if (usesCollectionFn || usesCollectionType) {
+    const names = [...(usesCollectionFn ? ['collection'] : []), ...(usesCollectionType ? ['type Collection'] : [])];
+    externalImports.push(`import { ${names.join(', ')} } from '@nodegx/core';`);
+  }
   if (coreHooks.length > 0) {
     externalImports.push(`import { ${coreHooks.sort().join(', ')} } from '@nodegx/core/react';`);
   }
@@ -3542,10 +3680,16 @@ export function emitComponent(
     const specifier = `${relRoot}/stores/${store.exportName}`;
     internalImports.set(specifier, `import { ${store.exportName} } from '${specifier}';`);
   }
-  for (const name of [...usedCollectionNames].sort()) {
+  // EXP-011 §55. A handle typed by a named array's interface imports the type from that array's module.
+  const usedCollectionTypes = new Set<string>();
+  for (const m of plan.mintedArrays) {
+    if (m.rowCollection !== undefined && referencedStateNames.has(m.stateName) && collectionByName.has(m.rowCollection)) usedCollectionTypes.add(m.rowCollection);
+  }
+  for (const name of [...new Set([...usedCollectionNames, ...usedCollectionTypes])].sort()) {
     const collection = collectionByName.get(name)!;
     const specifier = `${relRoot}/collections/${collection.exportName}`;
-    internalImports.set(specifier, `import { ${collection.exportName} } from '${specifier}';`);
+    const names = [...(usedCollectionNames.has(name) ? [collection.exportName] : []), ...(usedCollectionTypes.has(name) ? [`type ${collection.interfaceName}`] : [])];
+    internalImports.set(specifier, `import { ${names.join(', ')} } from '${specifier}';`);
   }
   if (usedChannelNames.size > 0) {
     const specifier = `${relRoot}/events`;
@@ -4471,8 +4615,9 @@ export function emitComponent(
       const attrs = [`key={${indexLocal}}`, ...rowAttrs(keptExpr, itemLocal), ...rowSignalAttrs(indent + 2)];
       const lines = element(target.symbol, attrs, null, indent + 2, false);
       const srcCode = exprCode(itemsExpr, 'render');
-      // `?? []` is foreach.tsx's own "empty arrival clears the list".
-      const source = SIMPLE_REF.test(srcCode) ? `(${srcCode} ?? [])` : `((${srcCode}) ?? [])`;
+      // `?? []` is foreach.tsx's own "empty arrival clears the list". EXP-011 §55: a minted read is the hook
+      // local, an array by construction (`?? noArray` is already in the hook line).
+      const source = itemsExpr.kind === 'minted-array-get' ? srcCode : SIMPLE_REF.test(srcCode) ? `(${srcCode} ?? [])` : `((${srcCode}) ?? [])`;
       return [`${pad(indent)}{${source}.map((${itemLocal}, ${indexLocal}) => (`, ...lines, `${pad(indent)}))}`];
     }
     // Restrict to fields the item type actually carries — the runtime feeds undefined outside
@@ -5137,6 +5282,13 @@ export function emitComponent(
       ''
     );
   }
+  // EXP-011 §55. What an `Array` bound to a `Create New Array` reads before its first Do: one stand-in per
+  // file, never written (every write is guarded on the row). `Collection<T>` is invariant in T (its listener
+  // set is a function-typed property), so `never` would not widen — `any` does, and the hook's explicit type
+  // argument keeps a typed handle's rows typed.
+  if (hookMinted.length > 0) {
+    body.push(`/** What an Array bound to a Create New Array reads before its first Do. */`, `const ${NO_ARRAY} = collection<any>([]);`, '');
+  }
   // Static Data (STATIC-DATA-TARGET §3): the authored rows as a frozen module constant, above
   // the component. The inputs are `allowEditOnly`, so this is a build-time constant in the
   // runtime's terms too — there is no edit it could miss.
@@ -5266,6 +5418,13 @@ export function emitComponent(
         stateVar.bootCode ?? (stateVar.boot === null ? '' : tsLiteral(stateVar.boot))
       });`
     );
+  }
+  // EXP-011 §55. The minted array's hook, over the stand-in until the first Do — `useCollection` is
+  // `useValue(source)` keyed on `[source]`, so it resubscribes when the handle changes. After the state
+  // rows, because it reads one.
+  for (const nodeId of hookMinted) {
+    const rowType = mintByNode.get(nodeId)?.rowType ?? 'any';
+    body.push(`  const ${mintedLocals.get(nodeId)} = useCollection${rowType === 'any' ? '' : `<${rowType}>`}(${mintStateName(nodeId)} ?? ${NO_ARRAY});`);
   }
   // EXP-011 §39. The refs: a Delay's timer handle, and a Value Changed's last value seen.
   for (const [, ref] of delayRefs) body.push(`  const ${ref} = useRef<DelayHandle | null>(null);`);
@@ -5535,9 +5694,12 @@ export function emitComponent(
       case 'state-set':
         return a.expr !== undefined ? [a.expr] : [];
       case 'collection-add':
-        return a.entries.map((e) => e.expr);
+        return [...a.entries.map((e) => e.expr), ...(a.minted?.failThen ?? []).flatMap(actionExprsOf)];
       case 'collection-clear':
-        return [...a.then.flatMap(actionExprsOf), ...a.unchangedThen.flatMap(actionExprsOf)];
+        return [...a.then.flatMap(actionExprsOf), ...a.unchangedThen.flatMap(actionExprsOf), ...(a.minted?.failThen ?? []).flatMap(actionExprsOf)];
+      // EXP-011 §55. The source, then the chain.
+      case 'array-new':
+        return [...(a.source !== undefined ? [a.source] : []), ...a.then.flatMap(actionExprsOf)];
       case 'collection-remove':
         return a.then.flatMap(actionExprsOf);
       case 'branch':
@@ -5740,6 +5902,13 @@ const API_CALL_ERROR_CODES: Record<string, string> = {
 };
 /** EXP-011 §54. The action kinds whose failure arm raises on the error channel. */
 const RAISING_ACTION_KINDS = new Set<HandlerAction['kind']>(['api-call', 'cloud-call', 'record-fetch', 'file-pick', 'file-upload', 'file-sign', 'http-call']);
+/** EXP-011 §55. The module-scope stand-in an `Array` bound to a `Create New Array` reads before its first Do. */
+const NO_ARRAY = 'noArray';
+/** EXP-011 §55. The failure prefixes `addCollectionFailure` gives the three mutators (collection-failure.ts). */
+const MINTED_CODE_PREFIX: Record<MintedTarget['action'], string> = { insert: 'insert-into-array', clear: 'clear-array', remove: 'remove-from-array' };
+/** EXP-011 §55. A mutator bound by wire, outside the mint's own chain, guards on the handle and raises — the runtime's `no-array`. */
+const mintedGuards = (a: HandlerAction): boolean =>
+  (a.kind === 'collection-add' || a.kind === 'collection-clear') && a.minted !== undefined && a.minted.viaLocal === undefined;
 
 const GENERATED_SCRIPT_TS = '// @nodegx:generated (script node — provenance markers complete in EXP-007)';
 

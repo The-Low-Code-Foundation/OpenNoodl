@@ -1,111 +1,116 @@
-# Next session — §54 `On App Error` is 🟢 (session 82, 2026-09-03): picker 96/127. Next = EXP-011 Tier 2.8 row 5, `Create New Array` — a DESIGN session first (§7.3, §50.4)
+# Next session — §55 `Create New Array` is 🟢 (session 83, 2026-09-03): picker 97/127. Next = EXP-011 Tier 2.8 row 6, `Filter Records`
 
 ## 🔴 Read this first — Richard, 2026-09-02: *"Stop fucking up the CPU."*
 
-One heavy job at a time on this 16 GB box. Session 82 ran every gate behind a wait-for-quiet loop and
-**handed the box to a peer by message** (opennoodl-ab ran a site-builder look harness between my editor
-`tsc` and my arms). Tell the peer what you hold and for how long; default to letting them go first; never
-start an arm while their webpack or backend is up. Memory: `do-not-pile-cpu-work-on-a-shared-box`,
-`the-editor-test-ci-webpack-typechecks-a-sibling-packages-tests` (a spec in this package's `tests/` is
-typechecked by the editor's `test:ci` webpack — save specs whole).
+One heavy job at a time on this 16 GB box. Session 83 ran every gate alone (jest → arms → editor tsc → editor
+`test:ci` → the editor drive → the app build+drive), checked `ps`/`vm_stat` before each, and tore the dev stack
+down (25 processes) and the headless Chrome + `vite preview` (by pid) the moment each drive was read. Memory:
+`do-not-pile-cpu-work-on-a-shared-box`, `the-editor-test-ci-webpack-typechecks-a-sibling-packages-tests`.
 
 ## The board, re-derived from the task files
 
 | task | status |
 |---|---|
-| EXP-001 `@nodegx/core` | ✅ Published `0.1.0` (its file carries an uncommitted peer note — not in this commit) |
+| EXP-001 `@nodegx/core` | ✅ Published `0.1.0` — the exported snap-desk app builds and typechecks against the PUBLISHED package |
 | EXP-002 / 003 / 005 / 006 / 007 | unchanged |
 | EXP-004 | 🟡 built + driven; drill-down panel + three lines for Richard remain |
-| EXP-008 | ✅ `export-ledger:check` OK — 176 types, 103 translated |
+| EXP-008 | ✅ `export-ledger:check` OK — 176 types, 104 translated |
 | EXP-009 backend connection | 🟢 |
 | EXP-010 | 🟢 |
-| EXP-011 picker coverage | 🟡 **96/127 (75.6%)** — §54 built Tier 2.8 row 4; **row 5 `Create New Array` is next, design first** |
+| EXP-011 picker coverage | 🟡 **97/127 (76.4%)** — §55 built Tier 2.8 row 5; **row 6 `Filter Records` is next** |
 | EXP-012 | 🟢 |
 | EXP-013 "Not exportable yet" | 🟢 s78 |
 
-## What session 82 did (EXP-011 §54 — `On App Error`; the type id IS the display name)
+## What session 83 did (EXP-011 §55 — `Create New Array`; type id `CollectionNew`)
 
-1. **Read the runtime, predicted, measured the reverted arm** (`EXPECTED17.md`, graded at its foot;
-   `probe17-reverted.log`): both boundaries refused — the shell's as "node beside the router shell", the
-   page's as `logic node (On App Error)` — two pathway roots, the verdict "Without them, the app has no
-   error pathway"; the cloud call's failure wrote its row and **told nobody**.
-2. **Built two things**: `src/lib/errors.ts` (`src/emit/errorsLib.ts` — `runtimeerror.ts` transcribed:
-   the sync bus, the depth-2 guard, a throwing subscriber isolated, the console default at module load;
-   `useAppError({ filter }, onError)` armed in a **layout effect**, `last` current before the listener,
-   the Filter coerced as the setter coerces) AND **the raise at every site the runtime raises** — the six
-   request catch sites (after the Error row, before the chain, with `nodeId`/`nodeType`/`componentName`),
-   the Run Tasks host (`useRunTasks({ label, nodeId, componentName }, …)`), a Script's load failure
-   (`defineScript(…, at)`), the http module's `HttpError` codes and the `!ok` arm's `http/error-status`.
-3. **The router shell keeps a file** when a boundary sits beside its Router: `components/<Name>Shell.tsx`
-   (`plan.shell`, rootId null, only the Router disposed), rendered by the scaffold's `App.tsx` as the first
-   child of `BrowserRouter`. Without a boundary it is the scaffold skip it always was (the §I control).
-4. **Gates alone**: pkg tsc 0 · jest 66 files (66 on disk) 2125 · editor tsc 0 (16.3 s) · ledger OK 103
-   translated · picker 96 `--check` exit 0 · emitted apps typecheck 0 (alarm/batch/script/call-desk) ·
-   arms: 13/13 red (M1–M14 minus M13; M10 re-armed on the concatenation spelling).
-5. **Driven** (§54.6): the `On App Error` card's dot gone (Sign In With still dotted), the pre-flight *"16 files — 1 page, 1 component… Everything translates"*, the real write path, **16 files all byte-identical to `emitApp`** (`compare17.ts`). Stack torn down (26 processes), recents restored. ⚠️ the Settings panel must be OPENED through the route seam (`settings17.js`) before the section lookup (`settings17b.js`), and `patchfs17.js` installs that seam — order: patchfs → settings → settings-b.
+1. **Designed first (§55.0)**: the handle is the id. §7.3's "its Id feeds only a wired Array Id, which has no
+   module" measured the wrong thing — the wire is static. A `Create New Array` is a state row holding a
+   collection (`useState<Collection<T> | null>(null)`; `const <label>New = collection<T>([...items]);
+   set<Row>(<label>New)`; the Done chain reads the LOCAL); its `id` is never a string in the emitted app; every
+   Array Id port resolves through ONE `arrayTargetOf(node, component)` (appState.ts: `named` module | `minted`
+   handle) — `Array`, `Insert`, `Remove`, `Clear`, the repeater feed. Reads: `useCollection(<row> ?? noArray)` in
+   render, `(<row>?.peek() ?? [])` in a handler. A mutator bound by wire outside the mint's chain guards on the
+   handle and raises the runtime's `<prefix>/no-array` on §54's channel before its Failure chain.
+2. **Measured the reverted arm** (`EXPECTED18.md`, graded at its foot; `probe18-reverted.log`): the predicted
+   refusals held — and **the NAMED list died too**: `notesArray.items` also fed the mint's Items and the Array
+   node's closed list of `items` consumers read that as a stray; the named list, its insert target and §30's
+   Remove fell with the one untranslated node (§55.2). The reader list is now the rule (`collectionReadEligible`).
+3. **Built** (§55.3): appState `ArrayTarget`/`arrayTargetOf`/`InsertChain.minted`; plan.ts `minted-array-get`,
+   `MintedTarget`, `ArrayNewAction`, `mintChainScope`/`mintStateOf`/`mintRowTypeOf`/`arrayTargetIn`/
+   `mintScopeConflict`, `compileCollectionNew`, the three mutators over targets, the feed pass; component.ts the
+   minted read, `mintedGuard`, `array-new`, the hook AFTER the rows, `noArray`, the core value+type import, the
+   interface import. Ledger `translated`, floor 97 (five pins moved).
+4. **Gates alone**: pkg tsc 0 · jest 67 files (67 on disk) 2179 · editor tsc 0 · editor `test:ci` 2943 specs, 5
+   failures = AIX-006 ×4 (the floor, by name) + **SB-017 acceptance 6 "Expected 38 to be 35"** (a peer's
+   site-builder template count — registered in P82's NEXT-SESSION-PROMPT) · ledger OK · picker 97 `--check` 0 ·
+   the emitted apps under real `tsc` 0 (snap-desk, cheer, note-desk, batch-desk) · arms 17/17 red (M1 re-cut once:
+   a `never` narrowing failed TO COMPILE — "0 total" is not a kill).
+5. **Driven twice** (§55.6): the editor's real write path (card dot gone, Sign In With still dotted, pre-flight
+   "17 files… Everything translates", **17/17 byte-identical to `emitApp`**), and **the BUILT app** —
+   `npm install` against the published core, `tsc -b` 0, `vite build`, headless Chrome over CDP,
+   `EXPECTED18-drive.md` written first: **11/11 rows**, including the middle-row removal and the copy.
 
-## 🔴 Do this next — EXP-011 Tier 2.8, row 5: `Create New Array` — DESIGN FIRST
+## 🔴 Do this next — EXP-011 Tier 2.8, row 6: `Filter Records`
 
-§50.4 and §7.3: an array minted with a generated Id whose only consumer is another node's `Array Id` **by
-wire** — the named-array model keys on a literal name, and §7.3 measured that minting ids buys nothing on
-its own. Read §7.3, §30 (the array vocabulary and its three gates), `array-vocabulary.test.ts`, and the
-runtime (`grep -rna "Create New Array\|NewArray" packages/noodl-runtime/src`) BEFORE writing any code;
-write the design into a §55.0 in EXP-011 (what a wire-fed Array Id means in the emitted app — an anonymous
-collection store? a local?), then `EXPECTED18.md`, the fixture, the reverted arm, the arms, the drive.
-Then `Filter Records`, `Repeater Item`, the streaming trio, … `Sign In With` stays OUT.
+The search box over a fetched list. Read the runtime first (`grep -rna "Filter Records\|FilterDBModels\|filterrecords"
+packages/noodl-runtime/src`), then §43 (Record) and §7.1 (Array Filter — `applyFilter`'s loose `==`, the sort, skip/limit) for
+the vocabulary it will share; write a §56.0 (what a Filter Records over a Query Records / a named array / a minted array
+means — an expression over the list, or a hook?), then `EXPECTED19.md`, the fixture, the reverted arm, the build, the arms,
+the drive. Then `Repeater Item`, the streaming trio, … `Sign In With` stays OUT.
 
 🔴 **Every exporter change owes the editor `tsc` — and the editor `test:ci` webpack.**
-🔴 **A new chain owner must be added to BOTH walkers** (`scanActions` AND the session walker) and to
-`fillMaterialize` — §53.4.1, §54.3.
-🔴 **A node with NO trigger input registers in the early trigger-compile loop** (plan.ts ~12100), or the
-dropped-wire pass re-enters it as "its trigger chain is cyclic" — §54.4.1, memory
-`a-subscriber-node-has-no-trigger-side`.
-🔴 **A refusal's sentence depends on which side asks first** (§52.4, §54.4.2) — predict the sentence.
+🔴 **A new chain owner must be added to BOTH walkers** (`scanActions` AND `deepActions` in component.ts — the
+latter had never descended a Clear's or a Remove's chains, §55.4.8) **and to `fillMaterialize`**.
+🔴 **A new render local must print AFTER whatever it reads** (§55.4.2 — a hook over a state row printed before the
+row; only the spec's real `tsc` saw it).
+🔴 **A closed list of consumers silences every later one** (§55.4.1) — before adding a node that READS a list, grep
+`collectionReadEligible`.
+🔴 **`Collection<T>` is invariant** (§55.4.3) — stand-ins are `<any>`, typed hooks take an explicit type argument.
+🔴 **Read the sibling node's rule for the same port** (§55.4.4) — Run Tasks already decided what an untyped Items is.
 
 ## Open residuals (registered, none blocks an AC)
 
-- §54.7: the http answer's `error` typed optional (a union is the fix; `?? ''` in the raise); a Filter
-  fed by a Text Input refused with the fallback sentence (files B13's controlled-state seam would host it);
-  Function/Expression throws NOT on the bus (a raise per render through a state-setting chain is a loop —
-  memoise per input tuple first); a Query Records failure has no emitted catch site at all (pre-existing);
-  `image/load-failed` not raised. All owner NONE.
-- §53.7 rows unchanged (the template's error VALUE output, `*`-typed contract ports, the Script walkers —
-  owner P18). P80 `UNOWNED-ROWS-TO-MEASURE.md` §10 — unchanged.
+- §55.7: the id AS A STRING (store it on an object) needs a runtime array registry the named modules also
+  register into; a component-local interface from insert keys (a minted array anything inserts into is
+  `Collection<any>`); `count`/`firstItemId`/`changed` on `Array` (named and minted parity); the id nodes' own
+  two-spellings hazard (§55.4.6); two Dos off one button read the row the same handler just set. All owner NONE.
+- The emitted console default prints no `[noodl] ` prefix (cosmetic, errorsLib). Owner NONE.
+- §54.7, §53.7 rows unchanged. P80 `UNOWNED-ROWS-TO-MEASURE.md` §10 — unchanged.
 
-## The numbers (last honest readings, s82)
+## The numbers (last honest readings, s83)
 
 ```
-packages/nodegx-export: tsc 0 · jest 66 files (66 on disk) 2125 rows · on-app-error.test.ts 41
-noodl-editor: tsc -p tsconfig.json --noEmit 0 (16.3 s real; empty log)
-export-ledger:check OK — 176 types, 103 translated · picker 96/127 (75.6%), floor 96, --check exit 0
-arms: M1 3 · M2 2 · M3 2 · M4 2 · M5 1 · M6 4 · M7 8 · M8 13 · M9 1 · M10 3 · M11 2 · M12 1 · M14 1 — all restored, md5 unchanged
-drive: 16 files, 16 same, 0 diff (compare17.ts); AppShell.tsx + errors.ts on disk; App.tsx renders <AppShell />
+packages/nodegx-export: tsc 0 · jest 67 files (67 on disk) 2179 rows · create-new-array.test.ts 35
+noodl-editor: tsc -p tsconfig.json --noEmit 0 · test:ci 2943 specs, 5 failures (AIX-006 ×4 floor + SB-017 acc. 6, P82's)
+export-ledger:check OK — 176 types, 104 translated · picker 97/127 (76.4%), floor 97, --check exit 0
+arms: 17/17 red (mut18-summary.txt) — all restored, md5 unchanged
+drive: editor 17 files, 17 same, 0 diff (compare18.ts); built app 11/11 rows (drive18-app.log vs EXPECTED18-drive.md)
 ```
 
-## Instruments (s82 scratchpad `7346e801-0faf-438f-a784-ca6c5ee16806/scratchpad`)
+## Instruments (s83 scratchpad `243de074-9514-42b8-896d-13610c754325/scratchpad`)
 
-`EXPECTED17.md` (graded), `mkfixture17.js` (`--root=` for a drive copy), `probe17.ts` + `probe17-reverted.log` /
-`probe17-after.log`, `tsn17.sh`, `typecheck17.ts` (emitted apps as real programs), `patch17-plan.py` /
-`patch17-emit.py` / `patch17-specs.py` / `patch17-specs2.py` (the anchored edits, re-runnable against HEAD
-d4d3400c), `mut17.py` (`check` / `apply` / `restore`) + `runmut17.sh` (`ARMS="M1 M2" …`) + `mut17-summary.txt`
-+ `arm17-*.log`, `suite17.sh` / `jest17-full2.log`, `tsc17-editor.log`, the drive scripts `drive17.sh` /
-`drive17b.sh` / `open17.js` / `settings17b.js` / `patchfs17.js` / `readmodal17.js` / `readtoast17.js` /
-`reg17.sh` / `compare17.ts`, `drive17-project/`, `drive17-out/`, `drive17-0N-*.png`.
+`EXPECTED18.md` + `EXPECTED18-drive.md` (both graded), `mkfixture18.js` (`--root=` `--name=`; writes the registry),
+`probe18.ts` + `probe18-reverted.log` / `probe18-after.log`, `tsn18.sh`, `typecheck18.ts`, `patch18-appstate.py` /
+`patch18-plan.py` / `patch18-component.py` (anchored, against HEAD 86fcbcc6), `mut18.py` (`check`/`apply`/`restore`) +
+`runmut18.sh` + `mut18-summary.txt` + `arm18-*.log`, `jest18-full2.log`, `testci18.log`, the editor drive `drive18.sh` /
+`open18.js` / `patchfs18.js` / `settings17.js` / `settings17b.js` / `readmodal17.js` / `readtoast17.js` / `reg18.sh` /
+`compare18.ts`, the app drive `drive18-app.sh` / `app-hook.js` / `app-read.js` / `app-stamp.tpl.js` / `app-clearinput.js` /
+`drive18-app.log`, `drive18-project/`, `drive18-out/` (installed + built), `drive18-0N-*.png`.
 
-## 🔴 What session 82 would tell you if it could only say three things
+## 🔴 What session 83 would tell you if it could only say three things
 
-1. **A boundary over an empty bus is nothing.** The row was not the hook; it was the raise at every site
-   the runtime raises. Count the request verbs' catch blocks before you count the boundary's rows.
-2. **The natural placement had no file.** The app-wide boundary sits beside the Router, and the router
-   shell emitted nothing but `App.tsx`. Ask where a *person* would place the node before asking how to
-   compile it.
-3. **"Cyclic" was pass order.** A node registered lazily "by whichever side asks first" is re-entered when
-   the first asker is a read inside a sink compile; a subscriber has no trigger side, so give it one.
+1. **The sentence that excluded the node was measuring a string; the wire is static.** Ask what the id NAMES
+   before asking how to resolve it — the same move as §30's Remove ("no id is spelled").
+2. **Measure the reverted arm on the whole fixture, not the node.** The finding of the session was on the NAMED
+   side, three nodes away from the one being built.
+3. **Drive the built thing.** The editor drive proved the bytes; only the browser proved that removing the
+   snapshot's middle row leaves the notes' `beta` — the one row every wrong emitter reads identically on.
 
 ## Standing practice
 
-`cline-dev`; commit by exact pathspecs; `git status | grep '^??'` first (`git add` untracked before
-a pathspec commit or they are skipped silently); delete probe specs before committing; reconcile
-the suite count against disk (66); `grep -a`; absolute paths — **the shell cwd resets between
-calls**; `json.dumps(…, ensure_ascii=True)` on the ledger; **`vm_stat` + `ps` before any suite, never
-more than one of mine, wait for a peer's webpack to idle, tear servers down the moment the drive is read.**
+`cline-dev`; commit by exact pathspecs; `git status | grep '^??'` first (`git add` untracked before a pathspec
+commit or they are skipped silently); delete probe specs before committing; reconcile the suite count against disk
+(67); `grep -a`; absolute paths — **the shell cwd resets between calls**; `json.dumps(…, ensure_ascii=True)` on
+the ledger; `with open(...)` for every file write (an unclosed handle flushes after your append); **`vm_stat` + `ps`
+before any suite, never more than one of mine, wait for a peer's webpack to idle, tear servers down the moment the
+drive is read.**

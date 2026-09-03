@@ -1,0 +1,9 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "f2b8d1c3-6a4e-4f9b-8d2c-000000000097",
+  "name": "Home",
+  "path": "/Pages/Home",
+  "type": "page",
+  "modified": "2026-09-03T23:30:00.000Z",
+  "description": "EXP-011 §55 fixture: notes is a named array; Snapshot mints a copy of it (Create New Array) whose Id travels BY WIRE into an Array, an Insert, a Remove and a Clear."
+}

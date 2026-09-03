@@ -115,7 +115,7 @@ place. The order is by *what a refusal silences*, since §50.2 measured that a r
 | 2 | ✅ `Script` | **built s80 (§52)** — was: the escape hatch the MCP reaches for when the picker has no node; ten in one MCP-built project |
 | 3 | ✅ `Run Tasks` | **built s81 (§53)** — was: *"I use this all the time"* — and everything it fires is refused with it |
 | 4 | ✅ `On App Error` | **built s82 (§54)** — was: an error pathway that is left out is the exact case where exporting is worse than not |
-| 5 | `Create New Array` | *"I use this all the time"* — the anonymous-Id-by-wire mechanism (§7.3) needs a design session first |
+| 5 | ✅ `Create New Array` | **built s83 (§55)** — was: *"I use this all the time"* — the anonymous-Id-by-wire mechanism (§7.3) needs a design session first |
 | 6 | `Filter Records` | the search box over a fetched list |
 | 7 | `Repeater Item` | now that the node works, people will use it (§7.3 reversed) |
 | 8 | `JSON Stream Parser` · `Stream Buffer` · `Text Accumulator` | the streaming trio — pure functions over chunks, one build |
@@ -6688,9 +6688,7 @@ untouched because no translation changed.
 
 - ✅ EXP-013, the warning — **built, gated and driven in session 78 (2026-09-03)**; the record is in the task file. Measured on the way: the cascade is not one sentence but three, the root was never named as a node at all, and it reaches a `Variable` and the `Text` bound to it — five nodes behind one `Run Tasks`, not three.
 - ✅ Tier 2.8 row 1, `Component Children` — **built, gated, driven in session 79 (§51)**; picker 93. Next row 2, `Script`.
-- `Create New Array` (row 5) needs the anonymous-store design before a session opens it: an array
-  minted with a generated Id whose only consumer is another node's Array Id **by wire** — the
-  named-array model keys on a literal name. §7.3 measured that minting ids buys nothing on its own.
+- ✅ `Create New Array` (row 5) — **designed and built in session 83 (§55)**: the handle is the id. Picker 97.
 - The honest ceiling is now **117 of 127**; the ten out-of-scope rows stay out only while the badge
   says so where the node is placed.
 
@@ -7454,3 +7452,283 @@ arms 13/13 red, all restored (md5 of the five sources unchanged after each; one 
   boundary"); a task template hosts one per task instance, which is the runtime's own shape. Untested row.
   Owner NONE.
 - The shell's `docComment` and header say *"visual"* (`GENERATED_TS`); cosmetic. Owner NONE.
+
+## §55 Tier 2.8 row 5 — `Create New Array`: the handle is the id (session 83, 2026-09-03)
+
+### §55.0 The design, written before any code — what a wire-fed Array Id means in the emitted app
+
+§7.3 recorded the node as *deliberately out of scope* because "the only consumer of that Id is another
+node's Array Id, by wire — which is precisely what has no emitted module, since the named-array model keys
+on a literal name". §50 reversed the ruling and asked for a design session first. This is it, and the
+answer is that the sentence was measuring the wrong thing: **the Id is not a string the exported app has
+to resolve. It is a name for the array the wire points at, and the wire is static.**
+
+**What the runtime does** (`collectionnode-new.ts`, `collection.ts:764`, `collection-failure.ts`,
+`collectionnode2.ts`, read not guessed):
+
+- `Do` (port `new`) schedules; after inputs settle: `Collection.get()` with no name mints a **fresh
+  anonymous collection under a random guid** in the weak registry; if anything ever arrived on `items`
+  (`sourceCollection !== undefined`) it is copied in once — `collection.set(source)`, a snapshot, not a
+  link; `setCollection` flags `id` dirty; then `done`, then `completed`. **Every Do mints another
+  array.** No `Failure`, no `Unchanged` — the node's own comment says a port that cannot fire is worse
+  than none. `id` is `undefined` until the first Do.
+- The consumers of `id`: `Array` (`Collection2.collectionId`, whose setter calls
+  `Collection.get(id)` — which `take`s the anonymous collection out of the weak registry and **promotes
+  it to the named table: the same array object**), and the three mutators (`resolveCollectionId` →
+  the same `Collection.get(id)`). An `Array` bound by wire rebinds on every new id
+  (`shouldRunOnValueChanged('collectionId', …)` — unless the author unticks Run On Value Change, after
+  which only `Fetch` rebinds). Before the first Do the `Array` has **no collection**: `items`
+  answers `undefined`, `count` 0, and a mutator's Do answers `Failure` `<prefix>/no-array` ("Nothing to
+  insert — no array is bound. Set the Array Id input, or connect one, before triggering this node."),
+  raised on §54's channel before the pulse.
+- The corpus: **0 instances** in every project on disk (`grep -rl '"CollectionNew"' --include=project.json`
+  over `~/vscode_projects`). The catalog's own example (`docs/node-catalog/examples/data-run-tasks-batch.json`)
+  is the batch shape: `Do` → mint → `id` → an `Array` → `items` → `Run Tasks`. The enrichment doc's
+  *whenToUse* is the product surface: *"an anonymous or per-instance array instead of one fixed
+  well-known id — snapshotting a live array before batch-processing it, or a sub-array whose id you store
+  on an object"*. The per-instance list — mint on the page, insert by wire, repeat by wire — is the shape a
+  person builds when a named `Array` would be shared by every instance of the component.
+
+**What the emitted app does — a handle in a state row, never a string.**
+
+1. **The mint is a state row holding a collection handle.** A `Create New Array` whose Do is fired by a
+   translatable trigger allocates `const [snapshot, setSnapshot] = useState<Collection<T> | null>(null)`
+   (`allocStateVar`, origin `'array'`, boot `null` — the runtime's `id` is `undefined` until the first Do,
+   and a handle minted at mount would be a phantom array an Insert could succeed into where the interpreter
+   answers Failure). The Do compiles to an action `array-new`: `const snapshotNew = collection<T>([...src]);
+   setSnapshot(snapshotNew); <Done chain>` — the `[...src]` because `Collection`'s constructor slices but a
+   later `.add` on the same reference must not reach the source (the runtime copies too: `set` builds its own
+   list). With `items` unwired the literal is `[]`. The Done chain reads the handle through the **local**
+   (`mintChainScope`, the id nodes' Done-arm rule, §37): `setSnapshot` does not change `snapshot` in this
+   closure, and the chain must see the array it just made. Outside the chain every read is the **row**.
+2. **`id` is the handle.** The only ports that can take it are the Array Id ports (`collectionId`) of
+   `Array`, `Insert Object Into Array`, `Remove Object From Array` and `Clear Array` in the same component.
+   A node's array is resolved by one function, `arrayTargetOf(node)` → `{ kind: 'named', collectionName }`
+   (a literal name, the module) | `{ kind: 'minted', nodeId }` (exactly one wire on `collectionId`, from a
+   `Create New Array`'s `id`) | a refusal by name. **Every site that today asks `collectionNameOf` and
+   `registry.collections.has` asks this instead** — `listReadOf`'s `Collection2` branch, the three mutator
+   compiles, `insertChainOf`, `repeaterCollectionFeed`, and the For Each feed pass — so the named model and
+   the minted one cannot disagree about what a wire means. Any other consumer of `id` (a Set Variable's
+   value, a Text, a Component Output, a `NewModel` property — the "store its id on an object" pattern)
+   refuses the mint by name: *"its Id is consumed as a value by X — the export keeps the minted array as a
+   handle, not a string, and only an Array Id port can take it"*. That pattern is §55.7's, not this row's.
+3. **Reading a minted array.** `ValueExpr` gains `minted-array-get { nodeId, viaLocal? }`. In render it is
+   the hook local `const snapshotItems = useCollection(snapshot ?? noArray)` — `useCollection` is
+   `useValue(source)` over `[source]`, so the hook resubscribes when the handle changes, and `noArray` is one
+   module-scope `collection<never>([])` per component file, the stand-in for "no array bound" (it is never
+   written: every write is null-guarded). In a handler it is `(snapshot?.peek() ?? [])`; inside the Do chain
+   it is `snapshotNew.peek()`. Type `any[]`, exactly as `collection-get` answers (plan.ts 7501) — a
+   `For Each` fed by it takes the `itemsExpr` path (untyped rows, every mapped input kept, fields read as
+   `any`: the §10 contract), `Run Tasks` items and both transforms take it through `listReadOf` unchanged.
+   The `Array` node itself collapses into the read; its `id → collectionId` wire is consumed by the read.
+   Its other outputs keep the named model's parity: `count`, `firstItemId`, `changed`, `fetched`, `done`,
+   `id` consumed ⇒ refused by name (today's sentence); `fetch` or `items` wired ⇒ today's "wired inputs
+   (seeding or fetch)" — with the `collectionId` wire itself exempted from that gate, since it is the
+   binding. `runOnChange-collectionId` authored `false` ⇒ refused: the node would hold the previous array
+   until a Fetch this slice does not translate.
+4. **The row type `T`.** The snapshot source's row interface when `items` is a named array read or a
+   filter over one (`NotesItem`, imported from its module) **and nothing inserts into the minted array**;
+   otherwise `any`. An insert chain's keys have no static home in a component-local array (the registry
+   types keys per *named* module), so a minted array anything writes is `Collection<any>` — the emitted
+   app typechecks, and a component-local interface from the insert keys is §55.7's.
+5. **Mutators bound by wire** — the same actions with a `target: ArrayTarget` and a live Failure arm.
+   For a named target nothing changes and the dead-wire notes stand (a literal id always resolves). For a
+   minted target the handle can be null (no Do yet), which is the runtime's `no-array` Failure, so the
+   emitted code is the runtime's fork: `if (snapshot === null) { <raise clear-array/no-array>; <Failure
+   chain> } else { … }` — the raise on §54's channel with the runtime's own message, the code by prefix
+   (`insert-into-array`, `remove-from-array`, `clear-array`), and the arm printed only when the guard has
+   something to do (a failure chain or the raise — the raise is always there, since the interpreter always
+   raises). `Remove`'s gate 3 (§30.1, "the repeater must repeat the very array being written") becomes an
+   equality of targets: the row's repeater is fed by a `minted-array-get` of the same mint. `Insert` keeps
+   `insertChainOf`'s three gates with the target in place of the literal; the registry registers nothing
+   for a minted target (no module), and the NewModel compile emits `collection-add` against it.
+6. **Registration order (§54.4.1, memory `a-subscriber-node-has-no-trigger-side`).** The mint has a
+   trigger side — `TRIGGER_PORTS.CollectionNew = 'new'` — so the early loop compiles it first. A read of the
+   handle from *inside* its own Done chain resolves to the local and asks `compiledOf` nothing (the id nodes'
+   `inChain` rule), so `Do → Clear(bound to the same mint)` cannot re-enter. A read from *outside* the chain
+   is legal only when the mint compiles **and its Do is attached** — the id nodes' `rowIsReadable`, whose
+   answer must come from the attach predicate rather than from pass order (an `Array` read inside another
+   sink's early compile, before the attach loop, must not read as "never fired"). §55.4 records what that
+   turned out to be.
+7. **Refusals, by name and predicted** (§52.4: the side that asks first owns the sentence):
+   Do unwired → falls to logic: *"nothing is wired to its Do, so no array is ever created"* (replacing §7.3's
+   sentence in `dispositionForLogic`); two wires on Items → last-writer-wins; Items not a list → the
+   transforms' sentence; `Completed` consumed → the one-outcome sentence (`Unique Id`'s, verbatim); an
+   `Array` bound from anything but a mint's `id` → *"its Array Id is wired from X's Y — only a Create New
+   Array's Id binds by wire; any other source is a runtime string this slice cannot resolve to an array"*
+   (replacing "not a literal name" **only** when the wire exists — the unwired, unnamed case keeps its
+   sentence); two wires on an Array Id → last-writer-wins; a mint that compiles but never attaches → the
+   reader defers with *"the Create New Array it is bound to is never fired by a translatable trigger"*.
+8. **Divergences, recorded rather than hidden.** (a) A handler reads the handle as of its render (the id
+   rows' property): a callback captured before a re-mint acts on the previous array — the interpreter's
+   `Array` node rebinds synchronously. Two Dos in one frame are not a shape a click produces. (b) The
+   runtime's snapshot is `set`'s diff by Model id and the export's is a shallow copy; for plain rows the
+   two are indistinguishable, and a row mutated through `Set Object Properties` shows in both. (c) The
+   anonymous tier is weak: a re-mint drops the previous array in both worlds.
+
+**The fixture** — `tests/fixtures/snap-desk` (`mkfixture18.js`): a named `notes` array with the Cheer
+insert chain and a `Row` template carrying a Remove button (§30's shape, on the named array); a
+`Snapshot` button minting a copy of `notes` with `Done → status`; an `Array` bound by wire feeding a
+second `For Each` over the same `Row`; `Add to snapshot` (a `NewModel → Insert` chain by wire),
+`Clear snapshot` (`Done`/`Failure` into two status setters) and the row's Remove into a
+`Remove Object From Array` by wire. Refused shapes live in the spec by mutation (§52.4.2's rule).
+
+**Gates, in order:** the reverted arm (`probe18-reverted.log`, `EXPECTED18.md` graded at its foot) →
+the build → `tests/create-new-array.test.ts` → the emitted app under real `tsc` (`typecheck18.ts`) →
+the arms → pkg tsc, jest whole, editor tsc → ledger, picker floor → the drive.
+
+### §55.1 What the runtime does, and what that decides
+
+Recorded in §55.0 above, unchanged by the build except for one reading the build sharpened: `Collection.set`
+treats a non-array source as no rows (`src = src || []`, then `src.length`), so a mint whose Items is fed by
+something with no static type (a Function's output — the catalog's own batch example) copies what is an array
+and starts empty otherwise. That is Run Tasks' rule for its Items (`unknown`/`any`/`undefined` admitted), and
+the mint takes it too.
+
+### §55.2 What was measured before anything was built (`probe18-reverted.log`, HEAD 86fcbcc6)
+
+Fixture `tests/fixtures/snap-desk` (`mkfixture18.js`): `Pages/Home` (a text input → `draft`; `Add note` →
+`NewModel → Insert "notes"`; `notes` → a `For Each` over `Components/Row`, whose Remove pulses
+`itemOutputSignal-removed` into a `Remove Object From Array "notes"` — §30's shape; `Snapshot` → a
+`Create New Array` with Items ← `notesArray.items` and `done → status = "snapshot taken"`; an `Array` with
+`collectionId` ← `mint.id` feeding a second `For Each` over the same `Row`; `Add to snapshot` → `NewModel →
+Insert` with `collectionId` ← `mint.id`; `Clear snapshot` → `Clear Array` bound by wire, `done` and
+`failure` into two status setters; the second list's Remove into a `Remove Object From Array` bound by
+wire) and `Components/Row` (text in, `removed` out). 29 nodes, 29 wires.
+
+- Predicted and measured: the mint fell to §7.3's sentence; its click wire "no deterministic translation in
+  step 5"; `snapArray`/`makeSnapNote` "array id is not a literal"; `insertSnap` "logic node
+  (CollectionInsert)"; `clearSnap`/`removeSnap` the not-a-literal sentence; every chain behind them silenced
+  with `causedBy`. No `src/lib/errors.ts`.
+- 🔴 **Not predicted: the NAMED side died too.** `notesArray` was refused *"array feeds nothing statically
+  translatable"*, its `items → notesList` wire dropped *"its items output drives logic this slice does not
+  translate"*, and `removeNote` refused by gate 3 (*"not fed by a named array"*). `notesArray.items` also
+  fed the mint's Items, and `collectionReadEligible`'s stray-wire predicate admitted only a `For Each` and
+  the two transforms as `items` consumers — a `Create New Array` (and, measured beside it, a `Run Tasks`)
+  reading a named list counted as a stray, and the named list, its insert target and its Remove fell with
+  the one untranslated node. §50.2's cascade, on a **translated** construct: 14 refusals on Home against
+  a prediction of ≥ 8, and nothing naming the mint as the cause. Fixed by naming every `resolveExpr` list
+  reader in the predicate; pinned by `create-new-array.test.ts` A10/E1 (the mint refused by mutation, the
+  named list still whole) and D2 (a named `Array` into Run Tasks' Items is a read, not a stray).
+
+### §55.3 The build
+
+- **`appState.ts`**: `COLLECTION_NEW_TYPE`, `ArrayTarget` (`named` | `minted { nodeId, wireKey }`), and
+  `arrayTargetOf(node, component)` — two wires: last-writer-wins; one wire from a mint's `id`: minted; one
+  wire from anything else: *"its Array Id is wired from X's Y — only a Create New Array's Id binds by wire;
+  any other source is a runtime string this slice cannot resolve to an array"*; no wire: the literal, or the
+  old not-a-literal sentence. `InsertChain.minted`; `insertChainOf` over the target (the unwired, unnamed case
+  keeps "array id is not a literal"; the registry registers nothing for a minted chain).
+- **`plan.ts`**: `minted-array-get { nodeId, viaLocal? }` (type `any[]`, never undefined, valid in every
+  context — the five switches); `MintedTarget { nodeId, stateName, viaLocal?, sinkId, action, failThen }` on
+  the three mutator actions; `ArrayNewAction { local, stateName, rowType, source?, sourceIsList?, then }`;
+  `StateVarPlan.origin 'array'`; `MintedArrayPlan` on `ComponentPlan.mintedArrays`; `mintChainScope`,
+  `mintLocalOf` (`<label>New`), `mintRowTypeOf` (the snapshot source's interface when it is a named read or a
+  filter over one and nothing inserts; else `any`), `mintStateOf` (`allocStateVar(label, 'newArray',
+  `Collection<T> | null`, …)`, `bootCode 'null'`), `arrayTargetIn` (the named module check),
+  `mintedTargetFor`, `sameArrayTarget`, `mintScopeConflict`; `collectionReadEligible` exempts the
+  `collectionId` wire and admits every list reader; `listReadOf`'s `Collection2` branch resolves the target
+  (a wired id ⇒ the minted read, the `runOnChange-collectionId` gate, the wire consumed);
+  `compileCollectionClear`/`Remove` and the NewModel compile carry `minted` (Clear's Failure live, the
+  Insert's Failure compiled, Remove's gate 3 over targets with both described); `compileCollectionNew`
+  (Items 0/1/>1, the Run Tasks type rule, the `id` consumers, Completed's one-outcome sentence, the Done
+  chain in scope); `TRIGGER_PORTS`, `OWN_CHAIN_OUTPUTS`, the dispatch; `dispositionForLogic`'s sentence;
+  `scanActions`, `actionsValidIn`, `snapAction`, `fillMaterialize` over the new chains; the For Each feed
+  pass routes a wired-id `Array` to the untyped `itemsExpr` branch.
+- **`component.ts`**: `NO_ARRAY`, `MINTED_CODE_PREFIX`, `mintedGuards`; the minted read in `exprCode`
+  (chain-local `.peek()` / hook local / `(<row>?.peek() ?? [])`), `maybeUndefined`, the deps walker,
+  `hookExprSources` (the hook + the row), `collectExprUse`, `collectActionUse`, `listExprFields`,
+  `chainReadsChainLocal`, `deepActions` (which now also descends a Clear's and a Remove's chains — the emit
+  twin of §30.3's walker hole), `actionExprsOf`; `array-new` and `mintedGuard` in `actionCode`
+  (`if (<row> === null) { raise…; <Failure chain> } else …`, `else if` when the else is one `if`);
+  `actionIsStatement`/`actionTakesNoTerminator`/`blockBody`; the hook **after** the state rows, typed
+  `useCollection<T>` when the row is; `const noArray = collection<any>([])` at module scope;
+  `import { collection, type Collection } from '@nodegx/core'`; `import { notes, type NotesItem }` when the
+  row is typed by a module's interface; `raisesAppErrors` earns the raise import for a guard.
+- **Ledger** `translated`, floor 97 (five pins moved). `mkfixture18.js`, `probe18.ts`, `typecheck18.ts`,
+  `mut18.py` + `runmut18.sh`, `EXPECTED18.md` in the s83 scratchpad.
+
+### §55.4 What building it found
+
+1. 🔴 **A stray-wire gate written for one consumer silences every later one** (§55.2). The predicate was a
+   closed list of `items` readers, and every list reader added since — Run Tasks in §53, the mint here — made
+   a translated named array refuse the moment it fed the new node. The reader list is now the rule.
+2. 🔴 **The hook printed before its `useState` row** — a TDZ `ReferenceError` in the running app that the
+   suite's `typecheckEmittedApp` caught only because A2 runs real `tsc` ("used before declaration"). The
+   minted hook reads a state row, so it prints after the rows; the named hook never did.
+3. 🔴 **`Collection<never>` is not assignable to `Collection<any>`**: `listeners` is a function-typed
+   property, so `T` is invariant and a `never`-typed stand-in widens to nothing. Found by the same real
+   `tsc`; the stand-in is `collection<any>([])` and a typed handle's hook takes an explicit `<NotesItem>`.
+4. 🔴 **The catalog's own example refused on the first build**: a Function's output into Items is typed
+   `unknown`, and the mint took `listReadOf`'s list-only rule. Run Tasks had already decided this
+   (`unknown`/`any`/`undefined` admitted); the emitter copies what is an array and starts empty otherwise,
+   which is `Collection.set`'s own reading of a non-array source. D1 pins the batch shape.
+5. ⚠️ **No "attached" check is needed for a minted read**, unlike the id nodes' `rowIsReadable`: the row
+   boots `null` and stays `null` while the mint never fires, which is exactly the interpreter's unbound
+   `Array` — empty reads, and a mutator's `no-array` Failure. The id rows needed the check because they boot
+   with a value the runtime would regenerate. (B4 pins the unfired mint: no setter call, the app typechecks.)
+6. ⚠️ **One node, two spellings**: a mutator bound to the mint and fired both from the mint's Done and from
+   a button would be cached once (`compiledOf` keys on node and port) with the chain-local, and the button's
+   handler would name a local it has not got. Refused by name (`mintScopeConflict`, C11). The id nodes carry
+   the same hazard unrefused — registered in §55.7.
+7. ⚠️ An `Array` read inside a handler collapses **into that handler**, not into the page file — the
+   page-file `into` is the render-binding form. Two rows were written the other way round.
+8. ⚠️ **`deepActions` never descended a Clear's or a Remove's chains** — so a `navigate` inside a Clear's
+   Done chain would not have earned `useNavigate`. The emit twin of §30.3's `scanActions` hole; both
+   mutators now descend, and the minted Failure arms with them. Fix by inspection: no fixture reaches it.
+
+### §55.5 Graded — `tests/create-new-array.test.ts` (35 rows), the gates, the arms
+
+§A the fixture whole (nothing refused, real `tsc`, every file parses, the mint's order, the row and the hook AFTER it, the
+imports, the bound list's rows and `?.remove`, the two guards with the runtime's codes and messages, the named side beside the
+mint, every disposition, determinism, the ledger, `arrayTargetOf` for all six consumers) · §B the shapes (a mutator inside the
+mint's chain spells the local, no Items ⇒ `[]`, a typed snapshot ⇒ `Collection<NotesItem>` + the type import, an unfired mint
+still typechecks, the insert's Failure rides the guard) · §C twelve refusals by sentence and the §40 wire-order rule · §D the
+catalog's batch shape (mint → Array → Run Tasks items, `Array.isArray` copy; a named Array into Run Tasks is a read) · §E the
+reverted arm's finding as a control.
+
+Gates alone (one job at a time): pkg `tsc` 0 · jest **67 files (67 on disk) 2179 rows** · editor `tsc -p tsconfig.json` 0 ·
+editor `test:ci` 2943 specs, 5 failures = the AIX-006 floor (4, by name) + **SB-017 acceptance 6 "Expected 38 to be 35"** — a
+site-builder template connection count on a template file a peer modified at 18:24 today (not this change's population; registered
+for P82) · `export-ledger:check` OK 104 translated · picker **96 → 97 / 127 (76.4%)**, floor moved, five pins moved · the emitted
+apps under real `tsc`: snap-desk, cheer, note-desk, batch-desk 0 · **arms 17/17 red** (`mut18-summary.txt`: M1 any wire binds ·
+M2 the old stray gate · M3 no chain scope · M4 no trigger port · M5 no two-trigger refusal · M6 no own-chain outputs · M7 no hook
+line · M8 the `never` stand-in · M9 no insert guard · M10 no copy · M11 no interface · M12 no else-if · M13 the list-only Items
+rule · M14 the old sentence · M15 wrong raise codes · M16 boots undefined · M17 no Run On Value Change gate), each restored
+md5-checked. ⚠️ M1's first cut failed TO COMPILE (a `never` narrowing) — "0 total" is not a kill; re-cut to a compiling mutant, 4 rows red.
+
+### §55.6 The drive — twice: the editor's real write path, then the built app in a browser
+
+1. **The editor** (`drive18.sh`, dev editor on `NOODL_REMOTE_DEBUG_PORT=9224`, the drive copy registered in recents and restored
+   after): the picker's `Create New Array` card carries **no dot** while `Sign In With` still does; the pre-flight modal reads
+   *"17 files — 1 page, 1 component, plus the app shell, styles and build config. Uses no backend. Everything translates. No node, wire
+   or parameter is left out."*; the folder seam routed the real write path; **17 files on disk, 17 byte-identical to `emitApp`**
+   (`compare18.ts`); stack torn down (25 processes), recents restored. ⚠️ The first open failed *"project.json is missing or
+   unreadable"*: the drive copy had no `components/_registry.json` — `ProjectFormatDetector` accepts either indicator, and the fixture
+   generator now writes the registry (the fixture on disk gained it too; `parseProject` never reads it).
+2. **The built app** (`EXPECTED18-drive.md`, answers first; `npm install` against the PUBLISHED `@nodegx/core@0.1.0`, `tsc -b` 0,
+   `vite build`, `vite preview`, headless Chrome over CDP, `drive18-app.sh`): all eleven rows as written — the two guards raise
+   `clear-array/no-array` and `insert-into-array/no-array` before any Do; three notes; Snapshot copies them; a note added to the
+   snapshot lands there only; **removing the snapshot's middle row leaves the notes' `beta`**, and removing the notes' `beta` leaves
+   the snapshot's; Clear ⇒ "snapshot cleared", Clear again ⇒ nothing; Snapshot again ⇒ the current notes. Exactly two console
+   errors, both the guards'. (§30.4's rule: the middle row is the measurement — an emitter that bound the Array to `notes` itself or
+   skipped the copy reads identically on every other row.)
+
+### §55.7 What this leaves
+
+- **The id as a string** — `mint.id → NewModel prop`, `→ Set Variable`, `→ Component Outputs` (the
+  enrichment doc's "a sub-array whose id you store on an object"): refused by name. Translating it means a
+  runtime array registry in the emitted app (`Collection.get`'s create-on-read table) that the named modules
+  also register into, or it splits one array into two. A design of its own. Owner NONE.
+- **A component-local interface from insert keys**: a minted array anything inserts into is
+  `Collection<any>`; the registry types keys per named module only. Owner NONE.
+- **`count`, `firstItemId`, `changed` on an `Array`** — refused for named and minted alike (the named
+  model's parity). `count` is the natural "3 selected" display. Owner NONE.
+- **The id nodes' two-spellings hazard** (§55.4.6): a `Set Variable ← Id` fired both from `New`'s Done and a
+  button is cached once with the chain-local. Owner NONE.
+- **A handler reads the handle as of its render** (§55.0.8a): a Run Tasks completion captured before a
+  re-mint acts on the previous array. Not a shape a click produces. Recorded, not fixed.
+- **Two Dos off one button** (`Do → mint`, `Do → Clear(bound)`): the Clear compiles outside the mint's chain
+  and reads the row, which the same handler has just set — the interpreter orders both by wire order. Owner
+  NONE.
+- §54.7's rows unchanged.

@@ -1,0 +1,366 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "f2b8d1c3-6a4e-4f9b-8d2c-000000000097",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "page",
+      "type": "Page",
+      "label": "Home",
+      "children": [
+        "shell"
+      ],
+      "parameters": {
+        "title": "Snap Desk",
+        "urlPath": "home"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "shell",
+      "type": "Group",
+      "label": "Shell",
+      "parent": "page",
+      "children": [
+        "headline",
+        "draftInput",
+        "addBtn",
+        "notesList",
+        "snapBtn",
+        "addSnapBtn",
+        "clearBtn",
+        "snapList",
+        "statusText"
+      ],
+      "parameters": {
+        "flexDirection": "column",
+        "alignItems": "flex-start",
+        "rowGap": "var(--space-3)",
+        "paddingTop": "var(--space-8)",
+        "paddingLeft": "var(--space-6)"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "headline",
+      "type": "Text",
+      "label": "Headline",
+      "parent": "shell",
+      "parameters": {
+        "text": "Snap Desk",
+        "fontSize": "var(--text-3xl)",
+        "color": "var(--foreground)",
+        "fontWeight": "var(--font-semibold)"
+      },
+      "x": 160,
+      "y": 280
+    },
+    {
+      "id": "draftInput",
+      "type": "net.noodl.controls.textinput",
+      "label": "Draft",
+      "parent": "shell",
+      "parameters": {
+        "placeholder": "A note",
+        "borderColor": "var(--border)",
+        "backgroundColor": "var(--background)",
+        "borderRadius": "var(--radius-md)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "paddingLeft": "var(--space-3)",
+        "paddingRight": "var(--space-3)",
+        "paddingTop": "var(--space-2)",
+        "paddingBottom": "var(--space-2)"
+      },
+      "x": 160,
+      "y": 400
+    },
+    {
+      "id": "addBtn",
+      "type": "net.noodl.controls.button",
+      "label": "Add note",
+      "parent": "shell",
+      "parameters": {
+        "label": "Add note",
+        "backgroundColor": "var(--primary)",
+        "color": "var(--primary-foreground)",
+        "borderRadius": "var(--radius-full)",
+        "paddingLeft": "var(--space-4)",
+        "paddingRight": "var(--space-4)",
+        "paddingTop": "var(--space-2)",
+        "paddingBottom": "var(--space-2)",
+        "sizeMode": "contentSize"
+      },
+      "x": 160,
+      "y": 520
+    },
+    {
+      "id": "notesList",
+      "type": "For Each",
+      "label": "One row per note",
+      "parent": "shell",
+      "parameters": {
+        "template": "/Components/Row"
+      },
+      "x": 160,
+      "y": 640
+    },
+    {
+      "id": "snapBtn",
+      "type": "net.noodl.controls.button",
+      "label": "Snapshot",
+      "parent": "shell",
+      "parameters": {
+        "label": "Snapshot",
+        "backgroundColor": "var(--primary)",
+        "color": "var(--primary-foreground)",
+        "borderRadius": "var(--radius-full)",
+        "paddingLeft": "var(--space-4)",
+        "paddingRight": "var(--space-4)",
+        "paddingTop": "var(--space-2)",
+        "paddingBottom": "var(--space-2)",
+        "sizeMode": "contentSize"
+      },
+      "x": 160,
+      "y": 760
+    },
+    {
+      "id": "addSnapBtn",
+      "type": "net.noodl.controls.button",
+      "label": "Add to snapshot",
+      "parent": "shell",
+      "parameters": {
+        "label": "Add to snapshot",
+        "backgroundColor": "var(--primary)",
+        "color": "var(--primary-foreground)",
+        "borderRadius": "var(--radius-full)",
+        "paddingLeft": "var(--space-4)",
+        "paddingRight": "var(--space-4)",
+        "paddingTop": "var(--space-2)",
+        "paddingBottom": "var(--space-2)",
+        "sizeMode": "contentSize"
+      },
+      "x": 160,
+      "y": 880
+    },
+    {
+      "id": "clearBtn",
+      "type": "net.noodl.controls.button",
+      "label": "Clear snapshot",
+      "parent": "shell",
+      "parameters": {
+        "label": "Clear snapshot",
+        "backgroundColor": "var(--primary)",
+        "color": "var(--primary-foreground)",
+        "borderRadius": "var(--radius-full)",
+        "paddingLeft": "var(--space-4)",
+        "paddingRight": "var(--space-4)",
+        "paddingTop": "var(--space-2)",
+        "paddingBottom": "var(--space-2)",
+        "sizeMode": "contentSize"
+      },
+      "x": 160,
+      "y": 1000
+    },
+    {
+      "id": "snapList",
+      "type": "For Each",
+      "label": "One row per snapshot item",
+      "parent": "shell",
+      "parameters": {
+        "template": "/Components/Row"
+      },
+      "x": 160,
+      "y": 1120
+    },
+    {
+      "id": "statusText",
+      "type": "Text",
+      "label": "Status",
+      "parent": "shell",
+      "parameters": {
+        "fontSize": "var(--text-sm)",
+        "color": "var(--muted-foreground)"
+      },
+      "x": 160,
+      "y": 1240
+    },
+    {
+      "id": "draftVar",
+      "type": "Variable2",
+      "label": "draft variable",
+      "parameters": {
+        "name": "draft"
+      },
+      "x": 410,
+      "y": 400
+    },
+    {
+      "id": "makeNote",
+      "type": "NewModel",
+      "label": "Make note",
+      "parameters": {
+        "properties": "text",
+        "type-text": "string"
+      },
+      "x": 410,
+      "y": 520
+    },
+    {
+      "id": "insertNote",
+      "type": "CollectionInsert",
+      "label": "Insert note",
+      "parameters": {
+        "collectionId": "notes"
+      },
+      "x": 410,
+      "y": 580
+    },
+    {
+      "id": "notesArray",
+      "type": "Collection2",
+      "label": "Notes array",
+      "parameters": {
+        "collectionId": "notes"
+      },
+      "x": 410,
+      "y": 640
+    },
+    {
+      "id": "removeNote",
+      "type": "CollectionRemove",
+      "label": "Remove the note that was clicked",
+      "parameters": {
+        "collectionId": "notes"
+      },
+      "x": 410,
+      "y": 700
+    },
+    {
+      "id": "mint",
+      "type": "CollectionNew",
+      "label": "Snapshot",
+      "parameters": {},
+      "x": 410,
+      "y": 760
+    },
+    {
+      "id": "setTaken",
+      "type": "Set Variable",
+      "label": "Say snapshot taken",
+      "parameters": {
+        "name": "status"
+      },
+      "x": 700,
+      "y": 760
+    },
+    {
+      "id": "takenStr",
+      "type": "String",
+      "label": "taken wording",
+      "parameters": {
+        "value": "snapshot taken"
+      },
+      "x": 700,
+      "y": 820
+    },
+    {
+      "id": "snapArray",
+      "type": "Collection2",
+      "label": "Snapshot array",
+      "parameters": {},
+      "x": 410,
+      "y": 1120
+    },
+    {
+      "id": "makeSnapNote",
+      "type": "NewModel",
+      "label": "Make snapshot note",
+      "parameters": {
+        "properties": "text",
+        "type-text": "string"
+      },
+      "x": 410,
+      "y": 880
+    },
+    {
+      "id": "insertSnap",
+      "type": "CollectionInsert",
+      "label": "Insert into snapshot",
+      "parameters": {},
+      "x": 410,
+      "y": 940
+    },
+    {
+      "id": "clearSnap",
+      "type": "CollectionClear",
+      "label": "Clear the snapshot",
+      "parameters": {},
+      "x": 410,
+      "y": 1000
+    },
+    {
+      "id": "setCleared",
+      "type": "Set Variable",
+      "label": "Say snapshot cleared",
+      "parameters": {
+        "name": "status"
+      },
+      "x": 700,
+      "y": 1000
+    },
+    {
+      "id": "clearedStr",
+      "type": "String",
+      "label": "cleared wording",
+      "parameters": {
+        "value": "snapshot cleared"
+      },
+      "x": 700,
+      "y": 1060
+    },
+    {
+      "id": "setNoSnap",
+      "type": "Set Variable",
+      "label": "Say no snapshot yet",
+      "parameters": {
+        "name": "status"
+      },
+      "x": 700,
+      "y": 1120
+    },
+    {
+      "id": "noSnapStr",
+      "type": "String",
+      "label": "no snapshot wording",
+      "parameters": {
+        "value": "no snapshot yet"
+      },
+      "x": 700,
+      "y": 1180
+    },
+    {
+      "id": "removeSnap",
+      "type": "CollectionRemove",
+      "label": "Remove the snapshot row that was clicked",
+      "parameters": {},
+      "x": 410,
+      "y": 1180
+    },
+    {
+      "id": "statusVar",
+      "type": "Variable2",
+      "label": "status variable",
+      "parameters": {
+        "name": "status"
+      },
+      "x": 410,
+      "y": 1240
+    }
+  ],
+  "visualRoots": [
+    "page"
+  ]
+}

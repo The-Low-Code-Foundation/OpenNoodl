@@ -135,7 +135,8 @@ describe('what defers, all with notes (COLLECTIONS-TARGET §3)', () => {
     });
     const result = emitApp(mutated, catalog);
     expect(result.files['src/pages/Notes.tsx']).not.toContain('.add(');
-    expect(result.notes.join('\n')).toContain('array id is not a literal');
+    // EXP-011 §55: a wire from anything but a Create New Array's `id` names its source.
+    expect(result.notes.join('\n')).toContain("its Array Id is wired from Variable2's value — only a Create New Array's Id binds by wire");
   });
 
   test("a second consumer of the created object's id defers the chain (Model2 territory)", () => {

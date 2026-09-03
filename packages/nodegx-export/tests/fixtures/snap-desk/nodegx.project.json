@@ -1,0 +1,18 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/project-v2.json",
+  "name": "Snap Desk",
+  "id": "f2b8d1c3-0000-4000-8000-000000000095",
+  "version": "4",
+  "nodegxVersion": "0.2.0",
+  "runtimeVersion": "react19",
+  "created": "2026-09-03T23:30:00.000Z",
+  "modified": "2026-09-03T23:30:00.000Z",
+  "settings": {
+    "htmlTitle": "Snap Desk",
+    "navigationPathType": "path"
+  },
+  "structure": {
+    "componentsDir": "components"
+  },
+  "rootNodeId": "router"
+}

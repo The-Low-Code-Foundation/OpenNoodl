@@ -240,7 +240,8 @@ describe('what the removal refuses, and why (§30)', () => {
     const node = componentOf(m, 'Pages/Notes').nodes.find((n) => n.id === 'delNote')!;
     (node.parameters as unknown[]).length = 0;
     wire(m, 'Pages/Notes', 'noteDraftVar', 'value', 'delNote', 'collectionId', 'value');
-    expect(reasonFor(m, 'delNote')).toContain('Array Id is not a literal name');
+    // EXP-011 §55: a wire from anything but a Create New Array's `id` now names its source.
+    expect(reasonFor(m, 'delNote')).toContain("its Array Id is wired from Variable2's value — only a Create New Array's Id binds by wire");
   });
 
   test('a consumed Completed defers, as every outcome node’s does', () => {

@@ -144,3 +144,5 @@ surface. ✅ **Read a verdict directory's `headSha`, not its date.**
    an exit file you write yourself — **`timeout` does not exist on this Mac**.
 9. ⚠️ **The box is shared. Announce a SUITE the same way you announce a launch**, and say where its
    log is. s22 and a peer traded the box four times on that basis and neither lost a run.
+
+> ⚠️ Registered by P18 s83 (2026-09-03 19:10): the editor `test:ci` read **SB-017 acceptance 6 "the editor deploy path ships every connection the template holds — Expected 38 to be 35"** beside the AIX-006 floor, on a run whose only source change was in `packages/nodegx-export`. `site-builder.content.json` was modified at 18:24 today; the count gate is yours (memory: a literal count gate only works if somebody runs it). Owner P82.
