@@ -49,8 +49,7 @@
       "parent": "pageShell-3",
       "children": [
         "chrome-2",
-        "headBand-2",
-        "ground-3"
+        "pageMain-3"
       ],
       "parameters": {
         "width": {
@@ -64,6 +63,27 @@
       "y": 280
     },
     {
+      "id": "pageMain-3",
+      "type": "Group",
+      "label": "The page",
+      "parent": "pageBody-3",
+      "children": [
+        "headBand-2",
+        "ground-3"
+      ],
+      "parameters": {
+        "as": "main",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column"
+      },
+      "x": 220,
+      "y": 520
+    },
+    {
       "id": "chrome-2",
       "type": "/Members/Chrome",
       "label": "The band",
@@ -75,7 +95,7 @@
       "id": "headBand-2",
       "type": "Group",
       "label": "What this page is",
-      "parent": "pageBody-3",
+      "parent": "pageMain-3",
       "children": [
         "headBandShell-2"
       ],
@@ -94,8 +114,8 @@
         "paddingTop": "var(--space-8)",
         "paddingBottom": "var(--space-8)"
       },
-      "x": 220,
-      "y": 520
+      "x": 280,
+      "y": 640
     },
     {
       "id": "headBandShell-2",
@@ -120,8 +140,8 @@
         "sizeMode": "contentHeight",
         "alignX": "center"
       },
-      "x": 280,
-      "y": 640
+      "x": 340,
+      "y": 760
     },
     {
       "id": "pageFooter-3",
@@ -129,13 +149,13 @@
       "label": "The foot of the page",
       "parent": "pageShell-3",
       "x": 160,
-      "y": 3280
+      "y": 3400
     },
     {
       "id": "ground-3",
       "type": "Group",
       "label": "Page ground",
-      "parent": "pageBody-3",
+      "parent": "pageMain-3",
       "children": [
         "readingBlock",
         "refusal",
@@ -153,15 +173,14 @@
         "flexDirection": "column",
         "paddingLeft": "var(--space-6)",
         "paddingRight": "var(--space-6)",
-        "as": "main",
         "sizeMode": "contentHeight",
         "alignX": "center",
         "rowGap": "var(--space-5)",
         "paddingTop": "var(--space-12)",
         "paddingBottom": "var(--space-12)"
       },
-      "x": 220,
-      "y": 1480
+      "x": 280,
+      "y": 1600
     },
     {
       "id": "titleHeadRow",
@@ -182,8 +201,8 @@
         "alignItems": "center",
         "columnGap": "var(--space-4)"
       },
-      "x": 340,
-      "y": 760
+      "x": 400,
+      "y": 880
     },
     {
       "id": "titleBadge",
@@ -209,8 +228,8 @@
         "backgroundColor": "var(--accent)",
         "borderRadius": "var(--radius-lg)"
       },
-      "x": 400,
-      "y": 880
+      "x": 460,
+      "y": 1000
     },
     {
       "id": "titleGlyph",
@@ -229,8 +248,8 @@
         },
         "iconColor": "var(--accent-foreground)"
       },
-      "x": 460,
-      "y": 1000
+      "x": 520,
+      "y": 1120
     },
     {
       "id": "titleHead",
@@ -250,8 +269,8 @@
         "rowGap": "var(--space-1)",
         "paddingBottom": "var(--space-2)"
       },
-      "x": 400,
-      "y": 1120
+      "x": 460,
+      "y": 1240
     },
     {
       "id": "titleEyebrow",
@@ -267,8 +286,8 @@
         "color": "var(--primary)",
         "as": "span"
       },
-      "x": 460,
-      "y": 1240
+      "x": 520,
+      "y": 1360
     },
     {
       "id": "title",
@@ -284,8 +303,8 @@
         "color": "var(--foreground)",
         "as": "h1"
       },
-      "x": 460,
-      "y": 1360
+      "x": 520,
+      "y": 1480
     },
     {
       "id": "readingBlock",
@@ -309,8 +328,8 @@
         "flexDirection": "column",
         "rowGap": "var(--space-2)"
       },
-      "x": 280,
-      "y": 1600
+      "x": 340,
+      "y": 1720
     },
     {
       "id": "date",
@@ -322,8 +341,8 @@
         "fontSize": "var(--text-sm)",
         "color": "var(--muted-foreground)"
       },
-      "x": 340,
-      "y": 1720
+      "x": 400,
+      "y": 1840
     },
     {
       "id": "body",
@@ -335,8 +354,8 @@
         "fontSize": "var(--text-base)",
         "color": "var(--foreground)"
       },
-      "x": 340,
-      "y": 1840
+      "x": 400,
+      "y": 1960
     },
     {
       "id": "refusal",
@@ -365,8 +384,8 @@
         "paddingBottom": "var(--space-5)",
         "mounted": false
       },
-      "x": 280,
-      "y": 1960
+      "x": 340,
+      "y": 2080
     },
     {
       "id": "refusalText",
@@ -378,8 +397,8 @@
         "fontSize": "var(--text-sm)",
         "color": "var(--destructive)"
       },
-      "x": 340,
-      "y": 2080
+      "x": 400,
+      "y": 2200
     },
     {
       "id": "pageInputs",
@@ -388,8 +407,8 @@
       "parameters": {
         "pathParams": "announcementId"
       },
-      "x": 710,
-      "y": 3160
+      "x": 770,
+      "y": 3280
     },
     {
       "id": "hold-3",
@@ -420,7 +439,7 @@
           "group": "Outputs"
         }
       ],
-      "x": 710,
+      "x": 770,
       "y": 40
     },
     {
@@ -433,8 +452,8 @@
         "collectionName": "Announcement",
         "idSource": "explicit"
       },
-      "x": 710,
-      "y": 1360
+      "x": 770,
+      "y": 1480
     },
     {
       "id": "when-2",
@@ -443,8 +462,8 @@
       "parameters": {
         "functionScript": "function humanDay(raw) {\n  if (raw === undefined || raw === null) return '';\n  var s = String(raw);\n  if (s === '') return '';\n  var m = /^(\\d{4})-(\\d{2})-(\\d{2})$/.exec(s);\n  var at = m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : new Date(s);\n  if (isNaN(at.getTime())) return '';\n  return at.toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' });\n}\nif (Inputs.postedAt === undefined) return;\nOutputs.label = humanDay(Inputs.postedAt);"
       },
-      "x": 710,
-      "y": 1720,
+      "x": 770,
+      "y": 1840,
       "ports": [
         {
           "name": "in-postedAt",
@@ -470,8 +489,8 @@
         "condition": true,
         "runOnChange-condition": false
       },
-      "x": 710,
-      "y": 1960
+      "x": 770,
+      "y": 2080
     },
     {
       "id": "removal",
@@ -497,8 +516,8 @@
         "paddingTop": "var(--space-6)",
         "mounted": false
       },
-      "x": 280,
-      "y": 2200
+      "x": 340,
+      "y": 2320
     },
     {
       "id": "removeButton",
@@ -521,8 +540,8 @@
         "fontWeight": "var(--font-semibold)",
         "sizeMode": "contentSize"
       },
-      "x": 340,
-      "y": 2320
+      "x": 400,
+      "y": 2440
     },
     {
       "id": "confirm",
@@ -552,8 +571,8 @@
         "paddingBottom": "var(--space-5)",
         "mounted": false
       },
-      "x": 340,
-      "y": 2440
+      "x": 400,
+      "y": 2560
     },
     {
       "id": "confirmText",
@@ -565,8 +584,8 @@
         "fontSize": "var(--text-sm)",
         "color": "var(--destructive)"
       },
-      "x": 400,
-      "y": 2560
+      "x": 460,
+      "y": 2680
     },
     {
       "id": "confirmRow",
@@ -582,8 +601,8 @@
         "flexDirection": "row",
         "columnGap": "var(--space-3)"
       },
-      "x": 400,
-      "y": 2680
+      "x": 460,
+      "y": 2800
     },
     {
       "id": "confirmYes",
@@ -606,8 +625,8 @@
         "fontWeight": "var(--font-semibold)",
         "sizeMode": "contentSize"
       },
-      "x": 460,
-      "y": 2800
+      "x": 520,
+      "y": 2920
     },
     {
       "id": "confirmNo",
@@ -630,8 +649,8 @@
         "fontWeight": "var(--font-semibold)",
         "sizeMode": "contentSize"
       },
-      "x": 460,
-      "y": 2920
+      "x": 520,
+      "y": 3040
     },
     {
       "id": "removeFailed",
@@ -660,8 +679,8 @@
         "paddingBottom": "var(--space-5)",
         "mounted": false
       },
-      "x": 340,
-      "y": 3040
+      "x": 400,
+      "y": 3160
     },
     {
       "id": "removeFailedText",
@@ -673,8 +692,8 @@
         "fontSize": "var(--text-sm)",
         "color": "var(--destructive)"
       },
-      "x": 400,
-      "y": 3160
+      "x": 460,
+      "y": 3280
     },
     {
       "id": "confirmed",
@@ -705,8 +724,8 @@
           "group": "Outputs"
         }
       ],
-      "x": 710,
-      "y": 2800
+      "x": 770,
+      "y": 2920
     },
     {
       "id": "del",
@@ -716,8 +735,8 @@
         "collectionName": "Announcement",
         "idSource": "explicit"
       },
-      "x": 710,
-      "y": 3280
+      "x": 770,
+      "y": 3400
     },
     {
       "id": "confirmGate",
@@ -727,8 +746,8 @@
         "condition": true,
         "runOnChange-condition": false
       },
-      "x": 710,
-      "y": 2440
+      "x": 770,
+      "y": 2560
     },
     {
       "id": "confirmClear",
@@ -738,8 +757,8 @@
         "condition": false,
         "runOnChange-condition": false
       },
-      "x": 710,
-      "y": 2560
+      "x": 770,
+      "y": 2680
     },
     {
       "id": "removeFailedGate",
@@ -749,8 +768,8 @@
         "condition": true,
         "runOnChange-condition": false
       },
-      "x": 710,
-      "y": 3040
+      "x": 770,
+      "y": 3160
     },
     {
       "id": "toList",
@@ -760,8 +779,8 @@
         "router": "Main",
         "target": "/Pages/Members"
       },
-      "x": 710,
-      "y": 3400
+      "x": 770,
+      "y": 3520
     }
   ],
   "visualRoots": [

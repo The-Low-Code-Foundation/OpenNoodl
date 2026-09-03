@@ -499,3 +499,143 @@ suite re-read **77/77, EXIT=0**.
 holding the two near-misses that would make the census a tautology — a node whose *id* is `main`,
 and a `Text` whose *content* is the word `main` — and must return neither.
 
+
+---
+
+# §9 SESSION 26 — the landmark that did not contain its own heading
+
+§8.5 item 2 registered this and left it: *"the `h1` sits outside `<main>` on the nine chrome pages —
+`pageHead()` roots in `headBand`, which is `ground`'s sibling. Common, legal, and not ideal."* It was
+built. **Two of that sentence's numbers were wrong**, and both were found by measuring the artefact
+before touching it rather than by trusting the note.
+
+## §9.1 🔴 It was TWELVE pages of thirteen, and the chrome pages are EIGHT
+
+A walk of `parent`/`children` over the shipped `nodes.json`, asking of each page whether the node
+carrying `as: 'h1'` is a descendant of the node carrying `as: 'main'`:
+
+| | pages |
+|---|---|
+| `h1` inside `main` | **1** — `/` alone |
+| `h1` a SIBLING of `main`, one level apart | **12** |
+
+`/` was right for the one reason it could not be wrong: it has no `ground`, so §8 could not take the
+shortcut on it and had to be given `landingMain` by hand. **Everywhere the shortcut was available it
+was taken, and everywhere it was taken it was wrong** — which is the whole account of the defect.
+The three door pages (`/setup`, `/sign-in`, `/unsubscribe`) and `/join` were never "chrome pages"
+and had it too: their heading roots in `heroBand`, the same sibling relationship one node over.
+
+🔴 **And the chrome is on EIGHT pages, not nine.** REL-010 AC4 and §8.5 both say nine; the artefact
+places `/Members/Chrome` on `/account`, `/announcements/{id}`, `/directory`, `/meetings`,
+`/meetings/{id}`, `/members`, `/post` and `/requests` — eight. §7.3 already said eight when it
+measured the phone column. The gate now asserts the number so the sweep it guards cannot silently
+become empty.
+
+## §9.2 What was built — one wrapper per shape, and the chrome deliberately left out
+
+`PAGE_GROUND` loses `as: 'main'`; the landmark moves up one level onto a node that wraps the head
+band **and** the ground.
+
+| shape | pages | how |
+|---|---|---|
+| `pageShell()` with chrome | 8 | new `pageMain` wraps `headBand` + `ground` |
+| `pageShell()` with a hero band | 3 | the same `pageMain`, wrapping `heroBand` + `ground` + the two closing bands |
+| `BAND_PAGE_GROUND`, no `pageShell` | 1 (`/join`) | new `joinMain`, the twin of `/`'s `landingMain` |
+| already correct | 1 (`/`) | `landingMain`, unchanged |
+
+🔴 **The chrome is the one child that stays OUT**, and that is the half a fix gets wrong. The cheap
+way to make the first assertion green is to move `as: 'main'` up to `pageBody` — no new node, no
+layout to reason about — and it produces a `<main>` that contains the site navigation, which is the
+single thing the landmark is defined not to be. §8.7's second arm exists for that mutant alone.
+
+**13 of the artefact's 100 files changed** (twelve pages and `_registry.json`); **twelve nodes were
+added — 553 → 565** — and **no connection was: 493 both sides.** Tree hash
+`d3d3e00f…` → `1823554f…`.
+
+## §9.3 🔴 The gate on disk could not have caught this, and it says so in its own count
+
+§8.1 counts an `h1` per page and §8.2 counts a `main` per page. **Both were satisfied by twelve
+pages where the two were siblings** — a census is a count, and a count cannot see a relationship.
+So §8.7 asserts the relationship, in both directions, and the containment predicate has a control of
+its own because a walk that returned `true` for everything would pass §8.7 on the artefact that
+provoked it.
+
+| mutant | result |
+|---|---|
+| **the artefact exactly as s25 shipped it** | **§8.7 RED, naming all twelve pages**; §8.1–§8.4 and the §8 control all **green** |
+| the cheap fix — `main` moved up onto `pageBody`, swallowing the chrome | **§8.7 RED** on its second arm; every other §8 spec green |
+| one page stops placing the chrome | **§8.7 RED** on the cardinality arm (and three older specs, which is that mutant being coarse) |
+
+The first row is the one that matters: **the gate that shipped this template one session ago stays
+entirely green on the defect.**
+
+## §9.4 🔴 …and neither could the gate on disk prove the fix — §11, in the browser
+
+**A parameter is an intention.** `as: 'main'` on a `Group` being asserted in a JSON file says
+nothing about whether the runtime emits a `<main>` element, and a node being a descendant of another
+node says nothing about the DOM. Both were assumed by this change, and an assumption no gate can see
+is the shape of every hole in one.
+
+So the same claim is taken one layer down, in `tpl001-members-drive.test.ts` **§11**, over the twenty
+page loads that drive already takes against a real backend in a real browser — no navigation added
+for its own sake. Four specs: every load renders exactly one `<main>` and one `<h1>`; the `<h1>` is a
+DOM descendant of the `<main>`; a control that the reading is not vacuous; and a control that the
+band's `<nav>` **is** in the document and **is not** in the `<main>`.
+
+🔴 **That last one is what makes the third mean anything.** A probe that answered *"inside"* for
+everything in the document would pass the containment check on every page ever written. The band is
+the one landmark deliberately left outside `pageMain`, so it is the reading that separates *in the
+document* from *inside the main* — and it is paired with `anon.landing`, which has no `<nav>` at all
+(REL-002b gates `navWrap` on `isSignedIn`, so the landmark leaves with its contents), so *"0 inside
+main"* is not simply *"0 anywhere"*.
+
+**§11 was driven RED on the s25 artefact**, in the browser, with the fix reverted:
+
+| | s25 artefact | HEAD + this change |
+|---|---|---|
+| loads whose `<h1>` is inside their `<main>` | **0 of 17** signed-in/door loads | **20 of 20** |
+| loads with one `<main>` and one `<h1>` | 20 of 20 | 20 of 20 |
+| loads with a `<nav>` inside the `<main>` | 0 | 0 |
+| exit status | **1**, one spec red | **0**, 63/63 |
+
+The middle row is the point again: **the census arm stayed green through the reverted arm.** Only
+the containment arm moved.
+
+## §9.5 The pictures — 200 of 200 unmoved, and why that is a reading and not a broken run
+
+| | s25 | s26 |
+|---|---|---|
+| PNGs identical | — | **200 of 200** |
+| text dumps identical | — | **100 of 100** |
+| `artefactTreeMd5`, door arm | `eeb3b2f0…` | **`b7b30627…`** |
+| `artefactTreeMd5`, living arm | `bf0e9ac3…` | **`bac9598a…`** |
+
+🔴 ***"200 of 200 identical" is the exact shape of a run that photographed the OLD artefact.*** It is
+excluded from inside the same run: the pin s24 built moved on **both** arms, so the browser was
+served the twelve changed files, and §11 — taken in that same browser — read the new structure. An
+old artefact cannot produce both. Together the three say the thing none says alone: **the landmark
+moved, the browser built it, and not one pixel of what a person sees changed.**
+
+⚠️ **The whole verdict tree is two files different** — the two manifests, and nothing else: 200 PNGs
+and 100 text dumps all reproduced byte-for-byte across a run that changed twelve of the artefact's
+page files. Recorded because s24 had to work to establish that the pictures Richard was given were
+of the shipping artefact at all; from here the manifests carry the answer.
+
+## §9.6 The readings, with their exit statuses
+
+| gate | reading |
+|---|---|
+| `tpl001Template.test.ts` | **79/79, EXIT=0** (77 before §8.7's two) |
+| `noodl-mcp` full jest | **92 suites / 1233 tests, EXIT=0** |
+| `tsc --noEmit -p packages/noodl-mcp` | **0 errors, EXIT=0** |
+| `tpl001-members-drive.test.ts` (real backend, real browser) | **63/63, EXIT=0** (59 before §11's four) |
+| `vib001-members.look.ts` | **EXIT=0, 2/2, 200 shots, 200 identical** |
+| `noodl-editor` `test:main` | **412 suites / 6847 tests, EXIT=0** |
+| `noodl-editor` `test:ci` | **2943 specs, 5 failures, seed 97192, HEAD `2c494793`** — the four `AIX-006 style vocabulary` floor specs **by name**, plus the known order-dependent fifth (`pending project saves … re-arms a held save`). Fresh `tests/test-results.json`, `gitHead` matching |
+
+## §9.7 ⚠️ What is NOT built
+
+1. **The four judgements of §7.3 are still untouched** — they were always Richard's.
+2. **The site-builder template still has no outline gate.** It ships 26 `as` tags and nothing holds
+   them there; §8 and §8.7 cover the members' area only, and §11 drives only this template. One
+   seam, and it is the same two files' worth of work. **Owner: NONE.**

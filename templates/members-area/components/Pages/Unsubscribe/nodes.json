@@ -48,8 +48,7 @@
       "label": "Everything above the foot",
       "parent": "pageShell-11",
       "children": [
-        "heroBand-5",
-        "ground-12"
+        "pageMain-11"
       ],
       "parameters": {
         "width": {
@@ -63,10 +62,31 @@
       "y": 280
     },
     {
+      "id": "pageMain-11",
+      "type": "Group",
+      "label": "The page",
+      "parent": "pageBody-11",
+      "children": [
+        "heroBand-5",
+        "ground-12"
+      ],
+      "parameters": {
+        "as": "main",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column"
+      },
+      "x": 220,
+      "y": 400
+    },
+    {
       "id": "heroBand-5",
       "type": "Group",
       "label": "The photograph, and what this page is",
-      "parent": "pageBody-11",
+      "parent": "pageMain-11",
       "children": [
         "heroShell-5"
       ],
@@ -90,8 +110,8 @@
         "paddingBottom": "var(--space-12)",
         "backgroundImage": "noodl_modules/starter-imagery/ground-shore.webp"
       },
-      "x": 220,
-      "y": 400
+      "x": 280,
+      "y": 520
     },
     {
       "id": "heroShell-5",
@@ -117,8 +137,8 @@
         "alignX": "center",
         "rowGap": "var(--space-5)"
       },
-      "x": 280,
-      "y": 520
+      "x": 340,
+      "y": 640
     },
     {
       "id": "pageFooter-12",
@@ -126,13 +146,13 @@
       "label": "The foot of the page",
       "parent": "pageShell-11",
       "x": 160,
-      "y": 1600
+      "y": 1720
     },
     {
       "id": "ground-12",
       "type": "Group",
       "label": "Page ground",
-      "parent": "pageBody-11",
+      "parent": "pageMain-11",
       "children": [
         "done",
         "failed-3"
@@ -149,15 +169,14 @@
         "flexDirection": "column",
         "paddingLeft": "var(--space-6)",
         "paddingRight": "var(--space-6)",
-        "as": "main",
         "sizeMode": "contentHeight",
         "alignX": "center",
         "rowGap": "var(--space-5)",
         "paddingTop": "var(--space-12)",
         "paddingBottom": "var(--space-12)"
       },
-      "x": 220,
-      "y": 1000
+      "x": 280,
+      "y": 1120
     },
     {
       "id": "headingHead-10",
@@ -177,8 +196,8 @@
         "rowGap": "var(--space-1)",
         "paddingBottom": "var(--space-2)"
       },
-      "x": 340,
-      "y": 640
+      "x": 400,
+      "y": 760
     },
     {
       "id": "headingEyebrow-10",
@@ -194,8 +213,8 @@
         "color": "var(--primary-foreground)",
         "as": "span"
       },
-      "x": 400,
-      "y": 760
+      "x": 460,
+      "y": 880
     },
     {
       "id": "heading-11",
@@ -211,8 +230,8 @@
         "color": "var(--primary-foreground)",
         "as": "h1"
       },
-      "x": 400,
-      "y": 880
+      "x": 460,
+      "y": 1000
     },
     {
       "id": "done",
@@ -241,8 +260,8 @@
         "paddingBottom": "var(--space-5)",
         "mounted": false
       },
-      "x": 280,
-      "y": 1120
+      "x": 340,
+      "y": 1240
     },
     {
       "id": "doneText",
@@ -254,8 +273,8 @@
         "fontSize": "var(--text-sm)",
         "color": "var(--accent-foreground)"
       },
-      "x": 340,
-      "y": 1240
+      "x": 400,
+      "y": 1360
     },
     {
       "id": "failed-3",
@@ -284,8 +303,8 @@
         "paddingBottom": "var(--space-5)",
         "mounted": false
       },
-      "x": 280,
-      "y": 1360
+      "x": 340,
+      "y": 1480
     },
     {
       "id": "failedText-2",
@@ -297,8 +316,8 @@
         "fontSize": "var(--text-sm)",
         "color": "var(--destructive)"
       },
-      "x": 340,
-      "y": 1480
+      "x": 400,
+      "y": 1600
     },
     {
       "id": "pageInputs-3",
@@ -307,8 +326,8 @@
       "parameters": {
         "queryParams": "token"
       },
-      "x": 650,
-      "y": 1480
+      "x": 710,
+      "y": 1600
     },
     {
       "id": "hold-5",
@@ -344,7 +363,7 @@
           "group": "Outputs"
         }
       ],
-      "x": 650,
+      "x": 710,
       "y": 40
     },
     {
@@ -354,8 +373,8 @@
       "parameters": {
         "function": "unsubscribe"
       },
-      "x": 650,
-      "y": 1600
+      "x": 710,
+      "y": 1720
     },
     {
       "id": "doneGate",
@@ -365,8 +384,8 @@
         "condition": true,
         "runOnChange-condition": false
       },
-      "x": 650,
-      "y": 1120
+      "x": 710,
+      "y": 1240
     },
     {
       "id": "failGate-2",
@@ -376,8 +395,8 @@
         "condition": true,
         "runOnChange-condition": false
       },
-      "x": 650,
-      "y": 1360
+      "x": 710,
+      "y": 1480
     }
   ],
   "visualRoots": [

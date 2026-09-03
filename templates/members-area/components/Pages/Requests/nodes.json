@@ -49,8 +49,7 @@
       "parent": "pageShell-8",
       "children": [
         "chrome-6",
-        "headBand-6",
-        "ground-9"
+        "pageMain-8"
       ],
       "parameters": {
         "width": {
@@ -64,6 +63,27 @@
       "y": 280
     },
     {
+      "id": "pageMain-8",
+      "type": "Group",
+      "label": "The page",
+      "parent": "pageBody-8",
+      "children": [
+        "headBand-6",
+        "ground-9"
+      ],
+      "parameters": {
+        "as": "main",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column"
+      },
+      "x": 220,
+      "y": 520
+    },
+    {
       "id": "chrome-6",
       "type": "/Members/Chrome",
       "label": "The band",
@@ -75,7 +95,7 @@
       "id": "headBand-6",
       "type": "Group",
       "label": "What this page is",
-      "parent": "pageBody-8",
+      "parent": "pageMain-8",
       "children": [
         "headBandShell-6"
       ],
@@ -94,8 +114,8 @@
         "paddingTop": "var(--space-8)",
         "paddingBottom": "var(--space-8)"
       },
-      "x": 220,
-      "y": 520
+      "x": 280,
+      "y": 640
     },
     {
       "id": "headBandShell-6",
@@ -120,8 +140,8 @@
         "sizeMode": "contentHeight",
         "alignX": "center"
       },
-      "x": 280,
-      "y": 640
+      "x": 340,
+      "y": 760
     },
     {
       "id": "pageFooter-9",
@@ -129,13 +149,13 @@
       "label": "The foot of the page",
       "parent": "pageShell-8",
       "x": 160,
-      "y": 2320
+      "y": 2440
     },
     {
       "id": "ground-9",
       "type": "Group",
       "label": "Page ground",
-      "parent": "pageBody-8",
+      "parent": "pageMain-8",
       "children": [
         "notAllowed-2",
         "queue"
@@ -152,15 +172,14 @@
         "flexDirection": "column",
         "paddingLeft": "var(--space-6)",
         "paddingRight": "var(--space-6)",
-        "as": "main",
         "sizeMode": "contentHeight",
         "alignX": "center",
         "rowGap": "var(--space-5)",
         "paddingTop": "var(--space-12)",
         "paddingBottom": "var(--space-12)"
       },
-      "x": 220,
-      "y": 1480
+      "x": 280,
+      "y": 1600
     },
     {
       "id": "headingHeadRow-4",
@@ -181,8 +200,8 @@
         "alignItems": "center",
         "columnGap": "var(--space-4)"
       },
-      "x": 340,
-      "y": 760
+      "x": 400,
+      "y": 880
     },
     {
       "id": "headingBadge-4",
@@ -208,8 +227,8 @@
         "backgroundColor": "var(--accent)",
         "borderRadius": "var(--radius-lg)"
       },
-      "x": 400,
-      "y": 880
+      "x": 460,
+      "y": 1000
     },
     {
       "id": "headingGlyph-4",
@@ -228,8 +247,8 @@
         },
         "iconColor": "var(--accent-foreground)"
       },
-      "x": 460,
-      "y": 1000
+      "x": 520,
+      "y": 1120
     },
     {
       "id": "headingHead-7",
@@ -249,8 +268,8 @@
         "rowGap": "var(--space-1)",
         "paddingBottom": "var(--space-2)"
       },
-      "x": 400,
-      "y": 1120
+      "x": 460,
+      "y": 1240
     },
     {
       "id": "headingEyebrow-7",
@@ -266,8 +285,8 @@
         "color": "var(--primary)",
         "as": "span"
       },
-      "x": 460,
-      "y": 1240
+      "x": 520,
+      "y": 1360
     },
     {
       "id": "heading-8",
@@ -283,8 +302,8 @@
         "color": "var(--foreground)",
         "as": "h1"
       },
-      "x": 460,
-      "y": 1360
+      "x": 520,
+      "y": 1480
     },
     {
       "id": "notAllowed-2",
@@ -313,8 +332,8 @@
         "paddingBottom": "var(--space-5)",
         "mounted": false
       },
-      "x": 280,
-      "y": 1600
+      "x": 340,
+      "y": 1720
     },
     {
       "id": "notAllowedText-2",
@@ -326,8 +345,8 @@
         "fontSize": "var(--text-sm)",
         "color": "var(--destructive)"
       },
-      "x": 340,
-      "y": 1720
+      "x": 400,
+      "y": 1840
     },
     {
       "id": "queue",
@@ -348,8 +367,8 @@
         "rowGap": "var(--space-4)",
         "mounted": false
       },
-      "x": 280,
-      "y": 1840
+      "x": 340,
+      "y": 1960
     },
     {
       "id": "list-3",
@@ -360,8 +379,8 @@
         "templateType": "explicit",
         "template": "/Members/RequestRow"
       },
-      "x": 340,
-      "y": 1960
+      "x": 400,
+      "y": 2080
     },
     {
       "id": "emptyState-3",
@@ -390,8 +409,8 @@
         "paddingBottom": "var(--space-5)",
         "mounted": false
       },
-      "x": 340,
-      "y": 2080
+      "x": 400,
+      "y": 2200
     },
     {
       "id": "emptyStateText-3",
@@ -403,8 +422,8 @@
         "fontSize": "var(--text-sm)",
         "color": "var(--muted-foreground)"
       },
-      "x": 400,
-      "y": 2200
+      "x": 460,
+      "y": 2320
     },
     {
       "id": "notModerator-2",
@@ -413,8 +432,8 @@
       "parameters": {
         "functionScript": "if (Inputs.isModerator === undefined) return;\nOutputs.no = Inputs.isModerator !== true;"
       },
-      "x": 710,
-      "y": 1600,
+      "x": 770,
+      "y": 1720,
       "ports": [
         {
           "name": "in-isModerator",
@@ -449,8 +468,8 @@
           }
         ]
       },
-      "x": 710,
-      "y": 1960
+      "x": 770,
+      "y": 2080
     },
     {
       "id": "emptyGate-3",
@@ -460,8 +479,8 @@
         "runOnChange-in-count": true,
         "functionScript": "Outputs.empty = (Inputs.count || 0) === 0;"
       },
-      "x": 710,
-      "y": 2080,
+      "x": 770,
+      "y": 2200,
       "ports": [
         {
           "name": "in-count",
@@ -487,7 +506,7 @@
         "router": "Main",
         "target": "/Pages/Landing"
       },
-      "x": 710,
+      "x": 770,
       "y": 400
     }
   ],

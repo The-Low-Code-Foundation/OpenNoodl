@@ -166,7 +166,7 @@
     "Pages/SignIn": {
       "path": "Pages/SignIn",
       "type": "page",
-      "nodeCount": 22,
+      "nodeCount": 23,
       "connectionCount": 8,
       "modified": "2026-08-28T00:00:00.000Z",
       "created": "2026-08-28T00:00:00.000Z"
@@ -174,7 +174,7 @@
     "Pages/Members": {
       "path": "Pages/Members",
       "type": "page",
-      "nodeCount": 29,
+      "nodeCount": 30,
       "connectionCount": 11,
       "modified": "2026-08-28T00:00:00.000Z",
       "created": "2026-08-28T00:00:00.000Z"
@@ -182,7 +182,7 @@
     "Pages/Announcement": {
       "path": "Pages/Announcement",
       "type": "page",
-      "nodeCount": 39,
+      "nodeCount": 40,
       "connectionCount": 22,
       "modified": "2026-08-28T00:00:00.000Z",
       "created": "2026-08-28T00:00:00.000Z"
@@ -190,7 +190,7 @@
     "Pages/Meetings": {
       "path": "Pages/Meetings",
       "type": "page",
-      "nodeCount": 24,
+      "nodeCount": 25,
       "connectionCount": 9,
       "modified": "2026-08-28T00:00:00.000Z",
       "created": "2026-08-28T00:00:00.000Z"
@@ -198,7 +198,7 @@
     "Pages/Meeting": {
       "path": "Pages/Meeting",
       "type": "page",
-      "nodeCount": 39,
+      "nodeCount": 40,
       "connectionCount": 23,
       "modified": "2026-08-28T00:00:00.000Z",
       "created": "2026-08-28T00:00:00.000Z"
@@ -206,7 +206,7 @@
     "Pages/Join": {
       "path": "Pages/Join",
       "type": "page",
-      "nodeCount": 26,
+      "nodeCount": 27,
       "connectionCount": 10,
       "modified": "2026-08-28T00:00:00.000Z",
       "created": "2026-08-28T00:00:00.000Z"
@@ -214,7 +214,7 @@
     "Pages/Setup": {
       "path": "Pages/Setup",
       "type": "page",
-      "nodeCount": 32,
+      "nodeCount": 33,
       "connectionCount": 23,
       "modified": "2026-08-28T00:00:00.000Z",
       "created": "2026-08-28T00:00:00.000Z"
@@ -222,7 +222,7 @@
     "Pages/Post": {
       "path": "Pages/Post",
       "type": "page",
-      "nodeCount": 42,
+      "nodeCount": 43,
       "connectionCount": 32,
       "modified": "2026-08-28T00:00:00.000Z",
       "created": "2026-08-28T00:00:00.000Z"
@@ -230,7 +230,7 @@
     "Pages/Requests": {
       "path": "Pages/Requests",
       "type": "page",
-      "nodeCount": 24,
+      "nodeCount": 25,
       "connectionCount": 10,
       "modified": "2026-08-28T00:00:00.000Z",
       "created": "2026-08-28T00:00:00.000Z"
@@ -238,7 +238,7 @@
     "Pages/Directory": {
       "path": "Pages/Directory",
       "type": "page",
-      "nodeCount": 25,
+      "nodeCount": 26,
       "connectionCount": 9,
       "modified": "2026-08-28T00:00:00.000Z",
       "created": "2026-08-28T00:00:00.000Z"
@@ -246,7 +246,7 @@
     "Pages/Account": {
       "path": "Pages/Account",
       "type": "page",
-      "nodeCount": 33,
+      "nodeCount": 34,
       "connectionCount": 25,
       "modified": "2026-08-28T00:00:00.000Z",
       "created": "2026-08-28T00:00:00.000Z"
@@ -254,7 +254,7 @@
     "Pages/Unsubscribe": {
       "path": "Pages/Unsubscribe",
       "type": "page",
-      "nodeCount": 19,
+      "nodeCount": 20,
       "connectionCount": 10,
       "modified": "2026-08-28T00:00:00.000Z",
       "created": "2026-08-28T00:00:00.000Z"
@@ -262,7 +262,7 @@
   },
   "stats": {
     "totalComponents": 32,
-    "totalNodes": 553,
+    "totalNodes": 565,
     "totalConnections": 493
   }
 }

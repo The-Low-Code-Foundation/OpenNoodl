@@ -49,8 +49,7 @@
       "parent": "pageShell-10",
       "children": [
         "chrome-8",
-        "headBand-8",
-        "ground-11"
+        "pageMain-10"
       ],
       "parameters": {
         "width": {
@@ -64,6 +63,27 @@
       "y": 280
     },
     {
+      "id": "pageMain-10",
+      "type": "Group",
+      "label": "The page",
+      "parent": "pageBody-10",
+      "children": [
+        "headBand-8",
+        "ground-11"
+      ],
+      "parameters": {
+        "as": "main",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column"
+      },
+      "x": 220,
+      "y": 520
+    },
+    {
       "id": "chrome-8",
       "type": "/Members/Chrome",
       "label": "The band",
@@ -75,7 +95,7 @@
       "id": "headBand-8",
       "type": "Group",
       "label": "What this page is",
-      "parent": "pageBody-10",
+      "parent": "pageMain-10",
       "children": [
         "headBandShell-8"
       ],
@@ -94,8 +114,8 @@
         "paddingTop": "var(--space-8)",
         "paddingBottom": "var(--space-8)"
       },
-      "x": 220,
-      "y": 520
+      "x": 280,
+      "y": 640
     },
     {
       "id": "headBandShell-8",
@@ -120,8 +140,8 @@
         "sizeMode": "contentHeight",
         "alignX": "center"
       },
-      "x": 280,
-      "y": 640
+      "x": 340,
+      "y": 760
     },
     {
       "id": "pageFooter-11",
@@ -129,13 +149,13 @@
       "label": "The foot of the page",
       "parent": "pageShell-10",
       "x": 160,
-      "y": 2680
+      "y": 2800
     },
     {
       "id": "ground-11",
       "type": "Group",
       "label": "Page ground",
-      "parent": "pageBody-10",
+      "parent": "pageMain-10",
       "children": [
         "panel",
         "savedOn",
@@ -154,15 +174,14 @@
         "flexDirection": "column",
         "paddingLeft": "var(--space-6)",
         "paddingRight": "var(--space-6)",
-        "as": "main",
         "sizeMode": "contentHeight",
         "alignX": "center",
         "rowGap": "var(--space-5)",
         "paddingTop": "var(--space-12)",
         "paddingBottom": "var(--space-12)"
       },
-      "x": 220,
-      "y": 1480
+      "x": 280,
+      "y": 1600
     },
     {
       "id": "headingHeadRow-6",
@@ -183,8 +202,8 @@
         "alignItems": "center",
         "columnGap": "var(--space-4)"
       },
-      "x": 340,
-      "y": 760
+      "x": 400,
+      "y": 880
     },
     {
       "id": "headingBadge-6",
@@ -210,8 +229,8 @@
         "backgroundColor": "var(--accent)",
         "borderRadius": "var(--radius-lg)"
       },
-      "x": 400,
-      "y": 880
+      "x": 460,
+      "y": 1000
     },
     {
       "id": "headingGlyph-6",
@@ -230,8 +249,8 @@
         },
         "iconColor": "var(--accent-foreground)"
       },
-      "x": 460,
-      "y": 1000
+      "x": 520,
+      "y": 1120
     },
     {
       "id": "headingHead-9",
@@ -251,8 +270,8 @@
         "rowGap": "var(--space-1)",
         "paddingBottom": "var(--space-2)"
       },
-      "x": 400,
-      "y": 1120
+      "x": 460,
+      "y": 1240
     },
     {
       "id": "headingEyebrow-9",
@@ -268,8 +287,8 @@
         "color": "var(--primary)",
         "as": "span"
       },
-      "x": 460,
-      "y": 1240
+      "x": 520,
+      "y": 1360
     },
     {
       "id": "heading-10",
@@ -285,8 +304,8 @@
         "color": "var(--foreground)",
         "as": "h1"
       },
-      "x": 460,
-      "y": 1360
+      "x": 520,
+      "y": 1480
     },
     {
       "id": "panel",
@@ -320,8 +339,8 @@
         },
         "mounted": false
       },
-      "x": 280,
-      "y": 1600
+      "x": 340,
+      "y": 1720
     },
     {
       "id": "box",
@@ -347,8 +366,8 @@
         "labelfontSize": "var(--text-base)",
         "labelcolor": "var(--foreground)"
       },
-      "x": 340,
-      "y": 1720
+      "x": 400,
+      "y": 1840
     },
     {
       "id": "note",
@@ -360,8 +379,8 @@
         "fontSize": "var(--text-sm)",
         "color": "var(--muted-foreground)"
       },
-      "x": 340,
-      "y": 1840
+      "x": 400,
+      "y": 1960
     },
     {
       "id": "savedOn",
@@ -394,8 +413,8 @@
           "unit": "px"
         }
       },
-      "x": 280,
-      "y": 1960
+      "x": 340,
+      "y": 2080
     },
     {
       "id": "savedOnText",
@@ -407,8 +426,8 @@
         "fontSize": "var(--text-sm)",
         "color": "var(--accent-foreground)"
       },
-      "x": 340,
-      "y": 2080
+      "x": 400,
+      "y": 2200
     },
     {
       "id": "savedOff",
@@ -441,8 +460,8 @@
           "unit": "px"
         }
       },
-      "x": 280,
-      "y": 2200
+      "x": 340,
+      "y": 2320
     },
     {
       "id": "savedOffText",
@@ -454,8 +473,8 @@
         "fontSize": "var(--text-sm)",
         "color": "var(--accent-foreground)"
       },
-      "x": 340,
-      "y": 2320
+      "x": 400,
+      "y": 2440
     },
     {
       "id": "failed-2",
@@ -488,8 +507,8 @@
           "unit": "px"
         }
       },
-      "x": 280,
-      "y": 2440
+      "x": 340,
+      "y": 2560
     },
     {
       "id": "failedText",
@@ -501,8 +520,8 @@
         "fontSize": "var(--text-sm)",
         "color": "var(--destructive)"
       },
-      "x": 340,
-      "y": 2560
+      "x": 400,
+      "y": 2680
     },
     {
       "id": "read-4",
@@ -511,8 +530,8 @@
       "parameters": {
         "function": "myNotifySetting"
       },
-      "x": 710,
-      "y": 1720
+      "x": 770,
+      "y": 1840
     },
     {
       "id": "write",
@@ -521,8 +540,8 @@
       "parameters": {
         "function": "setNotifySetting"
       },
-      "x": 710,
-      "y": 1840
+      "x": 770,
+      "y": 1960
     },
     {
       "id": "which",
@@ -551,8 +570,8 @@
           "group": "Inputs"
         }
       ],
-      "x": 710,
-      "y": 2680
+      "x": 770,
+      "y": 2800
     },
     {
       "id": "onGate",
@@ -562,8 +581,8 @@
         "condition": true,
         "runOnChange-condition": false
       },
-      "x": 710,
-      "y": 1960
+      "x": 770,
+      "y": 2080
     },
     {
       "id": "offGate",
@@ -573,8 +592,8 @@
         "condition": true,
         "runOnChange-condition": false
       },
-      "x": 710,
-      "y": 2200
+      "x": 770,
+      "y": 2320
     },
     {
       "id": "failGate",
@@ -584,8 +603,8 @@
         "condition": true,
         "runOnChange-condition": false
       },
-      "x": 710,
-      "y": 2440
+      "x": 770,
+      "y": 2560
     },
     {
       "id": "onClear",
@@ -595,8 +614,8 @@
         "condition": false,
         "runOnChange-condition": false
       },
-      "x": 710,
-      "y": 2080
+      "x": 770,
+      "y": 2200
     },
     {
       "id": "offClear",
@@ -606,8 +625,8 @@
         "condition": false,
         "runOnChange-condition": false
       },
-      "x": 710,
-      "y": 2320
+      "x": 770,
+      "y": 2440
     },
     {
       "id": "failClear",
@@ -617,8 +636,8 @@
         "condition": false,
         "runOnChange-condition": false
       },
-      "x": 710,
-      "y": 2560
+      "x": 770,
+      "y": 2680
     },
     {
       "id": "toLanding-6",
@@ -628,7 +647,7 @@
         "router": "Main",
         "target": "/Pages/Landing"
       },
-      "x": 710,
+      "x": 770,
       "y": 400
     }
   ],

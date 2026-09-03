@@ -2,9 +2,9 @@
   "task": "vib-001",
   "subject": "members-area",
   "state": "living",
-  "headSha": "a013697d9861b52d8df46f009ae93d78b27c677d",
-  "artefactMd5": "e8a11d9a737ff2a872f91e5a64f62046",
-  "artefactTreeMd5": "bf0e9ac3896484cf4c13d6b6e0aa54f8",
+  "headSha": "2c4947932fd9e16401850cda32add7c196a3f50b",
+  "artefactMd5": "03a6de1966f39538ab644c5b945b10b6",
+  "artefactTreeMd5": "bac9598a3c5f0f843e9bea6ced28da5d",
   "outDir": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-09-03/members-area-living",
   "starterAssets": {
     "written": [],
@@ -804,7 +804,7 @@
       "subject": "members-area",
       "state": "living",
       "page": "announcement",
-      "url": "/announcements/90b08c92-b29f-4b0e-a05d-edf3d3443aff",
+      "url": "/announcements/3d5690bd-b8ca-4b1f-a83d-780acf0bbdd1",
       "as": "a member reading the newest announcement — the top row of /members",
       "viewport": {
         "id": "preview",
@@ -827,7 +827,7 @@
       "subject": "members-area",
       "state": "living",
       "page": "announcement",
-      "url": "/announcements/90b08c92-b29f-4b0e-a05d-edf3d3443aff",
+      "url": "/announcements/3d5690bd-b8ca-4b1f-a83d-780acf0bbdd1",
       "as": "a member reading the newest announcement — the top row of /members",
       "viewport": {
         "id": "desktop",
@@ -850,7 +850,7 @@
       "subject": "members-area",
       "state": "living",
       "page": "announcement",
-      "url": "/announcements/90b08c92-b29f-4b0e-a05d-edf3d3443aff",
+      "url": "/announcements/3d5690bd-b8ca-4b1f-a83d-780acf0bbdd1",
       "as": "a member reading the newest announcement — the top row of /members",
       "viewport": {
         "id": "wide",
@@ -873,7 +873,7 @@
       "subject": "members-area",
       "state": "living",
       "page": "announcement",
-      "url": "/announcements/90b08c92-b29f-4b0e-a05d-edf3d3443aff",
+      "url": "/announcements/3d5690bd-b8ca-4b1f-a83d-780acf0bbdd1",
       "as": "a member reading the newest announcement — the top row of /members",
       "viewport": {
         "id": "phone",
@@ -896,7 +896,7 @@
       "subject": "members-area",
       "state": "living",
       "page": "meeting",
-      "url": "/meetings/ede9a372-b8cd-40c7-b56b-718d6a49cb24",
+      "url": "/meetings/402d3050-e029-4efc-9826-e23ec601a21c",
       "as": "a member opening the soonest meeting — the top row of /meetings",
       "viewport": {
         "id": "preview",
@@ -919,7 +919,7 @@
       "subject": "members-area",
       "state": "living",
       "page": "meeting",
-      "url": "/meetings/ede9a372-b8cd-40c7-b56b-718d6a49cb24",
+      "url": "/meetings/402d3050-e029-4efc-9826-e23ec601a21c",
       "as": "a member opening the soonest meeting — the top row of /meetings",
       "viewport": {
         "id": "desktop",
@@ -942,7 +942,7 @@
       "subject": "members-area",
       "state": "living",
       "page": "meeting",
-      "url": "/meetings/ede9a372-b8cd-40c7-b56b-718d6a49cb24",
+      "url": "/meetings/402d3050-e029-4efc-9826-e23ec601a21c",
       "as": "a member opening the soonest meeting — the top row of /meetings",
       "viewport": {
         "id": "wide",
@@ -965,7 +965,7 @@
       "subject": "members-area",
       "state": "living",
       "page": "meeting",
-      "url": "/meetings/ede9a372-b8cd-40c7-b56b-718d6a49cb24",
+      "url": "/meetings/402d3050-e029-4efc-9826-e23ec601a21c",
       "as": "a member opening the soonest meeting — the top row of /meetings",
       "viewport": {
         "id": "phone",

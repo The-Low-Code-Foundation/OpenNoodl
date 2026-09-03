@@ -49,8 +49,7 @@
       "parent": "pageShell-7",
       "children": [
         "chrome-5",
-        "headBand-5",
-        "ground-8"
+        "pageMain-7"
       ],
       "parameters": {
         "width": {
@@ -64,6 +63,27 @@
       "y": 280
     },
     {
+      "id": "pageMain-7",
+      "type": "Group",
+      "label": "The page",
+      "parent": "pageBody-7",
+      "children": [
+        "headBand-5",
+        "ground-8"
+      ],
+      "parameters": {
+        "as": "main",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column"
+      },
+      "x": 220,
+      "y": 520
+    },
+    {
       "id": "chrome-5",
       "type": "/Members/Chrome",
       "label": "The band",
@@ -75,7 +95,7 @@
       "id": "headBand-5",
       "type": "Group",
       "label": "What this page is",
-      "parent": "pageBody-7",
+      "parent": "pageMain-7",
       "children": [
         "headBandShell-5"
       ],
@@ -94,8 +114,8 @@
         "paddingTop": "var(--space-8)",
         "paddingBottom": "var(--space-8)"
       },
-      "x": 220,
-      "y": 520
+      "x": 280,
+      "y": 640
     },
     {
       "id": "headBandShell-5",
@@ -120,8 +140,8 @@
         "sizeMode": "contentHeight",
         "alignX": "center"
       },
-      "x": 280,
-      "y": 640
+      "x": 340,
+      "y": 760
     },
     {
       "id": "pageFooter-8",
@@ -129,13 +149,13 @@
       "label": "The foot of the page",
       "parent": "pageShell-7",
       "x": 160,
-      "y": 3640
+      "y": 3760
     },
     {
       "id": "ground-8",
       "type": "Group",
       "label": "Page ground",
-      "parent": "pageBody-7",
+      "parent": "pageMain-7",
       "children": [
         "notAllowed",
         "tools"
@@ -152,15 +172,14 @@
         "flexDirection": "column",
         "paddingLeft": "var(--space-6)",
         "paddingRight": "var(--space-6)",
-        "as": "main",
         "sizeMode": "contentHeight",
         "alignX": "center",
         "rowGap": "var(--space-5)",
         "paddingTop": "var(--space-12)",
         "paddingBottom": "var(--space-12)"
       },
-      "x": 220,
-      "y": 1480
+      "x": 280,
+      "y": 1600
     },
     {
       "id": "headingHeadRow-3",
@@ -181,8 +200,8 @@
         "alignItems": "center",
         "columnGap": "var(--space-4)"
       },
-      "x": 340,
-      "y": 760
+      "x": 400,
+      "y": 880
     },
     {
       "id": "headingBadge-3",
@@ -208,8 +227,8 @@
         "backgroundColor": "var(--accent)",
         "borderRadius": "var(--radius-lg)"
       },
-      "x": 400,
-      "y": 880
+      "x": 460,
+      "y": 1000
     },
     {
       "id": "headingGlyph-3",
@@ -228,8 +247,8 @@
         },
         "iconColor": "var(--accent-foreground)"
       },
-      "x": 460,
-      "y": 1000
+      "x": 520,
+      "y": 1120
     },
     {
       "id": "headingHead-6",
@@ -249,8 +268,8 @@
         "rowGap": "var(--space-1)",
         "paddingBottom": "var(--space-2)"
       },
-      "x": 400,
-      "y": 1120
+      "x": 460,
+      "y": 1240
     },
     {
       "id": "headingEyebrow-6",
@@ -266,8 +285,8 @@
         "color": "var(--primary)",
         "as": "span"
       },
-      "x": 460,
-      "y": 1240
+      "x": 520,
+      "y": 1360
     },
     {
       "id": "heading-7",
@@ -283,8 +302,8 @@
         "color": "var(--foreground)",
         "as": "h1"
       },
-      "x": 460,
-      "y": 1360
+      "x": 520,
+      "y": 1480
     },
     {
       "id": "notAllowed",
@@ -317,8 +336,8 @@
           "unit": "px"
         }
       },
-      "x": 280,
-      "y": 1600
+      "x": 340,
+      "y": 1720
     },
     {
       "id": "notAllowedText",
@@ -330,8 +349,8 @@
         "fontSize": "var(--text-sm)",
         "color": "var(--destructive)"
       },
-      "x": 340,
-      "y": 1720
+      "x": 400,
+      "y": 1840
     },
     {
       "id": "tools",
@@ -356,8 +375,8 @@
         },
         "mounted": false
       },
-      "x": 280,
-      "y": 1840
+      "x": 340,
+      "y": 1960
     },
     {
       "id": "announcementForm",
@@ -389,8 +408,8 @@
         "paddingTop": "var(--space-5)",
         "paddingBottom": "var(--space-5)"
       },
-      "x": 340,
-      "y": 1960
+      "x": 400,
+      "y": 2080
     },
     {
       "id": "aHeading",
@@ -405,8 +424,8 @@
         "color": "var(--foreground)",
         "as": "h2"
       },
-      "x": 400,
-      "y": 2080
+      "x": 460,
+      "y": 2200
     },
     {
       "id": "aTitle",
@@ -433,8 +452,8 @@
         "useLabel": true,
         "label": "Title"
       },
-      "x": 400,
-      "y": 2200
+      "x": 460,
+      "y": 2320
     },
     {
       "id": "aBody",
@@ -462,8 +481,8 @@
         "label": "What you want to say",
         "type": "textArea"
       },
-      "x": 400,
-      "y": 2320
+      "x": 460,
+      "y": 2440
     },
     {
       "id": "aButton",
@@ -484,8 +503,8 @@
         "fontWeight": "var(--font-semibold)",
         "sizeMode": "contentSize"
       },
-      "x": 400,
-      "y": 2440
+      "x": 460,
+      "y": 2560
     },
     {
       "id": "aDone",
@@ -498,8 +517,8 @@
         "fontSize": "var(--text-sm)",
         "color": "var(--accent-foreground)"
       },
-      "x": 400,
-      "y": 2560
+      "x": 460,
+      "y": 2680
     },
     {
       "id": "meetingForm",
@@ -533,8 +552,8 @@
         "paddingTop": "var(--space-5)",
         "paddingBottom": "var(--space-5)"
       },
-      "x": 340,
-      "y": 2680
+      "x": 400,
+      "y": 2800
     },
     {
       "id": "mHeading",
@@ -549,8 +568,8 @@
         "color": "var(--foreground)",
         "as": "h2"
       },
-      "x": 400,
-      "y": 2800
+      "x": 460,
+      "y": 2920
     },
     {
       "id": "mTitle",
@@ -577,8 +596,8 @@
         "useLabel": true,
         "label": "Title"
       },
-      "x": 400,
-      "y": 2920
+      "x": 460,
+      "y": 3040
     },
     {
       "id": "mWhen",
@@ -606,8 +625,8 @@
         "label": "Date",
         "placeholder": "2026-09-14"
       },
-      "x": 400,
-      "y": 3040
+      "x": 460,
+      "y": 3160
     },
     {
       "id": "mPlace",
@@ -634,8 +653,8 @@
         "useLabel": true,
         "label": "Where"
       },
-      "x": 400,
-      "y": 3160
+      "x": 460,
+      "y": 3280
     },
     {
       "id": "mDetails",
@@ -663,8 +682,8 @@
         "label": "Details",
         "type": "textArea"
       },
-      "x": 400,
-      "y": 3280
+      "x": 460,
+      "y": 3400
     },
     {
       "id": "mButton",
@@ -685,8 +704,8 @@
         "fontWeight": "var(--font-semibold)",
         "sizeMode": "contentSize"
       },
-      "x": 400,
-      "y": 3400
+      "x": 460,
+      "y": 3520
     },
     {
       "id": "mDone",
@@ -699,8 +718,8 @@
         "fontSize": "var(--text-sm)",
         "color": "var(--accent-foreground)"
       },
-      "x": 400,
-      "y": 3520
+      "x": 460,
+      "y": 3640
     },
     {
       "id": "notModerator",
@@ -709,8 +728,8 @@
       "parameters": {
         "functionScript": "if (Inputs.isModerator === undefined) return;\nOutputs.no = Inputs.isModerator !== true;"
       },
-      "x": 710,
-      "y": 1600,
+      "x": 770,
+      "y": 1720,
       "ports": [
         {
           "name": "in-isModerator",
@@ -749,8 +768,8 @@
           "group": "Outputs"
         }
       ],
-      "x": 710,
-      "y": 2440
+      "x": 770,
+      "y": 2560
     },
     {
       "id": "createAnnouncement",
@@ -777,8 +796,8 @@
         "acl-member-read": true,
         "acl-member-write": false
       },
-      "x": 710,
-      "y": 2200
+      "x": 770,
+      "y": 2320
     },
     {
       "id": "createMeeting",
@@ -805,8 +824,8 @@
         "acl-member-read": true,
         "acl-member-write": false
       },
-      "x": 710,
-      "y": 2920
+      "x": 770,
+      "y": 3040
     },
     {
       "id": "aDoneGate",
@@ -816,8 +835,8 @@
         "condition": true,
         "runOnChange-condition": false
       },
-      "x": 710,
-      "y": 2560
+      "x": 770,
+      "y": 2680
     },
     {
       "id": "mDoneGate",
@@ -827,8 +846,8 @@
         "condition": true,
         "runOnChange-condition": false
       },
-      "x": 710,
-      "y": 3520
+      "x": 770,
+      "y": 3640
     },
     {
       "id": "toLanding-3",
@@ -838,7 +857,7 @@
         "router": "Main",
         "target": "/Pages/Landing"
       },
-      "x": 710,
+      "x": 770,
       "y": 400
     },
     {
@@ -877,8 +896,8 @@
           "group": "Outputs"
         }
       ],
-      "x": 710,
-      "y": 3640
+      "x": 770,
+      "y": 3760
     },
     {
       "id": "notify",
@@ -887,8 +906,8 @@
       "parameters": {
         "function": "notifyMembers"
       },
-      "x": 710,
-      "y": 3760
+      "x": 770,
+      "y": 3880
     },
     {
       "id": "report",
@@ -900,8 +919,8 @@
         "runOnChange-in-error": false,
         "functionScript": "// TPL-002 §3, and the four cases are separately actionable: post it\n// again, tell somebody another way, go and configure SMTP, or nothing.\nif (Inputs.sent === undefined) return;\nconst sent = Number(Inputs.sent) || 0;\nconst failed = Number(Inputs.failed) || 0;\nconst error = Inputs.error === undefined || Inputs.error === null ? '' : String(Inputs.error);\nif (sent === 0 && failed === 0) {\n  Outputs.line = \"Posted. Nobody has asked to be emailed yet, so no emails were sent.\";\n  return;\n}\nif (sent === 0) {\n  // 🔴 The mailer’s own words, verbatim. With SMTP unconfigured this\n  // is `notConfiguredReason()`, which names the Backend Services\n  // panel — the one thing the person reading it has to go and open.\n  Outputs.line = \"Posted — but the emails could not be sent. \" + (error || \"No emails could be sent.\");\n  return;\n}\nlet line = \"Posted. \" + \"Emailed to \" + sent +\n  (sent === 1 ? \" member who asked to be told.\" : \" members who asked to be told.\");\nif (failed > 0) {\n  line += \" \" + failed + \" could not be sent. \" + error;\n}\nOutputs.line = line;"
       },
-      "x": 710,
-      "y": 2680,
+      "x": 770,
+      "y": 2800,
       "ports": [
         {
           "name": "in-sent",
@@ -940,8 +959,8 @@
       "parameters": {
         "functionScript": "Outputs.line = \"Posted — but the emails could not be sent. \" + \"No emails could be sent.\";"
       },
-      "x": 710,
-      "y": 2800,
+      "x": 770,
+      "y": 2920,
       "ports": [
         {
           "name": "out-line",

@@ -23,10 +23,7 @@
       "label": "Page ground",
       "parent": "page-7",
       "children": [
-        "heroBand-3",
-        "formBand",
-        "prompt-3",
-        "inside-4",
+        "joinMain",
         "pageFooter-6"
       ],
       "parameters": {
@@ -52,13 +49,36 @@
       "label": "The foot of the page",
       "parent": "joinGround",
       "x": 160,
-      "y": 2560
+      "y": 2680
+    },
+    {
+      "id": "joinMain",
+      "type": "Group",
+      "label": "The page",
+      "parent": "joinGround",
+      "children": [
+        "heroBand-3",
+        "formBand",
+        "prompt-3",
+        "inside-4"
+      ],
+      "parameters": {
+        "as": "main",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column"
+      },
+      "x": 160,
+      "y": 280
     },
     {
       "id": "heroBand-3",
       "type": "Group",
       "label": "The photograph, and what this page is",
-      "parent": "joinGround",
+      "parent": "joinMain",
       "children": [
         "heroShell-3"
       ],
@@ -82,8 +102,8 @@
         "paddingBottom": "var(--space-12)",
         "backgroundImage": "noodl_modules/starter-imagery/people-meeting.webp"
       },
-      "x": 160,
-      "y": 280
+      "x": 220,
+      "y": 400
     },
     {
       "id": "heroShell-3",
@@ -109,8 +129,8 @@
         "alignX": "center",
         "rowGap": "var(--space-5)"
       },
-      "x": 220,
-      "y": 400
+      "x": 280,
+      "y": 520
     },
     {
       "id": "headingHead-4",
@@ -130,8 +150,8 @@
         "rowGap": "var(--space-1)",
         "paddingBottom": "var(--space-2)"
       },
-      "x": 280,
-      "y": 520
+      "x": 340,
+      "y": 640
     },
     {
       "id": "headingEyebrow-4",
@@ -147,8 +167,8 @@
         "color": "var(--primary-foreground)",
         "as": "span"
       },
-      "x": 340,
-      "y": 640
+      "x": 400,
+      "y": 760
     },
     {
       "id": "heading-5",
@@ -164,14 +184,14 @@
         "color": "var(--primary-foreground)",
         "as": "h1"
       },
-      "x": 340,
-      "y": 760
+      "x": 400,
+      "y": 880
     },
     {
       "id": "formBand",
       "type": "Group",
       "label": "The form band",
-      "parent": "joinGround",
+      "parent": "joinMain",
       "children": [
         "ground-6"
       ],
@@ -186,8 +206,8 @@
         "backgroundColor": "var(--background)",
         "paddingBottom": "var(--space-12)"
       },
-      "x": 160,
-      "y": 880
+      "x": 220,
+      "y": 1000
     },
     {
       "id": "ground-6",
@@ -211,15 +231,14 @@
         "flexDirection": "column",
         "paddingLeft": "var(--space-6)",
         "paddingRight": "var(--space-6)",
-        "as": "main",
         "sizeMode": "contentHeight",
         "alignX": "center",
         "rowGap": "var(--space-5)",
         "paddingTop": "var(--space-8)",
         "paddingBottom": "var(--space-12)"
       },
-      "x": 220,
-      "y": 1000
+      "x": 280,
+      "y": 1120
     },
     {
       "id": "form-2",
@@ -251,8 +270,8 @@
         "paddingTop": "var(--space-5)",
         "paddingBottom": "var(--space-5)"
       },
-      "x": 280,
-      "y": 1120
+      "x": 340,
+      "y": 1240
     },
     {
       "id": "nameField",
@@ -279,8 +298,8 @@
         "useLabel": true,
         "label": "Your name"
       },
-      "x": 340,
-      "y": 1240
+      "x": 400,
+      "y": 1360
     },
     {
       "id": "emailField",
@@ -308,8 +327,8 @@
         "label": "Email",
         "type": "email"
       },
-      "x": 340,
-      "y": 1360
+      "x": 400,
+      "y": 1480
     },
     {
       "id": "passwordField",
@@ -337,8 +356,8 @@
         "label": "Choose a password",
         "type": "password"
       },
-      "x": 340,
-      "y": 1480
+      "x": 400,
+      "y": 1600
     },
     {
       "id": "messageField",
@@ -366,8 +385,8 @@
         "label": "Why you’d like to join",
         "type": "textArea"
       },
-      "x": 340,
-      "y": 1600
+      "x": 400,
+      "y": 1720
     },
     {
       "id": "sendButton",
@@ -388,8 +407,8 @@
         "fontWeight": "var(--font-semibold)",
         "sizeMode": "contentSize"
       },
-      "x": 340,
-      "y": 1720
+      "x": 400,
+      "y": 1840
     },
     {
       "id": "sent-2",
@@ -418,8 +437,8 @@
         "paddingBottom": "var(--space-5)",
         "mounted": false
       },
-      "x": 280,
-      "y": 1840
+      "x": 340,
+      "y": 1960
     },
     {
       "id": "sentText",
@@ -431,8 +450,8 @@
         "fontSize": "var(--text-sm)",
         "color": "var(--accent-foreground)"
       },
-      "x": 340,
-      "y": 1960
+      "x": 400,
+      "y": 2080
     },
     {
       "id": "refusal-3",
@@ -461,8 +480,8 @@
         "paddingBottom": "var(--space-5)",
         "mounted": false
       },
-      "x": 280,
-      "y": 2080
+      "x": 340,
+      "y": 2200
     },
     {
       "id": "refusalText-3",
@@ -474,29 +493,29 @@
         "fontSize": "var(--text-sm)",
         "color": "var(--destructive)"
       },
-      "x": 340,
-      "y": 2200
+      "x": 400,
+      "y": 2320
     },
     {
       "id": "prompt-3",
       "type": "/Members/Prompt",
       "label": "The closing prompt",
-      "parent": "joinGround",
+      "parent": "joinMain",
       "parameters": {
         "heading": "Already have an account?",
         "line": "Members sign in with the email and password they joined with.",
         "action": "Sign in"
       },
-      "x": 160,
-      "y": 2320
+      "x": 220,
+      "y": 2440
     },
     {
       "id": "inside-4",
       "type": "/Members/InsideBand",
       "label": "What members can see",
-      "parent": "joinGround",
-      "x": 160,
-      "y": 2440
+      "parent": "joinMain",
+      "x": 220,
+      "y": 2560
     },
     {
       "id": "send",
@@ -505,8 +524,8 @@
       "parameters": {
         "function": "requestAccess"
       },
-      "x": 590,
-      "y": 1240
+      "x": 650,
+      "y": 1360
     },
     {
       "id": "sentGate",
@@ -516,8 +535,8 @@
         "condition": true,
         "runOnChange-condition": false
       },
-      "x": 590,
-      "y": 1840
+      "x": 650,
+      "y": 1960
     },
     {
       "id": "refusalGate-3",
@@ -527,8 +546,8 @@
         "condition": true,
         "runOnChange-condition": false
       },
-      "x": 590,
-      "y": 2080
+      "x": 650,
+      "y": 2200
     },
     {
       "id": "toSignIn",
@@ -538,8 +557,8 @@
         "router": "Main",
         "target": "/Pages/SignIn"
       },
-      "x": 590,
-      "y": 2320
+      "x": 650,
+      "y": 2440
     }
   ],
   "visualRoots": [

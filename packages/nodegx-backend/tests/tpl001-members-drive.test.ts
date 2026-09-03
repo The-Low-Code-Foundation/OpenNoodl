@@ -163,6 +163,16 @@ describe("TPL-001 — the members' area, driven", () => {
   const tokens: Record<string, string> = {};
   /** Every browser reading, taken once in `beforeAll` and asserted below. */
   const visits: Record<string, Visit> = {};
+  /** One page load's landmarks, counted in the rendered document. */
+  interface Landmarks {
+    mains: number;
+    h1s: number;
+    /** `<h1>`s that are DOM descendants of the one `<main>`. */
+    h1sInMain: number;
+    navsInDoc: number;
+    /** `<nav>`s that are DOM descendants of the one `<main>` — must be zero. */
+    navsInMain: number;
+  }
   /**
    * What each reading OFFERED — rendered, painted, clickable — and what was
    * merely PRESENT in the document. Two different claims; see `Control`.
@@ -186,6 +196,15 @@ describe("TPL-001 — the members' area, driven", () => {
    * on, so it deliberately does not record one.
    */
   const standingCalls: Record<string, number> = {};
+  /**
+   * 🔴 **§11 — the document outline as the BROWSER builds it, not as the
+   * artefact declares it.** REL-002c §8.7 gates the `as` parameters on disk,
+   * and a parameter is an intention: nothing in that gate says the runtime
+   * turns `as: 'main'` on a `Group` into a `<main>` element, or that a child
+   * node ends up a DOM descendant of its parent's element. This is the same
+   * claim taken one layer down, on the pages this drive already visits.
+   */
+  const landmarks: Record<string, Landmarks> = {};
   /** What the browser held after each sign-in — a session, or nothing. */
   const sessions: Record<string, string | null> = {};
   let enforced = false;
@@ -339,6 +358,18 @@ describe("TPL-001 — the members' area, driven", () => {
         buttons[label] = offered(cs);
         inDocument[label] = present(cs);
         standingCalls[label] = await countStanding();
+        landmarks[label] = (await page.evaluate(
+          '(function () {' +
+            " var m = document.querySelectorAll('main');" +
+            " var one = m.length === 1 ? m[0] : null;" +
+            ' return {' +
+            ' mains: m.length,' +
+            " h1s: document.querySelectorAll('h1').length," +
+            " h1sInMain: one ? one.querySelectorAll('h1').length : 0," +
+            " navsInDoc: document.querySelectorAll('nav').length," +
+            " navsInMain: one ? one.querySelectorAll('nav').length : 0 };" +
+            '})()'
+        )) as Landmarks;
       };
 
       /**
@@ -1096,6 +1127,68 @@ describe("TPL-001 — the members' area, driven", () => {
    * called neither — neither of which is what a person pays for. What costs
    * them a round trip is a request, so a request is what is counted.
    */
+  /**
+   * 🔴 **§11 — REL-002c §8.7, taken in the browser instead of on disk.**
+   *
+   * §8.7 in `tpl001Template.test.ts` reads the `as` parameters out of the
+   * shipped JSON and asserts that each page's `h1` node is a descendant of its
+   * `main` node. That is an assertion about what was AUTHORED. Two things it
+   * cannot see: whether `as: 'main'` on a `Group` reaches the DOM as a `<main>`
+   * element at all, and whether the node tree and the element tree agree. Both
+   * were assumed by the change that moved the landmark onto `pageMain`, and an
+   * assumption that a gate cannot see is the shape of every hole in one.
+   *
+   * ⚠️ **It grades the pages this drive ALREADY visits** — fifteen loads across
+   * four signed-in states — rather than adding navigation for its own sake. The
+   * pictures in `vib001-members.look.ts` cannot do this job: a landmark is
+   * invisible by construction, and 200 of 200 PNGs were byte-identical across
+   * the change that moved it.
+   */
+  describe('§11 the document outline the browser actually builds', () => {
+    const loaded = () => Object.keys(landmarks).sort();
+
+    it('control: there are page loads to grade, and every one recorded its landmarks', () => {
+      // `every` over an empty list is vacuously true — the way this section
+      // would go quietly green if `look` stopped taking the reading.
+      expect(loaded().length).toBeGreaterThan(15);
+      expect(loaded().filter((k) => typeof landmarks[k]?.mains !== 'number')).toEqual([]);
+    });
+
+    it('🔴 every rendered page has exactly one <main> and exactly one <h1>', () => {
+      const wrong = loaded()
+        .filter((k) => landmarks[k].mains !== 1 || landmarks[k].h1s !== 1)
+        .map((k) => `${k}: ${landmarks[k].mains} main, ${landmarks[k].h1s} h1`);
+      expect(wrong).toEqual([]);
+    });
+
+    it('🔴 and the <h1> is INSIDE the <main> — the defect §8.7 was written for', () => {
+      // On disk this was twelve pages of thirteen. In the browser it is every
+      // load this drive takes, and it is the reading that says the parameter
+      // reached the element tree rather than merely the file.
+      const wrong = loaded()
+        .filter((k) => landmarks[k].h1sInMain !== 1)
+        .map((k) => `${k}: ${landmarks[k].h1sInMain} h1 inside main`);
+      expect(wrong).toEqual([]);
+    });
+
+    it('🔴 CONTROL — the band’s <nav> is in the document and NOT in the <main>', () => {
+      // 🔴 **Without this the check above proves nothing about containment.**
+      // A probe that answered "inside" for everything in the document would
+      // pass it on every page. The band is the one landmark deliberately left
+      // outside `pageMain`, so it is the reading that separates "in the
+      // document" from "inside the main" — and it is taken where a `<nav>` is
+      // known to exist, because a signed-out page has none (REL-002b gates
+      // `navWrap` on `isSignedIn`, so the landmark leaves with its contents).
+      const withNav = loaded().filter((k) => landmarks[k].navsInDoc > 0);
+      expect(withNav.length).toBeGreaterThan(8);
+      expect(withNav.filter((k) => landmarks[k].navsInMain !== 0).map((k) => `${k}: nav inside main`)).toEqual([]);
+
+      // And the other arm of the same control: a signed-out load has no `<nav>`
+      // at all, so "0 inside main" above is not simply "0 anywhere".
+      expect(landmarks['anon.landing'].navsInDoc).toBe(0);
+    });
+  });
+
   describe('§10 D29 — one standing check per page, not two', () => {
     /** Every reading `look` took, i.e. every page load. `lookHere` records none. */
     const loads = () => Object.keys(standingCalls).sort();

@@ -1174,11 +1174,16 @@ const PAGE_HEAD = {
  */
 const PAGE_GROUND = {
   ...composition('shell'),
-  // 🔴 **The page's `main`.** `FORM_GROUND` spreads this, so the twelve pages
-  // that root their content in a `ground` node get exactly one between them —
-  // `Pages/Landing` and `Pages/Join` are the two that do not, and the note on
-  // `BAND_PAGE_GROUND` says why they cannot have one written here.
-  as: 'main',
+  // 🔴 **The page's `main` USED TO BE HERE, and here was below the heading it
+  // is supposed to contain.** s25 put `as: 'main'` on this constant, which is
+  // the cheapest place a landmark fits and the wrong one: `pageHead()` roots
+  // the `h1` in `headBand` or `heroBand`, and both are this ground's SIBLING.
+  // Measured over the shipped artefact at s25's HEAD, **twelve of the thirteen
+  // pages had their `h1` outside their `main`** — only `/` was right, and only
+  // because it had no ground to take the shortcut and was given `landingMain`
+  // by hand. A reader who jumps to the landmark landed AFTER the page's title.
+  // The landmark now lives on `pageMain` (`pageShell()`) and on `joinMain`,
+  // each of which wraps the head band and the ground together. §8.7 holds it.
   // 🔴 **`contentHeight`, and it used to be `explicit` at `height: 100%`.** That
   // was believed inert — see `PAGE_SHELL` — and it is not: a percentage height
   // in a column parent becomes `flexGrow` (`layout.ts:98`). It did nothing only
@@ -1450,8 +1455,48 @@ function pageShell(
       label: 'Everything above the foot',
       parent: 'pageShell',
       parameters: PAGE_BODY,
+      // 🔴 **The chrome is the ONE child that stays out of `pageMain`.** A
+      // `main` that contained the band would announce the site navigation as
+      // this page's content, which is the single thing the landmark is defined
+      // not to be — and the nav already has its own `<nav>` inside a `<header>`
+      // (`CHROME_NODES`). Everything below it is the page.
+      children: [...(opts.chrome ? ['chrome'] : []), 'pageMain']
+    },
+    /**
+     * 🔴 **The page's `main`, and it is a NODE rather than a parameter because
+     * the heading is not inside the ground.** REL-002c §8 gave every page a
+     * landmark by spreading `as: 'main'` through `PAGE_GROUND`, and §8.5 item 2
+     * registered what that bought: `pageHead()` roots in `headBand` on the
+     * chrome pages and in `heroBand` on the door pages, both siblings of
+     * `ground`, so twelve of the thirteen pages declared an `h1` that was not
+     * in their own `main`. Moving the landmark up one level is the whole fix.
+     *
+     * ⚠️ **It re-parents between two and four children into one, and nothing in
+     * the layout depends on how many `pageBody` has.** `PAGE_BODY` is a
+     * content-height column with no `justifyContent` — it stacks its children
+     * and is as tall as they are — and `pageMain` is given the identical three
+     * parameters, so the box it adds has the width, the height and the axis of
+     * the box it sits in. The distribution that IS load-bearing is one level up
+     * in `PAGE_SHELL`, which spaces `pageBody` against `pageFooter`, and that
+     * pair is untouched. **The pictures are the check, not this paragraph** —
+     * `landingMain` carries the same argument and the same warning.
+     */
+    {
+      id: 'pageMain',
+      type: 'Group',
+      label: 'The page',
+      parent: 'pageBody',
+      parameters: {
+        as: 'main',
+        width: { value: 100, unit: '%' },
+        // Pinned — hazard 1, the same pin `bar`, `headBand` and `landingMain`
+        // carry. A `Group` with no `sizeMode` is `explicit` at `height: 100%`,
+        // which a column parent turns into `flex-grow: 100` (`layout.ts:98`).
+        sizeMode: 'contentHeight',
+        flexDirection: 'column'
+      },
       children: [
-        ...(opts.chrome ? ['chrome', 'headBand'] : []),
+        ...(opts.chrome ? ['headBand'] : []),
         ...(opts.band ? ['heroBand'] : []),
         'ground',
         ...tail
@@ -1463,7 +1508,7 @@ function pageShell(
       id: 'prompt',
       type: PROMPT_COMPONENT,
       label: 'The closing prompt',
-      parent: 'pageBody',
+      parent: 'pageMain',
       parameters: { ...opts.prompt }
     });
   }
@@ -1472,7 +1517,7 @@ function pageShell(
       id: 'inside',
       type: INSIDE_BAND_COMPONENT,
       label: 'What members can see',
-      parent: 'pageBody'
+      parent: 'pageMain'
     });
   }
   if (opts.chrome) {
@@ -1511,7 +1556,7 @@ function pageShell(
         id: 'headBand',
         type: 'Group',
         label: 'What this page is',
-        parent: 'pageBody',
+        parent: 'pageMain',
         parameters: {
           width: { value: 100, unit: '%' },
           // Pinned — hazard 1. A band is as tall as what is in it, and this one
@@ -1558,7 +1603,7 @@ function pageShell(
         id: 'heroBand',
         type: 'Group',
         label: 'The photograph, and what this page is',
-        parent: 'pageBody',
+        parent: 'pageMain',
         parameters: bandGround(opts.band),
         children: ['heroShell']
       },
@@ -2714,7 +2759,7 @@ const SIGN_IN: Tpl001Component = {
       id: 'ground',
       type: 'Group',
       label: 'Page ground',
-      parent: 'pageBody',
+      parent: 'pageMain',
       parameters: { ...FORM_GROUND, alignX: 'center' },
       children: ['form', 'error']
     },
@@ -3313,7 +3358,7 @@ const MEMBERS: Tpl001Component = {
       id: 'ground',
       type: 'Group',
       label: 'Page ground',
-      parent: 'pageBody',
+      parent: 'pageMain',
       parameters: PAGE_GROUND,
       children: ['pendingNotice', 'unknownNotice', 'memberArea', 'moderatorTools']
     },
@@ -3535,7 +3580,7 @@ const ANNOUNCEMENT: Tpl001Component = {
       id: 'ground',
       type: 'Group',
       label: 'Page ground',
-      parent: 'pageBody',
+      parent: 'pageMain',
       parameters: PAGE_GROUND,
       children: ['readingBlock', 'refusal', 'removal']
     },
@@ -3657,7 +3702,7 @@ const MEETINGS: Tpl001Component = {
       id: 'ground',
       type: 'Group',
       label: 'Page ground',
-      parent: 'pageBody',
+      parent: 'pageMain',
       parameters: PAGE_GROUND,
       children: ['pendingNotice', 'memberArea']
     },
@@ -3755,7 +3800,7 @@ const MEETING: Tpl001Component = {
       id: 'ground',
       type: 'Group',
       label: 'Page ground',
-      parent: 'pageBody',
+      parent: 'pageMain',
       parameters: PAGE_GROUND,
       children: ['readingBlock', 'refusal', 'removal']
     },
@@ -3920,7 +3965,14 @@ const JOIN: Tpl001Component = {
       // still is. What changed is that there is far less slack to place: this
       // page was a hero, a form and a foot, and it is now a hero, a form, what
       // to do if this is the wrong page, and what is behind the door.
-      children: ['heroBand', 'formBand', 'prompt', 'inside', 'pageFooter']
+      // 🔴 **Two children again, and the middle four moved into `joinMain`.**
+      // REL-002c §8.5 item 2: this page's `h1` is in `heroBand` and its `main`
+      // was on the form band's `FORM_GROUND`, so the landmark began below the
+      // heading AND excluded the hero, the closing prompt and the tiles — most
+      // of the page. `joinMain` is the twin of `landingMain`, on the twin
+      // ground, for the twin reason; the footer stays out here exactly as it
+      // stays out there.
+      children: ['joinMain', 'pageFooter']
     },
     {
       id: 'pageFooter',
@@ -3928,11 +3980,44 @@ const JOIN: Tpl001Component = {
       label: 'The foot of the page',
       parent: 'joinGround'
     },
+    /**
+     * 🔴 **The `main` `/join` was getting from the wrong node.** `PAGE_GROUND`
+     * used to spread `as: 'main'`, and `FORM_GROUND` spreads `PAGE_GROUND`, so
+     * this page's landmark landed on the form column — one of five bands, and
+     * not the one carrying the heading. `/` needed `landingMain` for the same
+     * shape; this is the same wrapper with the same two paragraphs of account.
+     *
+     * ⚠️ **It re-parents four children into one under a `space-between`, and
+     * that is the half worth stating.** `BAND_PAGE_GROUND` floors at `100vh`
+     * and spaces its children so the foot is pinned when there is slack. There
+     * is no slack on this page in any state it has: a 560px photograph, a
+     * five-field form, the closing prompt and a three-card band are taller than
+     * any viewport the template is rendered at, which is the ground's own
+     * recorded account of when `space-between` is a no-op. Before the wrapper
+     * the slack — if there were any — would have been shared among five
+     * children; after it, between two. **The pictures are the check.**
+     */
+    {
+      id: 'joinMain',
+      type: 'Group',
+      label: 'The page',
+      parent: 'joinGround',
+      parameters: {
+        as: 'main',
+        width: { value: 100, unit: '%' },
+        // Pinned — hazard 1, as on `landingMain`: a `Group` with no `sizeMode`
+        // is `explicit` at `height: 100%`, which a column parent turns into
+        // `flex-grow: 100`, and this one sits in a ground floored at `100vh`.
+        sizeMode: 'contentHeight',
+        flexDirection: 'column'
+      },
+      children: ['heroBand', 'formBand', 'prompt', 'inside']
+    },
     {
       id: 'heroBand',
       type: 'Group',
       label: 'The photograph, and what this page is',
-      parent: 'joinGround',
+      parent: 'joinMain',
       parameters: JOIN_GROUND,
       children: ['heroShell']
     },
@@ -3964,7 +4049,7 @@ const JOIN: Tpl001Component = {
       id: 'formBand',
       type: 'Group',
       label: 'The form band',
-      parent: 'joinGround',
+      parent: 'joinMain',
       // ⚠️ `alignItems: center` on the BAND and `alignX: center` on the ground
       // inside it are not a duplicate: the first centres this band's own child,
       // the second is what `layout.ts:150-160` reads to write `alignSelf` on the
@@ -4066,14 +4151,14 @@ const JOIN: Tpl001Component = {
       id: 'prompt',
       type: PROMPT_COMPONENT,
       label: 'The closing prompt',
-      parent: 'joinGround',
+      parent: 'joinMain',
       parameters: {
         heading: ALREADY_A_MEMBER_HINT,
         line: 'Members sign in with the email and password they joined with.',
         action: 'Sign in'
       }
     },
-    { id: 'inside', type: INSIDE_BAND_COMPONENT, label: 'What members can see', parent: 'joinGround' },
+    { id: 'inside', type: INSIDE_BAND_COMPONENT, label: 'What members can see', parent: 'joinMain' },
     { id: 'send', type: 'CloudFunction2', label: FN_REQUEST_ACCESS, parameters: { function: FN_REQUEST_ACCESS } },
     { id: 'sentGate', type: 'Condition', label: 'Show the confirmation', parameters: { ...CONDITION_GATE } },
     { id: 'refusalGate', type: 'Condition', label: 'Show the refusal', parameters: { ...CONDITION_GATE } },
@@ -4163,7 +4248,7 @@ const SETUP: Tpl001Component = {
       id: 'ground',
       type: 'Group',
       label: 'Page ground',
-      parent: 'pageBody',
+      parent: 'pageMain',
       parameters: { ...FORM_GROUND, alignX: 'center' },
       children: ['blurb', 'form', 'refusal', 'missing']
     },
@@ -4412,7 +4497,7 @@ const POST: Tpl001Component = {
       id: 'ground',
       type: 'Group',
       label: 'Page ground',
-      parent: 'pageBody',
+      parent: 'pageMain',
       // 🔴 `PAGE_GROUND`, not `FORM_GROUND`, and `AT_FORM_MEASURE` on the two
       // children below — Richard's ruling of 2026-09-01. The head now lines up
       // with the association's name in the band and with the footer; only the
@@ -4742,7 +4827,7 @@ const REQUESTS: Tpl001Component = {
       id: 'ground',
       type: 'Group',
       label: 'Page ground',
-      parent: 'pageBody',
+      parent: 'pageMain',
       parameters: PAGE_GROUND,
       children: ['notAllowed', 'queue']
     },
@@ -4852,7 +4937,7 @@ const DIRECTORY: Tpl001Component = {
       id: 'ground',
       type: 'Group',
       label: 'Page ground',
-      parent: 'pageBody',
+      parent: 'pageMain',
       parameters: PAGE_GROUND,
       children: ['notAllowed', 'directory']
     },
@@ -5936,7 +6021,7 @@ const ACCOUNT: Tpl001Component = {
       id: 'ground',
       type: 'Group',
       label: 'Page ground',
-      parent: 'pageBody',
+      parent: 'pageMain',
       // 🔴 `PAGE_GROUND` + `AT_FORM_MEASURE` on the panel and the three notices —
       // the same ruling as `Pages/Post`. See `AT_FORM_MEASURE`.
       parameters: PAGE_GROUND,
@@ -6159,7 +6244,7 @@ const UNSUBSCRIBE_PAGE: Tpl001Component = {
       id: 'ground',
       type: 'Group',
       label: 'Page ground',
-      parent: 'pageBody',
+      parent: 'pageMain',
       parameters: FORM_GROUND,
       children: ['done', 'failed']
     },

@@ -2093,6 +2093,23 @@ describe('TPL-001 — the design system is finished, not merely opened', () => {
   const tagsIn = (nodes: readonly StoredNode[], tag: string): string[] =>
     nodes.filter((n) => (n.parameters ?? {}).as === tag).map((n) => n.id);
 
+  /** The node type a page places to get the band — asserted OUT of `main` by §8.7. */
+  const CHROME = '/Members/Chrome';
+
+  /**
+   * Is `childId` anywhere under `rootId`? A real walk down `children`, because
+   * the defect §8.7 exists for is one level apart and a one-level check would
+   * have passed on it.
+   */
+  const contains = (nodes: readonly StoredNode[], rootId: string | undefined, childId: string): boolean => {
+    if (rootId === undefined) return false;
+    const byId = new Map(nodes.map((n) => [n.id, n]));
+    const seen = new Set<string>();
+    const walk = (id: string): boolean =>
+      (byId.get(id)?.children ?? []).some((c) => c === childId || (!seen.has(c) && (seen.add(c), walk(c))));
+    return walk(rootId);
+  };
+
   const pages = shipped.filter((c) => c.path.startsWith('/Pages/')).sort((a, b) => a.path.localeCompare(b.path));
 
   it('§8 every page declares exactly one h1, and there are thirteen pages', () => {
@@ -2152,6 +2169,75 @@ describe('TPL-001 — the design system is finished, not merely opened', () => {
       .filter(({ node }) => node.type !== 'Group' && node.type !== 'Text')
       .map(({ component, node }) => `${component} › ${node.id} (${node.type})`);
     expect(stray).toEqual([]);
+  });
+
+  /**
+   * 🔴 **§8.7 — the landmark has to CONTAIN the heading, and for one session it
+   * did not.** §8.1 and §8.2 are censuses: they count an `h1` and they count a
+   * `main` and they are both satisfied by a page where the two are siblings —
+   * which is exactly what §8 shipped. `pageHead()` roots the heading in
+   * `headBand` (the eight chrome pages) or `heroBand` (the three door pages),
+   * and s25 put `as: 'main'` on `PAGE_GROUND`, their sibling. **Twelve of the
+   * thirteen pages declared a heading outside their own landmark**; only `/`
+   * was right, and only because it had no ground to take the shortcut and was
+   * given `landingMain` by hand. A reader who jumps to `main` landed after the
+   * title of the page they jumped into.
+   *
+   * ⚠️ **The second half is the one a "fix" gets wrong.** The cheap way to make
+   * the first half green is to move the landmark up to `pageBody`, which also
+   * contains the `Chrome` instance — a `main` that swallows the site navigation.
+   * So this asserts both directions: the heading is in, and the chrome is out.
+   */
+  it('§8.7 every page keeps its h1 INSIDE its main, and the chrome OUTSIDE it', () => {
+    const inside = pages.map((c) => {
+      const [h1] = tagsIn(c.nodes, 'h1');
+      const [main] = tagsIn(c.nodes, 'main');
+      return { page: c.path, h1, main, ok: h1 !== undefined && main !== undefined && contains(c.nodes, main, h1) };
+    });
+    expect(inside.filter((r) => !r.ok).map((r) => `${r.page}: h1 ${r.h1} is not inside main ${r.main}`)).toEqual([]);
+
+    // The chrome is placed by the page, so the page is where it is asserted.
+    const swallowed = pages
+      .flatMap((c) =>
+        c.nodes
+          .filter((n) => n.type === CHROME)
+          .filter((n) => contains(c.nodes, tagsIn(c.nodes, 'main')[0], n.id))
+          .map((n) => `${c.path}: ${n.id} is inside main ${tagsIn(c.nodes, 'main')[0]}`)
+      );
+    expect(swallowed).toEqual([]);
+
+    // 🔴 **Not vacuous, and the number is EIGHT.** REL-010 AC4 and REL-002c
+    // §8.5 both say *"the nine chrome pages"*; the artefact says eight —
+    // `/account`, `/announcements/{id}`, `/directory`, `/meetings`,
+    // `/meetings/{id}`, `/members`, `/post` and `/requests`. Counted here so
+    // the second assertion above cannot silently become an empty sweep.
+    expect(pages.filter((c) => c.nodes.some((n) => n.type === CHROME)).length).toBe(8);
+  });
+
+  /**
+   * 🔴 **CONTROL for §8.7, and it is a different predicate from `tagsIn`.**
+   * `contains` walks `children`, and a walk that returned `true` for everything
+   * — or one that only ever looked one level down — would pass §8.7 on the very
+   * artefact that provoked it. So it is run over a hand-built tree whose answers
+   * are known in both directions and at both depths.
+   */
+  it('§8.7 CONTROL — containment is a real walk, not a same-parent check', () => {
+    const mutant = [
+      { id: 'body', type: 'Group', children: ['chrome', 'main'] },
+      { id: 'chrome', type: 'Group', children: [] },
+      { id: 'main', type: 'Group', parameters: { as: 'main' }, children: ['band'] },
+      { id: 'band', type: 'Group', children: ['head'] },
+      { id: 'head', type: 'Text', parameters: { as: 'h1' } },
+      { id: 'orphan', type: 'Text', parameters: { as: 'h1' } }
+    ] as unknown as StoredNode[];
+    // Two levels down is still inside.
+    expect(contains(mutant, 'main', 'head')).toBe(true);
+    // A sibling of the landmark is not — this is the shipped defect's shape.
+    expect(contains(mutant, 'main', 'chrome')).toBe(false);
+    // A node the walk never reaches is not, and neither is the root itself.
+    expect(contains(mutant, 'main', 'orphan')).toBe(false);
+    expect(contains(mutant, 'main', 'main')).toBe(false);
+    expect(contains(mutant, 'missing', 'head')).toBe(false);
   });
 
   /**

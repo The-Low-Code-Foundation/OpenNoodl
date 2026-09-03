@@ -48,10 +48,7 @@
       "label": "Everything above the foot",
       "parent": "pageShell",
       "children": [
-        "heroBand-2",
-        "ground",
-        "prompt-2",
-        "inside-3"
+        "pageMain"
       ],
       "parameters": {
         "width": {
@@ -65,31 +62,54 @@
       "y": 280
     },
     {
+      "id": "pageMain",
+      "type": "Group",
+      "label": "The page",
+      "parent": "pageBody",
+      "children": [
+        "heroBand-2",
+        "ground",
+        "prompt-2",
+        "inside-3"
+      ],
+      "parameters": {
+        "as": "main",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column"
+      },
+      "x": 220,
+      "y": 400
+    },
+    {
       "id": "prompt-2",
       "type": "/Members/Prompt",
       "label": "The closing prompt",
-      "parent": "pageBody",
+      "parent": "pageMain",
       "parameters": {
         "heading": "Not a member yet?",
         "line": "Membership is by request. Ask to join and a moderator will approve you.",
         "action": "Ask to join"
       },
-      "x": 220,
-      "y": 1840
+      "x": 280,
+      "y": 1960
     },
     {
       "id": "inside-3",
       "type": "/Members/InsideBand",
       "label": "What members can see",
-      "parent": "pageBody",
-      "x": 220,
-      "y": 1960
+      "parent": "pageMain",
+      "x": 280,
+      "y": 2080
     },
     {
       "id": "heroBand-2",
       "type": "Group",
       "label": "The photograph, and what this page is",
-      "parent": "pageBody",
+      "parent": "pageMain",
       "children": [
         "heroShell-2"
       ],
@@ -113,8 +133,8 @@
         "paddingBottom": "var(--space-12)",
         "backgroundImage": "noodl_modules/starter-imagery/people-desk.webp"
       },
-      "x": 220,
-      "y": 400
+      "x": 280,
+      "y": 520
     },
     {
       "id": "heroShell-2",
@@ -140,8 +160,8 @@
         "alignX": "center",
         "rowGap": "var(--space-5)"
       },
-      "x": 280,
-      "y": 520
+      "x": 340,
+      "y": 640
     },
     {
       "id": "pageFooter",
@@ -149,13 +169,13 @@
       "label": "The foot of the page",
       "parent": "pageShell",
       "x": 160,
-      "y": 2080
+      "y": 2200
     },
     {
       "id": "ground",
       "type": "Group",
       "label": "Page ground",
-      "parent": "pageBody",
+      "parent": "pageMain",
       "children": [
         "form",
         "error"
@@ -172,15 +192,14 @@
         "flexDirection": "column",
         "paddingLeft": "var(--space-6)",
         "paddingRight": "var(--space-6)",
-        "as": "main",
         "sizeMode": "contentHeight",
         "alignX": "center",
         "rowGap": "var(--space-5)",
         "paddingTop": "var(--space-12)",
         "paddingBottom": "var(--space-12)"
       },
-      "x": 220,
-      "y": 1000
+      "x": 280,
+      "y": 1120
     },
     {
       "id": "headingHead",
@@ -200,8 +219,8 @@
         "rowGap": "var(--space-1)",
         "paddingBottom": "var(--space-2)"
       },
-      "x": 340,
-      "y": 640
+      "x": 400,
+      "y": 760
     },
     {
       "id": "headingEyebrow",
@@ -217,8 +236,8 @@
         "color": "var(--primary-foreground)",
         "as": "span"
       },
-      "x": 400,
-      "y": 760
+      "x": 460,
+      "y": 880
     },
     {
       "id": "heading-2",
@@ -234,8 +253,8 @@
         "color": "var(--primary-foreground)",
         "as": "h1"
       },
-      "x": 400,
-      "y": 880
+      "x": 460,
+      "y": 1000
     },
     {
       "id": "form",
@@ -265,8 +284,8 @@
         "paddingTop": "var(--space-5)",
         "paddingBottom": "var(--space-5)"
       },
-      "x": 280,
-      "y": 1120
+      "x": 340,
+      "y": 1240
     },
     {
       "id": "email",
@@ -294,8 +313,8 @@
         "label": "Email",
         "type": "email"
       },
-      "x": 340,
-      "y": 1240
+      "x": 400,
+      "y": 1360
     },
     {
       "id": "password",
@@ -323,8 +342,8 @@
         "label": "Password",
         "type": "password"
       },
-      "x": 340,
-      "y": 1360
+      "x": 400,
+      "y": 1480
     },
     {
       "id": "submit",
@@ -345,8 +364,8 @@
         "fontWeight": "var(--font-semibold)",
         "sizeMode": "contentSize"
       },
-      "x": 340,
-      "y": 1480
+      "x": 400,
+      "y": 1600
     },
     {
       "id": "error",
@@ -375,8 +394,8 @@
         "paddingBottom": "var(--space-5)",
         "mounted": false
       },
-      "x": 280,
-      "y": 1600
+      "x": 340,
+      "y": 1720
     },
     {
       "id": "errorText",
@@ -388,15 +407,15 @@
         "fontSize": "var(--text-sm)",
         "color": "var(--destructive)"
       },
-      "x": 340,
-      "y": 1720
+      "x": 400,
+      "y": 1840
     },
     {
       "id": "login",
       "type": "net.noodl.user.LogIn",
       "label": "Log in",
-      "x": 650,
-      "y": 1720
+      "x": 710,
+      "y": 1840
     },
     {
       "id": "errorGate",
@@ -406,8 +425,8 @@
         "condition": true,
         "runOnChange-condition": false
       },
-      "x": 650,
-      "y": 1600
+      "x": 710,
+      "y": 1720
     },
     {
       "id": "toMembers",
@@ -417,8 +436,8 @@
         "router": "Main",
         "target": "/Pages/Members"
       },
-      "x": 650,
-      "y": 1960
+      "x": 710,
+      "y": 2080
     },
     {
       "id": "toJoin-2",
@@ -428,8 +447,8 @@
         "router": "Main",
         "target": "/Pages/Join"
       },
-      "x": 650,
-      "y": 1840
+      "x": 710,
+      "y": 1960
     }
   ],
   "visualRoots": [
