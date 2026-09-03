@@ -13,7 +13,7 @@ import {
 import { coerceToType } from './expression-type-coercion';
 import { diagnosticsEnabled, setDiagnostic } from './diagnostics';
 import { COMPLETED_PORT, TREAT_UNCHANGED_AS } from './outcome';
-import { runOnChangeInput, runOnChangePortName, runOnValueChange } from './run-on-value-change';
+import { runOnChangeInput, runOnChangePortName, runOnValueChange, valueDidChange } from './run-on-value-change';
 import type { NodeRunContext } from './runcontext';
 
 /**
@@ -185,6 +185,23 @@ Node.prototype.registerInputIfNeeded = function () {
  */
 Node.prototype.shouldRunOnValueChange = function (inputName) {
   return runOnValueChange(this, inputName);
+};
+
+/**
+ * DEF-046 — the same question, asked by a setter that knows what the value WAS.
+ *
+ * 🔴 **The one deciding function for "does this new value re-run the node".** Two conditions,
+ * and a call site that asks only one of them is the defect: `shouldRunOnValueChange` alone
+ * re-runs on a value that did not change (a code node writing a database row twice on one
+ * press); `valueDidChange` alone ignores the author's checkbox.
+ *
+ * ⚠️ **Only for a setter that stores a value.** The event-driven call sites — a cloud-store
+ * subscription firing, a model announcing a change — have no "previous value" and must keep
+ * calling `shouldRunOnValueChange` directly. There the question really is *"may this trigger
+ * run me"*, and nothing has been compared because nothing was handed over.
+ */
+Node.prototype.shouldRunOnValueChanged = function (inputName, previous, next) {
+  return valueDidChange(previous, next) && runOnValueChange(this, inputName);
 };
 
 /**

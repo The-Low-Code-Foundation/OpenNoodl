@@ -25,6 +25,12 @@ interface ConditionNodeInstance extends NodeInstance {
      * exactly where the first invocation reads it.
      */
     pendingEvalOutcomes?: OutcomeToken[];
+    /**
+     * DEF-046 — the last value that ARRIVED on `condition`, kept only so the setter can tell a
+     * new answer from the one it already has. ⚠️ Not a cache and not for reading: the node's
+     * answer is `getInputValue('condition')`, which may be a parameter this never sees.
+     */
+    lastConditionValue?: unknown;
   };
   scheduleEvaluate(token?: OutcomeToken): void;
 }
@@ -65,12 +71,16 @@ const ConditionNode: NodeDefinitionOptions = {
       displayName: 'Condition',
       group: 'General',
       description: 'Value to test for truth; it is re-tested on every change unless you untick it below',
-      // The incoming value is deliberately unused — the setter's only job is to decide
-      // whether to evaluate now or wait for the `eval` signal. Every reader goes back
-      // through `getInputValue('condition')`.
-      set(this: ConditionNodeInstance) {
+      // The incoming value decides one thing only — whether to evaluate now or wait for the
+      // `eval` signal. Every READER still goes back through `getInputValue('condition')`.
+      // ⚠️ DEF-046 gave this setter a use for its argument, so it is no longer unused: the
+      // previous one is kept beside it, and only for the comparison.
+      set(this: ConditionNodeInstance, value: unknown) {
+        const previous = this._internal.lastConditionValue;
+        this._internal.lastConditionValue = value;
         // NDA-017 §2. Was `if (!this.isInputConnected('eval'))`.
-        if (this.shouldRunOnValueChange('condition')) {
+        // DEF-046: and the same answer arriving twice is not a reason to re-evaluate.
+        if (this.shouldRunOnValueChanged('condition', previous, value)) {
           this.scheduleEvaluate();
         }
       }

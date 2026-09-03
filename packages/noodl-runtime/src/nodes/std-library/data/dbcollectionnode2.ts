@@ -561,9 +561,11 @@ const DbCollectionNode: NodeDefinitionOptions = {
   },
   prototypeExtensions: {
     setCollectionName: function (this: DbCollectionNodeInstance, name: string) {
+      // DEF-046: read before write — the stored value IS the previous one.
+      const previous = this._internal.name;
       this._internal.name = name;
 
-      if (this.shouldRunOnValueChange('collectionName')) this.scheduleFetch();
+      if (this.shouldRunOnValueChanged('collectionName', previous, name)) this.scheduleFetch();
       // A subscription is to a named collection; the old one is watching the wrong thing.
       this.scheduleRealtimeReconfigure();
     },
@@ -1107,15 +1109,20 @@ const DbCollectionNode: NodeDefinitionOptions = {
     // query unchanged). Orthogonal to the Filter — combined server-side with
     // whatever `where` the Visual/Javascript filter produces.
     setSearch: function (this: DbCollectionNodeInstance, value: string) {
+      // DEF-046: read before write — the stored value IS the previous one. Re-querying on a search string the
+      // node already holds is a round trip nobody asked for.
+      const previous = this._internal.search;
       this._internal.search = value;
 
-      if (this.shouldRunOnValueChange('search')) this.scheduleFetch();
+      if (this.shouldRunOnValueChanged('search', previous, value)) this.scheduleFetch();
     },
     setQueryParameter: function (this: DbCollectionNodeInstance, name: string, value: unknown) {
+      // DEF-046: read before write — the stored value IS the previous one.
+      const previous = this._internal.queryParameters[name];
       this._internal.queryParameters[name] = value;
 
       // One box per query parameter — see the note in `initialize`.
-      if (this.shouldRunOnValueChange('qp-' + name)) this.scheduleFetch();
+      if (this.shouldRunOnValueChanged('qp-' + name, previous, value)) this.scheduleFetch();
     },
     registerInputIfNeeded: function (this: DbCollectionNodeInstance, name: string) {
       if (this.hasInput(name)) {
@@ -1150,8 +1157,10 @@ const DbCollectionNode: NodeDefinitionOptions = {
         // BCN-004 step 5. Without the branch the picker's value would fall through to
         // `userInputSetter` and land in `storageSettings`, where nothing reads it.
         backendId: ((value: string) => {
+          // DEF-046: read before write — the stored value IS the previous one.
+          const previous = this._internal.backendId;
           this._internal.backendId = value;
-          if (this.shouldRunOnValueChange('querySettings')) this.scheduleFetch();
+          if (this.shouldRunOnValueChanged('querySettings', previous, value)) this.scheduleFetch();
           // BCN-008: and the subscription follows the picker, or it stays connected to
           // whichever backend happened to be selected when the node first ran.
           this.scheduleRealtimeReconfigure();
@@ -1185,9 +1194,11 @@ function userOutputGetter(this: DbCollectionNodeInstance, name: string) {
 
 function userInputSetter(this: DbCollectionNodeInstance, name: string, value: unknown) {
   /* jshint validthis:true */
+  // DEF-046: read before write — the stored value IS the previous one.
+  const previous = this._internal.storageSettings[name];
   this._internal.storageSettings[name] = value;
 
-  if (this.shouldRunOnValueChange('querySettings')) this.scheduleFetch();
+  if (this.shouldRunOnValueChanged('querySettings', previous, value)) this.scheduleFetch();
 }
 
 const _defaultJSONQuery =

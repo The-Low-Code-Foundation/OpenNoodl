@@ -450,6 +450,31 @@ export interface NodeInstance {
   shouldRunOnValueChange(inputName: string): boolean;
 
   /**
+   * The same question from a setter that knows the value it is replacing — DEF-046.
+   *
+   * `true` only when the box is still ticked AND the value actually changed. Prefer this in
+   * any setter that stores what it is handed:
+   *
+   * ```js
+   * set: function (value) {
+   *   const previous = this._internal.reading;
+   *   this._internal.reading = Number(value);
+   *   if (this.shouldRunOnValueChanged('reading', previous, this._internal.reading))
+   *     this.flagOutputDirty('output');
+   * }
+   * ```
+   *
+   * 🔴 Until this existed, a setter handed the value it already held re-ran the node anyway,
+   * and a node whose run has a SIDE EFFECT — a write, a request, an email — did it twice.
+   *
+   * ⚠️ Comparison is **primitives only**: an array or object mutated in place is the same
+   * reference and always counts as changed, so a node that passes rows around never goes
+   * quiet. ⚠️ A call site with no previous value — an event arriving rather than a value
+   * being set — should keep using {@link NodeInstance.shouldRunOnValueChange}.
+   */
+  shouldRunOnValueChanged(inputName: string, previous: unknown, next: unknown): boolean;
+
+  /**
    * Mint a `runOnChange-<name>` checkbox for an input **discovered at runtime**.
    * Declared inputs get theirs from `defineNode`; a node whose ports come from
    * user text or a schema has to register them alongside the port they govern.

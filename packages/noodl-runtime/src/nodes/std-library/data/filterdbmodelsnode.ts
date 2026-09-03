@@ -212,8 +212,10 @@ const FilterDBModelsNode: NodeDefinitionOptions = {
       default: true,
       description: 'Passes every record through unchanged when off, rather than emptying the result',
       set: function (this: FilterDbModelsInstance, value: unknown) {
+        // DEF-046: read before write — the stored value IS the previous one.
+        const previous = this._internal.enabled;
         this._internal.enabled = value as boolean;
-        if (this.shouldRunOnValueChange('enabled')) this.scheduleFilter();
+        if (this.shouldRunOnValueChanged('enabled', previous, value)) this.scheduleFilter();
       }
     },
     filter: {
@@ -522,11 +524,13 @@ const FilterDBModelsNode: NodeDefinitionOptions = {
       if (this.shouldRunOnValueChange('filterSettings')) this.scheduleFilter();
     },
     setFilterParameter: function (this: FilterDbModelsInstance, name: string, value: unknown) {
+      // DEF-046: read before write — the stored value IS the previous one.
+      const previous = this._internal.filterParameters[name];
       this._internal.filterParameters[name] = value;
 
       // One box per filter parameter — see the note on `runOnValueChange` above. Keyed by the
       // *port* name (`fp-<name>`), which is what `registerRunOnValueChangeInput` minted.
-      if (this.shouldRunOnValueChange('fp-' + name)) this.scheduleFilter();
+      if (this.shouldRunOnValueChanged('fp-' + name, previous, value)) this.scheduleFilter();
     },
     registerInputIfNeeded: function (this: FilterDbModelsInstance, name: string) {
       if (this.hasInput(name)) {
@@ -576,8 +580,10 @@ const FilterDBModelsNode: NodeDefinitionOptions = {
 
 function userInputSetter(this: FilterDbModelsInstance, name: string, value: unknown) {
   /* jshint validthis:true */
+  // DEF-046: read before write — the stored value IS the previous one.
+  const previous = this._internal.filterSettings[name];
   this._internal.filterSettings[name] = value;
-  if (this.shouldRunOnValueChange('filterSettings')) this.scheduleFilter();
+  if (this.shouldRunOnValueChanged('filterSettings', previous, value)) this.scheduleFilter();
 }
 
 /**

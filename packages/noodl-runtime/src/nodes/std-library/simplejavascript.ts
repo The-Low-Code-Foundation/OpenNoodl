@@ -578,6 +578,8 @@ const SimpleJavascriptNode: NodeDefinitionOptions = {
       editorConnection.clearWarning(componentName, this.id, NO_OUTPUT_WARNING_KEY);
     },
     setScriptInputValue: function (this: SimpleJavascriptNodeInstance, name: string, value: unknown) {
+      // DEF-046: read before write — see the comment under the guard below.
+      const previous = this._internal.inputValues[name];
       this._internal.inputValues[name] = value;
 
       // NDA-017 §2. Was `if (!this.isInputConnected('run'))`. §0 measured this node
@@ -586,7 +588,10 @@ const SimpleJavascriptNode: NodeDefinitionOptions = {
       // Expression *for* this node — so the workaround bought nothing. The checkbox is named
       // for the port (`in-<name>`), not the script variable, because that is what the author
       // sees in the panel and what `registerRunOnValueChangeInput` mints.
-      if (this.shouldRunOnValueChange('in-' + name)) this.scheduleRun();
+      // DEF-046. This node is where the reported harm was measured: a code node handed
+      // `title: 'Pricing'` twice ran twice and **wrote a database row on each run**. The value
+      // had not changed; nothing compared it to what was already in `inputValues`.
+      if (this.shouldRunOnValueChanged('in-' + name, previous, value)) this.scheduleRun();
     },
     getScriptOutputValue: function (this: SimpleJavascriptNodeInstance, name: string) {
       if (this._isSignalType(name)) {

@@ -124,8 +124,11 @@ const CollectionNode: NodeDefinitionOptions = {
       group: 'General',
       set: function (this: CollectionNodeInstance, value: string | CollectionLike) {
         if (value instanceof Collection) value = value.getId(); // Can be passed as collection as well
+        // DEF-046: read before write — the stored value IS the previous one. ⚠️ Compared AFTER the
+        // Collection→id normalisation above, so the two sides are the same kind of thing.
+        const previous = this._internal.collectionId;
         this._internal.collectionId = value as string; // Wait to fetch data
-        if (this.shouldRunOnValueChange('collectionId')) this.setCollectionID(value as string);
+        if (this.shouldRunOnValueChanged('collectionId', previous, value)) this.setCollectionID(value as string);
         else {
           this.flagOutputDirty('id');
         }

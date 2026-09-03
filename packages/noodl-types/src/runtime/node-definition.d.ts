@@ -164,6 +164,24 @@ export interface NodeInstance {
   shouldRunOnValueChange(inputName: string): boolean;
 
   /**
+   * DEF-046 — the same question from a setter that knows the value it is replacing.
+   *
+   * `true` only when the author has left the box ticked AND the value actually changed.
+   * Until this existed, a setter handed the value it already held re-ran the node anyway —
+   * a code node given `title: 'Pricing'` twice ran twice and wrote a row each time, and it
+   * contradicted the run-on-value-change contract's own justification for keeping `Run`
+   * (*"an async re-fetch that returns an identical value fires no change"*).
+   *
+   * ⚠️ Comparison is **primitives only**: an array mutated in place is the same reference,
+   * so a non-primitive on either side always counts as changed. ⚠️ A call site with no
+   * previous value — an event rather than a setter — keeps using
+   * {@link NodeInstance.shouldRunOnValueChange}.
+   *
+   * @see `packages/noodl-runtime/src/run-on-value-change.ts`
+   */
+  shouldRunOnValueChanged(inputName: string, previous: unknown, next: unknown): boolean;
+
+  /**
    * Mint the checkbox port for an input this node discovered at runtime.
    *
    * Declared inputs get theirs from {@link NodeDefinitionOptions.runOnValueChange}; only the

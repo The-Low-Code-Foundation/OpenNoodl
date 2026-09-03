@@ -160,10 +160,12 @@ export function createDefinition(args: VariableDefinitionArgs): NodeDefinitionOp
           // branch never ran. With `Set` additive both can happen, and a node that stored
           // eagerly while leaving `latestValue` behind would revert to a stale value the next
           // time `Set` was pulsed.
+          // DEF-046: read before the unconditional write above replaces it.
+          const previous = this._internal.latestValue;
           this._internal.latestValue = value;
 
           // Was `if (this.isInputConnected('saveValue') === false)`.
-          if (this.shouldRunOnValueChange('value')) {
+          if (this.shouldRunOnValueChanged('value', previous, value)) {
             this.setValueTo(value);
           }
         }

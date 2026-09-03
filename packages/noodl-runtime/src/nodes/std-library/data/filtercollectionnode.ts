@@ -217,8 +217,10 @@ const FilterCollectionNode: NodeDefinitionOptions = {
       description: 'When false the input array passes straight through — unfiltered, unsorted and unlimited',
       default: true,
       set: function (this: FilterCollectionInstance, value: boolean) {
+        // DEF-046: read before write — the stored value IS the previous one.
+        const previous = this._internal.enabled;
         this._internal.enabled = value;
-        if (this.shouldRunOnValueChange('enabled')) this.scheduleFilter();
+        if (this.shouldRunOnValueChanged('enabled', previous, value)) this.scheduleFilter();
       }
     },
     filter: {
@@ -552,8 +554,10 @@ const FilterCollectionNode: NodeDefinitionOptions = {
 };
 
 function userInputSetter(this: FilterCollectionInstance, name: string, value: string | number | boolean) {
+  // DEF-046: read before write — the stored value IS the previous one.
+  const previous = this._internal.filterSettings[name];
   this._internal.filterSettings[name] = value;
-  if (this.shouldRunOnValueChange('filterSettings')) this.scheduleFilter();
+  if (this.shouldRunOnValueChanged('filterSettings', previous, value)) this.scheduleFilter();
 }
 
 function updatePorts(

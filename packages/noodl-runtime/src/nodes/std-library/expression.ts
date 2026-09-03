@@ -192,12 +192,18 @@ const ExpressionNode: NodeDefinitionOptions = {
       this.registerRunOnValueChangeInput(name);
     },
     _onInputValueArrived: function (this: ExpressionNodeInstance, name: string, value: unknown) {
+      // DEF-046: read before write. The scope entry IS the previous value, and overwriting it
+      // first is how a setter loses the only thing it needs to know.
+      const previous = this._internal.scope[name];
       this._internal.scope[name] = value;
       this._internal.anyInputArrived = true;
       // NDA-017 §2. This used to read `if (!this.isInputConnected('run'))`, so wiring `Run`
       // made every value port on the node passive without saying so anywhere. Now the only
       // thing that makes a port passive is the author unticking it, and `Run` is additive.
-      if (this.shouldRunOnValueChange(name)) this._scheduleEvaluateExpression();
+      // DEF-046: …and a value identical to the one already here is not an arrival worth
+      // re-evaluating for. An array mutated in place is deliberately still one — see
+      // `valueDidChange`.
+      if (this.shouldRunOnValueChanged(name, previous, value)) this._scheduleEvaluateExpression();
     },
     _scheduleAutomaticEvaluation: function (this: ExpressionNodeInstance) {
       const internal = this._internal;
