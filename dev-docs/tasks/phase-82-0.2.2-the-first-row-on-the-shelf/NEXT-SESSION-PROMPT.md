@@ -1,125 +1,148 @@
 # Phase 82 — next session
 
-## The board, re-derived from [`TASKS.md`](TASKS.md) at 2026-09-03 14:2x (session 20)
+## The board, re-derived from [`TASKS.md`](TASKS.md) at 2026-09-03 15:4x (session 21)
 
-🔴 **Re-derive it again yourself.** This phase has been overtaken twice by a ruling that landed
-hours after a handoff was written. **The task files are the board; this section is a convenience.**
+🔴 **Re-derive it again yourself.** This phase has been overtaken three times by a ruling or a row
+that landed hours after a handoff was written. **The task files are the board; this section is a
+convenience.** ⚠️ **And session 20's handoff said *"there is no fully-buildable row left on this
+board."* That was wrong when it was written** — REL-011c owns six product findings, all of them
+buildable, and they were already registered in [REL-011 §AC3](REL-011-THE-SITE-BUILDER-SHIPS.md)
+when s20 wrote that sentence. ✅ **Read the FINDINGS a row owns, not only its status.**
 
 | # | row | state |
 |---|---|---|
 | 6 / 6b | REL-002c + [REL-010](REL-010-AS-GOOD-AS-THE-PAGE-HE-RATED.md) | ⏳ **RICHARD'S LOOK.** All building done (s15). A session cannot close a person |
 | 7 | REL-001 — publish the members' area | ⏳ **RICHARD.** Recommendation unchanged: *fix first, publish once* |
-| 8 | REL-004 — cut and tag `v0.2.2` | 🔴 **Blocked**: `cline-dev` unpushed (**638 at 13:4x s20 — re-derive at cut time**), CI has run on none of it |
+| 8 | REL-004 — cut and tag `v0.2.2` | 🔴 **Blocked**: `cline-dev` unpushed (**646 at 15:40 s21** — re-derive at cut time; peers commit while you work), CI has run on none of it |
 | 9a | REL-011a — the 53 controls | 🟢 CLOSED s17 `d88368c5` |
 | 9b | REL-011b — operable on the artefact a person publishes | 🟢 CLOSED s19 |
-| 9c | REL-011c — the three surfaces reach PASSABLE | ⏳ his look. **🔴 SEVEN registered findings wait to be ruled against** |
-| 10 | REL-009b — the editor sees the write | 🟡 **BUILT AND DRIVEN s20 — AC1/2/4/5 MET, AC3 UNMEASURED.** One cheap arm left, below |
+| **9c** | **REL-011c — the three surfaces reach PASSABLE** | 🟡 **HIS LOOK for the VERDICT — but SIX findings it OWNS are buildable NOW. ⬅️ THE NEXT ROW** |
+| 10 | REL-009b — the editor sees the write | 🟢 **CLOSED s21 — all five ACs met** |
 
-🔴 **There is no fully-buildable row left on this board.** REL-009b's remainder is one drive arm
-(~20 min). Everything else is Richard's.
+## 🟢 What session 21 did: REL-009b AC3 — closed, and the preview was never dead
 
-## 🟡 What session 20 did: REL-009b built and driven — the agent's write now reaches the open canvas
+Full write-up: **[REL-009 §3.2](REL-009-THE-WRITE-THE-EDITOR-CANNOT-SEE.md)**. Board row in
+[`TASKS.md`](TASKS.md). Photographs in [`verdicts/rel-009b/2026-09-03/`](verdicts/rel-009b/2026-09-03/).
 
-Full write-up: **[REL-009 §3.1](REL-009-THE-WRITE-THE-EDITOR-CANNOT-SEE.md)**. Board row in
-[`TASKS.md`](TASKS.md).
+§3.1 left exactly one instruction — *fresh stack, prove the control fires FIRST, then write through
+MCP* — plus *"do not record a finding against `ViewerConnection`; nothing here licenses one."*
+**Both halves earned their keep.** The ordering found two defects that no amount of reading had
+found, and the restraint stopped the first being filed as the second.
 
-`reloadComponentFromDisk` had **zero callers** for fourteen months. It has one now: a `fs.watch`
-watcher (`services/ProjectFileWatcher/`) maps changed files onto registry component paths, debounces
-them, and hands them to the seam. **Photographed**: an MCP write over stdio lands on the open canvas
-without reopening the project.
+### 🔴 1. s20's *"the preview had died"* was WRONG, and the editor had been saying so in words
 
-### 🔴 U3 was the expensive part, exactly as §3 predicted — and the first build of it was WRONG
+The fixture's router had **no start page** — wreckage of REL-009a's own arm C2 drive — so it
+correctly showed nothing. The toolbar's `⚠ 1` said:
 
-Three separate listeners treat the swap's `removeComponent` as a deletion, **across two event
-buses**. Guarding `componentRemoved` caught two of them. The third —
-`EditorEventBindings`, on **`NodeLibrary`'s `typeRemoved`** — called `switchToComponent()` with
-nothing, and the canvas still went blank.
+> *"This Router has no start page, so it has nothing to show on load — pick one in its Pages list"*
 
-```
-componentRemoved /Pages/Second reloadingFromDisk=true
-switchToComponent(UNDEFINED)          ← the third listener, on the OTHER bus
-componentAdded   /Pages/Second reloadingFromDisk=true
-componentReloadedFromDisk …
-```
+🔴 **The lesson is not "read the warning". It is that §3.1 read the same `⚠ 1` and treated it as
+ambient**, because a warning badge is always on in a fixture that has been driven a dozen times.
+✅ **A blank render has a producer, and this product will usually name it.** One click on a badge
+that was in every screenshot of two sessions replaced a diagnosis that had no mechanism with a
+sentence. ⚠️ `Make start page` is on the `···` menu of the page ROW inside the Router's `Pages` list;
+clicking the row navigates the canvas instead.
 
-**That middle line is the whole finding, and no amount of reading produced it** — an instrumented
-drive did, in about four minutes.
+### 🔴 2. A FOURTH listener treated the reload as a deletion — and it is the only one of the four that destroyed a person's project
 
-### The four things worth carrying forward
+`/App` on disk went `routes: ["/Pages/Third"], startPage: "/Pages/Third"` → **`routes: []`**
+**fourteen seconds after an agent added one node**, and the next autosave wrote the loss to disk.
+`RouterAdapter.componentRemoved` splices the page out of every Router's `routes`. **That is
+REL-009a arm C2's silent page loss — caused by REL-009b's own watcher.**
 
-1. 🔴 **A FLAG ON ONE EVENT REACHES ONLY THE LISTENERS ON THAT EVENT.** One state change
-   (`removeComponent`) fanned out onto `ProjectModel`'s bus *and* `NodeLibrary`'s. The `reloadingFromDisk`
-   flag was correct, complete and useless on half the listeners. ✅ **When you add a discriminator to
-   an event, grep for every OTHER event the same code path raises.**
-2. 🔴 **DON'T READ LIVE STATE TO ANSWER A QUESTION ABOUT THE PAST.** The follow-hook asked *"is the
-   canvas showing this component?"* at reload time — after several other listeners had run, one of
-   which had set it to `undefined`. It now answers at **removal** time and stores it. The specific
-   listener is fixed; **reading a value another listener may have moved is the fragility, not the
-   listener that moved it.**
-3. 🔴 **A GREEN READING AND ITS CONTROL BOTH READ ZERO ⇒ YOU MEASURED NOTHING.** AC3: the model took
-   an MCP write and the preview did not — which looks *exactly* like the propagation failure §3 told
-   us to go and verify. But an ordinary **editor** edit also never arrived, and the viewer's body was
-   empty: the preview had died. **A dead preview and a preview that ignores reloads are the same
-   photograph.** One extra reading is all that stood between this and a fabricated finding against
-   `ViewerConnection`.
-4. 🔴 **TAKE THE STACK BEFORE CLAIMING CREDIT.** The event log made the canvas re-point look like it
-   fired *before* the event my hook listens to — i.e. like something pre-existing was doing the work
-   and this row had added nothing. A stack trace attributed it to `UseSetupNodeGraph.ts:128` ←
-   `reloadComponentFromDisk` ← `EditorPage.tsx:242`. It was a logging artefact: two listeners on one
-   event, mine registered first. **The claim I nearly wrote was the wrong one in BOTH directions.**
+🔴 **s20's lesson was right and its sweep was too small.** It says *"a flag on one event reaches only
+the listeners on that event"* and it enumerated the OTHER bus. **It never enumerated the rest of its
+own.** `registeradapters.ts` fans `Model.componentRemoved` out to every adapter that asks for it, and
+one of them **writes parameters**. ✅ **When you add a discriminator to an event, enumerate every
+CONSUMER of that event too** — `grep componentRemoved` would have found it in the first minute.
 
-### 🔴 The design decision a future edit must not undo
+### 🔴 3. AC3's real answer was NO, and the seam is named
 
-`ProjectStructure.reloadComponent` was **split** into `readComponentFromDisk` + `markComponentBaseline`
-so the watcher decides **before** the baseline moves. Advance it and then refuse, and REL-009a's
-`findExternallyChanged` goes blind to the conflict — **the very next autosave clobbers the file the
-reload just declined to apply.** The refusal would have disarmed the guard that makes refusing
-worthwhile. Two specs pin it; a mutant that re-merges them reddens exactly those two.
+`ViewerConnection` sends the swap as the incremental pair `componentRemoved` → `componentAdded`; in
+`editormodeleventshandler.ts` those are `removeComponentWithName` (tears down the component's **live
+instances**) and `importComponentFromEditorData` (registers the **model** only). Nothing re-mounts
+it, so a Router showing that page holds an empty container. **And it does not merely fail to
+propagate — after the swap an ordinary editor edit no longer reached the preview either.** Fixed by
+taking the path `Model.rootNodeChanged` already takes for a change the incremental protocol cannot
+express: send nothing on the removal, **re-export** on the add.
 
-Verified in the running product, not only in specs: reload refused → `Third/nodes.json` byte-identical
-(`afa79b59…`) across a real autosave, agent's write intact, human's edit on disk **0 times** and
-still in memory. Both people's work survived and both were told.
+| moment | preview | `/App` on disk |
+|---|---|---|
+| **CONTROL** — ordinary editor edit | updates | unchanged |
+| **before** — agent write | 🔴 **0 chars** | 🔴 **`routes: []`** |
+| before — editor edit after | 🔴 **still 0** | — |
+| **after** — agent write | 🟢 **`AC3AFTERFIX` rendered** | 🟢 **`md5 3ccbabd0`, unchanged** |
+| after — editor edit after | 🟢 updates | unchanged |
+| **NEGATIVE CONTROL** — ordinary `componentAdded` | 🟢 page intact, **no re-export** | unchanged |
 
-## ⬜ The one buildable thing left: REL-009b AC3, ~20 minutes
+🔴 **The negative control is what stops the fix being a blunt instrument.** A re-export on *every*
+`componentAdded` would also have made AC3 pass — and would restart a person's preview every time
+they create a component.
 
-**Do not record a finding against `ViewerConnection` from s20's run — nothing licenses one.**
+**Gates**: `routerRouteRemoval.test.ts` **7/7** with **both** mutants reddening exactly their own
+arms (guard removed ⇒ the reload arm; widened to `!== false` ⇒ the two deletion arms);
+`tests-unit/rel-009b/` **23/23**; `typecheck:editor` **0, twice**; `test:ci` **2943 specs, 4
+failures, seed 09154, HEAD `ef5e90f5`** — all four `AIX-006 style vocabulary`, **by name** at
+`/tmp/ci.log:3959 :3963 :3981 :3985`. That is the floor; **exit 1 is the floor.**
 
-1. Fresh `npm run dev:debug -- --quiet`, open `NodeGX test projects/REL-009b Watcher Drive`
-   (already registered in the launcher as **`REL009B Watcher Drive`** — renamed precisely so its card
-   is distinguishable; there were two reading `Deadline Desk`).
-2. 🔴 **Prove the control FIRST**: make an ordinary editor edit to `Pages/Home` and watch it appear in
-   the preview (`npm run cdp -- eval "…" --target=viewer`). Only once that is known-firing:
-3. MCP-write a node into `Pages/Home` and read the same way. `scripts` for this are in s20's
-   scratchpad shape: spawn `packages/noodl-mcp/dist/noodl-mcp.cjs` with `ELECTRON_RUN_AS_NODE=1`,
-   `get_component {path}` → `update_component {path, set:{nodes, connections}}`.
-4. ⚠️ The preview died mid-session-20 with a `⚠ 1` in the toolbar and did not come back on refresh.
-   If it dies again, **that** is the finding to chase, and it is not this row's.
+### Four things worth carrying into any drive of this editor
 
+1. ⚠️ **The preview takes up to ~10 s to reflect an edit, not ~4.** A reading at 4 s said *"the
+   control does not fire"* and was **wrong**; the same reading at 12 s was right. ✅ **Re-read before
+   recording an absence.**
+2. 🔴 **`npm run cdp -- reload --target=viewer` reloads the EDITOR and destroys the preview webview**,
+   bouncing you back to the launcher mid-drive. Reload the editor deliberately; never the viewer.
+3. ⚠️ **A cached canvas coordinate started a graph RECORDING.** The window had resized between
+   screenshots and `(893,722)` was the `Record` button. ✅ **Re-screenshot before every coordinate
+   click** — `cdp click` takes a selector, so stamp the element (`setAttribute('data-drive',…)`) and
+   click that; for the `<canvas>` there is no selector and coordinates are all you have.
+4. ✅ **A spec that must load an editor model belongs in `tests/` (Jasmine, Electron) or behind a
+   no-import module.** A first draft of this session's spec imported `RouterAdapter`, which reaches
+   `bugtracker` → Electron's `getUserDataPath()` at module load, and **failed to run at all**
+   (`Tests: 0 total`). Extracting the decision into `routerRouteRemoval.ts` — the pattern
+   `ProjectFileWatcher/decide.ts` already uses — is what made it gradeable, **and it avoided editing
+   `tests/models/index.ts`, which carries a peer's uncommitted line.**
 
-## 🔴 An ownerless pile of somebody else's finished work is sitting in this tree
+## ⬅️ The next buildable row: REL-011c, and it owns six product findings
 
-**P80 s43 built DEF-039/040/041 this morning, recorded them as ✅ BUILT in
+[REL-011 §AC3](REL-011-THE-SITE-BUILDER-SHIPS.md) registers **seven** findings against
+`/admin/page/{pageId}` and the admin shell. **Six of them are REL-011c's own and every one is
+buildable**; only A3 belongs elsewhere (phase 81, the judge).
+
+| id | what | why it is worth doing before he looks |
+|---|---|---|
+| **A1** | 🔴 **The admin shell does not fold.** `/Admin/Shell`'s `sidebar` is `width: 240px, sizeMode: explicit` and **no node in it carries a `smallLayout`**. At 390 every admin screen gets ~150px: `/admin/page` reports **2379px unreachable** | Statically derivable from the artefact; visible in four phone shots |
+| **A2** | 🔴 **The page editor overflows horizontally below ~1900.** At **1280** `Preview`, `Save page`, the `Slug` field, `Show in navigation` and `Add section` are all outside the photograph — **a client on a laptop cannot see the button that saves their page** | ⚠️ **Mechanism UNMEASURED**: the fields DO narrow (~763 → ~573px), so it is not a fixed width, and no node on `/Pages/PageEditor` carries `width`, `minWidth` or `maxWidth`. **Diagnose before fixing** — that instruction is what made REL-011b AC2 cheap |
+| A4 | `Sections` and `Kind` share one line, `Kind`'s label sitting beside the `Sections` heading | cheap |
+| A5 | The `gallery` card shows a rendered picture **and** *"No pictures yet"* at the same moment | cheap, and it is a lie on the screen |
+| A6 | Section cards are headed by the raw slug (`hero`, `richText`) while the picker two lines above offers `Hero`, `Rich text` | two vocabularies for one thing on one screen |
+| A7 | **No admin page has an `h1`** — all twelve admin shots record `headings: []` | the words are drawn by `Text` nodes, so the screens have titles and the document has none |
+
+Plus **REL-011 row 3**: the nav wraps to two lines **even at 1900px** — seven short items capped to
+the content column, *"judged not fixed"*, and it reads as broken rather than plain.
+
+🔴 **Then re-photograph the three surfaces at four widths on the FIXED artefact** — the existing
+pictures show **D40** as well as the design (the Judge's harness never applied the template's
+`bodyScroll`). ⏳ **A session cannot award the verdict: Richard rules.** But it can hand him
+pictures of a fixed artefact instead of pictures of a defect.
+
+🔴 **NEVER OPEN the site-builder template IN THE EDITOR** — `readBundleDirectory` has no skip list.
+Work through `npm run template:site-builder`.
+
+## ⚠️ The ownerless s43 pile — a peer has taken it, do not race them
+
+**P80 s43 built DEF-039/040/041 this morning, recorded them ✅ BUILT in
 [P80 TASKS.md](../phase-80-the-defects-the-templates-found/TASKS.md), and ended without committing
-any of it.** s20 tripped over this because `projectmodel.ts` carries s43's DEF-040 hunks *and* this
-row's, interleaved and inseparable.
+any of it.** s20's `eff946c6` had to carry two of its files.
 
-s20's commit `eff946c6` therefore **carries two of s43's files** and says so in its message:
-`projectmodel.ts` (unavoidable — shared file) and `models/nodegraphmodel/rootNodeRemoval.ts`
-(unavoidable — `projectmodel.ts` imports it, and **a pathspec commit skips untracked files silently,
-so leaving it out would have broken HEAD**).
+✅ **As of 15:3x s21 a peer session holds this**: it measured `NodeGraphModel.ts` at **+99/−4** against
+HEAD, ~44 lines of which are its own SBR-008 work and the rest DEF-039/040, and said it will commit
+the lot with a message stating plainly that it carries three DEF rows that are not its own. **Do not
+commit those files without checking with it first.** ⚠️ **And do not assume the mtime cluster is the
+set** — that is how it was identified, and a third session's DEF-045 edit sat inside the same window
+earlier today.
 
-🔴 **The rest of s43's cluster is still uncommitted and nobody owns it.** By mtime (09-03 11:36–12:15):
-`NodeGraphModel.ts`, `NodeOperations.ts`, `NodeGraphEditorConnection.ts`, `ComponentLoader.ts`,
-`projectmodel.editor.ts`, `io/ProjectExporter.ts`, `io/ProjectImporter.ts`,
-`nodegraphmodel/connectionEnds.ts`, `tests/models/index.ts`, and the untracked
-`tests/models/RootNodeUndo.test.ts` + `tests-unit/def-039/`, `def-040/`, `def-041/`.
-
-✅ **Whoever picks this up: read P80's board first**, confirm the set, run editor `test:ci`, and land
-it under s43's own message. ⚠️ **Do not assume the mtime cluster is exactly the set** — that is how
-this session identified it, and it is a heuristic, not a measurement. A third peer's DEF-045 edit to
-`tests/cloud/cloudFunctions.test.ts` sits at 13:45, inside s20's own window, and is **not** s43's.
-
-## Working rules for this tree — unchanged, and all of them earned
+## Working rules for this tree — carried forward, and three added by session 21
 
 1. 🔴 **The canvas is a `<canvas>`.** Node labels are painted, not DOM, so `querySelector` cannot see
    them and **a screenshot is the only instrument** for anything about the graph. `elementFromPoint`
@@ -146,14 +169,27 @@ this session identified it, and it is a heuristic, not a measurement. A third pe
    120s. Gate on an exit file you write yourself.
 9. ⚠️ **The box is shared and busy.** One heavy job at a time. ✅ **Announce a `dev:debug` launch AND
    its teardown to every peer** — s20 did, and one peer was holding ~12 files of viewer-runtime edits
-   specifically waiting for that teardown.
+   specifically waiting for that teardown. ✅ **s21's launch announcement bought three explicit
+   all-clears and two facts nobody would have volunteered**: which uncommitted peer work the rebuild
+   would bake into `noodl.viewer.js`, and that a rebuild at 14:34 belonged to a session none of us
+   had heard from. **Announce the INTENT, not just the fact.**
+10. 🔴 **A SUITE IS NOT A DEV STACK, AND `dev:stop --list` CANNOT SEE ONE.** s21 started editor
+   `test:ci` two seconds before a peer would have started one on other packages; the collision was
+   caught only because both sessions announced. ✅ **Announce a suite the same way you announce a
+   launch**, and say where its log is.
+11. 🔴 **AN ANNOUNCEMENT IS NOT A PROCESS — AND A CLEARED SESSION'S MEMORY IS NOT EVIDENCE OF WHAT IT
+   DID.** A peer read *"starting `test:ci` next"* from an earlier turn of this session as a running
+   suite; this session, `/clear`ed since, then told it *"that was not mine"* — **a claim it had no
+   instrument for.** Its own `ps` walk (no jest anywhere at 14:52) was the sound half. ✅ **`ps -Ao
+   pid,ppid,command` answers whether; PPID answers whose; ARGV answers what** — and *"I never did
+   that"* after a `/clear` answers none of the three.
 
 ---
 
-_Everything below predates session 20. Rows 6/6b/7/8 have not moved, but **re-derive from
-[`TASKS.md`](TASKS.md) before believing any of it.**_
- Rows 6/6b/7/8 have not moved, but **re-derive from
-[`TASKS.md`](TASKS.md) before believing any of it.**_
+_Everything below predates session 21. Rows 6/6b/7/8 have not moved and s18's REL-011b write-up is
+still the best account of that row, but **row 9b is CLOSED and row 10 is CLOSED, so the "next
+buildable work" sections below are all out of date.** ✅ **Re-derive from [`TASKS.md`](TASKS.md)
+before believing any of it.**_
 
 ## The board, re-derived from [`TASKS.md`](TASKS.md) at 2026-09-03 13:0x (session 18)
 

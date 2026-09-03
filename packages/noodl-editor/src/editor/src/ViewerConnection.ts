@@ -986,6 +986,26 @@ export class ViewerConnection extends Model {
         if (e.args.model.owner === undefined) return; // Not part of component
         if (e.args.model.owner !== ProjectModel.instance) return; // Not part of current project
 
+        // 🔴 REL-009b AC3 — the add half of a reload swap. The incremental
+        // pair is wrong here and MEASURED wrong: the runtime's `componentRemoved`
+        // runs `graphModel.removeComponentWithName`, which tears down the live
+        // instances of that component, and `componentAdded` only registers the
+        // replacement's MODEL. Nothing re-mounts it, so a Router showing that
+        // page is left with an empty page container — the preview goes blank and
+        // STAYS blank: after the swap an ordinary editor edit no longer reaches
+        // it either. Driven both ways on 2026-09-03: editor edit → preview
+        // updates; agent write → preview blank; editor edit → still blank.
+        //
+        // A reload is rare (it costs an agent writing a file), so it takes the
+        // path `rootNodeChanged` already takes for a change the incremental
+        // protocol cannot express: re-export the project. The preview restarts,
+        // which is a visible cost and a truthful one — the alternative on the
+        // record is a blank page.
+        if (e.args.reloadingFromDisk === true) {
+          _this.export();
+          return;
+        }
+
         _this.send({
           cmd: 'modelUpdate',
           content: {
@@ -1001,6 +1021,11 @@ export class ViewerConnection extends Model {
       'Model.componentRemoved',
       function (e) {
         if (_this.watchModelChangesDisabled) return;
+
+        // REL-009b AC3: the remove half of a reload swap. Say nothing — the
+        // `componentAdded` that follows it re-exports, and sending the removal
+        // first would blank the preview for the width of that round trip.
+        if (e.args.reloadingFromDisk === true) return;
 
         _this.send({
           cmd: 'modelUpdate',

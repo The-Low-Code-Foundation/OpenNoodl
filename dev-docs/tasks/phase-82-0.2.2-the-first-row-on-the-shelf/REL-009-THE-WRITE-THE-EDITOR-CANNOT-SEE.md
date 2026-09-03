@@ -423,6 +423,8 @@ changed is the fragility, not the particular listener that changed it.**
 
 ### 🔴 AC3 — the preview: the reading and the control BOTH read zero, so neither means anything
 
+✅ **ANSWERED IN [§3.2](#32--ac3-met--2026-09-03-session-21-the-preview-was-never-dead-and-two-defects-stood-between-the-write-and-the-page) — read that before acting on anything in this section.** The diagnosis below (*"the preview had died"*) turned out to be **wrong**: the router had no start page, and the editor's own warning badge said so. The refusal to file against `ViewerConnection` was right; the mechanism guessed at here was not.
+
 MCP added `PREVIEWPROOF` to `Pages/Home`, the route the preview was showing. The **model took it**
 (`"/Pages/Home":[…,"PREVIEWPROOF"]`) and the **preview did not** — which looks exactly like
 *"a model swap does not propagate to the viewer"*, the thing §3 AC3 told us to verify rather than
@@ -499,6 +501,147 @@ a mutant that swaps the two clauses reddens **that spec and no other**.
 `ComponentModel`, so the filter removes nothing, ever. The real work is done by the
 `discardInvalidEntries()` call underneath it. Pre-existing, unrelated to this row, and it blocks no AC
 here — but it is a dead line that reads as live, and the next person to trust it will be wrong.
+
+## §3.2 🟢 AC3 MET — 2026-09-03 (session 21). The preview was never dead, and two defects stood between the write and the page
+
+**Read §3.1's AC3 note first.** It ended with one instruction — *fresh stack, prove the control
+fires FIRST, then write through MCP* — and *"do not record a finding against `ViewerConnection`;
+nothing here licenses one."* Both halves earned their keep: the ordering found two defects that no
+amount of reading had found, and the restraint stopped the first of them being filed as the second.
+
+### 🔴 Finding 1 — the blank preview of session 20 was a ROUTER WITH NO START PAGE, and the editor had been saying so all along
+
+On a fresh stack the preview was blank **before anything was driven**. It was not a dead preview and
+not a propagation failure: the fixture's `/App` read `pages: { routes: ["/Pages/Third"] }` with **no
+`startPage`** — wreckage left by REL-009a's own arm C2 drive — so the router had nothing to show, and
+the toolbar's `⚠ 1` badge said exactly that in words:
+
+> *"This Router has no start page, so it has nothing to show on load — pick one in its Pages list"*
+
+🔴 **The lesson is not "read the warning".** It is that **§3.1 read the same `⚠ 1` and treated it as
+ambient noise**, because a warning badge is always on in a fixture that has been driven a dozen
+times. ✅ **A blank render has a producer, and this product will usually name it.** One click on a
+badge that had been in every screenshot for two sessions replaced *"the preview had died"* — a
+diagnosis with no mechanism — with a sentence.
+
+⚠️ **`Make start page` is on the `···` menu of the page ROW inside the Router's `Pages` list.**
+Clicking the row navigates the canvas to that page instead, which is what the first three attempts
+did.
+
+### 🔴 Finding 2 — a FOURTH listener treated the reload as a deletion, and it is the only one that destroyed a person's project
+
+With a start page set, the preview rendered. An agent then added one node to `Pages/Third` over MCP.
+Fourteen seconds later `/App` on disk read:
+
+```
+pages: { routes: [] }          ← was routes: ["/Pages/Third"], startPage: "/Pages/Third"
+```
+
+**[`RouterAdapter.componentRemoved`](../../../packages/noodl-editor/src/editor/src/models/NodeTypeAdapters/RouterAdapter.ts)**
+splices the removed component out of every Router's `routes` and clears `startPage` when it names
+that page. It could not tell the swap's removal from a deletion, and **the editor's next autosave
+wrote the loss to disk.** That is REL-009a **arm C2's silent page loss** — a page dropped from the
+router while its files and registry entry stay, so nothing on any surface looks wrong — **caused by
+REL-009b's own watcher.**
+
+🔴 **§3.1's lesson was right and its sweep was too small.** It says *"a flag on one event reaches
+only the listeners on that event"*, and it enumerated the OTHER bus (`NodeLibrary`'s `typeRemoved`).
+It never enumerated the **rest of its own bus**. `registeradapters.ts` fans `Model.componentRemoved`
+out to every `NodeTypeAdapter` that asks for it, and one of them writes parameters.
+✅ **When you add a discriminator to an event, enumerate every CONSUMER of that event too, not just
+the other events the code path raises.** The three guards s20 added all stop a view re-pointing the
+canvas; this one is different **in kind**, and a fourth guard on the same event would have been found
+by `grep componentRemoved` in the first minute.
+
+**Swept, and clear**: `CloudFunctionAdapter.componentAddedOrRemoved` only recomputes ports and fires
+on both halves of the swap, so it re-settles; `RouterNavigateAdapter` and `PageInputsAdapter` take no
+`componentRemoved` at all. Every other consumer of the event is a re-render.
+
+### 🟢 Finding 3 — AC3's real answer was NO, and the seam is named
+
+With the router no longer being destroyed, the question §3 AC3 actually asked could be read for the
+first time, and the answer was **no**: the model took the agent's node and the preview did not.
+Then it got worse in a useful way — **an ordinary editor edit no longer reached the preview either**,
+so the reload does not merely fail to propagate, it **breaks the preview until the viewer is
+reloaded**.
+
+**The seam, named**:
+[`ViewerConnection.ts`](../../../packages/noodl-editor/src/editor/src/ViewerConnection.ts) sends the
+swap as the incremental pair `componentRemoved` → `componentAdded`, and in
+[`editormodeleventshandler.ts`](../../../packages/noodl-runtime/src/editormodeleventshandler.ts)
+those are `graphModel.removeComponentWithName(...)` — which tears down the **live instances** of the
+component — and `graphModel.importComponentFromEditorData(...)`, which registers the replacement's
+**model only**. Nothing re-mounts it, so a Router showing that page is left holding an empty page
+container. That is the blank page, and it is why the connection then looked dead: the Router's
+mounted instance was gone and no later update had anything to update.
+
+**The fix** takes the path `Model.rootNodeChanged` already takes for a change the incremental
+protocol cannot express: on a removal flagged `reloadingFromDisk` send nothing, and on the matching
+add **re-export the project**. The preview restarts — a visible cost, and a truthful one; the
+alternative on the record is a blank page. A reload costs an agent writing a file, so this is rare by
+construction.
+
+### The measurements, both arms, with the controls named
+
+| moment | preview (`document.body.innerText`) | `/App` on disk |
+|---|---|---|
+| project open, baseline | **5 texts, 96 chars** | `routes` ×4, `startPage: /Pages/Third` |
+| **CONTROL** — an ordinary editor edit | **updates** | unchanged |
+| **before the fixes** — agent adds a node over MCP | **0 chars** | 🔴 **`routes: []`, no `startPage`** |
+| before the fixes — editor edit after the reload | 🔴 **0 chars** — still | — |
+| **after the fixes** — agent adds a node over MCP | 🟢 **`AC3AFTERFIX` on the page** | 🟢 **unchanged, `md5 3ccbabd0`** |
+| after the fixes — editor edit after the reload | 🟢 **updates** | unchanged |
+| **NEGATIVE CONTROL** — an ordinary `componentAdded`, no flag | 🟢 **page intact, no re-export** | unchanged |
+
+Photographs: [`verdicts/rel-009b/2026-09-03/`](verdicts/rel-009b/2026-09-03/) —
+`ac3-after-the-fix-preview.png` shows the agent's `AC3AFTERFIX` rendered, and
+`ac3-after-the-fix-editor.png` shows the same string in the editor's own preview panel beside the
+canvas.
+
+🔴 **The negative control is the one that stops this fix being a blunt instrument.** A re-export on
+every `componentAdded` would also have made AC3 pass, and would have restarted a person's preview on
+every component they created. The guard is a strict `=== true` against a field `projectmodel` always
+sends as a boolean, and the control confirms the ordinary path still runs incrementally.
+
+🔴 **And the control that makes the "after" arm mean something is that the CONTROL EDIT STILL FIRES
+AFTERWARDS.** Without it, a green after-arm is equally explained by *"the preview was reloaded and
+happened to pick the write up"*.
+
+### Gates
+
+- `tests-unit/rel-009b/routerRouteRemoval.test.ts` — **7/7**, new. **Mutation-checked in both
+  directions**: removing the guard reddens **exactly** the reload arm; widening it to `!== false`
+  (so a missing flag reads as a reload) reddens **exactly** the two deletion arms. The decision lives
+  in its own no-import module because `RouterAdapter` reaches Electron's `getUserDataPath()` at module
+  load — an earlier draft of this spec imported the adapter and could not run at all.
+- `tests-unit/rel-009b/` whole — **23/23** (7 new + REL-009b's 16 existing watcher arms).
+- `typecheck:editor` **exit 0, 0 errors** — run twice, once after each source change.
+- `npm run test:ci` — **2943 specs, 4 failures, seed 09154, HEAD `ef5e90f5`**. All four are
+  `AIX-006 style vocabulary`, **checked by name** in the log at `:3959 :3963 :3981 :3985`. That is the
+  recorded floor; exit 1 is the floor, not this change.
+
+### ⚠️ Caveats on this drive, stated rather than buried
+
+- **The viewer bundle this preview ran on was not HEAD.** It was rebuilt by this session's own
+  webpack at 14:53 (`04bc4829` → `1b5a4512`) from a tree carrying two peers' then-uncommitted
+  changes — DEF-046 (since committed as `fc0ada95`) and SBR-008 (still uncommitted). Neither touches
+  component add/remove propagation, and the before/after arms ran on the **same** bundle, which is
+  what makes them comparable.
+- **The control edits in the final arm went through `NodeGraphNode.setParameter`**, the call the
+  property panel makes, rather than through a click in the panel. The earlier arms in this session
+  used the real property-panel textarea via CDP `type`, and both produced the same preview update.
+- **The preview takes up to ~10 s to reflect an edit**, not ~4. A reading at 4 s said *"the control
+  does not fire"* and was wrong; the same reading at 12 s was right. ✅ **Re-read before recording an
+  absence.**
+- 🔴 **`npm run cdp -- reload --target=viewer` reloaded the EDITOR and destroyed the preview
+  webview**, bouncing the editor back to the launcher mid-drive. That was an instrument error, not a
+  product one, and it cost a re-open. Reload the editor deliberately; do not reload the viewer.
+- ⚠️ **A stray click at the canvas coordinates that used to hold a node started a graph RECORDING**
+  (`recording · 0 events`). The canvas is a `<canvas>` and the window had resized between
+  screenshots, so cached coordinates pointed at the toolbar. ✅ **Re-screenshot before every
+  coordinate click.**
+
+---
 
 ## §4 Registered, unmeasured — do not build on these without reading them first
 

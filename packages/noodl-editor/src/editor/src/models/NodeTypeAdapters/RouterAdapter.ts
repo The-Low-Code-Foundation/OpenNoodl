@@ -4,6 +4,7 @@ import { NodeGraphModel } from '../nodegraphmodel';
 import { ProjectModel } from '../projectmodel';
 import { readNameList } from './nameListParameter.warnings';
 import NodeTypeAdapter from './NodeTypeAdapter';
+import { pagesAfterComponentRemoved } from './routerRouteRemoval';
 
 export class RouterAdapter extends NodeTypeAdapter {
   events: Record<string, any>;
@@ -22,20 +23,20 @@ export class RouterAdapter extends NodeTypeAdapter {
   }
 
   componentRemoved(e) {
+    // 🔴 REL-009b: a reload from disk removes the component and adds the
+    // replacement back under the same name, so this handler is asked to react
+    // to a swap as if it were a deletion. The cost of guessing wrong here is
+    // not cosmetic like the node graph's — it drops the page from every
+    // router's `routes` and the next autosave writes that loss to disk. The
+    // decision, and the measurement behind it, are in `routerRouteRemoval.ts`;
+    // it lives apart because this file cannot be loaded outside Electron.
     const componentName = e.model.fullName;
-    const routers = this.findAllNodes();
 
-    routers.forEach((r) => {
-      const pages = r.parameters['pages'];
-      if (pages !== undefined && pages.routes !== undefined) {
-        const idx = pages.routes.indexOf(componentName);
-        if (idx !== -1) {
-          const _pages = JSON.parse(JSON.stringify(pages));
-          _pages.routes.splice(idx, 1);
-          if (_pages.startPage === componentName) _pages.startPage = undefined;
-          r.setParameter('pages', _pages, { undo: e.undo });
-        }
-      }
+    this.findAllNodes().forEach((r) => {
+      const next = pagesAfterComponentRemoved(r.parameters['pages'], componentName, {
+        reloadingFromDisk: e.reloadingFromDisk
+      });
+      if (next !== null) r.setParameter('pages', next, { undo: e.undo });
     });
   }
 
