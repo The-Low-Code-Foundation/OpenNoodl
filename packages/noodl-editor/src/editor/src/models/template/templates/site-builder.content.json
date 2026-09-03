@@ -2048,115 +2048,132 @@
                         "dynamicports": []
                       },
                       {
-                        "id": "header",
+                        "id": "siteMain",
                         "type": "Group",
                         "children": [
                           {
-                            "id": "siteName",
-                            "type": "Text",
-                            "children": [],
-                            "label": "Site name",
+                            "id": "header",
+                            "type": "Group",
+                            "children": [
+                              {
+                                "id": "siteName",
+                                "type": "Text",
+                                "children": [],
+                                "label": "Site name",
+                                "x": 340,
+                                "y": 760,
+                                "parameters": {
+                                  "as": "span",
+                                  "fontWeight": "var(--font-semibold)",
+                                  "text": "",
+                                  "fontFamily": "var(--font-sans)",
+                                  "fontSize": "var(--text-sm)",
+                                  "color": "var(--muted-foreground)",
+                                  "letterSpacing": "var(--tracking-wide)"
+                                },
+                                "ports": [],
+                                "dynamicports": []
+                              },
+                              {
+                                "id": "pageTitle",
+                                "type": "Text",
+                                "children": [],
+                                "label": "Page title",
+                                "x": 340,
+                                "y": 880,
+                                "parameters": {
+                                  "as": "h1",
+                                  "fontWeight": "var(--font-bold)",
+                                  "fontSize": "var(--text-4xl)",
+                                  "text": "",
+                                  "fontFamily": "var(--font-serif)",
+                                  "color": "var(--foreground)",
+                                  "lineHeight": "var(--leading-tight)"
+                                },
+                                "ports": [],
+                                "dynamicports": []
+                              }
+                            ],
+                            "label": "Header",
                             "x": 280,
                             "y": 640,
                             "parameters": {
-                              "as": "span",
-                              "fontWeight": "var(--font-semibold)",
-                              "text": "",
-                              "fontFamily": "var(--font-sans)",
-                              "fontSize": "var(--text-sm)",
-                              "color": "var(--muted-foreground)",
-                              "letterSpacing": "var(--tracking-wide)"
+                              "sizeMode": "contentHeight",
+                              "as": "header",
+                              "flexDirection": "column",
+                              "rowGap": "var(--space-1)",
+                              "paddingTop": "var(--space-8)"
                             },
                             "ports": [],
                             "dynamicports": []
                           },
                           {
-                            "id": "pageTitle",
-                            "type": "Text",
+                            "id": "sectionList",
+                            "type": "For Each",
                             "children": [],
-                            "label": "Page title",
+                            "label": "One view per section",
                             "x": 280,
-                            "y": 760,
+                            "y": 1000,
                             "parameters": {
-                              "as": "h1",
-                              "fontWeight": "var(--font-bold)",
-                              "fontSize": "var(--text-4xl)",
-                              "text": "",
-                              "fontFamily": "var(--font-serif)",
-                              "color": "var(--foreground)",
-                              "lineHeight": "var(--leading-tight)"
+                              "templateType": "explicit",
+                              "template": "/Site/SectionView"
                             },
                             "ports": [],
                             "dynamicports": []
-                          }
-                        ],
-                        "label": "Header",
-                        "x": 220,
-                        "y": 520,
-                        "parameters": {
-                          "sizeMode": "contentHeight",
-                          "as": "header",
-                          "flexDirection": "column",
-                          "rowGap": "var(--space-1)",
-                          "paddingTop": "var(--space-8)"
-                        },
-                        "ports": [],
-                        "dynamicports": []
-                      },
-                      {
-                        "id": "sectionList",
-                        "type": "For Each",
-                        "children": [],
-                        "label": "One view per section",
-                        "x": 220,
-                        "y": 880,
-                        "parameters": {
-                          "templateType": "explicit",
-                          "template": "/Site/SectionView"
-                        },
-                        "ports": [],
-                        "dynamicports": []
-                      },
-                      {
-                        "id": "notFoundCard",
-                        "type": "Group",
-                        "children": [
+                          },
                           {
-                            "id": "notFound",
-                            "type": "Text",
-                            "children": [],
-                            "label": "Not found",
+                            "id": "notFoundCard",
+                            "type": "Group",
+                            "children": [
+                              {
+                                "id": "notFound",
+                                "type": "Text",
+                                "children": [],
+                                "label": "Not found",
+                                "x": 340,
+                                "y": 1240,
+                                "parameters": {
+                                  "as": "p",
+                                  "text": "That page could not be found.",
+                                  "color": "var(--muted-foreground)",
+                                  "fontFamily": "var(--font-sans)",
+                                  "fontSize": "var(--text-base)",
+                                  "textAlignX": "center"
+                                },
+                                "ports": [],
+                                "dynamicports": []
+                              }
+                            ],
+                            "label": "The empty-screen card",
                             "x": 280,
                             "y": 1120,
                             "parameters": {
-                              "as": "p",
-                              "text": "That page could not be found.",
-                              "color": "var(--muted-foreground)",
-                              "fontFamily": "var(--font-sans)",
-                              "fontSize": "var(--text-base)",
-                              "textAlignX": "center"
+                              "sizeMode": "contentHeight",
+                              "flexDirection": "column",
+                              "alignItems": "center",
+                              "mounted": false,
+                              "backgroundColor": "var(--surface)",
+                              "borderStyle": "solid",
+                              "borderWidth": "var(--border-1)",
+                              "borderColor": "var(--border)",
+                              "borderRadius": "var(--radius-md)",
+                              "paddingTop": "var(--space-12)",
+                              "paddingBottom": "var(--space-12)",
+                              "paddingLeft": "var(--space-6)",
+                              "paddingRight": "var(--space-6)"
                             },
                             "ports": [],
                             "dynamicports": []
                           }
                         ],
-                        "label": "The empty-screen card",
+                        "label": "The page",
                         "x": 220,
-                        "y": 1000,
+                        "y": 520,
                         "parameters": {
+                          "as": "main",
                           "sizeMode": "contentHeight",
                           "flexDirection": "column",
-                          "alignItems": "center",
-                          "mounted": false,
-                          "backgroundColor": "var(--surface)",
-                          "borderStyle": "solid",
-                          "borderWidth": "var(--border-1)",
-                          "borderColor": "var(--border)",
-                          "borderRadius": "var(--radius-md)",
-                          "paddingTop": "var(--space-12)",
-                          "paddingBottom": "var(--space-12)",
-                          "paddingLeft": "var(--space-6)",
-                          "paddingRight": "var(--space-6)"
+                          "rowGap": "var(--space-8)"
                         },
                         "ports": [],
                         "dynamicports": []
@@ -2171,7 +2188,7 @@
                             "children": [],
                             "label": "Footer site name",
                             "x": 280,
-                            "y": 1360,
+                            "y": 1480,
                             "parameters": {
                               "as": "span",
                               "text": "",
@@ -2188,7 +2205,7 @@
                             "children": [],
                             "label": "Back to home",
                             "x": 280,
-                            "y": 1480,
+                            "y": 1600,
                             "parameters": {
                               "as": "span",
                               "text": "Home",
@@ -2203,7 +2220,7 @@
                         ],
                         "label": "Footer",
                         "x": 220,
-                        "y": 1240,
+                        "y": 1360,
                         "parameters": {
                           "sizeMode": "contentHeight",
                           "as": "footer",
@@ -2268,8 +2285,8 @@
             "type": "RouterNavigate",
             "children": [],
             "label": "To the home page",
-            "x": 530,
-            "y": 1480,
+            "x": 590,
+            "y": 1600,
             "parameters": {
               "router": "Main",
               "target": "/Pages/Site"
@@ -2282,8 +2299,8 @@
             "type": "JavaScriptFunction",
             "children": [],
             "label": "Which of the three empty screens is this?",
-            "x": 530,
-            "y": 1000,
+            "x": 590,
+            "y": 1120,
             "parameters": {
               "functionScript": "const pageRefused = Inputs.error !== undefined && Inputs.error !== null && Inputs.error !== \"\";\nconst settingsRefused = Inputs.settingsError !== undefined && Inputs.settingsError !== null && Inputs.settingsError !== \"\";\nif (settingsRefused) {\n  Outputs.text = \"This site’s pages are not available right now.\";\n  Outputs.visible = true;\n  return;\n}\nif (Inputs.claimed === false) {\n  Outputs.text = \"This site has not been set up yet.\";\n  Outputs.visible = true;\n  return;\n}\nif (pageRefused) {\n  Outputs.text = \"This site’s pages are not available right now.\";\n  Outputs.visible = true;\n  return;\n}\nif (Inputs.watchdog !== undefined && Inputs.claimed === undefined && Inputs.missing === undefined) {\n  Outputs.text = \"No backend connected. This project needs a backend before it can store pages — add one from Backend Services.\";\n  Outputs.visible = true;\n  return;\n}\nif (Inputs.missing === undefined) return;\nif (!Inputs.missing) {\n  Outputs.visible = false;\n  return;\n}\nOutputs.text = \"That page could not be found.\";\nOutputs.visible = true;"
             },
@@ -2345,7 +2362,7 @@
             "type": "Timer",
             "children": [],
             "label": "The answer deadline",
-            "x": 530,
+            "x": 590,
             "y": 40,
             "parameters": {
               "duration": 4000
@@ -2358,8 +2375,8 @@
             "type": "PageInputs",
             "children": [],
             "label": "The slug from the URL",
-            "x": 530,
-            "y": 1600,
+            "x": 590,
+            "y": 1720,
             "parameters": {
               "pathParams": "slug"
             },
@@ -2371,8 +2388,8 @@
             "type": "DbCollection2",
             "children": [],
             "label": "SiteSettings (one row)",
-            "x": 530,
-            "y": 1720,
+            "x": 590,
+            "y": 1840,
             "parameters": {
               "collectionName": "SiteSettings"
             },
@@ -2384,8 +2401,8 @@
             "type": "JavaScriptFunction",
             "children": [],
             "label": "Read the settings row",
-            "x": 530,
-            "y": 640,
+            "x": 590,
+            "y": 760,
             "parameters": {
               "runOnChange-in-rows": true,
               "functionScript": "const rows = Inputs.rows || [];\nconst first = rows[0] ? rows[0].data || rows[0] : {};\nOutputs.siteName = first.siteName || '';\nOutputs.claimed = rows.length > 0;\nOutputs.homeSlug = first.homeSlug || 'home';"
@@ -2427,7 +2444,7 @@
             "type": "JavaScriptFunction",
             "children": [],
             "label": "The slug to show",
-            "x": 530,
+            "x": 590,
             "y": 160,
             "parameters": {
               "runOnChange-in-slug": true,
@@ -2469,8 +2486,8 @@
             "type": "DbCollection2",
             "children": [],
             "label": "The page with this slug",
-            "x": 530,
-            "y": 1840,
+            "x": 590,
+            "y": 1960,
             "parameters": {
               "runOnChange-collectionName": false,
               "runOnChange-querySettings": false,
@@ -2494,8 +2511,8 @@
             "type": "JavaScriptFunction",
             "children": [],
             "label": "Read the page record",
-            "x": 530,
-            "y": 760,
+            "x": 590,
+            "y": 880,
             "parameters": {
               "runOnChange-in-rows": true,
               "functionScript": "if (Inputs.rows === undefined) return;\nconst rows = Inputs.rows || [];\nconst row = rows[0];\nconst d = row ? row.data || row : undefined;\nOutputs.missing = d === undefined;\nOutputs.title = d ? d.title || '' : '';\nOutputs.seoDescription = d ? d.seoDescription || '' : '';\nOutputs.slug = d ? d.slug || '' : '';\nif (d === undefined) return;\nOutputs.pageId = row.getId ? row.getId() : (d.objectId || '');\nOutputs.found();"
@@ -2556,8 +2573,8 @@
             "type": "DbCollection2",
             "children": [],
             "label": "This page's sections",
-            "x": 530,
-            "y": 880,
+            "x": 590,
+            "y": 1000,
             "parameters": {
               "runOnChange-collectionName": false,
               "runOnChange-querySettings": false,
@@ -2589,8 +2606,8 @@
             "type": "DbCollection2",
             "children": [],
             "label": "Theme (one row)",
-            "x": 530,
-            "y": 1960,
+            "x": 590,
+            "y": 2080,
             "parameters": {
               "realtime": true,
               "runOnChange-records": true,
@@ -2604,8 +2621,8 @@
             "type": "JavaScriptFunction",
             "children": [],
             "label": "The theme record, as CSS variables",
-            "x": 530,
-            "y": 2080,
+            "x": 590,
+            "y": 2200,
             "parameters": {
               "runOnChange-in-rows": true,
               "functionScript": "if (typeof document === 'undefined') return;\nconst rows = Inputs.rows || [];\nconst first = rows[0] ? rows[0].data || rows[0] : {};\nconst t = first.tokens || {};\nconst root = document.documentElement;\nif (t.colorPrimary) {\n  root.style.setProperty('--primary', t.colorPrimary);\n  root.style.setProperty('--primary-hover', 'color-mix(in srgb, ' + t.colorPrimary + ' 82%, black)');\n  root.style.setProperty('--ring', t.colorPrimary);\n  root.style.setProperty('--accent-foreground', t.colorPrimary);\n}\nif (t.colorOnPrimary) root.style.setProperty('--primary-foreground', t.colorOnPrimary);\nif (t.colorBackground) root.style.setProperty('--background', t.colorBackground);\nif (t.colorSurface) {\n  root.style.setProperty('--surface', t.colorSurface);\n  root.style.setProperty('--surface-raised', t.colorSurface);\n}\nif (t.colorText) root.style.setProperty('--foreground', t.colorText);\nif (t.colorTextSoft) root.style.setProperty('--muted-foreground', t.colorTextSoft);\nif (t.colorBorder) {\n  root.style.setProperty('--border', t.colorBorder);\n  root.style.setProperty('--border-subtle', 'color-mix(in srgb, ' + t.colorBorder + ' 45%, var(--background))');\n  root.style.setProperty('--border-strong', 'color-mix(in srgb, ' + t.colorBorder + ' 65%, var(--foreground))');\n}\nif (t.colorAccentSoft) root.style.setProperty('--accent', t.colorAccentSoft);\nif (t.radius) root.style.setProperty('--radius-md', t.radius);\nif (t.fontDisplay) root.style.setProperty('--font-serif', t.fontDisplay);\nif (t.fontUi) {\n  root.style.setProperty('--font-sans', t.fontUi);\n  root.style.fontFamily = t.fontUi;\n}\nif (t.measure) root.style.setProperty('--site-measure', t.measure);"
@@ -2626,8 +2643,8 @@
             "type": "JavaScriptFunction",
             "children": [],
             "label": "The document title",
-            "x": 530,
-            "y": 2200,
+            "x": 590,
+            "y": 2320,
             "parameters": {
               "functionScript": "if (!Inputs.title) return;\nif (!Noodl || !Noodl.SEO) return;\nNoodl.SEO.setTitle(Inputs.title);"
             },
@@ -2946,6 +2963,7 @@
                 "x": 100,
                 "y": 160,
                 "parameters": {
+                  "as": "nav",
                   "sizeMode": "explicit",
                   "width": {
                     "value": 240,
@@ -5041,6 +5059,7 @@
                     "y": 280,
                     "parameters": {
                       "sizeMode": "contentHeight",
+                      "as": "main",
                       "flexDirection": "column",
                       "rowGap": "var(--space-4)"
                     },
@@ -7660,6 +7679,7 @@
                     "y": 280,
                     "parameters": {
                       "sizeMode": "contentHeight",
+                      "as": "main",
                       "flexDirection": "column",
                       "rowGap": "var(--space-6)"
                     },
@@ -9312,6 +9332,7 @@
                     "y": 280,
                     "parameters": {
                       "sizeMode": "contentHeight",
+                      "as": "main",
                       "flexDirection": "column",
                       "rowGap": "var(--space-4)"
                     },
@@ -9579,6 +9600,7 @@
                     "y": 280,
                     "parameters": {
                       "sizeMode": "contentHeight",
+                      "as": "main",
                       "flexDirection": "column",
                       "rowGap": "var(--space-4)"
                     },
@@ -9956,6 +9978,7 @@
                 "y": 160,
                 "parameters": {
                   "sizeMode": "contentHeight",
+                  "as": "main",
                   "flexDirection": "column",
                   "paddingTop": "var(--space-8)",
                   "paddingBottom": "var(--space-8)",
@@ -10279,6 +10302,7 @@
                 "x": 100,
                 "y": 160,
                 "parameters": {
+                  "as": "main",
                   "flexDirection": "column",
                   "paddingTop": "var(--space-6)",
                   "paddingLeft": "var(--space-6)",

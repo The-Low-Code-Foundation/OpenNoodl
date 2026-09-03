@@ -2,8 +2,9 @@
   "task": "vib-001",
   "subject": "site-builder",
   "state": "living",
-  "headSha": "1784396c1e3a88097b5a9e13aefd93a174d9a18a",
-  "artefactMd5": "e51e5f02f605599f5a1861f4522a4d74",
+  "headSha": "6112e946315a048a3dc28215fe434b2a59ec81cd",
+  "artefactMd5": "874a04bd411c48e60e166b920de7d5b7",
+  "artefactTreeMd5": "f0feaad641430ddd422f2c158bd156ad",
   "outDir": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-09-03/site-builder-living",
   "starterAssets": {
     "written": [
@@ -447,7 +448,7 @@
       "subject": "site-builder",
       "state": "living",
       "page": "admin-page",
-      "url": "/admin/page/6fdecd51-b60c-4704-b7f8-5603c5979d1e",
+      "url": "/admin/page/f4c90837-a491-464a-99f8-b5da3a59c829",
       "as": "the page editor, on a published page with four sections",
       "viewport": {
         "id": "preview",
@@ -470,7 +471,7 @@
       "subject": "site-builder",
       "state": "living",
       "page": "admin-page",
-      "url": "/admin/page/6fdecd51-b60c-4704-b7f8-5603c5979d1e",
+      "url": "/admin/page/f4c90837-a491-464a-99f8-b5da3a59c829",
       "as": "the page editor, on a published page with four sections",
       "viewport": {
         "id": "desktop",
@@ -493,7 +494,7 @@
       "subject": "site-builder",
       "state": "living",
       "page": "admin-page",
-      "url": "/admin/page/6fdecd51-b60c-4704-b7f8-5603c5979d1e",
+      "url": "/admin/page/f4c90837-a491-464a-99f8-b5da3a59c829",
       "as": "the page editor, on a published page with four sections",
       "viewport": {
         "id": "wide",
@@ -516,7 +517,7 @@
       "subject": "site-builder",
       "state": "living",
       "page": "admin-page",
-      "url": "/admin/page/6fdecd51-b60c-4704-b7f8-5603c5979d1e",
+      "url": "/admin/page/f4c90837-a491-464a-99f8-b5da3a59c829",
       "as": "the page editor, on a published page with four sections",
       "viewport": {
         "id": "phone",

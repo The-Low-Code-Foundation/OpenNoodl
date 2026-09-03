@@ -1613,7 +1613,15 @@ export const SETUP_NODES = [
     // is a spacing value written as a literal where the scale already names it,
     // which is why it takes the fix and NOT an exemption: the exemption list
     // says spacing, colour, radius, face and font size must gain no entries.
+    // 🔴 **REL-011c — this page's `<main>`, and it is a PARAMETER here where the
+    // members' area needed a node.** The site builder's admin pages each hang a
+    // single content column off the shell (or off the page), and that column
+    // already holds the heading and nothing else: no band, no foot, no rail. So
+    // the landmark goes on the column that is there. The rail is inside
+    // `/Admin/Shell` and is never a descendant of this node, which is the half a
+    // "just tag the outermost Group" fix gets wrong.
     parameters: {
+      as: 'main',
       flexDirection: 'column',
       paddingTop: 'var(--space-6)',
       paddingLeft: 'var(--space-6)',
@@ -1850,7 +1858,14 @@ export const ADMIN_NODES = [
     type: 'Group',
     label: 'Pages body',
     parent: 'shell',
-    parameters: { ...STACKED, flexDirection: 'column', rowGap: 'var(--space-4)' },
+    // 🔴 **REL-011c — this page's `<main>`, and it is a PARAMETER here where the
+    // members' area needed a node.** The site builder's admin pages each hang a
+    // single content column off the shell (or off the page), and that column
+    // already holds the heading and nothing else: no band, no foot, no rail. So
+    // the landmark goes on the column that is there. The rail is inside
+    // `/Admin/Shell` and is never a descendant of this node, which is the half a
+    // "just tag the outermost Group" fix gets wrong.
+    parameters: { ...STACKED, as: 'main', flexDirection: 'column', rowGap: 'var(--space-4)' },
     children: ['headerRow', 'countLine', 'listError', 'list']
   },
   {
@@ -2129,7 +2144,14 @@ export const PAGE_EDITOR_NODES = [
     // the shell's column — which is the same defect the page rows had. The old
     // raw `paddingTop: 24` / `paddingLeft: 24` are gone with it: the shell owns
     // the page's padding now, and a raw dimension here had no token reason.
-    parameters: { ...STACKED, flexDirection: 'column', rowGap: 'var(--space-4)' },
+    // 🔴 **REL-011c — this page's `<main>`, and it is a PARAMETER here where the
+    // members' area needed a node.** The site builder's admin pages each hang a
+    // single content column off the shell (or off the page), and that column
+    // already holds the heading and nothing else: no band, no foot, no rail. So
+    // the landmark goes on the column that is there. The rail is inside
+    // `/Admin/Shell` and is never a descendant of this node, which is the half a
+    // "just tag the outermost Group" fix gets wrong.
+    parameters: { ...STACKED, as: 'main', flexDirection: 'column', rowGap: 'var(--space-4)' },
     children: ['headerRow', 'fieldsCard', 'sectionsPanel', 'backButton']
   },
 
@@ -3273,7 +3295,14 @@ export const THEME_EDITOR_NODES = [
     // Child of the shell's content COLUMN now, so it stops assigning height —
     // and the paddings are gone because the shell supplies them; keeping both
     // would double the inset.
-    parameters: { ...STACKED, flexDirection: 'column', rowGap: 'var(--space-6)' },
+    // 🔴 **REL-011c — this page's `<main>`, and it is a PARAMETER here where the
+    // members' area needed a node.** The site builder's admin pages each hang a
+    // single content column off the shell (or off the page), and that column
+    // already holds the heading and nothing else: no band, no foot, no rail. So
+    // the landmark goes on the column that is there. The rail is inside
+    // `/Admin/Shell` and is never a descendant of this node, which is the half a
+    // "just tag the outermost Group" fix gets wrong.
+    parameters: { ...STACKED, as: 'main', flexDirection: 'column', rowGap: 'var(--space-6)' },
     children: ['heading', 'presetsCard', 'columns']
   },
   {
@@ -4129,7 +4158,17 @@ export const ADMIN_SHELL_NODES = [
     // ⚠️ That name used to read `ADMIN_RAW_DIMENSIONS`, which never existed —
     // an exemption list named in a comment and never written, so the rail's
     // reason was unenforced until SBR-012 built the list it pointed at.
+    // 🔴 **REL-011c — `<nav>`, and it is the CONTROL as much as the markup.**
+    // Four admin screens declare a `<main>` (above); an assertion that the
+    // heading is inside it means nothing unless something in the same document
+    // is deliberately outside it, and this rail is that thing. It is also the
+    // correct tag on its own terms: every child of it is a destination or a
+    // session action, which is what a navigation region is. ⚠️ The tag is on the
+    // rail rather than on a wrapper around the four links because there is no
+    // wrapper here — the members' area needed one only because its band mixed a
+    // brand mark and a nav row in a single flex row.
     parameters: {
+      as: 'nav',
       sizeMode: 'explicit',
       width: SIDEBAR_WIDTH,
       flexDirection: 'column',
@@ -4701,8 +4740,16 @@ export const SIGN_IN_NODES = [
     // `ADMIN_LAYOUT_OWED` precisely because it grows. A new component is not
     // owed anything: authoring the opt-out here is what keeps that list a
     // record of debt rather than a place new debt gets filed.
+    // 🔴 **REL-011c — this page's `<main>`, and it is a PARAMETER here where the
+    // members' area needed a node.** The site builder's admin pages each hang a
+    // single content column off the shell (or off the page), and that column
+    // already holds the heading and nothing else: no band, no foot, no rail. So
+    // the landmark goes on the column that is there. The rail is inside
+    // `/Admin/Shell` and is never a descendant of this node, which is the half a
+    // "just tag the outermost Group" fix gets wrong.
     parameters: {
       ...STACKED,
+      as: 'main',
       flexDirection: 'column',
       paddingTop: 'var(--space-8)',
       paddingBottom: 'var(--space-8)',
@@ -5205,7 +5252,14 @@ export const MESSAGES_NODES = [
     type: 'Group',
     label: 'Messages body',
     parent: 'adminShell',
-    parameters: { ...STACKED, flexDirection: 'column', rowGap: 'var(--space-4)' },
+    // 🔴 **REL-011c — this page's `<main>`, and it is a PARAMETER here where the
+    // members' area needed a node.** The site builder's admin pages each hang a
+    // single content column off the shell (or off the page), and that column
+    // already holds the heading and nothing else: no band, no foot, no rail. So
+    // the landmark goes on the column that is there. The rail is inside
+    // `/Admin/Shell` and is never a descendant of this node, which is the half a
+    // "just tag the outermost Group" fix gets wrong.
+    parameters: { ...STACKED, as: 'main', flexDirection: 'column', rowGap: 'var(--space-4)' },
     children: ['heading', 'readOnlyNote', 'tallyLine', 'listError', 'list']
   },
   {

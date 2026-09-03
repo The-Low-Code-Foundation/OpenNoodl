@@ -2556,3 +2556,268 @@ describe('D18 — a row sized by a string nobody has typed yet stays reachable',
     expect(unreachable).toEqual([]);
   });
 });
+
+// ── 12. The document outline ─────────────────────────────────────────────────
+//
+// 🔴 **Written because the site-builder template's `as` tags had no gate at
+// all, and the absence was invisible from every suite in this package.** The
+// members' area got §8 of `tpl001Template.test.ts` one session ago after its
+// artefact measured **0 semantic tags in 100 files**; this template was never
+// that bad — it shipped 26 tags, including an `h1` on all seven pages — and
+// that is exactly what made the hole easy to miss. Measured at HEAD before this
+// block was written:
+//
+// | | reading |
+// |---|---|
+// | pages declaring exactly one `h1` | 7 of 7 |
+// | pages declaring a `main` | **0 of 7** |
+// | tags held by any assertion anywhere | **0 of 26** |
+//
+// So every heading on every screen sat in no landmark, and a reader who jumps
+// to the main content of an admin page had nothing to jump to. The fix is one
+// parameter on six pages (the admin screens each hang a single content column
+// off their shell) plus one node on `/Pages/Site`, whose `shell` also holds the
+// nav and the foot — see `SITE_NODES`.
+//
+// ⚠️ **Only `Group` and `Text` have an `as` port** (`group.ts:247`,
+// `text.ts`), and `Text`'s enum is `div|h1…h6|p|span` — the landmark names live
+// on `Group` alone. §12.5 is what holds that, because an `as` on any other type
+// is a parameter nothing reads.
+
+describe('SB-007 — every screen has a document outline, and the landmark holds the heading', () => {
+  /** The predicate §12.1–§12.4 are written in terms of; §12.6 grades it. */
+  const tagsIn = (nodes: readonly Node[], tag: string): string[] =>
+    nodes.filter((n) => (n.parameters ?? {}).as === tag).map((n) => n.id);
+
+  /**
+   * Is `childId` anywhere under `root`? A real walk, because the defect this
+   * exists for is one level apart in the members' template and a one-level
+   * check would have passed on it.
+   */
+  const contains = (root: Node | undefined, childId: string): boolean =>
+    root !== undefined && (root.children ?? []).some((c) => c.id === childId || contains(c, childId));
+
+  const pages = shipped.components
+    .filter((c) => c.name.startsWith('/Pages/'))
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  /**
+   * The components that DECLARE a `<nav>`, resolved from the artefact rather
+   * than named: `/Site/Nav` (the public band) and `/Admin/Shell` (the rail).
+   * A page places these as instances, so the nav is not a node in the page's
+   * own graph at all — which is why §12.4 is written over instance TYPES.
+   */
+  const navComponents = new Set(
+    shipped.components.filter((c) => tagsIn(nodesOf(c), 'nav').length > 0).map((c) => c.name)
+  );
+
+  it('§12.1 every page declares exactly one h1, and there are seven pages', () => {
+    expect(pages.length).toBe(7);
+    const wrong = pages
+      .map((c) => ({ page: c.name, h1: tagsIn(nodesOf(c), 'h1') }))
+      .filter((r) => r.h1.length !== 1)
+      .map((r) => `${r.page}: ${r.h1.length} h1 (${r.h1.join(', ') || 'none'})`);
+    expect(wrong).toEqual([]);
+  });
+
+  it('§12.2 every page declares exactly one main', () => {
+    const wrong = pages
+      .map((c) => ({ page: c.name, main: tagsIn(nodesOf(c), 'main') }))
+      .filter((r) => r.main.length !== 1)
+      .map((r) => `${r.page}: ${r.main.length} main (${r.main.join(', ') || 'none'})`);
+    expect(wrong).toEqual([]);
+  });
+
+  /**
+   * 🔴 **The one a census cannot see.** §12.1 counts an `h1` and §12.2 counts a
+   * `main`, and both are satisfied by a page where the two are SIBLINGS — which
+   * is what the members' area shipped for a session (REL-002c §9). Here the six
+   * admin screens put the landmark on the column that already held the heading,
+   * so it holds by construction; `/Pages/Site` is the one that had to be built
+   * to hold, and it is the one this would catch.
+   */
+  it('§12.3 every page keeps its h1 INSIDE its main', () => {
+    const wrong = pages
+      .map((c) => {
+        const nodes = nodesOf(c);
+        const [h1] = tagsIn(nodes, 'h1');
+        const [main] = tagsIn(nodes, 'main');
+        const mainNode = nodes.find((n) => n.id === main);
+        return { page: c.name, h1, main, ok: h1 !== undefined && mainNode !== undefined && contains(mainNode, h1) };
+      })
+      .filter((r) => !r.ok)
+      .map((r) => `${r.page}: h1 ${r.h1} is not inside main ${r.main}`);
+    expect(wrong).toEqual([]);
+  });
+
+  /**
+   * 🔴 **The other direction, and it is the half a "fix" gets wrong.** The
+   * cheap way to make §12.3 green on `/Pages/Site` is to move the landmark up
+   * to `shell`, which also holds the nav band and the colophon — a `main` that
+   * announces the site's navigation as this page's content. On the admin
+   * screens the same shortcut is tagging the `/Admin/Shell` instance instead of
+   * the column inside it, which swallows the rail.
+   *
+   * ⚠️ The nav is never a node in the page's own graph — both nav-bearing
+   * components are placed as INSTANCES — so this is written over instance types
+   * and over any `as: 'nav'` a page might grow later.
+   */
+  it('§12.4 no page puts its navigation inside its main', () => {
+    expect([...navComponents].sort()).toEqual(['/Admin/Shell', '/Site/Nav']);
+
+    const swallowed = pages.flatMap((c) => {
+      const nodes = nodesOf(c);
+      const mainNode = nodes.find((n) => n.id === tagsIn(nodes, 'main')[0]);
+      return nodes
+        .filter((n) => navComponents.has(n.type) || (n.parameters ?? {}).as === 'nav')
+        .filter((n) => contains(mainNode, n.id))
+        .map((n) => `${c.name}: ${n.id} (${n.type}) is inside main ${mainNode?.id}`);
+    });
+    expect(swallowed).toEqual([]);
+
+    // 🔴 **Not a vacuous sweep, and the number is FIVE.** `/Pages/Site` places
+    // `/Site/Nav`; the four admin screens place `/Admin/Shell`. `/Pages/SignIn`
+    // and `/Pages/Setup` are doors and place neither — counted here so the
+    // assertion above cannot silently become a walk over nothing.
+    const placingNav = pages.filter((c) => nodesOf(c).some((n) => navComponents.has(n.type)));
+    expect(placingNav.map((c) => c.name).sort()).toEqual([
+      '/Pages/Admin',
+      '/Pages/Messages',
+      '/Pages/PageEditor',
+      '/Pages/Site',
+      '/Pages/ThemeEditor'
+    ]);
+  });
+
+  it('§12.5 no node carries an `as` its type has no port for', () => {
+    const stray = allNodes()
+      .filter(({ node }) => 'as' in (node.parameters ?? {}))
+      .filter(({ node }) => node.type !== 'Group' && node.type !== 'Text')
+      .map(({ component, node }) => `${component} › ${node.id} (${node.type})`);
+    expect(stray).toEqual([]);
+  });
+
+  /**
+   * 🔴 **CONTROL — it grades the PREDICATE, not the artefact.** A census that
+   * read the wrong field would report clean on a template with no tags in it at
+   * all, which is the state every other template in this repo was in until
+   * REL-002c. And the near-miss is not hypothetical here: `/Admin/Shell` holds
+   * a `Group` whose **id is literally `main`** and which carries no `as` at all.
+   */
+  it('§12.6 CONTROL — the census reads the `as` parameter, not an id that looks like one', () => {
+    const mutant = [
+      { id: 'real', type: 'Group', parameters: { as: 'main' } },
+      { id: 'main', type: 'Group', parameters: { flexDirection: 'column' } },
+      { id: 'decoy', type: 'Text', parameters: { text: 'main', label: 'main' } }
+    ] as unknown as Node[];
+    expect(tagsIn(mutant, 'main')).toEqual(['real']);
+    expect(tagsIn(mutant, 'h1')).toEqual([]);
+
+    // The live decoy: the shell's content column is NAMED `main` and is not one.
+    const shell = componentNamed('/Admin/Shell');
+    if (!shell) throw new Error('the artefact no longer holds /Admin/Shell');
+    expect(nodesOf(shell).some((n) => n.id === 'main')).toBe(true);
+    expect(tagsIn(nodesOf(shell), 'main')).toEqual([]);
+
+    // And the same predicate over the artefact is not vacuous: one per page.
+    expect(pages.flatMap((c) => tagsIn(nodesOf(c), 'h1')).length).toBe(7);
+    expect(pages.flatMap((c) => tagsIn(nodesOf(c), 'main')).length).toBe(7);
+  });
+
+  /**
+   * 🔴 **CONTROL for §12.3/§12.4, and a different predicate from `tagsIn`.** A
+   * walk that answered `true` for everything — or one that only ever looked one
+   * level down — passes §12.3 on the very artefact that provokes it. So it is
+   * run over a hand-built tree whose answers are known in both directions and
+   * at both depths.
+   */
+  it('§12.7 CONTROL — containment is a real walk, not a same-parent check', () => {
+    const tree = {
+      id: 'shell',
+      type: 'Group',
+      children: [
+        { id: 'nav', type: '/Site/Nav' },
+        { id: 'main', type: 'Group', parameters: { as: 'main' }, children: [{ id: 'band', type: 'Group', children: [{ id: 'head', type: 'Text', parameters: { as: 'h1' } }] }] }
+      ]
+    } as unknown as Node;
+    const main = (tree.children ?? []).find((n) => n.id === 'main');
+    // Two levels down is still inside.
+    expect(contains(main, 'head')).toBe(true);
+    // A sibling of the landmark is not — this is the shipped defect's shape.
+    expect(contains(main, 'nav')).toBe(false);
+    // Neither is the root itself, nor a node the walk never reaches.
+    expect(contains(main, 'main')).toBe(false);
+    expect(contains(main, 'orphan')).toBe(false);
+    expect(contains(undefined, 'head')).toBe(false);
+  });
+
+  /**
+   * 🔴 **MUTANT: the outline exactly as it shipped.** Every `as: 'main'` comes
+   * off, which is the artefact at `1784396c`. §12.2 and §12.3 must both redden,
+   * and — the point of running it — §12.1, §12.5 and §12.4's own swallow sweep
+   * must all stay GREEN, because a heading census and a stray-port census are
+   * satisfied by seven pages with no landmark between them.
+   */
+  it('§12 MUTANT: the template as it shipped — a heading on every page and a landmark on none', () => {
+    const mutant = JSON.parse(JSON.stringify(shipped)) as Content;
+    const mutantPages = mutant.components.filter((c) => c.name.startsWith('/Pages/'));
+    let stripped = 0;
+    for (const c of mutantPages) {
+      for (const n of nodesOf(c)) {
+        if ((n.parameters ?? {}).as === 'main') {
+          delete (n.parameters as Record<string, unknown>).as;
+          stripped += 1;
+        }
+      }
+    }
+    expect(stripped).toBe(7);
+
+    // What the shipped state DID satisfy, and why nothing caught it.
+    expect(mutantPages.every((c) => tagsIn(nodesOf(c), 'h1').length === 1)).toBe(true);
+    expect(
+      mutant.components
+        .flatMap((c) => nodesOf(c))
+        .filter((node) => 'as' in (node.parameters ?? {}))
+        .filter((node) => node.type !== 'Group' && node.type !== 'Text').length
+    ).toBe(0);
+
+    // And what it did not.
+    expect(mutantPages.filter((c) => tagsIn(nodesOf(c), 'main').length !== 1).map((c) => c.name).sort()).toEqual([
+      '/Pages/Admin',
+      '/Pages/Messages',
+      '/Pages/PageEditor',
+      '/Pages/Setup',
+      '/Pages/SignIn',
+      '/Pages/Site',
+      '/Pages/ThemeEditor'
+    ]);
+  });
+
+  /**
+   * 🔴 **MUTANT: the shortcut fix.** `/Pages/Site`'s landmark moves up one level
+   * onto `shell`, which passes §12.1, §12.2 and §12.3 — the page still declares
+   * one heading and one landmark, and the heading is inside it — and announces
+   * the nav band and the colophon as the page's content. §12.4 is the only
+   * assertion in this block that can see it.
+   */
+  it('§12 MUTANT: a main that swallows the band passes the census and fails the containment', () => {
+    const mutant = JSON.parse(JSON.stringify(shipped)) as Content;
+    const site = mutant.components.find((c) => c.name === '/Pages/Site');
+    if (!site) throw new Error('the artefact no longer holds /Pages/Site');
+    const nodes = nodesOf(site);
+    const siteMain = nodes.find((n) => (n.parameters ?? {}).as === 'main');
+    const shell = nodes.find((n) => n.id === 'shell');
+    if (!siteMain || !shell) throw new Error('/Pages/Site no longer has a shell and a main');
+    delete (siteMain.parameters as Record<string, unknown>).as;
+    shell.parameters = { ...(shell.parameters ?? {}), as: 'main' };
+
+    // The census half is untouched: one h1, one main, and the h1 is inside it.
+    expect(tagsIn(nodes, 'h1').length).toBe(1);
+    expect(tagsIn(nodes, 'main')).toEqual(['shell']);
+    expect(contains(shell, tagsIn(nodes, 'h1')[0])).toBe(true);
+
+    // The half that reddens.
+    const swallowed = nodes.filter((n) => navComponents.has(n.type)).filter((n) => contains(shell, n.id));
+    expect(swallowed.map((n) => `${n.id} (${n.type})`)).toEqual(['nav (/Site/Nav)']);
+  });
+});

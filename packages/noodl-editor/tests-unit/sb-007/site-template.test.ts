@@ -257,14 +257,20 @@ describe('SB-007 — install writes a project that opens', () => {
     //              `/Admin/Shell` +2, `/Pages/ThemeEditor` +2, and
     //              `/Pages/PageEditor` +3 (its third is the `Pick a kind and add
     //              it` Group).
-    //   401 → 400  REL-011c residual 2, this session — `/Site/ContactForm`'s
-    //              fixed `h2` is gone. The card sat one line below
-    //              `/Site/ContactSection`'s own heading, which is the one the
-    //              author writes, and `/contact-only` drew "Get in touch" twice.
+    //   401 → 400  REL-011c residual 2, s23 — `/Site/ContactForm`'s fixed `h2`
+    //              is gone. The card sat one line below `/Site/ContactSection`'s
+    //              own heading, which is the one the author writes, and
+    //              `/contact-only` drew "Get in touch" twice.
+    //   400 → 401  REL-011c's document outline, s27 — `siteMain`, `/Pages/Site`'s
+    //              `<main>`. Six of the seven pages took the landmark as a
+    //              PARAMETER on a column they already had and cost no node; this
+    //              page's `shell` also holds the nav band and the colophon, so a
+    //              `main` on it would announce the site's navigation as the
+    //              page's content and the landmark had to be a box of its own.
     // ⚠️ The literal is still the point, for the reason four lines up: it is the
     // only thing standing between a rewrite that RENAMED ids and a disjointness
     // assertion that would stay green on a set that had shrunk.
-    expect(a.size).toBe(400);
+    expect(a.size).toBe(401);
     expect([...a].filter((id) => b.has(id))).toEqual([]);
   });
 

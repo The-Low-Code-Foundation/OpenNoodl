@@ -1919,6 +1919,15 @@ describe('SB-006: the public site, beside the panel it shares a router with', ()
       'Pages/Site | Page shell',
       'Site/Nav | Navigation',
       'Site/NavLink | Nav link',
+      // 🔴 **REL-011c's `<main>`, and it is in this census because it is a real
+      // box.** The landmark had to be a node here rather than a parameter —
+      // `Page shell` above also holds the nav band and the colophon, and a
+      // `main` around those announces the site's navigation as the page's
+      // content (`SITE_NODES`). It is `contentHeight` for hazard 1, which is
+      // why it is graded and NOT in `growing`: a `Group` authored without a
+      // `sizeMode` is `explicit` at `height: 100%`, and `Page ground`'s
+      // `minHeight: 100vh` is exactly the slack that would be shared into it.
+      'Pages/Site | The page',
       'Pages/Site | Header',
       'Pages/Site | Site name',
       'Pages/Site | Page title',

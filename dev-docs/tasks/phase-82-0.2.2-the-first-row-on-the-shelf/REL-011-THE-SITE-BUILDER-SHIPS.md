@@ -869,3 +869,151 @@ database-credential act that only Richard performs.
 template *"is not in `templates/` and has never been staged for publication, so holding it is the
 default state — no action, and no accidental publish."* If it is to be published, that is a second
 REL-001 and it needs its own row.
+
+---
+
+## §5 The document outline the site builder never had — BUILT s27 (2026-09-03)
+
+🔴 **Registered by [session 26's handoff](NEXT-SESSION-PROMPT.md) with owner `NONE`, and it was the
+strongest buildable candidate left on the board.** REL-002c gave the members' area a document
+outline (§8) and then a gate that the landmark *contains* the heading (§8.7, §11). The site-builder
+template shipped **26 `as` tags and nothing anywhere held them**, and the sentence in that handoff —
+*"it ships 26 `as` tags and nothing holds them there"* — turned out to understate the finding.
+
+### 🔴 The reading that changed the job: seven headings, and nowhere to jump to
+
+Measured on `site-builder.content.json` at `6112e946`, before a line was written:
+
+| | reading at HEAD |
+|---|---|
+| pages | 7 |
+| pages declaring exactly one `h1` | **7 of 7** |
+| pages declaring a `main` | **0 of 7** |
+| `as` tags in the whole artefact | 26 |
+| tags held by an assertion anywhere in the repo | **0 of 26** |
+
+🔴 **This is a harder absence to see than the one REL-002c met, and the reason is that it looks
+better.** The members' area measured *0 semantic tags in 100 files*: every instrument agreed, and
+the render-time reading (0 of 60 shots carrying an `h1`) said so too. Here every page already had
+its heading — a census of headings reads perfect, a picture reads identical either way, and the
+thing that is missing is the region a screen-reader user jumps to in order to skip the rail. **The
+closer an outline gets to complete, the fewer instruments can see what is still missing from it.**
+
+### The fix — a parameter on six pages, a node on one
+
+The six admin screens each hang a single content column off `/Admin/Shell` (or, at the two doors,
+straight off the `Page`), and that column already held the heading and nothing else — no band, no
+foot, no rail. So the landmark goes onto the column that is there: `as: 'main'` on `body`/`shell` in
+`PAGE_EDITOR_NODES`, `THEME_EDITOR_NODES`, `MESSAGES_NODES`, `ADMIN_NODES`, `SIGN_IN_NODES` and
+`SETUP_NODES`.
+
+🔴 **`/Pages/Site` could not take the parameter, and that is the whole of §12.4.** Its `shell` holds
+`nav`, `header`, `sectionList`, `notFoundCard` and `footer` — a `main` on it would announce the site
+navigation and the colophon as the page's content. So `siteMain` is a **node**, wrapping the middle
+three, and `shell` keeps `['nav', 'siteMain', 'footer']`.
+
+`/Admin/Shell`'s rail took `as: 'nav'` at the same time, and it is a **control as much as markup**:
+an assertion that a heading is *inside* a landmark means nothing unless something in the same
+document is deliberately outside it.
+
+**400 → 401 nodes, 553 connections both sides, 26 → 34 tags, 33 components both sides.**
+
+### The gate — §12 of `sb007Template.test.ts`, nine specs
+
+| spec | what it holds |
+|---|---|
+| §12.1 | seven pages, each with exactly one `h1` |
+| §12.2 | each with exactly one `main` |
+| §12.3 | the `h1` is **inside** the `main` — a real walk, not a same-parent check |
+| §12.4 | no page puts its navigation inside its `main`, written over instance **types** (both nav-bearing components are placed as instances, so the nav is never a node in the page's own graph) — plus the five pages that place one, named, so the sweep cannot silently empty |
+| §12.5 | no node carries an `as` its type has no port for (`Group` and `Text` are the only two that have one) |
+| §12.6 | CONTROL — the census reads the `as` **parameter**, not an id that looks like one |
+| §12.7 | CONTROL — containment is a real walk, at both depths and in both directions |
+| §12 MUTANT ①| the template exactly as it shipped: every `as: 'main'` stripped. §12.2 and §12.3 redden; §12.1, §12.5 and §12.4's swallow sweep stay **green** |
+| §12 MUTANT ②| the shortcut fix: the landmark moved up onto `/Pages/Site`'s `shell`. §12.1, §12.2 and §12.3 **all pass**, and §12.4 is the only assertion that can see it |
+
+🔴 **The two mutants are the point of the block.** The first is the reverted arm run from inside the
+same suite — it says what the old artefact *did* satisfy, which is why nothing caught it. The second
+is the cheap fix a later session would reach for, and it passes every census in this file.
+
+### ⚠️ A literal census in a second file had to move, and that is the gate working
+
+`sb006PublicSite.test.ts`'s SBR-004 AC1 spec lists **every box its cross-component walk reaches, in
+walk order**, so a new node reds it until somebody names the node. `Pages/Site | The page` was
+added with the reason it exists — and its `growing` half stayed empty, because `siteMain` is
+`contentHeight`: a `Group` authored without a `sizeMode` is `explicit` at `height: 100%`, which a
+column parent turns into `flex-grow: 100`, and `Page ground`'s `minHeight: 100vh` is exactly the
+ancestor slack that would then be shared into it.
+
+### The readings
+
+| gate | reading |
+|---|---|
+| `sb007Template.test.ts` | **71/71, EXIT=0** (62 before §12's nine) |
+| `noodl-mcp` full jest | **92 suites / 1242 tests, EXIT=0** |
+| `tsc --noEmit -p packages/noodl-mcp` | **0 errors, EXIT=0** |
+| `sb008-public-site-drive.test.ts` (real backend + browser) | **24/24, EXIT=0** (20 before §6's four) |
+| `vib001-site.look.ts` | **EXIT=0, 2/2, 40 shots** |
+
+### 🟢 The browser half — §6 of `sb008-public-site-drive.test.ts`, and its reverted arm
+
+**A parameter is an intention.** §12 asserts what was *authored*; nothing in it says the runtime
+turns `as: 'main'` on a `Group` into a `<main>` element, or that the node tree and the element tree
+agree — and both were assumed by the change. §6 takes the same claim one layer down, on the four
+page loads this drive already makes against a real backend, and costs one `evaluate` per visit.
+
+| reading, per page load | reverted arm (`as: 'main'` stripped) | HEAD |
+|---|---|---|
+| loads with exactly one `<main>` and one `<h1>` | **0 of 4** | **4 of 4** |
+| loads whose `<h1>` is inside their `<main>` | **0 of 4** | **4 of 4** |
+| loads with a `<nav>` in the document | 4 of 4 | 4 of 4 |
+| `<nav>` inside the `<main>` | 0 | 0 |
+
+🔴 **The third row is what makes the first two mean anything.** The nav band is the thing
+deliberately outside `siteMain` and it is in the same document: without it, a probe that answered
+*"inside"* for the whole document would pass §6 on every page ever written, and *"0 mains"* in the
+reverted arm would be indistinguishable from a probe that sees nothing at all.
+
+⚠️ **The reverted arm's exit code needed reading from a file.** The background task's completion
+notice said *"exit code 0"* while the run's own exit file said **1** — that 1 was the entire result
+of the run. That is the wrapper's status, not the command's, and it has now misreported twice
+(s26's mutant drive, and this).
+
+### 🖼️ The pictures — 192 of 200 identical, and the eight that moved are a clock
+
+`vib001-site.look.ts` re-run at HEAD-of-worktree and compared file by file against the committed
+`vib-001/2026-09-03` tree (snapshotted to scratchpad first, because `judge()` keys by `today()` and
+overwrites in place):
+
+| | reading |
+|---|---|
+| PNGs byte-identical | **192 of 200** |
+| PNGs differing | **8** — every one an `admin-messages` shot |
+| text dumps byte-identical | **96 of 100** |
+| the difference, in full | `3 Sep 2026, 20:15` → `3 Sep 2026, 23:07` |
+
+The eight are the four viewports × full/viewport of `/admin/messages`, which prints the time the
+drive's own contact-form message was submitted. **The change is visually inert**, which is the
+expected result and is exactly why a picture is the wrong instrument for a landmark and §6 is the
+right one.
+
+🔴 **`artefactMd5` is NOT the pin here, and reading it as one would have been the trap.** It hashes
+`nodegx.project.json` alone — one file — and it moved on the *living* run (which binds a randomly
+allocated backend port into that file) while staying **identical** on the *door* run, whose graphs
+changed just as much. What actually excludes the stale-artefact explanation is the code path:
+`authorSiteTemplate` writes `SB006_COMPONENTS` and `SB005_COMPONENTS` through the MCP door **at run
+time**, so the harness cannot have photographed graphs other than the ones on disk when it ran.
+
+⚠️ The baseline tree was written at `1784396c`; the five commits between it and `6112e946` are the
+members' area and documentation, and none of them touches this template — checked, not assumed.
+
+### ⬅️ What this does NOT do — owner `NONE`
+
+1. **No drive grades the six admin screens' rendered outline.** §6's four loads are all the public
+   catch-all. What carries across is the *mechanism* — `as: 'main'` renders a `<main>`, and a child
+   node renders inside it — and per-page authoring is §12's job. Covering them would mean touching
+   `sbr010-messages-drive`, `sbr009ThemeEditorDrive` and `ac2-page-editor-drag-drive`.
+2. **`<h2>` order is unchecked in both templates.** Every section kind carries one, but nothing
+   asserts that a page's headings descend without skipping a level.
+3. **No other template has an outline gate.** The members' area and the site builder now have one
+   each; anything the shelf grows next starts at zero again, and neither gate is general.

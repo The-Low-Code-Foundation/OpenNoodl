@@ -64,6 +64,7 @@ import {
   makeSiteDataDir,
   PUBLIC_ACL,
   readVisit,
+  RenderedPage,
   SITE_SECURITY,
   Visit,
   withRenderedPage
@@ -170,6 +171,37 @@ describe('SB-008 — the public site in a browser, against an enforcing backend'
 
   /** Every URL this drive visits, read once in `beforeAll` and asserted below. */
   const visits: Record<string, Visit> = {};
+  /**
+   * 🔴 **§6 — the document outline as the BROWSER builds it.** `sb007Template`
+   * §12 gates the `as` parameters on disk, and **a parameter is an intention**:
+   * nothing in that gate says the runtime turns `as: 'main'` on a `Group` into
+   * a `<main>` element, or that the node tree and the element tree agree. Both
+   * were assumed by the change that added `siteMain`. Recorded on the four page
+   * loads this drive already takes, so it costs one `evaluate` per visit.
+   */
+  interface Landmarks {
+    mains: number;
+    h1s: number;
+    /** `<h1>`s that are DOM descendants of the one `<main>`. */
+    h1sInMain: number;
+    navsInDoc: number;
+    /** `<nav>`s that are DOM descendants of the one `<main>` — must be zero. */
+    navsInMain: number;
+  }
+  const landmarks: Record<string, Landmarks> = {};
+  const readLandmarks = (page: RenderedPage) =>
+    page.evaluate(
+      '(function () {' +
+        " var m = document.querySelectorAll('main');" +
+        ' var one = m.length === 1 ? m[0] : null;' +
+        ' return {' +
+        ' mains: m.length,' +
+        " h1s: document.querySelectorAll('h1').length," +
+        " h1sInMain: one ? one.querySelectorAll('h1').length : 0," +
+        " navsInDoc: document.querySelectorAll('nav').length," +
+        " navsInMain: one ? one.querySelectorAll('nav').length : 0 };" +
+        '})()'
+    ) as Promise<Landmarks>;
   const ids: Record<string, string> = {};
   /** F20 — how many `Theme` rows a freshly claimed site has. */
   let themeRowsAfterClaim = -1;
@@ -314,10 +346,17 @@ describe('SB-008 — the public site in a browser, against an enforcing backend'
 
     // ── And now the browser, with no credential of any kind ──────────────────
     await withRenderedPage({ projectDir, backendPort }, async (page) => {
-      visits.root = await readVisit(page, '/');
-      visits.about = await readVisit(page, '/about');
-      visits.secret = await readVisit(page, '/secret');
-      visits.nothing = await readVisit(page, '/no-such-page-at-all');
+      for (const [label, url] of [
+        ['root', '/'],
+        ['about', '/about'],
+        ['secret', '/secret'],
+        ['nothing', '/no-such-page-at-all']
+      ] as const) {
+        visits[label] = await readVisit(page, url);
+        // §6, on the page `readVisit` has just settled — before the next
+        // navigation throws this document away.
+        landmarks[label] = await readLandmarks(page);
+      }
 
       // eslint-disable-next-line no-console
       console.log('\n[SB-008] server log:\n' + page.serverLog().slice(-2000));
@@ -693,6 +732,66 @@ describe('SB-008 — the public site in a browser, against an enforcing backend'
       expect(creators.filter((c) => c.endsWith(':SiteSettings'))).toEqual([
         'sb004/#__cloud__/claimSite:SiteSettings'
       ]);
+    });
+  });
+
+  // ==========================================================================
+  // 6. The document outline — REL-011c §12, taken in the browser
+  // ==========================================================================
+
+  /**
+   * 🔴 **`sb007Template.test.ts` §12 reads the `as` parameters out of the
+   * shipped JSON; this reads the elements out of the document.** The two are
+   * different claims, and the gap between them is where the fix could have been
+   * wrong in a way no suite in this repo could see: `as: 'main'` might not reach
+   * the DOM at all, and a node's children might not end up its element's
+   * descendants. `/Pages/Site` is the page that needed a NEW NODE for its
+   * landmark — its `shell` also holds the nav band and the colophon — so it is
+   * the one where the node/element correspondence is actually load-bearing.
+   *
+   * ⚠️ **What this does NOT cover, stated rather than implied.** All four loads
+   * are the public catch-all. The six admin screens carry the landmark as a
+   * parameter on a column they already had, and no drive in this repo grades
+   * their rendered outline; what carries across from here is the *mechanism* —
+   * `as: 'main'` on a `Group` renders a `<main>`, and a child node renders
+   * inside it. Per-page authoring is §12's job. Owner for the admin half:
+   * `NONE`.
+   */
+  describe('🔴 §6 the outline the browser actually builds', () => {
+    const loaded = () => Object.keys(landmarks).sort();
+
+    it('control: there are page loads to grade, and every one recorded its landmarks', () => {
+      // `every` over an empty list is vacuously true — the way this section
+      // would go quietly green if the capture stopped happening.
+      expect(loaded()).toEqual(['about', 'nothing', 'root', 'secret']);
+      expect(loaded().filter((k) => typeof landmarks[k]?.mains !== 'number')).toEqual([]);
+    });
+
+    it('every rendered page has exactly one <main> and exactly one <h1>', () => {
+      const wrong = loaded()
+        .filter((k) => landmarks[k].mains !== 1 || landmarks[k].h1s !== 1)
+        .map((k) => `${k}: ${landmarks[k].mains} main, ${landmarks[k].h1s} h1`);
+      expect(wrong).toEqual([]);
+    });
+
+    it('🔴 and the <h1> is INSIDE the <main> — which is what the new node bought', () => {
+      // Before REL-011c this read 0 on every load, because there was no `<main>`
+      // on any page of this template to be inside of.
+      const wrong = loaded()
+        .filter((k) => landmarks[k].h1sInMain !== 1)
+        .map((k) => `${k}: ${landmarks[k].h1sInMain} h1 inside main`);
+      expect(wrong).toEqual([]);
+    });
+
+    it('🔴 CONTROL — the band’s <nav> is in the document and NOT in the <main>', () => {
+      // 🔴 **Without this the check above proves nothing about containment.** A
+      // probe that answered "inside" for everything in the document would pass
+      // it on every page ever written. The nav band is the thing deliberately
+      // left outside `siteMain`, and it is in the same document, which is what
+      // separates "inside the main" from "anywhere at all".
+      const withNav = loaded().filter((k) => landmarks[k].navsInDoc > 0);
+      expect(withNav).toEqual(loaded());
+      expect(withNav.filter((k) => landmarks[k].navsInMain !== 0).map((k) => `${k}: nav inside main`)).toEqual([]);
     });
   });
 });

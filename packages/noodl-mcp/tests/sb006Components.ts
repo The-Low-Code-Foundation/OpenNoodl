@@ -1919,14 +1919,49 @@ export const SITE_NODES = [
       rowGap: 'var(--space-8)',
       paddingBottom: 'var(--space-12)'
     },
-    children: ['nav', 'header', 'sectionList', 'notFoundCard', 'footer']
+    children: ['nav', 'siteMain', 'footer']
   },
   { id: 'nav', type: '/Site/Nav', label: 'Navigation', parent: 'shell' },
+  /**
+   * 🔴 **REL-011c — the public page's `<main>`, and it is the one landmark on
+   * this template that needed a NODE rather than a parameter.** The six admin
+   * screens each hang a single content column off their shell and the landmark
+   * goes straight onto it; `shell` here cannot take it, because `shell` also
+   * holds `nav` and `footer` and a `main` that contained those would announce
+   * the site's navigation and its colophon as this page's content. That is the
+   * shortcut a "tag the outermost Group" fix takes, and it is why the gate
+   * asserts both directions rather than only that a `main` exists.
+   *
+   * ⚠️ **It re-parents three children into one and the picture must not move.**
+   * `shell` is a column with `rowGap: var(--space-8)`, and its five children
+   * were evenly spaced by it; after this it has three, and the three that moved
+   * are spaced by an identical `rowGap` one level down. The cross axis is
+   * untouched — neither box states a width, so both stretch to `shell`, which is
+   * where the `--site-measure` clamp lives. `sizeMode` is pinned for hazard 1:
+   * a `Group` with none is `explicit` at `height: 100%`, which a column parent
+   * turns into `flex-grow: 100` (`layout.ts:98`), and `frame`'s `minHeight:
+   * 100vh` is exactly the ancestor slack that would then be shared out.
+   * **The pictures are the check, not this paragraph.**
+   */
+  {
+    id: 'siteMain',
+    type: 'Group',
+    label: 'The page',
+    parent: 'shell',
+    parameters: {
+      as: 'main',
+      // AC1 half B — see `STACKED_IN_A_COLUMN`.
+      ...STACKED_IN_A_COLUMN,
+      flexDirection: 'column',
+      rowGap: 'var(--space-8)'
+    },
+    children: ['header', 'sectionList', 'notFoundCard']
+  },
   {
     id: 'header',
     type: 'Group',
     label: 'Header',
-    parent: 'shell',
+    parent: 'siteMain',
     parameters: { ...STACKED_IN_A_COLUMN, as: 'header', flexDirection: 'column', rowGap: 'var(--space-1)', paddingTop: 'var(--space-8)' },
     children: ['siteName', 'pageTitle']
   },
@@ -1988,7 +2023,7 @@ export const SITE_NODES = [
     id: 'sectionList',
     type: 'For Each',
     label: 'One view per section',
-    parent: 'shell',
+    parent: 'siteMain',
     parameters: { templateType: 'explicit', template: '/Site/SectionView' }
   },
   // 🔴 **SBR-005 removed the page-level contact form, and the reason is a
@@ -2018,7 +2053,7 @@ export const SITE_NODES = [
     id: 'notFoundCard',
     type: 'Group',
     label: 'The empty-screen card',
-    parent: 'shell',
+    parent: 'siteMain',
     // 🔴 SBR-004 moves the visibility wire from the Text to this wrapper, and
     // the contract it carries moves with it unchanged: `mounted: false` is the
     // authored default and must stay standing until a fetch has happened (see
