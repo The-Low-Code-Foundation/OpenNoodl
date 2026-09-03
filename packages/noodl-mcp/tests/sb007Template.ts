@@ -156,7 +156,15 @@ function writeSkeleton(dir: string): void {
         name: TEMPLATE_PROJECT_NAME,
         version: '4',
         nodegxVersion: '1.1.0',
-        settings: { htmlTitle: TEMPLATE_PROJECT_NAME, navigationPathType: 'path' },
+        // 🔴 D40: `bodyScroll` is what decides whether `#root` is `overflow: clip;
+        // position: fixed` (index.html) or a page that scrolls. Absent, the admin
+        // panel and the public site are both frozen at one viewport: measured at
+        // 1440x900 on the DEPLOYED artefact, `Save theme` sits at y=932 with
+        // `scrollTop` pinned at 0, so a person on a laptop cannot save a theme or
+        // reach 3 of 5 section `Save` buttons. `createProject.ts` writes it for
+        // every new project for exactly this reason — "not a preference, it is
+        // whether the app can be used" — and this template did not.
+        settings: { htmlTitle: TEMPLATE_PROJECT_NAME, navigationPathType: 'path', bodyScroll: true },
         structure: { componentsDir: 'components', assetsDir: 'assets' }
       },
       null,

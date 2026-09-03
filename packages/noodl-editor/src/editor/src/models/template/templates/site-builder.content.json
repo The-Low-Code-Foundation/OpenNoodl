@@ -12162,6 +12162,7 @@
   ],
   "settings": {
     "htmlTitle": "Site Builder",
-    "navigationPathType": "path"
+    "navigationPathType": "path",
+    "bodyScroll": true
   }
 }
