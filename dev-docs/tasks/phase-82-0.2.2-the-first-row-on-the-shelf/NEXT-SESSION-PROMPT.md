@@ -95,6 +95,30 @@ still in memory. Both people's work survived and both were told.
 4. ⚠️ The preview died mid-session-20 with a `⚠ 1` in the toolbar and did not come back on refresh.
    If it dies again, **that** is the finding to chase, and it is not this row's.
 
+
+## 🔴 An ownerless pile of somebody else's finished work is sitting in this tree
+
+**P80 s43 built DEF-039/040/041 this morning, recorded them as ✅ BUILT in
+[P80 TASKS.md](../phase-80-the-defects-the-templates-found/TASKS.md), and ended without committing
+any of it.** s20 tripped over this because `projectmodel.ts` carries s43's DEF-040 hunks *and* this
+row's, interleaved and inseparable.
+
+s20's commit `eff946c6` therefore **carries two of s43's files** and says so in its message:
+`projectmodel.ts` (unavoidable — shared file) and `models/nodegraphmodel/rootNodeRemoval.ts`
+(unavoidable — `projectmodel.ts` imports it, and **a pathspec commit skips untracked files silently,
+so leaving it out would have broken HEAD**).
+
+🔴 **The rest of s43's cluster is still uncommitted and nobody owns it.** By mtime (09-03 11:36–12:15):
+`NodeGraphModel.ts`, `NodeOperations.ts`, `NodeGraphEditorConnection.ts`, `ComponentLoader.ts`,
+`projectmodel.editor.ts`, `io/ProjectExporter.ts`, `io/ProjectImporter.ts`,
+`nodegraphmodel/connectionEnds.ts`, `tests/models/index.ts`, and the untracked
+`tests/models/RootNodeUndo.test.ts` + `tests-unit/def-039/`, `def-040/`, `def-041/`.
+
+✅ **Whoever picks this up: read P80's board first**, confirm the set, run editor `test:ci`, and land
+it under s43's own message. ⚠️ **Do not assume the mtime cluster is exactly the set** — that is how
+this session identified it, and it is a heuristic, not a measurement. A third peer's DEF-045 edit to
+`tests/cloud/cloudFunctions.test.ts` sits at 13:45, inside s20's own window, and is **not** s43's.
+
 ## Working rules for this tree — unchanged, and all of them earned
 
 1. 🔴 **The canvas is a `<canvas>`.** Node labels are painted, not DOM, so `querySelector` cannot see
