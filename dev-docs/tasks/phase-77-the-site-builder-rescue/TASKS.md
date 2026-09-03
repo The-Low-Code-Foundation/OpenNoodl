@@ -1060,6 +1060,13 @@ Baseline taken by putting **HEAD's artefact** back for one run (md5-checked in a
 
 `test:main` is still the unwatched runner **D19** named. Owner: `NONE`.
 
+✅ **Re-measured s48 (2026-09-03), full run: `3 failed, 401 passed` suites / `4 failed, 6647 passed`
+tests, `EXIT=1` — exactly these three suites and no others.** Re-run once to rule out a flake; the
+same four. All three are on **committed** code, not on the tree's uncommitted product work:
+`node-catalog-enriched.json`'s working diff contains no `listusersinrole` (`HEAD` does), and
+`site-builder.content.json` is clean. So the table above is still right, and the row is still
+`NONE`.
+
 
 ---
 
