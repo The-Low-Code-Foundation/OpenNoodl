@@ -6,7 +6,7 @@
 > 🆕 **§6 added s29 (2026-08-31) and it is already MEASURED** — it was found by being blocked by
 > it, not by a sweep. Five left to measure.
 >
-> ⚠️ **`DEF-036` is taken (s34).** The next free id is **`DEF-037`**.
+> ⚠️ **`DEF-036` is taken (s34).** The next free id is **`DEF-039`**.
 
 **Written s23 (2026-08-30) at Richard's instruction.** The
 [unowned register](TASKS.md#findings-this-phase-raised-that-nobody-owns) holds twelve rows. Seven
@@ -316,7 +316,7 @@ and `connections-v2.json` is a named schema, so the question is not "should this
   **Not measured. Measure this before ranking the row.**
 
 Owner: **NONE**. Gets a `DEF-0xx` id when the bullet above is measured. ⚠️ Next free id is
-`DEF-038`.
+`DEF-039`.
 
 ---
 
@@ -363,4 +363,126 @@ in fact repair this**, which makes the confirm the only protection there is, and
   in its own right. Those are different fixes with different blast radii.
 
 Owner: **NONE**. Gets a `DEF-0xx` id when the bullets above are measured. ⚠️ Next free id is
-`DEF-038`.
+`DEF-039`.
+
+---
+
+## 9. 🔴 A curated template with NO home reaches the shelf, and installs silently
+
+**Measured, not read — 2026-08-31, s41.** Found while building the control for DEF-007 AC2
+(§8.1 of that row). A curated template whose manifest has no `rootNodeId` was **published,
+listed, installed through the picker and opened**, with nothing anywhere saying so.
+
+**The two doors are both called "publish" and only one is gated.**
+
+| door | who uses it | home gate? |
+| --- | --- | --- |
+| `shareAsTemplate.ts` `:342-390` — a person sharing their project | a builder, from the editor | ✅ **refuses**, built s38 on Richard's ruling |
+| `nodegx-community/scripts/publish-project-template.ts` — a curator with a DB credential | whoever publishes the curated shelf | 🔴 **no gate at all** |
+
+**And there is no install-side rescue.** `createFromTemplate.ts` never mentions the field; the
+install logged `Project created successfully` and drew no toast. The person lands on
+`/#__page__/Acme Legal Client Portal` — a **page-scoped internal component**, not a page anybody
+authored to be opened.
+
+✅ **The rescue already exists one package away.** `noodl-preview/src/loader.ts:131-156`
+`resolveRootNode` guesses a root using `allowAsExportRoot` **and tells the user it guessed**. Its
+own docstring names the population: *"projects authored from outside … frequently do not"* carry a
+home.
+
+**What to measure before fixing.**
+
+- ⚠️ **Does the submissions path inherit the editor's gate?** `promote-template-submission.ts`
+  promotes rows filed by `shareAsTemplate`, which already refuses — so the queue may be safe while
+  the direct-publish script is not. **Not measured**; check whether a submission can be filed by
+  anything other than the editor's door.
+- 🔴 **Which fix, and there are two with different blast radii**: the same predicate on the
+  curator's script (refuses at publish, matches the ruled shape) *or* a warn-and-resolve at install
+  (matches what `loadPreview` already does to the person). They are not alternatives to be guessed
+  between — §2.1 recorded this as 🧭 *a decision*, and only the **person's** door has been ruled on.
+- ⚠️ **A home check must not refuse a module.** §2.1's warning stands: 63 of 340 manifests carry no
+  home and most are modules and prefabs, which have none *by design*. `shareAsTemplate` solved this
+  for its own door; the curator's script would need the same care.
+
+⚠️ **This does NOT block DEF-007 AC2**, which is about a template that has a home and which passes.
+
+Owner: **NONE**. ⚠️ Next free id is `DEF-039`. 🔴 Part of the fix lives in the **`nodegx-community`
+repo**, not this one — the first row here that does.
+
+---
+
+## 10. ✅ CLOSED — the OTHER template generator DID disagree: **57 stored parameters**
+
+## 🟢 OWNED, BUILT AND GATED 2026-09-03 (s42) — [DEF-038](DEF-038-THE-OTHER-GENERATOR-DISAGREES.md)
+
+**Re-measured at HEAD first: still 57 writes** (`familyNodes` had moved 105 → 107, the `writes` had
+not), control still 0 on 97. Fixed in `prepareArtefact` via a new
+`pinRunOnValueChangeDefaultsInDirectory`, artefact regenerated (**57 insertions, 0 deletions**), and
+gated across **both** generators by a sweep that **derives** its population rather than listing it —
+`def038SettledTemplates.test.ts`, 5/5, two mutants each killed by its own arm.
+
+⚠️ **The known hole is stated in the row, not papered over**: a third template written as a `.ts`
+module (like `hello-world.template.ts`) would escape the sweep. Read
+[DEF-038](DEF-038-THE-OTHER-GENERATOR-DISAGREES.md) §*Bounds*, not this summary.
+
+*The original row, kept:*
+
+**Owner `NONE`. Source: DEF-007 §3.2's ⚠️, raised by a peer 2026-08-31 as an orphan of closing
+DEF-007 — and MEASURED here rather than registered as a question.**
+
+🔴 **§3.2 left this as *"nobody has measured whether TPL-001 has a disagreement at all"*, and the
+peer who raised it thought it might be zero. It is not zero. It is 57.**
+
+`templates/members-area`, the committed TPL-001 artefact, read through **the editor's own reader**
+(`readAsLegacyProject` → `ProjectImporter`) and put through **the same function** that measures
+site-builder:
+
+| artefact | `writes` | `familyNodes` | reading |
+| --- | --- | --- | --- |
+| **`templates/members-area` (TPL-001)** | **57** | **105** | 🔴 **disagrees** |
+| `site-builder.content.json` (control) | **0** | **82** | ✅ pinned by DEF-007 §3.2, s31 |
+
+✅ **Both arms have a non-zero `familyNodes`, which is what makes the 0 an absence and the 57 a
+presence** rather than two readings of a broken instrument. Same function, two inputs, one script.
+
+The first three writes name themselves:
+
+```
+/#__cloud__/claimAssociation  DbCollection2        runOnChange-records
+/#__cloud__/claimAssociation  DbCollection2        runOnChange-search
+/#__cloud__/claimAssociation  JavaScriptFunction   runOnChange-in-moderatorName
+```
+
+**So the shipped members-area artefact means one thing on disk and another once the editor has
+opened it — which is the whole of DEF-007's person-sentence, in the generator nobody fixed.**
+
+### ⚠️ This does not make DEF-007 AC3's green wrong — it makes its SCOPE explicit
+
+AC3 was asserted as a pair and is genuinely 0, but its gate (`DEF-007 AC3` in
+`sb007Template.test.ts`) covers **site-builder only**. TPL-001 is a second artefact the gate never
+looks at. 🔴 **That is the same decaying-hand-list shape the row's own AC4 exists to prevent** —
+a fix applied to the generator somebody was looking at, and a gate scoped to it.
+
+### What to do — the port, now that the measurement is in
+
+- 🔴 **The measurement is done; what is left is the fix and its gate.** `prepareArtefact` should
+  pin the same way `toTemplateContent` does.
+- ⚠️ **Not a one-line port.** TPL-001 writes a **v2 directory** (`components/*/nodes.json` +
+  `nodegx.project.json`); `pinRunOnValueChangeDefaults` takes the legacy
+  `{components:[{graph:{roots,connections}}]}` shape. ✅ **`readAsLegacyProject`
+  (`sb007Template.ts:361`) already does that conversion and is pure plain-node** — no
+  `ProjectModel`, no `NodeLibrary`, no Electron. It is what this measurement used.
+- 🔴 **Gate it across BOTH generators**, not beside the one being fixed, or this row recurs with a
+  third template.
+
+### Reproducing
+
+```bash
+npx esbuild <entry>.ts --bundle --platform=node --format=cjs --outfile=/tmp/m.cjs && node /tmp/m.cjs
+# readAsLegacyProject('templates/members-area') -> planRunOnValueChangeMigration(...)
+```
+🔴 **Always print `familyNodes` beside `writes`.** A zero with no family nodes found is a broken
+instrument, not an absence — and that is precisely how the site-builder figure would have been
+misread.
+
+⚠️ Next free id is `DEF-039`.
