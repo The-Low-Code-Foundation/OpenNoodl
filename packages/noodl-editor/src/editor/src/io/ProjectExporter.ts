@@ -384,6 +384,16 @@ export function buildComponentV2Files(component: LegacyComponent, now: string): 
     componentId: component.id as string,
     version: 1,
     connections: (component.graph?.connections ?? []).map((c) => {
+      /**
+       * DEF-039 (phase 80) — the other half of the importer's carry, and a round trip is only
+       * lossless if both ends agree. A connection the loader could not read is held verbatim in
+       * the model; picking the four fields off it here would write it back as `{}` and destroy
+       * the author's file on a project they merely opened.
+       */
+      if (typeof c.fromId !== 'string' || typeof c.toId !== 'string') {
+        return { ...(c as unknown as ConnectionV2) };
+      }
+
       const conn: ConnectionV2 = {
         fromId: c.fromId,
         fromProperty: c.fromProperty,

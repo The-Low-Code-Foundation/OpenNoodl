@@ -1,5 +1,6 @@
 import { EditorSettings } from '@noodl-utils/editorsettings';
 
+import { ElementConfigRegistry } from '../../models/ElementConfigs';
 import { NodeGraphNode, NodeGraphNodeJSON } from '../../models/nodegraphmodel';
 import { seedNewNode } from '../../models/nodeSeed/seedNewNode';
 import { guid } from '../../utils/utils';
@@ -30,6 +31,31 @@ export class NodeOperations {
       id: guid(),
       ...options
     });
+
+    /**
+     * DEF-041 (phase 80) — STYLE-002's defaults, on the second of the two creation doors.
+     *
+     * ⚠️ **This is a latent trap being closed, not a live defect being fixed** — and the drive
+     * that says so is the reason it is written this way. `applyDefaults` had exactly one call
+     * site (`NodePicker.utils.createNodeFunction`), and the row this comes from read that as
+     * *"a checkbox dragged from the library arrives without DEF-001's accessible border"*.
+     * **Driven 2026-09-03 and it does not**: the only drag source that reaches this function is
+     * the Components panel (`useDragDrop.ts`), which carries a **project component**, and
+     * `ElementConfigRegistry.has('/Site/Nav')` is `false` — the configs are keyed by built-in
+     * type names. `DragItem.nodeType` is declared and assigned by nothing. So no gesture places
+     * a bare Checkbox today, and this call is a **no-op on every item that can currently arrive
+     * here**.
+     *
+     * It is added because the field that would change that already exists and is already read by
+     * `getDragItemComponent`: the day anything populates `nodeType`, this door would start
+     * minting untokenised, inaccessible controls silently. Cheaper to make the doors agree now.
+     *
+     * 🔴 **Before the add, deliberately**, matching the picker exactly. `seedNewNode` runs
+     * *after* the add so its writes are their own undo entry; these are direct `parameters`
+     * writes with no undo of their own, so landing them after the node is in the graph would
+     * show a bare node until the next repaint and fold nothing into `create`.
+     */
+    ElementConfigRegistry.applyDefaults(node, type.name);
 
     if (editor.highlighted) {
       editor.highlighted.model.addChild(node, { undo: true, label: 'create' });

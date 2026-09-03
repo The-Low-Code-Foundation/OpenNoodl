@@ -194,11 +194,38 @@ export class NodeGraphEditorConnection {
     this.ctx = ctx;
   }
 
+  /**
+   * DEF-039 (phase 80) — **returns `undefined` for a wire whose ends do not resolve, and the
+   * caller skips it.** It used to throw one line into `connect()`.
+   *
+   * `findNodeWithId` answers `undefined` for an id that names no node in this component — a bad
+   * merge, a partial copy, a generator that writes nodes and wires separately. `connect()` then
+   * calls `resolvePorts()`, whose first act is `this.fromNode.model.getPort(…)`. 🔴 The cost was
+   * never one wire: `ModelBindings` builds the canvas in a bare loop, so the throw stopped **every
+   * later wire in the component** from being created.
+   *
+   * The model is untouched — the wire is still in the graph and still saved, so nothing is
+   * destroyed by being undrawable, and `evaluateConnectionHealth` still records
+   * `con-no-source-port` against it.
+   */
   static createFromModel(model: Connection, owner: NodeGraphEditor, ctx?: CanvasRenderingContext2D) {
+    const fromNode = owner.findNodeWithId(model.fromId);
+    const toNode = owner.findNodeWithId(model.toId);
+
+    if (!fromNode || !toNode) {
+      const missing = [!fromNode && `source "${model.fromId}"`, !toNode && `target "${model.toId}"`]
+        .filter(Boolean)
+        .join(' and ');
+      console.warn(
+        `[canvas] connection ${model.fromProperty} → ${model.toProperty} skipped: ${missing} is not a node in this component.`
+      );
+      return undefined;
+    }
+
     const con = new NodeGraphEditorConnection(model, ctx);
 
-    con.fromNode = owner.findNodeWithId(model.fromId);
-    con.toNode = owner.findNodeWithId(model.toId);
+    con.fromNode = fromNode;
+    con.toNode = toNode;
     con.owner = owner;
     con.connect(con);
 

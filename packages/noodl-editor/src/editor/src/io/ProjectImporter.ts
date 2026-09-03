@@ -186,12 +186,42 @@ export function reconstructLegacyComponent(
   registryPath: string,
   componentFile: ComponentV2File,
   nodesFile: NodesV2File,
-  connectionsFile: ConnectionsV2File
+  connectionsFile: ConnectionsV2File,
+  onWarning?: (message: string) => void
 ): LegacyComponent {
   const legacyName = toLegacyName(componentFile, registryPath);
   const roots = unflattenNodes(nodesFile.nodes ?? []);
 
-  const connections: LegacyConnection[] = (connectionsFile.connections ?? []).map((c) => {
+  const connections: LegacyConnection[] = (connectionsFile.connections ?? []).map((c, index) => {
+    /**
+     * DEF-039 (phase 80) — **a connection we cannot read is carried through untouched, not
+     * rebuilt out of the fields it does not have.**
+     *
+     * Picking four fields off an object that does not carry them produced
+     * `{fromId: undefined, …}`, which is `{}` once stringified — and because the exporter
+     * faithfully saves what the model holds, **opening such a project wrote the author's wires
+     * back to disk as empty objects.** Measured: a hand-authored file using
+     * `sourceId`/`sourcePort` came back as `[{},{}]` from load, before anything was written.
+     *
+     * The v2 loader is the door a project written by something else comes through — which is
+     * exactly the argument the `route` guard below already makes. Refusing the component is not
+     * available as a rescue: a component missing from the project lands in `ComponentSaver`'s
+     * `removed` set and its directory is deleted. So the wire is preserved verbatim, reported,
+     * and left for `getConnectionHealth` to call unhealthy (DEF-039 guards both its callers).
+     */
+    const readable =
+      typeof c.fromId === 'string' && typeof c.fromProperty === 'string' &&
+      typeof c.toId === 'string' && typeof c.toProperty === 'string';
+
+    if (!readable) {
+      const keys = Object.keys(c).length > 0 ? Object.keys(c).join(', ') : '(no fields)';
+      onWarning?.(
+        `${legacyName}: connection ${index} is missing fromId/fromProperty/toId/toProperty — ` +
+          `it carries ${keys}. The wire has been left exactly as written and will not work until it is corrected.`
+      );
+      return { ...(c as unknown as LegacyConnection) };
+    }
+
     const conn: LegacyConnection = {
       fromId: c.fromId,
       fromProperty: c.fromProperty,
@@ -312,7 +342,11 @@ export class ProjectImporter {
           registryPath,
           componentFiles.component,
           componentFiles.nodes,
-          componentFiles.connections
+          componentFiles.connections,
+          // DEF-039: an unreadable wire is reported through the channel that already exists,
+          // rather than thrown — throwing here drops the component, and a dropped component is
+          // deleted from disk by the next save.
+          (message) => warnings.push(message)
         );
         components.push(legacyComponent);
       } catch (err) {
@@ -440,8 +474,9 @@ export class ProjectImporter {
     registryPath: string,
     componentFile: ComponentV2File,
     nodesFile: NodesV2File,
-    connectionsFile: ConnectionsV2File
+    connectionsFile: ConnectionsV2File,
+    onWarning?: (message: string) => void
   ): LegacyComponent {
-    return reconstructLegacyComponent(registryPath, componentFile, nodesFile, connectionsFile);
+    return reconstructLegacyComponent(registryPath, componentFile, nodesFile, connectionsFile, onWarning);
   }
 }

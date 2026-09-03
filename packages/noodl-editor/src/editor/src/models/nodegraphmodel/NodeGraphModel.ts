@@ -13,6 +13,8 @@ import { reasonsForGatedPorts } from '@noodl-models/nodelibrary/portGateReason';
 import Model from '../../../../shared/model';
 import { EventDispatcher } from '../../../../shared/utils/EventDispatcher';
 import { unconvertedCast } from './connectionCoercion';
+import { resolveConnectionEnds } from './connectionEnds';
+import { isRootWithinRemoved } from './rootNodeRemoval';
 
 export type Connection = {
   fromProperty: string;
@@ -98,6 +100,45 @@ const URGENT_EVALUATE_HEALTH_DEBOUNCE_MS = 50;
  * wrong about types, and a port appearing does not make them stale.
  */
 const UNRESOLVED_PORT_WARNING_KEYS = ['con-no-source-port', 'con-no-target-port'];
+
+/**
+ * P77 SBR-008 §9 — the wire into a port the author is *declaring*, not a wire into a port
+ * that does not exist.
+ *
+ * A node type may say (`wireDeclaredPortPrefix`, set in `data/dbmodelcrudbase.ts` and
+ * `data/dbmodelnode2.ts`) that ports under some prefix are minted from the author's own
+ * wires. `prop-<field>` on the Record family is the case: on a fresh site a column exists
+ * only once something has written it, so the schema cannot name the port and the wire is
+ * the only declaration there is.
+ *
+ * 🔴 Without this, that is a **deadlock rather than a delay**, and the delay is what the
+ * `URGENT_EVALUATE_HEALTH_DEBOUNCE_MS` note above describes. The runtime mints the port from
+ * the node's wires — but it reads those wires off the component `exportComponent` handed it,
+ * and `exportComponent` drops every wire this verdict calls unhealthy. So the wire is
+ * dropped, the runtime never sees it, the port is never minted, and the verdict stays true
+ * for ever: `editor health → exported wires → runtime ports → editor health`. Measured on a
+ * wizard-fresh Site Builder project — the create node announced its three `prop-` ports that
+ * are also saved parameters and neither of the two that arrive only over a wire, so a page
+ * created through the panel had no title and no slug and the page editor's save wrote
+ * nothing at all.
+ *
+ * The loop is broken here, once, and deliberately not in the two other places it could be:
+ * not in `exportComponent`'s filter (SBR-008 §4 — it keeps meaning what it says) and not by
+ * minting the port in the editor (SBR-008 §2 — `setDynamicPorts` replaces, so a second
+ * writer erases the runtime's). The runtime stays the only thing that mints a port; this
+ * only stops the editor calling the wire broken before it can.
+ *
+ * ⚠️ **The stated cost, which is the same one the ruling already accepted**: a mistyped
+ * `prop-titel` no longer reddens. `record-ports.ts`'s docblock accepts exactly this for the
+ * runtime half — the wire *does* register the port at run time — and the warning was only
+ * ever correct for as long as the port set came from the schema alone. Scoped by prefix and
+ * by node type so nothing else on the canvas loses a warning it should keep.
+ */
+function isWireDeclaredPort(node, portName: string | undefined): boolean {
+  if (!node || typeof portName !== 'string') return false;
+  const prefix = node.type && node.type.wireDeclaredPortPrefix;
+  return typeof prefix === 'string' && prefix.length > 0 && portName.startsWith(prefix);
+}
 
 export class NodeGraphModel extends Model {
   roots: NodeGraphNode[];
@@ -426,6 +467,28 @@ export class NodeGraphModel extends Model {
   removeNode(model, args?) {
     const _this = this;
 
+    /**
+     * DEF-040 (phase 80) — **undo has to put the home back, and it did not.**
+     *
+     * Driven in DEF-007 s38: delete the home node, press *"Delete it anyway"*, undo. The `Group`
+     * came back into the graph and `ProjectModel.getRootNode()` was **still `null`**. The undo
+     * action below re-adds the node; the root pointer is cleared somewhere else entirely — a
+     * module-scope `Model.nodeRemoved` listener in `projectmodel.ts` — as a **side effect of an
+     * event rather than as part of the undoable act**, so nothing in the undo group knew to
+     * reverse it.
+     *
+     * 🔴 This is not tidiness. DEF-007 §7.2 shipped a *confirm* rather than a refusal, on the
+     * argument that a person may legitimately restructure and undo exists. Undo did not in fact
+     * repair this, which made that confirm the only protection there was.
+     *
+     * Read **before** the removal, because afterwards the listener has already cleared it. The
+     * whole subtree counts: the listener is now subtree-aware, and this has to agree with it or
+     * the two disagree exactly for a home nested inside a deleted Group.
+     */
+    const project = this.owner && (this.owner as { owner?: any }).owner;
+    const rootNodeBefore = project && typeof project.getRootNode === 'function' ? project.getRootNode() : undefined;
+    const removingTheRoot = isRootWithinRemoved(rootNodeBefore, model);
+
     // Start by removing all connections to/from this node
     this.removeConnectionsForNode(model, args);
 
@@ -470,6 +533,12 @@ export class NodeGraphModel extends Model {
         undo: function () {
           if (parent) parent.insertChild(model, index);
           else _this.addRoot(model);
+
+          // DEF-040: the node is back in the graph; the home pointer has to come back with it,
+          // and only after the re-add, so the project never points at a node it does not contain.
+          if (removingTheRoot && project && typeof project.setRootNode === 'function') {
+            project.setRootNode(rootNodeBefore);
+          }
         }
       });
     }
@@ -681,8 +750,33 @@ export class NodeGraphModel extends Model {
    * never visible from the templates alone.
    */
   getConnectionHealth(c, args?: { levels?: string[] }) {
-    const sourceId = c.sourceId ? c.sourceId : c.sourceNode.id;
-    const targetId = c.targetId ? c.targetId : c.targetNode.id;
+    /**
+     * DEF-039 (phase 80) — **an end that is not there is an unhealthy wire, not a `TypeError`.**
+     *
+     * The two callers hand this function opposite shapes, and each is missing what the other
+     * relies on. `exportComponent` (`utils/exporter/util.ts:115`) sends `sourceId: c.fromId` and
+     * no node; the canvas (`NodeGraphEditorConnection.getHealth`) sends `sourceNode` and no id.
+     * So `c.sourceId ? c.sourceId : c.sourceNode.id` dereferenced `undefined` in **both**
+     * directions, for different inputs:
+     *
+     *  - a `connections.json` written with field names v2 does not know arrives with `fromId`
+     *    undefined, and killed the export — the preview never mounted and the message named
+     *    neither the file nor the component nor the wire;
+     *  - a wire whose `fromId` names a node that is not in the component (a bad merge, a partial
+     *    copy) resolves to no node, and reaches the same line from the canvas side.
+     *
+     * A wire with an end we cannot name genuinely cannot work, so `error` is the honest level:
+     * `exportComponent` passes `levels: ['error']` and drops it, and the canvas dashes it.
+     * ⚠️ Answering here rather than consulting `WarningsModel` is deliberate — the lookup key is
+     * built from these very ids, so there is nothing to look it up by.
+     *
+     * The resolution itself lives in `./connectionEnds` so it can be graded: this module reads
+     * `platform.getUserDataPath()` at module scope and cannot be imported outside Electron.
+     */
+    const { sourceId, targetId, unresolved } = resolveConnectionEnds(c);
+    if (unresolved) {
+      return { healthy: false, message: unresolved };
+    }
 
     const warnings = WarningsModel.instance.getWarnings(
       {
@@ -827,7 +921,7 @@ export class NodeGraphModel extends Model {
     const sourcePort = sourceNode && c.fromProperty ? sourceNode.getPort(c.fromProperty) : undefined;
     WarningsModel.instance.setWarning(
       { component: this.owner, connection: c, key: 'con-no-source-port' },
-      !sourcePort
+      !sourcePort && !isWireDeclaredPort(sourceNode, c.fromProperty)
         ? {
             message: "Source port doesn't exist.",
             showGlobally: true,
@@ -839,7 +933,8 @@ export class NodeGraphModel extends Model {
     const targetPort = targetNode && c.toProperty ? targetNode.getPort(c.toProperty) : undefined;
     WarningsModel.instance.setWarning(
       { component: this.owner, connection: c, key: 'con-no-target-port' },
-      !targetPort || !NodeLibrary.instance.isConditionalPortValid(targetNode, c.toProperty, ['extended'])
+      (!targetPort || !NodeLibrary.instance.isConditionalPortValid(targetNode, c.toProperty, ['extended'])) &&
+      !isWireDeclaredPort(targetNode, c.toProperty)
         ? {
             message: "Target port doesn't exist.",
             showGlobally: true,
