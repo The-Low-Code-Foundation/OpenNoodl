@@ -1,5 +1,137 @@
 # Phase 82 — next session
 
+## The board, re-derived from [`TASKS.md`](TASKS.md) at 2026-09-03 13:4x (session 19)
+
+🔴 **Re-derive it again yourself.** This phase has been overtaken twice by a ruling that landed
+hours after a handoff was written. **The task files are the board; this section is a convenience.**
+
+| # | row | state |
+|---|---|---|
+| 6 / 6b | REL-002c + [REL-010](REL-010-AS-GOOD-AS-THE-PAGE-HE-RATED.md) | ⏳ **RICHARD'S LOOK.** All building done (s15). A session cannot close a person |
+| 7 | REL-001 — publish the members' area | ⏳ **RICHARD.** Recommendation unchanged: *fix first, publish once* |
+| 8 | REL-004 — cut and tag `v0.2.2` | 🔴 **Blocked**: `cline-dev` unpushed, CI has run on none of it. **Re-derive the count at cut time** |
+| 9a | REL-011a — the 53 controls | 🟢 CLOSED s17 `d88368c5` |
+| 9b | REL-011b — operable on the artefact a person publishes | 🟢 **CLOSED s19** — AC1 `3f95a804`, AC3 `83a03557`, AC2 s18 |
+| 9c | REL-011c — the three surfaces reach PASSABLE | ⏳ his look; a session cannot award it. **🔴 It now has SEVEN registered findings to be ruled against** |
+| 10 | REL-009b — the editor sees the write | ⬜ **the only buildable row left on this board** |
+
+## 🟢 What session 19 did: REL-011b CLOSED — AC1 diagnosed and fixed, AC3 photographed
+
+### AC1 / D54 — **the row described the wrong defect, in both halves**
+
+D54 read *"the theme presets are dead on the deployed site — 0 of 7 fields changed, works in the
+editor's preview, inert deployed"*. **They were never dead.**
+
+Driven on the deployed bundle (`deploy-from-disk` → `drive-deployed`) at `/admin/theme`, from an
+**empty** form so a change cannot hide:
+
+| pressed | the five token fields afterwards |
+|---|---|
+| `Studio` | `#d9a441 #14161a #eceae5 "Helvetica Neue"… 10px` |
+| `Press` | the same |
+| `Night` | the same |
+
+Those are **`night`'s** values. 🔴 **The chain fires on every press and publishes the wrong preset**,
+and D54's screen already held Night — so *"0 of 7 changed"* was the right preset arriving twice.
+There is no preview/deploy difference either: s46's preview drive pressed **Night**, the last chip
+placed and the only one ever right.
+
+**Cause**: three chips wire a `Component Inputs` constant, published at MOUNT, into the same
+`presets.in-name`; last placement wins, and `run` carries no payload. ⚠️ SBR-009's
+`runOnChange-in-name: false` fixed the half a screenshot could see and left the value untouched.
+**Fix**: `/Admin/PresetChip` publishes `{ name }` — its own — at the press, then fires `Picked`.
+
+Gates: new `d54ThemePresetIdentity.test.ts` **10/10** (shipped arm, first-draft MUTANT, REVERTED
+pair); `sbr009ThemeEditorDrive` **9/9 from 6, exactly the three new arms RED on the reverted
+source**; `template:site-builder` exit 0; full `noodl-mcp` **91 suites, 1196/1196, exit 0**;
+`typecheck:mcp` 0. After-drive: five presses, five correct palettes.
+
+### AC3 — 24 shots, and `/admin/page/{pageId}` is the worst screen in the template
+
+`vib001-site.look.ts`'s living arm now walks six pages: **24 shots, exit 0**, `md5=5e8dfaf9`,
+`head=3f95a804`. ⚠️ **The route count was wrong a third time and the answer is TWO** — the look
+file's **door** arm has photographed `/admin/setup` and `/admin/signin` all along. `/admin/messages`
+reads well; seven findings are registered against the page editor in
+[REL-011 §AC3](REL-011-THE-SITE-BUILDER-SHIPS.md), owned by REL-011c and phase 81.
+
+### 🔴 Six things from this session that will bite the next one
+
+1. 🔴 **A READING THAT MATCHES THE SCREEN IS NOT A READING THAT NOTHING HAPPENED.** *"0 of 7 fields
+   changed"* fits *"the chain is dead"* and *"the chain delivered exactly what was already there"*
+   equally. Eleven sessions took the first. ✅ **Set the starting state** — one drive from an empty
+   form separated them in ninety seconds.
+2. 🔴 **WHERE SEVERAL INSTANCES OF ONE CONTROL FEED ONE CONSUMER, PRESS A NON-DEFAULT ONE.** The
+   drive that existed pressed `Night` every time since the day it was written, and Night is the
+   last placement — the one press that could never have caught this.
+3. 🔴 **A WIRING PIN SAYS NOTHING ABOUT CARDINALITY AT THE TARGET.** *"every chip is wired to the
+   picker: the name as a value, the click as a signal"* was green and **true**. It cannot see that
+   all three wire into ONE port. Same family: a `runOnChange` census asks WHEN a node runs and
+   never WHAT it will read.
+4. 🔴 **A RELAYED CONCLUSION SENT THE DIAGNOSIS TO THE WRONG PACKAGE.** *"Works in preview, inert
+   on the deploy"* filed this under the exporter's family and bought a full pass over
+   `deployToFolder`, the health filter, the exported `ports` and the bundle JSON — all clean, none
+   of them it. The two readings differed by **which chip was pressed**.
+5. ⚠️ **A CONTENT GREP DOES NOT FIND A FILE.** This session recorded *"`sbr009ThemeEditorDrive` does
+   not exist"* from a grep for that string in code. It is
+   `packages/noodl-mcp/tests/sbr009ThemeEditorDrive.test.ts`, and it is the drive the new arms went
+   into. ✅ **Look for the FILE before calling a cited spec imaginary.**
+6. 🔴 **A PATHSPEC COMMIT TOOK A PEER'S IN-PROGRESS FILE.** `83a03557` swept the P80 session's
+   uncommitted s43 DEF-042 write-up in `UNOWNED-ROWS-TO-MEASURE.md`. Nothing lost; a note is at the
+   top of that file, and `b682201d` records it. ✅ **Before adding one line to a shared doc,
+   `git diff --stat` it — if the diff is far bigger than your edit, the rest is somebody else's.**
+
+### ⚠️ Registered rather than built
+
+- **The `/admin/*` findings A1–A7** ([REL-011 §AC3](REL-011-THE-SITE-BUILDER-SHIPS.md)). Headline:
+  **the admin shell has no `smallLayout` anywhere** and its `sidebar` is `240px` explicit, so at 390
+  every admin screen gets ~150px; and **the page editor overflows horizontally below ~1900** — at
+  **1280** `Save page` is off the right edge. Owner **REL-011c**.
+- **A3 — the judge has no horizontal reachability metric.** `unreachablePx` is vertical only, which
+  is why twelve desktop/wide admin shots read `unreachable=0` with `Save page` off-screen. Owner
+  **phase 81**.
+- **`DEF-043`** — the deprecated `DbCollection` twin of AC2's fix. Registered in P80's
+  `UNOWNED-ROWS-TO-MEASURE.md`; ⚠️ **the id is a recommendation, re-derive the next free one**.
+- **A release-notes line is still owed** for AC2's platform fix, and now for AC1's template fix.
+  Owner **REL-004**. Not written because `RELEASE-NOTES-0.2.2.md` carries a peer's uncommitted edit
+  — and hazard 6 above is exactly what happens if you commit it by pathspec anyway.
+
+## The next buildable work
+
+**REL-009b is the only buildable row left on this board.** `reloadComponentFromDisk` still has zero
+callers and there is still no filesystem watcher anywhere in the editor. Read
+[REL-009 §3 and §4 U3](REL-009-THE-WRITE-THE-EDITOR-CANNOT-SEE.md) first — **U3, whether the canvas
+survives a model swap underneath it, is where it gets expensive** — and D1 (`fs.watch` vs
+`chokidar`) is **unruled**.
+
+⚠️ Everything else on the board is Richard's: rows 6, 6b, 7, 8 and 9c.
+
+## Working rules for this tree — unchanged, and all of them earned
+
+1. 🔴 **`judge()` KEYS ITS OUTPUT BY `today()`.** Two sessions running a look harness on the same day
+   **overwrite each other's verdicts in place, silently.** s19's AC3 run deliberately replaced s17's
+   `vib-001/2026-09-03/site-builder-living` with a superset; s17's is recoverable from `d88368c5`.
+   ✅ **Commit a look run before starting another.**
+2. 🔴 **COMMIT BY PATHSPEC, NEVER `git add`** — except untracked paths, which a pathspec commit
+   **skips silently** (`git status --porcelain | grep '^??'`, and check whether a `??` is a
+   **directory**). ⚠️ **And see hazard 6: a pathspec commit takes the whole file, including a
+   sibling's half-written paragraph.**
+3. 🔴 **`scripts/devtools/render-from-disk.js` IS UNCOMMITTED AND LOAD-BEARING.** ✅ **Re-derive its
+   md5 rather than quoting the board's.**
+4. 🔴 **NEVER OPEN `templates/members-area` OR the site-builder template IN THE EDITOR** —
+   `readBundleDirectory` has no skip list. Work through `npm run template:members` /
+   `template:site-builder`.
+5. ⚠️ **`timeout` does not exist on this Mac.** Gate on an exit file you write yourself. ⚠️ And the
+   Bash tool kills a foreground command at 120s: a look run is ~145s, so **run it in the
+   background** and wait on the exit file.
+6. ⚠️ **`.look.ts` is outside `testMatch`.** Run one deliberately:
+   `npx jest --config packages/nodegx-backend/jest.config.js --testMatch '**/tests/**/*.look.ts' --runTestsByPath <file>`.
+7. ⚠️ **The box is shared and busy.** One heavy job at a time; wait for a peer's suite.
+
+---
+
+_Everything below predates session 19. Rows 6/6b/7/8 have not moved, but **re-derive from
+[`TASKS.md`](TASKS.md) before believing any of it.**_
+
 ## The board, re-derived from [`TASKS.md`](TASKS.md) at 2026-09-03 13:0x (session 18)
 
 🔴 **Re-derive it again yourself.** This phase has now been overtaken twice by a ruling that
