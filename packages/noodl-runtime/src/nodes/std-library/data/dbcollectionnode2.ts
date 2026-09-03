@@ -901,7 +901,42 @@ const DbCollectionNode: NodeDefinitionOptions = {
           this.sendSignalOnOutput('fetched');
         },
         error: (err: string) => {
-          this.setCollection(_c);
+          /**
+           * 🔴 **REL-011b AC2 — a failed fetch must not DELETE the rows it has
+           * already delivered.**
+           *
+           * `_c` is the empty collection minted at the top of `fetch()` and
+           * filled only by `success`, so publishing it here replaced whatever
+           * this node was showing with **nothing** — and `isEmpty` went true, so
+           * every `For Each` downstream redrew zero rows and every `mounted`
+           * wrapper fed by them unmounted.
+           *
+           * Measured on the published site-builder template, 2026-09-03: with
+           * the backend up the page held 82 elements, 6 sections, 3 images and
+           * 2 buttons; **within one round trip of the backend stopping it held
+           * 38, 0, 0 and 0**, with two `query-records/query-failed` lines in the
+           * console and nothing else changed. SBR-011 gives three of this
+           * template's queries a realtime subscription, and a dropped stream
+           * re-runs the query — so on a published site any backend restart or
+           * network blip empties every visitor's page until they reload it.
+           *
+           * 🔴 **This is the odd one out among `fetch()`'s three failure
+           * exits.** The unconfigured-backend exit and the bad-filter exit both
+           * `setError` and return, leaving the collection alone; only this one
+           * overwrote it. The guard aligns it with them.
+           *
+           * ⚠️ **The FIRST failure is deliberately unchanged**: with nothing yet
+           * bound, the empty collection is still published, so `items` is `[]`,
+           * `isEmpty` is true and `count` is 0 exactly as before. The behaviour
+           * differs only where there is something to lose.
+           *
+           * ⚠️ It does NOT make a refusal legible — P77 D4's *"a refused query
+           * and an empty collection are the same screen"* is a separate row with
+           * a separate fix (wire `failure`/`error`, which this node already
+           * offers). This one stops the query destroying good data on its way to
+           * being illegible.
+           */
+          if (this._internal.collection === undefined) this.setCollection(_c);
           this.setError(err || 'Failed to fetch.');
         }
       });

@@ -296,14 +296,131 @@ a control arm, or measured and ruled out of 0.2.2 by Richard — **but not left 
 2. **The page keeps its buttons when its backend goes away.** SBR-005's AC3 failure arm reports
    `no button labelled "Send". Buttons on the page: []` — **zero buttons anywhere** after
    `service.stop()`. Measured 2026-09-03 in **both** arms of the `bodyScroll` control pair, so it is
-   pre-existing at HEAD and not an artefact of that change. ⚠️ **Undiagnosed**: whether the published
-   page unmounts its sections when the backend is lost, or the harness raced the teardown. **Settle
+   pre-existing at HEAD and not an artefact of that change. 🟢 **DIAGNOSED AND FIXED 2026-09-03
+   — see §AC2 below.** It is the **product**: a failed fetch published an empty collection over the
+   rows it had already delivered, so a dropped realtime stream emptied the page. The sentence below
+   is what the row said before that, kept because the question it asks is the right one. **Settle
    which before fixing anything.**
 3. **The admin screens are photographed at last, now the void is gone.** Every `/admin/*` route at
    1280, on the fixed artefact. 🔴 This is a **discovery** AC: D40 hid whatever is below the first
    screen on eleven admin pages for the whole life of this template, and REL-011c cannot be scoped
    from pictures that do not exist. Anything found is registered with an owner — it does not
    automatically join this row.
+
+### 🟢 AC2 — SETTLED, AND IT IS THE PRODUCT. Fixed 2026-09-03 (s18)
+
+**The harness is exonerated and the mechanism is named.** The row asked to settle harness-vs-product
+*before fixing anything*; the settling is a step-by-step probe, and the fix follows from what it read.
+
+#### The measurement — `sbr005-sections.look.ts`, AC3's failure arm, 2026-09-03
+
+| moment | elements | buttons | fields | sections | imgs | `bodyChars` | headings |
+|---|---|---|---|---|---|---|---|
+| fresh load, backend **up** | 82 | 2 | 3 | 6 | 3 | 661 | 6 |
+| filled, backend **up** | 82 | 2 | 3 | 6 | 3 | 661 | 6 |
+| after the resize, backend **up** | 82 | 2 | 3 | 6 | 3 | 661 | 6 |
+| **backend DOWN, +0ms** | **38** | **0** | **0** | **0** | **0** | **140** | **1** |
+| backend DOWN, +2s | 38 | 0 | 0 | 0 | 0 | 140 | 1 |
+| backend DOWN, +8s | 38 | 0 | 0 | 0 | 0 | 140 | 1 |
+
+Console across that step, and nothing else:
+`DbCollection2 (/Pages/Site): Failed to fetch. [query-records/query-failed]` × 2.
+
+🔴 **The page was WHOLE at the moment before the stop**, on the same probe, three times. That
+is what makes this a product finding: nothing the harness did emptied it, and the emptying is
+**immediate** — inside one `evaluate` round trip, not a slow timeout. The three post-stop readings
+exist to separate those two, because they have different fixes.
+
+⚠️ **The nav band survives** (`bodyKids` stays 6, the page's own `Welcome` heading is still
+there). It is the *records-driven* content that goes: all six sections, all three pictures, both
+buttons and all three form fields.
+
+#### 🔴 The arm could not have told you this, and its own control was the reason
+
+The `beforeThePress` assertion reads *"answered before the press — sent: false, refused: false"*.
+That is **exactly what a blank page reports.** It was written to catch a form that submits on typing
+(D41) and it passes unchanged on a document with nothing in it — so every reading this file has ever
+taken of the zero-buttons failure was equally consistent with *"the page emptied earlier"*. ✅ A
+**presence control** now stands beside it (`any button: true, any field: true`, backend still up), so
+the after-picture is attributed to `service.stop()` and to nothing else. This is
+[[assert-an-absence-with-a-known-firing-signal-beside-it]] on a control that had been green for weeks.
+
+#### The mechanism, and why the fix is one guard
+
+[`dbcollectionnode2.ts`](../../../packages/noodl-runtime/src/nodes/std-library/data/dbcollectionnode2.ts)'s
+`fetch()` mints an empty `Collection` at the top and fills it **only** in the `success` branch. The
+`error` branch published **that empty collection** — so a query that merely failed to answer was
+indistinguishable from a table that had been emptied: `items` → `[]`, `isEmpty` → true, every
+`For Each` below it redrew zero rows, and every `mounted` wrapper they feed unmounted.
+
+SBR-011 gives three of this template's queries a **realtime subscription**, and a dropped stream
+re-runs the query. So on a published site **any backend restart or network blip empties every
+visitor's page until they reload it** — which is a far larger consequence than the one this AC was
+opened on.
+
+🔴 **The failing branch was the odd one out among `fetch()`'s three failure exits.** The
+unconfigured-backend exit and the bad-filter exit both `setError` and return, leaving the collection
+alone; only the fetch-error callback overwrote it. The fix aligns the third with the other two:
+
+```ts
+if (this._internal.collection === undefined) this.setCollection(_c);
+this.setError(err || 'Failed to fetch.');
+```
+
+⚠️ **The FIRST failure is deliberately unchanged.** With nothing bound yet the empty
+collection is still published, so a query that has never succeeded still reports `[]`, `isEmpty: true`
+and `count: 0` exactly as before. The behaviour differs **only where there is something to lose**.
+
+⚠️ **It does NOT make a refusal legible, and must not be read as closing that.** P77
+[D4](../phase-77-the-site-builder-rescue/DEFECTS-THE-SITE-BUILDER-FOUND.md) — *"a refused query and
+an empty collection are the same screen"* — is a separate row with a separate fix (wiring the
+`failure` signal and `error` string this node already offers), reclassified to the template in
+THE-SWEEP-2026-08-29 and owned by SBR-006/010. **This one stops the failure destroying good data on
+its way to being illegible.** The two are adjacent and neither substitutes for the other.
+
+#### The gate, and the reverted arm
+
+[`rel011b-failed-fetch-keeps-rows.test.ts`](../../../packages/noodl-runtime/test/nodes/rel011b-failed-fetch-keeps-rows.test.ts)
+— **5 specs, and the control matters more than the count**:
+
+| spec | fixed | 🔴 **reverted source** |
+|---|---|---|
+| a successful fetch delivers the rows (**presence control**) | ✓ | ✓ |
+| **keeps those rows when the NEXT fetch fails** | ✓ | ✕ `count: 0, isEmpty: true` |
+| still reports the failure — keeping rows must not hide the error | ✓ | ✓ |
+| a FIRST fetch that fails still reports empty (**unchanged half**) | ✓ | ✓ |
+| a successful re-fetch still REPLACES the rows (**not a freeze**) | ✓ | ✓ |
+
+✅ **Exactly one spec reddens on the pre-fix source**, and the two no-change controls stay green in
+both arms — so the file grades the change and not the neighbourhood.
+
+**Gates**: full `noodl-runtime` **150 suites, 2637 passed, 13 skipped, 0 failed, exit 0**.
+
+⚠️ **A trap inside the spec worth keeping**: `setInputValue('collectionName', …)` is dropped
+with a console line and no error — `collectionName` is a **dynamic** port registered from the
+editor's class list, so it does not exist on a bare node. The prototype extension
+`setCollectionName()` is the one that works. And `CloudStore._fromJSON` calls
+`(modelScope || Model).get(objectId)`, so a `{}` model scope makes every *successful* fetch throw —
+which would have left the file able to grade only the failure, with no presence control beside it.
+
+#### ⏳ What is still owed on AC2
+
+The **rendered after-arm**. The look harness serves the built `noodl.viewer.js`, so the page-level
+before/after needs that bundle rebuilt from this source. Pinned before the work:
+`8facb5b25e80339a28ebf539a4894b23`, mtime 2026-09-02 22:55:56. 🔴 **A peer was mid
+`render-from-disk.js` run with the box at load 40 when this was written**, and rebuilding the shared
+bundle under a live reading is this phase's own hazard 13 — so the rebuild waits for a quiet box, and
+the after-arm is taken with the md5 recorded **either side** of the run.
+
+### ⚠️ AC3 — the route count on this row is wrong, and it is FOUR, not nine
+
+Re-derived from the artefact rather than inherited: the template declares **seven** `Page`
+components, **six** of them under `admin/` — `/admin/setup`, `/admin/signin`, `/admin/pages`,
+`/admin/page`, `/admin/theme`, `/admin/messages` (`ADMIN_PATH_PREFIX` is the literal `admin`;
+`sb005Components.ts` holds all six, `sb006Components.ts` the public one). s17 photographed
+`/admin/pages` and `/admin/theme`, so **four routes remain**, not nine, and *"eleven admin pages"*
+above counts something other than routes. ✅ The AC is unchanged in substance — photograph every
+`/admin/*` route — only its arithmetic was inherited without being checked.
 
 **Close**: AC1 and AC2 each end in a fix with a before/after arm **or** a written measurement and
 Richard's ruling that it rides; AC3's pictures exist and anything in them is registered.
