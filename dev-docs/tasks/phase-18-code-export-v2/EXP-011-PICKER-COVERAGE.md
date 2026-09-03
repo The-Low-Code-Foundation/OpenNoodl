@@ -116,7 +116,7 @@ place. The order is by *what a refusal silences*, since §50.2 measured that a r
 | 3 | ✅ `Run Tasks` | **built s81 (§53)** — was: *"I use this all the time"* — and everything it fires is refused with it |
 | 4 | ✅ `On App Error` | **built s82 (§54)** — was: an error pathway that is left out is the exact case where exporting is worse than not |
 | 5 | ✅ `Create New Array` | **built s83 (§55)** — was: *"I use this all the time"* — the anonymous-Id-by-wire mechanism (§7.3) needs a design session first |
-| 6 | `Filter Records` | the search box over a fetched list |
+| 6 | ✅ `Filter Records` | **built s84 (§56)** — was: the search box over a fetched list |
 | 7 | `Repeater Item` | now that the node works, people will use it (§7.3 reversed) |
 | 8 | `JSON Stream Parser` · `Stream Buffer` · `Text Accumulator` | the streaming trio — pure functions over chunks, one build |
 | 9 | `Hash` · `Random Bytes` · `Screen Resolution` | one browser API each, one session for the three |
@@ -7732,3 +7732,134 @@ md5-checked. ⚠️ M1's first cut failed TO COMPILE (a `never` narrowing) — "
   and reads the row, which the same handler has just set — the interpreter orders both by wire order. Owner
   NONE.
 - §54.7's rows unchanged.
+
+## §56 Tier 2.8 row 6 — `Filter Records`: the search box, as a derived list (session 84, 2026-09-04)
+
+**97 → 98 of 127 (76.4% → 77.2%).** `pickerCoverageFloor` raised in the same commit; five pins moved
+(`script`, `run-tasks`, `on-app-error`, `animation-pair`, `object-store`). Type id `FilterDBModels`.
+
+### §56.0 What a Filter Records is, in the emitted app
+
+`filterdbmodelsnode.ts` calls itself Array Filter's twin (NDA-004 §2), and it is: an array it is *given*,
+filtered client-side, with the same six trigger paths and the same value-arrival guards. So it takes
+Array Filter's shape — a **derived expression** that is always current — and Array Filter's gates: a wired
+Enabled, a wired setting and a wired Filter signal are runtime values a derived list cannot spell; a Run On
+Value Change box unticked means the node re-filters *only* on its Filter signal, which is the trigger form
+this slice does not translate. What it does not share is the grammar: Array Filter's `filterFilter` list is
+six operators over literals, and Filter Records' `visualFilter` is the builder's saved tree — either
+generation — with connected `fp-<name>` parameters, run through `convertVisualFilter` and matched by
+`queryutils.ts`'s local matcher.
+
+The translation is in two halves, and where the line falls is the design:
+
+- **Static, in the exporter** (`recordFilterReadOf`, plan.ts): both saved shapes read the way
+  `savedFilterToNeutral` / `visualQueryToNeutral` read them (the English operator table, `contain` →
+  `containsIgnoreCase`, `exist`/`not exist` → a presence test, a rule with no operator dropped, a group of
+  one collapsed); every connected condition resolved to the expression wired into its `fp-` port through
+  `resolveExpr`; a connected condition whose port has *no wire* dropped with a note, which is the runtime's
+  own `dropUnresolvedConnected`; the schema-bound operators refused by name (`pointsTo`, `relatedTo`,
+  `textSearch`, the id and geo operators — the runtime answers them through the backend's schema, and
+  `matchesQuery` says `$relatedTo` matches nothing locally); a condition on a Date, File, Pointer or Relation
+  column refused by name (`parseValue` wraps a Date into the backend envelope and the local matcher then
+  compares a JS Date against it — not a comparison this slice claims); sort as `compareObjects`' `-`-prefixed
+  list; skip/limit with `getLimit`'s own defaults.
+- **Runtime, in the app** (`src/lib/filterRecords.ts`, the eighth hosted module): the tree as data, pruned
+  the way the neutral converter prunes (a connected condition whose *wired* value is `undefined` at this
+  render does not narrow — that is the search box before anyone types), lowered the way `toParseWhere`
+  lowers (the nine string operators onto an escaped regex, `between` onto a closed range, `exists` onto a
+  null test, `isEmpty` onto an empty-string comparison) and matched the way `matchesOperator` matches (loose
+  `==` on equality, strict `indexOf` on membership, `String(value)` under the regex, an `objectId` key read
+  from the row's `id`); then `compareObjects`, then skip, then limit — `scheduleFilter`'s order.
+
+The source is *any* list expression: a Query Records' state row (new — `query-get`, typed `<Type>[]` off the
+declared collection, allocated on first read by `queryPlanOf` and reused by the disposition pass), a named or
+minted array, another transform. The rows keep their static type through the filter (a filter selects, it
+does not reshape), so a repeater over it maps the declared columns and `tsc` checks them. `Count` is a
+binding (`list-count`, the derived length) for this node and for Array Filter; `firstItemId`, `Filtered`,
+`Done`, `Failure`, `Completed` and `Error` are refused by name, as a derived list has no run to announce.
+
+### §56.1 The fixture — `tests/fixtures/search-desk`
+
+A Query Records over `Contact` (name/city/age/vip, and a Date column `joined` the fixture never filters on)
+feeding a Filter Records: `name containsIgnoreCase <fp-search>` AND `vip equalTo true`, sorted by name,
+limit 5. The search text arrives through a Variable the input writes (§56.4 E2). Items feed a For Each of
+ContactRow; Count feeds a Text. Emitted, the page reads:
+
+```
+{filterRecords(contacts, { and: [{ field: 'name', op: 'containsIgnoreCase', value: searchValue, connected: true }, { field: 'vip', op: 'equalTo', value: true }] }, ['name'], { limit: 5 }).map((item, index) => (
+```
+
+### §56.2 The reverted arm (`EXPECTED19.md`, graded)
+
+Five refusals with the cascade §50.2 predicted, all five predicted: the node, the query "not consumed by a
+rendered repeater", the For Each unfed, three wires dropped, the pathway verdict. Nothing unpredicted on the
+fixture; what the build found is below.
+
+### §56.3 Built
+
+plan.ts: `RecordFilterOp`, `RecordWhere`, the `query-get` / `record-filter` / `list-count` expression kinds and
+their three switch sites (`maybeUndefinedExpr`, `exprTsType`, `exprValidIn`), `whereExprs`, `queryPlanOf` +
+`queryReaders`, `FilterDBModels` in `LIST_PRODUCERS`, `recordFilterReadOf`, the `count` opt-in in
+`LOGIC_VALUE_OUTPUTS`, the DbCollection2 disposition pass over `readByLandedTransform`. component.ts: the
+three `exprCode` cases (the where printed as data, a wired value where its condition sits), the walkers, the
+row-type answer for `query-get`, the lib import earned in the walkers, `recordFilterLib` on the emitted
+component. emit/recordFilterLib.ts: the module. emitApp.ts: the file. Ledger: `translated`, floor 98.
+
+### §56.4 What building it found
+
+- 🔴 **E1 — a read-time mark kept a dead fetch.** `queryReaders` fills when `resolveExpr` reads the query; a
+  Filter Records refused *after* that read (a wired Filter signal, say) left the query `stubbed` with a state
+  row and a fetch effect nothing printed — and the report saying the query translated. The disposition pass
+  now asks whether the query's `items` wire is in `consumed` (it is iff the reader landed) and drops the
+  allocated `QueryPlan` otherwise. Pinned (E1).
+- 🔴 **E2 — a text input's live text is not a render-time source.** The first fixture wired
+  `searchInput.text → fp-search`; the runtime's value port is `onTextChanged`, and `input-text` is legal only
+  inside the input's own handler. The search rides a Variable (`onTextChanged → Variable.value`, the
+  write-through rule; `Variable.value → fp-search`), which is what a Noodl author builds and what the
+  exporter already translates. Recorded, not changed.
+- ⚠️ **The where prints twice** when both Items and Count are consumed (each is its own `resolveExpr`), so
+  the two notes a where can raise (a dropped unwired condition; a field the rows do not carry) are deduped at
+  both sites. The duplicate *call* is pure and cheap; hoisting it to a render local is a residual (§56.7).
+- ⚠️ **The import block is assembled before the body prints** — a flag set in `exprCode` earned nothing. The
+  walkers (`collectExprUse`, `hookExprSources`) set it.
+- ⚠️ Three expectations I wrote about sorting were wrong and the matcher was right: bare `>`/`<` are stable
+  around an absent value; a lowercase initial sorts after every uppercase one; `notContains 'a'` is
+  case-sensitive. The spec pins the runtime's answers, not mine.
+
+### §56.5 Gates and arms
+
+Gates, each alone on the box: package `tsc` 0 · jest **68 files (68 on disk) 2233** (filter-records.test.ts 34 rows:
+§A the fixture whole + the real `tsc` over the emitted app, §B the matcher run on rows, §C the saved shapes and the
+static drops, §D ten refusals by name, §E the three findings pinned) · editor `tsc -p tsconfig.json --noEmit` 0 ·
+`export-ledger:check` OK (176 types, 105 translated) · picker 98/127 `--check` 0 · editor `test:ci` — see the
+hand-off. Arms: **17/17 killed** (`mut19.py`, `mut19-summary.txt`), sources restored md5-identical. Two re-cuts, both
+recorded: M5's first cut never aliased the input it claimed to mutate (a mutant that mutates nothing survives
+honestly); M8's first two cuts narrowed a later `=== 'Date'` comparison to `never` and **failed to compile** —
+"0 total" is not a kill (§55's rule) — the cut that kills retypes the Date column in the map the gate reads.
+
+### §56.6 Driven
+
+Twice. **The editor's real write path** (`drive19.sh`, `drive19.log`, screenshots `drive19-0N-*.png`): the drive copy
+opened from the launcher; the picker card for *Filter Records* carries **no badge** and *Sign In With* (the control)
+still carries its dot; the settings section shows the alpha sentence — *"Code export is in alpha. 98 of the 127 nodes
+you can place export today (77%)…"*; the pre-flight modal leads with the same sentence in the warning colour
+(`rgb(253, 176, 34)`), no verdict, no cascade, no refused node, "Choose folder and export…" reachable; the folder
+dialog routed through the seam; **19 files on disk, 19/19 byte-identical to `emitApp`** (`compare19.log`),
+`src/lib/filterRecords.ts` among them, the report's attention section reads *Nothing*, the README opens on the alpha
+line. **The BUILT app** (`drive19-app.sh`, `drive19-app.log`, `EXPECTED19-drive.md` written first and graded): `npm
+install` against the published `@nodegx/core`, `tsc -b` 0, `vite build`, `vite preview` on :4319, headless Chrome on
+CDP :9334, a seven-row mock backend on :8590 answering the client's one request (a POST that tunnels a GET — run 1 read
+the empty boot state because the mock answered only GET, and says so). **7/7 rows**: boot (search unset, the
+condition dropped) five VIPs by name; "al" four; "zz" none; back to "" five; "a.b" exactly the one row (the regex is
+escaped); "A" five of five; "BOB" none (not a VIP). No console error at any step. Everything torn down by pid.
+
+### §56.7 Residuals (registered, owner NONE unless named)
+
+- The filter call printed twice when Items and Count are both consumed — a render local would print it once.
+- `Count` on a named `Array` (`Collection2`) still refuses through `collectionReadEligible` (§55.7's parity row).
+- `firstItemId` is refused; it is `filtered[0]?.id`, one expression kind away.
+- A condition on a Date column is refused whole; the honest translation needs the wire envelope unwrapped on
+  both sides (§48's Date column).
+- A Query Records' own `visualFilter` is still not translated (it fetches the whole class) — the ledger's
+  blind spot §8 records, unchanged by this slice.
+

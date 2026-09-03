@@ -28,6 +28,7 @@ import { STATES_LIB_PATH, statesLibSource } from './statesLib';
 import { RUN_TASKS_LIB_PATH, runTasksLibSource } from './runTasksLib';
 import { SCRIPT_LIB_PATH, scriptLibSource } from './scriptLib';
 import { ERRORS_LIB_PATH, errorsLibSource } from './errorsLib';
+import { RECORD_FILTER_LIB_PATH, recordFilterLibSource } from './recordFilterLib';
 import { EmittedCopy, emitKits } from './kits';
 import { README_PATH, renderReadme } from './readme';
 import { ExportReportData, REPORT_PATH, ReportComponent, renderReport, stripScope } from './report';
@@ -130,6 +131,7 @@ export function emitApp(ir: ExportIR, catalog: Catalog): EmittedApp {
   let runTasksLibUsed = false;
   // EXP-011 §54. The error channel — earned by a boundary or a raising failure arm; script.ts and runTasks.ts import it too.
   let errorsLibUsed = false;
+  let recordFilterLibUsed = false;
   const reportComponents: ReportComponent[] = [];
   for (const plan of project.plans) {
     if (plan.skipReason) {
@@ -183,6 +185,7 @@ export function emitApp(ir: ExportIR, catalog: Catalog): EmittedApp {
     if (emitted.scriptLib) scriptLibUsed = true;
     if (emitted.runTasksLib) runTasksLibUsed = true;
     if (emitted.errorsLib) errorsLibUsed = true;
+    if (emitted.recordFilterLib) recordFilterLibUsed = true;
   }
 
   /**
@@ -238,6 +241,10 @@ export function emitApp(ir: ExportIR, catalog: Catalog): EmittedApp {
   // EXP-011 §54. `src/lib/errors.ts` — the channel. script.ts and runTasks.ts raise on it, so either earns it too.
   if (errorsLibUsed || scriptLibUsed || runTasksLibUsed) {
     files[ERRORS_LIB_PATH] = GENERATED_MODULE_TS + errorsLibSource();
+  }
+  // EXP-011 §56. `src/lib/filterRecords.ts` — the Filter Records matcher, when a component printed one.
+  if (recordFilterLibUsed) {
+    files[RECORD_FILTER_LIB_PATH] = GENERATED_MODULE_TS + recordFilterLibSource();
   }
 
   const api = apiModules(ir, project);

@@ -435,3 +435,19 @@ target dropping them with a note and an in-element marker. Gates: pkg tsc 0 · j
 tsc 0 · ledger OK (100 translated) · picker 93 floor 93 · 7/7 arms. Driven: the badge gone from the card by
 itself, the pre-flight's 1 refusal named, the real write path through the dialog seam, `Panel.tsx` on disk
 byte-identical to the golden.
+
+**Session 84 (2026-09-04) — 0.2.2's alpha notice, then EXP-011 §56, Tier 2.8 row 6 `Filter Records`, picker 97 → 98.**
+First the sentence the release needed: `exportCoverage()`/`alphaNotice()` read the ledger's floor and a new
+`pickerCoverageTotal` (both held by `export-ledger:picker --check`), and the pre-flight modal, the settings section,
+the emitted README and the 0.2.2 release notes all say *"Code export is in alpha. 98 of the 127 nodes you can place
+export today (77%)… do not ship a production app from it yet"* — one wording, four readers, the gate's own number.
+Then the node: Array Filter's twin, so a derived list with Array Filter's gates; the saved filter tree (both
+generations) read statically with every connected condition resolved to its wired expression, the schema-bound
+operators and the Date/File/Pointer/Relation columns refused by name; the runtime half — the connected-value drop,
+the regex lowering, the loose matcher, sort/skip/limit in `scheduleFilter`'s order — transcribed into
+`src/lib/filterRecords.ts`. A Query Records' state row became a readable list (`query-get`, typed off the declared
+collection, allocated lazily), and a transform's Count a binding. Found and pinned: a read-time query mark kept a dead
+fetch when the transform was refused after the read (E1); a text input's live text is not a render-time source, so the
+search rides a Variable (E2). Gates: pkg tsc 0 · jest 68 files 2233 · editor tsc 0 · ledger OK 105 · picker 98 floor 98 ·
+17/17 arms (two re-cuts recorded). Driven twice: the editor's write path 19/19 byte-identical with the alpha line in
+settings and modal; the BUILT app against a mock backend 7/7 rows.

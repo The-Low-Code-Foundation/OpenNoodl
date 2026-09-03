@@ -1,0 +1,19 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "5ea4c1d3-7b2e-4c8a-9d1f-000000000057",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "rowInputs",
+      "fromProperty": "name",
+      "toId": "nameText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "rowInputs",
+      "fromProperty": "city",
+      "toId": "cityText",
+      "toProperty": "text"
+    }
+  ]
+}

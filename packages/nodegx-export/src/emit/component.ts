@@ -30,7 +30,9 @@ import {
   QueryPlan,
   ValueExpr,
   RecordReadPlan,
-  ScriptPlan
+  ScriptPlan,
+  whereExprs,
+  RecordWhere
 } from '../analyze/plan';
 import { ExportIR, ITEM_OUTPUT_SIGNAL, NodeIR } from '../ir/types';
 import { KitBinding, tsTypeOf as kitPortTsType } from './kits';
@@ -42,6 +44,7 @@ import { ANIMATE_LIB_PATH } from './animateLib';
 import { STATES_LIB_PATH } from './statesLib';
 import { RUN_TASKS_LIB_PATH } from './runTasksLib';
 import { ERRORS_LIB_PATH } from './errorsLib';
+import { RECORD_FILTER_LIB_PATH } from './recordFilterLib';
 import { SCRIPT_LIB_PATH } from './scriptLib';
 import { SCRIPT_CODE_PREFIX } from '../analyze/script';
 import { ID_HELPERS_BY_FN, ID_LIB_PATH, IdHelper } from './idLib';
@@ -135,6 +138,8 @@ export interface EmittedComponent {
   runTasksLib: boolean;
   /** EXP-011 §54. `src/lib/errors.ts` is owed when this component keeps a boundary or raises on the channel. */
   errorsLib: boolean;
+  /** EXP-011 §56. `src/lib/filterRecords.ts` is owed when this component prints a Filter Records read. */
+  recordFilterLib: boolean;
 }
 
 export function emitComponent(
@@ -340,6 +345,8 @@ export function emitComponent(
   /** Which `src/lib/date.ts` helpers this component calls — the import list (EXP-011 Tier 1.3). */
   const usedDateHelpers = new Set<string>();
   const usedUtilHelpers = new Set<string>();
+  /** EXP-011 §56. Set by `exprCode` when a `record-filter` prints — the import and the lib file are earned from it. */
+  let usedRecordFilter = false;
   /** EXP-011 §45. The files-module helpers this component calls — `cloudFileName`, earned by an upload's Name read. Declared here, above the walkers that fill it (the §7.2 TDZ trap). */
   const usedFileHelpers = new Set<string>();
   /**
@@ -394,7 +401,14 @@ export function emitComponent(
     if (expr.kind === 'collection-get') usedCollectionNames.add(expr.collectionName);
     // EXP-011 §55. A handler read of the handle is a state read of this component's row.
     if (expr.kind === 'minted-array-get' && expr.viaLocal === undefined) referencedStateNames.add(mintStateName(expr.nodeId));
-    if (expr.kind === 'list-map' || expr.kind === 'list-filter') collectExprUse(expr.source);
+    if (expr.kind === 'list-map' || expr.kind === 'list-filter' || expr.kind === 'list-count') collectExprUse(expr.source);
+    // EXP-011 §56. A filter reads its source and every wired filter parameter — and earns the matcher's import,
+    // decided here because the import block is assembled before the body prints.
+    if (expr.kind === 'record-filter') {
+      usedRecordFilter = true;
+      collectExprUse(expr.source);
+      whereExprs(expr.where).forEach(collectExprUse);
+    }
     /**
      * EXP-011 Tier 1.3. A date call earns the helper's import, and its arguments earn whatever
      * they read — a variable, a state row, another date call. Missing the recursion here would
@@ -754,7 +768,13 @@ export function emitComponent(
       referencedStateNames.add(mintStateName(expr.nodeId));
       if (!hookMinted.includes(expr.nodeId)) hookMinted.push(expr.nodeId);
     }
-    if (expr.kind === 'list-map' || expr.kind === 'list-filter') hookExprSources(expr.source);
+    if (expr.kind === 'list-map' || expr.kind === 'list-filter' || expr.kind === 'list-count') hookExprSources(expr.source);
+    // EXP-011 §56. A filter reads its source and every wired filter parameter — and earns the matcher's import.
+    if (expr.kind === 'record-filter') {
+      usedRecordFilter = true;
+      hookExprSources(expr.source);
+      whereExprs(expr.where).forEach(hookExprSources);
+    }
     if (expr.kind === 'format') {
       for (const part of expr.parts) if (typeof part !== 'string') hookExprSources(part);
     }
@@ -1312,6 +1332,10 @@ export function emitComponent(
       case 'minted-array-get':
       case 'list-map':
       case 'list-filter':
+      // EXP-011 §56. Must agree with plan.ts maybeUndefinedExpr.
+      case 'query-get':
+      case 'record-filter':
+      case 'list-count':
       case 'input-text':
       case 'control-event':
       case 'literal':
@@ -1374,7 +1398,12 @@ export function emitComponent(
     // exactly these keys and nothing else.
     if (expr.kind === 'list-map') return new Set(expr.entries.map((e) => e.key));
     // A filter selects rows without changing their shape.
-    if (expr.kind === 'list-filter') return listExprFields(expr.source);
+    if (expr.kind === 'list-filter' || expr.kind === 'record-filter') return listExprFields(expr.source);
+    // EXP-011 §56. A query's rows are the declared collection's columns plus `id` — the emitted interface, exactly.
+    if (expr.kind === 'query-get') {
+      const declared = ir.project.collections.find((c) => c.name === expr.collectionName);
+      return new Set(['id', ...(declared?.columns ?? []).map((c) => c.name)]);
+    }
     return null;
   };
   /**
@@ -1752,6 +1781,40 @@ export function emitComponent(
           code = expr.limit === undefined ? `${code}.slice(${start})` : `${code}.slice(${start}, ${start + expr.limit})`;
         }
         return code;
+      }
+      /** EXP-011 §56. A Query Records' rows — its state row, the same in both modes (a handler reads the closure's). */
+      case 'query-get':
+        return expr.stateName;
+      /** EXP-011 §56. A transform's Count — the derived list's length. */
+      case 'list-count':
+        return `${listSourceCode(expr.source, mode)}.length`;
+      /**
+       * EXP-011 §56. `Filter Records` — `filterRecords(source, where, sort, range)` from `src/lib/filterRecords.ts`:
+       * the filter tree as data (a wired parameter's expression printed where its value sits), the sort as
+       * `compareObjects`' `-`-prefixed list, skip/limit as the range. A condition on a field the row type does not
+       * carry is reported the way a transform's read is (`rowFieldReader`): the runtime answers undefined there.
+       */
+      case 'record-filter': {
+        usedRecordFilter = true;
+        const known = listExprFields(expr.source);
+        const whereCode = (w: RecordWhere): string => {
+          if ('and' in w) return `{ and: [${w.and.map(whereCode).join(', ')}] }`;
+          if ('or' in w) return `{ or: [${w.or.map(whereCode).join(', ')}] }`;
+          if (known !== null && !known.has(w.field) && w.field !== 'objectId') {
+            // Printed twice when both Items and Count are consumed — one note, not two.
+            const note = `${plan.path}: Filter Records tests "${w.field}", which the records it reads do not carry — the runtime answers undefined there, and so does the emitted matcher`;
+            if (!notes.includes(note)) notes.push(note);
+          }
+          const value = w.value.kind === 'expr' ? exprCode(w.value.expr, mode) : w.value.value === undefined ? 'undefined' : JSON.stringify(w.value.value);
+          return `{ field: ${tsLiteral(w.field)}, op: ${tsLiteral(w.op)}, value: ${value}${w.connected ? ', connected: true' : ''} }`;
+        };
+        const where = expr.where === null ? 'null' : whereCode(expr.where);
+        const sort = `[${expr.sort.map((s) => tsLiteral((s.direction === 'descending' ? '-' : '') + s.field)).join(', ')}]`;
+        const range =
+          expr.skip !== undefined || expr.limit !== undefined
+            ? `, { ${[...(expr.skip !== undefined ? [`skip: ${expr.skip}`] : []), ...(expr.limit !== undefined ? [`limit: ${expr.limit}`] : [])].join(', ')} }`
+            : '';
+        return `filterRecords(${listSourceCode(expr.source, mode)}, ${where}, ${sort}${range})`;
       }
       /** A Script node's output (EXP-011 §52) — off the handle's live `outputs`, the same in both modes. */
       case 'script-out':
@@ -3649,6 +3712,11 @@ export function emitComponent(
     const names = [...(raisesAppErrors ? ['raiseAppError'] : []), ...(plan.appErrors.length > 0 ? ['useAppError'] : [])];
     internalImports.set(specifier, `import { ${names.join(', ')} } from '${specifier}';`);
   }
+  // EXP-011 §56. The Filter Records matcher, earned where a `record-filter` printed.
+  if (usedRecordFilter) {
+    const specifier = `${relRoot}/${RECORD_FILTER_LIB_PATH.replace(/^src\//, '').replace(/\.ts$/, '')}`;
+    internalImports.set(specifier, `import { filterRecords } from '${specifier}';`);
+  }
   if (usedUtilHelpers.size > 0) {
     const specifier = `${relRoot}/${UTIL_LIB_PATH.replace(/^src\//, '').replace(/\.ts$/, '')}`;
     internalImports.set(specifier, `import { ${[...usedUtilHelpers].sort().join(', ')} } from '${specifier}';`);
@@ -4617,7 +4685,13 @@ export function emitComponent(
       const srcCode = exprCode(itemsExpr, 'render');
       // `?? []` is foreach.tsx's own "empty arrival clears the list". EXP-011 §55: a minted read is the hook
       // local, an array by construction (`?? noArray` is already in the hook line).
-      const source = itemsExpr.kind === 'minted-array-get' ? srcCode : SIMPLE_REF.test(srcCode) ? `(${srcCode} ?? [])` : `((${srcCode}) ?? [])`;
+      // EXP-011 §56: a filterRecords(...) call answers an array by construction, like the hook local.
+      const source =
+        itemsExpr.kind === 'minted-array-get' || itemsExpr.kind === 'record-filter'
+          ? srcCode
+          : SIMPLE_REF.test(srcCode)
+            ? `(${srcCode} ?? [])`
+            : `((${srcCode}) ?? [])`;
       return [`${pad(indent)}{${source}.map((${itemLocal}, ${indexLocal}) => (`, ...lines, `${pad(indent)}))}`];
     }
     // Restrict to fields the item type actually carries — the runtime feeds undefined outside
@@ -5882,7 +5956,9 @@ export function emitComponent(
     // EXP-011 §53.
     runTasksLib: plan.runTasks.length > 0,
     // EXP-011 §54.
-    errorsLib: plan.appErrors.length > 0 || raisesAppErrors
+    errorsLib: plan.appErrors.length > 0 || raisesAppErrors,
+    // EXP-011 §56.
+    recordFilterLib: usedRecordFilter
   };
 }
 

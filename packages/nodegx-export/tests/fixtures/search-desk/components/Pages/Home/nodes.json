@@ -1,0 +1,163 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "5ea4c1d3-7b2e-4c8a-9d1f-000000000058",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "page",
+      "type": "Page",
+      "label": "Home",
+      "children": [
+        "shell"
+      ],
+      "parameters": {
+        "title": "Search Desk",
+        "urlPath": "home"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "shell",
+      "type": "Group",
+      "label": "Shell",
+      "parent": "page",
+      "children": [
+        "headline",
+        "searchInput",
+        "countText",
+        "contactList"
+      ],
+      "parameters": {
+        "flexDirection": "column",
+        "alignItems": "flex-start",
+        "rowGap": "var(--space-3)",
+        "paddingTop": "var(--space-8)",
+        "paddingLeft": "var(--space-6)"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "headline",
+      "type": "Text",
+      "label": "Headline",
+      "parent": "shell",
+      "parameters": {
+        "text": "Search Desk",
+        "fontSize": "var(--text-3xl)",
+        "color": "var(--foreground)",
+        "fontWeight": "var(--font-semibold)"
+      },
+      "x": 160,
+      "y": 280
+    },
+    {
+      "id": "searchInput",
+      "type": "net.noodl.controls.textinput",
+      "label": "Search",
+      "parent": "shell",
+      "parameters": {
+        "placeholder": "Search VIPs by name",
+        "borderColor": "var(--border)",
+        "backgroundColor": "var(--background)",
+        "borderRadius": "var(--radius-md)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "paddingLeft": "var(--space-3)",
+        "paddingRight": "var(--space-3)",
+        "paddingTop": "var(--space-2)",
+        "paddingBottom": "var(--space-2)"
+      },
+      "x": 160,
+      "y": 400
+    },
+    {
+      "id": "countText",
+      "type": "Text",
+      "label": "Count",
+      "parent": "shell",
+      "parameters": {
+        "fontSize": "var(--text-sm)",
+        "color": "var(--muted-foreground)"
+      },
+      "x": 160,
+      "y": 520
+    },
+    {
+      "id": "contactList",
+      "type": "For Each",
+      "label": "One row per match",
+      "parent": "shell",
+      "parameters": {
+        "template": "/Components/ContactRow"
+      },
+      "x": 160,
+      "y": 640
+    },
+    {
+      "id": "searchVar",
+      "type": "Variable2",
+      "label": "search variable",
+      "parameters": {
+        "name": "search"
+      },
+      "x": 410,
+      "y": 340
+    },
+    {
+      "id": "query",
+      "type": "DbCollection2",
+      "label": "All contacts",
+      "parameters": {
+        "collectionName": "Contact"
+      },
+      "x": 410,
+      "y": 400
+    },
+    {
+      "id": "filter",
+      "type": "FilterDBModels",
+      "label": "VIPs matching the search",
+      "x": 410,
+      "y": 520,
+      "parameters": {
+        "collectionName": "Contact",
+        "visualFilter": {
+          "id": "q",
+          "type": "and",
+          "conditions": [
+            {
+              "id": "q-0",
+              "kind": "field",
+              "field": "name",
+              "operator": "containsIgnoreCase",
+              "valueSource": "connected",
+              "valuePortName": "fp-search"
+            },
+            {
+              "id": "q-1",
+              "kind": "field",
+              "field": "vip",
+              "operator": "equalTo",
+              "valueSource": "static",
+              "value": true
+            }
+          ]
+        },
+        "visualSorting": [
+          {
+            "property": "name",
+            "order": "ascending"
+          }
+        ],
+        "filterEnableLimit": true,
+        "filterLimit": 5,
+        "filterSkip": 0
+      }
+    }
+  ],
+  "visualRoots": [
+    "page"
+  ]
+}

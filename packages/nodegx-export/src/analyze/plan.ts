@@ -862,6 +862,48 @@ export type BindingSource =
  * runtime folds it — format parts to '', truthiness to false, render children/attrs to the
  * empty/omitted form.
  */
+/**
+ * EXP-011 §56. The neutral operators a `Filter Records` condition may carry and still translate — the ones
+ * `queryutils.ts`'s local matcher answers from a loaded record alone, after `toParseWhere`'s lowering. Everything
+ * schema-bound (`pointsTo`, `relatedTo`, `textSearch`, the id and geo operators) is refused by name in
+ * `recordFilterReadOf`, because the runtime resolves those through the backend or not at all.
+ */
+export type RecordFilterOp =
+  | 'equalTo'
+  | 'notEqualTo'
+  | 'lessThan'
+  | 'greaterThan'
+  | 'lessThanOrEqualTo'
+  | 'greaterThanOrEqualTo'
+  | 'containedIn'
+  | 'notContainedIn'
+  | 'exists'
+  | 'matchesRegex'
+  | 'contains'
+  | 'notContains'
+  | 'containsIgnoreCase'
+  | 'startsWith'
+  | 'notStartsWith'
+  | 'startsWithIgnoreCase'
+  | 'endsWith'
+  | 'notEndsWith'
+  | 'endsWithIgnoreCase'
+  | 'between'
+  | 'notBetween'
+  | 'isEmpty'
+  | 'isNotEmpty';
+
+/**
+ * EXP-011 §56. A `Filter Records` filter tree as the emitted app evaluates it — the builder's saved shape (either
+ * generation) read the way `savedFilterToNeutral` / `visualQueryToNeutral` read it, with every value either a
+ * static JSON value or the expression wired into the condition's `fp-<name>` port. `connected` carries the runtime's
+ * `dropUnresolvedConnected` rule to the client: a connected condition whose value is `undefined` does not narrow.
+ */
+export type RecordWhere =
+  | { and: RecordWhere[] }
+  | { or: RecordWhere[] }
+  | { field: string; op: RecordFilterOp; value: { kind: 'json'; value: unknown } | { kind: 'expr'; expr: ValueExpr }; connected: boolean };
+
 export type ValueExpr =
   | { kind: 'prop'; name: string }
   | { kind: 'input-text'; inputId: string }
@@ -976,6 +1018,26 @@ export type ValueExpr =
       skip?: number;
       limit?: number;
     }
+  /**
+   * EXP-011 §56. A `Query Records`' result, read as a list: the state row its fetch effect fills (`QueryPlan`),
+   * typed `<TypeName>[]` off the project's declared collection — the same row the repeater branch reads directly.
+   */
+  | { kind: 'query-get'; nodeId: string; stateName: string; typeName: string; collectionName: string }
+  /**
+   * EXP-011 §56. `Filter Records` over a list — the saved filter tree, the visual sorting and skip/limit, applied
+   * in `scheduleFilter`'s order by `src/lib/filterRecords.ts` (the runtime's local matcher, transcribed). Unlike
+   * `list-filter` the rows keep their static type: a filter selects, it does not reshape.
+   */
+  | {
+      kind: 'record-filter';
+      source: ValueExpr;
+      where: RecordWhere | null;
+      sort: Array<{ field: string; direction: 'ascending' | 'descending' }>;
+      skip?: number;
+      limit?: number;
+    }
+  /** EXP-011 §56. A list transform's `Count` — the derived list's length, always current. */
+  | { kind: 'list-count'; source: ValueExpr }
   /**
    * An `HTTP Request` output (EXP-011 Tier 1.2) — the answer the last request produced.
    *
@@ -5368,13 +5430,40 @@ function planComponent(
     if (feeds.length !== 1) return { tsType: 'any' };
     const source = resolveExpr(nodeById.get(feeds[0].fromId), feeds[0].fromProperty, newCtx());
     const namedOf = (e: ValueExpr | null): string | undefined =>
-      e === null ? undefined : e.kind === 'collection-get' ? e.collectionName : e.kind === 'list-filter' ? namedOf(e.source) : undefined;
+      e === null ? undefined : e.kind === 'collection-get' ? e.collectionName : e.kind === 'list-filter' || e.kind === 'record-filter' ? namedOf(e.source) : undefined;
     const name = namedOf(source);
     const collectionPlan = name === undefined ? undefined : registry.collections.get(name);
     return collectionPlan === undefined ? { tsType: 'any' } : { tsType: collectionPlan.interfaceName, collectionName: name };
   };
   const mintVars = new Map<string, StateVarPlan>();
   /** The handle row — `null` until the first Do, as the node's `id` is `undefined` until then. */
+  /**
+   * EXP-011 §56. The state row a `Query Records`' result lands in, allocated on first read so a list transform over
+   * the query can name it in any pass; the disposition pass below reuses the row rather than minting a second one.
+   * `queryReaders` is the set of queries something translated reads through {@link resolveExpr} — the disposition
+   * pass keeps such a query even when no repeater consumes it directly.
+   */
+  const usedQueryStateNames = new Set<string>();
+  const queryReaders = new Set<string>();
+  const queryPlanOf = (node: NodeIR): QueryPlan => {
+    const existing = plan.queries.find((q) => q.nodeId === node.id);
+    if (existing !== undefined) return existing;
+    const collectionName = String(literalParam(node, 'collectionName') ?? 'Record');
+    const { typeName, plural, moduleBase, fetchName } = collectionModuleNames(collectionName);
+    const stateName = dedupe(plural, usedQueryStateNames);
+    const query: QueryPlan = {
+      nodeId: node.id,
+      collectionName,
+      stateName,
+      setterName: `set${stateName.charAt(0).toUpperCase()}${stateName.slice(1)}`,
+      itemName: typeName.charAt(0).toLowerCase() + typeName.slice(1),
+      fetchName,
+      typeName,
+      moduleBase
+    };
+    plan.queries.push(query);
+    return query;
+  };
   const mintStateOf = (node: NodeIR): StateVarPlan => {
     let stateVar = mintVars.get(node.id);
     if (stateVar === undefined) {
@@ -5892,7 +5981,9 @@ function planComponent(
    * fields reported). Routing it through here would retype its rows as `any` and lose that —
    * the §10 "untyped list" contract applied to the one source that does not need it.
    */
-  const LIST_PRODUCERS = new Set(['Collection2', 'Filter Collection', 'Map Collection']);
+  // EXP-011 §56. `Filter Records` is the fourth: a derived list over whatever feeds its Items — a Query Records'
+  // state row, a named or minted array, another transform — with the record filter grammar evaluated client-side.
+  const LIST_PRODUCERS = new Set(['Collection2', 'Filter Collection', 'Map Collection', 'FilterDBModels']);
 
   /**
    * Whether a `Collection2` is a plain read of a named array (COLLECTIONS-TARGET §2).
@@ -6004,7 +6095,8 @@ function planComponent(
      * silently dropping a signal chain would leave an app whose rows are right and whose
      * side-effects never happen.
      */
-    for (const wire of component.connections.filter((c) => c.fromId === node.id && c.fromProperty !== 'items')) {
+    // EXP-011 §56. `count` is read through `resolveExpr` as `list-count` (a derived length), so it is not a stray.
+    for (const wire of component.connections.filter((c) => c.fromId === node.id && c.fromProperty !== 'items' && c.fromProperty !== 'count')) {
       const port = wire.fromProperty;
       if (port === 'modified' || port === 'done' || port === 'failure' || port === 'completed') {
         ctx.defer = `its ${port === 'modified' ? 'Changed/Filtered' : port} signal is consumed — a derived list is always current and has no run to announce`;
@@ -6015,7 +6107,207 @@ function planComponent(
     }
 
     if (node.type === 'Map Collection') return mapReadOf(node, source, ctx);
+    if (node.type === 'FilterDBModels') return recordFilterReadOf(node, source, ctx);
     return filterReadOf(node, source, ctx);
+  };
+
+  /**
+   * EXP-011 §56 — `Filter Records` (`filterdbmodelsnode.ts`): the saved filter tree, the visual sorting and
+   * skip/limit, over the list wired into Items.
+   *
+   * The node is Array Filter's twin in the runtime (NDA-004 §2 says so in those words), and it takes Array Filter's
+   * gates: a wired Enabled, a wired setting and a wired Filter signal are runtime values a derived expression
+   * cannot spell; a Run On Value Change box unticked means the node re-filters only on its Filter signal, which is
+   * the trigger form. Everything else — the two saved shapes, the operator vocabulary, the connected-value drop,
+   * sort/skip/limit and their order — is read here exactly as `convertVisualFilter` and `scheduleFilter` read it,
+   * and evaluated by `src/lib/filterRecords.ts` in the emitted app.
+   */
+  const recordFilterReadOf = (node: NodeIR, source: ValueExpr, ctx: ResolveCtx): ValueExpr | null => {
+    if (wiredPorts.has(`${node.id}:enabled`)) {
+      ctx.defer = 'its Enabled input is wired — whether the filter applies is a runtime value';
+      return null;
+    }
+    if (wiredPorts.has(`${node.id}:filter`)) {
+      ctx.defer = 'its Filter signal is wired — a derived list is always current and has no run to trigger';
+      return null;
+    }
+    for (const p of node.parameters) {
+      if (p.name.startsWith('runOnChange-') && p.value.kind === 'literal' && p.value.value === false) {
+        const box = p.name.slice('runOnChange-'.length).replace(/^fp-/, '');
+        ctx.defer = `its Run On Value Change box for "${box}" is unticked — it would re-filter only on its Filter signal, which this slice does not translate`;
+        return null;
+      }
+    }
+    const wiredSetting = [...wiredPorts].find(
+      (p) => p.startsWith(`${node.id}:filter`) || p.startsWith(`${node.id}:visual`) || p === `${node.id}:collectionName` || p === `${node.id}:backendId`
+    );
+    if (wiredSetting !== undefined) {
+      ctx.defer = `its ${wiredSetting.slice(node.id.length + 1)} setting is wired — the filter is not statically known`;
+      return null;
+    }
+    // `enabled` false passes the records straight through — no filter, no sort, no limit (`scheduleFilter`).
+    if (literalParam(node, 'enabled') === false) {
+      ctx.logicNodeIds.push(node.id);
+      return source;
+    }
+    const collectionName = literalParam(node, 'collectionName');
+    const columnTypes = new Map<string, string>(
+      (ir.project.collections.find((c) => c.name === collectionName)?.columns ?? []).map((c) => [c.name, c.type])
+    );
+    const label = node.authoredLabel !== undefined ? `"${node.authoredLabel}"` : 'Filter Records';
+
+    /** A condition's static value or its wired expression; `undefined` when a connected port has no wire (dropped). */
+    type ConditionValue = { kind: 'json'; value: unknown } | { kind: 'expr'; expr: ValueExpr };
+    const connectedValue = (param: string): ConditionValue | null | undefined => {
+      const feeds = component.connections.filter((c) => c.toId === node.id && c.toProperty === `fp-${param}`);
+      if (feeds.length === 0) return undefined;
+      if (feeds.length > 1) {
+        ctx.defer = `two wires feed its "${param}" filter parameter — last-writer-wins is not statically ordered`;
+        return null;
+      }
+      const expr = resolveExpr(nodeById.get(feeds[0].fromId), feeds[0].fromProperty, ctx);
+      if (expr === null) {
+        ctx.defer = `its "${param}" filter parameter is fed by ${ctx.defer ?? 'no statically known source'}`;
+        return null;
+      }
+      ctx.consumes.push(feeds[0].key);
+      return { kind: 'expr', expr };
+    };
+    const SUPPORTED = new Set<string>([
+      'equalTo', 'notEqualTo', 'lessThan', 'greaterThan', 'lessThanOrEqualTo', 'greaterThanOrEqualTo', 'containedIn',
+      'notContainedIn', 'exists', 'matchesRegex', 'contains', 'notContains', 'containsIgnoreCase', 'startsWith',
+      'notStartsWith', 'startsWithIgnoreCase', 'endsWith', 'notEndsWith', 'endsWithIgnoreCase', 'between', 'notBetween',
+      'isEmpty', 'isNotEmpty'
+    ]);
+    const VISUAL_OPERATORS: Record<string, string> = {
+      'equal to': 'equalTo',
+      'not equal to': 'notEqualTo',
+      'greater than': 'greaterThan',
+      'greater than or equal to': 'greaterThanOrEqualTo',
+      'less than': 'lessThan',
+      'less than or equal to': 'lessThanOrEqualTo',
+      'points to': 'pointsTo',
+      contain: 'containsIgnoreCase'
+    };
+    /** One field condition, or null when the runtime drops it, or `false` after a refusal (ctx.defer set). */
+    const condition = (field: string, op: string, value: ConditionValue | null | undefined, connected: boolean): RecordWhere | null | false => {
+      if (value === null) return false;
+      if (!SUPPORTED.has(op)) {
+        ctx.defer = `its "${field}" condition uses "${op}", which the runtime answers through the backend's schema and this slice does not evaluate client-side`;
+        return false;
+      }
+      const columnType = columnTypes.get(field);
+      if (columnType === 'Date' || columnType === 'File' || columnType === 'Pointer' || columnType === 'Relation') {
+        ctx.defer = `its "${field}" condition is on a ${columnType} column, which the runtime compares through the backend's ${columnType === 'Date' ? 'date envelope' : 'reference shape'} and this slice does not reproduce`;
+        return false;
+      }
+      if ((op === 'between' || op === 'notBetween') && value?.kind === 'json' && !(Array.isArray(value.value) && value.value.length === 2)) {
+        ctx.defer = `its "${field}" ${op === 'between' ? 'between' : 'not between'} condition has no [from, to] pair — the runtime reports a filter failure and keeps the previous result`;
+        return false;
+      }
+      // `isEmpty`/`isNotEmpty` take no value; `exists` carries its boolean as the value in both saved shapes.
+      const finalValue: ConditionValue =
+        op === 'isEmpty' || op === 'isNotEmpty' ? { kind: 'json', value: true } : value === undefined ? { kind: 'json', value: undefined } : value;
+      // The runtime drops a connected condition whose port supplied nothing (`dropUnresolvedConnected`) — statically
+      // known here when the port has no wire at all; at runtime, when the wired value is undefined (the lib's job).
+      if (connected && value === undefined && op !== 'exists') {
+        // Read twice when both Items and Count are consumed — one note, not two.
+        const note = `${label} condition on "${field}" reads a filter parameter nothing is wired into — the runtime drops the condition, and so does the export`;
+        if (!notes.includes(note)) notes.push(note);
+        return null;
+      }
+      return { field, op: op as RecordFilterOp, value: finalValue, connected };
+    };
+    const savedGroup = (item: any): RecordWhere | null | false => {
+      const isGroup = item !== null && typeof item === 'object' && (item.type === 'and' || item.type === 'or');
+      if (isGroup) {
+        const children: RecordWhere[] = [];
+        for (const child of Array.isArray(item.conditions) ? item.conditions : []) {
+          const c = savedGroup(child);
+          if (c === false) return false;
+          if (c !== null) children.push(c);
+        }
+        if (children.length === 0) return null;
+        if (children.length === 1) return children[0];
+        return item.type === 'or' ? { or: children } : { and: children };
+      }
+      if (item === null || typeof item !== 'object') return null;
+      if (item.kind === 'relation' || item.operator === 'relatedTo') {
+        ctx.defer = 'it filters by a relation, which the runtime cannot answer from a loaded record either (`$relatedTo` matches nothing locally)';
+        return false;
+      }
+      if (!item.field || !item.operator) return null;
+      const connected = item.valueSource === 'connected' && !!item.valuePortName;
+      const param = connected ? String(item.valuePortName).replace(/^fp-/, '') : undefined;
+      const wired = connected ? connectedValue(param!) : undefined;
+      if (wired === null) return false;
+      // The runtime falls back to the literal typed into a connected row only without `dropUnresolvedConnected`;
+      // this family passes it, so an unwired connected condition drops rather than reading `item.value`.
+      const value: ConditionValue | undefined = connected ? wired : { kind: 'json', value: item.value };
+      return condition(String(item.field), String(item.operator), value, connected);
+    };
+    const visualNode = (q: any): RecordWhere | null | false => {
+      if (q === null || typeof q !== 'object') return null;
+      if (q.combinator !== undefined && Array.isArray(q.rules)) {
+        const children: RecordWhere[] = [];
+        for (const rule of q.rules) {
+          const c = visualNode(rule);
+          if (c === false) return false;
+          if (c !== null) children.push(c);
+        }
+        if (children.length === 0) return null;
+        if (children.length === 1) return children[0];
+        return q.combinator === 'or' ? { or: children } : { and: children };
+      }
+      if (q.operator === 'related to') {
+        ctx.defer = 'it filters by a relation, which the runtime cannot answer from a loaded record either (`$relatedTo` matches nothing locally)';
+        return false;
+      }
+      if (!q.property) return null;
+      if (q.operator === 'exist' || q.operator === 'not exist') {
+        return condition(String(q.property), 'exists', { kind: 'json', value: q.operator === 'exist' }, false);
+      }
+      const op = VISUAL_OPERATORS[String(q.operator ?? '')];
+      if (op === undefined) return null; // a rule whose operator was never chosen — the runtime drops it too
+      const connected = q.input !== undefined;
+      const wired = connected ? connectedValue(String(q.input)) : undefined;
+      if (wired === null) return false;
+      return condition(String(q.property), op, connected ? wired : { kind: 'json', value: q.value }, connected);
+    };
+
+    const rawFilter = node.parameters.find((p) => p.name === 'visualFilter')?.value;
+    const tree = rawFilter === undefined ? undefined : rawFilter.kind === 'json' ? rawFilter.value : rawFilter.kind === 'literal' ? rawFilter.value : undefined;
+    let where: RecordWhere | null = null;
+    if (tree !== undefined && tree !== null && typeof tree === 'object') {
+      const isSavedShape = Array.isArray((tree as any).conditions);
+      const built = isSavedShape ? savedGroup(tree) : visualNode(tree);
+      if (built === false) return null;
+      where = built;
+    } else if (tree !== undefined) {
+      ctx.defer = 'its Filter is not a saved filter tree';
+      return null;
+    }
+
+    const sort: Array<{ field: string; direction: 'ascending' | 'descending' }> = [];
+    const rawSort = node.parameters.find((p) => p.name === 'visualSorting')?.value;
+    const sortList = rawSort?.kind === 'json' && Array.isArray(rawSort.value) ? rawSort.value : [];
+    for (const s of sortList) {
+      if (s === null || typeof s !== 'object' || typeof (s as any).property !== 'string') continue;
+      sort.push({ field: (s as any).property, direction: (s as any).order === 'descending' ? 'descending' : 'ascending' });
+    }
+
+    // `getLimit`/`getSkip`: undefined unless the limit is enabled, then `filterLimit || 10` and `filterSkip || 0`.
+    let skip: number | undefined;
+    let limit: number | undefined;
+    if (literalParam(node, 'filterEnableLimit') === true) {
+      const authoredLimit = literalParam(node, 'filterLimit');
+      const authoredSkip = literalParam(node, 'filterSkip');
+      limit = typeof authoredLimit === 'number' && authoredLimit !== 0 ? authoredLimit : 10;
+      skip = typeof authoredSkip === 'number' ? authoredSkip : 0;
+    }
+
+    ctx.logicNodeIds.push(node.id);
+    return { kind: 'record-filter', source, where, sort, ...(skip ? { skip } : {}), ...(limit !== undefined ? { limit } : {}) };
   };
 
   /** `Array Map` — the `map({…})` script, when every mapping is a plain property name. */
@@ -6416,6 +6708,21 @@ function planComponent(
   const resolveExpr = (fromNode: NodeIR | undefined, fromProperty: string, ctx: ResolveCtx): ValueExpr | null => {
     if (!fromNode) return null;
     if (LIST_PRODUCERS.has(fromNode.type) && fromProperty === 'items') return listReadOf(fromNode, ctx);
+    // EXP-011 §56. A transform's Count is its derived list's length — current whenever the list is.
+    if (LIST_PRODUCERS.has(fromNode.type) && fromProperty === 'count') {
+      const source = listReadOf(fromNode, ctx);
+      return source === null ? null : { kind: 'list-count', source };
+    }
+    // EXP-011 §56. A Query Records' Items read as a list: its state row, typed off the declared collection.
+    if (fromNode.type === 'DbCollection2' && fromProperty === 'items') {
+      if (wiredPorts.has(`${fromNode.id}:collectionName`) || literalParam(fromNode, 'collectionName') === undefined) {
+        ctx.defer = 'the Query Records it reads names no Class statically';
+        return null;
+      }
+      const query = queryPlanOf(fromNode);
+      queryReaders.add(fromNode.id);
+      return { kind: 'query-get', nodeId: fromNode.id, stateName: query.stateName, typeName: query.typeName, collectionName: query.collectionName };
+    }
     /**
      * `Object` in "From repeater" mode is the repeater's row read sideways
      * (EXP-002-MODEL2-TARGET-OUTPUT §4), so a `prop-p` read is a prop read on this component.
@@ -7350,6 +7657,10 @@ function planComponent(
       case 'minted-array-get':
       case 'list-map':
       case 'list-filter':
+      // EXP-011 §56. The query row boots `[]`; the filtered list and its length are computed from it.
+      case 'query-get':
+      case 'record-filter':
+      case 'list-count':
       case 'input-text':
       case 'control-event':
       case 'literal':
@@ -7675,6 +7986,13 @@ function planComponent(
       case 'list-map':
       case 'list-filter':
         return 'any[]';
+      // EXP-011 §56. A query's rows carry the declared interface, and a filter selects without reshaping.
+      case 'query-get':
+        return `${expr.typeName}[]`;
+      case 'record-filter':
+        return exprTsType(expr.source);
+      case 'list-count':
+        return 'number';
     }
   };
 
@@ -11329,6 +11647,16 @@ function planComponent(
       case 'list-map':
       case 'list-filter':
         return exprValidIn(expr.source, context, invokedScope);
+      // EXP-011 §56. The query row is this component's state, readable wherever a state row is.
+      case 'query-get':
+        return true;
+      case 'list-count':
+        return exprValidIn(expr.source, context, invokedScope);
+      case 'record-filter':
+        return (
+          exprValidIn(expr.source, context, invokedScope) &&
+          whereExprs(expr.where).every((e) => exprValidIn(e, context, invokedScope))
+        );
       case 'input-text':
         return context.kind === 'dom' && context.nodeId === expr.inputId;
       case 'control-event':
@@ -13720,7 +14048,10 @@ function planComponent(
     // taught to `resolveExpr` and left invisible here.
     ...Object.fromEntries(Object.entries(UTIL_NODES).map(([type, spec]) => [type, spec.outputs])),
     // EXP-011 §39. `Log`'s pass-through — the second opt-in site, opted into.
-    [LOG_TYPE]: ['value']
+    [LOG_TYPE]: ['value'],
+    // EXP-011 §56. A transform's Count — the derived list's length (`list-count`), current whenever the list is.
+    'Filter Collection': ['count'],
+    FilterDBModels: ['count']
   };
   for (const connection of component.connections) {
     if (consumed.has(connection.key)) continue;
@@ -14978,31 +15309,25 @@ function planComponent(
 
   // Queries: a DbCollection2 consumed by a rendered repeater becomes state + effect + typed
   // stub (TARGET-OUTPUT §2); anything else about it defers.
-  const usedStateNames = new Set<string>();
   for (const node of component.nodes) {
     if (node.type !== 'DbCollection2') continue;
     const consumedByRepeater = Object.values(plan.repeaters).some((r) => r.itemsQueryId === node.id);
-    if (!consumedByRepeater) {
+    // EXP-011 §56. A query read by a translated list transform (a Filter Records, an Array Filter) is consumed too —
+    // but only when that read LANDED: `queryReaders` fills at read time, and a transform refused after the read would
+    // otherwise leave a state row and a fetch effect nothing prints. The items wire's key is in `consumed` iff it did.
+    const readByLandedTransform =
+      queryReaders.has(node.id) &&
+      component.connections.some((c) => c.fromId === node.id && c.fromProperty === 'items' && consumed.has(c.key));
+    if (!consumedByRepeater && !readByLandedTransform) {
+      plan.queries = plan.queries.filter((q) => q.nodeId !== node.id);
       dispositions[node.id] = {
         kind: 'deferred',
         to: 'EXP-003',
-        reason: 'query result is not consumed by a rendered repeater'
+        reason: 'query result is not consumed by a rendered repeater or a list transform this slice reads'
       };
       continue;
     }
-    const collectionName = String(literalParam(node, 'collectionName') ?? 'Record');
-    const { typeName, plural, moduleBase, fetchName } = collectionModuleNames(collectionName);
-    const stateName = dedupe(plural, usedStateNames);
-    plan.queries.push({
-      nodeId: node.id,
-      collectionName,
-      stateName,
-      setterName: `set${stateName.charAt(0).toUpperCase()}${stateName.slice(1)}`,
-      itemName: typeName.charAt(0).toLowerCase() + typeName.slice(1),
-      fetchName,
-      typeName,
-      moduleBase
-    });
+    queryPlanOf(node);
     dispositions[node.id] = { kind: 'stubbed', reason: 'DbCollection2 → typed api stub + useState/useEffect' };
   }
 
@@ -15947,6 +16272,14 @@ function dispositionForLogic(node: NodeIR, kits: KitIndex): Disposition {
     return { kind: 'unknown-type', reason: node.type === '' ? 'node has no type (editor debris)' : `type ${node.type} is not in the catalog` };
   }
   return { kind: 'deferred', to: 'EXP-003', reason: `logic node (${node.type})` };
+}
+
+/** EXP-011 §56. Every wired expression a filter tree reads, for the walkers that follow an expression's reads. */
+export function whereExprs(where: RecordWhere | null): ValueExpr[] {
+  if (where === null) return [];
+  if ('and' in where) return where.and.flatMap(whereExprs);
+  if ('or' in where) return where.or.flatMap(whereExprs);
+  return where.value.kind === 'expr' ? [where.value.expr] : [];
 }
 
 function literalParam(node: NodeIR, name: string): string | number | boolean | undefined {
