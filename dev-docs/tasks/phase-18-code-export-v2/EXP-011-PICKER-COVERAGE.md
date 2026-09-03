@@ -6989,6 +6989,33 @@ arms 9/9 red, all restored (md5 of the four sources unchanged after each):
   M9 a hosted node's code is ALSO preserved as a comment — 2
 ```
 
+### §52.6 The drive (`run-editor`, `dev:debug`, a copy of script-desk with the refused uploader registered in recents, torn down after)
+
+- **Picker**: `Script` searched — the `Javascript2` card carries **no** export-badge dot (nor do
+  Expression / Function / For Each / Map Collection beside it); the one dotted card in that result
+  is `Subscribe To Changes` (Tier 3.11), and the control search `Run Tasks` shows its 14×14 dot,
+  reachable, titled *"Not exportable yet — EXP-011 Tier 2.8 ro…"*. The ledger is the only list, so
+  the badge left the Script card by itself (`drive15-01-picker-script.png`, `drive15-02-picker-control.png`).
+- **Pre-flight**: Settings → Project → *Export as React code…* (the section is titled *Export as
+  code*; s79's button-text lookup no longer matched and was replaced by a section lookup) → *18
+  files — 1 page, 0 components* · *2 things will not translate* · *Pages/Home — 2 refusals* ·
+  *"Uploader" (Script) — the code reads the Noodl API — the runtime-coupled tier (EXP-003 Tier B)*
+  · no verdict (a Script is not a pathway type) · *Choose folder and export…* reachable
+  (`drive15-03-modal.png`).
+- **The write, through the real path**: the folder dialog routed through the
+  `FileSystem.instance.chooseDirectory` seam, so `checkTarget` → `writeExport` → the toast ran:
+  *"Exported EXP-011 Script Desk Drive — 18 files written to …/drive15-out. 2 things are left out —
+  read EXPORT-REPORT.md first"* (`drive15-04-toast.png`). On disk: **18 files, every one
+  byte-identical to `emitApp` over the same copy** (`compare15.ts`: same 18, diff 0) — `src/lib/script.ts`,
+  the four `src/scripts/pages/Home/*Script.ts`, `Home.tsx` with four `useScript` calls, and
+  `EXPORT-REPORT.md` naming the Uploader under *Nodes left out*.
+- Observed again, not measured: the preview pane on this generator's copy showed *"No HOME
+  component selected"* — the same observation §51.6 registered (owner NONE); both copies come from
+  the same fixture generator, so the generator's project shape is the first suspect.
+- ⚠️ The drive was launched twice: the first stack came up as the peer restarted the editor's
+  `test:ci`, and was torn down at once rather than left idle beside a suite on a box with 80 MB
+  free; the second ran after their run exited.
+
 ### §52.7 What this leaves
 
 - **Next, in §50's order: row 3 `Run Tasks`**, then `On App Error`, `Create New Array` (design session

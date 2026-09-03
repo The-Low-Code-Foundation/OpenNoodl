@@ -40,8 +40,11 @@ afternoon. Memory: `do-not-pile-cpu-work-on-a-shared-box`.
    lifecycle transcribed). Ledger `translated`, floor 94, both pins moved.
 4. **Gates alone**: pkg tsc 0 · jest 64 files (64 on disk) 1981 · editor tsc 0 (2,815 files) ·
    ledger OK · picker 94 `--check` exit 0 · arms 9/9 red on behaviour rows, all restored.
-5. **Driven**: PENDING at the time of writing — the peer's stack held port 9222. See §52.6 in the
-   task file for what ran, or its absence.
+5. **Driven** (§52.6): badge gone from the `Script` card by itself (`Run Tasks` still dotted), the
+   pre-flight's one refusal named with no verdict, the real `writeExport` path through the
+   `FileSystem.instance.chooseDirectory` seam, 18 files, **all 18 byte-identical to `emitApp`**
+   (`compare15.ts`). Stack torn down, recents restored. ⚠️ Settings' export button is found by
+   its *section* (`Export as code`) now — s79's text lookup returned nothing.
 
 ## 🔴 Do this next — EXP-011 Tier 2.8, row 3: `Run Tasks`
 
