@@ -14,7 +14,7 @@ deliberately not built**. ✅ **Read the FINDINGS a row owns, not only its statu
 | 6 | REL-002c — every page as good as the homepage | 🟢 **Everything a session can do is done.** s24 read the phone column; s25 built the semantic tags. ⏳ **RICHARD'S LOOK** + the four judgements §7.3 names |
 | 6b | [REL-010](REL-010-AS-GOOD-AS-THE-PAGE-HE-RATED.md) | ⏳ **RICHARD'S LOOK.** AC1–AC5 met s15, AC6 is a person. ✅ The pictures are current — **re-taken s25 and byte-identical to s24's** |
 | 7 | REL-001 — publish the members' area | ⏳ **RICHARD.** *fix first, publish once*. ✅ **s24's one finding against this row is CLEARED** (s25 — the artefact has an outline now) |
-| 8 | REL-004 — cut and tag `v0.2.2` | 🔴 **Blocked**: `cline-dev` unpushed (**666** at s25 close — re-derive at cut time), CI has run on none of it |
+| 8 | REL-004 — cut and tag `v0.2.2` | 🔴 **Blocked**: `cline-dev` unpushed (**667** at s25 close — re-derive at cut time), CI has run on none of it |
 | 9a / 9b / 10 | REL-011a / REL-011b / REL-009b | 🟢 CLOSED s17 / s19 / s21 |
 | 9c | REL-011c — the three surfaces reach PASSABLE | 🟡 AC1 + AC2 met, all findings built. ⏳ AC3 is Richard's ruling |
 
@@ -86,7 +86,7 @@ there. `/` needed a second wrapper (`landingMain`) because it is one of the two 
 1. ⏳ **Rows 6, 6b, 7 and 9c are RICHARD'S** — and 6/6b are genuinely ready: pictures current,
    §7.3's four phone-column judgements named rather than left to be found, and the one product
    finding that stood against REL-001 is now built.
-2. 🔴 **Row 8 needs a push**: **666** commits ahead of `origin/cline-dev`, CI has run on none.
+2. 🔴 **Row 8 needs a push**: **667** commits ahead of `origin/cline-dev`, CI has run on none.
 3. ⚠️ **The `h1` sits OUTSIDE `<main>` on the nine chrome pages** — `pageHead()` roots in
    `headBand`, which is `ground`'s sibling. Common, legal, not ideal. Fixing it means wrapping in
    `pageShell` and re-photographing. **Owner: NONE — register it before building it.**
