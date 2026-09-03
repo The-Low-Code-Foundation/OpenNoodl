@@ -114,7 +114,7 @@ where export means *taking your app with its backend*. Everything downstream fol
 | [EXP-008](./EXP-008-EXPORT-COVERAGE-LEDGER.md) | Coverage ledger & contributor gate | ✅ Built — **picker ratchet added 2026-08-28** |
 | [EXP-009](./EXP-009-BACKEND-CONNECTION.md) | **The exported app talks to its deployed backend** | 🟢 **Built + driven s33** — AC4 (cloud functions) waits on EXP-011's node |
 | [EXP-010](./EXP-010-CUSTOM-NODES-AND-MODULES.md) | **Custom nodes, modules and prefabs export** | 🔴 **NEW** |
-| [EXP-011](./EXP-011-PICKER-COVERAGE.md) | **Close the picker gap, ranked by what apps need** | 🟡 **TIER 1 COMPLETE, Tier 2.7's three pure utilities built** — 73/127 (57.5%); Tier 2's remainder is Cloud Services (9), the id pair and the component stack pair |
+| [EXP-011](./EXP-011-PICKER-COVERAGE.md) | **Close the picker gap, ranked by what apps need** | 🟡 **92/127 (72.4%) s77** — §49 built the animation pair, `States` and `Animate To Value` (Tier 3.8), as two emitted modules transcribed from `states.ts`, `animate-to-value.ts`, `timerscheduler.ts`, `easecurves.ts` and `bezier-easing`, graded frame by frame against those files, and the **wired style sink** (`opacity`/`color`/`backgroundColor` as an inline `style`) neither could do without; §48 `CSS Definition` + the CSS Class fold + the `Date` column; §47 the named Object; §41–§46 Cloud Services. Left: `Sign In With` (needs a provider), the stack pair, the parent-object family, `Script`, and the Data bucket's not-a-target rows |
 
 ### Order, and why
 

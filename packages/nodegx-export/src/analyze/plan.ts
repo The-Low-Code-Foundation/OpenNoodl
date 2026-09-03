@@ -42,7 +42,9 @@ import { isReservedWord, pascalCase } from '../emit/naming';
 import { DateHelper } from '../emit/dateLib';
 import { UtilHelper, UTIL_HELPER_MAY_BE_UNDEFINED } from '../emit/utilLib';
 import { ID_HELPERS_BY_FN, IdHelper } from '../emit/idLib';
-import { CONTENT_PARAMS, iconSourceOf, StyleRole } from '../emit/style';
+import { CONTENT_PARAMS, iconSourceOf, StyleRole, WIRED_STYLE_SINKS } from '../emit/style';
+import { AnimateEaseName, ANIMATE_EASE_NAMES } from '../emit/animateLib';
+import { StatesValueType, STATES_VALUE_TYPES } from '../emit/statesLib';
 import {
   expressionIdentifiersOf,
   functionMinedPortsOf,
@@ -242,6 +244,28 @@ type TimerTrigger = (typeof TIMER_TRIGGERS)[number];
 const isTimerTrigger = (port: string): port is TimerTrigger => (TIMER_TRIGGERS as readonly string[]).includes(port);
 /** The outputs a Delay publishes; anything else consumed defers the node, named. */
 const TIMER_OUTPUTS = ['done', 'unchanged', 'completed', 'timerStarted', 'timerFinished'];
+/**
+ * EXP-011 §49 — the animation pair. `States` (states.ts): a `states` stringlist and a `values`
+ * stringlist mint the ports — `value-<state>-<name>`, `type-<name>`, `transition-<state>-<name>`,
+ * `transitiondef-<state>`, `to-<state>`, `at-<state>`, `reached-<state>` — plus the fixed
+ * `toggle`, `currentState` (the State input AND the State output share the name), `useTransitions`,
+ * `stateChanged`, `error` and the outcome trio. `Animate To Value` (animate-to-value.ts): four
+ * inputs, `currentValue` and `atTargetValue`.
+ */
+const STATES_TYPE = 'States';
+const ANIMATE_TYPE = 'net.noodl.animatetovalue';
+/** The signal outputs a States publishes — its listeners; anything else consumed defers the node, named. */
+const STATES_SIGNAL_OUTPUTS = ['stateChanged', 'done', 'unchanged', 'failure', 'completed'];
+const ANIMATE_OUTPUTS = ['currentValue', 'atTargetValue'];
+/** A States' fixed input ports; every other input is minted from the two stringlists. */
+const STATES_FIXED_INPUTS = ['states', 'values', 'toggle', 'useTransitions', 'currentState'];
+/** A States' action ports: `toggle`, and `to-<state>` for every state (`registerInputIfNeeded`). */
+const isStatesTrigger = (port: string): boolean => port === 'toggle' || port.startsWith('to-');
+/** The listener chains a States plan carries, in a stable order — every walker over them reads this. */
+const statesListenerChains = (machine: StatesPlan): HandlerAction[][] =>
+  [machine.listeners.stateChanged, machine.listeners.done, machine.listeners.unchanged, machine.listeners.failure, ...Object.values(machine.listeners.reached)].filter(
+    (chain): chain is HandlerAction[] => chain !== undefined
+  );
 /** `log.ts`'s `LEVELS`, in its order — an authored level outside it falls back to `info` as the setter does. */
 const LOG_LEVELS = ['debug', 'info', 'warn', 'error'] as const;
 export type LogLevel = (typeof LOG_LEVELS)[number];
@@ -355,8 +379,15 @@ const OWN_CHAIN_OUTPUTS: Record<string, readonly string[]> = {
   // EXP-011 §45. The picker owns an Unchanged arm (cancel / nothing chosen / superseded).
   [FILE_PICKER_TYPE]: ['done', 'unchanged', 'failure', 'completed'],
   [UPLOAD_FILE_TYPE]: ['done', 'failure', 'completed'],
-  [SIGN_FILE_URL_TYPE]: ['done', 'failure', 'completed']
+  [SIGN_FILE_URL_TYPE]: ['done', 'failure', 'completed'],
+  // EXP-011 §49. The listeners a States' own registration compiles; `reached-<state>` is a prefix
+  // and is skipped by `ownsChainOutput` below. The animate node's one signal likewise.
+  [STATES_TYPE]: STATES_SIGNAL_OUTPUTS,
+  [ANIMATE_TYPE]: ['atTargetValue']
 };
+/** Whether `port` is one of `type`'s own chain outputs — the table above plus a States' `reached-<state>` family. */
+const ownsChainOutput = (type: string, port: string): boolean =>
+  (OWN_CHAIN_OUTPUTS[type] ?? []).includes(port) || (type === STATES_TYPE && port.startsWith('reached-'));
 /**
  * The node's **own** placeholder regex, and deliberately not the Router's.
  *
@@ -1010,7 +1041,23 @@ export type ValueExpr =
       fn: UtilHelper;
       args: ValueExpr[];
       cases?: Array<{ from: string; to: string | undefined }>;
-    };
+    }
+  /**
+   * A `States` node's value outputs (EXP-011 §49) — a read off the `useStates` handle the
+   * component declares: `state` is the State output (`<local>.state`), `value` one of the
+   * authored values (`<local>.values.<name>`, typed by its `type-<name>`), `at` an `At <state>`
+   * (`<local>.state === '<state>'`, a real boolean, so it lands at value sinks too), `error` the
+   * last Error (`<local>.error`, undefined until a failure). No `viaState`: the handle *is* the
+   * render-scope value, read the same way in a handler — the hook re-renders the component on
+   * every frame of a tween, and a handler closes over the latest render, which is what the
+   * interpreter's getter answers too.
+   */
+  | { kind: 'states-out'; nodeId: string; local: string; field: 'state' | 'value' | 'at' | 'error'; name?: string; tsType: string }
+  /**
+   * An `Animate To Value`'s `Current Value` (EXP-011 §49) — the number `useAnimatedValue` returns,
+   * never undefined (it boots 0 and only ever holds a number).
+   */
+  | { kind: 'animate-out'; nodeId: string; local: string };
 
 export type HandlerAction =
   /**
@@ -1527,7 +1574,29 @@ export type HandlerAction =
     }
   | IdNewAction
   | LogAction
-  | DelayAction;
+  | DelayAction
+  | StatesGoAction;
+
+/**
+ * A `States` node's `Toggle` or `To <state>` (EXP-011 §49) — one call on the `useStates` handle:
+ * `<local>.toggle()` or `<local>.goTo('<state>')`.
+ *
+ * ⚠️ **No chains ride on the action, and that is the node's own shape, not a shortcut.** Done,
+ * Unchanged and Failure are *ports of the node*, pulsed by `reportOutcome` whichever trigger asked
+ * — a chain wired off `done` fires for a Toggle and for every `To <state>` alike — so they are
+ * listeners on the node ({@link StatesPlan.listeners}), compiled once, not arms printed at each
+ * call site. The interpreter drains requests after the pass, so the outcome arrives from a
+ * microtask; the handler that asked has already finished, exactly as it has there.
+ */
+export type StatesGoAction = {
+  kind: 'states-go';
+  nodeId: string;
+  /** The `useStates` local. */
+  local: string;
+  verb: 'toggle' | 'to';
+  /** The state a `To <state>` names; absent for Toggle. */
+  state?: string;
+};
 
 /**
  * A `Log`'s `Log` (EXP-011 §39) — `log(level, message, data)` into `src/lib/util.ts`, then the
@@ -1837,6 +1906,75 @@ export interface StyleSheetPlan {
   constName: string;
   /** The authored CSS, verbatim — never trimmed, never reformatted. */
   css: string;
+  comment: string;
+}
+
+/** One `transitiondef-<state>` / `transition-<state>-<value>` — the node's `curve` port shape. */
+export interface StatesCurve {
+  curve: number[];
+  dur: number;
+  delay: number;
+}
+
+/** One authored value of a States node — its `type-<name>` and its `value-<state>-<name>` per state. */
+export interface StatesValueDef {
+  name: string;
+  type: StatesValueType;
+  /** The declared TypeScript type of the read: `number`, `string`, `boolean`; a colour is a `string`. */
+  tsType: string;
+  byState: Record<string, string | number | boolean>;
+  transitions: Record<string, StatesCurve>;
+}
+
+/**
+ * A `States` node (EXP-011 §49): a definition constant above the component (`defineStates({…})`),
+ * a `useStates` handle inside it, the listeners its signal outputs compiled into, and the wired
+ * State input as an effect.
+ *
+ * The values are held by the emitted hook, not by state rows: every frame of a tween publishes a
+ * new snapshot, and a row per value would be five setters per frame for the same re-render.
+ */
+export interface StatesPlan {
+  nodeId: string;
+  /** The `useStates` local — `panel`. */
+  local: string;
+  /** The definition constant — `PANEL_STATES`. */
+  constName: string;
+  states: string[];
+  values: StatesValueDef[];
+  /** `transitiondef-<state>`, by state, where authored. */
+  transitions: Record<string, StatesCurve>;
+  useTransitions: boolean;
+  /** The authored State, when it names a state; the node starts in the first state otherwise. */
+  start: string | undefined;
+  /** The wired State input — `useEffect(() => { local.follow(expr) }, [deps])`. */
+  follow?: ValueExpr;
+  /** The signal outputs, as the chains wired off them. `reached` is by state. */
+  listeners: {
+    stateChanged?: HandlerAction[];
+    reached: Record<string, HandlerAction[]>;
+    done?: HandlerAction[];
+    unchanged?: HandlerAction[];
+    failure?: HandlerAction[];
+  };
+  comment: string;
+}
+
+/**
+ * An `Animate To Value` node (EXP-011 §49): `const <local> = useAnimatedValue(target, { duration,
+ * delay, ease }, onArrive)`. `duration` and `delay` are read where the hook is — a wired one is
+ * the render expression, an authored one a literal — and `ease` is the authored enum, which a
+ * wire cannot deliver (the node indexes `EaseCurves` by it and an unknown name throws).
+ */
+export interface AnimationPlan {
+  nodeId: string;
+  local: string;
+  target: ValueExpr;
+  duration: ValueExpr;
+  delay: ValueExpr;
+  ease: AnimateEaseName;
+  /** The At Target Value chain, when wired. */
+  arrive?: HandlerAction[];
   comment: string;
 }
 
@@ -2276,6 +2414,10 @@ export interface ComponentPlan {
   recordEffects: RecordEffectPlan[];
   /** EXP-011 §48. CSS Definitions, node order — one module constant + one mount effect each. */
   styleSheets: StyleSheetPlan[];
+  /** EXP-011 §49. The States nodes that translated, registration order. */
+  statesMachines: StatesPlan[];
+  /** EXP-011 §49. The Animate To Value nodes that translated, registration order. */
+  animations: AnimationPlan[];
   /**
    * Value output ports this component lifts (§4d child side) — the parent side consults this
    * list off the target's plan, so parent and child agree by construction (the s10 rule).
@@ -2522,6 +2664,8 @@ function planComponent(
     recordEffects: [],
     valueChangedEffects: [],
     styleSheets: [],
+    statesMachines: [],
+    animations: [],
     liftedOutputProps: [],
     instanceLifted: {},
     pendingLifted: [],
@@ -5653,6 +5797,45 @@ function planComponent(
       }
       return { kind: 'literal', value: sd.rows.length };
     }
+    /**
+     * A `States` node's outputs (EXP-011 §49) — reads off the handle the component declares.
+     * The node registers itself on first use, whichever side asks first (a read here, a trigger
+     * in `compileStatesGo`, the wired State in the registration pass); a node that fails its
+     * gate answers every read with the same named reason.
+     */
+    if (fromNode.type === STATES_TYPE) {
+      const registered = statesPlanOf(fromNode);
+      if ('defer' in registered) {
+        ctx.defer = registered.defer;
+        return null;
+      }
+      const read = statesReadOf(registered, fromProperty);
+      if (read === null) {
+        ctx.defer = STATES_SIGNAL_OUTPUTS.includes(fromProperty) || fromProperty.startsWith('reached-')
+          ? `its ${fromProperty} output is consumed as a value — a pulse carries nothing to read`
+          : `its ${fromProperty} output is not a port this node has`;
+        return null;
+      }
+      ctx.logicNodeIds.push(fromNode.id);
+      return read;
+    }
+    /** An `Animate To Value`'s Current Value (EXP-011 §49) — the number its hook returns. */
+    if (fromNode.type === ANIMATE_TYPE) {
+      if (fromProperty !== 'currentValue') {
+        ctx.defer =
+          fromProperty === 'atTargetValue'
+            ? 'its At Target Value output is consumed as a value — a pulse carries nothing to read'
+            : `its ${fromProperty} output is not a port this node has`;
+        return null;
+      }
+      const registered = animationPlanOf(fromNode);
+      if ('defer' in registered) {
+        ctx.defer = registered.defer;
+        return null;
+      }
+      ctx.logicNodeIds.push(fromNode.id);
+      return { kind: 'animate-out', nodeId: fromNode.id, local: registered.local };
+    }
     if (fromNode.type === 'Variable2' && fromProperty === 'value') {
       const name = variableNameOf(fromNode);
       return name !== undefined ? { kind: 'store-get', variableName: name } : null;
@@ -6366,6 +6549,16 @@ function planComponent(
       case 'now-out':
         return false;
       /**
+       * EXP-011 §49. The State is always a name once the node has booted; a value is authored in
+       * every state (the gate); an `At <state>` is a comparison. Only `Error` is empty until a
+       * failure — `_internal.error` is unwritten until then. Must agree with component.ts.
+       */
+      case 'states-out':
+        return expr.field === 'error';
+      /** EXP-011 §49. Boots 0 and only ever holds a number (animate-to-value.ts `currentNumber`). */
+      case 'animate-out':
+        return false;
+      /**
        * The id nodes (EXP-011 §37), and the answer differs **by node** rather than by form.
        *
        * The chain-local is never undefined in either: it is only ever minted inside the Done arm,
@@ -6676,6 +6869,11 @@ function planComponent(
        */
       case 'now-out':
         return expr.output === 'timestamp' ? 'number' : expr.output === 'iso' ? 'string' : 'unknown';
+      /** EXP-011 §49. The declared `type-<name>` for a value, `string` for the State and Error, `boolean` for an At. */
+      case 'states-out':
+        return expr.tsType;
+      case 'animate-out':
+        return 'number';
       /**
        * Both messages are string literals the emitter writes itself (EXP-011 §24) — so `string`
        * in **both** forms, and the row form does not append `| undefined` here.
@@ -6779,7 +6977,9 @@ function planComponent(
     ((type === 'net.noodl.controls.checkbox' || type === 'Checkbox') && (toProperty === 'check' || toProperty === 'uncheck')) ||
     (isTextInputType(type) && toProperty === 'clear') ||
     // EXP-011 §39. A Delay's Start/Restart/Stop — one node, three action ports.
-    (type === TIMER_TYPE && isTimerTrigger(toProperty));
+    (type === TIMER_TYPE && isTimerTrigger(toProperty)) ||
+    // EXP-011 §49. A States' Toggle and its `to-<state>` family.
+    (type === STATES_TYPE && isStatesTrigger(toProperty));
 
   // Which components open as popups anywhere in the project — the close side translates only
   // inside one; elsewhere the runtime resolves an enclosing popup by ancestor walk, which a
@@ -8806,6 +9006,277 @@ function planComponent(
     };
   };
 
+  // ---- EXP-011 §49: the animation pair -----------------------------------------------------
+
+  /** A wired style parameter (opacity, color, backgroundColor) on a node whose catalog entry declares the port. */
+  const styleSinkOf = (toNode: NodeIR, port: string): { css: string; sink: 'number' | 'string' } | undefined => {
+    const sink = WIRED_STYLE_SINKS[port];
+    if (sink === undefined) return undefined;
+    return catalog.get(toNode.type)?.inputs?.some((input) => input.name === port) ? sink : undefined;
+  };
+
+  /** A `curve`-typed parameter as the node reads it: `{ curve: [x1, y1, x2, y2], dur, delay }`, or the reason it is not one. */
+  const curveParam = (node: NodeIR, name: string): StatesCurve | undefined | { defer: string } => {
+    const param = node.parameters.find((p) => p.name === name)?.value;
+    if (param === undefined) return undefined;
+    const raw = param.kind === 'json' ? param.value : param.kind === 'literal' ? param.value : undefined;
+    if (typeof raw !== 'object' || raw === null) return { defer: `its ${name} is not a transition curve` };
+    const { curve, dur, delay } = raw as { curve?: unknown; dur?: unknown; delay?: unknown };
+    if (!Array.isArray(curve) || curve.length !== 4 || !curve.every((n) => typeof n === 'number' && Number.isFinite(n))) {
+      return { defer: `its ${name} has no four-point curve` };
+    }
+    if (typeof dur !== 'number' || typeof delay !== 'number') return { defer: `its ${name} has no numeric duration and delay` };
+    return { curve: [...curve] as number[], dur, delay };
+  };
+
+  const statesPlans = new Map<string, StatesPlan | { defer: string }>();
+  const statesLocals = new Map<string, string>();
+  /**
+   * A `States` node, registered on first use by whichever side asks — a read in `resolveExpr`, a
+   * trigger in `compileStatesGo`, or the registration pass beside the effect producers — and
+   * memoized so every side gets the same handle or the same named reason.
+   *
+   * 🔴 **The core is cached before the listeners are compiled**, because a listener chain may
+   * fire this node's own `To <state>` through another node, and that compile asks for the handle:
+   * the provisional entry answers it. If a listener then defers, the entry flips to the reason
+   * and every sink compiled against the provisional handle is dropped from the cache, so no
+   * handler keeps a call on a local the component never declares.
+   */
+  const statesPlanOf = (node: NodeIR): StatesPlan | { defer: string } => {
+    const cached = statesPlans.get(node.id);
+    if (cached !== undefined) return cached;
+    const refuse = (defer: string): { defer: string } => {
+      const reason = { defer };
+      statesPlans.set(node.id, reason);
+      const index = plan.statesMachines.findIndex((m) => m.nodeId === node.id);
+      if (index !== -1) plan.statesMachines.splice(index, 1);
+      for (const key of [...compiledSinks.keys()]) if (key.startsWith(`${node.id}:`)) compiledSinks.delete(key);
+      return reason;
+    };
+    if (!plan.file) return refuse('component emits no file to host the state machine');
+    for (const wire of component.connections.filter((c) => c.toId === node.id)) {
+      const port = wire.toProperty;
+      if (port === 'currentState' || isStatesTrigger(port)) continue;
+      if (port === 'states' || port === 'values') return refuse(`its ${port === 'states' ? 'States' : 'Values'} list is wired — the port set is not statically knowable`);
+      if (port === 'useTransitions') return refuse('its Use Transitions is wired — only an authored switch translates in this slice');
+      if (port.startsWith('type-')) return refuse(`its ${port} is wired — a value's type is not statically knowable`);
+      if (port.startsWith('value-')) return refuse(`its ${port} is wired — only authored state values translate in this slice`);
+      if (port.startsWith('transition')) return refuse(`its ${port} is wired — only authored transitions translate in this slice`);
+      return refuse(`its ${port} input is not a port this node has`);
+    }
+    const statesParam = literalParam(node, 'states');
+    const states = typeof statesParam === 'string' ? statesParam.split(',').filter((s) => s !== '') : [];
+    if (states.length === 0) return refuse('its States list is empty — the node has nowhere to go (states.ts _failNoStates)');
+    const valuesParam = literalParam(node, 'values');
+    const valueNames = typeof valuesParam === 'string' ? valuesParam.split(',').filter((s) => s !== '') : [];
+    const values: StatesValueDef[] = [];
+    for (const name of valueNames) {
+      const typeParam = literalParam(node, `type-${name}`) ?? 'number';
+      if (!(STATES_VALUE_TYPES as readonly unknown[]).includes(typeParam)) {
+        return refuse(
+          typeParam === 'textStyle'
+            ? `its value "${name}" is a Text Style — a style preset name has no sink in this slice`
+            : `its value "${name}" has a type this node does not offer (${String(typeParam)})`
+        );
+      }
+      const type = typeParam as StatesValueType;
+      const byState: Record<string, string | number | boolean> = {};
+      const transitions: Record<string, StatesCurve> = {};
+      for (const state of states) {
+        const authored = literalParam(node, `value-${state}-${name}`);
+        if (authored === undefined) return refuse(`its value "${name}" has no authored value in state "${state}"`);
+        byState[state] = authored;
+        const curve = curveParam(node, `transition-${state}-${name}`);
+        if (curve !== undefined && 'defer' in curve) return refuse(curve.defer);
+        if (curve !== undefined) transitions[state] = curve;
+      }
+      values.push({ name, type, tsType: type === 'color' ? 'string' : type, byState, transitions });
+    }
+    const transitions: Record<string, StatesCurve> = {};
+    for (const state of states) {
+      const curve = curveParam(node, `transitiondef-${state}`);
+      if (curve !== undefined && 'defer' in curve) return refuse(curve.defer);
+      if (curve !== undefined) transitions[state] = curve;
+    }
+    const useTransitionsParam = literalParam(node, 'useTransitions');
+    const useTransitions = useTransitionsParam === undefined ? true : Boolean(useTransitionsParam);
+    let start: string | undefined;
+    const startParam = literalParam(node, 'currentState');
+    if (startParam !== undefined && startParam !== '') {
+      if (states.includes(String(startParam))) start = String(startParam);
+      else {
+        notes.push(
+          `node ${node.id} (${node.type}): its State parameter names "${String(startParam)}", which is not one of its states — the interpreter refuses it at boot and stays in the first state; the export starts there too`
+        );
+      }
+    }
+    for (const wire of component.connections.filter((c) => c.fromId === node.id)) {
+      const port = wire.fromProperty;
+      if (port === 'completed') return refuse('its Completed output is consumed — it fires after every outcome, and this slice emits the outcome listeners rather than a join beneath them');
+      if (STATES_SIGNAL_OUTPUTS.includes(port) || port === 'currentState' || port === 'error' || valueNames.includes(port)) continue;
+      if (port.startsWith('at-') || port.startsWith('reached-')) {
+        const state = port.slice(port.indexOf('-') + 1);
+        if (states.includes(state)) continue;
+        return refuse(`its ${port} output names a state this node does not have`);
+      }
+      return refuse(`its ${port} output is consumed, and this node has no such port`);
+    }
+    const label = (node.authoredLabel ?? '').replace(/[^A-Za-z0-9]+/g, ' ').trim();
+    let constName = `${(label.length > 0 ? label : 'states').replace(/[^A-Za-z0-9]+/g, '_').toUpperCase()}_STATES`;
+    if (/^[0-9]/.test(constName)) constName = `_${constName}`;
+    const base = constName;
+    let counter = 2;
+    while (usedStaticNames.has(constName) || stateNameTaken(constName)) constName = `${base}_${counter++}`;
+    usedStaticNames.add(constName);
+    const core: StatesPlan = {
+      nodeId: node.id,
+      local: mintLocal(statesLocals, node, 'States', ''),
+      constName,
+      states,
+      values,
+      transitions,
+      useTransitions,
+      start,
+      listeners: { reached: {} },
+      comment: `${node.authoredLabel ?? 'States'} — a state machine whose values move between states (states.ts); starts in "${start ?? states[0]}".`
+    };
+    statesPlans.set(node.id, core);
+    plan.statesMachines.push(core);
+    // The listeners: every signal output with a chain, compiled in the render context — the hook
+    // stores the latest listeners passed, so each closes over the latest render.
+    const consumes: string[] = [];
+    const collapses: string[] = [];
+    const subscribes: string[] = [];
+    const listenerPorts = [...STATES_SIGNAL_OUTPUTS.filter((p) => p !== 'completed'), ...states.map((s) => `reached-${s}`)];
+    for (const port of listenerPorts) {
+      if (!component.connections.some((c) => c.fromId === node.id && c.fromProperty === port)) continue;
+      const chain = doneChainOf(node, port);
+      if ('defer' in chain) return refuse(chain.defer);
+      if (!actionsValidIn(chain.then, { kind: 'render' })) return refuse(`its ${port} chain reads values that only exist inside a handler`);
+      const snapped = snapActionList(chain.then, chainSnapshotFor(`states:${node.id}:${port}`));
+      if (!Array.isArray(snapped)) return refuse(snapped.defer);
+      if (port.startsWith('reached-')) core.listeners.reached[port.slice('reached-'.length)] = snapped;
+      else core.listeners[port as 'stateChanged' | 'done' | 'unchanged' | 'failure'] = snapped;
+      consumes.push(...chain.consumes);
+      collapses.push(...chain.collapses);
+      subscribes.push(...chain.subscribes);
+    }
+    // The wired State input: an effect that asks for whatever the value becomes.
+    const followWires = component.connections.filter((c) => c.toId === node.id && c.toProperty === 'currentState');
+    if (followWires.length > 1) return refuse('two wires feed its State input — last-writer-wins is not statically ordered');
+    if (followWires.length === 1) {
+      const ctx = newCtx();
+      const follow = resolveExpr(nodeById.get(followWires[0].fromId), followWires[0].fromProperty, ctx);
+      if (follow === null) return refuse(ctx.defer ?? 'its State input has no statically known source');
+      if (!exprValidIn(follow, { kind: 'render' })) return refuse('its State input reads a value that only exists inside a handler');
+      core.follow = follow;
+      consumes.push(followWires[0].key, ...ctx.consumes);
+      collapses.push(...ctx.logicNodeIds);
+      subscribes.push(...ctx.subscriberIds);
+    }
+    const into = `src/${plan.file.dir}/${plan.file.fileBase}.tsx`;
+    for (const key of consumes) consumed.add(key);
+    for (const id of collapses) dispositions[id] = { kind: 'collapsed', into };
+    for (const id of subscribes) boundSubscribers.add(id);
+    return core;
+  };
+
+  /** One of a States' readable outputs as the expression that reads it off the handle, or null for a port it has not got. */
+  const statesReadOf = (machine: StatesPlan, port: string): ValueExpr | null => {
+    if (port === 'currentState') return { kind: 'states-out', nodeId: machine.nodeId, local: machine.local, field: 'state', tsType: 'string' };
+    if (port === 'error') return { kind: 'states-out', nodeId: machine.nodeId, local: machine.local, field: 'error', tsType: 'string' };
+    const value = machine.values.find((v) => v.name === port);
+    if (value !== undefined) return { kind: 'states-out', nodeId: machine.nodeId, local: machine.local, field: 'value', name: value.name, tsType: value.tsType };
+    if (port.startsWith('at-') && machine.states.includes(port.slice('at-'.length))) {
+      return { kind: 'states-out', nodeId: machine.nodeId, local: machine.local, field: 'at', name: port.slice('at-'.length), tsType: 'boolean' };
+    }
+    return null;
+  };
+
+  /** A States' `Toggle` or `To <state>` — one call on the handle; the outcomes are the node's listeners. */
+  const compileStatesGo = (node: NodeIR, port: string): CompiledSink => {
+    const registered = statesPlanOf(node);
+    if ('defer' in registered) return registered;
+    if (port === 'toggle') {
+      return { action: { kind: 'states-go', nodeId: node.id, local: registered.local, verb: 'toggle' }, consumes: [], collapses: [], subscribes: [] };
+    }
+    const state = port.slice('to-'.length);
+    if (!registered.states.includes(state)) return { defer: `its To "${state}" names a state this node does not have` };
+    return { action: { kind: 'states-go', nodeId: node.id, local: registered.local, verb: 'to', state }, consumes: [], collapses: [], subscribes: [] };
+  };
+
+  const animationPlans = new Map<string, AnimationPlan | { defer: string }>();
+  const animateLocals = new Map<string, string>();
+  /** An `Animate To Value`, registered on first use and memoized — `statesPlanOf`'s shape, with nothing that can re-enter. */
+  const animationPlanOf = (node: NodeIR): AnimationPlan | { defer: string } => {
+    const cached = animationPlans.get(node.id);
+    if (cached !== undefined) return cached;
+    const refuse = (defer: string): { defer: string } => {
+      const reason = { defer };
+      animationPlans.set(node.id, reason);
+      return reason;
+    };
+    if (!plan.file) return refuse('component emits no file to host the animation');
+    if (wiredPorts.has(`${node.id}:easingCurve`)) return refuse('its Easing Curve is wired — the node indexes its curve table by the name and throws on one it does not know');
+    const easeParam = literalParam(node, 'easingCurve') ?? 'easeOut';
+    if (!(ANIMATE_EASE_NAMES as readonly unknown[]).includes(easeParam)) return refuse(`its Easing Curve "${String(easeParam)}" is not a curve the node knows`);
+    for (const wire of component.connections.filter((c) => c.toId === node.id)) {
+      if (!['targetValue', 'duration', 'delay', 'easingCurve'].includes(wire.toProperty)) return refuse(`its ${wire.toProperty} input is not a port this node has`);
+    }
+    for (const wire of component.connections.filter((c) => c.fromId === node.id)) {
+      if (!ANIMATE_OUTPUTS.includes(wire.fromProperty)) return refuse(`its ${wire.fromProperty} output is consumed, and this node publishes only Current Value and At Target Value`);
+    }
+    const ctx = newCtx();
+    const consumes: string[] = [];
+    const inputOf = (input: 'targetValue' | 'duration' | 'delay', fallback: ValueExpr): ValueExpr | { defer: string } => {
+      const wires = component.connections.filter((c) => c.toId === node.id && c.toProperty === input);
+      if (wires.length > 1) return { defer: `two wires feed its ${input} input — last-writer-wins is not statically ordered` };
+      if (wires.length === 1) {
+        const expr = resolveExpr(nodeById.get(wires[0].fromId), wires[0].fromProperty, ctx);
+        if (expr === null) return { defer: ctx.defer ?? `its ${input} input has no statically known source` };
+        if (!exprValidIn(expr, { kind: 'render' })) return { defer: `its ${input} input reads a value that only exists inside a handler` };
+        consumes.push(wires[0].key);
+        return expr;
+      }
+      return fallback;
+    };
+    const targetLiteral = literalParam(node, 'targetValue');
+    const target = inputOf('targetValue', targetLiteral === undefined ? { kind: 'undefined' } : { kind: 'literal', value: targetLiteral });
+    if ('defer' in target) return refuse(target.defer);
+    const durationLiteral = literalParam(node, 'duration');
+    const duration = inputOf('duration', { kind: 'literal', value: typeof durationLiteral === 'number' ? durationLiteral : Number(durationLiteral ?? 300) || 0 });
+    if ('defer' in duration) return refuse(duration.defer);
+    const delayLiteral = literalParam(node, 'delay');
+    const delay = inputOf('delay', { kind: 'literal', value: typeof delayLiteral === 'number' ? delayLiteral : Number(delayLiteral ?? 0) || 0 });
+    if ('defer' in delay) return refuse(delay.defer);
+    let arrive: HandlerAction[] | undefined;
+    const arriveChain = doneChainOf(node, 'atTargetValue');
+    if ('defer' in arriveChain) return refuse(arriveChain.defer);
+    if (component.connections.some((c) => c.fromId === node.id && c.fromProperty === 'atTargetValue')) {
+      if (!actionsValidIn(arriveChain.then, { kind: 'render' })) return refuse('its At Target Value chain reads values that only exist inside a handler');
+      const snapped = snapActionList(arriveChain.then, chainSnapshotFor(`animate:${node.id}`));
+      if (!Array.isArray(snapped)) return refuse(snapped.defer);
+      arrive = snapped;
+    }
+    const registered: AnimationPlan = {
+      nodeId: node.id,
+      local: mintLocal(animateLocals, node, 'Animated', ''),
+      target,
+      duration,
+      delay,
+      ease: easeParam as AnimateEaseName,
+      ...(arrive !== undefined ? { arrive } : {}),
+      comment: `${node.authoredLabel ?? 'Animate To Value'} — moves towards its Target Value over Duration after Delay (animate-to-value.ts); the first target is adopted outright.`
+    };
+    animationPlans.set(node.id, registered);
+    plan.animations.push(registered);
+    const into = `src/${plan.file.dir}/${plan.file.fileBase}.tsx`;
+    for (const key of [...consumes, ...ctx.consumes, ...arriveChain.consumes]) consumed.add(key);
+    for (const id of [...ctx.logicNodeIds, ...arriveChain.collapses]) dispositions[id] = { kind: 'collapsed', into };
+    for (const id of [...ctx.subscriberIds, ...arriveChain.subscribes]) boundSubscribers.add(id);
+    return registered;
+  };
+
   /**
    * `Navigate To Path` (EXP-011 §15, session 44) — the Navigation node that routes without
    * naming a page, transcribed from `navigate-to-path.ts` rather than from the Router.
@@ -9124,6 +9595,7 @@ function planComponent(
     if (node.type === EXTERNAL_LINK_TYPE) return compileExternalLink(node);
     if (node.type === LOG_TYPE) return compileLog(node);
     if (node.type === TIMER_TYPE && isTimerTrigger(port)) return compileDelay(node, port);
+    if (node.type === STATES_TYPE && isStatesTrigger(port)) return compileStatesGo(node, port);
     if (node.type === NAVIGATE_TO_PATH_TYPE) return compileNavigateToPath(node);
     if (node.type === 'NavigationShowPopup') return compileShowPopup(node);
     if (node.type === 'NavigationClosePopup') return compileClosePopup(node, port);
@@ -9538,6 +10010,14 @@ function planComponent(
       case 'now-out':
         return true;
       /**
+       * EXP-011 §49. Both handles are component-scope locals a handler closes over, so both read
+       * in every context — the hook re-renders on every publish, and a handler sees the latest
+       * render's snapshot, which is what the interpreter's getter answers.
+       */
+      case 'states-out':
+      case 'animate-out':
+        return true;
+      /**
        * The id nodes (EXP-011 §37), on the same footing and the same reason: the row form is an
        * ordinary state read, and the local form is only ever minted while the Done chain that
        * declares the local is being compiled, so an escaped local would first have to escape the
@@ -9765,6 +10245,10 @@ function planComponent(
               invokedScope
             )
           );
+        // EXP-011 §49. A call on a component-scope handle, reading nothing; its chains are the
+        // node's listeners, validated where they are compiled (the render context).
+        case 'states-go':
+          return true;
       }
     });
 
@@ -10196,7 +10680,9 @@ function planComponent(
       truthinessSink ||
       contentRole === 'children' ||
       contentRole === 'attr-not:disabled' ||
-      (contentRole !== undefined && contentRole.startsWith('attr:'));
+      (contentRole !== undefined && contentRole.startsWith('attr:')) ||
+      // EXP-011 §49. A wired style parameter the emitter prints inline.
+      styleSinkOf(toNode, c.toProperty) !== undefined;
     if (!bindable) {
       consumed.add(c.key);
       notes.push(
@@ -10885,7 +11371,7 @@ function planComponent(
     // named by its verdict sweep with the right sentence rather than this one.
     // 🔴 Without this the answer depended on wire ORDER — a chain wire listed before the wire
     // that fires the node was reported dropped here and then emitted anyway (§39.3, §40.1).
-    if (fromNode !== undefined && (OWN_CHAIN_OUTPUTS[fromNode.type] ?? []).includes(connection.fromProperty)) continue;
+    if (fromNode !== undefined && ownsChainOutput(fromNode.type, connection.fromProperty)) continue;
     // A JS node's `done` wires are its Run chain, chain-internal exactly as a popup's (the
     // compile consumes them on attach); with Run unwired, `done` never pulses — the JS sweep
     // drops the wire with that note.
@@ -11328,6 +11814,21 @@ function planComponent(
     dispositions[node.id] = { kind: 'collapsed', into };
   }
 
+  // EXP-011 §49 — the animation pair: a States is a hook and a definition constant, an Animate To
+  // Value a hook; both register on first use from a read or a trigger, and this pass registers the
+  // rest (a node whose only wire is the State input, or one nothing reads) and names the refused.
+  // Runs beside the other effect producers so the dispositions are set before the sweeps.
+  for (const node of component.nodes) {
+    if ((node.type !== STATES_TYPE && node.type !== ANIMATE_TYPE) || dispositions[node.id] !== undefined) continue;
+    const registered = node.type === STATES_TYPE ? statesPlanOf(node) : animationPlanOf(node);
+    if ('defer' in registered) {
+      dispositions[node.id] = { kind: 'deferred', to: 'EXP-003', reason: registered.defer };
+      notes.push(`node ${node.id} (${node.type}) deferred: ${registered.defer}`);
+      continue;
+    }
+    dispositions[node.id] = { kind: 'collapsed', into: `src/${plan.file!.dir}/${plan.file!.fileBase}.tsx` };
+  }
+
   // EXP-011 §39 — `Value Changed`: the effect() slice §9.6 named. The node has no trigger; it
   // fires from a value arriving, so it is a `useEffect` keyed on the Input with the last value
   // seen in a ref. Runs before the session sweep so a session read inside the chain is seen as
@@ -11491,6 +11992,10 @@ function planComponent(
     for (const effect of plan.branchEffects) scanActions([effect.action]);
     for (const effect of plan.valueChangedEffects) scanActions(effect.actions);
     for (const effect of plan.recordEffects) scanActions([effect.action]);
+    // EXP-011 §49. A popup opened from a Has Reached, a record verb in a State Changed chain, an
+    // At Target Value that navigates — every listener is a chain like any other.
+    for (const machine of plan.statesMachines) for (const chain of statesListenerChains(machine)) scanActions(chain);
+    for (const animation of plan.animations) if (animation.arrive !== undefined) scanActions(animation.arrive);
     plan.popups = slotRegistry.filter((s) => attachedSlotKeys.has(s.slotKey));
     plan.closesPopup = closeAttached;
     plan.mutations = plan.mutations.filter((m) => attachedMutations.has(m.nodeId));
@@ -11763,7 +12268,9 @@ function planComponent(
       truthinessSink ||
       contentRole === 'children' ||
       contentRole === 'attr-not:disabled' ||
-      (contentRole !== undefined && contentRole.startsWith('attr:'));
+      (contentRole !== undefined && contentRole.startsWith('attr:')) ||
+      // EXP-011 §49. A wired style parameter the emitter prints inline.
+      styleSinkOf(toNode, connection.toProperty) !== undefined;
     if (!bindable) continue; // the sweep names the reason
     if (connection.toProperty === 'mounted' && toNode.id === plan.rootId) continue; // the sweep names the reason
     const ctx = newCtx();
@@ -11809,7 +12316,9 @@ function planComponent(
       truthinessSink ||
       contentRole === 'children' ||
       contentRole === 'attr-not:disabled' ||
-      (contentRole !== undefined && contentRole.startsWith('attr:'));
+      (contentRole !== undefined && contentRole.startsWith('attr:')) ||
+      // EXP-011 §49. A wired style parameter the emitter prints inline.
+      styleSinkOf(toNode, connection.toProperty) !== undefined;
     if (!bindable) continue; // the sweep names the reason
     if (connection.toProperty === 'mounted' && toNode.id === plan.rootId) continue; // the sweep names the reason
     const ctx = newCtx();
@@ -11990,6 +12499,14 @@ function planComponent(
       ID_NODES[fromNode.type] !== undefined &&
       (connection.fromProperty === ID_NODES[fromNode.type].output ||
         (ID_NODES[fromNode.type].canFail && connection.fromProperty === 'error'));
+    /**
+     * EXP-011 §49. A States' State, a value, an `At <state>` or its Error, and an Animate To
+     * Value's Current Value — reads off a hook's handle rather than a row, and this pass because
+     * it is where every read that is not a pure expression lives (§37's argument, verbatim).
+     * A port the node has not got resolves to null with its named reason and defers there.
+     */
+    const isStatesRead = fromNode.type === STATES_TYPE;
+    const isAnimateRead = fromNode.type === ANIMATE_TYPE && connection.fromProperty === 'currentValue';
     if (
       !isLatchRead &&
       !isControlRead &&
@@ -12005,7 +12522,9 @@ function planComponent(
       !isNowRead &&
       !isExternalLinkErrorRead &&
       !isNavigatePathErrorRead &&
-      !isIdRead
+      !isIdRead &&
+      !isStatesRead &&
+      !isAnimateRead
     ) {
       continue;
     }
@@ -12017,7 +12536,9 @@ function planComponent(
       truthinessSink ||
       contentRole === 'children' ||
       contentRole === 'attr-not:disabled' ||
-      (contentRole !== undefined && contentRole.startsWith('attr:'));
+      (contentRole !== undefined && contentRole.startsWith('attr:')) ||
+      // EXP-011 §49. A wired style parameter the emitter prints inline.
+      styleSinkOf(toNode, connection.toProperty) !== undefined;
     if (!bindable) continue; // the sweep names the reason
     // Three verbs sharing one status line is the corpus's own shape (the Puppy admin form). The
     // runtime shows whichever wrote last, which is not statically ordered — so the first wire
@@ -12091,7 +12612,9 @@ function planComponent(
       truthinessSink ||
       contentRole === 'children' ||
       contentRole === 'attr-not:disabled' ||
-      (contentRole !== undefined && contentRole.startsWith('attr:'));
+      (contentRole !== undefined && contentRole.startsWith('attr:')) ||
+      // EXP-011 §49. A wired style parameter the emitter prints inline.
+      styleSinkOf(toNode, connection.toProperty) !== undefined;
     if (!bindable) continue;
     if (connection.toProperty === 'mounted' && toNode.id === plan.rootId) continue;
     // EXP-011 §47. A named Object's read is a store-key binding — Pass 4b's shape in the widened
@@ -12148,7 +12671,9 @@ function planComponent(
       truthinessSink ||
       contentRole === 'children' ||
       contentRole === 'attr-not:disabled' ||
-      (contentRole !== undefined && contentRole.startsWith('attr:'));
+      (contentRole !== undefined && contentRole.startsWith('attr:')) ||
+      // EXP-011 §49. A wired style parameter the emitter prints inline.
+      styleSinkOf(toNode, connection.toProperty) !== undefined;
     if (!bindable) continue;
     if (connection.toProperty === 'mounted' && toNode.id === plan.rootId) continue;
     const ctx = newCtx();
@@ -12569,7 +13094,7 @@ function planComponent(
         // lands on a trigger port: a Done read *as a value* keeps `resolveExpr`'s own sentence.
         const chainSink = nodeById.get(c.toId);
         if (
-          (OWN_CHAIN_OUTPUTS[node.type] ?? []).includes(c.fromProperty) &&
+          ownsChainOutput(node.type, c.fromProperty) &&
           chainSink !== undefined &&
           (isTriggerWire(chainSink.type, c.toProperty) || chainSink.type === 'Component Outputs')
         ) {
@@ -12727,6 +13252,9 @@ function planComponent(
             walkActions(action.startedThen);
             walkActions(action.finishedThen);
             break;
+          // EXP-011 §49. Nothing to read; the listeners are walked off the plan below.
+          case 'states-go':
+            break;
           case 'branch':
             walkExpr(action.cond);
             walkActions(action.whenTrue);
@@ -12769,6 +13297,17 @@ function planComponent(
     for (const effect of plan.valueChangedEffects) {
       walkExpr(effect.watch);
       walkActions(effect.actions);
+    }
+    // EXP-011 §49. The wired State, the target and its two numbers, and every listener chain.
+    for (const machine of plan.statesMachines) {
+      if (machine.follow !== undefined) walkExpr(machine.follow);
+      for (const chain of statesListenerChains(machine)) walkActions(chain);
+    }
+    for (const animation of plan.animations) {
+      walkExpr(animation.target);
+      walkExpr(animation.duration);
+      walkExpr(animation.delay);
+      if (animation.arrive !== undefined) walkActions(animation.arrive);
     }
     for (const nodeId of readNodeIds) {
       plan.sessionCalls.push({ nodeId, verb: 'read', fnName: 'useSession' });
@@ -13113,6 +13652,9 @@ function planComponent(
             fillMaterialize(action.startedThen);
             fillMaterialize(action.finishedThen);
             break;
+          // EXP-011 §49. Nothing nested; the listeners are filled off the plan below.
+          case 'states-go':
+            break;
           case 'id-new': {
             const row = idVars.get(action.nodeId);
             if (row !== undefined && plan.stateVars.includes(row)) action.materialize = row.name;
@@ -13206,6 +13748,9 @@ function planComponent(
     for (const effect of plan.valueChangedEffects) fillMaterialize(effect.actions);
     // EXP-011 §43. A Record's Id effect writes its row exactly as a handler's Fetch does.
     for (const effect of plan.recordEffects) fillMaterialize([effect.action]);
+    // EXP-011 §49. A request or a Now inside a listener chain materializes as it would in a handler.
+    for (const machine of plan.statesMachines) for (const chain of statesListenerChains(machine)) fillMaterialize(chain);
+    for (const animation of plan.animations) if (animation.arrive !== undefined) fillMaterialize(animation.arrive);
   }
 
   // Whatever analysis has not classified yet is logic: EXP-003's, or unknown-type debris.

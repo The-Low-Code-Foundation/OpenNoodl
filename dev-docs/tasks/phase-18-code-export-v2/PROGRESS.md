@@ -12,7 +12,7 @@ npm run export-ledger:picker
 node scripts/export-ledger/picker-coverage.js
 ```
 
-> **PICKER COVERAGE: 90 of 127 placeable nodes export (70.9%)** — 2026-09-03 s76 (was 51 on 2026-08-28, 81 on 2026-09-01 s69)
+> **PICKER COVERAGE: 92 of 127 placeable nodes export (72.4%)** — 2026-09-03 s77 (was 51 on 2026-08-28, 81 on 2026-09-01 s69, 90 on 2026-09-03 s76)
 
 **Do not report the corpus number as progress.** `coverage-audit.ts` reads 85.00% (93.38% over
 components a route reaches) across ~40 old drive fixtures. It is a **regression detector** and a
@@ -34,7 +34,7 @@ README §*What went wrong* has the mechanism.
 | [EXP-009](./EXP-009-BACKEND-CONNECTION.md) | **Exported app talks to its deployed backend** | 🟢 **Built + driven s33; AC4 (`Cloud Function`) built s69 via EXP-011 §41 — typechecked, not driven** |
 | [EXP-010](./EXP-010-CUSTOM-NODES-AND-MODULES.md) | **Custom nodes, modules and prefabs export** | 🔴 **Not started.** `parseProject` never opens `noodl_modules` |
 | [EXP-012](./EXP-012-THE-EDITOR-EXPORT-COMMAND.md) | **The editor export command** | 🟢 **BUILT + DRIVEN s67 (2026-09-01).** Settings → Project → *Export as React code…*: exact pre-flight modal, folder dialog, inside-project refusal, non-empty confirm, write + toast. Byte-identical to `emit-app.ts`. `@nodegx/export` has its **first product consumer**; EXP-004's §21.1 block is over. Rides 0.2.2 if Richard says so |
-| [EXP-011](./EXP-011-PICKER-COVERAGE.md) | **Close the picker gap, ranked by what apps need** | 🟡 **90/127 (70.9%) s76 — §48 built `CSS Definition` (Tier 3.9) and, beside it, the authored CSS Class on every visual node, the `Date` column (§46.3's debt) and four handler-argument readers the control-mint clause was missing — a text input, a button and a `Set Variable` exported as a button that does nothing until §48**. §47 the named Object (89); §45–§46 the files and the file↔record pair (88); §41–§44 `Cloud Function`, `Record`, the two session verbs (81→84). Next: `Sign In With` once provider sign-in is wanted; `States`/`Animate To Value`; the component stack pair; `Script` |
+| [EXP-011](./EXP-011-PICKER-COVERAGE.md) | **Close the picker gap, ranked by what apps need** | 🟡 **92/127 (72.4%) s77 — §49 built the animation pair, `States` and `Animate To Value` (Tier 3.8): `src/lib/animate.ts` (the scheduler's frame engine, the ease curves, the bezier solver, `useAnimatedValue`) and `src/lib/states.ts` (the whole node as a machine plus `useStates`), graded frame by frame against the interpreter's own files, and the wired style sink (`opacity`/`color`/`backgroundColor` inline) that no wire could reach before**. §48 `CSS Definition` + the CSS Class fold + the `Date` column (90); §47 the named Object (89); §45–§46 the files (88); §41–§44 Cloud Services (81→84). Next: `Sign In With` once provider sign-in is wanted; the component stack pair; `Script` |
 
 ## What actually works today
 

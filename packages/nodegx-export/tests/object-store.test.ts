@@ -484,6 +484,6 @@ describe('§D — the fixture, whole', () => {
     expect(status('Model2').status).toBe('translated');
     expect(status('CollectionNew').status).toBe('deferred');
     expect(status('CollectionNew').exemption).toMatch(/^deliberately out of scope/);
-    expect(ledger.pickerCoverageFloor).toBe(90); // 89 after §47; §48 added CSS Definition
+    expect(ledger.pickerCoverageFloor).toBe(92); // 90 after §48; §49 added States and Animate To Value
   });
 });

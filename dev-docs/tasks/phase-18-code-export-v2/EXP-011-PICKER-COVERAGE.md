@@ -88,8 +88,10 @@ Ranked by *"can you build a normal app without it"*, not by corpus frequency.
 
 ### Tier 3 — real, but a smaller audience
 
-8. **`States` and `Animate To Value`** — the animation pair. Genuinely hard (they are time-based
-   and stateful) and worth doing properly rather than early.
+8. ✅ **`States` and `Animate To Value`** — the animation pair. Genuinely hard (they are time-based
+   and stateful) and worth doing properly rather than early. **Built, graded frame by frame against
+   the interpreter's own files, and driven in session 77 — §49**, together with the wired style sink
+   (`opacity`/`color`/`backgroundColor`) neither could do without.
 9. **`CSS Definition` and `Script`** — global CSS and arbitrary script. `CSS Definition` looks
    trivial and ⚠️ **every instance in the current corpus is the empty stub `".group1 "`, so it
    would buy nothing measurable there** — build it against a real project, not the corpus.
@@ -6391,3 +6393,193 @@ the two registered debts that were one clause each, and found the debts were big
   first, `_consumeAuthReturn`); `States` / `Animate To Value` (Tier 3.8, "worth doing properly");
   the component stack pair (§16.2 says what a Component Stack is not); `Script`. The Data bucket's
   remaining rows are "not a target" by §3 and stay so.
+## §49 Tier 3.8 — the animation pair: `States`, `Animate To Value`, and the wired style sink neither could do without (session 77, 2026-09-03)
+
+Session 76 left four named next steps; the one Richard-era ruling said "worth doing properly
+rather than early" was the animation pair, so this session took it whole. The two nodes are the
+picker's `Animation` category entire, and every prefab in `library/prefabs` that moves anything
+(toggle-switch, tab-bar, rating, toast, navigation-menu, table, app-shell, auth-pages, stripe)
+carries a `States`. Building it found the gap that made the pair pointless on its own: **a wire
+into `opacity`, `color` or `backgroundColor` was not a sink the export could bind at all** — a
+Variable into a Group's opacity dropped with the same catch-all sentence before this session.
+
+### §49.1 What the runtime does, and what that decides
+
+- **The engine** (timerscheduler.ts, one timer, repeat count 1): `start()` queues; the timer
+  **joins at the end of the next frame** with `_start = frameTime + delay` (a zero delay plays
+  `onStart` + `onRunning(0)` in the join frame); each later frame at or after `_start` computes
+  `t = (now − _start)/duration` (`1` when the duration is 0), calls `onRunning(min(t, 1))`, and at
+  `t ≥ 1` calls `onFinish`; `stop()` fires nothing; `start()` on a running timer stops it first.
+  So the export is a `Run` in `src/lib/animate.ts` driven by `requestAnimationFrame`, with
+  `runFrame(run, now)` exported so a test can drive it at chosen instants — which is how it is
+  graded (§49.4). The ease table is easecurves.ts's four picker names aliased onto the cubics,
+  and the bezier solver is bezier-easing 1.1.1 with its constants, both transcribed.
+- **`Animate To Value`** (animate-to-value.ts): the first numeric target is **adopted outright**,
+  a target equal to the current end is ignored, anything else tweens from wherever the value is;
+  booleans are 1/0, a NaN is ignored, `At Target Value` fires on finish only and never for an
+  interrupted run. The export: `const fade = useAnimatedValue(target, { duration, delay, ease },
+  onArrive)` — the engine in a ref, the number in state, the latest `onArrive` in a ref, the
+  first target adopted in the ref's lazy creation so the first render already shows it.
+- **`States`** (states.ts, 1127 lines): requests are **queued per pass and drained after it**
+  (`scheduleGoToState` over `scheduleAfterInputsHaveUpdated`) — a request for where the pass is
+  already heading answers Unchanged at once, all but the last request are *settled immediately*,
+  the last one animates. `goToState`: a falsy state is the first; the current state is Unchanged;
+  a name not in the list is Failure with the node's own `Error` text (`nearestName` transcribed
+  for the "Did you mean" clause); the first ever request jumps (no State Changed); after that
+  booleans and strings jump, numbers and colours tween along `transition-<state>-<value>` ||
+  `transitiondef-<state>` || `{[0,0,0.58,1], 300, 0}`, settled at once when both are 0, when Use
+  Transitions is off, or when the pass only passed through the state. `State`, `At <state>` and
+  State Changed move at the request, `Has Reached <state>` at the tween's end, Done after State
+  Changed. The export: a `defineStates({…})` constant above the component (the node's parameters
+  in its own names), `const panel = useStates(PANEL_STATES, 'dim', { stateChanged, reached: {…},
+  done, unchanged, failure })` inside it, `panel.toggle()` / `panel.goTo('bright')` from the
+  action ports, `useEffect(() => { follower.follow(wanted); }, [wanted])` for a wired State,
+  and reads `panel.state`, `panel.values.opacity`, `panel.state === 'bright'`, `panel.error`.
+  🔴 **Done/Unchanged/Failure are node ports, not per-trigger arms**: `reportOutcome` pulses the
+  same port whichever trigger asked, so a chain off `done` is a listener passed once, and the
+  first design (arms at each call site) would have printed one chain N times and fired it for
+  one trigger only. The drain is a microtask — the handler that asked is the pass.
+- **The wired style sink.** `WIRED_STYLE_SINKS` (style.ts): `opacity` (number), `color` and
+  `backgroundColor` (strings) — unitless or a string, so no `defaultUnit` question — bound by
+  every binding pass through one `styleSinkOf` (the node's catalog entry must declare the port)
+  and printed as one inline `style={{ opacity: …, backgroundColor: … }}` after the class, which
+  wins over the module class exactly as a wired value replaces the authored parameter.
+
+### §49.2 The build
+
+- `src/emit/animateLib.ts` → `src/lib/animate.ts`; `src/emit/statesLib.ts` → `src/lib/states.ts`
+  (imports `./animate`); `emitApp.ts` ships the first for either node, the second for a States.
+- `plan.ts`: `STATES_TYPE`/`ANIMATE_TYPE`; `states-out` and `animate-out` expression kinds;
+  the `states-go` action (no chains ride on it — see above); `StatesPlan`/`AnimationPlan` on
+  the component plan; `statesPlanOf` (memoized, **the core cached before the listeners are
+  compiled** so a listener that fires this node's own `To <state>` through another node finds the
+  handle; a later refusal flips the entry and evicts every sink compiled against it) and
+  `animationPlanOf`; `compileStatesGo`; `isStatesTrigger` on the trigger predicate; the
+  registration pass beside the effect producers; `ownsChainOutput` (the `reached-<state>`
+  family) on the attach-loop skip; the reads in Pass 4f beside `Now`'s; the style sink on every
+  `bindable`.
+- `component.ts`: the constant, the hooks after the render locals (an Expression into State is
+  the corpus's own shape), the follow effects, the imports, `styleAttrs`, the typed coercions
+  (`String(x)` for a number or an At in a text sink, `?? ''` for the Error only), the walkers.
+- Ledger: both translated; floor 90 → 92. Fixture `tests/fixtures/glow-desk` (49 nodes, 37
+  wires): a Panel machine (two states; a number with a per-value 200 ms delay, a colour, a
+  string) driving a box's opacity and background and a label, Toggle/To bright/To dim buttons,
+  a State Changed counter, Has Reached chains, Done/Unchanged chains; a Follower machine whose
+  State is wired from a Variable two buttons write; a Fade whose target is a Variable.
+
+### §49.3 What building it found, and what is written down rather than fixed
+
+- 🔴 **The typecheck cannot see a store object handed to a hook.** The first emit printed
+  `useAnimatedValue(level, …)` and `follower.follow(wanted)` — the *store objects*, not the
+  `useValue` locals — because the new plans' expressions were never walked for hooks. Both
+  typechecked (`unknown` takes anything) and neither would ever have moved. Read off the emitted
+  page before any test existed; B2/B6 pin the locals now. The second walker's warning
+  (`hookExprSources`'s own comment) was right for the eleventh time.
+- 🔴 **MEASURED: a token-coloured States value cannot reach its colour in the interpreter.**
+  `resolveColor` is a lookup in a `styles.colors` table no v2 project carries, so `var(--primary)`
+  reaches `setRGBA` unresolved: the first channel is `parseInt('ar', 16)` = 10, the other three
+  NaN, every tween frame is `#0aNaNNaNNaN`, and — the part that matters — the tween **ends** on
+  `rgbaToHex(targetValues)`, the parsed garbage, never the authored string. With transitions on
+  the value stays invalid for good (the browser keeps the previous colour). Pinned by the loaded
+  `states.ts` (A5 MEASURED); the export resolves a `var(--token)` off the document and degrades
+  to the interpreter's own answer where there is no document. Owner **NONE** — a runtime defect
+  in `states.ts`, outside this phase.
+- 🔴 **MEASURED: an authored State that is not a state is refused at boot with a Failure pulse**
+  and the node stays in its first state; a valid non-first authored State **animates from the
+  first state at boot and fires State Changed**. Both reproduced (the second) or noted (the
+  first — the export starts in the first state and files a note, without the boot pulse).
+  ⚠️ The boot order is the parameter key order in the file: `currentState` before `states`
+  would jump to the authored state and then animate *back* to the first. Owner NONE.
+- ⚠️ **A colour with a per-value delay publishes its RGBA array for the delay** (`currentValues[v]
+  = this.startValues[v]` in `onRunning`). Transcribed, not corrected — the browser ignores the
+  invalid style in both worlds.
+- ⚠️ **Only a String constant types a Variable.** `level`, written by two Number constants, is
+  `value<unknown>`; `wanted`, written by two String constants, is `value<string | undefined>`.
+  So a Number-fed Variable into `opacity` is refused by name (B15) where a Counter binds. Owner
+  EXP-011 (the `typeOfSource` table in appState.ts).
+- ⚠️ A States driving itself (`reached-bright → to-dim`, the bounce) is refused by
+  `doneChainOf`'s self-drive rule, as a self-restarting Delay is. Registered.
+- ⚠️ A listener chain that reads a handler-only value defers the node ("its X chain reads values
+  that only exist inside a handler") — unmeasured by a row.
+- ⚠️ `textStyle` values, wired `states`/`values`/`type-*`/`value-*`/`transition*`/
+  `useTransitions`, a value unauthored in a state, `to-`/`at-`/`reached-` naming no state, a
+  consumed Completed, an empty States list, a wired or unknown Easing Curve — all refused by name.
+- ⚠️ The transform family (`transformX`, `rotation`, `scale`) stays an unmapped parameter; the
+  toggle-switch prefab's `pos → transformX` is the first fixture that will ask.
+
+### §49.4 Graded — `tests/animation-pair.test.ts` (55 rows); 61 files on disk
+
+- **§A the modules against the interpreter, loaded from source and driven at the same
+  instants.** A1 the run engine against `timerscheduler.ts` over seven scripts (delay, zero
+  duration, stop, restart, start twice, start off a frame): the same start/finish instants and
+  the same `t` on every frame, plus a broken copy that disagrees. A2 the frame loop advances
+  under a `requestAnimationFrame` polyfill. A3 the ease table and the bezier solver against
+  `easecurves.ts` and `bezier-easing` at 101 points. A4 `animateTo` against the loaded
+  `animate-to-value.ts` node over seven scripts (adoption, same target, retarget mid-run,
+  booleans, NaN/numeric string, delay, zero duration) plus a control. A5 the state machine
+  against the loaded `states.ts` — the whole node, booted through a stand-in for `Node` and
+  drained as the runtime drains it — over nine scripts (To, retarget, Unchanged, Toggle twice,
+  unknown state, two requests in one pass, the State input in three forms), Use Transitions off,
+  an authored non-first State, an authored non-state, the Error text with "Did you mean", the
+  MEASURED token colour, and a control that animates every queued state. A6 both hooks under
+  `renderToString`.
+- **§B the translation** — 18 rows: the constant, the hook with listeners, the one-argument
+  hook and the follow effect on the `useValue` local, the three calls, the five read shapes, the
+  inline style, the fade hook, dispositions and the order row, which modules ship, the States
+  refusals by name, a To naming no state (the trigger refuses, the node translates), an authored
+  non-state, a value name with a space, the Animate refusals, no callback / a literal target,
+  CONTROL the sink is general (a Counter binds, an untyped Variable is refused by name), an
+  unnamed style parameter stays reported, an At into a truthiness sink prints bare, the ledger.
+- **§C** the fixture typechecks whole. `object-store` D6 re-pinned to 92.
+
+### §49.5 The gates, the arms and the drive — and the control that diffed one cell I had not predicted
+
+- Gates, one at a time, the box otherwise idle (a peer's dev stack came up and went down while
+  files were being written, and nothing of mine ran beside it): `tsc` 0 (three passes); the full
+  suite **61 files, 1755 rows** (the file then grew by two rows for arm A and was re-run alone,
+  57/57 — 1757 by arithmetic, not by a second full run); `export-ledger:check` OK — 176 types,
+  99 translated; picker **92/127 (72.4%)**, floor 92, `--check` exit 0. No editor change.
+- **Seventeen arms, 17/17 killed by rows** (`mut49.py`, `runmut49.sh`, five specs): A the
+  drain's own Unchanged, B the run delay (`min` → `max`), C a run never finishes, D `t` unclamped,
+  E a textStyle admitted, F a missing value as 0, G the trigger predicate, H the style attribute
+  inverted, I the target not walked for hooks (the store-object defect of §49.3), J the style sink
+  inverted, K the number coercion, L `reached-` off the attach skip, M `states.ts` never ships, N
+  the authored State ignored at boot, O the follow effect without deps, P no "Did you mean", R the
+  At comparison inverted. 🔴 **A survived round one**: the row that should have caught it
+  answers Unchanged one clause earlier (`scheduleGoToState`'s pending-target test), and the only
+  road to `goToState`'s own Unchanged is a *failed* request followed by a request for the current
+  state in the same pass — a row that both worlds answer `[failure, unchanged]` now pins it.
+  **E was TS2367 first** (a literal comparison the narrowing called unintentional) and jest ran 0
+  rows — a mutant only tsc kills is not killed (§46.5's rule); re-armed through `String()`.
+- **Drive** (`EXPECTED49.md` first; `drive49-run.sh`: emit → build → headless Chrome → preview →
+  eleven steps → `trap` teardown, no backend): run 1 **51/51, 0 diffs, consoleErrors [], 0
+  listeners left**. Read off the page: To bright moves `State`/`At`/the label/the count/`done`
+  within 27 ms while the box's opacity is still `0.2` (its 200 ms delay) and the background still
+  the dim colour; at +379 ms opacity `0.632182` and background `rgb(207, 172, 19)`, neither
+  endpoint; settled at `1` / `rgb(255, 204, 0)` with `bright reached`; Bright again is
+  `unchanged` with the count unmoved; Toggle back is `dim reached`; the Follower jumps to `1`
+  and refuses `nope` with the node's own sentence; Level high is adopted outright (`1`, no
+  arrival); Level low reads `0.153302` at +250 ms and settles at `0` with `arrived`.
+- **The sabotage control** (`arm49-ctl.sh`: `t` forced to 1 in the EMITTED `animate.ts`, the
+  exporter untouched): **46/51, 5 diffs** — D3's two mid-tween cells (opacity `1`, background
+  the target) and D10's `fade`/`fadeOpacity` at `0`, as predicted, **plus D10's `arrived`**,
+  which I had not predicted: a run that settles on its first frame fires At Target Value at once.
+  The two D2 cells I did predict did not diff: the read landed 27 ms after the click, before the
+  second frame the cut settles on — the timing margin of §39.5, on the instrument side this time.
+  Counted, not corrected: the arithmetic was the prediction's.
+
+### §49.6 What this leaves
+
+- **The interpreter's token colour** (§49.3, owner NONE): a `var(--token)` colour value in a
+  States node with transitions on never reaches its target in the interpreter. The export
+  resolves it. Nobody has driven a prefab that does this in the editor; the first will see it.
+- **Only a String constant types a Variable** (§49.3, owner EXP-011): a Number-fed Variable is
+  `unknown` and refuses a number sink by name. One table row in `appState.ts`.
+- **The transform family** (`transformX`, `rotation`, `scale`) — the next style sinks the
+  toggle-switch prefab will ask for; a `transform` rule the static style has no shape for yet.
+- **A States driving itself** (the bounce) is refused by the self-drive rule; a listener chain
+  reading a handler-only value defers the node — neither measured by a row.
+- **HTTP Request's body on the control-mint clause** (§48.6) — still unmeasured.
+- Next by the surface: `Sign In With` once provider sign-in is wanted (the client's return leg
+  first); the component stack pair (§16.2 says what a Component Stack is not); `Script`. The
+  Data bucket's remaining rows are "not a target" by §3 and stay so.

@@ -1,0 +1,9 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "e1a7c3d9-4f2b-4c8e-9a1d-000000000050",
+  "name": "Glow",
+  "path": "/Pages/Glow",
+  "type": "page",
+  "modified": "2026-09-03T15:00:00.000Z",
+  "description": "EXP-011 §49 fixture: a States node driving a box's opacity and background and a label, with Toggle/To bright/To dim buttons, a State Changed counter and Has Reached chains; a second States node following a wired State; an Animate To Value driving a Text and a box's opacity from a Variable."
+}

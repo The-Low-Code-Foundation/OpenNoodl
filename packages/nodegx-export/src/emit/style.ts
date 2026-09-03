@@ -210,6 +210,23 @@ const PASSTHROUGH = new Set([
 ]);
 
 /**
+ * The style parameters a **wire** may land on (EXP-011 §49) — printed as an inline `style={{…}}`
+ * on the element, which wins over the module class exactly as a wired value replaces the
+ * authored parameter in the runtime. `sink` is what the position holds, for the untyped-source
+ * table in `component.ts`; `css` is the React style key.
+ *
+ * Three, chosen by what the animation pair drives and by what needs no unit: `opacity` is
+ * unitless, the two colours are strings. A wired `width` would need the port's `defaultUnit`
+ * appended and a wired `transformX` a `transform` the static style has no rule for — both
+ * refused by name until a fixture asks. Keys in emit order.
+ */
+export const WIRED_STYLE_SINKS: Record<string, { css: string; sink: 'number' | 'string' }> = {
+  opacity: { css: 'opacity', sink: 'number' },
+  color: { css: 'color', sink: 'string' },
+  backgroundColor: { css: 'backgroundColor', sink: 'string' }
+};
+
+/**
  * Style-semantic switches consumed by the rules below rather than emitted as properties.
  * `flexDirection` is consumed by the flex base; the `boxShadow*` family folds into `box-shadow`.
  */

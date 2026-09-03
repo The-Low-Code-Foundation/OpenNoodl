@@ -23,6 +23,8 @@ import { DATE_LIB_PATH, dateLibSource } from './dateLib';
 import { UTIL_LIB_PATH, utilLibSource } from './utilLib';
 import { ID_LIB_PATH, idLibSource } from './idLib';
 import { TIMER_LIB_PATH, timerLibSource } from './timerLib';
+import { ANIMATE_LIB_PATH, animateLibSource } from './animateLib';
+import { STATES_LIB_PATH, statesLibSource } from './statesLib';
 import { EmittedCopy, emitKits } from './kits';
 import { README_PATH, renderReadme } from './readme';
 import { ExportReportData, REPORT_PATH, ReportComponent, renderReport, stripScope } from './report';
@@ -115,6 +117,9 @@ export function emitApp(ir: ExportIR, catalog: Catalog): EmittedApp {
   const idHelpersUsed = new Set<string>();
   /** The same gate for `src/lib/timer.ts` (EXP-011 §39). */
   const timerHelpersUsed = new Set<string>();
+  // EXP-011 §49. The animation pair's modules — earned by a component whose plan kept a node.
+  let animateLibUsed = false;
+  let statesLibUsed = false;
   const reportComponents: ReportComponent[] = [];
   for (const plan of project.plans) {
     if (plan.skipReason) {
@@ -157,6 +162,8 @@ export function emitApp(ir: ExportIR, catalog: Catalog): EmittedApp {
     for (const helper of emitted.utilHelpers) utilHelpersUsed.add(helper);
     for (const helper of emitted.idHelpers) idHelpersUsed.add(helper);
     for (const helper of emitted.timerHelpers) timerHelpersUsed.add(helper);
+    if (emitted.animateLib) animateLibUsed = true;
+    if (emitted.statesLib) statesLibUsed = true;
   }
 
   /**
@@ -189,6 +196,17 @@ export function emitApp(ir: ExportIR, catalog: Catalog): EmittedApp {
   /** `src/lib/timer.ts` (EXP-011 §39) — the fourth module, on the same rule as the other three. */
   if (timerHelpersUsed.size > 0) {
     files[TIMER_LIB_PATH] = GENERATED_MODULE_TS + timerLibSource();
+  }
+  /**
+   * `src/lib/animate.ts` and `src/lib/states.ts` (EXP-011 §49) — the fifth and sixth modules, on
+   * the same rule. `states.ts` imports `animate.ts`, so a States alone ships both; an Animate To
+   * Value alone ships only the first.
+   */
+  if (animateLibUsed) {
+    files[ANIMATE_LIB_PATH] = GENERATED_MODULE_TS + animateLibSource();
+  }
+  if (statesLibUsed) {
+    files[STATES_LIB_PATH] = GENERATED_MODULE_TS + statesLibSource();
   }
 
   const api = apiModules(ir, project);

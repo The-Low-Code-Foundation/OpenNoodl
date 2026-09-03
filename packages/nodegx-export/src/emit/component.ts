@@ -36,8 +36,10 @@ import { assignClassNames, ClassCandidate, partitionMergeGroup, pascalCase, prop
 import { tsLiteral } from './state';
 import { UTIL_HELPER_MAY_BE_UNDEFINED, UTIL_LIB_PATH } from './utilLib';
 import { TIMER_LIB_PATH } from './timerLib';
+import { ANIMATE_LIB_PATH } from './animateLib';
+import { STATES_LIB_PATH } from './statesLib';
 import { ID_HELPERS_BY_FN, ID_LIB_PATH, IdHelper } from './idLib';
-import { computeNodeStyle, computeRoleCss, CONTENT_ATTR_ORDER, CONTENT_PARAMS, Decl, iconSourceOf, RoleCss, StyleRole } from './style';
+import { computeNodeStyle, computeRoleCss, CONTENT_ATTR_ORDER, CONTENT_PARAMS, Decl, iconSourceOf, RoleCss, StyleRole, WIRED_STYLE_SINKS } from './style';
 
 const GENERATED_TS = '// @nodegx:generated (visual — provenance markers complete in EXP-007)\n';
 const GENERATED_CSS = '/* @nodegx:generated (visual) */\n';
@@ -118,6 +120,9 @@ export interface EmittedComponent {
   idHelpers: Set<string>;
   /** `src/lib/timer.ts` verbs this component calls (EXP-011 §39). */
   timerHelpers: Set<string>;
+  /** EXP-011 §49. Whether this component imports `src/lib/animate.ts` / `src/lib/states.ts`. */
+  animateLib: boolean;
+  statesLib: boolean;
 }
 
 export function emitComponent(
@@ -586,6 +591,12 @@ export function emitComponent(
     ...plan.branchEffects.map((e) => e.action),
     // EXP-011 §39. A Value Changed's chain earns imports and references exactly as a handler's does.
     ...plan.valueChangedEffects.flatMap((e) => e.actions),
+    // EXP-011 §49. The listeners and the arrive chain are chains like any other: a store write
+    // inside one earns its import here, a state setter its row.
+    ...plan.statesMachines.flatMap((m) =>
+      [m.listeners.stateChanged, m.listeners.done, m.listeners.unchanged, m.listeners.failure, ...Object.values(m.listeners.reached)].flatMap((chain) => chain ?? [])
+    ),
+    ...plan.animations.flatMap((a) => a.arrive ?? []),
     // EXP-011 §43. A Record's Id effect is a read chain run from an effect.
     ...plan.recordEffects.map((e) => e.action)
   ];
@@ -758,6 +769,15 @@ export function emitComponent(
   }
   // EXP-011 §39. The watched Input is the effect's dependency and prints as the render local.
   for (const effect of plan.valueChangedEffects) hookExprSources(effect.watch);
+  // EXP-011 §49. The target and its two numbers, and the wired State, print as render locals —
+  // 🔴 without this the hook was handed the store *object* (`useAnimatedValue(level, …)`), which
+  // typechecks against `unknown` and never animates. Read off the emitted page, not off a gate.
+  for (const animation of plan.animations) {
+    hookExprSources(animation.target);
+    hookExprSources(animation.duration);
+    hookExprSources(animation.delay);
+  }
+  for (const machine of plan.statesMachines) if (machine.follow !== undefined) hookExprSources(machine.follow);
   // EXP-011 §43. The Id is the effect's dependency and prints as the render local.
   for (const effect of plan.recordEffects) {
     if (effect.action.kind === 'record-fetch') hookExprSources(effect.action.id);
@@ -1158,6 +1178,11 @@ export function emitComponent(
       // which is what lets `now.getTime()` print without a guard.
       case 'now-out':
         return false;
+      // EXP-011 §49. Only the Error is empty until a failure. Must agree with plan.ts maybeUndefinedExpr.
+      case 'states-out':
+        return expr.field === 'error';
+      case 'animate-out':
+        return false;
       /**
        * The id nodes (EXP-011 §37). The chain-local never — it is minted only in the Done arm,
        * where the generator has just answered. The row only for `UUID`, whose `initialize`
@@ -1460,6 +1485,21 @@ export function emitComponent(
         return base;
       }
       /**
+       * A `States` read (EXP-011 §49) off the `useStates` handle, in both modes — the handle is a
+       * component-scope local. A value name is a port name and may carry a space (`bg color`), so
+       * it takes bracket access where it is not an identifier; an `At <state>` is the comparison.
+       */
+      case 'states-out': {
+        if (expr.field === 'state') return `${expr.local}.state`;
+        if (expr.field === 'error') return `${expr.local}.error`;
+        if (expr.field === 'at') return `${expr.local}.state === ${tsLiteral(expr.name ?? '')}`;
+        const name = expr.name ?? '';
+        return /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(name) ? `${expr.local}.values.${name}` : `${expr.local}.values[${JSON.stringify(name)}]`;
+      }
+      /** An `Animate To Value`'s Current Value (EXP-011 §49) — the number its hook returns. */
+      case 'animate-out':
+        return expr.local;
+      /**
        * One of the five pure date nodes (EXP-011 Tier 1.3) — the node *is* the call, and the
        * arguments print in the same mode, so a nested `Now → Date Add → Date To String` comes
        * out as one nested expression in either context.
@@ -1687,6 +1727,13 @@ export function emitComponent(
         // dependency. The local form cannot reach an effect — it lives inside the New's arm.
         case 'id-out':
           if (e.viaState !== undefined) add(e.viaState);
+          break;
+        // EXP-011 §49. The read itself is the dependency — `panel.state`, `panel.values.opacity`
+        // — never the handle, which is a fresh object every render and would re-run the effect
+        // on every frame of a tween; `fade` is a number and is its own dependency.
+        case 'states-out':
+        case 'animate-out':
+          add(exprCode(e, 'render'));
           break;
         case 'date-call':
         case 'util-call':
@@ -2888,6 +2935,12 @@ export function emitComponent(
        * one-action chain stays an arrow expression and a longer one takes the block form. A
        * Stop never passes them — a stopped countdown fires neither.
        */
+      /**
+       * A States' Toggle or To <state> (EXP-011 §49) — one call on the handle, always an
+       * expression: its outcomes are the node's listeners, passed once to the hook, not arms here.
+       */
+      case 'states-go':
+        return action.verb === 'toggle' ? `${action.local}.toggle()` : `${action.local}.goTo(${tsLiteral(action.state ?? '')})`;
       case 'delay': {
         const at = pad(indent);
         const inner = pad(indent + 2);
@@ -3176,6 +3229,8 @@ export function emitComponent(
       plan.recordEffects.length > 0 ||
       // EXP-011 §48. A CSS Definition is a mount effect.
       plan.styleSheets.length > 0 ||
+      // EXP-011 §49. A States' wired State input is an effect keyed on the read.
+      plan.statesMachines.some((m) => m.follow !== undefined) ||
       delayRefs.size > 0) &&
     !reactImports.includes('useEffect')
   ) {
@@ -3320,6 +3375,15 @@ export function emitComponent(
       specifier,
       `import { ${[...usedTimerHelpers].sort().join(', ')}, type DelayHandle } from '${specifier}';`
     );
+  }
+  // EXP-011 §49. The animation pair's two modules, earned by the plans that survived.
+  if (plan.animations.length > 0) {
+    const specifier = `${relRoot}/${ANIMATE_LIB_PATH.replace(/^src\//, '').replace(/\.ts$/, '')}`;
+    internalImports.set(specifier, `import { useAnimatedValue } from '${specifier}';`);
+  }
+  if (plan.statesMachines.length > 0) {
+    const specifier = `${relRoot}/${STATES_LIB_PATH.replace(/^src\//, '').replace(/\.ts$/, '')}`;
+    internalImports.set(specifier, `import { defineStates, useStates } from '${specifier}';`);
   }
   if (usedUtilHelpers.size > 0) {
     const specifier = `${relRoot}/${UTIL_LIB_PATH.replace(/^src\//, '').replace(/\.ts$/, '')}`;
@@ -3502,6 +3566,20 @@ export function emitComponent(
       ((source.expr.kind === 'file-out' && source.expr.output !== 'error' && source.expr.tsType !== 'string') ||
         // EXP-011 §46. A stored file's Size off a record's column — the same table.
         (source.expr.kind === 'file-field' && source.expr.tsType !== 'string'));
+    /**
+     * EXP-011 §49. A States value typed number or boolean, an `At <state>`, an animated number —
+     * never undefined (plan.ts maybeUndefinedExpr), so a text position takes the runtime Text
+     * node's own `String()` without the `?? ''`; a string value and the Error are already what
+     * every sink takes; a number sink takes the number bare.
+     */
+    if (source.kind === 'computed' && (source.expr.kind === 'states-out' || source.expr.kind === 'animate-out')) {
+      const tsType = source.expr.kind === 'animate-out' ? 'number' : source.expr.tsType;
+      if (tsType === 'string') return base;
+      if (sink === 'text' || sink === 'string') return `String(${base})`;
+      if (sink === 'number') return tsType === 'number' ? base : null;
+      if (sink === 'boolean') return tsType === 'boolean' ? base : SIMPLE_REF.test(base) ? `!!${base}` : `!!(${base})`;
+      return base;
+    }
     if (untypedVariableOf(source) === null && untypedStoreKeyOf(source) === null && !nonStringRecordColumn && !nonStringFileField) return base;
     switch (sink) {
       // The runtime's Text node puts whatever the variable holds through `String()` on its way
@@ -3553,6 +3631,29 @@ export function emitComponent(
     range: 'value',
     select: 'value',
     input: 'startValue'
+  };
+
+  /**
+   * EXP-011 §49. The wired style parameters (`WIRED_STYLE_SINKS`) as one inline `style={{…}}`, in
+   * the table's key order — it wins over the module class exactly as a wired value replaces the
+   * authored parameter in the runtime. An untyped source into `opacity` is refused by name, the
+   * `maxLength` rule: a number position the vocabulary cannot state a cast for.
+   */
+  const styleAttrs = (node: NodeIR): string[] => {
+    const entries: string[] = [];
+    for (const [port, sink] of Object.entries(WIRED_STYLE_SINKS)) {
+      const source = (plan.bindings[node.id] ?? {})[port];
+      if (source === undefined) continue;
+      if (source.kind === 'computed' && source.expr.kind === 'undefined') continue;
+      const expr = bindingExpr(source, sink.sink);
+      if (expr === null) {
+        notes.push(`${plan.path}: wire into ${node.id}.${port} ${noSourceReason(source, sink.sink)} — dropped, reported`);
+        defer(node.id, `the wire into "${port}"`, noSourceReason(source, sink.sink), source);
+        continue;
+      }
+      entries.push(`${sink.css}: ${expr}`);
+    }
+    return entries.length === 0 ? [] : [`style={{ ${entries.join(', ')} }}`];
   };
 
   const contentAttrs = (node: NodeIR): string[] => {
@@ -3683,6 +3784,8 @@ export function emitComponent(
     if (e.kind === 'state-get') return (stateVarByName.get(e.name)?.tsType.replace(' | undefined', '') ?? '') === 'boolean';
     if (e.kind === 'prop') return plan.props.find((p) => p.name === e.name)?.tsType === 'boolean';
     if (e.kind === 'jsfun-out') return e.fold === 'boolean';
+    // EXP-011 §49. An `At <state>` is a comparison, and a boolean-typed value is a boolean.
+    if (e.kind === 'states-out') return e.field === 'at' || (e.field === 'value' && e.tsType === 'boolean');
     return false;
   };
   const truthinessCode = (source: BindingSource): string | null => {
@@ -3779,7 +3882,9 @@ export function emitComponent(
           // without this line the read compiled, rendered and silently did not fold. React shows
           // `undefined` as nothing either way, so nothing observable would have caught it — but a
           // format that interpolates the same read prints the text "undefined".
-          bound.expr.kind === 'id-out') &&
+          bound.expr.kind === 'id-out' ||
+          // EXP-011 §49. A States' Error is the one read of the pair that can be empty.
+          bound.expr.kind === 'states-out') &&
         maybeUndefined(bound.expr)
       ) {
         const code = bindingExpr(bound, 'text');
@@ -3947,6 +4052,8 @@ export function emitComponent(
     const className = classOf(id);
     const classAttr = classAttrOf(id, className);
     if (classAttr !== null) attrs.push(classAttr);
+    // EXP-011 §49. The wired style parameters, after the class they override.
+    attrs.push(...styleAttrs(node));
     const isControl = role === 'checkbox' || role === 'radio' || role === 'range' || role === 'select';
     if (role === 'image' || role === 'input' || role === 'button' || role === 'video' || isControl) {
       attrs.push(...contentAttrs(node));
@@ -4853,6 +4960,31 @@ export function emitComponent(
       ''
     );
   }
+  // EXP-011 §49. A States' definition — its states, every value with its type and per-state
+  // authored values and transitions, the per-state default transitions and the Use Transitions
+  // switch — as one `defineStates({…})` constant above the component, the node's own parameters
+  // in the runtime's own names. Keys are port names and may carry spaces, so each is quoted
+  // where it is not an identifier.
+  const key = (name: string): string => (/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(name) ? name : JSON.stringify(name));
+  const curveLiteral = (curve: { curve: number[]; dur: number; delay: number }): string =>
+    `{ curve: [${curve.curve.join(', ')}], dur: ${curve.dur}, delay: ${curve.delay} }`;
+  const curvesLiteral = (curves: Record<string, { curve: number[]; dur: number; delay: number }>): string =>
+    `{ ${Object.entries(curves)
+      .map(([state, curve]) => `${key(state)}: ${curveLiteral(curve)}`)
+      .join(', ')} }`;
+  for (const machine of plan.statesMachines) {
+    body.push(`/** ${commentSafe(machine.comment)} */`, `const ${machine.constName} = defineStates({`);
+    body.push(`  states: [${machine.states.map((s) => tsLiteral(s)).join(', ')}],`);
+    body.push('  values: {');
+    machine.values.forEach((value, index) => {
+      const byState = `{ ${machine.states.map((s) => `${key(s)}: ${tsLiteral(value.byState[s])}`).join(', ')} }`;
+      const transitions = Object.keys(value.transitions).length > 0 ? `, transitions: ${curvesLiteral(value.transitions)}` : '';
+      body.push(`    ${key(value.name)}: { type: ${tsLiteral(value.type)}, byState: ${byState}${transitions} }${index < machine.values.length - 1 ? ',' : ''}`);
+    });
+    body.push('  },');
+    if (Object.keys(machine.transitions).length > 0) body.push(`  transitions: ${curvesLiteral(machine.transitions)},`);
+    body.push(`  useTransitions: ${machine.useTransitions}`, '});', '');
+  }
   const allPropNames = [
     ...plan.props.map((p) => propName(p.name)),
     ...plan.outputProps.map((o) => o.prop),
@@ -4932,6 +5064,34 @@ export function emitComponent(
   for (const [id, local] of jsLocals) {
     const def = jsFunByNode[id]!;
     body.push(`  const ${local} = ${def.fnName}(${jsArgsObject(def, 'render')});`);
+  }
+  // EXP-011 §49. The animation pair's hooks — after the render locals a target or a wired State
+  // may read (an Expression into State is the corpus's own shape), before the effects that read
+  // the handles. The listeners are printed inline so each closes over this render.
+  for (const animation of plan.animations) {
+    const options = `{ duration: ${exprCode(animation.duration, 'render')}, delay: ${exprCode(animation.delay, 'render')}, ease: ${tsLiteral(animation.ease)} }`;
+    const arrive = animation.arrive !== undefined ? `, ${handlerArrow(animation.arrive, '()', 2)}` : '';
+    body.push(`  // ${animation.comment}`, `  const ${animation.local} = useAnimatedValue(${exprCode(animation.target, 'render')}, ${options}${arrive});`);
+  }
+  for (const machine of plan.statesMachines) {
+    const listenerLines: string[] = [];
+    const { stateChanged, reached, done, unchanged, failure } = machine.listeners;
+    if (stateChanged !== undefined) listenerLines.push(`    stateChanged: ${handlerArrow(stateChanged, '()', 4)}`);
+    const reachedEntries = Object.entries(reached);
+    if (reachedEntries.length > 0) {
+      listenerLines.push(
+        `    reached: { ${reachedEntries.map(([state, chain]) => `${/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(state) ? state : JSON.stringify(state)}: ${handlerArrow(chain, '()', 4)}`).join(', ')} }`
+      );
+    }
+    if (done !== undefined) listenerLines.push(`    done: ${handlerArrow(done, '()', 4)}`);
+    if (unchanged !== undefined) listenerLines.push(`    unchanged: ${handlerArrow(unchanged, '()', 4)}`);
+    if (failure !== undefined) listenerLines.push(`    failure: ${handlerArrow(failure, '()', 4)}`);
+    // The authored State is the second argument; unauthored, the node starts in its first state
+    // and the argument is left out (or `undefined` where the listeners need the position).
+    const start = machine.start !== undefined ? `, ${tsLiteral(machine.start)}` : listenerLines.length > 0 ? ', undefined' : '';
+    body.push(`  // ${machine.comment}`);
+    if (listenerLines.length === 0) body.push(`  const ${machine.local} = useStates(${machine.constName}${start});`);
+    else body.push(`  const ${machine.local} = useStates(${machine.constName}${start}, {`, listenerLines.join(',\n'), '  });');
   }
   if (
     usesNavigate ||
@@ -5058,6 +5218,19 @@ export function emitComponent(
   for (const [, ref] of delayRefs) {
     body.push('  useEffect(() => () => {', `    stopDelay(${ref});`, '  }, []);', '');
   }
+  // EXP-011 §49. A States' wired State input: the `currentState` setter is `scheduleGoToState`,
+  // run whenever the value arrives — an effect keyed on the read, asking the handle to follow.
+  for (const machine of plan.statesMachines) {
+    if (machine.follow === undefined) continue;
+    const deps = effectDeps(machine.follow).join(', ');
+    body.push(
+      `  // ${machine.local}'s State input follows its wire (states.ts currentState setter).`,
+      '  useEffect(() => {',
+      `    ${machine.local}.follow(${exprCode(machine.follow, 'render')});`,
+      `  }, [${deps}]);`,
+      ''
+    );
+  }
   // EXP-011 §48. A CSS Definition: appended to `document.head` on mount, removed on unmount —
   // `updateStyle` and `removeStyleDeclaration` in css-definition.ts, per instance.
   for (const sheet of plan.styleSheets) {
@@ -5158,6 +5331,9 @@ export function emitComponent(
           a.duration,
           ...[...a.then, ...a.unchangedThen, ...a.startedThen, ...a.finishedThen].flatMap(actionExprsOf)
         ];
+      // EXP-011 §49. A call on the handle reads nothing; the listeners are walked off the plan.
+      case 'states-go':
+        return [];
       // EXP-011 Tier 2.5. The link, the wired Open In New Tab, and both chains — `usesPayload`
       // walks this list, so a link built from a received event's payload is found here or the
       // emitted callback takes no argument and its body reads one.
@@ -5264,7 +5440,10 @@ export function emitComponent(
     dateHelpers: usedDateHelpers,
     utilHelpers: usedUtilHelpers,
     idHelpers: usedIdHelpers,
-    timerHelpers: usedTimerHelpers
+    timerHelpers: usedTimerHelpers,
+    // EXP-011 §49. `states.ts` imports `animate.ts`, so a States alone earns both modules.
+    animateLib: plan.animations.length > 0 || plan.statesMachines.length > 0,
+    statesLib: plan.statesMachines.length > 0
   };
 }
 

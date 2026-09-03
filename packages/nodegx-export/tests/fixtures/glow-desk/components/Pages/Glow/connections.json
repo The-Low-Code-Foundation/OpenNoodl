@@ -1,0 +1,229 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "e1a7c3d9-4f2b-4c8e-9a1d-000000000050",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "panel",
+      "fromProperty": "opacity",
+      "toId": "panelBox",
+      "toProperty": "opacity"
+    },
+    {
+      "fromId": "panel",
+      "fromProperty": "tint",
+      "toId": "panelBox",
+      "toProperty": "backgroundColor"
+    },
+    {
+      "fromId": "panel",
+      "fromProperty": "label",
+      "toId": "panelLabel",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "panel",
+      "fromProperty": "currentState",
+      "toId": "stateText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "panel",
+      "fromProperty": "at-bright",
+      "toId": "atText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "panel",
+      "fromProperty": "stateChanged",
+      "toId": "changes",
+      "toProperty": "increase"
+    },
+    {
+      "fromId": "changes",
+      "fromProperty": "currentCount",
+      "toId": "changesText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "panel",
+      "fromProperty": "reached-bright",
+      "toId": "setReachedBright",
+      "toProperty": "do"
+    },
+    {
+      "fromId": "reachedBrightStr",
+      "fromProperty": "savedValue",
+      "toId": "setReachedBright",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "panel",
+      "fromProperty": "reached-dim",
+      "toId": "setReachedDim",
+      "toProperty": "do"
+    },
+    {
+      "fromId": "reachedDimStr",
+      "fromProperty": "savedValue",
+      "toId": "setReachedDim",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "reachedVar",
+      "fromProperty": "value",
+      "toId": "reachedText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "toggleBtn",
+      "fromProperty": "onClick",
+      "toId": "panel",
+      "toProperty": "toggle"
+    },
+    {
+      "fromId": "brightBtn",
+      "fromProperty": "onClick",
+      "toId": "panel",
+      "toProperty": "to-bright"
+    },
+    {
+      "fromId": "dimBtn",
+      "fromProperty": "onClick",
+      "toId": "panel",
+      "toProperty": "to-dim"
+    },
+    {
+      "fromId": "panel",
+      "fromProperty": "done",
+      "toId": "setOutcomeDone",
+      "toProperty": "do"
+    },
+    {
+      "fromId": "doneStr",
+      "fromProperty": "savedValue",
+      "toId": "setOutcomeDone",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "panel",
+      "fromProperty": "unchanged",
+      "toId": "setOutcomeUnchanged",
+      "toProperty": "do"
+    },
+    {
+      "fromId": "unchangedStr",
+      "fromProperty": "savedValue",
+      "toId": "setOutcomeUnchanged",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "outcomeVar",
+      "fromProperty": "value",
+      "toId": "outcomeText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "wantedVar",
+      "fromProperty": "value",
+      "toId": "follower",
+      "toProperty": "currentState"
+    },
+    {
+      "fromId": "follower",
+      "fromProperty": "level",
+      "toId": "followText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "follower",
+      "fromProperty": "error",
+      "toId": "ferrorText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "wantOnBtn",
+      "fromProperty": "onClick",
+      "toId": "setWantOn",
+      "toProperty": "do"
+    },
+    {
+      "fromId": "onStr",
+      "fromProperty": "savedValue",
+      "toId": "setWantOn",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "wantBadBtn",
+      "fromProperty": "onClick",
+      "toId": "setWantBad",
+      "toProperty": "do"
+    },
+    {
+      "fromId": "badStr",
+      "fromProperty": "savedValue",
+      "toId": "setWantBad",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "levelVar",
+      "fromProperty": "value",
+      "toId": "fade",
+      "toProperty": "targetValue"
+    },
+    {
+      "fromId": "fade",
+      "fromProperty": "currentValue",
+      "toId": "fadeText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "fade",
+      "fromProperty": "currentValue",
+      "toId": "fadeBox",
+      "toProperty": "opacity"
+    },
+    {
+      "fromId": "fade",
+      "fromProperty": "atTargetValue",
+      "toId": "setArrived",
+      "toProperty": "do"
+    },
+    {
+      "fromId": "arrivedStr",
+      "fromProperty": "savedValue",
+      "toId": "setArrived",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "arrivedVar",
+      "fromProperty": "value",
+      "toId": "arrivedText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "levelHighBtn",
+      "fromProperty": "onClick",
+      "toId": "setLevelHigh",
+      "toProperty": "do"
+    },
+    {
+      "fromId": "oneNum",
+      "fromProperty": "savedValue",
+      "toId": "setLevelHigh",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "levelLowBtn",
+      "fromProperty": "onClick",
+      "toId": "setLevelLow",
+      "toProperty": "do"
+    },
+    {
+      "fromId": "zeroNum",
+      "fromProperty": "savedValue",
+      "toId": "setLevelLow",
+      "toProperty": "value"
+    }
+  ]
+}

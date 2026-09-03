@@ -1,0 +1,23 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/registry-v2.json",
+  "version": 1,
+  "lastUpdated": "2026-09-03T15:00:00.000Z",
+  "components": {
+    "App": {
+      "path": "App",
+      "type": "root",
+      "nodeCount": 1,
+      "connectionCount": 0,
+      "created": "2026-09-03T15:00:00.000Z",
+      "modified": "2026-09-03T15:00:00.000Z"
+    },
+    "Pages/Glow": {
+      "path": "Pages/Glow",
+      "type": "page",
+      "nodeCount": 49,
+      "connectionCount": 37,
+      "created": "2026-09-03T15:00:00.000Z",
+      "modified": "2026-09-03T15:00:00.000Z"
+    }
+  }
+}
