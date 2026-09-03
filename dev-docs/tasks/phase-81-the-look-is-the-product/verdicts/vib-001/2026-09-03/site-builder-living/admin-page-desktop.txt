@@ -15,13 +15,14 @@ Navigation order
 Show in navigation
 Sections
 Kind
+Rich text
 Hero
 Gallery
 Call to action
 Rich text
 Contact
 Add section
-hero
+Hero
 Move up
 Move down
 Heading
@@ -29,7 +30,7 @@ Body
 Choose image
 Save
 Delete
-richText
+Rich text
 Move up
 Move down
 Heading
@@ -37,16 +38,17 @@ Body
 Choose image
 Save
 Delete
-gallery
+Gallery
 Move up
 Move down
 Heading
 Body
-No pictures yet
+2 pictures
 Choose image
+Remove last picture
 Save
 Delete
-cta
+Call to action
 Move up
 Move down
 Heading

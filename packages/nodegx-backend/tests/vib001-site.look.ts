@@ -247,7 +247,18 @@ describe('VIB-001 — the site builder, as a person meets it', () => {
             'is the better answer than a replacement.'
         }
       },
-      { kind: 'gallery', data: { image: { url: SWATCH } } },
+      // 🔴 **REL-011c A5. The old seed put the picture in `data.image`, and a
+      // gallery built through the product NEVER has one** — `/Admin/SectionRow`'s
+      // `absorb` pushes an upload onto `data.images` for this kind and sets
+      // `image` for every other. So the seeded gallery was a state the product
+      // cannot reach, and it manufactured half of A5's finding (a rendered
+      // picture over the words *"No pictures yet"*) while HIDING the defect
+      // underneath it: fed a real gallery, the admin card showed no picture at
+      // all beside a count that said how many there were. It also left the
+      // PUBLIC home page — one of the three states REL-011c re-photographs —
+      // with ~150px of empty ground where the gallery should be, because
+      // `/Site/GallerySection` reads `data.images` and nothing else.
+      { kind: 'gallery', data: { images: [{ url: SWATCH }, { url: SWATCH }] } },
       { kind: 'cta', data: { body: 'Come and see the workshop — Thursdays, or by arrangement.' } }
     ]);
     const about = await makePage('About the workshop', 'about', 2, [

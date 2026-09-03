@@ -606,6 +606,191 @@ Richard's ruling that it rides; AC3's pictures exist and anything in them is reg
 
 ---
 
+### 🟡 The six product findings this row owns are BUILT (s22, 2026-09-03)
+
+**AC3 is his and stays his.** What a session could do — and what s20's hand-off said there was none
+of left on this board — is the **six product findings REL-011 §AC3 registered against
+`/admin/page/{pageId}` and the admin shell**. A1, A2, A4, A5, A6 and A7 are built; A3 is untouched
+and still belongs to phase 81's judge.
+
+Gate: **`rel011cAdminSurfaces.test.ts`, 24/24, over the shipped
+`site-builder.content.json`** — not over the source constants that produce it, because the door
+renames ids, drops parameters it refuses and rewrites connections, so a spec over the arguments can
+be green about a template that does not carry the fix.
+
+🔴 **It was written to RED and the red is measured, not asserted.** The same file run with HEAD's
+artefact copied over the fixed one (`9de22f4634b7…` in place of the new bytes, restored and
+md5-checked afterwards) reads **21 failed, 1 passed of 22**. The single survivor is the arm that
+exists to survive: *"the population is real — these are the screens the router actually serves"*,
+which asserts only that the six admin components exist. **A control that reads the same in both arms
+is what tells you the other twenty-one were reading something.**
+
+#### 🔴 A2 — the mechanism, and it was ONE node's empty parameter bag
+
+The row recorded A2 as *"the page editor overflows horizontally below ~1900, and the mechanism is
+unmeasured: the fields DO narrow (~763 → ~573px), so it is not a fixed width, and no node on
+`/Pages/PageEditor` carries a `width`, `minWidth` or `maxWidth` at all."* All three of those
+observations were correct and the conclusion they invited — *"something has a fixed width"* — was
+wrong.
+
+**Measured on the deployed bundle at all four widths**, by walking the widest-right path from
+`<body>` and printing every box on it with its flex arithmetic (`main` is `/Admin/Shell`'s
+`Admin content`; `body` is the page editor's own column):
+
+| viewport | `main` | `body` | `body` scrollWidth | document width |
+|---|---|---|---|---|
+| **1900** | 1660 | 1596 | 1596 | 1900 — everything on screen |
+| **1280** | **1280** | 1216 | 1217 | **1520** |
+| **988** | **988** | 924 | **1217** | **1489** |
+| **390** | **390** | 326 | **1217** | **1489** |
+
+🔴 **`body`'s content wants 1217px at every viewport, and it is a 1200×600 picture.**
+`/Admin/SectionRow`'s `Image preview` was authored as `{ id, type: 'Image', label, parent }` — **no
+parameters at all**. `Image` defaults to `contentSize` (`image.ts:176`), which assigns neither axis,
+so the node rendered at its **source's intrinsic width**, and `layout.ts:82` starts every node
+`flexShrink: 0` — only a percentage size along the parent's direction opts back in. The look
+harness's swatch is 1200px wide; a client's phone photograph is three times that.
+
+🔴 **And that is also why the two boxes behaved differently, which is the part the row could not
+explain.** `min-width: auto` on a flex item is `min(its own stated width, its content minimum)`.
+`Admin content` carries `width: 100%`, and its content minimum was **1280** — 64px of its own
+padding plus the card's 1216. So:
+
+- above 1280, the rail's 240px comes out of the content column correctly (1900 → 1660);
+- at or below it, `main` stops shrinking at its own stated width, and the **rail is pushed off the
+  right-hand edge instead of coming out of the content**.
+
+The fields narrowed because they are percentage-width children of a box that *was* narrowing;
+`Save page` sat at x=1370 on a 1280px screen because it is in a box that was not. **Two different
+boxes, one of them clamped.** The fix is the treatment this template's other `Image` already carries
+(`/Site/GalleryTile`): `sizeMode: 'explicit'`, `objectFit: 'cover'`, a 100% width and a 180px crop —
+plus `mounted` off until there is something to show, because an explicit box draws 180px of empty
+ground on every section without a picture.
+
+⚠️ Two raw dimensions, both named with reasons in `TEMPLATE_DIMENSION_EXEMPTIONS`
+(`siteBuilderStyleScan.ts`); `sbr012RawColourGate` asserts that list **exactly**, in both directions.
+
+#### 🔴 A1 — the shell had no breakpoint of any kind, and `Columns` is the wrong tool
+
+`/Admin/Shell` carried a `240px` explicit rail and nothing anywhere that read a viewport. Fixing A2
+does not fix this: with the picture sized, `main` at 390 shrinks to **150px** and the content column
+to 86.
+
+⚠️ **The runtime's own breakpoint is on `Columns` and only there** (`smallBreakpoint`/`smallLayout`,
+`columns.ts:239`) — the mechanism `members-area`'s `MemberRow` uses. It is wrong here: a `Columns`
+divides its width by a ratio, so the fixed 240px rail would become a **proportion** of the viewport
+and grow to ~380px at 1900. The rail is fixed on purpose (`SIDEBAR_WIDTH`), so the breakpoint had to
+come from somewhere that does not also resize it.
+
+**`Screen Resolution`** is that somewhere — a reactive `width` output that re-publishes on every
+`resize` (`screenresolution.ts:70`). Below **760px** (240 for a rail leaves under 500px of content,
+which is narrower than this screen's own two-up field row wants) one function moves four ports
+together: the frame's `flexDirection` to `column`, the rail's `sizeMode` to `contentHeight`, its
+`width` to `100%`, and its `borderRightStyle` to `none`.
+
+- ⚠️ **All four, or none.** A stacked frame whose rail still states 240px is a 240px block with the
+  content beneath it; a rail at 100% inside a row is the whole screen.
+- ⚠️ **`railWidth` is built FRESH on every run.** A `Function`'s `Outputs` proxy publishes only on
+  change, so a shared constant would be sent once and never re-sent when the window came back over
+  the fold. The three strings beside it are deliberately the opposite.
+- ⚠️ **The guarded return is the SSR answer.** `Screen Resolution` is client-only, so an unmeasured
+  width publishes nothing and the **authored** parameters — which are the wide shape — stand.
+- ⚠️ `borderRightStyle` is authored as a real line because `borderRightWidth`/`Color` are dynamic
+  ports gated on exactly that; authoring `'none'` would have made the other two unauthorable.
+
+**Second half, same number**: `/Pages/PageEditor`'s title/slug pair stops being two-up below 760 as
+well, from its own `Screen Resolution` rather than a contract passed down from the shell — a shell
+that reports its layout to its children is a shell that has to be right about all of them. ⚠️
+`flexWrap: 'wrap'` is authored on that row purely so `rowGap` is **authorable at all**: the port is
+gated on `flexDirection = column OR flexWrap = wrap` (`group.ts:478`) and the Group is authored as a
+row, so without it the stacked form would have had no gap between its two fields.
+
+#### 🔴 A5 — the photograph showed a fixture defect, and it was hiding the opposite product defect
+
+A5 read: *"the `gallery` card shows a rendered picture **and** the words 'No pictures yet' at the
+same moment."* Both halves of that screen were real. **Neither was the defect.**
+
+`/Admin/SectionRow`'s `absorb` pushes an upload onto `data.images` for a gallery and writes
+`data.image` for every other kind — so **a gallery built through the product never has an `image`**,
+and the seeded row (`{ image: { url: SWATCH } }`) was a state the product cannot reach. The seed
+manufactured the contradiction. Underneath it, `unpack` fed the preview `d.image` for every kind, so
+a **real** gallery — three uploads, `images` full, `image` absent — showed **no picture at all**
+beside a count that said how many there were. The seed was hiding it by never producing one.
+
+✅ One derivation settles both: a gallery's picture is the **last** of `images`, which is also the
+one `Remove last picture` takes back, so what is on the card is what the button acts on. Graded four
+ways with the **reverted** script beside it — the reverted arm fails exactly the two the finding
+describes and passes the four kinds the fix must not touch.
+
+⚠️ **The seed is fixed too, so the A5 before/after PICTURE is not a one-variable comparison** — the
+one-variable evidence is the spec, which runs both data shapes through the same script. The seed had
+to move for a second reason: `/Site/GallerySection` reads `data.images` and nothing else, so the
+public home page — **one of the three states this row re-photographs** — carried ~150px of empty
+ground where the gallery section should have been, in every shot taken of it.
+
+#### A4, A6, A7 — the three cheap ones
+
+- **A4** was containment, not spacing. `useLabel` draws a control's label **above** its box, so with
+  the heading, the picker and `Add section` sharing one centred row, the word *Kind* landed beside
+  the word *Sections* and read as a second heading of the same rank. The header is a column now:
+  heading on its own line, then the picker and the button in a row aligned at `flex-end` (they are
+  different heights — one is labelled and one is not, and centred puts `Add section` halfway up the
+  field beside it).
+- **A6**: the card's heading is wired from a derived label rather than from the raw discriminator,
+  with the map **derived from `SECTION_KIND_LABELS`** rather than retyped — the same discipline
+  `kindItems` already applies, and for the same reason. An unknown kind falls back to the slug, since
+  a card headed `undefined` is worse than one headed `richText`.
+- **A7**: six `Text` nodes take `as: 'h1'` — one per admin route. It changes nothing visually, which
+  is the point: a `Text` renders a `<div>` unless told otherwise, so twelve admin shots recorded
+  `headings: []` on screens that visibly had titles. The public site has said `h1`/`h2` since
+  SBR-004; the panel a client works in every day never did. **Exactly one per screen**, because two
+  is the other way to have no heading structure.
+
+#### ⚠️ What this build does NOT do
+
+- **A3 is untouched.** The judge still has no horizontal reachability metric, and every desktop and
+  wide admin shot will still read `unreachable=0` however far off the right edge something sits.
+  Owner is unchanged: **phase 81**. It is worth saying that this session's diagnosis was made with a
+  throw-away probe in the look harness's `prepare` hook and **not** by adding a measure to `judge()`
+  — that would have been building another task's AC.
+- **§3 finding 3 — the nav wrapping — is deliberately NOT fixed**, per the row: *"judged not
+  fixed"*. It is named for his look below.
+
+#### 🔴 The render caught a regression the first build shipped, and it is the lesson of the session
+
+`flexWrap: 'wrap'` was authored on `/Pages/PageEditor`'s `nameRow` and `/Pages/ThemeEditor`'s
+`columns` for one reason: `rowGap` is a **dynamic port gated on `flexDirection = column OR flexWrap
+= wrap`** (`group.ts:478`), and both Groups are authored as rows, so without the wrap the stacked
+form would have had no gap at all. The gate went green, the manifest read `unreachable=0` at every
+width, and the photographs came back with **Title above Slug at 1280 and 1900** and **the live
+preview under the fields at 1900** — because two children whose flex-basis is 100% each take their
+own line in a wrap container, at every width. The fix had removed the two-up everywhere instead of
+restoring it below the fold.
+
+✅ `flexWrap` now moves WITH the direction (`nowrap` above 760, `wrap` below), and an arm pins the
+pair. 🔴 **Nothing in the numbers said this**: `unreachablePx` is vertical, `contentBottom` grew by
+66px on a page whose text was byte-identical, and the spec arms about `flexDirection` were all true.
+**Only looking at the picture said it** — which is the close protocol's rule 4, and it earned its
+keep twice in one session.
+
+#### ⚠️ Two residuals, registered rather than built — owner: this row, for his look
+
+1. **The theme editor's live preview says *"follow the fields on the left"*** — true at 1900 and
+   false at 390, where A9 now stacks the fields ABOVE it. One string, and it should be neutral at
+   both widths rather than width-aware.
+2. **`/contact-only` draws the words *"Get in touch"* twice** — once as the section's own heading and
+   again as the form card's, one above the other. Visible in
+   `sbr-005/2026-09-03/site-builder-living/kind-contact-*`.
+
+⚠️ **And a fact about the before-arm that changes what the sbr-005 pictures are of:** the committed
+`sbr-005/2026-09-03` run was taken at **`2696c850` (10:14)**, which is *before* REL-011a landed
+(`d88368c5`). So the pictures that were on disk showed the site builder with its **25 text inputs
+still invisible**, and this run is the first photograph of that fix on the public surface — the
+contact form's three fields are drawn for the first time. That is the +66px on every page holding a
+contact section, and it is REL-011a's, not this row's.
+
+---
+
 ## §4 One question this file does NOT decide
 
 ⚠️ **Does the site builder also get a row on the template shelf?** [REL-001](TASKS.md) publishes the

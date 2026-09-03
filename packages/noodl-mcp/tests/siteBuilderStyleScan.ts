@@ -423,5 +423,20 @@ export const TEMPLATE_DIMENSION_EXEMPTIONS: ReadonlyArray<TemplateExemption> = [
     label: 'Page shell',
     port: 'width',
     why: sb006Why('Page shell', 'width')
+  },
+  // REL-011c A2. The section card's picture used to state no size at all and
+  // took its SOURCE's intrinsic width, which is what made the page editor
+  // 1216px wide at every viewport — see the note on the node.
+  {
+    component: '/Admin/SectionRow',
+    label: 'Image preview',
+    port: 'width',
+    why: 'The crop fills the card it sits in, and 100% of a card is a layout instruction rather than a distance — the same statement /Site/GalleryTile makes, and the one quantity the token vocabulary deliberately has no name for.'
+  },
+  {
+    component: '/Admin/SectionRow',
+    label: 'Image preview',
+    port: 'height',
+    why: 'A crop band, so that four section cards holding four differently shaped photographs read as four cards rather than four page lengths. It is a picture box, not spacing, so the spacing scale is the wrong vocabulary for it — exactly the argument /Site/GalleryTile\'s 180px carries.'
   }
 ];

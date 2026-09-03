@@ -3124,6 +3124,67 @@
             "dynamicports": []
           },
           {
+            "id": "viewport",
+            "type": "Screen Resolution",
+            "children": [],
+            "label": "How wide is the window",
+            "x": 410,
+            "y": 1600,
+            "parameters": {},
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "fold",
+            "type": "JavaScriptFunction",
+            "children": [],
+            "label": "Is there room for the rail beside the content?",
+            "x": 410,
+            "y": 40,
+            "parameters": {
+              "runOnChange-in-width": true,
+              "functionScript": "if (Inputs.width === undefined) return;\nconst roomy = Inputs.width >= 760;\nOutputs.frameDirection = roomy ? 'row' : 'column';\nOutputs.railSizeMode = roomy ? 'explicit' : 'contentHeight';\nOutputs.railWidth = roomy ? { value: 240, unit: 'px' } : { value: 100, unit: '%' };\nOutputs.railRightBorder = roomy ? 'solid' : 'none';"
+            },
+            "ports": [
+              {
+                "name": "in-width",
+                "displayName": "width",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "out-frameDirection",
+                "displayName": "frameDirection",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              },
+              {
+                "name": "out-railSizeMode",
+                "displayName": "railSizeMode",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              },
+              {
+                "name": "out-railWidth",
+                "displayName": "railWidth",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              },
+              {
+                "name": "out-railRightBorder",
+                "displayName": "railRightBorder",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              }
+            ],
+            "dynamicports": []
+          },
+          {
             "id": "goPages",
             "type": "RouterNavigate",
             "children": [],
@@ -3233,7 +3294,7 @@
             "children": [],
             "label": "Theme (one row)",
             "x": 410,
-            "y": 1600,
+            "y": 1720,
             "parameters": {
               "collectionName": "Theme"
             },
@@ -3246,7 +3307,7 @@
             "children": [],
             "label": "The saved theme, on this document",
             "x": 410,
-            "y": 1720,
+            "y": 1840,
             "parameters": {
               "runOnChange-in-rows": true,
               "functionScript": "if (typeof document === 'undefined') return;\nconst rows = Inputs.rows || [];\nconst first = rows[0] ? rows[0].data || rows[0] : {};\nconst t = first.tokens || {};\nconst root = document.documentElement;\nif (t.colorPrimary) {\n  root.style.setProperty('--primary', t.colorPrimary);\n  root.style.setProperty('--primary-hover', 'color-mix(in srgb, ' + t.colorPrimary + ' 82%, black)');\n  root.style.setProperty('--ring', t.colorPrimary);\n  root.style.setProperty('--accent-foreground', t.colorPrimary);\n}\nif (t.colorOnPrimary) root.style.setProperty('--primary-foreground', t.colorOnPrimary);\nif (t.colorBackground) root.style.setProperty('--background', t.colorBackground);\nif (t.colorSurface) {\n  root.style.setProperty('--surface', t.colorSurface);\n  root.style.setProperty('--surface-raised', t.colorSurface);\n}\nif (t.colorText) root.style.setProperty('--foreground', t.colorText);\nif (t.colorTextSoft) root.style.setProperty('--muted-foreground', t.colorTextSoft);\nif (t.colorBorder) {\n  root.style.setProperty('--border', t.colorBorder);\n  root.style.setProperty('--border-subtle', 'color-mix(in srgb, ' + t.colorBorder + ' 45%, var(--background))');\n  root.style.setProperty('--border-strong', 'color-mix(in srgb, ' + t.colorBorder + ' 65%, var(--foreground))');\n}\nif (t.colorAccentSoft) root.style.setProperty('--accent', t.colorAccentSoft);\nif (t.radius) root.style.setProperty('--radius-md', t.radius);\nif (t.fontDisplay) root.style.setProperty('--font-serif', t.fontDisplay);\nif (t.fontUi) {\n  root.style.setProperty('--font-sans', t.fontUi);\n  root.style.fontFamily = t.fontUi;\n}\nif (t.measure) root.style.setProperty('--site-measure', t.measure);"
@@ -3281,6 +3342,36 @@
             "fromProperty": "active",
             "toId": "navStyle",
             "toProperty": "in-active"
+          },
+          {
+            "fromId": "viewport",
+            "fromProperty": "width",
+            "toId": "fold",
+            "toProperty": "in-width"
+          },
+          {
+            "fromId": "fold",
+            "fromProperty": "out-frameDirection",
+            "toId": "frame-2",
+            "toProperty": "flexDirection"
+          },
+          {
+            "fromId": "fold",
+            "fromProperty": "out-railSizeMode",
+            "toId": "sidebar",
+            "toProperty": "sizeMode"
+          },
+          {
+            "fromId": "fold",
+            "fromProperty": "out-railWidth",
+            "toId": "sidebar",
+            "toProperty": "width"
+          },
+          {
+            "fromId": "fold",
+            "fromProperty": "out-railRightBorder",
+            "toId": "sidebar",
+            "toProperty": "borderRightStyle"
           },
           {
             "fromId": "navStyle",
@@ -3589,7 +3680,20 @@
                     "label": "Image preview",
                     "x": 160,
                     "y": 1240,
-                    "parameters": {},
+                    "parameters": {
+                      "mounted": false,
+                      "sizeMode": "explicit",
+                      "objectFit": "cover",
+                      "width": {
+                        "value": 100,
+                        "unit": "%"
+                      },
+                      "height": {
+                        "value": 180,
+                        "unit": "px"
+                      },
+                      "borderRadius": "var(--radius-md)"
+                    },
                     "ports": [],
                     "dynamicports": []
                   },
@@ -3730,7 +3834,7 @@
             "children": [],
             "label": "The section record",
             "x": 470,
-            "y": 280,
+            "y": 1960,
             "parameters": {},
             "ports": [
               {
@@ -3762,9 +3866,9 @@
             "children": [],
             "label": "Read this section out of data, and decide which controls it needs",
             "x": 470,
-            "y": 760,
+            "y": 280,
             "parameters": {
-              "functionScript": "const d = Inputs.data || {};\nconst kind = Inputs.kind || 'richText';\nOutputs.heading = d.heading || '';\nOutputs.body = d.body || '';\nOutputs.linkLabel = d.linkLabel || '';\nOutputs.linkTarget = d.linkTarget || '';\nOutputs.image = (d.image && d.image.url) || '';\n\nconst images = Array.isArray(d.images) ? d.images : [];\nconst isGallery = kind === 'gallery';\nconst isCta = kind === 'cta';\nOutputs.isGallery = isGallery;\nOutputs.isCta = isCta;\nOutputs.canRemove = isGallery && images.length > 0;\nOutputs.count =\n  images.length === 0 ? 'No pictures yet' : images.length === 1 ? '1 picture' : images.length + ' pictures';"
+              "functionScript": "const d = Inputs.data || {};\nconst kind = Inputs.kind || 'richText';\nconst LABELS = {\"hero\":\"Hero\",\"gallery\":\"Gallery\",\"cta\":\"Call to action\",\"richText\":\"Rich text\",\"contact\":\"Contact\"};\nOutputs.kindLabel = LABELS[kind] || kind;\nOutputs.heading = d.heading || '';\nOutputs.body = d.body || '';\nOutputs.linkLabel = d.linkLabel || '';\nOutputs.linkTarget = d.linkTarget || '';\n\nconst images = Array.isArray(d.images) ? d.images : [];\nconst isGallery = kind === 'gallery';\nconst isCta = kind === 'cta';\nOutputs.isGallery = isGallery;\nOutputs.isCta = isCta;\nconst shown = isGallery ? images[images.length - 1] : d.image;\nOutputs.image = (shown && shown.url) || '';\nOutputs.hasImage = Outputs.image !== '';\nOutputs.canRemove = isGallery && images.length > 0;\nOutputs.count =\n  images.length === 0 ? 'No pictures yet' : images.length === 1 ? '1 picture' : images.length + ' pictures';"
             },
             "ports": [
               {
@@ -3780,6 +3884,13 @@
                 "plug": "input",
                 "type": "*",
                 "group": "Inputs"
+              },
+              {
+                "name": "out-kindLabel",
+                "displayName": "kindLabel",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
               },
               {
                 "name": "out-heading",
@@ -3810,13 +3921,6 @@
                 "group": "Outputs"
               },
               {
-                "name": "out-image",
-                "displayName": "image",
-                "plug": "output",
-                "type": "*",
-                "group": "Outputs"
-              },
-              {
                 "name": "out-isGallery",
                 "displayName": "isGallery",
                 "plug": "output",
@@ -3826,6 +3930,20 @@
               {
                 "name": "out-isCta",
                 "displayName": "isCta",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              },
+              {
+                "name": "out-image",
+                "displayName": "image",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              },
+              {
+                "name": "out-hasImage",
+                "displayName": "hasImage",
                 "plug": "output",
                 "type": "*",
                 "group": "Outputs"
@@ -3866,7 +3984,7 @@
             "children": [],
             "label": "Upload it",
             "x": 470,
-            "y": 1960,
+            "y": 2080,
             "parameters": {},
             "ports": [],
             "dynamicports": []
@@ -3877,7 +3995,7 @@
             "children": [],
             "label": "Fold the edits back into data",
             "x": 470,
-            "y": 880,
+            "y": 760,
             "parameters": {
               "runOnChange-in-data": false,
               "runOnChange-in-body": false,
@@ -3943,7 +4061,7 @@
             "children": [],
             "label": "Fold an uploaded picture into this section",
             "x": 470,
-            "y": 2080,
+            "y": 2200,
             "parameters": {
               "runOnChange-in-data": false,
               "runOnChange-in-kind": false,
@@ -4027,7 +4145,7 @@
             "children": [],
             "label": "Save this section",
             "x": 470,
-            "y": 2200,
+            "y": 2320,
             "parameters": {
               "collectionName": "Section",
               "idSource": "explicit",
@@ -4129,8 +4247,8 @@
         ],
         "connections": [
           {
-            "fromId": "inputs-11",
-            "fromProperty": "kind",
+            "fromId": "unpack-2",
+            "fromProperty": "out-kindLabel",
             "toId": "kindText",
             "toProperty": "text"
           },
@@ -4175,6 +4293,12 @@
             "fromProperty": "out-image",
             "toId": "preview",
             "toProperty": "src"
+          },
+          {
+            "fromId": "unpack-2",
+            "fromProperty": "out-hasImage",
+            "toId": "preview",
+            "toProperty": "mounted"
           },
           {
             "fromId": "unpack-2",
@@ -4443,6 +4567,7 @@
                                 "value": 60,
                                 "unit": "%"
                               },
+                              "as": "h1",
                               "text": "",
                               "fontFamily": "var(--font-sans)",
                               "fontSize": "var(--text-3xl)",
@@ -4631,7 +4756,9 @@
                             "parameters": {
                               "sizeMode": "contentHeight",
                               "flexDirection": "row",
-                              "columnGap": "var(--space-4)"
+                              "flexWrap": "wrap",
+                              "columnGap": "var(--space-4)",
+                              "rowGap": "var(--space-4)"
                             },
                             "ports": [],
                             "dynamicports": []
@@ -4761,7 +4888,7 @@
                                 "x": 340,
                                 "y": 2440,
                                 "parameters": {
-                                  "sizeMode": "contentSize",
+                                  "sizeMode": "contentHeight",
                                   "text": "Sections",
                                   "fontFamily": "var(--font-sans)",
                                   "fontSize": "var(--text-xl)",
@@ -4772,45 +4899,63 @@
                                 "dynamicports": []
                               },
                               {
-                                "id": "kindPicker",
-                                "type": "net.noodl.controls.options",
-                                "children": [],
-                                "label": "Section kind",
+                                "id": "sectionsAddRow",
+                                "type": "Group",
+                                "children": [
+                                  {
+                                    "id": "kindPicker",
+                                    "type": "net.noodl.controls.options",
+                                    "children": [],
+                                    "label": "Section kind",
+                                    "x": 400,
+                                    "y": 2680,
+                                    "parameters": {
+                                      "sizeMode": "contentHeight",
+                                      "backgroundColor": "var(--background)",
+                                      "borderStyle": "solid",
+                                      "borderWidth": "var(--border-1)",
+                                      "borderColor": "var(--border)",
+                                      "borderRadius": "var(--radius-md)",
+                                      "color": "var(--foreground)",
+                                      "fontSize": "var(--text-base)",
+                                      "paddingLeft": "var(--space-3)",
+                                      "paddingRight": "var(--space-3)",
+                                      "paddingTop": "var(--space-2)",
+                                      "paddingBottom": "var(--space-2)",
+                                      "useLabel": true,
+                                      "label": "Kind",
+                                      "value": "richText"
+                                    },
+                                    "ports": [],
+                                    "dynamicports": []
+                                  },
+                                  {
+                                    "id": "addButton",
+                                    "type": "net.noodl.controls.button",
+                                    "children": [],
+                                    "label": "Add",
+                                    "x": 400,
+                                    "y": 2800,
+                                    "parameters": {
+                                      "backgroundColor": "var(--primary)",
+                                      "color": "var(--primary-foreground)",
+                                      "borderRadius": "var(--radius-md)",
+                                      "fontSize": "var(--text-base)",
+                                      "fontWeight": "var(--font-semibold)",
+                                      "label": "Add section"
+                                    },
+                                    "ports": [],
+                                    "dynamicports": []
+                                  }
+                                ],
+                                "label": "Pick a kind and add it",
                                 "x": 340,
                                 "y": 2560,
                                 "parameters": {
                                   "sizeMode": "contentHeight",
-                                  "backgroundColor": "var(--background)",
-                                  "borderStyle": "solid",
-                                  "borderWidth": "var(--border-1)",
-                                  "borderColor": "var(--border)",
-                                  "borderRadius": "var(--radius-md)",
-                                  "color": "var(--foreground)",
-                                  "fontSize": "var(--text-base)",
-                                  "paddingLeft": "var(--space-3)",
-                                  "paddingRight": "var(--space-3)",
-                                  "paddingTop": "var(--space-2)",
-                                  "paddingBottom": "var(--space-2)",
-                                  "useLabel": true,
-                                  "label": "Kind"
-                                },
-                                "ports": [],
-                                "dynamicports": []
-                              },
-                              {
-                                "id": "addButton",
-                                "type": "net.noodl.controls.button",
-                                "children": [],
-                                "label": "Add",
-                                "x": 340,
-                                "y": 2680,
-                                "parameters": {
-                                  "backgroundColor": "var(--primary)",
-                                  "color": "var(--primary-foreground)",
-                                  "borderRadius": "var(--radius-md)",
-                                  "fontSize": "var(--text-base)",
-                                  "fontWeight": "var(--font-semibold)",
-                                  "label": "Add section"
+                                  "flexDirection": "row",
+                                  "alignItems": "flex-end",
+                                  "columnGap": "var(--space-3)"
                                 },
                                 "ports": [],
                                 "dynamicports": []
@@ -4821,9 +4966,8 @@
                             "y": 2320,
                             "parameters": {
                               "sizeMode": "contentHeight",
-                              "flexDirection": "row",
-                              "alignItems": "center",
-                              "columnGap": "var(--space-3)"
+                              "flexDirection": "column",
+                              "rowGap": "var(--space-2)"
                             },
                             "ports": [],
                             "dynamicports": []
@@ -4834,7 +4978,7 @@
                             "children": [],
                             "label": "Why that move did not work",
                             "x": 280,
-                            "y": 2800,
+                            "y": 2920,
                             "parameters": {
                               "sizeMode": "contentHeight",
                               "mounted": false,
@@ -4856,7 +5000,7 @@
                                 "children": [],
                                 "label": "One row per section",
                                 "x": 340,
-                                "y": 3040,
+                                "y": 3160,
                                 "parameters": {
                                   "templateType": "explicit",
                                   "template": "/Admin/SectionRow"
@@ -4867,7 +5011,7 @@
                             ],
                             "label": "The section rows",
                             "x": 280,
-                            "y": 2920,
+                            "y": 3040,
                             "parameters": {
                               "sizeMode": "contentHeight",
                               "flexDirection": "column",
@@ -4894,7 +5038,7 @@
                         "children": [],
                         "label": "Back",
                         "x": 220,
-                        "y": 3160,
+                        "y": 3280,
                         "parameters": {
                           "backgroundColor": "var(--surface)",
                           "color": "var(--foreground)",
@@ -4943,12 +5087,59 @@
             "dynamicports": []
           },
           {
+            "id": "viewport-2",
+            "type": "Screen Resolution",
+            "children": [],
+            "label": "How wide is the window",
+            "x": 650,
+            "y": 3640,
+            "parameters": {},
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "fields",
+            "type": "JavaScriptFunction",
+            "children": [],
+            "label": "Is there room for two fields side by side?",
+            "x": 650,
+            "y": 1360,
+            "parameters": {
+              "runOnChange-in-width": true,
+              "functionScript": "if (Inputs.width === undefined) return;\nconst roomy = Inputs.width >= 760;\nOutputs.fieldsDirection = roomy ? 'row' : 'column';\nOutputs.fieldsWrap = roomy ? 'nowrap' : 'wrap';"
+            },
+            "ports": [
+              {
+                "name": "in-width",
+                "displayName": "width",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "out-fieldsDirection",
+                "displayName": "fieldsDirection",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              },
+              {
+                "name": "out-fieldsWrap",
+                "displayName": "fieldsWrap",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              }
+            ],
+            "dynamicports": []
+          },
+          {
             "id": "kindItems",
             "type": "Static Data",
             "children": [],
             "label": "The five section kinds",
-            "x": 590,
-            "y": 2560,
+            "x": 650,
+            "y": 2680,
             "parameters": {
               "type": "json",
               "json": "[{\"Label\":\"Hero\",\"Value\":\"hero\"},{\"Label\":\"Gallery\",\"Value\":\"gallery\"},{\"Label\":\"Call to action\",\"Value\":\"cta\"},{\"Label\":\"Rich text\",\"Value\":\"richText\"},{\"Label\":\"Contact\",\"Value\":\"contact\"}]"
@@ -4961,8 +5152,8 @@
             "type": "PageInputs",
             "children": [],
             "label": "Which page",
-            "x": 590,
-            "y": 3520,
+            "x": 650,
+            "y": 3760,
             "parameters": {
               "pathParams": "pageId"
             },
@@ -4974,7 +5165,7 @@
             "type": "JavaScriptFunction",
             "children": [],
             "label": "Hold the page id",
-            "x": 590,
+            "x": 650,
             "y": 40,
             "parameters": {
               "runOnChange-in-pageId": true,
@@ -5008,7 +5199,7 @@
             "type": "DbModel2",
             "children": [],
             "label": "The page being edited",
-            "x": 590,
+            "x": 650,
             "y": 1480,
             "parameters": {
               "runOnChange-modelId": true,
@@ -5024,7 +5215,7 @@
             "type": "SetDbModelProperties",
             "children": [],
             "label": "Save the page fields",
-            "x": 590,
+            "x": 650,
             "y": 1600,
             "parameters": {
               "collectionName": "Page",
@@ -5039,8 +5230,8 @@
             "type": "DbCollection2",
             "children": [],
             "label": "This page's sections",
-            "x": 590,
-            "y": 3040,
+            "x": 650,
+            "y": 3160,
             "parameters": {
               "runOnChange-records": true,
               "runOnChange-search": true,
@@ -5073,8 +5264,8 @@
             "type": "JavaScriptFunction",
             "children": [],
             "label": "Where does this section go if it moves up",
-            "x": 590,
-            "y": 3160,
+            "x": 650,
+            "y": 3280,
             "parameters": {
               "runOnChange-in-sections": false,
               "runOnChange-in-itemId": false,
@@ -5122,8 +5313,8 @@
             "type": "JavaScriptFunction",
             "children": [],
             "label": "Where does this section go if it moves down",
-            "x": 590,
-            "y": 3280,
+            "x": 650,
+            "y": 3400,
             "parameters": {
               "runOnChange-in-sections": false,
               "runOnChange-in-itemId": false,
@@ -5171,8 +5362,8 @@
             "type": "States",
             "children": [],
             "label": "Did the last move refuse?",
-            "x": 590,
-            "y": 2800,
+            "x": 650,
+            "y": 2920,
             "parameters": {
               "states": "Quiet,Refused",
               "values": "refused",
@@ -5188,8 +5379,8 @@
             "type": "CloudFunction2",
             "children": [],
             "label": "reorderSection",
-            "x": 590,
-            "y": 2920,
+            "x": 650,
+            "y": 3040,
             "parameters": {
               "function": "reorderSection"
             },
@@ -5201,8 +5392,8 @@
             "type": "NewDbModelProperties",
             "children": [],
             "label": "Add a section to this page",
-            "x": 590,
-            "y": 2680,
+            "x": 650,
+            "y": 2800,
             "parameters": {
               "collectionName": "Section",
               "accessControl": [
@@ -5224,8 +5415,8 @@
             "type": "RouterNavigate",
             "children": [],
             "label": "Back to the list",
-            "x": 590,
-            "y": 3400,
+            "x": 650,
+            "y": 3520,
             "parameters": {
               "router": "Main",
               "target": "/Pages/Admin"
@@ -5238,7 +5429,7 @@
             "type": "JavaScriptFunction",
             "children": [],
             "label": "Which page is being edited",
-            "x": 590,
+            "x": 650,
             "y": 520,
             "parameters": {
               "runOnChange-in-title": true,
@@ -5267,7 +5458,7 @@
             "type": "JavaScriptFunction",
             "children": [],
             "label": "Draft or published, as a word and a colour",
-            "x": 590,
+            "x": 650,
             "y": 760,
             "parameters": {
               "runOnChange-in-published": true,
@@ -5310,7 +5501,7 @@
             "type": "JavaScriptFunction",
             "children": [],
             "label": "Is there anything unsaved?",
-            "x": 590,
+            "x": 650,
             "y": 880,
             "parameters": {
               "runOnChange-in-title": true,
@@ -5411,7 +5602,7 @@
             "type": "RouterNavigate",
             "children": [],
             "label": "Preview the public page",
-            "x": 590,
+            "x": 650,
             "y": 1000,
             "parameters": {
               "router": "Main",
@@ -5427,6 +5618,24 @@
             "fromProperty": "items",
             "toId": "kindPicker",
             "toProperty": "items"
+          },
+          {
+            "fromId": "viewport-2",
+            "fromProperty": "width",
+            "toId": "fields",
+            "toProperty": "in-width"
+          },
+          {
+            "fromId": "fields",
+            "fromProperty": "out-fieldsDirection",
+            "toId": "nameRow",
+            "toProperty": "flexDirection"
+          },
+          {
+            "fromId": "fields",
+            "fromProperty": "out-fieldsWrap",
+            "toId": "nameRow",
+            "toProperty": "flexWrap"
           },
           {
             "fromId": "pageInputs-2",
@@ -6659,6 +6868,7 @@
                         "y": 400,
                         "parameters": {
                           "sizeMode": "contentHeight",
+                          "as": "h1",
                           "text": "Theme and settings",
                           "fontFamily": "var(--font-serif)",
                           "fontSize": "var(--text-2xl)",
@@ -7454,7 +7664,9 @@
                         "parameters": {
                           "sizeMode": "contentHeight",
                           "flexDirection": "row",
+                          "flexWrap": "wrap",
                           "columnGap": "var(--space-6)",
+                          "rowGap": "var(--space-6)",
                           "alignItems": "flex-start"
                         },
                         "ports": [],
@@ -7494,12 +7706,59 @@
             "dynamicports": []
           },
           {
+            "id": "viewport-3",
+            "type": "Screen Resolution",
+            "children": [],
+            "label": "How wide is the window",
+            "x": 770,
+            "y": 3640,
+            "parameters": {},
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "panes",
+            "type": "JavaScriptFunction",
+            "children": [],
+            "label": "Is there room for the preview beside the fields?",
+            "x": 770,
+            "y": 1360,
+            "parameters": {
+              "runOnChange-in-width": true,
+              "functionScript": "if (Inputs.width === undefined) return;\nconst roomy = Inputs.width >= 760;\nOutputs.panesDirection = roomy ? 'row' : 'column';\nOutputs.panesWrap = roomy ? 'nowrap' : 'wrap';"
+            },
+            "ports": [
+              {
+                "name": "in-width",
+                "displayName": "width",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "out-panesDirection",
+                "displayName": "panesDirection",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              },
+              {
+                "name": "out-panesWrap",
+                "displayName": "panesWrap",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              }
+            ],
+            "dynamicports": []
+          },
+          {
             "id": "settings-2",
             "type": "DbCollection2",
             "children": [],
             "label": "SiteSettings (one row)",
             "x": 770,
-            "y": 3640,
+            "y": 3760,
             "parameters": {
               "collectionName": "SiteSettings"
             },
@@ -7512,7 +7771,7 @@
             "children": [],
             "label": "Theme (one row)",
             "x": 770,
-            "y": 3760,
+            "y": 3880,
             "parameters": {
               "runOnChange-records": true,
               "runOnChange-querySettings": true,
@@ -7899,7 +8158,7 @@
             "children": [],
             "label": "The edited tokens, as a scoped rule",
             "x": 770,
-            "y": 3880,
+            "y": 4000,
             "parameters": {
               "runOnChange-in-tokens": true,
               "functionScript": "const t = Inputs.tokens || {};\nconst F = {\"colorPrimary\":\"--primary\",\"colorOnPrimary\":\"--primary-foreground\",\"colorBackground\":\"--background\",\"colorSurface\":\"--surface\",\"colorText\":\"--foreground\",\"colorTextSoft\":\"--muted-foreground\",\"colorBorder\":\"--border\",\"colorAccentSoft\":\"--accent\",\"radius\":\"--radius-md\",\"fontDisplay\":\"--font-serif\",\"fontUi\":\"--font-sans\",\"measure\":\"--site-measure\"};\nconst decls = Object.keys(F)\n  .filter(function (k) { return t[k]; })\n  .map(function (k) { return F[k] + ': ' + String(t[k]).replace(/[;{}<>]/g, '') + ';'; })\n  .join(' ');\nOutputs.css = '.ndl-theme-preview { ' + decls + ' }';"
@@ -7928,7 +8187,7 @@
             "children": [],
             "label": "Preview token scope",
             "x": 770,
-            "y": 4000,
+            "y": 4120,
             "parameters": {
               "style": ""
             },
@@ -7941,7 +8200,7 @@
             "children": [],
             "label": "The saved theme, on this document",
             "x": 770,
-            "y": 4120,
+            "y": 4240,
             "parameters": {
               "runOnChange-in-rows": true,
               "functionScript": "if (typeof document === 'undefined') return;\nconst rows = Inputs.rows || [];\nconst first = rows[0] ? rows[0].data || rows[0] : {};\nconst t = first.tokens || {};\nconst root = document.documentElement;\nif (t.colorPrimary) {\n  root.style.setProperty('--primary', t.colorPrimary);\n  root.style.setProperty('--primary-hover', 'color-mix(in srgb, ' + t.colorPrimary + ' 82%, black)');\n  root.style.setProperty('--ring', t.colorPrimary);\n  root.style.setProperty('--accent-foreground', t.colorPrimary);\n}\nif (t.colorOnPrimary) root.style.setProperty('--primary-foreground', t.colorOnPrimary);\nif (t.colorBackground) root.style.setProperty('--background', t.colorBackground);\nif (t.colorSurface) {\n  root.style.setProperty('--surface', t.colorSurface);\n  root.style.setProperty('--surface-raised', t.colorSurface);\n}\nif (t.colorText) root.style.setProperty('--foreground', t.colorText);\nif (t.colorTextSoft) root.style.setProperty('--muted-foreground', t.colorTextSoft);\nif (t.colorBorder) {\n  root.style.setProperty('--border', t.colorBorder);\n  root.style.setProperty('--border-subtle', 'color-mix(in srgb, ' + t.colorBorder + ' 45%, var(--background))');\n  root.style.setProperty('--border-strong', 'color-mix(in srgb, ' + t.colorBorder + ' 65%, var(--foreground))');\n}\nif (t.colorAccentSoft) root.style.setProperty('--accent', t.colorAccentSoft);\nif (t.radius) root.style.setProperty('--radius-md', t.radius);\nif (t.fontDisplay) root.style.setProperty('--font-serif', t.fontDisplay);\nif (t.fontUi) {\n  root.style.setProperty('--font-sans', t.fontUi);\n  root.style.fontFamily = t.fontUi;\n}\nif (t.measure) root.style.setProperty('--site-measure', t.measure);"
@@ -8003,6 +8262,24 @@
           }
         ],
         "connections": [
+          {
+            "fromId": "viewport-3",
+            "fromProperty": "width",
+            "toId": "panes",
+            "toProperty": "in-width"
+          },
+          {
+            "fromId": "panes",
+            "fromProperty": "out-panesDirection",
+            "toId": "columns",
+            "toProperty": "flexDirection"
+          },
+          {
+            "fromId": "panes",
+            "fromProperty": "out-panesWrap",
+            "toId": "columns",
+            "toProperty": "flexWrap"
+          },
           {
             "fromId": "settings-2",
             "fromProperty": "items",
@@ -8970,6 +9247,7 @@
                         "y": 400,
                         "parameters": {
                           "sizeMode": "contentHeight",
+                          "as": "h1",
                           "text": "Messages",
                           "fontFamily": "var(--font-serif)",
                           "fontSize": "var(--text-2xl)",
@@ -9223,6 +9501,7 @@
                             "y": 520,
                             "parameters": {
                               "sizeMode": "contentSize",
+                              "as": "h1",
                               "text": "Pages",
                               "fontFamily": "var(--font-sans)",
                               "fontSize": "var(--text-3xl)",
@@ -9554,6 +9833,7 @@
                     "y": 280,
                     "parameters": {
                       "sizeMode": "contentHeight",
+                      "as": "h1",
                       "text": "Sign in",
                       "fontFamily": "var(--font-sans)",
                       "fontSize": "var(--text-2xl)",
@@ -9847,6 +10127,7 @@
                     "x": 160,
                     "y": 280,
                     "parameters": {
+                      "as": "h1",
                       "text": "Claim this site",
                       "fontWeight": "var(--font-bold)"
                     },

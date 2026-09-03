@@ -655,7 +655,21 @@ describe('SB-005: the admin panel, through the MCP door', () => {
     // because three placements sharing one mount-time value made every press
     // answer with the LAST placement; the picker's `run` says *now* and never
     // *which*.
-    expect(rows.length).toBe(25);
+    // 25 → 28 and 10 → **10**: REL-011c's three breakpoints — `fold` on
+    // `/Admin/Shell`, `fields` on `/Pages/PageEditor` and `panes` on
+    // `/Pages/ThemeEditor`. All three turn a
+    // `Screen Resolution` width into port VALUES and neither announces anything,
+    // so both are `declared=` rows and the second number is unmoved. That is the
+    // arithmetic and not the luck: a node that decides a layout has nobody to
+    // tell — the ports it feeds are read, not signalled.
+    //
+    // ⚠️ **Three nodes and not one, deliberately.** The shell's fold, the page
+    // editor's two-up and the theme editor's two panes read the same number and
+    // could have been one node with a `Component Outputs` hop — but a shell that
+    // reports its layout to its children has to be right about all of them, and
+    // three readers is three nodes against one contract.
+    // 27 → 28: A9's `panes` on `/Pages/ThemeEditor`, same shape, same number.
+    expect(rows.length).toBe(28);
     expect(rows.filter((r) => !r.endsWith('declared=')).length).toBe(10);
   });
 
@@ -783,7 +797,16 @@ describe('SB-005: the admin panel, through the MCP door', () => {
       // 24 → 25: D54's `pick` on `/Admin/PresetChip` — the first code node in
       // that component, and the smallest one here: it republishes this chip's
       // own name at the press so the picker can tell three placements apart.
-      code: 25,
+      // 25 → 28: REL-011c's three breakpoints — `fold` on `/Admin/Shell` (so its
+      // term is 2, not 1), `fields` on `/Pages/PageEditor` (so its term is 7)
+      // and `panes` on `/Pages/ThemeEditor` (so its term is 7). 🔴 Each sits
+      // beside a `Screen Resolution` node, which is the only reactive viewport
+      // reading in the runtime outside a `Columns` ratio: the admin shell had NO
+      // breakpoint of any kind, so its 240px rail kept all 240 of its pixels at
+      // 390 and every admin screen got ~150px. A9 is the one that says the shell
+      // folding is not enough on its own — `/admin/theme` went from 362px
+      // unreachable to 102 and kept its live preview off the right-hand edge.
+      code: 28,
       // 4 → 5: SBR-017's `/Pages/SignIn`.
       // 5 → 6: SBR-010's `/Pages/Messages`.
       pages: 6

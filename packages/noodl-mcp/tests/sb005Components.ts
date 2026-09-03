@@ -1074,7 +1074,55 @@ export const SECTION_ROW_NODES = [
       mounted: false
     }
   },
-  { id: 'preview', type: 'Image', label: 'Image preview', parent: 'row' },
+  {
+    id: 'preview',
+    type: 'Image',
+    label: 'Image preview',
+    parent: 'row',
+    // 🔴 **REL-011c A2 — the page editor's whole horizontal overflow was this
+    // node's EMPTY parameter bag.** `Image` defaults to `contentSize`
+    // (`image.ts:176`), so the node took its SOURCE's intrinsic width and
+    // `layout.ts:82` left it `flexShrink: 0`. The look harness's swatch is
+    // 1200×600, so the card was 1216px wide at every viewport — and a client's
+    // phone photograph is three times that.
+    //
+    // Measured on the deployed bundle at four widths before the fix
+    // (`main` is `/Admin/Shell`'s `Admin content`, `body` the editor column):
+    //
+    //   1900 → main 1660, body 1596 — everything on screen
+    //   1280 → main 1280, body 1216, document 1520 wide
+    //    988 → main  988, body  924 holding 1217px of content
+    //    390 → main  390, body  326 holding 1217px of content
+    //
+    // 🔴 The arithmetic that ties it together: `min-width: auto` on a flex item
+    // is `min(its own stated width, its content minimum)`, and `Admin content`'s
+    // content minimum was **1280** — 64px of its own padding plus this card's
+    // 1216. Above 1280 the rail's 240px comes out of the content column
+    // correctly; at or below it, `main` stops shrinking and the rail is pushed
+    // off the right edge instead. That is why the fields DID narrow (763 → 573)
+    // while `Save page` sat at x=1370 on a 1280px screen: two different boxes,
+    // one of them clamped.
+    //
+    // The treatment is the one this template's other `Image` already carries
+    // (`/Site/GalleryTile`), and `members-area`'s tile photograph independently:
+    // an explicit box with `objectFit: 'cover'`.
+    // ⚠️ The door refuses `objectFit` without `sizeMode: 'explicit'`
+    // (`inert-dimension`, blocking), and a bare number on a dimension port reads
+    // as a PERCENTAGE (`unitless-dimension`).
+    //
+    // 🔴 `mounted: false` with a wire raising it, and it is not tidiness: an
+    // explicit 180px box draws 180px of empty ground on every section that has
+    // no picture — which, before A5 below, was every gallery. `visible` would
+    // keep the band; `mounted` is the rule the rest of this card already follows.
+    parameters: {
+      mounted: false,
+      sizeMode: 'explicit',
+      objectFit: 'cover',
+      width: { value: 100, unit: '%' },
+      height: { value: 180, unit: 'px' },
+      borderRadius: 'var(--radius-md)'
+    }
+  },
   {
     id: 'galleryCount',
     type: 'Text',
@@ -1138,13 +1186,21 @@ export const SECTION_ROW_NODES = [
       functionScript:
         'const d = Inputs.data || {};\n' +
         "const kind = Inputs.kind || 'richText';\n" +
+        // 🔴 **REL-011c A6.** The card's own heading used to be wired straight
+        // from `inputs.kind`, so a section card was headed `richText` while the
+        // `Kind` picker two lines above it offered `Rich text` — two vocabularies
+        // for one thing, on one screen. The map is DERIVED from
+        // {@link SECTION_KIND_LABELS} rather than retyped here, for the same
+        // reason `kindItems` derives its list: a hand-written second copy offers
+        // the author a word the site does not know on the first day they disagree.
+        'const LABELS = ' +
+        JSON.stringify(SECTION_KIND_LABELS) +
+        ';\n' +
+        'Outputs.kindLabel = LABELS[kind] || kind;\n' +
         "Outputs.heading = d.heading || '';\n" +
         "Outputs.body = d.body || '';\n" +
         "Outputs.linkLabel = d.linkLabel || '';\n" +
         "Outputs.linkTarget = d.linkTarget || '';\n" +
-        // A `cloudfile` renders through its `url`; an unset one must not become
-        // the string "undefined" on an Image's `src`.
-        "Outputs.image = (d.image && d.image.url) || '';\n" +
         '\n' +
         // SBR-005. The gallery's pictures live on the same record, in the same
         // `data` column, under the same row ACL as the single `image` — which is
@@ -1155,6 +1211,24 @@ export const SECTION_ROW_NODES = [
         "const isCta = kind === 'cta';\n" +
         'Outputs.isGallery = isGallery;\n' +
         'Outputs.isCta = isCta;\n' +
+        // 🔴 **REL-011c A5, and the picture was the half that was wrong.** The
+        // preview was fed `d.image` for EVERY kind — and `absorb` below never
+        // writes `image` on a gallery, it pushes onto `images`. So a gallery
+        // built through the product showed **no picture at all** beside a count
+        // that said `3 pictures`, and the seeded state the row was photographed
+        // on (a legacy `image`, an empty `images`) showed the opposite: a
+        // rendered picture over the words *"No pictures yet"*. One derivation
+        // settles both — a gallery's picture is the LAST of `images`, which is
+        // also the one `Remove last picture` takes back, so what is on the card
+        // is what the button acts on.
+        //
+        // ⚠️ A `cloudfile` renders through its `url`; an unset one must not
+        // become the string "undefined" on an Image's `src`.
+        'const shown = isGallery ? images[images.length - 1] : d.image;\n' +
+        "Outputs.image = (shown && shown.url) || '';\n" +
+        // The preview box is explicit now, so "no picture" has to be an absent
+        // node rather than an empty one — see the note on `preview`.
+        "Outputs.hasImage = Outputs.image !== '';\n" +
         // Only a gallery accumulates, so only a gallery can have a last picture
         // to take back.
         'Outputs.canRemove = isGallery && images.length > 0;\n' +
@@ -1401,7 +1475,11 @@ export const SECTION_ROW_NODES = [
 ];
 
 export const SECTION_ROW_WIRES = [
-  { fromId: 'inputs', fromProperty: 'kind', toId: 'kindText', toProperty: 'text' },
+  // 🔴 REL-011c A6: the human word, not the discriminator. `unpack` runs the
+  // moment either `kind` or `data` arrives (it carries no `runOnChange` guards,
+  // deliberately — see its note), so the card is headed before it is painted;
+  // `kindText`'s standing `text: ''` is what covers the gap, per SB-018 (3).
+  { fromId: 'unpack', fromProperty: 'out-kindLabel', toId: 'kindText', toProperty: 'text' },
   { fromId: 'inputs', fromProperty: 'data', toId: 'unpack', toProperty: 'in-data' },
   { fromId: 'inputs', fromProperty: 'kind', toId: 'unpack', toProperty: 'in-kind' },
   { fromId: 'unpack', fromProperty: 'out-heading', toId: 'headingField', toProperty: 'startValue' },
@@ -1409,6 +1487,7 @@ export const SECTION_ROW_WIRES = [
   { fromId: 'unpack', fromProperty: 'out-linkLabel', toId: 'linkLabelField', toProperty: 'startValue' },
   { fromId: 'unpack', fromProperty: 'out-linkTarget', toId: 'linkTargetField', toProperty: 'startValue' },
   { fromId: 'unpack', fromProperty: 'out-image', toId: 'preview', toProperty: 'src' },
+  { fromId: 'unpack', fromProperty: 'out-hasImage', toId: 'preview', toProperty: 'mounted' },
 
   // SBR-005. Which controls this kind actually has — `mounted`, so an absent
   // control costs no row height and leaves nothing behind in the DOM.
@@ -1549,7 +1628,7 @@ export const SETUP_NODES = [
     parent: 'shell',
     // The door's `monotone-typography` check, answered: a page where nothing sets
     // a weight measures as unstyled, because it is.
-    parameters: { text: 'Claim this site', fontWeight: 'var(--font-bold)' }
+    parameters: { as: 'h1', text: 'Claim this site', fontWeight: 'var(--font-bold)' }
   },
   {
     id: 'blurb',
@@ -1792,6 +1871,14 @@ export const ADMIN_NODES = [
     // the screen. This is the distinction {@link STACKED} exists to keep straight.
     parameters: {
       ...IN_A_ROW,
+      // 🔴 **REL-011c A7.** All twelve admin shots recorded `headings: []` while
+      // every screen visibly had a title: the words are drawn by `Text` nodes,
+      // which render a `<div>` unless told otherwise, so the screens had titles
+      // and the document had no heading structure at all. `as` changes nothing
+      // visually — it is the one port on this node that exists for a screen
+      // reader. The public site has said `h1`/`h2` since SBR-004; the panel a
+      // client works in every day never did.
+      as: 'h1',
       text: 'Pages',
       fontFamily: 'var(--font-sans)',
       fontSize: 'var(--text-3xl)',
@@ -2120,6 +2207,7 @@ export const PAGE_EDITOR_NODES = [
     parameters: {
       sizeMode: 'contentHeight',
       width: { value: 60, unit: '%' },
+      as: 'h1',
       text: '',
       fontFamily: 'var(--font-sans)',
       fontSize: 'var(--text-3xl)',
@@ -2231,7 +2319,26 @@ export const PAGE_EDITOR_NODES = [
     // `Group`, `Text` and `Image` carry a `DEFAULT_SIZE_MODE` in
     // `findGrowingNodes`, so a control is not graded and does not need an
     // exemption row to sit in a row.
-    parameters: { ...STACKED, flexDirection: 'row', columnGap: 'var(--space-4)' },
+    //
+    // 🔴 **REL-011c A1's second half: two-up STOPS being two-up on a phone.**
+    // Once `/Admin/Shell` folds, this screen gets the whole 390 rather than the
+    // ~86px it used to — and two 155px boxes side by side is legible-and-operable
+    // in the sense that nothing is hidden and in no other. `flexDirection` is
+    // wired from `fields` below.
+    //
+    // ⚠️ `flexWrap: 'wrap'` is authored so that `rowGap` is AUTHORABLE at all:
+    // the port is gated on `flexDirection = column OR flexWrap = wrap`
+    // (`group.ts:478`), and this Group is authored as a row, so without the wrap
+    // the stacked form would have no gap between its two fields. It changes
+    // nothing while the row is a row — both children carry a percentage width
+    // along the axis, so they shrink rather than wrap.
+    parameters: {
+      ...STACKED,
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      columnGap: 'var(--space-4)',
+      rowGap: 'var(--space-4)'
+    },
     children: ['titleField', 'slugField']
   },
   {
@@ -2337,21 +2444,42 @@ export const PAGE_EDITOR_NODES = [
     parent: 'sectionsPanel',
     // The second of SBR-007's three `ADMIN_LAYOUT_OWED` rows: this Group was the
     // bare `addRow` and defaulted to filling its parent.
+    //
+    // 🔴 **REL-011c A4 — a COLUMN now, and the heading is why.** The panel's
+    // heading, the `Kind` picker and `Add section` used to share one centred
+    // row, so `useLabel`'s *"Kind"* — which a control draws ABOVE its box —
+    // landed beside the word *"Sections"* and read as a second heading of the
+    // same rank. A label belongs over the control it names; that is the whole
+    // finding, and it is a containment fix rather than a spacing one.
+    parameters: { ...STACKED, flexDirection: 'column', rowGap: 'var(--space-2)' },
+    children: ['sectionsHeading', 'sectionsAddRow']
+  },
+  {
+    id: 'sectionsAddRow',
+    type: 'Group',
+    label: 'Pick a kind and add it',
+    parent: 'sectionsHeader',
+    // ⚠️ `flex-end`, not `center`: the picker is a labelled control and the
+    // button is not, so their boxes are different heights — centring them puts
+    // `Add section` halfway up the field beside it. Aligned at the bottom the
+    // two controls sit on one line, which is what they are.
     parameters: {
       ...STACKED,
       flexDirection: 'row',
-      alignItems: 'center',
+      alignItems: 'flex-end',
       columnGap: 'var(--space-3)'
     },
-    children: ['sectionsHeading', 'kindPicker', 'addButton']
+    children: ['kindPicker', 'addButton']
   },
   {
     id: 'sectionsHeading',
     type: 'Text',
     label: 'Sections heading',
     parent: 'sectionsHeader',
+    // ⚠️ `STACKED` and not `IN_A_ROW` — the parent is a column now, and
+    // `contentSize` down a column is the size mode that assigns NEITHER axis.
     parameters: {
-      ...IN_A_ROW,
+      ...STACKED,
       text: 'Sections',
       fontFamily: 'var(--font-sans)',
       fontSize: 'var(--text-xl)',
@@ -2363,20 +2491,37 @@ export const PAGE_EDITOR_NODES = [
     id: 'kindPicker',
     type: 'net.noodl.controls.options',
     label: 'Section kind',
-    parent: 'sectionsHeader',
+    parent: 'sectionsAddRow',
     // 🔴 `items` is NOT a comma list, and the door cannot say so — it is a static
     // `array` port, so no `dynamic-port-skipped` info covers it and a string
     // lands as a green graph that throws in `Select.tsx:116` the moment the page
     // renders. The control wants an array of `{ Label, Value }` objects
     // (`Select.tsx:116-119` reads exactly those two keys), which is what
     // `kindItems` below supplies.
-    parameters: { ...FIELD, useLabel: true, label: 'Kind' }
+    //
+    // 🔴 **REL-011c A8 — found by LOOKING at A4's own after-arm, and it is the
+    // floor rather than taste.** With nothing selected and no placeholder,
+    // `Select.tsx:125-130` renders `label = null`: the bordered wrapper has no
+    // content at all, so it collapsed to its own padding — a **~16px empty
+    // sliver 1450px wide**, with no word in it saying what would be added. It
+    // was there before A4 too; giving `Kind` its own line is what made it the
+    // first thing on the screen instead of a hairline beside a heading.
+    //
+    // ⚠️ `value` and not `placeholder`, and the difference is what the button
+    // then does. A placeholder makes the control legible and leaves `prop-kind`
+    // **undefined** on the first press — a `Section` with no kind, which the
+    // site draws as `richText` by fallback without anyone choosing it. Starting
+    // ON the fallback makes `Add section` honest: the picker says the word the
+    // press will act on. `DEFAULT_SECTION_KIND`, not a fourth copy of the
+    // string. ✅ Setting `value` from the graph does NOT fire `Changed`
+    // (`options.ts:112`), so this cannot trigger anything on load.
+    parameters: { ...FIELD, useLabel: true, label: 'Kind', value: DEFAULT_SECTION_KIND }
   },
   {
     id: 'addButton',
     type: 'net.noodl.controls.button',
     label: 'Add',
-    parent: 'sectionsHeader',
+    parent: 'sectionsAddRow',
     parameters: { ...PRIMARY_BUTTON, label: 'Add section' }
   },
   {
@@ -2392,6 +2537,45 @@ export const PAGE_EDITOR_NODES = [
     label: 'Back',
     parent: 'body',
     parameters: { ...SECONDARY_BUTTON, label: 'Back to pages' }
+  },
+  // ── REL-011c A1, this screen's half ─────────────────────────────────────────
+  //
+  // ⚠️ **Its own reading rather than one passed down from `/Admin/Shell`.** The
+  // shell holds the fold that decides the rail, but handing that boolean across
+  // would mean a `Component Outputs` on a component every admin screen places —
+  // and a shell that reports its layout to its children is a shell that has to
+  // be right about all of them. Two nodes here is cheaper than one contract.
+  {
+    id: 'viewport',
+    type: 'Screen Resolution',
+    label: 'How wide is the window'
+  },
+  {
+    id: 'fields',
+    type: 'JavaScriptFunction',
+    label: 'Is there room for two fields side by side?',
+    parameters: {
+      // SBR-004 §9.2, as on every other value input in this file.
+      'runOnChange-in-width': true,
+      functionScript: [
+        // Unmeasured leaves the authored two-up standing — see `/Admin/Shell`'s
+        // `fold`, which guards for the same reason.
+        'if (Inputs.width === undefined) return;',
+        // The same 760 the shell folds at, and deliberately the same number: the
+        // two decisions are one decision about whether this is a phone.
+        "const roomy = Inputs.width >= 760;",
+        "Outputs.fieldsDirection = roomy ? 'row' : 'column';",
+        // 🔴 **`flexWrap` moves WITH the direction, and the render is what said
+        // so.** `flexWrap: 'wrap'` is authored on `nameRow` only so that
+        // `rowGap` is authorable at all — but two children whose flex-basis is
+        // 100% each take their OWN LINE in a wrap container, at every width. The
+        // first build of this fix left `wrap` on, and the 1280 and 1900
+        // photographs came back with Title above Slug: the two-up was gone
+        // everywhere, not restored below the fold. Wrapping is the phone's
+        // shape and `nowrap` is the desktop's.
+        "Outputs.fieldsWrap = roomy ? 'nowrap' : 'wrap';"
+      ].join('\n')
+    }
   },
   {
     id: 'kindItems',
@@ -2688,6 +2872,10 @@ export const PAGE_EDITOR_NODES = [
 
 export const PAGE_EDITOR_WIRES = [
   { fromId: 'kindItems', fromProperty: 'items', toId: 'kindPicker', toProperty: 'items' },
+  // REL-011c A1: the title/slug pair stacks on a phone.
+  { fromId: 'viewport', fromProperty: 'width', toId: 'fields', toProperty: 'in-width' },
+  { fromId: 'fields', fromProperty: 'out-fieldsDirection', toId: 'nameRow', toProperty: 'flexDirection' },
+  { fromId: 'fields', fromProperty: 'out-fieldsWrap', toId: 'nameRow', toProperty: 'flexWrap' },
   { fromId: 'pageInputs', fromProperty: 'pm-pageId', toId: 'hold', toProperty: 'in-pageId' },
   // The page node's mount is the one signal guaranteed to come after the Router
   // has set the parameters (`router.tsx:602`), and it is a different producer
@@ -3095,6 +3283,7 @@ export const THEME_EDITOR_NODES = [
     parent: 'shell',
     parameters: {
       ...STACKED,
+      as: 'h1',
       text: 'Theme and settings',
       fontFamily: 'var(--font-serif)',
       fontSize: 'var(--text-2xl)',
@@ -3147,8 +3336,54 @@ export const THEME_EDITOR_NODES = [
     type: 'Group',
     label: 'Fields and preview',
     parent: 'shell',
-    parameters: { ...STACKED, flexDirection: 'row', columnGap: 'var(--space-6)', alignItems: 'flex-start' },
+    // 🔴 **REL-011c A9 — the shell folding is not enough for this screen.** With
+    // A1 in, `/admin/theme` at 390 gets the whole width and then spends it on a
+    // two-up split whose right-hand pane runs off the edge: the live preview is
+    // a card with a real min-content width, so a half of 390 is not a half, it
+    // is an overflow. Found by looking at A1's own after-arm rather than
+    // reasoned about — the fold reduced this screen's unreachable pixels from
+    // 362 to 102 and left the preview clipped, which no single number said.
+    //
+    // ⚠️ `flexWrap: 'wrap'` for the same reason as `/Pages/PageEditor`'s
+    // `nameRow`: `rowGap` is gated on `flexDirection = column OR flexWrap =
+    // wrap` (`group.ts:478`) and this Group is authored as a row, so without it
+    // the stacked panes would have no gap. It changes nothing while the row is a
+    // row — both children fill, so they shrink rather than wrap.
+    parameters: {
+      ...STACKED,
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      columnGap: 'var(--space-6)',
+      rowGap: 'var(--space-6)',
+      alignItems: 'flex-start'
+    },
     children: ['fieldsCol', 'previewCol']
+  },
+  // REL-011c A9. The same two nodes `/Pages/PageEditor` carries, reading the
+  // same number — see the note there for why each screen holds its own rather
+  // than taking a boolean down from `/Admin/Shell`.
+  {
+    id: 'viewport',
+    type: 'Screen Resolution',
+    label: 'How wide is the window'
+  },
+  {
+    id: 'panes',
+    type: 'JavaScriptFunction',
+    label: 'Is there room for the preview beside the fields?',
+    parameters: {
+      'runOnChange-in-width': true,
+      functionScript: [
+        'if (Inputs.width === undefined) return;',
+        "const roomy = Inputs.width >= 760;",
+        "Outputs.panesDirection = roomy ? 'row' : 'column';",
+        // See `/Pages/PageEditor`'s `fields`: the authored `wrap` exists to make
+        // `rowGap` authorable and would otherwise put the live preview under the
+        // fields at 1900 as well as at 390. Measured, not reasoned about — the
+        // first build of A9 did exactly that.
+        "Outputs.panesWrap = roomy ? 'nowrap' : 'wrap';"
+      ].join('\n')
+    }
   },
   {
     id: 'fieldsCol',
@@ -3609,6 +3844,10 @@ export const THEME_EDITOR_NODES = [
 ];
 
 export const THEME_EDITOR_WIRES = [
+  // REL-011c A9: the preview stacks under the fields on a phone.
+  { fromId: 'viewport', fromProperty: 'width', toId: 'panes', toProperty: 'in-width' },
+  { fromId: 'panes', fromProperty: 'out-panesDirection', toId: 'columns', toProperty: 'flexDirection' },
+  { fromId: 'panes', fromProperty: 'out-panesWrap', toId: 'columns', toProperty: 'flexWrap' },
   { fromId: 'settings', fromProperty: 'items', toId: 'readSettings', toProperty: 'in-rows' },
   { fromId: 'settings', fromProperty: 'fetched', toId: 'readSettings', toProperty: 'run' },
   { fromId: 'readSettings', fromProperty: 'out-siteName', toId: 'siteNameField', toProperty: 'startValue' },
@@ -3860,6 +4099,12 @@ export const ADMIN_SHELL_NODES = [
     // The frame IS the page's ground — it is supposed to take the whole
     // viewport, which is why it is one of the two nodes here that legitimately
     // fill. See `ADMIN_FILL_EXEMPTIONS`.
+    // 🔴 **REL-011c A1 — `flexDirection` is WIRED as well as authored.** The
+    // authored `row` is the wide shape and the standing value; below the fold
+    // (see `fold`) it becomes `column` and the rail stacks above the content.
+    // `Group.flexDirection`'s setter calls `setLayout`, so the children's
+    // `parentLayout` — and therefore every percentage size on them — is
+    // recomputed rather than left describing the old axis.
     parameters: { flexDirection: 'row', backgroundColor: 'var(--background)' },
     children: ['sidebar', 'main']
   },
@@ -3887,6 +4132,13 @@ export const ADMIN_SHELL_NODES = [
       paddingLeft: 'var(--space-4)',
       paddingRight: 'var(--space-4)',
       rowGap: 'var(--space-1)',
+      // ⚠️ REL-011c A1: `borderRightStyle` is wired to `'none'` below the fold.
+      // A rail rule down the left of a stacked band is a line in mid-air; the
+      // `--surface` ground is what separates the two once they are stacked.
+      // The style is AUTHORED as a real line because `borderRightWidth` and
+      // `borderRightColor` are dynamic ports gated on exactly that
+      // (`node-shared-port-definitions.ts:1096-1101`) — authoring `'none'` here
+      // would make the other two unauthorable.
       borderRightStyle: 'solid',
       borderRightWidth: 'var(--border-1)',
       borderRightColor: 'var(--border)'
@@ -4009,6 +4261,64 @@ export const ADMIN_SHELL_NODES = [
         'Outputs.themeWeight = weight("theme");',
         'Outputs.messagesColor = colour("messages");',
         'Outputs.messagesWeight = weight("messages");'
+      ].join('\n')
+    }
+  },
+  // ── REL-011c A1 — the rail yields on a phone ────────────────────────────────
+  //
+  // 🔴 **The defect, measured on the deployed bundle rather than argued.** The
+  // shell had no breakpoint of any kind: the rail kept all 240 of its pixels at
+  // every viewport, and `Admin content` — which carries `width: 100%` — cannot
+  // shrink below its own stated width, because `min-width: auto` on a flex item
+  // is `min(its own stated width, its content minimum)`. So at 390 the frame was
+  // 240 + 390 = 630px wide, the content column got the 390 it had asked for, and
+  // the whole rail was pushed off the right-hand edge instead of coming out of
+  // the content. Every admin screen was affected; `/admin/theme` reported 362px
+  // unreachable and `/admin/page` 2379px.
+  //
+  // ⚠️ **`Columns` is the runtime's own breakpoint and it is the wrong tool
+  // here.** `smallBreakpoint`/`smallLayout` live on `Columns` only
+  // (`columns.ts:239`), and a `Columns` divides its width by a ratio — which
+  // would turn the fixed 240px rail into a proportion of the viewport, growing
+  // it to 380px at 1900. The rail is fixed on purpose (see `SIDEBAR_WIDTH`), so
+  // the breakpoint has to come from somewhere that does not also resize it.
+  {
+    id: 'viewport',
+    type: 'Screen Resolution',
+    label: 'How wide is the window'
+  },
+  {
+    id: 'fold',
+    type: 'JavaScriptFunction',
+    label: 'Is there room for the rail beside the content?',
+    parameters: {
+      // 🔴 `runOnChange-in-width: true`, authored, for SBR-004 §9.2's reason —
+      // the same one `navStyle` above carries. The NDA-017 migration writes
+      // `runOnChange-<input>: false` over every value input of a node whose
+      // control signal is wired, on every project load; an explicit `true`
+      // survives it and an absent key does not. `width` arriving IS this node's
+      // only trigger, so losing it would freeze the shell in whichever shape it
+      // first rendered.
+      'runOnChange-in-width': true,
+      functionScript: [
+        // `Screen Resolution` is client-only (`screenresolution.ts:15`), so on a
+        // server render the width is genuinely unknown — and the guarded return
+        // leaves the AUTHORED wide shape standing, which is the right default
+        // for a screen nobody has measured yet.
+        'if (Inputs.width === undefined) return;',
+        // 240 for the rail leaves under 500px of content below this, which is
+        // narrower than the page editor's own two-up field row wants. Above it
+        // the rail is affordable; below it, it is the only thing on the screen.
+        'const roomy = Inputs.width >= 760;',
+        "Outputs.frameDirection = roomy ? 'row' : 'column';",
+        "Outputs.railSizeMode = roomy ? 'explicit' : 'contentHeight';",
+        // ⚠️ A FRESH object each run, and that is load-bearing: a `Function`'s
+        // `Outputs` proxy publishes only when the value CHANGES, so a shared
+        // constant would be sent once and never re-sent after a resize back.
+        // The three strings above are deliberately the opposite — they should
+        // publish only at the crossing.
+        "Outputs.railWidth = roomy ? { value: 240, unit: 'px' } : { value: 100, unit: '%' };",
+        "Outputs.railRightBorder = roomy ? 'solid' : 'none';"
       ].join('\n')
     }
   },
@@ -4163,6 +4473,15 @@ export const ADMIN_SHELL_WIRES = [
   { fromId: 'adminTheme', fromProperty: 'fetched', toId: 'applyTheme', toProperty: 'run' },
 
   { fromId: 'inputs', fromProperty: 'active', toId: 'navStyle', toProperty: 'in-active' },
+
+  // REL-011c A1. Four ports, one reading, and they have to move together: a
+  // stacked frame whose rail still states 240px is a 240px block with the
+  // content beneath it, and a rail at 100% inside a ROW is the whole screen.
+  { fromId: 'viewport', fromProperty: 'width', toId: 'fold', toProperty: 'in-width' },
+  { fromId: 'fold', fromProperty: 'out-frameDirection', toId: 'frame', toProperty: 'flexDirection' },
+  { fromId: 'fold', fromProperty: 'out-railSizeMode', toId: 'sidebar', toProperty: 'sizeMode' },
+  { fromId: 'fold', fromProperty: 'out-railWidth', toId: 'sidebar', toProperty: 'width' },
+  { fromId: 'fold', fromProperty: 'out-railRightBorder', toId: 'sidebar', toProperty: 'borderRightStyle' },
 
   { fromId: 'navStyle', fromProperty: 'out-pagesColor', toId: 'navPages', toProperty: 'color' },
   { fromId: 'navStyle', fromProperty: 'out-pagesWeight', toId: 'navPages', toProperty: 'fontWeight' },
@@ -4393,6 +4712,7 @@ export const SIGN_IN_NODES = [
     parent: 'shell',
     parameters: {
       ...STACKED,
+      as: 'h1',
       text: 'Sign in',
       fontFamily: 'var(--font-sans)',
       fontSize: 'var(--text-2xl)',
@@ -4888,6 +5208,7 @@ export const MESSAGES_NODES = [
     parent: 'body',
     parameters: {
       ...STACKED,
+      as: 'h1',
       text: 'Messages',
       fontFamily: 'var(--font-serif)',
       fontSize: 'var(--text-2xl)',
