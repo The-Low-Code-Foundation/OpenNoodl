@@ -1,6 +1,7 @@
 # Phase 80 — next session
 
-🟡 **45 of the 46 rows in the table are ✅. The one that is open needs Richard, not a session.**
+🟢 **46 of the 46 rows in the table are ✅. The phase is closed — DEF-042 was ruled on and built
+in session 45.**
 
 🔴 **Derive the board from the STATUS COLUMN, never `grep -av '✅'`** (a ✅ in prose filters the row
 out):
@@ -9,7 +10,7 @@ out):
 grep -aE '^\| DEF-0[0-9]{2} \|' TASKS.md | awk -F'|' '{gsub(/^ +| +$/,"",$3); print ($3 ~ /^✅/) ? "done" : "open"}' | sort | uniq -c
 ```
 
-Reads **45 done / 1 open** over **46 rows** at the time of writing. ⚠️ **Next free id is
+Reads **46 done / 0 open** over **46 rows** at the time of writing. ⚠️ **Next free id is
 `DEF-048`.** 🔴 **`DEF-043` is still CLAIMED BY PHASE 82 with no row here** — read the claim line in
 the header of [UNOWNED-ROWS-TO-MEASURE.md](UNOWNED-ROWS-TO-MEASURE.md), never the highest number in
 the table.
@@ -28,6 +29,8 @@ landed now**, in four commits across two repositories:
 | `ef5e90f5` | the register: DEF-039/040/041/042/044 rows, DEF-042's mechanism spec, TASKS.md, and s41's 08-31 updates to DEF-007/DEF-036/the rulings |
 | `b782c08` (`nodegx-community`) | **DEF-044** — the home gate at both curated doors |
 | `22bdb473` | 🆕 **DEF-047** — the stale-function double render |
+| `2f5c7ef5` | s43's **DEF-039/040/041**, with the Electron gate that had never run |
+| `ccfa88b5` | 🆕 **DEF-042** — the throwing listener, built on Richard's ruling |
 
 🔴 **Two files held BOTH s44's hunks and a live P77 peer's** — `noodl-types/src/runtime/node-definition.d.ts`
 and `noodl-runtime/src/nodes/std-library/data/dbmodelnode2.ts` carry `wireDeclaredPortPrefix`
@@ -163,16 +166,20 @@ and `NodePicker.search.ts` import.
 
 ### These need Richard
 
-- **[DEF-042](DEF-042-A-THROWING-LISTENER-KILLS-THE-BACKEND.md)** — the first thing to put in front
-  of him. Measured, diagnosed, deliberately unbuilt: two PUTs declaring the same cloud component
-  name → PUT 1 **200**, PUT 2 **no response at all**, `EXIT=1`. 🔴 The row's own recommendation
-  measured **wrong** — the try/catch it proposed has been in `loadWorkflow` since WFA-001 and never
-  runs, because `EventSender.emit` is `async` and `GraphModel.addComponent` calls it without
-  awaiting. **The decision is blast radius**: awaiting makes `addComponent` async and ripples into
-  `noodl-runtime`, shared with the viewer; a backend-local `unhandledRejection` guard alone answers
-  `{success:true}` for a half-written registry. ⚠️ `graphmodel.ts` has **15** un-awaited
-  `this.emit(...)`. Its mechanism spec (`tests/def-042-detached-emit.test.ts`, 3/3, needs no
-  database) is committed and pins the mechanism at HEAD.
+- ✅ **DEF-042 is BUILT (`ccfa88b5`)** and is no longer his to decide. 🔴 **Keep the lesson: the
+  "blast radius" that made the row need a ruling had never been counted.** `graphModel.addComponent`
+  has **exactly ONE caller** across the runtime, both viewers and the backend — twelve lines above
+  it — and that caller was **already `async`**, as was every link above it, **already awaited**. The
+  guard in `loadWorkflow` was **starved by two missing `await`s in one file**, not missing. A naive
+  `grep -c addComponent` said 69; 68 were unrelated methods on other classes. ⚠️ **The class is
+  narrowed, not closed**: 15 emits in `graphmodel.ts` are still un-awaited, and
+  `editormodeleventshandler.ts:225` still detaches on the editor's live-edit path — the gate's last
+  arm **measures** the `nodeAdded` gap so this and the code cannot drift. ⚠️ **The semantics question
+  is untouched** and is still his if he wants it: whether two projects on one backend *should*
+  collide at all (namespace per bundle / refuse the second / last-writer-wins). Today the second
+  deploy is refused, loudly, with the previous version still serving.
+  ✅ **The drive is committed**: `scripts/devtools/drive-def042-duplicate-component.js` — build
+  **both** arms, `dist/` is gitignored and the artefact on disk may be days old.
 - **§3 — the backend card cannot see a backend-side change.** Never re-measured (needs a screen).
   ⚠️ Not a defect in DEF-015's fix and the header is honest; **the rows overclaim**. Three
   candidates — refresh on open, poll while visible, or reword to *"at last push"*. 🆕 **DEF-047
