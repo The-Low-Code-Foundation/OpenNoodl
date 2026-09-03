@@ -119,7 +119,14 @@ import {
   THEME_TOKEN_FIELDS,
   buildThemeApplierScript
 } from '../../noodl-editor/src/editor/src/models/template/templates/siteTheme';
-import { DEFAULT_SECTION_KIND, ROUTER, SECTION_KINDS, SECTION_SORT } from './sb005Components';
+import {
+  DEFAULT_SECTION_KIND,
+  FIELD,
+  PRIMARY_BUTTON,
+  ROUTER,
+  SECTION_KINDS,
+  SECTION_SORT
+} from './sb005Components';
 
 export const THEME_KEYS = THEME_TOKEN_FIELDS;
 
@@ -1073,7 +1080,12 @@ export const CTA_SECTION_NODES = [
       backgroundColor: 'var(--primary-foreground)',
       color: 'var(--primary)',
       fontWeight: 'var(--font-semibold)',
-      borderRadius: 'var(--radius-md)'
+      borderRadius: 'var(--radius-md)',
+      // REL-011a. The one control that was dressed, and the one port it was
+      // missing: `.ndl-controls-button` inherits the project's family but, by
+      // that stylesheet's own decision, not its size — so the CTA's label sat at
+      // the user agent's ~13px on a band whose heading is `--text-4xl`.
+      fontSize: 'var(--text-base)'
     }
   },
   {
@@ -1571,28 +1583,28 @@ export const CONTACT_FORM_NODES = [
     type: 'net.noodl.controls.textinput',
     label: 'Your name',
     parent: 'form',
-    parameters: { useLabel: true, label: 'Your name' }
+    parameters: { ...FIELD, useLabel: true, label: 'Your name' }
   },
   {
     id: 'emailField',
     type: 'net.noodl.controls.textinput',
     label: 'Your email',
     parent: 'form',
-    parameters: { useLabel: true, label: 'Your email', type: 'email' }
+    parameters: { ...FIELD, useLabel: true, label: 'Your email', type: 'email' }
   },
   {
     id: 'messageField',
     type: 'net.noodl.controls.textinput',
     label: 'Your message',
     parent: 'form',
-    parameters: { useLabel: true, label: 'Your message', type: 'textArea' }
+    parameters: { ...FIELD, useLabel: true, label: 'Your message', type: 'textArea' }
   },
   {
     id: 'sendButton',
     type: 'net.noodl.controls.button',
     label: 'Send',
     parent: 'form',
-    parameters: { label: 'Send' }
+    parameters: { ...PRIMARY_BUTTON, label: 'Send' }
   },
   {
     id: 'sent',

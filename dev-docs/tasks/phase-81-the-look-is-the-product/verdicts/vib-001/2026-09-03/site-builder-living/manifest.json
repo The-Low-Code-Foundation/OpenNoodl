@@ -1,0 +1,430 @@
+{
+  "task": "vib-001",
+  "subject": "site-builder",
+  "state": "living",
+  "headSha": "f0ba56357d3a9e7200f7c68d1f66fba63bcef8b0",
+  "artefactMd5": "1eeb52778b37e74efb290355f0f03cb0",
+  "outDir": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-09-03/site-builder-living",
+  "starterAssets": {
+    "written": [
+      "noodl_modules/inter/manifest.json",
+      "noodl_modules/inter/styles.css",
+      "noodl_modules/inter/LICENSE.txt",
+      "noodl_modules/inter/Inter-Regular.ttf",
+      "noodl_modules/inter/Inter-Medium.ttf",
+      "noodl_modules/inter/Inter-SemiBold.ttf",
+      "noodl_modules/inter/Inter-Bold.ttf",
+      "noodl_modules/lucide-icons/manifest.json",
+      "noodl_modules/lucide-icons/styles.css",
+      "noodl_modules/lucide-icons/lucide.woff2",
+      "noodl_modules/starter-imagery/manifest.json",
+      "noodl_modules/starter-imagery/ground-aurora.svg",
+      "noodl_modules/starter-imagery/ground-ridge.svg",
+      "noodl_modules/starter-imagery/tile-1.svg",
+      "noodl_modules/starter-imagery/tile-2.svg",
+      "noodl_modules/starter-imagery/tile-3.svg",
+      "noodl_modules/starter-imagery/portrait.svg",
+      "noodl_modules/starter-imagery/LICENCES.json",
+      "noodl_modules/starter-imagery/ground-canyon.webp",
+      "noodl_modules/starter-imagery/ground-city-dusk.webp",
+      "noodl_modules/starter-imagery/ground-coast.webp",
+      "noodl_modules/starter-imagery/ground-dune.webp",
+      "noodl_modules/starter-imagery/ground-forest-fog.webp",
+      "noodl_modules/starter-imagery/ground-red-rock.webp",
+      "noodl_modules/starter-imagery/ground-shore.webp",
+      "noodl_modules/starter-imagery/ground-skyline.webp",
+      "noodl_modules/starter-imagery/texture-brick.webp",
+      "noodl_modules/starter-imagery/texture-coffee.webp",
+      "noodl_modules/starter-imagery/texture-earth.webp",
+      "noodl_modules/starter-imagery/texture-pebbles.webp",
+      "noodl_modules/starter-imagery/texture-snow.webp",
+      "noodl_modules/starter-imagery/texture-soil.webp",
+      "noodl_modules/starter-imagery/work-baker.webp",
+      "noodl_modules/starter-imagery/work-carpenter.webp",
+      "noodl_modules/starter-imagery/work-chef.webp",
+      "noodl_modules/starter-imagery/work-hands-clay.webp",
+      "noodl_modules/starter-imagery/work-leather-bench.webp",
+      "noodl_modules/starter-imagery/work-machine-shop.webp",
+      "noodl_modules/starter-imagery/work-potter.webp",
+      "noodl_modules/starter-imagery/work-welder.webp",
+      "noodl_modules/starter-imagery/people-cafe.webp",
+      "noodl_modules/starter-imagery/people-coffee-shop.webp",
+      "noodl_modules/starter-imagery/people-desk.webp",
+      "noodl_modules/starter-imagery/people-market.webp",
+      "noodl_modules/starter-imagery/people-meeting.webp",
+      "noodl_modules/starter-imagery/food-bakery.webp",
+      "noodl_modules/starter-imagery/food-board.webp",
+      "noodl_modules/starter-imagery/food-bread.webp",
+      "noodl_modules/starter-imagery/food-carrots.webp",
+      "noodl_modules/starter-imagery/food-grocer.webp",
+      "noodl_modules/starter-imagery/food-market.webp",
+      "noodl_modules/starter-imagery/food-plate.webp",
+      "noodl_modules/starter-imagery/animal-cat.webp",
+      "noodl_modules/starter-imagery/animal-dog.webp",
+      "noodl_modules/starter-imagery/animal-horse.webp",
+      "noodl_modules/starter-imagery/animal-sheep.webp",
+      "noodl_modules/starter-imagery/avatar-1.webp",
+      "noodl_modules/starter-imagery/avatar-2.webp",
+      "noodl_modules/starter-imagery/avatar-3.webp",
+      "noodl_modules/starter-imagery/avatar-4.webp",
+      "noodl_modules/starter-imagery/avatar-5.webp",
+      "noodl_modules/starter-imagery/avatar-6.webp"
+    ],
+    "skipped": [],
+    "failed": []
+  },
+  "shots": [
+    {
+      "task": "vib-001",
+      "subject": "site-builder",
+      "state": "living",
+      "page": "public-home",
+      "url": "/",
+      "as": "the published home page, as a visitor",
+      "viewport": {
+        "id": "preview",
+        "width": 988,
+        "height": 313
+      },
+      "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-09-03/site-builder-living/public-home-preview-viewport.png",
+      "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-09-03/site-builder-living/public-home-preview-full.png",
+      "contentBottom": 945,
+      "canScroll": true,
+      "unreachablePx": 0,
+      "textChars": 395,
+      "headings": [
+        "Welcome"
+      ],
+      "errors": []
+    },
+    {
+      "task": "vib-001",
+      "subject": "site-builder",
+      "state": "living",
+      "page": "public-home",
+      "url": "/",
+      "as": "the published home page, as a visitor",
+      "viewport": {
+        "id": "desktop",
+        "width": 1280,
+        "height": 900
+      },
+      "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-09-03/site-builder-living/public-home-desktop-viewport.png",
+      "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-09-03/site-builder-living/public-home-desktop-full.png",
+      "contentBottom": 945,
+      "canScroll": true,
+      "unreachablePx": 0,
+      "textChars": 395,
+      "headings": [
+        "Welcome"
+      ],
+      "errors": []
+    },
+    {
+      "task": "vib-001",
+      "subject": "site-builder",
+      "state": "living",
+      "page": "public-home",
+      "url": "/",
+      "as": "the published home page, as a visitor",
+      "viewport": {
+        "id": "wide",
+        "width": 1900,
+        "height": 1080
+      },
+      "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-09-03/site-builder-living/public-home-wide-viewport.png",
+      "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-09-03/site-builder-living/public-home-wide-full.png",
+      "contentBottom": 1080,
+      "canScroll": false,
+      "unreachablePx": 0,
+      "textChars": 395,
+      "headings": [
+        "Welcome"
+      ],
+      "errors": []
+    },
+    {
+      "task": "vib-001",
+      "subject": "site-builder",
+      "state": "living",
+      "page": "public-home",
+      "url": "/",
+      "as": "the published home page, as a visitor",
+      "viewport": {
+        "id": "phone",
+        "width": 390,
+        "height": 844
+      },
+      "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-09-03/site-builder-living/public-home-phone-viewport.png",
+      "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-09-03/site-builder-living/public-home-phone-full.png",
+      "contentBottom": 1053,
+      "canScroll": true,
+      "unreachablePx": 0,
+      "textChars": 395,
+      "headings": [
+        "Welcome"
+      ],
+      "errors": []
+    },
+    {
+      "task": "vib-001",
+      "subject": "site-builder",
+      "state": "living",
+      "page": "public-about",
+      "url": "/about",
+      "as": "a second published page",
+      "viewport": {
+        "id": "preview",
+        "width": 988,
+        "height": 313
+      },
+      "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-09-03/site-builder-living/public-about-preview-viewport.png",
+      "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-09-03/site-builder-living/public-about-preview-full.png",
+      "contentBottom": 643,
+      "canScroll": true,
+      "unreachablePx": 0,
+      "textChars": 201,
+      "headings": [
+        "About the workshop"
+      ],
+      "errors": []
+    },
+    {
+      "task": "vib-001",
+      "subject": "site-builder",
+      "state": "living",
+      "page": "public-about",
+      "url": "/about",
+      "as": "a second published page",
+      "viewport": {
+        "id": "desktop",
+        "width": 1280,
+        "height": 900
+      },
+      "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-09-03/site-builder-living/public-about-desktop-viewport.png",
+      "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-09-03/site-builder-living/public-about-desktop-full.png",
+      "contentBottom": 900,
+      "canScroll": false,
+      "unreachablePx": 0,
+      "textChars": 201,
+      "headings": [
+        "About the workshop"
+      ],
+      "errors": []
+    },
+    {
+      "task": "vib-001",
+      "subject": "site-builder",
+      "state": "living",
+      "page": "public-about",
+      "url": "/about",
+      "as": "a second published page",
+      "viewport": {
+        "id": "wide",
+        "width": 1900,
+        "height": 1080
+      },
+      "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-09-03/site-builder-living/public-about-wide-viewport.png",
+      "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-09-03/site-builder-living/public-about-wide-full.png",
+      "contentBottom": 1080,
+      "canScroll": false,
+      "unreachablePx": 0,
+      "textChars": 201,
+      "headings": [
+        "About the workshop"
+      ],
+      "errors": []
+    },
+    {
+      "task": "vib-001",
+      "subject": "site-builder",
+      "state": "living",
+      "page": "public-about",
+      "url": "/about",
+      "as": "a second published page",
+      "viewport": {
+        "id": "phone",
+        "width": 390,
+        "height": 844
+      },
+      "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-09-03/site-builder-living/public-about-phone-viewport.png",
+      "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-09-03/site-builder-living/public-about-phone-full.png",
+      "contentBottom": 844,
+      "canScroll": false,
+      "unreachablePx": 0,
+      "textChars": 201,
+      "headings": [
+        "About the workshop"
+      ],
+      "errors": []
+    },
+    {
+      "task": "vib-001",
+      "subject": "site-builder",
+      "state": "living",
+      "page": "admin-pages",
+      "url": "/admin/pages",
+      "as": "the panel (recorded debt: judge for clarity)",
+      "viewport": {
+        "id": "preview",
+        "width": 988,
+        "height": 313
+      },
+      "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-09-03/site-builder-living/admin-pages-preview-viewport.png",
+      "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-09-03/site-builder-living/admin-pages-preview-full.png",
+      "contentBottom": 313,
+      "canScroll": false,
+      "unreachablePx": 0,
+      "textChars": 179,
+      "headings": [],
+      "errors": []
+    },
+    {
+      "task": "vib-001",
+      "subject": "site-builder",
+      "state": "living",
+      "page": "admin-pages",
+      "url": "/admin/pages",
+      "as": "the panel (recorded debt: judge for clarity)",
+      "viewport": {
+        "id": "desktop",
+        "width": 1280,
+        "height": 900
+      },
+      "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-09-03/site-builder-living/admin-pages-desktop-viewport.png",
+      "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-09-03/site-builder-living/admin-pages-desktop-full.png",
+      "contentBottom": 900,
+      "canScroll": false,
+      "unreachablePx": 0,
+      "textChars": 179,
+      "headings": [],
+      "errors": []
+    },
+    {
+      "task": "vib-001",
+      "subject": "site-builder",
+      "state": "living",
+      "page": "admin-pages",
+      "url": "/admin/pages",
+      "as": "the panel (recorded debt: judge for clarity)",
+      "viewport": {
+        "id": "wide",
+        "width": 1900,
+        "height": 1080
+      },
+      "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-09-03/site-builder-living/admin-pages-wide-viewport.png",
+      "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-09-03/site-builder-living/admin-pages-wide-full.png",
+      "contentBottom": 1080,
+      "canScroll": false,
+      "unreachablePx": 0,
+      "textChars": 179,
+      "headings": [],
+      "errors": []
+    },
+    {
+      "task": "vib-001",
+      "subject": "site-builder",
+      "state": "living",
+      "page": "admin-pages",
+      "url": "/admin/pages",
+      "as": "the panel (recorded debt: judge for clarity)",
+      "viewport": {
+        "id": "phone",
+        "width": 390,
+        "height": 844
+      },
+      "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-09-03/site-builder-living/admin-pages-phone-viewport.png",
+      "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-09-03/site-builder-living/admin-pages-phone-full.png",
+      "contentBottom": 844,
+      "canScroll": false,
+      "unreachablePx": 0,
+      "textChars": 179,
+      "headings": [],
+      "errors": []
+    },
+    {
+      "task": "vib-001",
+      "subject": "site-builder",
+      "state": "living",
+      "page": "admin-theme",
+      "url": "/admin/theme",
+      "as": "the theme editor",
+      "viewport": {
+        "id": "preview",
+        "width": 988,
+        "height": 313
+      },
+      "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-09-03/site-builder-living/admin-theme-preview-viewport.png",
+      "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-09-03/site-builder-living/admin-theme-preview-full.png",
+      "contentBottom": 1143,
+      "canScroll": true,
+      "unreachablePx": 0,
+      "textChars": 691,
+      "headings": [],
+      "errors": []
+    },
+    {
+      "task": "vib-001",
+      "subject": "site-builder",
+      "state": "living",
+      "page": "admin-theme",
+      "url": "/admin/theme",
+      "as": "the theme editor",
+      "viewport": {
+        "id": "desktop",
+        "width": 1280,
+        "height": 900
+      },
+      "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-09-03/site-builder-living/admin-theme-desktop-viewport.png",
+      "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-09-03/site-builder-living/admin-theme-desktop-full.png",
+      "contentBottom": 1120,
+      "canScroll": true,
+      "unreachablePx": 0,
+      "textChars": 691,
+      "headings": [],
+      "errors": []
+    },
+    {
+      "task": "vib-001",
+      "subject": "site-builder",
+      "state": "living",
+      "page": "admin-theme",
+      "url": "/admin/theme",
+      "as": "the theme editor",
+      "viewport": {
+        "id": "wide",
+        "width": 1900,
+        "height": 1080
+      },
+      "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-09-03/site-builder-living/admin-theme-wide-viewport.png",
+      "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-09-03/site-builder-living/admin-theme-wide-full.png",
+      "contentBottom": 1120,
+      "canScroll": true,
+      "unreachablePx": 0,
+      "textChars": 691,
+      "headings": [],
+      "errors": []
+    },
+    {
+      "task": "vib-001",
+      "subject": "site-builder",
+      "state": "living",
+      "page": "admin-theme",
+      "url": "/admin/theme",
+      "as": "the theme editor",
+      "viewport": {
+        "id": "phone",
+        "width": 390,
+        "height": 844
+      },
+      "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-09-03/site-builder-living/admin-theme-phone-viewport.png",
+      "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-09-03/site-builder-living/admin-theme-phone-full.png",
+      "contentBottom": 1206,
+      "canScroll": false,
+      "unreachablePx": 362,
+      "textChars": 691,
+      "headings": [],
+      "errors": []
+    }
+  ]
+}

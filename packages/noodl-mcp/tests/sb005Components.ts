@@ -158,6 +158,145 @@ export const STACKED = { sizeMode: 'contentHeight' } as const;
 /** The row-direction twin of {@link STACKED}. See there for why they differ. */
 export const IN_A_ROW = { sizeMode: 'contentSize' } as const;
 
+// ── The control treatments (REL-011a) ────────────────────────────────────────
+
+/**
+ * 🔴 **The template placed 53 interactive controls and dressed one of them.**
+ * Phase 82's REL-011a; the census is `sbr014ControlStyleCensus.test.ts`, and it
+ * was written to red at HEAD — **1 of 53** — before any of this existed.
+ *
+ * The controls are the only nodes in the template that arrive already painted,
+ * and what they arrive painted as is the browser's idea of a form: an `<input>`
+ * with `background-color: transparent` and `border-style: none`, and a `<button>`
+ * that is `black` with `white` text and square corners. Every `Text` and `Group`
+ * beside them was tokenised from the first commit; these were skipped because
+ * they *looked* finished — a control with no parameters still renders something,
+ * which is exactly what makes this defect survive a review.
+ *
+ * 🔴 **Rendered, a text input in this template is not there at all.** Confirmed
+ * three independent ways before a line was changed: the node's own default
+ * (`backgroundColor: 'transparent'`, border width 0), the runtime stylesheet
+ * (`.ndl-controls-textinput { border-style: none; background-color: transparent }`),
+ * and the photograph the row was opened on — *"Your name / Your email / Your
+ * message"* over blank ground. Under the bar Richard set for 0.2.2 — *"you can
+ * at least see the elements clearly and interact"* — that one fact is the whole
+ * difference between SHITTY and PASSABLE.
+ *
+ * ⚠️ **The dropdown and the checkbox were NOT part of that defect**, and REL-011
+ * §2's *"53 controls, 3 styled"* reads as though they were. Both draw a 2px box
+ * at their own node defaults. They take the treatments below to join the
+ * palette, not to become visible, and this comment is the record of that
+ * difference so a later session does not cite them as evidence of the fix.
+ *
+ * ⚠️ **`fontFamily` is deliberately absent from all four.** `assets/style.css`
+ * gives both classes `font-family: inherit` (P78 D18), so the controls already
+ * render in the project's face; setting the port would restate a correct value
+ * and move the census's number without moving a pixel. `fontSize` is here for
+ * the opposite reason — the same stylesheet inherits family and, in its own
+ * words, *deliberately not size*, so every control's text sits at the user
+ * agent's ~13px beside a `Text` at `--text-base`.
+ */
+export const FIELD = {
+  // 🔴 **Found by looking at the render, not by reasoning about it.** With the
+  // border drawn, the first after-arm showed three ~205px fields adrift in a
+  // 700px card — a `textinput` defaults to `contentSize`, so it had always been
+  // that narrow and nobody could see it while it was invisible. `contentHeight`
+  // stops the node assigning its own height but keeps it assigning width, which
+  // is what lets the explicit 100% span the column (see {@link STACKED}).
+  //
+  // ✅ Not invented here: `templates/members-area` reached the same eleven-line
+  // treatment independently — same background, border stack, radius, padding,
+  // size and colour, down to the token names — and it is the template Richard
+  // rates. Its `Pages/SignIn` field is the pattern this matches.
+  //
+  // ⚠️ **`sizeMode` alone, with NO `width`** — and that is a deliberate
+  // departure from the members-area, which sets `width: 100%` beside it. Adding
+  // the width here reddened `sbr012RawColourGate` with **26 new raw dimensions**
+  // and `sb006PublicSite` with three more, and the only way to keep it would
+  // have been twenty-six copies of one exemption reason. `contentHeight` stops
+  // the node assigning its own HEIGHT and leaves it assigning WIDTH, so down a
+  // column the field spans the column on its own (see {@link STACKED}). The
+  // width was redundant; the render is what says so.
+  sizeMode: 'contentHeight',
+  // The card these sit on is `--surface`; the field is the step below it, and
+  // the border is what actually draws the edge on a preset where the two are
+  // close (Studio: #ffffff card, #fbfaf8 field, #e3ded4 border).
+  backgroundColor: 'var(--background)',
+  borderStyle: 'solid',
+  borderWidth: 'var(--border-1)',
+  borderColor: 'var(--border)',
+  borderRadius: 'var(--radius-md)',
+  color: 'var(--foreground)',
+  fontSize: 'var(--text-base)',
+  // 🔴 The wrapper has no padding of its own, so without these the text would
+  // sit against the border this treatment just drew.
+  paddingLeft: 'var(--space-3)',
+  paddingRight: 'var(--space-3)',
+  paddingTop: 'var(--space-2)',
+  paddingBottom: 'var(--space-2)'
+} as const;
+
+/**
+ * The one action a screen is asking for: submit, save, publish, create.
+ *
+ * ⚠️ Padding is **not** set here. `.ndl-controls-button` already supplies
+ * `5px 20px`, and overriding it is a change to every button's metrics that no
+ * measurement asked for — the same reasoning the stylesheet's own comment gives
+ * for not inheriting `font-size` there.
+ */
+export const PRIMARY_BUTTON = {
+  backgroundColor: 'var(--primary)',
+  color: 'var(--primary-foreground)',
+  borderRadius: 'var(--radius-md)',
+  fontSize: 'var(--text-base)',
+  fontWeight: 'var(--font-semibold)'
+} as const;
+
+/**
+ * Everything a screen offers but is not asking for: cancel, back, move, edit.
+ *
+ * A bordered chip rather than a second filled colour — on an admin row the
+ * ground is already `--surface`, so the border is what separates the control
+ * from the card, and two filled colours side by side would make every row look
+ * like it had two primary actions.
+ */
+export const SECONDARY_BUTTON = {
+  backgroundColor: 'var(--surface)',
+  color: 'var(--foreground)',
+  borderStyle: 'solid',
+  borderWidth: 'var(--border-1)',
+  borderColor: 'var(--border)',
+  borderRadius: 'var(--radius-md)',
+  fontSize: 'var(--text-sm)',
+  fontWeight: 'var(--font-semibold)'
+} as const;
+
+/**
+ * `Delete` alone. The shape of {@link SECONDARY_BUTTON} with the label in
+ * `--destructive`, rather than a filled red block: the destructive action on a
+ * section row is one of six controls in that row, and a filled red would make
+ * it the loudest thing on a screen whose actual subject is the page's content.
+ */
+export const DESTRUCTIVE_BUTTON = {
+  ...SECONDARY_BUTTON,
+  color: 'var(--destructive)'
+} as const;
+
+/**
+ * The one checkbox, `Show in navigation`.
+ *
+ * ⚠️ Three ports, not eleven, and the difference is the point: a checkbox draws
+ * its own 32×32 box from node defaults (`solid`, 2px, `#000000`, radius 3) and
+ * has no `color`/`fontSize` of its own — its text is the `<label>` beside it,
+ * which inherits the page. So it was never invisible. This treatment moves it
+ * off a raw black edge onto the palette and does nothing else.
+ */
+export const CHECKBOX = {
+  backgroundColor: 'var(--background)',
+  borderColor: 'var(--border)',
+  borderRadius: 'var(--radius-md)'
+} as const;
+
 /**
  * The admin rail's width. A raw dimension, in the same shape and for the same
  * reason as `sb006Components.ts`'s `RAW_DIMENSION_EXEMPTIONS`: a fixed rail has
@@ -517,7 +656,7 @@ export const PAGE_ROW_NODES = [
       color: 'var(--muted-foreground)'
     }
   },
-  { id: 'editButton', type: 'net.noodl.controls.button', label: 'Edit', parent: 'row', parameters: { label: 'Edit' } },
+  { id: 'editButton', type: 'net.noodl.controls.button', label: 'Edit', parent: 'row', parameters: { ...SECONDARY_BUTTON, label: 'Edit' } },
   {
     id: 'menuButton',
     type: 'net.noodl.controls.button',
@@ -526,7 +665,7 @@ export const PAGE_ROW_NODES = [
     // SBR-006 §2: publish/unpublish/duplicate move off the row and behind one
     // control, because four buttons per row IS the current design and the task
     // is to stop it being that.
-    parameters: { label: 'More' }
+    parameters: { ...SECONDARY_BUTTON, label: 'More' }
   },
   {
     id: 'menu',
@@ -555,21 +694,21 @@ export const PAGE_ROW_NODES = [
     type: 'net.noodl.controls.button',
     label: 'Publish',
     parent: 'menu',
-    parameters: { label: 'Publish' }
+    parameters: { ...PRIMARY_BUTTON, label: 'Publish' }
   },
   {
     id: 'unpublishButton',
     type: 'net.noodl.controls.button',
     label: 'Unpublish',
     parent: 'menu',
-    parameters: { label: 'Unpublish' }
+    parameters: { ...SECONDARY_BUTTON, label: 'Unpublish' }
   },
   {
     id: 'duplicateButton',
     type: 'net.noodl.controls.button',
     label: 'Duplicate',
     parent: 'menu',
-    parameters: { label: 'Duplicate' }
+    parameters: { ...SECONDARY_BUTTON, label: 'Duplicate' }
   },
   {
     id: 'menuState',
@@ -876,14 +1015,14 @@ export const SECTION_ROW_NODES = [
     type: 'net.noodl.controls.button',
     label: 'Move up',
     parent: 'moveRow',
-    parameters: { ...IN_A_ROW, label: 'Move up' }
+    parameters: { ...IN_A_ROW, ...SECONDARY_BUTTON, label: 'Move up' }
   },
   {
     id: 'moveDownButton',
     type: 'net.noodl.controls.button',
     label: 'Move down',
     parent: 'moveRow',
-    parameters: { ...IN_A_ROW, label: 'Move down' }
+    parameters: { ...IN_A_ROW, ...SECONDARY_BUTTON, label: 'Move down' }
   },
   // ── SBR-005 AC5's authoring half ──────────────────────────────────────────
   //
@@ -902,14 +1041,14 @@ export const SECTION_ROW_NODES = [
     type: 'net.noodl.controls.textinput',
     label: 'Heading',
     parent: 'row',
-    parameters: { useLabel: true, label: 'Heading' }
+    parameters: { ...FIELD, useLabel: true, label: 'Heading' }
   },
   {
     id: 'bodyField',
     type: 'net.noodl.controls.textinput',
     label: 'Body',
     parent: 'row',
-    parameters: { useLabel: true, label: 'Body', type: 'textArea' }
+    parameters: { ...FIELD, useLabel: true, label: 'Body', type: 'textArea' }
   },
   {
     id: 'linkLabelField',
@@ -918,7 +1057,7 @@ export const SECTION_ROW_NODES = [
     parent: 'row',
     // Only a `cta` has a button, so only a `cta` row offers the two fields that
     // describe one. `unpack` publishes the boolean.
-    parameters: { useLabel: true, label: 'Button label', mounted: false }
+    parameters: { ...FIELD, useLabel: true, label: 'Button label', mounted: false }
   },
   {
     id: 'linkTargetField',
@@ -929,6 +1068,7 @@ export const SECTION_ROW_NODES = [
     // than displayed: `Site/CtaSection`'s `route` treats an `https://` value as
     // the open web and anything else as a page slug on this site.
     parameters: {
+      ...FIELD,
       useLabel: true,
       label: 'Button goes to (a page slug, or an https:// address)',
       mounted: false
@@ -955,7 +1095,7 @@ export const SECTION_ROW_NODES = [
     type: 'net.noodl.controls.button',
     label: 'Choose image',
     parent: 'row',
-    parameters: { label: 'Choose image' }
+    parameters: { ...SECONDARY_BUTTON, label: 'Choose image' }
   },
   {
     id: 'removeImageButton',
@@ -964,15 +1104,15 @@ export const SECTION_ROW_NODES = [
     parent: 'row',
     // A gallery is the only kind that accumulates, so it is the only kind that
     // needs an undo. For every other kind the next upload replaces the picture.
-    parameters: { label: 'Remove last picture', mounted: false }
+    parameters: { ...SECONDARY_BUTTON, label: 'Remove last picture', mounted: false }
   },
-  { id: 'saveButton', type: 'net.noodl.controls.button', label: 'Save', parent: 'row', parameters: { label: 'Save' } },
+  { id: 'saveButton', type: 'net.noodl.controls.button', label: 'Save', parent: 'row', parameters: { ...PRIMARY_BUTTON, label: 'Save' } },
   {
     id: 'deleteButton',
     type: 'net.noodl.controls.button',
     label: 'Delete',
     parent: 'row',
-    parameters: { label: 'Delete' }
+    parameters: { ...DESTRUCTIVE_BUTTON, label: 'Delete' }
   },
   {
     id: 'inputs',
@@ -1425,28 +1565,28 @@ export const SETUP_NODES = [
     type: 'net.noodl.controls.textinput',
     label: 'Email',
     parent: 'shell',
-    parameters: { useLabel: true, label: 'Email', type: 'email' }
+    parameters: { ...FIELD, useLabel: true, label: 'Email', type: 'email' }
   },
   {
     id: 'passwordField',
     type: 'net.noodl.controls.textinput',
     label: 'Password',
     parent: 'shell',
-    parameters: { useLabel: true, label: 'Password', type: 'password' }
+    parameters: { ...FIELD, useLabel: true, label: 'Password', type: 'password' }
   },
   {
     id: 'tokenField',
     type: 'net.noodl.controls.textinput',
     label: 'Setup token',
     parent: 'shell',
-    parameters: { useLabel: true, label: 'Setup token', type: 'password' }
+    parameters: { ...FIELD, useLabel: true, label: 'Setup token', type: 'password' }
   },
   {
     id: 'claimButton',
     type: 'net.noodl.controls.button',
     label: 'Claim',
     parent: 'shell',
-    parameters: { label: 'Claim this site' }
+    parameters: { ...PRIMARY_BUTTON, label: 'Claim this site' }
   },
   {
     id: 'claimRefusal',
@@ -1667,7 +1807,7 @@ export const ADMIN_NODES = [
     // ⚠️ SBR-006 §8.5 / SBR-004: at 360px this button's centre was off-screen
     // and a click landed on nothing. It now sits in a row with one heading
     // rather than after two text fields, which is what put it there.
-    parameters: { label: 'New page', marginLeft: 'var(--space-6)' }
+    parameters: { ...PRIMARY_BUTTON, label: 'New page', marginLeft: 'var(--space-6)' }
   },
   {
     id: 'countLine',
@@ -2046,14 +2186,14 @@ export const PAGE_EDITOR_NODES = [
     type: 'net.noodl.controls.button',
     label: 'Preview',
     parent: 'headerRow',
-    parameters: { label: 'Preview' }
+    parameters: { ...SECONDARY_BUTTON, label: 'Preview' }
   },
   {
     id: 'saveButton',
     type: 'net.noodl.controls.button',
     label: 'Save',
     parent: 'headerRow',
-    parameters: { label: 'Save page' }
+    parameters: { ...PRIMARY_BUTTON, label: 'Save page' }
   },
 
   // ── The fields, in a card, grouped — §2's first bullet ──────────────────────
@@ -2099,21 +2239,21 @@ export const PAGE_EDITOR_NODES = [
     type: 'net.noodl.controls.textinput',
     label: 'Title',
     parent: 'nameRow',
-    parameters: { useLabel: true, label: 'Title' }
+    parameters: { ...FIELD, useLabel: true, label: 'Title' }
   },
   {
     id: 'slugField',
     type: 'net.noodl.controls.textinput',
     label: 'Slug',
     parent: 'nameRow',
-    parameters: { useLabel: true, label: 'Slug' }
+    parameters: { ...FIELD, useLabel: true, label: 'Slug' }
   },
   {
     id: 'seoField',
     type: 'net.noodl.controls.textinput',
     label: 'SEO description',
     parent: 'fieldsCard',
-    parameters: { useLabel: true, label: 'Search description', type: 'textArea' }
+    parameters: { ...FIELD, useLabel: true, label: 'Search description', type: 'textArea' }
   },
   {
     id: 'navRow',
@@ -2134,14 +2274,14 @@ export const PAGE_EDITOR_NODES = [
     type: 'net.noodl.controls.textinput',
     label: 'Nav order',
     parent: 'navRow',
-    parameters: { useLabel: true, label: 'Navigation order', type: 'number' }
+    parameters: { ...FIELD, useLabel: true, label: 'Navigation order', type: 'number' }
   },
   {
     id: 'showInNavBox',
     type: 'net.noodl.controls.checkbox',
     label: 'Show in navigation',
     parent: 'navRow',
-    parameters: { useLabel: true, label: 'Show in navigation' }
+    parameters: { ...CHECKBOX, useLabel: true, label: 'Show in navigation' }
   },
 
   // ── The sections — §2's third bullet ───────────────────────────────────────
@@ -2230,14 +2370,14 @@ export const PAGE_EDITOR_NODES = [
     // renders. The control wants an array of `{ Label, Value }` objects
     // (`Select.tsx:116-119` reads exactly those two keys), which is what
     // `kindItems` below supplies.
-    parameters: { useLabel: true, label: 'Kind' }
+    parameters: { ...FIELD, useLabel: true, label: 'Kind' }
   },
   {
     id: 'addButton',
     type: 'net.noodl.controls.button',
     label: 'Add',
     parent: 'sectionsHeader',
-    parameters: { label: 'Add section' }
+    parameters: { ...PRIMARY_BUTTON, label: 'Add section' }
   },
   {
     id: 'sectionList',
@@ -2251,7 +2391,7 @@ export const PAGE_EDITOR_NODES = [
     type: 'net.noodl.controls.button',
     label: 'Back',
     parent: 'body',
-    parameters: { label: 'Back to pages' }
+    parameters: { ...SECONDARY_BUTTON, label: 'Back to pages' }
   },
   {
     id: 'kindItems',
@@ -2837,6 +2977,7 @@ const themeField = (id: string, label: string, parent: string, placeholder: stri
   label,
   parent,
   parameters: {
+    ...FIELD,
     useLabel: true,
     label,
     placeholder,
@@ -3035,21 +3176,21 @@ export const THEME_EDITOR_NODES = [
     type: 'net.noodl.controls.textinput',
     label: 'Site name',
     parent: 'siteCard',
-    parameters: { useLabel: true, label: 'Site name', placeholder: 'The name in the header and the tab' }
+    parameters: { ...FIELD, useLabel: true, label: 'Site name', placeholder: 'The name in the header and the tab' }
   },
   {
     id: 'homeSlugField',
     type: 'net.noodl.controls.textinput',
     label: 'Home slug',
     parent: 'siteCard',
-    parameters: { useLabel: true, label: 'Home page slug', placeholder: 'home' }
+    parameters: { ...FIELD, useLabel: true, label: 'Home page slug', placeholder: 'home' }
   },
   {
     id: 'settingsButton',
     type: 'net.noodl.controls.button',
     label: 'Save settings',
     parent: 'siteCard',
-    parameters: { label: 'Save settings' }
+    parameters: { ...PRIMARY_BUTTON, label: 'Save settings' }
   },
 
   {
@@ -3090,14 +3231,14 @@ export const THEME_EDITOR_NODES = [
     type: 'net.noodl.controls.button',
     label: 'Save theme',
     parent: 'actions',
-    parameters: { label: 'Save theme' }
+    parameters: { ...PRIMARY_BUTTON, label: 'Save theme' }
   },
   {
     id: 'backButton',
     type: 'net.noodl.controls.button',
     label: 'Back',
     parent: 'actions',
-    parameters: { label: 'Back to pages' }
+    parameters: { ...SECONDARY_BUTTON, label: 'Back to pages' }
   },
 
   // ── The live preview ───────────────────────────────────────────────────────
@@ -4068,14 +4209,14 @@ export const NEW_PAGE_DIALOG_NODES = [
     type: 'net.noodl.controls.textinput',
     label: 'Title',
     parent: 'card',
-    parameters: { useLabel: true, label: 'Title' }
+    parameters: { ...FIELD, useLabel: true, label: 'Title' }
   },
   {
     id: 'slugField',
     type: 'net.noodl.controls.textinput',
     label: 'Slug',
     parent: 'card',
-    parameters: { useLabel: true, label: 'Slug' }
+    parameters: { ...FIELD, useLabel: true, label: 'Slug' }
   },
   {
     id: 'actions',
@@ -4090,14 +4231,14 @@ export const NEW_PAGE_DIALOG_NODES = [
     type: 'net.noodl.controls.button',
     label: 'Cancel',
     parent: 'actions',
-    parameters: { label: 'Cancel' }
+    parameters: { ...SECONDARY_BUTTON, label: 'Cancel' }
   },
   {
     id: 'createButton',
     type: 'net.noodl.controls.button',
     label: 'Create page',
     parent: 'actions',
-    parameters: { label: 'Create page' }
+    parameters: { ...PRIMARY_BUTTON, label: 'Create page' }
   },
   {
     id: 'close',
@@ -4210,21 +4351,21 @@ export const SIGN_IN_NODES = [
     type: 'net.noodl.controls.textinput',
     label: 'Email',
     parent: 'shell',
-    parameters: { useLabel: true, label: 'Email', type: 'email' }
+    parameters: { ...FIELD, useLabel: true, label: 'Email', type: 'email' }
   },
   {
     id: 'passwordField',
     type: 'net.noodl.controls.textinput',
     label: 'Password',
     parent: 'shell',
-    parameters: { useLabel: true, label: 'Password', type: 'password' }
+    parameters: { ...FIELD, useLabel: true, label: 'Password', type: 'password' }
   },
   {
     id: 'signInButton',
     type: 'net.noodl.controls.button',
     label: 'Sign in',
     parent: 'shell',
-    parameters: { label: 'Sign in' }
+    parameters: { ...PRIMARY_BUTTON, label: 'Sign in' }
   },
   {
     id: 'refusal',

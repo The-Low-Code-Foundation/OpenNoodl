@@ -157,6 +157,120 @@ and is the pattern to follow.
 
 **Close**: the census spec is green having been red, and AC2/AC3's pictures exist.
 
+### 🟢 CLOSED 2026-09-03 (s17) — 53 of 53, from 1 of 53
+
+Artefact `d40d8f88d933f1232c5f3fc7ec34460b`, built from HEAD `f0ba5635`.
+Gates: `npm run template:site-builder` **exit 0**; `sbr014ControlStyleCensus.test.ts` **12/12**
+having been **1 failed / 11 passed**; the named neighbourhood — `sb005AdminPanel`,
+`sb006PublicSite`, `sb007Template`, `sbr009ThemeEditor`, `sbr010Messages`, `sbr012RawColourGate` —
+**7 suites, 248/248**.
+
+| AC | how it closed |
+|---|---|
+| **1** | 🔴 **Red first, and recorded**: `1 of 53`, not the 3 this file was opened on. Green at 53/53 |
+| **2** | `public-site-after/kind-contact-desktop-viewport.png` beside the committed before-arm |
+| **3** | `/admin/pages` **and** `/admin/theme` photographed. §2's *"NOT measured"* is now measured |
+| **4** | `all-five-desktop-full.png` — the CTA pill and `Send` on one page, one idiom |
+| **5** | Regenerated from source, `sb007Template.test.ts` green — no hand edit to the JSON |
+
+#### 🔴 The count in §2 was 3 and the answerable count was 1
+
+§2 counted *"carrying any `var(--…)` parameter"*. That admits `/Pages/Admin`'s `New page` on a lone
+`marginLeft` — spacing, not treatment — and `/Admin/PresetChip`, which carries a full chip treatment
+but no `fontSize`. Neither reading is wrong. **They are different questions**, and a census whose
+number cannot be reproduced from its own definition is a number a later session will re-derive
+differently. The contract is now written down per port, per type, with the measured default each one
+overrules, in `sbr014ControlStyleCensus.test.ts`.
+
+#### 🔴 Two of the four control types were never part of the defect
+
+§2 reads *"53 interactive controls and styles 3 of them"* and the fix reads across all four types.
+Measured on the **live** node definitions — `nodes/controls/`, not the `nodes-deprecated/` twin that
+carries the same display names and different defaults:
+
+| type | at its own defaults | against the bar |
+|---|---|---|
+| `textinput` ×25 | `transparent`, `border-style: none`, width 0 | 🔴 **invisible** — the row's defect |
+| `button` ×26 | `black` / `white` / `padding: 5px 20px`, radius 0 | 🟡 legible; a raw pair outside the palette |
+| `options` ×1 | `solid`, 2px, `#000000`, radius 5 | 🟢 **draws already** |
+| `checkbox` ×1 | `solid`, 2px, `#000000`, radius 3, 32×32 | 🟢 **draws already** |
+
+✅ The invisible-field finding is **confirmed three independent ways** — the node default, the
+runtime stylesheet, and the photograph. It is the text inputs. The dropdown and the checkbox took
+the treatment to join the palette, and this row does not cite them as evidence of the fix.
+
+#### 🔴 The root cause was ONE parameter's absence, and the product was already correct
+
+`.ndl-controls-textinput { border-style: none; background-color: transparent }` is the whole of it.
+Nothing was mis-built: `addBorderInputs`, `addPaddingInputs` and `backgroundColor` all already carry
+`styleTag: 'inputWrapper'`, and the text style carries `styleTag: 'input'`, so **every port this
+needed lands on the element a person would expect** — a border does not box the label in with the
+field. The template simply never set any of them. ⚠️ Nearly filed as a hazard the other way round,
+from reading `TextInput.tsx`'s outer `<div>` before reading where the ports are routed.
+
+#### ⚠️ Two ports were REFUSED, and the refusals are the load-bearing part
+
+1. 🔴 **`fontFamily` is not in the contract.** `assets/style.css` gives both control classes
+   `font-family: inherit` — P78 D18's fix, measured across eleven pages. Requiring the port would
+   have restated a correct value on 53 nodes, moved this census's number, and **changed no pixel**.
+   That is REL-010 §6.5's refused move wearing a different hat.
+2. 🔴 **Label ports are not in the contract.** A `<label>` is not a form control and inherits the
+   page. The labels are legible in the very photograph this row was opened on — *"Your name / Your
+   email / Your message"* reads fine; it is the field **beneath** it that is not there.
+
+`fontSize` **is** required, from the same stylesheet's own comment: *"`font-family` only,
+deliberately. Size and weight were not measured"* — so every control's text sat at the user agent's
+~13px beside a `Text` at `--text-base`, including the one button that was already dressed.
+
+#### 🔴 The fix's first arm was correct and looked unfinished, and only the render said so
+
+With the border drawn, the three contact fields were **~205px in a 700px card**. A `textinput`
+defaults to `contentSize`, so they had *always* been that narrow — invisible, so nobody could see it.
+✅ **`sizeMode: 'contentHeight'` alone fixed it, with no `width` at all**: `contentHeight` stops the
+node assigning its own height and leaves it assigning width, so the field spans the column.
+
+⚠️ **The first draft did set `width: 100%`**, copying `templates/members-area`. That reddened
+`sbr012RawColourGate` with **26 new raw dimensions** and `sb006PublicSite` with three more, and the
+only way to keep it would have been twenty-six copies of one exemption reason. **The gate was right
+and the parameter was redundant** — dropping it is greener *and* fewer parameters. A second render
+is what proved it, not the argument.
+
+✅ **Independent confirmation of the treatment itself**: `templates/members-area` — the template
+Richard rates — reached the same eleven-line field treatment on its own, down to the token names
+(`--background` / `--border-1` / `--border` / `--radius-md` / `--space-3` / `--space-2` /
+`--text-base` / `--foreground`). Two templates, arrived at separately, agree.
+
+#### What a person sees now
+
+- **Public contact form**: three bordered fields on the card, and `Send` as a filled `--primary`
+  with `--radius-md` corners instead of a black square.
+- **`/admin/pages`**: `New page` and `Published` filled; `Edit` / `More` as bordered chips.
+- **`/admin/theme`**: all seven fields boxed with their values legible; the three preset chips and
+  `Save settings` in one idiom.
+- **One page, both idioms** (`all-five-desktop-full.png`): the CTA keeps its deliberate inverse
+  treatment on the brand band, and now shares the corner radius, weight and size of `Send`.
+
+⚠️ **The admin before-arm is `vib-001/2026-08-31/`, and it is NOT a one-variable pair.** It confirms
+the admin fields were invisible in the same way as the contact form's — which is exactly what §2
+flagged as unmeasured — but the cards, the section headings, the preset chips and the live preview
+all landed between that shot and this one. Cite it for the fields, not for the screen.
+
+#### 🔴 A hazard this row met, which will bite the next look session
+
+**`judge()` keys its output directory by `today()`, so two sessions running the same look harness on
+the same day overwrite each other's verdicts in place.** This session's first run replaced P77 s48's
+`sbr-005/2026-09-03/site-builder-living` — the very before-arm AC2 names. ✅ Recovered in full from
+`9bd1488f` and restored (`md5` checked against `git show` on both arms); the after-arm now lives in
+`verdicts/rel-011a/2026-09-03/`. ✅ **Commit a run before taking another, and copy an after-arm out
+before re-running.**
+
+#### One measurement handed to REL-011b, not fixed here
+
+`sbr005-sections.look.ts` AC3 failed again with **`no button labelled "Send". Buttons on the page:
+[]`** after `service.stop()` — REL-011b AC2's known defect, **reproduced a third time**, on a
+template whose buttons are now unmistakably present when the backend is up. AC1 (five kinds), AC2
+(the CTA navigates), AC4 and AC5 all passed in the same run.
+
 ⚠️ **Neighbourhood owed**: `sb005AdminPanel.test.ts`, `sb006PublicSite.test.ts`,
 `sbr009ThemeEditor.test.ts`, `sbr010Messages.test.ts` and `sb007Template.test.ts` all read these
 graphs. A parameter added to a node is exactly the shape that silently moves a count in one of them.
