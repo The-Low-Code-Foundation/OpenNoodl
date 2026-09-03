@@ -92,10 +92,22 @@ a worker has no route to be absent from.
 | **reverted arm** — the pre-fix shape restored inside `cloudFunctionRows` (a tick for every backend name, plus a separate stale pass) | **1 suite failed, 3 red / 4 passed** — and the three reds are the three defect assertions: the single-stale-row case, the no-name-drawn-twice cardinality case, and the whole-project `stale` case. The four that stay green are about `missing`, workers, unreachable keys and the empty control, none of which this defect touches |
 | `tsc -p packages/noodl-editor --noEmit` | **exit 0**, 0 `error TS` |
 
-🔴 **`test:ci` is OWED and was not run by this session.** The editor suite last read
-**2943 specs, 4 failures, seed 09154, HEAD `ef5e90f5`** — all four `AIX-006 style vocabulary`,
-checked by name, which is the known floor — but that run predates this change. No spec in `tests/`
-names this component, so nothing there is expected to move; that is an argument, not a reading.
+✅ **`test:ci` TAKEN — 2943 specs, 5 failures, seed 13203, HEAD `2f5c7ef5`**, fresh
+`test-results.json`. Four are the `AIX-006 style vocabulary` floor, by name. **The fifth is not
+this change**, and that is measured rather than argued:
+
+- it reproduces **deterministically at the same seed**, so it is order-dependent, not random;
+- **the control — the same seed with this fix reverted in the tree — reads the same 5 failures.**
+  ✅ Source reverted, never a spec: the seeded shuffle depends on the SPEC SET, so removing one spec
+  would have changed the order and destroyed the control. This fix's spec lives in `tests-unit/`,
+  which the test-CI bundle does not compile, so the set was provably identical — 2943 in both arms;
+- **DEF-007 s38 already met the same spec** as a lone fifth red and re-seeded it away
+  (70598 → 76055). It is `projectsaveflush.js`, a timing spec that polls the disk after the
+  1000 ms debounce, and its own header records that `saveOnModelChange`, `savePending` and
+  `ProjectModel.instance` are module globals whose leakage makes the next spec file order-dependent.
+
+⚠️ **That leak is an unowned gate defect, twice sighted.** Not a product defect, so it is not a DEF
+row — but a session that meets a fifth red should check this name before its own change.
 
 ⚠️ **What the gate cannot prove:** that the JSX renders one `<li>` per row. That is structural now
 — a single map, and no second list for it to disagree with — rather than asserted, because the

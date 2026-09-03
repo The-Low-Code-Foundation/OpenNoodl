@@ -1,10 +1,6 @@
 # Phase 80 — next session
 
-🟡 **44 of 45 rows in the table are ✅. The one that is open needs Richard, not a session.**
-
-Session 44 (2026-09-03) answered Richard's *"are there defects recorded but not scoped for 0.2.2?
-I'd like to tackle them"* — thirteen were, he picked three, and all three are built and gated as
-**DEF-044 / DEF-045 / DEF-046**.
+🟡 **45 of the 46 rows in the table are ✅. The one that is open needs Richard, not a session.**
 
 🔴 **Derive the board from the STATUS COLUMN, never `grep -av '✅'`** (a ✅ in prose filters the row
 out):
@@ -12,181 +8,176 @@ out):
 ```
 grep -aE '^\| DEF-0[0-9]{2} \|' TASKS.md | awk -F'|' '{gsub(/^ +| +$/,"",$3); print ($3 ~ /^✅/) ? "done" : "open"}' | sort | uniq -c
 ```
-Reads **44 done / 1 open** over **45 rows** at the time of writing.
 
-⚠️ **Next free id is `DEF-047`.** 🔴 **`DEF-043` is CLAIMED BY PHASE 82 and has no row here** — the
-deprecated `DbCollection`'s copy of the failed-fetch defect, measured but unwritten. **Read the
-claim line in the header of [UNOWNED-ROWS-TO-MEASURE.md](UNOWNED-ROWS-TO-MEASURE.md), not the
-highest number in the table** — s44 took an id, and a peer had claimed the next one **while s44 was
-building in another repository**.
+Reads **45 done / 1 open** over **46 rows** at the time of writing. ⚠️ **Next free id is
+`DEF-048`.** 🔴 **`DEF-043` is still CLAIMED BY PHASE 82 with no row here** — read the claim line in
+the header of [UNOWNED-ROWS-TO-MEASURE.md](UNOWNED-ROWS-TO-MEASURE.md), never the highest number in
+the table.
 
 ---
 
-## 🔴 FIRST: NOTHING IS COMMITTED, AND TWO SESSIONS' WORK IS IN THE TREE
+## What session 45 did
 
-**s44's changes span two repositories and neither is committed:**
+**s44's work was entirely uncommitted in a shared checkout when this session opened. It is all
+landed now**, in four commits across two repositories:
 
-| repo | files |
+| commit | what |
 | --- | --- |
-| `nodegx-community` (`/Users/richardosborne/vscode_projects/nodegx-community`, on `2bce720`) | `src/lib/projecttemplates.ts` + 5 spec files — **DEF-044** |
-| `OpenNoodl` | `nodegx-backend/src/server/HttpServer.ts`, `tests/ops-{request-id,rate-limit}.test.ts`, new `tests/def045-nested-function-address.test.ts`, `noodl-editor/tests/cloud/cloudFunctions.test.ts` — **DEF-045** |
-| `OpenNoodl` | `noodl-runtime/src/{node.ts,run-on-value-change.ts}`, 10 node files, `test/corpus/nda-012-…`, new `test/corpus/def046-unchanged-value-reruns.test.ts`, `noodl-types/src/runtime/node-definition.d.ts`, `nodegx-node-kit-types/src/index.d.ts` — **DEF-046** |
+| `3cb68903` | **DEF-045** — `functions/:name` → `functions/*name`, and the two pattern consumers |
+| `fc0ada95` | **DEF-046** — `valueDidChange` + `shouldRunOnValueChanged`, 17 setters, the type mirrors |
+| `ef5e90f5` | the register: DEF-039/040/041/042/044 rows, DEF-042's mechanism spec, TASKS.md, and s41's 08-31 updates to DEF-007/DEF-036/the rulings |
+| `b782c08` (`nodegx-community`) | **DEF-044** — the home gate at both curated doors |
+| `22bdb473` | 🆕 **DEF-047** — the stale-function double render |
 
-🔴 **AND s43's cluster is still uncommitted and unowned** — a phase-82 session named it in
-`7d651798` and had to carry two of its files in `eff946c6` because the hunks interleaved.
-Reportedly: `NodeGraphModel.ts`, `NodeOperations.ts`, `NodeGraphEditorConnection.ts`,
-`ComponentLoader.ts`, `projectmodel.editor.ts`, `io/Project{Ex,Im}porter.ts`,
-`nodegraphmodel/connectionEnds.ts`, `tests/models/index.ts`, plus untracked
-`tests/models/RootNodeUndo.test.ts` and `tests-unit/def-039..041`. ⚠️ **That set came from mtime
-clustering — a heuristic, not a measurement. Confirm before committing.** TASKS.md records
-DEF-039/040/041 as BUILT, so **the register and the tree disagree**, and they will keep disagreeing
-until somebody lands it.
+🔴 **Two files held BOTH s44's hunks and a live P77 peer's** — `noodl-types/src/runtime/node-definition.d.ts`
+and `noodl-runtime/src/nodes/std-library/data/dbmodelnode2.ts` carry `wireDeclaredPortPrefix`
+(SBR-008 §9) beside DEF-046. A `git commit <pathspec>` would have swept them into my commit under
+my message. **The recipe, now in memory:** `git diff -- <files>` → drop the peer's hunks from the
+patch → `git apply --cached` → `git add` the clean files → **read `git diff --cached --stat`** →
+`git commit` with *no* pathspec. Afterwards their `+6` and `+14` were still unstaged and intact.
+⚠️ **Cluster by mtime before trusting a hand-off's file list**: s44's said "10 node files", the diff
+touched **11**, and the eleventh (`dbmodelcrudbase.ts`, a day older) was the peer's.
 
-✅ Use `git commit <pathspecs>`, **never stage** — a sibling's commit sweeps staged files, and this
-checkout has live peers. ⚠️ `git add` untracked files first; a pathspec commit **skips them
-silently**.
+### 🆕 DEF-047 — and the lesson that outranks the fix
 
----
+[DEF-047](DEF-047-A-STALE-CLOUD-FUNCTION-RENDERS-TWICE.md): the backend card mapped
+`backendFunctions` with a green ✓ and, one line below, mapped `stale` — **which is defined as a
+subset of it** — with a warning triangle. A function the backend still serves that the project no
+longer has was drawn as a healthy row *and* a problem row, one line apart.
 
-## 🧭 THE ONE OPEN ROW IS RICHARD'S — DEF-042
+🔴 **"TRIVIALLY FIXED" IN A REGISTER DESCRIBES THE EDIT, NOT THE GATE.** The row said *trivially
+fixed by rendering the ticks over `backendFunctions` minus `stale`* and sat there, owner `NONE`,
+after being found in a control frame **and screenshotted**. The one-line filter is trivial and
+**ungradeable**: the classification lived in the JSX, `tests-unit` is plain Node (no jsdom, and
+`Icon` alone makes a spec fail *to run*), and a grep proved **no spec in `tests/` or `tests-unit/`
+names the component at all**. Built instead as a pure `cloudFunctionRows` returning ONE ordered row
+list — a name drawn twice is now unrepresentable rather than filtered — which is also what let the
+**reverted arm** exist at all. ⚠️ The register's own citation was backwards: `:123` *defines*
+`stale` from `backendFunctions` and filters nothing out of it.
 
-[DEF-042](DEF-042-A-THROWING-LISTENER-KILLS-THE-BACKEND.md) is **measured, diagnosed and
-deliberately unbuilt**. A session cannot advance it; it needs a decision about blast radius.
-
-**Reproduced at HEAD** against the committed `dist/cli.js`, no editor: two `PUT`s declaring the
-same cloud component name → PUT 1 **200**, PUT 2 **no response at all**, status **refused**,
-`EXIT=1`.
-
-🔴 **The row's own recommendation measured WRONG.** It called *"catch the rejection so the PUT
-answers 400"* small, clearly right and ruling-free. **That try/catch has been in `loadWorkflow`
-since WFA-001** — verified in the built bundle — and **never runs**. `EventSender.emit` is `async`;
-`GraphModel.addComponent` calls it **without awaiting**; the listener's throw rejects a promise
-nobody holds, so it never joins the chain the catch is watching and Node exits instead.
-
-**The decision:** awaiting the emit makes `addComponent` async and ripples into **`noodl-runtime`,
-shared with the viewer**. A backend-local `unhandledRejection` guard is cheap and *wrong alone* —
-it returns `{success:true}` for a half-written component registry, replacing a loud failure with a
-quiet one on the one code path whose whole design is *"only a complete success swaps it in."*
-
-⚠️ `graphmodel.ts` has **15** un-awaited `this.emit(...)` calls. `componentAdded` is only the one a
-person has met. ⚠️ s43 left a spec at `nodegx-backend/tests/def-042-detached-emit.test.ts`.
+⚠️ **One deliberate behaviour change**, written up in §3.1 of the row: `stale` is measured against
+**every** cloud component rather than endpoints only, because the old set can hold a name the
+project has as a *worker*, of which the row's own sentence (*"not in the project"*) is false. The
+populations coincide today.
 
 ---
 
-## What session 44 did, and 🔴 the lesson that outranks all three fixes
+## ✅ s43's DEF-039/040/041 IS LANDED TOO — the register and the tree agree again
 
-| row | outcome |
-| --- | --- |
-| §9 → [DEF-044](DEF-044-A-TEMPLATE-WITH-NO-HOME-REACHES-THE-SHELF.md) | ✅ built — the home gate at **both curated doors**, in the `nodegx-community` repo |
-| folder-404 → [DEF-045](DEF-045-A-CLOUD-FUNCTION-IN-A-FOLDER-HAS-TWO-ADDRESSES.md) | ✅ built — 🔴 **the row's headline claim was FALSE** |
-| RoVC → [DEF-046](DEF-046-AN-UNCHANGED-VALUE-RE-RUNS-THE-NODE.md) | ✅ built — 🔴 **the row's SIZING was wrong by 3×** |
+TASKS.md recorded all three as **BUILT** while none of the code was in HEAD. It was **one clean
+mtime cluster, 11:36–12:15 on 2026-09-03, nothing live in it** — this was the set:
 
-Read each row's own file, not this table.
+```
+ M src/editor/src/io/ProjectExporter.ts · ProjectImporter.ts
+ M src/editor/src/models/nodegraphmodel/NodeGraphModel.ts · projectmodel.editor.ts
+ M src/editor/src/services/ProjectStructure/ComponentLoader.ts
+ M src/editor/src/views/nodegrapheditor/NodeGraphEditorConnection.ts · NodeOperations.ts
+ M tests/models/index.ts
+?? src/editor/src/models/nodegraphmodel/connectionEnds.ts
+?? tests/models/RootNodeUndo.test.ts   ?? tests-unit/def-039/ def-040/ def-041/
+```
 
-### 🔴 ALL THREE DEFECTS WERE REAL AND TWO ROWS WERE WRONG ABOUT THEMSELVES
-
-**A staleness check would have confirmed every one of them and shipped the wrong fix.** This is the
-fourth session running to find that a register row decays in a way *"is this still true?"* cannot
-detect.
-
-1. **DEF-045 — the row said *"unreachable over HTTP"*. It was reachable.**
-   `POST /functions/site%2FpublishPage` answered **200** at HEAD, and every in-product caller
-   percent-encodes. Only the **raw-slash** address 404'd. 🔴 **A second file in the same repo had
-   already measured the other half** — `newFunctionFromStep.ts:44-52` (SB-003) records *"nested
-   names are shipped practice … and work on every call path"* — **and neither row knew the other
-   existed.** Two half-measurements, each reading as a verdict on the other's question.
-   ✅ **Before believing a register row, grep the SOURCE for a second measurement of the same
-   mechanism.**
-
-2. **DEF-046 — the row was real and mis-SIZED.** *"Four lines per family, twelve families"*
-   re-derives as **39 call sites across 15 files in three shapes**, and **nine are event handlers
-   with no previous value to compare** (`cloudStoreEvents`, `onModelChangedCallback`,
-   `collectionChangedCallback`). Building it as one idiom would have broken the data nodes.
-   ✅ **Re-derive a row's SIZE, not just its truth — the size is what decides the design.**
-
-3. **DEF-044 — the row waited three days for a ruling it already had.** It recorded the choice as
-   🧭 *a decision*, noting *"only the person's door has been ruled on"*. Richard's **2026-08-31**
-   words are unqualified: *"A project with no home page must not publish as a template."*
-   ✅ **When a row says *needs a ruling*, check whether the ruling exists and is BROADER than the
-   row that prompted it.**
+✅ **LANDED as `2f5c7ef5`.** `tests/models/RootNodeUndo.test.ts` — registered in
+`tests/models/index.ts`, needs Electron, and had **never run** — ran in `test:ci` and **passed**,
+which is what made landing it defensible. Neither `eff946c6` nor `3214ef4d` had touched any of these
+files, so no hunk was interleaved; `tests-unit/def-039|040|041` read 3 suites / 18 tests, exit 0.
 
 ---
 
-## 🔴 The harness fact that will cost you an hour if nobody tells you
+## ✅ THE GATE WAS TAKEN — and the 5th red is NOT ours, proved with a seeded control
 
-**`better-sqlite3` is not installed on this machine and Node is 20.11.1** (no usable `node:sqlite`,
-which wants ≥ 22.13). Measured 2026-09-03:
+**`test:ci` — 2943 specs, 5 failures, seed 13203, HEAD `2f5c7ef5`, fresh `test-results.json`.**
+Four are the `AIX-006 style vocabulary` floor, checked **by name**. The fifth is
+`pending project saves survive the way out > re-arms a held save when saving is switched back on`
+([`tests/project/projectsaveflush.js:87`](../../../packages/noodl-editor/tests/project/projectsaveflush.js#L87)),
+`Expected Object({ written: true }) to be undefined`.
 
-- **Every `nodegx-backend` spec that constructs a `BackendService` dies in `beforeAll`.** Six
-  route-table suites read **59 failed / 40 passed** and *all 59* are that one error.
-  `cloud-csv-nodes`, `cloud-secret-node`, `sb008-public-site-drive`, `ops-request-id`,
-  `ops-rate-limit`, `service-http` — **none of them can run here.**
-- **`noodl-runtime`'s floor on this box is 146 passed / 5 failed** — `LocalSQLAdapter.*`,
-  `QueryBuilder`, `SchemaManager.changeColumnType`, all *"No SQLite engine available"*. **That is
-  the floor, not a regression.**
-- ✅ **`new BackendService({ …, allowEphemeral: true })` runs a test that needs no database.** No
-  shipped spec passes it, which is exactly why none of them run.
-- ⚠️ `tsc -p packages/nodegx-backend/tsconfig.tests.json` **cannot complete here** — OOM at the 4 GB
-  default (**exit 134**) and SIGTERM at 9 GB after 10 minutes (**exit 143**), with **0 `error TS`
-  lines either way**. CI runs it. Gate on the exit status, never the error count.
+🔴 **It reproduces deterministically at seed 13203 and it is NOT this session's work.** Evidence, in
+the order it was taken:
 
-🔴 **A fix whose own gate cannot run is verified by nothing.** DEF-045 renames a route pattern that
-`ops-request-id` and `ops-rate-limit` assert; both are unrunnable, so **both assertions are re-made
-inside `def045-nested-function-address.test.ts`**, which does run. Do the same, or say plainly that
-the gate was not taken.
+1. **DEF-007 s38 already met this exact spec** as a lone fifth red, re-seeded it away (70598 →
+   76055), and recorded the right standard: *"a lone red that a session quietly re-rolls until it is
+   green is how a real regression gets attributed to luck — the attribution here is the spec's
+   content"*. See [DEF-007 §Gates](DEF-007-DISK-AND-LOAD-DISAGREE.md).
+2. **Re-run pinned to the same seed: red again.** So it is order-dependent, not random. Seed 13203
+   puts six `SUB-007` merger specs immediately before it; seed 09154 (green, 40 minutes earlier)
+   put `the operator dropdown` specs there. The spec's own header says why that matters:
+   *"`saveOnModelChange`, `savePending` and `ProjectModel.instance` are module globals. Leaving any
+   of them dirty makes the NEXT spec file's result depend on execution order."*
+3. **THE CONTROL — the same seed with DEF-047 reverted in the tree: the same 5 failures.**
+   ✅ **Reverting source only, never a spec**, because the seeded shuffle depends on the SPEC SET:
+   remove or add one spec and the same seed gives a different order, and the control stops being
+   one. DEF-047's spec lives in `tests-unit/`, which this bundle does not compile, so the set was
+   provably identical (2943 both arms).
 
----
+⚠️ **The row that is owed: `projectsaveflush.js` leaks module state across spec files under some
+orders.** It is a real, seed-dependent gate defect, twice sighted, still unowned — not a product
+defect, so it did not become a DEF row. **A session that meets a fifth red should check this name
+first.**
 
-## Gate readings actually taken by s44 (2026-09-03, on top of `7d651798`)
+🔴 **`tests/models/RootNodeUndo.test.ts` RAN FOR THE FIRST TIME AND PASSED.** It is s43's DEF-040
+gate, needs Electron, and had never executed. That is why s43's pile could be landed.
 
-| gate | reading |
-| --- | --- |
-| `nodegx-community` — the two target suites | **96 passed (96), exit 0** |
-| `nodegx-community` — 4 neighbouring publish suites | **92 passed (92), exit 0** |
-| **DEF-044 reverted arm** (guard disabled with `false &&`) | **exit 1 — exactly 4 refusal specs red, 92 controls green** |
-| `tsc` community | exit 0 |
-| `def045-…test.ts` before / after | **exit 1 (1 red of 4)** / **exit 0 (6/6)** |
-| `tsc -p packages/nodegx-backend` | exit 0 |
-| `def046-…test.ts` before / after | **exit 1 (3 red of 7, every control green)** / **exit 0 (7/7)** |
-| full `noodl-runtime` suite | **146 suites, 2566 passed**, 5 red = the SQLite floor above |
-| `tsc -p packages/noodl-runtime` · `packages/noodl-viewer-react` | exit 0 · exit 0 |
-| `nodegx-node-kit-types` | 77 passed, **5 failed — identical before and after**: pre-existing mirror drift on `placeholder` (added to `noodl-types` 2026-08-24, `06520033`) |
+### 🔴 The trap that cost this session four wasted runs
 
-🔴 **`test:ci` was NOT run by s44.** The last reading is s43's: **2938 specs, 4 failures, seed 60967,
-HEAD `da055635`**, all four the known **`AIX-006 style vocabulary`** floor checked **BY NAME**. A
-phase-82 peer reported **2943 specs / 4 AIX-006** later the same day with s43's pile present.
-**s44 changed `noodl-runtime`, `noodl-types` and `nodegx-backend`, and none of that is covered by
-either reading. Run it.**
+**The editor `test:ci` webpack typechecks a sibling package's UNTRACKED spec, and caches its
+failure.** Run 1 exited 1 after **109 log lines with no spec count at all**: 4 webpack errors, two
+of them `TS2532`/`TS18048` inside `packages/nodegx-export/tests/run-tasks.test.ts` — an untracked,
+in-progress file belonging to the P18 session, mtime four minutes before my launch. ts-loader then
+emitted no output for `nodegx-export/src/index.ts` and `src/ledger.ts`, which `CodeExportModal.tsx`
+and `NodePicker.search.ts` import.
 
----
+- **`tsc -p packages/noodl-editor` exits 0 on this.** Mine did; so did the owning session's, minutes
+  earlier. The editor tsconfig does not include a sibling package's tests; the test-CI webpack
+  reaches them **through the import chain** and is the only instrument that sees them.
+- 🔴 **`TypeScript emitted no output` with NO TypeScript error above it is a POISONED
+  `.webpack-cache`** — ts-loader's failure state, kept. It cost runs 2 and 5. ✅ **`rm -rf
+  packages/noodl-editor/.webpack-cache` after anything reds the webpack, before believing the next
+  reading.** The cache is cleared as of this hand-off.
+- ✅ **A `test:ci` that fails with no `N specs, M failures` line DID NOT RUN.** Read the log for
+  `ERROR in`, and **check the mtimes of the files it names** before assuming the failure is yours.
+- ✅ **Message the owner; never edit their live file to unblock yourself.** `opennoodl-54` fixed both
+  errors within minutes, then held every write into that package for a clean window.
+- ✅ **Pin the seed with `NOODL_SPEC_SEED=<n>`** (`tests/SpecRunner.html:42`), not a `--seed` flag.
+- ✅ **Delete `packages/noodl-editor/tests/test-results.json` before every run** — the P63 gate needs
+  a fresh one, and a stale file reads as a perfect pass. Check its mtime after.
 
 ## What is left, in the order a session should take it
 
 ### An agent can do these alone
 
-1. **§3 — the backend card cannot see a backend-side change.** Never re-measured (needs a screen).
-   The `missing` row can only ever render after a *failed* push. ⚠️ Not a defect in DEF-015's fix
-   and the header is honest; **the rows overclaim**. The cheapest candidate — *reword to say “at
-   last push”* — may simply be right.
-2. **A stale cloud function renders twice** — a green ✓ and a warning triangle, one line apart.
-   `CloudFunctionsSection.tsx:138` maps the unfiltered list above `:162`'s `stale.map`. **Trivially
-   fixed**; the only reason it is not done is that it is a rendering choice DEF-015 did not touch.
-3. **§6 — `group.ts` cannot be imported from a test**, so the most-used visual node is ungraded and
+1. **§6 — `group.ts` cannot be imported from a test**, so the most-used visual node is ungraded and
    the failure mode reads as `Tests: 0 total`. Already measured. ⚠️ **Measure the blast radius
    first**: whether a `.js` transform in that package's jest config moves any of its 86 suites.
-4. **§5 — the `domelement` port cannot reach the destination its own description names.** ⚠️ **Four
+   **This is now the biggest agent-doable row, and DEF-047 is the argument for it** — an ungradeable
+   surface is where defects sit unfixed for months with a screenshot attached.
+2. **§5 — the `domelement` port cannot reach the destination its own description names.** ⚠️ **Four
    generated copies of the description.** 🔴 And the wire would not have worked if it had connected
    (`Group.tsx:113` wants the node, `Video.tsx:217` sends the element).
-5. **The configured site address is unreachable from a graph** — DEF-022's broader half; wants a
+3. **The configured site address is unreachable from a graph** — DEF-022's broader half; wants a
    read-only `Site Address` node on the same seam `Secret` uses.
-6. **Nothing gives an auto-created class the columns its project has already declared.** It is the
-   only route to a real *typo vs unwritten* distinction.
-7. **A workflow step pointing at a cloud *helper* is told to deploy it**, and deploying can never
+4. **Nothing gives an auto-created class the columns its project has already declared.** The only
+   route to a real *typo vs unwritten* distinction.
+5. **A workflow step pointing at a cloud *helper* is told to deploy it**, and deploying can never
    help. The honest answer is a **sixth state**, not a rewording.
 
 ### These need Richard
 
-- **DEF-042** — above. The first thing to put in front of him.
+- **[DEF-042](DEF-042-A-THROWING-LISTENER-KILLS-THE-BACKEND.md)** — the first thing to put in front
+  of him. Measured, diagnosed, deliberately unbuilt: two PUTs declaring the same cloud component
+  name → PUT 1 **200**, PUT 2 **no response at all**, `EXIT=1`. 🔴 The row's own recommendation
+  measured **wrong** — the try/catch it proposed has been in `loadWorkflow` since WFA-001 and never
+  runs, because `EventSender.emit` is `async` and `GraphModel.addComponent` calls it without
+  awaiting. **The decision is blast radius**: awaiting makes `addComponent` async and ripples into
+  `noodl-runtime`, shared with the viewer; a backend-local `unhandledRejection` guard alone answers
+  `{success:true}` for a half-written registry. ⚠️ `graphmodel.ts` has **15** un-awaited
+  `this.emit(...)`. Its mechanism spec (`tests/def-042-detached-emit.test.ts`, 3/3, needs no
+  database) is committed and pins the mechanism at HEAD.
+- **§3 — the backend card cannot see a backend-side change.** Never re-measured (needs a screen).
+  ⚠️ Not a defect in DEF-015's fix and the header is honest; **the rows overclaim**. Three
+  candidates — refresh on open, poll while visible, or reword to *"at last push"*. 🆕 **DEF-047
+  makes the reword a one-line change**: every row's sentence now lives in `cloudFunctionRows` and
+  nowhere else. It is still a design choice with a cost, so it is his.
 - **§4 — `Record.Fetched` fires when the `Id` merely binds.** The description half is fixed. The
   behaviour half needs **a corpus count of graphs relying on the bind-time firing** — get the
   number, *then* ask him. The number is the decision.
@@ -194,19 +185,40 @@ either reading. Run it.**
   `fieldError` ships `--red-700`, which **no preset re-themes**. Needs a value in `DefaultTokens.ts`
   **and in all five presets**, each chosen against the contrast floor.
 
-### 🆕 Four rows s44 registered at `NONE` (all small, none blocking)
+### Rows registered at `NONE` (all small, none blocking)
 
 - **`ComponentItem.tsx:188` refuses a cloud function inside a cloud function and its stated reason
-  is now FALSE** — *"a name the backend's `/functions/:name` route cannot address"*. It can now.
-  The **behaviour** was deliberately left alone (SPR-005 made it a visible disabled row); the
-  comment is what is stale.
+  is now FALSE** — *"a name the backend's `/functions/:name` route cannot address"*. Since DEF-045
+  it can. The **behaviour** was deliberately left alone (SPR-005 made it a visible disabled row);
+  the comment is what is stale.
 - **The `/functions` 404 body still cannot tell *"no such function"* from *"wrong address"*.**
 - **`variablenode2.ts`'s `name` setter** was excluded from DEF-046 because its `else` branch does
-  real work — a comparison there would change *which branch runs*, which is a behaviour question.
+  real work — a comparison there would change *which branch runs*.
 - **The missing SQLite engine** blinds every backend HTTP drive on this box. An environment row.
 
 ---
 
-🔴 **A closed phase is not a sealed one.** This is the **fourth** session in a row to find real work
-behind a DONE banner — and the second to find that the work was not shaped like the row describing
-it.
+## The harness facts that will cost you an hour if nobody tells you
+
+- **`better-sqlite3` is not installed and Node is 20.11.1.** Every `nodegx-backend` spec that
+  constructs a `BackendService` dies in `beforeAll` — six route-table suites read **59 failed / 40
+  passed** and *all 59* are that one error. `noodl-runtime`'s floor here is **146 passed / 5
+  failed** (`LocalSQLAdapter.*`, `QueryBuilder`, `SchemaManager.changeColumnType`). ✅
+  `new BackendService({ …, allowEphemeral: true })` runs a test that needs no database; no shipped
+  spec passes it. 🔴 **A fix whose own gate cannot run is verified by nothing** — re-make the
+  assertion in a spec that runs, or say plainly that the gate was not taken.
+- ⚠️ `tsc -p packages/nodegx-backend/tsconfig.tests.json` **cannot complete here** — OOM at 4 GB
+  (exit 134) and SIGTERM at 9 GB after ten minutes (exit 143), with **0 `error TS` lines either
+  way**. CI runs it. **Gate on the exit status, never the error count.**
+- ⚠️ **The shell cwd persists between Bash calls.** A `cd` in one call made a later
+  `git diff -- packages/...` print nothing, which reads exactly like *"that file is clean"*; the
+  only tell was a `warning: could not open directory`. Put `cd <repo root> &&` in front of any call
+  whose answer is an **absence**.
+
+---
+
+🔴 **A closed phase is not a sealed one.** This is the **fifth** session running to find real work
+behind a DONE banner, and the fourth to find the work was not shaped like the row describing it.
+The failure mode has now repeated in three distinct forms: a row **wrong about its own reach**
+(DEF-045), **wrong about its own size** (DEF-046), and **wrong about what would make it cheap**
+(DEF-047). *"Is this still true?"* catches none of them.
