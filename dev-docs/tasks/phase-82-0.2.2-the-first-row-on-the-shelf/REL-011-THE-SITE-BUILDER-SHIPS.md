@@ -403,14 +403,53 @@ editor's class list, so it does not exist on a bare node. The prototype extensio
 `(modelScope || Model).get(objectId)`, so a `{}` model scope makes every *successful* fetch throw —
 which would have left the file able to grade only the failure, with no presence control beside it.
 
-#### ⏳ What is still owed on AC2
+#### 🟢 The rendered after-arm — AC2 IS CLOSED
 
-The **rendered after-arm**. The look harness serves the built `noodl.viewer.js`, so the page-level
-before/after needs that bundle rebuilt from this source. Pinned before the work:
-`8facb5b25e80339a28ebf539a4894b23`, mtime 2026-09-02 22:55:56. 🔴 **A peer was mid
-`render-from-disk.js` run with the box at load 40 when this was written**, and rebuilding the shared
-bundle under a live reading is this phase's own hazard 13 — so the rebuild waits for a quiet box, and
-the after-arm is taken with the md5 recorded **either side** of the run.
+Same harness, same seed, same probe, on the rebuilt runtime. The bundle was pinned either side
+of the run: **`8facb5b25e80339a28ebf539a4894b23` → `c8d6228e2e61017979e38870ee67e56e`**
+(`packages/noodl-viewer-react` `npm run build`, exit 0, size warnings only), and the guard was
+confirmed present in the minified text as
+`void 0===this._internal.collection&&this.setCollection(t)`.
+
+| moment | elements | buttons | fields | sections | imgs | `bodyChars` |
+|---|---|---|---|---|---|---|
+| backend up, 3 readings | 82 | 2 | 3 | 6 | 3 | 661 |
+| **backend DOWN +0ms** | **82** | **2** | **3** | **6** | **3** | **661** |
+| backend DOWN +2s | 82 | 2 | 3 | 6 | 3 | 661 |
+| backend DOWN +8s | 82 | 2 | 3 | 6 | 3 | 661 |
+
+*(before the fix, the same three post-stop rows read `38 / 0 / 0 / 0 / 0 / 140`.)*
+
+🔴 **The control that makes this mean something: the query STILL FAILS.** Both
+`DbCollection2 (/Pages/Site): Failed to fetch. [query-records/query-failed]` lines are in the
+console of the after-run, unchanged. So the fix did not suppress the failure or keep the backend
+alive — **it stopped the failure deleting the rows**, and nothing else moved.
+
+🟢 **`sbr005-sections.look.ts` now passes whole — 3 of 3, exit 0** (AC1+AC4+AC5, AC2, AC3),
+where AC3 had failed three runs in a row. Its refusal arm is now observable for the first time: the
+`Send` button is found, clicked, and the template's refusal sentence renders — so *"a failed message
+says so"* is measured rather than blocked behind an empty page.
+
+Pictures: [`verdicts/rel-011b/2026-09-03/after-the-fix/`](verdicts/rel-011b/2026-09-03/after-the-fix/)
+(73 files). ⚠️ **The before-arm was restored, not overwritten**: `judge()` keys its output by
+`today()`, so this run wrote over `phase-81/verdicts/sbr-005/2026-09-03/` — the after-arm was copied
+out first and the committed before-arm restored with `git checkout --`, both `md5`-checked
+(`all-five-desktop-full.png`: before `da99c590…`, after `b1d303aa…`). This is REL-011a's hazard
+hitting the very next session that ran a look harness.
+
+#### ⚠️ Registered, not built — the deprecated twin has the same defect. Owner: `NONE`
+
+[`packages/noodl-viewer-react/src/nodes-deprecated/std-library/data/dbcollectionnode.ts:384-387`](../../../packages/noodl-viewer-react/src/nodes-deprecated/std-library/data/dbcollectionnode.ts#L384)
+carries the identical unguarded `error: … setCollection(_c)`, and both branches are in the shipped
+bundle — the substring search that confirmed the fix found the guarded v2 branch **and** the
+unguarded v1 one. The site-builder template uses `DbCollection2`, so this AC is unaffected; a
+project carrying the **deprecated** node still empties on a failed re-fetch. Not fixed here because
+it is outside this row and outside 0.2.2's scope as written. 🔴 **It has no owner — give it
+one before it is rediscovered at full price.**
+
+⚠️ **Adjacent, and worth linking rather than merging**: P80 **DEF-026** is `CloudFunction2`'s dead
+failure path on an unreachable backend. Same trigger (the backend is gone), different node, different
+defect — noted by the P80 session working beside this one.
 
 ### ⚠️ AC3 — the route count on this row is wrong, and it is FOUR, not nine
 
