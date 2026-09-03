@@ -1,729 +1,146 @@
 # Phase 82 — next session
 
-## The board, re-derived from [`TASKS.md`](TASKS.md) at 2026-09-03 15:4x (session 21)
+## The board, re-derived from [`TASKS.md`](TASKS.md) at 2026-09-03 18:3x (session 22)
 
 🔴 **Re-derive it again yourself.** This phase has been overtaken three times by a ruling or a row
 that landed hours after a handoff was written. **The task files are the board; this section is a
-convenience.** ⚠️ **And session 20's handoff said *"there is no fully-buildable row left on this
-board."* That was wrong when it was written** — REL-011c owns six product findings, all of them
-buildable, and they were already registered in [REL-011 §AC3](REL-011-THE-SITE-BUILDER-SHIPS.md)
-when s20 wrote that sentence. ✅ **Read the FINDINGS a row owns, not only its status.**
+convenience.** ⚠️ And s20's handoff said *"there is no fully-buildable row left on this board"* — it
+was wrong when it was written, and s21 and s22 have now both built from rows that handoff called
+finished. ✅ **Read the FINDINGS a row owns, not only its status.**
 
 | # | row | state |
 |---|---|---|
 | 6 / 6b | REL-002c + [REL-010](REL-010-AS-GOOD-AS-THE-PAGE-HE-RATED.md) | ⏳ **RICHARD'S LOOK.** All building done (s15). A session cannot close a person |
 | 7 | REL-001 — publish the members' area | ⏳ **RICHARD.** Recommendation unchanged: *fix first, publish once* |
-| 8 | REL-004 — cut and tag `v0.2.2` | 🔴 **Blocked**: `cline-dev` unpushed (**646 at 15:40 s21** — re-derive at cut time; peers commit while you work), CI has run on none of it |
+| 8 | REL-004 — cut and tag `v0.2.2` | 🔴 **Blocked**: `cline-dev` unpushed (**654 at 18:37 s22** — re-derive at cut time; peers commit while you work), CI has run on none of it |
 | 9a | REL-011a — the 53 controls | 🟢 CLOSED s17 `d88368c5` |
 | 9b | REL-011b — operable on the artefact a person publishes | 🟢 CLOSED s19 |
-| **9c** | **REL-011c — the three surfaces reach PASSABLE** | 🟡 **HIS LOOK for the VERDICT — but SIX findings it OWNS are buildable NOW. ⬅️ THE NEXT ROW** |
-| 10 | REL-009b — the editor sees the write | 🟢 **CLOSED s21 — all five ACs met** |
+| **9c** | **REL-011c — the three surfaces reach PASSABLE** | 🟡 **AC1 + AC2 MET s22 `86fcbcc6`; the SIX findings it owned are BUILT. ⏳ AC3 is Richard's ruling and a session cannot award it** |
+| 10 | REL-009b — the editor sees the write | 🟢 CLOSED s21 |
 
-## 🟢 What session 21 did: REL-009b AC3 — closed, and the preview was never dead
+🔴 **So every row on this board is now either CLOSED or waiting on Richard.** That was also true when
+s20 said it, and it was false then. **Check the findings each open row owns before believing it of
+this one** — REL-011c's write-up registers two residuals below, and phase 81 owns A3.
 
-Full write-up: **[REL-009 §3.2](REL-009-THE-WRITE-THE-EDITOR-CANNOT-SEE.md)**. Board row in
-[`TASKS.md`](TASKS.md). Photographs in [`verdicts/rel-009b/2026-09-03/`](verdicts/rel-009b/2026-09-03/).
+## 🟢 What session 22 did: REL-011c's six product findings, and A2's mechanism
 
-§3.1 left exactly one instruction — *fresh stack, prove the control fires FIRST, then write through
-MCP* — plus *"do not record a finding against `ViewerConnection`; nothing here licenses one."*
-**Both halves earned their keep.** The ordering found two defects that no amount of reading had
-found, and the restraint stopped the first being filed as the second.
+Full write-up: **[REL-011 §REL-011c](REL-011-THE-SITE-BUILDER-SHIPS.md)** (the section headed *"The
+six product findings this row owns are BUILT"*). Board row in [`TASKS.md`](TASKS.md). Pictures in
+[`phase-81/verdicts/vib-001/2026-09-03/`](../phase-81-the-look-is-the-product/verdicts/vib-001/2026-09-03/)
+and `sbr-005/2026-09-03/`; the before-arm is committed at **`d4d3400c`**.
 
-### 🔴 1. s20's *"the preview had died"* was WRONG, and the editor had been saying so in words
+**A1, A2, A4, A5, A6, A7 built**, plus **A8 and A9 found by looking at this row's own after-arm**.
+A3 is untouched and stays phase 81's. Gates: `rel011cAdminSurfaces.test.ts` **28/28**, noodl-mcp
+**92 suites / 1224 passed exit 0**, `typecheck:mcp` **0**, `template:site-builder` exit 0, both look
+harnesses exit 0. **All sixteen admin shots now read `unreachable=0` with a named heading**, from
+`admin-page phone 2379`, `admin-theme phone 362` and `headings: []` on all twelve.
 
-The fixture's router had **no start page** — wreckage of REL-009a's own arm C2 drive — so it
-correctly showed nothing. The toolbar's `⚠ 1` said:
+### 🔴 1. A2's mechanism was ONE node's EMPTY parameter bag, and every observation on the row was right
 
-> *"This Router has no start page, so it has nothing to show on load — pick one in its Pages list"*
+The row recorded A2 as *undiagnosed*: *"the fields DO narrow (~763 → ~573px), so it is not a fixed
+width, and no node on `/Pages/PageEditor` carries a `width`, `minWidth` or `maxWidth` at all."*
+**All three of those were true.** The conclusion they invited — *something has a fixed width* — was
+not.
 
-🔴 **The lesson is not "read the warning". It is that §3.1 read the same `⚠ 1` and treated it as
-ambient**, because a warning badge is always on in a fixture that has been driven a dozen times.
-✅ **A blank render has a producer, and this product will usually name it.** One click on a badge
-that was in every screenshot of two sessions replaced a diagnosis that had no mechanism with a
-sentence. ⚠️ `Make start page` is on the `···` menu of the page ROW inside the Router's `Pages` list;
-clicking the row navigates the canvas instead.
+`/Admin/SectionRow`'s `Image preview` was authored as `{ id, type, label, parent }` — **no
+parameters at all**. `Image` defaults to `contentSize`, so it rendered at its **source's** intrinsic
+width, and `layout.ts:82` leaves everything `flexShrink: 0` unless a percentage size opts it back in.
 
-### 🔴 2. A FOURTH listener treated the reload as a deletion — and it is the only one of the four that destroyed a person's project
+🔴 **And the arithmetic that ties it to the symptom is worth carrying:** `min-width: auto` on a flex
+item is `min(its own stated width, its content minimum)`. `Admin content` carries `width: 100%` and
+its content minimum was **1280** (64px padding + the card's 1216). Above 1280 the rail's 240px comes
+out of the content column; at or below it, `main` stops shrinking and **the rail is pushed off the
+right-hand edge instead**. The fields narrowed and `Save page` did not because **they are two
+different boxes and only one was clamped.**
 
-`/App` on disk went `routes: ["/Pages/Third"], startPage: "/Pages/Third"` → **`routes: []`**
-**fourteen seconds after an agent added one node**, and the next autosave wrote the loss to disk.
-`RouterAdapter.componentRemoved` splices the page out of every Router's `routes`. **That is
-REL-009a arm C2's silent page loss — caused by REL-009b's own watcher.**
+✅ **How it was measured, cheaply**: a throw-away probe in the look harness's own `prepare` hook that
+walks the widest-right path from `<body>` and prints every box with its flex arithmetic
+(`w / min / grow / shrink / basis / dir / wrap`). Four widths, one run, and the whole chain read off
+one log. 🔴 **Deliberately NOT a measure added to `judge()`** — that is A3, and it belongs to phase 81.
 
-🔴 **s20's lesson was right and its sweep was too small.** It says *"a flag on one event reaches only
-the listeners on that event"* and it enumerated the OTHER bus. **It never enumerated the rest of its
-own.** `registeradapters.ts` fans `Model.componentRemoved` out to every adapter that asks for it, and
-one of them **writes parameters**. ✅ **When you add a discriminator to an event, enumerate every
-CONSUMER of that event too** — `grep componentRemoved` would have found it in the first minute.
+### 🔴 2. The render caught a regression the fix shipped, and no number said so
 
-### 🔴 3. AC3's real answer was NO, and the seam is named
+`flexWrap: 'wrap'` was authored on two Groups for one reason: `rowGap` is a **dynamic port gated on
+`flexDirection = column OR flexWrap = wrap`** (`group.ts:478`), so on a Group authored as a row the
+gap is otherwise unauthorable. The gate was green, every manifest read `unreachable=0`, and the
+photographs came back with **Title above Slug at 1280 and 1900** and the theme editor's **live
+preview under the fields at 1900**: two children with a 100% flex-basis each take their own line in
+a wrap container, at **every** width. The fix had removed the two-up everywhere instead of restoring
+it below the fold.
 
-`ViewerConnection` sends the swap as the incremental pair `componentRemoved` → `componentAdded`; in
-`editormodeleventshandler.ts` those are `removeComponentWithName` (tears down the component's **live
-instances**) and `importComponentFromEditorData` (registers the **model** only). Nothing re-mounts
-it, so a Router showing that page holds an empty container. **And it does not merely fail to
-propagate — after the swap an ordinary editor edit no longer reached the preview either.** Fixed by
-taking the path `Model.rootNodeChanged` already takes for a change the incremental protocol cannot
-express: send nothing on the removal, **re-export** on the add.
+⚠️ The only hint in the numbers was `contentBottom` growing 66px on pages whose text was
+byte-identical — and that turned out to be **REL-011a's**, not this. ✅ **Rule 4 of the close
+protocol — LOOK at the PNG — earned its keep twice in one session.**
 
-| moment | preview | `/App` on disk |
-|---|---|---|
-| **CONTROL** — ordinary editor edit | updates | unchanged |
-| **before** — agent write | 🔴 **0 chars** | 🔴 **`routes: []`** |
-| before — editor edit after | 🔴 **still 0** | — |
-| **after** — agent write | 🟢 **`AC3AFTERFIX` rendered** | 🟢 **`md5 3ccbabd0`, unchanged** |
-| after — editor edit after | 🟢 updates | unchanged |
-| **NEGATIVE CONTROL** — ordinary `componentAdded` | 🟢 page intact, **no re-export** | unchanged |
+### 🔴 3. A5's photograph showed a FIXTURE defect that was hiding the opposite PRODUCT defect
 
-🔴 **The negative control is what stops the fix being a blunt instrument.** A re-export on *every*
-`componentAdded` would also have made AC3 pass — and would restart a person's preview every time
-they create a component.
+A5 read *"the gallery card shows a rendered picture **and** 'No pictures yet' at the same moment"*.
+Both halves of that screen were real and **neither was the defect**. `/Admin/SectionRow`'s `absorb`
+pushes an upload onto `data.images` for a gallery and writes `data.image` for every other kind — so
+a gallery built through the product **never has an `image`**, and the seeded `{ image: … }` gallery
+was a state the product cannot reach. Underneath it, a **real** gallery showed **no picture at all**
+beside a count saying how many there were.
 
-**Gates**: `routerRouteRemoval.test.ts` **7/7** with **both** mutants reddening exactly their own
-arms (guard removed ⇒ the reload arm; widened to `!== false` ⇒ the two deletion arms);
-`tests-unit/rel-009b/` **23/23**; `typecheck:editor` **0, twice**; `test:ci` **2943 specs, 4
-failures, seed 09154, HEAD `ef5e90f5`** — all four `AIX-006 style vocabulary`, **by name** at
-`/tmp/ci.log:3959 :3963 :3981 :3985`. That is the floor; **exit 1 is the floor.**
+✅ The seed is fixed too, so the picture is not a one-variable comparison — **the one-variable
+evidence is the spec**, which runs both data shapes through the same shipped script with the
+reverted derivation beside it. It also un-blanked ~150px of the **public** home page, one of the
+three states this row re-photographs.
 
-### Four things worth carrying into any drive of this editor
+### ⚠️ 4. The sbr-005 before-arm on disk predated REL-011a
 
-1. ⚠️ **The preview takes up to ~10 s to reflect an edit, not ~4.** A reading at 4 s said *"the
-   control does not fire"* and was **wrong**; the same reading at 12 s was right. ✅ **Re-read before
-   recording an absence.**
-2. 🔴 **`npm run cdp -- reload --target=viewer` reloads the EDITOR and destroys the preview webview**,
-   bouncing you back to the launcher mid-drive. Reload the editor deliberately; never the viewer.
-3. ⚠️ **A cached canvas coordinate started a graph RECORDING.** The window had resized between
-   screenshots and `(893,722)` was the `Record` button. ✅ **Re-screenshot before every coordinate
-   click** — `cdp click` takes a selector, so stamp the element (`setAttribute('data-drive',…)`) and
-   click that; for the `<canvas>` there is no selector and coordinates are all you have.
-4. ✅ **A spec that must load an editor model belongs in `tests/` (Jasmine, Electron) or behind a
-   no-import module.** A first draft of this session's spec imported `RouterAdapter`, which reaches
-   `bugtracker` → Electron's `getUserDataPath()` at module load, and **failed to run at all**
-   (`Tests: 0 total`). Extracting the decision into `routerRouteRemoval.ts` — the pattern
-   `ProjectFileWatcher/decide.ts` already uses — is what made it gradeable, **and it avoided editing
-   `tests/models/index.ts`, which carries a peer's uncommitted line.**
+The committed `sbr-005/2026-09-03` run was taken at **`2696c850` (10:14)** — *before* the 53 controls
+took the palette (`d88368c5`). So the pictures that were on disk showed the site builder with its 25
+text inputs **still invisible**, and s22's run is the first photograph of REL-011a on the public
+surface. ✅ **Read a verdict directory's `headSha`, not its date.**
 
-## ⬅️ The next buildable row: REL-011c, and it owns six product findings
+## ⬅️ What is left, and none of it is a build
 
-[REL-011 §AC3](REL-011-THE-SITE-BUILDER-SHIPS.md) registers **seven** findings against
-`/admin/page/{pageId}` and the admin shell. **Six of them are REL-011c's own and every one is
-buildable**; only A3 belongs elsewhere (phase 81, the judge).
+1. ⏳ **REL-011c AC3 — Richard's ruling.** He needs the three SHITTY states at four widths on the
+   fixed artefact; they are in `vib-001/2026-09-03/site-builder-{door,living}/` (the door `/`, and
+   `/admin/pages` signed in) and `sbr-005/2026-09-03/site-builder-living/all-five-*` (the published
+   home page with every section kind).
+   🔴 **AC2's job is to name §3 finding 3 for him so he is not asked to notice it unaided: the nav
+   wraps to two lines EVEN AT 1900** — seven short items capped to the ~700px reading measure. It is
+   in `sbr-005/.../all-five-wide-viewport.png` and `kind-*-wide-viewport.png`, and it is
+   **deliberately not fixed** ("judged not fixed" on the row). It reads as broken rather than plain.
+2. ⚠️ **Two residuals registered against REL-011c, not built** — both are one string each and both
+   are in the write-up: the theme editor's preview says *"follow the fields on the left"*, which A9
+   makes false at 390 where they now sit above it; and `/contact-only` draws *"Get in touch"* twice,
+   one line above the other.
+3. ⏳ **Rows 6, 6b and 7 are Richard's** and have not moved since s15.
+4. 🔴 **Row 8 needs a push**: 654 commits ahead of `origin/cline-dev` at 18:37, CI has run on none.
 
-| id | what | why it is worth doing before he looks |
-|---|---|---|
-| **A1** | 🔴 **The admin shell does not fold.** `/Admin/Shell`'s `sidebar` is `width: 240px, sizeMode: explicit` and **no node in it carries a `smallLayout`**. At 390 every admin screen gets ~150px: `/admin/page` reports **2379px unreachable** | Statically derivable from the artefact; visible in four phone shots |
-| **A2** | 🔴 **The page editor overflows horizontally below ~1900.** At **1280** `Preview`, `Save page`, the `Slug` field, `Show in navigation` and `Add section` are all outside the photograph — **a client on a laptop cannot see the button that saves their page** | ⚠️ **Mechanism UNMEASURED**: the fields DO narrow (~763 → ~573px), so it is not a fixed width, and no node on `/Pages/PageEditor` carries `width`, `minWidth` or `maxWidth`. **Diagnose before fixing** — that instruction is what made REL-011b AC2 cheap |
-| A4 | `Sections` and `Kind` share one line, `Kind`'s label sitting beside the `Sections` heading | cheap |
-| A5 | The `gallery` card shows a rendered picture **and** *"No pictures yet"* at the same moment | cheap, and it is a lie on the screen |
-| A6 | Section cards are headed by the raw slug (`hero`, `richText`) while the picker two lines above offers `Hero`, `Rich text` | two vocabularies for one thing on one screen |
-| A7 | **No admin page has an `h1`** — all twelve admin shots record `headings: []` | the words are drawn by `Text` nodes, so the screens have titles and the document has none |
+## Working rules for this tree — carried forward, and four earned by session 22
 
-Plus **REL-011 row 3**: the nav wraps to two lines **even at 1900px** — seven short items capped to
-the content column, *"judged not fixed"*, and it reads as broken rather than plain.
-
-🔴 **Then re-photograph the three surfaces at four widths on the FIXED artefact** — the existing
-pictures show **D40** as well as the design (the Judge's harness never applied the template's
-`bodyScroll`). ⏳ **A session cannot award the verdict: Richard rules.** But it can hand him
-pictures of a fixed artefact instead of pictures of a defect.
-
-🔴 **NEVER OPEN the site-builder template IN THE EDITOR** — `readBundleDirectory` has no skip list.
-Work through `npm run template:site-builder`.
-
-## ⚠️ The ownerless s43 pile — a peer has taken it, do not race them
-
-**P80 s43 built DEF-039/040/041 this morning, recorded them ✅ BUILT in
-[P80 TASKS.md](../phase-80-the-defects-the-templates-found/TASKS.md), and ended without committing
-any of it.** s20's `eff946c6` had to carry two of its files.
-
-✅ **As of 15:3x s21 a peer session holds this**: it measured `NodeGraphModel.ts` at **+99/−4** against
-HEAD, ~44 lines of which are its own SBR-008 work and the rest DEF-039/040, and said it will commit
-the lot with a message stating plainly that it carries three DEF rows that are not its own. **Do not
-commit those files without checking with it first.** ⚠️ **And do not assume the mtime cluster is the
-set** — that is how it was identified, and a third session's DEF-045 edit sat inside the same window
-earlier today.
-
-## Working rules for this tree — carried forward, and three added by session 21
-
-1. 🔴 **The canvas is a `<canvas>`.** Node labels are painted, not DOM, so `querySelector` cannot see
-   them and **a screenshot is the only instrument** for anything about the graph. `elementFromPoint`
-   before clicking anything — s20's launcher card sat at **y=7572** in a 76-project list and reported
-   `hitTest: null` until scrolled (`behavior:'instant'`; smooth scrolling leaves `scrollTop` at 0).
-2. 🔴 **You can reach the editor's modules from CDP** — nothing is on `window`, but
-   `webpackChunknoodl_editor.push([[id],{},(r)=>{req=r}])` hands you the require function and
-   `req.c['./src/editor/src/models/projectmodel.ts'].exports` the rest. That is how s20 instrumented
-   `switchToComponent` and read the save baselines live.
-3. ⚠️ **Editing source while a `dev:debug` stack is up triggers HMR and can bounce the editor back to
-   the launcher mid-drive.** Finish the edits, let it settle, `cdp reload`, then drive in one pass.
-4. 🔴 **`judge()` KEYS ITS OUTPUT BY `today()`** — two sessions running a look harness on the same day
-   overwrite each other silently. ✅ Commit a look run before starting another.
+1. 🔴 **A GATE THAT IS GREEN ON THE ARITHMETIC CAN BE GREEN ON A BROKEN SCREEN.** Every
+   `flexDirection` arm passed while `flexWrap` silently unstacked the two-up at every width. ✅ **A
+   layout fix is not verified until the picture is looked at**, and `unreachablePx` is a VERTICAL
+   measure — it reads 0 on a page whose right-hand column is off the screen.
+2. 🔴 **A PORT CAN BE UNAUTHORABLE UNLESS ANOTHER PORT IS AUTHORED A CERTAIN WAY**, and the gate is
+   at the DOOR, on the authored value, not at runtime. `rowGap` needs `flexDirection = column OR
+   flexWrap = wrap`; authoring `wrap` to unlock it is what caused (1). ✅ **When you author a value
+   only to unlock a port, WIRE that value too** — the authored one is now a lie about the run state.
+3. 🔴 **AN "UNDIAGNOSED" ROW'S OBSERVATIONS ARE USUALLY RIGHT AND ITS INFERENCE WRONG.** A2's three
+   recorded facts all held; *"so it is not a fixed width"* pointed away from a node that stated no
+   width because it had no parameters at all. ✅ **Re-measure the SYMPTOM before believing the row's
+   candidate list** — the widest-right walk found it in one run.
+4. 🔴 **A SEED THAT REACHES A STATE THE PRODUCT CANNOT PRODUCE MANUFACTURES ONE DEFECT AND HIDES
+   ANOTHER.** ✅ Ask of every fixture row: *which product path writes this shape?* If none does, the
+   picture is about the fixture.
 5. 🔴 **COMMIT BY PATHSPEC, NEVER `git add`** — except untracked paths, which a pathspec commit
-   **skips silently** (`git status --porcelain | grep '^??'`; check whether a `??` is a directory).
-   ⚠️ **And a pathspec commit takes the WHOLE file, including a sibling's half-written paragraph** —
-   `git diff --stat` it first; if the diff dwarfs your edit, the rest is somebody else's.
-   ⚠️ **`README.md` in this directory carries a peer's uncommitted edit.** s20 left it alone.
-6. 🔴 **`scripts/devtools/render-from-disk.js` IS UNCOMMITTED AND LOAD-BEARING** (`render-report.js`
-   too, plus an untracked `reap-render-orphans.js`). ✅ **Re-derive its md5 rather than quoting a board's.**
+   **skips silently** (`git status --porcelain | grep '^??'`). ⚠️ `phase-81/TASKS.md`,
+   `phase-82/README.md` and `packages/noodl-mcp/tests/sbr011LivePreview.test.ts` all carry a peer's
+   uncommitted work right now; s22 left all three alone. ⚠️ **An untracked peer spec runs in your
+   suite** — s22's "92 suites / 1224" includes one that is not on `HEAD`.
+6. 🔴 **`judge()` KEYS ITS OUTPUT BY `today()`** — two look runs on the same day overwrite each other
+   silently, and a re-run overwrites a committed before-arm. ✅ Commit before running; for a
+   diagnostic run pass `date: DATE + '-something'` and delete the directory afterwards.
 7. 🔴 **NEVER OPEN `templates/members-area` OR the site-builder template IN THE EDITOR** —
-   `readBundleDirectory` has no skip list. Work through `npm run template:members` / `template:site-builder`.
-8. ⚠️ **`timeout` does not exist on this Mac**, and the Bash tool backgrounds a foreground command at
-   120s. Gate on an exit file you write yourself.
-9. ⚠️ **The box is shared and busy.** One heavy job at a time. ✅ **Announce a `dev:debug` launch AND
-   its teardown to every peer** — s20 did, and one peer was holding ~12 files of viewer-runtime edits
-   specifically waiting for that teardown. ✅ **s21's launch announcement bought three explicit
-   all-clears and two facts nobody would have volunteered**: which uncommitted peer work the rebuild
-   would bake into `noodl.viewer.js`, and that a rebuild at 14:34 belonged to a session none of us
-   had heard from. **Announce the INTENT, not just the fact.**
-10. 🔴 **A SUITE IS NOT A DEV STACK, AND `dev:stop --list` CANNOT SEE ONE.** s21 started editor
-   `test:ci` two seconds before a peer would have started one on other packages; the collision was
-   caught only because both sessions announced. ✅ **Announce a suite the same way you announce a
-   launch**, and say where its log is.
-11. 🔴 **AN ANNOUNCEMENT IS NOT A PROCESS — AND A CLEARED SESSION'S MEMORY IS NOT EVIDENCE OF WHAT IT
-   DID.** A peer read *"starting `test:ci` next"* from an earlier turn of this session as a running
-   suite; this session, `/clear`ed since, then told it *"that was not mine"* — **a claim it had no
-   instrument for.** Its own `ps` walk (no jest anywhere at 14:52) was the sound half. ✅ **`ps -Ao
-   pid,ppid,command` answers whether; PPID answers whose; ARGV answers what** — and *"I never did
-   that"* after a `/clear` answers none of the three.
-
----
-
-_Everything below predates session 21. Rows 6/6b/7/8 have not moved and s18's REL-011b write-up is
-still the best account of that row, but **row 9b is CLOSED and row 10 is CLOSED, so the "next
-buildable work" sections below are all out of date.** ✅ **Re-derive from [`TASKS.md`](TASKS.md)
-before believing any of it.**_
-
-## The board, re-derived from [`TASKS.md`](TASKS.md) at 2026-09-03 13:0x (session 18)
-
-🔴 **Re-derive it again yourself.** This phase has now been overtaken twice by a ruling that
-landed hours after a handoff was written — s16's *"the whole run sheet is Richard's"* was true at
-07:56 and false by 10:42. **The task files are the board; this section is a convenience.**
-
-| # | row | state |
-|---|---|---|
-| 6 / 6b | REL-002c + [REL-010](REL-010-AS-GOOD-AS-THE-PAGE-HE-RATED.md) | ⏳ **RICHARD'S LOOK.** All building done (s15). A session cannot close a person |
-| 7 | REL-001 — publish the members' area | ⏳ **RICHARD.** Recommendation unchanged: *fix first, publish once* |
-| 8 | REL-004 — cut and tag `v0.2.2` | 🔴 **Blocked**: `cline-dev` unpushed, CI has run on none of it. **Re-derive the count at cut time** — it moves while you work |
-| 9a | REL-011a — the 53 controls | 🟢 CLOSED s17 `d88368c5` |
-| **9b** | **REL-011b — operable on the artefact a person publishes** | 🟡 **AC2 CLOSED s18** (`f9a3d301`, `10592e03`). **AC1 (D54) and AC3 are the next buildable work** |
-| 9c | REL-011c — the three surfaces reach PASSABLE | ⏳ his look; a session cannot award it |
-| 10 | REL-009b — the editor sees the write | ⬜ buildable; D1 unruled, U3 expensive |
-
-## 🟢 What session 18 did: REL-011b AC2 — settled, fixed, and driven both ways
-
-Full write-up in [REL-011 §AC2](REL-011-THE-SITE-BUILDER-SHIPS.md). The row said *"settle
-harness-vs-product before fixing anything"*, and the settling is the part worth reading.
-
-**It was the product.** A step-by-step probe either side of `service.stop()`:
-
-| moment | elements | buttons | fields | sections | imgs |
-|---|---|---|---|---|---|
-| backend **up** (three readings running) | 82 | 2 | 3 | 6 | 3 |
-| **before the fix**, backend down +0/2/8s | **38** | **0** | **0** | **0** | **0** |
-| **after the fix**, backend down +0/2/8s | **82** | **2** | **3** | **6** | **3** |
-
-**Cause**: `dbcollectionnode2.ts`'s `fetch()` mints an empty `Collection` at the top and fills it
-only in `success`; the **error** branch published that empty collection. So a query that merely
-failed to answer overwrote the rows it had already delivered — `isEmpty` went true and every
-`For Each` below redrew nothing. SBR-011 gives three of this template's queries a realtime
-subscription and a dropped stream re-runs the query, so **any backend restart or blip emptied every
-visitor's published page until they reloaded it.** Fixed with one guard, aligning the error branch
-with `fetch()`'s two other failure exits, which already leave the collection alone.
-
-**Gates**: `rel011b-failed-fetch-keeps-rows.test.ts` **5/5** with **exactly one spec red on the
-reverted source**; full `noodl-runtime` **150 suites, 2637 passed, exit 0**;
-`sbr005-sections.look.ts` **3/3, exit 0** — it had failed three runs in a row.
-
-### 🔴 Four things from this session that will bite the next one
-
-1. 🔴 **A CONTROL THAT PASSES ON A BLANK PAGE IS NOT A CONTROL.** The AC3 arm's own guard reads
-   *"answered before the press — sent: false, refused: false"*, which is **exactly what an empty
-   document reports**. It was written against a form that submits on typing and it had been green
-   for weeks over a page that may already have been empty. **Every reading this file ever took of
-   the zero-buttons failure was equally consistent with the opposite diagnosis.** ✅ A presence
-   control now stands beside it. **Ask what your control reads on the failure you are not testing
-   for.**
-2. 🔴 **THE CONTROL THAT MADE THE AFTER-ARM MEAN SOMETHING IS THAT THE QUERY STILL FAILS.** Both
-   `query-records/query-failed` lines are in the after-run's console, unchanged. Without that, a
-   green after-arm is equally explained by *"the fix suppressed the failure"* or *"the backend
-   didn't really stop"*. ✅ **Name what must STAY red for your fix to be the explanation.**
-3. 🔴 **A PIN IS A CLAIM ABOUT A FILE, AND `ps` CANNOT SEE ONE.** Before rebuilding
-   `noodl.viewer.js` I waited out a peer's render run, waited out a peer's jest suite and watched
-   load fall from 40 to 7 — and a peer **had** pinned that exact md5. Nothing was lost, and the
-   reason is the lesson: **that run carried a three-bundle stability control**, so its numbers were
-   demonstrably bundle-independent. ✅ **Announce the INTENT to rebuild a shared artefact, not just
-   the fact.** ⚠️ And when a peer says *"X pinned it"*, **ask X** — the first answer back was
-   *"never mine"*, from a session whose `/clear` had put its own history out of context. It then
-   corrected itself. **A cleared session's "I never did X" is not a measurement.**
-   ⚠️ Bundle pinned this session: `8facb5b25e80339a28ebf539a4894b23` → `c8d6228e2e61017979e38870ee67e56e`.
-4. 🔴 **`grep -c` ON A MINIFIED BUNDLE RETURNS 1 WHATEVER IS IN IT** — it is one line. A peer nearly
-   filed a fix as half-lost on that reading. ✅ Verify a fix in a bundle by **substring search over
-   the text**. That is how the guard was confirmed present — and how the **unguarded twin** in
-   `nodes-deprecated/` was found beside it.
-
-### ⚠️ Two things registered rather than built
-
-- **`nodes-deprecated/std-library/data/dbcollectionnode.ts:384`** carries the **identical**
-  unguarded branch and is in the shipped bundle. The site-builder uses `DbCollection2`, so no AC
-  here is affected; a project carrying the deprecated node still empties on a failed re-fetch.
-  🔴 **Owner `NONE` — give it one.**
-- **A release-notes line is owed** for this fix (it is a platform behaviour change riding 0.2.2).
-  Not written, because `dev-docs/tasks/release-0.2.2/RELEASE-NOTES-0.2.2.md` **carries a peer's
-  uncommitted edit** and a pathspec commit would sweep it. **Owner: REL-004.**
-
-## The next buildable work: REL-011b AC1 and AC3
-
-**AC1 is [D54](../phase-77-the-site-builder-rescue/DEFECTS-THE-SITE-BUILDER-FOUND.md#d54)** — the
-theme presets are inert on the deploy and live in the editor's preview: 0 of 7 fields, 0 requests,
-on enabled buttons with `onclick`, while `Save theme` on the same screen fires its `PUT`.
-**Undiagnosed**, and `droppedByHealthFilter` was 0 with the `--sabotage` control proving that filter
-alive, so the export filter is excluded and nothing else is. ✅ **Diagnose before fixing** — that
-instruction is what made AC2 cheap, and AC2's cause was not on anybody's candidate list.
-
-**AC3 is a discovery AC, and its arithmetic was wrong.** ⚠️ **Re-derived from the artefact: the
-template declares SIX admin routes and FOUR are unphotographed**, not nine —
-`/admin/setup`, `/admin/signin`, `/admin/pages`, `/admin/page/{pageId}`, `/admin/theme`,
-`/admin/messages` (`ADMIN_PATH_PREFIX` is the literal `admin`; all six are `Page` components in
-`sb005Components.ts`). s17 took `/admin/pages` and `/admin/theme`. The *"eleven admin pages"* on
-the row counts something other than routes.
-
-**REL-009b remains buildable too** — `reloadComponentFromDisk` still has zero callers and there is
-still no filesystem watcher anywhere in the editor. Read [REL-009 §3 and §4 U3](REL-009-THE-WRITE-THE-EDITOR-CANNOT-SEE.md)
-first; **U3 — whether the canvas survives a model swap underneath it — is where it gets expensive**,
-and D1 (`fs.watch` vs `chokidar`) is unruled.
-
-## Working rules for this tree — unchanged, and all of them earned
-
-1. 🔴 **`judge()` KEYS ITS OUTPUT BY `today()`.** Two sessions running a look harness on the same day
-   **overwrite each other's verdicts in place, silently.** This session did it to phase-81's
-   `sbr-005/2026-09-03/` — the very arm REL-011a names. ✅ **Copy the after-arm out first, then
-   `git checkout --` the directory back**, and `md5` both. It only worked because the before-arm was
-   **committed**.
-2. 🔴 **COMMIT BY PATHSPEC, NEVER `git add`** — except untracked paths, which a pathspec commit
-   **skips silently**. ⚠️ **`sbr005-sections.look.ts` had NEVER been tracked** despite defining
-   REL-011b AC2 and being cited by REL-011a. It is committed now. `git status --porcelain | grep '^??'`
-   before every commit, and check whether a `??` is a **directory**.
-3. 🔴 **`scripts/devtools/render-from-disk.js` IS UNCOMMITTED AND LOAD-BEARING**, and its md5 has
-   **moved** since the board recorded it: `1557f527…` → **`665987c0…`** (mtime 09-02 16:47), and
-   `render-report.js` is modified too. The product-host-stylesheet behaviour REL-002a needs is still
-   in it (checked). ✅ **Re-derive that md5 rather than quoting the board's.**
-4. 🔴 **NEVER OPEN `templates/members-area` OR the site-builder template IN THE EDITOR** —
-   `readBundleDirectory` has no skip list and would ship `.mcp.json`, `CLAUDE.md` and a `.gitignore`
-   block. Work through `npm run template:members` / `template:site-builder`.
-5. ⚠️ **`timeout` does not exist on this Mac** — `command not found` piped into `echo "EXIT=$?"`
-   reads as **`EXIT=0`**. Gate on an exit file you write yourself.
-6. ⚠️ **The box is shared and busy.** Load sat between 7 and 42 all session with peers running an
-   editor dev stack, a render harness and two jest suites. One heavy job at a time; wait for a
-   peer's suite; and see hazard 3 above before touching a shared build artefact.
-
----
-
-_Everything below predates session 18. It is kept because rows 6/6b/7/8 have not moved, but
-**re-derive from [`TASKS.md`](TASKS.md) before believing any of it.**_
-
-## 🔴 READ THIS FIRST — the board grew after s16 wrote its handoff, and rows 6–8 are no longer all there is
-
-_Session 17, 2026-09-03._ **s16 concluded *"the whole run sheet is now Richard's"*. That was true
-when it was written at 07:56 and stopped being true at 10:42**, when a P77 session landed
-[REL-011](REL-011-THE-SITE-BUILDER-SHIPS.md) on this board: **Richard reversed the site-builder hold
-and set its bar at literally `PASSABLE`.** Three new rows, and s17 took the first one.
-
-🔴 **So do not read the run sheet below and conclude there is nothing to build.** Everything from
-*"SESSION 16"* down was written before REL-011 existed. ✅ **The instruction that saves you is the
-one this phase already carries: re-derive the board from [`TASKS.md`](TASKS.md) and the task files,
-not from a handoff's copy of it.** This is the second time in three sessions that a handoff's
-*"a session cannot advance any row"* was overtaken by a ruling arriving hours later.
-
-### 🟢 What session 17 built: REL-011a — CLOSED, `d88368c5`
-
-**53 of 53 controls carry the palette, from 1 of 53.** Full write-up in
-[REL-011 §REL-011a](REL-011-THE-SITE-BUILDER-SHIPS.md); board row in [`TASKS.md`](TASKS.md).
-Gates: `npm run template:site-builder` **exit 0**; the new
-`sbr014ControlStyleCensus.test.ts` **12/12 having been 1 failed / 11 passed**; full `noodl-mcp`
-**90 suites, 1182/1182, exit 0**.
-
-- 🔴 **The census read 1 at HEAD, not the 3 REL-011 §2 recorded.** §2 counted *"any `var(--…)`
-  parameter"*, which admits a lone `marginLeft` as styling and misses that the one dressed button
-  had no `fontSize`. Neither count is wrong — **they are different questions**, and a number that
-  cannot be reproduced from its own definition gets re-derived differently by the next session.
-- 🔴 **Only the 25 text inputs were ever invisible.** `options` and `checkbox` draw a 2px box at
-  their own node defaults. They took the treatment to **join the palette**, not to become visible,
-  and the write-up refuses to cite them as evidence of the fix. ⚠️ Measured on the **live** nodes in
-  `nodes/controls/`, not the `nodes-deprecated/` twin that carries the same display names and
-  different defaults — the first reading of this session came from the wrong file.
-- 🔴 **Two ports were REFUSED and that is the load-bearing part.** `fontFamily` is already
-  `inherit` in `assets/style.css` (P78 D18), so requiring it would have moved this census's number
-  on 53 nodes and **changed no pixel** — REL-010 §6.5's refused move in new clothes. Label ports
-  likewise: the labels were legible in the very photograph the row was opened on.
-- 🔴 **The fix's first arm was correct and looked unfinished**, and only the render said so: fields
-  ~205px in a 700px card, which they had always been, invisibly. `sizeMode: 'contentHeight'` alone
-  fixed it; the `width: 100%` copied from `members-area` reddened `sbr012` with 26 raw dimensions
-  and was **redundant**. The gate was right, and a second render is what proved it.
-
-### 🔴 The next buildable row is REL-011b, and its first job is a diagnosis, not a fix
-
-[REL-011 §REL-011b](REL-011-THE-SITE-BUILDER-SHIPS.md). Two of its three ACs are **undiagnosed**, and
-the row says so — *"settle which before fixing anything."*
-
-- **AC2 reproduced a third time in s17's run**: `no button labelled "Send". Buttons on the page: []`
-  after `service.stop()`. 🔴 **And it is a sharper measurement than it was**: the same template's
-  buttons are now unmistakably present and painted when the backend is up, so *"the harness cannot
-  find a button"* and *"the page has no buttons"* are further apart than before. **Settle
-  harness-vs-product first.**
-- **AC1 is D54** — theme presets inert on the deploy, live in preview, `droppedByHealthFilter` 0.
-- **AC3 is a discovery AC.** ✅ **s17 has already photographed two of the eleven** — `/admin/pages`
-  and `/admin/theme`, four widths each, in `verdicts/vib-001/2026-09-03/site-builder-living/`. The
-  rest are still unphotographed, and D40 hid them for the life of the template.
-
-⚠️ **REL-011c is Richard's look and a session cannot close it**, exactly like rows 6 and 6b.
-**REL-009b remains buildable too** — see the s16 section below, which is still accurate about it.
-
-### 🔴 A hazard s17 met, which will bite the next session that runs a look harness
-
-**`judge()` keys its output directory by `today()`.** Two sessions running the same harness on the
-same day **overwrite each other's verdicts in place, silently**. s17's first run replaced P77 s48's
-`sbr-005/2026-09-03/site-builder-living` — the exact before-arm REL-011a AC2 names. ✅ Recovered from
-`9bd1488f` and restored, both arms `md5`-checked against `git show`. ✅ **Commit a look run before
-starting another, and copy an after-arm out before re-running.**
-
----
-
-_Opened 2026-08-31 (s1). Last updated **2026-09-03, session 16** — ⚠️ **everything below this line
-predates REL-011; read the section above first.** 🔴 **ROW 6 IS REOPENED — see the section below before reading anything else.** Row 6 has **no building left on
-it**: every one of the thirteen pages has been photographed and graded at **all four widths**, both
-of s13's queued questions are answered and built, and s14 found that the one apparent defect left in
-the pictures belonged to the **test harness**, not the product. What remains is **Richard's own
-look**. The decisions are
-[`RICHARD-RULINGS-2026-09-01.md`](RICHARD-RULINGS-2026-09-01.md) — **§I is new, read it** — and the
-change list is [`REL-002c-WHAT-I-WOULD-CHANGE.md`](REL-002c-WHAT-I-WOULD-CHANGE.md)._
-
-## 🔴 Read this first: this is the only board you open
-
-Richard, 2026-08-31: *"can we work through the next session prompt in phase 82, rather than me
-ending up driving unnecessary tasks in other phases by accident — just so we focus on the tasks we
-need to launch, over several sessions all in phase 82."*
-
-**So: every launch session opens THIS file, takes the next unstruck row from the run sheet below,
-and finishes inside phase 82.** The verdict scale and close protocol are restated in
-[`TASKS.md`](TASKS.md) — you do not need to open phase 81.
-
-🔴 **If a row is not on this board, it does not gate 0.2.2.** Anything else you find is a **register
-row with an owner**, not this session's job — see
-[`../../guidelines/PHASE-EXECUTION.md`](../../guidelines/PHASE-EXECUTION.md).
-
-## The bar for row 6 — 🔴 REWRITTEN 2026-09-02 (s15). The old one was circular.
-
-**The benchmark is `docs/node-catalog/examples/ui-landing-page.json` (VIB-006)** — the page Richard
-called *"fucking pro"* — **not the members-area's own `/`**, which he puts in the *passable,
-old-school WordPress template* bucket. The previous instruction on this board said to grade each page
-beside `/`, and twelve pages were certified *"as good as the homepage"* against a homepage he does
-not rate. **The comparison could not fail, and for fourteen sessions it did not.**
-
-✅ **The chrome exemption is now RULED and its author is named — this was register row R2.** It used
-to read as the bar and was a *session's sentence*. Richard ruled it as **§3.1 of
-[REL-010](REL-010-AS-GOOD-AS-THE-PAGE-HE-RATED.md) on 2026-09-02**, choosing *"§3.1 as proposed —
-density, not billboards"* from three options:
-
-> All thirteen clear AC2/AC4/AC5. The **public four** (`/`, `/join`, `/sign-in`, `/setup`)
-> additionally take the VIB-006 section vocabulary. The **signed-in nine** get the display tier,
-> imagery where a row or card can honestly hold one, and a second and third ground —
-> **density and decision, not billboards.**
-
-⚠️ **What that does NOT license.** It is a ruling about how much *marketing* an app-chrome page
-carries. It is not an exemption from being designed: the nine still owe a display tier, three
-grounds and a page-identity zone, and s15 measured all three onto them. A page that "shows decision"
-is now a **measured** claim (`vib001-members.poverty.look.ts`), not a verdict somebody types.
-
-## ✅ SESSION 13 — the run was taken, and it changed the row twice
-
-**Full write-up: [`TASKS.md`](TASKS.md) §"what session 13 did".** Gates: `template:members` **exit 0
-and idempotent** (30 components, 94 files, same 110 door diagnostics); `tpl001Template.test.ts`
-**72/72**; full `noodl-mcp` **85/85 suites, 1117/1117**; `tpl001-members-drive` + `empty-states` +
-`refused-query` **3/3 suites, 79/79**; `vib001-members.look.ts` **exit 0 ×3**, 60 shots each.
-
-### What the twelve unseen pictures showed
-
-| page | before | after |
-|---|---|---|
-| `/meetings/{id}` | **the weakest page in the gate** — when and where as two unlabelled grey lines | `12 January 2099 · The hall`, one composed line, as `MeetingRow` already ruled |
-| `/announcements/{id}` | body across the full §C 1200 — ~210 characters a line at 1900 | date + body in a `PROSE` 640 measure, as one record |
-| `/post` | 🔴 **three left edges** — band 64, heading 304, footer 64 | one left edge; forms capped at 720 |
-| `/account` | same three left edges | same fix |
-
-🔴 **The `/meetings/{id}` defect is the one to learn from: it was a DECISION THAT HAD ALREADY BEEN
-MADE.** `MeetingRow` carries the ruling in writing — *"one meta line, not two"* — and the detail page
-was the exact shape that ruling was written against. **A member who pressed `Details` got a LESS
-composed version of what they had just read.** Nothing had ever rendered that page, so the row and
-the page it opens had never been seen together.
-
-### The two rulings Richard gave (now `RICHARD-RULINGS-2026-09-01.md` §I)
-
-1. **`/unsubscribe` vs D39 — *"D39 stands, accept the slack."*** 🔴 **The ~290px/~470px of space on
-   that page is a RECORDED CONSEQUENCE, not open work.** It has been rediscovered and re-argued four
-   times. Do not fix it, do not re-derive it.
-2. **`/post` + `/account` — *"head on 1200, form panels capped at 720."*** Built as
-   `AT_FORM_MEASURE`. ⚠️ **This does NOT reopen §C's departure on the four DOOR pages** —
-   `/sign-in`, `/join`, `/setup`, `/unsubscribe` keep `FORM_GROUND` at 720 centred.
-
-### Item 5's header row — **decided NO**, from the render
-
-`/directory` at 1900 reads `Ada Newcomer` · `ada@example.invalid` · `Member · since 1 September
-2026`. **A header would restate three things the data already says**, and below 700px the `Columns`
-folds to `smallLayout: '1'` with no runtime rule that can hide it. The original symptom — ~250px
-between a name and its email — **was fixed by s10**. Priced, not skipped.
-
-## ✅ SESSION 14 — the phone column is read, and one "defect" turned out to be the harness
-
-**Full write-up: [`TASKS.md`](TASKS.md) §"what session 14 did".**
-
-1. ✅ **All fifteen phone renders opened** — 15 covers the 13 pages, since `/` and `/members` are
-   photographed in both states. 🟢 **Nothing is broken at 390.** The three caps this row added are
-   correct no-ops below their breakpoints; `/directory` folds to one column and **s8's
-   `ada@example.invali / d` break is gone**.
-2. ✅ **`/join` graded at all four widths — and its finding was a NON-finding.** Its footer sits on
-   1200 while its hero and form sit on 720, but `/sign-in` does the same, so it is consistent across
-   the four door pages and is the shape Richard already ruled acceptable. **Priced. Do not
-   rediscover it.**
-3. 🔴 **`/requests` was showing the applicant's name twice — and it was the SEED, not the product.**
-   The harness was posting `message: `${name} would like to join.``, inventing the applicant's
-   reason out of their name. `JOINERS` now carries real reasons. **The page a moderator sees was
-   never wrong; the photograph was.**
-4. ✅ **Re-render control: 32 of 36 text dumps byte-identical** to s13's, the 4 that differ being
-   exactly the `/requests` ones. The harness is deterministic and s13's pictures were honest.
-
-## 🔴 ROW 6 IS REOPENED — read this before believing anything above it
-
-**2026-09-02. Richard, shown the artifact of all thirteen pages, pointed at a DIFFERENT page:**
-
-> *"This is the one where I said 'this is fucking pro'... all the other ones that you're showing me
-> in the artifact were the ones I said looked like oldschool Wordpress templates, passable but
-> nowhere near this."* — `verdicts/vib-006/2026-08-31/landing-door/landing-desktop-full.png`
-
-🔴 **The benchmark this board gave every session was circular.** *"Grade each page beside `/` at the
-same width"* pointed at the members-area's **own** landing page — which he puts in the *passable*
-bucket. Twelve pages were certified *"as good as the homepage"* against a homepage he does not rate.
-**The comparison could not fail, and it did not.**
-
-🔴 **The "chrome exemption" below is a SESSION'S SENTENCE, not his ruling.** It is what licensed the
-gap. Do not quote it as the bar until §3.1 of [REL-010](REL-010-AS-GOOD-AS-THE-PAGE-HE-RATED.md) is
-ruled.
-
-**Measured, not argued** — [`vib001-members.poverty.look.ts`](../../../packages/nodegx-backend/tests/vib001-members.poverty.look.ts),
-VIB-006 as a known-silent control in the same run. ✅ **s15 BUILT the fix; both columns are on one
-runtime** (the baseline was re-taken after a peer's webpack rebuilt `noodl.viewer.js` mid-session,
-and it reproduced exactly):
-
-| arm | headline | `<img>` | icons | grounds | tells |
-|---|---|---|---|---|---|
-| **CONTROL — VIB-006** | **94px** | **7** | **20** | **6** | **none** |
-| members, door ×4 | 30 → **72** (`/unsubscribe` **48**) | 0 → **3** (`/unsubscribe` 0) | 0 → **2** | 2–3 → **4–5** (`/unsubscribe` 2) | **none** |
-| `/` living | 48 → **94** | 0 → **3** | 0 → **2** | **4** | **none** |
-| members, signed-in ×8 | 30 → **48** | 0 | 2 → **4** | 2 → **3** | **none** |
-
-🟢 **13 of 13 read clean, from 0 of 13.**
-
-🔴 **The root cause of the type gap was ONE PARAMETER and it was an override of the product's own
-fix.** `displayHeadline` already carried `--display-lg`; VIB-002 put it there *because* the
-members-area hero was stuck at 48px. `tpl001Components.ts` then overrode it back to `--text-5xl`.
-
-⚠️ `no-imagery` is blind to CSS backgrounds — **never quote it on the hero pages**. The real fact was
-**zero `Image` nodes in thirty components**; there are now real ones, and the four public pages carry
-three rendered photographs each.
-
-⚠️ **Two cheap wins were REFUSED as instrument-gaming and the refusals are the useful part** — see
-REL-010 §6.5. Painting `PAGE_GROUND` would have moved the ground count and changed no pixel; stock
-avatars on `/directory` would be a claim about what real members look like.
-
-**Everything below about row 6 being nearly done was written before this and is superseded.** Rows 7
-and 8 stay behind **AC6, which is Richard's look and nothing else**.
-
-### 🔴 Two things landed AFTER the build, late in s15 — read them before quoting §6
-
-1. **§6.9's typeface claim was CORRECTED, by a peer, and the correction is the useful part.** The
-   starter-assets fix is sound and its evidence is the **photographs** (three observed
-   `image/load-failed` lines). The first draft also claimed every earlier drive rendered *"with no
-   typeface"* — **false**: this template sets `--font-sans` as a **custom token**
-   (`"Source Sans Pro", "Segoe UI", …`), so Inter is never requested, installed or absent. ✅ **The
-   committed renders are therefore FAITHFUL to a real install**, which is what AC6 is read from.
-   🔴 The error shape, because this row keeps meeting it: **a finding with two halves, evidence for
-   one.** The photographs half was observed; the typeface half was inferred from the same file list
-   and rode on its credibility. **Write the claim at the width of the evidence.**
-2. 🔴 **R8 is a PRODUCT defect and it is why (1) happened.** `templates/members-area` ships
-   `--font-sans` whose **description** says *"Inter, falling back to…"* while its **value** contains
-   no Inter — and that string is the **only** occurrence of `Inter` in the artefact, so a grep
-   returns one hit and the hit is untrue. Authored by
-   [`StyleTokensModel.ts:161`](../../../packages/noodl-editor/src/editor/src/models/StyleTokensModel/StyleTokensModel.ts#L161),
-   which inherits the DEFAULT's description when a preset overrides the VALUE. **11 of 45 described
-   tokens state a value; `--font-sans` is overridden by 4 of the 5 shipped presets**, so most new
-   projects carry it. ⚠️ **Do not "fix" it by dropping the description on override** — that discards
-   the 34 role descriptions, which are the ones worth keeping. **Owner: phase 81. Not this row's, and
-   it blocks no AC here.**
-
-## 🔴 SESSION 16 — the whole run sheet is now RICHARD'S, and a session took the one row it could
-
-**Read this before taking a row.** Session 16 re-derived the board from the task files and found
-that **rows 6, 6b, 7 and 8 all wait on Richard and a session cannot advance any of them**:
-
-| row | what it is waiting for |
-|---|---|
-| **6 / 6b** | **AC6 — his look**, against `verdicts/vib-006/…/landing-desktop-full.png`. AC1–AC5 are met and re-measured; a session cannot close a person |
-| **6b, R6** | one word from him on `/unsubscribe`'s 2 grounds, which **AC4 names neither group of** |
-| **7** | his call on **when to publish** — the recommendation is unchanged, *fix first, publish once* |
-| **8** | `cline-dev` is far ahead of `origin/cline-dev` — **613 at the start of s16, 618 by the end of it** (580 at s13). Peers commit *during* sessions, so 🔴 **re-derive at cut time, never quote a number from this board.** CI has run on none of it |
-
-🔴 **So do not open row 6 again looking for building to do — there is none, and s15 already said so.**
-
-**What session 16 built instead: [REL-009a](REL-009-THE-WRITE-THE-EDITOR-CANNOT-SEE.md), which is on
-this board (TASKS.md row REL-009a) and which [the README §2](README.md) says a launch session may
-build without asking.** It is 🟢 **CLOSED** — measured, then fixed, then driven again. Commit
-`40a80bf5`.
-
-- 🔴 **The clobber-on-quit warning in four phase-55 handoffs was WRONG and is now corrected in
-  place.** A quit with nothing pending wrote **nothing at all**. Arms A, B, D all passed.
-- 🔴 **Arm C is real: two writers on the SAME component is silent last-writer-wins.** And on `/App`
-  it costs a whole page — dropped from the router, files and registry entry left behind, so
-  **nothing on any surface looks wrong**.
-- ✅ **Fixed and verified in the running app**, negative control first.
-- 🔴 **A PRE-EXISTING spec caught a regression in the fix's first draft.** The guard could not tell
-  *"an agent wrote this"* from *"we wrote this and rewound our own bookkeeping"*. **A new check does
-  not have to be wrong to be dangerous — it has to be unable to tell two situations apart.**
-
-### The next buildable row is REL-009b, and it is the real fix
-
-`reloadComponentFromDisk` still has **zero callers** and there is still **no filesystem watcher
-anywhere in the editor** (re-derived at HEAD, 09-03). REL-009a's guard makes the loss visible;
-**REL-009b makes it not happen**, because the watcher advances the baseline as the write lands.
-🔴 **Its known cost is on the board: once a component is refused it stays refused until the project is
-reopened.** Do not close REL-009b believing REL-009a already solved it. Read
-[REL-009 §3 and §4 U3](REL-009-THE-WRITE-THE-EDITOR-CANNOT-SEE.md) first — **U3, whether the canvas
-survives a model swap underneath it, is where that task gets expensive**, and D1 (`fs.watch` vs
-`chokidar`) is **unruled**.
-
-## The run sheet
-
-Take the topmost row that is not ✅.
-
-| # | row | why here | needs |
-|---|---|---|---|
-| ~~1–5~~ | ~~REL-007/006, REL-005, REL-003, REL-002a, REL-002b~~ | ✅ **CLOSED s1–s5** | — |
-| **6** | **REL-002c — every page as good as the homepage** ⏳ **RICHARD** | 🔴 **REOPENED 09-02** — graded for 14 sessions against the members-area's OWN `/`, a page Richard puts in the *passable* bucket | ⏳ **REL-010's building is DONE; both wait on the same look** |
-| **6b** | 🟢 **[REL-010](REL-010-AS-GOOD-AS-THE-PAGE-HE-RATED.md) — as good as the page he actually rated** | §3.1 RULED and BUILT s15. **13 of 13 pages now read clean**, from 0 of 13. AC1–AC5 met (AC3 declined on the nine, in writing; AC4 has a hole at `/unsubscribe`) | ⏳ **AC6 — RICHARD'S LOOK. A session cannot close it** |
-| 7 | **REL-001** publish + drive the install ⏳ **RICHARD** | shelf's first row; also closes P75's FB-005 | ⏸️ **HOLD** — see below |
-| 8 | **REL-004** cut, tag and publish `v0.2.2` ⏳ **RICHARD** | last | 🟡 **AC1 done s11** (`5c805978`). 🔴 Blocked: `cline-dev` unpushed |
-| **9a** | 🟢 **REL-011a — the 53 controls** | **CLOSED s17 `d88368c5`** — 53 of 53, from 1 of 53 | — |
-| **9b** | **REL-011b — operable on the artefact a person publishes** ⬅️ **THE NEXT BUILDABLE ROW** | D54, the zero-buttons arm, and nine unphotographed `/admin/*` routes | 🔴 **Two ACs are UNDIAGNOSED — settle harness-vs-product before fixing** |
-| 9c | **REL-011c — the three surfaces reach PASSABLE** ⏳ **RICHARD** | needs 9b | ⏳ his look; a session cannot award it |
-| 10 | **REL-009b — the editor sees the write** | the real fix behind REL-009a | ⬜ buildable; D1 unruled, U3 expensive |
-
-### ⏸️ Why row 7 still waits
-
-Row 7 publishes `templates/members-area` to the shelf, and **row 6 has changed that artefact three
-times today**. ✅ **Re-publishing is supported and safe** — `publish-project-template.ts` re-run
-against an existing row leaves visibility where it was — so this is genuinely Richard's call, and
-the recommendation is unchanged: **fix first, publish once.** Ask when his look is booked, not now.
-
-## 🔴 Hazards that bit this row before, carried forward
-
-1. 🔴🔴 **EVERY `Group` WITHOUT A `sizeMode` IS `flex-grow: 100`.** `addDimensions` defaults
-   `sizeMode` to `explicit` and `height` to `100%`, and
-   [`layout.ts:98`](../../../packages/noodl-viewer-react/src/layout.ts#L98) turns a percentage height
-   inside a **column** parent into `flexGrow`. ⚠️ **s13 relied on the other half of this and checked
-   it**: `AT_FORM_MEASURE` sets a `width` and no `sizeMode`, which is safe *only* because
-   `PAGE_GROUND` is `contentHeight` and has no slack to share out. ✅ **Pin anything that must stay
-   content-height before giving an ancestor a floor.**
-2. 🔴 **A FIX'S STATED MECHANISM CAN PAINT NOTHING.** Item 4's `minHeight: 100vh` on `PAGE_GROUND`
-   would have changed no pixel — that Group carries **no `backgroundColor`**. ✅ **Check the artefact
-   for the property the fix needs.**
-3. 🔴 **FOUR TIMES IN THIS ROW, A LAYOUT COMPLAINT HAD A CONTENT ANSWER** — and 🔴 **s13 is the
-   counter-example that stops this becoming a reflex.** The remaining space on `/unsubscribe`,
-   `/announcements/{id}` and `/meetings/{id}` has **no** content answer: a short record is short, and
-   every candidate is new product surface on a page whose data model holds nothing more. ✅ Ask what
-   is missing before what is mis-sized — **and accept "nothing" as an answer.**
-4. 🔴 **A DECISION RECORDED IN A COMMENT IS STILL A CLAIM — this landed for the THIRD time in this
-   row, and s13's instance is the sharpest.** `Members/Chrome` said *"they are now the same 1200"*;
-   it was true of six of the eight signed-in pages and **nobody had rendered the other two**. ✅
-   **Re-derive a recorded decision against the picture before inheriting it.**
-5. ⚠️ **DELETING A CONTROL DELETES MORE THAN THE CONTROL.** ✅ **Grep for the id after removing a
-   node.** ⚠️ **And check for an id COLLISION before adding one**: s13's first draft named a new
-   `Group` `record` on both detail pages, where `record` was already the `DbModel2` every connection
-   fires from.
-6. 🔴 **A DELETED AFFORDANCE REDDENS THE SPEC THAT USES IT AS A CONTROL — RE-POINT IT, DON'T DROP
-   IT.** `tpl001-members-drive` §5 AC4 uses the moderator's offered buttons as the **positive
-   control** for two negative arms.
-7. ⚠️ **A GATE CAN BE A HARD COUNT IN SEVERAL PLACES, AND THE ARGUMENT ABOVE IT IS THE PART THAT
-   MATTERS.** s13 moved `tpl001Template.test.ts` §6 from `1` to `3` and **rewrote the paragraph**:
-   it had read *"today exactly one page stacks two sections"*, which the change made false. A silent
-   increment would have hidden the finding.
-8. 🔴 **NEVER OPEN `templates/members-area` IN THE EDITOR.** `readBundleDirectory` has **no skip
-   list of any kind** — opening writes `.mcp.json` (with absolute paths from this machine),
-   `CLAUDE.md` and a `.gitignore` block, and **all three would ship**. ✅ Work through
-   `npm run template:members`.
-9. 🔴 **GATE ON AN EXIT FILE YOU WRITE YOURSELF.** ⚠️ **`timeout` does not exist on this Mac** —
-   `command not found` piped into `echo "EXIT=$?"` reads as **`EXIT=0`**.
-10. ⚠️ **A SEED CAN MAKE A FIX UNPHOTOGRAPHABLE.** Every `ANNOUNCEMENTS` body in
-    `vib001-members.look.ts` is one short sentence, so **no render this harness can take will show a
-    paragraph wrapping** — the `PROSE` 640 cap is asserted from `nodes.json`, not from a picture.
-    Say which of the two you have when you claim a measure is right.
-
-11. 🔴 **AND A SEED CAN MANUFACTURE A DEFECT THAT IS NOT THERE — the inverse of 10, found in s14.**
-    `/requests` showed the applicant's name as the heading and again as their own words, at all four
-    widths, because the harness posted `message: `${name} would like to join.``. **The product was
-    correct; the photograph was not.** ✅ **Read the seed beside the picture before filing what the
-    picture shows** — this row was one session away from Richard filing a defect against a page that
-    does not have one.
-12. 🔴 **THE LIVING ARM'S `artefactMd5` IS NOT A CONTENT FINGERPRINT, AND THIS BOARD SAYS IT IS.**
-    `bindProjectToBackend` writes an **OS-assigned ephemeral port** into the copied project file
-    before `judge()` hashes it, so **the living md5 changes every run even when nothing changed** —
-    s14 moved it `ed8a32db → e6bea8be` while editing only a test file. **The door arm is sound**
-    (`f969ad96…` equals the template on disk, which is the pin to cite). ⚠️ **s13's citation of a
-    living-md5 progression as evidence of its edits is void** — the edits were real, the hash was
-    never the evidence. Registered in [`TASKS.md`](TASKS.md) §4; owner REL-002c.
-
-13. 🔴🔴 **A PEER'S WEBPACK REBUILT `noodl.viewer.js` BETWEEN A BASELINE AND ITS AFTER-RUN — R3, live
-    rather than historical.** s15 measured the baseline on md5 `8c0ad51b…` at 22:25; the bundle became
-    `e35ea918…` at 22:42, mid-session, and a peer had announced twenty minutes earlier that the watch
-    was torn down and the bundle static. **It was not.** ✅ **Record the md5 BEFORE AND AFTER every
-    run** — a pin read once cannot tell you a rebuild landed inside the window. ✅ **And a baseline is
-    re-takeable**: `TPL001_TEMPLATE_DIR` points a run at a `git archive` of the committed artefact, so
-    the artefact can be rolled back while the runtime stays current. s15's re-take reproduced the
-    original baseline exactly, which is what made the before/after admissible.
-14. 🔴 **THE CHEAPEST WAY TO MOVE A MEASUREMENT IS USUALLY AN EDIT TO THE INSTRUMENT'S VIEW, NOT TO
-    THE PAGE.** Two were available and refused in s15, in writing, in
-    [REL-010](REL-010-AS-GOOD-AS-THE-PAGE-HE-RATED.md) §6.5: painting `PAGE_GROUND` with
-    `--background` would have taken all nine app-chrome pages from 2 distinct grounds to 3 **and
-    changed no pixel**, because that is the colour the ground already appears to be. ✅ **Ask what a
-    person would SEE differently.** If the answer is nothing, the number moved and the page did not.
-15. ⚠️ **A COMPOSITION CAN ALREADY CARRY THE FIX AND THE TEMPLATE CAN BE OVERRIDING IT.** The whole of
-    the `no-display-type` finding on twelve pages was `{ ...composition('displayHeadline'), fontSize:
-    'var(--text-5xl)' }` — the composition shipped `--display-lg`, VIB-002 having put it there *for
-    this exact page*. ✅ **Before designing a fix, diff what the composition gives against what the
-    template kept.** ✅ **And census the BENCHMARK before promoting a ramp**: VIB-006's section
-    headings are 30px, the same as this template's, so promoting those too would have re-flattened
-    the ramp one tier higher and moved the number the wrong way for the right-looking reason.
-
-## Row 8 — done and blocked parts
-
-✅ **AC1 met s11 (`5c805978`):** `packages/noodl-editor/package.json` reads `0.2.2`, gated on
-`npm run ci:build:editor` **exit 0**. Two findings are in
-[the runbook §2](../release-0.2.2/PUBLISH-0.2.2.md): the nine `library/prefabs/*/library.json` files
-that also read `0.2.0` and must **not** move, and why the `package-lock.json` copy is **not** a gate.
-
-🔴 **Still blocked on Richard:** `cline-dev` is a long way ahead of `origin/cline-dev` (**618 at 2026-09-03 08:0x; 613 four hours earlier, 580 at s13 — it moves while you work**), `origin/cline-dev` is at
-2026-08-21, CI has run on none of it. **Derive the count again at cut time.** ✅ **Tag at `5c805978`
-or later** — anything earlier carries `0.2.0` in `artifactName`.
-
-## Working rules for this tree
-
-🔴 **The tree carries a large amount of other work in flight, and peers are committing.** The
-`headSha` recorded in s13's last two render manifests **differ from each other** — two peer commits
-landed during a single 14-minute run. ✅ **Commit by pathspec, never `git add`** — except untracked
-paths, which a pathspec commit **skips silently** (`git status --porcelain | grep '^??'`, and check
-whether a `??` is a **directory**).
-
-🔴 **`scripts/devtools/render-from-disk.js` is UNCOMMITTED and LOAD-BEARING.** Its working-tree diff
-(`md5=1557f527…`, mtime 09-01 11:38) makes the harness serve **the product's own host stylesheet**
-instead of a bare reset — which is what makes every `unreachable=0px` a statement about the product
-rather than about the instrument. **If it is reverted, every fold reading since 09-01 is void.**
-
-⚠️ **And it is not a peer's.** Its own docstring says **REL-002a** — this phase's row 4. s11 and s12
-both recorded the whole 11:35–11:50 mtime cluster as *"another session's in-flight work"*, and at
-least this one file is **ours**. ✅ **Read that cluster before the cut rather than inheriting the
-label** — *"a peer's"* is a relayed conclusion nobody has re-derived.
+   `readBundleDirectory` has no skip list. Work through `npm run template:members` /
+   `template:site-builder`, and **regenerate after every source edit**: `sb007Template.test.ts`
+   asserts the committed JSON is byte-identical to what the door writes.
+8. ⚠️ **The Bash tool reaps a `&`-backgrounded pipeline when the call returns.** s22's first look run
+   died after ts-jest's warning with no exit file. ✅ Use the tool's own background mode, and gate on
+   an exit file you write yourself — **`timeout` does not exist on this Mac**.
+9. ⚠️ **The box is shared. Announce a SUITE the same way you announce a launch**, and say where its
+   log is. s22 and a peer traded the box four times on that basis and neither lost a run.
