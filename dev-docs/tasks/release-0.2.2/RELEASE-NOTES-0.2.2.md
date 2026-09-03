@@ -52,8 +52,8 @@ writes a Vite + React project with an `EXPORT-REPORT.md` that names every node i
 The one library that exported code depends on, `@nodegx/core`, is now **on npm** — so the
 `npm install` the exported README tells you to run works, with nothing to fetch by hand.
 
-**Code export is alpha, and says so.** 97 of the 127 nodes you can place from the picker export
-today (76%). The other 30 are badged *Not exportable yet* on the picker card and in the property
+**Code export is alpha, and says so.** 98 of the 127 nodes you can place from the picker export
+today (77%). The other 29 are badged *Not exportable yet* on the picker card and in the property
 panel, the pre-flight names every node it will leave out and what each one silences downstream, and
 the same warning is written into the exported README with the day's number. Explore the code and
 build on it; do not ship a production app from it yet. The next release moves the number.
