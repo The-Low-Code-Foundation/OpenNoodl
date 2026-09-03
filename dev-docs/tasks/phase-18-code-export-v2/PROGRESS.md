@@ -12,7 +12,7 @@ npm run export-ledger:picker
 node scripts/export-ledger/picker-coverage.js
 ```
 
-> **PICKER COVERAGE: 93 of 127 placeable nodes export (73.2%)** — 2026-09-03 s79 (was 51 on 2026-08-28, 81 on 2026-09-01 s69, 90 on 2026-09-03 s76, 92 on 2026-09-03 s77)
+> **PICKER COVERAGE: 94 of 127 placeable nodes export (74.0%)** — 2026-09-03 s80 (was 51 on 2026-08-28, 81 on 2026-09-01 s69, 90 on 2026-09-03 s76, 92 on 2026-09-03 s77, 93 on 2026-09-03 s79)
 
 **Do not report the corpus number as progress.** `coverage-audit.ts` reads 85.00% (93.38% over
 components a route reaches) across ~40 old drive fixtures. It is a **regression detector** and a
@@ -34,7 +34,7 @@ README §*What went wrong* has the mechanism.
 | [EXP-009](./EXP-009-BACKEND-CONNECTION.md) | **Exported app talks to its deployed backend** | 🟢 **Built + driven s33; AC4 (`Cloud Function`) built s69 via EXP-011 §41 — typechecked, not driven** |
 | [EXP-010](./EXP-010-CUSTOM-NODES-AND-MODULES.md) | **Custom nodes, modules and prefabs export** | 🔴 **Not started.** `parseProject` never opens `noodl_modules` |
 | [EXP-012](./EXP-012-THE-EDITOR-EXPORT-COMMAND.md) | **The editor export command** | 🟢 **BUILT + DRIVEN s67 (2026-09-01).** Settings → Project → *Export as React code…*: exact pre-flight modal, folder dialog, inside-project refusal, non-empty confirm, write + toast. Byte-identical to `emit-app.ts`. `@nodegx/export` has its **first product consumer**; EXP-004's §21.1 block is over. Rides 0.2.2 if Richard says so |
-| [EXP-011](./EXP-011-PICKER-COVERAGE.md) | **Close the picker gap, ranked by what apps need** | 🟡 **93/127 (73.2%) s79 — §51 built `Component Children` (Tier 2.8 row 1): the wrapper declares `children?: ReactNode` and renders `{children}` where the marker sits; an instance passes its placed children as JSX children, in order; a target with no marker drops them with a note and an in-file marker, as the runtime never draws them. Measured first: the placed children were dispositioned `static` and silently never emitted.** s77 — §49 built the animation pair, `States` and `Animate To Value` (Tier 3.8): `src/lib/animate.ts` (the scheduler's frame engine, the ease curves, the bezier solver, `useAnimatedValue`) and `src/lib/states.ts` (the whole node as a machine plus `useStates`), graded frame by frame against the interpreter's own files, and the wired style sink (`opacity`/`color`/`backgroundColor` inline) that no wire could reach before**. §48 `CSS Definition` + the CSS Class fold + the `Date` column (90); §47 the named Object (89); §45–§46 the files (88); §41–§44 Cloud Services (81→84). Next (§50's order): `Script`, `Run Tasks`, `On App Error`, … |
+| [EXP-011](./EXP-011-PICKER-COVERAGE.md) | **Close the picker gap, ranked by what apps need** | 🟡 **94/127 (74.0%) s80 — §52 built `Script` (Tier 2.8 row 2): hosted, not re-hosted — `src/lib/script.ts` transcribes the runtime's three DSL generations and the viewer lifecycle, the author's code goes verbatim into its own `// @ts-nocheck` file under `src/scripts/`, and the page calls `useScript(definition, inputs, listeners)`; refused only what the app cannot supply (`Noodl.`, `Component.`, createComponent, `import()`, Use External File, a port set the editor has not written). s79 — §51 built `Component Children` (Tier 2.8 row 1): the wrapper declares `children?: ReactNode` and renders `{children}` where the marker sits; an instance passes its placed children as JSX children, in order; a target with no marker drops them with a note and an in-file marker, as the runtime never draws them. Measured first: the placed children were dispositioned `static` and silently never emitted.** s77 — §49 built the animation pair, `States` and `Animate To Value` (Tier 3.8): `src/lib/animate.ts` (the scheduler's frame engine, the ease curves, the bezier solver, `useAnimatedValue`) and `src/lib/states.ts` (the whole node as a machine plus `useStates`), graded frame by frame against the interpreter's own files, and the wired style sink (`opacity`/`color`/`backgroundColor` inline) that no wire could reach before**. §48 `CSS Definition` + the CSS Class fold + the `Date` column (90); §47 the named Object (89); §45–§46 the files (88); §41–§44 Cloud Services (81→84). Next (§50's order): `Script`, `Run Tasks`, `On App Error`, … |
 
 ## What actually works today
 
@@ -412,6 +412,16 @@ the property header, and a modal that leads with the verdict and *"1 node … an
 pkg tsc 0 · jest 62 files 1850 green (+ the 2 rows red on HEAD, fixed) · editor tsc 0 (**was red on
 HEAD** — §49's `'defer' in x` narrowings, `isDefer()` now) · tests-unit/exp-013 147/147 · ledger OK ·
 picker holds 92 · 6/6 arms killed. Driven on all three surfaces, screenshots in the s78 scratchpad.
+
+**Session 80 (2026-09-03) — EXP-011 §52, Tier 2.8 row 2 `Script` (`Javascript2`), picker 93 → 94.** Read
+`javascriptnodeparser.js` and `javascript.ts` and the 15 distinct bodies on disk first: the code runs once and
+declares a lifecycle object, and every real body is stateful and browser-coupled — so the Function node's pure
+wrapper is the wrong target. Built a host instead: `src/lib/script.ts` (the three DSL generations and the
+viewer's lifecycle transcribed), the author's code verbatim in its own `// @ts-nocheck` file under
+`src/scripts/`, `useScript(definition, inputs, listeners)` in the page, reads live off the handle, triggers as
+one call. Refused only what the app cannot supply. The port set is the one on disk (the MCP writes none for
+Script — registered P80 §10). tsc 0 · jest 64 files 1981 · editor tsc 0 · ledger OK (101 translated) · picker 94
+floor 94 · 9/9 arms (M8 re-armed after `|| true` was killed by TS2872 alone). Drive: see §52.6.
 
 **Session 79 (2026-09-03) — EXP-011 §51, Tier 2.8 row 1 `Component Children`, picker 92 → 93.** Read from the
 runtime first: the marker is not a node (`nodescope.ts:217` sets its parent as the instance's child root),

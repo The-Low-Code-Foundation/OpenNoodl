@@ -112,7 +112,7 @@ place. The order is by *what a refusal silences*, since §50.2 measured that a r
 | row | nodes | why here |
 |---|---|---|
 | 1 | ✅ `Component Children` | **built s79 (§51)** — was: a wrapper's children vanish from the export — a working component becomes a blank one |
-| 2 | `Script` | the escape hatch the MCP reaches for when the picker has no node; ten in one MCP-built project |
+| 2 | ✅ `Script` | **built s80 (§52)** — was: the escape hatch the MCP reaches for when the picker has no node; ten in one MCP-built project |
 | 3 | `Run Tasks` | *"I use this all the time"* — and everything it fires is refused with it |
 | 4 | `On App Error` | an error pathway that is left out is the exact case where exporting is worse than not |
 | 5 | `Create New Array` | *"I use this all the time"* — the anonymous-Id-by-wire mechanism (§7.3) needs a design session first |
@@ -6832,3 +6832,187 @@ arms 7/7 red, all restored: M1 instance passes no children (8) · M2 children re
 - A `Component Children` inside a `For Each` template component: the repeater's row component takes
   the prop like any other, but nothing places children under a repeater instance in the editor.
   Untested, and probably unplaceable — noted so nobody measures it twice.
+
+## §52 Tier 2.8 row 2 — `Script`: hosted, not re-hosted (session 80, 2026-09-03)
+
+The second row of §50's list. Picker **93 → 94 of 127 (74.0%)**, floor 94, `export-ledger:check` OK
+(101 translated). The type id is `Javascript2`; `Script` is its display name — a grep for
+`"type": "Script"` finds nothing, and this section is the first thing that says so.
+
+### §52.1 What the runtime does, and what that decides
+
+- **The code runs once, and declares an object.** `javascriptnodeparser.js` compiles the code as
+  `new Function('define', 'script', 'Node', 'Component', prefix + code)` — non-strict, with the prefix
+  `const Script = (typeof Node !== 'undefined')?Node:undefined;` — and **calls it once** at parse. Three
+  generations of DSL declare the node: `define({inputs, outputs, setup, run|change, destroy, <signal>()})`,
+  `script({inputs, outputs, setup, destroy, changed: {k(new, old)}, signals: {k()}, methods})` (whose
+  `setup` installs `this.inputs`/`this.outputs`/`this.setOutputs` and the methods), and the bare
+  `Node.*` form — `Node.Inputs`/`Node.Outputs` as type maps, `Node.Signals.k`, `Node.Setters.k`,
+  `Node.OnInit`/`OnInputsChanged`/`OnDestroy`, `Node.setOutputs` — taken when neither was called
+  (`_afterSourced`). Every real body on disk is the third form; one is `define`.
+- **The lifecycle is the viewer's** (`javascript.ts`). Output accessors exist only for the ports on
+  `model.outputPorts` (a set publishes and flags dirty — no change gate, unlike Function; a signal reads as
+  a callable that pulses). After parsing: setup is scheduled, then the run, then every input delivered
+  before the parse is replayed (each marks itself changed), then `Node.Inputs` becomes the live values
+  and `Node.Outputs` the accessors. A value input marks itself changed and schedules a run — gen 3's
+  run calls `Setters[k]` per changed key then `OnInputsChanged`; gen 2's diffs against the previous
+  inputs and calls `changed[k](new, old)`. A signal input schedules its function, coalesced per name
+  per pass, `this` = `{flagOutputDirty, sendSignalOnOutput, runNextFrame, createComponent,
+  deleteComponent}`. Deletion runs destroy. Throws are logged and swallowed.
+- 🔴 **The port set is the one on disk.** `nodemodel.ts createFromExportData` builds a node's ports
+  from `ports`; the editor persists what it discovered under `dynamicports`, which `parseProject`
+  already merges into `declaredPorts`. The deployed app registers exactly that set — the export never
+  runs the code to find ports, and never needs to.
+- 🔴 **The MCP's script-port backstop covers `JavaScriptFunction` only** (`noodl-mcp/src/scriptPorts.ts`,
+  `SCRIPT_PORT_NODE_TYPE`). An MCP-authored Script node reaches disk with no ports until the editor
+  opens the project, and the running app has none either. Source read, not driven — registered in
+  §52.7 with an owner.
+- **The corpus** (`strictprobe.js`, 15 distinct bodies across `NodeGX test projects`): all 15 compile
+  sloppy **and** strict; 13 gen 3, 1 `define`, 1 junk. Every real body keeps state in module-level
+  `let`s and reaches `setInterval`, `navigator.mediaDevices`, `MediaRecorder`, a DOM element through
+  `Inputs.This.getDOMElement()`, or a CDN script; three of def036-dash-drive's ten call
+  `Noodl.Files.upload`.
+
+So the Function node's pure re-host is the wrong target: a timer inside a render-time wrapper would
+run on every render, and the gate that keeps Function pure would refuse every real Script body. The
+faithful deterministic target is a **hosted object with the runtime's lifecycle**: `src/lib/script.ts`
+transcribes the parser and the viewer's lifecycle; each node's code is preserved **verbatim** as the
+runtime-shaped function `(define, script, Node, Component) => { <prefix>; <code> }` in its own file
+under `src/scripts/<dir>/<fileBase>/<name>.ts`; the component calls `useScript(definition, inputs,
+listeners)`. Timers, the DOM, `fetch`, `async`, `this`, `Date` and `Math.random` are **not** refused —
+they run inside effects and handlers the host owns, and they are what the node is for. What is refused
+is only what the exported app cannot supply: `Noodl.*`, `Component.*`, `createComponent`, a dynamic
+`import()`, code fetched from a URL at runtime (Use External File), and a port set the editor has not
+written yet.
+
+### §52.2 What was measured before anything was built (`probe15-reverted.log`, HEAD e1a92d95)
+
+Fixture `tests/fixtures/script-desk`, `Pages/Home`: a gen-3 **ticker** (Start/Stop signals in, an
+interval, `Seconds` out), a gen-3 **greeter** (`Name` in, `Greet` in, `Greeting` out, `Greeted`
+signal out into a `Set Variable`), a gen-1 **doubler** (`define` with a reactive `change`), a gen-2
+**bumper** (`script` with `signals` + `changed`), and — in the probe only — a gen-3 **uploader** that
+calls `Noodl.Files.upload`.
+
+- All five `deferred` with `logic node (Javascript2)`; every wire into or out of them dropped with
+  the generic *"no deterministic translation in step 5"*; the three constants feeding them deferred
+  as *"feeds Javascript2.Name, which has no static binding"*, each attributed **by graph** to its
+  Script as `causedBy` (EXP-013's rows worked as built); `setGreeted` refused as *"trigger
+  greeter.Greeted is not a rendered element event or a receiver"*.
+- The five bodies survived only as the §27 comment blocks in `Home.tsx`; every Text bound to them
+  emitted empty; the pre-flight said *Pages/Home — 5 refusals*.
+
+### §52.3 The build
+
+- **`src/analyze/script.ts`** (new): `SCRIPT_TYPE`, the verbatim `SCRIPT_CODE_PREFIX`, `scriptPortsOf`
+  (declared ports split by plug and kind, the node's own static inputs and `intype-`/`outtype-` rows
+  excluded), `scriptCodeOf`, `scriptPortTsType` (`*`/object/cloudfile → `any`, EXP-003 §4's ruling),
+  `scriptNamesPorts`, and `scriptBodyDefer` — compile sloppy with the prefix, recompile strict, then
+  the four marker gates over the comment-stripped text (`strippedForScan` now exported from
+  jsfun.ts rather than copied).
+- **plan.ts**: `ValueExpr` gains `script-out` (a live read off the handle, valid in both contexts,
+  always maybe-undefined); `HandlerAction` gains `script-signal` (one call on the handle);
+  `ScriptPlan` + `ComponentPlan.scripts`; `scriptPlanOf` in `statesPlanOf`'s shape (memoised,
+  provisional entry before the listeners compile, `refuse` unwinds the plan, the compiled sinks and
+  `translatedScriptIds`); inputs = every declared value input ∪ every wired name ∪ every authored
+  literal, each resolved through `resolveExpr` and typed by **what is delivered**; listeners =
+  every wired signal output through `doneChainOf`, with a pulse into a **value** port refused as
+  *"consumed as a value — a pulse carries nothing to read"* before the chain compile can call it a
+  chain that drives nothing; `scriptReadOf`; `compileScriptSignal`; `isTriggerInto(node, port)`
+  beside `isTriggerWire` (a Script's trigger ports are the signals its own code declared, which no
+  table keyed by type can list) at all six call sites; the trigger-compile loop, the handler pass
+  skip, the binding pass, the registration pass beside States, and every kind switch
+  (`maybeUndefinedExpr`, `exprTsType`, `exprValidIn`, `actionsValidIn`, `exprTouchesSnap`,
+  `snapExpr`, `snapAction`, the session walker, `fillMaterialize`). `jsNameTaken` factored out of
+  `allocJsFnName` so the definition names share the predicate.
+- **component.ts**: `script-out` prints `<local>.outputs.<name>` in both modes; `script-signal`
+  prints `<local>.signals.<port>()`; the binding table for a Script output at each sink (a string
+  port bare, anything else through `String(x ?? '')` at a text position, a number port bare at a
+  number sink, `!!` at a boolean one); the hooks after States'; the imports (`useScript` and one
+  definition per node); `scriptFileSource` — `// @ts-nocheck` first, the header that says why, the
+  runtime's wrapper, the prefix, the code verbatim, `defineScript<Inputs, Outputs>(label, ports, fn)`.
+- **`src/emit/scriptLib.ts`** (new): `src/lib/script.ts`, shipped when any component kept a Script.
+  `defineScript`, `useScript` (a ref-held instance created in the mount effect; a reducer bump on
+  every output write; the listeners in a ref so the latest render's chains fire; a diff effect that
+  delivers changed inputs and runs once; `signals.<k>()` queues a microtask, coalesced per name;
+  unmount runs destroy and kills the node), and the three DSLs transcribed.
+- **Ledger** `translated`, floor 94; the two floor pins moved.
+
+### §52.4 What building it found
+
+1. 🔴 **A refusal's sentence depends on which side asks first.** A pulse wired into a Text was
+   refused as *"its Greeted output drives no translatable action"* — true, and the wrong sentence:
+   the listener compile ran before any read could say *"consumed as a value"*. The fix is in the
+   listener loop, from the sink's own port kind (its declaration, then the catalog), so the sentence
+   a person reads names the mistake they made. §G pins both sentences.
+2. 🔴 **The corpus control forbids a refused node in a fixture.** `in-code-markers`' false-positive
+   row asserts zero preserved-script comments over every fixture; the first cut of `script-desk`
+   carried the refused uploader and went red. The refused shape now lives in the spec by mutation
+   and in the drive copy behind `--uploader`; the corpus stays clean, as that row demands.
+3. ⚠️ **An unknown feeder has no sentence of its own.** `resolveExpr` over a `Hash` answers null with
+   no `ctx.defer`; the first sentence was the bare fallback. Now the Function node's own wording:
+   *"its Name input is fed by net.noodl.Hash — no statically known source in the emit vocabulary"*.
+4. ⚠️ The runtime's gen-3 `change` calls `Node.Setters[key](value)` unbound and `OnInputsChanged()`
+   unbound; gen 2's `setup` copies `methods` onto `this`. Transcribed as they are — a body that
+   reads `this` inside a Setter gets what the runtime gives it.
+
+### §52.5 Graded — `tests/script.test.ts` (74 rows), the gates, the arms
+
+§A the gate: the four refusals, does-not-compile, sloppy-only, a marker in a comment, and eleven bodies
+that must **not** be refused (timers, the DOM, `navigator.mediaDevices`, `fetch`, async, the clock,
+randomness, `this`, module state, the four fixture bodies) · §B the ports · §C the page (golden shape:
+the imports, the four hooks, the four button handlers, the four text sinks by port type) · §D the
+script files (`@ts-nocheck` first, the runtime's wrapper, the prefix, every byte of the code, the
+generics, the port map, the import depth, the delivered-type rule) · §E **the host run under node
+through a hook harness** — refs, reducers and effects with React's ordering — gen 3's boot order and
+Setters, gen 1's `change`, gen 2's `changed(new, old)` / `setOutputs` / methods, the latest listener
+firing, the microtask order (a value set in the handler that pulsed is visible to the signal
+function), coalescing, unmount → destroy → killed, a throw logged and swallowed, a load-time throw
+leaving the node inert, undeclared outputs invisible, an unfed input reading undefined, the four
+fixture bodies loading · §F the refused shape by mutation (the sentence, the four beside it
+translating, the comment block, the dropped wire with its marker, the report row, the pre-flight
+row with no verdict) · §G thirteen graph gates · §H the ledger (translated, no badge, floor 94) and
+the pre-flight · §I the fixture and the refused variant as real `ts.Program`s · §J slot-desk ships
+no host and no `src/scripts/`.
+
+```
+arms 9/9 red, all restored (md5 of the four sources unchanged after each):
+  M1 the host never runs change on an input change — 3 behaviour rows (+5 typing: `&& false` breaks a narrowing in the emitted lib)
+  M2 a signal function runs synchronously — 3 (the microtask-order row, coalescing, the bumper's "not yet")
+  M3 a signal output never reaches the listener — 1
+  M4 the gate admits the Noodl API — 5 (§A, §F ×4)
+  M5 the prefix line dropped from the wrapper — 5 (§D wrapper + every verbatim row)
+  M6 gen 2's changed never fires — 1 behaviour row (+5 typing, the M1 shape)
+  M7 the script file is type-checked after all — 1 text row + 5 typecheck rows: `let timerId;` and `Script.Signals`
+     on a `NodeApi | undefined` fail strict TS exactly as the corpus predicted
+  M8 a Script nothing reads or fires is not hosted — 3 (re-armed at the value level: the first arm was
+     `|| true`, which TS2872 refused and ts-jest reported as "Tests: 0 total" — the mutant-only-tsc-kills trap, again)
+  M9 a hosted node's code is ALSO preserved as a comment — 2
+```
+
+### §52.7 What this leaves
+
+- **Next, in §50's order: row 3 `Run Tasks`**, then `On App Error`, `Create New Array` (design session
+  first — §7.3's anonymous-Id-by-wire), `Filter Records`, `Repeater Item`, … `Sign In With` stays out.
+- 🔴 **An MCP-authored Script node has no ports on disk** until the editor opens the project, and the
+  running app registers only the ports on disk — so it is portless there too. Registered with its
+  instrument (source read, not driven) as **§10 of P80's `UNOWNED-ROWS-TO-MEASURE.md`**, owner `NONE`.
+  The export refuses such a node by name rather than hosting it portless.
+- `Noodl.Files.upload` inside a Script (three of def036-dash-drive's ten) stays refused as Tier B. The
+  files module (§45) is the obvious binding for a `Noodl.Files` facade in the host, the way the Visual
+  Function binds `Noodl.Variables` — a later increment, not this row. Owner NONE.
+- A Script whose input is fed by a Text Input's `text` is refused (*"reads a value that only exists
+  inside a handler"*) — the same seam as every other hook argument; the controlled-state row is the
+  place it would land. Owner NONE.
+- `Use External File` is refused whole. The URL could be fetched at export time and inlined, but a
+  file that changes on its server after the export would silently diverge from the app; refusing is
+  the honest reading until someone asks. Owner NONE.
+- A Script in a **logic-only component** falls to the early return before the registration pass and
+  keeps `logic node (Javascript2)` with its code in the report's `preservedScripts` (§28) — the same
+  as every hook-hosted node there. Not a regression; noted.
+- Recorded divergences of the host (in its own header): delivery on `!==` rather than on every
+  upstream publish; a signal's function in a microtask (React flushes a discrete event's render and
+  its effects synchronously before it, so an input set in the same handler is visible — §E pins that
+  order under the harness, not under React itself); throws to the console only.
+- A `Script` is not an `isPathwayType`, so a refused one produces no cascade verdict even when it
+  silences a pathway behind it (the uploader shape: its `Done` chain into a record verb). Whether the
+  escape hatch should count as a pathway is a §50.2 question; owner NONE.

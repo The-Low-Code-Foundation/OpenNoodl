@@ -1,4 +1,4 @@
-# The seven unowned rows that need a measurement, not a re-read
+# The unowned rows that need a measurement, not a re-read
 
 > 🔴 **P80 session of 2026-09-03: your uncommitted s43 write-up in this file was COMMITTED by a
 > phase-82 session, in `83a03557`, together with a `DEF-043` claim added to the header.** Nothing is
@@ -13,7 +13,8 @@
 > 🆕 **§6 added s29 (2026-08-31) and it is already MEASURED** — it was found by being blocked by
 > it, not by a sweep. Five left to measure.
 >
-> ⚠️ **`DEF-039` (§7), `DEF-040` (§8), `DEF-041` (drag door) and `DEF-042` (§2) are taken (s43).** Next free id: **`DEF-043`**.
+> ⚠️ **`DEF-039` (§7), `DEF-040` (§8), `DEF-041` (drag door) and `DEF-042` (§2) are taken (s43); `DEF-043` is
+> CLAIMED below; **`DEF-044` (§9) is BUILT (s44)**.** Next free id: **`DEF-045`**.
 >
 > 🆕 **`DEF-043` is CLAIMED by phase 82 (2026-09-03) and the measurement is already done** — it needs
 > writing up here, not measuring. **A failed re-fetch on the DEPRECATED `DbCollection` empties the
@@ -451,7 +452,38 @@ Owner: **NONE**. Gets a `DEF-0xx` id when the bullets above are measured. ⚠️
 
 ---
 
-## 9. 🔴 A curated template with NO home reaches the shelf, and installs silently
+## 9. ✅ CLOSED — a curated template with NO home reached the shelf, and installed silently
+
+## 🟢 OWNED, RE-MEASURED, BUILT AND GATED 2026-09-03 (s44) — [DEF-044](DEF-044-A-TEMPLATE-WITH-NO-HOME-REACHES-THE-SHELF.md)
+
+⚠️ **`DEF-044`, not `DEF-043`** — phase 82 claimed 043 in this file's header while s44 was building in the
+`nodegx-community` repo. The header's *"next free id"* line was right when it was written and stale by the
+time it was read, which is the ordinary cost of two sessions and one register.
+
+**Re-derived at HEAD before anything was built** (`nodegx-community` at `2bce720`): `rootNodeId` is **0 hits**
+in the curator's `publish-project-template.ts`, **0** in the queue's promote path, and **0** in this repo's
+`createFromTemplate.ts`. The row held whole.
+
+🔴 **This row's own open question is ANSWERED, and the answer is the unsafe one.** *"Does the submissions
+path inherit the editor's gate?"* — **no.** `POST /api/v1/community/templates/submissions` is an ordinary
+authenticated write route taking `files` as JSON; the editor is one client of three and was the only one
+refusing.
+
+🔴 **And the ruling to choose between the two fixes already existed.** This row recorded the choice as
+🧭 *a decision*, noting *"only the person's door has been ruled on"* — but
+[Richard's 2026-08-31 words](RICHARD-RULINGS-2026-08-31.md) are unqualified: *"A project with no home page
+must not publish as a template."* **A ruling written while looking at one door was read as being about that
+door only, and the row waited three days for a decision it already had.** ⚠️ Worth carrying: when a row says
+*needs a ruling*, check whether the ruling exists and is broader than the row that prompted it.
+
+**Fixed at `publishProjectTemplate`** — the one seam both curated doors pass through. Gates: 96/96 + 92/92,
+tsc 0, and a **reverted arm that exits 1 with exactly the four refusal specs red**. ✅ **REL-001 is not
+blocked**: `templates/members-area` carries `rootNodeId: app_root`, checked before the gate was written.
+⚠️ The registry-only hole is left open **deliberately** and has a green spec asserting it is open.
+
+*The original row, kept:*
+
+## 9. (as recorded 2026-08-31) A curated template with NO home reaches the shelf, and installs silently
 
 **Measured, not read — 2026-08-31, s41.** Found while building the control for DEF-007 AC2
 (§8.1 of that row). A curated template whose manifest has no `rootNodeId` was **published,
@@ -570,3 +602,28 @@ instrument, not an absence — and that is precisely how the site-builder figure
 misread.
 
 ⚠️ Next free id is `DEF-039`.
+
+## §10 — an MCP-authored `Script` node has NO ports on disk until the editor opens the project (registered by P18 s80, 2026-09-03; owner `NONE`)
+
+- **Claim.** `packages/noodl-mcp/src/scriptPorts.ts` derives script-declared ports for
+  `SCRIPT_PORT_NODE_TYPE = 'JavaScriptFunction'` only. A `Javascript2` (`Script`) node the MCP writes
+  carries neither `ports` nor `dynamicports`; the deployed runtime builds a node's ports from `ports`
+  (`noodl-runtime/src/models/nodemodel.ts createFromExportData`) and the Script node registers
+  its output accessors only from `model.outputPorts` (`noodl-viewer-react/src/nodes/std-library/javascript.ts
+  _onCodeParsed`). So until the editor opens the project and persists `dynamicports`, the running
+  app's Script node has no ports: every `Script.Outputs.X = …` lands nowhere, every wire from it is
+  dead. `erg004-qa`'s own `Driver` script says as much in a comment ("on the FIRST open of a project
+  whose Script node carries no `dynamicports` on disk … `flagOutputDirty('obj')` warns").
+- **Instrument so far.** Source read only (the three files above); **not driven** — nobody has yet
+  created a Script node through the MCP and rendered the project headlessly. The measurement owed:
+  `create_component` with one `Javascript2` node whose code declares an output, `render_report` or a
+  deploy, read whether the output port exists. Expected if the claim holds: 0 ports.
+- **What the export does meanwhile** (EXP-011 §52): a Script node with no ports on disk whose code
+  names `Inputs`/`Outputs`/`Signals`/`define(`/`script(` is refused by name — *"its ports have not been
+  discovered yet — the editor writes them into the project when it opens it, and the running app
+  registers only the ports on disk"* — rather than hosted portless; the badge, pre-flight and report
+  carry that sentence.
+- **Who.** The MCP door (`withAuthoredScriptPorts`) is the natural site — but `Javascript2`'s ports
+  cannot be mined by regex alone (`Node.Signals.k = fn` and `define({inputs})` are only known by
+  running the code, which `javascriptnodeparser.js` does with `new Function`). Owner `NONE`; the row
+  bites anyone who builds with the MCP and deploys without opening the editor.

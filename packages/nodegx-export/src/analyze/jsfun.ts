@@ -179,7 +179,7 @@ const MARKER_GATES: ReadonlyArray<{ pattern: RegExp; reason: string }> = [
 ];
 
 /** Comment + quoted-string stripping for the marker scan (LOGIC-TARGET's parse discipline). */
-function strippedForScan(body: string): string {
+export function strippedForScan(body: string): string {
   return body
     .replace(/\/\/[^\n]*/g, '')
     .replace(/\/\*[\s\S]*?\*\//g, '')

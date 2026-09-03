@@ -28,7 +28,8 @@ import {
   ProjectPlan,
   QueryPlan,
   ValueExpr,
-  RecordReadPlan
+  RecordReadPlan,
+  ScriptPlan
 } from '../analyze/plan';
 import { ExportIR, ITEM_OUTPUT_SIGNAL, NodeIR } from '../ir/types';
 import { KitBinding, tsTypeOf as kitPortTsType } from './kits';
@@ -38,6 +39,8 @@ import { UTIL_HELPER_MAY_BE_UNDEFINED, UTIL_LIB_PATH } from './utilLib';
 import { TIMER_LIB_PATH } from './timerLib';
 import { ANIMATE_LIB_PATH } from './animateLib';
 import { STATES_LIB_PATH } from './statesLib';
+import { SCRIPT_LIB_PATH } from './scriptLib';
+import { SCRIPT_CODE_PREFIX } from '../analyze/script';
 import { ID_HELPERS_BY_FN, ID_LIB_PATH, IdHelper } from './idLib';
 import { computeNodeStyle, computeRoleCss, CONTENT_ATTR_ORDER, CONTENT_PARAMS, Decl, iconSourceOf, RoleCss, StyleRole, WIRED_STYLE_SINKS } from './style';
 
@@ -123,6 +126,8 @@ export interface EmittedComponent {
   /** EXP-011 §49. Whether this component imports `src/lib/animate.ts` / `src/lib/states.ts`. */
   animateLib: boolean;
   statesLib: boolean;
+  /** EXP-011 §52. Whether this component imports `src/lib/script.ts`. */
+  scriptLib: boolean;
 }
 
 export function emitComponent(
@@ -1148,6 +1153,9 @@ export function emitComponent(
         // An unwritten output reads undefined, like the runtime getter; a materialized read is
         // undefined until the first invocation (CONTROLLED-STATE §4f).
         return expr.viaState !== undefined || expr.fold === undefined;
+      // EXP-011 §52. Undefined until the code writes it. Must agree with plan.ts maybeUndefinedExpr.
+      case 'script-out':
+        return true;
       // Always — before the first request, after a path that matched nothing, and for an Error
       // nothing has written. Must agree with plan.ts maybeUndefinedExpr (EXP-011 Tier 1.2).
       case 'http-out':
@@ -1631,6 +1639,9 @@ export function emitComponent(
         }
         return code;
       }
+      /** A Script node's output (EXP-011 §52) — off the handle's live `outputs`, the same in both modes. */
+      case 'script-out':
+        return memberExpr(`${expr.local}.outputs`, expr.output);
       // Render reads the node's local; a handler inlines the call over `.get()` snapshots —
       // pure by the gate, so recomputation is unobservable (EXP-003 §4). The folds are
       // Expression's typed getters, verbatim semantics (expression.ts).
@@ -1734,6 +1745,10 @@ export function emitComponent(
         // on every frame of a tween; `fade` is a number and is its own dependency.
         case 'states-out':
         case 'animate-out':
+          add(exprCode(e, 'render'));
+          break;
+        // EXP-011 §52. The read itself — `ticker.outputs.Seconds` — is the dependency, never the handle.
+        case 'script-out':
           add(exprCode(e, 'render'));
           break;
         case 'date-call':
@@ -1938,6 +1953,9 @@ export function emitComponent(
             reads(a.duration) ||
             [...a.then, ...a.unchangedThen, ...a.startedThen, ...a.finishedThen].some(inAction)
           );
+        // EXP-011 §52. A call on the handle reads nothing.
+        case 'script-signal':
+          return false;
         case 'popup-show':
         case 'popup-close':
         case 'jsfun-run':
@@ -2398,6 +2416,9 @@ export function emitComponent(
       }
       // A materialized run prints its setter statement (§4f); the plain form is unreachable in
       // practice — every print site expands first — and kept total so the switch stays exhaustive.
+      /** A Script's signal input (EXP-011 §52) — one call on the handle; the code's function runs after this handler. */
+      case 'script-signal':
+        return `${memberExpr(`${action.local}.signals`, action.port)}()`;
       case 'jsfun-run': {
         if (action.materialize !== undefined) {
           const def = jsFunByNode[action.nodeId]!;
@@ -3388,6 +3409,16 @@ export function emitComponent(
     const specifier = `${relRoot}/${STATES_LIB_PATH.replace(/^src\//, '').replace(/\.ts$/, '')}`;
     internalImports.set(specifier, `import { defineStates, useStates } from '${specifier}';`);
   }
+  // EXP-011 §52. The host, and one definition import per Script node — the file sits under
+  // `src/scripts/<dir>/<fileBase>/`, so from `src/<dir>/` the path is `../scripts/<dir>/<fileBase>/<defName>`.
+  if (plan.scripts.length > 0) {
+    const specifier = `${relRoot}/${SCRIPT_LIB_PATH.replace(/^src\//, '').replace(/\.ts$/, '')}`;
+    internalImports.set(specifier, `import { useScript } from '${specifier}';`);
+    for (const script of plan.scripts) {
+      const from = `${relRoot}/${script.file.replace(/^src\//, '').replace(/\.ts$/, '')}`;
+      internalImports.set(from, `import { ${script.defName} } from '${from}';`);
+    }
+  }
   if (usedUtilHelpers.size > 0) {
     const specifier = `${relRoot}/${UTIL_LIB_PATH.replace(/^src\//, '').replace(/\.ts$/, '')}`;
     internalImports.set(specifier, `import { ${[...usedUtilHelpers].sort().join(', ')} } from '${specifier}';`);
@@ -3575,6 +3606,21 @@ export function emitComponent(
      * node's own `String()` without the `?? ''`; a string value and the Error are already what
      * every sink takes; a number sink takes the number bare.
      */
+    /**
+     * EXP-011 §52. A Script output is undefined until the code writes it, and its declared type is the
+     * editor's label for a value the code delivers as it pleases: a string port takes the bare read
+     * (React renders undefined as nothing, as the runtime's Text node does); anything else at a text
+     * position takes the Text node's own `String()` behind the `?? ''` fold; a number sink takes a
+     * number port bare and refuses the rest; a boolean sink coerces `!!` as `enabled` does.
+     */
+    if (source.kind === 'computed' && source.expr.kind === 'script-out') {
+      const tsType = source.expr.tsType;
+      if (sink === 'text' || sink === 'string') return tsType === 'string' ? base : `String(${base} ?? '')`;
+      if (sink === 'number') return tsType === 'number' ? base : null;
+      if (sink === 'boolean') return SIMPLE_REF.test(base) ? `!!${base}` : `!!(${base})`;
+      if (sink === 'truthy') return base;
+      return null;
+    }
     if (source.kind === 'computed' && (source.expr.kind === 'states-out' || source.expr.kind === 'animate-out')) {
       const tsType = source.expr.kind === 'animate-out' ? 'number' : source.expr.tsType;
       if (tsType === 'string') return base;
@@ -5109,6 +5155,18 @@ export function emitComponent(
     if (listenerLines.length === 0) body.push(`  const ${machine.local} = useStates(${machine.constName}${start});`);
     else body.push(`  const ${machine.local} = useStates(${machine.constName}${start}, {`, listenerLines.join(',\n'), '  });');
   }
+  // EXP-011 §52. The Script hooks — after the render locals an input may read, before the effects.
+  // The listeners print inline so each closes over this render; the inputs record carries only the
+  // inputs the graph feeds, so an absent key reads undefined in the code, as an undelivered input does.
+  for (const script of plan.scripts) {
+    const key = (name: string) => (/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(name) ? name : JSON.stringify(name));
+    const fields = script.inputs.filter((i) => i.expr !== undefined).map((i) => `${key(i.name)}: ${exprCode(i.expr!, 'render')}`);
+    const inputsArg = fields.length > 0 ? `{ ${fields.join(', ')} }` : '{}';
+    const listenerLines = Object.entries(script.listeners).map(([port, chain]) => `    ${key(port)}: ${handlerArrow(chain, '()', 4)}`);
+    body.push(`  // ${script.comment}`);
+    if (listenerLines.length === 0) body.push(`  const ${script.local} = useScript(${script.defName}, ${inputsArg});`);
+    else body.push(`  const ${script.local} = useScript(${script.defName}, ${inputsArg}, {`, listenerLines.join(',\n'), '  });');
+  }
   if (
     usesNavigate ||
     usesPageParams ||
@@ -5119,7 +5177,8 @@ export function emitComponent(
     plan.queries.length > 0 ||
     popupState !== null ||
     referencedStateVars.length > 0 ||
-    jsLocals.size > 0
+    jsLocals.size > 0 ||
+    plan.scripts.length > 0
   ) {
     body.push('');
   }
@@ -5302,6 +5361,9 @@ export function emitComponent(
       case 'popup-show':
       case 'popup-close':
         return a.then.flatMap(actionExprsOf);
+      // EXP-011 §52. A call on the handle reads nothing; the inputs and listeners are walked off the plan.
+      case 'script-signal':
+        return [];
       case 'jsfun-run':
         return [...jsArgExprs(a.nodeId), ...a.then.flatMap(actionExprsOf)];
       case 'http-call':
@@ -5450,6 +5512,9 @@ export function emitComponent(
     files[`${baseDir}/${plan.file.fileBase}.module.css`] = GENERATED_CSS + '\n' + cssBlocks.join('\n\n') + '\n';
   }
 
+  // EXP-011 §52. One file per Script node: the author's code, verbatim, in the runtime's own wrapper.
+  for (const script of plan.scripts) files[script.file] = scriptFileSource(script, plan.path);
+
   return {
     files,
     notes,
@@ -5459,8 +5524,61 @@ export function emitComponent(
     timerHelpers: usedTimerHelpers,
     // EXP-011 §49. `states.ts` imports `animate.ts`, so a States alone earns both modules.
     animateLib: plan.animations.length > 0 || plan.statesMachines.length > 0,
-    statesLib: plan.statesMachines.length > 0
+    statesLib: plan.statesMachines.length > 0,
+    // EXP-011 §52.
+    scriptLib: plan.scripts.length > 0
   };
+}
+
+const GENERATED_SCRIPT_TS = '// @nodegx:generated (script node — provenance markers complete in EXP-007)';
+
+/**
+ * The file a Script node's code lives in (EXP-011 §52): the author's text, verbatim, inside the exact
+ * wrapper the runtime compiles it in (`new Function('define', 'script', 'Node', 'Component', prefix + code)`),
+ * exported as a typed definition the component's hook takes.
+ *
+ * 🔴 `// @ts-nocheck` on this one file, and the reason is in the header it prints: the body was written
+ * against the Script node's API — `Script.Inputs.X` is `any`, `navigator.webkitGetUserMedia` is not in
+ * `lib.dom`, `let timerId;` is implicitly `any` — and the corpus says every real body would fail a strict
+ * check on lines the runtime runs happily. Checking the host and every read of the outputs is what the
+ * generic arguments below are for; checking the author's JavaScript as TypeScript is a rewrite this export
+ * does not perform. The import path's depth is the file's: `src/scripts/<dir>/<fileBase>/` is three below `src/`.
+ */
+function scriptFileSource(script: ScriptPlan, componentPath: string): string {
+  const safe = (text: string): string => text.split('*/').join('* /');
+  const key = (name: string) => (/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(name) ? name : JSON.stringify(name));
+  const inputFields = script.inputs.map((i) => `${key(i.name)}?: ${i.tsType}`);
+  const outputFields = script.outputs.map((o) => `${key(o.name)}?: ${o.tsType}`);
+  const inputsType = inputFields.length > 0 ? `{ ${inputFields.join('; ')} }` : 'Record<string, never>';
+  const outputsType = outputFields.length > 0 ? `{ ${outputFields.join('; ')} }` : 'Record<string, never>';
+  const portMap = (ports: Record<string, string>) =>
+    `{ ${Object.entries(ports)
+      .map(([name, type]) => `${key(name)}: ${JSON.stringify(type)}`)
+      .join(', ')} }`;
+  const lines = [
+    '// @ts-nocheck',
+    GENERATED_SCRIPT_TS,
+    '//',
+    `// From the Script node "${safe(script.label)}" (node ${safe(script.nodeId)}) in ${safe(componentPath)}.`,
+    "// The code below is the author's, preserved verbatim, inside the wrapper the runtime compiles it in",
+    '// (javascriptnodeparser.js): a function of (define, script, Node, Component), run once when the node',
+    "// is created. Its first line is the runtime's own prefix, so `Script` and `Node` both name the node.",
+    "// Type checking is off for this one file: the code was written against the Script node's API, not",
+    '// TypeScript. The host it plugs into (src/lib/script.ts) is typed, and so is every read of its outputs.',
+    "import { defineScript } from '../../../lib/script';",
+    '',
+    `/** ${safe(script.label)} — its ports as the editor discovered them, which is the set the running app registers. */`,
+    `export const ${script.defName} = defineScript<${inputsType}, ${outputsType}>(`,
+    `  ${JSON.stringify(script.label)},`,
+    `  { inputs: ${portMap(script.ports.inputs)}, outputs: ${portMap(script.ports.outputs)} },`,
+    '  function (define, script, Node, Component) {',
+    SCRIPT_CODE_PREFIX,
+    ...script.code.split(/\r\n|\n|\r/),
+    '  }',
+    ');',
+    ''
+  ];
+  return lines.join('\n');
 }
 
 /** Pre-order walk of the render tree, root first — CSS class order and naming order. */

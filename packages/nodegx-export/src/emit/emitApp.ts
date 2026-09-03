@@ -25,6 +25,7 @@ import { ID_LIB_PATH, idLibSource } from './idLib';
 import { TIMER_LIB_PATH, timerLibSource } from './timerLib';
 import { ANIMATE_LIB_PATH, animateLibSource } from './animateLib';
 import { STATES_LIB_PATH, statesLibSource } from './statesLib';
+import { SCRIPT_LIB_PATH, scriptLibSource } from './scriptLib';
 import { EmittedCopy, emitKits } from './kits';
 import { README_PATH, renderReadme } from './readme';
 import { ExportReportData, REPORT_PATH, ReportComponent, renderReport, stripScope } from './report';
@@ -120,6 +121,8 @@ export function emitApp(ir: ExportIR, catalog: Catalog): EmittedApp {
   // EXP-011 §49. The animation pair's modules — earned by a component whose plan kept a node.
   let animateLibUsed = false;
   let statesLibUsed = false;
+  // EXP-011 §52. The Script host — earned by a component whose plan kept a Script node.
+  let scriptLibUsed = false;
   const reportComponents: ReportComponent[] = [];
   for (const plan of project.plans) {
     if (plan.skipReason) {
@@ -170,6 +173,7 @@ export function emitApp(ir: ExportIR, catalog: Catalog): EmittedApp {
     for (const helper of emitted.timerHelpers) timerHelpersUsed.add(helper);
     if (emitted.animateLib) animateLibUsed = true;
     if (emitted.statesLib) statesLibUsed = true;
+    if (emitted.scriptLib) scriptLibUsed = true;
   }
 
   /**
@@ -213,6 +217,10 @@ export function emitApp(ir: ExportIR, catalog: Catalog): EmittedApp {
   }
   if (statesLibUsed) {
     files[STATES_LIB_PATH] = GENERATED_MODULE_TS + statesLibSource();
+  }
+  /** `src/lib/script.ts` (EXP-011 §52) — the Script node's host, the seventh module, on the same rule. */
+  if (scriptLibUsed) {
+    files[SCRIPT_LIB_PATH] = GENERATED_MODULE_TS + scriptLibSource();
   }
 
   const api = apiModules(ir, project);

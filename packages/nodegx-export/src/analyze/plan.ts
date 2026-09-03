@@ -56,6 +56,15 @@ import {
   JS_FUNCTION
 } from './jsfun';
 import {
+  SCRIPT_TYPE,
+  isStaticScriptInput,
+  scriptBodyDefer,
+  scriptCodeOf,
+  scriptNamesPorts,
+  scriptPortTsType,
+  scriptPortsOf
+} from './script';
+import {
   censusOf,
   hasProgram,
   isVisualFunction,
@@ -1095,7 +1104,28 @@ export type ValueExpr =
    * An `Animate To Value`'s `Current Value` (EXP-011 §49) — the number `useAnimatedValue` returns,
    * never undefined (it boots 0 and only ever holds a number).
    */
+  /**
+   * A `Script` node's value output (EXP-011 §52) — read off the `useScript` handle's `outputs`, which
+   * reads the live record in both modes: render re-renders on every write, and a handler that fires a
+   * signal reads what the code has written so far, exactly as the runtime getter answers. Always
+   * maybe-undefined — an output the code has not written yet reads undefined.
+   */
+  | { kind: 'script-out'; nodeId: string; local: string; output: string; tsType: string }
   | { kind: 'animate-out'; nodeId: string; local: string };
+
+/**
+ * A `Script` node's signal input pulsed (EXP-011 §52) — `<local>.signals.<port>()`, one call on the
+ * handle. The code's function for that signal runs after the handler that asked (a microtask), which is
+ * where `scheduleSignal` puts it in the runtime; nothing rides on the action, and the node's signal
+ * outputs are its listeners ({@link ScriptPlan.listeners}), passed once to the hook.
+ */
+export type ScriptSignalAction = {
+  kind: 'script-signal';
+  nodeId: string;
+  /** The `useScript` local. */
+  local: string;
+  port: string;
+};
 
 export type HandlerAction =
   /**
@@ -1613,7 +1643,8 @@ export type HandlerAction =
   | IdNewAction
   | LogAction
   | DelayAction
-  | StatesGoAction;
+  | StatesGoAction
+  | ScriptSignalAction;
 
 /**
  * A `States` node's `Toggle` or `To <state>` (EXP-011 §49) — one call on the `useStates` handle:
@@ -1995,6 +2026,37 @@ export interface StatesPlan {
     unchanged?: HandlerAction[];
     failure?: HandlerAction[];
   };
+  comment: string;
+}
+
+/**
+ * A `Script` node (EXP-011 §52): `const <local> = useScript(<defName>, { <inputs> }, { <listeners> })`,
+ * with the node's code in its own file under `src/scripts/`, verbatim and unchecked, exported as
+ * `<defName>`. The port set is the one on disk (`scriptPortsOf`); the input record carries only the
+ * inputs the graph feeds, typed by what is delivered.
+ */
+export interface ScriptPlan {
+  nodeId: string;
+  /** The authored label, or `Script`. */
+  label: string;
+  /** The `useScript` local — `ticker`. */
+  local: string;
+  /** The exported definition constant and the file's base name — `tickerScript`. */
+  defName: string;
+  /** `src/scripts/<dir>/<fileBase>/<defName>.ts` — the file the code lives in. */
+  file: string;
+  /** The author's code, verbatim (`sourceText`'s contract: never trimmed, never reformatted). */
+  code: string;
+  /** Value inputs, in port order: wire-fed carry the resolved source, literals fold, unfed are absent from the record. */
+  inputs: Array<{ name: string; tsType: string; expr?: ValueExpr }>;
+  signalInputs: string[];
+  /** Value outputs, in port order, typed by the declared port type. */
+  outputs: Array<{ name: string; tsType: string }>;
+  signalOutputs: string[];
+  /** The ports as `defineScript` registers them — every port on disk, typed as the editor spelled it. */
+  ports: { inputs: Record<string, string>; outputs: Record<string, string> };
+  /** The signal outputs, as the chains wired off them. */
+  listeners: Record<string, HandlerAction[]>;
   comment: string;
 }
 
@@ -2464,6 +2526,8 @@ export interface ComponentPlan {
   statesMachines: StatesPlan[];
   /** EXP-011 §49. The Animate To Value nodes that translated, registration order. */
   animations: AnimationPlan[];
+  /** EXP-011 §52. The Script nodes that translated, registration order. */
+  scripts: ScriptPlan[];
   /**
    * Value output ports this component lifts (§4d child side) — the parent side consults this
    * list off the target's plan, so parent and child agree by construction (the s10 rule).
@@ -2718,6 +2782,7 @@ function planComponent(
     styleSheets: [],
     statesMachines: [],
     animations: [],
+    scripts: [],
     liftedOutputProps: [],
     instanceLifted: {},
     pendingLifted: [],
@@ -3776,22 +3841,32 @@ function planComponent(
    * JS-node chain, deferred whole in this slice (it would need a translated-order fixpoint). */
   const jsResolving = new Set<string>();
   const usedJsFnNames = new Set<string>();
+  /** A module-scope name the component file already binds — shared by the wrappers and the Script definitions. */
+  const jsNameTaken = (name: string): boolean =>
+    usedJsFnNames.has(name) ||
+    usedStateVarNames.has(name) ||
+    plan.props.some((p) => p.name === name) ||
+    plan.outputProps.some((o) => o.prop === name) ||
+    outputInterface.valueProps.some((v) => v.prop === name) ||
+    name === plan.file?.symbol ||
+    name === 'Inputs' ||
+    name === 'Outputs';
   const allocJsFnName = (node: NodeIR, kind: JsFunctionPlan['kind']): string => {
     const cleaned = (node.authoredLabel ?? '').replace(/[^A-Za-z0-9_$]+/g, '_').replace(/^_+|_+$/g, '');
     let base = cleaned.length > 0 ? cleaned : kind === 'function' ? 'fn' : kind === 'visual' ? 'blocks' : 'expr';
     if (/^[0-9]/.test(base)) base = `_${base}`;
-    const taken = (name: string) =>
-      usedJsFnNames.has(name) ||
-      usedStateVarNames.has(name) ||
-      plan.props.some((p) => p.name === name) ||
-      plan.outputProps.some((o) => o.prop === name) ||
-      outputInterface.valueProps.some((v) => v.prop === name) ||
-      name === plan.file?.symbol ||
-      name === 'Inputs' ||
-      name === 'Outputs';
     let name = base;
     let counter = 2;
-    while (taken(name)) name = `${base}${counter++}`;
+    while (jsNameTaken(name)) name = `${base}${counter++}`;
+    usedJsFnNames.add(name);
+    return name;
+  };
+  /** EXP-011 §52. The Script definition's module-scope name, off the hook local: `ticker` → `tickerScript`. */
+  const allocScriptDefName = (local: string): string => {
+    const base = `${local}Script`;
+    let name = base;
+    let counter = 2;
+    while (jsNameTaken(name)) name = `${base}${counter++}`;
     usedJsFnNames.add(name);
     return name;
   };
@@ -6041,6 +6116,27 @@ function planComponent(
       ctx.logicNodeIds.push(fromNode.id);
       return read;
     }
+    /**
+     * A `Script` node's outputs (EXP-011 §52) — reads off the `useScript` handle, the States rule one
+     * node over: the node registers itself on first use, whichever side asks, and a node that fails
+     * its gate answers every read with the same named reason.
+     */
+    if (fromNode.type === SCRIPT_TYPE) {
+      const registered = scriptPlanOf(fromNode);
+      if ('defer' in registered) {
+        ctx.defer = registered.defer;
+        return null;
+      }
+      const read = scriptReadOf(registered, fromProperty);
+      if (read === null) {
+        ctx.defer = registered.signalOutputs.includes(fromProperty)
+          ? `its ${fromProperty} output is consumed as a value — a pulse carries nothing to read`
+          : `its ${fromProperty} output is not a port this node has`;
+        return null;
+      }
+      ctx.logicNodeIds.push(fromNode.id);
+      return read;
+    }
     /** An `Animate To Value`'s Current Value (EXP-011 §49) — the number its hook returns. */
     if (fromNode.type === ANIMATE_TYPE) {
       if (fromProperty !== 'currentValue') {
@@ -6777,6 +6873,9 @@ function planComponent(
        */
       case 'states-out':
         return expr.field === 'error';
+      // EXP-011 §52. An output the code has not written reads undefined, as the runtime getter answers.
+      case 'script-out':
+        return true;
       /** EXP-011 §49. Boots 0 and only ever holds a number (animate-to-value.ts `currentNumber`). */
       case 'animate-out':
         return false;
@@ -7096,6 +7195,8 @@ function planComponent(
         return expr.tsType;
       case 'animate-out':
         return 'number';
+      case 'script-out':
+        return expr.tsType;
       /**
        * Both messages are string literals the emitter writes itself (EXP-011 §24) — so `string`
        * in **both** forms, and the row form does not append `| undefined` here.
@@ -7203,6 +7304,13 @@ function planComponent(
     // EXP-011 §49. A States' Toggle and its `to-<state>` family.
     (type === STATES_TYPE && isStatesTrigger(toProperty));
 
+  /**
+   * `isTriggerWire` with the node in hand — a `Script` node's trigger ports are the signal inputs its
+   * own code declared (EXP-011 §52), which no table keyed by type can list.
+   */
+  const isTriggerInto = (node: NodeIR, toProperty: string): boolean =>
+    isTriggerWire(node.type, toProperty) || (node.type === SCRIPT_TYPE && scriptPortsOf(node).signalInputs.includes(toProperty));
+
   // Which components open as popups anywhere in the project — the close side translates only
   // inside one; elsewhere the runtime resolves an enclosing popup by ancestor walk, which a
   // prop cannot thread statically (POPUPS-TARGET §4).
@@ -7274,7 +7382,7 @@ function planComponent(
         consumes.push(wire.key);
         continue;
       }
-      if (!target || !isTriggerWire(target.type, wire.toProperty)) {
+      if (!target || !isTriggerInto(target, wire.toProperty)) {
         return { defer: `its ${port} output drives no translatable action` };
       }
       const compiled = compiledOf(target, wire.toProperty);
@@ -9429,6 +9537,180 @@ function planComponent(
     return { action: { kind: 'states-go', nodeId: node.id, local: registered.local, verb: 'to', state }, consumes: [], collapses: [], subscribes: [] };
   };
 
+  // ---- EXP-011 §52 — the Script node --------------------------------------------------------------
+  const scriptPlans = new Map<string, ScriptPlan | { defer: string }>();
+  const scriptLocals = new Map<string, string>();
+  /**
+   * A `Script` node, registered on first use by whichever side asks — a read in `resolveExpr`, a
+   * trigger in `compileScriptSignal`, or the registration pass — and memoized so every side gets the
+   * same handle or the same named reason. `statesPlanOf`'s shape, including the provisional entry
+   * cached before the listeners compile (a listener chain may fire this node's own signal input).
+   *
+   * What it refuses is only what the exported app cannot supply (`scriptBodyDefer`), a port set the
+   * editor has not written yet, and the graph shapes every hook refuses: two wires on one input, an
+   * input with no static source, a chain this slice cannot compile. Timers, the DOM, `fetch` and
+   * `this` are not refused — the host runs the code inside effects and handlers, as the runtime does.
+   */
+  const scriptPlanOf = (node: NodeIR): ScriptPlan | { defer: string } => {
+    const cached = scriptPlans.get(node.id);
+    if (cached !== undefined) return cached;
+    const refuse = (defer: string): { defer: string } => {
+      const reason = { defer };
+      scriptPlans.set(node.id, reason);
+      const index = plan.scripts.findIndex((s) => s.nodeId === node.id);
+      if (index !== -1) plan.scripts.splice(index, 1);
+      translatedScriptIds.delete(node.id);
+      for (const key of [...compiledSinks.keys()]) if (key.startsWith(`${node.id}:`)) compiledSinks.delete(key);
+      return reason;
+    };
+    if (!plan.file) return refuse('component emits no file to host the script');
+    if (literalParam(node, 'useExternalFile') === 'yes') {
+      return refuse('its code is loaded from a URL at runtime (Use External File) — only code typed into the node translates');
+    }
+    const code = scriptCodeOf(node);
+    if (code === undefined || code.trim().length === 0) return refuse('the node has no code');
+    const bodyDefer = scriptBodyDefer(code);
+    if (bodyDefer !== null) return refuse(`the code ${bodyDefer}`);
+    const ports = scriptPortsOf(node);
+    const portless =
+      ports.inputs.length === 0 && ports.signalInputs.length === 0 && ports.outputs.length === 0 && ports.signalOutputs.length === 0;
+    if (portless && scriptNamesPorts(code)) {
+      return refuse(
+        'its ports have not been discovered yet — the editor writes them into the project when it opens it, and the running app registers only the ports on disk'
+      );
+    }
+    for (const wire of component.connections.filter((c) => c.toId === node.id)) {
+      if (isStaticScriptInput(wire.toProperty)) return refuse(`its ${wire.toProperty} is wired — only authored code and ports translate`);
+    }
+    for (const wire of component.connections.filter((c) => c.fromId === node.id)) {
+      const port = wire.fromProperty;
+      if (ports.signalOutputs.includes(port) || ports.outputs.some((p) => p.name === port)) continue;
+      return refuse(`its ${port} output is consumed, and this node has no such port`);
+    }
+    // The value inputs: every declared value input, plus any the graph feeds by name — the runtime
+    // registers an input for any wire that asks (`registerInputIfNeeded`), declared or not — plus
+    // any authored literal on a port the script declared.
+    const inputNames: string[] = ports.inputs.map((p) => p.name);
+    for (const c of component.connections) {
+      if (c.toId !== node.id || ports.signalInputs.includes(c.toProperty) || inputNames.includes(c.toProperty)) continue;
+      inputNames.push(c.toProperty);
+    }
+    for (const p of node.parameters) {
+      if (isStaticScriptInput(p.name) || p.value.kind !== 'literal' || inputNames.includes(p.name) || ports.signalInputs.includes(p.name)) continue;
+      inputNames.push(p.name);
+    }
+    const ctx = newCtx();
+    const consumes: string[] = [];
+    const inputs: ScriptPlan['inputs'] = [];
+    for (const name of inputNames) {
+      const declared = scriptPortTsType(ports.inputs.find((p) => p.name === name)?.type);
+      const wires = component.connections.filter((c) => c.toId === node.id && c.toProperty === name);
+      if (wires.length > 1) return refuse(`two wires feed its ${name} input — last-writer-wins is not statically ordered`);
+      if (wires.length === 1) {
+        const from = nodeById.get(wires[0].fromId);
+        const expr = resolveExpr(from, wires[0].fromProperty, ctx);
+        if (expr === null) {
+          return refuse(`its ${name} input is fed by ${from?.type ?? 'a missing node'} — ${ctx.defer ?? 'no statically known source in the emit vocabulary'}`);
+        }
+        if (!exprValidIn(expr, { kind: 'render' })) return refuse(`its ${name} input reads a value that only exists inside a handler`);
+        // Typed by what is delivered, not by the declaration: the runtime hands the code whatever
+        // arrives, and the declared type is a label the editor draws (EXP-003 §4's `any` ruling).
+        const delivered = exprTsType(expr);
+        inputs.push({ name, tsType: delivered === 'string' || delivered === 'number' || delivered === 'boolean' ? delivered : 'any', expr });
+        consumes.push(wires[0].key);
+        continue;
+      }
+      const literal = literalParam(node, name);
+      if (literal !== undefined) {
+        inputs.push({ name, tsType: typeof literal, expr: { kind: 'literal', value: literal } });
+        continue;
+      }
+      // Declared and never fed: absent from the record, so the code reads undefined — exactly what
+      // a never-delivered runtime input reads. The type is the declaration's, for the interface.
+      inputs.push({ name, tsType: declared });
+    }
+    const label = node.authoredLabel ?? 'Script';
+    const local = mintLocal(scriptLocals, node, 'Script', '');
+    const defName = allocScriptDefName(local);
+    const file = `src/scripts/${plan.file.dir}/${plan.file.fileBase}/${defName}.ts`;
+    const core: ScriptPlan = {
+      nodeId: node.id,
+      label,
+      local,
+      defName,
+      file,
+      code,
+      inputs,
+      signalInputs: ports.signalInputs,
+      outputs: ports.outputs.map((p) => ({ name: p.name, tsType: scriptPortTsType(p.type) })),
+      signalOutputs: ports.signalOutputs,
+      ports: {
+        inputs: Object.fromEntries([
+          ...ports.inputs.map((p) => [p.name, p.type ?? '*'] as const),
+          ...ports.signalInputs.map((s) => [s, 'signal'] as const)
+        ]),
+        outputs: Object.fromEntries([
+          ...ports.outputs.map((p) => [p.name, p.type ?? '*'] as const),
+          ...ports.signalOutputs.map((s) => [s, 'signal'] as const)
+        ])
+      },
+      listeners: {},
+      comment: `${label} — a Script node, hosted by script.ts; its code is ${file}, verbatim.`
+    };
+    scriptPlans.set(node.id, core);
+    plan.scripts.push(core);
+    // The code became emitted code — this node's script is in the repo, as the thing it is.
+    translatedScriptIds.add(node.id);
+    // The listeners: every signal output with a chain, compiled in the render context — the hook
+    // keeps the latest listeners passed, so each closes over the latest render.
+    const collapses: string[] = [...ctx.logicNodeIds];
+    const subscribes: string[] = [...ctx.subscriberIds];
+    consumes.push(...ctx.consumes);
+    for (const port of ports.signalOutputs) {
+      const wires = component.connections.filter((c) => c.fromId === node.id && c.fromProperty === port);
+      if (wires.length === 0) continue;
+      // A pulse into a value port is not a chain that drives nothing — it is a read of nothing, and
+      // the sentence has to say which. The sink's own declaration decides, then the catalog.
+      for (const wireOut of wires) {
+        const target = nodeById.get(wireOut.toId);
+        if (target === undefined || target.type === 'Component Outputs') continue;
+        const sinkKind =
+          target.declaredPorts.find((p) => p.plug === 'input' && p.name === wireOut.toProperty)?.kind ??
+          catalog.portKind(target.type, wireOut.toProperty, 'input');
+        if (sinkKind === 'value') return refuse(`its ${port} output is consumed as a value — a pulse carries nothing to read`);
+      }
+      const chain = doneChainOf(node, port);
+      if ('defer' in chain) return refuse(chain.defer);
+      if (!actionsValidIn(chain.then, { kind: 'render' })) return refuse(`its ${port} chain reads values that only exist inside a handler`);
+      const snapped = snapActionList(chain.then, chainSnapshotFor(`script:${node.id}:${port}`));
+      if (!Array.isArray(snapped)) return refuse(snapped.defer);
+      core.listeners[port] = snapped;
+      consumes.push(...chain.consumes);
+      collapses.push(...chain.collapses);
+      subscribes.push(...chain.subscribes);
+    }
+    const into = `src/${plan.file.dir}/${plan.file.fileBase}.tsx`;
+    for (const key of consumes) consumed.add(key);
+    for (const id of collapses) dispositions[id] = { kind: 'collapsed', into };
+    for (const id of subscribes) boundSubscribers.add(id);
+    return core;
+  };
+
+  /** One of a Script's value outputs as the expression that reads it off the handle, or null for a port it has not got. */
+  const scriptReadOf = (script: ScriptPlan, port: string): ValueExpr | null => {
+    const output = script.outputs.find((o) => o.name === port);
+    if (output === undefined) return null;
+    return { kind: 'script-out', nodeId: script.nodeId, local: script.local, output: output.name, tsType: output.tsType };
+  };
+
+  /** A Script's signal input pulsed — one call on the handle; the outcomes are the node's listeners. */
+  const compileScriptSignal = (node: NodeIR, port: string): CompiledSink => {
+    const registered = scriptPlanOf(node);
+    if ('defer' in registered) return registered;
+    if (!registered.signalInputs.includes(port)) return { defer: `its ${port} input is not a signal this node declares` };
+    return { action: { kind: 'script-signal', nodeId: node.id, local: registered.local, port }, consumes: [], collapses: [], subscribes: [] };
+  };
+
   const animationPlans = new Map<string, AnimationPlan | { defer: string }>();
   const animateLocals = new Map<string, string>();
   /** An `Animate To Value`, registered on first use and memoized — `statesPlanOf`'s shape, with nothing that can re-enter. */
@@ -9820,6 +10102,8 @@ function planComponent(
     if (node.type === LOG_TYPE) return compileLog(node);
     if (node.type === TIMER_TYPE && isTimerTrigger(port)) return compileDelay(node, port);
     if (node.type === STATES_TYPE && isStatesTrigger(port)) return compileStatesGo(node, port);
+    // EXP-011 §52. A Script node's signal inputs, as its own code declared them.
+    if (node.type === SCRIPT_TYPE) return compileScriptSignal(node, port);
     if (node.type === NAVIGATE_TO_PATH_TYPE) return compileNavigateToPath(node);
     if (node.type === 'NavigationShowPopup') return compileShowPopup(node);
     if (node.type === 'NavigationClosePopup') return compileClosePopup(node, port);
@@ -10102,7 +10386,7 @@ function planComponent(
           consumes.push(wire.key);
           continue;
         }
-        if (!target || !isTriggerWire(target.type, wire.toProperty)) {
+        if (!target || !isTriggerInto(target, wire.toProperty)) {
           return { defer: `its ${port} wire drives no translatable action` };
         }
         if (target.type === 'Condition') {
@@ -10240,6 +10524,8 @@ function planComponent(
        */
       case 'states-out':
       case 'animate-out':
+      // EXP-011 §52. The handle reads live in both contexts.
+      case 'script-out':
         return true;
       /**
        * The id nodes (EXP-011 §37), on the same footing and the same reason: the row form is an
@@ -10473,6 +10759,9 @@ function planComponent(
         // node's listeners, validated where they are compiled (the render context).
         case 'states-go':
           return true;
+        // EXP-011 §52. A call on the handle; the node's listeners are validated where they compile.
+        case 'script-signal':
+          return true;
       }
     });
 
@@ -10626,7 +10915,7 @@ function planComponent(
       // into Upload File's Private, a text input into the picker's Accepted file types. s19's
       // rule, fourth family: the sink-membership test grows with the vocabulary or a control
       // renders stateless and the trigger is dropped with a true sentence about a row nothing minted.
-      if (fileFamilyOf(sink.type) !== undefined) return !isTriggerWire(sink.type, c.toProperty);
+      if (fileFamilyOf(sink.type) !== undefined) return !isTriggerInto(sink, c.toProperty);
       // EXP-011 §47 — a Set Object Properties reads its property inputs from the button's
       // handler, the record verbs' form idiom on a client-side object. Fifth family on s19's
       // rule; found the same way (the first emit dropped the Save wire with a true sentence).
@@ -10665,7 +10954,7 @@ function planComponent(
         );
         return !firedByOwnChange;
       }
-      return rendered.has(sink.id) && !isTriggerWire(sink.type, c.toProperty);
+      return rendered.has(sink.id) && !isTriggerInto(sink, c.toProperty);
     });
     if (!stateWired && !actionWired && !outputRead) continue;
     controlMintReasons.set(node.id, { stateWired, actionWired, outputRead });
@@ -11025,6 +11314,9 @@ function planComponent(
         return exprTouchesSnap(e.operand, snap);
       case 'jsfun-out':
         return (plan.jsFunctions[e.nodeId]?.inputs ?? []).some((i) => i.expr !== undefined && exprTouchesSnap(i.expr, snap));
+      // EXP-011 §52. A live read off the handle: what the code wrote, not anything set earlier in the chain.
+      case 'script-out':
+        return false;
       /**
        * 🔴 A walker with a `default`, and the third construct to nearly die in one (§8.3).
        *
@@ -11083,6 +11375,8 @@ function planComponent(
         if ('defer' in r) return r;
         return { ...expr, operand: r };
       }
+      case 'script-out':
+        return expr;
       case 'jsfun-out': {
         // Wrapper argument records are shared across call sites — a per-site rewrite cannot
         // land, so a chain-written argument gates instead (zero corpus demand).
@@ -11300,6 +11594,8 @@ function planComponent(
         if (!Array.isArray(failThen)) return failThen;
         return { ...action, id, then, failThen };
       }
+      case 'script-signal':
+        return action;
       case 'jsfun-run': {
         if ((plan.jsFunctions[action.nodeId]?.inputs ?? []).some((i) => i.expr !== undefined && exprTouchesSnap(i.expr, snap))) {
           return { defer: 'a Function argument reads state written earlier in this chain — not translated in this slice' };
@@ -11421,6 +11717,9 @@ function planComponent(
       }
     } else if (jsNodeKindOf(node.type) !== null && wiredPorts.has(`${node.id}:run`)) {
       compiledOf(node, 'run');
+    } else if (node.type === SCRIPT_TYPE) {
+      // EXP-011 §52. Every wired signal input compiles — the port set is the node's own.
+      for (const port of scriptPortsOf(node).signalInputs) if (wiredPorts.has(`${node.id}:${port}`)) compiledOf(node, port);
     } else if (node.type === TIMER_TYPE) {
       // EXP-011 §39. Only the wired verbs compile: an unwired Stop on a timer that starts is
       // not a sink anything reports on, and compiling it would mint nothing useful.
@@ -11579,7 +11878,7 @@ function planComponent(
     const toNode = nodeById.get(connection.toId);
     if (!toNode) continue;
     const outputsSink = toNode.type === 'Component Outputs';
-    if (!outputsSink && !isTriggerWire(toNode.type, connection.toProperty)) continue;
+    if (!outputsSink && !isTriggerInto(toNode, connection.toProperty)) continue;
     const fromNode = nodeById.get(connection.fromId);
     if (fromNode?.type === 'Condition' && (connection.fromProperty === 'ontrue' || connection.fromProperty === 'onfalse')) {
       continue;
@@ -11596,6 +11895,8 @@ function planComponent(
     // 🔴 Without this the answer depended on wire ORDER — a chain wire listed before the wire
     // that fires the node was reported dropped here and then emitted anyway (§39.3, §40.1).
     if (fromNode !== undefined && ownsChainOutput(fromNode.type, connection.fromProperty)) continue;
+    // EXP-011 §52. A Script node's signal outputs are its listeners, compiled by its own registration.
+    if (fromNode !== undefined && fromNode.type === SCRIPT_TYPE && scriptPortsOf(fromNode).signalOutputs.includes(connection.fromProperty)) continue;
     // A JS node's `done` wires are its Run chain, chain-internal exactly as a popup's (the
     // compile consumes them on attach); with Run unwired, `done` never pulses — the JS sweep
     // drops the wire with that note.
@@ -12036,6 +12337,21 @@ function planComponent(
       comment: `${node.authoredLabel ?? 'CSS Definition'} — added to the page while this component is mounted and removed with it (css-definition.ts).`
     });
     dispositions[node.id] = { kind: 'collapsed', into };
+  }
+
+  // EXP-011 §52 — `Script`: a hook, a definition file, and the code verbatim. Registers on first use
+  // from a read or a trigger; this pass registers the rest (a node nothing reads or fires still runs
+  // its code, as the runtime runs it) and names the refused. Before the States pass so its
+  // dispositions are set before the sweeps.
+  for (const node of component.nodes) {
+    if (node.type !== SCRIPT_TYPE || dispositions[node.id] !== undefined) continue;
+    const registered = scriptPlanOf(node);
+    if ('defer' in registered) {
+      dispositions[node.id] = { kind: 'deferred', to: 'EXP-003', reason: registered.defer };
+      notes.push(`node ${node.id} (${node.type}) deferred: ${registered.defer}`);
+      continue;
+    }
+    dispositions[node.id] = { kind: 'collapsed', into: `src/${plan.file!.dir}/${plan.file!.fileBase}.tsx` };
   }
 
   // EXP-011 §49 — the animation pair: a States is a hook and a definition constant, an Animate To
@@ -12730,6 +13046,8 @@ function planComponent(
      * A port the node has not got resolves to null with its named reason and defers there.
      */
     const isStatesRead = fromNode.type === STATES_TYPE;
+    // EXP-011 §52. A Script node's value outputs, off its handle — the same footing as a States read.
+    const isScriptRead = fromNode.type === SCRIPT_TYPE;
     const isAnimateRead = fromNode.type === ANIMATE_TYPE && connection.fromProperty === 'currentValue';
     if (
       !isLatchRead &&
@@ -12748,7 +13066,8 @@ function planComponent(
       !isNavigatePathErrorRead &&
       !isIdRead &&
       !isStatesRead &&
-      !isAnimateRead
+      !isAnimateRead &&
+      !isScriptRead
     ) {
       continue;
     }
@@ -13320,7 +13639,7 @@ function planComponent(
         if (
           ownsChainOutput(node.type, c.fromProperty) &&
           chainSink !== undefined &&
-          (isTriggerWire(chainSink.type, c.toProperty) || chainSink.type === 'Component Outputs')
+          (isTriggerInto(chainSink, c.toProperty) || chainSink.type === 'Component Outputs')
         ) {
           verdict = `its ${c.fromProperty} chain hangs off a node nothing fires`;
           break;
@@ -13479,6 +13798,9 @@ function planComponent(
           // EXP-011 §49. Nothing to read; the listeners are walked off the plan below.
           case 'states-go':
             break;
+          // EXP-011 §52. The same: the inputs and listeners are walked off the plan below.
+          case 'script-signal':
+            break;
           case 'branch':
             walkExpr(action.cond);
             walkActions(action.whenTrue);
@@ -13532,6 +13854,11 @@ function planComponent(
       walkExpr(animation.duration);
       walkExpr(animation.delay);
       if (animation.arrive !== undefined) walkActions(animation.arrive);
+    }
+    // EXP-011 §52. Every fed input and every listener chain.
+    for (const script of plan.scripts) {
+      for (const input of script.inputs) if (input.expr !== undefined) walkExpr(input.expr);
+      for (const chain of Object.values(script.listeners)) walkActions(chain);
     }
     for (const nodeId of readNodeIds) {
       plan.sessionCalls.push({ nodeId, verb: 'read', fnName: 'useSession' });
@@ -13879,6 +14206,8 @@ function planComponent(
           // EXP-011 §49. Nothing nested; the listeners are filled off the plan below.
           case 'states-go':
             break;
+          case 'script-signal':
+            break;
           case 'id-new': {
             const row = idVars.get(action.nodeId);
             if (row !== undefined && plan.stateVars.includes(row)) action.materialize = row.name;
@@ -13975,6 +14304,8 @@ function planComponent(
     // EXP-011 §49. A request or a Now inside a listener chain materializes as it would in a handler.
     for (const machine of plan.statesMachines) for (const chain of statesListenerChains(machine)) fillMaterialize(chain);
     for (const animation of plan.animations) if (animation.arrive !== undefined) fillMaterialize(animation.arrive);
+    // EXP-011 §52. A listener chain materializes as a handler's would.
+    for (const script of plan.scripts) for (const chain of Object.values(script.listeners)) fillMaterialize(chain);
   }
 
   // Whatever analysis has not classified yet is logic: EXP-003's, or unknown-type debris.
