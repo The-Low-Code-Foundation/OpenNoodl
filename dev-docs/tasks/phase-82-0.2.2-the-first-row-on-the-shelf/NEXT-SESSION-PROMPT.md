@@ -1,5 +1,133 @@
 # Phase 82 — next session
 
+## The board, re-derived from [`TASKS.md`](TASKS.md) at 2026-09-03 13:0x (session 18)
+
+🔴 **Re-derive it again yourself.** This phase has now been overtaken twice by a ruling that
+landed hours after a handoff was written — s16's *"the whole run sheet is Richard's"* was true at
+07:56 and false by 10:42. **The task files are the board; this section is a convenience.**
+
+| # | row | state |
+|---|---|---|
+| 6 / 6b | REL-002c + [REL-010](REL-010-AS-GOOD-AS-THE-PAGE-HE-RATED.md) | ⏳ **RICHARD'S LOOK.** All building done (s15). A session cannot close a person |
+| 7 | REL-001 — publish the members' area | ⏳ **RICHARD.** Recommendation unchanged: *fix first, publish once* |
+| 8 | REL-004 — cut and tag `v0.2.2` | 🔴 **Blocked**: `cline-dev` unpushed, CI has run on none of it. **Re-derive the count at cut time** — it moves while you work |
+| 9a | REL-011a — the 53 controls | 🟢 CLOSED s17 `d88368c5` |
+| **9b** | **REL-011b — operable on the artefact a person publishes** | 🟡 **AC2 CLOSED s18** (`f9a3d301`, `10592e03`). **AC1 (D54) and AC3 are the next buildable work** |
+| 9c | REL-011c — the three surfaces reach PASSABLE | ⏳ his look; a session cannot award it |
+| 10 | REL-009b — the editor sees the write | ⬜ buildable; D1 unruled, U3 expensive |
+
+## 🟢 What session 18 did: REL-011b AC2 — settled, fixed, and driven both ways
+
+Full write-up in [REL-011 §AC2](REL-011-THE-SITE-BUILDER-SHIPS.md). The row said *"settle
+harness-vs-product before fixing anything"*, and the settling is the part worth reading.
+
+**It was the product.** A step-by-step probe either side of `service.stop()`:
+
+| moment | elements | buttons | fields | sections | imgs |
+|---|---|---|---|---|---|
+| backend **up** (three readings running) | 82 | 2 | 3 | 6 | 3 |
+| **before the fix**, backend down +0/2/8s | **38** | **0** | **0** | **0** | **0** |
+| **after the fix**, backend down +0/2/8s | **82** | **2** | **3** | **6** | **3** |
+
+**Cause**: `dbcollectionnode2.ts`'s `fetch()` mints an empty `Collection` at the top and fills it
+only in `success`; the **error** branch published that empty collection. So a query that merely
+failed to answer overwrote the rows it had already delivered — `isEmpty` went true and every
+`For Each` below redrew nothing. SBR-011 gives three of this template's queries a realtime
+subscription and a dropped stream re-runs the query, so **any backend restart or blip emptied every
+visitor's published page until they reloaded it.** Fixed with one guard, aligning the error branch
+with `fetch()`'s two other failure exits, which already leave the collection alone.
+
+**Gates**: `rel011b-failed-fetch-keeps-rows.test.ts` **5/5** with **exactly one spec red on the
+reverted source**; full `noodl-runtime` **150 suites, 2637 passed, exit 0**;
+`sbr005-sections.look.ts` **3/3, exit 0** — it had failed three runs in a row.
+
+### 🔴 Four things from this session that will bite the next one
+
+1. 🔴 **A CONTROL THAT PASSES ON A BLANK PAGE IS NOT A CONTROL.** The AC3 arm's own guard reads
+   *"answered before the press — sent: false, refused: false"*, which is **exactly what an empty
+   document reports**. It was written against a form that submits on typing and it had been green
+   for weeks over a page that may already have been empty. **Every reading this file ever took of
+   the zero-buttons failure was equally consistent with the opposite diagnosis.** ✅ A presence
+   control now stands beside it. **Ask what your control reads on the failure you are not testing
+   for.**
+2. 🔴 **THE CONTROL THAT MADE THE AFTER-ARM MEAN SOMETHING IS THAT THE QUERY STILL FAILS.** Both
+   `query-records/query-failed` lines are in the after-run's console, unchanged. Without that, a
+   green after-arm is equally explained by *"the fix suppressed the failure"* or *"the backend
+   didn't really stop"*. ✅ **Name what must STAY red for your fix to be the explanation.**
+3. 🔴 **A PIN IS A CLAIM ABOUT A FILE, AND `ps` CANNOT SEE ONE.** Before rebuilding
+   `noodl.viewer.js` I waited out a peer's render run, waited out a peer's jest suite and watched
+   load fall from 40 to 7 — and a peer **had** pinned that exact md5. Nothing was lost, and the
+   reason is the lesson: **that run carried a three-bundle stability control**, so its numbers were
+   demonstrably bundle-independent. ✅ **Announce the INTENT to rebuild a shared artefact, not just
+   the fact.** ⚠️ And when a peer says *"X pinned it"*, **ask X** — the first answer back was
+   *"never mine"*, from a session whose `/clear` had put its own history out of context. It then
+   corrected itself. **A cleared session's "I never did X" is not a measurement.**
+   ⚠️ Bundle pinned this session: `8facb5b25e80339a28ebf539a4894b23` → `c8d6228e2e61017979e38870ee67e56e`.
+4. 🔴 **`grep -c` ON A MINIFIED BUNDLE RETURNS 1 WHATEVER IS IN IT** — it is one line. A peer nearly
+   filed a fix as half-lost on that reading. ✅ Verify a fix in a bundle by **substring search over
+   the text**. That is how the guard was confirmed present — and how the **unguarded twin** in
+   `nodes-deprecated/` was found beside it.
+
+### ⚠️ Two things registered rather than built
+
+- **`nodes-deprecated/std-library/data/dbcollectionnode.ts:384`** carries the **identical**
+  unguarded branch and is in the shipped bundle. The site-builder uses `DbCollection2`, so no AC
+  here is affected; a project carrying the deprecated node still empties on a failed re-fetch.
+  🔴 **Owner `NONE` — give it one.**
+- **A release-notes line is owed** for this fix (it is a platform behaviour change riding 0.2.2).
+  Not written, because `dev-docs/tasks/release-0.2.2/RELEASE-NOTES-0.2.2.md` **carries a peer's
+  uncommitted edit** and a pathspec commit would sweep it. **Owner: REL-004.**
+
+## The next buildable work: REL-011b AC1 and AC3
+
+**AC1 is [D54](../phase-77-the-site-builder-rescue/DEFECTS-THE-SITE-BUILDER-FOUND.md#d54)** — the
+theme presets are inert on the deploy and live in the editor's preview: 0 of 7 fields, 0 requests,
+on enabled buttons with `onclick`, while `Save theme` on the same screen fires its `PUT`.
+**Undiagnosed**, and `droppedByHealthFilter` was 0 with the `--sabotage` control proving that filter
+alive, so the export filter is excluded and nothing else is. ✅ **Diagnose before fixing** — that
+instruction is what made AC2 cheap, and AC2's cause was not on anybody's candidate list.
+
+**AC3 is a discovery AC, and its arithmetic was wrong.** ⚠️ **Re-derived from the artefact: the
+template declares SIX admin routes and FOUR are unphotographed**, not nine —
+`/admin/setup`, `/admin/signin`, `/admin/pages`, `/admin/page/{pageId}`, `/admin/theme`,
+`/admin/messages` (`ADMIN_PATH_PREFIX` is the literal `admin`; all six are `Page` components in
+`sb005Components.ts`). s17 took `/admin/pages` and `/admin/theme`. The *"eleven admin pages"* on
+the row counts something other than routes.
+
+**REL-009b remains buildable too** — `reloadComponentFromDisk` still has zero callers and there is
+still no filesystem watcher anywhere in the editor. Read [REL-009 §3 and §4 U3](REL-009-THE-WRITE-THE-EDITOR-CANNOT-SEE.md)
+first; **U3 — whether the canvas survives a model swap underneath it — is where it gets expensive**,
+and D1 (`fs.watch` vs `chokidar`) is unruled.
+
+## Working rules for this tree — unchanged, and all of them earned
+
+1. 🔴 **`judge()` KEYS ITS OUTPUT BY `today()`.** Two sessions running a look harness on the same day
+   **overwrite each other's verdicts in place, silently.** This session did it to phase-81's
+   `sbr-005/2026-09-03/` — the very arm REL-011a names. ✅ **Copy the after-arm out first, then
+   `git checkout --` the directory back**, and `md5` both. It only worked because the before-arm was
+   **committed**.
+2. 🔴 **COMMIT BY PATHSPEC, NEVER `git add`** — except untracked paths, which a pathspec commit
+   **skips silently**. ⚠️ **`sbr005-sections.look.ts` had NEVER been tracked** despite defining
+   REL-011b AC2 and being cited by REL-011a. It is committed now. `git status --porcelain | grep '^??'`
+   before every commit, and check whether a `??` is a **directory**.
+3. 🔴 **`scripts/devtools/render-from-disk.js` IS UNCOMMITTED AND LOAD-BEARING**, and its md5 has
+   **moved** since the board recorded it: `1557f527…` → **`665987c0…`** (mtime 09-02 16:47), and
+   `render-report.js` is modified too. The product-host-stylesheet behaviour REL-002a needs is still
+   in it (checked). ✅ **Re-derive that md5 rather than quoting the board's.**
+4. 🔴 **NEVER OPEN `templates/members-area` OR the site-builder template IN THE EDITOR** —
+   `readBundleDirectory` has no skip list and would ship `.mcp.json`, `CLAUDE.md` and a `.gitignore`
+   block. Work through `npm run template:members` / `template:site-builder`.
+5. ⚠️ **`timeout` does not exist on this Mac** — `command not found` piped into `echo "EXIT=$?"`
+   reads as **`EXIT=0`**. Gate on an exit file you write yourself.
+6. ⚠️ **The box is shared and busy.** Load sat between 7 and 42 all session with peers running an
+   editor dev stack, a render harness and two jest suites. One heavy job at a time; wait for a
+   peer's suite; and see hazard 3 above before touching a shared build artefact.
+
+---
+
+_Everything below predates session 18. It is kept because rows 6/6b/7/8 have not moved, but
+**re-derive from [`TASKS.md`](TASKS.md) before believing any of it.**_
+
 ## 🔴 READ THIS FIRST — the board grew after s16 wrote its handoff, and rows 6–8 are no longer all there is
 
 _Session 17, 2026-09-03._ **s16 concluded *"the whole run sheet is now Richard's"*. That was true
