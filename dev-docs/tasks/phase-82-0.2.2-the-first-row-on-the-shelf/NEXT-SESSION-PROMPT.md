@@ -1,6 +1,74 @@
 # Phase 82 — next session
 
-_Opened 2026-08-31 (s1). Last updated **2026-09-03, session 16**. 🔴 **ROW 6 IS REOPENED — see the section below before reading anything else.** Row 6 has **no building left on
+## 🔴 READ THIS FIRST — the board grew after s16 wrote its handoff, and rows 6–8 are no longer all there is
+
+_Session 17, 2026-09-03._ **s16 concluded *"the whole run sheet is now Richard's"*. That was true
+when it was written at 07:56 and stopped being true at 10:42**, when a P77 session landed
+[REL-011](REL-011-THE-SITE-BUILDER-SHIPS.md) on this board: **Richard reversed the site-builder hold
+and set its bar at literally `PASSABLE`.** Three new rows, and s17 took the first one.
+
+🔴 **So do not read the run sheet below and conclude there is nothing to build.** Everything from
+*"SESSION 16"* down was written before REL-011 existed. ✅ **The instruction that saves you is the
+one this phase already carries: re-derive the board from [`TASKS.md`](TASKS.md) and the task files,
+not from a handoff's copy of it.** This is the second time in three sessions that a handoff's
+*"a session cannot advance any row"* was overtaken by a ruling arriving hours later.
+
+### 🟢 What session 17 built: REL-011a — CLOSED, `d88368c5`
+
+**53 of 53 controls carry the palette, from 1 of 53.** Full write-up in
+[REL-011 §REL-011a](REL-011-THE-SITE-BUILDER-SHIPS.md); board row in [`TASKS.md`](TASKS.md).
+Gates: `npm run template:site-builder` **exit 0**; the new
+`sbr014ControlStyleCensus.test.ts` **12/12 having been 1 failed / 11 passed**; full `noodl-mcp`
+**90 suites, 1182/1182, exit 0**.
+
+- 🔴 **The census read 1 at HEAD, not the 3 REL-011 §2 recorded.** §2 counted *"any `var(--…)`
+  parameter"*, which admits a lone `marginLeft` as styling and misses that the one dressed button
+  had no `fontSize`. Neither count is wrong — **they are different questions**, and a number that
+  cannot be reproduced from its own definition gets re-derived differently by the next session.
+- 🔴 **Only the 25 text inputs were ever invisible.** `options` and `checkbox` draw a 2px box at
+  their own node defaults. They took the treatment to **join the palette**, not to become visible,
+  and the write-up refuses to cite them as evidence of the fix. ⚠️ Measured on the **live** nodes in
+  `nodes/controls/`, not the `nodes-deprecated/` twin that carries the same display names and
+  different defaults — the first reading of this session came from the wrong file.
+- 🔴 **Two ports were REFUSED and that is the load-bearing part.** `fontFamily` is already
+  `inherit` in `assets/style.css` (P78 D18), so requiring it would have moved this census's number
+  on 53 nodes and **changed no pixel** — REL-010 §6.5's refused move in new clothes. Label ports
+  likewise: the labels were legible in the very photograph the row was opened on.
+- 🔴 **The fix's first arm was correct and looked unfinished**, and only the render said so: fields
+  ~205px in a 700px card, which they had always been, invisibly. `sizeMode: 'contentHeight'` alone
+  fixed it; the `width: 100%` copied from `members-area` reddened `sbr012` with 26 raw dimensions
+  and was **redundant**. The gate was right, and a second render is what proved it.
+
+### 🔴 The next buildable row is REL-011b, and its first job is a diagnosis, not a fix
+
+[REL-011 §REL-011b](REL-011-THE-SITE-BUILDER-SHIPS.md). Two of its three ACs are **undiagnosed**, and
+the row says so — *"settle which before fixing anything."*
+
+- **AC2 reproduced a third time in s17's run**: `no button labelled "Send". Buttons on the page: []`
+  after `service.stop()`. 🔴 **And it is a sharper measurement than it was**: the same template's
+  buttons are now unmistakably present and painted when the backend is up, so *"the harness cannot
+  find a button"* and *"the page has no buttons"* are further apart than before. **Settle
+  harness-vs-product first.**
+- **AC1 is D54** — theme presets inert on the deploy, live in preview, `droppedByHealthFilter` 0.
+- **AC3 is a discovery AC.** ✅ **s17 has already photographed two of the eleven** — `/admin/pages`
+  and `/admin/theme`, four widths each, in `verdicts/vib-001/2026-09-03/site-builder-living/`. The
+  rest are still unphotographed, and D40 hid them for the life of the template.
+
+⚠️ **REL-011c is Richard's look and a session cannot close it**, exactly like rows 6 and 6b.
+**REL-009b remains buildable too** — see the s16 section below, which is still accurate about it.
+
+### 🔴 A hazard s17 met, which will bite the next session that runs a look harness
+
+**`judge()` keys its output directory by `today()`.** Two sessions running the same harness on the
+same day **overwrite each other's verdicts in place, silently**. s17's first run replaced P77 s48's
+`sbr-005/2026-09-03/site-builder-living` — the exact before-arm REL-011a AC2 names. ✅ Recovered from
+`9bd1488f` and restored, both arms `md5`-checked against `git show`. ✅ **Commit a look run before
+starting another, and copy an after-arm out before re-running.**
+
+---
+
+_Opened 2026-08-31 (s1). Last updated **2026-09-03, session 16** — ⚠️ **everything below this line
+predates REL-011; read the section above first.** 🔴 **ROW 6 IS REOPENED — see the section below before reading anything else.** Row 6 has **no building left on
 it**: every one of the thirteen pages has been photographed and graded at **all four widths**, both
 of s13's queued questions are answered and built, and s14 found that the one apparent defect left in
 the pictures belonged to the **test harness**, not the product. What remains is **Richard's own
@@ -221,6 +289,10 @@ Take the topmost row that is not ✅.
 | **6b** | 🟢 **[REL-010](REL-010-AS-GOOD-AS-THE-PAGE-HE-RATED.md) — as good as the page he actually rated** | §3.1 RULED and BUILT s15. **13 of 13 pages now read clean**, from 0 of 13. AC1–AC5 met (AC3 declined on the nine, in writing; AC4 has a hole at `/unsubscribe`) | ⏳ **AC6 — RICHARD'S LOOK. A session cannot close it** |
 | 7 | **REL-001** publish + drive the install ⏳ **RICHARD** | shelf's first row; also closes P75's FB-005 | ⏸️ **HOLD** — see below |
 | 8 | **REL-004** cut, tag and publish `v0.2.2` ⏳ **RICHARD** | last | 🟡 **AC1 done s11** (`5c805978`). 🔴 Blocked: `cline-dev` unpushed |
+| **9a** | 🟢 **REL-011a — the 53 controls** | **CLOSED s17 `d88368c5`** — 53 of 53, from 1 of 53 | — |
+| **9b** | **REL-011b — operable on the artefact a person publishes** ⬅️ **THE NEXT BUILDABLE ROW** | D54, the zero-buttons arm, and nine unphotographed `/admin/*` routes | 🔴 **Two ACs are UNDIAGNOSED — settle harness-vs-product before fixing** |
+| 9c | **REL-011c — the three surfaces reach PASSABLE** ⏳ **RICHARD** | needs 9b | ⏳ his look; a session cannot award it |
+| 10 | **REL-009b — the editor sees the write** | the real fix behind REL-009a | ⬜ buildable; D1 unruled, U3 expensive |
 
 ### ⏸️ Why row 7 still waits
 
