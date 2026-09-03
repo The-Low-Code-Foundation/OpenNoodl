@@ -1,6 +1,8 @@
 # DEF-042 — a throwing event listener kills the whole backend, and the catch written for it cannot see the throw
 
-**Status: 🟡 MEASURED AND DIAGNOSED — 2026-09-03, session 43. 🧭 THE FIX NEEDS A RULING.**
+**Status: ✅ BUILT — 2026-09-03, session 45, on Richard's ruling the same day. Measured and
+diagnosed by s43; 🔴 the blast radius that made it need a ruling was NEVER COUNTED, and when it was
+counted it turned out to be one `await` on one line.**
 Promoted from [UNOWNED-ROWS-TO-MEASURE.md §2](UNOWNED-ROWS-TO-MEASURE.md), owner `NONE` since
 2026-08-30. 🔴 **The row's central recommendation — *"catching the rejection so the PUT answers 400
 and the backend survives is small and clearly right; that half needs no ruling"* — is wrong, and
@@ -76,27 +78,49 @@ That frame is where the chain was **created**, not where the rejection was **del
 `projectSettingsChanged`, `metadataChanged`, `variantUpdated` are all the same hazard waiting for
 a listener that throws.
 
-## 🧭 Why nothing was built, and what the decision is
+## ✅ What was built — and 🔴 the blast radius nobody had counted
 
-The row said *"✅ Split them: ship the survival half, register the semantics half."* **The split
-does not exist**, and that is this row's finding:
+s43 left this row unbuilt on one premise: *"making the throw reachable means `addComponent` must
+await `emit`, which makes it `async`, which ripples through every synchronous caller — in
+`noodl-runtime`, shared with the viewer. That is not a small change and it is not backend-local."*
 
-- **Making the throw reachable** means `addComponent` must await `emit`, which makes it `async`,
-  which ripples through every synchronous caller — in **`noodl-runtime`, shared with the viewer**.
-  That is not a small change and it is not backend-local.
-- **A process-level `unhandledRejection` guard** is backend-local and small, and it is *wrong on
-  its own*: with the rejection swallowed, `importComponentFromEditorData` carries on, `load`
-  resolves, and `loadWorkflow` returns **`{success:true}`** for a runner whose component registry
-  is half-written. The backend survives and is silently incorrect — trading a loud crash for a
-  quiet one, on the very code path whose entire design is *"only a complete success swaps it in."*
-- So the survival half is **entangled** with the semantics half (namespace per bundle / refuse the
-  second / last-writer-wins), which the row correctly calls *a design question with a person
-  attached*.
+**Counted on 2026-09-03, before writing anything:**
 
-🔴 **Recommendation for whoever rules on it:** await the emit in `addComponent` and let
-`loadWorkflow`'s existing catch do the job it was written for — the 500 and *"previous version
-left in place"* are already implemented and already correct. The cost is the blast radius into
-`noodl-runtime`, and that is the thing to weigh, not the backend behaviour.
+| question | answer |
+| --- | --- |
+| callers of `graphModel.addComponent` in the runtime, both viewers and the backend | **ONE** — [`graphmodel.ts:113`](../../../packages/noodl-runtime/src/models/graphmodel.ts#L113), twelve lines above the function |
+| is that caller already `async`? | **yes** — `importComponentFromEditorData` has been `async` all along |
+| is the chain above it awaited? | **yes, every link**: `loadWorkflow` → `CloudRunner.load` (`index.ts:164`) → `NoodlRuntime.setData` (`noodl-runtime.ts:693`) → `importEditorData` (`graphmodel.ts:176`) |
+
+🔴 **The chain was already fully `async` and fully awaited except for the last two links, both in
+`graphmodel.ts`.** The guard in `loadWorkflow` was not missing and not wrongly written — it was
+**starved by two missing `await`s in one file**. The "ripple into the shared runtime" was one
+`await` on one line, and the row's premise was the thing that needed measuring rather than the fix.
+
+**Built:** `addComponent` is `async` and awaits its `componentAdded` emit; its single caller awaits
+it. Three lines of behaviour, in one file, with the reasoning in the function's header.
+
+⚠️ **What was deliberately NOT built**, and both are named in the code:
+
+- **The other 15 emits in `graphmodel.ts` are still un-awaited**, `_onNodeAdded`'s among them —
+  reached from a `forEach` inside `addComponent` itself. `componentAdded` is the one a person has
+  met; **the class is narrowed, not closed.** Awaiting the rest changes node-registration ordering
+  in the browser viewer, which is its own decision. The last arm of the runtime gate **measures**
+  this so the code and this row cannot drift apart about it.
+- **`editormodeleventshandler.ts:225` calls `importComponentFromEditorData` without awaiting**, so
+  a throw still detaches on the editor's live-edit path.
+
+⚠️ **The ordering this buys is a strengthening, not a change of contract.** Callers now wait for
+every `componentAdded` listener before the next component is imported. They previously did not
+reliably — the first listener ran synchronously and the rest in microtasks interleaving with the
+caller's own `await` — so *"registration has finished"* was already being assumed without being
+true.
+
+⚠️ **The PUT answers 500, not the 400 the original register row asked for.** `updateWorkflow` maps
+every `{success:false}` to 500, and it covers disk failures as well as bad bundles, so splitting it
+would need `loadWorkflow` to signal which kind. Out of scope here and **not a defect** — this row's
+own recommendation had already concluded the 500 and *"previous version left in place"* were
+correct.
 
 ## The gate — `tests/def-042-detached-emit.test.ts` (nodegx-backend)
 
@@ -118,14 +142,39 @@ the product. The process-level consequence is measured where it actually happens
 
 ## Gates run
 
-| gate | result |
-| --- | --- |
-| `tests/def-042-detached-emit.test.ts` | **3 passed**, exit 0 |
-| live reproduction against committed `dist/cli.js` | as tabulated above |
+🔴 **The crash is a PROCESS-level consequence, so the gate is a drive against the built service, not
+a spec.** Jest installs its own `unhandledRejection` handler — s43's first attempt waited on that
+event and measured the harness. The drive spawns `dist/cli.js` and sends the two `PUT`s over real
+HTTP.
+
+| gate | before (reverted arm) | after |
+| --- | --- | --- |
+| **drive** — `PUT projectA`, `PUT projectB`, `GET /admin/status`, both against a FRESH build | A **200**; B **no response** (`ECONNRESET`); status **`ECONNREFUSED`**; child **exit 1** | A **200**; B **500** `{"success":false,"error":"Duplicate component name …"}`; status **200**; **service alive** |
+| the guard's own log line, `Failed to load workflow … (previous version left in place)` | **absent** | 🟢 **present** — the catch that has been dead since WFA-001 now runs |
+| `test/models/def-042-component-added-await.test.ts` (new, `noodl-runtime`) | **4 red of 5** | **5/5, exit 0** |
+| `tests/def-042-detached-emit.test.ts` (s43's mechanism spec) | 3 passed | **3 passed** — unchanged, and correctly so: it pins `EventSender`, which this fix does not touch |
+| `noodl-runtime` full suite | — | **146 suites / 2566 passed**, 5 red = the SQLite floor by name, byte-identical to s44's reading |
+| `noodl-viewer-react` suite · `noodl-viewer-cloud` suite | — | **87 suites / 1138 passed** · **13 suites / 219 passed** |
+| `tsc` — `noodl-runtime`, `noodl-viewer-react`, `noodl-viewer-cloud`, `nodegx-backend` | — | **exit 0 × 4**, 0 `error TS` |
+
+🔴 **Both arms of the drive were taken against a FRESH build.** `dist/` is gitignored, and the
+artefact s43 measured was from 09-02 — comparing today's build against it would have varied the
+whole day's runtime changes as well as this fix.
+
+🔴 **The "absent guard line" reading was re-taken after the instrument changed.** The first pass
+searched only stderr; `WorkflowRunner.safeLog` uses `console.log`, so the line lands on **stdout**
+and its absence would have been an artefact of the instrument. The drive now reads both streams,
+and the reverted arm was **re-run with it** — the absence is real, beside a known-firing signal in
+the other arm.
 
 ## Bounds
 
-- **Nothing is fixed.** This row is a measurement and a diagnosis; the backend still dies.
+- ✅ **The backend survives and answers.** What is fixed is `componentAdded`; see *What was built*
+  for the two paths deliberately left detached.
+- ⚠️ **This is not the semantics question.** Whether two projects on one backend *should* collide at
+  all — namespace per bundle, refuse the second, last-writer-wins — is untouched and still a design
+  question with a person attached. The second deploy is now **refused, loudly, with the previous
+  version still serving**, which is a defensible answer and not necessarily the final one.
 - The reproduction used a **hand-built minimal bundle** declaring one duplicate component name, not
   a real site-builder export. That is sufficient for the crash and is *not* evidence about how
   many real project pairs collide — the row's own "any two site-builder projects" claim is

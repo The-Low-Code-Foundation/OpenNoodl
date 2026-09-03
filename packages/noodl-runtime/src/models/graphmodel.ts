@@ -53,7 +53,7 @@ interface GraphModel extends GraphModelLike {
   getComponentWithName(name: string): ComponentModel | undefined;
   getAllComponents(): ComponentModel[];
   getAllNodes(): NodeModel[];
-  addComponent(component: ComponentModel): void;
+  addComponent(component: ComponentModel): Promise<void>;
   removeComponentWithName(componentName: string): Promise<void>;
   renameComponent(componentName: string, newName: string): void;
   _addComponentPorts(node: NodeModel): void;
@@ -110,7 +110,9 @@ GraphModel.prototype = Object.create(EventSender.prototype);
 
 GraphModel.prototype.importComponentFromEditorData = async function (this: GraphModel, componentData) {
   const componentModel = await ComponentModel.createFromExportData(componentData);
-  this.addComponent(componentModel);
+  // DEF-042: awaited. This is the only call site `addComponent` has, and it was the first of the
+  // two breaks in an otherwise fully awaited chain — see `addComponent`'s header.
+  await this.addComponent(componentModel);
 };
 
 GraphModel.prototype.getBundleContainingComponent = function (this: GraphModel, name) {
@@ -221,7 +223,47 @@ GraphModel.prototype.getAllNodes = function (this: GraphModel) {
   return nodes;
 };
 
-GraphModel.prototype.addComponent = function (this: GraphModel, component) {
+/**
+ * Register a component and announce it.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * 🔴 **DEF-042 — `async`, and the emit is AWAITED. Until it was, a throwing listener took the
+ * whole backend process down with no HTTP response.**
+ *
+ * `emit` is async and sequential. Called without `await`, a listener that throws rejects a promise
+ * **nobody is holding**, which Node turns into an unhandled rejection and an unhandled rejection
+ * ends the process. The listener in question is real and shipped:
+ * `NoodlRuntime.registerGraphModelListeners` subscribes to `componentAdded` and calls
+ * `NodeContext.registerComponentModel`, which throws `Duplicate component name` when two bundles
+ * declare the same one. **Measured:** two projects deploying a cloud function of the same
+ * component name to one backend — `PUT` 1 answered 200, `PUT` 2 answered nothing at all, the
+ * service was gone (`ECONNREFUSED`) and every other project's functions with it.
+ *
+ * 🔴 **The guard for this has existed since WFA-001 and was STARVED, not missing.**
+ * `WorkflowRunner.loadWorkflow` wraps `await candidateRunner.load(bundle)` in a try/catch written
+ * for exactly this case — *"a failure leaves the previous runner serving and the previous file on
+ * disk"* — and no `Failed to load workflow` line ever appeared before the crash. The reason was
+ * two missing `await`s in this file: every other link of
+ * `loadWorkflow → CloudRunner.load → NoodlRuntime.setData → importEditorData →
+ * importComponentFromEditorData` was already `async` **and already awaited**. `addComponent` has
+ * exactly ONE caller, twelve lines above, and it was already `async` — so the "ripple into the
+ * shared runtime" this fix was feared to cause is one `await` on one line.
+ *
+ * ⚠️ **What this does NOT fix.** `graphmodel.ts` emits in 16 places and the other 15 are still
+ * un-awaited, `_onNodeAdded`'s among them — reached from a `forEach` inside this very function.
+ * `componentAdded` is the one a person has met; the class is narrowed, not closed. Awaiting the
+ * rest changes node-registration ordering in the browser viewer and is deliberately a separate
+ * decision. ⚠️ `editormodeleventshandler.ts` also calls `importComponentFromEditorData` without
+ * awaiting, so on the editor's live-edit path a throw still detaches.
+ *
+ * ⚠️ **The ordering this buys is a strengthening, not a change of contract.** Callers now wait for
+ * every `componentAdded` listener before the next component is imported. They previously did not
+ * reliably — the first listener ran synchronously and the rest in microtasks that interleaved with
+ * the caller's own `await` — so "registration has finished" was already being assumed without
+ * being true.
+ * ═══════════════════════════════════════════════════════════════════════════════
+ */
+GraphModel.prototype.addComponent = async function (this: GraphModel, component) {
   this.components[component.name] = component;
 
   //nodes that are already added are missing component input/output ports if the component is registered after the nodes
@@ -238,7 +280,9 @@ GraphModel.prototype.addComponent = function (this: GraphModel, component) {
   component.on('nodeRemoved', this._onNodeRemoved.bind(this), this);
   component.on('nodeWasRemoved', this._onNodeWasRemoved.bind(this), this);
 
-  this.emit('componentAdded', component);
+  // DEF-042: the second of the two breaks. Awaited, so a listener that throws rejects THIS
+  // function's promise and travels the already-awaited chain to `loadWorkflow`'s catch.
+  await this.emit('componentAdded', component);
 };
 
 GraphModel.prototype.removeComponentWithName = async function (this: GraphModel, componentName) {
