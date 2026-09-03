@@ -97,7 +97,10 @@ describe('§4a — Create Record: the form idiom, awaited', () => {
         '              try {',
         '                await createPuppy({ name: nameInput, photo: photoURLInput, breed: breedInput, age: ageInput, description: descriptionInput });',
         '              } catch (error) {',
-        '                setCreatePuppyError(error instanceof Error ? error.message : String(error));',
+        '                const createPuppyErrorMessage = error instanceof Error ? error.message : String(error);',
+        '                setCreatePuppyError(createPuppyErrorMessage);',
+        // EXP-011 §54. The Error row first, then the raise on the error channel with the runtime's own code and the node's provenance.
+        "                raiseAppError({ code: 'record/storage-op-failed', message: createPuppyErrorMessage, nodeId: 'createRecord', nodeType: 'NewDbModelProperties', componentName: '/Pages/Admin' });",
         '              }',
         '            }}'
       ].join('\n')
@@ -118,7 +121,10 @@ describe('§4a — Create Record: the form idiom, awaited', () => {
     // name a binding the unused-state filter had already dropped.
     const source = adminSource(app);
     expect(source).toContain("const [updatePuppyError, setUpdatePuppyError] = useState<string | undefined>();");
-    expect(source).toContain('setUpdatePuppyError(error instanceof Error ? error.message : String(error));');
+    expect(source).toContain('const updatePuppyErrorMessage = error instanceof Error ? error.message : String(error);');
+    expect(source).toContain('setUpdatePuppyError(updatePuppyErrorMessage);');
+    // EXP-011 §54. Raised on the error channel, after the row.
+    expect(source).toContain("raiseAppError({ code: 'record/storage-op-failed', message: updatePuppyErrorMessage, nodeId: 'updateRecord', nodeType: 'SetDbModelProperties', componentName: '/Pages/Admin' });");
   });
 
   test('the second and third Error wires into one status line drop with a note, never silently', () => {
@@ -257,7 +263,10 @@ describe('§1 — an absent record id refuses, the way the runtime does', () => 
       "if (!puppyIdInput) throw new Error('Missing Record Id');\n                await updatePuppy(puppyIdInput, "
     );
     // It lands in the catch that already writes the Error output — the runtime's `setError`.
-    expect(source).toContain('setUpdatePuppyError(error instanceof Error ? error.message : String(error));');
+    expect(source).toContain('const updatePuppyErrorMessage = error instanceof Error ? error.message : String(error);');
+    expect(source).toContain('setUpdatePuppyError(updatePuppyErrorMessage);');
+    // EXP-011 §54. Raised on the error channel, after the row.
+    expect(source).toContain("raiseAppError({ code: 'record/storage-op-failed', message: updatePuppyErrorMessage, nodeId: 'updateRecord', nodeType: 'SetDbModelProperties', componentName: '/Pages/Admin' });");
   });
 
   test('the done chain does not run when the id is missing — the throw skips it', () => {

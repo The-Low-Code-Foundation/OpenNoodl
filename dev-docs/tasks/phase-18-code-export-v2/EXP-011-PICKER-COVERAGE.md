@@ -114,7 +114,7 @@ place. The order is by *what a refusal silences*, since §50.2 measured that a r
 | 1 | ✅ `Component Children` | **built s79 (§51)** — was: a wrapper's children vanish from the export — a working component becomes a blank one |
 | 2 | ✅ `Script` | **built s80 (§52)** — was: the escape hatch the MCP reaches for when the picker has no node; ten in one MCP-built project |
 | 3 | ✅ `Run Tasks` | **built s81 (§53)** — was: *"I use this all the time"* — and everything it fires is refused with it |
-| 4 | `On App Error` | an error pathway that is left out is the exact case where exporting is worse than not |
+| 4 | ✅ `On App Error` | **built s82 (§54)** — was: an error pathway that is left out is the exact case where exporting is worse than not |
 | 5 | `Create New Array` | *"I use this all the time"* — the anonymous-Id-by-wire mechanism (§7.3) needs a design session first |
 | 6 | `Filter Records` | the search box over a fetched list |
 | 7 | `Repeater Item` | now that the node works, people will use it (§7.3 reversed) |
@@ -7242,3 +7242,215 @@ gates (one at a time, behind a wait-for-quiet loop): pkg tsc 0 · jest 65 files 
   chains without a verdict of its own; the verdict comes from what it silences. Owner NONE.
 - The nested shape the corpus uses (a Run Tasks inside a template) is planned and rendered as a fragment
   of tasks; untested beyond the cycle row. Owner NONE.
+
+## §54 Tier 2.8 row 4 — `On App Error`: the channel, the boundary, and the shell that had nowhere to put it (session 82, 2026-09-03)
+
+The fourth row of §50's list. Picker **95 → 96 of 127 (75.6%)**, floor 96, `export-ledger:check` OK
+(103 translated). The type id IS the display name (`On App Error`). The corpus has **zero** instances
+(grep over every `NodeGX test project` and the templates); the ranking is Richard's (§50) and the design
+is the runtime's.
+
+### §54.1 What the runtime does, and what that decides
+
+- **The channel** (`runtimeerror.ts`): one synchronous bus per context; `raise` returns at once with no
+  subscribers; the subscriber list is cloned before the loop (a subscriber may unsubscribe during
+  delivery); a throwing subscriber is logged and the rest still run; `MAX_DELIVERY_DEPTH = 2` — a raise
+  while delivering at depth ≥ 2 is dropped with *"runtime error raised while delivering another; dropped"*.
+  Every deployed context installs `createConsoleErrorSubscriber`: one structured line per failure, so a
+  failure is never fully silent even in an app where nobody wired a Failure output.
+- **The raise** (`Node.raiseRuntimeError`): provenance is filled by the runtime — `nodeId` (graph id),
+  `componentName` (the legacy path, `/Pages/Home`), `nodeType` (the **type id**, `CloudFunction2`); `code`
+  is the matchable half, `message` the human half. `reportOutcome(token, 'failure', …)` raises **before** the
+  `failure` pulse ("a graph wiring failure → show must already be able to read the reason"), and every
+  `setError` funnel flags its `Error` value dirty before that — so the order is: the Error value, the raise
+  (the boundaries), the Failure pulse.
+- **The boundary** (`onapperror.ts`): subscribes in `initialize`, before any input update — "errors raised
+  while the graph is still being built are exactly the ones an author has the hardest time seeing";
+  accepts an event when `code.indexOf(filter) === 0` (a **prefix**; empty or unset means everything;
+  the setter is `undefined`/`null` → cleared, anything else `String(value)`); flags the six value outputs
+  dirty and THEN pulses `Error` — values before the signal, always; **multiple instances all fire** — no
+  claiming, no consumption. An instance in a page exists only while the page does.
+- **The codes the translated families raise**, read from each node file: `cloud-function/call-failed`;
+  `record/storage-op-failed` (the three record verbs AND `Record`'s Fetch, "Missing Record Id" and
+  "Missing Id." included); `user/log-in-failed`, `user/log-out-failed`, `user/sign-up-failed`,
+  `user/set-properties-failed`, `user/request-magic-link-failed`; `open-file-picker/open-failed`;
+  `upload-file/upload-failed`; `sign-file-url/sign-failed`; `http/no-url`, `http/error-status`,
+  `http/timeout`, `http/network-error`; `run-tasks/already-running`, `no-items`, `invalid-concurrency`,
+  `task-failed`; `script/source-failed` (a Script's phase throws are `console.log` + an editor warning
+  only — NOT on the bus); `function/script-threw`, `expression/threw` (the pure wrappers). `External Link`
+  and `Navigate` raise nothing.
+
+So the faithful target is **two things, not one**: `src/lib/errors.ts` — the channel transcribed
+(`raiseAppError`, `subscribeAppErrors`, the depth guard, the throwing-subscriber isolation, the console
+default installed at module load) with `useAppError({ filter }, onError)` over it (a stable handle whose
+`last` reads a ref; a reducer bump on every accepted error BEFORE the listener; the Filter read live and
+coerced as the setter coerces; armed in a **layout effect**, which runs before every passive effect in the
+tree — the requests, a Script's mount, a template's start chain — the closest a hook comes to subscribing
+at node creation) — and **the raise at every site the runtime raises**: each request verb's failure arm
+now prints, after the Error row and before the failure chain,
+`raiseAppError({ code, message, nodeId, nodeType, componentName })` with the node's own provenance; the
+Run Tasks host's four diagnostics and a Script's load failure go through the same call (their hooks now
+carry `{ label, nodeId, componentName }` and a definition's `at`); the http module throws an `HttpError`
+whose `code` is the node's (no-url / timeout / network) so the catch can report it, and a non-2xx answer
+reports `http/error-status` with the status. A boundary that hears nothing would be a boundary over an
+empty bus — the raise sites are the row.
+
+### §54.2 What was measured before anything was built (`probe17-reverted.log`, HEAD d4d3400c)
+
+Fixture `tests/fixtures/alarm-desk`: `App` — the Router and `Catch all` (no filter) → `Error` → two
+`Set Variable`s reading its `Message` and `Code`; `Pages/Home` — a `Cloud Function` "Ping" on a button
+(no backend: it fails with the interpreter's own sentence), three Texts on the Variables, `Cloud only`
+(`filter: cloud-function`) → `Error` → a `Set Variable` reading `Node Type`, and a Text bound **directly**
+to `Cloud only.message`.
+
+- `App`: *router shell — emitted as src/App.tsx by the scaffold*; `Catch all` and both setters `node
+  beside the router shell`, the setters `causedBy: ['catchAll']` (EXP-013 attributed them by graph).
+- `Pages/Home`: `Cloud only` → `logic node (On App Error)`; the setter *the value wire has no statically
+  known source* (I predicted the trigger sentence — the value wire is asked first); the direct Text
+  emitted **empty** with a step-5 note; the Cloud Function translated and its failure wrote a row and
+  **told nobody** — no console line, no raise.
+- Pre-flight: two roots, both `pathway: true`, three silenced; verdict *"…"Catch all" (On App Error) in
+  `App`; "Cloud only" (On App Error) in `Pages/Home`. Without them, the app has no error pathway."*
+
+### §54.3 The build
+
+- **`src/emit/errorsLib.ts`** (new): `src/lib/errors.ts` as above. Shipped when any component keeps a
+  boundary or raises, and whenever `script.ts` or `runTasks.ts` ships (both import it) — so every app with
+  a request verb now carries it (batch-desk 16 → 17 files, script-desk 18 → 19).
+- **`plan.ts`**: `ON_APP_ERROR_TYPE`, `ON_APP_ERROR_VALUE_OUTPUTS`, `APP_ERROR_TS_TYPE` (the Error Object
+  spelled structurally so a store row needs no import); `ValueExpr` gains `app-error-out { field }` (always
+  maybe-undefined, valid in both contexts, touches no snapshot); `AppErrorPlan` on `ComponentPlan.appErrors`;
+  `appErrorPlanOf` in `scriptPlanOf`'s shape (memoised, `refuse` unwinds): no file to host it, two wires on
+  Filter, an unknown input or output, `Error` consumed as a value (from the sink's port kind BEFORE the chain
+  compiles — §52.4's rule), a chain that reads handler-only values, a chain that did not compile;
+  `appErrorReadOf`; the `resolveExpr` branch; `[ON_APP_ERROR_TYPE]: ['error']` in `OWN_CHAIN_OUTPUTS`;
+  the binding pass's whitelist (`isAppErrorRead`); the registration pass; **both walkers** (`scanActions`,
+  the session walker) and `fillMaterialize` over the listener and a wired Filter; the five expression
+  switches; **the shell**: a root component with a Router AND a boundary keeps a file
+  (`components/<Name>Shell.tsx`, deduped) with `rootId === null` and `plan.shell = true` — only the Router
+  is disposed there; what no chain reaches is still "beside the router shell" via the catch-all;
+  `bailAsLogicOnly` names a boundary in a logic-only component "component emits no file to host the boundary".
+- **`component.ts`**: the gate admits the shell; `raiseLine` / `errorCodeOf` / `API_CALL_ERROR_CODES` /
+  `RAISING_ACTION_KINDS`; the six catch sites (api-call's inline setter became a `<state>Message` local so
+  the raise can read it; http's `failArm` takes the code and, for the `!ok` arm, the status as `detail`
+  and `?? ''` on a message the one-interface answer types optional); `allActions` and the imports; the hook
+  line after the Run Tasks hooks; `app-error-out` in `maybeUndefined`, `exprCode`, the deps walk, the
+  binding table (the Error Object at a text position takes `JSON.stringify` — NDA-014's object → string
+  cast); `useRunTasks({ label, nodeId, componentName }, …)`; `defineScript(…, at)`.
+- **`emitApp.ts`**: the lib; `emitScaffold(ir, shell)`; the `HttpError` class and its three throw sites.
+  **`scaffold.ts`**: `ScaffoldShell`; `App.tsx` imports the shell and renders `<AppShell />` as the first
+  child of `BrowserRouter`, before `<Routes>` — inside the router (a Navigate in its chain works), outside
+  the routes (it lives for the app's life). **`runTasksLib.ts`**: the four `console.error`s are raises;
+  **`scriptLib.ts`**: the load failure raises `script/source-failed`; the phase throws stay console.
+- **Ledger** `translated`, floor 96. `logic.test.ts`'s corpus control (no template literal, no unlisted
+  `if (` in generated code) now excludes `src/lib/` **by kind**, as it excludes `.md` — the channel is the
+  first lib the puppy fixture ships, and its `if (index !== -1)` is the runtime's own idiom, not translation.
+
+### §54.4 What building it found
+
+1. 🔴 **A subscriber has no trigger side, so nothing registered it before a pass that reads it.** The
+   first build refused both boundaries as *"its trigger chain is cyclic"*: the dropped-wire pass explains
+   an unconsumed value wire by compiling its sink (`compiledOf(setLastError, 'do')`), the sink's value
+   read (`Catch all.message`) registered the boundary from inside that compile, the registration compiled
+   the listener, and the listener's chain re-entered the same key. A `Script` never sees this because
+   its wired signal INPUT registers it in the early trigger-compile loop, before any read. The fix is
+   the same loop: a boundary registers there unconditionally — that loop is its trigger side.
+2. ⚠️ **The prediction file said "reads a value that only exists inside a handler" for a Filter fed by a
+   Text Input; the export says "has no statically known source".** The controlled-state seam that hosts a
+   hook argument fed by a text input (`files.test.ts` B13) runs after the boundary registers, so the read
+   answers null with no reason of its own. The refusal is right; the sentence and the seam are §54.7's.
+3. ⚠️ **A wired Filter of unknown type failed the emitted app's own `tsc`** (a Variable's `useValue` is
+   `unknown`; the option was `string`). The runtime's setter coerces — `undefined`/`null` clear, else
+   `String(value)` — so the hook does exactly that and takes `unknown`; the emitted line stays `{ filter: code }`.
+4. ⚠️ **The http answer types `error` optional** (one interface serves both outcomes) — the `!ok` arm's
+   raise needed `?? ''` to compile, though the module writes `error` on every failed answer. The union
+   type is the honest fix; registered.
+5. ⚠️ **`json.dumps` rewrote the ledger with 115 spurious lines** — the file is `ensure_ascii` (`—`),
+   and the first write used the default. Diff was 4 lines once written faithfully. *Read the file's own
+   escaping before writing it back.*
+6. ⚠️ **A `repr()`'d raise line inside a single-quoted spec literal killed three suites** ("Cannot find
+   name 'cloud'") — the quotes were the string's. The rows moved by hand, escaped.
+7. ⚠️ The receiver-sentence prediction for a boundary in a logic-only component held ("component emits
+   no file to host the boundary"), because `bailAsLogicOnly` runs before any registration; it is the one
+   place that names the node without the plan.
+
+### §54.5 Graded — `tests/on-app-error.test.ts` (41 rows), the gates, the arms
+
+§A the plan (the shell kept, both boundaries, the direct binding, the six outputs, the Error Object's
+structural type) · §B the shell (`App.tsx` renders it first inside the router; the hook, the stores,
+`return null`; the report row) · §C the page (both halves imported; the hook line; the direct read;
+the raise between the row and the chain; the JSON cast, the truthiness sink) · §D the channel's text ·
+§E **the channel under a hook harness** — never silent, `last` before the listener, the prefix filter and
+the empty one, every boundary fires, unmount unsubscribes, a throwing listener isolated, one level of
+re-entry delivered and the second dropped, a clone before the loop, the Filter read live · §F six refused
+shapes by mutation and the wired-Filter variant · §G the report and the pre-flight · §H the ledger · §I
+the fixture and the shell-less control as real `ts.Program`s · §J the controls (slot-desk ships no
+channel; batch-desk and script-desk do through their libs; quote-desk's `HttpError` and both arms; the
+Function wrapper still `console.error`s).
+
+Moved rows: the 13 catch-block goldens in seven specs (`cloud-function`, `record`, `record-verbs`,
+`user-family`, `files`, `set-user-properties-magic-link`, `run-tasks` §D), the Run Tasks and Script
+loaders (they serve `./errors` as a recording stub, and the four console-spy rows became raised-event
+rows asserting cardinality), the `useRunTasks` golden, the `defineScript` tail, four floor pins.
+
+```
+packages/nodegx-export: tsc 0 · on-app-error.test.ts 41/41 · jest 66 files (66 on disk) 2125 rows, exit 0
+noodl-editor: tsc -p tsconfig.json --noEmit 0 (16.3 s real)
+export-ledger:check OK — 176 types, 103 translated · picker 96/127 (75.6%), floor 96, --check exit 0
+emitted apps typecheck (real ts.Program): alarm-desk 16 files, batch-desk 17, script-desk 19, call-desk 17 — 0 diagnostics
+arms 13/13 red, all restored (md5 of the five sources unchanged after each; one 5-file jest run per arm — on-app-error, run-tasks, cloud-function, scaffold, script):
+  M1 the Filter never filters — 3 · M2 the listener runs BEFORE the values — 2 · M3 the depth guard off — 2 · M4 a throwing subscriber
+  stops the rest — 2 · M5 unmount never unsubscribes — 1 · M6 the four catch sites no longer raise — 4 (three suites) · M7 the shell is
+  never kept — 8 · M8 the early registration gone (the cycle returns) — 13 · M9 Error-as-a-value unchecked — 1 · M10 the console
+  default not installed — 3 (its first anchor was the template-literal spelling; re-armed on the concatenation) · M11 the Run Tasks
+  host raises the display name — 2 · M12 the Filter not coerced — 1 (the emitted app's tsc) · M14 App.tsx never renders the shell — 1
+```
+
+### §54.6 The drive
+
+(`run-editor`, `dev:debug`, a copy of alarm-desk registered in recents, torn down after — `drive17.sh` for the picker,
+`drive17c.sh` for the export; the box was handed to a peer between the arms and the drive by message.)
+
+- **Picker**: `On App Error` searched — the card carries **no** export-badge dot (`dot: null`); the control search
+  `Sign In With` shows its 14×14 dot, reachable, titled *"Not exportable — until provider sign-in …"*
+  (`drive17-01-picker-onapperror.png`, `drive17-02-picker-control.png`). The ledger is the only list.
+- **Pre-flight**: Settings → Project (through the route seam — `patchfs17.js` installs it, so it runs FIRST; the
+  section lookup alone finds nothing until the panel is open, which cost one pass) → *Export as React code…* →
+  *16 files — 1 page, 1 component, plus the app shell, styles and build config* · *Everything translates. No node,
+  wire or parameter is left out.* · no verdict, no cascade, no rows (`drive17-03-modal.png`). The "1 component" is
+  the shell.
+- **The write, through the real path**: the folder dialog routed through the `FileSystem.instance.chooseDirectory`
+  seam → `checkTarget` → `writeExport` → the toast: *"Exported EXP-011 Alarm Desk Drive — 16 files written to
+  …/drive17-out. Everything translated — EXPORT-REPORT.md says how to build and run it"* (`drive17-04-toast.png`).
+  On disk: **16 files, every one byte-identical to `emitApp` over the same copy** (`compare17.ts`: same 16, diff 0)
+  — `src/lib/errors.ts`, `src/components/AppShell.tsx`, `src/App.tsx` rendering `<AppShell />`, `Home.tsx` with one
+  `useAppError` and one `raiseAppError`.
+- Not driven: the exported app in a browser (the cloud function answers the interpreter's "No cloud services
+  defined" failure; a real run would raise `cloud-function/call-failed` once, both boundaries would hear it, the
+  shell's chain would write `lastError`/`lastCode`, the page's `cloudType` = `CloudFunction2`, and the direct Text
+  would show the message). The channel's behaviour is graded under the hook harness (§E). Owner NONE.
+- ⚠️ `EXPORT-REPORT.md` does not name `On App Error` when everything translates — expected (the report names
+  what was left out), and different from §53's report, which named Run Tasks in a note.
+
+### §54.7 What this leaves
+
+- **Next, in §50's order: row 5 `Create New Array` — a design session first** (§7.3's anonymous-Id-by-wire; the
+  named-array model keys on a literal name), then `Filter Records`, `Repeater Item`, the streaming trio, … `Sign
+  In With` stays out.
+- The http answer types `error` optional (one interface for both outcomes); the `!ok` arm's raise carries `?? ''`.
+  A discriminated union (`ok: true | ok: false & error: string`) is the honest fix and moves the http goldens.
+  Owner NONE.
+- A Filter fed by a **Text Input** is refused with the fallback sentence ("has no statically known source"): the
+  boundary registers before the controlled-state seam that hosts a hook argument fed by a text input (files
+  B13). The seam would host it; the sentence would then be the precise one. Owner NONE.
+- **Function / Expression throws are NOT on the bus** (the runtime raises `function/script-threw`,
+  `expression/threw`): the pure wrapper recomputes per render, and a raise per render through a chain that sets
+  state is a render loop. Memoising the wrapper per input tuple (`useMemo` per call site) is the precondition —
+  then the raise is once per computation, the runtime's own cadence. Owner NONE.
+- A **Query Records** failure has no emitted catch site at all (the query effects have no failure handling —
+  pre-existing, §54.1 lists its code `query-records/query-failed`). Owner NONE.
+- `image/load-failed`: the emitted `<img>` has no `onError`. Owner NONE.
+- A boundary in a logic-only component nothing mounts is refused ("component emits no file to host the
+  boundary"); a task template hosts one per task instance, which is the runtime's own shape. Untested row.
+  Owner NONE.
+- The shell's `docComment` and header say *"visual"* (`GENERATED_TS`); cosmetic. Owner NONE.

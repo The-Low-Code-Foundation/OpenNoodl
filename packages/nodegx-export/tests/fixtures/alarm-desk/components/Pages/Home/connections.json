@@ -1,0 +1,61 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "e7a1c4d2-5b3f-4e8d-9c1a-000000000091",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "pingBtn",
+      "fromProperty": "onClick",
+      "toId": "ping",
+      "toProperty": "call"
+    },
+    {
+      "fromId": "ping",
+      "fromProperty": "failure",
+      "toId": "setPings",
+      "toProperty": "do"
+    },
+    {
+      "fromId": "failedStr",
+      "fromProperty": "savedValue",
+      "toId": "setPings",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "lastErrorVar",
+      "fromProperty": "value",
+      "toId": "lastErrorText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "lastCodeVar",
+      "fromProperty": "value",
+      "toId": "lastCodeText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "pingsVar",
+      "fromProperty": "value",
+      "toId": "pingsText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "cloudOnly",
+      "fromProperty": "error",
+      "toId": "setCloudCount",
+      "toProperty": "do"
+    },
+    {
+      "fromId": "cloudOnly",
+      "fromProperty": "nodeType",
+      "toId": "setCloudCount",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "cloudOnly",
+      "fromProperty": "message",
+      "toId": "directText",
+      "toProperty": "text"
+    }
+  ]
+}

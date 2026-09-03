@@ -16,13 +16,15 @@
  * the element's `onSuccess` / `onFailure` are the task's `succeed` / `fail` — the same edge
  * `creatorCallbacks.onOutputChanged` watches for. Finishing removes the element, as `deleteNode` does.
  *
- * What differs, recorded rather than hidden: a task's failure report (`run-tasks/task-failed`) goes to
- * the console without the template's error output (the runtime reads it off the dying node; the host
- * has no value channel from the element); `run()` runs its checks synchronously at the pulse rather
- * than through the node's operation queue (the queue exists to serialise `createNode`, which is
- * asynchronous there and synchronous here — React mounts the element); the `already-running`,
- * `no-items` and `invalid-concurrency` diagnostics go to the console (the runtime raises them on its
- * error channel and, in the editor, as warnings).
+ * The diagnostics — `already-running`, `no-items`, `invalid-concurrency`, `task-failed` — are raised on the
+ * app's error channel (`src/lib/errors.ts`, EXP-011 §54) with the node's own provenance, exactly where the
+ * runtime raises them; a boundary hears them, and the console default prints them.
+ *
+ * What differs, recorded rather than hidden: a task's failure report (`run-tasks/task-failed`) carries the
+ * index but not the template's error output (the runtime reads it off the dying node; the host has no
+ * value channel from the element); `run()` runs its checks synchronously at the pulse rather than through
+ * the node's operation queue (the queue exists to serialise `createNode`, which is asynchronous there and
+ * synchronous here — React mounts the element).
  */
 
 export const RUN_TASKS_LIB_PATH = 'src/lib/runTasks.ts';
@@ -46,11 +48,26 @@ export function runTasksLibSource(): string {
     '// Aborted, then Failure. Every outcome is followed by Completed, once per Do or Abort that owns it, so an',
     "// honoured abort fires Completed twice (the run's Do and the Abort are two invocations).",
     '//',
-    '// Recorded divergences: a failed task is reported to the console without the template\'s error output; the',
-    "// checks run at the pulse rather than through the node's operation queue; diagnostics go to the console.",
+    "// The diagnostics — already-running, no-items, invalid-concurrency, task-failed — are raised on the app's error",
+    "// channel (./errors) with the node's own provenance, where the runtime raises them.",
+    '//',
+    '// Recorded divergences: a failed task is reported without the template\'s error output; the checks run at',
+    "// the pulse rather than through the node's operation queue.",
     '//',
     '',
     "import { useEffect, useReducer, useRef } from 'react';",
+    '',
+    "import { raiseAppError } from './errors';",
+    '',
+    '/** Which node this is — the provenance every raise carries (Node.raiseRuntimeError fills the same three in). */',
+    'export interface RunTasksSource {',
+    "  /** The authored label, or 'Run Tasks'. */",
+    '  label: string;',
+    "  /** The node's graph id. */",
+    '  nodeId: string;',
+    "  /** The component it sits in — '/Pages/Home'. */",
+    '  componentName: string;',
+    '}',
     '',
     'export interface RunTasksConfig {',
     '  /** How many tasks may run at the same time (default 10); below 1 the run fails rather than starting. */',
@@ -95,7 +112,7 @@ export function runTasksLibSource(): string {
     "type State = 'idle' | 'running' | 'aborted';",
     '',
     'interface Instance<Item> {',
-    '  label: string;',
+    '  source: RunTasksSource;',
     '  state: State;',
     '  items: readonly Item[] | undefined;',
     '  queue: Array<{ item: Item; index: number }>;',
@@ -120,7 +137,7 @@ export function runTasksLibSource(): string {
     '}',
     '',
     'export function useRunTasks<Item = Record<string, any>>(',
-    '  label: string,',
+    '  source: RunTasksSource,',
     '  config: RunTasksConfig = {},',
     '  on: RunTasksListeners = {}',
     '): RunTasksHandle<Item> {',
@@ -133,7 +150,7 @@ export function runTasksLibSource(): string {
     '  const handle = useRef<RunTasksHandle<Item> | null>(null);',
     '  if (inst.current === null || handle.current === null) {',
     '    const self: Instance<Item> = {',
-    '      label,',
+    '      source,',
     "      state: 'idle',",
     '      items: undefined,',
     '      queue: [],',
@@ -148,6 +165,10 @@ export function runTasksLibSource(): string {
     '    inst.current = self;',
     '    const fire = (name: keyof RunTasksListeners) => {',
     '      onRef.current[name]?.();',
+    '    };',
+    "    // raiseRuntimeError: the node's own code and message, its graph id, its type, its component.",
+    '    const raise = (code: string, message: string, detail?: unknown) => {',
+    "      raiseAppError({ code, message, nodeId: self.source.nodeId, nodeType: 'RunTasks', componentName: self.source.componentName, detail });",
     '    };',
     '    // reportOutcomes: the outcome, then Completed, once per token — the run\'s Do pulses first, then',
     "    // the Abort pulses it honoured, which are Done however the run ended (_endRun).",
@@ -191,7 +212,7 @@ export function runTasksLibSource(): string {
     "      if (self.dead || self.state === 'idle' || !self.active.includes(task)) return;",
     '      self.active = self.active.filter((t) => t !== task);',
     "      if (how === 'failure') {",
-    '        console.error(`Run Tasks ${self.label}: Task ${task.index + 1} of ${self.numTasks} failed`);',
+    "        raise('run-tasks/task-failed', `Task ${task.index + 1} of ${self.numTasks} failed`, { itemIndex: task.index });",
     '        self.failedTasks++;',
     '      }',
     '      self.completedTasks++;',
@@ -228,20 +249,20 @@ export function runTasksLibSource(): string {
     '        if (items === null) self.items = undefined;',
     '        else if (items) self.items = items;',
     "        if (self.state !== 'idle') {",
-    '          console.error(`Run Tasks ${self.label}: Do was triggered while a run was still in progress, so it was ignored`);',
+    "          raise('run-tasks/already-running', 'Do was triggered while a run was still in progress, so it was ignored');",
     "          fire('unchanged');",
     "          fire('completed');",
     '          return;',
     '        }',
     '        if (self.items === undefined) {',
-    '          console.error(`Run Tasks ${self.label}: No Items list was provided, so there is nothing to run`);',
+    "          raise('run-tasks/no-items', 'No Items list was provided, so there is nothing to run');",
     "          fire('failure');",
     "          fire('completed');",
     '          return;',
     '        }',
     '        const max = configRef.current.maxRunningTasks ?? 10;',
     '        if (!(max >= 1)) {',
-    '          console.error(`Run Tasks ${self.label}: Max Running Tasks is ${max}, so no task could ever start`);',
+    "          raise('run-tasks/invalid-concurrency', `Max Running Tasks is ${max}, so no task could ever start`);",
     "          fire('failure');",
     "          fire('completed');",
     '          return;',

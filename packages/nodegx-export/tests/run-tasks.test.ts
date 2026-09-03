@@ -194,7 +194,8 @@ describe('§C the emitted page — the hook, the two handlers, the tasks rendere
   });
 
   test('the hook line carries the label, the config and the three listeners', () => {
-    expect(page).toContain("const sendAll = useRunTasks('Send all', { maxRunningTasks: 2, stopOnFailure: true }, {");
+    // EXP-011 §54. The first argument is the node's provenance — what every raise on the error channel carries.
+    expect(page).toContain("const sendAll = useRunTasks({ label: 'Send all', nodeId: 'sendAll', componentName: '/Pages/Home' }, { maxRunningTasks: 2, stopOnFailure: true }, {");
     expect(page).toContain("    done: () => status.set('all sent'),");
     expect(page).toContain("    failure: () => status.set('some failed'),");
     expect(page).toContain("    aborted: () => status.set('stopped')");
@@ -234,7 +235,8 @@ describe('§D the emitted template — renders null, runs its start chain once o
   test('the mount effect: a ref guards the second mount, the chain is the try/catch, the deps are empty', () => {
     expect(template).toContain('  const started = useRef(false);');
     expect(template).toContain('  useEffect(() => {\n    if (started.current) return;\n    started.current = true;\n    void (async () => {\n      try {\n        const notifyGuestAnswer = await callNotifyGuest({ name });\n        onSuccess?.();\n        lastSent.set(name);\n      } catch (error) {');
-    expect(template).toContain('        setNotifyGuestError(notifyGuestMessage);\n        onFailure?.();\n      }\n    })();\n    // eslint-disable-next-line react-hooks/exhaustive-deps -- once, like the task\'s own start pulse\n  }, []);');
+    // EXP-011 §54. The raise sits between the Error row and the failure chain — where reportOutcome raises, before the pulse.
+    expect(template).toContain('        setNotifyGuestError(notifyGuestMessage);\n        raiseAppError({ code: \'cloud-function/call-failed\', message: notifyGuestMessage, nodeId: \'notify\', nodeType: \'CloudFunction2\', componentName: \'/Notify\' });\n        onFailure?.();\n      }\n    })();\n    // eslint-disable-next-line react-hooks/exhaustive-deps -- once, like the task\'s own start pulse\n  }, []);');
     expect(template).toContain('  // A Run Tasks template (run by Pages/Home › sendAll): draws nothing; its "Do" chain runs once on mount');
   });
 
@@ -258,7 +260,12 @@ describe('§D the emitted template — renders null, runs its start chain once o
 type Listeners = Partial<Record<'done' | 'failure' | 'unchanged' | 'completed' | 'aborted', () => void>>;
 type Task = { key: string; id: string; index: number; item: any; succeed: () => void; fail: () => void };
 type Handle = { run: (items: unknown) => void; abort: () => void; tasks: ReadonlyArray<Task> };
-type Lib = { useRunTasks: (label: string, config?: { maxRunningTasks?: number; stopOnFailure?: boolean }, on?: Listeners) => Handle };
+type Source = { label: string; nodeId: string; componentName: string };
+type Lib = { useRunTasks: (source: Source, config?: { maxRunningTasks?: number; stopOnFailure?: boolean }, on?: Listeners) => Handle };
+/** EXP-011 §54. What the lib raises on `./errors` — recorded by the loader's stub, one entry per raise. */
+type AppError = { code: string; message: string; nodeId: string; nodeType: string; componentName: string; detail?: unknown };
+const raised: AppError[] = [];
+const BATCH: Source = { label: 'Batch', nodeId: 'batch', componentName: '/Pages/Home' };
 
 interface Harness {
   React: {
@@ -335,8 +342,10 @@ const loadLib = (): { lib: Lib; harness: Harness } => {
   // eslint-disable-next-line no-new-func
   new Function('require', 'module', 'exports', js)(
     (name: string) => {
-      if (name !== 'react') throw new Error(`unexpected import ${name}`);
-      return harness.React;
+      if (name === 'react') return harness.React;
+      // EXP-011 §54. The error channel the four diagnostics are raised on: a stub that records every raise.
+      if (name === './errors') return { raiseAppError: (error: AppError) => raised.push(error) };
+      throw new Error(`unexpected import ${name}`);
     },
     module,
     module.exports
@@ -349,17 +358,15 @@ const host = (config: { maxRunningTasks?: number; stopOnFailure?: boolean } = {}
   const log: string[] = [];
   const on: Listeners = {};
   for (const name of ['done', 'failure', 'unchanged', 'completed', 'aborted'] as const) on[name] = () => log.push(name);
-  const render = () => harness.render(() => lib.useRunTasks('Batch', config, on));
+  const render = () => harness.render(() => lib.useRunTasks(BATCH, config, on));
   const handle = render();
   return { handle, log, render, harness };
 };
 
 describe('§E the host library runs the way runtasks.ts does (hook harness under node)', () => {
-  let errors: jest.SpyInstance;
   beforeEach(() => {
-    errors = jest.spyOn(console, 'error').mockImplementation(() => {});
+    raised.length = 0;
   });
-  afterEach(() => errors.mockRestore());
 
   test('a run of three with two at a time: two mount, the third when one finishes, Done then Completed at the end', () => {
     const { handle, log, render } = host({ maxRunningTasks: 2 });
@@ -393,7 +400,8 @@ describe('§E the host library runs the way runtasks.ts does (hook harness under
     handle.run([{ name: 'Linus' }]);
     expect(log).toEqual(['unchanged', 'completed']);
     expect(render().tasks.map((t) => t.item.name)).toEqual(['Ada']);
-    expect(errors).toHaveBeenCalledWith(expect.stringContaining('Do was triggered while a run was still in progress'));
+    // EXP-011 §54. Raised on the channel with the runtime's code, message and the node's provenance — exactly one.
+    expect(raised).toEqual([{ code: 'run-tasks/already-running', message: 'Do was triggered while a run was still in progress, so it was ignored', nodeId: 'batch', nodeType: 'RunTasks', componentName: '/Pages/Home', detail: undefined }]);
   });
 
   test('an empty list is a completed run: Done, Completed, nothing mounted', () => {
@@ -407,7 +415,7 @@ describe('§E the host library runs the way runtasks.ts does (hook harness under
     const { handle, log, render } = host();
     handle.run(undefined);
     expect(log).toEqual(['failure', 'completed']);
-    expect(errors).toHaveBeenCalledWith(expect.stringContaining('No Items list was provided'));
+    expect(raised).toEqual([expect.objectContaining({ code: 'run-tasks/no-items', message: 'No Items list was provided, so there is nothing to run', nodeType: 'RunTasks' })]);
     log.length = 0;
     handle.run([{ name: 'Ada' }]);
     expect(render().tasks).toHaveLength(1);
@@ -431,7 +439,7 @@ describe('§E the host library runs the way runtasks.ts does (hook harness under
     handle.run([{ name: 'Ada' }]);
     expect(log).toEqual(['failure', 'completed']);
     expect(render().tasks).toEqual([]);
-    expect(errors).toHaveBeenCalledWith(expect.stringContaining('Max Running Tasks is 0'));
+    expect(raised).toEqual([expect.objectContaining({ code: 'run-tasks/invalid-concurrency', message: 'Max Running Tasks is 0, so no task could ever start' })]);
   });
 
   test('a failed task with Stop On Failure: the queue is dropped, Aborted first, then Failure, then Completed', () => {
@@ -440,7 +448,7 @@ describe('§E the host library runs the way runtasks.ts does (hook harness under
     render().tasks[0].fail();
     expect(log).toEqual(['aborted', 'failure', 'completed']);
     expect(render().tasks).toEqual([]);
-    expect(errors).toHaveBeenCalledWith(expect.stringContaining('Task 1 of 3 failed'));
+    expect(raised).toEqual([expect.objectContaining({ code: 'run-tasks/task-failed', message: 'Task 1 of 3 failed', detail: { itemIndex: 0 } })]);
   });
 
   test('a failed task without Stop On Failure: the run goes on and ends in Failure', () => {
@@ -502,7 +510,7 @@ describe('§E the host library runs the way runtasks.ts does (hook harness under
     const { lib, harness } = loadLib();
     const log: string[] = [];
     let config = { maxRunningTasks: 1, stopOnFailure: false };
-    const render = () => harness.render(() => lib.useRunTasks('Batch', config, { aborted: () => log.push('aborted'), failure: () => log.push('failure') }));
+    const render = () => harness.render(() => lib.useRunTasks(BATCH, config, { aborted: () => log.push('aborted'), failure: () => log.push('failure') }));
     const handle = render();
     handle.run([{ name: 'Ada' }, { name: 'Grace' }]);
     config = { maxRunningTasks: 1, stopOnFailure: true };
@@ -756,11 +764,11 @@ describe('§G the report and the pre-flight', () => {
 });
 
 describe('§H the ledger', () => {
-  test('RunTasks is translated, carries no badge, and the floor moved to 95', () => {
+  test('RunTasks is translated, carries no badge, and the floor is 96 (since §54)', () => {
     expect(ledgerEntryOf('RunTasks')?.status).toBe('translated');
     expect(exportBadgeOf('RunTasks')).toBeUndefined();
     const ledger = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'coverage-ledger.json'), 'utf8'));
-    expect(ledger.pickerCoverageFloor).toBe(95);
+    expect(ledger.pickerCoverageFloor).toBe(96);
   });
 });
 

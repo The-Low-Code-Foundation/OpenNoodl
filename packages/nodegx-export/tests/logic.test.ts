@@ -349,6 +349,11 @@ describe('the puppy fixture is untouched by the slice', () => {
       // literals and branches are its normal idiom, and backend-client.test.ts pins the
       // whole file byte-for-byte, a stronger claim than this scan.
       if (name === 'src/api/client.ts') continue;
+      // EXP-011 §54: `src/lib/*` is transcribed runtime — the error channel (runtimeerror.ts, with its
+      // depth guard and its subscriber loop) is the first lib every project with a record verb ships,
+      // and a branch or a template literal there is the runtime's own idiom, not graph translation.
+      // Excluded by kind, for the same reason `.md` is: the population is "the lib modules", not one file.
+      if (name.startsWith('src/lib/')) continue;
       // 🔴 Excluded **by kind, not by name.** This sweep is about generated *code*: a backtick in
       // TypeScript is a template literal, and in Markdown it is a code span. `README.md` used to
       // be listed here individually, and EXP-004's `EXPORT-REPORT.md` reddened it the day it

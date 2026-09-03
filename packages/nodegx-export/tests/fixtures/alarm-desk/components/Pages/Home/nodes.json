@@ -1,0 +1,198 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "e7a1c4d2-5b3f-4e8d-9c1a-000000000091",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "page",
+      "type": "Page",
+      "label": "Home",
+      "children": [
+        "shell"
+      ],
+      "parameters": {
+        "title": "Alarm Desk",
+        "urlPath": "home"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "shell",
+      "type": "Group",
+      "label": "Shell",
+      "parent": "page",
+      "children": [
+        "headline",
+        "pingBtn",
+        "lastErrorText",
+        "lastCodeText",
+        "pingsText",
+        "directText"
+      ],
+      "parameters": {
+        "flexDirection": "column",
+        "alignItems": "flex-start",
+        "rowGap": "var(--space-3)",
+        "paddingTop": "var(--space-8)",
+        "paddingLeft": "var(--space-6)"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "headline",
+      "type": "Text",
+      "label": "Headline",
+      "parent": "shell",
+      "parameters": {
+        "text": "Alarm Desk",
+        "fontSize": "var(--text-base)"
+      },
+      "x": 100,
+      "y": 280
+    },
+    {
+      "id": "pingBtn",
+      "type": "net.noodl.controls.button",
+      "label": "Ping",
+      "parent": "shell",
+      "parameters": {
+        "label": "Ping"
+      },
+      "x": 100,
+      "y": 380
+    },
+    {
+      "id": "lastErrorText",
+      "type": "Text",
+      "label": "Last error",
+      "parent": "shell",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-base)"
+      },
+      "x": 100,
+      "y": 460
+    },
+    {
+      "id": "lastCodeText",
+      "type": "Text",
+      "label": "Last code",
+      "parent": "shell",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-base)"
+      },
+      "x": 100,
+      "y": 540
+    },
+    {
+      "id": "pingsText",
+      "type": "Text",
+      "label": "Pings",
+      "parent": "shell",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-base)"
+      },
+      "x": 100,
+      "y": 620
+    },
+    {
+      "id": "directText",
+      "type": "Text",
+      "label": "Direct",
+      "parent": "shell",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-base)"
+      },
+      "x": 100,
+      "y": 700
+    },
+    {
+      "id": "ping",
+      "type": "CloudFunction2",
+      "label": "Ping",
+      "parameters": {
+        "function": "ping"
+      },
+      "x": 400,
+      "y": 380
+    },
+    {
+      "id": "setPings",
+      "type": "Set Variable",
+      "label": "Mark failed",
+      "parameters": {
+        "name": "pings"
+      },
+      "x": 700,
+      "y": 380
+    },
+    {
+      "id": "failedStr",
+      "type": "String",
+      "label": "failed",
+      "parameters": {
+        "value": "failed"
+      },
+      "x": 500,
+      "y": 460
+    },
+    {
+      "id": "lastErrorVar",
+      "type": "Variable2",
+      "label": "Last error",
+      "parameters": {
+        "name": "lastError"
+      },
+      "x": 400,
+      "y": 460
+    },
+    {
+      "id": "lastCodeVar",
+      "type": "Variable2",
+      "label": "Last code",
+      "parameters": {
+        "name": "lastCode"
+      },
+      "x": 400,
+      "y": 540
+    },
+    {
+      "id": "pingsVar",
+      "type": "Variable2",
+      "label": "Pings",
+      "parameters": {
+        "name": "pings"
+      },
+      "x": 400,
+      "y": 620
+    },
+    {
+      "id": "cloudOnly",
+      "type": "On App Error",
+      "label": "Cloud only",
+      "parameters": {
+        "filter": "cloud-function"
+      },
+      "x": 400,
+      "y": 760
+    },
+    {
+      "id": "setCloudCount",
+      "type": "Set Variable",
+      "label": "Remember node type",
+      "parameters": {
+        "name": "cloudType"
+      },
+      "x": 700,
+      "y": 760
+    }
+  ],
+  "visualRoots": [
+    "page"
+  ]
+}

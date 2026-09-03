@@ -27,6 +27,7 @@ import { ANIMATE_LIB_PATH, animateLibSource } from './animateLib';
 import { STATES_LIB_PATH, statesLibSource } from './statesLib';
 import { RUN_TASKS_LIB_PATH, runTasksLibSource } from './runTasksLib';
 import { SCRIPT_LIB_PATH, scriptLibSource } from './scriptLib';
+import { ERRORS_LIB_PATH, errorsLibSource } from './errorsLib';
 import { EmittedCopy, emitKits } from './kits';
 import { README_PATH, renderReadme } from './readme';
 import { ExportReportData, REPORT_PATH, ReportComponent, renderReport, stripScope } from './report';
@@ -69,7 +70,9 @@ export interface EmittedApp {
 export function emitApp(ir: ExportIR, catalog: Catalog): EmittedApp {
   const index = new CatalogIndex(catalog);
   const project = planProject(ir, index);
-  const files = emitScaffold(ir);
+  // EXP-011 §54. The router shell kept as a file for the boundary beside its Router: App.tsx renders it inside the router.
+  const shell = project.plans.find((p) => p.shell === true && p.file !== null);
+  const files = emitScaffold(ir, shell?.file ? { symbol: shell.file.symbol, fileBase: shell.file.fileBase } : undefined);
   const notes: string[] = [];
 
   // EXP-010. The kit bridge is built from the node types the plans actually render, so a project
@@ -125,6 +128,8 @@ export function emitApp(ir: ExportIR, catalog: Catalog): EmittedApp {
   // EXP-011 §52. The Script host — earned by a component whose plan kept a Script node.
   let scriptLibUsed = false;
   let runTasksLibUsed = false;
+  // EXP-011 §54. The error channel — earned by a boundary or a raising failure arm; script.ts and runTasks.ts import it too.
+  let errorsLibUsed = false;
   const reportComponents: ReportComponent[] = [];
   for (const plan of project.plans) {
     if (plan.skipReason) {
@@ -177,6 +182,7 @@ export function emitApp(ir: ExportIR, catalog: Catalog): EmittedApp {
     if (emitted.statesLib) statesLibUsed = true;
     if (emitted.scriptLib) scriptLibUsed = true;
     if (emitted.runTasksLib) runTasksLibUsed = true;
+    if (emitted.errorsLib) errorsLibUsed = true;
   }
 
   /**
@@ -228,6 +234,10 @@ export function emitApp(ir: ExportIR, catalog: Catalog): EmittedApp {
   // EXP-011 §53.
   if (runTasksLibUsed) {
     files[RUN_TASKS_LIB_PATH] = GENERATED_MODULE_TS + runTasksLibSource();
+  }
+  // EXP-011 §54. `src/lib/errors.ts` — the channel. script.ts and runTasks.ts raise on it, so either earns it too.
+  if (errorsLibUsed || scriptLibUsed || runTasksLibUsed) {
+    files[ERRORS_LIB_PATH] = GENERATED_MODULE_TS + errorsLibSource();
   }
 
   const api = apiModules(ir, project);
@@ -611,7 +621,20 @@ function httpModule(project: ProjectPlan): [string, string] | null {
     'src/api/http.ts',
     GENERATED_MODULE_TS +
       '//\n// Requests the graph makes to addresses outside this app. Each function is one\n' +
-      "// HTTP Request node's configuration, with the values it was wired for as parameters.\n\n" +
+      "// HTTP Request node's configuration, with the values it was wired for as parameters.\n" +
+      '//\n// Where nothing came back at all — no URL, a timeout, a network error — the function throws an\n' +
+      "// HttpError whose `code` is the node's own (http/no-url, http/timeout, http/network-error), for the\n" +
+      '// failure arm to report on the error channel; a non-2xx answer is `ok: false`, reported there as\n' +
+      '// http/error-status.\n\n' +
+      'export class HttpError extends Error {\n' +
+      '  constructor(\n' +
+      '    message: string,\n' +
+      "    /** The node's stable code for what went wrong (httpnode.ts HTTP_ERROR_CODES). */\n" +
+      '    readonly code: string\n' +
+      '  ) {\n' +
+      '    super(message);\n' +
+      '  }\n' +
+      '}\n\n' +
       parts.join('\n')
   ];
 }
@@ -899,7 +922,7 @@ function httpFunction(componentPath: string, call: HttpCallPlan): string {
   }
   // Only reachable with an authored-empty URL: nothing below can empty a URL that had text in it.
   if (call.url === '') {
-    out.push("  if (!url) throw new Error('URL is required, so no request could be sent');");
+    out.push("  if (!url) throw new HttpError('URL is required, so no request could be sent', 'http/no-url');");
   }
 
   // ---- headers, then the credential, which wins on a collision --------------------------------
@@ -951,8 +974,9 @@ function httpFunction(componentPath: string, call: HttpCallPlan): string {
     '      signal: controller.signal',
     '    });',
     '  } catch (error) {',
-    '    throw new Error(',
-    `      timedOut ? \`Request timed out after ${call.timeout} ms\` : error instanceof Error && error.message ? error.message : 'Network error'`,
+    '    throw new HttpError(',
+    `      timedOut ? \`Request timed out after ${call.timeout} ms\` : error instanceof Error && error.message ? error.message : 'Network error',`,
+    "      timedOut ? 'http/timeout' : 'http/network-error'",
     '    );',
     '  } finally {',
     '    clearTimeout(timer);',

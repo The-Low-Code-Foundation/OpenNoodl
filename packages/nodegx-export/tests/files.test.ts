@@ -339,7 +339,8 @@ describe('§B — the component', () => {
     wire(fail, HOME, 'picker', 'failure', 'pickFailSet', 'do', 'signal');
     wire(fail, HOME, 'picker', 'error', 'pickFailSet', 'value');
     const handler = handlerOf(home(emitApp(fail, catalog)), 'Choose a photo');
-    expect(handler).toContain('setPhotoPickerError(photoPickerMessage);\n            pickNote.set(photoPickerMessage);');
+    // EXP-011 §54. The raise (open-file-picker/open-failed) sits between the row and the chain.
+    expect(handler).toContain('setPhotoPickerError(photoPickerMessage);\n            raiseAppError({ code: \'open-file-picker/open-failed\', message: photoPickerMessage, nodeId: \'picker\', nodeType: \'Open File Picker\', componentName: \'/Pages/Home\' });\n            pickNote.set(photoPickerMessage);');
 
     const wrong = cloneIr();
     addNode(componentOf(wrong, HOME), { id: 'urlOnFail', type: 'Set Variable', parameters: [{ name: 'name', value: lit('lastUpload') }] });

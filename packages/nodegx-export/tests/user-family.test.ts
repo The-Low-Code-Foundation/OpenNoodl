@@ -103,7 +103,10 @@ describe('§4a — Log In: the whole idiom, awaited', () => {
         '              await logIn(usernameInput, passwordInput);',
         "              navigate('/admin');",
         '            } catch (error) {',
-        '              setLogInActionError(error instanceof Error ? error.message : String(error));',
+        '              const logInActionErrorMessage = error instanceof Error ? error.message : String(error);',
+        '              setLogInActionError(logInActionErrorMessage);',
+        // EXP-011 §54. login.ts raises user/log-in-failed before the failure pulse; the export raises after the row, before nothing.
+        "              raiseAppError({ code: 'user/log-in-failed', message: logInActionErrorMessage, nodeId: 'login', nodeType: 'net.noodl.user.LogIn', componentName: '/Pages/Admin Login' });",
         '            }',
         '          }}'
       ].join('\n')
@@ -145,7 +148,9 @@ describe('§4b — Log Out, and the Error row nothing reads', () => {
     // because all three of theirs feed a status Text.
     const source = adminSource(app);
     expect(source).toContain('const [logOutActionError, setLogOutActionError] = useState<string | undefined>();');
-    expect(source).toContain('setLogOutActionError(error instanceof Error ? error.message : String(error));');
+    expect(source).toContain('const logOutActionErrorMessage = error instanceof Error ? error.message : String(error);');
+    expect(source).toContain('setLogOutActionError(logOutActionErrorMessage);');
+    expect(source).toContain("raiseAppError({ code: 'user/log-out-failed', message: logOutActionErrorMessage, nodeId: 'logout', nodeType: 'net.noodl.user.LogOut', componentName: '/Pages/Admin' });");
     // …and nothing renders it, which is exactly the runtime's `_internal.error` with no reader.
     expect(source).not.toContain('{logOutActionError');
   });
@@ -320,7 +325,11 @@ describe('§4e — the shared action generalised, not altered', () => {
       expect(source).toContain('try {');
       expect(source).toContain(call);
       expect(source).toContain(catchLine);
-      expect(source).toContain(`${setter}error instanceof Error ? error.message : String(error));`);
+      // EXP-011 §54. The message is a local now — the Error row reads it, and so does the raise on the error channel.
+      const local = setter.slice('set'.length, -1);
+      const messageLocal = `${local.charAt(0).toLowerCase()}${local.slice(1)}Message`;
+      expect(source).toContain(`const ${messageLocal} = error instanceof Error ? error.message : String(error);`);
+      expect(source).toContain(`${setter}${messageLocal});`);
     }
   });
 });

@@ -40,6 +40,7 @@ import { TIMER_LIB_PATH } from './timerLib';
 import { ANIMATE_LIB_PATH } from './animateLib';
 import { STATES_LIB_PATH } from './statesLib';
 import { RUN_TASKS_LIB_PATH } from './runTasksLib';
+import { ERRORS_LIB_PATH } from './errorsLib';
 import { SCRIPT_LIB_PATH } from './scriptLib';
 import { SCRIPT_CODE_PREFIX } from '../analyze/script';
 import { ID_HELPERS_BY_FN, ID_LIB_PATH, IdHelper } from './idLib';
@@ -131,6 +132,8 @@ export interface EmittedComponent {
   scriptLib: boolean;
   /** EXP-011 §53. `src/lib/runTasks.ts` is owed when any component keeps a Run Tasks node. */
   runTasksLib: boolean;
+  /** EXP-011 §54. `src/lib/errors.ts` is owed when this component keeps a boundary or raises on the channel. */
+  errorsLib: boolean;
 }
 
 export function emitComponent(
@@ -146,9 +149,36 @@ export function emitComponent(
   kitBindings: Map<string, KitBinding> = new Map()
 ): EmittedComponent | null {
   // EXP-011 §53. A Run Tasks template has a file and no root — it renders null and runs its start chain on mount.
-  if (!plan.file || (!plan.rootId && plan.task === undefined)) return null;
+  // EXP-011 §54. The router shell kept for its boundary has a file and no root too — it renders null and hosts the hook.
+  if (!plan.file || (!plan.rootId && plan.task === undefined && plan.shell !== true)) return null;
   const component = ir.components.find((c) => c.path === plan.path)!;
   const nodeById = new Map(component.nodes.map((n) => [n.id, n]));
+  /**
+   * EXP-011 §54. The raise a failure arm makes on the error channel (`src/lib/errors.ts`), with the provenance
+   * `Node.raiseRuntimeError` fills in — the node's graph id, its TYPE id, its component's name — and the code
+   * the node's own file raises with. `code` and `detail` are printed as given (a literal or an expression).
+   */
+  const raiseLine = (nodeId: string, code: string, messageLocal: string, detail?: string): string =>
+    `raiseAppError({ code: ${code}, message: ${messageLocal}, nodeId: ${tsLiteral(nodeId)}, nodeType: ${tsLiteral(nodeById.get(nodeId)?.type ?? '<runtime>')}, componentName: ${tsLiteral(plan.legacyPath)}${detail !== undefined ? `, detail: ${detail}` : ''} });`;
+  /** The code each node raises its failure under — read from the node files, not invented. */
+  const errorCodeOf = (action: HandlerAction): string => {
+    switch (action.kind) {
+      case 'api-call':
+        return tsLiteral(API_CALL_ERROR_CODES[nodeById.get(action.nodeId)?.type ?? ''] ?? 'outcome/unspecified-failure');
+      case 'cloud-call':
+        return tsLiteral('cloud-function/call-failed');
+      case 'record-fetch':
+        return tsLiteral('record/storage-op-failed');
+      case 'file-pick':
+        return tsLiteral('open-file-picker/open-failed');
+      case 'file-upload':
+        return tsLiteral('upload-file/upload-failed');
+      case 'file-sign':
+        return tsLiteral('sign-file-url/sign-failed');
+      default:
+        return tsLiteral('outcome/unspecified-failure');
+    }
+  };
   const notes: string[] = [];
 
   // ---- styles + class names --------------------------------------------------------------
@@ -612,7 +642,9 @@ export function emitComponent(
     ...plan.recordEffects.map((e) => e.action),
     // EXP-011 §53. A Run Tasks' listener chains, and a template's start chain (a mount effect), are chains like any other.
     ...plan.runTasks.flatMap((r) => Object.values(r.listeners).flatMap((chain) => chain ?? [])),
-    ...(plan.task?.actions ?? [])
+    ...(plan.task?.actions ?? []),
+    // EXP-011 §54. A boundary's Error chain.
+    ...plan.appErrors.flatMap((b) => b.listener ?? [])
   ];
   allActions.forEach(collectActionUse);
   /** Nested actions (branch arms, popup done-chains) flattened — the `usesNavigate` sweep. */
@@ -849,6 +881,8 @@ export function emitComponent(
   // EXP-011 §15. Both kinds call `navigate(...)`, so both earn the hook. A `some` over one
   // kind is the shape that silently emits a call to an undeclared identifier.
   const usesNavigate = deepActions(allActions).some((a) => a.kind === 'navigate' || a.kind === 'navigate-path');
+  // EXP-011 §54. The failure arms that raise on the error channel — each earns the `raiseAppError` import.
+  const raisesAppErrors = deepActions(allActions).some((a) => RAISING_ACTION_KINDS.has(a.kind));
 
   // The hook's local name is the variable's last camelCase word (`visitorName` → `name`),
   // deduplicated against everything else in scope, falling back to `<export>Value`.
@@ -1169,6 +1203,8 @@ export function emitComponent(
         return expr.viaState !== undefined || expr.fold === undefined;
       // EXP-011 §52. Undefined until the code writes it. Must agree with plan.ts maybeUndefinedExpr.
       case 'script-out':
+      // EXP-011 §54. Undefined before the first error. Must agree with plan.ts maybeUndefinedExpr.
+      case 'app-error-out':
         return true;
       // Always — before the first request, after a path that matched nothing, and for an Error
       // nothing has written. Must agree with plan.ts maybeUndefinedExpr (EXP-011 Tier 1.2).
@@ -1656,6 +1692,9 @@ export function emitComponent(
       /** A Script node's output (EXP-011 §52) — off the handle's live `outputs`, the same in both modes. */
       case 'script-out':
         return memberExpr(`${expr.local}.outputs`, expr.output);
+      /** A boundary's value output (EXP-011 §54) — off the handle's `last`, the same in both modes; the Error Object is `last` itself. */
+      case 'app-error-out':
+        return expr.field === 'errorObject' ? `${expr.local}.last` : `${expr.local}.last?.${expr.field}`;
       // Render reads the node's local; a handler inlines the call over `.get()` snapshots —
       // pure by the gate, so recomputation is unobservable (EXP-003 §4). The folds are
       // Expression's typed getters, verbatim semantics (expression.ts).
@@ -1763,6 +1802,8 @@ export function emitComponent(
           break;
         // EXP-011 §52. The read itself — `ticker.outputs.Seconds` — is the dependency, never the handle.
         case 'script-out':
+        // EXP-011 §54. The same — `catchAll.last?.message`.
+        case 'app-error-out':
           add(exprCode(e, 'render'));
           break;
         case 'date-call':
@@ -2490,7 +2531,10 @@ export function emitComponent(
           'try {',
           ...body,
           `${pad(indent)}} catch (error) {`,
-          `${inner}${stateSetterOf(action.errorState)}(error instanceof Error ? error.message : String(error));`,
+          `${inner}const ${action.errorState}Message = error instanceof Error ? error.message : String(error);`,
+          `${inner}${stateSetterOf(action.errorState)}(${action.errorState}Message);`,
+          // EXP-011 §54. The Error row first, then the raise, then nothing — the order the setError funnels keep.
+          `${inner}${raiseLine(action.nodeId, errorCodeOf(action), `${action.errorState}Message`)}`,
           `${pad(indent)}}`
         ].join('\n');
       }
@@ -2540,6 +2584,7 @@ export function emitComponent(
           `${pad(indent)}} catch (error) {`,
           `${inner}const ${names.messageLocal} = error instanceof Error ? error.message : String(error);`,
           `${inner}${stateSetterOf(action.errorState)}(${names.messageLocal});`,
+          `${inner}${raiseLine(action.nodeId, errorCodeOf(action), names.messageLocal)}`,
           ...expandActions(action.failThen).map((a) => `${inner}${actionCode(a, indent + 2)};`),
           `${pad(indent)}}`
         ].join('\n');
@@ -2582,6 +2627,7 @@ export function emitComponent(
           `${pad(indent)}} catch (error) {`,
           `${inner}const ${names.messageLocal} = error instanceof Error ? error.message : String(error);`,
           `${inner}${stateSetterOf(action.errorState)}(${names.messageLocal});`,
+          `${inner}${raiseLine(action.nodeId, errorCodeOf(action), names.messageLocal)}`,
           ...expandActions(action.failThen).map((a) => `${inner}${actionCode(a, indent + 2)};`),
           `${pad(indent)}}`
         ].join('\n');
@@ -2627,6 +2673,7 @@ export function emitComponent(
           `${at}} catch (error) {`,
           `${inner}const ${names.messageLocal} = error instanceof Error ? error.message : String(error);`,
           `${inner}${stateSetterOf(action.errorState)}(${names.messageLocal});`,
+          `${inner}${raiseLine(action.nodeId, errorCodeOf(action), names.messageLocal)}`,
           ...expandActions(action.failThen).map((a) => `${inner}${actionCode(a, indent + 2)};`),
           `${at}}`
         ].join('\n');
@@ -2661,6 +2708,7 @@ export function emitComponent(
           `${at}} catch (error) {`,
           `${inner}const ${names.messageLocal} = error instanceof Error ? error.message : String(error);`,
           `${inner}${stateSetterOf(action.errorState)}(${names.messageLocal});`,
+          `${inner}${raiseLine(action.nodeId, errorCodeOf(action), names.messageLocal)}`,
           ...expandActions(action.failThen).map((a) => `${inner}${actionCode(a, indent + 2)};`),
           `${at}}`
         ].join('\n');
@@ -2673,8 +2721,11 @@ export function emitComponent(
           const code = exprCode(a.expr, 'handler');
           return code === a.param ? code : `${a.param}: ${code}`;
         });
-        const failArm = (at: string): string[] => [
+        // EXP-011 §54. Two arms, two codes: an answer that was not 2xx is `http/error-status` with the status;
+        // nothing coming back carries the module's own code (no-url, timeout, network) on the thrown HttpError.
+        const failArm = (at: string, code: string, detail?: string, message: string = names.messageLocal): string[] => [
           `${at}${stateSetterOf(action.errorState)}(${names.messageLocal});`,
+          `${at}${raiseLine(action.nodeId, code, message, detail)}`,
           ...expandActions(action.failThen).map((a) => `${at}${actionCode(a, indent + 4)};`)
         ];
         return [
@@ -2694,11 +2745,12 @@ export function emitComponent(
               ]
             : [`${inner}if (!${names.answerLocal}.ok) {`]),
           `${deeper}const ${names.messageLocal} = ${names.answerLocal}.error;`,
-          ...failArm(deeper),
+          // The answer's `error` is typed optional (one interface serves both outcomes) and written on every failed one.
+          ...failArm(deeper, tsLiteral('http/error-status'), `{ status: ${names.answerLocal}.statusCode }`, `${names.messageLocal} ?? ''`),
           `${inner}}`,
           `${pad(indent)}} catch (error) {`,
           `${inner}const ${names.messageLocal} = error instanceof Error ? error.message : String(error);`,
-          ...failArm(inner),
+          ...failArm(inner, `(error as { code?: string }).code ?? ${tsLiteral('http/network-error')}`),
           `${pad(indent)}}`
         ].join('\n');
       }
@@ -3453,6 +3505,12 @@ export function emitComponent(
     const specifier = `${relRoot}/${RUN_TASKS_LIB_PATH.replace(/^src\//, '').replace(/\.ts$/, '')}`;
     internalImports.set(specifier, `import { useRunTasks } from '${specifier}';`);
   }
+  // EXP-011 §54. The channel: the boundary hook, and the raise every request's failure arm makes.
+  if (plan.appErrors.length > 0 || raisesAppErrors) {
+    const specifier = `${relRoot}/${ERRORS_LIB_PATH.replace(/^src\//, '').replace(/\.ts$/, '')}`;
+    const names = [...(raisesAppErrors ? ['raiseAppError'] : []), ...(plan.appErrors.length > 0 ? ['useAppError'] : [])];
+    internalImports.set(specifier, `import { ${names.join(', ')} } from '${specifier}';`);
+  }
   if (usedUtilHelpers.size > 0) {
     const specifier = `${relRoot}/${UTIL_LIB_PATH.replace(/^src\//, '').replace(/\.ts$/, '')}`;
     internalImports.set(specifier, `import { ${[...usedUtilHelpers].sort().join(', ')} } from '${specifier}';`);
@@ -3647,6 +3705,19 @@ export function emitComponent(
      * position takes the Text node's own `String()` behind the `?? ''` fold; a number sink takes a
      * number port bare and refuses the rest; a boolean sink coerces `!!` as `enabled` does.
      */
+    /**
+     * EXP-011 §54. A boundary's value output: the five strings take the bare read (undefined before the first
+     * error renders nothing, as the Text node does); the Error Object at a text position takes the runtime's
+     * object → string cast, which is JSON (NDA-014, PORT-TYPE-CONTRACT); `enabled` and its kin coerce `!!`.
+     */
+    if (source.kind === 'computed' && source.expr.kind === 'app-error-out') {
+      const isObject = source.expr.field === 'errorObject';
+      if (sink === 'text' || sink === 'string') return isObject ? `JSON.stringify(${base})` : base;
+      if (sink === 'number') return null;
+      if (sink === 'boolean') return SIMPLE_REF.test(base) ? `!!${base}` : `!!(${base})`;
+      if (sink === 'truthy' || sink === 'opaque') return base;
+      return null;
+    }
     if (source.kind === 'computed' && source.expr.kind === 'script-out') {
       const tsType = source.expr.tsType;
       if (sink === 'text' || sink === 'string') return tsType === 'string' ? base : `String(${base} ?? '')`;
@@ -5251,8 +5322,16 @@ export function emitComponent(
       .filter((port) => run.listeners[port] !== undefined)
       .map((port) => `    ${port}: ${handlerArrow(run.listeners[port]!, '()', 4)}`);
     body.push(`  // ${run.comment}`);
-    if (listenerLines.length === 0) body.push(`  const ${run.local} = useRunTasks(${tsLiteral(run.label)}, ${config});`);
-    else body.push(`  const ${run.local} = useRunTasks(${tsLiteral(run.label)}, ${config}, {`, listenerLines.join(',\n'), '  });');
+    if (listenerLines.length === 0) body.push(`  const ${run.local} = useRunTasks({ label: ${tsLiteral(run.label)}, nodeId: ${tsLiteral(run.nodeId)}, componentName: ${tsLiteral(plan.legacyPath)} }, ${config});`);
+    else body.push(`  const ${run.local} = useRunTasks({ label: ${tsLiteral(run.label)}, nodeId: ${tsLiteral(run.nodeId)}, componentName: ${tsLiteral(plan.legacyPath)} }, ${config}, {`, listenerLines.join(',\n'), '  });');
+  }
+  // EXP-011 §54. The boundaries — after the render locals a wired Filter may read, before the effects. The
+  // listener prints inline so it closes over this render; the Filter is read live by the hook.
+  for (const boundary of plan.appErrors) {
+    const options = boundary.filter !== undefined ? `{ filter: ${exprCode(boundary.filter, 'render')} }` : '{}';
+    body.push(`  // ${boundary.comment}`);
+    if (boundary.listener === undefined) body.push(`  const ${boundary.local} = useAppError(${options});`);
+    else body.push(`  const ${boundary.local} = useAppError(${options}, ${handlerArrow(boundary.listener, '()', 2)});`);
   }
   // EXP-011 §53. A task template's start chain: once, on mount — startTask pulses the start input right after
   // createNode, and never again for that task. The ref guards StrictMode's second mount in development.
@@ -5281,7 +5360,9 @@ export function emitComponent(
     popupState !== null ||
     referencedStateVars.length > 0 ||
     jsLocals.size > 0 ||
-    plan.scripts.length > 0
+    plan.scripts.length > 0 ||
+    plan.runTasks.length > 0 ||
+    plan.appErrors.length > 0
   ) {
     body.push('');
   }
@@ -5622,7 +5703,7 @@ export function emitComponent(
   }
 
   // EXP-011 §52. One file per Script node: the author's code, verbatim, in the runtime's own wrapper.
-  for (const script of plan.scripts) files[script.file] = scriptFileSource(script, plan.path);
+  for (const script of plan.scripts) files[script.file] = scriptFileSource(script, plan.path, plan.legacyPath);
 
   return {
     files,
@@ -5637,9 +5718,28 @@ export function emitComponent(
     // EXP-011 §52.
     scriptLib: plan.scripts.length > 0,
     // EXP-011 §53.
-    runTasksLib: plan.runTasks.length > 0
+    runTasksLib: plan.runTasks.length > 0,
+    // EXP-011 §54.
+    errorsLib: plan.appErrors.length > 0 || raisesAppErrors
   };
 }
+
+/**
+ * EXP-011 §54. The code each `api-call` type raises its failure under — the record verbs share one funnel
+ * (`dbmodelcrudbase.ts` STORAGE_OP_ERROR_CODE), the user family one code per node file.
+ */
+const API_CALL_ERROR_CODES: Record<string, string> = {
+  NewDbModelProperties: 'record/storage-op-failed',
+  SetDbModelProperties: 'record/storage-op-failed',
+  DeleteDbModelProperties: 'record/storage-op-failed',
+  'net.noodl.user.LogIn': 'user/log-in-failed',
+  'net.noodl.user.LogOut': 'user/log-out-failed',
+  'net.noodl.user.SignUp': 'user/sign-up-failed',
+  'net.noodl.user.SetUserProperties': 'user/set-properties-failed',
+  'net.noodl.user.RequestMagicLink': 'user/request-magic-link-failed'
+};
+/** EXP-011 §54. The action kinds whose failure arm raises on the error channel. */
+const RAISING_ACTION_KINDS = new Set<HandlerAction['kind']>(['api-call', 'cloud-call', 'record-fetch', 'file-pick', 'file-upload', 'file-sign', 'http-call']);
 
 const GENERATED_SCRIPT_TS = '// @nodegx:generated (script node — provenance markers complete in EXP-007)';
 
@@ -5655,7 +5755,7 @@ const GENERATED_SCRIPT_TS = '// @nodegx:generated (script node — provenance ma
  * generic arguments below are for; checking the author's JavaScript as TypeScript is a rewrite this export
  * does not perform. The import path's depth is the file's: `src/scripts/<dir>/<fileBase>/` is three below `src/`.
  */
-function scriptFileSource(script: ScriptPlan, componentPath: string): string {
+function scriptFileSource(script: ScriptPlan, componentPath: string, legacyPath: string): string {
   const safe = (text: string): string => text.split('*/').join('* /');
   const key = (name: string) => (/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(name) ? name : JSON.stringify(name));
   const inputFields = script.inputs.map((i) => `${key(i.name)}?: ${i.tsType}`);
@@ -5685,7 +5785,9 @@ function scriptFileSource(script: ScriptPlan, componentPath: string): string {
     '  function (define, script, Node, Component) {',
     SCRIPT_CODE_PREFIX,
     ...script.code.split(/\r\n|\n|\r/),
-    '  }',
+    '  },',
+    // EXP-011 §54. Where a load failure is raised from (script/source-failed): the node's graph id and its component.
+    `  { nodeId: ${JSON.stringify(script.nodeId)}, componentName: ${JSON.stringify(legacyPath)} }`,
     ');',
     ''
   ];

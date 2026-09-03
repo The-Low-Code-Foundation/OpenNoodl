@@ -200,7 +200,7 @@ describe('EXP-011 §41 §B — the component', () => {
     expect(page).toContain('onClick={async () => {');
     expect(page).toContain(
       // ⚠️ Ten spaces: the handler's own column. A probe's console output carries jest's four on top.
-      '          try {\n            const publishPageAnswer = await callPublishPage({ pageId: noteDraft.get() });\n            lastPublished.set(publishPageAnswer.pageId);\n          } catch (error) {\n            const publishPageMessage = error instanceof Error ? error.message : String(error);\n            setPublishPageError(publishPageMessage);\n            lastError.set(publishPageMessage);\n          }'
+      '          try {\n            const publishPageAnswer = await callPublishPage({ pageId: noteDraft.get() });\n            lastPublished.set(publishPageAnswer.pageId);\n          } catch (error) {\n            const publishPageMessage = error instanceof Error ? error.message : String(error);\n            setPublishPageError(publishPageMessage);\n            raiseAppError({ code: \'cloud-function/call-failed\', message: publishPageMessage, nodeId: \'pub\', nodeType: \'CloudFunction2\', componentName: \'/Pages/Notes\' });\n            lastError.set(publishPageMessage);\n          }'
     );
     // The chain reads the local; nothing outside the chain reads a result, so there is no results row.
     expect(page).not.toContain('setPublishPageOut(');

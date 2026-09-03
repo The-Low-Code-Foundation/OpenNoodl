@@ -145,6 +145,8 @@ const HANDLER =
   '          } catch (error) {\n' +
   '            const pageMessage = error instanceof Error ? error.message : String(error);\n' +
   '            setPageError(pageMessage);\n' +
+  // EXP-011 §54. dbmodelnode2.ts raises record/storage-op-failed (Missing Id. included) before the failure pulse.
+  "            raiseAppError({ code: 'record/storage-op-failed', message: pageMessage, nodeId: 'rec', nodeType: 'DbModel2', componentName: '/Pages/Notes' });\n" +
   '            lastError.set(pageMessage);\n' +
   '          }';
 
@@ -282,6 +284,7 @@ describe('EXP-011 §43 §B — the component', () => {
         '      } catch (error) {\n' +
         '        const pageMessage = error instanceof Error ? error.message : String(error);\n' +
         '        setPageError(pageMessage);\n' +
+        "        raiseAppError({ code: 'record/storage-op-failed', message: pageMessage, nodeId: 'rec', nodeType: 'DbModel2', componentName: '/Pages/Notes' });\n" +
         '        lastError.set(pageMessage);\n' +
         '      }\n' +
         '    })();\n' +

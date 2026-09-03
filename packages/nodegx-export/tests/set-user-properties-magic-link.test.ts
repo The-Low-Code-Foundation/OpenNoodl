@@ -210,7 +210,10 @@ describe('§B — the component', () => {
     const call = source.indexOf(SAVE_CALL);
     expect(call).toBeGreaterThan(0);
     expect(source.indexOf('savedName.set(newUsername);')).toBeGreaterThan(call);
-    expect(source).toContain('setSaveProfileError(error instanceof Error ? error.message : String(error));');
+    expect(source).toContain('const saveProfileErrorMessage = error instanceof Error ? error.message : String(error);');
+    expect(source).toContain('setSaveProfileError(saveProfileErrorMessage);');
+    // EXP-011 §54. setuserproperties.ts raises user/set-properties-failed before the failure pulse; the export raises after the row.
+    expect(source).toContain("raiseAppError({ code: 'user/set-properties-failed', message: saveProfileErrorMessage, nodeId: 'setProps', nodeType: 'net.noodl.user.SetUserProperties', componentName: '/Pages/Home' });");
     expect(source).toContain("<p className={styles.errorText}>{saveProfileError ?? ''}</p>");
   });
 

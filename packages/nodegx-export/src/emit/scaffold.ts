@@ -18,6 +18,15 @@ import { ComponentIR, ExportIR } from '../ir/types';
 const GENERATED_TS = '// @nodegx:generated (scaffold — placeholder markers complete in EXP-007)\n';
 const GENERATED_CSS = '/* @nodegx:generated (scaffold) */\n';
 
+/**
+ * EXP-011 §54. The router shell kept as a component file for the logic beside its Router — an `On App Error`
+ * boundary — which `App.tsx` renders as the first child of the router, alive for the app's life.
+ */
+export interface ScaffoldShell {
+  symbol: string;
+  fileBase: string;
+}
+
 export interface ScaffoldPage {
   /** Component path form: "Pages/Landing". */
   componentPath: string;
@@ -74,7 +83,7 @@ function routePatternOf(urlPath: string): string {
   return urlPath.replace(/{([^}]+)}/g, (_match, name: string) => `:${name}`);
 }
 
-export function emitScaffold(ir: ExportIR): Record<string, string> {
+export function emitScaffold(ir: ExportIR, shell?: ScaffoldShell): Record<string, string> {
   const pages = routedPages(ir);
   const files: Record<string, string> = {};
 
@@ -83,7 +92,7 @@ export function emitScaffold(ir: ExportIR): Record<string, string> {
   files['tsconfig.json'] = tsConfig();
   files['index.html'] = indexHtml(ir);
   files['src/main.tsx'] = mainTsx();
-  files['src/App.tsx'] = appTsx(pages);
+  files['src/App.tsx'] = appTsx(pages, shell);
   files['src/styles/tokens.css'] = tokensCss(ir);
   files['src/styles/base.css'] = baseCss();
   for (const page of pages) {
@@ -270,9 +279,11 @@ createRoot(document.getElementById('root')!).render(
   );
 }
 
-function appTsx(pages: ScaffoldPage[]): string {
-  const imports = pages
-    .map((p) => `import { ${p.symbol} } from './pages/${p.fileBase}';`)
+function appTsx(pages: ScaffoldPage[], shell?: ScaffoldShell): string {
+  const imports = [
+    ...(shell !== undefined ? [`import { ${shell.symbol} } from './components/${shell.fileBase}';`] : []),
+    ...pages.map((p) => `import { ${p.symbol} } from './pages/${p.fileBase}';`)
+  ]
     .sort()
     .join('\n');
   const start = pages.find((p) => p.isStart) ?? pages[0];
@@ -291,7 +302,7 @@ ${imports}
 export function App() {
   return (
     <BrowserRouter>
-      <Routes>
+${shell !== undefined ? `      <${shell.symbol} />\n` : ''}      <Routes>
 ${routes}
       </Routes>
     </BrowserRouter>

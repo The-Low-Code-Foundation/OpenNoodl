@@ -264,7 +264,8 @@ describe('§D each script file is the runtime\'s wrapper around the verbatim cod
   });
   test.each(['ticker', 'greeter', 'doubler', 'bumper'])('%s: the code is verbatim — every byte, indentation included', (id) => {
     const file = app.files[`${SCRIPTS_DIR}${id}Script.ts`];
-    expect(file).toContain(`\n${SCRIPT_CODE_PREFIX}\n${codeOf(id)}\n  }\n);\n`);
+    // EXP-011 §54. The definition closes with its provenance — where a load failure is raised from.
+    expect(file).toContain(`\n${SCRIPT_CODE_PREFIX}\n${codeOf(id)}\n  },\n  { nodeId: ${JSON.stringify(id)}, componentName: "/Pages/Home" }\n);\n`);
   });
   test('the definition carries the ports as the editor discovered them, and the types the hook reads', () => {
     expect(greeterFile).toContain('export const greeterScript = defineScript<{ Name?: string }, { Greeting?: string }>(');
@@ -304,14 +305,19 @@ type Lib = {
   useScript: (def: any, inputs?: Record<string, unknown>, on?: Record<string, () => void>) => { outputs: Record<string, unknown>; signals: Record<string, () => void> };
 };
 
+/** EXP-011 §54. What the lib raises on `./errors` — recorded by the loader's stub, one entry per raise. */
+type AppError = { code: string; message: string; nodeId: string; nodeType: string; componentName: string; detail?: unknown };
+const raised: AppError[] = [];
 const loadLib = (): { lib: Lib; harness: Harness } => {
   const harness = makeHarness();
   const js = ts.transpileModule(scriptLibSource(), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 } }).outputText;
   const module = { exports: {} as Lib };
   // eslint-disable-next-line no-new-func
   new Function('require', 'module', 'exports', js)((name: string) => {
-    if (name !== 'react') throw new Error(`unexpected import ${name}`);
-    return harness.React;
+    if (name === 'react') return harness.React;
+    // EXP-011 §54. The error channel a load failure is raised on: a stub that records every raise.
+    if (name === './errors') return { raiseAppError: (error: AppError) => raised.push(error) };
+    throw new Error(`unexpected import ${name}`);
   }, module, module.exports);
   return { lib: module.exports, harness };
 };
@@ -382,6 +388,7 @@ describe('§E the host runs the code the way the runtime does (hook harness unde
   let errors: jest.SpyInstance;
   beforeEach(() => {
     errors = jest.spyOn(console, 'error').mockImplementation(() => {});
+    raised.length = 0;
   });
   afterEach(() => errors.mockRestore());
 
@@ -543,7 +550,9 @@ describe('§E the host runs the code the way the runtime does (hook harness unde
     });
     const handle = harness.render(() => lib.useScript(def, {}));
     expect(handle.outputs.X).toBeUndefined();
-    expect(errors).toHaveBeenCalledWith(expect.stringContaining('Broken: the code could not be loaded'), expect.any(Error));
+    // EXP-011 §54. javascript.ts raises script/source-failed on the error channel; the console line is the channel's default, not the lib's.
+    expect(raised).toEqual([expect.objectContaining({ code: 'script/source-failed', message: expect.stringContaining('The script could not be loaded: '), nodeId: 'Broken', nodeType: 'Javascript2', componentName: '<runtime>' })]);
+    expect(errors).not.toHaveBeenCalledWith(expect.stringContaining('could not be loaded'), expect.anything());
   });
 
   test('only the ports on disk exist: a write to an undeclared output is not readable, an undeclared signal call throws (and is logged)', async () => {
@@ -752,11 +761,11 @@ describe('§G the graph gates', () => {
 // ---------------------------------------------------------------------------------------------
 
 describe('§H the ledger and the pre-flight', () => {
-  test('Javascript2 is translated; the badge is gone; the floor is 95 (since §53)', () => {
+  test('Javascript2 is translated; the badge is gone; the floor is 96 (since §54)', () => {
     expect(ledgerEntryOf('Javascript2')).toEqual({ typeName: 'Javascript2', status: 'translated' });
     expect(exportBadgeOf('Javascript2')).toBeUndefined();
     const ledger = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'coverage-ledger.json'), 'utf8'));
-    expect(ledger.pickerCoverageFloor).toBe(95);
+    expect(ledger.pickerCoverageFloor).toBe(96);
   });
   test('the clean fixture pre-flights with nothing to attend to', () => {
     const summary = summarizePreflight(app);

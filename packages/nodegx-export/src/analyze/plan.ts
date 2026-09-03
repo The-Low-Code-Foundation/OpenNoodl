@@ -418,6 +418,12 @@ const FILE_OUT_OPTIONAL_FIELDS = new Set(['upload.contentType', 'upload.size', '
  * contract names are `runtasks-template-contract.ts`'s defaults, applied when the parameter is absent
  * or empty (`resolveTemplateContract`: "an empty name falls back rather than being honoured").
  */
+/** `On App Error` (EXP-011 §54) — the app-wide error boundary. The type id IS the display name. */
+export const ON_APP_ERROR_TYPE = 'On App Error';
+/** The boundary's six value outputs — read off the `useAppError` handle's `last` (onapperror.ts's getters). */
+export const ON_APP_ERROR_VALUE_OUTPUTS = ['message', 'code', 'nodeId', 'componentName', 'nodeType', 'errorObject'] as const;
+/** The Error Object's type, structurally — `src/lib/errors.ts`'s AppError, spelled so a store row needs no import. */
+export const APP_ERROR_TS_TYPE = '{ code: string; message: string; nodeId: string; componentName: string; nodeType: string; detail?: unknown }';
 export const RUN_TASKS_TYPE = 'RunTasks';
 export const RUN_TASKS_OUTPUTS: readonly string[] = ['done', 'failure', 'unchanged', 'completed', 'aborted'];
 export const RUN_TASKS_CONTRACT_TEMPLATE_PARAM = 'taskTemplate';
@@ -430,6 +436,8 @@ export const RUN_TASKS_CONTRACT = {
 
 const OWN_CHAIN_OUTPUTS: Record<string, readonly string[]> = {
   [RUN_TASKS_TYPE]: RUN_TASKS_OUTPUTS,
+  // EXP-011 §54. The boundary's Error is its listener, compiled by its own registration.
+  [ON_APP_ERROR_TYPE]: ['error'],
   [LOG_TYPE]: ['done'],
   [TIMER_TYPE]: TIMER_OUTPUTS,
   [VALUE_CHANGED_TYPE]: ['valueChanged'],
@@ -1129,6 +1137,14 @@ export type ValueExpr =
    * maybe-undefined — an output the code has not written yet reads undefined.
    */
   | { kind: 'script-out'; nodeId: string; local: string; output: string; tsType: string }
+  /**
+   * An `On App Error` boundary's value output (EXP-011 §54) — read off the `useAppError` handle's `last`, the
+   * latest error it accepted, in both modes: the hook re-renders on every accepted error, and a chain fired
+   * by its Error signal reads the error that fired it (the values are updated before the signal, as
+   * onapperror.ts flags them dirty before `sendSignalOnOutput('error')`). Always maybe-undefined — before
+   * the first error there is nothing to read.
+   */
+  | { kind: 'app-error-out'; nodeId: string; local: string; field: (typeof ON_APP_ERROR_VALUE_OUTPUTS)[number]; tsType: string }
   | { kind: 'animate-out'; nodeId: string; local: string };
 
 /**
@@ -2146,6 +2162,26 @@ export interface TaskPlan {
 }
 
 /**
+ * An `On App Error` node (EXP-011 §54): `const <local> = useAppError({ filter }, () => { …the Error chain… })`.
+ * The boundary subscribes to the app's error channel (`src/lib/errors.ts`) for the life of the component
+ * that hosts it — a page's boundary hears errors while the page is mounted, the root component's for the
+ * app's life (the router shell keeps a file for it, {@link ComponentPlan.shell}) — and every instance
+ * fires (onapperror.ts: no claiming, no consumption). Its value outputs read off the handle's `last`.
+ */
+export interface AppErrorPlan {
+  nodeId: string;
+  /** The authored label, or `On App Error`. */
+  label: string;
+  /** The `useAppError` local — `catchAll`. */
+  local: string;
+  /** The Filter — a literal, or a render read where wired; absent means every error. Read live by the hook. */
+  filter?: ValueExpr;
+  /** The chain wired off `Error`, when any. */
+  listener?: HandlerAction[];
+  comment: string;
+}
+
+/**
  * An `Animate To Value` node (EXP-011 §49): `const <local> = useAnimatedValue(target, { duration,
  * delay, ease }, onArrive)`. `duration` and `delay` are read where the hook is — a wired one is
  * the render expression, an authored one a literal — and `ease` is the authored enum, which a
@@ -2619,6 +2655,14 @@ export interface ComponentPlan {
   task?: TaskPlan;
   /** EXP-011 §53. Why a component named as a template is not one — repeated by every host that names it. */
   taskRefusal?: string;
+  /** EXP-011 §54. The On App Error boundaries hosted here, registration order. */
+  appErrors: AppErrorPlan[];
+  /**
+   * EXP-011 §54. Set when this is the router shell kept as a file for the logic beside its Router — a
+   * null-rendering component the scaffold's `App.tsx` renders inside the router, for the app's life. The
+   * Router itself is still `collapsed into src/App.tsx`.
+   */
+  shell?: true;
   /**
    * Value output ports this component lifts (§4d child side) — the parent side consults this
    * list off the target's plan, so parent and child agree by construction (the s10 rule).
@@ -2921,6 +2965,7 @@ function planComponent(
     animations: [],
     scripts: [],
     runTasks: [],
+    appErrors: [],
     liftedOutputProps: [],
     instanceLifted: {},
     pendingLifted: [],
@@ -3106,24 +3151,33 @@ function planComponent(
 
   // The router shell: the scaffold generates App.tsx from RouterIR; the visual generator owns
   // nothing here (TARGET-OUTPUT §3).
+  const routerShellDisposition = (node: NodeIR): Disposition =>
+    node.type === 'Router'
+      ? { kind: 'collapsed', into: 'src/App.tsx' }
+      : // A Visual Function that never runs asked nothing of the translation, so calling it
+        // deferred would be untrue even here (LOGIC-BUILDER-TARGET §3.5). Everything else
+        // beside the router really is work the scaffold does not do.
+        isVisualFunction(node.type) && !(hasProgram(node) && component.connections.some((c) => c.toId === node.id && c.toProperty === 'run'))
+        ? { kind: 'static' }
+        : { kind: 'deferred', to: 'EXP-003', reason: 'node beside the router shell' };
   if (component.nodes.some((n) => n.type === 'Router')) {
-    for (const node of component.nodes) {
-      dispositions[node.id] =
-        node.type === 'Router'
-          ? { kind: 'collapsed', into: 'src/App.tsx' }
-          : // A Visual Function that never runs asked nothing of the translation, so calling it
-            // deferred would be untrue even here (LOGIC-BUILDER-TARGET §3.5). Everything else
-            // beside the router really is work the scaffold does not do.
-            isVisualFunction(node.type) && !(hasProgram(node) && component.connections.some((c) => c.toId === node.id && c.toProperty === 'run'))
-            ? { kind: 'static' }
-            : { kind: 'deferred', to: 'EXP-003', reason: 'node beside the router shell' };
+    if (component.nodes.some((n) => n.type === ON_APP_ERROR_TYPE)) {
+      // EXP-011 §54. A boundary beside the Router is the app-wide placement — the one the node exists for
+      // — so the shell keeps a file: a null-rendering component the scaffold renders inside the router
+      // (`src/App.tsx`), alive for the app's life. Only the Router is disposed here; the boundary and
+      // whatever its chain reaches go through the ordinary passes, and what nothing reaches is named
+      // "beside the router shell" by the catch-all at the end, as before.
+      for (const node of component.nodes) if (node.type === 'Router') dispositions[node.id] = routerShellDisposition(node);
+      plan.shell = true;
+    } else {
+      for (const node of component.nodes) dispositions[node.id] = routerShellDisposition(node);
+      plan.skipReason = 'router shell — emitted as src/App.tsx by the scaffold';
+      plan.skipKind = 'scaffolded';
+      sweepRefusedScripts();
+      sweepUnreportedDeferrals();
+      collectRefusals();
+      return plan;
     }
-    plan.skipReason = 'router shell — emitted as src/App.tsx by the scaffold';
-    plan.skipKind = 'scaffolded';
-    sweepRefusedScripts();
-    sweepUnreportedDeferrals();
-    collectRefusals();
-    return plan;
   }
 
   // A supported visual type can still be un-renderable statically (wire-fed structure, masonry,
@@ -3167,7 +3221,8 @@ function planComponent(
   const declaredRoots = component.visualRoots
     ?.map((id) => nodeById.get(id))
     .filter((n): n is NodeIR => n !== undefined);
-  const roots = (declaredRoots ?? component.nodes.filter((n) => n.parent === undefined)).filter(rootable);
+  // EXP-011 §54. The router shell's Router is the scaffold's, not a root this file renders.
+  const roots = plan.shell === true ? [] : (declaredRoots ?? component.nodes.filter((n) => n.parent === undefined)).filter(rootable);
   const rendered = new Set<string>();
   // EXP-011 §53. The Run Tasks nodes anywhere in the project that name this component as their
   // template, statically. With no visual root this component is then a task template: it goes on to
@@ -3192,7 +3247,12 @@ function planComponent(
       if (dispositions[node.id] !== undefined) continue;
       const named = recordNeighbourDefer(node, component, nodeById, pageFileByPath.has(component.path), null);
       dispositions[node.id] =
-        named !== undefined ? { kind: 'deferred', to: 'EXP-003', reason: named } : dispositionForLogic(node, kits);
+        named !== undefined
+          ? { kind: 'deferred', to: 'EXP-003', reason: named }
+          : // EXP-011 §54. The receiver's sentence: a boundary is a subscription, and it needs a component that mounts.
+            node.type === ON_APP_ERROR_TYPE
+            ? { kind: 'deferred', to: 'EXP-003', reason: 'component emits no file to host the boundary' }
+            : dispositionForLogic(node, kits);
     }
     plan.file = null;
     plan.rootId = null;
@@ -3204,7 +3264,7 @@ function planComponent(
     collectRefusals();
     return plan;
   };
-  if (roots.length === 0 && taskHosts.length === 0) {
+  if (roots.length === 0 && taskHosts.length === 0 && plan.shell !== true) {
     return bailAsLogicOnly('no visual root — logic-only components defer to EXP-003');
   }
   if (roots.length === 0 && taskStarts.size > 1) {
@@ -3218,6 +3278,9 @@ function planComponent(
   if (root !== undefined) {
     plan.rootId = root.id;
     if (root.authoredLabel) plan.docComment = root.authoredLabel;
+  } else if (plan.shell === true) {
+    // EXP-011 §54. The router shell: no root, a file all the same (assigned below), nothing to render.
+    plan.docComment = `${component.path} — the logic beside the Router, hosted for the app's life (src/App.tsx renders it inside the router)`;
   } else {
     // EXP-011 §53. A task template: no root, a file all the same (assigned below), the start chain
     // compiled before the trigger pass. Provisional until that compile answers.
@@ -3235,7 +3298,11 @@ function planComponent(
   // component is a page whatever its component.json says — the editor home page
   // (#__page__/Home) declares itself "visual".
   const routed = pageFileByPath.get(component.path);
-  if (component.role === 'page' || routed) {
+  if (plan.shell === true) {
+    // EXP-011 §54. `<Name>Shell` — the scaffold's App.tsx keeps the `App` symbol, and this is the logic beside it.
+    const fileBase = dedupe(`${pascalCase(lastSegment(component.path))}Shell`, usedComponentNames);
+    plan.file = { dir: 'components', fileBase, symbol: fileBase };
+  } else if (component.role === 'page' || routed) {
     const fileBase = routed?.fileBase ?? dedupe(pascalCase(lastSegment(component.path)), usedPageNames);
     plan.file = { dir: 'pages', fileBase, symbol: routed?.symbol ?? `${fileBase}Page` };
     if (!routed) notes.push('page is not listed by any router — exported without a route');
@@ -6314,6 +6381,28 @@ function planComponent(
       ctx.logicNodeIds.push(fromNode.id);
       return read;
     }
+    /**
+     * An `On App Error`'s value outputs (EXP-011 §54) — reads off the `useAppError` handle's `last`; the
+     * Script rule one node over: the node registers itself on first use, and a node that fails its gate
+     * answers every read with the same named reason.
+     */
+    if (fromNode.type === ON_APP_ERROR_TYPE) {
+      const registered = appErrorPlanOf(fromNode);
+      if ('defer' in registered) {
+        ctx.defer = registered.defer;
+        return null;
+      }
+      const read = appErrorReadOf(registered, fromProperty);
+      if (read === null) {
+        ctx.defer =
+          fromProperty === 'error'
+            ? 'its Error output is consumed as a value — a pulse carries nothing to read'
+            : `its ${fromProperty} output is not a port this node has`;
+        return null;
+      }
+      ctx.logicNodeIds.push(fromNode.id);
+      return read;
+    }
     /** An `Animate To Value`'s Current Value (EXP-011 §49) — the number its hook returns. */
     if (fromNode.type === ANIMATE_TYPE) {
       if (fromProperty !== 'currentValue') {
@@ -7052,6 +7141,8 @@ function planComponent(
         return expr.field === 'error';
       // EXP-011 §52. An output the code has not written reads undefined, as the runtime getter answers.
       case 'script-out':
+      // EXP-011 §54. Nothing to read before the first error (`last` is undefined until one is accepted).
+      case 'app-error-out':
         return true;
       /** EXP-011 §49. Boots 0 and only ever holds a number (animate-to-value.ts `currentNumber`). */
       case 'animate-out':
@@ -7373,6 +7464,8 @@ function planComponent(
       case 'animate-out':
         return 'number';
       case 'script-out':
+      // EXP-011 §54. `string` for the five, the structural AppError for the Error Object.
+      case 'app-error-out':
         return expr.tsType;
       /**
        * Both messages are string literals the emitter writes itself (EXP-011 §24) — so `string`
@@ -10093,6 +10186,107 @@ function planComponent(
 
   const animationPlans = new Map<string, AnimationPlan | { defer: string }>();
   const animateLocals = new Map<string, string>();
+  // ---- EXP-011 §54 — the On App Error boundary ------------------------------------------------------
+  const appErrorPlans = new Map<string, AppErrorPlan | { defer: string }>();
+  const appErrorLocals = new Map<string, string>();
+  /**
+   * An `On App Error` node, registered on first use by whichever side asks — a read in `resolveExpr`, or the
+   * registration pass (it has no trigger input: it is a subscriber, armed at creation, and every instance
+   * fires) — and memoized so every side gets the same handle or the same named reason. `scriptPlanOf`'s
+   * shape, including the provisional entry cached before the listener compiles.
+   *
+   * What it refuses: a component with no file to host it (a logic-only component nothing mounts), two
+   * wires on Filter, a Filter with no static source, an input or output the node has not got, its Error
+   * consumed as a value (decided from the sink's own port kind BEFORE the chain compiles — §52.4's rule,
+   * so the sentence names the mistake), and a chain this slice cannot compile.
+   */
+  const appErrorPlanOf = (node: NodeIR): AppErrorPlan | { defer: string } => {
+    const cached = appErrorPlans.get(node.id);
+    if (cached !== undefined) return cached;
+    const refuse = (defer: string): { defer: string } => {
+      const reason = { defer };
+      appErrorPlans.set(node.id, reason);
+      const index = plan.appErrors.findIndex((b) => b.nodeId === node.id);
+      if (index !== -1) plan.appErrors.splice(index, 1);
+      return reason;
+    };
+    if (!plan.file) return refuse('component emits no file to host the boundary');
+    const consumes: string[] = [];
+    const collapses: string[] = [];
+    const subscribes: string[] = [];
+    const inWires = component.connections.filter((c) => c.toId === node.id);
+    for (const wire of inWires) {
+      if (wire.toProperty !== 'filter') return refuse(`its ${wire.toProperty} input is not a port this node has`);
+    }
+    if (inWires.length > 1) return refuse('two wires feed its Filter input — last-writer-wins is not statically ordered');
+    let filter: ValueExpr | undefined;
+    if (inWires.length === 1) {
+      const ctx = newCtx();
+      const fed = resolveExpr(nodeById.get(inWires[0].fromId), inWires[0].fromProperty, ctx);
+      if (fed === null) return refuse(ctx.defer ?? 'its Filter input has no statically known source');
+      if (!exprValidIn(fed, { kind: 'render' })) return refuse('its Filter input reads a value that only exists inside a handler');
+      filter = fed;
+      consumes.push(inWires[0].key, ...ctx.consumes);
+      collapses.push(...ctx.logicNodeIds);
+      subscribes.push(...ctx.subscriberIds);
+    } else {
+      // The runtime's setter: `undefined`/`null` clear the filter, anything else is `String(value)`; and an
+      // empty string catches everything, which is what no filter does — so it is left out.
+      const authored = literalParam(node, 'filter');
+      if (authored !== undefined && String(authored) !== '') filter = { kind: 'literal', value: String(authored) };
+    }
+    for (const wire of component.connections.filter((c) => c.fromId === node.id)) {
+      const port = wire.fromProperty;
+      if (port === 'error' || (ON_APP_ERROR_VALUE_OUTPUTS as readonly string[]).includes(port)) continue;
+      return refuse(`its ${port} output is consumed, and this node has no such port`);
+    }
+    const label = node.authoredLabel ?? 'On App Error';
+    const core: AppErrorPlan = {
+      nodeId: node.id,
+      label,
+      local: mintLocal(appErrorLocals, node, 'AppError', ''),
+      filter,
+      comment: `${label} — an On App Error boundary (onapperror.ts): hears every error raised anywhere in the app while this component is mounted${filter !== undefined ? ', filtered by code prefix' : ''}; its value outputs describe the latest one.`
+    };
+    appErrorPlans.set(node.id, core);
+    plan.appErrors.push(core);
+    // The listener: the Error chain, compiled in the render context — the hook keeps the latest listener
+    // passed, so it closes over the latest render. A pulse into a value port is a read of nothing, and the
+    // sentence has to say which: the sink's own declaration decides, then the catalog.
+    const errorWires = component.connections.filter((c) => c.fromId === node.id && c.fromProperty === 'error');
+    if (errorWires.length > 0) {
+      for (const wireOut of errorWires) {
+        const target = nodeById.get(wireOut.toId);
+        if (target === undefined || target.type === 'Component Outputs') continue;
+        const sinkKind =
+          target.declaredPorts.find((p) => p.plug === 'input' && p.name === wireOut.toProperty)?.kind ??
+          catalog.portKind(target.type, wireOut.toProperty, 'input');
+        if (sinkKind === 'value') return refuse('its Error output is consumed as a value — a pulse carries nothing to read');
+      }
+      const chain = doneChainOf(node, 'error');
+      if ('defer' in chain) return refuse(chain.defer);
+      if (!actionsValidIn(chain.then, { kind: 'render' })) return refuse('its Error chain reads values that only exist inside a handler');
+      const snapped = snapActionList(chain.then, chainSnapshotFor(`app-error:${node.id}`));
+      if (!Array.isArray(snapped)) return refuse(snapped.defer);
+      core.listener = snapped;
+      consumes.push(...chain.consumes);
+      collapses.push(...chain.collapses);
+      subscribes.push(...chain.subscribes);
+    }
+    const into = `src/${plan.file.dir}/${plan.file.fileBase}.tsx`;
+    for (const key of consumes) consumed.add(key);
+    for (const id of collapses) dispositions[id] = { kind: 'collapsed', into };
+    for (const id of subscribes) boundSubscribers.add(id);
+    return core;
+  };
+
+  /** One of a boundary's six value outputs as the expression that reads it off the handle's `last`, or null. */
+  const appErrorReadOf = (boundary: AppErrorPlan, port: string): ValueExpr | null => {
+    if (!(ON_APP_ERROR_VALUE_OUTPUTS as readonly string[]).includes(port)) return null;
+    const field = port as (typeof ON_APP_ERROR_VALUE_OUTPUTS)[number];
+    return { kind: 'app-error-out', nodeId: boundary.nodeId, local: boundary.local, field, tsType: field === 'errorObject' ? APP_ERROR_TS_TYPE : 'string' };
+  };
+
   /** An `Animate To Value`, registered on first use and memoized — `statesPlanOf`'s shape, with nothing that can re-enter. */
   const animationPlanOf = (node: NodeIR): AnimationPlan | { defer: string } => {
     const cached = animationPlans.get(node.id);
@@ -10907,6 +11101,8 @@ function planComponent(
       case 'animate-out':
       // EXP-011 §52. The handle reads live in both contexts.
       case 'script-out':
+      // EXP-011 §54. The same: `last` is the latest accepted error in every context.
+      case 'app-error-out':
         return true;
       /**
        * The id nodes (EXP-011 §37), on the same footing and the same reason: the row form is an
@@ -11702,6 +11898,8 @@ function planComponent(
         return (plan.jsFunctions[e.nodeId]?.inputs ?? []).some((i) => i.expr !== undefined && exprTouchesSnap(i.expr, snap));
       // EXP-011 §52. A live read off the handle: what the code wrote, not anything set earlier in the chain.
       case 'script-out':
+      // EXP-011 §54. The same: the error that fired the chain, not anything the chain set.
+      case 'app-error-out':
         return false;
       /**
        * 🔴 A walker with a `default`, and the third construct to nearly die in one (§8.3).
@@ -11762,6 +11960,7 @@ function planComponent(
         return { ...expr, operand: r };
       }
       case 'script-out':
+      case 'app-error-out':
         return expr;
       case 'jsfun-out': {
         // Wrapper argument records are shared across call sites — a per-site rewrite cannot
@@ -12122,6 +12321,14 @@ function planComponent(
       // EXP-011 §53. Both action ports, when wired; an unfired Run Tasks falls to logic as a Cloud
       // Function nothing calls does, and the verdict sweep names its dangling chains.
       for (const port of ['run', 'abort']) if (wiredPorts.has(`${node.id}:${port}`)) compiledOf(node, port);
+    } else if (node.type === ON_APP_ERROR_TYPE) {
+      // EXP-011 §54. No trigger port — it registers HERE, unconditionally, because it must register before any
+      // other pass compiles a sink that reads it: a Set Variable in its own Error chain reads its Message, and a
+      // pass that reaches that sink first (the dropped-wire pass explaining the value wire) would register the
+      // boundary from inside `compiledOf(sink, 'do')`, whose listener compile re-enters the same key and reads
+      // as "its trigger chain is cyclic". A Script escapes this by registering from its trigger side; a
+      // subscriber has none, so this loop is its trigger side.
+      appErrorPlanOf(node);
     }
   }
 
@@ -12712,6 +12919,8 @@ function planComponent(
     // chains do — a Cloud Function called only from a task's start chain earns its export and its rows here.
     for (const run of plan.runTasks) for (const chain of Object.values(run.listeners)) if (chain !== undefined) scanActions(chain);
     if (plan.task !== undefined) scanActions(plan.task.actions);
+    // EXP-011 §54. A boundary's Error chain attaches exactly as a handler's chains do.
+    for (const boundary of plan.appErrors) if (boundary.listener !== undefined) scanActions(boundary.listener);
 
     /**
      * EXP-011 §40. The two producers that attach actions to something other than a rendered
@@ -12777,6 +12986,20 @@ function planComponent(
       comment: `${node.authoredLabel ?? 'CSS Definition'} — added to the page while this component is mounted and removed with it (css-definition.ts).`
     });
     dispositions[node.id] = { kind: 'collapsed', into };
+  }
+
+  // EXP-011 §54 — `On App Error`: a subscriber, so every instance registers whether or not anything reads or
+  // fires it (it has no trigger input; the runtime arms it at creation and it fires on every error). Before
+  // the Script pass so its dispositions are set before the sweeps.
+  for (const node of component.nodes) {
+    if (node.type !== ON_APP_ERROR_TYPE || dispositions[node.id] !== undefined) continue;
+    const registered = appErrorPlanOf(node);
+    if ('defer' in registered) {
+      dispositions[node.id] = { kind: 'deferred', to: 'EXP-003', reason: registered.defer };
+      notes.push(`node ${node.id} (${node.type}) deferred: ${registered.defer}`);
+      continue;
+    }
+    dispositions[node.id] = { kind: 'collapsed', into: `src/${plan.file!.dir}/${plan.file!.fileBase}.tsx` };
   }
 
   // EXP-011 §52 — `Script`: a hook, a definition file, and the code verbatim. Registers on first use
@@ -13488,6 +13711,8 @@ function planComponent(
     const isStatesRead = fromNode.type === STATES_TYPE;
     // EXP-011 §52. A Script node's value outputs, off its handle — the same footing as a States read.
     const isScriptRead = fromNode.type === SCRIPT_TYPE;
+    // EXP-011 §54. A boundary's value outputs, off its handle — the same footing.
+    const isAppErrorRead = fromNode.type === ON_APP_ERROR_TYPE;
     const isAnimateRead = fromNode.type === ANIMATE_TYPE && connection.fromProperty === 'currentValue';
     if (
       !isLatchRead &&
@@ -13507,7 +13732,8 @@ function planComponent(
       !isIdRead &&
       !isStatesRead &&
       !isAnimateRead &&
-      !isScriptRead
+      !isScriptRead &&
+      !isAppErrorRead
     ) {
       continue;
     }
@@ -14308,6 +14534,11 @@ function planComponent(
       for (const chain of Object.values(run.listeners)) if (chain !== undefined) walkActions(chain);
     }
     if (plan.task !== undefined) walkActions(plan.task.actions);
+    // EXP-011 §54. A wired Filter and the Error chain.
+    for (const boundary of plan.appErrors) {
+      if (boundary.filter !== undefined) walkExpr(boundary.filter);
+      if (boundary.listener !== undefined) walkActions(boundary.listener);
+    }
     // EXP-011 §52. Every fed input and every listener chain.
     for (const script of plan.scripts) {
       for (const input of script.inputs) if (input.expr !== undefined) walkExpr(input.expr);
@@ -14766,6 +14997,8 @@ function planComponent(
     // EXP-011 §53. A request inside a listener chain, or inside a template's start chain, materializes as a handler's would.
     for (const run of plan.runTasks) for (const chain of Object.values(run.listeners)) if (chain !== undefined) fillMaterialize(chain);
     if (plan.task !== undefined) fillMaterialize(plan.task.actions);
+    // EXP-011 §54. A request inside the Error chain materializes as a handler's would.
+    for (const boundary of plan.appErrors) if (boundary.listener !== undefined) fillMaterialize(boundary.listener);
   }
 
   // EXP-011 §53. A Run Tasks nothing fires: named as a Cloud Function nothing calls is, by what hangs off it,
@@ -14783,7 +15016,8 @@ function planComponent(
   // Whatever analysis has not classified yet is logic: EXP-003's, or unknown-type debris.
   for (const node of component.nodes) {
     if (dispositions[node.id] === undefined) {
-      const disposition = dispositionForLogic(node, kits);
+      // EXP-011 §54. In a router shell kept for its boundary, what no chain reached is still beside the router.
+      const disposition = plan.shell === true ? routerShellDisposition(node) : dispositionForLogic(node, kits);
       dispositions[node.id] = disposition;
       if (disposition.kind === 'unknown-type') {
         notes.push(`node ${node.id} has no resolvable type — exported nowhere, reported here`);
