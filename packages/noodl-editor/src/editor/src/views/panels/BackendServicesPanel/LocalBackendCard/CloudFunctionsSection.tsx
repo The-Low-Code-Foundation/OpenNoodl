@@ -24,7 +24,21 @@ import {
   CloudDeployState,
   CloudFunctionDeployer
 } from '../../../../services/CloudFunctionDeployer';
+import { cloudFunctionRows, CloudFunctionRowKind } from './cloudFunctionRows';
 import css from './LocalBackendCard.module.scss';
+
+/**
+ * DEF-047 — the icon and tone for each kind of row. The ONLY thing the view decides about a
+ * row: what it says and which name it carries are `cloudFunctionRows`'s answers, so the view
+ * has nothing left to classify and cannot draw the same function twice.
+ */
+const ROW_ICON: Record<CloudFunctionRowKind, { icon: IconName; color: string }> = {
+  live: { icon: IconName.Check, color: 'var(--theme-color-success)' },
+  missing: { icon: IconName.WarningTriangle, color: 'var(--theme-color-notice)' },
+  stale: { icon: IconName.WarningTriangle, color: 'var(--theme-color-notice)' },
+  workers: { icon: IconName.Play, color: 'var(--theme-color-fg-muted)' },
+  unreachable: { icon: IconName.WarningTriangle, color: 'var(--theme-color-notice)' }
+};
 
 interface WorkflowStatus {
   initialized: boolean;
@@ -99,28 +113,31 @@ export function CloudFunctionsSection({ backendId, isRunning, onDeploy }: CloudF
   const backendFunctions = (status?.functions || []).map((f) => f.name);
   const error = deployState.lastError[backendId];
 
-  /**
-   * DEF-015 — **only endpoints are diffed against the backend.**
-   *
-   * This list used to be every `/#__cloud__/` component, and the backend's list
-   * is only the ones holding a Request node, so every helper in the project sat
-   * under a warning triangle saying it was "in the project, not on this backend"
-   * — permanently, on a healthy system, immediately after a successful deploy.
-   * The site-builder template ships three: two `RunTasks` task templates and one
-   * component instance. A signal that is always on is not a signal.
-   */
-  const endpoints = cloudComponents.filter((c) => c.role === 'endpoint').map((c) => c.name);
-  const workers = cloudComponents.filter((c) => c.role === 'worker');
-  const unreachable = cloudComponents.filter((c) => c.role === 'unreachable');
-
   // A project with no cloud functions gets no section at all: the point of the
   // browser-only experience being unchanged.
   if (cloudComponents.length === 0 && backendFunctions.length === 0) {
     return null;
   }
 
-  const missing = endpoints.filter((name) => !backendFunctions.includes(name));
-  const stale = backendFunctions.filter((name) => !endpoints.includes(name));
+  /**
+   * DEF-015 — **only endpoints are diffed against the backend.** DEF-047 — **and every row is
+   * produced exactly once.**
+   *
+   * The diffed list used to be every `/#__cloud__/` component, and the backend's list is only
+   * the ones holding a Request node, so every helper in the project sat under a warning
+   * triangle saying it was "in the project, not on this backend" — permanently, on a healthy
+   * system, immediately after a successful deploy. The site-builder template ships three: two
+   * `RunTasks` task templates and one component instance. A signal that is always on is not a
+   * signal.
+   *
+   * 🔴 Both rules live in `cloudFunctionRows` now, and that is the fix rather than a tidy-up:
+   * this component cannot be mounted in the plain-Node runner — no jsdom, and `Icon` alone
+   * fails a spec *to run* — so for as long as the classification lived in the JSX, nothing
+   * graded it, and a stale function rendered twice (a green tick from the unfiltered backend
+   * list, and a warning from the `stale` subset one line below) through every release since
+   * WFA-001.
+   */
+  const { rows, endpointCount } = cloudFunctionRows({ backendId, cloudComponents, backendFunctions });
 
   return (
     <div className={css.CloudFunctions} data-test={`cloud-functions-${backendId}`}>
@@ -135,77 +152,22 @@ export function CloudFunctionsSection({ backendId, isRunning, onDeploy }: CloudF
 
       {isRunning ? (
         <ul className={css.CloudFunctionsList}>
-          {backendFunctions.map((name) => (
-            <li key={name} data-test={`cloud-function-live-${name}`}>
+          {rows.map((row) => (
+            <li key={row.key} data-test={row.testId}>
               <Icon
-                icon={IconName.Check}
+                icon={ROW_ICON[row.kind].icon}
                 size={IconSize.Tiny}
-                UNSAFE_style={{ color: 'var(--theme-color-success)' }}
+                UNSAFE_style={{ color: ROW_ICON[row.kind].color }}
               />
               <Text textType={TextType.Shy} style={{ fontSize: '11px', marginLeft: '6px' }}>
-                {name}
-              </Text>
-            </li>
-          ))}
-          {missing.map((name) => (
-            <li key={name} data-test={`cloud-function-missing-${name}`}>
-              <Icon
-                icon={IconName.WarningTriangle}
-                size={IconSize.Tiny}
-                UNSAFE_style={{ color: 'var(--theme-color-notice)' }}
-              />
-              <Text textType={TextType.Shy} style={{ fontSize: '11px', marginLeft: '6px' }}>
-                {name} — in the project, not on this backend
-              </Text>
-            </li>
-          ))}
-          {stale.map((name) => (
-            <li key={name} data-test={`cloud-function-stale-${name}`}>
-              <Icon
-                icon={IconName.WarningTriangle}
-                size={IconSize.Tiny}
-                UNSAFE_style={{ color: 'var(--theme-color-notice)' }}
-              />
-              <Text textType={TextType.Shy} style={{ fontSize: '11px', marginLeft: '6px' }}>
-                {name} — on this backend, not in the project
-              </Text>
-            </li>
-          ))}
-          {/*
-            Counted rather than silenced. A worker has no endpoint to be absent
-            from, so it can never be "missing" — but one that has genuinely been
-            deleted from the project is worth noticing, and a number that drops
-            is how you notice.
-          */}
-          {workers.length > 0 && (
-            <li data-test={`cloud-workers-${backendId}`}>
-              <Icon icon={IconName.Play} size={IconSize.Tiny} UNSAFE_style={{ color: 'var(--theme-color-fg-muted)' }} />
-              <Text textType={TextType.Shy} style={{ fontSize: '11px', marginLeft: '6px' }}>
-                {workers.length} {workers.length === 1 ? 'worker' : 'workers'}, run in-process by these functions
-              </Text>
-            </li>
-          )}
-          {/*
-            The total classification's third bucket. Nothing can start these —
-            no route, and no endpoint reaches them — so this is the one case in
-            the section where a warning is the honest answer.
-          */}
-          {unreachable.map((c) => (
-            <li key={c.componentName} data-test={`cloud-component-unreachable-${c.name}`}>
-              <Icon
-                icon={IconName.WarningTriangle}
-                size={IconSize.Tiny}
-                UNSAFE_style={{ color: 'var(--theme-color-notice)' }}
-              />
-              <Text textType={TextType.Shy} style={{ fontSize: '11px', marginLeft: '6px' }}>
-                {c.name} — in the project, but nothing calls it and it has no endpoint
+                {row.text}
               </Text>
             </li>
           ))}
         </ul>
       ) : (
         <Text textType={TextType.Shy} style={{ fontSize: '11px' }}>
-          {endpoints.length} in the project. Start the backend to deploy them.
+          {endpointCount} in the project. Start the backend to deploy them.
         </Text>
       )}
 
