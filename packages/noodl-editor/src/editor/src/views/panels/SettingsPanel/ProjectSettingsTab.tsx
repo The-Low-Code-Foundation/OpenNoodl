@@ -1,4 +1,3 @@
-import Path from 'path';
 import { useEventListener } from '@noodl-hooks/useEventListener';
 import { useTriggerRerenderState } from '@noodl-hooks/useTriggerRerender';
 import React, { useCallback, useEffect, useState } from 'react';
@@ -10,6 +9,7 @@ import { PrimaryButton, PrimaryButtonSize, PrimaryButtonVariant } from '@noodl-c
 import { Section } from '@noodl-core-ui/components/sidebar/Section';
 
 import View from '../../../../../shared/ListenableView';
+import { ToastLayer } from '../../ToastLayer/ToastLayer';
 import { Frame } from '../../common/Frame';
 import { Ports } from '../propertyeditor/DataTypes/Ports';
 import { HTML_TITLE_PORT, ProjectSettingsModel } from './ProjectSettingsModel';
@@ -106,10 +106,37 @@ export function ProjectSettingsTab() {
     };
   }, []);
 
+  /**
+   * 🔴 **Reveals the DIRECTORY, not a file inside it.**
+   *
+   * This used to point at `<projectDir>/project.json`, and that file does not exist in a v2
+   * project: `ProjectFormatDetector` names the manifest `nodegx.project.json`, and `ProjectMigrator`
+   * *deletes* the legacy `project.json` on migration. v2 is default-on, so for practically every
+   * project the button targeted a path that was not there.
+   *
+   * ⚠️ **`showItemInFolder` returns `void` and does nothing at all when the target is missing** —
+   * no throw, no rejection, nothing to log. That is why this read as a dead button rather than as
+   * an error, and why it survived: a legacy-format project still worked.
+   *
+   * Reported by Richard, 2026-09-04. Revealing the directory itself is also format-agnostic, so
+   * there is nothing here left to go stale the next time the manifest is renamed — which is the
+   * shape `ProjectsPage.handleOpenProjectFolder` already had, and this now matches.
+   */
   function onOpenProjectFolderClicked() {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const shell = require('@electron/remote').shell;
-    shell.showItemInFolder(Path.normalize(ProjectModel.instance._retainedProjectDirectory + '/project.json'));
+    const directory = ProjectModel.instance?._retainedProjectDirectory;
+    if (!directory) {
+      ToastLayer.showError('Project folder not found');
+      return;
+    }
+
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const shell = require('@electron/remote').shell;
+      shell.showItemInFolder(directory);
+    } catch (error) {
+      console.error('Failed to open project folder:', error);
+      ToastLayer.showError('Could not open project folder');
+    }
   }
 
   const config = ProjectModel.instance.getAppConfig();
