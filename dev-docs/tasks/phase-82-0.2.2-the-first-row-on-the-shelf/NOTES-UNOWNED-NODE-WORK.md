@@ -241,14 +241,49 @@ port type whose editor asks for one string per row and derives the rest.
 
 ### A separate, smaller, independently-actionable fix
 
-Restoring **default items** (the *"go back to Option 1/Option 2"* half of the ask) does not
-depend on any of the above — it is one field on `options.ts`'s `items` port:
-`default: [{Label: 'Option 1', Value: 'option-1'}, {Label: 'Option 2', Value: 'option-2'}]`,
-mirroring the shape `Select.tsx` already reads. ⚠️ Worth confirming against a running editor
-before shipping it alone: whether the property panel's `isDefault`/`getParameter` machinery
-(`ListValueType.ts` line 45) treats a port `default` the way it treats an authored value for
-every consumer of `items` (`Select.tsx`'s own `props.items` guard, the `unbindItems`/`on('change')`
-subscription in `initialize`) — not verified this session.
+Restoring **default items** (the *"go back to Option 1/Option 2"* half of the ask) — 🟢 **BUILT,
+session 35.**
+
+🔴 **The one-line version this section originally proposed does NOT work, and was never shipped
+as written.** A `default` declared on `items` alone never reaches the render: `items` has a
+custom `set` (this file's own §3 quote above already names it), and the runtime only seeds a
+port's `default` into `_inputValues` for an unauthored input — `nodedefinition.ts`'s
+`initializeDefaultValues` (called from the `nodeDefinition` factory, twice) writes straight into
+`node._inputValues`, and **never calls the port's own `set`**. `props.items`, the only thing
+`Select.tsx` reads, would have stayed `undefined`. Traced through the source
+(`node.ts:registerInput`, `nodedefinition.ts:173-193,507-553`) and then confirmed empirically: a
+scratch corpus-harness node with only `default:` set showed `props.items === undefined`,
+`_internal.items === undefined`. The property panel *would* have shown "2 items" (`getParameter`
+does fall back to `port.default`, `ListValueType.ts:868`) while the live preview stayed empty —
+the exact "panel lies about what renders" shape this project's memory files warn about
+repeatedly.
+
+**What actually shipped**: `options.ts` — a `DEFAULT_ITEMS` constant, seeded directly into
+`this.props.items` (a fresh per-instance clone, `DEFAULT_ITEMS.map(item => ({...item}))`) at the
+top of `initialize()`, **plus** `default: DEFAULT_ITEMS` still on the port declaration so the
+property panel's summary agrees with what renders. `set()` is untouched — an authored or wired
+value still overwrites the seeded default exactly as before, and `undefined` still abstains.
+Verified empirically (corpus harness, not assumed): a never-authored Dropdown's `props.items`
+equals the two-item array; two sibling instances do not share one array reference (each gets its
+own clone, so nothing can mutate a sibling's dropdown); the default array carries no `.on` (a
+plain literal never passed through `set`, so it was never bound as a Collection — no listener
+leak onto a shared object). New suite:
+`noodl-viewer-react/tests/corpus/p82-dropdown-default-items.test.ts` (3 specs). Readings: that
+suite plus the existing `nda-012-dropdown-items.test.ts` and `fh-015-pointer-blocking.test.ts` all
+green; full `noodl-viewer-react` suite 91/91 files, 1175/1175 tests; `tsc -p noodl-viewer-react`
+clean; `nodegx-export`'s `controlled-state.test.ts` + `visual-controls.test.ts` (both author
+`items` explicitly, so a default can't touch them) 64/64 green.
+
+**Catalog**: `node-catalog.json` hand-patched the same way session 34 patched Circle's entry —
+`--out-dir` scratch generation, diffed, only `net.noodl.controls.options`'s `items` port gained
+the `default` block, copied verbatim and verified byte-identical to the fresh generation.
+`catalog:check` is still red — the same seven pre-existing §A1 deltas (four icon-colour
+`#FFFFFF`→`#000000` defaults, one dropped default, the Video Source sentence, the textinput
+placeholder default), untouched by this. ⚠️ The next session that regenerates the catalog in
+place, without `--out-dir` first, will still sweep §A1's changes in with everyone else's.
+
+**Not built**: the beginner "click plus and type" JSON-editor mode (the harder half of the
+original ask) — still three unchosen directions, unchanged from the research above.
 
 ---
 

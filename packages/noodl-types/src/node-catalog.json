@@ -44430,6 +44430,16 @@
             "name": "array"
           },
           "isSignal": false,
+          "default": [
+            {
+              "Label": "Option 1",
+              "Value": "option-1"
+            },
+            {
+              "Label": "Option 2",
+              "Value": "option-2"
+            }
+          ],
           "description": "Options to offer, as an array of objects with Label and Value properties; an empty value offers nothing"
         },
         {

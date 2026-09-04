@@ -4,6 +4,21 @@ import NodeSharedPortDefinitions from '../../node-shared-port-definitions';
 import { createNodeFromReactComponent } from '../../react-component-node';
 import Utils from './utils';
 
+/**
+ * A freshly dragged Dropdown showed an empty select with nothing in the list — restoring this
+ * is a "go back to how it used to work" from Richard, 2026-09-04 (see
+ * `dev-docs/tasks/phase-82-0.2.2-the-first-row-on-the-shelf/NOTES-UNOWNED-NODE-WORK.md` §3).
+ * A `default` on `items` alone does not reach the render: `items` has a custom `set` (below),
+ * and the runtime only seeds `default` into `_inputValues` for an unauthored port — it never
+ * calls the port's own `set`, so `props.items` (what `Select.tsx` reads) would stay `undefined`.
+ * `initialize` below seeds `props.items` directly for that reason; `default` stays on the port
+ * too, so the property panel's summary ("2 items" instead of "Empty list") matches what renders.
+ */
+const DEFAULT_ITEMS = [
+  { Label: 'Option 1', Value: 'option-1' },
+  { Label: 'Option 2', Value: 'option-2' }
+];
+
 const OptionsNode = {
   name: 'net.noodl.controls.options',
   displayName: 'Dropdown',
@@ -55,6 +70,7 @@ const OptionsNode = {
     });
 
     this.props.id = 'input-' + guid();
+    this.props.items = DEFAULT_ITEMS.map((item) => ({ ...item }));
 
     this.props.valueChanged = (value) => {
       const changed = this._internal.value !== value;
@@ -75,6 +91,7 @@ const OptionsNode = {
       description:
         'Options to offer, as an array of objects with Label and Value properties; an empty value offers nothing',
       group: 'General',
+      default: DEFAULT_ITEMS,
       /**
        * NDA-012 (Visual). Three defects lived in the eleven lines this replaces, and one rewrite
        * closes all three:
