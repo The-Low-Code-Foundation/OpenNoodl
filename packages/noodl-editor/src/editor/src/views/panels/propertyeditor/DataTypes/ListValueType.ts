@@ -1,7 +1,11 @@
 import React from 'react';
 import { createRoot, Root } from 'react-dom/client';
 
-import { decodeForEditor, type ListPortType } from '@noodl-core-ui/components/json-editor/utils/listValueCodec';
+import {
+  decodeForEditor,
+  listPortTypeFor,
+  type ListPortType
+} from '@noodl-core-ui/components/json-editor/utils/listValueCodec';
 
 import { ListInputRow } from '../components/ListInputRow';
 import { openListValueEditor } from '../components/ListValueEditor';
@@ -45,8 +49,11 @@ export class ListValueType extends TypeView {
     view.isDefault = parent.model.parameters[p.name] === undefined;
     view.readOnly = p.readOnly || p.type?.readOnly || getEditType(p)?.readOnly || false;
 
-    const typeName = typeof view.type === 'string' ? view.type : view.type?.name;
-    view.portType = typeName === 'object' ? 'object' : 'array';
+    // 🔴 The port type is RESOLVED, not collapsed to array/object. It used to be the latter,
+    // which was correct while this row served exactly those two — but the codec dispatches on it,
+    // and an `optionslist` narrowed to `'array'` would be decoded and encoded as a raw JSON blob,
+    // which is the very thing §3 added the type to stop.
+    view.portType = listPortTypeFor(view.type) ?? 'array';
 
     return view;
   }
@@ -68,7 +75,8 @@ export class ListValueType extends TypeView {
   private summary(): string {
     const stored = this.parent.model.getParameter(this.name);
     if (stored === undefined || stored === null || stored === '') {
-      return this.portType === 'array' ? 'Empty list' : 'Empty object';
+      // Only `object` is object-shaped; everything else this row serves is a list.
+      return this.portType === 'object' ? 'Empty object' : 'Empty list';
     }
 
     const decoded = decodeForEditor(this.portType, stored);

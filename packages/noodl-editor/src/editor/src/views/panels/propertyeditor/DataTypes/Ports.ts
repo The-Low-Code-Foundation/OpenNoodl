@@ -878,7 +878,11 @@ export class Ports extends View {
     // editor covers cannot drift from the set it is claimed to cover.
     function isOfListValueType() {
       const t = listPortTypeFor(type);
-      return t === 'array' || t === 'object';
+      // ⚠️ `stringlist` and `proplist` have their own row types and are deliberately absent.
+      // `optionslist` (§3, Richard 2026-09-04) joins the shared editor because its whole point is
+      // the visual list builder — the codec decides how a row is spelled, this only decides which
+      // editor opens.
+      return t === 'array' || t === 'object' || t === 'optionslist';
     }
 
     // Image ref type

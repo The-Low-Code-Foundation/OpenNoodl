@@ -25,7 +25,19 @@
  */
 
 /** The four list-shaped port types the property panel routes through one editor. */
-export type ListPortType = 'array' | 'object' | 'stringlist' | 'proplist';
+export type ListPortType = 'array' | 'object' | 'stringlist' | 'proplist' | 'optionslist';
+
+/**
+ * One row of an `optionslist`, as `Select.tsx` reads it.
+ *
+ * 🔴 **Capitalised, because the runtime reads `i.Label` and `i.Value` on every entry.** A bare
+ * `["a","b"]` renders `<option value="">` with nothing selectable, which is the defect this port
+ * type exists to make unreachable — see §3 of NOTES-UNOWNED-NODE-WORK.md.
+ */
+export interface OptionEntry {
+  Label: string;
+  Value: string;
+}
 
 /** One row of a `proplist`, as the runtime reads it (`simplejavascript.ts`, `javascript.ts`). */
 export interface PropListEntry {
@@ -70,7 +82,13 @@ export function expectedTypeFor(portType: ListPortType): 'array' | 'object' {
 }
 
 /** Every port type the shared list editor claims. Derived from the catalog, not hand-listed. */
-export const LIST_PORT_TYPES: readonly ListPortType[] = ['array', 'object', 'stringlist', 'proplist'];
+export const LIST_PORT_TYPES: readonly ListPortType[] = [
+  'array',
+  'object',
+  'stringlist',
+  'proplist',
+  'optionslist'
+];
 
 /**
  * Is this port one of the list-shaped ones, and which?
@@ -323,6 +341,166 @@ export function encodePropList(entries: unknown, previous: unknown): EncodeResul
 }
 
 /* -------------------------------------------------------------------------- */
+/* optionslist                                                                */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * A URL-ish value derived from a label — lowercase, spaces to hyphens.
+ *
+ * ⚠️ Falls back to the trimmed label when a label is all punctuation or non-Latin, because an
+ * empty `Value` is exactly the `<option value="">` this port type exists to prevent. A derived
+ * value is a convenience; it is never allowed to be worse than the label itself.
+ */
+export function slugForOption(label: string): string {
+  const slug = label
+    .trim()
+    .toLowerCase()
+    .replace(/[\s_]+/g, '-')
+    .replace(/[^a-z0-9-]/g, '')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+  return slug === '' ? label.trim() : slug;
+}
+
+/**
+ * Stored value -> normalised `[{Label, Value}]`.
+ *
+ * 🔴 **Four stored shapes are accepted, and the reason is migration.** `items` shipped as
+ * `type: 'array'`, whose stored form is a *string* holding a JS/JSON literal. No project in this
+ * repo has one (measured: 0 across 148 files, which is what the `array` row of the table above
+ * already said) but a user's project may, and a port type change that could not read the old
+ * shape would silently empty their Dropdown.
+ *
+ * So: a real array, a string holding a literal, bare strings per row, and `{label,value}` in the
+ * lowercase spelling a person would guess.
+ */
+export function decodeOptionsList(stored: unknown): OptionEntry[] {
+  if (stored === undefined || stored === null || stored === '') return [];
+
+  let source: unknown = stored;
+  if (typeof stored === 'string') {
+    const read = readLiteral(stored);
+    if (!read.ok) return [];
+    source = read.value;
+  }
+  if (!Array.isArray(source)) return [];
+
+  const out: OptionEntry[] = [];
+  for (const item of source) {
+    if (item === null || item === undefined) continue;
+    if (typeof item === 'string' || typeof item === 'number' || typeof item === 'boolean') {
+      const label = String(item);
+      out.push({ Label: label, Value: slugForOption(label) });
+      continue;
+    }
+    if (typeof item !== 'object' || Array.isArray(item)) continue;
+    const row = item as Record<string, unknown>;
+    // Both spellings. The capital pair is what the runtime reads; the lowercase pair is what a
+    // person hand-writing JSON guesses, and reading it costs nothing.
+    const label = row.Label !== undefined ? row.Label : row.label;
+    const value = row.Value !== undefined ? row.Value : row.value;
+    if (label === undefined && value === undefined) continue;
+    const labelText = String(label !== undefined ? label : value);
+    out.push({
+      Label: labelText,
+      Value: value !== undefined ? String(value) : slugForOption(labelText)
+    });
+  }
+  return out;
+}
+
+/**
+ * Editor array -> the `[{Label, Value}]` the runtime consumes.
+ *
+ * A row may be written three ways and all three mean the same thing:
+ *
+ * - `"Large"` — the beginner path. Label is what was typed, Value is its slug.
+ * - `{ "Label": "Large" }` — the same, spelled out.
+ * - `{ "Label": "Large", "Value": "l" }` — the author overriding the derived value.
+ *
+ * 🔴 **Duplicate values are handled differently depending on where they came from, because the
+ * two cases mean different things.** A *derived* collision ("A B" and "A-B" both slug to `a-b`) is
+ * an accident of the convenience and gets a numeric suffix — refusing there would block an author
+ * from typing two ordinary labels. An *explicitly written* duplicate is a statement, and a wrong
+ * one: two options with the same value cannot be told apart by anything downstream, so it is
+ * refused with a message rather than silently renamed behind the author's back.
+ */
+export function encodeOptionsList(entries: unknown): EncodeResult<OptionEntry[] | undefined> {
+  if (!Array.isArray(entries)) {
+    return { ok: false, error: 'Expected a list of options, for example ["First", "Second"].' };
+  }
+
+  const out: OptionEntry[] = [];
+  const used = new Set<string>();
+
+  for (const raw of entries) {
+    let label: string;
+    let explicitValue: string | undefined;
+
+    if (typeof raw === 'string' || typeof raw === 'number' || typeof raw === 'boolean') {
+      label = String(raw);
+    } else if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
+      const row = raw as Record<string, unknown>;
+      const rawLabel = row.Label !== undefined ? row.Label : row.label;
+      const rawValue = row.Value !== undefined ? row.Value : row.value;
+      if (rawLabel === undefined && rawValue === undefined) {
+        return { ok: false, error: 'Every option needs a "Label". Example: { "Label": "First" }.' };
+      }
+      label = String(rawLabel !== undefined ? rawLabel : rawValue);
+      if (rawValue !== undefined) explicitValue = String(rawValue);
+    } else {
+      return { ok: false, error: 'Each option must be a label, or an object with Label and Value.' };
+    }
+
+    if (label.trim() === '') {
+      return { ok: false, error: 'An option label cannot be empty — it is what the reader sees.' };
+    }
+
+    if (explicitValue !== undefined) {
+      if (explicitValue.trim() === '') {
+        return {
+          ok: false,
+          error: `"${label}" has an empty Value. An option with no value cannot be selected — remove the Value to derive one from the label.`
+        };
+      }
+      if (used.has(explicitValue)) {
+        return {
+          ok: false,
+          error: `Two options both use the value "${explicitValue}". Values must differ, or nothing downstream can tell the options apart.`
+        };
+      }
+      used.add(explicitValue);
+      out.push({ Label: label, Value: explicitValue });
+      continue;
+    }
+
+    // Derived: disambiguate rather than refuse.
+    const base = slugForOption(label);
+    let value = base;
+    for (let n = 2; used.has(value); n++) value = `${base}-${n}`;
+    used.add(value);
+    out.push({ Label: label, Value: value });
+  }
+
+  // The same "empty means default" rule the other list types apply — an empty list clears the
+  // parameter so the port falls back to its declared default rather than storing `[]`.
+  return { ok: true, value: out.length === 0 ? undefined : out };
+}
+
+/**
+ * The simplest spelling of a row that round-trips to the same thing.
+ *
+ * 🔴 **This is what makes the beginner mode a beginner mode.** Richard asked for "click plus and
+ * type"; if the editor always showed `{ "Label": …, "Value": … }` the author would meet a
+ * two-field object before they had done anything. A row whose value is exactly its label's slug
+ * carries no information the label does not, so it is shown as the bare label — and the moment an
+ * author needs "Large" to send `l`, the row expands to the object that says so.
+ */
+function shortestOptionForm(entry: OptionEntry): string | OptionEntry {
+  return entry.Value === slugForOption(entry.Label) ? entry.Label : entry;
+}
+
+/* -------------------------------------------------------------------------- */
 /* The public boundary                                                        */
 /* -------------------------------------------------------------------------- */
 
@@ -336,6 +514,17 @@ export function decodeForEditor(portType: ListPortType, stored: unknown): Decode
 
   if (portType === 'proplist') {
     return { json: canonical(decodePropList(stored)), expectedType, recovered: false, unparseable: false };
+  }
+
+  if (portType === 'optionslist') {
+    const decoded = decodeOptionsList(stored);
+    // ⚠️ `recovered` is set for a stored STRING that parsed, which is the legacy `array` shape.
+    // The caller uses it to tell the author their value was rewritten into the new form rather
+    // than leaving them to notice the file changed.
+    const recovered = typeof stored === 'string' && stored.trim() !== '' && decoded.length > 0;
+    const unparseable = typeof stored === 'string' && stored.trim() !== '' && decoded.length === 0;
+    if (unparseable) return { json: stored, expectedType, recovered: false, unparseable: true };
+    return { json: canonical(decoded.map(shortestOptionForm)), expectedType, recovered, unparseable: false };
   }
 
   // array / object: stored as a literal *string*, but a real array/object is
@@ -385,6 +574,7 @@ export function encodeFromEditor(portType: ListPortType, json: string, previous?
 
   if (portType === 'stringlist') return encodeStringList(parsed);
   if (portType === 'proplist') return encodePropList(parsed, previous);
+  if (portType === 'optionslist') return encodeOptionsList(parsed);
 
   if (portType === 'array' && !Array.isArray(parsed)) {
     return { ok: false, error: 'This port takes a list. Wrap the value in [ ] brackets.' };

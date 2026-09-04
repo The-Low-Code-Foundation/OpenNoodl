@@ -23,6 +23,21 @@
  * ⚠️ 2026-08-07: the library grew further (`JWT Sign`, `Log`, `To CSV` among the
  * additions) — the invariant held (nothing fell through uncovered), so this is a
  * snapshot update, not a fix. New total: 54 inputs / 32 outputs / 86 combined.
+ *
+ * ⚠️ 2026-09-05, and it is TWO separate movements that happen to land together.
+ *
+ * 1. 🔴 **The outputs count was ALREADY wrong before this session touched anything** — measured at
+ *    `bc3d033b` with the pre-session catalog and codec restored: 40, not 32, and every one of the
+ *    extra 8 is an `array` output on a node the library gained (`Pattern Extractor`,
+ *    `Stream Buffer`, `Text Accumulator`, `JSON Stream Parser`, `State History`, `State Snapshot`,
+ *    `Global Store` and friends). The invariant held throughout, so this is the snapshot update
+ *    this header describes — but note that it went unnoticed because `noodl-core-ui`'s jest is in
+ *    neither `test:main` nor `test:ci`. That is worth an owner; the drift is not this session's.
+ * 2. §3 of `NOTES-UNOWNED-NODE-WORK.md`: `Dropdown`'s `items` moved from `array` to the new
+ *    `optionslist`, so inputs stay at 54 while `array` drops by one and `optionslist` gains one.
+ *    ⚠️ The deprecated `Options` twin keeps its `array` items port and is left alone.
+ *
+ * New totals: 54 inputs / 40 outputs / 94 combined.
  */
 
 import { listPortTypeFor, LIST_PORT_TYPES } from '@noodl-core-ui/components/json-editor/utils/listValueCodec';
@@ -72,9 +87,10 @@ function countBy(rows: { listType: string }[]) {
 }
 
 describe('ERG-003 criterion 2 — the list-shaped port surface, derived from the catalog', () => {
-  it('the catalog declares exactly four list-shaped port types', () => {
-    // If a fifth ever appears in `portTypeNames`, it needs a decision, not a
-    // default — hence a failing test rather than a silent pass-through.
+  it('the catalog declares exactly five list-shaped port types', () => {
+    // If a sixth ever appears in `portTypeNames`, it needs a decision, not a
+    // default — hence a failing test rather than a silent pass-through. The fifth
+    // was `optionslist`, and it got that decision: §3, Richard 2026-09-04.
     const declared: string[] = catalog.portTypeNames;
     const listLike = declared.filter((n) => LIST_PORT_TYPES.includes(n as never));
     expect(listLike.sort()).toEqual([...LIST_PORT_TYPES].sort());
@@ -92,18 +108,19 @@ describe('ERG-003 criterion 2 — the list-shaped port surface, derived from the
   });
 
   it('the input census — 54 editable ports', () => {
+    // Unchanged at 54: `Dropdown.items` moved between types rather than appearing or leaving.
     expect(inputs.length).toBe(54);
-    expect(countBy(inputs)).toEqual({ array: 12, object: 7, stringlist: 28, proplist: 7 });
+    expect(countBy(inputs)).toEqual({ array: 11, object: 7, stringlist: 28, proplist: 7, optionslist: 1 });
   });
 
-  it('the spec’s 69 was inputs + outputs, and 32 of those are outputs with no editor', () => {
-    expect(outputs.length).toBe(32);
-    expect(countBy(outputs)).toEqual({ array: 21, object: 11, stringlist: 0, proplist: 0 });
+  it('the spec’s 69 was inputs + outputs, and 40 of those are outputs with no editor', () => {
+    expect(outputs.length).toBe(40);
+    expect(countBy(outputs)).toEqual({ array: 29, object: 11, stringlist: 0, proplist: 0, optionslist: 0 });
 
     // The exact arithmetic behind §0's table, so the correction stays checkable.
     const combined = countBy([...inputs, ...outputs]);
-    expect(combined).toEqual({ array: 33, stringlist: 28, object: 18, proplist: 7 });
-    expect(inputs.length + outputs.length).toBe(86);
+    expect(combined).toEqual({ array: 40, stringlist: 28, object: 18, proplist: 7, optionslist: 1 });
+    expect(inputs.length + outputs.length).toBe(94);
   });
 
   it('names the nodes each type appears on, so a catalog change is legible in the diff', () => {
@@ -125,13 +142,15 @@ describe('ERG-003 criterion 2 — the list-shaped port surface, derived from the
       'Array Filter',
       'Array Map',
       'Create New Array',
-      'Dropdown',
       'Filter Records',
+      // ⚠️ `Options` is the deprecated twin and keeps its `array` items port. Only the live
+      // `Dropdown` moved — see below.
       'Options',
       'Repeater',
       'Run Tasks',
       'To CSV'
     ]);
+    expect(nodesFor('optionslist')).toEqual(['Dropdown']);
   });
 });
 

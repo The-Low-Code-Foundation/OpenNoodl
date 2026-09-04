@@ -24,6 +24,7 @@
     "mediastream",
     "number",
     "object",
+    "optionslist",
     "pages",
     "proplist",
     "reference",
@@ -48356,7 +48357,7 @@
           "group": "General",
           "plug": "input",
           "type": {
-            "name": "array"
+            "name": "optionslist"
           },
           "isSignal": false,
           "default": [
@@ -48369,7 +48370,7 @@
               "Value": "option-2"
             }
           ],
-          "description": "Options to offer, as an array of objects with Label and Value properties; an empty value offers nothing"
+          "description": "Options to offer. Type a label per option — the value is derived from it — or give an option its own Value when it must send something different"
         },
         {
           "name": "label",

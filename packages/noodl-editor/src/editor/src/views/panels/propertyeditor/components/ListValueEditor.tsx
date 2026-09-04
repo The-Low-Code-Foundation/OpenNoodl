@@ -16,7 +16,8 @@ import css from './ListValueEditor.module.scss';
  *
  * `JSONEditor` (visual tree + code, already in core-ui) was used in exactly one
  * place before this: the app-level Variables section. This is the host that
- * makes it the property panel's list editor too, for all four port types.
+ * makes it the property panel's list editor too, for `array`, `object` and — since §3,
+ * 2026-09-04 — `optionslist`. (`stringlist` and `proplist` keep their own row types.)
  *
  * Everything type-specific lives in `listValueCodec`; this file only knows how
  * to put the editor on screen and when it is allowed to write.
@@ -56,7 +57,9 @@ export function ListValueEditor({
   const hint = decoded.unparseable
     ? `This value could not be read as JSON, so it is shown exactly as stored and the visual builder is unavailable. Nothing has been changed.`
     : decoded.recovered
-      ? `This was stored as a JavaScript literal. It is shown as JSON; saving will store the JSON form.`
+      ? portType === 'optionslist'
+        ? `This list was stored in the older format. It is shown as options; saving will store the new form.`
+        : `This was stored as a JavaScript literal. It is shown as JSON; saving will store the JSON form.`
       : undefined;
 
   function commit(): boolean {

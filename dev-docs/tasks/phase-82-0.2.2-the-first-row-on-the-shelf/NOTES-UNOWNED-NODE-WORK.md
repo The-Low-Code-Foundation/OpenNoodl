@@ -267,7 +267,53 @@ embed.
 > *"We need to go back to the two default 'Option 1' 'Option 2' items… can we add this as a third
 > JSON editor mode? A mode where you just click plus and add a text, and it autoformats it."*
 
-✅ **RESEARCHED, session 34 — all five questions answered. Nothing built; this is still research.**
+✅ **RESEARCHED, session 34 — all five questions answered.**
+
+### ✅ BUILT, session 39 — direction 1, `optionslist`
+
+Richard chose direction 1 on 2026-09-04: a new list-port type alongside `array`/`object`/
+`stringlist`/`proplist`, `Dropdown.items` moving to it.
+
+🔴 **It landed entirely in the codec, with no new UI component**, and that is what makes it the
+beginner mode rather than another JSON blob: `decodeForEditor` shows **the shortest spelling of a
+row that round-trips**. A row whose `Value` is exactly its `Label`'s slug carries no information
+the label does not, so the editor shows the bare label — "click plus and type", as asked. The
+moment an author needs "Large" to send `l`, that row and only that row expands to
+`{ "Label": "Large", "Value": "l" }`. An author who has typed nothing special never meets a
+two-field object.
+
+- **Values are never empty.** A slug that would come out empty (all punctuation, non-Latin) falls
+  back to the trimmed label — an empty `Value` is the `<option value="">` defect itself.
+- 🔴 **Duplicate values are treated by provenance.** A *derived* collision ("A B" and "A-B" both
+  slug to `a-b`) gets a numeric suffix, because refusing would block an author from typing two
+  ordinary labels. An *explicitly written* duplicate is refused with a message, because two options
+  with the same value cannot be told apart downstream and silently renaming one would overwrite a
+  statement the author made.
+- ⚠️ **The decoder reads four stored shapes**, including the legacy `array` form (a *string*
+  holding a literal). Measured: 0 such values across 148 files in this repo — but a user's project
+  may hold one, and a port type that could not read its own history would silently empty their
+  Dropdown. The editor tells them it will be rewritten.
+- The panel routing is derived (`listPortTypeFor`), so `Ports.ts` and the catalog coverage gate
+  picked the new type up without being told. 🔴 `ListValueType` had been *collapsing* the port type
+  to `'array' | 'object'`; that was right while it served exactly those two, but an `optionslist`
+  narrowed to `'array'` would be encoded as a raw blob — the very thing the type exists to stop.
+- ⚠️ The deprecated `Options` twin keeps its `array` items port and was left alone.
+
+### 🔴 FOUND WHILE BUILDING IT — a Dropdown with a selected value CRASHED its own render
+
+`Select.tsx` read `props.items.items.length`, and `props.items` is a plain array — so
+`props.items.items` is `undefined` and `.length` **throws**. Present since the initial commit
+(2024-01-26, verified with `git log -L`), and invisible for four years because it sits behind
+`selectedIndex >= 0`, which is false whenever `value` is undefined.
+
+🔴 **`4672d924` made it reachable on every freshly placed Dropdown** by seeding `value` with the
+first default item — so the node that commit existed to make visible threw instead. The commit that
+exposed it is not the commit that caused it, and it shipped uncaught because **`Select.tsx` had no
+render coverage of any kind**. `nat-dropdown-001` is that coverage; the reverted arm reddens 4 of
+its 7 rows.
+
+✅ This also closes the §C register row *"an authored Dropdown still collapses"* one step further:
+a value matching no option now draws the placeholder rather than throwing.
 
 ### The port, today
 

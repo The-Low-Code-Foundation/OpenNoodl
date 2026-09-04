@@ -221,6 +221,7 @@ export type PortTypeName =
   | 'mediastream'
   | 'number'
   | 'object'
+  | 'optionslist'
   | 'pages'
   | 'proplist'
   | 'reference'

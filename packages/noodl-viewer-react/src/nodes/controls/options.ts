@@ -110,10 +110,24 @@ const OptionsNode = {
   },
   inputs: {
     items: {
-      type: 'array',
+      /**
+       * §3 of NOTES-UNOWNED-NODE-WORK.md — Richard's chosen direction, 2026-09-04.
+       *
+       * 🔴 **`optionslist`, not `array`, and the difference is what an author has to know.** As an
+       * `array` this port was a JSON blob: `Select.tsx` reads `i.Label` and `i.Value` on every
+       * entry, so a beginner who typed the obvious `["Small", "Large"]` got three
+       * `<option value="">` elements and nothing selectable — correct JSON, silently useless. The
+       * `optionslist` codec mints `{ Label, Value }` from a bare label, so typing a label is
+       * enough, and shows the object form only once an author overrides the derived value.
+       *
+       * ⚠️ **The stored shape changes and the decoder reads BOTH.** The old form was a string
+       * holding a literal; a project carrying one still opens, because a port type that could not
+       * read its own history would silently empty somebody's Dropdown.
+       */
+      type: 'optionslist',
       displayName: 'Items',
       description:
-        'Options to offer, as an array of objects with Label and Value properties; an empty value offers nothing',
+        'Options to offer. Type a label per option — the value is derived from it — or give an option its own Value when it must send something different',
       group: 'General',
       default: DEFAULT_ITEMS,
       /**
