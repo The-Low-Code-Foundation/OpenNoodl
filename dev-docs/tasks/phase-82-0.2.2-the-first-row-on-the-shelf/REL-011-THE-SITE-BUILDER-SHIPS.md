@@ -1017,3 +1017,190 @@ members' area and documentation, and none of them touches this template — chec
    asserts that a page's headings descend without skipping a level.
 3. **No other template has an outline gate.** The members' area and the site builder now have one
    each; anything the shelf grows next starts at zero again, and neither gate is general.
+
+---
+
+## §6 The admin panel's outline, RENDERED — BUILT s28 (2026-09-04)
+
+§5 gave the template a document outline and gated it two ways: `sb007Template` §12 on the `as`
+parameters **on disk**, and `sb008-public-site-drive` §6 on what the browser builds — for the four
+**public** loads. This section is the half §5 explicitly left with owner `NONE`: the six admin
+screens, whose landmark is a parameter on a column they already had, and which **no drive in this
+repository had ever opened and looked at**.
+
+### 🔴 The absence, measured before a line was written
+
+A repo-wide sweep for anything that reads a rendered `<main>` (`querySelector`/`querySelectorAll`)
+returns **exactly two files**: `sb008-public-site-drive.test.ts` and `tpl001-members-drive.test.ts`
+— the public site and the members' area. The three drives that actually load an admin screen —
+`sbr010-messages-drive`, `sbr009ThemeEditorDrive`, `ac2-page-editor-drag-drive` — matched **nothing**
+for `main`, `h1`, `nav`, `landmark` or `outline`.
+
+⚠️ The sweep was run against `sb008` as a **known-firing control** before its absence on the other
+three was believed: the same pattern, the same command, one file known to contain the thing.
+
+The artefact itself: `sb005Components.ts` carries **13 `as` tags — 6 `main`, 6 `h1`, 1 `nav`** — one
+landmark and one heading on each of the six screens, plus the rail on `/Admin/Shell`.
+
+### The instrument, and why it is a module rather than a copy
+
+s27 wrote the reading inline in `sb008`. The moment a second drive wanted it, the repo was one
+copy-paste from two probes that answer slightly different questions and disagree without anybody
+noticing. **`packages/noodl-mcp/tests/documentOutline.ts`** is now the single copy — the expression,
+the `Landmarks` type, a `NO_LANDMARKS` sentinel, `outlineFault()` and `stripOutlineTags()` for
+reverted arms. `sb008` §6 was refactored onto it and its numbers are unchanged.
+
+It lives in `noodl-mcp/tests` because that is the direction the dependency already runs: the backend
+drives import `sb005Components` from there, and the MCP-side drive can reach it without dragging
+`BackendService` across.
+
+🔴 **`NO_LANDMARKS` is `-1`, not `0`, and that is the point.** Zeroes are exactly what a *reverted*
+arm is supposed to read. An arm that silently never ran would leave zeroes too — and would pass as a
+working negative control **by not happening**.
+
+### 🔴 The instrument is itself graded, without a browser
+
+`documentOutline.test.ts` — **11 specs, 0.3 s**. `READ_LANDMARKS` is a *string*; nothing typechecks
+it, and a typo inside it surfaces 118 seconds away as a thrown `Runtime.evaluate` blamed on the page.
+So the expression is **executed** against a hand-built stub `document`, which grades the two pieces of
+logic that can silently be wrong:
+
+| the probe must… | the wrong probe that would pass without it |
+|---|---|
+| refuse to answer *"inside"* when there is more than one `<main>` | reports a tidy `1` for a document that is already malformed |
+| ask the `<main>`, not the document, what is inside it | passes on a page whose `<h1>` sits OUTSIDE the `<main>` — REL-011c's shortcut fix exactly |
+
+It also typechecks `stripOutlineTags` against the real `fs` and `path.join`, which matters because
+the two backend drives that call it live in a package whose test typecheck **cannot complete on this
+box**.
+
+### What was built, and what it reads
+
+| gate | screens | reading at HEAD | reverted arm |
+|---|---|---|---|
+| `sbr010-messages-drive` **§7** (5 specs) | `/admin/signin`, `/admin/pages`, `/admin/messages`, **each twice** — empty collection and with rows | **6 of 6** loads: one `<main>`, one `<h1>`, the `<h1>` inside it | **0 of 3**: no `<main>`, no `<h1>`, no `<nav>` |
+| `sbr009ThemeEditorDrive` **§4** (4 specs) | `/admin/theme` | 1 `<main>`, 1 `<h1>`, inside | 0 / 0 / 0 |
+
+Both reverted arms strip **13 of 13** tags (asserted exactly — *a strip that matched nothing would
+leave the arm reading a good outline and be scored as "the instrument cannot see the defect": the
+same numbers, the opposite conclusion*).
+
+### 🔴 The negative control, and the one screen that inverts it
+
+`h1sInMain === 1` proves nothing on its own — a probe answering *"inside"* for the whole document
+gives the same answer on every page ever written. `/Admin/Shell`'s rail is the thing deliberately
+outside the content column, **in the same document**:
+
+| load | `<nav>` in document | `<nav>` in `<main>` |
+|---|---|---|
+| `/admin/pages`, `/admin/messages`, `/admin/theme` | **1** | **0** |
+| `/admin/signin` | **0** | 0 |
+
+⚠️ **`/admin/signin` is asserted the other way round on purpose.** Nobody has a rail before they
+sign in, so it is the reading that says the control tracks *the document it is in* rather than the
+template as a whole. It was recorded before it was asserted, then asserted as an invariant.
+
+### 🔴 What this run also found: a drive that was RED at HEAD, and why
+
+`sbr010-messages-drive` **failed on the first run of this session**, and not on anything §7 touched:
+
+```
+D42: the one public endpoint stores each enquiry exactly ONCE
+  expect(contactSteps.filter((st) => st.endsWith('#pick'))).toHaveLength(1)   →   0
+```
+
+The step list had `JavaScriptFunction#pick-2` where the spec pinned `#pick`. Traced to the artefact
+on disk rather than guessed:
+
+1. **The MCP door enforces node ids unique across the WHOLE PROJECT** (`graph.ts:186`) and suffixes
+   the loser of a collision in authoring order. The artefact shows the pattern everywhere:
+   `req`/`req-2`/`req-3`/`req-4`/`req-5` across the five cloud functions, `save`/`save-2`/`save-3`.
+2. `authorSiteTemplate` writes the SB-005 panel **before** the SB-004 cloud half.
+3. Commit **`3f95a804`** (2026-09-03, REL-011b's D54 fix) added a node with `id: 'pick'` to
+   **`/Admin/PresetChip`** — a preset chip, with no relationship to the contact form whatsoever.
+4. It took the name, and `__cloud__/site/ContactRecipient`'s `pick` shipped as **`pick-2`**.
+
+🔴 **A node id added to one component silently renamed a node in an unrelated one, and the only
+thing in the repository that noticed was a literal in a drive nobody had re-run.** The fix here is
+*not* to pin `#pick-2` — that is the same fragility with a fresh literal. `D42` now matches the id
+**base** (`stepBase` strips a trailing `-<digits>`), which is stable under the collision numbering
+and preserves the assertion's meaning. Verified against **both** recorded step lists — the Sep 2 one
+(`#pick`) and today's (`#pick-2`) — so the repair is not tuned to the reading that provoked it.
+
+The door's behaviour is **not changed here** and is registered below as a product question.
+
+### The readings, with their exit statuses
+
+⚠️ Every one gated on an **exit file written by the run itself**. The task-completion notice
+reported *"exit code 0"* for a drive that was still executing — the wrapper's status, not the
+command's, now misreported across four sessions running.
+
+| gate | reading |
+|---|---|
+| `documentOutline.test.ts` | **11/11, EXIT=0** (new) |
+| `sbr010-messages-drive.test.ts` | **22/22, EXIT=0** — 17 before §7's five |
+| `sbr009ThemeEditorDrive.test.ts` | **13/13, EXIT=0** — 9 before §4's four |
+| `sb008-public-site-drive.test.ts` | **24/24, EXIT=0** — unchanged, which is the refactor's control |
+| `noodl-mcp` full jest | **93 suites / 1257 tests, EXIT=0** |
+| `tsc --noEmit -p packages/noodl-mcp` | **0 errors, EXIT=0** — `--listFiles` confirms both new files are in the program |
+
+🔴 **`tsc -p packages/nodegx-backend` is NOT a reading of anything this session changed.** Its
+`include` is `src/**/*` and it *excludes* `**/*.test.ts`: it returned EXIT=0 having typechecked none
+of the edited files. `typecheck:backend-tests` is the config that covers them and it **could not
+complete** — EXIT=**134** (OOM) at a 3 GB heap with **0 `error TS` in the log**, which reads exactly
+like a pass, and a timeout with **no exit file at all** at 5 GB. CI runs it; this box cannot.
+✅ **Neither editor suite was run, and neither needed to be**: no editor source, no template
+component and no node-count literal was touched, and the editor's webpack provably does not reach
+`noodl-mcp` — nothing under `packages/noodl-editor/src` imports it as a module (only string paths to
+the built server), so the `nodegx-export` sibling-typecheck hazard does not apply.
+
+### ⬅️ What this does NOT do — owner `NONE`
+
+1. **Two of the six admin screens are still ungraded at render time**: `/Pages/PageEditor` and
+   `/Pages/Setup`. `/Pages/Setup` has **no drive that loads it at all** — the site is claimed over
+   HTTP before any browser opens, so reaching it needs a new arm, not a rider. `/Pages/PageEditor` is
+   blocked, and that is the next finding.
+2. **The door's project-wide id renaming is unexamined as a product question.** Silently renaming a
+   node in component A because component B later used the name is defensible for uniqueness and
+   indefensible for anything that refers to a node by id. Nobody has asked which it should be.
+3. **`<h2>` order is still unchecked in both templates** (carried from §5).
+4. **Neither outline gate is general** (carried from §5) — but `documentOutline.ts` is now the shared
+   instrument the next template would use, which is the part that was missing.
+
+### 🔴 `ac2-page-editor-drag-drive` is RED at HEAD — measured at last, and it is 23 of 23
+
+Carried unmeasured since s23 as *"judged not worth a drive, **not** measured"*. It was run this
+session, once, as a baseline before adding anything to it — and it does not reach a single
+assertion:
+
+| | reading |
+|---|---|
+| result | **23 failed, 23 total — EXIT=1**, 119 s |
+| where | `beforeAll`, in the `setParams` mutant-setup helper (line 309) |
+| the assertion | `defect restored was:…,runOnChange-in-image=false` vs received `…=undefined` |
+
+🔴 **The drive is stale; the template is not.** `setParams` finds the node by **label** and asserts
+its three `runOnChange` keys are present-and-false before flipping them. Two of the three are on the
+node it names; the third is not, and has not been since the picture handling was split out:
+
+| node in `Admin/SectionRow` | label | its `runOnChange` keys |
+|---|---|---|
+| `merge` | *Fold the edits back into data* | `in-data`, `in-body`, `in-heading`, `in-linkLabel`, `in-linkTarget` |
+| `absorb` | *Fold an uploaded picture into this section* | `in-data`, `in-kind`, **`in-image`** |
+
+- `ac2-page-editor-drag-drive.test.ts` last changed **2026-08-30** (`505d9b381`).
+- `absorb` was added **2026-09-01** by `bc012147` (SBR-009), taking the image input with it.
+- Nothing re-ran the drive in the three days and five sessions between, so its arm has pointed at a
+  node that no longer carries the key it asserts ever since.
+
+⚠️ **This is why `/Pages/PageEditor`'s outline is not covered by this session.** The capture would
+have ridden this drive's page loads, and a `beforeAll` that throws means no arm runs at all — the
+reading would have been the never-ran sentinel, or worse, silently absent. **Fixing the drive is a
+P77/AC2 job, not a rider on an outline task**: only the mutant's precondition is diagnosed here, and
+the other 22 specs have never been observed passing in this tree, so the cost of repairing it is
+unknown rather than small. **Owner: `NONE`.**
+
+🔴 **The transferable half: a drive nobody runs decays against the artefact it drives, and its decay
+is invisible.** Both the `#pick` literal above and this mutant broke because an *unrelated,
+correct* change moved something they name. Neither template was wrong; both gates were, and each
+had been wrong for days behind a green board.

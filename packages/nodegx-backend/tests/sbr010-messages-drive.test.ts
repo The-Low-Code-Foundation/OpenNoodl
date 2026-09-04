@@ -67,8 +67,10 @@ import {
   EMPTY_MESSAGE_LIST_TEXT,
   MESSAGES_READ_ONLY_TEXT,
   MESSAGE_LIST_ERROR_TEXT,
+  SB005_COMPONENTS,
   SIGNED_OUT_TEXT
 } from '../../noodl-mcp/tests/sb005Components';
+import { Landmarks, NO_LANDMARKS, outlineFault, readLandmarks, stripOutlineTags } from '../../noodl-mcp/tests/documentOutline';
 import { BackendService } from '../src/service';
 
 import { bundleAuthoredComponents, WorkflowBundle } from './helpers/authored-bundle';
@@ -191,6 +193,26 @@ const LOCATE = (needle: string) => `(function () {
   return JSON.stringify({ found: all.length > 0, reachable: false, x: 0, y: 0 });
 })()`;
 
+/**
+ * 🔴 **A step id is not the id the source wrote.**
+ *
+ * The MCP door enforces node ids unique **across the whole project**, and
+ * suffixes the loser of a collision in authoring order: `sb004Components` says
+ * `id: 'pick'`, and because `authorSiteTemplate` writes the SB-005 panel first,
+ * `/Admin/PresetChip`'s own `pick` takes the name and the cloud node ships as
+ * `pick-2`. The same door had already renamed `req`/`save`/`res` in four of the
+ * five cloud functions.
+ *
+ * ⚠️ **This is why the assertions below match a BASE rather than a literal.**
+ * They were written as `endsWith('#pick')` and were correct until `3f95a804`
+ * (2026-09-03) added a node called `pick` to a preset chip — a component with
+ * no relationship to the contact form at all — which silently renamed this one
+ * and reddened this drive. A literal id here is a gate on the authoring ORDER
+ * of an unrelated component. Registered as a product question in REL-011 §6;
+ * the door's behaviour is not changed here.
+ */
+const stepBase = (step: string): string => step.slice(step.indexOf('#') + 1).replace(/-\d+$/, '');
+
 async function clickText(page: RenderedPage, needle: string): Promise<void> {
   const at = JSON.parse(String(await page.evaluate(LOCATE(needle)))) as {
     found: boolean;
@@ -232,6 +254,26 @@ describe('SBR-010 — a visitor writes, and the owner reads it', () => {
   let mutantPathAfterClick = 'ARM NEVER RAN';
   let mutantItemReachable = false;
 
+  /**
+   * 🔴 **§7 — the document outline of the ADMIN screens, as the browser builds
+   * it.** `sb007Template` §12 gates the `as` parameters on disk and
+   * `sb008-public-site-drive` §6 grades the rendered outline of the four PUBLIC
+   * loads. Between them sat a hole exactly the shape of this panel: the six
+   * admin screens carry `as: 'main'` on a column they already had, and until
+   * this section **no drive in the repo had ever looked at one of them**.
+   *
+   * Recorded on the page loads this drive already takes, so it costs one
+   * `evaluate` per visit and adds no navigation. Three screens — `/admin/signin`,
+   * `/admin/pages` and `/admin/messages` — each read twice, once on the empty
+   * collection and once with rows, because a list screen with three rows in it
+   * is a different document from the same screen with none.
+   */
+  const landmarks: Record<string, Landmarks> = {};
+  /** The reverted arm's project: the shipped one with all thirteen `as` tags gone. */
+  let revertedDir = '';
+  /** How many tags that strip actually removed. An arm that stripped none proves nothing. */
+  let revertedStripped = -1;
+
   let storedBefore: Stored = NO_STORED;
   let storedAfter: Stored = NO_STORED;
   /**
@@ -242,6 +284,8 @@ describe('SBR-010 — a visitor writes, and the owner reads it', () => {
   let contactRuns: Array<{ status: string; stores: number }> = [];
   /** The step list of one of those runs, which is where D42 was actually visible. */
   let contactSteps: string[] = ['ARM NEVER RAN'];
+  /** Steps whose node id has `base` once the door's collision suffix is taken off. */
+  const stepsNamed = (base: string): string[] => contactSteps.filter((st) => stepBase(st) === base);
 
   const readStored = async (): Promise<Stored> => {
     const asOwner = await client.get<{ results?: Row[] }>('/classes/ContactMessage?order=-createdAt', asUser(owner));
@@ -258,10 +302,16 @@ describe('SBR-010 — a visitor writes, and the owner reads it', () => {
   const readScreen = async (page: RenderedPage): Promise<Screen> =>
     JSON.parse(String(await page.evaluate(READ_SCREEN))) as Screen;
 
-  async function signInBrowser(page: RenderedPage): Promise<string | null> {
+  /**
+   * `arm` is the §7 capture. It is read on the signed-OUT screen, before the
+   * form is filled: `/admin/signin` is one of the six screens that grew a
+   * landmark, and after the click it is no longer the document on the screen.
+   */
+  async function signInBrowser(page: RenderedPage, arm?: string): Promise<string | null> {
     await page.setViewport({ width: 1440, height: 1800 });
     await page.navigate('/admin/signin');
     await wait(2500);
+    if (arm) landmarks[`${arm}/signin`] = await readLandmarks(page);
     await fill(page, 'email', OWNER_EMAIL);
     await fill(page, 'password', OWNER_PASSWORD);
     await clickButton(page, 'Sign in');
@@ -270,11 +320,13 @@ describe('SBR-010 — a visitor writes, and the owner reads it', () => {
   }
 
   /** Go to the page list, then reach Messages the way a person does: the rail. */
-  async function openMessagesFromTheRail(page: RenderedPage): Promise<Screen> {
+  async function openMessagesFromTheRail(page: RenderedPage, arm?: string): Promise<Screen> {
     await page.navigate('/admin/pages');
     await wait(2500);
+    if (arm) landmarks[`${arm}/pages`] = await readLandmarks(page);
     await clickText(page, 'Messages');
     await wait(2500);
+    if (arm) landmarks[`${arm}/messages`] = await readLandmarks(page);
     return readScreen(page);
   }
 
@@ -374,8 +426,8 @@ describe('SBR-010 — a visitor writes, and the owner reads it', () => {
     // ── ARM 1: the owner, on an empty collection ────────────────────────────
     await withRenderedPage({ projectDir, backendPort }, async (p) => {
       const page1 = p as RenderedPage;
-      ownerSession = await signInBrowser(page1);
-      screenEmpty = await openMessagesFromTheRail(page1);
+      ownerSession = await signInBrowser(page1, 'empty');
+      screenEmpty = await openMessagesFromTheRail(page1, 'empty');
       // eslint-disable-next-line no-console
       console.log('        arm 1 (empty):', JSON.stringify({ path: screenEmpty.path, rail: screenEmpty.rail }));
     });
@@ -422,8 +474,8 @@ describe('SBR-010 — a visitor writes, and the owner reads it', () => {
     // ── ARM 3: the owner reads what the visitor wrote ────────────────────────
     await withRenderedPage({ projectDir, backendPort }, async (p) => {
       const page3 = p as RenderedPage;
-      await signInBrowser(page3);
-      screenFull = await openMessagesFromTheRail(page3);
+      await signInBrowser(page3, 'full');
+      screenFull = await openMessagesFromTheRail(page3, 'full');
       // eslint-disable-next-line no-console
       console.log('        arm 3 (full):', JSON.stringify(screenFull.text).slice(0, 900));
     });
@@ -444,6 +496,32 @@ describe('SBR-010 — a visitor writes, and the owner reads it', () => {
       // eslint-disable-next-line no-console
       console.log('        mutant after click:', mutantPathAfterClick);
     });
+
+    // ── §7's REVERTED ARM: the same three screens with no `as` tags at all ───
+    //
+    // 🔴 Per this phase's rule the arm restores the ABSENCE the fix removed
+    // rather than breaking something new. Before REL-011c not one of these
+    // components carried an `as`, so deleting the parameter is literally the
+    // shipped state of the eleven sessions before it — and `stripOutlineTags`
+    // walks every SB-005 component rather than the three this drive visits, so
+    // the count below is a census of the panel and not of this route.
+    revertedDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sbr010msg-noas-'));
+    fs.cpSync(projectDir, revertedDir, { recursive: true });
+    revertedStripped = stripOutlineTags(
+      fs,
+      path.join,
+      revertedDir,
+      SB005_COMPONENTS.map((c) => c.path)
+    );
+    // eslint-disable-next-line no-console
+    console.log('        reverted arm stripped:', revertedStripped, 'as-tags');
+    await withRenderedPage({ projectDir: revertedDir, backendPort }, async (p) => {
+      const page5 = p as RenderedPage;
+      await signInBrowser(page5, 'reverted');
+      await openMessagesFromTheRail(page5, 'reverted');
+    });
+    // eslint-disable-next-line no-console
+    console.log('        §7 landmarks:', JSON.stringify(landmarks));
   });
 
   afterAll(async () => {
@@ -563,10 +641,13 @@ describe('SBR-010 — a visitor writes, and the owner reads it', () => {
     ]);
     // …and the chain it hangs off ran once too, which is the cause rather than
     // the symptom: two `save` steps were two `fallback → pick` runs.
-    expect(contactSteps.filter((st) => st.endsWith('#fallback'))).toHaveLength(1);
-    expect(contactSteps.filter((st) => st.endsWith('#pick'))).toHaveLength(1);
+    expect(stepsNamed('fallback')).toHaveLength(1);
+    expect(stepsNamed('pick')).toHaveLength(1);
     // The control: the step list is a real reading of a run that did the work.
-    expect(contactSteps).toContain('noodl.cloud.response#res-3');
+    expect(stepsNamed('res')).toHaveLength(1);
+    // …and it is a reading of THIS chain and not of an empty list — the filter
+    // above returns `[]` just as happily for a step list that never arrived.
+    expect(contactSteps.length).toBeGreaterThan(4);
   });
 
   // ── §2. AC2 — the ACL is the feature ──────────────────────────────────────
@@ -673,5 +754,104 @@ describe('SBR-010 — a visitor writes, and the owner reads it', () => {
     // …beside the shipped arm, which is the known-firing signal: the same click,
     // on the same item, in the same browser, one wire different.
     expect(screenFull.path).toBe('/admin/messages');
+  });
+
+  // ── §7. The admin screens' document outline ───────────────────────────────
+
+  /**
+   * 🔴 **The half of REL-011c's outline that nothing had ever rendered.**
+   *
+   * §12 of `sb007Template.test.ts` asserts the `as` parameters sitting in the
+   * shipped JSON. §6 of `sb008-public-site-drive.test.ts` asserts what the
+   * browser builds — for the four PUBLIC loads. **A parameter is an
+   * intention**, and between those two gates the whole admin panel was
+   * ungraded: six screens whose landmark is a parameter on a column they
+   * already had, none of which any drive had ever opened and looked at.
+   *
+   * This section closes three of the six on loads this drive was already
+   * making. `/Pages/PageEditor`, `/Pages/ThemeEditor` and `/Pages/Setup` are
+   * still ungraded at render time — stated rather than implied, and registered.
+   */
+  describe('🔴 §7 the admin outline the browser actually builds', () => {
+    const HEAD = ['empty/messages', 'empty/pages', 'empty/signin', 'full/messages', 'full/pages', 'full/signin'];
+    const REVERTED = ['reverted/messages', 'reverted/pages', 'reverted/signin'];
+    const head = () => HEAD.filter((k) => k in landmarks);
+
+    /**
+     * 🔴 **Cardinality first.** Every assertion below is a `filter(...)` over a
+     * list of keys, and `[].filter(...)` is `[]` — the way this whole section
+     * would go silently green if a capture stopped happening or an arm threw
+     * before it read. The names are written out rather than derived from
+     * `Object.keys`, because a list derived from the readings cannot notice a
+     * reading that was never taken.
+     */
+    it('control: all nine readings were taken, and none is the never-ran sentinel', () => {
+      expect(Object.keys(landmarks).sort()).toEqual([...HEAD, ...REVERTED].sort());
+      const unread = Object.keys(landmarks)
+        .sort()
+        .filter((k) => landmarks[k].mains === NO_LANDMARKS.mains);
+      expect(unread).toEqual([]);
+    });
+
+    it('every admin screen has exactly one <main>, one <h1>, and the <h1> is INSIDE it', () => {
+      // `outlineFault` returns which of the four ways it is wrong, so a red
+      // prints the defect rather than `false !== true`.
+      const faults = head()
+        .map((k) => ({ k, fault: outlineFault(landmarks[k]) }))
+        .filter((r) => r.fault)
+        .map((r) => `${r.k}: ${r.fault}`);
+      expect(faults).toEqual([]);
+      expect(head()).toEqual(HEAD);
+    });
+
+    /**
+     * 🔴 **The negative control, in the same document.** `/Admin/Shell`'s rail
+     * is the thing deliberately left outside the content column, and it is on
+     * the screen at the same moment. Without it, a probe that answered
+     * *"inside"* for anything anywhere in the document would pass the assertion
+     * above on every page ever written.
+     *
+     * ⚠️ `/admin/signin` is asserted the other way on purpose: it is NOT inside
+     * the shell — nobody has a rail before they sign in — so it is the reading
+     * that says this control tracks the document it is in rather than the
+     * template as a whole.
+     */
+    it('🔴 CONTROL — the rail’s <nav> is in the signed-IN documents and never inside the <main>', () => {
+      const railed = head().filter((k) => !k.endsWith('/signin'));
+      expect(railed.filter((k) => landmarks[k].navsInDoc !== 1)).toEqual([]);
+      expect(railed.filter((k) => landmarks[k].navsInMain !== 0)).toEqual([]);
+      // …and the signed-out screen, which has no rail to be outside anything.
+      const signin = head().filter((k) => k.endsWith('/signin'));
+      expect(signin.filter((k) => landmarks[k].navsInDoc !== 0)).toEqual([]);
+    });
+
+    /**
+     * 🔴 **The reverted arm — and it is what makes every reading above mean
+     * something.** An acceptance criterion can be green before the work: if the
+     * runtime rendered a `<main>` for reasons of its own, or the probe found one
+     * that was never authored, the section would pass identically with the fix
+     * absent. Here the same three screens are driven from a project copy with
+     * all thirteen `as` tags deleted, and they must read ZERO.
+     */
+    it('🔴 REVERTED ARM: the strip removed all thirteen tags the panel ships', () => {
+      // Counted, not assumed. A strip that matched nothing would leave the arm
+      // below reading a perfectly good outline and calling it a failure to
+      // detect — the same numbers, the opposite conclusion.
+      expect(`stripped:${revertedStripped}`).toBe('stripped:13');
+    });
+
+    it('🔴 REVERTED ARM: with the tags gone the browser builds no outline at all', () => {
+      const withMain = REVERTED.filter((k) => (landmarks[k]?.mains ?? -1) !== 0);
+      expect(withMain).toEqual([]);
+      const withH1 = REVERTED.filter((k) => (landmarks[k]?.h1s ?? -1) !== 0);
+      expect(withH1).toEqual([]);
+      // 🔴 And the rail's `<nav>` goes with them, which is what says the strip
+      // reached `/Admin/Shell` and not only the page components.
+      expect(landmarks['reverted/pages'].navsInDoc).toBe(0);
+      // Beside the shipped arm, taken in the same run, on the same backend:
+      // one project directory apart.
+      expect(landmarks['full/pages'].mains).toBe(1);
+      expect(landmarks['full/pages'].navsInDoc).toBe(1);
+    });
   });
 });

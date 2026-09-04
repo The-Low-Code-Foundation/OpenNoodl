@@ -31,10 +31,18 @@
  * changing from the shipped blue to Night's `#d9a441` is the person sentence,
  * and a spec that stopped at the variable would pass on a preview nothing draws.
  */
+import * as fs from 'fs';
+import * as os from 'os';
 import * as path from 'path';
 
 import { SITE_THEME_PRESETS } from '../../noodl-editor/src/editor/src/models/template/templates/siteTheme';
-import { ADMIN_PATH_PREFIX, PREVIEW_SCOPE_CLASS, THEME_EDITOR_FIELDS } from './sb005Components';
+import { Landmarks, NO_LANDMARKS, outlineFault, readLandmarks, stripOutlineTags } from './documentOutline';
+import {
+  ADMIN_PATH_PREFIX,
+  PREVIEW_SCOPE_CLASS,
+  SB005_COMPONENTS,
+  THEME_EDITOR_FIELDS
+} from './sb005Components';
 import { buildSiteTemplateProject } from './sb007Template';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -122,12 +130,34 @@ let afterStudio: Reading;
 let afterNightAgain: Reading;
 let afterStudioAgain: Reading;
 
+/**
+ * 🔴 **§4 — `/Pages/ThemeEditor`'s document outline, as the browser builds it.**
+ *
+ * REL-011c gave the six admin screens a landmark and a heading; `sb007Template`
+ * §12 gates those `as` parameters **on disk**. Nothing rendered one until
+ * SBR-010 §7, and that drive reaches only three of the six. This screen is a
+ * fourth, and it is free here: this file already loads it in a real browser.
+ *
+ * ⚠️ Deliberately the WHOLE screen and not the preview scope. Everything else
+ * in this file is about a CSS scope; this is about the document that contains
+ * it, and the two claims share only the page load.
+ */
+let outline: Landmarks = NO_LANDMARKS;
+/** The same screen with the panel's thirteen `as` tags deleted. */
+let outlineReverted: Landmarks = NO_LANDMARKS;
+/** How many tags that strip removed — an arm that stripped none proves nothing. */
+let strippedTags = -1;
+
 describe('SBR-009 AC2 — the preset restyles the preview and nothing else, driven at 1280×900', () => {
   beforeAll(async () => {
     const built = await buildSiteTemplateProject();
     await withRenderedPage({ projectDir: built.projectDir }, async (page: RenderedPage) => {
       await page.navigate(`/${ADMIN_PATH_PREFIX}/theme`);
       before = JSON.parse(await page.evaluate(READ)) as Reading;
+      // §4, on the screen as it first settles — one extra `evaluate`, no extra
+      // navigation, and taken BEFORE any chip is pressed so it is a reading of
+      // the shipped screen rather than of a screen this drive has restyled.
+      outline = await readLandmarks(page);
       clickResult = await page.evaluate(CLICK_NIGHT);
       await wait(600);
       after = JSON.parse(await page.evaluate(READ)) as Reading;
@@ -145,10 +175,33 @@ describe('SBR-009 AC2 — the preset restyles the preview and nothing else, driv
       await wait(600);
       afterStudioAgain = JSON.parse(await page.evaluate(READ)) as Reading;
     });
+
+    // ── §4's REVERTED ARM: the same screen with no `as` tags at all ─────────
+    //
+    // 🔴 The arm restores the ABSENCE the fix removed rather than breaking
+    // something new: before REL-011c not one SB-005 component carried an `as`.
+    // Without it, `outline` reading a tidy 1/1/1 would be equally consistent
+    // with a runtime that renders a `<main>` for reasons of its own.
+    const revertedDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sbr009-noas-'));
+    fs.cpSync(built.projectDir, revertedDir, { recursive: true });
+    strippedTags = stripOutlineTags(
+      fs,
+      path.join,
+      revertedDir,
+      SB005_COMPONENTS.map((c) => c.path)
+    );
+    await withRenderedPage({ projectDir: revertedDir }, async (page: RenderedPage) => {
+      await page.navigate(`/${ADMIN_PATH_PREFIX}/theme`);
+      await wait(600);
+      outlineReverted = await readLandmarks(page);
+    });
+
     // eslint-disable-next-line no-console
     console.log('        before:', JSON.stringify({ ...before, rule: before.rule }, null, 0));
     // eslint-disable-next-line no-console
     console.log('        after :', JSON.stringify({ ...after, rule: after.rule }, null, 0));
+    // eslint-disable-next-line no-console
+    console.log('        §4 outline:', JSON.stringify({ outline, outlineReverted, strippedTags }));
   });
 
   /**
@@ -312,5 +365,48 @@ describe('SBR-009 AC2 — the preset restyles the preview and nothing else, driv
     for (const f of THEME_EDITOR_FIELDS) {
       expect(`${f.field}: ${values.has(SITE_THEME_PRESETS.studio[f.field])}`).toBe(`${f.field}: true`);
     }
+  });
+
+  // ── §4. The screen's document outline ─────────────────────────────────────
+
+  /**
+   * 🔴 **A parameter is an intention.** `sb007Template` §12 asserts that
+   * `/Pages/ThemeEditor` carries `as: 'main'` and `as: 'h1'` in the JSON it
+   * ships. This says the browser built them, which is a different claim and the
+   * one a person using a screen reader actually depends on.
+   *
+   * This is the FOURTH of the six admin screens to be graded at render time —
+   * SBR-010 §7 covers `/admin/signin`, `/admin/pages` and `/admin/messages`.
+   * `/Pages/PageEditor` and `/Pages/Setup` remain ungraded; owner `NONE`.
+   */
+  describe('🔴 §4 the outline the browser actually builds', () => {
+    it('the theme editor renders exactly one <main>, one <h1>, and the <h1> is inside it', () => {
+      expect(outlineFault(outline)).toBeNull();
+    });
+
+    /**
+     * 🔴 **The negative control, in the same document.** `/Admin/Shell`'s rail
+     * is on this screen and is deliberately outside the content column. Without
+     * something known to be OUTSIDE, `h1sInMain === 1` would also be the answer
+     * a probe gives when it reports on the whole document.
+     */
+    it('🔴 CONTROL — the rail’s <nav> is in the document and NOT inside the <main>', () => {
+      expect(outline.navsInDoc).toBe(1);
+      expect(outline.navsInMain).toBe(0);
+    });
+
+    it('🔴 REVERTED ARM: the strip removed all thirteen tags the panel ships', () => {
+      // Counted, not assumed — a strip that matched nothing would leave the arm
+      // below reading a good outline and calling it a detection failure.
+      expect(`stripped:${strippedTags}`).toBe('stripped:13');
+    });
+
+    it('🔴 REVERTED ARM: with the tags gone this screen builds no outline at all', () => {
+      // 🔴 Not `NO_LANDMARKS`: `-1` would mean the arm never ran, and zeroes are
+      // the reading only a page that really rendered without landmarks gives.
+      expect(outlineReverted).toEqual({ mains: 0, h1s: 0, h1sInMain: 0, navsInDoc: 0, navsInMain: 0 });
+      // …beside the shipped arm, in the same run, one project directory apart.
+      expect(outline.mains).toBe(1);
+    });
   });
 });

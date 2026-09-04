@@ -46,6 +46,7 @@ import { SB005_COMPONENTS } from '../../noodl-mcp/tests/sb005Components';
 // component sets directly rather than the authored project — the authoring
 // itself now happens inside `authorSiteTemplate`.
 import { NOT_FOUND_TEXT, SB006_COMPONENTS } from '../../noodl-mcp/tests/sb006Components';
+import { Landmarks, readLandmarks } from '../../noodl-mcp/tests/documentOutline';
 import { BackendService } from '../src/service';
 
 import { bundleAuthoredComponents, WorkflowBundle } from './helpers/authored-bundle';
@@ -178,30 +179,13 @@ describe('SB-008 — the public site in a browser, against an enforcing backend'
    * a `<main>` element, or that the node tree and the element tree agree. Both
    * were assumed by the change that added `siteMain`. Recorded on the four page
    * loads this drive already takes, so it costs one `evaluate` per visit.
+   *
+   * ⚠️ The reading itself moved to `documentOutline.ts` when SBR-010 grew the
+   * same section: two inline copies of a containment probe that disagree by a
+   * word is a failure this repo has already paid for. The numbers §6 asserts
+   * are unchanged.
    */
-  interface Landmarks {
-    mains: number;
-    h1s: number;
-    /** `<h1>`s that are DOM descendants of the one `<main>`. */
-    h1sInMain: number;
-    navsInDoc: number;
-    /** `<nav>`s that are DOM descendants of the one `<main>` — must be zero. */
-    navsInMain: number;
-  }
   const landmarks: Record<string, Landmarks> = {};
-  const readLandmarks = (page: RenderedPage) =>
-    page.evaluate(
-      '(function () {' +
-        " var m = document.querySelectorAll('main');" +
-        ' var one = m.length === 1 ? m[0] : null;' +
-        ' return {' +
-        ' mains: m.length,' +
-        " h1s: document.querySelectorAll('h1').length," +
-        " h1sInMain: one ? one.querySelectorAll('h1').length : 0," +
-        " navsInDoc: document.querySelectorAll('nav').length," +
-        " navsInMain: one ? one.querySelectorAll('nav').length : 0 };" +
-        '})()'
-    ) as Promise<Landmarks>;
   const ids: Record<string, string> = {};
   /** F20 — how many `Theme` rows a freshly claimed site has. */
   let themeRowsAfterClaim = -1;
