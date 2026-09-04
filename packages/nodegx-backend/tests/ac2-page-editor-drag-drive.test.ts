@@ -66,6 +66,25 @@ import * as os from 'os';
 import * as path from 'path';
 
 import { SB004_COMPONENTS } from '../../noodl-mcp/tests/sb004Components';
+/**
+ * ⚠️ **The card's words, DERIVED rather than retyped.** REL-011c A6 stopped the section card
+ * heading itself `richText` while the `Kind` picker beside it offered `Rich text` — one thing, two
+ * vocabularies — by wiring `kindText` to a `kindLabel` the template computes from this very map.
+ * This file went on reading the card's first word as the kind, which is what a label like
+ * *"Rich text"* is NOT, and a second copy of the map here would go stale on the same day.
+ */
+import { SB005_COMPONENTS, SECTION_KIND_LABELS } from '../../noodl-mcp/tests/sb005Components';
+/**
+ * §8's instrument, shared with `sbr010`, `sbr009ThemeEditorDrive` and `sb008` rather than copied —
+ * one expression, one vocabulary of faults, one reverted-arm stripper.
+ */
+import {
+  Landmarks,
+  NO_LANDMARKS,
+  outlineFault,
+  readLandmarks,
+  stripOutlineTags
+} from '../../noodl-mcp/tests/documentOutline';
 import { BackendService } from '../src/service';
 
 import { bundleAuthoredComponents, WorkflowBundle } from './helpers/authored-bundle';
@@ -224,8 +243,31 @@ const centre = (c: Card): number => c.top + c.height / 2;
  */
 const pressPoint = (c: Card): { x: number; y: number } => ({ x: c.left + 8, y: c.top + 10 });
 
-/** The section kind a card names, which is the first word of its text (`kindText`). */
-const kindOf = (c: Card): string => c.text.split(' ')[0];
+/** The words a card of this kind is headed with, which is what its `kindText` now shows. */
+const labelOf = (kind: string): string => {
+  const label = (SECTION_KIND_LABELS as Record<string, string>)[kind];
+  expect(`label for ${kind}:${label !== undefined}`).toBe(`label for ${kind}:true`);
+  return label;
+};
+
+/**
+ * The section kind a card names — read back through the label the template prints on it.
+ *
+ * 🔴 **This used to be `c.text.split(' ')[0]`, and it was silent when it went wrong.** Once A6
+ * gave the card its human label, that expression returned `Rich` for `richText`, `Gallery` for
+ * `gallery` and `Call` for `cta`; every caller then looked the kind up in `SECTIONS`, got `-1`,
+ * and indexed `sectionIds[-1]`. The reading that came out was an `expectedAfterDrag` keyed
+ * `{"undefined": 0, …}` and a `Move up` press that found "no card" — **four specs red, and the
+ * product was doing exactly the right thing throughout.** So the match is asserted to be unique
+ * and total: an unrecognised card is a red spec here, never an `undefined` two frames later.
+ */
+const kindOf = (c: Card): string => {
+  const hits = Object.keys(SECTION_KIND_LABELS).filter((kind) => c.text.startsWith(labelOf(kind)));
+  expect(`kind of ${JSON.stringify(c.text.slice(0, 24))}:${hits.join(',')}`).toBe(
+    `kind of ${JSON.stringify(c.text.slice(0, 24))}:${hits.length === 1 ? hits[0] : 'EXACTLY ONE'}`
+  );
+  return hits[0];
+};
 
 /**
  * What `reorderSection` does, derived rather than typed out: put `id` at `toIndex` in the list
@@ -265,51 +307,85 @@ function dropWire(dir: string, componentPath: string, fromProperty: string, toPr
 }
 
 /**
- * Write parameters onto exactly one node of a project copy, and count the match.
+ * Put D31 back on a project copy: every `runOnChange-in-*` the section's write-back nodes state
+ * `false`, flipped to `true` — which is exactly what the absence of the fix reads as
+ * (`run-on-value-change.ts` treats an absent key as ticked).
  *
- * 🔴 The new keys go **first** in the bag. That is not tidiness: `NodeScope.setNodeParameters`
- * drains queued values in the bag's own key order, so a `runOnChange-*` that landed *after* the
- * value it governs would let the load-time run it exists to prevent happen once anyway. The
- * editor's own NDA-017 migration rebuilds the bag for the same reason.
+ * 🔴 **The population is DERIVED FROM THE GRAPH, and s29 is why.** This helper used to name one
+ * node by its label — *"Fold the edits back into data"* — and three ports by literal name, one of
+ * which was `runOnChange-in-image`. SBR-005 then split the picture path onto its own node
+ * (`absorb`), correctly and for a reason the template states, taking `in-image` with it. The
+ * template was right; this file's `beforeAll` threw on its own precondition, and **all 23 specs
+ * went red at HEAD for three days behind a green board** — which is also why `/Pages/PageEditor`
+ * could not be graded on anything a rider would have added: a `beforeAll` that throws runs no arm.
+ *
+ * So the arm now asks the graph the question the template's own rule asks
+ * (`sb005Components.ts`: *"a new value input on a repeater-item write-back node owes a key"*):
+ *
+ *  1. Find the node that writes a `Section` row back — the component's one `SetDbModelProperties`.
+ *  2. A **write-back node** is a `JavaScriptFunction` wired into it. Today that is `merge`,
+ *     `absorb` and `dropLast`; a fourth would be picked up without an edit here, and a node that
+ *     stopped being one would drop out.
+ *  3. Every value input actually WIRED into such a node owes a `runOnChange-<in-x>`, and each one
+ *     must be `false` before this arm touches it.
+ *
+ * (3) is the mirror precondition the label-matching version had, and it is stronger for being
+ * derived: an arm that RESTORES a defect the template now fixes has to prove the fix was there to
+ * undo, and a template that quietly stopped stating a key would otherwise leave this arm
+ * "restoring" a defect that was never absent — the shipped arm would go red and this one would
+ * still look like it had done its job.
+ *
+ * ⚠️ The keys are flipped IN PLACE, which preserves their position at the head of the bag.
+ * `NodeScope.setNodeParameters` drains queued values in the bag's own key order, and it matters in
+ * both directions: the template puts them first so the load-time run cannot happen once anyway.
  */
-function setParams(
-  dir: string,
-  componentPath: string,
-  nodeLabel: string,
-  params: Record<string, unknown>,
-  label: string,
-  precondition: 'absent' | 'present-and-false' = 'absent'
-): void {
-  const file = path.join(dir, 'components', componentPath, 'nodes.json');
-  const doc = JSON.parse(fs.readFileSync(file, 'utf-8')) as {
-    nodes: Array<{ label?: string; parameters?: Record<string, unknown> }>;
+function restoreD31(dir: string, label: string): void {
+  const base = path.join(dir, 'components', 'Admin/SectionRow');
+  const nodesFile = path.join(base, 'nodes.json');
+  const doc = JSON.parse(fs.readFileSync(nodesFile, 'utf-8')) as {
+    nodes: Array<{ id: string; type?: string; parameters?: Record<string, unknown> }>;
   };
-  const matched = doc.nodes.filter((n) => n.label === nodeLabel);
-  expect(`${label} matched:${matched.length}`).toBe(`${label} matched:1`);
-  const existing = matched[0].parameters || {};
-  if (precondition === 'absent') {
-    // 🔴 The keys must be ABSENT before the edit, or the arm varied nothing and the whole
-    // comparison with the shipped arm is between two identical projects.
-    expect(`${label} already set:${Object.keys(params).filter((k) => k in existing).join(',')}`).toBe(
-      `${label} already set:`
-    );
-    matched[0].parameters = { ...params, ...existing };
-  } else {
-    /**
-     * 🔴 **The mirror precondition, and s32 needs it more than the original.** An arm that
-     * RESTORES a defect the template now fixes has to prove the fix was there to undo: the keys
-     * must be present AND `false` beforehand. Without this, a template that quietly stopped
-     * stating them would leave this arm "restoring" a defect that was never absent — the shipped
-     * arm would go red and this one would still look like it had done its job.
-     */
-    expect(
-      `${label} was:${Object.keys(params)
-        .map((k) => `${k}=${JSON.stringify(existing[k])}`)
-        .join(',')}`
-    ).toBe(`${label} was:${Object.keys(params).map((k) => `${k}=false`).join(',')}`);
-    matched[0].parameters = { ...existing, ...params };
+  const wires = (
+    JSON.parse(fs.readFileSync(path.join(base, 'connections.json'), 'utf-8')) as {
+      connections: Array<{ fromId: string; toId: string; toProperty: string }>;
+    }
+  ).connections;
+
+  // (1) One writer, or the derivation below is ambiguous and this arm should say so rather than
+  // pick one. ⚠️ **Counted, never named.** The MCP door enforces node ids unique across the whole
+  // PROJECT and suffixes the loser of a collision in authoring order, so a literal `save` here
+  // would be a dependency on the authoring order of every other component — which is exactly how
+  // `sbr010`'s D42 came to be pinned to a `#pick` that a preset chip had quietly renamed.
+  const writers = doc.nodes.filter((n) => n.type === 'SetDbModelProperties');
+  expect(`${label} section writers:${writers.length}`).toBe(`${label} section writers:1`);
+
+  // (2) The `JavaScriptFunction`s wired into it — the nodes that BUILD what gets written.
+  const feeders = new Set(wires.filter((c) => c.toId === writers[0].id).map((c) => c.fromId));
+  const writeBack = doc.nodes.filter((n) => n.type === 'JavaScriptFunction' && feeders.has(n.id));
+  expect(`${label} write-back nodes:${writeBack.length > 0}`).toBe(`${label} write-back nodes:true`);
+
+  // (3) Every WIRED value input owes a key, and every key must be `false` before the flip.
+  const owed: string[] = [];
+  const held: string[] = [];
+  for (const node of writeBack) {
+    const params = node.parameters || {};
+    const valueInputs = [
+      ...new Set(wires.filter((c) => c.toId === node.id && c.toProperty.startsWith('in-')).map((c) => c.toProperty))
+    ].sort();
+    for (const input of valueInputs) {
+      owed.push(`${node.id}.${input}=false`);
+      held.push(`${node.id}.${input}=${JSON.stringify(params[`runOnChange-${input}`])}`);
+      params[`runOnChange-${input}`] = true;
+    }
+    node.parameters = params;
   }
-  fs.writeFileSync(file, JSON.stringify(doc, null, 2));
+  expect(`${label} was:\n${held.join('\n')}`).toBe(`${label} was:\n${owed.join('\n')}`);
+  // A mutant that varied nothing is an arm that measured nothing.
+  expect(`${label} restored:${owed.length > 0}`).toBe(`${label} restored:true`);
+  // eslint-disable-next-line no-console
+  console.log(`        ${label} — D31 restored on ${writeBack.length} nodes, ${owed.length} keys:`, owed.join(' '));
+
+  fs.writeFileSync(nodesFile, JSON.stringify(doc, null, 2));
 }
 
 /** One page's worth of seeded content. */
@@ -369,6 +445,12 @@ describe('SBR-007 AC2 — dragging a section on the REAL page editor, against an
   /** The session the BROWSER ended up holding — "the form did something" is a different claim. */
   let browserSession: string | null = null;
   let boot: Listing = NO_LISTING;
+  /** §8 — one reading per arm of the ONE screen no drive could reach until this file ran again. */
+  const landmarks: Record<string, Landmarks> = {};
+  /** How many `as` tags §8's reverted arm actually removed. An arm that stripped nothing measures nothing. */
+  let strippedTags = -1;
+  /** Section cards the reverted arm drew — its proof that it lost landmarks rather than the page. */
+  let revertedCards = -1;
   let afterDrag: Listing = NO_LISTING;
   /** What the STORED rows said at each point, keyed by section id. */
   let storedSeeded: Record<string, number> = {};
@@ -574,6 +656,9 @@ describe('SBR-007 AC2 — dragging a section on the REAL page editor, against an
       // still. It now runs on the artefact a person receives.
       storedBoot = await readOrders(gesturePage);
       boot = await openEditor(page, gesturePage);
+      // §8. One `evaluate` on a page load this arm was already making — no extra navigation, and
+      // taken BEFORE the gesture so it reads the screen a person arrives at.
+      landmarks['head/pageEditor'] = await readLandmarks(page);
       // eslint-disable-next-line no-console
       console.log('        boot:', JSON.stringify(boot).slice(0, 800));
       // eslint-disable-next-line no-console
@@ -610,6 +695,11 @@ describe('SBR-007 AC2 — dragging a section on the REAL page editor, against an
         // seeded kinds are distinct, so this is an identification rather than a guess.
         const kind = kindOf(source);
         const id = gesturePage.sectionIds[SECTIONS.findIndex((s) => s.kind === kind)];
+        // ⚠️ An id that did not resolve used to travel silently into `applyReorder`, which happily
+        // returned a map keyed `undefined`. The arm is worthless from here on if this is not real.
+        expect(`dragged card ${kind} resolves to a seeded row:${typeof id}`).toBe(
+          `dragged card ${kind} resolves to a seeded row:string`
+        );
         dragged = { kind, id, fromDomIndex: fromIndex, toDomIndex: 0, dy: Math.round(dy) };
         expectedAfterDrag = applyReorder(storedBoot, id, 0);
 
@@ -698,7 +788,12 @@ describe('SBR-007 AC2 — dragging a section on the REAL page editor, against an
         const lastStoredKind = SECTIONS[gesturePage.sectionIds.indexOf(lastStoredId)].kind;
         movedUpKind = lastStoredKind;
         const found = await findMoveUp(
-          `cards.filter(function (c) { return (c.innerText || '').indexOf(${JSON.stringify(lastStoredKind)}) === 0; })[0]`
+          // The card is headed with the kind's LABEL, not the kind — see `kindOf`. Searching for
+          // the raw kind here matched nothing and reported `no card`, which reads like a screen
+          // that lost its rows rather than a query asking for a word nobody prints.
+          `cards.filter(function (c) { return (c.innerText || '').indexOf(${JSON.stringify(
+            labelOf(lastStoredKind)
+          )}) === 0; })[0]`
         );
         // eslint-disable-next-line no-console
         console.log(`        Move up on the LAST STORED card (${lastStoredKind}):`, JSON.stringify(found));
@@ -712,24 +807,20 @@ describe('SBR-007 AC2 — dragging a section on the REAL page editor, against an
       }
     });
 
-    // ── ARM 2: the defect put back — one parameter bag, counted ──────────────
+    // ── ARM 2: the defect put back — the write-back nodes' keys, counted ─────
     //
     // 🔴 **The regression net, and the mutant is now the DEFECT rather than the fix.**
-    // `runOnChange` reads absent as ticked, so what shipped was the ABSENCE of these three keys.
-    // The template states them `false`; this arm states them `true` — same node, same wires, same
-    // backend, same window, three values different. If the template ever loses them, ARM 1 goes
-    // red and this arm is what that red would look like.
+    // `runOnChange` reads absent as ticked, so what shipped was the ABSENCE of these keys. The
+    // template states them `false`; this arm states them `true` — same nodes, same wires, same
+    // backend, same window, and nothing else different. If the template ever loses them, ARM 1
+    // goes red and this arm is what that red would look like.
+    //
+    // ⚠️ **Which keys is asked of the graph, not typed here** — see `restoreD31`. When it was
+    // typed, one port moved to a new node and this whole file was red for three days.
     await wait(RATE_WINDOW_MS);
     const defectRestored = copyProject(projectDir, 'defect');
     mutantDirs.push(defectRestored);
-    setParams(
-      defectRestored,
-      'Admin/SectionRow',
-      'Fold the edits back into data',
-      { 'runOnChange-in-data': true, 'runOnChange-in-body': true, 'runOnChange-in-image': true },
-      'defect restored',
-      'present-and-false'
-    );
+    restoreD31(defectRestored, 'defect restored');
     await withRenderedPage({ projectDir: defectRestored, backendPort }, async (page0) => {
       const page = page0 as RenderedPage;
       await signInBrowser(page);
@@ -746,20 +837,46 @@ describe('SBR-007 AC2 — dragging a section on the REAL page editor, against an
     await wait(RATE_WINDOW_MS);
     const defectNoRefetch = copyProject(projectDir, 'defect-norefetch');
     mutantDirs.push(defectNoRefetch);
-    setParams(
-      defectNoRefetch,
-      'Admin/SectionRow',
-      'Fold the edits back into data',
-      { 'runOnChange-in-data': true, 'runOnChange-in-body': true, 'runOnChange-in-image': true },
-      'defect restored + no refetch',
-      'present-and-false'
-    );
+    restoreD31(defectNoRefetch, 'defect restored + no refetch');
     dropWire(defectNoRefetch, 'Pages/PageEditor', 'itemOutputSignal-Changed', 'storageFetch', 'refetch-on-Changed');
     await withRenderedPage({ projectDir: defectNoRefetch, backendPort }, async (page0) => {
       const page = page0 as RenderedPage;
       await signInBrowser(page);
       watchDefectNoRefetch = await watchForWrites(page, watchPage, 'defect restored, no refetch-on-Changed');
     });
+
+    // ── §8's REVERTED ARM: the same page editor with no `as` tags at all ─────
+    //
+    // 🔴 **An acceptance criterion can be green before the work.** `/Pages/PageEditor` carries
+    // `as: 'main'` and `as: 'h1'` in the shipped artefact, and a census has said so since s27 —
+    // but a census reads a PARAMETER, and a parameter is an intention. Without this arm, a §8 that
+    // read one `<main>` would be equally consistent with a runtime that emits `<main>` for
+    // something else entirely, and the reading would prove nothing about the tags.
+    //
+    // Per the house rule the arm restores the ABSENCE the fix removed rather than breaking
+    // something new: before REL-011c not one of these components carried an `as`. The stripper
+    // walks every SB-005 component rather than the one this drive visits, so the count is a census
+    // of the panel — and it is asserted, because an arm that stripped nothing reads on every
+    // screen exactly like a fix that does not work.
+    await wait(RATE_WINDOW_MS);
+    const revertedDir = copyProject(projectDir, 'no-as');
+    mutantDirs.push(revertedDir);
+    strippedTags = stripOutlineTags(
+      fs,
+      path.join,
+      revertedDir,
+      SB005_COMPONENTS.map((c) => c.path)
+    );
+    // eslint-disable-next-line no-console
+    console.log('        §8 reverted arm stripped:', strippedTags, 'as-tags');
+    await withRenderedPage({ projectDir: revertedDir, backendPort }, async (page0) => {
+      const page = page0 as RenderedPage;
+      await signInBrowser(page);
+      revertedCards = (await openEditor(page, gesturePage)).cardCount;
+      landmarks['reverted/pageEditor'] = await readLandmarks(page);
+    });
+    // eslint-disable-next-line no-console
+    console.log('        §8 landmarks:', JSON.stringify(landmarks));
   });
 
   afterAll(async () => {
@@ -1065,5 +1182,78 @@ describe('SBR-007 AC2 — dragging a section on the REAL page editor, against an
     // 🔴 An arm that rendered nothing would be quiet for the wrong reason — and after s32 this is
     // the SHIPPED arm, so it is also the claim that the fix cost the screen nothing.
     expect(watchShipped.cardsAtEnd).toBe(SECTIONS.length);
+  });
+
+  // ==========================================================================
+  // §8 — the document outline `/Pages/PageEditor` builds in a browser.
+  //
+  // 🔴 **The screen that was ungraded BECAUSE THIS FILE WAS RED.** s28 rendered
+  // the outline of four of the six admin screens and registered the other two,
+  // noting that a rider on this drive could not have carried the page editor
+  // because its `beforeAll` threw — and a `beforeAll` that throws runs no arm.
+  // Repairing the drive is what made this section possible; it is not a
+  // separate errand, it is what the repair was for.
+  //
+  // `/Pages/Setup` is still ungraded and stays registered: the site is claimed
+  // over HTTP before any browser opens, so it needs a new arm, not a rider.
+  // ==========================================================================
+  describe('🔴 §8 the page editor’s outline, as the browser builds it', () => {
+    const KEYS = ['head/pageEditor', 'reverted/pageEditor'];
+
+    /**
+     * 🔴 **Cardinality first, and the sentinel is why.** Every assertion below
+     * is about a reading, and a reading that was never taken leaves either a
+     * missing key or `NO_LANDMARKS`. `-1` rather than `0` is the whole point:
+     * zeroes are what a working REVERTED arm reads, so an arm that silently
+     * failed to run would otherwise pass by not happening.
+     */
+    it('control: both readings were taken, and neither is the never-ran sentinel', () => {
+      expect(Object.keys(landmarks).sort()).toEqual(KEYS);
+      expect(KEYS.filter((k) => landmarks[k].mains === NO_LANDMARKS.mains)).toEqual([]);
+    });
+
+    it('the page editor has exactly one <main>, one <h1>, and the <h1> is INSIDE it', () => {
+      // `outlineFault` names WHICH of the ways it is wrong, so a red prints the
+      // defect rather than `false !== true`.
+      expect(`head/pageEditor: ${outlineFault(landmarks['head/pageEditor']) ?? 'ok'}`).toBe('head/pageEditor: ok');
+    });
+
+    /**
+     * 🔴 **The negative control, in the same document.** `/Admin/Shell`'s rail
+     * is the thing deliberately left outside the content column and it is on
+     * this screen at the same moment. Without it, a probe that answered
+     * *"inside"* for anything anywhere would pass the spec above on every page
+     * ever written.
+     */
+    it('🔴 CONTROL — the rail’s <nav> is in this document and is NOT inside the <main>', () => {
+      const l = landmarks['head/pageEditor'];
+      expect(`navsInDoc:${l.navsInDoc} navsInMain:${l.navsInMain}`).toBe('navsInDoc:1 navsInMain:0');
+    });
+
+    /**
+     * 🔴 **The reverted arm, which is what makes the readings above mean
+     * anything.** Strip the `as` parameters and the same page, same backend,
+     * same navigation must lose the landmark entirely — otherwise the `<main>`
+     * counted above was coming from somewhere else and the tags are decoration.
+     */
+    it('🔴 REVERTED — with the `as` tags stripped the same screen has NO <main> and NO <h1>', () => {
+      const l = landmarks['reverted/pageEditor'];
+      expect(`mains:${l.mains} h1s:${l.h1s} h1sInMain:${l.h1sInMain}`).toBe('mains:0 h1s:0 h1sInMain:0');
+    });
+
+    it('🔴 CONTROL — the reverted arm removed tags, and drew the page it removed them from', () => {
+      // An arm that stripped nothing renders identically to HEAD and would read
+      // as a fix that does not work — so the edit is counted, not assumed.
+      expect(`stripped:${strippedTags > 0}`).toBe('stripped:true');
+      /**
+       * 🔴 **`mains:0 h1s:0` is also what a BLANK SCREEN reads**, and the obvious
+       * control is not available here: the stripper takes `/Admin/Shell`'s
+       * `as: 'nav'` with everything else, so the reverted arm's `navsInDoc` is
+       * legitimately 0 and cannot say the document rendered. The section cards
+       * can — they are drawn from the backend by a route that has nothing to do
+       * with a semantic tag, and this drive already counts them.
+       */
+      expect(`reverted cards:${revertedCards}`).toBe(`reverted cards:${SECTIONS.length}`);
+    });
   });
 });

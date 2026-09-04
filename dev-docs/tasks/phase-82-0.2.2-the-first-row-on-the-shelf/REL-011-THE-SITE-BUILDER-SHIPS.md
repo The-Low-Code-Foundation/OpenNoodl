@@ -1204,3 +1204,84 @@ unknown rather than small. **Owner: `NONE`.**
 is invisible.** Both the `#pick` literal above and this mutant broke because an *unrelated,
 correct* change moved something they name. Neither template was wrong; both gates were, and each
 had been wrong for days behind a green board.
+
+---
+
+## §7 The red release gate, repaired — and the sixth screen it was hiding (s29, 2026-09-04)
+
+s28 registered `ac2-page-editor-drag-drive.test.ts` as **RED at HEAD, 23 failed of 23**, owner
+`NONE`, and named the consequence precisely: *"a `beforeAll` that throws means no arm runs, so the
+outline capture could not have ridden it."* This section is that repair and the capture it unlocked.
+They are one job, not two.
+
+**Reading now: 28 of 28, EXIT=0, 327 s** — from 23 of 23 red.
+
+### The drive was stale in TWO places, and the template was right in both
+
+| # | what the drive named by literal | what the template does now | how it read |
+|---|---|---|---|
+| 1 | `runOnChange-in-image` on the node labelled *Fold the edits back into data* | SBR-005 split the picture path onto its own `absorb` node, taking `in-image` with it — **for a stated reason**: `merge` runs on the save press *and* on `upload.done`, which is harmless while the fold is `next.image = file` and is a bug the moment it becomes `images.push(file)` | `beforeAll` threw on its own precondition. **All 23 specs red.** Three days |
+| 2 | the card's kind, read as `c.text.split(' ')[0]` | REL-011c **A6** stopped the card heading itself `richText` while the `Kind` picker beside it offered `Rich text`; `kindText` is now wired to a `kindLabel` | `Rich`, `Hero`, `Gallery` — so `SECTIONS.findIndex` returned `-1`, `sectionIds[-1]` was `undefined`, and the expected map came out keyed **`{"undefined": 0, …}`**. **4 specs red, and the product was doing exactly the right thing throughout** |
+
+🔴 **Neither was fixed with a fresh literal.** Both now ask the artefact:
+
+- **`restoreD31`** derives its population from the graph — the component's one `SetDbModelProperties`,
+  the `JavaScriptFunction`s wired into it, and the value inputs actually WIRED to each. That is the
+  template's own stated rule (*"a new value input on a repeater-item write-back node owes a key"*)
+  turned into the arm that tests it. It restored **9 keys across 3 nodes** —
+  `merge` 5, `absorb` 3, `dropLast` 1 — where the typed version restored 3 across 1.
+  ⚠️ It counts the writer, it does not **name** it: the MCP door renames node ids project-wide, which
+  is exactly how `sbr010`'s D42 came to be pinned to a `#pick` a preset chip had taken.
+- **`kindOf`** inverts `SECTION_KIND_LABELS`, **imported** from `sb005Components.ts` rather than
+  copied, and asserts the match is unique and total. An unrecognised card is now a red spec here,
+  not an `undefined` two frames later.
+
+### The arms still disagree, which is what makes the green mean something
+
+| arm | `landed` | `rowWrites` | reading |
+|---|---|---|---|
+| shipped | `false` | **0** | three `updatedAt` unmoved to the millisecond |
+| defect restored (9 keys) | `true` | **137+** | all three rows moved |
+| defect restored, no refetch wire | `true` | **>50** | the obvious suspect still excluded |
+
+And the gesture: `stored after drag` matches `expectedAfterDrag` exactly with no `undefined` key;
+`Move up on the LAST STORED card` now reports `ok:true` on the card headed *"Rich text"* and
+renumbers `[1,2,0] → [2,1,0]`, where it reported **`no card`** and `[1,2,0] → [1,2,0]` before.
+
+### §8 — `/Pages/PageEditor`'s rendered outline, the fifth of six admin screens
+
+The screen s28 could not reach. One `evaluate` on a page load the shipped arm was already making,
+plus one reverted arm, on the shared instrument (`documentOutline.ts`):
+
+| arm | mains | h1s | h1sInMain | navsInDoc | navsInMain |
+|---|---|---|---|---|---|
+| **HEAD** | 1 | 1 | 1 | 1 | 0 |
+| **reverted** (13 `as` tags stripped) | 0 | 0 | 0 | 0 | 0 |
+
+🔴 **The obvious control was not available and the section says so.** `mains:0 h1s:0` is also what a
+**blank screen** reads — and the usual answer, *"the rail's `<nav>` is still there"*, cannot be used
+here: `stripOutlineTags` takes `/Admin/Shell`'s `as: 'nav'` with everything else, so the reverted
+arm's `navsInDoc` is legitimately 0. The three **section cards** are the control instead: drawn from
+the backend by a route that has nothing to do with a semantic tag, and already counted by this drive.
+
+**Five of six admin screens are now graded at render time.** `/Pages/Setup` stays registered, owner
+`NONE`: the site is claimed over HTTP before any browser opens, so it needs a new arm, not a rider.
+
+### ⚠️ Registered, owner `NONE` — why `typecheck:backend-tests` cannot run here, narrowed
+
+Three sessions have recorded it as *"this 16GB box cannot"*. It is **one import**, found by bisecting
+the drive's graph with single-file `tsc` programs at a 2.5 GB heap:
+
+| probe | EXIT |
+|---|---|
+| `BackendService`, the 3.7 MB `site-builder.content.json`, `sb004`/`sb005`/`sb006Components`, `documentOutline`, the MCP SDK `Client` | **0** each |
+| `helpers/site-drive.ts` — which **every** site drive imports | **134** |
+| …narrowed to `noodl-mcp/src/server` | **134** |
+
+🔴 **`typecheck:mcp` compiles that same file fine**, so this is the cost of compiling it under the
+**backend's** tsconfig, not a defect in the file. Until somebody looks at it, no session can
+typecheck a backend spec locally and CI is the only reading.
+
+⚠️ **And the control that makes this a finding rather than a suspicion**: the **unedited** drive,
+restored from a snapshot and compiled the same way, OOMs identically. The instrument is what is
+broken, not the edit — which is the reading s28 could not take, having no control beside it.
