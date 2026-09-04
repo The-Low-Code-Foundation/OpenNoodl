@@ -1806,9 +1806,28 @@ export default {
 
     const index = 20;
 
+    /**
+     * 🔴 **Black, since 2026-09-04.** This was `#FFFFFF`, and a white default is invisible on every
+     * ground the library actually puts an icon on: the page, an unfilled Checkbox, an unfilled
+     * Radio Button. Richard, having just found the checkbox's tick: *"of course it's WHITE by
+     * default so I didn't see it... Can we make every icon everywhere black by default please?"*
+     *
+     * It is the single source for the Icon node, the Checkbox's author glyph, the Radio Button's
+     * and the Button's — `Text Input` and `Select` already passed `#000000` explicitly, which is
+     * the same judgement reached one node at a time.
+     *
+     * ⚠️ **`Button` overrides this back to white, and that is not an oversight** — see the note at
+     * its `addIconInputs` call. It is the one control whose own default variant paints a filled
+     * ground under the icon.
+     *
+     * ⚠️ **A raw hex rather than `var(--foreground)` on purpose.** `Icon.tsx` assigns `iconColor`
+     * straight to `style.color` without `resolveColor`, so a project that has not declared the
+     * token would render the icon with no colour at all. Tokens belong on author-set parameters,
+     * not on a runtime default that has to work in every project.
+     */
     const defaults = {
       useIcon: true,
-      iconColor: '#FFFFFF'
+      iconColor: '#000000'
     };
 
     if (args.defaults) {
