@@ -13,7 +13,11 @@
 
 import * as Blockly from 'blockly';
 
-import { DEFAULT_HAT_SIGNAL, HAT_BLOCK_TYPE } from '@noodl/runtime/src/nodes/std-library/logic-builder-io';
+import {
+  DEFAULT_HAT_SIGNAL,
+  DEFAULT_SIGNAL_OUTPUT,
+  HAT_BLOCK_TYPE
+} from '@noodl/runtime/src/nodes/std-library/logic-builder-io';
 
 import {
   appConfigKeyDisplay,
@@ -428,7 +432,7 @@ function defineInputOutputBlocks() {
     init: function () {
       this.appendDummyInput()
         .appendField('⚡ Define signal output')
-        .appendField(new Blockly.FieldTextInput('done'), 'NAME');
+        .appendField(new Blockly.FieldTextInput(DEFAULT_SIGNAL_OUTPUT), 'NAME');
       this.setPreviousStatement(true, null);
       this.setNextStatement(true, null);
       this.setColour(180);
@@ -440,7 +444,9 @@ function defineInputOutputBlocks() {
   // Send Signal block
   Blockly.Blocks['noodl_send_signal'] = {
     init: function () {
-      this.appendDummyInput().appendField('⚡ send signal').appendField(new Blockly.FieldTextInput('done'), 'NAME');
+      this.appendDummyInput()
+        .appendField('⚡ send signal')
+        .appendField(new Blockly.FieldTextInput(DEFAULT_SIGNAL_OUTPUT), 'NAME');
       this.setPreviousStatement(true, null);
       this.setNextStatement(true, null);
       this.setColour(180);

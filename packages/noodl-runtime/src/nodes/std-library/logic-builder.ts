@@ -47,11 +47,26 @@ interface LogicBuilderNodeInstance extends NodeInstance {
     compileError: string | null;
     /** Deduplication key for the raise, so an author mid-edit gets one event, not one per keystroke. */
     lastReportedError?: string;
+    /**
+     * Every failure code currently drawn as a warning on this node. Remembered rather than listed,
+     * so `_clearFailureWarnings` cannot go stale the day a new `_fail` code is added.
+     */
+    raisedCodes?: string[];
+    /**
+     * The codes raised by the run in progress, reset at the top of every `_executeLogic`.
+     *
+     * 🔴 **Without this the fix ate its own warning.** A refused *signal* send fails inside the
+     * `sendSignalOnOutput` wrapper, which returns from the wrapper and not from `_executeLogic` —
+     * so a run that was refused still reaches the success path. Clearing everything there withdrew
+     * the warning that had been raised microseconds earlier, and the node showed nothing at all.
+     */
+    runRaisedCodes?: string[];
     /** The workspace string `io` was derived from — the memo key. */
     ioSource?: string;
     io?: DetectedIO;
   };
   _executeLogic(triggerSignal: string, token?: OutcomeToken): void;
+  _clearFailureWarnings(): void;
   _createExecutionContext(triggerSignal: string): LogicBuilderExecutionContext;
   _compileFunction(): ((...args: unknown[]) => unknown) | null;
   _probeFragment(code: string): ProbeResult;
@@ -270,6 +285,15 @@ const LogicBuilderNode: NodeDefinitionOptions = {
       internal.executionError = message;
       this.flagOutputDirty('error');
 
+      // The editor draws a warning keyed on this `code` (`createEditorWarningSubscriber`), and the
+      // error bus has no withdraw. Remembering what was raised is what lets the next good run take
+      // it back down — see `_clearFailureWarnings`. Recorded OUTSIDE the dedup below, because the
+      // dedup is keyed on the *message* while the warning is keyed on the *code*.
+      if (!internal.raisedCodes) internal.raisedCodes = [];
+      if (internal.raisedCodes.indexOf(code) === -1) internal.raisedCodes.push(code);
+      if (!internal.runRaisedCodes) internal.runRaisedCodes = [];
+      if (internal.runRaisedCodes.indexOf(code) === -1) internal.runRaisedCodes.push(code);
+
       if (internal.lastReportedError !== message) {
         internal.lastReportedError = message;
         this.raiseRuntimeError(code, message, { error: message });
@@ -287,8 +311,76 @@ const LogicBuilderNode: NodeDefinitionOptions = {
       }
     },
 
+    /**
+     * Take down every warning this node's failures put on the canvas.
+     *
+     * 🔴 **The runtime error bus raises and never withdraws.** `createEditorWarningSubscriber`
+     * forwards each raise to `sendWarning`, keyed on the failure code, and nothing anywhere on that
+     * channel calls `clearWarning`. So a Logic Builder that failed once kept its dotted error style
+     * through every later good run: the author fixed the program, ran it, and the node still said it
+     * was broken. The only thing that cleared it was a preview refresh — `ViewerConnection`'s
+     * `clearWarningsForRefMatching((ref) => ref.isFromViewer)` on reconnect, which wipes every
+     * viewer-originated warning wholesale and is therefore not a fix, just a bigger hammer.
+     *
+     * Reported by Richard, 2026-09-04: *"I fixed the problem, ran the function again and the error
+     * persisted. I refreshed the preview window, the error cleared."*
+     *
+     * ⚠️ **The codes are REMEMBERED, not listed.** A literal array here would be a second statement
+     * of what `_fail` can raise, and it would go stale the first time somebody added a code — the
+     * symptom being a warning that never comes down, which is precisely this defect returning.
+     *
+     * 🔴 **`lastReportedError` is reset with them, and that is not tidying.** It deduplicates the
+     * raise, so leaving it set would mean the *same* failure occurring after a good run raised
+     * nothing at all — the node would go quiet exactly when it had something to say.
+     *
+     * ⚠️ This clears the editor's *display* of a failure; it does not retract the failure event.
+     * A failure happened, `On App Error` saw it, and a deployed build logged it — that is the
+     * event/predicate line `FAILURE-CONTRACT.md` and `DIAGNOSTICS-CONTRACT.md` draw between them.
+     */
+    _clearFailureWarnings: function (this: LogicBuilderNodeInstance) {
+      const internal = this._internal;
+      const raisedThisRun = internal.runRaisedCodes || [];
+
+      // 🔴 Only when this run reported nothing. `lastReportedError` deduplicates the raise, so
+      // resetting it while a failure is still standing would silence the *next* occurrence of the
+      // failure the node is currently showing.
+      if (raisedThisRun.length === 0) internal.lastReportedError = undefined;
+
+      const displayed = internal.raisedCodes;
+      if (!displayed || displayed.length === 0) return;
+
+      // ⚠️ The difference, not the whole set: a refused signal send fails inside the
+      // `sendSignalOnOutput` wrapper and still reaches this line, so clearing everything would
+      // withdraw the warning this very run just raised. What comes down is what is no longer true.
+      const codes = displayed.filter((code) => raisedThisRun.indexOf(code) === -1);
+      internal.raisedCodes = raisedThisRun.slice();
+      if (codes.length === 0) return;
+
+      const editorConnection = this.context && this.context.editorConnection;
+      if (!editorConnection || typeof editorConnection.clearWarning !== 'function') return;
+
+      // Best-effort provenance, exactly as `Node.raiseRuntimeError` does it: a node without a
+      // component owner still has an id, and a missing name must not throw inside a good run.
+      let componentName = '<unknown>';
+      try {
+        if (this.nodeScope && this.nodeScope.componentOwner && this.nodeScope.componentOwner.name) {
+          componentName = this.nodeScope.componentOwner.name;
+        }
+      } catch (e) {
+        /* provenance is best-effort; the clear still names the node id */
+      }
+
+      for (let i = 0; i < codes.length; i++) {
+        editorConnection.clearWarning(componentName, this.id, codes[i]);
+      }
+    },
+
     _executeLogic: function (this: LogicBuilderNodeInstance, triggerSignal: string, token?: OutcomeToken) {
       const internal = this._internal;
+
+      // What THIS run reports, as opposed to what is already on the node. `_clearFailureWarnings`
+      // withdraws the difference, so a run that failed keeps the warning it just raised.
+      internal.runRaisedCodes = [];
 
       // Compile function if needed
       if (!internal.compiledFunction) {
@@ -399,6 +491,9 @@ const LogicBuilderNode: NodeDefinitionOptions = {
 
         internal.executionError = null;
         this.flagOutputDirty('error');
+        // The run succeeded, so nothing a previous run reported is still true. Without this the
+        // node keeps its error style until the preview is refreshed — see `_clearFailureWarnings`.
+        this._clearFailureWarnings();
         // NDA-004 §3: `Run` in, nothing out was this node's entry on the mute ten. Sent
         // last, after every output the program wrote has been flagged, so a graph sequenced
         // on `Success` reads values that are already up to date.

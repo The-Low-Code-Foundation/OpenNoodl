@@ -80,6 +80,23 @@ export const DEFAULT_HAT_SIGNAL = 'run';
 export const RESERVED_INPUTS = ['workspace', 'generatedCode', 'run'];
 export const RESERVED_OUTPUTS = ['error', 'success', 'failure', 'done', 'unchanged', 'completed'];
 
+/**
+ * The signal output name a freshly dragged block carries, for both `⚡ Define signal output` and
+ * `⚡ send signal`.
+ *
+ * 🔴 **It exists because the previous default was `'done'`, which is on `RESERVED_OUTPUTS` two
+ * lines up.** Dragging the block and pressing Run — accepting the default, the one thing every
+ * first-time author does — raised `logic-builder/reserved-port-name` and put the node in its error
+ * style. A default that cannot be used is worse than no default: it teaches the author that the
+ * block is broken rather than that the name is theirs to choose.
+ *
+ * ⚠️ **The two blocks share this on purpose.** The define and the send are a pair, so a program
+ * assembled entirely from defaults must actually run; two different placeholders would send to a
+ * port nothing declared. `reserved-default-names.spec.ts` holds both halves — that this value is
+ * absent from `RESERVED_OUTPUTS`, and that every block default in the editor's palette is.
+ */
+export const DEFAULT_SIGNAL_OUTPUT = 'Output1';
+
 export interface DetectedPort {
   name: string;
   /** A Noodl port type name, or `'*'` when the blocks do not declare one. */
