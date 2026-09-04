@@ -138,6 +138,12 @@ export const CONTENT_PARAMS: Record<string, Record<string, string>> = {
     loop: 'attr:loop'
   }),
   ...aliased(['Circle'], {
+    // §1 of NOTES-UNOWNED-NODE-WORK.md — the new `shape` PORT joins the pre-existing `'shape'`
+    // CONTENT tag (every Circle param that feeds `renderCircle` rather than a CSS decl). A
+    // literal `shape` reaches `renderCircle` exactly like `fillColor` does when the node's role
+    // is not already `unsupported` — see `visualDeferReason`'s circle branch in `analyze/plan.ts`
+    // for the case where it is (a non-circle literal, or a wired value).
+    shape: 'shape',
     size: 'shape',
     fillEnabled: 'shape',
     fillColor: 'shape',

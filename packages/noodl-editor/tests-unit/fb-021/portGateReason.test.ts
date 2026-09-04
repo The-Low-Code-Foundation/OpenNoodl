@@ -318,12 +318,17 @@ describe('FB-021 — over the shipped catalog, not a fixture', () => {
   // drops (Group, Text, Image, Circle, Video), gated behind `acceptFileDrops = true`. Both
   // counts moved by exactly 5 again, which is the reading that matters: every one of the new
   // gated ports is explained, so the unexplained remainder is untouched at 11.
-  it('finds all 359 conditionally-gated input ports', () => {
-    expect(all).toHaveLength(359);
+  //
+  // 362 = those 359 plus §1 of NOTES-UNOWNED-NODE-WORK.md — Circle's `startAngle`, `endAngle`
+  // and `strokeLineCap`, newly gated behind `shape = circle OR shape NOT SET` now that Circle
+  // draws Square and Triangle too. All three are the clause form, all three explained, so both
+  // counts move by exactly 3 and the unexplained remainder stays 11.
+  it('finds all 362 conditionally-gated input ports', () => {
+    expect(all).toHaveLength(362);
   });
 
-  it('explains 348 of them', () => {
-    expect(all.filter((row) => row.explained)).toHaveLength(348);
+  it('explains 351 of them', () => {
+    expect(all.filter((row) => row.explained)).toHaveLength(351);
   });
 
   /*

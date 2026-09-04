@@ -15970,6 +15970,7 @@ const STRUCTURE_PORTS: Partial<Record<RenderRole, string[]>> = {
   select: ['items', 'placeholder', 'useLabel'],
   circle: [
     'size',
+    'shape',
     'fillEnabled',
     'fillColor',
     'strokeEnabled',
@@ -16040,6 +16041,17 @@ function visualDeferReason(
   }
   if (role === 'select' && literal('useLabel') === true) {
     return 'a labelled dropdown is not translated in this slice';
+  }
+  // Stage 1 of the Circle → Shape node (dev-docs NOTES-UNOWNED-NODE-WORK §1): the runtime and
+  // this exporter both grow a Square and a Triangle path, but only Circle's arc math has been
+  // ported here — see `renderCircle` in emit/component.ts. A literal non-circle shape defers
+  // whole rather than emitting a circle nobody asked for; a WIRED shape (unknown at export time)
+  // already defers through `STRUCTURE_PORTS.circle` above.
+  if (role === 'circle') {
+    const shape = literal('shape');
+    if (shape !== undefined && shape !== 'circle') {
+      return `the "${shape}" shape is not translated in this slice — only Circle renders statically today`;
+    }
   }
   return null;
 }

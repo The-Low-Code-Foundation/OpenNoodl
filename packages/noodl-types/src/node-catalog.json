@@ -3129,7 +3129,7 @@
     },
     {
       "typeName": "Circle",
-      "displayName": "Circle",
+      "displayName": "Shape",
       "category": "Visual",
       "isVisual": true,
       "isDeprecated": false,
@@ -3568,6 +3568,34 @@
           "default": "relative",
           "description": "How the element is placed: In Layout follows its siblings, Absolute ignores them, Sticky pins to the parent edge on overflow, Fixed stays put and takes no space",
           "index": 11
+        },
+        {
+          "name": "shape",
+          "displayName": "Shape",
+          "group": "General",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Circle",
+                "value": "circle"
+              },
+              {
+                "label": "Square",
+                "value": "square"
+              },
+              {
+                "label": "Triangle",
+                "value": "triangle"
+              }
+            ]
+          },
+          "isSignal": false,
+          "default": "circle",
+          "description": "Which outline this element draws inside its Size × Size box",
+          "index": 5,
+          "allowVisualStates": true
         },
         {
           "name": "size",
@@ -4075,6 +4103,14 @@
         ],
         "description": "Declares conditional/expandable port groups whose visibility depends on parameter values (see declaredPortGroups).",
         "declaredPortGroups": [
+          {
+            "condition": "shape = circle OR shape NOT SET",
+            "inputs": [
+              "startAngle",
+              "endAngle",
+              "strokeLineCap"
+            ]
+          },
           {
             "condition": "pointerEventsMode = explicit",
             "inputs": [

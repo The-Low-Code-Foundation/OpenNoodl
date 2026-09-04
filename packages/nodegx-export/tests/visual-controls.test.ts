@@ -431,6 +431,45 @@ describe('range, dropdown, video, circle (VISUALS-TARGET §4–§7)', () => {
     const full = result.files['src/components/Showcase.tsx'];
     expect(full).toMatch(/<path d="M 39\.9999 0 A 40 40 0 1 0 40 0 L 40 40 L 39\.9999 0"/);
   });
+
+  /**
+   * §1 of NOTES-UNOWNED-NODE-WORK.md, stage 1: `shape` is not translated to Square/Triangle SVG
+   * yet — only Circle's arc math is ported here. A literal non-circle shape must defer whole,
+   * with a named marker, rather than emit the arc above for a shape that is not a circle at all.
+   */
+  test('🔴 a literal "square"/"triangle" shape defers the node with a named marker, not an arc', () => {
+    const result = withShowcase((component) => {
+      component.nodes.find((n) => n.id === 'dot')!.parameters.push({ name: 'shape', value: lit('square') });
+    });
+    expect(result.notes.join('\n')).toContain('the "square" shape is not translated in this slice');
+    const out = result.files['src/components/Showcase.tsx'];
+    // The circle's own arc path must not appear — a defer that still drew the old shape would
+    // be a silent wrong-shape bug, exactly the class of defect "emit an arc nobody asked for"
+    // (the module note in circle.ts) names.
+    expect(out).not.toContain('xmlns="http://www.w3.org/2000/svg"');
+    expect(out).toContain('TODO(export)');
+  });
+
+  test('a WIRED shape defers too, before any literal value is even read', () => {
+    const result = withShowcase((component) => {
+      component.connections.push({
+        key: 'x:value->dot:shape',
+        fromId: 'x',
+        fromProperty: 'value',
+        toId: 'dot',
+        toProperty: 'shape',
+        kind: 'value'
+      });
+    });
+    expect(result.notes.join('\n')).toContain('its shape arrives over a wire, so the rendered structure is not static');
+  });
+
+  test('an explicit `shape: "circle"` renders identically to leaving it unset', () => {
+    const result = withShowcase((component) => {
+      component.nodes.find((n) => n.id === 'dot')!.parameters.push({ name: 'shape', value: lit('circle') });
+    });
+    expect(result.files['src/components/Showcase.tsx']).toBe(tsx);
+  });
 });
 
 /**
