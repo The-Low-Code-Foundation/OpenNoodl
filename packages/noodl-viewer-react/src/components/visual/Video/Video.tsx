@@ -3,6 +3,7 @@ import React from 'react';
 import Layout from '../../../layout';
 import PointerListeners from '../../../pointerlisteners';
 import { withMediaFragment } from '../../../media-fragment';
+import { resolveVideoEmbed } from '../../../video-embed';
 import { Noodl } from '../../../types';
 
 export interface VideoProps extends Noodl.ReactProps {
@@ -214,6 +215,50 @@ export class Video extends React.Component<VideoProps> {
     }
 
     style.objectPosition = `${props.objectPositionX} ${props.objectPositionY}`;
+
+    /**
+     * §2 — a YouTube or Vimeo link plays in an `<iframe>` rather than failing in a `<video>`.
+     *
+     * 🔴 **Auto-detected from the Source rather than switched on by an enum.** The defect this
+     * fixes is *pasting a link and getting a broken element*; a type the author must also remember
+     * to change would leave that defect in place for exactly the person who hit it. Anything not
+     * recognised returns `{ kind: 'file' }` and falls through to the path below unchanged.
+     *
+     * ⚠️ **The `<video>` element's whole API is absent here** — no `play()`, no `error` event, no
+     * `videoWidth`. So `Play`/`Pause`/`Reset` and the failure ports do nothing for an embed, which
+     * is a limit of URL-parameter embedding (Richard's ruling, 2026-09-04) and not a gap to be
+     * papered over. `video.ts` says so on each affected port.
+     */
+    const embed = resolveVideoEmbed(props.dom?.src, {
+      startTime: props.dom?.startTime,
+      endTime: props.dom?.endTime,
+      autoplay: props.dom?.autoplay,
+      controls: props.dom?.controls,
+      loop: props.dom?.loop,
+      muted: props.dom?.muted
+    });
+
+    if (embed.kind === 'iframe') {
+      return (
+        <iframe
+          className={props.className}
+          style={{ ...style, border: 'none' }}
+          src={embed.url}
+          title={embed.title}
+          // Only what a player needs. `allow` is an explicit grant list, so anything the provider
+          // might reach for and is not named here stays denied.
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          referrerPolicy="strict-origin-when-cross-origin"
+          allowFullScreen
+          ref={(element) => {
+            // The drag node and `getDOMElement` expect *an* element; an iframe is the one this
+            // node renders. Nothing that reads it as an HTMLVideoElement runs on this path.
+            this.props.noodlNode?.setDOMElement(element as unknown as HTMLVideoElement);
+          }}
+          {...PointerListeners(this.props)}
+        />
+      );
+    }
 
     return (
       <CachedVideo

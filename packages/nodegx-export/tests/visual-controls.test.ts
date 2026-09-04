@@ -415,6 +415,25 @@ describe('range, dropdown, video, circle (VISUALS-TARGET §4–§7)', () => {
 
   // ── §2: Start/End Time ─────────────────────────────────────────────────────────────────────
 
+  test('🔴 a YouTube or Vimeo source defers rather than emitting a broken <video>', () => {
+    for (const src of ['https://www.youtube.com/watch?v=dQw4w9WgXcQ', 'https://vimeo.com/76979871']) {
+      const result = withShowcase((component) => {
+        const promo = component.nodes.find((n) => n.id === 'promo')!;
+        promo.parameters = promo.parameters.filter((p) => p.name !== 'src');
+        promo.parameters.push({ name: 'src', value: lit(src) });
+      });
+      expect(result.notes.join('\n')).toContain(
+        'its source is a YouTube or Vimeo link — the runtime plays those in an embedded player, which is not translated in this slice'
+      );
+      expect(result.files['src/components/Showcase.tsx']).not.toContain(src);
+    }
+  });
+
+  test('an ordinary mp4 source is untouched by that check', () => {
+    // The control: the host test must not be catching everything.
+    expect(tsx).toContain('src="/assets/promo.mp4"');
+  });
+
   test('🔴 a literal Start or End Time defers the video with a named reason', () => {
     for (const port of ['startTime', 'endTime']) {
       const result = withShowcase((component) => {

@@ -16060,6 +16060,22 @@ function visualDeferReason(
   // knows nothing about. Reimplementing that here would be the arc-maths mistake §1 warns about —
   // a second copy of a rule that already exists once — so a literal value defers whole.
   if (role === 'video') {
+    /**
+     * §2 — a YouTube or Vimeo source plays through an `<iframe>` in the runtime, and this emitter
+     * writes a `<video src>`. Emitting one for a provider link would produce the exact broken
+     * element the runtime work removed.
+     *
+     * ⚠️ **This is DETECTION, not the embed rule.** `resolveVideoEmbed` (noodl-viewer-react) owns
+     * the id extraction and every parameter; nodegx-export has no dependency on that package, and
+     * copying the rule here would be the arc-maths mistake §1 warns about. A host check is the
+     * smallest thing that can answer "is this the other path?", and it only ever decides to
+     * defer — so a link it fails to recognise degrades to today's behaviour rather than to a
+     * wrong embed.
+     */
+    const source = literal('src');
+    if (typeof source === 'string' && /(?:youtube\.com|youtube-nocookie\.com|youtu\.be|vimeo\.com)/i.test(source)) {
+      return 'its source is a YouTube or Vimeo link — the runtime plays those in an embedded player, which is not translated in this slice';
+    }
     for (const port of ['startTime', 'endTime']) {
       const value = literal(port);
       if (value !== undefined && value !== '' && value !== null) {

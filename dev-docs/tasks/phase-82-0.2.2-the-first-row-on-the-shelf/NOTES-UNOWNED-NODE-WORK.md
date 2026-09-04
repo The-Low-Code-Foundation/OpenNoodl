@@ -227,14 +227,38 @@ lands on the `<video>` element and a port named `startTime` would become an inva
 Export defers a video with a literal or wired value, by a named reason — reimplementing
 `withMediaFragment` in the emitter would be the arc-maths mistake §1 warns about.
 
-### 🔴 STILL NOT BUILT — YouTube/Vimeo
+### ✅ BUILT, session 39 — YouTube and Vimeo, URL parameters only
 
-Richard ruled 2026-09-04: **URL parameters only, no third-party player SDK.** So the buildable
-shape is an `<iframe>` path driven by `?start=&end=&autoplay=…`, needing no SDK and no new network
-origin logic. ⚠️ Under that ruling a *reliable* `end` and dependable autoplay are **not available**
-— they need the IFrame Player API script, which the ruling declines — so the ports must say what
-they can and cannot promise rather than implying an accuracy the mechanism does not have. Owner
-`NONE`. Nothing about the mp4 work above blocks it.
+Richard ruled 2026-09-04: **URL parameters only, no third-party player SDK.** Built to that ruling
+exactly — nothing loads a script, and a published app gains no third-party JavaScript origin.
+
+🔴 **Auto-detected from the Source, not switched on by a type enum.** The defect he hit is *pasting
+a link and getting a broken element*; an enum the author must also remember to change would leave
+that defect in place for exactly the person who hit it. Anything unrecognised returns
+`{ kind: 'file' }` and falls through to the `<video>` path unchanged, so nothing that worked before
+changes. Recognises `watch?v=`, `youtu.be`, `/embed/`, `/shorts/`, `vimeo.com/<id>` and
+`player.vimeo.com/video/<id>`, and reads a `?t=90` / `&t=1m30s` out of the pasted link so a
+"share at current time" URL does what the person expects — with the Start Time port winning when
+both are present, because it is the control they can see.
+
+#### 🔴 What the ruling costs, stated on the ports and asserted in `nat-video-002` §3
+
+- **Vimeo has NO end parameter at all.** End Time is ignored there, and the port says so.
+- **YouTube's `end` is approximate** — the player rounds to the nearest second.
+- **Autoplay forces mute on both.** An unmuted autoplay is refused by every current browser without
+  a gesture, and there is no player API on this path to report that it was refused — so the
+  alternative is a video that silently never starts.
+- **YouTube's `loop` does nothing on its own**: it loops a *playlist*, so a single video needs
+  `playlist=<its own id>`. Without that the parameter is accepted and ignored.
+- **`Play` / `Pause` / `Reset` and the failure outputs do not apply to an embed.** The `<video>`
+  element's API is simply absent. This is the ruling's cost, not a gap to paper over.
+
+Uses `youtube-nocookie.com`, YouTube's own privacy-preserving host, which takes identical
+parameters. Export defers a provider link rather than emitting the broken `<video>` the runtime
+work just removed — ⚠️ by a **host check only**, because nodegx-export has no dependency on
+noodl-viewer-react and copying the embed rule would be §1's arc-maths mistake; it only ever decides
+to defer, so a link it fails to recognise degrades to today's behaviour rather than to a wrong
+embed.
 
 ---
 

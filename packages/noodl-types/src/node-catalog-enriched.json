@@ -33903,7 +33903,7 @@
             "name": "boolean"
           },
           "isSignal": false,
-          "description": "Starts playing as soon as the video can; most browsers only allow this while Muted is on"
+          "description": "Starts playing as soon as the video can; most browsers only allow this while Muted is on. On a YouTube or Vimeo link it is muted automatically for that reason, because an embedded player cannot report that the browser refused"
         },
         {
           "name": "blockTouch",
@@ -34396,7 +34396,7 @@
             "name": "number"
           },
           "isSignal": false,
-          "description": "Seconds at which to stop; leave blank to play to the end. Ignored if it is not later than Start Time, and browsers vary in how strictly they honour it while Loop is on"
+          "description": "Seconds at which to stop; leave blank to play to the end. Ignored if it is not later than Start Time, and browsers vary in how strictly they honour it while Loop is on. ⚠️ Approximate on YouTube, and ignored entirely on Vimeo, whose embedded player has no end setting"
         },
         {
           "name": "height",
@@ -34937,7 +34937,7 @@
             "name": "string"
           },
           "isSignal": false,
-          "description": "Direct video file to play — an mp4, webm or ogg URL, or a file in your project. ⚠️ NOT a YouTube or Vimeo page link: those are web pages, not video files, and will not play. Leave blank to load nothing rather than fail on a missing source"
+          "description": "What to play: an mp4, webm or ogg URL, a file in your project, or a YouTube or Vimeo link. A YouTube or Vimeo link is recognised automatically and plays in an embedded player, where Play, Pause, Reset and the failure outputs do not apply. Leave blank to load nothing rather than fail on a missing source"
         },
         {
           "name": "srcObject",
@@ -34960,7 +34960,7 @@
             "name": "number"
           },
           "isSignal": false,
-          "description": "Seconds into the video to begin at; leave blank to start at the beginning. Works for a direct video file, not for a third-party player"
+          "description": "Seconds into the video to begin at; leave blank to start at the beginning. Works for a video file, for YouTube and for Vimeo"
         },
         {
           "name": "styleCss",

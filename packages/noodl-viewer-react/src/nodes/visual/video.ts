@@ -138,7 +138,7 @@ const VideoNode: ReactNodeDefinition = {
        * of what this port can honestly do.
        */
       description:
-        'Direct video file to play — an mp4, webm or ogg URL, or a file in your project. ⚠️ NOT a YouTube or Vimeo page link: those are web pages, not video files, and will not play. Leave blank to load nothing rather than fail on a missing source',
+        'What to play: an mp4, webm or ogg URL, a file in your project, or a YouTube or Vimeo link. A YouTube or Vimeo link is recognised automatically and plays in an embedded player, where Play, Pause, Reset and the failure outputs do not apply. Leave blank to load nothing rather than fail on a missing source',
       set(src) {
         this.props.dom.src = resolveMediaSource(src);
         this.forceUpdate();
@@ -158,7 +158,8 @@ const VideoNode: ReactNodeDefinition = {
   inputProps: {
     autoplay: {
       displayName: 'Autoplay',
-      description: 'Starts playing as soon as the video can; most browsers only allow this while Muted is on',
+      description:
+        'Starts playing as soon as the video can; most browsers only allow this while Muted is on. On a YouTube or Vimeo link it is muted automatically for that reason, because an embedded player cannot report that the browser refused',
       propPath: 'dom',
       group: 'Video',
       type: 'boolean'
@@ -166,7 +167,7 @@ const VideoNode: ReactNodeDefinition = {
     startTime: {
       displayName: 'Start Time',
       description:
-        'Seconds into the video to begin at; leave blank to start at the beginning. Works for a direct video file, not for a third-party player',
+        'Seconds into the video to begin at; leave blank to start at the beginning. Works for a video file, for YouTube and for Vimeo',
       propPath: 'dom',
       group: 'Video',
       type: 'number'
@@ -174,7 +175,7 @@ const VideoNode: ReactNodeDefinition = {
     endTime: {
       displayName: 'End Time',
       description:
-        'Seconds at which to stop; leave blank to play to the end. Ignored if it is not later than Start Time, and browsers vary in how strictly they honour it while Loop is on',
+        'Seconds at which to stop; leave blank to play to the end. Ignored if it is not later than Start Time, and browsers vary in how strictly they honour it while Loop is on. ⚠️ Approximate on YouTube, and ignored entirely on Vimeo, whose embedded player has no end setting',
       propPath: 'dom',
       group: 'Video',
       type: 'number'
