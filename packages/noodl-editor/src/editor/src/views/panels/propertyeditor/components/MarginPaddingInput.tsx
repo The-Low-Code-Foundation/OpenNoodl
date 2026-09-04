@@ -2,43 +2,51 @@ import React, { useEffect, useRef, useState } from 'react';
 
 import { Icon, IconName } from '@noodl-core-ui/components/common/Icon';
 
-export interface MarginPaddingValue {
-  value: number;
-  unit: string;
-}
+// REL-014 — the parse, the display text and the side split all live in
+// `marginPaddingEdit` rather than here, because this file imports `common/Icon`
+// and is therefore unreachable from the plain-Node runner. Re-exported so the
+// existing importers of these names do not have to move.
+import {
+  MarginPaddingParam,
+  MarginPaddingSide,
+  MarginPaddingValue,
+  commitMarginPaddingEdit,
+  editTextOf,
+  isZeroValue,
+  labelTextOf,
+  readMarginPaddingEdit,
+  scrubStartOf,
+  sideOf,
+  unitOf
+} from './marginPaddingEdit';
 
-/** The two independently lockable groups inside the one widget. */
-export type MarginPaddingSide = 'margin' | 'padding';
-
-/**
- * Which group a comp belongs to.
- *
- * The eight ports share one port *group* (`'Margin and padding'`) and therefore
- * one view, so the split has to come from the comp name. It is the only thing
- * that distinguishes them.
- */
-export function sideOf(comp: string): MarginPaddingSide {
-  return comp.startsWith('padding') ? 'padding' : 'margin';
-}
+export { sideOf };
+export type { MarginPaddingParam, MarginPaddingSide, MarginPaddingValue };
 
 export interface MarginPaddingInputProps {
-  /** comp ('margin-top', 'padding-left', ...) → explicit value or undefined */
-  values: Record<string, MarginPaddingValue | undefined>;
-  defaults: Record<string, MarginPaddingValue>;
+  /**
+   * comp ('margin-top', 'padding-left', ...) → explicit value or undefined.
+   *
+   * REL-014: a value may be a `var(--token)` string. `TextInputConfig` stamps four
+   * of them onto every new Text Input, so this is the ordinary case rather than
+   * the exotic one.
+   */
+  values: Record<string, MarginPaddingParam | undefined>;
+  defaults: Record<string, MarginPaddingParam>;
   /** POL-012 — per side, whether editing one field writes all four. */
   linked: Record<MarginPaddingSide, boolean>;
   onToggleLink: (side: MarginPaddingSide) => void;
 
   onUpdate: (
     comp: string,
-    value: MarginPaddingValue | undefined,
-    opts?: { drag?: boolean; oldValue?: MarginPaddingValue }
+    value: MarginPaddingParam | undefined,
+    opts?: { drag?: boolean; oldValue?: MarginPaddingParam }
   ) => void;
   /** All four sides of one group, as one undo step. */
   onUpdateAll: (
     side: MarginPaddingSide,
-    value: MarginPaddingValue | undefined,
-    opts?: { drag?: boolean; oldValues?: Record<string, MarginPaddingValue | undefined> }
+    value: MarginPaddingParam | undefined,
+    opts?: { drag?: boolean; oldValues?: Record<string, MarginPaddingParam | undefined> }
   ) => void;
   onReset: () => void;
 }
@@ -126,7 +134,7 @@ export function MarginPaddingInput({
     startY: number;
     startValue: MarginPaddingValue;
     /** Every side's value before the drag, for the one undo step at the end. */
-    startValues: Record<string, MarginPaddingValue | undefined>;
+    startValues: Record<string, MarginPaddingParam | undefined>;
     linked: boolean;
     moved: boolean;
   } | null>(null);
@@ -194,24 +202,40 @@ export function MarginPaddingInput({
     if (x + EDITBOX_WIDTH + 2 > rootRect.width) x = rootRect.width - EDITBOX_WIDTH - 2;
     if (x < 0) x = 2;
 
-    const v = values[comp] || defaults[comp];
-    setEditText(values[comp] !== undefined ? String(values[comp].value) : '');
-    setEditUnit(v.unit);
+    const v = values[comp] !== undefined ? values[comp] : defaults[comp];
+    // REL-014 — a token seeds the box **in full** (`var(--space-2)`, not the
+    // `--space-2` the label shows), so committing it back unchanged stores the
+    // same string. This used to be `String(values[comp].value)`, which for a
+    // token is the literal text `undefined`.
+    setEditText(editTextOf(values[comp]));
+    setEditUnit(unitOf(v, 'px'));
     setEditPos({ x, y });
     setUnitDropdownOpen(false);
     setEditComp(comp);
   }
 
+  /**
+   * 🔴 REL-014. This was `parseFloat(text)` → `isNaN ? undefined`, and `undefined`
+   * is the value that CLEARS a parameter — so a token, which `parseFloat` cannot
+   * read, was deleted by any edit that touched the field, and could not be typed
+   * back. The decision now lives in `commitMarginPaddingEdit`, which this file
+   * cannot grade and that module can; `onRefuse` is the visible half of AC4 — the
+   * typed text snapped back to what survived, synchronously, because nothing was
+   * written and so nothing upstream will re-seed the box.
+   */
   function commitEdit(text: string, unit: string) {
     if (!editComp) return;
-    const parsed = parseFloat(text);
-    const value = isNaN(parsed) ? undefined : { value: parsed, unit };
-    // ⚠️ The unit goes with the value on every side. Four sides carrying
-    // different units is a real state, and linked mode resolves it by making
-    // them all the one the user just typed in — a visible action, not a silent
-    // reinterpretation of three numbers under a new unit.
-    if (linked[sideOf(editComp)]) onUpdateAll(sideOf(editComp), value);
-    else onUpdate(editComp, value);
+
+    commitMarginPaddingEdit({
+      comp: editComp,
+      text,
+      unit,
+      values,
+      linked,
+      onUpdate: (comp, value) => onUpdate(comp, value),
+      onUpdateAll: (side, value) => onUpdateAll(side, value),
+      onRefuse: setEditText
+    });
   }
 
   /**
@@ -222,8 +246,8 @@ export function MarginPaddingInput({
    * *display only*: nothing is written until the edit is committed, which is
    * what keeps the whole gesture one undo step rather than one per keystroke.
    */
-  function displayedValue(comp: string): MarginPaddingValue {
-    const own = values[comp] || defaults[comp];
+  function displayedValue(comp: string): MarginPaddingParam | undefined {
+    const own = values[comp] !== undefined ? values[comp] : defaults[comp];
     if (!editComp) return own;
     // ⚠️ Includes the field being edited. Excluding it left three siblings
     // reading 16 and the one under the cursor reading 0 — measured — which is
@@ -231,8 +255,12 @@ export function MarginPaddingInput({
     // usually covers that label, so the wrong value was there and invisible
     // until something read the DOM.
     if (!linked[sideOf(editComp)] || sideOf(comp) !== sideOf(editComp)) return own;
-    const parsed = parseFloat(editText);
-    return isNaN(parsed) ? own : { value: parsed, unit: editUnit };
+    // REL-014 — the preview is read through the same function the commit is, so
+    // a token being typed previews as that token on its three siblings rather
+    // than as their old numbers. Anything that would be refused previews as
+    // `own`: the preview must never show a value the commit will not store.
+    const edit = readMarginPaddingEdit(editText, editUnit);
+    return edit.kind === 'number' || edit.kind === 'token' ? edit.value : own;
   }
 
   return (
@@ -266,21 +294,24 @@ export function MarginPaddingInput({
         .filter((comp) => defaults[comp] !== undefined)
         .map((comp) => {
           const v = displayedValue(comp);
-          // No more "- px" wireframe placeholder: show the numeric value (zeros
-          // read muted), and only surface a non-px unit inline.
-          const num = v.value === undefined ? '0' : v.value;
-          const text = v.unit && v.unit !== 'px' ? `${num}${v.unit}` : `${num}`;
+          // REL-014: a token shows its name (`--space-2`) rather than the `0` a
+          // raw string used to produce here — see `labelTextOf` for why the name
+          // and not the whole `var(...)`.
+          const text = labelTextOf(v);
+          const isToken = typeof v === 'string';
           // PAR-002 (mock): zero values read muted; the padding boxes sit on
           // bg-1 inside the solid inner block.
           const classes =
             'marginpadding-label drag-handle' +
             (values[comp] !== undefined ? ' changed' : '') +
-            (Number(num) === 0 ? ' zero' : '') +
+            (isZeroValue(v) ? ' zero' : '') +
             (comp.startsWith('padding') ? ' inner-box' : '');
           return (
             <div
               key={comp}
               className={classes}
+              // The full token, since the label is deliberately the short name.
+              title={isToken ? (v as string) : undefined}
               // The eight labels are otherwise identical to anything outside
               // React — same class, position-only difference — so naming them
               // is what lets a live check say "the padding sides" rather than
@@ -288,12 +319,15 @@ export function MarginPaddingInput({
               data-comp={comp}
               style={{ position: 'absolute', ...LABEL_POSITIONS[comp] }}
               onMouseDown={(e) => {
-                const start = values[comp] || defaults[comp];
                 dragState.current = {
                   comp,
                   startX: e.pageX,
                   startY: e.pageY,
-                  startValue: { value: start.value || 0, unit: start.unit },
+                  // ⚠️ REL-014 — a drag still replaces a token with a number, which
+                  // is the one remaining gesture that removes one without saying so.
+                  // What changed is that it no longer starts from `0` with no unit:
+                  // see `scrubStartOf`.
+                  startValue: scrubStartOf(values[comp], defaults[comp], UNITS[0]),
                   startValues: { ...values },
                   linked: linked[sideOf(comp)],
                   moved: false
@@ -340,7 +374,7 @@ export function MarginPaddingInput({
                 className="sidebar-panel-dark-input"
                 style={{ position: 'absolute', width: '100%', height: '100%' }}
                 value={editText}
-                placeholder={values[editComp] === undefined ? String(defaults[editComp]?.value ?? '') : undefined}
+                placeholder={values[editComp] === undefined ? editTextOf(defaults[editComp]) : undefined}
                 onChange={(e) => setEditText(e.target.value)}
                 onBlur={() => commitEdit(editText, editUnit)}
                 onKeyDown={(e) => {

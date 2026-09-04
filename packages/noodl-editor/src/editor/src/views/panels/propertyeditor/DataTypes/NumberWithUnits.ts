@@ -8,27 +8,84 @@ import { getConnectionSourceLabel, getConnectionSourceNavigate, getEditType } fr
 import { commitScrub, writeScrubStep } from './scrubCommit';
 import { scrubSpecForPortType, scrubStartValue } from './scrubPolicy';
 
-function parseNumberWithUnit(stringValue, permittedUnits) {
-  let value = parseFloat(stringValue);
+/**
+ * REL-014 — what a typed edit to a number-with-units field *means*.
+ *
+ * ## Why this exists, and why it lives here rather than in each row
+ *
+ * The old shape was two outcomes: a number, or `undefined`. `undefined` is the
+ * value that clears a parameter, so **every parse failure was a deletion** —
+ * and `var(--space-4)` is a parse failure. `parseFloat('var(--space-4)')` is
+ * `NaN`, so touching one character of a token and blurring wiped it, and typing
+ * it back wiped it again. The editor authors those tokens itself
+ * (`ElementConfigRegistry.applyDefaults` stamps `var(--space-4)` on every new
+ * Checkbox, `var(--text-base)` on every new Text), so the product was
+ * destroying its own values on contact. Colour fields never had the bug —
+ * `ColorType`'s `onCommit` commits any non-empty trimmed string.
+ *
+ * So there are **four** outcomes, and separating them is the whole fix:
+ *
+ * - `clear` — an empty field. Still `undefined`, still a deletion, deliberately.
+ * - `token` — a design-token reference, kept **verbatim** as a string.
+ * - `number` — a number, with the unit the text ended in if it named one.
+ * - `refuse` — text that is none of the above (`banana`). The parameter is left
+ *   alone. AC4: a parse failure must stop being a deletion, which is not the
+ *   same as accepting everything.
+ *
+ * 🔴 **One copy, imported by both rows.** `Dimension` and `NumberWithUnits` are
+ * twins that each carried their own byte-identical `parseNumberWithUnit`, which
+ * is exactly how a fix lands in one and not the other (AC5). There is now one
+ * function and `Dimension.ts` imports it.
+ */
+export type NumberFieldEdit =
+  | { kind: 'clear' }
+  | { kind: 'token'; token: string }
+  | { kind: 'number'; value: number; unit: string | undefined }
+  | { kind: 'refuse' };
 
-  if (isNaN(value)) {
-    value = undefined;
-  }
+/**
+ * A design-token reference, in the shape the editor itself writes.
+ *
+ * ⚠️ Deliberately narrow. It matches `var(--name)` and `var(--name, fallback)`
+ * and nothing else — not a half-typed `var(--space-4`, not `var(--)`, not a
+ * bare `--space-4`. A looser rule here is how AC1 turns into "the field accepts
+ * anything", which is the failure AC4 is the control for.
+ */
+const TOKEN_REFERENCE = /^var\(\s*--[A-Za-z0-9_-]+\s*(?:,[^()]*)?\)$/;
 
-  let unit;
+/** Whether `text` is a design-token reference this field must keep verbatim. */
+export function isTokenReference(text: unknown): boolean {
+  return typeof text === 'string' && TOKEN_REFERENCE.test(text.trim());
+}
 
-  permittedUnits.some((u) => {
-    if (stringValue.endsWith(u)) {
+/**
+ * Read one typed edit. See {@link NumberFieldEdit} for why there are four
+ * answers rather than two.
+ *
+ * ⚠️ The numeric branch keeps `parseFloat`'s tolerance on purpose — `50px`,
+ * `50 px` and even `50abc` have always committed as `50`, and narrowing that
+ * here would be a second, unasked-for behaviour change riding along with this
+ * one.
+ */
+export function readNumberFieldEdit(text: unknown, permittedUnits: string[]): NumberFieldEdit {
+  const trimmed = typeof text === 'string' ? text.trim() : String(text ?? '').trim();
+
+  if (trimmed === '') return { kind: 'clear' };
+  if (isTokenReference(trimmed)) return { kind: 'token', token: trimmed };
+
+  const value = parseFloat(trimmed);
+  if (isNaN(value)) return { kind: 'refuse' };
+
+  let unit: string | undefined;
+  (permittedUnits || []).some((u) => {
+    if (trimmed.endsWith(u)) {
       unit = u;
       return true;
     }
     return false;
   });
 
-  return {
-    value,
-    unit
-  };
+  return { kind: 'number', value, unit };
 }
 
 export class NumberWithUnits extends TypeView {
@@ -37,6 +94,11 @@ export class NumberWithUnits extends TypeView {
   private root: Root | null = null;
   /** What the parameter held when the current scrub began; `undefined` between gestures. */
   private scrubStartParameter: TSFixme = undefined;
+  /**
+   * REL-014 AC4 — how many edits this row has refused. It is the React `key`,
+   * and bumping it is what makes a refusal **visible**. See {@link rejectEdit}.
+   */
+  private refusals = 0;
 
   static fromPort(args) {
     const view = new NumberWithUnits();
@@ -88,6 +150,10 @@ export class NumberWithUnits extends TypeView {
 
     this.root.render(
       React.createElement(NumberUnitInput, {
+        // REL-014 AC4 — see `refusals`. Constant across every ordinary re-render
+        // (a scrub re-renders this row on every mousemove), so the field is only
+        // remounted when an edit was actually turned down.
+        key: `${this.name}#${this.refusals}`,
         label: this.displayName,
         value: this.value === undefined ? '' : String(this.value),
         unit: this.unit,
@@ -177,20 +243,54 @@ export class NumberWithUnits extends TypeView {
     this.renderReact();
   }
 
+  /**
+   * REL-014 — commit one typed edit.
+   *
+   * 🔴 The branch that used to read *"if the input is not a valid value, then set
+   * undefined"* is the defect this row exists for: `undefined` clears the
+   * parameter, so a value the field merely could not parse was deleted. A token
+   * is now kept verbatim and unparseable text is turned down without touching
+   * what is stored. See {@link readNumberFieldEdit}.
+   */
   private updateValue(text: string, fallbackUnit: string) {
-    const v = parseNumberWithUnit(text, this.type.units || []);
-    const unit = v.unit ? v.unit : fallbackUnit;
+    const edit = readNumberFieldEdit(text, this.type.units || []);
 
-    // If the input is not a valid value, then set undefined
-    if (v.value !== undefined) {
-      this.parent.setParameter(this.name, {
-        value: v.value,
-        unit: unit ? unit : this.type.defaultUnit
-      });
-    } else {
-      this.parent.setParameter(this.name, undefined);
+    if (edit.kind === 'refuse') {
+      this.rejectEdit();
+      return;
     }
 
+    if (edit.kind === 'clear') {
+      this.parent.setParameter(this.name, undefined);
+    } else if (edit.kind === 'token') {
+      // Stored as the bare string the editor itself writes — the same shape
+      // `ElementConfigRegistry.applyDefaults` stamps, and the one `value`/`unit`
+      // above already read back, so it round-trips through the field.
+      this.parent.setParameter(this.name, edit.token);
+    } else {
+      const unit = edit.unit ? edit.unit : fallbackUnit;
+      this.parent.setParameter(this.name, {
+        value: edit.value,
+        unit: unit ? unit : this.type.defaultUnit
+      });
+    }
+
+    this.refreshFromModel();
+  }
+
+  /**
+   * REL-014 AC4 — turn an edit down, **visibly**.
+   *
+   * ⚠️ Re-rendering alone is not enough and that is the whole reason this method
+   * exists. `NumberUnitInput` keeps the text in local state and only re-seeds it
+   * from the `value` prop when that prop *changes* — and on a refusal it does
+   * not, because nothing was written. The field would keep showing `banana`
+   * while the model still held `50`, which reads as accepted. Bumping the key
+   * remounts the input, so its state is re-seeded from the model and the typed
+   * text snaps back to the value that survived.
+   */
+  private rejectEdit() {
+    this.refusals++;
     this.refreshFromModel();
   }
 

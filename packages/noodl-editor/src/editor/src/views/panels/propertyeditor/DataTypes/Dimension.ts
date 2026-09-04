@@ -4,31 +4,13 @@ import { createRoot, Root } from 'react-dom/client';
 import { NumberUnitInput } from '../components/NumberUnitInput';
 import { TypeView } from '../TypeView';
 import { getConnectionSourceLabel, getConnectionSourceNavigate, getEditType } from '../utils';
+// REL-014 AC5 — `Dimension` and `NumberWithUnits` are twins, and until this row
+// they each carried their own byte-identical `parseNumberWithUnit`. Two copies is
+// how a fix lands in one field and not the other, so there is now one function
+// and this row imports it rather than restating it.
+import { readNumberFieldEdit } from './NumberWithUnits';
 import { commitScrub, writeScrubStep } from './scrubCommit';
 import { scrubSpecForPortType, scrubStartValue } from './scrubPolicy';
-
-function parseNumberWithUnit(stringValue, permittedUnits) {
-  let value = parseFloat(stringValue);
-
-  if (isNaN(value)) {
-    value = undefined;
-  }
-
-  let unit;
-
-  permittedUnits.some((u) => {
-    if (stringValue.endsWith(u)) {
-      unit = u;
-      return true;
-    }
-    return false;
-  });
-
-  return {
-    value,
-    unit
-  };
-}
 
 export class Dimension extends TypeView {
   numberWithUnits: TSFixme;
@@ -38,6 +20,11 @@ export class Dimension extends TypeView {
   private root: Root | null = null;
   /** What the parameter held when the current scrub began; `undefined` between gestures. */
   private scrubStartParameter: TSFixme = undefined;
+  /**
+   * REL-014 AC4 — how many edits this row has refused. It is the React `key`,
+   * and bumping it is what makes a refusal **visible**. See {@link rejectEdit}.
+   */
+  private refusals = 0;
 
   static fromPort(args) {
     const view = new Dimension();
@@ -91,6 +78,10 @@ export class Dimension extends TypeView {
 
     this.root.render(
       React.createElement(NumberUnitInput, {
+        // REL-014 AC4 — see `refusals`. Constant across every ordinary re-render
+        // (a scrub re-renders this row on every mousemove), so the field is only
+        // remounted when an edit was actually turned down.
+        key: `${this.name}#${this.refusals}`,
         label: this.displayName,
         value: this.value === undefined ? '' : String(this.value),
         unit: this.unit,
@@ -180,18 +171,56 @@ export class Dimension extends TypeView {
     this.renderReact();
   }
 
+  /**
+   * REL-014 — commit one typed edit.
+   *
+   * 🔴 The branch that used to read *"if the input is not a valid value, then set
+   * undefined"* is the defect this row exists for: `undefined` clears the
+   * parameter, so a value the field merely could not parse was deleted — and
+   * `var(--space-4)`, which the editor stamps on every new Checkbox, is a value
+   * this field cannot parse. See {@link readNumberFieldEdit}.
+   */
   private updateValue(text: string, fallbackUnit: string) {
-    const v = parseNumberWithUnit(text, this.type.units || []);
-    const unit = v.unit ? v.unit : fallbackUnit;
+    const edit = readNumberFieldEdit(text, this.type.units || []);
 
-    // If the input is not a valid value, then set undefined
-    if (v.value !== undefined) {
-      const u = unit ? unit : this.type.defaultUnit;
-      this.parent.setParameter(this.name, { value: v.value, unit: u, isFixed: this.isFixed });
-    } else {
-      this.parent.setParameter(this.name, undefined);
+    if (edit.kind === 'refuse') {
+      this.rejectEdit();
+      return;
     }
 
+    if (edit.kind === 'clear') {
+      this.parent.setParameter(this.name, undefined);
+    } else if (edit.kind === 'token') {
+      // Stored as the bare string the editor itself writes — the same shape
+      // `ElementConfigRegistry.applyDefaults` stamps, and the one the `value`
+      // and `unit` getters above already read back, so it round-trips.
+      //
+      // ⚠️ `isFixed` is deliberately not carried onto a token. It is a third
+      // field on a `{ value, unit }` object and a token is not one; a token has
+      // no unit either, which is why the Fixed tick is inert while one is set.
+      this.parent.setParameter(this.name, edit.token);
+    } else {
+      const unit = edit.unit ? edit.unit : fallbackUnit;
+      const u = unit ? unit : this.type.defaultUnit;
+      this.parent.setParameter(this.name, { value: edit.value, unit: u, isFixed: this.isFixed });
+    }
+
+    this.refreshFromModel();
+  }
+
+  /**
+   * REL-014 AC4 — turn an edit down, **visibly**.
+   *
+   * ⚠️ Re-rendering alone is not enough and that is the whole reason this method
+   * exists. `NumberUnitInput` keeps the text in local state and only re-seeds it
+   * from the `value` prop when that prop *changes* — and on a refusal it does
+   * not, because nothing was written. The field would keep showing `banana`
+   * while the model still held `50`, which reads as accepted. Bumping the key
+   * remounts the input, so its state is re-seeded from the model and the typed
+   * text snaps back to the value that survived.
+   */
+  private rejectEdit() {
+    this.refusals++;
     this.refreshFromModel();
   }
 

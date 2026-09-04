@@ -6,7 +6,7 @@ import {
 } from '@noodl-core-ui/components/property-panel/PropertyPanelBaseInput';
 import { ScrubBinding, useDragToScrub } from '@noodl-core-ui/components/property-panel/scrub';
 
-import { extractNumber } from '../../../utils/extractNumber';
+import { readNumberInputText } from './numberInputEdit';
 
 export interface PropertyPanelNumberInputProps extends PropertyPanelBaseInputProps {
   /**
@@ -46,21 +46,39 @@ export function PropertyPanelNumberInput({
 
     // Only commit real edits — committing unconditionally would push a
     // spurious undo entry on every mount/blur and neutralize app undo
-    if (inputValue === '') {
+    const current = value?.toString() || '';
+    const edit = readNumberInputText(inputValue);
+
+    if (edit.kind === 'empty') {
       setDisplayedInputValue('');
-      if ((value?.toString() || '') !== '') {
+      if (current !== '') {
         onChange && onChange(inputValue);
       }
       return;
     }
 
-    const newNumber = extractNumber(inputValue);
-
-    if (!isNaN(newNumber)) {
-      setDisplayedInputValue(newNumber.toString());
-      if (newNumber.toString() !== (value?.toString() || '')) {
-        onChange && onChange(newNumber);
+    if (edit.kind === 'number') {
+      setDisplayedInputValue(edit.text);
+      if (edit.text !== current) {
+        onChange && onChange(edit.value);
       }
+      return;
+    }
+
+    // REL-014 — text this field cannot read as a number is NOT this component's
+    // to throw away. See `numberInputEdit`: the branch that used to be missing
+    // here is why `var(--space-4)` could never survive a plain number port, and
+    // why a mistyped value left the field showing something the model did not
+    // hold. The row decides; this hands it down.
+    //
+    // 🔴 The snap-back is what makes a refusal visible, and it has to happen
+    // *before* the hand-off. If the row accepts (a token), `value` changes and
+    // the effect above re-seeds the field from it; if the row refuses, nothing
+    // is written, `value` does not change, the effect does not fire — and the
+    // typed text would otherwise stay on screen looking accepted.
+    setDisplayedInputValue(current);
+    if (edit.text !== current) {
+      onChange && onChange(edit.text);
     }
   }
 

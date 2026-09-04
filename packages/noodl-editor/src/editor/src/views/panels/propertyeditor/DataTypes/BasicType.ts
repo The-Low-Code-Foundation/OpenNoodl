@@ -11,6 +11,7 @@ import { PropertyPanelInputWithExpressionModal } from '../components/PropertyPan
 import { TypeView } from '../TypeView';
 import { getConnectionSourceLabel, getConnectionSourceNavigate, getEditType } from '../utils';
 import { expressionProps } from './expressionProps';
+import { readNumberFieldEdit } from './NumberWithUnits';
 import { commitScrub, writeScrubStep } from './scrubCommit';
 import { scrubSpecForPortType, scrubStartValue } from './scrubPolicy';
 
@@ -33,6 +34,11 @@ export class BasicType extends TypeView {
   private root: Root | null = null;
   /** What the parameter held when the current scrub began; `undefined` between gestures. */
   private scrubStartParameter: TSFixme = undefined;
+  /**
+   * REL-014 AC4 — how many edits this row has refused. It is the React `key`, and
+   * bumping it is what makes a refusal visible. See {@link rejectEdit}.
+   */
+  private refusals = 0;
 
   static fromPort(args) {
     const view = new BasicType();
@@ -82,6 +88,10 @@ export class BasicType extends TypeView {
     const displayValue = ParameterValueResolver.toString(rawValue);
 
     const props = {
+      // REL-014 AC4 — see `refusals`. Constant across every ordinary re-render (a
+      // scrub re-renders this row on every mousemove and must not remount the
+      // field), so the input is rebuilt only when an edit was actually turned down.
+      key: `${this.name}#${this.refusals}`,
       label: this.displayName,
       value: displayValue,
       dataIdentifier: this.name,
@@ -108,11 +118,37 @@ export class BasicType extends TypeView {
       onChange: (value: unknown) => {
         // Handle standard value change
         if (firstType(this.type) === 'number') {
-          const numValue = parseFloat(String(value));
-          this.parent.setParameter(this.name, isNaN(numValue) ? undefined : numValue, {
-            undo: true,
-            label: `change ${this.displayName}`
-          });
+          // REL-014 — the fourth copy of "a parse failure is a deletion". This was
+          // `parseFloat(String(value))` → `isNaN ? undefined`, and `undefined` is the
+          // value that CLEARS a parameter. Same four outcomes as the dimension and
+          // number-with-units rows, from the same function, so a fix cannot land in
+          // three of the four fields again. See `readNumberFieldEdit`.
+          //
+          // ⚠️ **A unitless port, so there are no permitted units to hand it** — the
+          // numeric branch's unit sniffing is not wanted here and an empty list turns
+          // it off. What is left of that branch is `parseFloat`, which is exactly what
+          // this line used to do.
+          const edit = readNumberFieldEdit(value, []);
+
+          if (edit.kind === 'refuse') {
+            this.rejectEdit();
+            return;
+          }
+
+          // ⚠️ A `number` port has no units, so the runtime's `input.set` for it is the
+          // plain branch that assigns the value through untouched — a token is not
+          // fitted with a unit here and cannot become `var(--x)px`. It does mean a
+          // token can now reach a port whose consumer wanted arithmetic; that is the
+          // author's own edit, visible in the field and undoable, where before it was
+          // a silent deletion of whatever was there.
+          this.parent.setParameter(
+            this.name,
+            edit.kind === 'clear' ? undefined : edit.kind === 'token' ? edit.token : edit.value,
+            {
+              undo: true,
+              label: `change ${this.displayName}`
+            }
+          );
         } else {
           this.parent.setParameter(this.name, value, {
             undo: true,
@@ -120,6 +156,12 @@ export class BasicType extends TypeView {
           });
         }
         this.isDefault = false;
+        // REL-014 — re-read the row from the model after an accepted edit, as the dimension and
+        // number-with-units rows already do. Nothing else does it for this row: `resetToDefault`
+        // is bound only to a style-metadata change, so without this the `value` prop keeps the
+        // value the edit replaced. The key is unchanged on an accepted edit (only `rejectEdit`
+        // bumps `refusals`), so this updates the field in place and never remounts it mid-scrub.
+        this.renderReact();
       },
 
       // Expression support — POL-011 lifted this into `expressionProps` so
@@ -129,6 +171,20 @@ export class BasicType extends TypeView {
     };
 
     this.root.render(React.createElement(PropertyPanelInputWithExpressionModal, props));
+  }
+
+  /**
+   * REL-014 AC4 — turn an edit down, **visibly**.
+   *
+   * ⚠️ Re-rendering alone is not enough, which is the whole reason this method exists.
+   * `PropertyPanelNumberInput` keeps the typed text in local state and re-seeds it from
+   * the `value` prop only when that prop *changes* — and on a refusal nothing is written,
+   * so it does not. Bumping the key remounts the input, so its state is seeded from the
+   * model and the typed text snaps back to the value that survived.
+   */
+  private rejectEdit() {
+    this.refusals++;
+    this.renderReact();
   }
 
   /**
@@ -199,8 +255,16 @@ export class BasicType extends TypeView {
   // Legacy method kept for compatibility
   onPropertyChanged(scope, el) {
     if (firstType(scope.type) === 'number') {
-      const value = parseFloat(el.val());
-      this.parent.setParameter(scope.name, isNaN(value) ? undefined : value);
+      // REL-014 — the same four outcomes as `onChange` above. This path has no call
+      // site left in the editor, but it is a byte-identical copy of the defect and
+      // leaving it is how the fix un-lands the day something calls it again.
+      const edit = readNumberFieldEdit(el.val(), []);
+      if (edit.kind !== 'refuse') {
+        this.parent.setParameter(
+          scope.name,
+          edit.kind === 'clear' ? undefined : edit.kind === 'token' ? edit.token : edit.value
+        );
+      }
     } else {
       this.parent.setParameter(scope.name, el.val());
     }
