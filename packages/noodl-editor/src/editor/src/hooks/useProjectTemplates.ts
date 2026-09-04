@@ -69,13 +69,60 @@ export function galleryFromListing(listing: TemplateListing): {
 }
 
 /**
+ * REL-013 — the launcher page id the Templates tab is drawn on.
+ *
+ * A literal rather than an import of `LauncherPageId`: this module is graded by the plain-Node
+ * runner and the union it belongs to lives in a core-ui file that names a `.module.scss` two
+ * imports along. The spec asserts this constant against `isValidPageId`, which is the one place
+ * a *stored* string is turned into a page — so a rename that missed this reddens rather than
+ * quietly disabling the tab's fetch.
+ */
+export const TEMPLATES_PAGE_ID = 'templates';
+
+/**
+ * REL-013 — 🔴 **THE WHOLE GATE, IN ONE PLACE, AS A FUNCTION OF TWO FACTS.**
+ *
+ * Until this row the gate was the create wizard's visibility alone, because the wizard was the
+ * only surface that drew the shelf. The Templates tab is the second, and it is a *tab* — so the
+ * naive wiring (a hook inside the tab, or `enabled` left true) puts a community request on every
+ * cold start of the launcher, which the note on `useProjectTemplates` below forbids in as many
+ * words. Equally naive: a second `useProjectTemplates` for the tab, which would double every
+ * request and let the two surfaces disagree about what is on the shelf.
+ *
+ * So: one hook instance in `ProjectsPage`, and this is its argument. ⚠️ **Exported and pure** so
+ * that AC2's control — *a cold start with neither open makes no request* — is a reading somebody
+ * can take, rather than a claim about an effect nobody can run in this repo's runner.
+ *
+ * ⚠️ What this CANNOT see: that `ProjectsPage` actually passes it, and that
+ * `useProjectTemplates`' effect really does return early on `false`. The first is asserted as a
+ * call-site cardinality check in `tests-unit/rel-013`; the second is the hook's own `if
+ * (!enabled) return`, which no plain-Node runner can execute. A drive is what closes that.
+ */
+export function shouldFetchTemplates({
+  isCreateWizardOpen,
+  activeLauncherPage
+}: {
+  isCreateWizardOpen: boolean;
+  activeLauncherPage: string;
+}): boolean {
+  return isCreateWizardOpen || activeLauncherPage === TEMPLATES_PAGE_ID;
+}
+
+/**
  * @param enabled Whether the shelf is being looked at.
  *
- * 🔴 **The launcher must not make a community request on startup.** The picker is reachable only
- * from inside the create wizard, and a hook that fetched on mount would put a network read on
- * every cold start of the launcher for a screen most sessions never open. Gating on the wizard's
- * visibility also buys the freshness anybody would expect: re-opening the wizard re-reads the
- * shelf rather than showing whatever was there when the app started.
+ * 🔴 **The launcher must not make a community request on startup.** A hook that fetched on mount
+ * would put a network read on every cold start of the launcher for a screen most sessions never
+ * open. Gating on the surface being looked at also buys the freshness anybody would expect:
+ * opening the wizard, or the Templates tab, re-reads the shelf rather than showing whatever was
+ * there when the app started.
+ *
+ * ⚠️ **REL-013 — TWO SURFACES NOW, AND STILL ONE INSTANCE.** The shelf was reachable only from
+ * inside the create wizard until the Templates tab was wired to the same state; `enabled` is now
+ * {@link shouldFetchTemplates}, an OR over both. One consequence worth stating rather than
+ * discovering: with the tab already open, opening the wizard no longer re-reads — `enabled` was
+ * already `true`, so the effect does not re-run. That is right (the tab is showing a listing it
+ * has just read) and it is a change from "every open of the wizard re-reads".
  */
 export function useProjectTemplates(enabled: boolean): TemplateGalleryState {
   const [listing, setListing] = useState<TemplateListing | null>(null);

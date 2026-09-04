@@ -29,10 +29,10 @@ import {
 } from '@noodl-core-ui/preview/launcher/Launcher/hooks/useGitHubRepos';
 import type { LauncherLearningData } from '@noodl-core-ui/preview/launcher/Launcher/components/LearningSection';
 import { Launcher } from '@noodl-core-ui/preview/launcher/Launcher/Launcher';
-import { LauncherLessonData } from '@noodl-core-ui/preview/launcher/Launcher/LauncherContext';
+import { LauncherLessonData, LauncherPageId } from '@noodl-core-ui/preview/launcher/Launcher/LauncherContext';
 
 import { useEventListener } from '../../hooks/useEventListener';
-import { useProjectTemplates } from '../../hooks/useProjectTemplates';
+import { shouldFetchTemplates, useProjectTemplates } from '../../hooks/useProjectTemplates';
 import { useShareTemplate } from './useShareTemplate';
 import type { AuthoringPlan } from '../../models/AiAssistant/authoring/plan';
 import { provisionSummary } from '../../models/AiAssistant/authoring/plan';
@@ -308,6 +308,11 @@ export function ProjectsPage(props: ProjectsPageProps) {
 
   // Create project modal state
   const [isCreateModalVisible, setIsCreateModalVisible] = useState(false);
+  /**
+   * REL-013 — the template the wizard should open on, or `''` for the ordinary entry screen.
+   * Set by both openers so neither can inherit the other's last value.
+   */
+  const [wizardTemplateUrl, setWizardTemplateUrl] = useState('');
 
   // AIX-012 — the scoping conversation. The session lives in a ref because it
   // is a long-lived object with an in-flight request, not render state; what
@@ -330,9 +335,28 @@ export function ProjectsPage(props: ProjectsPageProps) {
   const connectAgent = useConnectAgent();
 
   /**
-   * FB-005 T3 — the template shelf, read only while the create wizard is open. See the hook.
+   * REL-013 — 🔴 **WHICH LAUNCHER TAB IS OPEN.** `usePersistentTab` lives inside `Launcher`, so
+   * this page could not tell; `onActivePageChange` is the report, and this is where it lands.
+   *
+   * ⚠️ Seeded from `launcherLanding` — the same value passed as `initialTab` — so the first
+   * render already agrees with the launcher rather than being corrected one render later.
+   * `LauncherLandingPage` is `'projects' | 'community' | 'learning'` and never `'templates'`, so
+   * on every cold start this seed leaves the template gate CLOSED, which is AC2's control.
    */
-  const projectTemplates = useProjectTemplates(isCreateModalVisible);
+  const [activeLauncherPage, setActiveLauncherPage] = useState<LauncherPageId>(launcherLanding ?? 'projects');
+
+  /**
+   * FB-005 T3 — the template shelf. REL-013: read while the create wizard is open **or** the
+   * Templates tab is, and on no other frame. See `shouldFetchTemplates`.
+   *
+   * 🔴 **THE ONLY `useProjectTemplates` IN THE APPLICATION, AND IT HAS TO STAY THAT WAY.** Two
+   * instances would issue two community requests for every one the user caused, and the tab and
+   * the wizard could then be showing two different shelves — a difference nobody would read as a
+   * bug, because each list would look perfectly plausible on its own.
+   */
+  const projectTemplates = useProjectTemplates(
+    shouldFetchTemplates({ isCreateWizardOpen: isCreateModalVisible, activeLauncherPage })
+  );
 
   /**
    * UNI-001 AC2 — the NodeGX account. 🔴 Always present, unlike `connectAgent`: the card draws
@@ -777,6 +801,32 @@ export function ProjectsPage(props: ProjectsPageProps) {
     setScopingScope(emptyScope());
     setScopingError(undefined);
     setIsScopingBusy(false);
+    // REL-013 — and no leftover template either. "New project" means the entry screen, not
+    // whatever row somebody clicked on the Templates tab five minutes ago.
+    setWizardTemplateUrl('');
+    setIsCreateModalVisible(true);
+  }, []);
+
+  /**
+   * REL-013 AC5 — a row on the Templates tab opens **this** wizard, already on that template.
+   *
+   * 🔴 **NO SECOND CREATION ROUTE, AND THAT IS THE POINT.** `handleCreateProjectConfirm` below is
+   * where `needsBackend` is read off the chosen row and where `ensureTemplateBackend` is called
+   * (SBR-001). A tab that installed a template itself would have had to repeat both, and the
+   * repeat that forgot would hand somebody a backend-less project from a template that needs one
+   * — exactly the defect SBR-001 closed, re-entered by a new door.
+   *
+   * ⚠️ The scoping conversation is reset here too. Opening the wizard in template mode with a
+   * previous AI session still in state would carry that transcript into `finishScopedProject`
+   * if the user backed out to `ai` mode.
+   */
+  const handleUseTemplate = useCallback((templateUrl: string) => {
+    scopingSessionRef.current = null;
+    setScopingMessages([]);
+    setScopingScope(emptyScope());
+    setScopingError(undefined);
+    setIsScopingBusy(false);
+    setWizardTemplateUrl(templateUrl);
     setIsCreateModalVisible(true);
   }, []);
 
@@ -1570,6 +1620,12 @@ export function ProjectsPage(props: ProjectsPageProps) {
         // UNI-001 AC2 — the sign-in card, and the chip plus sign-out once there is a session.
         // The editor is fully functional signed out; this adds a surface and gates nothing.
         community={community}
+        // REL-013 — the Templates tab. The SAME gallery state the wizard's picker is handed,
+        // from the one hook instance above; the tab draws it and creates nothing itself.
+        templates={projectTemplates}
+        onUseTemplate={handleUseTemplate}
+        // REL-013 — how this page learns which tab is open, which is half of the fetch gate.
+        onActivePageChange={setActiveLauncherPage}
         communityMirror={{
           view: communityMirror.view,
           isRefreshing: communityMirror.isRefreshing,
@@ -1616,6 +1672,9 @@ export function ProjectsPage(props: ProjectsPageProps) {
         scoping={scopingState}
         templates={projectTemplates}
         initialLocation={initialWizardLocation}
+        // REL-013 AC5 — set only when the Templates tab opened this; `''` otherwise, which
+        // leaves the wizard on its entry screen exactly as before.
+        initialTemplateUrl={wizardTemplateUrl}
       />
 
       {/* The launcher had no update surface at all: `BaseWindow`, which owned

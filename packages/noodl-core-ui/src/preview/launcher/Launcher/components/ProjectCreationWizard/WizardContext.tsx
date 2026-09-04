@@ -130,6 +130,43 @@ export function isStepValid(step: WizardStep, state: WizardState): boolean {
   }
 }
 
+/**
+ * What the wizard starts from, given what the host asked for.
+ *
+ * 🔴 **Exported and pure so the seed is graded without a renderer.** `WizardProvider` calls
+ * `useState`, so the plain-Node runner (`tests-unit/support/renderElements`) cannot evaluate the
+ * component that would apply this — and REL-013's AC5 is a claim about *what the seeded wizard
+ * confirms*, not about pixels. Asserting the seed and `getStepSequence('template')` together is
+ * the reach check; the alternative was grepping this file's source, which passes on dead code.
+ *
+ * ⚠️ Returns `undefined` rather than `{}` when there is nothing to seed. Spreading a partial with
+ * `location: undefined` over the defaults would make `location` undefined rather than `''`, and
+ * `isStepValid('basics', …)` reads `state.location.length` — that is FIX-021's note, kept.
+ */
+export function seedWizardState({
+  initialLocation,
+  initialTemplateUrl
+}: {
+  initialLocation?: string;
+  initialTemplateUrl?: string;
+}): Partial<WizardState> | undefined {
+  const seed: Partial<WizardState> = {};
+
+  if (initialLocation) seed.location = initialLocation;
+
+  if (initialTemplateUrl) {
+    // 🔴 All three, together. `mode` is what `handleNext` reads to decide whether to pass the URL
+    // to `onConfirm` at all (`mode === 'template' ? selectedTemplateUrl : ''`), and what the
+    // host's `templateNeedsBackend` branches on. A seed that set the URL without the mode would
+    // create a project from the DEFAULT template while the review screen named another one.
+    seed.mode = 'template';
+    seed.currentStep = 'basics';
+    seed.selectedTemplateUrl = initialTemplateUrl;
+  }
+
+  return Object.keys(seed).length > 0 ? seed : undefined;
+}
+
 // ----- Provider -------------------------------------------------------------
 
 export interface WizardProviderProps {

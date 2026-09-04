@@ -17,6 +17,7 @@ import {
 } from '@noodl-core-ui/preview/launcher/Launcher/components/LauncherProjectCard';
 import type { LauncherLearnerPath } from '@noodl-core-ui/preview/launcher/Launcher/components/LearnerPathSection';
 import type { ShareTemplateModalProps } from '@noodl-core-ui/preview/launcher/Launcher/components/ShareTemplateModal';
+import type { TemplateGalleryState } from '@noodl-core-ui/preview/launcher/Launcher/components/ProjectCreationWizard/steps/TemplateStep';
 import type { LauncherLearningData } from '@noodl-core-ui/preview/launcher/Launcher/components/LearningSection';
 import { NoodlGitHubRepo, UseGitHubReposReturn } from '@noodl-core-ui/preview/launcher/Launcher/hooks/useGitHubRepos';
 import { usePersistentTab } from '@noodl-core-ui/preview/launcher/Launcher/hooks/usePersistentTab';
@@ -119,6 +120,29 @@ export interface LauncherProps {
 
   /** UNI-001 AC2 — the NodeGX account card and chip. Absent in Storybook, same as above. */
   community?: CommunityAccountHostState;
+
+  /** REL-013 — the template shelf the Templates tab draws. See `LauncherContext.templates`. */
+  templates?: TemplateGalleryState;
+  /** REL-013 — start a project from a row on that tab. See `LauncherContext.onUseTemplate`. */
+  onUseTemplate?: (templateUrl: string) => void;
+
+  /**
+   * REL-013 — 🔴 **WHICH TAB IS OPEN, REPORTED TO THE HOST.**
+   *
+   * `usePersistentTab` lives in here, so `ProjectsPage` had no way of knowing which page the
+   * launcher is on — and it has to know, because the template fetch is gated on *the shelf being
+   * looked at* and the Templates tab is the second reason to look at one (the create wizard is
+   * the first). Without this the only ways to wire the tab were a hook that fetched on launcher
+   * mount — a community request on every cold start, for a screen most sessions never open,
+   * which `useProjectTemplates`' own header forbids — or a second `useProjectTemplates` instance
+   * inside core-ui, which cannot import it and which would double every request anyway.
+   *
+   * ⚠️ **Fired on mount as well as on every change**, so a deep link or an `initialTab` that
+   * lands straight on Templates is reported too. The host seeds its own copy from the same
+   * `initialTab` it passed, so the first render already agrees and this effect confirms rather
+   * than corrects.
+   */
+  onActivePageChange?: (pageId: LauncherPageId) => void;
 }
 
 // FIXME: make the mock data real
@@ -286,7 +310,10 @@ export function Launcher({
   onMaximizeWindow,
   onCloseWindow,
   connectAgent,
-  community
+  community,
+  templates,
+  onUseTemplate,
+  onActivePageChange
 }: LauncherProps) {
   // Determine initial tab: props > deep link > persisted > default
   const deepLinkTab = parseDeepLink();
@@ -371,6 +398,12 @@ export function Launcher({
     }
   }, [activePageId]);
 
+  // REL-013 — tell the host which tab is open, so it can gate the template fetch on the tab
+  // being looked at without moving the fetch to launcher mount. See `onActivePageChange`.
+  useEffect(() => {
+    onActivePageChange?.(activePageId);
+  }, [activePageId, onActivePageChange]);
+
   // Render active view
   const renderActiveView = () => {
     switch (activePageId) {
@@ -448,7 +481,9 @@ export function Launcher({
         onMaximizeWindow,
         onCloseWindow,
         connectAgent,
-        community
+        community,
+        templates,
+        onUseTemplate
       }}
     >
       <div className={css['Root']}>

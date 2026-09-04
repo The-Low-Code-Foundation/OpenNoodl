@@ -11,6 +11,8 @@ import React, { createContext, useContext, ReactNode } from 'react';
 import type { CommunityAccountState } from './components/CommunityAccountCard';
 import type { ConnectAgentResult, ConnectAgentState } from './components/ConnectAgentCard';
 import type { LauncherCommunityHostState } from './views/Community';
+// The leaf module, not the wizard's index — see the note in `views/Templates.tsx`.
+import type { TemplateGalleryState } from './components/ProjectCreationWizard/steps/TemplateStep';
 import type { LauncherLearnerPath } from './components/LearnerPathSection';
 import type { LauncherLearningData } from './components/LearningSection';
 import { LauncherProjectData } from './components/LauncherProjectCard';
@@ -95,6 +97,30 @@ export interface LauncherContextValue {
    */
   onShareAsTemplate?: (projectId: string) => void;
   shareTemplateModal?: ShareTemplateModalProps | null;
+
+  /**
+   * REL-013 — the template shelf the **Templates tab** draws.
+   *
+   * 🔴 **THE SAME `TemplateGalleryState` THE CREATE WIZARD IS HANDED, FROM THE SAME
+   * `useProjectTemplates` INSTANCE.** One shelf, two surfaces. A second instance in the host
+   * would double every community request and let the tab and the wizard show two different
+   * lists — which is why this is a value passed down rather than a hook the tab could call.
+   *
+   * ⚠️ `undefined` means *nobody wired this* (Storybook, or a host with no hook), which is not
+   * one of the shelf's own states — an empty shelf is a claim, and the tab cannot make it on no
+   * evidence. `communityMirror` above draws the same line for the same reason.
+   */
+  templates?: TemplateGalleryState;
+
+  /**
+   * REL-013 — start a project from a row on the Templates tab.
+   *
+   * 🔴 **The host opens the CREATE WIZARD on that template; it does not create anything here.**
+   * `handleCreateProjectConfirm` is the one creation route, and it is the route that reads
+   * `needsBackend` off the chosen row (SBR-001). A second route from this tab that forgot it
+   * would produce a backend-less project from a template that needs one.
+   */
+  onUseTemplate?: (templateUrl: string) => void;
 
   // Lessons (Learn tab)
   lessons?: LauncherLessonData[];

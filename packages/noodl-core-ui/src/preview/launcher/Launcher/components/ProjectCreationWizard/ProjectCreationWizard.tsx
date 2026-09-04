@@ -23,7 +23,7 @@ import { ReviewPlanRow, ReviewStep } from './steps/ReviewStep';
 import { ScopingMessage, ScopingStep } from './steps/ScopingStep';
 import { StylePresetStep } from './steps/StylePresetStep';
 import { TemplateGalleryState, TemplateStep } from './steps/TemplateStep';
-import { WizardProvider, useWizardContext, WizardMode, WizardStep } from './WizardContext';
+import { WizardProvider, seedWizardState, useWizardContext, WizardMode, WizardStep } from './WizardContext';
 
 // ----- Public API -----------------------------------------------------------
 
@@ -105,6 +105,24 @@ export interface ProjectCreationWizardProps {
    * ⚠️ Omitted reads as *still loading*, not as *empty*. See `TemplateStep`.
    */
   templates?: TemplateGalleryState;
+  /**
+   * REL-013 — open straight into template mode with this row already chosen.
+   *
+   * 🔴 **THIS IS WHAT KEEPS THE TEMPLATES TAB OFF A SECOND CREATION ROUTE.** Choosing a row on
+   * the launcher's Templates tab opens *this* wizard, seeded — so the creation still runs through
+   * `onConfirm` with `mode === 'template'`, which is the exact condition the host's
+   * `templateNeedsBackend` lookup branches on (SBR-001). A tab that created projects itself would
+   * have had to re-derive that, and the one that forgot would ship a backend-less project from a
+   * template that needs one.
+   *
+   * ⚠️ Seeds `currentStep: 'basics'` and NOT `'template'`: the name and the folder are still
+   * required, and `getStepSequence('template')` puts the picker after them — so somebody who
+   * arrived with a template chosen still walks past the picker (where they can change their
+   * mind) and Review (where the choice is named) before anything is created.
+   *
+   * Empty or omitted leaves the wizard exactly as it was: entry screen, no mode, no template.
+   */
+  initialTemplateUrl?: string;
 }
 
 // ----- Step metadata --------------------------------------------------------
@@ -309,24 +327,24 @@ export function ProjectCreationWizard({
   aiAvailability,
   scoping,
   templates,
-  initialLocation
+  initialLocation,
+  initialTemplateUrl
 }: ProjectCreationWizardProps) {
   if (!isVisible) return null;
 
-  // Key the provider on `isVisible` so state fully resets each time the
-  // modal opens — no stale name/location from the previous session.
+  // `isVisible === false` unmounts this whole subtree, so state fully resets each time the modal
+  // opens — no stale name, folder or template from the previous session.
   //
-  // FIX-021 — which is also why the seed is a prop rather than something the
-  // provider remembers: the reset is deliberate, and the one field that should
-  // survive it comes back in from the host, freshly read.
-  //
-  // Passed conditionally: spreading `{ location: undefined }` over the defaults
-  // would make `location` undefined rather than `''`, and `isStepValid` reads
-  // `state.location.length`.
+  // FIX-021 — which is also why the seed is a prop rather than something the provider remembers:
+  // the reset is deliberate, and the fields that should survive it come back in from the host,
+  // freshly read. `seedWizardState` (in `WizardContext`) is what turns those props into the
+  // partial, including REL-013's template mode; it lives there so it can be graded without
+  // compiling this file's step components. See its own note for why it returns `undefined`
+  // rather than an empty object.
   return (
     <WizardProvider
       key="project-creation-wizard"
-      initialState={initialLocation ? { location: initialLocation } : undefined}
+      initialState={seedWizardState({ initialLocation, initialTemplateUrl })}
     >
       <WizardInner
         onClose={onClose}
