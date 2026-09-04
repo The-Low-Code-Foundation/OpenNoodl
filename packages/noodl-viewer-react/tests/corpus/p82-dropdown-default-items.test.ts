@@ -14,8 +14,6 @@
 
 /* eslint-env jest */
 
-import type { NodeInstance } from '@noodl/types';
-
 import { createCorpusGraph } from '../../../noodl-runtime/test/corpus/graph-harness';
 
 // The node modules reach `Noodl.deployed` at import time to decide whether to build editor
@@ -79,4 +77,100 @@ it('two Dropdowns on the same page do not share one items array', async () => {
   const [a, b] = await makeDropdowns(['a', 'b']);
 
   expect(a.props.items).not.toBe(b.props.items);
+});
+
+/**
+ * Richard, 2026-09-04, after the two default items landed: *"The value input port should be by
+ * default set to the first item in the default list when the node is placed … so the user
+ * immediately sees a dropdown in the preview with a real option, not just a horizontally collapsed
+ * input."*
+ *
+ * 🔴 **The items alone did not make the Dropdown visible, and these rows say why.** `Select.tsx`
+ * draws the selected label into a `<span>`; the native `<select>` is `opacity: 0` and overlaid for
+ * interaction only. That span is fed `items[selectedIndex].Label`, and `selectedIndex` is `-1`
+ * while `value` is `undefined` — so the options existed and the node still measured no content at
+ * its `contentSize` default. These rows therefore grade **what the span would draw**, computed the
+ * way `Select.tsx` computes it, rather than the port's declaration.
+ */
+describe('the first default item is selected when the node is placed', () => {
+  it('a never-authored Dropdown hands Select a value that matches an option', async () => {
+    const [dropdown] = await makeDropdowns(['dropdown']);
+
+    expect(dropdown.props.value).toBe(DEFAULT_ITEMS[0].Value);
+  });
+
+  it("so Select's own selectedIndex resolves a Label, which is what the visible span draws", async () => {
+    const [dropdown] = await makeDropdowns(['dropdown']);
+
+    // `Select.tsx`'s line, not a paraphrase of it: an index of -1 is what left the span empty.
+    const items = dropdown.props.items as { Value: string; Label: string }[];
+    const value = dropdown.props.value as string | undefined;
+    const selectedIndex = !items || value === undefined ? -1 : items.findIndex((i) => i.Value === value);
+
+    expect(selectedIndex).toBe(0);
+    expect(items[selectedIndex].Label).toBe('Option 1');
+  });
+
+  /**
+   * ⚠️ The trap this row exists for. `Select`'s mount effect calls `valueChanged(props.value)`
+   * unconditionally, and `valueChanged` fires **Changed** whenever the value it receives differs
+   * from `_internal.value`. Seeding `props.value` without `_internal.value` would make every
+   * placed Dropdown emit a signal it promises not to emit — and the node would look correct on
+   * screen the whole time, so only this row would notice.
+   */
+  it('and the mount does not fire Changed, because _internal agrees with props', async () => {
+    const [dropdown] = await makeDropdowns(['dropdown']);
+
+    const node = dropdown as unknown as {
+      _internal: { value?: string };
+      props: { valueChanged: (v: string) => void };
+      sendSignalOnOutput: (name: string) => void;
+    };
+
+    expect(node._internal.value).toBe(DEFAULT_ITEMS[0].Value);
+
+    const signals: string[] = [];
+    node.sendSignalOnOutput = (name: string) => signals.push(name);
+
+    // Exactly what `Select`'s `useEffect` does on first render.
+    node.props.valueChanged(dropdown.props.value as string);
+
+    expect(signals).toEqual([]);
+  });
+
+  it('the value output reads the same selection the screen shows', async () => {
+    const [dropdown] = await makeDropdowns(['dropdown']);
+
+    // ⚠️ Asserted against the LITERAL, not against `props.value`. Comparing the two fields to each
+    // other passes in the reverted arm too, where both are `undefined` — a row that agrees with
+    // both arms grades nothing. The output's getter reads `_internal.value`, so a seed that set
+    // only `props` would leave the graph reading `undefined` while the span drew "Option 1".
+    const internal = (dropdown as unknown as { _internal: { value?: string } })._internal;
+
+    expect(internal.value).toBe(DEFAULT_ITEMS[0].Value);
+    expect(internal.value).toBe(dropdown.props.value);
+  });
+
+  it('an authored value still wins over the default', async () => {
+    const graph = await createCorpusGraph({
+      modules: [OptionsModule as never],
+      data: {
+        components: [
+          {
+            name: '/root',
+            nodes: [{ id: 'dropdown', type: OptionsModule.node.name, parameters: { value: 'option-2' } }]
+          }
+        ]
+      } as never
+    });
+    (graph.context as unknown as { styles: unknown }).styles = {
+      getTextStyle: () => ({}),
+      resolveColor: (c: unknown) => c
+    };
+    graph.update();
+
+    const dropdown = graph.node('dropdown') as unknown as DrivableNode;
+
+    expect(dropdown.props.value).toBe('option-2');
+  });
 });

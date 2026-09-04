@@ -72,6 +72,30 @@ const OptionsNode = {
     this.props.id = 'input-' + guid();
     this.props.items = DEFAULT_ITEMS.map((item) => ({ ...item }));
 
+    /**
+     * Richard, 2026-09-04: *"The value input port should be by default set to the first item in the
+     * default list when the node is placed … so the user immediately sees a dropdown in the preview
+     * with a real option, not just a horizontally collapsed input."*
+     *
+     * 🔴 **The two default items above were not enough on their own, and this is why.** The visible
+     * face of a Dropdown is the `<span>` in `Select.tsx`, not the native `<select>` — that is
+     * `opacity: 0` and `position: absolute`, overlaid for interaction only. The span renders
+     * `items[selectedIndex].Label`, and `selectedIndex` is `-1` whenever `value` is `undefined`. So
+     * a freshly placed Dropdown drew an empty span, and at the `contentSize` default that node
+     * measures its content: no content, no width. The options existed and nothing showed them.
+     *
+     * ⚠️ **Seeding BOTH `props.value` and `_internal.value` is load-bearing, not belt-and-braces.**
+     * `Select`'s mount effect calls `valueChanged(props.value)`, and `valueChanged` fires
+     * `onChange` when the incoming value differs from `_internal.value`. Seeding `props` alone
+     * would make every placed Dropdown emit a spurious **Changed** signal on its first render —
+     * the port's own description promises the opposite. `_internal.value` is also what the `value`
+     * *output*'s getter returns, so seeding it is what keeps the graph agreeing with the screen.
+     *
+     * As with `items`, the port's `default` below cannot do this by itself: `value` has a custom
+     * `set`, and the runtime never calls a port's `set` for an unauthored default.
+     */
+    this.props.value = this._internal.value = DEFAULT_ITEMS[0].Value;
+
     this.props.valueChanged = (value) => {
       const changed = this._internal.value !== value;
       this._internal.value = value;
@@ -127,6 +151,9 @@ const OptionsNode = {
       displayName: 'Value',
       group: 'General',
       description: 'Selects the option with this Value; a value matching no option deselects everything. Setting it from the graph does not fire Changed',
+      // Declared so the property panel shows the same selection the render does. `initialize`
+      // is what actually seeds it — see the note there.
+      default: DEFAULT_ITEMS[0].Value,
       set: function (value) {
         if (value !== undefined && typeof value !== 'string') {
           if (value?.toString !== undefined) value = value.toString();

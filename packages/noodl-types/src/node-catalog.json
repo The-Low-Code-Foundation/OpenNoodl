@@ -45382,6 +45382,7 @@
             "name": "string"
           },
           "isSignal": false,
+          "default": "option-1",
           "description": "Selects the option with this Value; a value matching no option deselects everything. Setting it from the graph does not fire Changed"
         },
         {
