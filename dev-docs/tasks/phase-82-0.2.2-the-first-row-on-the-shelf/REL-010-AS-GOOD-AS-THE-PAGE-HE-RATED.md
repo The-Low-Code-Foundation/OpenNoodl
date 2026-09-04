@@ -269,7 +269,7 @@ button is `outlineButton`, and `Send my request` is still the only filled contro
 | **AC3** photography is content | 🟡 **MET on the public four, DECLINED on the nine** | ≥1 `Image` node ✅ (was 0); public four carry **3** each ✅; the nine carry 0 photographs and 4 icons — see §6.5.2 |
 | **AC4** ground variety | 🟡 **MET as written** | public four read 4 / 5 / 4 / 4 ✅; signed-in nine read **3** ✅. ⚠️ `/unsubscribe` reads **2** and **AC4 names neither group it is in** — see R6 |
 | **AC5** the tells are gone | 🟢 **MET** | **0 of 13**, down from 13 of 13 |
-| **AC6** Richard rules it | ⏳ **OPEN — a session cannot close this** | AC1–AC5 are what an instrument can see. The close condition is a person, and PASSABLE does not close it |
+| **AC6** Richard rules it | 🔴 **RULED 2026-09-04 — PASSABLE on 14 of 15 pages, SHITTY on `/unsubscribe` door, WORTHY on none. STAYS OPEN** | AC1–AC5 are what an instrument can see. The close condition is a person, and PASSABLE does not close it |
 
 ## §6.7 New register rows
 
@@ -450,3 +450,23 @@ carry: a description that describes the token versus one that describes its curr
 
 ⚠️ **Registered, not built** — this row's phase rule: *a defect is the next first job only if it
 blocks an AC*. It blocks none of AC1–AC6, and the renders are faithful either way.
+
+---
+
+# 🔴 AC6 — RULED 2026-09-04, and it did not close
+
+Given on the [0.2.2 Ruling Sheet](https://claude.ai/code/artifact/aa22ce64-e6da-4c2a-94d7-60bbabeef904)
+against the committed shots in `phase-81/verdicts/vib-001/2026-09-03/members-area-{door,living}/`,
+re-rendered first at HEAD `ba1bd3a6` as a control — **113 of 120 PNGs byte-identical**, the seven
+that moved being `/directory`'s printed date. Full record:
+[`RICHARD-RULINGS-2026-09-04.md`](RICHARD-RULINGS-2026-09-04.md).
+
+**14 PASSABLE · 1 SHITTY (`/unsubscribe`, door) · 0 WORTHY.**
+
+🔴 **AC1–AC5 were all met and AC6 still failed, which is exactly what this row's own §6.11 warned
+about**: the four instrument ACs are *presence* readings — how big, how many, how varied — and *"not
+one of them can see an alignment"*. The rulings extend that: they cannot see whatever the remaining
+seam is either. **This row is now evidence for its own §6.11, not a counterexample to it.**
+
+⚠️ **A fourth round needs the seam named by him first** — see the rulings file §4.1. Sessions 12
+through 26 built every seam a session could name and the grade did not move.
