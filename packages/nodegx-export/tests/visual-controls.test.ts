@@ -413,6 +413,50 @@ describe('range, dropdown, video, circle (VISUALS-TARGET §4–§7)', () => {
     expect(css).toContain('.promo {\n  object-fit: contain;\n}');
   });
 
+  // ── §2: Start/End Time ─────────────────────────────────────────────────────────────────────
+
+  test('🔴 a literal Start or End Time defers the video with a named reason', () => {
+    for (const port of ['startTime', 'endTime']) {
+      const result = withShowcase((component) => {
+        component.nodes.find((n) => n.id === 'promo')!.parameters.push({ name: port, value: lit(5) });
+      });
+      expect(result.notes.join('\n')).toContain(
+        `its ${port} composes a media fragment onto the source — that is resolved in the runtime and is not translated in this slice`
+      );
+    }
+  });
+
+  test('a wired Start or End Time defers too', () => {
+    for (const port of ['startTime', 'endTime']) {
+      const result = withShowcase((component) => {
+        component.connections.push({
+          key: `x:value->promo:${port}`,
+          fromId: 'x',
+          fromProperty: 'value',
+          toId: 'promo',
+          toProperty: port,
+          kind: 'value'
+        });
+      });
+      expect(result.notes.join('\n')).toContain(
+        `its ${port} arrives over a wire, so the rendered structure is not static`
+      );
+    }
+  });
+
+  test('🔴 an EMPTY Start/End Time emits no marker and no difference', () => {
+    // The state a cleared field leaves behind. It must not defer (nothing was asked for) and it
+    // must not raise `has no style or content mapping` either — the trap §1 stage 1 shipped once.
+    const result = withShowcase((component) => {
+      component.nodes
+        .find((n) => n.id === 'promo')!
+        .parameters.push({ name: 'startTime', value: lit('') }, { name: 'endTime', value: lit('') });
+    });
+    const out = result.files['src/components/Showcase.tsx'];
+    expect(out).not.toContain('has no style or content mapping');
+    expect(out).toBe(tsx);
+  });
+
   test('circle computes the runtime arc paths at generation time', () => {
     expect(tsx).toContain('width={80}');
     expect(tsx).toContain('height={80}');

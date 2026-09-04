@@ -31818,6 +31818,17 @@
           "index": 100010
         },
         {
+          "name": "endTime",
+          "displayName": "End Time",
+          "group": "Video",
+          "plug": "input",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false,
+          "description": "Seconds at which to stop; leave blank to play to the end. Ignored if it is not later than Start Time, and browsers vary in how strictly they honour it while Loop is on"
+        },
+        {
           "name": "height",
           "displayName": "Height",
           "group": "Dimensions",
@@ -32369,6 +32380,17 @@
           "isSignal": false,
           "default": null,
           "description": "A live MediaStream to play, from a camera or screen capture, instead of a URL"
+        },
+        {
+          "name": "startTime",
+          "displayName": "Start Time",
+          "group": "Video",
+          "plug": "input",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false,
+          "description": "Seconds into the video to begin at; leave blank to start at the beginning. Works for a direct video file, not for a third-party player"
         },
         {
           "name": "styleCss",

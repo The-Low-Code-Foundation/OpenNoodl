@@ -15968,6 +15968,9 @@ const STRUCTURE_PORTS: Partial<Record<RenderRole, string[]>> = {
   radio: ['useLabel', 'useIcon', 'value'],
   radiogroup: ['value'],
   select: ['items', 'placeholder', 'useLabel'],
+  // §2 of NOTES-UNOWNED-NODE-WORK.md. Both compose into the emitted `src` as a media fragment,
+  // so a wired value makes the attribute non-static exactly as a wired `src` would.
+  video: ['startTime', 'endTime'],
   circle: [
     'size',
     'shape',
@@ -16052,6 +16055,18 @@ function visualDeferReason(
   // ported here — see `renderCircle` in emit/component.ts. A literal non-circle shape defers
   // whole rather than emitting a circle nobody asked for; a WIRED shape (unknown at export time)
   // already defers through `STRUCTURE_PORTS.circle` above.
+  // §2 — Start/End Time compose a `#t=` media fragment onto the source, and the runtime resolves
+  // it in `withMediaFragment` (noodl-viewer-react) against a first-frame workaround this emitter
+  // knows nothing about. Reimplementing that here would be the arc-maths mistake §1 warns about —
+  // a second copy of a rule that already exists once — so a literal value defers whole.
+  if (role === 'video') {
+    for (const port of ['startTime', 'endTime']) {
+      const value = literal(port);
+      if (value !== undefined && value !== '' && value !== null) {
+        return `its ${port} composes a media fragment onto the source — that is resolved in the runtime and is not translated in this slice`;
+      }
+    }
+  }
   if (role === 'circle') {
     const shape = literal('shape');
     // Stage 3. A custom source gets its OWN sentence rather than the generic one below, because

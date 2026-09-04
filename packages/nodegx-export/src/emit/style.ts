@@ -135,7 +135,13 @@ export const CONTENT_PARAMS: Record<string, Record<string, string>> = {
     autoplay: 'attr:autoPlay',
     controls: 'attr:controls',
     muted: 'attr:muted',
-    loop: 'attr:loop'
+    loop: 'attr:loop',
+    // §2. Tagged so a node carrying an EMPTY Start/End Time — the state a cleared field leaves —
+    // emits no `TODO(export)` marker over output that is perfectly correct. A real value defers
+    // the node before this map is consulted; this covers the value that is present but says
+    // nothing, which is the case stage 1 of §1 learned to check for.
+    startTime: 'shape',
+    endTime: 'shape'
   }),
   ...aliased(['Circle'], {
     // §1 of NOTES-UNOWNED-NODE-WORK.md — the new `shape` PORT joins the pre-existing `'shape'`

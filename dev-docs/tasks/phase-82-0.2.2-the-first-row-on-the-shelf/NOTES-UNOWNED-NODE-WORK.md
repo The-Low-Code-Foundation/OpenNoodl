@@ -201,14 +201,40 @@ no `<iframe>` in the viewer at all. A pasted YouTube link renders a broken eleme
 
 ✅ **autoplay, controls, loop, muted and volume already exist** for mp4.
 
-**Start/end time is half built for mp4.** `Video.tsx` already appends `#t=0.01` as an Android
-first-frame hack and guards on `src.indexOf('#t=') === -1` — so media fragments are *already the
-mechanism in this file*, and start/end would compose into that same string. The existing hack is the
-collision to resolve.
+### ✅ BUILT, session 39 — Start Time and End Time for mp4
 
-**YouTube/Vimeo** need an iframe path that does not exist. URL params (`?start=&end=&autoplay=…`)
-need no SDK; a reliable `end` plus dependable autoplay needs the IFrame Player API script, which
-nothing loads — a CSP and network decision, not a port change.
+The collision was the whole of it, and it resolves rather than stacking. The hack's purpose is to
+make the browser seek *somewhere* so a frame paints — and **a start time does that too**: `#t=30`
+renders the frame at 30s exactly as `#t=0.01` renders the one at 0.01s. So the workaround is not
+overridden, it is the **default value of the start**. That is why:
+
+- both ports unset ⇒ `#t=0.01`, byte-for-byte what shipped before;
+- Start Time set ⇒ `#t=30`, the author replacing the default rather than fighting it;
+- End Time only ⇒ `#t=0.01,10`, the Android behaviour surviving an end-only setting.
+
+🔴 **A hand-written `#t=` in the Source field still wins while both ports are unset** — it was the
+only way to do this before, and it keeps working untouched. Once a port is set, the control the
+author can see beats the one buried in a string, and the old fragment is *replaced* rather than
+doubled.
+
+⚠️ **An end at or before the start is dropped, not honoured.** It is a range that plays nothing,
+which reads as a broken node rather than as a bad value — the same reasoning as the star's inner
+-radius clamp in §1.
+
+Built as **`src/media-fragment.ts`**, a pure module, so the rule is graded without a DOM;
+`Video.tsx` destructures the two ports **out of the `{...this.props}` spread**, because that spread
+lands on the `<video>` element and a port named `startTime` would become an invalid DOM attribute.
+Export defers a video with a literal or wired value, by a named reason — reimplementing
+`withMediaFragment` in the emitter would be the arc-maths mistake §1 warns about.
+
+### 🔴 STILL NOT BUILT — YouTube/Vimeo
+
+Richard ruled 2026-09-04: **URL parameters only, no third-party player SDK.** So the buildable
+shape is an `<iframe>` path driven by `?start=&end=&autoplay=…`, needing no SDK and no new network
+origin logic. ⚠️ Under that ruling a *reliable* `end` and dependable autoplay are **not available**
+— they need the IFrame Player API script, which the ruling declines — so the ports must say what
+they can and cannot promise rather than implying an accuracy the mechanism does not have. Owner
+`NONE`. Nothing about the mp4 work above blocks it.
 
 ---
 

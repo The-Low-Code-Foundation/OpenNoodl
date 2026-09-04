@@ -2,6 +2,7 @@ import React from 'react';
 
 import Layout from '../../../layout';
 import PointerListeners from '../../../pointerlisteners';
+import { withMediaFragment } from '../../../media-fragment';
 import { Noodl } from '../../../types';
 
 export interface VideoProps extends Noodl.ReactProps {
@@ -49,6 +50,10 @@ export interface CachedVideoProps {
   autoplay?: boolean;
   controls?: boolean;
   src: string;
+  /** §2 — seconds into the video to begin at. Composed into the `#t=` fragment. */
+  startTime?: number;
+  /** §2 — seconds at which to stop. Composed into the `#t=` fragment. */
+  endTime?: number;
 
   innerRef: (video: HTMLVideoElement) => void;
   onCanPlay: () => void;
@@ -70,23 +75,27 @@ class CachedVideo extends React.PureComponent<CachedVideoProps> {
   }
 
   render() {
-    let src = this.props.src ? this.props.src.toString() : undefined;
+    // 🔴 Pulled OUT of the spread below, not just read from it. `{...this.props}` lands on the
+    // `<video>` element, so a port named `startTime` would become an invalid DOM attribute and
+    // React would warn about it on every render. They are inputs to the source string, not
+    // attributes of the element.
+    const { startTime, endTime, ...videoProps } = this.props;
 
-    if (src) {
-      if (src.indexOf('#t=') === -1) {
-        src += '#t=0.01'; //force Android to render the first frame
-      }
-      if (src.startsWith('/')) {
-        const baseUrl = Noodl.Env['BaseUrl'];
-        if (baseUrl) {
-          src = baseUrl + src.substring(1);
-        }
+    // §2 — the Android first-frame hack and the two ports are the same mechanism, resolved in
+    // `withMediaFragment` rather than stacked here. With both ports unset this returns exactly
+    // what this function used to build.
+    let src = withMediaFragment(this.props.src ? this.props.src.toString() : undefined, startTime, endTime);
+
+    if (src && src.startsWith('/')) {
+      const baseUrl = Noodl.Env['BaseUrl'];
+      if (baseUrl) {
+        src = baseUrl + src.substring(1);
       }
     }
 
     return (
       <video
-        {...this.props}
+        {...videoProps}
         playsInline={true}
         src={src}
         {...PointerListeners(this.props)}

@@ -163,6 +163,22 @@ const VideoNode: ReactNodeDefinition = {
       group: 'Video',
       type: 'boolean'
     },
+    startTime: {
+      displayName: 'Start Time',
+      description:
+        'Seconds into the video to begin at; leave blank to start at the beginning. Works for a direct video file, not for a third-party player',
+      propPath: 'dom',
+      group: 'Video',
+      type: 'number'
+    },
+    endTime: {
+      displayName: 'End Time',
+      description:
+        'Seconds at which to stop; leave blank to play to the end. Ignored if it is not later than Start Time, and browsers vary in how strictly they honour it while Loop is on',
+      propPath: 'dom',
+      group: 'Video',
+      type: 'number'
+    },
     controls: {
       displayName: 'Controls',
       description: 'Shows the browser\'s own play, seek and volume controls',
