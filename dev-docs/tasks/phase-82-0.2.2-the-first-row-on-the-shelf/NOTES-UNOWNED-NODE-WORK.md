@@ -106,6 +106,15 @@ because authored SVG *travels* in kits and templates.
   is still red — for the same pre-existing §A1 reason, unchanged by this. ⚠️ **The next session
   that regenerates in place will still sweep both changes together** — this only avoided making
   that worse today.
+
+  ✅ **RESOLVED, session 38 (2026-09-04).** Everything the paragraph above was working around is
+  gone: `catalog:check` and `catalog:merge:check --require-coverage` are both **EXIT=0**, and no
+  hand-patching is needed any more. The §A1 work that made in-place regeneration unsafe is all
+  committed (`8c5e5b10`, `edccfe53`, `06839b9a`), so a plain `npm run catalog:generate` now
+  produces exactly your own delta. ⚠️ **Still do the `--out-dir` + diff first** — the reason is
+  permanent (other tasks feed this file), not specific to §A1. 🔴 **And note `catalog:merge` has
+  NO `--out-dir` flag**: for the enriched catalog the equivalent is `cp -a` the current file aside,
+  `md5`, regenerate in place, diff against the backup, `md5` again.
 - 🔴 **A literal count gate moved, found by running the full suite**:
   `tests-unit/fb-021/portGateReason.test.ts` counts every conditionally-gated port in the shipped
   catalog (`359` → `362`, `explained: 348` → `351`, unexplained held at `11`) because the three new
@@ -281,6 +290,55 @@ the `default` block, copied verbatim and verified byte-identical to the fresh ge
 `#FFFFFF`→`#000000` defaults, one dropped default, the Video Source sentence, the textinput
 placeholder default), untouched by this. ⚠️ The next session that regenerates the catalog in
 place, without `--out-dir` first, will still sweep §A1's changes in with everyone else's.
+
+✅ **Both catalogs are green as of session 38** — see §1's resolution note. No more hand-patching.
+
+### ✅ AND THE ITEMS ALONE WERE NOT ENOUGH — session 38, `4672d924`
+
+> *"The value input port of the dropdown should be by default set to the first item in the default
+> list when the node is placed, 'Option-1' in this case I think, so the user immediately sees a
+> dropdown in the preview with a real option, not just a horizontally collapsed input."* — Richard,
+> 2026-09-04, **after** the two default items above had shipped
+
+🔴 **He was right, and the reason is that `Select.tsx` does not show you the `<select>`.** The
+native element is `opacity: 0`, `position: absolute`, `inset: 0` — overlaid for interaction only.
+What you actually see is a `<span>` drawing `items[selectedIndex].Label`, and `selectedIndex` is
+**-1 whenever `value` is `undefined`**. So session 35's default items populated an invisible
+element, the span drew nothing, and at the node's `contentSize` default it measured no content and
+collapsed to a sliver. **The options were there the whole time and nothing displayed them.**
+
+The fix is the same shape as the items one and for the same reason (`value` also has a custom
+`set`): `initialize()` seeds it, `default:` stays on the port so the panel agrees.
+
+⚠️ **`props.value` AND `_internal.value` are both seeded, and the pairing is load-bearing.**
+`Select`'s mount effect calls `valueChanged(props.value)`, and `valueChanged` fires **Changed**
+whenever the value differs from `_internal.value` — so seeding `props` alone would make every
+placed Dropdown emit a signal the port's own description promises it does not emit, and the node
+would look perfectly correct while doing it. `_internal.value` is also what the `value` *output*'s
+getter returns, so it is what keeps the graph agreeing with the screen. One spec grades exactly
+that, because nothing else would notice.
+
+✅ **Checked, not assumed**: `Select.tsx:126` reads `props.items.items.length`, which a plain
+`DEFAULT_ITEMS` array only survives because `collection.ts:436` defines `items` on
+`Array.prototype` (returning a proxy of the same array). Until now `selectedIndex === -1`
+short-circuited that expression; selecting an item makes it evaluate for the first time. Verified
+it resolves rather than throwing before shipping the seed.
+
+**Readings**: `p82-dropdown-default-items` **8/8 EXIT=0**, and **EXIT=1 on the reverted arm** with
+4 of the 5 new rows red (the fifth is a regression guard that should pass in both). 🔴 **One row
+was rewritten because the reverted arm showed it passing in both directions** — asserting
+`_internal.value === props.value` is a tautology when both are `undefined`, so it asserts the
+literal now. Full `noodl-viewer-react` **91/91 files, 1180/1180**; `noodl-mcp` **93/93, 1257/1257**;
+`tsc -p noodl-viewer-react` clean; both catalog gates EXIT=0.
+
+🔴 **REGISTERED WHILE BUILDING, owner `NONE`, deliberately NOT built** — an author who replaces
+`items` with their own list and never sets `value` still gets the collapsed input, because the
+seeded `option-1` matches none of their options and `selectedIndex` goes back to -1. **Unchanged
+by this commit rather than caused by it** (it was collapsed before too), and out of the scope
+asked. The cheap remedy is a `placeholder` — the port exists and its label renders in exactly that
+case. The fuller one is for the `items` setter to adopt the new list's first value when the current
+value is still the untouched seed, which is more behaviour than anyone has asked for and would
+surprise an author who wants nothing selected until the reader picks.
 
 **Not built**: the beginner "click plus and type" JSON-editor mode (the harder half of the
 original ask) — still three unchosen directions, unchanged from the research above.
