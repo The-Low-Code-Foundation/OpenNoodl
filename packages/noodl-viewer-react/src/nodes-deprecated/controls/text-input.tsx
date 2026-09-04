@@ -181,7 +181,12 @@ const TextInput: ReactNodeDefinition = {
       index: 22,
       group: 'Text',
       displayName: 'Placeholder',
-      default: 'Type here...',
+      // REL-002a / register V14 — the SECOND copy of this default, and the reason a one-file
+      // fix read as done: `Text Input` (deprecated) and `net.noodl.controls.textinput` are two
+      // source files, and the catalog carries an entry for each. Editing only the live one left
+      // `Type here...` in `node-catalog.json` and every legacy project still shipping the tell.
+      // See the live node's note for what was measured.
+      default: '',
       type: {
         name: 'string'
       }

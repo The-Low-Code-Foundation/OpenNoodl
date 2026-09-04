@@ -94,7 +94,21 @@ const TextInputNode = {
       group: 'Text',
       displayName: 'Placeholder',
       description: 'Greyed-out hint shown while the field is empty',
-      default: 'Type here...',
+      // REL-002a / register V14 — empty, not `'Type here...'`.
+      //
+      // 🔴 This default SHIPPED. Measured on `templates/members-area` at HEAD: 18 text inputs,
+      // **one** of which sets `placeholder` explicitly, so seventeen fields across the setup
+      // and join forms rendered *"Type here…"* — six on `/setup`, four on `/join`, every one
+      // of them under a real label that already said what the field was for. A runtime default
+      // that manufactures the rubric's own placeholder-grade-copy tell, on every shipped form,
+      // and nothing fired on it: `render-report`'s placeholder finding derives its strings from
+      // this very default, so the string it hunts for is one the product put there.
+      //
+      // ⚠️ A hint is still a good idea on a field whose format is not obvious, and authoring one
+      // costs a parameter. What is not defensible is shipping the same six words on every field
+      // of every form because nobody said otherwise. Empty is the honest unset: the label above
+      // the field is what names it, which is what these forms already do.
+      default: '',
       type: {
         name: 'string'
       }
