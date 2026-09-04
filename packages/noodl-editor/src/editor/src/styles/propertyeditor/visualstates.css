@@ -1,5 +1,5 @@
 .property-editor-visual-states {
-  border-bottom: 1px solid var(--theme-color-bg-1);
+  border-bottom: 1px solid var(--theme-color-border-default);
   box-sizing: border-box;
 }
 
