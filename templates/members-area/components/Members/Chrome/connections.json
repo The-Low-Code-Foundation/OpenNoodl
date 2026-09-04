@@ -102,8 +102,74 @@
     {
       "fromId": "standing",
       "fromProperty": "isSignedIn",
+      "toId": "bandShape",
+      "toProperty": "in-signedIn"
+    },
+    {
+      "fromId": "viewport",
+      "fromProperty": "width",
+      "toId": "bandShape",
+      "toProperty": "in-width"
+    },
+    {
+      "fromId": "menuState",
+      "fromProperty": "navOpen",
+      "toId": "bandShape",
+      "toProperty": "in-open"
+    },
+    {
+      "fromId": "bandShape",
+      "fromProperty": "out-navMounted",
       "toId": "navWrap",
       "toProperty": "mounted"
+    },
+    {
+      "fromId": "bandShape",
+      "fromProperty": "out-menuMounted",
+      "toId": "menuButton",
+      "toProperty": "mounted"
+    },
+    {
+      "fromId": "menuButton",
+      "fromProperty": "onClick",
+      "toId": "menuState",
+      "toProperty": "toggle"
+    },
+    {
+      "fromId": "navAnnouncements",
+      "fromProperty": "onClick",
+      "toId": "menuState",
+      "toProperty": "to-Closed"
+    },
+    {
+      "fromId": "navMeetings",
+      "fromProperty": "onClick",
+      "toId": "menuState",
+      "toProperty": "to-Closed"
+    },
+    {
+      "fromId": "navPost",
+      "fromProperty": "onClick",
+      "toId": "menuState",
+      "toProperty": "to-Closed"
+    },
+    {
+      "fromId": "navRequests",
+      "fromProperty": "onClick",
+      "toId": "menuState",
+      "toProperty": "to-Closed"
+    },
+    {
+      "fromId": "navDirectory",
+      "fromProperty": "onClick",
+      "toId": "menuState",
+      "toProperty": "to-Closed"
+    },
+    {
+      "fromId": "navAccount",
+      "fromProperty": "onClick",
+      "toId": "menuState",
+      "toProperty": "to-Closed"
     },
     {
       "fromId": "standing",

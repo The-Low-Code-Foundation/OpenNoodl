@@ -76,7 +76,7 @@
         "mounted": false
       },
       "x": 160,
-      "y": 880
+      "y": 1120
     },
     {
       "id": "topRow",
@@ -85,7 +85,7 @@
       "parent": "inner",
       "children": [
         "identity",
-        "signOutButton"
+        "actions"
       ],
       "parameters": {
         "width": {
@@ -101,6 +101,49 @@
       },
       "x": 160,
       "y": 280
+    },
+    {
+      "id": "actions",
+      "type": "Group",
+      "label": "The controls at the end of the band",
+      "parent": "topRow",
+      "children": [
+        "menuButton",
+        "signOutButton"
+      ],
+      "parameters": {
+        "sizeMode": "contentSize",
+        "flexDirection": "row",
+        "alignItems": "center",
+        "columnGap": "var(--space-2)"
+      },
+      "x": 220,
+      "y": 760
+    },
+    {
+      "id": "menuButton",
+      "type": "net.noodl.controls.button",
+      "label": "Menu",
+      "parent": "actions",
+      "parameters": {
+        "label": "Menu",
+        "backgroundColor": "transparent",
+        "color": "var(--foreground)",
+        "borderRadius": "var(--radius-full)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-control)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "sizeMode": "contentSize",
+        "mounted": false
+      },
+      "x": 280,
+      "y": 880
     },
     {
       "id": "identity",
@@ -155,7 +198,7 @@
       "id": "signOutButton",
       "type": "net.noodl.controls.button",
       "label": "Sign out",
-      "parent": "topRow",
+      "parent": "actions",
       "parameters": {
         "label": "Sign out",
         "backgroundColor": "transparent",
@@ -172,8 +215,8 @@
         "fontWeight": "var(--font-semibold)",
         "sizeMode": "contentSize"
       },
-      "x": 220,
-      "y": 760
+      "x": 280,
+      "y": 1000
     },
     {
       "id": "nav",
@@ -200,7 +243,7 @@
         }
       },
       "x": 220,
-      "y": 1000
+      "y": 1240
     },
     {
       "id": "navAnnouncements",
@@ -228,7 +271,7 @@
         }
       },
       "x": 280,
-      "y": 1120
+      "y": 1360
     },
     {
       "id": "navMeetings",
@@ -256,7 +299,7 @@
         }
       },
       "x": 280,
-      "y": 1240
+      "y": 1480
     },
     {
       "id": "navPost",
@@ -285,7 +328,7 @@
         "mounted": false
       },
       "x": 280,
-      "y": 1360
+      "y": 1600
     },
     {
       "id": "navRequests",
@@ -314,7 +357,7 @@
         "mounted": false
       },
       "x": 280,
-      "y": 1480
+      "y": 1720
     },
     {
       "id": "navDirectory",
@@ -343,7 +386,7 @@
         "mounted": false
       },
       "x": 280,
-      "y": 1600
+      "y": 1840
     },
     {
       "id": "navAccount",
@@ -371,7 +414,7 @@
         }
       },
       "x": 280,
-      "y": 1720
+      "y": 1960
     },
     {
       "id": "toAnnouncements",
@@ -382,7 +425,7 @@
         "target": "/Pages/Members"
       },
       "x": 530,
-      "y": 1120
+      "y": 1360
     },
     {
       "id": "toMeetingsNav",
@@ -393,7 +436,7 @@
         "target": "/Pages/Meetings"
       },
       "x": 530,
-      "y": 1240
+      "y": 1480
     },
     {
       "id": "toPostNav",
@@ -404,7 +447,7 @@
         "target": "/Pages/Post"
       },
       "x": 530,
-      "y": 1360
+      "y": 1600
     },
     {
       "id": "toRequestsNav",
@@ -415,7 +458,7 @@
         "target": "/Pages/Requests"
       },
       "x": 530,
-      "y": 1600
+      "y": 1840
     },
     {
       "id": "toDirectoryNav",
@@ -426,7 +469,7 @@
         "target": "/Pages/Directory"
       },
       "x": 530,
-      "y": 1720
+      "y": 1960
     },
     {
       "id": "toAccountNav",
@@ -437,7 +480,78 @@
         "target": "/Pages/Account"
       },
       "x": 530,
-      "y": 1840
+      "y": 2080
+    },
+    {
+      "id": "viewport",
+      "type": "Screen Resolution",
+      "label": "How wide is the window",
+      "x": 530,
+      "y": 2200
+    },
+    {
+      "id": "menuState",
+      "type": "States",
+      "label": "Is the band’s menu open?",
+      "parameters": {
+        "states": "Closed,Open",
+        "values": "navOpen",
+        "type-navOpen": "boolean",
+        "value-Closed-navOpen": false,
+        "value-Open-navOpen": true
+      },
+      "x": 530,
+      "y": 880
+    },
+    {
+      "id": "bandShape",
+      "type": "JavaScriptFunction",
+      "label": "Is there room for the six ways on, or do they go behind a menu?",
+      "parameters": {
+        "runOnChange-in-width": true,
+        "runOnChange-in-signedIn": true,
+        "runOnChange-in-open": true,
+        "functionScript": "const narrow = Inputs.width !== undefined && Inputs.width < 700;\nconst signedIn = Inputs.signedIn === true;\nOutputs.menuMounted = signedIn && narrow;\nOutputs.navMounted = signedIn && (!narrow || Inputs.open === true);"
+      },
+      "x": 530,
+      "y": 1120,
+      "ports": [
+        {
+          "name": "in-width",
+          "displayName": "width",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "in-signedIn",
+          "displayName": "signedIn",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "in-open",
+          "displayName": "open",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "out-menuMounted",
+          "displayName": "menuMounted",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-navMounted",
+          "displayName": "navMounted",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        }
+      ]
     },
     {
       "id": "association",
@@ -447,7 +561,7 @@
         "collectionName": "Association"
       },
       "x": 530,
-      "y": 1960
+      "y": 2320
     },
     {
       "id": "read-2",
@@ -481,7 +595,7 @@
       "type": "/Members/Standing",
       "label": "Who is this?",
       "x": 530,
-      "y": 1480
+      "y": 1720
     },
     {
       "id": "outputs-4",
@@ -530,14 +644,14 @@
         }
       ],
       "x": 530,
-      "y": 2080
+      "y": 2440
     },
     {
       "id": "logout",
       "type": "net.noodl.user.LogOut",
       "label": "Log out",
       "x": 530,
-      "y": 760
+      "y": 1000
     },
     {
       "id": "toLanding-7",
@@ -548,7 +662,7 @@
         "target": "/Pages/Landing"
       },
       "x": 530,
-      "y": 2200
+      "y": 2560
     }
   ],
   "visualRoots": [

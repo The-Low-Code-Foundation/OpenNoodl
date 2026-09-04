@@ -103,7 +103,7 @@
       "parent": "heroBand",
       "children": [
         "hero",
-        "actions",
+        "actions-2",
         "setupCard",
         "waitingCard"
       ],
@@ -202,7 +202,7 @@
       "y": 1000
     },
     {
-      "id": "actions",
+      "id": "actions-2",
       "type": "Group",
       "label": "Ways in",
       "parent": "heroShell",
@@ -223,7 +223,7 @@
       "id": "signInButton",
       "type": "net.noodl.controls.button",
       "label": "Members sign in",
-      "parent": "actions",
+      "parent": "actions-2",
       "parameters": {
         "label": "Members sign in",
         "backgroundColor": "var(--primary)",
@@ -245,7 +245,7 @@
       "id": "joinButton",
       "type": "net.noodl.controls.button",
       "label": "Ask to join",
-      "parent": "actions",
+      "parent": "actions-2",
       "parameters": {
         "label": "Ask to join",
         "backgroundColor": "var(--surface-glass)",

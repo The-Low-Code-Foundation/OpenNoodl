@@ -42,7 +42,7 @@
     {
       "fromId": "read-3",
       "fromProperty": "out-hasAssociation",
-      "toId": "actions",
+      "toId": "actions-2",
       "toProperty": "mounted"
     },
     {

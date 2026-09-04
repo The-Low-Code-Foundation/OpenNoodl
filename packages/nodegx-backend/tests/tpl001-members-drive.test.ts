@@ -210,6 +210,17 @@ describe("TPL-001 — the members' area, driven", () => {
   let enforced = false;
   let signupStatus = -1;
   let approvedInBrowser = false;
+  /**
+   * Judgement 1's four readings, and the failure that would otherwise take the
+   * whole file with it.
+   *
+   * 🔴 `clickButton` throws on a control it cannot find or cannot hit, and this
+   * runs inside `beforeAll` — **a `beforeAll` that throws runs no arm**. Caught
+   * and carried, so a fold that breaks reddens §11 and leaves the other
+   * sixty-three specs saying what they say.
+   */
+  const fold: Record<string, Visit> = {};
+  let foldError = '';
   /** The ids §9 needs, read over HTTP because the URL is `/announcements/{id}`. */
   let removableId = '';
   let typedId = '';
@@ -493,6 +504,42 @@ describe("TPL-001 — the members' area, driven", () => {
       // of the removal a refusal rather than a page that failed to render.
       typedId = await idOfAnnouncement(TYPED.title);
       await look('member.announcement', `/announcements/${typedId}`);
+
+      // ── §11 — JUDGEMENT 1: the band's nav folds behind a menu below 700 ────
+      //
+      // 🔴 Richard, 2026-09-04: *"collapse the nav to a menu below 700."*
+      // §7.3 measured what it buys: content began at y=373 on a phone, 44.2% of
+      // the first screen, against 30.6% on a desktop — the whole difference
+      // being this nav.
+      //
+      // ⚠️ **Taken LAST, and the viewport is put back.** A resize reflows every
+      // control on the page, and `clickButtonInRow` above depends on the layout
+      // it was written against. Running this at the end costs nothing and
+      // cannot move an earlier reading.
+      //
+      // ⚠️ `Visit.nav` is every descendant of `<nav>`, which is `navWrap` —
+      // authored `as: 'nav'`. When the group is unmounted the element is gone,
+      // so this reads the collapse itself rather than a style on it.
+      try {
+        await page.setViewport({ width: 1280, height: 1600 });
+        fold.wide = await readVisit(page, '/members');
+
+        await page.setViewport({ width: 390, height: 844 });
+        fold.narrowClosed = await readVisit(page, '/members');
+
+        await clickButton(page, 'Menu');
+        fold.narrowOpen = await readHere(page, { until: 'Announcements' });
+
+        // Choosing a destination puts it away again — the tap that would
+        // otherwise hand the reader a menu standing over the page it just
+        // opened. Read on the page it LANDS on, which is the point.
+        await clickButton(page, 'Meetings');
+        fold.afterChoosing = await readHere(page);
+      } catch (e) {
+        foldError = String((e as Error)?.message ?? e);
+      } finally {
+        await page.setViewport({ width: 1280, height: 1600 });
+      }
     });
 
     // ── The HTTP arms that need Mo to be a member ─────────────────────────────
@@ -1222,4 +1269,52 @@ describe("TPL-001 — the members' area, driven", () => {
       expect(standingCalls['moderator.announcement']).toBe(1);
     });
   });
+  /**
+   * 🔴 **RICHARD'S JUDGEMENT 1, 2026-09-04, in a browser at two widths.**
+   *
+   * §7.3 read the phone column and found no breakage anywhere — and four things
+   * that were judgements rather than faults. The first: **44.2% of the first
+   * phone screen was chrome on eight of the thirteen pages**, content beginning
+   * at y=373 against y=275 on a desktop, the whole difference being this nav.
+   * His answer was *"collapse the nav to a menu below 700"*.
+   *
+   * ⚠️ **What this adds over `tpl001Template.test.ts`.** The graph gate can see
+   * a `Screen Resolution`, a `States` and a function wired to `navWrap.mounted`.
+   * It cannot see which way the function decides, and `Screen Resolution` is
+   * client-only — so the one thing that matters here happens in a browser or
+   * not at all.
+   */
+  it('§11 the band\u2019s nav is on the page at 1280, behind a menu at 390, and puts itself away again', () => {
+    // 🔴 Read the caught failure first and print it — `clickButton`'s own
+    // message lists the buttons that WERE on the page, which is the useful one.
+    expect(foldError).toBe('');
+
+    // Wide: the six ways on are simply there, and no menu control is.
+    expect(fold.wide.nav).toContain('Announcements');
+    expect(fold.wide.nav).toContain('Meetings');
+    expect(fold.wide.nav).toContain('Your account');
+    expect(fold.wide.text).not.toContain('Menu');
+
+    // 🔴 Narrow and closed: the nav element is GONE, not merely restyled — and
+    // the control that brings it back is on the page. `mounted`, never
+    // `visible`: a hidden nav that keeps its box gives back none of the 44.2%.
+    expect(fold.narrowClosed.nav).toEqual([]);
+    expect(fold.narrowClosed.text).toContain('Menu');
+
+    // 🔴 The CONTROL that makes the emptiness above a fold rather than a band
+    // that failed to render: the same visit still carries the association and
+    // the way out, so the chrome is there and only the nav is folded.
+    expect(fold.narrowClosed.text).toContain('Sign out');
+
+    // Pressed: the six come back, at the same 390 width.
+    expect(fold.narrowOpen.nav).toContain('Announcements');
+    expect(fold.narrowOpen.nav).toContain('Your account');
+
+    // And choosing one puts it away — on the page it lands on, which is where
+    // a menu left standing would cost the reader the screen twice over.
+    expect(fold.afterChoosing.url).toBe('/meetings');
+    expect(fold.afterChoosing.nav).toEqual([]);
+    expect(fold.afterChoosing.text).toContain('Menu');
+  });
+
 });

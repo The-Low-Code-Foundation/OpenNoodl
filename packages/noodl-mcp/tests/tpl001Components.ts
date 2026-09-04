@@ -5725,7 +5725,41 @@ export const CHROME_NODES = [
       // about the reader, and the band was making it before it had asked.
       mounted: false
     },
-    children: ['identity', 'signOutButton']
+    // 🔴 **STILL TWO CHILDREN, and that is deliberate.** `BAND_NAV`'s own note
+    // records why: *"a third child in the top row would be [a new layout
+    // mechanism], and D32 is what happens when one is added without looking."*
+    // Judgement 1's menu control therefore joins `Sign out` inside `actions`
+    // rather than becoming a third item in a `space-between` row.
+    children: ['identity', 'actions']
+  },
+  {
+    id: 'actions',
+    type: 'Group',
+    label: 'The controls at the end of the band',
+    parent: 'topRow',
+    // `contentSize`, so it takes only the width of the two buttons and
+    // `space-between` still pushes it to the end. A `contentHeight` here would
+    // assign width and eat the row — the `pill` trap, one component over.
+    parameters: {
+      sizeMode: 'contentSize',
+      flexDirection: 'row',
+      alignItems: 'center',
+      columnGap: 'var(--space-2)'
+    },
+    children: ['menuButton', 'signOutButton']
+  },
+  {
+    id: 'menuButton',
+    type: 'net.noodl.controls.button',
+    label: 'Menu',
+    parent: 'actions',
+    // ⚠️ `btn`, not `navBtn`: `navBtn` wraps `inColumn`, which sizes a control
+    // for a `Columns` cell. This one sits in an ordinary row.
+    //
+    // 🔴 Authored CLOSED. It is mounted only when the band is both signed in
+    // and narrow — see `bandShape`. A menu control on a desktop is a second way
+    // to reach a nav that is already on the screen.
+    parameters: { ...btn('Menu'), mounted: false }
   },
   {
     id: 'identity',
@@ -5762,7 +5796,10 @@ export const CHROME_NODES = [
     id: 'signOutButton',
     type: 'net.noodl.controls.button',
     label: 'Sign out',
-    parent: 'topRow',
+    // Moved out of `topRow` and into `actions` by judgement 1 — see `topRow`.
+    // Last of the two, so the menu toggle is the nearer target and the way out
+    // is not the thing a thumb reaches first.
+    parent: 'actions',
     parameters: btn('Sign out')
   },
   {
@@ -5799,6 +5836,74 @@ export const CHROME_NODES = [
     label: `To ${item.label.toLowerCase()}`,
     parameters: { router: ROUTER, target: item.target }
   })),
+  {
+    id: 'viewport',
+    type: 'Screen Resolution',
+    label: 'How wide is the window'
+  },
+  {
+    id: 'menuState',
+    type: 'States',
+    label: 'Is the band’s menu open?',
+    // `states[0]` is the start state when `startState` is unset
+    // (`states.ts:243`), so it begins Closed without a second parameter saying
+    // so. `navOpen` is a value name and becomes an output port verbatim —
+    // deliberately not one of `RESERVED_OUTPUTS`, where a value called `done`
+    // would resolve to the outcome contract's signal instead.
+    parameters: {
+      states: 'Closed,Open',
+      values: 'navOpen',
+      'type-navOpen': 'boolean',
+      'value-Closed-navOpen': false,
+      'value-Open-navOpen': true
+    }
+  },
+  {
+    id: 'bandShape',
+    type: 'JavaScriptFunction',
+    label: 'Is there room for the six ways on, or do they go behind a menu?',
+    // 🔴 **RICHARD'S JUDGEMENT 1, 2026-09-04**: *"collapse the nav to a menu
+    // below 700"*. §7.3 measured the cost it answers — content starts at y=373
+    // on a phone, **44.2% of the first screen**, against y=275 and 30.6% on a
+    // desktop. The band is 121px at both widths; the whole difference is this
+    // nav, one row of six pills on a desktop and a 2×3 grid on a phone. On
+    // `/requests` the first card began below the halfway line.
+    //
+    // 🔴 **ONE producer for `navWrap.mounted`, not two.** REL-002b's gate used
+    // to reach that port directly from `standing.isSignedIn`, and `nav`'s own
+    // note already warns that a second `mounted` on this branch would be a twin
+    // of it. Both facts arrive here and leave as one value, so the fail-closed
+    // behaviour is unchanged and unduplicated: a signed-out reader gets no nav
+    // at any width, because `signedIn` gates the whole expression.
+    parameters: {
+      // 🔴 Authored `true` on every input, for the reason `sb005`'s `fold`
+      // carries: the NDA-017 migration writes `runOnChange-<input>: false` over
+      // the value inputs of a node whose control signal is wired, on every
+      // project load. An explicit `true` survives it; an absent key does not.
+      // None of the three is a trigger this node can afford to lose — width
+      // freezes the band mid-resize, `signedIn` leaves the nav up after a sign
+      // out, and `open` makes the menu button inert.
+      'runOnChange-in-width': true,
+      'runOnChange-in-signedIn': true,
+      'runOnChange-in-open': true,
+      functionScript: [
+        // 🔴 **An unknown width is WIDE here, and that is the opposite of
+        // `sb005`'s `fold`, on purpose.** `Screen Resolution` is client-only
+        // (`screenresolution.ts:15`), so a server render measures nothing.
+        // `fold` returns early because ITS authored shape is the wide one and
+        // leaving it standing is right. `navWrap` is authored `mounted: false`,
+        // so an early return here would leave the nav off on every server
+        // render — the band would lose its six ways on for anybody whose first
+        // paint is the server's.
+        'const narrow = Inputs.width !== undefined && Inputs.width < 700;',
+        'const signedIn = Inputs.signedIn === true;',
+        // The menu control only exists where the nav has somewhere to hide.
+        'Outputs.menuMounted = signedIn && narrow;',
+        // Wide: the nav is simply there. Narrow: it is there when asked for.
+        'Outputs.navMounted = signedIn && (!narrow || Inputs.open === true);'
+      ].join('\n')
+    }
+  },
   {
     id: 'association',
     type: 'DbCollection2',
@@ -5921,7 +6026,30 @@ export const CHROME_WIRES = [
   // handed to nobody: it answers "is there a session", which is the band's
   // question, while the pages ask "may this person read", which is `isMember`.
   { fromId: 'standing', fromProperty: 'isSignedIn', toId: 'topRow', toProperty: 'mounted' },
-  { fromId: 'standing', fromProperty: 'isSignedIn', toId: 'navWrap', toProperty: 'mounted' },
+  // 🔴 **JUDGEMENT 1 — `navWrap.mounted` now has exactly ONE producer.** This
+  // line used to read `standing.isSignedIn → navWrap.mounted`; the same fact
+  // now arrives at `bandShape` instead, together with the width and whether the
+  // menu is open, and leaves as one value. Two producers on this port is the
+  // shape `nav`'s own note calls "a twin of that gate", and it is how a
+  // fail-closed band comes back open.
+  { fromId: 'standing', fromProperty: 'isSignedIn', toId: 'bandShape', toProperty: 'in-signedIn' },
+  { fromId: 'viewport', fromProperty: 'width', toId: 'bandShape', toProperty: 'in-width' },
+  { fromId: 'menuState', fromProperty: 'navOpen', toId: 'bandShape', toProperty: 'in-open' },
+  { fromId: 'bandShape', fromProperty: 'out-navMounted', toId: 'navWrap', toProperty: 'mounted' },
+  { fromId: 'bandShape', fromProperty: 'out-menuMounted', toId: 'menuButton', toProperty: 'mounted' },
+  { fromId: 'menuButton', fromProperty: 'onClick', toId: 'menuState', toProperty: 'toggle' },
+  // ⚠️ **Choosing a destination CLOSES the menu.** Without these six the panel
+  // would still be standing over the page it just took the reader to — which is
+  // the same 44.2% of a phone screen judgement 1 exists to give back, arriving
+  // one tap later. Wired from each item's own click, beside the navigate it
+  // already fires: a `States` reached from six places is what `to-<state>` is
+  // for, and it is idempotent when the menu is already closed at a wide width.
+  ...BAND_NAV.map((item) => ({
+    fromId: item.id,
+    fromProperty: 'onClick',
+    toId: 'menuState',
+    toProperty: 'to-Closed'
+  })),
   // The same value the three moderator-only nav items are gated on, handed up
   // to whichever page placed the band. See `outputs` for why it is here and not
   // a third call on the two pages that want it.

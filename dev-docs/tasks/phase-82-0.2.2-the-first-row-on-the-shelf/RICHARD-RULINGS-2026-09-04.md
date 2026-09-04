@@ -317,6 +317,22 @@ above its footer"* and the option he chose was worded *"the void closes"*.
 
 **It did not close.** A 60px control was added to a 190px gap.
 
+## ✅ §6.5 SECOND LOOK, 2026-09-04 — **PASSABLE**
+
+Given on the ruling sheet's step 00, against the four shots in
+`verdicts/rel-002c-unsubscribe/2026-09-04/`:
+
+> **"Unsubscribe is passable now."**
+
+🔴 **So D2's condition is MET and the publish is unblocked.** The members' area now reads **15
+PASSABLE, 0 SHITTY, 0 WORTHY** — no page below the amended bar, which is exactly what close
+condition 2 was amended to require.
+
+⚠️ **He ruled it PASSABLE with the void still measuring ~220px**, having been told so in the same
+breath. So the remaining slack is **not** an open defect on this row: it is a second consequence of
+a ruling, like the void itself was. **Do not "fix" it without asking him** — that is the mistake s12
+made with the link, one ruling earlier.
+
 ✅ **What DID happen is the thing he actually asked for**: the page offers a way back, which is D39
 reversed and is the only remedy any verdict on this page arrived with. Whether that is enough to
 lift `/unsubscribe` off SHITTY is **his call and nobody else's** — and it is the condition D2
@@ -326,3 +342,81 @@ attaches to the publish, so **it must be re-ruled before the publish command run
 band's eyebrow and the content column at x≈305 (`FORM_GROUND`'s 720 centred), the footer at x≈65.
 That is the same defect REL-002c §"three different left edges" fixed on `Pages/Post` and
 `Pages/Account`, surviving on a door page nobody re-measured after the band went on.
+
+---
+
+# §7 🔴 JUDGEMENT 1 IS BUILT — 174px back on every chrome page
+
+Built after `/unsubscribe` was re-ruled PASSABLE and the publish was cleared.
+
+## §7.1 The mechanism, and the two things it is deliberately not
+
+`Members/Chrome` gains a `Screen Resolution`, a `States` (`Closed,Open` → `navOpen`), a `Menu`
+button and one `JavaScriptFunction`, `bandShape`.
+
+🔴 **`navWrap.mounted` still has exactly ONE producer.** REL-002b's fail-closed gate used to reach
+that port straight from `standing.isSignedIn`, and `nav`'s own note already warned that a second
+`mounted` on this branch *"would be a twin of that gate"*. So the signed-in fact, the width and the
+open state all arrive at `bandShape` and leave as one value. A signed-out reader gets no nav at any
+width, because `signedIn` gates the whole expression — unchanged and unduplicated.
+
+🔴 **The top row still has TWO children.** `BAND_NAV`'s note records why: *"a third child in the top
+row would be [a new layout mechanism], and D32 is what happens when one is added without looking."*
+The `Menu` control therefore joins `Sign out` inside a new `actions` group.
+
+🔴 **An unknown width is WIDE here, and that is the OPPOSITE of `sb005`'s `fold`, on purpose.**
+`Screen Resolution` is client-only, so a server render measures nothing. `fold` returns early
+because *its* authored shape is the wide one. `navWrap` is authored `mounted: false`, so an early
+return here would have left the nav off on every server render — the band losing its six ways on for
+anybody whose first paint is the server's.
+
+⚠️ **Choosing a destination closes the menu** — six wires from each nav item's own click to
+`to-Closed`. Without them the panel stands over the page it just opened, which is the same screen
+judgement 1 exists to give back, arriving one tap later.
+
+## §7.2 What it bought, measured
+
+Phone (390) full-page heights, before → after, from the harness's own `SHOT` lines:
+
+| page | before | after | |
+|---|---|---|---|
+| `/members` | 1555 | **1381** | −174 |
+| `/post` | 1474 | **1300** | −174 |
+| `/requests` | 1060 | **886** | −174 |
+| `/directory` | 1229 | **1055** | −174 |
+| `/meetings` | 1005 | **844** | −161, and it **stops scrolling entirely** |
+| `/account`, `/announcements/{id}`, `/meetings/{id}` | 844 | 844 | already inside one screen; the number cannot move |
+| the six door pages, and `/` | — | — | carry no chrome band. Correctly unchanged |
+
+🔴 **The number moves on five of nine chrome pages, and the fold applied to all nine.** A census over
+the text dumps is what separates those two: **`Menu` on 8 of 8 chrome pages, and 0 nav items on any
+phone page**. (`/` shows no `Menu` — it has a hero, not the band, which is the control.) Reading
+*"five pages changed"* as *"the fix reached five pages"* would have been wrong in the safe direction.
+
+Derived, not measured directly: §7.3's *"content starts at y=373, 44.2% of the first screen"* becomes
+**y≈199, about 23.6%** — 373 minus the measured 174.
+
+## §7.3 The readings, with their exit statuses
+
+| gate | reading |
+|---|---|
+| `tpl001Template.test.ts` | **79/79, EXIT=0** |
+| the same, before the tally was moved | **EXIT=1** — `D7/D16 … gated with visible` read **54, expected 53**. The literal count gate caught the new node, which is what it is for; the tally moved to 54 **with its reason** |
+| `tpl001-members-drive.test.ts` (real backend, real browser) | **64/64, EXIT=0** (63 before) |
+| `noodl-mcp` full jest | **93 suites / 1257, EXIT=0** |
+| `tsc --noEmit -p packages/noodl-mcp` | **0, EXIT=0** |
+| `vib001-members.look.ts` | **EXIT=0, 2/2, 60 shots** |
+| `noodl-editor` `test:main` | **412 suites / 6847, EXIT=0** |
+| `noodl-editor` `test:ci` | **2943 specs, 4 failures, seed 15995, HEAD `d9b9e628`** — the AIX-006 floor, all four by name, fresh readout |
+
+⚠️ **§11's press is wrapped and its failure carried**, the same shape §6b ended up in: `clickButton`
+throws, it runs in `beforeAll`, and **a `beforeAll` that throws runs no arm**. A broken fold reddens
+one spec, not sixty-four.
+
+## §7.4 ⚠️ What is NOT built
+
+1. **Judgement 4** — `/members` unauthenticated navigating to `/sign-in` instead of rendering the
+   landing page byte-identically. Answered by him, unbuilt, and **it gates nothing**.
+2. **The pictures have not been re-ruled at PASSABLE.** The fold changes eight phone screens he
+   graded. Nothing here claims his verdicts carry over; they were given on the pre-fold shots, and
+   the amended close condition is met on those.

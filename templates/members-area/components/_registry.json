@@ -150,8 +150,8 @@
     "Members/Chrome": {
       "path": "Members/Chrome",
       "type": "visual",
-      "nodeCount": 27,
-      "connectionCount": 25,
+      "nodeCount": 32,
+      "connectionCount": 36,
       "modified": "2026-08-28T00:00:00.000Z",
       "created": "2026-08-28T00:00:00.000Z"
     },
@@ -262,7 +262,7 @@
   },
   "stats": {
     "totalComponents": 32,
-    "totalNodes": 568,
-    "totalConnections": 494
+    "totalNodes": 573,
+    "totalConnections": 505
   }
 }

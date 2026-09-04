@@ -1132,7 +1132,7 @@ describe('TPL-001 — the states a person can be in all have a screen', () => {
     // supplies — so on a fresh install it is a `--background` stripe holding one
     // empty `Text` between a photograph and a footer unless it is gated on the
     // same `hasAssociation` every other record-filled band here is.
-    expect(gates.length).toBe(53); // TPL-002: Account ×7, Unsubscribe ×2 · REL-002b: band ×2, waiting card · REL-002c: hero, about, −`inside`
+    expect(gates.length).toBe(54); // TPL-002: Account ×7, Unsubscribe ×2 · REL-002b: band ×2, waiting card · REL-002c: hero, about, −`inside` · judgement 1: `menuButton`
   });
 
   it('AC6 — every list ships an empty state, hidden until a query has answered', () => {
