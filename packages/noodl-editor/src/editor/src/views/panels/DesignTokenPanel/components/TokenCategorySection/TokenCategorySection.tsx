@@ -6,9 +6,18 @@
  * current value, and a reset button if overridden.
  */
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 
-import { StyleTokenRecord, TokenResolver } from '@noodl-models/StyleTokensModel';
+/**
+ * ⚠️ **The two leaf modules, not the barrel.** `@noodl-models/StyleTokensModel`'s `index.ts` also
+ * re-exports `StyleTokensModel`, which imports `projectmodel` → `bugtracker`, which reads
+ * `platform.getUserDataPath()` at module scope. Importing the barrel therefore drags an editor
+ * singleton chain into anything that touches this component — and that is why this file had no
+ * test coverage: the suite failed to RUN, reporting `Tests: 0 total`. Both `TokenResolver` and
+ * `StyleTokenRecord` live in self-contained files, and this row needs nothing else.
+ */
+import { StyleTokenRecord } from '@noodl-models/StyleTokensModel/TokenCategories';
+import { TokenResolver } from '@noodl-models/StyleTokensModel/TokenResolver';
 
 import css from './TokenCategorySection.module.scss';
 
@@ -34,13 +43,51 @@ interface TokenRowProps {
   onTokenReset: (name: string) => void;
 }
 
-// onTokenChange is passed for future inline editing (Phase 3: TokenPicker)
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function TokenRow({ token, onTokenChange: _onTokenChange, onTokenReset }: TokenRowProps) {
+/**
+ * One token, and — since FIX-015 slice 1 — an editable one.
+ *
+ * 🔴 **`onTokenChange` used to be accepted and thrown away.** The parameter was destructured to
+ * `_onTokenChange` behind an eslint-disable, with a comment deferring the work to "Phase 3:
+ * TokenPicker". The write path was never the missing piece: `DesignTokensTab` already passes
+ * `styleTokensModel.setToken(name, value, { undo: true })`, a real, undoable write — it arrived
+ * here and stopped. That is gap A of FIX-015 ("no human editing surface at all"), and it was one
+ * component deep, not a phase away.
+ *
+ * ⚠️ **And it is NOT TokenPicker, which is what slice 1 assumed.** `TokenPicker` chooses *which
+ * token a property references* — its callback is `onTokenSelect(cssVar)`, "the full CSS
+ * `var(--token-name)` string, ready to use as a style value". It cannot change a token's own
+ * value, which is the whole of what this panel is for. Editing `--primary` from `#3b82f6` to
+ * `#ff0000` needs a value input, so that is what this is.
+ */
+function TokenRow({ token, onTokenChange, onTokenReset }: TokenRowProps) {
   const isColor = token.category === 'color-semantic' || token.category === 'color-palette';
   const isRef = TokenResolver.isReference(token.value);
-  // Resolved display value — show raw value if it's a reference
-  const displayValue = isRef ? token.value : token.value;
+
+  /**
+   * Edited locally, committed on blur or Enter.
+   *
+   * 🔴 **Not committed per keystroke.** `setToken` writes through to the project with `undo: true`,
+   * so a keystroke-per-write would put one undo entry on the stack for every character and
+   * re-render every subscriber mid-word. The same reason `PropertyPanelNumberInput` commits on
+   * blur.
+   */
+  const [draft, setDraft] = useState(token.value);
+
+  // A token changed from elsewhere — a reset, an undo, an AI edit — must show here. Keyed on the
+  // token's own value so an external write wins over a stale draft.
+  useEffect(() => setDraft(token.value), [token.value]);
+
+  function commit() {
+    const next = draft.trim();
+    // ⚠️ An empty value is not an edit, it is a half-typed one. Reverting the draft rather than
+    // writing `''` keeps the token at its last good value — clearing is what the reset button is
+    // for, and it restores the DEFAULT rather than leaving the token undefined.
+    if (next === '' || next === token.value) {
+      setDraft(token.value);
+      return;
+    }
+    onTokenChange(token.name, next);
+  }
 
   return (
     <div className={`${css.TokenRow} ${token.isCustom ? css.isOverridden : ''}`}>
@@ -61,7 +108,24 @@ function TokenRow({ token, onTokenChange: _onTokenChange, onTokenReset }: TokenR
         <span className={css.TokenName} title={token.description}>
           {token.name}
         </span>
-        <span className={css.TokenValue}>{displayValue}</span>
+        <input
+          className={css.TokenValue}
+          value={draft}
+          spellCheck={false}
+          aria-label={`Value for ${token.name}`}
+          title={isRef ? `References ${token.value}` : token.value}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={commit}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              commit();
+              (e.target as HTMLInputElement).blur();
+            } else if (e.key === 'Escape') {
+              setDraft(token.value);
+              (e.target as HTMLInputElement).blur();
+            }
+          }}
+        />
       </div>
 
       {/* Override indicator + reset */}
