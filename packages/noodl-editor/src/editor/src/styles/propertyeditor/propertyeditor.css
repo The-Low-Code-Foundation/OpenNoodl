@@ -337,6 +337,24 @@
   z-index: 2;
 }
 
+/* P82 §A4 — the filter field itself. `SearchInput.module.scss`'s `.SearchInput` paints
+   `border: none; background: transparent`, and this container is `bg-1` — the same token
+   as the panel ground behind it, so the field had no fill AND no edge: 1.00:1 in both
+   themes, nothing there to measure (NAT-001). `border-control` is what this panel's other
+   controls already use on a raised ground (`VariantSelector`, `TokenPicker`); NAT-001 grades
+   the identical (border-control, bg-1) pairing elsewhere on this same panel ground.
+   ⚠️ A single class selector here would tie with `.SearchInput`'s own rule on specificity and
+   the winner would depend on stylesheet load order — `input.property-filter-input` is an
+   element+class selector so it wins outright, regardless of order. */
+.property-filter input.property-filter-input {
+  /* `border-box` keeps the field at its existing 45px ($_search-bar-height in
+     SearchInput.module.scss) rather than growing it by the new border's 2px — that
+     box has no `box-sizing` of its own, so a border added outside it would nudge the
+     filter bar's stated height and its sticky offset math. */
+  box-sizing: border-box;
+  border: 1px solid var(--theme-color-border-control);
+}
+
 /* The match count is for screen readers only — the surviving rows are the sighted
    answer, and a number beside the box would be chrome that case does not need. Not
    `display: none`, which would take it out of the accessibility tree along with the

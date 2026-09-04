@@ -1,5 +1,13 @@
 .variants-editor {
-  border-bottom: 1px solid var(--theme-color-bg-1);
+  /* This divider was `border-bottom: 1px solid var(--theme-color-bg-1)` — the same tone as the
+     panel ground, so it painted nothing. The section below (`ElementStyleSection`, "Style" /
+     "Variant") sat flush against this one with no visible line between them, and both use the
+     word "variant" — "Add style variant" saves a reusable named style shared by every node of
+     that typename; the "Style" section's "Variant" picker stamps a built-in preset's parameters
+     in place and creates nothing. Two different systems that read as one feature because nothing
+     drew a line between them. `border-default` is the divider token this panel already uses for
+     the same job (`.property-header-bar`, `.property-group-children`). */
+  border-bottom: 1px solid var(--theme-color-border-default);
   position: relative;
   display: flex;
   align-items: center;

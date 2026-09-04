@@ -39,7 +39,12 @@ export function PropertyFilterInput({
         }
       }}
     >
-      <SearchInput placeholder="Filter properties" value={value} onChange={onChange} />
+      <SearchInput
+        placeholder="Filter properties"
+        value={value}
+        onChange={onChange}
+        UNSAFE_className="property-filter-input"
+      />
 
       {/*
        * The count is announced rather than drawn. A filter that silently empties the panel is

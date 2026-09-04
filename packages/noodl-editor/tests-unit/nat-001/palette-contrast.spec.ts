@@ -587,6 +587,21 @@ const PAIRS: Pair[] = [
     bg: '--theme-color-bg-2',
     min: 3,
     why: 'NON-TEXT (1.4.11): the panel ground, where every one of these is drawn narrower and the rule is doing more of the work'
+  },
+
+  // ── P82 §A4: the property panel's filter field ──────────────────────────────────────────
+  // `PropertyFilterInput.tsx`. Its field used to paint `border: none; background: transparent`
+  // over a `.property-filter` container that is `bg-1` — the same token as the panel ground
+  // behind it, so the field had no fill AND no edge: 1.00:1, nothing there to measure. Given
+  // `border-control`, the token this panel's other controls (`VariantSelector`, `TokenPicker`)
+  // already use on a raised ground. A duplicate tuple of the two rows above (the directory
+  // search box's edge, a filter pill's edge) — same token, same panel ground, a different site.
+  {
+    what: 'the property panel: the 1px edge that says the properties filter field is there',
+    fg: '--theme-color-border-control',
+    bg: '--theme-color-bg-1',
+    min: 3,
+    why: 'NON-TEXT (1.4.11): the field paints no fill of its own, so this edge is the only thing that says a control is there'
   }
 ];
 
