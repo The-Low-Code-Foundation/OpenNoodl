@@ -44,14 +44,56 @@ function generateId(): string {
 }
 
 /**
+ * Templates that stay **installable but unoffered** — registered here, absent from the shelf.
+ *
+ * 🔴 **`site-builder` is held out of 0.2.2 by Richard's ruling D1, 2026-09-04.** That ruling was
+ * given on the understanding that *"holding costs no action — it is not in `templates/` and has
+ * never been staged for publication."* **The premise was false about this file**: the site builder
+ * was in the map below and `list()` returns the whole map, so every 0.2.2 user would have been
+ * offered the held template in the create wizard. Holding it costs exactly this line.
+ *
+ * ⚠️ **Held, not deleted, and the difference is the point.** README §3 names **phase 77** as its
+ * owner after 0.2.2; `install('embedded://site-builder')` still works, and every gate that reads
+ * `site-builder.content.json` (`sb007Template`, `sbr012RawColourGate`, `def-004`) is untouched.
+ * Unholding it is removing one string from this set.
+ *
+ * 🔴 **`hello-world` is held for an entirely different reason, and it CANNOT be deleted.** Richard
+ * asked for it to go — *"We should remove Hello World, it's not a template"* — and he is right
+ * about the shelf: *"I start a blank app and that has the hello world thing"*, so offering it as a
+ * template was offering the blank project twice.
+ *
+ * But it **is** the blank project. `DEFAULT_PROJECT_TEMPLATE` in `utils/forge/index.ts` is
+ * `'embedded://hello-world'`, and `resolveTemplateUrl` (`createFromTemplate.ts`) returns it
+ * whenever no template was chosen — the "Quick Start" path. Removing it from the map would make
+ * every blank project creation throw `Unknown embedded template: hello-world`. Holding it removes
+ * the row from the shelf and leaves the fallback intact, which is what was actually wanted.
+ */
+export const HELD_TEMPLATE_IDS: ReadonlySet<string> = new Set(['hello-world', 'site-builder']);
+
+/**
  * Provider for templates that are embedded in the application code
  */
 export class EmbeddedTemplateProvider implements ITemplateProvider {
+  /**
+   * @param heldIds Ids to register but not offer. Defaults to {@link HELD_TEMPLATE_IDS}.
+   *
+   * ⚠️ **A parameter so the shelf can be graded with nothing held.** `list()` is the one place
+   * `templateNeedsBackend` is composed into a `TemplateItem`, and with everything held there is no
+   * row left to assert that composition on — the gate would go quiet exactly where the mapping
+   * lives. Production passes nothing and gets the real set.
+   */
+  constructor(private readonly heldIds: ReadonlySet<string> = HELD_TEMPLATE_IDS) {}
+
   /**
    * Registry of all embedded templates
    * New templates should be added here
    */
   private templates: Map<string, ProjectTemplate> = new Map([
+    // 🔴 **`hello-world` is REGISTERED AND UNOFFERED, and it must stay registered.** It is what
+    // `DEFAULT_PROJECT_TEMPLATE` points at (`utils/forge/index.ts`), and `resolveTemplateUrl`
+    // falls back to it whenever no template was chosen — so it is the source of the **blank
+    // project** that "Quick Start" creates. Deleting it from this map does not remove a template
+    // choice; it makes every blank project creation throw `Unknown embedded template`.
     ['hello-world', helloWorldTemplate],
     // SB-007. ⚠️ Its `content` is a generated JSON blob — `npm run
     // template:site-builder` — not a hand-written graph like `hello-world`'s.
@@ -71,6 +113,9 @@ export class EmbeddedTemplateProvider implements ITemplateProvider {
     const items: TemplateItem[] = [];
 
     for (const [id, template] of this.templates) {
+      // Held templates stay installable and unoffered — see `HELD_TEMPLATE_IDS`.
+      if (this.heldIds.has(id)) continue;
+
       items.push({
         title: template.name,
         desc: template.description,

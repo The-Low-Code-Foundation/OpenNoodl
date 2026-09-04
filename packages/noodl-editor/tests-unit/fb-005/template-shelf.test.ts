@@ -1008,7 +1008,17 @@ describe('createProjectFromTemplate never throws, including from the cleanup pre
 const EMBEDDED_TEMPLATE_CATEGORIES = ['starter', 'data-app', 'dashboard', 'site', 'form', 'integration'];
 
 describe('FB-005 — embedded templates use the platform’s category vocabulary', () => {
-  const provider = new EmbeddedTemplateProvider();
+  /**
+   * 🔴 **Constructed with NOTHING held, and that is what keeps this suite honest.**
+   *
+   * Every embedded template is held as of 0.2.2 (`HELD_TEMPLATE_IDS` — hello-world is the blank
+   * project, the site builder is Richard's D1), so the shipped `list()` is empty and every
+   * `for (const item of items)` below would iterate zero rows and pass for the worst possible
+   * reason. Grading the unheld shelf keeps the vocabulary rule applied to the templates that
+   * exist — including the ones a later phase will unhold, which is when a bad category would
+   * otherwise first be seen.
+   */
+  const provider = new EmbeddedTemplateProvider(new Set());
 
   it('control: there is at least one embedded template to grade', () => {
     // 🔴 Without this, every assertion below passes over an empty list — for the worst reason.
@@ -1033,6 +1043,9 @@ describe('FB-005 — embedded templates use the platform’s category vocabulary
   });
 
   it('the default template is one of them', async () => {
+    // ⚠️ Reachable here only because this provider holds nothing — on the shipped shelf the
+    // default template is deliberately absent (it is the blank project, not a template choice).
+    // Its category still has to be valid, because unholding it must not introduce one.
     const items = await provider.list();
     const preset = items.find((i) => i.projectURL === DEFAULT_PROJECT_TEMPLATE);
     expect(preset).toBeDefined();

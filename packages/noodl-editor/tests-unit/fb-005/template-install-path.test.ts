@@ -178,10 +178,31 @@ describe('FB-005 T1 — the zip transport is removed', () => {
     );
   });
 
-  it('lists at least the default template, and every listing carries an installable URL', async () => {
+  it('🔴 the default template is INSTALLABLE through the registry, though it is not listed', async () => {
+    /**
+     * This used to assert the default template appeared in `list({})`. As of 0.2.2 it does not:
+     * `hello-world` is the **blank project** rather than a template choice, so it is held off the
+     * shelf (`HELD_TEMPLATE_IDS`). What must never change is that the registry can still install
+     * it — `resolveTemplateUrl` returns this URL for every project created without a template, so
+     * an unroutable default would break Quick Start while leaving the shelf looking correct.
+     */
+    const claims = await Promise.all(
+      templateRegistry.providers.map((p: ITemplateProvider) => p.canInstall(DEFAULT_PROJECT_TEMPLATE))
+    );
+    expect(claims).toContain(true);
+  });
+
+  it('every listed row carries an installable URL', async () => {
+    // The shipped shelf is empty until the members' area is published, so this is currently a
+    // statement about zero rows — asserted anyway, because it is the invariant that must hold the
+    // moment the first row arrives, and it costs nothing to have it waiting.
     const items = await templateRegistry.list({});
-    expect(items.length).toBeGreaterThan(0);
-    expect(items.map((i: TemplateItem) => i.projectURL)).toContain(DEFAULT_PROJECT_TEMPLATE);
+    for (const item of items as TemplateItem[]) {
+      const claims = await Promise.all(
+        templateRegistry.providers.map((p: ITemplateProvider) => p.canInstall(item.projectURL))
+      );
+      expect(claims).toContain(true);
+    }
   });
 });
 

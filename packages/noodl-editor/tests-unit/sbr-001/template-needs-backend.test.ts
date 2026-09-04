@@ -16,6 +16,7 @@ import { helloWorldTemplate } from '../../src/editor/src/models/template/templat
 import { siteBuilderTemplate } from '../../src/editor/src/models/template/templates/site-builder.template';
 import type { ProjectTemplate } from '../../src/editor/src/models/template/ProjectTemplate';
 import { galleryFromListing } from '../../src/editor/src/hooks/useProjectTemplates';
+import { DEFAULT_PROJECT_TEMPLATE } from '../../src/editor/src/utils/forge';
 
 describe('SBR-001 templateNeedsBackend', () => {
   it('the Site Builder template needs one — it ships a policy AND seven cloud functions', () => {
@@ -49,11 +50,60 @@ describe('SBR-001 templateNeedsBackend', () => {
 
 describe('SBR-001 the derived need reaches the wizard', () => {
   it('the embedded provider fills TemplateItem.needsBackend on every row', async () => {
-    const rows = await new EmbeddedTemplateProvider().list();
+    /**
+     * ⚠️ **Graded with NOTHING held**, because the shipped shelf is empty (see the case below) and
+     * a mapping cannot be asserted over zero rows. This is the composition itself —
+     * `templateNeedsBackend` reaching `TemplateItem.needsBackend` — which neither the unit cases
+     * above nor `galleryFromListing` below covers.
+     */
+    const rows = await new EmbeddedTemplateProvider(new Set()).list();
     const byUrl = new Map(rows.map((r) => [r.projectURL, r.needsBackend]));
 
     expect(byUrl.get('embedded://site-builder')).toBe(true);
-    expect(byUrl.get('embedded://hello-world')).toBe(false);
+  });
+
+  it('🔴 offers NOTHING embedded in 0.2.2 — hello-world removed, site-builder held', async () => {
+    /**
+     * Richard, 2026-09-04: *"we need that out of the create modal please"* (site builder), and
+     * earlier *"We should remove Hello World, it's not a template."*
+     *
+     * 🔴 This is the assertion that ruling D1 needed and did not have. D1 held the site builder
+     * from 0.2.2 believing *"holding costs no action"* — but `list()` returned the whole map, so
+     * the wizard offered it regardless. An empty shelf is the shipped state until the members' area
+     * is published to the community, at which point the row arrives through
+     * `PlatformTemplateProvider`, not this one.
+     */
+    const rows = await new EmbeddedTemplateProvider().list();
+    expect(rows.map((r) => r.projectURL)).toEqual([]);
+  });
+
+  it('🔴 keeps the DEFAULT project template installable even though it is not on the shelf', async () => {
+    /**
+     * 🔴 **The near-miss this pins.** `hello-world` was first deleted from the registry outright,
+     * on the reasoning that nothing imported it — which was true of the *symbol* and false of the
+     * *id*. `DEFAULT_PROJECT_TEMPLATE` is the string `'embedded://hello-world'`, and
+     * `resolveTemplateUrl` returns it whenever no template was chosen, so hello-world is the source
+     * of every **blank** project. Deleting it made `install()` throw `Unknown embedded template`
+     * on the most common path in the product — Quick Start — while the shelf looked correct.
+     *
+     * Being held must therefore mean *"not offered"* and never *"not installable"*. This asserts
+     * both halves against the same id, which is the only way the distinction can be graded.
+     */
+    const provider = new EmbeddedTemplateProvider();
+    const id = DEFAULT_PROJECT_TEMPLATE.replace('embedded://', '');
+
+    // Not offered…
+    const urls = (await provider.list()).map((r) => r.projectURL);
+    expect(urls).not.toContain(DEFAULT_PROJECT_TEMPLATE);
+
+    // …and still resolvable, which is what Quick Start depends on.
+    expect(provider.getTemplate(id)).toBeDefined();
+    expect(await provider.canInstall(DEFAULT_PROJECT_TEMPLATE)).toBe(true);
+  });
+
+  it('unholding is one string — phase 77 gets the site builder back without a code change', async () => {
+    const urls = (await new EmbeddedTemplateProvider(new Set()).list()).map((r) => r.projectURL);
+    expect(urls).toContain('embedded://site-builder');
   });
 
   it('galleryFromListing carries it through, and a community row without the field stays undefined (AC6)', () => {
