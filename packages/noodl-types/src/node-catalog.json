@@ -32283,7 +32283,7 @@
             "name": "string"
           },
           "isSignal": false,
-          "description": "URL or project file to play; leave blank to load nothing rather than fail on a missing source"
+          "description": "Direct video file to play — an mp4, webm or ogg URL, or a file in your project. ⚠️ NOT a YouTube or Vimeo page link: those are web pages, not video files, and will not play. Leave blank to load nothing rather than fail on a missing source"
         },
         {
           "name": "srcObject",
@@ -40269,7 +40269,6 @@
             "name": "color"
           },
           "isSignal": false,
-          "default": "#FFFFFF",
           "description": "Colour of the icon",
           "index": 27,
           "allowVisualStates": true
@@ -42235,7 +42234,7 @@
             "name": "color"
           },
           "isSignal": false,
-          "default": "#FFFFFF",
+          "default": "#000000",
           "description": "Colour of the icon",
           "index": 27,
           "allowVisualStates": true
@@ -46574,7 +46573,7 @@
             "name": "color"
           },
           "isSignal": false,
-          "default": "#FFFFFF",
+          "default": "#000000",
           "description": "Colour of the icon",
           "index": 27,
           "allowVisualStates": true
@@ -54227,7 +54226,7 @@
             "name": "color"
           },
           "isSignal": false,
-          "default": "#FFFFFF",
+          "default": "#000000",
           "description": "Colour of the icon",
           "index": 27,
           "allowVisualStates": true
