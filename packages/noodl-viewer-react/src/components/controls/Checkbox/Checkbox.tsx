@@ -72,7 +72,26 @@ export function Checkbox(props: CheckboxProps) {
     Object.assign(inputWrapperStyle, style);
   }
 
+  /**
+   * 🔴 **The author's icon is the CHECKED mark, so it draws only when checked.**
+   *
+   * It used to draw unconditionally, which meant that the moment an author picked an Icon Source
+   * the checkbox showed that icon for ever — ticked or not. Reported by Richard, 2026-09-04:
+   * *"I can't check and uncheck a Checkbox node... When I click it I see the `checked` output
+   * value change to false, but I still see the check icon inside the check box."* The click, the
+   * state and the output were all correct; only the mark was wrong, which is FB-020's defect
+   * exactly, surviving on the one path FB-020 did not gate.
+   *
+   * ⚠️ **FB-020 gated `_renderDefaultCheck` and not this.** That is why a *fresh* checkbox behaved
+   * correctly and a configured one did not — the bug was invisible until somebody chose an icon,
+   * which is the first thing anybody does after adding the node.
+   *
+   * There is one icon source, not one per state, so "the icon" can only mean the checked mark. An
+   * author who wants the unchecked box to carry something styles the box itself.
+   */
   function _renderIcon() {
+    if (!checked) return null;
+
     if (props.iconSourceType === 'image' && props.iconImageSource !== undefined)
       return (
         <img

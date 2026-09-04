@@ -112,7 +112,22 @@ export function RadioButton(props: RadioButtonProps) {
     Object.assign(inputWrapperStyle, style);
   }
 
+  /**
+   * 🔴 **The author's icon is the SELECTED mark, so it draws only when selected.**
+   *
+   * Found by sweeping this component after the same defect was fixed on the Checkbox
+   * (Richard, 2026-09-04). It drew unconditionally, so an author who picked an Icon Source got
+   * that icon on **every button in the group at once** — the exact shape FB-020 already recorded
+   * for `fillColor` on this very node: *"an author who set `Fill Color` as a plain parameter got
+   * a filled dot on every option."* FB-020 gated the fill and left this path ungated beside it.
+   *
+   * ⚠️ Nobody reported this one; it was found by reading the sibling of a reported defect. The
+   * `fillColor` half is gated at `const fillColor = checked ? … : undefined` below, which is why
+   * a radio button with no icon has always behaved correctly.
+   */
   function _renderIcon() {
+    if (!checked) return null;
+
     if (props.iconSourceType === 'image' && props.iconImageSource !== undefined)
       return <img alt="" src={props.iconImageSource} style={{ width: props.iconSize, height: props.iconSize }} />;
     else if (props.iconSourceType === 'icon' && props.iconIconSource !== undefined) {

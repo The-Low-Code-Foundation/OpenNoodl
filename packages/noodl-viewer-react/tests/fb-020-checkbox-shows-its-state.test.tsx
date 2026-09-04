@@ -184,6 +184,69 @@ describe('FB-020 AC4 — a fresh radio button shows that it is selected', () => 
 });
 
 /**
+ * FB-020's third half, reported 2026-09-04 — **the author's icon never had a state gate.**
+ *
+ * Richard: *"in the preview I can't check and uncheck a Checkbox node... When I click it I see the
+ * `checked` output value change to false, but I still see the check icon inside the check box."*
+ *
+ * FB-020 gated `_renderDefaultCheck` on `checked` and left `_renderIcon` drawing unconditionally.
+ * So a **fresh** checkbox behaved correctly — which is precisely what the original suite above
+ * measures — and a **configured** one showed its icon for ever. The bug appeared the moment an
+ * author picked an Icon Source, which is the first thing anybody does after adding the node, and
+ * the suite could not see it because every case above either has no icon or is already checked.
+ *
+ * ⚠️ **Each pair here is checked-and-unchecked on purpose.** Asserting only the absence would
+ * pass just as well if the icon never rendered at all, or if the markup probe were looking for
+ * the wrong string. The checked arm is the known-firing control for the unchecked arm.
+ */
+describe('FB-020 — an author icon is the mark, so it follows the state', () => {
+  /**
+   * ⚠️ **The real font-source shape**, not the `{ codeAsClass: 'fa fa-check' }` shorthand used by
+   * the older cases above. `IconGlyph` branches on `codeAsClass === true` and renders
+   * `class` + `code` as CSS classes; the shorthand is truthy-but-not-`true`, so it falls to the
+   * other branch and emits an empty `<span>`. That is harmless where the assertion is only
+   * *"the default tick is suppressed"*, and useless here, where the icon has to be identifiable
+   * in the markup. Building this wrong is what the checked arm of each pair caught.
+   */
+  const ICON = { codeAsClass: true, class: 'fa', code: 'fa-check' };
+
+  it('checkbox: draws the author icon when checked', () => {
+    expect(renderCheckbox({ checked: true, iconIconSource: ICON })).toContain('fa-check');
+  });
+
+  it('🔴 checkbox: does NOT draw the author icon when unchecked', () => {
+    expect(renderCheckbox({ checked: false, iconIconSource: ICON })).not.toContain('fa-check');
+  });
+
+  it('checkbox: draws an author image when checked', () => {
+    const html = renderCheckbox({ checked: true, iconSourceType: 'image', iconImageSource: '/tick.png' });
+    expect(html).toContain('/tick.png');
+  });
+
+  it('🔴 checkbox: does NOT draw an author image when unchecked', () => {
+    const html = renderCheckbox({ checked: false, iconSourceType: 'image', iconImageSource: '/tick.png' });
+    expect(html).not.toContain('/tick.png');
+  });
+
+  it('checkbox: still falls back to the default tick when checked with no author icon', () => {
+    // The interaction worth pinning: gating the icon must not cost the fresh-node tick FB-020
+    // exists for. `_renderIcon() || _renderDefaultCheck()` has to keep reaching its right half.
+    expect(renderCheckbox({ checked: true })).toContain('data-ndl-default-check');
+  });
+
+  it('radio: draws the author icon on the selected button', () => {
+    expect(renderRadio('a', { useIcon: true, iconIconSource: ICON })).toContain('fa-check');
+  });
+
+  it('🔴 radio: does NOT draw the author icon on the unselected buttons', () => {
+    // Nobody reported this one — it was found by reading the sibling of the reported defect.
+    // Ungated, an author icon appeared on every option in the group at once, which is the same
+    // shape as the `fillColor` defect gated two describes above.
+    expect(renderRadio('b', { useIcon: true, iconIconSource: ICON })).not.toContain('fa-check');
+  });
+});
+
+/**
  * The second, latent half of FB-020, found by reading and then confirmed live: the user-click
  * path never wrote `props.checked`, unlike the `checked` input setter and `setCheckedByAction`
  * which both do. After a click the drive read `_internal.checked: true` beside
