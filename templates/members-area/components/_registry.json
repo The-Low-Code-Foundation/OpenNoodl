@@ -254,15 +254,15 @@
     "Pages/Unsubscribe": {
       "path": "Pages/Unsubscribe",
       "type": "page",
-      "nodeCount": 20,
-      "connectionCount": 10,
+      "nodeCount": 23,
+      "connectionCount": 11,
       "modified": "2026-08-28T00:00:00.000Z",
       "created": "2026-08-28T00:00:00.000Z"
     }
   },
   "stats": {
     "totalComponents": 32,
-    "totalNodes": 565,
-    "totalConnections": 493
+    "totalNodes": 568,
+    "totalConnections": 494
   }
 }

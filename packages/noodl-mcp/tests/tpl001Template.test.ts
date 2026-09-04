@@ -68,6 +68,7 @@ import {
   ROLE_MODERATOR,
   ROUTER,
   TPL001_COLLECTIONS,
+  UNSUBSCRIBE_BACK_LABEL,
   UNSUBSCRIBE_FAILED_TEXT,
   UNSUBSCRIBED_TEXT,
   TPL001_FUNCTIONS,
@@ -1732,24 +1733,38 @@ describe('TPL-001 — the design system is finished, not merely opened', () => {
   });
 
   /**
-   * 🔴 **RICHARD'S RULING, 2026-08-29 (D39): the unsubscribe page stays one
-   * sentence.** It names no association and offers no way back, and that is now
-   * a decision rather than an omission.
+   * 🔴 **RICHARD'S RULING, 2026-08-29 (D39), HALF-REVERSED BY HIM 2026-09-04.**
    *
-   * The reason this is a spec and not a comment: the page's silence was
-   * previously a property of *what nobody had added yet*. Nothing failed if a
-   * later session, reading the same screen and reaching D39's conclusion
-   * independently, "fixed" it — which is exactly the shape of a ruling that gets
-   * silently reversed. The ruling names a place; this reads that place.
+   * D39 was: the unsubscribe page stays one sentence — it names no association
+   * and offers no way back, and that is a decision rather than an omission.
    *
    * ⚠️ **It costs a query and a link, and only one of those is expensive.** The
    * association name is `acl-world-read`, so it CAN be fetched with no session —
    * but on a page opened from a mail client its whole design is making no round
-   * trip. A link back is free, a static route with no data behind it. The ruling
-   * declines both; the check therefore covers both, because the cheap half is
-   * the one somebody adds without thinking about the ruling at all.
+   * trip. A link back is free, a static route with no data behind it. D39
+   * declined both, so this spec covered both.
+   *
+   * ✅ **The LINK half is now authorised.** On the 0.2.2 ruling sheet he ruled
+   * `/unsubscribe` **SHITTY** — its only sub-PASSABLE verdict in the members'
+   * area — and answered the standing §7.3 judgement about its ~190px of void
+   * with **"Allow a way back after all"**. So the page now carries an outline
+   * button to `/Pages/SignIn`, which is precisely what s12 built and this spec
+   * correctly refused at the time.
+   *
+   * 🔴 **This spec is REWRITTEN, not deleted, and the difference matters.** Its
+   * whole reason to exist was that the page's silence used to be a property of
+   * *what nobody had added yet*: nothing failed if a later session reached D39's
+   * conclusion independently and "fixed" it. That hazard is unchanged for the
+   * half still standing — so rows 1, 3 and 4 read exactly as they did, and row 2
+   * now pins the way back as **one** route to **one** target rather than pinning
+   * its absence. A second `RouterNavigate`, or a different destination, is still
+   * a red.
+   *
+   * ⚠️ **The EXPENSIVE half was never put to him** and stays declined: row 1
+   * still asserts this page reads nothing from the database, and row 3 still
+   * pins the single cloud call by name.
    */
-  it('§5 the unsubscribe page fetches nothing and leads nowhere \u2014 Richard\u2019s D39 ruling', () => {
+  it('§5 the unsubscribe page fetches nothing and leads to exactly one place \u2014 D39, half-reversed 2026-09-04', () => {
     const page = byLegacyName.get('/Pages/Unsubscribe');
     expect(page).toBeDefined();
     const types = (page?.nodes ?? []).map((n) => String(n.type));
@@ -1768,8 +1783,43 @@ describe('TPL-001 — the design system is finished, not merely opened', () => {
     //    association, and the half the ruling actually paid for.
     expect(types.filter((t) => FETCHES.has(t))).toEqual([]);
 
-    // 2. Nothing leads anywhere — no button, no navigate. The free half.
-    expect(types.filter((t) => LEADS_AWAY.has(t))).toEqual([]);
+    // 2. 🔴 **The half he reversed on 2026-09-04.** It used to read
+    //    `toEqual([])`. It now pins the shape of the thing that replaced the
+    //    absence, because "there is a way back" is satisfied by a page with
+    //    four of them pointing at three different places, and that would be a
+    //    worse page than the silent one D39 asked for.
+    //
+    //    ⚠️ **Counted, then identified — never named by node id.** The id is
+    //    the one thing about this graph a door rename can move.
+    //    ⚠️ `LEADS_AWAY` holds BOTH halves of a way out — the control and the
+    //    navigate — because D39 declined both and one without the other is not
+    //    a way out. So the pair is counted as a pair.
+    const leadsAway = (page?.nodes ?? []).filter((n) => LEADS_AWAY.has(String(n.type)));
+    expect(leadsAway).toHaveLength(2);
+
+    const navs = leadsAway.filter((n) => String(n.type) === 'RouterNavigate');
+    expect(navs).toHaveLength(1);
+    expect(String((navs[0].parameters ?? {}).target)).toBe('/Pages/SignIn');
+
+    const controls = leadsAway.filter((n) => String(n.type) !== 'RouterNavigate');
+    expect(controls).toHaveLength(1);
+    expect(String((controls[0].parameters ?? {}).label)).toBe(UNSUBSCRIBE_BACK_LABEL);
+
+    //    And the two are wired to each other, which is the half a census
+    //    cannot see. An unreachable navigate is the same screen as no navigate
+    //    at all — the state this row exists to tell apart.
+    //
+    //    🔴 **Both ends are read from the graph, never typed.** The door
+    //    renames ids project-wide for uniqueness: this run's navigate came out
+    //    as `toSignIn-3`, and a spec naming `toSignIn` would have been green on
+    //    a template that had lost the wire.
+    const navId = String(navs[0].id);
+    const controlId = String(controls[0].id);
+    const wire = (page?.connections ?? []).filter(
+      (c) => String(c.toId) === navId && String(c.toProperty) === 'navigate'
+    );
+    expect(wire).toHaveLength(1);
+    expect(String(wire[0].fromId)).toBe(controlId);
 
     // 3. It still makes exactly ONE outbound call, and it is the unsubscribe
     //    itself. 🔴 This row is not redundant with (1): the association name is

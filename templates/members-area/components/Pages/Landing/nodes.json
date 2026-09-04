@@ -631,7 +631,7 @@
       ]
     },
     {
-      "id": "toSignIn-3",
+      "id": "toSignIn-4",
       "type": "RouterNavigate",
       "label": "Go to sign in",
       "parameters": {

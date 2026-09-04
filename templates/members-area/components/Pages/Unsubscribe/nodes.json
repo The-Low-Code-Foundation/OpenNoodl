@@ -146,7 +146,7 @@
       "label": "The foot of the page",
       "parent": "pageShell-11",
       "x": 160,
-      "y": 1720
+      "y": 1960
     },
     {
       "id": "ground-12",
@@ -155,7 +155,8 @@
       "parent": "pageMain-11",
       "children": [
         "done",
-        "failed-3"
+        "failed-3",
+        "back"
       ],
       "parameters": {
         "width": {
@@ -320,6 +321,57 @@
       "y": 1600
     },
     {
+      "id": "back",
+      "type": "Group",
+      "label": "The way back",
+      "parent": "ground-12",
+      "children": [
+        "backButton"
+      ],
+      "parameters": {
+        "sizeMode": "contentSize",
+        "flexDirection": "row",
+        "columnGap": "var(--space-3)"
+      },
+      "x": 340,
+      "y": 1720
+    },
+    {
+      "id": "backButton",
+      "type": "net.noodl.controls.button",
+      "label": "Sign in to your account",
+      "parent": "back",
+      "parameters": {
+        "label": "Sign in to your account",
+        "backgroundColor": "transparent",
+        "color": "var(--foreground)",
+        "borderRadius": "var(--radius-full)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-control)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "sizeMode": "contentSize"
+      },
+      "x": 400,
+      "y": 1840
+    },
+    {
+      "id": "toSignIn-3",
+      "type": "RouterNavigate",
+      "label": "Back to the sign-in page",
+      "parameters": {
+        "router": "Main",
+        "target": "/Pages/SignIn"
+      },
+      "x": 710,
+      "y": 1840
+    },
+    {
       "id": "pageInputs-3",
       "type": "PageInputs",
       "label": "The token",
@@ -327,7 +379,7 @@
         "queryParams": "token"
       },
       "x": 710,
-      "y": 1600
+      "y": 1960
     },
     {
       "id": "hold-5",
@@ -374,7 +426,7 @@
         "function": "unsubscribe"
       },
       "x": 710,
-      "y": 1720
+      "y": 2080
     },
     {
       "id": "doneGate",

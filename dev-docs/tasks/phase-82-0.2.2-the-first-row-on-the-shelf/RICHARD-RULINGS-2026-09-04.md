@@ -254,3 +254,75 @@ D2**:
 
 ⚠️ **Judgement 3's work also lifts the one SHITTY.** It does not make the page WORTHY and nobody
 should claim it does.
+
+---
+
+# §6 🔴 JUDGEMENT 3 IS BUILT — and it did NOT close the void it was asked to close
+
+Built the same day, because D2 attached it to the publish as a condition.
+
+## §6.1 What is in
+
+| | |
+|---|---|
+| `Pages/Unsubscribe` | a `back` row inside `ground`, holding one **outline** button *"Sign in to your account"*, wired to a `RouterNavigate` at `/Pages/SignIn` |
+| vocabulary | `UNSUBSCRIBE_BACK_LABEL`, with D39's reversal recorded on the constant |
+| `tpl001Template.test.ts` §5 | **rewritten to the new ruling, not deleted** — see §2.1 |
+| `tpl002-account-drive.test.ts` §6b | **new** — the press, in a real browser |
+
+⚠️ **Deliberately the OUTLINE button.** Both notices already end by telling the reader to use their
+account, so this is the route they were just sent on rather than the point of the page. `btn()` keys
+the variant on the label, so the label staying out of `PRIMARY_LABELS` is what makes that true.
+
+## §6.2 The readings, with their exit statuses
+
+| gate | reading |
+|---|---|
+| `tpl001Template.test.ts` | **79/79, EXIT=0** (78 before) |
+| the same file, on the **reverted artefact** | **EXIT=1** — §5 reads `Received length: 0` where it wants 2, and the AC7 byte-identity spec reds too, as it should |
+| `noodl-mcp` full jest | **93 suites / 1257 tests, EXIT=0** |
+| `tsc --noEmit -p packages/noodl-mcp` | **0, EXIT=0** |
+| `tpl002-account-drive.test.ts` (real backend, real browser) | **23/23, EXIT=0** (22 before) |
+| `vib001-members.look.ts` | **EXIT=0, 2/2, 60 shots** |
+| `noodl-editor` `test:main` | **412 suites / 6847 tests, EXIT=0** |
+| `noodl-editor` `test:ci` | **2943 specs, 4 failures, seed 79804, HEAD `871becf3`** — the AIX-006 floor, all four **by name**. Fresh `tests/test-results.json`, `gitHead` matching, `elapsedSeconds` 70 |
+
+🔴 **The reverted arm was measured, not asserted.** The fixed artefact was snapshotted with `cp`,
+the committed one restored with `git archive`, the spec run, and the snapshot restored — `git
+checkout --` and `git stash` are both forbidden on this checkout.
+
+## §6.3 🔴 TWO traps this session walked into, both already in the register
+
+1. **`LEADS_AWAY` holds the CONTROL as well as the NAVIGATE.** D39 declined both halves of a way
+   out, so a spec expecting one node read `Received length: 2` and was **right to**. Fixed by
+   counting the pair as a pair.
+2. 🔴 **The door renamed `toSignIn` to `toSignIn-3`** — project-wide id uniqueness, the same
+   mechanism that pinned s28's D42 to a `#pick` a preset chip had taken. **Both ends of the wire are
+   derived from the graph; neither is typed.**
+4. ⚠️ **A `cd` that outlived its command made a present file read as MISSING.** The readout was
+   checked from inside the phase directory, reported `No such file or directory`, and was briefly
+   written up as *"the runner says it wrote the file and it is gone"* — a hazard about a peer that
+   did not exist. ✅ **The log's own `Readout:` line names an ABSOLUTE path; read it from there.**
+
+3. 🔴 **The first draft of §6b put a throwing `clickButton` inside `beforeAll` — and all 23 specs
+   went red on a missing import.** *A `beforeAll` that throws runs no arm* (s28). The press is now
+   wrapped, the message carried, and **§6b is the one spec that reads it** — so a button that
+   vanishes reddens one spec and leaves the other twenty-two meaning what they say.
+
+## §6.4 🔴 THE VOID IS STILL THERE, AND THAT IS THE HONEST READING
+
+`unsubscribe-desktop`, door arm, at HEAD: **content=900px, scroll=NO, unreachable=0**. The button
+sits under the notice and the footer begins about **220px** below it. §7.3 named *"~190px of void
+above its footer"* and the option he chose was worded *"the void closes"*.
+
+**It did not close.** A 60px control was added to a 190px gap.
+
+✅ **What DID happen is the thing he actually asked for**: the page offers a way back, which is D39
+reversed and is the only remedy any verdict on this page arrived with. Whether that is enough to
+lift `/unsubscribe` off SHITTY is **his call and nobody else's** — and it is the condition D2
+attaches to the publish, so **it must be re-ruled before the publish command runs**.
+
+⚠️ **Registered while looking, owner `NONE`, NOT built:** the page has **three left edges** — the
+band's eyebrow and the content column at x≈305 (`FORM_GROUND`'s 720 centred), the footer at x≈65.
+That is the same defect REL-002c §"three different left edges" fixed on `Pages/Post` and
+`Pages/Account`, surviving on a door page nobody re-measured after the band went on.

@@ -98,6 +98,7 @@ import {
   NOTIFY_PARTIAL_SUFFIX,
   NOTIFY_POSTED_LEAD,
   UNSUBSCRIBED_TEXT,
+  UNSUBSCRIBE_BACK_LABEL,
   UNSUBSCRIBE_FAILED_TEXT,
   MEETING_SORT,
   DIRECTORY_PROJECTION_NOTE,
@@ -6246,26 +6247,50 @@ const UNSUBSCRIBE_PAGE: Tpl001Component = {
       label: 'Page ground',
       parent: 'pageMain',
       parameters: FORM_GROUND,
-      children: ['done', 'failed']
+      children: ['done', 'failed', 'back']
     },
     ...pageHead('heading', 'Heading', 'heroShell', 'Members’ area', 'Emails', { onScrim: true }),
     ...notice('done', 'Turned off', 'ground', UNSUBSCRIBED_TEXT, { tone: 'accent' }),
     ...notice('failed', 'That link did not work', 'ground', UNSUBSCRIBE_FAILED_TEXT, { tone: 'refused' }),
-    // ⚠️ **REL-002c s12 tried to give this page a way out and a gate refused
-    // it, correctly.** The reasoning was this row's own hazard 3 — after the band
-    // went on, ~290px of void remained at 1280, and a layout complaint in this
-    // row has four times had a content answer. The content answer here looked
-    // obvious: both notices tell the reader to use their account and the page
-    // offered no route to one.
+    // ✅ **REL-002c s12 built exactly this and a gate refused it, correctly.
+    // Richard has now reversed the ruling that gate was reading.**
     //
-    // 🔴 **It is ruled against.** Richard's D39, 2026-08-29: the page names no
-    // association and offers no way back. `tpl001Template.test.ts` §5 reads that
-    // place, and its own note predicted this session exactly — *"a link back is
-    // free… the cheap half is the one somebody adds without thinking about the
-    // ruling at all."* A `net.noodl.controls.button` and a `RouterNavigate` were
-    // added and removed again; the remaining slack below the notice is a
-    // CONSEQUENCE OF THE RULING, not an unfixed defect, and reversing it is
-    // Richard's call rather than a later session's.
+    // 🔴 **D39, 2026-08-29 — SUPERSEDED 2026-09-04.** D39 was that this page
+    // names no association and offers no way back, and that the silence was a
+    // decision rather than an omission. s12 added a button and a
+    // `RouterNavigate`, `tpl001Template.test.ts` §5 reddened, and the work was
+    // reverted — which is the gate doing its job, because at that moment nobody
+    // had asked him. On the 0.2.2 ruling sheet he was asked, against this page's
+    // own picture, and answered **"Allow a way back after all"**. It was also
+    // the only SHITTY verdict in the members' area, and the only one that
+    // arrived with a stated remedy.
+    //
+    // ⚠️ **Only the LINK half was reversed, and the distinction is D39's own.**
+    // Its expensive half — naming the association, a round trip from a mail
+    // client on a page whose whole design is making none — was NOT put to him.
+    // §5 still asserts this page reads nothing from the database, and the
+    // `CloudFunction2` census still pins one call by name.
+    //
+    // ⚠️ **It is a child of `ground`, not of either notice**, so it is there
+    // before the call answers and in both of the states it can answer with. Both
+    // notices already end by telling the reader to use their account; this is
+    // the route they were just sent on, which is also why it is the outline
+    // button and not the filled one.
+    { id: 'back', type: 'Group', label: 'The way back', parent: 'ground', parameters: laidOut('row', { sizeMode: 'contentSize' }, 'var(--space-3)'),
+      children: ['backButton'] },
+    {
+      id: 'backButton',
+      type: 'net.noodl.controls.button',
+      label: UNSUBSCRIBE_BACK_LABEL,
+      parent: 'back',
+      parameters: btn(UNSUBSCRIBE_BACK_LABEL)
+    },
+    {
+      id: 'toSignIn',
+      type: 'RouterNavigate',
+      label: 'Back to the sign-in page',
+      parameters: { router: ROUTER, target: '/Pages/SignIn' }
+    },
     { id: 'pageInputs', type: 'PageInputs', label: 'The token', parameters: { queryParams: UNSUBSCRIBE_PARAM } },
     {
       id: 'hold',
@@ -6310,7 +6335,10 @@ const UNSUBSCRIBE_PAGE: Tpl001Component = {
     { fromId: 'hold', fromProperty: 'out-missing', toId: 'failGate', toProperty: 'eval' },
     // D27: a throw in the hold is a refusal a person can see, not a blank page.
     { fromId: 'hold', fromProperty: 'failure', toId: 'failGate', toProperty: 'eval' },
-    { fromId: 'failGate', fromProperty: 'result', toId: 'failed', toProperty: 'mounted' }
+    { fromId: 'failGate', fromProperty: 'result', toId: 'failed', toProperty: 'mounted' },
+
+    // The way back — D39's link half, reversed by Richard 2026-09-04.
+    { fromId: 'backButton', fromProperty: 'onClick', toId: 'toSignIn', toProperty: 'navigate' }
   ]
 };
 

@@ -475,6 +475,28 @@ export const UNSUBSCRIBED_TEXT =
 export const UNSUBSCRIBE_FAILED_TEXT =
   'That link did not work. It may have been broken by your email program — try copying the whole address, or turn emails off from your account.';
 
+/**
+ * The way back off the unsubscribe page.
+ *
+ * 🔴 **This exists because Richard REVERSED D39 on 2026-09-04.** D39, 2026-08-29,
+ * was that the page names no association and offers no way back, and that the
+ * silence was a decision rather than an omission. Asked again on the ruling
+ * sheet — *"/unsubscribe carries ~190px of void above its footer"* — his answer
+ * was **"Allow a way back after all"**. `tpl001Template.test.ts` §5 existed to
+ * catch exactly this reversal being made by accident; it is now made on purpose
+ * and §5 is rewritten to the new ruling rather than deleted.
+ *
+ * ⚠️ **Only the LINK half was reversed.** The other half of D39 — naming the
+ * association, which costs a round trip from a mail client — was NOT put to him
+ * and stays declined. §5 still asserts this page fetches nothing.
+ *
+ * ⚠️ **Deliberately NOT in `PRIMARY_LABELS`.** Both notices already tell the
+ * reader to use their account, so this is the route they were just sent on —
+ * not the point of the page. A filled button here would invent an urgency on a
+ * page somebody reached on their way out.
+ */
+export const UNSUBSCRIBE_BACK_LABEL = 'Sign in to your account';
+
 /** What the moderator is told when the mail went out. `{n}` is filled in the graph. */
 export const NOTIFY_SENT_PREFIX = 'Emailed to ';
 export const NOTIFY_SENT_SUFFIX_ONE = ' member who asked to be told.';

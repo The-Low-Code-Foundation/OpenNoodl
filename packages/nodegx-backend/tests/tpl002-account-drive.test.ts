@@ -68,6 +68,7 @@ import {
   Box,
   bundleMembersCloud,
   clickBox,
+  clickButton,
   copyTemplateProject,
   makeMembersDataDir,
   readBox,
@@ -139,6 +140,27 @@ describe('TPL-002 — the box on the screen, and the link out of the email', () 
   const settings: Record<string, boolean | undefined> = {};
   /** The URL the message body carried, and the session the browser held on it. */
   let link = '';
+  /**
+   * The way back off `/unsubscribe`, before and after it is pressed.
+   *
+   * ⚠️ Retyped, not imported — see this file's header. The label lives in
+   * `tpl001Vocabulary.UNSUBSCRIBE_BACK_LABEL` and `tpl001Template.test.ts` §5
+   * ties the artefact to it; a change there should redden HERE and ask a person
+   * to look, rather than follow along silently.
+   */
+  const BACK_LABEL = 'Sign in to your account';
+  const wayBack: Record<string, Visit> = {};
+  /**
+   * 🔴 **Why the press below is wrapped rather than left to throw.**
+   * `clickButton` throws on a control it cannot find or cannot hit — which is
+   * the behaviour wanted — but it runs inside `beforeAll`, and **a `beforeAll`
+   * that throws runs no arm**: a missing button would redden all twenty-three
+   * specs in this file and say nothing about the twenty-two that are not about
+   * it. So the failure is CAUGHT and CARRIED, and §6b is the one spec that
+   * reads it. The message is kept whole because `clickButton`'s own is the
+   * useful one — it lists the buttons that WERE on the page.
+   */
+  let wayBackError = '';
   let sessionOnUnsubscribe: string | null = 'unread';
   /** `myStanding` requests the unsubscribe page's own load made. It carries no band. */
   let standingOnUnsubscribe = -1;
@@ -321,6 +343,29 @@ describe('TPL-002 — the box on the screen, and the link out of the email', () 
       visits['unsub.broken'] = await readVisit(page, '/unsubscribe?token=not-a-real-token');
       visits['unsub.none'] = await readVisit(page, '/unsubscribe');
 
+      // ── §6b — THE WAY BACK, PRESSED ───────────────────────────────
+      //
+      // 🔴 **D39's link half, reversed by Richard 2026-09-04** after he ruled
+      // this page SHITTY — its only sub-PASSABLE verdict in the members' area.
+      // `tpl001Template.test.ts` §5 says the button and the navigate exist and
+      // are wired to one another. **A wire is a claim; this is the press.**
+      //
+      // ⚠️ It is taken on the REFUSAL arm deliberately. The line above leaves
+      // the page on `/unsubscribe` with no token, which is the state a person
+      // reaches when their mail client mangles the link — the reader D39's own
+      // text says is most likely to need a way out.
+      //
+      // ⚠️ `clickButton` refuses a control it cannot hit: it scrolls, then
+      // reads `elementFromPoint`, so a button drawn behind something else
+      // throws here instead of quietly passing. RENDERED is not REACHABLE.
+      try {
+        wayBack.before = await readHere(page);
+        await clickButton(page, BACK_LABEL);
+        wayBack.after = await readHere(page, { until: 'Members sign in' });
+      } catch (e) {
+        wayBackError = String((e as Error)?.message ?? e);
+      }
+
       settings['mo.afterUnsub'] = await mySetting(tokens.mo);
       settings['ann.afterUnsub'] = await mySetting(tokens.ann);
       settings['sam.afterUnsub'] = await mySetting(tokens.sam);
@@ -447,6 +492,49 @@ describe('TPL-002 — the box on the screen, and the link out of the email', () 
   });
 
   // ── §6 — the link the message carried ──────────────────────────────────────
+
+  /**
+   * 🔴 **D39, half-reversed 2026-09-04, graded in a browser.**
+   *
+   * D39 (2026-08-29) was that `/unsubscribe` names no association and offers no
+   * way back. On the 0.2.2 ruling sheet Richard ruled the page **SHITTY** and
+   * answered its standing judgement with *"Allow a way back after all"*, so the
+   * link half is now authorised and built. The expensive half — naming the
+   * association, a round trip from a mail client — was never put to him and
+   * stays declined; `tpl001Template.test.ts` §5 still asserts this page reads
+   * nothing from the database.
+   *
+   * ⚠️ **What this adds over the graph gate.** §5 counts nodes and follows one
+   * wire in the stored artefact. It cannot see a button that does not render, a
+   * button nothing can click, or a navigate that lands somewhere else. All
+   * three are the same picture to a census and three different screens to a
+   * person.
+   */
+  it('§6b the way back is on the page, can be pressed, and lands on the sign-in page', () => {
+    // 🔴 Read the caught failure FIRST, and print it. Without this the next
+    // line reports `Cannot read properties of undefined`, which is a fact
+    // about this spec rather than about the page.
+    expect(wayBackError).toBe('');
+
+    // It is THERE, and on the refusal arm — the reader most likely to want it.
+    expect(wayBack.before.url).toBe('/unsubscribe');
+    expect(wayBack.before.text).toContain(BACK_LABEL);
+
+    // 🔴 The control that makes the line above mean something. `/unsubscribe`
+    // is the page D39 emptied: if this drive were reading some other screen,
+    // the refusal notice would not be on it either.
+    expect(wayBack.before.text).toContain('That link did not work');
+
+    // It was PRESSED — `clickButton` above throws on a control it cannot hit —
+    // and it landed on the sign-in page rather than merely somewhere else.
+    expect(wayBack.after.url).toBe('/sign-in');
+    expect(wayBack.after.text).toContain('Members sign in');
+
+    // And it LEFT the page it was on. A router that renders the new page
+    // underneath the old one is a real failure mode in a single document, and
+    // it reads as success on the url alone.
+    expect(wayBack.after.text).not.toContain('That link did not work');
+  });
 
   it('§6 Mo’s message carries an unsubscribe link, and it is Mo’s own', () => {
     expect(link).toMatch(/\/unsubscribe\?token=[0-9a-f]{32,}$/);

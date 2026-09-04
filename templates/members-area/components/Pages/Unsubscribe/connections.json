@@ -62,6 +62,12 @@
       "fromProperty": "result",
       "toId": "failed-3",
       "toProperty": "mounted"
+    },
+    {
+      "fromId": "backButton",
+      "fromProperty": "onClick",
+      "toId": "toSignIn-3",
+      "toProperty": "navigate"
     }
   ]
 }
