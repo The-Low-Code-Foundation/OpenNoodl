@@ -144,6 +144,15 @@ export const CONTENT_PARAMS: Record<string, Record<string, string>> = {
     // is not already `unsupported` — see `visualDeferReason`'s circle branch in `analyze/plan.ts`
     // for the case where it is (a non-circle literal, or a wired value).
     shape: 'shape',
+    // 🔴 Stage 2's two ports are tagged here even though `renderCircle` never reads them, and that
+    // is the point. A literal value on a port absent from this map raises
+    // `TODO(export): … has no style or content mapping`. `cornerRadius` and `points` are gated off
+    // for a Circle, so the only way one reaches the exporter is an author who set it on a Square
+    // and switched back — a stale parameter on a node that renders perfectly. Untagged, that
+    // author gets a marker over correct output. Every non-circle shape defers whole before this
+    // map is consulted, so nothing here is claiming they are translated.
+    points: 'shape',
+    cornerRadius: 'shape',
     size: 'shape',
     fillEnabled: 'shape',
     fillColor: 'shape',

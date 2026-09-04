@@ -57,10 +57,35 @@ const CircleNode: ReactNodeDefinition = {
         enums: [
           { label: 'Circle', value: 'circle' },
           { label: 'Square', value: 'square' },
-          { label: 'Triangle', value: 'triangle' }
+          { label: 'Triangle', value: 'triangle' },
+          { label: 'Polygon', value: 'polygon' },
+          { label: 'Star', value: 'star' }
         ]
       },
       index: 5,
+      allowVisualStates: true
+    },
+    points: {
+      displayName: 'Points',
+      description: 'How many sides a Polygon has, or how many points a Star has; the minimum is 3',
+      default: 5,
+      group: 'General',
+      type: {
+        name: 'number'
+      },
+      index: 6,
+      allowVisualStates: true
+    },
+    cornerRadius: {
+      displayName: 'Corner Radius',
+      description:
+        'Rounds the corners of the straight-edged shapes, in pixels; it stops at the roundest the shape can be',
+      default: 0,
+      group: 'General',
+      type: {
+        name: 'number'
+      },
+      index: 7,
       allowVisualStates: true
     },
     size: {
@@ -170,6 +195,22 @@ const CircleNode: ReactNodeDefinition = {
     {
       condition: 'shape = circle OR shape NOT SET',
       inputs: ['startAngle', 'endAngle', 'strokeLineCap']
+    },
+    {
+      condition: 'shape = polygon OR shape = star',
+      inputs: ['points']
+    },
+    /**
+     * 🔴 **Every straight-edged shape is NAMED, rather than `shape != circle`.** `!=` compares
+     * `'' + getParameter('shape')` against `'circle'`, and an unset parameter stringifies to
+     * `'undefined'` — so `shape != circle` is TRUE on every Circle saved before stage 1, and Corner
+     * Radius would appear on all of them offering to round a shape that has no corners. Naming the
+     * four shapes leaves an unset `shape` matching nothing, which is the same reading the group
+     * above gets from its explicit `NOT SET` clause.
+     */
+    {
+      condition: 'shape = square OR shape = triangle OR shape = polygon OR shape = star',
+      inputs: ['cornerRadius']
     }
   ]
 };

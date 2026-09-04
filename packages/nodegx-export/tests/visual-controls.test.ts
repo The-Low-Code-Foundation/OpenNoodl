@@ -470,6 +470,58 @@ describe('range, dropdown, video, circle (VISUALS-TARGET §4–§7)', () => {
     });
     expect(result.files['src/components/Showcase.tsx']).toBe(tsx);
   });
+
+  // ── Stage 2: `points` and `cornerRadius` ───────────────────────────────────────────────────
+
+  test('the two shapes stage 2 added defer by the same named marker', () => {
+    for (const shape of ['polygon', 'star']) {
+      const result = withShowcase((component) => {
+        component.nodes.find((n) => n.id === 'dot')!.parameters.push({ name: 'shape', value: lit(shape) });
+      });
+      expect(result.notes.join('\n')).toContain(`the "${shape}" shape is not translated in this slice`);
+      expect(result.files['src/components/Showcase.tsx']).not.toContain('xmlns="http://www.w3.org/2000/svg"');
+    }
+  });
+
+  test('a wired `points` or `cornerRadius` defers — both move the outline itself', () => {
+    for (const port of ['points', 'cornerRadius']) {
+      const result = withShowcase((component) => {
+        component.connections.push({
+          key: `x:value->dot:${port}`,
+          fromId: 'x',
+          fromProperty: 'value',
+          toId: 'dot',
+          toProperty: port,
+          kind: 'value'
+        });
+      });
+      expect(result.notes.join('\n')).toContain(
+        `its ${port} arrives over a wire, so the rendered structure is not static`
+      );
+    }
+  });
+
+  /**
+   * 🔴 **The registry stage 1 found the hard way, checked for stage 2's ports before shipping
+   * them.** `cornerRadius` and `points` are gated off for a Circle, so the only way one reaches
+   * the exporter is an author who set it on a Square and switched back — a stale parameter on a
+   * node that renders perfectly. If it is missing from `emit/style.ts`'s `CONTENT_PARAMS.Circle`,
+   * that author gets `TODO(export): … has no style or content mapping` over correct output.
+   *
+   * ⚠️ Asserting byte-identity against the unset render is what makes this measure the marker's
+   * ABSENCE. A test that only asserted the defer cases would pass with the registry untouched —
+   * which is exactly how stage 1 shipped the bug it later found.
+   */
+  test('🔴 a stale `cornerRadius`/`points` on a Circle emits no marker and no difference', () => {
+    const result = withShowcase((component) => {
+      component.nodes
+        .find((n) => n.id === 'dot')!
+        .parameters.push({ name: 'cornerRadius', value: lit(12) }, { name: 'points', value: lit(7) });
+    });
+    const out = result.files['src/components/Showcase.tsx'];
+    expect(out).not.toContain('has no style or content mapping');
+    expect(out).toBe(tsx);
+  });
 });
 
 /**

@@ -26,10 +26,17 @@ const CircleNode = CircleNodeModule as unknown as {
 // one, via the same `dynamicports` array `NodeSharedPortDefinitions`'s `addDynamicInputPorts`
 // shares with every node. This file grades the one Circle itself declares, found by its
 // condition rather than assumed to be alone or first.
-function shapeGroup(): { condition?: string; inputs?: string[] } {
-  const found = (CircleNode.node.dynamicports ?? []).find((g) => (g.condition ?? '').includes('shape'));
-  if (!found) throw new Error('circle.ts declared no dynamic-port group mentioning "shape"');
+function groupGating(input: string): { condition?: string; inputs?: string[] } {
+  // 🔴 Located by the port it gates, not by position and not by the first condition mentioning
+  // "shape". Stage 2 added two more shape-conditioned groups, and a finder that took the first
+  // match would have gone on grading the arc group while reporting on the others.
+  const found = (CircleNode.node.dynamicports ?? []).find((g) => (g.inputs ?? []).includes(input));
+  if (!found) throw new Error(`circle.ts declared no dynamic-port group gating "${input}"`);
   return found;
+}
+
+function shapeGroup(): { condition?: string; inputs?: string[] } {
+  return groupGating('startAngle');
 }
 
 describe('the shape port gates the arc-only ports, and reads the vocabulary the editor expects', () => {
@@ -53,5 +60,46 @@ describe('the shape port gates the arc-only ports, and reads the vocabulary the 
 
   it('does NOT gate Size, Fill or Stroke — every shape uses those', () => {
     expect(shapeGroup().inputs).not.toEqual(expect.arrayContaining(['size', 'fillEnabled', 'strokeEnabled']));
+  });
+});
+
+// ── Stage 2 ──────────────────────────────────────────────────────────────────────────────────
+
+describe('stage 2 — the two new ports are gated, and neither leaks onto a saved Circle', () => {
+  it('shows Points only for the two shapes that have any', () => {
+    const group = groupGating('points');
+    expect(group.condition).toBe('shape = polygon OR shape = star');
+    expect(group.inputs).toEqual(['points']);
+  });
+
+  it('🔴 Corner Radius NAMES every straight-edged shape rather than saying `!= circle`', () => {
+    // `!=` compares `'' + getParameter('shape')` against `'circle'`, and an unset parameter
+    // stringifies to `'undefined'` — so `shape != circle` is TRUE on every Circle saved before
+    // stage 1, and the row would appear on all of them offering to round a shape with no corners.
+    const condition = groupGating('cornerRadius').condition ?? '';
+    expect(condition).not.toContain('!=');
+    for (const shape of ['square', 'triangle', 'polygon', 'star']) {
+      expect(condition).toContain(`shape = ${shape}`);
+    }
+  });
+
+  it('🔴 neither new condition can be satisfied by an unset shape', () => {
+    // The arc group says `NOT SET` on purpose, because unset means circle. These two must not:
+    // a pre-stage-1 Circle has no `shape` parameter and must show neither row.
+    for (const input of ['points', 'cornerRadius']) {
+      expect(groupGating(input).condition).not.toContain('NOT SET');
+    }
+  });
+
+  it('🔴 the clause mini-language, never `#js` — the same trap as stage 1', () => {
+    for (const input of ['points', 'cornerRadius']) {
+      expect(groupGating(input).condition).not.toContain('#js');
+    }
+  });
+
+  it('leaves the arc group exactly as stage 1 left it', () => {
+    // Adding groups must not widen the one the two shipped prefabs depend on.
+    expect(shapeGroup().condition).toBe('shape = circle OR shape NOT SET');
+    expect(shapeGroup().inputs).toHaveLength(3);
   });
 });

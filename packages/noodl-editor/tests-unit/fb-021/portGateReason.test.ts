@@ -323,12 +323,21 @@ describe('FB-021 — over the shipped catalog, not a fixture', () => {
   // and `strokeLineCap`, newly gated behind `shape = circle OR shape NOT SET` now that Circle
   // draws Square and Triangle too. All three are the clause form, all three explained, so both
   // counts move by exactly 3 and the unexplained remainder stays 11.
-  it('finds all 362 conditionally-gated input ports', () => {
-    expect(all).toHaveLength(362);
+  //
+  // 364 = those 362 plus §1 stage 2 — Circle's `points` (gated `shape = polygon OR shape = star`)
+  // and `cornerRadius` (gated on the four straight-edged shapes by name). 🔴 **The reading worth
+  // having is the remainder, not the total.** Both are the clause form, so both are explained and
+  // the unexplained count stays 11. ✅ **Measured, not argued**: rewriting just the `points` gate
+  // as `#js` — the second trap §1 names — leaves this total at 364 while explained drops to 352,
+  // the remainder rises to 12 and the `#js`-refused count below rises to 10 (both gates rewritten
+  // would give 13). So the TOTAL cannot tell the two cases apart and the remainder can: it is what
+  // distinguishes "two new gated ports" from "two new ports an author cannot be told about".
+  it('finds all 364 conditionally-gated input ports', () => {
+    expect(all).toHaveLength(364);
   });
 
-  it('explains 351 of them', () => {
-    expect(all.filter((row) => row.explained)).toHaveLength(351);
+  it('explains 353 of them', () => {
+    expect(all.filter((row) => row.explained)).toHaveLength(353);
   });
 
   /*

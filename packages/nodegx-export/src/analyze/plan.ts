@@ -15971,6 +15971,10 @@ const STRUCTURE_PORTS: Partial<Record<RenderRole, string[]>> = {
   circle: [
     'size',
     'shape',
+    // Stage 2. Both move the outline itself, so a wire into either makes the rendered structure
+    // non-static exactly as a wired `shape` does.
+    'points',
+    'cornerRadius',
     'fillEnabled',
     'fillColor',
     'strokeEnabled',

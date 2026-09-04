@@ -3423,6 +3423,20 @@
           "index": 451
         },
         {
+          "name": "cornerRadius",
+          "displayName": "Corner Radius",
+          "group": "General",
+          "plug": "input",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false,
+          "default": 0,
+          "description": "Rounds the corners of the straight-edged shapes, in pixels; it stops at the roundest the shape can be",
+          "index": 7,
+          "allowVisualStates": true
+        },
+        {
           "name": "cssClassName",
           "displayName": "CSS Class",
           "group": "Advanced HTML",
@@ -3697,6 +3711,20 @@
           "index": 403
         },
         {
+          "name": "points",
+          "displayName": "Points",
+          "group": "General",
+          "plug": "input",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false,
+          "default": 5,
+          "description": "How many sides a Polygon has, or how many points a Star has; the minimum is 3",
+          "index": 6,
+          "allowVisualStates": true
+        },
+        {
           "name": "position",
           "displayName": "Position",
           "group": "Layout",
@@ -3746,6 +3774,14 @@
               {
                 "label": "Triangle",
                 "value": "triangle"
+              },
+              {
+                "label": "Polygon",
+                "value": "polygon"
+              },
+              {
+                "label": "Star",
+                "value": "star"
               }
             ]
           },
@@ -4267,6 +4303,18 @@
               "startAngle",
               "endAngle",
               "strokeLineCap"
+            ]
+          },
+          {
+            "condition": "shape = polygon OR shape = star",
+            "inputs": [
+              "points"
+            ]
+          },
+          {
+            "condition": "shape = square OR shape = triangle OR shape = polygon OR shape = star",
+            "inputs": [
+              "cornerRadius"
             ]
           },
           {

@@ -8,7 +8,11 @@ import { noodlRootRef } from '../../noodl-root-ref';
 export interface CircleProps extends Noodl.ReactProps {
   /** §1 of NOTES-UNOWNED-NODE-WORK.md — stage 1. Absent on every project saved before this
       shipped; `circle.ts`'s port gate reads that as `'circle'`, and so does this component. */
-  shape?: 'circle' | 'square' | 'triangle';
+  shape?: 'circle' | 'square' | 'triangle' | 'polygon' | 'star';
+  /** Sides of a Polygon, or points of a Star. Ignored by every other shape. */
+  points?: number;
+  /** Corner rounding in pixels for the straight-edged shapes. Ignored by Circle. */
+  cornerRadius?: number;
   size: number;
   startAngle: number;
   endAngle: number;
@@ -147,8 +151,141 @@ function polygonPath(points: Point[]): string {
   return points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ') + ' Z';
 }
 
-function shapePoints(shape: 'square' | 'triangle', size: number): Point[] {
-  return shape === 'square' ? squarePoints(size) : trianglePoints(size);
+// ── §1 stage 2: the point-driven shapes, and rounded corners ─────────────────────────────────
+//
+// Polygon and Star are the same construction as Square and Triangle — vertices inscribed in the
+// size × size box, wound clockwise in screen coordinates — so they reach `insetPolygon` and
+// `polygonPath` unchanged. Nothing above this line moves.
+
+/** Where a vertex sits on the inscribed circle: clockwise from the top, screen coordinates. */
+function vertexAt(size: number, angleFromTop: number, radiusScale = 1): Point {
+  const c = size / 2;
+  const r = (size / 2) * radiusScale;
+  const a = angleFromTop - Math.PI / 2;
+  return { x: c + r * Math.cos(a), y: c + r * Math.sin(a) };
+}
+
+/** A regular n-gon inscribed in the box, first vertex at the top, wound clockwise. */
+function polygonPoints(size: number, sides: number): Point[] {
+  const n = Math.max(3, Math.round(sides));
+  return Array.from({ length: n }, (_, i) => vertexAt(size, (i * 2 * Math.PI) / n));
+}
+
+/**
+ * How deep a star's inner vertices sit, as a fraction of the outer radius.
+ *
+ * `cos(2π/n) / cos(π/n)` is the ratio at which the two edges meeting at an outer point are
+ * **collinear with the edges of the neighbouring points** — the classic star-polygon look. It
+ * gives 0.382 for five (the pentagram everyone pictures) and 0.577 for six (the Star of David),
+ * both of which are the values those stars are actually drawn with.
+ *
+ * ⚠️ **It goes to zero at four points and negative at three**, where a star with collinear edges
+ * does not exist. Clamping to 0.2 there draws a recognisable spiky shape instead of a degenerate
+ * one; the alternative was refusing to draw, which teaches an author that the port is broken.
+ */
+function starInnerRatio(points: number): number {
+  const ratio = Math.cos((2 * Math.PI) / points) / Math.cos(Math.PI / points);
+  return Math.max(0.2, Math.min(0.9, ratio));
+}
+
+/** An n-pointed star: outer and inner vertices alternating, wound clockwise from the top. */
+function starPoints(size: number, points: number): Point[] {
+  const n = Math.max(3, Math.round(points));
+  const inner = starInnerRatio(n);
+  const out: Point[] = [];
+  for (let i = 0; i < n; i++) {
+    out.push(vertexAt(size, (i * 2 * Math.PI) / n));
+    out.push(vertexAt(size, ((i + 0.5) * 2 * Math.PI) / n, inner));
+  }
+  return out;
+}
+
+function unit(from: Point, to: Point): { x: number; y: number; len: number } {
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  const len = Math.hypot(dx, dy) || 1;
+  return { x: dx / len, y: dy / len, len };
+}
+
+/**
+ * The same outline as {@link polygonPath}, with each corner replaced by a circular arc of
+ * `radius` that is tangent to both of its edges.
+ *
+ * The trim length along each edge is `radius / tan(θ/2)` for interior angle θ, which is what makes
+ * the arc tangent rather than merely nearby. 🔴 **It is clamped to half of the shorter adjacent
+ * edge and the radius recomputed from the clamped length** — without that, a corner radius larger
+ * than the shape eats past the next corner and the path crosses itself. An author dragging the
+ * value up therefore sees it stop at the roundest the shape can be, rather than tearing.
+ *
+ * ⚠️ **The sweep flag is per corner, not per shape, because a Star has reflex corners.** The
+ * cross product of the incoming and outgoing edges says which way this corner turns; using one
+ * flag for the whole outline would bulge every inner vertex of a star the wrong way.
+ */
+function roundedPolygonPath(points: Point[], radius: number): string {
+  if (!(radius > 0)) return polygonPath(points);
+
+  const n = points.length;
+  const parts: string[] = [];
+  let start: Point | null = null;
+
+  for (let i = 0; i < n; i++) {
+    const curr = points[i];
+    const prev = points[(i - 1 + n) % n];
+    const next = points[(i + 1) % n];
+
+    const v1 = unit(curr, prev);
+    const v2 = unit(curr, next);
+
+    const cos = Math.max(-1, Math.min(1, v1.x * v2.x + v1.y * v2.y));
+    const theta = Math.acos(cos);
+    const half = Math.tan(theta / 2);
+
+    // Collinear (nothing to round) or a fold back on itself (no tangent circle exists).
+    if (!isFinite(half) || half <= 1e-6 || theta >= Math.PI - 1e-6) {
+      if (start === null) {
+        start = curr;
+        parts.push(`M ${curr.x} ${curr.y}`);
+      } else {
+        parts.push(`L ${curr.x} ${curr.y}`);
+      }
+      continue;
+    }
+
+    const trim = Math.min(radius / half, v1.len / 2, v2.len / 2);
+    const r = trim * half;
+    const p1 = { x: curr.x + v1.x * trim, y: curr.y + v1.y * trim };
+    const p2 = { x: curr.x + v2.x * trim, y: curr.y + v2.y * trim };
+
+    // Clockwise in screen coordinates (y down) is a positive cross product, and a positive
+    // cross product is SVG sweep 1. A star's inner vertices turn the other way and get 0.
+    const cross = (curr.x - prev.x) * (next.y - curr.y) - (curr.y - prev.y) * (next.x - curr.x);
+    const sweep = cross > 0 ? 1 : 0;
+
+    if (start === null) {
+      start = p1;
+      parts.push(`M ${p1.x} ${p1.y}`);
+    } else {
+      parts.push(`L ${p1.x} ${p1.y}`);
+    }
+    parts.push(`A ${r} ${r} 0 0 ${sweep} ${p2.x} ${p2.y}`);
+  }
+
+  return parts.join(' ') + ' Z';
+}
+
+export type StraightShape = 'square' | 'triangle' | 'polygon' | 'star';
+
+function shapePoints(shape: StraightShape, size: number, points: number): Point[] {
+  switch (shape) {
+    case 'square':
+      return squarePoints(size);
+    case 'triangle':
+      return trianglePoints(size);
+    case 'polygon':
+      return polygonPoints(size, points);
+    default:
+      return starPoints(size, points);
+  }
 }
 
 export class Circle extends React.Component<CircleProps> {
@@ -191,16 +328,33 @@ export class Circle extends React.Component<CircleProps> {
         );
       }
     } else {
-      const points = shapePoints(shape, this.props.size);
+      // ⚠️ Defaults live here as well as on the port for the Empty-Value Contract reason `shape`
+      // does: a connection can deliver `undefined`, and a project saved before stage 2 has neither
+      // parameter. 5 points is a pentagon and a five-pointed star, which is what those two words
+      // draw in anybody's head.
+      const pointCount = Math.max(3, Math.round(this.props.points ?? 5));
+      const cornerRadius = Math.max(0, this.props.cornerRadius ?? 0);
+      const points = shapePoints(shape, this.props.size, pointCount);
 
       if (this.props.fillEnabled) {
-        fill = <path d={polygonPath(points)} fill={this.props.fillColor} />;
+        fill = <path d={roundedPolygonPath(points, cornerRadius)} fill={this.props.fillColor} />;
       }
 
       if (this.props.strokeEnabled) {
         const { strokeColor, strokeWidth } = this.props;
         const inset = insetPolygon(points, strokeWidth / 2);
-        stroke = <path d={polygonPath(inset)} stroke={strokeColor} strokeWidth={strokeWidth} fill="transparent" />;
+        // 🔴 The inner path's corners are `strokeWidth / 2` LESS round, not equally round. Insetting
+        // a rounded outline by d shrinks every corner arc by d — keeping the radius would make the
+        // stroke visibly thicker at the corners than along the edges, which is the artefact the
+        // straight-edged inset was written to avoid in the first place.
+        stroke = (
+          <path
+            d={roundedPolygonPath(inset, Math.max(0, cornerRadius - strokeWidth / 2))}
+            stroke={strokeColor}
+            strokeWidth={strokeWidth}
+            fill="transparent"
+          />
+        );
       }
     }
 
