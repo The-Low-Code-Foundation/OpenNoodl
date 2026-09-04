@@ -103,9 +103,19 @@ function observeOnBench(code: string, inputs: Record<string, unknown>, trigger: 
 /**
  * The runtime's own run.
  *
- * The stub is the eight members `_executeLogic` and `_createExecutionContext` actually touch, and
- * no more. Anything it does not need is deliberately absent, so a future runtime that reaches for
+ * The stub is the members `_executeLogic` and `_createExecutionContext` actually touch, and no
+ * more. Anything it does not need is deliberately absent, so a future runtime that reaches for
  * something new fails here loudly rather than being quietly accommodated.
+ *
+ * 🔴 **That tripwire fired, and this is what admitting a new member looks like.** P82 gave the node
+ * `_clearFailureWarnings`, called on the success path so a fixed program takes its error style back
+ * down. Absent from this list, the call threw inside `_executeLogic`, the throw was caught, and
+ * `executionError` was set — so all six drift fixtures reported a runtime error the bench did not
+ * have. The failure named `Boolean(bench.error)` disagreeing, which points at drift and not at a
+ * missing stub member, so the list is worth checking first whenever every fixture goes red at once.
+ *
+ * ⚠️ **Add to it deliberately, never derive it.** Copying every method off the definition would end
+ * the loud failure and with it the only signal that the runtime's reach has grown.
  */
 function observeInRuntime(
   code: string,
@@ -149,7 +159,18 @@ function observeInRuntime(
     raiseRuntimeError: (errorCode: string, message: string) => raised.push({ code: errorCode, message })
   };
 
-  for (const name of ['_io', '_fail', '_executeLogic', '_createExecutionContext', '_compileFunction', 'registerOutputIfNeeded']) {
+  for (const name of [
+    '_io',
+    '_fail',
+    '_executeLogic',
+    '_createExecutionContext',
+    '_compileFunction',
+    'registerOutputIfNeeded',
+    // Reached on the success path. `context` here has no `editorConnection`, so it correctly
+    // short-circuits and this gate observes no warning traffic — the lifecycle is graded in
+    // `noodl-runtime/test/logic-builder-warning-lifecycle.test.ts`, not here.
+    '_clearFailureWarnings'
+  ]) {
     node[name] = runtimeMethods[name];
   }
 

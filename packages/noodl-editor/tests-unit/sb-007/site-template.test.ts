@@ -51,6 +51,18 @@ jest.mock(
 );
 
 const provider = new EmbeddedTemplateProvider();
+
+/**
+ * The same provider with nothing held, which is the only way to grade the **shape of the row**
+ * now that the real shelf does not offer one.
+ *
+ * 🔴 **Richard's ruling D1 (2026-09-04) holds `site-builder` out of 0.2.2** — registered and
+ * installable, absent from the create wizard. The two assertions below are about the row's title
+ * and its category vocabulary, which are facts about the template's metadata and not about whether
+ * it is currently offered; held behind an empty set they keep grading that metadata, and they will
+ * go on grading it when the hold is lifted. `heldOut` below pins the ruling itself.
+ */
+const unheldProvider = new EmbeddedTemplateProvider(new Set<string>());
 const TEMPLATE_URL = 'embedded://site-builder';
 
 async function installOnce(destination: string): Promise<ProjectContent> {
@@ -81,11 +93,20 @@ function nodeIdsOf(project: ProjectContent): Set<string> {
 // ── 1. It is on the shelf, and it is the right kind of thing ─────────────────
 
 describe('SB-007 — the template is on the embedded shelf', () => {
-  it('lists a Site Builder row the registry can install', async () => {
-    const items = await provider.list();
+  it('lists a Site Builder row the registry can install, once nothing is held', async () => {
+    const items = await unheldProvider.list();
     const row = items.find((i) => i.projectURL === TEMPLATE_URL);
     expect(row).toBeDefined();
     expect(row?.title).toBe('Site Builder');
+  });
+
+  it('🔴 is HELD off the real shelf for 0.2.2, while staying installable', async () => {
+    // Ruling D1. The row must not reach the create wizard...
+    const offered = await provider.list();
+    expect(offered.find((i) => i.projectURL === TEMPLATE_URL)).toBeUndefined();
+    // ...and must still install when asked for by URL, which is what "held, not deleted" means.
+    expect(await provider.canInstall(TEMPLATE_URL)).toBe(true);
+    expect(provider.getTemplateIds()).toContain('site-builder');
   });
 
   it('claims its own URL', async () => {
@@ -96,7 +117,7 @@ describe('SB-007 — the template is on the embedded shelf', () => {
     // The full vocabulary check lives in `fb-005/template-shelf.test.ts`, which
     // walks every embedded template. This is the one row's half of it, stated
     // here so a failure names this template.
-    const items = await provider.list();
+    const items = await unheldProvider.list();
     expect(items.find((i) => i.projectURL === TEMPLATE_URL)?.category).toBe('site');
   });
 
