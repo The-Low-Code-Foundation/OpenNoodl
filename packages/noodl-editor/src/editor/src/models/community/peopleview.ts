@@ -39,6 +39,7 @@ import {
   type CommunityChip,
   type CommunityDirectoryView,
   type CommunityFilterPill,
+  type CommunityListingState,
   type CommunityPersonRowView,
   type CommunityProfileDetailView,
   type CommunityProfileState,
@@ -46,7 +47,15 @@ import {
 } from '@noodl-core-ui/components/community';
 import { badgeMark } from '@noodl-core-ui/components/community/badgeMarks';
 
-import type { Directory, MeResponse, PersonBadge, PersonProfile, PersonSummary, Read } from './communityapi';
+import type {
+  Directory,
+  MeResponse,
+  MyListingResponse,
+  PersonBadge,
+  PersonProfile,
+  PersonSummary,
+  Read
+} from './communityapi';
 
 export type { CommunityDirectoryView, CommunityProfileState };
 
@@ -306,9 +315,14 @@ export function composeDirectory(inputs: DirectoryInputs): { surface: 'hidden' }
       // ⚠️ The two empties are different sentences and neither is "nothing here". One says what
       // the directory is FOR; the other says a search matched nobody and is a state the reader
       // caused and can undo.
+      // ⚠️ REL-015 — the unfiltered sentence used to read *"Builders who have published or
+      // finished something, and chose to be listed"*, which was D8's bar in words. Richard's
+      // 2026-09-04 ruling took that bar out of `listDirectory` and put an approval queue in its
+      // place, so the old line described a rule that no longer decides anything — and it named
+      // the ONE rule a reader could not act on while omitting the one they can.
       emptyLine: narrowed
         ? 'Nobody here matches that yet — try fewer words, or clear the filters.'
-        : 'Builders who have published or finished something, and chose to be listed, appear here.',
+        : 'Members who asked to be listed, and were approved, appear here.',
       // The web page's own label, which NAMES the fields so the box does not promise more than
       // it does.
       searchLabel: 'Search names, handles, bios and skills',
@@ -506,4 +520,87 @@ export function composeProfileView(inputs: ProfileInputs): CommunityProfileState
   if (read.outcome === 'unauthenticated') return { state: 'unreachable', detail: 'Sign in to see this profile.' };
 
   return { state: 'unreachable', detail: read.detail };
+}
+
+// ── REL-015 §1 — the caller's own listing ──────────────────────────────────────
+
+/**
+ * 🔴 **PURE, AND EXPORTED FOR THE SAME REASON `composeDirectory` IS**: the branch that decides
+ * whether a member sees a *"list me"* button at all is the one worth grading directly, and a
+ * spec that had to mount a hook to reach it would be grading React.
+ */
+export type ListingInputs = {
+  /** 🔴 D15's source, exactly as in {@link DirectoryInputs}. Never the listing read's own 404. */
+  me: Read<MeResponse> | undefined;
+  /** `undefined` = not asked yet. */
+  read: Read<MyListingResponse> | undefined;
+};
+
+/**
+ * What the People pane should draw above the directory.
+ *
+ * 🔴 **`{ surface: 'hidden' }` COVERS THREE DIFFERENT REFUSALS AND THAT IS DELIBERATE**, because
+ * the correct screen for all three is the same one — the directory, with no button — and a card
+ * that said *"sign in to list yourself"* would be this editor advertising an account system to a
+ * pupil D15 is refusing a directory to. The three are: D15 answered `absent`; the caller is
+ * signed out (`unauthenticated`); and the route answered `absent` itself, which is D15 again one
+ * request along.
+ *
+ * ⚠️ **AN UNREACHABLE READ IS `error`, NOT HIDDEN.** That distinction is `communityapi.ts`'s and
+ * it is load-bearing here: a network failure drawn as *"you cannot list yourself"* would be this
+ * client inventing a platform policy out of its own broken connection. It is retryable and it
+ * says so.
+ */
+export function composeListing(
+  inputs: ListingInputs
+): { surface: 'hidden' } | { surface: 'shown'; state: CommunityListingState } {
+  const { me, read } = inputs;
+
+  // 1. D15, off `me` alone and before anything else is read — `composeDirectory`'s order.
+  if (me?.outcome === 'ok' && me.value.community.surface === 'absent') {
+    return { surface: 'hidden' };
+  }
+
+  // 2. Signed out. ⚠️ Read off `me`, which is the route that answers 200 signed out and says so
+  // in a field, rather than off the listing read's 401 — that would make the button's presence
+  // depend on a request that has not come back yet, and flicker it in on every refresh.
+  if (me?.outcome === 'ok' && me.value.viewer === null) {
+    return { surface: 'hidden' };
+  }
+
+  if (read === undefined) return { surface: 'shown', state: { kind: 'loading' } };
+
+  if (read.outcome === 'unauthenticated' || read.outcome === 'absent') {
+    return { surface: 'hidden' };
+  }
+
+  if (read.outcome !== 'ok') {
+    return {
+      surface: 'shown',
+      state: {
+        kind: 'error',
+        message: 'Could not check whether you are listed. The community may be unreachable.'
+      }
+    };
+  }
+
+  const item = read.value.item;
+
+  /**
+   * 🔴 THE HANDLE COMES FROM THE ITEM WHEN THERE IS ONE AND FROM `me` WHEN THERE IS NOT, and the
+   * fallback is not a nicety: `item: null` is an account with no profile row, which is the state
+   * every real sign-up produces — and it is exactly the state whose sentence has to name the page
+   * that does not exist yet.
+   */
+  const handle = item?.handle ?? (me?.outcome === 'ok' ? (me.value.viewer?.handle ?? '') : '');
+
+  return {
+    surface: 'shown',
+    state: {
+      kind: 'ready',
+      status: item === null ? 'none' : item.listing.status,
+      handle,
+      note: item?.listing.note ?? null
+    }
+  };
 }

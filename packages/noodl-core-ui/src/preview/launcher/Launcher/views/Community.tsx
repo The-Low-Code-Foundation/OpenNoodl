@@ -54,6 +54,7 @@ import {
   CommunityChatThread,
   CommunityChatView,
   CommunityDirectoryView,
+  CommunityListingCard,
   CommunityProfileView,
   CommunityRow,
   CommunitySection,
@@ -65,9 +66,11 @@ import {
 } from '@noodl-core-ui/components/community';
 import type {
   CommunityBenchViewModel,
+  CommunityChatComposerBox,
   CommunityChatThreadState,
   CommunityChatViewModel,
   CommunityDirectoryViewModel,
+  CommunityListingState,
   CommunityProfileState,
   CommunityReplyBox,
   CommunitySectionState,
@@ -181,6 +184,37 @@ export interface LauncherCommunityPeoplePane {
   onToggleFilter: (key: string) => void;
   onOpenPerson: (handle: string) => void;
   onRetry: () => void;
+  /**
+   * REL-015 §1 — *"list me on /people"*, from the editor. Richard, 2026-09-04: *"we currently
+   * have no button to add a 'person', it should be free for any registered member to do so."*
+   *
+   * 🔴 **`undefined` AND `null` MEAN DIFFERENT THINGS HERE, EXACTLY AS THEY DO ON `people`
+   * ITSELF, AND FOR THE SAME REASON.** `undefined` is a host that has not wired the surface —
+   * Storybook, an older editor build — and `null` is a host whose read came back
+   * `unauthenticated` or D15-refused, so there is nobody to list. Both draw nothing, and a spec
+   * that could not tell them apart could not tell a refusal from an un-built feature.
+   *
+   * ⚠️ The directory below it renders either way: reading who is here works signed out, and a
+   * signed-out member seeing the community with no button is the honest screen.
+   */
+  listing?: LauncherCommunityListingPane | null;
+}
+
+/**
+ * REL-015 §1's host state for the listing card.
+ *
+ * ⚠️ The BIO lives here rather than in the component, for {@link LauncherCommunityHostState}'s
+ * reason one level up: the card sits inside a list that re-renders whenever the directory
+ * refreshes, and a `useState` inside it would lose what somebody had typed.
+ */
+export interface LauncherCommunityListingPane {
+  state: CommunityListingState;
+  bio: string;
+  busy: boolean;
+  onBioChange: (bio: string) => void;
+  onRequest: () => void;
+  onWithdraw: () => void;
+  onRetry: () => void;
 }
 
 /**
@@ -202,6 +236,14 @@ export interface LauncherCommunityChatPane {
   onBack: () => void;
   onRetry: () => void;
   onOpenLink?: (href: string) => void;
+  /**
+   * FB-013 — start a thread, above the river. See {@link CommunityChatComposerBox} for the two
+   * arms. ⚠️ Optional for {@link LauncherCommunityThreadPane.reply}'s reason: a host with no
+   * write wiring draws the river with no way to start something.
+   */
+  composer?: CommunityChatComposerBox | null;
+  /** FB-013 — reply, under an open thread. Reuses the bench's {@link CommunityReplyBox}. */
+  reply?: CommunityReplyBox | null;
 }
 
 export interface LauncherCommunityProfilePane {
@@ -395,6 +437,7 @@ export function CommunityTab({
           onBack={chat.onBack}
           onRetry={chat.onRetry}
           onOpenLink={chat.onOpenLink}
+          reply={chat.reply}
         />
       </LauncherPage>
     );
@@ -507,6 +550,7 @@ export function CommunityTab({
               onOpenThread={chat.onOpenThread}
               onRetry={chat.onRetry}
               onOpenLink={chat.onOpenLink}
+              composer={chat.composer}
             />
           </div>
         </section>
@@ -581,6 +625,24 @@ export function CommunityTab({
                 `CommunitySection` renders the body itself. The count that component would have
                 drawn is `directory.summary`, which says "2 of 11 people" — a more honest number on
                 a filtered list than a bare item count. */}
+            {/*
+              🔴 REL-015 §1 — ABOVE the directory, and above the SEARCH BOX. The one thing a
+              member who is not in this list wants is a way into it, and a control placed after
+              fifty rows is a control found by the people who least need it. ⚠️ `people.listing`
+              absent or null draws nothing at all — see the pane type, which owns that
+              distinction rather than this line deciding it.
+            */}
+            {people.listing && (
+              <CommunityListingCard
+                state={people.listing.state}
+                bio={people.listing.bio}
+                busy={people.listing.busy}
+                onBioChange={people.listing.onBioChange}
+                onRequest={people.listing.onRequest}
+                onWithdraw={people.listing.onWithdraw}
+                onRetry={people.listing.onRetry}
+              />
+            )}
             <CommunityDirectoryView
               view={people.directory}
               onQueryChange={people.onQueryChange}

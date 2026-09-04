@@ -536,6 +536,34 @@
 }
 
 /*
+  FB-013 — the chat starter's channel `<select>`. Same box treatment as `.ReplyInput`, on the
+  header above it: one named ground per control rather than a second pairing for a field that
+  differs from the textarea in nothing the PAIRS table would need to know about.
+*/
+.ComposerSelect {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  padding: var(--spacing-1-5) var(--spacing-2);
+  background: var(--theme-color-bg-2);
+  border: 1px solid var(--theme-color-border-control);
+  border-radius: 3px;
+  color: var(--theme-color-fg-default);
+  font: inherit;
+  font-size: var(--font-size-sm);
+
+  &:disabled {
+    cursor: progress;
+    color: var(--theme-color-fg-disabled);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--theme-color-primary);
+    outline-offset: -1px;
+  }
+}
+
+/*
   The one FILLED control on this screen, and the only one in `components/community`.
 
   🔴 Posting an answer is the verb the phase is named after; drawing it in the same quiet outline
@@ -1401,4 +1429,27 @@
 .MessageFoot {
   display: flex;
   margin-top: var(--spacing-1);
+}
+
+/* ── REL-015 §1 — the "list me" card, above the directory ─────────────────────────────────── */
+
+/*
+  ⚠️ A stack and not a card. It sits INSIDE `.SectionCard`, above the directory's search box, so a
+  second card here would be a card in a card — the "different page" look NAT-005 exists to prevent.
+  The rule underneath it is what separates it from the list, exactly as `.ThreadReply` is separated
+  from the posts above it.
+*/
+.Listing {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+  padding-bottom: var(--spacing-3);
+  margin-bottom: var(--spacing-3);
+  /*
+    🔴 `border-default` AND NOT `border-subtle`, and `.SectionCard` above measured why: against
+    this ground `border-subtle` is 1.29 dark but **1.03 light** — a rule that separates the card
+    from the directory in dark and does nothing at all in light. This is the only thing dividing
+    them, so it cannot be the half-visible one.
+  */
+  border-bottom: 1px solid var(--theme-color-border-default);
 }

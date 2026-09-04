@@ -37,6 +37,12 @@ export type {
 } from './CommunityPersonRow';
 export { FilterPill } from './CommunityFilterPill';
 export type { FilterPillModel, FilterPillProps } from './CommunityFilterPill';
+export { CommunityListingCard } from './CommunityListingCard';
+export type {
+  CommunityListingCardProps,
+  CommunityListingState,
+  CommunityListingStatus
+} from './CommunityListingCard';
 export { CommunityDirectoryView } from './CommunityDirectoryView';
 export type {
   CommunityDirectoryView as CommunityDirectoryViewModel,
@@ -51,6 +57,8 @@ export type {
 } from './CommunityBenchView';
 export { CommunityChatThread, CommunityChatView } from './CommunityChatView';
 export type {
+  ChatChannelOption,
+  CommunityChatComposerBox,
   CommunityChatThreadProps,
   CommunityChatThreadState,
   CommunityChatFilterPill,

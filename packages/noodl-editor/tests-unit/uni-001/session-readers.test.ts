@@ -491,10 +491,23 @@ describe('AC4 — the people surfaces withhold nothing, proven against the real 
   });
 
   it('the token is used once per client, and nowhere else', () => {
-    // ⚠️ Counted rather than eyeballed. Two clients are built here — one for the directory and
-    // one for a profile — so the expected count is two, and a third would be a third place a
-    // decision could hide.
-    expect(hook.split('session?.token').length - 1).toBe(2);
+    /**
+     * ⚠️ Counted rather than eyeballed: a use that is not a client is a place a decision could
+     * hide.
+     *
+     * 🔴 **DERIVED FROM THE CLIENTS RATHER THAN RE-LITERALLED, AND THE REPAIR IS THE POINT.**
+     * This read `toBe(2)` — one client for the directory, one for a profile — until REL-015 §1
+     * added a third for the listing write, at which point the literal was simply the wrong
+     * number and a session picked a better one. The CRITERION was never *"two"*; it is *"once
+     * per client"*, and stating it that way is a gate that survives the fourth client without
+     * anybody having to notice.
+     *
+     * ⚠️ The pair below is what keeps it from becoming vacuous: `0 === 0` would satisfy the
+     * equality on a hook that had lost its clients altogether.
+     */
+    const clients = hook.split('new CommunityApiClient').length - 1;
+    expect(clients).toBeGreaterThan(0);
+    expect(hook.split('session?.token').length - 1).toBe(clients);
   });
 
   it('the directory is fetched with no branch on being signed in', () => {

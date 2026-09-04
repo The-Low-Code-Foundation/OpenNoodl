@@ -436,3 +436,63 @@ one spec, not sixty-four.
 2. **The pictures have not been re-ruled at PASSABLE.** The fold changes eight phone screens he
    graded. Nothing here claims his verdicts carry over; they were given on the pre-fold shots, and
    the amended close condition is met on those.
+
+---
+
+# §8 🔴 TWO MORE RULINGS, SAME DAY, ON REL-015's PEOPLE DIRECTORY
+
+Asked at the top of session 33, because REL-015 shipped both questions as **open consequences** and
+the first of them decided whether the editor button being built that session would work for him on
+the day it shipped. Both were put with the cost of each option stated. His answers, verbatim as
+chosen:
+
+| # | question | ruling |
+|---|---|---|
+| **D3** | `listDirectory` ANDs the approval **with** `profile_meets_bar()`, so approval is *necessary and not sufficient* — he and Dishant could be approved and still not appear, for want of a `building`/`learning` award | 🔴 **DROP THE BAR FROM `listDirectory`.** Approval alone lists you |
+| **D4** | `/u/<handle>` (`publicProfile`) gates on visibility alone — it never honoured the bar and did not honour approval either, so an unapproved member is reachable at a guessable URL | 🔴 **GATE IT ON APPROVAL TOO.** *Nothing is VISIBLE until I allow it*, not merely *nothing is LISTED* |
+
+## §8.1 D3 — what it reverses, and what it deliberately does not
+
+REL-015 built the conservative reading of its own AC2 (*"AND-ed with, never replacing"*) and said
+so in five places, each naming this as the one-line change if he ruled the other way. He did.
+
+✅ **`profile_meets_bar()` IS NOT DROPPED, NOT REDEFINED, NOT NARROWED — AC3 HOLDS UNCHANGED.** One
+predicate left one query. The function still governs its four other callers, none of which moved:
+`listOffers`/`isOfferListed`, the coach queue (UNI-017 AC4 — gated by it *"and by nothing else"*),
+the `rfp_response_gate` trigger, and `profileBar`. **Who may answer an RFP is exactly what it was.**
+
+⚠️ **What it costs, said plainly:** nothing automatic keeps a thin profile off `/people` any more.
+The reviewer running `approve-listing.ts show <handle>` is the only thing between a one-line bio and
+the directory — the script still **prints** the four bar conditions, it just no longer enforces them,
+and its header now says so.
+
+## §8.2 D4 — the cost he was told about, and the one he was not
+
+The leak D4 closes is real: a member could tick *"list me"*, sit in the queue, and be readable at
+`/u/<handle>` the whole time.
+
+🔴 **The cost that goes with it is larger than the question implied, and it is recorded here rather
+than buried.** `listing_status` defaults to `unlisted`, so **a member who sets their profile public
+and never asks to be listed now has no page at all — including for themselves**, since `/u/<handle>`
+has no viewer. UNI-003 AC1's *"the page is the owner's toggle and nothing else"* is no longer true:
+there are two toggles and the second one is his.
+
+✅ **The product says so on the one screen where somebody would go looking.** `AccountForm`'s copy
+was rewritten in all four listing states — it previously told a waiting member *"your page at
+/u/<handle> is already live — this is only about the directory"*, which D4 turned into a lie.
+
+## §8.3 Where the reversals are written down
+
+Both rulings reverse recorded decisions, so both are recorded **beside the code**, on the D39/D8
+precedent — never quietly deleted:
+
+* `listDirectory` — the removed predicate's whole argument is kept and answered in place.
+* `publicProfile` + `hasPublicProfile` — the "deliberate non-gate" note is rewritten, not removed.
+* `0025_rel015_listing_approval.sql` — safe to amend, it had **never been applied**.
+* `people/page.tsx`, `coaching.ts`, `apisurfaces.ts`, `lists.ts`, `schema.ts` ×2, `seed.mjs`,
+  `approve-listing.ts`, `settings/page.tsx` — nine sentences that the rulings made false.
+* `uni003`, `uni023`, `nat006` and `rel015` — four **specs inverted rather than deleted**, each
+  keeping the old sentence so the reversal is readable where somebody would look for it.
+
+⚠️ **`0003_uni003_profiles.sql` is STILL not amended**, for REL-015's reason: it is applied in
+production and `migrate.ts` checksums migration bytes, so a comment-only edit stops the next deploy.

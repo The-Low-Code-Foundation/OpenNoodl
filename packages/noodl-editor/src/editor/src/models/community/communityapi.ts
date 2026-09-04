@@ -37,6 +37,51 @@ export type MeResponse = {
   community: CommunityVisibility;
 };
 
+/**
+ * REL-015 §1 — `GET /api/v1/me/profile`. This caller's own listing.
+ *
+ * ⚠️ **`item: null` means NO PROFILE ROW HAS EVER EXISTED**, and it is the only state this shape
+ * collapses. `ownProfile` on the platform is the OWNER's reader — it returns a private profile
+ * and a hidden one — so `null` here is one fact and not three, and the editor can tell *"you have
+ * no profile"* from *"your profile is private"*. See the route, which argues it at length.
+ *
+ * ⚠️ It carries the listing and the visibility and stops there. `/settings` on the web renders the
+ * whole `OwnProfile`; the editor's People pane is not a profile editor and has no use for the
+ * bar, the points, the badges or the links.
+ */
+export type MyListing = {
+  handle: string;
+  displayName: string | null;
+  bio: string | null;
+  visibility: 'public' | 'private';
+  listing: {
+    status: 'unlisted' | 'pending' | 'approved' | 'declined';
+    /** 🔴 The decline's reason, and `null` in every other state — `0025` makes that biconditional. */
+    note: string | null;
+  };
+  profilePath: string;
+};
+
+export type MyListingResponse = { item: MyListing | null };
+
+/**
+ * What `POST /api/v1/me/profile` answers.
+ *
+ * 🔴 **`listing` IS THE ACT THAT WAS REQUESTED, NOT THE RESULTING STATUS**, and the route says so
+ * in as many words: reading the row back *"would invite a client to treat this response as the
+ * authority on a state a moderator owns."* So the editor re-reads {@link CommunityApi.myListing}
+ * after a write rather than believing this — which is also what stops the card telling somebody
+ * they were approved the moment they asked.
+ */
+export type ListingReceipt = {
+  item: {
+    handle: string;
+    visibility: 'public' | 'private' | null;
+    listing: 'requested' | 'withdrawn' | null;
+    profilePath: string;
+  };
+};
+
 export type ComponentReading<T> = { value: T; required: T; met: boolean };
 
 export type ThresholdResponse = {
@@ -556,6 +601,17 @@ export type ChatThread = {
   root: ChatMessage;
   replies: ChatMessage[];
 };
+
+/** `POST /api/v1/community/chat`, 201 — start a thread in a channel. */
+export type ChatPostAccepted = { id: string; channel: string };
+
+/**
+ * `POST /api/v1/community/chat/:id`, 201 — reply in a thread.
+ *
+ * ⚠️ `notified` is echoed by the platform because it is a fact about what the write DID, not
+ * telemetry: a reply to your own thread should not draw "they have been told".
+ */
+export type ChatReplyAccepted = { id: string; notified: boolean };
 
 /**
  * Read one message off the wire, or `null` if it is not one.
@@ -2335,6 +2391,107 @@ export class CommunityApiClient {
     }
 
     return { outcome: 'ok', value: { root, replies } };
+  }
+
+  /**
+   * FB-013 — start a thread in a channel. `POST /api/v1/community/chat`, 201.
+   *
+   * ⚠️ **The route wraps its answer in `item`, unlike `askQuestion`'s bench route.** So this
+   * unwraps it rather than returning `write<T>`'s raw JSON — a caller reading `.value.id` off a
+   * `{item: {...}}` payload is the same class of bug `chat()` and `chatThread()` guard against on
+   * the read side, and D14 exists precisely so this file is the one place either shape can drift.
+   */
+  async postChat(input: { channel: string; body: string }): Promise<Write<ChatPostAccepted>> {
+    const write = await this.post<{ item?: unknown }>('/api/v1/community/chat', input);
+    if (write.outcome !== 'ok') return write;
+
+    const item = write.value?.item;
+    const shape = typeof item === 'object' && item !== null ? (item as Record<string, unknown>) : null;
+    if (!shape || typeof shape.id !== 'string' || typeof shape.channel !== 'string') {
+      return { outcome: 'unreachable', status: null, detail: 'the chat post payload could not be read' };
+    }
+    return { outcome: 'ok', value: { id: shape.id, channel: shape.channel } };
+  }
+
+  /**
+   * FB-013 — reply in a thread. `POST /api/v1/community/chat/:id`, 201.
+   *
+   * 🔴 **NO `channel` FIELD, AND NONE IS OFFERED.** The platform reads it off the root and
+   * `0024`'s trigger refuses a mismatch — see the route's own note. A parameter here is a
+   * parameter somebody could pass the wrong value for, and what they would see is a 500 about an
+   * invariant this client never told them existed.
+   */
+  async replyChat(messageId: string, body: string): Promise<Write<ChatReplyAccepted>> {
+    const write = await this.post<{ item?: unknown }>(
+      `/api/v1/community/chat/${encodeURIComponent(messageId)}`,
+      { body }
+    );
+    if (write.outcome !== 'ok') return write;
+
+    const item = write.value?.item;
+    const shape = typeof item === 'object' && item !== null ? (item as Record<string, unknown>) : null;
+    if (!shape || typeof shape.id !== 'string' || typeof shape.notified !== 'boolean') {
+      return { outcome: 'unreachable', status: null, detail: 'the chat reply payload could not be read' };
+    }
+    return { outcome: 'ok', value: { id: shape.id, notified: shape.notified } };
+  }
+
+  /**
+   * REL-015 §1 — this caller's own listing, and the state the editor's People pane renders.
+   *
+   * 🔴 **`GET /api/v1/me/profile`, NOT A `/api/v1/me/listing` OF ITS OWN.** REL-015's sequencing
+   * proposed a second route; building it would have put two doors on one state, which this
+   * file's own `write()` header calls the *"one edit away from disagreeing with itself"*
+   * arrangement. `POST /api/v1/me/profile` already carries `listing`, so only the READ was
+   * missing and only the read was added.
+   *
+   * ⚠️ **`item: null` IS A REAL ANSWER, NOT AN ABSENCE.** It means this account has never had a
+   * profile row — a state every real sign-up produces. `absent` (the 404 branch) is D15's
+   * refusal and means something else entirely, and a client that folded them together would draw
+   * *"list yourself"* to a pupil the platform is refusing to show a directory to at all.
+   */
+  myListing(): Promise<Read<MyListingResponse>> {
+    return this.get<MyListingResponse>('/api/v1/me/profile');
+  }
+
+  /**
+   * Ask to be listed. REL-015 AC5's other half, from the editor.
+   *
+   * 🔴 **THREE FIELDS, AND `visibility` IS THE ONE A READER WILL QUESTION.** `listDirectory` ANDs
+   * `visibility = 'public'`, so a request from a private profile is one that can never be
+   * granted; the web's `/settings` disables its checkbox while private for exactly that reason,
+   * and the editor has no visibility control to disable. So the ask publishes as it asks — and
+   * `CommunityListingCard` says so **above** the button rather than in a result.
+   *
+   * ⚠️ **`listing: 'requested'` IS A VERB, NEVER A STATUS.** The route refuses anything else, and
+   * that is the security property rather than a shape preference: a field carrying a
+   * `listing_status` would be one typo in this file away from a self-service `"approved"`.
+   *
+   * ⚠️ The bio is sent because it is what the directory ROW shows. Absent would mean *"leave the
+   * column alone"* — the route's `readOptionalText` is explicit — so a member with no bio would
+   * be queued with a blank row and nothing for a reviewer to read.
+   */
+  requestListing(bio: string): Promise<Write<ListingReceipt>> {
+    return this.post<ListingReceipt>('/api/v1/me/profile', {
+      bio,
+      visibility: 'public',
+      listing: 'requested'
+    });
+  }
+
+  /**
+   * Take yourself off. REL-015 AC6's half that belongs to the person rather than the moderator.
+   *
+   * 🔴 **IT SENDS NO `visibility`, AND THAT ABSENCE IS THE DECISION.** Withdrawing a listing is
+   * not a request to make a profile private — those are two facts, which is why the web keeps
+   * them in two fieldsets — and a client that helpfully privated the profile as well would take
+   * an action nobody asked for and that the person would have to find a browser to undo.
+   *
+   * ⚠️ It also sends no `bio`: absent means *"leave the column alone"*, so somebody who takes
+   * themselves off and asks again later still has what they wrote.
+   */
+  withdrawListing(): Promise<Write<ListingReceipt>> {
+    return this.post<ListingReceipt>('/api/v1/me/profile', { listing: 'withdrawn' });
   }
 
   intake(): Promise<Read<IntakeState>> {

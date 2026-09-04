@@ -31,6 +31,7 @@ import { FilterPill } from './CommunityFilterPill';
 import { CommunityDensity } from './CommunityRow';
 import { CommunityPostBody } from './CommunityPostBody';
 import { CommunitySectionBody, type CommunitySectionState } from './CommunitySectionBody';
+import type { CommunityReplyBox } from './CommunityThreadView';
 import type { PostBlock } from './postBlocks';
 import { metaLine, relativeTime } from './communityMeta';
 import css from './Community.module.scss';
@@ -68,6 +69,40 @@ export type CommunityChatView = {
   emptyLine: string;
 };
 
+/** One entry in the composer's channel `<select>`. See `chatwrites.ts`'s `CHANNEL_OPTIONS`. */
+export type ChatChannelOption = { key: string; label: string; purpose: string };
+
+/**
+ * FB-013 — "start something", above the river.
+ *
+ * 🔴 **Two arms, `threadwrites.CommunityReplyBox`'s reasoning applied to the starter.** D5 gives
+ * the editor the browser's own session scope, so a signed-in reader gets `composer`; a signed-out
+ * one gets a labelled hand-off rather than a sign-in line with nothing behind it, because this
+ * panel has no sign-in control of its own (UNI-001 put that on the launcher card).
+ *
+ * ⚠️ `value`, `channel` and every callback are the HOST's state — this component may not call a
+ * hook. See {@link CommunityReplyBox} one file along for the same rule and the same reason.
+ */
+export type CommunityChatComposerBox =
+  | { kind: 'handoff'; line: string; actionLabel: string; onAction: () => void }
+  | {
+      kind: 'composer';
+      /** The whole closed vocabulary — a `<select>`, not a free-text tag box. See `chatview.ts`. */
+      channels: ChatChannelOption[];
+      channel: string;
+      onChannelChange: (next: string) => void;
+      value: string;
+      onChange: (next: string) => void;
+      onSubmit: () => void;
+      submitLabel: string;
+      canSubmit: boolean;
+      /** Non-null only when there is something worth SAYING — `CommunityReplyBox`'s rule. */
+      blockedReason: string | null;
+      busy: boolean;
+      error: string | null;
+      note: string | null;
+    };
+
 export interface CommunityChatViewProps {
   view: CommunityChatView;
   density?: CommunityDensity;
@@ -76,6 +111,14 @@ export interface CommunityChatViewProps {
   onRetry: () => void;
   /** Absent means links are drawn and do nothing — never navigate. */
   onOpenLink?: (href: string) => void;
+  /**
+   * How to start a conversation — see {@link CommunityChatComposerBox}.
+   *
+   * ⚠️ Optional, and absent means no host wired it: a story, or a spec grading the read half
+   * alone, draws the river with no way to start something — honest, because that host cannot
+   * post either.
+   */
+  composer?: CommunityChatComposerBox | null;
 }
 
 /**
@@ -134,16 +177,103 @@ function ChatMessageRow({
   );
 }
 
+/**
+ * The starter, above the river — "starting something is the page's first verb", `ChatRiver`'s
+ * own note on the web, carried here unchanged.
+ */
+function ChatStarter({ composer }: { composer: CommunityChatComposerBox }) {
+  if (composer.kind === 'handoff') {
+    return (
+      <div className={css['ThreadReply']}>
+        <p className={css['StateLine']}>{composer.line}</p>
+        <button type="button" className={css['RetryButton']} onClick={composer.onAction}>
+          {composer.actionLabel}
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className={css['ThreadReply']}>
+      <label className={css['ReplyLabel']} htmlFor={STARTER_CHANNEL_FIELD_ID}>
+        Channel
+      </label>
+      {/* 🔴 A `<select>` of the whole closed vocabulary, not a free-text tag box — D19 excluded
+          user-created categories and `FB-013-SCOPE.md` §8 leaves free tags shut. The platform
+          refuses an unknown channel independently; this control is the message, not the gate. */}
+      <select
+        id={STARTER_CHANNEL_FIELD_ID}
+        className={css['ComposerSelect']}
+        value={composer.channel}
+        disabled={composer.busy}
+        onChange={(event) => composer.onChannelChange(event.target.value)}
+      >
+        {composer.channels.map((option) => (
+          <option key={option.key} value={option.key}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+      {/* AC4's sentence at the moment it is useful — choosing where something goes is the one
+          time a reader needs to know what a channel is for. Same string the quiet-channel empty
+          line draws, one owner: `CHANNEL_PURPOSE`. */}
+      <p className={css['ReplyBlocked']}>
+        {composer.channels.find((option) => option.key === composer.channel)?.purpose}
+      </p>
+
+      <label className={css['ReplyLabel']} htmlFor={STARTER_BODY_FIELD_ID}>
+        Say something
+      </label>
+      <textarea
+        id={STARTER_BODY_FIELD_ID}
+        className={css['ReplyInput']}
+        value={composer.value}
+        placeholder="What is on your mind?"
+        rows={4}
+        spellCheck
+        disabled={composer.busy}
+        onChange={(event) => composer.onChange(event.target.value)}
+      />
+
+      <div className={css['ReplyActions']}>
+        <button
+          type="button"
+          className={css['ReplySubmit']}
+          onClick={composer.onSubmit}
+          disabled={!composer.canSubmit || composer.busy}
+        >
+          {composer.submitLabel}
+        </button>
+        {composer.blockedReason && <p className={css['ReplyBlocked']}>{composer.blockedReason}</p>}
+      </div>
+
+      {composer.error && (
+        <p className={css['ReplyError']} role="alert">
+          {composer.error}
+        </p>
+      )}
+      {composer.note && <p className={css['ReplyNote']}>{composer.note}</p>}
+    </div>
+  );
+}
+
+/** See the labels above — constants because this component may not call `useId`. */
+const STARTER_CHANNEL_FIELD_ID = 'community-chat-starter-channel';
+const STARTER_BODY_FIELD_ID = 'community-chat-starter-body';
+
 export function CommunityChatView({
   view,
   density = CommunityDensity.Page,
   onSelectChannel,
   onOpenThread,
   onRetry,
-  onOpenLink
+  onOpenLink,
+  composer
 }: CommunityChatViewProps) {
   return (
     <div className={`${css['Chat']} ${css[`is-density-${density}`]}`}>
+      {composer && <ChatStarter composer={composer} />}
+
       {view.filters.length > 0 && (
         /* ⚠️ A named group, as the Bench's is: five pills labelled "All channels" and "#lounge"
            say what they select and not what they are selecting from. */
@@ -205,6 +335,12 @@ export interface CommunityChatThreadProps {
   onBack: () => void;
   onRetry: () => void;
   onOpenLink?: (href: string) => void;
+  /**
+   * How to reply — see `chatwrites.composeChatReplyBox`. Reuses the bench's own
+   * {@link CommunityReplyBox}: one field, one submit, one platform sentence. Optional and, for
+   * {@link CommunityChatViewProps.composer}'s reason, absent means no host wired it.
+   */
+  reply?: CommunityReplyBox | null;
 }
 
 export function CommunityChatThread({
@@ -212,7 +348,8 @@ export function CommunityChatThread({
   density = CommunityDensity.Page,
   onBack,
   onRetry,
-  onOpenLink
+  onOpenLink,
+  reply
 }: CommunityChatThreadProps) {
   if (state.state === 'closed') return null;
 
@@ -247,8 +384,57 @@ export function CommunityChatThread({
           {state.replies.map((reply) => (
             <ChatMessageRow key={reply.id} row={reply} density={density} onOpenLink={onOpenLink} />
           ))}
+
+          {reply?.kind === 'handoff' && (
+            <div className={css['ThreadReply']}>
+              <p className={css['StateLine']}>{reply.line}</p>
+              <button type="button" className={css['RetryButton']} onClick={reply.onAction}>
+                {reply.actionLabel}
+              </button>
+            </div>
+          )}
+
+          {reply?.kind === 'composer' && (
+            <div className={css['ThreadReply']}>
+              <label className={css['ReplyLabel']} htmlFor={REPLY_FIELD_ID}>
+                {reply.label}
+              </label>
+              <textarea
+                id={REPLY_FIELD_ID}
+                className={css['ReplyInput']}
+                value={reply.value}
+                placeholder={reply.placeholder}
+                rows={4}
+                spellCheck
+                disabled={reply.busy}
+                onChange={(event) => reply.onChange(event.target.value)}
+              />
+
+              <div className={css['ReplyActions']}>
+                <button
+                  type="button"
+                  className={css['ReplySubmit']}
+                  onClick={reply.onSubmit}
+                  disabled={!reply.canSubmit || reply.busy}
+                >
+                  {reply.submitLabel}
+                </button>
+                {reply.blockedReason && <p className={css['ReplyBlocked']}>{reply.blockedReason}</p>}
+              </div>
+
+              {reply.error && (
+                <p className={css['ReplyError']} role="alert">
+                  {reply.error}
+                </p>
+              )}
+              {reply.note && <p className={css['ReplyNote']}>{reply.note}</p>}
+            </div>
+          )}
         </>
       )}
     </div>
   );
 }
+
+/** See the label above — a constant because this component may not call `useId`. */
+const REPLY_FIELD_ID = 'community-chat-reply';

@@ -31,15 +31,17 @@ import {
   readDirectory,
   type Directory,
   type MeResponse,
+  type MyListingResponse,
   type PersonProfile,
   type Read
 } from '@noodl-models/community/communityapi';
 import { COMMUNITY_URL } from '@noodl-models/community/communityorigin';
 import { readCommunitySession, type CommunitySession } from '@noodl-models/community/communitysession';
-import { composeDirectory, composeProfileView } from '@noodl-models/community/peopleview';
+import { composeDirectory, composeListing, composeProfileView } from '@noodl-models/community/peopleview';
 
 import type {
   CommunityDirectoryViewModel,
+  CommunityListingState,
   CommunityProfileDetailView,
   CommunityProfileState
 } from '@noodl-core-ui/components/community';
@@ -63,6 +65,18 @@ export type CommunityPeoplePane = {
   onQueryChange: (query: string) => void;
   onToggleFilter: (key: string) => void;
   onOpenPerson: (handle: string) => void;
+  onRetry: () => void;
+  /** REL-015 §1. 🔴 `null` when there is nobody to list — see {@link composeListing}. */
+  listing: CommunityListingPane | null;
+};
+
+export type CommunityListingPane = {
+  state: CommunityListingState;
+  bio: string;
+  busy: boolean;
+  onBioChange: (bio: string) => void;
+  onRequest: () => void;
+  onWithdraw: () => void;
   onRetry: () => void;
 };
 
@@ -90,6 +104,18 @@ export function useCommunityPeople(): CommunityPeopleHost {
   const [query, setQuery] = useState('');
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
   const [generation, setGeneration] = useState(0);
+  const [listingRead, setListingRead] = useState<Read<MyListingResponse> | undefined>(undefined);
+  /**
+   * REL-015 §1 — what this person has typed into the bio box THIS SESSION.
+   *
+   * 🔴 **`null` MEANS "NOT TOUCHED YET" AND IS NOT THE SAME AS `''`.** The box shows
+   * `typedBio ?? the account's existing bio` (see `listedBio` below), so `null` is what lets the
+   * account's own text show through — and `''` is somebody who selected that text and deleted it,
+   * which must stay deleted. Collapsing the two would make the box refill itself under a cursor
+   * on the next refresh.
+   */
+  const [typedBio, setTypedBio] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
   const openPerson = useCallback((next: string) => {
     // ⚠️ Cleared rather than left, so opening a second profile never shows the first one's badges
@@ -102,6 +128,11 @@ export function useCommunityPeople(): CommunityPeopleHost {
   const onRetry = useCallback(() => {
     setDirectoryRead(undefined);
     setProfileRead(undefined);
+    // ⚠️ REL-015 — cleared too, and the omission would have been invisible: the listing card's
+    // own "Try again" button is this same callback, so leaving the stale `error` read in place
+    // would give it a button that re-fetched the directory and left the card's message exactly
+    // where it was. `undefined` is `loading`, which is what a retry is.
+    setListingRead(undefined);
     setGeneration((n) => n + 1);
   }, []);
 
@@ -129,11 +160,31 @@ export function useCommunityPeople(): CommunityPeopleHost {
     let live = true;
     const client = new CommunityApiClient({ baseUrl: COMMUNITY_URL, token: session?.token ?? null });
 
-    void Promise.all([client.me(), readDirectory(client)]).then(([meRead, listRead]) => {
-      if (!live) return;
-      setMe(meRead);
-      setDirectoryRead(listRead);
-    });
+    /**
+     * 🔴 **THE LISTING READ IS UNCONDITIONAL, AND THE FIRST VERSION OF THIS LINE WAS NOT.** It
+     * read `session?.token ? client.myListing() : Promise.resolve(undefined)` — an optimisation
+     * (a signed-out caller's answer is a 401 nobody needs) that `uni-001/session-readers.test.ts`
+     * caught and was right to: UNI-001 AC4 counts `session?.token` and expects it **once per
+     * client and nowhere else**, because *"a third use is a third place a decision could hide."*
+     *
+     * ⚠️ The branch was defensible and the rule is better. Every read on this surface goes out
+     * the same way for everybody and every decision about what to DRAW is made in
+     * `composeListing`, off `me` — the route that answers 200 signed out and says who the viewer
+     * is. A gated read is one 401 saved and one more place a future edit can quietly decide that
+     * somebody does not get a surface.
+     */
+    void Promise.all([client.me(), readDirectory(client), client.myListing()]).then(
+      ([meRead, listRead, mine]) => {
+        if (!live) return;
+        setMe(meRead);
+        setDirectoryRead(listRead);
+        setListingRead(mine);
+        // 🔴 NOTHING SEEDS THE BIO BOX HERE, AND THAT IS THE POINT. The displayed value is derived
+        // below as `typedBio ?? whatever the account already has`, so a refresh landing a beat
+        // after somebody started typing cannot overwrite them — there is no write to race with.
+        // A seeding effect is the version of this that has that bug.
+      }
+    );
 
     return () => {
       live = false;
@@ -179,6 +230,66 @@ export function useCommunityPeople(): CommunityPeopleHost {
           onOpenLink: (href: string) => platformOpenExternal(href)
         };
 
+  const listing = useMemo(() => composeListing({ me, read: listingRead }), [me, listingRead]);
+
+  /**
+   * REL-015 §1 — the bio the box shows.
+   *
+   * 🔴 **DERIVED, NEVER STORED-THEN-SYNCED.** `typedBio` is what this person has typed in this
+   * session and `null` until they touch the box; underneath it is whatever bio the account
+   * already has. So a refresh cannot overwrite an edit in progress, and there is no effect to get
+   * the ordering wrong in. ⚠️ `?? ''` and not `?? null`: the textarea is CONTROLLED, and React
+   * switches a controlled input to an uncontrolled one on `undefined` with a console warning and
+   * a field that then ignores its own value.
+   */
+  const listedBio =
+    typedBio ?? (listingRead?.outcome === 'ok' ? (listingRead.value.item?.bio ?? '') : '');
+
+  /**
+   * 🔴 **RE-READS AFTER THE WRITE RATHER THAN BELIEVING THE RECEIPT.** `POST /api/v1/me/profile`
+   * answers with the ACT that was requested and says in its own comment why: reading the row back
+   * *"would invite a client to treat this response as the authority on a state a moderator owns."*
+   * So the write's answer moves nothing on screen; the following read does.
+   *
+   * ⚠️ **A FAILED WRITE LEAVES `listingRead` ALONE**, which is what keeps the card honest: the
+   * card goes on saying whatever was true before, rather than flipping to `pending` on the
+   * strength of a request that 500'd. The `busy` flag comes off either way, so the button is never
+   * stuck.
+   */
+  const runListingWrite = useCallback(
+    (write: (client: CommunityApiClient) => Promise<unknown>) => {
+      if (session === undefined) return;
+      setBusy(true);
+      const client = new CommunityApiClient({ baseUrl: COMMUNITY_URL, token: session?.token ?? null });
+      void write(client)
+        .then(() => client.myListing())
+        .then((fresh) => {
+          setListingRead(fresh);
+          // ⚠️ Cleared so the box goes back to showing what the ACCOUNT now holds. Leaving it
+          // would make a withdrawn-then-reopened card show a draft the server already has.
+          setTypedBio(null);
+          // The DIRECTORY changed too — withdrawing from `approved` takes a row out of it — so the
+          // generation bump re-reads the list. ⚠️ That effect also re-reads the listing, so this
+          // path makes TWO listing requests where one would do. Kept deliberately: the explicit
+          // one is what `busy` covers, so the buttons stay disabled until the card is actually
+          // showing the new state rather than until the POST returned. The second read cannot
+          // disagree with the first — both are fresh — so it costs a request and no correctness.
+          setGeneration((n) => n + 1);
+        })
+        .finally(() => setBusy(false));
+    },
+    [session]
+  );
+
+  const onRequestListing = useCallback(
+    () => runListingWrite((client) => client.requestListing(listedBio)),
+    [runListingWrite, listedBio]
+  );
+  const onWithdrawListing = useCallback(
+    () => runListingWrite((client) => client.withdrawListing()),
+    [runListingWrite]
+  );
+
   return {
     openPerson,
     profile,
@@ -190,7 +301,19 @@ export function useCommunityPeople(): CommunityPeopleHost {
             onQueryChange: setQuery,
             onToggleFilter,
             onOpenPerson: openPerson,
-            onRetry
+            onRetry,
+            listing:
+              listing.surface === 'hidden'
+                ? null
+                : {
+                    state: listing.state,
+                    bio: listedBio,
+                    busy,
+                    onBioChange: setTypedBio,
+                    onRequest: onRequestListing,
+                    onWithdraw: onWithdrawListing,
+                    onRetry
+                  }
           }
   };
 }
