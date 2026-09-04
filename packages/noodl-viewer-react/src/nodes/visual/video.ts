@@ -120,7 +120,25 @@ const VideoNode: ReactNodeDefinition = {
       displayName: 'Source',
       group: 'Video',
       type: 'string',
-      description: 'URL or project file to play; leave blank to load nothing rather than fail on a missing source',
+      /**
+       * 🔴 **IT NAMES THE FORMATS AND IT NAMES THE ONE THING PEOPLE WILL TRY FIRST, BECAUSE THIS
+       * NODE HAS NO YOUTUBE PATH AT ALL AND NEVER SAID SO.** Richard, 2026-09-04: *"most people
+       * probably won't publish an mp4 with their project… the builder will add a hosted mp4 URL,
+       * or a Youtube or Vimeo video. Can we make these choices clear?"*
+       *
+       * `Video.tsx` renders a raw `<video>`; there is no `<iframe>` in the viewer anywhere. A
+       * pasted YouTube page link renders a broken element and fires `video/media-error` — a
+       * failure whose cause is invisible from the panel, because the old sentence said *"URL"*
+       * and a YouTube link is a URL.
+       *
+       * ⚠️ **THIS IS THE CHEAP HALF AND IT IS NOT THE FEATURE.** Supporting YouTube or Vimeo needs
+       * an iframe path that does not exist, and a dependable `end` needs the IFrame Player API
+       * script that nothing loads — a CSP and network decision. Owner `NONE`; see
+       * `phase-82/NOTES-UNOWNED-NODE-WORK.md` §2. Until somebody takes it, saying so is the whole
+       * of what this port can honestly do.
+       */
+      description:
+        'Direct video file to play — an mp4, webm or ogg URL, or a file in your project. ⚠️ NOT a YouTube or Vimeo page link: those are web pages, not video files, and will not play. Leave blank to load nothing rather than fail on a missing source',
       set(src) {
         this.props.dom.src = resolveMediaSource(src);
         this.forceUpdate();
