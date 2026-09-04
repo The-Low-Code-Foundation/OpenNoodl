@@ -7,6 +7,7 @@ import './process-setup';
 
 import { EventDispatcher } from '../shared/utils/EventDispatcher';
 import { flushAiSidecars } from './src/models/AiAssistant/thread/installThreadPersistence';
+import { seedShippedLessonsOnStartup } from './src/models/lessonseed';
 import { NodeLibrary } from './src/models/nodelibrary';
 import { flushPendingProjectSave, ProjectModel } from './src/models/projectmodel';
 
@@ -130,6 +131,16 @@ window.addEventListener('DOMContentLoaded', () => {
     window.NodeLibraryData = undefined;
     NodeLibrary.instance.reload();
   }, null);
+
+  // REL-012 — put the shipped lesson bundles into the Learning register, once each, ever.
+  //
+  // 🔴 The Learning tab reads an install register, not a curated list, and nothing seeded it — so a
+  // fresh install opened an empty shelf however the bundles were packaged. This is the writer that
+  // was missing. It is fire-and-forget on purpose: `install` emits `learningFolderChanged`, which
+  // `ProjectsPage` already listens for and rebuilds on, so the shelf fills itself and nothing on
+  // the render path waits for a verification pass that after the first run does not happen at all.
+  // Never throws — see `models/lessonseed`.
+  void seedShippedLessonsOnStartup();
 
   // Create the main element
   const rootElement = document.getElementById('root');

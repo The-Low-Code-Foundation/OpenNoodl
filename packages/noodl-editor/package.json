@@ -126,6 +126,15 @@
         "to": "nodegx-observe/nodegx-observe.cjs"
       },
       {
+        "from": "../../project-examples/lessons",
+        "to": "lessons",
+        "filter": [
+          "**/*",
+          "!**/.mcp.json",
+          "!**/.DS_Store"
+        ]
+      },
+      {
         "from": "../../PRIVACY.md",
         "to": "legal/PRIVACY.md"
       },
