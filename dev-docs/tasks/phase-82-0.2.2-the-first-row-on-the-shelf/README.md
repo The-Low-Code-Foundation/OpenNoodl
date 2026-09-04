@@ -98,6 +98,13 @@ gate 0.2.2 — that is the point of the container. Resist widening it: every tas
 another phase must be one 0.2.2 genuinely waits on, and must arrive with its close condition
 restated here, not linked.
 
+⚠️ **Two rows on this board RIDE rather than GATE, and they are marked as such at the top of their
+own files** — **REL-008** (code export, ruled by Richard 2026-09-01) and **REL-009** (the write the
+editor cannot see, added at his request the same day). The converse of the rule above is that a row's
+presence on the board does not by itself make it a blocker: §4 is the close condition, and neither of
+these is in it. A launch session may build them; a launch session may also drop them for the cut
+without asking. **Anything else added here is a gate until Richard says otherwise.**
+
 ⚠️ **The transfer owes a note back to phase 81** (REL-006 AC4) so two phases do not both believe
 they own the members' area. Write it after the peer session that was live on 2026-08-31 has ended.
 
@@ -107,6 +114,12 @@ the next session's first job **only if it blocks an acceptance criterion**. Othe
 owner, and **build the next task**.
 
 ## §3 The hold list — recorded so it is not rediscovered
+
+🔴 **REINSTATED 2026-09-04.** The site-builder hold was lifted on 2026-09-03 with the bar relaxed to
+`PASSABLE` so it could ship in this cut. Richard then ruled its ten screens: **9 SHITTY, 1
+PASSABLE**. It fails the relaxed bar, and he has put it **back on hold for 0.2.2** — owner **phase
+77**, exactly as the table below already said. Everything in this section is live again, unchanged.
+⚠️ **Holding still costs no action**: it is not in `templates/` and has never been staged.
 
 Deliberately **out** of 0.2.2, by Richard's decision:
 
@@ -135,8 +148,14 @@ where it went.
 0.2.2 is launched when **all** of:
 
 1. The association template is **published** and installed from a clean launcher (REL-001).
-2. Its landing and one members page are **WORTHY** at all three widths, in both states — the
-   VIB-008 close condition, ruled by Richard before publication (REL-002).
+2. ~~Its landing and one members page are **WORTHY** at all three widths, in both states — the
+   VIB-008 close condition, ruled by Richard before publication (REL-002).~~
+   🔴 **AMENDED 2026-09-04, by Richard, in writing rather than quietly.** He ruled all fifteen
+   members-area screens and they came back **14 PASSABLE, 1 SHITTY, 0 WORTHY** — the third reading
+   and the second time at that grade. His decision: **publish as V1 at PASSABLE.** So the clause is
+   now: *the template is PASSABLE on every page, and the one SHITTY page is fixed first, so nothing
+   ships below the bar.* **WORTHY becomes the V2 brief**, with a seam he named — see
+   [`RICHARD-RULINGS-2026-09-04.md`](RICHARD-RULINGS-2026-09-04.md) §4.
 3. The cut is tagged `v0.2.2` with release notes, built from a tree whose committed bundles are
    **not** stale (REL-003, REL-004).
 4. What rode and what rolled forward is **written down** (REL-005), and the hold list survives into

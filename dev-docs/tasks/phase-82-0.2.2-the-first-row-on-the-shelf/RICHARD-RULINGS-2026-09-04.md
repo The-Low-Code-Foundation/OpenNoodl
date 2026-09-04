@@ -157,7 +157,22 @@ grade**. That distinction is the whole of §1's rubric and this row spent six fi
 Neither is a session's to take, and **nothing about the look should be built until they are
 answered**, because they decide whether the work exists at all.
 
-### D1 — Does the site builder come off 0.2.2?
+### ✅ D1 — ANSWERED 2026-09-04: **back on hold, phase 77 owns it**
+
+**Richard's answer: back on hold.** README §3's hold list is **reinstated**, unchanged, with the
+site-builder template, VIB-009 and P77's five unbuilt tasks in it. ⚠️ **Holding costs no action** —
+it is not in `templates/` and has never been staged for publication, so the risk this addresses is
+not an accidental publish but the row being rediscovered at full price. REL-011c AC3 does not close;
+it goes with the template.
+
+🔴 **What this does NOT undo.** A1/A2/A4–A7, the outline work and the two residuals are **built and
+gated and they stay** — they are operability fixes on a template phase 77 inherits, and the gates
+(`rel011cAdminSurfaces.test.ts`, `sb007Template` §12, `sbr010` §7, `ac2-page-editor-drag-drive`) go
+with it. The hold is about **shipping in 0.2.2**, not about the code.
+
+#### The original framing, kept
+
+
 
 Nine of ten screens fail a bar that was already relaxed for it. The hold lifted on 2026-09-03 was
 granted on the expectation that PASSABLE was reachable this cut.
@@ -169,13 +184,51 @@ granted on the expectation that PASSABLE was reachable this cut.
   makes it cheaper than nine screens sounds — but it is a look round on a template that has had
   three, and the grade has not moved on the other one.
 
-### D2 — Does the members' area publish at PASSABLE?
+### ✅ D2 — ANSWERED 2026-09-04: **publish as V1 at PASSABLE**
+
+**Richard's answer: publish as V1.** ✅ **README §4's close condition 2 is AMENDED IN WRITING**, not
+quietly ignored: the clause now reads *PASSABLE on every page, with the one SHITTY page fixed
+first*. **WORTHY becomes the V2 brief.**
+
+🔴 **So `/unsubscribe` is now on the launch path, not beside it.** Judgement 3's work is the
+condition attached to this answer — nothing ships below the bar — which makes §5 row 3 the **first
+job**, before the publish command runs.
+
+#### The original framing, kept
+
+
 
 - **Publish as V1** — which is what he said at s10 before reopening. Close condition 2 would be
   **amended, in writing, to PASSABLE**, not quietly ignored.
 - **Another round** — then it needs §4.1, because three rounds have not moved this grade.
 
-### 🔴 §4.1 What a fourth round would need that the first three did not
+### ✅ §4.1 THE SEAM, NAMED BY HIM 2026-09-04 — and it is the V2 brief
+
+Asked what single thing keeps the living landing page off worthy, having declined all three of the
+session's candidate readings:
+
+> **"It still looks like a standard Wordpress bootstrap template, there's nothing modern CSS about
+> it."**
+
+🔴 **This is the same sentence he opened the phase-81 baseline with** — *"they still look like
+original Wordpress default templates"* — arriving unchanged after three rounds of work. **That is
+the finding.** The rounds moved presence readings (display type, ground variety, photography,
+landmarks, alignment) and did not touch it, because none of them was about the seam.
+
+⚠️ **It is a seam, not yet a task, and it must not be turned into one by guessing.** *"Nothing
+modern CSS about it"* names a class of technique, and this runtime draws through `Group`/`Text`
+nodes onto flexbox — so the **first** piece of V2 work is measuring **which modern CSS the runtime
+can actually reach and author**, not picking effects off a list. Candidates worth measuring rather
+than assuming: fluid type with `clamp()`, `aspect-ratio`, container queries, `subgrid`,
+`backdrop-filter`, `mask-image`, blend modes, scroll-driven animation, `text-wrap: balance`.
+🔴 **A candidate the runtime cannot express is not a V2 item; it is a runtime task.**
+
+⚠️ **He explicitly declined three readings a session offered** — generic stock photography, one
+typeface doing every job, and the narrow left column. **Do not build them.** They were the
+session's, they were wrong, and recording that they were put and refused is what stops the fourth
+round rediscovering them.
+
+### 🔴 §4.2 What a fourth round would need that the first three did not
 
 **A named seam, from him, before anything is built.** Close protocol rule 6 already says this: *"If
 not WORTHY, the why is mandatory work, not commentary — name the seam that blocked it."* Fourteen
