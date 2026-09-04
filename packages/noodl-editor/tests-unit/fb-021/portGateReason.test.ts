@@ -332,12 +332,15 @@ describe('FB-021 — over the shipped catalog, not a fixture', () => {
   // the remainder rises to 12 and the `#js`-refused count below rises to 10 (both gates rewritten
   // would give 13). So the TOTAL cannot tell the two cases apart and the remainder can: it is what
   // distinguishes "two new gated ports" from "two new ports an author cannot be told about".
-  it('finds all 364 conditionally-gated input ports', () => {
-    expect(all).toHaveLength(364);
+  //
+  // 365 = those 364 plus §1 stage 3 — Circle's `svgSource`, gated `shape = svg`. One port, one
+  // clause, explained, so the remainder is again untouched at 11.
+  it('finds all 365 conditionally-gated input ports', () => {
+    expect(all).toHaveLength(365);
   });
 
-  it('explains 353 of them', () => {
-    expect(all.filter((row) => row.explained)).toHaveLength(353);
+  it('explains 354 of them', () => {
+    expect(all.filter((row) => row.explained)).toHaveLength(354);
   });
 
   /*

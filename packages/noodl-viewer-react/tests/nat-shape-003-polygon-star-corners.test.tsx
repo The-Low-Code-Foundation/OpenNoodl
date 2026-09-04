@@ -235,3 +235,57 @@ describe('NAT-SHAPE-003 §4 — stage 2 moves nothing that already worked', () =
     expect(render({ shape: undefined, cornerRadius: 40, points: 9 })).toBe(render({ shape: 'circle' }));
   });
 });
+
+// ── Stage 3: the custom source ───────────────────────────────────────────────────────────────
+
+describe('NAT-SHAPE-003 §5 — the `svg` shape draws the author’s own markup', () => {
+  it('renders the source instead of a generated path', () => {
+    const html = render({ shape: 'svg', svgSource: '<svg viewBox="0 0 10 10"><rect width="10" height="10"/></svg>' });
+    // ⚠️ Verbatim, not re-serialised: `dangerouslySetInnerHTML` inserts the string as written,
+    // so a self-closing tag stays self-closing rather than becoming `<rect …></rect>`.
+    expect(html).toContain('<rect width="10" height="10"/>');
+    // The node's own arc/polygon output must not be there as well.
+    expect(paths(html)).toHaveLength(0);
+  });
+
+  it('🔴 a script in the source does not reach the DOM — the consequence, not the mechanism', () => {
+    // `nat-shape-004` grades the sanitiser as a function. This grades the thing that matters:
+    // that the component actually routes the source through it. A component that forgot to call
+    // it would leave that file green and this one red.
+    const html = render({ shape: 'svg', svgSource: '<svg><script>alert(1)</script><circle r="5"/></svg>' });
+    expect(html).not.toContain('alert');
+    expect(html).toContain('<circle r="5"/>');
+  });
+
+  it('🔴 an event handler and a remote reference are gone too', () => {
+    const html = render({
+      shape: 'svg',
+      svgSource: '<svg><a href="javascript:alert(1)"><circle onclick="alert(2)" r="5"/></a><use xlink:href="https://evil.test/x#a"/></svg>'
+    });
+    expect(html).not.toContain('javascript:');
+    expect(html).not.toContain('onclick');
+    expect(html).not.toContain('evil.test');
+  });
+
+  it('strips root width/height so the drawing fills the Size box', () => {
+    const html = render({ shape: 'svg', size: 200, svgSource: '<svg width="24" height="24"><circle r="5"/></svg>' });
+    expect(html).not.toContain('width="24"');
+    expect(html).not.toContain('height="24"');
+  });
+
+  it('renders nothing rather than "undefined" when the port delivers nothing', () => {
+    // The Empty-Value Contract: a wire can deliver `undefined`, and a node switched to `svg`
+    // before anything was typed has no parameter at all.
+    for (const svgSource of [undefined, '']) {
+      const html = render({ shape: 'svg', svgSource });
+      expect(html).not.toContain('undefined');
+      expect(paths(html)).toHaveLength(0);
+    }
+  });
+
+  it('🔴 ignores svgSource entirely for every other shape', () => {
+    // A source left behind by switching away must not leak into a Circle or a Square.
+    expect(render({ shape: 'circle', svgSource: '<svg><rect id="leak"/></svg>' })).toBe(render({ shape: 'circle' }));
+    expect(render({ shape: 'square', svgSource: '<svg><rect id="leak"/></svg>' })).toBe(render({ shape: 'square' }));
+  });
+});

@@ -15975,6 +15975,7 @@ const STRUCTURE_PORTS: Partial<Record<RenderRole, string[]>> = {
     // non-static exactly as a wired `shape` does.
     'points',
     'cornerRadius',
+    'svgSource',
     'fillEnabled',
     'fillColor',
     'strokeEnabled',
@@ -16053,6 +16054,14 @@ function visualDeferReason(
   // already defers through `STRUCTURE_PORTS.circle` above.
   if (role === 'circle') {
     const shape = literal('shape');
+    // Stage 3. A custom source gets its OWN sentence rather than the generic one below, because
+    // the wall is a different kind: the other shapes are arithmetic this slice has not ported yet,
+    // and this one is arbitrary author markup that would have to be sanitised and re-serialised
+    // into JSX. Naming them the same way would tell an author to wait for a translation that is
+    // not the thing standing in the way.
+    if (shape === 'svg') {
+      return 'its shape is a custom SVG source — author markup is not translated into JSX in this slice';
+    }
     if (shape !== undefined && shape !== 'circle') {
       return `the "${shape}" shape is not translated in this slice — only Circle renders statically today`;
     }

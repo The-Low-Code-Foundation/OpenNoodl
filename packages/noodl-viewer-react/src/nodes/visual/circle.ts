@@ -59,7 +59,8 @@ const CircleNode: ReactNodeDefinition = {
           { label: 'Square', value: 'square' },
           { label: 'Triangle', value: 'triangle' },
           { label: 'Polygon', value: 'polygon' },
-          { label: 'Star', value: 'star' }
+          { label: 'Star', value: 'star' },
+          { label: 'Custom SVG', value: 'svg' }
         ]
       },
       index: 5,
@@ -75,6 +76,20 @@ const CircleNode: ReactNodeDefinition = {
       },
       index: 6,
       allowVisualStates: true
+    },
+    svgSource: {
+      displayName: 'SVG Source',
+      description:
+        'Your own SVG markup, drawn inside the Size box. Script, event handlers, styles, animation and remote references are removed before it renders',
+      default: '',
+      group: 'General',
+      type: {
+        name: 'string',
+        allowEditOnly: true,
+        codelanguage: 'xml'
+      },
+      index: 8,
+      allowVisualStates: false
     },
     cornerRadius: {
       displayName: 'Corner Radius',
@@ -211,6 +226,18 @@ const CircleNode: ReactNodeDefinition = {
     {
       condition: 'shape = square OR shape = triangle OR shape = polygon OR shape = star',
       inputs: ['cornerRadius']
+    },
+    /**
+     * ⚠️ **Fill and Stroke are deliberately NOT gated off for a custom source**, even though they
+     * are inert for one — a custom SVG carries its own paint. Gating them would mean adding a
+     * group that covers every other shape including `shape NOT SET`, changing the property panel
+     * of every Circle ever saved in order to tidy one new case, and `nat-shape-002` asserts they
+     * are ungated on purpose. Registered as an observation in the §1 notes instead of decided
+     * here.
+     */
+    {
+      condition: 'shape = svg',
+      inputs: ['svgSource']
     }
   ]
 };

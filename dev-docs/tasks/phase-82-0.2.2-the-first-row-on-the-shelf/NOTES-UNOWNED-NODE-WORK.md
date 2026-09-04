@@ -124,10 +124,68 @@ because authored SVG *travels* in kits and templates.
   `test:main` back to the documented baseline — 2 failed suites (`sb-007`, `vfn-011`, both §A1's),
   7069/7077 passed. `typecheck:editor`, `typecheck:core-ui` (50 pre-existing, none touched),
   `tsc -p noodl-viewer-react`, `tsc -p nodegx-export` all clean.
-- **Not built**: remaining shapes/`cornerRadius`/`points` (stage 2), `svgSource` + sanitiser
-  (stage 3), and the icon glyph (`NodePicker.icons.ts`'s `Circle: IconName.CircleOpen` is
+- **Not built**: the icon glyph (`NodePicker.icons.ts`'s `Circle: IconName.CircleOpen` is
   unchanged — cosmetic, and not required since `name: 'Circle'` never changed). Not driven in a
   running editor.
+
+#### ✅ Stage 2, session 39 — `points` and `cornerRadius`
+
+- **Two shapes, one port.** `polygon` and `star` both read `points`, built the same way Square and
+  Triangle were (inscribed, clockwise), so they reach `insetPolygon`/`polygonPath` unchanged and
+  `filledArc`/`arc` stay untouched for the third stage running.
+- A star's inner radius is `cos(2π/n)/cos(π/n)` — the collinear-edge ratio, 0.382 at five and 0.577
+  at six. ⚠️ It is zero at four points and negative at three; clamped to 0.2 there.
+- `cornerRadius` trims each edge by `radius / tan(θ/2)`, 🔴 **clamped to half the shorter adjacent
+  edge with the radius recomputed from the clamp** — unclamped, a large radius eats past the next
+  corner and the outline self-intersects. ⚠️ **Sweep flag is per corner**: a Star has reflex
+  corners and one flag for the whole outline bulges them backwards.
+- 🔴 **`cornerRadius` NAMES all four straight-edged shapes rather than `shape != circle`.** `!=`
+  stringifies an unset parameter to `'undefined'`, so `!= circle` is TRUE on every pre-stage-1
+  Circle and the row would have appeared on all of them. This is the same trap as stage 1's
+  `NOT SET`, reached from the opposite direction.
+- All four registries moved together again, the fourth (`CONTENT_PARAMS.Circle`) included by
+  following stage 1's own warning rather than rediscovering it.
+
+#### ✅ Stage 3, session 39 — `svgSource` and the shared sanitiser
+
+- `sanitizeInlineIconSvg` moved out of `IconGlyph.tsx` into **`src/sanitize-inline-svg.ts`**, and
+  the three constructs §1 named as uncovered are now closed: **`<style>` blocks**, **CSS `url()`**
+  (with `url(#…)` surviving, as `href="#…"` does), and **SMIL `<animate>`/`<set>`/`<animateTransform>`/
+  `<animateMotion>`/`<discard>`** — the last being the subtle one, since `<set attributeName="href">`
+  rewrites an attribute *after* the href rule has passed over it.
+- `stripRootSvgDimensions` is a separate export because both callers need it and neither use is
+  about trust: an icon must size with `iconSize`, a Shape's source must fill its `size` box.
+- 🔴 **The `url()` rule was written wrong first, by the trap the `href` rule beside it already
+  documents.** `url\(\s*(['"]?)(?!#)…` lets the optional quote group backtrack to empty, so the
+  lookahead reads the QUOTE instead of the `#` behind it and `url('#g')` is destroyed as remote.
+  Caught by the quoted-fragment case, which is why that case exists separately from the bare one.
+  ✅ **The rules are exported as `SANITIZER_CASES` and driven from there**, each paired with a
+  control asserting the RAW input really contains the payload — a sanitiser suite that writes its
+  own examples writes the ones the code already handles.
+- The export path gets its **own** defer sentence for a custom source rather than the generic
+  shape one: the wall is arbitrary author markup, not un-ported arithmetic, and naming them alike
+  would tell an author to wait for a translation that is not what stands in the way.
+
+##### 🔴 Registered, owner `NONE` — Fill and Stroke are inert for a custom SVG
+
+A custom source carries its own paint, so `fillEnabled`/`fillColor`/`strokeEnabled`/`strokeWidth`/
+`strokeColor` do nothing when `shape = svg`. They are **deliberately left ungated**: switching them
+off needs a group whose condition covers every other shape *including `shape NOT SET`*, which
+changes the property panel of every Circle ever saved in order to tidy one new case — and
+`nat-shape-002` asserts they are ungated on purpose. Worth a decision, not worth taking silently
+inside stage 3.
+
+- **Readings, session 39**: `noodl-viewer-react` 93 suites / 1231 tests, `nodegx-export` 68 / 2241,
+  `noodl-mcp` 93 / 1257, editor `test:main` 422 / 7080 — all EXIT=0, and `test:main` is now clean
+  rather than carrying the two §A1 reds, because §A1 was committed and both gates repaired
+  (`14ceaa99`). `catalog:check`, `catalog:merge:check --require-coverage`, `catalog:examples` 67/67
+  and `tsc` on both packages all clean. fb-021's count moved `362`→`364`→`365`, explained
+  `351`→`353`→`354`, unexplained held at `11` throughout.
+- ✅ **Six mutants run, all killed by exactly one row each**: a single sweep flag, an unclamped
+  trim, equally-round stroke corners, an unclamped star ratio, the `CONTENT_PARAMS` entries
+  removed, and the sanitiser bypassed in the component. Plus a `#js` mutant on the `points` gate
+  confirming fb-021's *remainder* — not its total — is what distinguishes an explained gate from an
+  unexplainable one.
 
 ---
 

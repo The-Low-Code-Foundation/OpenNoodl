@@ -512,11 +512,46 @@ describe('range, dropdown, video, circle (VISUALS-TARGET §4–§7)', () => {
    * ABSENCE. A test that only asserted the defer cases would pass with the registry untouched —
    * which is exactly how stage 1 shipped the bug it later found.
    */
+  test('🔴 a custom SVG source defers by its OWN reason, not the generic shape one', () => {
+    // The wall is a different kind — arbitrary author markup rather than un-ported arithmetic —
+    // and telling an author to wait for "a translation" would name the wrong obstacle.
+    const result = withShowcase((component) => {
+      component.nodes
+        .find((n) => n.id === 'dot')!
+        .parameters.push({ name: 'shape', value: lit('svg') }, { name: 'svgSource', value: lit('<svg><rect/></svg>') });
+    });
+    const notes = result.notes.join('\n');
+    expect(notes).toContain('its shape is a custom SVG source — author markup is not translated into JSX in this slice');
+    expect(notes).not.toContain('the "svg" shape is not translated in this slice');
+    // And no author markup leaks into the emitted file.
+    expect(result.files['src/components/Showcase.tsx']).not.toContain('<rect');
+  });
+
+  test('a wired `svgSource` defers before any literal is read', () => {
+    const result = withShowcase((component) => {
+      component.connections.push({
+        key: 'x:value->dot:svgSource',
+        fromId: 'x',
+        fromProperty: 'value',
+        toId: 'dot',
+        toProperty: 'svgSource',
+        kind: 'value'
+      });
+    });
+    expect(result.notes.join('\n')).toContain(
+      'its svgSource arrives over a wire, so the rendered structure is not static'
+    );
+  });
+
   test('🔴 a stale `cornerRadius`/`points` on a Circle emits no marker and no difference', () => {
     const result = withShowcase((component) => {
       component.nodes
         .find((n) => n.id === 'dot')!
-        .parameters.push({ name: 'cornerRadius', value: lit(12) }, { name: 'points', value: lit(7) });
+        .parameters.push(
+          { name: 'cornerRadius', value: lit(12) },
+          { name: 'points', value: lit(7) },
+          { name: 'svgSource', value: lit('<svg><rect/></svg>') }
+        );
     });
     const out = result.files['src/components/Showcase.tsx'];
     expect(out).not.toContain('has no style or content mapping');

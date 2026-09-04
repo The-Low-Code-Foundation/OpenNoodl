@@ -2,17 +2,20 @@ import React from 'react';
 
 import Layout from '../../../layout';
 import PointerListeners from '../../../pointerlisteners';
+import { sanitizeInlineSvg, stripRootSvgDimensions } from '../../../sanitize-inline-svg';
 import { Noodl } from '../../../types';
 import { noodlRootRef } from '../../noodl-root-ref';
 
 export interface CircleProps extends Noodl.ReactProps {
   /** §1 of NOTES-UNOWNED-NODE-WORK.md — stage 1. Absent on every project saved before this
       shipped; `circle.ts`'s port gate reads that as `'circle'`, and so does this component. */
-  shape?: 'circle' | 'square' | 'triangle' | 'polygon' | 'star';
+  shape?: 'circle' | 'square' | 'triangle' | 'polygon' | 'star' | 'svg';
   /** Sides of a Polygon, or points of a Star. Ignored by every other shape. */
   points?: number;
   /** Corner rounding in pixels for the straight-edged shapes. Ignored by Circle. */
   cornerRadius?: number;
+  /** Author-supplied SVG markup, used only by the `svg` shape. Sanitised before it renders. */
+  svgSource?: string;
   size: number;
   startAngle: number;
   endAngle: number;
@@ -308,7 +311,26 @@ export class Circle extends React.Component<CircleProps> {
     const r = this.props.size / 2;
     const { startAngle, endAngle } = this.props;
 
-    if (shape === 'circle') {
+    /**
+     * The author's own markup, with everything executable taken out of it.
+     *
+     * 🔴 **Sanitised at the render boundary, not when the parameter is set.** A value can arrive
+     * over a wire at any time, and a check that ran only on the authored parameter would pass over
+     * every one of those. `sanitize-inline-svg` explains what the boundary is defending against
+     * and why the SET rather than the author is the thing being distrusted.
+     *
+     * ⚠️ Root `width`/`height` are removed so the drawing fills the node's Size box. A source that
+     * ships `width="24"` would otherwise ignore Size entirely, which reads as a broken port.
+     */
+    let custom: React.ReactNode = null;
+    if (shape === 'svg') {
+      custom = (
+        <span
+          style={{ display: 'block', width: this.props.size, height: this.props.size }}
+          dangerouslySetInnerHTML={{ __html: stripRootSvgDimensions(sanitizeInlineSvg(this.props.svgSource)) }}
+        />
+      );
+    } else if (shape === 'circle') {
       if (this.props.fillEnabled) {
         fill = <path d={filledArc(r, r, r, startAngle, endAngle)} fill={this.props.fillColor} />;
       }
@@ -376,10 +398,12 @@ export class Circle extends React.Component<CircleProps> {
         {...PointerListeners(this.props)}
         style={style}
       >
-        <svg xmlns="http://www.w3.org/2000/svg" width={this.props.size} height={this.props.size}>
-          {fill}
-          {stroke}
-        </svg>
+        {custom ?? (
+          <svg xmlns="http://www.w3.org/2000/svg" width={this.props.size} height={this.props.size}>
+            {fill}
+            {stroke}
+          </svg>
+        )}
       </div>
     );
   }

@@ -153,6 +153,7 @@ export const CONTENT_PARAMS: Record<string, Record<string, string>> = {
     // map is consulted, so nothing here is claiming they are translated.
     points: 'shape',
     cornerRadius: 'shape',
+    svgSource: 'shape',
     size: 'shape',
     fillEnabled: 'shape',
     fillColor: 'shape',

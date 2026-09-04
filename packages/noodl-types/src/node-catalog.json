@@ -3624,6 +3624,10 @@
               {
                 "label": "Star",
                 "value": "star"
+              },
+              {
+                "label": "Custom SVG",
+                "value": "svg"
               }
             ]
           },
@@ -3741,6 +3745,21 @@
           "default": "/* background-color: red; */",
           "description": "Raw CSS declarations applied to this element, overriding the styling ports above",
           "index": 100011
+        },
+        {
+          "name": "svgSource",
+          "displayName": "SVG Source",
+          "group": "General",
+          "plug": "input",
+          "type": {
+            "name": "string",
+            "allowEditOnly": true,
+            "codelanguage": "xml"
+          },
+          "isSignal": false,
+          "default": "",
+          "description": "Your own SVG markup, drawn inside the Size box. Script, event handlers, styles, animation and remote references are removed before it renders",
+          "index": 8
         },
         {
           "name": "transformOriginX",
@@ -4157,6 +4176,12 @@
             "condition": "shape = square OR shape = triangle OR shape = polygon OR shape = star",
             "inputs": [
               "cornerRadius"
+            ]
+          },
+          {
+            "condition": "shape = svg",
+            "inputs": [
+              "svgSource"
             ]
           },
           {
