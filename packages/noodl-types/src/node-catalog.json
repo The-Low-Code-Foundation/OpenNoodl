@@ -29668,7 +29668,7 @@
             "name": "string"
           },
           "isSignal": false,
-          "default": "Type here...",
+          "default": "",
           "index": 22
         },
         {
@@ -51646,7 +51646,7 @@
             "name": "string"
           },
           "isSignal": false,
-          "default": "Type here...",
+          "default": "",
           "description": "Greyed-out hint shown while the field is empty",
           "index": 22
         },

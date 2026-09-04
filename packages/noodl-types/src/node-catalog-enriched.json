@@ -3287,7 +3287,7 @@
     },
     {
       "typeName": "Circle",
-      "displayName": "Circle",
+      "displayName": "Shape",
       "category": "Visual",
       "isVisual": true,
       "isDeprecated": false,
@@ -3726,6 +3726,34 @@
           "default": "relative",
           "description": "How the element is placed: In Layout follows its siblings, Absolute ignores them, Sticky pins to the parent edge on overflow, Fixed stays put and takes no space",
           "index": 11
+        },
+        {
+          "name": "shape",
+          "displayName": "Shape",
+          "group": "General",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Circle",
+                "value": "circle"
+              },
+              {
+                "label": "Square",
+                "value": "square"
+              },
+              {
+                "label": "Triangle",
+                "value": "triangle"
+              }
+            ]
+          },
+          "isSignal": false,
+          "default": "circle",
+          "description": "Which outline this element draws inside its Size × Size box",
+          "index": 5,
+          "allowVisualStates": true
         },
         {
           "name": "size",
@@ -4233,6 +4261,14 @@
         ],
         "description": "Declares conditional/expandable port groups whose visibility depends on parameter values (see declaredPortGroups).",
         "declaredPortGroups": [
+          {
+            "condition": "shape = circle OR shape NOT SET",
+            "inputs": [
+              "startAngle",
+              "endAngle",
+              "strokeLineCap"
+            ]
+          },
           {
             "condition": "pointerEventsMode = explicit",
             "inputs": [
@@ -29590,8 +29626,8 @@
             "name": "number"
           },
           "isSignal": false,
-          "default": 0,
-          "description": "Position to stop before; leave it unset to run to the end of the string, since setting it to 0 yields nothing"
+          "default": -1,
+          "description": "Position to stop before; -1, the default, runs to the end of the string, and 0 yields an empty result"
         },
         {
           "name": "start",
@@ -32024,7 +32060,7 @@
             "name": "string"
           },
           "isSignal": false,
-          "default": "Type here...",
+          "default": "",
           "index": 22
         },
         {
@@ -34817,7 +34853,7 @@
             "name": "string"
           },
           "isSignal": false,
-          "description": "URL or project file to play; leave blank to load nothing rather than fail on a missing source"
+          "description": "Direct video file to play — an mp4, webm or ogg URL, or a file in your project. ⚠️ NOT a YouTube or Vimeo page link: those are web pages, not video files, and will not play. Leave blank to load nothing rather than fail on a missing source"
         },
         {
           "name": "srcObject",
@@ -44012,7 +44048,6 @@
             "name": "color"
           },
           "isSignal": false,
-          "default": "#FFFFFF",
           "description": "Colour of the icon",
           "index": 27,
           "allowVisualStates": true
@@ -46010,7 +46045,7 @@
             "name": "color"
           },
           "isSignal": false,
-          "default": "#FFFFFF",
+          "default": "#000000",
           "description": "Colour of the icon",
           "index": 27,
           "allowVisualStates": true
@@ -48229,6 +48264,16 @@
             "name": "array"
           },
           "isSignal": false,
+          "default": [
+            {
+              "Label": "Option 1",
+              "Value": "option-1"
+            },
+            {
+              "Label": "Option 2",
+              "Value": "option-2"
+            }
+          ],
           "description": "Options to offer, as an array of objects with Label and Value properties; an empty value offers nothing"
         },
         {
@@ -50385,7 +50430,7 @@
             "name": "color"
           },
           "isSignal": false,
-          "default": "#FFFFFF",
+          "default": "#000000",
           "description": "Colour of the icon",
           "index": 27,
           "allowVisualStates": true
@@ -55502,7 +55547,7 @@
             "name": "string"
           },
           "isSignal": false,
-          "default": "Type here...",
+          "default": "",
           "description": "Greyed-out hint shown while the field is empty",
           "index": 22
         },
@@ -58375,7 +58420,7 @@
             "name": "color"
           },
           "isSignal": false,
-          "default": "#FFFFFF",
+          "default": "#000000",
           "description": "Colour of the icon",
           "index": 27,
           "allowVisualStates": true
@@ -69731,7 +69776,6 @@
                   "unit": "%"
                 },
                 "type": "text",
-                "placeholder": "Type here",
                 "backgroundColor": "var(--background)",
                 "color": "var(--foreground)",
                 "fontSize": "var(--text-base)",

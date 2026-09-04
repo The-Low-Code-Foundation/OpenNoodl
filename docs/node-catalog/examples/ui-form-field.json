@@ -150,7 +150,6 @@
             "sizeMode": "contentHeight",
             "width": { "value": 100, "unit": "%" },
             "type": "text",
-            "placeholder": "Type here",
             "backgroundColor": "var(--background)",
             "color": "var(--foreground)",
             "fontSize": "var(--text-base)",
