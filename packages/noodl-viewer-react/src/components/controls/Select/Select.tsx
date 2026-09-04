@@ -123,8 +123,22 @@ export function Select(props: SelectProps) {
 
   let label = null;
 
-  if (selectedIndex >= 0 && selectedIndex < props.items.items.length) {
-    label = <span>{props.items.items[selectedIndex].Label}</span>;
+  /**
+   * 🔴 **`props.items`, not `props.items.items`.** This line read `props.items.items` from the
+   * initial commit (2024-01-26) onwards, and `props.items` is a plain array — `options.ts` assigns
+   * whatever the port delivers straight through, and the `.map` twelve lines above already depends
+   * on it being one. So `props.items.items` is `undefined` and `.length` **throws**: a Dropdown
+   * with a selected value crashed its own render.
+   *
+   * ⚠️ **It survived four years because it is behind `selectedIndex >= 0`**, and `selectedIndex`
+   * is -1 whenever `value` is undefined — which it was, for every Dropdown nobody had chosen from.
+   * `4672d924` then seeded `value` with the first default item so a placed node would draw
+   * something, and that made this reachable on every freshly placed Dropdown: the node it was
+   * meant to make visible threw instead. Found while moving `items` to `optionslist` (§3); the
+   * commit that exposed it is not the commit that caused it.
+   */
+  if (selectedIndex >= 0 && selectedIndex < props.items.length) {
+    label = <span>{props.items[selectedIndex].Label}</span>;
   } else if (props.placeholder) {
     label = <span style={{ opacity: props.placeholderOpacity }}>{props.placeholder}</span>;
   }
