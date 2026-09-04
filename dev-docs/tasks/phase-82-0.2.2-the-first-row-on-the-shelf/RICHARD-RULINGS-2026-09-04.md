@@ -160,7 +160,22 @@ answered**, because they decide whether the work exists at all.
 ### ✅ D1 — ANSWERED 2026-09-04: **back on hold, phase 77 owns it**
 
 **Richard's answer: back on hold.** README §3's hold list is **reinstated**, unchanged, with the
-site-builder template, VIB-009 and P77's five unbuilt tasks in it. ⚠️ **Holding costs no action** —
+site-builder template, VIB-009 and P77's five unbuilt tasks in it.
+
+🔴 **CORRECTION, 2026-09-04, from Richard's own testing pass — "holding costs no action" was FALSE,
+and it was false about the EDITOR.** The template sat in `EmbeddedTemplateProvider`'s map and
+`list()` returns the whole map, so **every 0.2.2 user would have been offered the held template in
+the create wizard.** The reasoning below is right about `templates/` and the community shelf and was
+never checked against the shipped app — a two-population claim asserted from one population.
+✅ **Fixed by the testing pass**: `HELD_TEMPLATE_IDS`, one line, gated by
+`template-needs-backend.test.ts`; phase 77 unholds it by deleting one string. See
+[`TESTING-PASS-2026-09-04.md`](TESTING-PASS-2026-09-04.md) §1.2.
+
+⚠️ **The superseded reasoning is kept below rather than deleted**, because it is the shape of the
+mistake: *"it is not in `templates/`"* is a fact about the community shelf, and the sentence it was
+used to support was about everything that ships.
+
+⚠️ ~~**Holding costs no action**~~ —
 it is not in `templates/` and has never been staged for publication, so the risk this addresses is
 not an accidental publish but the row being rediscovered at full price. REL-011c AC3 does not close;
 it goes with the template.
@@ -178,7 +193,8 @@ Nine of ten screens fail a bar that was already relaxed for it. The hold lifted 
 granted on the expectation that PASSABLE was reachable this cut.
 
 - **Back on hold** (a session's recommendation): it returns to the state it was in until 09-03 — not
-  in `templates/`, never staged, **so holding costs no action**. Owner after 0.2.2 is already named
+  in `templates/`, never staged, ~~**so holding costs no action**~~ — **false about the editor, see
+  the correction above**. Owner after 0.2.2 is already named
   in README §3: **phase 77**. 0.2.2 loses nothing it had on 08-31.
 - **Fix it for this cut**: nine screens against §3's five shared seams. The seams are shared, which
   makes it cheaper than nine screens sounds — but it is a look round on a template that has had
