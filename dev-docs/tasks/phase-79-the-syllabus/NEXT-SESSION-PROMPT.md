@@ -242,3 +242,160 @@ the four modified `SYL-*.md` are session 8's uncommitted edits — left exactly 
 ⚠️ **This prompt IS committed** (`30f94dca`, corrected by `6fab4cca`), and committing it
 necessarily carried session 8's own uncommitted edit to this same file along with it. Their
 text is above and intact; nothing of theirs was rewritten.
+
+---
+---
+
+# Session 10 — SYL-002, the chain that cannot drift (2026-09-05, appended)
+
+WARNING: **Sessions 8 and 9 above are left intact.** This section supersedes only session 9's
+**FIRST JOB** list, at item 3: SYL-002 is built, so the list now starts at J2.
+
+Richard's standing rule decided the lane before anything else did: **two sessions had closed zero
+ACs** (session 8 drove, session 9 swept defects), so this one **had to build**. SYL-002 was the only
+open, unblocked build task — and it had been *seven sessions overdue* with R1 saying *"build the
+equality check before lesson 3, not after lesson 12."*
+
+## The board — re-derived from the task FILES
+
+| task | state |
+|---|---|
+| [SYL-001](SYL-001-THE-HAND-HOLDING-HALF.md) | ✅ done, driven |
+| [SYL-002](SYL-002-THE-CHAIN-THAT-CANNOT-DRIFT.md) | 🟢 **BUILT this session, all five ACs.** `bb20c8cc` |
+| [SYL-003](SYL-003-THE-CREATURE-YOU-CHOSE.md) | ⬜ open, independent — **the only open build task left in this phase** |
+| [SYL-004](SYL-004-LESSON-1-YOUR-CREATURE-ON-SCREEN.md) … [SYL-010](SYL-010-LESSON-7-IT-GETS-DEMANDING.md) | 🟢 seven spine lessons built, gated, driven |
+| [LESSON-VOICE.md](LESSON-VOICE.md) | 🟡 §3 and §6 are Richard's |
+| defect registers | **13 open**, every one owner `NONE`. 10 were closed in session 9 |
+
+**Seven of thirteen spine lessons ship** — thirteen, not twelve, because R2 added one, which is the
+whole story of this session.
+
+---
+
+## 🟢 What shipped
+
+`npm run lessons:chain` and `npm run lessons:chain:self-test`, both in `pr.yml` beside
+`lessons:check`. **6 adjacent pairs compared and holding; 12 mutations, 0 uncaught.**
+
+### 🔴 Its first run found the drift it was written to catch — in `curriculum.json`
+
+**`curriculum.json` had never gained `it-breaks-on-a-phone`**, the lesson R2 ruled into the spine at
+position 2. It claimed `poke-it` follows `your-creature-on-screen`. **Six lessons had shipped
+against an order the published syllabus did not describe.**
+
+Fixed in the community repo the same session (`63e72b2` on `main` there, Richard asked and answered):
+lesson 2 inserted, `poke-it.needs` repointed, the spine lede corrected *Twelve → Thirteen*.
+Graded: `uni022-syllabus` 17/17 and `uni007-intake-and-pathing` 31/31 against the edit.
+
+⚠️ **That repo's suite needs its own Postgres on 55432** (`docker compose up -d db` in
+`~/vscode_projects/nodegx-community`; the whole suite is ECONNREFUSED without it). **Torn down
+after use.** Port 55432, deliberately not 5432 — a homebrew Postgres already holds that one, and
+the suite DROPs schemas.
+
+### Where the order lives, and why it is not where the task said
+
+The scope said *"read the order from `curriculum.json`"*. **Richard ruled twice on this**, because
+the first recommendation rested on a half-read note:
+
+- ❌ Not `lesson.json`. UNI-022 states the boundary deliberately: *"What is NOT in a manifest is
+  curriculum-level: order, prerequisite, and state."*
+- ❌ Not `curriculum.json` alone. **CI has no community checkout**, so that gate reports
+  *"0 pairs checked"* forever — the hole shaped exactly like the defect.
+- ✅ **[`project-examples/lessons/spine.json`](../../../project-examples/lessons/spine.json)**, beside
+  the bundles. Adding a lesson stays a data edit.
+
+🔴 **The two files ARE two statements of one fact and they WILL drift**, so they are **cross-checked
+whenever the community file is reachable, and disagreement FAILS.** That arm is what found the
+drift. Absent is reported as *"NOT RUN … UNMEASURED here"*, never as agreement.
+
+---
+
+## FIRST JOB — J2, then SYL-003 or lesson 8
+
+1. 🔴 **[J2](DEFECTS-THE-RUNNER-DRIVE-FOUND.md)** — *Check my work* on an incomplete step removes the
+   instructions and says nothing new. Measured on two lessons, **unowned for six sessions now**, and
+   it hits the learner at the exact moment they were stuck. Still the only high-severity row in the
+   runner register.
+2. **[H1](DEFECTS-LESSON-6-FOUND.md)** — `paramsEqual` on a `stringlist` sorts before comparing, so a
+   graded step cannot tell two orders apart. WARNING: **left deliberately twice now** — the honest fix
+   adds an ordered form to the authoring format, which is a format decision touching the compiler,
+   the evaluator, the copy module and the verifier. **Arguably Richard's call.**
+3. **[SYL-003](SYL-003-THE-CREATURE-YOU-CHOSE.md)** — the avatar picker. The only open build task.
+4. **Lesson 8 — `snacks`** (`Static Data`, `For Each`, `For Each Actions`). Its opening problem is
+   built and waiting. 🔴 **Read all five registers first and check every node name with
+   `get_node_type`** — four of seven entries so far named a node that could not do the job.
+   ✅ **And it now has a gate**: `lessons:chain` will refuse the bundle unless its starter IS
+   `it-gets-demanding`'s finished app, and `spine.json` must gain the row.
+5. The remainder: E3, E1, E4/H3 (narrowed, other repo), D1, D3, D4, D5, G2, G3, G4, H2, I1, I2.
+
+---
+
+## 🔴 NOT MINE — `test:main` is red on someone else's in-flight work
+
+`npm run test:main` ends **7143/7144, one failure**, and **it is not this session's**:
+
+```
+exp-013/exportBadge.test.tsx:42  expect(deferred.length).toBeGreaterThan(10)
+                                 Expected: > 10   Received: 10
+```
+
+Controlled, not assumed:
+
+| arm | deferred | guard `>10` |
+|---|---|---|
+| **HEAD (committed)** | 11 | ✅ passes |
+| **working tree (peer, uncommitted)** | 10 | 🔴 fails |
+
+The P18 peer translated **`SubscribeToChanges`** — literally the next item their own hand-off names —
+which moved it from `deferred` to `translated` and tripped **their own non-vacuity floor**. It is
+their file (`packages/nodegx-export/coverage-ledger.json`, mtime 19:22, uncommitted) and their
+guard; the floor is simply too high now that nearly everything is translated.
+
+⚠️ **`test:main` is an UNWATCHED gate and their own package suite will not catch this** — the
+assertion lives in `noodl-editor`, not `nodegx-export`. It reaches CI the moment they commit.
+
+## Traps this session paid for
+
+- 🔴 **A recommendation built on a half-read note.** I recommended putting `needs` in `lesson.json`
+  and Richard accepted — then the *next sentence* of `curriculum.ts`'s header turned out to forbid
+  exactly that. ✅ **Read the whole note before quoting the half that agrees with you**, and when it
+  turns out otherwise, say so and re-ask rather than quietly building the accepted-but-wrong thing.
+- 🔴 **The self-test read the developer's real community checkout.** Two arms passed here and would
+  have gone **red in CI** for a reason having nothing to do with the corpus. ✅ **A self-test that
+  only works where somebody happens to have a sibling repo checked out is not a self-test** — it now
+  writes a fixture derived from `spine.json`.
+- ⚠️ **Two arms first read as "NOT caught" when the gate was right and my expectation was wrong.**
+  It reported the divergence in the opposite direction to the phrase I predicted, and it correctly
+  exited 0 on a skipped lesson. ✅ **A failing arm is a claim about the expectation as much as about
+  the code.**
+- ⚠️ **`expect: 'SKIPPED'` alone passes on a gate that prints the word and counts the pair anyway.**
+  ✅ **Assert the denominator moved**, not that a sentence appeared.
+- ⚠️ **`package.json` carried a peer's uncommitted `reap:orphans` line.** A pathspec commit would
+  have swept it. ✅ **Staged my version through `git hash-object -w` + `git update-index --cacheinfo`
+  and committed the INDEX** — their line is still in the working tree, uncommitted.
+- ⚠️ **`curriculum.json` does not round-trip through `json.dumps`** — its `nodes` arrays are kept on
+  one line by hand (662 bytes of reformatting). ✅ **Edited surgically as text.**
+- ⚠️ **`tsc -p scripts/tsconfig.json` pulls in the whole editor source and will not finish here.**
+  It is **not a CI gate**; `ts-node` full-typechecks by default, so `npm run lessons:chain` running
+  clean IS the typecheck, and that is what CI runs.
+- ⚠️ **`cd X && …` persists the cwd into the NEXT tool call.** A follow-up `ls` read as
+  "No such file or directory" from inside `packages/noodl-editor`.
+
+## Still Richard's, unchanged
+
+The step prose for lessons 2-7, the `description`s and badges, and `LESSON-VOICE.md` §3 and §6.
+Two things now wait on that pass:
+
+- ⬜ **`state` in `curriculum.json` is `in-writing` for all thirteen.** Seven bundles ship, but the
+  prose is a draft and `LessonState` has only `ready | in-writing` — `ready` would claim the writing
+  is finished. **One line per lesson when the prose lands.**
+- ⬜ **Four comments in the community repo still say "fifteen lessons"** (`curriculum.ts:111`,
+  `pathing.ts:24`, `university/page.tsx:27-28`, `me/assignments/[id]/lesson/route.ts:15`). Prose,
+  not code; now sixteen.
+
+## What this session did NOT do
+
+- **The editor's `test:ci`** (webpack + Electron) was **not run**, as in session 9. Nothing this
+  session touches editor source — the change is `scripts/`, `package.json`, `pr.yml` and one new
+  data file — but that is an argument, not a reading.
+- **Nothing was driven.** SYL-002 is a gate; it has no surface a person touches.
