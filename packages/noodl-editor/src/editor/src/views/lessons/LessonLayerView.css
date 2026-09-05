@@ -296,6 +296,24 @@
   font-weight: var(--font-weight-semibold);
 }
 
+/*
+ * P79 J1 — lesson prose may use a blockquote, and until the renderer learned the
+ * construct there was nothing here to style. Five of the eight shipped lessons put
+ * the sentence the lesson exists to teach in one, so it is given the emphasis that
+ * intent implies: a rule down the side rather than the browser's bare indent.
+ */
+.lesson-item-popup blockquote,
+.lesson-item blockquote {
+  margin: 16px 0;
+  padding-left: 12px;
+  border-left: 2px solid var(--theme-color-primary);
+}
+
+.lesson-item-popup blockquote p:last-child,
+.lesson-item blockquote p:last-child {
+  margin-bottom: 0;
+}
+
 .lesson-item-popup p i {
   font-style: italic;
 }

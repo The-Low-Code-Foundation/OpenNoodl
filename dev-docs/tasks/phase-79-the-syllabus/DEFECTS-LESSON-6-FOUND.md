@@ -15,7 +15,7 @@ the tasks, not farm the defects. The earlier registers are
 |---|---|---|---|
 | H1 | ⚠️ medium | `NONE` | `paramsEqual` on a `stringlist` is order-independent, and a `States` node's start state depends on the order |
 | H2 | ⚠️ medium | `NONE` | a `States` value with no `type-<value>` is a number, and the FIRST jump hides it |
-| H3 | ⚠️ medium | `NONE` | `Timer`'s display name is **Delay**, and the curriculum's lesson 7 entry says `Timer` |
+| H3 | ⚠️ medium | `NONE` — ⚠️ **runner half fixed s9** | `Timer`'s display name is **Delay**, and the curriculum's lesson 7 entry says `Timer` |
 | H4 | low | `NONE` | the catalog's one-line summary of `Visible` does not say it keeps the space |
 
 ---
@@ -121,3 +121,18 @@ have looked like a spacing bug in the card rather than a wrong choice of port.
 
 ⚠️ Worth a sentence in the summary — *"the element keeps its space; use a Group's own children or a
 conditional to remove it"* — because a hide/show pattern is the first thing most authors reach for.
+
+
+---
+
+## ⚠️ H3 — NARROWED, not closed (2026-09-05, session 9)
+
+The **editor-facing half is fixed**: the lesson runner's *"Looking for…"* line used to repeat the
+internal type id back at the learner, so a step grading a `Timer` told them to look for a "Timer"
+while the picker offers **Delay**. That sentence now resolves through the node picker's own label
+function — see [D2](DEFECTS-LESSON-2-FOUND.md), fixed in the same pass, which turned out to be the
+same defect wearing a different hat for eight node types.
+
+🔴 **The row itself stays open.** What H3 is about is the **curriculum entry**, whose text lives
+in the other repo and still names a node called `Timer`. Nothing in this pass touched it, and the
+prose a learner reads in the lesson body is unchanged. Owner still `NONE`.

@@ -421,18 +421,47 @@ export function safeLessonUrl(value: string, kind: 'link' | 'media' = 'link'): s
   return allowed.test(probe) ? raw : undefined;
 }
 
+/**
+ * Placeholder standing in for a code span while emphasis is applied. The NUL is
+ * stripped from the input first, so an author cannot forge one.
+ */
+const CODE_SLOT = /\u0000(\d+)\u0000/g;
+
 function inlineMarkdown(text: string): string {
-  return escapeHtml(text)
-    .replace(/`([^`]+)`/g, '<code>$1</code>')
-    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-    .replace(/(?:\*|_)([^*_]+)(?:\*|_)/g, '<em>$1</em>')
-    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_m, label, href) => {
-      const safe = safeLessonUrl(href);
-      // A refused link keeps its words and loses its href. Deleting the label
-      // would leave a hole in a sentence the author wrote; a dead link is
-      // visible feedback that something was rejected.
-      return safe ? `<a href="${escapeAttr(safe)}">${label}</a>` : label;
-    });
+  // 🔴 P79 J1(c). Code spans are lifted out BEFORE emphasis rather than being turned
+  // straight into `<code>`, because the emphasis rules do not know what a code span is.
+  // `moods` step 1 ships `min(96 + pokes * 8, 200)` — a multiplication inside code — and
+  // that `*` paired with the `*how much*` after it, opening an `<em>` INSIDE the code and
+  // closing it outside: mismatched tags, a corrupted code sample, and the italics on the
+  // wrong words. Masking is the only ordering that makes a code span opaque to the rules
+  // that run after it, which is what a code span means.
+  const codes: string[] = [];
+  const masked = escapeHtml(text.replace(/\u0000/g, '')).replace(/`([^`]+)`/g, (_m, code) => {
+    codes.push(code);
+    return `\u0000${codes.length - 1}\u0000`;
+  });
+
+  return (
+    masked
+      // 🔴 P79 J1(b). The content class here used to be `[^*]+`, which forbids the very
+      // character that opens a nested emphasis — so `**bold with *nested* inside**` never
+      // matched as bold at all. The single-star rule below then paired across the wrong
+      // spans, italicising the words the author left plain and leaving the emphasised
+      // ones bare, with two stray `*` in the sentence. Non-greedy `.+?` closes on the
+      // FIRST following `**`, so the nested run survives to be matched below.
+      // `.` excludes newlines, and this runs per line, so a run cannot span a paragraph.
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      .replace(/(?:\*|_)([^*_]+)(?:\*|_)/g, '<em>$1</em>')
+      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_m, label, href) => {
+        const safe = safeLessonUrl(href);
+        // A refused link keeps its words and loses its href. Deleting the label
+        // would leave a hole in a sentence the author wrote; a dead link is
+        // visible feedback that something was rejected.
+        return safe ? `<a href="${escapeAttr(safe)}">${label}</a>` : label;
+      })
+      // Restored last, so a code span inside a link label survives both rules.
+      .replace(CODE_SLOT, (_m, index) => `<code>${codes[Number(index)]}</code>`)
+  );
 }
 
 /** Render a Markdown-subset string to an HTML fragment (headings, lists, paragraphs, inline). */
@@ -447,6 +476,17 @@ export function renderMarkdown(md: string | undefined): string {
     if (lines.length === 1 && heading) {
       const level = heading[1].length;
       html.push(`<h${level}>${inlineMarkdown(heading[2])}</h${level}>`);
+      continue;
+    }
+    // 🔴 P79 J1(a). Without this branch a `> …` line fell through to the paragraph
+    // branch, where `escapeHtml` turned the marker into a literal `&gt;` — in five of
+    // the eight shipped lessons, on the one sentence the lesson exists to teach.
+    // Recursing on the stripped body rather than inlining means a quote may hold a
+    // list or several paragraphs; the strip guarantees the recursion terminates.
+    // Checked BEFORE the list branches so `> - item` is read as a quoted list.
+    if (lines.every((l) => /^\s*>\s?/.test(l))) {
+      const quoted = lines.map((l) => l.replace(/^\s*>\s?/, '')).join('\n');
+      html.push(`<blockquote>${renderMarkdown(quoted)}</blockquote>`);
       continue;
     }
     if (lines.every((l) => /^\s*[-*]\s+/.test(l))) {

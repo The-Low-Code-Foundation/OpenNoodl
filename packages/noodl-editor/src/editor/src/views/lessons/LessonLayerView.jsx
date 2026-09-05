@@ -5,6 +5,22 @@ const PopupLayer = require('../popuplayer').default;
 const LessonItem = require('./LessonItem');
 const { EventDispatcher } = require('../../../../shared/utils/EventDispatcher');
 const { describeStepCheck } = require('./lessonconditioncopy');
+const { NodeLibrary } = require('../../models/nodelibrary');
+const { getItemLabel } = require('../NodePicker/NodePicker.search');
+
+/*
+ * P79 D2 — the name the learner reads is the name on the node.
+ *
+ * A lesson grades `hasType`, which is an internal id: `poke-it` step 1 asked for a
+ * `net.noodl.controls.button`, and that is what the "Looking for..." line said. This routes the
+ * id through the node picker's OWN label function, so the sentence and the picker can never
+ * disagree about what a node is called. `getNodeTypeWithName` returns undefined before the
+ * library has loaded, and the copy module falls back rather than throwing.
+ */
+function resolveTypeName(typeName) {
+  const type = NodeLibrary.instance && NodeLibrary.instance.getNodeTypeWithName(typeName);
+  return type ? getItemLabel(type) : undefined;
+}
 
 require('./LessonLayerView.css');
 
@@ -105,7 +121,7 @@ function LessonLayerView({ steps, currentStepIndex, check, completion }) {
           evaluator grades, so the control appears exactly when it can do something.
         */}
         {check && currentStep && currentStep.conditions && currentStep.conditions.length ? (
-          <LessonCheckControl check={check} looking={describeStepCheck(currentStep.conditions)} />
+          <LessonCheckControl check={check} looking={describeStepCheck(currentStep.conditions, resolveTypeName)} />
         ) : null}
       </div>
       <div className="lesson-layer-progressbar">

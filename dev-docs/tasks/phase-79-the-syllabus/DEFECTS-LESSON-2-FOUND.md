@@ -11,7 +11,7 @@ the tasks, not farm the defects.
 | # | severity | owner | one line |
 |---|---|---|---|
 | D1 | 🔴 high | `NONE` | the gate cannot see a condition whose **unit** a learner can never type |
-| D2 | ⚠️ medium | `NONE` | a condition's prose shows the learner a raw type name |
+| D2 | ⚠️ medium | ✅ **FIXED 2026-09-05 (s9)** | a condition's prose shows the learner a raw type name |
 | D3 | ⚠️ medium | `NONE` | a Columns node silently overflows its parent by `marginX` |
 | D4 | low | `NONE` | `derive_starter` leaves `_registry.json` counting the solution's nodes |
 | D5 | low | `NONE` | `Columns.justifyContent` is inert for auto-height items |
@@ -141,3 +141,40 @@ Caught only because the render was compared before and after.
   hit it, and fixing it in lesson 1's project is what fixes it for the chain.
 - ⚠️ **The header comment on `tests-unit/tut-004/the-real-bundle-installs.test.ts`** says
   `log-a-thing` "is the only" shipped bundle. It was already false; it is now false about two.
+
+
+---
+
+## ✅ D2 — FIXED 2026-09-05 (session 9), and it was wider than recorded
+
+The *"Looking for…"* line resolves a lesson's `hasType` through the node picker's **own**
+`getItemLabel`, injected from `LessonLayerView` rather than imported, so the sentence and the picker
+cannot disagree about what a node is called. Gated by 10 rows in
+`tests-unit/fix-025/check-my-work-copy.test.ts`, mutant-checked.
+
+🔴 **The row recorded this as the raw dotted ids. It is not only those.** Eight of the types the
+shipped lessons grade do not read as their own name, and three of them are ordinary words that are
+simply the **wrong** word — a learner hunting the picker for what the sentence named would not find
+it:
+
+| the lesson grades | the learner was told | the editor actually calls it |
+|---|---|---|
+| `net.noodl.controls.button` | `net.noodl.controls.button` | **Button** |
+| `net.noodl.visual.columns` | `net.noodl.visual.columns` | **Columns** |
+| `net.noodl.animatetovalue` | `net.noodl.animatetovalue` | **Animate To Value** |
+| `Circle` | *a Circle* | **Shape** |
+| `Timer` | *a Timer* | **Delay** |
+| `Logic Builder` | *a Logic Builder* | **Visual Function** |
+| `DbCollection2` | *a DbCollection2* | **Query Records** |
+| `NewDbModelProperties` | *a NewDbModelProperties* | **Create Record** |
+
+The three undotted ones are the same mismatch as [E4](DEFECTS-LESSON-3-FOUND.md) and
+[H3](DEFECTS-LESSON-6-FOUND.md) (`Timer` vs `Delay`) — which had been filed twice, as a curriculum
+problem, without either row noticing that the runner was repeating the wrong name to the learner at
+the moment they were looking for the node.
+
+⚠️ **The fallback is a deliberate degradation.** With no library loaded a dotted id loses its
+namespace and nothing else: it cannot recover `Animate To Value` from `animatetovalue`, and it must
+not guess at `Circle`, whose real name shares no letters with it. Consistent with the module's
+standing contract — degrade the copy, never break grading — and pinned by its own spec row so
+nobody later mistakes the fallback for the answer.

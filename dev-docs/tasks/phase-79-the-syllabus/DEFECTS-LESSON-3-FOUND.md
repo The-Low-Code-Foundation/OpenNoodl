@@ -14,7 +14,7 @@ the tasks, not farm the defects. Lesson 2's register is
 | E1 | 🔴 high | `NONE` | a **Button** cannot be put on the design system from the properties panel |
 | E2 | ⚠️ medium | `NONE` | `Color Blend` yields `#NaNNaNNaN` for every `var(--token)` colour, silently |
 | E3 | ⚠️ medium | `NONE` | a new wire does not pull its source's value — it carries only what was already cached |
-| E4 | low | `NONE` | the curriculum's lesson 6 names a node called **Timer**; the product calls it **Delay** |
+| E4 | low | `NONE` — ⚠️ **runner half fixed s9** | the curriculum's lesson 6 names a node called **Timer**; the product calls it **Delay** |
 
 ---
 
@@ -104,3 +104,18 @@ Two consequences for whoever writes lesson 6: the prose must say **Delay**
 ([the two vocabularies](../../../packages/noodl-mcp/src/lessons)), and any design that wanted a
 progress number out of it has to come from somewhere else. Checked while looking for a
 signal-to-value bridge for lesson 3, and worth writing down before it costs a design.
+
+
+---
+
+## ⚠️ E4 — NARROWED, not closed (2026-09-05, session 9)
+
+The **editor-facing half is fixed**: the lesson runner's *"Looking for…"* line used to repeat the
+internal type id back at the learner, so a step grading a `Timer` told them to look for a "Timer"
+while the picker offers **Delay**. That sentence now resolves through the node picker's own label
+function — see [D2](DEFECTS-LESSON-2-FOUND.md), fixed in the same pass, which turned out to be the
+same defect wearing a different hat for eight node types.
+
+🔴 **The row itself stays open.** What E4 is about is the **curriculum entry**, whose text lives
+in the other repo and still names a node called `Timer`. Nothing in this pass touched it, and the
+prose a learner reads in the lesson body is unchanged. Owner still `NONE`.

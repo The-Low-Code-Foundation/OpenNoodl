@@ -74,15 +74,75 @@ function where(path: string | undefined): string {
 }
 
 /**
+ * Turns a node's TYPE id into the name the editor puts on the node.
+ *
+ * 🔴 P79 D2. Injected rather than imported, because the authority is `NodeLibrary` — a
+ * renderer singleton — and this module is deliberately reachable without one (see the module
+ * note). The view passes the node picker's own `getItemLabel`, so the sentence and the picker
+ * cannot disagree; a caller with no library gets the fallback below.
+ */
+export type TypeNameResolver = (typeName: string) => string | undefined;
+
+/**
+ * The node's name as a learner sees it on the canvas.
+ *
+ * 🔴 P79 D2 — `poke-it` step 1 rendered *"Looking for a **net.noodl.controls.button** called
+ * “Poke”"*. A lesson's `hasType` is an internal id and eight of the types the shipped lessons
+ * grade do not read as their own name: `net.noodl.controls.button` is **Button**, `Circle` is
+ * **Shape**, `Logic Builder` is **Visual Function**, `DbCollection2` is **Query Records**,
+ * `NewDbModelProperties` is **Create Record**, and `Timer` is **Delay** — the last being the
+ * same mismatch filed separately as this phase's E4 and H3.
+ *
+ * ⚠️ **The fallback is a degradation and is meant to look like one.** Without a resolver a
+ * dotted id at least loses its namespace, which is the difference between an unreadable
+ * sentence and an imprecise one; it cannot recover `Animate To Value` from `animatetovalue`,
+ * and it must not guess at an undotted id like `Circle`, whose real name shares no letters
+ * with it. Consistent with this module's contract: degrade the copy, never break grading.
+ */
+function typeDisplayName(type: string, resolve?: TypeNameResolver): string {
+  const resolved = resolve?.(type);
+  if (resolved) return resolved;
+  if (!type.includes('.')) return type;
+  const leaf = type.split('.').pop() || type;
+  return leaf.charAt(0).toUpperCase() + leaf.slice(1);
+}
+
+/**
+ * A parameter's expected value, as a learner would type it.
+ *
+ * 🔴 A dimension is stored as `{ value, unit }` and `JSON.stringify` renders that as
+ * `{"value":560,"unit":"px"}` — a shape the property panel never shows and the learner has
+ * no way to enter. `560px` is the same fact in the panel's own words.
+ */
+function formatParamValue(value: unknown): string {
+  if (value && typeof value === 'object' && !Array.isArray(value)) {
+    const dimension = value as { value?: unknown; unit?: unknown };
+    if (typeof dimension.value === 'number' && typeof dimension.unit === 'string') {
+      return `${dimension.value}${dimension.unit}`;
+    }
+  }
+  return JSON.stringify(value);
+}
+
+/** `a`, `a and b`, `a, b and c` — the same shape {@link describeStepCheck} uses for conditions. */
+function joinPhrases(phrases: readonly string[]): string {
+  if (phrases.length <= 1) return phrases[0] ?? '';
+  return `${phrases.slice(0, -1).join(', ')} and ${phrases[phrases.length - 1]}`;
+}
+
+/**
  * One condition, as a phrase. `null` for a verb with no copy yet — see the module note on why
  * that is a degradation and not a failure.
  */
-export function describeCondition(condition: Record<string, unknown>): string | null {
+export function describeCondition(
+  condition: Record<string, unknown>,
+  resolveTypeName?: TypeNameResolver
+): string | null {
   const path = typeof condition.path === 'string' ? condition.path : undefined;
   const name = nodeName(path);
 
   if ('hastype' in condition) {
-    const type = String(condition.hastype);
+    const type = typeDisplayName(String(condition.hastype), resolveTypeName);
     const label = labelName(path);
     return label ? `a ${type} called “${label}”${where(path)}` : `a ${type}${where(path)}`;
   }
@@ -108,9 +168,12 @@ export function describeCondition(condition: Record<string, unknown>): string | 
     const values = condition.paramseq as Record<string, unknown>;
     const keys = Object.keys(values ?? {});
     if (!keys.length || !name) return null;
-    return keys.length === 1
-      ? `“${name}” with ${keys[0]} set to ${JSON.stringify(values[keys[0]])}`
-      : `“${name}” with ${keys.join(', ')} set`;
+    // 🔴 P79 J4. The multi-key arm used to say “Board” with sizeMode, maxWidth set — the
+    // learner was told WHICH parameters are graded and not WHAT they must equal, which is
+    // the only half they can act on. The single-key arm had said the value all along, so
+    // this was a step asking a harder question the more it asked for.
+    const parts = keys.map((key) => `${key} set to ${formatParamValue(values[key])}`);
+    return `“${name}” with ${joinPhrases(parts)}`;
   }
   if ('hasconnection' in condition) {
     const from = nodeName(condition.from as string);
@@ -150,10 +213,15 @@ export function describeCondition(condition: Record<string, unknown>): string | 
  * control is 280px wide with the step strip beside it; past three the count is more useful
  * than the list.
  */
-export function describeStepCheck(conditions: readonly Record<string, unknown>[] | undefined): string | null {
+export function describeStepCheck(
+  conditions: readonly Record<string, unknown>[] | undefined,
+  resolveTypeName?: TypeNameResolver
+): string | null {
   if (!conditions || conditions.length === 0) return null;
 
-  const phrases = conditions.map(describeCondition).filter((phrase): phrase is string => Boolean(phrase));
+  const phrases = conditions
+    .map((condition) => describeCondition(condition, resolveTypeName))
+    .filter((phrase): phrase is string => Boolean(phrase));
   if (!phrases.length) return 'Looking for the changes this step asks for.';
 
   if (phrases.length > 3) {

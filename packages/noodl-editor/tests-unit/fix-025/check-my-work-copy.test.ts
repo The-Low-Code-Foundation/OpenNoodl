@@ -44,3 +44,138 @@ describe('describeStepCheck', () => {
     ).toBe('Button wired to Text (click → set)');
   });
 });
+
+/**
+ * P79 J4 — a condition named the parameters it grades but not the values they must equal.
+ *
+ * Measured by the session-8 lesson-runner drive on `it-breaks-on-a-phone` step 1, which rendered
+ *
+ *   "Looking for a Group called “Board” on Home, “Board” with sizeMode, maxWidth set and
+ *    paddingLeft and paddingRight set on “Board”."
+ *
+ * The step needs `sizeMode: contentHeight` and `maxWidth: 560px`, and said neither. The
+ * single-key arm had said its value all along, so the sentence got LESS useful the more the
+ * step asked for — which is why the multi-key case is the one with a row here.
+ */
+describe('P79 J4 — a graded value is named, not just its parameter', () => {
+  // The exact condition from the shipped `it-breaks-on-a-phone` step 1, in compiled form.
+  const BOARD = '/Pages/Home:#Home:#Page shell:#Board';
+
+  it('🔴 names every expected value, not just the parameter names', () => {
+    expect(
+      describeCondition({
+        path: BOARD,
+        paramseq: { sizeMode: 'contentHeight', maxWidth: { value: 560, unit: 'px' } }
+      })
+    ).toBe('“Board” with sizeMode set to "contentHeight" and maxWidth set to 560px');
+  });
+
+  it('renders a dimension the way the property panel does, not as a JSON blob', () => {
+    expect(describeCondition({ path: BOARD, paramseq: { maxWidth: { value: 560, unit: 'px' } } })).toBe(
+      '“Board” with maxWidth set to 560px'
+    );
+  });
+
+  it('joins three the same way the condition list does', () => {
+    expect(describeCondition({ path: BOARD, paramseq: { a: 1, b: 2, c: 3 } })).toBe(
+      '“Board” with a set to 1, b set to 2 and c set to 3'
+    );
+  });
+
+  it('still names an object that is not a dimension rather than dropping it', () => {
+    expect(describeCondition({ path: BOARD, paramseq: { style: { weight: 700 } } })).toBe(
+      '“Board” with style set to {"weight":700}'
+    );
+  });
+
+  it('renders the whole step 1 sentence a learner reads', () => {
+    expect(
+      describeStepCheck([
+        { path: BOARD, hastype: 'Group' },
+        { path: BOARD, paramseq: { sizeMode: 'contentHeight', maxWidth: { value: 560, unit: 'px' } } },
+        { path: BOARD, hasparams: 'paddingLeft,paddingRight' }
+      ])
+    ).toBe(
+      'Looking for a Group called “Board” on Home, ' +
+        '“Board” with sizeMode set to "contentHeight" and maxWidth set to 560px and ' +
+        'paddingLeft and paddingRight set on “Board”.'
+    );
+  });
+});
+
+/**
+ * P79 D2 — the "Looking for..." line showed the learner a raw internal type id.
+ *
+ * Filed from source against lesson 2 and first WITNESSED by the session-8 drive, which read
+ * `poke-it` step 1 as *"Looking for a net.noodl.controls.button called “Poke” on Home"*.
+ *
+ * 🔴 The register recorded this as the dotted ids only. It is wider than that: eight of the
+ * types the shipped lessons grade do not read as their own name, and three of them are plain
+ * words that are simply the WRONG word — `Circle` is **Shape**, `Timer` is **Delay** (this
+ * phase's E4 and H3), `Logic Builder` is **Visual Function**. A learner hunting the picker for
+ * a "Timer" does not find one. That is why the fix resolves through the picker's own label
+ * function rather than tidying up the string.
+ */
+describe('P79 D2 — a node is called what the editor calls it', () => {
+  /** Stands in for `NodeLibrary` + `getItemLabel`, with the catalog's real answers. */
+  const library: Record<string, string> = {
+    'net.noodl.controls.button': 'Button',
+    'net.noodl.visual.columns': 'Columns',
+    'net.noodl.animatetovalue': 'Animate To Value',
+    Circle: 'Shape',
+    Timer: 'Delay',
+    'Logic Builder': 'Visual Function',
+    DbCollection2: 'Query Records',
+    NewDbModelProperties: 'Create Record',
+    Text: 'Text',
+    Group: 'Group'
+  };
+  const resolve = (type: string) => library[type];
+
+  it('🔴 renders the sentence the drive read, with the name the picker shows', () => {
+    expect(
+      describeStepCheck([{ path: '/#__page__/Home:#Poke', hastype: 'net.noodl.controls.button' }], resolve)
+    ).toBe('Looking for a Button called “Poke” on Home.');
+  });
+
+  it.each([
+    ['Circle', 'Shape'],
+    ['Timer', 'Delay'],
+    ['Logic Builder', 'Visual Function'],
+    ['DbCollection2', 'Query Records'],
+    ['NewDbModelProperties', 'Create Record'],
+    ['net.noodl.visual.columns', 'Columns'],
+    ['net.noodl.animatetovalue', 'Animate To Value']
+  ])('%s is named %s', (type, shown) => {
+    expect(describeCondition({ path: '/App:#N', hastype: type }, resolve)).toBe(
+      `a ${shown} called “N” on App`
+    );
+  });
+
+  it('leaves a type that is already its own name alone', () => {
+    expect(describeCondition({ path: '/App:#Caption', hastype: 'Text' }, resolve)).toBe(
+      'a Text called “Caption” on App'
+    );
+  });
+
+  it('🔴 degrades rather than throwing when the library has not loaded', () => {
+    // `getNodeTypeWithName` returns undefined before load, so the resolver returns undefined.
+    const unloaded = () => undefined;
+    expect(describeCondition({ path: '/App:#Poke', hastype: 'net.noodl.controls.button' }, unloaded)).toBe(
+      'a Button called “Poke” on App'
+    );
+    // And with no resolver at all — the shape every existing caller and spec uses.
+    expect(describeCondition({ path: '/App:#Poke', hastype: 'net.noodl.controls.button' })).toBe(
+      'a Button called “Poke” on App'
+    );
+  });
+
+  it('⚠️ the fallback does not invent a name it cannot know', () => {
+    // Documented degradation: an undotted id is left alone rather than guessed at, and a
+    // squashed dotted leaf is not re-spaced. Both are wrong-but-honest without a library.
+    expect(describeCondition({ path: '/App:#N', hastype: 'Timer' })).toBe('a Timer called “N” on App');
+    expect(describeCondition({ path: '/App:#N', hastype: 'net.noodl.animatetovalue' })).toBe(
+      'a Animatetovalue called “N” on App'
+    );
+  });
+});
