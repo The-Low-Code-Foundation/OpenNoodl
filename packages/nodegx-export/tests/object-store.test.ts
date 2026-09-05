@@ -21,9 +21,14 @@ import { ComponentIR, ExportIR, NodeIR, ParamValue } from '../src/ir/types';
  * Global Store or an Object node"; this is the second half of that sentence built.
  *
  * §A the module, §B the component, §C every refusal by its sentence, §D the fixture
- * `tests/fixtures/profile-desk` whole: two inputs and a Save into `profile`, three Texts reading
- * it back (one key nothing writes), a Set Variable on the Done, and a badge component reading the
- * same object from a second file.
+ * `tests/fixtures/profile-desk` whole: two inputs and a Save into `profile`, four Texts reading
+ * it back (one key nothing writes, one written only by a value typed into the Set — §68), a Set
+ * Variable on the Done, and a badge component reading the same object from a second file.
+ *
+ * §E (EXP-011 §68, session 92): a listed key nothing wires but the author typed a value for is
+ * written as that literal — the runtime queues every authored parameter into the node at creation
+ * and `_pushInputValues` writes every listed key that is not `undefined` — and the literal types
+ * the key as itself (§67's rule for a Variable's Value).
  */
 
 const FIXTURE = path.join(__dirname, 'fixtures', 'profile-desk');
@@ -141,6 +146,7 @@ export interface ProfileState {
   name?: string;
   city?: string;
   motto?: unknown;
+  since?: string;
 }
 
 /**
@@ -151,7 +157,7 @@ export interface ProfileState {
 export const profile = store<ProfileState>('profile', {});
 `;
 
-const SAVE = "onClick={() => { profile.set({ name: name, city: city }); status.set('Saved.'); }}";
+const SAVE = "onClick={() => { profile.set({ name: name, city: city, since: '2026' }); status.set('Saved.'); }}";
 
 describe('§A — the module', () => {
   test('A1 the named object is a store module — the Global Store shape, keys optional and writer-typed, "Read by" where a store says "Declared by"', () => {
@@ -203,10 +209,11 @@ describe('§A — the module', () => {
 });
 
 describe('§B — the component', () => {
-  test('B1 every read is a selector hook — three on the page, one in the badge, both files importing the one module', () => {
+  test('B1 every read is a selector hook — four on the page, one in the badge, both files importing the one module', () => {
     expect(home(app)).toContain('const profileName = useStore(profile, (s) => s.name);');
     expect(home(app)).toContain('const profileCity = useStore(profile, (s) => s.city);');
     expect(home(app)).toContain('const motto = useStore(profile, (s) => s.motto);');
+    expect(home(app)).toContain('const since = useStore(profile, (s) => s.since);');
     expect(badge(app)).toContain('const name = useStore(profile, (s) => s.name);');
     expect(home(app)).toContain("import { profile } from '../stores/profile';");
     expect(badge(app)).toContain("import { profile } from '../stores/profile';");
@@ -215,9 +222,9 @@ describe('§B — the component', () => {
   test('B2 Save is one patch in the node’s own list order, then the Done chain as a following statement', () => {
     expect(handlerOf(home(app), 'Save profile')).toBe(SAVE);
     const reordered = cloneIr();
-    setParam(nodeOf(reordered, HOME, 'saveProfile'), 'properties', lit('city,name'));
+    setParam(nodeOf(reordered, HOME, 'saveProfile'), 'properties', lit('city,since,name'));
     expect(handlerOf(home(emitApp(reordered, catalog)), 'Save profile')).toBe(
-      "onClick={() => { profile.set({ city: city, name: name }); status.set('Saved.'); }}"
+      "onClick={() => { profile.set({ city: city, since: '2026', name: name }); status.set('Saved.'); }}"
     );
   });
 
@@ -277,14 +284,14 @@ describe('§B — the component', () => {
 
   test('B8 a listed property nothing feeds is absent from the patch — undefined abstains (EMPTY-VALUE-CONTRACT)', () => {
     const ir = cloneIr();
-    setParam(nodeOf(ir, HOME, 'saveProfile'), 'properties', lit('name,motto,city'));
+    setParam(nodeOf(ir, HOME, 'saveProfile'), 'properties', lit('name,motto,city,since'));
     expect(handlerOf(home(emitApp(ir, catalog)), 'Save profile')).toBe(SAVE);
   });
 
   test('B9 without a Done chain the handler is the patch alone', () => {
     const ir = cloneIr();
     dropNodes(ir, HOME, ['setStatus', 'savedString']);
-    expect(handlerOf(home(emitApp(ir, catalog)), 'Save profile')).toBe('onClick={() => profile.set({ name: name, city: city })}');
+    expect(handlerOf(home(emitApp(ir, catalog)), 'Save profile')).toBe("onClick={() => profile.set({ name: name, city: city, since: '2026' })}");
   });
 
   test('B10 the Object’s Properties list does not gate a read — the runtime registers any prop-* a wire asks for', () => {
@@ -448,6 +455,82 @@ describe('§C — refused by name', () => {
   });
 });
 
+describe('§E — EXP-011 §68: a value typed into a listed, unwired property is written, and types the key', () => {
+  test('E1 the fixture’s "since" is in the patch as the literal, in list order, and the module types it string', () => {
+    expect(handlerOf(home(app), 'Save profile')).toBe(SAVE);
+    expect(module_(app)).toContain('  since?: string;');
+    expect(home(app)).toContain('<p className={styles.text2}>{since}</p>'); // typed ⇒ the read binds without String()
+  });
+
+  test('E2 a number literal writes as a number and types the key unknown — and the app still typechecks; a boolean likewise', () => {
+    const num = cloneIr();
+    setParam(nodeOf(num, HOME, 'saveProfile'), 'prop-since', lit(2026));
+    const numBuilt = emitApp(num, catalog);
+    expect(handlerOf(home(numBuilt), 'Save profile')).toBe("onClick={() => { profile.set({ name: name, city: city, since: 2026 }); status.set('Saved.'); }}");
+    expect(module_(numBuilt)).toContain('  since?: unknown;');
+    expect(typecheckEmittedApp(numBuilt)).toEqual([]);
+    const bool = cloneIr();
+    setParam(nodeOf(bool, HOME, 'saveProfile'), 'prop-since', lit(true));
+    expect(handlerOf(home(emitApp(bool, catalog)), 'Save profile')).toContain('since: true }');
+  });
+
+  test('E3 a literal under a wire is shadowed — the wire’s value is written, the literal is not mentioned', () => {
+    const ir = cloneIr();
+    wire(ir, HOME, 'nameInput', 'onTextChanged', 'saveProfile', 'prop-since');
+    const built = emitApp(ir, catalog);
+    expect(handlerOf(home(built), 'Save profile')).toBe("onClick={() => { profile.set({ name: name, city: city, since: name }); status.set('Saved.'); }}");
+    expect(home(built)).not.toContain("'2026'");
+    expect(module_(built)).toContain('  since?: string;');
+    // The wire governs the type too: a number typed under a string wire does not demote the key.
+    setParam(nodeOf(ir, HOME, 'saveProfile'), 'prop-since', lit(2026));
+    expect(module_(emitApp(ir, catalog))).toContain('  since?: string;');
+  });
+
+  test('E4 a literal on a key the list does not admit is never written (the runtime filters by the list) — and leaves nothing to drop, so no note', () => {
+    const ir = cloneIr();
+    setParam(nodeOf(ir, HOME, 'saveProfile'), 'properties', lit('name,city'));
+    const built = emitApp(ir, catalog);
+    expect(handlerOf(home(built), 'Save profile')).toBe("onClick={() => { profile.set({ name: name, city: city }); status.set('Saved.'); }}");
+    expect(built.notes).toEqual(['App: router shell — emitted as src/App.tsx by the scaffold']);
+    expect(module_(built)).toContain('  since?: unknown;'); // read by the Text, written by nothing typed
+  });
+
+  test('E5 the two acting selectors refuse a literal exactly as a wire — the runtime evals / dereferences the string either way', () => {
+    const ir = cloneIr();
+    setParam(nodeOf(ir, HOME, 'saveProfile'), 'type-since', lit('array'));
+    expect(reasonFor(ir, HOME, 'saveProfile')).toBe(
+      'its "since" is typed Array, which the runtime reads by evaluating a string as code — not translated in this slice'
+    );
+  });
+
+  test('E6 a Set whose only value is the literal translates as that one-key patch; with the literal gone too, C9’s refusal', () => {
+    const ir = cloneIr();
+    unwire(ir, HOME, 'nameInput:onTextChanged->saveProfile:prop-name');
+    unwire(ir, HOME, 'cityInput:onTextChanged->saveProfile:prop-city');
+    expect(handlerOf(home(emitApp(ir, catalog)), 'Save profile')).toBe("onClick={() => { profile.set({ since: '2026' }); status.set('Saved.'); }}");
+    dropParam(nodeOf(ir, HOME, 'saveProfile'), 'prop-since');
+    expect(reasonFor(ir, HOME, 'saveProfile')).toBe('nothing is wired into any of its properties, so Do writes nothing');
+  });
+
+  test('E8 a literal on a listed key nothing reads still lands on the module, typed by the literal — the write alone earns the key', () => {
+    const ir = cloneIr();
+    setParam(nodeOf(ir, HOME, 'saveProfile'), 'properties', lit('name,city,since,plan'));
+    setParam(nodeOf(ir, HOME, 'saveProfile'), 'prop-plan', lit('free'));
+    const built = emitApp(ir, catalog);
+    expect(module_(built)).toContain('  plan?: string;');
+    expect(handlerOf(home(built), 'Save profile')).toBe("onClick={() => { profile.set({ name: name, city: city, since: '2026', plan: 'free' }); status.set('Saved.'); }}");
+    expect(typecheckEmittedApp(built)).toEqual([]);
+  });
+
+  test('E7 an expression parameter is not a literal — refused as having no statically known source, not written as its source text', () => {
+    const ir = cloneIr();
+    setParam(nodeOf(ir, HOME, 'saveProfile'), 'prop-since', { kind: 'expression', source: 'Date.now()' } as unknown as ParamValue);
+    const built = emitApp(ir, catalog);
+    expect(handlerOf(home(built), 'Save profile')).toBe("onClick={() => { profile.set({ name: name, city: city }); status.set('Saved.'); }}");
+    expect(home(built)).not.toContain('Date.now()');
+  });
+});
+
 describe('§D — the fixture, whole', () => {
   test('D1 nothing refused: every node has a rule, and the only note is the router shell', () => {
     expect(app.notes).toEqual(['App: router shell — emitted as src/App.tsx by the scaffold']);
@@ -468,8 +551,8 @@ describe('§D — the fixture, whole', () => {
     }
   });
 
-  test('D4 the sites, counted: four selector hooks, one patch, one module, two store files', () => {
-    expect(home(app).match(/useStore\(profile, /g)).toHaveLength(3);
+  test('D4 the sites, counted: five selector hooks, one patch, one module, two store files', () => {
+    expect(home(app).match(/useStore\(profile, /g)).toHaveLength(4);
     expect(badge(app).match(/useStore\(profile, /g)).toHaveLength(1);
     expect(home(app).match(/profile\.set\(/g)).toHaveLength(1);
     expect(Object.keys(app.files).filter((f) => f.startsWith('src/stores/')).sort()).toEqual(['src/stores/profile.ts', 'src/stores/variables.ts']);

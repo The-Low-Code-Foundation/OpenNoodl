@@ -30,6 +30,7 @@
         "statusText",
         "nameText",
         "cityText",
+        "sinceText",
         "mottoText",
         "badge"
       ],
@@ -155,6 +156,18 @@
       "y": 1000
     },
     {
+      "id": "sinceText",
+      "type": "Text",
+      "label": "Stored since",
+      "parent": "shell",
+      "parameters": {
+        "fontSize": "var(--text-base)",
+        "color": "var(--foreground)"
+      },
+      "x": 160,
+      "y": 1060
+    },
+    {
       "id": "mottoText",
       "type": "Text",
       "label": "Stored motto",
@@ -182,7 +195,7 @@
       "y": 880,
       "parameters": {
         "modelId": "profile",
-        "properties": "name,city,motto"
+        "properties": "name,city,motto,since"
       },
       "metadata": {
         "comment": "Id Source left at its default (Specify explicitly): the object named \"profile\" in the app-wide Model store."
@@ -197,7 +210,11 @@
       "parameters": {
         "idSource": "explicit",
         "modelId": "profile",
-        "properties": "name,city"
+        "properties": "name,city,since",
+        "prop-since": "2026"
+      },
+      "metadata": {
+        "comment": "\"since\" is listed but nothing wires it: the value 2026 is typed into the port, and the runtime writes it on every Do (queued at creation, _pushInputValues writes every listed key that is not undefined)."
       }
     },
     {

@@ -423,7 +423,7 @@
     {
       "typeName": "SetModelProperties",
       "status": "translated",
-      "note": "one patch on the named object's store module (`profile.set({ name, city })`) plus its Done chain \u2014 the \"Specify explicitly\" form with a literal Id only; inside a repeater row it is still list-owned state and a wired Id is a runtime value, both refused by name. EXP-011 \u00a747, session 75"
+      "note": "one patch on the named object's store module (`profile.set({ name, city, since: '2026' })`) plus its Done chain \u2014 the \"Specify explicitly\" form with a literal Id only; a value typed into a listed, unwired property is written and types the key (\u00a768, session 92); inside a repeater row it is still list-owned state and a wired Id is a runtime value, both refused by name. EXP-011 \u00a747, session 75"
     },
     {
       "typeName": "Sign File URL",

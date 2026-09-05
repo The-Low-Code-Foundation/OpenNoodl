@@ -56,6 +56,12 @@
       "fromProperty": "prop-motto",
       "toId": "mottoText",
       "toProperty": "text"
+    },
+    {
+      "fromId": "profile",
+      "fromProperty": "prop-since",
+      "toId": "sinceText",
+      "toProperty": "text"
     }
   ]
 }

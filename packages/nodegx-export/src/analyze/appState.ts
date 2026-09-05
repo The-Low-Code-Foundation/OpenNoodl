@@ -559,10 +559,24 @@ export function collectAppState(ir: ExportIR): AppStateRegistry {
           } else {
             plan.writers.push(writerRef(component, node));
             const listed = setPropertiesOf(node);
+            const wired = wiredPortsOf(component);
             for (const wire of component.connections) {
               if (wire.toId !== node.id || !wire.toProperty.startsWith('prop-')) continue;
               const key = wire.toProperty.slice('prop-'.length);
               if (listed.includes(key)) ensureStoreKey(plan, key);
+            }
+            // EXP-011 §68. A listed key nothing wires but the author typed a value for is written
+            // too: the runtime queues every authored parameter into the node at creation
+            // (nodescope.ts `queueInput`, into `_setInputValue`), and `_pushInputValues` writes
+            // every listed key whose value is not `undefined`. The literal is the key's source,
+            // typed as itself — §67's rule for a Variable's Value, one construct over.
+            for (const key of listed) {
+              if (wired.has(`${node.id}:prop-${key}`)) continue;
+              const literal = literalPrimitive(node, `prop-${key}`);
+              if (literal === undefined) continue;
+              ensureStoreKey(plan, key);
+              const mapKey = `${id}\u0000${key}`;
+              storeKeySources.set(mapKey, [...(storeKeySources.get(mapKey) ?? []), { component, fromNode: undefined, fromProperty: `prop-${key}`, literal }]);
             }
           }
         }

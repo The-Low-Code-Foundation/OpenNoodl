@@ -13856,6 +13856,14 @@ function planComponent(
    * type selectors that *act* — Array (a string is `eval`led as code) and Object (a string is
    * dereferenced as an object Id) — refuse by name, and the others are inert on the write path
    * (`_pushInputValues` coerces nothing else), so they are ignored as the runtime ignores them.
+   *
+   * EXP-011 §68. A listed key nothing wires but the author typed a value for is written as that
+   * literal: the runtime queues every authored parameter into the node at creation (nodescope.ts
+   * `queueInput` → `_setInputValue`), so the key's `inputValues` entry is the literal from the
+   * first Do on. A literal under a wire is shadowed (the wire delivers over it) and is ignored as
+   * the wire's compile ignores it; a literal on a key the list does not admit is filtered out like
+   * a wire there, and unlike a wire leaves nothing to drop. The two acting selectors act on a
+   * literal string exactly as on a wired one, so the same refusal stands in front of both.
    */
   const compileSetObjectProperties = (node: NodeIR): CompiledSink => {
     if (
@@ -13876,13 +13884,18 @@ function planComponent(
     const entries: Array<{ key: string; expr: ValueExpr }> = [];
     for (const key of listed) {
       const wires = component.connections.filter((c) => c.toId === node.id && c.toProperty === `prop-${key}`);
-      if (wires.length === 0) continue; // `undefined` abstains — the key is left as it is (EMPTY-VALUE-CONTRACT)
+      const authored = wires.length === 0 ? literalParam(node, `prop-${key}`) : undefined;
+      if (wires.length === 0 && authored === undefined) continue; // `undefined` abstains — the key is left as it is (EMPTY-VALUE-CONTRACT)
       if (wires.length > 1) return { defer: `two wires feed its "${key}" — last-writer-wins is not statically ordered` };
       const selector = literalParam(node, `type-${key}`);
       if (selector === 'array' || selector === 'object') {
         return {
           defer: `its "${key}" is typed ${selector === 'array' ? 'Array, which the runtime reads by evaluating a string as code' : 'Object, which the runtime reads by dereferencing a string as an object Id'} — not translated in this slice`
         };
+      }
+      if (authored !== undefined) {
+        entries.push({ key, expr: { kind: 'literal', value: authored } }); // §68 — the authored value, in list order
+        continue;
       }
       const expr = resolveExpr(nodeById.get(wires[0].fromId), wires[0].fromProperty, ctx);
       if (expr === null) return { defer: ctx.defer ?? `its "${key}" has no statically known source` };
@@ -13892,7 +13905,7 @@ function planComponent(
       entries.push({ key, expr });
       consumes.push(wires[0].key);
     }
-    if (entries.length === 0) return { defer: 'nothing is wired into any of its properties, so Do writes nothing' };
+    if (entries.length === 0) return { defer: 'nothing is wired into any of its properties, so Do writes nothing' }; // §68: nor authored
     const done = doneChainOf(node, 'done');
     if ('defer' in done) return { defer: done.defer };
     // The two drops, written only once the node translates (compiledOf caches this answer).
