@@ -44,12 +44,32 @@ second authoring path.
   the recommender cannot be built until the content carries the tags. See
   [RICHARD-RULINGS-2026-08-28.md](../phase-75-0.2.1-the-feedback/RICHARD-RULINGS-2026-08-28.md) §6.
 
+## The board — re-derived from the task files, 2026-09-05
+
+| task | state |
+|---|---|
+| [SYL-001](SYL-001-THE-HAND-HOLDING-HALF.md) — the hand-holding half | ✅ **done**, slices A+B, driven |
+| [SYL-002](SYL-002-THE-CHAIN-THAT-CANNOT-DRIFT.md) — `starter(N)` == `solution(N-1)` | 🟡 **unblocked 2026-09-05** — it needed two spine lessons and there are two. The join is met and was checked **by hand** (a `diff` in [SYL-005](SYL-005-LESSON-2-IT-BREAKS-ON-A-PHONE.md)); nothing automated asserts it. R1: *build it before lesson 3* |
+| [SYL-003](SYL-003-THE-CREATURE-YOU-CHOSE.md) — the avatar picker | ⬜ open, independent |
+| [SYL-004](SYL-004-LESSON-1-YOUR-CREATURE-ON-SCREEN.md) — lesson 1 | 🟢 built, gated, **driven**. Prose awaits Richard |
+| [SYL-005](SYL-005-LESSON-2-IT-BREAKS-ON-A-PHONE.md) — lesson 2 | 🟢 built, gated (`d656b714`). ⬜ **not driven**. Prose awaits Richard |
+| [LESSON-VOICE.md](LESSON-VOICE.md) | 🟡 written and **measured** across all three bundles; two calls are ⬜ Richard's |
+| [DEFECTS-LESSON-2-FOUND.md](DEFECTS-LESSON-2-FOUND.md) | 5 rows, **all owner `NONE`**. D1 is the one that matters |
+
+**Two of twelve spine lessons ship.** Both are seeded onto the Learning shelf automatically — the
+seed enumerates `project-examples/lessons` directories and is ledgered per folder, so a new bundle
+reaches existing installs on their next launch with no allowlist to edit.
+
 ## Standing facts
 
 - 🔴 The prose is **Richard's**, and this phase cannot proceed without him — that is its nature, not
   a blocker to work around. **Rulings so far: [RICHARD-RULINGS-2026-08-28.md](RICHARD-RULINGS-2026-08-28.md).**
-- 🔴 **The one lesson bundle that exists does not fit the spine.** `project-examples/lessons/log-a-thing`
-  is built and validates clean, but it is a log app teaching the Visual-Function/async rule; the
-  spine's data lesson is a snack cupboard. It is a good **standalone article**, not spine lesson 8.
+- ⚠️ **`log-a-thing` still does not fit the spine.** It is built and validates clean, but it is a log
+  app teaching the Visual-Function/async rule; the spine's data lesson is a snack cupboard. It is a
+  good **standalone article**, not spine lesson 8. It ships on the shelf alongside the two spine
+  lessons, which is fine and is not the same as being in the spine.
+- 🔴 **A spine lesson may only ADD to the one before it**, and ungraded parameters may only go on
+  nodes it creates. Both fall out of R1's chain and neither is checked by anything —
+  [SYL-005](SYL-005-LESSON-2-IT-BREAKS-ON-A-PHONE.md) explains what each one cost.
 - ⚠️ Lessons are **served**, like tutorials and templates: published content reaches every existing
   install with no update.

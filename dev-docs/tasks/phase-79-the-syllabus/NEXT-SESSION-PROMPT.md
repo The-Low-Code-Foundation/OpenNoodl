@@ -1,165 +1,147 @@
-# Phase 79 — next session: the copy review
+# Phase 79 — next session
 
-**Written 2026-08-28, end of session 3.** Richard, at the close of it:
+**Written 2026-09-05, end of session 4.** The previous version of this file asked for a copy-review
+session with Richard. **That has partly happened**: he was asked, chose *"draft it, capture the
+rules"*, and [LESSON-VOICE.md](LESSON-VOICE.md) now exists — measured across all three shipped
+bundles rather than asserted. Two of its calls are still his. This file replaces that one.
 
-> *"Can we make the next session prompt specifically about us reviewing the copy together, how the
-> lesson presents itself, to set a precedent for all future lessons?"*
+## The board — re-derived from the task files
 
-**So this session is not an engineering session.** It is the two of us reading lesson 1's words and
-deciding how a NodeGX lesson sounds — once, so the next twelve inherit it instead of each one
-re-deciding.
+| task | state |
+|---|---|
+| [SYL-001](SYL-001-THE-HAND-HOLDING-HALF.md) | ✅ done, driven |
+| [SYL-002](SYL-002-THE-CHAIN-THAT-CANNOT-DRIFT.md) | 🟡 **unblocked** — two spine lessons now exist |
+| [SYL-003](SYL-003-THE-CREATURE-YOU-CHOSE.md) | ⬜ open, independent |
+| [SYL-004](SYL-004-LESSON-1-YOUR-CREATURE-ON-SCREEN.md) — lesson 1 | 🟢 built, gated, driven |
+| [SYL-005](SYL-005-LESSON-2-IT-BREAKS-ON-A-PHONE.md) — lesson 2 | 🟢 built, gated `d656b714`, ⬜ **not driven** |
+| [LESSON-VOICE.md](LESSON-VOICE.md) | 🟡 written; §3 and §6 are Richard's |
+| [DEFECTS-LESSON-2-FOUND.md](DEFECTS-LESSON-2-FOUND.md) | 5 rows, all owner `NONE` |
 
----
-
-## 1. Why this is worth a whole session
-
-Lesson 1 is **built, gated and driven** ([SYL-004](SYL-004-LESSON-1-YOUR-CREATURE-ON-SCREEN.md)) —
-so nothing is blocked on it and there is no pressure to rush the words. What there *is*:
-
-- 🔴 **Twelve more lessons inherit whatever we settle here.** Every choice below gets made again
-  eleven or twelve times. Settling them once is the entire return on this session.
-- 🔴 **The prose is currently mine.** The workshop's own split says the words that ship are
-  Richard's. This is the pass that makes that true.
-- ⚠️ **Lessons are served.** Published copy reaches every existing install with no update — so the
-  voice we set is the voice already-installed users meet.
-
-## 2. Read the copy from the file, not from a copy of it
-
-🔴 **Do not paste the prose into this document or any other.** A second copy drifts from the
-bundle silently, and then the review is of the wrong text. One command prints all of it:
-
-```bash
-python3 -c "
-import json
-d=json.load(open('project-examples/lessons/your-creature-on-screen/lesson.json'))
-for i,s in enumerate(d['steps'],1):
-    print('--- %d %s (%s)'%(i,s.get('title'),'popup' if s.get('kind')=='popup' else 'task'))
-    print('BODY:');   print(s.get('body',''))
-    if 'detail' in s: print('DETAIL:'); print(s['detail'])
-    print()"
-```
-
-**467 words of `body`, 187 of `detail`, across 6 steps.** That is the whole review surface.
-
-## 3. How to change a word — cheaply, and what it costs
-
-**Prose only** (`title`, `body`, `detail`, `description`) → edit `lesson.json` in place, then:
-
-```bash
-npm run lessons:check > /tmp/lc.log 2>&1; echo "EXIT=$?"   # ⚠️ NOT `| tail` — $PIPESTATUS is empty in zsh
-```
-
-That is the whole loop. Prose does not touch the graph, so **no `derive_starter`, no
-`create_lesson`, no re-drive.**
-
-🔴 **The one exception, and it is the important one: `body` and `completeWhen` are a PAIR.**
-If a rewrite changes *what the step asks for*, the condition has to move with it — and the
-pressure only runs one way, because a condition **weaker** than its prose passes every gate
-silently. The rule to hold:
-
-> **If the body names a value, the condition is `paramsEqual`. If it genuinely does not matter,
-> `hasParams` — and the step text should say so out loud.**
-
-Changing a condition *does* mean re-running `derive_starter` → `create_lesson` → re-drive.
-
-**To see edits in the editor**, the bundle must be re-installed — the running copy lives at
-`~/Library/Application Support/NodeGX/Learning/your-creature-on-screen/`, separate from the repo.
-
-## 4. 🔴 The precedent questions — the actual agenda
-
-Each one is a choice lesson 1 has already made by accident. Ratify, or overrule and I will apply it
-across the bundle.
-
-### 4a. The `body` / `detail` split — the structural one, settle it first
-
-Today: **`body` = what to do, then one short paragraph of why it works. `detail` = where the
-control is, and what to do when it goes wrong.** Everything else follows from this, and it is the
-one that most needs to be a rule rather than a habit — a later lesson that puts *why* into `detail`
-hides the teaching from anyone who collapsed it.
-
-⚠️ **The disclosure is collapsible and the learner's choice is remembered** (SYL-001 slice B). So
-**nothing load-bearing can live in `detail`.**
-
-### 4b. Punctuation — there is a real inconsistency to fix
-
-🔴 **Richard's curriculum descriptions use em dashes; my step prose downgraded them to hyphens.**
-Measured, not assumed — the *same sentence*, both files:
-
-| | em dash `—` | hyphen-as-dash ` - ` |
-|---|---|---|
-| Richard's `curriculum.json` description | **1** | 0 |
-| the bundle's `description` | 0 | **1** |
-| all six steps' `body` + `detail` | **0** | **8** |
-
-**Decide: em dash throughout, and I will fix all 9 instances.** ⚠️ It is a one-line `sed` away, but
-it is the kind of thing that silently becomes house style if it ships once.
-
-### 4c. Spelling — British voice, American product
-
-Step 3's body says **Background Color** (quoting the UI label verbatim) and the surrounding prose
-says *"any colour you like"*. That is defensible — quote the control, write the voice — but it is
-currently an accident. **Rule it**: quoted UI labels keep the product's spelling, prose is British.
-
-### 4d. Contractions
-
-Currently none: *"you will have"*, *"it is"*, *"cannot"*. That reads formal. Richard's own
-curriculum lines are similarly uncontracted, so this may already be right — but for the most
-beginner-facing lesson we ship it is worth choosing on purpose rather than inheriting from me.
-
-### 4e. Formatting of node names and labels
-
-Today: node **types** in bold (**Group**, **Circle**), things the learner **types** in backticks
-(`Card`, `Creature`). Consistent so far. Worth fixing as a rule because it is the convention most
-likely to rot across twelve lessons.
-
-### 4f. Do we say "node"?
-
-*"Add a **Group** node"* in lesson 1 versus *"Add a **Group**"* later. Beginner-friendly early,
-noise by lesson 5. **Is there a lesson where we stop saying it?**
-
-### 4g. The forward hook
-
-The outro ends: *"Your creature currently ignores you completely. That is the next lesson."*
-The spine's own lede is *"each concept is motivated by a problem the last lesson left you with"* —
-so a closing hook is arguably **mandatory**, not stylistic. If we agree that, every lesson owes one
-and lesson 12 owes something else instead.
-
-### 4h. How much "why" a task body gets
-
-Currently one short paragraph per step. Is that the ration, or does the why belong only in the
-popups, keeping task bodies purely instructional?
-
-## 5. Lesson-1-specific calls, still open
-
-- ⬜ **The badge**: `First Light`.
-- ⬜ **Does the creature get eyes?** One Circle today. Eyes need absolute positioning, which is
-  lesson 2's subject — so this is a real call, not a detail.
-- ⬜ **The `description`** currently says "creature" where Richard's curriculum entry says
-  "picture", because there is no picture yet ([SYL-003](SYL-003-THE-CREATURE-YOU-CHOSE.md)).
-  ⚠️ **The curriculum file and the bundle each carry a description and they can drift.**
-
-## 6. What we should write down at the end
-
-A **LESSON-VOICE.md** in this phase, holding whatever §4 settles, and referenced from the MCP
-authoring brief so the next lesson is written to it rather than to taste. 🔴 **That artefact is the
-point of the session** — the edited copy is the by-product.
+**Two of twelve spine lessons ship.** `lessons:check` exit 0 over 3 bundles.
 
 ---
 
-## 7. Everything else, briefly — none of it is this session's work
+## FIRST JOB — drive lesson 2
 
-- **Lesson 1**: built, F1–F4 pass, `lessons:check` green, driven with a control pair.
-  [SYL-004](SYL-004-LESSON-1-YOUR-CREATURE-ON-SCREEN.md).
-- ⬜ **R2's `it-breaks-on-a-phone`** still needs Richard's `description`. Mechanics fully
-  pre-cleared; it is a two-line data edit. See [the rulings](RICHARD-RULINGS-2026-08-28.md#r2).
-- ⬜ **[SYL-002](SYL-002-THE-CHAIN-THAT-CANNOT-DRIFT.md)** still blocked: needs two spine lessons.
-- ⬜ **[SYL-003](SYL-003-THE-CREATURE-YOU-CHOSE.md)**: the avatar picker, independent.
-- 🔴 **Curriculum findings from Richard's stuck-list, awaiting his call**: the component system —
-  which he named *first* — is spine lesson **10 of 12**; and **`Variable` appears in no lesson at
-  all**, though he named it top-five.
-- 🔴 **Unfixed product defect**: pressing "Check my work" on an incomplete step **removes the
-  instructions** (body *and* the `detail` disclosure leave the DOM) and shows no new feedback. It is
-  the runner, so `log-a-thing` has it too.
-- ⚠️ **For whenever lesson 2 is built**: conditions take **type** names, and `Button`, `Variable`,
-  `Text Input`, `Checkbox`, `Radio Button` and `Cloud Function` are the type names of the
-  **deprecated** nodes. `poke-it` needs `net.noodl.controls.button`.
+🔴 **It is the only thing SYL-005 owes that is not done**, and lesson 1 set the standard. It was
+skipped because the box was at load average 8.32 with four peer sessions live, not because it was
+judged unnecessary.
+
+**Check the box first** (`uptime`, `npm run dev:stop -- --list`, `ListAgents`) — a dev stack is three
+webpack watchers plus Electron, and a peer's `dev` reaps yours.
+
+The bundle is already on disk at `project-examples/lessons/it-breaks-on-a-phone`. Install it the way
+[SYL-004](SYL-004-LESSON-1-YOUR-CREATURE-ON-SCREEN.md) did — place it in `Learning/` and register it
+in `learning_folder.json` directly, because the real installer goes through a **native file dialog
+CDP cannot drive** (that path is specced by `tut-004/the-real-bundle-installs.test.ts`).
+
+**The four things the drive is for, and nothing else** — everything else was answered from source and
+is recorded in [SYL-005 §6](SYL-005-LESSON-2-IT-BREAKS-ON-A-PHONE.md#6--what-was-not-done-and-what-it-costs)
+so you do not re-derive it:
+
+1. 🔴 **Does the runner resolve a 5-segment node path?** `…:#Page shell:#Board:#Care:#Feed`. Lesson
+   1's deepest is 4. **This is the real unknown** — if it fails, steps 4 onward never tick.
+2. 🔴 **The negative control**: on the untouched starter, "check my work" must read *not complete*.
+   Structurally guaranteed by `derive_starter`'s replay and F2, never observed on screen.
+3. **The positive**: add `Board`, check again, expect step 2 to complete and the runner to advance.
+4. **Confirm [D2](DEFECTS-LESSON-2-FOUND.md#d2-️--the-learner-is-shown-a-raw-type-name)** — step 3's
+   condition should render *"a **net.noodl.visual.columns** called “Care”"*. Predicted from
+   `describeCondition`; seeing it is what turns a prediction into a finding.
+
+⚠️ **Set `NOODL_REMOTE_DEBUG_PORT` if anything already holds 9222.** It was free at 08:45.
+
+## SECOND JOB — pick one, they are independent
+
+### (a) D1 — the gate hole, ~1 session
+
+[D1](DEFECTS-LESSON-2-FOUND.md#d1--create_lesson-cannot-catch-a-condition-a-learner-can-never-satisfy)
+is the highest-value row on the register and it gets worse with every lesson: **`create_lesson`
+cannot see a condition whose unit a learner can never type.** All four classes read `pass` while the
+step refuses correct work. Lesson 2 hit it on `Group.maxWidth` (`defaultUnit: "%"`) and it was caught
+by hand.
+
+The fix is mechanical: for every `paramsEqual` naming a number-with-units port, compare the
+condition's unit to the catalog's `defaultUnit`; **warn** (never refuse — lesson 2 does it
+deliberately and correctly) and name the step. ⚠️ Build the **reverted arm**: the check must go red
+on lesson 2's original `body` and green on the current one, or it is measuring nothing.
+
+### (b) SYL-002 — the chain check, ~1 session
+
+R1: *"build the equality check before lesson 3, not after lesson 12."* **It is now buildable** and
+lesson 3 is next, so this is the last cheap moment. The invariant, and the diff that proves it holds
+today, are in [SYL-005](SYL-005-LESSON-2-IT-BREAKS-ON-A-PHONE.md#-the-chain-is-a-build-constraint-and-it-constrained-this-lesson-twice).
+
+🔴 **Compare `nodes.json` and `connections.json`, not the whole directory** — `_registry.json`
+legitimately differs ([D4](DEFECTS-LESSON-2-FOUND.md#d4-low--derive_starter-ships-a-_registryjson-that-counts-the-solution))
+and so do timestamps, and a check that fails on those is a check somebody turns off. The lesson order
+has to come from `curriculum.json` in the **other repo**, which is the part that needs designing.
+
+### (c) Lesson 3 — `poke-it`, ~1 session
+
+Events. Its starter must equal lesson 2's solution, so it may only **add** to the `Board`/`Care`
+strip — which is exactly why lesson 2 ends with three words that do nothing.
+
+⚠️ **`Button` is the type name of the DEPRECATED node.** `poke-it` needs
+`net.noodl.controls.button`. Same trap for `Variable`, `Text Input`, `Checkbox`, `Radio Button`,
+`Cloud Function`.
+🔴 **Read [D1](DEFECTS-LESSON-2-FOUND.md#d1--create_lesson-cannot-catch-a-condition-a-learner-can-never-satisfy)
+before writing a single `paramsEqual`** — check every number-with-units port's `defaultUnit` with
+`get_node_type` first, or do (a) so the gate does it for you.
+
+---
+
+## What is waiting on Richard, and none of it blocks the above
+
+- ⬜ **The step prose of both spine lessons.** Drafted so he is editing, not staring at a blank page.
+  Print lesson 2's without making a second copy of it:
+  ```bash
+  python3 -c "
+  import json
+  d=json.load(open('project-examples/lessons/it-breaks-on-a-phone/lesson.json'))
+  for i,s in enumerate(d['steps'],1):
+      print('--- %d %s (%s)'%(i,s.get('title'),'popup' if s.get('kind')=='popup' else 'task'))
+      print(s.get('body',''))
+      if 'detail' in s: print('DETAIL:'); print(s['detail'])
+      print()"
+  ```
+  🔴 **Prose-only edits are cheap** — edit `lesson.json`, then
+  `npm run lessons:check > /tmp/lc.log 2>&1; echo "EXIT=$?"` (⚠️ **not** `| tail`; `$PIPESTATUS` is
+  empty in zsh). No re-derive, no re-drive. **The exception is `body` and `completeWhen`, which are a
+  pair**: if a rewrite changes what the step asks for, the condition moves with it, and *that* means
+  `derive_starter` → `create_lesson` → re-drive.
+- ⬜ **[LESSON-VOICE.md](LESSON-VOICE.md) §3 — em dash.** New measurement: `log-a-thing` already uses
+  **11 em dashes and 0 hyphen-dashes**, so **lesson 1's 9 hyphens are the outlier**, not the house
+  style. This is a stronger case than the previous prompt had. Nine substitutions in one file.
+- ⬜ **§6 — do we say "node"?** Suggested rule: on a type's first appearance in a lesson, then not
+  again.
+- ⬜ **Both badges**: `First Light`, `Holds Its Shape`.
+- ⬜ **Lesson 2's `description`**, and 🔴 **its `teaches` line**: R2 says *alignment*, and the lesson
+  does **not** teach alignment — the step that would have was deleted because the control it set
+  changed nothing on screen ([D5](DEFECTS-LESSON-2-FOUND.md#d5-low--columnsjustifycontent-is-inert-for-auto-height-items)).
+- ⬜ **Does the creature get eyes?** Still open from lesson 1.
+
+## ⬜ The curriculum entry still does not exist
+
+`curriculum.json` is in the **separate `nodegx-community` checkout** and still lists `poke-it` at
+spine position 2. R2's insert is **two edits**: the new entry, and `poke-it`'s `needs` moving to
+`it-breaks-on-a-phone`. Spine 12 → 13, curriculum 15 → 16.
+
+⚠️ **This does not gate shipping.** The editor's Learning shelf seeds from the repo directory, so
+lesson 2 already reaches every install. `curriculum.json` is what puts it on the served
+`/university` page — and being served, it reaches existing installs with no update, which is why the
+wording is Richard's.
+
+## Traps from this session worth not repeating
+
+- 🔴 **`grep` skipped a `.ts` file silently.** `grep -n SHIPPED_LESSONS_REPO_PATH lessonseed.ts` →
+  nothing; `grep -an` → seven hits. The absence would have led to inventing an allowlist that already
+  existed. **Use `-a`.**
+- 🔴 **A corpus grep can answer the wrong question convincingly.** Sampling real projects for
+  `maxWidth` shapes returned 60+ consistent hits — every one written by an MCP server or an export
+  fixture, i.e. the wrong population for *"what does the panel write when a person types?"*. It would
+  have confirmed the bug instead of finding it. The answer came from the panel's own source.
+- 🔴 **A graph that validates can teach the opposite of its own title.** The first draft's breakpoint
+  folded the columns at every width. Every gate passed. `render_report` at two viewports is what
+  disagreed.
+- ⚠️ **A new bundle is a "stowaway" until `git add`.** `rel-012/shipped-lessons-reach-the-artefact`
+  fails on any untracked file under `project-examples/lessons`, and it is right to.
