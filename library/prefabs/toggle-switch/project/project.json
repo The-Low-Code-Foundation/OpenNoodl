@@ -378,10 +378,6 @@
             "x": 151.1303518180543,
             "y": -18.940469248447698,
             "parameters": {
-              "height": {
-                "value": 20,
-                "unit": "px"
-              },
               "sizeMode": "contentSize"
             },
             "ports": [],

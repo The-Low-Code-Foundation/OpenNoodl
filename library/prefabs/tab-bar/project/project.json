@@ -653,20 +653,7 @@
                   "transformY": {
                     "value": 0,
                     "unit": "px"
-                  },
-                  "boxShadowBlurRadius": {
-                    "value": 0,
-                    "unit": "px"
-                  },
-                  "boxShadowSpreadRadius": {
-                    "value": 0,
-                    "unit": "px"
-                  },
-                  "boxShadowOffsetY": {
-                    "value": 0,
-                    "unit": "px"
-                  },
-                  "boxShadowColor": "Primary"
+                  }
                 },
                 "ports": [],
                 "dynamicports": [],

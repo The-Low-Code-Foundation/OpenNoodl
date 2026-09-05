@@ -1,5 +1,37 @@
 # Prefab Audit — LIB-002
 
+> **2026-09-05 (later) — the nine "drew nothing" prefabs, ruled once so nobody re-derives them.**
+> The render sweep reported 10 entries drawing nothing. Reading each project graph against
+> `card-grid` (the shelf's self-demo standard: an unconditional root `Group` with ink, and a
+> `Static Data` node feeding the `For Each` through a `Choose items` guard so a connected input
+> wins) settles **8 as invisible-by-design and 1 as genuinely broken**:
+>
+> | Entry | Verdict | The evidence that settles it |
+> |---|---|---|
+> | `confirm-dialog` | invisible-by-design | Root `Group` "Dialog layer" is `mounted: false`, driven by a `Switch` whose `onFromStart` defaults false and whose only `on` source is the `Open` component input. The open path exists; it is closed at rest. |
+> | `media-query` | invisible-by-design | The picked showcase has **zero visual node types** — `Component Inputs`/`Outputs` and a `Javascript2` wrapping `window.matchMedia`. Its `Media Query Debugger` *would* draw. |
+> | `oauth2` | invisible-by-design | Zero visual nodes in any of its 5 components; showcase is a `CloudFunction2` plus a `Noodl.Users.become` function. |
+> | `shake-detector` | invisible-by-design | Showcase is `DeviceMotionEvent` `Javascript2` + two `String` nodes used as comments. Its `Shake Detector Example` sibling *would* draw. |
+> | `supabase` | invisible-by-design | Zero visual nodes across 12 components; showcase is one `JavaScriptFunction` calling `.from('companies').select('*')`. |
+> | `toast` | invisible-by-design | Showcase is a `NavigationShowPopup` fired only by the `Do` input. The popup chain resolves (target exists; `For Each` `templateScript` + `States` default `Normal` → `/Show Toast/Normal`, which exists) — a trigger component at rest, not a dangling target. |
+> | `totp` | invisible-by-design | Zero visual nodes across 11 components; 9 are under `/#__cloud__/`. |
+> | `xano` | invisible-by-design | Zero visual nodes across 10 components; showcase is a `JavaScriptFunction` over `Noodl.Variables.xano[...]`. |
+> | **`tags`** | **BROKEN** | Root `Group` has no `backgroundColor` or `border` (no ink of its own) and its only child is a `For Each` fed **solely** by the `Items` input — the project contains **no `Static Data` node at all**, so it repeats zero times. Fixed this session with the `card-grid` contract. |
+>
+> **And the harness was manufacturing six of those blanks.** `pickShowcase` filtered candidates on
+> `c.roots.length > 0` — which counts **nodes, not ink**. A component of pure `JavaScriptFunction` /
+> `CloudFunction2` logic has roots, so it was picked as the "showcase" and then reported as drawing
+> nothing; worse, for `media-query` and `shake-detector` it *out-ranked a sibling component that
+> would have drawn*. The variable was even named `visual`, so this was a bug against the file's own
+> stated intent. Fixed: the pick now narrows to components containing a node the runtime reports as
+> visual, read from `isVisual` in the generated `packages/noodl-types/src/node-catalog.json` rather
+> than a hand-listed set here — a second copy of "what draws" is the copy that goes stale. An
+> **unknown type counts as visual**, because module-provided node types are absent from the core
+> catalog and demoting a real visual component to `no-visual` would *hide* a broken entry, which is
+> the expensive direction to be wrong in. Entries with nothing drawable now report `no-visual` — a
+> fact about the entry — instead of `drew nothing`, which reads as a defect. `For Each` is
+> `isVisual: true`, so `tags` stays correctly reported as broken.
+
 > **2026-09-05 — LBR-003 ran, and the shelf had been drawing the wrong thing for six weeks.**
 > `npm run library:render` renders every entry into a page seeded with the Inter + Lucide modules a
 > real new project ships (`starterAssets.ts`, POL-006), then measures what reaches the DOM.

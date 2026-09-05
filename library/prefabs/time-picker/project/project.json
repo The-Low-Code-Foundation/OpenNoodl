@@ -195,10 +195,6 @@
             "x": -260,
             "y": -153,
             "parameters": {
-              "height": {
-                "value": 40,
-                "unit": "px"
-              },
               "borderColor": "Grey - 400",
               "flexDirection": "column",
               "sizeMode": "contentHeight",
@@ -992,10 +988,6 @@
             "x": 0,
             "y": 0,
             "parameters": {
-              "height": {
-                "value": 20,
-                "unit": "px"
-              },
               "marginTop": {
                 "value": 0,
                 "unit": "px"

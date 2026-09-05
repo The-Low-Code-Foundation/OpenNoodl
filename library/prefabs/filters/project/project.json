@@ -627,6 +627,7 @@
                 "id": "83f0abd7-575a-77c1-6c36-34130ab83944",
                 "type": "net.noodl.controls.checkbox",
                 "parameters": {
+                  "useLabel": true,
                   "label": "Text"
                 },
                 "ports": [],
@@ -1993,7 +1994,9 @@
               {
                 "id": "80cb26dc-ec12-14f1-7422-195199c1efe5",
                 "type": "net.noodl.controls.checkbox",
-                "parameters": {},
+                "parameters": {
+                  "useLabel": true
+                },
                 "ports": [],
                 "dynamicports": [],
                 "children": []
@@ -3539,7 +3542,9 @@
               {
                 "id": "5bdf9aeb-6a5c-dd7c-93be-8dffe6224949",
                 "type": "net.noodl.controls.radiobutton",
-                "parameters": {},
+                "parameters": {
+                  "useLabel": true
+                },
                 "ports": [],
                 "dynamicports": [],
                 "children": []

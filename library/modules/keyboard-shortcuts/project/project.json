@@ -1,0 +1,284 @@
+{
+    "name": "Keyboard Shortcuts Module",
+    "components": [
+        {
+            "name": "/Keyboard Shortcuts Demo",
+            "id": "1a9c4d10-0000-4b71-9d33-ba0000000001",
+            "graph": {
+                "connections": [
+                    {
+                        "fromId": "1a9c4d10-0010-4b71-9d33-ba0000000010",
+                        "fromProperty": "pressed",
+                        "toId": "1a9c4d10-0020-4b71-9d33-ba0000000020",
+                        "toProperty": "to-Palette"
+                    },
+                    {
+                        "fromId": "1a9c4d10-0011-4b71-9d33-ba0000000011",
+                        "fromProperty": "pressed",
+                        "toId": "1a9c4d10-0020-4b71-9d33-ba0000000020",
+                        "toProperty": "to-Idle"
+                    },
+                    {
+                        "fromId": "1a9c4d10-0012-4b71-9d33-ba0000000012",
+                        "fromProperty": "pressed",
+                        "toId": "1a9c4d10-0020-4b71-9d33-ba0000000020",
+                        "toProperty": "to-Help"
+                    },
+                    {
+                        "fromId": "1a9c4d10-0012-4b71-9d33-ba0000000012",
+                        "fromProperty": "blockedInTextField",
+                        "toId": "1a9c4d10-0020-4b71-9d33-ba0000000020",
+                        "toProperty": "to-Typing"
+                    },
+                    {
+                        "fromId": "1a9c4d10-0020-4b71-9d33-ba0000000020",
+                        "fromProperty": "currentState",
+                        "toId": "1a9c4d10-0006-4b71-9d33-ba0000000006",
+                        "toProperty": "text"
+                    }
+                ],
+                "roots": [
+                    {
+                        "id": "1a9c4d10-0002-4b71-9d33-ba0000000002",
+                        "type": "Group",
+                        "x": 0,
+                        "y": 0,
+                        "parameters": {
+                            "sizeMode": "contentHeight",
+                            "paddingTop": "var(--space-4)",
+                            "paddingBottom": "var(--space-4)",
+                            "paddingLeft": "var(--space-4)",
+                            "paddingRight": "var(--space-4)",
+                            "backgroundColor": "var(--background)"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": [
+                            {
+                                "id": "1a9c4d10-0003-4b71-9d33-ba0000000003",
+                                "type": "Text",
+                                "x": 20,
+                                "y": 60,
+                                "parameters": {
+                                    "text": "Keyboard Shortcuts",
+                                    "color": "var(--foreground)",
+                                    "fontSize": 20
+                                },
+                                "ports": [],
+                                "dynamicports": [],
+                                "children": []
+                            },
+                            {
+                                "id": "1a9c4d10-0004-4b71-9d33-ba0000000004",
+                                "type": "Text",
+                                "x": 20,
+                                "y": 120,
+                                "parameters": {
+                                    "text": "Cmd/Ctrl + K opens the palette. Escape closes it. ? opens help — but not while you are typing in the box below, which is the whole point.",
+                                    "color": "var(--muted-foreground)",
+                                    "marginTop": "var(--space-2)"
+                                },
+                                "ports": [],
+                                "dynamicports": [],
+                                "children": []
+                            },
+                            {
+                                "id": "1a9c4d10-0005-4b71-9d33-ba0000000005",
+                                "type": "net.noodl.controls.textinput",
+                                "x": 20,
+                                "y": 190,
+                                "parameters": {
+                                    "useLabel": true,
+                                    "label": "Click here and type",
+                                    "labelcolor": "var(--foreground)",
+                                    "labelSpacing": 6,
+                                    "type": "text",
+                                    "placeholder": "Press ? in here — nothing should happen",
+                                    "marginTop": "var(--space-4)"
+                                },
+                                "ports": [],
+                                "dynamicports": [],
+                                "children": []
+                            },
+                            {
+                                "id": "1a9c4d10-0006-4b71-9d33-ba0000000006",
+                                "type": "Text",
+                                "x": 20,
+                                "y": 260,
+                                "parameters": {
+                                    "text": "Idle",
+                                    "color": "var(--primary)",
+                                    "marginTop": "var(--space-4)"
+                                },
+                                "ports": [],
+                                "dynamicports": [],
+                                "children": []
+                            }
+                        ]
+                    },
+                    {
+                        "id": "1a9c4d10-0010-4b71-9d33-ba0000000010",
+                        "type": "keyboard-shortcuts.KeyboardShortcut",
+                        "x": 460,
+                        "y": 40,
+                        "parameters": {
+                            "shortcut": "mod+k"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "1a9c4d10-0011-4b71-9d33-ba0000000011",
+                        "type": "keyboard-shortcuts.KeyboardShortcut",
+                        "x": 460,
+                        "y": 160,
+                        "parameters": {
+                            "shortcut": "escape"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "1a9c4d10-0012-4b71-9d33-ba0000000012",
+                        "type": "keyboard-shortcuts.KeyboardShortcut",
+                        "x": 460,
+                        "y": 280,
+                        "parameters": {
+                            "shortcut": "?, shift+?"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "1a9c4d10-0020-4b71-9d33-ba0000000020",
+                        "type": "States",
+                        "x": 760,
+                        "y": 40,
+                        "parameters": {
+                            "states": "Idle,Palette,Help,Typing",
+                            "currentState": "Idle"
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "plug": "input",
+                                "type": {
+                                    "name": "signal",
+                                    "allowConnectionsOnly": true
+                                },
+                                "displayName": "To Idle",
+                                "name": "to-Idle",
+                                "group": "Go to state",
+                                "index": 6
+                            },
+                            {
+                                "plug": "output",
+                                "type": "boolean",
+                                "displayName": "At Idle",
+                                "name": "at-Idle",
+                                "group": "Current state",
+                                "index": 7
+                            },
+                            {
+                                "plug": "output",
+                                "type": "signal",
+                                "displayName": "Has Reached Idle",
+                                "name": "reached-Idle",
+                                "group": "Current state",
+                                "index": 8
+                            },
+                            {
+                                "plug": "input",
+                                "type": {
+                                    "name": "signal",
+                                    "allowConnectionsOnly": true
+                                },
+                                "displayName": "To Palette",
+                                "name": "to-Palette",
+                                "group": "Go to state",
+                                "index": 9
+                            },
+                            {
+                                "plug": "output",
+                                "type": "boolean",
+                                "displayName": "At Palette",
+                                "name": "at-Palette",
+                                "group": "Current state",
+                                "index": 10
+                            },
+                            {
+                                "plug": "output",
+                                "type": "signal",
+                                "displayName": "Has Reached Palette",
+                                "name": "reached-Palette",
+                                "group": "Current state",
+                                "index": 11
+                            },
+                            {
+                                "plug": "input",
+                                "type": {
+                                    "name": "signal",
+                                    "allowConnectionsOnly": true
+                                },
+                                "displayName": "To Help",
+                                "name": "to-Help",
+                                "group": "Go to state",
+                                "index": 12
+                            },
+                            {
+                                "plug": "output",
+                                "type": "boolean",
+                                "displayName": "At Help",
+                                "name": "at-Help",
+                                "group": "Current state",
+                                "index": 13
+                            },
+                            {
+                                "plug": "output",
+                                "type": "signal",
+                                "displayName": "Has Reached Help",
+                                "name": "reached-Help",
+                                "group": "Current state",
+                                "index": 14
+                            },
+                            {
+                                "plug": "input",
+                                "type": {
+                                    "name": "signal",
+                                    "allowConnectionsOnly": true
+                                },
+                                "displayName": "To Typing",
+                                "name": "to-Typing",
+                                "group": "Go to state",
+                                "index": 15
+                            },
+                            {
+                                "plug": "output",
+                                "type": "boolean",
+                                "displayName": "At Typing",
+                                "name": "at-Typing",
+                                "group": "Current state",
+                                "index": 16
+                            },
+                            {
+                                "plug": "output",
+                                "type": "signal",
+                                "displayName": "Has Reached Typing",
+                                "name": "reached-Typing",
+                                "group": "Current state",
+                                "index": 17
+                            }
+                        ],
+                        "children": []
+                    }
+                ]
+            }
+        }
+    ],
+    "settings": {},
+    "version": "1",
+    "metadata": {}
+}

@@ -111,10 +111,6 @@
             "x": -260,
             "y": -153,
             "parameters": {
-              "height": {
-                "value": 40,
-                "unit": "px"
-              },
               "borderColor": "Grey - 400",
               "flexDirection": "column",
               "sizeMode": "contentHeight",
@@ -210,25 +206,12 @@
                         "value": 0,
                         "unit": "px"
                       },
+                      "sizeMode": "explicit",
                       "height": {
                         "value": 100,
                         "unit": "%"
                       },
-                      "useIcon": false,
-                      "iconIconSource": {
-                        "class": "lucide",
-                        "code": "icon-calendar",
-                        "codeAsClass": true
-                      },
-                      "iconSpacing": {
-                        "value": 8,
-                        "unit": "px"
-                      }
-                    },
-                    "stateParameters": {
-                      "focused": {
-                        "iconColor": "Primary"
-                      }
+                      "useIcon": false
                     },
                     "ports": [],
                     "dynamicports": [],

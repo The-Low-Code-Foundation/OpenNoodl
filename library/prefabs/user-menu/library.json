@@ -1,0 +1,15 @@
+{
+  "label": "User Menu",
+  "description": "The avatar button that lives in the top-right of an app: a person's picture (or their initials when there is no picture), their name and email, and a dropdown holding account items and a Sign Out. Click it to open, click anywhere else to close. Out of the box it renders a sample person and four sample items from Static Data nodes; connect Name/Email/Avatar and an Items array and they win over the samples. Publishes Item Clicked with Clicked Label and Clicked Item Id, and a Sign Out signal to wire at the Log Out node beside Auth Pages.",
+  "type": "prefab",
+  "tags": [
+    "UI",
+    "Auth",
+    "Navigation"
+  ],
+  "version": "1.0.0",
+  "minEditorVersion": "0.1.0",
+  "runtimeVersion": "2.7.0",
+  "icon": "icon.png",
+  "docsPath": "/library/prefabs/user-menu/"
+}

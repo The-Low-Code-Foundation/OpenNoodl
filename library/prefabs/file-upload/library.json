@@ -1,0 +1,14 @@
+{
+  "label": "File Upload",
+  "description": "A drop zone that walks a file all the way to storage: Open File Picker chooses it, Upload File sends it, Cloud File reads back the URL you can actually link to. It shows what it is the moment you place it — a dashed zone stating the file types and the size limit it will accept — and then owns the whole sequence, with a thumbnail of the file being sent, a real progress bar driven by the transfer's own byte counts, and an error panel that prints the reason rather than going quiet. The size limit is checked in the browser, so the one failure that does not need a server does not wait for one. Publishes Uploaded, the stored Cloud File, its URL and File Name, and a Failed signal with an Error string.",
+  "type": "prefab",
+  "tags": [
+    "UI",
+    "Data",
+    "Form"
+  ],
+  "version": "1.0.0",
+  "minEditorVersion": "0.1.0",
+  "runtimeVersion": "2.7.0",
+  "icon": "icon.png"
+}

@@ -85,7 +85,7 @@
                         "x": -111.4681915301291,
                         "y": 311.4376377651178,
                         "parameters": {
-                            "backgroundColor": "#FFFFFF"
+                            "backgroundColor": "var(--background)"
                         },
                         "ports": [],
                         "dynamicports": [],
@@ -454,7 +454,7 @@
                                         "value": 20,
                                         "unit": "px"
                                     },
-                                    "backgroundColor": "#FFFFFF"
+                                    "backgroundColor": "var(--surface-raised)"
                                 },
                                 "ports": [],
                                 "dynamicports": [],
@@ -549,6 +549,7 @@
                                                 "variant": "Zoom Button",
                                                 "label": "Zoom Out",
                                                 "parameters": {
+                                                    "useIcon": true,
                                                     "iconIconSource": { "class": "lucide", "code": "icon-zoom-out", "codeAsClass": true }
                                                 },
                                                 "ports": [],
@@ -641,7 +642,7 @@
                                                 "parameters": {
                                                     "label": "Cancel",
                                                     "alignX": "right",
-                                                    "backgroundColor": "#F53636"
+                                                    "backgroundColor": "var(--destructive)"
                                                 },
                                                 "ports": [],
                                                 "dynamicports": [],
@@ -1090,7 +1091,7 @@
                             "alignY": "center",
                             "alignX": "center",
                             "zIndex": 2,
-                            "backgroundColor": "#FFFFFF",
+                            "backgroundColor": "var(--surface-raised)",
                             "borderRadius": {
                                 "value": 8,
                                 "unit": "px"
@@ -1148,7 +1149,7 @@
                                         "label": "Mask",
                                         "parameters": {
                                             "position": "absolute",
-                                            "backgroundColor": "#C6C6C6",
+                                            "backgroundColor": "var(--gray-300)",
                                             "width": {
                                                 "value": 100,
                                                 "unit": "px"

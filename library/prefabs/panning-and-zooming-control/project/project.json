@@ -135,6 +135,7 @@
                                         "variant": "Zoom Button",
                                         "label": "Zoom Out",
                                         "parameters": {
+                                            "useIcon": true,
                                             "iconIconSource": { "class": "lucide", "code": "icon-zoom-out", "codeAsClass": true },
                                             "alignX": "right"
                                         },

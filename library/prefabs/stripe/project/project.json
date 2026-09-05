@@ -2143,7 +2143,6 @@
             "x": 327.5,
             "y": 141,
             "parameters": {
-              "params": "Invoices",
               "status": "failure",
               "errorMessage": "Failed to list invoices."
             },
@@ -7947,20 +7946,7 @@
                   "transformY": {
                     "value": 0,
                     "unit": "px"
-                  },
-                  "boxShadowBlurRadius": {
-                    "value": 0,
-                    "unit": "px"
-                  },
-                  "boxShadowSpreadRadius": {
-                    "value": 0,
-                    "unit": "px"
-                  },
-                  "boxShadowOffsetY": {
-                    "value": 0,
-                    "unit": "px"
-                  },
-                  "boxShadowColor": "Primary"
+                  }
                 },
                 "ports": [],
                 "dynamicports": [],

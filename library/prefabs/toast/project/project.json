@@ -762,6 +762,7 @@
                         "y": -39,
                         "parameters": {
                             "position": "absolute",
+                            "pointerEventsMode": "explicit",
                             "pointerEventsEnabled": false,
                             "mounted": true
                         },

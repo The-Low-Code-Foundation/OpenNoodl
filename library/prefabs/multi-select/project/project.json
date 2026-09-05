@@ -821,6 +821,7 @@
                 "id": "97efb085-ce0c-fcac-8c6c-eba33de816dd",
                 "type": "net.noodl.controls.checkbox",
                 "parameters": {
+                  "useLabel": true,
                   "styleCss": "cursor:pointer;"
                 },
                 "ports": [],
@@ -2363,11 +2364,7 @@
                 "id": "e6f2a917-2b35-180a-4210-5924c879b162",
                 "type": "Group",
                 "parameters": {
-                  "sizeMode": "contentHeight",
-                  "height": {
-                    "value": 40,
-                    "unit": "px"
-                  }
+                  "sizeMode": "contentHeight"
                 },
                 "ports": [],
                 "dynamicports": [],
@@ -2462,6 +2459,14 @@
                         "parameters": {
                           "position": "absolute",
                           "sizeMode": "explicit",
+                          "width": {
+                            "value": 100,
+                            "unit": "%"
+                          },
+                          "height": {
+                            "value": 100,
+                            "unit": "%"
+                          },
                           "borderStyle": "solid",
                           "borderWidth": {
                             "value": 1,
@@ -2484,6 +2489,14 @@
                         "parameters": {
                           "position": "absolute",
                           "sizeMode": "explicit",
+                          "width": {
+                            "value": 100,
+                            "unit": "%"
+                          },
+                          "height": {
+                            "value": 100,
+                            "unit": "%"
+                          },
                           "borderStyle": "solid",
                           "borderWidth": {
                             "value": 1,
@@ -2603,6 +2616,10 @@
                 "label": "Dropdown sheet",
                 "parameters": {
                   "sizeMode": "contentHeight",
+                  "width": {
+                    "value": 100,
+                    "unit": "%"
+                  },
                   "borderStyle": "solid",
                   "borderWidth": {
                     "value": 1,
@@ -3466,7 +3483,9 @@
               {
                 "id": "2c7df0b7-2f1f-58c9-a62a-b5b7e8e13fb8",
                 "type": "net.noodl.controls.checkbox",
-                "parameters": {},
+                "parameters": {
+                  "useLabel": true
+                },
                 "ports": [],
                 "dynamicports": [],
                 "children": []

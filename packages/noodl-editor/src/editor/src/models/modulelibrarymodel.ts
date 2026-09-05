@@ -1,5 +1,6 @@
 import { platform } from '@noodl/platform';
-import { describeIncompatibilityFor, Incompatibility } from './moduleCompatibility';
+import { CompatibilityCandidate, describeIncompatibilityFor, Incompatibility } from './moduleCompatibility';
+import { dependencyInstallOrder, dependencyKind, IModuleDependency } from './moduleDependencies';
 
 import { addHashToUrl } from '@noodl-utils/addHashToUrl';
 import FileSystem from '@noodl-utils/filesystem';
@@ -34,6 +35,14 @@ export interface IModule {
   version?: string;
   minEditorVersion?: string;
   runtimeVersion?: string;
+  /**
+   * ✅ LBR-007. Entries this one does not work without, already resolved and
+   * ordered dependency-first by `scripts/library/build.js`. Installing this
+   * entry installs these first, in this order, in the same click. Absent on
+   * every entry that needs nothing — and on every index published before the
+   * field existed, which an old editor and a new one both read as "none".
+   */
+  dependencies?: IModuleDependency[];
 }
 
 /**
@@ -52,8 +61,24 @@ export type LibraryFetchStatus = 'loading' | 'loaded' | 'error';
 export { isVersionAtLeast } from './moduleCompatibility';
 export type { Incompatibility } from './moduleCompatibility';
 
-/** Why this entry cannot be installed into the running editor, or null if it can. */
-export function describeIncompatibility(module: IModule): Incompatibility | null {
+/**
+ * ✅ LBR-007. Re-exported for the same reason `Incompatibility` is: `IModule`
+ * names this type in a public field, so a consumer of `IModule` must be able to
+ * name it from here rather than reaching into the leaf module.
+ */
+export type { IModuleDependency } from './moduleDependencies';
+
+/**
+ * Why this entry cannot be installed into the running editor, or null if it can.
+ *
+ * ✅ LBR-007 widened the parameter from `IModule` to the structural
+ * `CompatibilityCandidate` the rule actually reads. A *dependency* row
+ * (`IModuleDependency`) carries a `minEditorVersion` too and has to face the
+ * same gate as the entry that pulled it in — an editor too old for the
+ * dependency is an editor too old for the install — and it is not an `IModule`.
+ * `IModule` is still assignable, so every existing caller is unchanged.
+ */
+export function describeIncompatibility(module: CompatibilityCandidate): Incompatibility | null {
   return describeIncompatibilityFor(platform.getVersion(), module);
 }
 
@@ -173,34 +198,128 @@ export class ModuleLibraryModel extends Model {
    * untyped caller is invisible to every gate but `test:ci`.
    */
   async installModule(modulePath: string, onBeforePopup: (() => void) | undefined, onAfterPopup: (() => void) | undefined, module: IModule) {
-    const incompatible = describeIncompatibility(module);
-    if (incompatible) {
-      throw { message: incompatible.full };
-    }
-
-    await this._install(await this.getModuleTemplateRoot(modulePath), {
-      label: module?.label ?? 'module',
-      kind: 'module',
-      url: modulePath,
-      onBeforePopup,
-      onAfterPopup
-    });
+    await this._installWithDependencies(modulePath, 'module', module, onBeforePopup, onAfterPopup);
   }
 
   /** ✅ CN-016 AC3 — see `installModule` for why `module` is required. */
   async installPrefab(modulePath: string, onBeforePopup: (() => void) | undefined, onAfterPopup: (() => void) | undefined, module: IModule) {
+    await this._installWithDependencies(modulePath, 'prefab', module, onBeforePopup, onAfterPopup);
+  }
+
+  /**
+   * ✅ LBR-007 — install `module`'s dependencies, then `module`, under one
+   * click and one picker block.
+   *
+   * ## The defect this exists to close
+   *
+   * `modules/pdf-viewer` is built around the `Custom HTML` node
+   * (`module.inlineHtml`), which the standalone `modules/custom-html` entry
+   * registers. Installing PDF Viewer installed PDF Viewer, the node came up as
+   * a red dashed placeholder, and the runtime said
+   * *"Can't find component model for module.inlineHtml"*. Nothing in the
+   * product said what was missing: the entry's own `library.json` description
+   * and README were the only place the requirement was written down, and prose
+   * is not an installer. The library had a dependency and no mechanism, so the
+   * two workarounds available were "tell the user to read the card" and "ship a
+   * second copy of the module inside the entry" — and the second one had
+   * already been tried and reverted, because two copies of
+   * `custom-html-module` fight over `noodl_modules/custom-html-module/` in the
+   * installing project.
+   *
+   * ## What is resolved where
+   *
+   * The graph work happens at BUILD time. `library.json` authors
+   * `"dependencies": ["modules/custom-html"]`; `scripts/library/build.js`
+   * resolves that against the entries on disk, refuses to build on an unknown
+   * slug or a cycle, flattens the transitive closure dependency-first, and
+   * publishes it into `index.json` as resolved descriptors. So this walks a
+   * flat list in order and installs each one exactly the way a user's own click
+   * would — same download, same consent, same collision flow.
+   *
+   * ## 🔴 Why the popup hooks moved up here
+   *
+   * `_install` used to take `onBeforePopup`/`onAfterPopup` and hold them across
+   * its own body, for the reason `_consentFor` documents: two modals each taking
+   * and releasing the block would unblock the node picker in the gap between
+   * them, which is exactly when a second click can start a second install. A
+   * dependency chain is that same gap, one level up — block, install Custom
+   * HTML, unblock, block, install PDF Viewer — so the hooks now live here and
+   * are held across the WHOLE chain. `_install` no longer takes them, which is
+   * what stops the invariant being re-broken by the next caller.
+   *
+   * ## What a failing dependency does
+   *
+   * Aborts the whole install, naming the dependency and the entry that needed
+   * it. Installing the dependent alone is not a degraded success — it is the
+   * red dashed placeholder above, which is the state this field exists to
+   * abolish.
+   */
+  private async _installWithDependencies(
+    modulePath: string,
+    kind: 'prefab' | 'module',
+    module: IModule,
+    onBeforePopup: (() => void) | undefined,
+    onAfterPopup: (() => void) | undefined
+  ) {
+    // ✅ CN-016 AC3, unchanged: refuse an incompatible entry before anything is
+    // downloaded — and before a dependency of it is downloaded either.
     const incompatible = describeIncompatibility(module);
     if (incompatible) {
       throw { message: incompatible.full };
     }
 
-    await this._install(await this.getModuleTemplateRoot(modulePath), {
-      label: module?.label ?? 'prefab',
-      kind: 'prefab',
-      url: modulePath,
-      onBeforePopup,
-      onAfterPopup
-    });
+    const dependencies = dependencyInstallOrder(module);
+
+    // ⚠️ Held across the whole chain — see this method's header.
+    onBeforePopup?.();
+    try {
+      for (const dep of dependencies) {
+        await this._installDependency(dep, module);
+      }
+
+      await this._install(await this.getModuleTemplateRoot(modulePath), {
+        label: module?.label ?? kind,
+        kind,
+        url: modulePath
+      });
+    } finally {
+      onAfterPopup?.();
+    }
+  }
+
+  /**
+   * ✅ LBR-007 — one resolved dependency, installed through the same `_install`
+   * a click uses, with any failure re-thrown as a sentence that names both ends.
+   *
+   * The compat gate runs on the DEPENDENCY's own `minEditorVersion`, not the
+   * dependent's: an editor old enough for PDF Viewer but too old for Custom
+   * HTML is still an editor that cannot complete this install, and the refusal
+   * should say which half is the problem rather than fail somewhere inside the
+   * import flow.
+   */
+  private async _installDependency(dep: IModuleDependency, dependent: IModule) {
+    const label = dep.label ?? dep.key ?? 'a required library entry';
+    const dependentLabel = dependent?.label ?? 'the entry you are installing';
+
+    const incompatible = describeIncompatibility(dep);
+    if (incompatible) {
+      throw { message: `${incompatible.full} ("${dependentLabel}" cannot be installed without it.)` };
+    }
+
+    // Same rule ModuleCard applies to an entry's own `project` path: absolute
+    // URLs are taken verbatim, index-relative ones hang off the content endpoint.
+    const url = dep.project.startsWith('http') ? dep.project : `${getContentEndpoint()}/${dep.project}`;
+
+    try {
+      await this._install(await this.getModuleTemplateRoot(url), {
+        label,
+        kind: dependencyKind(dep),
+        url
+      });
+    } catch (err) {
+      const reason = (err as { message?: string })?.message ?? String(err);
+      throw { message: `Could not install "${label}", which "${dependentLabel}" depends on: ${reason}` };
+    }
   }
 
   /**
@@ -223,8 +342,6 @@ export class ModuleLibraryModel extends Model {
       kind: 'prefab' | 'module';
       /** The library URL this was downloaded from — CN-017's provenance, verbatim. */
       url: string;
-      onBeforePopup?: () => void;
-      onAfterPopup?: () => void;
     }
   ) {
     const project = ProjectModel.instance;
@@ -249,43 +366,40 @@ export class ModuleLibraryModel extends Model {
      * install of a module and never again. This runs on the resolved root path,
      * every install.
      */
-    // ⚠️ Held across the WHOLE install — see `_consentFor`. Two modals each
-    // taking and releasing this would unblock the picker in the gap between them.
-    options.onBeforePopup?.();
+    // ⚠️ The picker block that used to be taken here now lives in
+    // `_installWithDependencies`, one level up, so that it is held across a
+    // whole dependency chain and not re-taken per entry — see there, and see
+    // `_consentFor` for why two modals must not each take and release it.
+    const origin = await this._consentFor(moduleRootPath, options);
+
+    const source = await loadSource(moduleRootPath);
+    const target = await createTargetProject(project);
+    const everything: SelectionState = {
+      requested: new Set(source.items.map((item) => item.key)),
+      droppedLinks: new Set()
+    };
+
+    const dryRun = planSelection(source, target, everything, origin);
+
+    if (!dryRun.hasCollisions) {
+      const result = await applyToProject(dryRun, project);
+      if (result.result !== 'success') throw { message: result.message };
+      return;
+    }
+
     try {
-      const origin = await this._consentFor(moduleRootPath, options);
-
-      const source = await loadSource(moduleRootPath);
-      const target = await createTargetProject(project);
-      const everything: SelectionState = {
-        requested: new Set(source.items.map((item) => item.key)),
-        droppedLinks: new Set()
-      };
-
-      const dryRun = planSelection(source, target, everything, origin);
-
-      if (!dryRun.hasCollisions) {
-        const result = await applyToProject(dryRun, project);
-        if (result.result !== 'success') throw { message: result.message };
-        return;
-      }
-
-      try {
-        const result = await openImportFlow({
-          title: `Install ${options.label}`,
-          subtitle: options.kind === 'prefab' ? 'Prefab' : 'Module',
-          sourceDir: moduleRootPath,
-          origin,
-          initialSelection: 'all',
-          keepExistingNonComponents: options.kind === 'prefab'
-        });
-        if (result.result !== 'success') throw { message: result.message };
-      } catch (err) {
-        if (err instanceof ImportFlowCancelled) throw { message: 'Import cancelled' };
-        throw err;
-      }
-    } finally {
-      options.onAfterPopup?.();
+      const result = await openImportFlow({
+        title: `Install ${options.label}`,
+        subtitle: options.kind === 'prefab' ? 'Prefab' : 'Module',
+        sourceDir: moduleRootPath,
+        origin,
+        initialSelection: 'all',
+        keepExistingNonComponents: options.kind === 'prefab'
+      });
+      if (result.result !== 'success') throw { message: result.message };
+    } catch (err) {
+      if (err instanceof ImportFlowCancelled) throw { message: 'Import cancelled' };
+      throw err;
     }
   }
 
@@ -294,11 +408,14 @@ export class ModuleLibraryModel extends Model {
    * message so the two install branches report it identically.
    *
    * ⚠️ **No `onBeforePopup`/`onAfterPopup` here.** Those hooks block the node
-   * picker behind a modal, and `_install` now holds them across the *whole*
-   * install — consent and flow — rather than each modal taking and releasing
-   * them. Per-modal hooks would unblock the picker in the gap between the
-   * consent dialog closing and the flow opening, which is exactly the moment a
-   * second click could start a second install.
+   * picker behind a modal, and `_installWithDependencies` holds them across the
+   * *whole* install — every dependency, then the entry, consent and flow for
+   * each — rather than each modal, or each entry, taking and releasing them.
+   * Per-modal hooks would unblock the picker in the gap between the consent
+   * dialog closing and the flow opening, which is exactly the moment a second
+   * click could start a second install; per-entry hooks (which is where LBR-007
+   * found them, on `_install`) would do the same in the gap between a
+   * dependency finishing and its dependent starting.
    */
   private async _consentFor(moduleRootPath: string, options: { label: string; url: string }): Promise<ImportOrigin> {
     try {

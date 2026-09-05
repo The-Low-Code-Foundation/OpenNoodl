@@ -376,6 +376,45 @@ function seedStarterModules(to) {
   return true;
 }
 
+/**
+ * The entries a declared `dependencies` list pulls in, transitively.
+ *
+ * 🔴 **Why the render path needs this at all.** LBR-007 gave the library a real
+ * `dependencies` field, resolved at build time and installed by
+ * `ModuleLibraryModel._installWithDependencies`. That is the INSTALL path. This
+ * harness builds its scratch project straight from the entry's own `project/`,
+ * so without this it renders an entry as nobody will ever have it — and an
+ * instance of a node type the dependency registers does not draw nothing, it
+ * THROWS (`noderegister.ts`: "Unknown node type with name ..."). A gate blind to
+ * the mechanism it is meant to protect is the hole shaped like the defect: it
+ * would have reported `pdf-viewer` — the entry the whole mechanism exists for —
+ * as broken forever, or passed it for the wrong reason.
+ *
+ * Resolution is deliberately tolerant here: a slug that does not exist on disk
+ * is skipped rather than thrown on, because `build.js::resolveDependencies` is
+ * the authority that FAILS on a bad slug, and a second copy of that rule in a
+ * reporting tool would only drift. Cycles terminate on `seen`.
+ */
+function resolveEntryDependencies(entryDir) {
+  const out = [];
+  const seen = new Set();
+  const queue = [entryDir];
+  while (queue.length) {
+    const dir = queue.shift();
+    const meta = readJSON(path.join(dir, 'library.json'));
+    for (const slug of (meta && meta.dependencies) || []) {
+      if (seen.has(slug)) continue;
+      seen.add(slug);
+      const depDir = path.join(REPO_ROOT, 'library', slug);
+      const depProject = path.join(depDir, 'project');
+      if (!fs.existsSync(depProject)) continue;
+      out.push({ slug, dir: depDir, project: depProject });
+      queue.push(depDir);
+    }
+  }
+  return out;
+}
+
 const HARNESS_PAGE = '/Library Harness Page';
 const HARNESS_APP = '/App';
 
@@ -513,10 +552,53 @@ function writeV2Project({ project, components }, targetDir, rootNodeId) {
  * `#`-prefixed folders are Noodl's convention for "hidden from the picker" and
  * `__cloud__` components have no visual surface at all; neither is a front door.
  */
+/**
+ * The node types the runtime itself reports as non-visual, read from the
+ * generated structural catalog rather than re-listed here — a second copy of
+ * "what draws" is the copy that goes stale, and this rule is what decides
+ * whether an entry is reported as BLANK (a defect) or as having nothing to
+ * draw (a fact about the entry).
+ *
+ * An UNKNOWN type counts as VISUAL. A module ships its own node types and they
+ * are not in the core catalog, so filing an unknown as non-visual would demote
+ * a real visual component to `no-visual` — that failure hides a broken entry,
+ * which is the expensive direction to be wrong in. If the catalog cannot be
+ * read at all the set is empty and the pick falls back to the old behaviour.
+ */
+const NON_VISUAL_TYPES = (() => {
+  try {
+    const catalog = JSON.parse(
+      fs.readFileSync(path.join(__dirname, '../../packages/noodl-types/src/node-catalog.json'), 'utf8')
+    );
+    const out = new Set();
+    for (const n of Object.values(catalog.nodes || {})) {
+      if (n && n.isVisual === false && n.typeName) out.add(n.typeName);
+    }
+    return out;
+  } catch {
+    return new Set();
+  }
+})();
+
+/** Does this component contain a node that can put ink on the page? */
+function drawsSomething(component) {
+  return flatten(component.roots).some((n) => !NON_VISUAL_TYPES.has(n.type));
+}
+
 function pickShowcase(components, label) {
-  const visual = components.filter(
+  const candidates = components.filter(
     (c) => !/(^|\/)#?__cloud__(\/|$)/.test(c.name) && c.roots.length > 0
   );
+  if (candidates.length === 0) return undefined;
+
+  // `roots.length > 0` counts NODES, not ink: a component of pure
+  // JavaScriptFunction/CloudFunction2 logic has roots and renders blank. That
+  // is why six logic-only entries (oauth2, supabase, totp, xano, media-query,
+  // shake-detector) were reported as "drew nothing" on every sweep, and why two
+  // of them hid a component that WOULD have drawn. Narrow to components that
+  // actually contain a drawable node; if none does, the entry genuinely has
+  // nothing to render and `no-visual` says so honestly.
+  const visual = candidates.filter(drawsSomething);
   if (visual.length === 0) return undefined;
 
   const norm = (s) => String(s).toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -580,12 +662,32 @@ async function checkEntry(entry, scratchRoot) {
 
   const target = path.join(scratchRoot, `${entry.type}-${entry.slug}`);
   fs.rmSync(target, { recursive: true, force: true });
+  // A dependency's components join the project, but NOT the showcase pick above:
+  // the entry is what is being measured, not the thing it leans on.
+  const deps = resolveEntryDependencies(entry.dir);
+  const depComponents = [];
+  for (const dep of deps) {
+    const depLoaded = readComponents(dep.project);
+    if (!depLoaded) continue;
+    for (const c of depLoaded.components) {
+      const clash = loaded.components.some((x) => x.name === c.name) || depComponents.some((x) => x.name === c.name);
+      if (!clash) depComponents.push(c);
+    }
+  }
+  if (deps.length) result.dependencies = deps.map((d) => d.slug);
+
   const withHarness = {
     project: loaded.project,
-    components: [...loaded.components, ...harnessComponents(showcase.name)]
+    components: [...loaded.components, ...depComponents, ...harnessComponents(showcase.name)]
   };
   writeV2Project(withHarness, target, 'lrc-app-root');
   result.starterModules = seedStarterModules(target);
+  // After the starter set and before the entry's own: a dependency's nodes
+  // register, and an entry that ships its own copy of something still wins.
+  for (const dep of deps) {
+    const mods = path.join(dep.project, 'noodl_modules');
+    if (fs.existsSync(mods)) fs.cpSync(mods, path.join(target, 'noodl_modules'), { recursive: true });
+  }
   copyAssets(projectDir, target);
   result.scratch = target;
 
