@@ -3268,6 +3268,25 @@ export interface FileOpPlan {
   messageLocal: string;
 }
 
+/**
+ * A `Variable` node carrying an authored `Value` (EXP-011 §67). The runtime's `value` input setter
+ * runs at node creation with the parameter and schedules a store (variablenode2.ts), so the node
+ * rewrites the variable on EVERY mount of the component that holds it — navigating back to the
+ * page resets the variable there. The translation is therefore a mount effect in the host — never
+ * a module-level seed, which would boot once, never reset, and run for a component nothing mounted.
+ */
+export interface VariableSeedPlan {
+  nodeId: string;
+  variableName: string;
+  value: string | number | boolean;
+  comment: string;
+}
+
+/** The seed as the action it prints — read off the plan so the import sweep and the emitter cannot disagree. */
+export function variableSeedAction(seed: VariableSeedPlan): HandlerAction {
+  return { kind: 'store-set', variableName: seed.variableName, expr: { kind: 'literal', value: seed.value } };
+}
+
 /** A `Record` whose `Fetch` is unwired (EXP-011 §43): the read, run from an effect keyed on its Id. */
 export interface RecordEffectPlan {
   nodeId: string;
@@ -3531,6 +3550,8 @@ export interface ComponentPlan {
   valueChangedEffects: ValueChangedEffectPlan[];
   /** EXP-011 §43. Records whose Fetch is unwired, compile order — one useEffect keyed on the Id each. */
   recordEffects: RecordEffectPlan[];
+  /** EXP-011 §67. Variables with an authored Value, node order — one mount effect each. */
+  variableSeeds: VariableSeedPlan[];
   /** EXP-011 §48. CSS Definitions, node order — one module constant + one mount effect each. */
   styleSheets: StyleSheetPlan[];
   /** EXP-011 §49. The States nodes that translated, registration order. */
@@ -3871,6 +3892,7 @@ function planComponent(
     pushEffects: [],
     branchEffects: [],
     recordEffects: [],
+    variableSeeds: [],
     valueChangedEffects: [],
     styleSheets: [],
     statesMachines: [],
@@ -18096,6 +18118,34 @@ function planComponent(
         ? wireNote(connection, `${kitEndpoint}`)
         : `wire ${connection.key} has no deterministic translation in step 5 (deferred to EXP-003)`
     );
+  }
+
+  // EXP-011 §67. A Variable's authored Value is the runtime's per-mount write (variablenode2.ts: the `value`
+  // setter runs at node creation and schedules a store) — a mount effect in the host. A wire into Value is the
+  // writer instead (pass 3 above translates the one shape it can), so the seed is refused by name there; a
+  // literal that is not a string, number or boolean has no `store-set` form and is refused by name too.
+  for (const node of component.nodes) {
+    if (node.type !== 'Variable2' || dispositions[node.id] !== undefined) continue;
+    const variableName = variableNameOf(node);
+    const authored = node.parameters.find((p) => p.name === 'value');
+    if (variableName === undefined || authored === undefined) continue;
+    const label = node.authoredLabel ?? 'Variable';
+    if (wiredPorts.has(`${node.id}:value`)) {
+      notes.push(`node ${node.id} (Variable2): its authored Value is not seeded — a wire into Value governs "${variableName}" (the runtime delivers the parameter first and every arrival on the wire over it)`);
+      continue;
+    }
+    const value = authored.value.kind === 'literal' ? authored.value.value : undefined;
+    if (typeof value !== 'string' && typeof value !== 'number' && typeof value !== 'boolean') {
+      notes.push(`node ${node.id} (Variable2): its authored Value is not a string, number or boolean literal — not seeded into "${variableName}"`);
+      continue;
+    }
+    // A component with no file never reaches this pass — `bailAsLogicOnly` returned above, the node a `logic node (Variable2)`.
+    plan.variableSeeds.push({
+      nodeId: node.id,
+      variableName,
+      value,
+      comment: `${label} — its authored Value is stored on every mount of this component (variablenode2.ts: the value setter runs at node creation).`
+    });
   }
 
   // Variables collapse into the stores module — the node is the module's provenance.

@@ -155,9 +155,12 @@ function writersComment(variable: VariablePlan): string {
   if (variable.writers.length === 0) {
     return '/** No statically-known writer — reads stay undefined until EXP-003 translates the writing logic. */';
   }
-  const lines = variable.writers.map(
-    (w) => `Written by ${w.label !== undefined ? `"${w.label}" ` : ''}(${w.nodeType} \`${w.nodeId}\` on /${w.componentPath}).`
-  );
+  const lines = variable.writers.map((w) => {
+    const who = `${w.label !== undefined ? `"${w.label}" ` : ''}(${w.nodeType} \`${w.nodeId}\` on /${w.componentPath})`;
+    // EXP-011 §67. The node's authored Value, stored on every mount of its component.
+    if (w.seed !== undefined) return `Seeded with ${tsLiteral(w.seed)} by ${who} on every mount of its component.`;
+    return `Written by ${who}.`;
+  });
   if (lines.length === 1) return `/** ${lines[0]} */`;
   return `/**\n${lines.map((line) => ` * ${line}`).join('\n')}\n */`;
 }

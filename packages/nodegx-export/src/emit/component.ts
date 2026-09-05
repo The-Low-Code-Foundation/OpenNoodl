@@ -39,7 +39,8 @@ import {
   streamTypeOfKind,
   NO_ANCESTOR_WRITE_MESSAGE,
   PARENT_COMPONENT_OBJECT_TYPE,
-  PAGE_STACK_ENTRY_PROP
+  PAGE_STACK_ENTRY_PROP,
+  variableSeedAction
 } from '../analyze/plan';
 import { ExportIR, ITEM_OUTPUT_SIGNAL, NodeIR } from '../ir/types';
 import { KitBinding, tsTypeOf as kitPortTsType } from './kits';
@@ -768,6 +769,8 @@ export function emitComponent(
     ...plan.animations.flatMap((a) => a.arrive ?? []),
     // EXP-011 §43. A Record's Id effect is a read chain run from an effect.
     ...plan.recordEffects.map((e) => e.action),
+    // EXP-011 §67. A Variable's authored Value is a store write run from a mount effect — it earns its import here.
+    ...plan.variableSeeds.map(variableSeedAction),
     // EXP-011 §53. A Run Tasks' listener chains, and a template's start chain (a mount effect), are chains like any other.
     ...plan.runTasks.flatMap((r) => Object.values(r.listeners).flatMap((chain) => chain ?? [])),
     ...(plan.task?.actions ?? []),
@@ -3910,6 +3913,8 @@ export function emitComponent(
       plan.valueChangedEffects.length > 0 ||
       // EXP-011 §43. A Record with Fetch unwired is an effect keyed on its Id.
       plan.recordEffects.length > 0 ||
+      // EXP-011 §67. A Variable's authored Value is a mount effect.
+      plan.variableSeeds.length > 0 ||
       // EXP-011 §48. A CSS Definition is a mount effect.
       plan.styleSheets.length > 0 ||
       // EXP-011 §49. A States' wired State input is an effect keyed on the read.
@@ -6281,6 +6286,11 @@ export function emitComponent(
   }
   // Sync effects (§3.4): the graph path of a wired control-state input — the input setter's
   // own coercion and abstain rules (§1's table), and never the Changed chain.
+  // EXP-011 §67. A Variable's authored Value: the runtime stores it at node creation, so every mount of this component
+  // rewrites the variable — a mount effect, printed before the mirrors so a mirror reading the variable follows it.
+  for (const seed of plan.variableSeeds) {
+    body.push(`  // ${seed.comment}`, '  useEffect(() => {', ...effectBody([variableSeedAction(seed)], 4), '  }, []);', '');
+  }
   // EXP-011 §60. A Component Object's mirror wires: `value-<key>` is a continuous input (every delivery stores at
   // frame end — componentobject.ts scheduleStore), so each is a sync effect on the record, keyed on its source.
   if (printsRecord) {

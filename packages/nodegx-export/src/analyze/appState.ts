@@ -23,6 +23,12 @@ export interface VariableWriter {
   nodeId: string;
   nodeType: string;
   label?: string;
+  /**
+   * EXP-011 §67. Set when the writer is a `Variable` node carrying an authored `Value`: the
+   * runtime's `value` input setter runs at node creation with that parameter and schedules a
+   * store (variablenode2.ts), so the node writes the variable on every mount of its component.
+   */
+  seed?: string | number | boolean;
 }
 
 export interface VariablePlan {
@@ -336,6 +342,8 @@ interface SourceRef {
   component: ComponentIR;
   fromNode: NodeIR | undefined;
   fromProperty: string;
+  /** EXP-011 §67. An authored literal standing where a wire's source node would — no node, one value. */
+  literal?: string | number | boolean;
 }
 
 export function collectAppState(ir: ExportIR): AppStateRegistry {
@@ -447,6 +455,15 @@ export function collectAppState(ir: ExportIR): AppStateRegistry {
         const plan = ensureVariable(name);
         if (node.type === 'Set Variable') {
           plan.writers.push(writerRef(component, node));
+        }
+        // EXP-011 §67. A Variable's authored Value is a writer — the runtime stores it at node
+        // creation, per mount — and a typed source of the variable (a number literal makes the
+        // variable `unknown`, as a number writer would). A wire into Value is the writer instead:
+        // the wire's source is registered below, and the plan refuses the seed by name.
+        const seed = node.type === 'Variable2' ? literalPrimitive(node, 'value') : undefined;
+        if (seed !== undefined && !wiredPortsOf(component).has(`${node.id}:value`)) {
+          plan.writers.push({ ...writerRef(component, node), seed });
+          variableSources.get(name)!.push({ component, fromNode: undefined, fromProperty: 'value', literal: seed });
         }
       }
       /**
@@ -706,6 +723,8 @@ export function collectAppState(ir: ExportIR): AppStateRegistry {
     return resolved;
   };
   const typeOfSource = (ref: SourceRef, visiting: Set<string>): 'string' | 'unknown' => {
+    // EXP-011 §67. An authored literal types as itself.
+    if (ref.literal !== undefined) return typeof ref.literal === 'string' ? 'string' : 'unknown';
     const node = ref.fromNode;
     if (!node) return 'unknown';
     if (isTextInputType(node.type) && ref.fromProperty === 'onTextChanged') return 'string';
@@ -929,6 +948,13 @@ function writerRef(component: ComponentIR, node: NodeIR): VariableWriter {
     nodeType: node.type,
     ...(node.authoredLabel !== undefined ? { label: node.authoredLabel } : {})
   };
+}
+
+/** EXP-011 §67. An authored parameter as the primitive it is, or `undefined` for anything else. */
+function literalPrimitive(node: NodeIR, paramName: string): string | number | boolean | undefined {
+  const value = node.parameters.find((p) => p.name === paramName)?.value;
+  if (value?.kind !== 'literal') return undefined;
+  return typeof value.value === 'string' || typeof value.value === 'number' || typeof value.value === 'boolean' ? value.value : undefined;
 }
 
 function literalString(node: NodeIR, paramName: string): string | undefined {
