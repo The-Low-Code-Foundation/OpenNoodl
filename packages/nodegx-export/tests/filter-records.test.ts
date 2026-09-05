@@ -128,7 +128,7 @@ describe('§A the fixture, whole — Query Records → Filter Records → For Ea
     expect(ledgerEntryOf('FilterDBModels')?.status).toBe('translated');
     expect(exportBadgeOf('FilterDBModels')).toBeUndefined();
     const ledger = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'coverage-ledger.json'), 'utf8'));
-    expect(ledger.pickerCoverageFloor).toBe(98);
+    expect(ledger.pickerCoverageFloor).toBe(101); // §58 the streaming trio (session 85)
   });
 });
 
