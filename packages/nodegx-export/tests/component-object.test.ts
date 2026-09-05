@@ -185,21 +185,31 @@ describe('the node gates (COMPONENT-OBJECT-TARGET §4)', () => {
     expect((plan.dispositions['gc-state2'] as { reason: string }).reason).toContain('two Component Object nodes');
   });
 
-  test('a Set Component Object Properties beside it defers: an imperative writer of the same record', () => {
+  // EXP-011 §60 flipped gates 3 and 4 from refusals into RECORD mode: the node collapses into a `useComponentObject`
+  // hook with a Provider, the mirror becomes a sync effect, and the reads become state reads. The Set beside it, with
+  // nothing firing its Do, is named for that; the descendant's reader reads the Provider.
+  test('a Set Component Object Properties beside it puts the record in record mode: a hook, a Provider, the mirror as an effect (§60)', () => {
     const mutated = cloneIr();
     addNode(mutated, CARD, { id: 'gc-setprops', type: 'net.noodl.SetComponentObjectProperties' });
+    setParam(nodeOf(mutated, CARD, 'gc-setprops'), 'properties', 'Draft');
     const disposition = cardDisposition(mutated);
-    expect(disposition.kind).toBe('deferred');
-    expect(disposition.reason).toContain('Set Component Object Properties');
+    expect(disposition.kind).toBe('collapsed');
+    const result = emitApp(mutated, catalog);
+    const tsx = result.files['src/components/GreetingCard.tsx'];
+    expect(tsx).toContain('const cardState = useComponentObject<CardStateRecord>();');
+    expect(tsx).toContain('<ParentComponentObjectContext.Provider value={cardState}>');
+    expect(tsx).toContain('cardState.set({ DisplayName: Name });');
+    expect(tsx).toContain('{cardState.value.DisplayName ?? \'\'}');
+    expect(result.notes.some((n) => n.includes('gc-setprops') && n.includes('nothing fires its Do, so no write could ever happen'))).toBe(true);
   });
 
-  test('a descendant with Parent Component Object defers: the walk reaches this record from below', () => {
+  test('a descendant with Parent Component Object puts the record in record mode too: the Provider is what the walk finds (§60)', () => {
     const mutated = cloneIr();
     addChild(mutated, CARD, 'greet-root', { id: 'gc-badge', type: '/Components/GreetingBadge' });
     addNode(mutated, 'Components/GreetingBadge', { id: 'badge-pco', type: 'net.noodl.ParentComponentObject' });
     const disposition = cardDisposition(mutated);
-    expect(disposition.kind).toBe('deferred');
-    expect(disposition.reason).toContain('Parent Component Object');
+    expect(disposition.kind).toBe('collapsed');
+    expect(emitApp(mutated, catalog).files['src/components/GreetingCard.tsx']).toContain('ParentComponentObjectContext.Provider');
   });
 });
 

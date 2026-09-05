@@ -617,6 +617,12 @@ export const STREAM_NODES: Record<string, StreamNodeSpec> = {
 export const RUN_TASKS_TYPE = 'RunTasks';
 /** EXP-011 §57. `Repeater Item` — the type id is the runtime's `name`, not the display name. */
 export const REPEATER_ITEM_TYPE = 'For Each Actions';
+/** EXP-011 §60. The component-object trio — the Set, and the parent pair that read/write an ancestor's record. */
+export const SET_COMPONENT_OBJECT_TYPE = 'net.noodl.SetComponentObjectProperties';
+export const PARENT_COMPONENT_OBJECT_TYPE = 'net.noodl.ParentComponentObject';
+export const SET_PARENT_COMPONENT_OBJECT_TYPE = 'net.noodl.SetParentComponentObjectProperties';
+/** EXP-011 §60. The message setparentcomponentobjectproperties.ts raises on a miss — verbatim (the lib exports the same constant). */
+export const NO_ANCESTOR_WRITE_MESSAGE = 'No ancestor component has a Component Object node — nothing was written';
 export const RUN_TASKS_OUTPUTS: readonly string[] = ['done', 'failure', 'unchanged', 'completed', 'aborted'];
 export const RUN_TASKS_CONTRACT_TEMPLATE_PARAM = 'taskTemplate';
 export const RUN_TASKS_CONTRACT = {
@@ -1320,6 +1326,13 @@ export type ValueExpr =
    */
   | { kind: 'screen-out'; nodeId: string; local: string; field: (typeof SCREEN_RESOLUTION_OUTPUTS)[number] }
   /**
+   * EXP-011 §60. A key of a component-object record: `<local>.value.<key>` in render, `<local>.get().<key>` in a
+   * handler (live, as `model.get` is). `parent` reads the nearest ancestor's record through the context hook, whose
+   * handle is `undefined` at the root — the read prints `?.` and answers undefined, as the unbound node's output does.
+   * `tsType` is the key's own type (`unknown` for a parent read, or a key with no statically-known own writer).
+   */
+  | { kind: 'component-object-out'; nodeId: string; local: string; key: string; parent: boolean; tsType: string }
+  /**
    * The `Error` output of `External Link` or `Navigate To Path` (EXP-011 §24) — the message the
    * node wrote just before it fired `Failure`.
    *
@@ -1670,6 +1683,22 @@ export type HandlerAction =
    * object bound) is unreachable, because `Model.get` creates the object on read.
    */
   | { kind: 'object-set'; storeName: string; entries: Array<{ key: string; expr: ValueExpr }>; then: HandlerAction[] }
+  /**
+   * EXP-011 §60. `Set Component Object Properties` (`parent: false`) — `<local>.set({ … })`, then Done, then Completed, as
+   * following statements (one arm, always taken: the self variant cannot miss its own record). `Set Parent Component
+   * Object Properties` (`parent: true`) — the block form: `if (<local> === undefined) { raise no-ancestor; failThen }
+   * else { <local>.set({ … }); then }` — the runtime's `resolution.id === undefined` fork in base.ts, verbatim.
+   */
+  | {
+      kind: 'component-object-set';
+      nodeId: string;
+      local: string;
+      parent: boolean;
+      entries: Array<{ key: string; expr: ValueExpr }>;
+      then: HandlerAction[];
+      completedThen: HandlerAction[];
+      failThen: HandlerAction[];
+    }
   | { kind: 'collection-add'; collectionName: string; entries: Array<{ key: string; expr: ValueExpr }>; minted?: MintedTarget }
   /**
    * `Clear Array` (EXP-011 Tier 1.1) — `notes.clear()`, plus the two chains the runtime's own
@@ -2619,6 +2648,40 @@ export interface ScreenResolutionPlan {
 }
 
 /**
+ * EXP-011 §60. A `Component Object` node in **record** mode — its component hosts a `Set Component Object Properties`,
+ * or a descendant reaches the record through the parent pair: `const <local> = useComponentObject<<typeName>>()`,
+ * one mirror effect per wired `value-*` input (`useEffect(() => { <local>.set({ key: src }); }, [deps])`), and the
+ * component's root wrapped in `ParentComponentObjectContext.Provider` — the transcription of "this component owns a
+ * Component Object", which is what `findAncestorWithComponentObject` tests. Alias mode (no writer, no descendant
+ * reach) is COMPONENT-OBJECT-TARGET §3 unchanged and registers nothing here.
+ */
+export interface ComponentObjectRecordPlan {
+  nodeId: string;
+  label: string;
+  local: string;
+  /** The record's type alias, printed at module level: `type <typeName> = { key?: tsType; … }`. */
+  typeName: string;
+  keys: Array<{ key: string; tsType: string }>;
+  mirrors: Array<{ key: string; source: ValueExpr; wireKey: string }>;
+  comment: string;
+}
+
+/**
+ * EXP-011 §60. The nearest ancestor's record, read from below — one hook per component, shared by every
+ * `Parent Component Object` and `Set Parent Component Object Properties` in it (each resolves the same nearest
+ * owner): `const <local> = useParentComponentObject<<typeName>>([readers])`. `readers` are the reader nodes that
+ * collapsed — each raises `parent-component-object/no-ancestor` once at mount when the hook answers undefined.
+ */
+export interface ParentComponentObjectPlan {
+  local: string;
+  typeName: string;
+  keys: Array<{ key: string; tsType: string }>;
+  readers: Array<{ nodeId: string; label: string }>;
+  /** Whether a parent Set prints — the hook prints when a reader collapsed or a writer attached. */
+  comment: string;
+}
+
+/**
  * An `Animate To Value` node (EXP-011 §49): `const <local> = useAnimatedValue(target, { duration,
  * delay, ease }, onArrive)`. `duration` and `delay` are read where the hook is — a wired one is
  * the render expression, an authored one a literal — and `ease` is the authored enum, which a
@@ -3109,6 +3172,10 @@ export interface ComponentPlan {
   streams: StreamPlan[];
   /** EXP-011 §59. The Screen Resolution hooks this component reads, registration order. */
   screenResolutions: ScreenResolutionPlan[];
+  /** EXP-011 §60. The Component Object record this component materializes (record mode), if any. */
+  componentObject?: ComponentObjectRecordPlan;
+  /** EXP-011 §60. The nearest ancestor's record this component reads or writes through the parent pair, if any. */
+  parentObject?: ParentComponentObjectPlan;
   /** EXP-011 §55. The `Create New Array` handles this component holds, allocation order. */
   mintedArrays: MintedArrayPlan[];
   /**
@@ -4437,12 +4504,9 @@ function planComponent(
       if (properties !== undefined && properties.value.kind !== 'literal') {
         return 'its Properties list is not a literal';
       }
-      if (component.nodes.some((n) => n.type === 'net.noodl.SetComponentObjectProperties')) {
-        return 'a Set Component Object Properties node writes the same record — not translated in this slice';
-      }
-      if (parentFamilyReachesThisRecord()) {
-        return "a descendant component reaches this record through Parent Component Object — not translated in this slice";
-      }
+      // EXP-011 §60. Gates 3 (a Set in the component) and 4 (a descendant reaches the record through the parent
+      // pair) are no longer refusals: either puts the node in RECORD mode (`componentObjectModeOf`), where the
+      // record is a `useComponentObject` hook rather than an alias. The other five gates stand.
       // Absent means ticked (the Evaluate-additive family): unticked silences the model
       // subscription, so outputs freeze between Fetch pulses and a live alias would lie.
       if (literalParam(node, 'runOnChange-object') === false) {
@@ -4461,7 +4525,28 @@ function planComponent(
             c.fromProperty.startsWith('changed-'))
       );
       if (signalOut !== undefined) {
-        return `its ${signalOut.fromProperty} signal is consumed — signal-on-write belongs to the component-state slice`;
+        // EXP-011 §60. This IS the slice the old sentence pointed at, and it says no: a write notification is a
+        // change effect on the record, which this slice does not emit — the record's readers re-render instead.
+        return `its ${signalOut.fromProperty} signal is consumed — signal-on-write is not translated in this slice; the record's readers re-render on every write instead`;
+      }
+      // EXP-011 §60. Record mode: every mirror wire must translate to a sync effect, or the key would read a lie —
+      // decided HERE, before pass 4d binds any read of the record. The memo is pre-set so a self-mirror's
+      // speculative resolve re-enters as "passing" rather than recursing.
+      if (componentObjectModeOf() === 'record') {
+        if (!plan.file) return 'component emits no file to host its record';
+        componentObjectGateMemo.set(node.id, null);
+        const seen = new Set<string>();
+        for (const write of component.connections) {
+          if (write.toId !== node.id || !write.toProperty.startsWith('value-')) continue;
+          const key = write.toProperty.slice('value-'.length);
+          if (seen.has(key)) return `two wires write property "${key}" — last-writer-wins is not statically ordered`;
+          seen.add(key);
+          const ctx = newCtx();
+          const source = resolveExpr(nodeById.get(write.fromId), write.fromProperty, ctx);
+          if (source === null) return ctx.defer ?? `property "${key}" mirrors a source with no static translation`;
+          if (isBooleanExpr(source)) return `property "${key}" mirrors a logic truth value — only truthiness sinks take one in this slice`;
+          if (!exprValidIn(source, { kind: 'render' })) return `property "${key}" mirrors a value that only exists inside a handler`;
+        }
       }
       return null;
     })();
@@ -4514,6 +4599,184 @@ function planComponent(
   };
 
   /**
+   * EXP-011 §60. Which shape a Component Object node takes: `alias` (COMPONENT-OBJECT-TARGET §3 — the record compiles
+   * away) when nothing but continuous mirrors writes it and nothing below reads it; `record` (a `useComponentObject`
+   * hook, a provider) when a `Set Component Object Properties` sits in the component or a descendant hosts a
+   * parent-family node. Decided once per node, so a read is an alias OR a state read — never both.
+   */
+  const componentObjectModeOf = (): 'alias' | 'record' =>
+    component.nodes.some((n) => n.type === SET_COMPONENT_OBJECT_TYPE) || parentFamilyReachesThisRecord() ? 'record' : 'alias';
+
+  /** The keys a Component Object node's record carries: its Properties list, plus any `value-*` port a wire names (the runtime honours any). */
+  const componentObjectKeysOf = (node: NodeIR): string[] => {
+    const keys = setPropertiesOf(node);
+    for (const c of component.connections) {
+      const port = c.toId === node.id ? c.toProperty : c.fromId === node.id ? c.fromProperty : undefined;
+      if (port !== undefined && port.startsWith('value-')) {
+        const key = port.slice('value-'.length);
+        if (!keys.includes(key)) keys.push(key);
+      }
+    }
+    return keys;
+  };
+
+  /** `string` / `number` / `boolean` when every statically-known writer agrees; `unknown` otherwise — and `unknown` for no writer (§47's vacuous-`every` rule). */
+  const uniformTypeOf = (types: string[]): string => {
+    if (types.length === 0) return 'unknown';
+    const first = types[0];
+    if (!['string', 'number', 'boolean'].includes(first)) return 'unknown';
+    return types.every((t) => t === first) ? first : 'unknown';
+  };
+
+  const componentObjectLocals = new Map<string, string>();
+  /**
+   * The record plan of a Component Object node in record mode, registered once. The key types are read off the
+   * statically-known own writers — the mirror wires and every `Set Component Object Properties` in the component
+   * whose list names the key (a wire, or an authored `prop-<key>` literal) — with the plan registered BEFORE the
+   * writers are resolved, so a self-mirror cannot recurse into this registration.
+   */
+  const componentObjectRecordOf = (node: NodeIR): ComponentObjectRecordPlan => {
+    if (plan.componentObject !== undefined && plan.componentObject.nodeId === node.id) return plan.componentObject;
+    const label = node.authoredLabel ?? 'Component Object';
+    const local = mintLocal(componentObjectLocals, node, 'ComponentObject', '');
+    const core: ComponentObjectRecordPlan = {
+      nodeId: node.id,
+      label,
+      local,
+      typeName: `${pascalCase(local)}Record`,
+      keys: componentObjectKeysOf(node).map((key) => ({ key, tsType: 'unknown' })),
+      mirrors: [],
+      comment: `${label} — a Component Object node (componentobject.ts): this instance's record, one useState per mount; a Set writes it, the Provider hands it to Parent Component Object below.`
+    };
+    plan.componentObject = core;
+    for (const entry of core.keys) {
+      const types: string[] = [];
+      for (const c of component.connections) {
+        if (c.toId === node.id && c.toProperty === `value-${entry.key}`) {
+          const expr = resolveExpr(nodeById.get(c.fromId), c.fromProperty, newCtx());
+          if (expr !== null) types.push(exprTsType(expr));
+        }
+      }
+      for (const setter of component.nodes) {
+        if (setter.type !== SET_COMPONENT_OBJECT_TYPE || !setPropertiesOf(setter).includes(entry.key)) continue;
+        const wire = component.connections.find((c) => c.toId === setter.id && c.toProperty === `prop-${entry.key}`);
+        if (wire !== undefined) {
+          const expr = resolveExpr(nodeById.get(wire.fromId), wire.fromProperty, newCtx());
+          if (expr !== null) types.push(exprTsType(expr));
+          continue;
+        }
+        const authored = literalParam(setter, `prop-${entry.key}`);
+        if (authored !== undefined) types.push(typeof authored);
+      }
+      entry.tsType = uniformTypeOf(types);
+    }
+    return core;
+  };
+
+  /** The one parent-record hook a component prints, registered on first use; keys are `unknown` (a descendant cannot know its host). */
+  const parentObjectPlanOf = (): ParentComponentObjectPlan => {
+    if (plan.parentObject !== undefined) return plan.parentObject;
+    let local = 'parentObject';
+    let counter = 2;
+    while (stateNameTaken(local)) local = `parentObject${counter++}`;
+    usedStateVarNames.add(local);
+    const keys: string[] = [];
+    for (const n of component.nodes) {
+      if (n.type !== PARENT_COMPONENT_OBJECT_TYPE && n.type !== SET_PARENT_COMPONENT_OBJECT_TYPE) continue;
+      for (const key of setPropertiesOf(n)) if (!keys.includes(key)) keys.push(key);
+      for (const c of component.connections) {
+        const port = c.toId === n.id ? c.toProperty : c.fromId === n.id ? c.fromProperty : undefined;
+        const prefix = port === undefined ? undefined : port.startsWith('value-') ? 'value-' : port.startsWith('prop-') ? 'prop-' : undefined;
+        if (port !== undefined && prefix !== undefined) {
+          const key = port.slice(prefix.length);
+          if (!keys.includes(key)) keys.push(key);
+        }
+      }
+    }
+    const symbol = plan.file ? pascalCase(plan.file.fileBase) : pascalCase(component.path.split('/').pop() ?? 'Component');
+    plan.parentObject = {
+      local,
+      typeName: `${symbol}ParentRecord`,
+      keys: keys.map((key) => ({ key, tsType: 'unknown' })),
+      readers: [],
+      comment: `The nearest ancestor's Component Object record (componentwalk.ts: the closest component above this one that owns a Component Object node) — undefined at the root.`
+    };
+    return plan.parentObject;
+  };
+
+  /**
+   * EXP-011 §60. The whole-node gate on a `Parent Component Object` — any hit refuses the node and every read through it.
+   * The runtime's `Parent Component` input (an ancestor by name) and its Fetch/signal/Error surface are refused by name;
+   * a `value-*` INPUT is a write through the reader node itself (`registerInputIfNeeded` → `scheduleStore`).
+   */
+  const parentReaderGateMemo = new Map<string, string | null>();
+  const parentReaderGate = (node: NodeIR): string | null => {
+    const cached = parentReaderGateMemo.get(node.id);
+    if (cached !== undefined) return cached;
+    const verdict = ((): string | null => {
+      if (!plan.file) return 'component emits no file to host the parent record';
+      const properties = node.parameters.find((p) => p.name === 'properties');
+      if (properties !== undefined && properties.value.kind !== 'literal') return 'its Properties list is not a literal';
+      if (wiredPorts.has(`${node.id}:targetComponent`)) return 'its Parent Component is wired — which ancestor it reads is not statically knowable';
+      const target = literalParam(node, 'targetComponent');
+      if (typeof target === 'string' && target.length > 0) {
+        return `its Parent Component names "${target}" — this slice resolves the nearest ancestor record only; a named ancestor is not translated`;
+      }
+      if (literalParam(node, 'runOnChange-object') === false) {
+        return 'Parent object is unticked under Run On Value Change — its outputs freeze between Fetch pulses';
+      }
+      if (wiredPorts.has(`${node.id}:fetch`)) {
+        return 'its Fetch is wired — a batch republish with Fetched/Done ordering is signal work this slice does not translate';
+      }
+      for (const c of component.connections) {
+        if (c.toId === node.id && c.toProperty.startsWith('value-')) {
+          return `its "${c.toProperty.slice('value-'.length)}" property input is wired — a write through the Parent Component Object node itself is not translated in this slice; a Set Parent Component Object Properties is`;
+        }
+      }
+      for (const c of component.connections) {
+        if (c.fromId !== node.id) continue;
+        if (c.fromProperty === 'failure') {
+          return 'its Failure signal is consumed — a missing ancestor is raised on the error channel once at mount (parent-component-object/no-ancestor) and not branched on in this slice';
+        }
+        if (c.fromProperty === 'error') {
+          return 'its Error output is consumed — the miss message is raised on the error channel (parent-component-object/no-ancestor) rather than exposed as a row in this slice';
+        }
+        if (c.fromProperty === 'changed' || c.fromProperty === 'fetched' || c.fromProperty === 'done' || c.fromProperty === 'completed' || c.fromProperty.startsWith('changed-')) {
+          return `its ${c.fromProperty} signal is consumed — signal-on-write is not translated in this slice; the record's readers re-render on every write instead`;
+        }
+        if (!c.fromProperty.startsWith('value-')) return `its ${c.fromProperty} output is not a port this node has`;
+      }
+      return null;
+    })();
+    parentReaderGateMemo.set(node.id, verdict);
+    return verdict;
+  };
+
+  /** A `Parent Component Object` `value-*` read as an expression — the nearest ancestor's record, through the context hook. */
+  const parentComponentObjectReadExpr = (fromNode: NodeIR, fromProperty: string, ctx: ResolveCtx): ValueExpr | null => {
+    const gate = parentReaderGate(fromNode);
+    if (gate !== null) {
+      ctx.defer = gate;
+      return null;
+    }
+    if (!fromProperty.startsWith('value-')) {
+      ctx.defer = `its ${fromProperty} output is not a port this node has`;
+      return null;
+    }
+    const key = fromProperty.slice('value-'.length);
+    if (key.includes('.')) {
+      ctx.defer = `property "${key}" is a dotted path the record would resolve through nested models`;
+      return null;
+    }
+    const parent = parentObjectPlanOf();
+    if (!parent.readers.some((r) => r.nodeId === fromNode.id)) {
+      parent.readers.push({ nodeId: fromNode.id, label: fromNode.authoredLabel ?? 'Parent Component Object' });
+    }
+    if (!parent.keys.some((k) => k.key === key)) parent.keys.push({ key, tsType: 'unknown' });
+    return { kind: 'component-object-out', nodeId: fromNode.id, local: parent.local, key, parent: true, tsType: 'unknown' };
+  };
+
+  /**
    * A Component Object read as an expression (COMPONENT-OBJECT-TARGET §3): the record compiles
    * away. Every statically-visible write is a continuous mirror (`value-X` has no trigger —
    * componentobject.ts), so a single-writer property reads its writer's source; a property no
@@ -4536,6 +4799,12 @@ function planComponent(
     if (writers.length > 1) {
       ctx.defer = `two wires write property "${prop}" — last-writer-wins is not statically ordered`;
       return null;
+    }
+    // EXP-011 §60. Record mode: the read is a key of the hook's record — live in a handler, a snapshot in render.
+    if (componentObjectModeOf() === 'record') {
+      const record = componentObjectRecordOf(fromNode);
+      const entry = record.keys.find((k) => k.key === prop);
+      return { kind: 'component-object-out', nodeId: fromNode.id, local: record.local, key: prop, parent: false, tsType: entry?.tsType ?? 'unknown' };
     }
     if (writers.length === 0) return { kind: 'undefined' };
     const cycleKey = `${fromNode.id}:${prop}`;
@@ -7258,6 +7527,25 @@ function planComponent(
     if (fromNode.type === COMPONENT_OBJECT && fromProperty.startsWith('value-')) {
       return componentObjectReadExpr(fromNode, fromProperty, ctx);
     }
+    // EXP-011 §60. The parent pair: a read of the nearest ancestor's record; a Set's outputs read as values.
+    if (fromNode.type === PARENT_COMPONENT_OBJECT_TYPE) {
+      if (fromProperty === 'changed' || fromProperty === 'fetched' || fromProperty === 'done' || fromProperty === 'completed' || fromProperty === 'failure' || fromProperty.startsWith('changed-')) {
+        ctx.defer = `its ${fromProperty} output is consumed as a value — a pulse carries nothing to read`;
+        return null;
+      }
+      return parentComponentObjectReadExpr(fromNode, fromProperty, ctx);
+    }
+    if (fromNode.type === SET_COMPONENT_OBJECT_TYPE || fromNode.type === SET_PARENT_COMPONENT_OBJECT_TYPE) {
+      if (fromProperty === 'error' && fromNode.type === SET_PARENT_COMPONENT_OBJECT_TYPE) {
+        ctx.defer = 'its Error output is consumed — the miss message is raised on the error channel (set-parent-component-object-properties/no-ancestor) rather than exposed as a row in this slice';
+        return null;
+      }
+      ctx.defer =
+        fromProperty === 'done' || fromProperty === 'completed' || (fromProperty === 'failure' && fromNode.type === SET_PARENT_COMPONENT_OBJECT_TYPE)
+          ? `its ${fromProperty} output is consumed as a value — a pulse carries nothing to read`
+          : `its ${fromProperty} output is not a port this node has`;
+      return null;
+    }
     if (jsNodeKindOf(fromNode.type) !== null) {
       return jsFunReadExpr(fromNode, fromProperty, ctx);
     }
@@ -8196,6 +8484,9 @@ function planComponent(
       /** EXP-011 §59. The hook seeds all three from the window at mount; never undefined. */
       case 'screen-out':
         return false;
+      /** EXP-011 §60. The record boots empty, and a parent read is undefined at the root. */
+      case 'component-object-out':
+        return true;
       /**
        * The row only when it is the row: it reads undefined until the first failure, exactly as
        * the interpreter's unwritten getter does. The chain-local was assigned by the statement
@@ -8529,6 +8820,9 @@ function planComponent(
         return 'string';
       case 'screen-out':
         return 'number';
+      // EXP-011 §60. The key's own type, read off its statically-known writers; `unknown` for a parent read.
+      case 'component-object-out':
+        return expr.tsType;
       case 'state-get':
         return plan.stateVars.find((v) => v.name === expr.name)?.tsType.replace(' | undefined', '') ?? 'unknown';
       case 'control-event':
@@ -8571,6 +8865,9 @@ function planComponent(
     [GLOBAL_STORE_SET]: 'set',
     // EXP-011 §47. The port is `store`; its display name is "Do".
     [SET_OBJECT_PROPERTIES_TYPE]: 'store',
+    // EXP-011 §60. The same port name on both component-object Sets (base.ts).
+    [SET_COMPONENT_OBJECT_TYPE]: 'store',
+    [SET_PARENT_COMPONENT_OBJECT_TYPE]: 'store',
     NewModel: 'new',
     // EXP-011 Tier 1.1. The port is `clear`; its display name is "Do".
     CollectionClear: 'clear',
@@ -12212,6 +12509,8 @@ function planComponent(
     if (CRYPTO_NODES[node.type] !== undefined) return compileCryptoCall(node);
     if (node.type === 'Condition') return compileCondition(node);
     if (node.type === SET_OBJECT_PROPERTIES_TYPE) return compileSetObjectProperties(node);
+    // EXP-011 §60.
+    if (node.type === SET_COMPONENT_OBJECT_TYPE || node.type === SET_PARENT_COMPONENT_OBJECT_TYPE) return compileComponentObjectSet(node);
     /**
      * ⚠️ **Everything below this line is the Set Variable case, and there is no `default`.**
      *
@@ -12241,6 +12540,101 @@ function planComponent(
       consumes: [wire.key, ...ctx.consumes],
       collapses: ctx.logicNodeIds,
       subscribes: ctx.subscriberIds
+    };
+  };
+
+  /**
+   * EXP-011 §60. `Set Component Object Properties` / `Set Parent Component Object Properties` — one patch on the
+   * record, then the chains. What the runtime does on `Do` (base.ts `scheduleStore`): resolve the record (the self
+   * variant's own instance — cannot miss; the parent variant walks and can), then for every key in the node's OWN
+   * Properties list that is in `inputValues`, `model.set(key, value)` — a key never delivered is absent (abstains by
+   * absence), a key delivered as `undefined` IS written (no undefined filter here, unlike modelcrudbase); an authored
+   * `prop-<key>` literal is delivered at creation and is therefore written too; a wired `prop-<x>` the list does not
+   * name is filtered out. `type-<p>` inputs have an empty setter — inert. Then `done`, then `completed`; on a miss
+   * (parent only) `error` is set, the code is raised, `failure` pulses, and nothing is written.
+   */
+  const compileComponentObjectSet = (node: NodeIR): CompiledSink => {
+    const parent = node.type === SET_PARENT_COMPONENT_OBJECT_TYPE;
+    if (!plan.file) return { defer: 'component emits no file to host the record write' };
+    if (parent) {
+      if (wiredPorts.has(`${node.id}:targetComponent`)) return { defer: 'its Parent Component is wired — which ancestor it writes is not statically knowable' };
+      const target = literalParam(node, 'targetComponent');
+      if (typeof target === 'string' && target.length > 0) {
+        return { defer: `its Parent Component names "${target}" — this slice resolves the nearest ancestor record only; a named ancestor is not translated` };
+      }
+    } else {
+      const owner = component.nodes.find((n) => n.type === COMPONENT_OBJECT);
+      if (owner === undefined) {
+        return { defer: "its component has no Component Object node — the record it writes is read by nothing statically translatable (a Function's Component.Object is deferred)" };
+      }
+      const gate = componentObjectGate(owner);
+      if (gate !== null) return { defer: `its Component Object node is refused — ${gate}` };
+    }
+    for (const wire of component.connections) {
+      if (wire.fromId !== node.id) continue;
+      if (wire.fromProperty === 'error' && parent) {
+        return { defer: 'its Error output is consumed — the miss message is raised on the error channel (set-parent-component-object-properties/no-ancestor) rather than exposed as a row in this slice' };
+      }
+      if (wire.fromProperty === 'completed' && parent) {
+        return { defer: 'its Completed output is consumed — it fires after every outcome, and this slice emits the outcome arms rather than a join beneath them' };
+      }
+    }
+    const listed = setPropertiesOf(node);
+    if (listed.length === 0) return { defer: 'its Properties list is empty, so Do writes nothing' };
+    const ctx = newCtx();
+    const consumes: string[] = [];
+    const entries: Array<{ key: string; expr: ValueExpr }> = [];
+    for (const key of listed) {
+      const wires = component.connections.filter((c) => c.toId === node.id && c.toProperty === `prop-${key}`);
+      if (wires.length > 1) return { defer: `two wires feed its "${key}" — last-writer-wins is not statically ordered` };
+      if (wires.length === 0) {
+        const authored = literalParam(node, `prop-${key}`);
+        if (authored !== undefined) entries.push({ key, expr: { kind: 'literal', value: authored } });
+        continue; // never delivered — absent from inputValues, so never written
+      }
+      const expr = resolveExpr(nodeById.get(wires[0].fromId), wires[0].fromProperty, ctx);
+      if (expr === null) return { defer: ctx.defer ?? `its "${key}" has no statically known source` };
+      if (isBooleanExpr(expr)) return { defer: `its "${key}" is fed a logic truth value — only truthiness sinks take one in this slice` };
+      entries.push({ key, expr });
+      consumes.push(wires[0].key);
+    }
+    if (entries.length === 0) return { defer: 'nothing is wired into any of its properties, so Do writes nothing' };
+    // A pulse into a value port is a read of nothing, decided from the sink's port kind BEFORE the chains compile
+    // (§52.4's rule, §59.4's second finding) — or doneChainOf names it first as "drives no translatable action".
+    for (const wireOut of component.connections.filter((c) => c.fromId === node.id && (c.fromProperty === 'done' || c.fromProperty === 'completed' || c.fromProperty === 'failure'))) {
+      const target = nodeById.get(wireOut.toId);
+      if (target === undefined || target.type === 'Component Outputs') continue;
+      const sinkKind =
+        target.declaredPorts.find((p) => p.plug === 'input' && p.name === wireOut.toProperty)?.kind ??
+        catalog.portKind(target.type, wireOut.toProperty, 'input');
+      if (sinkKind === 'value') {
+        return { defer: `its ${wireOut.fromProperty === 'done' ? 'Done' : wireOut.fromProperty === 'completed' ? 'Completed' : 'Failure'} output is consumed as a value — a pulse carries nothing to read` };
+      }
+    }
+    const done = doneChainOf(node, 'done');
+    if ('defer' in done) return { defer: done.defer };
+    const completed = parent ? { then: [], consumes: [], collapses: [], subscribes: [] } : doneChainOf(node, 'completed');
+    if ('defer' in completed) return { defer: completed.defer };
+    const failed = parent ? doneChainOf(node, 'failure') : { then: [], consumes: [], collapses: [], subscribes: [] };
+    if ('defer' in failed) return { defer: failed.defer };
+    for (const wire of component.connections) {
+      if (wire.toId === node.id && wire.toProperty.startsWith('prop-')) {
+        const key = wire.toProperty.slice('prop-'.length);
+        if (listed.includes(key)) continue;
+        notes.push(wireNote(wire, `"${key}" is not in the node's Properties list, so the runtime never writes it (keysToSet filters by the list) — dropped`));
+        consumes.push(wire.key);
+      }
+    }
+    const local = parent ? parentObjectPlanOf().local : componentObjectRecordOf(component.nodes.find((n) => n.type === COMPONENT_OBJECT)!).local;
+    if (parent) {
+      const parentPlan = parentObjectPlanOf();
+      for (const entry of entries) if (!parentPlan.keys.some((k) => k.key === entry.key)) parentPlan.keys.push({ key: entry.key, tsType: 'unknown' });
+    }
+    return {
+      action: { kind: 'component-object-set', nodeId: node.id, local, parent, entries, then: done.then, completedThen: completed.then, failThen: failed.then },
+      consumes: [...consumes, ...done.consumes, ...completed.consumes, ...failed.consumes, ...ctx.consumes],
+      collapses: [...ctx.logicNodeIds, ...done.collapses, ...completed.collapses, ...failed.collapses],
+      subscribes: [...ctx.subscriberIds, ...done.subscribes, ...completed.subscribes, ...failed.subscribes]
     };
   };
 
@@ -12556,6 +12950,8 @@ function planComponent(
       case 'crypto-out':
       // EXP-011 §59. A handle read — a handler closes over the latest render, which is what the getter answers.
       case 'screen-out':
+      // EXP-011 §60. Render reads the snapshot, a handler reads `.get()` live — valid in every context.
+      case 'component-object-out':
         return true;
       /**
        * `External Link` and `Navigate To Path`'s `Error`, on the same footing and the same
@@ -12623,6 +13019,14 @@ function planComponent(
           return (
             action.entries.every((e) => exprValidIn(e.expr, context, invokedScope)) &&
             actionsValidIn(action.then, context, invokedScope)
+          );
+        // EXP-011 §60. The patch, then the three chains.
+        case 'component-object-set':
+          return (
+            action.entries.every((e) => exprValidIn(e.expr, context, invokedScope)) &&
+            actionsValidIn(action.then, context, invokedScope) &&
+            actionsValidIn(action.completedThen, context, invokedScope) &&
+            actionsValidIn(action.failThen, context, invokedScope)
           );
         case 'state-set':
           return action.expr === undefined || exprValidIn(action.expr, context, invokedScope);
@@ -12964,6 +13368,9 @@ function planComponent(
       // handler, the record verbs' form idiom on a client-side object. Fifth family on s19's
       // rule; found the same way (the first emit dropped the Save wire with a true sentence).
       if (sink.type === SET_OBJECT_PROPERTIES_TYPE) return c.toProperty.startsWith('prop-');
+      // EXP-011 §60. The two component-object Sets read their property inputs from the button's handler — the
+      // tenth family on s19's rule, and the first emit dropped the Rename wire with the same true sentence.
+      if (sink.type === SET_COMPONENT_OBJECT_TYPE || sink.type === SET_PARENT_COMPONENT_OBJECT_TYPE) return c.toProperty.startsWith('prop-');
       // EXP-011 §48. A Set Global Store reads its `value` from the button's handler too — §47.3
       // registered it as the clause's sixth family, met by the same first-emit symptom (a text
       // input into the Set's value from a button drops the trigger with a true sentence).
@@ -13367,6 +13774,8 @@ function planComponent(
       // EXP-011 §59. A handle read; and a crypto row is written by its own verb, never by a Set Variable.
       case 'screen-out':
       case 'crypto-out':
+      // EXP-011 §60. A live read off the record — a write earlier in the chain is visible through `.get()`, no snapshot.
+      case 'component-object-out':
         return false;
       /**
        * 🔴 A walker with a `default`, and the third construct to nearly die in one (§8.3).
@@ -13432,6 +13841,8 @@ function planComponent(
       // EXP-011 §59.
       case 'screen-out':
       case 'crypto-out':
+      // EXP-011 §60.
+      case 'component-object-out':
         return expr;
       case 'jsfun-out': {
         // Wrapper argument records are shared across call sites — a per-site rewrite cannot
@@ -13505,6 +13916,22 @@ function planComponent(
         const then = snapActionList(action.then, snap);
         if (!Array.isArray(then)) return then;
         return { ...action, entries, then };
+      }
+      // EXP-011 §60. The patch's values, then the three chains — the record itself is read live and needs no snapshot.
+      case 'component-object-set': {
+        const entries: Array<{ key: string; expr: ValueExpr }> = [];
+        for (const entry of action.entries) {
+          const e = snapExpr(entry.expr, snap);
+          if ('defer' in e) return e;
+          entries.push({ key: entry.key, expr: e });
+        }
+        const then = snapActionList(action.then, snap);
+        if (!Array.isArray(then)) return then;
+        const completedThen = snapActionList(action.completedThen, snap);
+        if (!Array.isArray(completedThen)) return completedThen;
+        const failThen = snapActionList(action.failThen, snap);
+        if (!Array.isArray(failThen)) return failThen;
+        return { ...action, entries, then, completedThen, failThen };
       }
       case 'emit': {
         const payload: Array<{ key: string; expr: ValueExpr }> = [];
@@ -14390,6 +14817,11 @@ function planComponent(
         } else if (action.kind === 'popup-close') {
           closeAttached = true;
           scanActions(action.then);
+        } else if (action.kind === 'component-object-set') {
+          // EXP-011 §60. A popup opened from a record write's Done is a popup this pass must see.
+          scanActions(action.then);
+          scanActions(action.completedThen);
+          scanActions(action.failThen);
         } else if (action.kind === 'api-call') {
           attachedMutations.add(action.nodeId);
           scanActions(action.then);
@@ -15055,7 +15487,8 @@ function planComponent(
   for (const connection of component.connections) {
     if (consumed.has(connection.key)) continue;
     const fromNode = nodeById.get(connection.fromId);
-    if (fromNode?.type !== COMPONENT_OBJECT || !connection.fromProperty.startsWith('value-')) continue;
+    // EXP-011 §60. A Parent Component Object's `value-*` read lands here too — the same sinks, through the context hook.
+    if ((fromNode?.type !== COMPONENT_OBJECT && fromNode?.type !== PARENT_COMPONENT_OBJECT_TYPE) || !connection.fromProperty.startsWith('value-')) continue;
     const toNode = nodeById.get(connection.toId);
     if (!toNode || !rendered.has(toNode.id)) continue; // the sweep names the reason
     const contentRole = (CONTENT_PARAMS[toNode.type] ?? {})[connection.toProperty];
@@ -15637,6 +16070,42 @@ function planComponent(
     const reads = component.connections.filter((c) => c.fromId === node.id && c.fromProperty.startsWith('value-'));
     const writes = component.connections.filter((c) => c.toId === node.id && c.toProperty.startsWith('value-'));
     let verdict: string | null = componentObjectGate(node);
+    // EXP-011 §60. Record mode: the record is real state, not a derived alias — a read into an out-of-vocabulary
+    // sink is THAT WIRE's refusal (as a Variable's read into a margin is), never the node's; every mirror wire is a
+    // sync effect, and a mirror whose source has no static translation refuses the node (the key would read a lie).
+    if (verdict === null && componentObjectModeOf() === 'record') {
+      const record = componentObjectRecordOf(node);
+      for (const write of writes) {
+        if (consumed.has(write.key)) continue;
+        const key = write.toProperty.slice('value-'.length);
+        const ctx = newCtx();
+        const source = resolveExpr(nodeById.get(write.fromId), write.fromProperty, ctx);
+        // The gate already refused a mirror that does not translate; this is the registration.
+        if (source === null) {
+          verdict = ctx.defer ?? `property "${key}" mirrors a source with no static translation`;
+          break;
+        }
+        record.mirrors.push({ key, source, wireKey: write.key });
+        consumed.add(write.key);
+        for (const k of ctx.consumes) consumed.add(k);
+        for (const id of ctx.logicNodeIds) dispositions[id] = { kind: 'collapsed', into: `src/${plan.file!.dir}/${plan.file!.fileBase}.tsx` };
+      }
+      if (verdict === null) {
+        for (const read of reads) {
+          if (coBoundReadKeys.has(read.key) || stateLandedKeys.has(read.key) || consumed.has(read.key)) continue;
+          const sink = nodeById.get(read.toId);
+          const reason =
+            sink !== undefined && dispositions[read.toId] !== undefined && dispositions[read.toId].kind === 'deferred'
+              ? `its ${read.fromProperty} feeds ${sink.type}, which is itself deferred`
+              : `its ${read.fromProperty} feeds ${sink?.type ?? 'a missing node'}.${read.toProperty}, which has no static binding in this slice`;
+          notes.push(wireNote(read, reason));
+          consumed.add(read.key);
+        }
+        dispositions[node.id] = { kind: 'collapsed', into: `src/${plan.file!.dir}/${plan.file!.fileBase}.tsx` };
+        continue;
+      }
+      plan.componentObject = undefined;
+    }
     if (verdict === null && reads.length === 0) {
       verdict =
         writes.length === 0
@@ -16062,6 +16531,13 @@ function planComponent(
           case 'object-set':
             action.entries.forEach((e) => walkExpr(e.expr));
             walkActions(action.then);
+            break;
+          // EXP-011 §60. The same, three chains.
+          case 'component-object-set':
+            action.entries.forEach((e) => walkExpr(e.expr));
+            walkActions(action.then);
+            walkActions(action.completedThen);
+            walkActions(action.failThen);
             break;
           case 'external-link':
             walkExpr(action.link);
@@ -16604,6 +17080,12 @@ function planComponent(
           case 'object-set':
             fillMaterialize(action.then);
             break;
+          // EXP-011 §60. The same, three chains.
+          case 'component-object-set':
+            fillMaterialize(action.then);
+            fillMaterialize(action.completedThen);
+            fillMaterialize(action.failThen);
+            break;
           case 'navigate-path': {
             const row = navigatePathErrorVars.get(action.nodeId);
             if (row !== undefined && plan.stateVars.includes(row)) action.errorState = row.name;
@@ -16671,6 +17153,55 @@ function planComponent(
       to: 'EXP-003',
       reason: dangling !== undefined ? `its ${dangling.fromProperty} chain hangs off a node nothing fires` : 'nothing fires its Do, so no run could ever start'
     };
+  }
+
+  // EXP-011 §60. The Parent Component Object verdict — the Component Object's record-mode rule from below: the gate
+  // refuses the node; a read into an out-of-vocabulary sink is the wire's refusal; a node nothing reads is named.
+  for (const node of component.nodes) {
+    if (node.type !== PARENT_COMPONENT_OBJECT_TYPE || dispositions[node.id] !== undefined) continue;
+    const reads = component.connections.filter((c) => c.fromId === node.id && c.fromProperty.startsWith('value-'));
+    let verdict: string | null = parentReaderGate(node);
+    if (verdict === null && reads.length === 0) verdict = 'its properties feed nothing statically translatable';
+    if (verdict === null) {
+      for (const read of reads) {
+        if (coBoundReadKeys.has(read.key) || stateLandedKeys.has(read.key) || consumed.has(read.key)) continue;
+        const ctx = newCtx();
+        if (resolveExpr(node, read.fromProperty, ctx) === null) {
+          verdict = ctx.defer ?? `property "${read.fromProperty.slice('value-'.length)}" has no static translation`;
+          break;
+        }
+        const sink = nodeById.get(read.toId);
+        const reason =
+          sink !== undefined && dispositions[read.toId] !== undefined && dispositions[read.toId].kind === 'deferred'
+            ? `its ${read.fromProperty} feeds ${sink.type}, which is itself deferred`
+            : `its ${read.fromProperty} feeds ${sink?.type ?? 'a missing node'}.${read.toProperty}, which has no static binding in this slice`;
+        notes.push(wireNote(read, reason));
+        consumed.add(read.key);
+      }
+    }
+    if (verdict !== null) {
+      dispositions[node.id] = { kind: 'deferred', to: 'EXP-003', reason: verdict };
+      notes.push(`node ${node.id} (${node.type}) deferred: ${verdict}`);
+      continue;
+    }
+    dispositions[node.id] = { kind: 'collapsed', into: `src/${plan.file!.dir}/${plan.file!.fileBase}.tsx` };
+  }
+  // EXP-011 §60. A Set nothing fires — named by what hangs off it, the Log/Delay sweep's rule.
+  for (const node of component.nodes) {
+    if ((node.type !== SET_COMPONENT_OBJECT_TYPE && node.type !== SET_PARENT_COMPONENT_OBJECT_TYPE) || dispositions[node.id] !== undefined) continue;
+    const trigger = component.connections.find((c) => c.toId === node.id && c.toProperty === 'store');
+    let verdict: string;
+    if (trigger === undefined) verdict = 'nothing fires its Do, so no write could ever happen';
+    else {
+      const compiled = compiledSinks.get(`${node.id}:store`);
+      verdict = compiled !== undefined && 'defer' in compiled ? compiled.defer : 'its Do is never fired by a translatable source';
+    }
+    dispositions[node.id] = { kind: 'deferred', to: 'EXP-003', reason: verdict };
+    notes.push(`node ${node.id} (${node.type}) deferred: ${verdict}`);
+  }
+  // EXP-011 §60. The parent hook's readers are the reader nodes that collapsed — a deferred reader raises nothing.
+  if (plan.parentObject !== undefined) {
+    plan.parentObject.readers = plan.parentObject.readers.filter((r) => dispositions[r.nodeId]?.kind === 'collapsed');
   }
 
   // Whatever analysis has not classified yet is logic: EXP-003's, or unknown-type debris.

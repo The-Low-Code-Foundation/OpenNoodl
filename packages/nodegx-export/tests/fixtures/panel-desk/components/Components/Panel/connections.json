@@ -1,0 +1,55 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "c0a1b2c3-5b3f-4e8d-9c1a-000000000062",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "parentState",
+      "fromProperty": "value-title",
+      "toId": "panelTitle",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "parentState",
+      "fromProperty": "value-note",
+      "toId": "panelNote",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "bumpBtn",
+      "fromProperty": "onClick",
+      "toId": "bump",
+      "toProperty": "store"
+    },
+    {
+      "fromId": "bump",
+      "fromProperty": "done",
+      "toId": "setBumped",
+      "toProperty": "do"
+    },
+    {
+      "fromId": "bump",
+      "fromProperty": "failure",
+      "toId": "setBumpFailed",
+      "toProperty": "do"
+    },
+    {
+      "fromId": "bumpStatusVar",
+      "fromProperty": "value",
+      "toId": "bumpText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "bumpedLabel",
+      "fromProperty": "savedValue",
+      "toId": "setBumped",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "missedLabel",
+      "fromProperty": "savedValue",
+      "toId": "setBumpFailed",
+      "toProperty": "value"
+    }
+  ]
+}
