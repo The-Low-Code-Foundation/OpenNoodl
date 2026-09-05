@@ -35,6 +35,7 @@ import {
   clampBenchWidth,
   isMounted,
   matchingPreset,
+  readMenuComponents,
   type BenchFrame,
   type PreviewScope
 } from './previewScope';
@@ -63,27 +64,17 @@ export function PreviewScopeControl({ scope, onScopeChange, getComponents }: Pre
 
   function open() {
     /**
-     * 🔴 **`.slice()`, and it is the whole fix.**
+     * 🔴 **The `.slice()` inside {@link readMenuComponents} is the whole fix**, and it is in
+     * `previewScope.ts` rather than here so that something can grade it: this module imports
+     * `Icon`, whose `require.context` fails ts-jest at load, so no spec can reach a line written
+     * in this file. The reasoning, the symptom and the rejected alternative are on the function.
      *
-     * `ProjectModel.getComponents()` returns `this.components` — the **live array**, not a copy —
-     * and `addComponent` does `this.components.push(...)` in place. So `setComponents(getComponents())`
-     * handed React the same array reference on every open, `Object.is` bailed the update out, and
-     * `components` never changed identity after the very first open. The `useMemo` below is keyed on
-     * that identity, so it computed once per project and never again.
-     *
-     * The symptom, reported by Richard 2026-09-04: create a component, open this menu, and it is
-     * not there. Closing the project and reopening it fixed it — because a new `ProjectModel` brings
-     * a new array, which is a new identity.
-     *
-     * ⚠️ **The prop above already promised this**: *"it must be *fresh* then, not a snapshot from
-     * whenever the preview last laid out."* The getter was right; the state write threw the fresh
-     * read away. Copying makes each open its own identity, which is what the memo needs to see.
-     *
-     * A `ProjectModel` subscription (`componentAdded`/`Removed`/`Renamed`, as
-     * `useComponentsPanel.ts` does) would also work, but it would keep a list current that is only
-     * ever read while this menu is open — and `open()` is that moment.
+     * The reverted form is `setComponents(getComponents())` — named here so a reader can see what
+     * changed, and named in this comment on purpose: `ben-004/previewScopeMenuRead.test.ts` §4
+     * reads this function's source with comments stripped, so the sentence above cannot pass the
+     * gate on behalf of the line below it.
      */
-    setComponents(getComponents().slice());
+    setComponents(readMenuComponents(getComponents));
     setIsOpen(true);
   }
 

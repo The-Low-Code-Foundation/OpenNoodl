@@ -201,6 +201,35 @@ export interface BenchTarget {
  * (BEN-003) exists for. Refusing them here would re-impose the limit the phase
  * was written to remove.
  */
+/**
+ * The component list the scope menu reads when it opens — **a copy, and the copy is the point.**
+ *
+ * 🔴 `ProjectModel.getComponents()` returns `this.components`, the **live array**, and
+ * `addComponent` does `this.components.push(...)` in place. So `setComponents(getComponents())`
+ * handed React the same array reference on every open, `Object.is` bailed the state update out,
+ * and the menu's `components` never changed identity after the very first open. The `useMemo`
+ * that calls {@link benchTargets} is keyed on that identity, so it computed once per project and
+ * never again.
+ *
+ * The symptom, reported by Richard 2026-09-04: create a component, open the menu, and it is not
+ * there. Closing the project and reopening it fixed it — a new `ProjectModel` brings a new array,
+ * which is a new identity.
+ *
+ * ⚠️ **It lives here rather than inline in `PreviewChrome.tsx` because nothing can grade it
+ * there.** That module imports `@noodl-core-ui/.../Icon`, whose `require.context` call ts-jest
+ * rejects outright (`Icon.tsx:207`, TS2339) — the module fails the suite *to run*, so the one
+ * decision in `open()` was ungated by construction (phase 82 `TESTING-PASS-2026-09-04.md` §3,
+ * owner `NONE`). Moved out, it is a plain function from a getter to a list and
+ * `ben-004/previewScopeMenuRead.test.ts` grades both arms of it.
+ *
+ * A `ProjectModel` subscription (`componentAdded`/`Removed`/`Renamed`, as `useComponentsPanel.ts`
+ * does) would also work, but it would keep a list current that is only ever read while the menu is
+ * open — and the open *is* that moment.
+ */
+export function readMenuComponents(getComponents: () => Array<{ name: string }>): Array<{ name: string }> {
+  return getComponents().slice();
+}
+
 export function benchTargets(components: Array<{ name: string }>, query = ''): BenchTarget[] {
   const needle = query.trim().toLowerCase();
 

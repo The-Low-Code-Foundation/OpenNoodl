@@ -94,16 +94,67 @@ They are listed so that fact is visible rather than implied.
 
 ---
 
-## §3 ⚠️ The one fix that is not gated
+## §3 ✅ CLOSED 2026-09-05 (s46) — the one fix that was not gated now is
 
-Finding 6 (workbench dropdown) is **fixed and ungated**. `@testing-library/react` is not installed in
-this repo, so the menu cannot be opened and read in a spec, and a second editor cannot be launched
-while Richard's is running. A source-text assertion was deliberately **not** written — it would pass
-on dead code.
+**Finding 6 (workbench dropdown) has a gate**: `packages/noodl-editor/tests-unit/ben-004/previewScopeMenuRead.test.ts`,
+**13 tests, EXIT=0**, and it reddens against both halves of the fix reverted.
 
-**What would close it:** a drive against a real editor — create a component, open the scope chip,
-read the menu — or `@testing-library/react` as a dev dependency, which would also unblock the
-several other launcher views that currently have no render coverage.
+### 🔴 The reason it was written off was right about the conclusion and wrong about the cause
+
+The row below said the blocker was the missing dependency. **Measured, it is not.**
+`PreviewChrome.tsx` cannot be graded by this runner for a blunter reason: it imports
+`@noodl-core-ui/components/common/Icon`, and ts-jest rejects that file's `require.context` call
+outright — `Icon.tsx:207`, `TS2339: Property 'context' does not exist on type 'Require'`. The module
+**fails the suite to run**, so `@testing-library/react` would not have helped; it is the registered
+`Icon` trap, hit a third time. A probe measured both sides in one run before anything was written:
+`previewScope.ts` imports clean (17 exports), `PreviewChrome.tsx` returns that error and **zero**
+exports.
+
+### ✅ What closed it: the decision was never in the rendering
+
+*"What list does the menu read when it opens"* is a function from a getter to an array. It moved to
+**`previewScope.readMenuComponents`** — a module whose only import is one type constant — and
+`open()` calls it. That is the standard move for this runner and it is what makes the fix
+gradeable without a DOM, without React and without opening a menu.
+
+| § | what it grades | reverted arm |
+|---|---|---|
+| §1 | **the premise** — a model shaped exactly like `ProjectModel` (`getComponents()` returns `this.components`, `addComponent` pushes in place) hands out **one object** across two reads | *known-firing control* — reads `true` today; a `false` here means ProjectModel started copying and §2 is holding a property the product no longer needs |
+| §2 | **the fix** — the read is not the live array, each open has its own identity, and each snapshot is of **the moment it was taken** | Arm A (`return getComponents()`): **5 red of 13 that all ran** |
+| §3 | **the symptom** — Richard's bug reproduced through the real `benchTargets` behind a faithful `useMemo` (`Object.is` per dep): the live-array arm computes **once**, and `/Cards/New` is **not in the menu** | same arm |
+| §4 | **the wire** — `open()` calls it, read off source with comments stripped | Arm B (`setComponents(getComponents())`): **2 red of 13 that all ran**, EXIT=1 |
+
+🔴 **§4 is the source-level row the commit warned about, and the warning was answered rather than
+waved through.** The fix's own prose quotes `setComponents(getComponents())` — the reverted form —
+so a raw text match would have passed on the *documentation* of a change that had been undone. Two
+arms prove the strip is load-bearing rather than decorative:
+
+- **Arm C1** — the reverted line named in `open()`'s comment, fix in place: **13/13, EXIT=0**.
+- **Arm C2** — `stripComments()` removed from the spec's own reader, nothing else changed:
+  **exactly 1 red of 13**, and it is *"open() does NOT hand the live array straight to
+  setComponents"*. The comment alone reddens the gate the moment the strip goes.
+
+**13 total in every arm** is what says each one graded something rather than failing to compile.
+
+⚠️ **What this still does NOT establish.** No menu was opened. This holds the identity contract and
+the wire; it cannot see focus, the search field, the scroll, or whether the row is clickable. A
+drive against a real editor would still be worth its cost — it is just no longer the *only* thing
+that could close this.
+
+### The row as it stood
+
+> Finding 6 (workbench dropdown) is **fixed and ungated**. `@testing-library/react` is not installed in
+> this repo, so the menu cannot be opened and read in a spec, and a second editor cannot be launched
+> while Richard's is running. A source-text assertion was deliberately **not** written — it would pass
+> on dead code.
+>
+> **What would close it:** a drive against a real editor — create a component, open the scope chip,
+> read the menu — or `@testing-library/react` as a dev dependency, which would also unblock the
+> several other launcher views that currently have no render coverage.
+
+⚠️ **`@testing-library/react` really is absent** — the tree has `@testing-library/dom`, `jest-dom`
+and `user-event`, and no package declares the React binding. That half of the row was true; it was
+simply not the thing standing in the way.
 
 ---
 
