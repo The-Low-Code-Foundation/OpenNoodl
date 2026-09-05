@@ -1,5 +1,182 @@
 # Phase 82 — next session
 
+> ### 🟢 THE UNGATED LANE, 2026-09-05 (s46) — added beside the other lanes, not over them
+>
+> **The board was right that no REL row was buildable, and it was wrong that nothing was.** Two
+> registered rows with owner `NONE` were re-measured. One was a real hole and is now closed with a
+> gate; the other had been fixed an hour after it was written and nobody had struck it. Commits
+> **`bee37739`** and **`d3c56a3b`**.
+>
+> **1. ✅ THE ONE FIX FROM RICHARD'S TESTING PASS THAT SHIPPED WITH NO GATE NOW HAS ONE** —
+> `tests-unit/ben-004/previewScopeMenuRead.test.ts`, **14/14, EXIT=0**, and red on four separate
+> reverts. Finding 6, the workbench dropdown that could not see a component created since the
+> project opened, was fixed in `16f38e7963` and deliberately left ungated.
+>
+> 🔴 **The reason it was written off was right about the conclusion and wrong about the cause, and
+> the difference mattered.** The commit said *"`@testing-library/react` is not installed, so the
+> menu cannot be opened in a spec"*. The dependency **really is absent** — the tree has
+> `@testing-library/dom`, `jest-dom` and `user-event`, no React binding — and it was **never the
+> blocker**: `PreviewChrome.tsx` imports `@noodl-core-ui/.../Icon`, whose `require.context` ts-jest
+> rejects outright (`Icon.tsx:207`, `TS2339`), so the module fails the suite **to run**. Installing
+> the dependency would have bought nothing. ✅ **A two-line probe measured both sides in one run
+> before anything was written** — `previewScope.ts` clean with 17 exports, `PreviewChrome.tsx` that
+> error and **zero**. *This is the third time the `Icon` trap has been paid for.*
+>
+> ✅ **The decision was never in the rendering.** *"What list does the menu read when it opens"* is a
+> function from a getter to an array, so it moved to `previewScope.readMenuComponents` and `open()`
+> calls it. §1 grades the premise, §2 the identity, §3 **Richard's bug reproduced** through the real
+> `benchTargets` behind a faithful `useMemo` (`Object.is` per dep — the live-array arm computes
+> **once** and `/Cards/New` is not in the menu), §4 the wire.
+>
+> | arm | reading |
+> |---|---|
+> | green — the reverted line named in `open()`'s comment | **14/14, EXIT=0** |
+> | A — `readMenuComponents` returns `getComponents()` | **5 red of 14** |
+> | B — `open()` reverted to `setComponents(getComponents())` | **2 red of 14**, EXIT=1 |
+> | C2 — `stripComments()` removed from the spec's own reader | **1 red of 14** |
+> | D — `ProjectModel.getComponents()` made to copy | **1 red of 14**, restored md5-identical |
+>
+> 🔴 **Arm C2 is the one that answers the original commit's other warning** (*"a source-text
+> assertion would pass on dead code"*). The fix's own prose quotes the reverted form, so without the
+> strip the **documentation** reddens the gate — and a differently-worded comment could equally have
+> passed on behalf of a line that had been undone. C2 says the strip is load-bearing, which is why
+> the reverted form is now named in that comment **on purpose**.
+>
+> 🔴 **AND THE GATE'S OWN §1 WAS A CLAIM ITS INSTRUMENT COULD NOT MAKE.** The first draft labelled a
+> `ProjectModel`-shaped **stub** *"the known-firing control — if this reads `false`, ProjectModel
+> started copying."* **A stub does not notice when the thing it imitates changes.** §1.3 now reads
+> the two lines off `projectmodel.ts` itself, and Arm D is what proves it fires. ⚠️ **Ask of every
+> restated fixture: what would this read if the thing it restates had moved?**
+>
+> **2. ✅ REL-002c §9.7 ITEM 2 STRUCK — the site-builder outline gate was built fifty-three minutes
+> after the row was typed.** The row (*"ships 26 `as` tags and nothing holds them there. Owner:
+> `NONE`"*) was saved at 22:30 on 09-03; **`373375fd`** landed at **23:23 the same evening** with
+> that sentence's own numbers in its subject. `sb007Template.test.ts` §12 is a **full peer** of the
+> members' area census, not a subset — one `h1` per page over seven pages, one `main` per page, the
+> `h1` **inside** the `main`, the nav resolved from the artefact, no node carrying an `as` its type
+> has no port for, and the same near-miss control. **Read green, not inferred: 9 passed, EXIT=0**,
+> including two mutant rows. ⚠️ **Its claim is not what a skim takes it for** — the heading-*order*
+> check is a different gate (`headingOrder.test.ts`, s41, both artefacts); what was missing was the
+> **landmark census**. Both now exist, for both templates.
+>
+> **3. ⚠️ TRAPS THIS SESSION PAID FOR, BOTH REGISTERED ALREADY.**
+> 🔴 **`npx jest` from the repo root is a DIFFERENT RUNNER.** There is no root jest config and no
+> root jest gate, so it falls back to **babel-jest**, which cannot parse `import { x, type T }` —
+> **`Tests: 0 total`**, three times, on arms that were fine. The cause was `cd X &&` persisting its
+> cwd into a later call; the same trap also made `rm -rf <relative path>` exit 0 against a path that
+> did not exist there. ✅ **`cd <abs> && pwd && npx jest …` in ONE command**, and the FAIL line names
+> the runner: the editor's prints `tests-unit/…`, the root one `packages/noodl-editor/tests-unit/…`.
+> 🔴 **A peer's half-saved spec read 4 red, then 19 green ninety seconds later** — `syl-j1` was
+> mid-write. It was **not** in the gate run below as that; the run caught an earlier saved version
+> and passed it.
+>
+> **4. ✅ GATES.** `npm run test:main` **426 suites / 7136 tests, EXIT=0, zero reds**;
+> `npm run typecheck:editor` **0 `error TS`, EXIT=0**; `tests-unit/ben-004` **14/14**;
+> `sb007Template.test.ts` §12 **9/9**.
+> ⚠️ **`test:main` reconciles against s44's 423/7086 as +1 suite/+14 mine and the rest peers'
+> untracked lanes in the same tree** — two runs an hour apart read 425/7115 then 426/7136, and the
+> drift between them is not mine. ⚠️ **The editor's `test:ci` was NOT run and is unreadable today**:
+> a peer lane holds uncommitted specs under `packages/nodegx-export/tests`, which reddens that gate
+> for everyone (registered trap). The two jasmine specs that touch `previewScope` live there; this
+> change to it is **purely additive** — one new exported function — and their subjects are untouched.
+>
+> ⬜ **No REL row's ACs moved and none could.** §A's queue is unchanged and still Richard's. What
+> changed is that the phase's `NONE`-owned register is two rows shorter, and one of those two was a
+> hole rather than a stale line.
+
+> ### 🟢 THE CUT LANE, 2026-09-05 (s45) — added beside the other lanes, not over them
+>
+> **The board said everything left was Richard's, and it was right about the ROWS and wrong about the
+> DOCUMENTS he cuts from.** Nothing here builds a feature; it makes the two files the release is
+> executed out of true, and it found one ordering defect that would have shipped.
+>
+> **1. 🔴 THE RELEASE NOTES ADVERTISED A TEMPLATE THE APP DELIBERATELY DOES NOT OFFER, AND A SHELF
+> THAT IS EMPTY.** `EmbeddedTemplateProvider.list()` returns **zero rows** in 0.2.2 —
+> `HELD_TEMPLATE_IDS` holds `hello-world` (it *is* the blank project) and `site-builder` (Richard's
+> D1) — so the create wizard and REL-013's new Templates tab draw **only** what the community shelf
+> serves, and until `publish-project-template.ts` runs that is nothing. The notes' §"Alongside it, a
+> **site builder** template and the admin shell that goes with it" was simply **false**, and its
+> first headline is *"templates you can start from"*.
+>
+> 🔴 **The runbook made it worse by being technically correct.** §6 said the publish and the tag
+> *"neither blocks the other, and row 7 can go first"* — true about **mechanism** (G5a), and read as
+> **"the order does not matter"**. It does: tag first and 0.2.2 ships an empty shelf under notes that
+> lead on templates. Nothing red, no gate failing, the release just wrong about itself. §6 now says
+> **publish, confirm the row is live, then tag**, with the measurement under it.
+>
+> **2. ✅ REL-001's PRECONDITIONS RE-DERIVED AT HEAD — ALL GREEN, so the one action he is about to
+> take is safe to take today.** Four top-level entries; **100 files**, which reconciles exactly with
+> `tpl001Template.test.ts` §1's own control (`32 × 3 + 4`) — **the submission file's "94 files" is the
+> 09-01 figure and is superseded**; no `.mcp.json` / `CLAUDE.md` / `.gitignore` (the FIX-008 B hazard,
+> and `readBundleDirectory` has no skip list of any kind); no `.env` / `*.key` / `*.pem`; and a
+> content scan finding **no absolute developer path and no credential-shaped literal** — every
+> `secret`/`password` hit is a port name, a param name or a node id. ✅ **AC7 graded without
+> regenerating anything**: §1 already compares every byte of every file against a fresh build, and it
+> reads **82/82, EXIT=0**. A regenerate over a shared artefact was the obvious move and was the wrong
+> one.
+>
+> **3. 🔴 A REGISTERED §B ROW WAS FALSE — `noodl-core-ui`'s jest DOES run in a CI gate.** It is in
+> `pr.yml`'s package job (`npm run test:packages`, on `pull_request` **and** `push`), it is the
+> **first** `--scope` in that script and has been since before session 39 wrote the row, all 16 scopes
+> resolve against the packages' declared names (**0 unresolved**), and the suite reads **29 suites /
+> 551 tests, EXIT=0** at HEAD. ⚠️ **The reading that nearly confirmed the row was `lerna list`, which
+> hides private packages** — 11 of 16 — and `--all` is what makes the population honest.
+> 🆕 **The real residual is registered instead** (§B): core-ui is **8th of 16** topologically and
+> `lerna run` bails on the first failure, so a red in any of the seven before it means those 551
+> specs never run. `--no-bail` was **not** applied — those suites bind real sockets, which is why the
+> job is serial.
+>
+> **4. ✅ THE NOTES' NUMBERS ARE ALL RE-DERIVED, AND THE INSTRUMENT IS NOW WRITTEN DOWN.** 573 → **760
+> commits** (238 feat / 126 fix / 369 docs), eleven → **fifteen days**. 🔴 **The per-workstream counts
+> could not be reproduced from the old numbers** — a first pass read the alpha-feedback round *lower*
+> than 09-01's figure, which over four append-only days means the instruments differ, not that
+> commits vanished. So all of them were re-taken with **one stated instrument** (the `type(scope):`
+> scope, split on `/` and `,`, de-duplicated per commit) and the instrument is printed in the notes:
+> export **92**, templates-driven **54**, alpha feedback **37**, site-builder **55**, and the 0.2.2
+> round **57** — which had never been written up at all and is the part a user meets first.
+> ⚠️ **P18's alpha paragraph (114 of 127, 89%) was left untouched** — it is their number and they
+> maintain it in this file.
+>
+> **5. ✅ TWO "KNOWN AND OPEN" ITEMS WERE FIXED, NOT CARRIED, AND WERE STILL BEING SHIPPED AS OPEN.**
+> *"Four of the thirteen pages have never been photographed"* — all four are photographed at four
+> widths in both arms (120 shots, `phase-81/verdicts/vib-001/2026-09-03/`). *"Eleven pages have no
+> bottom edge"* — `Members/Footer` is placed on **13 of 13**. Both struck, with the measurement kept
+> so the strike is auditable.
+>
+> ✅ **Board corrected, re-derived from the files**: REL-001 had read *"the condition is BUILT but NOT
+> YET RE-RULED"* for a day after [§6.5](RICHARD-RULINGS-2026-09-04.md) recorded *"Unsubscribe is
+> passable now"*. **D2's condition is MET**; the members' area reads 15 PASSABLE / 0 SHITTY.
+>
+> ⬜ **No REL row's ACs moved and none could** — §A's queue is unchanged and still his. What changed
+> is that the two documents he executes the cut from are now true, and they were not.
+>
+> ✅ **DRIVEN AFTER THE FACT — the empty shelf is confirmed in the running app, on BOTH surfaces.**
+> The claim above was read off source (mechanism); a peer freed the editor, so it was graded as a
+> consequence. A 0.2.2 dev stack, launcher only, no project opened:
+>
+> | surface | what it renders |
+> |---|---|
+> | **Templates tab** | *"**No templates published yet** — Nothing has gone wrong, the shelf is simply bare for this release."* **Zero rows.** REL-013's AC4 state, and the old *"this feature is coming soon"* placeholder is gone |
+> | **Create wizard → Start from a Template** | *"**There are no templates to start from right now.** Go back and pick another way to start."* **Zero rows**, and **`Next` is disabled** |
+>
+> 🔴 **The control that makes this mean anything: the tab has TWO empty states that look alike and
+> mean opposite things** — *"No templates published yet"* (nothing published) and *"Templates could
+> not be loaded"* (the fetch failed). A failed community request would have rendered the second and
+> could have been read as confirming the first. **It rendered the first**: `isUnreadable` false,
+> `isLoading` false, no *"coming soon"*, no unwired-host state. And the two surfaces print
+> **different sentences**, so neither reading is the other bleeding through the modal — which it
+> nearly was, since the tab sits behind the wizard and `document.body.innerText` picks up both.
+> Screenshots taken of each.
+>
+> ⚠️ **What this still does NOT establish**: that the **production** shelf is bare. The fetch
+> completed and returned nothing, which is stronger than a source reading, but a dev stack's
+> community endpoint is not provably the production one. Confirming that needs the production
+> `DATABASE_URL`, which is his.
+>
+> ⚠️ Nothing was created — the wizard was cancelled at the picker, and the projects directory is
+> unchanged (newest entry 13:41, another session's). `templates/members-area` was never opened.
+> Stack torn down: **25 processes stopped, 0 left**, the 6 peer MCP servers untouched.
+
 > ### 🟢 THE GATE LANE, 2026-09-05 (s44) — added beside the other lanes, not over them
 >
 > **`test:main` now reads 423 suites / 7086 tests, EXIT=0, ZERO reds — the first fully green
@@ -353,10 +530,10 @@ so the next reader can see what it cost to empty it.
 | 🆕 **Judgement 4 costs the UNBOUND first run its explanation** — with no backend bound an ejection now lands on a painted door whose form cannot work, rather than on the page carrying the waiting card. **Not put to him**; the remedy (split the destination by producer) would reverse REL-002b's *"the refusal is unconditional"* on a reading nobody asked for | [rulings](RICHARD-RULINGS-2026-09-04.md) §9.5, and in the spec beside the assertion |
 | ✅ ~~**`projectFileWatcher.test.ts` is a stopwatch race**~~ — **FIXED s44 (`b3037aa1`)**, and the sweep found the same class in `bld-004`/`aib-009` (below) | the gate lane at the top |
 | 🆕 🔴 **`bld-004/reasoningChannel.test.ts` and `aib-009/turnDeadline.test.ts` run a 60ms stall window on a 2× margin** — the same defect class, and `bld-004` is the OTHER red s40 called a flake. Spec-side fix; the source is correct | gate lane §3 |
-| **`noodl-core-ui`'s jest runs in no CI gate** — it caught a real drift and nobody saw it | session 39 |
+| ❌ ~~**`noodl-core-ui`'s jest runs in no CI gate**~~ — **FALSE, re-measured s45 (09-05).** It runs in `pr.yml`'s package job (`npm run test:packages`, on `pull_request` AND `push`); `@noodl/noodl-core-ui` is the first `--scope` in that script and has been since before session 39, the scope resolves (all 16 do — checked against each package's declared `name`, 0 unresolved), and the suite reads **29 suites / 551 tests, EXIT=0** at HEAD. ⚠️ The `pr.yml` comment above the step still says *"Six jest suites (~1,050 specs)"* and lists six packages — **the comment is stale, the scope list is not**. 🆕 **The residual, owner `NONE`:** `lerna run --concurrency 1` bails on the first failure and core-ui is **8th of 16** in topological order, so a red in any of the seven before it means core-ui's 551 specs never run — which is the same shape as the trap `pr.yml`'s own comment records (*"Nx bailed the whole run on an earlier package's failure every time — so the gap was invisible"*). `--no-bail` is the obvious fix and was **NOT applied**: several of those suites bind real sockets, which is why the job is serial, and changing a shared CI gate on one session's judgement is not this row's call | session 39; re-measured s45 |
 | **Fill/Stroke are inert for a custom SVG shape**, deliberately ungated | [`NOTES`](NOTES-UNOWNED-NODE-WORK.md) §1 stage 3 |
 | **`/unsubscribe` has three left edges** — the defect REL-002c fixed on `Pages/Post`, surviving on a door page | [rulings](RICHARD-RULINGS-2026-09-04.md) §6.5 |
-| **The workbench dropdown fix is UNGATED** — `@testing-library/react` is not installed | [`TESTING-PASS`](TESTING-PASS-2026-09-04.md) §3 |
+| ✅ ~~**The workbench dropdown fix is UNGATED** — `@testing-library/react` is not installed~~ — **CLOSED s46 (09-05).** The dependency was never the blocker: `PreviewChrome.tsx` imports `Icon`, whose `require.context` fails ts-jest at load (`Icon.tsx:207`, TS2339), so the module fails the suite **to run** — measured with a probe before anything was written. The decision was not in the rendering, so it moved to `previewScope.readMenuComponents` and `ben-004/previewScopeMenuRead.test.ts` grades it: **13/13, EXIT=0**, Arm A (no `.slice()`) **5 red of 13**, Arm B (`open()` reverted) **2 red of 13**, and Arm C2 (the spec's own `stripComments` removed) **1 red of 13** — which is what says the source row is not passing on the fix's prose. ⚠️ `@testing-library/react` really is absent; that half of the row was true and simply not load-bearing | [`TESTING-PASS`](TESTING-PASS-2026-09-04.md) §3 |
 | **`/unsubscribe`'s ~220px void** — 🔴 he ruled it PASSABLE *having been told the void was there*. **Do not "fix" it without asking** | ruling §6.4–6.5 |
 
 ---
