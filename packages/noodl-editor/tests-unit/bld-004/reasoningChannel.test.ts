@@ -224,20 +224,59 @@ describe('BLD-004: reasoning keeps the turn alive', () => {
   it('counts a reasoning delta as life, so a long silent think is not a stall', async () => {
     // Reasoning only — no text, no tool call, no `onActivity`. Run for four
     // stall windows: without the wrapper this rejects at the first one.
-    const guarded = withTurnDeadline(
-      async (_request, callbacks?: AiStreamCallbacks) => {
-        for (let i = 0; i < 8; i++) {
-          await sleep(STALL_MS / 2);
-          callbacks?.onReasoning?.(`step ${i}`, `step ${i}`);
-        }
-        return okResponse();
-      },
-      { stallMs: STALL_MS }
-    );
+    //
+    // 🔴 THIS IS THE RED s40 CALLED A FLAKE, AND IT WAS THE SPEC, NOT THE SOURCE.
+    // 🔴 THE REGISTERED ROW SAID THIS RACED THE 60ms STALL WINDOW ON A 2x MARGIN.
+    // IT DOES NOT, AND THE DIFFERENCE IS THE WHOLE FIX. The heartbeat timer is
+    // always due `STALL_MS / 2` BEFORE the deadline's next check, and node fires
+    // expired timers in EXPIRY ORDER — so however late the loop wakes, the
+    // heartbeat is delivered first and the check that follows reads a silence of
+    // ~0. Measured, not reasoned: with the event loop blocked 200ms out of every
+    // 5ms, the original still passed. Delay can make this test slow; it cannot
+    // make the deadline lose.
+    //
+    // What it CAN do is blow the runner's budget, which is the same place s44's
+    // fix of `projectFileWatcher` ended up. Nominal cost 240ms; at that same
+    // saturation 3227ms; at twice it, **5610ms and red — `Exceeded timeout of
+    // 5000 ms for a test`, not `AiTurnStalledError`**. A stopwatch against
+    // jest's clock rather than the deadline's, and invisible as such because the
+    // failure names a timeout instead of the thing being tested.
+    //
+    // Fake timers take the wall clock out of the question: the elapsed time is
+    // now something this test STATES. Under the identical 200ms/5ms saturation
+    // that costs the original 3227ms, this reads **5ms**. The assertion is also
+    // strictly stronger than the one it replaces — "it never fired" is read at a
+    // moment the test chooses, instead of inferred from the turn happening to
+    // finish first.
+    jest.useFakeTimers();
+    try {
+      const guarded = withTurnDeadline(
+        async (_request, callbacks?: AiStreamCallbacks) => {
+          for (let i = 0; i < 8; i++) {
+            await sleep(STALL_MS / 2);
+            callbacks?.onReasoning?.(`step ${i}`, `step ${i}`);
+          }
+          return okResponse();
+        },
+        { stallMs: STALL_MS }
+      );
 
-    await expect(guarded({ messages: [{ role: 'user', content: 'hi' }] }, {})).resolves.toMatchObject({
-      text: 'done'
-    });
+      const inFlight = guarded({ messages: [{ role: 'user', content: 'hi' }] }, {});
+      // Both handlers, so a rejection is a reading rather than an unhandled one.
+      const settled = jest.fn();
+      inFlight.then(settled, settled);
+
+      // Seven half-windows — 210ms, three and a half deadlines' worth of turn —
+      // and it is still open, which is the claim. Reading it here rather than
+      // inferring it from the turn finishing is what the fake clock buys.
+      for (let i = 0; i < 7; i++) await jest.advanceTimersByTimeAsync(STALL_MS / 2);
+      expect(settled).not.toHaveBeenCalled();
+
+      await jest.advanceTimersByTimeAsync(STALL_MS / 2);
+      await expect(inFlight).resolves.toMatchObject({ text: 'done' });
+    } finally {
+      jest.useRealTimers();
+    }
   });
 
   it('still ends a turn that goes silent after reasoning', async () => {
