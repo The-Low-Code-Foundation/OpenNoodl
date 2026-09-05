@@ -1,127 +1,118 @@
 # Phase 82 — next session
 
-**Session 39 ran the previous handoff's queue end to end.** Job 0 and every buildable row of §B are
-committed, gated, and mutant-checked. What is left is §B7 — the rows that need Richard — plus the
-drives nothing here could do on a shared box.
+**Session 40 built the last buildable row on the queue.** All four of Richard's §7.3 judgements are
+now answered *and* built. What remains is what session 39 said remained: **his content, his
+decisions, and four drives** — plus one thing session 40 found while checking the board.
 
-**Read [`RICHARD-RULINGS-2026-09-04.md`](RICHARD-RULINGS-2026-09-04.md) and
-[`NOTES-UNOWNED-NODE-WORK.md`](NOTES-UNOWNED-NODE-WORK.md) first.** Four new rulings were given on
-2026-09-04 and all four are now built; they are recorded in the notes file beside the work.
+**Read [`RICHARD-RULINGS-2026-09-04.md`](RICHARD-RULINGS-2026-09-04.md) §9 first** — it is the build
+record for judgement 4 and it carries the one register row this session opened.
 
 ---
 
-## ✅ WHAT SESSION 39 SHIPPED — 15 commits, `7439efc8`…`335be2e9`
+## ✅ WHAT SESSION 40 SHIPPED — one commit, `5f407849`
 
-### Job 0 — the uncommitted pile is gone
+**Judgement 4** — *"`/` and `/members` unauthenticated are byte-identical… send them to `/sign-in`
+instead."* The six protected pages' refusal navigator now targets `/Pages/SignIn`.
 
-Richard answered **"commit all eight"**. All eight are in, as seven logical commits, and every
-untracked path was `git add`ed first.
+🔴 **REL-002b is untouched, and that is the shape of the change.** Same `Denied` signal, same two
+producers, same six pages, same fail-closed. **Only the destination moved** — `connections.json` is
+byte-identical on all six pages, and the artefact diff is **6 files · 6 targets · 6 labels · nothing
+else**. `Members/Chrome`'s own navigator still goes to the landing page, because signing out is not
+a refusal.
 
-| commit | what |
+| gate | reading |
 |---|---|
-| `7439efc8` | Visual Function: `done`→`Output1` default, and a failure warning that comes back down |
-| `b1ae7462` | "Open project folder" reveals the folder, not a `project.json` v2 does not have |
-| `16f38e79` | Workbench dropdown sees a component created since the project opened (`.slice()`) |
-| `c6db0d32` | Hello World + Site Builder held off the shelf, still installable |
-| `ead2d04f` | 🔴 **REL-012 — the 0.2.2 blocker.** Lessons reach the artefact and something seeds the shelf |
-| `14c9bd90` | REL-013 — the launcher Templates tab |
-| `9d58c505` | REL-014 — a `var()` value survives being touched |
-
-🔴 **Two gates in other phases went red and BOTH WERE RIGHT** (`14ceaa99`):
-
-- **VFN-011's drift gate** builds its runtime node from an enumerated list of members
-  `_executeLogic` touches — deliberately, as a tripwire. `_clearFailureWarnings` was not on it, so
-  the call threw, the throw was caught, and **all six fixtures reported a runtime error the bench
-  did not have**. ⚠️ The failure names `Boolean(bench.error)` disagreeing, which points at *drift*
-  rather than at a missing stub member — so when every fixture reddens at once, check that list
-  first. **Never derive it**: copying every method off the definition would end the loud failure
-  and with it the only signal the runtime's reach has grown.
-- **SB-007** asserted the Site Builder row is on the shelf, which ruling D1 has now held off it.
-  Its own control (`getTemplateIds()`) passed throughout, correctly reporting registration was
-  untouched. The row-shape assertions now run against a provider constructed with nothing held,
-  and a new test pins the ruling itself.
-
-🔴 **Neither was visible from the touched directories.** Every per-directory run before each commit
-read green. **Only `test:main` sees them.** The previous handoff's §D said `test:main` was not run;
-the notes file had in fact recorded both reds and attributed them correctly to the uncommitted pile.
-
-### §B — every buildable row
-
-| row | commit | note |
-|---|---|---|
-| **B1** Shape stage 2 | `6129076d` | Polygon, Star, `cornerRadius`. All four registries moved together |
-| **B2** Shape stage 3 | `0a46e663` | `svgSource` + a shared sanitiser closing `<style>`, CSS `url()`, SMIL |
-| **B3** Video start/end | `827ee855` | The Android `#t=0.01` hack becomes the *default start* |
-| **B4** YouTube/Vimeo | `a97738b6` | URL parameters only, per his ruling. Auto-detected from the Source |
-| **B5** `optionslist` | `0ce92adc` | Direction 1. Landed entirely in the codec, no new UI component |
-| — | `9f5ae5a7` | 🔴 **A Dropdown with a selected value CRASHED its own render** (below) |
-| **B6** Tokens panel | `335be2e9` | REL-016. Rows are editable; the `devMode` flag is deliberately untouched |
+| `tpl001Template.test.ts` | **82/82, EXIT=0** (79 before) |
+| the same file, **reverted arm** | **EXIT=1**, 1 red of 82 **that all ran**, by name |
+| `noodl-mcp` full jest | **93 suites / 1260 tests, EXIT=0** |
+| `rel002b-fail-closed.test.ts` (real backend, real browser) | **38/38, EXIT=0** (37 before) |
+| `tpl001-refused-query.test.ts` (real backend, real browser) | **6/6, EXIT=0**, D4 still `LEGIBLE` |
+| `tsc --noEmit -p packages/noodl-mcp` | **0, EXIT=0** |
+| `npm run template:members` | **clean no-op BEFORE the edit**, so the diff is attributable |
 
 ---
 
-## 🔴 THE THREE FINDINGS WORTH CARRYING FORWARD
+## 🔴 THE FOUR FINDINGS WORTH CARRYING FORWARD
 
-### 1. A Dropdown with a selected value crashed the render — shipped, and four years old
+### 1. A byte gate cannot hold a ruling
 
-`Select.tsx` read `props.items.items.length`; `props.items` is a plain array, so that is
-`undefined.length` and it **throws**. Present since the initial commit (2024-01-26, `git log -L`),
-invisible because it sits behind `selectedIndex >= 0`, false whenever `value` is undefined.
+`tpl001Template.test.ts` §1 proves the artefact is byte-for-byte what the generator writes. **That is
+green for any destination** — revert the generator, regenerate, and §1 passes. Judgement 4 would have
+been held by a comment and nothing else. §5b now grades the destination itself, and **derives the
+gated pages from the graph** (every `Denied` wire reaching a `RouterNavigate`) rather than listing
+them, so a seventh protected page with a wrong ejection reddens instead of passing.
 
-🔴 **`4672d924` made it reachable on every freshly placed Dropdown** by seeding `value` with the
-first default item — the node that commit existed to make visible threw instead. It shipped uncaught
-because **`Select.tsx` had no render coverage of any kind**. ⚠️ *The commit that exposes a defect is
-not the commit that causes it* — but it is the one that makes it a user's problem.
+⚠️ **The first draft of its control was WRONG and the failure was the useful part**: it asserted the
+band held exactly one `RouterNavigate` and read **seven** — the band *is* the navigation. Counting
+would have graded the menu; the control now finds the sign-out destination by **the wire that fires
+it**.
 
-### 2. `TokenPicker` is the wrong component for FIX-015 slice 1
+### 2. 🔴 Renaming the node id would have INVERTED a spec's verdict
 
-Slice 1 says *"editable rows via the already-built TokenPicker"*. Measured: its callback is
-`onTokenSelect(cssVar)` — it chooses **which token a property references** and cannot change a
-token's own value, which is the only thing that panel is for. Its zero call sites mean the
-*property-side* picker has no host yet — **gap B's work, not slice 1's**. Slice 1's estimate should
-not have included it. Full write-up in [`REL-016`](REL-016-THE-TOKENS-NOBODY-CAN-EDIT.md).
+The tidy-up — `toLanding` → `toSignIn` — was measured and rejected. Ids are unique **project-wide**
+(`toSignIn`, `-2`, `-3`, `-4` already exist), so renaming six renumbers the rest **by component
+authoring order**. And `tpl001-refused-query.test.ts` addresses this exact node **by literal id**
+when it pushes its twin's wire: a rename aims that wire at a node that does not exist, the arm
+navigates nowhere, and *"the refused arm did not move"* reads as **"a refusal is SILENT to the
+graph"** — the exact inverse of D4's answer, with no platform change at all.
 
-### 3. A pre-existing red nobody could see
+✅ That spec now **derives** its expected URL from the artefact in two hops (`target` → the page's
+`urlPath`), so a future retarget moves the spec instead of silently inverting it.
 
-`noodl-core-ui`'s jest is in **neither `test:main` nor `test:ci`**. Its
-`listPortCoverage.test.ts` outputs census was already wrong — 40 against an expected 32 — **before
-this session touched anything**, verified by restoring the pre-session catalog and codec at
-`bc3d033b`. All 8 extras are `array` outputs on nodes the library gained. Updated with the
-derivation, and the two movements kept separate in the header. ⚠️ **That suite needs an owner or it
-will drift again silently.**
+### 3. `projectFileWatcher.test.ts` reddens `test:main` whenever the box is busy
+
+**Two `test:main` runs, both `423 suites / 7086 tests` with exactly ONE red** — `REL-009b › reports
+the component when a real two-phase save lands in it` — and **16/16 EXIT=0 when run alone**. It
+waits **600ms** for a debounced (60ms) `fs.watch` event in a temp directory; under two concurrent
+peer suites that budget blows. It imports nothing this session touched.
+
+⚠️ **So `test:main` was NOT read green here**, and the honest statement is: identical suite/test
+counts to the `335be2e9` baseline, one load-sensitive red, green in isolation, and **the three
+editor specs that actually read `templates/members-area` — `def-002`, `def-009`, `def-025` — passed
+in both runs.** 🔴 **Registered, owner `NONE`: that spec needs a wait that is not a stopwatch, or
+this repo's most-used gate is red on a busy box for ever.**
+
+### 4. 🔴 The board's status column is stale in BOTH directions — re-derive from the FILES
+
+`TASKS.md` still showed **REL-012 as ⬜ BLOCKS 0.2.2** and **REL-014 as ⬜**, and both were built and
+committed by session 39 (`ead2d04f`, `9d58c505`). It also still said *"judgements 1 and 4 are still
+unbuilt"* when judgement 1 shipped in `0b72b600`. **Only the REL-002c sentence was corrected here**,
+because it is this row's own and it was measurably false; the others were **read, not flipped**:
+
+🔴 **REL-012's ⬜ may well be CORRECT rather than stale.** Its own file ends *"Not run here — no
+suite, no tsc, no webpack, no build, no editor. Every AC is ASSERTED-ONLY."* **AC1 wants a packaged
+artefact inspected and AC5 wants a clean profile opening the Learning tab in a running editor** —
+neither has been done by any session. **It is the 0.2.2 blocker and its two hardest ACs are the two
+nobody can grade headlessly.** Do not mark it green off the commit.
 
 ---
 
 ## §A THE QUEUE — what is left
 
-### ⬜ Everything here needs Richard. Nothing else is blocked.
+### ⬜ Everything here needs Richard. There is no buildable row behind it.
 
 | what | what unblocks it |
 |---|---|
 | **Default tutorial content** (FB-012, phase 75) | his brief |
 | **The empty template shelf** (FB-005, phase 75) | closes on **REL-001**, publishing the members' area |
 | **REL-015 AC9/AC11** | two YouTube links and one real tutorial, his content |
-| **REL-004 — cut and tag `v0.2.2`** | his. `cline-dev` is now **711 commits ahead of `origin/cline-dev`** (1685 ahead of `origin/main`), measured 2026-09-05. Pushing is his own standing decision — **do not push and do not re-raise it** |
-| **The V2 "modern CSS" brief** | his seam. 🔴 **Must not be turned into a task by guessing**; he declined three readings already. [`RICHARD-RULINGS-2026-09-04.md`](RICHARD-RULINGS-2026-09-04.md) §4.1 |
+| **REL-001 — publish** | ⏳ cleared by D2; `/unsubscribe` was re-ruled PASSABLE, so the condition is met |
+| **REL-004 — cut and tag `v0.2.2`** | his. `cline-dev` is far ahead of `origin`; **RE-DERIVE the count at cut time**. Pushing is his standing decision — **do not push, do not re-raise** |
+| **The V2 "modern CSS" brief** | his seam. 🔴 **Must not be turned into a task by guessing** — he declined three readings already ([rulings](RICHARD-RULINGS-2026-09-04.md) §4.1) |
+| **A seam for REL-002c** | §4.2 — fourteen PASSABLE verdicts arrived with no why. **One** would do: the page he would call *nearly* worthy, and the single thing keeping it there |
 
-### 🟢 The one small thing he has already answered
+### 🔴 The drives — still nothing has run in a real editor
 
-**REL-002c / REL-010 judgement 4** — `/members` unauthenticated should navigate to `/sign-in`.
-**Answered by him, unbuilt, gates nothing.** Not started here only because the queue ran out of
-buildable rows before it; it is a genuine 🟢 for whoever wants a short one.
+Five to six sessions have been live on this box continuously and none of this has been driven. **This
+is now the largest unexamined surface in the phase**, and REL-012's AC1/AC5 have joined it.
 
-### 🔴 The drives nothing in session 39 could do
-
-Five sessions were live on this box and none of this was driven in a running editor. In rough
-priority:
-
-1. **REL-016's five checks before the tokens panel is ungated** — listed in that file. The
-   `devMode` flag stays put until they pass; FIX-015 is explicit that revealing an unexercised
-   panel is the wrong verb.
-2. **A freshly placed Dropdown** — `9f5ae5a7` is graded headlessly, but Richard's actual ask ("the
-   user immediately sees a dropdown with a real option") is a screen claim.
-3. **A YouTube link pasted into a Video node** (`a97738b6`) — the iframe path has never rendered in
-   a real browser here.
-4. **The Shape node's five shapes** in the property panel — the gates are graded, the panel is not.
+1. **REL-012 AC1 + AC5** — a packaged build inspected for the lesson bundles, and a clean profile
+   opening a non-empty Learning tab. 🔴 **The 0.2.2 blocker's two ungraded ACs.**
+2. **REL-016's five checks** before the tokens panel is ungated — listed in that file. The `devMode`
+   flag stays put until they pass.
+3. **A freshly placed Dropdown** (`9f5ae5a7`) — graded headlessly; his ask is a screen claim.
+4. **A YouTube link pasted into a Video node** (`a97738b6`) — the iframe path has never rendered here.
+5. **The Shape node's five shapes** in the property panel — gates graded, panel not.
 
 ---
 
@@ -129,64 +120,38 @@ priority:
 
 | finding | where |
 |---|---|
-| **`noodl-core-ui`'s jest runs in no CI gate** — it caught a real drift and nobody saw it | this session |
-| **Fill/Stroke are inert for a custom SVG shape** and are deliberately left ungated — switching them off needs a condition covering every other shape *including `shape NOT SET`*, changing the panel of every Circle ever saved | [`NOTES`](NOTES-UNOWNED-NODE-WORK.md) §1 stage 3 |
-| **`/unsubscribe` has three left edges** — the same defect REL-002c fixed on `Pages/Post`, surviving on a door page | [`RICHARD-RULINGS-2026-09-04.md`](RICHARD-RULINGS-2026-09-04.md) §6.5 |
-| **The workbench dropdown fix is UNGATED** — `@testing-library/react` is not installed, and a source-text assertion would pass on dead code | [`TESTING-PASS`](TESTING-PASS-2026-09-04.md) §3 |
-| **`/unsubscribe`'s ~220px void** — 🔴 he ruled the page PASSABLE *having been told the void was there*. A consequence of a ruling, not an open defect. **Do not "fix" it without asking** | ruling §6.4–6.5 |
+| 🆕 **Judgement 4 costs the UNBOUND first run its explanation** — with no backend bound an ejection now lands on a painted door whose form cannot work, rather than on the page carrying the waiting card. **Not put to him**; the remedy (split the destination by producer) would reverse REL-002b's *"the refusal is unconditional"* on a reading nobody asked for | [rulings](RICHARD-RULINGS-2026-09-04.md) §9.5, and in the spec beside the assertion |
+| 🆕 **`projectFileWatcher.test.ts` is a stopwatch race that reddens `test:main` under load** | finding 3 above |
+| **`noodl-core-ui`'s jest runs in no CI gate** — it caught a real drift and nobody saw it | session 39 |
+| **Fill/Stroke are inert for a custom SVG shape**, deliberately ungated | [`NOTES`](NOTES-UNOWNED-NODE-WORK.md) §1 stage 3 |
+| **`/unsubscribe` has three left edges** — the defect REL-002c fixed on `Pages/Post`, surviving on a door page | [rulings](RICHARD-RULINGS-2026-09-04.md) §6.5 |
+| **The workbench dropdown fix is UNGATED** — `@testing-library/react` is not installed | [`TESTING-PASS`](TESTING-PASS-2026-09-04.md) §3 |
+| **`/unsubscribe`'s ~220px void** — 🔴 he ruled it PASSABLE *having been told the void was there*. **Do not "fix" it without asking** | ruling §6.4–6.5 |
 
 ---
 
-## §C READINGS — all taken 2026-09-05, at `335be2e9`
+## §C WORKING RULES — the ones this session actually needed
 
-| gate | reading |
-|---|---|
-| editor `test:main` | **423 suites / 7086 tests, EXIT=0** (was 422/7080 before REL-016) |
-| `noodl-viewer-react` | **96 suites / 1271 tests** |
-| `nodegx-export` | **68 suites / 2246 tests** |
-| `noodl-mcp` | **93 suites / 1257 tests** |
-| `noodl-core-ui` | **29 suites / 551 tests** |
-| `catalog:check` · `catalog:merge:check --require-coverage` · `catalog:examples` | EXIT=0 · EXIT=0 · 67/67 |
-| `tsc` — viewer-react, nodegx-export, noodl-editor | 0 errors each |
-| `tsc -p noodl-core-ui` | 50 errors, **all pre-existing**, all in noodl-editor files about unbuilt sibling packages; none in any file touched |
-
-**Not run: `test:ci`.** ⚠️ A peer's `webpack.test-ci` reddens for everyone and the box carried five
-live sessions; `test:main` covers the same specs without the webpack. **Not driven in a running
-editor** — see the drive list above.
-
-⚠️ **One flake**: `noodl-mcp`'s `projectOwnsBackend` went red once in a full-suite run, passed alone,
-and the full suite was green on re-run. Five green mcp readings this session against that one red.
-
----
-
-## §D WORKING RULES — the ones this session actually needed
-
-0. 🔴 **A SPEC THAT FAILS TO *RUN* REPORTS A CLEAN TEST COUNT.** Hit twice here. A `Tests: 0 total`
-   was a **barrel import** dragging `projectmodel` → `bugtracker` into a view spec; the fix was to
-   import the two leaf modules. Gate on the **exit status and the suite count**, never on the
-   absence of a `✕`.
-1. 🔴 **PER-DIRECTORY RUNS DO NOT SEE CROSS-PHASE GATES.** Every commit in Job 0 was green in its
-   own directory and two other phases' gates were red. **Run `test:main` before believing a
-   package-local green.**
-2. 🔴 **RESTORE BY ABSOLUTE PATH AND `md5` THE RESULT.** Every mutant in this session did; a
-   compound `cd X && …` persists its cwd into later tool calls, and session 38 lost a restore to it.
-3. 🔴 **A REVERTED ARM THAT FAILS TO COMPILE GRADES NOTHING.** The first HELD_TEMPLATE_IDS control
-   returned `EXIT=1` with `188 passed, 188 total` — 90 tests never ran, because the reverted source
-   had no export to import. ✅ **Mutate the BEHAVIOUR, keep the surface**: removing just the filter
-   line gave 2 assertion failures out of 278 that all ran.
-4. 🔴 **`git status` IS NOT AUTHORSHIP HERE — MTIME IS.** The §A table missed two files
-   (`NoodlBlocks.ts`, and the wizard pair in REL-013) that mtime placed in the same minute, and
-   correctly excluded four 08-28 scss files that a status column would have swept.
-5. 🔴 **COMMIT BY PATHSPEC, `git add` UNTRACKED FIRST** — a pathspec commit skips them silently.
-6. ✅ **The catalog dance is cheap now** but still do it: `--out-dir` + diff, and for the enriched
-   one (no `--out-dir`) `cp -a` aside, merge in place, diff against the backup. Four rounds here,
-   and every round the diff named exactly one node.
-7. 🔴 **A LITERAL COUNT GATE MOVES, AND THE INTERESTING NUMBER IS USUALLY NOT THE TOTAL.** fb-021
-   went 362→364→365. ✅ **Measured, not argued**: rewriting one gate as `#js` leaves the *total*
-   unchanged while the unexplained remainder rises. The total cannot tell "two new gated ports" from
-   "two new ports an author cannot be told about"; the remainder can.
-8. 🔴 **A LONE RED IS A FLAKE UNTIL RE-RUN ALONE** — and a *pre-existing* red must be measured
-   against the session's starting commit before it is called yours. Both happened here.
-9. 🔴 **NEVER `git stash`**, never `isolation: worktree` on this repo.
-10. ⚠️ **`electron/dist` in `ps` matches the MCP servers.** All five "editors" seen at session start
-    were `noodl-mcp.cjs`. Read `ps -o command=` before attributing a process.
+0. 🔴 **`tsc -p packages/nodegx-backend/tsconfig.tests.json` CANNOT BE READ ON THIS BOX.** `EXIT=134`,
+   OOM, and **its log carries 0 `error TS` lines** — the exact reading that has been mistaken for a
+   pass. Narrowing to **two files** still OOMs at 6GB after 393s. ⚠️ And ts-jest runs those specs
+   with `isolatedModules: true`, so **the drives do not typecheck them either**. New logic there
+   must be exercised some other way — here, by running the function against the real artefact.
+1. 🔴 **BUILD THE REVERTED ARM, AND RECONCILE THE COUNTS.** Mutate the **behaviour**, keep the
+   **surface**: the six targets went back to `/Pages/Landing` and the generator was **regenerated**,
+   so the byte gate stayed green and only the ruling could speak. `81 + 1 = 82` is what says the
+   revert compiled; a revert that does not compile grades nothing.
+2. 🔴 **A CONTROL THAT FAILS IS DOING ITS JOB — READ IT BEFORE "FIXING" IT.** *"The band holds one
+   navigator"* read seven, and the right answer was a better control, not a bigger number.
+3. 🔴 **WAIT FOR A PEER'S SUITE, AND CHECK AGAIN AFTER IT ENDS.** Both `test:main` reds landed
+   beside other people's jobs; the box had **five live sessions**, a worktree mutant loop, three
+   `vib001-site.look.ts` runs and a full `noodl-mcp` suite. `ps -Ao pid,command` before every gate.
+4. 🔴 **RESTORE BY ABSOLUTE PATH AND `md5` THE RESULT** — and `diff -rq` the artefact. A compound
+   `cd X && …` persisted its cwd into a later call here and made a present file read as missing.
+5. ✅ **REGENERATE AS A NO-OP FIRST.** `npm run template:members` was run and diffed **before** the
+   edit, so every byte of the later diff is attributable.
+6. 🔴 **DERIVE, DON'T TYPE, ANYTHING A RENAME CAN MOVE** — the spec's expected URL, the list of
+   gated pages, the sign-out navigator. Every literal here was a place a future edit could invert a
+   verdict silently.
+7. 🔴 **NEVER `git stash`**, never `isolation: worktree` on this repo; commit **by pathspec**,
+   `git add` untracked first.
