@@ -37,10 +37,16 @@ export function imagePickerEmptyState(): ContentPickerEmptyState {
  */
 export function imagePickerActions(routes: {
   onImport: () => void;
+  onCreateAvatar?: () => void;
   onShowProjectFolder: () => void;
 }): ContentPickerAction[] {
   return [
     { label: 'Import image…', onClick: routes.onImport },
+    // SYL-003 — the third route, and the only one that does not require the author to already have
+    // a picture. It sits in the footer for the reason the other two do: a route out of a picker is
+    // not a property of the picker being empty, and the author most likely to want a generated
+    // avatar is the one whose project has no images yet AND the one filling a second card.
+    ...(routes.onCreateAvatar ? [{ label: 'Create an avatar…', onClick: routes.onCreateAvatar }] : []),
     { label: 'Show project folder', onClick: routes.onShowProjectFolder }
   ];
 }

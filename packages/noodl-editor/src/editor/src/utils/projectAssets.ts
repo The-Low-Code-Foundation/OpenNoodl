@@ -35,6 +35,21 @@ export interface AssetImportDeps {
 }
 
 /**
+ * SYL-003 — the same disk, for content that has no source file.
+ *
+ * A generated avatar is a string, not a path, so there is nothing to copy: the only difference
+ * from {@link AssetImportDeps} is `writeFile`. It is a separate interface rather than an optional
+ * member so that a caller which can only copy cannot be passed where a write is required.
+ */
+export interface AssetWriteDeps {
+  /** Absolute path of the open project's directory. */
+  projectDirectory: string;
+  exists(path: string): boolean;
+  makeDirectory(path: string): Promise<void>;
+  writeFile(path: string, contents: string): Promise<void>;
+}
+
+/**
  * The three outcomes, discriminated by a string rather than an `ok` boolean.
  *
  * ⚠️ Not a stylistic choice: this program compiles with `strictNullChecks` off, and a boolean
@@ -139,4 +154,40 @@ export async function importFileIntoProjectAssets(
   }
 
   return { status: 'imported', projectRelativePath: `${PROJECT_ASSETS_FOLDER}/${fileName}` };
+}
+
+/**
+ * Write generated content into the project's `assets/` folder under a name nothing else claims,
+ * and return the project-relative path the picker should commit.
+ *
+ * The naming goes through {@link uniqueFileName} for the reason documented at the top of this
+ * module — the counter belongs *before* the extension, or the file the author just made would not
+ * appear in the picker that made it, the image walk listing by extension. That trap is not one a
+ * generated file is exempt from: two authors typing `Nibbles` in the same project is the ordinary
+ * case, not the edge one.
+ *
+ * 🔴 The failure path is reported rather than swallowed. This repo has thirteen sites of the
+ * awaited-callback write whose error path is dead; the caller here is told, and tells the author.
+ */
+export async function writeGeneratedAssetIntoProject(
+  deps: AssetWriteDeps,
+  fileName: string,
+  contents: string
+): Promise<AssetImportResult> {
+  if (!deps.projectDirectory) return { status: 'failed', reason: 'There is no open project to save into.' };
+  if (!fileName) return { status: 'failed', reason: 'The generated file has no name.' };
+  if (!contents) return { status: 'failed', reason: `${fileName} was empty, so it was not saved.` };
+
+  const root = toPosixPath(deps.projectDirectory).replace(/\/+$/, '');
+  const assetsDirectory = `${root}/${PROJECT_ASSETS_FOLDER}`;
+  const unique = uniqueFileName(fileName, (candidate) => deps.exists(`${assetsDirectory}/${candidate}`));
+
+  try {
+    await deps.makeDirectory(assetsDirectory);
+    await deps.writeFile(`${assetsDirectory}/${unique}`, contents);
+  } catch (error) {
+    return { status: 'failed', reason: `${unique} could not be saved into ${PROJECT_ASSETS_FOLDER}/.` };
+  }
+
+  return { status: 'imported', projectRelativePath: `${PROJECT_ASSETS_FOLDER}/${unique}` };
 }

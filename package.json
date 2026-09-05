@@ -85,6 +85,7 @@
     "calibrate:layout": "ts-node -P ./scripts/tsconfig.json ./scripts/def018-020-corpus-layout.ts",
     "calibrate:gates": "ts-node -P ./scripts/tsconfig.json ./scripts/def-024-corpus-gates.ts",
     "calibrate:query-timing": "ts-node -P ./scripts/tsconfig.json ./scripts/def-012-corpus-query-timing.ts",
+    "reap:orphans": "node ./scripts/devtools/reap-render-orphans.js",
     "template:site-builder": "ts-node -T -P ./scripts/tsconfig.json ./scripts/generate-site-template.ts",
     "library:build": "node scripts/library/build.js",
     "library:check": "ts-node -P ./scripts/tsconfig.json ./scripts/library/check.ts",
@@ -119,7 +120,8 @@
     "pretypecheck:viewer": "npm run build:types",
     "icons": "node scripts/generate-icons.js",
     "icons:check": "node scripts/generate-icons.js --check",
-    "template:members": "ts-node -T -P ./scripts/tsconfig.json ./scripts/generate-members-template.ts"
+    "template:members": "ts-node -T -P ./scripts/tsconfig.json ./scripts/generate-members-template.ts",
+    "template:landing": "ts-node -T -P ./scripts/tsconfig.json ./scripts/generate-landing-template.ts"
   },
   "devDependencies": {
     "@ianvs/prettier-plugin-sort-imports": "^3.7.2",

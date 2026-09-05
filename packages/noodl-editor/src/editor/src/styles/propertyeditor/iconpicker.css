@@ -72,3 +72,29 @@
   align-items: center;
   cursor: pointer;
 }
+
+/**
+ * SYL-003 — the avatar tiles.
+ *
+ * 🔴 NOT `.iconpicker-icon`, which is a fixed 24×24 box built for a 20px glyph. Reusing it for a
+ * 44px avatar clipped every tile against the next style's header — the picker looked like it was
+ * drawing half-avatars, which is what the drive found.
+ */
+.avatarpicker-tile {
+  width: 52px;
+  height: 52px;
+  padding: 4px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  border-radius: 6px;
+}
+
+.avatarpicker-tile:hover {
+  background: var(--theme-color-bg-3);
+}
+
+.avatarpicker-tile img {
+  border-radius: 4px;
+}

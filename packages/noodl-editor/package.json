@@ -148,6 +148,16 @@
     "@anthropic-ai/sdk": "^0.71.2",
     "@babel/parser": "^7.28.5",
     "@blockly/theme-dark": "^8.0.3",
+    "@dicebear/core": "9.4.3",
+    "@dicebear/glass": "9.4.2",
+    "@dicebear/identicon": "9.4.2",
+    "@dicebear/lorelei": "9.4.2",
+    "@dicebear/notionists": "9.4.2",
+    "@dicebear/open-peeps": "9.4.2",
+    "@dicebear/pixel-art": "9.4.2",
+    "@dicebear/rings": "9.4.2",
+    "@dicebear/shapes": "9.4.2",
+    "@dicebear/thumbs": "9.4.2",
     "@electron/remote": "^2.1.3",
     "@jaames/iro": "^5.5.2",
     "@microlink/react-json-view": "^1.27.0",
@@ -199,6 +209,7 @@
   "devDependencies": {
     "@babel/core": "^7.28.3",
     "@babel/preset-react": "^7.27.1",
+    "@electron/notarize": "^2.5.0",
     "@svgr/webpack": "^6.5.1",
     "@types/checksum": "^0.1.35",
     "@types/dagre": "^0.7.52",
@@ -230,8 +241,7 @@
     "webpack": "^5.101.3",
     "webpack-cli": "^5.1.4",
     "webpack-dev-server": "^4.15.2",
-    "webpack-merge": "^5.10.0",
-    "@electron/notarize": "^2.5.0"
+    "webpack-merge": "^5.10.0"
   },
   "engines": {
     "npm": ">=10.0.0",

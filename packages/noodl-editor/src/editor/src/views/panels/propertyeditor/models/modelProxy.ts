@@ -34,6 +34,19 @@ export class ModelProxy {
     return this.model.variantName;
   }
 
+  /**
+   * SYL-003 — the node's own label, forwarded like `type` and `variantName` above.
+   *
+   * 🔴 Its absence was not visible from a property row. A `TypeView` is handed this proxy rather
+   * than the `NodeGraphNode`, and `label` is a *getter* on the node, so `parent.model.label` read
+   * `undefined` in silence — the avatar picker prefilled an empty box instead of the name on the
+   * node, and looked exactly like a picker that had simply chosen not to prefill. Measured in a
+   * running editor, not reasoned about.
+   */
+  get label() {
+    return this.model.label;
+  }
+
   constructor(args) {
     this.model = args.model;
     this.visualState = 'neutral';
