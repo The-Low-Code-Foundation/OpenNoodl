@@ -74,6 +74,7 @@ with `Demanding` reading `Ignored` alone.
 | the delay control | `5000` → visible at t≈12s; **`60000` → absent** |
 | the live drive | the three rows above, `errors: []` |
 | voice | 1618 words, **16 em dashes, 0 hyphen-dashes, 0 contractions** |
+| `tests-unit/rel-012` + `tut-004` | **109 passed, 7 suites, exit 0** — both bundles committed first |
 | ⚠️ `typecheck` / `test:ci` | **not run, and not needed** — no TypeScript changed |
 
 ## 🔴 The curriculum named four nodes; two are built, one is renamed, one would be wrong
@@ -109,9 +110,10 @@ complicated gets complicated at that boundary.
 - **The lesson runner is still unexercised.** Lesson 7 adds **eleven** graded `connection` conditions,
   taking the spine to **twenty-six** across lessons 3-7, none ever observed being graded in a running
   editor. It also adds a first: a condition on a wire leaving the **Page** node (`didMount`).
-- **`tests-unit/rel-012` + `tut-004`.** A peer held the box with a 30-minute browser drive for the
-  whole session and the standing rule is one heavy job at a time. **This is the next session's first
-  five minutes**, and the bundle is committed so `shipped-lessons-reach-the-artefact` can see it.
+- ~~`tests-unit/rel-012` + `tut-004`.~~ ✅ **Run after both bundles were committed: 109 passed,
+  7 suites, exit 0.** It was held most of the session while a peer ran a 30-minute browser drive.
+  ⚠️ It did overlap a third session's `test:main` by 11 seconds; that session was told, and mine was
+  green either way.
 - **The curriculum edits.** Five are now owed in `nodegx-community`, none blocking.
 
 ## What is Richard's

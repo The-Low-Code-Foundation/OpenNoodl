@@ -61,6 +61,7 @@ graph these lessons ship might not do what the prose says.
 | **four static arms** | `startValue` 0 → dozing, **4 → dozing**, **5 → delighted**, 6 → delighted |
 | **the live drive** | the table above, `errors: []` |
 | voice | 1563 words, **12 em dashes, 0 hyphen-dashes, 0 contractions** |
+| `tests-unit/rel-012` + `tut-004` | **109 passed, 7 suites, exit 0** |
 | ⚠️ `typecheck` / `test:ci` | **not run, and not needed** — no TypeScript changed |
 
 **The boundary arms are the point.** `> 4` is exclusive, and an arm at 4 and an arm at 5 are what
