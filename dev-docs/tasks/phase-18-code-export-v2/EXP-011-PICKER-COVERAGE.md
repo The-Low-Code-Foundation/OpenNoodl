@@ -96,7 +96,7 @@ Ranked by *"can you build a normal app without it"*, not by corpus frequency.
     the 2026-09-03 ruling (§50): it is the escape hatch the MCP reaches for, not a niche.
 10. **`Drag`, the component-tree family** — `Component Children`, `Component Stack` and its pair, the
     parent-object family all moved to **Tier 2.8** by §50; `Drag` stays here as its row 13.
-11. **The transports** — `Subscribe To Changes`, `Server-Sent Events`, `WebSocket`. **Added by §50**
+11. **The transports** — `Subscribe To Changes`, `Server-Sent Events` ✅ **§64 (session 88)**, `WebSocket`. **Added by §50**
     (they were "not a target"). Each is a browser API in a `useEffect`: EventSource on
     `/realtime` plus one subscribe POST; EventSource; WebSocket with reconnect. Real, buildable, and
     the streaming-LLM app is the one every new user builds first.
@@ -9471,3 +9471,152 @@ What this leaves of the residual: a child authored with `flex-grow` or `align-se
 (the wrapper is fit-content, so a growing child no longer grows); the full answer remains printing the ref, the transform and the handlers
 onto the child's own element. Owner NONE. Cannot see: `touchstart` `passive: false` (no `getEventListeners` under `Runtime.evaluate`), a
 real touch, the un-emitted marker classes.
+
+## §64 Tier 3.11 row 1 — `Server-Sent Events`: the streaming table's fourth member, the connection machine transcribed (session 88, 2026-09-05)
+
+### §64.0 Design — what the node is on disk, and what that decides (written before a line of code)
+
+`net.noodl.SSE` (display name *Server-Sent Events*, category Data, `ssr: client-only`) is `agent/sse.ts`: a thin shell over
+`sse-connection.ts` — `SseConnection` (a state machine `idle → connecting → open → reconnecting → closed | error`, an exponential
+backoff `base · 2^attempt` capped at a maximum, a `RecentIds` dedupe window of 512, `Last-Event-ID` carried on a reconnect) over
+one of two transports (`FetchStreamTransport`: fetch + a streaming body, headers, a method and a body, the frames parsed here;
+`EventSourceTransport`: the browser's EventSource, no headers, the browser's own retry reported as a self-retry) — and
+`stream-parsers.ts`'s SSE half (`parseSseChunk`, the WHATWG event-stream grammar; `parseJsonOrText`; `textForPath`).
+
+The port set on disk (the catalog): 17 inputs — every one a value port except `connect` / `disconnect` (the two Actions) —
+and 21 outputs: 4 Events (`onOpen`, `onMessage`, `onError`, `onClose`), the outcome trio + Completed, 13 values (Status:
+`connectionState`, `connected`, `lastError`, `retryCount`, `messageCount`, `lastMessageTime`, `duplicatesSuppressed`,
+`deliverySemantics`; Data: `data`, `raw`, `text`, `eventType`, `lastEventId`).
+
+**That is §58's shape exactly, minus a data port**: config ports read live off an options object, action verbs on the handle,
+signals as listeners, values as live getters. So the node joins `STREAM_NODES` as its fourth member (`kind: 'sse'`) rather
+than growing a table of its own — `streamPlanOf` / `streamReadOf` / `compileStreamAction`, `stream-out` / `stream-action`, the
+attach pass's `OWN_CHAIN_OUTPUTS`, the binding table by declared type, all inherited. Two things the table had to learn:
+`data` became optional (a node whose actions carry nothing), and a spec gained `lib` + `sourceFile` so a hook can live in a
+module other than `streaming.ts` (component.ts groups the imports by module; emitApp ships each where a hook of its printed).
+
+The lib is its own module, `src/lib/sse.ts` (≈1,250 lines), because the machine is large and the trio's users should not carry
+it; it imports `describeError` / `tryParseJson` / `StreamSource` from `./streaming` and `raiseAppError` from `./errors`, so a
+transport alone earns both. The hook follows the Drag row's shape (a machine in one ref, live getters, a `rerender` where the
+runtime `flagOutputDirty`s) with the runtime's own `_internal` and methods transcribed one for one: `applyOptions` = the
+setters (each coercion verbatim: `url` `''` for null/undefined else `String`, `transport || 'auto'`, `method || 'GET'`,
+`headers` an object or none, `!!` for the booleans, `Number(v) > 0 ? Number(v) : default` for the three delays/retries);
+`doConnect` (settle an earlier Connect as Unchanged, tear down, snapshot `_internal` into `SseConnectionOptions`, connect);
+`handleState` (the state written → re-render → On Open / On Close → the pending Connect settles Done on `open`, Failure with
+`sse/connect-failed` + the connection's Last Error on `error`); `handleFrame` (Raw, Data = `parseJsonOrText`, Event Type →
+re-render → On Message); `handleError` (re-render → On Error); `scheduleAutoConnect`'s body as an effect run after every render
+that changed URL or Auto Connect (a live connection on a changed URL is superseded and reopened when Auto Connect says so);
+`_onNodeDeleted` as the unmount cleanup. `Node.beginOutcome` / `reportOutcome` as a one-shot token: on Failure the raise, then
+the outcome's pulse, then Completed — the trio's transcription of the same contract.
+
+**Refused by name** (the table's own gates, unchanged in wording): two wires on one input (*"two wires feed its URL input —
+last-writer-wins is not statically ordered"*); a config wire whose source only exists inside a handler; a signal consumed as a
+value (*"its onMessage output is consumed as a value — a pulse carries nothing to read"*); an input or output the node has not
+got; a chain this slice cannot compile; a component with no file (*"component emits no file to host the Server-Sent Events"*).
+Every port translates.
+
+### §64.1 What is emitted
+
+- **`src/emit/sseLib.ts`** (new) → `src/lib/sse.ts`: the parsers (`parseSseChunk`, `parseJsonOrText`, `splitPath`,
+  `valueAtPath`, `textForPath`), `backoffDelay`, `RecentIds`, the two transports, `SseConnection`, `resolveTransport` —
+  verbatim from the runtime, the three `'X' in options ? options.X : …` seam reads made `?? null` (the emitted app's stricter
+  tsconfig; falsy-means-absent is preserved); `ServerSentEventsOptions` / `Listeners` / `Handle`; `useServerSentEvents(source,
+  options, on, env = {})` — `env` is the runtime's own test seam (a fetch, an EventSource, an AbortController, timers, a
+  clock), spread into the connection options; the emitted page never passes it. Generated from a plain-text source
+  (`sse-lib-source.ts` + `gen-sselib.py` in the session scratchpad) into the quoted-line-array form the other libs use.
+- **plan.ts**: `SSE_TYPE`; `StreamKind` + `'sse'`; `StreamNodeSpec.data?` optional, `lib`, `sourceFile`; the fourth table
+  entry (15 config ports, 2 actions, 8 signals in `sse.ts`'s declaration order, 13 values with `data` maybe-undefined);
+  `OWN_CHAIN_OUTPUTS[SSE_TYPE]`; `streamPlanOf` reads `spec.data` only when present, the comment from `sourceFile` / `lib`;
+  `streamTypeOfKind` (the one kind→type ladder, shared with component.ts and `streamFieldMaybeUndefined`).
+- **component.ts**: the hook import grouped by `lib` (`../lib/streaming` and `../lib/sse` as two lines); `sseLib` flag;
+  the cast ladder through `streamTypeOfKind`. **emitApp.ts**: `sseLibUsed`; `streaming.ts` shipped when either module is
+  used; `errors.ts` earned by sse.ts; the file. **Ledger**: the row `translated` with a note, floor **114 → 115**
+  (90.6%), the comment sentence; 12 pins moved. **EXP-013's badge spec** pins `net.noodl.WebSocket` as the scheduled row now.
+- **The page** (token-desk): `const stream = useServerSentEvents({ label: 'Stream', nodeId: 'stream', componentName:
+  '/Pages/Home' }, { url: 'http://localhost:8582/stream', textPath: 'choices.0.delta.content' }, { onOpen: () =>
+  status.set('open'), onMessage: () => tokens.add(stream.text), onClose: () => status.set('closed'), failure: () =>
+  status.set('failed') });` — the accumulator's Chunk read AT the pulse (the trio's rule); `stream.connect()` /
+  `stream.disconnect()` on the buttons; `{stream.connectionState}` bare, `{String(stream.connected)}`,
+  `{String(stream.messageCount)}`, `{stream.lastError}` bare — by declared type.
+
+### §64.2 The fixture — `tests/fixtures/token-desk`
+
+`Pages/Home`: `stream` (SSE, URL `http://localhost:8582/stream`, Text Path `choices.0.delta.content`, nothing else authored) ←
+Connect / Stop buttons; `stream.text → acc.chunk`, `stream.onMessage → acc.add` (a Text Accumulator — **the streaming-LLM
+shape**, §58.5's "what a transport's onMessage chain would call"); `onOpen` / `onClose` / `failure` → three String-fed Set
+Variables on `status`; Connection State, Connected, Message Count, Last Error, the accumulated text and the status each in a
+Text. **The reverted arm** (`probe-reverted.log`, HEAD f23368a1): 18 refusals — `logic node (net.noodl.SSE)`, the accumulator
+*"its Chunk input is fed by net.noodl.SSE — no statically known source"*, the three Set Variables *"trigger stream.onOpen is
+not a rendered element event or a receiver"*, their Strings behind them, every wire into or out of the node dropped.
+**Built**: 16 files, 0 refusals, the shell note alone; the real `tsc` over the app clean (`typecheck-emitted`).
+
+### §64.3 Gates and arms
+
+```
+pkg tsc 0 (after every stitch) · sse.test.ts 35/35
+  §A the plan and the page (7) · §B the refused shapes by mutation (6) · §C the lib's text, the module earning (4) ·
+  §D the pure cores under node (6: the frame grammar incl. CRLF/BOM/NUL-id/comment lines, JSON-or-text, the text path,
+  the backoff, the dedupe window, the transport choice) · §E the hook under the harness with a scripted fetch, a scripted
+  EventSource and the runtime's timer seam (11: the happy path with a frame split across chunks, Disconnect open/closed,
+  a fatal 4xx with the raise, the backoff and Max Retries' suffix, dedupe on/off, Auto Connect and a URL change, a
+  superseded Connect, unmount, the EventSource transport incl. the browser's own retry, the setters' coercions and a POST
+  body, Text Path live + options snapshotted at Connect + Last-Event-ID on the reconnect) · §F the ledger (1)
+streaming-trio 60/60 (the catalog-set row now grades the fourth member too) · typecheck-emitted 41/41 (token-desk under
+  the real tsc) · drag 52/52 · export-ledger:check OK 122 translated · picker --check 115/127 (90.6%) exit 0
+arms (mut.py, mut-summary.txt; sources restored md5-identical after each): 16 armed — 14 KILLED on the first run:
+  M1 dedupe off (1 row) · M2 open never settles Done (6) · M3 Failure never raises (2) · M4 Last-Event-ID dropped (2) · M6 unmount
+  keeps the connection (1) · M7 the trailing newline kept on data (3) · M8 textForPath drops numbers (1) · M9 onClose off the signal
+  list (13) · M10 every hook imported from streaming.ts (2) · M11 sse alone does not earn streaming.ts (1) · M12 Completed never fires
+  (8) · M13 Data is the raw text (3) · M14 Disconnect leaves the pending Connect unsettled (1) · M16 a 4xx is not fatal (1).
+  M15 the setter reads Reconnect Delay raw — SURVIVED and EQUIVALENT: backoffDelay re-guards `base > 0 ? base : 1000`, so no delivered
+  value can tell the two apart (the runtime carries the same redundancy); recorded, not fixed.
+  M5 the same-URL guard in scheduleAutoConnect removed — SURVIVED ⇒ a missing row: E6 gained "Auto Connect flipped on while the same
+  URL is live does nothing" (a re-render and a manual-Connect variant); re-armed after the row (see §64.6's gate line).
+whole package jest, editor tsc, exp-012/013, editor test:ci: see §64.6
+```
+
+### §64.4 What building it found
+
+1. 🔴 **The emitted app's tsconfig is stricter than the runtime's** — `'fetchImpl' in options ? options.fetchImpl : …`
+   types as `T | null | undefined` under it and the real `tsc` over token-desk was red at three lines while the package's
+   own tsc, the spec and the hook harness were all green. `typecheck-emitted` is the gate that saw it; `?? null` keeps the
+   runtime's falsy-means-absent reading. ✅ run `typecheck-emitted` before the first arm, not after the last.
+2. 🔴 **The cascade sentence changed when the node joined the table.** Reverted, the Set Variables behind the Events read
+   the attach pass's *"trigger stream.onOpen is not a rendered element event or a receiver"*; with the node in the table and
+   REFUSED (an unknown port), they read the generic *"logic node (Set Variable)"* — the registration pass answers before the
+   attach pass does. Both honest, both graph-rooted at the stream by EXP-013's `causedBy`; B5 pins the observed sentence.
+3. ⚠️ **Completed is per token.** A Disconnect before the Connect opened logs `unchanged, completed, onClose, done,
+   completed` — the superseded Connect's token and the Disconnect's own each report Completed (the runtime's
+   `reportOutcome` on each `beginOutcome`). My first expectation had one; the runtime's answer is two (E7).
+4. ⚠️ **The connection options are a snapshot at Connect** — `doConnect` copies `_internal` into `SseConnectionOptions`, so
+   `Reconnect On Stream End` set after the Connect applies to the NEXT connection; `Text Path` is read by the getter, so it
+   IS live. Pinned as E11, with the reconnect carrying `Last-Event-ID: 41`.
+5. ⚠️ `Cache-Control` is not a CORS-safelisted request header, so the fetch transport pre-flights (an OPTIONS before the
+   GET) against a cross-origin endpoint — the runtime's fetch does the same; a fake endpoint must answer OPTIONS.
+6. ⚠️ The catalog-set row in the trio's spec iterates the whole table — the optional data port made `spec.data.port` a type
+   error there before it was a runtime one; the row now grades all four members.
+
+### §64.5 What this leaves (owner NONE unless named)
+
+- **`WebSocket`** and **`Subscribe To Changes`** — Tier 3.11 rows 2 and 3, scheduled; the badge spec pins `WebSocket` now.
+  Owner **EXP-011**.
+- A **`Headers` object fed by a wire** prints the render local; an authored Headers literal on disk (an object parameter)
+  would need the object-literal print the record verbs use — no fixture authors one. Owner NONE.
+- **`Body` for a POST** is JSON-encoded unless a string, as the runtime's is; a Content-Type authored in Headers wins.
+  Not driven (the fake streams on GET). Owner NONE.
+- StrictMode in development mounts twice: the first connection is torn down by the cleanup and the second mount's pass
+  reopens it (Auto Connect) — one extra request in dev only, as the Drag row's touchstart note. Owner NONE.
+- The hook re-renders once per state change / frame / error (the runtime's `flagOutputDirty` batch); a fast token stream
+  re-renders per token — the runtime does too. Owner NONE.
+
+### §64.6 The drive — the built export, headless, against a fake event stream (session 88)
+
+`token-desk` built (exit 0, 0 `error TS`), `vite preview` 4364, Chrome 9365, `--target=Token`; `fakesse.js` on 8582 —
+`GET /stream` answers `text/event-stream`, a `: hello` comment, four OpenAI-delta frames (`id: 1..4`, tokens `Hel` `lo, `
+`wor` `ld!`) 120 ms apart, then ends; every request logged. `EXPECTED64.md` first: **T1** boot `idle false 0 '' '' ''`, no
+request (Auto Connect off) ✓ · **T2** Connect, +250 ms: an OPTIONS pre-flight then ONE `GET /stream` with `Accept:
+text/event-stream` and `Cache-Control: no-store`; `open true 2 '' 'Hello, ' 'open'` ✓ · **T3/T4** `closed false 4 ''
+'Hello, world!' 'closed'` — the accumulator concatenated the Text at each On Message, the clean end closed without a reconnect,
+still one GET ✓ · **T5** Stop when closed: READ identical (Unchanged, nobody listens) ✓ · **T6** Connect again then Stop: a
+second GET with **no Last-Event-ID** (a fresh Connect is a fresh connection), count `3` (the new connection's), tokens
+`Hello, world!Hello, wor` ✓ · **T7** errs `[]`, no raise ✓. Teardown: 0 listeners on 4364 / 9365 / 8582.
