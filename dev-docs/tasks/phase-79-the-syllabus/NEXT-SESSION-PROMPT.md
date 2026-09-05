@@ -399,3 +399,155 @@ Two things now wait on that pass:
   session touches editor source — the change is `scripts/`, `package.json`, `pr.yml` and one new
   data file — but that is an argument, not a reading.
 - **Nothing was driven.** SYL-002 is a gate; it has no surface a person touches.
+
+
+---
+---
+
+# Session 11 — J2, and the press that never landed (2026-09-05, appended)
+
+WARNING: **Sessions 8, 9 and 10 above are left intact.** This section supersedes only session 10's
+**FIRST JOB** list, at item 1: J2 is fixed. The list now starts at H1.
+
+Session 10 built SYL-002, so the *"two sessions, zero ACs ⇒ must build"* guard was not armed, and
+J2 had stood at the top of three consecutive hand-offs. It is a 🔴 high row on the surface every
+shipped lesson depends on, so this session took it. ⚠️ **Stated plainly: under a strict reading of
+the standing rule this was a defect, not a build task** — J2 blocks no AC (SYL-004's negative
+control passed). SYL-003 and lesson 8 are still unbuilt, and that is the cost.
+
+## The board — re-derived from the task FILES
+
+| task | state |
+|---|---|
+| [SYL-001](SYL-001-THE-HAND-HOLDING-HALF.md) | ✅ done, driven |
+| [SYL-002](SYL-002-THE-CHAIN-THAT-CANNOT-DRIFT.md) | 🟢 built s10, all five ACs, in CI |
+| [SYL-003](SYL-003-THE-CREATURE-YOU-CHOSE.md) | ⬜ open — **the only open build task in this phase** |
+| [SYL-004](SYL-004-LESSON-1-YOUR-CREATURE-ON-SCREEN.md) … [SYL-010](SYL-010-LESSON-7-IT-GETS-DEMANDING.md) | 🟢 seven spine lessons built, gated, driven |
+| [LESSON-VOICE.md](LESSON-VOICE.md) | 🟡 §3 and §6 are Richard's |
+| **[DEFECTS-THE-RUNNER-DRIVE-FOUND.md](DEFECTS-THE-RUNNER-DRIVE-FOUND.md)** | 🟢 **0 open, 4 fixed — the whole runner register is closed** |
+| the five per-lesson registers | **15 open**, every one owner `NONE` |
+
+⚠️ **Counts re-derived, not inherited, and they disagree with earlier boards again.** Grepping the
+register tables for owner `NONE` versus `FIXED` gives **24 rows: 15 open, 9 fixed** (L2 4/1, L3 3/2,
+L5 3/1, L6 3/1, L7 2/0, runner 0/4). Session 8 said 21, session 9 said 23. Nothing turns on it, but
+**re-derive rather than copy** — session 9 flagged exactly this and it drifted again.
+
+---
+
+## 🟢 J2 is fixed, and the row's DIAGNOSIS was wrong
+
+`d36175be`. Read [DEFECTS-THE-RUNNER-DRIVE-FOUND.md](DEFECTS-THE-RUNNER-DRIVE-FOUND.md) for the full
+account; the short version is the part worth carrying.
+
+The row said *"Check my work removes the instructions and says nothing new"* — a grading pass that
+ran and then discarded the instructions. **It never ran.** `.popup-layer` is fixed, 100vw x 100vh,
+`z-index: 10`, and `showPopout` raised a click-eating blocker for **every** popout;
+`.lesson-bottombar` carries no `z-index` at all. While the instructions were open — the ordinary
+path, since §17 opens them on entering a step — **CHECK MY WORK sat underneath the blocker**. The
+press fired the body-level dismissal instead: the popout closed, `instructionDismissed` remembered
+it so it never reopened, and the button received nothing.
+
+🔴 **The control that pins it.** On the *reverted* arm, pressing the button a **second** time — the
+instructions now gone and `elementFromPoint` returning the button itself — produced the full
+grading summary. Same button, same code, same step; the only variable was the blocker. And because
+§17 opens instructions on entering a step, **the press a learner actually makes is always the
+swallowed one.**
+
+The fix is two opt-ins on `showPopout` (`blockOutsideClicks`, `keepOpenWithin`), both defaulting to
+today's behaviour so the ~20 other call sites are untouched — confirmed live. Decisions live in
+`views/PopupLayer/popoutdismissal.ts` because `popuplayer.ts` imports `electron` and the plain-Node
+runner cannot load it.
+
+## 🟢 test:ci WAS RUN — the caveat sessions 9 and 10 both carried is closed
+
+**2943 specs, 5 failures, seed 28415.** Four are the known **AIX-006** floor. **None is mine.**
+
+🔴 **The fifth is P77's and it is red on `cline-dev` right now, for every peer.**
+
+```
+SB-017 acceptance 6 — leaves every browser component alone
+  Expected 39 to be 38.
+```
+
+Pinned by counting `JavaScriptFunction` nodes in the non-cloud components of
+`site-builder.content.json` at each commit that touched it — the spec's own method:
+
+| commit | count |
+|---|---|
+| `02a3c924` | 38 |
+| **`f77e6647`** — *feat(p77/sbr-007): AC3 — a picture can be dropped onto a section* | **39** |
+| `4fbd8cd2`, HEAD | 39 |
+
+**`/Admin/SectionRow` went 5 → 6** in `f77e6647` — the picture-drop gesture, exactly that commit's
+subject. The literal still says 38.
+
+⚠️ **I did NOT bump it, deliberately.** The spec's own comment says *"the count is the population;
+the LINE BELOW is the claim"* — the real assertion is that those browser Function nodes had no cloud
+ports written onto them, and the count failing means **that assertion did not run**. Bumping the
+literal without checking it is the hole-shaped-like-the-defect move. **Owner: P77 / SBR-007.** The
+fix is `38` → `39` plus one sentence naming SectionRow's picture-drop, then re-run `test:ci` to see
+what the claim underneath says.
+
+🔴 **Two readings FITTED before one EXCLUDED.** I first attributed the red to a peer's uncommitted
+unhold of `site-builder`, then to `4fbd8cd2`. Both were coherent; both were wrong. Counting at each
+revision is what settled it. *A reading that fits is not one that excludes* — third repeat.
+
+---
+
+## FIRST JOB — the list, unchanged except that J2 is gone
+
+1. **[H1](DEFECTS-LESSON-6-FOUND.md)** — `paramsEqual` on a `stringlist` sorts before comparing, so
+   a graded step **cannot tell two orders apart**. A false pass in a teaching product. WARNING:
+   **left deliberately three times now** — the honest fix adds an ordered form to the authoring
+   format, touching the compiler, the evaluator, the copy module and the verifier. **Arguably
+   Richard's call**, and worth asking him rather than deferring a fourth time.
+2. **[SYL-003](SYL-003-THE-CREATURE-YOU-CHOSE.md)** — the avatar picker. The only open build task.
+3. **Lesson 8 — `snacks`** (`Static Data`, `For Each`, `For Each Actions`). Opening problem built and
+   waiting. 🔴 **Read all five registers first and check every node name with `get_node_type`** —
+   four of seven entries so far named a node that could not do the job. ✅ It now has a gate:
+   `lessons:chain` refuses the bundle unless its starter IS `it-gets-demanding`'s finished app, and
+   `spine.json` must gain the row.
+4. **P77's SB-017 literal** (above) — not this phase's, but it is red for everyone until someone acts.
+5. The remainder: E3, E1, E4/H3 (narrowed, other repo), D1, D3, D4, D5, G2, G3, G4, H2, I1, I2.
+
+## Traps this session paid for
+
+- 🔴 **A row's OBSERVATION and its DIAGNOSIS are two claims — second session running.** J1 taught
+  this in s9; J2 repeated it exactly. The transcript matched character for character and the
+  explanation was still wrong, because *"said nothing new"* reads as a quiet check and was actually
+  **no check at all**. ✅ **When a symptom is an absence, ask what a total absence would look like.**
+- 🔴 **A blocker is invisible to every instrument except `elementFromPoint`.** DOM presence, text and
+  even a successful `cdp click` all said the button was fine. `RENDERED ≠ REACHABLE`, and the drive
+  doc's own advice — *stamp, check `elementFromPoint`, then confirm the consequence* — is what found
+  it. `npm run cdp -- click` printed `clicked … at x,y` for a press that reached nothing.
+- ⚠️ **`npm run cdp -- click "button" --nth=3` is not a thing** — the flag is ignored and it clicks
+  the FIRST match. It navigated the launcher to another tab. ✅ Stamp `data-drive` and click that.
+- ⚠️ **`--list` shows a peer's `tsc` as "dev stack".** `npm run dev:stop` would have killed a peer's
+  9-minute typecheck; `NEVER_SWEEP` shields MCP servers and `test:ci`, **not a bare `tsc`**.
+  ✅ **Always `dev:stop -- --list` and read the rows before `dev:stop`.**
+- ⚠️ **`PIPESTATUS` is a bash-ism and read EMPTY in this zsh**, turning a typecheck into a
+  no-reading that looked like a pass. ✅ Run without a pipe and read `$?`, or `$pipestatus[1]`.
+- ⚠️ **`test-results.json` is written to `tests/`, not the package root.** Looking in the root said
+  "no results" for a run that had completed, which reads exactly like a run that died.
+- ⚠️ **A reload drops you back to the launcher**, so a hot-swapped arm needs the whole open path
+  re-driven. Both arms here were cold opens, which is what made them comparable.
+
+## Confirmed live in passing, on a fresh profile
+
+Session 9's three fixes, observed on screen for the first time: the badge reads **NodeGX** (J3), and
+the prose reads *"Looking for a **Button** called “Poke” on Home and “Poke” with label set to
+"Poke""* — a resolved node name (D2) and a named value (J4).
+
+## Still Richard's, unchanged
+
+Step prose for lessons 2-7, the `description`s and badges, `LESSON-VOICE.md` §3 and §6, the
+`state: in-writing` line per lesson, and the four "fifteen lessons" comments in the community repo.
+
+## What this session did NOT do
+
+- **Nothing was built.** No AC closed anywhere. See the note at the top.
+- **The timeline-click route is unmeasured.** One scripted press on a lesson step did not respond
+  and `elementFromPoint` returned the scroll container — session 8's own trap. It is **not**
+  evidence the route is broken, and nothing in the J2 account depends on it.
+- `DRIVE-2026-09-05-THE-LESSON-RUNNER.md` is **still untracked and is session 8's**, and the four
+  modified `SYL-*.md` are still session 8's uncommitted edits — left exactly as found, again.
