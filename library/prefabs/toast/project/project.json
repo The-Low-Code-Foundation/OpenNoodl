@@ -393,10 +393,7 @@
                                         "id": "209665a5-e050-441f-0a36-e75bceb95d6d",
                                         "type": "net.noodl.visual.icon",
                                         "parameters": {
-                                            "iconIconSource": {
-                                                "class": "material-icons",
-                                                "code": "error"
-                                            },
+                                            "iconIconSource": { "class": "lucide", "code": "icon-alert-circle", "codeAsClass": true },
                                             "iconSize": {
                                                 "value": 24,
                                                 "unit": "px"
@@ -630,10 +627,7 @@
                                         "id": "8d1d94fd-4805-c6f9-bc17-24d62f605429",
                                         "type": "net.noodl.visual.icon",
                                         "parameters": {
-                                            "iconIconSource": {
-                                                "class": "material-icons",
-                                                "code": "check_circle"
-                                            },
+                                            "iconIconSource": { "class": "lucide", "code": "icon-check-circle-2", "codeAsClass": true },
                                             "iconSize": {
                                                 "value": 24,
                                                 "unit": "px"
@@ -1283,10 +1277,7 @@
                                         "id": "9fb45867-8b43-1c1e-3a39-268a7f83d7e8",
                                         "type": "net.noodl.visual.icon",
                                         "parameters": {
-                                            "iconIconSource": {
-                                                "class": "material-icons",
-                                                "code": "warning"
-                                            },
+                                            "iconIconSource": { "class": "lucide", "code": "icon-alert-triangle", "codeAsClass": true },
                                             "iconSize": {
                                                 "value": 24,
                                                 "unit": "px"

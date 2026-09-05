@@ -388,10 +388,7 @@
                     "type": "net.noodl.visual.icon",
                     "label": "Action hint",
                     "parameters": {
-                      "iconIconSource": {
-                        "class": "material-icons",
-                        "code": "arrow_forward"
-                      },
+                      "iconIconSource": { "class": "lucide", "code": "icon-arrow-right", "codeAsClass": true },
                       "iconColor": "var(--primary)",
                       "iconSize": {
                         "value": 16,

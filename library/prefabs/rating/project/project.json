@@ -719,10 +719,7 @@
                                         "unit": "px"
                                     },
                                     "iconColor": "Rating/Star",
-                                    "iconIconSource": {
-                                        "class": "material-icons",
-                                        "code": "star_border"
-                                    }
+                                    "iconIconSource": { "class": "lucide", "code": "icon-star", "codeAsClass": true }
                                 },
                                 "ports": [],
                                 "dynamicports": [],
@@ -738,10 +735,7 @@
                                         "unit": "px"
                                     },
                                     "iconColor": "Rating/Star",
-                                    "iconIconSource": {
-                                        "class": "material-icons",
-                                        "code": "star"
-                                    }
+                                    "iconIconSource": { "class": "lucide", "code": "icon-star", "codeAsClass": true }
                                 },
                                 "ports": [],
                                 "dynamicports": [],

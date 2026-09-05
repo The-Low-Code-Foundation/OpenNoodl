@@ -1,5 +1,38 @@
 # Prefab Audit — LIB-002
 
+> **2026-09-05 — LBR-003 ran, and the shelf had been drawing the wrong thing for six weeks.**
+> `npm run library:render` renders every entry into a page seeded with the Inter + Lucide modules a
+> real new project ships (`starterAssets.ts`, POL-006), then measures what reaches the DOM.
+>
+> **The finding: sixteen prefabs named an icon set no project has.** They set
+> `iconIconSource: { class: "material-icons", … }`. A project made by this editor ships **Lucide**.
+> A missing icon font does not render as nothing — the ligature falls back to its own literal name,
+> so `rating` drew the words `starstar_borderstar_borderstar_borderstar_border` in gold, `pagination`
+> drew `chevron_left` and `chevron_right` across its page numbers, and `app-shell`'s sidebar read
+> `space_dashboard / home / folder / settings`. The library was seeded (LIB-001, 2026-07-25) from
+> live Noodl content, where Material Icons *was* the default; POL-006 changed the default and
+> nothing re-measured. **44 icon parameters across 16 entries, plus four prefabs that build an icon
+> source inside a `functionScript` string** — invisible to any JSON rewrite, the same hiding place
+> FH-006 found a font family in. Fixed by `scripts/library/remap-icons.js`; measured 17 → **0**
+> ligature names on screen.
+>
+> `image-cropper` and `panning-and-zooming-control` bundled their own Material manifest, which was
+> only a `<link>` to **`fonts.googleapis.com`** — a network dependency and a request per app.
+> Removed (Richard's ruling, 2026-09-05); both now use Lucide like everything else.
+>
+> **Second finding: 16 nodes across 10 entries drew a border that could never appear.** `Group`'s
+> `borderStyle` defaults to `none` and gates width and colour, so the Tab Bar's active-tab
+> underline, the Table's cell and header rules, the Multi Select dropdown outline and the Date
+> Picker field outline were all set, all visible in the property panel, and all absent on screen.
+> Fixed by `scripts/library/fix-invisible-borders.js` (catalog-driven — it refuses to write the port
+> onto module-provided node types, which was 39 of the 55 candidates).
+> `inactive-conditional-parameter` warnings: 49 → **18**.
+>
+> **New this session:** `avatar` 2.0.0 (re-authored from the dead module), `search-bar`, `accordion`,
+> `stepper` — each rendered *and driven* through a behavioural harness before being called done.
+> Still open: `form`, `tags` and `table` render blank on install because they are `For Each` over
+> data with no samples; `card-grid`'s "connected wins over samples" pattern is the fix.
+
 > **2026-08-22 — phase-65 blitz supersedes parts of this record.** The prefab set is now **35
 > entries**, and every consolidation proposal below has been EXECUTED: multi-choice +
 > multi-choice-with-pills + selection-pills → **multi-select** 1.0.0; pagination + pages-and-rows →

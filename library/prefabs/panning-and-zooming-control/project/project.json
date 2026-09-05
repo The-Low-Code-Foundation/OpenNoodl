@@ -135,10 +135,7 @@
                                         "variant": "Zoom Button",
                                         "label": "Zoom Out",
                                         "parameters": {
-                                            "iconIconSource": {
-                                                "class": "material-icons",
-                                                "code": "zoom_out"
-                                            },
+                                            "iconIconSource": { "class": "lucide", "code": "icon-zoom-out", "codeAsClass": true },
                                             "alignX": "right"
                                         },
                                         "ports": [],
@@ -1543,10 +1540,7 @@
                 },
                 "sizeMode": "contentWidth",
                 "backgroundColor": "Primary",
-                "iconIconSource": {
-                    "class": "material-icons",
-                    "code": "home"
-                },
+                "iconIconSource": { "class": "lucide", "code": "icon-home", "codeAsClass": true },
                 "iconSize": {
                     "value": 22,
                     "unit": "px"
@@ -1778,10 +1772,7 @@
             "stateParamaters": {
                 "checked": {
                     "useIcon": true,
-                    "iconIconSource": {
-                        "class": "material-icons",
-                        "code": "check"
-                    },
+                    "iconIconSource": { "class": "lucide", "code": "icon-check", "codeAsClass": true },
                     "backgroundColor": "Primary",
                     "borderColor": "Primary",
                     "iconSize": {
@@ -1943,10 +1934,7 @@
                 "borderColor": "#1F1F1F7F",
                 "boxShadowColor": "Dark Gray",
                 "useIcon": true,
-                "iconIconSource": {
-                    "class": "material-icons",
-                    "code": "expand_more"
-                },
+                "iconIconSource": { "class": "lucide", "code": "icon-chevron-down", "codeAsClass": true },
                 "iconPlacement": "right",
                 "iconSize": {
                     "value": 24,
@@ -1994,10 +1982,7 @@
                     },
                     "useIcon": true,
                     "iconColor": "Primary",
-                    "iconIconSource": {
-                        "class": "material-icons",
-                        "code": "keyboard_arrow_up"
-                    },
+                    "iconIconSource": { "class": "lucide", "code": "icon-chevron-up", "codeAsClass": true },
                     "iconSize": {
                         "value": 24,
                         "unit": "px"
@@ -2045,10 +2030,7 @@
                 },
                 "sizeMode": "explicit",
                 "backgroundColor": "Primary",
-                "iconIconSource": {
-                    "class": "material-icons",
-                    "code": "zoom_in"
-                },
+                "iconIconSource": { "class": "lucide", "code": "icon-zoom-in", "codeAsClass": true },
                 "iconSize": {
                     "value": 40,
                     "unit": "px"

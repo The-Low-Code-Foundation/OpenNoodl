@@ -1,0 +1,13 @@
+{
+  "label": "Accordion",
+  "description": "A list of sections that open and close, one click each. Each section owns its own state, so opening one never closes another, and the chevron swaps glyph rather than rotating so it reads correctly with animation off. The whole header row is the hit area, not just the words. Out of the box it renders three sample sections from a Static Data node; connect your own array (Title/Body per item, optional Start Open) to Items and it wins over the samples.",
+  "type": "prefab",
+  "tags": [
+    "UI",
+    "Layout"
+  ],
+  "version": "1.0.0",
+  "minEditorVersion": "0.1.0",
+  "runtimeVersion": "2.7.0",
+  "icon": "icon.png"
+}

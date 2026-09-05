@@ -1,0 +1,427 @@
+{
+  "name": "Search Bar",
+  "components": [
+    {
+      "name": "/Search Bar",
+      "id": "5ea2c000-0000-4000-9000-000000000001",
+      "graph": {
+        "connections": [
+          {
+            "fromId": "5ea2c000-1000-4000-9000-000000000001",
+            "fromProperty": "Placeholder",
+            "toId": "5ea2c000-1000-4000-9000-000000000011",
+            "toProperty": "placeholder"
+          },
+          {
+            "fromId": "5ea2c000-1000-4000-9000-000000000001",
+            "fromProperty": "Debounce",
+            "toId": "5ea2c000-1000-4000-9000-000000000004",
+            "toProperty": "duration"
+          },
+          {
+            "fromId": "5ea2c000-1000-4000-9000-000000000001",
+            "fromProperty": "Result Count",
+            "toId": "5ea2c000-1000-4000-9000-000000000003",
+            "toProperty": "in-Count"
+          },
+          {
+            "fromId": "5ea2c000-1000-4000-9000-000000000011",
+            "fromProperty": "onTextChanged",
+            "toId": "5ea2c000-1000-4000-9000-000000000002",
+            "toProperty": "in-Text"
+          },
+          {
+            "fromId": "5ea2c000-1000-4000-9000-000000000011",
+            "fromProperty": "onTextChanged",
+            "toId": "5ea2c000-1000-4000-9000-000000000003",
+            "toProperty": "in-Text"
+          },
+          {
+            "fromId": "5ea2c000-1000-4000-9000-000000000011",
+            "fromProperty": "textChanged",
+            "toId": "5ea2c000-1000-4000-9000-000000000004",
+            "toProperty": "restart"
+          },
+          {
+            "fromId": "5ea2c000-1000-4000-9000-000000000011",
+            "fromProperty": "onEnter",
+            "toId": "5ea2c000-1000-4000-9000-000000000002",
+            "toProperty": "run"
+          },
+          {
+            "fromId": "5ea2c000-1000-4000-9000-000000000004",
+            "fromProperty": "timerFinished",
+            "toId": "5ea2c000-1000-4000-9000-000000000002",
+            "toProperty": "run"
+          },
+          {
+            "fromId": "5ea2c000-1000-4000-9000-000000000002",
+            "fromProperty": "out-Query",
+            "toId": "5ea2c000-1000-4000-9000-000000000005",
+            "toProperty": "Query"
+          },
+          {
+            "fromId": "5ea2c000-1000-4000-9000-000000000002",
+            "fromProperty": "out-Changed",
+            "toId": "5ea2c000-1000-4000-9000-000000000005",
+            "toProperty": "Changed"
+          },
+          {
+            "fromId": "5ea2c000-1000-4000-9000-000000000003",
+            "fromProperty": "out-HasText",
+            "toId": "5ea2c000-1000-4000-9000-000000000012",
+            "toProperty": "mounted"
+          },
+          {
+            "fromId": "5ea2c000-1000-4000-9000-000000000003",
+            "fromProperty": "out-ShowCount",
+            "toId": "5ea2c000-1000-4000-9000-000000000013",
+            "toProperty": "mounted"
+          },
+          {
+            "fromId": "5ea2c000-1000-4000-9000-000000000003",
+            "fromProperty": "out-CountLabel",
+            "toId": "5ea2c000-1000-4000-9000-000000000013",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "5ea2c000-1000-4000-9000-000000000012",
+            "fromProperty": "onClick",
+            "toId": "5ea2c000-1000-4000-9000-000000000011",
+            "toProperty": "clear"
+          },
+          {
+            "fromId": "5ea2c000-1000-4000-9000-000000000012",
+            "fromProperty": "onClick",
+            "toId": "5ea2c000-1000-4000-9000-000000000005",
+            "toProperty": "Cleared"
+          }
+        ],
+        "roots": [
+          {
+            "id": "5ea2c000-1000-4000-9000-000000000001",
+            "type": "Component Inputs",
+            "x": -760,
+            "y": 40,
+            "parameters": {},
+            "ports": [
+              {
+                "name": "Placeholder",
+                "plug": "output",
+                "type": {
+                  "name": "string"
+                },
+                "group": "Content",
+                "index": 0
+              },
+              {
+                "name": "Debounce",
+                "plug": "output",
+                "type": {
+                  "name": "number"
+                },
+                "group": "Behaviour",
+                "index": 1
+              },
+              {
+                "name": "Result Count",
+                "plug": "output",
+                "type": {
+                  "name": "number"
+                },
+                "group": "Content",
+                "index": 2
+              }
+            ],
+            "dynamicports": [],
+            "children": []
+          },
+          {
+            "id": "5ea2c000-1000-4000-9000-000000000004",
+            "type": "Timer",
+            "label": "Debounce",
+            "x": -440,
+            "y": 40,
+            "parameters": {
+              "duration": 300
+            },
+            "ports": [],
+            "dynamicports": [],
+            "children": []
+          },
+          {
+            "id": "5ea2c000-1000-4000-9000-000000000002",
+            "type": "JavaScriptFunction",
+            "label": "Emit query",
+            "x": -160,
+            "y": 40,
+            "parameters": {
+              "functionScript": "// Runs when the Timer finishes, not when a key goes down: this node's\n// \"Run on value change\" is unticked for Text (runOnChange-in-Text), so the\n// only thing that runs it is the debounce completing.\nconst query = String(Inputs.Text || '').trim();\n\n// Outputs reads back what was last published \u2014 the proxy only traps writes.\n// Every Function runs once at boot, and a search bar that announces a change\n// before anybody typed makes every listener run a query for \"\". So the first\n// run establishes the baseline and stays quiet; only a real move signals.\nconst previous = Outputs.Query === undefined ? '' : Outputs.Query;\nOutputs.Query = query;\nif (query !== previous) Outputs.Changed();\n",
+              "runOnChange-in-Text": false
+            },
+            "ports": [],
+            "dynamicports": [
+              {
+                "name": "in-Text",
+                "displayName": "Text",
+                "plug": "input",
+                "type": "string",
+                "group": "Inputs",
+                "index": 0
+              },
+              {
+                "name": "runOnChange-in-Text",
+                "displayName": "Text",
+                "group": "Run On Value Change",
+                "plug": "input",
+                "default": true,
+                "type": {
+                  "name": "boolean",
+                  "allowEditOnly": true
+                },
+                "index": 3
+              },
+              {
+                "name": "out-Query",
+                "displayName": "Query",
+                "plug": "output",
+                "type": "string",
+                "group": "Outputs",
+                "index": 1
+              },
+              {
+                "name": "out-Changed",
+                "displayName": "Changed",
+                "plug": "output",
+                "type": "signal",
+                "group": "Outputs",
+                "index": 2
+              }
+            ],
+            "children": []
+          },
+          {
+            "id": "5ea2c000-1000-4000-9000-000000000003",
+            "type": "JavaScriptFunction",
+            "label": "Field view",
+            "x": -160,
+            "y": 260,
+            "parameters": {
+              "functionScript": "// The live view of the field, on every keystroke \u2014 separate from the\n// debounced Query on purpose. A clear button that waits 300ms to appear\n// after you type would feel broken.\nconst text = String(Inputs.Text || '');\nconst count = Inputs.Count;\nconst hasCount = count !== undefined && count !== null && count !== '';\n\nOutputs.HasText = text.length > 0;\nOutputs.ShowCount = hasCount && text.length > 0;\nOutputs.CountLabel = hasCount\n  ? Number(count) === 1 ? '1 result' : Number(count).toLocaleString() + ' results'\n  : '';\n"
+            },
+            "ports": [],
+            "dynamicports": [
+              {
+                "name": "in-Text",
+                "displayName": "Text",
+                "plug": "input",
+                "type": "string",
+                "group": "Inputs",
+                "index": 0
+              },
+              {
+                "name": "in-Count",
+                "displayName": "Count",
+                "plug": "input",
+                "type": "number",
+                "group": "Inputs",
+                "index": 1
+              },
+              {
+                "name": "out-HasText",
+                "displayName": "HasText",
+                "plug": "output",
+                "type": "boolean",
+                "group": "Outputs",
+                "index": 2
+              },
+              {
+                "name": "out-ShowCount",
+                "displayName": "ShowCount",
+                "plug": "output",
+                "type": "boolean",
+                "group": "Outputs",
+                "index": 3
+              },
+              {
+                "name": "out-CountLabel",
+                "displayName": "CountLabel",
+                "plug": "output",
+                "type": "string",
+                "group": "Outputs",
+                "index": 4
+              }
+            ],
+            "children": []
+          },
+          {
+            "id": "5ea2c000-1000-4000-9000-000000000005",
+            "type": "Component Outputs",
+            "x": 200,
+            "y": 40,
+            "parameters": {},
+            "ports": [
+              {
+                "name": "Query",
+                "plug": "input",
+                "type": {
+                  "name": "string"
+                },
+                "group": "Results",
+                "index": 0
+              },
+              {
+                "name": "Changed",
+                "plug": "input",
+                "type": "signal",
+                "group": "Results",
+                "index": 1
+              },
+              {
+                "name": "Cleared",
+                "plug": "input",
+                "type": "signal",
+                "group": "Results",
+                "index": 2
+              }
+            ],
+            "dynamicports": [],
+            "children": []
+          },
+          {
+            "id": "5ea2c000-1000-4000-9000-000000000010",
+            "type": "Group",
+            "label": "Search bar",
+            "x": 20,
+            "y": -320,
+            "parameters": {
+              "flexDirection": "row",
+              "alignItems": "center",
+              "sizeMode": "contentHeight",
+              "width": {
+                "value": 100,
+                "unit": "%"
+              },
+              "styleCss": "gap: 8px; min-width: 0;"
+            },
+            "ports": [],
+            "dynamicports": [],
+            "children": [
+              {
+                "id": "5ea2c000-1000-4000-9000-000000000011",
+                "type": "net.noodl.controls.textinput",
+                "label": "Field",
+                "parameters": {
+                  "placeholder": "Search",
+                  "useIcon": true,
+                  "iconIconSource": {
+                    "class": "lucide",
+                    "code": "icon-search",
+                    "codeAsClass": true
+                  },
+                  "iconColor": "var(--muted-foreground)",
+                  "iconSize": {
+                    "value": 16,
+                    "unit": "px"
+                  },
+                  "iconPlacement": "left",
+                  "iconSpacing": {
+                    "value": 8,
+                    "unit": "px"
+                  },
+                  "sizeMode": "contentHeight",
+                  "backgroundColor": "var(--background)",
+                  "color": "var(--foreground)",
+                  "borderStyle": "solid",
+                  "borderWidth": {
+                    "value": 1,
+                    "unit": "px"
+                  },
+                  "borderColor": "var(--border-control)",
+                  "borderRadius": {
+                    "value": 8,
+                    "unit": "px"
+                  },
+                  "paddingTop": "var(--space-2)",
+                  "paddingBottom": "var(--space-2)",
+                  "paddingLeft": "var(--space-3)",
+                  "paddingRight": "var(--space-3)",
+                  "styleCss": "flex: 1 1 auto; min-width: 0;"
+                },
+                "stateParameters": {
+                  "focused": {
+                    "borderColor": "var(--ring)"
+                  }
+                },
+                "ports": [],
+                "dynamicports": [],
+                "children": []
+              },
+              {
+                "id": "5ea2c000-1000-4000-9000-000000000012",
+                "type": "net.noodl.controls.button",
+                "label": "Clear",
+                "parameters": {
+                  "mounted": false,
+                  "useIcon": true,
+                  "useLabel": false,
+                  "iconIconSource": {
+                    "class": "lucide",
+                    "code": "icon-x",
+                    "codeAsClass": true
+                  },
+                  "iconColor": "var(--muted-foreground)",
+                  "iconSize": {
+                    "value": 16,
+                    "unit": "px"
+                  },
+                  "backgroundColor": "var(--muted)",
+                  "borderRadius": {
+                    "value": 8,
+                    "unit": "px"
+                  },
+                  "sizeMode": "explicit",
+                  "width": {
+                    "value": 34,
+                    "unit": "px"
+                  },
+                  "height": {
+                    "value": 34,
+                    "unit": "px"
+                  },
+                  "styleCss": "flex: 0 0 auto; cursor: pointer;"
+                },
+                "ports": [],
+                "dynamicports": [],
+                "children": []
+              },
+              {
+                "id": "5ea2c000-1000-4000-9000-000000000013",
+                "type": "Text",
+                "label": "Result count",
+                "parameters": {
+                  "mounted": false,
+                  "text": "12 results",
+                  "sizeMode": "contentSize",
+                  "color": "var(--muted-foreground)",
+                  "fontSize": {
+                    "value": 13,
+                    "unit": "px"
+                  },
+                  "styleCss": "flex: 0 0 auto; white-space: nowrap;"
+                },
+                "ports": [],
+                "dynamicports": [],
+                "children": []
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "settings": {},
+  "version": 4,
+  "metadata": {},
+  "variants": []
+}

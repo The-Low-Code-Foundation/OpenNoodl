@@ -1,0 +1,456 @@
+{
+  "name": "Accordion",
+  "components": [
+    {
+      "name": "/Accordion",
+      "id": "acc07000-0000-4000-9000-000000000001",
+      "graph": {
+        "connections": [
+          {
+            "fromId": "acc07000-1000-4000-9000-000000000001",
+            "fromProperty": "Items",
+            "toId": "acc07000-1000-4000-9000-000000000003",
+            "toProperty": "in-Items"
+          },
+          {
+            "fromId": "acc07000-1000-4000-9000-000000000002",
+            "fromProperty": "items",
+            "toId": "acc07000-1000-4000-9000-000000000003",
+            "toProperty": "in-Samples"
+          },
+          {
+            "fromId": "acc07000-1000-4000-9000-000000000003",
+            "fromProperty": "out-Items",
+            "toId": "acc07000-1000-4000-9000-000000000011",
+            "toProperty": "items"
+          }
+        ],
+        "roots": [
+          {
+            "id": "acc07000-1000-4000-9000-000000000001",
+            "type": "Component Inputs",
+            "x": -720,
+            "y": 40,
+            "parameters": {},
+            "ports": [
+              {
+                "name": "Items",
+                "plug": "output",
+                "type": {
+                  "name": "array"
+                },
+                "group": "Data",
+                "index": 0
+              }
+            ],
+            "dynamicports": [],
+            "children": []
+          },
+          {
+            "id": "acc07000-1000-4000-9000-000000000002",
+            "type": "Static Data",
+            "label": "Sample sections",
+            "x": -720,
+            "y": 240,
+            "parameters": {
+              "type": "json",
+              "json": "[\n    {\n        \"Title\": \"What is a prefab?\",\n        \"Body\": \"A prefab is a project you install into your own. Its components land in your component tree and you edit them like anything else you drew \\u2014 there is no black box and nothing to un-eject.\"\n    },\n    {\n        \"Title\": \"Does it use my theme?\",\n        \"Body\": \"Yes, when it is written to. Colours and spacing here come from design tokens, so an installed prefab picks up the host project's palette instead of carrying this one's.\"\n    },\n    {\n        \"Title\": \"Can I open more than one at a time?\",\n        \"Body\": \"Each section owns its own state, so yes \\u2014 opening one never closes another.\"\n    }\n]"
+            },
+            "ports": [],
+            "dynamicports": [],
+            "children": []
+          },
+          {
+            "id": "acc07000-1000-4000-9000-000000000003",
+            "type": "JavaScriptFunction",
+            "label": "Choose items",
+            "x": -400,
+            "y": 140,
+            "parameters": {
+              "functionScript": "// A connected, non-empty Items array wins over the samples, so the accordion\n// shows what it is the moment it is placed. Same contract as Card Grid.\nconst asArray = (v) => (Array.isArray(v) ? v : v && Array.isArray(v.items) ? v.items : []);\nconst connected = asArray(Inputs.Items);\nOutputs.Items = connected.length > 0 ? connected : asArray(Inputs.Samples);\n"
+            },
+            "ports": [],
+            "dynamicports": [
+              {
+                "name": "in-Items",
+                "displayName": "Items",
+                "plug": "input",
+                "type": "array",
+                "group": "Inputs",
+                "index": 0
+              },
+              {
+                "name": "in-Samples",
+                "displayName": "Samples",
+                "plug": "input",
+                "type": "array",
+                "group": "Inputs",
+                "index": 1
+              },
+              {
+                "name": "out-Items",
+                "displayName": "Items",
+                "plug": "output",
+                "type": "array",
+                "group": "Outputs",
+                "index": 2
+              }
+            ],
+            "children": []
+          },
+          {
+            "id": "acc07000-1000-4000-9000-000000000010",
+            "type": "Group",
+            "label": "Accordion",
+            "x": 20,
+            "y": -300,
+            "parameters": {
+              "flexDirection": "column",
+              "sizeMode": "contentHeight",
+              "width": {
+                "value": 100,
+                "unit": "%"
+              },
+              "borderTopStyle": "solid",
+              "borderTopWidth": {
+                "value": 1,
+                "unit": "px"
+              },
+              "borderTopColor": "var(--border)"
+            },
+            "ports": [],
+            "dynamicports": [],
+            "children": [
+              {
+                "id": "acc07000-1000-4000-9000-000000000011",
+                "type": "For Each",
+                "parameters": {
+                  "template": "/Accordion/Section"
+                },
+                "ports": [],
+                "dynamicports": [],
+                "children": []
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "/Accordion/Section",
+      "id": "acc07000-0000-4000-9000-000000000002",
+      "graph": {
+        "connections": [
+          {
+            "fromId": "acc07000-1000-4000-9000-000000000041",
+            "fromProperty": "Title",
+            "toId": "acc07000-1000-4000-9000-000000000052",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "acc07000-1000-4000-9000-000000000041",
+            "fromProperty": "Body",
+            "toId": "acc07000-1000-4000-9000-000000000055",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "acc07000-1000-4000-9000-000000000041",
+            "fromProperty": "Start Open",
+            "toId": "acc07000-1000-4000-9000-000000000042",
+            "toProperty": "in-StartOpen"
+          },
+          {
+            "fromId": "acc07000-1000-4000-9000-000000000051",
+            "fromProperty": "onClick",
+            "toId": "acc07000-1000-4000-9000-000000000044",
+            "toProperty": "increase"
+          },
+          {
+            "fromId": "acc07000-1000-4000-9000-000000000044",
+            "fromProperty": "currentCount",
+            "toId": "acc07000-1000-4000-9000-000000000042",
+            "toProperty": "in-Clicks"
+          },
+          {
+            "fromId": "acc07000-1000-4000-9000-000000000042",
+            "fromProperty": "out-IsOpen",
+            "toId": "acc07000-1000-4000-9000-000000000054",
+            "toProperty": "mounted"
+          },
+          {
+            "fromId": "acc07000-1000-4000-9000-000000000042",
+            "fromProperty": "out-Chevron",
+            "toId": "acc07000-1000-4000-9000-000000000053",
+            "toProperty": "iconIconSource"
+          },
+          {
+            "fromId": "acc07000-1000-4000-9000-000000000042",
+            "fromProperty": "out-IsOpen",
+            "toId": "acc07000-1000-4000-9000-000000000043",
+            "toProperty": "Opened"
+          }
+        ],
+        "roots": [
+          {
+            "id": "acc07000-1000-4000-9000-000000000041",
+            "type": "Component Inputs",
+            "x": -720,
+            "y": 40,
+            "parameters": {},
+            "ports": [
+              {
+                "name": "Title",
+                "plug": "output",
+                "type": {
+                  "name": "string"
+                },
+                "group": "Content",
+                "index": 0
+              },
+              {
+                "name": "Body",
+                "plug": "output",
+                "type": {
+                  "name": "string"
+                },
+                "group": "Content",
+                "index": 1
+              },
+              {
+                "name": "Start Open",
+                "plug": "output",
+                "type": {
+                  "name": "boolean"
+                },
+                "group": "Behaviour",
+                "index": 2
+              }
+            ],
+            "dynamicports": [],
+            "children": []
+          },
+          {
+            "id": "acc07000-1000-4000-9000-000000000042",
+            "type": "JavaScriptFunction",
+            "label": "Open or closed",
+            "x": -400,
+            "y": 40,
+            "parameters": {
+              "functionScript": "// Open when the click count is odd \u2014 flipped if the section was asked to\n// start open. A COUNT rather than a remembered boolean, and that is the whole\n// design:\n//\n// \ud83d\udd34 A Function that toggles `Outputs.IsOpen` has to know whether it has ever\n// run, and it has not. Its only input here would be `Start Open`, which is\n// normally unset, so no value ever arrives and the node never runs at boot \u2014\n// the first click becomes the missing boot run and does nothing. Measured: the\n// drive had to click a header TWICE to open it, once per section, and the\n// third click on row 0 was the one that worked.\n//\n// Counting removes the question. `Clicks` arrives at 0 on load, so this runs\n// with a real answer before anybody touches it, and `Start Open` works without\n// a boot run to seed it.\nconst clicks = Number(Inputs.Clicks || 0);\nconst open = (clicks % 2 === 1) !== (Inputs.StartOpen === true);\n\nOutputs.IsOpen = open;\nOutputs.IsClosed = !open;\n// Lucide has no rotation port, so the chevron is two glyphs rather than one\n// turned \u2014 which also means it reads correctly with animation disabled.\nOutputs.Chevron = {\n  class: 'lucide',\n  code: open ? 'icon-chevron-down' : 'icon-chevron-right',\n  codeAsClass: true\n};\n"
+            },
+            "ports": [],
+            "dynamicports": [
+              {
+                "name": "in-Clicks",
+                "displayName": "Clicks",
+                "plug": "input",
+                "type": "number",
+                "group": "Inputs",
+                "index": 0
+              },
+              {
+                "name": "in-StartOpen",
+                "displayName": "StartOpen",
+                "plug": "input",
+                "type": "boolean",
+                "group": "Inputs",
+                "index": 4
+              },
+              {
+                "name": "out-IsOpen",
+                "displayName": "IsOpen",
+                "plug": "output",
+                "type": "boolean",
+                "group": "Outputs",
+                "index": 1
+              },
+              {
+                "name": "out-IsClosed",
+                "displayName": "IsClosed",
+                "plug": "output",
+                "type": "boolean",
+                "group": "Outputs",
+                "index": 2
+              },
+              {
+                "name": "out-Chevron",
+                "displayName": "Chevron",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs",
+                "index": 3
+              }
+            ],
+            "children": []
+          },
+          {
+            "id": "acc07000-1000-4000-9000-000000000044",
+            "type": "Counter",
+            "label": "Clicks",
+            "x": -560,
+            "y": 200,
+            "parameters": {
+              "startValue": 0
+            },
+            "ports": [],
+            "dynamicports": [],
+            "children": []
+          },
+          {
+            "id": "acc07000-1000-4000-9000-000000000043",
+            "type": "Component Outputs",
+            "x": -60,
+            "y": 40,
+            "parameters": {},
+            "ports": [
+              {
+                "name": "Opened",
+                "plug": "input",
+                "type": {
+                  "name": "boolean"
+                },
+                "group": "State",
+                "index": 0
+              }
+            ],
+            "dynamicports": [],
+            "children": []
+          },
+          {
+            "id": "acc07000-1000-4000-9000-000000000050",
+            "type": "Group",
+            "label": "Section",
+            "x": 20,
+            "y": -300,
+            "parameters": {
+              "flexDirection": "column",
+              "sizeMode": "contentHeight",
+              "width": {
+                "value": 100,
+                "unit": "%"
+              },
+              "borderBottomStyle": "solid",
+              "borderBottomWidth": {
+                "value": 1,
+                "unit": "px"
+              },
+              "borderBottomColor": "var(--border)"
+            },
+            "ports": [],
+            "dynamicports": [],
+            "children": [
+              {
+                "id": "acc07000-1000-4000-9000-000000000051",
+                "type": "Group",
+                "label": "Header",
+                "parameters": {
+                  "flexDirection": "row",
+                  "alignItems": "center",
+                  "sizeMode": "contentHeight",
+                  "width": {
+                    "value": 100,
+                    "unit": "%"
+                  },
+                  "paddingTop": "var(--space-4)",
+                  "paddingBottom": "var(--space-4)",
+                  "paddingLeft": "var(--space-1)",
+                  "paddingRight": "var(--space-1)",
+                  "styleCss": "cursor: pointer; gap: 12px;"
+                },
+                "stateParameters": {
+                  "hover": {
+                    "backgroundColor": "var(--muted)"
+                  }
+                },
+                "ports": [],
+                "dynamicports": [],
+                "children": [
+                  {
+                    "id": "acc07000-1000-4000-9000-000000000052",
+                    "type": "Text",
+                    "label": "Title",
+                    "parameters": {
+                      "text": "Section title",
+                      "color": "var(--foreground)",
+                      "fontSize": {
+                        "value": 15,
+                        "unit": "px"
+                      },
+                      "styleCss": "font-weight: 600; flex: 1 1 auto; min-width: 0;"
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": []
+                  },
+                  {
+                    "id": "acc07000-1000-4000-9000-000000000053",
+                    "type": "net.noodl.visual.icon",
+                    "label": "Chevron",
+                    "parameters": {
+                      "iconIconSource": {
+                        "class": "lucide",
+                        "code": "icon-chevron-right",
+                        "codeAsClass": true
+                      },
+                      "iconColor": "var(--muted-foreground)",
+                      "iconSize": {
+                        "value": 18,
+                        "unit": "px"
+                      },
+                      "styleCss": "flex: 0 0 auto;"
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": []
+                  }
+                ]
+              },
+              {
+                "id": "acc07000-1000-4000-9000-000000000054",
+                "type": "Group",
+                "label": "Body",
+                "parameters": {
+                  "mounted": false,
+                  "flexDirection": "column",
+                  "sizeMode": "contentHeight",
+                  "width": {
+                    "value": 100,
+                    "unit": "%"
+                  },
+                  "paddingBottom": "var(--space-4)",
+                  "paddingLeft": "var(--space-1)",
+                  "paddingRight": "var(--space-1)"
+                },
+                "ports": [],
+                "dynamicports": [],
+                "children": [
+                  {
+                    "id": "acc07000-1000-4000-9000-000000000055",
+                    "type": "Text",
+                    "label": "Body text",
+                    "parameters": {
+                      "text": "Section body.",
+                      "color": "var(--muted-foreground)",
+                      "fontSize": {
+                        "value": 14,
+                        "unit": "px"
+                      },
+                      "styleCss": "line-height: 1.55;"
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": []
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "settings": {},
+  "version": 4,
+  "metadata": {},
+  "variants": []
+}

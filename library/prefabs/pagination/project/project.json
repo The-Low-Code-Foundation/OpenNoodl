@@ -420,10 +420,7 @@
                       },
                       "useLabel": false,
                       "useIcon": true,
-                      "iconIconSource": {
-                        "class": "material-icons",
-                        "code": "chevron_left"
-                      },
+                      "iconIconSource": { "class": "lucide", "code": "icon-chevron-left", "codeAsClass": true },
                       "iconSize": {
                         "value": 30,
                         "unit": "px"
@@ -580,10 +577,7 @@
                       },
                       "useLabel": false,
                       "useIcon": true,
-                      "iconIconSource": {
-                        "class": "material-icons",
-                        "code": "chevron_right"
-                      },
+                      "iconIconSource": { "class": "lucide", "code": "icon-chevron-right", "codeAsClass": true },
                       "backgroundColor": "transparent",
                       "iconSize": {
                         "value": 30,
@@ -1354,10 +1348,7 @@
                 "id": "dd272c23-5164-b889-894b-4ddc12ec9981",
                 "type": "net.noodl.visual.icon",
                 "parameters": {
-                  "iconIconSource": {
-                    "class": "material-icons",
-                    "code": "more_horiz"
-                  },
+                  "iconIconSource": { "class": "lucide", "code": "icon-more-horizontal", "codeAsClass": true },
                   "iconColor": "var(--muted-foreground)",
                   "iconSize": {
                     "value": 20,

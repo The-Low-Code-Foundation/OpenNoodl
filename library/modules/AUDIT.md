@@ -1,5 +1,24 @@
 # Module audit & triage — LIB-003
 
+> **2026-09-05 — LBR-003/004 ran. The shelf was rendered for the first time.**
+> `npm run library:render` builds a page for every entry, seeds it with the Inter + Lucide modules
+> a real new project ships, and measures what reaches the DOM. Two findings landed here:
+>
+> - **avatar is RETIRED and re-authored as `prefabs/avatar` 2.0.0.** Its 2018 prebuilt bundle
+>   reaches into React's `__SECRET_INTERNALS…ReactCurrentDispatcher`, removed in React 19, so the
+>   kit failed to load and *every* `Avatar` node rendered nothing —
+>   `Kit "noodl-avatar" failed to load` in the console, `Can't find component model for Avatar`
+>   after it. There was no source in the repo, only a 91KB bundle. The replacement is core nodes
+>   only (clipped round Group + Image or initials + an overlapping Avatar Group with a `+N` badge),
+>   so there is no bundle to go stale against the next React release, and it takes 9.6MB with it.
+> - **pdf-viewer still fails on `module.inlineHtml`** — it depends on the standalone `custom-html`
+>   module by README convention, and nothing installs it for you. `Can't find component model for
+>   module.inlineHtml`, then `Unknown node id`. This is phase-65 follow-up #3 (no dependency
+>   mechanism exists) with a measurement attached now.
+>
+> Everything else in `modules/` rendered or has no visual surface. See `library/prefabs/AUDIT.md`
+> for the icon finding, which was the large one.
+
 > **2026-08-22 — phase-65 blitz supersedes parts of this record.** The module set is now **30
 > entries**. RETIRED (Richard's ruling, no-integration-library policy): google-sheets,
 > google-analytics, parse-cloud-function. RE-TYPED to prefabs (register zero nodes): image-cropper,

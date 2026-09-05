@@ -1,0 +1,14 @@
+{
+  "label": "Stepper",
+  "description": "A numbered progress rail with Back/Next and a Finish on the last step. It publishes Current Step and a Completed signal and deliberately does not hold your content: you mount each step's Group against Current Step, so a step is an ordinary part of your page rather than something trapped inside a container. Steps behind the current one collapse to a tick. Out of the box it renders four sample steps; connect your own array (Title per item) to Steps and it wins over the samples. Pairs with Form Fields, one fieldset per step.",
+  "type": "prefab",
+  "tags": [
+    "UI",
+    "Form",
+    "Layout"
+  ],
+  "version": "1.0.0",
+  "minEditorVersion": "0.1.0",
+  "runtimeVersion": "2.7.0",
+  "icon": "icon.png"
+}

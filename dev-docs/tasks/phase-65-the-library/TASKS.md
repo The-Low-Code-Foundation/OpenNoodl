@@ -144,3 +144,74 @@ panning-and-zooming-control, shake-detector.
    auto-migrate to `nodegx.maplibre.map`.
 10. **Not done from the table**: the i18next-translation vs phase-47 check (nobody was assigned);
     LBR-010 (Tier 2) untouched; avatar's 41 unknown-"Avatar" warnings remain the CN-003 fixture.
+
+
+---
+
+## 2026-09-05 — LBR-003/004: the shelf was rendered, and it had been drawing the wrong thing
+
+**LBR-003/004 were the whole residual and they are now largely closed.** `npm run library:render`
+(`scripts/library/render-check.js`) renders every entry into a real page — an `/App` with a Router
+and a `Page` holding an instance of the entry — seeded with the Inter + Lucide modules a new
+project ships, and measures painted boxes, texts, controls, broken images, console errors and
+icons that rendered as their own name. Entry ledger: 65 → **68** (39 prefabs + 29 modules).
+
+### What was actually broken
+
+| Finding | Size | Fixed by |
+|---|---|---|
+| **Prefabs named an icon set no project has.** `class: "material-icons"` against a Lucide starter (POL-006). The ligature falls back to its literal name, so `rating` drew `starstar_borderstar_border…`, `pagination` drew `chevron_left`/`chevron_right` over its page numbers, `app-shell`'s sidebar read `space_dashboard / home / folder / settings` | 44 params across 16 entries, **plus 4 built inside `functionScript` strings** | `scripts/library/remap-icons.js` — measured **17 → 0** ligature names on screen |
+| **Borders that could never draw.** `borderStyle` defaults to `none` and gates width and colour — Tab Bar's active underline, Table's cell/header rules, Multi Select's dropdown outline, Date Picker's field outline | 16 nodes / 10 entries (39 more skipped: module-provided types, whose border semantics are their own) | `scripts/library/fix-invisible-borders.js` — `inactive-conditional-parameter` **49 → 18** |
+| **Two prefabs shipped a Material manifest that was a `<link>` to `fonts.googleapis.com`** — a network dependency and a request per app | image-cropper, panning-and-zooming-control | deleted (Richard's ruling 2026-09-05) |
+| **`avatar` is dead on React 19.** Its 2018 bundle reaches into `__SECRET_INTERNALS…ReactCurrentDispatcher`; the kit fails to load and every `Avatar` node renders nothing. No source in the repo | whole module, 9.6MB | retired; re-authored as **`prefabs/avatar` 2.0.0** from core nodes (Richard's ruling) |
+| **`pdf-viewer` fails on `module.inlineHtml`** — depends on `custom-html` by README convention and nothing installs it | 1 entry | 🔴 **OPEN** — this is follow-up #3 (no dependency mechanism), now with a measurement |
+
+### 🔴 Two findings were the harness's, and the controls are what caught them
+
+Recorded because both would otherwise have been filed as library defects, and one nearly was.
+
+1. **`Outputs.X is not a function` against table, form, filters and pagination.** A Function's
+   `out-*` ports are dynamic; the editor derives them and `exportNode` writes them into `ports`,
+   while the on-disk `dynamicports` are never read by the runtime. An A/B whose simplest arm was a
+   Function calling `Outputs.Done()` on its own run threw identically — **no library content can
+   explain that.** The harness now reproduces the export contract, and `--self-test` locks it in
+   with a **known-bad floor that must still fail**. 34 of 40 console errors were this.
+2. **Every icon failing, Lucide included**, when rendering into a bare directory. Seeding the
+   starter modules is what makes a missing Material glyph mean anything.
+
+### New content (Tier 2 / LBR-010, first four)
+
+`avatar` 2.0.0, `search-bar` 1.0.0, `accordion` 1.0.0, `stepper` 1.0.0 — each **rendered and
+driven** before being called done. Every one of the three new ones failed its first drive while
+looking completely correct on screen:
+
+- **search-bar**: `Timer`'s `Duration` is a plain number of milliseconds. Given the `{value, unit}`
+  shape every *dimension* port takes, it stores the object, measures it as zero, and fires
+  `Finished` on every `Restart` — the bar emitted once per keystroke and looked like a debounce.
+- **accordion**: a Function that toggles a remembered boolean must know whether it has ever run,
+  and it has not — with no input ever arriving it never runs at load, so the **first click on each
+  header was silently consumed as the missing boot run**. The drive had to click twice. Now a
+  `Counter`, which arrives at 0 on load.
+- **stepper**: `Advance` reads the Counter it increments; with *Run on value change* ticked it
+  re-runs on its own effect and one click walks to the end. Both boxes unticked, and the drive
+  counts steps **per click** rather than checking where it ended up.
+
+`scripts/library/make-monogram-icon.js` is new: the phase-65 blitz generated fifteen placeholder
+icons and never committed the generator, so the next person to add an entry met a failing
+`verify-dist` with no way to satisfy it.
+
+### Still open
+
+1. 🔴 **pdf-viewer / custom-html** — the cross-entry dependency mechanism (follow-up #3) is now a
+   measured failure, not a design note.
+2. **`form`, `tags`, `table` render blank on install** — `For Each` over data with no samples.
+   `card-grid`'s "a connected array wins over the samples" contract is the fix, and the four new
+   entries all use it.
+3. **494 `raw-spacing-literal` warnings** across the older entries. The new ones are token-clean;
+   `var(--space-N)` is proven to resolve on node parameters (form-fields renders correctly, and the
+   spacing survived the search-bar's drive unchanged).
+4. **`modules/material-icons` still loads from `fonts.googleapis.com`** — inherent to that module,
+   but a vendoring decision nobody has made.
+5. **LBR-010 Tier 2 remainder**: File Upload, User Menu, Settings Page, Command Palette, Data Grid;
+   modules Signature Pad, Speech to Text, Keyboard Shortcuts, Scroll Reveal.
+6. `verify-origin` still compares by label only (follow-up #2, unchanged).

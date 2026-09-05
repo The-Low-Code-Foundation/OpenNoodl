@@ -126,6 +126,66 @@ authored directly in this repo going forward are expected to be
 warning-clean too — nothing stops tightening this gate later once LIB-002/003
 land.
 
+## Render
+
+```
+npm run library:render                 # every entry
+npm run library:render prefabs/table   # one, or several
+npm run library:render -- --shots out/ # keep the PNGs
+npm run library:render:self-test
+```
+
+`library:check` proves an entry is *structurally* valid: it loads, its references resolve, its
+fonts ship. It cannot tell you that a prefab draws nothing, that a module never registers its node,
+or that the browser throws on mount. Until 2026-09-05 nothing in `library/` had ever been rendered
+— the whole shelf was verified by reading it, and it had been drawing the literal words
+`star_border` and `chevron_left` on screen for six weeks (see
+[prefabs/AUDIT.md](prefabs/AUDIT.md)).
+
+For each entry this builds a real page — an `/App` with a Router and a `Page` holding an instance
+of the entry — renders it headless, and reports painted boxes, texts, controls, broken images,
+console errors and **icons that rendered as their own name**.
+
+Two things it does that are not obvious, and both are load-bearing:
+
+**It seeds the starter modules first.** A project made by this editor is not empty:
+`starterAssets.ts` puts Inter and the Lucide icon set in it. Rendering an entry into a bare
+directory fails *every* icon, Lucide and Material alike, and the report then reads "everything is
+broken" — a fact about the harness. Seeding is what makes a missing Material glyph mean something.
+
+**It reproduces the export contract for Function ports.** A `JavaScriptFunction`'s `out-*` ports are
+dynamic: the editor derives them, `exportNode` writes them into `ports`, and the on-disk
+`dynamicports` are never read by the runtime. Hand the stored graph straight to the viewer and every
+signal output is missing, so `Outputs.Changed()` throws `is not a function` in scripts that have
+always been correct. The first sweep reported exactly that against four prefabs and it was the
+harness's defect, not theirs. `--self-test` is the guard: three Functions, one render, and a
+**known-bad floor that must still fail** — a probe whose floor passes cannot tell a working signal
+from a missing one, and this one could not, for a whole sweep.
+
+## Drive
+
+```
+npm run library:drive                          # every behavioural drive
+node scripts/library/drives/search-bar.js      # one
+```
+
+Rendering is not the same as working. A render shows a search field; it cannot show you that the
+debounce debounces. Every prefab added on 2026-09-05 **rendered correctly on its first try and
+failed its first drive** — see `scripts/library/drives/harness.js` for the three failures and each
+entry's README for the trap behind it. Each drive asserts a *sequence* (signals per keystroke,
+steps per click) rather than a final state, because in all three cases the final state was right.
+
+## Icons
+
+```
+npm run library:icons          # generate a monogram for any entry missing one
+npm run library:icons:check    # exit 1 if any entry has none
+```
+
+`library:verify-dist` **fails** an entry with no usable `icon` — `ModuleCard` destructures it
+unguarded. These are placeholders; a bespoke icon beats a monogram on a shelf people browse. The
+point is that "no icon at all" is never the reason an entry cannot ship.
+
 ## Publish
 
 Publishing = copying the contents of `library-dist/` over the docs repo's

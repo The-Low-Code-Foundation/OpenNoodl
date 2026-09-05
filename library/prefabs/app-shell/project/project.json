@@ -171,7 +171,7 @@
                         "y": 260,
                         "parameters": {
                             "type": "json",
-                            "json": "[\n    {\n        \"Label\": \"Home\",\n        \"Icon\": \"home\",\n        \"Target\": \"/\",\n        \"IsHome\": true\n    },\n    {\n        \"Label\": \"Projects\",\n        \"Icon\": \"folder\",\n        \"Target\": \"/projects\"\n    },\n    {\n        \"Label\": \"Settings\",\n        \"Icon\": \"settings\",\n        \"Target\": \"/settings\"\n    }\n]"
+                            "json": "[\n    {\n        \"Label\": \"Home\",\n        \"Icon\": \"icon-home\",\n        \"Target\": \"/\",\n        \"IsHome\": true\n    },\n    {\n        \"Label\": \"Projects\",\n        \"Icon\": \"icon-folder\",\n        \"Target\": \"/projects\"\n    },\n    {\n        \"Label\": \"Settings\",\n        \"Icon\": \"icon-settings\",\n        \"Target\": \"/settings\"\n    }\n]"
                         },
                         "ports": [],
                         "dynamicports": [],
@@ -458,10 +458,7 @@
                                                 "type": "net.noodl.visual.icon",
                                                 "label": "App logo",
                                                 "parameters": {
-                                                    "iconIconSource": {
-                                                        "class": "material-icons",
-                                                        "code": "space_dashboard"
-                                                    },
+                                                    "iconIconSource": { "class": "lucide", "code": "icon-layout-grid", "codeAsClass": true },
                                                     "iconColor": "var(--primary)",
                                                     "iconSize": {
                                                         "value": 24,
@@ -637,10 +634,7 @@
                                                         "id": "a5e17000-1000-4000-9000-00000000001a",
                                                         "type": "net.noodl.visual.icon",
                                                         "parameters": {
-                                                            "iconIconSource": {
-                                                                "class": "material-icons",
-                                                                "code": "menu"
-                                                            },
+                                                            "iconIconSource": { "class": "lucide", "code": "icon-menu", "codeAsClass": true },
                                                             "iconColor": "var(--foreground)",
                                                             "iconSize": {
                                                                 "value": 22,
@@ -716,10 +710,7 @@
                                                         "id": "a5e17000-1000-4000-9000-00000000001f",
                                                         "type": "net.noodl.visual.icon",
                                                         "parameters": {
-                                                            "iconIconSource": {
-                                                                "class": "material-icons",
-                                                                "code": "account_circle"
-                                                            },
+                                                            "iconIconSource": { "class": "lucide", "code": "icon-user-circle-2", "codeAsClass": true },
                                                             "iconColor": "var(--muted-foreground)",
                                                             "iconSize": {
                                                                 "value": 28,
@@ -939,7 +930,7 @@
                         "x": -300,
                         "y": -10,
                         "parameters": {
-                            "functionScript": "Outputs.IconSource = {\n    \"class\": \"material-icons\",\n    \"code\": Inputs.IconCode\n}\nOutputs.HaveIcon = Inputs.IconCode !== undefined && Inputs.IconCode !== \"\"\n"
+                            "functionScript": "Outputs.IconSource = {\n    \"class\": \"lucide\", \"codeAsClass\": true,\n    \"code\": Inputs.IconCode\n}\nOutputs.HaveIcon = Inputs.IconCode !== undefined && Inputs.IconCode !== \"\"\n"
                         },
                         "ports": [],
                         "dynamicports": [
@@ -1208,10 +1199,7 @@
                                 "id": "a5e17000-2000-4000-9000-000000000006",
                                 "type": "net.noodl.visual.icon",
                                 "parameters": {
-                                    "iconIconSource": {
-                                        "class": "material-icons",
-                                        "code": "circle"
-                                    },
+                                    "iconIconSource": { "class": "lucide", "code": "icon-circle", "codeAsClass": true },
                                     "iconColor": "var(--muted-foreground)",
                                     "iconSize": {
                                         "value": 20,
