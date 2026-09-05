@@ -215,6 +215,22 @@ describe('REL-009b — coalescing', () => {
  * would pass just as happily against a mapping built for a filename format node
  * never produces.
  */
+/**
+ * How long a real `fs.watch` event is allowed to take before we call it a hang.
+ * Not a budget the assertion spends: the spec returns as soon as the batch
+ * arrives, so a healthy box pays ~73ms of it and a busy one pays what it needs.
+ *
+ * 🔴 The ceiling is USELESS unless jest's own per-test timeout is longer than
+ * it. That default is 5000ms, and the first version of this fix left it there:
+ * the 10s ceiling could never be reached, so the effective budget was still a
+ * stopwatch — jest's, not the spec's — and under a full 423-suite run the event
+ * took over 5s and jest killed the test. It passed one whole-gate run and failed
+ * the next. The `it()` below therefore carries an explicit timeout ABOVE this
+ * value, and the two must be changed together.
+ */
+const WATCH_EVENT_CEILING_MS = 30_000;
+const WATCH_TEST_TIMEOUT_MS = WATCH_EVENT_CEILING_MS + 5_000;
+
 describe('REL-009b — against a real filesystem', () => {
   let dir: string;
 
@@ -238,12 +254,40 @@ describe('REL-009b — against a real filesystem', () => {
     fs.writeFileSync(`${target}.tmp`, JSON.stringify({ nodes: [] }));
     fs.renameSync(`${target}.tmp`, target);
 
-    await new Promise((resolve) => setTimeout(resolve, 600));
+    // 🔴 Wait for the EVENT, never for a stopwatch. The first form of this
+    // spec slept a flat 600ms and asserted afterwards, which grades the box
+    // rather than the watcher: the batch lands at ~73ms here when nothing else
+    // is running, so the budget was ~8x headroom on a chain of timers, and two
+    // concurrent suites ate it. It went red in `test:main` twice while passing
+    // green alone. The ceiling below bounds a genuine hang and nothing else.
+    const deadline = Date.now() + WATCH_EVENT_CEILING_MS;
+    while (batches.length === 0 && Date.now() < deadline) {
+      await new Promise((resolve) => setTimeout(resolve, 5));
+    }
+
+    // 🔴 Latch the answer HERE, before the settle below is spent. The
+    // settle is itself a wait, so without this the ceiling is not load-bearing
+    // at all: cut it to 30ms and the batch still lands inside the 200ms on a
+    // fast box, while a slow one reddens — the very defect this spec is being
+    // fixed for, one level down. A control cutting the ceiling to 30ms PASSED
+    // until this latch existed.
+    const arrivedWithinCeiling = batches.length > 0;
+
+    // One more debounce window once the first batch is in, so the purity
+    // assertion below sees everything the write produced rather than only the
+    // first thing to arrive. This one IS a stopwatch, deliberately: running
+    // short can only make that assertion see less, never make it fail.
+    await new Promise((resolve) => setTimeout(resolve, 200));
     watcher.stop();
 
-    expect(batches.length).toBeGreaterThan(0);
+    // 🔴 Every assertion is AFTER stop(). An expect() before it leaks the
+    // fs.watch handle on failure and jest then never exits — a spec that HANGS
+    // `test:main` for everybody is strictly worse than one that reddens it. The
+    // control above did exactly that: it failed correctly in 35ms and then hung
+    // until it was killed (EXIT=143, not 1).
+    expect(arrivedWithinCeiling).toBe(true);
     expect(batches.flat()).toContain('Pages/Home');
     // And nothing that is not a component path ever got through.
     expect(batches.flat().every((p) => p === 'Pages/Home')).toBe(true);
-  });
+  }, WATCH_TEST_TIMEOUT_MS);
 });

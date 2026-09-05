@@ -288,10 +288,20 @@ describe('SB-007 — install writes a project that opens', () => {
     //              page's `shell` also holds the nav band and the colophon, so a
     //              `main` on it would announce the site's navigation as the
     //              page's content and the landmark had to be a box of its own.
+    //   401 → 406  🔴 NOT this phase — P77/SBR-007 AC3 (`f77e6647`, 2026-09-05
+    //              13:37), the drop zone on `/Admin/SectionRow`: `dropZone`,
+    //              `dropHint`, `dropWords`, `dropRefused`, `dropRefusal`. Five
+    //              ids, named in that commit's own diff, and 401 + 5 reconciles
+    //              exactly. ⚠️ It left `test:main` RED for every peer on the
+    //              checkout, because this gate lives in `noodl-editor` and the
+    //              node it counts lives in `noodl-mcp` — a package boundary that
+    //              no per-package run crosses. Reconciled by P82/s44 while
+    //              reading the gate for another row; the FEATURE was not
+    //              reviewed, only the count.
     // ⚠️ The literal is still the point, for the reason four lines up: it is the
     // only thing standing between a rewrite that RENAMED ids and a disjointness
     // assertion that would stay green on a set that had shrunk.
-    expect(a.size).toBe(401);
+    expect(a.size).toBe(406);
     expect([...a].filter((id) => b.has(id))).toEqual([]);
   });
 

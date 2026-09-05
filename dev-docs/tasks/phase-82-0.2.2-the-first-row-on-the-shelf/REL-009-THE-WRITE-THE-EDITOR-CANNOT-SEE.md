@@ -668,3 +668,176 @@ capability and its main surface are mutually exclusive. That is a strange thing 
 whose first row is *"an app an agent can build with you."*
 
 It is still not a launch blocker, and this file says so at the top.
+
+---
+
+## §6 The real-filesystem arm was a stopwatch, and it reddened `test:main` for everybody (s44, 2026-09-05)
+
+**Registered with owner `NONE` by session 40**, in the phase hand-off's §B and again in
+[REL-011 §8](REL-011-THE-SITE-BUILDER-SHIPS.md): two consecutive `test:main` runs, both
+**423 suites / 7086 tests with exactly one red**, and the red was always this file's last spec —
+*"reports the component when a real two-phase save lands in it"* — while the same spec ran
+**16/16 EXIT=0 alone**. It imports nothing either of those sessions touched. This is the repo's
+most-used gate, so the cost lands on every peer on a busy box, not on the row that wrote it.
+
+### §6.1 The defect, and the number nobody had taken
+
+```ts
+await new Promise((resolve) => setTimeout(resolve, 600));
+watcher.stop();
+expect(batches.length).toBeGreaterThan(0);
+```
+
+A flat 600ms budget for a **60ms**-debounced `fs.watch` event in a temp directory. The spec's own
+duration says nothing about it — it reports **607 ms**, which is the sleep, not the event.
+
+🔴 **So the first instrument was a probe, not an assertion.** With the sleep replaced by a
+poll-and-record, the batch lands at **73ms**, five runs, on a box that was calm:
+
+| run | 1 | 2 | 3 | 4 | 5 |
+|---|---|---|---|---|---|
+| first batch after | 73ms | 74ms | 72ms | 74ms | 73ms |
+
+**60ms of that is the debounce the spec itself configures.** The remaining ~13ms is scheduling, and
+the 600ms budget is roughly **8× headroom on a chain of timers** — which two concurrent suites plus
+a webpack will eat. That reconciles the two reds without needing to reproduce the load.
+
+### §6.2 The fix, and the one stopwatch deliberately kept
+
+The sleep becomes a wait on the **event**, with a ceiling that only bounds a genuine hang
+(`WATCH_EVENT_CEILING_MS = 10_000`, named at module scope so a control can move it). The spec
+returns the moment the batch arrives: a healthy box pays ~73ms of the ceiling and a busy one pays
+what it needs.
+
+⚠️ **A second, 200ms sleep is kept on purpose** and is not the same kind of thing. It runs *after*
+the first batch is in, so that the final assertion — *"nothing that is not a component path ever got
+through"* — sees everything the write produced rather than only the first thing to arrive.
+**Running short can only make that assertion see less; it can never make it fail.** A wait that can
+only weaken a control is not a wait that can flake.
+
+### §6.3 🔴 The sweep — this spec is not the only one, and the OTHER red was in the same hand-off
+
+Fixing one instance of a defect class leaves the gate red if there are others, so the pattern was
+run over the corpus that exists rather than assumed unique: **175 directories** in
+`packages/noodl-editor/tests-unit`, grepped for a bare `setTimeout(resolve, …)` wait.
+
+| file | shape | margin |
+|---|---|---|
+| `rel-009b/projectFileWatcher.test.ts` | 600ms budget, 60ms debounce | **~8×** — fixed here |
+| `bld-004/reasoningChannel.test.ts:198,230` | `STALL_MS = 60`, heartbeat `sleep(STALL_MS / 2)` | 🔴 **2×** |
+| `aib-009/turnDeadline.test.ts:19,94–117` | `STALL_MS = 60`, the same heartbeat, four sites | 🔴 **2×** |
+| `lgc-005`, `lgc-009`, `vfn-006` | `setTimeout(…, 0)` / `50` to yield a microtask queue | not a budget — nothing is asserted against elapsed time |
+
+🔴 **`bld-004/reasoningChannel` is the OTHER red session 40 recorded**, and it wrote it off as *"a
+lone red under concurrent load"*. It is the same defect class as this one, on a **2× margin instead
+of 8×** — a heartbeat that must beat faster than the stall window it is proving does not fire. The
+two reds in that session's `test:main` were **one fault with two homes**.
+
+⚠️ **The source is NOT at fault, and that matters for whoever fixes it.**
+`turnDeadline.ts:27` takes `Date.now()` at each check *deliberately* — *"Chromium throttles
+`setTimeout` in an occluded window"* — so when 60ms of wall time really does pass with no activity,
+declaring a stall is the wrapper being right. There is no clock seam to inject. **The fix is in the
+specs**: raise `STALL_MS` while keeping the heartbeat small in absolute terms (e.g. 1000ms against a
+50ms beat = a 20× margin, ~400ms per test), rather than scaling both and keeping the 2×.
+
+**Registered, owner `NONE` — it belongs to BLD-004 and AIB-009, not to this row.** It is written
+down to this precision so that fixing it is a ten-minute job rather than a rediscovery: this session
+did not touch either file.
+
+### §6.4 The arms — and the two that were WRONG before they were right
+
+Four arms, all on one commit, all reading **16 tests that ran** so the counts reconcile.
+
+| arm | spec form | debounce | ceiling | reading |
+|---|---|---|---|---|
+| **A** | the **original shipped spec**, flat 600ms | **900ms** | — | 🔴 **RED — 1 failed / 16 that all ran**, `Expected: > 0 / Received: 0`, 605ms |
+| **B** | the fix | **900ms** | 10s | 🟢 **16/16, EXIT=0**, **1123ms** |
+| **C** | the fix | 60ms | **30ms** | 🔴 **RED — 1 failed / 16 that all ran**, 240ms, EXIT=1 |
+| **D** | the fix, as it ships | 60ms | 10s | 🟢 **16/16, EXIT=0**, **278ms** (was 607ms) |
+
+**Arm A is the defect reproduced deterministically, without loading the box.** The failure mode is
+*"the callback has not been scheduled by the time the budget expires"*, and stretching the watcher's
+own debounce past the budget is that, exactly — no CPU contention needed, no peer's drive disturbed.
+**Arm B is the same stretch surviving**, and its **1123ms** is the proof the wait is real: 910ms of
+event plus the 200ms settle. A vacuous wait could not have taken that long.
+
+#### 🔴 Arm C PASSED the first time, and reading it rather than "fixing" it found a real defect
+
+The first form of the fix put no assertion between the wait loop and the settle. So with the ceiling
+cut to 30ms the loop gave up with `batches` **empty** — and the **200ms settle then supplied the
+wait**, the batch landing at 73ms inside it. **The ceiling was decorative.** Anyone later trimming
+it would have re-introduced this exact bug: green on a fast box, red on a busy one.
+
+✅ Fixed by **latching the answer before the settle is spent** (`arrivedWithinCeiling`), which is
+what makes arm C red.
+
+#### 🔴 And the first latch HUNG jest — a spec that hangs the gate is worse than one that reddens it
+
+The latch was first written as a bare `expect(...)` *before* `watcher.stop()`. Arm C then failed
+correctly **in 35ms** and jest never exited: the failed assertion skipped `stop()`, the `fs.watch`
+handle stayed open, and the run sat there until it was killed. **`EXIT=143`, not 1** — and 7 minutes
+of a `test:main` slot for every peer. ✅ **Every assertion now runs after `stop()`**; only the latched
+boolean crosses.
+
+⚠️ **Arm A was ALSO wrong once, and the tell was the count.** Built by surgery on the fixed file, it
+stripped the latch declaration and left its assertion behind, so the arm did not compile:
+**`Tests: 0 total`, EXIT=1** — a reverted arm that grades nothing while looking like a red. It was
+rebuilt from the pre-edit snapshot with one `sed`, and the reading above is that rebuild. **16 total
+in every arm is what says all four graded something.**
+
+### §6.5 🔴 The fix was WRONG until the gate was read TWICE — jest's timeout ate the ceiling
+
+**One whole-gate run passed and the next failed.** The second run killed the spec with
+*"Exceeded timeout of 5000 ms for a test"*.
+
+🔴 **jest's default per-test timeout is 5000ms, and the ceiling was 10s — so the ceiling could never
+be reached.** The effective budget was still a stopwatch; it had merely moved from the spec (600ms)
+to the runner (5000ms). Under a full 423-suite run the `fs.watch` event really does take over five
+seconds, and the failure arrived as an illegible runner timeout rather than as the spec's own
+assertion.
+
+✅ **Fixed**: `WATCH_EVENT_CEILING_MS = 30_000` with an explicit
+`it(…, WATCH_TEST_TIMEOUT_MS)` of **35s** above it, and a comment saying the two move together.
+Arm C now fails on `expect(arrivedWithinCeiling)` — the legible failure — instead of a timeout.
+
+⚠️ **A single green gate run would have shipped this**, which is the whole argument for reading a
+gate rather than a package. The first run's `projectFileWatcher` *passed* — at **6.18s of suite
+time against 278ms alone** — so it was already sitting on the boundary while reading green.
+
+### §6.6 The readings
+
+| gate | reading |
+|---|---|
+| `test:main`, **#1** (before the sb-007 fix) | **423 suites / 7086 tests**, 1 red — `sb-007`, not this row. `projectFileWatcher` **PASSED under load**, 6.18s |
+| `test:main`, **#2** (after sb-007, before the timeout fix) | 423 / 7086, `sb-007` green, **`projectFileWatcher` RED** on the 5000ms runner timeout |
+| `test:main`, **#3** (both fixes in) | 🟢 **423 suites / 7086 tests, EXIT=0, ZERO reds**, 44.7s |
+| the spec alone, arm D | **16/16, EXIT=0, 280ms** (was 607ms) |
+| `sb-007/site-template.test.ts` alone | **15/15, EXIT=0** |
+
+🔴 **Run #3 is the first fully green `test:main` in this phase's record** — every prior session's
+reading carried at least one red. ✅ **And it was NOT taken on a quiet box**: a peer ran a 7-suite,
+11-second editor jest across it and said so afterwards. A green under contention is worth more than
+a green in silence, and this is the contention that used to redden the spec.
+
+⚠️ **What this baseline is NOT**: a clean-HEAD reading. The working tree carried another lane's
+uncommitted SBR-011/D46 realtime work (`SseConnectionPool.ts` and three siblings) throughout, and
+that lane said so before the run. The number is **HEAD + D46 + this row's two test files** — nobody
+should later read 7086/EXIT=0 as attributable to this change alone.
+
+### §6.7 🔴 The gate had a THIRD red, from a different phase, and no per-package run could see it
+
+`test:main` #1 failed on **`sb-007/site-template.test.ts`**: `expect(a.size).toBe(401)` against a
+template that now holds **406** nodes.
+
+**Reconciled exactly, not adjusted to fit**: `f77e6647` (**P77/SBR-007 AC3**, 13:37 the same day)
+adds five node ids to `/Admin/SectionRow` — `dropZone`, `dropHint`, `dropWords`, `dropRefused`,
+`dropRefusal` — named in its own diff. **401 + 5 = 406.**
+
+🔴 **The structural reason nobody caught it: the gate lives in `noodl-editor/tests-unit` and the
+nodes it counts live in `noodl-mcp`.** A per-package run on either side is green. This is the
+registered *"a literal count gate only works if somebody runs it"* trap with a package seam under
+it, and it had been red for **every peer on the checkout** for the rest of that afternoon.
+
+✅ The literal is updated **with a ledger line** in the style that file already keeps, naming the
+commit, the five ids and the seam. ⚠️ **The count was reconciled; the FEATURE was not reviewed** —
+SBR-007 is phase 77's row and this session did not read it.
