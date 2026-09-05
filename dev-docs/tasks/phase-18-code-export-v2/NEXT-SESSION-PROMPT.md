@@ -17,7 +17,7 @@ as well. Memory: `do-not-pile-cpu-work-on-a-shared-box`, `parallel-worktree-trap
 | EXP-009 backend connection | 🟢 |
 | EXP-010 | 🟢 |
 | EXP-011 picker coverage | 🟡 **115/127 (90.6%)** — Tier 2.8 rows 1–13 built AND driven (§60/§62/§63 this session, §61 s87, §57–59 s85); **Tier 3.11 row 1 `Server-Sent Events` built + driven (§64)**; rows 2–3 (`WebSocket`, `Subscribe To Changes`) are the only scheduled nodes left (ceiling 117); the editor write path is UNDRIVEN |
-| EXP-012 | 🟢 — the alpha notice reads 115/91% off the ledger; the 0.2.2 release notes updated to match (see "uncommitted", below) |
+| EXP-012 | 🟢 — the alpha notice reads 115/91% off the ledger; the 0.2.2 release notes match (`a805a8c2`) |
 | EXP-013 "Not exportable yet" | 🟢 — the badge spec's "scheduled" pin moved from `net.noodl.SSE` to `net.noodl.WebSocket` |
 
 ## What session 88 did
@@ -41,31 +41,25 @@ as well. Memory: `do-not-pile-cpu-work-on-a-shared-box`, `parallel-worktree-trap
 3. **Gates on the s88 tree (before the final chain)**: pkg tsc 0 · sse 35/35 · streaming-trio 60/60 · typecheck-emitted 41/41
    (token-desk under the real tsc) · drag 52/52 · `export-ledger:check` OK 122 · picker `--check` 115 exit 0 · **arms 14/16 KILLED**,
    M15 EQUIVALENT (the setter's number coercion is re-guarded by `backoffDelay` — the runtime carries the same redundancy), M5 survived ⇒
-   E6 gained the Auto-Connect-while-live row (re-arm it: `python3 mut.py M5` from `packages/nodegx-export`). Earlier on the drag-fix tree:
+   E6 gained the Auto-Connect-while-live row, **re-armed: KILLED (1 row)** — 15/16 killed, 1 equivalent. Earlier on the drag-fix tree:
    whole pkg jest 75/75 files 2725 · editor tsc 0 · exp-012/013 157/157.
 4. **The drive** (`drive64.sh`, `fakesse.js` on 8582, `EXPECTED64.md` first): idle at boot with no request; Connect ⇒ an OPTIONS
    pre-flight (`Cache-Control` is not CORS-safelisted) then ONE GET with `Accept: text/event-stream` + `Cache-Control: no-store`; four
    tokens accumulated to `Hello, world!`; a clean end ⇒ `closed`, no reconnect; Stop when closed changes nothing; a fresh Connect ⇒ a
    fresh GET with no Last-Event-ID. Written up as §64.6.
 
-## 🔴 The final gate chain — READ THE EXIT FILES before believing anything here
+## The final gate chain — READ on the final tree (commits `d11407c6` + `dcbea2e1` + `a805a8c2`)
 
-`final-gates.sh` (s88 scratchpad `3407594e-…`) ran, in order, each behind a load gate: whole pkg jest (`whole2.log/.exit/.files` — reconcile
-the file count against `ls tests/*.test.ts | wc -l` = 76), editor tsc (`editor-tsc2.*`), exp-012/013 (`exp0123b.*`), editor `test:ci`
-with `.webpack-cache` cleared (`testci2.*`; the known floor is 5 = AIX-006 ×4 + SB-017 "39 to be 38"; a `test-results.json` with a fresh
-mtime or the run did not count). **The whole-suite step started beside a peer's four-worker jest — a red there is a flake until re-run
-alone.** If any exit file is missing, that step never ran: run it yourself, alone.
+`final-gates.sh` (s88 scratchpad `3407594e-…`), each step behind a load gate: **whole pkg jest 76 files (76 on disk) 2778/2778 exit 0**
+(`whole2.*`; it started beside a peer's four-worker jest and still read clean) · **editor tsc 0** (`editor-tsc2.*`) · **exp-012/013
+157/157** (`exp0123b.*`) · **editor `test:ci` 2943 specs, 5 failures = the known floor** (AIX-006 ×4 + SB-017 acceptance 6 "Expected 39
+to be 38"; seed 88918, HEAD 9346e392 — a peer's commit on top of mine; `test-results.json` fresh at 15:58; `.webpack-cache` cleared
+first).
 
-## Uncommitted at hand-off (commit by exact pathspec; `git add` the untracked first)
+## Uncommitted at hand-off
 
-- `packages/nodegx-export/`: `src/emit/sseLib.ts` (untracked), `tests/sse.test.ts` (untracked), `tests/fixtures/token-desk/` (untracked),
-  `src/analyze/plan.ts`, `src/emit/component.ts`, `src/emit/emitApp.ts`, `coverage-ledger.json`, `tests/streaming-trio.test.ts`, the 12 pin
-  specs (`grep -a -n 'toBe(115)' tests/*.test.ts`).
-- `packages/noodl-editor/tests-unit/exp-013/exportBadge.test.tsx` (the WebSocket pin).
-- `dev-docs/tasks/phase-18-code-export-v2/`: `EXP-011-PICKER-COVERAGE.md` (§3 row 11 ticked, §64), `PROGRESS.md`, this file.
-- 🔴 `dev-docs/tasks/release-0.2.2/RELEASE-NOTES-0.2.2.md` — TWO lines (115 / 91% / "other 12") in a file a PEER holds 55 UNCOMMITTED lines
-  in. Never commit it by pathspec (it would sweep theirs): stage only the hunk (`git diff -U0 -- <file>` → keep the `115 of the 127` hunk →
-  `git apply --cached --unidiff-zero`) and commit with `git diff --cached --stat` showing that file alone.
+- Nothing of session 88's. The code (`d11407c6`), the docs (`dcbea2e1`) and the release-notes hunk (`a805a8c2` — staged alone with
+  `git apply --cached --unidiff-zero` because a PEER holds 55 uncommitted lines in that file; never commit it by pathspec) are all in.
 
 ## 🔴 Do this next
 

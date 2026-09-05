@@ -9571,8 +9571,10 @@ arms (mut.py, mut-summary.txt; sources restored md5-identical after each): 16 ar
   M15 the setter reads Reconnect Delay raw — SURVIVED and EQUIVALENT: backoffDelay re-guards `base > 0 ? base : 1000`, so no delivered
   value can tell the two apart (the runtime carries the same redundancy); recorded, not fixed.
   M5 the same-URL guard in scheduleAutoConnect removed — SURVIVED ⇒ a missing row: E6 gained "Auto Connect flipped on while the same
-  URL is live does nothing" (a re-render and a manual-Connect variant); re-armed after the row (see §64.6's gate line).
-whole package jest, editor tsc, exp-012/013, editor test:ci: see §64.6
+  URL is live does nothing" (a re-render and a manual-Connect variant); re-armed after the row: KILLED (1 row). 15/16 killed, 1 equivalent.
+whole package jest ONCE on the final tree: 76 files (76 on disk), 2778/2778, exit 0 · editor tsc 0 · exp-012/013 157/157 ·
+  editor test:ci 2943 specs / 5 failures = the known floor (AIX-006 ×4 + SB-017 acceptance 6), seed 88918, HEAD 9346e392,
+  `.webpack-cache` cleared first, `test-results.json` fresh
 ```
 
 ### §64.4 What building it found
