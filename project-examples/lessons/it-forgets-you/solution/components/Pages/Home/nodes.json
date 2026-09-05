@@ -55,7 +55,8 @@
       "children": [
         "creature-0001",
         "name-0001",
-        "reaction-0001"
+        "reaction-0001",
+        "score-0001"
       ],
       "parameters": {
         "sizeMode": "contentSize",
@@ -129,7 +130,8 @@
       },
       "children": [
         "care-0001",
-        "poke-0001"
+        "poke-0001",
+        "rest-0001"
       ]
     },
     {
@@ -242,6 +244,42 @@
       },
       "metadata": {
         "comment": "Step 5. Boolean in, number out: targetValue casts true/false to 1/0 (animate-to-value.ts:96-99), so the Switch's Current State needs no conversion node. The FIRST value to arrive is adopted outright rather than animated to, so at load currentValue is 0 and the reaction is invisible without any parameter saying so."
+      }
+    },
+    {
+      "id": "score-0001",
+      "type": "Text",
+      "label": "Score",
+      "x": 220,
+      "y": 620,
+      "parent": "card-0001",
+      "metadata": {
+        "comment": "Step 4. It carries NO text parameter at all, deliberately: the number arrives on a wire, and leaving the port unset means that if the wire ever stops delivering, the node falls back to the catalog default 'Text' and F4's placeholder check sees it. A parameter here would hide that."
+      }
+    },
+    {
+      "id": "rest-0001",
+      "type": "net.noodl.controls.button",
+      "label": "Rest",
+      "x": 220,
+      "y": 1200,
+      "parent": "board-0001",
+      "parameters": {
+        "label": "Rest",
+        "marginTop": "var(--space-2)"
+      },
+      "metadata": {
+        "comment": "Step 5. A SECOND event acting on the SAME remembered value — that is the half of 'state' a counter alone does not show. Unstyled apart from its caption; its black is the product's default (E1 in the lesson 3 register)."
+      }
+    },
+    {
+      "id": "pokes-0001",
+      "type": "Counter",
+      "label": "Pokes",
+      "x": 560,
+      "y": 1360,
+      "metadata": {
+        "comment": "Step 2. startValue is left at its default 0 and is NOT graded — a step that set it would teach a knob rather than the idea. Counter already emits countChanged, so the curriculum's paired 'Value Changed' node has no job in this graph (see SYL-007)."
       }
     }
   ],

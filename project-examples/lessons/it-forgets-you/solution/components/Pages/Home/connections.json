@@ -20,6 +20,24 @@
       "fromProperty": "currentValue",
       "toId": "reaction-0001",
       "toProperty": "opacity"
+    },
+    {
+      "fromId": "poke-0001",
+      "fromProperty": "onClick",
+      "toId": "pokes-0001",
+      "toProperty": "increase"
+    },
+    {
+      "fromId": "pokes-0001",
+      "fromProperty": "currentCount",
+      "toId": "score-0001",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "rest-0001",
+      "fromProperty": "onClick",
+      "toId": "pokes-0001",
+      "toProperty": "reset"
     }
   ]
 }
