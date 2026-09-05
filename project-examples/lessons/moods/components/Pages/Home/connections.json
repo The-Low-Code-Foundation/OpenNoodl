@@ -1,0 +1,67 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "61f9e398-9cc7-4b18-ba3b-94424ea4d54d",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "poke-0001",
+      "fromProperty": "onClick",
+      "toId": "poked-0001",
+      "toProperty": "flip"
+    },
+    {
+      "fromId": "poked-0001",
+      "fromProperty": "state",
+      "toId": "ease-0001",
+      "toProperty": "targetValue"
+    },
+    {
+      "fromId": "ease-0001",
+      "fromProperty": "currentValue",
+      "toId": "reaction-0001",
+      "toProperty": "opacity"
+    },
+    {
+      "fromId": "poke-0001",
+      "fromProperty": "onClick",
+      "toId": "pokes-0001",
+      "toProperty": "increase"
+    },
+    {
+      "fromId": "pokes-0001",
+      "fromProperty": "currentCount",
+      "toId": "score-0001",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "rest-0001",
+      "fromProperty": "onClick",
+      "toId": "pokes-0001",
+      "toProperty": "reset"
+    },
+    {
+      "fromId": "pokes-0001",
+      "fromProperty": "currentCount",
+      "toId": "caption-0001",
+      "toProperty": "count"
+    },
+    {
+      "fromId": "caption-0001",
+      "fromProperty": "formatted",
+      "toId": "story-0001",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "pokes-0001",
+      "fromProperty": "currentCount",
+      "toId": "excitement-0001",
+      "toProperty": "pokes"
+    },
+    {
+      "fromId": "excitement-0001",
+      "fromProperty": "result",
+      "toId": "creature-0001",
+      "toProperty": "size"
+    }
+  ]
+}

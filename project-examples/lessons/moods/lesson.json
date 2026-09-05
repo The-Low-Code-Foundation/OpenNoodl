@@ -1,0 +1,126 @@
+{
+  "format": "noodl-lesson@1",
+  "title": "Moods",
+  "description": "\"Hungry\" versus \"fine\" is a decision the app has to make. Conditions and branching.",
+  "authoredBy": "ai",
+  "completionBadge": "Made Its Mind Up",
+  "steps": [
+    {
+      "kind": "popup",
+      "title": "Your app cannot make up its mind",
+      "body": "## Moods\n\nPoke Nibbles once and read the card. It says *\"Nibbles has been poked 1 times\"*.\n\nThat sentence is stuck, and it is worth being precise about why. The words live in `Caption`'s **Format** box, typed in by you at the time you built it. A wire can change the *number* inside them, because you left a hole for it. No wire can change the *words*, because there is no hole for words — and there could not be, since what belongs in that hole depends on the very number arriving.\n\nSomething in the app has to look at the number and **pick one of two answers**. That is the move your app cannot make yet, and it is the only move it is missing:\n\n> **A comparison turns a value into true or false. A branch turns true or false into two different outcomes.**\n\nYou will build the machinery here, and spend it on something more interesting than a plural: Nibbles gets a mood. Ignored, it dozes. Poked enough, it is delighted. The card says which — and the app decides for itself, on every single poke, with nothing to reset and nothing to remember."
+    },
+    {
+      "title": "Ask a question instead of doing a sum",
+      "body": "Add an **Expression** node beside `Excitement`, rename it `Is Happy`, set its **Expression** to `pokes > 4`, and wire `Pokes`' **Current Count** into the **pokes** input that appears on it.\n\nThis is the same node you used last lesson, put to a different kind of work. `min(96 + pokes * 8, 200)` answered *how much*; `pokes > 4` answers *yes or no*. The `>` is a comparison, and a comparison always evaluates to one of exactly two values — true or false. Those two values have a name of their own in this editor: a **boolean**, and once you have one, everything that follows is about what you do with it.\n\nNothing on the card has changed. Nibbles is being assessed and told nothing.",
+      "detail": "**Expression** is under **CustomCode** in the node picker, the same place you found `Excitement`.\n\nThe **pokes** port appears on the node as soon as the expression is typed, exactly as it did last lesson — the names in the sum are the interface.\n\nThe other comparisons work the same way: `<`, `>=`, `<=`, and `==` for *is exactly equal to*. Note the two equals signs; a single one means something else entirely.",
+      "completeWhen": [
+        {
+          "node": "/Pages/Home:#Is Happy",
+          "hasType": "Expression"
+        },
+        {
+          "node": "/Pages/Home:#Is Happy",
+          "paramsEqual": {
+            "expression": "pokes > 4"
+          }
+        },
+        {
+          "connection": {
+            "from": "/Pages/Home:#Pokes",
+            "fromPort": "currentCount",
+            "to": "/Pages/Home:#Is Happy",
+            "toPort": "pokes"
+          }
+        }
+      ]
+    },
+    {
+      "title": "Give the answer somewhere to fork",
+      "body": "Add a **Condition** node beside `Is Happy`, rename it `Mood Check`, and wire `Is Happy`'s **Is True** output into `Mood Check`'s **Condition** input.\n\nA **Condition** is the fork in the road. It tests the boolean it is given and fires exactly one of two signals — **On True** or **On False** — and it does that again every time the answer changes. You do not have to tell it when to look. Poking Nibbles moves the count, the count moves the comparison, and the comparison moves this node, all on its own.\n\nStill nothing on the card. The fork exists and both roads lead nowhere.",
+      "detail": "**Condition** is under **Logic** in the picker.\n\n🔴 Take the answer from **Is True**, in the **Result** group. An **Expression** also offers **As Boolean**, which looks like the right port and is not — it delivers one reading when you draw the wire and never updates again, so your creature would be stuck in whatever mood it woke up in.\n\nLeave **Evaluate** unwired. It is there for the times you want to force a test at a particular moment, and it is *additional* to testing on change rather than a replacement for it.",
+      "completeWhen": [
+        {
+          "node": "/Pages/Home:#Mood Check",
+          "hasType": "Condition"
+        },
+        {
+          "connection": {
+            "from": "/Pages/Home:#Is Happy",
+            "fromPort": "isTrue",
+            "to": "/Pages/Home:#Mood Check",
+            "toPort": "condition"
+          }
+        }
+      ]
+    },
+    {
+      "title": "Name the two moods",
+      "body": "Add a **States** node below `Mood Check` and rename it `Mood`. Set its **States** to two entries, `Bored` and `Happy`, in that order. Set its **Values** to one entry, `word`. Then set `word`'s type to **String**, and fill in what that word is in each mood: while **Bored** it is `Nibbles is dozing`, and while **Happy** it is `Nibbles is delighted`.\n\nA **States** node is the two answers, written down in one place. You name the situations your app can be in, you name the things that differ between them, and then you say what each of those things is in each situation. Everything else on the node is built from those names: `word` becomes an output, and each state you named becomes a **To** input you can send the node to.\n\nThis is where the second half of the idea lives. The comparison found out *which* answer; this node holds *what the answers are*, and it holds them somewhere you can read and change without touching a single wire.",
+      "detail": "**States** is under **Animation** in the picker, which is a fair description of what it is most often used for and an unfair one about what it does. It is a state machine, and moving smoothly between the states is optional.\n\n**States** and **Values** are list fields: use the **+** on each to add an entry, and type the name into the row. Order matters in **States** — the node starts in the first one.\n\n🔴 **The type of `word` starts as Number and must be changed to String.** A value the node believes is a number is one it will try to slide gradually from one setting to the other, and a sentence cannot be slid. If the card ends up blank or reading `0`, this is why.\n\nThe two sentence boxes appear once `word` exists, grouped under the state they belong to.",
+      "completeWhen": [
+        {
+          "node": "/Pages/Home:#Mood",
+          "hasType": "States"
+        },
+        {
+          "node": "/Pages/Home:#Mood",
+          "paramsEqual": {
+            "states": "Bored,Happy",
+            "values": "word",
+            "type-word": "string",
+            "value-Bored-word": "Nibbles is dozing",
+            "value-Happy-word": "Nibbles is delighted"
+          }
+        }
+      ]
+    },
+    {
+      "title": "Send the fork to the moods",
+      "body": "Wire `Mood Check`'s **On True** output into `Mood`'s **To Happy** input, and `Mood Check`'s **On False** output into **To Bored**.\n\nThese two wires are the branch itself, and they are the first ones you have drawn that carry no value at all. A signal is a moment rather than a number: *this just happened*. **On True** does not tell `Mood` anything about the poke count, and `Mood` does not ask. It is told to go somewhere, and it goes.\n\nThat is worth holding on to, because it is how the two halves stay independent. `Is Happy` knows arithmetic and nothing about moods. `Mood` knows two sentences and nothing about counting. `Mood Check` sits between them and knows only that one road is true and the other is false.",
+      "detail": "**To Happy** and **To Bored** are on the node only because of the two names you typed into **States** in the last step. If you cannot find them, check the spelling there — the port takes the state's name exactly as written.\n\nSignal wires draw the same way as any other. The ports are the ones marked with an arrow rather than a circle.",
+      "completeWhen": [
+        {
+          "connection": {
+            "from": "/Pages/Home:#Mood Check",
+            "fromPort": "ontrue",
+            "to": "/Pages/Home:#Mood",
+            "toPort": "to-Happy"
+          }
+        },
+        {
+          "connection": {
+            "from": "/Pages/Home:#Mood Check",
+            "fromPort": "onfalse",
+            "to": "/Pages/Home:#Mood",
+            "toPort": "to-Bored"
+          }
+        }
+      ]
+    },
+    {
+      "title": "Put the mood on the card",
+      "body": "Add a **Text** node inside `Card`, underneath `Story`, and rename it `Mood Line`. Then wire `Mood`'s **word** output into that Text's **Text** input, and leave its **Text** property empty.\n\nRun the preview. The card reads *Nibbles is dozing* before you touch anything, because `Mood` starts in the first state you named. Poke five times and watch the line change to *Nibbles is delighted* — on the fifth poke and not the fourth, because you asked for *more than four*. Press **Rest** and it goes straight back to dozing.\n\nNothing in that chain was told when to run. You built a question, a fork, and two answers, and the app now makes a decision several times a second without being asked to.",
+      "detail": "Drop the node onto `Card` in the node tree on the left to put it inside the card rather than beside it, the same way you added `Story`.\n\n**word** is an output on `Mood` because you named it in **Values**. It carries whichever of the two sentences matches the state the node is in.",
+      "completeWhen": [
+        {
+          "node": "/Pages/Home:#Home:#Page shell:#Card:#Mood Line",
+          "hasType": "Text"
+        },
+        {
+          "connection": {
+            "from": "/Pages/Home:#Mood",
+            "fromPort": "word",
+            "to": "/Pages/Home:#Home:#Page shell:#Card:#Mood Line",
+            "toPort": "text"
+          }
+        }
+      ]
+    },
+    {
+      "kind": "popup",
+      "title": "What you just learned",
+      "body": "Your app makes a decision now, and the decision is spread across three nodes that each do one thing.\n\n- **A comparison is just another transformation.** `pokes > 4` sits in the same kind of node as `min(96 + pokes * 8, 200)` and re-runs on the same terms. The only difference is the shape of its answer: true or false rather than a number. Everything in this editor that decides anything starts from a value of that shape.\n- **Branching is a node, not a line of code.** `Mood Check` is permanently wired between the question and the answers. You never wrote *if*, and there is nowhere in your project where the fork happens once and finishes.\n- **The answers live somewhere you can read.** Both sentences are on `Mood`, side by side, in plain sight. Changing what Nibbles says when it is bored is one text box and no wires — which is the difference between an app you can hand to somebody else and one only you can edit.\n\nNow leave Nibbles alone and watch it.\n\nNothing happens. It dozes because you have not poked it, not because any time has passed, and it will sit there unchanged for a week. A creature that only ever reacts to a click is a creature with no inner life at all — and one mood swing hanging off one comparison is a thin inner life even then. Real needs stack up: hungry **and** bored is a different animal from either on its own.\n\nCombining conditions, and time as a source of events, is the next lesson."
+    }
+  ]
+}
