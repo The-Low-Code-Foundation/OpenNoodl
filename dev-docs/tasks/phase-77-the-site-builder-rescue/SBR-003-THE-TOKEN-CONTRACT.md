@@ -158,12 +158,37 @@ is now fixed and documented.
 
 ---
 
-## 6. ✅ AC5 CLOSED — the owed rendered probe, built and read (s51, 2026-09-05)
+## 6. ✅ AC5 CLOSED — the probe is a SPEC now (s51, 2026-09-05)
 
-**The last item SBR-003 was carrying.** §2's first bullet said the `{value,unit}` ports accept
-`var(--token)` *per `WIRE_FORMAT_LEGEND`* and then refused to close on that: **"verify with a
-rendered probe … not by quoting the legend."** At s4 nothing consumed the token, so the probe had
-nowhere to stand. `/Pages/Site`'s `shell` consumes it now
+🔴 **CORRECTION, and it is the finding about this session.** §5 above says the rendered probe is
+*"still owed"*. **It was not owed — s5 took the reading on 2026-08-28** and wrote it into
+[`SBR-004` §140–141](SBR-004-THE-PUBLIC-SITE-WEARS-THE-THEME.md) as a table with the identical
+structure: known token `704px` computed and 704px rendered, `var(--site-measure-typo)` control
+`none` and 940px, in a 988px frame. `TASKS.md`'s s5 entry says so in as many words — *"✅ SBR-003's
+carried probe answered"*.
+
+**Two files in this phase disagreed and this session read only one.** §5 says owed; `TASKS.md` line
+290 and `SBR-004` say answered. ✅ *"Re-measure the blocker before you inheriting it" was applied to
+the wrong question* — the check run was **"does a spec exist?"** (it did not, and that grep was
+correct) rather than **"has the question been answered?"** (it had). A status section is not a
+measurement, and neither is its absence of an update.
+
+**What was actually missing, and what AC5 actually asks for.** AC5's words are *"the probe specs of
+§2 **exist and are green** — each one paired with a control"*. s5's reading was a one-off drive:
+nothing in the repo asserted it, nothing would have caught a regression, and the number lived in a
+task file. **So this session's contribution is the gate, not the discovery** — plus
+[D57](DEFECTS-THE-SITE-BUILDER-FOUND.md#d57), which is new and which a re-reading of s5's table
+could not have produced.
+
+⚠️ **The commit that closed this (`1e415037`) does not carry this correction** — its message reads
+as though the reading were first taken here. A peer committed on top before it could be amended and
+shared history was not rewritten for it. **This section is the correct statement.**
+
+---
+
+§2's first bullet said the `{value,unit}` ports accept `var(--token)` *per `WIRE_FORMAT_LEGEND`*
+and refused to close on it: **"verify with a rendered probe … not by quoting the legend."**
+`/Pages/Site`'s `shell` consumes the token
 ([`sb006Components.ts:1918`](../../../packages/noodl-mcp/tests/sb006Components.ts)).
 
 **Home:** `sb008-public-site-drive.test.ts` §7 — the drive that already boots a real backend and a
@@ -171,6 +196,10 @@ real browser over the shipped graph. Instrument:
 [`noodl-mcp/tests/measureClamp.ts`](../../../packages/noodl-mcp/tests/measureClamp.ts).
 
 ### The reading — both arms, 1280×900, anonymous, enforcement on
+
+⚠️ **This REPRODUCES s5's table at a different viewport**, it does not replace it. s5 read a 988px
+frame and a 940px unclamped shell; this reads 1280 and 1232. Two independent readings of the same
+mechanism two viewports apart is worth more than either alone — but neither is news.
 
 | | `--site-measure` on `:root` | shell computed `max-width` | shell | frame | frame padding |
 |---|---|---|---|---|---|
