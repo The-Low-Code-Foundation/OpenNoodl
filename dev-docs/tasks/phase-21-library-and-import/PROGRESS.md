@@ -259,6 +259,26 @@ misleading comment has been replaced with the measurement.
 
 ## Log
 
+- **2026-09-05 — the shelf was published for the first time since 2026-08-22: 8 new entries, 22 version bumps, and three entries that drew nothing on install** (content repo `02ad8a6`).
+
+  **Published**, live and verified by fetching the served index (not merely the label-coverage gate): prefabs **35 → 42**, modules **30 → 30** (`keyboard-shortcuts` in, `avatar` retired). `library:check` 72/72 exit 0, `library:build` + `library:verify-dist` exit 0, `library:verify-origin` exit 0 (42/42, 30/30), the three existing behavioural drives green (17 checks), and two new drives green (12/12 and 6/6).
+
+  | New | Version | | Bumped | |
+  |---|---|---|---|---|
+  | File Upload | 1.0.0 | | Form | 0.5.0 → **0.10.0** |
+  | User Menu | 1.0.0 | | Table | 0.7.0 → **0.10.2** |
+  | Settings Page | 1.1.0 | | Tags | 0.2.0 → **0.5.0** |
+  | Keyboard Shortcuts (module) | 1.0.0 | | PDF Viewer | 1.1.0 → **1.2.0** |
+  | Accordion · Avatar · Search Bar · Stepper | (built last session, first publish) | | + 18 others | |
+
+  **`form`, `tags` and `table` drew NOTHING on install** — all three were a `For Each` over data with no source, so a user installed them and saw an empty rectangle. Each now carries the `card-grid` contract. Two defects surfaced that only a screenshot could catch: `form`'s Plan dropdown rendered as a **4px black bar** (`net.noodl.controls.options` opts into a default solid/2px/`#000000` border while every sibling defaults to `none`, and its content is empty until something is selected — so under a content-driven size mode the border was the only thing with a size); and a script threw on every load. That throw was **not** in the node it was reported against: `Noodl.Events.emit` dispatches synchronously, so a listener's frame unwinds into the *emitting* script's `try/catch` and wears its name. It cost two measured render rounds, and the first diagnosis of it — blaming `Noodl.Objects[id]` — was **wrong and has been removed from the audit rather than left standing**.
+
+  **`pdf-viewer` was broken at runtime** (`Can't find component model for module.inlineHtml`): it needs `modules/custom-html` and nothing installed it. Fixed at the mechanism — `library.json` now takes a `dependencies` array, resolved by `build.js::resolveDependencies` (which fails the build on an unknown slug, self-reference or cycle) and installed by `ModuleLibraryModel._installWithDependencies`. Re-bundling was rejected **not** for the duplication but because two copies race for `noodl_modules/custom-html-module/` and the loser is silent.
+
+  **The render gate was blind to the mechanism it exists to protect** — it built its scratch project from the entry's own `project/` only, and an unresolved node type does not draw nothing, it *throws*. It now resolves dependencies transitively. A second harness bug: `pickShowcase` filtered on `roots.length > 0`, which counts **nodes, not ink**, so six logic-only entries were reported as "drew nothing" on every sweep and for two of them it out-ranked a sibling that *would* have drawn.
+
+  **Still open, owner NONE:** `table`'s column `Width` never reaches the cell (the dimension port's setter *deletes* the prop for a value without `.value`) — deliberately declined without a render beside it, since the fix switches on a path that has never executed for every column of every table.
+
 - **2026-08-03 — a partial live pass: `data-test` hooks shipped, LIB-002's two shifts measured, and one real defect found. The pass was cut short deliberately** (commit `789dc073`).
 
   **What shipped.** `views/ImportFlow` now has `data-test` hooks across all five components (residual E, `789dc073`) — the repo's existing `testId`→`data-test` convention, attributes only, no behaviour change, `typecheck:editor` **0**. The load-bearing one is `data-test-stage` on the root: the Done stage renders *narrower* than Select/Review (`rootNarrow`), which is exactly why a geometry- or class-based probe has read a successful import as *"the flow closed"*. Where the flow is, is now a fact to read rather than infer.
