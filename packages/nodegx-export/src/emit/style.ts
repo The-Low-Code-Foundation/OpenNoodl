@@ -38,7 +38,9 @@ export type StyleRole =
   | 'select'
   | 'range'
   | 'video'
-  | 'circle';
+  | 'circle'
+  /** EXP-011 §61. A Component Stack — a flex column that fills its parent and clips, as its `defaultCss` states. */
+  | 'stack';
 
 export interface Decl {
   prop: string;
@@ -94,6 +96,9 @@ export const CONTENT_PARAMS: Record<string, Record<string, string>> = {
   },
   Page: { title: 'head', description: 'head', urlPath: 'routing' },
   'For Each': { template: 'template', items: 'items', inputMappingScript: 'mapping' },
+  // EXP-011 §61. The stack's structure ports — read by the plan, never style. The per-page `pageComp-<id>` /
+  // `pagePath-<id>` ports are dynamic and are skipped by prefix in `computeNodeStyle`.
+  'Page Stack': { name: 'stack', pages: 'stack', useRoutes: 'stack', startPage: 'stack' },
   ...aliased(['net.noodl.visual.icon'], {
     iconSourceType: 'icon-source',
     iconIconSource: 'icon-source',
@@ -406,6 +411,17 @@ export function computeNodeStyle(node: NodeIR, role: StyleRole, catalog: Catalog
     const direction = literal('flexDirection') ?? catalogDefault('flexDirection') ?? 'column';
     decls.push({ prop: 'flex-direction', value: String(direction) });
   }
+  // EXP-011 §61. navigation-stack.tsx `defaultCss`, applied at initialize: a relative flex column filling its
+  // parent, clipping unless Clip Content is unticked (the declared default never runs its setter, so the
+  // class states the effective value — `overflow: hidden` unless the author turned it off).
+  if (role === 'stack') {
+    decls.push({ prop: 'width', value: '100%' });
+    decls.push({ prop: 'flex', value: '1 1 100%' });
+    decls.push({ prop: 'position', value: 'relative' });
+    decls.push({ prop: 'display', value: 'flex' });
+    decls.push({ prop: 'flex-direction', value: 'column' });
+    if (literal('clip') !== false) decls.push({ prop: 'overflow', value: 'hidden' });
+  }
 
   // Columns → CSS Grid (VISUALS-TARGET §1): the layout string's fractions are fr units, the
   // negative-margin gutter is gap, Auto Fit is the repeat() it was imitating. Breakpoints live
@@ -554,7 +570,8 @@ export function computeNodeStyle(node: NodeIR, role: StyleRole, catalog: Catalog
     });
   }
 
-  if (literal('clip') === true) decls.push({ prop: 'overflow', value: 'hidden' });
+  // The stack's clip is decided with its defaults above (its declared default is true, and the class states it).
+  if (role !== 'stack' && literal('clip') === true) decls.push({ prop: 'overflow', value: 'hidden' });
 
   boxShorthand('padding', params, decls);
   boxShorthand('margin', params, decls);
@@ -570,6 +587,8 @@ export function computeNodeStyle(node: NodeIR, role: StyleRole, catalog: Catalog
   for (const { name } of node.parameters) {
     if (consumed.has(name) || CONSUMED.has(name)) continue;
     if (content[name] !== undefined) continue;
+    // EXP-011 §61. The stack's per-page ports are dynamic (`pageComp-<id>`, `pagePath-<id>`) — structure, read by the plan.
+    if (role === 'stack' && (name.startsWith('pageComp-') || name.startsWith('pagePath-'))) continue;
     if (PASSTHROUGH.has(name)) {
       decls.push({ prop: kebabCase(name), value: cssParam(name)! });
     } else {

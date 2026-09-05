@@ -32,6 +32,7 @@ import { RECORD_FILTER_LIB_PATH, recordFilterLibSource } from './recordFilterLib
 import { STREAMING_LIB_PATH, streamingLibSource } from './streamingLib';
 import { CRYPTO_LIB_PATH, cryptoLibSource } from './cryptoLib';
 import { SCREEN_LIB_PATH, screenLibSource } from './screenLib';
+import { PAGE_STACK_LIB_PATH, pageStackLibSource } from './pageStackLib';
 import { EmittedCopy, emitKits } from './kits';
 import { README_PATH, renderReadme } from './readme';
 import { ExportReportData, REPORT_PATH, ReportComponent, renderReport, stripScope } from './report';
@@ -140,6 +141,8 @@ export function emitApp(ir: ExportIR, catalog: Catalog): EmittedApp {
   // EXP-011 §59.
   let cryptoLibUsed = false;
   let screenLibUsed = false;
+  // EXP-011 §61.
+  let pageStackLibUsed = false;
   const reportComponents: ReportComponent[] = [];
   for (const plan of project.plans) {
     if (plan.skipReason) {
@@ -197,6 +200,7 @@ export function emitApp(ir: ExportIR, catalog: Catalog): EmittedApp {
     if (emitted.streamingLib) streamingLibUsed = true;
     if (emitted.cryptoHelpers.size > 0) cryptoLibUsed = true;
     if (emitted.screenLib) screenLibUsed = true;
+    if (emitted.pageStackLib) pageStackLibUsed = true;
   }
 
   /**
@@ -261,6 +265,10 @@ export function emitApp(ir: ExportIR, catalog: Catalog): EmittedApp {
   // EXP-011 §59. The crypto verbs and the viewport hook, each only where a component calls into it.
   if (cryptoLibUsed) {
     files[CRYPTO_LIB_PATH] = GENERATED_MODULE_TS + cryptoLibSource();
+  }
+  // EXP-011 §61. Owed by a rendered stack, a push, a pop, or a component the stack pushes (its reserved prop's type).
+  if (pageStackLibUsed) {
+    files[PAGE_STACK_LIB_PATH] = GENERATED_MODULE_TS + pageStackLibSource();
   }
   if (screenLibUsed) {
     files[SCREEN_LIB_PATH] = GENERATED_MODULE_TS + screenLibSource();

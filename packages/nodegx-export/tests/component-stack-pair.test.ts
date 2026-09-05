@@ -162,7 +162,15 @@ describe('EXP-011 §16 — why the pair is re-tiered rather than translated', ()
     expect(src).toContain('if (this._internal.useRoutes && typeof window !== \'undefined\' && window.history !== undefined) {');
   });
 
-  it('the container these two drive is itself deferred in the ledger', () => {
+  /**
+   * EXP-011 §61 (session 86). This row used to pin all three as `deferred` — "if `Page Stack` is ever
+   * translated, this test fails, which is exactly when the pair should be reconsidered". That moment came:
+   * the container translated in §61 and the pair landed WITH it, as §16.3 said they must. The pin is now the
+   * positive claim, and the three findings above stay as they were — the runtime facts they measure are the
+   * ones §61 transcribed (the back channel as a callback, the url only with useRoutes, the pushed component's
+   * own Component Inputs set by the stack).
+   */
+  it('the container these two drive translated in §61, and the pair landed with it — not before', () => {
     const ledger = JSON.parse(read(path.join(__dirname, '..', 'coverage-ledger.json')));
     const rows: Record<string, unknown>[] = [];
     const walk = (o: unknown) => {
@@ -175,15 +183,30 @@ describe('EXP-011 §16 — why the pair is re-tiered rather than translated', ()
     walk(ledger);
     const byName = (n: string) => rows.find((r) => r.typeName === n);
 
-    // A pusher with no stack has nothing to push onto. If `Page Stack` is ever translated, this
-    // fails and the pair becomes answerable — which is exactly when it should be reconsidered.
-    expect(byName('Page Stack')?.status).toBe('deferred');
-    expect(byName('PageStackNavigate')?.status).toBe('deferred');
-    expect(byName('PageStackNavigateBack')?.status).toBe('deferred');
-
-    // And all three are scheduled to the same tier, which is the point of the re-tiering.
     for (const n of ['Page Stack', 'PageStackNavigate', 'PageStackNavigateBack']) {
-      expect(String(byName(n)?.exemption)).toContain('Tier 3');
+      expect(byName(n)?.status).toBe('translated');
+      expect(String(byName(n)?.note)).toContain('EXP-011 §61');
+      expect(byName(n)?.exemption).toBeUndefined();
     }
+    // The three moved together: a pusher with no stack has nothing to push onto, and the ledger says so once
+    // per row — the pair's notes name the container's mechanism, the container's names the pair's.
+    expect(String(byName('PageStackNavigate')?.note)).toContain('replaceAsync installs none');
+    expect(String(byName('PageStackNavigateBack')?.note)).toContain('getNodesWithType, non-recursive');
+    expect(String(byName('Page Stack')?.note)).toContain('no transition');
+  });
+
+  it('the Pop reaches its stack through a prop because the runtime reaches the Pop non-recursively', () => {
+    // §61.0's design decision, pinned against the file it was read from: the stack installs the back
+    // callback on `content.nodeScope.getNodesWithType(...)` — the pushed component's OWN scope. A Pop one
+    // component below never receives it, so a reserved prop the stack row passes is the exact reach; a
+    // context would reach further than the runtime does.
+    const src = read(RUNTIME_STACK);
+    expect(src).toContain("content.nodeScope.getNodesWithType('PageStackNavigateBack')");
+    expect(src).not.toContain("getNodesWithTypeRecursive('PageStackNavigateBack')");
+    // And only the push path installs it: replace and reset build the content without one. Counted over CALL
+    // expressions — the text count reads 2, because the type the call is made through DECLARES the method too,
+    // which is this file's own lesson about greps, met again while writing this row.
+    expect(countMethodCalls(RUNTIME_STACK, '_setBackCallback')).toBe(1);
+    expect(countText(RUNTIME_STACK, '_setBackCallback(')).toBe(2);
   });
 });

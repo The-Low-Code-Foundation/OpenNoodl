@@ -35,7 +35,8 @@ import {
   whereExprs,
   RecordWhere,
   STREAM_NODES,
-  streamFieldMaybeUndefined
+  streamFieldMaybeUndefined,
+  PAGE_STACK_ENTRY_PROP
 } from '../analyze/plan';
 import { ExportIR, ITEM_OUTPUT_SIGNAL, NodeIR } from '../ir/types';
 import { KitBinding, tsTypeOf as kitPortTsType } from './kits';
@@ -54,6 +55,7 @@ import { SCRIPT_CODE_PREFIX } from '../analyze/script';
 import { ID_HELPERS_BY_FN, ID_LIB_PATH, IdHelper } from './idLib';
 import { CRYPTO_LIB_PATH, CryptoHelper } from './cryptoLib';
 import { SCREEN_LIB_PATH } from './screenLib';
+import { PAGE_STACK_LIB_PATH } from './pageStackLib';
 import { computeNodeStyle, computeRoleCss, CONTENT_ATTR_ORDER, CONTENT_PARAMS, Decl, iconSourceOf, RoleCss, StyleRole, WIRED_STYLE_SINKS } from './style';
 
 const GENERATED_TS = '// @nodegx:generated (visual — provenance markers complete in EXP-007)\n';
@@ -101,7 +103,9 @@ const TAGS: Record<string, string> = {
   range: 'input',
   select: 'select',
   video: 'video',
-  circle: 'svg'
+  circle: 'svg',
+  // EXP-011 §61. The Component Stack's container — the runtime's `PageStackReactComponent` is a div.
+  stack: 'div'
 };
 
 /**
@@ -151,6 +155,8 @@ export interface EmittedComponent {
   /** EXP-011 §59. `src/lib/crypto.ts` verbs this component calls; `src/lib/screen.ts` is owed when a viewport hook prints. */
   cryptoHelpers: Set<string>;
   screenLib: boolean;
+  /** EXP-011 §61. `src/lib/pageStack.ts` is owed when this component renders a stack, pushes, pops, or is pushed. */
+  pageStackLib: boolean;
 }
 
 export function emitComponent(
@@ -195,6 +201,9 @@ export function emitComponent(
       // EXP-011 §59. The code rides the action, read off the node table in plan.ts.
       case 'crypto-call':
         return tsLiteral(action.code);
+      // EXP-011 §61. The one Pop failure the export can reach (navigate-back.ts).
+      case 'stack-pop':
+        return tsLiteral('pop-component-stack/no-stack-in-scope');
       default:
         return tsLiteral('outcome/unspecified-failure');
     }
@@ -464,6 +473,8 @@ export function emitComponent(
     // EXP-011 §59. The same clause for the crypto rows; a viewport read earns its hook.
     if (expr.kind === 'crypto-out' && expr.viaState !== undefined) referencedStateNames.add(expr.viaState);
     if (expr.kind === 'screen-out') usedScreenNodeIds.add(expr.nodeId);
+    // EXP-011 §61. A Back Result read through the row earns the row; the local form is the callback's own argument.
+    if (expr.kind === 'stack-back-result' && expr.viaState !== undefined) referencedStateNames.add(expr.viaState);
     if (expr.kind === 'format') {
       for (const part of expr.parts) if (typeof part !== 'string') collectExprUse(part);
     }
@@ -623,6 +634,20 @@ export function emitComponent(
       action.then.forEach(collectActionUse);
       action.failThen.forEach(collectActionUse);
     }
+    // EXP-011 §61. The parameters the push sets, the row its callback writes, and every callback's chain.
+    if (action.kind === 'stack-push') {
+      if (action.backResults !== undefined) referencedStateNames.add(action.backResults);
+      for (const param of action.params) collectExprUse(param.expr);
+      action.then.forEach(collectActionUse);
+      action.unchangedThen.forEach(collectActionUse);
+      for (const back of action.backActions) back.then.forEach(collectActionUse);
+    }
+    if (action.kind === 'stack-pop') {
+      for (const result of action.results) collectExprUse(result.expr);
+      action.then.forEach(collectActionUse);
+      action.failThen.forEach(collectActionUse);
+    }
+    if (action.kind === 'stack-reset') action.then.forEach(collectActionUse);
     // EXP-011 Tier 2.5. The link is an expression and both outcome chains are chains; this node
     // writes no row of its own, so there is nothing else here to reference.
     if (action.kind === 'external-link') {
@@ -738,6 +763,11 @@ export function emitComponent(
             // opened from a UUID's Failure chain is a popup nothing here knows is attached.
             a.kind === 'id-new' || a.kind === 'crypto-call'
             ? [a, ...deepActions(a.then), ...deepActions(a.failThen)]
+            : // EXP-011 §61. The pusher's three callback families; the Pop's two arms.
+              a.kind === 'stack-push'
+              ? [a, ...deepActions(a.then), ...deepActions(a.unchangedThen), ...a.backActions.flatMap((b) => deepActions(b.then))]
+            : a.kind === 'stack-pop'
+              ? [a, ...deepActions(a.then), ...deepActions(a.failThen)]
             : // EXP-011 §39. Four chains — a popup opened from a Delay's Finished is the shape
               // this node exists for, and it is nowhere without this line.
               a.kind === 'delay'
@@ -761,7 +791,9 @@ export function emitComponent(
                 a.kind === 'api-call' ||
                 a.kind === 'date-now-read' ||
                 a.kind === 'collection-remove' ||
-                a.kind === 'array-new'
+                a.kind === 'array-new' ||
+                // EXP-011 §61. A Reset's one chain.
+                a.kind === 'stack-reset'
               ? [a, ...deepActions(a.then)]
               : [a]
     );
@@ -860,6 +892,8 @@ export function emitComponent(
     // EXP-011 §59. The same clause; a viewport read from a hook argument earns the hook too.
     if (expr.kind === 'crypto-out' && expr.viaState !== undefined) referencedStateNames.add(expr.viaState);
     if (expr.kind === 'screen-out') usedScreenNodeIds.add(expr.nodeId);
+    // EXP-011 §61. A render read of a Back Result is always the row form — the local exists only inside the back chain.
+    if (expr.kind === 'stack-back-result' && expr.viaState !== undefined) referencedStateNames.add(expr.viaState);
     if (expr.kind === 'jsfun-out') {
       if (expr.viaState !== undefined) {
         // A materialized read (§4f) goes through the state var, not a render local.
@@ -1367,6 +1401,12 @@ export function emitComponent(
         return expr.viaState !== undefined;
       case 'screen-out':
         return false;
+      // EXP-011 §61. The stack's two outputs boot `''` / 0; a Back Result the pop did not carry is undefined in both forms.
+      // Must agree with plan.ts maybeUndefinedExpr.
+      case 'stack-out':
+        return false;
+      case 'stack-back-result':
+        return true;
       // The row is undefined until the first failure; the chain-local is assigned on the line
       // above the read and never is. Must agree with plan.ts maybeUndefinedExpr (EXP-011 §24).
       case 'outcome-error':
@@ -1680,6 +1720,11 @@ export function emitComponent(
         return expr.viaState ?? cryptoLocalReadOf(expr.nodeId, expr.node);
       case 'screen-out':
         return `${expr.local}.${expr.field}`;
+      // EXP-011 §61. The stack's field off its handle; a Back Result off the row or off the callback's argument.
+      case 'stack-out':
+        return `${expr.local}.${expr.field}`;
+      case 'stack-back-result':
+        return memberExpr(expr.viaState ?? expr.local ?? 'results', expr.key);
       case 'now-out': {
         const base = expr.viaState ?? nowLocalOf(expr.nodeId);
         if (expr.output === 'timestamp') return `${base}.getTime()`;
@@ -1989,6 +2034,13 @@ export function emitComponent(
         case 'screen-out':
           add(`${e.local}.${e.field}`);
           break;
+        // EXP-011 §61. The stack's field is its own dependency; a Back Result's row is the dependency, its local cannot reach an effect.
+        case 'stack-out':
+          add(`${e.local}.${e.field}`);
+          break;
+        case 'stack-back-result':
+          if (e.viaState !== undefined) add(e.viaState);
+          break;
         // EXP-011 §55. The row is the dependency; the chain-local cannot reach an effect.
         case 'minted-array-get':
           if (e.viaLocal === undefined) add(mintStateName(e.nodeId));
@@ -2236,6 +2288,18 @@ export function emitComponent(
         // EXP-011 §59. The inputs, then both arms.
         case 'crypto-call':
           return a.inputs.some((i) => i.expr !== undefined && reads(i.expr)) || a.then.some(inAction) || a.failThen.some(inAction);
+        // EXP-011 §61. The parameters, then every callback; the results, then both arms; the one chain.
+        case 'stack-push':
+          return (
+            a.params.some((p) => reads(p.expr)) ||
+            a.then.some(inAction) ||
+            a.unchangedThen.some(inAction) ||
+            a.backActions.some((b) => b.then.some(inAction))
+          );
+        case 'stack-pop':
+          return a.results.some((r) => reads(r.expr)) || a.then.some(inAction) || a.failThen.some(inAction);
+        case 'stack-reset':
+          return a.then.some(inAction);
         default:
           return false;
       }
@@ -3308,6 +3372,78 @@ export function emitComponent(
        */
       case 'states-go':
         return action.verb === 'toggle' ? `${action.local}.toggle()` : `${action.local}.goTo(${tsLiteral(action.state ?? '')})`;
+      /**
+       * EXP-011 §61. A push, printed as the runtime's own call (`navigate.ts` `navigate()`): the target, the
+       * parameters by the target's own prop identifiers, the back callback (the results row written FIRST, then
+       * the action's chain — the runtime flags the outputs dirty before it sends the signal), and the two
+       * outcome callbacks. Replace mode is `replaceComponent` with no callback, as `replaceAsync` installs none.
+       */
+      case 'stack-push': {
+        const at = pad(indent);
+        const inner = pad(indent + 2);
+        const inner2 = pad(indent + 4);
+        const objKey = (name: string) => (/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(name) ? name : JSON.stringify(name));
+        const fields: string[] = [`${inner}target: ${tsLiteral(action.target)}`];
+        if (action.params.length > 0) {
+          const entries = action.params.map((p) => {
+            const code = exprCode(p.expr, 'handler');
+            const value = p.coerce === 'string' ? `String(${code} ?? '')` : code;
+            return `${objKey(targetPropName(action.targetLegacy, p.port) ?? p.port)}: ${value}`;
+          });
+          fields.push(`${inner}params: { ${entries.join(', ')} }`);
+        }
+        if (action.mode === 'push' && (action.backResults !== undefined || action.backActions.length > 0)) {
+          const resultsParam = `${action.local}Results`;
+          const lines: string[] = [];
+          if (action.backResults !== undefined) lines.push(`${inner2}${stateSetterOf(action.backResults)}(${resultsParam});`);
+          for (const back of action.backActions) {
+            lines.push(`${inner2}if (action === ${tsLiteral(back.action)}) {`, ...blockBody(expandActions(back.then), indent + 6), `${inner2}}`);
+          }
+          const isAsync = action.backActions.some((b) => actionsAwait(expandActions(b.then)));
+          const actionParam = action.backActions.length > 0 ? 'action' : '_action';
+          fields.push(`${inner}backCallback: ${isAsync ? 'async ' : ''}(${actionParam}, ${resultsParam}) => {\n${lines.join('\n')}\n${inner}}`);
+        }
+        if (action.then.length > 0) fields.push(`${inner}hasNavigated: ${handlerArrow(action.then, '()', indent + 2)}`);
+        if (action.unchangedThen.length > 0) fields.push(`${inner}hasUnchanged: ${handlerArrow(action.unchangedThen, '()', indent + 2)}`);
+        const fn = action.mode === 'replace' ? 'replaceComponent' : 'pushComponent';
+        return `${fn}(${tsLiteral(action.stack)}, {\n${fields.join(',\n')}\n${at}})`;
+      }
+      /**
+       * EXP-011 §61. A pop (`navigate-back.ts` `navigate()`): the call on the reserved prop, the Done arm, and the
+       * Failure arm — which raises `pop-component-stack/no-stack-in-scope` on the channel, the one failure the
+       * export can reach (`reportOutcome` raises before the pulse), then runs its chain. Always the block form.
+       * The `'code' in` test is the runtime's own discriminant: an end-stop answers `unchanged`, not a code.
+       */
+      case 'stack-pop': {
+        const at = pad(indent);
+        const inner = pad(indent + 2);
+        const objKey = (name: string) => (/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(name) ? name : JSON.stringify(name));
+        const args: string[] = [];
+        if (action.backAction !== undefined) args.push(`backAction: ${tsLiteral(action.backAction)}`);
+        if (action.results.length > 0) {
+          // `{ email }` where the value is the same identifier — the way a person writes it.
+          const entries = action.results.map((r) => {
+            const code = exprCode(r.expr, 'handler');
+            return code === r.key && objKey(r.key) === r.key ? code : `${objKey(r.key)}: ${code}`;
+          });
+          args.push(`results: { ${entries.join(', ')} }`);
+        }
+        const call = `popComponent(${PAGE_STACK_ENTRY_PROP}, ${args.length > 0 ? `{ ${args.join(', ')} }` : '{}'})`;
+        const head = `const ${action.local} = ${call};`;
+        const doneLines = blockBody(expandActions(action.then), indent + 2);
+        const failLines = [
+          `${inner}${raiseLine(action.nodeId, errorCodeOf(action), `${action.local}.message`)}`,
+          ...blockBody(expandActions(action.failThen), indent + 2)
+        ];
+        if (doneLines.length === 0) return [head, `${at}if (!${action.local}.ok && 'code' in ${action.local}) {`, ...failLines, `${at}}`].join('\n');
+        return [head, `${at}if (${action.local}.ok) {`, ...doneLines, `${at}} else if ('code' in ${action.local}) {`, ...failLines, `${at}}`].join('\n');
+      }
+      /** EXP-011 §61. A Reset: the call, then the Done chain — `resetAsync` reports done last. */
+      case 'stack-reset': {
+        const at = pad(indent);
+        const statements = [`${action.local}.reset()`, ...expandActions(action.then).map((a) => actionCode(a, indent))];
+        return statements.join(`;\n${at}`);
+      }
       case 'delay': {
         const at = pad(indent);
         const inner = pad(indent + 2);
@@ -3515,7 +3651,11 @@ export function emitComponent(
     (a.kind === 'id-new' &&
       (idNewIsBlock(a) || a.materialize !== undefined || a.then.length > 0 || chainReadsIdLocal(a.then, a.nodeId))) ||
     // EXP-011 §59. Always the block form — the Failure arm always raises.
-    a.kind === 'crypto-call'
+    a.kind === 'crypto-call' ||
+    // EXP-011 §61. A push is a multi-line call; a pop is always the block form; a Reset with a chain is a run of statements.
+    a.kind === 'stack-push' ||
+    a.kind === 'stack-pop' ||
+    (a.kind === 'stack-reset' && a.then.length > 0)
     );
   }
 
@@ -3545,7 +3685,9 @@ export function emitComponent(
       // `Unique Id` form is a run of statements and takes one, exactly as a Now Read does.
       (a.kind === 'id-new' && idNewIsBlock(a)) ||
       // EXP-011 §59. The block form ends in `}` too.
-      a.kind === 'crypto-call'
+      a.kind === 'crypto-call' ||
+      // EXP-011 §61. The pop's block form ends in `}`; the push ends in `)` and takes its `;`, as does a Reset.
+      a.kind === 'stack-pop'
     );
   }
   /** Whether anything in these actions, at any depth, is awaited — the arrow around it is `async`. */
@@ -3574,7 +3716,7 @@ export function emitComponent(
     return expanded.map((a) =>
       actionTakesNoTerminator(a)
         ? `${pad(indent)}${actionCode(a, indent)}`
-        : `${pad(indent)}${actionCode(a, a.kind === 'date-now-read' || a.kind === 'id-new' || a.kind === 'crypto-call' || a.kind === 'branch' || a.kind === 'array-new' ? indent : 0)};`
+        : `${pad(indent)}${actionCode(a, a.kind === 'date-now-read' || a.kind === 'id-new' || a.kind === 'crypto-call' || a.kind === 'branch' || a.kind === 'array-new' || a.kind === 'stack-push' || a.kind === 'stack-reset' ? indent : 0)};`
     );
   }
   /**
@@ -3869,6 +4011,18 @@ export function emitComponent(
     const specifier = `${relRoot}/${CRYPTO_LIB_PATH.replace(/^src\//, '').replace(/\.ts$/, '')}`;
     internalImports.set(specifier, `import { ${[...usedCryptoHelpers].sort().join(', ')} } from '${specifier}';`);
   }
+  // EXP-011 §61. `src/lib/pageStack.ts`, earned from the calls that print, the hook line, and the reserved prop's type.
+  const usedPageStackNames = new Set<string>();
+  for (const a of deepActions(allActions)) {
+    if (a.kind === 'stack-push') usedPageStackNames.add(a.mode === 'replace' ? 'replaceComponent' : 'pushComponent');
+    if (a.kind === 'stack-pop') usedPageStackNames.add('popComponent');
+  }
+  if (plan.pageStacks.length > 0) usedPageStackNames.add('usePageStack');
+  if (plan.popsStack) usedPageStackNames.add('PageStackEntryHandle');
+  if (usedPageStackNames.size > 0) {
+    const specifier = `${relRoot}/${PAGE_STACK_LIB_PATH.replace(/^src\//, '').replace(/\.ts$/, '')}`;
+    internalImports.set(specifier, `import { ${[...usedPageStackNames].sort().join(', ')} } from '${specifier}';`);
+  }
   // EXP-011 §59. `src/lib/screen.ts`, earned where a viewport read printed (the hook line prints for the same set).
   const screenHooks = plan.screenResolutions.filter((s) => usedScreenNodeIds.has(s.nodeId));
   if (screenHooks.length > 0) {
@@ -3909,7 +4063,7 @@ export function emitComponent(
     internalImports.set(specifier, `import { ${names.join(', ')} } from '${specifier}';`);
   }
 
-  const requireInstance = (legacyPath: string | null, where: string): { symbol: string } | null => {
+  const requireInstance = (legacyPath: string | null, where: string, withProps = false): { symbol: string } | null => {
     if (!legacyPath) return null;
     const target = project.byLegacyPath.get(legacyPath);
     if (!target?.file) {
@@ -3918,9 +4072,24 @@ export function emitComponent(
     }
     const specifier =
       plan.file!.dir === target.file.dir ? `./${target.file.fileBase}` : `../${target.file.dir}/${target.file.fileBase}`;
-    internalImports.set(specifier, `import { ${target.file.symbol} } from '${specifier}';`);
+    // EXP-011 §61. Symbols MERGE (the kit import's shape): a stack row imports a page's `Props` type beside the
+    // symbol, and an ordinary instance of the same component in the same file — in either order — must not
+    // clobber the other's line.
+    const existing = internalImports.get(specifier);
+    const symbols = new Set(existing ? existing.replace(/^import \{ | \} from .*$/g, '').split(', ') : []);
+    symbols.add(target.file.symbol);
+    if (withProps) symbols.add(`${target.file.symbol}Props`);
+    internalImports.set(specifier, `import { ${[...symbols].sort().join(', ')} } from '${specifier}';`);
     return { symbol: target.file.symbol };
   };
+  /** Whether a component's file declares a `<Symbol>Props` interface — the emitter's own condition, restated off the plan. */
+  const declaresPropsInterface = (target: ComponentPlan): boolean =>
+    target.props.length > 0 ||
+    target.outputProps.length > 0 ||
+    target.liftedOutputProps.length > 0 ||
+    target.closesPopup ||
+    target.popsStack ||
+    target.childSlot !== undefined;
 
   // ---- JSX -------------------------------------------------------------------------------
   /**
@@ -4110,7 +4279,9 @@ export function emitComponent(
       if (sink === 'boolean') return tsType === 'boolean' ? base : SIMPLE_REF.test(base) ? `!!${base}` : `!!(${base})`;
       return base;
     }
-    if (untypedVariableOf(source) === null && untypedStoreKeyOf(source) === null && !nonStringRecordColumn && !nonStringFileField) return base;
+    // EXP-011 §61. A pusher's Back Result is `*` on the port and `unknown` here — the untyped Variable's table.
+    const stackBackResult = source.kind === 'computed' && source.expr.kind === 'stack-back-result';
+    if (untypedVariableOf(source) === null && untypedStoreKeyOf(source) === null && !nonStringRecordColumn && !nonStringFileField && !stackBackResult) return base;
     switch (sink) {
       // The runtime's Text node puts whatever the variable holds through `String()` on its way
       // to the DOM, and a string attribute reaches the DOM the same way (§8.2's coercion).
@@ -4147,6 +4318,10 @@ export function emitComponent(
       // EXP-011 §10.5, the fourth of these — and distinguishable from the variable line above
       // because the fix is different: a store key is typed by what *writes* it, so the reader
       // is told which store and key to look at, not which variable.
+      // EXP-011 §61. A Back Result is whatever the popped component handed back; the fix is on the Pop's side.
+      if (source.kind === 'computed' && source.expr.kind === 'stack-back-result') {
+        return `reads Back Result "${source.expr.key}", which arrives as whatever the popped component handed back (the port is *), into a sink this slice cannot coerce it to`;
+      }
       const storeKey = untypedStoreKeyOf(source);
       if (storeKey !== null) {
         return `reads store key "${storeKey}", which has no statically-typed writer, into a sink this slice cannot coerce it to`;
@@ -4604,6 +4779,8 @@ export function emitComponent(
     if (role === 'input' || isControl) attrs.push(...changeAttrs(node, indent + 2));
     attrs.push(...handlerAttrs(node, indent + 2));
 
+    // EXP-011 §61. The Component Stack: the top entry only, one `&&` line per page.
+    if (role === 'stack') return renderStack(node, attrs, indent);
     if (role === 'text') {
       return element(tag, attrs, childText(node, 'text'), indent, false);
     }
@@ -4686,6 +4863,35 @@ export function emitComponent(
     }
     const children = blocks.flat();
     return element(tag, attrs, children.length > 0 ? children : null, indent, true);
+  };
+
+  /**
+   * EXP-011 §61. The Component Stack row — the TOP entry only, one `&&` line per page of its Components list.
+   *
+   * `key` is the entry's, fresh per push, so React mounts a new instance each time as the runtime creates a new
+   * node; the entry's params spread as the page component's props (cast to its own `Props` — the pusher typed
+   * them against the same interface at compile time, §61.0) where the target declares any; the reserved
+   * `pageStackEntry` prop only where the target's plan keeps a Pop. Before the mount effect registers the
+   * stack, `top` is undefined and nothing renders — the runtime paints an empty stack first too.
+   */
+  const renderStack = (node: NodeIR, attrs: string[], indent: number): string[] => {
+    const stack = plan.pageStacks.find((s) => s.nodeId === node.id);
+    if (stack === undefined) return [`${pad(indent)}{/* TODO(export): Component Stack ${node.id} rendered without a plan */}`];
+    const lines: string[] = [];
+    for (const page of stack.pages) {
+      const targetPlan = project.byLegacyPath.get(page.componentLegacy);
+      const withProps = targetPlan !== undefined && declaresPropsInterface(targetPlan);
+      const target = requireInstance(page.componentLegacy, `Component Stack ${node.id} page "${page.label}"`, withProps);
+      if (!target) {
+        lines.push(`${pad(indent + 2)}{/* TODO(export): Component Stack ${node.id} — its component "${page.label}" (${page.componentLegacy}) exports no component */}`);
+        continue;
+      }
+      const pageAttrs = [`key={${stack.local}.top.key}`];
+      if (withProps) pageAttrs.push(`{...(${stack.local}.top.params as ${target.symbol}Props)}`);
+      if (targetPlan?.popsStack) pageAttrs.push(`${PAGE_STACK_ENTRY_PROP}={${stack.local}.top.handle}`);
+      lines.push(`${pad(indent + 2)}{${stack.local}.top?.pageId === ${tsLiteral(page.id)} && <${target.symbol} ${pageAttrs.join(' ')} />}`);
+    }
+    return element(TAGS.stack, attrs, lines.length > 0 ? lines : null, indent, true);
   };
 
   const renderRepeater = (node: NodeIR, indent: number): string[] => {
@@ -5631,6 +5837,8 @@ export function emitComponent(
     ...plan.liftedOutputProps.map((l) => l.prop)
   ];
   if (plan.closesPopup) allPropNames.push('onClose');
+  // EXP-011 §61. The Pop's way back — passed by the stack row that shows this component, absent everywhere else.
+  if (plan.popsStack) allPropNames.push(PAGE_STACK_ENTRY_PROP);
   // EXP-011 §51. Destructured only where `{children}` renders; the interface declares it whenever
   // the component has a marker at all, so every instance may pass children (see ComponentPlan.childSlot).
   const rendersChildren = plan.childSlot !== undefined && plan.roleOf[plan.childSlot] === 'slot';
@@ -5649,6 +5857,8 @@ export function emitComponent(
     for (const lifted of plan.liftedOutputProps) body.push(`  ${lifted.prop}?: (value: ${lifted.tsType}) => void;`);
     // The popup boundary's reserved prop (POPUPS-TARGET §4), after the declared interface.
     if (plan.closesPopup) body.push('  onClose?: (action?: string) => void;');
+    // EXP-011 §61. The stack's reserved prop, after the declared interface (Close Popup's placement).
+    if (plan.popsStack) body.push(`  /** The Component Stack that pushed this component — its Pop Component Stack's way back. */`, `  ${PAGE_STACK_ENTRY_PROP}?: PageStackEntryHandle;`);
     // EXP-011 §51. The nodes placed under an instance, rendered where the Component Children node sits.
     if (plan.childSlot !== undefined) body.push('  children?: ReactNode;');
     body.push('}', '');
@@ -5770,6 +5980,12 @@ export function emitComponent(
     body.push(`  // ${run.comment}`);
     if (listenerLines.length === 0) body.push(`  const ${run.local} = useRunTasks({ label: ${tsLiteral(run.label)}, nodeId: ${tsLiteral(run.nodeId)}, componentName: ${tsLiteral(plan.legacyPath)} }, ${config});`);
     else body.push(`  const ${run.local} = useRunTasks({ label: ${tsLiteral(run.label)}, nodeId: ${tsLiteral(run.nodeId)}, componentName: ${tsLiteral(plan.legacyPath)} }, ${config}, {`, listenerLines.join(',\n'), '  });');
+  }
+  // EXP-011 §61. The Component Stacks this component renders — the hook reads nothing (its config is authored), and
+  // prints for every stack the walk rendered: the row that renders the top entry is its reading.
+  for (const stack of plan.pageStacks) {
+    const pages = stack.pages.map((p) => `{ id: ${tsLiteral(p.id)}, label: ${tsLiteral(p.label)} }`).join(', ');
+    body.push(`  // ${stack.comment}`, `  const ${stack.local} = usePageStack({ name: ${tsLiteral(stack.name)}, pages: [${pages}], startPage: ${tsLiteral(stack.startPage)} });`);
   }
   // EXP-011 §59. The viewport hooks — they read nothing, and print only where an emitted expression reads them.
   for (const screen of screenHooks) {
@@ -6084,6 +6300,18 @@ export function emitComponent(
           ...a.then.flatMap(actionExprsOf),
           ...a.failThen.flatMap(actionExprsOf)
         ];
+      // EXP-011 §61. The parameters, then every callback; the results, then both arms; the one chain.
+      case 'stack-push':
+        return [
+          ...a.params.map((p) => p.expr),
+          ...a.then.flatMap(actionExprsOf),
+          ...a.unchangedThen.flatMap(actionExprsOf),
+          ...a.backActions.flatMap((b) => b.then.flatMap(actionExprsOf))
+        ];
+      case 'stack-pop':
+        return [...a.results.map((r) => r.expr), ...a.then.flatMap(actionExprsOf), ...a.failThen.flatMap(actionExprsOf)];
+      case 'stack-reset':
+        return a.then.flatMap(actionExprsOf);
       // EXP-011 §39. The message and data, then the chain; the two numbers, then all four chains.
       case 'log':
         return [a.message, ...(a.data !== undefined ? [a.data] : []), ...a.then.flatMap(actionExprsOf)];
@@ -6222,7 +6450,9 @@ export function emitComponent(
     streamingLib: plan.streams.length > 0,
     // EXP-011 §59.
     cryptoHelpers: usedCryptoHelpers,
-    screenLib: screenHooks.length > 0
+    screenLib: screenHooks.length > 0,
+    // EXP-011 §61.
+    pageStackLib: usedPageStackNames.size > 0
   };
 }
 
@@ -6241,7 +6471,7 @@ const API_CALL_ERROR_CODES: Record<string, string> = {
   'net.noodl.user.RequestMagicLink': 'user/request-magic-link-failed'
 };
 /** EXP-011 §54. The action kinds whose failure arm raises on the error channel. */
-const RAISING_ACTION_KINDS = new Set<HandlerAction['kind']>(['api-call', 'cloud-call', 'record-fetch', 'file-pick', 'file-upload', 'file-sign', 'http-call', 'crypto-call']);
+const RAISING_ACTION_KINDS = new Set<HandlerAction['kind']>(['api-call', 'cloud-call', 'record-fetch', 'file-pick', 'file-upload', 'file-sign', 'http-call', 'crypto-call', 'stack-pop']);
 /** EXP-011 §55. The module-scope stand-in an `Array` bound to a `Create New Array` reads before its first Do. */
 const NO_ARRAY = 'noArray';
 /** EXP-011 §55. The failure prefixes `addCollectionFailure` gives the three mutators (collection-failure.ts). */

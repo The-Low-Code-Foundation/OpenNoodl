@@ -1,0 +1,99 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "e7a1c4d2-5b3f-4e8d-9c1a-00000000009a",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "detailsInputs",
+      "type": "Component Inputs",
+      "label": "Details inputs",
+      "ports": [
+        {
+          "name": "email",
+          "plug": "output",
+          "type": "string",
+          "index": 0
+        }
+      ],
+      "x": 400,
+      "y": 100
+    },
+    {
+      "id": "detailsRoot",
+      "type": "Group",
+      "label": "Details",
+      "children": [
+        "detailsTitle",
+        "emailText",
+        "confirmBtn",
+        "cancelBtn"
+      ],
+      "parameters": {
+        "flexDirection": "column",
+        "rowGap": "var(--space-2)"
+      },
+      "x": 100,
+      "y": 100
+    },
+    {
+      "id": "detailsTitle",
+      "type": "Text",
+      "label": "Title",
+      "parent": "detailsRoot",
+      "parameters": {
+        "text": "Step 2 - confirm",
+        "fontSize": "var(--text-base)"
+      },
+      "x": 100,
+      "y": 200
+    },
+    {
+      "id": "emailText",
+      "type": "Text",
+      "label": "Email",
+      "parent": "detailsRoot",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-base)"
+      },
+      "x": 100,
+      "y": 280
+    },
+    {
+      "id": "confirmBtn",
+      "type": "net.noodl.controls.button",
+      "label": "Confirm",
+      "parent": "detailsRoot",
+      "parameters": {
+        "label": "Confirm"
+      },
+      "x": 100,
+      "y": 360
+    },
+    {
+      "id": "cancelBtn",
+      "type": "net.noodl.controls.button",
+      "label": "Cancel",
+      "parent": "detailsRoot",
+      "parameters": {
+        "label": "Cancel"
+      },
+      "x": 260,
+      "y": 360
+    },
+    {
+      "id": "pop",
+      "type": "PageStackNavigateBack",
+      "label": "Pop",
+      "parameters": {
+        "results": "email",
+        "backActions": "confirm,cancel"
+      },
+      "x": 400,
+      "y": 360
+    }
+  ],
+  "visualRoots": [
+    "detailsRoot"
+  ]
+}
