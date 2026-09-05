@@ -2964,7 +2964,7 @@
                 "y": 160,
                 "parameters": {
                   "as": "nav",
-                  "sizeMode": "explicit",
+                  "sizeMode": "contentHeight",
                   "width": {
                     "value": 240,
                     "unit": "px"
@@ -3037,7 +3037,12 @@
             "y": 40,
             "parameters": {
               "flexDirection": "row",
-              "backgroundColor": "var(--background)"
+              "alignItems": "stretch",
+              "backgroundColor": "var(--background)",
+              "minHeight": {
+                "value": 100,
+                "unit": "vh"
+              }
             },
             "ports": [],
             "dynamicports": []
@@ -3143,7 +3148,7 @@
             "y": 40,
             "parameters": {
               "runOnChange-in-width": true,
-              "functionScript": "if (Inputs.width === undefined) return;\nconst roomy = Inputs.width >= 760;\nOutputs.frameDirection = roomy ? 'row' : 'column';\nOutputs.railSizeMode = roomy ? 'explicit' : 'contentHeight';\nOutputs.railWidth = roomy ? { value: 240, unit: 'px' } : { value: 100, unit: '%' };\nOutputs.railRightBorder = roomy ? 'solid' : 'none';"
+              "functionScript": "if (Inputs.width === undefined) return;\nconst roomy = Inputs.width >= 760;\nOutputs.frameDirection = roomy ? 'row' : 'column';\nOutputs.railWidth = roomy ? { value: 240, unit: 'px' } : { value: 100, unit: '%' };\nOutputs.railRightBorder = roomy ? 'solid' : 'none';"
             },
             "ports": [
               {
@@ -3156,13 +3161,6 @@
               {
                 "name": "out-frameDirection",
                 "displayName": "frameDirection",
-                "plug": "output",
-                "type": "*",
-                "group": "Outputs"
-              },
-              {
-                "name": "out-railSizeMode",
-                "displayName": "railSizeMode",
                 "plug": "output",
                 "type": "*",
                 "group": "Outputs"
@@ -3354,12 +3352,6 @@
             "fromProperty": "out-frameDirection",
             "toId": "frame-2",
             "toProperty": "flexDirection"
-          },
-          {
-            "fromId": "fold",
-            "fromProperty": "out-railSizeMode",
-            "toId": "sidebar",
-            "toProperty": "sizeMode"
           },
           {
             "fromId": "fold",

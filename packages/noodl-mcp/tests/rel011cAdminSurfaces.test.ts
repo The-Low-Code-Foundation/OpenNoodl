@@ -298,7 +298,6 @@ describe('REL-011c A1 — the admin rail yields when there is no room for it', (
   it('a phone gets the whole width, and a desktop keeps the rail', () => {
     const narrow = run(fold(), { width: 390 });
     expect(narrow.frameDirection).toBe('column');
-    expect(narrow.railSizeMode).toBe('contentHeight');
     expect(narrow.railWidth).toEqual({ value: 100, unit: '%' });
     // A rule down the left of a stacked band is a line in mid-air.
     expect(narrow.railRightBorder).toBe('none');
@@ -306,7 +305,6 @@ describe('REL-011c A1 — the admin rail yields when there is no room for it', (
     for (const width of [988, 1280, 1900]) {
       const roomy = run(fold(), { width });
       expect(`${width}: ${String(roomy.frameDirection)}`).toBe(`${width}: row`);
-      expect(`${width}: ${String(roomy.railSizeMode)}`).toBe(`${width}: explicit`);
       expect(roomy.railWidth).toEqual({ value: 240, unit: 'px' });
       expect(`${width}: ${String(roomy.railRightBorder)}`).toBe(`${width}: solid`);
     }
@@ -325,7 +323,11 @@ describe('REL-011c A1 — the admin rail yields when there is no room for it', (
     // measured — and the authored parameters are the wide shape for exactly this.
     expect(run(fold(), {})).toEqual({});
     expect(byLabel(shell(), 'Admin frame').parameters?.flexDirection).toBe('row');
-    expect(byLabel(shell(), 'Sidebar').parameters?.sizeMode).toBe('explicit');
+    // 🔴 `contentHeight`, and the mode is now the SAME in both fold states — see
+    // the §8.3 note on the node. `explicit` handed the rail a 100% height (the
+    // `addDimensions` default), which overrode the frame's `stretch` and left
+    // the rail's ground and rule stopping at the last nav item.
+    expect(byLabel(shell(), 'Sidebar').parameters?.sizeMode).toBe('contentHeight');
     expect(byLabel(shell(), 'Sidebar').parameters?.width).toEqual({ value: 240, unit: 'px' });
   });
 
@@ -339,16 +341,34 @@ describe('REL-011c A1 — the admin rail yields when there is no room for it', (
     expect(a).not.toBe(b);
   });
 
-  it('all four ports move together, from the one reading', () => {
+  it('the rail is stretched by the frame, not sized by itself', () => {
+    // 🔴 The pair that closes §3 seam 3's second clause, asserted together
+    // because either alone is inert: `stretch` does nothing to an item with a
+    // specified cross size, and `contentHeight` alone leaves the rail at its
+    // content in a frame that never told it otherwise.
+    const frame = byLabel(shell(), 'Admin frame');
+    expect(frame.parameters?.alignItems).toBe('stretch');
+    expect(frame.parameters?.minHeight).toEqual({ value: 100, unit: 'vh' });
+    expect(byLabel(shell(), 'Sidebar').parameters?.sizeMode).toBe('contentHeight');
+    // The control: `main` is the other child of the same frame and is NOT
+    // exempted from stretching — if a future edit narrows `stretch` to the rail
+    // alone, the ground under the content column goes back to the body's white.
+    expect(byLabel(shell(), 'Admin content').parameters?.sizeMode).toBeUndefined();
+  });
+
+  it('all three wired ports move together, from the one reading', () => {
     const c = shell();
     const foldNode = byLabel(c, 'Is there room for the rail beside the content?');
     const frame = byLabel(c, 'Admin frame');
     const sidebar = byLabel(c, 'Sidebar');
     // A stacked frame whose rail still states 240px is a 240px block with the
     // content beneath it; a rail at 100% inside a row is the whole screen. The
-    // four are one change, so the gate asserts them as one.
+    // three are one change, so the gate asserts them as one.
     expect(sourcesOf(c, frame.id, 'flexDirection')).toEqual([`${foldNode.id}.out-frameDirection`]);
-    expect(sourcesOf(c, sidebar.id, 'sizeMode')).toEqual([`${foldNode.id}.out-railSizeMode`]);
+    // ⚠️ `sizeMode` is deliberately NOT in this list any more: both fold states
+    // want `contentHeight`, so the output and its wire were deleted rather than
+    // left publishing one value forever.
+    expect(sourcesOf(c, sidebar.id, 'sizeMode')).toEqual([]);
     expect(sourcesOf(c, sidebar.id, 'width')).toEqual([`${foldNode.id}.out-railWidth`]);
     expect(sourcesOf(c, sidebar.id, 'borderRightStyle')).toEqual([`${foldNode.id}.out-railRightBorder`]);
   });

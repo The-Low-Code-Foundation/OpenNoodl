@@ -4141,7 +4141,54 @@ export const ADMIN_SHELL_NODES = [
     // `Group.flexDirection`'s setter calls `setLayout`, so the children's
     // `parentLayout` — and therefore every percentage size on them — is
     // recomputed rather than left describing the old axis.
-    parameters: { flexDirection: 'row', backgroundColor: 'var(--background)' },
+    // 🔴 **REL-011c / §3 seam 3 — `minHeight`, and the public site has had it
+    // since SBR-004.** `ADMIN_FILL_EXEMPTIONS` says this node "is meant to be
+    // the whole viewport" and until 2026-09-05 nothing made it so: `flexGrow`
+    // grows a box inside its parent, and the parent chain from `/App` down
+    // through the `Page` does not hand a height down — which is why
+    // `/Pages/Site`'s `Page ground` states `100vh` explicitly and carries the
+    // note *"this is what keeps a one-section page from ending halfway down the
+    // screen."* The admin shell simply never got the same line.
+    //
+    // Measured on `/admin/pages` living, desktop: the document was 900px (the
+    // viewport) and the shell's painted ground stopped at ~260px, leaving
+    // ~640px of **`#ffffff`** — sampled off the PNG, and white is not a token
+    // in this palette. Every instrument read `unreachable=0` and was right: the
+    // void is BELOW the content, not clipped by it, so no scroll or reach
+    // measure could ever have seen it.
+    //
+    // ⚠️ `/Pages/ThemeEditor` is the reason this survived a ruling. It is the
+    // one admin screen whose content is TALLER than the viewport (1126px against
+    // 900), so it fills by content and shows no void — and it is the one screen
+    // Richard graded PASSABLE. "It fills the viewport" was read as a fact about
+    // its composition; it is a fact about its content length.
+    //
+    // `minHeight` rather than `height`: the page editor runs to 2789px and a
+    // stated height would clip it. Raw, and named in
+    // `TEMPLATE_DIMENSION_EXEMPTIONS` — a viewport relation, which the
+    // vocabulary is deliberately without.
+    // 🔴 **`alignItems: 'stretch'` is the other half, and `minHeight` alone is a
+    // HALF FIX.** With the frame 100vh and its children at the enum's default
+    // `flex-start`, the white void closes and the rail's `--surface` panel and
+    // its right rule still stop at the last nav item — the second clause of the
+    // same finding (*"sidebar rule and ground ending mid-air"*). Measured
+    // between the two renders: the ground under the rail went `#ffffff` →
+    // `#f5efe6`, and the rail itself did not move.
+    //
+    // ✅ **It is correct in BOTH fold states, which is why it beats a height.**
+    // `stretch` is across the layout direction, and `fold` swaps that direction:
+    // wide, the cross axis is height and the rail runs the window; folded, the
+    // cross axis is width and the stacked rail runs full width — which is what
+    // `out-railWidth` already asks for at `100%`. A stated height would have
+    // needed a fifth wire on `fold` to switch itself off, and `minHeight` on the
+    // rail could not be switched off at all (`Layout.size` gates `width`/
+    // `height` on `sizeMode` and never touches `minHeight`).
+    parameters: {
+      flexDirection: 'row',
+      alignItems: 'stretch',
+      backgroundColor: 'var(--background)',
+      minHeight: { value: 100, unit: 'vh' }
+    },
     children: ['sidebar', 'main']
   },
   {
@@ -4169,7 +4216,22 @@ export const ADMIN_SHELL_NODES = [
     // brand mark and a nav row in a single flex row.
     parameters: {
       as: 'nav',
-      sizeMode: 'explicit',
+      // 🔴 **`contentHeight`, not `explicit`, and the height is the POINT.**
+      // `Layout.size` assigns a height only under `explicit`/`contentWidth`, and
+      // `addDimensions` defaults the `height` port to **100%** — so `explicit`
+      // handed this rail `height: calc(100% - 0px)` against a frame whose height
+      // is indefinite (`min-height: 100vh`, no `height`), which resolves to its
+      // content AND overrides `alignItems: 'stretch'`, because stretch only
+      // applies to an item whose cross size is `auto`. Measured: with the frame
+      // at 100vh and stretch set, the rail did not move — `#f5efe6` under it at
+      // y=600 either way.
+      //
+      // Under `contentHeight` the height port is not even offered
+      // (`heightCondition`), nothing is assigned, the cross size is `auto`, and
+      // the frame's `stretch` runs the rail the full height of the window.
+      // ⚠️ The WIDTH is untouched by this — `contentHeight` still assigns it,
+      // which is the whole reason the mode is named for one axis.
+      sizeMode: 'contentHeight',
       width: SIDEBAR_WIDTH,
       flexDirection: 'column',
       backgroundColor: 'var(--surface)',
@@ -4357,7 +4419,12 @@ export const ADMIN_SHELL_NODES = [
         // the rail is affordable; below it, it is the only thing on the screen.
         'const roomy = Inputs.width >= 760;',
         "Outputs.frameDirection = roomy ? 'row' : 'column';",
-        "Outputs.railSizeMode = roomy ? 'explicit' : 'contentHeight';",
+        // ⚠️ **`railSizeMode` is gone, not set to a constant.** It used to send
+        // `explicit` when roomy, which is what stopped the rail stretching; both
+        // states now want `contentHeight`, so the output and its wire are
+        // DELETED rather than left publishing one value forever. An inert wire
+        // reads to the next person as a decision that varies.
+
         // ⚠️ A FRESH object each run, and that is load-bearing: a `Function`'s
         // `Outputs` proxy publishes only when the value CHANGES, so a shared
         // constant would be sent once and never re-sent after a resize back.
@@ -4525,7 +4592,6 @@ export const ADMIN_SHELL_WIRES = [
   // content beneath it, and a rail at 100% inside a ROW is the whole screen.
   { fromId: 'viewport', fromProperty: 'width', toId: 'fold', toProperty: 'in-width' },
   { fromId: 'fold', fromProperty: 'out-frameDirection', toId: 'frame', toProperty: 'flexDirection' },
-  { fromId: 'fold', fromProperty: 'out-railSizeMode', toId: 'sidebar', toProperty: 'sizeMode' },
   { fromId: 'fold', fromProperty: 'out-railWidth', toId: 'sidebar', toProperty: 'width' },
   { fromId: 'fold', fromProperty: 'out-railRightBorder', toId: 'sidebar', toProperty: 'borderRightStyle' },
 

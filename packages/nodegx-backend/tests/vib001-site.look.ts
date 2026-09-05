@@ -41,7 +41,10 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
-import { buildSiteDesignTokens } from '../../noodl-editor/src/editor/src/models/template/templates/siteTheme';
+import {
+  buildSiteDesignTokens,
+  SITE_THEME_PRESETS
+} from '../../noodl-editor/src/editor/src/models/template/templates/siteTheme';
 import { SB004_COMPONENTS } from '../../noodl-mcp/tests/sb004Components';
 import { BackendService } from '../src/service';
 
@@ -165,25 +168,36 @@ describe('VIB-001 — the site builder, as a person meets it', () => {
       { siteName: 'Kestrel Joinery', homeSlug: 'home' },
       owner
     );
+    /**
+     * 🔴 **A SHIPPED preset, imported — not a colour this harness invented.**
+     *
+     * This seed used to write four hand-picked values (`colorPrimary:
+     * '#1f6feb'`, `colorBackground: '#fffdf7'`, `colorText: '#12202e'`,
+     * `fontDisplay: 'Georgia, serif'`) with the other eight fields empty. Every
+     * one of them was the harness's taste. `#1f6feb` in particular is neither
+     * the shipped default (`#2563eb`, `DefaultTokens.ts`) nor this template's
+     * floor (Studio's `#1e4d8c`) nor any of the three chips the theme editor
+     * offers — it is reachable only by a person typing a hex by hand.
+     *
+     * 🔴 **That colour was then read off the photographs as a finding about the
+     * PRODUCT** — `RICHARD-RULINGS-2026-09-04.md` §3 seam 1, *"the framework's
+     * default blue on every button, link and pill … the one colour a form
+     * library emits before anyone has chosen anything"* — and it is on nine of
+     * the ten screens he graded. A look verdict taken on a seed's palette is a
+     * verdict about the seed. The DOOR arm is the control that always said so:
+     * unclaimed and unthemed, it renders Studio's navy correctly.
+     *
+     * ✅ So the overlay path stays exercised — a preset is what a person
+     * actually presses — but the values come from the one module that owns them.
+     * **`press`, not `studio`**: Studio is also the floor
+     * (`buildSiteDesignTokens`), so seeding it would leave the overlay and the
+     * `:root` stamp indistinguishable in the picture and this arm would stop
+     * proving the record beats the default.
+     */
     const themeRows = await client.get<{ results: Row[] }>('/classes/Theme', owner);
     await client.put(
       `/classes/Theme/${themeRows.json.results[0].objectId}`,
-      {
-        tokens: {
-          colorPrimary: '#1f6feb',
-          colorOnPrimary: '',
-          colorBackground: '#fffdf7',
-          colorSurface: '',
-          colorText: '#12202e',
-          colorTextSoft: '',
-          colorBorder: '',
-          colorAccentSoft: '',
-          radius: '',
-          fontDisplay: 'Georgia, serif',
-          fontUi: '',
-          measure: ''
-        }
-      },
+      { tokens: { ...SITE_THEME_PRESETS.press } },
       owner
     );
 
@@ -197,18 +211,39 @@ describe('VIB-001 — the site builder, as a person meets it', () => {
      * the plainest one photographs a ceiling the template does not actually have.
      *
      * ⚠️ `data.image` is a `cloudfile` read through `.url`. A real owner uploads
-     * a file and gets a backend URL; this seeds a renderable `data:` URI, which
+     * a file and gets a backend URL; these seed a project-relative path, which
      * exercises the same render path with a different URL source. Stated because
      * it is the one place this seed is not what a person would have.
+     *
+     * 🔴 **Real photographs, because the harness ALREADY PUTS THEM THERE.**
+     * These used to be one hand-written `data:` URI SVG — a 1200×600 linear
+     * ramp `#2b3a2f → #8a7f5c` — repeated for the hero, both gallery tiles and
+     * the second page's hero. It is the olive-and-khaki rectangle on every
+     * site-builder picture taken before 2026-09-05, and it was read off those
+     * pictures as a finding about the PRODUCT:
+     * `RICHARD-RULINGS-2026-09-04.md` §3 seam 4, *"gradient rectangles where
+     * photographs belong … the members' area draws on 44 real `.webp` files
+     * under `noodl_modules/starter-imagery/`; the site builder draws on none."*
+     *
+     * The site builder draws on none because **this seed** drew on none.
+     * `judge()` calls `placeStarterAssets()` on the served directory
+     * (`helpers/judge.ts:229`, from `STARTER_ASSETS` — the same list the editor
+     * installs), so all 44 have been reachable from these pages the whole time.
+     * A `starterAssets` count rides on every run record, which is the
+     * known-firing signal beside these paths: if the module were missing the
+     * pictures would 404 and the manifest would say the assets were not placed.
+     *
+     * ⚠️ Chosen by SUBJECT, the way `get_style_vocabulary`'s `imagery` block
+     * tells an author to choose: this is a joinery, so the `work` group. They
+     * are `role: tile` rather than `ground` and that is deliberate — there is no
+     * workshop in the eight `ground` heroes, and a real joiner would reach for
+     * the carpenter over a slot canyon. The band crops with `backgroundSize:
+     * cover`, which is what makes that safe.
      */
-    const SWATCH =
-      'data:image/svg+xml;utf8,' +
-      encodeURIComponent(
-        '<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="600">' +
-          '<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">' +
-          '<stop offset="0" stop-color="#2b3a2f"/><stop offset="1" stop-color="#8a7f5c"/>' +
-          '</linearGradient></defs><rect width="1200" height="600" fill="url(#g)"/></svg>'
-      );
+    const IMG = (name: string) => `noodl_modules/starter-imagery/${name}`;
+    const HOME_HERO = IMG('work-carpenter.webp');
+    const HOME_GALLERY = [IMG('work-machine-shop.webp'), IMG('work-leather-bench.webp')];
+    const ABOUT_HERO = IMG('texture-brick.webp');
 
     const makePage = async (
       title: string,
@@ -235,7 +270,7 @@ describe('VIB-001 — the site builder, as a person meets it', () => {
         kind: 'hero',
         data: {
           body: 'Stairs, windows and doors, out of oak, ash and elm.',
-          image: { url: SWATCH }
+          image: { url: HOME_HERO }
         }
       },
       {
@@ -258,13 +293,13 @@ describe('VIB-001 — the site builder, as a person meets it', () => {
       // PUBLIC home page — one of the three states REL-011c re-photographs —
       // with ~150px of empty ground where the gallery should be, because
       // `/Site/GallerySection` reads `data.images` and nothing else.
-      { kind: 'gallery', data: { images: [{ url: SWATCH }, { url: SWATCH }] } },
+      { kind: 'gallery', data: { images: HOME_GALLERY.map((url) => ({ url })) } },
       { kind: 'cta', data: { body: 'Come and see the workshop — Thursdays, or by arrangement.' } }
     ]);
     const about = await makePage('About the workshop', 'about', 2, [
       {
         kind: 'hero',
-        data: { body: 'Forty years of joints that have not moved.', image: { url: SWATCH } }
+        data: { body: 'Forty years of joints that have not moved.', image: { url: ABOUT_HERO } }
       },
       {
         kind: 'richText',

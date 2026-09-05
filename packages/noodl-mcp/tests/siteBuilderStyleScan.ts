@@ -418,6 +418,16 @@ export const TEMPLATE_DIMENSION_EXEMPTIONS: ReadonlyArray<TemplateExemption> = [
     port: 'minHeight',
     why: sb006Why('Page ground', 'minHeight')
   },
+  // REL-011c / §3 seam 3, 2026-09-05. The same statement `/Pages/Site`'s ground
+  // makes one row above, on the admin half — which had gone without it since the
+  // panel was built, leaving ~640px of unpainted `<body>` under every admin
+  // screen short enough to fit. See the note on `Admin frame`.
+  {
+    component: '/Admin/Shell',
+    label: 'Admin frame',
+    port: 'minHeight',
+    why: 'A viewport relation, and the vocabulary is deliberately viewport-free — the identical reason /Pages/Site states it. `flexGrow` grows a box inside its parent and the chain from /App through the Page hands no height down, so "the shell IS the admin page ground" (ADMIN_FILL_EXEMPTIONS) is only true once this is stated out loud.'
+  },
   {
     component: '/Pages/Site',
     label: 'Page shell',
