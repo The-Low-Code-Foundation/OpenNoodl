@@ -32,7 +32,9 @@ import {
   RecordReadPlan,
   ScriptPlan,
   whereExprs,
-  RecordWhere
+  RecordWhere,
+  STREAM_NODES,
+  streamFieldMaybeUndefined
 } from '../analyze/plan';
 import { ExportIR, ITEM_OUTPUT_SIGNAL, NodeIR } from '../ir/types';
 import { KitBinding, tsTypeOf as kitPortTsType } from './kits';
@@ -46,6 +48,7 @@ import { RUN_TASKS_LIB_PATH } from './runTasksLib';
 import { ERRORS_LIB_PATH } from './errorsLib';
 import { RECORD_FILTER_LIB_PATH } from './recordFilterLib';
 import { SCRIPT_LIB_PATH } from './scriptLib';
+import { STREAMING_LIB_PATH } from './streamingLib';
 import { SCRIPT_CODE_PREFIX } from '../analyze/script';
 import { ID_HELPERS_BY_FN, ID_LIB_PATH, IdHelper } from './idLib';
 import { computeNodeStyle, computeRoleCss, CONTENT_ATTR_ORDER, CONTENT_PARAMS, Decl, iconSourceOf, RoleCss, StyleRole, WIRED_STYLE_SINKS } from './style';
@@ -140,6 +143,8 @@ export interface EmittedComponent {
   errorsLib: boolean;
   /** EXP-011 §56. `src/lib/filterRecords.ts` is owed when this component prints a Filter Records read. */
   recordFilterLib: boolean;
+  /** EXP-011 §58. `src/lib/streaming.ts` is owed when this component keeps a streaming node. */
+  streamingLib: boolean;
 }
 
 export function emitComponent(
@@ -470,6 +475,8 @@ export function emitComponent(
   const collectActionUse = (action: HandlerAction) => {
     // EXP-011 §53. The list read at the pulse earns whatever its sources earn.
     if (action.kind === 'runtasks-run') collectExprUse(action.items);
+    // EXP-011 §58. The data read at the pulse earns whatever its source earns.
+    if (action.kind === 'stream-action' && action.value !== undefined) collectExprUse(action.value);
     if (action.kind === 'state-set') {
       referencedStateNames.add(action.name);
       if (action.expr !== undefined) collectExprUse(action.expr);
@@ -681,7 +688,9 @@ export function emitComponent(
     // EXP-011 §57. A Repeater Item's Added chain (a mount effect) is a chain like any other.
     ...plan.repeaterItems.flatMap((r) => r.actions),
     // EXP-011 §54. A boundary's Error chain.
-    ...plan.appErrors.flatMap((b) => b.listener ?? [])
+    ...plan.appErrors.flatMap((b) => b.listener ?? []),
+    // EXP-011 §58. A streaming node's listener chains.
+    ...plan.streams.flatMap((s) => Object.values(s.listeners).flat())
   ];
   allActions.forEach(collectActionUse);
   /** Nested actions (branch arms, popup done-chains) flattened — the `usesNavigate` sweep. */
@@ -882,6 +891,8 @@ export function emitComponent(
     hookExprSources(animation.delay);
   }
   for (const machine of plan.statesMachines) if (machine.follow !== undefined) hookExprSources(machine.follow);
+  // EXP-011 §58. The config reads are render reads (the data is read at the pulse, in handler mode).
+  for (const stream of plan.streams) for (const entry of stream.config) hookExprSources(entry.expr);
   // EXP-011 §53. The two config reads are render reads.
   for (const run of plan.runTasks) {
     hookExprSources(run.maxRunningTasks);
@@ -1275,6 +1286,9 @@ export function emitComponent(
       // EXP-011 §54. Undefined before the first error. Must agree with plan.ts maybeUndefinedExpr.
       case 'app-error-out':
         return true;
+      // EXP-011 §58. The table's answer, shared with plan.ts.
+      case 'stream-out':
+        return streamFieldMaybeUndefined(expr.node, expr.field);
       // Always — before the first request, after a path that matched nothing, and for an Error
       // nothing has written. Must agree with plan.ts maybeUndefinedExpr (EXP-011 Tier 1.2).
       case 'http-out':
@@ -1824,6 +1838,9 @@ export function emitComponent(
       /** A boundary's value output (EXP-011 §54) — off the handle's `last`, the same in both modes; the Error Object is `last` itself. */
       case 'app-error-out':
         return expr.field === 'errorObject' ? `${expr.local}.last` : `${expr.local}.last?.${expr.field}`;
+      /** A streaming node's value output (EXP-011 §58) — a live getter on the handle, the same in both modes. */
+      case 'stream-out':
+        return `${expr.local}.${expr.field}`;
       // Render reads the node's local; a handler inlines the call over `.get()` snapshots —
       // pure by the gate, so recomputation is unobservable (EXP-003 §4). The folds are
       // Expression's typed getters, verbatim semantics (expression.ts).
@@ -1937,6 +1954,8 @@ export function emitComponent(
         case 'script-out':
         // EXP-011 §54. The same — `catchAll.last?.message`.
         case 'app-error-out':
+        // EXP-011 §58. The same — `parser.valueCount`.
+        case 'stream-out':
           add(exprCode(e, 'render'));
           break;
         case 'date-call':
@@ -2152,6 +2171,9 @@ export function emitComponent(
           return reads(a.items);
         case 'runtasks-abort':
           return false;
+        // EXP-011 §58. The data is read at the pulse.
+        case 'stream-action':
+          return a.value !== undefined && reads(a.value);
         case 'popup-show':
         case 'popup-close':
         case 'jsfun-run':
@@ -2675,6 +2697,9 @@ export function emitComponent(
         return `${action.local}.run(${exprCode(action.items, 'handler')})`;
       case 'runtasks-abort':
         return `${action.local}.abort()`;
+      /** A streaming node's action (EXP-011 §58) — one call on the handle, the data read at the pulse where the verb takes it. */
+      case 'stream-action':
+        return `${action.local}.${action.verb}(${action.value !== undefined ? exprCode(action.value, 'handler') : ''})`;
       case 'jsfun-run': {
         if (action.materialize !== undefined) {
           const def = jsFunByNode[action.nodeId]!;
@@ -3715,6 +3740,12 @@ export function emitComponent(
     const names = [...(raisesAppErrors ? ['raiseAppError'] : []), ...(plan.appErrors.length > 0 ? ['useAppError'] : [])];
     internalImports.set(specifier, `import { ${names.join(', ')} } from '${specifier}';`);
   }
+  // EXP-011 §58. The streaming trio's hooks, one import per hook the plan kept.
+  if (plan.streams.length > 0) {
+    const specifier = `${relRoot}/${STREAMING_LIB_PATH.replace(/^src\//, '').replace(/\.ts$/, '')}`;
+    const hooks = [...new Set(plan.streams.map((s) => STREAM_NODES[s.type].hook))].sort();
+    internalImports.set(specifier, `import { ${hooks.join(', ')} } from '${specifier}';`);
+  }
   // EXP-011 §56. The Filter Records matcher, earned where a `record-filter` printed.
   if (usedRecordFilter) {
     const specifier = `${relRoot}/${RECORD_FILTER_LIB_PATH.replace(/^src\//, '').replace(/\.ts$/, '')}`;
@@ -3931,6 +3962,26 @@ export function emitComponent(
       if (sink === 'number') return null;
       if (sink === 'boolean') return SIMPLE_REF.test(base) ? `!!${base}` : `!!(${base})`;
       if (sink === 'truthy' || sink === 'opaque') return base;
+      return null;
+    }
+    /**
+     * EXP-011 §58. A streaming node's value output, by the port's DECLARED type — which is what NDA-014's
+     * typecast keys on (`outputproperty.ts`: the declared type travels with the value, and only an
+     * `object`/`array` port takes the string cast): an `array` port at a text position is JSON; a `*`
+     * port (`Parsed`) is the untyped Variable's `String(x ?? '')`; a number or boolean takes the Text
+     * node's own `String()` (never undefined, so no fold); a string port is already what every sink takes.
+     */
+    if (source.kind === 'computed' && source.expr.kind === 'stream-out') {
+      const cast = STREAM_NODES[source.expr.node === 'parser' ? 'net.noodl.JSONStreamParser' : source.expr.node === 'buffer' ? 'net.noodl.StreamBuffer' : 'net.noodl.TextAccumulator'].values[source.expr.field]?.cast ?? 'unknown';
+      if (sink === 'text' || sink === 'string') {
+        if (cast === 'string') return base;
+        if (cast === 'array') return `JSON.stringify(${base})`;
+        if (cast === 'unknown') return `String(${base} ?? '')`;
+        return `String(${base})`;
+      }
+      if (sink === 'number') return cast === 'number' ? base : null;
+      if (sink === 'boolean') return cast === 'boolean' ? base : SIMPLE_REF.test(base) ? `!!${base}` : `!!(${base})`;
+      if (sink === 'truthy') return base;
       return null;
     }
     if (source.kind === 'computed' && source.expr.kind === 'script-out') {
@@ -5615,6 +5666,19 @@ export function emitComponent(
     if (boundary.listener === undefined) body.push(`  const ${boundary.local} = useAppError(${options});`);
     else body.push(`  const ${boundary.local} = useAppError(${options}, ${handlerArrow(boundary.listener, '()', 2)});`);
   }
+  // EXP-011 §58. The streaming hooks — after the render locals a wired config may read, before the effects. The
+  // listeners print inline so each closes over this render; the config is read live by the hook.
+  for (const stream of plan.streams) {
+    const spec = STREAM_NODES[stream.type];
+    const options = stream.config.length > 0 ? `{ ${stream.config.map((c) => `${c.port}: ${exprCode(c.expr, 'render')}`).join(', ')} }` : '{}';
+    const listenerLines = spec.signals
+      .filter((port) => stream.listeners[port] !== undefined)
+      .map((port) => `    ${port}: ${handlerArrow(stream.listeners[port], '()', 4)}`);
+    const source = `{ label: ${tsLiteral(stream.label)}, nodeId: ${tsLiteral(stream.nodeId)}, componentName: ${tsLiteral(plan.legacyPath)} }`;
+    body.push(`  // ${stream.comment}`);
+    if (listenerLines.length === 0) body.push(`  const ${stream.local} = ${spec.hook}(${source}, ${options});`);
+    else body.push(`  const ${stream.local} = ${spec.hook}(${source}, ${options}, {`, listenerLines.join(',\n'), '  });');
+  }
   // EXP-011 §53. A task template's start chain: once, on mount — startTask pulses the start input right after
   // createNode, and never again for that task. The ref guards StrictMode's second mount in development.
   if (plan.task !== undefined) {
@@ -5661,7 +5725,8 @@ export function emitComponent(
     plan.scripts.length > 0 ||
     plan.runTasks.length > 0 ||
     plan.appErrors.length > 0 ||
-    plan.repeaterItems.length > 0
+    plan.repeaterItems.length > 0 ||
+    plan.streams.length > 0
   ) {
     body.push('');
   }
@@ -5855,6 +5920,9 @@ export function emitComponent(
         return [a.items];
       case 'runtasks-abort':
         return [];
+      // EXP-011 §58. The data; the config and listeners are walked off the plan.
+      case 'stream-action':
+        return a.value !== undefined ? [a.value] : [];
       case 'jsfun-run':
         return [...jsArgExprs(a.nodeId), ...a.then.flatMap(actionExprsOf)];
       case 'http-call':
@@ -6024,7 +6092,9 @@ export function emitComponent(
     // EXP-011 §54.
     errorsLib: plan.appErrors.length > 0 || raisesAppErrors,
     // EXP-011 §56.
-    recordFilterLib: usedRecordFilter
+    recordFilterLib: usedRecordFilter,
+    // EXP-011 §58.
+    streamingLib: plan.streams.length > 0
   };
 }
 

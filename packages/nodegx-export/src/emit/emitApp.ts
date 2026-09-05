@@ -29,6 +29,7 @@ import { RUN_TASKS_LIB_PATH, runTasksLibSource } from './runTasksLib';
 import { SCRIPT_LIB_PATH, scriptLibSource } from './scriptLib';
 import { ERRORS_LIB_PATH, errorsLibSource } from './errorsLib';
 import { RECORD_FILTER_LIB_PATH, recordFilterLibSource } from './recordFilterLib';
+import { STREAMING_LIB_PATH, streamingLibSource } from './streamingLib';
 import { EmittedCopy, emitKits } from './kits';
 import { README_PATH, renderReadme } from './readme';
 import { ExportReportData, REPORT_PATH, ReportComponent, renderReport, stripScope } from './report';
@@ -132,6 +133,8 @@ export function emitApp(ir: ExportIR, catalog: Catalog): EmittedApp {
   // EXP-011 §54. The error channel — earned by a boundary or a raising failure arm; script.ts and runTasks.ts import it too.
   let errorsLibUsed = false;
   let recordFilterLibUsed = false;
+  // EXP-011 §58. The streaming trio's host — earned by a component whose plan kept one of the three; it raises on errors.ts.
+  let streamingLibUsed = false;
   const reportComponents: ReportComponent[] = [];
   for (const plan of project.plans) {
     if (plan.skipReason) {
@@ -186,6 +189,7 @@ export function emitApp(ir: ExportIR, catalog: Catalog): EmittedApp {
     if (emitted.runTasksLib) runTasksLibUsed = true;
     if (emitted.errorsLib) errorsLibUsed = true;
     if (emitted.recordFilterLib) recordFilterLibUsed = true;
+    if (emitted.streamingLib) streamingLibUsed = true;
   }
 
   /**
@@ -239,8 +243,12 @@ export function emitApp(ir: ExportIR, catalog: Catalog): EmittedApp {
     files[RUN_TASKS_LIB_PATH] = GENERATED_MODULE_TS + runTasksLibSource();
   }
   // EXP-011 §54. `src/lib/errors.ts` — the channel. script.ts and runTasks.ts raise on it, so either earns it too.
-  if (errorsLibUsed || scriptLibUsed || runTasksLibUsed) {
+  if (errorsLibUsed || scriptLibUsed || runTasksLibUsed || streamingLibUsed) {
     files[ERRORS_LIB_PATH] = GENERATED_MODULE_TS + errorsLibSource();
+  }
+  // EXP-011 §58. `src/lib/streaming.ts` — the trio's host; it raises on the channel, so it earns errors.ts above.
+  if (streamingLibUsed) {
+    files[STREAMING_LIB_PATH] = GENERATED_MODULE_TS + streamingLibSource();
   }
   // EXP-011 §56. `src/lib/filterRecords.ts` — the Filter Records matcher, when a component printed one.
   if (recordFilterLibUsed) {

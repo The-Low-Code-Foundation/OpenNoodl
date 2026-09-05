@@ -429,6 +429,117 @@ export const ON_APP_ERROR_TYPE = 'On App Error';
 export const ON_APP_ERROR_VALUE_OUTPUTS = ['message', 'code', 'nodeId', 'componentName', 'nodeType', 'errorObject'] as const;
 /** The Error Object's type, structurally — `src/lib/errors.ts`'s AppError, spelled so a store row needs no import. */
 export const APP_ERROR_TS_TYPE = '{ code: string; message: string; nodeId: string; componentName: string; nodeType: string; detail?: unknown }';
+/**
+ * EXP-011 §58 — the streaming trio (`agent/json-stream-parser.ts`, `stream-buffer.ts`, `text-accumulator.ts`).
+ * The type ids carry the `net.noodl.` prefix; the display names do not. Each is one hook over one `_internal`
+ * (`src/lib/streaming.ts`): the data port is read at the pulse, the config ports live off an options object, the
+ * signal outputs are listeners, the value outputs are live getters on the handle. The table is the catalog's
+ * port set, read off the node files — every port of the three translates, so what is refused is only the graph
+ * shapes every hook refuses (two wires, no static source, a pulse read as a value, an uncompilable chain).
+ */
+export const STREAM_PARSER_TYPE = 'net.noodl.JSONStreamParser';
+export const STREAM_BUFFER_TYPE = 'net.noodl.StreamBuffer';
+export const TEXT_ACCUMULATOR_TYPE = 'net.noodl.TextAccumulator';
+export type StreamKind = 'parser' | 'buffer' | 'accumulator';
+export interface StreamValueField {
+  tsType: string;
+  /** How the value casts at a sink: the port's declared type, which is what NDA-014's typecast keys on. */
+  cast: 'string' | 'number' | 'boolean' | 'array' | 'unknown';
+  /** Undefined before anything happened (must agree with component.ts). */
+  maybeUndefined: boolean;
+}
+export interface StreamNodeSpec {
+  kind: StreamKind;
+  displayName: string;
+  hook: string;
+  localStem: string;
+  /** The data port, delivered with the pulse. */
+  data: { port: string; displayName: string };
+  /** The config ports, read live off the options object. */
+  config: Array<{ port: string; displayName: string }>;
+  /** The action ports: the verb on the handle, and whether the call carries the data port's value. */
+  actions: Record<string, { verb: string; takesData: boolean }>;
+  /** The signal outputs, as the listeners the hook takes, in the runtime's declaration order. */
+  signals: readonly string[];
+  values: Record<string, StreamValueField>;
+}
+const OUTCOME_SIGNALS = ['done', 'completed', 'unchanged', 'failure'] as const;
+export const STREAM_NODES: Record<string, StreamNodeSpec> = {
+  [STREAM_PARSER_TYPE]: {
+    kind: 'parser',
+    displayName: 'JSON Stream Parser',
+    hook: 'useJsonStreamParser',
+    localStem: 'Parser',
+    data: { port: 'chunk', displayName: 'Chunk' },
+    config: [
+      { port: 'format', displayName: 'Format' },
+      { port: 'maxLength', displayName: 'Max Pending' }
+    ],
+    actions: { parse: { verb: 'parse', takesData: true }, clear: { verb: 'clear', takesData: false } },
+    signals: ['success', 'cleared', ...OUTCOME_SIGNALS],
+    values: {
+      parsed: { tsType: 'unknown', cast: 'unknown', maybeUndefined: true },
+      values: { tsType: 'unknown[]', cast: 'array', maybeUndefined: false },
+      valueCount: { tsType: 'number', cast: 'number', maybeUndefined: false },
+      pendingCharacters: { tsType: 'number', cast: 'number', maybeUndefined: false },
+      isComplete: { tsType: 'boolean', cast: 'boolean', maybeUndefined: false },
+      error: { tsType: 'string', cast: 'string', maybeUndefined: false },
+      errorCount: { tsType: 'number', cast: 'number', maybeUndefined: false }
+    }
+  },
+  [STREAM_BUFFER_TYPE]: {
+    kind: 'buffer',
+    displayName: 'Stream Buffer',
+    hook: 'useStreamBuffer',
+    localStem: 'Buffer',
+    data: { port: 'data', displayName: 'Data' },
+    config: [
+      { port: 'flushSize', displayName: 'Flush Size' },
+      { port: 'flushInterval', displayName: 'Flush Interval' },
+      { port: 'maxSize', displayName: 'Max Size' }
+    ],
+    actions: {
+      add: { verb: 'add', takesData: true },
+      flush: { verb: 'flush', takesData: false },
+      clear: { verb: 'clear', takesData: false }
+    },
+    signals: ['flushed', 'overflowed', 'cleared', ...OUTCOME_SIGNALS],
+    values: {
+      buffer: { tsType: 'unknown[]', cast: 'array', maybeUndefined: false },
+      bufferSize: { tsType: 'number', cast: 'number', maybeUndefined: false },
+      flushedData: { tsType: 'unknown[]', cast: 'array', maybeUndefined: false },
+      flushCount: { tsType: 'number', cast: 'number', maybeUndefined: false },
+      droppedItems: { tsType: 'number', cast: 'number', maybeUndefined: false },
+      // `lastError` is never initialised: undefined until an Add is refused.
+      error: { tsType: 'string', cast: 'string', maybeUndefined: true }
+    }
+  },
+  [TEXT_ACCUMULATOR_TYPE]: {
+    kind: 'accumulator',
+    displayName: 'Text Accumulator',
+    hook: 'useTextAccumulator',
+    localStem: 'Accumulator',
+    data: { port: 'chunk', displayName: 'Chunk' },
+    config: [
+      { port: 'delimiter', displayName: 'Delimiter' },
+      { port: 'maxLength', displayName: 'Max Length' },
+      { port: 'maxMessages', displayName: 'Max Messages' }
+    ],
+    actions: { add: { verb: 'add', takesData: true }, clear: { verb: 'clear', takesData: false } },
+    signals: ['messageReceived', 'changed', 'cleared', 'overflowed', ...OUTCOME_SIGNALS],
+    values: {
+      accumulated: { tsType: 'string', cast: 'string', maybeUndefined: false },
+      messages: { tsType: 'string[]', cast: 'array', maybeUndefined: false },
+      lastMessage: { tsType: 'string', cast: 'string', maybeUndefined: false },
+      messageCount: { tsType: 'number', cast: 'number', maybeUndefined: false },
+      characterCount: { tsType: 'number', cast: 'number', maybeUndefined: false },
+      byteCount: { tsType: 'number', cast: 'number', maybeUndefined: false },
+      droppedCharacters: { tsType: 'number', cast: 'number', maybeUndefined: false },
+      droppedMessages: { tsType: 'number', cast: 'number', maybeUndefined: false },
+      error: { tsType: 'string', cast: 'string', maybeUndefined: false }
+    }
+  }
+};
 export const RUN_TASKS_TYPE = 'RunTasks';
 /** EXP-011 §57. `Repeater Item` — the type id is the runtime's `name`, not the display name. */
 export const REPEATER_ITEM_TYPE = 'For Each Actions';
@@ -445,6 +556,10 @@ const OWN_CHAIN_OUTPUTS: Record<string, readonly string[]> = {
   [RUN_TASKS_TYPE]: RUN_TASKS_OUTPUTS,
   // EXP-011 §54. The boundary's Error is its listener, compiled by its own registration.
   [ON_APP_ERROR_TYPE]: ['error'],
+  // EXP-011 §58. The trio's signal outputs are their listeners, compiled by their own registration.
+  [STREAM_PARSER_TYPE]: STREAM_NODES[STREAM_PARSER_TYPE].signals,
+  [STREAM_BUFFER_TYPE]: STREAM_NODES[STREAM_BUFFER_TYPE].signals,
+  [TEXT_ACCUMULATOR_TYPE]: STREAM_NODES[TEXT_ACCUMULATOR_TYPE].signals,
   [LOG_TYPE]: ['done'],
   [TIMER_TYPE]: TIMER_OUTPUTS,
   [VALUE_CHANGED_TYPE]: ['valueChanged'],
@@ -1224,6 +1339,12 @@ export type ValueExpr =
    * the first error there is nothing to read.
    */
   | { kind: 'app-error-out'; nodeId: string; local: string; field: (typeof ON_APP_ERROR_VALUE_OUTPUTS)[number]; tsType: string }
+  /**
+   * A streaming node's value output (EXP-011 §58) — a live getter on the hook's handle, read the same way in
+   * both contexts: the host re-renders once per invocation, and a chain fired by one of the node's signals
+   * reads the state the runtime's getter would answer at that moment. `maybeUndefined` is the table's.
+   */
+  | { kind: 'stream-out'; nodeId: string; local: string; node: StreamKind; field: string; tsType: string }
   | { kind: 'animate-out'; nodeId: string; local: string };
 
 /**
@@ -1769,7 +1890,23 @@ export type HandlerAction =
   | DelayAction
   | StatesGoAction
   | ScriptSignalAction
-  | RunTasksAction;
+  | RunTasksAction
+  | StreamAction;
+
+/**
+ * A streaming node's action port pulsed (EXP-011 §58) — `<local>.<verb>(<data>)`. `value` is the data port's
+ * expression, read AT THE PULSE (the runtime appends the last delivered Chunk / Data when the pulse lands, and
+ * the chain that pulses may have written it a statement earlier — `runtasks-run`'s rule); absent when the port
+ * has no source, in which case the call takes no argument and the setter never ran. The node's signal outputs
+ * are its listeners ({@link StreamPlan.listeners}), passed once to the hook.
+ */
+export type StreamAction = {
+  kind: 'stream-action';
+  nodeId: string;
+  local: string;
+  verb: string;
+  value?: ValueExpr;
+};
 
 /**
  * A `States` node's `Toggle` or `To <state>` (EXP-011 §49) — one call on the `useStates` handle:
@@ -2325,6 +2462,29 @@ export interface AppErrorPlan {
 }
 
 /**
+ * A streaming node (EXP-011 §58): `const <local> = use<Hook>({ label, nodeId, componentName }, { <config> },
+ * { <listeners> })`. The data port's expression rides every action that takes it; the config is the options
+ * object the hook re-reads every render (a literal, or a render read where wired); the signal outputs are the
+ * chains wired off them.
+ */
+export interface StreamPlan {
+  nodeId: string;
+  type: string;
+  kind: StreamKind;
+  /** The authored label, or the display name. */
+  label: string;
+  /** The hook local — `parser`. */
+  local: string;
+  /** The data port's source — a wire's expression or an authored literal; absent when the port has none. */
+  data?: ValueExpr;
+  /** The config ports that are authored or wired, by port name; an absent port keeps the runtime's initialize() value. */
+  config: Array<{ port: string; expr: ValueExpr }>;
+  /** The signal outputs, as the chains wired off them. */
+  listeners: Record<string, HandlerAction[]>;
+  comment: string;
+}
+
+/**
  * An `Animate To Value` node (EXP-011 §49): `const <local> = useAnimatedValue(target, { duration,
  * delay, ease }, onArrive)`. `duration` and `delay` are read where the hook is — a wired one is
  * the render expression, an authored one a literal — and `ease` is the authored enum, which a
@@ -2811,6 +2971,8 @@ export interface ComponentPlan {
   taskRefusal?: string;
   /** EXP-011 §54. The On App Error boundaries hosted here, registration order. */
   appErrors: AppErrorPlan[];
+  /** EXP-011 §58. */
+  streams: StreamPlan[];
   /** EXP-011 §55. The `Create New Array` handles this component holds, allocation order. */
   mintedArrays: MintedArrayPlan[];
   /**
@@ -3123,6 +3285,7 @@ function planComponent(
     scripts: [],
     runTasks: [],
     appErrors: [],
+    streams: [],
     mintedArrays: [],
     liftedOutputProps: [],
     instanceLifted: {},
@@ -3410,7 +3573,10 @@ function planComponent(
           : // EXP-011 §54. The receiver's sentence: a boundary is a subscription, and it needs a component that mounts.
             node.type === ON_APP_ERROR_TYPE
             ? { kind: 'deferred', to: 'EXP-003', reason: 'component emits no file to host the boundary' }
-            : dispositionForLogic(node, kits);
+            : // EXP-011 §58. The same sentence, naming the node.
+              STREAM_NODES[node.type] !== undefined
+              ? { kind: 'deferred', to: 'EXP-003', reason: `component emits no file to host the ${STREAM_NODES[node.type].displayName}` }
+              : dispositionForLogic(node, kits);
     }
     plan.file = null;
     plan.rootId = null;
@@ -6983,6 +7149,26 @@ function planComponent(
       ctx.logicNodeIds.push(fromNode.id);
       return read;
     }
+    /**
+     * A streaming node's value outputs (EXP-011 §58) — live getters on the handle; the Script rule one node
+     * over: registered on first use, and a node that fails its gate answers every read with the same reason.
+     */
+    if (STREAM_NODES[fromNode.type] !== undefined) {
+      const registered = streamPlanOf(fromNode);
+      if ('defer' in registered) {
+        ctx.defer = registered.defer;
+        return null;
+      }
+      const read = streamReadOf(registered, fromProperty);
+      if (read === null) {
+        ctx.defer = STREAM_NODES[fromNode.type].signals.includes(fromProperty)
+          ? `its ${fromProperty} output is consumed as a value — a pulse carries nothing to read`
+          : `its ${fromProperty} output is not a port this node has`;
+        return null;
+      }
+      ctx.logicNodeIds.push(fromNode.id);
+      return read;
+    }
     /** An `Animate To Value`'s Current Value (EXP-011 §49) — the number its hook returns. */
     if (fromNode.type === ANIMATE_TYPE) {
       if (fromProperty !== 'currentValue') {
@@ -7724,6 +7910,9 @@ function planComponent(
       // EXP-011 §54. Nothing to read before the first error (`last` is undefined until one is accepted).
       case 'app-error-out':
         return true;
+      // EXP-011 §58. The table's answer: `Parsed` before the first value, the buffer's `Error` before a refused Add.
+      case 'stream-out':
+        return streamFieldMaybeUndefined(expr.node, expr.field);
       /** EXP-011 §49. Boots 0 and only ever holds a number (animate-to-value.ts `currentNumber`). */
       case 'animate-out':
         return false;
@@ -8051,6 +8240,8 @@ function planComponent(
       case 'script-out':
       // EXP-011 §54. `string` for the five, the structural AppError for the Error Object.
       case 'app-error-out':
+      // EXP-011 §58. The table's type.
+      case 'stream-out':
         return expr.tsType;
       /**
        * Both messages are string literals the emitter writes itself (EXP-011 §24) — so `string`
@@ -8169,7 +8360,9 @@ function planComponent(
     // EXP-011 §49. A States' Toggle and its `to-<state>` family.
     (type === STATES_TYPE && isStatesTrigger(toProperty)) ||
     // EXP-011 §53. A Run Tasks' Do and Abort — one node, two action ports.
-    (type === RUN_TASKS_TYPE && (toProperty === 'run' || toProperty === 'abort'));
+    (type === RUN_TASKS_TYPE && (toProperty === 'run' || toProperty === 'abort')) ||
+    // EXP-011 §58. The trio's action ports — Parse/Clear, Add/Flush/Clear, Add/Clear.
+    (STREAM_NODES[type] !== undefined && STREAM_NODES[type].actions[toProperty] !== undefined);
 
   /**
    * `isTriggerWire` with the node in hand — a `Script` node's trigger ports are the signal inputs its
@@ -10958,6 +11151,141 @@ function planComponent(
     return { kind: 'app-error-out', nodeId: boundary.nodeId, local: boundary.local, field, tsType: field === 'errorObject' ? APP_ERROR_TS_TYPE : 'string' };
   };
 
+  // ---- EXP-011 §58 — the streaming trio ------------------------------------------------------------
+  const streamPlans = new Map<string, StreamPlan | { defer: string }>();
+  const streamLocals = new Map<string, string>();
+  /**
+   * A streaming node, registered on first use by whichever side asks — a read in `resolveExpr`, a trigger in
+   * `compileStreamAction`, or the registration pass — and memoized so every side gets the same handle or the
+   * same named reason. `scriptPlanOf`'s shape, including the provisional entry cached before the listeners
+   * compile (a listener chain may pulse this node's own action port).
+   *
+   * What it refuses: a component with no file to host it, an input or output the node has not got, two wires on
+   * one value input, a value input with no static source or one that only exists inside a handler, a signal output
+   * consumed as a value (decided from the sink's own port kind BEFORE the chain compiles — §52.4's rule), and a
+   * chain this slice cannot compile. Every port of the three nodes translates.
+   */
+  const streamPlanOf = (node: NodeIR): StreamPlan | { defer: string } => {
+    const cached = streamPlans.get(node.id);
+    if (cached !== undefined) return cached;
+    const spec = STREAM_NODES[node.type];
+    const refuse = (defer: string): { defer: string } => {
+      const reason = { defer };
+      streamPlans.set(node.id, reason);
+      const index = plan.streams.findIndex((s) => s.nodeId === node.id);
+      if (index !== -1) plan.streams.splice(index, 1);
+      for (const key of [...compiledSinks.keys()]) if (key.startsWith(`${node.id}:`)) compiledSinks.delete(key);
+      return reason;
+    };
+    if (!plan.file) return refuse(`component emits no file to host the ${spec.displayName}`);
+    const valueInputs = [spec.data, ...spec.config];
+    for (const wire of component.connections.filter((c) => c.toId === node.id)) {
+      if (spec.actions[wire.toProperty] !== undefined || valueInputs.some((p) => p.port === wire.toProperty)) continue;
+      return refuse(`its ${wire.toProperty} input is not a port this node has`);
+    }
+    for (const wire of component.connections.filter((c) => c.fromId === node.id)) {
+      const port = wire.fromProperty;
+      if (spec.signals.includes(port) || spec.values[port] !== undefined) continue;
+      return refuse(`its ${port} output is consumed, and this node has no such port`);
+    }
+    const ctx = newCtx();
+    const consumes: string[] = [];
+    // A value input: a wire's expression (one wire, a render-time source), else the authored literal, else nothing.
+    const sourceOf = (input: { port: string; displayName: string }): ValueExpr | undefined | { defer: string } => {
+      const wires = component.connections.filter((c) => c.toId === node.id && c.toProperty === input.port);
+      if (wires.length > 1) return { defer: `two wires feed its ${input.displayName} input — last-writer-wins is not statically ordered` };
+      if (wires.length === 1) {
+        const from = nodeById.get(wires[0].fromId);
+        const expr = resolveExpr(from, wires[0].fromProperty, ctx);
+        if (expr === null) {
+          return { defer: `its ${input.displayName} input is fed by ${from?.type ?? 'a missing node'} — ${ctx.defer ?? 'no statically known source in the emit vocabulary'}` };
+        }
+        if (!exprValidIn(expr, { kind: 'render' })) return { defer: `its ${input.displayName} input reads a value that only exists inside a handler` };
+        consumes.push(wires[0].key);
+        return expr;
+      }
+      const literal = literalParam(node, input.port);
+      return literal !== undefined ? { kind: 'literal', value: literal } : undefined;
+    };
+    const data = sourceOf(spec.data);
+    if (data !== undefined && 'defer' in data) return refuse(data.defer);
+    const config: StreamPlan['config'] = [];
+    for (const input of spec.config) {
+      const expr = sourceOf(input);
+      if (expr === undefined) continue;
+      if ('defer' in expr) return refuse(expr.defer);
+      config.push({ port: input.port, expr });
+    }
+    const label = node.authoredLabel ?? spec.displayName;
+    const core: StreamPlan = {
+      nodeId: node.id,
+      type: node.type,
+      kind: spec.kind,
+      label,
+      local: mintLocal(streamLocals, node, spec.localStem, ''),
+      data,
+      config,
+      listeners: {},
+      comment: `${label} — a ${spec.displayName} (${spec.kind === 'parser' ? 'json-stream-parser.ts' : spec.kind === 'buffer' ? 'stream-buffer.ts' : 'text-accumulator.ts'}), hosted by streaming.ts; its value outputs read live off the handle.`
+    };
+    streamPlans.set(node.id, core);
+    plan.streams.push(core);
+    // The listeners: every signal output with a chain, compiled in the render context — the hook keeps the
+    // latest listeners passed, so each closes over the latest render.
+    const collapses: string[] = [...ctx.logicNodeIds];
+    const subscribes: string[] = [...ctx.subscriberIds];
+    consumes.push(...ctx.consumes);
+    for (const port of spec.signals) {
+      const wires = component.connections.filter((c) => c.fromId === node.id && c.fromProperty === port);
+      if (wires.length === 0) continue;
+      // A pulse into a value port is a read of nothing, and the sentence has to say which: the sink's own
+      // declaration decides, then the catalog.
+      for (const wireOut of wires) {
+        const target = nodeById.get(wireOut.toId);
+        if (target === undefined || target.type === 'Component Outputs') continue;
+        const sinkKind =
+          target.declaredPorts.find((p) => p.plug === 'input' && p.name === wireOut.toProperty)?.kind ??
+          catalog.portKind(target.type, wireOut.toProperty, 'input');
+        if (sinkKind === 'value') return refuse(`its ${port} output is consumed as a value — a pulse carries nothing to read`);
+      }
+      const chain = doneChainOf(node, port);
+      if ('defer' in chain) return refuse(chain.defer);
+      if (!actionsValidIn(chain.then, { kind: 'render' })) return refuse(`its ${port} chain reads values that only exist inside a handler`);
+      const snapped = snapActionList(chain.then, chainSnapshotFor(`stream:${node.id}:${port}`));
+      if (!Array.isArray(snapped)) return refuse(snapped.defer);
+      core.listeners[port] = snapped;
+      consumes.push(...chain.consumes);
+      collapses.push(...chain.collapses);
+      subscribes.push(...chain.subscribes);
+    }
+    const into = `src/${plan.file.dir}/${plan.file.fileBase}.tsx`;
+    for (const key of consumes) consumed.add(key);
+    for (const id of collapses) dispositions[id] = { kind: 'collapsed', into };
+    for (const id of subscribes) boundSubscribers.add(id);
+    return core;
+  };
+
+  /** One of a streaming node's value outputs as the expression that reads it off the handle, or null for a port it has not got. */
+  const streamReadOf = (stream: StreamPlan, port: string): ValueExpr | null => {
+    const field = STREAM_NODES[stream.type].values[port];
+    if (field === undefined) return null;
+    return { kind: 'stream-out', nodeId: stream.nodeId, local: stream.local, node: stream.kind, field: port, tsType: field.tsType };
+  };
+
+  /** A streaming node's action port pulsed — one call on the handle, the data read at the pulse where the verb takes it. */
+  const compileStreamAction = (node: NodeIR, port: string): CompiledSink => {
+    const registered = streamPlanOf(node);
+    if ('defer' in registered) return registered;
+    const action = STREAM_NODES[node.type].actions[port];
+    if (action === undefined) return { defer: `its ${port} input is not a port this node has` };
+    return {
+      action: { kind: 'stream-action', nodeId: node.id, local: registered.local, verb: action.verb, ...(action.takesData && registered.data !== undefined ? { value: registered.data } : {}) },
+      consumes: [],
+      collapses: [],
+      subscribes: []
+    };
+  };
+
   /** An `Animate To Value`, registered on first use and memoized — `statesPlanOf`'s shape, with nothing that can re-enter. */
   const animationPlanOf = (node: NodeIR): AnimationPlan | { defer: string } => {
     const cached = animationPlans.get(node.id);
@@ -11350,6 +11678,8 @@ function planComponent(
     // EXP-011 §52. A Script node's signal inputs, as its own code declared them.
     if (node.type === SCRIPT_TYPE) return compileScriptSignal(node, port);
     if (node.type === RUN_TASKS_TYPE) return compileRunTasks(node, port);
+    // EXP-011 §58. The trio's action ports.
+    if (STREAM_NODES[node.type] !== undefined) return compileStreamAction(node, port);
     if (node.type === NAVIGATE_TO_PATH_TYPE) return compileNavigateToPath(node);
     if (node.type === 'NavigationShowPopup') return compileShowPopup(node);
     if (node.type === 'NavigationClosePopup') return compileClosePopup(node, port);
@@ -11809,6 +12139,8 @@ function planComponent(
       case 'script-out':
       // EXP-011 §54. The same: `last` is the latest accepted error in every context.
       case 'app-error-out':
+      // EXP-011 §58. The same: a live getter on a component-scope handle.
+      case 'stream-out':
         return true;
       /**
        * The id nodes (EXP-011 §37), on the same footing and the same reason: the row form is an
@@ -12057,6 +12389,9 @@ function planComponent(
           return exprValidIn(action.items, context, invokedScope);
         case 'runtasks-abort':
           return true;
+        // EXP-011 §58. The data is read at the pulse, in the handler that pulses; the listeners are validated where they compile.
+        case 'stream-action':
+          return action.value === undefined || exprValidIn(action.value, context, invokedScope);
       }
     });
 
@@ -12613,6 +12948,8 @@ function planComponent(
       case 'script-out':
       // EXP-011 §54. The same: the error that fired the chain, not anything the chain set.
       case 'app-error-out':
+      // EXP-011 §58. The same: a live read off the handle.
+      case 'stream-out':
         return false;
       /**
        * 🔴 A walker with a `default`, and the third construct to nearly die in one (§8.3).
@@ -12674,6 +13011,7 @@ function planComponent(
       }
       case 'script-out':
       case 'app-error-out':
+      case 'stream-out':
         return expr;
       case 'jsfun-out': {
         // Wrapper argument records are shared across call sites — a per-site rewrite cannot
@@ -12924,6 +13262,13 @@ function planComponent(
         if ('defer' in items) return items;
         return { ...action, items };
       }
+      // EXP-011 §58. The data read at the pulse sees what the chain wrote before it — the Set Variable, then the Parse.
+      case 'stream-action': {
+        if (action.value === undefined) return action;
+        const value = snapExpr(action.value, snap);
+        if ('defer' in value) return value;
+        return { ...action, value };
+      }
       case 'runtasks-abort':
         return action;
       case 'jsfun-run': {
@@ -13058,6 +13403,9 @@ function planComponent(
       // EXP-011 §53. Both action ports, when wired; an unfired Run Tasks falls to logic as a Cloud
       // Function nothing calls does, and the verdict sweep names its dangling chains.
       for (const port of ['run', 'abort']) if (wiredPorts.has(`${node.id}:${port}`)) compiledOf(node, port);
+    } else if (STREAM_NODES[node.type] !== undefined) {
+      // EXP-011 §58. Every wired action port compiles.
+      for (const port of Object.keys(STREAM_NODES[node.type].actions)) if (wiredPorts.has(`${node.id}:${port}`)) compiledOf(node, port);
     } else if (node.type === ON_APP_ERROR_TYPE) {
       // EXP-011 §54. No trigger port — it registers HERE, unconditionally, because it must register before any
       // other pass compiles a sink that reads it: a Set Variable in its own Error chain reads its Message, and a
@@ -13703,6 +14051,8 @@ function planComponent(
     for (const item of plan.repeaterItems) scanActions(item.actions);
     // EXP-011 §54. A boundary's Error chain attaches exactly as a handler's chains do.
     for (const boundary of plan.appErrors) if (boundary.listener !== undefined) scanActions(boundary.listener);
+    // EXP-011 §58. A streaming node's listener chains attach exactly as a handler's chains do.
+    for (const stream of plan.streams) for (const chain of Object.values(stream.listeners)) scanActions(chain);
 
     /**
      * EXP-011 §40. The two producers that attach actions to something other than a rendered
@@ -13776,6 +14126,20 @@ function planComponent(
   for (const node of component.nodes) {
     if (node.type !== ON_APP_ERROR_TYPE || dispositions[node.id] !== undefined) continue;
     const registered = appErrorPlanOf(node);
+    if ('defer' in registered) {
+      dispositions[node.id] = { kind: 'deferred', to: 'EXP-003', reason: registered.defer };
+      notes.push(`node ${node.id} (${node.type}) deferred: ${registered.defer}`);
+      continue;
+    }
+    dispositions[node.id] = { kind: 'collapsed', into: `src/${plan.file!.dir}/${plan.file!.fileBase}.tsx` };
+  }
+
+  // EXP-011 §58 — the streaming trio: a hook each. Registers on first use from a read or a trigger; this pass
+  // registers the rest (a node nothing fires still exists and holds its defaults, as the runtime instance does;
+  // its chains are compiled and never fire, as the runtime's never would) and names the refused.
+  for (const node of component.nodes) {
+    if (STREAM_NODES[node.type] === undefined || dispositions[node.id] !== undefined) continue;
+    const registered = streamPlanOf(node);
     if ('defer' in registered) {
       dispositions[node.id] = { kind: 'deferred', to: 'EXP-003', reason: registered.defer };
       notes.push(`node ${node.id} (${node.type}) deferred: ${registered.defer}`);
@@ -14498,6 +14862,8 @@ function planComponent(
     const isScriptRead = fromNode.type === SCRIPT_TYPE;
     // EXP-011 §54. A boundary's value outputs, off its handle — the same footing.
     const isAppErrorRead = fromNode.type === ON_APP_ERROR_TYPE;
+    // EXP-011 §58. A streaming node's value outputs, off its handle — the same footing.
+    const isStreamRead = STREAM_NODES[fromNode.type] !== undefined;
     const isAnimateRead = fromNode.type === ANIMATE_TYPE && connection.fromProperty === 'currentValue';
     if (
       !isLatchRead &&
@@ -14518,7 +14884,8 @@ function planComponent(
       !isStatesRead &&
       !isAnimateRead &&
       !isScriptRead &&
-      !isAppErrorRead
+      !isAppErrorRead &&
+      !isStreamRead
     ) {
       continue;
     }
@@ -15263,6 +15630,10 @@ function planComponent(
             break;
           case 'runtasks-abort':
             break;
+          // EXP-011 §58. The data read at the pulse; the config and listeners are walked off the plan below.
+          case 'stream-action':
+            if (action.value !== undefined) walkExpr(action.value);
+            break;
           case 'branch':
             walkExpr(action.cond);
             walkActions(action.whenTrue);
@@ -15330,6 +15701,12 @@ function planComponent(
     for (const boundary of plan.appErrors) {
       if (boundary.filter !== undefined) walkExpr(boundary.filter);
       if (boundary.listener !== undefined) walkActions(boundary.listener);
+    }
+    // EXP-011 §58. The data, the wired config and every listener chain.
+    for (const stream of plan.streams) {
+      if (stream.data !== undefined) walkExpr(stream.data);
+      for (const entry of stream.config) walkExpr(entry.expr);
+      for (const chain of Object.values(stream.listeners)) walkActions(chain);
     }
     // EXP-011 §52. Every fed input and every listener chain.
     for (const script of plan.scripts) {
@@ -15694,6 +16071,9 @@ function planComponent(
           case 'runtasks-run':
           case 'runtasks-abort':
             break;
+          // EXP-011 §58. Nothing nested on the action; the listeners are filled off the plan below.
+          case 'stream-action':
+            break;
           case 'id-new': {
             const row = idVars.get(action.nodeId);
             if (row !== undefined && plan.stateVars.includes(row)) action.materialize = row.name;
@@ -15799,6 +16179,8 @@ function planComponent(
     for (const item of plan.repeaterItems) fillMaterialize(item.actions);
     // EXP-011 §54. A request inside the Error chain materializes as a handler's would.
     for (const boundary of plan.appErrors) if (boundary.listener !== undefined) fillMaterialize(boundary.listener);
+    // EXP-011 §58. A request inside a listener chain materializes as a handler's would.
+    for (const stream of plan.streams) for (const chain of Object.values(stream.listeners)) fillMaterialize(chain);
   }
 
   // EXP-011 §53. A Run Tasks nothing fires: named as a Cloud Function nothing calls is, by what hangs off it,
@@ -16437,6 +16819,12 @@ function pageInputsUnroutedReason(node: NodeIR): string {
  * — the verdict in the pre-flight turns on this distinction, so it lives beside the tables that
  * define the families rather than in a second list the report would keep.
  */
+/** EXP-011 §58. Which of a streaming node's value outputs read undefined before anything happened — the table's answer, shared with component.ts. */
+export function streamFieldMaybeUndefined(node: StreamKind, field: string): boolean {
+  const type = node === 'parser' ? STREAM_PARSER_TYPE : node === 'buffer' ? STREAM_BUFFER_TYPE : TEXT_ACCUMULATOR_TYPE;
+  return STREAM_NODES[type].values[field]?.maybeUndefined === true;
+}
+
 export function isPathwayType(type: string): boolean {
   return (
     RECORD_VERBS[type] !== undefined ||

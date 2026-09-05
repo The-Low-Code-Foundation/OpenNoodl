@@ -765,7 +765,7 @@ describe('§H the ledger and the pre-flight', () => {
     expect(ledgerEntryOf('Javascript2')).toEqual({ typeName: 'Javascript2', status: 'translated' });
     expect(exportBadgeOf('Javascript2')).toBeUndefined();
     const ledger = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'coverage-ledger.json'), 'utf8'));
-    expect(ledger.pickerCoverageFloor).toBe(99); // §57 Repeater Item (session 85) // §56 Filter Records (session 84)
+    expect(ledger.pickerCoverageFloor).toBe(102); // §57 Repeater Item, §58 the streaming trio (session 85) // §56 Filter Records (session 84)
   });
   test('the clean fixture pre-flights with nothing to attend to', () => {
     const summary = summarizePreflight(app);

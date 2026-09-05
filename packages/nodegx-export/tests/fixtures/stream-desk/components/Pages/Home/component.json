@@ -1,0 +1,9 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "f2b8d4e0-5a3c-4d9f-8b2e-000000000081",
+  "name": "Home",
+  "path": "/Pages/Home",
+  "type": "page",
+  "modified": "2026-09-05T09:00:00.000Z",
+  "description": "EXP-011 §58 fixture: the streaming trio. A JSON Stream Parser fed by a `chunk` Variable two Load buttons write (a document split mid-string across the two), parsed on its own button; a Text Accumulator (delimiter |) fed the same way; a Stream Buffer (Max Size 3) fed a constant, with Add and Flush buttons. Every value output is shown in a Text; each node's headline signal writes a `status` Variable."
+}
