@@ -636,6 +636,25 @@ of the shipping artefact at all; from here the manifests carry the answer.
 ## §9.7 ⚠️ What is NOT built
 
 1. **The four judgements of §7.3 are still untouched** — they were always Richard's.
-2. **The site-builder template still has no outline gate.** It ships 26 `as` tags and nothing holds
-   them there; §8 and §8.7 cover the members' area only, and §11 drives only this template. One
-   seam, and it is the same two files' worth of work. **Owner: NONE.**
+2. ✅ ~~**The site-builder template still has no outline gate.** It ships 26 `as` tags and nothing
+   holds them there; §8 and §8.7 cover the members' area only, and §11 drives only this template.
+   One seam, and it is the same two files' worth of work. **Owner: NONE.**~~
+   **BUILT — struck 2026-09-05 (s46), and it was already built when this was written.**
+   `373375fd` (09-03 23:23, *"the document outline the site builder never had — 7 headings, 0
+   landmarks, and 0 of 26 tags held by anything"*) landed **fifty-three minutes after this file was
+   last saved**, so the row was true when typed and stale within the hour. It is
+   `sb007Template.test.ts` §12, and it is a full peer of §8 rather than a subset —
+   **§12.1** one `h1` per page over seven pages, **§12.2** one `main` per page, **§12.3** the `h1`
+   *inside* the `main` (the defect §9 of this file fixed in the members' area, gated here before it
+   could happen), **§12.4** the nav resolved from the artefact rather than named, **§12.5** no node
+   carrying an `as` its type has no port for, and **§12.6** the same near-miss CONTROL — a node
+   whose *id* is `main` and a `Text` whose *content* is the word `main`, neither of which the
+   census may count.
+   ✅ **Read green rather than inferred from the commit message**: `npx jest tests/sb007Template.test.ts
+   -t "document outline"` reads **9 passed, EXIT=0** — the seven above plus **§12.7**, a second
+   control proving containment is a real walk and not a same-parent check, and **two MUTANT rows**
+   that reproduce the template as it shipped (a heading on every page, a landmark on none) and the
+   near-miss where a `main` swallows the band.
+   ⚠️ **Read the row's claim, not its status**: what was missing was never the heading-*order*
+   check (that is `headingOrder.test.ts`, built s41 over **both** artefacts) — it was the landmark
+   census, and it is this. Both now exist, for both templates.

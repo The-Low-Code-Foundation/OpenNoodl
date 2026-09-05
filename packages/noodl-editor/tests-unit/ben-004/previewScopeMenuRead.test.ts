@@ -39,10 +39,13 @@ import { benchTargets, readMenuComponents, type BenchTarget } from '../../src/ed
 /**
  * `ProjectModel`, in the two lines this decision depends on —
  * `getComponents() { return this.components; }` and `addComponent` doing
- * `this.components.push(component)`. Both read off `projectmodel.ts` at the time of writing
- * (`getComponents` ~line 327, `addComponent` ~line 341); the point of restating them rather than
- * importing the real model is that the real one drags Electron, the node library and half the
- * editor's singletons into a plain-Node runner.
+ * `this.components.push(component)`. Restated rather than imported because the real model drags
+ * Electron, the node library and half the editor's singletons into a plain-Node runner.
+ *
+ * 🔴 **A restatement is not a reading of the thing it restates.** If `ProjectModel` ever starts
+ * handing out a copy, this class carries on describing a world that has moved and §2 keeps passing
+ * on a property the product no longer needs. That is what §1.3 is for: it reads the two lines off
+ * `projectmodel.ts` itself, so the premise is checked rather than assumed.
  */
 class LiveArrayModel {
   readonly components: Array<{ name: string }> = [];
@@ -90,8 +93,9 @@ describe('BEN-004 — the scope menu reads a list it can tell apart from the las
       model.addComponent({ name: '/Cards/New' });
       const after = model.getComponents();
 
-      // The known-firing control. If this ever reads `false`, ProjectModel started copying and
-      // §2 is holding a property the product no longer needs — look before deleting anything.
+      // ⚠️ This says the STUB is shaped the way the bug needs. It cannot say anything about
+      // `ProjectModel` — a stub does not notice when the thing it imitates changes. §1.3 is the
+      // row that watches the real file.
       expect(Object.is(before, after)).toBe(true);
     });
 
@@ -103,6 +107,38 @@ describe('BEN-004 — the scope menu reads a list it can tell apart from the las
       // The list a `console.log` in `open()` would print is correct. Nothing is stale in the
       // getter; what is discarded is the state write, one layer up.
       expect(before.map((c) => c.name)).toContain('/Cards/New');
+    });
+
+    /**
+     * §1.3 — the premise, read off the real file rather than off the stub above.
+     *
+     * Returns `null` rather than asserting, for the same reason `openBody()` does: a helper that
+     * asserts runs during collection, and a mutant that deletes its subject then produces
+     * `Tests: 0 total` instead of a named red.
+     */
+    function projectModelBody(name: string): string | null {
+      const source = stripComments(
+        readFileSync(join(__dirname, '../../src/editor/src/models/projectmodel.ts'), 'utf8')
+      );
+      const start = source.indexOf(name);
+      if (start === -1) return null;
+      const end = source.indexOf('\n  }', start);
+      if (end === -1) return null;
+      return source.slice(start, end);
+    }
+
+    it('§1.3 ProjectModel still hands out the array it mutates — the reason .slice() is needed', () => {
+      const getter = projectModelBody('getComponents(): ComponentModel[] {');
+      const adder = projectModelBody('addComponent(component, args?: TSFixme) {');
+
+      expect(getter).not.toBeNull();
+      expect(adder).not.toBeNull();
+
+      // If either of these moves, the hazard `readMenuComponents` exists for may have gone — read
+      // this row's failure before changing anything, because the copy is cheap and harmless either
+      // way, and a getter that starts copying is a change worth noticing rather than absorbing.
+      expect(getter).toContain('return this.components;');
+      expect(adder).toContain('this.components.push(component);');
     });
   });
 
