@@ -8690,8 +8690,8 @@ NOT run (the orchestrator's, after merging): editor tsc, editor test:ci, any dri
   are refused by name. `Error` on the parent Set likewise (its only message is the miss sentence, raised). Owner NONE.
 - **A key written only from a descendant is typed `unknown` on the host** (`count` in the fixture) — the host cannot see the
   child's literal; a project-wide pass over parent Sets could type it. Owner NONE.
-- **`Set Object Properties` (§47) skips an authored `prop-<key>` literal** where the runtime writes it — one clause in
-  `compileSetObjectProperties`, mirroring this row's. Owner **EXP-011**.
+- ✅ **`Set Object Properties` (§47) skips an authored `prop-<key>` literal** where the runtime writes it. **BUILT session 92 as §68**:
+  the literal is one entry in the patch, in list order, and types the key; profile-desk's `since` drives `2026` on Save.
 - ✅ **A `Variable2`'s authored initial value is not seeded** into the emitted store (finding 8) — CONFIRMED observable by the §60.6
   drive (boot reads `''` where the runtime reads `First note`). **BUILT session 91 as §67: a mount write in the host, per mount**
   (`useEffect(() => { note.set('First note'); }, [])`), driven — boot reads `First note` on Home and the Panel.
@@ -10072,3 +10072,82 @@ read the record through the Provider). **P2** type `Quarterly` ⇒ the controlle
 ⇒ title `Quarterly` ×4, note `renamed` on Home and the Panel (the Set overwrote the record key; the variable still holds `First note`
 and the mirror did NOT re-run — predicted), status `Renamed.` ✓. **P4 Bump** ⇒ count `1`, `Bumped.` ✓. **P5** errs `[]` ✓.
 Teardown: 0 listeners on 4367 / 9368. Every row matched the sheet written before the drive.
+
+## §68 A `Set Object Properties`' authored `prop-<key>` value is written on every Do — the §60.5 register's second EXP-011-owned row, built (session 92, 2026-09-05)
+
+**Picker 117/127 unchanged** — `SetModelProperties` has been a translated node since §47; this closes the second **divergence inside a
+translated node** the §60 build registered (§60.4, §60.5: *"one clause in `compileSetObjectProperties`, mirroring §60's"*). The hand-off
+said RE-MEASURE first, and the row was right on both sides.
+
+### §68.0 What the runtime does, read before a line of code
+
+`nodescope.ts` (`createNodeFromModel`'s parameter pass): every authored parameter is `registerInputIfNeeded`'d and then `queueInput`'d
+into the node **at creation**; on this node family `registerInputIfNeeded` (`modelcrudbase.ts`) registers a `prop-<key>` input whose setter
+is `_setInputValue` ⇒ `internal.inputValues[key] = value`. On `Do`, `_pushInputValues` writes **every key in the node's own Properties
+list whose value is not `undefined`** — a wired key and a typed-in key alike; the Array selector `eval`s a string, the Object selector
+dereferences one, every other selector is inert. So a listed key nothing wires but the author typed `2026` into is written as `'2026'`
+on every Do, from the first. **Measured first** (`probe68.ts`, profile-desk's Set with `properties: name,since,city` + `prop-since: '2026'`):
+the pre-change patch was `profile.set({ name: name, city: city })` — the literal vanished with no entry, no key on the module and no note.
+
+### §68.1 What is emitted
+
+`plan.ts` `compileSetObjectProperties`: for a listed key with no wire, `literalParam(node, 'prop-<key>')`; a defined literal is
+`{ key, expr: { kind: 'literal', value } }` **in the loop, so list order holds** (`{ city: city, since: '2026', name: name }` for
+`city,since,name`); the acting-selector refusal stands **in front of** both the wired and the authored path (the runtime acts on the
+string either way); a literal under a wire is shadowed (the wire is compiled, the literal never read — the runtime's arrivals land
+over it); a literal on a key the list does not admit is filtered out like a wire there, and unlike a wire leaves nothing to drop;
+an `expression` parameter is not a literal and stays refused. `appState.ts`: discovery registers a literal `SourceRef` for every
+listed, unwired, authored key (`ensureStoreKey` + `storeKeySources`), so **the literal types the key** — `'2026'` ⇒ `since?: string`,
+`2026` ⇒ `since?: unknown`, and the patch `since: 2026` typechecks against it; under a wire the wire governs the type too.
+
+```tsx
+onClick={() => { profile.set({ name: name, city: city, since: '2026' }); status.set('Saved.'); }}
+```
+
+### §68.2 The fixture — `tests/fixtures/profile-desk`, extended
+
+The Set now lists `name,city,since` with `prop-since: "2026"` typed in and nothing wired to it (a `metadata.comment` says why); the
+Object lists `since` too and a fourth Text (`sinceText`, *Stored since*) reads it. profile-desk was the only fixture of 39 with a
+`SetModelProperties` at all (measured: a walk over every `nodes.json`), and none carried a `prop-*` parameter — the shape had no
+presence anywhere, which is why the gap sat green for 17 sessions. Moved pins: `SAVE`, the module golden (`since?: string`), B1 (four
+hooks), B2's reorder (`city,since,name`), B8's list, B9, D4 (four hooks on Home).
+
+### §68.3 Gates and arms
+
+Spec `tests/object-store.test.ts`, **43 rows** (+8, §E): E1 the fixture's literal in the patch and `since?: string` and the read
+binding without `String()`; E2 a number writes as a number, types `unknown`, **and the app typechecks**, a boolean likewise; E3 a
+literal under a wire is shadowed, and a number under a string wire does not demote the key; E4 a literal on an unlisted key is never
+written and leaves no note; E5 the acting selectors refuse a literal by the same sentence; E6 a Set whose only value is the literal
+translates as a one-key patch, and with the literal gone too it is C9's refusal (the presence control beside the absence); E7 an
+`expression` parameter is not written as its source text; E8 a literal on a listed key nothing reads still earns the key, typed.
+Pkg tsc 0. **11 arms, 11 killed** (`mut68.py`, md5-restored): the compiler blind to the parameter (13 red), written under a wire
+(E3), the selector gate skipped for a literal (E5), printed as a string whatever it is (E2), the source never registered (A1 A4 E1
+E8), the demotion off (E2), registered under a wire (E3), the key never created (B12 E8), list order lost (B2), an expression as its
+text (E7), an unlisted key typed (E4). Whole package, editor tsc, ledger, picker and editor `test:ci` — see the session 92 hand-off.
+
+### §68.4 What building it found
+
+1. ⚠️ **The typing rule and the write rule live in two files** (`appState.ts` discovery, `plan.ts` compile) and had to be added
+   twice — M5/M8 vs M1 are different arms. §67 had the same shape. A key written by a literal that discovery does not see is a
+   `.set()` against a key the interface lacks — TS2353 in the emitted app, which is why E2/E8 typecheck.
+2. ⚠️ **A gate on `entries.length === 0` still says "nothing is wired"** — true (nor authored), sentence kept; C9 pins it.
+3. ⚠️ **The heading is a `<p>` too** — the prediction sheet counted six paragraphs and the page has seven; the six predicted follow
+   the heading exactly. Count the heading next time.
+
+### §68.5 What this leaves (owner NONE unless named)
+
+- **A literal under a wire** is shadowed in the export; in the runtime the literal shows in the record until the wire's source first
+  delivers (creation-time queue, then arrivals). The same residual as §67.5's first row, one construct over. Owner NONE.
+- **`Set Component Object Properties`** (§60) already read the literal; **`Set Variable`'s authored Value** (§67.5) still does not —
+  the third sibling with the same runtime rule and no clause. Owner NONE.
+- **The `Object` node's own `prop-*` inputs** as authored literals (a write through the Object itself at creation) — refused by name
+  since §47 (`objectNodeGate` refuses a WIRED prop input; an authored one is silently not written). Registered here. Owner NONE.
+
+### §68.6 The drive — the built export, headless (session 92)
+
+`EXPECTED68.md` FIRST, then `drive68.sh` on the built `profile-desk-out` (16 files, 0 refusals; `tsc -b && vite build` exit 0, 0
+`error TS`, 237.88 kB; `vite preview` 4368, Chrome headless CDP 9369). **P1 boot**: `["Profile Desk","","","","","",""]`, errs `[]` —
+the literal is a write on Do, not a seed ✓. **P2** type `Ada` ⇒ nothing else moves ✓. **P3 Save** ⇒ `["Profile Desk","Saved.","Ada","",
+"2026","","Ada"]` — **`since` reads `2026`** where the pre-change export would read `''` ✓ (city is the wired input's `''`, written).
+**P4** type `Paris`, Save ⇒ `"Paris"`, since still `2026` ✓. **P5** errs `[]` ✓. Teardown: 0 listeners on 4368 / 9369. Every row
+matched the sheet.
