@@ -678,6 +678,8 @@ export function emitComponent(
     // EXP-011 §53. A Run Tasks' listener chains, and a template's start chain (a mount effect), are chains like any other.
     ...plan.runTasks.flatMap((r) => Object.values(r.listeners).flatMap((chain) => chain ?? [])),
     ...(plan.task?.actions ?? []),
+    // EXP-011 §57. A Repeater Item's Added chain (a mount effect) is a chain like any other.
+    ...plan.repeaterItems.flatMap((r) => r.actions),
     // EXP-011 §54. A boundary's Error chain.
     ...plan.appErrors.flatMap((b) => b.listener ?? [])
   ];
@@ -3539,7 +3541,8 @@ export function emitComponent(
   // EXP-011 §39. The timer handle and the last value seen both live in refs.
   if (delayRefs.size > 0 || plan.valueChangedEffects.length > 0) reactImports.push('useRef');
   // EXP-011 §53. A task template's mount effect and its once-guard (StrictMode mounts twice; startTask pulses once).
-  if (plan.task !== undefined) {
+  // EXP-011 §57. A Repeater Item's Added effect takes the same pair, for the same reason.
+  if (plan.task !== undefined || plan.repeaterItems.length > 0) {
     if (!reactImports.includes('useEffect')) reactImports.push('useEffect');
     if (!reactImports.includes('useRef')) reactImports.push('useRef');
   }
@@ -4542,7 +4545,21 @@ export function emitComponent(
      * named rather than written onto `IntrinsicAttributes`. The rows below run only past the
      * `!target` guard, so an absent template plan never reaches here.
      */
-    const rowAttrs = (entries: ReadonlyArray<{ input: string; field: string }>, itemRef: string): string[] => {
+    /** One mapped row input; `repeaterItem` marks a Repeater Item's Item Id (EXP-011 §57), whose drop names the node. */
+    type RowEntry = { input: string; field: string; repeaterItem?: string };
+    /**
+     * EXP-011 §57. A feed that cannot supply a Repeater Item's Item Id — named by node and port, with the
+     * runtime fact behind the gap (`Model.create` mints a guid where a row has no `id` of its own; the
+     * exported app has no such minting, so the prop stays undefined). Reported and deferred, never silent.
+     */
+    const dropRepeaterItem = (entry: RowEntry, feed: string): void => {
+      const attr = templateIdents.get(entry.input) ?? entry.input;
+      notes.push(
+        `${plan.path}: For Each ${node.id} repeats ${templateLegacy}, whose Repeater Item ${entry.repeaterItem} reads Item Id, but ${feed} — the row's "${attr}" stays undefined — dropped, reported`
+      );
+      defer(node.id, `the Repeater Item's Item Id (${templateLegacy} › ${entry.repeaterItem})`, feed);
+    };
+    const rowAttrs = (entries: ReadonlyArray<RowEntry>, itemRef: string): string[] => {
       const out: string[] = [];
       for (const { input, field } of entries) {
         const attr = templateIdents.get(input) ?? null;
@@ -4638,14 +4655,28 @@ export function emitComponent(
       repeater.mapping === 'template-inputs'
         ? (templatePlan?.props ?? []).filter((p) => !rowPropNames.has(p.name)).map((p) => ({ input: p.name, field: p.name }))
         : repeater.mapping.filter((entry) => !rowPropNames.has(entry.input));
-    const mapping = [...declaredMapping, ...rowProps.map((r) => ({ input: r.prop, field: r.field }))];
+    const mapping: RowEntry[] = [...declaredMapping, ...rowProps.map((r) => ({ input: r.prop, field: r.field, repeaterItem: r.repeaterItem }))];
     // STATIC-DATA §3: the rows are known, so this takes the typed treatment — the item type's
     // own fields are the allowed set, and a mapped input the rows do not carry is dropped and
     // reported, exactly as the collection/query paths do.
     if (staticData !== undefined) {
       const carried = new Set(staticData.fields.map((f) => f.name));
-      const keptStatic = mapping.filter((entry) => carried.has(entry.field));
-      for (const dropped of mapping.filter((entry) => !carried.has(entry.field))) {
+      // EXP-011 §57. Item Id rides the key rule (§3.2 — every row a unique primitive `id`, the runtime's own
+      // identity) and the port's type: a number in `id` reaches Item Id as a number through a string port.
+      const idType = staticData.fields.find((f) => f.name === 'id')?.tsType;
+      const staticIdReason =
+        staticData.keyField !== 'id'
+          ? 'the authored rows carry no unique "id" — the runtime mints a guid per row there, which the exported app does not'
+          : idType !== 'string'
+            ? `the authored rows' "id" is typed ${idType ?? 'unknown'}, which the runtime hands through the string-typed Item Id unchanged — a type the exported row will not claim`
+            : null;
+      const staticKeeps = (entry: RowEntry): boolean => (entry.repeaterItem !== undefined ? staticIdReason === null : carried.has(entry.field));
+      const keptStatic = mapping.filter(staticKeeps);
+      for (const dropped of mapping.filter((entry) => !staticKeeps(entry))) {
+        if (dropped.repeaterItem !== undefined) {
+          dropRepeaterItem(dropped, staticIdReason!);
+          continue;
+        }
         notes.push(
           `${plan.path}: For Each ${node.id} maps "${dropped.input}" from field "${dropped.field}", which no authored row carries — dropped, reported`
         );
@@ -4675,6 +4706,11 @@ export function emitComponent(
       const keptExpr = known === null ? mapping : mapping.filter((entry) => known.has(entry.field));
       if (known !== null) {
         for (const dropped of mapping.filter((entry) => !known.has(entry.field))) {
+          // EXP-011 §57. An untyped list keeps Item Id under §4e (fields read as `any`); a typed one without `id` drops it by name.
+          if (dropped.repeaterItem !== undefined) {
+            dropRepeaterItem(dropped, 'the list it reads carries no "id" — the runtime mints a guid per row there, which the exported app does not');
+            continue;
+          }
           notes.push(
             `${plan.path}: For Each ${node.id} maps "${dropped.input}" from field "${dropped.field}", which the array it reads does not carry — dropped, reported`
           );
@@ -4699,8 +4735,21 @@ export function emitComponent(
     const allowedFields = collection
       ? new Set(collection.keys.map((k) => k.key))
       : new Set(['id', ...(ir.project.collections.find((c) => c.name === query!.collectionName)?.columns ?? []).map((c) => c.name)]);
-    const kept = mapping.filter((entry) => allowedFields.has(entry.field));
-    for (const dropped of mapping.filter((entry) => !allowedFields.has(entry.field))) {
+    // EXP-011 §57. A query row's `id` is the record's own (always in `allowedFields`); a named array's rows have
+    // one only when an inserter writes an `id` key typed string — otherwise the runtime mints a guid the app does not.
+    const collectionIdReason =
+      collection === undefined
+        ? null
+        : collection.keys.some((k) => k.key === 'id' && k.tsType === 'string')
+          ? null
+          : `the rows of the array "${collection.name}" are inserted without a string "id" — the runtime mints a guid per row there, which the exported app does not`;
+    const keeps = (entry: RowEntry): boolean => (entry.repeaterItem !== undefined && collectionIdReason !== null ? false : allowedFields.has(entry.field));
+    const kept = mapping.filter(keeps);
+    for (const dropped of mapping.filter((entry) => !keeps(entry))) {
+      if (dropped.repeaterItem !== undefined) {
+        dropRepeaterItem(dropped, collectionIdReason ?? 'no statically-known item carries an "id"');
+        continue;
+      }
       notes.push(
         `${plan.path}: For Each ${node.id} maps "${dropped.input}" from field "${dropped.field}", which no statically-known item carries — dropped, reported`
       );
@@ -5582,6 +5631,22 @@ export function emitComponent(
       ''
     );
   }
+  // EXP-011 §57. A Repeater Item's Added chain: once, on mount — signalAdded is called once per row, right after
+  // the repeater creates it (foreach.tsx). The ref guards StrictMode's second mount in development, as §53's does.
+  for (const item of plan.repeaterItems) {
+    const added = dedupeLocal('added');
+    body.push(
+      `  // ${item.comment}`,
+      `  const ${added} = useRef(false);`,
+      '  useEffect(() => {',
+      `    if (${added}.current) return;`,
+      `    ${added}.current = true;`,
+      ...effectBody(item.actions, 4),
+      "    // eslint-disable-next-line react-hooks/exhaustive-deps -- once, like the row's own Added pulse",
+      '  }, []);',
+      ''
+    );
+  }
   if (
     usesNavigate ||
     usesPageParams ||
@@ -5595,7 +5660,8 @@ export function emitComponent(
     jsLocals.size > 0 ||
     plan.scripts.length > 0 ||
     plan.runTasks.length > 0 ||
-    plan.appErrors.length > 0
+    plan.appErrors.length > 0 ||
+    plan.repeaterItems.length > 0
   ) {
     body.push('');
   }

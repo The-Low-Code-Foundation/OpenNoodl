@@ -1,0 +1,150 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "2d8f4b61-9c07-4e3a-b5f2-7a1e6c3d9b84",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "homePage",
+      "type": "Page",
+      "label": "Roster Desk",
+      "children": [
+        "shell"
+      ],
+      "parameters": {
+        "title": "Roster Desk",
+        "urlPath": "home"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "shell",
+      "type": "Group",
+      "label": "Shell",
+      "parent": "homePage",
+      "children": [
+        "heading",
+        "peopleList",
+        "statusText",
+        "lastAddedText"
+      ],
+      "parameters": {
+        "flexDirection": "column",
+        "alignItems": "flex-start",
+        "rowGap": "var(--space-4)",
+        "maxWidth": {
+          "value": 640,
+          "unit": "px"
+        },
+        "paddingTop": "var(--space-10)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "heading",
+      "type": "Text",
+      "label": "Heading",
+      "parent": "shell",
+      "parameters": {
+        "text": "Roster Desk",
+        "fontSize": "var(--text-3xl)",
+        "fontWeight": "var(--font-semibold)",
+        "color": "var(--foreground)"
+      },
+      "x": 160,
+      "y": 280
+    },
+    {
+      "id": "peopleList",
+      "type": "For Each",
+      "label": "One row per person",
+      "parent": "shell",
+      "parameters": {
+        "template": "/Components/PersonRow"
+      },
+      "x": 160,
+      "y": 400
+    },
+    {
+      "id": "statusText",
+      "type": "Text",
+      "label": "Status",
+      "parent": "shell",
+      "parameters": {
+        "fontSize": "var(--text-sm)",
+        "color": "var(--muted-foreground)"
+      },
+      "x": 160,
+      "y": 520
+    },
+    {
+      "id": "lastAddedText",
+      "type": "Text",
+      "label": "Last added",
+      "parent": "shell",
+      "parameters": {
+        "fontSize": "var(--text-sm)",
+        "color": "var(--muted-foreground)"
+      },
+      "x": 160,
+      "y": 640
+    },
+    {
+      "id": "peopleData",
+      "type": "Static Data",
+      "label": "People",
+      "parameters": {
+        "type": "json",
+        "json": "[{\"id\":\"p1\",\"name\":\"Ada\"},{\"id\":\"p2\",\"name\":\"Grace\"},{\"id\":\"p3\",\"name\":\"Linus\"}]"
+      },
+      "x": 410,
+      "y": 400
+    },
+    {
+      "id": "removedVar",
+      "type": "Set Variable",
+      "label": "Say it went",
+      "parameters": {
+        "name": "lastAction"
+      },
+      "x": 410,
+      "y": 520
+    },
+    {
+      "id": "removedLabel",
+      "type": "String",
+      "label": "Removed wording",
+      "parameters": {
+        "value": "Removed a person."
+      },
+      "x": 410,
+      "y": 640
+    },
+    {
+      "id": "statusVar",
+      "type": "Variable2",
+      "label": "lastAction variable",
+      "parameters": {
+        "name": "lastAction"
+      },
+      "x": 410,
+      "y": 760
+    },
+    {
+      "id": "lastAddedVar",
+      "type": "Variable2",
+      "label": "lastAdded variable",
+      "parameters": {
+        "name": "lastAdded"
+      },
+      "x": 410,
+      "y": 880
+    }
+  ],
+  "visualRoots": [
+    "homePage"
+  ]
+}

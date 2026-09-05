@@ -430,6 +430,8 @@ export const ON_APP_ERROR_VALUE_OUTPUTS = ['message', 'code', 'nodeId', 'compone
 /** The Error Object's type, structurally — `src/lib/errors.ts`'s AppError, spelled so a store row needs no import. */
 export const APP_ERROR_TS_TYPE = '{ code: string; message: string; nodeId: string; componentName: string; nodeType: string; detail?: unknown }';
 export const RUN_TASKS_TYPE = 'RunTasks';
+/** EXP-011 §57. `Repeater Item` — the type id is the runtime's `name`, not the display name. */
+export const REPEATER_ITEM_TYPE = 'For Each Actions';
 export const RUN_TASKS_OUTPUTS: readonly string[] = ['done', 'failure', 'unchanged', 'completed', 'aborted'];
 export const RUN_TASKS_CONTRACT_TEMPLATE_PARAM = 'taskTemplate';
 export const RUN_TASKS_CONTRACT = {
@@ -2288,6 +2290,21 @@ export interface TaskPlan {
 }
 
 /**
+ * A `Repeater Item` (EXP-011 §57) whose `Added` drives a chain: once, on mount, guarded against StrictMode's
+ * second mount — `signalAdded` is called synchronously inside `addItem` after `createNode`, once per row
+ * (`foreach.tsx`). Its Item Id, when read, is a row prop ({@link ComponentPlan.rowProps}) rather than anything
+ * here — the parent binds it from `item.id`.
+ */
+export interface RepeaterItemPlan {
+  nodeId: string;
+  /** The authored label, or `Repeater Item`. */
+  label: string;
+  /** The Added chain, snapped for render context. */
+  actions: HandlerAction[];
+  comment: string;
+}
+
+/**
  * An `On App Error` node (EXP-011 §54): `const <local> = useAppError({ filter }, () => { …the Error chain… })`.
  * The boundary subscribes to the app's error channel (`src/lib/errors.ts`) for the life of the component
  * that hosts it — a page's boundary hears errors while the page is mounted, the root component's for the
@@ -2641,7 +2658,16 @@ export interface ComponentPlan {
    * must still bind it from `item.mood`. Deriving the field from the prop name would silently
    * read a field no row has, exactly where the collision made it hardest to notice.
    */
-  rowProps: Array<{ prop: string; field: string }>;
+  rowProps: Array<{
+    prop: string;
+    field: string;
+    /**
+     * EXP-011 §57. Set when the row prop is a `Repeater Item`'s Item Id (field `id`, typed `string` on this
+     * side): the parent then names the node and the port when a feed cannot supply it, rather than the
+     * generic "no row carries this field".
+     */
+    repeaterItem?: string;
+  }>;
   /**
    * Declared signal outputs as callback props (`onWaved?: () => void`), declaration order —
    * the parent side reads the same list off the target's plan (COMPONENT-OUTPUTS-TARGET §2).
@@ -2779,6 +2805,8 @@ export interface ComponentPlan {
   runTasks: RunTasksPlan[];
   /** EXP-011 §53. Set when this component is a Run Tasks template whose start chain translated. */
   task?: TaskPlan;
+  /** EXP-011 §57. Repeater Items whose Added chain translated — a once-on-mount effect each. */
+  repeaterItems: RepeaterItemPlan[];
   /** EXP-011 §53. Why a component named as a template is not one — repeated by every host that names it. */
   taskRefusal?: string;
   /** EXP-011 §54. The On App Error boundaries hosted here, registration order. */
@@ -3058,6 +3086,7 @@ function planComponent(
     props: [],
     rowProps: [],
     outputProps: [],
+    repeaterItems: [],
     childrenOf: {},
     roleOf: {},
     customNodes: {},
@@ -3894,6 +3923,68 @@ function planComponent(
       plan.props.push({ name, tsType: 'any' });
     }
     if (byPort.size > 0) model2Props.set(node.id, byPort);
+    dispositions[node.id] = { kind: 'collapsed', into: plan.rootId ?? node.id };
+  }
+
+  /**
+   * EXP-011 §57 — `Repeater Item` (`For Each Actions`), the row's own id read from inside the template.
+   *
+   * The Object-in-repeater seam, not a new one: an `Object` in "From repeater" mode became a row prop the
+   * parent binds from `item.<field>` (the pre-pass just above); Item Id is that read with the field fixed
+   * to `id` — `getItemId()` is `resolveForEachItem(this).getId()`, the model `Collection.set` minted the
+   * row into, whose id is the row's own `id` when it carries one and a minted guid otherwise
+   * (`model.ts` `Model.create`). The prop is typed `string` here — the port's own type, the one thing the
+   * template can promise without knowing its host — and the parent gates each feed on whether its rows
+   * carry a string `id` (`renderRepeater`, the four branches), naming this node and the port when not.
+   *
+   * Refused whole, by name, before any prop is minted: no For Each host (`repeater-item/no-item-in-scope`
+   * — Item Id reads undefined for ever and Added never fires, since no repeater creates the node); a Run
+   * Tasks host (`runtasks.ts:193` is the other `_forEachModel` producer, and a task input is not a rendered
+   * row); and the exit handshake — a connected Try Remove holds the repeater's teardown until Remove
+   * Completed is pulsed, which a row that unmounts when its item leaves the list has no way to offer, so
+   * Try Remove, Remove Completed and the outcome trio (Done when a held removal is released, Unchanged
+   * when none was waiting, Completed either way) all refuse on the same fact.
+   *
+   * Two hosts are NOT a refusal here, unlike the Object gate's §5.2: that node reads arbitrary fields whose
+   * shapes the hosts need not share; this one reads a single field whose type it declares itself, and each
+   * host's feed is gated on its own rows. Added, when consumed, is compiled in the trigger pass (it needs
+   * the chain compiler, which is declared later) into a once-on-mount effect — §53's task-start shape.
+   */
+  const repeaterItemProps = new Map<string, string>();
+  const repeaterItemAdded = new Set<string>();
+  for (const node of component.nodes) {
+    if (node.type !== REPEATER_ITEM_TYPE) continue;
+    const wiresOut = component.connections.filter((c) => c.fromId === node.id);
+    const hosts = foreachTemplateHosts.get(plan.legacyPath) ?? [];
+    const runTasksHosts = hosts.filter((h) => h.kind === 'runtasks');
+    const outcome = wiresOut.find((c) => c.fromProperty === 'done' || c.fromProperty === 'completed' || c.fromProperty === 'unchanged');
+    const reason =
+      hosts.length === 0
+        ? `no For Each names ${plan.legacyPath} as its template, so there is no repeater row: Item Id reads undefined and Added never fires (the runtime reports "repeater-item/no-item-in-scope" once). A Repeater Item nested one component below the template walks up in the runtime; this slice reads only a template's own`
+        : runTasksHosts.length > 0
+          ? `${plan.legacyPath} is named as a Run Tasks template by ${runTasksHosts.map((h) => `${h.componentPath} › ${h.nodeId}`).join(', ')}, where the item is a task input rather than a rendered row (runtasks.ts sets _forEachModel too) — this slice translates the For Each row only`
+          : wiresOut.some((c) => c.fromProperty === 'tryRemove')
+            ? "its Try Remove is connected, which holds the repeater's teardown of this row until Remove Completed is pulsed — the emitted row unmounts the moment its item leaves the list and has no hold to offer"
+            : wiredPorts.has(`${node.id}:removeCompleted`)
+              ? 'its Remove Completed is wired: the exit handshake it completes has no counterpart in the emitted row, which unmounts the moment its item leaves the list'
+              : outcome !== undefined
+                ? `its "${outcome.fromProperty}" output is consumed, and it reports the exit handshake this slice does not translate (Done when a held removal is released, Unchanged when none was waiting, Completed either way)`
+                : null;
+    if (reason !== null) {
+      dispositions[node.id] = { kind: 'deferred', to: 'EXP-003', reason: `Repeater Item ${node.id}: ${reason}` };
+      notes.push(`node ${node.id} (${node.type}) deferred: ${reason}`);
+      continue;
+    }
+    if (wiresOut.some((c) => c.fromProperty === 'itemId')) {
+      const taken = takenNamesOf(plan);
+      let name = 'itemId';
+      let counter = 2;
+      while (taken.has(name)) name = `itemId${counter++}`;
+      repeaterItemProps.set(node.id, name);
+      plan.rowProps.push({ prop: name, field: 'id', repeaterItem: node.id });
+      plan.props.push({ name, tsType: 'string' });
+    }
+    if (wiresOut.some((c) => c.fromProperty === 'added')) repeaterItemAdded.add(node.id);
     dispositions[node.id] = { kind: 'collapsed', into: plan.rootId ?? node.id };
   }
 
@@ -6744,6 +6835,17 @@ function planComponent(
       if (name === undefined) {
         const disposition = dispositions[fromNode.id];
         ctx.defer = disposition?.kind === 'deferred' ? disposition.reason : `Object ${fromNode.id} does not read the repeater row`;
+        return null;
+      }
+      return { kind: 'prop', name };
+    }
+    // EXP-011 §57. A Repeater Item's Item Id is the row read sideways, exactly as an Object's property is —
+    // a prop the parent binds from `item.id`. Its other outputs are signals and never reach here.
+    if (fromNode.type === REPEATER_ITEM_TYPE && fromProperty === 'itemId') {
+      const name = repeaterItemProps.get(fromNode.id);
+      if (name === undefined) {
+        const disposition = dispositions[fromNode.id];
+        ctx.defer = disposition?.kind === 'deferred' ? disposition.reason : `Repeater Item ${fromNode.id} does not read the repeater row`;
         return null;
       }
       return { kind: 'prop', name };
@@ -13150,6 +13252,42 @@ function planComponent(
     }
   }
 
+  /**
+   * EXP-011 §57. A Repeater Item's Added chain: once, on mount — `signalAdded` is called synchronously inside
+   * `addItem` right after `createNode`, once per row, and never again for that row (`foreach.tsx`). Compiled
+   * exactly as a task template's start chain is: render context (the row's props exist on mount; a text
+   * input's live value does not), snapped, its sinks collapsed into the node. A chain that does not
+   * translate is named on the node and the port — the node itself keeps its Item Id, which is a separate
+   * read and not this chain's business; the chain's sink is what the report lists.
+   */
+  for (const nodeId of repeaterItemAdded) {
+    const node = nodeById.get(nodeId)!;
+    const label = node.authoredLabel ?? 'Repeater Item';
+    const chain = doneChainOf(node, 'added');
+    let addedRefusal: string | undefined;
+    if ('defer' in chain) addedRefusal = chain.defer;
+    else if (chain.then.length === 0) addedRefusal = 'its Added drives nothing this slice translates';
+    else if (!actionsValidIn(chain.then, { kind: 'render' })) addedRefusal = 'its Added chain reads values that only exist inside a handler';
+    else {
+      const snapped = snapActionList(chain.then, chainSnapshotFor(`repeater-item:${nodeId}`));
+      if (!Array.isArray(snapped)) addedRefusal = snapped.defer;
+      else {
+        plan.repeaterItems.push({
+          nodeId,
+          label,
+          actions: snapped,
+          comment: `Repeater Item "${label}": its Added chain runs once, on mount — signalAdded fires once per row, right after the repeater creates it (foreach.tsx).`
+        });
+        for (const key of chain.consumes) consumed.add(key);
+        for (const id of chain.collapses) dispositions[id] = { kind: 'collapsed', into: nodeId };
+        for (const id of chain.subscribes) boundSubscribers.add(id);
+      }
+    }
+    if (addedRefusal !== undefined) {
+      notes.push(`Repeater Item ${nodeId}: its Added chain did not translate — ${addedRefusal}; its Item Id, if read, still does`);
+    }
+  }
+
   const receiverActions = new Map<string, HandlerAction[]>();
   for (const connection of component.connections) {
     if (consumed.has(connection.key)) continue;
@@ -13561,6 +13699,8 @@ function planComponent(
     // chains do — a Cloud Function called only from a task's start chain earns its export and its rows here.
     for (const run of plan.runTasks) for (const chain of Object.values(run.listeners)) if (chain !== undefined) scanActions(chain);
     if (plan.task !== undefined) scanActions(plan.task.actions);
+    // EXP-011 §57. A Repeater Item's Added chain attaches exactly as a handler's chains do.
+    for (const item of plan.repeaterItems) scanActions(item.actions);
     // EXP-011 §54. A boundary's Error chain attaches exactly as a handler's chains do.
     for (const boundary of plan.appErrors) if (boundary.listener !== undefined) scanActions(boundary.listener);
 
@@ -14457,7 +14597,10 @@ function planComponent(
   for (const connection of component.connections) {
     if (consumed.has(connection.key)) continue;
     const fromNode = nodeById.get(connection.fromId);
-    if (fromNode?.type !== 'Model2' || !connection.fromProperty.startsWith('prop-')) continue;
+    const objectRead = fromNode?.type === 'Model2' && connection.fromProperty.startsWith('prop-');
+    // EXP-011 §57. A Repeater Item's Item Id is the same read with the field fixed — the same sinks, the same pass.
+    const repeaterItemRead = fromNode?.type === REPEATER_ITEM_TYPE && connection.fromProperty === 'itemId';
+    if (fromNode === undefined || (!objectRead && !repeaterItemRead)) continue;
     const toNode = nodeById.get(connection.toId);
     if (!toNode || !rendered.has(toNode.id)) continue; // Pass 6 names the reason
     const contentRole = (CONTENT_PARAMS[toNode.type] ?? {})[connection.toProperty];
@@ -14490,7 +14633,7 @@ function planComponent(
     const ctx = newCtx();
     const expr = resolveExpr(fromNode, connection.fromProperty, ctx);
     if (expr === null) {
-      notes.push(wireNote(connection, `${ctx.defer ?? 'the Object node does not read the repeater row'}`));
+      notes.push(wireNote(connection, `${ctx.defer ?? (repeaterItemRead ? 'the Repeater Item does not read the repeater row' : 'the Object node does not read the repeater row')}`));
       consumed.add(connection.key);
       continue;
     }
@@ -15181,6 +15324,8 @@ function planComponent(
       for (const chain of Object.values(run.listeners)) if (chain !== undefined) walkActions(chain);
     }
     if (plan.task !== undefined) walkActions(plan.task.actions);
+    // EXP-011 §57. The Added chain.
+    for (const item of plan.repeaterItems) walkActions(item.actions);
     // EXP-011 §54. A wired Filter and the Error chain.
     for (const boundary of plan.appErrors) {
       if (boundary.filter !== undefined) walkExpr(boundary.filter);
@@ -15650,6 +15795,8 @@ function planComponent(
     // EXP-011 §53. A request inside a listener chain, or inside a template's start chain, materializes as a handler's would.
     for (const run of plan.runTasks) for (const chain of Object.values(run.listeners)) if (chain !== undefined) fillMaterialize(chain);
     if (plan.task !== undefined) fillMaterialize(plan.task.actions);
+    // EXP-011 §57. A request inside a Repeater Item's Added chain materializes as a handler's would.
+    for (const item of plan.repeaterItems) fillMaterialize(item.actions);
     // EXP-011 §54. A request inside the Error chain materializes as a handler's would.
     for (const boundary of plan.appErrors) if (boundary.listener !== undefined) fillMaterialize(boundary.listener);
   }
@@ -16254,8 +16401,10 @@ function recordNeighbourDefer(
     if (!authoredOrWired('modelId')) return SET_OBJECT_NO_ID_REASON;
     return 'its Do is never fired by a translatable trigger';
   }
-  if (node.type === 'For Each Actions') {
-    return 'its Item Id is the runtime record id of a repeater row, which the emitted app has no counterpart for, and its other ports are the Repeater’s removal handshake — lifecycle signals, which are effect() work';
+  // EXP-011 §57. The component pass admits or refuses a Repeater Item by name before this fallback is asked;
+  // what reaches here sits in a component with no render tree, which no For Each can repeat.
+  if (node.type === REPEATER_ITEM_TYPE) {
+    return 'it sits in a component with no visual root, which no For Each can repeat as a template — there is no row for it to read';
   }
 
   return undefined;
