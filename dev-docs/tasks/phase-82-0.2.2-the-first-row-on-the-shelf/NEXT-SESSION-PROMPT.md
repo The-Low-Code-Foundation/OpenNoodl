@@ -1,5 +1,147 @@
 # Phase 82 — next session
 
+> ### 🟢 THE GATE LANE, 2026-09-05 (s44) — added beside the other lanes, not over them
+>
+> **`test:main` now reads 423 suites / 7086 tests, EXIT=0, ZERO reds — the first fully green
+> reading in this phase's record**, and it was taken *with* a peer's 7-suite jest overlapping it.
+> Committed as **`b3037aa1`**. Getting there meant three separate faults, not the one that was
+> registered.
+>
+> **1. `rel-009b/projectFileWatcher.test.ts` was a stopwatch.** A flat **600ms** budget for a
+> **60ms**-debounced `fs.watch` event. The number nobody had taken: the batch lands at **73ms**
+> (5 runs, 72–74ms), so the budget was **~8× headroom on a chain of timers** and two concurrent
+> suites ate it. It waits on the **event** now — **278ms**, was 607ms.
+>
+> 🔴 **THE FIX WAS WRONG UNTIL THE GATE WAS READ TWICE.** jest's default per-test timeout is
+> **5000ms** and the ceiling was 10s, so **the ceiling could never be reached**: the stopwatch had
+> merely moved from the spec to the runner. Whole-gate run #1 **passed** (at 6.18s of suite time
+> against 278ms alone — already on the boundary while reading green); run #2 **died on the runner
+> timeout**. ✅ Ceiling is 30s with an explicit **35s `it()` timeout** above it, and they move
+> together. **A single green gate run would have shipped this.**
+>
+> 🔴 **Three of the arms were wrong before they were right, and every correction came from READING a
+> control rather than adjusting it.** (a) Arm C — ceiling cut below the latency — **PASSED**: the
+> 200ms settle is itself a wait and supplied what the ceiling refused, so the ceiling was
+> **decorative** and a later trim would have re-introduced the bug. Fixed by latching the answer
+> before the settle is spent. (b) The first latch was a bare `expect()` **before** `watcher.stop()`,
+> so a failure leaked the `fs.watch` handle and **jest never exited** — failed correctly in 35ms,
+> then sat **7 minutes** until killed, **EXIT=143 not 1**. A spec that HANGS the gate is worse than
+> one that reddens it. (c) Arm A briefly read **`Tests: 0 total`** — built by surgery it stripped the
+> latch declaration and left its assertion, grading nothing while looking like a red. **16 total in
+> every arm is what says each one graded something.**
+>
+> ✅ **The defect is reproduced DETERMINISTICALLY without loading the box** — stretching the
+> watcher's own debounce to 900ms past a 600ms budget *is* "the callback was not scheduled in time".
+> No peer's drive had to be disturbed to get a red.
+>
+> **2. 🔴 `sb-007/site-template.test.ts` was red at HEAD, from ANOTHER PHASE, and no per-package run
+> could see it.** `expect(a.size).toBe(401)` against a template holding **406**. Reconciled exactly
+> rather than adjusted to fit: **`f77e6647` (P77/SBR-007 AC3, 13:37 the same day)** adds five ids to
+> `/Admin/SectionRow` — `dropZone`, `dropHint`, `dropWords`, `dropRefused`, `dropRefusal`.
+> **401 + 5 = 406.** The gate lives in `noodl-editor`, the nodes live in `noodl-mcp`, **so a
+> per-package run on either side is green** — the registered *"a literal count gate only works if
+> somebody runs it"* trap with a package seam under it. ⚠️ **The count was reconciled; the FEATURE
+> was not reviewed** — SBR-007 is phase 77's.
+>
+> **3. 🔴 REGISTERED, OWNER `NONE` — the stopwatch class is NOT unique.**
+> `bld-004/reasoningChannel.test.ts:198,230` and `aib-009/turnDeadline.test.ts:19,94–117` both run a
+> **60ms** stall window against a `sleep(STALL_MS / 2)` heartbeat — a **2× margin**, tighter than the
+> 8× that was failing. **`bld-004` is the OTHER red s40 recorded and wrote off as "a lone red under
+> concurrent load": the two reds in that session were ONE FAULT WITH TWO HOMES.** ⚠️ The source is
+> **not** at fault — `turnDeadline.ts:27` reads `Date.now()` deliberately because Chromium throttles
+> `setTimeout` in an occluded window, and there is no clock seam; the fix is spec-side (raise
+> `STALL_MS`, keep the beat small in absolute terms). **Untouched here — they belong to BLD-004 and
+> AIB-009.**
+>
+> ⚠️ **The `b3037aa1` baseline is NOT a clean-HEAD reading**: the tree carried another lane's
+> uncommitted SBR-011/D46 realtime work throughout, and that lane said so before the run. It is
+> **HEAD + D46 + two test files**.
+>
+> ⚠️ **`b3037aa1`'s message has one cosmetic gap** — backticks in a `-m` string were
+> command-substituted, so *"Arm A briefly read `Tests: 0 total`"* lost its quoted phrase. A peer
+> committed on top before it could be amended and shared history was not rewritten for a cosmetic
+> defect. **[§6.4](REL-009-THE-WRITE-THE-EDITOR-CANNOT-SEE.md) carries the correct statement.**
+>
+> ⬜ **The phase's own queue is unchanged and still Richard's** — see §A below. This lane touched no
+> REL row's ACs; it fixed the gate every other row is read through.
+
+> ### 🟢 THE DRIVE LIST IS EMPTY, 2026-09-05 (s43) — added beside the other lanes, not over them
+>
+> **The last three undriven items are driven, and none of them needed a fix.** A freshly placed
+> **Dropdown** renders **64.09px wide showing "Option 1"** (panel: *Items* "2 items", *Value*
+> "option-1"); a pasted **YouTube** share link becomes one
+> `youtube-nocookie.com/embed/…?start=90` **iframe with zero `<video>` elements**, and the poster
+> frame really loads; the **Shape** enum offers all six values and **every `dynamicports` gate holds
+> on all six arms**, each printing its own sentence. Full record with the tables:
+> [NOTES §5](NOTES-UNOWNED-NODE-WORK.md).
+>
+> 🔴 **A control, not an assertion, is what makes the Dropdown reading mean anything.** With `value`
+> set to something matching no item the wrapper collapses to **4px with no span at all** — and
+> `select.value` **still reports `option-1`** in that arm, because the browser refuses an unmatched
+> value. **Anyone grading this node through `select.value` would have passed both arms.** The
+> original arm was re-run afterwards and came back byte-identical (`64.0859375`).
+>
+> 🔴 **THE INSTRUMENT WAS WRONG FIRST AND HAD A SOURCE CITATION TO PROVE IT.** Reading the panel by
+> label text made every shape look identical, and `nodelibrary.ts:100` really does have the
+> `conditionalports` manager commented out — a perfect fit for *"the gates never reach the panel"*.
+> **They do**: this panel greys an inapplicable port and explains it
+> (`div.property-port-gated-control[aria-disabled=true]`), which no label query and no
+> `getComputedStyle` on the label can see. **One screenshot was the discriminator and should have
+> been the first instrument.** ~⅓ of the session.
+>
+> ⚠️ **Two things the drive did NOT measure**, so do not read them as green: the spurious-`Changed`
+> claim (nothing was wired to `onChange`) and *Start Time beats a URL `t=`* (only the URL was set).
+>
+> ⚠️ **The stack died once mid-drive** — every Claude process on the box restarted, the launcher went
+> with it, and all peer session names changed. The launch announcement went to names that no longer
+> exist. Nothing was lost; the drive was simply re-run.
+>
+> ⬜ **What is left in the phase is now, with no exception, Richard's** — §A's queue below. There is
+> no buildable and no drivable row behind it.
+
+
+> ### 🟢 THE DRIVES LANE, 2026-09-05 (s42) — added beside the other lanes, not over them
+>
+> **The two rows that were "asserted only" are now measured, and neither needed a fix.**
+>
+> **REL-012 — all five ACs graded, from ASSERTED-ONLY to a reading.** AC2/3/4 by
+> `npx jest tests-unit/rel-012` (**2 suites / 30 tests, EXIT=0**). **AC1 on a real packaged
+> artefact** built here (`build:bundles`, then `electron-builder --mac --arm64 --dir`, both EXIT=0):
+> `NodeGX.app/Contents/Resources/lessons` present, **4 bundles / 122 files**, and the reverted arm
+> was already on disk — the **2026-08-20 build has no `lessons` directory at all**. 🔴 The stowaway
+> filter was graded **with a presence control**: the source really does carry two `.mcp.json` files
+> naming a developer's absolute paths, and **124 − 2 = 122** reconciles exactly. **AC5 driven, both
+> arms**: a clean profile seeds 3 lessons and *Log a thing* opens; the reverted arm (the one
+> `seedShippedLessonsOnStartup()` line disabled) lands on *Your path* with **no register file
+> written at all**. ⚠️ A peer has since committed a 4th and 5th bundle — the 4/122 reading is the
+> artefact that was measured, not a claim about today's tree.
+>
+> **REL-016 — all five pre-ungate checks PASS**, so FIX-015's *"expect a bug list"* did not hold.
+> 🔴 **But the gate is not what the row thought**: `if (config.devMode)` at `router.setup.ts:435` is
+> dead in **every** build — `config-dev.js` is required by nothing — so `design-tokens`,
+> `file-explorer` and `undo-queue` register **nowhere, dev included**. Measured as an A/B on the
+> live experimental-panels list (6 entries, then 9). ⚠️ And un-gating is **two** gates:
+> `experimental: true` keeps it behind a per-user Settings toggle that is off by default.
+>
+> 🆕 **New instrument, and the only source change left in the tree:**
+> `packages/noodl-editor/scripts/start-electron-dev.js` now honours **`NOODL_USER_DATA_DIR`**
+> (Chromium's `--user-data-dir`), which is how a *first-run* drive is done without touching the
+> developer's own profile. ✅ Richard's `learning_folder.json` md5 is **unchanged across the whole
+> session**. **Uncommitted, and not asked for.**
+>
+> ✅ **The board was stale in two more places and both are corrected off the commits**: REL-013
+> (`14c9bd90`) and REL-014 (`9d58c505`) were ⬜ and are built. Full records:
+> [REL-012](REL-012-THE-LESSONS-NOBODY-RECEIVES.md) and
+> [REL-016](REL-016-THE-TOKENS-NOBODY-CAN-EDIT.md).
+>
+> 🔴 **Two editors cannot coexist on this checkout** — a second Electron on a second profile reaches
+> `DevTools listening` and then aborts on *"async hook stack has become corrupted"* (port 8574 taken
+> → `showMessageBox` from a `net` error handler). Every control arm here therefore costs a full
+> stack restart.
+>
+> ⬜ **Still undriven, and now the whole of the drive list**: a freshly placed Dropdown, a YouTube
+> link in a Video node, the Shape node's five shapes in the property panel.
+
 
 > ### 🔴 SITE-BUILDER LANE, 2026-09-05 — added beside another session's handoff, not over it
 >
@@ -186,18 +328,21 @@ nobody can grade headlessly.** Do not mark it green off the commit.
 | **The V2 "modern CSS" brief** | his seam. 🔴 **Must not be turned into a task by guessing** — he declined three readings already ([rulings](RICHARD-RULINGS-2026-09-04.md) §4.1) |
 | **A seam for REL-002c** | §4.2 — fourteen PASSABLE verdicts arrived with no why. **One** would do: the page he would call *nearly* worthy, and the single thing keeping it there |
 
-### 🔴 The drives — still nothing has run in a real editor
+### 🟢 The drives — ALL FIVE ARE DONE (s42 took 1–2, s43 took 3–5)
 
-Five to six sessions have been live on this box continuously and none of this has been driven. **This
-is now the largest unexamined surface in the phase**, and REL-012's AC1/AC5 have joined it.
+Written when nothing had ever run in a real editor. It is now empty, and that sentence is kept only
+so the next reader can see what it cost to empty it.
 
-1. **REL-012 AC1 + AC5** — a packaged build inspected for the lesson bundles, and a clean profile
-   opening a non-empty Learning tab. 🔴 **The 0.2.2 blocker's two ungraded ACs.**
-2. **REL-016's five checks** before the tokens panel is ungated — listed in that file. The `devMode`
-   flag stays put until they pass.
-3. **A freshly placed Dropdown** (`9f5ae5a7`) — graded headlessly; his ask is a screen claim.
-4. **A YouTube link pasted into a Video node** (`a97738b6`) — the iframe path has never rendered here.
-5. **The Shape node's five shapes** in the property panel — gates graded, panel not.
+1. ✅ **REL-012 AC1 + AC5** — s42: a real packaged artefact (`lessons` present, 4 bundles / 122
+   files) and a clean-profile first run seeding 3 lessons, both arms.
+2. ✅ **REL-016's five checks** — s42: all five PASS. 🔴 But `config.devMode` is dead in **every**
+   build, so the three panels register nowhere; un-gating is two gates, not one.
+3. ✅ **A freshly placed Dropdown** (`9f5ae5a7`) — s43: **64.09px, "Option 1" on screen**, panel
+   reads *2 items* / *option-1*; control arm collapses to **4px**. [NOTES §5](NOTES-UNOWNED-NODE-WORK.md).
+4. ✅ **A YouTube link pasted into a Video node** (`a97738b6`) — s43: one
+   `youtube-nocookie.com/embed/…?start=90` iframe, **zero `<video>`**, poster frame loaded.
+5. ✅ **The Shape node's shapes in the property panel** — s43: **six** values offered (five drawn
+   plus Custom SVG), and every gate correct across all six arms.
 
 ---
 
@@ -206,7 +351,8 @@ is now the largest unexamined surface in the phase**, and REL-012's AC1/AC5 have
 | finding | where |
 |---|---|
 | 🆕 **Judgement 4 costs the UNBOUND first run its explanation** — with no backend bound an ejection now lands on a painted door whose form cannot work, rather than on the page carrying the waiting card. **Not put to him**; the remedy (split the destination by producer) would reverse REL-002b's *"the refusal is unconditional"* on a reading nobody asked for | [rulings](RICHARD-RULINGS-2026-09-04.md) §9.5, and in the spec beside the assertion |
-| 🆕 **`projectFileWatcher.test.ts` is a stopwatch race that reddens `test:main` under load** | finding 3 above |
+| ✅ ~~**`projectFileWatcher.test.ts` is a stopwatch race**~~ — **FIXED s44 (`b3037aa1`)**, and the sweep found the same class in `bld-004`/`aib-009` (below) | the gate lane at the top |
+| 🆕 🔴 **`bld-004/reasoningChannel.test.ts` and `aib-009/turnDeadline.test.ts` run a 60ms stall window on a 2× margin** — the same defect class, and `bld-004` is the OTHER red s40 called a flake. Spec-side fix; the source is correct | gate lane §3 |
 | **`noodl-core-ui`'s jest runs in no CI gate** — it caught a real drift and nobody saw it | session 39 |
 | **Fill/Stroke are inert for a custom SVG shape**, deliberately ungated | [`NOTES`](NOTES-UNOWNED-NODE-WORK.md) §1 stage 3 |
 | **`/unsubscribe` has three left edges** — the defect REL-002c fixed on `Pages/Post`, surviving on a door page | [rulings](RICHARD-RULINGS-2026-09-04.md) §6.5 |
