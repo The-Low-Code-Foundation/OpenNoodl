@@ -238,6 +238,21 @@ const ExpressionNode: NodeDefinitionOptions = {
             this.flagOutputDirty('result');
             this.flagOutputDirty('isTrue');
             this.flagOutputDirty('isFalse');
+            // 🔴 P79 G1. These three were declared with getters and flagged nowhere in this
+            // file, so a wire leaving one delivered whatever the getter returned at the moment
+            // the connection was made and never delivered again. `As Number` is the port an
+            // author reaches for when the target is a number input — which is exactly when the
+            // failure is silent and total, because an unevaluated expression reads 0 and 0 into
+            // a dimension renders nothing while the parameter that would have saved it is
+            // overridden by the wire. Building spine lesson 5, `As Number → size` drew no
+            // circle at all with every gate green.
+            //
+            // They ride INSIDE the `!hadEvaluated || lastValue !== cachedValue` guard on
+            // purpose: all three are pure functions of `cachedValue`, so a result that has not
+            // moved must not wake their consumers either.
+            this.flagOutputDirty('asString');
+            this.flagOutputDirty('asNumber');
+            this.flagOutputDirty('asBoolean');
           }
           if (internal.cachedValue) this.sendSignalOnOutput('isTrueEv');
           else this.sendSignalOnOutput('isFalseEv');

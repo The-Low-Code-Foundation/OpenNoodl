@@ -12,7 +12,7 @@ the tasks, not farm the defects. The earlier registers are
 
 | # | severity | owner | one line |
 |---|---|---|---|
-| G1 | 🔴 high | `NONE` | an **Expression**'s `As Number` / `As String` / `As Boolean` outputs never update |
+| G1 | 🔴 high | ✅ **FIXED 2026-09-05 (s9)** | an **Expression**'s `As Number` / `As String` / `As Boolean` outputs never update |
 | G2 | ⚠️ medium | `NONE` | the render report's `distinctAccents` reads `0` for a page drawing a `--primary` circle |
 | G3 | ⚠️ medium | `NONE` | `derive_starter` reports a wrong port name and a benign cascade with the *same* sentence |
 | G4 | low | `NONE` | nothing checks that a spine lesson's outro promises something the next lesson can deliver |
@@ -154,3 +154,38 @@ its outro's illustration of one value feeding three consumers.
 **Why it is low rather than medium.** It has bitten once, the cost was a paragraph, and the fix is
 prose. It is registered because the next author will hit it the moment they write lesson 6's outro,
 and because `LESSON-VOICE.md` §7 currently reads as though any deficiency will do.
+
+
+---
+
+## ✅ G1 — FIXED 2026-09-05 (session 9)
+
+Option 1 of the two the row offered: the three ports are flagged alongside `result`, so nothing
+already built moves and the ports start working. `expression.ts` now flags `asString`, `asNumber`
+and `asBoolean` **inside** the existing `!hadEvaluated || lastValue !== cachedValue` guard — all
+three are pure functions of `cachedValue`, so a result that has not moved must not wake their
+consumers either. That is a control row, not a detail.
+
+🔴 **The gate had to measure a WIRE, not a getter.** `getOutput('asNumber').value` calls the getter
+directly and is therefore correct at HEAD, defect and all — a spec written that way passes against
+the broken runtime and grades nothing. Every row drives a real graph through the corpus harness with
+a **sink node recording what it actually received**. Built as the reverted arm first: at HEAD the
+four typed-output rows are red and the `result` control is green.
+
+`packages/noodl-runtime/test/corpus/syl-g1-expression-typed-outputs.test.ts`, 6 rows including the
+lesson-5 shape (`96 + pokes * 8`, 0 → 96 and 5 → 136) and two controls. Full `noodl-runtime` suite
+after the fix: **2662 passed, 0 failed** across 154 suites.
+
+⚠️ **One number in the row above is stale and is corrected rather than quietly dropped.** It
+recorded the first `asNumber` reading as `NaN`; the getter now ends `Number(val) || 0`, so an
+unevaluated expression reads **0**. The port was equally dead either way, and `0` into a dimension
+is exactly as invisible as `NaN`, so the row's conclusion is untouched — but the mechanism sentence
+was written against an older getter.
+
+🆕 **Found while fixing, not part of the row: the code export did not share the defect.**
+`nodegx-export`'s `plan.ts` lists all six in `EXPRESSION_VALUE_OUTPUTS` and derives the typed ones
+from the expression's value (`asNumber` → `Number(x) || 0`, verbatim). Read from source, not driven.
+So an **exported** app would have animated the creature that the editor's own runtime could not —
+the two implementations of one node had disagreed, and the shipped one was the one that was wrong.
+Worth a thought for whoever owns the export/runtime parity question; not registered as a row,
+because after this fix they agree.
