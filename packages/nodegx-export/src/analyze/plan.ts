@@ -439,6 +439,21 @@ export type LogLevel = (typeof LOG_LEVELS)[number];
 /** `Navigate To Path` (EXP-011 Tier 2.5) — the Navigation node that routes without naming a page. */
 const NAVIGATE_TO_PATH_TYPE = 'PageStackNavigateToPath';
 const NAVIGATE_TO_PATH_OUTPUTS = ['done', 'failure', 'unchanged', 'completed', 'error'];
+/**
+ * EXP-011 §61. The component-stack trio: the visual container (display name "Component Stack"), the pusher
+ * ("Push Component To Stack") and the popper ("Pop Component Stack"). A push is a call and a pop is its
+ * return — the pusher grows a `backResult-<k>` output per result and a `backAction-<a>` signal per way of
+ * closing that any Pop in the target declares (`navigate.ts` setup), and the Pop's `result-<k>` values and
+ * `backAction-<a>` signals are the other end of the same wire (`navigate-back.ts`).
+ */
+export const PAGE_STACK_TYPE = 'Page Stack';
+export const STACK_PUSH_TYPE = 'PageStackNavigate';
+export const STACK_POP_TYPE = 'PageStackNavigateBack';
+export const PAGE_STACK_OUTPUTS = ['topPageName', 'stackDepth'] as const;
+/** The reserved prop the stack row passes to the component it shows — the Pop's way back (§61.0). */
+export const PAGE_STACK_ENTRY_PROP = 'pageStackEntry';
+const STACK_COMPLETED_REASON =
+  'its Completed output is consumed — it fires after every outcome, and this slice emits the outcome arms rather than a join beneath them';
 
 /**
  * EXP-011 §41 — `Cloud Function` (`CloudFunction2`): `Call`, a `function` parameter naming the
@@ -705,11 +720,17 @@ const OWN_CHAIN_OUTPUTS: Record<string, readonly string[]> = {
   [STATES_TYPE]: STATES_SIGNAL_OUTPUTS,
   [ANIMATE_TYPE]: ['atTargetValue'],
   // EXP-011 §63. The three pulses are the hook's listeners; the outcome trio belongs to the node's two snaps.
-  [DRAG_TYPE]: Object.keys(DRAG_PULSE_OUTPUTS)
+  [DRAG_TYPE]: Object.keys(DRAG_PULSE_OUTPUTS),
+  // EXP-011 §61. The trio's outcome ports; the pusher's `backAction-<a>` family is a prefix, skipped below.
+  [PAGE_STACK_TYPE]: ['done', 'failure', 'completed'],
+  [STACK_PUSH_TYPE]: ['done', 'unchanged', 'failure', 'completed'],
+  [STACK_POP_TYPE]: ['done', 'unchanged', 'failure', 'completed']
 };
 /** Whether `port` is one of `type`'s own chain outputs — the table above plus a States' `reached-<state>` family. */
 const ownsChainOutput = (type: string, port: string): boolean =>
-  (OWN_CHAIN_OUTPUTS[type] ?? []).includes(port) || (type === STATES_TYPE && port.startsWith('reached-'));
+  (OWN_CHAIN_OUTPUTS[type] ?? []).includes(port) ||
+  (type === STATES_TYPE && port.startsWith('reached-')) ||
+  (type === STACK_PUSH_TYPE && port.startsWith('backAction-'));
 /**
  * The node's **own** placeholder regex, and deliberately not the Router's.
  *
@@ -1391,6 +1412,14 @@ export type ValueExpr =
    * `useScreenResolution` handle, never undefined (the hook seeds from the window at mount).
    */
   | { kind: 'screen-out'; nodeId: string; local: string; field: (typeof SCREEN_RESOLUTION_OUTPUTS)[number] }
+  /** EXP-011 §61. A Component Stack's two outputs off its `usePageStack` handle — a string and a number, never undefined. */
+  | { kind: 'stack-out'; nodeId: string; local: string; field: (typeof PAGE_STACK_OUTPUTS)[number] }
+  /**
+   * EXP-011 §61. A pusher's `backResult-<k>`: inside one of its `backAction-*` chains the callback's own
+   * `results` argument (the runtime flags the outputs dirty BEFORE sending the signal, and a state read
+   * there would be the stale closure); anywhere else the row `viaState`, typed `unknown` — the port is `*`.
+   */
+  | { kind: 'stack-back-result'; nodeId: string; key: string; viaState?: string; local?: string }
   /**
    * EXP-011 §60. A key of a component-object record: `<local>.value.<key>` in render, `<local>.get().<key>` in a
    * handler (live, as `model.get` is). `parent` reads the nearest ancestor's record through the context hook, whose
@@ -2083,6 +2112,9 @@ export type HandlerAction =
     }
   | IdNewAction
   | CryptoCallAction
+  | StackPushAction
+  | StackPopAction
+  | StackResetAction
   | ArrayNewAction
   | LogAction
   | DelayAction
@@ -2280,6 +2312,60 @@ export type CryptoCallAction = {
   failThen: HandlerAction[];
 };
 
+/**
+ * A `Push Component To Stack`'s Navigate (EXP-011 §61) — `navigate.ts` `navigate()`, printed as the runtime's own call:
+ * `pushComponent(name, { target, params, backCallback, hasNavigated, hasUnchanged })` (or `replaceComponent`, which
+ * installs no callback — `replaceAsync` never does). The three failures are excluded statically (a literal Target inside
+ * the stack's Components list, no transitions), so `hasFailed` is never printed and a Failure wire is dropped with a note.
+ */
+export type StackPushAction = {
+  kind: 'stack-push';
+  nodeId: string;
+  /** The stack's authored name (`'Main'` by default) — the registry key. */
+  stack: string;
+  mode: 'push' | 'replace';
+  /** The target page id, resolved statically against the stack's Components list. */
+  target: string;
+  /** The component the target page shows — the emit resolves each param's prop identifier off its plan. */
+  targetLegacy: string;
+  /** The target's Component Inputs the pusher sets, by port; the prop identifier is the target's own, read at emit. */
+  params: Array<{ port: string; expr: ValueExpr; coerce?: 'string' }>;
+  /** The pusher's local stem — the callback's `results` argument is `<local>Results`. */
+  local: string;
+  /** The back-results row, where anything outside the back chains reads a `backResult-<k>`. Allocated by a read. */
+  backResults?: string;
+  /** The `backAction-<a>` chains, by action, in wire order. */
+  backActions: Array<{ action: string; then: HandlerAction[] }>;
+  then: HandlerAction[];
+  unchangedThen: HandlerAction[];
+};
+
+/**
+ * A `Pop Component Stack`'s Navigate or one of its `backAction-<a>` inputs (EXP-011 §61) — `navigate-back.ts`
+ * `navigate()`: `const <local> = popComponent(pageStackEntry, { backAction, results })`, the Done arm, and the
+ * Failure arm, which raises `pop-component-stack/no-stack-in-scope` on the channel (the one failure the export can
+ * reach — `transition-in-progress` needs a transition). Always the block form, on the crypto verbs' reason.
+ */
+export type StackPopAction = {
+  kind: 'stack-pop';
+  nodeId: string;
+  /** The back action this pop was asked under, or none for the plain Navigate. */
+  backAction?: string;
+  /** The `result-<k>` values, read where the setters stored them — the render expression the handler closes over. */
+  results: Array<{ key: string; expr: ValueExpr }>;
+  local: string;
+  then: HandlerAction[];
+  failThen: HandlerAction[];
+};
+
+/** A `Component Stack`'s Reset (EXP-011 §61): `<local>.reset()` then the Done chain — `resetAsync` reports done last. */
+export type StackResetAction = {
+  kind: 'stack-reset';
+  nodeId: string;
+  local: string;
+  then: HandlerAction[];
+};
+
 export type IdNewAction = {
   kind: 'id-new';
   nodeId: string;
@@ -2440,7 +2526,9 @@ export interface StateVarPlan {
     | 'id-error'
     /** EXP-011 §59 — a `Hash`'s Digest / a `Random Bytes`' Value row, and its Error row. Both allocated by a read. */
     | 'crypto'
-    | 'crypto-error';
+    | 'crypto-error'
+    /** EXP-011 §61 — a pusher's back-results row (`Record<string, unknown>`, boots `{}`). */
+    | 'stack-back';
   /** The provenance comment above the row. */
   comment: string;
 }
@@ -2757,6 +2845,24 @@ export interface ComponentObjectRecordPlan {
   typeName: string;
   keys: Array<{ key: string; tsType: string }>;
   mirrors: Array<{ key: string; source: ValueExpr; wireKey: string }>;
+  comment: string;
+}
+
+/**
+ * A `Component Stack` that renders (EXP-011 §61): `const <local> = usePageStack({ name, pages, startPage })`, and a
+ * visual row that renders the TOP entry only — one `&&` line per page, the entry's params spread as the page
+ * component's props, the reserved `pageStackEntry` prop where the page keeps a Pop.
+ */
+export interface PageStackPlan {
+  nodeId: string;
+  label: string;
+  local: string;
+  /** The registry key — the authored Name, `Main` by default. */
+  name: string;
+  /** The Components list in authored order, each resolved to the component it shows. */
+  pages: Array<{ id: string; label: string; componentLegacy: string }>;
+  /** The authored Start Page, or the first page's id. */
+  startPage: string;
   comment: string;
 }
 
@@ -3294,6 +3400,13 @@ export interface ComponentPlan {
   parentObject?: ParentComponentObjectPlan;
   /** EXP-011 §63. The Drag nodes rendered here, registration order. */
   drags: DragPlan[];
+  /** EXP-011 §61. The Component Stacks this component renders, registration order — one hook line each. */
+  pageStacks: PageStackPlan[];
+  /**
+   * EXP-011 §61. Set when a Pop Component Stack attached here: the interface then declares the reserved prop
+   * `pageStackEntry?: PageStackEntryHandle`, and every stack row that shows this component passes it.
+   */
+  popsStack: boolean;
   /** EXP-011 §55. The `Create New Array` handles this component holds, allocation order. */
   mintedArrays: MintedArrayPlan[];
   /**
@@ -3609,6 +3722,8 @@ function planComponent(
     streams: [],
     screenResolutions: [],
     drags: [],
+    pageStacks: [],
+    popsStack: false,
     mintedArrays: [],
     liftedOutputProps: [],
     instanceLifted: {},
@@ -3831,6 +3946,10 @@ function planComponent(
   // that — not the port — is the wall the node is actually behind.
   const wiredIn = new Map(component.connections.map((c) => [`${c.toId}:${c.toProperty}`, nodeById.get(c.fromId)?.type ?? 'a wire']));
   const deferReasons = new Map<string, string>();
+  // EXP-011 §61. Every Component Stack in the project, refused or not, read once off the IR; and the ones this
+  // component's walk renders, in pre-order — their hook lines print in that order (`stackPlanOf` below).
+  const stackIndex = indexPageStacks(ir, catalog, kits);
+  const renderedStackIds: string[] = [];
   const roleOf = (node: NodeIR): RenderRole | 'unsupported' | null => {
     const role = renderRole(node, catalog, kits);
     if (role === null || role === 'unsupported' || role === 'instance' || role === 'repeater' || role === 'slot') return role;
@@ -3845,6 +3964,15 @@ function planComponent(
       const dragReason = dragDeferReason(node, component, catalog);
       if (dragReason !== null) {
         deferReasons.set(node.id, dragReason);
+        return 'unsupported';
+      }
+      return role;
+    }
+    // EXP-011 §61. A Component Stack refuses whole, by the index's sentence — nothing renders where it sat.
+    if (role === 'stack') {
+      const refusal = stackIndex.byNode.get(node.id)?.refusal ?? null;
+      if (refusal !== null) {
+        deferReasons.set(node.id, refusal);
         return 'unsupported';
       }
       return role;
@@ -4033,6 +4161,8 @@ function planComponent(
     rendered.add(node.id);
     plan.roleOf[node.id] = role;
     dispositions[node.id] = { kind: 'static' };
+    // EXP-011 §61. A rendered stack earns its hook line whether or not anything reads it — the row is its rendering.
+    if (role === 'stack') renderedStackIds.push(node.id);
     if (role === 'custom') {
       const kit = kits.get(node.type)!;
       plan.customNodes[node.id] = { moduleDir: kit.moduleDir, def: kit.def };
@@ -7780,6 +7910,88 @@ function planComponent(
       ctx.logicNodeIds.push(fromNode.id);
       return read;
     }
+    /** A `Component Stack`'s two outputs (EXP-011 §61) — off its `usePageStack` handle, in both contexts. */
+    if (fromNode.type === PAGE_STACK_TYPE) {
+      if (!(PAGE_STACK_OUTPUTS as readonly string[]).includes(fromProperty)) {
+        ctx.defer =
+          fromProperty === 'done' || fromProperty === 'failure' || fromProperty === 'completed'
+            ? `its ${fromProperty} output is consumed as a value — a pulse carries nothing to read`
+            : `its ${fromProperty} output is consumed, and this slice translates only Top Component Name, Stack Depth and the Reset outcomes`;
+        return null;
+      }
+      const registered = stackPlanOf(fromNode);
+      if ('defer' in registered) {
+        ctx.defer = registered.defer;
+        return null;
+      }
+      return { kind: 'stack-out', nodeId: fromNode.id, local: registered.local, field: fromProperty as (typeof PAGE_STACK_OUTPUTS)[number] };
+    }
+    /**
+     * A pusher's `backResult-<k>` (EXP-011 §61): inside one of its back chains the callback's own argument;
+     * anywhere else the row, allocated by this read. A pusher nothing fires never pushes and nothing ever
+     * comes back — §56 E1's rule, a row nothing writes is a dead artefact.
+     */
+    if (fromNode.type === STACK_PUSH_TYPE) {
+      if (!fromProperty.startsWith('backResult-')) {
+        ctx.defer =
+          fromProperty === 'error'
+            ? "its Error is read, and with a literal Target inside the stack's Components list none of the pusher's three failures can fire (no components, component not found, still animating) — the row would be a string nothing ever writes"
+            : `its ${fromProperty} output is consumed as a value — a pulse carries nothing to read`;
+        return null;
+      }
+      const key = fromProperty.slice('backResult-'.length);
+      const target = pushTargetOf(fromNode);
+      if ('defer' in target) {
+        ctx.defer = target.defer;
+        return null;
+      }
+      if (target.mode === 'replace') {
+        ctx.defer = `its Back Result "${key}" is read, but in Replace mode the stack installs no back callback (navigation-stack.tsx replaceAsync) — nothing ever writes it`;
+        return null;
+      }
+      if (!target.backResults.has(key)) {
+        ctx.defer = `its Back Result "${key}" is not one the target's Pop Component Stack declares`;
+        return null;
+      }
+      if (stackPushChainScope.get(fromNode.id) === 'back') {
+        return { kind: 'stack-back-result', nodeId: fromNode.id, key, local: `${mintLocal(stackPushLocals, fromNode, 'Push', '')}Results` };
+      }
+      if (!wiredPorts.has(`${fromNode.id}:navigate`)) {
+        ctx.defer = `its Back Result "${key}" is read, but nothing fires its Navigate — no component is ever pushed, and nothing ever comes back`;
+        return null;
+      }
+      // A row read from outside the pusher's own chains: the push itself must translate, or the row is one nothing
+      // writes (§56 E1). Asked through `compiledOf`, which memoises and guards re-entry; inside the pusher's own
+      // compile (a Done chain reading its Back Result) the scope is set and the question is the compile's own.
+      if (stackPushChainScope.get(fromNode.id) === undefined) {
+        const compiled = compiledOf(fromNode, 'navigate');
+        if ('defer' in compiled) {
+          ctx.defer = `its Back Result "${key}" is read, but its Navigate did not translate — ${compiled.defer}`;
+          return null;
+        }
+        // A push that compiled but never attached (the attach pass refused the handler it sat in) writes the row
+        // as little as one that never compiled. `attachedStackPushes` fills in the attach pass, which runs after
+        // every sink has compiled — so a render read (Pass 4c) sees the answer, and a SIBLING handler's read
+        // compiled before it is refused here with the id nodes' sentence (§59.5's residual, the same shape).
+        if (!attachedStackPushes.has(fromNode.id)) {
+          ctx.defer = `its Back Result "${key}" is read, but its Navigate is never fired by a translatable trigger`;
+          return null;
+        }
+      }
+      return { kind: 'stack-back-result', nodeId: fromNode.id, key, viaState: stackBackStateOf(fromNode).name };
+    }
+    /** A Pop's `Error` (EXP-011 §61): the Failure arm's own binding, and nowhere else. */
+    if (fromNode.type === STACK_POP_TYPE) {
+      if (fromProperty !== 'error') {
+        ctx.defer = `its ${fromProperty} output is consumed as a value — a pulse carries nothing to read`;
+        return null;
+      }
+      if (stackPopChainScope.get(fromNode.id) !== 'failure') {
+        ctx.defer = 'its Error is read outside its Failure chain — this slice reads the message only inside the arm that writes it';
+        return null;
+      }
+      return { kind: 'outcome-error', nodeId: fromNode.id, local: `${mintLocal(stackPopLocals, fromNode, 'Pop', 'Result')}.message` };
+    }
     /** A `Screen Resolution`'s three outputs (EXP-011 §59) — numbers off the `useScreenResolution` handle. */
     if (fromNode.type === SCREEN_RESOLUTION_TYPE) {
       const registered = screenPlanOf(fromNode);
@@ -8646,6 +8858,11 @@ function planComponent(
       /** EXP-011 §59. The hook seeds all three from the window at mount; never undefined. */
       case 'screen-out':
         return false;
+      /** EXP-011 §61. `topPageName` boots `''` and `stackDepth` 0 — never undefined. */
+      case 'stack-out':
+        return false;
+      /** EXP-011 §61. A Back Result the pop did not carry reads undefined in both forms. */
+      case 'stack-back-result':
       /** EXP-011 §60. The record boots empty, and a parent read is undefined at the root. */
       case 'component-object-out':
         return true;
@@ -8988,6 +9205,11 @@ function planComponent(
       // EXP-011 §60. The key's own type, read off its statically-known writers; `unknown` for a parent read.
       case 'component-object-out':
         return expr.tsType;
+      /** EXP-011 §61. The stack's two outputs by port; a Back Result is `*` and stays unknown. */
+      case 'stack-out':
+        return expr.field === 'stackDepth' ? 'number' : 'string';
+      case 'stack-back-result':
+        return 'unknown';
       case 'state-get':
         return plan.stateVars.find((v) => v.name === expr.name)?.tsType.replace(' | undefined', '') ?? 'unknown';
       case 'control-event':
@@ -9059,6 +9281,8 @@ function planComponent(
     [LOG_TYPE]: 'log',
     // EXP-011 §15. `Navigate To Path`'s only action port.
     [NAVIGATE_TO_PATH_TYPE]: 'navigate',
+    // EXP-011 §61. The pusher's only action port; the Pop's `navigate` + `backAction-*` and the stack's `reset` are predicates in `isTriggerWire`.
+    [STACK_PUSH_TYPE]: 'navigate',
     /**
      * EXP-011 §37. The two id nodes' only action port — and they **spell it differently**
      * (`new` against `generate`) while both display it as "New". Derived from `ID_NODES` rather
@@ -9102,7 +9326,10 @@ function planComponent(
     // EXP-011 §58. The trio's action ports — Parse/Clear, Add/Flush/Clear, Add/Clear.
     (STREAM_NODES[type] !== undefined && STREAM_NODES[type].actions[toProperty] !== undefined) ||
     // EXP-011 §63. A Drag's two snap Dos — one node, two action ports.
-    (type === DRAG_TYPE && DRAG_SNAP_TRIGGERS[toProperty] !== undefined);
+    (type === DRAG_TYPE && DRAG_SNAP_TRIGGERS[toProperty] !== undefined) ||
+    // EXP-011 §61. The Pop's Navigate and its `backAction-<a>` family; the stack's Reset.
+    (type === STACK_POP_TYPE && (toProperty === 'navigate' || toProperty.startsWith('backAction-'))) ||
+    (type === PAGE_STACK_TYPE && toProperty === 'reset');
 
   /**
    * `isTriggerWire` with the node in hand — a `Script` node's trigger ports are the signal inputs its
@@ -11056,6 +11283,398 @@ function planComponent(
     };
   };
 
+  // ---- EXP-011 §61: the component-stack trio ------------------------------------------------
+  //
+  // A push is a call and a pop is its return. The stack is a visual role whose hook line prints beside the
+  // others; the pusher and the popper are actions in the runtime's own callback / return-value shapes; the
+  // cross-component facts (which stacks exist, which components they list, which component a target is)
+  // come off `stackIndex`, read once from the IR.
+
+  const stackLocals = new Map<string, string>();
+  const stackPlans = new Map<string, PageStackPlan | { defer: string }>();
+  /** A rendered Component Stack's plan — the hook line and the row's page list. Memoised per node. */
+  const stackPlanOf = (node: NodeIR): PageStackPlan | { defer: string } => {
+    const cached = stackPlans.get(node.id);
+    if (cached !== undefined) return cached;
+    const refuse = (defer: string): { defer: string } => {
+      const reason = { defer };
+      stackPlans.set(node.id, reason);
+      return reason;
+    };
+    const info = stackIndex.byNode.get(node.id);
+    if (info === undefined) return refuse('it is not a Component Stack this project indexes');
+    if (info.refusal !== null) return refuse(info.refusal);
+    if (!rendered.has(node.id)) return refuse('the Component Stack is not rendered here, so it has no stack to read');
+    const label = info.label;
+    const core: PageStackPlan = {
+      nodeId: node.id,
+      label,
+      local: mintLocal(stackLocals, node, 'Stack', ''),
+      name: info.name,
+      pages: info.pages.map((p) => ({ id: p.id, label: p.label, componentLegacy: p.componentLegacy! })),
+      startPage: info.pages.find((p) => p.id === info.startPage || p.label === info.startPage)!.id,
+      comment: `${label} — a Component Stack "${info.name}" (navigation-stack.tsx): registers by name on mount, shows the top of its stack, and answers Top Component Name and Stack Depth. Pushed and popped by name from anywhere in the app; no transition (EXP-011 §61).`
+    };
+    stackPlans.set(node.id, core);
+    plan.pageStacks.push(core);
+    // The outcome wires nothing compiles: a Done with no Reset wired never fires (the mount-path reset reports
+    // nothing); a Failure cannot fire once the index's gates have passed (its two causes are both static).
+    if (!wiredPorts.has(`${node.id}:reset`)) {
+      for (const wire of component.connections.filter((c) => c.fromId === node.id && c.fromProperty === 'done')) {
+        notes.push(wireNote(wire, `Component Stack's Done fires only after a Reset it was asked for, and nothing fires its Reset — the mount-path reset reports nothing (navigation-stack.tsx _reportReset)`));
+        consumed.add(wire.key);
+      }
+    }
+    for (const wire of component.connections.filter((c) => c.fromId === node.id && c.fromProperty === 'failure')) {
+      notes.push(wireNote(wire, `Component Stack's Failure chain is dead — its two causes (no components, a start component that does not resolve) are both excluded statically`));
+      consumed.add(wire.key);
+    }
+    return core;
+  };
+  for (const id of renderedStackIds) stackPlanOf(nodeById.get(id)!);
+
+  /** The pusher's back-results row, allocated by a read outside its back chains (§14.2's rule). */
+  const stackBackVars = new Map<string, StateVarPlan>();
+  const stackBackStateOf = (node: NodeIR): StateVarPlan => {
+    let stateVar = stackBackVars.get(node.id);
+    if (stateVar === undefined) {
+      stateVar = allocStateVar(
+        node.authoredLabel === undefined ? undefined : `${node.authoredLabel} Back Results`,
+        'backResults',
+        'Record<string, unknown>',
+        null,
+        node.id,
+        'stack-back',
+        `What the component ${node.authoredLabel ? `"${node.authoredLabel}"` : 'this Push Component To Stack'} pushed handed back when it popped — every Back Result, by name (navigate.ts backCallback). Empty until the first pop.`
+      );
+      stateVar.bootCode = '{}';
+      stackBackVars.set(node.id, stateVar);
+    }
+    return stateVar;
+  };
+  const stackPushLocals = new Map<string, string>();
+  const stackPopLocals = new Map<string, string>();
+  /** The pushers / pops currently having a chain compiled, and which arm — `cryptoChainScope`'s shape. */
+  const stackPushChainScope = new Map<string, 'back' | 'done' | 'unchanged'>();
+  const stackPopChainScope = new Map<string, 'done' | 'failure'>();
+  /** Pushers whose Navigate attached to a handler — `attachedCryptoNodes`'s twin. */
+  const attachedStackPushes = new Set<string>();
+  /** Reserved-prop collision for the Pop's way back (Close Popup's `onClose` rule). */
+  const stackEntryPropCollision = (() => {
+    const taken = new Set(plan.props.map((p) => p.name));
+    plan.outputProps.forEach((o) => taken.add(o.prop));
+    return taken.has(PAGE_STACK_ENTRY_PROP)
+      ? `a declared port already claims the reserved prop "${PAGE_STACK_ENTRY_PROP}" — rename the port`
+      : undefined;
+  })();
+
+  interface PushTarget {
+    stackName: string;
+    mode: 'push' | 'replace';
+    page: StackPageInfo;
+    targetLegacy: string;
+    /** The target's declared Component Inputs, by port, with the type the target's own interface prints. */
+    inputs: Map<string, string>;
+    /** What the target's Pop nodes declare — the back channel's vocabulary. */
+    backActions: Set<string>;
+    backResults: Set<string>;
+  }
+  /**
+   * Where a pusher pushes, resolved statically: its stack by name (every stack under the name must list the
+   * target and show the same component for it — the runtime fans the push out to all of them, and the editor
+   * mints the `pm-` ports from the first), its target page, and that page's component.
+   */
+  const pushTargetOf = (node: NodeIR): PushTarget | { defer: string } => {
+    for (const port of ['stack', 'mode', 'target', 'transition'] as const) {
+      if (!wiredPorts.has(`${node.id}:${port}`)) continue;
+      if (port === 'stack') return { defer: 'its Stack is wired — which Component Stack it pushes onto is a runtime value; this slice binds a pusher to a stack by its authored name' };
+      if (port === 'mode') return { defer: 'its Mode is wired — push and replace are two different calls' };
+      if (port === 'target') return { defer: 'its Target Page is wired — which component it pushes is a runtime value' };
+      return { defer: 'its Transition is wired — the export switches components without animation, and a wire choosing one would be a wire into nothing' };
+    }
+    const trWire = component.connections.find((c) => c.toId === node.id && c.toProperty.startsWith('tr-'));
+    if (trWire !== undefined) {
+      return { defer: `its transition parameter "${trWire.toProperty.slice('tr-'.length)}" is wired — the export switches components without animation, and a wire choosing one would be a wire into nothing` };
+    }
+    const nameParam = literalParam(node, 'stack');
+    const stackName = typeof nameParam === 'string' && nameParam !== '' ? nameParam : 'Main';
+    const stacks = stackIndex.byName.get(stackName) ?? [];
+    if (stacks.length === 0) return { defer: `no Component Stack in the project is named "${stackName}" — the runtime queues the push until one mounts, and none ever will` };
+    const refused = stacks.find((s) => s.refusal !== null);
+    if (refused !== undefined) return { defer: `it pushes onto the Component Stack "${stackName}", which did not translate — ${refused.refusal}` };
+    const modeParam = literalParam(node, 'mode');
+    if (modeParam !== undefined && modeParam !== 'push' && modeParam !== 'replace') {
+      return { defer: `its Mode "${String(modeParam)}" is neither push nor replace — the runtime's navigate() does nothing for it` };
+    }
+    const mode: 'push' | 'replace' = modeParam === 'replace' ? 'replace' : 'push';
+    const targetParam = literalParam(node, 'target');
+    // `args.target || pages[0].id`, then `_findPage` by id or label.
+    const targetKey = typeof targetParam === 'string' && targetParam !== '' ? targetParam : stacks[0].pages[0].id;
+    const pageOf = (s: StackInfo): StackPageInfo | undefined => s.pages.find((p) => p.id === targetKey) ?? s.pages.find((p) => p.label === targetKey);
+    const page = pageOf(stacks[0]);
+    if (page === undefined) {
+      return { defer: `its Target Page "${targetKey}" is not in the Components list of the stack "${stackName}" — the runtime reports push-component-stack/component-not-found` };
+    }
+    for (const other of stacks.slice(1)) {
+      const otherPage = pageOf(other);
+      if (otherPage === undefined) {
+        return { defer: `its Target Page "${targetKey}" is not in the Components list of the stack "${stackName}" — the runtime reports push-component-stack/component-not-found` };
+      }
+      if (otherPage.componentLegacy !== page.componentLegacy) {
+        return { defer: `two Component Stacks are named "${stackName}" and show different components for "${targetKey}" — the pusher's parameters are minted from one of them` };
+      }
+    }
+    const targetLegacy = page.componentLegacy!;
+    const targetComp = ir.components.find((c) => `/${c.path}` === targetLegacy)!;
+    const inputs = new Map<string, string>();
+    const backActions = new Set<string>();
+    const backResults = new Set<string>();
+    for (const n of targetComp.nodes) {
+      if (n.type === 'Component Inputs') {
+        for (const p of n.declaredPorts) if (p.plug === 'output') inputs.set(p.name, tsTypeOf(p.type, p.kind));
+      }
+      if (n.type === STACK_POP_TYPE) {
+        for (const a of stackStringList(literalParam(n, 'backActions'))) backActions.add(a);
+        for (const r of stackStringList(literalParam(n, 'results'))) backResults.add(r);
+      }
+    }
+    return { stackName, mode, page, targetLegacy, inputs, backActions, backResults };
+  };
+
+  const compileStackPush = (node: NodeIR): CompiledSink => {
+    const target = pushTargetOf(node);
+    if ('defer' in target) return target;
+    const outWires = component.connections.filter((c) => c.fromId === node.id);
+    for (const wire of outWires) {
+      const port = wire.fromProperty;
+      if (port === 'done' || port === 'unchanged' || port === 'failure') continue;
+      if (port === 'completed') return { defer: STACK_COMPLETED_REASON };
+      if (port === 'error') {
+        return { defer: "its Error is read, and with a literal Target inside the stack's Components list none of the pusher's three failures can fire (no components, component not found, still animating) — the row would be a string nothing ever writes" };
+      }
+      if (port.startsWith('backAction-')) {
+        const action = port.slice('backAction-'.length);
+        if (target.mode === 'replace') {
+          return { defer: `its Back Action "${action}" is wired, but in Replace mode the stack installs no back callback (navigation-stack.tsx replaceAsync) — the chain would never fire` };
+        }
+        if (!target.backActions.has(action)) return { defer: `its Back Action "${action}" is not one the target's Pop Component Stack declares` };
+        continue;
+      }
+      if (port.startsWith('backResult-')) {
+        const key = port.slice('backResult-'.length);
+        if (target.mode === 'replace') {
+          return { defer: `its Back Result "${key}" is read, but in Replace mode the stack installs no back callback (navigation-stack.tsx replaceAsync) — nothing ever writes it` };
+        }
+        if (!target.backResults.has(key)) return { defer: `its Back Result "${key}" is not one the target's Pop Component Stack declares` };
+        continue;
+      }
+      return { defer: `its ${port} output is not a port this node has` };
+    }
+    // A pulse into a value port — decided from the sink's port kind BEFORE the chains compile (§52.4's rule).
+    for (const wireOut of outWires.filter((c) => c.fromProperty === 'done' || c.fromProperty === 'unchanged' || c.fromProperty.startsWith('backAction-'))) {
+      const sink = nodeById.get(wireOut.toId);
+      if (sink === undefined || sink.type === 'Component Outputs') continue;
+      const sinkKind =
+        sink.declaredPorts.find((p) => p.plug === 'input' && p.name === wireOut.toProperty)?.kind ??
+        catalog.portKind(sink.type, wireOut.toProperty, 'input');
+      if (sinkKind === 'value') {
+        const label = wireOut.fromProperty === 'done' ? 'Done' : wireOut.fromProperty === 'unchanged' ? 'Unchanged' : `Back Action "${wireOut.fromProperty.slice('backAction-'.length)}"`;
+        return { defer: `its ${label} output is consumed as a value — a pulse carries nothing to read` };
+      }
+    }
+    const consumes: string[] = [];
+    const collapses: string[] = [];
+    const subscribes: string[] = [];
+    // The parameters: the authored `pm-` values, then the wires — a wire beats an authored value (§10.3's precedence).
+    const ports: string[] = [];
+    for (const param of node.parameters) if (param.name.startsWith('pm-') && !ports.includes(param.name.slice(3))) ports.push(param.name.slice(3));
+    for (const c of component.connections) if (c.toId === node.id && c.toProperty.startsWith('pm-') && !ports.includes(c.toProperty.slice(3))) ports.push(c.toProperty.slice(3));
+    const params: StackPushAction['params'] = [];
+    for (const port of ports) {
+      const wires = component.connections.filter((c) => c.toId === node.id && c.toProperty === `pm-${port}`);
+      if (wires.length > 1) return { defer: `two wires feed its "${port}" parameter — last-writer-wins is not statically ordered` };
+      let expr: ValueExpr | undefined;
+      if (wires.length === 1) {
+        const ctx = newCtx();
+        const resolved = resolveExpr(nodeById.get(wires[0].fromId), wires[0].fromProperty, ctx);
+        if (resolved === null) return { defer: ctx.defer ?? `its "${port}" parameter has no statically known source` };
+        expr = resolved;
+        consumes.push(wires[0].key, ...ctx.consumes);
+        collapses.push(...ctx.logicNodeIds);
+        subscribes.push(...ctx.subscriberIds);
+      } else {
+        const authored = literalParam(node, `pm-${port}`);
+        if (authored === undefined) continue;
+        expr = { kind: 'literal', value: authored };
+      }
+      const declared = target.inputs.get(port);
+      if (declared === undefined) {
+        // `content.setInputValue` on an input the component never declared reaches nothing — a no-op in the runtime too.
+        notes.push(`${plan.path}: Push Component To Stack ${node.id} sets "${port}" on ${target.targetLegacy}, which declares no such input — the runtime's setInputValue on an undeclared input reaches nothing; dropped, reported`);
+        continue;
+      }
+      const given = exprTsType(expr);
+      if (given === 'undefined') continue;
+      if (declared === 'any' || given === declared) params.push({ port, expr });
+      else if (declared === 'string' && given === 'unknown') params.push({ port, expr, coerce: 'string' });
+      else return { defer: `its "${port}" parameter is fed a ${given} where ${target.targetLegacy} declares "${port}" as ${declared}` };
+    }
+    // The recorded divergence, per node where the author chose an animation.
+    const transition = literalParam(node, 'transition');
+    const defaultTransition = target.mode === 'replace' ? 'None' : 'Push';
+    if (typeof transition === 'string' && transition !== defaultTransition) {
+      notes.push(`${plan.path}: Push Component To Stack ${node.id}: its Transition "${transition}" is authored — the export switches components without animation (EXP-011 §61's recorded divergence)`);
+    }
+    for (const wire of outWires.filter((c) => c.fromProperty === 'failure')) {
+      notes.push(wireNote(wire, `Push Component To Stack's Failure chain is dead — a literal Target inside the stack's Components list, and no transition, leave none of the node's three failures reachable (navigation-stack.tsx navigateAsync)`));
+      consumes.push(wire.key);
+    }
+    const local = mintLocal(stackPushLocals, node, 'Push', '');
+    // The back chains compile under the `back` scope, so a Back Result read inside one is the callback's argument.
+    stackPushChainScope.set(node.id, 'back');
+    const backActions: StackPushAction['backActions'] = [];
+    for (const wire of outWires) {
+      if (!wire.fromProperty.startsWith('backAction-')) continue;
+      const action = wire.fromProperty.slice('backAction-'.length);
+      if (backActions.some((b) => b.action === action)) continue;
+      const chain = doneChainOf(node, wire.fromProperty);
+      if ('defer' in chain) {
+        stackPushChainScope.delete(node.id);
+        return { defer: chain.defer };
+      }
+      backActions.push({ action, then: chain.then });
+      consumes.push(...chain.consumes);
+      collapses.push(...chain.collapses);
+      subscribes.push(...chain.subscribes);
+    }
+    stackPushChainScope.set(node.id, 'done');
+    const done = doneChainOf(node, 'done');
+    stackPushChainScope.set(node.id, 'unchanged');
+    const unchanged = 'defer' in done ? done : doneChainOf(node, 'unchanged');
+    stackPushChainScope.delete(node.id);
+    if ('defer' in done) return { defer: done.defer };
+    if ('defer' in unchanged) return { defer: unchanged.defer };
+    return {
+      action: {
+        kind: 'stack-push',
+        nodeId: node.id,
+        stack: target.stackName,
+        mode: target.mode,
+        target: target.page.id,
+        targetLegacy: target.targetLegacy,
+        params,
+        local,
+        backActions,
+        then: done.then,
+        unchangedThen: unchanged.then
+      },
+      consumes: [...consumes, ...done.consumes, ...unchanged.consumes],
+      collapses: [...collapses, ...done.collapses, ...unchanged.collapses],
+      subscribes: [...subscribes, ...done.subscribes, ...unchanged.subscribes]
+    };
+  };
+
+  const compileStackPop = (node: NodeIR, port: string): CompiledSink => {
+    const hosts = stackIndex.hostsOf.get(`/${component.path}`) ?? [];
+    if (hosts.length === 0) {
+      return { defer: `no Component Stack lists /${component.path} among its Components, so nothing ever pushes it — its Navigate answers Failure ("No Component Stack to pop") every time` };
+    }
+    if (hosts.every((h) => h.refusal !== null)) {
+      return { defer: `the Component Stack "${hosts[0].name}" that lists /${component.path} did not translate — ${hosts[0].refusal}` };
+    }
+    if (stackEntryPropCollision !== undefined) return { defer: stackEntryPropCollision };
+    const declaredActions = stackStringList(literalParam(node, 'backActions'));
+    const declaredResults = stackStringList(literalParam(node, 'results'));
+    const backAction = port === 'navigate' ? undefined : port.slice('backAction-'.length);
+    if (backAction !== undefined && !declaredActions.includes(backAction)) {
+      return { defer: `its back action "${backAction}" is not in its Back Actions list` };
+    }
+    for (const wire of component.connections.filter((c) => c.toId === node.id)) {
+      if (wire.toProperty === 'navigate' || wire.toProperty.startsWith('backAction-')) continue;
+      if (wire.toProperty.startsWith('result-')) {
+        const key = wire.toProperty.slice('result-'.length);
+        if (!declaredResults.includes(key)) return { defer: `its result "${key}" is not in its Results list` };
+        continue;
+      }
+      return { defer: `its ${wire.toProperty} input is not a port this node has` };
+    }
+    const outWires = component.connections.filter((c) => c.fromId === node.id);
+    for (const wire of outWires) {
+      const out = wire.fromProperty;
+      if (out === 'done' || out === 'failure' || out === 'error') continue;
+      if (out === 'unchanged') {
+        return { defer: "its Unchanged output is consumed — it fires when the stack is already at its first component, which a pushed component's Pop cannot reach (only a pushed component receives the back callback; the start component's Pop answers Failure instead)" };
+      }
+      if (out === 'completed') return { defer: STACK_COMPLETED_REASON };
+      return { defer: `its ${out} output is not a port this node has` };
+    }
+    for (const wireOut of outWires.filter((c) => c.fromProperty === 'done' || c.fromProperty === 'failure')) {
+      const sink = nodeById.get(wireOut.toId);
+      if (sink === undefined || sink.type === 'Component Outputs') continue;
+      const sinkKind =
+        sink.declaredPorts.find((p) => p.plug === 'input' && p.name === wireOut.toProperty)?.kind ??
+        catalog.portKind(sink.type, wireOut.toProperty, 'input');
+      if (sinkKind === 'value') {
+        return { defer: `its ${wireOut.fromProperty === 'done' ? 'Done' : 'Failure'} output is consumed as a value — a pulse carries nothing to read` };
+      }
+    }
+    const consumes: string[] = [];
+    const collapses: string[] = [];
+    const subscribes: string[] = [];
+    const results: StackPopAction['results'] = [];
+    for (const key of declaredResults) {
+      const wires = component.connections.filter((c) => c.toId === node.id && c.toProperty === `result-${key}`);
+      if (wires.length > 1) return { defer: `two wires feed its result "${key}" — last-writer-wins is not statically ordered` };
+      if (wires.length === 1) {
+        const ctx = newCtx();
+        const resolved = resolveExpr(nodeById.get(wires[0].fromId), wires[0].fromProperty, ctx);
+        if (resolved === null) return { defer: ctx.defer ?? `its result "${key}" has no statically known source` };
+        results.push({ key, expr: resolved });
+        consumes.push(wires[0].key, ...ctx.consumes);
+        collapses.push(...ctx.logicNodeIds);
+        subscribes.push(...ctx.subscriberIds);
+        continue;
+      }
+      const authored = literalParam(node, `result-${key}`);
+      if (authored !== undefined) results.push({ key, expr: { kind: 'literal', value: authored } });
+    }
+    const local = mintLocal(stackPopLocals, node, 'Pop', 'Result');
+    stackPopChainScope.set(node.id, 'done');
+    const done = doneChainOf(node, 'done');
+    stackPopChainScope.set(node.id, 'failure');
+    const fail = 'defer' in done ? done : doneChainOf(node, 'failure');
+    stackPopChainScope.delete(node.id);
+    if ('defer' in done) return { defer: done.defer };
+    if ('defer' in fail) return { defer: fail.defer };
+    return {
+      action: { kind: 'stack-pop', nodeId: node.id, ...(backAction !== undefined ? { backAction } : {}), results, local, then: done.then, failThen: fail.then },
+      consumes: [...consumes, ...done.consumes, ...fail.consumes],
+      collapses: [...collapses, ...done.collapses, ...fail.collapses],
+      subscribes: [...subscribes, ...done.subscribes, ...fail.subscribes]
+    };
+  };
+
+  const compileStackReset = (node: NodeIR): CompiledSink => {
+    const registered = stackPlanOf(node);
+    if ('defer' in registered) return registered;
+    for (const wireOut of component.connections.filter((c) => c.fromId === node.id && c.fromProperty === 'done')) {
+      const sink = nodeById.get(wireOut.toId);
+      if (sink === undefined || sink.type === 'Component Outputs') continue;
+      const sinkKind =
+        sink.declaredPorts.find((p) => p.plug === 'input' && p.name === wireOut.toProperty)?.kind ??
+        catalog.portKind(sink.type, wireOut.toProperty, 'input');
+      if (sinkKind === 'value') return { defer: 'its Done output is consumed as a value — a pulse carries nothing to read' };
+    }
+    const done = doneChainOf(node, 'done');
+    if ('defer' in done) return { defer: done.defer };
+    return {
+      action: { kind: 'stack-reset', nodeId: node.id, local: registered.local, then: done.then },
+      consumes: done.consumes,
+      collapses: done.collapses,
+      subscribes: done.subscribes
+    };
+  };
+
   /**
    * A Router navigation with its page parameters (EXP-011 Tier 2.5).
    *
@@ -12762,6 +13381,10 @@ function planComponent(
     // EXP-011 §58. The trio's action ports.
     if (STREAM_NODES[node.type] !== undefined) return compileStreamAction(node, port);
     if (node.type === NAVIGATE_TO_PATH_TYPE) return compileNavigateToPath(node);
+    // EXP-011 §61. The component-stack trio's action ports.
+    if (node.type === STACK_PUSH_TYPE) return compileStackPush(node);
+    if (node.type === STACK_POP_TYPE) return compileStackPop(node, port);
+    if (node.type === PAGE_STACK_TYPE && port === 'reset') return compileStackReset(node);
     if (node.type === 'NavigationShowPopup') return compileShowPopup(node);
     if (node.type === 'NavigationClosePopup') return compileClosePopup(node, port);
     if (node.type === 'RouterNavigate') {
@@ -13341,6 +13964,11 @@ function planComponent(
       // EXP-011 §60. Render reads the snapshot, a handler reads `.get()` live — valid in every context.
       case 'component-object-out':
         return true;
+      // EXP-011 §61. The same for the stack's handle; a Back Result's row is a state read, its local is minted only
+      // while the back chain that declares it is being compiled.
+      case 'stack-out':
+      case 'stack-back-result':
+        return true;
       /**
        * `External Link` and `Navigate To Path`'s `Error`, on the same footing and the same
        * reason (EXP-011 §24): the state form is an ordinary state read, and the local form is
@@ -13514,6 +14142,22 @@ function planComponent(
             actionsValidIn(action.then, context, invokedScope) &&
             actionsValidIn(action.failThen, context, invokedScope)
           );
+        // EXP-011 §61. The parameters are read where the handler is; every callback runs in that same closure.
+        case 'stack-push':
+          return (
+            action.params.every((p) => exprValidIn(p.expr, context, invokedScope)) &&
+            actionsValidIn(action.then, context, invokedScope) &&
+            actionsValidIn(action.unchangedThen, context, invokedScope) &&
+            action.backActions.every((b) => actionsValidIn(b.then, context, invokedScope))
+          );
+        case 'stack-pop':
+          return (
+            action.results.every((r) => exprValidIn(r.expr, context, invokedScope)) &&
+            actionsValidIn(action.then, context, invokedScope) &&
+            actionsValidIn(action.failThen, context, invokedScope)
+          );
+        case 'stack-reset':
+          return actionsValidIn(action.then, context, invokedScope);
         /**
          * EXP-011 Tier 2.5. The link and (where wired) Open In New Tab are read in the handler,
          * and both outcome chains run in that same closure.
@@ -14170,6 +14814,10 @@ function planComponent(
       // EXP-011 §63. A live getter; nothing a chain sets reaches it.
       case 'drag-out':
         return false;
+      // EXP-011 §61. The same: a handle read, and a back-results row written only by the pop's callback.
+      case 'stack-out':
+      case 'stack-back-result':
+        return false;
       /**
        * 🔴 A walker with a `default`, and the third construct to nearly die in one (§8.3).
        *
@@ -14238,6 +14886,10 @@ function planComponent(
       case 'component-object-out':
       // EXP-011 §63.
       case 'drag-out':
+        return expr;
+      // EXP-011 §61.
+      case 'stack-out':
+      case 'stack-back-result':
         return expr;
       case 'jsfun-out': {
         // Wrapper argument records are shared across call sites — a per-site rewrite cannot
@@ -14562,6 +15214,45 @@ function planComponent(
         if (!Array.isArray(failThen)) return failThen;
         return { ...action, then, failThen };
       }
+      // EXP-011 §61. The parameters and the results are read where the handler is (the `log` rule); the chains
+      // are walked; the back-results row is NOT entered in the snapshot — the pop's callback writes it, never a Set Variable.
+      case 'stack-push': {
+        const params: StackPushAction['params'] = [];
+        for (const param of action.params) {
+          const e = snapExpr(param.expr, snap);
+          if ('defer' in e) return e;
+          params.push({ ...param, expr: e });
+        }
+        const then = snapActionList(action.then, snap);
+        if (!Array.isArray(then)) return then;
+        const unchangedThen = snapActionList(action.unchangedThen, snap);
+        if (!Array.isArray(unchangedThen)) return unchangedThen;
+        const backActions: StackPushAction['backActions'] = [];
+        for (const back of action.backActions) {
+          const chain = snapActionList(back.then, snap);
+          if (!Array.isArray(chain)) return chain;
+          backActions.push({ action: back.action, then: chain });
+        }
+        return { ...action, params, then, unchangedThen, backActions };
+      }
+      case 'stack-pop': {
+        const results: StackPopAction['results'] = [];
+        for (const result of action.results) {
+          const e = snapExpr(result.expr, snap);
+          if ('defer' in e) return e;
+          results.push({ key: result.key, expr: e });
+        }
+        const then = snapActionList(action.then, snap);
+        if (!Array.isArray(then)) return then;
+        const failThen = snapActionList(action.failThen, snap);
+        if (!Array.isArray(failThen)) return failThen;
+        return { ...action, results, then, failThen };
+      }
+      case 'stack-reset': {
+        const then = snapActionList(action.then, snap);
+        if (!Array.isArray(then)) return then;
+        return { ...action, then };
+      }
       // EXP-011 §59. The inputs are read where the handler is, so a `Set Variable` earlier in the chain must
       // reach them (the `log` rule); the value row is NOT entered in the snapshot, on `id-new`'s reason.
       case 'crypto-call': {
@@ -14651,6 +15342,15 @@ function planComponent(
       for (const c of component.connections) {
         if (c.toId === node.id && c.toProperty.startsWith('closeAction-')) compiledOf(node, c.toProperty);
       }
+    } else if (node.type === STACK_POP_TYPE) {
+      // EXP-011 §61. The Pop compiles per trigger port, as Close Popup does: Navigate and every wired back action.
+      if (wiredPorts.has(`${node.id}:navigate`)) compiledOf(node, 'navigate');
+      for (const c of component.connections) {
+        if (c.toId === node.id && c.toProperty.startsWith('backAction-')) compiledOf(node, c.toProperty);
+      }
+    } else if (node.type === PAGE_STACK_TYPE) {
+      // EXP-011 §61. Only a wired Reset is a sink; the stack's row is its rendering, not an action.
+      if (wiredPorts.has(`${node.id}:reset`)) compiledOf(node, 'reset');
     } else if (jsNodeKindOf(node.type) !== null && wiredPorts.has(`${node.id}:run`)) {
       compiledOf(node, 'run');
     } else if (node.type === SCRIPT_TYPE) {
@@ -15263,6 +15963,8 @@ function planComponent(
     const attachedSlotKeys = new Set<string>();
     const attachedMutations = attachedRecordVerbs;
     let closeAttached = false;
+    // EXP-011 §61. Whether a Pop Component Stack attached — the reserved `pageStackEntry` prop is declared for it.
+    let popAttached = false;
     const scanActions = (actions: HandlerAction[]) => {
       for (const action of actions) {
         if (action.kind === 'popup-show') {
@@ -15321,6 +16023,19 @@ function planComponent(
           attachedCryptoNodes.add(action.nodeId);
           scanActions(action.then);
           scanActions(action.failThen);
+        } else if (action.kind === 'stack-push') {
+          // EXP-011 §61. Every callback is a chain like any other; the pusher gets a registry for the sweep's reason.
+          attachedStackPushes.add(action.nodeId);
+          scanActions(action.then);
+          scanActions(action.unchangedThen);
+          for (const back of action.backActions) scanActions(back.then);
+        } else if (action.kind === 'stack-pop') {
+          // EXP-011 §61. A Pop attached here: the interface declares the reserved prop.
+          popAttached = true;
+          scanActions(action.then);
+          scanActions(action.failThen);
+        } else if (action.kind === 'stack-reset') {
+          scanActions(action.then);
         } else if (action.kind === 'external-link') {
           // EXP-011 Tier 2.5. The chains are walked here, which is what earns the popups,
           // mutations and channels inside them — and §14 gave the node a registry of its own,
@@ -15679,6 +16394,7 @@ function planComponent(
     for (const animation of plan.animations) if (animation.arrive !== undefined) scanActions(animation.arrive);
     plan.popups = slotRegistry.filter((s) => attachedSlotKeys.has(s.slotKey));
     plan.closesPopup = closeAttached;
+    plan.popsStack = popAttached;
     plan.mutations = plan.mutations.filter((m) => attachedMutations.has(m.nodeId));
     // The user family earns its session exports the same way (USER-FAMILY-TARGET §5.1). The
     // `read` entries are pushed after the 4x passes and are earned separately, by a surviving
@@ -15787,6 +16503,26 @@ function planComponent(
       compiled !== undefined && 'defer' in compiled
         ? compiled.defer
         : `its ${port === 'do' ? 'Do' : 'Navigate'} is never fired by a translatable trigger`;
+    dispositions[node.id] = { kind: 'deferred', to: 'EXP-003', reason };
+    notes.push(`node ${node.id} (${node.type}) deferred: ${reason}`);
+  }
+  // EXP-011 §61. The pusher and the Pop, the same sweep — the Pop over every trigger port it has (its Navigate and
+  // its back actions), so a Pop fired only through a back action that refused reports that refusal, not "never fired".
+  for (const node of component.nodes) {
+    if ((node.type !== STACK_PUSH_TYPE && node.type !== STACK_POP_TYPE) || dispositions[node.id] !== undefined) continue;
+    const ports =
+      node.type === STACK_PUSH_TYPE
+        ? ['navigate']
+        : ['navigate', ...component.connections.filter((c) => c.toId === node.id && c.toProperty.startsWith('backAction-')).map((c) => c.toProperty)];
+    let reason: string | undefined;
+    for (const p of ports) {
+      const compiled = compiledSinks.get(`${node.id}:${p}`);
+      if (compiled !== undefined && 'defer' in compiled) {
+        reason = compiled.defer;
+        break;
+      }
+    }
+    reason ??= 'its Navigate is never fired by a translatable trigger';
     dispositions[node.id] = { kind: 'deferred', to: 'EXP-003', reason };
     notes.push(`node ${node.id} (${node.type}) deferred: ${reason}`);
   }
@@ -16214,6 +16950,12 @@ function planComponent(
     const isScreenRead = fromNode.type === SCREEN_RESOLUTION_TYPE;
     // EXP-011 §63. A Drag's four value outputs, off its handle — the same footing.
     const isDragRead = fromNode.type === DRAG_TYPE && DRAG_VALUE_OUTPUTS[connection.fromProperty] !== undefined;
+    // EXP-011 §61. The stack's two outputs (a handle read) and a pusher's Back Results (the row's footing).
+    const isStackRead =
+      (fromNode.type === PAGE_STACK_TYPE && (PAGE_STACK_OUTPUTS as readonly string[]).includes(connection.fromProperty)) ||
+      (fromNode.type === STACK_PUSH_TYPE && connection.fromProperty.startsWith('backResult-')) ||
+      // A Pop's Error into a rendered sink reaches resolveExpr here so the refusal can name itself (D13).
+      (fromNode.type === STACK_POP_TYPE && connection.fromProperty === 'error');
     const isAnimateRead = fromNode.type === ANIMATE_TYPE && connection.fromProperty === 'currentValue';
     if (
       !isLatchRead &&
@@ -16238,7 +16980,8 @@ function planComponent(
       !isStreamRead &&
       !isCryptoRead &&
       !isScreenRead &&
-      !isDragRead
+      !isDragRead &&
+      !isStackRead
     ) {
       continue;
     }
@@ -16271,7 +17014,16 @@ function planComponent(
     }
     const ctx = newCtx();
     const expr = resolveExpr(fromNode, connection.fromProperty, ctx);
-    if (expr === null) continue; // the sweep defers with this reason
+    if (expr === null) {
+      // EXP-011 §61. A stack-family read refused here carries its sentence to the report as a wire note: the source
+      // node is attached (a Pop whose Error is read outside its Failure arm) or already dispositioned (a pusher
+      // nothing fires), so no later sweep names the WIRE — Pass 6 would call it "step 5", which says nothing.
+      if (ctx.defer !== undefined && (fromNode.type === STACK_POP_TYPE || fromNode.type === STACK_PUSH_TYPE || fromNode.type === PAGE_STACK_TYPE)) {
+        notes.push(wireNote(connection, ctx.defer));
+        consumed.add(connection.key);
+      }
+      continue; // the sweep defers with this reason
+    }
     consumed.add(connection.key);
     stateLandedKeys.add(connection.key);
     plan.bindings[toNode.id] = plan.bindings[toNode.id] ?? {};
@@ -16968,6 +17720,21 @@ function planComponent(
             walkActions(action.then);
             walkActions(action.failThen);
             break;
+          // EXP-011 §61. The signed-in user's id is an ordinary parameter to push, or result to hand back.
+          case 'stack-push':
+            for (const param of action.params) walkExpr(param.expr);
+            walkActions(action.then);
+            walkActions(action.unchangedThen);
+            for (const back of action.backActions) walkActions(back.then);
+            break;
+          case 'stack-pop':
+            for (const result of action.results) walkExpr(result.expr);
+            walkActions(action.then);
+            walkActions(action.failThen);
+            break;
+          case 'stack-reset':
+            walkActions(action.then);
+            break;
           // EXP-011 §43. The signed-in user's id is an ordinary Id to read a record by.
           case 'record-fetch':
             walkExpr(action.id);
@@ -17503,6 +18270,22 @@ function planComponent(
             fillMaterialize(action.failThen);
             break;
           }
+          // EXP-011 §61. The same rule for the back-results row; the callbacks are walked for what nests in them.
+          case 'stack-push': {
+            const row = stackBackVars.get(action.nodeId);
+            if (row !== undefined && plan.stateVars.includes(row)) action.backResults = row.name;
+            fillMaterialize(action.then);
+            fillMaterialize(action.unchangedThen);
+            for (const back of action.backActions) fillMaterialize(back.then);
+            break;
+          }
+          case 'stack-pop':
+            fillMaterialize(action.then);
+            fillMaterialize(action.failThen);
+            break;
+          case 'stack-reset':
+            fillMaterialize(action.then);
+            break;
           // EXP-011 §59. The same rule: a row exists only where a read allocated it.
           case 'crypto-call': {
             const row = cryptoVars.get(action.nodeId);
@@ -17964,6 +18747,9 @@ function renderRole(node: NodeIR, catalog: CatalogIndex, kits: KitIndex): Render
       return 'repeater';
     case 'Router':
       return null;
+    // EXP-011 §61. The Component Stack renders its top entry; `roleOf` refuses the shapes §61.0 names.
+    case PAGE_STACK_TYPE:
+      return 'stack';
     // EXP-011 §51. Rendered as `{children}` where it sits; see CHILD_SLOT_TYPE.
     case CHILD_SLOT_TYPE:
       return 'slot';
@@ -18409,6 +19195,9 @@ export function isPathwayType(type: string): boolean {
     type === 'RouterNavigate' ||
     type === NAVIGATE_TO_PATH_TYPE ||
     type === EXTERNAL_LINK_TYPE ||
+    // EXP-011 §61. A push or a pop is a navigation — losing one loses the way through a wizard, not a feature.
+    type === STACK_PUSH_TYPE ||
+    type === STACK_POP_TYPE ||
     type === 'On App Error'
   );
 }
@@ -18506,6 +19295,124 @@ export function parseIdentityMapping(script: string): Array<{ input: string; fie
  * ⚠️ `string` must stay an explicit case. It is 224 ports, and it reached its type through the
  * old default — folding it into this one would widen every genuinely-typed prop in the corpus.
  */
+/** One row of a Component Stack's Components list, resolved (EXP-011 §61). */
+interface StackPageInfo {
+  id: string;
+  label: string;
+  /** The `pageComp-<id>` parameter — undefined when unset (the stack then refuses). */
+  componentLegacy: string | undefined;
+}
+
+/** A `Page Stack` anywhere in the project, read off the IR once (EXP-011 §61). */
+export interface StackInfo {
+  nodeId: string;
+  componentPath: string;
+  label: string;
+  /** The authored Name, `Main` by default — `navigation-handler.ts` keys its registry on `name || 'Main'`. */
+  name: string;
+  pages: StackPageInfo[];
+  /** The authored Start Page, or the first page's id (`resetAsync`). */
+  startPage: string;
+  /** Why the stack does not translate, or null. Decided from the IR alone, so a pusher in any component can ask. */
+  refusal: string | null;
+}
+
+export interface StackIndex {
+  byNode: Map<string, StackInfo>;
+  byName: Map<string, StackInfo[]>;
+  /** The stacks listing a component (by legacy path) among their pages — the Pop's gate. */
+  hostsOf: Map<string, StackInfo[]>;
+}
+
+const stackIndexCache = new WeakMap<ExportIR, StackIndex>();
+
+/** The stringlist parameters of a Pop (`results`, `backActions`) — split as the runtime splits them, no trimming. */
+export function stackStringList(value: unknown): string[] {
+  return typeof value === 'string' && value !== '' ? value.split(',') : [];
+}
+
+/**
+ * EXP-011 §61. Every `Page Stack` in the project with its refusal, computed once per IR — `popupTargetLegacies`'
+ * shape, because a pusher is planned in one component and its stack sits in another, and the plan runs
+ * component by component. Every check here is a fact the IR states outright (an authored value, a wire into
+ * the stack, a page's existence and root), never a plan-time one.
+ */
+export function indexPageStacks(ir: ExportIR, catalog: CatalogIndex, kits: KitIndex): StackIndex {
+  const cached = stackIndexCache.get(ir);
+  if (cached !== undefined) return cached;
+  const byNode = new Map<string, StackInfo>();
+  const byName = new Map<string, StackInfo[]>();
+  const hostsOf = new Map<string, StackInfo[]>();
+  const pushTo = <K>(map: Map<K, StackInfo[]>, key: K, info: StackInfo) => {
+    const list = map.get(key);
+    if (list === undefined) map.set(key, [info]);
+    else list.push(info);
+  };
+  for (const comp of ir.components) {
+    for (const node of comp.nodes) {
+      if (node.type !== PAGE_STACK_TYPE) continue;
+      const wiredIn = new Set(comp.connections.filter((c) => c.toId === node.id).map((c) => c.toProperty));
+      const consumedOut = comp.connections.filter((c) => c.fromId === node.id).map((c) => c.fromProperty);
+      const label = node.authoredLabel ?? 'Component Stack';
+      const nameParam = literalParam(node, 'name');
+      const name = typeof nameParam === 'string' && nameParam !== '' ? nameParam : 'Main';
+      const pagesParam = node.parameters.find((p) => p.name === 'pages')?.value;
+      const rawPages: unknown = pagesParam?.kind === 'json' ? pagesParam.value : undefined;
+      const pages: StackPageInfo[] = Array.isArray(rawPages)
+        ? rawPages
+            .filter((p): p is { id: string; label: string } => typeof p === 'object' && p !== null && typeof (p as { id?: unknown }).id === 'string')
+            .map((p) => {
+              const comp = literalParam(node, `pageComp-${p.id}`);
+              return { id: p.id, label: typeof p.label === 'string' ? p.label : p.id, componentLegacy: typeof comp === 'string' && comp !== '' ? comp : undefined };
+            })
+        : [];
+      const startParam = literalParam(node, 'startPage');
+      const startPage = typeof startParam === 'string' && startParam !== '' ? startParam : (pages[0]?.id ?? '');
+      const refusal = ((): string | null => {
+        if (wiredIn.has('useRoutes') || literalParam(node, 'useRoutes') === true) {
+          return `its Use Routes is ${wiredIn.has('useRoutes') ? 'wired' : 'ticked'} — the stack then writes the browser url (history.pushState) and reads its start component back from it, which this slice does not translate; untick it, or route the pages`;
+        }
+        if (wiredIn.has('name')) return 'its Name is wired — a pusher finds its stack by name statically, and a name that arrives on a wire has no pusher this export can bind';
+        if (wiredIn.has('pages')) return 'its Components list is wired — the pages it can show are its structure';
+        if (wiredIn.has('startPage')) return 'its Start Page is wired — which component the stack starts on is its structure';
+        if (pages.length === 0) return 'its Components list is empty — the runtime reports component-stack/no-components at mount and shows nothing';
+        for (const page of pages) {
+          if (page.componentLegacy === undefined) {
+            return `its component "${page.label}" names no component — the runtime cannot show it (component-stack/component-not-found)`;
+          }
+          const target = ir.components.find((c) => `/${c.path}` === page.componentLegacy);
+          if (target === undefined) return `its component "${page.label}" is ${page.componentLegacy}, which is not in the project`;
+          if (target.role === 'page' || target.nodes.some((n) => n.type === 'Page' || n.type === 'Router')) {
+            return `its component "${page.label}" is ${page.componentLegacy}, a routed page — a Component Stack shows components; a page has a url of its own`;
+          }
+          const rootable = target.nodes.some((n) => {
+            if (n.parent !== undefined) return false;
+            const role = renderRole(n, catalog, kits);
+            return role !== null && role !== 'unsupported' && role !== 'radio';
+          });
+          if (!rootable) return `its component "${page.label}" is ${page.componentLegacy}, which exports no component`;
+        }
+        if (!pages.some((p) => p.id === startPage || p.label === startPage)) {
+          return `its Start Page "${startPage}" is not in its Components list — the runtime reports component-stack/component-not-found at mount`;
+        }
+        for (const port of consumedOut) {
+          if ((PAGE_STACK_OUTPUTS as readonly string[]).includes(port) || port === 'done' || port === 'failure') continue;
+          if (port === 'completed') return STACK_COMPLETED_REASON;
+          return `its ${port} output is consumed, and this slice translates only Top Component Name, Stack Depth and the Reset outcomes`;
+        }
+        return null;
+      })();
+      const info: StackInfo = { nodeId: node.id, componentPath: comp.path, label, name, pages, startPage, refusal };
+      byNode.set(node.id, info);
+      pushTo(byName, name, info);
+      for (const page of pages) if (page.componentLegacy !== undefined) pushTo(hostsOf, page.componentLegacy, info);
+    }
+  }
+  const index = { byNode, byName, hostsOf };
+  stackIndexCache.set(ir, index);
+  return index;
+}
+
 function tsTypeOf(portType: string | undefined, kind: 'value' | 'signal'): string {
   if (kind === 'signal') return '() => void';
   switch (portType) {

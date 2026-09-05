@@ -1,0 +1,35 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "e7a1c4d2-5b3f-4e8d-9c1a-00000000009b",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "overviewRoot",
+      "type": "Group",
+      "label": "Overview",
+      "children": [
+        "overviewText"
+      ],
+      "parameters": {
+        "flexDirection": "column"
+      },
+      "x": 100,
+      "y": 100
+    },
+    {
+      "id": "overviewText",
+      "type": "Text",
+      "label": "Text",
+      "parent": "overviewRoot",
+      "parameters": {
+        "text": "Overview tab",
+        "fontSize": "var(--text-base)"
+      },
+      "x": 100,
+      "y": 200
+    }
+  ],
+  "visualRoots": [
+    "overviewRoot"
+  ]
+}

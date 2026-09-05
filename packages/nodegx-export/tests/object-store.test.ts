@@ -487,6 +487,6 @@ describe('§D — the fixture, whole', () => {
     // EXP-011 §50 (Richard, 2026-09-03) reversed §7.3 and scheduled the row; §55 built it.
     expect(status('CollectionNew').status).toBe('translated');
     expect(status('CollectionNew').note).toMatch(/^EXP-011 §55/);
-    expect(ledger.pickerCoverageFloor).toBe(111); // §60 the component-object trio + §62 the relation pair + §63 Drag (session 86); §57 + §58 + §59 (session 85) // 90 after §48; §49 added States and Animate To Value; §51 Component Children; §52 Script; §53 Run Tasks; §54 On App Error; §55 Create New Array §56 Filter Records
+    expect(ledger.pickerCoverageFloor).toBe(114); // §61 the component-stack trio + §60 the component-object trio + §62 the relation pair + §63 Drag (session 86); §57 + §58 + §59 (session 85) // 90 after §48; §49 added States and Animate To Value; §51 Component Children; §52 Script; §53 Run Tasks; §54 On App Error; §55 Create New Array §56 Filter Records
   });
 });

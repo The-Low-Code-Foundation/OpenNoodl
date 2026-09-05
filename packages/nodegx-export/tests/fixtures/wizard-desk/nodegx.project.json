@@ -1,0 +1,17 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/project-v2.json",
+  "name": "Wizard Desk",
+  "id": "e7a1c4d2-0000-4000-8000-000000000097",
+  "version": "4",
+  "nodegxVersion": "0.2.0",
+  "runtimeVersion": "react19",
+  "created": "2026-09-05T10:00:00.000Z",
+  "modified": "2026-09-05T10:00:00.000Z",
+  "settings": {
+    "htmlTitle": "Wizard Desk",
+    "navigationPathType": "path"
+  },
+  "structure": {
+    "componentsDir": "components"
+  }
+}

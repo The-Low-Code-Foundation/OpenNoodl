@@ -1,0 +1,35 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "e7a1c4d2-5b3f-4e8d-9c1a-00000000009c",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "settingsRoot",
+      "type": "Group",
+      "label": "Settings",
+      "children": [
+        "settingsText"
+      ],
+      "parameters": {
+        "flexDirection": "column"
+      },
+      "x": 100,
+      "y": 100
+    },
+    {
+      "id": "settingsText",
+      "type": "Text",
+      "label": "Text",
+      "parent": "settingsRoot",
+      "parameters": {
+        "text": "Settings tab",
+        "fontSize": "var(--text-base)"
+      },
+      "x": 100,
+      "y": 200
+    }
+  ],
+  "visualRoots": [
+    "settingsRoot"
+  ]
+}

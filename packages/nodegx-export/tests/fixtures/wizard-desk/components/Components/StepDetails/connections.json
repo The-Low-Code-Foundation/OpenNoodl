@@ -1,0 +1,31 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "e7a1c4d2-5b3f-4e8d-9c1a-00000000009a",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "detailsInputs",
+      "fromProperty": "email",
+      "toId": "emailText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "detailsInputs",
+      "fromProperty": "email",
+      "toId": "pop",
+      "toProperty": "result-email"
+    },
+    {
+      "fromId": "confirmBtn",
+      "fromProperty": "onClick",
+      "toId": "pop",
+      "toProperty": "backAction-confirm"
+    },
+    {
+      "fromId": "cancelBtn",
+      "fromProperty": "onClick",
+      "toId": "pop",
+      "toProperty": "backAction-cancel"
+    }
+  ]
+}
