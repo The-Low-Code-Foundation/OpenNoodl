@@ -588,7 +588,7 @@ describe('§H the ledger', () => {
     expect(ledgerEntryOf('On App Error')?.status).toBe('translated');
     expect(exportBadgeOf('On App Error')).toBeUndefined();
     const ledger = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'coverage-ledger.json'), 'utf8'));
-    expect(ledger.pickerCoverageFloor).toBe(98); // §56 Filter Records (session 84)
+    expect(ledger.pickerCoverageFloor).toBe(101); // §56 Filter Records (session 84) §59 Hash, Random Bytes, Screen Resolution (session 85)
   });
 });
 

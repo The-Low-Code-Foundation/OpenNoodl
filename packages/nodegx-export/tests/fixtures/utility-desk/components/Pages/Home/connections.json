@@ -1,0 +1,103 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "e7a1c4d2-5b3f-4e8d-9c1a-000000000096",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "plainInput",
+      "fromProperty": "onTextChanged",
+      "toId": "plainVar",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "plainVar",
+      "fromProperty": "value",
+      "toId": "hash",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "hashBtn",
+      "fromProperty": "onClick",
+      "toId": "hash",
+      "toProperty": "hash"
+    },
+    {
+      "fromId": "hash",
+      "fromProperty": "digest",
+      "toId": "digestText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "hash",
+      "fromProperty": "error",
+      "toId": "hashErrorText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "hash",
+      "fromProperty": "done",
+      "toId": "setLastDigest",
+      "toProperty": "do"
+    },
+    {
+      "fromId": "hash",
+      "fromProperty": "digest",
+      "toId": "setLastDigest",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "hash",
+      "fromProperty": "failure",
+      "toId": "setHashFailed",
+      "toProperty": "do"
+    },
+    {
+      "fromId": "hash",
+      "fromProperty": "error",
+      "toId": "setHashFailed",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "lastDigestVar",
+      "fromProperty": "value",
+      "toId": "lastDigestText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "hashFailedVar",
+      "fromProperty": "value",
+      "toId": "hashFailedText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "nonceBtn",
+      "fromProperty": "onClick",
+      "toId": "nonce",
+      "toProperty": "generate"
+    },
+    {
+      "fromId": "nonce",
+      "fromProperty": "value",
+      "toId": "nonceText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "screen",
+      "fromProperty": "width",
+      "toId": "widthText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "screen",
+      "fromProperty": "height",
+      "toId": "heightText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "screen",
+      "fromProperty": "aspectRatio",
+      "toId": "aspectText",
+      "toProperty": "text"
+    }
+  ]
+}

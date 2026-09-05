@@ -42,11 +42,13 @@ const baseIr = parseProject(FIXTURE, catalog);
 const CARD = 'Components/PuppyCard';
 /**
  * ⚠️ Re-pointed in EXP-011 §39: the orphan was a `Timer`, and `Timer` is now `Delay`, translated —
- * its own verdict sweep names it, which is exactly what this control must not have. `Hash` is
- * deliberately out of scope (§3's "not a target"), so no pass will ever claim it.
+ * its own verdict sweep names it, which is exactly what this control must not have. Re-pointed AGAIN
+ * in §59: `Hash` was chosen because §3 kept it out of scope "for good", and §50 reversed that — it is
+ * translated now, with a sweep of its own. `Pattern Extractor` is the §50 ruling's own "deliberately
+ * out of scope" list, so no pass will ever claim it — and if one does, this control is the alarm.
  */
-const ORPHAN = 'orphan-hash-row';
-const ORPHAN_TYPE = 'net.noodl.Hash';
+const ORPHAN = 'orphan-pattern-row';
+const ORPHAN_TYPE = 'net.noodl.PatternExtractor';
 
 const cloneIr = (): ExportIR => structuredClone(baseIr);
 const componentOf = (source: ExportIR, componentPath: string): ComponentIR =>
@@ -106,8 +108,8 @@ describe('a deferred node the report never mentioned', () => {
     // "Nodes left out" (built from `dispositions`, which is the list this sweep exists to keep
     // honest) and once as the sweep's own note. Two lines, each asserted by shape.
     expect(lines.length).toBe(2);
-    // The row carries the picker's name for the type ("Hash"), the note the catalog typeName.
-    expect(lines[0]).toContain(`Hash \`${ORPHAN}\` — the export has no rule for this node yet`);
+    // The row carries the picker's name for the type ("Pattern Extractor"), the note the catalog typeName.
+    expect(lines[0]).toContain(`Pattern Extractor \`${ORPHAN}\` — the export has no rule for this node yet`);
     expect(lines[1]).toContain(`(${ORPHAN_TYPE}) has no translation in this slice — it is not in the generated app`);
   });
 

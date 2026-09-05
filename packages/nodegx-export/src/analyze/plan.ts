@@ -257,6 +257,80 @@ const ID_NODES: Record<
   [UUID_TYPE]: { output: 'uuid', fn: 'randomUuid', trigger: 'generate', label: 'UUID', canFail: true }
 };
 
+/** `Hash` (EXP-011 §59). A SHA-2 digest of a UTF-8 string through `crypto.subtle.digest` — asynchronous. */
+export const HASH_TYPE = 'net.noodl.Hash';
+/** `Random Bytes` (EXP-011 §59). `crypto.getRandomValues` rendered as text — synchronous, never `Math.random()`. */
+export const RANDOM_BYTES_TYPE = 'net.noodl.RandomBytes';
+/**
+ * The two crypto verbs (EXP-011 §59), which are `UUID`'s shape (§37) and not a request's: read the
+ * inputs the setters stored, answer a value or a failure in the one call (`_run` / `_generate`),
+ * write the value row or leave it as it was, clear or write the Error, report the outcome. Two
+ * things differ from `UUID` and the export keeps both: **the value row boots empty** (neither node
+ * has an `initialize` that seeds it — `Digest` / `Value` read undefined until the first Do) and
+ * **a failure raises on the error channel** (`reportOutcome(…, 'failure', { code })` raises
+ * `hash/failed` / `random-bytes/failed` before the Failure pulse — `node.ts`). `Hash` awaits.
+ *
+ * `inputs` is the port order the emitted verb takes its arguments in; `numeric` names the one
+ * port whose setter is `Number(value)`, applied at the delivery site (a wire) and not in the lib.
+ */
+export const CRYPTO_NODES: Record<
+  string,
+  {
+    node: 'hash' | 'random-bytes';
+    /** The value output port. */
+    output: string;
+    /** The action port, and what the editor shows it as. */
+    trigger: string;
+    triggerLabel: string;
+    /** The value output's display name, for the sentence about a read nothing ever writes. */
+    outputLabel: string;
+    /** The lib verb, the raised code, whether the call is awaited. */
+    fn: 'tryHash' | 'tryRandomBytes';
+    code: string;
+    async: boolean;
+    inputs: readonly string[];
+    numeric?: string;
+    /** What the node is called in a deferral sentence. */
+    label: string;
+    /** The sentence for a read while nothing fires the trigger. */
+    neverFired: string;
+  }
+> = {
+  [HASH_TYPE]: {
+    node: 'hash',
+    output: 'digest',
+    trigger: 'hash',
+    triggerLabel: 'Do',
+    outputLabel: 'Digest',
+    fn: 'tryHash',
+    code: 'hash/failed',
+    async: true,
+    inputs: ['value', 'algorithm', 'encoding'],
+    label: 'Hash',
+    neverFired: 'no digest is ever computed'
+  },
+  [RANDOM_BYTES_TYPE]: {
+    node: 'random-bytes',
+    output: 'value',
+    trigger: 'generate',
+    triggerLabel: 'New',
+    outputLabel: 'Value',
+    fn: 'tryRandomBytes',
+    code: 'random-bytes/failed',
+    async: false,
+    inputs: ['length', 'encoding'],
+    numeric: 'length',
+    label: 'Random Bytes',
+    neverFired: 'no random bytes are ever generated'
+  }
+};
+/** The display name of a crypto input port, for a sentence. */
+const CRYPTO_INPUT_LABELS: Record<string, string> = { value: 'Value', algorithm: 'Algorithm', encoding: 'Encoding', length: 'Length' };
+
+/** `Screen Resolution` (EXP-011 §59). The type id IS the display name. Three numbers off one `resize` listener. */
+export const SCREEN_RESOLUTION_TYPE = 'Screen Resolution';
+export const SCREEN_RESOLUTION_OUTPUTS = ['width', 'height', 'aspectRatio'] as const;
+
 /**
  * The outputs `External Link` publishes.
  *
@@ -454,6 +528,9 @@ const OWN_CHAIN_OUTPUTS: Record<string, readonly string[]> = {
   // EXP-011 §55. The mint's one outcome; `completed` is refused by its compile, on Unique Id's sentence.
   [COLLECTION_NEW_TYPE]: ['done', 'completed'],
   [UUID_TYPE]: ['done', 'failure', 'completed'],
+  // EXP-011 §59. The two crypto verbs, UUID's shape; `completed` is refused by their compile, on UUID's sentence.
+  [HASH_TYPE]: ['done', 'failure', 'completed'],
+  [RANDOM_BYTES_TYPE]: ['done', 'failure', 'completed'],
   [CLOUD_FUNCTION_TYPE]: ['done', 'failure', 'completed'],
   [RECORD_TYPE]: ['done', 'failure', 'completed'],
   // EXP-011 §45. The picker owns an Unchanged arm (cancel / nothing chosen / superseded).
@@ -1115,6 +1192,17 @@ export type ValueExpr =
    */
   | { kind: 'id-out'; nodeId: string; fn: 'randomId' | 'randomUuid'; viaState?: string }
   /**
+   * `Hash`'s Digest or `Random Bytes`' Value (EXP-011 §59) — `id-out`'s two forms: the row anywhere,
+   * the chain-local (`<local>.digest` / `<local>.value`) inside the node's own Done arm. The row is
+   * always maybe-undefined: neither node seeds it, so it reads nothing until the first Do.
+   */
+  | { kind: 'crypto-out'; nodeId: string; node: 'hash' | 'random-bytes'; viaState?: string }
+  /**
+   * A `Screen Resolution`'s width, height or aspect ratio (EXP-011 §59) — a number off the
+   * `useScreenResolution` handle, never undefined (the hook seeds from the window at mount).
+   */
+  | { kind: 'screen-out'; nodeId: string; local: string; field: (typeof SCREEN_RESOLUTION_OUTPUTS)[number] }
+  /**
    * The `Error` output of `External Link` or `Navigate To Path` (EXP-011 §24) — the message the
    * node wrote just before it fired `Failure`.
    *
@@ -1762,6 +1850,7 @@ export type HandlerAction =
       then: HandlerAction[];
     }
   | IdNewAction
+  | CryptoCallAction
   | ArrayNewAction
   | LogAction
   | DelayAction
@@ -1898,6 +1987,36 @@ export interface MintedArrayPlan {
   /** The named array whose interface `rowType` names, for the import. */
   rowCollection?: string;
 }
+
+/**
+ * A `Hash`'s Do or a `Random Bytes`' New (EXP-011 §59) — {@link IdNewAction}'s two-arm shape with a
+ * value row that boots empty, a raise in the Failure arm, and (Hash) an `await`.
+ */
+export type CryptoCallAction = {
+  kind: 'crypto-call';
+  nodeId: string;
+  node: 'hash' | 'random-bytes';
+  fn: 'tryHash' | 'tryRandomBytes';
+  /** The raised code — `hash/failed` / `random-bytes/failed` (the node files). */
+  code: string;
+  /** Whether the call is awaited (`crypto.subtle.digest` is a promise; `getRandomValues` is not). */
+  async: boolean;
+  /**
+   * The verb's arguments in port order. A wire is the expression the handler closes over, a literal
+   * is the literal, and an input nobody set is absent — the lib applies the node's own fallback
+   * there, as `_run` / `_generate` do. `numeric` marks the one argument printed inside `Number(…)`
+   * (Length's setter), and only where a wire delivers it.
+   */
+  inputs: Array<{ port: string; expr?: ValueExpr; numeric?: true }>;
+  /** The chain-local the call binds — the whole result; the Done arm reads `.digest` / `.value`, the Failure arm `.error`. */
+  local: string;
+  /** The value row, where anything outside the chain reads it. Allocated by a read (§14.2's rule). */
+  materialize?: string;
+  /** The Error row, allocated by a read. */
+  errorMaterialize?: string;
+  then: HandlerAction[];
+  failThen: HandlerAction[];
+};
 
 export type IdNewAction = {
   kind: 'id-new';
@@ -2056,7 +2175,10 @@ export interface StateVarPlan {
     | 'id'
     | 'array'
     /** EXP-011 §37 — a `UUID`'s Error. `Unique Id` has no Failure port and never allocates one. */
-    | 'id-error';
+    | 'id-error'
+    /** EXP-011 §59 — a `Hash`'s Digest / a `Random Bytes`' Value row, and its Error row. Both allocated by a read. */
+    | 'crypto'
+    | 'crypto-error';
   /** The provenance comment above the row. */
   comment: string;
 }
@@ -2304,6 +2426,18 @@ export interface AppErrorPlan {
   filter?: ValueExpr;
   /** The chain wired off `Error`, when any. */
   listener?: HandlerAction[];
+  comment: string;
+}
+
+/**
+ * A `Screen Resolution` node (EXP-011 §59): `const <local> = useScreenResolution()`. Registered on first
+ * read, the boundary's shape without a listener; its three outputs read off the handle. A node nobody
+ * reads is never registered — the hook would be a listener nothing observes.
+ */
+export interface ScreenResolutionPlan {
+  nodeId: string;
+  label: string;
+  local: string;
   comment: string;
 }
 
@@ -2783,6 +2917,8 @@ export interface ComponentPlan {
   taskRefusal?: string;
   /** EXP-011 §54. The On App Error boundaries hosted here, registration order. */
   appErrors: AppErrorPlan[];
+  /** EXP-011 §59. The Screen Resolution hooks this component reads, registration order. */
+  screenResolutions: ScreenResolutionPlan[];
   /** EXP-011 §55. The `Create New Array` handles this component holds, allocation order. */
   mintedArrays: MintedArrayPlan[];
   /**
@@ -3094,6 +3230,7 @@ function planComponent(
     scripts: [],
     runTasks: [],
     appErrors: [],
+    screenResolutions: [],
     mintedArrays: [],
     liftedOutputProps: [],
     instanceLifted: {},
@@ -5524,6 +5661,56 @@ function planComponent(
   /** Id nodes whose `New` attached to a handler. `attachedNowNodes`'s twin, and the same rule. */
   const attachedIdNodes = new Set<string>();
 
+  // ---- EXP-011 §59: Hash and Random Bytes — UUID's rows and chain-local, minus the seed, plus the raise ----
+  const cryptoLocals = new Map<string, string>();
+  const cryptoLocalOf = (node: NodeIR): string => mintLocal(cryptoLocals, node, CRYPTO_NODES[node.type].label.replace(/ /g, ''), 'Result');
+  /**
+   * The value row — `Digest` / `Value` — allocated by a **read** (`idErrorStateOf`'s rule, not
+   * `idStateOf`'s): neither node seeds it, so a node whose output nobody reads outside its chain has
+   * no row and no setter. Boots `undefined`: the getter reads an unwritten `_internal` until the first Do.
+   */
+  const cryptoVars = new Map<string, StateVarPlan>();
+  const cryptoStateOf = (node: NodeIR): StateVarPlan => {
+    let stateVar = cryptoVars.get(node.id);
+    if (stateVar === undefined) {
+      const spec = CRYPTO_NODES[node.type];
+      stateVar = allocStateVar(
+        node.authoredLabel,
+        spec.node === 'hash' ? 'digest' : 'randomBytes',
+        'string | undefined',
+        null,
+        node.id,
+        'crypto',
+        `The ${spec.outputLabel} ${node.authoredLabel ? `"${node.authoredLabel}"` : spec.label} holds. Empty until the first ${spec.triggerLabel}, replaced on every one that succeeds and left as it was by one that fails.`
+      );
+      cryptoVars.set(node.id, stateVar);
+    }
+    return stateVar;
+  };
+  /** The Error row, allocated by a read on the same rule; cleared on every success, as `_run` / `_generate` clear it. */
+  const cryptoErrorVars = new Map<string, StateVarPlan>();
+  const cryptoErrorStateOf = (node: NodeIR): StateVarPlan => {
+    let stateVar = cryptoErrorVars.get(node.id);
+    if (stateVar === undefined) {
+      const spec = CRYPTO_NODES[node.type];
+      stateVar = allocStateVar(
+        node.authoredLabel === undefined ? undefined : `${node.authoredLabel} Error`,
+        spec.node === 'hash' ? 'digestError' : 'randomBytesError',
+        'string | undefined',
+        null,
+        node.id,
+        'crypto-error',
+        `Why ${node.authoredLabel ? `"${node.authoredLabel}"` : spec.label} failed. Cleared on every ${spec.triggerLabel} that succeeds, as the node's own run clears it.`
+      );
+      cryptoErrorVars.set(node.id, stateVar);
+    }
+    return stateVar;
+  };
+  /** The crypto nodes currently having a chain compiled, and which arm — `idChainScope`'s shape. */
+  const cryptoChainScope = new Map<string, 'done' | 'failure'>();
+  /** Crypto nodes whose Do / New attached to a handler. `attachedIdNodes`'s twin, and the same rule. */
+  const attachedCryptoNodes = new Set<string>();
+
   // ---- Static Data: the authored blob as a build-time constant (STATIC-DATA-TARGET) --------
   //
   // `type`, `csv` and `json` are all `allowEditOnly` (staticdata.ts), so this is not a solver
@@ -6881,6 +7068,16 @@ function planComponent(
       ctx.logicNodeIds.push(fromNode.id);
       return read;
     }
+    /** A `Screen Resolution`'s three outputs (EXP-011 §59) — numbers off the `useScreenResolution` handle. */
+    if (fromNode.type === SCREEN_RESOLUTION_TYPE) {
+      const registered = screenPlanOf(fromNode);
+      if ('defer' in registered) {
+        ctx.defer = registered.defer;
+        return null;
+      }
+      ctx.logicNodeIds.push(fromNode.id);
+      return { kind: 'screen-out', nodeId: fromNode.id, local: registered.local, field: fromProperty as (typeof SCREEN_RESOLUTION_OUTPUTS)[number] };
+    }
     /** An `Animate To Value`'s Current Value (EXP-011 §49) — the number its hook returns. */
     if (fromNode.type === ANIMATE_TYPE) {
       if (fromProperty !== 'currentValue') {
@@ -7405,6 +7602,66 @@ function planComponent(
       }
     }
     /**
+     * `Hash`'s and `Random Bytes`' outputs (EXP-011 §59) — UUID's three-question table (§37), verbatim:
+     * the row from render or another handler; the Done arm's own local (`<local>.digest` / `.value`);
+     * the Failure arm reads the row for the value (neither node writes it on failure) and the local for
+     * the Error; an Error read from the Done arm is refused — both nodes clear the message before Done
+     * fires. Two things UUID has not got: a read while nothing is wired to the trigger is refused (the
+     * row would be a `useState` nothing ever writes — §56 E1's dead artefact; UUID's mount id makes that
+     * read meaningful, and these nodes have no mount value), and the value row is allocated by the read
+     * (§14.2's rule), so a node read only inside its own chain has no row.
+     */
+    {
+      const spec = CRYPTO_NODES[fromNode.type];
+      if (spec !== undefined) {
+        const arm = cryptoChainScope.get(fromNode.id);
+        const rowIsReadable = (): boolean => {
+          if (arm === undefined && !attachedCryptoNodes.has(fromNode.id)) {
+            if (!wiredPorts.has(`${fromNode.id}:${spec.trigger}`)) {
+              ctx.defer = `its ${fromProperty === 'error' ? 'Error' : spec.outputLabel} is read, but nothing fires its ${spec.triggerLabel} — ${spec.neverFired}`;
+              return false;
+            }
+            const compiled = compiledOf(fromNode, spec.trigger);
+            ctx.defer = 'defer' in compiled ? compiled.defer : `its ${spec.triggerLabel} is never fired by a translatable trigger`;
+            return false;
+          }
+          ctx.logicNodeIds.push(fromNode.id);
+          return true;
+        };
+        if (fromProperty === spec.output) {
+          if (arm === 'done') {
+            ctx.logicNodeIds.push(fromNode.id);
+            return { kind: 'crypto-out', nodeId: fromNode.id, node: spec.node };
+          }
+          if (!rowIsReadable()) return null;
+          return { kind: 'crypto-out', nodeId: fromNode.id, node: spec.node, viaState: cryptoStateOf(fromNode).name };
+        }
+        if (fromProperty === 'error') {
+          if (arm === 'done') {
+            ctx.defer =
+              'its Error is read from its own Done chain — the node clears the message before Done fires, so that read is always empty';
+            return null;
+          }
+          if (arm === 'failure') {
+            ctx.logicNodeIds.push(fromNode.id);
+            return { kind: 'outcome-error', nodeId: fromNode.id, local: `${cryptoLocalOf(fromNode)}.error` };
+          }
+          if (!rowIsReadable()) return null;
+          return {
+            kind: 'outcome-error',
+            nodeId: fromNode.id,
+            local: `${cryptoLocalOf(fromNode)}.error`,
+            viaState: cryptoErrorStateOf(fromNode).name
+          };
+        }
+        ctx.defer =
+          fromProperty === 'done' || fromProperty === 'failure' || fromProperty === 'completed'
+            ? `its ${fromProperty.charAt(0).toUpperCase()}${fromProperty.slice(1)} output is consumed as a value — a pulse carries nothing to read`
+            : `its ${fromProperty} output is not a port this node has`;
+        return null;
+      }
+    }
+    /**
      * `Log`'s `Value` (EXP-011 §39) — passed straight through: the setter stores what arrived
      * and the getter hands it back, so the read *is* the read of whatever feeds the input. An
      * unwired input is the authored value, or `undefined` where the panel was never opened.
@@ -7639,6 +7896,15 @@ function planComponent(
        */
       case 'id-out':
         return expr.fn === 'randomUuid' && expr.viaState !== undefined;
+      /**
+       * EXP-011 §59. The row reads undefined until the first Do — neither node seeds it; the chain-local
+       * is minted only in the Done arm, where the verb has just answered. Must agree with component.ts.
+       */
+      case 'crypto-out':
+        return expr.viaState !== undefined;
+      /** EXP-011 §59. The hook seeds all three from the window at mount; never undefined. */
+      case 'screen-out':
+        return false;
       /**
        * The row only when it is the row: it reads undefined until the first failure, exactly as
        * the interpreter's unwritten getter does. The chain-local was assigned by the statement
@@ -7965,6 +8231,11 @@ function planComponent(
       /** Both nodes publish a string id, in both forms (EXP-011 §37). */
       case 'id-out':
         return 'string';
+      /** EXP-011 §59. A rendered digest or block is a string in both forms; the viewport's three are numbers. */
+      case 'crypto-out':
+        return 'string';
+      case 'screen-out':
+        return 'number';
       case 'state-get':
         return plan.stateVars.find((v) => v.name === expr.name)?.tsType.replace(' | undefined', '') ?? 'unknown';
       case 'control-event':
@@ -8039,6 +8310,8 @@ function planComponent(
      * than written out here, so the table that knows the port name is the only place it lives.
      */
     ...Object.fromEntries(Object.entries(ID_NODES).map(([type, spec]) => [type, spec.trigger])),
+    // EXP-011 §59. `hash` (Do) and `generate` (New) — read from the table for the same reason.
+    ...Object.fromEntries(Object.entries(CRYPTO_NODES).map(([type, spec]) => [type, spec.trigger])),
     Condition: 'eval',
     NewDbModelProperties: 'store',
     SetDbModelProperties: 'store',
@@ -9800,6 +10073,91 @@ function planComponent(
   };
 
   /**
+   * `Hash`'s Do and `Random Bytes`' New (EXP-011 §59) — `compileIdNew` with the inputs read where
+   * the setters read them. A wire is the expression the handler closes over (a wired Length inside
+   * `Number(…)`, the setter's own coercion at the delivery site); an authored literal prints as a
+   * literal; an input nobody set is absent, and the lib applies the node's own fallback there. Two
+   * wires on one input are refused (last-writer-wins is not statically ordered), as the boundary's
+   * Filter is. `Completed` takes UUID's sentence; a port the node has not got is named.
+   */
+  const compileCryptoCall = (node: NodeIR): CompiledSink => {
+    const spec = CRYPTO_NODES[node.type];
+    const readable = new Set([spec.output, 'done', 'failure', 'error']);
+    for (const wire of component.connections.filter((c) => c.fromId === node.id)) {
+      if (readable.has(wire.fromProperty)) continue;
+      if (wire.fromProperty === 'completed') {
+        return {
+          defer: 'its Completed output is consumed — it fires after every outcome, and this slice emits the outcome arms rather than a join beneath them'
+        };
+      }
+      return { defer: `its ${wire.fromProperty} output is not a port this node has` };
+    }
+    const inWires = component.connections.filter((c) => c.toId === node.id && c.toProperty !== spec.trigger);
+    for (const wire of inWires) {
+      if (!spec.inputs.includes(wire.toProperty)) return { defer: `its ${wire.toProperty} input is not a port this node has` };
+    }
+    const consumes: string[] = [];
+    const collapses: string[] = [];
+    const subscribes: string[] = [];
+    const inputs: CryptoCallAction['inputs'] = [];
+    for (const port of spec.inputs) {
+      const wires = inWires.filter((c) => c.toProperty === port);
+      if (wires.length > 1) return { defer: `two wires feed its ${CRYPTO_INPUT_LABELS[port]} input — last-writer-wins is not statically ordered` };
+      if (wires.length === 1) {
+        const ctx = newCtx();
+        const fed = resolveExpr(nodeById.get(wires[0].fromId), wires[0].fromProperty, ctx);
+        if (fed === null) return { defer: ctx.defer ?? `its ${CRYPTO_INPUT_LABELS[port]} input has no statically known source` };
+        inputs.push({ port, expr: fed, ...(spec.numeric === port ? { numeric: true as const } : {}) });
+        consumes.push(wires[0].key, ...ctx.consumes);
+        collapses.push(...ctx.logicNodeIds);
+        subscribes.push(...ctx.subscriberIds);
+        continue;
+      }
+      const authored = literalParam(node, port);
+      if (authored === undefined) inputs.push({ port });
+      else inputs.push({ port, expr: { kind: 'literal', value: authored }, ...(spec.numeric === port && typeof authored !== 'number' ? { numeric: true as const } : {}) });
+    }
+    // A pulse into a value port is a read of nothing, and the sentence has to say which — decided from the
+    // sink's own port kind BEFORE the chain compiles (§52.4's rule), or the chain compiler names it first
+    // as "drives no translatable action", which is true of the wire and silent about the mistake.
+    for (const wireOut of component.connections.filter((c) => c.fromId === node.id && (c.fromProperty === 'done' || c.fromProperty === 'failure'))) {
+      const target = nodeById.get(wireOut.toId);
+      if (target === undefined || target.type === 'Component Outputs') continue;
+      const sinkKind =
+        target.declaredPorts.find((p) => p.plug === 'input' && p.name === wireOut.toProperty)?.kind ??
+        catalog.portKind(target.type, wireOut.toProperty, 'input');
+      if (sinkKind === 'value') {
+        return { defer: `its ${wireOut.fromProperty === 'done' ? 'Done' : 'Failure'} output is consumed as a value — a pulse carries nothing to read` };
+      }
+    }
+    const local = cryptoLocalOf(node);
+    cryptoChainScope.set(node.id, 'done');
+    const done = doneChainOf(node, 'done');
+    cryptoChainScope.set(node.id, 'failure');
+    const fail = !('defer' in done) ? doneChainOf(node, 'failure') : { then: [], consumes: [], collapses: [], subscribes: [] };
+    cryptoChainScope.delete(node.id);
+    if ('defer' in done) return { defer: done.defer };
+    if ('defer' in fail) return { defer: fail.defer };
+    return {
+      action: {
+        kind: 'crypto-call',
+        nodeId: node.id,
+        node: spec.node,
+        fn: spec.fn,
+        code: spec.code,
+        async: spec.async,
+        inputs,
+        local,
+        then: done.then,
+        failThen: fail.then
+      },
+      consumes: [...consumes, ...done.consumes, ...fail.consumes],
+      collapses: [...collapses, ...done.collapses, ...fail.collapses],
+      subscribes: [...subscribes, ...done.subscribes, ...fail.subscribes]
+    };
+  };
+
+  /**
    * A Router navigation with its page parameters (EXP-011 Tier 2.5).
    *
    * The runtime builds the url in `getRelativeURL` (`router.tsx:607-643`) and this is that
@@ -10849,6 +11207,42 @@ function planComponent(
     return core;
   };
 
+  // ---- EXP-011 §59 — the Screen Resolution hook ------------------------------------------------------
+  const screenPlans = new Map<string, ScreenResolutionPlan | { defer: string }>();
+  const screenLocals = new Map<string, string>();
+  /**
+   * A `Screen Resolution` node, registered on first read and memoized — `appErrorPlanOf`'s shape with
+   * nothing to compile. What it refuses: a component with no file to host the hook, a wire INTO it (it
+   * has no inputs), and a wire off a port it has not got.
+   */
+  const screenPlanOf = (node: NodeIR): ScreenResolutionPlan | { defer: string } => {
+    const cached = screenPlans.get(node.id);
+    if (cached !== undefined) return cached;
+    const refuse = (defer: string): { defer: string } => {
+      const reason = { defer };
+      screenPlans.set(node.id, reason);
+      return reason;
+    };
+    if (!plan.file) return refuse('component emits no file to host the viewport hook');
+    for (const wire of component.connections.filter((c) => c.toId === node.id)) {
+      return refuse(`its ${wire.toProperty} input is not a port this node has`);
+    }
+    for (const wire of component.connections.filter((c) => c.fromId === node.id)) {
+      if ((SCREEN_RESOLUTION_OUTPUTS as readonly string[]).includes(wire.fromProperty)) continue;
+      return refuse(`its ${wire.fromProperty} output is consumed, and this node has no such port`);
+    }
+    const label = node.authoredLabel ?? 'Screen Resolution';
+    const core: ScreenResolutionPlan = {
+      nodeId: node.id,
+      label,
+      local: mintLocal(screenLocals, node, 'Viewport', ''),
+      comment: `${label} — a Screen Resolution node (screenresolution.ts): the viewport's width, height and aspect ratio, read at mount and on every resize.`
+    };
+    screenPlans.set(node.id, core);
+    plan.screenResolutions.push(core);
+    return core;
+  };
+
   /** One of a boundary's six value outputs as the expression that reads it off the handle's `last`, or null. */
   const appErrorReadOf = (boundary: AppErrorPlan, port: string): ValueExpr | null => {
     if (!(ON_APP_ERROR_VALUE_OUTPUTS as readonly string[]).includes(port)) return null;
@@ -11376,6 +11770,8 @@ function planComponent(
     if (node.type === SIGN_FILE_URL_TYPE) return compileFileSign(node);
     if (node.type === NOW_TYPE) return compileNowRead(node);
     if (ID_NODES[node.type] !== undefined) return compileIdNew(node);
+    // EXP-011 §59.
+    if (CRYPTO_NODES[node.type] !== undefined) return compileCryptoCall(node);
     if (node.type === 'Condition') return compileCondition(node);
     if (node.type === SET_OBJECT_PROPERTIES_TYPE) return compileSetObjectProperties(node);
     /**
@@ -11716,6 +12112,11 @@ function planComponent(
        */
       case 'id-out':
         return true;
+      // EXP-011 §59. The same footing: the row is a state read, the local is minted inside the arm that declares it.
+      case 'crypto-out':
+      // EXP-011 §59. A handle read — a handler closes over the latest render, which is what the getter answers.
+      case 'screen-out':
+        return true;
       /**
        * `External Link` and `Navigate To Path`'s `Error`, on the same footing and the same
        * reason (EXP-011 §24): the state form is an ordinary state read, and the local form is
@@ -11871,6 +12272,13 @@ function planComponent(
          */
         case 'id-new':
           return (
+            actionsValidIn(action.then, context, invokedScope) &&
+            actionsValidIn(action.failThen, context, invokedScope)
+          );
+        // EXP-011 §59. The inputs are read where the handler is; both arms run in that same closure.
+        case 'crypto-call':
+          return (
+            action.inputs.every((i) => i.expr === undefined || exprValidIn(i.expr, context, invokedScope)) &&
             actionsValidIn(action.then, context, invokedScope) &&
             actionsValidIn(action.failThen, context, invokedScope)
           );
@@ -12511,6 +12919,9 @@ function planComponent(
       case 'script-out':
       // EXP-011 §54. The same: the error that fired the chain, not anything the chain set.
       case 'app-error-out':
+      // EXP-011 §59. A handle read; and a crypto row is written by its own verb, never by a Set Variable.
+      case 'screen-out':
+      case 'crypto-out':
         return false;
       /**
        * 🔴 A walker with a `default`, and the third construct to nearly die in one (§8.3).
@@ -12572,6 +12983,9 @@ function planComponent(
       }
       case 'script-out':
       case 'app-error-out':
+      // EXP-011 §59.
+      case 'screen-out':
+      case 'crypto-out':
         return expr;
       case 'jsfun-out': {
         // Wrapper argument records are shared across call sites — a per-site rewrite cannot
@@ -12872,6 +13286,25 @@ function planComponent(
         const failThen = snapActionList(action.failThen, snap);
         if (!Array.isArray(failThen)) return failThen;
         return { ...action, then, failThen };
+      }
+      // EXP-011 §59. The inputs are read where the handler is, so a `Set Variable` earlier in the chain must
+      // reach them (the `log` rule); the value row is NOT entered in the snapshot, on `id-new`'s reason.
+      case 'crypto-call': {
+        const inputs: CryptoCallAction['inputs'] = [];
+        for (const input of action.inputs) {
+          if (input.expr === undefined) {
+            inputs.push(input);
+            continue;
+          }
+          const e = snapExpr(input.expr, snap);
+          if ('defer' in e) return e;
+          inputs.push({ ...input, expr: e });
+        }
+        const then = snapActionList(action.then, snap);
+        if (!Array.isArray(then)) return then;
+        const failThen = snapActionList(action.failThen, snap);
+        if (!Array.isArray(failThen)) return failThen;
+        return { ...action, inputs, then, failThen };
       }
       // EXP-011 §39. The message and data are read where the handler is, so a `Set Variable`
       // earlier in the chain must reach them; the chain carries the map onward.
@@ -13503,6 +13936,11 @@ function planComponent(
           // channels inside them — and the node gets a registry of its own for `Now`'s reason:
           // a read of `Id` through the row has to know whether anything ever writes it.
           attachedIdNodes.add(action.nodeId);
+          scanActions(action.then);
+          scanActions(action.failThen);
+        } else if (action.kind === 'crypto-call') {
+          // EXP-011 §59. The same, one family over.
+          attachedCryptoNodes.add(action.nodeId);
           scanActions(action.then);
           scanActions(action.failThen);
         } else if (action.kind === 'external-link') {
@@ -14358,6 +14796,11 @@ function planComponent(
     const isScriptRead = fromNode.type === SCRIPT_TYPE;
     // EXP-011 §54. A boundary's value outputs, off its handle — the same footing.
     const isAppErrorRead = fromNode.type === ON_APP_ERROR_TYPE;
+    // EXP-011 §59. A crypto verb's value or Error (the id nodes' footing), and the viewport's three (a handle read).
+    const isCryptoRead =
+      CRYPTO_NODES[fromNode.type] !== undefined &&
+      (connection.fromProperty === CRYPTO_NODES[fromNode.type].output || connection.fromProperty === 'error');
+    const isScreenRead = fromNode.type === SCREEN_RESOLUTION_TYPE;
     const isAnimateRead = fromNode.type === ANIMATE_TYPE && connection.fromProperty === 'currentValue';
     if (
       !isLatchRead &&
@@ -14378,7 +14821,9 @@ function planComponent(
       !isStatesRead &&
       !isAnimateRead &&
       !isScriptRead &&
-      !isAppErrorRead
+      !isAppErrorRead &&
+      !isCryptoRead &&
+      !isScreenRead
     ) {
       continue;
     }
@@ -14915,14 +15360,21 @@ function planComponent(
      * trigger port, whose every reason — nothing wired, two wires, a source that is not an
      * Upload File, an upload that never attached — comes out of `resolveExpr`.
      */
+    /**
+     * ⚠️ The two crypto verbs and `Screen Resolution` (EXP-011 §59) ride it too: the verbs are the
+     * id nodes' shape with their own trigger spelling, and the viewport hook is a pure value node.
+     */
     const isDateNode =
       DATE_NODES[node.type] !== undefined ||
       node.type === NOW_TYPE ||
       UTIL_NODES[node.type] !== undefined ||
       ID_NODES[node.type] !== undefined ||
+      CRYPTO_NODES[node.type] !== undefined ||
+      node.type === SCREEN_RESOLUTION_TYPE ||
       node.type === CLOUD_FILE_TYPE;
     if (!isDateNode || dispositions[node.id] !== undefined) continue;
-    const idTrigger = ID_NODES[node.type]?.trigger;
+    const idTrigger = ID_NODES[node.type]?.trigger ?? CRYPTO_NODES[node.type]?.trigger;
+    const idTriggerLabel = ID_NODES[node.type] !== undefined ? 'New' : CRYPTO_NODES[node.type]?.triggerLabel;
     let verdict: string | null = null;
     for (const c of component.connections) {
       if (consumed.has(c.key)) continue;
@@ -14941,7 +15393,7 @@ function planComponent(
         verdict =
           compiled !== undefined && 'defer' in compiled
             ? compiled.defer
-            : 'its New is never fired by a translatable source';
+            : `its ${idTriggerLabel} is never fired by a translatable source`;
         break;
       }
       if (c.fromId === node.id) {
@@ -15053,6 +15505,12 @@ function planComponent(
           // EXP-011 §41. The same — the signed-in user's id is an ordinary parameter to send.
           case 'cloud-call':
             for (const arg of action.args) walkExpr(arg.expr);
+            walkActions(action.then);
+            walkActions(action.failThen);
+            break;
+          // EXP-011 §59. The signed-in user's id is an ordinary thing to hash.
+          case 'crypto-call':
+            for (const input of action.inputs) if (input.expr !== undefined) walkExpr(input.expr);
             walkActions(action.then);
             walkActions(action.failThen);
             break;
@@ -15558,6 +16016,16 @@ function planComponent(
             fillMaterialize(action.failThen);
             break;
           }
+          // EXP-011 §59. The same rule: a row exists only where a read allocated it.
+          case 'crypto-call': {
+            const row = cryptoVars.get(action.nodeId);
+            if (row !== undefined && plan.stateVars.includes(row)) action.materialize = row.name;
+            const errorRow = cryptoErrorVars.get(action.nodeId);
+            if (errorRow !== undefined && plan.stateVars.includes(errorRow)) action.errorMaterialize = errorRow.name;
+            fillMaterialize(action.then);
+            fillMaterialize(action.failThen);
+            break;
+          }
           /**
            * EXP-011 Tier 2.5. `External Link` materialises no answer of its own — it has none to
            * publish — but a request or a `Now` nested in either of its chains does, and this
@@ -15652,6 +16120,10 @@ function planComponent(
     if (plan.task !== undefined) fillMaterialize(plan.task.actions);
     // EXP-011 §54. A request inside the Error chain materializes as a handler's would.
     for (const boundary of plan.appErrors) if (boundary.listener !== undefined) fillMaterialize(boundary.listener);
+    // EXP-011 §59. A viewport hook registered by a diagnostic read (the sweep resolves a wire to name its reason)
+    // whose node was then deferred would be a listener nothing observes — §56 E1's read-time mark. Only a node
+    // that collapsed into this file keeps its hook.
+    plan.screenResolutions = plan.screenResolutions.filter((s) => dispositions[s.nodeId]?.kind === 'collapsed');
   }
 
   // EXP-011 §53. A Run Tasks nothing fires: named as a Cloud Function nothing calls is, by what hangs off it,

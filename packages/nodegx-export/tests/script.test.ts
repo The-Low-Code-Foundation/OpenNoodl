@@ -689,16 +689,17 @@ describe('§G the graph gates', () => {
   test('an input fed by something with no static source refuses the node, naming the feeder', () => {
     const ir = cloneIr();
     const home = componentOf(ir, HOME);
-    home.nodes.push({ id: 'hash', type: 'net.noodl.Hash', catalogRef: 'net.noodl.Hash', parameters: [], declaredPorts: [], portKnowledge: 'partial' });
+    // §59 re-pointed the feeder from `Hash` (translated since) to `Pattern Extractor`, §50's own out-of-scope list.
+    home.nodes.push({ id: 'pattern', type: 'net.noodl.PatternExtractor', catalogRef: 'net.noodl.PatternExtractor', parameters: [], declaredPorts: [], portKnowledge: 'partial' });
     unwire(ir, HOME, 'nameConst:savedValue->greeter:Name');
-    wire(ir, HOME, 'hash', 'hash', 'greeter', 'Name');
-    expect(dispositionOf(ir, HOME, 'greeter').reason).toBe('its Name input is fed by net.noodl.Hash — no statically known source in the emit vocabulary');
+    wire(ir, HOME, 'pattern', 'match', 'greeter', 'Name');
+    expect(dispositionOf(ir, HOME, 'greeter').reason).toBe('its Name input is fed by net.noodl.PatternExtractor — no statically known source in the emit vocabulary');
   });
   test('a signal-output chain that lands on nothing translatable refuses the node with the chain\'s reason', () => {
     const ir = cloneIr();
     const home = componentOf(ir, HOME);
-    home.nodes.push({ id: 'hash', type: 'net.noodl.Hash', catalogRef: 'net.noodl.Hash', parameters: [], declaredPorts: [], portKnowledge: 'partial' });
-    wire(ir, HOME, 'greeter', 'Greeted', 'hash', 'hash', 'signal');
+    home.nodes.push({ id: 'pattern', type: 'net.noodl.PatternExtractor', catalogRef: 'net.noodl.PatternExtractor', parameters: [], declaredPorts: [], portKnowledge: 'partial' });
+    wire(ir, HOME, 'greeter', 'Greeted', 'pattern', 'extract', 'signal');
     expect(dispositionOf(ir, HOME, 'greeter').reason).toBe('its Greeted output drives no translatable action');
   });
   test('a Script firing another Script: the listener is one call on the other handle', () => {
@@ -765,7 +766,7 @@ describe('§H the ledger and the pre-flight', () => {
     expect(ledgerEntryOf('Javascript2')).toEqual({ typeName: 'Javascript2', status: 'translated' });
     expect(exportBadgeOf('Javascript2')).toBeUndefined();
     const ledger = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'coverage-ledger.json'), 'utf8'));
-    expect(ledger.pickerCoverageFloor).toBe(98); // §56 Filter Records (session 84)
+    expect(ledger.pickerCoverageFloor).toBe(101); // §56 Filter Records (session 84) §59 Hash, Random Bytes, Screen Resolution (session 85)
   });
   test('the clean fixture pre-flights with nothing to attend to', () => {
     const summary = summarizePreflight(app);
