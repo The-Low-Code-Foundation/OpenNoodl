@@ -796,10 +796,11 @@ describe('§F the refused shapes, by mutation — each sentence exact, and the c
     expect(
       sentence('parser', (ir) => {
         const home = componentOf(ir, HOME);
-        home.nodes.push({ id: 'hash', type: 'net.noodl.Hash', catalogRef: 'net.noodl.Hash', parameters: [], declaredPorts: [], portKnowledge: 'complete' });
-        connect(home, 'hash', 'hash', 'parser', 'maxLength', 'value');
+        // §59 made `net.noodl.Hash` readable the same session this row was written; Pattern Extractor is §50's own out-of-scope list.
+        home.nodes.push({ id: 'pattern', type: 'net.noodl.PatternExtractor', catalogRef: 'net.noodl.PatternExtractor', parameters: [], declaredPorts: [], portKnowledge: 'partial' });
+        connect(home, 'pattern', 'matches', 'parser', 'maxLength', 'value');
       })
-    ).toBe('its Max Pending input is fed by net.noodl.Hash — no statically known source in the emit vocabulary');
+    ).toBe('its Max Pending input is fed by net.noodl.PatternExtractor — no statically known source in the emit vocabulary');
   });
 
   test('a listener chain into an untranslatable sink refuses the node with doneChainOf’s sentence', () => {
@@ -883,13 +884,13 @@ describe('§G the report and the pre-flight', () => {
 
 // ---------------------------------------------------------------------------------------------------
 describe('§H the ledger', () => {
-  test('the three are translated, carry no badge, and the floor is 102', () => {
+  test('the three are translated, carry no badge, and the floor is 105', () => {
     for (const type of [STREAM_PARSER_TYPE, STREAM_BUFFER_TYPE, TEXT_ACCUMULATOR_TYPE]) {
       expect({ type, status: ledgerEntryOf(type)?.status }).toEqual({ type, status: 'translated' });
       expect(exportBadgeOf(type)).toBeUndefined();
     }
     const ledger = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'coverage-ledger.json'), 'utf8'));
-    expect(ledger.pickerCoverageFloor).toBe(102); // §57 Repeater Item, §58 the streaming trio (session 85)
+    expect(ledger.pickerCoverageFloor).toBe(105); // §57 Repeater Item, §58 the streaming trio, §59 Hash / Random Bytes / Screen Resolution (session 85)
   });
 });
 

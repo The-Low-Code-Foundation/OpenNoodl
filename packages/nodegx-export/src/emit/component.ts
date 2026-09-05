@@ -22,6 +22,7 @@ import {
   ComponentPlan,
   HandlerAction,
   IdNewAction,
+  CryptoCallAction,
   MintedTarget,
   JsFunctionPlan,
   RefusedScriptPlan,
@@ -51,6 +52,8 @@ import { SCRIPT_LIB_PATH } from './scriptLib';
 import { STREAMING_LIB_PATH } from './streamingLib';
 import { SCRIPT_CODE_PREFIX } from '../analyze/script';
 import { ID_HELPERS_BY_FN, ID_LIB_PATH, IdHelper } from './idLib';
+import { CRYPTO_LIB_PATH, CryptoHelper } from './cryptoLib';
+import { SCREEN_LIB_PATH } from './screenLib';
 import { computeNodeStyle, computeRoleCss, CONTENT_ATTR_ORDER, CONTENT_PARAMS, Decl, iconSourceOf, RoleCss, StyleRole, WIRED_STYLE_SINKS } from './style';
 
 const GENERATED_TS = '// @nodegx:generated (visual — provenance markers complete in EXP-007)\n';
@@ -145,6 +148,9 @@ export interface EmittedComponent {
   recordFilterLib: boolean;
   /** EXP-011 §58. `src/lib/streaming.ts` is owed when this component keeps a streaming node. */
   streamingLib: boolean;
+  /** EXP-011 §59. `src/lib/crypto.ts` verbs this component calls; `src/lib/screen.ts` is owed when a viewport hook prints. */
+  cryptoHelpers: Set<string>;
+  screenLib: boolean;
 }
 
 export function emitComponent(
@@ -186,6 +192,9 @@ export function emitComponent(
         return tsLiteral('upload-file/upload-failed');
       case 'file-sign':
         return tsLiteral('sign-file-url/sign-failed');
+      // EXP-011 §59. The code rides the action, read off the node table in plan.ts.
+      case 'crypto-call':
+        return tsLiteral(action.code);
       default:
         return tsLiteral('outcome/unspecified-failure');
     }
@@ -365,6 +374,10 @@ export function emitComponent(
    * list and the surviving rows are both known.
    */
   const usedIdHelpers = new Set<IdHelper>();
+  // EXP-011 §59. The crypto verbs called, and the Screen Resolution nodes some emitted expression reads —
+  // a registered hook nothing reads prints no line (§56 E1's rule, decided here at emit time).
+  const usedCryptoHelpers = new Set<CryptoHelper>();
+  const usedScreenNodeIds = new Set<string>();
   /** `src/lib/timer.ts`'s verbs (EXP-011 §39) — actions, gathered the id helpers' way. */
   const usedTimerHelpers = new Set<string>();
   // Re-host wrappers (EXP-003 §4): only definitions that surviving expressions/actions
@@ -448,6 +461,9 @@ export function emitComponent(
     // the `outcome-error` note below: the row would be written by the action, read by the sink,
     // then dropped as unreferenced — a component naming an identifier it never declares.
     if (expr.kind === 'id-out' && expr.viaState !== undefined) referencedStateNames.add(expr.viaState);
+    // EXP-011 §59. The same clause for the crypto rows; a viewport read earns its hook.
+    if (expr.kind === 'crypto-out' && expr.viaState !== undefined) referencedStateNames.add(expr.viaState);
+    if (expr.kind === 'screen-out') usedScreenNodeIds.add(expr.nodeId);
     if (expr.kind === 'format') {
       for (const part of expr.parts) if (typeof part !== 'string') collectExprUse(part);
     }
@@ -599,6 +615,14 @@ export function emitComponent(
       action.then.forEach(collectActionUse);
       action.failThen.forEach(collectActionUse);
     }
+    // EXP-011 §59. The same, plus the inputs the verb reads where the handler is.
+    if (action.kind === 'crypto-call') {
+      if (action.materialize !== undefined) referencedStateNames.add(action.materialize);
+      if (action.errorMaterialize !== undefined) referencedStateNames.add(action.errorMaterialize);
+      for (const input of action.inputs) if (input.expr !== undefined) collectExprUse(input.expr);
+      action.then.forEach(collectActionUse);
+      action.failThen.forEach(collectActionUse);
+    }
     // EXP-011 Tier 2.5. The link is an expression and both outcome chains are chains; this node
     // writes no row of its own, so there is nothing else here to reference.
     if (action.kind === 'external-link') {
@@ -712,7 +736,7 @@ export function emitComponent(
             ? [a, ...deepActions(a.then), ...deepActions(a.failThen), ...deepActions(a.completedThen)]
           : // EXP-011 §37. Two arms, so it cannot join the single-chain list below — a popup
             // opened from a UUID's Failure chain is a popup nothing here knows is attached.
-            a.kind === 'id-new'
+            a.kind === 'id-new' || a.kind === 'crypto-call'
             ? [a, ...deepActions(a.then), ...deepActions(a.failThen)]
             : // EXP-011 §39. Four chains — a popup opened from a Delay's Finished is the shape
               // this node exists for, and it is nowhere without this line.
@@ -833,6 +857,9 @@ export function emitComponent(
     // EXP-011 §37. A render read of an id is *always* the row form — the local exists only
     // inside the New chain — so this clause earns every id row render can see.
     if (expr.kind === 'id-out' && expr.viaState !== undefined) referencedStateNames.add(expr.viaState);
+    // EXP-011 §59. The same clause; a viewport read from a hook argument earns the hook too.
+    if (expr.kind === 'crypto-out' && expr.viaState !== undefined) referencedStateNames.add(expr.viaState);
+    if (expr.kind === 'screen-out') usedScreenNodeIds.add(expr.nodeId);
     if (expr.kind === 'jsfun-out') {
       if (expr.viaState !== undefined) {
         // A materialized read (§4f) goes through the state var, not a render local.
@@ -1335,6 +1362,11 @@ export function emitComponent(
        */
       case 'id-out':
         return expr.fn === 'randomUuid' && expr.viaState !== undefined;
+      // EXP-011 §59. The row until the first Do; the local never. Must agree with plan.ts maybeUndefinedExpr.
+      case 'crypto-out':
+        return expr.viaState !== undefined;
+      case 'screen-out':
+        return false;
       // The row is undefined until the first failure; the chain-local is assigned on the line
       // above the read and never is. Must agree with plan.ts maybeUndefinedExpr (EXP-011 §24).
       case 'outcome-error':
@@ -1519,6 +1551,12 @@ export function emitComponent(
     if (action === undefined || action.kind !== 'id-new') return 'idNew';
     return action.fn === 'randomUuid' ? `${action.local}.uuid` : action.local;
   };
+  /** EXP-011 §59. The same, one family over: the local is the whole result, and the value is `.digest` / `.value`. */
+  const cryptoLocalReadOf = (nodeId: string, node: 'hash' | 'random-bytes'): string => {
+    const action = deepActions(allActions).find((a) => a.kind === 'crypto-call' && a.nodeId === nodeId);
+    const local = action !== undefined && action.kind === 'crypto-call' ? action.local : 'cryptoResult';
+    return `${local}.${node === 'hash' ? 'digest' : 'value'}`;
+  };
   const exprCode = (expr: ValueExpr, mode: 'handler' | 'render'): string => {
     switch (expr.kind) {
       case 'prop':
@@ -1637,6 +1675,11 @@ export function emitComponent(
        */
       case 'id-out':
         return expr.viaState ?? idLocalReadOf(expr.nodeId);
+      // EXP-011 §59. The row anywhere, the Done arm's own binding inside it; the viewport's field off its handle.
+      case 'crypto-out':
+        return expr.viaState ?? cryptoLocalReadOf(expr.nodeId, expr.node);
+      case 'screen-out':
+        return `${expr.local}.${expr.field}`;
       case 'now-out': {
         const base = expr.viaState ?? nowLocalOf(expr.nodeId);
         if (expr.output === 'timestamp') return `${base}.getTime()`;
@@ -1939,6 +1982,13 @@ export function emitComponent(
         case 'id-out':
           if (e.viaState !== undefined) add(e.viaState);
           break;
+        // EXP-011 §59. The same; and a viewport field is its own dependency (`states-out`'s rule — never the handle).
+        case 'crypto-out':
+          if (e.viaState !== undefined) add(e.viaState);
+          break;
+        case 'screen-out':
+          add(`${e.local}.${e.field}`);
+          break;
         // EXP-011 §55. The row is the dependency; the chain-local cannot reach an effect.
         case 'minted-array-get':
           if (e.viaLocal === undefined) add(mintStateName(e.nodeId));
@@ -2183,6 +2233,9 @@ export function emitComponent(
         // read the id through the row, and `default: false` would say it reads nothing.
         case 'id-new':
           return a.then.some(inAction) || a.failThen.some(inAction);
+        // EXP-011 §59. The inputs, then both arms.
+        case 'crypto-call':
+          return a.inputs.some((i) => i.expr !== undefined && reads(i.expr)) || a.then.some(inAction) || a.failThen.some(inAction);
         default:
           return false;
       }
@@ -3334,6 +3387,45 @@ export function emitComponent(
           `${at}}`
         ].join('\n');
       }
+      /**
+       * EXP-011 §59. `UUID`'s block form, always: the Failure arm is never empty, because the runtime
+       * raises `hash/failed` / `random-bytes/failed` on the channel whether or not anything is wired
+       * (`reportOutcome` → `raiseRuntimeError`, before the pulse). The Done arm writes the row, clears
+       * the Error row, then runs its chain — `_run` / `_generate`'s order; the Failure arm writes the
+       * Error row, raises, then runs its chain — `_fail`'s. Hash is awaited.
+       */
+      case 'crypto-call': {
+        const at = pad(indent);
+        const inner = pad(indent + 2);
+        const args = action.inputs.map((input) => {
+          if (input.expr === undefined) return 'undefined';
+          const code = exprCode(input.expr, 'handler');
+          return input.numeric === true ? `Number(${code})` : code;
+        });
+        // Trailing `undefined`s are the lib's own defaults — dropped so `tryRandomBytes(16, 'hex')` reads as written.
+        while (args.length > 0 && args[args.length - 1] === 'undefined') args.pop();
+        const call = `${action.async ? 'await ' : ''}${action.fn}(${args.join(', ')})`;
+        const valueField = action.node === 'hash' ? 'digest' : 'value';
+        const doneStatements: string[] = [];
+        if (action.materialize !== undefined) doneStatements.push(`${stateSetterOf(action.materialize)}(${action.local}.${valueField})`);
+        if (action.errorMaterialize !== undefined) doneStatements.push(`${stateSetterOf(action.errorMaterialize)}(undefined)`);
+        doneStatements.push(...expandActions(action.then).map((a) => actionCode(a, indent + 2)));
+        const failStatements: string[] = [];
+        if (action.errorMaterialize !== undefined) failStatements.push(`${stateSetterOf(action.errorMaterialize)}(${action.local}.error)`);
+        failStatements.push(raiseLine(action.nodeId, errorCodeOf(action), `${action.local}.error`).replace(/;$/, ''));
+        failStatements.push(...expandActions(action.failThen).map((a) => actionCode(a, indent + 2)));
+        const arm = (list: string[]): string => list.map((line) => `${inner}${line};`).join('\n');
+        const head = `const ${action.local} = ${call};`;
+        if (doneStatements.length === 0) return [head, `${at}if (!${action.local}.ok) {`, arm(failStatements), `${at}}`].join('\n');
+        return [
+          head,
+          `${at}if (${action.local}.ok) {`,
+          arm(doneStatements),
+          `${at}} else {`,
+          arm(failStatements),
+          `${at}}`
+        ].join('\n');
+      }
       case 'branch': {
         /**
          * 🔴 EXP-011 §40. An arm that holds a *statement* takes the multi-line block form at the
@@ -3421,7 +3513,9 @@ export function emitComponent(
      * it is the same test the emitter runs.
      */
     (a.kind === 'id-new' &&
-      (idNewIsBlock(a) || a.materialize !== undefined || a.then.length > 0 || chainReadsIdLocal(a.then, a.nodeId)))
+      (idNewIsBlock(a) || a.materialize !== undefined || a.then.length > 0 || chainReadsIdLocal(a.then, a.nodeId))) ||
+    // EXP-011 §59. Always the block form — the Failure arm always raises.
+    a.kind === 'crypto-call'
     );
   }
 
@@ -3449,7 +3543,9 @@ export function emitComponent(
       mintedGuards(a) ||
       // EXP-011 §37. The block form ends in `}` and must not take a terminator; the
       // `Unique Id` form is a run of statements and takes one, exactly as a Now Read does.
-      (a.kind === 'id-new' && idNewIsBlock(a))
+      (a.kind === 'id-new' && idNewIsBlock(a)) ||
+      // EXP-011 §59. The block form ends in `}` too.
+      a.kind === 'crypto-call'
     );
   }
   /** Whether anything in these actions, at any depth, is awaited — the arrow around it is `async`. */
@@ -3463,7 +3559,9 @@ export function emitComponent(
         // EXP-011 §45. All three await.
         a.kind === 'file-pick' ||
         a.kind === 'file-upload' ||
-        a.kind === 'file-sign'
+        a.kind === 'file-sign' ||
+        // EXP-011 §59. `crypto.subtle.digest` is a promise; `getRandomValues` is not.
+        (a.kind === 'crypto-call' && a.async)
     );
   }
   /**
@@ -3476,7 +3574,7 @@ export function emitComponent(
     return expanded.map((a) =>
       actionTakesNoTerminator(a)
         ? `${pad(indent)}${actionCode(a, indent)}`
-        : `${pad(indent)}${actionCode(a, a.kind === 'date-now-read' || a.kind === 'id-new' || a.kind === 'branch' || a.kind === 'array-new' ? indent : 0)};`
+        : `${pad(indent)}${actionCode(a, a.kind === 'date-now-read' || a.kind === 'id-new' || a.kind === 'crypto-call' || a.kind === 'branch' || a.kind === 'array-new' ? indent : 0)};`
     );
   }
   /**
@@ -3764,6 +3862,18 @@ export function emitComponent(
    */
   for (const a of deepActions(allActions)) {
     if (a.kind === 'id-new') usedIdHelpers.add(ID_HELPERS_BY_FN[a.fn].call);
+    // EXP-011 §59. `src/lib/crypto.ts`, earned from the calls that print.
+    if (a.kind === 'crypto-call') usedCryptoHelpers.add(a.fn);
+  }
+  if (usedCryptoHelpers.size > 0) {
+    const specifier = `${relRoot}/${CRYPTO_LIB_PATH.replace(/^src\//, '').replace(/\.ts$/, '')}`;
+    internalImports.set(specifier, `import { ${[...usedCryptoHelpers].sort().join(', ')} } from '${specifier}';`);
+  }
+  // EXP-011 §59. `src/lib/screen.ts`, earned where a viewport read printed (the hook line prints for the same set).
+  const screenHooks = plan.screenResolutions.filter((s) => usedScreenNodeIds.has(s.nodeId));
+  if (screenHooks.length > 0) {
+    const specifier = `${relRoot}/${SCREEN_LIB_PATH.replace(/^src\//, '').replace(/\.ts$/, '')}`;
+    internalImports.set(specifier, `import { useScreenResolution } from '${specifier}';`);
   }
   for (const v of referencedStateVars) {
     if (v.bootHelper !== undefined) usedIdHelpers.add(v.bootHelper);
@@ -4303,6 +4413,9 @@ export function emitComponent(
           // `undefined` as nothing either way, so nothing observable would have caught it — but a
           // format that interpolates the same read prints the text "undefined".
           bound.expr.kind === 'id-out' ||
+          // 🔴 EXP-011 §59 adds `crypto-out`, the NINTH instance: the first build rendered `{hash}` bare and
+          // `{hashError ?? ''}` folded on the same page, and nothing observable said so.
+          bound.expr.kind === 'crypto-out' ||
           // EXP-011 §49. A States' Error is the one read of the pair that can be empty.
           bound.expr.kind === 'states-out') &&
         maybeUndefined(bound.expr)
@@ -5658,6 +5771,10 @@ export function emitComponent(
     if (listenerLines.length === 0) body.push(`  const ${run.local} = useRunTasks({ label: ${tsLiteral(run.label)}, nodeId: ${tsLiteral(run.nodeId)}, componentName: ${tsLiteral(plan.legacyPath)} }, ${config});`);
     else body.push(`  const ${run.local} = useRunTasks({ label: ${tsLiteral(run.label)}, nodeId: ${tsLiteral(run.nodeId)}, componentName: ${tsLiteral(plan.legacyPath)} }, ${config}, {`, listenerLines.join(',\n'), '  });');
   }
+  // EXP-011 §59. The viewport hooks — they read nothing, and print only where an emitted expression reads them.
+  for (const screen of screenHooks) {
+    body.push(`  // ${screen.comment}`, `  const ${screen.local} = useScreenResolution();`);
+  }
   // EXP-011 §54. The boundaries — after the render locals a wired Filter may read, before the effects. The
   // listener prints inline so it closes over this render; the Filter is read live by the hook.
   for (const boundary of plan.appErrors) {
@@ -5726,7 +5843,8 @@ export function emitComponent(
     plan.runTasks.length > 0 ||
     plan.appErrors.length > 0 ||
     plan.repeaterItems.length > 0 ||
-    plan.streams.length > 0
+    plan.streams.length > 0 ||
+    screenHooks.length > 0
   ) {
     body.push('');
   }
@@ -5959,6 +6077,13 @@ export function emitComponent(
       // callback takes no argument and its body reads one.
       case 'id-new':
         return [...a.then.flatMap(actionExprsOf), ...a.failThen.flatMap(actionExprsOf)];
+      // EXP-011 §59. The inputs, then both arms.
+      case 'crypto-call':
+        return [
+          ...a.inputs.flatMap((i) => (i.expr !== undefined ? [i.expr] : [])),
+          ...a.then.flatMap(actionExprsOf),
+          ...a.failThen.flatMap(actionExprsOf)
+        ];
       // EXP-011 §39. The message and data, then the chain; the two numbers, then all four chains.
       case 'log':
         return [a.message, ...(a.data !== undefined ? [a.data] : []), ...a.then.flatMap(actionExprsOf)];
@@ -6094,7 +6219,10 @@ export function emitComponent(
     // EXP-011 §56.
     recordFilterLib: usedRecordFilter,
     // EXP-011 §58.
-    streamingLib: plan.streams.length > 0
+    streamingLib: plan.streams.length > 0,
+    // EXP-011 §59.
+    cryptoHelpers: usedCryptoHelpers,
+    screenLib: screenHooks.length > 0
   };
 }
 
@@ -6113,7 +6241,7 @@ const API_CALL_ERROR_CODES: Record<string, string> = {
   'net.noodl.user.RequestMagicLink': 'user/request-magic-link-failed'
 };
 /** EXP-011 §54. The action kinds whose failure arm raises on the error channel. */
-const RAISING_ACTION_KINDS = new Set<HandlerAction['kind']>(['api-call', 'cloud-call', 'record-fetch', 'file-pick', 'file-upload', 'file-sign', 'http-call']);
+const RAISING_ACTION_KINDS = new Set<HandlerAction['kind']>(['api-call', 'cloud-call', 'record-fetch', 'file-pick', 'file-upload', 'file-sign', 'http-call', 'crypto-call']);
 /** EXP-011 §55. The module-scope stand-in an `Array` bound to a `Create New Array` reads before its first Do. */
 const NO_ARRAY = 'noArray';
 /** EXP-011 §55. The failure prefixes `addCollectionFailure` gives the three mutators (collection-failure.ts). */

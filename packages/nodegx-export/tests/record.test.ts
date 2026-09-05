@@ -445,13 +445,14 @@ describe('EXP-011 §43 §D — the §40 class, for this node', () => {
       connect(notes, 'rec', 'prop-title', 'after', 'value');
       connect(notes, 'rec', 'prop-title', 'notesHeading', 'text');
       // A wire INTO fetch keeps the port wired (so the effect form does not apply) from a node
-      // that carries no signal this slice can hear.
-      addNode(notes, { id: 'hash', type: 'net.noodl.Hash' });
-      connect(notes, 'hash', 'done', 'rec', 'fetch', 'signal');
+      // that carries no signal this slice can hear. (§59 re-pointed it from `Hash`, whose Done is
+      // a chain the exporter owns since, to `Pattern Extractor` — §50's own out-of-scope list.)
+      addNode(notes, { id: 'pattern', type: 'net.noodl.PatternExtractor' });
+      connect(notes, 'pattern', 'done', 'rec', 'fetch', 'signal');
     }, { connected: true, schema: true });
     // The attach pass disposes the sink with the trigger's own reason — the class rule, not this
     // node's — so the wire note is the name, and nothing of the read is left behind.
-    expect(app.notes).toContain('Pages/Notes: wire hash:done->rec:fetch dropped: the trigger is not a rendered element event or a receiver');
+    expect(app.notes).toContain('Pages/Notes: wire pattern:done->rec:fetch dropped: the trigger is not a rendered element event or a receiver');
     expect(app.notes.join('\n')).not.toContain('node rec (DbModel2)');
     expect(pagesFile(app)).toBeUndefined();
     expect(notesFile(app)).not.toContain('pageRow');

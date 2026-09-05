@@ -30,6 +30,8 @@ import { SCRIPT_LIB_PATH, scriptLibSource } from './scriptLib';
 import { ERRORS_LIB_PATH, errorsLibSource } from './errorsLib';
 import { RECORD_FILTER_LIB_PATH, recordFilterLibSource } from './recordFilterLib';
 import { STREAMING_LIB_PATH, streamingLibSource } from './streamingLib';
+import { CRYPTO_LIB_PATH, cryptoLibSource } from './cryptoLib';
+import { SCREEN_LIB_PATH, screenLibSource } from './screenLib';
 import { EmittedCopy, emitKits } from './kits';
 import { README_PATH, renderReadme } from './readme';
 import { ExportReportData, REPORT_PATH, ReportComponent, renderReport, stripScope } from './report';
@@ -135,6 +137,9 @@ export function emitApp(ir: ExportIR, catalog: Catalog): EmittedApp {
   let recordFilterLibUsed = false;
   // EXP-011 §58. The streaming trio's host — earned by a component whose plan kept one of the three; it raises on errors.ts.
   let streamingLibUsed = false;
+  // EXP-011 §59.
+  let cryptoLibUsed = false;
+  let screenLibUsed = false;
   const reportComponents: ReportComponent[] = [];
   for (const plan of project.plans) {
     if (plan.skipReason) {
@@ -190,6 +195,8 @@ export function emitApp(ir: ExportIR, catalog: Catalog): EmittedApp {
     if (emitted.errorsLib) errorsLibUsed = true;
     if (emitted.recordFilterLib) recordFilterLibUsed = true;
     if (emitted.streamingLib) streamingLibUsed = true;
+    if (emitted.cryptoHelpers.size > 0) cryptoLibUsed = true;
+    if (emitted.screenLib) screenLibUsed = true;
   }
 
   /**
@@ -251,6 +258,13 @@ export function emitApp(ir: ExportIR, catalog: Catalog): EmittedApp {
     files[STREAMING_LIB_PATH] = GENERATED_MODULE_TS + streamingLibSource();
   }
   // EXP-011 §56. `src/lib/filterRecords.ts` — the Filter Records matcher, when a component printed one.
+  // EXP-011 §59. The crypto verbs and the viewport hook, each only where a component calls into it.
+  if (cryptoLibUsed) {
+    files[CRYPTO_LIB_PATH] = GENERATED_MODULE_TS + cryptoLibSource();
+  }
+  if (screenLibUsed) {
+    files[SCREEN_LIB_PATH] = GENERATED_MODULE_TS + screenLibSource();
+  }
   if (recordFilterLibUsed) {
     files[RECORD_FILTER_LIB_PATH] = GENERATED_MODULE_TS + recordFilterLibSource();
   }
