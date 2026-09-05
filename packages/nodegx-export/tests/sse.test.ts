@@ -894,6 +894,22 @@ describe('§E the hook under the harness — the connection, the listeners in or
     expect(m.fetch.calls).toHaveLength(3);
     expect(m.fetch.calls[2].init.headers['Last-Event-ID']).toBe('41');
   });
+
+  test('E12 EXP-011 §66.5 — an option passed as undefined (a Variable nothing has written) is NOT a delivery: Auto Reconnect undefined keeps the runtime default true (a failure retries); Auto Connect true then undefined keeps connecting-on-URL rather than switching off', async () => {
+    const m = mount({ url: 'http://x/stream', autoReconnect: undefined, reconnectDelay: 0 });
+    m.fetch.respond((_, n) => (n === 1 ? Promise.reject(new TypeError('Failed to fetch')) : Promise.resolve({ ok: true, status: 200, body: { getReader: () => makeStream().reader } })));
+    m.handle().connect();
+    await flush();
+    expect([m.handle().connectionState, m.handle().retryCount]).toEqual(['reconnecting', 1]);
+    expect(m.timers.timers.map((t) => t.ms)).toEqual([1000]);
+    const a = mount({ url: 'http://x/one', autoConnect: true });
+    expect(a.fetch.calls.map((c) => c.url)).toEqual(['http://x/one']);
+    await flush();
+    a.current.options = { url: 'http://x/two', autoConnect: undefined };
+    a.render();
+    expect(a.fetch.calls.map((c) => c.url)).toEqual(['http://x/one', 'http://x/two']);
+  });
+
 });
 
 // ---------------------------------------------------------------------------------------------------

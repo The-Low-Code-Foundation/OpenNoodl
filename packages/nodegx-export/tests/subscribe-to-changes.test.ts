@@ -8,9 +8,9 @@ import { ComponentPlan, STREAM_NODES, SUBSCRIBE_TO_CHANGES_TYPE, planProject } f
 import { emitApp } from '../src/emit/emitApp';
 import { ERRORS_LIB_PATH } from '../src/emit/errorsLib';
 import { REALTIME_LIB_PATH, realtimeLibSource } from '../src/emit/realtimeLib';
-import { SSE_LIB_PATH } from '../src/emit/sseLib';
-import { STREAMING_LIB_PATH } from '../src/emit/streamingLib';
-import { WEBSOCKET_LIB_PATH } from '../src/emit/websocketLib';
+import { SSE_LIB_PATH, sseLibSource } from '../src/emit/sseLib';
+import { STREAMING_LIB_PATH, streamingLibSource } from '../src/emit/streamingLib';
+import { WEBSOCKET_LIB_PATH, websocketLibSource } from '../src/emit/websocketLib';
 import { exportBadgeOf, ledgerEntryOf } from '../src/ledger';
 import { parseProject } from '../src/parse/parseProject';
 import { ComponentIR, ConnectionIR, ExportIR, NodeIR, ParamValue } from '../src/ir/types';
@@ -35,6 +35,13 @@ import { ComponentIR, ConnectionIR, ExportIR, NodeIR, ParamValue } from '../src/
  * §A the plan and the emitted page · §B the refused shapes, by mutation · §C the lib's text and the module earning ·
  * §D the pure cores under node · §E the hook under a hook harness with a scripted EventSource, a scripted fetch and the
  * runtime's own timer seam · §F the ledger.
+ *
+ * §66.5 #1 (session 94), measured in the runtime first (packages/noodl-runtime/test/corpus/exp-011-s66-5-…): a Variable nothing
+ * has written NEVER reaches the setter it is wired to — `node.ts` `sendValue` drops an undefined before it crosses a wire, so the
+ * `enabled` setter never runs and the untouched node is ON. The export read `!!undefined` ⇒ OFF: a divergence inside a translated
+ * node. Fixed at the rule, not the node: every stream lib's `has(options, key)` now counts an undefined as no delivery (the internal
+ * keeps what it holds), and the hooks decide "did an input change" from the APPLIED values. The fixture wires Enabled from that
+ * Variable now (A9, E18, E19; C4 pins the rule in the four libs).
  */
 
 const FIXTURE = path.join(__dirname, 'fixtures', 'live-desk');
@@ -74,8 +81,15 @@ const sentence = (id: string, mutate: (ir: ExportIR) => void): string | undefine
   return refusalOf(ir, HOME, id)?.reason;
 };
 
+/** §66.5: the fixture wires Enabled from `enabledVar`; a row about the UNWIRED node removes the wire and the Variable first. */
+const unwireEnabled = (ir: ExportIR) => {
+  const home = componentOf(ir, HOME);
+  home.connections = home.connections.filter((c) => !(c.toId === 'feed' && c.toProperty === 'enabled'));
+  home.nodes = home.nodes.filter((n) => n.id !== 'enabledVar');
+};
+
 const HOOK_LINE =
-  "  const feed = useSubscribeToChanges({ label: 'Feed', nodeId: 'feed', componentName: '/Pages/Home' }, { collection: 'Contact' }, {\n" +
+  "  const feed = useSubscribeToChanges({ label: 'Feed', nodeId: 'feed', componentName: '/Pages/Home' }, { collection: 'Contact', enabled: enabledValue }, {\n" +
   "    realtimeFailure: () => last.set('failed'),\n" +
   "    created: () => last.set('created'),\n" +
   "    updated: () => last.set('updated'),\n" +
@@ -102,11 +116,14 @@ describe('§A the plan and the emitted page — the sixth member of the streamin
     expect(Object.keys(app.files).filter((f) => f.startsWith('src/api/'))).toEqual(['src/api/client.ts']);
   });
 
-  test('A2 the plan: one stream of kind subscription, no data, the Class its one config (read off the collectionName parameter), the five listeners in declaration order', () => {
+  test('A2 the plan: one stream of kind subscription, no data, the Class (read off the collectionName parameter) and the wired Enabled (a store read) its two configs, the five listeners in declaration order', () => {
     const feed = home.streams.find((s) => s.nodeId === 'feed')!;
     expect(feed).toMatchObject({ type: SUBSCRIBE_TO_CHANGES_TYPE, kind: 'subscription', label: 'Feed', local: 'feed' });
     expect(feed.data).toBeUndefined();
-    expect(feed.config).toEqual([{ port: 'collection', expr: { kind: 'literal', value: 'Contact' } }]);
+    expect(feed.config).toEqual([
+      { port: 'collection', expr: { kind: 'literal', value: 'Contact' } },
+      { port: 'enabled', expr: { kind: 'store-get', variableName: 'enabled' } }
+    ]);
     expect(Object.keys(feed.listeners)).toEqual(['realtimeFailure', 'created', 'updated', 'deleted', 'changed']);
     expect(feed.listeners.changed).toEqual([{ kind: 'store-set', variableName: 'pulse', expr: { kind: 'literal', value: 'changed' } }]);
     expect(feed.comment).toBe('Feed — a Subscribe To Changes (subscribetochanges.ts), hosted by realtime.ts; its value outputs read live off the handle.');
@@ -156,26 +173,33 @@ describe('§A the plan and the emitted page — the sixth member of the streamin
     expect(spec).toMatchObject({ kind: 'subscription', hook: 'useSubscribeToChanges', localStem: 'Subscription', lib: 'realtime', sourceFile: 'subscribetochanges.ts' });
   });
 
-  test('A6 Enabled: an authored false prints as a literal; a wire from a Variable prints its render read; absent prints nothing (the hook reads absent as ON)', () => {
+  test('A6 Enabled: an authored false prints as a literal (under the wire, the wire wins); the fixture’s wire from a Variable prints its render read; the wire removed prints nothing (the hook reads absent as ON)', () => {
     const authored = cloneIr();
+    unwireEnabled(authored);
     setParam(nodeOf(authored, HOME, 'feed'), 'enabled', { kind: 'literal', value: false });
     expect(emitApp(authored, catalog).files[HOME_FILE]).toContain("{ collection: 'Contact', enabled: false }, {");
+    const shadowed = cloneIr();
+    setParam(nodeOf(shadowed, HOME, 'feed'), 'enabled', { kind: 'literal', value: false });
+    expect(emitApp(shadowed, catalog).files[HOME_FILE]).toContain("{ collection: 'Contact', enabled: enabledValue }, {");
 
-    const wired = cloneIr();
-    addNode(componentOf(wired, HOME), { id: 'enabledVar', type: 'Variable2', authoredLabel: 'Enabled', parameters: [{ name: 'name', value: { kind: 'literal', value: 'enabled' } }] });
-    connect(componentOf(wired, HOME), 'enabledVar', 'value', 'feed', 'enabled', 'value');
-    const wiredPage = emitApp(wired, catalog).files[HOME_FILE];
-    expect(wiredPage).toContain("{ collection: 'Contact', enabled: enabledValue }, {");
-    expect(wiredPage).toContain('const enabledValue = useValue(enabled);');
-    expect(refusalOf(wired, HOME, 'feed')).toBeUndefined();
+    expect(page).toContain("{ collection: 'Contact', enabled: enabledValue }, {");
+    expect(page).toContain('const enabledValue = useValue(enabled);');
+    expect(refusalOf(baseIr, HOME, 'feed')).toBeUndefined();
 
-    expect(page).toContain("{ collection: 'Contact' }, {");
+    const absent = cloneIr();
+    unwireEnabled(absent);
+    const absentPage = emitApp(absent, catalog).files[HOME_FILE];
+    expect(absentPage).toContain("{ collection: 'Contact' }, {");
+    expect(absentPage).not.toContain('enabledValue');
   });
 
   test('A7 no Class authored: the node still translates with an empty options object — the hook never subscribes, as the runtime never does (reconfigure returns on an empty name)', () => {
     const ir = cloneIr();
     nodeOf(ir, HOME, 'feed').parameters = [];
     expect(refusalOf(ir, HOME, 'feed')).toBeUndefined();
+    // §66.5: with the fixture's Enabled wire the options carry that read alone; unwired, the object is empty.
+    expect(emitApp(ir, catalog).files[HOME_FILE]).toContain("useSubscribeToChanges({ label: 'Feed', nodeId: 'feed', componentName: '/Pages/Home' }, { enabled: enabledValue }, {");
+    unwireEnabled(ir);
     expect(emitApp(ir, catalog).files[HOME_FILE]).toContain("useSubscribeToChanges({ label: 'Feed', nodeId: 'feed', componentName: '/Pages/Home' }, {}, {");
   });
 
@@ -187,6 +211,18 @@ describe('§A the plan and the emitted page — the sixth member of the streamin
     const search = emitApp(parseProject(path.join(__dirname, 'fixtures', 'search-desk'), catalog), catalog);
     expect(search.files['src/api/client.ts'].replace(/8590/g, '8584').replace(/backend_searchdesk/g, 'backend_livedesk')).toBe(client);
   });
+
+  test('A9 §66.5 — the fixture’s Enabled is wired from a Variable NOTHING writes: the store declares it undefined, the page reads it once per render and passes it as the option, 0 refusals, the same 17 files — and a Set Variable writing it later is the ordinary store write', () => {
+    expect(app.report.components.find((c) => c.path === HOME)?.refusals ?? []).toEqual([]);
+    expect(Object.keys(app.files)).toHaveLength(17);
+    expect(app.files['src/stores/variables.ts']).toContain('export const enabled = value<');
+    expect(app.files['src/stores/variables.ts']).toContain('(undefined);');
+    expect(page).toContain("import { enabled, last, pulse } from '../stores/variables';");
+    expect(page.split('const enabledValue = useValue(enabled);')).toHaveLength(2);
+    // The runtime's rule for this shape (runtime.log, S1): the setter never runs, the node is ON; the lib below reads an undefined the same way.
+    expect(realtimeLibSource()).toContain('if (has(options, \'enabled\')) s.internal.enabled = !!options.enabled;');
+  });
+
 });
 
 // ---------------------------------------------------------------------------------------------------
@@ -230,6 +266,7 @@ describe('§B the refused shapes, by mutation — each named, each before the ta
   test('B4 two wires on Enabled; Enabled fed by a text input’s own value (handler-only); a signal consumed as a value; an output or input the node has not got', () => {
     expect(
       sentence('feed', (ir) => {
+        unwireEnabled(ir);
         addNode(componentOf(ir, HOME), { id: 'a', type: 'Boolean', parameters: [{ name: 'value', value: { kind: 'literal', value: true } }] });
         addNode(componentOf(ir, HOME), { id: 'b', type: 'Boolean', parameters: [{ name: 'value', value: { kind: 'literal', value: false } }] });
         connect(componentOf(ir, HOME), 'a', 'savedValue', 'feed', 'enabled', 'value');
@@ -238,6 +275,7 @@ describe('§B the refused shapes, by mutation — each named, each before the ta
     ).toBe('two wires feed its Enabled input — last-writer-wins is not statically ordered');
     expect(
       sentence('feed', (ir) => {
+        unwireEnabled(ir);
         addNode(componentOf(ir, HOME), { id: 'box', type: 'net.noodl.controls.textinput', parent: 'shell', parameters: [{ name: 'placeholder', value: { kind: 'literal', value: 'x' } }] });
         const shell = componentOf(ir, HOME).nodes.find((n) => n.id === 'shell')!;
         shell.children = [...(shell.children ?? []), 'box'];
@@ -293,6 +331,17 @@ describe('§C the lib’s text, and what earns it', () => {
     const search = emitApp(parseProject(path.join(__dirname, 'fixtures', 'search-desk'), catalog), catalog);
     expect(search.files[REALTIME_LIB_PATH]).toBeUndefined();
     expect(app.files[ERRORS_LIB_PATH]).toBeDefined();
+  });
+  test('C4 §66.5 — the rule in every stream lib: has(options, key) is false for a key passed as undefined (node.ts sendValue drops an undefined before it crosses a wire); the four sources carry the same line and name the rule', () => {
+    const RULE = 'return Object.prototype.hasOwnProperty.call(options, key) && (options as Record<string, unknown>)[key] !== undefined;';
+    for (const source of [realtimeLibSource(), sseLibSource(), websocketLibSource(), streamingLibSource()]) {
+      expect(source.split(RULE)).toHaveLength(2);
+      expect(source).toContain('node.ts sendValue drops an undefined before it crosses a wire');
+    }
+    // The hooks decide "did an input change" from the APPLIED values, never the raw options.
+    expect(realtimeLibSource()).toContain('const next = { collection: s.internal.name, enabled: s.internal.enabled };');
+    expect(sseLibSource()).toContain('const next = { url: s.internal.url, autoConnect: s.internal.autoConnect };');
+    expect(websocketLibSource()).toContain("const next = { url: s.internal.config.url, protocols: (s.internal.config.protocols ?? []).join(','), autoConnect: s.internal.autoConnect };");
   });
 });
 
@@ -473,7 +522,8 @@ function makeTimers() {
   return {
     timers,
     setTimeoutImpl: (fn: () => void, ms: number) => {
-      timers.push({ fn, ms, cleared: false });
+      timers.push({ fn, ms, cleared: false 
+});
       return timers.length;
     },
     clearTimeoutImpl: (h: unknown) => {
@@ -909,6 +959,41 @@ describe('§E the hook under the harness — the stream, the registration, the f
     m.timers.fire(m.timers.pendingIndex());
     expect(m.timers.pending()).toEqual([50]);
   });
+
+  test('E18 §66.5 — Enabled wired from a Variable nothing wrote arrives as undefined, which is NOT a delivery: ON at mount (one stream, subscribed); false closes it; undefined again keeps it closed and reconfigures nothing; true reopens', async () => {
+    const m = mount({ collection: 'Contact', enabled: undefined });
+    const h = m.handle();
+    expect(m.streams()).toBe(1);
+    m.es().fire('connected', { clientId: 'c1' });
+    await flush();
+    expect([h.subscribed, h.realtimeStatus]).toEqual([true, 'subscribed']);
+    m.current.options = { collection: 'Contact', enabled: false };
+    m.render();
+    expect([h.subscribed, h.realtimeStatus, m.es().closes]).toEqual([false, '', 1]);
+    m.current.options = { collection: 'Contact', enabled: undefined };
+    m.render();
+    expect([h.subscribed, m.streams(), m.es().closes]).toEqual([false, 1, 1]);
+    m.current.options = { collection: 'Contact', enabled: true };
+    m.render();
+    expect(m.streams()).toBe(2);
+    // A control beside it: a mount that never mentions Enabled opens exactly the same one stream.
+    expect(mount({ collection: 'Contact' }).streams()).toBe(1);
+  });
+
+  test('E19 §66.5 — a subscribed node handed undefined on a later render (the Variable written back to undefined) keeps its last Enabled: no teardown, no second stream, no re-POST — the effect compares the APPLIED values, not the raw options', async () => {
+    const m = mount({ collection: 'Contact', enabled: true });
+    m.es().fire('connected', { clientId: 'c1' });
+    await flush();
+    expect(m.handle().subscribed).toBe(true);
+    const posts = m.fetch.calls.length;
+    m.current.options = { collection: 'Contact', enabled: undefined };
+    m.render();
+    expect([m.handle().subscribed, m.streams(), m.es().closes, m.fetch.calls.length]).toEqual([true, 1, 0, posts]);
+    // And the same Class arriving again is no change either.
+    m.render();
+    expect([m.streams(), m.es().closes]).toEqual([1, 0]);
+  });
+
 });
 
 // ---------------------------------------------------------------------------------------------------

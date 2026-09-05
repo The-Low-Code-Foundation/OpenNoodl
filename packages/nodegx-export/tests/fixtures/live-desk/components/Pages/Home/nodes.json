@@ -175,6 +175,16 @@
       "y": 300
     },
     {
+      "id": "enabledVar",
+      "type": "Variable2",
+      "label": "Enabled",
+      "parameters": {
+        "name": "enabled"
+      },
+      "x": 200,
+      "y": 300
+    },
+    {
       "id": "lastVar",
       "type": "Variable2",
       "label": "Last",

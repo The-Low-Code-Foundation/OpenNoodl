@@ -594,6 +594,19 @@ describe('§D the pure cores run the way stream-parsers.ts and the three node fi
     lib.applyBufferOptions(s, { flushSize: -3, maxSize: 0, flushInterval: 'x' });
     expect(s).toMatchObject({ flushSize: 0, maxSize: 0, flushInterval: 0 });
   });
+
+  test('EXP-011 §66.5 — an option passed as undefined (a Variable nothing has written) is NOT a delivery: the parser keeps its 1 MiB and ndjson, the buffer its 10000 (and re-arms nothing), the accumulator its newline / 1 MiB / 1000', () => {
+    const p = lib.createParserState();
+    lib.applyParserOptions(p, { format: undefined, maxLength: undefined });
+    expect([p.format, p.maxLength]).toEqual(['ndjson', 1024 * 1024]);
+    const b = lib.createBufferState();
+    expect(lib.applyBufferOptions(b, { flushSize: undefined, flushInterval: undefined, maxSize: undefined })).toEqual([]);
+    expect([b.flushSize, b.flushInterval, b.maxSize]).toEqual([0, 0, 10000]);
+    const a = lib.createAccumulatorState();
+    lib.applyAccumulatorOptions(a, { delimiter: undefined, maxLength: undefined, maxMessages: undefined });
+    expect([a.delimiter, a.maxLength, a.maxMessages]).toEqual(['\n', 1024 * 1024, 1000]);
+  });
+
 });
 
 describe('§E the hooks under the harness — the listeners in order, the live getters, the raise, the timer', () => {

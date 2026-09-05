@@ -4,6 +4,12 @@
   "version": 1,
   "connections": [
     {
+      "fromId": "enabledVar",
+      "fromProperty": "value",
+      "toId": "feed",
+      "toProperty": "enabled"
+    },
+    {
       "fromId": "feed",
       "fromProperty": "created",
       "toId": "setCreated",

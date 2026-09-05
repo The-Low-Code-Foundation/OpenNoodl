@@ -906,6 +906,20 @@ describe('§E the hook under the harness — the connection, the listeners in or
     expect(d.handle().connectionState).toBe('closed');
     expect(d.socket().closeCalls).toEqual([{ code: 1000, reason: 'Client disconnect' }]);
   });
+
+  test('E13 EXP-011 §66.5 — an option passed as undefined (a Variable nothing has written) is NOT a delivery: { url, autoConnect: undefined } opens at mount (the runtime default true stands); reconnectDelay undefined keeps 1000, not NaN; true then undefined rebuilds nothing', () => {
+    const m = mount({ url: 'ws://x/chat', autoConnect: undefined, reconnectDelay: undefined });
+    expect(m.sockets()).toBe(1);
+    m.socket().fireOpen();
+    m.current.options = { url: 'ws://x/chat', autoConnect: true };
+    m.render();
+    m.current.options = { url: 'ws://x/chat', autoConnect: undefined };
+    m.render();
+    expect(m.sockets()).toBe(1);
+    m.socket().fireClose({ code: 1006 });
+    expect(m.seams.pending()).toEqual([1000]);
+  });
+
 });
 
 // ---------------------------------------------------------------------------------------------------
