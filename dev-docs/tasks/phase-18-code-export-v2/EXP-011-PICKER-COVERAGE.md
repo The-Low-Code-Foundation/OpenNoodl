@@ -8757,7 +8757,7 @@ with no components or an unresolvable start page. The mount-path reset reports n
   prop and answers the runtime's own `no-stack-in-scope` failure.
 - **The `Page Stack` is a visual role `'stack'`** (a `StyleRole` too: the runtime's `defaultCss` — `width:100%; flex:1 1 100%;
   position:relative; display:flex; flex-direction:column; overflow:hidden` unless `clip` is authored false — becomes its class).
-  Its hook line prints beside the other hooks; the row renders THE TOP ENTRY ONLY, one `&&` line per page:
+  Its hook line prints beside the other hooks; the row renders the top entry, one `&&` line per page (session 86; session 87 changed the row to render EVERY entry with the ones below the top hidden — §61.6, the drive):
   `{wizard.top?.pageId === 'details' && <StepDetails key={wizard.top.key} {...(wizard.top.params as StepDetailsProps)} pageStackEntry={wizard.top.handle} />}`
   (`key` is the entry's — every push creates a fresh instance in the runtime; the spread only where the target declares props;
   `pageStackEntry` only where the target's plan keeps a Pop). `topPageName` / `stackDepth` reads are `stack-out { local, field }`
@@ -8966,6 +8966,37 @@ NOT run (the orchestrator's, after merging): editor tsc, editor test:ci, any dri
   `pm-` ports from the first. Owner NONE.
 - Not driven in a browser this session (the brief forbids drives from a slice agent); the orchestrator's drive is owed — the
   wizard (push → confirm → the Variable shows the email; Start over) and the tab bar (replace → the same tab twice is Unchanged).
+
+### §61.6 What the drive found (session 87, 2026-09-05) — the pusher's component was unmounted under the page it pushed
+
+**Read before driven.** Writing `EXPECTED61-drive.md` against the emitted `Home.tsx` and `navigation-stack.tsx` side by side
+predicted one divergence before Chrome ran: §61.1's row rendered THE TOP ENTRY ONLY (`{wizard.top?.pageId === 'intro' && <StepIntro …/>}`),
+so the PUSHER's own component — StepIntro, which pushes `details` and renders `backResult-email` — was unmounted by React the moment
+its push landed and remounted on the pop with a fresh `useState` (`{}`). The runtime does the opposite: `navigateAsync` keeps the
+outgoing page's node as `top.from` and `backAsync` re-adds it (`this.addChild(top.from, 0)`), so a Text or a text input in the
+pusher keeps its state while covered. The Variable (`draftEmail` / `confirmedEmail`, a store outside React) survived in both,
+which is why the fixture's Home text still showed the confirmed email — the defect was visible ONLY in the pusher's own render.
+
+**Arm a — the session-86 emit, driven** (`drive61-a.log`, headless Chrome on the built app, 8 rows): 7 as predicted; R4 the
+divergence, confirmed — after Confirm the intro's "Came back" Text read `''` while Home's Confirmed text read the email; the
+second push (R5) carried the email anyway because the push reads the Variable, not the input (my misprediction, both
+sides agree). Top Component Name is the page LABEL (`Intro`), as the runtime's `topPageName: pageInfo.label` — the lib had it right.
+
+**The fix** (`3a412ade`): `PageStackHandle.entries` (the store's stack, bottom to top); the row maps every entry into a wrapper
+`<div key={entry.key} style={{ display: entry === wizard.top ? 'contents' : 'none' }}>` holding one `&&` line per page —
+`display: contents` keeps the top page a direct flex child of the stack (the runtime's layout), `display: none` keeps the
+covered pages mounted and unpainted. A6 pins the new row and refuses the old one (`top?.pageId ===`, `top.key`).
+
+**Arm b — the fix, driven** (`drive61-b.log` + `drive61-b2.log`): every row as predicted BEFORE its drive — R3 the intro still in
+the DOM with its input kept; R4 "Came back" = the email, the input kept, Confirmed = the email; R5 Cancel writes the row too;
+R7 Start over remounts fresh (input and Came back empty); zero console errors. And the wrapper does not paint: after the
+push `innerText` lists `Step 2 - confirm` and not `Step 1 - your email`, the three wrappers compute `[contents, none, contents]`,
+the covered input's `offsetParent` is `null`.
+
+**What this row now cannot see (owner NONE unless said):** the runtime removes the covered page's DOM and re-adds it (a
+scroll position or a focused input is lost there and kept here); a stack under a stack renders its covered entries' hooks
+(effects keep running while covered — the runtime's covered node keeps running too, so faithful, but unmeasured);
+replace mode drops the covered entries in both. `EXPECTED61-drive.md`, `drive61.sh`, `emit61.ts` in the s87 scratchpad `fde4ba8c-…`.
 
 ## §62 Tier 2.8 row 12 — the relation pair: `Add Record Relation` and `Remove Record Relation`, the record verbs' shape with a Pointer on the wire (session 86, 2026-09-05)
 
