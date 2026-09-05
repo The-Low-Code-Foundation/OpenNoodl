@@ -10055,8 +10055,9 @@ Set's value, so the wire gate hid the arm; C6 disconnects the wire first.
   after pass 3 grows past text inputs. Owner NONE.
 - **A variable with no statically-known writer is typed `string`** (finding 1) — the honest answer is `unknown`, as store keys read
   since §47; changing it moves every fixture whose variables are written only by refused logic. Owner NONE.
-- **A `Set Variable` with an authored Value** (no wire) is refused by the export (*nothing is wired into value*, §60.4 finding 7) where
-  the runtime writes the literal on the pulse. C6 pins that it is at least NOT a seed. Owner NONE.
+- ✅ **A `Set Variable` with an authored Value** (no wire) was refused by the export (*nothing is wired into value*, §60.4 finding 7) where
+  the runtime writes the literal on the pulse. C6 pins that it is at least NOT a seed. **Built as §69 (session 93)** — and the refusal
+  had been dropping the whole chain in front of the Set.
 - StrictMode's dev double-mount writes the seed twice (idempotent — the same value); `vite preview` is the production build and the
   drive read one write per mount. Owner NONE.
 - A page revisited rewrites the variable — the runtime's behaviour, transcribed; an author who expected a Variable to survive
@@ -10138,8 +10139,8 @@ text (E7), an unlisted key typed (E4). Whole package, editor tsc, ledger, picker
 
 - **A literal under a wire** is shadowed in the export; in the runtime the literal shows in the record until the wire's source first
   delivers (creation-time queue, then arrivals). The same residual as §67.5's first row, one construct over. Owner NONE.
-- **`Set Component Object Properties`** (§60) already read the literal; **`Set Variable`'s authored Value** (§67.5) still does not —
-  the third sibling with the same runtime rule and no clause. Owner NONE.
+- ✅ **`Set Component Object Properties`** (§60) already read the literal; **`Set Variable`'s authored Value** (§67.5) did not —
+  the third sibling with the same runtime rule and no clause. **Built as §69 (session 93).** The fourth, `Global Store Set`, is §69.5's.
 - **The `Object` node's own `prop-*` inputs** as authored literals (a write through the Object itself at creation) — refused by name
   since §47 (`objectNodeGate` refuses a WIRED prop input; an authored one is silently not written). Registered here. Owner NONE.
 
@@ -10151,3 +10152,106 @@ the literal is a write on Do, not a seed ✓. **P2** type `Ada` ⇒ nothing else
 "2026","","Ada"]` — **`since` reads `2026`** where the pre-change export would read `''` ✓ (city is the wired input's `''`, written).
 **P4** type `Paris`, Save ⇒ `"Paris"`, since still `2026` ✓. **P5** errs `[]` ✓. Teardown: 0 listeners on 4368 / 9369. Every row
 matched the sheet.
+
+## §69 A `Set Variable`'s typed-in `Value` is written on every Do — the third sibling of §67 and §68, built (session 93, 2026-09-05)
+
+**Picker 117/127 unchanged** — `Set Variable` has been a translated node since Tier 1.4; this closes §67.5's third row and §68.5's second,
+a **divergence inside a translated node** for the third session running, and the biggest of the three: the refused Set did not lose a
+value, it lost the chain in front of it.
+
+### §69.0 What the runtime does, read before a line of code
+
+`setvariablenode.ts`: `value` is a DYNAMIC input — `registerInputIfNeeded('value')` registers it with `setValue` as its setter, which stores
+`internal.value`. `nodescope.ts` (the parameter pass): every authored parameter is `registerInputIfNeeded`'d and `queueInput`'d into the node
+**at creation** (an authored parameter with no input to receive it is an "obsolete parameter" and dropped — this one has its input). On
+`Do`, `scheduleStore` writes `internal.value` — after the `setWith` coercions — with `forceChange`. So *"Set status to `Saved.`"* typed
+straight into the node is written on every Do, from the first. **Measured first** (`probe69.ts`: profile-desk with its String node removed
+and `value: 'Saved.'` typed into `setStatus`): the Set was refused *nothing is wired into value* — and the refusal **cascaded**:
+`wire saveButton:onClick->saveProfile:store dropped: nothing is wired into value`. The Save button emitted with **no `onClick`**, the Set
+Object Properties in front of the Set carried the Set's sentence (the registration pass's, §64.4 #3), four refusals on a page that had none.
+Where §68 lost one key silently, §69 lost the button. The type read `value<string | undefined>` for a NUMBER typed in too — §67.5 #2's
+`all([])` seen live; the type is now earned.
+
+**The corpus** (measured: a walk over every `nodes.json`): 89 `Set Variable` nodes in 33 fixtures; exactly **four** carry a typed-in
+`value` (mood-desk's `setOpen`/`setClosed`/`setCalm`/`setAngry`) and every one of the four ALSO has a wire into Value (a Boolean or Number
+node) — the shadowed shape. The common authoring — typed in, nothing wired — had no presence anywhere, which is why it sat green; the
+hand-off's *"every fixture used a String node"* was right about the unshadowed case only. F8 pins the four so a later change cannot move
+them unnoticed.
+
+### §69.1 What is emitted
+
+`plan.ts`, the Set Variable case: with no wire into `value`, `literalParam(node, 'value')` ⇒ `{ kind: 'store-set', variableName, expr:
+{ kind: 'literal', value } }` with nothing to consume, collapse or subscribe; the `setWith` gate stays **in front of** both paths (the runtime
+coerces a typed-in value exactly as a wire's); a literal under a wire is shadowed (the wire is compiled, the literal never read — the
+runtime's arrivals land over it); an `expression` parameter is not a literal and meets the old sentence; nothing wired AND nothing typed
+in is the old sentence too. `appState.ts`: a literal `SourceRef` is registered beside the Set's writer entry, unwired only, so **the literal
+types the variable** — `'Saved.'` ⇒ `value<string | undefined>`, `7` ⇒ `value<unknown>` and the Text's read goes through `String()`.
+
+```tsx
+onClick={() => { profile.set({ name: name, city: city, since: '2026' }); status.set('Saved.'); }}
+```
+
+— **byte-identical** to what the String wire produced (`pre69.json` = `post69.json`: 16 files, notes equal). The same handler from a
+different authoring.
+
+### §69.2 The fixture — `tests/fixtures/profile-desk`, re-authored
+
+`savedString` (the String node) and its wire are gone; `setStatus` has `"value": "Saved."` typed in and a `metadata.comment` saying why.
+Because the emitted output is byte-identical, **no pin moved**: B3/B9's drop lists lost the String node's id, and B7/C3's added Sets type
+their value in instead of borrowing the String node. The fixture is now the presence control for the shape the corpus lacked. **One pin
+moved elsewhere**: `tests/variable-seed.test.ts` C6 (§67) pinned the OLD refusal by name (*not* `status.set('Pulsed.')`) — found by the
+whole-package run, not by a grep; it now asserts the write on the pulse AND no mount effect. A `grep -a` for the sentence would not have
+found it: the pin was a negative on the emitted text, not the sentence.
+
+### §69.3 Gates and arms
+
+Spec `tests/object-store.test.ts`, **51 rows** (+8, §F): F1 the fixture's typed-in value with no wire and no String node, the handler
+`SAVE`, the variable typed `string`; F2 a number writes as a number, types `unknown`, **and the app typechecks**, a boolean likewise (a
+literal is not `isBooleanExpr`'s logic truth value); F3 a literal under a wire is shadowed and the wire governs the type (a number under a
+string wire does not demote); F4 neither wire nor literal ⇒ the old sentence, and the whole Save chain drops behind it, `profile.set(` gone
+(the absence beside F1); F5 the `setWith` gate in front of the typed-in path; F6 an expression is not a literal; F7 a second Set typing in a
+number demotes the variable to `unknown` and the app typechecks; F8 mood-desk's four, all under a wire. Pkg tsc 0. **10 arms, 10 killed**
+(`mut69.py`, md5-restored): the compiler blind to the parameter (21 red), the literal preferred under a wire (F3), the `setWith` gate skipped
+for a literal (F5), printed as a string whatever it is (F2 F7), the source never registered (F2 F7), registered under a wire (F3), a literal
+always `string` — the line shared with §67/§68 (E2 F2 F7), an expression as its text (F6), nothing typed in writes `''` instead of refusing
+(F4 F6), the variable typed from the wrong parameter (F2 F7). Whole package, editor tsc, ledger, picker and editor `test:ci` — see the
+session 93 hand-off.
+
+### §69.4 What building it found
+
+1. ⚠️ **A refused sink in a Done chain drops the trigger wire in front of it, and the node in front wears the sink's sentence** — the
+   reverted emit lists *Save profile — nothing is wired into value* beside *Set status — nothing is wired into value*. The report is
+   truthful about the wire and misleading about the node; §64.4 #3 named the mechanism (the registration pass's sentence), this is its
+   cost in a report a person reads. Registered §69.5.
+2. ⚠️ **The typing rule and the write rule live in two files** for the third time — M5/M6/M10 (`appState.ts`) and M1–M4/M8/M9 (`plan.ts`)
+   are different kills; a spec that only reads the handler text sees half of them.
+3. ⚠️ **A corpus claim measured by grepping for the WORKAROUND** (String nodes) misses the shape it was about (a typed-in value under a
+   wire): four fixtures nodes had the parameter, all shadowed. Walk the parameter, not the workaround.
+4. ⚠️ **Byte-identical output is the strongest pin-preservation argument and the weakest evidence of change** — the pre/post snapshot
+   proved nothing moved; only the reverted arm (C1) and the arms show the change did anything. Both were run.
+
+### §69.5 What this leaves (owner NONE unless named)
+
+- **A literal under a wire** is shadowed in the export; in the runtime the typed-in value shows until the wire's source first delivers.
+  mood-desk's four Sets are exactly this shape. The same residual as §67.5 #1 and §68.5 #1. Owner NONE.
+- **`Global Store Set`'s typed-in Value — the FOURTH sibling.** `globalstoresetnode.ts` has a STATIC `value` input whose setter stores
+  `internal.value`, written on `Set`; the export's `net.noodl.GlobalStore.Set` case refuses *nothing is wired into value* one screen above
+  the Set Variable case, with the same shape and the same fix (a clause + a literal `SourceRef` under `storeKeySources`). Owner NONE — a
+  one-session job, the natural next.
+- **`setWith` with a typed-in value** — every non-string coercion is refused by name in front (F5), as it was for a wire; `emptyString`
+  writes `''` with no Value at all and is refused as a conversion. Each is one clause. Owner NONE.
+- **A variable whose only writer is a REFUSED Set with a typed-in value is still typed by the literal** — discovery registers the source
+  regardless of the plan's refusal, the same convention the wired path has had since §47. Owner NONE.
+- **The cascade sentence on the node in front** (§69.4 #1). Owner NONE (EXP-004's report is where a person meets it).
+- §67.5 #2 (a no-source variable typed `string`) unchanged; §67.5 #1 / §68.5 #1 unchanged.
+
+### §69.6 The drive — the built export, headless (session 93)
+
+`EXPECTED69.md` FIRST, then `drive69.sh` on the built `profile-desk-out` (16 files, 0 refusals; `tsc -b && vite build` exit 0, 0 `error TS`,
+237.88 kB — s92's bundle to the byte; `vite preview` 4369, Chrome headless CDP 9370). **P1 boot**: `["Profile Desk","","","","","",""]`,
+errs `[]` — a write on Do, not a seed ✓. **P2** type `Ada` ⇒ nothing else moves ✓. **P3 Save** ⇒ `["Profile Desk","Saved.","Ada","","2026",
+"","Ada"]` — **`Saved.` from the typed-in value** ✓. **P4** `Paris`, Save ⇒ `"Paris"`, `Saved.` again ✓. **P5** errs `[]` ✓. Teardown: 0
+listeners on 4369 / 9370. **C1, the control**: the SAME fixture emitted by the reverted source (a detached worktree at `8ecb5248`,
+`node_modules` symlinked) — 4 refusals, `<button className={styles.saveButton}>Save profile</button>` with **no `onClick`**, the two
+dropped-wire notes exactly as the sheet predicted ✓ (read from the emitted text; C2, driving that build, was not run — a button with no
+handler needs no drive). Every row matched the sheet written before the drive.
