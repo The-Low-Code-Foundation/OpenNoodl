@@ -3328,3 +3328,166 @@ artefact and is unaffected: all six drop wires — `droppedFile`, `filesDropped`
 three `isDragOver` — are present in `noodl_bundles/b2-*.json`, **on the pass where 69 others were
 dropped and the sabotage fired**. A survival reading taken beside a demonstrably active filter is
 stronger than one taken beside an idle one.
+
+---
+
+## D57 — 🔴 Thirteen drives render the site template with its one MINTED token undefined
+
+**Found:** s51, building SBR-003 AC5's owed rendered probe · **Owner:** `NONE`
+· **Bites:** any drive that reads geometry, spacing or width off a page `authorSiteTemplate` built.
+
+`authorSiteTemplate` (`helpers/site-drive.ts`) copies the `demo-app` fixture and authors the
+components through the MCP door. It does **not** perform the install step
+`EmbeddedTemplateProvider` performs for a real user: writing the template's `designTokens` into
+project metadata.
+
+🔴 **The consequence is invisible on every token the template OVERRIDES and total on the one it
+MINTS.** `render-from-disk.js:346` emits the product's *shipped defaults* from the token source and
+then layers `metadata.designTokens.customTokens` on top (`projectOverrideDecls`, line 335). So
+`--primary`, `--space-8`, `--foreground` and the rest all still resolve — **the page looks
+correctly themed** — while `--site-measure`, which exists nowhere but the template's own metadata,
+resolves to nothing. `/Pages/Site`'s `shell` states `maxWidth: 'var(--site-measure)'`, so it
+renders `max-width: none` and the site has **no reading measure at all**.
+
+**Measured, both arms, 1280×900:**
+
+| project | `--site-measure` | shell `max-width` | shell width |
+|---|---|---|---|
+| as `authorSiteTemplate` leaves it | *(empty)* | `none` | 1232 |
+| + the install a real user gets | `44rem` | `704px` | **704** |
+
+🔴 **`vib001-site.look.ts` was the only caller that had the install step, as a PRIVATE function**,
+with its own comment naming the gap: *"The install step the editor performs and
+`authorSiteTemplate` does not."* So **the photographs Richard ruled on were right** and the drives
+beside them were looking at a different page. Thirteen files call `authorSiteTemplate`
+(`sb008`, `sbr005-sections.look`, `sbr010`, `sbr011` ×2, `sbr015`, `sb015` ×2, `sb017`, `def004`,
+`def014`, `sbr006`, `ac2-page-editor-drag-drive`); one of them had the fix.
+
+✅ **Half-fixed s51, and the half that is done is the seam, not the callers.**
+`applyTemplateDesignTokens` is now exported from `helpers/site-drive.ts` and `vib001-site.look.ts`
+imports it — the behaviour of that file is unchanged, and there is no second copy to go stale.
+`sb008` §7 calls it on both of its arms.
+
+⬜ **What is NOT done, and why it is a row rather than a commit:** the other twelve drives are
+untouched. Folding the install into `authorSiteTemplate` itself would be the obvious fix and it
+would **move readings in every one of them** — `customTokens` carries the whole Studio palette, not
+just the minted token, so every colour those drives read would change at once. That is a sweep with
+its own before/after, not a side effect of a probe.
+
+⚠️ **Do not restate this as "the drives are wrong".** For every claim those drives actually make —
+publication boundaries, wires, row counts, outlines — the missing token changes nothing. The row is
+that **no drive except the look harness can see a width, a gap or a measure** and that a session
+reading one would have no way to know.
+
+🔴 **And the reason this is registered at all is that it fooled the probe first.** §7's opening run
+read `max-width: none` in BOTH arms and fitted perfectly to *"the dimension port drops
+`var(--token)`"* — which is exactly the defect SBR-003 §2 was written to look for. A fixture fact
+in the shape of the product defect you went looking for is the most expensive kind.
+
+---
+
+## D58 — 🟢 FIXED 2026-09-05 · `sbr015-execution-steps-drive` was RED at HEAD, and it is SBR-015 AC4's own gate
+
+| | |
+|---|---|
+| **found** | 2026-09-05, by P82/REL-011c seam work running the whole `nodegx-backend` suite |
+| **owner** | **P82 s54 — FIXED, green** |
+| **blocks** | nothing — the suite is 131/131 again |
+
+**The reading**: `packages/nodegx-backend/tests/sbr015-execution-steps-drive.test.ts`, spec
+*"ARM M — 'never called': what is downstream of the failure is ABSENT, not marked done"*, fails at
+line 327 — `expect(recordedInA.has(downstream)).toBe(true)` for one of `['tasks', 'page-8', 'res']`.
+**It is the SUCCESS arm that is short a row**, not the failure arm: arm A did not record a node the
+spec expects it to, so the absence in arm M can no longer be read as meaningful.
+
+Whole-suite context: **130 of 131 suites pass, 1589 tests passed, 10 skipped** — this is the only red.
+
+🔴 **It is NOT the seam work, and that was MEASURED rather than argued.** The obvious hypothesis was
+node-id renumbering — adding nodes to the template reallocates project-wide unique ids, which is
+exactly how [D42](#d42) went stale on `#pick` → `pick-2`, and this spec pins the literal id `page-8`.
+Two things exclude it:
+
+1. **The `page-*` ids are byte-identical across the change.** `git show HEAD:…/site-builder.content.json`
+   and the regenerated file both yield exactly `page-2 … page-8`.
+2. **The control run.** The committed artefact was replaced with `HEAD`'s (`md5 d842dbde`), the suite
+   re-run, and it **fails identically** — same spec, same line, same message — then restored
+   (`md5 6c9dd41f`, and a fresh `npm run template:site-builder` reproduces that md5 exactly).
+
+⚠️ **Do not restate this as "the execution-steps recorder is broken."** What is measured is that one
+expected row is missing from the success arm. Whether the recorder stopped writing it, or
+`publishPage`'s graph stopped reaching that node, or the id moved for a reason unrelated to this
+template, is **not** settled — arm A's recorded set was never printed.
+✅ **The first job for whoever takes this is to print `armA.steps.map(s => s.nodeId)`**, which
+separates those three immediately.
+
+⚠️ **Unknown how long it has been red.** No prior whole-suite `nodegx-backend` reading is recorded in
+this phase; s51's run was `sb008` alone. It is red at HEAD today, which is all this row claims.
+
+---
+
+### 🟢 RESOLVED, 2026-09-05 (P82 s54) — the id MOVED, and it moved in the artefact this row did not check
+
+**Re-derived at HEAD before inheriting it**, per this file's own standing rule: same spec, same line
+327, same message. Then the stated first job was done — arm A's recorded ids **printed**:
+
+```
+ARM A — control: http=200 record=success steps=7
+  prep:JavaScriptFunction:success       withFlag:JavaScriptFunction:success
+  tasks:RunTasks:success                write:SetDbModelProperties:success
+  write:SetDbModelProperties:success    page-9:SetDbModelProperties:success
+  res:noodl.cloud.response:success
+```
+
+🔴 **That separates the three candidates in one reading.** `tasks` and `res` are both there, so the
+recorder did not stop writing rows; `page-9` ran and succeeded, so `publishPage`'s graph reached the
+node. **The id moved: `page-8` → `page-9`.** A probe over the deployed bundle confirms the negative
+half — `/#__cloud__/publishPage` carries exactly one `SetDbModelProperties`, `page-9`, and **no
+`page-8` exists anywhere in the bundle**, so the missing row was never a node at all.
+
+🔴 **The renumbering hypothesis was right; the artefact it was tested against was the wrong one.**
+This row excluded it by showing `site-builder.content.json`'s `page-*` ids byte-identical across the
+change — which is true, and irrelevant. **This spec never loads that template.** It authors a fresh
+project through the real MCP door (`authorSiteTemplate`), and *the door rewrites node ids on write* —
+`DEF-004` records the same thing against this same graph (`sections` → `sections-3`, `page` →
+`page-8`), calling it out as *"two wrong instruments"* before it. The suffix is allocated against
+everything already in the project, and `SB006_COMPONENTS` is authored **first**: REL-011c's seam lane
+(`4fbd8cd2`) gave two bleeding bands an `inner` node each, and `page-8` became `page-9`.
+⚠️ **So it had been red since `4fbd8cd2` — one commit, not an unknown span.** Nothing about the
+recorder, the graph or the product was ever wrong.
+
+✅ **The fix is in the spec, and it removes the class rather than the instance.** `bundleIdFor()`
+resolves an **authored** id through the **deployed** bundle positionally, and refuses to guess: a
+component whose bundled node list is a different length throws instead of returning a plausible id.
+The assertion now reads `['tasks', 'page', 'res']` — authored ids — and asserts the three resolve to
+**three distinct** deployed ones, so a mapping that collapsed could not satisfy the loop over a list
+of one.
+
+**Reverted arms — the fix is graded, not merely green:**
+
+| arm | reading |
+|---|---|
+| green | **10/10**, and the whole package **131 suites / 1590 passed, 10 skipped, EXIT=0** |
+| A — `bundleIdFor` returns the authored id verbatim (the pre-fix pinning) | **1 red of 10 that all ran**, on `recordedInA.has(id)` — line 367 |
+| B — the positional mapping collapses to index 0 | **1 red of 10 that all ran**, on `expect(new Set(downstream).size).toBe(3)` — line 365 |
+
+Source restored **md5-identical** (`ceb388b2…`) after each arm. ⚠️ **The whole-suite number
+reconciles rather than merely looking good**: this row recorded **130/131 and 1589 passed**; it is
+now **131/131 and 1590** — exactly the one suite and the one test this fixed, and no other movement.
+
+⚠️ **Swept for siblings and there are none.** Every other literal `<base>-<n>` id in
+`nodegx-backend/tests` and `noodl-mcp/tests` belongs to a fixture that authors its own project
+(`nodeIdAllocation`, `roundtrip`, `starterWriter`, `lessonTools`, `tpl001`); this was the only spec
+pinning an id the door had allocated.
+
+⚠️ **NOT typechecked locally, and that is a limit of this box, not a hole in the repo.** My first
+write of this row registered a D59 saying nothing typechecks `nodegx-backend/tests` — **it was wrong
+and was withdrawn before it was committed.** `tsconfig.tests.json` covers `tests/**/*.ts`, PLAT-004
+built it for exactly this reason (it *"started at 32 errors"*), and `npm run typecheck:backend-tests`
+runs it in CI at [`pr.yml:39`](../../../.github/workflows/pr.yml). What is true is narrower: the
+package's own `typecheck` script excludes specs by design, and ts-jest runs `isolatedModules: true`,
+so **the jest run that greens this file does not type it**. 🔴 **And the gate that does cannot
+complete here** — `tsc` over this ONE spec died `FATAL ERROR: Ineffective mark-compacts near heap
+limit` at an 8GB heap, **exit 134 after 634s**, which matches the standing note that
+`typecheck:backend-tests` does not finish on this 16GB box. ⚠️ **Its log had `error TS` count = 0**,
+so anything grading on that count instead of the exit status would have recorded this OOM as a clean
+pass. **CI types this change; this session did not, and does not claim to.**

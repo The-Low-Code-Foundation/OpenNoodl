@@ -76,6 +76,9 @@ jest.setTimeout(900000);
 
 const SETUP_TOKEN = 'sbr015-steps-token-4d91ac';
 
+/** The endpoint under test, by the legacyName the bundle names its component with. */
+const PUBLISH_PAGE = '/#__cloud__/publishPage';
+
 interface Row {
   objectId: string;
   [field: string]: unknown;
@@ -221,6 +224,37 @@ async function publishOnce(
 }
 
 /**
+ * The bundle's id for a node the fixture authored — DERIVED, never pinned.
+ *
+ * 🔴 **The MCP door rewrites node ids on write.** DEF-004 records it against this same graph
+ * (`sections` → `sections-3`, `page` → `page-8`), and the suffix is allocated against everything
+ * already in the project — so a node added ANYWHERE upstream moves it. That is [D58] exactly:
+ * REL-011c's seam lane gave two `SB006_COMPONENTS` bands an `inner` node, `SB006` is authored
+ * before `SB004`, and this spec's literal `page-8` silently became `page-9`. The success arm then
+ * looked short a row, and the absence in arm M stopped meaning anything.
+ *
+ * The mapping is positional because the door preserves node ORDER within a component, and it
+ * refuses to guess: a component whose bundled list is a different length is a different graph, so
+ * that throws rather than handing back a plausible id.
+ */
+function bundleIdFor(legacyName: string, authoredId: string): string {
+  const authored = SB004_COMPONENTS.find((c) => c.legacyName === legacyName);
+  if (!authored) throw new Error(`SB004 authors no component ${legacyName}`);
+  const deployedNodes = (bundle as unknown as BundleShape).components.find((c) => c.name === legacyName)?.nodes;
+  if (!deployedNodes) throw new Error(`${legacyName} is not in the deployed bundle`);
+  const authoredNodes = authored.nodes as Array<{ id: string }>;
+  if (authoredNodes.length !== deployedNodes.length) {
+    throw new Error(
+      `${legacyName}: authored ${authoredNodes.length} nodes, bundle carries ${deployedNodes.length} — ` +
+        `the positional mapping is not valid, so no id is derivable`
+    );
+  }
+  const index = authoredNodes.findIndex((n) => n.id === authoredId);
+  if (index < 0) throw new Error(`${legacyName} authors no node ${authoredId}`);
+  return deployedNodes[index].id;
+}
+
+/**
  * Remove `withFlag`'s `out-built` signal port declaration, and report how many it removed.
  *
  * 🔴 **The count is the mutant's receipt.** A mutation that silently matched nothing leaves the
@@ -323,9 +357,15 @@ describe('SBR-015 AC4 — a failed publish and a successful one, told apart in t
     // about nodes this table never covers at all (see the header).
     const recordedInA = new Set(armA.steps.map((s) => s.nodeId));
     const recordedInM = new Set(armM.steps.map((s) => s.nodeId));
-    for (const downstream of ['tasks', 'page-8', 'res']) {
-      expect(recordedInA.has(downstream)).toBe(true); // known-firing, in this very table
-      expect(recordedInM.has(downstream)).toBe(false); // and demonstrably not reached
+    // ⚠️ The AUTHORED ids, resolved through the deployed bundle — see `bundleIdFor`. D58 was this
+    // list carrying the literal `page-8` after the door had started allocating `page-9`.
+    const downstream = ['tasks', 'page', 'res'].map((id) => bundleIdFor(PUBLISH_PAGE, id));
+    // …and three authored nodes must resolve to three distinct deployed ones: a mapping that
+    // collapsed would satisfy every assertion below over a list of one.
+    expect(new Set(downstream).size).toBe(3);
+    for (const id of downstream) {
+      expect(recordedInA.has(id)).toBe(true); // known-firing, in this very table
+      expect(recordedInM.has(id)).toBe(false); // and demonstrably not reached
     }
   });
 
