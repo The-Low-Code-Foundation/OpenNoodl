@@ -120,9 +120,9 @@ place. The order is by *what a refusal silences*, since §50.2 measured that a r
 | 7 | ✅ `Repeater Item` | **built s85 (§57)** — was: now that the node works, people will use it (§7.3 reversed) |
 | 8 | ✅ `JSON Stream Parser` · `Stream Buffer` · `Text Accumulator` | **built s85 (§58)** — was: the streaming trio — pure functions over chunks, one build |
 | 9 | ✅ `Hash` · `Random Bytes` · `Screen Resolution` | **built s85 (§59)** — was: one browser API each, one session for the three |
-| 10 | `Set Component Object Properties` · `Parent Component Object` · `Set Parent Component Object Properties` | own store = local state; the parent pair = context |
+| 10 | ✅ `Set Component Object Properties` · `Parent Component Object` · `Set Parent Component Object Properties` | **built s86 (§60)** — was: own store = local state; the parent pair = context |
 | 11 | `Component Stack` · `Push Component To Stack` · `Pop Component Stack` | the in-page router — §16.2 says what it is not |
-| 12 | `Add Record Relation` · `Remove Record Relation` | a relation column through the EXP-009 client |
+| 12 | ✅ `Add Record Relation` · `Remove Record Relation` | **built s86 (§62)** — was: a relation column through the EXP-009 client |
 | 13 | `Drag` | the smallest audience of the buildable rows |
 
 Twenty-two nodes. With Tier 3.11's three: **25 scheduled ⇒ ceiling 117 of 127 (92.1%)**.
@@ -8466,3 +8466,419 @@ Added ran once on mount, in order, the last Set Variable winning as `signalAdded
 second row's *Remove* sets the page Variable to "Removed a person." and deletes nothing, which is what the fixture
 wires (§57.2 — the list is static; the exit handshake stays refused). Zero console errors. Servers torn down by pid.
 
+## §60 Tier 2.8 row 10 — the component-object trio: `Set Component Object Properties`, `Parent Component Object`, `Set Parent Component Object Properties` — own record = local state, the parent pair = context (session 86, 2026-09-05)
+
+Type ids `net.noodl.SetComponentObjectProperties`, `net.noodl.ParentComponentObject`, `net.noodl.SetParentComponentObjectProperties`
+(display names *Set Component Object Properties*, *Parent Component Object*, *Set Parent Component Object Properties*). All three are
+picker nodes (`inNodePicker`, not deprecated; the Set is browser+cloud, the parent pair browser-only). Floor **105 → 108**.
+This is the slice EXP-002-COMPONENT-OBJECT-TARGET §4 named three times as "not translated in this slice" (gate 3 the Set, gate 4 the
+parent family, gate 7 signal-on-write) and §7 drew the upgrade path for: *the record materializes as component state; aliases become
+state reads; mirror wires become sync effects*. Richard's ruling (§50, the Tier 2.8 table): *own store = local state; the parent pair = context*.
+
+### §60.0 Design — what the nodes are on disk, and what that decides (written before a line of code)
+
+**The record.** `componentobject.ts`: one `Model` per component *instance* (`componentState<instanceId>`), create-on-read, booting empty;
+every node of the family in that instance shares it. `Component Object`'s `value-X` inputs are continuous mirrors (`scheduleStore` at
+frame end); its `value-X` outputs are `model.get(X)`; `changed`/`changed-X` fire off the model's `change` event, which `Model.set`
+raises **only when the value differs** (`model.ts:347`, `oldValue !== value`).
+
+**`Set Component Object Properties`** (`base.ts` + `setcomponentobjectproperties.ts`): on `Do` (`store`), `scheduleStore` →
+`Model.get('componentState' + own instance id)` — *cannot miss*, which is why the node has **no Failure and no Error port by design**
+(`canFailToResolve` is opt-in and the self variant does not opt in) — then for each key in the node's **own `properties` list** that is
+present in `inputValues`, `model.set(key, value, { resolve: true })`; then `done`, then `completed`. 🔴 **Verified in `base.ts`, and it is
+NOT the modelcrudbase rule the brief predicted:** `_pushInputValues` there abstains on an `undefined` value; here `keysToSet` is
+`Object.keys(inputValues)` filtered by the list — a key **never delivered** is absent (abstains by absence), a key delivered as `undefined`
+**is written as `undefined`**. The `type-<p>` inputs are registered with an empty setter — inert on the write path, no Array/Object eval
+(unlike §47's node). An authored literal on a `prop-<p>` port is delivered at creation like any parameter, so it is in `inputValues` and
+is written — a literal entry in the patch (§47 only reads wires; recorded as a residual there).
+
+**`Parent Component Object`** (`parentcomponentobject.ts`) walks the *visual* parent chain (`componentwalk.ts`: first root's visual
+parent, else `parentNodeScope`) for the **nearest ancestor that owns a `net.noodl.ComponentObject` (or deprecated `Component State`)
+node** — or, with `Parent Component` set, the ancestor *named* so (`target-not-found` / `target-has-no-object` distinct misses). It
+binds to that record: `value-X` outputs read it (`undefined` while unbound), `value-X` inputs **write** it (`scheduleStore` — a write
+through the reader node), `changed`/`changed-X`/`fetched`/`done` are its signals, `fetch` republishes; a miss is raised **once, after
+the deferred first resolution** (`reportMiss`: `parent-component-object/no-ancestor`, `Failure` pulses, `Error` carries the sentence).
+**`Set Parent Component Object Properties`** walks the same way on `Do`, writes the same way as the self variant, and on a miss writes
+nothing, sets `Error`, raises `set-parent-component-object-properties/no-ancestor` and pulses `Failure` (`canFailToResolve: true`).
+
+**What that decides — the shape.**
+
+1. **A `Component Object` node has a mode, decided once per node.** *Alias* (EXP-002 §3 unchanged — the record compiles away) when no
+   `Set Component Object Properties` sits in its component AND no descendant (instances + For Each templates, transitively —
+   `parentFamilyReachesThisRecord`, the existing gate-4 walk) hosts a parent-family node. *Record* otherwise. This answers (a): a read
+   is an alias **or** a state read, by the node's mode, never both; the two cannot print together because the mode is a property of
+   the node, not of the wire.
+2. **In record mode the record is a per-instance hook**, `const <local> = useComponentObject<<Local>Record>()` from
+   `src/lib/componentObject.ts` — `useState` for the render snapshot (`<local>.value`) plus a `useRef` for the live read
+   (`<local>.get()`), and `set(patch)` which writes **every own key of the patch** (undefined included — `base.ts`'s rule) and bumps state
+   only when a key changed (`Model.set`'s rule). Not `@nodegx/core`'s `store()` — that is module-level and keyed by name (§47's named
+   Object, one per app); this record is one per component *instance*, which is what `useState` is. Reads: render prints
+   `<local>.value.X`, a handler prints `<local>.get().X` — live, as `model.get` is, so a Done chain reading a key the same handler just
+   wrote sees the new value with no snapshot rewrite (the Variable's `.get()` precedent, §59.4 finding 5). Every `value-X` **mirror
+   wire** becomes a mirror effect `useEffect(() => { <local>.set({ X: <src> }); }, [deps])` (§7's "sync effects"); a key's TS type is
+   `string` when every own writer (Set entries + mirrors) is string-typed, else `unknown` (§47's vacuous-`every` correction: no writer ⇒
+   `unknown`). The component's root JSX is wrapped in `<ParentComponentObjectContext.Provider value={<local>}>` — the transcription of
+   "this component owns a Component Object", which is exactly the predicate `findAncestorWithComponentObject` tests. Shadowing is
+   therefore right by construction: an intermediate component with its own Component Object is in record mode (the descendant reach
+   forces it) and provides, so the nearest provider is the nearest owner.
+3. **The parent pair read the nearest provider through `useParentComponentObject<<Local>ParentRecord>(readers)`** — one hook per
+   component (every parent-family node in a component resolves the same nearest ancestor), `undefined` at the root. Keys typed
+   `unknown` (a descendant cannot know its host) and coerced at the sink as an untyped Variable is (`String(x ?? '')`). The hook
+   raises `parent-component-object/no-ancestor` once per reader site at mount when there is no provider — the loud point of
+   `nodeScopeDidInitialize`, guarded against StrictMode's double mount — and every read answers `undefined`, which is (d)'s runtime
+   answer transcribed. (d) two different parents: context, naturally. (e) a For Each template row: the row renders inside the host's
+   JSX, so the provider reaches it — fixtured (`PanelRow`).
+4. **`Set … Properties` is a handler action** `component-object-set`: own → `<local>.set({ title: titleText, note: 'renamed' })` with
+   the Done chain, then the Completed chain, as following statements (one arm, always taken — `object-set`'s treatment); parent →
+   the block form: `if (<pl> === undefined) { raise no-ancestor; <Failure chain> } else { <pl>.set({ … }); <Done chain> }`.
+5. **Named `Parent Component` — REFUSED BY NAME** in this slice, on both parent nodes: the context carries the nearest owner only;
+   resolving a *name* needs either a chain of providers or a static ancestor map, and the corpus has one Parent Component Object
+   (Puppy test) with no name set. (b) **signal-on-write — REFUSED BY NAME**, with the sentence saying which: a `changed`/`changed-X`
+   consumer on any of the three record nodes is a write-notification effect this slice does not emit; the record's readers re-render
+   on every write instead. (c) **Fetch stays refused** on both readers. **Error on the parent pair — REFUSED BY NAME**: the only
+   message it can carry is the miss sentence, which the raise already reports on the channel. **Failure on the parent Set —
+   translated** (the `else` arm's twin); **Failure on the parent reader — refused by name** (a mount-time pulse chain; the raise is
+   transcribed, the branch is not).
+
+**Refused by name, every sentence predicted** (graded in the spec by mutation):
+
+- Own Set: `its component has no Component Object node — the record it writes is read by nothing statically translatable (a Function's Component.Object is deferred)` · `its Properties list is empty, so Do writes nothing` · `nothing is wired into any of its properties, so Do writes nothing` · `two wires feed its "X" — last-writer-wins is not statically ordered` · `its "X" has no statically known source` (or the feeder's) · `its "X" is fed a logic truth value — only truthiness sinks take one in this slice` · `its Component Object node is refused — <the host's own sentence>` · `its Done output drives no translatable action` · `its Do is never fired by a translatable source` (the sweep) · a `prop-X` wire the list does not name: dropped with `"X" is not in the node's Properties list, so the runtime never writes it — dropped`.
+- Parent Set adds: `its Parent Component names "<X>" — this slice resolves the nearest ancestor record only; a named ancestor is not translated` · `its Parent Component is wired — which ancestor it writes is not statically knowable` · `its Error output is consumed — the miss message is raised on the error channel (set-parent-component-object-properties/no-ancestor) rather than exposed as a row in this slice` · `its Completed output is consumed — it fires after every outcome, and this slice emits the outcome arms rather than a join beneath them` · `its Failure output drives no translatable action`.
+- Parent reader: the two Parent Component sentences (reads) · `its Fetch is wired — a batch republish with Fetched/Done ordering is signal work this slice does not translate` · `Parent object is unticked under Run On Value Change — its outputs freeze between Fetch pulses` · `its <port> signal is consumed — signal-on-write is not translated in this slice; the record's readers re-render on every write instead` (changed, changed-X, fetched, done, completed) · `its Failure signal is consumed — a missing ancestor is raised on the error channel once at mount (parent-component-object/no-ancestor) and not branched on in this slice` · `its Error output is consumed — …` · `its "X" property input is wired — a write through the Parent Component Object node itself is not translated in this slice; a Set Parent Component Object Properties is` · `property "X" is a dotted path the record would resolve through nested models` · `its <port> output is consumed as a value — a pulse carries nothing to read` · `its <port> output is not a port this node has` · `component emits no file to host the parent record` · unread: `its properties feed nothing statically translatable`.
+- `Component Object` in record mode keeps gates 1, 2, 5, 6, 7 with their sentences; gates 3 and 4 are gone. Its `changed`
+  sentence is re-worded to the one above (the old one said "belongs to the component-state slice" — this is that slice, and it says no).
+
+**Not translated, recorded:** the runtime resolves the parent one update pass late (`nodeScopeDidInitialize`'s deferral) and mirrors
+land end-of-frame; the mirror effect lands after the first paint — the same one-tick lag, on the other side. A `Set` writes N keys
+with N `change` notifications; one patch, one render. The deprecated `Component State` node is not a provider here (it is not a picker
+node and not in the ledger's population).
+
+**Decided on the way (against §60.0 as first written):** in record mode an out-of-vocabulary read is the **wire's**
+refusal, never the node's — the record is real state (a Variable read into a margin drops the wire, the Variable
+stays), where alias mode's node-level defer is right because the alias *is* the wire. And the mirror-source check
+moved from the verdict loop into the gate: pass 4d binds reads of the record before the verdict runs, so a late
+refusal would have left bound reads pointing at a hook that never prints.
+
+### §60.1 What is emitted
+
+- **`src/lib/componentObject.ts`** (`src/emit/componentObjectLib.ts`, new): `useComponentObject<T>()` — a lazy `useState`
+  per mount (the instance), a `useRef` beside it, `get()` live, `set(patch)` writing every own key of the patch (undefined
+  included — `base.ts`) and bumping state only when a key changed (`Model.set`'s `oldValue !== value`), the handle memoised
+  on the value so a Provider's consumers re-render exactly when the record does; `ParentComponentObjectContext`
+  (`createContext<ComponentObject<Record<string, unknown>> | undefined>`); `useParentComponentObject<T>(readers)` — the
+  context, and a once-guarded mount effect raising `parent-component-object/no-ancestor` per reader site when it is
+  `undefined`; the two miss messages exported verbatim. Imports `./errors`, so it earns `errors.ts` (`emitApp.ts`).
+- **The host** (record mode): `type <Local>Record = { title?: string; count?: unknown; note?: string }` at module level;
+  `const panelState = useComponentObject<PanelStateRecord>()` after the state rows; one mirror effect per wired `value-*`
+  input beside the sync effects — `useEffect(() => { panelState.set({ note: noteValue }); }, [noteValue])`; render reads
+  `panelState.value.title ?? ''` (a string key folds bare) / `String(panelState.value.count ?? '')` (any other type, once);
+  handler reads `panelState.get().title`; the Set `panelState.set({ title: title, note: 'renamed' })` with Done then
+  Completed as following statements; the root JSX wrapped in `<ParentComponentObjectContext.Provider value={panelState}>`.
+- **A descendant**: `type PanelParentRecord = { title?: unknown; note?: unknown; count?: unknown }`;
+  `const parentObject = useParentComponentObject<PanelParentRecord>([{ nodeId, nodeType, componentName }])` (the reader sites
+  that collapsed; none for a component with only a parent Set); reads `String(parentObject?.value.title ?? '')`; the parent
+  Set in the block form — `if (parentObject === undefined) { raiseAppError({ code: 'set-parent-component-object-properties/no-ancestor', message: 'No ancestor component has a Component Object node — nothing was written', … }); <Failure chain> } else { parentObject.set({ count: 1 }); <Done chain> }`.
+- **plan.ts**: `SET_COMPONENT_OBJECT_TYPE` / `PARENT_COMPONENT_OBJECT_TYPE` / `SET_PARENT_COMPONENT_OBJECT_TYPE`,
+  `NO_ANCESTOR_WRITE_MESSAGE`; `ValueExpr` gains `component-object-out { nodeId, local, key, parent, tsType }`;
+  `HandlerAction` gains `component-object-set { nodeId, local, parent, entries, then, completedThen, failThen }`;
+  `ComponentObjectRecordPlan` / `ParentComponentObjectPlan` on `ComponentPlan.componentObject` / `.parentObject`;
+  `componentObjectModeOf`, `componentObjectKeysOf`, `uniformTypeOf`, `componentObjectRecordOf` (registered BEFORE its
+  writers are typed, so a self-mirror cannot recurse), `parentObjectPlanOf`, `parentReaderGate`,
+  `parentComponentObjectReadExpr`, `compileComponentObjectSet` (the sink port-kind check before the chains, §59.4's rule);
+  the gate's record-mode block (mirror sources checked there, memo pre-set against re-entry); the record-mode arm of the
+  Component Object verdict; the Parent Component Object verdict; the never-fired sweep for the two Sets; the reader prune;
+  `resolveExpr`'s three new branches; the five expression switches; `actionsValidIn` / `snapAction` / `scanActions` /
+  `walkActions` / `fillMaterialize`; `TRIGGER_PORTS`; the `outputRead` control-mint clause (tenth family); pass 4d admits
+  the parent read.
+- **component.ts**: `usedParentObject`; `printsRecord` (the plan registered a record AND its node collapsed) /
+  `printsParent`; the lib import; `useEffect` for the mirrors; the type aliases before the props interface; the two hook
+  lines after the state rows; the mirror effects beside the sync effects (their sources through `hookExprSources` — the
+  first emit closed over the store object); the Provider around the return; `component-object-out` in
+  `collectExprUse` / `hookExprSources` / `maybeUndefined` / `exprCode` / `effectDeps` / the fold whitelist (string keys
+  only) / `bindingExpr`'s coercion table; `component-object-set` in `collectActionUse` / `deepActions` / `inAction` /
+  `expandActions` (own form) / `actionCode` (both forms) / `errorCodeOf` / `actionIsStatement` / `actionTakesNoTerminator`
+  / `blockBody` / `actionExprsOf` / `raisesAppErrors`; `recordKeyAccess` / `recordKeyDeclaration` (a hyphenated key
+  brackets). **emitApp.ts**: the file, and `errors.ts` earned by it. **Ledger**: three rows `translated`; floor **105 →
+  108**; eight pins moved (`animation-pair`, `browser-utilities`, `filter-records`, `on-app-error`, `object-store`,
+  `run-tasks`, `script`, `streaming-trio`).
+- **Refused by name**: every sentence of §60.0's list, unchanged in wording except two the build corrected — a Done /
+  Completed / Failure wired into a value port is `its <Port> output is consumed as a value — a pulse carries nothing to
+  read` (decided from the port kind before `doneChainOf` speaks), and a parent reader's signal wired anywhere is the
+  whole-node gate's sentence first.
+
+### §60.2 The fixture — `tests/fixtures/panel-desk`
+
+`App`: the router. `Pages/Home`: a text input `titleInput` → `setTitle.prop-title`; a Rename button → `setTitle.store`
+(`properties: title,note`, `prop-note` authored `"renamed"`); `setTitle.done → setStatus` (`status ← "Renamed."`);
+`panelState` (`properties: title,count,note`) → three Texts; `noteVar` (Variable `note`) → `panelState.value-note` (the
+mirror); a `Panel` instance; `rows` (For Each over a two-row Static Data, template `PanelRow`). `Components/Panel`:
+`parentState` (`title,note`) → two Texts; a Bump button → `bump` (`Set Parent Component Object Properties`, `count`
+authored `1`), `done → setBumped` (`"Bumped."`), `failure → setBumpFailed` (`"No parent panel."`); a Text on the status.
+`Components/PanelRow`: `name` input → Text; `rowParent` (`title`) → Text.
+
+**The reverted arm** (`probe-reverted.log`, HEAD 2a2dd4fa): `panelState` deferred with gate 3's sentence, `setTitle` /
+`parentState` / `bump` / `rowParent` as `logic node (…)`, the three Set Variables silenced behind them, **14 refusals**,
+no pathway — every node predicted; the Set Variables' sentence was *"nothing is wired into value"* rather than the
+cascade's, because the first fixture authored the values as parameters and a `Set Variable` takes a wire (fixed with
+three `String` nodes, roster-desk's shape). **Built**: 19 files, 0 refusals, the shell note; the real `tsc` clean.
+
+### §60.3 Gates
+
+```
+packages/nodegx-export: tsc --noEmit 0 (after every stitch) · component-object-trio.test.ts 60/60
+  §A the fixture whole + the real ts.Program + the handler read (11) · §B the lib under a fake React (8) · §C the own Set's
+  refusals (10) · §D the parent Set's (7) · §E the parent reader's (11) · §F record mode vs alias mode (7) · §G the findings,
+  the ledger, the lib's surface (6)
+component-object.test.ts: two pins flipped to positive rows (gate 3 ⇒ record mode with a hook, a Provider, the mirror as an
+  effect, the Set named "nothing fires its Do"; gate 4 ⇒ record mode with a Provider) — 22/22
+neighbours re-run in band, green: unreported-deferrals, in-code-markers, logic, cascade, typecheck-emitted + the eight pin
+  specs — 14 files, 655/655
+export-ledger:check OK — 176 types, 115 translated · picker --check 108/127 (85.0%), floor 108, exit 0 (was 105)
+arms 18/18 KILLED (mut.py, mut-summary.txt), every arm compiled, sources restored md5-identical after each: M1 set() skips
+  undefined — 1 · M2 re-render on no change — 2 · M3 get() reads the snapshot — 1 · M4 the once-guard on the mount raise — 1 ·
+  M5 the gate admits an untranslatable mirror — 1 · M6 record mode ignores the descendant reach — 1 · M7 a named Parent
+  Component silently the nearest — 1 · M8 an authored prop literal skipped — 12 · M9 a handler read prints .value — 1 · M10 no
+  Provider — 2 · M11 the mirror effect loses its dependency — 1 · M12 the string key off the fold whitelist — 2 · M13 the
+  port-kind check removed — 3 · M14 the miss arm no longer raises — 2 · M15 the Sets off the control-mint clause — 10 ·
+  M16 the lib no longer earns errors.ts — SURVIVED on the first run (the Panel's own raise earned it) ⇒ G6 written (readers
+  alone still ship errors.ts, typechecked) ⇒ KILLED — 1 · M17 the reader's value-* input gate removed — 1 · M18 every key
+  typed unknown — 5
+whole package jest ONCE, alone at load 5.4: 72 files (72 on disk = 71 + this spec), 2521/2521, exit 0; no file under src/ changed after it
+  (an earlier run was stopped and re-run once: the Provider wrap indented blank lines — nine whitespace-only lines — fixed before the run that counts)
+NOT run (the orchestrator's, after merging): editor tsc, editor test:ci, any drive.
+```
+
+### §60.4 What building it found
+
+1. 🔴 **The mirror effect closed over the STORE OBJECT — the hooks-walker trap's twelfth instance, and the brief's own
+   warning.** The first emit printed `panelState.set({ note: note })` with deps `[note]` and no import of `note`: my
+   mirror sources never passed through `hookExprSources`, so the `useValue(note)` hook line was never earned. One line at
+   the sync-effects' walker site; pinned (A7, G1); an arm (M11 is the deps, the store-object shape is G1's `not.toContain`).
+2. 🔴 **A non-string key folded twice** — `{String(panelState.value.count ?? '') ?? ''}`: my `bindingExpr` coercion and the
+   text-sink fold whitelist both fired. The whitelist now admits a `component-object-out` only when its `tsType` is
+   `string`; pinned (A7, G2); an arm (M12).
+3. 🔴 **`base.ts` does NOT abstain on `undefined`** — the brief said "as the modelcrudbase family does — VERIFY": `keysToSet`
+   is `Object.keys(inputValues)` filtered by the list, no undefined filter; a key never delivered is absent, a key delivered
+   as `undefined` is written. The lib writes every own key of the patch (B3); an unfed key is absent from the patch (C3).
+4. 🔴 **An authored `prop-<key>` literal is delivered and written.** §47's compile reads wires only and silently skips an
+   authored literal on a `Set Object Properties` property; `base.ts` (and `modelcrudbase`) receive parameters into
+   `inputValues` at creation. This slice writes the literal (`note: 'renamed'`, G3, M8 — 12 rows red without it); §47's
+   node is registered below.
+5. 🔴 **The chain compiler asks first — §59.4's finding 2, met again.** A Completed wired into a Text said *"drives no
+   translatable action"*; the port-kind check now runs before `doneChainOf`, for all three chain ports (C7, C9, D5; M13).
+6. ⚠️ **A click-attached sink's disposition is `into: <trigger id>`**, not the file — the attach pass's norm; my A4 first
+   asserted the file for the Sets (the reads register the record node into the file, the Sets collapse into their button).
+7. ⚠️ **A `Set Variable` takes a wire, never an authored value** — the first fixture authored `"Renamed."` as a parameter and
+   every Set Variable refused with *"nothing is wired into value"*. Three `String` nodes, roster-desk's shape.
+8. ⚠️ **A `Variable2`'s authored initial value (`value: "First note"`) is not seeded** — the emitted store boots
+   `value<string | undefined>(undefined)` and nothing writes it; the mirror effect therefore writes `undefined` on mount.
+   Pre-existing, not this row's (registered below); the fixture keeps the Variable because it is the shape that pins
+   finding 1.
+9. ⚠️ **The parent reader's whole-node gate speaks before a value-read of its signal does** — `fetched → Text.text` is
+   *"its fetched signal is consumed — …"*, not *"consumed as a value"*; honest, and pinned as such (E10).
+10. ⚠️ **M16 survived on the first run**: the Panel's own miss-arm raise earned `errors.ts`, so the lib's own import of it
+    was unobserved. G6 (readers alone, typechecked) is the row; killed on the second run.
+
+### §60.5 Residuals (owner NONE unless named)
+
+- **A named `Parent Component`** on either parent node is refused by name. The translation is a chain of providers (each
+  owner's Provider value carrying its name and the outer handle) so the hook can walk by name, plus a static check that the
+  named component owns a Component Object; the corpus has no named target. Owner NONE.
+- **Signal-on-write** (`changed`, `changed-<p>`, `fetched`, `done`, `completed` on the three record nodes) is refused by
+  name; the honest translation is a per-key change effect on the record with a previous-value ref (StrictMode-safe). Owner NONE.
+- **`Failure` / `Error` on the parent reader** — the mount-time raise is transcribed (the lib), the pulse chain and the row
+  are refused by name. `Error` on the parent Set likewise (its only message is the miss sentence, raised). Owner NONE.
+- **A key written only from a descendant is typed `unknown` on the host** (`count` in the fixture) — the host cannot see the
+  child's literal; a project-wide pass over parent Sets could type it. Owner NONE.
+- **`Set Object Properties` (§47) skips an authored `prop-<key>` literal** where the runtime writes it — one clause in
+  `compileSetObjectProperties`, mirroring this row's. Owner **EXP-011**.
+- **A `Variable2`'s authored initial value is not seeded** into the emitted store (finding 8). Owner **EXP-011** (a store
+  module boot value; not this row's node).
+- **The deprecated `Component State` node** is a resolvable ancestor in the runtime (`COMPONENT_OBJECT_TYPES`) and is not a
+  provider here; it is not a picker node. Owner NONE.
+- **A host whose Component Object is refused** (gates 1/2/5/6/7) leaves its descendants' parent reads answering `undefined`
+  with a mount raise — the host's refusal is reported, the descendants are not told. Owner NONE.
+- Not driven in a browser this session (the brief forbids drives from a slice agent); the orchestrator's drive is owed:
+  Rename → the three Texts, the Panel and both rows follow; Bump → count `1` on the page; the mirror on mount.
+
+## §62 Tier 2.8 row 12 — the relation pair: `Add Record Relation` and `Remove Record Relation`, the record verbs' shape with a Pointer on the wire (session 86, 2026-09-05)
+
+Type ids `AddDbModelRelation` / `RemoveDbModelRelation`, display names *Add Record Relation* / *Remove Record
+Relation* — the twelfth row of §50's list, designed in session 28 (RECORD-VERBS-TARGET §17) and refused since
+with *"a relation write has no shape in the api stub"*. Both are in the picker population, so the floor moves
+**105 → 107**.
+
+### §62.0 Design — what the pair is on disk, and what it becomes
+
+**The port sets**, assembled by `dbmodelcrudbase` exactly as the three record verbs are (`addBaseInfo` +
+`addModelId` + `addRelationProperty`; `-addrelation.ts`, `-removerelation.ts`): inputs `collectionName`
+(Class), `idSource` (explicit | foreach), `modelId` (Id — "a record itself is accepted here as well as its Id"),
+`repeaterComponent`, `backendId`, `relationProperty` (Relation — an `allowEditOnly` enum the schema fills,
+**no default**), `targetId` (Target Record Id — `allowConnectionsOnly`), `store` (Do); outputs `id`, `done`,
+`failure`, `completed` (the family's outcome trio, declared once in `addBaseInfo`), `error` (Error — "kept
+after a later attempt succeeds"). **No `Unchanged`** on either; the Remove sibling's file records why.
+
+**What the runtime does on Do** (`scheduleAddRelation` / `scheduleRemoveRelation`): one token into the
+batch, `scheduleOnce`, then `validateInputs()` — the whole pre-flight, in this order: *No class specified* →
+*No relation property specified* → *No target record Id (the record to add a relation to) specified* → *No
+record Id specified (the record that should get the relation)* → the NDA-012 class check (*The target record
+"<id>" has not been loaded, so its class is unknown …*). The first problem is `setError`'d (Error written,
+`record/storage-op-failed` raised, Failure pulsed) and the backend is never called. Otherwise
+`cloudstore.addRelation({ collection, objectId: model.getId(), key, targetObjectId, targetCollection })`, which
+`ParseWireAdapter.addRelation` sends as **`PUT /classes/<collection>/<objectId>` with body
+`{ [key]: { __op: 'AddRelation', objects: [{ __type: 'Pointer', objectId, className }] } }`** (`RemoveRelation`
+for the sibling). The backend (`parse-wire.ts classUpdate`) walks the ops, calls `facade.addRelation` per
+Pointer and answers `{ updatedAt }`; the runtime merges that into the in-process record and reports `done`.
+Error is never cleared by a later success.
+
+**The design: the record verbs' shape, verbatim — an `api-call`.** The pair is the same assembly as
+Create/Update/Delete with two more inputs, so it takes the same action kind rather than a sibling one (USER-FAMILY
+§4e's rule: a new discriminant recruits every switch site silently; the existing one is walked by all of them).
+The verb union widens to `'add-relation' | 'remove-relation'`; `MutationPlan.verb` too; the api module prints
+`add<Type>Relation(id, relation, targetId, targetClass): Promise<void>` / `remove<Type>Relation(…)` beside the
+class's other verbs, calling two new client functions `addRelation` / `removeRelation` (the wire above,
+transcribed) — or the stub that throws, where the project declares no backend. The handler is the record verbs'
+try/catch: the dynamic guards **in the runtime's order** (target first, then id — each `throw new Error(<the
+runtime's own sentence>)`, emitted only where the argument is not a literal), the awaited call, the done chain,
+and the catch that writes the Error row and raises `record/storage-op-failed`.
+
+**Where the four arguments come from:**
+- `id`: a wire (through `resolveExpr` — a Variable prints `.get()`, a prop its name) or the authored literal;
+  two wires refused; a boolean refused; `''`/`undefined` at run time throws *"No record Id specified (the record
+  that should get the relation)"* / *"(… should lose the relation)"* — `setModelID` clears the binding on those.
+- `relation`: the authored literal, always — a wired one is refused (`allowEditOnly`, but a project can hold it).
+- `targetId`: the one wire, whose source must be a `DbModel2` / `DbCollection2` (NDA-012's static form,
+  `LOADED_RECORD_SOURCES`, unchanged); the expression it resolves to (a `Record`'s Id is its feeder — a literal or
+  a Variable); a list (Query Records' Items) refused.
+- `targetClass`: the source node's literal `collectionName` — the runtime reads it off the loaded record, and
+  statically the record a `Record`/`Query Records` loads is of the class it names.
+
+**Refused by name** — every sentence predicted here, graded in §D of the spec:
+- the five pre-flight sentences (unchanged from §17, now shared by the compiler and the sweep): *no class is
+  named, so the runtime answers Failure with "No class specified" and never calls the backend* · *no relation
+  property is named, so the runtime answers Failure with "No relation property specified" and never calls the
+  backend* · *no Target Record Id is wired, so the runtime answers Failure with "No target record Id ...
+  specified" and never calls the backend* · *it names no record to put the relation on, so the runtime answers
+  Failure with "No record Id specified" and never calls the backend* · *its Target Record Id comes from <type>
+  rather than a Record or Query Records output, so the target's class is unknown and the runtime refuses the write*;
+- the static-value gates, the record verbs' sentences where they have one: *its class name is not a literal* ·
+  *its Relation is wired — which relation column is written is not statically knowable* · *it names a specific
+  Backend — one api module per class is all this slice emits* · *its Id Source is the enclosing repeater's row —
+  row identity is not statically knowable in this slice* · *its Target Record Id comes from a Record or Query
+  Records whose class is not a literal, so the target's class is not statically known*;
+- the consumed outputs: *its failure|completed output is consumed — only the done chain and the Error value are
+  translated in this slice* (the record verbs' sentence — the pair's Failure has the same standing as Create's) ·
+  *its Id output is consumed — it republishes the Id it was given, and that read is not translated in this slice*;
+- the wires: *two wires feed its Id — last-writer-wins is not statically ordered* · *two wires feed its Target
+  Record Id — last-writer-wins is not statically ordered* · *its Id is fed a logic truth value — only truthiness
+  sinks take one in this slice* · *its Id has no statically known source* / the feeder's own sentence · *its
+  Target Record Id has no statically known source* / the feeder's own · *its Target Record Id is fed the Query
+  Records' Items list rather than one record's Id — a row's Id reaches the page only through a repeater, which
+  this slice does not translate*;
+- the chains: the done chain's own refusal; an Error read while Do is never attached: *its Do is never fired by a
+  translatable trigger* (the record verbs' rule, `attachedRecordVerbs`); the sweep for a well-formed node nothing
+  fires: *its Do is never fired by a translatable trigger*.
+
+**Deliberately not done, recorded**: a Failure *chain* (the record verbs refuse it too — one funnel for the
+family, and a `failThen` on `api-call` is a second pipeline through every walker); §4c's chain-local
+`created.id` (a Create's consumed Id stays gate 11 — the Create's refusal, not this node's); the runtime's merge
+of `updatedAt` into the in-process record (the export holds none — `Promise<void>`); `encodeURIComponent` on the
+id, the client's convention where the wire adapter concatenates raw (a backend never mints an id that differs).
+
+### §62.1 What is emitted
+
+- **`src/api/client.ts`** gains `addRelation` / `removeRelation(collection, id, relation, targetId, targetClass): Promise<void>` beside
+  `update` / `remove`: `PUT /classes/<collection>/<encodeURIComponent(id)>` with body `{ [relation]: { __op: 'AddRelation' |
+  'RemoveRelation', objects: [{ __type: 'Pointer', objectId: targetId, className: targetClass }] } }` — `ParseWireAdapter.addRelation`
+  / `removeRelation` transcribed; the `{ updatedAt }` answer is not returned (the export holds no in-process record to merge it into).
+  The golden `tests/goldens/exp009/client.ts.golden` regenerated; the diff is exactly that block (`client-golden.diff`).
+- **`src/api/<plural>.ts`**: `add<Type>Relation` / `remove<Type>Relation(id, relation, targetId, targetClass)` beside the class's other
+  verbs, the client import naming both; the stub form throws `'<fn> is not connected to a backend yet'` (the write stubs' rule).
+- **The page**: the record verbs' try/catch. Each dynamic guard binds a local first and the call reads it —
+  `const linkTargetId = puppyId.get(); if (!linkTargetId) throw new Error('No target record Id (the record to add a relation to) specified');`
+  then the record's — in `validateInputs`' order; a literal argument prints no guard. Then
+  `await addInquiryRelation(linkRecordId, 'puppies', 'pup-1', 'Puppy');`, the done chain, and the catch that writes the Error row and
+  raises `record/storage-op-failed` with the node's own type. The Error Text folds (`{linkError ?? ''}`).
+- **plan.ts**: `RelationVerb`, `RELATION_NODES` (the verb, the fn prefix, the two "specified" sentences per node), `relationPreflight`
+  (module-level, shared by `compileRelationOp`, the record-verb sweep and the logic-only path), `compileRelationOp` (`api-call` with
+  `verb: 'add-relation' | 'remove-relation'`, `guardId: false`, `guards: [{ index, local, message }]`, `MutationPlan` with `writes: []`),
+  `TRIGGER_PORTS` (both `store`), the sink ladder, the `error` read (`attachedRecordVerbs`, unchanged rule), the record-verb sweep, the
+  render pass's `isRecordErrorRead` (the family's THIRD enumeration), and the corpus idiom's own sentence (a record verb's `id` into
+  the verb's Id). **component.ts**: `API_CALL_ERROR_CODES` two rows; the `guards` print in the `api-call` case. **emitApp.ts**: the
+  module print, the client import, the two client functions. **No new lib, no new action kind, no new expression kind** — nothing in
+  the hook-gap `||` chain and nothing in the expression switches; the `resolveExpr` if-ladder gained no branch (the `error` clause widened).
+- **Ledger**: both rows `translated`; floor **105 → 107**; eight pins moved (the brief said seven; `grep` found eight —
+  `animation-pair`, `browser-utilities`, `filter-records`, `on-app-error`, `object-store`, `run-tasks`, `script`, `streaming-trio`).
+
+### §62.2 The fixture — `tests/fixtures/link-desk`
+
+`App`: the Router. `Pages/Home`: a Record `puppy` (class Puppy, literal Id `pup-1`, Fetch unwired — §43's effect form) whose `Id` feeds
+both verbs' Target Record Id and whose `name` is a Text; a text input → `inquiryId` Variable (§56 E2's write-through) → both verbs' Id;
+"Link the puppy" → `link.store` (class Inquiry, relation `puppies`); "Unlink the puppy" → `unlink.store`; each `done` → a Set Variable
+`status` fed by a String (`savedValue`); each `error` → a Text; `status` → a Text. Backend `backend_linkdesk` at `localhost:8581`, a
+schema snapshot for Inquiry (`message`) and Puppy (`name`).
+
+**The reverted arm** (`probe-reverted.log`, HEAD 2a2dd4fa): both verbs on *"a relation write has no shape in the api stub …"*, the two
+Set Variables silenced with *"the trigger is not a rendered element event or a receiver"* (the attach pass speaks, not the "never fired"
+sentence I predicted — §59.4 item 3 again), the two Strings behind them, **16 refusals**, `whole: []`, the verdict naming both verbs,
+`pathway: true`. **Built**: 18 files, **0 refusals**, the shell note and the backend note only; the page reads as §62.1.
+
+### §62.3 The gates and the arms
+
+```
+packages/nodegx-export: tsc --noEmit 0 (after every stitch, four runs) · relation-pair.test.ts 47/47
+  §A the fixture whole + the real ts.Program (10) · §B the client under node against a fake fetch — the PUT, the op, the typed Pointer,
+  the header pair, encodeURIComponent, the backend's own message, the status-only failure, the unreachable sentence, the session token (6)
+  · §C the shapes a wire changes — the stub form, the wired target's guards in the runtime's order (typechecked), a literal record Id (4)
+  · §D refusals by mutation, each sentence exact (24) · §E the corpus shape and the logic-only path (3)
+relation-verbs.test.ts 24/24 (the well-formed row re-pinned: the verb names §4c's unbuilt chain-local read from its own side)
+neighbours re-run alone, green: backend-client 17 (golden regenerated), in-code-markers 57, unreported-deferrals 7, logic 29, cascade 83,
+  record 29, file-record 26 (B10 re-pinned: the client's `__type` count 3 → 5, the two Pointers named and counted — writes, not File envelopes)
+whole package jest ONCE at load 5.2: 72 files (72 on disk = 71 + this spec), 2508 rows — 2507 green + file-record B10, re-pinned and re-run alone
+export-ledger:check OK — 176 types, 114 translated · picker 107/127 (84.3%), --check exit 0 (was 105)
+arms 16/16 KILLED (mut-summary.txt), sources restored md5-identical after each: M1 pre-flight check — 2 · M2 NDA-012 rule inverted — 30 ·
+  M3 op misspelt — 2 · M4 Pointer without className — 2 · M5 guards reordered — 1 · M6 target guard dropped — 1 · M7 guard not rebound
+  (TS2345) — 8 · M8 Failure/Completed allowed — 2 · M9 list gate — 1 · M10 logic-only pre-flight dropped — 1 · M11 render-pass Error read
+  reverted — 3 · M12 record-verb Id sentence — 1 · M13 family code dropped — 7 · M14 POST — 2 · M15 wired target class — 1 · M16 the
+  source class sent as the target's — 7
+NOT run (the orchestrator's, after merging): editor tsc, editor test:ci, any drive.
+```
+
+### §62.4 Traps found
+
+- 🔴 **The first reverted arm measured a fixture defect, not the product.** A `String` node's output is `savedValue`, not `value`
+  (roster-desk wires `savedValue`); the Set Variables read *"the value wire has no statically known source"* and I read that as the
+  cascade. Re-run with the wire fixed; the control is the fixed one. *Copy a fixture's wire, not its display name.*
+- 🔴 **`if (!x.get()) throw …; await f(x.get())` does not typecheck** — the guard narrows nothing for a second call (TS2345 in the emitted
+  program, caught only by the real tsc, A2). The guards now bind a local and the call reads it, which is also what the runtime does
+  (the setter stored the value once). **The record verbs' own `guardId` has the same hole for a Variable-fed Id** — registered below.
+- 🔴 **The family's THIRD enumeration.** `RECORD_VERBS[…] || USER_VERBS[…]` appears in `resolveExpr`'s `error` clause AND in the render
+  pass's `isRecordErrorRead`; the Error Text was dropped with the step-5 note until the second was widened (§43's "second consumer"
+  rule, s19's dispatcher rule). Arm M11.
+- 🔴 **A sweep-side pre-flight fallback was dead code, and the arm that could not kill it said so.** Every trigger sink is compiled
+  diagnostically before the sweeps (`compiledOf(node, TRIGGER_PORTS[node.type])`, plan.ts ~14005), so the record-verb sweep always
+  reports the compiler's verdict. Removed; the logic-only path is the one place the sweep-side pre-flight runs (E3, M10 re-aimed).
+- 🔴 **The compiler speaks before the sweep for the corpus shape too.** I predicted the gate-11 graph would leave the verb on *"never
+  fired"*; the sink is compiled from the wire side and refused on its Id — now with its own sentence naming §4c's unbuilt chain-local read.
+- ⚠️ **The ledger is mostly raw UTF-8** (89 raw `—` lines, 4 escaped): `json.dump(ensure_ascii=True)` rewrote 218 lines. Edited as text on
+  HEAD's bytes instead; the diff is 6/6.
+- ⚠️ **Three substring traps in one spec** (§57.4's): `linkError` ⊂ `linkErrorText` (the marker names the node id), `linkRecordId` ⊂
+  `unlinkRecordId`. Every absence narrowed to a declaration.
+- ⚠️ The first spec run pinned `into: HOME_FILE` for handler actions; a handler action collapses into its **button**, a render read into the file.
+
+### §62.5 Residuals (owner NONE unless named)
+
+- **`api-call`'s `guardId` for a Variable-fed Id does not narrow** (`if (!x.get()) … await f(x.get())`) — an Update/Delete Record whose Id
+  is a Variable would fail the emitted tsc with TS2345. The record verbs' shape, older than this row; the fix is the `guards` print (bind a
+  local). Owner NONE — a one-line change plus a row in `record-verbs`' spec.
+- **§4c's chain-local `created.id`** — the corpus idiom (`NewDbModelProperties.id → AddDbModelRelation.modelId`) stays refused on both
+  sides (gate 11 on the Create; the verb's own sentence). Owner NONE.
+- **A Failure chain on the pair** is refused as the record verbs' is — one funnel for the family; translating it is a `failThen` on
+  `api-call` through every walker. Owner NONE.
+- **A Query Records' `firstItemId`** — the one Query Records string output that names a loaded record — resolves to nothing (§56 reads
+  Items and Count), so a relation fed by it is refused with the feeder's sentence, not built. Owner NONE.
+- **`pathwayVerdict`'s consequence clause** (`src/emit/report.ts`): when a root pathway node silences no other pathway node, the verdict
+  says *"the app has no error pathway"* — written for `On App Error` (§54), reached by any refused backend verb with only Set Variables
+  behind it (the reverted arm read it for the relation pair). EXP-013 is closed; owner NONE. Pre-existing, not this row's.
+- The runtime's `updatedAt` merge into the in-process record, and its raw (un-encoded) id in the path, are recorded divergences (§62.0).
+- Not driven in a browser this session (the brief forbids drives from a slice agent); the orchestrator's drive is owed.
