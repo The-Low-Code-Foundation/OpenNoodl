@@ -35,7 +35,7 @@
 
 ## 🔴 SITE-BUILDER LANE, s41 — what changed, and what the next session must NOT do
 
-**Two commits: `02a3c924`** (s40's build, held back only by the peer's merge) **and `26c1ab21`**
+**Two commits: `02a3c924`** (s40's build, held back only by the peer's merge) **and `d8af6e5d`**
 (this session). ⚠️ **Three other lanes' uncommitted files live in the same package and were left
 alone** — `createProject.ts`, `validate.ts`, `sbr011LivePreview.test.ts`.
 
