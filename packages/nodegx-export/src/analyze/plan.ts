@@ -912,6 +912,30 @@ const RELATION_VERBS: Record<string, 'add' | 'remove'> = {
   AddDbModelRelation: 'add',
   RemoveDbModelRelation: 'remove'
 };
+/** EXP-011 §62. The api-call / MutationPlan verb the pair compiles to. */
+export type RelationVerb = 'add-relation' | 'remove-relation';
+/**
+ * EXP-011 §62. What each of the pair says, in `validateInputs`' own words — the two dynamic guards
+ * the handler throws (the runtime asks about the target *before* the record), and the fallback the
+ * adapter's error callback substitutes for an empty message.
+ */
+const RELATION_NODES: Record<
+  string,
+  { verb: RelationVerb; noTarget: string; noRecord: string; fnPrefix: 'add' | 'remove' }
+> = {
+  AddDbModelRelation: {
+    verb: 'add-relation',
+    fnPrefix: 'add',
+    noTarget: 'No target record Id (the record to add a relation to) specified',
+    noRecord: 'No record Id specified (the record that should get the relation)'
+  },
+  RemoveDbModelRelation: {
+    verb: 'remove-relation',
+    fnPrefix: 'remove',
+    noTarget: 'No target record Id (the record to remove a relation from) specified',
+    noRecord: 'No record Id specified (the record that should lose the relation)'
+  }
+};
 
 /**
  * The node types whose `Id` output names a record the app has actually *loaded*.
@@ -1745,8 +1769,8 @@ export type HandlerAction =
   | {
       kind: 'api-call';
       nodeId: string;
-      /** What produced the call — for notes and the stub's provenance line. */
-      verb: 'create' | 'update' | 'delete' | UserVerb;
+      /** What produced the call — for notes and the stub's provenance line. EXP-011 §62: the relation pair rides the same action. */
+      verb: 'create' | 'update' | 'delete' | RelationVerb | UserVerb;
       /** The api module's exported function: `createPuppy` / `updatePuppy` / `logIn` / `logOut`. */
       fnName: string;
       /**
@@ -1766,6 +1790,15 @@ export type HandlerAction =
        * which takes no id at all.
        */
       guardId: boolean;
+      /**
+       * EXP-011 §62. The relation verbs' dynamic pre-flight, in the runtime's own order and its own
+       * words (`validateInputs`): a positional argument that is empty at the click throws that
+       * sentence into the catch — *No target record Id (the record to add a relation to) specified*
+       * before *No record Id specified (the record that should get the relation)*, because the
+       * runtime asks about the target first. Printed after `guardId`'s line; emitted only for an
+       * argument that is not a literal (a literal is never empty — the planner refused that).
+       */
+      guards?: Array<{ index: number; local: string; message: string }>;
       errorState: string;
       /**
        * EXP-011 §44 — write `undefined` to the Error row the moment the call answers, before the
@@ -2660,7 +2693,8 @@ export interface QueryPlan {
  */
 export interface MutationPlan {
   nodeId: string;
-  verb: 'create' | 'update' | 'delete';
+  /** EXP-011 §62: `add-relation` / `remove-relation` join the class's module beside the three record verbs. */
+  verb: 'create' | 'update' | 'delete' | RelationVerb;
   collectionName: string;
   /** `createPuppy` / `updatePuppy` / `deletePuppy`. */
   fnName: string;
@@ -7457,7 +7491,11 @@ function planComponent(
     // until the first refusal, which folds at its sinks exactly as the runtime's own unwritten
     // getter does. Read only when the verb itself translates: a deferred verb never writes it,
     // and a state row nothing writes would be an invented value.
-    if ((RECORD_VERBS[fromNode.type] !== undefined || USER_VERBS[fromNode.type] !== undefined) && fromProperty === 'error') {
+    // EXP-011 §62. The relation pair's Error is the same row, earned the same way.
+    if (
+      (RECORD_VERBS[fromNode.type] !== undefined || RELATION_VERBS[fromNode.type] !== undefined || USER_VERBS[fromNode.type] !== undefined) &&
+      fromProperty === 'error'
+    ) {
       if (!attachedRecordVerbs.has(fromNode.id)) {
         const trigger = USER_VERBS[fromNode.type]?.trigger ?? 'store';
         const compiled = compiledOf(fromNode, trigger);
@@ -8609,6 +8647,9 @@ function planComponent(
     NewDbModelProperties: 'store',
     SetDbModelProperties: 'store',
     DeleteDbModelProperties: 'store',
+    // EXP-011 §62. The relation pair's only action port — `store`, displayed "Do", as the three above.
+    AddDbModelRelation: 'store',
+    RemoveDbModelRelation: 'store',
     // ⚠️ Log Out's is `login` too — the port name is persisted in every project that uses the
     // node, so the runtime could not correct it (USER-FAMILY-TARGET §1).
     'net.noodl.user.LogIn': 'login',
@@ -9119,6 +9160,143 @@ function planComponent(
           ...(verb === 'delete' ? [] : [{ kind: 'data' as const, props }])
         ],
         guardId: idExpr !== undefined && idExpr.kind !== 'literal',
+        errorState: verbErrorStateOf(node).name,
+        then: chain.then
+      },
+      consumes: [...consumes, ...chain.consumes, ...ctx.consumes],
+      collapses: [...ctx.logicNodeIds, ...chain.collapses],
+      subscribes: [...ctx.subscriberIds, ...chain.subscribes]
+    };
+  };
+
+  /**
+   * EXP-011 §62. A relation verb fired from a handler chain — `Add Record Relation` /
+   * `Remove Record Relation` (RECORD-VERBS-TARGET §17, designed in session 28; built here).
+   *
+   * The record verbs' shape exactly (`api-call`, one try/catch, the Error row nothing clears, the
+   * done chain after the await), with the pair's own pre-flight in front: `validateInputs` is
+   * static where it can be (`relationPreflight`, shared with the sweeps) and dynamic where the
+   * runtime's is (`guards` — the two "specified" sentences, thrown into the catch in the runtime's
+   * order). The wire is the runtime's own: `PUT /classes/<class>/<id>` carrying one
+   * `AddRelation` / `RemoveRelation` op with a Pointer that names the target's class — which is
+   * why the target's class has to be statically known (NDA-012), and it is: the source is a
+   * `Record` / `Query Records` whose literal Class is the class of every record it loads.
+   */
+  const compileRelationOp = (node: NodeIR): CompiledSink => {
+    const spec = RELATION_NODES[node.type];
+    const authoredOrWired = (name: string) =>
+      node.parameters.some((p) => p.name === name) || wiredPorts.has(`${node.id}:${name}`);
+
+    // The runtime's pre-flight first, in its order — the sentences the sweeps give too.
+    const preflight = relationPreflight(node, component, nodeById);
+    if (preflight !== undefined) return { defer: preflight };
+
+    // The static-value gates, the record verbs' sentences where they have one.
+    if (wiredPorts.has(`${node.id}:collectionName`) || typeof literalParam(node, 'collectionName') !== 'string' || literalParam(node, 'collectionName') === '') {
+      return { defer: 'its class name is not a literal' };
+    }
+    if (wiredPorts.has(`${node.id}:relationProperty`) || typeof literalParam(node, 'relationProperty') !== 'string' || literalParam(node, 'relationProperty') === '') {
+      return { defer: 'its Relation is wired — which relation column is written is not statically knowable' };
+    }
+    if (authoredOrWired('backendId')) return { defer: 'it names a specific Backend — one api module per class is all this slice emits' };
+    if (literalParam(node, 'idSource') === 'foreach' || authoredOrWired('repeaterComponent')) {
+      return { defer: "its Id Source is the enclosing repeater's row — row identity is not statically knowable in this slice" };
+    }
+
+    // Consumed outcome pulses beyond `done`, and the `id` output (the record verbs' rule, §5.11).
+    for (const wire of component.connections.filter((c) => c.fromId === node.id)) {
+      if (wire.fromProperty === 'failure' || wire.fromProperty === 'completed') {
+        return { defer: `its ${wire.fromProperty} output is consumed — only the done chain and the Error value are translated in this slice` };
+      }
+      if (wire.fromProperty === 'id') {
+        return { defer: 'its Id output is consumed — it republishes the Id it was given, and that read is not translated in this slice' };
+      }
+    }
+
+    const collectionName = literalParam(node, 'collectionName') as string;
+    const relation = literalParam(node, 'relationProperty') as string;
+    const ctx = newCtx();
+    const consumes: string[] = [];
+
+    // The record the relation is written on — `modelId`, the record verbs' rule (§5.9).
+    let idExpr: ValueExpr;
+    const idWires = component.connections.filter((c) => c.toId === node.id && c.toProperty === 'modelId');
+    if (idWires.length > 1) return { defer: 'two wires feed its Id — last-writer-wins is not statically ordered' };
+    if (idWires.length === 1) {
+      const idSource = nodeById.get(idWires[0].fromId);
+      // The corpus idiom (RECORD-VERBS-TARGET §2: `NewDbModelProperties.id → AddDbModelRelation.modelId`) —
+      // §4c designs the chain-local read and it is not built; the Create is gate 11 for the same wire.
+      if (idSource !== undefined && RECORD_VERBS[idSource.type] !== undefined && idWires[0].fromProperty === 'id') {
+        return {
+          defer:
+            "its Id is the Id output of a record verb — that value exists only inside the verb's own done chain, and the chain-local read RECORD-VERBS-TARGET §4c designs is not built"
+        };
+      }
+      const expr = resolveExpr(idSource, idWires[0].fromProperty, ctx);
+      if (expr === null) return { defer: ctx.defer ?? 'its Id has no statically known source' };
+      if (isBooleanExpr(expr)) return { defer: 'its Id is fed a logic truth value — only truthiness sinks take one in this slice' };
+      idExpr = expr;
+      consumes.push(idWires[0].key);
+    } else {
+      const literal = literalParam(node, 'modelId');
+      if (typeof literal !== 'string' || literal === '') {
+        return { defer: `it names no record, so the runtime answers Failure with "${spec.noRecord}" every time` };
+      }
+      idExpr = { kind: 'literal', value: literal };
+    }
+
+    // The target: exactly one wire from a loaded-record source (the pre-flight settled the type);
+    // its class is the source's literal Class, and its Id is whatever that source's Id resolves to.
+    const targetWires = component.connections.filter((c) => c.toId === node.id && c.toProperty === 'targetId');
+    if (targetWires.length > 1) return { defer: 'two wires feed its Target Record Id — last-writer-wins is not statically ordered' };
+    const targetSource = nodeById.get(targetWires[0].fromId)!;
+    const targetClass = literalParam(targetSource, 'collectionName');
+    if (wiredPorts.has(`${targetSource.id}:collectionName`) || typeof targetClass !== 'string' || targetClass === '') {
+      return { defer: "its Target Record Id comes from a Record or Query Records whose class is not a literal, so the target's class is not statically known" };
+    }
+    const targetExpr = resolveExpr(targetSource, targetWires[0].fromProperty, ctx);
+    if (targetExpr === null) return { defer: ctx.defer ?? 'its Target Record Id has no statically known source' };
+    if (exprTsType(targetExpr).endsWith('[]')) {
+      return {
+        defer:
+          "its Target Record Id is fed the Query Records' Items list rather than one record's Id — a row's Id reaches the page only through a repeater, which this slice does not translate"
+      };
+    }
+    if (isBooleanExpr(targetExpr)) return { defer: 'its Target Record Id is fed a logic truth value — only truthiness sinks take one in this slice' };
+    consumes.push(targetWires[0].key);
+
+    const chain = doneChainOf(node);
+    if ('defer' in chain) return { defer: chain.defer };
+
+    const { typeName, moduleBase } = collectionModuleNames(collectionName);
+    const fnName = `${spec.fnPrefix}${typeName}Relation`;
+    plan.mutations.push({ nodeId: node.id, verb: spec.verb, collectionName, fnName, typeName, moduleBase, writes: [] });
+
+    // The guards in the runtime's order — the target before the record — and only where the
+    // argument can be empty at the click (a literal never is).
+    // Each guard binds a local first (`const linkTargetId = puppyId.get(); if (!linkTargetId) throw …`) —
+    // a second `.get()` in the call would not be narrowed by the first (TS2345), and the runtime reads
+    // the stored value once. The stem is the Error row's, unique per node.
+    const stem = verbErrorStateOf(node).name.replace(/Error$/, '');
+    const guards: Array<{ index: number; local: string; message: string }> = [];
+    if (targetExpr.kind !== 'literal') guards.push({ index: 2, local: `${stem}TargetId`, message: spec.noTarget });
+    if (idExpr.kind !== 'literal') guards.push({ index: 0, local: `${stem}RecordId`, message: spec.noRecord });
+
+    return {
+      action: {
+        kind: 'api-call',
+        nodeId: node.id,
+        verb: spec.verb,
+        fnName,
+        // `addInquiryRelation(id, 'puppies', targetId, 'Puppy')` — position order, the client's.
+        args: [
+          { kind: 'expr', expr: idExpr },
+          { kind: 'expr', expr: { kind: 'literal', value: relation } },
+          { kind: 'expr', expr: targetExpr },
+          { kind: 'expr', expr: { kind: 'literal', value: targetClass } }
+        ],
+        guardId: false,
+        ...(guards.length > 0 ? { guards } : {}),
         errorState: verbErrorStateOf(node).name,
         then: chain.then
       },
@@ -12065,6 +12243,8 @@ function planComponent(
 
   const compileSink = (node: NodeIR, port: string): CompiledSink => {
     if (RECORD_VERBS[node.type] !== undefined && port === 'store') return compileRecordOp(node);
+    // EXP-011 §62. The relation pair's Do — the record verbs' shape with a Pointer on the wire.
+    if (RELATION_VERBS[node.type] !== undefined && port === 'store') return compileRelationOp(node);
     if (USER_VERBS[node.type] !== undefined && port === USER_VERBS[node.type].trigger) return compileUserOp(node);
     if (jsNodeKindOf(node.type) !== null && port === 'run') return compileJsRun(node);
     if (isLatchType(node.type)) return compileLatch(node, port);
@@ -14820,10 +15000,19 @@ function planComponent(
   // The record-verb sweep, the popup sweep's twin: a verb the attachment pass did not collapse
   // defers with its *compiled* reason rather than falling to the catch-all "logic node (…)" —
   // the named-deferral rule, which is what makes the audit a map of the next slices.
+  // EXP-011 §62. The relation pair rides it. Its compiled verdict opens with the runtime's own
+  // pre-flight (`relationPreflight`), and the diagnostic compile of every trigger sink above
+  // (`compiledOf(node, TRIGGER_PORTS[node.type])`) guarantees the entry exists — a pre-flight
+  // fallback here was dead code, found by the arm that could not kill it. The logic-only path
+  // (`bailAsLogicOnly` → `recordNeighbourDefer`) is the one place the sweep-side pre-flight runs.
   for (const node of component.nodes) {
     if (dispositions[node.id] !== undefined) continue;
     const trigger =
-      RECORD_VERBS[node.type] !== undefined ? 'store' : USER_VERBS[node.type] !== undefined ? USER_VERBS[node.type].trigger : undefined;
+      RECORD_VERBS[node.type] !== undefined || RELATION_VERBS[node.type] !== undefined
+        ? 'store'
+        : USER_VERBS[node.type] !== undefined
+          ? USER_VERBS[node.type].trigger
+          : undefined;
     if (trigger === undefined) continue;
     const compiled = compiledSinks.get(`${node.id}:${trigger}`);
     const reason =
@@ -15160,8 +15349,9 @@ function planComponent(
     // resolved and then fell through to the catch-all note, rendering an empty `<p>` where the
     // interpreted app shows the refusal (USER-FAMILY-TARGET §9). s19's dispatcher rule in its
     // second family — when a vocabulary grows a member, audit every site that enumerates it.
+    // EXP-011 §62. The relation pair's Error is the same read — the third family this predicate names.
     const isRecordErrorRead =
-      (RECORD_VERBS[fromNode.type] !== undefined || USER_VERBS[fromNode.type] !== undefined) &&
+      (RECORD_VERBS[fromNode.type] !== undefined || RELATION_VERBS[fromNode.type] !== undefined || USER_VERBS[fromNode.type] !== undefined) &&
       connection.fromProperty === 'error';
     // A `User` output into a rendered sink (USER-FAMILY-TARGET §4c) — `Signed in as <username>`
     // and the `authenticated` visibility gates. It rides this pass for the same reason the
@@ -17108,6 +17298,40 @@ function visualDeferReason(
 }
 
 /**
+ * EXP-011 §62. The relation pair's pre-flight, statically — `validateInputs` in the runtime's own
+ * order (RECORD-VERBS-TARGET §17): the class, the relation property, the target wire, the record,
+ * and NDA-012's class check (`LOADED_RECORD_SOURCES`). Every sentence names what the runtime would
+ * answer, because the runtime answers it on every pulse for the life of the graph — translating
+ * such a node into a working call would be a hole shaped like the defect (§5.1's rule). Shared by
+ * the compiler, the record-verb sweep and the logic-only path, so the three cannot disagree.
+ *
+ * `undefined` means the node can act; the compiler's own gates (a wired class, a wired relation, a
+ * named backend, a repeater-bound Id, the consumed outputs, the wires) come after.
+ */
+function relationPreflight(node: NodeIR, component: ComponentIR, nodeById: Map<string, NodeIR>): string | undefined {
+  const wiredIn = (name: string) => component.connections.some((c) => c.toId === node.id && c.toProperty === name);
+  const authoredOrWired = (name: string) => node.parameters.some((p) => p.name === name) || wiredIn(name);
+  if (!authoredOrWired('collectionName')) {
+    return 'no class is named, so the runtime answers Failure with "No class specified" and never calls the backend';
+  }
+  if (!authoredOrWired('relationProperty')) {
+    return 'no relation property is named, so the runtime answers Failure with "No relation property specified" and never calls the backend';
+  }
+  const targetWire = component.connections.find((c) => c.toId === node.id && c.toProperty === 'targetId');
+  if (targetWire === undefined) {
+    return 'no Target Record Id is wired, so the runtime answers Failure with "No target record Id ... specified" and never calls the backend';
+  }
+  if (!authoredOrWired('modelId')) {
+    return 'it names no record to put the relation on, so the runtime answers Failure with "No record Id specified" and never calls the backend';
+  }
+  const targetSource = nodeById.get(targetWire.fromId);
+  if (targetSource === undefined || !LOADED_RECORD_SOURCES.has(targetSource.type)) {
+    return `its Target Record Id comes from ${targetSource?.type ?? 'nothing'} rather than a Record or Query Records output, so the target's class is unknown and the runtime refuses the write`;
+  }
+  return undefined;
+}
+
+/**
  * The record-neighbour verdicts (RECORD-VERBS-TARGET §17) — the named reason a node in the
  * record family's graph defers with, instead of the catch-all `logic node (…)`.
  *
@@ -17139,25 +17363,10 @@ function recordNeighbourDefer(
   const wiredIn = (name: string) => component.connections.some((c) => c.toId === node.id && c.toProperty === name);
   const authoredOrWired = (name: string) => node.parameters.some((p) => p.name === name) || wiredIn(name);
 
+  // EXP-011 §62. The pre-flight is shared with the compiler and the record-verb sweep; what reaches
+  // here is a relation verb in a component with no render tree, where nothing can fire a Do.
   if (RELATION_VERBS[node.type] !== undefined) {
-    if (!authoredOrWired('collectionName')) {
-      return 'no class is named, so the runtime answers Failure with "No class specified" and never calls the backend';
-    }
-    if (!authoredOrWired('relationProperty')) {
-      return 'no relation property is named, so the runtime answers Failure with "No relation property specified" and never calls the backend';
-    }
-    const targetWire = component.connections.find((c) => c.toId === node.id && c.toProperty === 'targetId');
-    if (targetWire === undefined) {
-      return 'no Target Record Id is wired, so the runtime answers Failure with "No target record Id ... specified" and never calls the backend';
-    }
-    if (!authoredOrWired('modelId')) {
-      return 'it names no record to put the relation on, so the runtime answers Failure with "No record Id specified" and never calls the backend';
-    }
-    const targetSource = nodeById.get(targetWire.fromId);
-    if (targetSource === undefined || !LOADED_RECORD_SOURCES.has(targetSource.type)) {
-      return `its Target Record Id comes from ${targetSource?.type ?? 'nothing'} rather than a Record or Query Records output, so the target's class is unknown and the runtime refuses the write`;
-    }
-    return 'a relation write has no shape in the api stub — RECORD-VERBS-TARGET §4c designs it, and the corpus holds no well-formed instance to build it against';
+    return relationPreflight(node, component, nodeById) ?? 'its Do is never fired by a translatable trigger';
   }
 
   if (node.type === 'DbModel2') {

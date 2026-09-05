@@ -273,7 +273,11 @@ describe('§B — the component', () => {
 
   test('B10 the envelope is built in exactly one place — the client never builds a File envelope (its one `__type` read is §48’s Date unwrap)', () => {
     expect(client(app)).not.toContain("__type: 'File'");
-    expect(client(app).match(/__type/g)).toHaveLength(3); // the Date unwrap: its doc line, the cast, the test — nothing else
+    // The Date unwrap: its doc line, the cast, the test (3) — plus EXP-011 §62's two relation Pointers
+    // (`__type: 'Pointer'`, the runtime's own AddRelation / RemoveRelation wire), which are writes of a
+    // Pointer and not File envelopes; the read count is still the one Date unwrap.
+    expect(client(app).match(/__type/g)).toHaveLength(5);
+    expect(client(app).match(/__type: 'Pointer'/g)).toHaveLength(2);
     expect(client(app)).toContain(".__type === 'Date'");
     const sites = Object.entries(app.files).filter(([, source]) => source.includes("__type: 'File'"));
     expect(sites.map(([name]) => name)).toEqual(['src/api/files.ts']);

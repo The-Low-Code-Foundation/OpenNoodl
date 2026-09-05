@@ -15,7 +15,8 @@ import {
   QueryPlan,
   SessionCallPlan,
   UserVerb,
-  tsColumnType
+  tsColumnType,
+  RelationVerb
 } from '../analyze/plan';
 import { CloudServicesIR, ExportIR } from '../ir/types';
 import { emitComponent } from './component';
@@ -401,7 +402,7 @@ function apiModules(
     fetchOneName?: string;
     readSites: Site[];
     /** Mutation function name → its call sites, first-use order (RECORD-VERBS-TARGET §4d). */
-    mutations: Map<string, { verb: 'create' | 'update' | 'delete'; sites: Site[] }>;
+    mutations: Map<string, { verb: 'create' | 'update' | 'delete' | RelationVerb; sites: Site[] }>;
     /** Column → type, from the graph's writes; first-use order, first writer wins. */
     writes: Map<string, string>;
     /** Column → type, from a Record's reads the snapshot does not declare (EXP-011 §43). */
@@ -540,6 +541,29 @@ function apiModules(
     // The connected form has no such asymmetry: every body calls the client, and a failed
     // request throws the backend's own message into the graph's Failure path.
     for (const [fnName, { verb, sites }] of mutations) {
+      // EXP-011 §62. The relation pair: the runtime's own `PUT /classes/<class>/<id>` with one
+      // `AddRelation` / `RemoveRelation` op whose Pointer names the target's class (ParseWireAdapter).
+      // Connected: the client's `addRelation` / `removeRelation`. Stub: throws, the write stubs' rule.
+      if (verb === 'add-relation' || verb === 'remove-relation') {
+        const add = verb === 'add-relation';
+        const nodeType = add ? 'AddDbModelRelation' : 'RemoveDbModelRelation';
+        const signature = `(id: string, relation: string, targetId: string, targetClass: string): Promise<void>`;
+        const clientFn = add ? 'addRelation' : 'removeRelation';
+        parts.push(
+          backend !== undefined
+            ? `/**\n${sites.map((s) => siteLine(s, nodeType)).join('\n')}\n` +
+                ` * ${add ? 'Adds' : 'Removes'} the record \`targetId\` (of class \`targetClass\`) ${add ? 'to' : 'from'} the \`relation\` column of one \`${collectionName}\` record\n` +
+                ` * on the project's NodeGX backend — the runtime's own PUT with ${add ? 'an AddRelation' : 'a RemoveRelation'} op (src/api/client.ts).\n` +
+                ` * A failed request throws, which is what the graph's Failure path already handles.\n */\n` +
+                `export async function ${fnName}${signature} {\n  return ${clientFn}(${tsStringLiteral(collectionName)}, id, relation, targetId, targetClass);\n}\n`
+            : `/**\n${sites.map((s) => siteLine(s, nodeType)).join('\n')}\n` +
+                ` * ${add ? 'added' : 'removed'} a related record ${add ? 'to' : 'from'} a relation column of the \`${collectionName}\` collection in the project's NodeGX backend. Connect this to your\n` +
+                ` * own data source; until you do it throws, which is what the graph's Failure path already handles.\n */\n` +
+                `export async function ${fnName}${signature} {\n` +
+                `  throw new Error('${fnName} is not connected to a backend yet');\n}\n`
+        );
+        continue;
+      }
       const nodeType =
         verb === 'create' ? 'NewDbModelProperties' : verb === 'update' ? 'SetDbModelProperties' : 'DeleteDbModelProperties';
       const past = verb === 'create' ? 'created a record in' : verb === 'update' ? 'updated a record in' : 'deleted a record from';
@@ -575,7 +599,17 @@ function apiModules(
       if (fetchName !== undefined) clientImports.add('query');
       if (fetchOneName !== undefined) clientImports.add('fetchOne');
       for (const { verb } of mutations.values()) {
-        clientImports.add(verb === 'create' ? 'create' : verb === 'update' ? 'update' : 'remove');
+        clientImports.add(
+          verb === 'create'
+            ? 'create'
+            : verb === 'update'
+              ? 'update'
+              : verb === 'add-relation'
+                ? 'addRelation'
+                : verb === 'remove-relation'
+                  ? 'removeRelation'
+                  : 'remove'
+        );
       }
       const importLine = `import { ${[...clientImports].sort().join(', ')} } from './client';\n`;
       stubs.push([`src/api/${moduleBase}.ts`, GENERATED_MODULE_TS + importLine + filesImport + '\n' + parts.join('\n')]);
@@ -1534,6 +1568,30 @@ export async function update<T extends { id: string }>(collection: string, id: s
 
 export async function remove(collection: string, id: string): Promise<void> {
   await request<unknown>(\`/classes/\${collection}/\${encodeURIComponent(id)}\`, { method: 'DELETE' });
+}
+
+/**
+ * The runtime's own relation write (ParseWireAdapter.addRelation): a PUT carrying one
+ * \`AddRelation\` op whose Pointer names the target record AND its class. The class is not
+ * decoration — a Pointer without one makes Parse write \`Relation<undefined>\` into the class
+ * schema and refuse every correct write after it, which is why the exporter only translates a
+ * Target Record Id that comes from a Record or Query Records of a known class.
+ * The wire answers \`{ updatedAt }\`; the running app merges that into its in-process record,
+ * which this app does not hold — so nothing is returned.
+ */
+export async function addRelation(collection: string, id: string, relation: string, targetId: string, targetClass: string): Promise<void> {
+  await request<unknown>(\`/classes/\${collection}/\${encodeURIComponent(id)}\`, {
+    method: 'PUT',
+    body: { [relation]: { __op: 'AddRelation', objects: [{ __type: 'Pointer', objectId: targetId, className: targetClass }] } }
+  });
+}
+
+/** The same PUT with a \`RemoveRelation\` op (ParseWireAdapter.removeRelation); removing a relation that was never there succeeds identically. */
+export async function removeRelation(collection: string, id: string, relation: string, targetId: string, targetClass: string): Promise<void> {
+  await request<unknown>(\`/classes/\${collection}/\${encodeURIComponent(id)}\`, {
+    method: 'PUT',
+    body: { [relation]: { __op: 'RemoveRelation', objects: [{ __type: 'Pointer', objectId: targetId, className: targetClass }] } }
+  });
 }
 
 export async function logInRequest(username: string, password: string): Promise<WireSession> {

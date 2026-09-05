@@ -890,7 +890,7 @@ describe('§H the ledger', () => {
       expect(exportBadgeOf(type)).toBeUndefined();
     }
     const ledger = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'coverage-ledger.json'), 'utf8'));
-    expect(ledger.pickerCoverageFloor).toBe(105); // §57 Repeater Item, §58 the streaming trio, §59 Hash / Random Bytes / Screen Resolution (session 85)
+    expect(ledger.pickerCoverageFloor).toBe(107); // §62 the relation pair (session 86) // §57 Repeater Item, §58 the streaming trio, §59 Hash / Random Bytes / Screen Resolution (session 85)
   });
 });
 
