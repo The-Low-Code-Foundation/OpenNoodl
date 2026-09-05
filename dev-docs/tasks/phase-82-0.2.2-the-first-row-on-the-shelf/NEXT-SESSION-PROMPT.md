@@ -1,5 +1,70 @@
 # Phase 82 — next session
 
+> ### 🟢 D58 IS FIXED, AND P82 NOW HAS NO UNOWNED HUMAN-INDEPENDENT WORK LEFT, 2026-09-05 (s54)
+>
+> **One commit: `6101f96f`.** No REL row's ACs moved and none could — every open row is Richard's or
+> held. Full record: **[D58](../phase-77-the-site-builder-rescue/DEFECTS-THE-SITE-BUILDER-FOUND.md#d58)**.
+>
+> **1. ✅ D58 RE-DERIVED BEFORE IT WAS INHERITED, AND THE RED WAS REAL** — same spec, same line 327,
+> same message. s53's instruction to re-derive was right to give and cost nothing to follow.
+>
+> **2. 🔴 THE STATED FIRST JOB SETTLED IT IN ONE READING, AND THE ANSWER WAS THE HYPOTHESIS D58 HAD
+> EXCLUDED.** Printing arm A's ids gives `prep, withFlag, tasks, write, write, page-9, res`. `tasks`
+> and `res` are both present, so the recorder did not stop writing rows; `page-9` ran and succeeded,
+> so `publishPage`'s graph reached the node. **The id moved.** A probe over the deployed bundle
+> closes the negative half: `/#__cloud__/publishPage` carries exactly one `SetDbModelProperties`,
+> `page-9`, and **no `page-8` exists anywhere in the bundle** — the missing row was never a node.
+>
+> 🔴 **D58 excluded node-id renumbering against the WRONG ARTEFACT, and the exclusion was internally
+> perfect.** It showed `site-builder.content.json`'s `page-*` ids byte-identical across the change —
+> true, and irrelevant, because **this spec never loads that template**. It authors a fresh project
+> through the real MCP door, and *the door rewrites ids on write*; `DEF-004` records the very same
+> thing about this very same graph (`page` → `page-8`) and calls it *"two wrong instruments"*.
+> `SB006_COMPONENTS` is authored first, REL-011c's seam lane gave two bands an `inner` node each, and
+> `page-8` became `page-9`. ✅ **So "unknown how long it has been red" resolves to one commit,
+> `4fbd8cd2`.** ⚠️ **The lesson worth carrying: a control run that reproduces the red proves the red
+> is not YOUR change; it says nothing about which artefact the subject actually reads.** D58 ran that
+> control, correctly, and drew a conclusion one step wider than it supported.
+>
+> **3. ✅ FIXED AS A CLASS.** `bundleIdFor()` resolves an **authored** id through the **deployed**
+> bundle positionally and refuses to guess — a component whose bundled node list is a different
+> length throws rather than returning a plausible id. The assertion names authored ids and asserts
+> the three resolve to **three distinct** deployed ones.
+>
+> | arm | reading |
+> |---|---|
+> | green | **10/10**, and the package **131 suites / 1590 passed, 10 skipped, EXIT=0** |
+> | A — the authored id verbatim (the pre-fix pinning) | **1 red of 10 that all ran**, on `recordedInA.has(id)` |
+> | B — the mapping collapses to index 0 | **1 red of 10 that all ran**, on the cardinality assert |
+>
+> ✅ **The whole-suite number RECONCILES**: D58 recorded 130/131 and 1589 passed; it is now 131/131
+> and 1590 — exactly the one suite and one test, nothing else moved. Source restored md5-identical
+> after each arm. ⚠️ **Swept for siblings: none.** Every other literal `<base>-<n>` id in
+> `nodegx-backend/tests` and `noodl-mcp/tests` belongs to a fixture authoring its own project.
+>
+> **4. 🔴 I REGISTERED A D59 THAT WAS WRONG AND WITHDREW IT BEFORE COMMITTING.** It said nothing
+> typechecks `nodegx-backend/tests`. `tsconfig.tests.json` covers `tests/**/*.ts`, PLAT-004 built it
+> for exactly that reason, and CI runs it at `pr.yml:39`. ⚠️ **What IS true and worth knowing before
+> you try**: the package's own `typecheck` script excludes specs by design, ts-jest runs
+> `isolatedModules: true` so the jest run does **not** type the file, and `tsc` over this ONE spec
+> died `FATAL ERROR: Ineffective mark-compacts` at an **8GB** heap — **exit 134 after 634s, with
+> `error TS` count 0 in the log**. That is the standing "counting error lines reads an OOM as a pass"
+> trap, met head-on. **CI types this change; s54 did not, and does not claim to.**
+>
+> **5. ⚠️ ONLY MY OWN HUNK OF THE P77 REGISTER IS COMMITTED.** That file also carries a peer's
+> uncommitted **D46/D57** hunks — a pathspec commit would have swept them, so mine went in through
+> the index (`git apply --cached` on a split patch) and theirs are **still in the tree, untouched**.
+>
+> ⬜ **WHAT THE NEXT SESSION SHOULD TAKE.** 🔴 **Not a P82 row.** The board re-derived from the task
+> files: REL-001 *Richard runs the publish command*; REL-002c needs **a seam named by him** (close
+> protocol rule 6); REL-004 *Richard pushes*; REL-011c **held under D1**; REL-015's AC9/AC11 are his
+> two links and one tutorial; REL-016 is his call on the dead flag. **Everything else is 🟢.** With
+> D58 gone there is **no unowned, human-independent, buildable row left in this phase** — which is a
+> finding, not a gap: what 0.2.2 is waiting on is Richard, and saying so is more useful than
+> inventing work. ✅ **The nearest live buildable lane is P18** — s89 leaves `Subscribe To Changes`
+> next, then the editor write path. **Re-derive that before starting it.**
+
+
 > ### 🟢 THE CLOCK LANE, 2026-09-05 (s53) — added beside the other lanes, not over them
 >
 > **Two commits: `5c589970` (the stopwatch rows, closed) and `4fbd8cd2` (s52's whole lane,
