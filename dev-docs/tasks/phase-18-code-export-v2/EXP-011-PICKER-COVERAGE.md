@@ -96,7 +96,7 @@ Ranked by *"can you build a normal app without it"*, not by corpus frequency.
     the 2026-09-03 ruling (§50): it is the escape hatch the MCP reaches for, not a niche.
 10. **`Drag`, the component-tree family** — `Component Children`, `Component Stack` and its pair, the
     parent-object family all moved to **Tier 2.8** by §50; `Drag` stays here as its row 13.
-11. **The transports** — `Subscribe To Changes`, `Server-Sent Events` ✅ **§64 (session 88)**, `WebSocket`. **Added by §50**
+11. **The transports** — `Subscribe To Changes`, `Server-Sent Events` ✅ **§64 (session 88)**, `WebSocket` ✅ **§65 (session 89)**. **Added by §50**
     (they were "not a target"). Each is a browser API in a `useEffect`: EventSource on
     `/realtime` plus one subscribe POST; EventSource; WebSocket with reconnect. Real, buildable, and
     the streaming-LLM app is the one every new user builds first.
@@ -9600,7 +9600,7 @@ whole package jest ONCE on the final tree: 76 files (76 on disk), 2778/2778, exi
 
 ### §64.5 What this leaves (owner NONE unless named)
 
-- **`WebSocket`** and **`Subscribe To Changes`** — Tier 3.11 rows 2 and 3, scheduled; the badge spec pins `WebSocket` now.
+- **`WebSocket`** ✅ built session 89 (§65). **`Subscribe To Changes`** — Tier 3.11 row 3, scheduled; the badge spec pins it now.
   Owner **EXP-011**.
 - A **`Headers` object fed by a wire** prints the render local; an authored Headers literal on disk (an object parameter)
   would need the object-literal print the record verbs use — no fixture authors one. Owner NONE.
@@ -9622,3 +9622,164 @@ text/event-stream` and `Cache-Control: no-store`; `open true 2 '' 'Hello, ' 'ope
 still one GET ✓ · **T5** Stop when closed: READ identical (Unchanged, nobody listens) ✓ · **T6** Connect again then Stop: a
 second GET with **no Last-Event-ID** (a fresh Connect is a fresh connection), count `3` (the new connection's), tokens
 `Hello, world!Hello, wor` ✓ · **T7** errs `[]`, no raise ✓. Teardown: 0 listeners on 4364 / 9365 / 8582.
+
+## §65 Tier 3.11 row 2 — `WebSocket`: the streaming table's fifth member, the connection machine and the rebuild policy transcribed (session 89, 2026-09-05)
+
+### §65.0 Design — what the node is on disk, and what that decides (written before a line of code)
+
+`net.noodl.WebSocket` (display name *WebSocket*, category Data, `ssr: client-only`) is `agent/websocket.ts`: a shell over
+`websocket-connection.ts` — `WebSocketConnection` (a state machine `idle → connecting → open → reconnecting → closed | error`;
+an equal-jitter exponential backoff `base · 2^attempt` capped at a maximum and scaled into [50 %, 100 %]; a FIFO send queue
+with three When Disconnected policies — queue, drop, report an error — and a Max Queue Size that refuses the NEWEST; a heartbeat
+that sends application text on an interval, measures the reply as Latency, swallows it, and treats an unanswered one as a dead
+connection; the fatal close codes 1002/1003/1007/1008/1009/1010/1015 never retried; a clean 1000/1001 with Auto Reconnect off
+`closed`, everything else `error` and loud) — plus the node's own policy: `url` / `protocols` / `autoConnect` schedule a
+**rebuild** (a changed identity disposes the connection and reopens where the app still wants one; an unchanged identity does
+nothing, so a Send queued in the same frame survives), every other input is tuning applied in place through `applyConfig` /
+`configure` (a heartbeat interval change restarts the heartbeat at once). `Connect` mints the outcome token at the port and
+nowhere else — auto-connect and rebuild mint none — so a first attempt that dropped and a retry that opened is ONE Done.
+
+The port set on disk (the catalog): 18 inputs — `message` (`*`) the data port that only `send` carries, 14 value ports, the
+three Actions — and 22 outputs: 6 Events (`onOpen`, `onMessage`, `onMessageSent`, `onError`, `onClose`, `onReconnect`), the
+outcome trio + Completed, 12 values (Status: `connectionState`, `connected`, `retryCount`, `lastError`, `queueSize`,
+`droppedCount`, `latency`, `closeCode`, `closeReason`; Data: `received`, `receivedRaw`, `receivedIsBinary`).
+
+**That is the streaming table's shape with the data port back** (§58's `takesData` on one verb, §64's optional data): the node
+joins `STREAM_NODES` as its fifth member (`kind: 'websocket'`, `lib: 'websocket'`), the Message read AT the pulse by the Send
+verb — `socket.send(message.get())` — as the trio's Chunk/Data are. Nothing in `streamPlanOf` / `compileStreamAction` /
+`stream-out` / `stream-action` changed; the `lib` union grew a third member, component.ts's import loop and path ladder took it,
+emitApp ships the file. **The lib imports `./errors` only**: its source type is its own, so a socket alone does not carry the
+trio's 1,000-line module (§64's sse.ts did, for `describeError` / `tryParseJson`).
+
+The hook, `useWebSocket(source, options, on, env)`: `_internal` (connection, config, autoConnect, pendingConnect, received ×3)
+in one ref; `applyOptions` = the setters keyed on presence (`url` a string else `''`, `autoConnect` / `autoReconnect` /
+`jitter` `!!`, `protocols` through `parseProtocols`, the five numbers `Number(v)`, the two heartbeat strings a string else
+`''`, the two enums `|| 'auto'` / `|| 'queue'`), the identity three written to `internal`, the rest through `applyConfig`;
+`getConnection` lazy, rebuilt after a dispose, with the runtime's six callbacks (`onStatus` ⇒ re-render, and the `error`
+state settles the pending Connect as Failure `websocket/connect-failed`; `onOpen` ⇒ On Open, On Reconnect when it is one,
+then Done; `onMessage` ⇒ the three Data outputs written, re-render, On Message; `onError` / `onClose` / `onSent` ⇒ their
+Events) and `...env` last (the seams: a WebSocket constructor, timers, a clock, a random); `rebuild` verbatim; an effect after
+every render applies the options and runs `rebuild` at mount and whenever `url` / `protocols` / `autoConnect` changed (the
+setters fire on delivery); the unmount cleanup is `_onNodeDeleted` (dispose, forget the token). The three verbs: `connect()`
+(settle an earlier one Unchanged, mint, `connect()`), `disconnect()` (its own token; a pending Connect Unchanged; Done when
+something closed else Unchanged), `send(message)` (Failure with the connection's own code — nothing-to-send, not-connected,
+queue-full, encode-failed, send-failed — Unchanged for a policy drop, Done for sent OR queued).
+
+**Refused by name**: the table's own gates, unchanged in wording (B1–B6). Every port translates.
+
+### §65.1 What is emitted
+
+- **`src/emit/websocketLib.ts`** (new) → `src/lib/websocket.ts` (≈1,050 lines): websocket-connection.ts verbatim
+  (`WebSocketConnection`, `nextReconnectDelay`, `isFatalCloseCode`, the codes, the defaults) — two strictness edits for the
+  emitted app's tsconfig (`_config` typed `Required<…>`; the `'WebSocketImpl' in options ? (options.WebSocketImpl ?? null)`
+  seam read, §64.4's lesson applied before the first arm; `(this._socket as WebSocketLike).send(frame)` where the runtime
+  relies on its callers); then the node: `WebSocketOptions` / `Listeners` / `Handle`, `createInternal` (= initialize, **Auto
+  Connect true**), `identityChanged`, `parseProtocols`, `reportOutcome` / `settleConnect`, `getConnection`, `applyConfig`,
+  `rebuild`, `applyOptions`, `teardown`, `useWebSocket`. Generated from a plain source (`websocket-lib-source.ts` +
+  `gen-wslib.py`, the session scratchpad) into the quoted-line-array form — regenerate, never hand-edit.
+- **plan.ts**: `WEBSOCKET_TYPE`; `StreamKind` + `'websocket'`; `lib` + `'websocket'`; the fifth table entry (data `message`,
+  14 config, 3 actions with `send.takesData`, 10 signals in websocket.ts's declaration order, 12 values with `received`
+  maybe-undefined); `OWN_CHAIN_OUTPUTS[WEBSOCKET_TYPE]`; `streamTypeOfKind`'s ladder.
+- **component.ts**: the import loop over three modules, the path ladder, the `websocketLib` flag. **emitApp.ts**:
+  `websocketLibUsed` earns errors.ts and ships the file; never streaming.ts. **Ledger**: the row `translated` with a note,
+  floor **115 → 116** (91.3 %), the comment sentence; 13 pins moved; the two catch-all pins that used `net.noodl.WebSocket`
+  as "a node nothing translates" re-pointed (relation-verbs → `net.noodl.PatternExtractor`, unreported-deferrals → an
+  unwired `RunTasks`, whose own gate says "nothing fires its Do"). **EXP-013's badge spec** pins `SubscribeToChanges` now.
+- **The page** (socket-desk): `const socket = useWebSocket({ label: 'Socket', nodeId: 'socket', componentName: '/Pages/Home' },
+  { url: 'ws://localhost:8583/' }, { onOpen: () => status.set('open'), onClose: () => status.set('closed'), onReconnect: () =>
+  status.set('reconnected'), failure: () => status.set('failed') });` — `socket.connect()` / `socket.disconnect()` /
+  `socket.send(message.get())` on the buttons; `{socket.connectionState}` bare, `{String(socket.connected)}`,
+  `{String(socket.queueSize)}`, `{String(socket.received ?? '')}` (the `*` port, undefined before the first frame),
+  `{socket.receivedRaw}`, `{socket.lastError}` — by declared type.
+
+### §65.2 The fixture — `tests/fixtures/socket-desk`
+
+`Pages/Home`: `socket` (WebSocket, URL `ws://localhost:8583/`, nothing else authored — **so Auto Connect is on**) ← Connect /
+Stop / Send buttons; a Text Input written through to a `message` Variable that feeds `socket.message` — **the live-chat
+shape**; `onOpen` / `onClose` / `onReconnect` / `failure` → four String-fed Set Variables on `status`; Connection State,
+Connected, Queue Size, Received, Received Raw, Last Error and the status each in a Text. **The reverted arm**
+(`probe-reverted.log`, HEAD af752b95): 21 refusals — `logic node (net.noodl.WebSocket)`, the four Set Variables *"trigger
+socket.onOpen is not a rendered element event or a receiver"*, their Strings behind them, every wire into or out of the node
+dropped. **Built**: 15 files, 0 refusals, the shell note alone; the real `tsc` over the app clean (`typecheck-emitted`).
+
+### §65.3 Gates and arms
+
+```
+pkg tsc 0 (after the stitch) · typecheck-emitted socket-desk ✓ (run BEFORE the first arm) · websocket.test.ts 37/37
+  §A the plan and the page (9: incl. A8 an authored Message literal / a bare send(), A9 the input-text refusal) · §B the refused
+  shapes by mutation (6) · §C the lib's text, the module earning (4: errors.ts yes, streaming.ts no; beside an accumulator both)
+  · §D the pure cores under node (5: the backoff incl. equal jitter and the exponent clamp, the fatal codes, parseProtocols,
+  identityChanged, the connection alone) · §E the hook under the harness with a scripted socket and the runtime's timer /
+  clock / random seams (12: auto-connect at mount with no outcome + text/JSON/binary frames; Connect and the replacement;
+  Send's four encodings and the refused empty one; the queue and its three policies + the full-queue refusal; Disconnect
+  ×3; the outage — one Done across a never-opened Connect, the backoff growing across a failed retry and resetting on open,
+  the give-up; Auto Reconnect off incl. the Failure raise; the heartbeat incl. the dead-connection path; the rebuild policy
+  — URL change, tuning in place, the same-parse protocol guard, Auto Connect flips, the deliberately disconnected node;
+  unmount; the setters' coercions ×4; superseded tokens) · §F the ledger (1)
+streaming-trio 60/60 (the catalog-set row grades the fifth member) · sse 35/35 · relation-verbs + unreported-deferrals re-pointed ✓
+export-ledger:check OK 123 translated · picker --check 116/127 (91.3 %) exit 0
+arms (mut.py, mut-summary.txt; sources restored md5-identical after each): 17 armed — 17 KILLED on the first run:
+  M1 the queue flushes before On Open (1 row) · M2 On Reconnect never fires (3) · M3 a queued Send is Unchanged (1) · M4 the
+  give-up never settles the pending Connect (2) · M5 jitter ignored (1) · M6 a URL change re-points instead of rebuilding (1) ·
+  M7 the heartbeat reply delivered as a message (1) · M8 a fatal close code retried (1) · M9 unmount keeps the socket (1) · M10
+  Failure never raises (4) · M11 onReconnect off the signal list (16) · M12 the Send verb carries no data (3) · M13 the hook
+  imported from sse.ts (2) · M14 websocket.ts never shipped (4) · M15 Auto Connect defaults off (9) · M16 a Disconnect with
+  nothing built reports Done (1) · M17 Received is the raw text (1).
+whole package jest ONCE on the final tree: 77 files (77 on disk), 2835/2835, exit 0 · editor tsc 0 (exit 0, empty log — s88's read the same) ·
+  exp-012/013 157/157 · editor test:ci 2943 specs / 5 failures = the known floor (AIX-006 ×4 + SB-017 acceptance 6 "Expected 39 to be
+  38"), seed 16782, HEAD b2d68b51 (a peer's commit on top of af752b95), `.webpack-cache` cleared first, `test-results.json` fresh 18:26;
+  the enforced gate exits 1 on the floor exactly as s88's did
+```
+
+### §65.4 What building it found
+
+1. 🔴 **A text input's value cannot feed a stream's data port directly.** The first built emit refused the node: *"its Message
+   input reads a value that only exists inside a handler"* — a text input's `onTextChanged` resolves to `input-text`, legal
+   only inside that input's own onChange (the exporter's standing rule; §3's form idiom, RECORD-VERBS §3). Every other
+   fixture writes an input through a Variable, and so does this one now; A9 pins the sentence. **Not this row's to change**
+   — the rule is the exporter's, and a wire from a text input into ANY handler-read port meets it — but it is the first place
+   the streaming table meets it, because the trio's data ports were fed by other streams. Owner NONE (registered; the fix
+   would be §4c's "a control's value output anywhere in the component reads its local state" extended to the table's data
+   port, which is a table-wide decision).
+2. ⚠️ **A manual Stop then Connect fires On Reconnect.** `disconnect()` does not dispose the connection, so `getConnection()`
+   returns the same object, whose `_hasEverOpened` is true — the next open is "an open after the first". PREDICTED in
+   `EXPECTED65.md` before the drive (T5 `reconnected`), observed. The runtime does the same; the docs' *"including after a
+   reconnect"* is broader than an outage. E2 pins the replacement case, the drive the Stop/Connect case.
+3. ⚠️ **`_fail` settles the token before it fires On Error** — a Connect with no URL logs `failure, completed, onError`, where
+   the connection's give-up logs `onError, onClose` and a status-settled failure between (`onError, failure, completed,
+   onError, onClose` for a never-opened socket with Auto Reconnect off). All three orders are the runtime's callback order
+   (status first), pinned as E7 / E11.
+4. ⚠️ **The fired-timer trap in the harness**: a timer that has run is not "pending" — the first `pending()` counted it and
+   read a growing backoff where the counter had in fact RESET on the successful open. Fixed in the seam; E6 now shows both:
+   the backoff growing across a failed retry (1000 → 2000) and starting over after an open.
+5. ⚠️ `emit.ts` removes its output directory before writing — a copied `node_modules` inside it goes too; copy after the emit.
+6. ⚠️ The catch-all pins that used `net.noodl.WebSocket` as "a node nothing translates" (relation-verbs ×2, unreported-
+   deferrals ×1) were a countdown, not a control — the third time a Tier 3.11 row moved one (§39 Timer, §59 Hash).
+
+### §65.5 What this leaves (owner NONE unless named)
+
+- **`Subscribe To Changes`** — Tier 3.11 row 3, the last scheduled node; the badge spec pins it. Owner **EXP-011**. When it
+  lands, the badge spec needs a scheduled node that is not being translated, or its pin becomes "no scheduled rows remain".
+- A text input straight into Message (finding 1). Owner NONE.
+- A **binary frame end to end**: the spec sends and receives one under the harness; the drive's fake speaks text only.
+- **The heartbeat against a server that answers**: driven under the harness (E8), not against the fake. Owner NONE.
+- **`wss://` with a subprotocol** the server selects: `protocols` is passed to the constructor (E2); no fake negotiates one.
+- StrictMode in development mounts twice: the cleanup disposes the first connection and the second mount's rebuild reopens —
+  one extra socket in dev only (§64.5's shape). Owner NONE.
+- The hook re-renders on every status change / frame (the runtime's `flagOutputDirty` batch) — a chatty socket re-renders
+  per message, as the runtime does. Owner NONE.
+
+### §65.6 The drive — the built export, headless, against a fake WebSocket server (session 89)
+
+`socket-desk` built (exit 0, 0 `error TS`; the s88 `node_modules` reused — the emitted package.json is identical bar the
+name), `vite preview` 4365, Chrome 9366, `--target=Socket`; `fakews.js` (the repo's `ws`) on 8583 — greets each connection
+`{"kind":"hello","connection":N}`, echoes text as `{"echo":…}`, closes 1011 "kicked" on the text `kick`; every event logged.
+`EXPECTED65.md` first, every row graded: **T1** boot: the page connected at MOUNT with no button pressed (Auto Connect is the
+node's default) — `open true 0 [object Object] {"kind":"hello","connection":1} '' open`, ONE server open, errs `[]` ✓ ·
+**T2** type + Send: the server logged `hello there`, Raw = its echo, Queue `0` ✓ · **T3** Stop: `closed false`, status
+`closed`, the server saw close 1000 `Client disconnect` ✓ · **T4** Send while closed: Queue `1`, no server line ✓ · **T5**
+Connect: server open id 2, the queued message flushed AFTER the open and echoed on connection 2, Queue `0`, **status
+`reconnected`** — the prediction (§65.4 #2) ✓ · **T6** `kick`: the server closed 1011; +300 ms `reconnecting`, status
+`closed`, Error `Connection closed (1011): kicked; reconnecting in 617ms` (jitter inside [500, 1000]) ✓ · **T6b** +1.6 s:
+server open id 3, `open true`, status `reconnected`, Raw the third hello, Error cleared ✓ · **T7** errs `[]`, no raise, no
+console.error ✓. Teardown: 0 listeners on 4365 / 9366 / 8583.
