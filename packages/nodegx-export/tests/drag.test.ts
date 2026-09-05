@@ -71,6 +71,8 @@ const dispositionOf = (source: ExportIR, nodeId: string): string => JSON.stringi
 const HOOK_LINE =
   "const card = useDrag({ label: 'Card', nodeId: 'drag', componentName: '/Pages/Home' }, { axis: 'both', startX: 20, startY: 20, snapX: x, snapXDuration: 200, snapY: 0 }, {";
 const WRAPPER = '<div ref={card.ref} style={card.style} {...card.handlers}>';
+/** The handle's style: the transform, and the fit-content pair that keeps the wrapper the child's box (§63.6 — the drive found a stretched wrapper pinning the X bound). */
+const wrapperStyle = (transform: string) => ({ width: 'fit-content', height: 'fit-content', transform });
 
 // ---------------------------------------------------------------------------------------------------
 describe('§A the fixture, whole — a card in a bounded board, four live reads, three listeners, two snaps', () => {
@@ -245,7 +247,7 @@ class FakeDocument {
 
 type Handle = {
   ref: { current: FakeElement | null };
-  style: { transform: string };
+  style: { width: string; height: string; transform: string };
   handlers: { onMouseDown: (e: unknown) => void; onMouseUp: (e: unknown) => void; onTouchEnd: (e: unknown) => void };
   readonly x: number;
   readonly y: number;
@@ -418,7 +420,7 @@ describe('§B useDrag runs the way Drag.tsx and react-draggable run (hook harnes
   test('B1 mount: Start Drag X/Y as the position, deltas 0, the transform, one native touchstart (passive: false)', () => {
     const h = makeHarness({ axis: 'both', startX: 20, startY: 20 });
     expect(values(h)).toEqual({ x: 20, y: 20, deltaX: 0, deltaY: 0 });
-    expect(h.handle.style).toEqual({ transform: 'translate(20px,20px)' });
+    expect(h.handle.style).toEqual(wrapperStyle('translate(20px,20px)'));
     expect(h.el.count('touchstart')).toBe(1);
     expect(h.el.listenerOptions.get('touchstart')).toEqual({ passive: false });
     expect(h.doc.count('mousemove')).toBe(0);
@@ -447,9 +449,9 @@ describe('§B useDrag runs the way Drag.tsx and react-draggable run (hook harnes
     down(h, 100, 100);
     move(h, 130, 110);
     expect(seen).toEqual([{ x: 50, y: 30, deltaX: 30, deltaY: 10 }]);
-    expect(h.handle.style).toEqual({ transform: 'translate(20px,20px)' }); // the last render's
+    expect(h.handle.style).toEqual(wrapperStyle('translate(20px,20px)')); // the last render's
     h.render();
-    expect(h.handle.style).toEqual({ transform: 'translate(50px,30px)' });
+    expect(h.handle.style).toEqual(wrapperStyle('translate(50px,30px)'));
   });
 
   test('B5 bounds "parent" clamp against the parent\'s inner box and keep the overshoot as slack, so the element does not lag on the way back', () => {
@@ -484,7 +486,7 @@ describe('§B useDrag runs the way Drag.tsx and react-draggable run (hook harnes
     expect(h.doc.count('mousemove')).toBe(0);
     expect(h.doc.count('mouseup')).toBe(0);
     h.render();
-    expect(h.handle.style).toEqual({ transform: 'translate(50px,30px)' });
+    expect(h.handle.style).toEqual(wrapperStyle('translate(50px,30px)'));
     expect(h.doc.body.classes.has('react-draggable-transparent-selection')).toBe(true);
     h.frame(1);
     expect(h.doc.body.classes.has('react-draggable-transparent-selection')).toBe(false);
@@ -499,11 +501,11 @@ describe('§B useDrag runs the way Drag.tsx and react-draggable run (hook harnes
     down(h, 100, 100);
     move(h, 130, 110);
     h.render();
-    expect(h.handle.style).toEqual({ transform: 'translate(50px,20px)' });
+    expect(h.handle.style).toEqual(wrapperStyle('translate(50px,20px)'));
     expect(values(h)).toEqual({ x: 50, y: 30, deltaX: 30, deltaY: 10 });
     up(h, 130, 110);
     h.render();
-    expect(h.handle.style).toEqual({ transform: 'translate(50px,20px)' });
+    expect(h.handle.style).toEqual(wrapperStyle('translate(50px,20px)'));
     expect(h.handle.y).toBe(30);
   });
 
@@ -513,12 +515,12 @@ describe('§B useDrag runs the way Drag.tsx and react-draggable run (hook harnes
     move(h, 130, 110);
     up(h, 130, 110);
     h.render();
-    expect(h.handle.style).toEqual({ transform: 'translate(50px,20px)' });
+    expect(h.handle.style).toEqual(wrapperStyle('translate(50px,20px)'));
     const odd = makeHarness({ axis: 'diagonal', startX: 20, startY: 20 });
     down(odd, 100, 100);
     move(odd, 130, 110);
     odd.render();
-    expect(odd.handle.style).toEqual({ transform: 'translate(20px,20px)' });
+    expect(odd.handle.style).toEqual(wrapperStyle('translate(20px,20px)'));
     expect(values(odd)).toEqual({ x: 50, y: 30, deltaX: 30, deltaY: 10 });
   });
 
@@ -576,7 +578,7 @@ describe('§B useDrag runs the way Drag.tsx and react-draggable run (hook harnes
     expect(h.handle.x).toBe(100);
     expect(h.pendingFrames()).toBe(0);
     h.render();
-    expect(h.handle.style).toEqual({ transform: 'translate(100px,20px)' });
+    expect(h.handle.style).toEqual(wrapperStyle('translate(100px,20px)'));
     expect(seen).toEqual(['done']);
   });
 
@@ -657,7 +659,7 @@ describe('§B useDrag runs the way Drag.tsx and react-draggable run (hook harnes
     const h = makeHarness({ axis: 'both', startX: 20, startY: 20 });
     h.render({ axis: 'both', startX: 60, startY: 20 });
     expect(values(h)).toEqual({ x: 60, y: 20, deltaX: 40, deltaY: 0 });
-    expect(h.handle.style).toEqual({ transform: 'translate(60px,20px)' });
+    expect(h.handle.style).toEqual(wrapperStyle('translate(60px,20px)'));
   });
 
   test('B19 unmount: every listener off, a running snap stopped (NDA-012 H1)', () => {
@@ -918,5 +920,14 @@ describe('§F the findings pinned', () => {
     expect(plan.dispositions['setDragging']).toEqual({ kind: 'collapsed', into: 'drag' });
     expect(plan.dispositions['draggingLabel']?.kind).toBe('collapsed');
     expect(dispositionOf(baseIr, 'homeX')).toBeDefined();
+  });
+
+  test('F3 🔴 the wrapper is the child\'s box — `width`/`height: fit-content` (the §63.6 drive: an unstyled flex item stretched to the board\'s 320 px, so `bounds: \'parent\'` measured 320 − 320 and pinned x at −offsetLeft; the interpreter drags the 80 px card itself)', () => {
+    const lib = app.files['src/lib/drag.ts'];
+    expect(lib).toContain("style: { width: 'fit-content', height: 'fit-content', transform: `translate(${transformX}px,${transformY}px)` }");
+    expect(lib).toContain('an unstyled flex item would STRETCH');
+    // The page prints the handle's style verbatim — nothing else sizes the wrapper (no class, no inline width).
+    expect(app.files['src/pages/Home.tsx']).toContain(WRAPPER);
+    expect(app.files['src/pages/Home.tsx']).not.toMatch(/style=\{\{[^}]*width/);
   });
 });
