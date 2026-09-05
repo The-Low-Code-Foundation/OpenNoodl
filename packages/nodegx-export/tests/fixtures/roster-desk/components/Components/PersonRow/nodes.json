@@ -1,0 +1,117 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "9e3b7c15-4a62-4f8d-a1c9-5d2f8e7b6a43",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "rowGroup",
+      "type": "Group",
+      "label": "Person row",
+      "children": [
+        "nameText",
+        "idText",
+        "removeButton"
+      ],
+      "parameters": {
+        "flexDirection": "row",
+        "columnGap": "var(--space-3)",
+        "alignItems": "center"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "nameText",
+      "type": "Text",
+      "label": "Name",
+      "parent": "rowGroup",
+      "parameters": {
+        "fontSize": "var(--text-base)",
+        "color": "var(--foreground)"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "idText",
+      "type": "Text",
+      "label": "Item id",
+      "parent": "rowGroup",
+      "parameters": {
+        "fontSize": "var(--text-xs)",
+        "color": "var(--muted-foreground)"
+      },
+      "x": 100,
+      "y": 280
+    },
+    {
+      "id": "removeButton",
+      "type": "net.noodl.controls.button",
+      "label": "Remove",
+      "parent": "rowGroup",
+      "parameters": {
+        "label": "Remove",
+        "backgroundColor": "var(--destructive)",
+        "color": "var(--destructive-foreground)",
+        "borderRadius": "var(--radius-full)",
+        "paddingLeft": "var(--space-4)",
+        "paddingRight": "var(--space-4)",
+        "paddingTop": "var(--space-2)",
+        "paddingBottom": "var(--space-2)",
+        "sizeMode": "contentSize"
+      },
+      "x": 100,
+      "y": 400
+    },
+    {
+      "id": "rowInputs",
+      "type": "Component Inputs",
+      "label": "Row properties",
+      "ports": [
+        {
+          "name": "name",
+          "plug": "output",
+          "type": "string",
+          "index": 0
+        }
+      ],
+      "x": 350,
+      "y": 160
+    },
+    {
+      "id": "rowItem",
+      "type": "For Each Actions",
+      "label": "This row",
+      "parameters": {},
+      "x": 350,
+      "y": 280
+    },
+    {
+      "id": "setLastAdded",
+      "type": "Set Variable",
+      "label": "Remember the last row added",
+      "parameters": {
+        "name": "lastAdded"
+      },
+      "x": 600,
+      "y": 280
+    },
+    {
+      "id": "rowOutputs",
+      "type": "Component Outputs",
+      "label": "Row outputs",
+      "ports": [
+        {
+          "name": "removed",
+          "plug": "input",
+          "type": "signal"
+        }
+      ],
+      "x": 350,
+      "y": 400
+    }
+  ],
+  "visualRoots": [
+    "rowGroup"
+  ]
+}
