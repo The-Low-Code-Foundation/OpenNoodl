@@ -468,5 +468,9 @@ two-arm shape — 55 rows, 15/15 arms. Merge-found: three specs (and a fourth af
 `net.noodl.Hash` as "a node with no rule" — re-pointed to Pattern Extractor; a `x !== undefined && 'defer' in x`
 narrowing typed in the package and not in the editor's non-strict tsc (EXP-012's trap, third recurrence) — split.
 Gates on the merged tree: pkg tsc 0 · jest 71 files (71 on disk) 2443 · editor tsc 0 · exp-012/013 157/157 · ledger OK
-112 translated · picker 105 floor 105 · editor `test:ci` 2943 specs, 4 failures = AIX-006 ×4 by name (the known floor; seed 75372, HEAD a94c8394, fresh `tests/test-results.json`). Not driven this session (three rows, one box, five peer
-sessions): the editor write path and a built app for `roster-desk` / `stream-desk` / `utility-desk` are owed.
+112 translated · picker 105 floor 105 · editor `test:ci` 2943 specs, 4 failures = AIX-006 ×4 by name (the known floor; seed 75372, HEAD a94c8394, fresh `tests/test-results.json`). Driven once: the BUILT `utility-desk` export (npm install against the published core, `tsc -b` + vite 0, headless
+Chrome) 6/6 rows against `EXPECTED20-drive.md` — SHA-256 of "" and of "abc" at the known vectors, the Done chain's Variable
+following, two distinct 22-char base64url nonces, the viewport off `innerWidth`/`innerHeight`, zero console errors. The BUILT `stream-desk` export likewise 10/10 rows
+against `EXPECTED21-drive.md` (the retained-chunk re-parse, the parse-failed line on the channel, the accumulator's split,
+the buffer's drop and flush). The BUILT `roster-desk` 2/2 (three rows with their Item Ids, `lastAdded` = the last row's mount,
+the relayed Remove). Owed: the editor write path only.

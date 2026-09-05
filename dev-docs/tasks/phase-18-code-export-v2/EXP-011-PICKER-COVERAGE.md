@@ -8430,3 +8430,39 @@ NOT run (the orchestrator's, after merging): editor tsc, editor test:ci, any dri
 - The runtime's SSR guard on Screen Resolution is not transcribed (a Vite SPA has no server render); outputs typed `number`.
 - The two crypto verbs and the viewport hook are **not driven** in a built app (the orchestrator runs drives after merging). The
   libs are graded under node against the real WebCrypto (§B, 13 rows) and a fake window (§C, 4 rows).
+
+### §59.6 The drive — the built export, headless (session 85, the orchestrator)
+
+`emitApp` over `tests/fixtures/utility-desk` → 16 files, 0 refusals; `npm install` against the published
+`@nodegx/core` 0.1.0; `tsc -b && vite build` 0; `vite preview` on :4320 under a headless Chrome (1280×800) on CDP
+:9335. `EXPECTED20-drive.md` written first, six rows, six held: the boot column empty with the viewport at
+`1280 / 713 / 1.7952…` (the window's 800 includes the browser's own frame — the hook reads `innerHeight`, as
+`screenresolution.ts` does); *Hash it* on an empty input prints SHA-256("") `e3b0c442…b855` in both the node's Digest
+and the Done chain's Variable (the runtime's `value || ''`); "abc" prints `ba7816bf…15ad` in both; *New nonce* twice
+gives two distinct 22-character base64url values; zero console errors throughout. Servers torn down by pid the
+moment the last row was read. `stream-desk` and `roster-desk` are not yet driven built, and the editor's write path
+is not yet driven for any of the three.
+
+### §58.6 The drive — the built export, headless (session 85, the orchestrator; recorded after §59.6)
+
+`emitApp` over `tests/fixtures/stream-desk` → 15 files, 0 refusals; `npm install`, `tsc -b && vite build` 0; `vite
+preview` on :4321 under a headless Chrome on CDP :9336. `EXPECTED21-drive.md` written first from `doParse` /
+`addChunk` / `addItem`+`doFlush`, ten rows, ten held: boot all-empty; *Load A* + *Parse* leaves 17 pending characters
+and no value (Success is narrower — no signal, status stays empty); *Load B* + *Parse* completes two NDJSON lines →
+`[Ada, Bob]`, count 2, `isComplete` true, status "parsed"; **a bare *Parse* re-appends the retained chunk** (§58.4's
+trap, now seen in a browser): `da"}` fails and line 2 parses, so Values is THIS parse's `[Bob]`, count 3, the Error
+row `Line did not parse as JSON: Unexpected token 'd'…`, and ONE console line on the channel —
+`net.noodl.JSONStreamParser (/Pages/Home): … [json-stream-parser/parse-failed]` with the node's provenance; *Clear*
+empties values, count and error; the accumulator splits `Hello, wor` + `ld|Bye|` into two messages (accumulated "",
+last "Bye", status "message"); four *Push tick* against `maxSize 3` reads size 3 / dropped 1; *Flush* hands over
+`["tick","tick","tick"]`, count 1, status "flushed"; an empty *Flush* changes nothing. Servers torn down by pid.
+
+### §57.6 The drive — the built export, headless (session 85, the orchestrator; recorded after §58.6)
+
+`emitApp` over `tests/fixtures/roster-desk` → 15 files, 0 refusals; installed, `tsc -b && vite build` 0; `vite preview`
+on :4322 under a headless Chrome on CDP :9337. `EXPECTED22-drive.md` first, two rows, two held: the three rows print
+name and Item Id (`Ada/p1`, `Grace/p2`, `Linus/p3`) and the page's `lastAdded` Variable reads `p3` — every row's
+Added ran once on mount, in order, the last Set Variable winning as `signalAdded` per row does in `foreach.tsx`; the
+second row's *Remove* sets the page Variable to "Removed a person." and deletes nothing, which is what the fixture
+wires (§57.2 — the list is static; the exit handshake stays refused). Zero console errors. Servers torn down by pid.
+

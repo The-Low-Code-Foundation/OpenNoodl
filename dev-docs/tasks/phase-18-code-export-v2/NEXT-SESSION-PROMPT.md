@@ -1,4 +1,4 @@
-# Next session — §57 + §58 + §59 are 🟢 (session 85, 2026-09-05): picker 105/127 (82.7%). Next = EXP-011 Tier 2.8 row 10, the component-object trio — and the three drives session 85 did not run
+# Next session — §57 + §58 + §59 are 🟢 (session 85, 2026-09-05): picker 105/127 (82.7%). Next = EXP-011 Tier 2.8 row 10, the component-object trio — and the one drive session 85 did not run (the editor write path)
 
 ## 🔴 Read this first — Richard, 2026-09-02: *"Stop fucking up the CPU."*
 
@@ -45,11 +45,13 @@ jest; the orchestrator ran the editor tsc and `test:ci` alone, after merging. Fi
 
 ## 🔴 Do this next
 
-**First, the three drives session 85 owes** (the brief forbade drives from the agents; the box had no room for them after):
-the editor write path on ONE of the three fixtures (badge gone from the three cards, pre-flight "everything translates",
+**First, the one drive session 85 still owes** (the brief forbade drives from the agents; the orchestrator drove all three BUILT apps):
+the editor write path on ONE of the three fixtures (badge gone from the seven cards, pre-flight "everything translates",
 files byte-identical to `emitApp`; instruments in the s84 scratchpad `a2aa95be-…`: `drive19.sh`/`open19.js`/
-`patchfs19.js`/`compare19.ts`), and a BUILT app for `utility-desk` (headless Chrome: SHA-256 of a typed string, Random
-Bytes on a click, the viewport numbers) and `stream-desk` (chunks through the accumulator and the parser). Then
+`patchfs19.js`/`compare19.ts`), — that is all. `utility-desk` (6/6), `stream-desk` (10/10) and `roster-desk` (2/2) WERE driven built (s85 scratchpad
+`3b1e55b7-…`: `emit20.ts <fixture> <out>`, `EXPECTED20/21/22-drive.md`, `app20-read.js`, `drive20/21/22-app.log`,
+`drive20/21/22-out/` installed + built — the recipe: export, `npm install`, `npm run build`, `vite preview --port`,
+headless Chrome `--remote-debugging-port`, `NOODL_REMOTE_DEBUG_PORT=<port> npm run -s cdp -- click/eval --target=<title word>`). Then
 **EXP-011 Tier 2.8 row 10**: `Set Component Object Properties` (own store = local state), `Parent Component Object` +
 `Set Parent Component Object Properties` (React context). Read §47 (the named Object) and §16.2 first, then write §60.0.
 
