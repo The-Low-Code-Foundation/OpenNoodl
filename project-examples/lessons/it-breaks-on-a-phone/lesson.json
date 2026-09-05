@@ -1,0 +1,125 @@
+{
+  "title": "It breaks on a phone",
+  "description": "The card looks right on your screen and wrong on a phone. A fixed width is a promise you cannot keep — width gets negotiated with a limit, a share and a breakpoint instead.",
+  "format": "noodl-lesson@1",
+  "steps": [
+    {
+      "kind": "popup",
+      "title": "What breaks, and why",
+      "body": "## It breaks on a phone\n\nYour card looks right. Open the same page on a phone and it will not — and the reason is not that phones are small. It is that nothing on that page has been told **how to share the width it is given**.\n\nIn this lesson you will add a row of three things underneath your creature — `Feed`, `Play` and `Sleep` — and make that row behave: three columns across on a laptop, stacked one above the other on a phone. Nothing gets positioned by hand, and nothing gets measured in a number that cannot change.\n\nYou will finish with the one habit that separates a layout which survives a phone from one that does not: **give a box a limit, not a size.**"
+    },
+    {
+      "title": "Give the row its own box",
+      "body": "Add a **Group** node inside `Page shell`, underneath `Card`, and rename it `Board`. Then set three of its properties:\n\n- **Size Mode** to **Content Height**\n- **Max Width** to `560`, with its unit set to **px**\n- **Pad Left** and **Pad Right** to `16`\n\nThat is the whole idea of the lesson in one node. **Content Height** says *be as tall as whatever is inside you*, and leaves the width alone — so the Board takes all the width it is offered. **Max Width** then says *and stop at 560*. That is a limit rather than a size: on a laptop the Board is 560 across, on a phone it is as wide as the phone, and you did not write two layouts to get that.",
+      "detail": "All three properties are in the right-hand panel when `Board` is selected. **Size Mode** is in the **Dimensions** group, **Max Width** is in **Dimension Constraints**, and the two padding fields are in **Margin and padding**.\n\n**Max Width** has a unit dropdown beside the number, and it starts on `%` — so typing `560` on its own means *560 per cent of the parent*, which is not what you want here. Pick `px` from the dropdown, or type `560px` and the field will follow you.\n\nThe padding is not decoration. In a moment the Board will hold a **Columns** node, which draws the gaps between its columns by hanging over its own edges — and with nothing to hang into, those edges get cut off at the side of a phone. Any amount will do; `16` is what the answer uses.\n\nIf the Board swallows the whole page, **Size Mode** is still on **Explicit** — that is the 100% × 100% default the last lesson warned about.",
+      "completeWhen": [
+        {
+          "node": "/Pages/Home:#Home:#Page shell:#Board",
+          "hasType": "Group"
+        },
+        {
+          "node": "/Pages/Home:#Home:#Page shell:#Board",
+          "paramsEqual": {
+            "sizeMode": "contentHeight",
+            "maxWidth": {
+              "value": 560,
+              "unit": "px"
+            }
+          }
+        },
+        {
+          "node": "/Pages/Home:#Home:#Page shell:#Board",
+          "hasParams": [
+            "paddingLeft",
+            "paddingRight"
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Add the columns",
+      "body": "Add a **Columns** node inside `Board`, and rename it `Care`.\n\nA Columns node does one job: it takes its children and lays them out side by side in columns. It is also the only node here that can change *how many* columns there are at different widths, which is the reason this lesson uses one. Nothing will look any different yet — it has no children.",
+      "detail": "Type `columns` into the node picker to find it. Drop it onto `Board` rather than onto empty canvas, the same way `Card` went inside `Page shell` last lesson.",
+      "completeWhen": [
+        {
+          "node": "/Pages/Home:#Home:#Page shell:#Board:#Care",
+          "hasType": "net.noodl.visual.columns"
+        }
+      ]
+    },
+    {
+      "title": "Put three things in it",
+      "body": "Add three **Text** nodes inside `Care`, and name them `Feed`, `Play` and `Sleep`. Type something into each one's **Text** property.\n\nThey will go side by side straight away, and the middle one will be wider than the other two. That is not a mistake — it is a Columns node's default layout, and the next step turns it from something you inherited into something you chose.",
+      "detail": "Rename a node by double-clicking its name in the tree. The words you type into **Text** can be anything at all — the lesson checks that each one says something, not what it says. The three *names* do matter, because the names are how the lesson finds them.",
+      "completeWhen": [
+        {
+          "node": "/Pages/Home:#Home:#Page shell:#Board:#Care:#Feed",
+          "hasType": "Text"
+        },
+        {
+          "node": "/Pages/Home:#Home:#Page shell:#Board:#Care:#Feed",
+          "hasParams": [
+            "text"
+          ]
+        },
+        {
+          "node": "/Pages/Home:#Home:#Page shell:#Board:#Care:#Play",
+          "hasType": "Text"
+        },
+        {
+          "node": "/Pages/Home:#Home:#Page shell:#Board:#Care:#Play",
+          "hasParams": [
+            "text"
+          ]
+        },
+        {
+          "node": "/Pages/Home:#Home:#Page shell:#Board:#Care:#Sleep",
+          "hasType": "Text"
+        },
+        {
+          "node": "/Pages/Home:#Home:#Page shell:#Board:#Care:#Sleep",
+          "hasParams": [
+            "text"
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Say how many columns, and how wide",
+      "body": "Select `Care` and set its **Layout String** to `1 1 1`.\n\nA layout string is the entire column arrangement written on one line: **the count of numbers is the count of columns, and each number is that column's share of the width.** So `1 1 1` is three equal columns. `1 2 1` — what you have been looking at, because it is the default — is three columns with a double-width one in the middle. `2 1` would be two columns, the first twice the width of the second.\n\nNotice there is not a pixel anywhere in that. Shares divide up whatever width turns out to be available. A pixel cannot.",
+      "detail": "**Layout String** is in the **Layout Settings** group. The numbers are separated by spaces, not commas.",
+      "completeWhen": [
+        {
+          "node": "/Pages/Home:#Home:#Page shell:#Board:#Care",
+          "paramsEqual": {
+            "layoutString": "1 1 1"
+          }
+        }
+      ]
+    },
+    {
+      "title": "Make it fold",
+      "body": "Still on `Care`, set **Small Below** to `480` and **Small Layout** to `1`.\n\nRead that pair as one sentence: *below 480, use this layout instead.* And `1` is a layout string with a single number in it — one column. Your row now holds two layouts and swaps between them without being asked.\n\nOne thing worth knowing, because it catches nearly everybody: the width it measures is the **Columns node's own width, not the screen's**. Inside a 560-wide Board with padding down either side, the strip is about 528 across on a laptop and about 358 on a phone — so 480 is the number that falls between the two.",
+      "detail": "Both are in the **Breakpoints** group. **Medium Below** and **Medium Layout**, just above them, are the same pair again for a width in between; you do not need them here.\n\nTo watch it happen, drag the edge of the preview window in and out. The row goes from three across to one above the other as it passes the threshold, and back again.",
+      "completeWhen": [
+        {
+          "node": "/Pages/Home:#Home:#Page shell:#Board:#Care",
+          "paramsEqual": {
+            "smallBreakpoint": {
+              "value": 480,
+              "unit": "px"
+            },
+            "smallLayout": "1"
+          }
+        }
+      ]
+    },
+    {
+      "kind": "popup",
+      "title": "What you just learned",
+      "body": "You wrote a layout that survives a screen you have never seen.\n\nThree ideas did that, and not one of them is about phones:\n\n- **A limit is not a size.** `Board` never had a width. It had a *maximum*, and took whatever it was given up to that. A box with a width written into it is a promise about a screen you cannot see.\n- **Shares divide; pixels do not.** `1 1 1` means three equal columns of whatever width arrives. It is equally correct at 528 across and at 358.\n- **A layout is allowed more than one answer.** **Small Below** and **Small Layout** are a second answer with a condition attached, and the box picks between them by measuring itself.\n\nYour creature now has a row of things to do, and not one of them does anything — `Feed` is a word, not a button. That is the next lesson."
+    }
+  ],
+  "authoredBy": "ai",
+  "completionBadge": "Holds Its Shape"
+}
