@@ -1095,27 +1095,183 @@ describe('SB-005: the admin panel, through the MCP door', () => {
     expect(byOutcome).toEqual(['done', 'done', 'done', 'failure', 'failure', 'failure']);
   });
 
-  it('AC1: the status is a pill whose colour is derived, not authored per row', () => {
+  it('AC1: the status colour is derived, not authored per row', () => {
     const row = written['Admin/PageRow'];
     const status = byType(row, 'JavaScriptFunction').find((n) => String(n.parameters?.functionScript).includes('Published'))!;
-    const pill = byLabel(row, 'Group', 'Status pill');
+    const dot = byLabel(row, 'Group', 'Status dot');
     const text = byLabel(row, 'Text', 'Draft or published');
 
     const wired = (toId: string, port: string) =>
       row.wires.find((w) => w.fromId === status.id && w.toId === toId && w.toProperty === port);
-    expect(wired(pill.id, 'backgroundColor')?.fromProperty).toBe('out-pillBackground');
-    expect(wired(text.id, 'color')?.fromProperty).toBe('out-pillColor');
+    // 🔴 REL-011c seam 2 — the derivation is unchanged and the NODE it paints is
+    // not. The ports were RENAMED (`pillBackground` → `dotColor`) rather than
+    // re-pointed, so this assertion fails loudly against the old graph instead of
+    // reading a port whose name no longer describes what it does.
+    expect(wired(dot.id, 'backgroundColor')?.fromProperty).toBe('out-dotColor');
+    expect(wired(text.id, 'color')?.fromProperty).toBe('out-labelColor');
     expect(wired(text.id, 'text')?.fromProperty).toBe('out-label');
 
     // SB-018 (3): both ports are ALSO authored, so a draft never flashes the
     // published colour before the function first publishes.
-    expect(pill.parameters?.backgroundColor).toBe('var(--accent)');
+    expect(dot.parameters?.backgroundColor).toBe('var(--muted-foreground)');
     expect(text.parameters?.text).toBe('Draft');
 
     // 🔴 SBR-004 §9.2: an explicit `true` survives the NDA-017 migration, an
     // absent key does not — and this node's control signal is exactly what that
     // migration keys on.
     expect(status.parameters?.['runOnChange-in-published']).toBe(true);
+  });
+
+  /**
+   * 🔴 **REL-011c seam 2 — the ORDER OF LOUDNESS, gated.**
+   *
+   * Richard ruled `/admin/pages` SHITTY and [REL-011 §9.1] settled that the row
+   * idiom is the product's own, not the look harness's. The defect was not any
+   * one colour: it was that the loudest element in the row (`Published`, a solid
+   * filled block) is the one thing a person cannot click, while the two things
+   * they can were identical bordered chips.
+   *
+   * ⚠️ **A screenshot cannot hold this and neither can a colour census** — every
+   * value involved was already a token, and `sbr012RawColourGate` was green
+   * throughout. What is asserted here is the RANKING: exactly one filled control
+   * per row, and the status carrying no fill at all.
+   *
+   * The mutant below is the regression that would actually happen: somebody
+   * gives the status a background again "so it reads as a badge", every other
+   * gate stays green, and the seam comes back.
+   */
+  /**
+   * 🔴 **"Filled" is the wrong predicate and the first draft of this spec used
+   * it.** `SECONDARY_BUTTON`'s ground is `var(--surface)` — a real
+   * `backgroundColor` — so *any non-transparent background* counted the menu's
+   * two quiet chips as loud, and the spec read `['Duplicate','Edit','Publish',
+   * 'Unpublish']` where it expected `['Edit']`. That is not a bug in the
+   * template; it is a predicate that measures SOME property (does a background
+   * exist?) rather than the one the seam is about (does it SHOUT?).
+   *
+   * A control is loud when its ground is a brand colour. `--surface` is the
+   * ground the admin page is already painted in, so a chip wearing it is a
+   * border with a label inside, which is exactly what it looks like.
+   */
+  const LOUD_GROUNDS = ['var(--primary)', 'var(--accent)', 'var(--destructive)'];
+
+  /**
+   * 🔴 **Scoped to the ROW, and the exclusion is named rather than silent.**
+   * `menu` is a popover that is `mounted: false` until someone presses `More`;
+   * its composition is SBR-006 §2's and Richard ruled on the row as it draws.
+   * Taking the whole component's buttons would assert about a surface that was
+   * never in the picture — and, worse, would pass or fail for reasons in a
+   * different design decision.
+   *
+   * Direct children of `row` is the right cut because a regression that fills
+   * `More` lands there, not in the menu.
+   */
+  const loudness = (component: Written) => {
+    const cell = byLabel(component, 'Group', 'Status pill');
+    const rowNode = component.graph.nodes.find((n) => n.children?.includes(cell.id))!;
+    const inRow = new Set(rowNode.children ?? []);
+    const buttons = byType(component, 'net.noodl.controls.button').filter((b) => inRow.has(b.id));
+    const loud = buttons.filter((b) => LOUD_GROUNDS.includes(String(b.parameters?.backgroundColor ?? '')));
+    return {
+      statusFill: cell.parameters?.backgroundColor,
+      statusRadius: cell.parameters?.borderRadius,
+      statusPadding: ['paddingTop', 'paddingBottom', 'paddingLeft', 'paddingRight'].filter(
+        (k) => cell.parameters?.[k] !== undefined
+      ),
+      /** Every button drawn in the row, loud or not — asserted so an empty `loud` cannot mean an empty scope. */
+      considered: buttons.map((b) => String(b.label)).sort(),
+      loud: loud.map((b) => String(b.label)).sort()
+    };
+  };
+
+  it('AC1 seam 2: the status carries no fill, and the row has exactly one filled control', () => {
+    const row = written['Admin/PageRow'];
+    const read = loudness(row);
+
+    // The status cell is a bare row now — no ground, no radius, no padding. All
+    // three together, because dropping the background and keeping the padded
+    // rounded box leaves the same shape in a different colour.
+    expect(read.statusFill).toBeUndefined();
+    expect(read.statusRadius).toBeUndefined();
+    expect(read.statusPadding).toEqual([]);
+
+    // 🔴 The scope FIRST. `loud: []` is also what an empty population reads, and
+    // an empty population is what a renamed id or a moved child would produce —
+    // the gate would go quiet exactly when the row stopped being what it says.
+    expect(read.considered).toEqual(['Edit', 'More actions']);
+
+    // 🔴 By NAME, not by count: `expect(loud).toHaveLength(1)` is satisfied by
+    // the wrong button being the loud one, which is the same defect mirrored.
+    expect(read.loud).toEqual(['Edit']);
+
+    // The dot is what carries the state, and it must be an explicit box or a
+    // Group takes `height: 100%` and draws a bar the height of the row.
+    const dot = byLabel(row, 'Group', 'Status dot');
+    expect(dot.parameters?.sizeMode).toBe('explicit');
+    expect(dot.parameters?.width).toBe('var(--space-2)');
+    expect(dot.parameters?.height).toBe('var(--space-2)');
+    expect(dot.parameters?.borderRadius).toBe('var(--radius-full)');
+  });
+
+  it('AC1 seam 2 MUTANT: re-inflating the status to a filled pill reds this and nothing else', () => {
+    const mutant = clone(written['Admin/PageRow']);
+    byLabel(mutant, 'Group', 'Status pill').parameters!.backgroundColor = 'var(--accent)';
+    expect(loudness(mutant).statusFill).toBe('var(--accent)');
+
+    // The control that makes the mutant mean something: the SHIPPED graph reads
+    // undefined for the same expression, so this is a real difference and not a
+    // predicate that returns undefined for everything.
+    expect(loudness(written['Admin/PageRow']).statusFill).toBeUndefined();
+  });
+
+  it('AC1 seam 2 MUTANT: making `More` a second loud control reds it by name', () => {
+    const mutant = clone(written['Admin/PageRow']);
+    byLabel(mutant, 'net.noodl.controls.button', 'More actions').parameters!.backgroundColor = 'var(--primary)';
+    expect(loudness(mutant).loud).toEqual(['Edit', 'More actions']);
+  });
+
+  /**
+   * ⚠️ The control on `LOUD_GROUNDS` itself. `--surface` is deliberately NOT a
+   * loud ground, and if it were, this whole family would red for the menu chips
+   * rather than for the seam — which is the failure the first draft actually had.
+   */
+  it('AC1 seam 2 CONTROL: a `--surface` ground is not loud, and that is why the menu is quiet', () => {
+    const mutant = clone(written['Admin/PageRow']);
+    byLabel(mutant, 'net.noodl.controls.button', 'More actions').parameters!.backgroundColor = 'var(--surface)';
+    expect(loudness(mutant).loud).toEqual(['Edit']);
+    expect(loudness(mutant).considered).toEqual(['Edit', 'More actions']);
+  });
+
+  /**
+   * 🔴 **The second copy, and it is the reason this spec exists at all.**
+   * `/Pages/PageEditor` carries an identical status cell fed by an identical
+   * `status` function. Demoting one and not the other renders the same fact two
+   * ways inside one admin panel, and NO gate above would have seen it — each
+   * copy is internally consistent, so both would pass their own assertions.
+   */
+  it('AC1 seam 2: the page editor\'s copy was demoted too, and matches the list', () => {
+    const editor = written['Pages/PageEditor'];
+    const read = loudness(editor);
+    expect(read.statusFill).toBeUndefined();
+    expect(read.statusRadius).toBeUndefined();
+    expect(read.statusPadding).toEqual([]);
+
+    const status = byType(editor, 'JavaScriptFunction').find((n) => String(n.parameters?.functionScript).includes('Published'))!;
+    const dot = byLabel(editor, 'Group', 'Status dot');
+    const text = byLabel(editor, 'Text', 'Draft or published');
+    const wired = (toId: string, port: string) =>
+      editor.wires.find((w) => w.fromId === status.id && w.toId === toId && w.toProperty === port);
+    expect(wired(dot.id, 'backgroundColor')?.fromProperty).toBe('out-dotColor');
+    expect(wired(text.id, 'color')?.fromProperty).toBe('out-labelColor');
+
+    // 🔴 The two `status` functions are duplicated on purpose (four lines of
+    // string arithmetic against a `Component Inputs` hop), so the thing worth
+    // pinning is that they still agree. A drift here is exactly what "a second
+    // copy of a palette drifts silently" names.
+    const rowStatus = byType(written['Admin/PageRow'], 'JavaScriptFunction').find((n) =>
+      String(n.parameters?.functionScript).includes('Published')
+    )!;
+    expect(status.parameters?.functionScript).toBe(rowStatus.parameters?.functionScript);
   });
 
   it('§4: the refresh wire still names the row output it is derived from', () => {

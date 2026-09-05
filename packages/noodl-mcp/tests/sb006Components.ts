@@ -776,21 +776,54 @@ export const HERO_SECTION_NODES = [
     id: 'band',
     type: 'Group',
     label: 'Hero band',
+    // 🔴 **REL-011c seam 5 — this band now runs the window**, because
+    // `heroWrap` states no measure. Three consequences, all deliberate:
+    //
+    // 1. **`borderRadius` is gone.** A band that reaches both edges of the window
+    //    with rounded corners reads as a card that has overflowed, not as a
+    //    photograph. Radius belongs to boxes that have a visible edge.
+    // 2. **The vertical padding roughly doubles at the top** (`--space-16` →
+    //    `--space-24`). At the old value, on a page whose blocks were all one
+    //    width, the hero drew as a ~140px letterbox — a banner rather than an
+    //    arrival. It is the first thing on the page and it now takes the room.
+    // 3. **The gutter and the gap move to `inner`**, which is what holds the
+    //    words at the reading measure while the picture behind them does not.
     parameters: {
       ...STACKED_IN_A_COLUMN,
       flexDirection: 'column',
-      rowGap: 'var(--space-3)',
-      paddingTop: 'var(--space-16)',
-      paddingBottom: 'var(--space-8)',
-      paddingLeft: 'var(--space-6)',
-      paddingRight: 'var(--space-6)',
+      alignItems: 'center',
+      paddingTop: 'var(--space-24)',
+      paddingBottom: 'var(--space-16)',
       // The gradient paints OVER the picture — one declaration, gradient first.
       backgroundGradient: 'var(--gradient-scrim)',
       backgroundSize: 'cover',
       backgroundPosition: 'center',
       // The ground under the scrim when the section carries no photograph.
-      backgroundColor: 'var(--foreground)',
-      borderRadius: 'var(--radius-md)'
+      backgroundColor: 'var(--foreground)'
+    },
+    children: ['inner']
+  },
+  {
+    id: 'inner',
+    type: 'Group',
+    label: 'Hero content',
+    parent: 'band',
+    // 🔴 **A node, not a parameter, and that is the whole reason a band can
+    // bleed at all.** The ground has to reach the window and the words must not:
+    // one box cannot state both, because a `maxWidth` clamps the background with
+    // the text. This holds the band's old gutter and row gap unchanged, so
+    // nothing about the words themselves moves — only the ground behind them.
+    //
+    // `alignItems: 'flex-start'` keeps the heading left-aligned inside the
+    // measure, which is where it was before the band started centring.
+    parameters: {
+      ...STACKED_IN_A_COLUMN,
+      flexDirection: 'column',
+      alignItems: 'flex-start',
+      rowGap: 'var(--space-3)',
+      maxWidth: 'var(--site-measure)',
+      paddingLeft: 'var(--space-6)',
+      paddingRight: 'var(--space-6)'
     },
     children: ['heading', 'sub']
   },
@@ -798,7 +831,7 @@ export const HERO_SECTION_NODES = [
     id: 'heading',
     type: 'Text',
     label: 'Hero heading',
-    parent: 'band',
+    parent: 'inner',
     // SB-018 (3): a standing `text`, because `Text` declares `default: 'Text'`
     // and a node whose only `text` is a wire renders the literal word until that
     // wire publishes.
@@ -821,7 +854,7 @@ export const HERO_SECTION_NODES = [
     id: 'sub',
     type: 'Text',
     label: 'Hero sub-heading',
-    parent: 'band',
+    parent: 'inner',
     parameters: {
       as: 'p',
       mounted: false,
@@ -1017,20 +1050,40 @@ export const CTA_SECTION_NODES = [
     id: 'band',
     type: 'Group',
     label: 'Call to action band',
+    // 🔴 **REL-011c seam 5 — bleeds, for the same three reasons the hero band
+    // does** (see `/Site/HeroSection`): no radius on a band with no visible edge,
+    // more vertical room so it interrupts rather than continues, and the gutter
+    // and gap moved down to `inner` so the brand gradient reaches the window
+    // while the words stay at the reading measure.
+    parameters: {
+      ...STACKED_IN_A_COLUMN,
+      flexDirection: 'column',
+      alignItems: 'center',
+      paddingTop: 'var(--space-16)',
+      paddingBottom: 'var(--space-16)',
+      // A themed gradient: every stop is another token, so the band follows the
+      // Theme record through every preset instead of freezing one palette.
+      backgroundGradient: 'var(--gradient-brand)',
+      backgroundColor: 'var(--primary)'
+    },
+    children: ['inner']
+  },
+  {
+    id: 'inner',
+    type: 'Group',
+    label: 'Call to action content',
+    parent: 'band',
+    // The twin of `/Site/HeroSection`'s — see the full reasoning there. It keeps
+    // this band's old `alignItems: 'flex-start'`, so the heading, the paragraph
+    // and the button stay left-aligned against the measure rather than centring.
     parameters: {
       ...STACKED_IN_A_COLUMN,
       flexDirection: 'column',
       alignItems: 'flex-start',
       rowGap: 'var(--space-4)',
-      paddingTop: 'var(--space-10)',
-      paddingBottom: 'var(--space-10)',
+      maxWidth: 'var(--site-measure)',
       paddingLeft: 'var(--space-6)',
-      paddingRight: 'var(--space-6)',
-      // A themed gradient: every stop is another token, so the band follows the
-      // Theme record through every preset instead of freezing one palette.
-      backgroundGradient: 'var(--gradient-brand)',
-      backgroundColor: 'var(--primary)',
-      borderRadius: 'var(--radius-md)'
+      paddingRight: 'var(--space-6)'
     },
     children: ['heading', 'body', 'button']
   },
@@ -1038,7 +1091,7 @@ export const CTA_SECTION_NODES = [
     id: 'heading',
     type: 'Text',
     label: 'Call to action heading',
-    parent: 'band',
+    parent: 'inner',
     parameters: {
       as: 'h2',
       text: '',
@@ -1053,7 +1106,7 @@ export const CTA_SECTION_NODES = [
     id: 'body',
     type: 'Text',
     label: 'Call to action body',
-    parent: 'band',
+    parent: 'inner',
     parameters: {
       as: 'p',
       mounted: false,
@@ -1067,7 +1120,7 @@ export const CTA_SECTION_NODES = [
     id: 'button',
     type: 'net.noodl.controls.button',
     label: 'Call to action button',
-    parent: 'band',
+    parent: 'inner',
     // The button is a visual node, so `mounted` is its own port — no wrapper
     // Group is needed here. The five wrappers above need one each because they
     // wrap a *component instance*, which has only its declared ports.
@@ -1341,13 +1394,23 @@ export const SECTION_VIEW_NODES = [
     label: 'One section',
     // `as: 'section'` — this is the public HTML, and a site made of `div`s is
     // the thing a client's SEO consultant will complain about first.
-    // SBR-004: the rhythm between sections is two steps of the spacing scale.
+    //
+    // 🔴 **REL-011c seam 5 — the uniform `var(--space-4)` top and bottom is GONE
+    // from this node, and it was the second of the two token references §9.2
+    // named.** Every section of all five kinds was drawn through this one box, so
+    // every kind got the same air above and below it whatever it was: a
+    // photograph, a paragraph and a call to action were spaced identically
+    // because there was one place to state it and one value to state.
+    //
+    // The rhythm now belongs to the five wrappers below, one decision each. This
+    // node keeps the landmark and the column, and gains `alignItems: 'center'`
+    // for the same reason `shell` did — three of the five wrappers state the
+    // measure and two deliberately do not, and one parent has to lay out both.
     parameters: {
       ...STACKED_IN_A_COLUMN,
       as: 'section',
       flexDirection: 'column',
-      paddingTop: 'var(--space-4)',
-      paddingBottom: 'var(--space-4)'
+      alignItems: 'center'
     },
     children: ['heroWrap', 'galleryWrap', 'ctaWrap', 'richWrap', 'contactWrap']
   },
@@ -1362,6 +1425,10 @@ export const SECTION_VIEW_NODES = [
     type: 'Group',
     label: 'Hero, when this section is one',
     parent: 'section',
+    // 🔴 **REL-011c seam 5 — BLEEDS.** It states no `maxWidth`, so it runs the
+    // window, and no vertical padding, because the band inside it carries its own
+    // and a hero separated from the top of the page by a gap is not an arrival.
+    // The absence of a clamp here is the decision; it is not an omission.
     parameters: { ...STACKED_IN_A_COLUMN, flexDirection: 'column', mounted: false },
     children: ['hero']
   },
@@ -1371,7 +1438,22 @@ export const SECTION_VIEW_NODES = [
     type: 'Group',
     label: 'Gallery, when this section is one',
     parent: 'section',
-    parameters: { ...STACKED_IN_A_COLUMN, flexDirection: 'column', mounted: false },
+    // REL-011c seam 5 — measured, and the TIGHTEST rhythm of the three. A grid of
+    // photographs is read by looking, not by reading, and it does not need the air
+    // a paragraph needs on either side of it.
+    //
+    // ⚠️ These numbers are the WHOLE gap between this section and its
+    // neighbours, not an addition to a container gap — see `siteMain`.
+    parameters: {
+      ...STACKED_IN_A_COLUMN,
+      flexDirection: 'column',
+      mounted: false,
+      maxWidth: 'var(--site-measure)',
+      paddingLeft: 'var(--space-6)',
+      paddingRight: 'var(--space-6)',
+      paddingTop: 'var(--space-6)',
+      paddingBottom: 'var(--space-6)'
+    },
     children: ['gallery']
   },
   { id: 'gallery', type: '/Site/GallerySection', label: 'Gallery', parent: 'galleryWrap' },
@@ -1380,6 +1462,10 @@ export const SECTION_VIEW_NODES = [
     type: 'Group',
     label: 'Call to action, when this section is one',
     parent: 'section',
+    // 🔴 **REL-011c seam 5 — BLEEDS**, the second of the two. A call to action is
+    // the one block on the page whose job is to interrupt, and it cannot do that
+    // at the same width and the same distance as the paragraph above it. Its band
+    // carries the vertical rhythm, as the hero's does.
     parameters: { ...STACKED_IN_A_COLUMN, flexDirection: 'column', mounted: false },
     children: ['cta']
   },
@@ -1389,7 +1475,18 @@ export const SECTION_VIEW_NODES = [
     type: 'Group',
     label: 'Passage, when this section is one',
     parent: 'section',
-    parameters: { ...STACKED_IN_A_COLUMN, flexDirection: 'column', mounted: false },
+    // REL-011c seam 5 — measured, and the most generous rhythm: this is the kind
+    // a visitor actually reads, and `--site-measure` exists for it.
+    parameters: {
+      ...STACKED_IN_A_COLUMN,
+      flexDirection: 'column',
+      mounted: false,
+      maxWidth: 'var(--site-measure)',
+      paddingLeft: 'var(--space-6)',
+      paddingRight: 'var(--space-6)',
+      paddingTop: 'var(--space-10)',
+      paddingBottom: 'var(--space-10)'
+    },
     children: ['rich']
   },
   { id: 'rich', type: '/Site/RichTextSection', label: 'Passage', parent: 'richWrap' },
@@ -1398,7 +1495,20 @@ export const SECTION_VIEW_NODES = [
     type: 'Group',
     label: 'Contact, when this section is one',
     parent: 'section',
-    parameters: { ...STACKED_IN_A_COLUMN, flexDirection: 'column', mounted: false },
+    // REL-011c seam 5 — measured, at the passage's rhythm. A form is filled in at
+    // reading width and wants the same air around it; it is deliberately NOT a
+    // third value, because a per-kind decision is not the same thing as five
+    // different numbers.
+    parameters: {
+      ...STACKED_IN_A_COLUMN,
+      flexDirection: 'column',
+      mounted: false,
+      maxWidth: 'var(--site-measure)',
+      paddingLeft: 'var(--space-6)',
+      paddingRight: 'var(--space-6)',
+      paddingTop: 'var(--space-10)',
+      paddingBottom: 'var(--space-10)'
+    },
     children: ['contact']
   },
   { id: 'contact', type: '/Site/ContactSection', label: 'Contact', parent: 'contactWrap' },
@@ -1799,6 +1909,11 @@ export const NAV_NODES = [
       flexWrap: 'wrap',
       paddingTop: 'var(--space-4)',
       paddingBottom: 'var(--space-4)',
+      // REL-011c seam 5 — the measure and the gutter `frame`/`shell` used to
+      // supply. ⚠️ Like the colophon, the bar's rule stays at the measure.
+      maxWidth: 'var(--site-measure)',
+      paddingLeft: 'var(--space-6)',
+      paddingRight: 'var(--space-6)',
       borderBottomStyle: 'solid',
       borderBottomWidth: 'var(--border-1)',
       borderBottomColor: 'var(--border)'
@@ -1890,8 +2005,15 @@ export const SITE_NODES = [
       // `Text` on the page names its own colour, and that is why `--foreground`
       // appears on the leaves rather than once at the top.
       backgroundColor: 'var(--background)',
-      paddingLeft: 'var(--space-6)',
-      paddingRight: 'var(--space-6)',
+      // 🔴 **REL-011c seam 5 — the horizontal inset is GONE from here.** It was
+      // `var(--space-6)` on each side, and while it lived on the page ground
+      // nothing inside could reach the window: a "full-bleed" band would have
+      // stopped 24px short on both sides, which reads as a mistake rather than
+      // as a decision. The inset now sits on each measured box (`bar`, `header`,
+      // `notFoundCard`, `footer`, and the three measured section wrappers), so
+      // the boxes that want the window get it and the boxes that want a reading
+      // column keep their gutter on a phone.
+      //
       // Named in `RAW_DIMENSION_EXEMPTIONS`: a viewport relation, and the
       // vocabulary is deliberately viewport-free.
       minHeight: { value: 100, unit: 'vh' }
@@ -1912,10 +2034,32 @@ export const SITE_NODES = [
     //
     // `width: 100%` under it is the centred-measure idiom, and is named in
     // `RAW_DIMENSION_EXEMPTIONS` for what it is: a layout instruction.
+    // 🔴 **REL-011c seam 5 — `maxWidth` HAS MOVED OFF THIS NODE, and that is the
+    // whole mechanism.** Richard ruled the public pages SHITTY; §9.2 settled that
+    // *"every block is the same width with the same gap above it — no density
+    // decision anywhere"* is not an impression but **two token references**, of
+    // which this was one. While the measure was stated HERE it was an ancestor of
+    // every section, so no section could ever be wider than any other: there was
+    // nowhere in the graph a per-kind decision could even be expressed.
+    //
+    // The clamp is now stated by each box that wants it — the nav bar, the page
+    // header, the not-found card, the colophon, and three of the five section
+    // wrappers. The two that do not state it (hero, call to action) run the
+    // window. `alignItems: 'center'` here is what makes a clamped child centre
+    // rather than sit against the left edge.
+    //
+    // ⚠️ **No child needed a `width` adding.** `sizeMode: 'contentHeight'` sets
+    // `style.width = props.width` (`layout.ts:63`) and the `width` port's own
+    // default is `100` with `defaultUnit: '%'`
+    // (`node-shared-port-definitions.ts:1160-1171`) — so every box carrying
+    // `STACKED_IN_A_COLUMN` was already 100% wide without saying so, and stating
+    // it would have added a dozen entries to `RAW_DIMENSION_EXEMPTIONS` for a
+    // value the runtime supplies. This node keeps its own `width` because it does
+    // not carry that constant.
     parameters: {
       flexDirection: 'column',
+      alignItems: 'center',
       width: { value: 100, unit: '%' },
-      maxWidth: 'var(--site-measure)',
       rowGap: 'var(--space-8)',
       paddingBottom: 'var(--space-12)'
     },
@@ -1953,7 +2097,22 @@ export const SITE_NODES = [
       // AC1 half B — see `STACKED_IN_A_COLUMN`.
       ...STACKED_IN_A_COLUMN,
       flexDirection: 'column',
-      rowGap: 'var(--space-8)'
+      // REL-011c seam 5: full width like `shell`, and centring for the same
+      // reason — `header` and `notFoundCard` state the measure, the sections
+      // that bleed do not, and both have to be laid out by this one node.
+      alignItems: 'center',
+      // 🔴 **`rowGap` is GONE, and the first render is what found it.** With the
+      // per-kind rhythm added to a `var(--space-8)` gap that was still stated
+      // here, every gap on the page was counted twice — the section's own air
+      // PLUS this — and the photograph came back looser than the one that was
+      // ruled SHITTY for being uniform. A per-kind decision is only a decision
+      // if the per-kind value is the whole of it.
+      //
+      // ⚠️ `header` grows a `paddingBottom` to replace the one gap this was
+      // legitimately providing: the space between the page title and the first
+      // section. `shell` keeps its own `rowGap` — nav, main and colophon are
+      // chrome and are not what this change is about.
+      rowGap: 'var(--space-0)'
     },
     children: ['header', 'sectionList', 'notFoundCard']
   },
@@ -1962,7 +2121,21 @@ export const SITE_NODES = [
     type: 'Group',
     label: 'Header',
     parent: 'siteMain',
-    parameters: { ...STACKED_IN_A_COLUMN, as: 'header', flexDirection: 'column', rowGap: 'var(--space-1)', paddingTop: 'var(--space-8)' },
+    // REL-011c seam 5: states the reading measure and its own gutter, which
+    // `frame` used to supply for the whole page.
+    parameters: {
+      ...STACKED_IN_A_COLUMN,
+      as: 'header',
+      flexDirection: 'column',
+      rowGap: 'var(--space-1)',
+      paddingTop: 'var(--space-8)',
+      // The one gap `siteMain`'s `rowGap` used to give that is still wanted —
+      // between the page title and whatever the first section turns out to be.
+      paddingBottom: 'var(--space-8)',
+      maxWidth: 'var(--site-measure)',
+      paddingLeft: 'var(--space-6)',
+      paddingRight: 'var(--space-6)'
+    },
     children: ['siteName', 'pageTitle']
   },
   {
@@ -2078,7 +2251,10 @@ export const SITE_NODES = [
       paddingTop: 'var(--space-12)',
       paddingBottom: 'var(--space-12)',
       paddingLeft: 'var(--space-6)',
-      paddingRight: 'var(--space-6)'
+      paddingRight: 'var(--space-6)',
+      // REL-011c seam 5: the clamp `shell` used to hold for the whole page. This
+      // card already stated its own gutter, so only the measure is new.
+      maxWidth: 'var(--site-measure)'
     },
     children: ['notFound']
   },
@@ -2117,6 +2293,12 @@ export const SITE_NODES = [
       flexDirection: 'column',
       rowGap: 'var(--space-2)',
       paddingTop: 'var(--space-8)',
+      // REL-011c seam 5. ⚠️ The rule stays at the MEASURE rather than running the
+      // window: a full-width rule under a measured colophon is a different design
+      // decision, and this change is about the sections, not the chrome.
+      maxWidth: 'var(--site-measure)',
+      paddingLeft: 'var(--space-6)',
+      paddingRight: 'var(--space-6)',
       borderTopStyle: 'solid',
       borderTopWidth: 'var(--border-1)',
       borderTopColor: 'var(--border)'

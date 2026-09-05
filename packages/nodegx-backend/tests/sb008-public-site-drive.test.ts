@@ -877,26 +877,60 @@ describe('SB-008 — the public site in a browser, against an enforcing backend'
    *
    * 🔴 **What the two arms hold constant is the point.** `--site-measure` is
    * DEFINED on `:root` in both arms — the control does not delete the token, it
-   * changes what the port REFERENCES. So the difference between 704px and no
+   * changes what the port REFERENCES. So the difference between a length and no
    * clamp cannot be "the token was missing"; it can only be "the port carried
    * the reference into CSS". Deleting the definition would have produced the
    * same two numbers for a reason that says nothing about ports.
+   *
+   * ⚠️ **REL-011c seam 5 moved the box this is read on, and the numbers moved
+   * with it.** The measure used to sit on the page shell; it now sits on the
+   * page `<header>` (and on the colophon, the not-found card, the nav band and
+   * three of the five section wrappers), because a clamp on the shell was an
+   * ancestor of every section and made a full-bleed hero impossible. The CLAIM
+   * is unchanged — a `var(--token)` in a dimension port resolves in a browser —
+   * and every number below is re-derived rather than re-fitted.
    */
   describe('🔴 §7 the reading measure, as a browser resolves it', () => {
-    it('control: both arms ran, and the control edit replaced exactly one string', () => {
+    it('control: both arms ran, and the control edit landed on every site that states the measure', () => {
       // `clampFault` names "the arm never ran" separately from every other way
       // a reading can be wrong, because the control arm's expected answer is an
       // ABSENT clamp and an arm that never happened reads absent too.
       expect([clampFault(clamps.head), clampFault(clamps.unknownToken)]).toEqual([null, null]);
-      expect(`replacements: ${measureControlEdits}`).toBe('replacements: 1');
+      // 🔴 **THREE, and it was one until REL-011c seam 5 — this assertion is the
+      // gate noticing its own scope changed rather than passing quietly.**
+      // `/Pages/Site` used to state the measure on exactly one node, the shell.
+      // Seam 5 moved it off the shell and onto the three boxes on this page that
+      // should keep a reading width: the page `<header>`, the colophon and the
+      // not-found card. (The nav band and the section wrappers state it too, in
+      // their own components, which this file does not rewrite.)
+      //
+      // ⚠️ **Three replacements is still a ONE-variable control.** What varies is
+      // what the ports REFERENCE, and it varies the same way at every site; the
+      // token's own definition is untouched, which the `:root` control below
+      // asserts in both arms. A control that changed one of three would be the
+      // broken one — the header would lose its clamp while the colophon kept it,
+      // and the reading would be of a page in a state the product never has.
+      //
+      // The three are named by label on the authoring side, in
+      // `sb006PublicSite.test.ts`'s "the reading measure is the minted token":
+      // if that census and this count ever disagree, one of them is stale.
+      expect(`replacements: ${measureControlEdits}`).toBe('replacements: 3');
     });
 
-    it('control: the element measured is the SHELL — the nav band and the h1 are inside it', () => {
-      // Identification, not geometry. If the walk had landed on the `<main>`
-      // itself the nav would be outside it (§6 asserts exactly that), so this
-      // is the assertion that says the parent walk went one level and no more.
+    it('control: the element measured is the page HEADER, inside the main, holding the h1', () => {
+      // Identification, not geometry — and all four fields, because seam 5 gave
+      // this probe a new target and "we are reading the right box" is the part
+      // that silently stopped being true when the old one lost its clamp.
+      //
+      // 🔴 `nav:0` is the assertion that separates this header from the shell.
+      // The nav band is a SIBLING of `<main>` (§6 asserts no nav inside main),
+      // so a reading that still found the nav would mean the walk had drifted
+      // back up to the box that no longer carries the measure.
       const c = clamps.head;
-      expect(`isMain:${c.shellIsMain} nav:${c.shellHasNav} h1:${c.shellHasH1}`).toBe('isMain:false nav:1 h1:1');
+      expect(`isMain:${c.shellIsMain} inMain:${c.shellInsideMain} nav:${c.shellHasNav} h1:${c.shellHasH1}`).toBe(
+        'isMain:false inMain:true nav:0 h1:1'
+      );
+      expect(`mains:${c.mains} headers:${c.headers}`).toBe('mains:1 headers:1');
     });
 
     it('control: `--site-measure` is defined on :root in BOTH arms', () => {
@@ -914,13 +948,19 @@ describe('SB-008 — the public site in a browser, against an enforcing backend'
       expect(clamps.head.shellMaxWidth).toBe('704px');
     });
 
-    it('🔴 and the clamp BINDS — the shell is 704px inside a 1280px frame', () => {
+    it('🔴 and the clamp BINDS — the header is 704px inside a 1280px main', () => {
       // A `max-width` that never binds is decorative, and a decorative clamp
-      // reads identically to a working one on the width alone. The frame is the
-      // width the shell would take if nothing stopped it.
+      // reads identically to a working one on the width alone. The parent is the
+      // width the header would take if nothing stopped it.
+      //
+      // 🔴 **`main:1280` is itself a seam 5 reading.** Before it, the page ground
+      // carried `paddingLeft`/`paddingRight: var(--space-6)` and nothing inside
+      // could reach the window; the parent measured 1232. That padding moved down
+      // onto the measured boxes — this header states its own — so `<main>` now
+      // spans the viewport exactly, which is what lets the hero band bleed.
       const c = clamps.head;
-      expect(`shell:${Math.round(c.shellWidth)} frame:${Math.round(c.frameWidth)} vp:${c.viewportWidth}`).toBe(
-        'shell:704 frame:1280 vp:1280'
+      expect(`header:${Math.round(c.shellWidth)} main:${Math.round(c.frameWidth)} vp:${c.viewportWidth}`).toBe(
+        'header:704 main:1280 vp:1280'
       );
     });
 
@@ -928,31 +968,38 @@ describe('SB-008 — the public site in a browser, against an enforcing backend'
       // SBR-003 §2's control, in its own words. Same graph, same backend, same
       // viewport, one token name apart.
       //
-      // 🔴 **This assertion was PREDICTED as `shell:1280` and measured 1232.**
-      // The prediction was wrong about the geometry, not about the claim: the
-      // shell states `width: 100%`, so unclamped it fills its parent's CONTENT
-      // box, and `frame` carries 48px of horizontal padding. Rather than edit
-      // 1280 to 1232 — which is how a control quietly becomes a number somebody
-      // fitted — the claim is stated as the equation it always was: no clamp,
-      // and the shell exactly fills what its parent offers.
+      // 🔴 **Kept as the EQUATION, not as a literal, and seam 5 is why that
+      // mattered.** When this was written the parent carried 48px of padding and
+      // the reading was 1232, against a prediction of 1280. Seam 5 moved that
+      // padding off the page ground and onto the measured boxes, so the parent
+      // is now 1280 and its padding 0 — BOTH numbers moved, and the equation is
+      // green on the new pair without a character being edited to fit. A spec
+      // written as `expect(1232)` would have had to be re-fitted here, and a
+      // re-fitted control is one nobody can tell from a broken one.
       const c = clamps.unknownToken;
       expect(c.shellMaxWidth).toBe('none');
       expect(
-        `shell:${Math.round(c.shellWidth)} = frame:${Math.round(c.frameWidth)} − padding:${Math.round(c.framePaddingX)}`
-      ).toBe(`shell:${Math.round(c.frameWidth - c.framePaddingX)} = frame:1280 − padding:48`);
+        `box:${Math.round(c.shellWidth)} = parent:${Math.round(c.frameWidth)} − padding:${Math.round(c.framePaddingX)}`
+      ).toBe(`box:${Math.round(c.frameWidth - c.framePaddingX)} = parent:1280 − padding:0`);
     });
 
-    it('🔴 the pair, stated as one number: the token is worth 528px of clamp', () => {
+    it('🔴 the pair, stated as one number: the token is worth 576px of clamp', () => {
       // The cross-arm reading. Written as a difference so a future change that
       // moves BOTH arms together — a different default viewport, a themed root
       // font-size — fails here rather than passing two absolute assertions that
       // happen to have been edited to match.
       //
-      // 528 = 1232 − 704, and both ends are reconciled above: 1232 is the frame
-      // less its padding, 704 is `44rem` at a 16px root. Neither is a number
-      // read off a run and pasted in.
+      // 576 = 1280 − 704, and both ends are reconciled above: 1280 is the parent
+      // less its (now zero) padding, 704 is `44rem` at a 16px root. Neither is a
+      // number read off a run and pasted in.
+      //
+      // ⚠️ **This was 528 before REL-011c seam 5** (1232 − 704) and the 48px of
+      // difference is exactly the page ground's old horizontal padding, which
+      // seam 5 moved down onto the measured boxes. The clamped end did not move
+      // at all, which is the check that the token still resolves to the same
+      // length and only the box around it changed.
       const delta = Math.round(clamps.unknownToken.shellWidth - clamps.head.shellWidth);
-      expect(`unclamped − clamped = ${delta}px`).toBe('unclamped − clamped = 528px');
+      expect(`unclamped − clamped = ${delta}px`).toBe('unclamped − clamped = 576px');
     });
   });
 });

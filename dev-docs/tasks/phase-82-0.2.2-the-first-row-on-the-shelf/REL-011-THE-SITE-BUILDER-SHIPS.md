@@ -1672,3 +1672,216 @@ exist when the attribution was made.
    conditionally mounted could render a sequence this reading does not predict.
 3. **Still not general.** A third template on the shelf gets this for free only if it ships in one of
    the two shapes; a new shape needs a third adapter.
+
+---
+
+## §11 The two seams that were the product, BUILT — Richard named them (2026-09-05, s52)
+
+**§9.3 ended by saying what a fourth round should aim at and stopping**, because §4 is explicit
+that nothing about the look is built until Richard names the seam. He named both, in this session,
+after being shown the board: *"build seam 2 and seam 5 now"*, choosing **demote status / promote the
+action** for the admin row and **per-kind width AND rhythm** for the page.
+
+⚠️ **The hold is NOT lifted and this does not lift it.** D1 stands, `HELD_TEMPLATE_IDS` is untouched,
+and AC3 is still his ruling. This builds the two things §9 identified as the product's own.
+
+### §11.1 Seam 2 — the order of loudness
+
+🔴 **The defect was never a colour, and that is why every gate was green through it.** Each row on
+`/admin/pages` drew `Published` as a **solid filled pill**, beside `Edit` and `More` — two identical
+bordered chips. **The loudest element in the row was the one thing a person cannot click**, and the
+two things they can were indistinguishable from one another. Every value involved was already a
+token; `sbr012RawColourGate` never had anything to say.
+
+| | before | after |
+|---|---|---|
+| status | Group, `backgroundColor` wired `--primary`/`--accent`, padded, `--radius-md`, `--font-semibold` | **8px dot** (`--space-2` square, `--radius-full`) + the word in `--font-normal` |
+| `Edit` | `SECONDARY_BUTTON` (bordered chip on `--surface`) | **`PRIMARY_BUTTON`** — the only filled control in the row |
+| `More` | `SECONDARY_BUTTON`, identical to `Edit` | **`GHOST_BUTTON`** — no border, ground `--background` |
+
+🔴 **`SECONDARY_BUTTON`'s own comment argued against a fill on `Edit`** — *"two filled colours side
+by side would make every row look like it had two primary actions"*. That was **true while the status
+was the other fill**. The premise changed, not the reasoning, and the comment now says so.
+
+🔴 **BOTH copies moved.** `/Pages/PageEditor` carries an identical status cell fed by an identical
+`status` function. Demoting one and not the other renders the same fact two ways inside one admin
+panel, and **no gate would have seen it** — each copy is internally consistent, so both would pass
+their own assertions. A spec now pins that the two `functionScript`s are still byte-identical.
+
+⚠️ **The output ports were RENAMED, not re-pointed** — `pillBackground` → `dotColor`,
+`pillColor` → `labelColor`. A gate or a drive still reaching for the old name now FAILS instead of
+reading a port whose name no longer describes what it paints.
+
+### §11.2 Seam 5 — a page that could not express a density decision
+
+§9.2 established that *"every block is the same width with the same gap above it"* was **two token
+references**. Both have moved, and the point is not the new values — it is that **there is now
+somewhere in the graph a per-kind decision can be expressed at all.**
+
+| | before | after |
+|---|---|---|
+| the measure | `Page shell`'s `maxWidth` — an **ancestor of every section**, so no section could ever be wider than another | stated by the nav band, the page `<header>`, the colophon, the not-found card, and **three of the five section wrappers** |
+| the rhythm | `One section`'s single `paddingTop`/`paddingBottom: var(--space-4)`, **for all five kinds** | one decision per wrapper: hero **bleeds, no rhythm**; gallery `--space-6`; passage and contact `--space-10`; CTA **bleeds, no rhythm** |
+| the gutter | `Page ground`'s `paddingLeft`/`Right` — which meant a "full-bleed" band would stop 24px short of the window on both sides | on each measured box, so the boxes that want the window get it |
+
+**Hero and call to action now run the window.** Each gained one node — `inner` — because **a band
+cannot hold its ground at the viewport and its words at the reading measure with one box**: a
+`maxWidth` clamps the background along with the text. `borderRadius` came off both, because a band
+that reaches both edges with rounded corners reads as a card that has overflowed.
+
+✅ **No `width` was added anywhere, and no new `RAW_DIMENSION_EXEMPTIONS` entry.** `sizeMode:
+'contentHeight'` sets `style.width = props.width` (`layout.ts:63`) and the `width` port's own default
+is `100` at `defaultUnit: '%'` (`node-shared-port-definitions.ts:1160-1171`) — so every box carrying
+`STACKED_IN_A_COLUMN` was already full width without saying so. Stating it would have added a dozen
+exemptions for a value the runtime supplies.
+
+### §11.3 🔴 The first render found a defect the build had introduced, and the gates could not
+
+The per-kind padding was added **on top of `siteMain`'s existing `rowGap: var(--space-8)`**, so every
+gap on the page was counted twice. Every spec was green and **the photograph came back looser than
+the page that was ruled SHITTY for being uniform.** `rowGap` is now `--space-0` and `header` grows a
+`paddingBottom` to replace the one gap it was legitimately providing.
+
+✅ **A per-kind decision is only a decision if the per-kind value is the whole of it.** Nothing but
+rendering it could have said so.
+
+### §11.4 🔴 Two gates had holes shaped exactly like this change
+
+1. **`sb006PublicSite`'s measure assertion read `find(n => n.parameters?.maxWidth !== undefined)`** —
+   *"some node on this page states the measure"*. When the measure moved off `shell` onto four other
+   boxes it **went on passing**, because `Header` answered the same question. It now names the three
+   boxes that should carry it AND asserts `shell` does not.
+2. **`measureClamp.ts` read `main.parentElement`** — the shell. Left alone it would not have failed;
+   it would have read **`max-width: none` in BOTH arms**, which is the exact shape of D57 and fits
+   *"the dimension port drops `var(--token)`"* perfectly — the very defect SBR-003 AC5 exists to
+   detect, reported by a probe aimed at a box that no longer carries the measure. Re-aimed at the
+   page `<header>`, identified as the single `<header>` inside the single `<main>` holding the `<h1>`.
+
+⚠️ **`sb008` §7's control was PREDICTED and RECONCILED, not re-fitted.** The pair moved `528px` →
+**`576px`**, and the 48px is exactly the page ground's old horizontal padding. **The clamped end did
+not move at all** (704px = `44rem` at a 16px root), which is what shows the token still resolves and
+only the box around it changed. Because s51 wrote that control as an *equation* rather than a
+literal, `box = parent − padding` went green on the new pair **with no character edited to fit** —
+`parent:1232 − padding:48` became `parent:1280 − padding:0`.
+
+⚠️ **The control-arm edit count moved 1 → 3** and the spec said so rather than passing quietly: the
+control replaces `var(--site-measure)` throughout `/Pages/Site`, which now states it on three nodes.
+It is still a ONE-variable control — what varies is what the ports reference, identically at every
+site, and the token's own `:root` definition is asserted unchanged in both arms.
+
+### §11.5 🔴 A gate stayed green for a whole suite run because it reads the COMMITTED artefact
+
+`GHOST_BUTTON`'s first draft used `backgroundColor: 'transparent'`. `sbr014ControlStyleCensus` —
+REL-011a's own *"53 of 53 controls"* gate — requires every control to state `backgroundColor` as a
+`var(--token)` this project defines, because the button stylesheet's default is a raw `black`. A
+keyword is precisely the "outside the palette" value that gate exists to catch, and it would have
+taken 53 back to **52**.
+
+⚠️ **It passed a full 95-suite run first.** That run happened while `site-builder.content.json` was
+still the pre-change file — the same run in which `sb007Template` was red *for exactly that reason*.
+The census only spoke once the template was regenerated. ✅ **Measure the artefact, not the last
+green run.** The ghost's ground is now `var(--background)`, the page's own ground: no visible box,
+and a colour from the palette.
+
+### §11.6 The readings
+
+| gate | reading |
+|---|---|
+| `noodl-mcp` full suite | **95 suites / 1318, EXIT=0** |
+| `tsc -p noodl-mcp` | **0** |
+| `test:main` | **425 suites / 7144, EXIT=0** |
+| `nodegx-backend` full suite | **130 of 131 suites, 1589 passed** — the one red is **not this change**, see D58 |
+| `sb008-public-site-drive` (browser, enforcing backend) | **31/31, EXIT=0** |
+| `sb005AdminPanel` | **39/39** (34 → 39; +5 seam-2 specs) |
+| `sb006PublicSite` | **67/67** (59 → 67; +8 seam-5 specs) |
+| `vib001-site.look.ts` | **EXIT=0**, both arms, 40 shots |
+| `template:site-builder` | regenerates, and **regenerating twice gives the same md5** |
+
+⚠️ **`test:main`'s recorded floor is stale in the good direction.** P77's handoff records *"3 failed,
+401 passed suites / 4 failed, 6647 passed"* with owner `NONE` (`sb-018` ×2, `aib-007`). This run is
+**425 passed of 425** — all three are green, and the count of tests has moved 6647 → 7144. Whoever
+relies on that floor next should re-derive it rather than inherit it.
+
+⚠️ **Reconciled, not asserted**: `sb-007/site-template.test.ts`'s disjoint-id literal moved **406 →
+410**, and the four are named — `statusDot` twice (seam 2, one per admin copy) and `inner` twice
+(seam 5, one per bleeding band). That gate lives in `noodl-editor` and counts nodes authored in
+`noodl-mcp`, so **no per-package run crosses it**; `test:main` is what does.
+
+⚠️ **NOT re-photographed against a same-day before-arm.** `judge()` keys its output directory by
+`today()`, so this session's renders **overwrote the 09-05 corrected-instrument shots** that §8 had
+produced. The **09-03 shots Richard actually ruled on are intact** and are the comparison that
+matters, but a same-day before/after pair for this change does not exist.
+
+⚠️ **Not run**: `typecheck:backend-tests` (unrunnable on this box, §7's register row).
+
+---
+
+## §12 The before-arm §11 lost, rebuilt — and the comparison it was inviting was three-variable (s53, 2026-09-05)
+
+§11.6 closed by recording that `judge()` keys its output directory by `today()`, so s52's renders
+**overwrote the corrected-instrument shots**, and that *"a same-day before/after pair for this change
+does not exist."* It then pointed the next reader at the **09-03** shots as *"the comparison that
+matters."*
+
+🔴 **That comparison would have credited seams 2 and 5 with the instrument fix.** The 09-03 pictures
+are the ones §8 disqualified: they carry the seed's `#1f6feb` blue, the seed's ground, and
+`SWATCH`'s gradient rectangles where the 62 starter photographs belong. Set beside 09-05 the pair
+varies **three** things — palette, imagery, and the two seams — and only the third is this lane's.
+A ruling taken on it would have read the harness fix as the product's improvement, which is the
+**exact error §8 exists to have corrected**, re-introduced one section later by the comparison the
+file recommended.
+
+### §12.1 The arm was one revert away, and nothing but the date had to move
+
+**The seam change is uncommitted, so `HEAD` *is* the before-arm** — and `HEAD` already carries §8's
+palette fix and §8.3's admin surfaces (commit `02a3c924`), which is what makes it a **one-variable**
+control rather than a return to 09-03. The harness does not read `site-builder.content.json` at all;
+it reconstructs from `authorSiteTemplate`, so the two files to revert are the authoring sources
+**`sb005Components.ts`** (seam 2) and **`sb006Components.ts`** (seam 5). `helpers/site-drive.ts` is
+unmodified at HEAD and drives both arms unchanged.
+
+✅ **`VIB_VERDICT_DATE`** was added to `vib001-site.look.ts` — one line, `?? today()`, so unset it
+changes nothing. It is the remedy for the defect §11.6 recorded rather than a note about it: a
+reverted arm can now be photographed **beside** the current one instead of on top of it.
+
+### §12.2 The readings — what says this is one variable and not three
+
+| | before (reverted) | after (seams built) |
+|---|---|---|
+| `artefactMd5` | `40275bd8…` | `6b071442…` |
+| `artefactTreeMd5` | `eb3ae686…` | `ae6fcd13…` |
+| `starterAssets` | **written 62, skipped 0, failed []** | **written 62, skipped 0, failed []** |
+| shots | 24 | 24 |
+
+🔴 **Both halves of that table are load-bearing, in opposite directions.** The md5s moving is what
+says the *subject* changed — `judge.ts`'s own doc-comment records a run whose `artefactMd5` did not
+move while its subject did. The starter-asset counts being **identical** is what says the
+*instrument* did not: 62 photographs placed in both arms is the direct control on §8.2, and it is
+why the after-arm's pictures cannot be credited with imagery the before-arm also has.
+
+Run: `vib001-site.look.ts`, **EXIT=0, 2 tests, 40 shots**, both doors.
+Arm in `verdicts/vib-001/**2026-09-05-before-seams**/`.
+
+⚠️ **The working tree was restored and md5-verified** — `sb005Components.ts`
+`36d7fed11b76c9de86de4edbce0a1650`, `sb006Components.ts` `1edefeb852694a27751495ffc5f912a8`, both
+identical to the pre-revert snapshot, seam markers back at 8 and 9 occurrences.
+
+### §12.3 What the honest pair shows — and one claim of §11 it reconciles
+
+Both seams are legible in a same-instrument comparison, which is the thing that was in doubt:
+
+- **Seam 2** — `Published` stops being the loudest element in a row it cannot be clicked in; `Edit`
+  is the only filled control; `More` recedes to a ghost. The row now reads action-first.
+- **Seam 5** — hero and CTA reach the window; gallery and passage hold the measure. The page stops
+  being one column of equal blocks with equal gaps.
+
+✅ **§11.3's double-gap fix holds, measured rather than asserted.** The whole point of that fix was
+that the first render came back *looser than the page ruled SHITTY for being uniform*. Full-page
+heights across the honest pair: `public-home-desktop` **1125 → 1141px (+16)**, `admin-pages-desktop`
+**900 → 900**, `public-about-desktop` **900 → 900**. The page did not get looser.
+
+### ⬅️ What this does NOT do
+
+**It does not re-rule anything, and it does not lift the hold.** D1 stands, `HELD_TEMPLATE_IDS` is
+untouched, AC3 is Richard's. This replaces a comparison that would have flattered the change with
+one that isolates it; the verdict on what it isolates is still his.

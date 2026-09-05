@@ -1440,7 +1440,13 @@ describe('SB-006: the public site, beside the panel it shares a router with', ()
 
   it('MUTANT: a planted bare number on a spacing port reddens the token scan', () => {
     const mutant = clone(written['Pages/Site']);
-    const shell = mutant.graph.nodes.find((n) => n.parameters?.maxWidth !== undefined)!;
+    // 🔴 By LABEL. This read `find(n => n.parameters?.maxWidth !== undefined)`
+    // and was correct only while exactly one node on the page stated a measure.
+    // REL-011c seam 5 moved the measure onto four of them and the locator
+    // silently started returning `Header` — the mutant still planted a bare
+    // number, on the wrong node, and the spec failed with a confusing message
+    // about a node it never meant to name.
+    const shell = mutant.graph.nodes.find((n) => n.label === 'Page shell')!;
     shell.parameters!.rowGap = 32;
     expect(rawStyleValues([['Pages/Site', mutant]])).toContain('Pages/Site :: Page shell | rowGap');
   });
@@ -1455,8 +1461,21 @@ describe('SB-006: the public site, beside the panel it shares a router with', ()
    */
   it('SBR-004: the reading measure is the minted token, not a pixel literal', () => {
     const w = written['Pages/Site'];
-    const shell = w.graph.nodes.find((n) => n.parameters?.maxWidth !== undefined)!;
-    expect(shell.parameters?.maxWidth).toBe('var(--site-measure)');
+    // 🔴 **This spec used to read `find(n => n.parameters?.maxWidth !== undefined)`
+    // and it had a hole shaped exactly like REL-011c seam 5.** It asserted that
+    // SOME node on the page states the measure. When the measure moved off
+    // `shell` onto four other boxes the spec went on passing, because `Header`
+    // answered the same question — a gate that cannot tell "the measure is where
+    // it belongs" from "a measure exists somewhere".
+    //
+    // Named, and both directions: every box that should carry the measure does,
+    // and `shell` — which must NOT, or nothing below it can ever bleed — does not.
+    const measured = w.graph.nodes.filter((n) => n.parameters?.maxWidth !== undefined).map((n) => String(n.label)).sort();
+    expect(measured).toEqual(['Footer', 'Header', 'The empty-screen card']);
+    for (const n of w.graph.nodes.filter((x) => x.parameters?.maxWidth !== undefined)) {
+      expect(`${n.label}: ${n.parameters?.maxWidth}`).toBe(`${n.label}: var(--site-measure)`);
+    }
+    expect(w.graph.nodes.find((n) => n.label === 'Page shell')!.parameters?.maxWidth).toBeUndefined();
     // And the ground beneath it consumes the background token — before SBR-004
     // nothing did, so a Theme record could change `--background` and no element
     // ever read it (`TokenResolver.generateCss` stamps `:root` and a body floor).
@@ -1937,6 +1956,8 @@ describe('SB-006: the public site, beside the panel it shares a router with', ()
       // rather than about whatever the walk happened to reach.
       'Site/SectionView | Hero, when this section is one',
       'Site/HeroSection | Hero band',
+      // REL-011c seam 5: the band bleeds and this holds its words at the measure.
+      'Site/HeroSection | Hero content',
       'Site/HeroSection | Hero heading',
       'Site/HeroSection | Hero sub-heading',
       'Site/SectionView | Gallery, when this section is one',
@@ -1946,6 +1967,8 @@ describe('SB-006: the public site, beside the panel it shares a router with', ()
       'Site/GalleryTile | Gallery tile',
       'Site/SectionView | Call to action, when this section is one',
       'Site/CtaSection | Call to action band',
+      // REL-011c seam 5: the twin of `Hero content`.
+      'Site/CtaSection | Call to action content',
       'Site/CtaSection | Call to action heading',
       'Site/CtaSection | Call to action body',
       'Site/SectionView | Passage, when this section is one',
@@ -2070,6 +2093,145 @@ describe('SB-006: the public site, beside the panel it shares a router with', ()
       // SBR-002's answer deadline, and only that — a second Timer would be a
       // second writer racing the first onto the same watchdog port.
       timers: 1
+    });
+  });
+
+  /**
+   * ── REL-011c seam 5 — the per-kind decision, gated ─────────────────────────
+   *
+   * 🔴 **The defect this closes is an ABSENCE, and that is why nothing caught
+   * it.** Richard ruled the public pages SHITTY; [REL-011 §9.2] settled that
+   * *"every block is the same width with the same gap above it — no density
+   * decision anywhere"* was not an impression but **two token references**:
+   * `Page shell`'s `maxWidth`, which was an ancestor of every section, and
+   * `One section`'s single `paddingTop`/`paddingBottom`, which was the rhythm
+   * for all five kinds. There was nowhere in the graph a per-kind decision
+   * could be expressed, so no census could report one missing.
+   *
+   * ⚠️ **Every value involved was already a token and always had been** — the
+   * raw-colour and raw-dimension scans were green throughout, the fill census
+   * was green, and the look harness photographed it happily. What is asserted
+   * here is that the five kinds are ALLOWED TO DIFFER and that three of them
+   * actually do.
+   */
+  describe('REL-011c seam 5: the five section kinds carry a density decision', () => {
+    const WRAPS = [
+      'Hero, when this section is one',
+      'Gallery, when this section is one',
+      'Call to action, when this section is one',
+      'Passage, when this section is one',
+      'Contact, when this section is one'
+    ];
+
+    /** What each wrapper decides: whether it is clamped, and how much air it takes. */
+    const decisions = (view: Written) =>
+      WRAPS.map((label) => {
+        const n = byLabel(view, 'Group', label);
+        return {
+          kind: label.split(',')[0],
+          measure: n.parameters?.maxWidth ?? null,
+          top: n.parameters?.paddingTop ?? null,
+          bottom: n.parameters?.paddingBottom ?? null
+        };
+      });
+
+    it('the five wrappers exist and are the whole population', () => {
+      // 🔴 The scope FIRST. Every assertion below is a filter over these five,
+      // and a filter over an empty list returns the answer this spec wants.
+      const view = written['Site/SectionView'];
+      const wrappers = view.graph.nodes.filter((n) => n.type === 'Group' && String(n.label).includes('when this section is one'));
+      expect(wrappers.map((n) => String(n.label)).sort()).toEqual([...WRAPS].sort());
+    });
+
+    it('two kinds bleed and three are clamped — by NAME, not by count', () => {
+      const read = decisions(written['Site/SectionView']);
+      // A count would be satisfied by the wrong two bleeding, which is the same
+      // defect wearing the right number.
+      expect(read.filter((d) => d.measure === null).map((d) => d.kind)).toEqual(['Hero', 'Call to action']);
+      expect(read.filter((d) => d.measure !== null).map((d) => d.kind)).toEqual(['Gallery', 'Passage', 'Contact']);
+      for (const d of read.filter((x) => x.measure !== null)) {
+        expect(`${d.kind}: ${d.measure}`).toBe(`${d.kind}: var(--site-measure)`);
+      }
+    });
+
+    it('the rhythm is not one value repeated five times', () => {
+      const read = decisions(written['Site/SectionView']);
+      // 🔴 This is the assertion the old graph fails, and it is stated as a
+      // property rather than as five literals so a later session can retune the
+      // values without the gate reading as a regression. What must not come back
+      // is ONE number for every kind.
+      const distinct = new Set(read.map((d) => `${d.top}/${d.bottom}`));
+      expect(distinct.size).toBeGreaterThan(1);
+
+      // The two that bleed state no rhythm of their own: their band carries it,
+      // and a gap above a hero is a gap between it and the top of the page.
+      expect(read.filter((d) => d.top === null).map((d) => d.kind)).toEqual(['Hero', 'Call to action']);
+
+      // And the passage — the kind a visitor reads — has more air than the
+      // gallery, which is the density decision in one comparison.
+      const by = Object.fromEntries(read.map((d) => [d.kind, d]));
+      expect(by['Passage'].top).toBe('var(--space-10)');
+      expect(by['Gallery'].top).toBe('var(--space-6)');
+    });
+
+    it('`One section` no longer imposes a rhythm on every kind', () => {
+      const section = byLabel(written['Site/SectionView'], 'Group', 'One section');
+      expect(section.parameters?.paddingTop).toBeUndefined();
+      expect(section.parameters?.paddingBottom).toBeUndefined();
+      // It must centre, or a clamped wrapper sits against the left edge instead
+      // of in the middle of the window.
+      expect(section.parameters?.alignItems).toBe('center');
+    });
+
+    it('MUTANT: one rhythm for all five kinds reds, and the shipped graph does not', () => {
+      const mutant = clone(written['Site/SectionView']);
+      for (const label of WRAPS) {
+        const n = byLabel(mutant, 'Group', label);
+        n.parameters!.paddingTop = 'var(--space-4)';
+        n.parameters!.paddingBottom = 'var(--space-4)';
+      }
+      expect(new Set(decisions(mutant).map((d) => `${d.top}/${d.bottom}`)).size).toBe(1);
+      // The control: the same expression over the SHIPPED graph. Without it,
+      // `size === 1` would also be what a broken `decisions()` reports.
+      expect(new Set(decisions(written['Site/SectionView']).map((d) => `${d.top}/${d.bottom}`)).size).toBeGreaterThan(1);
+    });
+
+    it('MUTANT: clamping every kind reds — the shape the page had before', () => {
+      const mutant = clone(written['Site/SectionView']);
+      for (const label of WRAPS) byLabel(mutant, 'Group', label).parameters!.maxWidth = 'var(--site-measure)';
+      expect(decisions(mutant).filter((d) => d.measure === null)).toEqual([]);
+    });
+
+    /**
+     * 🔴 **The band is where the bleed is actually visible, and the wrapper
+     * alone cannot prove it.** A hero wrapper with no clamp still draws a 704px
+     * band if the band inside it states one — so the two bleeding kinds are
+     * checked at the node that paints the ground.
+     */
+    it.each([
+      ['Site/HeroSection', 'Hero band', 'Hero content'],
+      ['Site/CtaSection', 'Call to action band', 'Call to action content']
+    ])('%s: the ground runs the window and the words do not', (key, bandLabel, innerLabel) => {
+      const band = byLabel(written[key], 'Group', bandLabel);
+      const inner = byLabel(written[key], 'Group', innerLabel);
+
+      // The ground: no clamp, no gutter of its own, and no radius — a band that
+      // reaches both edges of the window with rounded corners reads as a card
+      // that overflowed.
+      expect(band.parameters?.maxWidth).toBeUndefined();
+      expect(band.parameters?.borderRadius).toBeUndefined();
+      expect(band.parameters?.paddingLeft).toBeUndefined();
+      expect(band.parameters?.alignItems).toBe('center');
+
+      // The words: clamped, with the gutter the band gave up, and still
+      // left-aligned inside it.
+      expect(inner.parameters?.maxWidth).toBe('var(--site-measure)');
+      expect(inner.parameters?.paddingLeft).toBe('var(--space-6)');
+      expect(inner.parameters?.alignItems).toBe('flex-start');
+
+      // 🔴 And the words are INSIDE the ground. Two boxes with the right
+      // parameters and no containment is a band beside its own text.
+      expect(band.children).toEqual([inner.id]);
     });
   });
 });

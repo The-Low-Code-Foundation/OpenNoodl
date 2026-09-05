@@ -298,10 +298,23 @@ describe('SB-007 — install writes a project that opens', () => {
     //              no per-package run crosses. Reconciled by P82/s44 while
     //              reading the gate for another row; the FEATURE was not
     //              reviewed, only the count.
+    //   406 → 410  🔴 NOT this phase — P82/REL-011c, the two look seams Richard
+    //              named. FOUR ids, and each is one node added for one reason:
+    //              `statusDot` on `/Admin/PageRow` and again on
+    //              `/Pages/PageEditor` (seam 2 — the status stops being a filled
+    //              pill and becomes a dot beside a quiet word, so the loudest
+    //              thing in a row is no longer the one thing you cannot click),
+    //              and `inner` on `/Site/HeroSection` and `/Site/CtaSection`
+    //              (seam 5 — those two bands now run the window, and a band
+    //              cannot hold its ground at the viewport and its words at the
+    //              reading measure with one box). 406 + 4 reconciles exactly.
+    //              ⚠️ Same package-boundary hazard as the line above: the nodes
+    //              live in `noodl-mcp` and this gate lives in `noodl-editor`, so
+    //              no per-package run sees it — `test:main` is what does.
     // ⚠️ The literal is still the point, for the reason four lines up: it is the
     // only thing standing between a rewrite that RENAMED ids and a disjointness
     // assertion that would stay green on a set that had shrunk.
-    expect(a.size).toBe(406);
+    expect(a.size).toBe(410);
     expect([...a].filter((id) => b.has(id))).toEqual([]);
   });
 

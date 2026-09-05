@@ -28,17 +28,34 @@
  * latency still passed because something else supplied the wait].
  *
  * ⚠️ **Identification is derived from the product, not guessed from an id.**
- * `shell` is the parent of the `<main>` that REL-011c's `siteMain` node added,
- * and the outline gate beside this one already proves there is exactly one
- * `<main>` per load. A `#shell` selector would have been a literal that a
- * project-wide id renumbering silently breaks — which is exactly how `sbr010`'s
- * D42 went stale on `#pick` → `pick-2`.
+ * A `#shell` selector would have been a literal that a project-wide id
+ * renumbering silently breaks — which is exactly how `sbr010`'s D42 went stale
+ * on `#pick` → `pick-2`.
+ *
+ * 🔴 **RE-AIMED BY REL-011c SEAM 5, AND THE OLD TARGET IS NOW THE CONTROL.**
+ * This used to read `main.parentElement` — the page shell — because the shell
+ * was the one box that stated `maxWidth: var(--site-measure)`. Seam 5 moved the
+ * measure OFF the shell precisely so that a hero and a call to action could
+ * reach the window, and there is no longer any clamp there to read.
+ *
+ * ⚠️ **Left unchanged, this probe would not have failed — it would have gone on
+ * reading, and read `max-width: none` in BOTH arms.** That is the same shape
+ * D57 produced, and it fits *"the dimension port drops `var(--token)`"*
+ * perfectly: the exact defect SBR-003 AC5 exists to detect, reported by a probe
+ * pointed at a box that was never supposed to carry the measure. The reading is
+ * now taken on the page `<header>`, which states it, and which is identified by
+ * being the single `<header>` inside the single `<main>` and holding the `<h1>`.
  */
 
 /** One reading of the reading-measure clamp on one rendered document. */
 export interface MeasureClamp {
   /** `<main>` elements in the document. Exactly one is the identification precondition. */
   mains: number;
+  /**
+   * `<header>` elements in the document. Exactly one is the second half of the
+   * identification, and it is what the reading is actually taken on.
+   */
+  headers: number;
   /**
    * The computed `max-width` of the shell, **verbatim**.
    *
@@ -79,6 +96,15 @@ export interface MeasureClamp {
   shellHasH1: number;
   /** True if the element found is the `<main>` itself — i.e. the walk went wrong. */
   shellIsMain: boolean;
+  /**
+   * True when the measured element is inside the `<main>`, which it must be.
+   *
+   * 🔴 The header is the page's OWN header, not a site-wide banner: REL-011c
+   * §5 put `siteMain` around the page's content and left the nav band outside
+   * it. A reading taken on a `<header>` that had drifted outside `<main>` would
+   * be a reading of a different box.
+   */
+  shellInsideMain: boolean;
 }
 
 /**
@@ -91,6 +117,7 @@ export interface MeasureClamp {
  */
 export const NO_CLAMP: MeasureClamp = Object.freeze({
   mains: -1,
+  headers: -1,
   shellMaxWidth: '(never ran)',
   shellWidth: -1,
   frameWidth: -1,
@@ -100,7 +127,8 @@ export const NO_CLAMP: MeasureClamp = Object.freeze({
   framePaddingX: -1,
   shellHasNav: -1,
   shellHasH1: -1,
-  shellIsMain: false
+  shellIsMain: false,
+  shellInsideMain: false
 });
 
 /** The custom property the site template mints. Mirrors `siteTheme.ts`'s `SITE_MEASURE_TOKEN`. */
@@ -116,7 +144,8 @@ export const MEASURE_TOKEN = '--site-measure';
 export const READ_MEASURE_CLAMP = `(function () {
   var m = document.querySelectorAll('main');
   var main = m.length === 1 ? m[0] : null;
-  var shell = main && main.parentElement ? main.parentElement : null;
+  var h = document.querySelectorAll('header');
+  var shell = h.length === 1 ? h[0] : null;
   var rootStyle = getComputedStyle(document.documentElement);
   var shellStyle = shell ? getComputedStyle(shell) : null;
   var shellBox = shell ? shell.getBoundingClientRect() : null;
@@ -124,6 +153,7 @@ export const READ_MEASURE_CLAMP = `(function () {
   var frameBox = frame ? frame.getBoundingClientRect() : null;
   return {
     mains: m.length,
+    headers: h.length,
     shellMaxWidth: shellStyle ? shellStyle.maxWidth : '(no shell)',
     shellWidth: shellBox ? shellBox.width : -1,
     frameWidth: frameBox ? frameBox.width : -1,
@@ -135,7 +165,8 @@ export const READ_MEASURE_CLAMP = `(function () {
       : -1,
     shellHasNav: shell ? shell.querySelectorAll('nav').length : -1,
     shellHasH1: shell ? shell.querySelectorAll('h1').length : -1,
-    shellIsMain: shell !== null && shell === main
+    shellIsMain: shell !== null && shell === main,
+    shellInsideMain: shell !== null && main !== null && main.contains(shell)
   };
 })()`;
 
@@ -166,8 +197,11 @@ export async function readMeasureClamp(page: EvaluatingPage): Promise<MeasureCla
 export function clampFault(c: MeasureClamp | undefined): string | null {
   if (!c || typeof c.mains !== 'number') return 'no reading was taken';
   if (c.mains === -1) return 'the arm never ran';
-  if (c.mains !== 1) return `${c.mains} <main>, expected 1 — the shell has no referent`;
-  if (c.shellIsMain) return 'the walk found the <main> itself, not its parent';
-  if (c.shellWidth <= 0) return `the shell measured ${c.shellWidth}px — nothing was laid out`;
+  if (c.mains !== 1) return `${c.mains} <main>, expected 1 — the measured box has no referent`;
+  if (c.headers !== 1) return `${c.headers} <header>, expected 1 — the measured box has no referent`;
+  if (c.shellIsMain) return 'the reading landed on the <main> itself, not the header inside it';
+  if (!c.shellInsideMain) return 'the <header> is not inside the <main> — a different box was measured';
+  if (c.shellHasH1 !== 1) return `the measured box holds ${c.shellHasH1} <h1>, expected 1`;
+  if (c.shellWidth <= 0) return `the measured box was ${c.shellWidth}px — nothing was laid out`;
   return null;
 }

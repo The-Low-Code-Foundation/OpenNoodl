@@ -313,39 +313,59 @@
             "type": "Group",
             "children": [
               {
-                "id": "heading",
-                "type": "Text",
-                "children": [],
-                "label": "Hero heading",
+                "id": "inner",
+                "type": "Group",
+                "children": [
+                  {
+                    "id": "heading",
+                    "type": "Text",
+                    "children": [],
+                    "label": "Hero heading",
+                    "x": 160,
+                    "y": 280,
+                    "parameters": {
+                      "as": "h2",
+                      "text": "",
+                      "fontSize": "var(--display-sm)",
+                      "fontFamily": "var(--font-serif)",
+                      "fontWeight": "var(--font-bold)",
+                      "lineHeight": "var(--leading-tight)",
+                      "letterSpacing": "var(--tracking-tight)",
+                      "color": "var(--primary-foreground)"
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  },
+                  {
+                    "id": "sub",
+                    "type": "Text",
+                    "children": [],
+                    "label": "Hero sub-heading",
+                    "x": 160,
+                    "y": 400,
+                    "parameters": {
+                      "as": "p",
+                      "mounted": false,
+                      "text": "",
+                      "fontSize": "var(--text-lg)",
+                      "lineHeight": "var(--leading-relaxed)",
+                      "color": "var(--primary-foreground)"
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  }
+                ],
+                "label": "Hero content",
                 "x": 100,
                 "y": 160,
                 "parameters": {
-                  "as": "h2",
-                  "text": "",
-                  "fontSize": "var(--display-sm)",
-                  "fontFamily": "var(--font-serif)",
-                  "fontWeight": "var(--font-bold)",
-                  "lineHeight": "var(--leading-tight)",
-                  "letterSpacing": "var(--tracking-tight)",
-                  "color": "var(--primary-foreground)"
-                },
-                "ports": [],
-                "dynamicports": []
-              },
-              {
-                "id": "sub",
-                "type": "Text",
-                "children": [],
-                "label": "Hero sub-heading",
-                "x": 100,
-                "y": 280,
-                "parameters": {
-                  "as": "p",
-                  "mounted": false,
-                  "text": "",
-                  "fontSize": "var(--text-lg)",
-                  "lineHeight": "var(--leading-relaxed)",
-                  "color": "var(--primary-foreground)"
+                  "sizeMode": "contentHeight",
+                  "flexDirection": "column",
+                  "alignItems": "flex-start",
+                  "rowGap": "var(--space-3)",
+                  "maxWidth": "var(--site-measure)",
+                  "paddingLeft": "var(--space-6)",
+                  "paddingRight": "var(--space-6)"
                 },
                 "ports": [],
                 "dynamicports": []
@@ -357,16 +377,13 @@
             "parameters": {
               "sizeMode": "contentHeight",
               "flexDirection": "column",
-              "rowGap": "var(--space-3)",
-              "paddingTop": "var(--space-16)",
-              "paddingBottom": "var(--space-8)",
-              "paddingLeft": "var(--space-6)",
-              "paddingRight": "var(--space-6)",
+              "alignItems": "center",
+              "paddingTop": "var(--space-24)",
+              "paddingBottom": "var(--space-16)",
               "backgroundGradient": "var(--gradient-scrim)",
               "backgroundSize": "cover",
               "backgroundPosition": "center",
-              "backgroundColor": "var(--foreground)",
-              "borderRadius": "var(--radius-md)"
+              "backgroundColor": "var(--foreground)"
             },
             "ports": [],
             "dynamicports": []
@@ -376,8 +393,8 @@
             "type": "Component Inputs",
             "children": [],
             "label": "What this hero shows",
-            "x": 350,
-            "y": 160,
+            "x": 410,
+            "y": 280,
             "parameters": {},
             "ports": [
               {
@@ -1222,57 +1239,77 @@
             "type": "Group",
             "children": [
               {
-                "id": "heading-5",
-                "type": "Text",
-                "children": [],
-                "label": "Call to action heading",
+                "id": "inner-2",
+                "type": "Group",
+                "children": [
+                  {
+                    "id": "heading-5",
+                    "type": "Text",
+                    "children": [],
+                    "label": "Call to action heading",
+                    "x": 160,
+                    "y": 280,
+                    "parameters": {
+                      "as": "h2",
+                      "text": "",
+                      "fontSize": "var(--text-3xl)",
+                      "fontFamily": "var(--font-serif)",
+                      "fontWeight": "var(--font-bold)",
+                      "lineHeight": "var(--leading-tight)",
+                      "color": "var(--primary-foreground)"
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  },
+                  {
+                    "id": "body-3",
+                    "type": "Text",
+                    "children": [],
+                    "label": "Call to action body",
+                    "x": 160,
+                    "y": 400,
+                    "parameters": {
+                      "as": "p",
+                      "mounted": false,
+                      "text": "",
+                      "fontSize": "var(--text-base)",
+                      "lineHeight": "var(--leading-relaxed)",
+                      "color": "var(--primary-foreground)"
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  },
+                  {
+                    "id": "button",
+                    "type": "net.noodl.controls.button",
+                    "children": [],
+                    "label": "Call to action button",
+                    "x": 160,
+                    "y": 520,
+                    "parameters": {
+                      "mounted": false,
+                      "label": "",
+                      "backgroundColor": "var(--primary-foreground)",
+                      "color": "var(--primary)",
+                      "fontWeight": "var(--font-semibold)",
+                      "borderRadius": "var(--radius-md)",
+                      "fontSize": "var(--text-base)"
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  }
+                ],
+                "label": "Call to action content",
                 "x": 100,
                 "y": 160,
                 "parameters": {
-                  "as": "h2",
-                  "text": "",
-                  "fontSize": "var(--text-3xl)",
-                  "fontFamily": "var(--font-serif)",
-                  "fontWeight": "var(--font-bold)",
-                  "lineHeight": "var(--leading-tight)",
-                  "color": "var(--primary-foreground)"
-                },
-                "ports": [],
-                "dynamicports": []
-              },
-              {
-                "id": "body-3",
-                "type": "Text",
-                "children": [],
-                "label": "Call to action body",
-                "x": 100,
-                "y": 280,
-                "parameters": {
-                  "as": "p",
-                  "mounted": false,
-                  "text": "",
-                  "fontSize": "var(--text-base)",
-                  "lineHeight": "var(--leading-relaxed)",
-                  "color": "var(--primary-foreground)"
-                },
-                "ports": [],
-                "dynamicports": []
-              },
-              {
-                "id": "button",
-                "type": "net.noodl.controls.button",
-                "children": [],
-                "label": "Call to action button",
-                "x": 100,
-                "y": 400,
-                "parameters": {
-                  "mounted": false,
-                  "label": "",
-                  "backgroundColor": "var(--primary-foreground)",
-                  "color": "var(--primary)",
-                  "fontWeight": "var(--font-semibold)",
-                  "borderRadius": "var(--radius-md)",
-                  "fontSize": "var(--text-base)"
+                  "sizeMode": "contentHeight",
+                  "flexDirection": "column",
+                  "alignItems": "flex-start",
+                  "rowGap": "var(--space-4)",
+                  "maxWidth": "var(--site-measure)",
+                  "paddingLeft": "var(--space-6)",
+                  "paddingRight": "var(--space-6)"
                 },
                 "ports": [],
                 "dynamicports": []
@@ -1284,15 +1321,11 @@
             "parameters": {
               "sizeMode": "contentHeight",
               "flexDirection": "column",
-              "alignItems": "flex-start",
-              "rowGap": "var(--space-4)",
-              "paddingTop": "var(--space-10)",
-              "paddingBottom": "var(--space-10)",
-              "paddingLeft": "var(--space-6)",
-              "paddingRight": "var(--space-6)",
+              "alignItems": "center",
+              "paddingTop": "var(--space-16)",
+              "paddingBottom": "var(--space-16)",
               "backgroundGradient": "var(--gradient-brand)",
-              "backgroundColor": "var(--primary)",
-              "borderRadius": "var(--radius-md)"
+              "backgroundColor": "var(--primary)"
             },
             "ports": [],
             "dynamicports": []
@@ -1302,8 +1335,8 @@
             "type": "Component Inputs",
             "children": [],
             "label": "What this call to action says and where it goes",
-            "x": 350,
-            "y": 160,
+            "x": 410,
+            "y": 280,
             "parameters": {},
             "ports": [
               {
@@ -1344,8 +1377,8 @@
             "type": "JavaScriptFunction",
             "children": [],
             "label": "Slug or the open web",
-            "x": 350,
-            "y": 400,
+            "x": 410,
+            "y": 520,
             "parameters": {
               "runOnChange-in-target": false,
               "functionScript": "const target = (Inputs.target || '').trim();\nif (target === '') return;\nif (/^https?:\\/\\//i.test(target)) {\n  if (typeof window !== 'undefined' && window.open) {\n    window.open(target, '_blank', 'noopener');\n  }\n  return;\n}\nOutputs.slug = target;\nOutputs.go();"
@@ -1378,8 +1411,8 @@
             "type": "RouterNavigate",
             "children": [],
             "label": "To that page",
-            "x": 350,
-            "y": 520,
+            "x": 410,
+            "y": 640,
             "parameters": {
               "router": "Main",
               "target": "/Pages/Site"
@@ -1506,7 +1539,12 @@
                 "parameters": {
                   "sizeMode": "contentHeight",
                   "flexDirection": "column",
-                  "mounted": false
+                  "mounted": false,
+                  "maxWidth": "var(--site-measure)",
+                  "paddingLeft": "var(--space-6)",
+                  "paddingRight": "var(--space-6)",
+                  "paddingTop": "var(--space-6)",
+                  "paddingBottom": "var(--space-6)"
                 },
                 "ports": [],
                 "dynamicports": []
@@ -1560,7 +1598,12 @@
                 "parameters": {
                   "sizeMode": "contentHeight",
                   "flexDirection": "column",
-                  "mounted": false
+                  "mounted": false,
+                  "maxWidth": "var(--site-measure)",
+                  "paddingLeft": "var(--space-6)",
+                  "paddingRight": "var(--space-6)",
+                  "paddingTop": "var(--space-10)",
+                  "paddingBottom": "var(--space-10)"
                 },
                 "ports": [],
                 "dynamicports": []
@@ -1587,7 +1630,12 @@
                 "parameters": {
                   "sizeMode": "contentHeight",
                   "flexDirection": "column",
-                  "mounted": false
+                  "mounted": false,
+                  "maxWidth": "var(--site-measure)",
+                  "paddingLeft": "var(--space-6)",
+                  "paddingRight": "var(--space-6)",
+                  "paddingTop": "var(--space-10)",
+                  "paddingBottom": "var(--space-10)"
                 },
                 "ports": [],
                 "dynamicports": []
@@ -1600,8 +1648,7 @@
               "sizeMode": "contentHeight",
               "as": "section",
               "flexDirection": "column",
-              "paddingTop": "var(--space-4)",
-              "paddingBottom": "var(--space-4)"
+              "alignItems": "center"
             },
             "ports": [],
             "dynamicports": []
@@ -1968,6 +2015,9 @@
               "flexWrap": "wrap",
               "paddingTop": "var(--space-4)",
               "paddingBottom": "var(--space-4)",
+              "maxWidth": "var(--site-measure)",
+              "paddingLeft": "var(--space-6)",
+              "paddingRight": "var(--space-6)",
               "borderBottomStyle": "solid",
               "borderBottomWidth": "var(--border-1)",
               "borderBottomColor": "var(--border)"
@@ -2102,7 +2152,11 @@
                               "as": "header",
                               "flexDirection": "column",
                               "rowGap": "var(--space-1)",
-                              "paddingTop": "var(--space-8)"
+                              "paddingTop": "var(--space-8)",
+                              "paddingBottom": "var(--space-8)",
+                              "maxWidth": "var(--site-measure)",
+                              "paddingLeft": "var(--space-6)",
+                              "paddingRight": "var(--space-6)"
                             },
                             "ports": [],
                             "dynamicports": []
@@ -2160,7 +2214,8 @@
                               "paddingTop": "var(--space-12)",
                               "paddingBottom": "var(--space-12)",
                               "paddingLeft": "var(--space-6)",
-                              "paddingRight": "var(--space-6)"
+                              "paddingRight": "var(--space-6)",
+                              "maxWidth": "var(--site-measure)"
                             },
                             "ports": [],
                             "dynamicports": []
@@ -2173,7 +2228,8 @@
                           "as": "main",
                           "sizeMode": "contentHeight",
                           "flexDirection": "column",
-                          "rowGap": "var(--space-8)"
+                          "alignItems": "center",
+                          "rowGap": "var(--space-0)"
                         },
                         "ports": [],
                         "dynamicports": []
@@ -2227,6 +2283,9 @@
                           "flexDirection": "column",
                           "rowGap": "var(--space-2)",
                           "paddingTop": "var(--space-8)",
+                          "maxWidth": "var(--site-measure)",
+                          "paddingLeft": "var(--space-6)",
+                          "paddingRight": "var(--space-6)",
                           "borderTopStyle": "solid",
                           "borderTopWidth": "var(--border-1)",
                           "borderTopColor": "var(--border)"
@@ -2240,11 +2299,11 @@
                     "y": 280,
                     "parameters": {
                       "flexDirection": "column",
+                      "alignItems": "center",
                       "width": {
                         "value": 100,
                         "unit": "%"
                       },
-                      "maxWidth": "var(--site-measure)",
                       "rowGap": "var(--space-8)",
                       "paddingBottom": "var(--space-12)"
                     },
@@ -2259,8 +2318,6 @@
                   "flexDirection": "column",
                   "alignItems": "center",
                   "backgroundColor": "var(--background)",
-                  "paddingLeft": "var(--space-6)",
-                  "paddingRight": "var(--space-6)",
                   "minHeight": {
                     "value": 100,
                     "unit": "vh"
@@ -4718,18 +4775,35 @@
                             "type": "Group",
                             "children": [
                               {
+                                "id": "statusDot",
+                                "type": "Group",
+                                "children": [],
+                                "label": "Status dot",
+                                "x": 340,
+                                "y": 760,
+                                "parameters": {
+                                  "sizeMode": "explicit",
+                                  "width": "var(--space-2)",
+                                  "height": "var(--space-2)",
+                                  "borderRadius": "var(--radius-full)",
+                                  "backgroundColor": "var(--muted-foreground)"
+                                },
+                                "ports": [],
+                                "dynamicports": []
+                              },
+                              {
                                 "id": "pillText",
                                 "type": "Text",
                                 "children": [],
                                 "label": "Draft or published",
                                 "x": 340,
-                                "y": 760,
+                                "y": 880,
                                 "parameters": {
                                   "sizeMode": "contentSize",
                                   "text": "Draft",
                                   "fontFamily": "var(--font-sans)",
                                   "fontSize": "var(--text-sm)",
-                                  "fontWeight": "var(--font-semibold)",
+                                  "fontWeight": "var(--font-normal)",
                                   "color": "var(--muted-foreground)"
                                 },
                                 "ports": [],
@@ -4743,12 +4817,7 @@
                               "sizeMode": "contentSize",
                               "flexDirection": "row",
                               "alignItems": "center",
-                              "paddingTop": "var(--space-1)",
-                              "paddingBottom": "var(--space-1)",
-                              "paddingLeft": "var(--space-3)",
-                              "paddingRight": "var(--space-3)",
-                              "borderRadius": "var(--radius-md)",
-                              "backgroundColor": "var(--accent)"
+                              "columnGap": "var(--space-2)"
                             },
                             "ports": [],
                             "dynamicports": []
@@ -4759,7 +4828,7 @@
                             "children": [],
                             "label": "Unsaved changes",
                             "x": 280,
-                            "y": 880,
+                            "y": 1000,
                             "parameters": {
                               "sizeMode": "contentSize",
                               "mounted": false,
@@ -4777,7 +4846,7 @@
                             "children": [],
                             "label": "Preview",
                             "x": 280,
-                            "y": 1000,
+                            "y": 1120,
                             "parameters": {
                               "backgroundColor": "var(--surface)",
                               "color": "var(--foreground)",
@@ -4798,7 +4867,7 @@
                             "children": [],
                             "label": "Save",
                             "x": 280,
-                            "y": 1120,
+                            "y": 1240,
                             "parameters": {
                               "backgroundColor": "var(--primary)",
                               "color": "var(--primary-foreground)",
@@ -4839,7 +4908,7 @@
                                 "children": [],
                                 "label": "Title",
                                 "x": 340,
-                                "y": 1480,
+                                "y": 1600,
                                 "parameters": {
                                   "sizeMode": "contentHeight",
                                   "backgroundColor": "var(--background)",
@@ -4865,7 +4934,7 @@
                                 "children": [],
                                 "label": "Slug",
                                 "x": 340,
-                                "y": 1600,
+                                "y": 1720,
                                 "parameters": {
                                   "sizeMode": "contentHeight",
                                   "backgroundColor": "var(--background)",
@@ -4888,7 +4957,7 @@
                             ],
                             "label": "Title and slug",
                             "x": 280,
-                            "y": 1360,
+                            "y": 1480,
                             "parameters": {
                               "sizeMode": "contentHeight",
                               "flexDirection": "row",
@@ -4905,7 +4974,7 @@
                             "children": [],
                             "label": "SEO description",
                             "x": 280,
-                            "y": 1720,
+                            "y": 1840,
                             "parameters": {
                               "sizeMode": "contentHeight",
                               "backgroundColor": "var(--background)",
@@ -4936,7 +5005,7 @@
                                 "children": [],
                                 "label": "Nav order",
                                 "x": 340,
-                                "y": 1960,
+                                "y": 2080,
                                 "parameters": {
                                   "sizeMode": "contentHeight",
                                   "backgroundColor": "var(--background)",
@@ -4963,7 +5032,7 @@
                                 "children": [],
                                 "label": "Show in navigation",
                                 "x": 340,
-                                "y": 2080,
+                                "y": 2200,
                                 "parameters": {
                                   "backgroundColor": "var(--background)",
                                   "borderColor": "var(--border)",
@@ -4977,7 +5046,7 @@
                             ],
                             "label": "Navigation",
                             "x": 280,
-                            "y": 1840,
+                            "y": 1960,
                             "parameters": {
                               "sizeMode": "contentHeight",
                               "flexDirection": "row",
@@ -4990,7 +5059,7 @@
                         ],
                         "label": "Page details",
                         "x": 220,
-                        "y": 1240,
+                        "y": 1360,
                         "parameters": {
                           "sizeMode": "contentHeight",
                           "flexDirection": "column",
@@ -5022,7 +5091,7 @@
                                 "children": [],
                                 "label": "Sections heading",
                                 "x": 340,
-                                "y": 2440,
+                                "y": 2560,
                                 "parameters": {
                                   "sizeMode": "contentHeight",
                                   "text": "Sections",
@@ -5044,7 +5113,7 @@
                                     "children": [],
                                     "label": "Section kind",
                                     "x": 400,
-                                    "y": 2680,
+                                    "y": 2800,
                                     "parameters": {
                                       "sizeMode": "contentHeight",
                                       "backgroundColor": "var(--background)",
@@ -5071,7 +5140,7 @@
                                     "children": [],
                                     "label": "Add",
                                     "x": 400,
-                                    "y": 2800,
+                                    "y": 2920,
                                     "parameters": {
                                       "backgroundColor": "var(--primary)",
                                       "color": "var(--primary-foreground)",
@@ -5086,7 +5155,7 @@
                                 ],
                                 "label": "Pick a kind and add it",
                                 "x": 340,
-                                "y": 2560,
+                                "y": 2680,
                                 "parameters": {
                                   "sizeMode": "contentHeight",
                                   "flexDirection": "row",
@@ -5099,7 +5168,7 @@
                             ],
                             "label": "Add a section",
                             "x": 280,
-                            "y": 2320,
+                            "y": 2440,
                             "parameters": {
                               "sizeMode": "contentHeight",
                               "flexDirection": "column",
@@ -5114,7 +5183,7 @@
                             "children": [],
                             "label": "Why that move did not work",
                             "x": 280,
-                            "y": 2920,
+                            "y": 3040,
                             "parameters": {
                               "sizeMode": "contentHeight",
                               "mounted": false,
@@ -5136,7 +5205,7 @@
                                 "children": [],
                                 "label": "One row per section",
                                 "x": 340,
-                                "y": 3160,
+                                "y": 3280,
                                 "parameters": {
                                   "templateType": "explicit",
                                   "template": "/Admin/SectionRow"
@@ -5147,7 +5216,7 @@
                             ],
                             "label": "The section rows",
                             "x": 280,
-                            "y": 3040,
+                            "y": 3160,
                             "parameters": {
                               "sizeMode": "contentHeight",
                               "flexDirection": "column",
@@ -5159,7 +5228,7 @@
                         ],
                         "label": "Sections",
                         "x": 220,
-                        "y": 2200,
+                        "y": 2320,
                         "parameters": {
                           "sizeMode": "contentHeight",
                           "flexDirection": "column",
@@ -5174,7 +5243,7 @@
                         "children": [],
                         "label": "Back",
                         "x": 220,
-                        "y": 3280,
+                        "y": 3400,
                         "parameters": {
                           "backgroundColor": "var(--surface)",
                           "color": "var(--foreground)",
@@ -5229,7 +5298,7 @@
             "children": [],
             "label": "How wide is the window",
             "x": 650,
-            "y": 3640,
+            "y": 3760,
             "parameters": {},
             "ports": [],
             "dynamicports": []
@@ -5240,7 +5309,7 @@
             "children": [],
             "label": "Is there room for two fields side by side?",
             "x": 650,
-            "y": 1360,
+            "y": 1480,
             "parameters": {
               "runOnChange-in-width": true,
               "functionScript": "if (Inputs.width === undefined) return;\nconst roomy = Inputs.width >= 760;\nOutputs.fieldsDirection = roomy ? 'row' : 'column';\nOutputs.fieldsWrap = roomy ? 'nowrap' : 'wrap';"
@@ -5276,7 +5345,7 @@
             "children": [],
             "label": "The five section kinds",
             "x": 650,
-            "y": 2680,
+            "y": 2800,
             "parameters": {
               "type": "json",
               "json": "[{\"Label\":\"Hero\",\"Value\":\"hero\"},{\"Label\":\"Gallery\",\"Value\":\"gallery\"},{\"Label\":\"Call to action\",\"Value\":\"cta\"},{\"Label\":\"Rich text\",\"Value\":\"richText\"},{\"Label\":\"Contact\",\"Value\":\"contact\"}]"
@@ -5290,7 +5359,7 @@
             "children": [],
             "label": "Which page",
             "x": 650,
-            "y": 3760,
+            "y": 3880,
             "parameters": {
               "pathParams": "pageId"
             },
@@ -5337,7 +5406,7 @@
             "children": [],
             "label": "The page being edited",
             "x": 650,
-            "y": 1480,
+            "y": 1600,
             "parameters": {
               "runOnChange-modelId": true,
               "runOnChange-record": true,
@@ -5353,7 +5422,7 @@
             "children": [],
             "label": "Save the page fields",
             "x": 650,
-            "y": 1600,
+            "y": 1720,
             "parameters": {
               "collectionName": "Page",
               "idSource": "explicit",
@@ -5368,7 +5437,7 @@
             "children": [],
             "label": "This page's sections",
             "x": 650,
-            "y": 3160,
+            "y": 3280,
             "parameters": {
               "runOnChange-records": true,
               "runOnChange-search": true,
@@ -5402,7 +5471,7 @@
             "children": [],
             "label": "Where does this section go if it moves up",
             "x": 650,
-            "y": 3280,
+            "y": 3400,
             "parameters": {
               "runOnChange-in-sections": false,
               "runOnChange-in-itemId": false,
@@ -5451,7 +5520,7 @@
             "children": [],
             "label": "Where does this section go if it moves down",
             "x": 650,
-            "y": 3400,
+            "y": 3520,
             "parameters": {
               "runOnChange-in-sections": false,
               "runOnChange-in-itemId": false,
@@ -5500,7 +5569,7 @@
             "children": [],
             "label": "Did the last move refuse?",
             "x": 650,
-            "y": 2920,
+            "y": 3040,
             "parameters": {
               "states": "Quiet,Refused",
               "values": "refused",
@@ -5517,7 +5586,7 @@
             "children": [],
             "label": "reorderSection",
             "x": 650,
-            "y": 3040,
+            "y": 3160,
             "parameters": {
               "function": "reorderSection"
             },
@@ -5530,7 +5599,7 @@
             "children": [],
             "label": "Add a section to this page",
             "x": 650,
-            "y": 2800,
+            "y": 2920,
             "parameters": {
               "collectionName": "Section",
               "accessControl": [
@@ -5553,7 +5622,7 @@
             "children": [],
             "label": "Back to the list",
             "x": 650,
-            "y": 3520,
+            "y": 3640,
             "parameters": {
               "router": "Main",
               "target": "/Pages/Admin"
@@ -5596,10 +5665,10 @@
             "children": [],
             "label": "Draft or published, as a word and a colour",
             "x": 650,
-            "y": 760,
+            "y": 880,
             "parameters": {
               "runOnChange-in-published": true,
-              "functionScript": "const published = Inputs.published === true;\nOutputs.label = published ? 'Published' : 'Draft';\nOutputs.pillBackground = published ? 'var(--primary)' : 'var(--accent)';\nOutputs.pillColor = published ? 'var(--primary-foreground)' : 'var(--muted-foreground)';"
+              "functionScript": "const published = Inputs.published === true;\nOutputs.label = published ? 'Published' : 'Draft';\nOutputs.dotColor = published ? 'var(--primary)' : 'var(--muted-foreground)';\nOutputs.labelColor = published ? 'var(--foreground)' : 'var(--muted-foreground)';"
             },
             "ports": [
               {
@@ -5617,15 +5686,15 @@
                 "group": "Outputs"
               },
               {
-                "name": "out-pillBackground",
-                "displayName": "pillBackground",
+                "name": "out-dotColor",
+                "displayName": "dotColor",
                 "plug": "output",
                 "type": "*",
                 "group": "Outputs"
               },
               {
-                "name": "out-pillColor",
-                "displayName": "pillColor",
+                "name": "out-labelColor",
+                "displayName": "labelColor",
                 "plug": "output",
                 "type": "*",
                 "group": "Outputs"
@@ -5639,7 +5708,7 @@
             "children": [],
             "label": "Is there anything unsaved?",
             "x": 650,
-            "y": 880,
+            "y": 1000,
             "parameters": {
               "runOnChange-in-title": true,
               "runOnChange-in-slug": true,
@@ -5740,7 +5809,7 @@
             "children": [],
             "label": "Preview the public page",
             "x": 650,
-            "y": 1000,
+            "y": 1120,
             "parameters": {
               "router": "Main",
               "target": "/Pages/Site"
@@ -6076,13 +6145,13 @@
           },
           {
             "fromId": "status",
-            "fromProperty": "out-pillBackground",
-            "toId": "pill",
+            "fromProperty": "out-dotColor",
+            "toId": "statusDot",
             "toProperty": "backgroundColor"
           },
           {
             "fromId": "status",
-            "fromProperty": "out-pillColor",
+            "fromProperty": "out-labelColor",
             "toId": "pillText",
             "toProperty": "color"
           },
@@ -6256,18 +6325,35 @@
                 "type": "Group",
                 "children": [
                   {
+                    "id": "statusDot-2",
+                    "type": "Group",
+                    "children": [],
+                    "label": "Status dot",
+                    "x": 160,
+                    "y": 760,
+                    "parameters": {
+                      "sizeMode": "explicit",
+                      "width": "var(--space-2)",
+                      "height": "var(--space-2)",
+                      "borderRadius": "var(--radius-full)",
+                      "backgroundColor": "var(--muted-foreground)"
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  },
+                  {
                     "id": "rowStatus",
                     "type": "Text",
                     "children": [],
                     "label": "Draft or published",
                     "x": 160,
-                    "y": 760,
+                    "y": 880,
                     "parameters": {
                       "sizeMode": "contentSize",
                       "text": "Draft",
                       "fontFamily": "var(--font-sans)",
                       "fontSize": "var(--text-sm)",
-                      "fontWeight": "var(--font-semibold)",
+                      "fontWeight": "var(--font-normal)",
                       "color": "var(--muted-foreground)"
                     },
                     "ports": [],
@@ -6281,13 +6367,8 @@
                   "sizeMode": "contentSize",
                   "flexDirection": "row",
                   "alignItems": "center",
-                  "paddingTop": "var(--space-1)",
-                  "paddingBottom": "var(--space-1)",
-                  "paddingLeft": "var(--space-3)",
-                  "paddingRight": "var(--space-3)",
-                  "borderRadius": "var(--radius-md)",
-                  "marginRight": "var(--space-4)",
-                  "backgroundColor": "var(--accent)"
+                  "columnGap": "var(--space-2)",
+                  "marginRight": "var(--space-4)"
                 },
                 "ports": [],
                 "dynamicports": []
@@ -6298,15 +6379,12 @@
                 "children": [],
                 "label": "Edit",
                 "x": 100,
-                "y": 880,
+                "y": 1000,
                 "parameters": {
-                  "backgroundColor": "var(--surface)",
-                  "color": "var(--foreground)",
-                  "borderStyle": "solid",
-                  "borderWidth": "var(--border-1)",
-                  "borderColor": "var(--border)",
+                  "backgroundColor": "var(--primary)",
+                  "color": "var(--primary-foreground)",
                   "borderRadius": "var(--radius-md)",
-                  "fontSize": "var(--text-sm)",
+                  "fontSize": "var(--text-base)",
                   "fontWeight": "var(--font-semibold)",
                   "label": "Edit"
                 },
@@ -6319,16 +6397,14 @@
                 "children": [],
                 "label": "More actions",
                 "x": 100,
-                "y": 1000,
+                "y": 1120,
                 "parameters": {
-                  "backgroundColor": "var(--surface)",
+                  "backgroundColor": "var(--background)",
                   "color": "var(--foreground)",
-                  "borderStyle": "solid",
-                  "borderWidth": "var(--border-1)",
-                  "borderColor": "var(--border)",
+                  "borderStyle": "none",
                   "borderRadius": "var(--radius-md)",
                   "fontSize": "var(--text-sm)",
-                  "fontWeight": "var(--font-semibold)",
+                  "fontWeight": "var(--font-normal)",
                   "label": "More"
                 },
                 "ports": [],
@@ -6344,7 +6420,7 @@
                     "children": [],
                     "label": "Publish",
                     "x": 160,
-                    "y": 1240,
+                    "y": 1360,
                     "parameters": {
                       "backgroundColor": "var(--primary)",
                       "color": "var(--primary-foreground)",
@@ -6362,7 +6438,7 @@
                     "children": [],
                     "label": "Unpublish",
                     "x": 160,
-                    "y": 1360,
+                    "y": 1480,
                     "parameters": {
                       "backgroundColor": "var(--surface)",
                       "color": "var(--foreground)",
@@ -6383,7 +6459,7 @@
                     "children": [],
                     "label": "Duplicate",
                     "x": 160,
-                    "y": 1480,
+                    "y": 1600,
                     "parameters": {
                       "backgroundColor": "var(--surface)",
                       "color": "var(--foreground)",
@@ -6401,7 +6477,7 @@
                 ],
                 "label": "Row actions menu",
                 "x": 100,
-                "y": 1120,
+                "y": 1240,
                 "parameters": {
                   "sizeMode": "contentSize",
                   "mounted": false,
@@ -6509,7 +6585,7 @@
             "y": 1000,
             "parameters": {
               "runOnChange-in-published": true,
-              "functionScript": "const published = Inputs.published === true;\nOutputs.label = published ? 'Published' : 'Draft';\nOutputs.pillBackground = published ? 'var(--primary)' : 'var(--accent)';\nOutputs.pillColor = published ? 'var(--primary-foreground)' : 'var(--muted-foreground)';"
+              "functionScript": "const published = Inputs.published === true;\nOutputs.label = published ? 'Published' : 'Draft';\nOutputs.dotColor = published ? 'var(--primary)' : 'var(--muted-foreground)';\nOutputs.labelColor = published ? 'var(--foreground)' : 'var(--muted-foreground)';"
             },
             "ports": [
               {
@@ -6527,15 +6603,15 @@
                 "group": "Outputs"
               },
               {
-                "name": "out-pillBackground",
-                "displayName": "pillBackground",
+                "name": "out-dotColor",
+                "displayName": "dotColor",
                 "plug": "output",
                 "type": "*",
                 "group": "Outputs"
               },
               {
-                "name": "out-pillColor",
-                "displayName": "pillColor",
+                "name": "out-labelColor",
+                "displayName": "labelColor",
                 "plug": "output",
                 "type": "*",
                 "group": "Outputs"
@@ -6643,13 +6719,13 @@
           },
           {
             "fromId": "status-2",
-            "fromProperty": "out-pillBackground",
-            "toId": "pill-2",
+            "fromProperty": "out-dotColor",
+            "toId": "statusDot-2",
             "toProperty": "backgroundColor"
           },
           {
             "fromId": "status-2",
-            "fromProperty": "out-pillColor",
+            "fromProperty": "out-labelColor",
             "toId": "rowStatus",
             "toProperty": "color"
           },

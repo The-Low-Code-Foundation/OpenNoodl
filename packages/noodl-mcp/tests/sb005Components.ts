@@ -283,6 +283,49 @@ export const DESTRUCTIVE_BUTTON = {
 } as const;
 
 /**
+ * REL-011c seam 2 — the third weight, for a control that must be reachable but
+ * must not compete.
+ *
+ * 🔴 **The seam Richard named was not the colours, it was the ORDER OF LOUDNESS.**
+ * On `/admin/pages` the loudest element in every row was `Published` — a solid
+ * filled pill — sitting beside `Edit` and `More`, two identical bordered chips.
+ * The one thing a person cannot click out-shouted the two things they can, and
+ * the two things they can were indistinguishable from each other. Three ranks
+ * now exist and each row spends them once: {@link PRIMARY_BUTTON} on the action
+ * the row is for (`Edit`), this on the overflow (`More`), and the status reduced
+ * to a dot and a word (see `statusDot` in {@link PAGE_ROW_NODES}).
+ *
+ * ⚠️ **No border, and its ground is the page's own ground** — `--background`,
+ * the token `/Pages/Admin`'s frame paints, so the control has no visible box
+ * while still naming a colour from the palette.
+ *
+ * 🔴 **It is NOT `transparent`, and the census is what settled that.** The first
+ * draft wrote `transparent`, which renders identically and reds
+ * `sbr014ControlStyleCensus` — REL-011a's gate requires every one of the 53
+ * controls to state `backgroundColor` as a `var(--token)` this project defines,
+ * because the button stylesheet's own default is a raw `black`. A keyword is
+ * exactly the "outside the palette" value that gate exists to catch, and it
+ * would have been the 53rd control going back to 52.
+ *
+ * ⚠️ That gate reads the COMMITTED artefact, so it stayed green through a whole
+ * suite run while `site-builder.content.json` was still the pre-change file. It
+ * only spoke once the template was regenerated — measure the artefact, not the
+ * last green run.
+ *
+ * ⚠️ The label keeps `--foreground` rather than `--muted-foreground`, because a
+ * ghost button in muted text at `--text-sm` is the shape that reads as disabled.
+ * The affordance it gives up is the box; it does not also give up contrast.
+ */
+export const GHOST_BUTTON = {
+  backgroundColor: 'var(--background)',
+  color: 'var(--foreground)',
+  borderStyle: 'none',
+  borderRadius: 'var(--radius-md)',
+  fontSize: 'var(--text-sm)',
+  fontWeight: 'var(--font-normal)'
+} as const;
+
+/**
  * The one checkbox, `Show in navigation`.
  *
  * ⚠️ Three ports, not eleven, and the difference is the point: a checkbox draws
@@ -621,23 +664,57 @@ export const PAGE_ROW_NODES = [
     type: 'Group',
     label: 'Status pill',
     parent: 'row',
+    // 🔴 **REL-011c seam 2 — this is no longer a pill, and the id is kept on
+    // purpose.** Richard ruled `/admin/pages` SHITTY and §9.1 settled that the
+    // idiom is the product's, not the look harness's: a solid filled block
+    // saying `Published` was the loudest thing in a row whose two actual
+    // affordances were quiet outlined chips. The fill moves to `statusDot`, an
+    // 8px circle, and the word beside it goes quiet — so the row's loudness now
+    // ranks the way its interactivity does.
+    //
+    // ⚠️ The id stays `pill` because ids are what gates and drives address, and
+    // a silent rename is the D42 defect (`#pick` → `pick-2`, a gate that passed
+    // on nothing). The LABEL is what a person reads in the editor and it moves.
+    //
     // Child of the row, so `contentSize` — `contentHeight` would still assign
-    // width and the pill would eat the row.
+    // width and the cell would eat the row.
     parameters: {
       ...IN_A_ROW,
       flexDirection: 'row',
       alignItems: 'center',
-      paddingTop: 'var(--space-1)',
-      paddingBottom: 'var(--space-1)',
-      paddingLeft: 'var(--space-3)',
-      paddingRight: 'var(--space-3)',
-      borderRadius: 'var(--radius-md)',
-      marginRight: 'var(--space-4)',
-      // Authored as well as wired, SB-018 (3): a draft row must not flash the
-      // published colour before `status` first publishes.
-      backgroundColor: 'var(--accent)'
+      columnGap: 'var(--space-2)',
+      marginRight: 'var(--space-4)'
     },
-    children: ['rowStatus']
+    children: ['statusDot', 'rowStatus']
+  },
+  {
+    id: 'statusDot',
+    type: 'Group',
+    label: 'Status dot',
+    parent: 'pill',
+    // 🔴 `sizeMode: 'explicit'` is required, not decoration: without it a Group
+    // takes `height: 100%` along its parent (`addDimensions` defaults it) and
+    // the dot would draw as a bar the height of the row. The same sentence is
+    // already on `/Admin/SectionRow`'s image preview.
+    //
+    // ⚠️ Both dimensions are `var(--space-2)` — a TOKEN on a dimension port,
+    // which SBR-003 AC5's probe proves the port takes and CSS resolves. That is
+    // what keeps this off `TEMPLATE_DIMENSION_EXEMPTIONS`: a raw `8px` here
+    // would have had to be written down as a reason, and there is no reason —
+    // the spacing scale has the value.
+    //
+    // `--radius-full` is 9999px and a border-radius larger than half the box
+    // clamps, so one token gives a circle at any size this ever becomes.
+    //
+    // Authored as well as wired, SB-018 (3): a draft row must not flash the
+    // published colour before `status` first publishes.
+    parameters: {
+      sizeMode: 'explicit',
+      width: 'var(--space-2)',
+      height: 'var(--space-2)',
+      borderRadius: 'var(--radius-full)',
+      backgroundColor: 'var(--muted-foreground)'
+    }
   },
   {
     id: 'rowStatus',
@@ -647,16 +724,25 @@ export const PAGE_ROW_NODES = [
     // Fed from `status`, below: the panel is the one reader `published` exists
     // for (SB-004 §3), and it reads the mirror rather than trying to infer the
     // ACL, which no browser query can see.
+    //
+    // ⚠️ `--font-normal`, down from `--font-semibold`. The weight was carrying
+    // the same emphasis the fill was, and demoting one while keeping the other
+    // would have moved the colour and not the reading order.
     parameters: {
       ...IN_A_ROW,
       text: 'Draft',
       fontFamily: 'var(--font-sans)',
       fontSize: 'var(--text-sm)',
-      fontWeight: 'var(--font-semibold)',
+      fontWeight: 'var(--font-normal)',
       color: 'var(--muted-foreground)'
     }
   },
-  { id: 'editButton', type: 'net.noodl.controls.button', label: 'Edit', parent: 'row', parameters: { ...SECONDARY_BUTTON, label: 'Edit' } },
+  // 🔴 REL-011c seam 2 — `Edit` is the action the row exists for and is now the
+  // only filled thing in it. {@link SECONDARY_BUTTON}'s own note argued against
+  // a fill here on the grounds that "two filled colours side by side would make
+  // every row look like it had two primary actions" — TRUE while the status was
+  // the other fill, and the premise is what changed, not the reasoning.
+  { id: 'editButton', type: 'net.noodl.controls.button', label: 'Edit', parent: 'row', parameters: { ...PRIMARY_BUTTON, label: 'Edit' } },
   {
     id: 'menuButton',
     type: 'net.noodl.controls.button',
@@ -665,7 +751,11 @@ export const PAGE_ROW_NODES = [
     // SBR-006 §2: publish/unpublish/duplicate move off the row and behind one
     // control, because four buttons per row IS the current design and the task
     // is to stop it being that.
-    parameters: { ...SECONDARY_BUTTON, label: 'More' }
+    //
+    // REL-011c seam 2: a ghost, so that the row reads `Edit` first and this
+    // second. It was a bordered chip identical to `Edit`, which made the two
+    // look like a pair of equals rather than an action and its overflow.
+    parameters: { ...GHOST_BUTTON, label: 'More' }
   },
   {
     id: 'menu',
@@ -750,13 +840,24 @@ export const PAGE_ROW_NODES = [
     // the NDA-017 migration writes `runOnChange-<input>: false` on every value
     // input of a node whose control signal is wired, on every project load. An
     // explicit `true` survives it; an absent key does not.
+    //
+    // 🔴 **REL-011c seam 2 — the ports are renamed because what they paint has
+    // changed.** `pillBackground` painted a block behind the word; `dotColor`
+    // paints an 8px circle beside it. A rename rather than a re-point, so that
+    // a gate or a drive still reaching for `out-pillBackground` FAILS rather
+    // than silently reading a port that no longer means what it says.
+    //
+    // ⚠️ Both branches of `labelColor` are quiet, and the difference is on
+    // purpose: `--foreground` for published and `--muted-foreground` for draft
+    // keeps the wire load-bearing (a constant would be an inert wire dressed as
+    // a derivation) while leaving the DOT as the thing that carries the state.
     parameters: {
       'runOnChange-in-published': true,
       functionScript: [
         'const published = Inputs.published === true;',
         "Outputs.label = published ? 'Published' : 'Draft';",
-        "Outputs.pillBackground = published ? 'var(--primary)' : 'var(--accent)';",
-        "Outputs.pillColor = published ? 'var(--primary-foreground)' : 'var(--muted-foreground)';"
+        "Outputs.dotColor = published ? 'var(--primary)' : 'var(--muted-foreground)';",
+        "Outputs.labelColor = published ? 'var(--foreground)' : 'var(--muted-foreground)';"
       ].join('\n')
     }
   },
@@ -812,8 +913,10 @@ export const PAGE_ROW_WIRES = [
   { fromId: 'inputs', fromProperty: 'slug', toId: 'rowSlug', toProperty: 'text' },
   { fromId: 'inputs', fromProperty: 'published', toId: 'status', toProperty: 'in-published' },
   { fromId: 'status', fromProperty: 'out-label', toId: 'rowStatus', toProperty: 'text' },
-  { fromId: 'status', fromProperty: 'out-pillBackground', toId: 'pill', toProperty: 'backgroundColor' },
-  { fromId: 'status', fromProperty: 'out-pillColor', toId: 'rowStatus', toProperty: 'color' },
+  // REL-011c seam 2: the derived colour lands on the DOT, not on a block behind
+  // the word. Same derivation, same authored floor beneath it, different node.
+  { fromId: 'status', fromProperty: 'out-dotColor', toId: 'statusDot', toProperty: 'backgroundColor' },
+  { fromId: 'status', fromProperty: 'out-labelColor', toId: 'rowStatus', toProperty: 'color' },
 
   { fromId: 'inputs', fromProperty: 'id', toId: 'publish', toProperty: 'in-pageId' },
   { fromId: 'inputs', fromProperty: 'id', toId: 'unpublish', toProperty: 'in-pageId' },
@@ -2415,35 +2518,55 @@ export const PAGE_EDITOR_NODES = [
     type: 'Group',
     label: 'Status pill',
     parent: 'headerRow',
-    // The same pill `/Admin/PageRow` carries, for the same reason and fed by the
-    // same three-output function: §2 asks for the publish state to be visible
-    // *while editing*, and the list's pill is two screens away.
+    // The same status cell `/Admin/PageRow` carries, for the same reason and fed
+    // by the same three-output function: §2 asks for the publish state to be
+    // visible *while editing*, and the list's is two screens away.
+    //
+    // 🔴 **REL-011c seam 2 changed BOTH copies, and that is the point.** This is
+    // the second of two identical pills fed by two identical `status` functions;
+    // demoting one and not the other would render the same fact two ways inside
+    // one admin panel. `a-second-copy-of-a-palette-drifts-silently` is exactly
+    // the shape of that mistake, and the divergence would have been invisible to
+    // every gate, because each copy is internally consistent.
     parameters: {
       ...IN_A_ROW,
       flexDirection: 'row',
       alignItems: 'center',
-      paddingTop: 'var(--space-1)',
-      paddingBottom: 'var(--space-1)',
-      paddingLeft: 'var(--space-3)',
-      paddingRight: 'var(--space-3)',
-      borderRadius: 'var(--radius-md)',
-      // Authored as well as wired, SB-018 (3): a draft must not flash the
-      // published colour before `status` first publishes.
-      backgroundColor: 'var(--accent)'
+      columnGap: 'var(--space-2)'
     },
-    children: ['pillText']
+    children: ['statusDot', 'pillText']
+  },
+  {
+    id: 'statusDot',
+    type: 'Group',
+    label: 'Status dot',
+    parent: 'pill',
+    // The twin of `/Admin/PageRow`'s — see the full reasoning there. `explicit`
+    // or the Group takes `height: 100%` and draws a bar; both dimensions are
+    // `var(--space-2)` so nothing lands on the dimension exemption list.
+    //
+    // Authored as well as wired, SB-018 (3): a draft must not flash the
+    // published colour before `status` first publishes.
+    parameters: {
+      sizeMode: 'explicit',
+      width: 'var(--space-2)',
+      height: 'var(--space-2)',
+      borderRadius: 'var(--radius-full)',
+      backgroundColor: 'var(--muted-foreground)'
+    }
   },
   {
     id: 'pillText',
     type: 'Text',
     label: 'Draft or published',
     parent: 'pill',
+    // `--font-normal`, matching the list. See `/Admin/PageRow`'s `rowStatus`.
     parameters: {
       ...IN_A_ROW,
       text: 'Draft',
       fontFamily: 'var(--font-sans)',
       fontSize: 'var(--text-sm)',
-      fontWeight: 'var(--font-semibold)',
+      fontWeight: 'var(--font-normal)',
       color: 'var(--muted-foreground)'
     }
   },
@@ -2993,8 +3116,8 @@ export const PAGE_EDITOR_NODES = [
       functionScript: [
         'const published = Inputs.published === true;',
         "Outputs.label = published ? 'Published' : 'Draft';",
-        "Outputs.pillBackground = published ? 'var(--primary)' : 'var(--accent)';",
-        "Outputs.pillColor = published ? 'var(--primary-foreground)' : 'var(--muted-foreground)';"
+        "Outputs.dotColor = published ? 'var(--primary)' : 'var(--muted-foreground)';",
+        "Outputs.labelColor = published ? 'var(--foreground)' : 'var(--muted-foreground)';"
       ].join('\n')
     }
   },
@@ -3178,8 +3301,8 @@ export const PAGE_EDITOR_WIRES = [
   // outputs onto the same three ports.
   { fromId: 'record', fromProperty: 'prop-published', toId: 'status', toProperty: 'in-published' },
   { fromId: 'status', fromProperty: 'out-label', toId: 'pillText', toProperty: 'text' },
-  { fromId: 'status', fromProperty: 'out-pillBackground', toId: 'pill', toProperty: 'backgroundColor' },
-  { fromId: 'status', fromProperty: 'out-pillColor', toId: 'pillText', toProperty: 'color' },
+  { fromId: 'status', fromProperty: 'out-dotColor', toId: 'statusDot', toProperty: 'backgroundColor' },
+  { fromId: 'status', fromProperty: 'out-labelColor', toId: 'pillText', toProperty: 'color' },
 
   // 🔴 Preview takes the RECORD's slug, not the field's — see the node's comment.
   { fromId: 'record', fromProperty: 'prop-slug', toId: 'preview', toProperty: 'pm-slug' },
