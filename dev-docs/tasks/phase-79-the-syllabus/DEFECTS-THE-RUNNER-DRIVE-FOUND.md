@@ -8,7 +8,7 @@ register rather than a per-lesson one. Every row is open and unowned.
 |---|---|---|---|
 | J1 | 🔴 high | ✅ **FIXED 2026-09-05 (s9)** | a markdown blockquote renders as a literal `>` in lesson prose — 5 of the 8 shipped lessons |
 | J2 | 🔴 high | `NONE` | *Check my work* on an incomplete step removes the instructions and says nothing new |
-| J3 | ⚠️ medium | `NONE` | every shipped lesson is badged **Written locally** instead of **NodeGX** |
+| J3 | ⚠️ medium | ✅ **FIXED 2026-09-05 (s9)** | every shipped lesson is badged **Written locally** instead of **NodeGX** |
 | J4 | ⚠️ medium | ✅ **FIXED 2026-09-05 (s9)** | a `paramsEqual` condition names the parameters it grades but not the values they must equal |
 
 ## ✅ 2026-09-05 (session 9) — J1 and J4 fixed, and J1 was two defects wearing one symptom
@@ -161,3 +161,35 @@ Related to but distinct from [D2](DEFECTS-LESSON-2-FOUND.md) (raw type names). D
 from source against lesson 2; this drive is its **first observation on screen**:
 `poke-it` step 1 renders *"Looking for a **net.noodl.controls.button** called “Poke” on Home"*.
 The row needs no re-argument, only the note that it is now witnessed.
+
+
+---
+
+## ✅ J3 — FIXED 2026-09-05 (session 9)
+
+The row's own prescription, followed exactly: *"the fix is not to stop downgrading — the badge
+needs an input of its own, separate from the gate's."*
+
+`LearningEntry` gains **`origin`**, the installing caller's word recorded *before*
+`resolveProvenance` folds the manifest's claim into it. `provenance` is untouched and still
+downgrades, so the stricter install gate the seed deliberately refuses to dodge is exactly as
+strict as it was. Only the card moved.
+
+🔴 **The migration is the part that would have been missed.** Writing `origin` at install fixes
+nothing for the eight lessons already on a learner's shelf: the seed **skips an id it has already
+installed**, so no future seed would ever rewrite them, and the badge would have stayed wrong for
+every existing user while reading correct in a fresh profile. `badgeProvenance` therefore falls
+back to `isShippedLessonId(entry.id)` — an id the seed mints and which `lessonseed` already asserts
+against — before falling back to the gate class. Three inputs, in that order, each with its own
+spec row and each independently mutant-checked.
+
+Nothing in `noodl-core-ui` changed: the card's `provenance` field is read in exactly one place,
+`PROVENANCE_LABEL`, so it *is* the badge input and the fix belongs on the editor side of the seam.
+
+Gated by 5 new rows in `tests-unit/uni-007/learningstate.test.ts` (21 total). Reverting the whole
+fix reddens 3; removing only the migration arm reddens 2; the 16 pre-existing rows stay green in
+both arms. 1058/1058 across the 59 lesson-touching suites.
+
+⚠️ **Left alone deliberately:** the platform install's confirmation dialog still shows the *folded*
+provenance. That dialog is about which checks the bundle is being held to, so the gate class is the
+right thing to show there.

@@ -178,3 +178,50 @@ describe('toLearningCard', () => {
     expect(toLearningCards([])).toEqual([]);
   });
 });
+
+/**
+ * P79 J3 — every shipped lesson was badged "Written locally" instead of "NodeGX".
+ *
+ * Measured by the session-8 lesson-runner drive: all 8 seeded entries carried
+ * `provenance: "local-ai"` and all 8 cards read **Written locally**.
+ *
+ * 🔴 The field meant two things and only one was intended. `lessonseed` installs shipped
+ * lessons as `curated` — *"they are editorial, and a person stands behind them"* — and their
+ * manifests declare `authoredBy: "ai"`, so `resolveProvenance` downgrades them to `local-ai`.
+ * That downgrade is CORRECT and deliberate: it buys the stricter install gate the seed
+ * explicitly refuses to dodge. What was wrong is that the shelf read the gate's field as an
+ * authorship claim. So the badge gets an input of its own — see `badgeProvenance`.
+ */
+describe('P79 J3 — the badge and the gate are two questions', () => {
+  const shipped = (over: Record<string, unknown> = {}) =>
+    entry({ id: 'shipped_poke-it', provenance: 'local-ai', ...over });
+
+  it('🔴 a shipped lesson downgraded for the gate is still badged as ours', () => {
+    expect(toLearningCard(shipped()).provenance).toBe('curated');
+  });
+
+  it('prefers the recorded origin over everything', () => {
+    expect(toLearningCard(shipped({ origin: 'curated' })).provenance).toBe('curated');
+    expect(toLearningCard(entry({ id: 'from-a-folder', provenance: 'local-ai', origin: 'local' })).provenance).toBe(
+      'local'
+    );
+  });
+
+  it('⚠️ the id arm is a migration, and only for ids the seed mints', () => {
+    // An entry written before `origin` existed and NOT shipped by us keeps reading the gate
+    // class — which is the honest answer for a bundle nobody claimed.
+    expect(toLearningCard(entry({ id: 'poke-it', provenance: 'local-ai' })).provenance).toBe('local-ai');
+    expect(toLearningCard(entry({ id: 'shippedish', provenance: 'local-ai' })).provenance).toBe('local-ai');
+  });
+
+  it('does not relabel a genuinely local bundle', () => {
+    expect(toLearningCard(entry({ id: 'mine', provenance: 'local' })).provenance).toBe('local');
+    expect(toLearningCard(entry({ id: 'assigned', provenance: 'org' })).provenance).toBe('org');
+  });
+
+  it('🔴 the gate class on the entry is untouched — only the card changed', () => {
+    const e = shipped();
+    expect(e.provenance).toBe('local-ai');
+    expect(toLearningCard(e).provenance).toBe('curated');
+  });
+});

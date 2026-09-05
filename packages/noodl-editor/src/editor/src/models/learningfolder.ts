@@ -138,6 +138,25 @@ export interface LearningEntry {
   title: string;
   description?: string;
   provenance: LessonProvenance;
+  /**
+   * P79 J3 — **the badge's input, and deliberately not the gate's.**
+   *
+   * `provenance` above is a GATE CLASS: `resolveProvenance` folds the manifest's `authoredBy`
+   * into the caller's word, and that fold can only ever tighten. `lessonseed` accepts that on
+   * purpose — *"passing `curated` here does not buy a shipped bundle a cheaper gate"*. But the
+   * shelf was labelling cards off the same field, so every shipped lesson (all eight declare
+   * `authoredBy: "ai"`, and are held to the stricter gate because of it) read **Written
+   * locally** — denying in the UI exactly what the seed says of them: *"they are editorial,
+   * and a person stands behind them."*
+   *
+   * 🔴 The fix is NOT to stop downgrading — that buys the cheaper gate the seed refuses. It is
+   * that a badge and a gate are two questions, so they get two fields. This one records the
+   * INSTALLING CALLER'S word, unfolded.
+   *
+   * Optional because entries written before this field existed do not carry it; see
+   * `badgeProvenance` in `projectsview.learningstate.ts` for how those are read.
+   */
+  origin?: LessonProvenance;
   /** Absolute path of the installed lesson project. */
   projectDirectory: string;
   source: LearningSource;
@@ -573,6 +592,9 @@ export class LearningFolderModel extends Model {
       title: manifest.title ?? id,
       ...(manifest.description ? { description: manifest.description } : {}),
       provenance,
+      // The caller's word, before `resolveProvenance` folded the manifest's claim into it. See
+      // the field's note: the gate is allowed to tighten, the badge is not.
+      origin: options.provenance,
       projectDirectory,
       source: options.source ?? { kind: 'local', path: bundleDir },
       installedAt: this.deps.now()

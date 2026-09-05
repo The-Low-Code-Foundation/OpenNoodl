@@ -17,6 +17,7 @@
  * @module noodl-editor/views/projectsview.learningstate
  */
 
+import { isShippedLessonId } from '../models/lessonseed';
 import type { LearningEntryView, LessonProvenance } from '../models/learningfolder';
 
 export type LearningCardState = 'not-started' | 'in-progress' | 'completed';
@@ -67,6 +68,31 @@ export function learningCardState(entry: LearningEntryView): LearningCardState {
   return 'not-started';
 }
 
+/**
+ * The provenance the CARD shows — P79 J3.
+ *
+ * 🔴 Three inputs, in order, and the order is the whole point:
+ *
+ *  1. `entry.origin` — the installing caller's word, recorded unfolded. The right answer, and
+ *     the one every entry written since the field landed carries.
+ *  2. A shipped-lesson id — the migration for entries written BEFORE it. The seed mints these
+ *     ids and `isShippedLessonId` is asserted against that, so it is a sound witness that
+ *     NodeGX shipped the bundle. Without this arm the eight lessons already on a learner's
+ *     shelf keep the wrong badge for ever: the seed skips an id it has already installed, so
+ *     nothing would ever rewrite them.
+ *  3. `entry.provenance` — the gate class, which is what the badge used to read and is still
+ *     the honest answer for a bundle nobody claimed.
+ *
+ * ⚠️ Deliberately NOT `entry.provenance` for a shipped lesson: that field is downgraded to
+ * `local-ai` by design, because all eight manifests declare `authoredBy: "ai"` and are held to
+ * the stricter gate for it. Reading a gate class as an authorship claim is the defect.
+ */
+export function badgeProvenance(entry: LearningEntryView): LessonProvenance {
+  if (entry.origin) return entry.origin;
+  if (isShippedLessonId(entry.id)) return 'curated';
+  return entry.provenance;
+}
+
 /** One entry, as its card reads it. */
 export function toLearningCard(entry: LearningEntryView): LearningCardData {
   const grade = entry.grade;
@@ -75,7 +101,7 @@ export function toLearningCard(entry: LearningEntryView): LearningCardData {
     id: entry.id,
     title: entry.title,
     ...(entry.description ? { description: entry.description } : {}),
-    provenance: entry.provenance,
+    provenance: badgeProvenance(entry),
     progressPercent: learningProgressPercent(entry.progress),
     state: learningCardState(entry),
     ...(grade ? { score: grade.completionPercent, gradedBy: grade.gradedBy } : {}),
