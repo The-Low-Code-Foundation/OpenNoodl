@@ -8692,9 +8692,9 @@ NOT run (the orchestrator's, after merging): editor tsc, editor test:ci, any dri
   child's literal; a project-wide pass over parent Sets could type it. Owner NONE.
 - **`Set Object Properties` (§47) skips an authored `prop-<key>` literal** where the runtime writes it — one clause in
   `compileSetObjectProperties`, mirroring this row's. Owner **EXP-011**.
-- **A `Variable2`'s authored initial value is not seeded** into the emitted store (finding 8) — **CONFIRMED observable by the §60.6
-  drive (boot reads `''` where the runtime reads `First note`); the fix shape is a MOUNT WRITE in the host, per mount, not a seed**. Owner **EXP-011** (a store
-  module boot value; not this row's node).
+- ✅ **A `Variable2`'s authored initial value is not seeded** into the emitted store (finding 8) — CONFIRMED observable by the §60.6
+  drive (boot reads `''` where the runtime reads `First note`). **BUILT session 91 as §67: a mount write in the host, per mount**
+  (`useEffect(() => { note.set('First note'); }, [])`), driven — boot reads `First note` on Home and the Panel.
 - **The deprecated `Component State` node** is a resolvable ancestor in the runtime (`COMPONENT_OBJECT_TYPES`) and is not a
   provider here; it is not a picker node. Owner NONE.
 - **A host whose Component Object is refused** (gates 1/2/5/6/7) leaves its descendants' parent reads answering `undefined`
@@ -9957,3 +9957,118 @@ updated record, `updated` ✓ · **T4** delete ⇒ `delete r1`, the pre-delete r
 and the hub's `resync` ⇒ Change Type `resync`, Id / Record / Records cleared, `last` unchanged (resync pulses no
 created/updated/deleted), the log shows `closed c1` ✓ · **T6** create r2 on c2 ⇒ `create r2`, `created` ✓ · **T7** errs `[]`, no
 raise, no console.error ✓. Teardown: 0 listeners on 4366 / 9367 / 8584. Every row matched the sheet written before the drive.
+
+---
+
+## §67 A `Variable`'s authored `Value` is the runtime's per-mount write — the §60.5 register's first EXP-011-owned row, built (session 91, 2026-09-05)
+
+**Picker 117/127 unchanged** — `Variable2` was already a translated node; this closes a **divergence inside a translated node**,
+the kind the picker number cannot see (§5's rule the other way round: the number holding is not the same as the translation being
+right). Registered §60.4 finding 8, CONFIRMED by §60.6's drive: the runtime's Home and Panel note Texts read `First note` at boot
+where the export read `''`.
+
+### §67.0 Design — what the node does on disk, and what that decides (written before a line of code)
+
+`variablenode2.ts`: the `value` input's setter is `this._internal.value = value; this.scheduleStore()`, and an authored parameter
+is delivered through that setter **at node creation** — so a `Variable` node with `value: "First note"` writes the shared
+`--ndl--global-variables` record on every creation of the component that holds it, i.e. **on every mount**, and navigating back to
+the page rewrites the variable there. Three translations were on the table and two are wrong:
+
+| shape | why |
+|---|---|
+| a module-level seed — `value<string>('First note')` in `src/stores/variables.ts` | boots once for the whole app, never resets on re-entry, and fires for a component nothing ever mounted. Not the runtime's behaviour |
+| a `useState` initialiser in the host | the variable is app-wide; local state is the wrong scope, and a second reader elsewhere would not see it |
+| **a mount effect in the host** — `useEffect(() => { note.set('First note'); }, [])` | one write per mount of the holding component, into the shared store every reader already subscribes to. **This is what was built** |
+
+Four gates, each with its own sentence, decided BEFORE the emit: a **wire into `Value`** is the writer instead (the runtime delivers
+the parameter first and every arrival on the wire over it; pass 3 translates the one wire shape it can) — the seed is refused by
+name; a **non-primitive parameter** (`expression`, `script`, `json`, `dimension`) has no `store-set` form — refused by name; a
+**non-literal name** defers on the name, the seed pass never speaks; a **logic-only component** (no visual root) is refused whole
+by `bailAsLogicOnly` before the pass runs — the node a `logic node (Variable2)`, the component's refusal the one the author reads.
+
+**The literal types the variable.** An authored string is one more `string` source; a number or boolean makes the variable
+`unknown` — exactly as a wired number writer would — so `note.set(42)` lands in a `value<unknown>` and typechecks. The seed is
+also a **writer** in the stores module's provenance comment: *Seeded with 'First note' by "Note variable" (Variable2 `noteVar` on
+/Pages/Home) on every mount of its component.*
+
+### §67.1 What is emitted
+
+`plan.ts`: `VariableSeedPlan { nodeId, variableName, value, comment }` on `ComponentPlan.variableSeeds`, filled by one pass before
+the Variable-collapse loop; `variableSeedAction(seed)` returns the `store-set` action the seed IS (`{ kind: 'store-set',
+variableName, expr: { kind: 'literal', value } }`) — read off the plan so the import sweep and the emitter cannot disagree.
+`component.ts`: the seeds join `allActions` (the store import is earned as any handler's write is), `useEffect` is imported for a
+seed alone, and the effect prints **before the §60 mirrors** so a mirror reading the variable follows the write:
+
+```tsx
+  // Note variable — its authored Value is stored on every mount of this component (variablenode2.ts: the value setter runs at node creation).
+  useEffect(() => {
+    note.set('First note');
+  }, []);
+```
+
+`appState.ts`: discovery pushes the node as a writer `{ ...writerRef, seed }` and a `SourceRef` carrying `literal` into the
+variable's sources when nothing is wired into its `value`; `typeOfSource` types a literal as itself. `state.ts` prints the seed line.
+The node's disposition stays `collapsed into src/stores/variables.ts` (the store is where the variable lives; the effect is the
+host's).
+
+### §67.2 The fixture — `tests/fixtures/panel-desk`, unchanged
+
+§60's fixture already carries the shape (`noteVar`: name `note`, value `First note`, a mirror wire reading it) — it is the ONLY
+fixture of 39 with an authored Variable value (measured: a walk over every `nodes.json`), so no other golden moved. **Measured
+first**: the pre-change emit printed `note = value<string | undefined>(undefined)` under *No statically-known writer* and a Home
+with no write of `note` at all.
+
+### §67.3 Gates and arms
+
+Spec `tests/variable-seed.test.ts`, **18 rows**: §A the fixture whole (the effect text exactly, its position before the mirror, the
+imports once, the seed writer line + `string | undefined`, no note, the disposition, the plan row, **the app typechecks**, the
+control on `status`); §B the literal decides the type (`42` ⇒ `value<unknown>` **and typechecks**, `true`, a string needing the JSON
+form, `''`); §C the refusals by name (a wire into Value ⇒ the wire's source is the writer, an `expression` parameter, the logic-only
+bail, a non-literal name, no Value at all, **a `Set Variable`'s authored Value is NOT a seed**); §D two hosts ⇒ two effects, each
+earning its own imports, both writer lines in component order. Pkg tsc 0. The §60 trio spec 60/60 (no pin moved).
+
+**13 arms, 13 killed** (`mut67.py`, md5-restored): the pass blind to the parameter (11 red), the effect moved below the mirrors (6),
+the wire gate off (1), the number demotion off (2 — B1's typecheck is the kill), the writer without its seed (3), the import sweep
+forgetting the seeds (1 — D1's Panel imports), `useEffect` not imported for a seed alone (1), an `expression` seeding as its text (1),
+the literal source unregistered (2), the seed printed as a string whatever the literal (2), a deps list that re-runs (6), discovery
+seeding under a wire (1), a seed on a `Set Variable` (1 — C6). ⚠️ **Two arms first read NO SUMMARY**: `if (false) …` around a
+push left a later read un-narrowed ⇒ TS2322 ⇒ ts-jest compiled nothing — §64.4's rule, arm at the VALUE level (`'value!'`,
+`'source' in v ? v.source`). ⚠️ **M13 survived until the row stood the literal alone**: the fixture wires a String into the
+Set's value, so the wire gate hid the arm; C6 disconnects the wire first.
+
+### §67.4 What building it found
+
+1. 🔴 **A variable with NO sources is typed `string`** — `sources.every(...)` over an empty list is `true` (the `all([])` trap; §47
+   fixed the same thing for store KEYS, `object-store.test` A3, and never looked one construct over). Pre-existing, not this row's;
+   `note` read `value<string | undefined>` under *No statically-known writer*. With a seed the type is now EARNED. Registered §67.5.
+2. ⚠️ **`plan.file` is `null` only on `bailAsLogicOnly`, which returns before the late passes** — a *"component emits no file to
+   host the mount write"* gate in the seed pass was dead code with no live population and was removed; C3 pins the bail instead.
+3. ⚠️ **Writers list in COMPONENT order** (`Components/…` before `Pages/…`), not discovery-by-page — D1's first expectation had them
+   the other way round.
+4. ⚠️ **Notes carry the component prefix at the app level** (`Pages/Home: node …`) and none on the plan — three rows read the
+   plan's sentence off `emitApp().notes` first.
+
+### §67.5 What this leaves (owner NONE unless named)
+
+- **An authored Value under a wire into Value** is refused by name; the runtime's actual order (parameter at creation, then the wire's
+  arrivals) means the authored value shows until the source first fires. Translating it is the seed effect PLUS the wire — only
+  after pass 3 grows past text inputs. Owner NONE.
+- **A variable with no statically-known writer is typed `string`** (finding 1) — the honest answer is `unknown`, as store keys read
+  since §47; changing it moves every fixture whose variables are written only by refused logic. Owner NONE.
+- **A `Set Variable` with an authored Value** (no wire) is refused by the export (*nothing is wired into value*, §60.4 finding 7) where
+  the runtime writes the literal on the pulse. C6 pins that it is at least NOT a seed. Owner NONE.
+- StrictMode's dev double-mount writes the seed twice (idempotent — the same value); `vite preview` is the production build and the
+  drive read one write per mount. Owner NONE.
+- A page revisited rewrites the variable — the runtime's behaviour, transcribed; an author who expected a Variable to survive
+  navigation will meet it in both places equally. Not a divergence.
+
+### §67.6 The drive — the built export, headless (session 91)
+
+`EXPECTED67.md` FIRST (the 12 `<p>` predicted per step), then `drive67.sh` on the built `panel-desk-out` (`node_modules` copied from
+s90's `live-desk-out`; `tsc -b && vite build` exit 0, 238.98 kB; `vite preview` 4367, Chrome headless CDP 9368). **P1 boot**:
+`["Panel Desk","","","First note","","","First note","","Ada","","Grace",""]` — Home's note Text AND the Panel's read `First note`
+where §60.6 read `''` ✓ (the seed wrote the store at mount; the mirror re-ran on `noteValue` and stored it in the record; the Panel
+read the record through the Provider). **P2** type `Quarterly` ⇒ the controlled input reads it, nothing else moves ✓. **P3 Rename**
+⇒ title `Quarterly` ×4, note `renamed` on Home and the Panel (the Set overwrote the record key; the variable still holds `First note`
+and the mirror did NOT re-run — predicted), status `Renamed.` ✓. **P4 Bump** ⇒ count `1`, `Bumped.` ✓. **P5** errs `[]` ✓.
+Teardown: 0 listeners on 4367 / 9368. Every row matched the sheet written before the drive.
