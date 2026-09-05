@@ -80,6 +80,12 @@
       "fromProperty": "result",
       "toId": "themeButton",
       "toProperty": "enabled"
+    },
+    {
+      "fromId": "stormyButton",
+      "fromProperty": "onClick",
+      "toId": "setStormy",
+      "toProperty": "set"
     }
   ]
 }

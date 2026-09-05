@@ -1,9 +1,11 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
-import { Catalog } from '../src/catalog';
+import { Catalog, CatalogIndex } from '../src/catalog';
+import { planProject } from '../src/analyze/plan';
 import { emitApp } from '../src/emit/emitApp';
 import { parseProject } from '../src/parse/parseProject';
+import { typecheckEmittedApp } from './helpers/typecheckApp';
 import { ExportIR, NodeIR, ParamValue } from '../src/ir/types';
 
 const FIXTURE = path.join(__dirname, 'fixtures', 'cheer');
@@ -47,6 +49,7 @@ export interface MoodState {
  * Declared by "mood store" (net.noodl.GlobalStore \`moodStore\` on /Pages/Mood).
  * Written by "Write note" (net.noodl.GlobalStore.Set \`setNote\` on /Pages/Mood).
  * Written by "Write theme" (net.noodl.GlobalStore.Set \`setTheme\` on /Pages/Mood).
+ * Written by "Write stormy" (net.noodl.GlobalStore.Set \`setStormy\` on /Pages/Mood).
  */
 export const mood = store<MoodState>('mood', {
   note: '',
@@ -92,6 +95,10 @@ export function MoodPage() {
       >
         Steal the visitor's name
       </button>
+
+      <button className={styles.stormyButton} onClick={() => mood.set({ theme: 'stormy' })}>
+        Make it stormy
+      </button>
     </div>
   );
 }
@@ -114,7 +121,8 @@ describe('the store module (NAMED-STORES-TARGET §1)', () => {
 
   test('every naming node defaulted ⇒ the store is app, module src/stores/app.ts', () => {
     const mutated = cloneIr();
-    for (const id of ['moodStore', 'setNote', 'setTheme', 'subNote', 'subTheme']) {
+    // §70 added `setStormy`, a sixth naming node; left named it would keep a second store `mood` beside `app`.
+    for (const id of ['moodStore', 'setNote', 'setTheme', 'setStormy', 'subNote', 'subTheme']) {
       dropParam(nodeOf(mutated, 'Pages/Mood', id), 'storeName');
     }
     const result = emitApp(mutated, catalog);
@@ -334,5 +342,160 @@ describe('EXP-011 §48 — the Global Store gaps §47.3 registered', () => {
     const builtEs = emitApp(es, catalog);
     expect(builtEs.notes.join('\n')).not.toContain(DROPPED);
     expect(mood48(builtEs)).toContain('useState<string>');
+  });
+});
+
+/**
+ * EXP-011 §70 (session 94): the fixture's `Write stormy` has `stormy` TYPED INTO its Value with nothing wired
+ * over it — the runtime's `value` is a static `*` input whose setter stores `_internal.value`, the parameter pass
+ * queues every authored parameter at creation, and `doSet` writes `_internal.value` on every `Set`. Before §70
+ * the export refused the node (*nothing is wired into value*) and the refusal cascaded: the button's `onClick`
+ * wire dropped, the button emitted with no handler (`probe-reverted.log`, session 94). The fourth sibling of
+ * §67/§68/§69. The typing rule lives in appState.ts and the write rule in plan.ts — rows below arm both.
+ */
+describe('EXP-011 §70 — a value typed into the Global Store Set with nothing wired over it is written on every Set, and types the key', () => {
+  type Built = ReturnType<typeof emitApp>;
+  const MOOD = 'Pages/Mood';
+  const componentOf70 = (source: ExportIR) => source.components.find((c) => c.path === MOOD)!;
+  const lit70 = (value: string | number | boolean): ParamValue => ({ kind: 'literal', value });
+  const add70 = (source: ExportIR, node: Partial<NodeIR> & { id: string; type: string }): NodeIR => {
+    const full = { catalogRef: node.type, parameters: [], declaredPorts: [], portKnowledge: 'complete', ...node } as NodeIR;
+    componentOf70(source).nodes.push(full);
+    return full;
+  };
+  const wire70 = (source: ExportIR, from: string, fromProperty: string, to: string, toProperty: string, kind: 'value' | 'signal' = 'value') => {
+    componentOf70(source).connections.push({ key: `${from}:${fromProperty}->${to}:${toProperty}`, fromId: from, fromProperty, toId: to, toProperty, kind });
+  };
+  const page = (built: Built): string => built.files['src/pages/Mood.tsx'];
+  const storeModule = (built: Built): string => built.files['src/stores/mood.ts'];
+  const reasonFor = (source: ExportIR, nodeId: string): string | undefined => {
+    const project = planProject(source, new CatalogIndex(catalog));
+    const plan = project.plans.find((p) => p.path === MOOD)!;
+    const disposition = plan.dispositions[nodeId] as { kind: string; reason?: string };
+    return disposition?.kind === 'deferred' ? disposition.reason : undefined;
+  };
+  const STORMY = "onClick={() => mood.set({ theme: 'stormy' })}";
+  const OLD_SENTENCE = 'nothing is wired into value';
+  /** The fixture's typed-in Set retargeted at `quote` — a key the initial state does not carry, so the literal is what types it. Read back through a Subscribe into the theme text (the String Format makes way, as §48 G1 does). */
+  const withQuote = (source: ExportIR, value: ParamValue): ExportIR => {
+    setParam(nodeOf(source, MOOD, 'setStormy'), 'key', lit70('quote'));
+    setParam(nodeOf(source, MOOD, 'setStormy'), 'value', value);
+    add70(source, { id: 'subQuote', type: 'net.noodl.GlobalStore.Subscribe', authoredLabel: 'Quote', parameters: [{ name: 'storeName', value: lit70('mood') }, { name: 'keys', value: lit70('quote') }] });
+    const mood = componentOf70(source);
+    mood.connections = mood.connections.filter((c) => !(c.toId === 'themeText' && c.toProperty === 'text'));
+    wire70(source, 'subQuote', 'value', 'themeText', 'text');
+    return source;
+  };
+
+  test('H1 the fixture: `Write stormy` has "stormy" typed in and nothing wired into Value — the button gets the handler a wire used to earn, the store names the writer, nothing is dropped, the wired Sets are untouched', () => {
+    const set = nodeOf(ir, MOOD, 'setStormy');
+    expect(set.parameters.find((p) => p.name === 'value')).toEqual({ name: 'value', value: lit70('stormy') });
+    expect(componentOf70(ir).connections.some((c) => c.toId === 'setStormy' && c.toProperty === 'value')).toBe(false);
+    expect(page(app)).toContain(STORMY);
+    expect(storeModule(app)).toContain('Written by "Write stormy" (net.noodl.GlobalStore.Set `setStormy` on /Pages/Mood).');
+    expect(storeModule(app)).toContain('theme: string;'); // the initial state types the key; the literal does not demote it
+    expect(app.notes.join('\n')).not.toContain('setStormy');
+    // CONTROL — the two wired Sets the fixture always had emit as before.
+    expect(page(app)).toContain('onChange={(event) => mood.set({ note: event.target.value })}');
+    expect(page(app)).toContain('if (visitorName.get()) mood.set({ theme: visitorName.get() });');
+    expect(typecheckEmittedApp(app)).toEqual([]);
+  });
+
+  test('H2 a string literal into a key the initial state does not carry types it string — read bare, written as the literal, and the app typechecks', () => {
+    const built = emitApp(withQuote(cloneIr(), lit70('Keep going')), catalog);
+    expect(storeModule(built)).toContain('quote?: string;');
+    expect(page(built)).toContain("onClick={() => mood.set({ quote: 'Keep going' })}");
+    expect(page(built)).toContain('{quote}');
+    expect(page(built)).not.toContain('String(quote');
+    expect(typecheckEmittedApp(built)).toEqual([]);
+  });
+
+  test('H3 a number literal writes as a number and types the key unknown (read through String()) — and the app typechecks; a boolean likewise, a literal is not a logic truth value', () => {
+    const num = emitApp(withQuote(cloneIr(), lit70(7)), catalog);
+    expect(page(num)).toContain('onClick={() => mood.set({ quote: 7 })}');
+    expect(storeModule(num)).toContain('quote?: unknown;');
+    expect(page(num)).toContain("{String(quote ?? '')}");
+    expect(typecheckEmittedApp(num)).toEqual([]);
+    const bool = emitApp(withQuote(cloneIr(), lit70(true)), catalog);
+    expect(page(bool)).toContain('onClick={() => mood.set({ quote: true })}');
+    expect(storeModule(bool)).toContain('quote?: unknown;');
+    expect(reasonFor(withQuote(cloneIr(), lit70(true)), 'setStormy')).toBeUndefined();
+  });
+
+  test('H4 a literal under a wire is shadowed — the wire is compiled, the literal never printed, and the wire governs the type (a number under a string wire does not demote)', () => {
+    const shadowed = cloneIr();
+    wire70(shadowed, 'noteInput', 'onTextChanged', 'setStormy', 'value');
+    const built = emitApp(shadowed, catalog);
+    expect(page(built)).not.toContain("'stormy'");
+    expect(page(built)).toContain('useState<string>'); // a text input into a Set fired from a button — §48 G2's idiom
+    expect(page(built)).toMatch(/onClick=\{\(\) => mood\.set\(\{ theme: \w+ \}\)\}/);
+    expect(built.notes.join('\n')).not.toContain('setStormy');
+    // The type under a wire: a number typed in beneath a string wire on a non-initial key stays `string`.
+    const typed = withQuote(cloneIr(), lit70(7));
+    wire70(typed, 'noteInput', 'onTextChanged', 'setStormy', 'value');
+    const builtTyped = emitApp(typed, catalog);
+    expect(storeModule(builtTyped)).toContain('quote?: string;');
+    expect(page(builtTyped)).not.toContain('quote: 7');
+  });
+
+  test('H5 with neither a wire nor a typed-in value the Set is refused by the old sentence and the button loses its handler — the pre-§70 cascade, kept as the absence beside H1 (§48 G1 pins the same sentence on its own shape)', () => {
+    const bare = cloneIr();
+    dropParam(nodeOf(bare, MOOD, 'setStormy'), 'value');
+    expect(reasonFor(bare, 'setStormy')).toBe(OLD_SENTENCE);
+    const built = emitApp(bare, catalog);
+    expect(built.notes).toContain(`Pages/Mood: wire stormyButton:onClick->setStormy:set dropped: ${OLD_SENTENCE}`);
+    expect(page(built)).not.toContain(STORMY);
+    expect(page(built)).not.toContain("mood.set({ theme: '' })");
+    expect(page(built)).toMatch(/<button className=\{styles\.stormyButton\}>\s*Make it stormy/);
+  });
+
+  test('H6 the initial-state type gate stands in front of the literal path — a literal into a number-typed key is refused by name, a boolean-typed key likewise, and the button wire drops with that sentence', () => {
+    const num = cloneIr();
+    setParam(nodeOf(num, MOOD, 'moodStore'), 'initialState', { kind: 'json', value: { note: '', theme: 'sunny', count: 0 } });
+    setParam(nodeOf(num, MOOD, 'setStormy'), 'key', lit70('count'));
+    const numSentence = 'key "count" is number-typed by the initial state; only string writes translate in this slice';
+    expect(reasonFor(num, 'setStormy')).toBe(numSentence);
+    expect(emitApp(num, catalog).notes).toContain(`Pages/Mood: wire stormyButton:onClick->setStormy:set dropped: ${numSentence}`);
+    const bool = cloneIr();
+    setParam(nodeOf(bool, MOOD, 'moodStore'), 'initialState', { kind: 'json', value: { note: '', theme: 'sunny', flag: false } });
+    setParam(nodeOf(bool, MOOD, 'setStormy'), 'key', lit70('flag'));
+    expect(reasonFor(bool, 'setStormy')).toBe('key "flag" is boolean-typed by the initial state; only string writes translate in this slice');
+  });
+
+  test('H7 the other gates stay in front of the literal path — merge, transaction and a blank key are each refused by their own sentence with the value typed in', () => {
+    const merge = cloneIr();
+    setParam(nodeOf(merge, MOOD, 'setStormy'), 'merge', lit70(true));
+    expect(reasonFor(merge, 'setStormy')).toBe('merge writes shallow-merge objects — not translated in this slice');
+    const batched = cloneIr();
+    setParam(nodeOf(batched, MOOD, 'setStormy'), 'transaction', lit70(true));
+    expect(reasonFor(batched, 'setStormy')).toBe('batched writes are not translated in this slice');
+    const blank = cloneIr();
+    setParam(nodeOf(blank, MOOD, 'setStormy'), 'key', lit70(''));
+    expect(reasonFor(blank, 'setStormy')).toBe('key is not a literal');
+  });
+
+  test('H8 an expression parameter is not a literal — refused as nothing wired, never written as its source text', () => {
+    const expr = cloneIr();
+    setParam(nodeOf(expr, MOOD, 'setStormy'), 'value', { kind: 'expression', source: 'Date.now()' } as unknown as ParamValue);
+    expect(reasonFor(expr, 'setStormy')).toBe(OLD_SENTENCE);
+    expect(page(emitApp(expr, catalog))).not.toContain('Date.now()');
+  });
+
+  test('H9 discovery registers the literal regardless of the plan’s refusal — a merge-refused Set with "Keep going" typed in still types `quote` string (the §47/§69.5 convention, now pinned for the store)', () => {
+    const refused = withQuote(cloneIr(), lit70('Keep going'));
+    setParam(nodeOf(refused, MOOD, 'setStormy'), 'merge', lit70(true));
+    const built = emitApp(refused, catalog);
+    expect(built.notes.join('\n')).toContain('merge writes shallow-merge objects');
+    expect(storeModule(built)).toContain('quote?: string;');
+    expect(page(built)).not.toContain('Keep going');
+  });
+
+  test('H10 the corpus control: the fixture’s two wired Sets carry no `value` parameter, and `setStormy` is the only typed-in Global Store Set in the fixture — the shape the corpus lacked before §70', () => {
+    const sets = componentOf70(ir).nodes.filter((n) => n.type === 'net.noodl.GlobalStore.Set');
+    expect(sets.map((n) => n.id).sort()).toEqual(['setNote', 'setStormy', 'setTheme']);
+    for (const id of ['setNote', 'setTheme']) {
+      expect(nodeOf(ir, MOOD, id).parameters.some((p) => p.name === 'value')).toBe(false);
+      expect(componentOf70(ir).connections.some((c) => c.toId === id && c.toProperty === 'value')).toBe(true);
+    }
   });
 });

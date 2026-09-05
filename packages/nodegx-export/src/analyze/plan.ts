@@ -13635,7 +13635,23 @@ function planComponent(
         return { defer: `key "${key}" is ${keyType}-typed by the initial state; only string writes translate in this slice` };
       }
       const wire = component.connections.find((c) => c.toId === node.id && c.toProperty === 'value');
-      if (!wire) return { defer: 'nothing is wired into value' };
+      if (!wire) {
+        /**
+         * EXP-011 §70. A value typed into the node with nothing wired over it is what every Set
+         * writes: `value` is a static `*` input whose setter stores `_internal.value`, the runtime
+         * queues every authored parameter into the node at creation (`nodescope.ts`), and `doSet`
+         * writes `_internal.value` through `globalStoreManager.setKey` on the pulse — the fourth
+         * sibling of §67 (a Variable's Value), §68 (a Set Object Properties' `prop-<key>`) and §69
+         * (a Set Variable's Value). Every gate above — store name, `merge`, `transaction`, the key
+         * literal, the initial-state number/boolean refusal — stands in front of this path too.
+         * Under a wire the literal is shadowed: the wire is compiled and the literal never read
+         * (the runtime's arrivals land over it; §69.5's residual). An `expression` parameter is
+         * not a literal and stays refused by the old sentence, as does nothing typed in at all.
+         */
+        const authored = literalParam(node, 'value');
+        if (authored === undefined) return { defer: 'nothing is wired into value' }; // §70: nor typed in
+        return { action: { kind: 'globalstore-set', storeName: store.name, key, expr: { kind: 'literal', value: authored } }, consumes: [], collapses: [], subscribes: [] };
+      }
       const ctx = newCtx();
       const expr = resolveExpr(nodeById.get(wire.fromId), wire.fromProperty, ctx);
       if (expr === null) return { defer: ctx.defer ?? 'the value wire has no statically known source' };

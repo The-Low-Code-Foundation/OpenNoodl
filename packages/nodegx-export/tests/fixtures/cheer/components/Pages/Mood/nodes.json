@@ -29,7 +29,8 @@
         "noteInput",
         "noteEcho",
         "themeText",
-        "themeButton"
+        "themeButton",
+        "stormyButton"
       ],
       "parameters": {
         "flexDirection": "column",
@@ -127,6 +128,27 @@
       }
     },
     {
+      "id": "stormyButton",
+      "type": "net.noodl.controls.button",
+      "label": "Make it stormy",
+      "x": 160,
+      "y": 880,
+      "parent": "moodShell",
+      "parameters": {
+        "label": "Make it stormy",
+        "backgroundColor": "var(--secondary)",
+        "color": "var(--secondary-foreground)",
+        "borderRadius": "var(--radius-full)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "sizeMode": "contentSize"
+      }
+    },
+    {
       "id": "moodStore",
       "type": "net.noodl.GlobalStore",
       "label": "mood store",
@@ -163,6 +185,21 @@
       "parameters": {
         "storeName": "mood",
         "key": "theme"
+      }
+    },
+    {
+      "id": "setStormy",
+      "type": "net.noodl.GlobalStore.Set",
+      "label": "Write stormy",
+      "x": 410,
+      "y": 880,
+      "parameters": {
+        "storeName": "mood",
+        "key": "theme",
+        "value": "stormy"
+      },
+      "metadata": {
+        "comment": "EXP-011 §70: the value is TYPED IN with nothing wired into Value — the runtime queues the authored parameter at creation and every Set writes it. The corpus had no Set of this shape; this is its presence control."
       }
     },
     {

@@ -542,6 +542,16 @@ export function collectAppState(ir: ExportIR): AppStateRegistry {
           if (key !== undefined && !wiredPortsOf(component).has(`${node.id}:key`)) {
             plan.writers.push(writerRef(component, node));
             ensureStoreKey(plan, key);
+            // EXP-011 §70. A value typed into the Set with nothing wired over it is what every Set
+            // writes, so it is a typed source of the key exactly as §69's is of a variable (a
+            // string literal types the key `string`; a number or boolean makes it `unknown`; an
+            // initial-state key keeps the initial state's type). Under a wire the wire's source
+            // is registered below instead and the literal is never read.
+            const authored = literalPrimitive(node, 'value');
+            if (authored !== undefined && !wiredPortsOf(component).has(`${node.id}:value`)) {
+              const mapKey = `${storeName}\u0000${key}`;
+              storeKeySources.set(mapKey, [...(storeKeySources.get(mapKey) ?? []), { component, fromNode: undefined, fromProperty: 'value', literal: authored }]);
+            }
           }
         }
       }

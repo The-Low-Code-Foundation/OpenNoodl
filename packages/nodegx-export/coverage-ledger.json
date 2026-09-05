@@ -577,7 +577,7 @@
     {
       "typeName": "net.noodl.GlobalStore.Set",
       "status": "translated",
-      "note": "store write"
+      "note": "store write; \u00a770 a typed-in Value with nothing wired over it is written on every Set and types the key"
     },
     {
       "typeName": "net.noodl.GlobalStore.Subscribe",
