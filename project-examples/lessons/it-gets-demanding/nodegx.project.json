@@ -1,0 +1,19 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/project-v2.json",
+  "name": "It gets demanding",
+  "id": "51fe2b4f-746d-4c0a-b48b-213a26bfa578",
+  "version": "4",
+  "nodegxVersion": "0.1.0",
+  "runtimeVersion": "react19",
+  "created": "2026-09-05T15:00:00.000000Z",
+  "modified": "2026-09-05T15:00:00.000000Z",
+  "settings": {
+    "htmlTitle": "It gets demanding",
+    "navigationPathType": "path"
+  },
+  "structure": {
+    "componentsDir": "components",
+    "assetsDir": "assets"
+  },
+  "rootNodeId": "ba9b869f-dc3a-425d-a06b-8da8846e7c3e"
+}

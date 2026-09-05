@@ -1,0 +1,156 @@
+{
+  "format": "noodl-lesson@1",
+  "title": "It gets demanding",
+  "description": "One condition is not enough — hungry AND bored. Combining logic, and time as a source of events.",
+  "authoredBy": "ai",
+  "completionBadge": "Two Things At Once",
+  "steps": [
+    {
+      "kind": "popup",
+      "title": "Nibbles has no inner life",
+      "body": "## It gets demanding\n\nOpen your app and then leave it alone. Watch it for a minute.\n\nNothing happens. Nibbles dozes, and it will go on dozing for a week, because every single thing in your app so far is downstream of a click. Take your hands off the keyboard and the whole graph goes quiet.\n\nThere are two things missing, and they are both about needs rather than reactions:\n\n> **Time is a source of events, exactly like a click is.**\n>\n> **A need is usually more than one condition at once.**\n\nA creature that wants something because you have not been there is a different animal from one that only ever answers. And a real need stacks: Nibbles should ask to be fed when it has been left alone **and** it is not already delighted — not when either one happens to be true on its own.\n\nBy the end of this lesson the card asks you for something, on its own, five seconds after you stop paying attention. And it stops asking the moment you do."
+    },
+    {
+      "title": "Give the app a clock",
+      "body": "Add a **Delay** node beside your other logic nodes, rename it `Patience`, and set its **Duration** to `5000`. Then wire `Home`'s **Did Mount** output into `Patience`'s **Start** input, and `Poke`'s **Click** output into `Patience`'s **Restart** input.\n\nA **Delay** is a countdown. Started, it waits the number of milliseconds you gave it and then fires **Finished** — once. **Did Mount** is the page announcing that it has arrived on screen, so the clock is running before the learner has done anything at all.\n\n**Restart** rather than **Start** on the poke, and the difference matters. **Start** on an already-running delay would leave the first countdown going and stack a second one on top. **Restart** throws the countdown away and begins it again, so every poke pushes the deadline five seconds further out. That pattern has a name — *debouncing* — and it is how anything that should happen *after you stop* is built.",
+      "detail": "The node is called **Delay** in the picker, under **Utilities**. Its type name is `Timer`, which is what you may see it called elsewhere; there is only one node and this is it.\n\n**Did Mount** is on the `Home` **Page** node — the one at the very top of the node tree, above `Page shell` — in its **Mounted** group.\n\n**Duration** is in milliseconds, so `5000` is five seconds. Nothing about the lesson changes if you prefer three or ten; the number is only there so you do not have to wait long enough to lose interest.",
+      "completeWhen": [
+        {
+          "node": "/Pages/Home:#Patience",
+          "hasType": "Timer"
+        },
+        {
+          "node": "/Pages/Home:#Patience",
+          "paramsEqual": {
+            "duration": 5000
+          }
+        },
+        {
+          "connection": {
+            "from": "/Pages/Home:#Home",
+            "fromPort": "didMount",
+            "to": "/Pages/Home:#Patience",
+            "toPort": "start"
+          }
+        },
+        {
+          "connection": {
+            "from": "/Pages/Home:#Home:#Page shell:#Board:#Poke",
+            "fromPort": "onClick",
+            "to": "/Pages/Home:#Patience",
+            "toPort": "restart"
+          }
+        }
+      ]
+    },
+    {
+      "title": "Turn the moment into a fact",
+      "body": "Add a **Switch** node beside `Patience` and rename it `Ignored`. Wire `Patience`'s **Finished** output into its **On** input, and `Poke`'s **Click** output into its **Off** input.\n\n**Finished** is a moment. It happens, and then it is over — there is no port anywhere on `Patience` that says *the countdown has already run out*, and nothing downstream can ask. What you need is a fact that stays true until something makes it false, and a **Switch** is exactly that: one bit of memory, pushed **On** by one event and **Off** by another.\n\nYou have met this node before. `Poked`, from lesson 3, is the same node doing the same job for a click. The difference here is that two *different* events drive it in opposite directions, which is why this one takes **On** and **Off** rather than **Flip**.",
+      "detail": "**Switch** is under **Logic**.\n\nThe output you will want in the next step is **Current State** — true while the switch is on. The input called **State** is a different thing: it is which way the switch starts, and you are leaving it alone.\n\nIf you want to watch this work before wiring anything else, the preview will not show you anything yet. A `Switch` has no appearance; it is a fact waiting for somebody to read it.",
+      "completeWhen": [
+        {
+          "node": "/Pages/Home:#Ignored",
+          "hasType": "Switch"
+        },
+        {
+          "connection": {
+            "from": "/Pages/Home:#Patience",
+            "fromPort": "timerFinished",
+            "to": "/Pages/Home:#Ignored",
+            "toPort": "on"
+          }
+        },
+        {
+          "connection": {
+            "from": "/Pages/Home:#Home:#Page shell:#Board:#Poke",
+            "fromPort": "onClick",
+            "to": "/Pages/Home:#Ignored",
+            "toPort": "off"
+          }
+        }
+      ]
+    },
+    {
+      "title": "Ask for two things at once",
+      "body": "Add an **And** node and rename it `Demanding`. Wire `Ignored`'s **Current State** into its **Input 0**, and `Mood Check`'s **Is False** output into its **Input 1**.\n\n**And** is true only while every input connected to it is true. That is the whole node. It has no settings, and it grows: connect something to the highest numbered input and another one appears below it, so a need made of five conditions is the same node with five wires.\n\nRead what you have just written back in English. *Nibbles is demanding when it has been ignored, and it is not delighted.* Those two facts come from opposite ends of the app — one from a clock, one from a comparison on a counter — and neither knows the other exists. This is the point at which the graph starts to describe behaviour rather than plumbing.\n\nNote where the second one came from. You did not need a node to work out *not delighted*: `Mood Check` has published **Is False** since the lesson you built it in.",
+      "detail": "**And** is under **Logic**, next to **Or**, which is the same node with a different question — true while *at least one* input is true. **Inverter** is beside them both and flips a single boolean over.\n\nThe inputs are called **Input 0** and **Input 1**. The editor always offers one more than you have connected, so the list is never full.\n\n🔴 **Take the second input from `Mood Check`'s Is False, not from an Inverter on Is True.** Both would work. The first says what you mean in one wire, and every node in this editor that answers a yes-or-no question publishes both answers for exactly this reason.",
+      "completeWhen": [
+        {
+          "node": "/Pages/Home:#Demanding",
+          "hasType": "And"
+        },
+        {
+          "connection": {
+            "from": "/Pages/Home:#Ignored",
+            "fromPort": "state",
+            "to": "/Pages/Home:#Demanding",
+            "toPort": "input 0"
+          }
+        },
+        {
+          "connection": {
+            "from": "/Pages/Home:#Mood Check",
+            "fromPort": "isfalse",
+            "to": "/Pages/Home:#Demanding",
+            "toPort": "input 1"
+          }
+        }
+      ]
+    },
+    {
+      "title": "Turn the answer back into a number",
+      "body": "Add an **Animate To Value** node, rename it `Fade the nag`, set its **Duration** to `400`, and wire `Demanding`'s **Result** output into its **Target Value** input.\n\nThis is lesson 3's node, doing lesson 3's job. **Target Value** is a number input and `Demanding` produces true or false, so the node converts: true becomes `1`, false becomes `0`. Then it slides between them over four hundred milliseconds rather than jumping, which is the difference between something appearing and something arriving.\n\nThe first value it ever receives is adopted outright instead of animated to. At load `Demanding` is false, so `Fade the nag` starts at `0` and stays there, and nothing has to be set anywhere to make that true.",
+      "detail": "**Animate To Value** is under **Animation**.\n\nIf you have forgotten which output to take, it is **Current Value** — the number it is on right now, which is what the next step wires. **At Target Value** is a signal that fires when the slide finishes, and is not what you want here.",
+      "completeWhen": [
+        {
+          "node": "/Pages/Home:#Fade the nag",
+          "hasType": "net.noodl.animatetovalue"
+        },
+        {
+          "node": "/Pages/Home:#Fade the nag",
+          "paramsEqual": {
+            "duration": 400
+          }
+        },
+        {
+          "connection": {
+            "from": "/Pages/Home:#Demanding",
+            "fromPort": "result",
+            "to": "/Pages/Home:#Fade the nag",
+            "toPort": "targetValue"
+          }
+        }
+      ]
+    },
+    {
+      "title": "Let it ask",
+      "body": "Add a **Text** node inside `Card`, underneath `Mood Line`, rename it `Nag` and set its **Text** to `Feed me.` Then wire `Fade the nag`'s **Current Value** output into the Text's **Opacity** input.\n\nRun the preview and take your hands off the mouse. Five seconds later the card asks you for something. Poke Nibbles and the request fades out — the switch went off the instant you clicked, and the countdown started again from the beginning. Poke it five times and it will not come back at all, because a delighted creature is not demanding no matter how long you leave it.\n\nThis one carries its words as a parameter, unlike `Score`, `Story` and `Mood Line`. It says the same thing every time; the only question your app answers about it is whether it is on screen.",
+      "detail": "Drop the node onto `Card` in the node tree to put it inside the card, the same way you added `Mood Line`.\n\n**Opacity** is in the Text's **Style** group. Leave it at its default in the panel — the wire supplies it, and a value arriving on a wire takes precedence over the box.\n\n⚠️ There is a port called **Visible** just below it, and it is not the one to use here. **Visible** hides the element but keeps the space it was occupying, so the card would carry a permanent gap.",
+      "completeWhen": [
+        {
+          "node": "/Pages/Home:#Home:#Page shell:#Card:#Nag",
+          "hasType": "Text"
+        },
+        {
+          "node": "/Pages/Home:#Home:#Page shell:#Card:#Nag",
+          "paramsEqual": {
+            "text": "Feed me."
+          }
+        },
+        {
+          "connection": {
+            "from": "/Pages/Home:#Fade the nag",
+            "fromPort": "currentValue",
+            "to": "/Pages/Home:#Home:#Page shell:#Card:#Nag",
+            "toPort": "opacity"
+          }
+        }
+      ]
+    },
+    {
+      "kind": "popup",
+      "title": "What you just learned",
+      "body": "Your app now wants something, and nobody asked it to.\n\n- **Time is an input.** A **Delay** started from **Did Mount** is an event source that owes nothing to the person using the app. Everything you have built until now was a reply; this is the first thing your app says first.\n- **A moment is not a fact, and a Switch is how you cross between them.** Signals fire and are gone. Booleans persist and can be read by anything, at any time. Almost every graph that gets complicated gets complicated at that boundary, and the fix is nearly always this small node.\n- **Conditions combine.** **And** is true while everything connected to it is true, **Or** while anything is, and **Inverter** turns one over. Between them they will express any need you can say out loud in English — which is the test worth applying: write the sentence first, and then wire the nodes in the order the sentence puts them.\n- **Ask for both answers before you build the second one.** `Mood Check` was already publishing **Is False**, so the second half of this lesson's condition cost nothing.\n\nNow look at what Nibbles actually wants.\n\nIt wants to be fed, and there is nothing to feed it. `Feed`, `Play` and `Sleep` have been sitting on that board since lesson 2 doing precisely nothing, and every one of them is a word you typed by hand. Three words, three copies, and changing the set means editing the tree.\n\nA list of things, drawn from data rather than typed out, is the next lesson."
+    }
+  ]
+}
