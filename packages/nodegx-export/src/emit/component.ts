@@ -5019,32 +5019,48 @@ export function emitComponent(
   };
 
   /**
-   * EXP-011 §61. The Component Stack row — the TOP entry only, one `&&` line per page of its Components list.
+   * EXP-011 §61. The Component Stack row — EVERY entry, bottom to top, one `&&` line per page of its Components
+   * list inside a wrapper that is `display: contents` for the top entry and `display: none` below it.
+   *
+   * Session 87's drive: the runtime keeps every page's node alive under the top (navigation-stack.tsx keeps the
+   * outgoing page as `top.from` and re-adds it on the way back), so a Text or an input in the PUSHER's own component
+   * keeps its state across the push and the pop — and the Back Results the pusher renders arrive in a component that
+   * is still mounted. Rendering the top entry only unmounted the pusher and lost both. `display: contents` keeps
+   * the top page a direct flex child of the stack, as the runtime's is.
    *
    * `key` is the entry's, fresh per push, so React mounts a new instance each time as the runtime creates a new
    * node; the entry's params spread as the page component's props (cast to its own `Props` — the pusher typed
    * them against the same interface at compile time, §61.0) where the target declares any; the reserved
    * `pageStackEntry` prop only where the target's plan keeps a Pop. Before the mount effect registers the
-   * stack, `top` is undefined and nothing renders — the runtime paints an empty stack first too.
+   * stack, `entries` is empty and nothing renders — the runtime paints an empty stack first too.
    */
   const renderStack = (node: NodeIR, attrs: string[], indent: number): string[] => {
     const stack = plan.pageStacks.find((s) => s.nodeId === node.id);
     if (stack === undefined) return [`${pad(indent)}{/* TODO(export): Component Stack ${node.id} rendered without a plan */}`];
-    const lines: string[] = [];
+    const pageLines: string[] = [];
     for (const page of stack.pages) {
       const targetPlan = project.byLegacyPath.get(page.componentLegacy);
       const withProps = targetPlan !== undefined && declaresPropsInterface(targetPlan);
       const target = requireInstance(page.componentLegacy, `Component Stack ${node.id} page "${page.label}"`, withProps);
       if (!target) {
-        lines.push(`${pad(indent + 2)}{/* TODO(export): Component Stack ${node.id} — its component "${page.label}" (${page.componentLegacy}) exports no component */}`);
+        pageLines.push(`${pad(indent + 6)}{/* TODO(export): Component Stack ${node.id} — its component "${page.label}" (${page.componentLegacy}) exports no component */}`);
         continue;
       }
-      const pageAttrs = [`key={${stack.local}.top.key}`];
-      if (withProps) pageAttrs.push(`{...(${stack.local}.top.params as ${target.symbol}Props)}`);
-      if (targetPlan?.popsStack) pageAttrs.push(`${PAGE_STACK_ENTRY_PROP}={${stack.local}.top.handle}`);
-      lines.push(`${pad(indent + 2)}{${stack.local}.top?.pageId === ${tsLiteral(page.id)} && <${target.symbol} ${pageAttrs.join(' ')} />}`);
+      const pageAttrs: string[] = [];
+      if (withProps) pageAttrs.push(`{...(entry.params as ${target.symbol}Props)}`);
+      if (targetPlan?.popsStack) pageAttrs.push(`${PAGE_STACK_ENTRY_PROP}={entry.handle}`);
+      const open = pageAttrs.length > 0 ? `<${target.symbol} ${pageAttrs.join(' ')} />` : `<${target.symbol} />`;
+      pageLines.push(`${pad(indent + 6)}{entry.pageId === ${tsLiteral(page.id)} && ${open}}`);
     }
-    return element(TAGS.stack, attrs, lines.length > 0 ? lines : null, indent, true);
+    if (pageLines.length === 0) return element(TAGS.stack, attrs, null, indent, true);
+    const lines = [
+      `${pad(indent + 2)}{${stack.local}.entries.map((entry) => (`,
+      `${pad(indent + 4)}<div key={entry.key} style={{ display: entry === ${stack.local}.top ? 'contents' : 'none' }}>`,
+      ...pageLines,
+      `${pad(indent + 4)}</div>`,
+      `${pad(indent + 2)}))}`
+    ];
+    return element(TAGS.stack, attrs, lines, indent, true);
   };
 
   const renderRepeater = (node: NodeIR, indent: number): string[] => {

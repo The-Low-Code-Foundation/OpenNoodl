@@ -133,12 +133,19 @@ describe('§A the fixture, whole — two stacks, a tab bar in Replace mode, a wi
     expect(src).not.toContain("pushComponent('Tabs'");
   });
 
-  test('A6 the two rows: the top entry only, one line per page, the params cast to the page\'s own Props, the reserved prop where a Pop lives', () => {
+  test('A6 the two rows: EVERY entry in a wrapper hidden below the top (session 87 — the runtime keeps the pages under the top alive), one line per page, the params cast to the page\'s own Props, the reserved prop where a Pop lives', () => {
     const src = fileOf(app, HOME_FILE);
-    expect(src).toContain("{tabs.top?.pageId === 'overview' && <TabOverview key={tabs.top.key} />}");
-    expect(src).toContain("{tabs.top?.pageId === 'settings' && <TabSettings key={tabs.top.key} />}");
-    expect(src).toContain("{wizard.top?.pageId === 'intro' && <StepIntro key={wizard.top.key} />}");
-    expect(src).toContain("{wizard.top?.pageId === 'details' && <StepDetails key={wizard.top.key} {...(wizard.top.params as StepDetailsProps)} pageStackEntry={wizard.top.handle} />}");
+    expect(src).toContain('{tabs.entries.map((entry) => (');
+    expect(src).toContain("<div key={entry.key} style={{ display: entry === tabs.top ? 'contents' : 'none' }}>");
+    expect(src).toContain("{entry.pageId === 'overview' && <TabOverview />}");
+    expect(src).toContain("{entry.pageId === 'settings' && <TabSettings />}");
+    expect(src).toContain('{wizard.entries.map((entry) => (');
+    expect(src).toContain("<div key={entry.key} style={{ display: entry === wizard.top ? 'contents' : 'none' }}>");
+    expect(src).toContain("{entry.pageId === 'intro' && <StepIntro />}");
+    expect(src).toContain("{entry.pageId === 'details' && <StepDetails {...(entry.params as StepDetailsProps)} pageStackEntry={entry.handle} />}");
+    // The top-only row of the first build is gone: nothing keys a page component on `top.key`.
+    expect(src).not.toContain('top?.pageId ===');
+    expect(src).not.toContain('top.key');
     // StepIntro declares no inputs and keeps no Pop: no spread, no reserved prop.
     expect(src).not.toContain('StepIntroProps');
   });
