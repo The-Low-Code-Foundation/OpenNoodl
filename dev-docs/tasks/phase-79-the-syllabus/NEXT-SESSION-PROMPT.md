@@ -138,7 +138,7 @@ tackle as many as we can."* The sweep found P77/P78's rows already swept into ph
 46/46), and **P79 holding 21 rows with every single owner `NONE`** — the freshest and the only
 wholly unowned register. That was the lane.
 
-## What shipped — 9 defects across 5 commits, every one gated and mutant-checked
+## What shipped — 10 defects across 7 commits, every one gated and mutant-checked
 
 | row | was | now |
 |---|---|---|
@@ -151,36 +151,44 @@ wholly unowned register. That was the lane.
 | **G1** | an `Expression`'s three typed outputs were dead for wiring | OK flagged alongside `result`, inside the existing guard |
 | **E2** | `Color Blend` painted `#NaNNaNNaN` for every token colour | OK resolves `var()`, `#RGB`, `rgb()`; reports what it cannot read |
 | **H4** | the catalog's `Visible` summary did not say it keeps its space | OK rewritten; both catalogs regenerated |
+| **E5** | *(caused here)* the export's copy of Color Blend still had the defect | OK `readColor` ported; the parity gate is what caught it |
 
 **E4 and H3 are NARROWED, not closed** — their editor half rode in on D2, but the curriculum entry
 naming `Timer` lives in the other repo and is untouched. Do not tick them.
 
-Suites after: **noodl-runtime 2662/2662 - noodl-viewer-react 1283/1283 - the 59 editor lesson
-suites 1058/1058.** Nothing else was run — see the caveat at the bottom.
+Suites after: **noodl-runtime 2662/2662 - noodl-viewer-react 1283/1283 - nodegx-export
+2780/2780 - the 59 editor lesson suites 1058/1058 - `catalog:check` and `catalog:merge:check`
+both up to date.** The editor's `test:ci` was not run — see the caveat at the bottom.
 
-## FIRST JOB — E5, and it is a regression this session caused
+## E5 — RAISED AND CLOSED IN THE SAME SESSION (read this before the trap list)
 
-[E5](DEFECTS-LESSON-3-FOUND.md), owner **P18**. `nodegx-export`'s emitted `blendColor` is, in its
-own comment, *"a transcription of colorblend.ts, **holes and all**"* — the same blind
-`parseInt(hex.substring(...))`. Before today both copies were wrong and **agreed**; E2 fixed the
-runtime and not the export, so **every exported app still paints `#NaNNaNNaN` where a token is
-blended**, and the two now disagree.
+E2 fixed `Color Blend` in the runtime and not in `nodegx-export`'s emitted copy, so for part of
+this session exported apps still painted `#NaNNaNNaN`. **It is now fixed** (`03288392`): the
+emitted lib has its own `readColor`. The P18 peer committed their hand-off and the package went
+clean, so the collision risk that made me defer it had gone — I re-checked rather than assuming.
 
-WARNING: **It was left deliberately, not missed.** A peer was editing `nodegx-export/src/emit/`
-throughout this session (`sseLib.ts`, ten minutes before the hand-off) and the emitted-code goldens
-would have moved under them. **Check that package is quiet before starting.** The fix is to port
-`parseColor` into `utilLib.ts`'s emitted source and update the two doc comments that currently
-promise the defect; the emitted copy has no error bus, so the fallback-to-nearest-endpoint half
-applies and the warning half does not.
+🔴 **The important part is not E5, it is how it was found.** `small-utilities.test.ts` §A **loads
+`colorblend.ts` from source and runs it** — a real parity gate — and it went red the instant the
+runtime changed. **I did not know for forty minutes**, because I had reasoned that Color Blend
+lives in `noodl-viewer-react` and had run `noodl-viewer-react`.
 
-**The bigger row underneath it: export/runtime parity has now drifted twice in one session.** E5 is
-one direction; G1 was the other — there the **export was the copy that was right**, and an exported
-app would have animated the creature the editor's own runtime could not. Two hand-maintained
-transcriptions of one node will keep doing this. Somebody should own the question.
+- 🔴 **A node's blast radius is not its package.** Editing one node source broke **two other
+  packages** in two different ways: `nodegx-export` grades against it, and
+  `node-catalog{,-enriched}.json` are generated from its port descriptions. Neither is visible
+  from the directory the file sits in. **After touching any node under
+  `noodl-runtime/src/nodes` or `noodl-viewer-react/src/nodes`, run `nodegx-export`'s suite and
+  `catalog:check` + `catalog:merge:check`, not just the owning package's.**
+- ⚠️ **A report can be worse than the defect.** The suite died on
+  `this.raiseRuntimeError is not a function` — the node is also loaded as a **bare definition
+  object** with no `Node.prototype`, so the new error report *threw* where the old code merely
+  returned nonsense. Guarded now. Reporting must never be the thing that throws.
+- ⚠️ **Parity is gated in ONE direction only.** `Color Blend` and `Boolean To String` have a gate
+  that loads the interpreter's own source. **`Expression` (G1) does not** — the export's
+  correctness there was read off `plan.ts` by eye. That asymmetry is a row P18 should want.
 
-## Then — what is left, in the order I would take it
+## FIRST JOB — J2, then the rest in this order
 
-1. **[J2](DEFECTS-THE-RUNNER-DRIVE-FOUND.md)** — *Check my work* on an incomplete step removes the
+1. 🔴 **[J2](DEFECTS-THE-RUNNER-DRIVE-FOUND.md)** — *Check my work* on an incomplete step removes the
    instructions and says nothing new. Measured on two lessons, unowned for five sessions, and it
    hits the learner at the exact moment they were stuck. The only high-severity row left in the
    runner register.
