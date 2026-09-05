@@ -1,0 +1,19 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/project-v2.json",
+  "name": "Show what it feels",
+  "id": "2cabee9c-ebec-4153-b538-a05537cfb3a0",
+  "version": "4",
+  "nodegxVersion": "0.1.0",
+  "runtimeVersion": "react19",
+  "created": "2026-09-05T13:30:00.000000Z",
+  "modified": "2026-09-05T13:30:00.000000Z",
+  "settings": {
+    "htmlTitle": "Show what it feels",
+    "navigationPathType": "path"
+  },
+  "structure": {
+    "componentsDir": "components",
+    "assetsDir": "assets"
+  },
+  "rootNodeId": "ba9b869f-dc3a-425d-a06b-8da8846e7c3e"
+}
