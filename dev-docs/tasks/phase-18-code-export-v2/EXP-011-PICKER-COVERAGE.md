@@ -96,7 +96,7 @@ Ranked by *"can you build a normal app without it"*, not by corpus frequency.
     the 2026-09-03 ruling (§50): it is the escape hatch the MCP reaches for, not a niche.
 10. **`Drag`, the component-tree family** — `Component Children`, `Component Stack` and its pair, the
     parent-object family all moved to **Tier 2.8** by §50; `Drag` stays here as its row 13.
-11. **The transports** — `Subscribe To Changes`, `Server-Sent Events` ✅ **§64 (session 88)**, `WebSocket` ✅ **§65 (session 89)**. **Added by §50**
+11. **The transports** — `Subscribe To Changes` ✅ **§66 (session 90)**, `Server-Sent Events` ✅ **§64 (session 88)**, `WebSocket` ✅ **§65 (session 89)**. **Tier 3.11 COMPLETE; no scheduled row remains in the ledger.** **Added by §50**
     (they were "not a target"). Each is a browser API in a `useEffect`: EventSource on
     `/realtime` plus one subscribe POST; EventSource; WebSocket with reconnect. Real, buildable, and
     the streaming-LLM app is the one every new user builds first.
@@ -9600,8 +9600,7 @@ whole package jest ONCE on the final tree: 76 files (76 on disk), 2778/2778, exi
 
 ### §64.5 What this leaves (owner NONE unless named)
 
-- **`WebSocket`** ✅ built session 89 (§65). **`Subscribe To Changes`** — Tier 3.11 row 3, scheduled; the badge spec pins it now.
-  Owner **EXP-011**.
+- **`WebSocket`** ✅ built session 89 (§65). **`Subscribe To Changes`** ✅ built session 90 (§66) — Tier 3.11 complete.
 - A **`Headers` object fed by a wire** prints the render local; an authored Headers literal on disk (an object parameter)
   would need the object-literal print the record verbs use — no fixture authors one. Owner NONE.
 - **`Body` for a POST** is JSON-encoded unless a string, as the runtime's is; a Content-Type authored in Headers wins.
@@ -9758,8 +9757,7 @@ whole package jest ONCE on the final tree: 77 files (77 on disk), 2835/2835, exi
 
 ### §65.5 What this leaves (owner NONE unless named)
 
-- **`Subscribe To Changes`** — Tier 3.11 row 3, the last scheduled node; the badge spec pins it. Owner **EXP-011**. When it
-  lands, the badge spec needs a scheduled node that is not being translated, or its pin becomes "no scheduled rows remain".
+- **`Subscribe To Changes`** ✅ built session 90 (§66) — the last scheduled node; the badge spec's pin became "no scheduled rows remain" (§66.4 #5).
 - A text input straight into Message (finding 1). Owner NONE.
 - A **binary frame end to end**: the spec sends and receives one under the harness; the drive's fake speaks text only.
 - **The heartbeat against a server that answers**: driven under the harness (E8), not against the fake. Owner NONE.
@@ -9783,3 +9781,179 @@ Connect: server open id 2, the queued message flushed AFTER the open and echoed 
 `closed`, Error `Connection closed (1011): kicked; reconnecting in 617ms` (jitter inside [500, 1000]) ✓ · **T6b** +1.6 s:
 server open id 3, `open true`, status `reconnected`, Raw the third hello, Error cleared ✓ · **T7** errs `[]`, no raise, no
 console.error ✓. Teardown: 0 listeners on 4365 / 9366 / 8583.
+
+## §66 Tier 3.11 row 3 — `Subscribe To Changes`: the streaming table's sixth member, the runtime's realtime layer for the built-in backend transcribed; the LAST scheduled node (session 90, 2026-09-05)
+
+### §66.0 Design — what the node is on disk, and what that decides (written before a line of code)
+
+`SubscribeToChanges` (display name *Subscribe To Changes*, category Cloud Services, `ssr: client-only`) is
+`data/subscribetochanges.ts`: a 690-line shell over `api/backends/realtime/` — `createRealtimeSubscription(handle, {collection,
+where, primaryKey, onEvent, onStatus, onError})` picks a transport by backend type and the node holds one subscription. The node's
+own policy: every setter (`Enabled`, the discovered `collectionName` / `backendId` / `visualFilter` / `qp-*`) schedules ONE
+`reconfigure` after the inputs have updated (teardown; nothing if disabled or no class; resolve the backend; `realtimeSupportFor`;
+subscribe; publish the handle's status at once because the subscription notifies on a status CHANGE only); `Enabled` is read
+`!== false` (a declared default never runs the setter, and this node is supposed to work untouched); `handleRealtimeChange` writes the
+four values (`recordsComplete` gates Changed Record, not `records.length`), returns on `init`, pulses created/updated/deleted by type
+and then `changed` for every non-init frame including `resync`; `handleRealtimeError` writes Realtime Error, pulses Realtime Failure,
+THEN raises `subscribe-to-changes/realtime-failed` on the error bus.
+
+The layer beneath, read from the WORKING TREE (a peer held `RealtimeSubscription.ts`, `SseTransport.ts`, `index.ts` modified and
+`SseConnectionPool.ts` untracked — mtimes 2026-09-02 21:19–21:30, D46's shared pool; the transcription is of those bytes):
+`RealtimeSubscription` (one reconnection funnel per socket tagged by generation, a CONFIRMATION deadline armed whenever the
+subscription is not `subscribed` and re-armed at most once per generation on an `EventSource` error, fatal-as-data from the
+contract's `REALTIME_FAILURE_KINDS`, the 1s→30s backoff reset only by a confirmation, `dispose` silent); `SseTransport` with the
+`NODEGX_SSE` dialect (GET `/realtime?token=`, hello `connected {clientId}`, POST `/realtime/subscriptions {clientId, subscriptions:
+[{collection, filter?}]}` with a Bearer header, confirmed by the BODY's `accepted[]` and never by the 200, the `change {action,
+collection, record}` and `resync` frames, a delete carrying the whole pre-delete record); `SseConnectionPool` (one `EventSource` per
+`(host, dialect, base, token, filter)`, the union of every member's collection re-POSTed on every membership change and on every
+hello — the POST REPLACES the set — at most one POST in flight, a verdict settling only the members that were in the request); the
+contract's types and `nextReconnectDelay`.
+
+**The export has ONE backend** (`metadata.cloudservices`, type `nodegx`), reached by EXP-009's `src/api/client.ts` — so the node is a
+hook riding the client: `useSubscribeToChanges(source, { collection, enabled }, listeners)`, `src/lib/realtime.ts` importing
+`../api/client` (`ENDPOINT`, now exported, and `readSession()` for the token) and `./errors`. Only the NodeGX dialect is transcribed;
+PocketBase / Directus / Parse LiveQuery / the unavailable pair are backends an export has not got. **The table takes it as a sixth
+member** (`kind: 'subscription'`, `lib: 'realtime'`, no data port, no Actions, two config ports — the Class through a new `param`
+field on the config entry, because on disk it is the discovered `collectionName` — five signals, seven values); `streamPlanOf`
+grew a §66 block BEFORE the table's own "not a port" gate: a project with no backend, a Backend other than the project's active
+one (the record verbs' sentence), an authored Filter or a `qp-` wire (the server evaluates the filter; the query row does not send
+its filter either; dropping it would deliver every change) are each refused by name. `apiModules` counts a subscription as a
+backend use (`hasSubscriptions`), so client.ts and `.env.example` ship for a subscription alone.
+
+### §66.1 What is emitted
+
+- **`src/emit/realtimeLib.ts`** (new) → `src/lib/realtime.ts` (≈1,300 lines): the contract (types, `REALTIME_FAILURE_KINDS`,
+  `REALTIME_TIMING`, `nextReconnectDelay`, the deps seam), `RealtimeSubscription` verbatim (the token getter is the Parse-wire
+  branch: the session's or none — SBR-011's finding kept as its comment), `NODEGX_SSE` + `SseTransport` verbatim, the pool verbatim
+  (`connectionFor`, `openConnectionCount`, the WeakMap on the deps object), `createRealtimeSubscription`, then the node: options /
+  listeners / handle / seams, `createInternal`, `isEnabled`, `applyOptions`, `resolveBackend` (`{ url: ENDPOINT, sessionToken }`
+  — a snapshot at reconfigure, as the runtime's resolved handle is), `teardown`, `reconfigure`, the three handlers,
+  `useSubscribeToChanges` (an effect after every render applies the options and reconfigures when the Class or Enabled changed,
+  and once at mount; the unmount cleanup is `_onNodeDeleted`). Generated from a plain source (`realtime-lib-source.ts` +
+  `gen-rtlib.py`, the session scratchpad) — regenerate, never hand-edit.
+- **plan.ts**: `SUBSCRIBE_TO_CHANGES_TYPE`, `REALTIME_ERROR_TS_TYPE`; `StreamKind` + `'subscription'`; `lib` + `'realtime'`;
+  `param?` on a config entry (read by `sourceOf` for the wire and the literal, and by the port check); the sixth table entry;
+  `OWN_CHAIN_OUTPUTS`; `streamTypeOfKind`'s ladder; the §66 gates in `streamPlanOf`. **component.ts**: the import loop over four
+  modules, the path ladder, the `realtimeLib` flag. **emitApp.ts**: `realtimeLibUsed` earns errors.ts and ships the file;
+  `hasSubscriptions` in `apiModules`; `export const ENDPOINT` in `clientModule` (the EXP-009 golden updated by that one word).
+  **Ledger**: the row `translated` with a note, floor **116 → 117** (92.1 %, 124 translated), the comment sentence; 13 pins moved;
+  websocket.test F1's badge pin → undefined. **EXP-013's editor badge spec**: "both kinds exist" → "no scheduled row remains"; the
+  drawn scheduled badge is a literal now.
+- **The page** (live-desk): `const feed = useSubscribeToChanges({ label: 'Feed', nodeId: 'feed', componentName: '/Pages/Home' },
+  { collection: 'Contact' }, { realtimeFailure: () => last.set('failed'), created: () => last.set('created'), updated: …, deleted: …,
+  changed: () => pulse.set('changed') });` — `{String(feed.subscribed)}`, `{feed.realtimeStatus}`, `{feed.changedEvent}`,
+  `{feed.changedRecordId}`, `{String(feed.changedRecord ?? '')}`, `{JSON.stringify(feed.changedRecords)}`,
+  `{String(feed.realtimeError ?? '')}` — by declared type; an authored `enabled: false` prints as a literal, a wired one as its
+  render read (`enabledValue`), an absent one prints nothing (the hook reads absent as ON).
+
+### §66.2 The fixture — `tests/fixtures/live-desk`
+
+A project with a backend (`http://localhost:8584`, `backend_livedesk`, type `nodegx`, one class `Contact`). `Pages/Home`: `feed`
+(Subscribe To Changes, Class Contact, nothing else authored — **Enabled untouched ⇒ ON, the zero-config path the node was
+designed for**); created / updated / deleted / realtimeFailure → four String-fed Set Variables on `last`; changed → one on
+`pulse`; the seven Realtime outputs and the two Variables each in a Text — **the live-feed shape**. **The reverted arm**
+(`probe-reverted.log`, a detached worktree at HEAD c58c2430 — `git worktree add --detach`, never a stash — with the root
+`node_modules` symlinked in): 22 refusals — `logic node (SubscribeToChanges)`, the five Set Variables *"trigger feed.created is not a
+rendered element event or a receiver"*, their five Strings, every wire out of the node dropped. **Built**: 17 files, 0 refusals,
+the shell note + the connected-backend note; the real `tsc` over the app clean (`typecheck-emitted`, after one red — §66.4 #1).
+
+### §66.3 Gates and arms
+
+```
+pkg tsc 0 (one TS2339 on the config union fixed) · typecheck-emitted live-desk ✓ (run BEFORE the first arm; red once on
+  `clearTimeout(unknown)`, §64.4's lesson, fixed in the source) · subscribe-to-changes.test.ts 41/41
+  §A the plan and the page (8: incl. A6 Enabled's three forms, A7 no Class ⇒ `{}`, A8 the client for a subscription alone,
+  byte-identical to search-desk's bar the defaults) · §B the refused shapes by mutation (5: no backend + nothing ships, a
+  second Backend authored/wired, the Filter and a qp- wire, the table's own four, the cascade) · §C the lib's text and the
+  earning (3) · §D the pure cores under node (6: the backoff, the classification, the dialect's URL/POST/headers, readVerdict by
+  the body, parseChange ×6, the pool keys) · §E the hook under the harness with a scripted EventSource, a scripted fetch and the
+  timer seam (17: mount-subscribes anonymously + one union POST; the token in URL and header; the three frames + resync; a
+  rejection ⇒ Failure THEN raise, retry, the retry clearing the error; the deadline and the backoff doubling then resetting; a
+  stream error ⇒ interrupted, no error, the deadline armed ONCE, the browser's reconnect re-POSTs; Enabled off/on/off; a Class
+  change; unmount; the pool — one stream, one union POST, a frame to its own class only, a leave re-POSTs, the last leave closes;
+  a join during an in-flight POST; a fetch rejection; the two fatal arms; a throwing listener contained; the timing seam; the
+  pulse-before-raise order) · §F the ledger (2: the row and the floor; NO scheduled row remains)
+export-ledger:check OK 124 translated · picker --check 117/127 (92.1 %) exit 0 · websocket 37 + the 13 floor pins re-run in the whole run
+whole package jest ONCE on the final tree: 78 files (78 on disk), 2894/2894, exit 0 (a first run read 2892 — the trio's catalog-set row and the SSE spec's
+  floor pin, §66.4 #4/#8) · editor tsc 0 (exit 0, empty log) · exp-012/013 157/157 (the badge spec's `deferred.length > 10` guard read 10 — now `>= 1`) ·
+  editor test:ci 2943 specs / 5 failures = the known floor (AIX-006 ×4 + SB-017 acceptance 6), seed 19064, HEAD 6101f96f, `test-results.json` fresh 19:51
+arms (mut.py, mut.log + mut-summary.txt; sources restored md5-identical after each): 21 armed — 21 KILLED:
+  M1 no Records Changed pulse (3 rows) · M2 Enabled absent reads OFF (17) · M3 the raise before the Failure pulse (5) · M4 a
+  confirmation never resets the backoff (1) · M6 two POSTs in flight (1) · M7 a fresh hello owes no registration (1) · M8
+  readVerdict trusts the 200 (3) · M9 a delete frame carries no record (2) · M10 teardown forgets without disposing (5) · M11
+  every render reconfigures (HUNG the harness on the first run — an infinite render loop, React's "Maximum update depth"; the
+  harness now caps a render at 100 settles and grades it: 17) · M12 Records Changed off the signal list (13) · M13 the hook
+  imported from websocket.ts (1) · M14 realtime.ts never shipped (3) · M15 a subscription is not a backend use (2) · M16 the
+  no-backend gate removed (2) · M17 the Filter gate removed (1) · M18 the deadline re-armed on every error (1) · M19 the backoff
+  uncapped (1) · M20 the Bearer header dropped (2) · M21 Enabled coerced whether or not passed (17) · M22 the primary key `id`
+  (SURVIVED first — the dialect reads objectId first, so the key only matters for a frame without one; E3 gained that edge: 1).
+```
+
+### §66.4 What building it found
+
+1. 🔴 **`typecheck-emitted` red where the package's tsc, the spec and the harness were green — the third time in three
+   transports** (§64.4 #1, §65.1): `this._deps.clearTimeoutImpl || clearTimeout.bind(globalThis)` called with an `unknown` handle
+   is a TS2769 under the emitted app's tsconfig. Fixed at the seam (`(h: unknown) => clearTimeout(h as ReturnType<typeof
+   setTimeout>)`). ✅ Run `typecheck-emitted` on the new fixture BEFORE the first arm — it was, and it caught it.
+2. 🔴 **A compiled lib binds `react` ONCE, at load.** The WebSocket spec's harness compiles the lib with `require('react')` returning
+   ONE harness's hooks; the pool rows mount TWO hooks on one lib (they must share the module's `POOLS`), and the second hook ran
+   against the first harness's slots — it read as the first hook re-rendered with new options, and the union POST carried one
+   collection. The harness's `react` is now a dispatcher onto whichever harness `use()` named last; every mount's `render` names
+   its own. Two other rows (E14's second harness, E15's listener swap) needed the same.
+3. ⚠️ **A hook that reconfigures on every render hangs a synchronous harness** (M11): reconfigure → status publish → dirty → render
+   → effect → reconfigure. React would throw "Maximum update depth exceeded"; the harness now throws after 100 settles, so the arm
+   is graded rather than reported as NO SUMMARY (a crash is not a kill).
+4. ⚠️ **The cascade sentence is the registration pass's** (§64.4 #3 again): a Set Variable behind a node refused IN THE TABLE reads
+   `logic node (Set Variable)`; the reverted arm's `trigger feed.created is not a rendered element event or a receiver` is the
+   attach pass's, for a type the table never knew. B5 pins the observed one.
+5. 🔴 **`SubscribeToChanges` was the ledger's ONLY `scheduled —` row.** Translating it emptied that kind: the editor badge spec's
+   "both kinds exist in the ledger" row could no longer be true of the real ledger, and its drawn-scheduled-badge rows read a
+   badge that is now `undefined`. The population row became "no scheduled row remains (every deferred row is a decision)", the
+   drawn scheduled badge a literal of the reader's shape, and subscribe-to-changes.test F2 pins the same from the package side.
+   The reader's `scheduled` branch is live code with no live population until a tier schedules another node.
+6. ⚠️ **The reverted arm needs a worktree, and a worktree needs `node_modules`**: `git worktree add --detach <scratch> HEAD` (never a
+   stash on this checkout), then `ln -s <repo>/node_modules <scratch>/node_modules` — `@nodegx/module-inject` is a workspace link
+   the bare worktree cannot resolve. `emit.ts` takes the package root from `$R` now.
+8. ⚠️ **`grep -l` SKIPPED `sse.test.ts` as binary** (a curly quote) — the floor-pin sweep missed it and the trio's catalog-set row needed a
+   discovered-port clause; the whole-package run found both, one run late. ✅ `grep -a` for every pin sweep.
+7. ⚠️ **The runtime's realtime directory was uncommitted in the working tree** across sessions 88–90 (D46's pool). The lib
+   transcribes the working-tree bytes (mtimes 2026-09-02 21:19–21:30); if the peer's commit lands differently, §66's transcription
+   is of what was on disk on 2026-09-05, and the spec's §D/§E rows are the record of which behaviour was taken.
+
+### §66.5 What this leaves (owner NONE unless named)
+
+- **Enabled wired from a Variable nothing has written** reads `!!undefined` ⇒ OFF in the export; whether the runtime delivers an
+  undefined Variable into the setter at boot (⇒ the same) or never runs it (⇒ ON) is UNMEASURED. The fixture leaves Enabled
+  untouched for that reason; A6/E8 grade the authored and wired forms. Owner NONE — measure in the runtime before a fixture wires it.
+- **An authored Filter is refused by name** (B3). Translating it means the runtime's `convertVisualFilter` (the Parse `$` grammar)
+  transcribed for `qp-` render reads — the query row does not send its filter either, so the two would land together. Owner NONE.
+- **Changed Record is the wire's record** (`objectId`, storage-shaped), as the runtime publishes it — not the client's
+  `fromWire` row (`id`). A page comparing it to a query row's `id` compares the wrong field on both sides equally. Owner NONE.
+- **The token is a snapshot at reconfigure** (the runtime's resolved handle is the same): a sign-in after mount does not
+  re-subscribe; the next Class/Enabled change or reconnect picks the session up (the pool key carries the token, so a new
+  connection opens). Owner NONE.
+- **The session token rides the stream URL** (`?token=`) because `EventSource` cannot set headers — the runtime's shipped
+  behaviour, visible in server logs. Owner NONE (the backend's contract).
+- StrictMode's dev double-mount opens and closes one extra stream (§64.5's shape); `vite preview` is the production build, and the
+  drive read ONE GET. Owner NONE.
+- The drive is against `fakert.js`, not `nodegx-backend`'s hub; the fake speaks the hub's measured wire (`id:`/`event:`/`data:`,
+  `resync` on a `Last-Event-ID` reconnect, the verdict body). A drive against the package's own server is owed to whoever wires
+  a template with a live subscription. Owner NONE.
+- `Realtime Error` in a Text prints `[object Object]` (an `object` port at a text sink, the runtime's `String()` too). Owner NONE.
+
+### §66.6 The drive — the built export, headless, against a fake `/realtime` (session 90)
+
+`live-desk` re-emitted on the final lib, `node_modules` copied AFTER the emit from s88's `token-desk-b-out` (the package.json
+identical bar the name), `vite build` exit 0 / 0 `error TS`, `vite preview` 4366, Chrome 9367, `--target=Live`; `fakert.js` on 8584
+(GET `/realtime` ⇒ SSE with `connected {clientId:cN}` and, on a `Last-Event-ID` request, `resync {reason:'reconnect'}`; POST
+`/realtime/subscriptions` ⇒ 200 `{accepted, rejected}` by collection; control routes `__change`, `__drop`, `__state`; every request
+logged). `EXPECTED66.md` FIRST, every row graded: **T1** boot: the page subscribed at MOUNT with nothing authored but a Class —
+one `GET /realtime` with NO token (anonymous), one `POST` `{"clientId":"c1","subscriptions":[{"collection":"Contact"}]}` with no
+authorization header; read `true subscribed '' '' '' [] '' '' ''`, errs `[]`, state one stream c1 subs [Contact] ✓ · **T2** create
+r1 ⇒ `create r1 [object Object] [{"objectId":"r1",…}]`, `last` = `created`, `pulse` = `changed` ✓ · **T3** update ⇒ `update`, the
+updated record, `updated` ✓ · **T4** delete ⇒ `delete r1`, the pre-delete record, `deleted` ✓ · **T5** the fake ends the stream ⇒
++0.5 s `false interrupted`, NO Realtime Error (a confirmed connection going down is not a failure), `last` still `deleted` ✓ ·
+**T5b** +4 s: the browser reconnected on its own with `Last-Event-ID: 4` ⇒ hello c2 ⇒ a second POST under c2 ⇒ `true subscribed`,
+and the hub's `resync` ⇒ Change Type `resync`, Id / Record / Records cleared, `last` unchanged (resync pulses no
+created/updated/deleted), the log shows `closed c1` ✓ · **T6** create r2 on c2 ⇒ `create r2`, `created` ✓ · **T7** errs `[]`, no
+raise, no console.error ✓. Teardown: 0 listeners on 4366 / 9367 / 8584. Every row matched the sheet written before the drive.
