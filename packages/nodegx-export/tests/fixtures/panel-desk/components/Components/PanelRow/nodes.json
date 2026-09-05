@@ -1,0 +1,74 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "c0a1b2c3-5b3f-4e8d-9c1a-000000000063",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "rowRoot",
+      "type": "Group",
+      "label": "Row",
+      "children": [
+        "rowName",
+        "rowTitle"
+      ],
+      "parameters": {
+        "flexDirection": "row",
+        "columnGap": "var(--space-2)"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "rowName",
+      "type": "Text",
+      "label": "Name",
+      "parent": "rowRoot",
+      "parameters": {
+        "fontSize": "var(--text-sm)",
+        "color": "var(--foreground)"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "rowTitle",
+      "type": "Text",
+      "label": "Parent title",
+      "parent": "rowRoot",
+      "parameters": {
+        "fontSize": "var(--text-sm)",
+        "color": "var(--muted-foreground)"
+      },
+      "x": 100,
+      "y": 220
+    },
+    {
+      "id": "rowInputs",
+      "type": "Component Inputs",
+      "label": "Row properties",
+      "ports": [
+        {
+          "name": "name",
+          "plug": "output",
+          "type": "string",
+          "index": 0
+        }
+      ],
+      "x": 350,
+      "y": 160
+    },
+    {
+      "id": "rowParent",
+      "type": "net.noodl.ParentComponentObject",
+      "label": "Parent page state",
+      "parameters": {
+        "properties": "title"
+      },
+      "x": 350,
+      "y": 220
+    }
+  ],
+  "visualRoots": [
+    "rowRoot"
+  ]
+}

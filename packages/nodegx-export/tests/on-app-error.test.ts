@@ -588,7 +588,7 @@ describe('§H the ledger', () => {
     expect(ledgerEntryOf('On App Error')?.status).toBe('translated');
     expect(exportBadgeOf('On App Error')).toBeUndefined();
     const ledger = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'coverage-ledger.json'), 'utf8'));
-    expect(ledger.pickerCoverageFloor).toBe(107); // §62 the relation pair (session 86) // §57 Repeater Item, §58 the streaming trio, §59 Hash / Random Bytes / Screen Resolution (session 85) // §56 Filter Records (session 84)
+    expect(ledger.pickerCoverageFloor).toBe(110); // §60 the component-object trio + §62 the relation pair (session 86); §57 + §58 + §59 (session 85) // §56 Filter Records (session 84)
   });
 });
 

@@ -172,7 +172,7 @@ describe('§A the fixture, whole — Variable → Hash on a button, a nonce on a
       expect(exportBadgeOf(type)).toBeUndefined();
     }
     const ledger = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'coverage-ledger.json'), 'utf8'));
-    expect(ledger.pickerCoverageFloor).toBe(107); // §62 the relation pair (session 86) // §57 + §58 + §59 (session 85)
+    expect(ledger.pickerCoverageFloor).toBe(110); // §60 the component-object trio + §62 the relation pair (session 86); §57 + §58 + §59 (session 85)
   });
 });
 

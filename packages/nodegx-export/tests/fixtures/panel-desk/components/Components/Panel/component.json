@@ -1,0 +1,10 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "c0a1b2c3-5b3f-4e8d-9c1a-000000000062",
+  "name": "Panel",
+  "path": "/Components/Panel",
+  "type": "visual",
+  "created": "2026-09-05T09:00:00.000Z",
+  "modified": "2026-09-05T09:00:00.000Z",
+  "description": "EXP-011 §60 fixture: reads the parent's title and note through Parent Component Object; a Bump button writes count into the parent through Set Parent Component Object Properties, with Done and Failure each remembering a status."
+}

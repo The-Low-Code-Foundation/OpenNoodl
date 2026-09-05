@@ -1,0 +1,67 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "c0a1b2c3-5b3f-4e8d-9c1a-000000000061",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "titleInput",
+      "fromProperty": "onTextChanged",
+      "toId": "setTitle",
+      "toProperty": "prop-title"
+    },
+    {
+      "fromId": "renameBtn",
+      "fromProperty": "onClick",
+      "toId": "setTitle",
+      "toProperty": "store"
+    },
+    {
+      "fromId": "setTitle",
+      "fromProperty": "done",
+      "toId": "setStatus",
+      "toProperty": "do"
+    },
+    {
+      "fromId": "panelState",
+      "fromProperty": "value-title",
+      "toId": "titleText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "panelState",
+      "fromProperty": "value-count",
+      "toId": "countText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "panelState",
+      "fromProperty": "value-note",
+      "toId": "noteText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "noteVar",
+      "fromProperty": "value",
+      "toId": "panelState",
+      "toProperty": "value-note"
+    },
+    {
+      "fromId": "statusVar",
+      "fromProperty": "value",
+      "toId": "statusText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "people",
+      "fromProperty": "items",
+      "toId": "rows",
+      "toProperty": "items"
+    },
+    {
+      "fromId": "renamedLabel",
+      "fromProperty": "savedValue",
+      "toId": "setStatus",
+      "toProperty": "value"
+    }
+  ]
+}

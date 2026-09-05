@@ -33,6 +33,7 @@ import { RECORD_FILTER_LIB_PATH, recordFilterLibSource } from './recordFilterLib
 import { STREAMING_LIB_PATH, streamingLibSource } from './streamingLib';
 import { CRYPTO_LIB_PATH, cryptoLibSource } from './cryptoLib';
 import { SCREEN_LIB_PATH, screenLibSource } from './screenLib';
+import { COMPONENT_OBJECT_LIB_PATH, componentObjectLibSource } from './componentObjectLib';
 import { EmittedCopy, emitKits } from './kits';
 import { README_PATH, renderReadme } from './readme';
 import { ExportReportData, REPORT_PATH, ReportComponent, renderReport, stripScope } from './report';
@@ -141,6 +142,8 @@ export function emitApp(ir: ExportIR, catalog: Catalog): EmittedApp {
   // EXP-011 §59.
   let cryptoLibUsed = false;
   let screenLibUsed = false;
+  // EXP-011 §60. The component-object record, its context and the parent hook; the lib raises on errors.ts.
+  let componentObjectLibUsed = false;
   const reportComponents: ReportComponent[] = [];
   for (const plan of project.plans) {
     if (plan.skipReason) {
@@ -198,6 +201,7 @@ export function emitApp(ir: ExportIR, catalog: Catalog): EmittedApp {
     if (emitted.streamingLib) streamingLibUsed = true;
     if (emitted.cryptoHelpers.size > 0) cryptoLibUsed = true;
     if (emitted.screenLib) screenLibUsed = true;
+    if (emitted.componentObjectLib) componentObjectLibUsed = true;
   }
 
   /**
@@ -251,7 +255,8 @@ export function emitApp(ir: ExportIR, catalog: Catalog): EmittedApp {
     files[RUN_TASKS_LIB_PATH] = GENERATED_MODULE_TS + runTasksLibSource();
   }
   // EXP-011 §54. `src/lib/errors.ts` — the channel. script.ts and runTasks.ts raise on it, so either earns it too.
-  if (errorsLibUsed || scriptLibUsed || runTasksLibUsed || streamingLibUsed) {
+  // EXP-011 §60. componentObject.ts raises parent-component-object/no-ancestor on the channel, so it earns errors.ts too.
+  if (errorsLibUsed || scriptLibUsed || runTasksLibUsed || streamingLibUsed || componentObjectLibUsed) {
     files[ERRORS_LIB_PATH] = GENERATED_MODULE_TS + errorsLibSource();
   }
   // EXP-011 §58. `src/lib/streaming.ts` — the trio's host; it raises on the channel, so it earns errors.ts above.
@@ -265,6 +270,10 @@ export function emitApp(ir: ExportIR, catalog: Catalog): EmittedApp {
   }
   if (screenLibUsed) {
     files[SCREEN_LIB_PATH] = GENERATED_MODULE_TS + screenLibSource();
+  }
+  // EXP-011 §60. `src/lib/componentObject.ts` — the record hook, the context and the parent hook, where a component printed one.
+  if (componentObjectLibUsed) {
+    files[COMPONENT_OBJECT_LIB_PATH] = GENERATED_MODULE_TS + componentObjectLibSource();
   }
   if (recordFilterLibUsed) {
     files[RECORD_FILTER_LIB_PATH] = GENERATED_MODULE_TS + recordFilterLibSource();

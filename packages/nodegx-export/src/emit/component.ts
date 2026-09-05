@@ -35,7 +35,9 @@ import {
   whereExprs,
   RecordWhere,
   STREAM_NODES,
-  streamFieldMaybeUndefined
+  streamFieldMaybeUndefined,
+  NO_ANCESTOR_WRITE_MESSAGE,
+  PARENT_COMPONENT_OBJECT_TYPE
 } from '../analyze/plan';
 import { ExportIR, ITEM_OUTPUT_SIGNAL, NodeIR } from '../ir/types';
 import { KitBinding, tsTypeOf as kitPortTsType } from './kits';
@@ -54,6 +56,7 @@ import { SCRIPT_CODE_PREFIX } from '../analyze/script';
 import { ID_HELPERS_BY_FN, ID_LIB_PATH, IdHelper } from './idLib';
 import { CRYPTO_LIB_PATH, CryptoHelper } from './cryptoLib';
 import { SCREEN_LIB_PATH } from './screenLib';
+import { COMPONENT_OBJECT_LIB_PATH } from './componentObjectLib';
 import { computeNodeStyle, computeRoleCss, CONTENT_ATTR_ORDER, CONTENT_PARAMS, Decl, iconSourceOf, RoleCss, StyleRole, WIRED_STYLE_SINKS } from './style';
 
 const GENERATED_TS = '// @nodegx:generated (visual — provenance markers complete in EXP-007)\n';
@@ -151,6 +154,8 @@ export interface EmittedComponent {
   /** EXP-011 §59. `src/lib/crypto.ts` verbs this component calls; `src/lib/screen.ts` is owed when a viewport hook prints. */
   cryptoHelpers: Set<string>;
   screenLib: boolean;
+  /** EXP-011 §60. `src/lib/componentObject.ts` is owed when a record hook, a parent hook or a provider printed. */
+  componentObjectLib: boolean;
 }
 
 export function emitComponent(
@@ -195,6 +200,9 @@ export function emitComponent(
       // EXP-011 §59. The code rides the action, read off the node table in plan.ts.
       case 'crypto-call':
         return tsLiteral(action.code);
+      // EXP-011 §60. setparentcomponentobjectproperties.ts's implicit-walk miss; the self variant never raises.
+      case 'component-object-set':
+        return tsLiteral('set-parent-component-object-properties/no-ancestor');
       default:
         return tsLiteral('outcome/unspecified-failure');
     }
@@ -378,6 +386,10 @@ export function emitComponent(
   // a registered hook nothing reads prints no line (§56 E1's rule, decided here at emit time).
   const usedCryptoHelpers = new Set<CryptoHelper>();
   const usedScreenNodeIds = new Set<string>();
+  // EXP-011 §60. Whether an emitted expression or action reaches the record hook / the parent hook — the parent hook
+  // prints only where something reads or writes through it; the record hook prints whenever the plan registered it
+  // (the provider is owed to descendants even when the host itself reads nothing).
+  let usedParentObject = false;
   /** `src/lib/timer.ts`'s verbs (EXP-011 §39) — actions, gathered the id helpers' way. */
   const usedTimerHelpers = new Set<string>();
   // Re-host wrappers (EXP-003 §4): only definitions that surviving expressions/actions
@@ -464,6 +476,8 @@ export function emitComponent(
     // EXP-011 §59. The same clause for the crypto rows; a viewport read earns its hook.
     if (expr.kind === 'crypto-out' && expr.viaState !== undefined) referencedStateNames.add(expr.viaState);
     if (expr.kind === 'screen-out') usedScreenNodeIds.add(expr.nodeId);
+    // EXP-011 §60. A parent read earns the parent hook.
+    if (expr.kind === 'component-object-out' && expr.parent) usedParentObject = true;
     if (expr.kind === 'format') {
       for (const part of expr.parts) if (typeof part !== 'string') collectExprUse(part);
     }
@@ -517,6 +531,14 @@ export function emitComponent(
       usedStoreNames.add(action.storeName);
       action.entries.forEach((e) => collectExprUse(e.expr));
       action.then.forEach(collectActionUse);
+    }
+    // EXP-011 §60. One patch on the record (own or parent), then the three chains.
+    if (action.kind === 'component-object-set') {
+      if (action.parent) usedParentObject = true;
+      action.entries.forEach((e) => collectExprUse(e.expr));
+      action.then.forEach(collectActionUse);
+      action.completedThen.forEach(collectActionUse);
+      action.failThen.forEach(collectActionUse);
     }
     if (action.kind === 'collection-add') {
       if (action.minted === undefined) usedCollectionNames.add(action.collectionName);
@@ -738,6 +760,10 @@ export function emitComponent(
             // opened from a UUID's Failure chain is a popup nothing here knows is attached.
             a.kind === 'id-new' || a.kind === 'crypto-call'
             ? [a, ...deepActions(a.then), ...deepActions(a.failThen)]
+            : // EXP-011 §60. Three chains — a popup opened from a record write's Done, or a raise in a parent write's
+              // Failure, is nowhere without this line.
+              a.kind === 'component-object-set'
+              ? [a, ...deepActions(a.then), ...deepActions(a.completedThen), ...deepActions(a.failThen)]
             : // EXP-011 §39. Four chains — a popup opened from a Delay's Finished is the shape
               // this node exists for, and it is nowhere without this line.
               a.kind === 'delay'
@@ -860,6 +886,8 @@ export function emitComponent(
     // EXP-011 §59. The same clause; a viewport read from a hook argument earns the hook too.
     if (expr.kind === 'crypto-out' && expr.viaState !== undefined) referencedStateNames.add(expr.viaState);
     if (expr.kind === 'screen-out') usedScreenNodeIds.add(expr.nodeId);
+    // EXP-011 §60. The same clause from a hook argument.
+    if (expr.kind === 'component-object-out' && expr.parent) usedParentObject = true;
     if (expr.kind === 'jsfun-out') {
       if (expr.viaState !== undefined) {
         // A materialized read (§4f) goes through the state var, not a render local.
@@ -899,6 +927,11 @@ export function emitComponent(
   }
   // The state effects' sources earn their hooks exactly as bindings do (CONTROLLED-STATE §3).
   for (const sync of plan.syncEffects) hookExprSources(sync.source);
+  // EXP-011 §60. A mirror effect's source is a render read: a Variable behind it needs its `useValue` hook, or the
+  // effect closes over the STORE OBJECT — the hooks-walker trap, met on the first emit (`panelState.set({ note: note })`).
+  if (plan.componentObject !== undefined && plan.dispositions[plan.componentObject.nodeId]?.kind === 'collapsed') {
+    for (const mirror of plan.componentObject.mirrors) hookExprSources(mirror.source);
+  }
   for (const push of plan.pushEffects) hookExprSources(push.expr);
   // The second walker again (LOGIC-TARGET §10). A reactive Condition's arms print in handler mode, so they
   // earn nothing here — but its *condition* is also the effect's dependency list, and
@@ -978,7 +1011,8 @@ export function emitComponent(
   // kind is the shape that silently emits a call to an undeclared identifier.
   const usesNavigate = deepActions(allActions).some((a) => a.kind === 'navigate' || a.kind === 'navigate-path');
   // EXP-011 §54. The failure arms that raise on the error channel — each earns the `raiseAppError` import.
-  const raisesAppErrors = deepActions(allActions).some((a) => RAISING_ACTION_KINDS.has(a.kind) || mintedGuards(a));
+  // EXP-011 §60. The parent Set raises on a miss (base.ts reportOutcome 'failure'); the self variant cannot miss.
+  const raisesAppErrors = deepActions(allActions).some((a) => RAISING_ACTION_KINDS.has(a.kind) || mintedGuards(a) || (a.kind === 'component-object-set' && a.parent));
 
   // The hook's local name is the variable's last camelCase word (`visitorName` → `name`),
   // deduplicated against everything else in scope, falling back to `<export>Value`.
@@ -1367,6 +1401,9 @@ export function emitComponent(
         return expr.viaState !== undefined;
       case 'screen-out':
         return false;
+      // EXP-011 §60. The record boots empty; a parent read is undefined at the root. Must agree with plan.ts maybeUndefinedExpr.
+      case 'component-object-out':
+        return true;
       // The row is undefined until the first failure; the chain-local is assigned on the line
       // above the read and never is. Must agree with plan.ts maybeUndefinedExpr (EXP-011 §24).
       case 'outcome-error':
@@ -1680,6 +1717,9 @@ export function emitComponent(
         return expr.viaState ?? cryptoLocalReadOf(expr.nodeId, expr.node);
       case 'screen-out':
         return `${expr.local}.${expr.field}`;
+      // EXP-011 §60. The render snapshot in JSX, the live record in a handler; a parent handle may be undefined.
+      case 'component-object-out':
+        return `${expr.local}${expr.parent ? '?' : ''}.${mode === 'handler' ? 'get()' : 'value'}${recordKeyAccess(expr.key)}`;
       case 'now-out': {
         const base = expr.viaState ?? nowLocalOf(expr.nodeId);
         if (expr.output === 'timestamp') return `${base}.getTime()`;
@@ -1989,6 +2029,10 @@ export function emitComponent(
         case 'screen-out':
           add(`${e.local}.${e.field}`);
           break;
+        // EXP-011 §60. The handle is the dependency — its identity changes exactly when the record does (useMemo on the value).
+        case 'component-object-out':
+          add(e.local);
+          break;
         // EXP-011 §55. The row is the dependency; the chain-local cannot reach an effect.
         case 'minted-array-get':
           if (e.viaLocal === undefined) add(mintStateName(e.nodeId));
@@ -2052,6 +2096,10 @@ export function emitComponent(
       (a.kind === 'popup-show' || a.kind === 'collection-remove' || a.kind === 'log' || a.kind === 'object-set' || (a.kind === 'delay' && a.verb === 'restart')) &&
       a.then.length > 0
         ? [{ ...a, then: [] }, ...expandActions(a.then)]
+        : // EXP-011 §60. The self variant cannot miss and `set` is synchronous: Done then Completed are following
+          // statements, in the order reportOutcome sends them. The parent form prints its own two arms.
+          a.kind === 'component-object-set' && !a.parent && (a.then.length > 0 || a.completedThen.length > 0)
+          ? [{ ...a, then: [], completedThen: [] }, ...expandActions(a.then), ...expandActions(a.completedThen)]
         : // A jsfun-run is only its done-chain (EXP-003 §4 A2h): output reads inline the call
           // at their sinks, so the run itself needs no statement — unless it materializes its
           // output record (CONTROLLED-STATE §4f), which is one setter statement before the chain.
@@ -2130,6 +2178,9 @@ export function emitComponent(
         // EXP-011 §47. Any of the patch's values, or anything in the chain after it.
         case 'object-set':
           return a.entries.some((e) => reads(e.expr)) || a.then.some(inAction);
+        // EXP-011 §60. The patch's values, or anything in the three chains.
+        case 'component-object-set':
+          return a.entries.some((e) => reads(e.expr)) || a.then.some(inAction) || a.completedThen.some(inAction) || a.failThen.some(inAction);
         case 'state-set':
           return a.expr !== undefined && reads(a.expr);
         case 'emit':
@@ -2632,6 +2683,31 @@ export function emitComponent(
           )
           .join(', ');
         return `${store.exportName}.set({ ${entries} })`;
+      }
+      /**
+       * EXP-011 §60. The own form is one patch in the node's list order — `panelState.set({ title: …, note: … })` —
+       * with Done and Completed as following statements (`expandActions`). The parent form is base.ts's fork: the
+       * hook answered undefined ⇒ the Error is set, the code is raised BEFORE the Failure pulse (reportOutcome's
+       * order), nothing is written; else the patch, then Done.
+       */
+      case 'component-object-set': {
+        const entries = action.entries
+          .map(
+            (e) =>
+              `${/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(e.key) ? e.key : JSON.stringify(e.key)}: ${exprCode(e.expr, 'handler')}`
+          )
+          .join(', ');
+        const patch = `${action.local}.set({ ${entries} })`;
+        if (!action.parent) return patch;
+        const at = pad(indent);
+        const inner = pad(indent + 2);
+        const failStatements = [
+          raiseLine(action.nodeId, errorCodeOf(action), tsLiteral(NO_ANCESTOR_WRITE_MESSAGE)).replace(/;$/, ''),
+          ...expandActions(action.failThen).map((a) => actionCode(a, indent + 2))
+        ];
+        const doneStatements = [patch, ...expandActions(action.then).map((a) => actionCode(a, indent + 2))];
+        const arm = (list: string[]): string => list.map((line) => `${inner}${line};`).join('\n');
+        return [`if (${action.local} === undefined) {`, arm(failStatements), `${at}} else {`, arm(doneStatements), `${at}}`].join('\n');
       }
       case 'collection-add': {
         const entries = action.entries
@@ -3523,7 +3599,9 @@ export function emitComponent(
     (a.kind === 'id-new' &&
       (idNewIsBlock(a) || a.materialize !== undefined || a.then.length > 0 || chainReadsIdLocal(a.then, a.nodeId))) ||
     // EXP-011 §59. Always the block form — the Failure arm always raises.
-    a.kind === 'crypto-call'
+    a.kind === 'crypto-call' ||
+    // EXP-011 §60. The parent write is the block form (the miss arm raises); the own write is one expression.
+    (a.kind === 'component-object-set' && a.parent)
     );
   }
 
@@ -3553,7 +3631,9 @@ export function emitComponent(
       // `Unique Id` form is a run of statements and takes one, exactly as a Now Read does.
       (a.kind === 'id-new' && idNewIsBlock(a)) ||
       // EXP-011 §59. The block form ends in `}` too.
-      a.kind === 'crypto-call'
+      a.kind === 'crypto-call' ||
+      // EXP-011 §60. The parent write's `if` ends in `}` and takes no terminator.
+      (a.kind === 'component-object-set' && a.parent)
     );
   }
   /** Whether anything in these actions, at any depth, is awaited — the arrow around it is `async`. */
@@ -3582,7 +3662,7 @@ export function emitComponent(
     return expanded.map((a) =>
       actionTakesNoTerminator(a)
         ? `${pad(indent)}${actionCode(a, indent)}`
-        : `${pad(indent)}${actionCode(a, a.kind === 'date-now-read' || a.kind === 'id-new' || a.kind === 'crypto-call' || a.kind === 'branch' || a.kind === 'array-new' ? indent : 0)};`
+        : `${pad(indent)}${actionCode(a, a.kind === 'date-now-read' || a.kind === 'id-new' || a.kind === 'crypto-call' || a.kind === 'branch' || a.kind === 'array-new' || a.kind === 'component-object-set' ? indent : 0)};`
     );
   }
   /**
@@ -3663,6 +3743,8 @@ export function emitComponent(
       plan.styleSheets.length > 0 ||
       // EXP-011 §49. A States' wired State input is an effect keyed on the read.
       plan.statesMachines.some((m) => m.follow !== undefined) ||
+      // EXP-011 §60. A Component Object's mirror wires are sync effects on the record.
+      (plan.componentObject !== undefined && plan.componentObject.mirrors.length > 0) ||
       delayRefs.size > 0) &&
     !reactImports.includes('useEffect')
   ) {
@@ -3882,6 +3964,18 @@ export function emitComponent(
   if (screenHooks.length > 0) {
     const specifier = `${relRoot}/${SCREEN_LIB_PATH.replace(/^src\//, '').replace(/\.ts$/, '')}`;
     internalImports.set(specifier, `import { useScreenResolution } from '${specifier}';`);
+  }
+  // EXP-011 §60. `src/lib/componentObject.ts` — the record hook and the Provider print whenever the plan registered a
+  // record (the provider is owed to descendants); the parent hook prints only where something reads or writes through it.
+  const printsRecord = plan.componentObject !== undefined && plan.dispositions[plan.componentObject.nodeId]?.kind === 'collapsed';
+  const printsParent = plan.parentObject !== undefined && usedParentObject;
+  const componentObjectNames = [
+    ...(printsRecord ? ['ParentComponentObjectContext', 'useComponentObject'] : []),
+    ...(printsParent ? ['useParentComponentObject'] : [])
+  ];
+  if (componentObjectNames.length > 0) {
+    const specifier = `${relRoot}/${COMPONENT_OBJECT_LIB_PATH.replace(/^src\//, '').replace(/\.ts$/, '')}`;
+    internalImports.set(specifier, `import { ${componentObjectNames.sort().join(', ')} } from '${specifier}';`);
   }
   for (const v of referencedStateVars) {
     if (v.bootHelper !== undefined) usedIdHelpers.add(v.bootHelper);
@@ -4117,6 +4211,19 @@ export function emitComponent(
       if (sink === 'number') return tsType === 'number' ? base : null;
       if (sink === 'boolean') return tsType === 'boolean' ? base : SIMPLE_REF.test(base) ? `!!${base}` : `!!(${base})`;
       return base;
+    }
+    /**
+     * EXP-011 §60. A record key at a sink, by its own type: a `string` key is what every sink takes; a `number` key
+     * takes a number sink bare; anything else is the untyped Variable's table — the runtime's Text node `String()`s
+     * whatever the record holds, `enabled` and its kin coerce `!!`, and a number sink refuses what it cannot type.
+     */
+    if (source.kind === 'computed' && source.expr.kind === 'component-object-out') {
+      const tsType = source.expr.tsType;
+      if (sink === 'text' || sink === 'string') return tsType === 'string' ? base : `String(${base} ?? '')`;
+      if (sink === 'number') return tsType === 'number' ? base : null;
+      if (sink === 'boolean') return SIMPLE_REF.test(base) ? `!!${base}` : `!!(${base})`;
+      if (sink === 'truthy') return base;
+      return null;
     }
     if (untypedVariableOf(source) === null && untypedStoreKeyOf(source) === null && !nonStringRecordColumn && !nonStringFileField) return base;
     switch (sink) {
@@ -4424,6 +4531,10 @@ export function emitComponent(
           // 🔴 EXP-011 §59 adds `crypto-out`, the NINTH instance: the first build rendered `{hash}` bare and
           // `{hashError ?? ''}` folded on the same page, and nothing observable said so.
           bound.expr.kind === 'crypto-out' ||
+          // EXP-011 §60. A record key is undefined until written; a parent read is undefined at the root. The TENTH
+          // instance — for a `string` key only: any other type is coerced `String(x ?? '')` by bindingExpr below, and
+          // folding it again printed `String(… ?? '') ?? ''` on the first emit.
+          (bound.expr.kind === 'component-object-out' && bound.expr.tsType === 'string') ||
           // EXP-011 §49. A States' Error is the one read of the pair that can be empty.
           bound.expr.kind === 'states-out') &&
         maybeUndefined(bound.expr)
@@ -5643,6 +5754,13 @@ export function emitComponent(
   // the component has a marker at all, so every instance may pass children (see ComponentPlan.childSlot).
   const rendersChildren = plan.childSlot !== undefined && plan.roleOf[plan.childSlot] === 'slot';
   if (rendersChildren) allPropNames.push('children');
+  // EXP-011 §60. The record types — every key optional (the record boots empty), typed off the statically-known writers.
+  const recordTypeLines = (typeName: string, keys: Array<{ key: string; tsType: string }>): string[] => [
+    `type ${typeName} = {${keys.length === 0 ? '' : ` ${keys.map((k) => `${recordKeyDeclaration(k.key)}?: ${k.tsType}`).join('; ')} `}};`,
+    ''
+  ];
+  if (printsRecord) body.push(`/** ${plan.componentObject!.label} — the keys this component's Component Object carries. */`, ...recordTypeLines(plan.componentObject!.typeName, plan.componentObject!.keys));
+  if (printsParent) body.push(`/** The keys this component reads or writes on its nearest ancestor's Component Object. */`, ...recordTypeLines(plan.parentObject!.typeName, plan.parentObject!.keys));
   if (allPropNames.length > 0 || plan.childSlot !== undefined) {
     body.push(`export interface ${symbol}Props {`);
     // The port name rides along as a doc comment wherever the identifier had to differ — the
@@ -5713,6 +5831,17 @@ export function emitComponent(
         stateVar.bootCode ?? (stateVar.boot === null ? '' : tsLiteral(stateVar.boot))
       });`
     );
+  }
+  // EXP-011 §60. The record hook and the parent hook — both read nothing, and print before anything that reads them.
+  if (printsRecord) {
+    body.push(`  // ${plan.componentObject!.comment}`, `  const ${plan.componentObject!.local} = useComponentObject<${plan.componentObject!.typeName}>();`);
+  }
+  if (printsParent) {
+    const parent = plan.parentObject!;
+    const readers = parent.readers
+      .map((r) => `{ nodeId: ${tsLiteral(r.nodeId)}, nodeType: ${tsLiteral(PARENT_COMPONENT_OBJECT_TYPE)}, componentName: ${tsLiteral(plan.legacyPath)} }`)
+      .join(', ');
+    body.push(`  // ${parent.comment}`, `  const ${parent.local} = useParentComponentObject<${parent.typeName}>(${readers.length > 0 ? `[${readers}]` : ''});`);
   }
   // EXP-011 §55. The minted array's hook, over the stand-in until the first Do — `useCollection` is
   // `useValue(source)` keyed on `[source]`, so it resubscribes when the handle changes. After the state
@@ -5861,6 +5990,21 @@ export function emitComponent(
   }
   // Sync effects (§3.4): the graph path of a wired control-state input — the input setter's
   // own coercion and abstain rules (§1's table), and never the Changed chain.
+  // EXP-011 §60. A Component Object's mirror wires: `value-<key>` is a continuous input (every delivery stores at
+  // frame end — componentobject.ts scheduleStore), so each is a sync effect on the record, keyed on its source.
+  if (printsRecord) {
+    for (const mirror of plan.componentObject!.mirrors) {
+      const src = exprCode(mirror.source, 'render');
+      const deps = effectDeps(mirror.source).join(', ');
+      body.push(
+        `  // Mirror: "${mirror.key}" follows its wire — a value-${mirror.key} input stores on every delivery (componentobject.ts).`,
+        '  useEffect(() => {',
+        `    ${plan.componentObject!.local}.set({ ${recordKeyDeclaration(mirror.key)}: ${src} });`,
+        `  }, [${deps}]);`,
+        ''
+      );
+    }
+  }
   for (const sync of plan.syncEffects) {
     const setter = stateSetterOf(sync.stateName);
     const src = exprCode(sync.source, 'render');
@@ -6022,6 +6166,9 @@ export function emitComponent(
       // EXP-011 §47. The patch's values, then the chain.
       case 'object-set':
         return [...a.entries.map((e) => e.expr), ...a.then.flatMap(actionExprsOf)];
+      // EXP-011 §60. The patch's values, then the three chains.
+      case 'component-object-set':
+        return [...a.entries.map((e) => e.expr), ...a.then.flatMap(actionExprsOf), ...a.completedThen.flatMap(actionExprsOf), ...a.failThen.flatMap(actionExprsOf)];
       case 'state-set':
         return a.expr !== undefined ? [a.expr] : [];
       case 'collection-add':
@@ -6164,8 +6311,18 @@ export function emitComponent(
     for (const action of expandActions(receiver.actions)) body.push(`    ${actionCode(action)};`);
     body.push('  });', '');
   }
+  // EXP-011 §60. A component that owns a Component Object provides its record to everything below — the
+  // transcription of the parent walk's predicate (componentwalk.ts findAncestorWithComponentObject).
+  const providedJsx =
+    printsRecord && !(jsxLines.length === 1 && jsxLines[0] === '    null')
+      ? [
+          `    <ParentComponentObjectContext.Provider value={${plan.componentObject!.local}}>`,
+          ...jsxLines.map((line) => (line.trim().length === 0 ? line : `  ${line}`)),
+          '    </ParentComponentObjectContext.Provider>'
+        ]
+      : jsxLines;
   if (jsxLines.length === 1 && jsxLines[0] === '    null') body.push(...preReturnComment, '  return null;', '}');
-  else body.push(...preReturnComment, '  return (', ...jsxLines, '  );', '}');
+  else body.push(...preReturnComment, '  return (', ...providedJsx, '  );', '}');
 
   const tsx = GENERATED_TS + importLines.join('\n') + '\n\n' + body.join('\n') + '\n';
 
@@ -6230,8 +6387,19 @@ export function emitComponent(
     streamingLib: plan.streams.length > 0,
     // EXP-011 §59.
     cryptoHelpers: usedCryptoHelpers,
-    screenLib: screenHooks.length > 0
+    screenLib: screenHooks.length > 0,
+    // EXP-011 §60.
+    componentObjectLib: printsRecord || printsParent
   };
+}
+
+/** EXP-011 §60. A record key as a property access — dotted for an identifier, bracketed otherwise (a `first-name` key). */
+function recordKeyAccess(key: string): string {
+  return /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(key) ? `.${key}` : `[${JSON.stringify(key)}]`;
+}
+/** The same key as a type-alias member or an object-literal key. */
+function recordKeyDeclaration(key: string): string {
+  return /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(key) ? key : JSON.stringify(key);
 }
 
 /**

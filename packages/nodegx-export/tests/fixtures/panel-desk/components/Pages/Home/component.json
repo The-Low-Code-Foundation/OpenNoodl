@@ -1,0 +1,9 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "c0a1b2c3-5b3f-4e8d-9c1a-000000000061",
+  "name": "Home",
+  "path": "/Pages/Home",
+  "type": "page",
+  "modified": "2026-09-05T09:00:00.000Z",
+  "description": "EXP-011 §60 fixture: a page owns a Component Object (title, count, note); a text input and a Rename button write title (and a literal note) through Set Component Object Properties, whose Done remembers a status; a Variable mirrors into note; three Texts read the record; a Panel instance and a repeated PanelRow read it from below through Parent Component Object, and the Panel bumps count through Set Parent Component Object Properties."
+}
