@@ -1,6 +1,6 @@
 {
   "label": "Tags",
-  "description": "Display a list of tags, with nice auto generated colors.",
+  "description": "A wrapping row of tag pills, optionally removable and clickable, with colours generated from each tag's own text so the same label is always the same colour. Out of the box it renders six sample tags from a Static Data node; connect your own array of { Label } to the Items input and it wins over the samples.",
   "type": "prefab",
   "tags": [
     "UI",
@@ -8,7 +8,7 @@
   ],
   "icon": "icon.png",
   "docsPath": "/library/prefabs/tags/",
-  "version": "0.3.0",
+  "version": "0.5.0",
   "minEditorVersion": "0.1.0",
   "runtimeVersion": "2.7.0",
   "provenance": {

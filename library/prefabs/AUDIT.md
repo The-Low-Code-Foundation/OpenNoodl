@@ -1,5 +1,47 @@
 # Prefab Audit — LIB-002
 
+> **2026-09-05 (later) — the three blank entries, and two product defects they uncovered.**
+>
+> - **`form` / `tags` / `table`** were each a `For Each` over data with **no source**, so a fresh
+>   install drew nothing at all. All three now carry the `card-grid` contract — a `Static Data` node
+>   of sample rows plus a `Choose items` Function where a connected non-empty array wins over the
+>   samples. **Measured drawing after the change** (form 10 texts / 3 controls, table 19 texts,
+>   tags 6 pills). `table` additionally *threw*: `Extract Headers` called `Inputs.Items.forEach`
+>   with nothing connected.
+> - **`form`**: `/Form/Text Input` and `/Form/Text Area` had `label` wired from the field descriptor
+>   with `useLabel` left at its default of `false`, so **every text field rendered unlabelled**. No
+>   rule covers a connected-but-inactive port — `label-not-a-click-target` and
+>   `inactive-conditional-parameter` both only look at *parameters*. Same class as the four toggles
+>   in `filters` and `multi-select` that shipped as unlabelled boxes.
+> - 🔴 **PRODUCT, worth a rule. Owner: NONE.** `net.noodl.controls.options` opts into a default
+>   `solid` / `2px` / `#000000` border (`noodl-viewer-react/src/nodes/controls/options.ts:259`) while
+>   every sibling control defaults to `borderStyle: none`, and its content is an empty `<span>` until
+>   something is selected or a placeholder is set. Under any content-driven size mode the wrapper
+>   therefore measures **zero** and the node renders as a 4px black rule across the page — a collapse
+>   that reads as a broken node, and which shipped in `form` looking exactly like a styling choice.
+>   A "dropdown with no declared height" diagnostic would have caught it.
+> - 🔴 **PRODUCT, diagnostics. Owner: NONE.** A throw inside a `Noodl.Events` listener is reported
+>   against the node that **emitted**, not the node that threw. `emit` is synchronous
+>   (`noodl-runtime/src/events.js`, `ReflectApply`), so the listener's frame unwinds into the
+>   emitting script's `try/catch` and wears its name. This cost **two measured render rounds** here:
+>   `JavaScriptFunction (/Form/Set Form Value): Cannot set properties of undefined (setting 'Name')`
+>   was thrown by `/Form`'s `Receive Value Changed`, in a different component. The message should
+>   name the script whose frame actually threw, or say "via" the emitter.
+> - 🔴 **PRODUCT, ordering. Owner: NONE.** A repeated child component mounts **before** its parent
+>   Group's `Did Mount` fires, so any state a prefab initialises on the parent's `Did Mount` is
+>   `undefined` for the first value a child publishes. `form` had exactly this (`HaveValues`) —
+>   guarded in one reader and not the other, which is the usual shape of the bug. Worth a
+>   diagnostic: state written on `Did Mount` and read by a descendant is a race. Fixed in `form`
+>   0.10.0 by creating the map lazily in the listener; **measured afterwards at zero console errors**.
+> - 🔴 **`table` — OPEN, not fixed. Owner: NONE.** A column's `Width` never reaches the cell.
+>   `Extract Headers` hands each column the string `'1%'`, and the dimension port's setter
+>   (`react-component-node.ts:627`) **deletes the prop** for any value without a `.value` — so a
+>   declared width does not merely fail to apply, it is removed, and every table lays out by content.
+>   Visible at 1280px as the first column taking most of the width. Fixing it means emitting
+>   dimension objects, which switches on a width path that **has never executed** in this prefab, on
+>   a `display: table` composition, for every column of every table. Deliberately declined without a
+>   render beside it; the workaround (`CSS Style`) is in the entry's README.
+
 > **2026-09-05 (later) — the nine "drew nothing" prefabs, ruled once so nobody re-derives them.**
 > The render sweep reported 10 entries drawing nothing. Reading each project graph against
 > `card-grid` (the shelf's self-demo standard: an unconditional root `Group` with ink, and a

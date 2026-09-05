@@ -75,7 +75,7 @@
           {
             "fromId": "7d9d181a-03bf-10ec-3af5-b6c247cf47cf",
             "fromProperty": "Items",
-            "toId": "540fc12e-4c5b-95fa-432e-cd59b5d995a4",
+            "toId": "7ab10000-1000-4000-9000-000000000002",
             "toProperty": "in-Items"
           },
           {
@@ -137,6 +137,18 @@
             "fromProperty": "savedValue",
             "toId": "1d337437-ffec-a39f-d9f3-b201668efad2",
             "toProperty": "value-Sorting"
+          },
+          {
+            "fromId": "7ab10000-1000-4000-9000-000000000001",
+            "fromProperty": "items",
+            "toId": "7ab10000-1000-4000-9000-000000000002",
+            "toProperty": "in-Fallback"
+          },
+          {
+            "fromId": "7ab10000-1000-4000-9000-000000000002",
+            "fromProperty": "out-Items",
+            "toId": "540fc12e-4c5b-95fa-432e-cd59b5d995a4",
+            "toProperty": "in-Items"
           }
         ],
         "roots": [
@@ -346,7 +358,7 @@
             "x": -259.60742249634336,
             "y": 503.43925456684116,
             "parameters": {
-              "functionScript": "const cellWidth = '1%'\n\nif(Inputs.Headers) {\n    // Use headers specified as input\n    Outputs.HeaderItems = Inputs.Headers.map(h => ({\n        id:Component.Object.id + '-' + h.Field,\n        Label:h.Label,\n        Width:h.Width||cellWidth,\n        Editable:!!h.Editable,\n        Field:h.Field,\n        Type:h.Type,\n        Sortable:!!h.Sortable\n    }))\n}\nelse {\n    // Use keys from items input\n    // Extract all keys from item properties\n    const allKeys = {}\n    Inputs.Items.forEach(i => {\n        for(let key in i) {\n            if(typeof i[key] === 'function' || typeof i[key] === 'undefined') continue;\n            allKeys[key] = true\n        }\n           \n    })\n\n    const headerKeys = Object.keys(allKeys)\n     Outputs.HeaderItems = headerKeys.map(h => ({\n        id:Component.Object.id + '-' + h,\n        Label:h,\n        Field:h,\n        Width:cellWidth\n    }))\n}\n\nOutputs.RowItems = Inputs.Items.map(i => ({\n    id:i.id?(Component.Object.id + '-row-' + i.id):undefined, // Component unique ids to avoid refreshing entire table\n    ItemId:i.id,\n    Columns:Outputs.HeaderItems.map(h => ({\n        id:i.id?(Component.Object.id + '-' + h.Field +  '-' + i.id):undefined,\n        Type:h.Type,\n        Editable:h.Editable,\n        Field:h.Field,\n        ItemId:i.id,\n        Width:h.Width || cellWidth,\n        Value:i[h.Field]\n    }))\n}))",
+              "functionScript": "const cellWidth = '1%'\n\n// Guarded. Nothing is connected on a freshly placed Table, and an unguarded\n// Inputs.Items.forEach threw here before the first row could ever arrive.\nconst items = Array.isArray(Inputs.Items) ? Inputs.Items : []\n\nif(Inputs.Headers) {\n    // Use headers specified as input\n    Outputs.HeaderItems = Inputs.Headers.map(h => ({\n        id:Component.Object.id + '-' + h.Field,\n        Label:h.Label,\n        Width:h.Width||cellWidth,\n        Editable:!!h.Editable,\n        Field:h.Field,\n        Type:h.Type,\n        Sortable:!!h.Sortable\n    }))\n}\nelse {\n    // Use keys from items input\n    // Extract all keys from item properties\n    const allKeys = {}\n    items.forEach(i => {\n        for(let key in i) {\n            if(typeof i[key] === 'function' || typeof i[key] === 'undefined') continue;\n            allKeys[key] = true\n        }\n           \n    })\n\n    const headerKeys = Object.keys(allKeys)\n     Outputs.HeaderItems = headerKeys.map(h => ({\n        id:Component.Object.id + '-' + h,\n        Label:h,\n        Field:h,\n        Width:cellWidth\n    }))\n}\n\nOutputs.RowItems = items.map(i => ({\n    id:i.id?(Component.Object.id + '-row-' + i.id):undefined, // Component unique ids to avoid refreshing entire table\n    ItemId:i.id,\n    Columns:Outputs.HeaderItems.map(h => ({\n        id:i.id?(Component.Object.id + '-' + h.Field +  '-' + i.id):undefined,\n        Type:h.Type,\n        Editable:h.Editable,\n        Field:h.Field,\n        ItemId:i.id,\n        Width:h.Width || cellWidth,\n        Value:i[h.Field]\n    }))\n}))",
               "scriptInputs": [
                 {
                   "id": "z3hf",
@@ -358,8 +370,7 @@
                 }
               ],
               "intype-Items": "array",
-              "intype-Headers": "array",
-              "in-Items": "[\n    {\n        \"Name\": \"Hello\",\n        \"Age\": 15,\n        \"Valid\": false\n    },\n    {\n        \"Name\": \"Noodl\",\n        \"Age\": 10,\n        \"Valid\": true\n    },\n    {\n        \"Name\": \"Table\",\n        \"Age\": 5,\n        \"Valid\": false\n    }\n]"
+              "intype-Headers": "array"
             },
             "ports": [],
             "dynamicports": [
@@ -618,7 +629,7 @@
             "x": 440,
             "y": 464.875,
             "parameters": {
-              "functionScript": "Outputs.ItemId = Noodl.Objects[Inputs.RowId].ItemId"
+              "functionScript": "// Guarded: a row whose source record carried no id gets no id of its own, and the\n// unguarded `.ItemId` on the lookup would throw on the click rather than report it.\nconst row = Inputs.RowId !== undefined ? Noodl.Object.get(Inputs.RowId) : undefined\nOutputs.ItemId = row ? row.ItemId : undefined\n"
             },
             "ports": [],
             "dynamicports": [
@@ -840,6 +851,65 @@
             "ports": [],
             "dynamicports": [],
             "children": []
+          },
+          {
+            "id": "7ab10000-1000-4000-9000-000000000001",
+            "type": "Static Data",
+            "label": "Sample rows",
+            "x": -880,
+            "y": 620,
+            "parameters": {
+              "type": "json",
+              "json": "[\n    {\n        \"Name\": \"Ada Lovelace\",\n        \"Team\": \"Engineering\",\n        \"Projects\": 12,\n        \"Active\": true\n    },\n    {\n        \"Name\": \"Grace Hopper\",\n        \"Team\": \"Engineering\",\n        \"Projects\": 8,\n        \"Active\": true\n    },\n    {\n        \"Name\": \"Alan Turing\",\n        \"Team\": \"Research\",\n        \"Projects\": 5,\n        \"Active\": false\n    },\n    {\n        \"Name\": \"Katherine Johnson\",\n        \"Team\": \"Flight\",\n        \"Projects\": 21,\n        \"Active\": true\n    },\n    {\n        \"Name\": \"Margaret Hamilton\",\n        \"Team\": \"Flight\",\n        \"Projects\": 14,\n        \"Active\": false\n    }\n]"
+            },
+            "ports": [],
+            "dynamicports": [],
+            "children": []
+          },
+          {
+            "id": "7ab10000-1000-4000-9000-000000000002",
+            "type": "JavaScriptFunction",
+            "label": "Choose items",
+            "x": -540,
+            "y": 700,
+            "parameters": {
+              "functionScript": "// A non-empty connected Items array wins over the Static Data samples, so the\n// entry shows what it is the moment it is placed and steps aside the instant real\n// data is wired in. Every input is guarded: an unconnected input is undefined, and\n// a Static Data node hands over a collection rather than a bare array.\nconst asArray = (v) => Array.isArray(v) ? v : (v && Array.isArray(v.items) ? v.items : []);\nconst connected = asArray(Inputs.Items);\nOutputs.Items = connected.length > 0 ? connected : asArray(Inputs.Fallback);\n"
+            },
+            "ports": [],
+            "dynamicports": [
+              {
+                "name": "in-Items",
+                "displayName": "Items",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs",
+                "index": 4
+              },
+              {
+                "name": "in-Fallback",
+                "displayName": "Fallback",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs",
+                "index": 5
+              },
+              {
+                "name": "out-Items",
+                "displayName": "Items",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs",
+                "index": 6
+              }
+            ],
+            "children": [],
+            "metadata": {
+              "merge": {
+                "soureCodePorts": [
+                  "functionScript"
+                ]
+              }
+            }
           }
         ],
         "comments": [
@@ -894,7 +964,7 @@
                 "unit": "px"
               },
               "borderBottomColor": "Grey - 400",
-              "sizeMode": "contentSize",
+              "sizeMode": "contentHeight",
               "width": {
                 "value": 100,
                 "unit": "%"
@@ -1767,7 +1837,8 @@
                       "height": {
                         "value": 100,
                         "unit": "%"
-                      }
+                      },
+                      "sizeMode": "explicit"
                     },
                     "ports": [],
                     "dynamicports": [],
@@ -2607,7 +2678,7 @@
                     "id": "9e5a8e5f-24d4-a961-f4f0-c590b28253be",
                     "type": "net.noodl.controls.textinput",
                     "parameters": {
-                      "sizeMode": "contentSize",
+                      "sizeMode": "explicit",
                       "height": {
                         "value": 100,
                         "unit": "%"
@@ -2717,8 +2788,7 @@
                 "type": "For Each",
                 "parameters": {
                   "templateType": "dynamic",
-                  "templateScript": "if(item.Type !== undefined)\n    component = '../' + item.Type + ' Cell'\nelse if(typeof item.Value === 'string')\n    component = '../String Cell'\nelse if(typeof item.Value === 'number')\n    component = '../Number Cell'    \nelse if(typeof item.Value === 'boolean')\n    component = '../Boolean Cell'    \nelse if(item.Value instanceof Date)\n    component = '../Date Cell'\nelse\n    component = '../Cell';",
-                  "template": "/Table/String Cell"
+                  "templateScript": "if(item.Type !== undefined)\n    component = '../' + item.Type + ' Cell'\nelse if(typeof item.Value === 'string')\n    component = '../String Cell'\nelse if(typeof item.Value === 'number')\n    component = '../Number Cell'    \nelse if(typeof item.Value === 'boolean')\n    component = '../Boolean Cell'    \nelse if(item.Value instanceof Date)\n    component = '../Date Cell'\nelse\n    component = '../Cell';"
                 },
                 "ports": [],
                 "dynamicports": [

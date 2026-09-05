@@ -51,7 +51,7 @@
           {
             "fromId": "9f259aa9-aeae-c3d3-5e81-fa19fb6435c3",
             "fromProperty": "Controls",
-            "toId": "8266aa41-f6be-b0c3-8481-ed14e59102ca",
+            "toId": "f0a70000-1000-4000-9000-000000000002",
             "toProperty": "in-Controls"
           },
           {
@@ -119,6 +119,18 @@
             "fromProperty": "out-ObjectId",
             "toId": "97e317e5-8814-0302-9476-69e680be2789",
             "toProperty": "Object Id"
+          },
+          {
+            "fromId": "f0a70000-1000-4000-9000-000000000001",
+            "fromProperty": "items",
+            "toId": "f0a70000-1000-4000-9000-000000000002",
+            "toProperty": "in-Fallback"
+          },
+          {
+            "fromId": "f0a70000-1000-4000-9000-000000000002",
+            "fromProperty": "out-Controls",
+            "toId": "8266aa41-f6be-b0c3-8481-ed14e59102ca",
+            "toProperty": "in-Controls"
           }
         ],
         "roots": [
@@ -289,15 +301,14 @@
             "x": -355.5,
             "y": 273,
             "parameters": {
-              "functionScript": "// No controls, just exit with empty array\nif(Inputs.Controls === undefined) {\n    Component.Object.ControlItems = []\n    return\n}\n\n// If there is no object id provided, create a new object for form values\nlet formValues\nif(!Inputs.ObjectId || !Noodl.Object.exists(Inputs.ObjectId)) {\n    formValues = Component.Object.FormValues || Noodl.Object.create({})\n}\nelse {\n    formValues = Noodl.Objects[Inputs.ObjectId]\n}\n\nComponent.Object.FormValues = formValues\nOutputs.ObjectId = formValues.getId()\nconst errors = Component.Object.Errors = Inputs.Errors\n\n// Create the control items array (all form controls)\nComponent.Object.ControlItems = Inputs.Controls.map(c => {\n    // Errors should only be shown for a control if it has\n    // been edited, or if the form has been submitted (show all errors)\n    const haveValues = Component.Object.HaveValues||{}\n    const showAllErrors = Component.Object.ShowAllErrors\n    const error = (errors&&(haveValues[c.Property]||showAllErrors))?errors.find(e => e.Property === c.Property):undefined\n\n    const controlItem = {\n        id:Component.Object.id + '-' + c.Property,\n        Value:formValues[c.Property],\n        ObjectId:formValues.getId(),\n        Error:error?error.Error:\"\"\n    }\n\n    for(let key in c) { // Copy non function values to the new object\n        if(typeof c[key] !== \"function\" && typeof c[key] !== \"undefined\")\n            controlItem[key] = c[key]\n    }\n\n    return Noodl.Object.create(controlItem)\n})",
+              "functionScript": "// No controls, just exit with empty array\nif(Inputs.Controls === undefined) {\n    Component.Object.ControlItems = []\n    return\n}\n\n// If there is no object id provided, create a new object for form values\nlet formValues\nif(!Inputs.ObjectId || !Noodl.Object.exists(Inputs.ObjectId)) {\n    formValues = Component.Object.FormValues || Noodl.Object.create({})\n}\nelse {\n    formValues = Noodl.Object.get(Inputs.ObjectId)\n}\n\nComponent.Object.FormValues = formValues\nOutputs.ObjectId = formValues.getId()\nconst errors = Component.Object.Errors = Inputs.Errors\n\n// Create the control items array (all form controls)\nComponent.Object.ControlItems = Inputs.Controls.map(c => {\n    // Errors should only be shown for a control if it has\n    // been edited, or if the form has been submitted (show all errors)\n    const haveValues = Component.Object.HaveValues||{}\n    const showAllErrors = Component.Object.ShowAllErrors\n    const error = (errors&&(haveValues[c.Property]||showAllErrors))?errors.find(e => e.Property === c.Property):undefined\n\n    const controlItem = {\n        id:Component.Object.id + '-' + c.Property,\n        Value:formValues[c.Property],\n        ObjectId:formValues.getId(),\n        Error:error?error.Error:\"\"\n    }\n\n    for(let key in c) { // Copy non function values to the new object\n        if(typeof c[key] !== \"function\" && typeof c[key] !== \"undefined\")\n            controlItem[key] = c[key]\n    }\n\n    return Noodl.Object.create(controlItem)\n})",
               "scriptInputs": [
                 {
                   "id": "rzc4",
                   "label": "Controls"
                 }
               ],
-              "intype-Controls": "array",
-              "in-Controls": "[\n    {\n        Type:\"Text Input\",\n        Label:\"Full Name\",\n        Property:\"Name\",\n    },\n    {\n        Type:\"Text Input\",\n        Label:\"Password\",\n        Property:\"Password\",\n        InputType:\"password\"\n    },    \n    {\n        Type:\"Checkbox\",\n        Label:\"Security\",\n        Text:\"Keep me signed in?\",\n        Property:\"KeepSignedIn\"\n    }\n]"
+              "intype-Controls": "array"
             },
             "ports": [],
             "dynamicports": [
@@ -426,7 +437,7 @@
             "x": 122.5,
             "y": 270,
             "parameters": {
-              "functionScript": "Noodl.Events.on(Component.Object.id + '-Form.ValueChanged',(ev) => {\n    Component.Object.HaveValues[ev.Property] = true\n    \n    Outputs.Property = ev.Property\n    Outputs.Changed()\n})"
+              "functionScript": "Noodl.Events.on(Component.Object.id + '-Form.ValueChanged',(ev) => {\n    // Guarded, and this is where the load-time throw lived. HaveValues is created by\n    // the initialiser on the root Group's Did Mount, and a repeated control mounts\n    // BEFORE its parent Group does - so the first field's value arrives here while\n    // HaveValues is still undefined and `undefined['Name'] = true` threw on every\n    // load. It was reported against /Form/Set Form Value rather than against this\n    // node because Noodl.Events.emit dispatches synchronously, so this frame unwinds\n    // into the script that emitted. Build controls guards the same property already.\n    if (!Component.Object.HaveValues) Component.Object.HaveValues = {}\n    Component.Object.HaveValues[ev.Property] = true\n\n    Outputs.Property = ev.Property\n    Outputs.Changed()\n})"
             },
             "ports": [],
             "dynamicports": [
@@ -577,6 +588,65 @@
             ],
             "dynamicports": [],
             "children": []
+          },
+          {
+            "id": "f0a70000-1000-4000-9000-000000000001",
+            "type": "Static Data",
+            "label": "Sample fields",
+            "x": -900,
+            "y": 420,
+            "parameters": {
+              "type": "json",
+              "json": "[\n    {\n        \"Type\": \"Text Input\",\n        \"Label\": \"Full name\",\n        \"Property\": \"Name\",\n        \"Placeholder\": \"Ada Lovelace\"\n    },\n    {\n        \"Type\": \"Text Input\",\n        \"Label\": \"Email\",\n        \"Property\": \"Email\",\n        \"InputType\": \"email\",\n        \"Placeholder\": \"ada@example.com\"\n    },\n    {\n        \"Type\": \"Drop Down\",\n        \"Label\": \"Plan\",\n        \"Property\": \"Plan\",\n        \"Options\": [\n            \"free\",\n            \"pro\",\n            \"team\"\n        ],\n        \"Labels\": [\n            \"Free\",\n            \"Pro\",\n            \"Team\"\n        ],\n        \"Value\": \"pro\"\n    },\n    {\n        \"Type\": \"Text Area\",\n        \"Label\": \"What are you building?\",\n        \"Property\": \"About\",\n        \"Placeholder\": \"A sentence or two\"\n    },\n    {\n        \"Type\": \"Checkbox\",\n        \"Label\": \"Updates\",\n        \"Text\": \"Email me when a release ships\",\n        \"Property\": \"Newsletter\"\n    }\n]"
+            },
+            "ports": [],
+            "dynamicports": [],
+            "children": []
+          },
+          {
+            "id": "f0a70000-1000-4000-9000-000000000002",
+            "type": "JavaScriptFunction",
+            "label": "Choose controls",
+            "x": -620,
+            "y": 420,
+            "parameters": {
+              "functionScript": "// A non-empty connected Controls array wins over the Static Data samples, so the\n// form shows what it is the moment it is placed and steps aside the instant real\n// fields are wired in. Every input is guarded: an unconnected input is undefined,\n// and a Static Data node hands over a collection rather than a bare array.\nconst asArray = (v) => Array.isArray(v) ? v : (v && Array.isArray(v.items) ? v.items : []);\n\n// Build controls reads plain properties off each row and copies them onto the\n// control item. A Static Data row is a Noodl record, not a plain object, so flatten\n// it here and both sources reach that script in the same shape.\nconst plain = (row) => {\n    if (!row || typeof row !== 'object') return row;\n    const out = {};\n    for (const key in row) {\n        const value = row[key];\n        if (typeof value !== 'function' && value !== undefined) out[key] = value;\n    }\n    return out;\n};\n\nconst connected = asArray(Inputs.Controls);\nconst rows = connected.length > 0 ? connected : asArray(Inputs.Fallback);\nOutputs.Controls = rows.map(plain);\n"
+            },
+            "ports": [],
+            "dynamicports": [
+              {
+                "name": "in-Controls",
+                "displayName": "Controls",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs",
+                "index": 4
+              },
+              {
+                "name": "in-Fallback",
+                "displayName": "Fallback",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs",
+                "index": 5
+              },
+              {
+                "name": "out-Controls",
+                "displayName": "Controls",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs",
+                "index": 6
+              }
+            ],
+            "children": [],
+            "metadata": {
+              "merge": {
+                "soureCodePorts": [
+                  "functionScript"
+                ]
+              }
+            }
           }
         ]
       }
@@ -659,7 +729,8 @@
                 "id": "0fae1507-894e-e31a-bdd7-5b4d9844c190",
                 "type": "net.noodl.controls.checkbox",
                 "parameters": {
-                  "label": "Text"
+                  "label": "Text",
+                  "useLabel": true
                 },
                 "ports": [],
                 "dynamicports": [],
@@ -1284,7 +1355,30 @@
                     "value": 100,
                     "unit": "%"
                   },
-                  "color": "Grey - 900"
+                  "color": "Grey - 900",
+                  "sizeMode": "explicit",
+                  "height": {
+                    "value": 40,
+                    "unit": "px"
+                  },
+                  "borderStyle": "solid",
+                  "borderWidth": {
+                    "value": 1,
+                    "unit": "px"
+                  },
+                  "borderColor": "Grey - 400",
+                  "borderRadius": {
+                    "value": 4,
+                    "unit": "px"
+                  },
+                  "paddingLeft": {
+                    "value": 12,
+                    "unit": "px"
+                  },
+                  "paddingRight": {
+                    "value": 12,
+                    "unit": "px"
+                  }
                 },
                 "ports": [],
                 "dynamicports": [],
@@ -2518,7 +2612,7 @@
             "x": 0,
             "y": -34,
             "parameters": {
-              "functionScript": "const controlItem = Component.RepeaterObject\n\ncontrolItem.Value = Inputs.Value\n\nNoodl.Objects[controlItem.ObjectId][controlItem.Property] = Inputs.Value\n\nNoodl.Events.emit(Component.ParentObject.id + '-Form.ValueChanged',{\n    Property:controlItem.Property,\n    Value:Inputs.Value\n})"
+              "functionScript": "const controlItem = Component.RepeaterObject\n\n// Guarded. This Function runs whenever its Value input changes as well as on Do, and\n// on a freshly placed Form the first of those is during mount - before anyone has\n// typed and before the repeater has necessarily handed this row over.\nif (!controlItem || !Component.ParentObject) return\n\ncontrolItem.Value = Inputs.Value\n\n// The Form holds the live value object, so read it from there, and fall back to the\n// id only for the window before Build controls has made one.\nconst formValues = Component.ParentObject.FormValues || Noodl.Object.get(controlItem.ObjectId)\nif (formValues) formValues[controlItem.Property] = Inputs.Value\n\nNoodl.Events.emit(Component.ParentObject.id + '-Form.ValueChanged',{\n    Property:controlItem.Property,\n    Value:Inputs.Value\n})\n"
             },
             "ports": [],
             "dynamicports": [
@@ -3288,7 +3382,9 @@
                   "paddingTop": {
                     "value": 8,
                     "unit": "px"
-                  }
+                  },
+                  "sizeMode": "contentWidth",
+                  "useLabel": true
                 },
                 "ports": [],
                 "dynamicports": [],
@@ -3500,7 +3596,8 @@
                 "id": "18467bd1-5ed9-34bf-518a-084d26a4bd75",
                 "type": "net.noodl.controls.textinput",
                 "parameters": {
-                  "placeholder": ""
+                  "placeholder": "",
+                  "useLabel": true
                 },
                 "ports": [],
                 "dynamicports": [],

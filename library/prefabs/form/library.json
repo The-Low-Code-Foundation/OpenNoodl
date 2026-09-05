@@ -1,6 +1,6 @@
 {
   "label": "Form",
-  "description": "Component for creating dynamic forms.",
+  "description": "A data-driven form: hand it an array of field descriptors and it builds Text Input, Text Area, Drop Down, Checkbox, Single Choice, Multi Choice, Slider and Date Input controls, collects the values into one object, shows per-field errors and reports a valid Submit. Out of the box it renders five sample fields from a Static Data node; connect your own array to the Controls input and it wins over the samples.",
   "type": "prefab",
   "tags": [
     "UI",
@@ -9,7 +9,7 @@
   ],
   "icon": "icon.png",
   "docsPath": "/library/prefabs/form/",
-  "version": "0.7.0",
+  "version": "0.10.0",
   "minEditorVersion": "0.1.0",
   "runtimeVersion": "2.7.0",
   "provenance": {

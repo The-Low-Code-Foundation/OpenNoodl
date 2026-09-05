@@ -9,8 +9,8 @@
                     {
                         "fromId": "0cd61caf-de4e-dec2-2db8-67bfc994976b",
                         "fromProperty": "Items",
-                        "toId": "95659ec5-d2d3-5c0c-af42-a7d68fc25fdc",
-                        "toProperty": "items"
+                        "toId": "7a950000-1000-4000-9000-000000000002",
+                        "toProperty": "in-Items"
                     },
                     {
                         "fromId": "0cd61caf-de4e-dec2-2db8-67bfc994976b",
@@ -143,6 +143,18 @@
                         "fromProperty": "itemOutputSignal-Tag clicked",
                         "toId": "328541ca-173f-9a5b-8ba6-3d47444c8746",
                         "toProperty": "Tag Clicked"
+                    },
+                    {
+                        "fromId": "7a950000-1000-4000-9000-000000000001",
+                        "fromProperty": "items",
+                        "toId": "7a950000-1000-4000-9000-000000000002",
+                        "toProperty": "in-Fallback"
+                    },
+                    {
+                        "fromId": "7a950000-1000-4000-9000-000000000002",
+                        "fromProperty": "out-Items",
+                        "toId": "95659ec5-d2d3-5c0c-af42-a7d68fc25fdc",
+                        "toProperty": "items"
                     }
                 ],
                 "roots": [
@@ -553,6 +565,65 @@
                         "ports": [],
                         "dynamicports": [],
                         "children": []
+                    },
+                    {
+                        "id": "7a950000-1000-4000-9000-000000000001",
+                        "type": "Static Data",
+                        "label": "Sample tags",
+                        "x": -920,
+                        "y": -430,
+                        "parameters": {
+                            "type": "json",
+                            "json": "[\n    {\n        \"Label\": \"Design\"\n    },\n    {\n        \"Label\": \"Engineering\"\n    },\n    {\n        \"Label\": \"Research\"\n    },\n    {\n        \"Label\": \"Marketing\"\n    },\n    {\n        \"Label\": \"Onboarding\"\n    },\n    {\n        \"Label\": \"Beta\"\n    }\n]"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "7a950000-1000-4000-9000-000000000002",
+                        "type": "JavaScriptFunction",
+                        "label": "Choose items",
+                        "x": -660,
+                        "y": -180,
+                        "parameters": {
+                            "functionScript": "// A non-empty connected Items array wins over the Static Data samples, so the\n// entry shows what it is the moment it is placed and steps aside the instant real\n// data is wired in. Every input is guarded: an unconnected input is undefined, and\n// a Static Data node hands over a collection rather than a bare array.\nconst asArray = (v) => Array.isArray(v) ? v : (v && Array.isArray(v.items) ? v.items : []);\nconst connected = asArray(Inputs.Items);\nOutputs.Items = connected.length > 0 ? connected : asArray(Inputs.Fallback);\n"
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "name": "in-Items",
+                                "displayName": "Items",
+                                "plug": "input",
+                                "type": "*",
+                                "group": "Inputs",
+                                "index": 4
+                            },
+                            {
+                                "name": "in-Fallback",
+                                "displayName": "Fallback",
+                                "plug": "input",
+                                "type": "*",
+                                "group": "Inputs",
+                                "index": 5
+                            },
+                            {
+                                "name": "out-Items",
+                                "displayName": "Items",
+                                "plug": "output",
+                                "type": "*",
+                                "group": "Outputs",
+                                "index": 6
+                            }
+                        ],
+                        "children": [],
+                        "metadata": {
+                            "merge": {
+                                "soureCodePorts": [
+                                    "functionScript"
+                                ]
+                            }
+                        }
                     }
                 ],
                 "comments": [
@@ -798,15 +869,16 @@
                                 "unit": "px"
                             },
                             "marginBottom": {
-                                "value": 4,
+                                "value": 8,
                                 "unit": "px"
                             },
                             "marginRight": {
-                                "value": 4,
+                                "value": 8,
                                 "unit": "px"
                             },
                             "visible": true,
-                            "pointerEventsEnabled": false
+                            "pointerEventsEnabled": false,
+                            "pointerEventsMode": "explicit"
                         },
                         "stateParameters": {
                             "hover": {}
@@ -820,9 +892,17 @@
                                 "label": "bg to hover",
                                 "parameters": {
                                     "position": "absolute",
-                                    "backgroundColor": "#FFFFFF00",
+                                    "backgroundColor": "transparent",
                                     "pointerEventsMode": "explicit",
-                                    "styleCss": "cursor:pointer;"
+                                    "styleCss": "cursor:pointer;",
+                                    "width": {
+                                        "value": 100,
+                                        "unit": "%"
+                                    },
+                                    "height": {
+                                        "value": 100,
+                                        "unit": "%"
+                                    }
                                 },
                                 "stateParameters": {
                                     "hover": {
@@ -865,7 +945,11 @@
                                         "parameters": {
                                             "useIcon": true,
                                             "useLabel": false,
-                                            "iconIconSource": { "class": "lucide", "code": "icon-x", "codeAsClass": true },
+                                            "iconIconSource": {
+                                                "class": "lucide",
+                                                "code": "icon-x",
+                                                "codeAsClass": true
+                                            },
                                             "sizeMode": "contentSize",
                                             "minWidth": {
                                                 "value": 0,
@@ -904,7 +988,7 @@
                                                 "unit": "px"
                                             },
                                             "iconColor": "White",
-                                            "backgroundColor": "#5836F500"
+                                            "backgroundColor": "transparent"
                                         },
                                         "stateParameters": {
                                             "hover": {
