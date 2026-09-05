@@ -5911,7 +5911,7 @@
             "name": "color"
           },
           "isSignal": false,
-          "description": "The blended colour as a hex string; the inputs must be 6-digit hex, since any other notation yields nonsense"
+          "description": "The blended colour. Inputs may be #RGB, #RRGGBB, rgb()/rgba() or var(--token); a colour it cannot read is reported and the nearest input is shown unblended"
         }
       ],
       "dynamicPorts": {
@@ -31375,7 +31375,7 @@
           "text": "The string to render; bind data here (e.g. a Component Inputs property or a String variable).",
           "textStyle": "Named project text style supplying font, size and color; explicit font parameters on this node override individual fields of it.",
           "sizeMode": "How the node takes its size: content-driven by default, or explicit width/height.",
-          "visible": "Boolean level; hides/shows without removing layout logic elsewhere."
+          "visible": "Boolean level; the element KEEPS ITS SPACE in the layout when hidden (visibility, not display). To remove the space, use a Condition on the parent or swap the children instead."
         },
         "runtimeBehavior": "Text's ports are conditional on parameter values (declared-port-groups): explicit width/height ports appear only in the matching size mode, and advanced text ports depend on chosen options. Treat the catalog's list as the superset the editor filters contextually.",
         "examples": [

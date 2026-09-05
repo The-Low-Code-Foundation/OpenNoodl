@@ -5478,7 +5478,7 @@
             "name": "color"
           },
           "isSignal": false,
-          "description": "The blended colour as a hex string; the inputs must be 6-digit hex, since any other notation yields nonsense"
+          "description": "The blended colour. Inputs may be #RGB, #RRGGBB, rgb()/rgba() or var(--token); a colour it cannot read is reported and the nearest input is shown unblended"
         }
       ],
       "dynamicPorts": {

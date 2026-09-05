@@ -16,7 +16,7 @@ the tasks, not farm the defects. The earlier registers are
 | H1 | ⚠️ medium | `NONE` | `paramsEqual` on a `stringlist` is order-independent, and a `States` node's start state depends on the order |
 | H2 | ⚠️ medium | `NONE` | a `States` value with no `type-<value>` is a number, and the FIRST jump hides it |
 | H3 | ⚠️ medium | `NONE` — ⚠️ **runner half fixed s9** | `Timer`'s display name is **Delay**, and the curriculum's lesson 7 entry says `Timer` |
-| H4 | low | `NONE` | the catalog's one-line summary of `Visible` does not say it keeps the space |
+| H4 | low | ✅ **FIXED 2026-09-05 (s9)** | the catalog's one-line summary of `Visible` does not say it keeps the space |
 
 ---
 
@@ -136,3 +136,29 @@ same defect wearing a different hat for eight node types.
 🔴 **The row itself stays open.** What H3 is about is the **curriculum entry**, whose text lives
 in the other repo and still names a node called `Timer`. Nothing in this pass touched it, and the
 prose a learner reads in the lesson body is unchanged. Owner still `NONE`.
+
+
+---
+
+## ✅ H4 — FIXED 2026-09-05 (session 9)
+
+`docs/node-catalog/enrichment/text.json` — the single authored source; the string appeared exactly
+once across all 176 enrichment files, so there was no second copy to drift. The summary now says
+the thing the row asked for:
+
+> *Boolean level; the element **KEEPS ITS SPACE** in the layout when hidden (visibility, not
+> display). To remove the space, use a Condition on the parent or swap the children instead.*
+
+⚠️ **The generated catalogs had to be regenerated, and that is the part worth recording.**
+`packages/noodl-types/src/node-catalog{,-enriched}.json` are committed artefacts with their own CI
+gates (`catalog:check`, `catalog:merge:check`), and **the E2 commit earlier this session left both
+stale** — changing `Color Blend`'s `result` port description changes the catalog, and nothing said
+so at the time. Measured rather than assumed: the catalogs were backed up, regenerated, and diffed
+against the committed copies before anything was committed. The combined diff is **exactly four
+lines** — the Color Blend description in both files, and this summary in the enriched one — so no
+other drift was swept in. Both gates now report up to date.
+
+🔴 **The lesson for the next person editing a port description: it is not a comment.** A
+`description` or a `displayName` on any port is an input to two committed artefacts and two CI
+gates. Change one and run `catalog:generate` and `catalog:merge` in the same commit, and diff the
+result before trusting it.
