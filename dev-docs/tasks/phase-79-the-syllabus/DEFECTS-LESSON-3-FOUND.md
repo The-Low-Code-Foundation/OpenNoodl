@@ -15,7 +15,7 @@ the tasks, not farm the defects. Lesson 2's register is
 | E2 | ⚠️ medium | ✅ **FIXED 2026-09-05 (s9)** — ⚠️ see E5, the export's copy | `Color Blend` yields `#NaNNaNNaN` for every `var(--token)` colour, silently |
 | E3 | ⚠️ medium | `NONE` | a new wire does not pull its source's value — it carries only what was already cached |
 | E4 | low | `NONE` — ⚠️ **runner half fixed s9** | the curriculum's lesson 6 names a node called **Timer**; the product calls it **Delay** |
-| E5 | 🔴 high | **P18** (new, 2026-09-05 s9) | the code export carries E2's defect in its own copy, and the two have now diverged |
+| E5 | 🔴 high | ✅ **FIXED 2026-09-05 (s9)**, same session that caused it | the code export carries E2's defect in its own copy, and the two have now diverged |
 
 ---
 
@@ -172,3 +172,45 @@ left:
 - ⚠️ **The parity question is the real row.** Two hand-maintained transcriptions of one node will
   drift again; E5 is the second sighting this session, after G1's (where the export was the copy
   that was *right*). Whoever owns export/runtime parity should know the count is two.
+
+
+---
+
+## ✅ E5 — FIXED 2026-09-05, later the same session
+
+`nodegx-export/src/emit/utilLib.ts` now emits a `readColor` alongside `blendColor` — the same
+notations the runtime reads, `var()` resolved against the document the same way. A colour it still
+cannot read falls back to the nearest authored endpoint; the exported app has no error bus, so the
+fallback is the whole of the behaviour there and the doc comment says so.
+
+The package was **re-checked before starting, not assumed**: the P18 peer had committed their
+session-88 hand-off and `git status` over `packages/nodegx-export` was clean, so the collision
+risk the hand-off warned about had gone. `tests/small-utilities.test.ts` **20/20**, full package
+**2780/2780 across 76 suites**.
+
+## 🔴 What this actually exposed, which is worse than E5 and is the thing to remember
+
+**The E2 commit left `nodegx-export`'s suite RED, and I did not know for forty minutes.**
+
+`small-utilities.test.ts` §A does not compare the emitted helper against a description of the
+runtime — it **loads `colorblend.ts` from source and runs it**. So it is a real parity gate, and it
+did its job immediately: the moment the runtime changed, it failed. I simply never ran that
+package, because I had reasoned that Color Blend lived in `noodl-viewer-react` and had run
+`noodl-viewer-react`.
+
+🔴 **A node's blast radius is not its package.** Two other packages compile or execute
+`colorblend.ts`: `nodegx-export` grades against it, and the catalogs are generated from its port
+descriptions. Both were broken by one commit, in two different ways, and neither is visible from
+the directory the file sits in.
+
+🔴 **And the failure was worse than the defect for a moment.** The suite failed with
+`this.raiseRuntimeError is not a function` — the node is also loaded as a **bare definition
+object**, with no `Node.prototype` under it, so the new report *threw* where the old code merely
+returned nonsense. The report is now guarded: reporting must never be the thing that throws, and an
+unreadable colour has to degrade to the fallback rather than take the render down. That guard is a
+real fix, and it exists only because a suite I had not thought to run was watching.
+
+⚠️ **The parity question is now answered in one direction only.** `Color Blend` and `Boolean To
+String` have a gate that loads the interpreter's own source. `Expression` (G1) does **not** — the
+export's correctness there was read off `plan.ts` by eye. That asymmetry is the row P18 should
+still want.

@@ -178,9 +178,41 @@ describe('EXP-011 §38 §A — the emitted helpers against the interpreter', () 
     expect(lib.blendColor(0.5)).toBe('#000000');
   });
 
-  it('a non-hex colour yields the same nonsense in both — transcribed, not repaired', () => {
+  /*
+   * P79 E2/E5 — this pair used to read:
+   *
+   *   expect(lib.blendColor(0.5, 'red', 'blue')).toBe('#NaNNaNNaN');
+   *
+   * and it was right at the time: both copies parsed six hex digits blindly, so a token colour
+   * painted the literal string `#NaNNaNNaN` and the transcription faithfully reproduced it. The
+   * runtime was fixed first, and THIS SUITE IS WHAT CAUGHT the day the two disagreed — which is
+   * the argument for grading the emitted helper against the interpreter's own source rather than
+   * against a second description of it.
+   */
+  it('a colour neither copy can read falls back to the nearest authored one, in both', () => {
     expect(lib.blendColor(0.5, 'red', 'blue')).toBe(runtimeBlend(0.5, ['red', 'blue']));
-    expect(lib.blendColor(0.5, 'red', 'blue')).toBe('#NaNNaNNaN');
+    // t = 0.5 rounds to the upper endpoint, verbatim — a colour the author chose, which the DOM
+    // may itself resolve, rather than a string that can only ever be wrong.
+    expect(lib.blendColor(0.5, 'red', 'blue')).toBe('blue');
+    expect(lib.blendColor(0.25, 'red', 'blue')).toBe(runtimeBlend(0.25, ['red', 'blue']));
+    expect(lib.blendColor(0.25, 'red', 'blue')).toBe('red');
+  });
+
+  it('a token colour blends in both, and neither invents one it cannot resolve', () => {
+    // Both copies read `var()` off the document; there is none in this runner, so both take the
+    // author's own var() fallback where there is one and refuse where there is not.
+    expect(lib.blendColor(0.5, '#000000', 'var(--accent, #ffffff)')).toBe(
+      runtimeBlend(0.5, ['#000000', 'var(--accent, #ffffff)'])
+    );
+    expect(lib.blendColor(0.5, '#000000', 'var(--accent, #ffffff)')).toBe('#7f7f7f');
+
+    expect(lib.blendColor(0.5, '#000000', 'var(--nope)')).toBe(runtimeBlend(0.5, ['#000000', 'var(--nope)']));
+    expect(lib.blendColor(0.5, '#000000', 'var(--nope)')).toBe('var(--nope)');
+  });
+
+  it('three-digit hex blends on all three channels, in both', () => {
+    expect(lib.blendColor(0.5, '#000', '#fff')).toBe(runtimeBlend(0.5, ['#000', '#fff']));
+    expect(lib.blendColor(0.5, '#000', '#fff')).toBe('#7f7f7f');
   });
 
   it('the control: a helper that rounds instead of flooring disagrees with the interpreter', () => {

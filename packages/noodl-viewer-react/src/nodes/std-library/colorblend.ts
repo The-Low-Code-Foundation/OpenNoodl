@@ -14,7 +14,6 @@ interface ColorBlendInstance extends NodeInstance {
   };
   updateColor(): void;
   warnUnreadableColor(value: string): void;
-  raiseRuntimeError(code: string, message: string, detail?: unknown): void;
 }
 
 function clamp(min: number, max: number, value: number) {
@@ -185,7 +184,14 @@ const ColorBlendNode: NodeDefinitionOptions = {
     warnUnreadableColor(this: ColorBlendInstance, value: string) {
       if (this._internal.warnedAbout === value) return;
       this._internal.warnedAbout = value;
-      this.raiseRuntimeError(
+      // 🔴 Guarded. `raiseRuntimeError` lives on `Node.prototype`, and this node is also loaded as
+      // a BARE DEFINITION OBJECT — `nodegx-export`'s parity suite does exactly that to grade its
+      // emitted copy against this source. Reporting must never be the thing that throws: an
+      // unreadable colour has to degrade to the fallback above, not take the render down with it.
+      const report = (this as { raiseRuntimeError?: (c: string, m: string) => void }).raiseRuntimeError;
+      if (typeof report !== 'function') return;
+      report.call(
+        this,
         'color-blend/unreadable-color',
         `Color Blend cannot read the colour ${JSON.stringify(value)}, so it is showing the nearest ` +
           `colour unblended. It understands #RGB, #RRGGBB, rgb()/rgba() and var(--token) when the ` +
