@@ -1,5 +1,165 @@
 # Phase 82 — next session
 
+> ### 🟢 THE CLOCK LANE, 2026-09-05 (s53) — added beside the other lanes, not over them
+>
+> **Two commits: `5c589970` (the stopwatch rows, closed) and `4fbd8cd2` (s52's whole lane,
+> committed).** No REL row's ACs moved and none could — §A is unchanged and still Richard's.
+>
+> **1. 🔴 THE §B STOPWATCH ROW WAS RIGHT ABOUT THE SYMPTOM AND WRONG ABOUT THE CAUSE, AND THE
+> PRESCRIBED FIX WOULD HAVE CHANGED NOTHING.** The row said `bld-004/reasoningChannel` and
+> `aib-009/turnDeadline` *"run a 60ms stall window on a 2× margin"* and told the next session to
+> raise `STALL_MS`. The margin is real; **the race is not, and raising the window would have bought
+> exactly zero.** The heartbeat timer is always due `STALL_MS / 2` **before** the deadline's next
+> check, and node fires expired timers in **expiry order** with microtasks draining between them —
+> so however late the loop wakes, the heartbeat lands first and the check that follows reads a
+> silence of ~0. 🔴 **Measured, not reasoned: with the event loop blocked 200ms out of every 5ms,
+> the ORIGINAL spec still PASSED** (3227ms, up from a nominal 240ms). **Delay can make these tests
+> slow. It cannot make the deadline lose.**
+>
+> 🔴 **WHAT ACTUALLY REDS IT IS A DIFFERENT CLOCK — jest's 5000ms per-test budget**, which is the
+> same place s44's `projectFileWatcher` fix ended up (*"the stopwatch had merely moved from the spec
+> to the runner"*). At twice that saturation bld-004 reads **5610ms and RED, as `Exceeded timeout of
+> 5000 ms for a test` — not `AiTurnStalledError`**. ✅ **That is why s40 wrote it off as a flake: the
+> failure names the runner instead of the subject.** ⚠️ **The criterion worth keeping: a stopwatch
+> FAILS when the box is slow; a test that merely TAKES LONGER is not one** — and say which of the two
+> you measured.
+>
+> ✅ **Fixed with fake timers, which is the right tool when the subject IS the clock.**
+> `jest.useFakeTimers()` fakes `Date.now()` too, so elapsed time is something the test *states*:
+> three tests went **250 / 150 / 90ms → 5 / 3 / 1ms**, and **5ms under the identical saturation that
+> costs the original 3227ms**. Each assertion is also stronger than the one it replaced — *"the
+> deadline never fired"* is now read at a moment the test chooses, instead of inferred from the turn
+> happening to finish first.
+>
+> | arm | reading |
+> |---|---|
+> | green | **16/16, EXIT=0** (2 suites), and 5 suites / **50 tests** across both directories |
+> | A — `onReasoning` stops calling `touch()` | **1 red of 16 that all ran**, by name, bld-004's reasoning test |
+> | B — `onActivity` stops calling `touch()` | **1 red of 16 that all ran**, aib-009's slow-turn test |
+> | C — `onText` stops calling `touch()` | **1 red of 16 that all ran**, aib-009's partials test |
+>
+> 🔴 **Every arm reds with an `AiTurnStalledError`, and that is the VACUITY CONTROL, not decoration.**
+> If `Date.now()` were not faked the deadline could never fire under fake timers and all three tests
+> would pass **for no reason at all**. A reverted arm that reds with the *domain* error is what says
+> the fake clock is driving the code under test. Source restored **md5-identical** after each arm.
+>
+> ⚠️ **NOT changed, stated so it is not mistaken for an oversight**: aib-009's *"names the silence in
+> seconds"* still spends a real **1002ms** against a 5000ms budget. By the criterion above it is not
+> a stopwatch — a slower box makes it pass later, never fail — and it is not the registered row.
+>
+> 🔴 **METHOD TRAP THIS COST 120 SECONDS OF WALL CLOCK.** The control that saturates the loop must
+> **self-limit by wall clock**. An unbounded `setInterval(() => block(400), 5)` starves the
+> **harness**, not just the subject: `jest.advanceTimersByTimeAsync` needs REAL macrotask hops of its
+> own, so the run hung past the 120s tool timeout, backgrounded, and had to be killed by pid. Every
+> blocker now carries `if (Date.now() < stopAt)`.
+>
+> **2. ✅ S52'S ENTIRE LANE IS COMMITTED — `4fbd8cd2`, nine files, ~1,100 lines.** It was built,
+> measured and written up, and then left loose in a shared checkout, which is the documented way work
+> gets swept. ✅ **Two of its three gate readings were RE-TAKEN at HEAD before committing and
+> reproduce s52's exactly** — `noodl-mcp` **95 suites / 1318 EXIT=0**, `tsc -p noodl-mcp` **0**,
+> `test:main` **425 / 7144 EXIT=0** (which is what grades the regenerated artefact, through
+> `tests-unit/sb-007/site-template.test.ts`). ⚠️ **Two were INHERITED and are s52's word, not mine**:
+> the `sb008` browser drive (31/31) and `vib001-site.look.ts`, both needing a live backend and a
+> browser; and *"`template:site-builder` regenerates to the same md5 twice"* — **the generator has no
+> `--out-dir`**, so re-deriving that means writing over a shared artefact, which is not a thing to do
+> with peers in the tree. ⚠️ Left OUT on purpose: another lane's **untracked**
+> `noodl-mcp/tests/sbr011LivePreview.test.ts` (it WAS in the 95-suite reading), and P77's
+> `DEFECTS-…md`, which carries a peer's D57 hunk.
+>
+> **3. ⚠️ TWO HANDOFF CLAIMS RE-DERIVED AND FOUND STALE — both said work was left to do that is done.**
+> **[NOTES §4](NOTES-UNOWNED-NODE-WORK.md)** *"the property panel's two small ones"*: the filter
+> field's 1.00:1 contrast is **fixed, gated and committed** — `propertyeditor.css:349`
+> (`input.property-filter-input`, an element+class selector so it beats `.SearchInput` regardless of
+> load order), graded by `nat-001/palette-contrast.spec.ts`'s last `PAIRS` row, commit **`645c3922`**.
+> Only the *"Add style variant vs Style → Variant"* half is open, and that one is a design decision.
+> And **s37's** *"the only human-independent buildable work left is Shape/SVG stages 2 and 3"*: both
+> **shipped in session 39** ([NOTES §1](NOTES-UNOWNED-NODE-WORK.md) stages 2 and 3).
+>
+> ⬜ **WHAT THE NEXT SESSION SHOULD TAKE, IN ORDER.** §A is Richard's, entire; §B is now one row
+> shorter. The one registered, unowned, human-independent thing left is **[D58](../phase-77-the-site-builder-rescue/DEFECTS-THE-SITE-BUILDER-FOUND.md)** —
+> `sbr015-execution-steps-drive` red at HEAD, 130 of 131 backend suites passing. **Its stated first
+> job is to print arm A's recorded node ids**, and the obvious hypothesis (node-id renumbering, the
+> D42 shape) is already **excluded by measurement**. 🔴 **Re-derive that red before inheriting it** —
+> this session's whole first item is what happens when you do not.
+
+> ### 🟢 THE SEAM LANE, 2026-09-05 (s52) — added beside the other lanes, not over them
+>
+> **Richard named the seams and they are BUILT.** §9.3 had stopped at *"what is left to re-show him
+> is seam 2 and seam 5"*, because §4 forbids building the look until he names it. Shown the board,
+> he chose **seam 2 = demote the status, promote the action** and **seam 5 = per-kind width AND
+> rhythm**. Full record: **[REL-011 §11](REL-011-THE-SITE-BUILDER-SHIPS.md)**.
+>
+> ⚠️ **THE HOLD IS NOT LIFTED.** D1 stands, `HELD_TEMPLATE_IDS` is untouched, AC3 is still his
+> ruling. This built the two things §9 identified as the product's own; **it did not re-rule them.**
+>
+> **Seam 2** — the loudest thing in every admin row was `Published`, a solid filled pill: **the one
+> element a person cannot click, out-shouting the two they can**, which were themselves identical
+> bordered chips. Status is now an 8px dot plus a quiet word; `Edit` is the only filled control in
+> the row; `More` is a ghost. 🔴 **Both copies moved** — `/Pages/PageEditor` carries an identical
+> cell fed by an identical function, and demoting one would have rendered the same fact two ways
+> with **no gate able to see it**, because each copy is internally consistent.
+>
+> **Seam 5** — the measure was on `Page shell`, an **ancestor of every section**, and the rhythm was
+> one `var(--space-4)` on `One section` **for all five kinds**. There was nowhere a per-kind decision
+> could be expressed. Both moved down: hero and CTA **bleed to the window**, gallery/passage/contact
+> stay at the measure with three different rhythms. Each bleeding band gained one node (`inner`) —
+> a band cannot hold its ground at the viewport and its words at the measure with one box.
+>
+> 🔴 **THE FIRST RENDER FOUND A DEFECT EVERY SPEC WAS GREEN ON.** The per-kind padding was added
+> *on top of* `siteMain`'s existing `rowGap`, so every gap was counted twice and **the photograph
+> came back looser than the page ruled SHITTY for being uniform**. Fixed. ✅ A per-kind decision is
+> only a decision if the per-kind value is the whole of it — nothing but rendering it could say so.
+>
+> 🔴 **TWO GATES HAD HOLES SHAPED EXACTLY LIKE THIS CHANGE, and neither would have failed.**
+> `sb006PublicSite` asserted *"some node states the measure"* and **went on passing** once it moved,
+> because `Header` answered the same question. And `measureClamp.ts` read `main.parentElement` —
+> left alone it would have reported **`max-width: none` in BOTH arms**, which is D57's shape and the
+> exact defect SBR-003 AC5 exists to detect, from a probe aimed at a box that no longer carries the
+> measure. Both re-aimed and both now assert **both directions**.
+>
+> ⚠️ **`sb008` §7's pair moved 528 → 576 and NOTHING WAS RE-FITTED.** s51 wrote it as the equation
+> `box = parent − padding`; `parent:1232 − padding:48` became `parent:1280 − padding:0` and it went
+> green untouched. **The clamped end did not move at all** (704px), which is what shows the token
+> still resolves and only the box changed. The control-arm edit count moved **1 → 3** and the spec
+> said so rather than passing quietly.
+>
+> 🔴 **A GATE STAYED GREEN FOR A WHOLE 95-SUITE RUN BECAUSE IT READS THE COMMITTED ARTEFACT.**
+> `GHOST_BUTTON` first used `backgroundColor: 'transparent'`, which reds `sbr014ControlStyleCensus`
+> (REL-011a's *"53 of 53"*) — a keyword is exactly the outside-the-palette value it exists to catch,
+> and it would have taken 53 back to **52**. It only spoke after the template was regenerated. The
+> ghost's ground is now `var(--background)`. ✅ **Measure the artefact, not the last green run.**
+>
+> **Readings**: `noodl-mcp` **95 suites / 1318 EXIT=0**; `tsc -p noodl-mcp` **0**; `test:main`
+> **425 / 7144 EXIT=0**; `sb008` browser drive **31/31**; `sb005AdminPanel` 34→**39**;
+> `sb006PublicSite` 59→**67**; `vib001-site.look.ts` EXIT=0 both arms; `template:site-builder`
+> regenerates to the same md5 twice.
+>
+> ⚠️ **`test:main`'s recorded floor is STALE IN THE GOOD DIRECTION.** P77's handoff carries
+> *"3 failed, 401 passed / 4 failed, 6647 passed, owner NONE"* (`sb-018` ×2, `aib-007`). **All three
+> are green** and the totals are 425 / 7144. **Re-derive that floor, do not inherit it.**
+>
+> 🆕 **[D58](../phase-77-the-site-builder-rescue/DEFECTS-THE-SITE-BUILDER-FOUND.md) — REGISTERED,
+> owner `NONE`, and it is NOT this change.** `sbr015-execution-steps-drive` is red at HEAD (130 of
+> 131 backend suites pass; it is the only one). The obvious hypothesis — node-id renumbering, the
+> D42 shape — was **excluded by measurement**: the `page-*` ids are byte-identical across the change,
+> and the suite **fails identically with HEAD's artefact swapped in** and restored. First job for
+> whoever takes it is to print arm A's recorded node ids.
+>
+> ⚠️ **`judge()` keys by `today()`, so this session's renders OVERWROTE the 09-05 corrected-instrument
+> shots.** The **09-03 shots Richard ruled on are intact**; a same-day before/after pair for this
+> change does not exist.
+>
+> ⬜ **What is left on REL-011c is what it always was: his ruling.** The pictures to re-show him are
+> `verdicts/vib-001/2026-09-05/site-builder-living/` — `public-home-*` for seam 5 and
+> `admin-pages-*` for seam 2. **Nothing else in this lane is buildable without him.**
+>
+> ⚠️ **Uncommitted, all of it.** `packages/noodl-mcp/tests/sb005Components.ts` ·
+> `sb006Components.ts` · `sb005AdminPanel.test.ts` · `sb006PublicSite.test.ts` · `measureClamp.ts` ·
+> `packages/nodegx-backend/tests/sb008-public-site-drive.test.ts` ·
+> `packages/noodl-editor/tests-unit/sb-007/site-template.test.ts` · the regenerated
+> `site-builder.content.json` · this file, `REL-011-…md`, and P77's `DEFECTS-…md` (which **carries a
+> peer's D57 hunk — a pathspec commit on it would sweep that**).
+
 > ### 🟢 THE UNGATED LANE, 2026-09-05 (s46) — added beside the other lanes, not over them
 >
 > **The board was right that no REL row was buildable, and it was wrong that nothing was.** Two
@@ -529,7 +689,7 @@ so the next reader can see what it cost to empty it.
 |---|---|
 | 🆕 **Judgement 4 costs the UNBOUND first run its explanation** — with no backend bound an ejection now lands on a painted door whose form cannot work, rather than on the page carrying the waiting card. **Not put to him**; the remedy (split the destination by producer) would reverse REL-002b's *"the refusal is unconditional"* on a reading nobody asked for | [rulings](RICHARD-RULINGS-2026-09-04.md) §9.5, and in the spec beside the assertion |
 | ✅ ~~**`projectFileWatcher.test.ts` is a stopwatch race**~~ — **FIXED s44 (`b3037aa1`)**, and the sweep found the same class in `bld-004`/`aib-009` (below) | the gate lane at the top |
-| 🆕 🔴 **`bld-004/reasoningChannel.test.ts` and `aib-009/turnDeadline.test.ts` run a 60ms stall window on a 2× margin** — the same defect class, and `bld-004` is the OTHER red s40 called a flake. Spec-side fix; the source is correct | gate lane §3 |
+| ✅ ~~**`bld-004/reasoningChannel.test.ts` and `aib-009/turnDeadline.test.ts` run a 60ms stall window on a 2× margin**~~ — **CLOSED s53 (09-05, `5c589970`), and the row's MECHANISM WAS WRONG.** The margin is real; the race is not. The heartbeat timer is always due `STALL_MS / 2` **before** the deadline's next check and node fires expired timers in **expiry order**, so however late the loop wakes the heartbeat lands first and the check reads a silence of ~0 — **measured: with the event loop blocked 200ms out of every 5ms the ORIGINAL spec still PASSED.** Delay makes these slow, it cannot make the deadline lose. What it blows is the **runner's** budget, the same place s44's fix ended up: bld-004's nominal 240ms → **3227ms** at that saturation, and at twice it **5610ms and RED as `Exceeded timeout of 5000 ms for a test`, not `AiTurnStalledError`** — which is exactly why s40 read it as a flake. Three tests moved to fake timers (250/150/90ms → **5/3/1ms**, and **5ms under the saturation that costs the original 3227ms**); arms A/B/C strip `touch()` from `onReasoning`/`onActivity`/`onText` and red one named test each, **16 of 16 running in every arm**, source restored md5-identical. `test:main` **425 / 7144 EXIT=0** — s52's own counts, so nothing was added or moved | gate lane §3; s53 lane at the top |
 | ❌ ~~**`noodl-core-ui`'s jest runs in no CI gate**~~ — **FALSE, re-measured s45 (09-05).** It runs in `pr.yml`'s package job (`npm run test:packages`, on `pull_request` AND `push`); `@noodl/noodl-core-ui` is the first `--scope` in that script and has been since before session 39, the scope resolves (all 16 do — checked against each package's declared `name`, 0 unresolved), and the suite reads **29 suites / 551 tests, EXIT=0** at HEAD. ⚠️ The `pr.yml` comment above the step still says *"Six jest suites (~1,050 specs)"* and lists six packages — **the comment is stale, the scope list is not**. 🆕 **The residual, owner `NONE`:** `lerna run --concurrency 1` bails on the first failure and core-ui is **8th of 16** in topological order, so a red in any of the seven before it means core-ui's 551 specs never run — which is the same shape as the trap `pr.yml`'s own comment records (*"Nx bailed the whole run on an earlier package's failure every time — so the gap was invisible"*). `--no-bail` is the obvious fix and was **NOT applied**: several of those suites bind real sockets, which is why the job is serial, and changing a shared CI gate on one session's judgement is not this row's call | session 39; re-measured s45 |
 | **Fill/Stroke are inert for a custom SVG shape**, deliberately ungated | [`NOTES`](NOTES-UNOWNED-NODE-WORK.md) §1 stage 3 |
 | **`/unsubscribe` has three left edges** — the defect REL-002c fixed on `Pages/Post`, surviving on a door page | [rulings](RICHARD-RULINGS-2026-09-04.md) §6.5 |

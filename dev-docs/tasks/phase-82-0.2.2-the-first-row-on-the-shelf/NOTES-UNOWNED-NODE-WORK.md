@@ -501,12 +501,21 @@ original ask) — still three unchosen directions, unchanged from the research a
 
 ## §4 The property panel's two small ones
 
-**Filter properties bar.** ~59px tall (`propertyeditor.css` padding + a 45px field height). Its field
-has **no border and no fill** — `border: none`, `background: transparent`, and the container's token
+**Filter properties bar.** ✅ **BUILT, GATED AND COMMITTED — `645c3922`. Struck s53 (09-05), which
+found this row still reading as open.** `propertyeditor.css:349` gives the field
+`border: 1px solid var(--theme-color-border-control)` under `input.property-filter-input` — an
+element+class selector on purpose, so it beats `.SearchInput`'s own single-class rule outright
+rather than by stylesheet load order — plus `box-sizing: border-box`, which keeps the box at its
+existing 45px instead of growing it by the border's 2px and moving the sticky bar's offset. The
+scoping warning below was heeded: nothing in `SearchInput.module.scss` moved, so the five other call
+sites are untouched. It is graded by the last `PAIRS` row in `nat-001/palette-contrast.spec.ts`.
+⬜ **Only the second half of this section is open, and it is a design decision, not a build.**
+
+~~Its field has **no border and no fill** — `border: none`, `background: transparent`, and the container's token
 is the same as the panel behind it, so contrast is **1.00:1** in both themes. Not a token going
 transparent; there is nothing there. Sibling controls in the same panel (`VariantSelector`,
 `TokenPicker`) already use `--theme-color-border-control` on a raised ground, and
-`nat-001/palette-contrast.spec.ts` already grades that pair. ⚠️ `SearchInput.module.scss` is shared by
+`nat-001/palette-contrast.spec.ts` already grades that pair.~~ ⚠️ `SearchInput.module.scss` is shared by
 **five** other call sites — scope any change under `.property-filter`.
 
 **"Add style variant" vs "Style → Variant".** Two genuinely different systems, not duplicate labels:
@@ -515,3 +524,119 @@ picks a built-in `ElementConfig` preset that stamps `baseStyles` as ordinary par
 `_variant` marker, and creates nothing. They are emitted adjacently with no separator, which is what
 makes them read as one feature. ⚠️ `connection-popup/refusalPlan.test.ts` asserts the literal port
 `displayName: 'Variant'` — renaming that port breaks it.
+
+---
+
+## §5 ✅ THE THREE DRIVES, RUN 2026-09-05 (s43) — all three land, none needed a fix
+
+The board's drive list carried three items that no session had ever put in a running editor: *a
+freshly placed Dropdown*, *a YouTube link in a Video node*, and *the Shape node's shapes in the
+property panel*. All three were driven in **one** editor launch (two editors cannot coexist here),
+and all three behave as their rows claim.
+
+**The artefact these readings are against**, since nothing in the tree records it:
+`packages/noodl-editor/src/external/viewer/noodl.viewer.js`, **mtime Sep 5 09:36**,
+**md5 `f034c48e5fde8dbd16eeb76010c9f408`** — unchanged across the whole session, so the dev stack
+did not rebuild it and every reading below is against that one bundle. Pre-flight greps confirmed
+the three changes were *in* it before launching (`youtube-nocookie` 4, `insetPolygon` 3, `option-1`
+1). HEAD at teardown: `f77e6647`.
+
+**Fixture**: `~/vscode_projects/NodeGX test projects/p82-nodes-drive` — a hand-written v1
+`project.json`: a Text, a Dropdown **with no parameters at all**, a Video whose only parameter is a
+pasted `watch?v=…&t=90` URL, and six Circles, one per `shape` value. Opened by the sanctioned
+route (append to `recently_opened_project.json`, `cdp reload`, click the card); the entry was
+removed after `dev:stop` and the store is back to 75 rows.
+
+### 1. 🟢 Dropdown — the seed reaches the screen, and the control shows what it is worth
+
+| arm | wrapper width | visible span | Items row | Value row |
+|---|---|---|---|---|
+| **as shipped** (no parameters) | **64.09px** | **"Option 1"** | **"2 items"** | **"option-1"** |
+| **control** — `value` set to `zzz-no-such-option` | **4px** | **none** | — | — |
+| **original re-run** after unsetting | **64.09px** | **"Option 1"** | — | — |
+
+The control is Richard's own words back verbatim — *"a horizontally collapsed input"* — and it is
+the arm that says the 64px reading is a measurement rather than a coincidence. The original control
+was **re-run after** the varied arm and came back byte-identical (`64.0859375`), so the two arms
+differ only by the thing that was varied.
+
+🔴 **The native `<select>` lies in the control arm and this is the whole point of the fix.**
+With a value matching no item, `select.value` still reports `option-1` and `selectedIndex` still
+reads `1` — the browser refuses an unmatched value — while the element the user actually sees, the
+`<span>`, is **absent from the DOM**. Anyone grading this node through `select.value` would have
+called both arms correct. §3's "the native element is `opacity: 0`, overlaid for interaction only"
+is not a footnote; it is the only reason the measurement has to be geometry.
+
+✅ **It also confirms §3's registered `NONE` row from the other side**: a `value` that matches no
+item collapses the input, exactly as predicted for an author who replaces `items` and never sets
+`value`. Still not built, still out of the scope asked.
+
+### 2. 🟢 Video — the embed renders, and the `<video>` path is gone
+
+One `<iframe>`, `src` = **`https://www.youtube-nocookie.com/embed/aqz-KE-bpKQ?start=90`**, and
+**zero `<video>` elements** on the page. The `&t=90` in the pasted share URL was read out and
+became `start=90` without anyone touching the Start Time port, which is the behaviour §2 was built
+to. The screenshot shows the real YouTube poster frame and play button, so it is not merely an
+element with a plausible `src` — the embed loaded.
+
+### 3. 🟢 Shape — six values in the panel, and every gate holds on all six arms
+
+The enum offers **Circle · Square · Triangle · Polygon · Star · Custom SVG** (the board said "five
+shapes"; it is five drawn shapes plus Custom SVG). The node header reads **"Shape · VISUAL"**, so
+the `displayName` rename landed. All six render distinct geometry at 60×60 — arc, `M 0 0 L 60 0 L
+60 60 L 0 60 Z`, `M 30 0 L 60 60 L 0 60 Z`, a pentagon, a star with alternating radii, and the
+custom source drawn into the size box.
+
+The gates, read per arm off `.property-port-gated-control[aria-disabled=true]`:
+
+| `shape` | Points | Corner Radius | SVG Source | Start/End Angle |
+|---|---|---|---|---|
+| circle | gated | gated | gated | **live** |
+| square | gated | **live** | gated | gated |
+| triangle | gated | **live** | gated | gated |
+| polygon | **live** | **live** | gated | gated |
+| star | **live** | **live** | gated | gated |
+| svg | gated | gated | **live** | gated |
+
+Exactly `circle.ts`'s three `dynamicports` groups, and each gated port prints its own sentence
+("Corner Radius applies when Shape is Square, Triangle, Polygon or Star."). Two ports of *other*
+nodes carry the same idiom in the same panel (`Accepted file types`, `Pointer Events Enabled`) —
+a presence control that the mechanism is the product's, not something this fixture induced.
+
+✅ **`fillColor` reaches all five drawn shapes and not the custom SVG** (`#3355cc` ×5, `purple`
+×1) — §1 stage 3's registered "Fill and Stroke are inert for a custom SVG" row, observed rather
+than assumed.
+
+### 4. 🔴 THE INSTRUMENT WAS WRONG FIRST, AND IT WOULD HAVE REGISTERED A DEFECT THAT ISN'T THERE
+
+The first pass read the panel by **collecting `PropertyPanelInput-module__Label` text**. Every
+arm returned the identical list — Points and SVG Source on a circle, Start Angle on a square — and
+the obvious reading was *"the `dynamicports` conditions never reach the panel"*. That reading
+survived two checks: selecting a Dropdown proved the panel **does** re-render on selection change,
+and `nodelibrary.ts:100` really does have the `conditionalports` manager **commented out**, with
+`NodeGraphNode.getPorts()` line 514's `getDynamicPortsForNode` commented out beside it. A source
+citation that fitted perfectly.
+
+**It was wrong, and only the screenshot said so.** This panel does not *hide* an inapplicable port;
+it renders it **greyed with an explanation and a "Show Shape" link**. The gate lives on an ancestor
+`div.property-port-gated-control[aria-disabled="true"]` (`portGate.ts` / `portGateReason.ts`), which
+a label-text query cannot see and a `getComputedStyle` on the label cannot see either — both labels
+compute the same colour.
+
+🔴 **Every step of the wrong reading was individually true.** The manager *is* commented out; the
+panel *does* re-render; the labels *are* all present. What was missing was the question *"what would
+this reading look like if the gates were working by some other means?"* — and the answer was: exactly
+like this. [[a-reading-that-fits-is-not-one-that-excludes]], costing about a third of the session.
+✅ **A picture was the cheap discriminator and should have been the first instrument, not the last.**
+
+### 5. ⚠️ Two things this drive did NOT measure
+
+- **The spurious-`Changed` claim** (`props.value` *and* `_internal.value` both seeded, or every
+  placed Dropdown emits a signal its port description promises it does not). Nothing was wired to
+  `onChange`, so this drive says nothing about it; `p82-dropdown-default-items` is still the only
+  grader.
+- **The Start Time port beating a URL `t=`.** Only the URL was set here.
+
+⚠️ **And one non-finding, so nobody chases it**: the six shapes stacked vertically rather than in a
+row. The fixture set `direction: 'horizontal'` on their Group and **the port is `layout`, taking
+flex-direction values** — the fixture's fault, not the product's.
