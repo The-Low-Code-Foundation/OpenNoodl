@@ -431,8 +431,7 @@ one spec, not sixty-four.
 
 ## §7.4 ⚠️ What is NOT built
 
-1. **Judgement 4** — `/members` unauthenticated navigating to `/sign-in` instead of rendering the
-   landing page byte-identically. Answered by him, unbuilt, and **it gates nothing**.
+1. ~~**Judgement 4**~~ — ✅ **BUILT 2026-09-05, session 40. See §9.**
 2. **The pictures have not been re-ruled at PASSABLE.** The fold changes eight phone screens he
    graded. Nothing here claims his verdicts carry over; they were given on the pre-fold shots, and
    the amended close condition is met on those.
@@ -496,3 +495,120 @@ precedent — never quietly deleted:
 
 ⚠️ **`0003_uni003_profiles.sql` is STILL not amended**, for REL-015's reason: it is applied in
 production and `migrate.ts` checksums migration bytes, so a comment-only edit stops the next deploy.
+
+---
+
+# §9 ✅ JUDGEMENT 4 IS BUILT — the last of the four, and the only one that gates nothing
+
+Built 2026-09-05, session 40, off §5's third buildable row and §7.4's *"answered by him, unbuilt"*.
+
+## §9.1 What he was shown, and what he answered
+
+REL-002c §7.3 item 4, verbatim: ***"`/` and `/members` unauthenticated are byte-identical** — fail-closed
+working as REL-002b built it. A person who followed a deep link to `/members` is shown the landing
+page with no acknowledgement they were moved."*
+
+His answer: **"Send them to `/sign-in` instead."**
+
+## §9.2 What is in
+
+| | |
+|---|---|
+| `tpl001Components.ts` | the six protected pages' refusal navigator: `target` `/Pages/Landing` → `/Pages/SignIn`, and a label that says so |
+| `templates/members-area/` | regenerated — **6 files, 12 lines, and nothing else** |
+| `tpl001Template.test.ts` §5b | **new** — three rows pinning the destination, with two controls |
+| `rel002b-fail-closed.test.ts` | every `landed` assertion moved, **+1 new**: the door is *painted*, not merely addressed |
+| `tpl001-refused-query.test.ts` | its observable is now **derived from the artefact** instead of typed |
+
+🔴 **REL-002b IS UNTOUCHED, and that is the whole shape of this change.** Same `Denied` signal, same
+two producers (`decide` on a `visitor` answer, `failed` when the server could not be asked), same six
+pages, same fail-closed. **Only the destination moved.** §5's row predicted exactly this — *"REL-002b's
+fail-closed stays, the destination changes"* — and the diff is the evidence: `connections.json` is
+byte-identical on all six pages; only `nodes.json` moved.
+
+⚠️ **`Members/Chrome`'s own navigator is deliberately NOT changed.** It is where `Sign out` lands, and
+signing out is not a refusal — a person who chose to leave has not been moved anywhere they did not
+ask to go. It still goes to `/Pages/Landing`, and §5b's second control is what says so.
+
+## §9.3 🔴 The node id stays `toLanding`, and that is a measurement rather than a preference
+
+The obvious tidy-up — rename the six to `toSignIn` — was **measured and rejected**:
+
+1. **Ids are unique PROJECT-wide.** The artefact already carries `toSignIn`, `-2`, `-3`, `-4`, and
+   `toLanding` through `-7`. Renaming six would renumber every existing `toSignIn-N` **by component
+   authoring order** — the same class as s28's `#pick` and §6.3's `toSignIn-3`.
+2. 🔴 **`tpl001-refused-query.test.ts` addresses this exact node by literal id** when it pushes its
+   twin's wire. A rename would aim that wire at a node that does not exist; the arm would navigate
+   nowhere, and *"the refused arm did not move"* reads as **"a refusal is SILENT to the graph"** —
+   the exact inverse of D4's recorded answer, arrived at without one line of the platform changing.
+3. The id is **not user-facing**. The label is, and the label was changed.
+
+✅ **The spec is now immune to the whole class**: `refusalDestination()` reads the navigator's
+`target` off disk and follows it to that page's `urlPath`, so the expected URL is derived in two hops
+from the artefact. A future retarget moves the spec with it instead of silently inverting its verdict.
+
+## §9.4 🔴 The byte gate could not have caught this, which is why §5b exists
+
+`tpl001Template.test.ts` §1 asserts the committed artefact is byte-for-byte what the generator
+writes. **That is green for any destination**: revert the generator, regenerate, and §1 passes. A
+ruling held only by a comment is held by nothing, so §5b grades the destination itself — and derives
+the six pages from the graph (every `Denied` wire that reaches a `RouterNavigate`) rather than
+listing them, so a seventh protected page with a wrong ejection reddens instead of passing.
+
+**Proved by a reverted arm, not asserted.** The generator's six targets were put back to
+`/Pages/Landing` — *the behaviour mutated, the surface kept* — and regenerated, so the byte gate
+stayed green and only the ruling could speak:
+
+| arm | reading |
+|---|---|
+| built | **82 passed, 82 total, EXIT=0** |
+| **reverted** | **EXIT=1 — 1 failed, 81 passed, 82 total**, and the failure is `and every one of them goes to the sign-in page` |
+| restored | **82/82, EXIT=0**, generator `md5 9b109f9d…` identical, artefact `diff -rq` clean |
+
+🔴 **All 82 ran in the reverted arm.** A revert that will not compile grades nothing (§D3 of the
+previous hand-off); 81 + 1 = 82 is the reconciliation that says this one did.
+
+⚠️ **The six-page control passed in BOTH arms**, correctly reporting that the wiring was never
+touched — the same shape as SB-007 last session, and the reason the two rows are separate.
+
+## §9.5 🔴 REGISTERED, owner `NONE` — what judgement 4 costs the unbound first run
+
+**Measured, not predicted:** `rel002b-fail-closed.test.ts`'s `unbound` arm now lands on `/sign-in`
+on all six pages, and it passes there.
+
+With **no backend bound**, a deep link to `/members` used to land on `/`, which is the page carrying
+REL-002b's waiting card — *"This members' area is not connected yet"*. It now lands on a real,
+painted sign-in door **whose form cannot work, because there is nothing to answer it**. The card is
+still there and still correct; it is simply no longer on the page an ejection reaches.
+
+⚠️ **This was NOT put to him and has NOT been built around.** The remedy would be to split the
+destination by producer — `decide` → the door, `failed` → the card — and that reverses REL-002b's
+*"the refusal is unconditional"* on a reading **nobody asked for**. His judgement was about a
+visitor handed the landing page with no acknowledgement, and that is what was built. Recorded here,
+in the spec beside the assertion, and left for him.
+
+## §9.6 ✅ It cannot loop, and that was checked rather than assumed
+
+A refused reader sent to a gated door would bounce for ever. `Pages/SignIn` places **no
+`Members/Chrome`, no `Members/Standing` and has no `Denied` wire** — read off the artefact — and
+§5b's six-page control names the gated pages exhaustively, so `/sign-in` joining them later reddens.
+
+## §9.7 The readings, with their exit statuses
+
+| gate | reading |
+|---|---|
+| `tpl001Template.test.ts` | **82/82, EXIT=0** (79 before) |
+| the same file, **reverted arm** | **EXIT=1**, 1 of 82 red, by name |
+| `noodl-mcp` full jest | **93 suites / 1260 tests, EXIT=0** (1257 before) |
+| `rel002b-fail-closed.test.ts` — real backend, real browser | **38/38, EXIT=0** (37 before) |
+| `tpl001-refused-query.test.ts` — real backend, real browser | **6/6, EXIT=0**, D4 still `LEGIBLE` |
+| `tsc --noEmit -p packages/noodl-mcp` | **0 errors, EXIT=0** |
+| `npm run template:members` | **clean no-op before the edit**, so the diff is attributable |
+| artefact diff | **6 files · 6 targets · 6 labels · nothing else** |
+
+🔴 **`tsc -p packages/nodegx-backend/tsconfig.tests.json` CANNOT be read on this box** — `EXIT=134`,
+OOM, and **its log carried 0 `error TS` lines**, which is exactly the reading that has been mistaken
+for a pass before. Narrowing it to the two edited files alone still OOMs at 6GB. CI owns this one;
+nothing here claims a local typecheck of the backend tests. ⚠️ ts-jest runs them with
+`isolatedModules: true`, so **the drives do not typecheck them either** — which is why the one piece
+of new logic was additionally run against the real artefact and asserted to resolve to `/sign-in`.

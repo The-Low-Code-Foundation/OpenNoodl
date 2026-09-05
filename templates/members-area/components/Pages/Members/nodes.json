@@ -585,10 +585,10 @@
     {
       "id": "toLanding",
       "type": "RouterNavigate",
-      "label": "Back to the landing page",
+      "label": "Send a refused reader to sign in",
       "parameters": {
         "router": "Main",
-        "target": "/Pages/Landing"
+        "target": "/Pages/SignIn"
       },
       "x": 770,
       "y": 400

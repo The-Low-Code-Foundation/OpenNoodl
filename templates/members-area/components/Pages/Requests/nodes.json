@@ -501,10 +501,10 @@
     {
       "id": "toLanding-4",
       "type": "RouterNavigate",
-      "label": "Out of the members area",
+      "label": "Send a refused reader to sign in",
       "parameters": {
         "router": "Main",
-        "target": "/Pages/Landing"
+        "target": "/Pages/SignIn"
       },
       "x": 770,
       "y": 400

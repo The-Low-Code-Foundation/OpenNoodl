@@ -41,8 +41,22 @@
  * | **unreadable** | real, `myStanding` NOT deployed | signed in, moderator | the *failure* ejects |
  * | **unbound** | none at all | none | V4: the first run has a screen |
  *
+ * ## 🔴 Richard's judgement 4, 2026-09-04 — the destination is `/sign-in`
+ *
+ * This file originally asserted every refused arm landed on `/`. He was shown
+ * that `/` and `/members` were byte-identical for an unauthenticated reader and
+ * ruled *"send them to `/sign-in` instead"*: being handed the landing page is
+ * no acknowledgement that you were moved, and the page a refused reader
+ * actually needs is the one that lets them back in.
+ *
+ * ⚠️ **The gate did not change and neither did this file's claim.** Same
+ * signal, same two producers, same six pages, same fail-closed. Only the
+ * destination moved, so every `landed` assertion below moved with it — and
+ * each is now paired with the door's own painted `Sign in` button, because a
+ * pathname on its own would pass on a blank page.
+ *
  * 🔴 **The member arm is what makes the other three mean anything.** Three arms
- * that all end on `/` are equally consistent with a template that ejects
+ * that all end on `/sign-in` are equally consistent with a template that ejects
  * everybody — a gate wired to refuse unconditionally would pass a
  * visitor-and-failure-only spec perfectly, and would also be a broken product.
  * So the member arm asserts the opposite outcome on the same page through the
@@ -97,6 +111,19 @@ const PROTECTED = ['/members', '/meetings', '/post', '/requests', '/directory', 
 
 /** The landing page's own words, so a redirect is legible as an arrival. */
 const WAITING_HEADING = 'This members’ area is not connected yet';
+
+/**
+ * Where a refused reader is sent — Richard's judgement 4. `/Pages/SignIn`'s
+ * `urlPath`, so this constant and the artefact say the same thing.
+ */
+const DOOR = '/sign-in';
+
+/**
+ * The door's own submit button. `Pages/Landing` offers `Members sign in` and
+ * `Pages/SignIn` offers `Sign in`, and `buttons` holds whole labels, so this
+ * distinguishes the two pages rather than merely finding the words.
+ */
+const DOOR_BUTTON = 'Sign in';
 
 /** Where the page actually IS — `Visit.url` echoes the request, not `location`. */
 const WHERE = `(function () { return location.pathname; })()`;
@@ -260,10 +287,14 @@ describe('REL-002b — the members’ gate fails closed, and a first run has a s
 
     // ── Arm 2b: ejected first, THEN signed in — the route a person takes ────
     //
-    // Somebody follows a link to `/members`, is bounced to the front door,
+    // Somebody follows a link to `/members`, is bounced to the sign-in door,
     // signs in, and goes back. Recorded because the first draft of this file
     // hit it by accident; §5 grades it separately so a failure there does not
     // read as a failure of the gate.
+    //
+    // ⚠️ Judgement 4 shortened this route rather than changing it: `signIn`
+    // navigates to `/sign-in` itself, so the arm drives identically whether the
+    // bounce delivered the reader there or to `/`.
     await withRenderedPage({ projectDir: projectA, backendPort: startedA.listen.port }, async (page) => {
       await page.setViewport({ width: 1280, height: 1600 });
       await land(page, 'ejected', '/members');
@@ -419,9 +450,17 @@ describe('REL-002b — the members’ gate fails closed, and a first run has a s
     });
   });
 
-  describe('§2 a visitor the server refuses is sent to the front door', () => {
-    it.each(PROTECTED)('%s ejects to /', (url) => {
-      expect(at[`visitor.${url}`].landed).toBe('/');
+  describe('§2 a visitor the server refuses is sent to the sign-in door', () => {
+    it.each(PROTECTED)('%s ejects to /sign-in', (url) => {
+      expect(at[`visitor.${url}`].landed).toBe(DOOR);
+    });
+
+    it('🔴 and the door it arrives at is PAINTED, not merely addressed', () => {
+      // Judgement 4 is about what the reader is shown, so a pathname cannot
+      // carry it: a blank page at `/sign-in` would pass the assertion above.
+      for (const url of PROTECTED) {
+        expect(at[`visitor.${url}`].buttons).toContain(DOOR_BUTTON);
+      }
     });
 
     it('🔴 and is never offered `Sign out` — not painted, and not in the markup', () => {
@@ -434,19 +473,21 @@ describe('REL-002b — the members’ gate fails closed, and a first run has a s
       }
     });
 
-    it('and the landing page it arrives at is the real one, not the waiting card', () => {
-      // The backend answered, so the association is known: a visitor gets the
-      // page a stranger is supposed to get.
+    it('and the landing page a stranger asks for directly is the real one, not the waiting card', () => {
+      // ⚠️ This reads the arm's OWN visit to `/`, not the ejection destination,
+      // which since judgement 4 is `/sign-in`. It is still worth asserting: the
+      // backend answered, so the association is known and a visitor who asks
+      // for the front page gets the page a stranger is supposed to get.
       expect(at['visitor./'].visit.text).toContain(ASSOCIATION.name);
       expect(at['visitor./'].visit.text).not.toContain(WAITING_HEADING);
     });
   });
 
   describe('§3 🔴 THE ROW — a standing that cannot be READ ejects too', () => {
-    it.each(PROTECTED)('%s ejects to /', (url) => {
+    it.each(PROTECTED)('%s ejects to /sign-in', (url) => {
       // This is V3. Before this task every one of these read as its own URL,
       // with the members' band on it.
-      expect(at[`unreadable.${url}`].landed).toBe('/');
+      expect(at[`unreadable.${url}`].landed).toBe(DOOR);
     });
 
     it('and the reader is not left wearing a members’ band', () => {
@@ -474,14 +515,31 @@ describe('REL-002b — the members’ gate fails closed, and a first run has a s
       expect(at['unbound./'].markup).not.toContain('Ask to join');
     });
 
-    it('and every protected screen lands there rather than on itself', () => {
-      for (const url of PROTECTED) expect(at[`unbound.${url}`].landed).toBe('/');
+    /**
+     * 🔴 **REGISTERED, owner `NONE` — judgement 4 costs the unbound arm its
+     * explanation, and this spec is where that is written down.**
+     *
+     * Before judgement 4 a refused reader landed on `/`, which with nothing
+     * bound is the page carrying the waiting card §4 exists to prove. They now
+     * land on `/sign-in`: a real, painted door whose form cannot work, because
+     * there is no backend to answer it. The card is still there and still
+     * correct — it is simply no longer on the page an ejection reaches.
+     *
+     * ⚠️ **This was NOT put to Richard.** His judgement was about a visitor
+     * being handed the landing page with no acknowledgement, and the remedy is
+     * the same one either way; splitting the destination by producer
+     * (`decide` → the door, `failed` → the card) would reverse REL-002b's
+     * "the refusal is unconditional" on a reading nobody asked for. Recorded
+     * here rather than built.
+     */
+    it('and every protected screen lands at the door rather than on itself', () => {
+      for (const url of PROTECTED) expect(at[`unbound.${url}`].landed).toBe(DOOR);
     });
   });
 
   describe('§5 the route a person takes: bounced, then signed in', () => {
     it('the bounce happens', () => {
-      expect(at['ejected./members'].landed).toBe('/');
+      expect(at['ejected./members'].landed).toBe(DOOR);
     });
 
     it('🔴 and signing in afterwards lets them in', () => {

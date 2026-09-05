@@ -41,10 +41,21 @@
  * instrument was measuring the wire rather than the refusal.
  *
  * `toLanding.navigate` is a **signal input**, so the twin is signal-to-signal
- * throughout. It is also unambiguous on this page: the only other things wired
- * to it are `standing.Visitor` and `logout.done`, and neither fires for a
- * signed-in person who does not press Sign out. So being on the landing page at
- * the end of the visit means `failure` fired, and nothing else does.
+ * throughout. It is also unambiguous on this page: the only other thing wired
+ * to it is `standing.Denied`, which fires for a visitor and for an unreadable
+ * standing — and this arm's person is neither. The server answers `pending`
+ * for them, so `decide` fires nothing and `failed` never runs. So being off
+ * `/members` at the end of the visit means `failure` fired, and nothing else
+ * does.
+ *
+ * ⚠️ **`toLanding` no longer goes to the landing page** — Richard's judgement 4
+ * (2026-09-04) retargeted the six protected pages' refusal to `/sign-in`, and
+ * this twin borrows one of those nodes rather than adding its own. The node's
+ * ID is unchanged, deliberately: ids are unique project-wide and a rename would
+ * renumber the artefact's `toSignIn-N` ids by authoring order, and would point
+ * the wire pushed below at a node that does not exist — an arm that navigates
+ * nowhere reads as *"the refusal is silent"*, which is the inverse of D4's
+ * answer. The destination is read from the artefact below rather than typed.
  *
  * ## The arms
  *
@@ -88,6 +99,43 @@ interface Wire {
   toProperty: string;
 }
 
+interface Node {
+  id: string;
+  type: string;
+  parameters?: Record<string, unknown>;
+}
+
+function nodesOf(projectDir: string, component: string): Node[] {
+  const file = path.join(projectDir, 'components', 'Pages', component, 'nodes.json');
+  return (JSON.parse(fs.readFileSync(file, 'utf-8')) as { nodes: Node[] }).nodes;
+}
+
+/**
+ * 🔴 **Where `toLanding` goes, DERIVED from the artefact and never typed.**
+ *
+ * The twin borrows a `RouterNavigate` the page already has, so the URL this
+ * file must expect is whatever that node's `target` resolves to — `/` before
+ * Richard's judgement 4, `/sign-in` after it. Typing the answer would make this
+ * spec's verdict depend on somebody remembering to edit it: a retarget would
+ * leave `landed.pending` reading the NEW page against the OLD expectation and
+ * the file would report *"a refusal is SILENT to the graph"*, reversing D4's
+ * answer without a single line of the platform changing.
+ *
+ * Two hops, both out of the project on disk: the navigator's `target` names a
+ * component, and that component's `Page` node carries the `urlPath` the router
+ * serves it at.
+ */
+function refusalDestination(projectDir: string): string {
+  const navigator = nodesOf(projectDir, 'Members').find((n) => n.id === 'toLanding');
+  if (!navigator) throw new Error('`Pages/Members` has no `toLanding` — the twin has nothing to borrow');
+  const target = String(navigator.parameters?.target ?? '');
+  const component = target.replace(/^\/Pages\//, '');
+  if (!component || component === target) throw new Error(`\`toLanding\` targets \`${target}\`, which is not a page`);
+  const page = nodesOf(projectDir, component).find((n) => n.type === 'Page');
+  if (!page) throw new Error(`\`Pages/${component}\` has no \`Page\` node, so it has no URL`);
+  return `/${String(page.parameters?.urlPath ?? '')}`;
+}
+
 /** The two wires, added to the shipped `Pages/Members` on disk. */
 function branchOnTheQuery(projectDir: string): void {
   const file = path.join(projectDir, 'components', 'Pages', 'Members', 'connections.json');
@@ -115,9 +163,12 @@ describe('D4 — what a refused query looks like from inside the page', () => {
   const landed: Record<string, string> = {};
   const status: Record<string, number> = {};
   let wired = 0;
+  /** Filled from the artefact in `beforeAll`, once the project is on disk. */
+  let REFUSAL_LANDS_AT = '';
 
   beforeAll(async () => {
     projectDir = copyTemplateProject('tpl001-d4');
+    REFUSAL_LANDS_AT = refusalDestination(projectDir);
     branchOnTheQuery(projectDir);
     wired = (
       JSON.parse(
@@ -272,11 +323,16 @@ describe('D4 — what a refused query looks like from inside the page', () => {
    * says so, and every app that branched on it is wrong that day.
    */
   it('🔴 D4 — `failure` fires on a refusal, so a refused query is not an empty one', () => {
-    const firedForRefused = landed.pending === '/';
+    // 🔴 The observable has to be somewhere OTHER than the page the arm starts
+    // on, or "did not move" and "was navigated" are the same reading and this
+    // spec answers D4 `true` for a platform that dropped the signal entirely.
+    expect(REFUSAL_LANDS_AT).not.toBe('/members');
+    const firedForRefused = landed.pending === REFUSAL_LANDS_AT;
     // eslint-disable-next-line no-console
     console.log(
       `\n[D4 ANSWER] a 403 reaching DbCollection2 is ${firedForRefused ? 'LEGIBLE' : 'SILENT'} to the graph: ` +
-        `failure ${firedForRefused ? 'FIRED' : 'DID NOT FIRE'} (refused arm landed on ${landed.pending}).`
+        `failure ${firedForRefused ? 'FIRED' : 'DID NOT FIRE'} (refused arm landed on ${landed.pending}, ` +
+        `and \`toLanding\` goes to ${REFUSAL_LANDS_AT}).`
     );
     expect(firedForRefused).toBe(true);
   });

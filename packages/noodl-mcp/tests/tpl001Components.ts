@@ -3495,8 +3495,8 @@ const MEMBERS: Tpl001Component = {
     {
       id: 'toLanding',
       type: 'RouterNavigate',
-      label: 'Back to the landing page',
-      parameters: { router: ROUTER, target: '/Pages/Landing' }
+      label: 'Send a refused reader to sign in',
+      parameters: { router: ROUTER, target: '/Pages/SignIn' }
     },
     // 🔴 **Three navigators went with the three buttons (REL-002c item 2).**
     // `toMeetings`, `toRequests` and `toDirectory` had exactly one driver each
@@ -3517,12 +3517,31 @@ const MEMBERS: Tpl001Component = {
     { fromId: 'chrome', fromProperty: 'isUnknown', toId: 'unknownNotice', toProperty: 'mounted' },
     // 🔴 The only trigger the query has.
     { fromId: 'chrome', fromProperty: 'Member', toId: 'announcements', toProperty: 'storageFetch' },
-    // 🔴 REL-002b — `Denied`, not `Visitor`. A visitor is sent back to the
-    // front door, and so is a reader whose standing could not be READ: with no
-    // backend bound this page used to keep them, because `Visitor` fires only
-    // when the server answered and said so. A gate whose failure mode is to
-    // stay on the protected page is not a gate. The refusal is still the
-    // server's; the navigation is the courtesy, and now it is unconditional.
+    // 🔴 REL-002b — `Denied`, not `Visitor`. A visitor is refused, and so is a
+    // reader whose standing could not be READ: with no backend bound this page
+    // used to keep them, because `Visitor` fires only when the server answered
+    // and said so. A gate whose failure mode is to stay on the protected page
+    // is not a gate. The refusal is still the server's; the navigation is the
+    // courtesy, and it is unconditional.
+    //
+    // 🔴 **Richard's judgement 4, 2026-09-04 — the DESTINATION is `/sign-in`,
+    // not `/`.** He was shown that `/` and `/members` were byte-identical for
+    // an unauthenticated reader and answered *"send them to `/sign-in`
+    // instead"*: a person who followed a deep link was being handed the landing
+    // page with no acknowledgement they had been moved, and the page they
+    // actually need is the one that lets them back in. REL-002b's fail-closed
+    // is untouched — the same signal, from the same two producers, refusing on
+    // the same six pages. Only where it lands moved.
+    //
+    // ⚠️ **The node id stays `toLanding` on purpose, and it is NOT tidiness.**
+    // Ids are unique PROJECT-wide, so the door renames collisions with a `-N`
+    // suffix (`toSignIn-2`…`-4` already exist). Renaming these six would
+    // renumber every other `toSignIn` in the artefact according to component
+    // authoring order, and `tpl001-refused-query.test.ts` addresses THIS node
+    // by literal id when it wires its twin — a rename would push that wire at
+    // a node that no longer exists, and the arm would read "the refusal is
+    // illegible", which is the inverse of the truth. The id is not user-facing;
+    // the label is, and the label says where it goes.
     { fromId: 'chrome', fromProperty: 'Denied', toId: 'toLanding', toProperty: 'navigate' },
 
     { fromId: 'announcements', fromProperty: 'items', toId: 'list', toProperty: 'items' },
@@ -3757,8 +3776,8 @@ const MEETINGS: Tpl001Component = {
     {
       id: 'toLanding',
       type: 'RouterNavigate',
-      label: 'Out of the members area',
-      parameters: { router: ROUTER, target: '/Pages/Landing' }
+      label: 'Send a refused reader to sign in',
+      parameters: { router: ROUTER, target: '/Pages/SignIn' }
     }
   ],
   connections: [
@@ -4674,8 +4693,8 @@ const POST: Tpl001Component = {
     {
       id: 'toLanding',
       type: 'RouterNavigate',
-      label: 'Out of the members area',
-      parameters: { router: ROUTER, target: '/Pages/Landing' }
+      label: 'Send a refused reader to sign in',
+      parameters: { router: ROUTER, target: '/Pages/SignIn' }
     },
     // ── TPL-002 ──────────────────────────────────────────────────────────────
     {
@@ -4880,8 +4899,8 @@ const REQUESTS: Tpl001Component = {
     {
       id: 'toLanding',
       type: 'RouterNavigate',
-      label: 'Out of the members area',
-      parameters: { router: ROUTER, target: '/Pages/Landing' }
+      label: 'Send a refused reader to sign in',
+      parameters: { router: ROUTER, target: '/Pages/SignIn' }
     }
   ],
   connections: [
@@ -4999,8 +5018,8 @@ const DIRECTORY: Tpl001Component = {
     {
       id: 'toLanding',
       type: 'RouterNavigate',
-      label: 'Out of the members area',
-      parameters: { router: ROUTER, target: '/Pages/Landing' }
+      label: 'Send a refused reader to sign in',
+      parameters: { router: ROUTER, target: '/Pages/SignIn' }
     }
   ],
   connections: [
@@ -6272,8 +6291,8 @@ const ACCOUNT: Tpl001Component = {
     {
       id: 'toLanding',
       type: 'RouterNavigate',
-      label: 'Out of the members area',
-      parameters: { router: ROUTER, target: '/Pages/Landing' }
+      label: 'Send a refused reader to sign in',
+      parameters: { router: ROUTER, target: '/Pages/SignIn' }
     }
   ],
   connections: [

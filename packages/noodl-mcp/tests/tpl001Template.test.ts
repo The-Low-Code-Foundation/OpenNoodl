@@ -1000,6 +1000,103 @@ describe('TPL-001 — the members-only queries have no trigger but the standing 
   });
 });
 
+// ── 5b. Where a refusal sends the reader ─────────────────────────────────────
+
+/**
+ * 🔴 **Richard's judgement 4, 2026-09-04 — pinned here because the byte gate
+ * cannot pin it.**
+ *
+ * §1 asserts the committed artefact is byte-for-byte what the generator writes.
+ * That is a drift gate, and it is green for ANY destination: edit the generator
+ * back to `/Pages/Landing`, regenerate, and §1 still passes. So the ruling
+ * needs a spec of its own or it is held by nothing but a comment.
+ *
+ * He was shown that `/` and `/members` were byte-identical for an
+ * unauthenticated reader and answered *"send them to `/sign-in` instead"* — a
+ * person who followed a deep link was handed the landing page with no
+ * acknowledgement they had been moved.
+ *
+ * ⚠️ **REL-002b is untouched and this spec must not be read as replacing it.**
+ * The refusal, its two producers and the six pages that navigate on it are all
+ * exactly what that task built; `rel002b-fail-closed.test.ts` still grades the
+ * behaviour in a real browser. **Only the destination is graded here.**
+ *
+ * ⚠️ **The pages are DERIVED, never listed.** A hardcoded six would pass on a
+ * seventh protected page that ejected to the wrong place — which is precisely
+ * the person REL-002b's §1 was written about, the one who adds a page and
+ * inherits the gate.
+ */
+describe('TPL-001 — a refused reader is sent to the door, not to the front page', () => {
+  const DOOR = '/Pages/SignIn';
+  const FRONT = '/Pages/Landing';
+
+  /** Every `RouterNavigate` a band's `Denied` fires, with the page it sits on. */
+  const refusals = (): Array<{ page: string; id: string; target: string }> => {
+    const found: Array<{ page: string; id: string; target: string }> = [];
+    for (const component of shipped) {
+      const bandIds = new Set(component.nodes.filter((n) => n.type === CHROME_COMPONENT).map((n) => n.id));
+      if (bandIds.size === 0) continue;
+      for (const wire of component.connections) {
+        if (!bandIds.has(wire.fromId) || wire.fromProperty !== 'Denied') continue;
+        const node = component.nodes.find((n) => n.id === wire.toId);
+        if (!node || node.type !== 'RouterNavigate') continue;
+        found.push({ page: component.path, id: node.id, target: String(node.parameters?.target) });
+      }
+    }
+    return found;
+  };
+
+  it('🔴 CONTROL — the refusal is wired on six pages, so the assertion below grades something', () => {
+    // An empty set would make every `toBe(DOOR)` below vacuously true. This is
+    // also the row that reddens if somebody adds a seventh protected page and
+    // forgets its ejection, or deletes one.
+    const pages = refusals().map((r) => r.page).sort();
+    expect(pages).toEqual(
+      [
+        '/Pages/Account',
+        '/Pages/Directory',
+        '/Pages/Meetings',
+        '/Pages/Members',
+        '/Pages/Post',
+        '/Pages/Requests'
+      ].sort()
+    );
+  });
+
+  it('🔴 and every one of them goes to the sign-in page', () => {
+    for (const r of refusals()) {
+      expect(`${r.page} → ${r.target}`).toBe(`${r.page} → ${DOOR}`);
+    }
+  });
+
+  /**
+   * 🔴 **The known-firing control, and it is the half that says the change was
+   * surgical.** `Members/Chrome` has a `RouterNavigate` of its own — where you
+   * land after pressing `Sign out` — and it is STILL the front page, because
+   * signing out is not a refusal and a person who chose to leave has not been
+   * moved anywhere they did not ask to go.
+   *
+   * Without this row, "every navigator goes to `/sign-in`" would also pass on a
+   * sweep that retargeted the sign-out button, which would drop a signed-out
+   * reader on a form asking them to sign back in.
+   */
+  it('🔴 CONTROL — but signing out still leads to the front page', () => {
+    const band = byLegacyName.get(CHROME_COMPONENT) as StoredComponent;
+    // ⚠️ **Found by the wire that FIRES it, not by counting navigators.** The
+    // first draft asserted the band held exactly one `RouterNavigate` and read
+    // seven: the band IS the navigation, so six of them are its nav buttons.
+    // A count would have graded the menu; what this row is about is the one
+    // destination `Sign out` leads to.
+    const logout = band.nodes.filter((n) => n.type === 'net.noodl.user.LogOut').map((n) => n.id);
+    expect(logout).toHaveLength(1);
+    const fired = band.connections.filter((w) => logout.includes(w.fromId) && w.toProperty === 'navigate');
+    expect(fired).toHaveLength(1);
+    const after = band.nodes.find((n) => n.id === fired[0].toId);
+    expect(after?.type).toBe('RouterNavigate');
+    expect(String(after?.parameters?.target)).toBe(FRONT);
+  });
+});
+
 // ── 6. The screens a person actually meets ───────────────────────────────────
 
 describe('TPL-001 — the states a person can be in all have a screen', () => {
