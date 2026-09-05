@@ -8692,7 +8692,8 @@ NOT run (the orchestrator's, after merging): editor tsc, editor test:ci, any dri
   child's literal; a project-wide pass over parent Sets could type it. Owner NONE.
 - **`Set Object Properties` (§47) skips an authored `prop-<key>` literal** where the runtime writes it — one clause in
   `compileSetObjectProperties`, mirroring this row's. Owner **EXP-011**.
-- **A `Variable2`'s authored initial value is not seeded** into the emitted store (finding 8). Owner **EXP-011** (a store
+- **A `Variable2`'s authored initial value is not seeded** into the emitted store (finding 8) — **CONFIRMED observable by the §60.6
+  drive (boot reads `''` where the runtime reads `First note`); the fix shape is a MOUNT WRITE in the host, per mount, not a seed**. Owner **EXP-011** (a store
   module boot value; not this row's node).
 - **The deprecated `Component State` node** is a resolvable ancestor in the runtime (`COMPONENT_OBJECT_TYPES`) and is not a
   provider here; it is not a picker node. Owner NONE.
@@ -8700,6 +8701,29 @@ NOT run (the orchestrator's, after merging): editor tsc, editor test:ci, any dri
   with a mount raise — the host's refusal is reported, the descendants are not told. Owner NONE.
 - Not driven in a browser this session (the brief forbids drives from a slice agent); the orchestrator's drive is owed:
   Rename → the three Texts, the Panel and both rows follow; Bump → count `1` on the page; the mirror on mount.
+
+### §60.6 The drive — the built export, headless (session 88, 2026-09-05)
+
+`panel-desk` emitted (19 files, 0 refusals), `npm run build` exit 0 with 0 `error TS`, `vite preview` 4360, Chrome headless 9360, read
+through `cdp.js eval --target=Panel` — every `<p>`, every button, every input, `window.__errs` (window errors, unhandled rejections and
+`console.error`, which `raiseAppError` writes to). `EXPECTED-60-62-63.md` was written before the drive; every row graded against it:
+
+- **P1 boot** — 12 `<p>`: headline, then `''` for title / count / note / status, `''` ×3 on the Panel, `Ada` / `''` / `Grace` / `''` on the
+  rows; buttons `Rename`, `Bump`; errs `[]`. ✓ as predicted — **including the registered divergence**: the fixture's `note` Variable is
+  authored `value: "First note"`, and the runtime delivers that on the node's creation (`variablenode2.ts`: the `value` input's setter
+  schedules a store), so the runtime's Home AND Panel note Texts read `First note` at boot where the export reads `''` (the emitted store
+  boots `undefined`; the mount mirror writes `note: undefined`). §60.4 finding 8 / §60.5, owner EXP-011 — CONFIRMED observable. The honest
+  translation is **a mount write in the host** (`useEffect(() => note.set('First note'), [])`), not a module-level seed: the runtime
+  rewrites the value on EVERY mount of the component that holds the node, so navigating back to Home resets the variable there.
+- **P2** type `Quarterly` → the controlled input reads it ✓. **P3 Rename** → title `Quarterly` on Home, the Panel and BOTH rows; note
+  `renamed` on Home and the Panel; status `Renamed.`; count still `''` ✓ (one `set` with two keys, one re-render through the Provider).
+- **P4 Bump** → count `1` on Home, the Panel's status `Bumped.`; no `no-ancestor` raise ✓ (the child wrote the parent's record through
+  the context). **P5 Rename again** (input unchanged) → READ byte-identical to P4 ✓ (no key changed ⇒ `set` returns before `setValue`).
+  **P6** type `Annual`, Rename → `Annual` ×4, count `1`, note `renamed` ✓.
+- **P7** errs `[]`; a reload with `cdp console` streaming shows only the favicon 404 — **no `parent-component-object/no-ancestor` at boot**
+  for the Panel or either row ✓ (all three sit under Home's Provider).
+
+Cannot see: the `changed` / `fetched` pulses (refused by name; nothing in the fixture observes them); a named Parent Component (none).
 
 ## §61 Tier 2.8 row 11 — the component-stack trio: `Component Stack`, `Push Component To Stack`, `Pop Component Stack` — a push is a call, a pop is its return (session 86, 2026-09-05)
 
@@ -9180,6 +9204,31 @@ NOT run (the orchestrator's, after merging): editor tsc, editor test:ci, any dri
 - The runtime's `updatedAt` merge into the in-process record, and its raw (un-encoded) id in the path, are recorded divergences (§62.0).
 - Not driven in a browser this session (the brief forbids drives from a slice agent); the orchestrator's drive is owed.
 
+### §62.6 The drive — the built export, headless, against a fake backend (session 88, 2026-09-05)
+
+`link-desk` emitted (18 files, 0 refusals), built exit 0 / 0 `error TS`, `vite preview` 4362, Chrome 9362, `--target=Link`. The backend was
+**a 30-line fake on 8581** (`fakebe.js`): CORS pre-flight answered, every non-OPTIONS request appended to `fakebe.log` as a JSON line
+(method, path, `X-Parse-Application-Id`, `Content-Type`, session header, body); `GET /classes/Puppy/pup-1` → `{objectId, name: 'Rex'}`,
+`PUT /classes/Inquiry/missing` → 404 `{error: 'Object not found.'}`, any other `PUT /classes/Inquiry/<id>` → 200. **The request is what
+was counted, not the node that would make it**; `EXPECTED-60-62-63.md` first, every row graded:
+
+- **L1 boot** — `<p>`: `Link Desk`, `Rex`, `''`, `''`, `''`; **fakebe.log exactly 1 line**: `GET /classes/Puppy/pup-1`, app id
+  `backend_linkdesk`, `application/json`, no session token ✓ (a production build — StrictMode does not double-run the mount effect there).
+- **L2 Link, input empty** → linkError `No record Id specified (the record that should get the relation)`; status `''`; **still 1 line
+  (no PUT)**; one `console:` entry, code `record/storage-op-failed`, node `link` ✓ — the guard throws before the request, as
+  `adddbmodelrelation.ts` does.
+- **L3** type `inq-7`, Link → **line 2: `PUT /classes/Inquiry/inq-7`**, body
+  `{"puppies":{"__op":"AddRelation","objects":[{"__type":"Pointer","objectId":"pup-1","className":"Puppy"}]}}`; status `Linked.`;
+  **linkError STILL the L2 sentence** ✓ — the node's Error output is never cleared by a later success in either world (RECORD-VERBS §1).
+- **L4 Unlink** → line 3: the same path, `__op: RemoveRelation`, the same Pointer; status `Unlinked.`; unlinkError `''` ✓.
+- **L5** type `missing`, Link → line 4: `PUT /classes/Inquiry/missing` (AddRelation); linkError `Object not found.` (the 404's `error`
+  string); status STILL `Unlinked.`; a second `console:` entry ✓.
+- **L6 totals** — **4 requests: 1 GET + 3 PUT**, every one carrying the app id and the JSON content type; errs = exactly the two
+  `record/storage-op-failed` console lines, no window error, no unhandled rejection ✓. Teardown: 0 listeners on 4362 / 9362 / 8581.
+
+Cannot see: the runtime's `updatedAt` merge into the in-process record (nothing renders it); a Failure chain (refused); the `created.id`
+idiom (refused); a real backend's relation semantics (the fake accepts any id but `missing`).
+
 ## §63 Tier 2.8 row 13 — `Drag`: the wrapper drags, the child rides (session 86, 2026-09-05)
 
 Type id `Drag`, display name *Drag* — the thirteenth and last row of §50's list. Picker **105 → 106**.
@@ -9369,7 +9418,8 @@ NOT run (the orchestrator's, after merging): editor tsc, editor test:ci (the exp
 
 ### §63.5 What this leaves (owner NONE unless named)
 
-- **The wrapper `<div>` takes the child's place in the parent's flex flow**, where the runtime drags the child's own root: a
+- **The wrapper `<div>` takes the child's place in the parent's flex flow** — **the STRETCH case is FIXED (§63.6: `fit-content`
+  on both axes; the drive had measured a 320 px wrapper around an 80 px card, pinning x)**; the rest stands — where the runtime drags the child's own root: a
   child with `flex-grow` or `align-self` now relates to the wrapper. The alternative — printing the ref, the transform and the
   handlers onto the child's own element — needs every role's printer to accept injected attrs and a style merge; recorded, not
   built. Owner NONE.
@@ -9385,3 +9435,39 @@ NOT run (the orchestrator's, after merging): editor tsc, editor test:ci (the exp
 - **Not driven in a browser this session** (the brief forbids drives from a slice agent); the orchestrator's headless drive of
   `board-desk` is owed — the lib is graded under a fake DOM (§B, 21 rows), which cannot see `offsetLeft`, `getComputedStyle`
   or a real `touchstart` being passive.
+
+### §63.6 The drive — the built export, headless; the wrapper stretched, and the X bound collapsed (session 88, 2026-09-05)
+
+`board-desk` emitted (16 files, 0 refusals), built exit 0 / 0 `error TS`, `vite preview` 4363, Chrome 9363, `--target=Board`. The pointer
+was driven with real `MouseEvent`s — `mousedown` dispatched on the card's `<p>` (bubbling to React's root listener and the wrapper's
+`onMouseDown`), `mousemove` / `mouseup` dispatched on `document` (where `handleDragStart` attached the core's listeners). The READ printed
+the four live values, the wrapper's inline transform, and — computed from the wrapper's MEASURED box — the position react-draggable's
+`getBoundPosition` would produce for the same pointer path. `EXPECTED-60-62-63.md` first.
+
+🔴 **PREDICTED BY READING, CONFIRMED BY ARM A: the wrapper was 320 px wide around an 80 px card.** `.board` is a COLUMN flex container;
+the wrapper is an unstyled `<div>` and therefore a flex item with `align-self: auto` ⇒ `stretch` across the cross axis. `getBoundPosition`
+(transcribed verbatim) computes `right = innerWidth(board) − outerWidth(node) − node.offsetLeft = 320 − 320 − 24` and
+`left = −node.offsetLeft = −24`: a bound of ONE value. The first bounded move pinned x at **−24** whatever the pointer did; the interpreter
+drags the card's OWN root (80 px), whose bound is `[−24, 216]`, and the same move lands at **50**. §63.5's first residual ("the wrapper takes
+the child's place in the parent's flex flow"), made concrete and measurable. (`offsetLeft` being relative to `body` — nothing positioned — is
+the library's own quirk and identical in both worlds; so is the y clamp at `120 − offsetTop = 58`.)
+
+- **Arm a** (`drive63.log`): M1 boot `20 20 0 0`, transform `translate(20px, 20px)`, **wrapper rect w 320 h 80, card 80, offsetParent
+  BODY, oL 24 oT 62**. M2 mousedown (100,100) → `dragging`, values `20 20 0 0`. **M3 mousemove (130,150) → x −24, y 58, Δ −44 / 38** (the
+  predicted pin). M4 mouseup → `released`, x/y kept, deltas kept (the stop rewrites x/y only). M5 type `50`, Snap home, +0.8 s → `50 0`,
+  `snapped`, deltas kept, `translate(50px, 0px)` (the x tween 200 ms, the y tween the 300 ms default — `snapYDuration` absent). M6 Snap
+  home again → identical (already there ⇒ no tween; `done` still fires). M7 errs `[]`. M8 type `abc` → one `drag/snap-position-not-a-number`
+  console line, the position unchanged. M9 the `react-draggable-style-el` is in the head, the body class removed after the drop.
+- **The fix** (`src/emit/dragLib.ts`): the handle's `style` carries **`width: 'fit-content', height: 'fit-content'`** beside the transform,
+  so the wrapper is the child's box on either axis of either flex direction (a definite cross size opts out of `stretch`; the main size
+  shrink-wraps). One place — the lib — not the printer: the page keeps printing `style={card.style}` verbatim. Pinned as `drag.test.ts`
+  F3 (the lib text, the doc sentence, and the page adding no sizing of its own); the ten §B `handle.style` rows read the pair through
+  `wrapperStyle()`. 52/52; package tsc 0.
+- **Arm b** (`drive63b.log`, predicted before its run): **M1 wrapper rect w 80 h 80**, oL/oT unchanged, the computed prediction now
+  `x 50, y 58`; **M3 → x 50, y 58, Δ 30 / 38** — the runtime's answer for the same pointer path; M4 released with the same numbers; M5
+  `50 0` (x already there ⇒ only the y tween), `snapped`; M6–M9 as arm a. Zero window errors, teardown 0 listeners.
+
+What this leaves of the residual: a child authored with `flex-grow` or `align-self` still relates to the wrapper rather than the board
+(the wrapper is fit-content, so a growing child no longer grows); the full answer remains printing the ref, the transform and the handlers
+onto the child's own element. Owner NONE. Cannot see: `touchstart` `passive: false` (no `getEventListeners` under `Runtime.evaluate`), a
+real touch, the un-emitted marker classes.
