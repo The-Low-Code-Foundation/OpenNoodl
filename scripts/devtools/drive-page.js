@@ -33,6 +33,7 @@
  *   drive-page.js click   <exact text> [--nth N]
  *   drive-page.js clickish <substring>      # reports what it matched
  *   drive-page.js clickat <x> <y>
+ *   drive-page.js dropfile <selector|x,y> <file>[,<file>...] [--probe=<body>] [--leave-to=<sel|x,y>] [--no-drop]
  *   drive-page.js fill    <nth> <value>     # nth VISIBLE input/textarea, 0-based
  *   drive-page.js eval    <expression>
  *   drive-page.js shot    <file>            # full-page
@@ -188,9 +189,19 @@ async function connectExisting() {
 
 async function main() {
   const [verb, ...rest] = process.argv.slice(2);
+  /**
+   * ⚠️ **Both spellings, because the two drivers disagreed and it cost a run.**
+   * This tool took `--probe <value>`; its sibling `cdp.js` documents
+   * `--probe=<value>`. The `=` form silently fell through to the default here,
+   * so the drag-hover reading came back `undefined` and read exactly like a
+   * probe that had evaluated to nothing — a fact about the argument parser
+   * wearing the shape of a fact about the page.
+   */
   const flag = (n, d) => {
     const i = process.argv.indexOf(n);
-    return i === -1 ? d : process.argv[i + 1];
+    if (i !== -1) return process.argv[i + 1];
+    const eq = process.argv.find((a) => a.startsWith(n + '='));
+    return eq === undefined ? d : eq.slice(n.length + 1);
   };
 
   if (verb === 'start') {
@@ -309,6 +320,123 @@ async function main() {
       }
       await wait(Number(flag('--settle', 1500)));
       return done({ clicked: true, at, requests: client.events.requests, errors: client.events.errors });
+    }
+    /**
+     * A file dragged from the desktop onto the page — SBR-007 AC3's gesture.
+     *
+     * ⚠️ **`clickat` and the mouse verbs above cannot produce this, and it is
+     * not a matter of effort.** `Input.dispatchMouseEvent` begins an *in-page*
+     * HTML5 drag, from a mousedown on a `draggable` element. A file drag has no
+     * mousedown in the page at all: it starts in the OS and the renderer is
+     * handed a `DataTransfer` whose `files` the *browser process* has already
+     * populated. Nothing built out of mouse events can put a real `File` there.
+     *
+     * 🔴 **And a synthetic `new DragEvent(...)` from `eval` is worse than
+     * nothing here.** It skips the browser's own drop machinery, so the
+     * `preventDefault()`-on-`dragover` contract is never exercised and the
+     * synthetic `drop` lands whether or not the page opted in. Half of what a
+     * drop zone has to get right is *becoming* droppable; only a real drag
+     * event distinguishes a page that did it from one that did not. The whole
+     * point of driving AC3 is that distinction.
+     *
+     * The implementation is `cdp.js`'s `dispatchFileDrop`, which DEF-029 §7.1
+     * built and drove. It is repeated rather than imported because these two
+     * drivers share no module and deliberately keep opposite `eval`
+     * conventions — see the header.
+     *
+     *   dropfile <selector|x,y> <file>[,<file>…] [--probe=<body>] [--leave-to=<sel|x,y>] [--no-drop]
+     *
+     * ✅ `--probe` reads the page **while the drag is still hovering**, on this
+     * same connection, between the last `dragOver` and the `drop`. A separate
+     * `eval` call arrives after the drag has ended, when "is something over me"
+     * is always `false` — so hover state is unmeasurable any other way.
+     */
+    case 'dropfile': {
+      const files = String(rest[1] || '')
+        .split(',')
+        .map((f) => f.trim())
+        .filter(Boolean)
+        .map((f) => path.resolve(f));
+      if (!files.length) return done({ dropped: false, why: 'usage: dropfile <selector|x,y> <file>[,<file>...]' });
+      // 🔴 Resolved here rather than trusted: a path Chromium cannot open
+      // yields a drop with an EMPTY `dataTransfer.files`, which reaches the page
+      // as a drag carrying nothing and reads exactly like a zone that refused.
+      const missing = files.filter((f) => !fs.existsSync(f));
+      if (missing.length) return done({ dropped: false, why: 'no such file', missing });
+
+      const centreOf = async (spec) => {
+        const m = /^(-?\d+)\s*,\s*(-?\d+)$/.exec(String(spec || '').trim());
+        if (m) return { x: Number(m[1]), y: Number(m[2]), from: 'coords' };
+        const r = await ev(
+          client,
+          `${CENSUS}
+          const e = document.querySelector(${JSON.stringify(String(spec))});
+          if (!e) return null;
+          const r = vis(e);
+          if (!r) return { hidden: true };
+          return { x: Math.round(r.left + r.width/2), y: Math.round(r.top + r.height/2),
+                   at: (document.elementFromPoint(Math.round(r.left+r.width/2), Math.round(r.top+r.height/2))||{}).tagName || null };`
+        );
+        return r ? { ...r, from: 'selector' } : null;
+      };
+
+      const at = await centreOf(rest[0]);
+      if (!at) return done({ dropped: false, why: 'no such element', target: rest[0] });
+      if (at.hidden) return done({ dropped: false, why: 'element has no rendered box', target: rest[0] });
+
+      const leaveSpec = flag('--leave-to', null);
+      const leaveTo = leaveSpec ? await centreOf(leaveSpec) : null;
+      const probe = flag('--probe', null);
+      const drop = !process.argv.includes('--no-drop');
+
+      const data = {
+        // `files` populates `dataTransfer.files`; `items` populates
+        // `dataTransfer.types`. A zone that checks for 'Files' before lighting
+        // up — the right thing to do, so a dragged text selection does not —
+        // reads the latter, and a payload without it looks like a non-file drag.
+        items: files.map((f) => ({ mimeType: 'application/octet-stream', data: f, title: path.basename(f) })),
+        files,
+        dragOperationsMask: 1 // copy
+      };
+
+      await client.send('Input.dispatchDragEvent', { type: 'dragEnter', x: at.x, y: at.y, data });
+      for (let i = 0; i < 3; i++) {
+        await client.send('Input.dispatchDragEvent', { type: 'dragOver', x: at.x, y: at.y, data });
+        // Let the renderer run its handler before the next event, or the state
+        // the drop depends on has not landed yet.
+        await wait(32);
+      }
+
+      let hover;
+      if (probe) hover = await ev(client, probe);
+
+      // 🔴 Walk the drag OUT before ending it; `dragCancel` is not a substitute.
+      // It ends the session without the pointer crossing the element's edge, so
+      // the page receives no `dragleave` at all and a hover flag stays true —
+      // which DEF-029 §7.3 correctly declined to report as a defect, because
+      // the instrument could not tell.
+      if (leaveTo && !leaveTo.hidden) {
+        for (let i = 0; i < 3; i++) {
+          await client.send('Input.dispatchDragEvent', { type: 'dragOver', x: leaveTo.x, y: leaveTo.y, data });
+          await wait(32);
+        }
+      }
+
+      if (drop) await client.send('Input.dispatchDragEvent', { type: 'drop', x: at.x, y: at.y, data });
+      else await client.send('Input.dispatchDragEvent', { type: 'dragCancel', x: at.x, y: at.y, data });
+
+      // An upload is a request; a thumbnail is a second one. 250ms is what
+      // `cdp.js` waits for the handler — this waits for the round trip too.
+      await wait(Number(flag('--settle', 2000)));
+      return done({
+        dropped: drop,
+        at,
+        files: files.map((f) => path.basename(f)),
+        hover,
+        leftTo: leaveTo || undefined,
+        requests: client.events.requests,
+        errors: client.events.errors
+      });
     }
     case 'fill': {
       // 🔴 Addressed by DOM ORDER. The viewer mints a fresh `input-<uuid>` on

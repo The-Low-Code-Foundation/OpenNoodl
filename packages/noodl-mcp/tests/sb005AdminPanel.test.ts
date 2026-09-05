@@ -669,7 +669,12 @@ describe('SB-005: the admin panel, through the MCP door', () => {
     // reports its layout to its children has to be right about all of them, and
     // three readers is three nodes against one contract.
     // 27 → 28: A9's `panes` on `/Pages/ThemeEditor`, same shape, same number.
-    expect(rows.length).toBe(28);
+    // 28 → 29: SBR-007 AC3's `dropWords` on `/Admin/SectionRow` — it turns the
+    // drop zone's `Is Dragging Over` into the sentence the zone is showing. It
+    // is a `declared=` row and the second number is unmoved, by the same
+    // arithmetic as the three layout readers above: a node that only publishes a
+    // string has nobody to signal.
+    expect(rows.length).toBe(29);
     expect(rows.filter((r) => !r.endsWith('declared=')).length).toBe(10);
   });
 
@@ -806,7 +811,11 @@ describe('SB-005: the admin panel, through the MCP door', () => {
       // 390 and every admin screen got ~150px. A9 is the one that says the shell
       // folding is not enough on its own — `/admin/theme` went from 362px
       // unreachable to 102 and kept its live preview off the right-hand edge.
-      code: 28,
+      // 28 → 29: SBR-007 AC3's `dropWords` on `/Admin/SectionRow`, the drop
+      // zone's hover sentence. The three write counts above are unmoved, which
+      // is the claim: a drop is a second GESTURE onto the existing upload path,
+      // not a second way to write a record.
+      code: 29,
       // 4 → 5: SBR-017's `/Pages/SignIn`.
       // 5 → 6: SBR-010's `/Pages/Messages`.
       pages: 6

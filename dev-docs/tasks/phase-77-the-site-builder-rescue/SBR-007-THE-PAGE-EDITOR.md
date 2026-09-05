@@ -1401,3 +1401,145 @@ by [D15](DEFECTS-THE-SITE-BUILDER-FOUND.md#d15) alone — no drop-target capabil
 a **file arriving from outside the page**. ⚠️ **s32 changes nothing about D15**: this drag is
 in-page pointer work and needed none of it. The twins were filed together and only one was ever
 real.
+
+---
+
+# 🟢 s49 (2026-09-05) — **AC3 IS MET.** The blocker was a product gap and the product closed it
+
+## 36. D15 was re-measured at HEAD and it has MOVED
+
+Every previous session inherited *"AC3 is blocked on [D15](DEFECTS-THE-SITE-BUILDER-FOUND.md#d15),
+which is unowned"* and stopped there. It was re-run instead, with the same word-bounded greps and
+the same control the row itself insists on:
+
+| over `noodl-viewer-react/src` + `noodl-runtime/src` | s21 | s29 | **s49** |
+|---|---|---|---|
+| `dataTransfer` | 0 | 0 | **8** |
+| `DragEvent` | 0 | 0 | **10** |
+| `onDrop` (word-bounded) | 0 | 0 | **3** |
+| `dragover` / `dragenter` / `dragleave` | 0 | 0 | **2 / 1 / 1** |
+| `onClick`/`onMouseDown` — the control | 39 | 39 | **52** |
+| `.ts`/`.tsx` files reached — the boundary control | — | 369 | **373** |
+
+**P80 `DEF-029` shipped the capability** (`node-shared-port-definitions.ts:886`, `addFileDropPorts`):
+`Accept File Drops` + `Accepted file types` in, and `Files Dropped` / `Files Rejected` /
+`File` / `Files` / `File Name` / `File Type` / `File Size In Bytes` / `Is Dragging Over` out.
+
+🔴 **The lesson is the re-measurement, not the result.** D15 was correct when filed, correct when
+re-run at s29, and stale by the time three sessions were quoting it as the reason not to look. **A
+blocker owned by `NONE` is the one most likely to have been fixed by somebody else** — nobody is
+watching it on your behalf. ⚠️ The first re-run of the greps above returned **0 for the finding AND
+0 for the control**, because an unquoted `$P` holding two paths does not word-split in zsh — the
+exact trap D15's own record warns about, reproduced while re-measuring D15.
+
+## 37. What was built
+
+`/Admin/SectionRow` gains a drop zone **above** `Choose image`, never instead of it — a drag has no
+keyboard equivalent, so replacing the button would take the picture path away from anyone who
+cannot drag. `sbr007FileDrop.test.ts` asserts the button survives.
+
+| node | what it is |
+|---|---|
+| `dropZone` | a dashed `Group`, `acceptFileDrops: true`, `acceptedFileTypes: 'image/*'` |
+| `dropHint` | ONE `Text`, standing words, whose `text` is rewired on hover — see §39 |
+| `dropWords` | the script that turns `Is Dragging Over` into that sentence |
+| `dropRefused` | the refusal line, raised by `dropRefusal` |
+| `dropRefusal` | a `Switch` — `Files Rejected` turns it on, `Is Dragging Over` turns it off |
+
+🔴 **It feeds the SAME `Upload File` the picker feeds** — `droppedFile → upload.file` and
+`filesDropped → upload.upload`, the pair the picker already publishes. Everything downstream
+(`absorb`'s gallery-versus-replace decision, `save`, the row ACL) is reached through one node either
+way, so a dropped picture and a chosen picture cannot diverge. The spec asserts that as
+**cardinality** — `upload.file` has exactly two producers, and they are the picker and the zone —
+because D54's whole lesson is that *a wiring pin cannot see cardinality at the target*.
+
+## 38. The drive — AC3, on a running app against a real enforcing backend
+
+Project built from the current template, bound to `backend_mtkip2rjf20ct` (the `sbr014-drive`
+backend, security **ENFORCED**), signed in as `owner@sbr014.test` through the product's own form,
+a **gallery** section added through the panel's own `Add section`. Real
+`Input.dispatchDragEvent` with `data.files` — Chromium opens the file and builds the `File`, so
+name, MIME type and size are the browser's, not the harness's.
+
+| run | file | requests | on screen |
+|---|---|---|---|
+| baseline | — | — | `No pictures yet`, 0 images, no refusal |
+| **A accepted** | `drop-me.png` | `POST /files/drop-me.png` → `PUT /classes/Section/…` carrying `{"data":{"images":[{"url":"…drop-me.png"}]}}` → `GET …/files/…drop-me.png` | **`1 picture`**, `<img>` at **naturalWidth 64** — the real decoded file |
+| **B refused** | `reject-me.pdf` | **none** | *"That file is not an image — try a .png or a .jpg"*, count **unchanged**, existing picture untouched |
+| **C hover** | `drop-me.png`, `--no-drop` | none | mid-drag the zone reads **"Let go to upload"**; count unchanged |
+| **D cleared** | `drop-me.png` | the full chain again | the refusal is **gone mid-drag** (the `off` wire), count `3 → 4` |
+
+✅ **B is the Failure Contract driven**: `Files Rejected` fires *instead of* `Files Dropped`, and it
+leaves the value outputs alone — the picture from A is still on screen and still the same file.
+
+✅ **The consequence, anonymously.** After pressing `Publish` through the panel, a signed-out browser
+on `/bootstrap-proof` reads **4 images, 4 DISTINCT uploaded URLs, all decoded, 2 per row over 2
+rows** — a grid, not a stack, and each tile its own picture. Pictures:
+[`notes/sbr007/s49-page-editor-drop-zone.png`](notes/sbr007/s49-page-editor-drop-zone.png),
+[`notes/sbr007/s49-public-gallery-anonymous.png`](notes/sbr007/s49-public-gallery-anonymous.png).
+
+⚠️ **A difference that was NOT a defect, checked before it was called one.** The first anonymous
+read showed **zero** images. The section's row ACL was `{"role:admin":…}` while sections on another
+page carried public read — because the section was added *after* the page was published, and the
+ACL is applied by `publishPage`. Pressing `Publish` through the panel fixed it, and the row ACL
+changed in the database as a result. **s47's trap, arriving from the other side**: drive the
+product's own path before calling a difference a defect.
+
+## 39. 🔴 The drive found a real defect IN THIS WORK, and it is the reason §37 has one Text
+
+The first build did the hint the way the rest of the card does it: an idle `Text` and a hover
+`Text`, each raised by a `mounted` wire, made exclusive by an `Inverter`. It renders correctly, it
+passed all fourteen structural checks, and it leaves the zone **stuck**.
+
+Measured on the running app, counting the zone's own `dragenter`/`dragleave` while a file was
+dragged in and walked back out **undropped**:
+
+| | first build | after the fix |
+|---|---|---|
+| `dragenter` on the zone | **2** | **1** |
+| `dragleave` on the zone | **1** | **1** |
+| the zone afterwards | **"Let go to upload"** — with no drag anywhere near it | **"Drop an image here"** |
+| the hover itself | "Let go to upload" | "Let go to upload" |
+
+The second `dragenter` is the pointer crossing into the newly-mounted hover label; the missing
+`dragleave` is the idle label being **unmounted while the pointer was inside it**. `dragDepth` is
+left at 1 and `Is Dragging Over` stays true.
+
+🔴 **It self-heals on the next drop** — `onDrop` sets the depth to 0 unconditionally — which is
+exactly why it nearly went unrecorded: runs A and B both looked clean afterwards, because both
+ended in a drop. Only the `--no-drop` arm could see it.
+
+⚠️ **This is not the runtime's bug**, and saying so took a reading rather than an opinion: the
+counter exists *precisely* so that a label inside the zone does not flicker it, and its own comment
+says so. What it cannot survive is that label being **replaced** mid-drag. The general rule, which
+is wider than this template, is filed as
+[D55](DEFECTS-THE-SITE-BUILDER-FOUND.md#d55).
+
+The fix is one `Text` whose **words** change. Changing `text` does not touch element identity, so
+the DOM under the pointer is stable for the whole gesture. The standing `text` keeps SB-018 (3).
+
+## 40. Where the ACs stand after s49
+
+| | verdict |
+|---|---|
+| **AC1** | 🟢 driven s25 |
+| **AC2** | 🟢 met on the shipped artefact s32 |
+| **AC3** | 🟢 **MET.** thumbnail ✅ · the **drop gesture** ✅ driven, [D15](DEFECTS-THE-SITE-BUILDER-FOUND.md#d15) closed by DEF-029 · the gallery model ✅ SBR-005's, and now authorable **through the panel** |
+| **AC4** | 🟢 by construction, shares AC1's drive |
+| **AC5** | 🟢 built |
+
+## 41. Gates
+
+| gate | reading |
+|---|---|
+| [`sbr007FileDrop.test.ts`](../../../packages/noodl-mcp/tests/sbr007FileDrop.test.ts) | **15/15**, over the **shipped artefact** — not the source constants, per D54's lesson |
+| the **reverted arm** | `SBR007_ARTEFACT=<pre-fix artefact>` → **13 of 15 RED**. The one that stays green is `Choose image survives`, which the revert does not touch — so the suite still *ran* rather than dying wholesale |
+| `sb005AdminPanel` census | 28 → **29** code nodes, `declared=` count unmoved at 10, and the three WRITE counts unmoved — a drop is a second gesture onto the existing upload path, not a second way to write a record |
+| `npm run template:site-builder` | exit 0, artefact regenerated and diffed (only the new nodes plus auto-layout `y` re-flows) |
+| full `noodl-mcp` | **95 suites, 1305/1305, exit 0** (from 94 / 1290) |
+| `typecheck:mcp` | exit 0 |
+
+🔴 **The reverted arm had to be made lazy to be worth anything.** Its first run died at import —
+`Tests: 0 total`, red, and grading **nothing**, because the node lookups were module-level consts.
+A reverted arm whose entire value is *which* predicates catch the revert cannot be one that stops
+every predicate from running.

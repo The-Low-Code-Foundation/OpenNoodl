@@ -3707,12 +3707,73 @@
                     "dynamicports": []
                   },
                   {
+                    "id": "dropZone",
+                    "type": "Group",
+                    "children": [
+                      {
+                        "id": "dropHint",
+                        "type": "Text",
+                        "children": [],
+                        "label": "Drop hint",
+                        "x": 220,
+                        "y": 1600,
+                        "parameters": {
+                          "sizeMode": "contentHeight",
+                          "text": "Drop an image here",
+                          "fontSize": "var(--text-sm)",
+                          "color": "var(--muted-foreground)"
+                        },
+                        "ports": [],
+                        "dynamicports": []
+                      }
+                    ],
+                    "label": "Drop an image here",
+                    "x": 160,
+                    "y": 1480,
+                    "parameters": {
+                      "sizeMode": "contentHeight",
+                      "acceptFileDrops": true,
+                      "acceptedFileTypes": "image/*",
+                      "flexDirection": "column",
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "paddingTop": "var(--space-4)",
+                      "paddingBottom": "var(--space-4)",
+                      "paddingLeft": "var(--space-3)",
+                      "paddingRight": "var(--space-3)",
+                      "borderStyle": "dashed",
+                      "borderWidth": "var(--border-1)",
+                      "borderColor": "var(--border)",
+                      "borderRadius": "var(--radius-md)",
+                      "backgroundColor": "var(--muted)"
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  },
+                  {
+                    "id": "dropRefused",
+                    "type": "Text",
+                    "children": [],
+                    "label": "That was not an image",
+                    "x": 160,
+                    "y": 1720,
+                    "parameters": {
+                      "sizeMode": "contentHeight",
+                      "text": "That file is not an image — try a .png or a .jpg",
+                      "mounted": false,
+                      "fontSize": "var(--text-sm)",
+                      "color": "var(--destructive)"
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  },
+                  {
                     "id": "pickButton",
                     "type": "net.noodl.controls.button",
                     "children": [],
                     "label": "Choose image",
                     "x": 160,
-                    "y": 1480,
+                    "y": 1840,
                     "parameters": {
                       "backgroundColor": "var(--surface)",
                       "color": "var(--foreground)",
@@ -3733,7 +3794,7 @@
                     "children": [],
                     "label": "Remove last picture",
                     "x": 160,
-                    "y": 1600,
+                    "y": 1960,
                     "parameters": {
                       "backgroundColor": "var(--surface)",
                       "color": "var(--foreground)",
@@ -3755,7 +3816,7 @@
                     "children": [],
                     "label": "Save",
                     "x": 160,
-                    "y": 1720,
+                    "y": 2080,
                     "parameters": {
                       "backgroundColor": "var(--primary)",
                       "color": "var(--primary-foreground)",
@@ -3773,7 +3834,7 @@
                     "children": [],
                     "label": "Delete",
                     "x": 160,
-                    "y": 1840,
+                    "y": 2200,
                     "parameters": {
                       "backgroundColor": "var(--surface)",
                       "color": "var(--destructive)",
@@ -3821,12 +3882,53 @@
             "dynamicports": []
           },
           {
+            "id": "dropWords",
+            "type": "JavaScriptFunction",
+            "children": [],
+            "label": "Which sentence the drop zone is showing",
+            "x": 470,
+            "y": 1600,
+            "parameters": {
+              "functionScript": "Outputs.text = Inputs.over ? 'Let go to upload' : 'Drop an image here';"
+            },
+            "ports": [
+              {
+                "name": "in-over",
+                "displayName": "over",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "out-text",
+                "displayName": "text",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              }
+            ],
+            "dynamicports": []
+          },
+          {
+            "id": "dropRefusal",
+            "type": "Switch",
+            "children": [],
+            "label": "Was the last drop refused",
+            "x": 470,
+            "y": 1720,
+            "parameters": {
+              "onFromStart": false
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
             "id": "inputs-11",
             "type": "Component Inputs",
             "children": [],
             "label": "The section record",
             "x": 470,
-            "y": 1960,
+            "y": 2320,
             "parameters": {},
             "ports": [
               {
@@ -3963,7 +4065,7 @@
             "children": [],
             "label": "Choose an image",
             "x": 470,
-            "y": 1480,
+            "y": 1840,
             "parameters": {
               "acceptedFileTypes": "image/*"
             },
@@ -3976,7 +4078,7 @@
             "children": [],
             "label": "Upload it",
             "x": 470,
-            "y": 2080,
+            "y": 1480,
             "parameters": {},
             "ports": [],
             "dynamicports": []
@@ -4053,7 +4155,7 @@
             "children": [],
             "label": "Fold an uploaded picture into this section",
             "x": 470,
-            "y": 2200,
+            "y": 2440,
             "parameters": {
               "runOnChange-in-data": false,
               "runOnChange-in-kind": false,
@@ -4103,7 +4205,7 @@
             "children": [],
             "label": "Take back the last picture",
             "x": 470,
-            "y": 1600,
+            "y": 1960,
             "parameters": {
               "runOnChange-in-data": false,
               "functionScript": "if (Inputs.data === undefined) return;\nconst next = Object.assign({}, Inputs.data);\nconst images = Array.isArray(next.images) ? next.images.slice() : [];\nif (images.length === 0) return;\nimages.pop();\nnext.images = images;\nOutputs.data = next;\nOutputs.built();"
@@ -4137,7 +4239,7 @@
             "children": [],
             "label": "Save this section",
             "x": 470,
-            "y": 2320,
+            "y": 2560,
             "parameters": {
               "collectionName": "Section",
               "idSource": "explicit",
@@ -4152,7 +4254,7 @@
             "children": [],
             "label": "Delete this section",
             "x": 470,
-            "y": 1840,
+            "y": 2200,
             "parameters": {
               "collectionName": "Section",
               "idSource": "explicit"
@@ -4339,6 +4441,48 @@
             "fromProperty": "done",
             "toId": "upload",
             "toProperty": "upload"
+          },
+          {
+            "fromId": "dropZone",
+            "fromProperty": "droppedFile",
+            "toId": "upload",
+            "toProperty": "file"
+          },
+          {
+            "fromId": "dropZone",
+            "fromProperty": "filesDropped",
+            "toId": "upload",
+            "toProperty": "upload"
+          },
+          {
+            "fromId": "dropZone",
+            "fromProperty": "isDragOver",
+            "toId": "dropWords",
+            "toProperty": "in-over"
+          },
+          {
+            "fromId": "dropWords",
+            "fromProperty": "out-text",
+            "toId": "dropHint",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "dropZone",
+            "fromProperty": "filesRejected",
+            "toId": "dropRefusal",
+            "toProperty": "on"
+          },
+          {
+            "fromId": "dropZone",
+            "fromProperty": "isDragOver",
+            "toId": "dropRefusal",
+            "toProperty": "off"
+          },
+          {
+            "fromId": "dropRefusal",
+            "fromProperty": "state",
+            "toId": "dropRefused",
+            "toProperty": "mounted"
           },
           {
             "fromId": "inputs-11",

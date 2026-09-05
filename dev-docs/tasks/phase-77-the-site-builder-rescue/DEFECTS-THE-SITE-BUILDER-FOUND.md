@@ -514,7 +514,7 @@ at 13 with the looser pattern, so one appearing turns the suite red rather than 
 
 ---
 
-## D15 — 🔴 The runtime has no file-drop capability at all, so "drop a file here" is not authorable
+## D15 — 🟢 **CLOSED s49 by P80 DEF-029.** The runtime had no file-drop capability, so "drop a file here" was not authorable
 
 **Found:** s21, building SBR-007 · **Owner:** `NONE` · **Product**, not template · **Bites:** any
 builder who wants a drop target, and SBR-007 AC3 as literally written.
@@ -551,6 +551,30 @@ template edit, which is why SBR-007 did not quietly build something else and cal
 🔴 **Unowned on purpose.** It is not SBR-007's (that task owns a screen, not the node library) and
 it is not SBR-005's (that owns the gallery data model). It needs a task, and phase 77 should not
 close pretending AC3 was met.
+
+### 🟢 D15 update, s49 — re-measured at HEAD, and it has MOVED. CLOSED
+
+The two updates above were both correct when taken, and by s49 three sessions were quoting this row
+as the reason not to look at SBR-007 AC3. The greps were run again, same terms, same controls:
+
+| | s21 | s29 | **s49** |
+|---|---|---|---|
+| `dataTransfer` | 0 | 0 | **8** |
+| `DragEvent` | 0 | 0 | **10** |
+| `onDrop`, word-bounded | 0 | 0 | **3** |
+| `dragover` / `dragenter` / `dragleave` | 0 | 0 | **2 / 1 / 1** |
+| `onClick`/`onMouseDown` — the predicate control | 39 | 39 | **52** |
+| `.ts`/`.tsx` files reached — the boundary control | — | 369 | **373** |
+
+**P80 `DEF-029` built it** — `addFileDropPorts` in `node-shared-port-definitions.ts:886`, with
+`Accept File Drops`, `Accepted file types`, `Files Dropped`, `Files Rejected`, `Is Dragging Over`
+and four value outputs. SBR-007 AC3 is built on it and driven (SBR-007 §36-§41).
+
+🔴 **The lesson is the re-measurement.** An `NONE`-owned blocker is the one most likely to have been
+fixed by somebody else, because nobody is watching it on your behalf. ⚠️ And the first re-run of
+these greps returned **0 for the finding AND 0 for the control** — an unquoted `$P` holding two
+paths does not word-split in zsh. That is this row's own documented trap, reproduced while
+re-measuring this row.
 
 ### D15 update, s29 — re-measured at HEAD, and it STANDS (unlike its twin)
 
@@ -3213,3 +3237,94 @@ its predecessor, so a press always lands. That arm is kept as a MUTANT.
    session's worth of export forensics: the health filter, the exported `ports`, the bundle
    contents — all checked, all clean, none of them the defect. The two readings differed by
    **which chip was pressed**, not by which surface it was on.
+
+---
+
+## D55 — 🔴 A drop zone whose child is MOUNTED or UNMOUNTED by the drag gets stuck "dragging over"
+
+**Found:** s49, building SBR-007 AC3 · **Owner:** `NONE` · **Product** (the viewer's file-drop
+ports), not template · **Bites:** any author who gives a drop zone the obvious hover affordance.
+
+The file-drop ports count `dragenter`/`dragleave` rather than holding a boolean, and the reason is
+written into the port's own source: *"Dragging onto a child fires `dragleave` on this element and
+`dragenter` on the child, so a plain boolean flickers off every time the pointer crosses an inner
+edge… which is every real drop zone, since the 'Drop files here' label is itself a child."*
+
+That is correct for a **static** child. It does not survive a child that is **swapped by the drag
+itself** — which is the first thing an author reaches for, because "show different words while
+something is over me" is what the `Is Dragging Over` output is *for*.
+
+**Measured**, on a running app, counting on the zone element itself while a file was dragged in and
+walked back out without being dropped:
+
+| | a zone with two labels swapped on `Is Dragging Over` | the same zone, one label, words rewired |
+|---|---|---|
+| `dragenter` | **2** | 1 |
+| `dragleave` | **1** | 1 |
+| `Is Dragging Over` afterwards | **still true** | false |
+| what the person sees | **"Let go to upload"**, with no drag on screen | the idle sentence |
+
+The extra `dragenter` is the pointer crossing into the newly-mounted label. The missing `dragleave`
+is the other label being removed from the document *while the pointer was inside it* — an element
+that leaves the DOM never fires the leave that would balance its enter. `dragDepth` settles at 1.
+
+🔴 **It self-heals on the next drop**, because `onDrop` sets `dragDepth = 0` unconditionally. So
+every arm that ends in a drop reads clean and the defect is invisible; only a drag that leaves
+without dropping shows it. That is why this is filed rather than left to be rediscovered.
+
+**Candidate fixes, none chosen here** — this is a product row and SBR-007 owns a screen:
+`dragenter`/`dragleave` could be reconciled against `document`'s own drag session (a `dragend`
+listener zeroing the depth), or the depth could be recomputed from `e.relatedTarget` rather than
+accumulated. Both are viewer changes.
+
+⚠️ **The template does not wait for it.** `/Admin/SectionRow` uses one `Text` whose words change,
+which never mutates the DOM under the pointer, and
+[`sbr007FileDrop.test.ts`](../../../packages/noodl-mcp/tests/sbr007FileDrop.test.ts) pins that as
+*"the zone has exactly one child and nothing mounts or unmounts inside it"* — deliberately a rule
+about the zone's subtree rather than about this one hint.
+
+---
+
+## D56 — 🔴 A project built through the MCP door has no `rootNodeId`, so `deployToFolder` refuses it
+
+**Found:** s49, deploying for SBR-007 AC3 · **Owner:** `NONE` · **Bites:** anything that deploys a
+project it did not open in the editor first.
+
+`Exporter.exportToJSON` opens with `const root = projectModel.getRootNode(); if (!root) return;`
+(`utils/exporter/json.ts:147`), and `deployer.ts:82` turns that bare `undefined` into
+`{ result: 'failure', message: 'Failed to export project.' }` — with **no stack**, so the deploy
+entry's `(err && err.stack) || String(err)` prints **`[object Object]`** and nothing else.
+
+A project written by `buildSiteTemplateProject()` carries `$schema`, `name`, `nodegxVersion`,
+`settings`, `structure`, `version` — and **no `rootNodeId`**. A project that has been opened in the
+editor carries `id`, `metadata`, `modified`, `rootNodeId` and `runtimeVersion` as well. Writing
+`rootNodeId: 'app_root'` by hand made the same project deploy.
+
+🔴 **Diagnosed with a control that reverses, not by inspection.** A site-builder project that
+predates this work deployed cleanly (12 entries) with the identical command, and a project built by
+the *same builder from HEAD's template source* failed **identically** — so the variable is the
+project's provenance and **not** the work under test. That control is the only reason this row is
+not filed as "the drop zone breaks the export".
+
+⚠️ **Whether the PRODUCT's create path writes `rootNodeId` is NOT measured here.** The wizard's
+output is v2 on disk (s48) and was never deployed; this row is about a project built through the
+MCP door. **Do not restate it as "a wizard project cannot be deployed"** — that is the question it
+raises, not one it answers, and it wants one drive.
+
+### D56b — the same fresh project loses **69 connections** to the health filter
+
+On the run that finally exported, the census read **561 on graph, 349 deployed, 143 cloud-excluded,
+`dropped by filter` 69**, with the `--sabotage` control confirming the filter alive. The
+pre-existing project dropped **1**. The deployed artefact was correspondingly broken: `/admin/signin`
+rendered with **0 inputs**, so it could not be signed into at all.
+
+`/Pages/PageEditor` lost 20 of 70, `/Admin/PageRow` 18 of 35, `/Admin/NewPageDialog` **4 of 4**.
+The plausible reading is that a never-opened project has had no NDA-017 migration and no health
+evaluation, so `getConnectionHealth` finds `con-no-target-port` warnings the editor would have
+resolved — **plausible and NOT measured**, which is why it is a `b` row and not a diagnosis.
+
+✅ **What it does NOT contaminate.** SBR-007 AC3's own export question was answered on this same
+artefact and is unaffected: all six drop wires — `droppedFile`, `filesDropped`, `filesRejected` and
+three `isDragOver` — are present in `noodl_bundles/b2-*.json`, **on the pass where 69 others were
+dropped and the sabotage fired**. A survival reading taken beside a demonstrably active filter is
+stronger than one taken beside an idle one.

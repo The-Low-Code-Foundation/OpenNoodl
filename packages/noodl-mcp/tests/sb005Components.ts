@@ -959,6 +959,11 @@ export const SECTION_ROW_NODES = [
       'linkTargetField',
       'preview',
       'galleryCount',
+      // SBR-007 AC3. The drop zone sits ABOVE `Choose image` rather than
+      // replacing it: a drop is a shortcut for people who have the file in a
+      // window already, and it is not reachable at all from a keyboard.
+      'dropZone',
+      'dropRefused',
       'pickButton',
       'removeImageButton',
       'saveButton',
@@ -1137,6 +1142,152 @@ export const SECTION_ROW_NODES = [
       fontSize: 'var(--text-sm)',
       color: 'var(--muted-foreground)'
     }
+  },
+  // ── SBR-007 AC3. The drop zone ────────────────────────────────────────────
+  //
+  // 🔴 **This AC was filed unbuildable and is now buildable, and the change is
+  // in the PRODUCT, not here.** [D15](DEFECTS-THE-SITE-BUILDER-FOUND.md#d15)
+  // measured `onDrop` / `onDragOver` / `onDragEnter` / `onDragLeave` /
+  // `dataTransfer` at **0** across the viewer and the runtime, word-bounded,
+  // beside a 39-hit `onClick` control — there was no drop target to author.
+  // P80 **DEF-029** shipped the ports (`node-shared-port-definitions.ts:886`),
+  // and the same greps read 8 / 10 / 3 at HEAD beside a 52-hit control. So
+  // this is the template half of a capability that already exists.
+  //
+  // ⚠️ **The drop zone feeds the SAME upload path the button does** — its
+  // `File` goes to `upload.file` and its `Files Dropped` to `upload.upload`,
+  // which is exactly the pair `picker` publishes. Everything downstream
+  // (`absorb`'s gallery-versus-replace decision, the save, the ACL) is reached
+  // through one node either way, so a picture dropped and a picture chosen
+  // cannot diverge — there is no second fold to keep in step.
+  {
+    id: 'dropZone',
+    type: 'Group',
+    label: 'Drop an image here',
+    parent: 'row',
+    // 🔴 `acceptedFileTypes` is not decoration. DEF-029's Failure Contract says
+    // a drop of nothing but rejected files fires `Files Rejected` INSTEAD of
+    // `Files Dropped` — so the filter is what makes the refusal arm exist at
+    // all. Left blank, this zone would hand a `.pdf` to `Upload File` and the
+    // person would get a broken thumbnail instead of a sentence.
+    //
+    // 🔴 The ports below are DYNAMIC — `addDynamicPorts(definition,
+    // 'acceptFileDrops = true', …)` — so every wire out of this node exists
+    // only while this parameter is `true`. That is a real hazard for the
+    // export (SBR-008's family), and it is why AC3's drive is taken on the
+    // DEPLOYED artefact and not on the editor's preview.
+    parameters: {
+      ...STACKED,
+      acceptFileDrops: true,
+      acceptedFileTypes: 'image/*',
+      flexDirection: 'column',
+      justifyContent: 'center',
+      alignItems: 'center',
+      paddingTop: 'var(--space-4)',
+      paddingBottom: 'var(--space-4)',
+      paddingLeft: 'var(--space-3)',
+      paddingRight: 'var(--space-3)',
+      borderStyle: 'dashed',
+      borderWidth: 'var(--border-1)',
+      borderColor: 'var(--border)',
+      borderRadius: 'var(--radius-md)',
+      backgroundColor: 'var(--muted)'
+    },
+    children: ['dropHint']
+  },
+  /**
+   * 🔴 **ONE Text whose WORDS change — never two Texts swapping `mounted`, and
+   * the drive is what settled it.**
+   *
+   * The first build did it the way the rest of this card does: an idle Text and
+   * a hover Text, each raised by a `mounted` wire, the pair made exclusive by an
+   * `Inverter`. It renders correctly and it leaves the zone STUCK.
+   *
+   * Measured on the running app, with `dragenter`/`dragleave` counted on the
+   * zone itself while a file was dragged in and walked back out without being
+   * dropped:
+   *
+   * | | |
+   * |---|---|
+   * | `dragenter` on the zone | **2** — one from outside, one as the pointer crossed into the newly-mounted hover label |
+   * | `dragleave` on the zone | **1** — the label the pointer was inside was UNMOUNTED, so its leave never fired |
+   * | the zone afterwards | **"Let go to upload"**, with no drag anywhere near it |
+   *
+   * `dragDepth` is left at 1, so `Is Dragging Over` stays true until the next
+   * drop resets it (`onDrop` sets the depth to 0 unconditionally, which is why
+   * this self-healed and was nearly missed).
+   *
+   * ⚠️ **This is not the runtime's bug.** Its counter exists precisely so a
+   * label inside the zone does not flicker it — the port's own comment says so.
+   * What it cannot survive is the label being *replaced* mid-drag: an element
+   * removed while the pointer is inside it never fires the leave that balances
+   * its enter. **Anything that mounts or unmounts a child of a drop zone in
+   * response to the drag will do this.**
+   *
+   * Changing a `Text`'s `text` does not touch element identity, so the DOM under
+   * the pointer is stable for the whole gesture and the enters and leaves pair
+   * up. The standing `text` keeps SB-018 (3): the sentence is right on the first
+   * frame, before `dropWords` has ever run.
+   */
+  {
+    id: 'dropHint',
+    type: 'Text',
+    label: 'Drop hint',
+    parent: 'dropZone',
+    parameters: {
+      ...STACKED,
+      text: 'Drop an image here',
+      fontSize: 'var(--text-sm)',
+      color: 'var(--muted-foreground)'
+    }
+  },
+  {
+    id: 'dropWords',
+    type: 'JavaScriptFunction',
+    label: 'Which sentence the drop zone is showing',
+    // Runs ON CHANGE of `over` — deliberately NOT guarded with
+    // `runOnChange-in-over: false`, unlike every write-back script on this card.
+    // Those guards exist because those nodes write into the model the row is fed
+    // from (D31); this one publishes a string to a Text and touches nothing, so
+    // a value-change run is the only trigger it can have. The hover has no
+    // signal to hang off.
+    parameters: {
+      functionScript:
+        "Outputs.text = Inputs.over ? 'Let go to upload' : 'Drop an image here';"
+    }
+  },
+  {
+    id: 'dropRefused',
+    type: 'Text',
+    label: 'That was not an image',
+    parent: 'row',
+    // ⚠️ The refusal is a SENTENCE, not a silence. A zone that takes `image/*`
+    // and says nothing when handed a `.pdf` is indistinguishable from a zone
+    // that is broken — which is the reading D54 cost eleven sessions.
+    parameters: {
+      ...STACKED,
+      text: 'That file is not an image — try a .png or a .jpg',
+      mounted: false,
+      fontSize: 'var(--text-sm)',
+      color: 'var(--destructive)'
+    }
+  },
+  {
+    id: 'dropRefusal',
+    type: 'Switch',
+    label: 'Was the last drop refused',
+    // 🔴 A `Switch` and not a flag on a Function, because the refusal has to
+    // turn OFF as well as on and a Function has one `run` — it cannot tell the
+    // two signals apart. `Switch`'s `on`/`off` are `valueChangedToTrue`
+    // inputs, which is what a signal wire delivers.
+    //
+    // ⚠️ **`isDragOver` clears it, not `Files Dropped`**, and the order is what
+    // makes that safe: `dragenter` raises `isDragOver` before the `drop` event
+    // fires either outcome, so a second drag clears the previous refusal on the
+    // way in and a refused drop still lands its own sentence afterwards.
+    // Clearing on `Files Dropped` alone would leave the line standing under a
+    // picture that uploaded fine.
+    parameters: { onFromStart: false }
   },
   {
     id: 'pickButton',
@@ -1504,6 +1655,28 @@ export const SECTION_ROW_WIRES = [
   // wires leave the same node in the same pass and `file` is a value the picker
   // sets before it reports.
   { fromId: 'picker', fromProperty: 'done', toId: 'upload', toProperty: 'upload' },
+
+  // ── SBR-007 AC3. The drop, into the SAME two ports the picker uses ────────
+  //
+  // 🔴 The pair, and it must be this pair. `droppedFile` is the value and
+  // `filesDropped` is the signal, and `flagFileDropOutputs` marks every value
+  // output dirty BEFORE the signal is sent (`node-shared-port-definitions.ts`
+  // §"Marks every value output dirty after a drop") — the same ordering
+  // `For Each` gives `itemOutput-…` before `itemOutputSignal-…`. A single
+  // signal carrying the file could not exist, and reading the file on a later
+  // pass would read the previous drop's.
+  { fromId: 'dropZone', fromProperty: 'droppedFile', toId: 'upload', toProperty: 'file' },
+  { fromId: 'dropZone', fromProperty: 'filesDropped', toId: 'upload', toProperty: 'upload' },
+
+  // The zone's three states. `isDragOver` is a boolean the runtime keeps with a
+  // drag-DEPTH counter, so it survives the hover crossing into a child — which
+  // is every real drop zone, because the label inside it is a child.
+  { fromId: 'dropZone', fromProperty: 'isDragOver', toId: 'dropWords', toProperty: 'in-over' },
+  { fromId: 'dropWords', fromProperty: 'out-text', toId: 'dropHint', toProperty: 'text' },
+
+  { fromId: 'dropZone', fromProperty: 'filesRejected', toId: 'dropRefusal', toProperty: 'on' },
+  { fromId: 'dropZone', fromProperty: 'isDragOver', toId: 'dropRefusal', toProperty: 'off' },
+  { fromId: 'dropRefusal', fromProperty: 'state', toId: 'dropRefused', toProperty: 'mounted' },
 
   // The words the author typed. `merge` no longer sees the uploaded file at all
   // — see the note on `absorb`.
