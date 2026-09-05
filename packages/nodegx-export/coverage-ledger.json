@@ -268,7 +268,7 @@
     {
       "typeName": "Model2",
       "status": "translated",
-      "note": "two forms: \"From repeater\" compiles away into the template's props (Tier 1.1); \"Specify explicitly\" with a literal Id is a store module (`src/stores/<id>.ts`, the Global Store shape \u2014 EXP-011 \u00a747), its `prop-*` reads the store's key reads. A wired Id, a write through its own property inputs, a wired Fetch and its signal outputs are refused by name"
+      "note": "two forms: \"From repeater\" compiles away into the template's props (Tier 1.1); \"Specify explicitly\" with a literal Id is a store module (`src/stores/<id>.ts`, the Global Store shape \u2014 EXP-011 \u00a747), its `prop-*` reads the store's key reads; values typed into its own `prop-*` inputs are a mount write (`useEffect`, EXP-011 \u00a771 \u2014 the runtime stores them at node creation, on every mount). A wired Id, a WIRED write through its own property inputs, a wired Fetch and its signal outputs are refused by name"
     },
     {
       "typeName": "NavigationClosePopup",

@@ -612,6 +612,199 @@ describe('§F — EXP-011 §69: a value typed into the Set Variable with nothing
   });
 });
 
+describe('§G — EXP-011 §71: a value typed into the Object node’s OWN property input is the runtime’s per-mount write — a mount effect in the host', () => {
+  /**
+   * `tests/fixtures/notice-desk` (session 94): an Object `board` with `prop-headline: 'Welcome'` and `prop-priority: 2`
+   * typed into its own property inputs and nothing wired over them; a Set Object Properties writing `headline` from an
+   * input on a button; a badge component whose own Object seeds `footer`. Measured in the runtime first ($SCRATCH
+   * runtime.log, session 94): nodescope.ts queues every authored parameter at creation, modelnode2.ts registers ANY
+   * `prop-*` input on demand, `userInputSetter` marks it dirty and `scheduleStore` writes it in the same pass — on
+   * every creation (mount), whatever the Properties list says, and a Set’s Do lands over it afterwards.
+   */
+  const NOTICE = path.join(__dirname, 'fixtures', 'notice-desk');
+  const noticeIr = parseProject(NOTICE, catalog);
+  const notice = emitApp(noticeIr, catalog);
+  const cloneNotice = (): ExportIR => structuredClone(noticeIr);
+  const nHome = (built: ReturnType<typeof emitApp>): string => built.files['src/pages/Home.tsx'];
+  const nBadge = (built: ReturnType<typeof emitApp>): string => built.files['src/components/NoticeBadge.tsx'];
+  const nModule = (built: ReturnType<typeof emitApp>): string => built.files['src/stores/board.ts'];
+  const BADGE_PATH = 'Components/NoticeBadge';
+  const SEED_COMMENT = '  // Board object — its authored property values are stored on every mount of this component (modelnode2.ts: each prop-* setter runs at node creation and schedules a store).';
+  const SEED_EFFECT = `${SEED_COMMENT}\n  useEffect(() => {\n    board.set({ headline: 'Welcome', priority: 2 });\n  }, []);\n`;
+  const noticeSeeds = (source: ExportIR, componentPath: string) =>
+    planProject(source, new CatalogIndex(catalog)).plans.find((p) => p.path === componentPath)!.objectSeeds;
+
+  test('G1 the fixture: one mount effect with the patch, printed after the state hooks and before the render; the module types the string key string and the number key unknown, and names the seed; nothing refused; the app typechecks', () => {
+    expect(nHome(notice)).toContain(SEED_EFFECT);
+    expect(nHome(notice).match(/useEffect\(/g)).toHaveLength(1);
+    expect(nHome(notice)).toContain("import { useEffect, useState } from 'react';");
+    expect(nHome(notice).indexOf('useState<string>')).toBeLessThan(nHome(notice).indexOf(SEED_COMMENT));
+    expect(nHome(notice).indexOf(SEED_COMMENT)).toBeLessThan(nHome(notice).indexOf('return ('));
+    expect(nModule(notice)).toContain('  headline?: string;\n');
+    expect(nModule(notice)).toContain('  priority?: unknown;\n');
+    expect(nModule(notice)).toContain(" * Seeded with { headline: 'Welcome', priority: 2 } by \"Board object\" (Model2 `board` on /Pages/Home) on every mount of its component.\n");
+    expect(nModule(notice)).toContain(' * Read by "Board object" (Model2 `board` on /Pages/Home).\n');
+    // The reads: the string key binds bare, the number key through the widened sink; the Set’s write is untouched.
+    expect(nHome(notice)).toContain('<p className={styles.headlineText}>{headline}</p>');
+    expect(nHome(notice)).toContain("<p className={styles.priorityText}>{String(priority ?? '')}</p>");
+    expect(nHome(notice)).toContain('onClick={() => board.set({ headline: notice })}');
+    expect(notice.notes).toEqual(['App: router shell — emitted as src/App.tsx by the scaffold']);
+    expect(dispositionOf(noticeIr, HOME, 'board')).toEqual({ kind: 'collapsed', into: 'src/stores/board.ts' });
+    expect(noticeSeeds(noticeIr, HOME)).toEqual([{ nodeId: 'board', storeName: 'board', entries: [{ key: 'headline', value: 'Welcome' }, { key: 'priority', value: 2 }], comment: SEED_COMMENT.trim().slice(3) }]);
+    expect(typecheckEmittedApp(notice)).toEqual([]);
+  });
+
+  test('G2 the literal types the key: a boolean writes as itself and types unknown; a string on the number key promotes it to string and the read binds bare — and both apps typecheck', () => {
+    const bool = cloneNotice();
+    setParam(nodeOf(bool, HOME, 'board'), 'prop-priority', lit(true));
+    const builtBool = emitApp(bool, catalog);
+    expect(nHome(builtBool)).toContain("    board.set({ headline: 'Welcome', priority: true });\n");
+    expect(nModule(builtBool)).toContain('  priority?: unknown;\n');
+    expect(typecheckEmittedApp(builtBool)).toEqual([]);
+    const str = cloneNotice();
+    setParam(nodeOf(str, HOME, 'board'), 'prop-priority', lit('high'));
+    const builtStr = emitApp(str, catalog);
+    expect(nHome(builtStr)).toContain("    board.set({ headline: 'Welcome', priority: 'high' });\n");
+    expect(nModule(builtStr)).toContain('  priority?: string;\n');
+    expect(nHome(builtStr)).toContain('<p className={styles.priorityText}>{priority}</p>');
+    expect(typecheckEmittedApp(builtStr)).toEqual([]);
+  });
+
+  test('G3 entries are in PARAMETER order — the order the runtime queues them and writes dirtyValues in — not the Properties list’s order (§68’s Set iterates its list; the Object never reads its list on the write path)', () => {
+    const ir = cloneNotice();
+    const node = nodeOf(ir, HOME, 'board');
+    const priority = node.parameters.find((p) => p.name === 'prop-priority')!;
+    node.parameters = [priority, ...node.parameters.filter((p) => p !== priority)];
+    expect(node.parameters.find((p) => p.name === 'properties')!.value).toEqual(lit('headline,priority,footer'));
+    expect(nHome(emitApp(ir, catalog))).toContain("    board.set({ priority: 2, headline: 'Welcome' });\n");
+  });
+
+  test('G4 a wire into the SAME property input: the node is refused by §47’s sentence, unchanged; no effect is printed; and the literal does not type the key (discovery skips it under a wire, so a key another component reads is not typed by a value the runtime would overwrite)', () => {
+    const ir = cloneNotice();
+    dropNodes(ir, HOME, ['postNotice']); // the Set was headline’s other (string) source — remove it so the literal alone would type the key
+    wire(ir, HOME, 'noteInput', 'onTextChanged', 'board', 'prop-headline');
+    expect(reasonFor(ir, HOME, 'board')).toBe('Object board: its "headline" property input is wired — a write through the Object node itself is not translated in this slice; a Set Object Properties naming "board" is');
+    const built = emitApp(ir, catalog);
+    expect(nHome(built)).not.toContain('useEffect');
+    expect(nHome(built)).not.toContain("'Welcome'");
+    expect(nModule(built)).toContain('  headline?: unknown;\n');
+    // The refused node’s OTHER literal is still registered (discovery is blind to the plan’s refusal — §47’s convention for a
+    // refused Set’s "Written by" line, §69.5’s for a refused Set Variable), so the module still says so; headline is not in it.
+    expect(nModule(built)).not.toContain("Seeded with { headline");
+    expect(nModule(built)).toContain(" * Seeded with { priority: 2 } by \"Board object\" (Model2 `board` on /Pages/Home) on every mount of its component.\n");
+    expect(nBadge(built)).toContain("<p className={styles.badgeText}>{String(headline ?? '')}</p>");
+    // The presence control: the same graph with the wire gone types headline string from the literal alone.
+    const control = cloneNotice();
+    dropNodes(control, HOME, ['postNotice']);
+    expect(nModule(emitApp(control, catalog))).toContain('  headline?: string;\n');
+  });
+
+  test('G5 a key the Properties list does not name is written and earned all the same — registerInputIfNeeded registers any prop-* (runtime Q1d) — with no note', () => {
+    const ir = cloneNotice();
+    setParam(nodeOf(ir, HOME, 'board'), 'prop-extra', lit('x'));
+    const built = emitApp(ir, catalog);
+    expect(nHome(built)).toContain("    board.set({ headline: 'Welcome', priority: 2, extra: 'x' });\n");
+    expect(nModule(built)).toContain('  extra?: string;\n');
+    expect(built.notes).toEqual(['App: router shell — emitted as src/App.tsx by the scaffold']);
+    expect(typecheckEmittedApp(built)).toEqual([]);
+  });
+
+  test('G6 a value that is not a string, number or boolean literal is named in a note and not written — the node still collapses and its reads still translate; the other key is still seeded', () => {
+    const ir = cloneNotice();
+    setParam(nodeOf(ir, HOME, 'board'), 'prop-headline', { kind: 'expression', source: 'Date.now()' } as unknown as ParamValue);
+    const built = emitApp(ir, catalog);
+    expect(built.notes).toContain('Pages/Home: node board (Model2): its authored "headline" property value is not a string, number or boolean literal — not written into "board" at mount');
+    expect(nHome(built)).toContain('    board.set({ priority: 2 });\n');
+    expect(nHome(built)).not.toContain('Date.now()');
+    expect(dispositionOf(ir, HOME, 'board')).toEqual({ kind: 'collapsed', into: 'src/stores/board.ts' });
+    expect(nHome(built)).toContain('<p className={styles.headlineText}>{headline}</p>');
+    const json = cloneNotice();
+    setParam(nodeOf(json, HOME, 'board'), 'prop-priority', { kind: 'json', value: { a: 1 } } as unknown as ParamValue);
+    expect(emitApp(json, catalog).notes).toContain('Pages/Home: node board (Model2): its authored "priority" property value is not a string, number or boolean literal — not written into "board" at mount');
+  });
+
+  test('G7 the control — the literals gone: no effect, no useEffect import, no seed line; the Set’s wire still types headline string; priority falls to the writer-less unknown; footer read in Home falls to String()', () => {
+    const ir = cloneNotice();
+    dropParam(nodeOf(ir, HOME, 'board'), 'prop-headline');
+    dropParam(nodeOf(ir, HOME, 'board'), 'prop-priority');
+    dropParam(nodeOf(ir, BADGE_PATH, 'badge-board'), 'prop-footer');
+    const built = emitApp(ir, catalog);
+    expect(nHome(built)).not.toContain('useEffect');
+    expect(nBadge(built)).not.toContain('useEffect');
+    expect(nBadge(built)).toContain("import { useStore } from '@nodegx/core/react';");
+    expect(nModule(built)).not.toContain('Seeded with');
+    expect(nModule(built)).toContain('  headline?: string;\n');
+    expect(nModule(built)).toContain('  priority?: unknown;\n');
+    expect(nModule(built)).toContain('  footer?: unknown;\n');
+    expect(nHome(built)).toContain("<p className={styles.footerText}>{String(footer ?? '')}</p>");
+    expect(nHome(built)).toContain('onClick={() => board.set({ headline: notice })}');
+    expect(noticeSeeds(ir, HOME)).toEqual([]);
+    expect(typecheckEmittedApp(built)).toEqual([]);
+  });
+
+  test('G8 two components, two effects, one module: the badge seeds footer in its own file, earns useEffect and the module import on its own, and the writers list in component order', () => {
+    expect(nBadge(notice)).toContain(`${SEED_COMMENT}\n  useEffect(() => {\n    board.set({ footer: 'Posted by the desk' });\n  }, []);\n`);
+    expect(nBadge(notice)).toContain("import { useEffect } from 'react';");
+    expect(nBadge(notice)).toContain("import { board } from '../stores/board';");
+    expect(nModule(notice)).toContain('  footer?: string;\n');
+    expect(nHome(notice)).toContain('<p className={styles.footerText}>{footer}</p>');
+    const seededLines = nModule(notice).split('\n').filter((l) => l.includes('Seeded with'));
+    expect(seededLines).toEqual([
+      " * Seeded with { footer: 'Posted by the desk' } by \"Board object\" (Model2 `badge-board` on /Components/NoticeBadge) on every mount of its component.",
+      " * Seeded with { headline: 'Welcome', priority: 2 } by \"Board object\" (Model2 `board` on /Pages/Home) on every mount of its component."
+    ]);
+    expect(noticeSeeds(noticeIr, BADGE_PATH)).toEqual([{ nodeId: 'badge-board', storeName: 'board', entries: [{ key: 'footer', value: 'Posted by the desk' }], comment: SEED_COMMENT.trim().slice(3) }]);
+  });
+
+  test('G9 a component that only seeds (its read wire gone) still imports the module — the write earns the import alone (B12’s rule for the effect)', () => {
+    const ir = cloneNotice();
+    unwire(ir, BADGE_PATH, 'badge-board:prop-headline->badge-text:text');
+    const built = emitApp(ir, catalog);
+    expect(nBadge(built)).toContain("import { board } from '../stores/board';");
+    expect(nBadge(built)).toContain("    board.set({ footer: 'Posted by the desk' });\n");
+    expect(nBadge(built)).not.toContain('useStore(');
+  });
+
+  test('G10 the refusals around the node stand as §47 wrote them, with the literals typed in: a wired Fetch, a consumed signal, a wired Id — none prints an effect', () => {
+    const fetch = cloneNotice();
+    addNode(componentOf(fetch, HOME), { id: 'refetch', type: 'net.noodl.controls.button', parameters: [{ name: 'label', value: lit('Refetch') }], parent: 'shell' } as never);
+    componentOf(fetch, HOME).nodes.find((n) => n.id === 'shell')!.children!.push('refetch');
+    wire(fetch, HOME, 'refetch', 'onClick', 'board', 'fetch', 'signal');
+    expect(reasonFor(fetch, HOME, 'board')).toContain('its Fetch is wired');
+    expect(nHome(emitApp(fetch, catalog))).not.toContain('useEffect');
+    const wiredId = cloneNotice();
+    wire(wiredId, HOME, 'noteInput', 'onTextChanged', 'board', 'modelId');
+    expect(reasonFor(wiredId, HOME, 'board')).toBeDefined();
+    expect(nHome(emitApp(wiredId, catalog))).not.toContain("'Welcome'");
+    expect(noticeSeeds(wiredId, HOME)).toEqual([]);
+  });
+
+  test('G11 profile-desk is untouched by §71: no Object there carries a typed-in property, so no effect, no seed line — and the corpus has no other Object with one (the presence lives in notice-desk alone)', () => {
+    expect(home(app)).not.toContain('useEffect');
+    expect(badge(app)).not.toContain('useEffect');
+    expect(module_(app)).not.toContain('Seeded with');
+    const fixtures = fs.readdirSync(path.join(__dirname, 'fixtures')).filter((f) => f !== 'notice-desk');
+    const carriers: string[] = [];
+    for (const name of fixtures) {
+      const dir = path.join(__dirname, 'fixtures', name);
+      if (!fs.existsSync(path.join(dir, 'nodegx.project.json'))) continue;
+      const ir = parseProject(dir, catalog);
+      for (const component of ir.components) {
+        for (const node of component.nodes) {
+          if (node.type === 'Model2' && node.parameters.some((p) => p.name.startsWith('prop-'))) carriers.push(`${name}:${component.path}:${node.id}`);
+        }
+      }
+    }
+    expect(carriers).toEqual([]);
+  });
+
+  test('G12 emission of notice-desk is deterministic, and its ledger row names the mount write', () => {
+    expect(emitApp(cloneNotice(), catalog).files).toEqual(notice.files);
+    const ledger = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'coverage-ledger.json'), 'utf8'));
+    expect(ledger.entries.find((e: { typeName: string }) => e.typeName === 'Model2').note).toContain('values typed into its own `prop-*` inputs are a mount write (`useEffect`, EXP-011 §71');
+  });
+});
+
 describe('§D — the fixture, whole', () => {
   test('D1 nothing refused: every node has a rule, and the only note is the router shell', () => {
     expect(app.notes).toEqual(['App: router shell — emitted as src/App.tsx by the scaffold']);

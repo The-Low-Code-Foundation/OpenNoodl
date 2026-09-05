@@ -1,0 +1,13 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "n0t1ce00-4e1a-4b3e-9f2a-1a2b3c4d7e03",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "badge-board",
+      "fromProperty": "prop-headline",
+      "toId": "badge-text",
+      "toProperty": "text"
+    }
+  ]
+}

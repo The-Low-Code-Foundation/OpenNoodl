@@ -91,6 +91,7 @@ import {
   isTextInputType,
   OBJECT_TYPE,
   objectIdOf,
+  objectSeedsOf,
   payloadKeysOf,
   SET_OBJECT_PROPERTIES_TYPE,
   setPropertiesOf,
@@ -3287,6 +3288,33 @@ export function variableSeedAction(seed: VariableSeedPlan): HandlerAction {
   return { kind: 'store-set', variableName: seed.variableName, expr: { kind: 'literal', value: seed.value } };
 }
 
+/**
+ * EXP-011 §71. An `Object` node whose OWN `prop-<key>` inputs carry typed-in values. The runtime
+ * registers any `prop-*` input on demand and queues every authored parameter at node creation
+ * (nodescope.ts); `userInputSetter` marks the key dirty and `scheduleStore` writes it into the
+ * record in the same pass (modelnode2.ts) — so the node rewrites those keys on EVERY mount of the
+ * component that holds it, and a Set's Do lands over them afterwards (measured, session 94). §67's
+ * shape one construct over: a mount effect in the host, one patch per node, never a module-level
+ * seed (which would boot once, never reset, and run for a component nothing mounted).
+ */
+export interface ObjectSeedPlan {
+  nodeId: string;
+  storeName: string;
+  /** Parameter order — the order the runtime writes `dirtyValues` in. */
+  entries: Array<{ key: string; value: string | number | boolean }>;
+  comment: string;
+}
+
+/** The seed as the action it prints — one patch, read off the plan so the import sweep and the emitter cannot disagree. */
+export function objectSeedAction(seed: ObjectSeedPlan): HandlerAction {
+  return {
+    kind: 'object-set',
+    storeName: seed.storeName,
+    entries: seed.entries.map((e) => ({ key: e.key, expr: { kind: 'literal', value: e.value } })),
+    then: []
+  };
+}
+
 /** A `Record` whose `Fetch` is unwired (EXP-011 §43): the read, run from an effect keyed on its Id. */
 export interface RecordEffectPlan {
   nodeId: string;
@@ -3552,6 +3580,8 @@ export interface ComponentPlan {
   recordEffects: RecordEffectPlan[];
   /** EXP-011 §67. Variables with an authored Value, node order — one mount effect each. */
   variableSeeds: VariableSeedPlan[];
+  /** EXP-011 §71. Object nodes with values typed into their own property inputs, node order — one mount effect each. */
+  objectSeeds: ObjectSeedPlan[];
   /** EXP-011 §48. CSS Definitions, node order — one module constant + one mount effect each. */
   styleSheets: StyleSheetPlan[];
   /** EXP-011 §49. The States nodes that translated, registration order. */
@@ -3893,6 +3923,7 @@ function planComponent(
     branchEffects: [],
     recordEffects: [],
     variableSeeds: [],
+    objectSeeds: [],
     valueChangedEffects: [],
     styleSheets: [],
     statesMachines: [],
@@ -4712,6 +4743,29 @@ function planComponent(
       }
       objectStoreNodes.set(node.id, objectStore as StorePlan);
       dispositions[node.id] = { kind: 'collapsed', into: `src/stores/${(objectStore as StorePlan).exportName}.ts` };
+      // EXP-011 §71. Values typed into the node's OWN property inputs are the runtime's per-mount write
+      // (`objectSeedsOf` — the one function discovery types the keys by, so the patch and the interface
+      // cannot disagree): a mount effect in the host. A wired prop input never reaches here (the gate
+      // above refuses the node by name); a value that is not a string, number or boolean literal has no
+      // `object-set` form and is named in a note while the node's reads still translate.
+      {
+        const store = objectStore as StorePlan;
+        for (const param of node.parameters) {
+          if (!param.name.startsWith('prop-') || param.name.length === 'prop-'.length) continue;
+          const value = param.value.kind === 'literal' ? param.value.value : undefined;
+          if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') continue;
+          notes.push(`node ${node.id} (Model2): its authored "${param.name.slice('prop-'.length)}" property value is not a string, number or boolean literal — not written into "${store.name}" at mount`);
+        }
+        const seeds = objectSeedsOf(node, wiredPorts);
+        if (seeds.length > 0) {
+          plan.objectSeeds.push({
+            nodeId: node.id,
+            storeName: store.name,
+            entries: seeds,
+            comment: `${node.authoredLabel ?? 'Object'} — its authored property values are stored on every mount of this component (modelnode2.ts: each prop-* setter runs at node creation and schedules a store).`
+          });
+        }
+      }
       continue;
     }
     const gate = model2ForeachGate(node);

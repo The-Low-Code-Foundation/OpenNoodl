@@ -1,0 +1,174 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "n0t1ce00-4e1a-4b3e-9f2a-1a2b3c4d7e02",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "page",
+      "type": "Page",
+      "label": "Home",
+      "children": [
+        "shell"
+      ],
+      "parameters": {
+        "title": "Notice Desk",
+        "urlPath": "home"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "shell",
+      "type": "Group",
+      "label": "Shell",
+      "parent": "page",
+      "children": [
+        "heading",
+        "noteInput",
+        "postButton",
+        "headlineText",
+        "priorityText",
+        "footerText",
+        "badge"
+      ],
+      "parameters": {
+        "flexDirection": "column",
+        "alignItems": "flex-start",
+        "rowGap": "var(--space-4)",
+        "paddingTop": "var(--space-10)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "heading",
+      "type": "Text",
+      "label": "Heading",
+      "parent": "shell",
+      "parameters": {
+        "fontSize": "var(--text-3xl)",
+        "color": "var(--foreground)",
+        "text": "Notice Desk",
+        "fontWeight": "var(--font-semibold)"
+      },
+      "x": 160,
+      "y": 280
+    },
+    {
+      "id": "noteInput",
+      "type": "net.noodl.controls.textinput",
+      "label": "Notice",
+      "parent": "shell",
+      "parameters": {
+        "placeholder": "New headline",
+        "borderColor": "var(--border)",
+        "backgroundColor": "var(--background)",
+        "borderRadius": "var(--radius-md)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "fontSize": "var(--text-base)",
+        "paddingLeft": "var(--space-3)",
+        "paddingRight": "var(--space-3)",
+        "paddingTop": "var(--space-2)",
+        "paddingBottom": "var(--space-2)"
+      },
+      "x": 160,
+      "y": 400
+    },
+    {
+      "id": "postButton",
+      "type": "net.noodl.controls.button",
+      "label": "Post",
+      "parent": "shell",
+      "parameters": {
+        "label": "Post notice",
+        "backgroundColor": "var(--primary)",
+        "color": "var(--primary-foreground)",
+        "borderRadius": "var(--radius-full)",
+        "paddingLeft": "var(--space-4)",
+        "paddingRight": "var(--space-4)",
+        "paddingTop": "var(--space-2)",
+        "paddingBottom": "var(--space-2)"
+      },
+      "x": 160,
+      "y": 520
+    },
+    {
+      "id": "headlineText",
+      "type": "Text",
+      "label": "Headline",
+      "parent": "shell",
+      "parameters": {
+        "fontSize": "var(--text-xl)",
+        "color": "var(--foreground)"
+      },
+      "x": 160,
+      "y": 640
+    },
+    {
+      "id": "priorityText",
+      "type": "Text",
+      "label": "Priority",
+      "parent": "shell",
+      "parameters": {
+        "fontSize": "var(--text-base)",
+        "color": "var(--muted-foreground)"
+      },
+      "x": 160,
+      "y": 760
+    },
+    {
+      "id": "footerText",
+      "type": "Text",
+      "label": "Footer",
+      "parent": "shell",
+      "parameters": {
+        "fontSize": "var(--text-sm)",
+        "color": "var(--muted-foreground)"
+      },
+      "x": 160,
+      "y": 880
+    },
+    {
+      "id": "badge",
+      "type": "/Components/NoticeBadge",
+      "label": "Notice badge",
+      "parent": "shell",
+      "x": 160,
+      "y": 1000
+    },
+    {
+      "id": "board",
+      "type": "Model2",
+      "label": "Board object",
+      "x": 520,
+      "y": 640,
+      "parameters": {
+        "modelId": "board",
+        "properties": "headline,priority,footer",
+        "prop-headline": "Welcome",
+        "prop-priority": 2
+      },
+      "metadata": {
+        "comment": "Id Source left at its default (Specify explicitly). \"headline\" and \"priority\" have values typed into the Object's OWN property inputs and nothing wired over them: the runtime queues each authored parameter into the node at creation (nodescope.ts), the prop-* setter marks it dirty and scheduleStore writes it into the record in the same pass — on every mount of this page (EXP-011 §71). The editor's panel hides these ports (allowConnectionsOnly); the MCP writes them with an info notice."
+      }
+    },
+    {
+      "id": "postNotice",
+      "type": "SetModelProperties",
+      "label": "Post notice",
+      "x": 520,
+      "y": 400,
+      "parameters": {
+        "idSource": "explicit",
+        "modelId": "board",
+        "properties": "headline"
+      }
+    }
+  ],
+  "visualRoots": [
+    "page"
+  ]
+}

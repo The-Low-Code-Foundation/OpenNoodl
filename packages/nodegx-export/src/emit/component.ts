@@ -40,7 +40,8 @@ import {
   NO_ANCESTOR_WRITE_MESSAGE,
   PARENT_COMPONENT_OBJECT_TYPE,
   PAGE_STACK_ENTRY_PROP,
-  variableSeedAction
+  variableSeedAction,
+  objectSeedAction
 } from '../analyze/plan';
 import { ExportIR, ITEM_OUTPUT_SIGNAL, NodeIR } from '../ir/types';
 import { KitBinding, tsTypeOf as kitPortTsType } from './kits';
@@ -771,6 +772,8 @@ export function emitComponent(
     ...plan.recordEffects.map((e) => e.action),
     // EXP-011 §67. A Variable's authored Value is a store write run from a mount effect — it earns its import here.
     ...plan.variableSeeds.map(variableSeedAction),
+    // EXP-011 §71. An Object's own authored property values are a store write run from a mount effect — it earns its import here.
+    ...plan.objectSeeds.map(objectSeedAction),
     // EXP-011 §53. A Run Tasks' listener chains, and a template's start chain (a mount effect), are chains like any other.
     ...plan.runTasks.flatMap((r) => Object.values(r.listeners).flatMap((chain) => chain ?? [])),
     ...(plan.task?.actions ?? []),
@@ -3915,6 +3918,8 @@ export function emitComponent(
       plan.recordEffects.length > 0 ||
       // EXP-011 §67. A Variable's authored Value is a mount effect.
       plan.variableSeeds.length > 0 ||
+      // EXP-011 §71. An Object's own authored property values are a mount effect.
+      plan.objectSeeds.length > 0 ||
       // EXP-011 §48. A CSS Definition is a mount effect.
       plan.styleSheets.length > 0 ||
       // EXP-011 §49. A States' wired State input is an effect keyed on the read.
@@ -6290,6 +6295,11 @@ export function emitComponent(
   // rewrites the variable — a mount effect, printed before the mirrors so a mirror reading the variable follows it.
   for (const seed of plan.variableSeeds) {
     body.push(`  // ${seed.comment}`, '  useEffect(() => {', ...effectBody([variableSeedAction(seed)], 4), '  }, []);', '');
+  }
+  // EXP-011 §71. An Object node's own authored property values: the runtime writes them into the record at node creation,
+  // so every mount of this component rewrites those keys — one patch per node, with the variable seeds, before the mirrors.
+  for (const seed of plan.objectSeeds) {
+    body.push(`  // ${seed.comment}`, '  useEffect(() => {', ...effectBody([objectSeedAction(seed)], 4), '  }, []);', '');
   }
   // EXP-011 §60. A Component Object's mirror wires: `value-<key>` is a continuous input (every delivery stores at
   // frame end — componentobject.ts scheduleStore), so each is a sync effect on the record, keyed on its source.

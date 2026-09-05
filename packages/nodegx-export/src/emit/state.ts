@@ -111,9 +111,14 @@ function declarersComment(store: StorePlan): string {
     ...store.declarers.map(
       (d) => `${verb} ${d.label !== undefined ? `"${d.label}" ` : ''}(${d.nodeType} \`${d.nodeId}\` on /${d.componentPath}).`
     ),
-    ...store.writers.map(
-      (w) => `Written by ${w.label !== undefined ? `"${w.label}" ` : ''}(${w.nodeType} \`${w.nodeId}\` on /${w.componentPath}).`
-    )
+    ...store.writers.map((w) => {
+      const who = `${w.label !== undefined ? `"${w.label}" ` : ''}(${w.nodeType} \`${w.nodeId}\` on /${w.componentPath})`;
+      // EXP-011 §71. An Object node's own authored property values, stored on every mount of its component.
+      if (w.seeds !== undefined) {
+        return `Seeded with { ${w.seeds.map((seed) => `${propKey(seed.key)}: ${tsLiteral(seed.value)}`).join(', ')} } by ${who} on every mount of its component.`;
+      }
+      return `Written by ${who}.`;
+    })
   ];
   if (lines.length === 0) {
     return store.origin === 'object'

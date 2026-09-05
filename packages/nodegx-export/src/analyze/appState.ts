@@ -29,6 +29,14 @@ export interface VariableWriter {
    * store (variablenode2.ts), so the node writes the variable on every mount of its component.
    */
   seed?: string | number | boolean;
+  /**
+   * EXP-011 §71. Set when the writer is an `Object` node carrying values typed into its OWN
+   * `prop-<key>` inputs: the runtime registers any `prop-*` input on demand and queues every
+   * authored parameter into the node at creation (nodescope.ts), the setter marks the key dirty
+   * and `scheduleStore` writes it into the record in the same pass (modelnode2.ts) — so the node
+   * writes these keys on every mount of its component. Parameter order, as the runtime writes them.
+   */
+  seeds?: Array<{ key: string; value: string | number | boolean }>;
 }
 
 export interface VariablePlan {
@@ -123,6 +131,28 @@ export function objectIdOf(node: NodeIR, wiredPorts: Set<string>): string | unde
  * is load-bearing on the write side: `_pushInputValues` filters the keys it writes by this list
  * (`validProperties`), so a wired `prop-<x>` whose `x` is not listed is silently not written.
  */
+/**
+ * EXP-011 §71. The values typed into an `Object` node's OWN `prop-<key>` inputs with nothing wired
+ * over them, in parameter order — what the runtime writes into the record at node creation
+ * (nodescope.ts queues every authored parameter; modelnode2.ts `userInputSetter` ⇒ dirty ⇒
+ * `scheduleStore` ⇒ `model.set`), on every mount of the holding component. The node's Properties
+ * list gates nothing here: `registerInputIfNeeded` registers ANY `prop-*` (measured, session 94).
+ * Under a wire on the same port the literal is not here (the wire's arrivals land over it, and
+ * plan.ts refuses the node by name); a non-primitive value is not here either — plan.ts notes it.
+ * One function for both files so discovery (the key's type) and the plan (the write) agree.
+ */
+export function objectSeedsOf(node: NodeIR, wiredPorts: Set<string>): Array<{ key: string; value: string | number | boolean }> {
+  const seeds: Array<{ key: string; value: string | number | boolean }> = [];
+  for (const param of node.parameters) {
+    if (!param.name.startsWith('prop-') || param.name.length === 'prop-'.length) continue;
+    if (wiredPorts.has(`${node.id}:${param.name}`)) continue;
+    const value = literalPrimitive(node, param.name);
+    if (value === undefined) continue;
+    seeds.push({ key: param.name.slice('prop-'.length), value });
+  }
+  return seeds;
+}
+
 export function setPropertiesOf(node: NodeIR): string[] {
   const raw = node.parameters.find((p) => p.name === 'properties')?.value;
   if (raw?.kind !== 'literal' || typeof raw.value !== 'string') return [];
@@ -572,6 +602,20 @@ export function collectAppState(ir: ExportIR): AppStateRegistry {
             for (const wire of component.connections) {
               if (wire.fromId === node.id && wire.fromProperty.startsWith('prop-')) {
                 ensureStoreKey(plan, wire.fromProperty.slice('prop-'.length));
+              }
+            }
+            // EXP-011 §71. A value typed into the Object's OWN `prop-<key>` input is written into the
+            // record at node creation, on every mount (`objectSeedsOf`) — so the node is a writer too
+            // (the module's "Seeded with" line) and the literal is the key's source, typed as itself:
+            // a string ⇒ `string`, anything else ⇒ `unknown` (§67's rule, one construct over). The key
+            // is earned by the write alone — the runtime never consults the Properties list here.
+            const seeds = objectSeedsOf(node, wiredPortsOf(component));
+            if (seeds.length > 0) {
+              plan.writers.push({ ...writerRef(component, node), seeds });
+              for (const seed of seeds) {
+                ensureStoreKey(plan, seed.key);
+                const mapKey = `${id}\u0000${seed.key}`;
+                storeKeySources.set(mapKey, [...(storeKeySources.get(mapKey) ?? []), { component, fromNode: undefined, fromProperty: `prop-${seed.key}`, literal: seed.value }]);
               }
             }
           } else {

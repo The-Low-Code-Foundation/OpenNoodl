@@ -1,0 +1,9 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "n0t1ce00-4e1a-4b3e-9f2a-1a2b3c4d7e02",
+  "name": "Home",
+  "path": "/Pages/Home",
+  "type": "page",
+  "modified": "2026-09-05T09:00:00.000Z",
+  "description": "EXP-011 \u00a771 fixture: an Object with a literal Id (\"board\") whose OWN property inputs carry typed-in values (a string and a number) — the runtime writes them at node creation, on every mount — read into Texts; a Set Object Properties with the same Id written from an input on a button; the badge component's own Object seeds a third key in a second file."
+}

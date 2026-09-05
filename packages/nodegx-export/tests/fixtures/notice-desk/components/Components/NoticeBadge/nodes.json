@@ -1,0 +1,56 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "n0t1ce00-4e1a-4b3e-9f2a-1a2b3c4d7e03",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "badge-root",
+      "type": "Group",
+      "label": "Badge",
+      "children": [
+        "badge-text"
+      ],
+      "parameters": {
+        "paddingLeft": "var(--space-3)",
+        "paddingRight": "var(--space-3)",
+        "paddingTop": "var(--space-2)",
+        "paddingBottom": "var(--space-2)",
+        "backgroundColor": "var(--muted)",
+        "borderRadius": "var(--radius-md)"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "badge-text",
+      "type": "Text",
+      "label": "Badge headline",
+      "parent": "badge-root",
+      "parameters": {
+        "fontSize": "var(--text-sm)",
+        "color": "var(--foreground)"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "badge-board",
+      "type": "Model2",
+      "label": "Board object",
+      "x": 350,
+      "y": 160,
+      "parameters": {
+        "idSource": "explicit",
+        "modelId": "board",
+        "properties": "headline,footer",
+        "prop-footer": "Posted by the desk"
+      },
+      "metadata": {
+        "comment": "\"footer\" is typed into this Object's own property input in a SECOND component: a second mount effect in a second file, into the one shared module (EXP-011 §71)."
+      }
+    }
+  ],
+  "visualRoots": [
+    "badge-root"
+  ]
+}

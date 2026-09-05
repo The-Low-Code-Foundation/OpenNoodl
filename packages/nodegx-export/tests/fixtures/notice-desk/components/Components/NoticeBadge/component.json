@@ -1,0 +1,9 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "n0t1ce00-4e1a-4b3e-9f2a-1a2b3c4d7e03",
+  "name": "NoticeBadge",
+  "path": "/Components/NoticeBadge",
+  "type": "visual",
+  "modified": "2026-09-05T09:00:00.000Z",
+  "description": "EXP-011 \u00a771 fixture: a second component whose own Object names the same record and seeds a third key (\"footer\") from a typed-in value — a second mount effect in a second file, one shared module."
+}
