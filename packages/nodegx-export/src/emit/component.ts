@@ -2790,6 +2790,14 @@ export function emitComponent(
                 `${inner}if (${SIMPLE_REF.test(args[0]) ? `!${args[0]}` : `!(${args[0]})`}) throw new Error('Missing Record Id');`
               ]
             : []),
+          // EXP-011 §62. The relation pair's own "specified" sentences, in `validateInputs`' order — each
+          // binds a local first so the call below is narrowed (a second `.get()` would not be), and the
+          // call reads the local, as the runtime reads the value its setter stored.
+          ...(action.guards ?? []).flatMap((g) => {
+            const bound = `${inner}const ${g.local} = ${args[g.index]};`;
+            args[g.index] = g.local;
+            return [bound, `${inner}if (!${g.local}) throw new Error(${tsLiteral(g.message)});`];
+          }),
           `${inner}await ${action.fnName}(${args.join(', ')});`,
           // EXP-011 §44 — Request Magic Link clears its Error on success, before `done`
           // (`requestmagiclink.ts`); no other verb in either family does.
@@ -6234,6 +6242,9 @@ const API_CALL_ERROR_CODES: Record<string, string> = {
   NewDbModelProperties: 'record/storage-op-failed',
   SetDbModelProperties: 'record/storage-op-failed',
   DeleteDbModelProperties: 'record/storage-op-failed',
+  // EXP-011 §62. The relation pair shares the family's one funnel (`setError`, STORAGE_OP_ERROR_CODE).
+  AddDbModelRelation: 'record/storage-op-failed',
+  RemoveDbModelRelation: 'record/storage-op-failed',
   'net.noodl.user.LogIn': 'user/log-in-failed',
   'net.noodl.user.LogOut': 'user/log-out-failed',
   'net.noodl.user.SignUp': 'user/sign-up-failed',

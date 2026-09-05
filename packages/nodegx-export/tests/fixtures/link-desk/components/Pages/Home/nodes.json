@@ -1,0 +1,237 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "1d3a7c0e-6b2f-4a9d-8e5c-3f1b2a4c6d03",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "1d3a7c0e-6b2f-4a9d-8e5c-3f1b2a4c6d05",
+      "type": "Page",
+      "label": "Home",
+      "parameters": {
+        "title": "Link Desk",
+        "urlPath": "home"
+      },
+      "children": [
+        "shell"
+      ],
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "shell",
+      "type": "Group",
+      "label": "Desk",
+      "parent": "1d3a7c0e-6b2f-4a9d-8e5c-3f1b2a4c6d05",
+      "parameters": {
+        "flexDirection": "column",
+        "alignItems": "flex-start",
+        "rowGap": "var(--space-4)",
+        "paddingLeft": "var(--space-6)",
+        "paddingTop": "var(--space-6)"
+      },
+      "children": [
+        "heading",
+        "puppyText",
+        "inquiryIdInput",
+        "linkBtn",
+        "unlinkBtn",
+        "statusText",
+        "linkErrorText",
+        "unlinkErrorText"
+      ],
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "heading",
+      "type": "Text",
+      "label": "Heading",
+      "parent": "shell",
+      "parameters": {
+        "text": "Link Desk",
+        "fontSize": "var(--text-3xl)",
+        "fontWeight": "var(--font-semibold)"
+      },
+      "x": 100,
+      "y": 220
+    },
+    {
+      "id": "puppyText",
+      "type": "Text",
+      "label": "Puppy",
+      "parent": "shell",
+      "parameters": {
+        "text": ""
+      },
+      "x": 100,
+      "y": 280
+    },
+    {
+      "id": "inquiryIdInput",
+      "type": "net.noodl.controls.textinput",
+      "label": "Inquiry id",
+      "parent": "shell",
+      "parameters": {
+        "placeholder": "an inquiry id"
+      },
+      "x": 100,
+      "y": 340
+    },
+    {
+      "id": "linkBtn",
+      "type": "net.noodl.controls.button",
+      "label": "Link",
+      "parent": "shell",
+      "parameters": {
+        "label": "Link the puppy"
+      },
+      "x": 100,
+      "y": 420
+    },
+    {
+      "id": "unlinkBtn",
+      "type": "net.noodl.controls.button",
+      "label": "Unlink",
+      "parent": "shell",
+      "parameters": {
+        "label": "Unlink the puppy"
+      },
+      "x": 100,
+      "y": 480
+    },
+    {
+      "id": "statusText",
+      "type": "Text",
+      "label": "Status",
+      "parent": "shell",
+      "parameters": {
+        "text": ""
+      },
+      "x": 100,
+      "y": 560
+    },
+    {
+      "id": "linkErrorText",
+      "type": "Text",
+      "label": "Link error",
+      "parent": "shell",
+      "parameters": {
+        "text": "",
+        "color": "var(--destructive)"
+      },
+      "x": 100,
+      "y": 620
+    },
+    {
+      "id": "unlinkErrorText",
+      "type": "Text",
+      "label": "Unlink error",
+      "parent": "shell",
+      "parameters": {
+        "text": "",
+        "color": "var(--destructive)"
+      },
+      "x": 100,
+      "y": 680
+    },
+    {
+      "id": "inquiryIdVar",
+      "type": "Variable2",
+      "label": "Inquiry id variable",
+      "parameters": {
+        "name": "inquiryId"
+      },
+      "x": 600,
+      "y": 340
+    },
+    {
+      "id": "puppy",
+      "type": "DbModel2",
+      "label": "Puppy",
+      "parameters": {
+        "collectionName": "Puppy",
+        "idSource": "explicit",
+        "modelId": "pup-1"
+      },
+      "x": 600,
+      "y": 280
+    },
+    {
+      "id": "link",
+      "type": "AddDbModelRelation",
+      "label": "Link",
+      "parameters": {
+        "collectionName": "Inquiry",
+        "idSource": "explicit",
+        "relationProperty": "puppies"
+      },
+      "x": 600,
+      "y": 420
+    },
+    {
+      "id": "unlink",
+      "type": "RemoveDbModelRelation",
+      "label": "Unlink",
+      "parameters": {
+        "collectionName": "Inquiry",
+        "idSource": "explicit",
+        "relationProperty": "puppies"
+      },
+      "x": 600,
+      "y": 480
+    },
+    {
+      "id": "linkedLabel",
+      "type": "String",
+      "label": "Linked wording",
+      "parameters": {
+        "value": "Linked."
+      },
+      "x": 900,
+      "y": 400
+    },
+    {
+      "id": "setLinked",
+      "type": "Set Variable",
+      "label": "Say it linked",
+      "parameters": {
+        "name": "status"
+      },
+      "x": 1000,
+      "y": 420
+    },
+    {
+      "id": "unlinkedLabel",
+      "type": "String",
+      "label": "Unlinked wording",
+      "parameters": {
+        "value": "Unlinked."
+      },
+      "x": 900,
+      "y": 460
+    },
+    {
+      "id": "setUnlinked",
+      "type": "Set Variable",
+      "label": "Say it unlinked",
+      "parameters": {
+        "name": "status"
+      },
+      "x": 1000,
+      "y": 480
+    },
+    {
+      "id": "statusRead",
+      "type": "Variable2",
+      "label": "Status",
+      "parameters": {
+        "name": "status"
+      },
+      "x": 600,
+      "y": 560
+    }
+  ],
+  "visualRoots": [
+    "1d3a7c0e-6b2f-4a9d-8e5c-3f1b2a4c6d05"
+  ]
+}

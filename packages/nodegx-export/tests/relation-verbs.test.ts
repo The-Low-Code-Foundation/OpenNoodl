@@ -2,7 +2,7 @@
  * The relation verbs and their neighbours (EXP-002-RECORD-VERBS-TARGET-OUTPUT §17):
  * `AddDbModelRelation`, `RemoveDbModelRelation`, the `Record` node (`DbModel2`) and `PageInputs`.
  *
- * ⚠️ **Nothing here translates, and that is the result.** The corpus's only Add Record Relation
+ * ⚠️ **Nothing here translated until EXP-011 §62**, and the corpus shape still does not: the corpus's only Add Record Relation
  * names no relation property, so the runtime's `validateInputs` answers *"No relation property
  * specified"*, `setError` fires and the backend is never called — the node fails on every pulse.
  * Its `Record` neighbour reads an Id from a `PageInputs` on a component no Router routes. So the
@@ -175,9 +175,15 @@ describe('§17 — Add Record Relation: the gates, in the order validateInputs r
     );
   });
 
-  it('a well-formed relation reaches the designed-not-built reason, and no other', () => {
+  /**
+   * EXP-011 §62 built the pair (`tests/relation-pair.test.ts`), so the designed-not-built reason is gone. What
+   * this graph pins now is the corpus's own wall: the verb's Do is fired by a Create whose Id it consumes, and
+   * that Create is **gate 11** — and the verb, compiled from the wire side, names the same wall from its own
+   * side rather than being built on a refused chain. §4c's chain-local `created.id` is the increment that would move both.
+   */
+  it("a well-formed relation fed a Create's Id names §4c's unbuilt chain-local read — the pre-flight passed", () => {
     expect(reasonFor(wellFormedRelation(), ADMIN, 'linkInquiry')).toBe(
-      'a relation write has no shape in the api stub — RECORD-VERBS-TARGET §4c designs it, and the corpus holds no well-formed instance to build it against'
+      "its Id is the Id output of a record verb — that value exists only inside the verb's own done chain, and the chain-local read RECORD-VERBS-TARGET §4c designs is not built"
     );
   });
 
