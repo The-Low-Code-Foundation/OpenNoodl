@@ -61,8 +61,12 @@
 > two links and one tutorial; REL-016 is his call on the dead flag. **Everything else is 🟢.** With
 > D58 gone there is **no unowned, human-independent, buildable row left in this phase** — which is a
 > finding, not a gap: what 0.2.2 is waiting on is Richard, and saying so is more useful than
-> inventing work. ✅ **The nearest live buildable lane is P18** — s89 leaves `Subscribe To Changes`
-> next, then the editor write path. **Re-derive that before starting it.**
+> inventing work. ✅ **The nearest live buildable lane is P18** — but ⚠️ **`Subscribe To Changes` was
+> taken by a peer WHILE THIS SESSION RAN** (`9055f34a`, P18 s90: picker 117/127, Tier 3.11 complete,
+> *"no scheduled row left"*). So P18's next row is **s90's hand-off, not s89's**, and the editor write
+> path is the standing candidate. 🔴 **RE-DERIVE IT FROM THE TASK FILE.** This pointer was accurate
+> when written and stale within the hour — which is the argument for re-deriving every inherited
+> "next", not for trusting a fresher-looking one.
 
 
 > ### 🟢 THE CLOCK LANE, 2026-09-05 (s53) — added beside the other lanes, not over them
