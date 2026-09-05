@@ -25,6 +25,7 @@ import { SB004_COMPONENTS } from '../../../noodl-mcp/tests/sb004Components';
 import { SB005_COMPONENTS, createPass as createPass005 } from '../../../noodl-mcp/tests/sb005Components';
 import { SB006_COMPONENTS, createPass as createPass006 } from '../../../noodl-mcp/tests/sb006Components';
 import { TEMPLATE_SETTINGS } from '../../../noodl-mcp/tests/sb007Template';
+import { buildSiteDesignTokens } from '../../../noodl-editor/src/editor/src/models/template/templates/siteTheme';
 
 /**
  * SB-004 §4's policy — **imported from the artefact the template ships**, not
@@ -176,6 +177,36 @@ export function bindProjectToBackend(
   project.metadata = metadata;
   fs.writeFileSync(file, JSON.stringify(project, null, 2));
   return cloudservices;
+}
+
+/**
+ * The install step the editor performs and `authorSiteTemplate` deliberately
+ * does not — the template's design tokens, into project metadata.
+ *
+ * 🔴 **Why a drive that skips this cannot see the template's own token.**
+ * `render-from-disk.js:338` emits the *shipped defaults* from the product's
+ * token source and layers `metadata.designTokens.customTokens` on top. Every
+ * token the template OVERRIDES therefore still resolves without this call —
+ * the page looks themed — but every token the template MINTS resolves to
+ * nothing. `--site-measure` is the only minted one (`siteTheme.ts`'s
+ * `SITE_MEASURE_TOKEN`), so the single visible consequence is that
+ * `/Pages/Site`'s `shell` renders with `max-width: none`.
+ *
+ * ⚠️ **That is a page a person never receives.** `EmbeddedTemplateProvider`
+ * writes this block at install, so a real project has it from its first open.
+ *
+ * ⚠️ Lifted here from `vib001-site.look.ts`, which was the only caller that had
+ * it and which now imports it. Leaving a private copy there and writing a
+ * second one for the drives is the "a second copy of a control is the copy that
+ * goes stale" trap this module's own header was created to avoid.
+ */
+export function applyTemplateDesignTokens(projectDir: string): void {
+  const file = path.join(projectDir, 'nodegx.project.json');
+  const project = JSON.parse(fs.readFileSync(file, 'utf-8')) as Record<string, unknown>;
+  const metadata = (project.metadata as Record<string, unknown>) ?? {};
+  metadata.designTokens = buildSiteDesignTokens();
+  project.metadata = metadata;
+  fs.writeFileSync(file, JSON.stringify(project, null, 2));
 }
 
 /**

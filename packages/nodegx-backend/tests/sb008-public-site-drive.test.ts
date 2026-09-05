@@ -39,6 +39,8 @@
  * `sb006PublicSite.test.ts` uses, and for the same two reasons.
  */
 import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
 
 import { SB004_COMPONENTS } from '../../noodl-mcp/tests/sb004Components';
 import { SB005_COMPONENTS } from '../../noodl-mcp/tests/sb005Components';
@@ -47,6 +49,7 @@ import { SB005_COMPONENTS } from '../../noodl-mcp/tests/sb005Components';
 // itself now happens inside `authorSiteTemplate`.
 import { NOT_FOUND_TEXT, SB006_COMPONENTS } from '../../noodl-mcp/tests/sb006Components';
 import { Landmarks, readLandmarks } from '../../noodl-mcp/tests/documentOutline';
+import { clampFault, MeasureClamp, MEASURE_TOKEN, NO_CLAMP, readMeasureClamp } from '../../noodl-mcp/tests/measureClamp';
 import { BackendService } from '../src/service';
 
 import { bundleAuthoredComponents, WorkflowBundle } from './helpers/authored-bundle';
@@ -59,6 +62,7 @@ import { adminHeaders, httpClient } from './helpers/http';
  * identical, and a second copy of a control is the copy that goes stale.
  */
 import {
+  applyTemplateDesignTokens,
   authorSiteTemplate,
   bindProjectToBackend,
   DRAFT_ACL,
@@ -186,6 +190,22 @@ describe('SB-008 — the public site in a browser, against an enforcing backend'
    * are unchanged.
    */
   const landmarks: Record<string, Landmarks> = {};
+  /**
+   * 🔴 **§7 — SBR-003's owed rendered probe, and its control.**
+   *
+   * `head` is the shipped graph; `unknownToken` is the same graph with the one
+   * `var(--site-measure)` in it replaced by a token that does not exist. Both
+   * are seeded with `NO_CLAMP` so an arm that never ran cannot pass as an arm
+   * that read an absent clamp — which is precisely what the control arm's
+   * *expected* answer looks like.
+   */
+  const clamps: Record<string, MeasureClamp> = { head: NO_CLAMP, unknownToken: NO_CLAMP };
+  /** How many strings the control arm's edit actually replaced. Exactly one is the claim. */
+  let measureControlEdits = -1;
+  let measureControlDir = '';
+  let measureHeadDir = '';
+  /** The viewport both §7 arms are read at — wide enough that a 44rem clamp must bind. */
+  const CLAMP_VIEWPORT = { width: 1280, height: 900 };
   const ids: Record<string, string> = {};
   /** F20 — how many `Theme` rows a freshly claimed site has. */
   let themeRowsAfterClaim = -1;
@@ -354,6 +374,69 @@ describe('SB-008 — the public site in a browser, against an enforcing backend'
       }
     });
 
+    // ── §7, on a pair of its own ─────────────────────────────────────────
+    //
+    // 🔴 **The first attempt read this off the suite's shared project and both
+    // arms came back identical — `max-width: none`, `--site-measure` empty.**
+    // That was not the product: `authorSiteTemplate` starts from the `demo-app`
+    // fixture and does not perform the editor's install step, and
+    // `render-from-disk.js:338` takes CUSTOM tokens from
+    // `metadata.designTokens` alone. The template's OVERRIDES all still resolve
+    // from the shipped defaults, so the page looks themed and only the one
+    // MINTED token is missing — a fixture fact wearing the shape of a product
+    // defect, and a probe that would have reported "the port drops `var()`".
+    //
+    // So both arms get the install a real project receives, and §7's readings
+    // are taken on copies rather than on `projectDir`: `customTokens` carries
+    // the whole Studio palette, so installing it into the shared project would
+    // have moved every colour every other test in this file reads.
+    //
+    // ⚠️ The copies are taken AFTER `bindProjectToBackend`, so both are already
+    // bound to the enforcing backend — same data, same permissions, same
+    // viewport. They differ by one string in one component's `nodes.json`.
+    const measureArm = (label: string, mutate?: (nodes: string) => string): string => {
+      const dir = fs.mkdtempSync(path.join(os.tmpdir(), `sb008-measure-${label}-`));
+      fs.cpSync(projectDir, dir, { recursive: true });
+      applyTemplateDesignTokens(dir);
+      if (mutate) {
+        const shellFile = path.join(dir, 'components', 'Pages', 'Site', 'nodes.json');
+        fs.writeFileSync(shellFile, mutate(fs.readFileSync(shellFile, 'utf-8')));
+      }
+      return dir;
+    };
+
+    measureHeadDir = measureArm('head');
+    measureControlDir = measureArm('control', (nodes) => {
+      // Counted, not assumed. A replacement that hit two parameters would be a
+      // two-variable control, and one that hit none would render the shipped
+      // graph twice and read green for the worst possible reason.
+      measureControlEdits = nodes.split(`var(${MEASURE_TOKEN})`).length - 1;
+      return nodes.split(`var(${MEASURE_TOKEN})`).join('var(--sbr003-no-such-token)');
+    });
+
+    for (const [key, dir] of [
+      ['head', measureHeadDir],
+      ['unknownToken', measureControlDir]
+    ] as const) {
+      await withRenderedPage({ projectDir: dir, backendPort }, async (page) => {
+        // 🔴 An explicit viewport, and a wide one. The clamp is `44rem` = 704px
+        // at a 16px root; a reading taken in a window narrower than that would
+        // show a shell at the viewport width in BOTH arms — the control and the
+        // claim would agree and the probe would certify nothing while reading
+        // green.
+        await page.setViewport(CLAMP_VIEWPORT);
+        await page.navigate('/');
+        clamps[key] = await readMeasureClamp(page);
+      });
+    }
+
+    // eslint-disable-next-line no-console
+    console.log(
+      `\n[SB-008] §7 measure clamp (${measureControlEdits} string replaced for the control)\n` +
+        `  head        = ${JSON.stringify(clamps.head)}\n` +
+        `  unknownToken= ${JSON.stringify(clamps.unknownToken)}`
+    );
+
     // ── The positive control: the SAME site, with enforcement OFF ────────────
     //
     // 🔴 Everything above is an absence claim, and an absence claim is worth
@@ -429,6 +512,8 @@ describe('SB-008 — the public site in a browser, against an enforcing backend'
     await openService?.stop();
     fs.rmSync(dataDir, { recursive: true, force: true });
     if (openDataDir) fs.rmSync(openDataDir, { recursive: true, force: true });
+    if (measureControlDir) fs.rmSync(measureControlDir, { recursive: true, force: true });
+    if (measureHeadDir) fs.rmSync(measureHeadDir, { recursive: true, force: true });
     fs.rmSync(projectDir, { recursive: true, force: true });
   });
 
@@ -776,6 +861,98 @@ describe('SB-008 — the public site in a browser, against an enforcing backend'
       const withNav = loaded().filter((k) => landmarks[k].navsInDoc > 0);
       expect(withNav).toEqual(loaded());
       expect(withNav.filter((k) => landmarks[k].navsInMain !== 0).map((k) => `${k}: nav inside main`)).toEqual([]);
+    });
+  });
+
+  // ==========================================================================
+  // §7 SBR-003 — a `var(--token)` in a DIMENSION port, in a real browser
+  // ==========================================================================
+
+  /**
+   * 🔴 **The one thing SBR-003 refused to close on a legend.** Its §2 says the
+   * `{value,unit}` ports accept `var(--token)` *per `WIRE_FORMAT_LEGEND`* and
+   * then says: verify it with a rendered probe, "not by quoting the legend".
+   * At s4 nothing consumed the token, so the probe had nowhere to stand and was
+   * carried into SBR-004. `/Pages/Site`'s `shell` consumes it now.
+   *
+   * 🔴 **What the two arms hold constant is the point.** `--site-measure` is
+   * DEFINED on `:root` in both arms — the control does not delete the token, it
+   * changes what the port REFERENCES. So the difference between 704px and no
+   * clamp cannot be "the token was missing"; it can only be "the port carried
+   * the reference into CSS". Deleting the definition would have produced the
+   * same two numbers for a reason that says nothing about ports.
+   */
+  describe('🔴 §7 the reading measure, as a browser resolves it', () => {
+    it('control: both arms ran, and the control edit replaced exactly one string', () => {
+      // `clampFault` names "the arm never ran" separately from every other way
+      // a reading can be wrong, because the control arm's expected answer is an
+      // ABSENT clamp and an arm that never happened reads absent too.
+      expect([clampFault(clamps.head), clampFault(clamps.unknownToken)]).toEqual([null, null]);
+      expect(`replacements: ${measureControlEdits}`).toBe('replacements: 1');
+    });
+
+    it('control: the element measured is the SHELL — the nav band and the h1 are inside it', () => {
+      // Identification, not geometry. If the walk had landed on the `<main>`
+      // itself the nav would be outside it (§6 asserts exactly that), so this
+      // is the assertion that says the parent walk went one level and no more.
+      const c = clamps.head;
+      expect(`isMain:${c.shellIsMain} nav:${c.shellHasNav} h1:${c.shellHasH1}`).toBe('isMain:false nav:1 h1:1');
+    });
+
+    it('control: `--site-measure` is defined on :root in BOTH arms', () => {
+      // What makes this a probe of the PORT rather than of the token.
+      expect(`head:${clamps.head.tokenValue} control:${clamps.unknownToken.tokenValue}`).toBe(
+        'head:44rem control:44rem'
+      );
+      expect(`root font-size: ${clamps.head.rootFontSize}`).toBe('root font-size: 16');
+    });
+
+    it('🔴 the dimension port carried the token into CSS — computed max-width is a LENGTH', () => {
+      // The claim, and the field that carries it. An unresolvable `var()` is
+      // invalid at computed-value time and `max-width` falls back to `none`;
+      // 44rem at a 16px root is 704px.
+      expect(clamps.head.shellMaxWidth).toBe('704px');
+    });
+
+    it('🔴 and the clamp BINDS — the shell is 704px inside a 1280px frame', () => {
+      // A `max-width` that never binds is decorative, and a decorative clamp
+      // reads identically to a working one on the width alone. The frame is the
+      // width the shell would take if nothing stopped it.
+      const c = clamps.head;
+      expect(`shell:${Math.round(c.shellWidth)} frame:${Math.round(c.frameWidth)} vp:${c.viewportWidth}`).toBe(
+        'shell:704 frame:1280 vp:1280'
+      );
+    });
+
+    it('🔴 CONTROL — an unknown token does NOT constrain the box', () => {
+      // SBR-003 §2's control, in its own words. Same graph, same backend, same
+      // viewport, one token name apart.
+      //
+      // 🔴 **This assertion was PREDICTED as `shell:1280` and measured 1232.**
+      // The prediction was wrong about the geometry, not about the claim: the
+      // shell states `width: 100%`, so unclamped it fills its parent's CONTENT
+      // box, and `frame` carries 48px of horizontal padding. Rather than edit
+      // 1280 to 1232 — which is how a control quietly becomes a number somebody
+      // fitted — the claim is stated as the equation it always was: no clamp,
+      // and the shell exactly fills what its parent offers.
+      const c = clamps.unknownToken;
+      expect(c.shellMaxWidth).toBe('none');
+      expect(
+        `shell:${Math.round(c.shellWidth)} = frame:${Math.round(c.frameWidth)} − padding:${Math.round(c.framePaddingX)}`
+      ).toBe(`shell:${Math.round(c.frameWidth - c.framePaddingX)} = frame:1280 − padding:48`);
+    });
+
+    it('🔴 the pair, stated as one number: the token is worth 528px of clamp', () => {
+      // The cross-arm reading. Written as a difference so a future change that
+      // moves BOTH arms together — a different default viewport, a themed root
+      // font-size — fails here rather than passing two absolute assertions that
+      // happen to have been edited to match.
+      //
+      // 528 = 1232 − 704, and both ends are reconciled above: 1232 is the frame
+      // less its padding, 704 is `44rem` at a 16px root. Neither is a number
+      // read off a run and pasted in.
+      const delta = Math.round(clamps.unknownToken.shellWidth - clamps.head.shellWidth);
+      expect(`unclamped − clamped = ${delta}px`).toBe('unclamped − clamped = 528px');
     });
   });
 });

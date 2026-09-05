@@ -155,3 +155,77 @@ nothing in the template consumes tokens until SBR-004/006 author with `var(--tok
 artifact's own diagnosis ("nothing reads the tokens"). They verify after SBR-004 (public
 site), SBR-006 (admin), SBR-009 (preset row picks Night). The contract they verify against
 is now fixed and documented.
+
+---
+
+## 6. ✅ AC5 CLOSED — the owed rendered probe, built and read (s51, 2026-09-05)
+
+**The last item SBR-003 was carrying.** §2's first bullet said the `{value,unit}` ports accept
+`var(--token)` *per `WIRE_FORMAT_LEGEND`* and then refused to close on that: **"verify with a
+rendered probe … not by quoting the legend."** At s4 nothing consumed the token, so the probe had
+nowhere to stand. `/Pages/Site`'s `shell` consumes it now
+([`sb006Components.ts:1918`](../../../packages/noodl-mcp/tests/sb006Components.ts)).
+
+**Home:** `sb008-public-site-drive.test.ts` §7 — the drive that already boots a real backend and a
+real browser over the shipped graph. Instrument:
+[`noodl-mcp/tests/measureClamp.ts`](../../../packages/noodl-mcp/tests/measureClamp.ts).
+
+### The reading — both arms, 1280×900, anonymous, enforcement on
+
+| | `--site-measure` on `:root` | shell computed `max-width` | shell | frame | frame padding |
+|---|---|---|---|---|---|
+| **shipped graph** | `44rem` | **`704px`** | **704** | 1280 | 48 |
+| **control: `var(--sbr003-no-such-token)`** | `44rem` | **`none`** | 1232 | 1280 | 48 |
+
+✅ **A dimension port really does carry `var(--token)` into CSS, and the clamp BINDS** — 704 inside
+a 1280 frame, so it is doing work rather than agreeing with a box that was that size anyway.
+✅ **The control fires exactly as §2 predicted it should**: an unknown token does not constrain.
+
+🔴 **What makes it a probe of the PORT and not of the token: `--site-measure` is defined on `:root`
+in BOTH arms.** The control changes what the port *references*, never what the token *is*. Deleting
+the definition instead would have produced the same two numbers for a reason that says nothing
+about ports at all.
+
+🔴 **Identification is derived, not a selector.** `shell` is the parent of the `<main>` REL-011c's
+`siteMain` added, and §6 next door proves there is exactly one `<main>` per load; the arm asserts
+the box it found holds the nav band and the `h1` and is not the `<main>`. A `#shell` literal is how
+`sbr010`'s D42 went stale when a project-wide id pass renamed `#pick` to `pick-2`.
+
+### 🔴 The first run was WRONG, and it was wrong in the shape of the defect being hunted
+
+**Both arms came back identical — `max-width: none`, `--site-measure` empty.** That fits
+*"the dimension port drops `var(--token)`"* perfectly, which is the exact thing §2 was written to
+suspect. It is **a fact about the fixture**: `authorSiteTemplate` never performs the editor's
+install step, and `render-from-disk` takes custom tokens from `metadata.designTokens` alone. Every
+token the template *overrides* still resolved — the page looked correctly themed — and only the one
+token it *mints* was missing. Registered as
+**[D57](DEFECTS-THE-SITE-BUILDER-FOUND.md#d57)**; the seam is fixed
+(`applyTemplateDesignTokens` exported from `helpers/site-drive.ts`, `vib001-site.look.ts` now
+imports what was its private copy), the other twelve drives are a sweep with its own before/after
+and are **not** done.
+
+⚠️ **Two assertions were PREDICTED wrong and reconciled rather than edited to fit.** The control was
+predicted to fill the frame at 1280 and measured **1232**; the pair was predicted at 576px and is
+**528**. The prediction was wrong about the geometry, not the claim — `shell` states `width: 100%`
+so unclamped it fills its parent's *content* box, and `frame` carries 48px of horizontal padding.
+The probe gained a `framePaddingX` field so the control now asserts the **equation**
+(`shell = frame − padding`) instead of a literal somebody could quietly re-fit later.
+
+### Gates
+
+- `sb008-public-site-drive.test.ts` — **31/31, EXIT=0** (24 pre-existing + 7 new), 41.5s.
+  §7's readings are taken on **copies** of the project, so the 24 existing readings are byte-for-byte
+  the ones they were: `customTokens` carries the whole Studio palette, and installing it into the
+  shared project would have moved every colour the rest of the file reads.
+- The five red arms are recorded, not just the green one: run 1 read **5 failed / 26 passed** with
+  the fixture gap, run 2 **2 failed / 29 passed** with the two mis-predicted literals.
+- `typecheck:mcp` — **EXIT=0, 0 errors** (it covers `tests/**/*.ts`, so it is what grades `measureClamp.ts`).
+- `vib001-site.look.ts` loads and collects its 2 tests after the refactor. ⚠️ **Its photographs were
+  NOT re-taken** — the change is import-only and its behaviour is identical, but that is an argument,
+  not a render.
+- ⚠️ **`typecheck:backend-tests` was not run**: it is unrunnable on this box (OOM through
+  `noodl-mcp/src/server` via `helpers/site-drive.ts`, bisected under REL-011 §7), and ts-jest here
+  runs `isolatedModules: true`, so **the green suite is not a typecheck** of the two backend-test
+  files this touched.
+
+**AC5 is met.** AC3 was already done. AC1/AC2/AC4 remain person-sentence drives.

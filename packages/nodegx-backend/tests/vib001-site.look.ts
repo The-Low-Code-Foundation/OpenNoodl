@@ -41,10 +41,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
-import {
-  buildSiteDesignTokens,
-  SITE_THEME_PRESETS
-} from '../../noodl-editor/src/editor/src/models/template/templates/siteTheme';
+import { SITE_THEME_PRESETS } from '../../noodl-editor/src/editor/src/models/template/templates/siteTheme';
 import { SB004_COMPONENTS } from '../../noodl-mcp/tests/sb004Components';
 import { BackendService } from '../src/service';
 
@@ -53,6 +50,7 @@ import { httpClient } from './helpers/http';
 import { judge, today } from './helpers/judge';
 import { clickButton, fill } from './helpers/members-drive';
 import {
+  applyTemplateDesignTokens,
   authorSiteTemplate,
   bindProjectToBackend,
   DRAFT_ACL,
@@ -73,20 +71,15 @@ interface Row {
 }
 
 /**
- * The install step the editor performs and `authorSiteTemplate` does not.
- *
- * Mirrors `EmbeddedTemplateProvider.instantiate`: the template's `designTokens`
- * go into project metadata under the key the style panel persists to, which is
- * where the preview injector and the deploy's `:root` stamp both read them.
+ * ⚠️ **`applyTemplateDesignTokens` moved to `helpers/site-drive.ts` (SBR-003
+ * §6, 2026-09-05) and is imported above.** It was private here, and it was the
+ * ONLY caller — which meant every drive built on `authorSiteTemplate` rendered
+ * the template with its one minted token (`--site-measure`) undefined, and the
+ * clamp on `/Pages/Site`'s shell silently absent. The pictures in this file
+ * were always right; thirteen drives beside it were not looking at the same
+ * page. **The behaviour of this file is unchanged** — same function, same call
+ * site, one import away.
  */
-function applyTemplateDesignTokens(projectDir: string): void {
-  const file = path.join(projectDir, 'nodegx.project.json');
-  const project = JSON.parse(fs.readFileSync(file, 'utf-8')) as Record<string, unknown>;
-  const metadata = (project.metadata as Record<string, unknown>) ?? {};
-  metadata.designTokens = buildSiteDesignTokens();
-  project.metadata = metadata;
-  fs.writeFileSync(file, JSON.stringify(project, null, 2));
-}
 
 describe('VIB-001 — the site builder, as a person meets it', () => {
   it('photographs the door: the template as installed, no backend, never claimed', async () => {
