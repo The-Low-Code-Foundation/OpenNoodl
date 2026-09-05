@@ -569,7 +569,9 @@ export const APP_ERROR_TS_TYPE = '{ code: string; message: string; nodeId: strin
 export const STREAM_PARSER_TYPE = 'net.noodl.JSONStreamParser';
 export const STREAM_BUFFER_TYPE = 'net.noodl.StreamBuffer';
 export const TEXT_ACCUMULATOR_TYPE = 'net.noodl.TextAccumulator';
-export type StreamKind = 'parser' | 'buffer' | 'accumulator';
+export type StreamKind = 'parser' | 'buffer' | 'accumulator' | 'sse';
+/** EXP-011 §64. `Server-Sent Events` — the fourth member of the table: no data port, two Actions, its own module. */
+export const SSE_TYPE = 'net.noodl.SSE';
 export interface StreamValueField {
   tsType: string;
   /** How the value casts at a sink: the port's declared type, which is what NDA-014's typecast keys on. */
@@ -582,8 +584,12 @@ export interface StreamNodeSpec {
   displayName: string;
   hook: string;
   localStem: string;
-  /** The data port, delivered with the pulse. */
-  data: { port: string; displayName: string };
+  /** The module the hook lives in (component.ts maps it to a path; emitApp.ts ships it). */
+  lib: 'streaming' | 'sse';
+  /** The runtime file the hook transcribes, for the emitted comment. */
+  sourceFile: string;
+  /** The data port, delivered with the pulse — absent on a node whose actions carry nothing (§64's SSE). */
+  data?: { port: string; displayName: string };
   /** The config ports, read live off the options object. */
   config: Array<{ port: string; displayName: string }>;
   /** The action ports: the verb on the handle, and whether the call carries the data port's value. */
@@ -599,6 +605,8 @@ export const STREAM_NODES: Record<string, StreamNodeSpec> = {
     displayName: 'JSON Stream Parser',
     hook: 'useJsonStreamParser',
     localStem: 'Parser',
+    lib: 'streaming',
+    sourceFile: 'json-stream-parser.ts',
     data: { port: 'chunk', displayName: 'Chunk' },
     config: [
       { port: 'format', displayName: 'Format' },
@@ -621,6 +629,8 @@ export const STREAM_NODES: Record<string, StreamNodeSpec> = {
     displayName: 'Stream Buffer',
     hook: 'useStreamBuffer',
     localStem: 'Buffer',
+    lib: 'streaming',
+    sourceFile: 'stream-buffer.ts',
     data: { port: 'data', displayName: 'Data' },
     config: [
       { port: 'flushSize', displayName: 'Flush Size' },
@@ -648,6 +658,8 @@ export const STREAM_NODES: Record<string, StreamNodeSpec> = {
     displayName: 'Text Accumulator',
     hook: 'useTextAccumulator',
     localStem: 'Accumulator',
+    lib: 'streaming',
+    sourceFile: 'text-accumulator.ts',
     data: { port: 'chunk', displayName: 'Chunk' },
     config: [
       { port: 'delimiter', displayName: 'Delimiter' },
@@ -667,8 +679,59 @@ export const STREAM_NODES: Record<string, StreamNodeSpec> = {
       droppedMessages: { tsType: 'number', cast: 'number', maybeUndefined: false },
       error: { tsType: 'string', cast: 'string', maybeUndefined: false }
     }
+  },
+  // EXP-011 §64. Every input but the two Actions is a config port (read live off the options object — a URL or Auto
+  // Connect change re-runs scheduleAutoConnect in the hook); the two Actions carry no data; the four Events and the
+  // outcome trio are the listeners in sse.ts's declaration order; every Status and Data output is a live getter.
+  [SSE_TYPE]: {
+    kind: 'sse',
+    displayName: 'Server-Sent Events',
+    hook: 'useServerSentEvents',
+    localStem: 'Stream',
+    lib: 'sse',
+    sourceFile: 'sse.ts',
+    config: [
+      { port: 'url', displayName: 'URL' },
+      { port: 'transport', displayName: 'Transport' },
+      { port: 'method', displayName: 'Method' },
+      { port: 'headers', displayName: 'Headers' },
+      { port: 'body', displayName: 'Body' },
+      { port: 'withCredentials', displayName: 'With Credentials' },
+      { port: 'eventTypes', displayName: 'Event Types' },
+      { port: 'textPath', displayName: 'Text Path' },
+      { port: 'autoConnect', displayName: 'Auto Connect' },
+      { port: 'autoReconnect', displayName: 'Auto Reconnect' },
+      { port: 'reconnectOnStreamEnd', displayName: 'Reconnect On Stream End' },
+      { port: 'reconnectDelay', displayName: 'Reconnect Delay (ms)' },
+      { port: 'maxReconnectDelay', displayName: 'Max Reconnect Delay (ms)' },
+      { port: 'maxRetries', displayName: 'Max Retries' },
+      { port: 'dedupeById', displayName: 'Dedupe By Id' }
+    ],
+    actions: { connect: { verb: 'connect', takesData: false }, disconnect: { verb: 'disconnect', takesData: false } },
+    signals: ['onOpen', 'onMessage', 'onError', 'onClose', ...OUTCOME_SIGNALS],
+    values: {
+      connectionState: { tsType: 'string', cast: 'string', maybeUndefined: false },
+      connected: { tsType: 'boolean', cast: 'boolean', maybeUndefined: false },
+      lastError: { tsType: 'string', cast: 'string', maybeUndefined: false },
+      retryCount: { tsType: 'number', cast: 'number', maybeUndefined: false },
+      // `data` is undefined until the first event, as the node's getter reads `_internal.data`.
+      data: { tsType: 'unknown', cast: 'unknown', maybeUndefined: true },
+      raw: { tsType: 'string', cast: 'string', maybeUndefined: false },
+      text: { tsType: 'string', cast: 'string', maybeUndefined: false },
+      eventType: { tsType: 'string', cast: 'string', maybeUndefined: false },
+      lastEventId: { tsType: 'string', cast: 'string', maybeUndefined: false },
+      messageCount: { tsType: 'number', cast: 'number', maybeUndefined: false },
+      lastMessageTime: { tsType: 'number', cast: 'number', maybeUndefined: false },
+      duplicatesSuppressed: { tsType: 'number', cast: 'number', maybeUndefined: false },
+      deliverySemantics: { tsType: 'string', cast: 'string', maybeUndefined: false }
+    }
   }
 };
+
+/** EXP-011 §64. The type id behind a `stream-out`'s kind — the one ladder component.ts and the maybe-undefined answer share. */
+export function streamTypeOfKind(kind: StreamKind): string {
+  return kind === 'parser' ? STREAM_PARSER_TYPE : kind === 'buffer' ? STREAM_BUFFER_TYPE : kind === 'accumulator' ? TEXT_ACCUMULATOR_TYPE : SSE_TYPE;
+}
 export const RUN_TASKS_TYPE = 'RunTasks';
 /** EXP-011 §57. `Repeater Item` — the type id is the runtime's `name`, not the display name. */
 export const REPEATER_ITEM_TYPE = 'For Each Actions';
@@ -695,6 +758,8 @@ const OWN_CHAIN_OUTPUTS: Record<string, readonly string[]> = {
   [STREAM_PARSER_TYPE]: STREAM_NODES[STREAM_PARSER_TYPE].signals,
   [STREAM_BUFFER_TYPE]: STREAM_NODES[STREAM_BUFFER_TYPE].signals,
   [TEXT_ACCUMULATOR_TYPE]: STREAM_NODES[TEXT_ACCUMULATOR_TYPE].signals,
+  // EXP-011 §64. The transport's Events and outcomes, the same footing.
+  [SSE_TYPE]: STREAM_NODES[SSE_TYPE].signals,
   [LOG_TYPE]: ['done'],
   [TIMER_TYPE]: TIMER_OUTPUTS,
   [VALUE_CHANGED_TYPE]: ['valueChanged'],
@@ -12870,7 +12935,7 @@ function planComponent(
       return reason;
     };
     if (!plan.file) return refuse(`component emits no file to host the ${spec.displayName}`);
-    const valueInputs = [spec.data, ...spec.config];
+    const valueInputs = [...(spec.data !== undefined ? [spec.data] : []), ...spec.config];
     for (const wire of component.connections.filter((c) => c.toId === node.id)) {
       if (spec.actions[wire.toProperty] !== undefined || valueInputs.some((p) => p.port === wire.toProperty)) continue;
       return refuse(`its ${wire.toProperty} input is not a port this node has`);
@@ -12902,7 +12967,7 @@ function planComponent(
     // ⚠️ Two statements, not one `&&`: the editor's tsc (no strictNullChecks) cannot narrow `x !== undefined && 'defer' in x`
     // on its false branch, and left `data` as the whole union (EXP-012's recorded trap, §50's `isDefer` fix).
     let data: ValueExpr | undefined;
-    const dataSource = sourceOf(spec.data);
+    const dataSource = spec.data !== undefined ? sourceOf(spec.data) : undefined;
     if (dataSource !== undefined) {
       if ('defer' in dataSource) return refuse(dataSource.defer);
       data = dataSource;
@@ -12924,7 +12989,7 @@ function planComponent(
       data,
       config,
       listeners: {},
-      comment: `${label} — a ${spec.displayName} (${spec.kind === 'parser' ? 'json-stream-parser.ts' : spec.kind === 'buffer' ? 'stream-buffer.ts' : 'text-accumulator.ts'}), hosted by streaming.ts; its value outputs read live off the handle.`
+      comment: `${label} — a ${spec.displayName} (${spec.sourceFile}), hosted by ${spec.lib}.ts; its value outputs read live off the handle.`
     };
     streamPlans.set(node.id, core);
     plan.streams.push(core);
@@ -19176,7 +19241,7 @@ function pageInputsUnroutedReason(node: NodeIR): string {
  */
 /** EXP-011 §58. Which of a streaming node's value outputs read undefined before anything happened — the table's answer, shared with component.ts. */
 export function streamFieldMaybeUndefined(node: StreamKind, field: string): boolean {
-  const type = node === 'parser' ? STREAM_PARSER_TYPE : node === 'buffer' ? STREAM_BUFFER_TYPE : TEXT_ACCUMULATOR_TYPE;
+  const type = streamTypeOfKind(node);
   return STREAM_NODES[type].values[field]?.maybeUndefined === true;
 }
 

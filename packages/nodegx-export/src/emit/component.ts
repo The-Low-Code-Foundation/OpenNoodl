@@ -36,6 +36,7 @@ import {
   RecordWhere,
   STREAM_NODES,
   streamFieldMaybeUndefined,
+  streamTypeOfKind,
   NO_ANCESTOR_WRITE_MESSAGE,
   PARENT_COMPONENT_OBJECT_TYPE,
   PAGE_STACK_ENTRY_PROP
@@ -54,6 +55,7 @@ import { ERRORS_LIB_PATH } from './errorsLib';
 import { RECORD_FILTER_LIB_PATH } from './recordFilterLib';
 import { SCRIPT_LIB_PATH } from './scriptLib';
 import { STREAMING_LIB_PATH } from './streamingLib';
+import { SSE_LIB_PATH } from './sseLib';
 import { SCRIPT_CODE_PREFIX } from '../analyze/script';
 import { ID_HELPERS_BY_FN, ID_LIB_PATH, IdHelper } from './idLib';
 import { CRYPTO_LIB_PATH, CryptoHelper } from './cryptoLib';
@@ -158,6 +160,8 @@ export interface EmittedComponent {
   recordFilterLib: boolean;
   /** EXP-011 §58. `src/lib/streaming.ts` is owed when this component keeps a streaming node. */
   streamingLib: boolean;
+  /** EXP-011 §64. `src/lib/sse.ts` is owed when this component keeps a Server-Sent Events node. */
+  sseLib: boolean;
   /** EXP-011 §59. `src/lib/crypto.ts` verbs this component calls; `src/lib/screen.ts` is owed when a viewport hook prints. */
   cryptoHelpers: Set<string>;
   screenLib: boolean;
@@ -4089,10 +4093,12 @@ export function emitComponent(
     const names = [...(raisesAppErrors ? ['raiseAppError'] : []), ...(plan.appErrors.length > 0 ? ['useAppError'] : [])];
     internalImports.set(specifier, `import { ${names.join(', ')} } from '${specifier}';`);
   }
-  // EXP-011 §58. The streaming trio's hooks, one import per hook the plan kept.
-  if (plan.streams.length > 0) {
-    const specifier = `${relRoot}/${STREAMING_LIB_PATH.replace(/^src\//, '').replace(/\.ts$/, '')}`;
-    const hooks = [...new Set(plan.streams.map((s) => STREAM_NODES[s.type].hook))].sort();
+  // EXP-011 §58 + §64. The streaming hooks, one import per hook the plan kept, grouped by the module each lives in.
+  for (const lib of ['streaming', 'sse'] as const) {
+    const hooks = [...new Set(plan.streams.filter((s) => STREAM_NODES[s.type].lib === lib).map((s) => STREAM_NODES[s.type].hook))].sort();
+    if (hooks.length === 0) continue;
+    const libPath = lib === 'streaming' ? STREAMING_LIB_PATH : SSE_LIB_PATH;
+    const specifier = `${relRoot}/${libPath.replace(/^src\//, '').replace(/\.ts$/, '')}`;
     internalImports.set(specifier, `import { ${hooks.join(', ')} } from '${specifier}';`);
   }
   // EXP-011 §56. The Filter Records matcher, earned where a `record-filter` printed.
@@ -4377,7 +4383,7 @@ export function emitComponent(
      * node's own `String()` (never undefined, so no fold); a string port is already what every sink takes.
      */
     if (source.kind === 'computed' && source.expr.kind === 'stream-out') {
-      const cast = STREAM_NODES[source.expr.node === 'parser' ? 'net.noodl.JSONStreamParser' : source.expr.node === 'buffer' ? 'net.noodl.StreamBuffer' : 'net.noodl.TextAccumulator'].values[source.expr.field]?.cast ?? 'unknown';
+      const cast = STREAM_NODES[streamTypeOfKind(source.expr.node)].values[source.expr.field]?.cast ?? 'unknown';
       if (sink === 'text' || sink === 'string') {
         if (cast === 'string') return base;
         if (cast === 'array') return `JSON.stringify(${base})`;
@@ -6677,8 +6683,9 @@ export function emitComponent(
     errorsLib: plan.appErrors.length > 0 || raisesAppErrors,
     // EXP-011 §56.
     recordFilterLib: usedRecordFilter,
-    // EXP-011 §58.
-    streamingLib: plan.streams.length > 0,
+    // EXP-011 §58 + §64. Each module, where a hook of its own printed.
+    streamingLib: plan.streams.some((s) => STREAM_NODES[s.type].lib === 'streaming'),
+    sseLib: plan.streams.some((s) => STREAM_NODES[s.type].lib === 'sse'),
     // EXP-011 §59.
     cryptoHelpers: usedCryptoHelpers,
     screenLib: screenHooks.length > 0,

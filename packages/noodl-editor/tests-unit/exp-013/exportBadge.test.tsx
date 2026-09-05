@@ -69,10 +69,10 @@ describe('the decision, over the real ledger', () => {
   });
 
   test('the nodes Richard named (EXP-011 §50) read as scheduled, and Sign In With as out of scope', () => {
-    // `RunTasks` and `On App Error` stood here until sessions 81 and 82 translated them (§53, §54), and `Drag`
-    // until session 86 translated it (§63, the last Tier 2.8 row); the pin is now Tier 3.11's `Server-Sent Events`,
-    // the scheduled transport, and the control below it is the ledger itself.
-    expect(exportBadgeFor('net.noodl.SSE')).toMatchObject({ kind: 'scheduled' });
+    // `RunTasks` and `On App Error` stood here until sessions 81 and 82 translated them (§53, §54), `Drag` until
+    // session 86 (§63) and `Server-Sent Events` until session 88 (§64, Tier 3.11's first transport); the pin is now
+    // `WebSocket`, the scheduled transport still open, and the control below it is the ledger itself.
+    expect(exportBadgeFor('net.noodl.WebSocket')).toMatchObject({ kind: 'scheduled' });
     expect(exportBadgeFor('RunTasks')).toBeUndefined();
     expect(exportBadgeFor('On App Error')).toBeUndefined();
     expect(exportBadgeFor('net.noodl.user.SignInWith')).toMatchObject({ kind: 'out-of-scope' });
@@ -89,7 +89,7 @@ describe('the decision, over the real ledger', () => {
 });
 
 describe('the badge, as drawn', () => {
-  const scheduled = exportBadgeFor('net.noodl.SSE'); // §63 translated Drag; Tier 3.11's SSE is the scheduled row now
+  const scheduled = exportBadgeFor('net.noodl.WebSocket'); // §63 translated Drag, §64 SSE; Tier 3.11's WebSocket is the scheduled row now
   const outOfScope = exportBadgeFor('net.noodl.user.SignInWith');
 
   test('one of each status, and the translated control draws nothing', () => {

@@ -128,7 +128,8 @@ describe('§A the plan — three hooks, the data read at the pulse, the config a
       const node = catalog.nodes.find((n) => n.typeName === type)!;
       const inputs = (node.inputs ?? []).map((p) => p.name).sort();
       const outputs = (node.outputs ?? []).map((p) => p.name).sort();
-      expect({ type, inputs }).toEqual({ type, inputs: [spec.data.port, ...spec.config.map((c) => c.port), ...Object.keys(spec.actions)].sort() });
+      // §64 made the data port optional (the SSE has none) — the row now grades the table's fourth member too.
+      expect({ type, inputs }).toEqual({ type, inputs: [...(spec.data !== undefined ? [spec.data.port] : []), ...spec.config.map((c) => c.port), ...Object.keys(spec.actions)].sort() });
       expect({ type, outputs }).toEqual({ type, outputs: [...spec.signals, ...Object.keys(spec.values)].sort() });
     }
   });
@@ -890,7 +891,7 @@ describe('§H the ledger', () => {
       expect(exportBadgeOf(type)).toBeUndefined();
     }
     const ledger = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'coverage-ledger.json'), 'utf8'));
-    expect(ledger.pickerCoverageFloor).toBe(114); // §61 the component-stack trio + §60 the component-object trio + §62 the relation pair + §63 Drag (session 86); §57 + §58 + §59 (session 85)
+    expect(ledger.pickerCoverageFloor).toBe(115); // §64 Server-Sent Events (session 88) on top of §61 the component-stack trio + §60 the component-object trio + §62 the relation pair + §63 Drag (session 86); §57 + §58 + §59 (session 85)
   });
 });
 
