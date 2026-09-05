@@ -1,5 +1,89 @@
 # Phase 82 — next session
 
+
+> ### 🔴 SITE-BUILDER LANE, 2026-09-05 — added beside another session's handoff, not over it
+>
+> **The 9-SHITTY ruling on REL-011c AC3 was taken on pictures wearing the HARNESS's palette.**
+> `vib001-site.look.ts` seeded a `Theme` row with four invented values; `#1f6feb` — §3 seam 1's
+> *"the framework's default blue"* — is that seed's `colorPrimary` byte for byte, on 9 of the 10
+> screens. The **door** arm, which seeds nothing, renders Studio's `#1e4d8c` correctly and was the
+> control all along. Seam 4's "gradient rectangles" were the seed's `SWATCH` too.
+> **Fixed** (a shipped preset, imported; four real photographs), and the door arm is **byte-identical
+> across the change** — 32 PNGs, combined `md5=6d90f842`.
+>
+> **§3 seam 3 WAS the product, survived the instrument fix, and is built**: `minHeight: 100vh` +
+> `alignItems: 'stretch'` on `Admin frame`, and the rail to `sizeMode: 'contentHeight'`. Four
+> pixel-sampled arms; 🔴 **arm 3 (`stretch`) moved nothing** — a three-arm run would have shipped it.
+>
+> ✅ **COMMITTED 2026-09-05 (s41) as `02a3c924`**, on Richard's instruction, once the peer's
+> `p18-row8` merge had landed and `MERGE_HEAD` was gone — the five files exactly, by pathspec, with
+> `createProject.ts`, `validate.ts` and `sbr011LivePreview.test.ts` (three OTHER lanes' uncommitted
+> work in the same package) untouched. Readings as recorded: `noodl-mcp` **93 / 1261 EXIT=0**;
+> `test:main` **423 / 7086 EXIT=0**.
+>
+> ✅ **The +3 unattributed tests are NAMED — and no suite was run to do it.** They are a peer's
+> commit landed **between the two arms**: `5f407849` (the members-area lane, 08:54) adds exactly
+> three `it()` blocks to `tpl001Template.test.ts`, and its own message records the whole-suite
+> reading — **93 / 1260**. So **1257 + 3 + 1 = 1261**. 🔴 **§8's registered trap, one level up**: the
+> four LOOK arms were flagged artefact-varied-not-commit-controlled and the two SUITE arms had the
+> identical defect unnoticed. Full record: [REL-011 §8](REL-011-THE-SITE-BUILDER-SHIPS.md).
+>
+> 🟢 **s41 also closed the five-seam audit and built the `<h2>` gate** — [§9](REL-011-THE-SITE-BUILDER-SHIPS.md)
+> and [§10](REL-011-THE-SITE-BUILDER-SHIPS.md), commit below.
+
+---
+
+## 🔴 SITE-BUILDER LANE, s41 — what changed, and what the next session must NOT do
+
+**Two commits: `02a3c924`** (s40's build, held back only by the peer's merge) **and `26c1ab21`**
+(this session). ⚠️ **Three other lanes' uncommitted files live in the same package and were left
+alone** — `createProject.ts`, `validate.ts`, `sbr011LivePreview.test.ts`.
+
+### 1. 🟢 The five seams are audited to the end — and the list is TWO, not five
+
+§8 measured seams 1, 3 and 4 and stopped. **Seams 2 and 5 had never been re-read against the
+corrected instrument at all.** Read off the 09-05 living shots beside the 09-03 shots he **actually
+ruled on**, then confirmed in the artefact:
+
+| # | §3's seam | verdict |
+|---|---|---|
+| 1 | the framework's default blue | 🟦 **harness** — gone |
+| 2 | ruled rows + outline-secondary pills | 🔴 **PRODUCT** — `/Admin/PageRow` is all tokens, so the seed fix repainted the idiom and changed none of it |
+| 3 | the shell does not fill the screen | 🔴 **product** — built |
+| 4 | gradient rectangles | 🟦 **harness** — gone, four real photographs |
+| 5 | one column, one rhythm | 🔴 **PRODUCT** — `shell` is the ONLY node stating a width; every section of all five kinds runs through one `/Site/SectionView` at one padding |
+
+🔴 **A fourth round aimed at §3 as written would spend two of its five items on the harness.** What
+is left to re-show him is **seam 2 and seam 5**.
+
+⚠️ **This is not a licence to build either of them.** The template is **held**, phase 77 owns it, and
+[§4](RICHARD-RULINGS-2026-09-04.md) is explicit: nothing about the look is built until he names the
+seam, and he has already **declined three readings a session offered**. §9 names where the work would
+land and stops there deliberately.
+
+### 2. 🟢 `<h2>` order — the residual this lane registered TWICE — is built, and GREEN AT HEAD
+
+`headingOrder.ts` + `headingOrder.test.ts`: **20 pages across both artefacts, 0 skipped levels.** A
+checker over the corpus that exists, and the corpus passes — said out loud rather than dressed up.
+
+🔴 **The trap it was built around**: `/Pages/Site`'s own tree holds **one** heading; the other five
+arrive through `/Site/SectionView`, which is **not a child of anything** — it is the `template`
+**parameter** of a `For Each`. A walker following only children reports every site-builder page as a
+lone `h1` and calls it well-formed: *the answer the gate wants, arrived at by seeing nothing.* Pinned
+by cardinality, and the fault detector is graded on synthetic sequences before it is aimed at
+anything. Mutant on the real artefacts: **3 red of 29 that all ran**, both files restored
+byte-identical.
+
+### 3. ⬜ What is left in this lane, in order
+
+1. 🔴 **Take the full `noodl-mcp` suite.** It was **not run** — a peer took the editor stack for
+   REL-012 AC5. **94 suites / 1290 is a PREDICTION written down to be taken, not a reading.** Two
+   files were added and none modified, and `tsc -p packages/noodl-mcp` is 0.
+2. **Re-take §8.3's four arms on ONE commit.** They were taken at four different commits while peers
+   landed work; the artefact for each is regenerable from §8.4.
+3. **Everything else here is Richard's** — the fourth round, and the V2 *"modern CSS"* seam, which
+   [§4.1](RICHARD-RULINGS-2026-09-04.md) says **must not be turned into a task by guessing**.
+
 **Session 40 built the last buildable row on the queue.** All four of Richard's §7.3 judgements are
 now answered *and* built. What remains is what session 39 said remained: **his content, his
 decisions, and four drives** — plus one thing session 40 found while checking the board.

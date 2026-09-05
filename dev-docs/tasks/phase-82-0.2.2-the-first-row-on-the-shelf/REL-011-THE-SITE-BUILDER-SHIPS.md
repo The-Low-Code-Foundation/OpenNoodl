@@ -1013,8 +1013,9 @@ members' area and documentation, and none of them touches this template — chec
    catch-all. What carries across is the *mechanism* — `as: 'main'` renders a `<main>`, and a child
    node renders inside it — and per-page authoring is §12's job. Covering them would mean touching
    `sbr010-messages-drive`, `sbr009ThemeEditorDrive` and `ac2-page-editor-drag-drive`.
-2. **`<h2>` order is unchecked in both templates.** Every section kind carries one, but nothing
-   asserts that a page's headings descend without skipping a level.
+2. ✅ **`<h2>` order — BUILT s41, see §10.** ~~unchecked in both templates~~ — `headingOrder.ts` +
+   `headingOrder.test.ts`, 29 specs over 20 pages of both artefacts, with the mutant that reddens
+   them.
 3. **No other template has an outline gate.** The members' area and the site builder now have one
    each; anything the shelf grows next starts at zero again, and neither gate is general.
 
@@ -1163,7 +1164,7 @@ the built server), so the `nodegx-export` sibling-typecheck hazard does not appl
 2. **The door's project-wide id renaming is unexamined as a product question.** Silently renaming a
    node in component A because component B later used the name is defensible for uniqueness and
    indefensible for anything that refers to a node by id. Nobody has asked which it should be.
-3. **`<h2>` order is still unchecked in both templates** (carried from §5).
+3. ✅ **`<h2>` order — BUILT s41** (was carried from §5; see §10).
 4. **Neither outline gate is general** (carried from §5) — but `documentOutline.ts` is now the shared
    instrument the next template would use, which is the part that was missing.
 
@@ -1285,3 +1286,385 @@ typecheck a backend spec locally and CI is the only reading.
 ⚠️ **And the control that makes this a finding rather than a suspicion**: the **unedited** drive,
 restored from a snapshot and compiled the same way, OOMs identically. The instrument is what is
 broken, not the edit — which is the reading s28 could not take, having no control beside it.
+
+---
+
+## §8 The nine SHITTY screens wore the HARNESS's palette — and the one seam that survived (s40, 2026-09-05)
+
+**REL-011c AC3's ruling — 9 SHITTY, 1 PASSABLE, 2026-09-04 — was taken on pictures whose brand
+colour, page ground, display face and every photograph were invented by `vib001-site.look.ts`, not
+shipped by the template.** Two of the five seams
+[`RICHARD-RULINGS-2026-09-04.md`](RICHARD-RULINGS-2026-09-04.md) §3 reads off those pictures are
+therefore facts about the seed.
+
+⚠️ **This does not overturn his ruling and must not be reported as doing so.** He looked at ten
+screens and did not like them; that stands, and the template is still held (D1). What it changes is
+what a fourth round would be *aimed at* — §3 was written down expressly *"so the correction has
+something to bite on"*, and this is the correction.
+
+🔴 **And the correction is not a discount.** §8.3 is a seam on that same list that survived the
+instrument fix, was the product all along, and is now built.
+
+### §8.1 The measurement — pixels, decoded off the ruled PNGs
+
+Straight out of `verdicts/vib-001/2026-09-03/site-builder-{living,door}/`, no browser:
+
+| element | **living** (9 of 10 ruled SHITTY) | **door** (never claimed, no `Theme` row) | what it is |
+|---|---|---|---|
+| nav / footer link | **`#1f6feb`** | **`#1e4d8c`** | the seed's `colorPrimary` — vs **Studio's**, correct |
+| page ground | **`#fffdf7`** | **`#fbfaf8`** | the seed's `colorBackground` — vs **Studio's**, correct |
+| `New page`, `/admin/pages` | **`#1f6feb`** | — | the same seed value on the admin half too (SBR-009 put the applier on `/Admin/Shell`) |
+| the CTA band | `#1e6ae0` → `#173763` | — | `--gradient-brand`, derived off the seed's primary |
+| a gallery tile | `#4b513e` | — | `SWATCH`, a hand-written `data:` URI SVG ramp |
+| **below the admin content** | **`#ffffff`** | — | **no token at all** — §8.3 |
+
+🔴 **`#1f6feb` is the seed's, byte for byte.** It is not the shipped default (`#2563eb`,
+`DefaultTokens.ts`), not this template's floor (Studio's `#1e4d8c`), and not any of the three chips
+the theme editor offers — it is reachable only by a person typing a hex into the colour field by
+hand. §3 seam 1 calls it *"the framework's default blue … the one colour a form library emits before
+anyone has chosen anything."* It is the one colour **this harness** emitted before anyone chose
+anything.
+
+✅ **The door arm is the control and it was right the whole time.** Same template, same run, no
+`Theme` row — Studio's navy and Studio's ground, to the byte. The token contract works; SBR-003 is
+not implicated; nothing about `designTokens` needed fixing. **A single-arm reading could not have
+told the seed's palette from the product's**, and the arm that could was in the same directory.
+
+### §8.2 Seam 4 is the same story — and the swatch was the right tool in the harness it came from
+
+§3 seam 4: *"Gradient rectangles where photographs belong … the members' area draws on **44 real
+`.webp` files** under `noodl_modules/starter-imagery/`; the site builder draws on none."*
+
+**The site builder drew on none because the seed drew on none.** `judge()` calls
+`placeStarterAssets()` on the served directory (`helpers/judge.ts:229`, from `STARTER_ASSETS` — the
+same list the editor installs into a real project), so all 44 have been reachable from these pages
+since the harness was written, and a `starterAssets` count rides on every run record.
+
+⚠️ **`SWATCH` came out of `sbr005-sections.look.ts`, where it is correct and stays.** There it is
+`swatch(name, from, to)` and each slot gets its own colours *and its own `<title>`*, precisely so a
+probe can tell *"the gallery drew three tiles"* from *"the gallery drew the hero's picture three
+times"*. That is the right instrument for a **functional** drive. Carried into a **look** harness it
+becomes the finding, because in a look harness the picture IS the reading.
+
+⚠️ **Registered, owner `NONE`**: `sbr-005`'s verdict shots carry those swatches too, deliberately.
+Any *look* verdict taken on that directory inherits the same limitation — REL-011 §2's
+`kind-contact-desktop-viewport.png` does not, because unstyled text inputs are not an imagery claim.
+
+### §8.3 🔴 The seam on that list that IS the product — built, in TWO halves
+
+`below the admin content` reads **`#ffffff`**: not `--background`, not `--surface`, no token. It
+survived the instrument fix unchanged, which is what makes it the product's.
+
+**Mechanism, and it is one parameter.** `/Pages/Site`'s `Page ground` has stated
+`minHeight: 100vh` since SBR-004, with the note *"this is what keeps a one-section page from ending
+halfway down the screen."* `/Admin/Shell`'s `Admin frame` — the node `ADMIN_FILL_EXEMPTIONS`
+describes as *"meant to be the whole viewport"* — never got the same line. `flexGrow` grows a box
+inside its parent, and the chain from `/App` down through the `Page` hands no height down; the
+public site answered that out loud and the admin half did not.
+
+🔴 **Why a ruling did not catch it, and why no instrument could.** Every admin shot reads
+`unreachable=0` and is **right**: the void is *below* the content, not clipped by it, so no scroll
+or reach measure can see it. And `/Pages/ThemeEditor` is the one admin screen whose content is
+TALLER than the viewport — **1126px against 900** — so it fills by content and shows no void. It is
+the one screen graded **PASSABLE**. §3 read *"it fills the viewport"* as a fact about its
+composition; it is a fact about its content length.
+
+**Fix**: `minHeight: { value: 100, unit: 'vh' }` on `Admin frame`, registered in
+`TEMPLATE_DIMENSION_EXEMPTIONS` as the viewport relation it is. `minHeight` and not `height` —
+`/admin/page/{id}` runs to 2789px and a stated height would clip it.
+
+🔴 **And that was a HALF FIX, which only a re-render showed.** The white void closed and the rail's
+own `--surface` panel and its right rule still stopped at the last nav item — the second clause of
+the same sentence. The rail needed two more things, and the FIRST ONE ALONE WAS INERT:
+
+| arm | `/admin/pages` desktop at y=600, under the rail | reading |
+|---|---|---|
+| 1 · as ruled | `#ffffff` | the unpainted `<body>` |
+| 2 · `+ minHeight: 100vh` | `#f5efe6` | ground fixed, **rail unchanged** |
+| 3 · `+ alignItems: 'stretch'` | `#f5efe6` | **no movement at all** — the arm that looked like the fix |
+| 4 · `+ rail sizeMode: 'contentHeight'` | **`#fffdf9`** | `--surface`: the rail runs the window |
+
+🔴 **Why arm 3 read identically to arm 2.** `addDimensions` defaults the `height` port to **100%**,
+and `Layout.size` assigns a height under `explicit`. So the rail carried
+`height: calc(100% - 0px)` against a frame whose height is indefinite (`min-height` with no
+`height`) — which resolves to its content **and overrides `stretch`, because stretch only applies
+to an item whose cross size is `auto`.** Under `contentHeight` the height port is not even offered
+and nothing is assigned. **A three-arm run would have certified `stretch` as the fix**; the fourth
+arm is what separates "the parameter is set" from "the parameter does anything".
+
+⚠️ `out-railSizeMode` and its wire are **deleted, not set to a constant** — both fold states now
+want `contentHeight`, and an inert wire reads as a decision that varies. `rel011cAdminSurfaces`
+§A1 is rewritten to that, not deleted: the "four ports move together" spec is now three, plus a new
+one asserting `stretch` and `contentHeight` **together**, because either alone is inert — with
+`Admin content` as the control, since narrowing `stretch` to the rail alone would put the body's
+white back under the content column.
+
+### §8.4 What changed
+
+| file | change |
+|---|---|
+| `vib001-site.look.ts` — theme | the four invented values → `{ ...SITE_THEME_PRESETS.press }`, **imported** from `siteTheme.ts` |
+| `vib001-site.look.ts` — imagery | `SWATCH` ×4 → `work-carpenter` (home hero), `work-machine-shop` + `work-leather-bench` (gallery), `texture-brick` (about hero) |
+| `sb005Components.ts` | `Admin frame` gains `minHeight: 100vh` **and** `alignItems: 'stretch'`; `Sidebar` moves to `sizeMode: 'contentHeight'`; `fold` loses `railSizeMode` |
+| `siteBuilderStyleScan.ts` | the `minHeight` exemption that pays for it |
+| `rel011cAdminSurfaces.test.ts` | §A1 rewritten to the new mechanism, +1 spec |
+
+🔴 **`press`, not `studio`.** Studio is also the floor (`buildSiteDesignTokens`), so seeding it would
+make the overlay and the `:root` stamp indistinguishable in the picture and this arm would stop
+proving the record beats the default. `press` is a chip a person can actually press, and it differs
+from the floor — so the arm keeps its meaning and the picture stays reachable.
+
+✅ **Imagery chosen by SUBJECT**, the way `get_style_vocabulary`'s `imagery` block tells an author to
+choose. `role: tile` rather than `ground`, deliberately: there is no workshop among the eight
+`ground` heroes, and a joiner would reach for the carpenter over a slot canyon. `backgroundSize:
+cover` is what makes that safe.
+
+
+### §8.5 The readings
+
+| gate | reading |
+|---|---|
+| `noodl-mcp` full jest | **93 suites / 1261 tests, EXIT=0** — twice, deterministic, artefact `md5=95a666c3` both times |
+| the same, at HEAD | 93 / **1257** |
+| `sbr012RawColourGate` **mutant** (the new exemption's `port` renamed) | **EXIT=1, 1 failed / 26 passed** — *"AC3: the artefact's raw dimensions are exactly the named exemptions"*, and only that. Restored by absolute path, `md5` matched |
+| `template:site-builder` regeneration | three rounds, each diffed against a `cp -a` snapshot; **every round named exactly the intended nodes and nothing else** (1 line, 1 line, then 17 lines = `sizeMode` + the script + one output port + one wire) |
+| HEAD-arm regeneration | reproduces the committed artefact's `md5=e7c8d2b2` exactly — the generator is deterministic and the baseline is honest |
+| `vib001-site.look.ts` | **40 shots, 2/2, EXIT=0**, four times |
+| the **door arm**, before vs after the seed fix | **all 32 PNGs byte-identical** (combined `md5=6d90f842`) — only the living arm moved, which is the isolation the seed change was supposed to have |
+
+### ⚠️ What the four arms do NOT control for
+
+🔴 **They were taken at four different commits** — `042f221c`, `042f221c`, `d656b714`,
+`09b6be63` — because peers were landing work on `cline-dev` throughout. The arms are therefore
+*artefact-varied*, not *commit-controlled*, and a viewer-side change between two of them would be
+invisible to this table.
+
+Two things keep the reading standing, and they are stated rather than assumed: **arms 2 and 3 are
+byte-identical in the sampled pixels despite sitting on different commits** (so the intervening work
+did not move this surface), and **arm 4's movement is the one the source predicted before it was
+run** — `addDimensions`' 100% height default overriding `stretch`. ✅ Anyone re-taking this should
+run all four on one commit; the artefact for each arm is regenerable from the source changes in
+§8.4.
+
+✅ **`test:main` — 423 suites / 7086 tests, EXIT=0**, the recorded baseline exactly, taken once the
+peer's merge had landed. **The first attempt could not be read at all**: `EXIT=1`, 2 suites failed,
+**7075 tests against a 7086 baseline** — the eleven-test shortfall being `exp-013/codeExportModal` failing *to
+run*, on `TS2304: Cannot find name 'A'` inside a comment in `nodegx-export/src/analyze/plan.ts:2606`.
+That file is **`UU` — unmerged.** A peer merged `p18-row8` into `cline-dev` during this session
+(`149bfc2f`) and `.git/MERGE_HEAD` was still present with **10 conflicted files** when the gate ran.
+This is the known coupling — *a spec in `nodegx-export` reddens the editor's gates for every peer* —
+reaching `test:main`. The second red (`bld-004/reasoningChannel`, a stall-timing spec) is a lone
+red under concurrent load — and the clean re-run proves it, since it passed with nothing changed.
+🔴 **Nothing was committed while `MERGE_HEAD` was present**, because a commit then would have
+concluded somebody else's merge. ✅ **The eleven-test shortfall is the tell worth keeping**: 2 failed
+suites but only 1 failed test means one suite failed to RUN, and the missing COUNT is what names it.
+
+### ⚠️ Registered, owner `NONE` — a test count that moved by three and was not explained
+
+`noodl-mcp` went **1257 → 1261**. **`rel011cAdminSurfaces` accounts for exactly one** (28 → 29 `it`
+blocks, confirmed by running the file alone). The other **three are unattributed**.
+
+What was ruled out, rather than assumed:
+
+- **The artefact.** Nine artefact- and `sb005Components`-dependent suites were run against BOTH
+  artefacts (`sb005AdminPanel`, `sb007Template`, `sbr012RawColourGate`, `vocabularyParity`,
+  `ac2DragGestureDrive`, `sb006PublicSite`, `sbr009ThemeEditor`, `sbr009ThemeEditorDrive`,
+  `sbr010Messages`): **155 and 155, 138 and 138.** Invariant.
+- **A test disappearing.** Comparing the verbose name lists, **nothing present before is absent
+  now** — so this is three additions, not six changes.
+- **Nondeterminism.** The full suite read 1261 twice, on a verified-identical tree.
+
+🔴 **The isolating run — the full suite on a restored HEAD arm — died on `ENOSPC` with 33 of 93
+suites done.** Those 33 have **identical per-suite counts in both arms** (554 = 554), so the three
+are among the other 60. **The disk was at 186Mi of 460Gi**; freeing this session's own harness temp
+projects (119M under `$TMPDIR/vib001-site-*`) took it back to 9.1Gi, which is the note worth
+keeping: *a `.look.ts` run leaves a project directory behind per arm, and four runs is 119M.*
+
+⚠️ **The suite is green and the count is stable; what is missing is the NAME of the three.** Anyone
+picking this up should re-run the HEAD arm now that there is room — the three files to swap are
+named in §8.4, and `npm run template:site-builder` restores either artefact exactly.
+
+#### ✅ ANSWERED 2026-09-05 (s41) — all four are named, and NO suite was run to do it
+
+**The three are a PEER'S COMMIT, landed between the two arms.** `5f407849` — *"judgement 4 — a
+refused reader is sent to the door"*, the members-area lane, committed **08:54 today** — adds
+**exactly three `it()` blocks** to `packages/noodl-mcp/tests/tpl001Template.test.ts` (76 → 79
+literal; 82 reported, because three `it.each(DETAIL)` blocks expand over a two-entry `DETAIL`).
+🔴 **Its own commit message records the whole-suite reading it produced: `93 suites / 1260 tests`.**
+
+| arm | tests | why |
+|---|---|---|
+| the HEAD arm | **1257** | taken **before 08:54** |
+| `5f407849`, the members-area lane | **+3** | `tpl001Template.test.ts`, three named `it()` blocks |
+| `rel011cAdminSurfaces.test.ts` 28 → 29 | **+1** | this lane's own, already attributed |
+| the fixed arm | **1261** | 1257 + 3 + 1 ✅ |
+
+✅ **The delta is 3 and not 4 because the other two specs that commit touched are in a different
+package** — `rel002b-fail-closed.test.ts` (37 → 38) and `tpl001-refused-query.test.ts` are under
+`packages/nodegx-backend/tests`, outside the `noodl-mcp` jest population. A count that moved by the
+"wrong" amount is what makes this attribution checkable rather than plausible.
+
+🔴 **This is §8's own registered trap arriving one level up.** The four look arms were flagged as
+*artefact-varied, not commit-controlled*; the two SUITE arms had the same defect and it was not
+noticed, because a test count feels like a property of the tree. ✅ **Before attributing a count
+delta to your own edit, `git log --since=<the first reading> -- <the package>`** — it cost two greps
+here and would have cost a second 93-suite run and the disk that killed the first one.
+
+---
+
+## §9 The five seams, audited to the end — TWO are the product, and the list is not five (s41, 2026-09-05)
+
+§8 measured seams 1, 3 and 4 and stopped. **Seams 2 and 5 had never been re-read against the
+corrected instrument at all**, so *"what a fourth round is aimed at"* was still unknown for two of
+the five. Read here off the **09-05 living shots** (the corrected arm, `head=09b6be63`,
+`artefactMd5=40ecad05`) beside the **09-03 living shots Richard actually ruled on**, and then
+confirmed in the artefact so the claim is not an eyeball.
+
+| # | §3's seam | the harness, or the product? | how it was settled |
+|---|---|---|---|
+| 1 | the framework's default blue | 🟦 **HARNESS** | §8.1 — `#1f6feb` is the seed's `colorPrimary`, byte for byte. **Gone**: `/admin/pages` now draws `press`'s maroon on a warm ground |
+| 2 | ruled rows with outline-secondary pills | 🔴 **PRODUCT** | **unchanged by the seed fix, in both the picture and the artefact** — see below |
+| 3 | the shell does not fill the screen | 🔴 **PRODUCT** | §8.3 — built. The 09-05 shot fills the frame; the rail's ground and rule run the window |
+| 4 | gradient rectangles where photographs belong | 🟦 **HARNESS** | §8.2 — `SWATCH`. **Gone**: four real `work-*`/`texture-*` photographs, and the manifest records all 44 written |
+| 5 | one column, one rhythm | 🔴 **PRODUCT** | **unchanged, and stated in exactly two places** — see below |
+
+### §9.1 Seam 2 is composition, and the palette only recoloured it
+
+`/Admin/PageRow`'s root `row-2` states `borderBottomStyle: solid` / `borderBottomWidth:
+var(--border-1)` / `borderBottomColor: var(--border)` — **the ruled row**. `pill-2` is a Group on
+`var(--accent)` wrapping the status Text — **the solid pill**. `editButton` and `menuButton` are
+`net.noodl.controls.button` on `var(--surface)` — **the two outline pills**. Every one of those is a
+token, so the seed fix repainted them and **changed no idiom**: the 09-05 picture is the same row,
+the same rule, the same three pills.
+
+🔴 **This is the seam §3 called *"the literal example the rubric names as SHITTY however clearly it
+reads"*, and it is the product's, unqualified.** It is not discounted by §8.
+
+### §9.2 Seam 5 is true of the artefact, and there are only two numbers behind it
+
+Walked from `/Pages/Site` down:
+
+- **One width.** `shell` is the only node on the page that states one — `width: 100%`, `maxWidth:
+  var(--site-measure)` — and the nav, every section and the footer are all inside it. **No node
+  anywhere in the page escapes the measure**: there is no full-bleed anything.
+- **One rhythm.** `shell` and `siteMain` each state `rowGap: var(--space-8)`, and **every** section
+  — hero, gallery, rich text, contact, CTA — is drawn through the single `/Site/SectionView`, whose
+  root `section` group states `paddingTop`/`paddingBottom: var(--space-4)` **for all five kinds**.
+  The five per-kind wrappers (`heroWrap`, `galleryWrap`, `ctaWrap`, `richWrap`, `contactWrap`) carry
+  **no width, no background and no padding of their own.**
+
+✅ So §3's *"every block is the same width with the same gap above it. No density decision anywhere"*
+is not an impression — it is **two token references and one shared wrapper**, and there is no place
+in the graph where a density decision could currently be expressed per kind.
+
+⚠️ **That cuts both ways and neither way is a licence to build.** The mechanism is cheap (the values
+are centralised, and `/Site/SectionView` is where a per-kind decision would go); *what* the rhythm
+should be is a look decision, which is D1's and §4.1's — **the site builder is on hold, phase 77
+owns it, and §4 is explicit that nothing about the look is built until he names the seam.** This
+section names where the work would land, and stops.
+
+### §9.3 What this changes for a fourth round
+
+**Two seams, not five.** A round aimed at §3 as written would spend two of its five items on the
+harness. What is left for him to be re-shown is seam 2 and seam 5 — one admin idiom and one page
+rhythm — on pictures whose palette and photographs are the template's.
+
+⚠️ **The ruling stands and this does not soften it** (§8's opening still governs). He disliked ten
+screens; three of the five reasons a session guessed at were wrong or are now fixed, which says the
+session's reading was poor, **not that the screens were better than he said.**
+
+---
+
+## §10 `<h2>` order, checked at last — and the gate is GREEN AT HEAD (s41, 2026-09-05)
+
+**This lane registered the same residual twice with owner `NONE`** — §5 item 2 and §6 item 3:
+*"`<h2>` order is unchecked in both templates. Every section kind carries one, but nothing asserts
+that a page's headings descend without skipping a level."* It is the one item on either list that is
+buildable, cheap, and **not a look decision** — which matters, because the template is held and §4 is
+explicit that nothing about the look is built until Richard names the seam.
+
+### §10.1 Measured first, and the corpus passes
+
+Over both shipped artefacts, before a line of the gate was written: **20 pages, 0 skipped levels,
+every page opening at `h1`.**
+
+| template | pages | sequences |
+|---|---|---|
+| site builder | 7 | six pages `h1`; `/Pages/Site` `h1 h2 h2 h2 h2 h2` |
+| members' area | 13 | `h1` alone ×6, `h1 h2` ×4, `h1 h2 h2`, and `h1 h2 h2 h3 h3 h3` ×4 |
+
+🔴 **So this is a checker over the corpus that exists, and it found nothing.** That is a real result
+and it is stated rather than buried: the outline work of §5–§7 left both templates well-formed by a
+rule nobody had ever asserted. What the gate buys is the next edit, not this one.
+
+### §10.2 🔴 A page's headings are mostly NOT in the page — and that is what a hole would look like
+
+Walking `/Pages/Site`'s own tree, following children only, finds **one** heading. The other five are
+in `/Site/HeroSection` and its four siblings, which reach the page through `/Site/SectionView` — and
+`SectionView` is **not a child of anything**. It is the `template` **parameter** of the `sectionList`
+`For Each`.
+
+**A walker that followed only children would report every site-builder page as a lone `h1` and call
+it well-formed** — the exact answer the gate wants, arrived at by seeing nothing. So the traversal
+follows two edges that look nothing alike: a node whose `type` is a component name (an instance), and
+a node whose `parameters.template` names one (`sb005AdminPanel.test.ts` already walks both pairs for
+its layout reading; this is the same traversal asked a different question).
+
+✅ **Pinned by cardinality, not by absence**: one spec asserts the page's own subtree holds exactly
+**1** heading and the resolved sequence holds **6**, from **more than one component**.
+
+### §10.3 The instrument is graded before it is pointed at anything
+
+A gate that has never been red is a gate whose failure nobody has read. Two things stand in:
+
+- **`headingOrderFault` on synthetic sequences** — the skip (`h1 h3`), the page that opens at `h2`,
+  and ⚠️ **the ascent that must stay legal** (`h1 h2 h3 h2 h3` is a second section; a rule forbidding
+  it would redden most pages in both templates). ⚠️ And `headingOrderFault([])` is `null` **on
+  purpose**, recorded as a control, because *"no headings"* is not a level fault — which is precisely
+  why the template blocks are obliged to count as well.
+- **A mutant on the real artefacts.** One `"as": "h2"` → `"h3"` in each: `/Site/HeroSection`'s
+  `heading` and `/Pages/Post`'s `aHeading`.
+
+| arm | reading |
+|---|---|
+| HEAD | **29 / 29, EXIT=0** |
+| mutant, both artefacts | **3 failed / 26 passed of 29 — all 29 RAN**, and the two page rows name themselves: *"`<h1>` (`/Pages/Site` #pageTitle) is followed by `<h3>` (`/Site/HeroSection` #heading) — a skipped level"* |
+| restore | both files byte-identical — `site-builder.content.json` `md5=95a666c3` (**the fixed arm §8.5 recorded**), `Pages/Post/nodes.json` `md5=d8fb0b7a` |
+
+⚠️ The third red is the sequence-shape spec, which pins `h1 h2 h2 h2 h2 h2` — expected, and left in
+because a gate that cannot see a *changed* outline is half a gate.
+
+### §10.4 One reading, two adapters — and why not two copies
+
+The templates ship in genuinely different shapes: one `content.json` holding every component, and a
+directory of `nodes.json` files whose `children` are **ids**. The traversal and the fault rule are in
+`headingOrder.ts`; each template contributes only the few lines that differ. This is the split
+`documentOutline.ts`'s own header argues for — *"one expression, one parse, one vocabulary of
+faults"* — and the failure it names (two probes answering slightly different questions and
+disagreeing without anybody noticing) is one this repo has already paid for twice.
+
+### §10.5 The readings, and what was NOT run
+
+| gate | reading |
+|---|---|
+| `headingOrder.test.ts` | **29/29, EXIT=0** |
+| the same, mutant arm | **EXIT=1**, 3 red of 29 that all ran, by name |
+| `tsc --noEmit -p packages/noodl-mcp` | **0 errors, EXIT=0** |
+
+🔴 **The full `noodl-mcp` suite was NOT run, and the whole-suite number is therefore NOT known.** A
+peer took the editor stack for REL-012 AC5 five minutes before it would have started, and this box's
+rule is one heavy job at a time. ⚠️ **The predictable reading — 94 suites / 1290 — is written here as
+a prediction and must be taken, not assumed**; §8's own trap was a count claimed across arms that had
+moved underneath it. What is true is narrower and enough to hand on: **this session added two files
+and modified none**, so nothing existing can have changed behaviour, and `tsc` covers the package.
+
+### ⬅️ What this does NOT do — owner `NONE`
+
+1. **It is the AUTHORED outline, not the rendered one.** `documentOutline.ts` is the browser half and
+   needs a drive; nothing here says a `Text` with `as: 'h2'` reaches the DOM as an `<h2>` (§5's
+   browser arm makes that claim for `main`/`h1` only).
+2. **Repetition, `mounted` conditions and draw-time ordering are not modelled** — level order is
+   invariant under repetition, which is why that is defensible, but a page whose headings are
+   conditionally mounted could render a sequence this reading does not predict.
+3. **Still not general.** A third template on the shelf gets this for free only if it ships in one of
+   the two shapes; a new shape needs a third adapter.
