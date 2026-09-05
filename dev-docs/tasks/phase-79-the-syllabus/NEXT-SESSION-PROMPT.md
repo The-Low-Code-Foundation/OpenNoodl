@@ -120,7 +120,7 @@ stowaways**). `curriculum.json` is what puts them on the served `/university` pa
    watching the count with a Value Changed duplicates a port the node has.
 
 ⚠️ Also owed from lesson 2: **`it-breaks-on-a-phone`'s `teaches` must drop *alignment***
-([D5](DEFECTS-LESSON-3-FOUND.md)) — the step that would have taught it was measured to change
+([D5](DEFECTS-LESSON-2-FOUND.md#d5-low--columnsjustifycontent-is-inert-for-auto-height-items)) — the step that would have taught it was measured to change
 nothing and was deleted.
 
 ## What is waiting on Richard, and none of it blocks the above
