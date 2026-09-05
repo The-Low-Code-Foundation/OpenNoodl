@@ -1,0 +1,112 @@
+{
+  "title": "Poke it",
+  "description": "The card ignores you. A click is a pulse that says something just happened — and a pulse is not a value, which is why nothing on screen can listen to one directly.",
+  "format": "noodl-lesson@1",
+  "steps": [
+    {
+      "kind": "popup",
+      "title": "The card ignores you",
+      "body": "## Poke it\n\nYour creature sits there. You can look at it, and that is all — click anywhere on that card and nothing in the app even notices.\n\nIn this lesson you will add a **Poke** button and make the creature answer back. Four small nodes do it, and the reason it takes four rather than one is the whole idea of the lesson:\n\n> **An event is a pulse. It says *something just happened* and carries no value with it.**\n\nThat matters because nothing you can see on screen listens for pulses. A **Text** node has a **Visible** and an **Opacity**; it has no *\"and now\"*. So between the button and the creature you will build the two nodes that turn a pulse into a value — and once you have seen that shape, you have seen how every interaction in this editor is wired."
+    },
+    {
+      "title": "Add a button",
+      "body": "Add a **Button** node inside `Board`, underneath `Care`, and rename it `Poke`. Then set its **Label** to `Poke`.\n\nA Button is the first node you have added that produces something rather than only displaying something. It draws a caption in a box, and when somebody clicks it, it fires — and *fires* is the word to hold on to, because that is not the same as *is*. The button has no output that means \"I am being clicked\". It has one that means \"a click just happened\", and there is a difference.",
+      "detail": "**Where to put it.** `Poke` is a child of `Board`, the box you added last lesson — not a child of `Care`. Drop it into `Care` and it becomes a fourth column, which fights the `1 1 1` layout you wrote.\n\n**Where the caption is.** Select the node and look for the **Label** group in the properties panel on the right. The port is called **Label**, and it opens on the word `Label`.\n\n⚠️ The picker has **two** things called Button. Take the one under **UI Controls**.",
+      "completeWhen": [
+        {
+          "node": "/Pages/Home:#Home:#Page shell:#Board:#Poke",
+          "hasType": "net.noodl.controls.button"
+        },
+        {
+          "node": "/Pages/Home:#Home:#Page shell:#Board:#Poke",
+          "paramsEqual": {
+            "label": "Poke"
+          }
+        }
+      ]
+    },
+    {
+      "title": "Give it something to say back",
+      "body": "Add a **Text** node inside `Card`, underneath `Name`, and rename it `Reaction`. Type whatever your creature should say when it is poked into its **Text** property — `Ouch!` will do.\n\nThe word itself does not matter and is not checked; the **name** `Reaction` is, because two steps from now a wire has to find this node. Leave everything else alone — in particular do not touch its **Opacity**. It is going to arrive down a wire, and a value you set by hand here would only be overwritten.",
+      "detail": "**Why it is inside `Card` and not `Board`.** The reaction belongs to the creature, so it goes in the creature's box — it will sit under the name, sharing the card's centring and its gap.\n\n**It will be visible at this point, and that is expected.** A brand-new Text is fully opaque. It stops being so in step 6, when something else starts deciding.",
+      "completeWhen": [
+        {
+          "node": "/Pages/Home:#Home:#Page shell:#Card:#Reaction",
+          "hasType": "Text"
+        },
+        {
+          "node": "/Pages/Home:#Home:#Page shell:#Card:#Reaction",
+          "hasParams": [
+            "text"
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Catch the pulse",
+      "body": "Add a **Switch** node — it is not a visual node, so drop it on the empty canvas to the right rather than inside anything — and rename it `Poked`. Then drag a wire from `Poke`'s **Click** output to the Switch's **Flip** input.\n\nThis is the step the lesson exists for. **Click** is a signal: it happens, and then it is over. **Flip** is a signal input: it listens for that. And what comes out of the other side of a Switch is not a signal at all — it is **Current State**, a plain true-or-false that just *sits there* until something flips it again. One node, and a pulse has become a value.",
+      "detail": "**Signal wires look different.** A port that carries a pulse is drawn as an arrow rather than a dot, and the editor will not let you connect an arrow to a dot. If a wire refuses to land, that is usually why, and it is the editor being right.\n\n**Why `Flip` and not `On`.** A Switch has three inputs — **On**, **Off** and **Flip**. `Poke` is one button firing one signal, so it has to be **Flip**: each click lands on whichever state the Switch is not in.",
+      "completeWhen": [
+        {
+          "node": "/Pages/Home:#Poked",
+          "hasType": "Switch"
+        },
+        {
+          "connection": {
+            "from": "/Pages/Home:#Home:#Page shell:#Board:#Poke",
+            "fromPort": "onClick",
+            "to": "/Pages/Home:#Poked",
+            "toPort": "flip"
+          }
+        }
+      ]
+    },
+    {
+      "title": "Make the value move",
+      "body": "Add an **Animate To Value** node beside the Switch and rename it `Ease the poke`. Set its **Duration** to `200`. Then wire `Poked`'s **Current State** output into its **Target Value** input.\n\nYou have just connected a true-or-false to a port that wants a number, and the editor allowed it: **Animate To Value** reads `true` as `1` and `false` as `0`. What it then does is the useful part — rather than jumping to the new number it walks there, over the 200 milliseconds you gave it, and reports where it has got to on **Current Value** every frame. A switch is instant. This is what makes it look like something moved.",
+      "detail": "**Duration is in milliseconds**, so `200` is a fifth of a second. It is a plain number with no unit dropdown beside it — type the digits and nothing else.\n\n**Two ports with similar names.** **Target Value** is where it is heading, and it is an input. **Current Value** is where it has got to, and it is an output. This step wires the first; the next step wires the second.",
+      "completeWhen": [
+        {
+          "node": "/Pages/Home:#Ease the poke",
+          "hasType": "net.noodl.animatetovalue"
+        },
+        {
+          "node": "/Pages/Home:#Ease the poke",
+          "paramsEqual": {
+            "duration": 200
+          }
+        },
+        {
+          "connection": {
+            "from": "/Pages/Home:#Poked",
+            "fromPort": "state",
+            "to": "/Pages/Home:#Ease the poke",
+            "toPort": "targetValue"
+          }
+        }
+      ]
+    },
+    {
+      "title": "Point it at the creature",
+      "body": "Wire `Ease the poke`'s **Current Value** output into `Reaction`'s **Opacity** input. Then run the preview and click **Poke**.\n\nThe reaction fades in. Click again and it fades out. Nothing in that chain knows what a poke *means* — the button knows only that it was clicked, the Switch knows only that it was flipped, and the Text knows only that its opacity is `0.62` this frame and `0.71` the next. The behaviour is in the wiring, not in any one node.",
+      "detail": "**The word disappeared the moment you connected it, before you clicked anything.** That is right. The Switch starts off, so **Current Value** starts at `0`, and it pushed that `0` down the wire as soon as there was a wire — a connected input stops using whatever you typed into it.\n\n**Opacity runs from 0 to 1**, not 0 to 100, which is why the boolean-to-number cast in the last step lands exactly where it needs to with no arithmetic anywhere.",
+      "completeWhen": [
+        {
+          "connection": {
+            "from": "/Pages/Home:#Ease the poke",
+            "fromPort": "currentValue",
+            "to": "/Pages/Home:#Home:#Page shell:#Card:#Reaction",
+            "toPort": "opacity"
+          }
+        }
+      ]
+    },
+    {
+      "kind": "popup",
+      "title": "What you just learned",
+      "body": "Your creature answers back, and you did it without writing a line of code that says *when the button is clicked, fade the text in*.\n\nThree ideas did that, and they are the ones every interaction in this editor is made of:\n\n- **An event is a pulse, not a value.** **Click** does not mean \"the button is being clicked\". It means \"a click happened\", once, and then it is gone. That is why it has an arrow instead of a dot, and why it cannot be plugged into anything that expects a number.\n- **Nothing visual listens for pulses.** Look through the properties of any node on that page: they are all values. So every interaction you will ever build has this same joint in the middle — something that catches the pulse and holds a value where the screen can read it.\n- **A wire beats a typed value.** You typed nothing into **Opacity**, and you could not have: the moment an input is connected, the connection decides. A parameter is what a port does when nobody is telling it otherwise.\n\nNow poke it twice. It fades in, then it fades out, and you are exactly where you started — because the only thing in that chain with any memory is a Switch, and a switch remembers one bit. Your creature cannot get hungrier, and it cannot tell you it has been poked eleven times. That is the next lesson."
+    }
+  ],
+  "authoredBy": "ai",
+  "completionBadge": "First Contact"
+}
