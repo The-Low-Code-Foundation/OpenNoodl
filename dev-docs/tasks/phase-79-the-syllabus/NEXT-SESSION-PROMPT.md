@@ -135,10 +135,14 @@ the drive. This section supersedes only its **FIRST JOB** list: (a) J1 is done, 
 
 Richard's instruction was *"do a sweep for any defects from the recent phases and line them up to
 tackle as many as we can."* The sweep found P77/P78's rows already swept into phase 80 (closed,
-46/46), and **P79 holding 21 rows with every single owner `NONE`** — the freshest and the only
-wholly unowned register. That was the lane.
+46/46), and **P79's registers holding 23 rows with every single owner `NONE`** — the freshest and the
+only wholly unowned set. That was the lane.
 
-## What shipped — 10 defects across 7 commits, every one gated and mutant-checked
+⚠️ **Session 8's board said 21 and the tables hold 23** (5+5+4+4+2 across the five lesson
+registers, plus 4 in the runner register — recounted, not inherited). Nothing turned on the
+difference, but a board figure that nobody re-derives is how a row goes missing.
+
+## What shipped — 10 defects across 6 fix commits, every one gated and mutant-checked
 
 | row | was | now |
 |---|---|---|
@@ -200,7 +204,10 @@ lives in `noodl-viewer-react` and had run `noodl-viewer-react`.
    its own, and arguably Richard's call, not a corner to cut at the end of a sweep.
 3. **[E3](DEFECTS-LESSON-3-FOUND.md)** — a new wire does not pull its source's value.
 4. **[E1](DEFECTS-LESSON-3-FOUND.md)** — a Button cannot be put on the design system from the panel.
-5. The remainder: D1, D3, D4, D5, G2, G3, G4, H2, I1, I2.
+5. **E4 and H3** — the two NARROWED rows. Their editor half is done; what is left is the
+   curriculum entry naming `Timer`, which is in the **other repo**, so neither can be closed
+   from this one. They are on this list so they are not mistaken for finished.
+6. The remainder: D1, D3, D4, D5, G2, G3, G4, H2, I1, I2.
 
 ## Traps this session paid for, so the next one does not
 
@@ -213,7 +220,8 @@ lives in `noodl-viewer-react` and had run `noodl-viewer-react`.
   spec drives a real graph with a **sink node recording what it received**.
 - **A port `description` is not a comment.** It is an input to two committed artefacts
   (`node-catalog{,-enriched}.json`) with two CI gates. E2 left both stale and nothing said so;
-  H4's commit repairs it. Run `catalog:generate` + `catalog:merge` **and diff** in the same commit.
+  H4's commit repairs it. Run `catalog:generate` + `catalog:merge` **and diff** in the same
+  commit — and see the blast-radius rule in the E5 section, which is the general form of this.
 - **`grep` went silent on a `.ts` file** because an edit had put a real NUL byte in it — the file
   read as binary to the tool. Written as the six-character escape sequence instead. If a grep you
   trust returns nothing, check the file is still text.
@@ -229,4 +237,8 @@ are restated in the cheap runner (`tests-unit/syl-j1`) and all eight pass, but *
 same as having run it**. Somebody should, before this is called finished.
 
 `DRIVE-2026-09-05-THE-LESSON-RUNNER.md` is still **untracked and is session 8's, not mine**, and
-the four modified `SYL-*.md` plus this prompt are session 8's uncommitted edits — left as found.
+the four modified `SYL-*.md` are session 8's uncommitted edits — left exactly as found.
+
+⚠️ **This prompt IS committed** (`30f94dca`, corrected by `6fab4cca`), and committing it
+necessarily carried session 8's own uncommitted edit to this same file along with it. Their
+text is above and intact; nothing of theirs was rewritten.
