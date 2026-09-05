@@ -952,6 +952,7 @@ ancestor slack that would then be shared into it.
 | `sb007Template.test.ts` | **71/71, EXIT=0** (62 before §12's nine) |
 | `noodl-mcp` full jest | **92 suites / 1242 tests, EXIT=0** |
 | `tsc --noEmit -p packages/noodl-mcp` | **0 errors, EXIT=0** |
+| `noodl-mcp` full jest | **94 suites / 1290 tests, EXIT=0** — from 93 / 1261, so **+1 suite and +29 tests, and nothing else moved** |
 | `sb008-public-site-drive.test.ts` (real backend + browser) | **24/24, EXIT=0** (20 before §6's four) |
 | `vib001-site.look.ts` | **EXIT=0, 2/2, 40 shots** |
 
@@ -1651,12 +1652,15 @@ disagreeing without anybody noticing) is one this repo has already paid for twic
 | the same, mutant arm | **EXIT=1**, 3 red of 29 that all ran, by name |
 | `tsc --noEmit -p packages/noodl-mcp` | **0 errors, EXIT=0** |
 
-🔴 **The full `noodl-mcp` suite was NOT run, and the whole-suite number is therefore NOT known.** A
-peer took the editor stack for REL-012 AC5 five minutes before it would have started, and this box's
-rule is one heavy job at a time. ⚠️ **The predictable reading — 94 suites / 1290 — is written here as
-a prediction and must be taken, not assumed**; §8's own trap was a count claimed across arms that had
-moved underneath it. What is true is narrower and enough to hand on: **this session added two files
-and modified none**, so nothing existing can have changed behaviour, and `tsc` covers the package.
+✅ **The full `noodl-mcp` suite — TAKEN, once the peer announced the stack was down: `94 suites /
+1290 tests, EXIT=0`, 0 FAIL, 82s.** It was written down as a **prediction** first and then measured,
+which is the only version worth quoting; §8's own trap was a count claimed across arms that had moved
+underneath it.
+
+✅ **And the arithmetic closes §8's register row a second way, independently.** 93 → **94** suites is
+this file; 1261 → **1290** is **+29**, which is exactly this file's own spec count — so **nothing
+else moved**, and the 1261 baseline the +3 attribution rests on is confirmed by a run that did not
+exist when the attribution was made.
 
 ### ⬅️ What this does NOT do — owner `NONE`
 

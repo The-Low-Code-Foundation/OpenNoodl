@@ -76,9 +76,10 @@ byte-identical.
 
 ### 3. ⬜ What is left in this lane, in order
 
-1. 🔴 **Take the full `noodl-mcp` suite.** It was **not run** — a peer took the editor stack for
-   REL-012 AC5. **94 suites / 1290 is a PREDICTION written down to be taken, not a reading.** Two
-   files were added and none modified, and `tsc -p packages/noodl-mcp` is 0.
+1. ✅ **DONE — the full `noodl-mcp` suite reads `94 suites / 1290 tests, EXIT=0`**, taken the moment
+   the peer announced their stack was down. It had been written down as a **prediction** first, and
+   then measured. ✅ **It closes §8's register row a second way**: +1 suite and **+29 tests = exactly
+   the new file's specs**, so nothing else moved.
 2. **Re-take §8.3's four arms on ONE commit.** They were taken at four different commits while peers
    landed work; the artefact for each is regenerable from §8.4.
 3. **Everything else here is Richard's** — the fourth round, and the V2 *"modern CSS"* seam, which
