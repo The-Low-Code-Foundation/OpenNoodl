@@ -451,3 +451,22 @@ fetch when the transform was refused after the read (E1); a text input's live te
 search rides a Variable (E2). Gates: pkg tsc 0 · jest 68 files 2233 · editor tsc 0 · ledger OK 105 · picker 98 floor 98 ·
 17/17 arms (two re-cuts recorded). Driven twice: the editor's write path 19/19 byte-identical with the alpha line in
 settings and modal; the BUILT app against a mock backend 7/7 rows.
+
+**Session 85 (2026-09-05) — EXP-011 §57 + §58 + §59, Tier 2.8 rows 7–9 in one session, three sub-agents in three
+worktrees, picker 98 → 105 (82.7%).** Richard asked for parallel agents; each row ran in its own `make-worktree.sh`
+worktree off `042f221c` (branches `p18-row7`, `p18-row8`, `p18-row9`) under a common brief (design note → EXPECTED →
+fixture → reverted arm → build → spec with the real tsc → arms → ledger → commit), limited to package-level gates, and the
+orchestrator merged the three branches sequentially (`09b6be63`, `149bfc2f`, `a94c8394`), reconciling the floor
+(99 → 102 → 105), the six pins, and the additive hunks in `plan.ts` / `component.ts` / `emitApp.ts`. §57 `Repeater
+Item` (type id `For Each Actions`): the row's Item Id as a string prop the host binds from `item.id`, Added as a
+once-on-mount effect, the exit handshake refused by name — 29 rows, 15/15 arms. §58 the streaming trio: the three
+runtime machines transcribed into `src/lib/streaming.ts` as pure cores plus hooks, the runtime's event order pinned
+(a bare parse re-appends the retained chunk; Clear resets Flush Count) — 59 rows, 13/13 arms. §59 `Hash`, `Random
+Bytes`, `Screen Resolution`: `src/lib/crypto.ts` (tryHash/tryRandomBytes, encoding transcribed, graded against the real
+WebCrypto and node's createHash) and `src/lib/screen.ts` (`useScreenResolution`), a `crypto-call` action in UUID's
+two-arm shape — 55 rows, 15/15 arms. Merge-found: three specs (and a fourth after the merge) had borrowed
+`net.noodl.Hash` as "a node with no rule" — re-pointed to Pattern Extractor; a `x !== undefined && 'defer' in x`
+narrowing typed in the package and not in the editor's non-strict tsc (EXP-012's trap, third recurrence) — split.
+Gates on the merged tree: pkg tsc 0 · jest 71 files (71 on disk) 2443 · editor tsc 0 · exp-012/013 157/157 · ledger OK
+112 translated · picker 105 floor 105 · editor `test:ci` 2943 specs, 4 failures = AIX-006 ×4 by name (the known floor; seed 75372, HEAD a94c8394, fresh `tests/test-results.json`). Not driven this session (three rows, one box, five peer
+sessions): the editor write path and a built app for `roster-desk` / `stream-desk` / `utility-desk` are owed.

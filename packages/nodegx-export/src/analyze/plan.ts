@@ -11601,8 +11601,14 @@ function planComponent(
       const literal = literalParam(node, input.port);
       return literal !== undefined ? { kind: 'literal', value: literal } : undefined;
     };
-    const data = sourceOf(spec.data);
-    if (data !== undefined && 'defer' in data) return refuse(data.defer);
+    // ⚠️ Two statements, not one `&&`: the editor's tsc (no strictNullChecks) cannot narrow `x !== undefined && 'defer' in x`
+    // on its false branch, and left `data` as the whole union (EXP-012's recorded trap, §50's `isDefer` fix).
+    let data: ValueExpr | undefined;
+    const dataSource = sourceOf(spec.data);
+    if (dataSource !== undefined) {
+      if ('defer' in dataSource) return refuse(dataSource.defer);
+      data = dataSource;
+    }
     const config: StreamPlan['config'] = [];
     for (const input of spec.config) {
       const expr = sourceOf(input);

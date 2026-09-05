@@ -117,9 +117,9 @@ place. The order is by *what a refusal silences*, since §50.2 measured that a r
 | 4 | ✅ `On App Error` | **built s82 (§54)** — was: an error pathway that is left out is the exact case where exporting is worse than not |
 | 5 | ✅ `Create New Array` | **built s83 (§55)** — was: *"I use this all the time"* — the anonymous-Id-by-wire mechanism (§7.3) needs a design session first |
 | 6 | ✅ `Filter Records` | **built s84 (§56)** — was: the search box over a fetched list |
-| 7 | `Repeater Item` | now that the node works, people will use it (§7.3 reversed) |
-| 8 | `JSON Stream Parser` · `Stream Buffer` · `Text Accumulator` | the streaming trio — pure functions over chunks, one build |
-| 9 | `Hash` · `Random Bytes` · `Screen Resolution` | one browser API each, one session for the three |
+| 7 | ✅ `Repeater Item` | **built s85 (§57)** — was: now that the node works, people will use it (§7.3 reversed) |
+| 8 | ✅ `JSON Stream Parser` · `Stream Buffer` · `Text Accumulator` | **built s85 (§58)** — was: the streaming trio — pure functions over chunks, one build |
+| 9 | ✅ `Hash` · `Random Bytes` · `Screen Resolution` | **built s85 (§59)** — was: one browser API each, one session for the three |
 | 10 | `Set Component Object Properties` · `Parent Component Object` · `Set Parent Component Object Properties` | own store = local state; the parent pair = context |
 | 11 | `Component Stack` · `Push Component To Stack` · `Pop Component Stack` | the in-page router — §16.2 says what it is not |
 | 12 | `Add Record Relation` · `Remove Record Relation` | a relation column through the EXP-009 client |
@@ -7863,3 +7863,570 @@ escaped); "A" five of five; "BOB" none (not a VIP). No console error at any step
 - A Query Records' own `visualFilter` is still not translated (it fetches the whole class) — the ledger's
   blind spot §8 records, unchanged by this slice.
 
+
+
+## §57 Tier 2.8 row 7 — `Repeater Item`: the row's own id, and the one pulse a row can hear (session 85, 2026-09-05)
+
+Type id `For Each Actions`, display name *Repeater Item* — the seventh row of §50's list. Picker **98 → 99**.
+
+### §57.0 What a Repeater Item is, and what that decides
+
+**The ports on disk** (`foreachactions.ts`, nothing added by an editor adapter — the module's `setup()` is
+empty since DEBT-006 removed the `itemAction-*` block): one input, `Remove Completed` (`removeCompleted`,
+boolean, connections only), and six outputs — `Added` (`added`, signal), `Try Remove` (`tryRemove`, signal),
+`Item Id` (`itemId`, string) and the outcome trio `Done` / `Completed` / `Unchanged`. **No index port, no
+Remove action.** The runtime hands a row *nothing to remove itself with*; removal is data-driven (a row
+leaves the array), and the Repeater Item only *hears* about it.
+
+**What the runtime does with them**, in `foreach.tsx` and `foreachactions.ts`:
+
+- `Item Id` is `resolveForEachItem(this).getId()` — the `_forEachModel` the repeater hung on the template
+  instance (`createNode(template, guid(), { _forEachModel: model })`), walked up the scope chain. The model is
+  what `Collection.set` minted the row into: `Model.create(plain)` takes **`plain.id` when the row carries
+  one and mints a guid otherwise** (`model.ts:238-247`), and for a Query Records row it is the record's
+  objectId. A number in `id` stays a number (`_newRecord(id)` keeps the raw value; the port says `string`).
+- `Added` is `signalAdded()`, called **synchronously inside `addItem` after `createNode`, once per row,
+  before `target.addChild`** — one pulse per row creation, never again for that row.
+- `Try Remove` is a **hold**, not a notification: `removeItem` calls `tryRemove(cb)` on the row's first
+  Repeater Item; when the output has connections the node stores `cb`, pulses `Try Remove` and waits for
+  `Remove Completed`, which then fires `Done` (a hold was waiting) or `Unchanged` (none was) and `Completed`
+  either way. With no connections the removal proceeds on `scheduleAfterInputsHaveUpdated` — nothing an author
+  can observe.
+- A Repeater Item with no template host resolves nothing: `repeater-item/no-item-in-scope`, once, and
+  `Item Id` reads `undefined` for ever; `Added` never fires because no repeater creates it.
+
+**The design — the Object-in-repeater shape, not a new one.** EXP-002-MODEL2-TARGET-OUTPUT §4 already
+translates "a node inside the template reads the row": an `Object` in *From repeater* mode becomes a row prop
+the parent binds from `item.<field>` (`ComponentPlan.rowProps`), typed on the template side and dropped by
+name on the parent side when the feed does not carry the field. `Item Id` is exactly that read with the field
+fixed to `id`, and it takes the same seam:
+
+- **`itemId` consumed** → the template declares `itemId?: string` (the port's own type — the one thing the
+  template can promise without knowing its host), and every For Each that repeats the template passes
+  `itemId={item.id}` through `rowAttrs`, **in all four feed branches**, so the emitted `tsc` checks the feed's
+  `id` against `string` where the row type is concrete. Per feed, by name (the parent's sentence, since the
+  parent is where the row's shape is known): Static Data rows without a unique primitive `id` (the runtime
+  mints a guid there that the exported app does not); a Static Data `id` not typed `string` (the runtime hands
+  a number through a string port — the export will not claim a type the graph did not); a named array (its
+  rows are inserted without an id — a guid again); a typed list expression without `id`. An untyped list
+  keeps it, under §4e's ruling. A query feed always passes it — `id` is the record's own.
+- **`added` consumed** → a once-on-mount effect guarded by `useRef(false)` — §53's task-start shape verbatim
+  (`startTask` pulses once after `createNode`; so does `signalAdded`), its chain compiled by `doneChainOf(node,
+  'added')` in render context and registered in every walker a task's chain is (`allActions`, `scanActions`,
+  `walkActions`, `fillMaterialize`, the React import).
+- **Refused, by name, the whole node** (`dispositionForLogic`-level, before any prop is minted):
+  1. no For Each names the component as its template — *"no For Each names /Components/X as its template,
+     so there is no repeater row: Item Id reads undefined and Added never fires (the runtime reports
+     `repeater-item/no-item-in-scope` once). A Repeater Item nested one component below the template walks up
+     in the runtime; this slice reads only a template's own"*;
+  2. a Run Tasks names it — *"named as a Run Tasks template by <comp> › <node>, where the item is a task
+     input rather than a rendered row (runtasks.ts sets `_forEachModel` too) — this slice translates the For
+     Each row only"*;
+  3. `Try Remove` connected — *"its Try Remove is connected, which holds the repeater's teardown of this row
+     until Remove Completed is pulsed — the emitted row unmounts the moment its item leaves the list and has
+     no hold to offer"*;
+  4. `Remove Completed` wired — *"its Remove Completed is wired: the exit handshake it completes has no
+     counterpart in the emitted row, which unmounts the moment its item leaves the list"*;
+  5. `Done`/`Completed`/`Unchanged` consumed — *"its "<port>" output is consumed, and it reports the exit
+     handshake this slice does not translate (Done when a held removal is released, Unchanged when none was
+     waiting, Completed either way)"*.
+- **Two hosts** are *not* a refusal: the prop's type is the port's, and each host's feed is gated on its own
+  rows, so a template repeated over two lists gets `itemId` from the one whose rows carry a string `id` and a
+  named drop from the other. (The `Object` gate refuses two hosts because it reads *arbitrary* fields; this
+  node reads one, whose type it declares itself.)
+- A Repeater Item nothing reads collapses into the root, as an `Object` nothing reads does — inert in the
+  runtime, absent in the emit, nothing lost.
+
+What this deliberately does **not** do: mint an id on rows that have none (a guid per render would differ from
+the runtime's stable one and from itself across renders); hold a row's unmount for an exit animation (the
+repeater is not being redesigned — §29's ruling); expose an index (the node has no such port).
+
+### §57.1 What is emitted
+
+- **The template** (`PersonRow.tsx`): `itemId?: string` on the props interface, destructured, rendered where the
+  Text sat — `<p className={styles.idText}>{itemId}</p>`; and, when `Added` is consumed, `useEffect`/`useRef` earned
+  in the import block and a once-on-mount effect after the boundaries and before the query effects:
+  ```
+  // Repeater Item "This row": its Added chain runs once, on mount — signalAdded fires once per row, right after the repeater creates it (foreach.tsx).
+  const added = useRef(false);
+  useEffect(() => {
+    if (added.current) return;
+    added.current = true;
+    lastAdded.set(itemId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once, like the row's own Added pulse
+  }, []);
+  ```
+- **The host** (`Home.tsx`): `itemId={item.id}` on the row element, in every feed branch that can supply it, beside
+  `key={item.id}` and §29's `onRemoved={() => …}`. A feed that cannot supply it drops the attribute with a sentence
+  naming the node and the port, under the page in `EXPORT-REPORT.md`, and the pre-flight counts it.
+- **The plan**: `ComponentPlan.rowProps` entries carry `repeaterItem` (the node id) so the parent's drop names the node
+  rather than the generic "no row carries this field"; `ComponentPlan.repeaterItems` holds the compiled Added chains;
+  `REPEATER_ITEM_TYPE` is exported beside `RUN_TASKS_TYPE`; the read is admitted in Pass 4g beside `Object`'s
+  `prop-*` reads and in `resolveExpr` beside the same branch. No new lib — the effect is inline, §53's shape.
+- **Refused by name** — the five whole-node sentences of §57.0 (no host; a Run Tasks host; Try Remove connected; Remove
+  Completed wired; Done/Completed/Unchanged consumed), the four parent-side drops (static rows without a unique `id`; a
+  static `id` typed number; a named array inserted without a string `id`; a typed list without `id`), the Added chain
+  that does not translate (*"Repeater Item X: its Added chain did not translate — <reason>; its Item Id, if read, still
+  does"*), and the fallback for a component with no visual root.
+
+### §57.2 The fixture — `tests/fixtures/roster-desk`
+
+A Static Data `People` (`p1` Ada, `p2` Grace, `p3` Linus — string ids) repeated by `peopleList` into
+`/Components/PersonRow`: a Text from the `name` input, a Text from the Repeater Item's Item Id, a Remove button whose
+Click is the row's `removed` output; `Added → Set Variable lastAdded ← Item Id`. The page relays `itemOutputSignal-removed`
+into `Set Variable lastAction = "Removed a person."` and shows both variables. Emitted whole: 0 refusals, 15 files, the
+real `tsc` over the app clean.
+
+🔴 **The brief asked for "a Remove button that signals the item's removal through the node's own mechanism".** The node
+has none — no Remove or Delete action, no index port; `tryRemove` is the repeater *asking the row* whether it may go.
+Removal is data-driven (a row leaves the array), and §30's `Remove Object From Array` needs a *named* array feed, which
+the exporter cannot seed from a Static Data (`collection<T>([])` boots empty). So the fixture's Remove rides §29's
+relay into a page action, which is what the runtime can do with a static list too; a working delete over a named array
+is `note-desk`'s and stays there.
+
+### §57.3 Gates
+
+```
+nodegx-export: tsc 0 · repeater-item.test.ts 29/29 · jest 69 files (69 on disk = 68 + this one) 2293 rows, exit 0, alone on the box at load 6
+export-ledger:check OK — 176 types, 106 translated · picker --check 99/127 (78.0%), exit 0 (was 98)
+six floor pins moved 98 → 99: animation-pair, filter-records, on-app-error, object-store, run-tasks, script
+neighbours re-run alone, green: unreported-deferrals 7, in-code-markers 54, logic 29, typecheck-emitted 34, static-data 23,
+  collection-remove 20, repeater-row-signals 14, foreach-relay-ports 10, filter-records 34
+arms 15/15 killed (mut-summary.txt), sources restored md5-identical; two first cuts did NOT compile ("0 total" is not a
+  kill) and were re-cut at the value level: M4 (the outcome arm → the port names misspelt, 3 red) and M12 (the named-array
+  gate → the key predicate inverted, 1 red)
+```
+
+### §57.4 Traps found
+
+- 🔴 **Predicted a Remove signal; the node has only outputs.** §7.3 called the ports "the Repeater's removal handshake"
+  and the brief read that as a signal the row sends. Reading `foreachactions.ts` first: `tryRemove(cb)` is the
+  repeater's call *into* the row, and the row's only verb is `Remove Completed`. The design changed before a line was
+  written — nothing to emit for removal, a hold to refuse by name.
+- 🔴 **Predicted a text input's live text in the Added chain would be handler-only (§56 E2's rule).** It is not: the
+  exporter syncs the input's text into `useState` and the chain reads `''` on mount — which is the runtime's answer too
+  (the input is empty when `signalAdded` fires). Pinned as a row rather than refused; the row that *does* refuse an
+  Added chain uses a `Navigate` with no target.
+- 🔴 **A `defer()` subject does not reach the report.** I asserted the report would carry the deferral's subject phrase;
+  the report carries the *note*, and the deferral only feeds in-file markers and the pre-flight count. The row asserts
+  the sentence under the page and `refusals === 1`.
+- ⚠️ **Notes are prefixed with the component path at `emitApp`**, so a `startsWith` on the sentence reads nothing.
+- ⚠️ **`not.toContain('itemId')` matched the AC3 marker's own port name** (`rowItem.itemId` in the TODO comment) — an
+  absence assertion on a substring that the *refusal prose* also contains proves nothing; narrowed to `itemId?:`.
+- ⚠️ A ternary arm replaced by `false` narrows the discriminant to `never` and fails to compile under ts-jest — twice.
+
+### §57.5 Residuals (owner NONE unless named)
+
+- A Static Data with a **number** `id` drops Item Id by name; the honest translation is the runtime's — the number
+  through a string port — which the export declines to type. Owner NONE.
+- A Repeater Item **nested one component below** the template (the runtime walks up the scope chain) refuses with the
+  no-host sentence, which names the case. Translating it needs an "instantiated inside a template" map. Owner NONE.
+- `foreach.tsx:587-593` feeds a template's Component Input named `id`/`Id` from `model.getId()` in identity-mapping mode;
+  the exporter's `template-inputs` mapping binds `id` from `item.id` (right when rows carry one) and `Id` from `item.Id`
+  (never carried — dropped with the generic sentence). Pre-existing, not this row's; owner NONE.
+- The exit handshake (`Try Remove` → exit animation → `Remove Completed`) stays refused by name; an honest translation
+  is a deferred-unmount list in the host, which is a repeater redesign. Owner NONE.
+- Not driven in a browser this session (the brief forbids drives from a slice agent); the orchestrator's drive is owed.
+
+
+## §58 Tier 2.8 row 8 — the streaming trio: `JSON Stream Parser`, `Stream Buffer`, `Text Accumulator`, hosted the way AGENT-007 runs them (session 85, 2026-09-05)
+
+The eighth row of §50's list, three picker nodes in one section. Type ids `net.noodl.JSONStreamParser`,
+`net.noodl.StreamBuffer`, `net.noodl.TextAccumulator` (the display names drop the `net.noodl.` and space the
+words; the ledger keys on the ids). All three are `inNodePicker`, not deprecated, `availableIn: browser` —
+`picker-coverage.js` counts each, so the floor moves **98 → 101**.
+
+### §58.0 What the three nodes are, and what that decides
+
+**The runtime** (`noodl-runtime/src/nodes/std-library/agent/`): three `_internal` state machines over
+`stream-parsers.ts`'s pure functions, each with the outcome contract (`outcomeOutputs`: `done`, `unchanged`,
+`failure`, `completed`) beside its own value-level signals. None spreads `outcomeInputs`, so there is no
+`Treat Unchanged as` port. Read off the files, not the docs:
+
+- **JSON Stream Parser** (`json-stream-parser.ts`). `chunk` is retained by its setter (`undefined`/`null` → `''`,
+  else `String(value)`); `Parse` appends it and runs one of three framings over the whole pending buffer —
+  `ndjson` (`splitDelimited` on `\n`, blank lines skipped, a line that will not parse is an error and the
+  stream goes on), `single` (`scanJsonValues` without array framing, the first complete value only), else
+  `stream` (`scanJsonValues` with array framing: top-level `[`, `]`, `,` are punctuation). The scanner
+  tracks strings and escapes and brace depth, so a boundary inside a string, inside an escape, or inside a
+  number waits (`12` at the end of a buffer might become `123`). Order per `Parse`: nothing pending →
+  `Unchanged`; over `Max Pending` → buffer cleared, `Error`/`Error Count`, then `Failure` (`Is Complete` is
+  NOT touched on that branch — transcribed as is); else `Is Complete`/`Pending Characters`, then the values
+  (`Parsed` = the last, `Values` = this parse's, `Value Count` cumulative), one `Error` per bad value (the
+  last message wins, the count grows by all), `Success` only if a value came out, then `Failure` iff this
+  parse added errors (with `Error`'s text) else `Done`, then `Completed`. `Clear` resets everything and
+  fires `Cleared`, then `Done` if there was anything (pending text, values, errors or a count) else
+  `Unchanged`. `format`'s setter is `(value) || 'ndjson'` and an unknown name falls to the `stream` branch.
+- **Stream Buffer** (`stream-buffer.ts`). `data` is retained and **marks arrival** (`hasPendingData`, set by
+  the setter and never cleared). `Add` with nothing ever delivered is `Failure` (`stream-buffer/no-data`,
+  `Error` set); else push, `Max Size` overflow drops the oldest (`Dropped Items`, `Overflowed`), then a
+  `Flush Size` reached hands the token to the flush; else the interval timer is armed and `Done`. `Flush`:
+  the timer stopped; an empty buffer is `Unchanged` (no `Flushed`); else `Flushed Data` = the buffer (a fresh
+  array each time), `Flush Count`, `Flushed`, `Done`. The timer's own flush owns no token — `Flushed` only.
+  `Flush Interval`'s setter re-arms on change (stop; arm iff the buffer is non-empty). `Clear` stops the
+  timer, resets, `Cleared`, then `Done`/`Unchanged` by what there was — read before the reset. `Max Size`
+  coerces `>= 0`, the other two `> 0`, else 0. Deletion stops the timer.
+- **Text Accumulator** (`text-accumulator.ts`). The `chunk` setter accepts text and the primitives that read
+  as text (`number`/`boolean`/`bigint` → `String`), blanks `undefined`/`null`, and **refuses** anything else
+  at delivery: `Error` set to `describeBadChunk`'s sentence, `Failure` pulsed and `text-accumulator/chunk-not-text`
+  raised — once per distinct message (`isRepeat`), the pulse before the raise. A text chunk clears `Error`.
+  `Add` with an empty chunk is `Unchanged` (keep-alive frames; also the path after a refused chunk); else
+  append, `truncateHead` to `Max Length` (`Dropped Characters`, `Overflowed`), `splitDelimited` on the
+  delimiter (empty delimiter: no boundaries), messages appended and capped to `Max Messages` (`Dropped
+  Messages`, `Overflowed`), `Message Received` once per Add that completed any, `Changed`, `Done`. `Clear`
+  as the buffer's, `Error` counting as something to clear.
+
+**The port set is the one on disk** — none of the three declares dynamic ports; the catalog rows are the
+runtime's port maps and are what `plan.ts` reads. Every wire into a port the node has not got, and every
+read of one, is refused by name.
+
+**What the export does with them.** Each node is a hook over one `_internal`, in §52/§53/§54's shape:
+`src/lib/streaming.ts` transcribes `stream-parsers.ts`'s cores (`splitDelimited`, `scanJsonValues`,
+`tryParseJson`, `truncateHead`, `utf8ByteLength`, `describeError`) and the three machines as **pure
+functions over a state object returning the ordered event list** (`parserParse(state)`, `bufferAdd(state)`,
+`accumulatorAdd(state)`, …: every signal, raise and timer instruction the runtime would issue, in the
+runtime's order), and three hooks over them — `useJsonStreamParser(source, options, listeners)`,
+`useStreamBuffer(…)`, `useTextAccumulator(…)` — that keep the state in a ref, deliver the events (a signal
+→ the listener, a raise → `raiseAppError` with the node's provenance, arm/stop → the one timer), and bump a
+reducer so the host re-renders. The handle's value outputs are **live getters** over the state, so a chain
+fired by a signal reads what the runtime's getter answers at that moment, and a Text bound to one re-renders
+after the invocation. Value inputs: the data port (`Chunk`/`Data`) is **read at the pulse**, `runtasks-run`'s
+rule — the action carries the wired expression (or the authored literal), snapped per chain, and the hook's
+`parse(chunk)`/`add(data)` runs the setter then the action; with no source at all the call takes no argument
+and the setter never ran (the parser and accumulator then see `''`; the buffer sees `hasPendingData` false and
+fails, as the runtime does). Config ports are read live off an options object the hook re-reads every
+render (§54's Filter) — absent means the `initialize` value, present means the setter's coercion — and the
+buffer's interval change re-arms the timer in an effect, as the setter does at delivery.
+
+**Refused by name** — every sentence predicted here, then pinned in §58.4:
+- a logic-only component: *component emits no file to host the JSON Stream Parser* (or the node's display name);
+- *its `<port>` input is not a port this node has* · *its `<port>` output is consumed, and this node has no such port*;
+- *two wires feed its `<Port>` input — last-writer-wins is not statically ordered* (any value input);
+- a value input with no static source: *its `<Port>` input is fed by `<type>` — `<the feeder's own reason, or>` no statically known source in the emit vocabulary*;
+- a value input fed by a text input's live text: *its `<Port>` input reads a value that only exists inside a handler*;
+- a signal output wired into a value port: *its `<port>` output is consumed as a value — a pulse carries nothing to read*, decided from the sink's port kind before the chain compiles (§52.4);
+- a listener chain this slice cannot compile: `doneChainOf`'s own sentences; a chain reading handler-only values: *its `<port>` chain reads values that only exist inside a handler*.
+Nothing else is refused: the three nodes' every port translates. A node nothing fires and nothing reads is
+still hosted (Script's and the boundary's rule — the runtime instance exists and holds its defaults); its
+listener chains are compiled and never fire, as the runtime's never would.
+
+**Recorded divergences** (in the lib's header): the setters run at the pulse with the value the render or the
+chain holds rather than at delivery — so the accumulator's refused-chunk `Failure` fires at the `Add` that
+carries it, not the moment the wire delivers it, and once per distinct message either way; a wired `Data`
+counts as arrived whether or not its source has published (the runtime's `hasPendingData` is per delivery);
+`flagOutputDirty` collapses into one re-render per invocation (the chains read live getters, so nothing they
+see moves).
+
+### §58.1 What is emitted
+
+- **`src/emit/streamingLib.ts`** (new) → `src/lib/streaming.ts`, shipped when any component keeps one of the three;
+  it imports `./errors`, so `errors.ts` ships with it (the `emitApp` rule, fifth member). Exports: the cores
+  (`splitDelimited`, `scanJsonValues`, `tryParseJson`, `truncateHead`, `utf8ByteLength`, `describeError`); per node a
+  state factory (`createParserState` = `initialize()`), an options applier (the setters, keyed on presence), the data
+  setter, and the actions as pure functions returning `StreamEvent[]` (`parserParse`/`parserClear`,
+  `bufferAdd`/`bufferFlush(state, owned)`/`bufferClear`, `accumulatorSetChunk`/`accumulatorAdd`/`accumulatorClear`);
+  the three hooks. `bufferFlush`'s `owned` is the token: the interval timer's flush owns none, so it reports no outcome.
+- **plan.ts**: `STREAM_PARSER_TYPE` / `STREAM_BUFFER_TYPE` / `TEXT_ACCUMULATOR_TYPE`, the `STREAM_NODES` table (the
+  catalog's port set per node: data port, config ports, action verbs, signals in declaration order, value fields with
+  their declared-type cast and their maybe-undefined answer — §A's last row pins it against the catalog); `ValueExpr`
+  gains `stream-out`, `HandlerAction` gains `stream-action` (`value` read at the pulse, `runtasks-run`'s rule, snapped
+  per chain); `StreamPlan` on `ComponentPlan.streams`; `streamPlanOf` in `scriptPlanOf`'s shape (memoised, `refuse`
+  unwinds the plan and the compiled sinks), `streamReadOf`, `compileStreamAction`; `isTriggerWire`; the `compileSink`
+  dispatch; the trigger-compile loop; `OWN_CHAIN_OUTPUTS` (so the attach pass skips a listener wire whatever its file
+  order); the registration pass beside Script's; the binding whitelist; the seven expression/action switches; both
+  walkers, `scanActions` and `fillMaterialize`; `bailAsLogicOnly`'s sentence; `streamFieldMaybeUndefined` exported.
+- **component.ts**: the flag, `allActions`, `collectActionUse`, `maybeUndefined`, `exprCode` (`<local>.<field>`
+  both modes), the deps walk, `chainReadsChainLocal`, `actionCode` (`<local>.<verb>(<data>)`), `actionExprsOf`, the
+  import (the hooks the plan kept, sorted), the config reads through `hookExprSources`, the binding table by declared
+  type (an `array` port `JSON.stringify` at text; a `*` port §10's `String(x ?? '')`; number/boolean `String()`; a
+  string bare; a number sink takes a number bare and refuses the rest; a boolean sink coerces `!!`), the hook lines
+  after the boundaries, the gate, the return.
+- **emitApp.ts**: the lib, and `errors.ts` when it ships. **Ledger**: three rows `translated`, floor **98 → 101**,
+  one sentence on the floor comment. **Moved rows**: the six floor pins (`filter-records`, `script`, `animation-pair`,
+  `object-store`, `on-app-error`, `run-tasks`).
+
+### §58.2 The fixture — `tests/fixtures/stream-desk`
+
+`Pages/Home`: a `chunk` Variable written by two Load buttons (`{"id":1,"name":"A` and `da"}\n{"id":2,"name":"Bob"}\n` —
+a document split mid-string across the two) into a JSON Stream Parser (`format: ndjson`) with Parse and Clear buttons;
+a `token` Variable written the same way (`Hello, wor` / `ld|Bye|`) into a Text Accumulator (`delimiter: |`) with an
+Add button; a String constant `tick` into a Stream Buffer (`maxSize: 3`) with Push and Flush buttons. Every value
+output is bound to a Text; `success` / `messageReceived` / `flushed` each write a `status` Variable shown in a Text.
+46 nodes, 35 wires. Load and Parse are **separate clicks on purpose**: a `Set Variable` compiles with no Done chain, and
+a set-and-parse pair off one click is exactly the shape whose runtime order cannot be read from source (the pulse is
+queued at the click, the Variable's delivery is queued when the setter runs) — the export would print
+`chunk.set(…); parser.parse(chunk.get())` and read the fresh value, and whether the runtime parses the old chunk is a
+question for a drive, registered in §58.5 rather than baked into a fixture.
+
+Emitted (`Home.tsx`): one import of the three hooks; three hook lines with the node's provenance, its authored config
+and its listener inline; `parser.parse(chunk.get())`, `acc.add(token.get())`, `buffer.add('tick')`, the bare verbs;
+`{JSON.stringify(parser.values)}`, `{String(parser.valueCount)}`, `{parser.error}`, … . 15 files, both libs, no
+refusal, no verdict; the emitted app typechecks as a real `ts.Program` with 0 diagnostics.
+
+### §58.3 The gates
+
+```
+packages/nodegx-export: tsc --noEmit 0 · streaming-trio.test.ts 59/59 · export-ledger:check OK (176 types, 108 translated)
+picker 101/127 (79.5%), floor 98 → 101, --check exit 0
+jest, the whole package, once, alone (1-min load 4.95): 69 files (69 on disk) 2323 rows, exit 0 (was 68 / 2233)
+the nine moved or joined specs, one at a time, all green: filter-records 34, script 74, animation-pair 57, object-store 35,
+  on-app-error 41, run-tasks 67, emitted-syntax 62, exported-readme 169, in-code-markers 54
+emitted apps typecheck (real ts.Program): the fixture, the wired-config variant, the Data-less variant, the `Parsed`/truthy
+  variant — 0 diagnostics; a CONTROL row proves the checker reddens on a getter the handle has not got
+arms 13/13 red, all restored (md5 identical after each; mut-summary.txt):
+  M1b the scanner forgets escapes in an object string — 1 · M2 Success on every Parse — 3 · M3b Completed before the outcome — 20
+  M3c the raise AFTER the failure pulse — 4 · M4b the timer's flush reports an outcome — 2 · M5b a repeated bad chunk fires again — 1
+  M6b a changed interval never re-arms — 2 · M7 the Chunk setter no longer clears on null — 2 · M8b a pulse read as a value
+  is no longer decided before the chain — 1 (the first cut, `sinkKind === 'never'`, was a COMPILER kill — "Tests: 0 total" — and
+  was re-cut at the value level, §55's rule) · M9 the data no longer read at the pulse — 3 · M10 an array port loses its JSON
+  cast — 1 · M11 two wires no longer refused — 1 · M12 streaming.ts ships without errors.ts — 8
+  (five lib arms were first written as multi-line anchors and cut NOTHING — the emitter is a quoted-line array, one string per
+  source line, so a `\n` anchor cannot match; recorded, re-cut as single quoted lines)
+```
+
+### §58.4 What building it found
+
+1. 🔴 **"Retained between pulses" is a behaviour, and my rows wanted the opposite.** Three §E rows expected a bare
+   `parse()` / `add()` to be `Unchanged`; the transcription re-appended the last chunk, which is exactly what the
+   port description says ("a second Add with no new chunk appends it again"). The rows now pin the re-append, and
+   `parse(null)` — the setter's empty chunk — for the `Unchanged` path.
+2. 🔴 **The scanner consumes the whitespace before an unterminated scalar.** `single` over `{"a":1} trailing` leaves
+   `rest = 'trailing'`, not `' trailing'`: the skip loop runs before `scanOneValue`, and `rest` starts where the value
+   would. The runtime's answer is pinned, not mine (Pending Characters 8, not 9).
+3. ⚠️ **`Clear` resets `Flush Count`** — a row expected the count to survive a Clear. It does not (`clearBuffer`).
+4. ⚠️ **The reverted-arm prediction put the wrong sentence on the wrong node**: I predicted "feeds X.chunk, which has
+   no static binding" on the Variable-fed *wires*; it landed on the *constant node* (`tickConst`, "its savedValue read
+   feeds net.noodl.StreamBuffer.data …") and the Variable wires took the generic step-5 note — a wire has no
+   disposition to carry a sentence, a node does.
+5. ⚠️ **A text input's live text into Chunk takes the feeder-named fallback** ("its Chunk input is fed by
+   net.noodl.controls.textinput — no statically known source in the emit vocabulary"), not the precise "only exists
+   inside a handler": §54.4.2's seam again — the node registers in the early trigger loop before the controlled-state
+   seam mints the input's row. Pinned as it is; residual below.
+6. 🔴 **The declared type, not the value, decides the cast** (`outputproperty.ts`, NDA-014): an `array` port takes
+   the JSON cast at a text sink and a `*` port does not — so `Values` prints `JSON.stringify(…)` and `Parsed` prints
+   §10's `String(x ?? '')`, and a parsed *object* on `Parsed` renders `[object Object]` in the export exactly as the
+   runtime's Text node renders it. Read off the runtime, not preferred.
+7. ⚠️ **A boundary's wired Filter is never walked by `hookExprSources`** (found while wiring my config reads): §54's
+   "wired Filter from a Variable" row passes because a Text already binds that Variable and mints the `useValue`
+   local; a Filter wired from a Variable nothing else reads would print a bare name. Not this row's; registered below.
+8. ⚠️ **`PIPESTATUS` is bash; this shell is zsh.** The first `tsc` gate printed an empty exit — an empty error list is
+   not a pass. Re-run unpiped, read the status (0).
+
+### §58.5 What this leaves (owner NONE unless named)
+
+- **The one-click set-then-parse order** (§58.2): the export reads the fresh Variable in the same handler; whether the
+  runtime's input queue parses the previous chunk is a drive question. If it does, the export is *more* right than the
+  runtime and the difference should be recorded as such; if it does not, nothing to do. Owner NONE (a drive).
+- A value input fed by a **text input's live text** refuses with the fallback sentence — §54.7's seam, third family
+  (boundary Filter, Script input, streaming data/config). The controlled-state row would host all three. Owner NONE.
+- **A boundary's wired Filter is not walked by `hookExprSources`** (§58.4.7) — a latent §54 hole with no fixture that
+  reaches it. One line beside the Run Tasks walk. Owner P18.
+- **The transports** (`Server-Sent Events`, `WebSocket`, `Subscribe To Changes`, Tier 3.11) are what feed these nodes
+  in a real app; until they translate, every stream-desk chunk arrives from a Variable or a constant. The hooks'
+  `parse(chunk)` / `add(data)` shape is what a transport's `onMessage` chain would call. Owner: Tier 3.11.
+- The accumulator's refused-chunk **`Failure` fires at the `Add` that carries the chunk**, not at delivery (recorded
+  divergence, §58.0). A transport delivering into Chunk without an Add would make the difference observable; today
+  nothing does. Owner NONE.
+- A wired **`Data` counts as arrived** even if its source never published; the runtime's `hasPendingData` is per
+  delivery. Observable only with a source that can be unset, which no fixture wires. Owner NONE.
+- `flagOutputDirty` collapses into one re-render per invocation; the listener chains read live getters so nothing they
+  see moves — a chain that fires a Set Variable read by a Text sees the same frame either way. Owner NONE.
+- Not driven: the exported app in a browser, the editor's picker badge and pre-flight over stream-desk (the
+  orchestrator's gates). The lib's behaviour is graded under the hook harness with fake timers (§D/§E).
+
+
+## §59 Tier 2.8 row 9 — `Hash`, `Random Bytes`, `Screen Resolution`: three browser APIs, two libs (session 85, 2026-09-05)
+
+Type ids `net.noodl.Hash`, `net.noodl.RandomBytes`, `Screen Resolution` (the last IS its display name; the first
+two are not — `Hash` / `Random Bytes`). All three are in the picker population (`inNodePicker`, browser, not
+deprecated), so the floor moves **98 → 101**.
+
+### §59.0 Design — what each node is on disk, and what it becomes
+
+**The port sets, read off the catalog (`node-catalog.json`), not the source files** — `outcomeOutputs` adds a
+`Completed` port the literal `outputs:` object does not show (§37's trap, paid once already):
+
+| node | inputs | outputs |
+|---|---|---|
+| `net.noodl.Hash` | `value` (string), `algorithm` (enum SHA-256/384/512, default SHA-256), `encoding` (enum hex/base64/base64url, default hex), `hash` (signal, display **Do**) | `digest` (string), `done`, `failure`, `completed`, `error` (string) |
+| `net.noodl.RandomBytes` | `length` (number, default 32), `encoding` (enum, default hex), `generate` (signal, display **New**) | `value` (string), `done`, `failure`, `completed`, `error` (string) |
+| `Screen Resolution` | none | `width`, `height`, `aspectRatio` (numbers) |
+
+**Hash and Random Bytes are `UUID`'s shape (§37), not a request's.** `hash.ts` `_run` and `randombytes.ts`
+`_generate` are: read the inputs the setters stored, produce a value or a failure, write the value row (or leave it
+as it was), clear or write the Error, report the outcome. That is `compileIdNew`'s two-arm `if` — with two
+differences the runtime makes and the export keeps: **the value row boots empty** (neither node has an `initialize`
+that seeds it; `Digest` / `Value` read `undefined` until the first Do — where UUID's `initialize` mints one), and
+**a failure raises on the error channel** (`reportOutcome(…, 'failure', { code })` → `raiseRuntimeError` before the
+Failure pulse: `hash/failed`, `random-bytes/failed`; §54's rule that the raise sites are the row). Hash is
+asynchronous (`crypto.subtle.digest` is a promise), so its call is awaited and the handler around it is `async`
+(`actionsAwait`); Random Bytes is synchronous.
+
+So: one action kind `crypto-call { node: 'hash' | 'random-bytes', inputs, local, materialize?, errorMaterialize?,
+async, then, failThen }`, one expression kind `crypto-out { node, viaState? }` for the value output, and `outcome-error`
+(the shape UUID already uses, `local: '<local>.error'`) for the Error. The three-question table is UUID's, verbatim:
+
+| read from | `Digest` / `Value` | `Error` |
+|---|---|---|
+| render, or another handler | the row | the row |
+| the **Done** arm | `<local>.digest` / `<local>.value` | 🔴 refused — both nodes clear the message before Done fires |
+| the **Failure** arm | the row (neither node writes the value on failure) | `<local>.error` |
+
+**The inputs are read where the setters read them.** `value`/`algorithm`/`encoding` (Hash) and `length`/`encoding`
+(Random Bytes): a wire is the render expression the handler closes over (a wired `length` is wrapped in `Number(…)`,
+the setter's own coercion at the delivery site); an authored literal prints as a literal; neither prints `undefined`,
+and the lib applies the runtime's own fallbacks *there* — `algorithm || 'SHA-256'`, `encoding || 'hex'`, `value || ''`
+(the `||`, not `??`: an author who cleared the field gets the default), and `length === undefined ? 32 : length`
+(NOT `||`: a `Length` of 0 is a failure, which is the node's whole reason for existing). A wired enum is accepted:
+the runtime stores whatever arrives and lets WebCrypto (`digest` rejects an unknown algorithm) or `encodeBytes`
+(`Unknown encoding "x". Use hex, base64 or base64url.`) refuse it at run time; the lib does the same.
+
+**`src/lib/crypto.ts`** (new emitter `src/emit/cryptoLib.ts`): `encoding.ts` transcribed — `bytesToHex`,
+`bytesToBase64` (chunked, verbatim), `bytesToBase64Url`, `encodeBytes` (unknown → throw), `requireSubtle` (message
+verbatim — it is the one realistic failure and the Error output prints it), `utf8Bytes`, `randomBytes` (the
+`getRandomValues` throw verbatim; the 65536-byte chunk loop is NOT transcribed, on `idLib.ts`'s stated rule: the
+node's own `MAX_LENGTH = 4096` makes it one iteration, a constraint that cannot bind); `tryHash(value, algorithm,
+encoding): Promise<HashResult>` (`_run`, both catch paths — the synchronous `requireSubtle` throw and the promise
+rejection — as `{ ok: false, error }`); `tryRandomBytes(length, encoding): RandomBytesResult` (`_generate`, the
+range gate with its exact sentence). Discriminated unions, on idLib's reason: the Done arm reads `.digest` unguarded.
+Separate from `id.ts` (which deliberately does not export `randomUuid`) and from `util.ts` (a project that formats a
+string should not ship a CSPRNG).
+
+**Screen Resolution is a hook, the boundary's shape (§54) without a listener.** `screenresolution.ts` reads
+`window.innerWidth/innerHeight` at `initialize` and on every `resize` (one listener per node instance, removed on
+delete — NDA-012), and `aspectRatio` is `width / height` in the getter. `src/lib/screen.ts` (`src/emit/screenLib.ts`):
+`useScreenResolution(): { width, height, aspectRatio }` — a lazy `useState(() => readViewport())` (the `initialize`
+read, once per mount), one `resize` listener in an effect with its cleanup (the delete listener), `aspectRatio`
+computed as the getter computes it (so a zero-height viewport answers `Infinity`, the runtime's own answer). Registered
+on first read (`screenPlanOf`, memoised) as `ScreenResolutionPlan { nodeId, label, local, comment }` on
+`plan.screenResolutions`; expression `screen-out { local, field }`, `number`, never undefined, valid in both contexts
+(a handler closes over the latest render, which is what the getter answers), touching no snapshot. The hook line
+prints beside the boundaries' (it reads nothing). Recorded divergence: the runtime's SSR guard (`typeof window ===
+'undefined'` → outputs unset) has nothing to guard in a Vite SPA and is not transcribed; the outputs are typed `number`.
+
+**Refused by name** (every sentence predicted here, graded in §F of the spec):
+
+- Hash / Random Bytes: `its <port> input is not a port this node has` · `two wires feed its <Port> input — last-writer-wins is not statically ordered` · `its <Port> input has no statically known source` (or the feeder's own sentence) · `its <port> output is not a port this node has` · `its Done|Failure output is consumed as a value — a pulse carries nothing to read` · `its Completed output is consumed — it fires after every outcome, and this slice emits the outcome arms rather than a join beneath them` (UUID's sentence) · `its Error is read from its own Done chain — the node clears the message before Done fires, so that read is always empty` · a read of Digest/Value/Error while Do|New is wired but never attached: the trigger's own reason or `its Do|New is never fired by a translatable trigger` · a read while Do|New is unwired: `its Digest is read, but nothing fires its Do — no digest is ever computed` / `its Value is read, but nothing fires its New — no random bytes are ever generated` (§56 E1: a row nothing writes is a dead artefact, not a translation) · the sweep for a node nothing fires: `its Do|New is never fired by a translatable source`.
+- Screen Resolution: `its <port> input is not a port this node has` (it has none) · `its <port> output is consumed, and this node has no such port` · `component emits no file to host the viewport hook` · unread: the date sweep's `its answer is read by nothing statically translatable`.
+- Not translated, recorded: two `Do` pulses in one tick are coalesced by `scheduleAfterInputsHaveUpdated` into one digest with two tokens; the export runs the digest once per pulse.
+
+### §59.1 What is emitted
+
+- **`src/lib/crypto.ts`** (`src/emit/cryptoLib.ts`, new): `tryHash(value, algorithm, encoding): Promise<HashResult>` and
+  `tryRandomBytes(length, encoding): RandomBytesResult`, both discriminated unions; the three encoders, `requireSubtle`,
+  `utf8Bytes`, `randomBytes` and `MAX_LENGTH = 4096` transcribed from `encoding.ts` / `hash.ts` / `randombytes.ts`; the
+  throwing internals are not exported (the nodes catch; §37's `randomUuid` rule). Shipped only where a component calls a verb.
+- **`src/lib/screen.ts`** (`src/emit/screenLib.ts`, new): `useScreenResolution(): { width, height, aspectRatio }` — a lazy
+  `useState(() => readViewport())`, one `resize` listener per hook with its cleanup, the ratio computed as the getter computes it.
+  Shipped only where a hook line prints.
+- **plan.ts**: `HASH_TYPE`, `RANDOM_BYTES_TYPE`, `CRYPTO_NODES` (port order, trigger + its display name, the raised code, `async`,
+  the `Number()`-coerced port, the two sentences), `SCREEN_RESOLUTION_TYPE` + `SCREEN_RESOLUTION_OUTPUTS`; `ValueExpr` gains
+  `crypto-out { node, viaState? }` and `screen-out { local, field }`; `HandlerAction` gains `crypto-call { node, fn, code, async,
+  inputs, local, materialize?, errorMaterialize?, then, failThen }`; `StateVarPlan.origin` gains `crypto` / `crypto-error`;
+  `ScreenResolutionPlan` on `ComponentPlan.screenResolutions`; `cryptoStateOf` / `cryptoErrorStateOf` (both allocated by a
+  READ — `idErrorStateOf`'s rule, not `idStateOf`'s: no seed, so a node read only inside its chain has no row),
+  `cryptoLocalOf`, `cryptoChainScope`, `attachedCryptoNodes`; `compileCryptoCall` (`compileIdNew` with the inputs, the
+  port-kind check on Done/Failure sinks BEFORE the chains compile, `Completed` on UUID's sentence); the `resolveExpr` branches
+  (UUID's three-question table for the verbs; the boundary's registration shape for the viewport, `screenPlanOf`); the five
+  expression switches, the five action walkers (`actionsValidIn`, `snapActionList`, `scanActions`, `fillMaterialize`, the
+  session-read walker), `TRIGGER_PORTS`, `OWN_CHAIN_OUTPUTS`, the binding whitelist (`isCryptoRead`, `isScreenRead`), the date
+  sweep (`its Do|New is never fired by a translatable source`), and a late prune of viewport plans whose node did not collapse.
+- **component.ts**: the `crypto-call` print (always the block form — the Failure arm always raises; Hash's call `await`ed;
+  trailing `undefined` arguments dropped so `tryRandomBytes(16, 'base64url')` reads as written; a wired Length inside `Number(…)`),
+  `errorCodeOf` → the action's code, `RAISING_ACTION_KINDS` + `actionsAwait` + `actionIsStatement` + `actionTakesNoTerminator` +
+  `blockBody`'s indent list + `deepActions` + `collectActionUse` + `actionExprsOf` + `chainReadsChainLocal`; `crypto-out` /
+  `screen-out` in `collectExprUse`, `hookExprSources`, `maybeUndefined`, `exprCode` (`cryptoLocalReadOf`), `effectDeps`, and the
+  text-sink fold whitelist; the viewport hook line beside the boundaries', printed only for nodes an emitted expression reads
+  (`usedScreenNodeIds`); the two imports earned in the walkers; `cryptoHelpers` / `screenLib` on `EmittedComponent`.
+- **emitApp.ts**: the two files. **Ledger**: three rows `translated` with notes; floor **98 → 101**; six pins moved
+  (`animation-pair`, `filter-records`, `object-store`, `on-app-error`, `run-tasks`, `script`).
+
+### §59.2 The fixture — `tests/fixtures/utility-desk`
+
+`App`: the Router alone. `Pages/Home`: a text input → `plaintext` Variable (the write-through rule, §56 E2) → Hash's Value; a
+"Hash it" button → Do (SHA-256, hex authored); Digest and Error bound to two Texts; Done → Set Variable `lastDigest` ← Digest
+(the Done arm's local), Failure → Set Variable `hashFailed` ← Error (the Failure arm's local); two Texts on those Variables; a
+"New nonce" button → Random Bytes' New (16, base64url) with Value in a Text and nothing on Done/Failure/Error; a Screen
+Resolution's three outputs in three Texts. **The reverted arm** (`probe-reverted.log`, 042f221c): the three nodes `logic node
+(…)`, the two Set Variables silenced behind Hash with *"the value wire has no statically known source"* (asked from the value
+side, §54.2's finding again), 13 refusals, `pathway: false`, verdict null — every node predicted, the Set Variables' sentence
+predicted as the alternative. **Built**: 16 files, zero refusals, the one shell note; the page reads:
+
+```
+const hashResult = await tryHash(plaintext.get(), 'SHA-256', 'hex');
+if (hashResult.ok) { setHash(hashResult.digest); setHashError(undefined); lastDigest.set(hashResult.digest); }
+else { setHashError(hashResult.error); raiseAppError({ code: 'hash/failed', … nodeType: 'net.noodl.Hash' … }); hashFailed.set(hashResult.error); }
+…
+const nonceResult = tryRandomBytes(16, 'base64url');
+if (nonceResult.ok) { setNonce(nonceResult.value); } else { raiseAppError({ code: 'random-bytes/failed', … }); }
+…
+const viewport = useScreenResolution();   →   {viewport.width} {viewport.height} {viewport.aspectRatio}
+```
+
+### §59.3 The gates and the arms
+
+```
+packages/nodegx-export: tsc --noEmit 0 · browser-utilities.test.ts 55/55
+  §A the fixture whole + the real ts.Program (8) · §B tryHash against the real WebCrypto (8) · §B′ tryRandomBytes (5)
+  §C the viewport hook under a fake window (4) · §D refusals by mutation, each sentence exact (17) · §E the shapes a wire
+  changes, three of them typechecked as real programs (7) · §F the findings pinned (3) · §G the ledger and the controls (3)
+logic.test.ts 29/29 (the corpus control: `if (<local>.ok)` is UUID's listed shape) · in-code-markers 54/54
+whole package jest ONCE: 69 files (69 on disk: 68 + this spec), 2319 rows — 2314 green + 5 red in three files that used
+  `net.noodl.Hash` as their "node with no rule" (§40 sent them there; §50 reversed it): unreported-deferrals (2), script §G
+  (2), record §D (1); re-pointed to `net.noodl.PatternExtractor` (§50's own out-of-scope list) and each re-run green
+  (7/7, 74/74, 29/29). No file under src/ changed after the full run.
+export-ledger:check OK — 176 types, 108 translated · picker 101/127 (79.5%), floor 101, --check exit 0
+arms 15/15 KILLED, every arm compiled (a "0 total" would not count — §55's rule), sources restored md5-identical after each
+  (mut.py, mut-summary.txt): M1 Length `|| 32` — 2 · M2 algorithm `??` — 1 · M3 base64url keeps padding — 2 · M4 the
+  synchronous requireSubtle throw escapes — 1 · M5 the resize listener never removed — 1 · M6 aspect inverted — 3 · M7 Error
+  read from the Done arm allowed — 1 · M8 the sink-port-kind check removed — 1 · M9 a wired Length not Number()-coerced — 1 ·
+  M10 the Failure arm no longer raises — 4 · M11 crypto-out off the fold whitelist — 2 · M12 Hash not awaited — 7 (the emitted
+  app's tsc among them) · M13 the Done arm's order swapped — 2 · M14 the unread-hook prune removed — 1 · M15 a read while
+  nothing fires Do allowed — 3
+NOT run (the orchestrator's, after merging): editor tsc, editor test:ci, any drive.
+```
+
+### §59.4 What building it found
+
+1. 🔴 **The text-sink fold's NINTH by-hand instance.** The first build rendered `{hash}` bare and `{hashError ?? ''}` folded
+   on the same page — `crypto-out` compiled, rendered, and silently did not fold, exactly as the whitelist's own comment warns
+   (`id-out` was the eighth). React shows `undefined` as nothing either way; a format interpolating the digest would print the
+   text "undefined". One line; pinned (A7, F1); an arm (M11).
+2. 🔴 **The chain compiler asks first.** I predicted *"its Done output is consumed as a value — a pulse carries nothing to read"*
+   for `nonce.done → Text.text`; the export said *"its done output drives no translatable action"* — `doneChainOf` reached the
+   wire before any read did. §52.4's rule, applied: `compileCryptoCall` now reads the sink's port kind BEFORE compiling the
+   chains, as `appErrorPlanOf` does. Pinned (D6); an arm (M8).
+3. ⚠️ **The attach pass names an untranslatable trigger before the read can.** I predicted *"its Do is never fired by a
+   translatable trigger"* for a Do wired from a Delay nothing starts; the export said *"trigger idle.finished is not a rendered
+   element event or a receiver"*. The predicted sentence is the COMPILED-but-unattached case (a Do fired from a Value Changed
+   nothing feeds — D9b). Both pinned; the design note's sentence was right about the kind and wrong about which pass speaks.
+4. ⚠️ **A node is refused once, with the first read's sentence.** Digest and Error both read with nothing wired to Do: the
+   Digest sentence names the node; the Error read is dropped under the existing disposition with the step-5 note. My row
+   asserted both sentences; the second exists only when the Error is the only read (D8, D8b).
+5. ⚠️ **A Variable feeding an input is read in the handler as `.get()`**, not as the render local I predicted (`plaintextValue`).
+   The live read is the more faithful one — the setter's stored value at the click — and it is why a `Set Variable` earlier in
+   the same chain needs no snapshot rewrite for it (F2, F3).
+6. ⚠️ **A Set Variable's own Done is not a chain this exporter owns** (`state-set` has no `then`): the first F3 hung the Hash
+   off `setPlain.done` and the attach pass refused the trigger. Pre-existing; the row hangs both off the nonce's Done.
+7. ⚠️ **My SHA-256("é") vector was wrong** — written from memory. The row now computes it with node's own `createHash` as the
+   second instrument and keeps a UTF-16 control that must differ (B4). *Pin the runtime's answer, never a remembered one.*
+8. ⚠️ `Value Changed`'s input port is `value`, not `input` — read the catalog, not the display name (E7's first cut).
+
+### §59.5 What this leaves (owner NONE unless named)
+
+- **A Digest / Value / Error read from a SIBLING handler before the attach pass is refused with *"its Do is never fired by a
+  translatable trigger"* even when Do is fired by a button** — `attachedCryptoNodes` fills in the attach pass, which runs after
+  every sink has compiled, and `compiledOf` memoises the refusal. Inherited from `rowIsReadable` verbatim (the id nodes have the
+  same hole; the files family keeps rows for a wired-but-unattached node instead). Owner NONE. Named in the ledger's floor comment.
+- **A crypto row allocated by the sweep's diagnostic read** (a Digest wired only into an unbindable logic sink) is still written
+  by the action and printed — a `useState` nobody reads. The viewport hook prunes for this case (D14); the rows do not. The id
+  nodes share it. Owner NONE.
+- **Two `Do` pulses in one tick** are coalesced by `scheduleAfterInputsHaveUpdated` into one digest that answers both tokens;
+  the export computes once per pulse. Recorded, not translated.
+- **`UUID`'s Failure arm does not raise** (`id-new` is not in `RAISING_ACTION_KINDS`) while its runtime reports `uuid/failed`
+  through `reportOutcome` — §54's rule says it should. Found reading the analogue; not this row's. Owner NONE.
+- **`String(algorithm)`**: the runtime passes the stored value to `digest` raw; the lib stringifies. Identical for every string;
+  differs only for a non-string object over a wire, which fails in both with possibly different messages. Recorded.
+- The runtime's SSR guard on Screen Resolution is not transcribed (a Vite SPA has no server render); outputs typed `number`.
+- The two crypto verbs and the viewport hook are **not driven** in a built app (the orchestrator runs drives after merging). The
+  libs are graded under node against the real WebCrypto (§B, 13 rows) and a fake window (§C, 4 rows).
