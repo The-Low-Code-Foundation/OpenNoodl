@@ -551,3 +551,125 @@ Step prose for lessons 2-7, the `description`s and badges, `LESSON-VOICE.md` §3
   evidence the route is broken, and nothing in the J2 account depends on it.
 - `DRIVE-2026-09-05-THE-LESSON-RUNNER.md` is **still untracked and is session 8's**, and the four
   modified `SYL-*.md` are still session 8's uncommitted edits — left exactly as found, again.
+
+---
+---
+
+# Session 12 — SYL-003, the creature you chose (2026-09-05, appended)
+
+WARNING: **Sessions 8–11 above are left intact.** This section supersedes session 11's **FIRST JOB**
+list at item 2: SYL-003 is built. The list now reads H1, lesson 8, SB-017, the remainder.
+
+Richard was asked which of the three lanes to take and **chose SYL-003**. Session 11 built nothing,
+so under the standing rule this session had to build, and it did: **all five ACs, driven.**
+
+## The board — re-derived from the task FILES
+
+| task | state |
+|---|---|
+| [SYL-001](SYL-001-THE-HAND-HOLDING-HALF.md) | ✅ done, driven |
+| [SYL-002](SYL-002-THE-CHAIN-THAT-CANNOT-DRIFT.md) | 🟢 built s10, all five ACs, in CI |
+| [SYL-003](SYL-003-THE-CREATURE-YOU-CHOSE.md) | 🟢 **BUILT s12 — all five ACs, driven.** No open build task left in this phase |
+| [SYL-004](SYL-004-LESSON-1-YOUR-CREATURE-ON-SCREEN.md) … [SYL-010](SYL-010-LESSON-7-IT-GETS-DEMANDING.md) | 🟢 seven spine lessons built, gated, driven |
+| [LESSON-VOICE.md](LESSON-VOICE.md) | 🟡 §3 and §6 are Richard's |
+| [DEFECTS-THE-RUNNER-DRIVE-FOUND.md](DEFECTS-THE-RUNNER-DRIVE-FOUND.md) | 🟢 0 open, 4 fixed |
+| the five per-lesson registers | **15 open**, every one owner `NONE` |
+| **[DEFECTS-SYL-003-FOUND.md](DEFECTS-SYL-003-FOUND.md)** | 🆕 **2 open (K1, K2), owner `NONE`**; 2 more found and fixed inside the task |
+
+⚠️ **Register count re-derived: 17 open across seven files** (15 lesson + K1 + K2). Sessions 8, 9
+and 11 each reported a different total; this one is counted, not inherited.
+
+**Seven of twelve spine lessons ship. Lesson 8 is the next one and is unbuilt.**
+
+## 🟢 What SYL-003 is, in one paragraph
+
+Type a word into the image property picker's new *Create an avatar…* route and get 36 creatures —
+nine styles × four variations — drawn **on this machine**, deterministically on the word. Pick one
+and it is written into the project's `assets/` as an SVG and selected. Full account in
+[SYL-003](SYL-003-THE-CREATURE-YOU-CHOSE.md#-built--session-12-2026-09-05); the parts worth carrying
+are below.
+
+## 🔴 A licensing decision is now waiting for Richard
+
+The task file said *"DiceBear is MIT"*. **That is the core; the artwork is licensed per style**, and
+most of the good ones are not MIT. Only the **nine CC0** styles ship. **`bottts` — the obvious
+creature style, the one in the step-1 probe screenshot — is deliberately excluded**, because its
+licence is a sentence on a web page (*"free for personal and commercial use"*) rather than a licence
+text, and `adventurer`/`fun-emoji`/`croodles`/`big-smile` are CC BY 4.0, which pushes an attribution
+into every project a learner exports.
+
+**Nothing is blocked by this** — the picker ships with nine styles. But if Richard wants robots,
+that is a decision to take, not a code change. The gate (`avatarLicenceViolations`) reads each
+installed package's own `LICENSE`, so adding one reddens CI immediately.
+
+## FIRST JOB — pick one
+
+1. **Lesson 8 — `snacks`** (`Static Data`, `For Each`, `For Each Actions`). **The strongest.** The
+   opening problem is built and waiting (lesson 7 ends pointing at `Feed`, `Play`, `Sleep`), the
+   chain gate already refuses a bundle whose starter is not `it-gets-demanding`'s finished app, and
+   `spine.json` must gain the row. 🔴 **Read all five lesson registers first and check every node
+   name with `get_node_type`** — four of seven entries so far named a node that could not do the job.
+2. **[H1](DEFECTS-LESSON-6-FOUND.md)** — `paramsEqual` sorts a `stringlist` before comparing, so a
+   graded step cannot tell two orders apart, and a `States` node starts in its *first* state. A false
+   pass in a teaching product. WARNING: **deferred four times now.** The honest fix adds an ordered
+   form to the authoring format (compiler, evaluator, copy module, verifier) — **worth asking Richard
+   rather than deferring a fifth time.**
+3. **P77's SB-017 literal** — `Expected 39 to be 38`, still red on `cline-dev` for every peer.
+   Unchanged from session 11: the fix is `38` → `39` plus a sentence naming SectionRow's
+   picture-drop, then re-run to see what the assertion underneath says. **Owner: P77 / SBR-007.**
+4. **[K1](DEFECTS-SYL-003-FOUND.md)** — `delete_component` leaves a dangling router route.
+5. The remainder: E3, E1, E4/H3 (narrowed, other repo), D1, D3, D4, D5, G2, G3, G4, H2, I1, I2.
+
+## Traps this session paid for
+
+- 🔴 **`npm run cdp -- network offline` DOES NOT SURVIVE the CDP client disconnecting.** Set it in
+  one command, measure in the next, and the `fetch` control comes back **`REACHED THE NETWORK`**.
+  Any offline claim written the obvious way measures the **online** app and passes. ✅ Do the
+  emulation and the measurement in **one session** and read a control on **both sides** of the
+  drive — `scratchpad/offline-in-app.js` is the worked example. Filed as
+  [K2](DEFECTS-SYL-003-FOUND.md). *This is the session's most transferable finding.*
+- 🔴 **A LICENCE ON THE WRAPPER IS NOT A LICENCE ON THE CONTENT.** `@dicebear/core` is MIT and says
+  so in `package.json`; nine of its style packages say `"See LICENSE file"` and ten say
+  `(MIT AND CC-BY-4.0)`. The task file had recorded the wrapper's licence as the product's. ✅ For
+  any dependency shipping **assets**, read the per-package `LICENSE`, not the root `license` field.
+- 🔴 **An ESM-only dependency fails a CommonJS jest suite TO RUN**, taking every unrelated spec in
+  the directory with it (`Cannot use import statement outside a module`). This repo has no
+  `@babel/preset-env`, so there is no ESM→CJS transform in `tests-unit`. ✅ Keep the import in one
+  webpack-only leaf and inject the library into the pure module — the pattern `projectAssets.ts`
+  and `popoutdismissal.ts` already use. Webpack itself bundles it with no complaint.
+- 🔴 **A `TypeView` is handed a `ModelProxy`, not the `NodeGraphNode`.** It forwards `getParameter`,
+  `type` and `variantName` but forwarded no `label`, and `label` is a *getter* — so
+  `parent.model.label` read `undefined` in silence. ✅ Probed it live rather than guessing
+  (`hasModel: true, labelType: "undefined"`); fixed by forwarding it.
+- ⚠️ **`cdp eval` snippets share ONE scope.** A second `const leaf = …` throws
+  `Identifier 'leaf' has already been declared` — and the throw skipped a re-stamp, so a stale
+  `data-drive` from the *previous* eval was still on the wrong element and read as reachable.
+  ✅ Wrap every eval in an IIFE, and clear `[data-drive]` at the top of each one.
+- ⚠️ **Climbing from a card's title overshoots** — session 8 recorded this and it happened again:
+  six levels up from the launcher card's name is the 1144×687 **grid**, which `elementFromPoint`
+  happily calls reachable. ✅ Walk the ancestor chain printing each `getBoundingClientRect` and stop
+  at the card-sized box (three levels, 344×261 here).
+- ⚠️ **The node graph canvas is not DOM.** No selector reaches a node; `cdp click` takes a selector
+  only. ✅ `cdp drag "x,y" "x+1,y+1" 3` selects a node, and the property panel it opens *is* DOM.
+- ⚠️ **A bound port shows a `BindingChip`, not a picker.** To drive a picker you need a port nothing
+  is wired to — reload to the launcher first so the editor is not holding the project, then edit
+  `connections.json` on disk, then reopen.
+- ✅ **A project not in the launcher can be added** by inserting into
+  `~/Library/Application Support/NodeGX/recently_opened_project.json` and reloading; entries whose
+  directory no longer exists are filtered out on the next `fetch()`, so deleting the folder cleans up
+  after itself.
+
+## Gates
+
+`test:main` **429 suites / 7178 tests, exit 0.** `tsc -p packages/noodl-editor` **exit 0.**
+`test:ci` **2943 specs, 5 failures, seed 71374** — four **AIX-006** (the documented floor, by name)
+and P77's **SB-017**. **None is this session's**, and the count is unchanged from session 11.
+
+## Committed
+
+The feature is **`3e0eaa0c`** — 13 files, committed by explicit pathspec because every *other*
+modified file under `packages/noodl-editor` right now belongs to a peer. ⚠️ `@electron/notarize`
+moves position in `package.json`: that is npm alphabetising during the install, not an edit.
+
+`DRIVE-2026-09-05-THE-LESSON-RUNNER.md` is **still untracked and is session 8's**, and the four
+modified `SYL-00[5-8].md` are still session 8's uncommitted edits — left exactly as found, again.

@@ -94,3 +94,120 @@ than a photo search, because the result is theirs rather than stock.
   want before wiring it to a name field.
 - 🔴 **Do not let this become lesson 1's blocker.** It was raised while building lesson 1 and the
   standing rule is that such findings become work, not scope creep into the task that found them.
+
+---
+
+# 🟢 BUILT — session 12 (2026-09-05)
+
+**All five acceptance criteria met and driven in a running editor.** Richard chose this lane over H1
+and lesson 8 when asked.
+
+## Step 1 first, because it decided everything: an `Image` node DOES render an SVG
+
+The task said to verify this before promising anything, and it was measured rather than reasoned
+about. A DiceBear SVG was written into a scratch project's `assets/`, pointed at by an `Image` node,
+and rendered headlessly — **beside a deliberately missing file**, because `images.broken: 0` proves
+nothing unless the instrument can be seen reporting a failure.
+
+| arm | reading |
+|---|---|
+| `assets/svg-probe-nibbles.svg` | rendered — the bot is in the screenshot at 160px, `objectFit` honoured |
+| `assets/svg-probe-does-not-exist.svg` | **broken**, reported as `broken-image` |
+
+`2 images (1 broken)`. **So there is no rasterising step and no PNG**, and the whole feature stays
+offline. The scratch page and asset were deleted afterwards.
+
+## What shipped
+
+| file | what it is |
+|---|---|
+| `utils/avatargenerator.ts` | the rules — seeds, slugs, file names, the licence gate. **Imports nothing** |
+| `utils/avatarstyles.ts` | the only file naming `@dicebear` packages; webpack-only |
+| `utils/projectAssets.ts` | `writeGeneratedAssetIntoProject` + `AssetWriteDeps`, beside the existing copy path |
+| `propertyeditor/avatarpicker.tsx` | the popout: keyword box, 9 styles × 4 variations, CC0 footer |
+| `propertyeditor/DataTypes/ImageType.ts` | the *Create an avatar…* route and the write |
+| `propertyeditor/components/pickerEmptyStates.ts` | the third footer action |
+| `propertyeditor/models/modelProxy.ts` | a `label` getter — see D-A below |
+| `styles/propertyeditor/iconpicker.css` | `.avatarpicker-tile` — see D-B below |
+
+**Generate, not search**, as the task proposed. Nine styles, four variations each, deterministic on
+the seed.
+
+## 🔴 The licensing decision the task did not know it was making
+
+The task recorded *"DiceBear is MIT"*. That is true of `@dicebear/core` and **false of most of the
+artwork**, which is licensed per style. Read off the installed packages:
+
+- **CC0 1.0** — `thumbs`, `open-peeps`, `lorelei`, `notionists`, `pixel-art`, `shapes`, `rings`,
+  `identicon`, `glass`. **These nine are what ship.**
+- **CC BY 4.0** — `adventurer`, `fun-emoji`, `croodles`, `big-ears`, `big-smile`, `micah`, `miniavs`,
+  `personas`, `dylan`, `toon-head`. Shipping one obliges an attribution into every project a learner
+  exports.
+- **"Free for personal and commercial use"**, on a web page, with no licence text — `bottts`,
+  `avataaars`.
+
+⚠️ **`bottts` is the obvious creature style and it is deliberately NOT shipped.** That is a
+licensing decision for Richard, not a code change: the nine CC0 styles are public domain, which is
+the only version defensible in a product sold to universities without somebody signing off on the
+other two categories.
+
+`avatarLicenceViolations` is the gate, and **it reads each installed package's own `LICENSE` file**
+rather than this repo's list — so a tenth style with a CC BY artist reddens at the moment it is
+added. Mutant-checked: flipping the required licence to `CC BY 4.0` turned all nine red.
+
+## Acceptance criteria
+
+| AC | state |
+|---|---|
+| 1 — type a word, see avatars, pick one, it lands on an `Image` node | 🟢 driven; `Source` committed as `assets/nibbles-thumbs.svg` |
+| 2 — **with the network disabled it still works** | 🟢 driven offline **on the product surface**, control armed |
+| 3 — the avatar is a project asset on disk | 🟢 `assets/nibbles-thumbs.svg`, 1618 bytes |
+| 4 — `render_report` shows the picture, `images.broken: 0` | 🟢 `6 images (0 broken)`, screenshot looked at |
+| 5 — lesson 1 is not modified | 🟢 untouched |
+
+### AC2 is the one worth reading
+
+🔴 **`npm run cdp -- network offline` does not survive the CDP client disconnecting.** Setting it in
+one command and measuring in the next reported `REACHED THE NETWORK` — the emulation had already
+been torn down. A two-command offline test here measures **nothing**, and would have read as a pass.
+
+So AC2 was taken in **one CDP session** (`scratchpad/offline-in-app.js`): emulate offline, run a
+`fetch` control, retype the keyword, re-read the grid, run the control again.
+
+```
+CONTROL (must be BLOCKED): BLOCKED
+typed while offline: typed
+OFFLINE RESULT: {"tiles":36,"decoded":36,"alt":"Creatures avatar for Offline Otto"}
+CONTROL still armed after the drive: BLOCKED
+```
+
+A **brand new keyword** was used so the tiles could not be cached, and the control is read on both
+sides of the drive so the absence is asserted beside a known-firing signal.
+
+There is a second, coarser proof in CI: `tests-unit/syl-003/avataroffline.test.ts` runs the real
+ESM library in a child process with `fetch`/`net`/`dns`/`http`/`https`/`tls` replaced by throws.
+Mutant-checked — removing the `fetch` poison reddens the control while **the other three tests still
+pass**, which is exactly why the control has to be there.
+
+## Two defects this task found and fixed
+
+### D-A — `ModelProxy` had no `label`, so the prefill silently did nothing
+
+A `TypeView` is handed a `ModelProxy`, not the `NodeGraphNode`, and the proxy forwards `type` and
+`variantName` but never `label` — which is a *getter* on the node. `parent.model.label` therefore
+read `undefined` in silence and the picker opened on an empty box, looking exactly like a picker
+that had chosen not to prefill. **Measured in the running editor** (`hasParent: true, hasModel:
+true, labelType: "undefined"`), not guessed at. Fixed by forwarding it like its two neighbours; the
+picker now opens on the node's own name.
+
+### D-B — `.iconpicker-icon` is a 24×24 box built for a 20px glyph
+
+Reused for a 44px avatar it clipped every tile against the next style's header. Found by **looking
+at the screenshot**, not by any number: the DOM said 36 images and all 36 had `naturalWidth > 0`.
+Fixed with `.avatarpicker-tile`.
+
+## Gates
+
+`test:main` **429 suites / 7178 tests, exit 0**. `tsc -p packages/noodl-editor` **exit 0** (read via
+`$pipestatus[1]` — `PIPESTATUS` is a bash-ism and reads empty in this zsh). 20 new specs across
+three files, both load-bearing gates mutant-checked.
