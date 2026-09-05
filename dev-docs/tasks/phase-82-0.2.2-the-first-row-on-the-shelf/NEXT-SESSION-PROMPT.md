@@ -1,5 +1,87 @@
 # Phase 82 — next session
 
+> ### 🟢 THE PHASE'S "NOTHING LEFT" WAS TRUE OF THE REL ROWS AND FALSE OF THE PHASE, 2026-09-05 (s55)
+>
+> **One commit: `9d5be875`.** No REL row's ACs moved and none could — that half of s54's finding
+> re-derived and holds. Full record: **[TESTING-PASS §5](TESTING-PASS-2026-09-04.md#§5)**.
+>
+> **1. 🔴 S54's HAND-OFF SAID *"no unowned, human-independent, buildable row left in this phase"*
+> AND POINTED THE NEXT SESSION AT ANOTHER PHASE. THE BOARD IT RE-DERIVED WAS THE REL TABLE.**
+> P82 also carries **two registers** — [TESTING-PASS §2.3](TESTING-PASS-2026-09-04.md) and
+> [NOTES-UNOWNED-NODE-WORK](NOTES-UNOWNED-NODE-WORK.md) — whose rows are `NONE` by construction,
+> and one of them was a build: *"Button `outline`/`ghost` icons ... correct **by inheritance**, but
+> no gate pins the variants themselves."* ⚠️ **The lesson is not that s54 was careless** — its
+> re-derivation was correct and its warning to re-derive was right. It is that **"the board" in a
+> phase with a register is more than the task table**, and a finding of *nothing left* has to name
+> which population it searched. This is the standing *"`asked − answered = absent`, never
+> `everything − answered`"* shape, met on a board instead of a query.
+>
+> **2. ✅ THE GATE IS THE LINK BETWEEN TWO GREEN GATES, WHICH IS WHY NEITHER COULD SEE THE HOLE.**
+> `icon-colour-defaults.test.ts` grades the declaration but renders a Button carrying **no variant
+> at all**; DEF-001 grades every variant's colour on every ground in every palette and **renders
+> nothing**. So *"is the icon visible on `outline`"* was covered from both ends and **not in the
+> middle**: nothing held that a Button stamped with variant V hands its glyph V's colour. Break it
+> and both stay green while the reported defect returns. 🔴 **Two gates covering the ends of a
+> chain read as coverage of the chain.**
+>
+> ✅ **It exercises the product's chain rather than modelling it** — `ButtonConfig` →
+> `applyVariant` → `node.parameters` → the `color` inputCss port → `setStyle` → `props.style` →
+> `<button>` → `IconGlyph`, through a real node in a real graph (`createCorpusGraph`) rendered by
+> its **own `render()`**. The glyph comes out as a bare `<span class="fa fa-check">` with **no
+> `style` attribute at all**: the fix, seen rather than asserted. ⚠️ **No contrast is computed** —
+> that is DEF-001's instrument and a second copy would be two readings that can disagree.
+>
+> | arm | reading |
+> |---|---|
+> | green | **39/39, `EXIT=0`**; package **98 suites / 1322 tests `EXIT=0`**, `tsc` **`EXIT=0`, 0 errors** |
+> | A — `iconColor: '#FFFFFF'` back on the node (**the defect as it shipped**) | **6 red of 39 that all ran** |
+> | B — `iconStyle.color = props.iconColor` deleted | **6 red of 39**, §4's rows |
+> | C — a constant at the render site instead of the port | **6 red of 39**, §3's rows |
+> | D — `ghost` loses its `color` in the config | **2 red of 39** |
+> | E — a seventh variant added to the config | **39 → 45 tests**, exactly **1 red** |
+>
+> 🔴 **B and C are the discrimination pair and they redden OPPOSITE sections.** Both take a colour
+> off the glyph. Without §4, *"the glyph declares no colour"* would read identically on a
+> `_renderIcon` that had stopped emitting colour **at all** — an author's own choice silently
+> dropped, graded as a pass. 🔴 **Arm E is what proves the population is derived**: a listed table
+> would have stayed at 39 and graded the seventh variant not at all. All three mutated sources
+> restored **md5-identical**.
+>
+> **3. ⚠️ THE ROW ASKED FOR FIVE VARIANTS. THERE ARE SIX** — `primary`, `secondary`, `outline`,
+> `ghost`, `destructive`, `link`. A register row's own count is a hypothesis; the registry is the
+> fact.
+>
+> **4. ✅ A SECOND REGISTER ROW WAS FALSE AND IS STRUCK** — *"Filter properties bar ... 1.00:1"*
+> has been fixed, gated and committed since `645c3922`. s53 struck it in **NOTES §4** and not in
+> **TESTING-PASS §2.3**, so it still read as open in the register a session would search. **A row
+> struck in one of two registers is a row still costing somebody a rediscovery at full price.**
+>
+> ⬜ **WHAT THE NEXT SESSION SHOULD TAKE.** 🔴 **RE-DERIVE IT, AND FROM BOTH REGISTERS AS WELL AS
+> the REL table** — that is the whole finding above. As measured this session, what is left in P82
+> is: **REL-001** Richard runs the publish command; **REL-002c** needs a seam named by him (close
+> protocol rule 6); **REL-004** Richard pushes; **REL-011c** held under D1; **REL-015** AC9/AC11 are
+> his two links and one tutorial; **REL-016** is his call on the dead `devMode` flag. In the
+> registers, the remaining `NONE` rows are all **decisions rather than builds**, and this is the
+> part worth reading before picking one up:
+>
+> - **Dropdown, the collapsed input** ([NOTES §3](NOTES-UNOWNED-NODE-WORK.md)) — an author who
+>   replaces `items` and never sets `value` gets a **4px** control, because the seeded `option-1`
+>   matches nothing. 🔴 **The register's own "cheap remedy" — a default `placeholder` — is the
+>   exact class of thing REL-002a REMOVED**: `text-input.ts`'s comment records `'Type here...'`
+>   shipping onto **17 of 18** fields on `members-area`, manufacturing the rubric's own
+>   placeholder tell. ✅ **Verified at HEAD that the remedy would work mechanically** —
+>   `Select.tsx` renders the placeholder span in exactly the `selectedIndex < 0` branch, and a
+>   fresh Dropdown never reaches it. So it is a real choice between a manufactured default and a
+>   4px void, **not an oversight** — and it is Richard's, not a session's.
+> - **Fill/Stroke inert for a custom SVG** ([NOTES §1](NOTES-UNOWNED-NODE-WORK.md)) — the row says
+>   so itself: *"worth a decision, not worth taking silently."*
+> - **"Add style variant" vs "Style → Variant"** — a design decision, stated as one.
+>
+> ⚠️ **So the honest statement is narrower than s54's and in the same direction**: P82 has no
+> unowned buildable row left **that is not a decision** — and that sentence needs the registers
+> searched to be worth anything.
+
+
 > ### 🟢 D58 IS FIXED, AND P82 NOW HAS NO UNOWNED HUMAN-INDEPENDENT WORK LEFT, 2026-09-05 (s54)
 >
 > **One commit: `6101f96f`.** No REL row's ACs moved and none could — every open row is Richard's or
