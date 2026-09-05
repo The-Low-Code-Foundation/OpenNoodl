@@ -1,186 +1,224 @@
 # Phase 79 — next session
 
-**Written 2026-09-05, end of session 7.** Richard's instruction was *"can we make another spine
-tutorial or two please?"*. **Two were built, gated, driven and committed**: lesson 6 `moods`
-(`45dac86f`) and lesson 7 `it-gets-demanding` (`08b9974e`).
+**Written 2026-09-05, end of session 8.** Richard's instruction was *"let's drive the new tutorials
+that haven't been driven yet, as long as a peer isn't using the editor"*. **All four undriven spine
+lessons were driven**, each with a control pair, in a running editor. Nothing was built this session
+and nothing needed to be.
 
 ## The board — re-derived from the task files
 
 | task | state |
 |---|---|
 | [SYL-001](SYL-001-THE-HAND-HOLDING-HALF.md) | ✅ done, driven |
-| [SYL-002](SYL-002-THE-CHAIN-THAT-CANNOT-DRIFT.md) | 🟡 **unblocked, six sessions overdue** — seven spine lessons now join |
+| [SYL-002](SYL-002-THE-CHAIN-THAT-CANNOT-DRIFT.md) | 🟡 **unblocked, seven sessions overdue** — seven spine lessons join |
 | [SYL-003](SYL-003-THE-CREATURE-YOU-CHOSE.md) | ⬜ open, independent |
 | [SYL-004](SYL-004-LESSON-1-YOUR-CREATURE-ON-SCREEN.md) — lesson 1 | 🟢 built, gated, driven |
-| [SYL-005](SYL-005-LESSON-2-IT-BREAKS-ON-A-PHONE.md) — lesson 2 | 🟢 built, gated, ⬜ not driven |
-| [SYL-006](SYL-006-LESSON-3-POKE-IT.md) — lesson 3 | 🟢 built, gated, ⬜ not driven |
-| [SYL-007](SYL-007-LESSON-4-IT-FORGETS-YOU.md) — lesson 4 | 🟢 built, gated, ⬜ not driven |
-| [SYL-008](SYL-008-LESSON-5-SHOW-WHAT-IT-FEELS.md) — lesson 5 | 🟢 built, gated, ⬜ not driven |
-| [SYL-009](SYL-009-LESSON-6-MOODS.md) — lesson 6 | 🟢 **built, gated, DRIVEN** |
-| [SYL-010](SYL-010-LESSON-7-IT-GETS-DEMANDING.md) — lesson 7 | 🟢 **built, gated, DRIVEN** |
+| [SYL-005](SYL-005-LESSON-2-IT-BREAKS-ON-A-PHONE.md) — lesson 2 | 🟢 **built, gated, DRIVEN** |
+| [SYL-006](SYL-006-LESSON-3-POKE-IT.md) — lesson 3 | 🟢 **built, gated, DRIVEN** |
+| [SYL-007](SYL-007-LESSON-4-IT-FORGETS-YOU.md) — lesson 4 | 🟢 **built, gated, DRIVEN** |
+| [SYL-008](SYL-008-LESSON-5-SHOW-WHAT-IT-FEELS.md) — lesson 5 | 🟢 **built, gated, DRIVEN** |
+| [SYL-009](SYL-009-LESSON-6-MOODS.md) — lesson 6 | 🟢 built, gated, driven *(app route only — see J1)* |
+| [SYL-010](SYL-010-LESSON-7-IT-GETS-DEMANDING.md) — lesson 7 | 🟢 built, gated, driven *(app route only — see J1)* |
 | [LESSON-VOICE.md](LESSON-VOICE.md) | 🟡 written; §3 and §6 are Richard's |
-| defect registers | **17 rows across four files, every one owner `NONE`** |
+| defect registers | **21 rows across five files, every one owner `NONE`** |
 
-**Seven of twelve spine lessons ship.** `lessons:check` exit 0 over 8 bundles, and the chain reads
-out in its own numbers: `3n → 6n → 11n → 15n → 18n → 21n → 25n → 30n`.
-
----
-
-## 🟢 What changed about how these are measured, and it is the useful part of the session
-
-**The app can be served and clicked, headlessly, in about four commands.** Nobody had done this in
-this phase before session 7:
-
-```bash
-node scripts/devtools/render-from-disk.js <project-dir> --port 8617 &     # serves the real viewer
-export DRIVE_STATE=/tmp/my-drive.json
-node scripts/devtools/drive-page.js start http://127.0.0.1:8617/ --width 1280 --height 900 --profile x
-node scripts/devtools/drive-page.js click Poke        # exact text match; clickish for substrings
-node scripts/devtools/drive-page.js look              # visible text
-node scripts/devtools/drive-page.js shot /tmp/a.png   # LOOK at it — opacity is invisible to `look`
-node scripts/devtools/drive-page.js stop; lsof -ti :8617 -sTCP:LISTEN | xargs kill
-```
-
-⚠️ `eval` wraps its argument in a function body, so it needs `return` in front of the expression
-(row [I2](DEFECTS-LESSON-7-FOUND.md)). Use `dom` and screenshots for anything visual.
-
-🔴 **This is NOT the editor lesson-runner drive that is still owed.** It exercises the app the lesson
-builds, not the grading of conditions. What it removes is the other doubt — that the graph might not
-do what the prose says — and it caught things a render could not:
-
-- lesson 6's branch fires on the **fifth** poke and not the fourth, and reverses on `Rest`;
-- lesson 7's `And` **refuses** while one input is false even though the other is true, which is the
-  only observation that can catch a missing `input 1` wire.
+**Seven of twelve spine lessons ship. Every lesson that ships has now been driven.**
 
 ---
 
-## FIRST JOB — still the lesson runner, and it has now slipped five sessions
+## 🟢 The five-session first job is DONE
 
-🔴 **Twenty-six graded `connection` conditions ship across lessons 3-7 and not one has been observed
-being graded in a running editor.** Lessons 6 and 7 add four first-of-their-kind cases on top of the
-inherited ones:
+Read [DRIVE-2026-09-05-THE-LESSON-RUNNER.md](DRIVE-2026-09-05-THE-LESSON-RUNNER.md) — method,
+caveats and the two ways a click lies to you.
 
-1. 🔴 **Does the runner grade a `connection` at all?** Lesson 3 step 4 is still the cheapest instance.
-2. 🔴 **A runtime-minted SIGNAL input** — `to-Happy`, `to-Bored` on lesson 6's `States`.
-3. 🔴 **A runtime-minted OUTPUT** — `word` on the same node.
-4. 🔴 **A wire leaving the Page node** — `didMount` in lesson 7 step 2. Nothing else in the spine
-   addresses the page itself as a source.
-5. **A numbered input with a space in its name** — `input 0` / `input 1` on lesson 7's `And`.
-6. Inherited and still open: a **5-segment node path**, a condition on a **runtime-minted port**
-   (`count`, `pokes`), `paramsEqual` round-tripping a string with `{braces}`, and the **negative
-   control** — an untouched starter must read *not complete*.
+**Twenty-six graded `connection` conditions shipped across lessons 3-7 with none ever observed being
+graded. They are observed now.** Every question the hand-offs had been carrying is answered yes:
+the runner grades a `connection`; it resolves 5- and 6-segment node paths; it grades runtime-minted
+signal inputs, runtime-minted outputs, and ports minted by what the learner *typed* (`{count}` in a
+format string, `pokes` in an expression); it round-trips a string with `{braces}`; and **all four
+untouched starters refuse**, which is the arm that makes the other four mean anything.
 
-**Check the box first** (`uptime`, `ListAgents`, and read any peer announcement). Install by placing
-the bundle in `Learning/` and registering it in `learning_folder.json` directly; the real installer
-goes through a native file dialog CDP cannot drive.
-
-## SECOND JOB — pick one
-
-### (a) [I1](DEFECTS-LESSON-7-FOUND.md) — the gates cannot see a time-based lesson. **Strongest.**
-
-🔴 Lesson 7's solution and a copy with **all eight of its wires deleted** produce comparable render
-reports, because the delay has not fired when the harness screenshots. `F4 pass` is printed in the
-same tone it uses for a lesson it actually checked. Every remaining spine lesson touching time,
-animation or navigation has the same hole.
-
-⚠️ The cheap fix is probably not a new gate: `render-report` could take a `--settle-ms` or a second
-capture, letting F4 ask *did anything change between these two frames?*. **Build the reverted arm** —
-a check that does not go red on today's harness measures nothing.
-
-### (b) SYL-002 — the chain check. Six lessons late, and seven bundles now join.
-
-R1 said *"build the equality check before lesson 3, not after lesson 12."* Sessions 6 and 7 both held
-byte-exact on the first attempt using the writer control (round-trip the previous solution's
-`nodes.json` through `json.dumps(d, indent=2, ensure_ascii=False)`, no trailing newline, and compare
-bytes). ⚠️ Compare `nodes.json` and `connections.json` only — `_registry.json` legitimately differs
-([D4](DEFECTS-LESSON-2-FOUND.md)). The lesson order has to come from `curriculum.json` in the other
-repo.
-
-### (c) Lesson 8 — `snacks`, ~1 session
-
-`Static Data`, `For Each`, `For Each Actions`. **Its opening problem is built and waiting**: lesson 7
-ends by pointing at `Feed`, `Play` and `Sleep` — three words typed by hand since lesson 2, which
-Nibbles now actively asks you to use.
-
-🔴 **Read all four registers before designing, and check every node name in the entry with
-`get_node_type` first.** Four of the seven entries built so far have named a node that could not do
-the job the description implies; that check has paid for itself every single time.
+🟢 **Two things got cheaper for every future drive.** A fresh profile via `NOODL_USER_DATA_DIR`
+**seeds all 8 lessons onto the shelf by itself** — no register surgery, no native file dialog. And a
+pre-solved second install (`cp -R` the installed dir, replace the two files that differ, add a
+register entry) gives a cold-open control pair without racing the editor's own flush.
 
 ---
 
-## 🔴 Four rules the chain imposes, and nothing checks any of them
+## FIRST JOB — pick one; there is no longer a blocked-for-five-sessions row
 
-1. **A spine lesson may only ADD.** Grading a parameter the previous lesson set makes
-   `derive_starter` retract it.
-2. **Ungraded parameters may only go on nodes THIS lesson creates.**
-3. **An outro may promise the app will GAIN something, and may never promise that anything already on
-   screen will change or go away.**
-4. 🆕 **A lesson may not repair a value an earlier lesson graded.** Lesson 6 could not fix
-   *"poked 1 times"* because the words live in `Caption`'s graded `format`. It says so in its intro
-   rather than quietly substituting something else, and that is the pattern to copy.
+### (a) [J1](DEFECTS-THE-RUNNER-DRIVE-FOUND.md#j1--a-blockquote-renders-as-a-literal--in-the-line-carrying-the-lessons-whole-idea) — the blockquote that renders as a literal `>`. **Strongest, and cheap.**
 
-## ⬜ The curriculum edits owed — now FIVE, still one file, still not blocking
+🔴 **Five of the eight shipped lessons**, and in each one the mangled line is the sentence the lesson
+exists to teach. `blockquotes: 0` in the DOM; the `>` and the `*emphasis*` both come through literal
+while `**bold**` in the same body is fine.
 
-`~/vscode_projects/nodegx-community/src/lib/curriculum.json`. The editor's Learning shelf seeds from
-the repo directory, so all seven lessons already reach every install; this is what puts them on the
-served `/university` page.
+⚠️ **It reaches lessons 6 and 7, which the board calls driven** — they were driven by the
+serve-and-click route, which never renders lesson prose. That is worth holding on to generally: *the
+route you drove by decides which defects you could possibly have seen.*
 
-1. **R2's insert** — a new entry for `it-breaks-on-a-phone` at position 2, `poke-it`'s `needs` moving
-   to it. ⬜ The description is Richard's.
-2. **`poke-it`'s `nodes` gains `Switch`.**
-3. **`it-forgets-you`'s `nodes` loses `Value Changed`.**
-4. 🆕 **`moods`' `nodes` → `Expression`, `Condition`, `States`.** `Switch` cannot branch; nothing in
-   the `Logic` category compares two numbers, so an `Expression` is unavoidable.
-5. 🆕 **`it-gets-demanding`'s `nodes` → `Timer`, `Switch`, `And`, `Animate To Value`.** `Switch` is
-   the hinge — an `And` cannot read a signal.
+The fix is the renderer, not the prose. Ruling blockquotes out of `LESSON-VOICE.md` and rewriting
+five lessons is the cheaper-looking option and the wrong one — the authors used a blockquote because
+the format offers it.
 
-⚠️ Also owed from lesson 2: **`it-breaks-on-a-phone`'s `teaches` must drop *alignment***
-([D5](DEFECTS-LESSON-2-FOUND.md)).
+### (b) [J2](DEFECTS-THE-RUNNER-DRIVE-FOUND.md#j2--check-my-work-on-an-incomplete-step-removes-the-instructions) — *Check my work* deletes the instructions
 
-## What is waiting on Richard, and none of it blocks the above
+Recorded against lesson 1 in session 3, measured again on lesson 3 this session, so it is the
+runner's and it has survived five sessions unowned. Press it while stuck and the step body and the
+*Show me how* disclosure leave the DOM, with no new feedback of any kind. The learner pressed it
+*because* they were stuck.
 
-- ⬜ **The step prose of all seven spine lessons.** Print one without making a second copy:
-  ```bash
-  python3 -c "
-  import json,sys
-  d=json.load(open('project-examples/lessons/%s/lesson.json'%sys.argv[1]))
-  for i,s in enumerate(d['steps'],1):
-      print('--- %d %s (%s)'%(i,s.get('title'),s.get('kind','task')))
-      print(s.get('body',''))
-      if 'detail' in s: print('DETAIL:'); print(s['detail'])
-      print()" moods
-  ```
-  🔴 **Prose-only edits are cheap** — edit `lesson.json`, then
-  `npm run lessons:check > /tmp/lc.log 2>&1; echo "EXIT=$?"` (⚠️ **not** `| tail`). **The exception is
-  `body` and `completeWhen`, which are a pair.** Lesson 6 grades two sentences and a threshold;
-  lesson 7 grades `Feed me.`, `5000` and `400`. Changing any of those costs a `derive_starter` →
-  `create_lesson` → re-drive.
-- ⬜ **[LESSON-VOICE.md](LESSON-VOICE.md) §3 (em dash)** — seven bundles to one now. Lesson 1's nine
-  hyphens are the last outlier.
-- ⬜ **§6 — do we say "node"?** Six bundles follow the suggested rule. It wants ratifying.
-- ⬜ **Seven badges**, the two new ones being `Made Its Mind Up` and `Two Things At Once`.
-- ⬜ **Lesson 6's words**: `Nibbles is dozing` / `Nibbles is delighted`, and `pokes > 4`.
-- ⬜ **Lesson 7's words**: `Feed me.`, and whether `Rest` should silence the nag. It does not today —
-  `Rest` makes Nibbles bored, which makes it *start* asking.
-- ⬜ **Does the `Poke` button get a colour?** Still black, still E1.
-- ⬜ **Does the creature get eyes?** Still open from lesson 1.
+### (c) SYL-002 — the chain check. **Seven sessions late.**
 
-## Traps from this session worth not repeating
+R1 said *"build the equality check before lesson 3, not after lesson 12."* Nothing about this
+session changed its cost, and eight bundles now join. Method unchanged: round-trip the previous
+solution's `nodes.json` through `json.dumps(d, indent=2, ensure_ascii=False)`, no trailing newline,
+compare bytes; `nodes.json` and `connections.json` only — `_registry.json` legitimately differs
+([D4](DEFECTS-LESSON-2-FOUND.md)). Lesson order comes from `curriculum.json` in the other repo.
 
-- 🔴 **A screenshot that fits is not one that excludes.** Lesson 7's first drive showed the nag at
-  t≈0 *and* t≈8s and read like a working timer — Chrome takes longer than five seconds to start, so
-  there was never an observation before the deadline. The arm that settles it is `duration: 60000`.
-- 🔴 **Read the port definition before designing around it.** Lesson 6's first design used `Visible`
-  to swap two Texts; `Visible` sets `visibility: hidden` and **keeps the space**. Caught by reading
-  `node-shared-port-definitions.ts:346`, not by rendering.
-- 🔴 **`paramsEqual` on a `stringlist` is order-independent** and a `States` node starts in the first
-  state in its list. The condition cannot say what the step body says (row H1).
-- 🔴 **A `States` value with no `type-<value>` is a NUMBER**, and `jumpToState` assigns the raw value
-  anyway — so it renders correctly at load and breaks on the first transition (row H2).
-- ✅ **Test the writer before authoring.** One round-trip command, and the chain held byte-exact on
-  the first attempt for the second and third session running.
-- ⚠️ **The `nodegx` MCP server binds ONCE** and may be bound elsewhere. The lesson tools run directly:
-  `writeDerivedStarter` from `packages/noodl-mcp/src/lessons/starterWriter` and `writeLessonBundle`
-  from `.../lessons/bundleWriter`, under
-  `npx ts-node --compiler-options '{"module":"CommonJS","esModuleInterop":true,"target":"ES2019","skipLibCheck":true}' --transpile-only`.
-  That is what built both lessons.
+### (d) Lesson 8 — `snacks`, ~1 session
+
+`Static Data`, `For Each`, `For Each Actions`. Its opening problem is built and waiting: lesson 7
+ends pointing at `Feed`, `Play` and `Sleep` — three words typed by hand since lesson 2 that Nibbles
+now actively asks you to use.
+
+🔴 **Read all five registers before designing, and check every node name in the entry with
+`get_node_type` first.** Four of the seven entries built so far named a node that could not do the
+job its description implied.
+
+---
+
+## What this drive did NOT cover, so nobody re-reads it as more than it is
+
+- **The install-from-a-folder path** — still only `tut-004/the-real-bundle-installs.test.ts`. The
+  real installer goes through a native file dialog CDP cannot drive. The starters here came via the
+  **seed**, which is the path shipped lessons actually take.
+- **A learner's own edit flipping a condition while the editor watches.** Both arms were cold opens.
+  Lesson 1's drive did this (add a `Card`, re-check, auto-advance) and remains the only sighting.
+- **Whether a person can physically drag a signal wire.** The runner grades one correctly; that is a
+  different claim.
+- 🔴 **[I1](DEFECTS-LESSON-7-FOUND.md) is untouched** — the gates still cannot see a time-based
+  lesson. That is a gate problem, not a runner problem, and this drive says nothing about it.
+
+## Two traps this session paid for
+
+🔴 **`npm run cdp -- click` prints `clicked … at x,y` whether or not anything received it.** Two
+clicks landed nowhere (card below the fold, `scrollIntoView` unsettled) and both would have been
+written up as "the lesson refused" — which is *exactly* what a passing negative control looks like.
+✅ **`elementFromPoint` before the click, and then confirm the consequence**: the
+`Learning/<id>` directory `mtime` moves the instant a lesson project opens, and it is the only
+honest witness to which copy is on screen.
+
+⚠️ **A substring title match opened the wrong lesson.** Asking for a card containing `Poke it`
+matched **It forgets you**, whose description begins *"Poke it twice…"*. Match the card's own `h3`
+exactly, and walk **from each `Start` button up** to its `h3` — climbing up from the title overshoots
+to the grid and stamps the first of ten buttons.
+
+⚠️ **Do not script the click-through.** Fourteen scripted `NEXT` clicks advanced nothing; one
+hand-issued click on the same button finished the lesson. The `[data-drive]` stamp does not reliably
+survive the re-render between the `eval` that sets it and the `click` that uses it. By hand it is
+four commands per lesson.
+
+## Still Richard's, unchanged
+
+The step prose for lessons 2-7, the `description`s and badges, and `LESSON-VOICE.md` §3 and §6.
+⚠️ **J1 is a live constraint on that pass**: until the renderer is fixed, a blockquote in a lesson
+body will reach the learner as a literal `>`.
+
+---
+---
+
+# Session 9 — the defect sweep (2026-09-05, appended)
+
+WARNING: **Everything above is session 8's and is left intact** — it is still the right account of
+the drive. This section supersedes only its **FIRST JOB** list: (a) J1 is done, and so is J3.
+
+Richard's instruction was *"do a sweep for any defects from the recent phases and line them up to
+tackle as many as we can."* The sweep found P77/P78's rows already swept into phase 80 (closed,
+46/46), and **P79 holding 21 rows with every single owner `NONE`** — the freshest and the only
+wholly unowned register. That was the lane.
+
+## What shipped — 9 defects across 5 commits, every one gated and mutant-checked
+
+| row | was | now |
+|---|---|---|
+| **J1(a)** | a blockquote rendered as a literal `>` in 5 of 8 lessons | OK `renderMarkdown` has a blockquote branch (+ CSS, which had none) |
+| **J1(b)** | bold containing nested `*em*` never matched, and emphasis then landed on the wrong words | OK the bold rule's content class no longer forbids `*` |
+| **J1(c)** | **found here, recorded by nobody** — a `*` inside a code span paired with prose outside it | OK code spans are masked before emphasis |
+| **J4** | a multi-key `paramsEqual` named its parameters and not their values | OK every value named; a dimension reads `560px` |
+| **D2** | the *"Looking for..."* line showed a raw type id | OK resolved through the node picker's own `getItemLabel` |
+| **J3** | every shipped lesson badged **Written locally** | OK the badge got an input of its own; the gate still downgrades |
+| **G1** | an `Expression`'s three typed outputs were dead for wiring | OK flagged alongside `result`, inside the existing guard |
+| **E2** | `Color Blend` painted `#NaNNaNNaN` for every token colour | OK resolves `var()`, `#RGB`, `rgb()`; reports what it cannot read |
+| **H4** | the catalog's `Visible` summary did not say it keeps its space | OK rewritten; both catalogs regenerated |
+
+**E4 and H3 are NARROWED, not closed** — their editor half rode in on D2, but the curriculum entry
+naming `Timer` lives in the other repo and is untouched. Do not tick them.
+
+Suites after: **noodl-runtime 2662/2662 - noodl-viewer-react 1283/1283 - the 59 editor lesson
+suites 1058/1058.** Nothing else was run — see the caveat at the bottom.
+
+## FIRST JOB — E5, and it is a regression this session caused
+
+[E5](DEFECTS-LESSON-3-FOUND.md), owner **P18**. `nodegx-export`'s emitted `blendColor` is, in its
+own comment, *"a transcription of colorblend.ts, **holes and all**"* — the same blind
+`parseInt(hex.substring(...))`. Before today both copies were wrong and **agreed**; E2 fixed the
+runtime and not the export, so **every exported app still paints `#NaNNaNNaN` where a token is
+blended**, and the two now disagree.
+
+WARNING: **It was left deliberately, not missed.** A peer was editing `nodegx-export/src/emit/`
+throughout this session (`sseLib.ts`, ten minutes before the hand-off) and the emitted-code goldens
+would have moved under them. **Check that package is quiet before starting.** The fix is to port
+`parseColor` into `utilLib.ts`'s emitted source and update the two doc comments that currently
+promise the defect; the emitted copy has no error bus, so the fallback-to-nearest-endpoint half
+applies and the warning half does not.
+
+**The bigger row underneath it: export/runtime parity has now drifted twice in one session.** E5 is
+one direction; G1 was the other — there the **export was the copy that was right**, and an exported
+app would have animated the creature the editor's own runtime could not. Two hand-maintained
+transcriptions of one node will keep doing this. Somebody should own the question.
+
+## Then — what is left, in the order I would take it
+
+1. **[J2](DEFECTS-THE-RUNNER-DRIVE-FOUND.md)** — *Check my work* on an incomplete step removes the
+   instructions and says nothing new. Measured on two lessons, unowned for five sessions, and it
+   hits the learner at the exact moment they were stuck. The only high-severity row left in the
+   runner register.
+2. **[H1](DEFECTS-LESSON-6-FOUND.md)** — `paramsEqual` on a `stringlist` sorts before comparing, so
+   a graded step **cannot tell two orders apart** while a `States` node starts in its first state.
+   A false pass in a teaching product. WARNING: **I left this on purpose**: the honest fix adds an
+   ordered form to the authoring format (there is no `paramsEqualOrdered`), and that is a format
+   decision touching the compiler, the evaluator, the copy module and the verifier — a session of
+   its own, and arguably Richard's call, not a corner to cut at the end of a sweep.
+3. **[E3](DEFECTS-LESSON-3-FOUND.md)** — a new wire does not pull its source's value.
+4. **[E1](DEFECTS-LESSON-3-FOUND.md)** — a Button cannot be put on the design system from the panel.
+5. The remainder: D1, D3, D4, D5, G2, G3, G4, H2, I1, I2.
+
+## Traps this session paid for, so the next one does not
+
+- **A row's OBSERVATION and its DIAGNOSIS are two claims, and only one of them was checked.** J1
+  reproduced character for character and its explanation was still wrong — one symptom had been
+  attributed to the construct standing next to it. It was three defects, and the third was in a
+  different lesson entirely. **Re-derive the mechanism even when the transcript matches.**
+- **A getter is not a wire.** `getOutput('asNumber').value` calls the getter directly and reads
+  correct against the broken runtime — a G1 spec written that way passes and grades nothing. The
+  spec drives a real graph with a **sink node recording what it received**.
+- **A port `description` is not a comment.** It is an input to two committed artefacts
+  (`node-catalog{,-enriched}.json`) with two CI gates. E2 left both stale and nothing said so;
+  H4's commit repairs it. Run `catalog:generate` + `catalog:merge` **and diff** in the same commit.
+- **`grep` went silent on a `.ts` file** because an edit had put a real NUL byte in it — the file
+  read as binary to the tool. Written as the six-character escape sequence instead. If a grep you
+  trust returns nothing, check the file is still text.
+- **A corpus arm finds what a row cannot.** J1(c) exists because the gate rendered all eight
+  shipped bundles rather than the one sentence the row quoted.
+
+## The caveat, stated plainly
+
+The editor's **`test:ci`** (webpack + Electron, the jasmine bundle) was **not run** — a peer held
+the box for most of the session and it is the one gate that cannot share.
+`tests/lessons/lessonformat.test.ts` lives there and covers `renderMarkdown`; its eight assertions
+are restated in the cheap runner (`tests-unit/syl-j1`) and all eight pass, but **that is not the
+same as having run it**. Somebody should, before this is called finished.
+
+`DRIVE-2026-09-05-THE-LESSON-RUNNER.md` is still **untracked and is session 8's, not mine**, and
+the four modified `SYL-*.md` plus this prompt are session 8's uncommitted edits — left as found.
