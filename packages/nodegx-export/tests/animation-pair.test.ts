@@ -899,7 +899,7 @@ describe('§B the translation — the fixture, then graphs mutated one fact at a
       expect(entry.status).toBe('translated');
       expect(entry.note).toContain('EXP-011 §49');
     }
-    expect(ledger.pickerCoverageFloor).toBe(110); // §60 the component-object trio + §62 the relation pair (session 86); §57 + §58 + §59 (session 85) // §51 added Component Children (session 79); §52 Script (session 80); §53 Run Tasks (session 81); §54 On App Error (session 82) §56 Filter Records
+    expect(ledger.pickerCoverageFloor).toBe(111); // §60 the component-object trio + §62 the relation pair + §63 Drag (session 86); §57 + §58 + §59 (session 85) // §51 added Component Children (session 79); §52 Script (session 80); §53 Run Tasks (session 81); §54 On App Error (session 82) §56 Filter Records
   });
 });
 

@@ -46,6 +46,7 @@ import { tsLiteral } from './state';
 import { UTIL_HELPER_MAY_BE_UNDEFINED, UTIL_LIB_PATH } from './utilLib';
 import { TIMER_LIB_PATH } from './timerLib';
 import { ANIMATE_LIB_PATH } from './animateLib';
+import { DRAG_LIB_PATH } from './dragLib';
 import { STATES_LIB_PATH } from './statesLib';
 import { RUN_TASKS_LIB_PATH } from './runTasksLib';
 import { ERRORS_LIB_PATH } from './errorsLib';
@@ -104,7 +105,9 @@ const TAGS: Record<string, string> = {
   range: 'input',
   select: 'select',
   video: 'video',
-  circle: 'svg'
+  circle: 'svg',
+  // EXP-011 §63. The wrapper the drag hook binds to.
+  drag: 'div'
 };
 
 /**
@@ -156,6 +159,8 @@ export interface EmittedComponent {
   screenLib: boolean;
   /** EXP-011 §60. `src/lib/componentObject.ts` is owed when a record hook, a parent hook or a provider printed. */
   componentObjectLib: boolean;
+  /** EXP-011 §63. Whether this component imports `src/lib/drag.ts`. */
+  dragLib: boolean;
 }
 
 export function emitComponent(
@@ -736,7 +741,9 @@ export function emitComponent(
     // EXP-011 §54. A boundary's Error chain.
     ...plan.appErrors.flatMap((b) => b.listener ?? []),
     // EXP-011 §58. A streaming node's listener chains.
-    ...plan.streams.flatMap((s) => Object.values(s.listeners).flat())
+    ...plan.streams.flatMap((s) => Object.values(s.listeners).flat()),
+    // EXP-011 §63. A Drag's listener chains.
+    ...plan.drags.flatMap((d) => Object.values(d.listeners).flatMap((chain) => chain ?? []))
   ];
   allActions.forEach(collectActionUse);
   /** Nested actions (branch arms, popup done-chains) flattened — the `usesNavigate` sweep. */
@@ -951,6 +958,8 @@ export function emitComponent(
     hookExprSources(animation.delay);
   }
   for (const machine of plan.statesMachines) if (machine.follow !== undefined) hookExprSources(machine.follow);
+  // EXP-011 §63. The options are render reads — a wired Snap Value off a Variable is its `useValue` local.
+  for (const drag of plan.drags) for (const option of drag.options) hookExprSources(option.expr);
   // EXP-011 §58. The config reads are render reads (the data is read at the pulse, in handler mode).
   for (const stream of plan.streams) for (const entry of stream.config) hookExprSources(entry.expr);
   // EXP-011 §53. The two config reads are render reads.
@@ -1404,6 +1413,9 @@ export function emitComponent(
       // EXP-011 §60. The record boots empty; a parent read is undefined at the root. Must agree with plan.ts maybeUndefinedExpr.
       case 'component-object-out':
         return true;
+      // EXP-011 §63. Seeded at mount; only ever a number. Must agree with plan.ts maybeUndefinedExpr.
+      case 'drag-out':
+        return false;
       // The row is undefined until the first failure; the chain-local is assigned on the line
       // above the read and never is. Must agree with plan.ts maybeUndefinedExpr (EXP-011 §24).
       case 'outcome-error':
@@ -1716,6 +1728,8 @@ export function emitComponent(
       case 'crypto-out':
         return expr.viaState ?? cryptoLocalReadOf(expr.nodeId, expr.node);
       case 'screen-out':
+      // EXP-011 §63. A live getter off the handle, in both modes.
+      case 'drag-out':
         return `${expr.local}.${expr.field}`;
       // EXP-011 §60. The render snapshot in JSX, the live record in a handler; a parent handle may be undefined.
       case 'component-object-out':
@@ -2027,6 +2041,8 @@ export function emitComponent(
           if (e.viaState !== undefined) add(e.viaState);
           break;
         case 'screen-out':
+        // EXP-011 §63. The same: the getter's value is its own dependency, never the handle.
+        case 'drag-out':
           add(`${e.local}.${e.field}`);
           break;
         // EXP-011 §60. The handle is the dependency — its identity changes exactly when the record does (useMemo on the value).
@@ -3392,6 +3408,9 @@ export function emitComponent(
        */
       case 'states-go':
         return action.verb === 'toggle' ? `${action.local}.toggle()` : `${action.local}.goTo(${tsLiteral(action.state ?? '')})`;
+      // EXP-011 §63. One call on the handle; Done is the node's listener, passed once to the hook.
+      case 'drag-snap':
+        return `${action.local}.snapTo(${tsLiteral(action.axis)})`;
       case 'delay': {
         const at = pad(indent);
         const inner = pad(indent + 2);
@@ -3976,6 +3995,11 @@ export function emitComponent(
   if (componentObjectNames.length > 0) {
     const specifier = `${relRoot}/${COMPONENT_OBJECT_LIB_PATH.replace(/^src\//, '').replace(/\.ts$/, '')}`;
     internalImports.set(specifier, `import { ${componentObjectNames.sort().join(', ')} } from '${specifier}';`);
+  }
+  // EXP-011 §63. `src/lib/drag.ts`, earned by every Drag plan that survived (the wrapper prints for the same set).
+  if (plan.drags.length > 0) {
+    const specifier = `${relRoot}/${DRAG_LIB_PATH.replace(/^src\//, '').replace(/\.ts$/, '')}`;
+    internalImports.set(specifier, `import { useDrag } from '${specifier}';`);
   }
   for (const v of referencedStateVars) {
     if (v.bootHelper !== undefined) usedIdHelpers.add(v.bootHelper);
@@ -4780,6 +4804,16 @@ export function emitComponent(
       return element(tag, attrs, blocks.length > 0 ? blocks : null, indent, true);
     }
 
+    // EXP-011 §63. The wrapper the hook drags: its ref, its transform, the three handlers, the first child inside.
+    if (role === 'drag') {
+      const drag = plan.drags.find((d) => d.nodeId === id);
+      if (drag !== undefined) {
+        for (const drop of drag.drops) defer(id, drop.subject, drop.reason);
+        attrs.push(`ref={${drag.local}.ref}`, `style={${drag.local}.style}`, `{...${drag.local}.handlers}`);
+      }
+      const blocks = renderChildBlocks(id, plan.childrenOf[id] ?? [], indent + 2, radioCtx).flat();
+      return element(tag, attrs, blocks.length > 0 ? blocks : null, indent, true);
+    }
     // Containers: group / page.
     const childIds = plan.childrenOf[id] ?? [];
     const blocks = renderChildBlocks(id, childIds, indent + 2, radioCtx);
@@ -5865,6 +5899,18 @@ export function emitComponent(
     const arrive = animation.arrive !== undefined ? `, ${handlerArrow(animation.arrive, '()', 2)}` : '';
     body.push(`  // ${animation.comment}`, `  const ${animation.local} = useAnimatedValue(${exprCode(animation.target, 'render')}, ${options}${arrive});`);
   }
+  // EXP-011 §63. The Drag hooks — after the render locals an option may read, before the effects. The listeners print
+  // inline so each closes over this render; the handle's getters read live, so a Drag Moved chain sees this frame's values.
+  for (const drag of plan.drags) {
+    const source = `{ label: ${tsLiteral(drag.label)}, nodeId: ${tsLiteral(drag.nodeId)}, componentName: ${tsLiteral(plan.legacyPath)} }`;
+    const options = drag.options.length > 0 ? `{ ${drag.options.map((o) => `${o.key}: ${exprCode(o.expr, 'render')}`).join(', ')} }` : '{}';
+    const listenerLines = (['onStart', 'onMove', 'onEnd', 'done'] as const)
+      .filter((port) => drag.listeners[port] !== undefined)
+      .map((port) => `    ${port}: ${handlerArrow(drag.listeners[port]!, '()', 4)}`);
+    body.push(`  // ${drag.comment}`);
+    if (listenerLines.length === 0) body.push(`  const ${drag.local} = useDrag(${source}, ${options});`);
+    else body.push(`  const ${drag.local} = useDrag(${source}, ${options}, {`, listenerLines.join(',\n'), '  });');
+  }
   for (const machine of plan.statesMachines) {
     const listenerLines: string[] = [];
     const { stateChanged, reached, done, unchanged, failure } = machine.listeners;
@@ -5981,7 +6027,8 @@ export function emitComponent(
     plan.appErrors.length > 0 ||
     plan.repeaterItems.length > 0 ||
     plan.streams.length > 0 ||
-    screenHooks.length > 0
+    screenHooks.length > 0 ||
+    plan.drags.length > 0
   ) {
     body.push('');
   }
@@ -6251,6 +6298,9 @@ export function emitComponent(
       // EXP-011 §49. A call on the handle reads nothing; the listeners are walked off the plan.
       case 'states-go':
         return [];
+      // EXP-011 §63. The same.
+      case 'drag-snap':
+        return [];
       // EXP-011 Tier 2.5. The link, the wired Open In New Tab, and both chains — `usesPayload`
       // walks this list, so a link built from a received event's payload is found here or the
       // emitted callback takes no argument and its body reads one.
@@ -6389,7 +6439,8 @@ export function emitComponent(
     cryptoHelpers: usedCryptoHelpers,
     screenLib: screenHooks.length > 0,
     // EXP-011 §60.
-    componentObjectLib: printsRecord || printsParent
+    componentObjectLib: printsRecord || printsParent,
+    dragLib: plan.drags.length > 0
   };
 }
 

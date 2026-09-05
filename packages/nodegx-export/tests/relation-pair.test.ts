@@ -213,13 +213,13 @@ describe('§A the fixture, whole — a Record feeds the target, a Variable the r
     );
   });
 
-  test('A10 the ledger rows moved, so the two picker cards carry no badge; the floor is 110', () => {
+  test('A10 the ledger rows moved, so the two picker cards carry no badge; the floor is 111', () => {
     for (const type of ['AddDbModelRelation', 'RemoveDbModelRelation']) {
       expect(ledgerEntryOf(type)?.status).toBe('translated');
       expect(exportBadgeOf(type)).toBeUndefined();
     }
     const ledger = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'coverage-ledger.json'), 'utf8'));
-    expect(ledger.pickerCoverageFloor).toBe(110); // §62 the relation pair (session 86)
+    expect(ledger.pickerCoverageFloor).toBe(111); // §62 the relation pair (session 86)
   });
 });
 

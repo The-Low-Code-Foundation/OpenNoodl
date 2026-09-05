@@ -332,6 +332,43 @@ export const SCREEN_RESOLUTION_TYPE = 'Screen Resolution';
 export const SCREEN_RESOLUTION_OUTPUTS = ['width', 'height', 'aspectRatio'] as const;
 
 /**
+ * `Drag` (EXP-011 §63). The type id IS the display name. A visual node that renders no element of its own — `Drag.tsx`
+ * wraps its FIRST child in `react-draggable` — so the export drags a wrapper `<div>` bound to a `useDrag` handle.
+ */
+export const DRAG_TYPE = 'Drag';
+/** The option ports in the order the hook prints them: the port, the `useDrag` option key, and the panel's label. */
+export const DRAG_OPTION_PORTS: ReadonlyArray<{ port: string; key: string; label: string }> = [
+  { port: 'axis', key: 'axis', label: 'Axis' },
+  { port: 'enabled', key: 'enabled', label: 'Enabled' },
+  { port: 'useParentBounds', key: 'useParentBounds', label: 'Constrain to parent' },
+  { port: 'scale', key: 'scale', label: 'Scale' },
+  { port: 'inputPositionX', key: 'startX', label: 'Start Drag X' },
+  { port: 'inputPositionY', key: 'startY', label: 'Start Drag Y' },
+  { port: 'snapToPositionX.value', key: 'snapX', label: 'Snap To Position X — Value' },
+  { port: 'snapToPositionX.duration', key: 'snapXDuration', label: 'Snap To Position X — Duration' },
+  { port: 'snapToPositionY.value', key: 'snapY', label: 'Snap To Position Y — Value' },
+  { port: 'snapToPositionY.duration', key: 'snapYDuration', label: 'Snap To Position Y — Duration' }
+];
+/** The four value outputs → the handle's live getters. */
+export const DRAG_VALUE_OUTPUTS: Readonly<Record<string, 'x' | 'y' | 'deltaX' | 'deltaY'>> = {
+  positionX: 'x',
+  positionY: 'y',
+  deltaX: 'deltaX',
+  deltaY: 'deltaY'
+};
+/** The three pulses → the hook's listeners, and the outcome trio the two snaps share (`outcomeOutputs`). */
+export const DRAG_PULSE_OUTPUTS: Readonly<Record<string, { listener: 'onStart' | 'onMove' | 'onEnd' | 'done' | 'failure' | 'completed'; label: string }>> = {
+  onStart: { listener: 'onStart', label: 'Drag Started' },
+  onStop: { listener: 'onEnd', label: 'Drag Ended' },
+  onDrag: { listener: 'onMove', label: 'Drag Moved' },
+  done: { listener: 'done', label: 'Done' },
+  failure: { listener: 'failure', label: 'Failure' },
+  completed: { listener: 'completed', label: 'Completed' }
+};
+/** The two action ports — `Do|Snap To Position X` and `Do|Snap To Position Y` — and the axis each snaps. */
+export const DRAG_SNAP_TRIGGERS: Readonly<Record<string, 'x' | 'y'>> = { 'snapToPositionX.do': 'x', 'snapToPositionY.do': 'y' };
+
+/**
  * The outputs `External Link` publishes.
  *
  * 🔴 **`completed` is in this list because the node's own source does not show it.** The
@@ -388,6 +425,9 @@ const STATES_FIXED_INPUTS = ['states', 'values', 'toggle', 'useTransitions', 'cu
 /** A States' action ports: `toggle`, and `to-<state>` for every state (`registerInputIfNeeded`). */
 const isStatesTrigger = (port: string): boolean => port === 'toggle' || port.startsWith('to-');
 /** The listener chains a States plan carries, in a stable order — every walker over them reads this. */
+/** EXP-011 §63. A Drag's listener chains, for the walkers that treat every chain alike. */
+const dragListenerChains = (drag: DragPlan): HandlerAction[][] =>
+  [drag.listeners.onStart, drag.listeners.onMove, drag.listeners.onEnd, drag.listeners.done].flatMap((chain) => (chain === undefined ? [] : [chain]));
 const statesListenerChains = (machine: StatesPlan): HandlerAction[][] =>
   [machine.listeners.stateChanged, machine.listeners.done, machine.listeners.unchanged, machine.listeners.failure, ...Object.values(machine.listeners.reached)].filter(
     (chain): chain is HandlerAction[] => chain !== undefined
@@ -663,7 +703,9 @@ const OWN_CHAIN_OUTPUTS: Record<string, readonly string[]> = {
   // EXP-011 §49. The listeners a States' own registration compiles; `reached-<state>` is a prefix
   // and is skipped by `ownsChainOutput` below. The animate node's one signal likewise.
   [STATES_TYPE]: STATES_SIGNAL_OUTPUTS,
-  [ANIMATE_TYPE]: ['atTargetValue']
+  [ANIMATE_TYPE]: ['atTargetValue'],
+  // EXP-011 §63. The three pulses are the hook's listeners; the outcome trio belongs to the node's two snaps.
+  [DRAG_TYPE]: Object.keys(DRAG_PULSE_OUTPUTS)
 };
 /** Whether `port` is one of `type`'s own chain outputs — the table above plus a States' `reached-<state>` family. */
 const ownsChainOutput = (type: string, port: string): boolean =>
@@ -1357,6 +1399,11 @@ export type ValueExpr =
    */
   | { kind: 'component-object-out'; nodeId: string; local: string; key: string; parent: boolean; tsType: string }
   /**
+   * A `Drag`'s Drag X / Drag Y / Delta X / Delta Y (EXP-011 §63) — a number off the `useDrag` handle's live getters,
+   * never undefined (the hook seeds all four at mount from Start Drag X/Y).
+   */
+  | { kind: 'drag-out'; nodeId: string; local: string; field: 'x' | 'y' | 'deltaX' | 'deltaY' }
+  /**
    * The `Error` output of `External Link` or `Navigate To Path` (EXP-011 §24) — the message the
    * node wrote just before it fired `Failure`.
    *
@@ -2040,6 +2087,7 @@ export type HandlerAction =
   | LogAction
   | DelayAction
   | StatesGoAction
+  | DragSnapAction
   | ScriptSignalAction
   | RunTasksAction
   | StreamAction;
@@ -2078,6 +2126,19 @@ export type StatesGoAction = {
   verb: 'toggle' | 'to';
   /** The state a `To <state>` names; absent for Toggle. */
   state?: string;
+};
+
+/**
+ * A `Drag`'s Snap To Position X / Y — Do (EXP-011 §63): one call on the handle, always an expression. Its Done is the
+ * node's listener — `outcomeOnInnerComponent` reports `done` for every snap call whichever port asked — so it is passed
+ * once to the hook, not printed as an arm here; Failure cannot fire in the emitted app and is dropped with a note.
+ */
+export type DragSnapAction = {
+  kind: 'drag-snap';
+  nodeId: string;
+  /** The `useDrag` local. */
+  local: string;
+  axis: 'x' | 'y';
 };
 
 /**
@@ -2715,6 +2776,27 @@ export interface ParentComponentObjectPlan {
 }
 
 /**
+ * A `Drag` node (EXP-011 §63): `const <local> = useDrag({ label, nodeId, componentName }, { …options }, { …listeners })`,
+ * and a wrapper `<div ref style {...handlers}>` where the node sits. Registered for every rendered Drag — the wrapper
+ * needs the hook whether or not anything reads the node.
+ */
+export interface DragPlan {
+  nodeId: string;
+  label: string;
+  local: string;
+  comment: string;
+  /**
+   * The options that print, in `DRAG_OPTION_PORTS` order — a wire is the render expression the hook reads on arrival,
+   * an authored value a literal, a port nothing set absent (the lib applies the declared default there).
+   */
+  options: Array<{ key: string; expr: ValueExpr }>;
+  /** The listener chains that translated. `done` fires after every snap call; Failure never (dropped with a note). */
+  listeners: { onStart?: HandlerAction[]; onMove?: HandlerAction[]; onEnd?: HandlerAction[]; done?: HandlerAction[] };
+  /** Wires dropped by name — printed as in-code markers on the wrapper, counted by the pre-flight. */
+  drops: Array<{ subject: string; reason: string }>;
+}
+
+/**
  * An `Animate To Value` node (EXP-011 §49): `const <local> = useAnimatedValue(target, { duration,
  * delay, ease }, onArrive)`. `duration` and `delay` are read where the hook is — a wired one is
  * the render expression, an authored one a literal — and `ease` is the authored enum, which a
@@ -3210,6 +3292,8 @@ export interface ComponentPlan {
   componentObject?: ComponentObjectRecordPlan;
   /** EXP-011 §60. The nearest ancestor's record this component reads or writes through the parent pair, if any. */
   parentObject?: ParentComponentObjectPlan;
+  /** EXP-011 §63. The Drag nodes rendered here, registration order. */
+  drags: DragPlan[];
   /** EXP-011 §55. The `Create New Array` handles this component holds, allocation order. */
   mintedArrays: MintedArrayPlan[];
   /**
@@ -3524,6 +3608,7 @@ function planComponent(
     appErrors: [],
     streams: [],
     screenResolutions: [],
+    drags: [],
     mintedArrays: [],
     liftedOutputProps: [],
     instanceLifted: {},
@@ -3754,6 +3839,16 @@ function planComponent(
     // has is one the kit declared, and whether a wire into it is translatable is decided by the
     // definition, in the custom-node passes below.
     if (role === 'custom') return role;
+    // EXP-011 §63. A Drag's structural walls — no child, Completed consumed, a pulse read as a value, a port it has not
+    // got, two wires on one option — decided here like every visual node's; the per-wire drops wait for registration.
+    if (role === 'drag') {
+      const dragReason = dragDeferReason(node, component, catalog);
+      if (dragReason !== null) {
+        deferReasons.set(node.id, dragReason);
+        return 'unsupported';
+      }
+      return role;
+    }
     const reason = visualDeferReason(node, role, wiredIn, catalog);
     if (reason !== null) {
       deferReasons.set(node.id, reason);
@@ -3951,6 +4046,13 @@ function planComponent(
       .map((id) => nodeById.get(id))
       .filter((c): c is NodeIR => c !== undefined);
     plan.childrenOf[node.id] = [];
+    // EXP-011 §63. `Drag.tsx` renders `React.Children.toArray(children)[0]` and nothing else — the rest are named, not drawn.
+    if (role === 'drag' && children.length > 1) {
+      for (const extra of children.slice(1)) {
+        dropSubtree(node.id, extra, 'the runtime draws only the first child of a Drag (Drag.tsx renders React.Children.toArray(children)[0])');
+      }
+      children.splice(1);
+    }
     // EXP-011 §51. An instance's placed children render where the target's marker sits. A target
     // with no marker never sets a child root (componentinstance.ts `setChildRoot` is only called
     // from a marker with a parent), so the runtime never draws them — nor does the export, marked.
@@ -8341,6 +8443,25 @@ function planComponent(
         ? { kind: 'session-get', nodeId: fromNode.id, field: 'authenticated' }
         : { kind: 'session-get', nodeId: fromNode.id, field: read.field };
     }
+    /**
+     * A `Drag`'s four value outputs (EXP-011 §63) — live getters on the `useDrag` handle. The pulses are not values,
+     * and the generic visual outputs (Bounding Box, Child Index, …) are not this row's: they fall through as a Group's do.
+     */
+    if (fromNode.type === DRAG_TYPE) {
+      const registered = dragPlanOf(fromNode);
+      if ('defer' in registered) {
+        ctx.defer = registered.defer;
+        return null;
+      }
+      const field = DRAG_VALUE_OUTPUTS[fromProperty];
+      if (field !== undefined) return { kind: 'drag-out', nodeId: fromNode.id, local: registered.local, field };
+      const pulse = DRAG_PULSE_OUTPUTS[fromProperty];
+      if (pulse !== undefined) {
+        ctx.defer = `its ${pulse.label} output is consumed as a value — a pulse carries nothing to read`;
+        return null;
+      }
+      return null;
+    }
     if (isTextInputType(fromNode.type) && fromProperty === 'onTextChanged') {
       return { kind: 'input-text', inputId: fromNode.id };
     }
@@ -8498,6 +8619,9 @@ function planComponent(
         return streamFieldMaybeUndefined(expr.node, expr.field);
       /** EXP-011 §49. Boots 0 and only ever holds a number (animate-to-value.ts `currentNumber`). */
       case 'animate-out':
+        return false;
+      /** EXP-011 §63. Seeded at mount from Start Drag X/Y (`inputPositionX ? inputPositionX : 0`); only ever a number. */
+      case 'drag-out':
         return false;
       /**
        * The id nodes (EXP-011 §37), and the answer differs **by node** rather than by form.
@@ -8832,6 +8956,9 @@ function planComponent(
         return expr.tsType;
       case 'animate-out':
         return 'number';
+      /** EXP-011 §63. Four numbers off the handle. */
+      case 'drag-out':
+        return 'number';
       case 'script-out':
       // EXP-011 §54. `string` for the five, the structural AppError for the Error Object.
       case 'app-error-out':
@@ -8973,7 +9100,9 @@ function planComponent(
     // EXP-011 §53. A Run Tasks' Do and Abort — one node, two action ports.
     (type === RUN_TASKS_TYPE && (toProperty === 'run' || toProperty === 'abort')) ||
     // EXP-011 §58. The trio's action ports — Parse/Clear, Add/Flush/Clear, Add/Clear.
-    (STREAM_NODES[type] !== undefined && STREAM_NODES[type].actions[toProperty] !== undefined);
+    (STREAM_NODES[type] !== undefined && STREAM_NODES[type].actions[toProperty] !== undefined) ||
+    // EXP-011 §63. A Drag's two snap Dos — one node, two action ports.
+    (type === DRAG_TYPE && DRAG_SNAP_TRIGGERS[toProperty] !== undefined);
 
   /**
    * `isTriggerWire` with the node in hand — a `Script` node's trigger ports are the signal inputs its
@@ -12013,6 +12142,81 @@ function planComponent(
     return core;
   };
 
+  // ---- EXP-011 §63 — the Drag hook ------------------------------------------------------------------------
+  const dragPlans = new Map<string, DragPlan | { defer: string }>();
+  const dragLocals = new Map<string, string>();
+  /**
+   * A rendered `Drag`, registered on first use and memoized. The structural walls were decided before the walk
+   * (`dragDeferReason`); what is decided here is per WIRE: an option that resolves prints, one that does not is dropped
+   * by name with a marker on the wrapper (the style-wire precedent — the element prints either way). The listeners are
+   * compiled by the pass beside §57's Added pass, once `chainSnapshotFor` exists.
+   */
+  const dragPlanOf = (node: NodeIR): DragPlan | { defer: string } => {
+    const cached = dragPlans.get(node.id);
+    if (cached !== undefined) return cached;
+    const refuse = (defer: string): { defer: string } => {
+      const reason = { defer };
+      dragPlans.set(node.id, reason);
+      return reason;
+    };
+    if (!plan.file) return refuse('component emits no file to host the drag hook');
+    if (plan.roleOf[node.id] !== 'drag') return refuse(deferReasons.get(node.id) ?? 'it is not drawn — the wrapper the hook binds to never renders');
+    const label = node.authoredLabel ?? 'Drag';
+    const into = `src/${plan.file.dir}/${plan.file.fileBase}.tsx`;
+    const options: DragPlan['options'] = [];
+    const drops: DragPlan['drops'] = [];
+    for (const spec of DRAG_OPTION_PORTS) {
+      const wires = component.connections.filter((c) => c.toId === node.id && c.toProperty === spec.port);
+      if (wires.length === 1) {
+        const ctx = newCtx();
+        const expr = resolveExpr(nodeById.get(wires[0].fromId), wires[0].fromProperty, ctx);
+        const reason =
+          expr === null
+            ? (ctx.defer ?? 'the wire has no statically known source')
+            : !exprValidIn(expr, { kind: 'render' })
+              ? 'it reads a value that only exists inside a handler'
+              : undefined;
+        consumed.add(wires[0].key);
+        if (reason !== undefined || expr === null) {
+          notes.push(wireNote(wires[0], `Drag ${node.id}: its ${spec.label} input is dropped — ${reason ?? 'the wire has no statically known source'}`));
+          drops.push({ subject: `the wire into "${spec.port}"`, reason: reason ?? 'the wire has no statically known source' });
+          continue;
+        }
+        options.push({ key: spec.key, expr });
+        for (const key of ctx.consumes) consumed.add(key);
+        for (const id of ctx.logicNodeIds) dispositions[id] = { kind: 'collapsed', into };
+        for (const id of ctx.subscriberIds) boundSubscribers.add(id);
+        continue;
+      }
+      const authored = literalParam(node, spec.port);
+      if (authored !== undefined) options.push({ key: spec.key, expr: { kind: 'literal', value: authored } });
+    }
+    const core: DragPlan = {
+      nodeId: node.id,
+      label,
+      local: mintLocal(dragLocals, node, 'Drag', ''),
+      comment: `${label} — a Drag node (drag.ts, Drag.tsx): the wrapper below drags its child with the mouse or a finger; Drag X/Y and Delta X/Y are the handle's live values.`,
+      options,
+      listeners: {},
+      drops
+    };
+    dragPlans.set(node.id, core);
+    plan.drags.push(core);
+    return core;
+  };
+
+  /** A Drag's Snap To Position X / Y — Do (EXP-011 §63): a call on the handle. Its Done is the node's listener, compiled once. */
+  const compileDragSnap = (node: NodeIR, port: string): CompiledSink => {
+    const registered = dragPlanOf(node);
+    if ('defer' in registered) return { defer: registered.defer };
+    return {
+      action: { kind: 'drag-snap', nodeId: node.id, local: registered.local, axis: DRAG_SNAP_TRIGGERS[port] },
+      consumes: [],
+      collapses: [],
+      subscribes: []
+    };
+  };
+
   /** One of a boundary's six value outputs as the expression that reads it off the handle's `last`, or null. */
   const appErrorReadOf = (boundary: AppErrorPlan, port: string): ValueExpr | null => {
     if (!(ON_APP_ERROR_VALUE_OUTPUTS as readonly string[]).includes(port)) return null;
@@ -12687,6 +12891,8 @@ function planComponent(
     if (ID_NODES[node.type] !== undefined) return compileIdNew(node);
     // EXP-011 §59.
     if (CRYPTO_NODES[node.type] !== undefined) return compileCryptoCall(node);
+    // EXP-011 §63.
+    if (node.type === DRAG_TYPE && DRAG_SNAP_TRIGGERS[port] !== undefined) return compileDragSnap(node, port);
     if (node.type === 'Condition') return compileCondition(node);
     if (node.type === SET_OBJECT_PROPERTIES_TYPE) return compileSetObjectProperties(node);
     // EXP-011 §60.
@@ -13111,6 +13317,8 @@ function planComponent(
        */
       case 'states-out':
       case 'animate-out':
+      // EXP-011 §63. The handle's getters read live in both contexts — a listener sees the value the pulse just wrote.
+      case 'drag-out':
       // EXP-011 §52. The handle reads live in both contexts.
       case 'script-out':
       // EXP-011 §54. The same: `last` is the latest accepted error in every context.
@@ -13378,6 +13586,9 @@ function planComponent(
         // EXP-011 §49. A call on a component-scope handle, reading nothing; its chains are the
         // node's listeners, validated where they are compiled (the render context).
         case 'states-go':
+          return true;
+        // EXP-011 §63. A call on the handle; the Done listener is validated where it compiles (the render context).
+        case 'drag-snap':
           return true;
         // EXP-011 §52. A call on the handle; the node's listeners are validated where they compile.
         case 'script-signal':
@@ -13956,6 +14167,8 @@ function planComponent(
       case 'crypto-out':
       // EXP-011 §60. A live read off the record — a write earlier in the chain is visible through `.get()`, no snapshot.
       case 'component-object-out':
+      // EXP-011 §63. A live getter; nothing a chain sets reaches it.
+      case 'drag-out':
         return false;
       /**
        * 🔴 A walker with a `default`, and the third construct to nearly die in one (§8.3).
@@ -14023,6 +14236,8 @@ function planComponent(
       case 'crypto-out':
       // EXP-011 §60.
       case 'component-object-out':
+      // EXP-011 §63.
+      case 'drag-out':
         return expr;
       case 'jsfun-out': {
         // Wrapper argument records are shared across call sites — a per-site rewrite cannot
@@ -14679,6 +14894,65 @@ function planComponent(
     }
     if (addedRefusal !== undefined) {
       notes.push(`Repeater Item ${nodeId}: its Added chain did not translate — ${addedRefusal}; its Item Id, if read, still does`);
+    }
+  }
+
+  /**
+   * EXP-011 §63. Every rendered Drag registers its hook (the wrapper needs it whether or not anything reads the node)
+   * and compiles its listeners — the three pulses and the snaps' Done — in render context (they close over the render
+   * that passed them), snapped, their sinks collapsed into the node. A chain that does not translate is named on the
+   * node and the port, its wires consumed so no sweep names them twice; the wrapper still drags. Failure is dropped with
+   * a note: it fires only when a snap reaches a Drag that has not mounted, and the emitted element is mounted whenever a
+   * handler in this component can run. Completed was refused before the walk.
+   */
+  for (const node of component.nodes) {
+    if (plan.roleOf[node.id] !== 'drag') continue;
+    const registered = dragPlanOf(node);
+    if ('defer' in registered) continue;
+    for (const [port, spec] of Object.entries(DRAG_PULSE_OUTPUTS)) {
+      const wires = component.connections.filter((c) => c.fromId === node.id && c.fromProperty === port);
+      if (wires.length === 0) continue;
+      if (spec.listener === 'failure') {
+        for (const wire of wires) {
+          consumed.add(wire.key);
+          notes.push(
+            wireNote(
+              wire,
+              `Drag ${node.id}: its Failure chain is not emitted — Failure fires only when a snap reaches a Drag that has not mounted (drag.ts outcomeOnInnerComponent), and the emitted element is mounted whenever a handler in this component can run`
+            )
+          );
+        }
+        continue;
+      }
+      if (spec.listener === 'completed') continue;
+      const compiled = doneChainOf(node, port);
+      let refusal: string | undefined;
+      let snapped: HandlerAction[] | undefined;
+      // Two statements, not `x !== undefined && 'defer' in x`: the editor's tsc has no strictNullChecks (the brief's trap).
+      let chain: DoneChain | undefined;
+      if ('defer' in compiled) refusal = compiled.defer;
+      else chain = compiled;
+      if (chain !== undefined) {
+        if (!actionsValidIn(chain.then, { kind: 'render' })) refusal = `its ${spec.label} chain reads values that only exist inside a handler`;
+        else {
+          const result = snapActionList(chain.then, chainSnapshotFor(`drag:${node.id}:${port}`));
+          if (!Array.isArray(result)) refusal = result.defer;
+          else snapped = result;
+        }
+      }
+      if (refusal !== undefined || snapped === undefined || chain === undefined) {
+        const reason = refusal ?? `its ${spec.label} chain drives nothing this slice translates`;
+        for (const wire of wires) {
+          consumed.add(wire.key);
+          notes.push(wireNote(wire, `Drag ${node.id}: its ${spec.label} chain did not translate — ${reason}; the wrapper still drags`));
+        }
+        registered.drops.push({ subject: `the "${port}" signal`, reason });
+        continue;
+      }
+      registered.listeners[spec.listener] = snapped;
+      for (const key of chain.consumes) consumed.add(key);
+      for (const id of chain.collapses) dispositions[id] = { kind: 'collapsed', into: node.id };
+      for (const id of chain.subscribes) boundSubscribers.add(id);
     }
   }
 
@@ -15400,6 +15674,8 @@ function planComponent(
     // EXP-011 §49. A popup opened from a Has Reached, a record verb in a State Changed chain, an
     // At Target Value that navigates — every listener is a chain like any other.
     for (const machine of plan.statesMachines) for (const chain of statesListenerChains(machine)) scanActions(chain);
+    // EXP-011 §63. A Drag's listener chains are chains like any other.
+    for (const drag of plan.drags) for (const chain of dragListenerChains(drag)) scanActions(chain);
     for (const animation of plan.animations) if (animation.arrive !== undefined) scanActions(animation.arrive);
     plan.popups = slotRegistry.filter((s) => attachedSlotKeys.has(s.slotKey));
     plan.closesPopup = closeAttached;
@@ -15936,6 +16212,8 @@ function planComponent(
       CRYPTO_NODES[fromNode.type] !== undefined &&
       (connection.fromProperty === CRYPTO_NODES[fromNode.type].output || connection.fromProperty === 'error');
     const isScreenRead = fromNode.type === SCREEN_RESOLUTION_TYPE;
+    // EXP-011 §63. A Drag's four value outputs, off its handle — the same footing.
+    const isDragRead = fromNode.type === DRAG_TYPE && DRAG_VALUE_OUTPUTS[connection.fromProperty] !== undefined;
     const isAnimateRead = fromNode.type === ANIMATE_TYPE && connection.fromProperty === 'currentValue';
     if (
       !isLatchRead &&
@@ -15959,7 +16237,8 @@ function planComponent(
       !isAppErrorRead &&
       !isStreamRead &&
       !isCryptoRead &&
-      !isScreenRead
+      !isScreenRead &&
+      !isDragRead
     ) {
       continue;
     }
@@ -16751,6 +17030,9 @@ function planComponent(
           // EXP-011 §49. Nothing to read; the listeners are walked off the plan below.
           case 'states-go':
             break;
+          // EXP-011 §63. Nothing to read; the options and listeners are walked off the plan below.
+          case 'drag-snap':
+            break;
           // EXP-011 §52. The same: the inputs and listeners are walked off the plan below.
           case 'script-signal':
             break;
@@ -16811,6 +17093,11 @@ function planComponent(
     for (const machine of plan.statesMachines) {
       if (machine.follow !== undefined) walkExpr(machine.follow);
       for (const chain of statesListenerChains(machine)) walkActions(chain);
+    }
+    // EXP-011 §63. The options are render reads; the listeners are chains.
+    for (const drag of plan.drags) {
+      for (const option of drag.options) walkExpr(option.expr);
+      for (const chain of dragListenerChains(drag)) walkActions(chain);
     }
     for (const animation of plan.animations) {
       walkExpr(animation.target);
@@ -17195,6 +17482,9 @@ function planComponent(
           // EXP-011 §49. Nothing nested; the listeners are filled off the plan below.
           case 'states-go':
             break;
+          // EXP-011 §63. Nothing nested; the listeners are filled off the plan below.
+          case 'drag-snap':
+            break;
           case 'script-signal':
             break;
           // EXP-011 §53. Nothing nested on the action; the listeners are filled off the plan below.
@@ -17315,6 +17605,8 @@ function planComponent(
     for (const effect of plan.recordEffects) fillMaterialize([effect.action]);
     // EXP-011 §49. A request or a Now inside a listener chain materializes as it would in a handler.
     for (const machine of plan.statesMachines) for (const chain of statesListenerChains(machine)) fillMaterialize(chain);
+    // EXP-011 §63. A request inside a Drag's listener chain materializes as a handler's would.
+    for (const drag of plan.drags) for (const chain of dragListenerChains(drag)) fillMaterialize(chain);
     for (const animation of plan.animations) if (animation.arrive !== undefined) fillMaterialize(animation.arrive);
     // EXP-011 §52. A listener chain materializes as a handler's would.
     for (const script of plan.scripts) for (const chain of Object.values(script.listeners)) fillMaterialize(chain);
@@ -17412,6 +17704,20 @@ function planComponent(
     }
   }
 
+  /**
+   * 🔴 EXP-011 §63. The attach pass writes `collapsed into <trigger>` over EVERY sink it takes, a RENDERED sink included —
+   * a Drag whose snap Do a button fires read "collapsed into snapBtn" in its own report, as a Checkbox with a wired
+   * Check has since the controlled-state slice. The element is drawn; `static` is what is true of it. Restored here,
+   * after every pass, for every rendered id that is the SINK of a trigger wire — exactly the population the attach pass
+   * takes. A rendered id collapsed for another reason keeps it: a page's sole Group collapses into the page div, truly.
+   */
+  for (const id of rendered) {
+    const disposition = dispositions[id];
+    if (disposition === undefined || disposition.kind !== 'collapsed') continue;
+    const node = nodeById.get(id);
+    if (node === undefined || !component.connections.some((c) => c.toId === id && isTriggerInto(node, c.toProperty))) continue;
+    dispositions[id] = { kind: 'static' };
+  }
   sweepRefusedScripts();
   sweepUnreportedDeferrals();
   collectRefusals();
@@ -17616,6 +17922,9 @@ function renderRole(node: NodeIR, catalog: CatalogIndex, kits: KitIndex): Render
   switch (node.type) {
     case 'Group':
       return 'group';
+    // EXP-011 §63. A wrapper div the drag hook binds to; the node itself renders nothing in the running app.
+    case DRAG_TYPE:
+      return 'drag';
     case 'Text':
     case 'Label':
       return 'text';
@@ -17743,6 +18052,48 @@ const CONTENT_BOUND_PORTS: Partial<Record<RenderRole, string[]>> = {
  * The checks mirror the target doc's defers: JS-measured layouts, wire-fed structure, custom
  * control marks, and the inline icon kind.
  */
+/**
+ * EXP-011 §63. A `Drag`'s structural walls, decided before the walk — its subtree is then left out and marked where it
+ * sat, the visual family's own rule. Everything per wire is decided at registration and drops the wire, not the node.
+ * The generic visual ports (Bounding Box, Mounted, Child Index, …) are not this row's and pass through.
+ */
+function dragDeferReason(node: NodeIR, component: ComponentIR, catalog: CatalogIndex): string | null {
+  if ((node.children ?? []).length === 0) return 'it has no child to drag — a Drag with no child renders nothing (Drag.tsx returns null)';
+  const nodeById = new Map(component.nodes.map((n) => [n.id, n]));
+  for (const wire of component.connections) {
+    if (wire.fromId !== node.id) continue;
+    const pulse = DRAG_PULSE_OUTPUTS[wire.fromProperty];
+    if (pulse !== undefined) {
+      if (pulse.listener === 'completed') {
+        return 'its Completed output is consumed — it fires after every outcome, and this slice emits the outcome arms rather than a join beneath them';
+      }
+      const target = nodeById.get(wire.toId);
+      if (target !== undefined && target.type !== 'Component Outputs') {
+        const sinkKind =
+          target.declaredPorts.find((p) => p.plug === 'input' && p.name === wire.toProperty)?.kind ??
+          catalog.portKind(target.type, wire.toProperty, 'input');
+        if (sinkKind === 'value') return `its ${pulse.label} output is consumed as a value — a pulse carries nothing to read`;
+      }
+      continue;
+    }
+    if (DRAG_VALUE_OUTPUTS[wire.fromProperty] !== undefined) continue;
+    if (catalog.portKind(DRAG_TYPE, wire.fromProperty, 'output') === undefined) return `its ${wire.fromProperty} output is not a port this node has`;
+  }
+  const seen = new Set<string>();
+  for (const wire of component.connections) {
+    if (wire.toId !== node.id) continue;
+    const option = DRAG_OPTION_PORTS.find((o) => o.port === wire.toProperty);
+    if (option !== undefined) {
+      if (seen.has(option.port)) return `two wires feed its ${option.label} input — last-writer-wins is not statically ordered`;
+      seen.add(option.port);
+      continue;
+    }
+    if (DRAG_SNAP_TRIGGERS[wire.toProperty] !== undefined) continue;
+    if (catalog.portKind(DRAG_TYPE, wire.toProperty, 'input') === undefined) return `its ${wire.toProperty} input is not a port this node has`;
+  }
+  return null;
+}
+
 function visualDeferReason(
   node: NodeIR,
   role: RenderRole,
