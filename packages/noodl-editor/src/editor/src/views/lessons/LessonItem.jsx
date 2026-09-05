@@ -73,6 +73,29 @@ function LessonItem({
       animate: true,
       offsetY: -8,
       manualClose: hasNextButton,
+      /*
+       * 🔴 P79 J2 — the instructions and the controls they describe are ONE surface.
+       *
+       * `showPopout` used to raise a full-screen blocker (`.popup-layer` is fixed,
+       * 100vw x 100vh, z-index 10; the lesson bar carries no z-index at all), so
+       * while the instructions were open every control in the bar sat UNDER it.
+       * Pressing CHECK MY WORK therefore landed on the blocker: the press dismissed
+       * the popout and the button never received it, so no grading pass ran. The
+       * learner lost their instructions and got no answer — and the recorded symptom,
+       * "the check removes the instructions and says nothing new", is exactly what a
+       * check that never ran looks like from the outside.
+       *
+       * Two facts have to hold together, which is why this is two options:
+       *   - `blockOutsideClicks: false` — the press reaches the button.
+       *   - `keepOpenWithin` — and pressing it does not throw the instructions away,
+       *     because the bar belongs to the same surface. Dismissing on it is also
+       *     REMEMBERED (`instructionDismissed` in `onClose`), so without this the
+       *     instructions would not come back on the next render either.
+       *
+       * Everything outside the bar still dismisses, exactly as before.
+       */
+      blockOutsideClicks: false,
+      keepOpenWithin: '.lesson-bottombar',
       onClose: () => {
         // FIX-027 §17: closing has to be REMEMBERED. Without this the next re-render — and
         // `refresh()` fires one on every `Model.*` event — reads as a fresh entry and re-opens

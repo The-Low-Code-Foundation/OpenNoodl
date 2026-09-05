@@ -11,6 +11,7 @@ import KeyboardHandler from '@noodl-utils/keyboardhandler';
 import { windowTitleBarHeight } from '@noodl-utils/utils';
 
 import { CodeExportModal, CodeExportModalProps } from './PopupLayer/CodeExportModal';
+import { blockerIsNeeded, popoutBlocksOutsideClicks, pressIsInsideKeptRegion } from './PopupLayer/popoutdismissal';
 import { ConfirmModal, ErrorModal } from './PopupLayer/ConfirmModal';
 import { StringInputPopup } from './PopupLayer/StringInputPopup';
 import { ToastLayer } from './ToastLayer/ToastLayer';
@@ -68,6 +69,31 @@ export interface PopoutArgs {
   disableCentering?: boolean;
   offsetX?: number;
   offsetY?: number;
+  /**
+   * P79 J2 — whether this popout puts the full-screen blocker over the editor.
+   *
+   * 🔴 The blocker is NOT what dismisses a popout. Dismissal is decided by the
+   * `pointerdown`/`pointerup` pair bound to `document.body`, which fire for any
+   * press anywhere regardless of what is on top; and `.popup-layer-popout` sets
+   * its own `pointer-events: all`, so the popout's own content stays clickable
+   * without it. The blocker's only effect is to EAT the press, so the control
+   * underneath never receives it.
+   *
+   * That is right for a popout that owns the screen while it is up, and wrong
+   * for one that sits beside a control the learner is meant to press — see
+   * `keepOpenWithin`. Defaults to `true`, so every existing caller is unchanged.
+   */
+  blockOutsideClicks?: boolean;
+  /**
+   * P79 J2 — a CSS selector for the region that belongs to this popout but is
+   * not inside it. A press whose target `.closest()`-matches is treated as
+   * INSIDE: it neither dismisses the popout nor is swallowed.
+   *
+   * The lesson instructions are attached to a step in the lesson bar, and the
+   * bar carries the controls the instructions are telling the learner to use.
+   * Without this, pressing them counts as pressing outside.
+   */
+  keepOpenWithin?: string;
   onClose?: () => void;
 }
 
@@ -82,6 +108,10 @@ export interface Popout {
   arrowColor?: string;
   animate?: boolean;
   manualClose?: boolean;
+  /** P79 J2 — see {@link PopoutArgs.blockOutsideClicks}. `undefined` means blocking. */
+  blockOutsideClicks?: boolean;
+  /** P79 J2 — see {@link PopoutArgs.keepOpenWithin}. */
+  keepOpenWithin?: string;
   attachToRect: Rect;
   resizeObserver: ResizeObserver;
 }
@@ -384,10 +414,28 @@ export class PopupLayer {
       return !!portal && portal.contains(target);
     };
 
+    /**
+     * P79 J2 — a popout may declare a region that belongs to it but is not
+     * inside it (`keepOpenWithin`). The lesson instructions are attached to a
+     * step in the lesson bar and the bar carries the controls they tell the
+     * learner to press — CHECK MY WORK above all — so a press there is part of
+     * using the instructions, not a gesture away from them.
+     *
+     * Read from the LIVE popout list on every press rather than captured once,
+     * because the popout that owns the region is opened and closed repeatedly
+     * over a lesson.
+     */
+    const insideKeptRegion = (target: EventTarget | null) => {
+      if (!(target instanceof Element)) return false;
+      return pressIsInsideKeptRegion(this.popouts, (selector) => !!target.closest(selector));
+    };
+
     const outsidePopup = (target: EventTarget | null) =>
       !isInside(target, this.popupEl) && !insideDialogPortal(target);
     const outsidePopouts = (target: EventTarget | null) =>
-      !(isInside(target, this.popupEl) || isInside(target, this.popoutsEl)) && !insideDialogPortal(target);
+      !(isInside(target, this.popupEl) || isInside(target, this.popoutsEl)) &&
+      !insideDialogPortal(target) &&
+      !insideKeptRegion(target);
 
     // Armed by a pointerdown that landed outside; only a pointerup that also
     // lands outside acts on it.
@@ -860,7 +908,10 @@ export class PopupLayer {
   public showPopout(args: PopoutArgs): Popout {
     this.disarmDismissal();
 
-    this.blockerEl.style.display = '';
+    // P79 J2 — a popout that does not block leaves the editor underneath live.
+    if (popoutBlocksOutsideClicks(args)) {
+      this.blockerEl.style.display = '';
+    }
 
     const content = args.content.el;
     args.content.owner = this;
@@ -886,6 +937,8 @@ export class PopupLayer {
       position: args.position,
       animate: args.animate,
       manualClose: args.manualClose,
+      blockOutsideClicks: args.blockOutsideClicks,
+      keepOpenWithin: args.keepOpenWithin,
       attachToRect: args.attachTo
         ? attachToRect(args.attachTo)
         : { left: args.attachToPoint.x, top: args.attachToPoint.y, width: 0, height: 0 },
@@ -900,7 +953,9 @@ export class PopupLayer {
     this.popouts.push(popout);
 
     // Enable pointer events for outside-click-to-close when popouts are active
-    this.el.classList.add('has-popouts');
+    if (popoutBlocksOutsideClicks(args)) {
+      this.el.classList.add('has-popouts');
+    }
 
     if (args.animate) {
       popoutEl.style.transform = 'translateY(10px)';
@@ -953,7 +1008,7 @@ export class PopupLayer {
     const close = () => {
       popout.el.remove();
 
-      if (this.popouts.length === 0) {
+      if (!blockerIsNeeded(this.popouts)) {
         this.blockerEl.style.display = 'none';
         // Disable pointer events when no popouts are active
         this.el.classList.remove('has-popouts');

@@ -7,7 +7,7 @@ register rather than a per-lesson one. Every row is open and unowned.
 | id | severity | owner | what |
 |---|---|---|---|
 | J1 | 🔴 high | ✅ **FIXED 2026-09-05 (s9)** | a markdown blockquote renders as a literal `>` in lesson prose — 5 of the 8 shipped lessons |
-| J2 | 🔴 high | `NONE` | *Check my work* on an incomplete step removes the instructions and says nothing new |
+| J2 | 🔴 high | ✅ **FIXED 2026-09-05 (s11)** | *Check my work* on an incomplete step removes the instructions and says nothing new — **because the press never reached the button** |
 | J3 | ⚠️ medium | ✅ **FIXED 2026-09-05 (s9)** | every shipped lesson is badged **Written locally** instead of **NodeGX** |
 | J4 | ⚠️ medium | ✅ **FIXED 2026-09-05 (s9)** | a `paramsEqual` condition names the parameters it grades but not the values they must equal |
 
@@ -193,3 +193,113 @@ both arms. 1058/1058 across the 59 lesson-touching suites.
 ⚠️ **Left alone deliberately:** the platform install's confirmation dialog still shows the *folded*
 provenance. That dialog is about which checks the bundle is being held to, so the gate class is the
 right thing to show there.
+
+
+---
+
+## ✅ J2 — FIXED 2026-09-05 (session 11), and the row's diagnosis was wrong
+
+🔴 **The observation was exact and reproduced character for character. The explanation was not.**
+The row reads *"the check removes the instructions and says nothing new"*, which describes a check
+that ran and then threw the instructions away. **No check ever ran.** "Says nothing new" is not a
+grading pass with nothing to add — it is the absence of one.
+
+### What was actually happening
+
+`.popup-layer` is `position: fixed`, `100vw x 100vh`, `z-index: 10`, and `showPopout` raised a
+full-screen `blockerEl` (`pointer-events: all`) plus `.has-popouts` for **every** popout.
+`.lesson-bottombar` carries **no `z-index` at all**. So whenever the instructions were open — which
+is the ordinary path, because FIX-027 §17 opens them on the edge into a step — **CHECK MY WORK sat
+underneath a click-eating blocker.**
+
+The press therefore landed on the blocker, which armed and fired the body-level dismissal:
+the popout closed, `LessonItem`'s `onClose` recorded the dismissal via `instructionDismissed` (so it
+never reopened), and **the button received nothing**. The learner lost their instructions, got no
+answer, and the one thing that would have told them the press had failed — a summary — is exactly
+what a swallowed press cannot produce.
+
+🔴 **The blocker was never what dismissed a popout.** Dismissal is the `pointerdown`/`pointerup`
+pair bound to `document.body`, which fires wherever the press lands. Nor is the blocker what makes a
+popout clickable: `.popup-layer-popout` sets its own `pointer-events: all`. Its **only** effect is to
+eat the press. That is right for a popout that owns the screen and wrong for one attached to a bar
+full of controls the popout is telling the learner to use.
+
+### The fix — two options, because it was two faults
+
+| | what it does |
+|---|---|
+| `blockOutsideClicks: false` | the press reaches the button, so the check runs |
+| `keepOpenWithin: '.lesson-bottombar'` | and pressing it does not throw the instructions away |
+
+Either alone is insufficient and the spec has a row for each: the blocker opt-out alone still loses
+the instructions (the body listeners still read the bar as outside), and the kept region alone keeps
+instructions the learner still cannot press through. **Both default to today's behaviour**, so the
+~20 other `showPopout` call sites — the property panel, the colour picker, the connection popups —
+are untouched.
+
+⚠️ **One rule had to change rather than gain an option.** `hidePopout` took the blocker down on
+`popouts.length === 0`, which was the same question only while every popout blocked. With one that
+does not, closing a *blocking* popout while a non-blocking one remained would leave `length !== 0`
+and **strand the blocker over a live editor** — the original defect with no popout visible to
+explain it. It now asks whether any *remaining* popout wants the blocker.
+
+### Gated, and where
+
+🔴 **The decisions live in `views/PopupLayer/popoutdismissal.ts`, not in `popuplayer.ts`**, which
+imports `electron` and React's DOM client and so cannot be loaded by the plain-Node runner in
+`tests-unit/`. The only suite that reaches `popuplayer.ts` is the webpack+Electron jasmine bundle,
+a gate that needs the whole box and went unrun for two sessions at a stretch. Same reasoning as
+`lessons/lessonstepflow.ts`. The module is deliberately DOM-free — `tests-unit` runs
+`testEnvironment: 'node'`, so there is no `Element` and no `closest`; `pressIsInsideKeptRegion` takes
+a `matches` predicate that the renderer satisfies with `Element.closest`.
+
+`tests-unit/syl-j2/popoutdismissal.test.ts` — **14 rows, all green.** Three mutants, each reddening
+only its own rows and nothing else:
+
+| mutant | reddens |
+|---|---|
+| `popoutBlocksOutsideClicks` always `true` (= the original defect) | 4 |
+| `blockerIsNeeded` back to the `popouts.length` rule | 1 |
+| `pressIsInsideKeptRegion` always `false` | 4 |
+
+### 🟢 The drive — a control pair on one running editor
+
+Fresh profile (`NOODL_USER_DATA_DIR`), all 8 lessons seeded by themselves, `Poke it` step 1 — the
+same lesson and step session 8 recorded the row on. The only variable between arms is
+`LessonItem.jsx`; the `popuplayer.ts` change is **inert without a caller that opts out**, so the
+reverted arm is the fix removed at its one call site.
+
+| | reverted (pre-fix) | fixed |
+|---|---|---|
+| topmost element over CHECK MY WORK | 🔴 **`popup-layer-blocker`** | ✅ **`lesson-check-button`** |
+| blocker / layer class | shown, `popup-layer has-popouts` | `none`, `popup-layer` |
+| **after pressing it once** | | |
+| instructions (`popouts`/`details`/`[data-template=popup]`) | 🔴 **0 / 0 / 0** — gone | ✅ **1 / 1 / 1** — still there |
+| `lesson-check-summary` | 🔴 **`null`** — no check ran | ✅ *"0 of 5 checked steps are done. Step 2 — “Add a button” is the first one still to do…"* |
+
+🔴 **The control that identifies the cause.** On the *reverted* arm, pressing the button a **second**
+time — now that the instructions were gone and `elementFromPoint` returned the button itself —
+produced the full grading summary. Same button, same code, same step: the only thing that changed
+was whether the blocker was over it. That rules out a broken button and pins the blocker.
+And because §17 opens the instructions on entering a step, **the press a learner actually makes is
+always the swallowed one.**
+
+✅ **Two negative controls, both observed:**
+- a press **outside** the lesson bar still dismisses the instructions (`popouts` 1 → 0) — without
+  this the fix would have swapped a popout you cannot use for one you cannot put away;
+- an **ordinary** popout (the components panel header action) still raises the blocker
+  (`blockerDisplay: ''`, `popup-layer has-popouts`) and still takes it down again on an outside
+  press. That is the row standing in for the other ~20 call sites.
+
+### Seen in passing, not claimed
+
+⚠️ **Clicking a step in the timeline did not respond to one scripted press** on the fixed arm —
+`elementFromPoint` at the item's centre returned `.lesson-steps`, the scroll container, so the item
+was not where its rect said it was. That is session 8's own "a click reports success and lands
+nowhere" trap and it is **unmeasured either way here**; it is *not* evidence the timeline route is
+broken, and nothing above depends on it.
+
+✅ **Confirmed live while passing through, on a fresh profile:** the card badge reads **NodeGX**
+(J3), and the condition prose reads *"Looking for a **Button** called “Poke” on Home and “Poke”
+with label set to "Poke""* — a resolved node name (D2) and a named value (J4). All three session-9
+fixes, observed on screen for the first time.
