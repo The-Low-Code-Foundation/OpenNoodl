@@ -88,9 +88,9 @@ They are listed so that fact is visible rather than implied.
 | **Circle → a Shape/SVG node** — premade shapes plus pasted SVG. Richard: *"you'd be a hero"* | a plan exists and is in [NOTES-UNOWNED-NODE-WORK](NOTES-UNOWNED-NODE-WORK.md); **extend in place, no migration** | `NONE` |
 | **Video node** — mp4 only; no YouTube or Vimeo anywhere; no start/end time | plan in the same notes file; mp4 start/end is **half built** already | `NONE` |
 | **Dropdown** places invisible with no options; wants two defaults and a beginner JSON mode | research incomplete — the one agent that did not report | `NONE` |
-| **Filter properties bar** — ~59px tall, and its field has no border and no fill, so contrast against the panel is **1.00:1** | sibling controls in the same panel already use a contrast-graded border token; the stylesheet has **five other consumers**, so scope it | `NONE` |
+| ~~**Filter properties bar** — ~59px tall, and its field has no border and no fill, so contrast against the panel is **1.00:1**~~ 🔴 **This row was FALSE from `645c3922` onward and still read as open here.** Struck in [NOTES §4](NOTES-UNOWNED-NODE-WORK.md) by s53 and not in this register, which is the second place it had to be struck | fixed under `input.property-filter-input` (`propertyeditor.css:349`) and graded by `nat-001/palette-contrast.spec.ts`'s last `PAIRS` row | ✅ done |
 | **"Add style variant" vs "Style → Variant"** — two genuinely different systems, emitted adjacently with no separator | one test asserts the literal port name `'Variant'` | `NONE` |
-| **Button `outline`/`ghost` icons** were invisible before §1's fix and are now correct *by inheritance* — but no gate pins the variants themselves | a render-level gate over all five variants | `NONE` |
+| ~~**Button `outline`/`ghost` icons** were invisible before §1's fix and are now correct *by inheritance* — but no gate pins the variants themselves~~ ✅ **CLOSED 2026-09-05 (s55) — §5 below.** ⚠️ The shape said *five* variants; there are **six** | ~~a render-level gate over all five variants~~ built, and the population is read from the registry so a seventh cannot ship ungraded | s55 |
 
 ---
 
@@ -173,3 +173,87 @@ suite only ever saw the arm that works.**
 block-defaults gate reads `Blockly.Blocks`, the icon-colour gate counts `addIconInputs` call sites on
 disk, and the template gate distinguishes *held* from *removed* by asking the provider both
 questions about the same id. A node or block added next month is inside all three the day it lands.
+
+## §5 ✅ CLOSED 2026-09-05 (s55) — the Button variants are gated, and the gate is the product's own chain
+
+**`packages/noodl-viewer-react/tests/corpus/p82-button-icon-inherits-every-variant.test.ts` — 39 tests, `EXIT=0`.**
+
+### The hole was between two green gates, and neither could see it
+
+Finding 8's fix is *"ships no default, inherits"*, and two gates already stood either side of it:
+
+| gate | what it holds | what it cannot see |
+|---|---|---|
+| `noodl-viewer-react/tests/icon-colour-defaults.test.ts` §3 | Button ships **no** `iconColor` default, and `_renderIcon` emits no `color` when the author set none | it renders a Button carrying **no variant at all** — it says nothing about the grounds a real Button lands on |
+| `noodl-editor/tests-unit/def-001/design-token-contrast.test.ts` | every variant's `color` against every ground, in every shipped palette, states included | it reads `ButtonConfig` and **renders nothing** |
+
+So DEF-001 proves the variant's foreground is visible on its ground, and `icon-colour-defaults`
+proves the glyph takes the button's colour *in one implicit case*. 🔴 **The link between them — that
+a Button stamped with variant V really does hand its glyph V's colour — was what nothing held**, and
+that link is the entire content of *"correct by inheritance"*. Break it and both gates stay green
+while `outline` and `ghost` go back to the invisible icon Richard reported.
+
+⚠️ **No contrast is computed in the new file.** That is DEF-001's instrument, and a second copy of it
+would be two readings that can disagree — the standing *"a check in a second pipeline is a duplicate
+first"* trap. This one grades **identity**: the glyph's colour *is* the button's.
+
+### It exercises the chain rather than modelling it
+
+```
+ButtonConfig.variants[v]
+  → ElementConfigRegistry.applyVariant(...)   what a variant click actually stamps
+    → node.parameters                          camelCase CSS keys on the node model
+      → the `color` inputCss port              targetStyleProperty: 'color' → setStyle
+        → noodlNode.style → props.style        react-component-node's props assembly
+          → <button style="color:…">           Button.tsx
+            → <span class="fa fa-check">       IconGlyph, carrying NO colour of its own
+```
+
+A real node in a real graph (`createCorpusGraph`), rendered by its own `render()`. The markup a
+`primary` Button actually produces is
+`<button … style="…color:var(--primary-foreground)…"><span class="fa fa-check"></span></button>` —
+the glyph has **no `style` attribute at all**, which is the fix, seen rather than asserted.
+
+### 🔴 The row asked for five variants. There are six.
+
+`primary`, `secondary`, `outline`, `ghost`, `destructive`, `link`. §1 reads the population from
+`ElementConfigRegistry.getVariantNames` — the same call the VariantSelector UI makes — so it is
+derived, not listed, and it carries a `length > 0` control because `all([])` is the answer you
+wanted.
+
+### Five reverted arms, and they redden on different rows
+
+| arm | mutation | reading |
+|---|---|---|
+| green | — | **39/39, `EXIT=0`** |
+| A | `iconColor: '#FFFFFF'` back in `button.ts`'s `addIconInputs` defaults — **the defect exactly as it shipped** | **6 red of 39 that all ran**, §3's inheritance rows |
+| B | `iconStyle.color = props.iconColor` deleted from `_renderIcon` | **6 red of 39**, §4's rows — an author's own Icon Color silently dropped |
+| C | that line made `props.iconColor ?? '#FFFFFF'` — a constant at the render site instead of the port | **6 red of 39**, §3's rows |
+| D | `ghost` loses its `color` in `ButtonConfig` | **2 red of 39**, §2 and §3 for that variant only |
+| E | a seventh variant `subtle` added to the config | **39 → 45 tests**, the six new rows graded automatically and **exactly 1 red** on §1 |
+
+🔴 **B and C are the discrimination pair.** Both remove a colour from the glyph and they redden
+**opposite** sections — without §4, *"the glyph declares no colour"* would read identically on a
+`_renderIcon` that had stopped emitting colour at all, and the gate would have called an author's
+dropped choice a pass.
+
+🔴 **Arm E is what proves the population is derived rather than listed.** A listed table would have
+stayed at 39 tests and graded the seventh variant not at all, silently. All three mutated sources
+(`button.ts`, `Button.tsx`, `ButtonConfig.ts`) restored **md5-identical** after every arm.
+
+### Readings
+
+`noodl-viewer-react` **98 suites / 1322 tests, `EXIT=0`** (the new file is the only delta: 97/1283
+without it), and `tsc -p noodl-viewer-react` **`EXIT=0`, 0 errors** — gated on the exit status, not
+on a count of error lines.
+
+### ⚠️ What it still does not establish
+
+- **Hover and disabled are not rendered.** `outline`/`ghost` swap to `--accent-foreground` on hover
+  and the runtime applies visual states through CSS classes, not inline style, so a static render
+  cannot reach them. DEF-001 *does* grade those pairs' contrast (`…/outline:hover`), so what is
+  unheld is the inheritance at hover, not the colours.
+- `context.styles.resolveColor` is stubbed as identity. The real one resolves a project colour style
+  *name*; a `var(--token)` passes through it unchanged, which is what every value in `ButtonConfig` is.
+
+---
