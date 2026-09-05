@@ -23,12 +23,19 @@ import { ComponentIR, ExportIR, NodeIR, ParamValue } from '../src/ir/types';
  * §A the module, §B the component, §C every refusal by its sentence, §D the fixture
  * `tests/fixtures/profile-desk` whole: two inputs and a Save into `profile`, four Texts reading
  * it back (one key nothing writes, one written only by a value typed into the Set — §68), a Set
- * Variable on the Done, and a badge component reading the same object from a second file.
+ * Variable on the Done with its value typed in (§69), and a badge component reading the same
+ * object from a second file.
  *
  * §E (EXP-011 §68, session 92): a listed key nothing wires but the author typed a value for is
  * written as that literal — the runtime queues every authored parameter into the node at creation
  * and `_pushInputValues` writes every listed key that is not `undefined` — and the literal types
  * the key as itself (§67's rule for a Variable's Value).
+ *
+ * §F (EXP-011 §69, session 93): the fixture's `Set status` has `Saved.` TYPED INTO its Value with no
+ * String node in front of it — the common authoring — and the export writes it on Do exactly as it
+ * wrote the wire (`status.set('Saved.')`, byte-identical output), where before §69 the node was
+ * refused (*nothing is wired into value*) and the refusal dropped the whole Save chain behind it.
+ * The literal types the variable as §67's seed does.
  */
 
 const FIXTURE = path.join(__dirname, 'fixtures', 'profile-desk');
@@ -233,7 +240,7 @@ describe('§B — the component', () => {
     expect(home(app)).toContain('value={name}');
     expect(home(app)).toContain("const [city, setCity] = useState<string>('');");
     const ir = cloneIr();
-    dropNodes(ir, HOME, ['saveProfile', 'setStatus', 'savedString']);
+    dropNodes(ir, HOME, ['saveProfile', 'setStatus']);
     const built = home(emitApp(ir, catalog));
     expect(built).not.toContain('useState');
     expect(built).not.toContain('value={');
@@ -272,9 +279,8 @@ describe('§B — the component', () => {
 
   test('B7 a Failure wire is dropped with the line of runtime source that makes it unreachable — Done still translates', () => {
     const ir = cloneIr();
-    addNode(componentOf(ir, HOME), { id: 'setFail', type: 'Set Variable', parameters: [{ name: 'name', value: lit('status') }] });
+    addNode(componentOf(ir, HOME), { id: 'setFail', type: 'Set Variable', parameters: [{ name: 'name', value: lit('status') }, { name: 'value', value: lit('Failed.') }] });
     wire(ir, HOME, 'saveProfile', 'failure', 'setFail', 'do', 'signal');
-    wire(ir, HOME, 'savedString', 'savedValue', 'setFail', 'value');
     const built = emitApp(ir, catalog);
     expect(handlerOf(home(built), 'Save profile')).toBe(SAVE);
     expect(built.notes.join('\n')).toContain(
@@ -290,7 +296,7 @@ describe('§B — the component', () => {
 
   test('B9 without a Done chain the handler is the patch alone', () => {
     const ir = cloneIr();
-    dropNodes(ir, HOME, ['setStatus', 'savedString']);
+    dropNodes(ir, HOME, ['setStatus']);
     expect(handlerOf(home(emitApp(ir, catalog)), 'Save profile')).toBe("onClick={() => profile.set({ name: name, city: city, since: '2026' })}");
   });
 
@@ -341,9 +347,8 @@ describe('§C — refused by name', () => {
 
   test('C3 a signal or the Object port consumed', () => {
     const changed = cloneIr();
-    addNode(componentOf(changed, HOME), { id: 'setAny', type: 'Set Variable', parameters: [{ name: 'name', value: lit('status') }] });
+    addNode(componentOf(changed, HOME), { id: 'setAny', type: 'Set Variable', parameters: [{ name: 'name', value: lit('status') }, { name: 'value', value: lit('Changed.') }] });
     wire(changed, HOME, 'profile', 'changed', 'setAny', 'do', 'signal');
-    wire(changed, HOME, 'savedString', 'savedValue', 'setAny', 'value');
     expect(reasonFor(changed, HOME, 'profile')).toBe(
       'Object profile: its "changed" output is consumed — only its property reads translate in this slice (the Id is the literal "profile"; its signals are effect() work; the Object port is the runtime\'s Model)'
     );
@@ -528,6 +533,82 @@ describe('§E — EXP-011 §68: a value typed into a listed, unwired property is
     const built = emitApp(ir, catalog);
     expect(handlerOf(home(built), 'Save profile')).toBe("onClick={() => { profile.set({ name: name, city: city }); status.set('Saved.'); }}");
     expect(home(built)).not.toContain('Date.now()');
+  });
+});
+
+describe('§F — EXP-011 §69: a value typed into the Set Variable with nothing wired over it is written on Do, and types the variable', () => {
+  const variables = (built: ReturnType<typeof emitApp>): string => fileOf(built, 'src/stores/variables.ts');
+
+  test('F1 the fixture’s Set status has "Saved." typed in and no wire — the handler is the text a String wire used to produce, and the variable types string', () => {
+    expect(nodeOf(baseIr, HOME, 'setStatus').parameters.find((p) => p.name === 'value')).toEqual({ name: 'value', value: lit('Saved.') });
+    expect(componentOf(baseIr, HOME).connections.some((c) => c.toId === 'setStatus' && c.toProperty === 'value')).toBe(false);
+    expect(componentOf(baseIr, HOME).nodes.some((n) => n.type === 'String')).toBe(false);
+    expect(handlerOf(home(app), 'Save profile')).toBe(SAVE);
+    expect(variables(app)).toContain('/** Written by "Set status" (Set Variable `setStatus` on /Pages/Home). */\nexport const status = value<string | undefined>(undefined);');
+  });
+
+  test('F2 a number literal writes as a number and types the variable unknown — and the app typechecks; a boolean likewise (a literal is not a logic truth value)', () => {
+    const num = cloneIr();
+    setParam(nodeOf(num, HOME, 'setStatus'), 'value', lit(7));
+    const built = emitApp(num, catalog);
+    expect(handlerOf(home(built), 'Save profile')).toBe("onClick={() => { profile.set({ name: name, city: city, since: '2026' }); status.set(7); }}");
+    expect(variables(built)).toContain('export const status = value<unknown>(undefined);');
+    expect(typecheckEmittedApp(built)).toEqual([]);
+    const bool = cloneIr();
+    setParam(nodeOf(bool, HOME, 'setStatus'), 'value', lit(true));
+    expect(handlerOf(home(emitApp(bool, catalog)), 'Save profile')).toContain('status.set(true); }}');
+  });
+
+  test('F3 a literal under a wire is shadowed — the wire is written, the literal is not mentioned, and the wire governs the type (a number under a string wire does not demote)', () => {
+    const ir = cloneIr();
+    wire(ir, HOME, 'nameInput', 'onTextChanged', 'setStatus', 'value');
+    setParam(nodeOf(ir, HOME, 'setStatus'), 'value', lit(7));
+    const built = emitApp(ir, catalog);
+    expect(handlerOf(home(built), 'Save profile')).toBe("onClick={() => { profile.set({ name: name, city: city, since: '2026' }); status.set(name); }}");
+    expect(home(built)).not.toContain('status.set(7)');
+    expect(variables(built)).toContain('export const status = value<string | undefined>(undefined);');
+  });
+
+  test('F4 with neither a wire nor a typed-in value the Set is refused by the old sentence — and the refusal still drops the whole Save chain behind it (the absence beside F1)', () => {
+    const ir = cloneIr();
+    dropParam(nodeOf(ir, HOME, 'setStatus'), 'value');
+    expect(reasonFor(ir, HOME, 'setStatus')).toBe('nothing is wired into value');
+    const built = emitApp(ir, catalog);
+    expect(built.notes).toContain('Pages/Home: wire saveProfile:done->setStatus:do dropped: nothing is wired into value');
+    expect(built.notes).toContain('Pages/Home: wire saveButton:onClick->saveProfile:store dropped: nothing is wired into value');
+    expect(home(built)).not.toContain('profile.set(');
+  });
+
+  test('F5 the Set as gate stands in front of the typed-in path — a Boolean coercion is refused by name with the value typed in', () => {
+    const ir = cloneIr();
+    setParam(nodeOf(ir, HOME, 'setStatus'), 'setWith', lit('boolean'));
+    expect(reasonFor(ir, HOME, 'setStatus')).toBe('setWith "boolean" conversion is not translated in step 5');
+  });
+
+  test('F6 an expression parameter is not a literal — refused as nothing wired, never written as its source text', () => {
+    const ir = cloneIr();
+    setParam(nodeOf(ir, HOME, 'setStatus'), 'value', { kind: 'expression', source: 'Date.now()' } as unknown as ParamValue);
+    expect(reasonFor(ir, HOME, 'setStatus')).toBe('nothing is wired into value');
+    expect(home(emitApp(ir, catalog))).not.toContain('Date.now()');
+  });
+
+  test('F7 a second Set on the same variable typing in a number is a second literal source — the variable demotes to unknown and the app still typechecks', () => {
+    const ir = cloneIr();
+    addNode(componentOf(ir, HOME), { id: 'setCount', type: 'Set Variable', parameters: [{ name: 'name', value: lit('status') }, { name: 'value', value: lit(3) }] });
+    addButton(ir, 'countButton', 'Count', 'setCount', 'do');
+    const built = emitApp(ir, catalog);
+    expect(handlerOf(home(built), 'Count')).toBe('onClick={() => status.set(3)}');
+    expect(variables(built)).toContain('export const status = value<unknown>(undefined);');
+    expect(variables(built)).toContain('Written by "Set status" (Set Variable `setStatus` on /Pages/Home)');
+    expect(typecheckEmittedApp(built)).toEqual([]);
+  });
+
+  test('F8 the corpus’s only typed-in Set Variable values (mood-desk, four) all sit under a wire — shadowed, so §69 moves nothing there', () => {
+    const mood = parseProject(path.join(__dirname, 'fixtures', 'mood-desk'), catalog);
+    const page = mood.components.find((c: ComponentIR) => c.path === 'Pages/Mood')!;
+    const typedIn = page.nodes.filter((n: NodeIR) => n.type === 'Set Variable' && n.parameters.some((p) => p.name === 'value'));
+    expect(typedIn.map((n: NodeIR) => n.id).sort()).toEqual(['setAngry', 'setCalm', 'setClosed', 'setOpen']);
+    for (const n of typedIn) expect(page.connections.some((c) => c.toId === n.id && c.toProperty === 'value')).toBe(true);
   });
 });
 

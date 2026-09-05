@@ -13732,7 +13732,22 @@ function planComponent(
       return { defer: `setWith "${String(setWith)}" conversion is not translated in step 5` };
     }
     const wire = component.connections.find((c) => c.toId === node.id && c.toProperty === 'value');
-    if (!wire) return { defer: 'nothing is wired into value' };
+    if (!wire) {
+      /**
+       * EXP-011 §69. A value typed into the node with nothing wired over it is what every Do
+       * writes: the runtime queues every authored parameter into the node at creation
+       * (`nodescope.ts` → `registerInputIfNeeded` registers `value`, `setValue` stores it) and
+       * `scheduleStore` writes `internal.value` on the pulse — the third sibling of §67 (a
+       * Variable's Value) and §68 (a Set Object Properties' `prop-<key>`). The `setWith` gate
+       * above stands in front of this path too: the runtime coerces a typed-in value exactly as
+       * it coerces a wire's. Under a wire the literal is shadowed — the wire is compiled and the
+       * literal never read (the runtime's arrivals land over it; §67.5/§68.5's residual). An
+       * `expression` parameter is not a literal and stays refused by the old sentence.
+       */
+      const authored = literalParam(node, 'value');
+      if (authored === undefined) return { defer: 'nothing is wired into value' }; // §69: nor typed in
+      return { action: { kind: 'store-set', variableName, expr: { kind: 'literal', value: authored } }, consumes: [], collapses: [], subscribes: [] };
+    }
     const ctx = newCtx();
     const expr = resolveExpr(nodeById.get(wire.fromId), wire.fromProperty, ctx);
     if (expr === null) return { defer: ctx.defer ?? 'the value wire has no statically known source' };

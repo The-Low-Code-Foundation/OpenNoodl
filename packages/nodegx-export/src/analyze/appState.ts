@@ -455,6 +455,14 @@ export function collectAppState(ir: ExportIR): AppStateRegistry {
         const plan = ensureVariable(name);
         if (node.type === 'Set Variable') {
           plan.writers.push(writerRef(component, node));
+          // EXP-011 §69. A value typed into the Set with nothing wired over it is what Do writes,
+          // so it is a typed source of the variable exactly as §67's seed is (a number literal
+          // makes the variable `unknown`). Under a wire the wire's source is registered below
+          // instead and the literal is never read.
+          const authored = literalPrimitive(node, 'value');
+          if (authored !== undefined && !wiredPortsOf(component).has(`${node.id}:value`)) {
+            variableSources.get(name)!.push({ component, fromNode: undefined, fromProperty: 'value', literal: authored });
+          }
         }
         // EXP-011 §67. A Variable's authored Value is a writer — the runtime stores it at node
         // creation, per mount — and a typed source of the variable (a number literal makes the

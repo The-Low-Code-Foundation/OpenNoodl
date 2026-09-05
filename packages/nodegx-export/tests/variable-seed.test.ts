@@ -195,14 +195,15 @@ describe('§C what is refused, by name — and what the seed leaves alone', () =
     expect(out.files[HOME_FILE]).not.toContain(SEED_COMMENT);
   });
 
-  test('C6 a Set Variable\'s authored Value is not a seed — the Set writes on its pulse, not at mount (§60.4 finding 7: the export refuses it by name)', () => {
+  test('C6 a Set Variable\'s authored Value is not a seed — the Set writes it on its pulse, not at mount (EXP-011 §69 writes it there; until then §60.4 finding 7 refused it by name)', () => {
     const ir = cloneIr();
     // The fixture wires a String into the Set's value; stand the authored literal alone, as an author who typed it would.
     disconnect(componentOf(ir, HOME), (c) => c.toId === 'setStatus' && c.toProperty === 'value');
     setParam(nodeOf(ir, HOME, 'setStatus'), 'value', { kind: 'literal', value: 'Pulsed.' });
     const out = emitApp(ir, catalog);
     expect(out.files[STORES_FILE]).not.toContain("Seeded with 'Pulsed.'");
-    expect(out.files[HOME_FILE]).not.toContain("status.set('Pulsed.')");
+    expect(out.files[HOME_FILE]).toContain("status.set('Pulsed.')"); // §69: written where the Do fires
+    expect(out.files[HOME_FILE]).not.toContain("useEffect(() => {\n    status.set("); // and never at mount
     expect(planOf(ir, HOME).variableSeeds.map((s) => s.variableName)).toEqual(['note']);
   });
 

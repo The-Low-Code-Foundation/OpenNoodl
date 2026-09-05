@@ -218,23 +218,17 @@
       }
     },
     {
-      "id": "savedString",
-      "type": "String",
-      "label": "Saved sentence",
-      "x": 760,
-      "y": 640,
-      "parameters": {
-        "value": "Saved."
-      }
-    },
-    {
       "id": "setStatus",
       "type": "Set Variable",
       "label": "Set status",
       "x": 760,
       "y": 760,
       "parameters": {
-        "name": "status"
+        "name": "status",
+        "value": "Saved."
+      },
+      "metadata": {
+        "comment": "\"Saved.\" is typed into the Value port and nothing is wired over it — the common authoring. The runtime queues the authored parameter into the node at creation and writes it on every Do (§69); before §69 the export refused the node and, with it, the whole Save chain."
       }
     },
     {

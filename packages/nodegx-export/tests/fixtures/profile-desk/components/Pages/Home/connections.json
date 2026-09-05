@@ -28,12 +28,6 @@
       "toProperty": "do"
     },
     {
-      "fromId": "savedString",
-      "fromProperty": "savedValue",
-      "toId": "setStatus",
-      "toProperty": "value"
-    },
-    {
       "fromId": "statusVar",
       "fromProperty": "value",
       "toId": "statusText",

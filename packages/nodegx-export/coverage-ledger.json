@@ -413,7 +413,7 @@
     {
       "typeName": "Set Variable",
       "status": "translated",
-      "note": "variable write in handler (element/receiver triggers only)"
+      "note": "variable write in handler (element/receiver triggers only); a value typed into Value with nothing wired over it is written on every Do and types the variable (§69, session 93)"
     },
     {
       "typeName": "SetDbModelProperties",
