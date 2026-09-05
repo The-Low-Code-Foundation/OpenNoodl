@@ -365,12 +365,13 @@ describe('§17 — the sweep replaces the catch-all and nothing else', () => {
   /**
    * `Counter` was the first pick here and it does **not** fall to the catch-all — it has a reason
    * of its own. A control that never reaches the thing it controls for proves nothing, so this
-   * uses a type the audit shows genuinely landing on `logic node (…)`.
+   * uses a type the audit shows genuinely landing on `logic node (…)`. (`net.noodl.WebSocket` stood here until
+   * EXP-011 §65 translated it; Pattern Extractor is deliberately out of scope, so it stays on the catch-all.)
    */
   it('a node the sweep does not know still falls to the catch-all', () => {
     const source = cloneIr();
-    addNode(source, ADMIN, 'someLogic', 'net.noodl.WebSocket');
-    expect(reasonFor(source, ADMIN, 'someLogic')).toBe('logic node (net.noodl.WebSocket)');
+    addNode(source, ADMIN, 'someLogic', 'net.noodl.PatternExtractor');
+    expect(reasonFor(source, ADMIN, 'someLogic')).toBe('logic node (net.noodl.PatternExtractor)');
   });
 });
 
@@ -402,11 +403,11 @@ describe('§17 — a component with no visual root gets the named reasons too', 
 
   it('the component really does take the early return — the control this needs', () => {
     const source = withLogicOnlyComponent();
-    addNode(source, LOGIC_ONLY, 'someLogic', 'net.noodl.WebSocket');
+    addNode(source, LOGIC_ONLY, 'someLogic', 'net.noodl.PatternExtractor');
     const project = planProject(source, new CatalogIndex(catalog));
     const plan = project.plans.find((p) => p.path === LOGIC_ONLY)!;
     expect(plan.skipReason).toBe('no visual root — logic-only components defer to EXP-003');
-    expect(reasonFor(source, LOGIC_ONLY, 'someLogic')).toBe('logic node (net.noodl.WebSocket)');
+    expect(reasonFor(source, LOGIC_ONLY, 'someLogic')).toBe('logic node (net.noodl.PatternExtractor)');
   });
 
   it('a relation verb there is named, not swept into the catch-all', () => {

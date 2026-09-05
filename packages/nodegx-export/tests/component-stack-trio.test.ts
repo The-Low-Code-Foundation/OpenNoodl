@@ -215,7 +215,7 @@ describe('§A the fixture, whole — two stacks, a tab bar in Replace mode, a wi
       expect(exportBadgeOf(type)).toBeUndefined();
     }
     const ledger = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'coverage-ledger.json'), 'utf8'));
-    expect(ledger.pickerCoverageFloor).toBe(115); // §64 Server-Sent Events (session 88) on top of §61 the component-stack trio beside §60 + §62 + §63 (session 86)
+    expect(ledger.pickerCoverageFloor).toBe(116); // §65 WebSocket (session 89) on top of §64 Server-Sent Events (session 88) on top of §61 the component-stack trio beside §60 + §62 + §63 (session 86)
     expect(String(ledger.$pickerCoverageFloorComment)).toContain('114 after Tier 2.8 row 11');
   });
 });

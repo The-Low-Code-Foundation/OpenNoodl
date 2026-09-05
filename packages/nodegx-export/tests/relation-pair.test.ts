@@ -219,7 +219,7 @@ describe('§A the fixture, whole — a Record feeds the target, a Variable the r
       expect(exportBadgeOf(type)).toBeUndefined();
     }
     const ledger = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'coverage-ledger.json'), 'utf8'));
-    expect(ledger.pickerCoverageFloor).toBe(115); // §64 Server-Sent Events (session 88) on top of §62 the relation pair + §61 the component-stack trio + §60 + §63 (session 86)
+    expect(ledger.pickerCoverageFloor).toBe(116); // §65 WebSocket (session 89) on top of §64 Server-Sent Events (session 88) on top of §62 the relation pair + §61 the component-stack trio + §60 + §63 (session 86)
   });
 });
 

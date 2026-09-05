@@ -569,9 +569,11 @@ export const APP_ERROR_TS_TYPE = '{ code: string; message: string; nodeId: strin
 export const STREAM_PARSER_TYPE = 'net.noodl.JSONStreamParser';
 export const STREAM_BUFFER_TYPE = 'net.noodl.StreamBuffer';
 export const TEXT_ACCUMULATOR_TYPE = 'net.noodl.TextAccumulator';
-export type StreamKind = 'parser' | 'buffer' | 'accumulator' | 'sse';
+export type StreamKind = 'parser' | 'buffer' | 'accumulator' | 'sse' | 'websocket';
 /** EXP-011 §64. `Server-Sent Events` — the fourth member of the table: no data port, two Actions, its own module. */
 export const SSE_TYPE = 'net.noodl.SSE';
+/** EXP-011 §65. `WebSocket` — the fifth member: a data port (Message) that only the Send verb carries, three Actions, its own module. */
+export const WEBSOCKET_TYPE = 'net.noodl.WebSocket';
 export interface StreamValueField {
   tsType: string;
   /** How the value casts at a sink: the port's declared type, which is what NDA-014's typecast keys on. */
@@ -585,7 +587,7 @@ export interface StreamNodeSpec {
   hook: string;
   localStem: string;
   /** The module the hook lives in (component.ts maps it to a path; emitApp.ts ships it). */
-  lib: 'streaming' | 'sse';
+  lib: 'streaming' | 'sse' | 'websocket';
   /** The runtime file the hook transcribes, for the emitted comment. */
   sourceFile: string;
   /** The data port, delivered with the pulse — absent on a node whose actions carry nothing (§64's SSE). */
@@ -725,12 +727,63 @@ export const STREAM_NODES: Record<string, StreamNodeSpec> = {
       duplicatesSuppressed: { tsType: 'number', cast: 'number', maybeUndefined: false },
       deliverySemantics: { tsType: 'string', cast: 'string', maybeUndefined: false }
     }
+  },
+  // EXP-011 §65. The Message is the data port — stored by its setter, read by the Send verb at the pulse, so `send`
+  // takes it and Connect / Disconnect do not; the other 14 inputs are config ports (URL / Protocols / Auto Connect
+  // re-run the runtime's rebuild in the hook, the tuning ones are applied in place through applyConfig); the six
+  // Events and the outcome trio are the listeners in websocket.ts's declaration order; every Status and Data output
+  // is a live getter.
+  [WEBSOCKET_TYPE]: {
+    kind: 'websocket',
+    displayName: 'WebSocket',
+    hook: 'useWebSocket',
+    localStem: 'Socket',
+    lib: 'websocket',
+    sourceFile: 'websocket.ts',
+    data: { port: 'message', displayName: 'Message' },
+    config: [
+      { port: 'url', displayName: 'URL' },
+      { port: 'autoConnect', displayName: 'Auto Connect' },
+      { port: 'protocols', displayName: 'Protocols' },
+      { port: 'autoReconnect', displayName: 'Auto Reconnect' },
+      { port: 'reconnectDelay', displayName: 'Reconnect Delay (ms)' },
+      { port: 'maxReconnectDelay', displayName: 'Max Reconnect Delay (ms)' },
+      { port: 'maxRetries', displayName: 'Max Retries' },
+      { port: 'jitter', displayName: 'Backoff Jitter' },
+      { port: 'heartbeatInterval', displayName: 'Heartbeat Interval (ms)' },
+      { port: 'heartbeatMessage', displayName: 'Heartbeat Message' },
+      { port: 'heartbeatReply', displayName: 'Heartbeat Reply' },
+      { port: 'messageType', displayName: 'Message Type' },
+      { port: 'whenDisconnected', displayName: 'When Disconnected' },
+      { port: 'maxQueueSize', displayName: 'Max Queue Size' }
+    ],
+    actions: {
+      connect: { verb: 'connect', takesData: false },
+      disconnect: { verb: 'disconnect', takesData: false },
+      send: { verb: 'send', takesData: true }
+    },
+    signals: ['onOpen', 'onMessage', 'onMessageSent', 'onError', 'onClose', 'onReconnect', ...OUTCOME_SIGNALS],
+    values: {
+      connectionState: { tsType: 'string', cast: 'string', maybeUndefined: false },
+      connected: { tsType: 'boolean', cast: 'boolean', maybeUndefined: false },
+      retryCount: { tsType: 'number', cast: 'number', maybeUndefined: false },
+      lastError: { tsType: 'string', cast: 'string', maybeUndefined: false },
+      queueSize: { tsType: 'number', cast: 'number', maybeUndefined: false },
+      droppedCount: { tsType: 'number', cast: 'number', maybeUndefined: false },
+      latency: { tsType: 'number', cast: 'number', maybeUndefined: false },
+      closeCode: { tsType: 'number', cast: 'number', maybeUndefined: false },
+      closeReason: { tsType: 'string', cast: 'string', maybeUndefined: false },
+      // `received` is undefined until the first message, as the node's getter reads `_internal.received`.
+      received: { tsType: 'unknown', cast: 'unknown', maybeUndefined: true },
+      receivedRaw: { tsType: 'string', cast: 'string', maybeUndefined: false },
+      receivedIsBinary: { tsType: 'boolean', cast: 'boolean', maybeUndefined: false }
+    }
   }
 };
 
 /** EXP-011 §64. The type id behind a `stream-out`'s kind — the one ladder component.ts and the maybe-undefined answer share. */
 export function streamTypeOfKind(kind: StreamKind): string {
-  return kind === 'parser' ? STREAM_PARSER_TYPE : kind === 'buffer' ? STREAM_BUFFER_TYPE : kind === 'accumulator' ? TEXT_ACCUMULATOR_TYPE : SSE_TYPE;
+  return kind === 'parser' ? STREAM_PARSER_TYPE : kind === 'buffer' ? STREAM_BUFFER_TYPE : kind === 'accumulator' ? TEXT_ACCUMULATOR_TYPE : kind === 'sse' ? SSE_TYPE : WEBSOCKET_TYPE;
 }
 export const RUN_TASKS_TYPE = 'RunTasks';
 /** EXP-011 §57. `Repeater Item` — the type id is the runtime's `name`, not the display name. */
@@ -760,6 +813,8 @@ const OWN_CHAIN_OUTPUTS: Record<string, readonly string[]> = {
   [TEXT_ACCUMULATOR_TYPE]: STREAM_NODES[TEXT_ACCUMULATOR_TYPE].signals,
   // EXP-011 §64. The transport's Events and outcomes, the same footing.
   [SSE_TYPE]: STREAM_NODES[SSE_TYPE].signals,
+  // EXP-011 §65. The socket's Events and outcomes, the same footing.
+  [WEBSOCKET_TYPE]: STREAM_NODES[WEBSOCKET_TYPE].signals,
   [LOG_TYPE]: ['done'],
   [TIMER_TYPE]: TIMER_OUTPUTS,
   [VALUE_CHANGED_TYPE]: ['valueChanged'],

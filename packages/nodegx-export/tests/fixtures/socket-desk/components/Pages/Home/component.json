@@ -1,0 +1,9 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "f2b8d4e0-5a3c-4d9f-8b2e-000000000093",
+  "name": "Home",
+  "path": "/Pages/Home",
+  "type": "page",
+  "modified": "2026-09-05T18:30:00.000Z",
+  "description": "EXP-011 \u00a765 fixture: a WebSocket node (`socket`, URL ws://localhost:8583/, Auto Connect left at its default of true) with Connect / Stop / Send buttons and a Text Input written through to a `message` Variable that feeds its Message \u2014 the live-chat shape. Connection State, Connected, Queue Size, Received, Received Raw and Last Error each shown in a Text; On Open / On Close / On Reconnect / Failure write a `status` Variable through four String-fed Set Variables."
+}

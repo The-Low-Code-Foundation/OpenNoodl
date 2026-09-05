@@ -733,7 +733,7 @@ describe('§G what building it found, pinned', () => {
       expect(entry.status).toBe('translated');
       expect((entry.note ?? '').length).toBeGreaterThan(40);
     }
-    expect(ledger.pickerCoverageFloor).toBe(115); // §64 Server-Sent Events (session 88) on top of §60 the component-object trio + §61 the component-stack trio + §62 + §63 (session 86)
+    expect(ledger.pickerCoverageFloor).toBe(116); // §65 WebSocket (session 89) on top of §64 Server-Sent Events (session 88) on top of §60 the component-object trio + §61 the component-stack trio + §62 + §63 (session 86)
   });
 
   test('G6 readers alone (no parent Set, no other raiser) still ship errors.ts — the lib imports it, and the emitted app typechecks', () => {

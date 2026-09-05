@@ -32,6 +32,7 @@ import { ERRORS_LIB_PATH, errorsLibSource } from './errorsLib';
 import { RECORD_FILTER_LIB_PATH, recordFilterLibSource } from './recordFilterLib';
 import { STREAMING_LIB_PATH, streamingLibSource } from './streamingLib';
 import { SSE_LIB_PATH, sseLibSource } from './sseLib';
+import { WEBSOCKET_LIB_PATH, websocketLibSource } from './websocketLib';
 import { CRYPTO_LIB_PATH, cryptoLibSource } from './cryptoLib';
 import { SCREEN_LIB_PATH, screenLibSource } from './screenLib';
 import { COMPONENT_OBJECT_LIB_PATH, componentObjectLibSource } from './componentObjectLib';
@@ -144,6 +145,8 @@ export function emitApp(ir: ExportIR, catalog: Catalog): EmittedApp {
   let streamingLibUsed = false;
   // EXP-011 §64. The transport's host — earned by a component whose plan kept a Server-Sent Events node; it imports streaming.ts and errors.ts.
   let sseLibUsed = false;
+  // EXP-011 §65. The socket's host — earned by a component whose plan kept a WebSocket node; it imports errors.ts only.
+  let websocketLibUsed = false;
   // EXP-011 §59.
   let cryptoLibUsed = false;
   let screenLibUsed = false;
@@ -209,6 +212,7 @@ export function emitApp(ir: ExportIR, catalog: Catalog): EmittedApp {
     if (emitted.recordFilterLib) recordFilterLibUsed = true;
     if (emitted.streamingLib) streamingLibUsed = true;
     if (emitted.sseLib) sseLibUsed = true;
+    if (emitted.websocketLib) websocketLibUsed = true;
     if (emitted.cryptoHelpers.size > 0) cryptoLibUsed = true;
     if (emitted.screenLib) screenLibUsed = true;
     if (emitted.componentObjectLib) componentObjectLibUsed = true;
@@ -270,8 +274,8 @@ export function emitApp(ir: ExportIR, catalog: Catalog): EmittedApp {
   // EXP-011 §54. `src/lib/errors.ts` — the channel. script.ts and runTasks.ts raise on it, so either earns it too.
   // EXP-011 §60 + §63. componentObject.ts raises parent-component-object/no-ancestor and drag.ts raises
   // `drag/snap-position-not-a-number` on the channel, so either earns errors.ts too.
-  // EXP-011 §64. sse.ts raises `sse/connect-failed` on the channel, so it earns errors.ts too.
-  if (errorsLibUsed || scriptLibUsed || runTasksLibUsed || streamingLibUsed || sseLibUsed || componentObjectLibUsed || dragLibUsed) {
+  // EXP-011 §64. sse.ts raises `sse/connect-failed` on the channel, so it earns errors.ts too. §65: websocket.ts raises its own codes.
+  if (errorsLibUsed || scriptLibUsed || runTasksLibUsed || streamingLibUsed || sseLibUsed || websocketLibUsed || componentObjectLibUsed || dragLibUsed) {
     files[ERRORS_LIB_PATH] = GENERATED_MODULE_TS + errorsLibSource();
   }
   // EXP-011 §58. `src/lib/streaming.ts` — the trio's host; it raises on the channel, so it earns errors.ts above.
@@ -282,6 +286,10 @@ export function emitApp(ir: ExportIR, catalog: Catalog): EmittedApp {
   // EXP-011 §64. `src/lib/sse.ts` — the Server-Sent Events hook, where a component printed one.
   if (sseLibUsed) {
     files[SSE_LIB_PATH] = GENERATED_MODULE_TS + sseLibSource();
+  }
+  // EXP-011 §65. `src/lib/websocket.ts` — the WebSocket hook, where a component printed one; it imports errors.ts only, never streaming.ts.
+  if (websocketLibUsed) {
+    files[WEBSOCKET_LIB_PATH] = GENERATED_MODULE_TS + websocketLibSource();
   }
   // EXP-011 §56. `src/lib/filterRecords.ts` — the Filter Records matcher, when a component printed one.
   // EXP-011 §59. The crypto verbs and the viewport hook, each only where a component calls into it.

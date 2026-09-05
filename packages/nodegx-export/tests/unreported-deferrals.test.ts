@@ -142,14 +142,16 @@ describe('a deferred node the report never mentioned', () => {
      * The other arm of the wording branch. A type the catch-all does not produce its stock reason
      * for must arrive with the reason its own gate computed, verbatim.
      */
+    // `net.noodl.WebSocket` stood here until EXP-011 §65 translated it (an unwired one now registers and collapses, so it
+    // is not deferred at all); an unwired `Run Tasks` has its own gate's sentence — "nothing fires its Do".
     const source = cloneIr();
-    addOrphanLogic(source, 'net.noodl.WebSocket', 'orphan-socket');
+    addOrphanLogic(source, 'RunTasks', 'orphan-tasks');
     const plan = planOf(source, CARD);
-    const reason = (plan.dispositions['orphan-socket'] as { reason: string }).reason;
+    const reason = (plan.dispositions['orphan-tasks'] as { reason: string }).reason;
     const report = reportOf(source);
-    expect(report).toContain(`node orphan-socket (net.noodl.WebSocket)`);
+    expect(report).toContain(`node orphan-tasks (RunTasks)`);
     // Whatever the gate said, the report says — this row does not hard-code which gate wins.
-    if (reason !== 'logic node (net.noodl.WebSocket)') expect(report).toContain(reason);
+    if (reason !== 'logic node (RunTasks)') expect(report).toContain(reason);
   });
 
   it('reaches the logic-only early return too, not just the bottom of the function', () => {

@@ -128,7 +128,7 @@ describe('§A the fixture, whole — Query Records → Filter Records → For Ea
     expect(ledgerEntryOf('FilterDBModels')?.status).toBe('translated');
     expect(exportBadgeOf('FilterDBModels')).toBeUndefined();
     const ledger = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'coverage-ledger.json'), 'utf8'));
-    expect(ledger.pickerCoverageFloor).toBe(115); // §64 Server-Sent Events (session 88) on top of §61 the component-stack trio + §60 the component-object trio + §62 the relation pair + §63 Drag (session 86); §57 + §58 + §59 (session 85)
+    expect(ledger.pickerCoverageFloor).toBe(116); // §65 WebSocket (session 89) on top of §64 Server-Sent Events (session 88) on top of §61 the component-stack trio + §60 the component-object trio + §62 the relation pair + §63 Drag (session 86); §57 + §58 + §59 (session 85)
   });
 });
 

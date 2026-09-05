@@ -898,17 +898,17 @@ describe('§E the hook under the harness — the connection, the listeners in or
 
 // ---------------------------------------------------------------------------------------------------
 describe('§F the ledger', () => {
-  test('F1 the row moved to translated with a note; the card carries no badge; the floor is 115 with its sentence', () => {
+  test('F1 the row moved to translated with a note; the card carries no badge; the floor is 116 (§65) with §64’s sentence still in it', () => {
     expect(ledgerEntryOf(SSE_TYPE)?.status).toBe('translated');
     expect(exportBadgeOf(SSE_TYPE)).toBeUndefined();
     const ledger = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'coverage-ledger.json'), 'utf8'));
     const row = (ledger.entries as Array<{ typeName: string; note?: string; exemption?: string }>).find((e) => e.typeName === SSE_TYPE)!;
     expect(row.exemption).toBeUndefined();
     expect(String(row.note)).toContain('useServerSentEvents');
-    expect(ledger.pickerCoverageFloor).toBe(115); // §64 Server-Sent Events (session 88) on top of the Tier 2.8 rows
+    expect(ledger.pickerCoverageFloor).toBe(116); // §65 WebSocket (session 89) on top of §64 Server-Sent Events (session 88) on top of the Tier 2.8 rows
     expect(String(ledger.$pickerCoverageFloorComment)).toContain('115 after Tier 3.11 row 1 Server-Sent Events');
-    // The other two transports stay scheduled — the pin EXP-013's badge spec moved onto.
-    expect(exportBadgeOf('net.noodl.WebSocket')).toMatchObject({ kind: 'scheduled' });
+    // §65 translated WebSocket; the third transport stays scheduled — the pin EXP-013's badge spec moved onto.
+    expect(exportBadgeOf('net.noodl.WebSocket')).toBeUndefined();
     expect(exportBadgeOf('SubscribeToChanges')).toMatchObject({ kind: 'scheduled' });
   });
 });
