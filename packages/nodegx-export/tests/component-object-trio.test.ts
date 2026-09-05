@@ -723,7 +723,7 @@ describe('§G what building it found, pinned', () => {
     expect(fileOf(app, HOME_FILE)).toContain("note: 'renamed'");
   });
 
-  test('G4 the ledger: three rows translated with notes, floor 108', () => {
+  test('G4 the ledger: three rows translated with notes, floor 110', () => {
     const ledger = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'coverage-ledger.json'), 'utf8')) as {
       pickerCoverageFloor: number;
       entries: Array<{ typeName: string; status: string; note?: string }>;
@@ -733,7 +733,7 @@ describe('§G what building it found, pinned', () => {
       expect(entry.status).toBe('translated');
       expect((entry.note ?? '').length).toBeGreaterThan(40);
     }
-    expect(ledger.pickerCoverageFloor).toBe(108); // §60 the component-object trio (session 86)
+    expect(ledger.pickerCoverageFloor).toBe(110); // §60 the component-object trio (session 86)
   });
 
   test('G6 readers alone (no parent Set, no other raiser) still ship errors.ts — the lib imports it, and the emitted app typechecks', () => {
