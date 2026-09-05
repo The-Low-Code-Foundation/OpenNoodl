@@ -309,6 +309,22 @@ jobs:
       # corpus of one reports "clean" whether or not it is looking, so the
       # measurement above is only worth its exit code if this passes too.
       - run: npm run lessons:check:self-test
+      # SYL-002 — the JOIN between lessons, which the two steps above cannot see.
+      # `derive_starter` guarantees a starter matches its OWN solution; nothing
+      # guaranteed it matches the PREVIOUS LESSON'S. Both failures look identical
+      # from inside one bundle, so a green corpus was never evidence for the chain.
+      #
+      # ⚠️ The cross-check against the community repo's curriculum.json does NOT
+      # run here — that checkout does not exist on this runner — and the script
+      # says so in its output rather than reporting silence as agreement. The
+      # chain itself IS checked here, from spine.json beside the bundles.
+      - run: npm run lessons:chain
+      # 🔴 Same reason as the self-test above, and more sharply: this gate's first
+      # run over a healthy corpus finds nothing, which is indistinguishable from a
+      # gate that is not looking. Twelve mutations, including three INVERTED arms —
+      # a canvas move must not fail, an unbuilt lesson must skip rather than pass,
+      # and the no-curriculum shape (this runner's) must still check the chain.
+      - run: npm run lessons:chain:self-test
 
   artefacts:
     name: Check build artefacts

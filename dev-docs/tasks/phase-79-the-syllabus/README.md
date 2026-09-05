@@ -49,14 +49,14 @@ second authoring path.
 | task | state |
 |---|---|
 | [SYL-001](SYL-001-THE-HAND-HOLDING-HALF.md) — the hand-holding half | ✅ **done**, slices A+B, driven |
-| [SYL-002](SYL-002-THE-CHAIN-THAT-CANNOT-DRIFT.md) — `starter(N)` == `solution(N-1)` | 🟡 **unblocked 2026-09-05** — it needed two spine lessons and there are two. The join is met and was checked **by hand** (a `diff` in [SYL-005](SYL-005-LESSON-2-IT-BREAKS-ON-A-PHONE.md)); nothing automated asserts it. R1: *build it before lesson 3* |
+| [SYL-002](SYL-002-THE-CHAIN-THAT-CANNOT-DRIFT.md) — `starter(N)` == `solution(N-1)` | 🟢 **BUILT 2026-09-05 (session 10), all five ACs.** `npm run lessons:chain` + `:self-test`, both in CI. **6 adjacent pairs compared and holding; 12 mutations, 0 uncaught.** 🔴 Its first run found the drift it was written to catch — in `curriculum.json`, which had never gained `it-breaks-on-a-phone`; fixed in the community repo the same session |
 | [SYL-003](SYL-003-THE-CREATURE-YOU-CHOSE.md) — the avatar picker | ⬜ open, independent |
 | [SYL-004](SYL-004-LESSON-1-YOUR-CREATURE-ON-SCREEN.md) — lesson 1 | 🟢 built, gated, **driven**. Prose awaits Richard |
 | [SYL-005](SYL-005-LESSON-2-IT-BREAKS-ON-A-PHONE.md) — lesson 2 | 🟢 built, gated (`d656b714`). ⬜ **not driven**. Prose awaits Richard |
 | [LESSON-VOICE.md](LESSON-VOICE.md) | 🟡 written and **measured** across all three bundles; two calls are ⬜ Richard's |
 | [DEFECTS-LESSON-2-FOUND.md](DEFECTS-LESSON-2-FOUND.md) | 5 rows, **all owner `NONE`**. D1 is the one that matters |
 
-**Two of twelve spine lessons ship.** Both are seeded onto the Learning shelf automatically — the
+**Seven of thirteen spine lessons ship** (R2 made it thirteen). All are seeded onto the Learning shelf automatically — the
 seed enumerates `project-examples/lessons` directories and is ledgered per folder, so a new bundle
 reaches existing installs on their next launch with no allowlist to edit.
 
@@ -69,7 +69,8 @@ reaches existing installs on their next launch with no allowlist to edit.
   good **standalone article**, not spine lesson 8. It ships on the shelf alongside the two spine
   lessons, which is fine and is not the same as being in the spine.
 - 🔴 **A spine lesson may only ADD to the one before it**, and ungraded parameters may only go on
-  nodes it creates. Both fall out of R1's chain and neither is checked by anything —
+  nodes it creates. Both fall out of R1's chain. ✅ **The first is now gated** (`lessons:chain`, SYL-002);
+  the second still is not —
   [SYL-005](SYL-005-LESSON-2-IT-BREAKS-ON-A-PHONE.md) explains what each one cost.
 - ⚠️ Lessons are **served**, like tutorials and templates: published content reaches every existing
   install with no update.

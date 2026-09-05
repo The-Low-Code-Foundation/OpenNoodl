@@ -90,6 +90,8 @@
     "library:check": "ts-node -P ./scripts/tsconfig.json ./scripts/library/check.ts",
     "lessons:check": "ts-node -P ./scripts/tsconfig.json ./scripts/check-lesson-bundles.ts",
     "lessons:check:self-test": "ts-node -P ./scripts/tsconfig.json ./scripts/check-lesson-bundles.ts --self-test",
+    "lessons:chain": "ts-node -P ./scripts/tsconfig.json ./scripts/check-lesson-chain.ts",
+    "lessons:chain:self-test": "ts-node -P ./scripts/tsconfig.json ./scripts/check-lesson-chain.ts --self-test",
     "starter-iconset:generate": "node scripts/library/make-starter-iconset.js",
     "starter-iconset:check": "node scripts/library/make-starter-iconset.js --check",
     "library:verify-dist": "ts-node -P ./scripts/tsconfig.json ./scripts/library/verify-dist.ts",

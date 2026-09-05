@@ -1,0 +1,40 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/lesson-chain-v1.json",
+  "format": "nodegx-lesson-chain@1",
+  "note": "SYL-002. The prerequisite chain for the lesson bundles that ship in THIS repository, and the only place in it that knows a lesson has a predecessor. Adding a lesson is a data edit here, exactly as it is in the community repo's curriculum.json; `npm run lessons:chain` reads this file and nothing else for its order. WHY THIS EXISTS RATHER THAN A FIELD IN lesson.json: UNI-022 states the boundary deliberately — order, prerequisite and state are curriculum-level and are NOT manifest fields, so `needs` may not go in a lesson.json. WHY IT IS NOT A COPY OF curriculum.json: that file lives in the nodegx-community checkout, which CI never has, and it describes all sixteen lessons including the eight with no bundle. This describes exactly the bundles on disk here. The two ARE two statements of one fact and will drift — so the gate cross-checks them whenever the community file is reachable, and reports disagreement as a finding. That cross-check is what caught the drift this file was written during: curriculum.json had never gained `it-breaks-on-a-phone`, the lesson R2 ruled into position 2, and so claimed `poke-it` follows `your-creature-on-screen`.",
+  "lessons": {
+    "your-creature-on-screen": {
+      "needs": null,
+      "why": "Spine lesson 1. The first lesson in the chain has no predecessor to be compared against."
+    },
+    "it-breaks-on-a-phone": {
+      "needs": "your-creature-on-screen",
+      "why": "Spine lesson 2 — the lesson R2 ruled into the spine at position 2, between lesson 1 and `poke-it`."
+    },
+    "poke-it": {
+      "needs": "it-breaks-on-a-phone",
+      "why": "Spine lesson 3. NOTE: curriculum.json said `your-creature-on-screen` until 2026-09-05, because it never gained lesson 2."
+    },
+    "it-forgets-you": {
+      "needs": "poke-it",
+      "why": "Spine lesson 4."
+    },
+    "show-what-it-feels": {
+      "needs": "it-forgets-you",
+      "why": "Spine lesson 5."
+    },
+    "moods": {
+      "needs": "show-what-it-feels",
+      "why": "Spine lesson 6."
+    },
+    "it-gets-demanding": {
+      "needs": "moods",
+      "why": "Spine lesson 7. The last spine lesson built so far; `snacks` is lesson 8 and has no bundle yet."
+    },
+    "log-a-thing": {
+      "needs": null,
+      "standalone": true,
+      "why": "🔴 DELIBERATELY NOT IN THE SPINE, and `standalone` is what stops it being read as a gap. It is a log app teaching the Visual-Function/async rule; the spine's data lesson is a snack cupboard. It ships on the Learning shelf beside the spine lessons, which is not the same as being in it — see the phase README. A lesson with `needs: null` and no `standalone` flag is a chain HEAD; this is neither, and the gate reports it as standalone rather than counting it as a second head."
+    }
+  }
+}
