@@ -2948,6 +2948,10 @@ export function emitComponent(
         const args = action.args.map((arg) =>
           arg.kind === 'expr' ? exprCode(arg.expr, 'handler') : recordDataObject(arg.props)
         );
+        // EXP-011 §72. An `unknown` id read (an untyped Variable) into a `string` parameter — the
+        // runtime keys the record by the value and the client encodes it, so `String()` is the
+        // transcription; `?? ''` keeps an unwritten variable on the `Missing Record Id` road.
+        if (action.coerceId === 'string') args[0] = `String(${args[0]} ?? '')`;
         const inner = pad(indent + 2);
         const body = [
           // The runtime's "Missing Record Id" (RECORD-VERBS-TARGET §1), thrown rather than
@@ -2966,7 +2970,8 @@ export function emitComponent(
           // binds a local first so the call below is narrowed (a second `.get()` would not be), and the
           // call reads the local, as the runtime reads the value its setter stored.
           ...(action.guards ?? []).flatMap((g) => {
-            const bound = `${inner}const ${g.local} = ${args[g.index]};`;
+            // EXP-011 §72. An `unknown` read narrows to `{}` under `if (!local)`, never to `string` — coerce at the bind.
+            const bound = `${inner}const ${g.local} = ${g.coerce === 'string' ? `String(${args[g.index]} ?? '')` : args[g.index]};`;
             args[g.index] = g.local;
             return [bound, `${inner}if (!${g.local}) throw new Error(${tsLiteral(g.message)});`];
           }),
@@ -3048,7 +3053,8 @@ export function emitComponent(
       case 'record-fetch': {
         const names = recordNamesOf(action.nodeId);
         const inner = pad(indent + 2);
-        const idCode = exprCode(action.id, 'handler');
+        // EXP-011 §72. An `unknown` Id (an untyped Variable) is coerced at the bind — `=== ''` below then reads the empty string an unwritten variable becomes.
+        const idCode = action.coerceId === 'string' ? `String(${exprCode(action.id, 'handler')} ?? '')` : exprCode(action.id, 'handler');
         const idLocal = names.idLocal;
         // A literal Id was refused empty by the planner, and a guard on a string literal is a
         // TS2367 (no overlap) — so the guard is emitted only where the Id is read from something.

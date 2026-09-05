@@ -250,3 +250,206 @@ describe('§D per host, not per module — a second Variable node with its own V
     expect(typecheckEmittedApp(out)).toEqual([]);
   });
 });
+
+// ---------------------------------------------------------------------------------------------------
+/**
+ * EXP-011 §72 — a variable with NO statically-known source is `unknown`, not `string`.
+ *
+ * `typeOfVariable` asked `sources.every(isString)` and `[].every(…)` is true, so a variable nothing wrote — no wire into
+ * any Variable's or Set Variable's `value`, no authored literal, or only writers the plan refuses — read `value<string |
+ * undefined>` and was bound BARE at every sink (§67.4 finding 1; §47 closed the same hole for store keys, §48 for global
+ * store keys). Measured on the reverted rule: a zero-source variable wired into `maxLength` printed `maxLength={noteValue}`
+ * and the built app was red (`TS2322 'string | undefined' is not assignable to 'number | undefined'`). The corpus: 0 of
+ * 79 variables in 39 fixtures have zero sources (every golden byte-identical); 1 of 36 product projects (`log-a-thing`'s
+ * Logic-Builder-minted `lastEntryTitle`) moves, from `string | undefined` to `unknown`. Every row here builds the shape by
+ * mutation on panel-desk — `noteVar` with its Value dropped is a Variable nothing writes.
+ */
+describe('§E (§72) a variable with no statically-known source is unknown — the vacuous every closed for variables', () => {
+  const NO_WRITER = '/** No statically-known writer — reads stay undefined until EXP-003 translates the writing logic. */';
+  const zeroSource = (): ExportIR => {
+    const ir = cloneIr();
+    dropParam(nodeOf(ir, HOME, 'noteVar'), 'value');
+    return ir;
+  };
+  const addSet = (ir: ExportIR, id: string, value: ParamValue) => {
+    componentOf(ir, HOME).nodes.push({
+      id,
+      type: 'Set Variable',
+      catalogRef: 'Set Variable',
+      parameters: [{ name: 'name', value: { kind: 'literal', value: 'note' } }, { name: 'value', value }],
+      declaredPorts: [],
+      portKnowledge: 'complete'
+    } as NodeIR);
+  };
+
+  test('E1 nothing wired and nothing typed in: "note" has zero sources and is value<unknown> under the no-writer comment', () => {
+    const out = emitApp(zeroSource(), catalog);
+    expect(out.files[STORES_FILE]).toContain(`${NO_WRITER}\nexport const note = value<unknown>(undefined);`);
+    expect(out.files[STORES_FILE]).not.toContain('export const note = value<string | undefined>');
+  });
+
+  test('E2 a writer the plan refuses — a Set Variable with an expression Value — is a writer with no source: the writer line stays, the type is unknown', () => {
+    const ir = zeroSource();
+    addSet(ir, 'setNote', { kind: 'expression', source: 'Date.now()' } as unknown as ParamValue);
+    const out = emitApp(ir, catalog);
+    expect(out.files[STORES_FILE]).toContain('/** Written by (Set Variable `setNote` on /Pages/Home). */\nexport const note = value<unknown>(undefined);');
+    expect(out.notes).toContain('Pages/Home: node setNote (Set Variable) has no translation in this slice — it is not in the generated app');
+  });
+
+  test('E3 the control: the seed alone is one string source, and the fixture stays string | undefined', () => {
+    expect(app.files[STORES_FILE]).toContain(
+      "/** Seeded with 'First note' by \"Note variable\" (Variable2 `noteVar` on /Pages/Home) on every mount of its component. */\nexport const note = value<string | undefined>(undefined);"
+    );
+    expect(app.files[STORES_FILE]).not.toContain(NO_WRITER);
+  });
+
+  test('E4 the two unknowns are told apart by the comment: a number seed is unknown because its one source is not a string, a dropped Value because it has none', () => {
+    const ir = cloneIr();
+    setParam(nodeOf(ir, HOME, 'noteVar'), 'value', { kind: 'literal', value: 9 });
+    expect(emitApp(ir, catalog).files[STORES_FILE]).toContain(
+      "/** Seeded with 9 by \"Note variable\" (Variable2 `noteVar` on /Pages/Home) on every mount of its component. */\nexport const note = value<unknown>(undefined);"
+    );
+    expect(emitApp(zeroSource(), catalog).files[STORES_FILE]).toContain(`${NO_WRITER}\nexport const note = value<unknown>`);
+  });
+
+  test('E5 the type propagates through the read: the store key the mirror writes becomes unknown and its Text reads through String(); the seeded control reads bare with ?? \'\'', () => {
+    const out = emitApp(zeroSource(), catalog);
+    expect(out.files[HOME_FILE]).toContain('type PanelStateRecord = { title?: string; count?: unknown; note?: unknown };');
+    expect(out.files[HOME_FILE]).toContain("<p className={styles.text}>{String(panelState.value.note ?? '')}</p>");
+    expect(app.files[HOME_FILE]).toContain('type PanelStateRecord = { title?: string; count?: unknown; note?: string };');
+    expect(app.files[HOME_FILE]).toContain("<p className={styles.text}>{panelState.value.note ?? ''}</p>");
+  });
+
+  test('E6 the app with a zero-source variable typechecks — every read site has an unknown-safe form', () => {
+    expect(typecheckEmittedApp(emitApp(zeroSource(), catalog))).toEqual([]);
+  });
+
+  test('E7 a zero-source variable into a number sink is refused by name — the reverted rule bound it bare and the built app was red', () => {
+    const ir = zeroSource();
+    connect(componentOf(ir, HOME), 'noteVar', 'value', 'titleInput', 'maxLength');
+    const out = emitApp(ir, catalog);
+    expect(out.notes).toContain(
+      'Pages/Home: wire into titleInput.maxLength reads variable "note", which has no statically-typed writer, into a sink this slice cannot coerce it to — dropped, reported'
+    );
+    expect(out.files[HOME_FILE]).not.toContain('maxLength={noteValue}');
+    expect(typecheckEmittedApp(out)).toEqual([]);
+  });
+
+  test('E8 mixed sources — the string seed plus a Set typing in a number — is unknown: every source must be a string, not some', () => {
+    const ir = cloneIr();
+    addSet(ir, 'setNoteNum', { kind: 'literal', value: 9 });
+    expect(emitApp(ir, catalog).files[STORES_FILE]).toContain(
+      "/**\n * Seeded with 'First note' by \"Note variable\" (Variable2 `noteVar` on /Pages/Home) on every mount of its component.\n * Written by (Set Variable `setNoteNum` on /Pages/Home).\n */\nexport const note = value<unknown>(undefined);"
+    );
+  });
+
+  test('E9 two string sources are not a demotion — the seed plus a Set typing in a string stays string | undefined', () => {
+    const ir = cloneIr();
+    addSet(ir, 'setNoteLater', { kind: 'literal', value: 'Later' });
+    expect(emitApp(ir, catalog).files[STORES_FILE]).toContain(
+      "/**\n * Seeded with 'First note' by \"Note variable\" (Variable2 `noteVar` on /Pages/Home) on every mount of its component.\n * Written by (Set Variable `setNoteLater` on /Pages/Home).\n */\nexport const note = value<string | undefined>(undefined);"
+    );
+  });
+
+  test('E10 a zero-source variable read straight into a Text prints the untyped table (String(x ?? \'\')); the seeded control is a string binding and prints bare', () => {
+    const ir = zeroSource();
+    connect(componentOf(ir, HOME), 'noteVar', 'value', 'headline', 'text');
+    expect(emitApp(ir, catalog).files[HOME_FILE]).toContain("<p className={styles.headline}>{String(noteValue ?? '')}</p>");
+    const seeded = cloneIr();
+    connect(componentOf(seeded, HOME), 'noteVar', 'value', 'headline', 'text');
+    const src = emitApp(seeded, catalog).files[HOME_FILE];
+    // A `string` binding at a text sink is the bare local: `{undefined}` renders nothing, so no fallback is printed.
+    expect(src).toContain('<p className={styles.headline}>{noteValue}</p>');
+    expect(src).not.toContain("String(noteValue ?? '')");
+  });
+});
+
+// ---------------------------------------------------------------------------------------------------
+/**
+ * EXP-011 §72, the build the type change forced: a record Id read from an `unknown` variable.
+ *
+ * The record family binds an Id local and narrows it (`const linkTargetId = puppyId.get(); if (!linkTargetId) throw …`) —
+ * a `string | undefined` narrows to `string`; an `unknown` narrows to `{}`, and `addInquiryRelation(x: string)` is TS2345
+ * in the built app. Measured BEFORE §72 (probe.ts): a variable made `unknown` by a number Set and wired into a record Id
+ * read `'{}' is not assignable to parameter of type 'string'` at three sites — a hole every HTTP-written variable had, and
+ * one §72 widens to every variable nothing writes (relation-pair C2's `puppyId` is exactly that). The fix: an `unknown` Id
+ * is coerced `String(x ?? '')` at the bind — the runtime keys `Model.get(id)` by the value and the client
+ * `encodeURIComponent`s it, so the coercion transcribes both — and an unwritten variable becomes `''`, which the guard
+ * that follows reads exactly as it read `undefined`.
+ */
+describe('§F (§72) an unknown Id — a Variable nothing writes — is coerced String(x ?? \'\') where the record family binds it', () => {
+  const LINK = path.join(__dirname, 'fixtures', 'link-desk');
+  const linkIr = parseProject(LINK, catalog);
+  const linkHome = (ir: ExportIR): string => emitApp(ir, catalog).files['src/pages/Home.tsx'];
+  const addVariable = (component: ComponentIR, id: string, name: string) => {
+    component.nodes.push({ id, type: 'Variable2', catalogRef: 'Variable2', parameters: [{ name: 'name', value: { kind: 'literal', value: name } }], declaredPorts: [], portKnowledge: 'complete' } as NodeIR);
+  };
+  /** relation-pair C2's shape: the Record's Id from a Variable nothing writes; the pair's target Id folds to the same read. */
+  const puppyIdFromVariable = (): ExportIR => {
+    const ir = structuredClone(linkIr);
+    const home = componentOf(ir, HOME);
+    addVariable(home, 'puppyIdVar', 'puppyId');
+    dropParam(nodeOf(ir, HOME, 'puppy'), 'modelId');
+    connect(home, 'puppyIdVar', 'value', 'puppy', 'modelId');
+    return ir;
+  };
+
+  test('F1 the Record fetch, the add and the remove all bind the coerced read; the store is unknown; the app typechecks (3× TS2345 on the reverted emitter)', () => {
+    const ir = puppyIdFromVariable();
+    const out = emitApp(ir, catalog);
+    const src = out.files['src/pages/Home.tsx'];
+    expect(src).toContain("const puppyRecordId = String(puppyId.get() ?? '');");
+    expect(src).toContain("const linkTargetId = String(puppyId.get() ?? '');");
+    expect(src).toContain("const unlinkTargetId = String(puppyId.get() ?? '');");
+    expect(src).not.toContain('= puppyId.get();');
+    expect(out.files[STORES_FILE]).toContain('/** No statically-known writer — reads stay undefined until EXP-003 translates the writing logic. */\nexport const puppyId = value<unknown>(undefined);');
+    expect(typecheckEmittedApp(out)).toEqual([]);
+  });
+
+  test('F2 the control: a string-typed Variable (written by the text input) into the same Id binds bare — no coercion is printed around a read that narrows', () => {
+    const ir = structuredClone(linkIr);
+    dropParam(nodeOf(ir, HOME, 'puppy'), 'modelId');
+    connect(componentOf(ir, HOME), 'inquiryIdVar', 'value', 'puppy', 'modelId');
+    const out = emitApp(ir, catalog);
+    const src = out.files['src/pages/Home.tsx'];
+    expect(src).toContain('const puppyRecordId = inquiryId.get();');
+    expect(src).toContain('const linkTargetId = inquiryId.get();');
+    expect(src).not.toContain("String(inquiryId.get() ?? '')");
+    expect(typecheckEmittedApp(out)).toEqual([]);
+  });
+
+  test("F3 the verb's own record Id from a Variable nothing writes is coerced at its bind too", () => {
+    const ir = structuredClone(linkIr);
+    const home = componentOf(ir, HOME);
+    disconnect(home, (c) => c.toId === 'link' && c.toProperty === 'modelId');
+    addVariable(home, 'recVar', 'rec');
+    connect(home, 'recVar', 'value', 'link', 'modelId');
+    const out = emitApp(ir, catalog);
+    expect(out.files['src/pages/Home.tsx']).toContain("const linkRecordId = String(rec.get() ?? '');");
+    expect(out.files['src/pages/Home.tsx']).toContain('const unlinkRecordId = inquiryId.get();');
+    expect(typecheckEmittedApp(out)).toEqual([]);
+  });
+
+  test('F4 the record verbs (guardId, no local): an unknown Id is coerced in the guard and in the call, and the app typechecks', () => {
+    const ir = parseProject(path.join(__dirname, 'fixtures', 'puppy-test-3'), catalog);
+    const admin = componentOf(ir, 'Pages/Admin');
+    disconnect(admin, (c) => (c.toId === 'updateRecord' || c.toId === 'deleteRecord') && c.toProperty === 'modelId');
+    // The fixture's Delete names no class and is refused on that sentence (record-verbs' own rows name it first).
+    setParam(nodeOf(ir, 'Pages/Admin', 'deleteRecord'), 'collectionName', { kind: 'literal', value: 'Puppy' });
+    addVariable(admin, 'recVar', 'rec');
+    connect(admin, 'recVar', 'value', 'updateRecord', 'modelId');
+    connect(admin, 'recVar', 'value', 'deleteRecord', 'modelId');
+    const out = emitApp(ir, catalog);
+    const src = out.files['src/pages/Admin.tsx'];
+    expect(src).toContain("if (!(String(rec.get() ?? ''))) throw new Error('Missing Record Id');");
+    expect(src).toContain("await updatePuppy(String(rec.get() ?? ''), ");
+    expect(src).toContain("await deletePuppy(String(rec.get() ?? ''));");
+    expect(typecheckEmittedApp(out)).toEqual([]);
+  });
+
+  test("F5 the guard still follows the coerced bind — an unwritten variable becomes '' and meets the runtime's own sentence, before any request", () => {
+    const src = linkHome(puppyIdFromVariable());
+    expect(src).toMatch(/const puppyRecordId = String\(puppyId\.get\(\) \?\? ''\);\n\s+if \(puppyRecordId === undefined \|\| puppyRecordId === null \|\| puppyRecordId === ''\) return;/);
+    expect(src).toMatch(/const linkTargetId = String\(puppyId\.get\(\) \?\? ''\);\n\s+if \(!linkTargetId\) throw new Error\('No target record Id \(the record to add a relation to\) specified'\);/);
+  });
+});

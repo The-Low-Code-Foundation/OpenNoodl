@@ -322,7 +322,8 @@ describe('§C the shapes a wire changes', () => {
     const src = home(emitApp(source, catalog));
     expect(src).toContain(
       [
-        '            const linkTargetId = puppyId.get();',
+        // EXP-011 §72: `puppyId` has no writer — an untyped Variable's read is coerced at the bind (`{}` would not narrow to string).
+        "            const linkTargetId = String(puppyId.get() ?? '');",
         "            if (!linkTargetId) throw new Error('No target record Id (the record to add a relation to) specified');",
         '            const linkRecordId = inquiryId.get();',
         "            if (!linkRecordId) throw new Error('No record Id specified (the record that should get the relation)');",
@@ -331,7 +332,7 @@ describe('§C the shapes a wire changes', () => {
     );
     expect(src).toContain(
       [
-        '            const unlinkTargetId = puppyId.get();',
+        "            const unlinkTargetId = String(puppyId.get() ?? '');",
         "            if (!unlinkTargetId) throw new Error('No target record Id (the record to remove a relation from) specified');",
         '            const unlinkRecordId = inquiryId.get();',
         "            if (!unlinkRecordId) throw new Error('No record Id specified (the record that should lose the relation)');",

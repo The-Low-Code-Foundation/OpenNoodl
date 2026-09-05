@@ -2056,6 +2056,15 @@ export type HandlerAction =
        */
       guardId: boolean;
       /**
+       * EXP-011 §72. The id argument is read from a source typed `unknown` — a Variable nothing
+       * statically writes, or one written by a Function or an HTTP body — and the client's
+       * parameter is `string`: the emitter prints `String(x ?? '')` around the read. The runtime
+       * keys `Model.get(id)` by the value and the client `encodeURIComponent`s it, so the
+       * coercion transcribes both; an empty read still meets `guardId`'s `Missing Record Id`.
+       * Absent for a `string` source — a `string | undefined` narrows on its own.
+       */
+      coerceId?: 'string';
+      /**
        * EXP-011 §62. The relation verbs' dynamic pre-flight, in the runtime's own order and its own
        * words (`validateInputs`): a positional argument that is empty at the click throws that
        * sentence into the catch — *No target record Id (the record to add a relation to) specified*
@@ -2063,7 +2072,7 @@ export type HandlerAction =
        * runtime asks about the target first. Printed after `guardId`'s line; emitted only for an
        * argument that is not a literal (a literal is never empty — the planner refused that).
        */
-      guards?: Array<{ index: number; local: string; message: string }>;
+      guards?: Array<{ index: number; local: string; message: string; coerce?: 'string' }>;
       errorState: string;
       /**
        * EXP-011 §44 — write `undefined` to the Error row the moment the call answers, before the
@@ -2168,6 +2177,8 @@ export type HandlerAction =
       /** The collection module's exported `fetch<Type>ById`. */
       fnName: string;
       id: ValueExpr;
+      /** EXP-011 §72. `id` is typed `unknown` — printed `String(id ?? '')`, as `api-call`'s `coerceId`. */
+      coerceId?: 'string';
       /** The record row, when anything outside the chain reads a column. */
       materialize?: string;
       /** The `Error` output's row — written on every failure, never cleared (the runtime's own). */
@@ -10048,6 +10059,8 @@ function planComponent(
           ...(verb === 'delete' ? [] : [{ kind: 'data' as const, props }])
         ],
         guardId: idExpr !== undefined && idExpr.kind !== 'literal',
+        // EXP-011 §72. An `unknown` id (an untyped Variable, a store key nothing types) into a `string` parameter.
+        ...(idExpr !== undefined && idExpr.kind !== 'literal' && exprTsType(idExpr) === 'unknown' ? { coerceId: 'string' as const } : {}),
         errorState: verbErrorStateOf(node).name,
         then: chain.then
       },
@@ -10166,9 +10179,12 @@ function planComponent(
     // a second `.get()` in the call would not be narrowed by the first (TS2345), and the runtime reads
     // the stored value once. The stem is the Error row's, unique per node.
     const stem = verbErrorStateOf(node).name.replace(/Error$/, '');
-    const guards: Array<{ index: number; local: string; message: string }> = [];
-    if (targetExpr.kind !== 'literal') guards.push({ index: 2, local: `${stem}TargetId`, message: spec.noTarget });
-    if (idExpr.kind !== 'literal') guards.push({ index: 0, local: `${stem}RecordId`, message: spec.noRecord });
+    // EXP-011 §72. A local bound from an `unknown` read narrows to `{}` under `if (!local)`, never to `string` —
+    // an untyped Variable (one nothing statically writes) into either id is coerced `String(x ?? '')` at the bind.
+    const coerceOf = (expr: ValueExpr) => (exprTsType(expr) === 'unknown' ? { coerce: 'string' as const } : {});
+    const guards: Array<{ index: number; local: string; message: string; coerce?: 'string' }> = [];
+    if (targetExpr.kind !== 'literal') guards.push({ index: 2, local: `${stem}TargetId`, message: spec.noTarget, ...coerceOf(targetExpr) });
+    if (idExpr.kind !== 'literal') guards.push({ index: 0, local: `${stem}RecordId`, message: spec.noRecord, ...coerceOf(idExpr) });
 
     return {
       action: {
@@ -11117,6 +11133,8 @@ function planComponent(
         nodeId: node.id,
         fnName: names.fnName,
         id,
+        // EXP-011 §72. An `unknown` Id (an untyped Variable) into `fetch<Type>ById(id: string)`.
+        ...(id.kind !== 'literal' && exprTsType(id) === 'unknown' ? { coerceId: 'string' as const } : {}),
         ...(materialize !== undefined ? { materialize } : {}),
         errorState: recordErrorStateOf(node).name,
         then: chain.then,

@@ -754,7 +754,17 @@ export function collectAppState(ir: ExportIR): AppStateRegistry {
     if (visiting.has(guard)) return 'unknown';
     visiting.add(guard);
     const sources = variableSources.get(name) ?? [];
-    const resolved = sources.every((ref) => typeOfSource(ref, visiting) === 'string') ? 'string' : 'unknown';
+    // EXP-011 §72. A variable with NO statically-known source — nothing wired into any Variable's
+    // or Set Variable's `value`, no authored literal, or only writers the plan refuses (an
+    // expression parameter, a Logic Builder's block write) — is `unknown`, not `string`:
+    // `[].every(…)` is true, and it typed "nothing wrote this" as a string the graph never
+    // promised (§67.4 finding 1 — §47 closed the same hole for store keys, §48 for global store
+    // keys, one construct over each time). An `unknown` variable is coerced at its sink
+    // (`String(x ?? '')`, `!!x`, a number sink refused by name) exactly as one written by an
+    // HTTP response is; a `string` one was bound bare — and a bare `string | undefined` into a
+    // number prop was red in the built app (measured: `maxLength={noteValue}`, TS2322).
+    const resolved =
+      sources.length > 0 && sources.every((ref) => typeOfSource(ref, visiting) === 'string') ? 'string' : 'unknown';
     visiting.delete(guard);
     variableTypes.set(name, resolved);
     return resolved;

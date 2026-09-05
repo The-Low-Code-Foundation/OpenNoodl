@@ -10,7 +10,7 @@
     {
       "typeName": "AddDbModelRelation",
       "status": "translated",
-      "note": "EXP-011 \u00a762 (session 86): an awaited addInquiryRelation(id, relation, targetId, targetClass) in the handler its Do is wired from \u2014 the client's addRelation, the runtime's own PUT /classes/<class>/<id> with one AddRelation op whose Pointer names the target's class (ParseWireAdapter.addRelation) \u2014 the done chain after the await and the Error output landing in component state that nothing clears; the runtime's pre-flight transcribed in its order: no class, no relation property, no Target Record Id wire, no record, and a Target Record Id from anything but a Record or Query Records (NDA-012: a class-less Pointer burns the schema) each defer with a named reason, and an empty record or target at the click throws the runtime's own \"specified\" sentence into the catch; a wired class or relation, a named Backend, a repeater-bound Id, two wires into Id or Target Record Id, a Query Records' Items list as the target, and a consumed Id, Failure or Completed each defer by name."
+      "note": "EXP-011 \u00a762 (session 86): an awaited addInquiryRelation(id, relation, targetId, targetClass) in the handler its Do is wired from \u2014 the client's addRelation, the runtime's own PUT /classes/<class>/<id> with one AddRelation op whose Pointer names the target's class (ParseWireAdapter.addRelation) \u2014 the done chain after the await and the Error output landing in component state that nothing clears; the runtime's pre-flight transcribed in its order: no class, no relation property, no Target Record Id wire, no record, and a Target Record Id from anything but a Record or Query Records (NDA-012: a class-less Pointer burns the schema) each defer with a named reason, and an empty record or target at the click throws the runtime's own \"specified\" sentence into the catch; a wired class or relation, a named Backend, a repeater-bound Id, two wires into Id or Target Record Id, a Query Records' Items list as the target, and a consumed Id, Failure or Completed each defer by name. An Id read from a source typed unknown (a Variable nothing statically writes) is coerced String(x ?? '') at the bind \u2014 an unknown narrows to {} not string, and the built app was TS2345 (\u00a772, session 94)."
     },
     {
       "typeName": "And",
@@ -159,7 +159,7 @@
     {
       "typeName": "DbModel2",
       "status": "translated",
-      "note": "EXP-011 \u00a743 (session 70): a read by Id through the class's collection module \u2014 fetch<Type>ById(id) beside the query and the record verbs, the row typed by the class's interface (schema snapshot first, then the columns the graph reads as unknown) \u2014 through the EXP-009 client's fetchOne() (GET /classes/<class>/<id>, app id + session token) where the project declares a backend, and a stub that throws where it does not. Fetch wired: a handler action, the Cloud Function's try/catch with the runtime's own \"Missing Id.\" thrown for an empty Id. Fetch unwired: a useEffect keyed on the Id (runOnValueChange, controlSignal fetch). Done/Failure are the two arms; Error is a row never cleared; Id resolves to the feeder. Defers by name: no class, a wired class, a second backend, a repeater-bound Id, two wires into the Id, no Id, a consumed Fetched (fires on bind AND after a read), Changed / changed-<column> (the in-process record store's pub/sub), Completed, any other output, a column read from the Failure chain. EXP-011 \u00a746 (session 74): a File column types CloudFile (tsColumnType), the collection module importing it from src/api/files.ts; the column feeds a Cloud File or a Sign File URL; a sibling handler may read the Id-effect form's row before the effect pass has attached it (recordWillFire asks the effect's own order-independent preconditions, and the late sweep keeps a fired node's rows). Registered, measured: a record fetched by a wired Fetch is NOT readable by a sibling handler in either wire order \u2014 attachment is recorded after every handler has compiled, and \u00a743's contract (a Fetch wired from nothing translatable leaves no row) keeps the trigger form out of recordWillFire."
+      "note": "EXP-011 \u00a743 (session 70): a read by Id through the class's collection module \u2014 fetch<Type>ById(id) beside the query and the record verbs, the row typed by the class's interface (schema snapshot first, then the columns the graph reads as unknown) \u2014 through the EXP-009 client's fetchOne() (GET /classes/<class>/<id>, app id + session token) where the project declares a backend, and a stub that throws where it does not. Fetch wired: a handler action, the Cloud Function's try/catch with the runtime's own \"Missing Id.\" thrown for an empty Id. Fetch unwired: a useEffect keyed on the Id (runOnValueChange, controlSignal fetch). Done/Failure are the two arms; Error is a row never cleared; Id resolves to the feeder. Defers by name: no class, a wired class, a second backend, a repeater-bound Id, two wires into the Id, no Id, a consumed Fetched (fires on bind AND after a read), Changed / changed-<column> (the in-process record store's pub/sub), Completed, any other output, a column read from the Failure chain. EXP-011 \u00a746 (session 74): a File column types CloudFile (tsColumnType), the collection module importing it from src/api/files.ts; the column feeds a Cloud File or a Sign File URL; a sibling handler may read the Id-effect form's row before the effect pass has attached it (recordWillFire asks the effect's own order-independent preconditions, and the late sweep keeps a fired node's rows). Registered, measured: a record fetched by a wired Fetch is NOT readable by a sibling handler in either wire order \u2014 attachment is recorded after every handler has compiled, and \u00a743's contract (a Fetch wired from nothing translatable leaves no row) keeps the trigger form out of recordWillFire. An Id read from a source typed unknown (a Variable nothing statically writes) is coerced String(x ?? '') at the bind \u2014 an unknown narrows to {} not string, and the built app was TS2345 (\u00a772, session 94)."
     },
     {
       "typeName": "DeleteDbModelProperties",
@@ -383,7 +383,7 @@
     {
       "typeName": "RemoveDbModelRelation",
       "status": "translated",
-      "note": "EXP-011 \u00a762 (session 86): the Add sibling's shape with a RemoveRelation op \u2014 removeInquiryRelation(id, relation, targetId, targetClass) through the client's removeRelation (ParseWireAdapter.removeRelation), the same pre-flight in the same order with its own two \"specified\" sentences, the same done chain and Error row; removing a relation that was never there succeeds identically (the node has no Unchanged port, and neither does the export); the same eleven refusals by name."
+      "note": "EXP-011 \u00a762 (session 86): the Add sibling's shape with a RemoveRelation op \u2014 removeInquiryRelation(id, relation, targetId, targetClass) through the client's removeRelation (ParseWireAdapter.removeRelation), the same pre-flight in the same order with its own two \"specified\" sentences, the same done chain and Error row; removing a relation that was never there succeeds identically (the node has no Unchanged port, and neither does the export); the same eleven refusals by name. An Id read from a source typed unknown (a Variable nothing statically writes) is coerced String(x ?? '') at the bind \u2014 an unknown narrows to {} not string, and the built app was TS2345 (\u00a772, session 94)."
     },
     {
       "typeName": "Router",
@@ -413,12 +413,12 @@
     {
       "typeName": "Set Variable",
       "status": "translated",
-      "note": "variable write in handler (element/receiver triggers only); a value typed into Value with nothing wired over it is written on every Do and types the variable (§69, session 93)"
+      "note": "variable write in handler (element/receiver triggers only); a value typed into Value with nothing wired over it is written on every Do and types the variable (\u00a769, session 93); a variable no source types is unknown (\u00a772, session 94)"
     },
     {
       "typeName": "SetDbModelProperties",
       "status": "translated",
-      "note": "RECORD-VERBS-TARGET (session 20): an awaited update taking the record id then the property record, on the same shape as Create; additionally Store to = Local only, Properties to store = All, an Id Source from the enclosing repeater and an unnamed record defer with a named reason EXP-011 \u00a746 (session 74): a prop-* fed a stored file rides the wire as fileRef(file), as Create's does."
+      "note": "RECORD-VERBS-TARGET (session 20): an awaited update taking the record id then the property record, on the same shape as Create; additionally Store to = Local only, Properties to store = All, an Id Source from the enclosing repeater and an unnamed record defer with a named reason EXP-011 \u00a746 (session 74): a prop-* fed a stored file rides the wire as fileRef(file), as Create's does. An Id read from a source typed unknown (a Variable nothing statically writes) is coerced String(x ?? '') at the bind \u2014 an unknown narrows to {} not string, and the built app was TS2345 (\u00a772, session 94)."
     },
     {
       "typeName": "SetModelProperties",
@@ -522,7 +522,7 @@
     {
       "typeName": "Variable2",
       "status": "translated",
-      "note": "useVariable hook"
+      "note": "useVariable hook; a variable with no statically-known source (nothing wired into any Value, no literal, or only refused writers) is value<unknown>, coerced at its sink \u2014 not string by [].every (\u00a772, session 94)"
     },
     {
       "typeName": "Video",
