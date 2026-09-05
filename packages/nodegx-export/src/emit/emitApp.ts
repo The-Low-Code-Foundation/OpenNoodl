@@ -33,6 +33,7 @@ import { RECORD_FILTER_LIB_PATH, recordFilterLibSource } from './recordFilterLib
 import { STREAMING_LIB_PATH, streamingLibSource } from './streamingLib';
 import { SSE_LIB_PATH, sseLibSource } from './sseLib';
 import { WEBSOCKET_LIB_PATH, websocketLibSource } from './websocketLib';
+import { REALTIME_LIB_PATH, realtimeLibSource } from './realtimeLib';
 import { CRYPTO_LIB_PATH, cryptoLibSource } from './cryptoLib';
 import { SCREEN_LIB_PATH, screenLibSource } from './screenLib';
 import { COMPONENT_OBJECT_LIB_PATH, componentObjectLibSource } from './componentObjectLib';
@@ -147,6 +148,8 @@ export function emitApp(ir: ExportIR, catalog: Catalog): EmittedApp {
   let sseLibUsed = false;
   // EXP-011 §65. The socket's host — earned by a component whose plan kept a WebSocket node; it imports errors.ts only.
   let websocketLibUsed = false;
+  // EXP-011 §66. The subscription's host — earned by a component whose plan kept a Subscribe To Changes node; it imports errors.ts and the client.
+  let realtimeLibUsed = false;
   // EXP-011 §59.
   let cryptoLibUsed = false;
   let screenLibUsed = false;
@@ -213,6 +216,7 @@ export function emitApp(ir: ExportIR, catalog: Catalog): EmittedApp {
     if (emitted.streamingLib) streamingLibUsed = true;
     if (emitted.sseLib) sseLibUsed = true;
     if (emitted.websocketLib) websocketLibUsed = true;
+    if (emitted.realtimeLib) realtimeLibUsed = true;
     if (emitted.cryptoHelpers.size > 0) cryptoLibUsed = true;
     if (emitted.screenLib) screenLibUsed = true;
     if (emitted.componentObjectLib) componentObjectLibUsed = true;
@@ -275,7 +279,8 @@ export function emitApp(ir: ExportIR, catalog: Catalog): EmittedApp {
   // EXP-011 §60 + §63. componentObject.ts raises parent-component-object/no-ancestor and drag.ts raises
   // `drag/snap-position-not-a-number` on the channel, so either earns errors.ts too.
   // EXP-011 §64. sse.ts raises `sse/connect-failed` on the channel, so it earns errors.ts too. §65: websocket.ts raises its own codes.
-  if (errorsLibUsed || scriptLibUsed || runTasksLibUsed || streamingLibUsed || sseLibUsed || websocketLibUsed || componentObjectLibUsed || dragLibUsed) {
+  // EXP-011 §66. realtime.ts raises subscribe-to-changes/realtime-failed on the channel.
+  if (errorsLibUsed || scriptLibUsed || runTasksLibUsed || streamingLibUsed || sseLibUsed || websocketLibUsed || realtimeLibUsed || componentObjectLibUsed || dragLibUsed) {
     files[ERRORS_LIB_PATH] = GENERATED_MODULE_TS + errorsLibSource();
   }
   // EXP-011 §58. `src/lib/streaming.ts` — the trio's host; it raises on the channel, so it earns errors.ts above.
@@ -290,6 +295,11 @@ export function emitApp(ir: ExportIR, catalog: Catalog): EmittedApp {
   // EXP-011 §65. `src/lib/websocket.ts` — the WebSocket hook, where a component printed one; it imports errors.ts only, never streaming.ts.
   if (websocketLibUsed) {
     files[WEBSOCKET_LIB_PATH] = GENERATED_MODULE_TS + websocketLibSource();
+  }
+  // EXP-011 §66. `src/lib/realtime.ts` — the Subscribe To Changes hook, where a component printed one; it imports errors.ts and ../api/client
+  // (the endpoint and the session), which apiModules ships because a subscription counts as a backend use.
+  if (realtimeLibUsed) {
+    files[REALTIME_LIB_PATH] = GENERATED_MODULE_TS + realtimeLibSource();
   }
   // EXP-011 §56. `src/lib/filterRecords.ts` — the Filter Records matcher, when a component printed one.
   // EXP-011 §59. The crypto verbs and the viewport hook, each only where a component calls into it.
@@ -496,7 +506,10 @@ function apiModules(
   const hasCloudCalls = project.plans.some((plan) => plan.cloudCalls.length > 0);
   // EXP-011 §45. An upload or a sign is a request to the backend; a picker alone is not.
   const hasFileOps = project.plans.some((plan) => plan.fileOps.some((op) => op.family !== 'pick'));
-  const hasApi = byCollection.size > 0 || hasSessionCalls || hasCloudCalls || hasFileOps;
+  // EXP-011 §66. A Subscribe To Changes rides the client too — its stream is the backend's `/realtime`, its token the session's;
+  // the plan keeps one only where the project declares a backend (streamPlanOf refuses it otherwise), so this never lands in the stub arm.
+  const hasSubscriptions = project.plans.some((plan) => plan.streams.some((stream) => stream.kind === 'subscription'));
+  const hasApi = byCollection.size > 0 || hasSessionCalls || hasCloudCalls || hasFileOps || hasSubscriptions;
   const notes: string[] = [];
   // No collection module can collide with `client.ts` (or `session.ts`): moduleBase is the
   // pluralized class name and every pluralize() result ends in "s"/"es"/"ies", while neither
@@ -1424,7 +1437,7 @@ function clientModule(backend: CloudServicesIR): string {
  * master key is a server credential that never belongs in a browser bundle.
  */
 
-const ENDPOINT: string = import.meta.env.VITE_NODEGX_ENDPOINT ?? ${tsStringLiteral(backend.endpoint)};
+export const ENDPOINT: string = import.meta.env.VITE_NODEGX_ENDPOINT ?? ${tsStringLiteral(backend.endpoint)};
 const APP_ID: string = import.meta.env.VITE_NODEGX_APP_ID ?? ${tsStringLiteral(backend.appId)};
 
 /**

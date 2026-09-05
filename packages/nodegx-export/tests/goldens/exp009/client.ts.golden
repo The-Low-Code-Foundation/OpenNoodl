@@ -12,7 +12,7 @@
  * master key is a server credential that never belongs in a browser bundle.
  */
 
-const ENDPOINT: string = import.meta.env.VITE_NODEGX_ENDPOINT ?? 'http://localhost:8581';
+export const ENDPOINT: string = import.meta.env.VITE_NODEGX_ENDPOINT ?? 'http://localhost:8581';
 const APP_ID: string = import.meta.env.VITE_NODEGX_APP_ID ?? 'backend_msjck0y2ukxwv';
 
 /**

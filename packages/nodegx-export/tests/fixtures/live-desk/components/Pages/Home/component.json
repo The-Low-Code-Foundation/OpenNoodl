@@ -1,0 +1,9 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "a7c3e9d1-5b2d-4e8f-9c1a-000000000097",
+  "name": "Home",
+  "path": "/Pages/Home",
+  "type": "page",
+  "modified": "2026-09-05T20:00:00.000Z",
+  "description": "EXP-011 \u00a766 fixture: a Subscribe To Changes node (`feed`, Class Contact, nothing else authored \u2014 Enabled left at its default, the Backend picker at the project's own) on a project whose backend is at http://localhost:8584 \u2014 the live-feed shape. Subscribed, Realtime Status, Change Type, Changed Record Id, Changed Record, Changed Records and Realtime Error each shown in a Text; Record Created / Updated / Deleted / Realtime Failure write a `last` Variable and Records Changed a `pulse` Variable through String-fed Set Variables."
+}

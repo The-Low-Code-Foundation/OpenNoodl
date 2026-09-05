@@ -569,11 +569,19 @@ export const APP_ERROR_TS_TYPE = '{ code: string; message: string; nodeId: strin
 export const STREAM_PARSER_TYPE = 'net.noodl.JSONStreamParser';
 export const STREAM_BUFFER_TYPE = 'net.noodl.StreamBuffer';
 export const TEXT_ACCUMULATOR_TYPE = 'net.noodl.TextAccumulator';
-export type StreamKind = 'parser' | 'buffer' | 'accumulator' | 'sse' | 'websocket';
+export type StreamKind = 'parser' | 'buffer' | 'accumulator' | 'sse' | 'websocket' | 'subscription';
 /** EXP-011 §64. `Server-Sent Events` — the fourth member of the table: no data port, two Actions, its own module. */
 export const SSE_TYPE = 'net.noodl.SSE';
 /** EXP-011 §65. `WebSocket` — the fifth member: a data port (Message) that only the Send verb carries, three Actions, its own module. */
 export const WEBSOCKET_TYPE = 'net.noodl.WebSocket';
+/**
+ * EXP-011 §66. `Subscribe To Changes` — the sixth member, and the last scheduled node: no data port, no Actions, two config
+ * ports (the Class — a runtime-discovered `collectionName` parameter, hence `param` — and Enabled), five signals, seven values;
+ * its own module, riding EXP-009's client. The Backend picker, the Filter and its `qp-` ports are refused by name (streamPlanOf).
+ */
+export const SUBSCRIBE_TO_CHANGES_TYPE = 'SubscribeToChanges';
+/** EXP-011 §66. The structural RealtimeError — `src/lib/realtime.ts`'s, spelled so a store row needs no import. */
+export const REALTIME_ERROR_TS_TYPE = '{ message: string; code: string; kind: string } | null';
 export interface StreamValueField {
   tsType: string;
   /** How the value casts at a sink: the port's declared type, which is what NDA-014's typecast keys on. */
@@ -587,13 +595,13 @@ export interface StreamNodeSpec {
   hook: string;
   localStem: string;
   /** The module the hook lives in (component.ts maps it to a path; emitApp.ts ships it). */
-  lib: 'streaming' | 'sse' | 'websocket';
+  lib: 'streaming' | 'sse' | 'websocket' | 'realtime';
   /** The runtime file the hook transcribes, for the emitted comment. */
   sourceFile: string;
   /** The data port, delivered with the pulse — absent on a node whose actions carry nothing (§64's SSE). */
   data?: { port: string; displayName: string };
-  /** The config ports, read live off the options object. */
-  config: Array<{ port: string; displayName: string }>;
+  /** The config ports, read live off the options object. `param` names the on-disk parameter / wire port where it differs from the option (§66's Class is `collectionName` on disk). */
+  config: Array<{ port: string; displayName: string; param?: string }>;
   /** The action ports: the verb on the handle, and whether the call carries the data port's value. */
   actions: Record<string, { verb: string; takesData: boolean }>;
   /** The signal outputs, as the listeners the hook takes, in the runtime's declaration order. */
@@ -778,12 +786,41 @@ export const STREAM_NODES: Record<string, StreamNodeSpec> = {
       receivedRaw: { tsType: 'string', cast: 'string', maybeUndefined: false },
       receivedIsBinary: { tsType: 'boolean', cast: 'boolean', maybeUndefined: false }
     }
+  },
+  // EXP-011 §66. The Class is the runtime's discovered `collectionName` parameter (read as `collection`, the hook's option) and
+  // Enabled the one declared input — a change to either re-runs the node's reconfigure in the hook; there is no data port and
+  // no Action; the five signal outputs are the listeners in subscribetochanges.ts's declaration order (the Failure first, as the
+  // node declares it; created / updated / deleted / changed); every Realtime value output is a live getter. The Backend picker,
+  // the Filter and its `qp-` ports are inputs the runtime discovers, and streamPlanOf refuses each by name before the table's gates.
+  [SUBSCRIBE_TO_CHANGES_TYPE]: {
+    kind: 'subscription',
+    displayName: 'Subscribe To Changes',
+    hook: 'useSubscribeToChanges',
+    localStem: 'Subscription',
+    lib: 'realtime',
+    sourceFile: 'subscribetochanges.ts',
+    config: [
+      { port: 'collection', displayName: 'Class', param: 'collectionName' },
+      { port: 'enabled', displayName: 'Enabled' }
+    ],
+    actions: {},
+    signals: ['realtimeFailure', 'created', 'updated', 'deleted', 'changed'],
+    values: {
+      subscribed: { tsType: 'boolean', cast: 'boolean', maybeUndefined: false },
+      realtimeStatus: { tsType: 'string', cast: 'string', maybeUndefined: false },
+      // `object` ports: null until something happened, never undefined — the getters answer `|| null`.
+      realtimeError: { tsType: REALTIME_ERROR_TS_TYPE, cast: 'unknown', maybeUndefined: false },
+      changedEvent: { tsType: 'string', cast: 'string', maybeUndefined: false },
+      changedRecord: { tsType: 'Record<string, unknown> | null', cast: 'unknown', maybeUndefined: false },
+      changedRecords: { tsType: 'Record<string, unknown>[]', cast: 'array', maybeUndefined: false },
+      changedRecordId: { tsType: 'string', cast: 'string', maybeUndefined: false }
+    }
   }
 };
 
 /** EXP-011 §64. The type id behind a `stream-out`'s kind — the one ladder component.ts and the maybe-undefined answer share. */
 export function streamTypeOfKind(kind: StreamKind): string {
-  return kind === 'parser' ? STREAM_PARSER_TYPE : kind === 'buffer' ? STREAM_BUFFER_TYPE : kind === 'accumulator' ? TEXT_ACCUMULATOR_TYPE : kind === 'sse' ? SSE_TYPE : WEBSOCKET_TYPE;
+  return kind === 'parser' ? STREAM_PARSER_TYPE : kind === 'buffer' ? STREAM_BUFFER_TYPE : kind === 'accumulator' ? TEXT_ACCUMULATOR_TYPE : kind === 'sse' ? SSE_TYPE : kind === 'websocket' ? WEBSOCKET_TYPE : SUBSCRIBE_TO_CHANGES_TYPE;
 }
 export const RUN_TASKS_TYPE = 'RunTasks';
 /** EXP-011 §57. `Repeater Item` — the type id is the runtime's `name`, not the display name. */
@@ -815,6 +852,8 @@ const OWN_CHAIN_OUTPUTS: Record<string, readonly string[]> = {
   [SSE_TYPE]: STREAM_NODES[SSE_TYPE].signals,
   // EXP-011 §65. The socket's Events and outcomes, the same footing.
   [WEBSOCKET_TYPE]: STREAM_NODES[WEBSOCKET_TYPE].signals,
+  // EXP-011 §66. The subscription's five signals, the same footing.
+  [SUBSCRIBE_TO_CHANGES_TYPE]: STREAM_NODES[SUBSCRIBE_TO_CHANGES_TYPE].signals,
   [LOG_TYPE]: ['done'],
   [TIMER_TYPE]: TIMER_OUTPUTS,
   [VALUE_CHANGED_TYPE]: ['valueChanged'],
@@ -12990,9 +13029,23 @@ function planComponent(
       return reason;
     };
     if (!plan.file) return refuse(`component emits no file to host the ${spec.displayName}`);
-    const valueInputs = [...(spec.data !== undefined ? [spec.data] : []), ...spec.config];
+    // EXP-011 §66. A subscription rides EXP-009's client — the project's own backend, the one `/realtime` the export can
+    // reach — so the three inputs the runtime discovers beside the Class are refused by name, each BEFORE the table's
+    // own "not a port this node has": the Backend picker (a second backend is not in this slice — the record verbs' rule),
+    // the Filter (evaluated by the server; not translated, and dropping it would deliver every change in the class — the
+    // node's own disclosure says the filter is never applied client-side) and its `qp-` value ports (they exist only with one).
+    if (spec.kind === 'subscription') {
+      if (ir.project.cloudservices === undefined) return refuse('the project declares no backend (metadata.cloudservices is absent) — there is no /realtime stream to subscribe to');
+      const backendId = literalParam(node, 'backendId');
+      if (wiredPorts.has(`${node.id}:backendId`) || (typeof backendId === 'string' && backendId !== '' && backendId !== '_active_')) {
+        return refuse(`it subscribes on the backend "${wiredPorts.has(`${node.id}:backendId`) ? '(wired)' : backendId}" rather than the project's active one — a second backend is not in this slice`);
+      }
+      const filtered = node.parameters.some((p) => p.name === 'visualFilter') || component.connections.some((c) => c.toId === node.id && (c.toProperty === 'visualFilter' || c.toProperty.startsWith('qp-')));
+      if (filtered) return refuse('its Filter is authored — a subscription filter is evaluated by the server and this slice does not translate the filter tree; dropping it would deliver every change in the class');
+    }
+    const valueInputs: Array<{ port: string; displayName: string; param?: string }> = [...(spec.data !== undefined ? [spec.data] : []), ...spec.config];
     for (const wire of component.connections.filter((c) => c.toId === node.id)) {
-      if (spec.actions[wire.toProperty] !== undefined || valueInputs.some((p) => p.port === wire.toProperty)) continue;
+      if (spec.actions[wire.toProperty] !== undefined || valueInputs.some((p) => (p.param ?? p.port) === wire.toProperty)) continue;
       return refuse(`its ${wire.toProperty} input is not a port this node has`);
     }
     for (const wire of component.connections.filter((c) => c.fromId === node.id)) {
@@ -13003,8 +13056,8 @@ function planComponent(
     const ctx = newCtx();
     const consumes: string[] = [];
     // A value input: a wire's expression (one wire, a render-time source), else the authored literal, else nothing.
-    const sourceOf = (input: { port: string; displayName: string }): ValueExpr | undefined | { defer: string } => {
-      const wires = component.connections.filter((c) => c.toId === node.id && c.toProperty === input.port);
+    const sourceOf = (input: { port: string; displayName: string; param?: string }): ValueExpr | undefined | { defer: string } => {
+      const wires = component.connections.filter((c) => c.toId === node.id && c.toProperty === (input.param ?? input.port));
       if (wires.length > 1) return { defer: `two wires feed its ${input.displayName} input — last-writer-wins is not statically ordered` };
       if (wires.length === 1) {
         const from = nodeById.get(wires[0].fromId);
@@ -13016,7 +13069,7 @@ function planComponent(
         consumes.push(wires[0].key);
         return expr;
       }
-      const literal = literalParam(node, input.port);
+      const literal = literalParam(node, input.param ?? input.port);
       return literal !== undefined ? { kind: 'literal', value: literal } : undefined;
     };
     // ⚠️ Two statements, not one `&&`: the editor's tsc (no strictNullChecks) cannot narrow `x !== undefined && 'defer' in x`

@@ -57,6 +57,7 @@ import { SCRIPT_LIB_PATH } from './scriptLib';
 import { STREAMING_LIB_PATH } from './streamingLib';
 import { SSE_LIB_PATH } from './sseLib';
 import { WEBSOCKET_LIB_PATH } from './websocketLib';
+import { REALTIME_LIB_PATH } from './realtimeLib';
 import { SCRIPT_CODE_PREFIX } from '../analyze/script';
 import { ID_HELPERS_BY_FN, ID_LIB_PATH, IdHelper } from './idLib';
 import { CRYPTO_LIB_PATH, CryptoHelper } from './cryptoLib';
@@ -165,6 +166,8 @@ export interface EmittedComponent {
   sseLib: boolean;
   /** EXP-011 §65. `src/lib/websocket.ts` is owed when this component keeps a WebSocket node. */
   websocketLib: boolean;
+  /** EXP-011 §66. `src/lib/realtime.ts` is owed when this component keeps a Subscribe To Changes node. */
+  realtimeLib: boolean;
   /** EXP-011 §59. `src/lib/crypto.ts` verbs this component calls; `src/lib/screen.ts` is owed when a viewport hook prints. */
   cryptoHelpers: Set<string>;
   screenLib: boolean;
@@ -4096,11 +4099,11 @@ export function emitComponent(
     const names = [...(raisesAppErrors ? ['raiseAppError'] : []), ...(plan.appErrors.length > 0 ? ['useAppError'] : [])];
     internalImports.set(specifier, `import { ${names.join(', ')} } from '${specifier}';`);
   }
-  // EXP-011 §58 + §64 + §65. The streaming hooks, one import per hook the plan kept, grouped by the module each lives in.
-  for (const lib of ['streaming', 'sse', 'websocket'] as const) {
+  // EXP-011 §58 + §64 + §65 + §66. The streaming hooks, one import per hook the plan kept, grouped by the module each lives in.
+  for (const lib of ['streaming', 'sse', 'websocket', 'realtime'] as const) {
     const hooks = [...new Set(plan.streams.filter((s) => STREAM_NODES[s.type].lib === lib).map((s) => STREAM_NODES[s.type].hook))].sort();
     if (hooks.length === 0) continue;
-    const libPath = lib === 'streaming' ? STREAMING_LIB_PATH : lib === 'sse' ? SSE_LIB_PATH : WEBSOCKET_LIB_PATH;
+    const libPath = lib === 'streaming' ? STREAMING_LIB_PATH : lib === 'sse' ? SSE_LIB_PATH : lib === 'websocket' ? WEBSOCKET_LIB_PATH : REALTIME_LIB_PATH;
     const specifier = `${relRoot}/${libPath.replace(/^src\//, '').replace(/\.ts$/, '')}`;
     internalImports.set(specifier, `import { ${hooks.join(', ')} } from '${specifier}';`);
   }
@@ -6690,6 +6693,7 @@ export function emitComponent(
     streamingLib: plan.streams.some((s) => STREAM_NODES[s.type].lib === 'streaming'),
     sseLib: plan.streams.some((s) => STREAM_NODES[s.type].lib === 'sse'),
     websocketLib: plan.streams.some((s) => STREAM_NODES[s.type].lib === 'websocket'),
+    realtimeLib: plan.streams.some((s) => STREAM_NODES[s.type].lib === 'realtime'),
     // EXP-011 §59.
     cryptoHelpers: usedCryptoHelpers,
     screenLib: screenHooks.length > 0,

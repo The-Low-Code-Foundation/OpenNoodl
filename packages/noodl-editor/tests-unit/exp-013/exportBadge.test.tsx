@@ -39,7 +39,8 @@ const translated = ledger.entries.filter((e) => e.status === 'translated' && pla
 
 describe('the decision, over the real ledger', () => {
   test('the populations are not empty, so the rows below grade something', () => {
-    expect(deferred.length).toBeGreaterThan(10);
+    // 10 since EXP-011 §66 (session 90) translated the last scheduled row; every one left is a §50 out-of-scope ruling.
+    expect(deferred.length).toBeGreaterThanOrEqual(1);
     expect(translated.length).toBeGreaterThan(50);
   });
 
@@ -63,17 +64,21 @@ describe('the decision, over the real ledger', () => {
     expect(exportBadgeFor(typeName)).toBeUndefined();
   });
 
-  test('both kinds exist in the ledger, so the kind branch is exercised both ways', () => {
+  test('every deferred row is now a decision: the out-of-scope kind is what the ledger holds, and no scheduled row remains (EXP-011 §66 translated the last one)', () => {
+    // Both kinds existed here until session 90; `SubscribeToChanges` was the last `scheduled` row. The scheduled branch is
+    // graded below on a literal badge (the drawing rows) and on the reader's own phrase test in @nodegx/export, so this
+    // row pins the population rather than pretending a kind the ledger no longer carries.
     const kinds = new Set(deferred.map((e) => exportBadgeFor(e.typeName)?.kind));
-    expect(kinds).toEqual(new Set(['scheduled', 'out-of-scope']));
+    expect(kinds).toEqual(new Set(['out-of-scope']));
+    expect(deferred.length).toBeGreaterThan(0);
   });
 
   test('the nodes Richard named (EXP-011 §50) read as scheduled, and Sign In With as out of scope', () => {
     // `RunTasks` and `On App Error` stood here until sessions 81 and 82 translated them (§53, §54), `Drag` until
-    // session 86 (§63) and `Server-Sent Events` until session 88 (§64, Tier 3.11's first transport); the pin is now
-    // `WebSocket` until session 89 (§65); the pin is now `Subscribe To Changes`, the scheduled transport still open, and
-    // the control below it is the ledger itself.
-    expect(exportBadgeFor('SubscribeToChanges')).toMatchObject({ kind: 'scheduled' });
+    // session 86 (§63), `Server-Sent Events` until session 88 (§64), `WebSocket` until session 89 (§65) and
+    // `Subscribe To Changes` until session 90 (§66, the last scheduled node): every node Richard named reads as
+    // nothing now, and the control is `Sign In With`, the out-of-scope decision.
+    expect(exportBadgeFor('SubscribeToChanges')).toBeUndefined();
     expect(exportBadgeFor('net.noodl.WebSocket')).toBeUndefined();
     expect(exportBadgeFor('RunTasks')).toBeUndefined();
     expect(exportBadgeFor('On App Error')).toBeUndefined();
@@ -91,7 +96,9 @@ describe('the decision, over the real ledger', () => {
 });
 
 describe('the badge, as drawn', () => {
-  const scheduled = exportBadgeFor('SubscribeToChanges'); // §63 translated Drag, §64 SSE, §65 WebSocket; Tier 3.11's Subscribe To Changes is the scheduled row now
+  // §66 translated the last scheduled row, so the scheduled variant is drawn from a literal badge — the shape exportBadgeOf
+  // answers for a `scheduled —` exemption (its phrase test lives in @nodegx/export's own spec).
+  const scheduled: ReturnType<typeof exportBadgeFor> = { kind: 'scheduled', label: 'Not exportable yet', reason: 'a tier will translate it' };
   const outOfScope = exportBadgeFor('net.noodl.user.SignInWith');
 
   test('one of each status, and the translated control draws nothing', () => {

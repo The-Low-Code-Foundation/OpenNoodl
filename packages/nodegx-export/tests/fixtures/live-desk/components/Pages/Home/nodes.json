@@ -1,0 +1,301 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "a7c3e9d1-5b2d-4e8f-9c1a-000000000097",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "page",
+      "type": "Page",
+      "label": "Home",
+      "children": [
+        "shell"
+      ],
+      "parameters": {
+        "title": "Live Desk",
+        "urlPath": "home"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "shell",
+      "type": "Group",
+      "label": "Shell",
+      "parent": "page",
+      "children": [
+        "headline",
+        "subscribedText",
+        "statusText",
+        "eventText",
+        "idText",
+        "recordText",
+        "recordsText",
+        "errorText",
+        "lastText",
+        "pulseText"
+      ],
+      "parameters": {
+        "flexDirection": "column",
+        "alignItems": "flex-start",
+        "rowGap": "var(--space-3)",
+        "paddingTop": "var(--space-8)",
+        "paddingLeft": "var(--space-6)"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "headline",
+      "type": "Text",
+      "label": "Headline",
+      "parent": "shell",
+      "parameters": {
+        "text": "Live Desk",
+        "fontSize": "var(--text-base)"
+      },
+      "x": 100,
+      "y": 360
+    },
+    {
+      "id": "subscribedText",
+      "type": "Text",
+      "label": "Subscribed",
+      "parent": "shell",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-base)"
+      },
+      "x": 100,
+      "y": 440
+    },
+    {
+      "id": "statusText",
+      "type": "Text",
+      "label": "Status",
+      "parent": "shell",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-base)"
+      },
+      "x": 100,
+      "y": 520
+    },
+    {
+      "id": "eventText",
+      "type": "Text",
+      "label": "Event",
+      "parent": "shell",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-base)"
+      },
+      "x": 100,
+      "y": 600
+    },
+    {
+      "id": "idText",
+      "type": "Text",
+      "label": "Id",
+      "parent": "shell",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-base)"
+      },
+      "x": 100,
+      "y": 680
+    },
+    {
+      "id": "recordText",
+      "type": "Text",
+      "label": "Record",
+      "parent": "shell",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-base)"
+      },
+      "x": 100,
+      "y": 760
+    },
+    {
+      "id": "recordsText",
+      "type": "Text",
+      "label": "Records",
+      "parent": "shell",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-base)"
+      },
+      "x": 100,
+      "y": 840
+    },
+    {
+      "id": "errorText",
+      "type": "Text",
+      "label": "Error",
+      "parent": "shell",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-base)"
+      },
+      "x": 100,
+      "y": 920
+    },
+    {
+      "id": "lastText",
+      "type": "Text",
+      "label": "Last",
+      "parent": "shell",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-base)"
+      },
+      "x": 100,
+      "y": 1000
+    },
+    {
+      "id": "pulseText",
+      "type": "Text",
+      "label": "Pulse",
+      "parent": "shell",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-base)"
+      },
+      "x": 100,
+      "y": 1080
+    },
+    {
+      "id": "feed",
+      "type": "SubscribeToChanges",
+      "label": "Feed",
+      "parameters": {
+        "collectionName": "Contact"
+      },
+      "x": 500,
+      "y": 300
+    },
+    {
+      "id": "lastVar",
+      "type": "Variable2",
+      "label": "Last",
+      "parameters": {
+        "name": "last"
+      },
+      "x": 800,
+      "y": 1000
+    },
+    {
+      "id": "pulseVar",
+      "type": "Variable2",
+      "label": "Pulse",
+      "parameters": {
+        "name": "pulse"
+      },
+      "x": 800,
+      "y": 1100
+    },
+    {
+      "id": "setCreated",
+      "type": "Set Variable",
+      "label": "Last created",
+      "parameters": {
+        "name": "last"
+      },
+      "x": 800,
+      "y": 300
+    },
+    {
+      "id": "createdStr",
+      "type": "String",
+      "label": "Created",
+      "parameters": {
+        "value": "created"
+      },
+      "x": 1100,
+      "y": 300
+    },
+    {
+      "id": "setUpdated",
+      "type": "Set Variable",
+      "label": "Last updated",
+      "parameters": {
+        "name": "last"
+      },
+      "x": 800,
+      "y": 420
+    },
+    {
+      "id": "updatedStr",
+      "type": "String",
+      "label": "Updated",
+      "parameters": {
+        "value": "updated"
+      },
+      "x": 1100,
+      "y": 420
+    },
+    {
+      "id": "setDeleted",
+      "type": "Set Variable",
+      "label": "Last deleted",
+      "parameters": {
+        "name": "last"
+      },
+      "x": 800,
+      "y": 540
+    },
+    {
+      "id": "deletedStr",
+      "type": "String",
+      "label": "Deleted",
+      "parameters": {
+        "value": "deleted"
+      },
+      "x": 1100,
+      "y": 540
+    },
+    {
+      "id": "setFailed",
+      "type": "Set Variable",
+      "label": "Last failed",
+      "parameters": {
+        "name": "last"
+      },
+      "x": 800,
+      "y": 660
+    },
+    {
+      "id": "failedStr",
+      "type": "String",
+      "label": "Failed",
+      "parameters": {
+        "value": "failed"
+      },
+      "x": 1100,
+      "y": 660
+    },
+    {
+      "id": "setPulse",
+      "type": "Set Variable",
+      "label": "Pulse changed",
+      "parameters": {
+        "name": "pulse"
+      },
+      "x": 800,
+      "y": 780
+    },
+    {
+      "id": "changedStr",
+      "type": "String",
+      "label": "Changed",
+      "parameters": {
+        "value": "changed"
+      },
+      "x": 1100,
+      "y": 780
+    }
+  ],
+  "visualRoots": [
+    "page"
+  ]
+}

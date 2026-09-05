@@ -910,15 +910,17 @@ describe('§E the hook under the harness — the connection, the listeners in or
 
 // ---------------------------------------------------------------------------------------------------
 describe('§F the ledger', () => {
-  test('F1 the row moved to translated with a note; the card carries no badge; the floor is 116 with its sentence; Subscribe To Changes is the scheduled transport left', () => {
+  test('F1 the row moved to translated with a note; the card carries no badge; the floor carries its sentence; Subscribe To Changes (§66) is translated too, so no scheduled transport is left', () => {
     expect(ledgerEntryOf(WEBSOCKET_TYPE)?.status).toBe('translated');
     expect(exportBadgeOf(WEBSOCKET_TYPE)).toBeUndefined();
     const ledger = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'coverage-ledger.json'), 'utf8'));
     const row = (ledger.entries as Array<{ typeName: string; note?: string; exemption?: string }>).find((e) => e.typeName === WEBSOCKET_TYPE)!;
     expect(row.exemption).toBeUndefined();
     expect(String(row.note)).toContain('useWebSocket');
-    expect(ledger.pickerCoverageFloor).toBe(116); // §65 WebSocket (session 89) on top of §64 Server-Sent Events (session 88)
+    expect(ledger.pickerCoverageFloor).toBe(117); // §66 Subscribe To Changes (session 90) on top of §65 WebSocket (session 89) on top of §64 Server-Sent Events (session 88)
     expect(String(ledger.$pickerCoverageFloorComment)).toContain('116 after Tier 3.11 row 2 WebSocket');
-    expect(exportBadgeOf('SubscribeToChanges')).toMatchObject({ kind: 'scheduled' });
+    // §66 (session 90) translated the last scheduled node; the badge reads nothing for it now, and the ledger's control for
+    // "a node nothing translates" is subscribe-to-changes.test.ts F2's out-of-scope set.
+    expect(exportBadgeOf('SubscribeToChanges')).toBeUndefined();
   });
 });

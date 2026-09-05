@@ -1,0 +1,121 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "a7c3e9d1-5b2d-4e8f-9c1a-000000000097",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "feed",
+      "fromProperty": "created",
+      "toId": "setCreated",
+      "toProperty": "do"
+    },
+    {
+      "fromId": "createdStr",
+      "fromProperty": "savedValue",
+      "toId": "setCreated",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "feed",
+      "fromProperty": "updated",
+      "toId": "setUpdated",
+      "toProperty": "do"
+    },
+    {
+      "fromId": "updatedStr",
+      "fromProperty": "savedValue",
+      "toId": "setUpdated",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "feed",
+      "fromProperty": "deleted",
+      "toId": "setDeleted",
+      "toProperty": "do"
+    },
+    {
+      "fromId": "deletedStr",
+      "fromProperty": "savedValue",
+      "toId": "setDeleted",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "feed",
+      "fromProperty": "realtimeFailure",
+      "toId": "setFailed",
+      "toProperty": "do"
+    },
+    {
+      "fromId": "failedStr",
+      "fromProperty": "savedValue",
+      "toId": "setFailed",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "feed",
+      "fromProperty": "changed",
+      "toId": "setPulse",
+      "toProperty": "do"
+    },
+    {
+      "fromId": "changedStr",
+      "fromProperty": "savedValue",
+      "toId": "setPulse",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "feed",
+      "fromProperty": "subscribed",
+      "toId": "subscribedText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "feed",
+      "fromProperty": "realtimeStatus",
+      "toId": "statusText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "feed",
+      "fromProperty": "changedEvent",
+      "toId": "eventText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "feed",
+      "fromProperty": "changedRecordId",
+      "toId": "idText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "feed",
+      "fromProperty": "changedRecord",
+      "toId": "recordText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "feed",
+      "fromProperty": "changedRecords",
+      "toId": "recordsText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "feed",
+      "fromProperty": "realtimeError",
+      "toId": "errorText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "lastVar",
+      "fromProperty": "value",
+      "toId": "lastText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "pulseVar",
+      "fromProperty": "value",
+      "toId": "pulseText",
+      "toProperty": "text"
+    }
+  ]
+}

@@ -141,7 +141,7 @@ describe('§A the fixture, whole — a card in a bounded board, four live reads,
     expect(ledgerEntryOf('Drag')?.status).toBe('translated');
     expect(exportBadgeOf('Drag')).toBeUndefined();
     const ledger = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'coverage-ledger.json'), 'utf8'));
-    expect(ledger.pickerCoverageFloor).toBe(116); // §65 WebSocket (session 89) on top of §64 Server-Sent Events (session 88) on top of §63 Drag + §61 the component-stack trio (session 86) on top of §57 + §58 + §59 (session 85)
+    expect(ledger.pickerCoverageFloor).toBe(117); // §66 Subscribe To Changes (session 90) on top of §65 WebSocket (session 89) on top of §64 Server-Sent Events (session 88) on top of §63 Drag + §61 the component-stack trio (session 86) on top of §57 + §58 + §59 (session 85)
   });
 
   test('A9 style.ts\'s own port list names exactly the option ports plan.ts prints (the two files cannot import each other)', () => {
