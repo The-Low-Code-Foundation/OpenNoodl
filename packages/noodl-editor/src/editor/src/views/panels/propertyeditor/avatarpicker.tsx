@@ -1,6 +1,6 @@
 import React from 'react';
 
-import { AVATAR_VARIATIONS, avatarSeed } from '@noodl-utils/avatargenerator';
+import { AVATAR_VARIATIONS, avatarSeed, requiresAttribution } from '@noodl-utils/avatargenerator';
 import { generateAvatar, installedAvatarStyles } from '@noodl-utils/avatarstyles';
 
 import Tooltip from '../../../reactcomponents/tooltip';
@@ -57,6 +57,11 @@ export function AvatarPicker({ initialKeyword, onAvatarSelected }: AvatarPickerP
     return installedAvatarStyles().map((style) => ({
       id: style.id,
       name: style.name,
+      // Shown beside the style name when the licence obliges it, so the author can see what
+      // picking this one commits their project to BEFORE they pick it.
+      credit: requiresAttribution(style.style?.meta?.license?.name)
+        ? `${style.style.meta.creator} · ${style.style.meta.license?.name}`
+        : undefined,
       avatars: Array.from({ length: AVATAR_VARIATIONS }, (_unused, variation) => {
         const seed = avatarSeed(trimmed, variation);
         return { variation, seed, svg: generateAvatar(style.id, seed) };
@@ -108,6 +113,7 @@ export function AvatarPicker({ initialKeyword, onAvatarSelected }: AvatarPickerP
             <div key={row.id} style={{ display: 'flex', flexDirection: 'column' }}>
               <div className="iconpicker-iconset-header" style={{ marginTop: '2px', marginBottom: '2px' }}>
                 <span className="iconpicker-label">{row.name}</span>
+                {row.credit && <span className="avatarpicker-credit">{row.credit}</span>}
               </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', paddingLeft: '12px', paddingBottom: '8px' }}>
                 {row.avatars.map((avatar) => (
@@ -144,8 +150,9 @@ export function AvatarPicker({ initialKeyword, onAvatarSelected }: AvatarPickerP
 
       <div className="iconpicker-footer">
         Drawn on this machine — nothing is fetched, and the picture is saved into your project&rsquo;s{' '}
-        <code>assets/</code> folder, so it keeps working with no network. All of these styles are public
-        domain (CC0).
+        <code>assets/</code> folder, so it keeps working with no network. Styles showing an artist are
+        CC BY 4.0: picking one records the credit in <code>assets/IMAGE-CREDITS.md</code>, which needs to
+        stay with anything you publish. The rest are public domain.
       </div>
     </div>
   );

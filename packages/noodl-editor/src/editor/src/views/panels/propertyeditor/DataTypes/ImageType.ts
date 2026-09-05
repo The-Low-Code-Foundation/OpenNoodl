@@ -2,7 +2,12 @@ import React from 'react';
 import { createRoot, Root } from 'react-dom/client';
 
 import { ProjectModel } from '@noodl-models/projectmodel';
-import { avatarFileName } from '@noodl-utils/avatargenerator';
+import {
+  AVATAR_CREDITS_FILE,
+  avatarCreditFor,
+  avatarFileName,
+  upsertAvatarCredits
+} from '@noodl-utils/avatargenerator';
 import FileSystem from '@noodl-utils/filesystem';
 import {
   importFileIntoProjectAssets,
@@ -12,6 +17,8 @@ import {
 import ThumbnailCache from '@noodl-utils/thumbnailcache';
 
 import { ToastLayer } from '../../../ToastLayer/ToastLayer';
+import { installedAvatarStyles } from '@noodl-utils/avatarstyles';
+
 import { AvatarChoice, AvatarPicker } from '../avatarpicker';
 import { ContentPickerItem } from '../components/ContentPicker';
 import { imagePickerActions, imagePickerEmptyState } from '../components/pickerEmptyStates';
@@ -222,8 +229,54 @@ export class ImageType extends PickerTypeView {
         return;
       }
 
+      this.writeAvatarCredit(choice, result.projectRelativePath);
       this.commit(result.projectRelativePath);
       this.parent.hidePopout();
+    });
+  }
+
+  /**
+   * Record the artist, for the styles whose licence obliges it.
+   *
+   * 🔴 **This is what makes shipping the CC BY styles legitimate rather than merely convenient.**
+   * CC BY 4.0 asks that the artist is credited *wherever the work appears*, and what appears is
+   * the learner's exported app — not this editor. So the credit is written into the project, beside
+   * the picture, where it travels with anything they publish. A note in our own docs would satisfy
+   * nobody.
+   *
+   * CC0 styles write nothing: public domain asks for no credit, and inventing one would put a
+   * claim in the author's project that the licence does not make.
+   *
+   * Failures are surfaced but do NOT block the picture, which is already on disk and already
+   * selected — the author is told the credit could not be written rather than losing the avatar to
+   * a bookkeeping error they cannot act on.
+   */
+  private writeAvatarCredit(choice: AvatarChoice, projectRelativePath: string) {
+    const style = installedAvatarStyles().find((entry) => entry.id === choice.styleId);
+    if (!style) return;
+
+    const credit = avatarCreditFor(projectRelativePath, style.name, style.style.meta);
+    if (!credit) return;
+
+    const directory = ProjectModel.instance?._retainedProjectDirectory;
+    if (!directory) return;
+
+    const creditsPath = `${directory}/${PROJECT_ASSETS_FOLDER}/${AVATAR_CREDITS_FILE}`;
+    let existing = '';
+    try {
+      if (FileSystem.instance.fileExistsSync(creditsPath)) {
+        existing = String(FileSystem.instance.readFileSync(creditsPath, 'utf8') || '');
+      }
+    } catch (error) {
+      // An unreadable credits file is rewritten from this one credit rather than abandoned: a
+      // missing older row is a smaller wrong than no attribution at all.
+      existing = '';
+    }
+
+    FileSystem.instance.writeFile(creditsPath, upsertAvatarCredits(existing, credit), (result: { result: string }) => {
+      if (result?.result !== 'success') {
+        ToastLayer.showError(`The picture was saved, but its artist credit could not be written to ${AVATAR_CREDITS_FILE}.`);
+      }
     });
   }
 

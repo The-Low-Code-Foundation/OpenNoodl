@@ -14,15 +14,22 @@
  * @module noodl-editor/utils/avatarstyles
  */
 import { createAvatar } from '@dicebear/core';
+import * as adventurer from '@dicebear/adventurer';
+import * as bigSmile from '@dicebear/big-smile';
+import * as croodles from '@dicebear/croodles';
+import * as funEmoji from '@dicebear/fun-emoji';
 import * as glass from '@dicebear/glass';
 import * as identicon from '@dicebear/identicon';
 import * as lorelei from '@dicebear/lorelei';
+import * as micah from '@dicebear/micah';
 import * as notionists from '@dicebear/notionists';
 import * as openPeeps from '@dicebear/open-peeps';
+import * as personas from '@dicebear/personas';
 import * as pixelArt from '@dicebear/pixel-art';
 import * as rings from '@dicebear/rings';
 import * as shapes from '@dicebear/shapes';
 import * as thumbs from '@dicebear/thumbs';
+import * as toonHead from '@dicebear/toon-head';
 
 import { AvatarStyle, CreateAvatar, SHIPPED_AVATAR_STYLES, renderAvatarSvg } from './avatargenerator';
 
@@ -36,7 +43,14 @@ const STYLE_MODULES: Record<string, AvatarStyle> = {
   shapes: shapes as AvatarStyle,
   rings: rings as AvatarStyle,
   identicon: identicon as AvatarStyle,
-  glass: glass as AvatarStyle
+  glass: glass as AvatarStyle,
+  adventurer: adventurer as AvatarStyle,
+  'fun-emoji': funEmoji as AvatarStyle,
+  croodles: croodles as AvatarStyle,
+  'big-smile': bigSmile as AvatarStyle,
+  micah: micah as AvatarStyle,
+  personas: personas as AvatarStyle,
+  'toon-head': toonHead as AvatarStyle
 };
 
 /** Every shipped style paired with its module — the argument `avatarLicenceViolations` grades. */

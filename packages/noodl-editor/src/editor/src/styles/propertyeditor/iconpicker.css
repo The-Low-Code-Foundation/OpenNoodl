@@ -98,3 +98,10 @@
 .avatarpicker-tile img {
   border-radius: 4px;
 }
+
+/** SYL-003 — the artist credit beside a CC BY style's name, so the obligation is visible before the click. */
+.avatarpicker-credit {
+  margin-left: 8px;
+  font-size: 10px;
+  opacity: 0.65;
+}

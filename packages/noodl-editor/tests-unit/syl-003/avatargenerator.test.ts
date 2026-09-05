@@ -12,13 +12,17 @@ import path from 'path';
 import {
   AVATAR_VARIATIONS,
   AvatarStyle,
-  REQUIRED_DESIGN_LICENCE,
+  PERMITTED_DESIGN_LICENCES,
   SHIPPED_AVATAR_STYLES,
+  avatarCreditFor,
   avatarFileName,
   avatarLicenceViolations,
   avatarSeed,
   avatarSlug,
-  renderAvatarSvg
+  parseAvatarCredits,
+  renderAvatarSvg,
+  requiresAttribution,
+  upsertAvatarCredits
 } from '../../src/editor/src/utils/avatargenerator';
 
 describe('SYL-003 — seeds', () => {
@@ -91,36 +95,44 @@ describe('SYL-003 — rendering', () => {
 });
 
 describe('SYL-003 — the licence rule', () => {
-  const styleWithLicence = (name?: string): AvatarStyle => ({
-    meta: name ? { title: 't', license: { name } } : { title: 't' },
+  const styleWithLicence = (name?: string, creator?: string): AvatarStyle => ({
+    meta: { title: 't', creator, ...(name ? { license: { name } } : {}) },
     create: () => undefined
   });
 
-  it('passes a set that is entirely CC0', () => {
+  it('permits CC0 and CC BY, and CC BY only with a named artist', () => {
     expect(
       avatarLicenceViolations([
-        { id: 'thumbs', style: styleWithLicence(REQUIRED_DESIGN_LICENCE) },
-        { id: 'rings', style: styleWithLicence(REQUIRED_DESIGN_LICENCE) }
+        { id: 'thumbs', style: styleWithLicence('CC0 1.0') },
+        { id: 'adventurer', style: styleWithLicence('CC BY 4.0', 'Lisa Wischofsky') }
       ])
     ).toEqual([]);
   });
 
   /**
-   * 🔴 The known-firing half. A gate that only ever sees the passing population proves nothing
-   * about what it would do with the failing one, and the failing one here is concrete: `adventurer`
-   * and `fun-emoji` are CC BY 4.0 and `bottts` carries no licence text at all.
+   * 🔴 The known-firing half, and it has two arms now. A gate that only ever sees the passing
+   * population proves nothing about the failing one, and both failing shapes are concrete:
+   * `bottts` declares no licence text at all, and a CC BY style with no artist cannot be complied
+   * with — a credits file with a blank in it reads as an attribution and is not one.
    */
-  it('names a CC BY style and one that declares nothing', () => {
+  it('names a style with no licence, and a CC BY style with nobody to credit', () => {
     expect(
       avatarLicenceViolations([
-        { id: 'thumbs', style: styleWithLicence(REQUIRED_DESIGN_LICENCE) },
-        { id: 'fun-emoji', style: styleWithLicence('CC BY 4.0') },
-        { id: 'bottts', style: styleWithLicence(undefined) }
+        { id: 'thumbs', style: styleWithLicence('CC0 1.0') },
+        { id: 'bottts', style: styleWithLicence(undefined) },
+        { id: 'anonymous', style: styleWithLicence('CC BY 4.0', undefined) }
       ])
     ).toEqual([
-      { id: 'fun-emoji', licence: 'CC BY 4.0' },
-      { id: 'bottts', licence: '(none declared)' }
+      { id: 'bottts', licence: '(none declared)', reason: 'not a permitted artwork licence' },
+      { id: 'anonymous', licence: 'CC BY 4.0', reason: 'attribution required but no creator is declared' }
     ]);
+  });
+
+  it('knows which licences oblige a credit', () => {
+    expect(requiresAttribution('CC BY 4.0')).toBe(true);
+    expect(requiresAttribution('CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/)')).toBe(true);
+    expect(requiresAttribution('CC0 1.0')).toBe(false);
+    expect(requiresAttribution(undefined)).toBe(false);
   });
 
   /**
@@ -128,10 +140,10 @@ describe('SYL-003 — the licence rule', () => {
    *
    * `avatarstyles.ts` cannot be imported here — DiceBear is ESM and this runner is CommonJS — so
    * the artefact is read off disk instead: every shipped style's own LICENSE file, which is what
-   * actually ships. Adding a tenth style whose artwork is CC BY reddens this at the moment it is
-   * added, rather than at the moment somebody is asked to indemnify it.
+   * actually ships. A style whose artwork licence is neither CC0 nor CC BY reddens this at the
+   * moment it is added, rather than at the moment somebody is asked to indemnify it.
    */
-  it('every style this build actually installs is CC0 on disk', () => {
+  it('every style this build installs carries a permitted artwork licence on disk', () => {
     const modules = path.resolve(__dirname, '../../../..', 'node_modules', '@dicebear');
     const offenders: Array<{ id: string; licence: string }> = [];
 
@@ -145,16 +157,122 @@ describe('SYL-003 — the licence rule', () => {
       const declared = /^License:\s*(.+)$/m.exec(design);
       const licence = declared ? declared[1].trim() : '(none declared)';
 
-      if (!licence.startsWith(REQUIRED_DESIGN_LICENCE)) offenders.push({ id, licence });
+      if (!PERMITTED_DESIGN_LICENCES.some((permitted) => licence.startsWith(permitted))) {
+        offenders.push({ id, licence });
+      }
     });
 
     expect(offenders).toEqual([]);
   });
 
-  it('ships nine styles and leads with the creatures', () => {
-    expect(SHIPPED_AVATAR_STYLES).toHaveLength(9);
+  /**
+   * 🔴 The other half of the same artefact read: a CC BY package must name somebody on disk, or the
+   * credit written into a learner's project would have a hole in it.
+   */
+  it('every CC BY style names an artist on disk', () => {
+    const modules = path.resolve(__dirname, '../../../..', 'node_modules', '@dicebear');
+    const missing: string[] = [];
+    let ccByCount = 0;
+
+    SHIPPED_AVATAR_STYLES.forEach(({ id }) => {
+      const design = fs.readFileSync(path.join(modules, id, 'LICENSE'), 'utf8').split('# Code')[0];
+      if (!/^License:\s*CC BY 4\.0/m.test(design)) return;
+      ccByCount++;
+      if (!/^Designer:\s*\S/m.test(design)) missing.push(id);
+    });
+
+    // ⚠️ Cardinality asserted: `missing` is empty both when every CC BY style names an artist and
+    // when the loop found no CC BY styles at all. Only one of those is the claim.
+    expect(ccByCount).toBe(7);
+    expect(missing).toEqual([]);
+  });
+
+  it('ships sixteen styles and leads with the creatures', () => {
+    expect(SHIPPED_AVATAR_STYLES).toHaveLength(16);
     expect(SHIPPED_AVATAR_STYLES[0].id).toBe('thumbs');
     // Every id is distinct — the record in `avatarstyles.ts` is keyed by these.
-    expect(new Set(SHIPPED_AVATAR_STYLES.map((s) => s.id)).size).toBe(9);
+    expect(new Set(SHIPPED_AVATAR_STYLES.map((s) => s.id)).size).toBe(16);
+  });
+
+  /**
+   * ⚠️ `bottts` and `avataaars` are excluded by Richard's 2026-09-05 ruling because their terms are
+   * a sentence on a web page rather than a licence. Named here so that adding one is a deliberate
+   * act with a red test in front of it, rather than a plausible-looking one-line addition.
+   */
+  it('does not ship the two styles whose terms are a web page', () => {
+    const ids = SHIPPED_AVATAR_STYLES.map((s) => s.id);
+    expect(ids).not.toContain('bottts');
+    expect(ids).not.toContain('avataaars');
+  });
+});
+
+describe('SYL-003 — the credit that travels with the picture', () => {
+  const ccBy = {
+    title: 'Adventurer',
+    creator: 'Lisa Wischofsky',
+    license: { name: 'CC BY 4.0', url: 'https://creativecommons.org/licenses/by/4.0/' }
+  };
+
+  it('writes no credit for a public-domain style', () => {
+    expect(
+      avatarCreditFor('assets/n-thumbs.svg', 'Creatures', {
+        title: 'Thumbs',
+        creator: 'DiceBear',
+        license: { name: 'CC0 1.0' }
+      })
+    ).toBeUndefined();
+  });
+
+  it('credits the artist for a CC BY style', () => {
+    expect(avatarCreditFor('assets/n-adventurer.svg', 'Adventurers', ccBy)).toEqual({
+      fileName: 'assets/n-adventurer.svg',
+      styleName: 'Adventurers',
+      creator: 'Lisa Wischofsky',
+      licence: 'CC BY 4.0',
+      licenceUrl: 'https://creativecommons.org/licenses/by/4.0/'
+    });
+  });
+
+  it('round-trips through the file it writes', () => {
+    const credit = avatarCreditFor('assets/n-adventurer.svg', 'Adventurers', ccBy);
+    const file = upsertAvatarCredits('', credit);
+
+    expect(file).toContain('Lisa Wischofsky');
+    expect(file).toContain('assets/n-adventurer.svg');
+    expect(parseAvatarCredits(file)).toEqual([credit]);
+  });
+
+  /**
+   * 🔴 Picking the same avatar twice is ordinary. A credits file that grew a duplicate row each
+   * time is the first thing an author would delete — taking the attribution with it.
+   */
+  it('is idempotent on the file name, and keeps other rows', () => {
+    const first = avatarCreditFor('assets/a-adventurer.svg', 'Adventurers', ccBy);
+    const second = avatarCreditFor('assets/b-croodles.svg', 'Doodles', {
+      title: 'Croodles',
+      creator: 'vijay verma',
+      license: { name: 'CC BY 4.0', url: 'https://creativecommons.org/licenses/by/4.0/' }
+    });
+
+    let file = upsertAvatarCredits('', first);
+    file = upsertAvatarCredits(file, second);
+    file = upsertAvatarCredits(file, first);
+
+    const rows = parseAvatarCredits(file);
+    expect(rows).toHaveLength(2);
+    expect(rows.map((r) => r.fileName)).toEqual(['assets/a-adventurer.svg', 'assets/b-croodles.svg']);
+  });
+
+  it('does not read its own header or divider back as a credit', () => {
+    expect(parseAvatarCredits(upsertAvatarCredits('', avatarCreditFor('assets/x-micah.svg', 'Portraits', ccBy)))).toHaveLength(1);
+    expect(parseAvatarCredits('')).toEqual([]);
+    expect(parseAvatarCredits('# Image credits\n\nJust prose, no table.')).toEqual([]);
+  });
+
+  it('survives prose a person added around the table', () => {
+    const credit = avatarCreditFor('assets/n-adventurer.svg', 'Adventurers', ccBy);
+    const edited = 'Some note from the author.\n\n' + upsertAvatarCredits('', credit) + '\nA closing note.\n';
+
+    expect(parseAvatarCredits(edited)).toEqual([credit]);
   });
 });

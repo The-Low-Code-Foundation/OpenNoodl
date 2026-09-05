@@ -589,7 +589,22 @@ and it is written into the project's `assets/` as an SVG and selected. Full acco
 [SYL-003](SYL-003-THE-CREATURE-YOU-CHOSE.md#-built--session-12-2026-09-05); the parts worth carrying
 are below.
 
-## 🔴 A licensing decision is now waiting for Richard
+## 🟢 Richard ruled on the licensing, and the CC BY styles are IN
+
+Asked to choose, **Richard added the CC BY 4.0 styles** — sixteen styles now, 64 avatars per
+keyword. `bottts`/`avataaars` stay out (their terms are a sentence on a web page, not a licence),
+and **a spec names them**, so adding one is a deliberate act with a red test in front of it.
+
+🔴 **The obligation is discharged INSIDE THE LEARNER'S PROJECT, not in our docs.** CC BY asks that
+the artist is credited *wherever the work appears*, and what appears is the exported app — so
+picking a CC BY avatar writes `assets/IMAGE-CREDITS.md` beside the picture, and the picker shows the
+artist before the click. Driven, **with the CC0 arm as the control**: a public-domain pick adds no
+row, because a credit the licence does not ask for is a claim we would be putting in the author's
+project.
+
+## The superseded version of that decision
+
+### (superseded) — the state before the ruling
 
 The task file said *"DiceBear is MIT"*. **That is the core; the artwork is licensed per style**, and
 most of the good ones are not MIT. Only the **nine CC0** styles ship. **`bottts` — the obvious

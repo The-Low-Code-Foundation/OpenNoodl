@@ -211,3 +211,67 @@ Fixed with `.avatarpicker-tile`.
 `test:main` **429 suites / 7178 tests, exit 0**. `tsc -p packages/noodl-editor` **exit 0** (read via
 `$pipestatus[1]` — `PIPESTATUS` is a bash-ism and reads empty in this zsh). 20 new specs across
 three files, both load-bearing gates mutant-checked.
+
+---
+
+# 🟢 Richard's ruling, 2026-09-05 — the CC BY styles are IN, with the credit carried
+
+Asked to choose between CC0-only, adding the CC BY 4.0 styles, and adding `bottts`/`avataaars` too,
+**Richard chose the CC BY styles**. Seven were added, and the obligation that comes with them is
+now discharged **inside the learner's project** rather than noted in ours.
+
+| | styles | credit owed |
+|---|---|---|
+| **CC0 1.0** | Creatures, Hand drawn, Illustrated, Sketched, Pixel art, Shapes, Rings, Identicon, Glass | none |
+| **CC BY 4.0** | Adventurers, Fun faces, Doodles, Big smiles, Portraits, Personas, Cartoon heads | **the artist, wherever the work appears** |
+
+**Sixteen styles, 64 avatars per keyword.** `bottts` and `avataaars` remain out — their terms are a
+sentence on a web page rather than a licence text — and a spec now names them, so adding one is a
+deliberate act with a red test in front of it rather than a plausible one-line addition.
+
+## 🔴 What "carried" means, and why it is not a line in our docs
+
+CC BY 4.0 asks that the artist is credited **wherever the work appears**. What appears is the
+*learner's exported app*, not this editor — so a credit in NodeGX's own documentation would satisfy
+nobody. Picking a CC BY avatar therefore writes `assets/IMAGE-CREDITS.md` into the project, beside
+the picture, where it travels with anything they publish:
+
+```
+| picture | style | artist | licence |
+| --- | --- | --- | --- |
+| assets/cover-photo-adventurer.svg | Adventurers | Lisa Wischofsky | CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/) |
+| assets/cover-photo-micah.svg | Portraits | Micah Lanier | CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/) |
+```
+
+The picker shows the artist **beside the style name before the click**, so the author can see what
+picking one commits their project to.
+
+## Driven, with the control that makes it mean something
+
+| arm | reading |
+|---|---|
+| pick **Adventurers** (CC BY) | `cover-photo-adventurer.svg` **and** a credits file with one row |
+| pick **Creatures** (CC0) — the control | the SVG lands, and the credits file stays at **one** row |
+| pick **Portraits** (CC BY), credits file already on disk | **two** rows, sorted, merged into the existing file |
+| `render_report` on the CC BY avatar | `2 images (1 broken)` — the portrait drawn, the deliberately missing control broken |
+
+🔴 **The CC0 arm is the one that matters.** Writing a credit for a public-domain picture would put a
+claim in the author's project that the licence does not make, and without that arm "the credits file
+has a row in it" would be true whichever way the code branched.
+
+## The gate grew a second half
+
+`avatarLicenceViolations` now rejects **two** shapes: a licence outside the permitted set, and a
+CC BY style with **no named artist** — because a credits file with a blank in it reads as an
+attribution and is not one. Both halves have a failing arm in the specs, and the disk-reading gate
+additionally asserts **cardinality** (`ccByCount` is 7), because "no CC BY style is missing an
+artist" is also true when the loop found no CC BY styles at all.
+
+⚠️ **An earlier `test:main` exited 1 while reporting `429 passed, 429 total`.** Three subsequent
+runs were clean at exit 0. Recorded as a flake, not chased — but if it recurs it is real.
+
+## Gates after the ruling
+
+`test:main` **429 suites / 7187 tests, exit 0** · `tsc -p packages/noodl-editor` **exit 0** ·
+29 specs across the three SYL-003 files, the credits dedupe mutant-checked (removing the filter
+reddens exactly the idempotence test).

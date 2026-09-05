@@ -73,7 +73,7 @@ describe('SYL-003 AC2 — the picker works with the network off', () => {
   it('generates a real avatar for every shipped style with no network at all', () => {
     const child = runOffline(`
       const { createAvatar } = await import('@dicebear/core');
-      const ids = ['thumbs','open-peeps','lorelei','notionists','pixel-art','shapes','rings','identicon','glass'];
+      const ids = ['thumbs','open-peeps','lorelei','notionists','pixel-art','shapes','rings','identicon','glass','adventurer','fun-emoji','croodles','big-smile','micah','personas','toon-head'];
       const out = [];
       for (const id of ids) {
         const style = await import('@dicebear/' + id);
@@ -87,7 +87,7 @@ describe('SYL-003 AC2 — the picker works with the network off', () => {
     expect(child.status).toBe(0);
 
     const rendered: string[] = JSON.parse(child.stdout);
-    expect(rendered).toHaveLength(9);
+    expect(rendered).toHaveLength(16);
     rendered.forEach((entry) => {
       const [id, size] = entry.split(':');
       expect(`${id}: ${size}`).not.toContain('NOT-AN-SVG');
@@ -130,7 +130,7 @@ describe('SYL-003 AC2 — the picker works with the network off', () => {
   it('produces self-contained SVG — no scripts, no external references', () => {
     const child = runOffline(`
       const { createAvatar } = await import('@dicebear/core');
-      const ids = ['thumbs','open-peeps','lorelei','notionists','pixel-art','shapes','rings','identicon','glass'];
+      const ids = ['thumbs','open-peeps','lorelei','notionists','pixel-art','shapes','rings','identicon','glass','adventurer','fun-emoji','croodles','big-smile','micah','personas','toon-head'];
       const bad = [];
       for (const id of ids) {
         const style = await import('@dicebear/' + id);
