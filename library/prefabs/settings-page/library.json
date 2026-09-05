@@ -1,0 +1,14 @@
+{
+  "label": "Settings Page",
+  "description": "A sectioned settings form that knows what you have changed. Profile, Notifications and Appearance sections built from labelled text, dropdown and checkbox fields in the same style as Form Fields, plus a save bar that is not there at all until a field actually differs from the value it loaded with \u2014 then it names the count (\"2 unsaved changes\") and offers Save and Discard. Discard puts every field back; Save re-baselines, so the values you just saved become the new \"unchanged\". Out of the box it loads a realistic sample record from a Static Data node; connect your own object to Settings and it wins. Publishes Values, Is Dirty and Change Count, and fires Saved / Discarded.",
+  "type": "prefab",
+  "tags": [
+    "UI",
+    "Form",
+    "Layout"
+  ],
+  "version": "1.1.0",
+  "minEditorVersion": "0.1.0",
+  "runtimeVersion": "2.7.0",
+  "icon": "icon.png"
+}
