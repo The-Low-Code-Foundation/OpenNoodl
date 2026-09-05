@@ -32,6 +32,7 @@ import { RECORD_FILTER_LIB_PATH, recordFilterLibSource } from './recordFilterLib
 import { STREAMING_LIB_PATH, streamingLibSource } from './streamingLib';
 import { CRYPTO_LIB_PATH, cryptoLibSource } from './cryptoLib';
 import { SCREEN_LIB_PATH, screenLibSource } from './screenLib';
+import { DRAG_LIB_PATH, dragLibSource } from './dragLib';
 import { EmittedCopy, emitKits } from './kits';
 import { README_PATH, renderReadme } from './readme';
 import { ExportReportData, REPORT_PATH, ReportComponent, renderReport, stripScope } from './report';
@@ -140,6 +141,8 @@ export function emitApp(ir: ExportIR, catalog: Catalog): EmittedApp {
   // EXP-011 §59.
   let cryptoLibUsed = false;
   let screenLibUsed = false;
+  // EXP-011 §63.
+  let dragLibUsed = false;
   const reportComponents: ReportComponent[] = [];
   for (const plan of project.plans) {
     if (plan.skipReason) {
@@ -197,6 +200,7 @@ export function emitApp(ir: ExportIR, catalog: Catalog): EmittedApp {
     if (emitted.streamingLib) streamingLibUsed = true;
     if (emitted.cryptoHelpers.size > 0) cryptoLibUsed = true;
     if (emitted.screenLib) screenLibUsed = true;
+    if (emitted.dragLib) dragLibUsed = true;
   }
 
   /**
@@ -235,7 +239,8 @@ export function emitApp(ir: ExportIR, catalog: Catalog): EmittedApp {
    * the same rule. `states.ts` imports `animate.ts`, so a States alone ships both; an Animate To
    * Value alone ships only the first.
    */
-  if (animateLibUsed) {
+  // EXP-011 §63. drag.ts runs its snap tween on animate.ts's scheduler transcription, so a Drag earns the module too.
+  if (animateLibUsed || dragLibUsed) {
     files[ANIMATE_LIB_PATH] = GENERATED_MODULE_TS + animateLibSource();
   }
   if (statesLibUsed) {
@@ -250,7 +255,8 @@ export function emitApp(ir: ExportIR, catalog: Catalog): EmittedApp {
     files[RUN_TASKS_LIB_PATH] = GENERATED_MODULE_TS + runTasksLibSource();
   }
   // EXP-011 §54. `src/lib/errors.ts` — the channel. script.ts and runTasks.ts raise on it, so either earns it too.
-  if (errorsLibUsed || scriptLibUsed || runTasksLibUsed || streamingLibUsed) {
+  // EXP-011 §63. drag.ts raises `drag/snap-position-not-a-number` on the channel, so a Drag earns errors.ts too.
+  if (errorsLibUsed || scriptLibUsed || runTasksLibUsed || streamingLibUsed || dragLibUsed) {
     files[ERRORS_LIB_PATH] = GENERATED_MODULE_TS + errorsLibSource();
   }
   // EXP-011 §58. `src/lib/streaming.ts` — the trio's host; it raises on the channel, so it earns errors.ts above.
@@ -264,6 +270,10 @@ export function emitApp(ir: ExportIR, catalog: Catalog): EmittedApp {
   }
   if (screenLibUsed) {
     files[SCREEN_LIB_PATH] = GENERATED_MODULE_TS + screenLibSource();
+  }
+  // EXP-011 §63. `src/lib/drag.ts` — the Drag hook, where a component rendered one.
+  if (dragLibUsed) {
+    files[DRAG_LIB_PATH] = GENERATED_MODULE_TS + dragLibSource();
   }
   if (recordFilterLibUsed) {
     files[RECORD_FILTER_LIB_PATH] = GENERATED_MODULE_TS + recordFilterLibSource();

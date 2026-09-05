@@ -38,7 +38,9 @@ export type StyleRole =
   | 'select'
   | 'range'
   | 'video'
-  | 'circle';
+  | 'circle'
+  // EXP-011 §63. The wrapper a Drag hook binds to — no style ports of its own.
+  | 'drag';
 
 export interface Decl {
   prop: string;
@@ -242,6 +244,24 @@ const PASSTHROUGH = new Set([
  * appended and a wired `transformX` a `transform` the static style has no rule for — both
  * refused by name until a fixture asks. Keys in emit order.
  */
+/**
+ * EXP-011 §63. A `Drag`'s own ports — the hook's options, printed by the component emitter and neither style nor
+ * content. ⚠️ `plan.ts`'s `DRAG_OPTION_PORTS` is the authority (it carries the keys and labels); this list must name the
+ * same ports, and `drag.test.ts` pins that it does. style.ts cannot import plan.ts (plan.ts imports this module).
+ */
+export const DRAG_OWN_PORTS: readonly string[] = [
+  'axis',
+  'enabled',
+  'useParentBounds',
+  'scale',
+  'inputPositionX',
+  'inputPositionY',
+  'snapToPositionX.value',
+  'snapToPositionX.duration',
+  'snapToPositionY.value',
+  'snapToPositionY.duration'
+];
+
 export const WIRED_STYLE_SINKS: Record<string, { css: string; sink: 'number' | 'string' }> = {
   opacity: { css: 'opacity', sink: 'number' },
   color: { css: 'color', sink: 'string' },
@@ -371,6 +391,8 @@ export function computeNodeStyle(node: NodeIR, role: StyleRole, catalog: Catalog
   const unhandled: string[] = [];
   const notes: string[] = [];
   const consumed = new Set<string>();
+  // EXP-011 §63. A Drag's own ports are the hook's options — consumed here so the emitter does not report them unmapped.
+  if (role === 'drag') for (const port of DRAG_OWN_PORTS) consumed.add(port);
 
   const literal = (name: string): string | number | boolean | undefined => {
     const v = params.get(name);
