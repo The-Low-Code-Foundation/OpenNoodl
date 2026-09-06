@@ -1241,6 +1241,18 @@ export interface NodeDefinitionOptions {
   haveComponentPorts?: boolean;
 
   /**
+   * P77 SBR-008 §9 — ports under this prefix are declared by the author's WIRES, not only by
+   * the node's own port set (`prop-` on the Record family).
+   *
+   * Such a port may not exist yet: the runtime mints it from the node's wires, and on a fresh
+   * site that is the only declaration there is, because the column the schema would name it
+   * from does not exist until something writes it. The editor reads this to stop calling such
+   * a wire broken in the meantime — without which it is a deadlock rather than a delay, since
+   * `exportComponent` drops the very wire the runtime would need to mint the port.
+   */
+  wireDeclaredPortPrefix?: string;
+
+  /**
    * NDA-017 §2 — declare this node a member of the control-signal class.
    *
    * `defineNode` synthesises one `runOnChange-<input>` checkbox port per named input, so a
@@ -1372,6 +1384,8 @@ export interface NodeMetadata {
   dynamicports?: DynamicPortEntry[];
   exportDynamicPorts?: boolean;
   haveComponentPorts?: boolean;
+  /** P77 SBR-008 §9 — see {@link NodeDefinitionOptions.wireDeclaredPortPrefix}. */
+  wireDeclaredPortPrefix?: string;
 
   singleton?: boolean;
   allowChildren?: boolean;

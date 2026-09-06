@@ -339,6 +339,10 @@ function defineNode(opts: NodeDefinitionOptions): NodeDefinition {
     displayNodeName: opts.displayNodeName || opts.displayName,
     deprecated: opts.deprecated,
     haveComponentPorts: opts.haveComponentPorts,
+    // P77 SBR-008 §9 — ports under this prefix are declared by the author's wires. Carried
+    // through to the editor so it stops calling such a wire broken before the runtime has
+    // minted the port; see `data/dbmodelcrudbase.ts` for the deadlock that needs.
+    wireDeclaredPortPrefix: opts.wireDeclaredPortPrefix,
     version: opts.version,
     module: opts.module,
     docs: opts.docs,

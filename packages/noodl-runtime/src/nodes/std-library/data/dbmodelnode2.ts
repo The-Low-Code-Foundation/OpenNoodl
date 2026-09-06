@@ -101,6 +101,12 @@ const ModelNodeDefinition: NodeDefinitionOptions = {
   displayNodeName: 'Record',
   category: 'Cloud Services',
   usePortAsLabel: 'collectionName',
+  // P77 SBR-008 §9. The same declaration the write family carries, for the read half: this
+  // node's `prop-<field>` are OUTPUTS, so its wires are the ones `/Pages/PageEditor` uses to
+  // fill a form (`prop-title → startValue`). Set here rather than in a shared mixin because
+  // this node builds its ports in its own `updatePorts`, not through `_addInputProperties`.
+  // See `dbmodelcrudbase.ts` for why the editor needs to be told at all.
+  wireDeclaredPortPrefix: 'prop-',
   color: 'data',
   dynamicports: [
     {

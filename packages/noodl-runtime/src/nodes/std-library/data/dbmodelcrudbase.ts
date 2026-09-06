@@ -662,6 +662,29 @@ function _addInputProperties(def: DbCrudNodeModule) {
   // the only honest place to say a node has them. See `_addBaseInfo`.
   def._hasInputProperties = true;
 
+  /**
+   * P77 SBR-008 §9 — the wire is the declaration, said where the EDITOR can hear it.
+   *
+   * `recordWiredFieldPorts` mints `prop-<field>` from this node's own wires, which is what
+   * lets a fresh site name a column nothing has written yet. But it reads those wires off
+   * the component the *runtime* holds, and that component reached it through
+   * `exportComponent`, which has already dropped every wire the editor called unhealthy —
+   * and a wire into a port the editor does not know about is exactly that. So the wire half
+   * could only ever recover the fields that are also saved parameters, and the bootstrap
+   * case it was built for stayed deadlocked: measured on a wizard-fresh site, this node
+   * announced `prop-published/showInNav/navOrder` (its three parameters) and neither of the
+   * two that arrive only over a wire.
+   *
+   * The loop is `editor health → exported wires → runtime ports → editor health`, and it has
+   * to be broken exactly once. Not in the exporter (§4's trap: the filter keeps meaning what
+   * it says) and not by minting these ports in the editor (§2: `setDynamicPorts` replaces, so
+   * a second writer erases the first). What is left is the *verdict*: a wire into a
+   * `prop-` port on this family is not a wire into a port that does not exist — it is the
+   * author declaring the field, which is this whole task's ruling. The editor reads this to
+   * say so, and the runtime stays the only thing that mints a port.
+   */
+  def.node.wireDeclaredPortPrefix = 'prop-';
+
   Object.assign(def.node, {
     inputs: def.node.inputs || {},
     outputs: def.node.outputs || {},

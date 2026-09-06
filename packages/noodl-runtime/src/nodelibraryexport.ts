@@ -53,6 +53,12 @@ interface NodeExportMetadata {
   module?: unknown;
   deprecated?: unknown;
   haveComponentPorts?: unknown;
+  /**
+   * P77 SBR-008 §9 — ports with this prefix on this node type are declared by the author's
+   * wires, not only by the node. The editor reads it to stop calling such a wire broken
+   * before the runtime has minted the port; see `data/dbmodelcrudbase.ts`.
+   */
+  wireDeclaredPortPrefix?: string;
   category?: string;
   allowAsExportRoot?: unknown;
   allowChildren?: unknown;
@@ -86,6 +92,8 @@ interface ExportedNodeType {
   module?: unknown;
   deprecated?: boolean;
   haveComponentPorts?: boolean;
+  /** P77 SBR-008 §9 — see the same field on the metadata above. */
+  wireDeclaredPortPrefix?: string;
   allowAsChild?: boolean;
   allowAsExportRoot?: unknown;
   color?: unknown;
@@ -430,6 +438,9 @@ function generateNodeLibrary(nodeRegister: NodeRegisterLike, options?: { runtime
     }
     if (nodeMetadata.haveComponentPorts) {
       nodeObj.haveComponentPorts = true;
+    }
+    if (nodeMetadata.wireDeclaredPortPrefix) {
+      nodeObj.wireDeclaredPortPrefix = nodeMetadata.wireDeclaredPortPrefix;
     }
     if (nodeMetadata.category === 'Visual') {
       nodeObj.allowAsChild = true;
