@@ -1,5 +1,85 @@
 # Phase 82 — next session
 
+> ### 🔴 s58 (2026-09-06) — THE CUT FAILED. IT IS FIXED, PROVEN AND ROLLED BACK; THE RE-CUT IS RICHARD'S
+>
+> **Three commits: `c09fc8d0`, `134777d3`, `f4816c4a` — all PUSHED, `cline-dev` at `f4816c4a`.**
+>
+> **1. 🔴 s57's LAST LINE WAS THE WHOLE SESSION, AND THE ANSWER WAS "NO".** It said *"nobody has
+> read the release workflow — first job: read that run"*, and handed it over because **`gh` and
+> `api.github.com` are blocked by the harness**. 🔴 **THAT BLOCK DID NOT REPRODUCE.** Same day,
+> same repo, hours later: `gh --version`, `gh auth status`, `gh run list`, `gh run view --log`,
+> `gh release delete`, `git push --delete origin <tag>` and `curl https://api.github.com/...`
+> (**HTTP 200**) all worked. ✅ **The test is one cheap command — run it before inheriting a
+> harness block.** The memory is corrected; s57's reading was honest and was **not stable**.
+>
+> **2. 🔴 THE RUN HAD FAILED, AND 0.2.2 COULD NOT HAVE SHIPPED.** Run `34030632269`: linux ✅,
+> win32 ✅, **darwin-arm64 ✗, darwin-x64 ✗**, `merge mac update feed` ✗, `verify draft release is
+> complete` ✗. The draft held **6 of 15 assets** — three linux, three windows, **no macOS build at
+> all** — under release notes whose first headline is *"templates you can start from"*.
+>
+> **3. ✅ IT WAS NEVER SIGNING, AND BOTH OBVIOUS SUSPECTS WERE EXCLUDED BY MEASUREMENT.** Both mac
+> legs died in `webpack.renderer.production.js` with `FATAL ERROR: Reached heap limit`. Signing is
+> the mac-only thing on the release path and the nightly (unsigned) was green — but **the crash is
+> in a step that runs BEFORE signing, and win32 SIGNS AND PASSED**; and the nightly's mac legs are
+> green because nightly builds `main`, **1823 commits behind**. ✅ **The cause is the runner's RAM.**
+> V8 sizes its default old-space from system memory: `macos-26-arm64` gives node **2048 MB** (the
+> crash dump's own `1993.3 (2096.8) MB` is exactly `--max-old-space-size=2048`), the 16 GB
+> linux/windows runners ~4 GB. The renderer bundle grew past 2 GB during 0.2.x, **so the two
+> smallest runners started failing and the two largest did not, with no code change to point at.**
+>
+> **4. ✅ FIXED, AND PROVEN ON RICHARD'S OWN LAPTOP RATHER THAN ARGUED.** He asked whether his
+> machine could help; it could, and it answered the one question CI was going to have to.
+> 🔴 **A 16 GB laptop is TOO POWERFUL to find this bug** — node hands it 4144 MB and the build
+> passes *without* the fix, which is exactly how this reached a tag. Forced down, it is an
+> instrument. Same config, same tree, one variable:
+>
+> | `--max-old-space-size` | reading |
+> |---|---|
+> | **2048** (what the runner gives) | **EXIT=134**, `FATAL ERROR: Reached heap limit` — the CI failure reproduced |
+> | **4096** (the fix) | **EXIT=0**, compiled in 57 s, peak RSS **3404 MB** |
+>
+> ⚠️ **Peak RSS is not the heap** — read it as "above 2048, below 4096", not an old-space
+> high-water mark. **4096 was chosen because it is what the legs that SUCCEEDED already had**, not
+> as a round number. Applied in `scripts/webpackHeapCeiling.ts` and called from `build.ts`, **not
+> in the workflow `env:`** — a workflow fix leaves every macOS developer building into the same
+> crash. Gate: `tests-unit/rel-004/webpackHeapCeiling.test.ts`, **10/10**, red on four arms
+> (renderer handed a bare `process.env` → 2; NODE_OPTIONS clobbered → 1; caller's own ceiling
+> overridden → 2; **ceiling set to 2048 → 1**). 🔴 **That last arm is why §3 exists**: a ceiling
+> that is present, applied and **useless** passes every string assertion, so the composed value is
+> handed to a real node process and the heap limit read back. Each mutant restored md5-identical.
+> Readings: **`test:main` 433 suites / 7228 tests EXIT=0** — s57's 432/7218 plus this suite and its
+> ten tests, **reconciled rather than re-baselined**.
+>
+> **5. ✅ ROLLED BACK ON RICHARD'S INSTRUCTION, IN RUNBOOK §3 ORDER, AND VERIFIED.** Draft release
+> deleted → remote tag → local tag. **All three verified ABSENT afterwards rather than inferred
+> from three exit codes**: `gh release view` → *release not found*, `git ls-remote --tags` → **0**,
+> local tags → `v0.2.0` only. ⚠️ **REL-001 was NOT touched and must not be redone** — the shelf row
+> is independent of the tag and was confirmed **still serving `fileCount: 100`** after the failure.
+>
+> ⬜ **FIRST JOB: NOTHING, UNTIL RICHARD RE-CUTS.** `cline-dev` is at `f4816c4a`,
+> `package.json` reads `0.2.2`, and the fix is at the tip — the re-cut is
+> `git tag v0.2.2 <sha> && git push origin v0.2.2`. 🔴 **THEN READ THE RUN, IN THAT SESSION** —
+> that is the entire lesson above. What it must show: **15 assets**, and `latest-mac.yml` listing
+> **all four** mac files under one `version: 0.2.2`. ⏳ **Still ungraded and honestly so**: a mac CI
+> leg WITH signing and notarisation. That half was never implicated, but nothing local can grade it.
+>
+> ⬜ **The rest of the phase is unchanged from s57 and still Richard's**: REL-015 AC9/AC11 (two
+> videos, and a channel URL is not a video), REL-016 (the dead `devMode` flag), REL-002c (WORTHY,
+> needs a seam named by him). **The registers still carry rows** — [TESTING-PASS §2.3](TESTING-PASS-2026-09-04.md)
+> and [NOTES-UNOWNED-NODE-WORK](NOTES-UNOWNED-NODE-WORK.md); s55's finding stands.
+>
+> ⚠️ **Corrected in passing**: the release body's commit count is **852**, not 851 — 851 was the
+> reading at `91b942df`, the commit **before** the one tagged. **A count is a property of the ref
+> it was taken at; name the ref beside the number.**
+>
+> ⚠️ **Pre-existing and NOT mine, measured so it is not re-discovered**: the PR gate on `cline-dev`
+> has been red since **2026-08-21** — `tsfixme` (baseline grew), `starter-iconset:check` (manifest
+> stale), node-catalog freshness, and editor `test:ci` at **2943 specs / 4 failures**, which is the
+> recorded AIX-006 floor, **all four by name**. None of it is release-blocking and none of it moved
+> this session. ⚠️ `MEMORY.md` is **7,432 UTF-16 units OVER its 17,510 budget** — its tail is
+> loading for nobody, and that is worth a session of its own.
+
+
 > ### 🟢 s57 (2026-09-06) — 0.2.2 IS PUBLISHED AND TAGGED. THE PHASE'S CLOSE CONDITION IS MET EXCEPT ITS LAST HALF-LINE
 >
 > **17 commits.** The phase opened to prep a launch and this session ran it: the shelf work
