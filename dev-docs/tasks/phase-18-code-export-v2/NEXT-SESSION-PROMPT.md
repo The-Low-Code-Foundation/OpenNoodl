@@ -1,107 +1,111 @@
-# Next session — session 96 (2026-09-06) built §74, the literal-under-a-wire family row five registers named: measured in the runtime first, ONE register sentence turned out to be TWO rows — a Do-Set (Set Variable / Global Store Set / Set Object Properties) holds the wire's last defined delivery else the typed-in value ⇒ `expr ?? typed` where the wire's source may read `undefined`, a NOTE where it always carries one (mood-desk's four sit under constants and are never written in the runtime either); a `Variable`'s seed under the one translated wire is dead in the runtime too (the text input fires `onTextChanged` AT MOUNT) ⇒ §67's refusal stands. Picker 117/127 (92.1%) unchanged. Next = the pre-existing TS2322 §74 found (an `unknown` Variable into a required-string Global Store key), then §69.4 #1's cascade sentence in EXP-004's report, then §71.5's ruling for Richard
+# Next session — session 97 (2026-09-06) built EXP-014, EXP-015 and EXP-016 together: the three divergences the TPL-003 landing-pages export drive found, all three now built, gated and driven on one reverted-worktree pair. The hero went from **1.03:1 to 17.24:1**, the exported page from **0 headings and 0 landmarks to 1 h1 / 5 h2 / 5 section / 1 main** (the viewer's own column), and body/heading/button from `system-ui`/`system-ui`/**`Arial`** to Inter throughout. Picker 117/127 (92.1%) unchanged — all three are parameter fixes inside already-translated nodes. Next = §14.5's `<img src>` residual OR back to EXP-011's queue (§74.5's TS2322 sink, then §69.4 #1's cascade sentence, then §71.5's ruling)
 
 ## 🔴 Read this first — Richard, 2026-09-02: *"Stop fucking up the CPU."*
 
-One heavy job at a time on this 16 GB box. Session 96 ran single-spec jest (one runtime corpus file, 4 export files) for the rows and
-the thirteen arms, then ONE whole-package run, the editor tsc, the ledger + picker checks and `test:ci` strictly one after another behind
-a load gate (`gates96.sh`, s96 scratchpad `47ba0b96-…`, s95's shape). Load 26 at 11:16 was MY OWN whole-package jest (7 workers, the
-same as s95's) + Docker + Firefox — `ps -Ao pid,ppid,%cpu,command | sort -k3 -nr` before waiting on it. Memory: `do-not-pile-cpu-work-on-a-shared-box`.
+One heavy job at a time on this 16 GB box. Session 97 ran single-spec jest for the rows and the
+21 arms, then **one** whole-package run, the editor tsc, the ledger + picker checks and `test:ci`
+strictly one after another; the drive's two `vite preview` servers and the headless Chrome were
+torn down the moment the last reading was taken (`lsof -ti tcp:PORT -sTCP:LISTEN`), and the
+reverted worktree was `git worktree remove`d. Load was 3.8–4.8 throughout.
+🔴 **The ledger was edited AFTER the first whole-package run, so the run was repeated** — many
+specs read `coverage-ledger.json`. Restart the gate chain whenever the tree moves under it.
 
 ## The board, re-derived from the task files
 
 | task | status |
 |---|---|
 | EXP-001 `@nodegx/core` | ✅ Published `0.1.0` (4 `0.1.1` rows carried) |
-| EXP-002 / 003 / 005 / 006 / 007 | unchanged |
-| EXP-004 | 🟡 built + driven; drill-down panel + the comprehension test remain (Richard's); §69.4 #1 (the cascade sentence on the node in front) — job 2 |
-| EXP-008 | ✅ `export-ledger:check` OK — 176 types, 124 translated |
-| EXP-009 backend connection | 🟢 |
-| EXP-010 | 🟢 Route B built + driven s34 |
-| EXP-011 picker coverage | 🟡 **117/127 (92.1%)** — every scheduled tier built and driven; **§74 built this session**; §67.5 #1, §68.5 #1, §69.5 #1, §70.5 #1 CLOSED, §71.5 #1 reworded; the 10 left are §50 out-of-scope RULINGS |
-| EXP-012 | 🟢 built + driven s67 |
-| EXP-013 "Not exportable yet" | 🟢 — no scheduled row remains |
+| EXP-002 / 003 / 005 / 006 / 007 | unchanged. ⚠️ EXP-002-TARGET-OUTPUT's "Semantic HTML" row was rewritten by s97 |
+| EXP-004 | 🟡 built + driven; drill-down panel + the comprehension test remain (Richard's); §69.4 #1 (the cascade sentence on the node in front) |
+| EXP-008 | ✅ `export-ledger:check` OK — 176 types, 124 translated. 🔴 **New open question from EXP-014 AC5**: a node can be `translated` while dropping the parameter that decides what it looks like. No per-parameter coverage exists, and nothing gated three visible gaps for seventeen sessions |
+| EXP-009 / EXP-010 / EXP-012 / EXP-013 | 🟢 |
+| EXP-011 picker coverage | 🟡 **117/127 (92.1%)** — every scheduled tier built and driven; the 10 left are §50 out-of-scope RULINGS. §74.5 #1 still open |
+| **EXP-014 the ground** | 🟢 **BUILT, GATED, DRIVEN s97.** One residual, §14.5, owner NONE |
+| **EXP-015 the tag** | 🟢 **BUILT, GATED, DRIVEN s97** |
+| **EXP-016 the typeface** | 🟢 **BUILT, GATED, DRIVEN s97** |
 
-## What session 96 did (§74 — RE-MEASURED first; the register's one sentence was two rows)
+## What session 97 did
 
-1. **The runtime, measured** (`packages/noodl-runtime/test/corpus/exp-011-s96-a-literal-under-a-wire.test.ts`, 11 rows, readout in the s96
-   scratchpad's `runtime.log`): `nodescope.ts` queues the typed-in parameter at creation; `connectInput` queues the wire's CURRENT value over
-   it only when defined; every delivery lands over it. Set Variable / Global Store Set / Set Object Properties under a wire from a `Variable`
-   nothing wrote: Do ⇒ `"typed"`, source written ⇒ `"wired"`, source back to `undefined` ⇒ still `"wired"` (sticky — registered); under a
-   `String` constant: `"const"` from the first Do, the typed-in value never written. `Variable`/`Object` creation-time writes: `["seed","wired"]`
-   under an unwritten source, `["const"]` under a constant.
-2. **The build** — `plan.ts` `typedInUnderWire` (one helper, the three Set sites) on `maybeUndefinedExpr` ⇒ `fallback?` on `store-set` /
-   `globalstore-set` / an `object-set` entry; `component.ts` `withFallback` prints `(code) ?? typed` (parens unless `SIMPLE_REF`);
-   `appState.ts` `sourceMayBeUndefined` + `liveSources` (the literal under a wire types the variable/key only while the wire may deliver
-   nothing; default = WIDEN). Never-undefined source ⇒ a note: *its typed-in Value 7 is never written — the wire from nameInput:onTextChanged
-   always carries a value, so every Do writes the wire's value, in the runtime and here*.
-3. **The `Variable` half is NOT this row**: the one wire into a Variable's Value the export translates (a text input's `onTextChanged`) fires
-   at mount (`TextInput.tsx` `componentDidMount` → `setText(startValue)`; code-read, the corpus harness cannot host a React control) ⇒ the
-   seed is dead in the runtime too; §67's refusal stands (D1). An Object's own `prop-*` under a wire stays with §47's whole-node refusal.
-4. Spec `tests/literal-under-a-wire.test.ts` 15 rows (3 typecheck the built app), **13/13 arms** (`mut.py`, md5-restored); pins moved:
-   object-store E3/F3/F8, global-store H4, small-utilities §C (mood-desk "no notes" → exactly four `is never written`).
-5. 🔴 **Found by the probe, controlled on the same tree by dropping the literal**: an `unknown` Variable (nothing writes it) wired into a
-   Global Store Set whose key the initial state types `string` emits `mood.set({ theme: ghost.get() })` ⇒ **TS2322 in the built app**,
-   with or without the fallback. Pre-existing (§72 coerced the record-Id sink, never this one). §74.5 #1 — job 1.
-6. Docs: EXP-011 §74 (six findings), five register rows, PROGRESS row, this file; memory `phase-18-code-export-v2`.
+1. **EXP-014** — `computeNodeStyle` grew the background fold, transcribed from the runtime's
+   `_updateBackgroundLayers`: two ports into ONE `background-image` with the **gradient first** (the
+   scrim idiom), `background-size`/`background-position` from the catalog defaults, an unported
+   `background-repeat: no-repeat`, and nothing at all when neither layer is set. `backdropBlur` is a
+   separate rule — both spellings or neither, a zero emitting nothing. `blurLength` is the runtime's
+   `cssLength` plus its zero gate; `cssUrl` is the **one** non-transcription, and it had to be: a
+   relative `url()` in a CSS module resolves against the **stylesheet**, so a project-relative
+   picture is made root-absolute, which is where the `copies` channel already puts it.
+2. **EXP-015** — `authoredTag(node, fallback, catalog)`, exported and pure so the spec grades it
+   directly, plus a `tagOf` closure that also reads the **collapsed Group** for a page div. Validated
+   against `CatalogIndex.enumValues` (new): no element list is written anywhere in the package.
+   Three refusals, in order — void element (first, so the guard is not dead code behind the enum
+   test), no Tag port on the type, off-enum — each a named note **and** an in-code marker.
+3. **EXP-016** — `baseCss()` is the runtime's two `body` declarations plus
+   `button, input, select, textarea { font: inherit }`.
+4. Two fixtures (`ground-desk`, `tag-desk`), three specs (32 + 32 + 14 rows), **21 arms, 21/21**.
+   Ledger `Group`/`Text` notes, `EXP-002-TARGET-OUTPUT`'s Semantic HTML row, README + PROGRESS.
 
 ## The gate chain — READ on this tree
 
-**whole pkg jest 80 files (80 on disk) 3012/3012 exit 0** (11:15–11:17) · **editor tsc exit 0, empty log** (11:19) · **`export-ledger:check` OK — 176 types, 124 translated** · **picker 117/127 exit 0** · **editor `test:ci` 2943 specs, 4 failures = the floor BY NAME** (AIX-006 ×4; seed 53136; `test-results.json` fresh 11:21, 3112 bytes; `.webpack-cache` cleared first; exit 1 as always on the floor; HEAD `d43dcbe0`). No drive: the emitted text is §69's handler with a `??`, and A1/A3/B1/B3 typecheck the emitted app.
+**whole pkg jest 83 files (83 on disk) 3126/3126 exit 0** (run TWICE — once before and once after
+the ledger edit) · **package `tsc` exit 0** · **editor `tsc -p tsconfig.json --noEmit` exit 0, empty
+log** · **`export-ledger:check` OK — 176 types, 124 translated** · **picker 117/127 exit 0** ·
+**editor `test:ci` 2943 specs, 4 failures = the floor BY NAME** (AIX-006 ×4; seed 61662;
+`tests/test-results.json` fresh 12:13, 3112 bytes; `.webpack-cache` cleared first; exit 1 as always
+on the floor; HEAD `f0675a6f`). **Drive**: both arms `npm install && tsc -b && vite build` exit 0,
+no hand edits, 82 modules; served and measured in one headless Chrome; pictures in the s97
+scratchpad `26fc68ac-…` (`before-*.png` / `after-*.png`).
 
 ## Uncommitted at hand-off
 
-Nothing of session 96's after its commits. `EXP-001-NODEGX-CORE.md` still carries a PEER's edit, untouched. `packages/noodl-runtime/test/backends/realtime-transports.test.ts` (M) and `packages/noodl-runtime/test/nodelibraryexport.wire-declared-ports.test.ts` (??) are a PEER's, untouched. `library/**`, `packages/noodl-core-ui/**`, `packages/noodl-editor/**`, `packages/noodl-mcp/**`, `packages/noodl-runtime/src/**` modifications are peers' (P78/P81/P82/P77), untouched.
+Nothing of session 97's after `e2ea5190` (feature) and `d7ede3c3` (docs).
+`EXP-001-NODEGX-CORE.md` still carries a PEER's edit, untouched. `packages/noodl-types/src/runtime/
+node-definition.d.ts`, `scripts/devtools/render-from-disk.js` and `render-report.js` are peers',
+untouched, as are `library/**`, `packages/noodl-core-ui/**`, `packages/noodl-editor/**`,
+`packages/noodl-mcp/**`, `packages/noodl-runtime/src/**` and every other phase's dev-docs.
 
 ## 🔴 Do this next (BUILD)
 
-1. **§74.5 #1 — the `unknown`-into-a-typed-store-key sink.** `mood.set({ theme: ghost.get() })` where `theme: string` is TS2322 in the built app
-   (the probe `probe74c.ts` in the s96 scratchpad reproduces it: cheer + a `Variable` `ghost` wired into `setStormy`, the literal dropped).
-   §72's treatment one sink over: where the key's `tsType` is `string` and the expr is an `unknown` read, print `String(x ?? '')` (or refuse by
-   name — pick the one §72 picked for the record Id: `coerceId` printed `String(x.get() ?? '')`). Check the `object-set` twin (an Object key
-   is never `required`, so it types `unknown` and probably survives — MEASURE) and the `store-set` twin (a variable is `value<unknown>` ⇒ fine).
-   Both files if the type moves; likely `plan.ts` only (the coercion is a print). One session.
-2. **§69.4 #1 — the cascade sentence lands on the node IN FRONT of the refused sink** (seen §69.0, §70.0, §73's F4). EXP-004's report is where
-   a person reads *Save profile — nothing is wired into value*. The fix is in the registration pass (§64.4 #3 named the mechanism): *fires
-   <sink>, which is refused: <sentence>*. Every `dropped:` note pin moves — the whole-package run is the sweep.
-3. **§71.5 — the editor cannot author a `Model2` `prop-*` value** (the panel hides `allowConnectionsOnly` ports; the MCP accepts them with an
-   info notice; the editor's `connection-only-parameter` "discarded" sentence is FALSE for this node). A product-surface ruling for Richard.
-4. §73.5's three small rows, §74.5's residuals (the sticky last value; an unclassified always-defined source widens), EXP-004's two Richard
-   items, the residual registers (§57.5–§74.5).
+1. **§14.5 — the `<img src>` channel is still project-relative.** `contentAttrs` prints
+   `src="noodl_modules/starter-imagery/food-grocer.webp"` verbatim and the emitted `index.html`
+   carries no `<base>` (measured). A relative URL resolves against the **document**: on `/business`
+   that lands on `/noodl_modules/…` and works, on a two-segment route it lands on
+   `/blog/noodl_modules/…` and 404s (`new URL('noodl_modules/x','http://h/blog/post')` in the
+   running app). Every route this template emits is depth 1, which is why the drive read **0 broken
+   images** — so this is a residual, not a finding, and it needs a fixture with a nested `urlPath`
+   to grade. The fix is `cssUrl`'s rule applied to the `attr:src` channel: `Image.src`,
+   `Image.srcSet`, `Video.src`, `Video.poster`. Half a session. Owner NONE.
+2. **§74.5 #1 — the `unknown`-into-a-typed-store-key sink.** `mood.set({ theme: ghost.get() })`
+   where `theme: string` is TS2322 in the built app (`probe74c.ts` in the s96 scratchpad
+   `47ba0b96-…` reproduces it). §72's treatment one sink over: where the key's `tsType` is `string`
+   and the expr is an `unknown` read, print `String(x ?? '')` — the shape §72 picked for the record
+   Id. Check the `object-set` and `store-set` twins (MEASURE, do not reason). One session.
+3. **§69.4 #1 — the cascade sentence lands on the node IN FRONT of the refused sink** (seen §69.0,
+   §70.0, §73's F4). Registration pass; every `dropped:` note pin moves, so the whole-package run
+   is the sweep.
+4. **§71.5 — the editor cannot author a `Model2` `prop-*` value.** A product-surface ruling for
+   Richard. And EXP-008's new question above, if EXP-014 AC5's per-parameter coverage is wanted.
 
-🔴 **A register's ONE sentence can be TWO rows — measure the runtime AND read the translated source's mount path before believing a
-hand-off's named fix** (s96: "seed PLUS wire" was right for a Do-Set, wrong for a Variable). 🔴 **The typing rule and the write rule live in
-two files** — `appState.ts` (discovery) and `plan.ts` (compile); arm BOTH (six sessions). 🔴 **A control that VARIES EXACTLY YOUR CHANGE on the
-same tree beats a reverted worktree when the old behaviour is proven by pins** (the literal was ignored ⇒ drop the literal = the reverted output).
-🔴 **`not.toContain('??')` on a whole page pins the PAGE (its reads print `?? ''`) — pin the handler.** 🔴 **A Subscribe read prints
-`mood.get().note` in a handler and `note` in render.** 🔴 **`??` beside `&&`/`||` unparenthesised is a SyntaxError — `withFallback` parenthesises;
-`mood.get().theme` is not `SIMPLE_REF`.** 🔴 **A whole-package run is the pin sweep a grep cannot do.** 🔴 **`ts-node` here needs
-`-O '{"module":"commonjs","moduleResolution":"node","esModuleInterop":true,"resolveJsonModule":true}'`.** 🔴 **`grep -a`. Absolute paths.
-`rm` one file per command in zsh.** 🔴 **`echo ======` is `=cmd` expansion in zsh — quote it.**
+## What this session learned, and would want said again
 
-## Open residuals (registered, none blocks an AC; owner NONE unless said)
-
-- §74.5: the `unknown`→required-string Global Store key TS2322 (→ job 1); the sticky last value (runtime keeps the wire's last value after
-  its source goes back to `undefined`; `expr ?? typed` falls back); an unclassified always-defined source widens the type; a `Variable`'s Value
-  under an UNTRANSLATED wire (opens with pass 3).
-- §73.5: Boolean under a wire; `date`; object/array with a non-string value.
-- §70.5: `merge: true` with a typed-in object; a refused Set's literal still types the key (H9); the cascade sentence (→ job 2).
-- §71.5: an Object's own `prop-*` under a wire (opens with a write through the Object node); the hidden port + the FALSE "discarded"
-  sentence (→ job 3); a refused Object's other literal still types + prints "Seeded with".
-- §72.5: a `number`-typed record column bound bare into a record Id (same TS2345); a Logic-Builder-minted variable is `unknown` until
-  EXP-003 translates the write.
-- §66.5#1.5: the `enabled` store is `unknown` under §72; sse/ws applied-vs-raw comparison equivalent today; `hasOwnProperty` redundant
-  in `has()`; the runtime instrument lives in `test/corpus/`.
-- §69.4 #1 (→ job 2).
-
-## Instruments
-
-s96 scratchpad `47ba0b96-56bb-4111-9747-1efc7a421b7f`: `snap/` (pre-edit copies with md5), `mut.py` + `mut-summary.txt` (13 arms),
-`probe74.ts` / `probe74b.ts` / `probe74c.ts` (the emitted-text probes; `probe74c.ts` = the TS2322 control), `runtime.log` (the corpus
-readout), `whole.log`/`whole.exit`, `gates96.sh` + `editor-tsc.*` / `ledger.*` / `picker.*` / `testci.*`. s94's four drives and
-`final-gates.sh` are unchanged and still the drive templates.
-
-## Standing practice
-
-`cline-dev`; commit by exact pathspecs; `git add` untracked first; reconcile the suite count against disk (80 spec files now); `grep -a`;
-absolute paths; **`pgrep -f jest-worker` before any suite, never more than one of mine, wait for a peer's suite, tear servers down the
-moment the drive is read.**
+🔴 **A task file's "what is true today" is a MEASUREMENT WITH A TIMESTAMP, not a premise — re-take
+the ones your change depends on.** Three of the nine claims across these three files were wrong,
+and each was cheap to check: the `as` drop *was* reported (61 notes, 61 report lines, 61 in-code
+markers — the file said "not refused, not noted"); `document.fonts` read **`unloaded`**, not
+"4 faces loaded", because a browser does not fetch a face nothing uses; and a `var()` fallback was
+written on the reasoning that 39 of 40 fixtures are token-less, which `effectiveTokens` disproves in
+one line. All three were caught, but only because the reverted arm was built and the spec was
+written before the belief was trusted.
+🔴 **A node can be `translated` in the ledger while dropping the parameter that decides what it
+looks like.** All three of these gaps sat green through 17 sessions of picker work behind a
+`status: translated` row and a corpus that never used the ports. **Rank by the product surface.**
+🔴 **`&& false` is not an arm** (fourth recurrence): M11 read `NO SUMMARY / 0 total`, which is a
+mutant that did not compile, not a kill. Arm at the VALUE level.
+🔴 **Restart the gate chain when the tree moves under it** — the ledger edit landed after the first
+whole-package run and many specs read that file.
+🔴 **A control that varies exactly your change beats a memory**: the reverted worktree reproduced
+1.03:1, `h1: 0`, `Arial` and `Inter … unloaded` to the digit, which is what makes the after-readings
+mean something.
+⚠️ `drive-page.js eval` takes a function BODY — an expression without `return` answers `{}`.
+⚠️ `TAGS[role]` keeps `text: 'p'` while the port's own default is `div`, so an untagged Text renders
+`<p>` here and `<div>` in the viewer. Pre-existing, deliberately unchanged (AC1's byte-identical
+clause), and the one element name the two renderers still disagree about.
