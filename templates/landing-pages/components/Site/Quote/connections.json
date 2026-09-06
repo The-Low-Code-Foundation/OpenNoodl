@@ -1,0 +1,37 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "86def56c-809e-5d1a-8443-2c07644e275f",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "quInputs",
+      "fromProperty": "quote",
+      "toId": "quText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "quInputs",
+      "fromProperty": "name",
+      "toId": "quName",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "quInputs",
+      "fromProperty": "role",
+      "toId": "quRole",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "quInputs",
+      "fromProperty": "portrait",
+      "toId": "quPortrait",
+      "toProperty": "src"
+    },
+    {
+      "fromId": "quInputs",
+      "fromProperty": "alt",
+      "toId": "quPortrait",
+      "toProperty": "alt"
+    }
+  ]
+}

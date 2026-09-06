@@ -1,0 +1,10 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "491fb5c2-0090-5ede-803c-3126c8ca99b1",
+  "name": "Freelancer",
+  "path": "/Pages/Freelancer",
+  "type": "page",
+  "created": "2026-09-05T00:00:00.000Z",
+  "modified": "2026-09-05T00:00:00.000Z",
+  "modifiedBy": "noodl-mcp"
+}

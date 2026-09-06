@@ -1,0 +1,31 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "0b28b322-ab7e-5f7a-879e-0125d32b3d3d",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "pcInputs",
+      "fromProperty": "picture",
+      "toId": "pcPhoto",
+      "toProperty": "src"
+    },
+    {
+      "fromId": "pcInputs",
+      "fromProperty": "alt",
+      "toId": "pcPhoto",
+      "toProperty": "alt"
+    },
+    {
+      "fromId": "pcInputs",
+      "fromProperty": "title",
+      "toId": "pcTitle",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "pcInputs",
+      "fromProperty": "line",
+      "toId": "pcLine",
+      "toProperty": "text"
+    }
+  ]
+}

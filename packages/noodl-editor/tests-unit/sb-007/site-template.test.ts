@@ -100,11 +100,29 @@ describe('SB-007 — the template is on the embedded shelf', () => {
     expect(row?.title).toBe('Site Builder');
   });
 
-  it('🔴 is HELD off the real shelf for 0.2.2, while staying installable', async () => {
-    // Ruling D1. The row must not reach the create wizard...
+  it('🔴 is OFFERED on the real shelf for 0.2.2 — D1 closed, and the row is the whole row', async () => {
+    /**
+     * Ruling D1 held this off the create wizard on 2026-09-04. Richard closed it on 2026-09-05,
+     * shown the two seams he had named built and photographed against a one-variable before-arm:
+     * *"It's passable, let's include it in the 0.2.2 release, add it to the templates menu."*
+     *
+     * 🔴 **Asserted on the SHIPPED provider, not the unheld one.** The case above already reads
+     * the row out of a provider constructed with nothing held, and that arm went on passing
+     * through the entire time this template was invisible to every user — which is exactly what
+     * the D1 near-miss was made of. This is the one that can tell the difference.
+     *
+     * The whole row is asserted rather than its presence: it is what the wizard and the Templates
+     * tab both draw, and `needsBackend` is what SBR-001 routes the create path on.
+     */
     const offered = await provider.list();
-    expect(offered.find((i) => i.projectURL === TEMPLATE_URL)).toBeUndefined();
-    // ...and must still install when asked for by URL, which is what "held, not deleted" means.
+    const row = offered.find((i) => i.projectURL === TEMPLATE_URL);
+
+    expect(row).toBeDefined();
+    expect(row?.title).toBe('Site Builder');
+    expect(row?.category).toBe('site');
+    expect(row?.needsBackend).toBe(true);
+
+    // Offered has never meant anything about installability, and still does not.
     expect(await provider.canInstall(TEMPLATE_URL)).toBe(true);
     expect(provider.getTemplateIds()).toContain('site-builder');
   });

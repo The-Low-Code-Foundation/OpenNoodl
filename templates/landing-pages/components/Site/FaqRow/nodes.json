@@ -1,0 +1,83 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "abb8e784-af7f-5144-8a02-34fe62128f37",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "fqRow",
+      "type": "Group",
+      "label": "One question",
+      "children": [
+        "fqQuestion",
+        "fqAnswer"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "flexDirection": "column",
+        "alignItems": "flex-start",
+        "borderBottomStyle": "solid",
+        "borderBottomWidth": "var(--border-1)",
+        "borderBottomColor": "var(--border-subtle)",
+        "paddingTop": "var(--space-5)",
+        "paddingBottom": "var(--space-5)",
+        "rowGap": "var(--space-2)"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "fqQuestion",
+      "type": "Text",
+      "label": "The question",
+      "parent": "fqRow",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-lg)",
+        "fontWeight": "var(--font-semibold)",
+        "lineHeight": "var(--leading-snug)",
+        "color": "var(--foreground)",
+        "as": "h3"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "fqAnswer",
+      "type": "Text",
+      "label": "The answer",
+      "parent": "fqRow",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-base)",
+        "color": "var(--muted-foreground)"
+      },
+      "x": 100,
+      "y": 280
+    },
+    {
+      "id": "fqInputs",
+      "type": "Component Inputs",
+      "label": "The question",
+      "ports": [
+        {
+          "name": "question",
+          "plug": "output",
+          "type": "string"
+        },
+        {
+          "name": "answer",
+          "plug": "output",
+          "type": "string"
+        }
+      ],
+      "x": 350,
+      "y": 160
+    }
+  ],
+  "visualRoots": [
+    "fqRow"
+  ]
+}

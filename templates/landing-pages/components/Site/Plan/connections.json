@@ -1,0 +1,97 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "79fa6fdf-7478-5520-8909-aa1eadcbc57d",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "plInputs",
+      "fromProperty": "name",
+      "toId": "plName",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "plInputs",
+      "fromProperty": "price",
+      "toId": "plPrice",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "plInputs",
+      "fromProperty": "line",
+      "toId": "plLine",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "plInputs",
+      "fromProperty": "point1",
+      "toId": "plPoint1",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "plInputs",
+      "fromProperty": "point2",
+      "toId": "plPoint2",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "plInputs",
+      "fromProperty": "point3",
+      "toId": "plPoint3",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "plInputs",
+      "fromProperty": "action",
+      "toId": "plAction",
+      "toProperty": "label"
+    },
+    {
+      "fromId": "plInputs",
+      "fromProperty": "ground",
+      "toId": "plCard",
+      "toProperty": "backgroundColor"
+    },
+    {
+      "fromId": "plInputs",
+      "fromProperty": "edge",
+      "toId": "plCard",
+      "toProperty": "borderColor"
+    },
+    {
+      "fromId": "plInputs",
+      "fromProperty": "ink",
+      "toId": "plPrice",
+      "toProperty": "color"
+    },
+    {
+      "fromId": "plInputs",
+      "fromProperty": "ink",
+      "toId": "plLine",
+      "toProperty": "color"
+    },
+    {
+      "fromId": "plInputs",
+      "fromProperty": "ink",
+      "toId": "plPoint1",
+      "toProperty": "color"
+    },
+    {
+      "fromId": "plInputs",
+      "fromProperty": "ink",
+      "toId": "plPoint2",
+      "toProperty": "color"
+    },
+    {
+      "fromId": "plInputs",
+      "fromProperty": "ink",
+      "toId": "plPoint3",
+      "toProperty": "color"
+    },
+    {
+      "fromId": "plAction",
+      "fromProperty": "onClick",
+      "toId": "plOutputs",
+      "toProperty": "chosen"
+    }
+  ]
+}

@@ -1,0 +1,82 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "b1a2837d-c995-5392-8135-d41da61b6a81",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "bsItem",
+      "type": "Group",
+      "label": "One number",
+      "children": [
+        "bsValue",
+        "bsLabel"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "rowGap": "var(--space-2)",
+        "borderLeftStyle": "solid",
+        "borderLeftWidth": "var(--border-1)",
+        "borderLeftColor": "var(--border-glass)",
+        "paddingLeft": "var(--space-5)"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "bsValue",
+      "type": "Text",
+      "label": "The number",
+      "parent": "bsItem",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--display-sm)",
+        "fontWeight": "var(--font-bold)",
+        "lineHeight": "var(--leading-none)",
+        "letterSpacing": "var(--tracking-tighter)",
+        "color": "var(--primary-foreground)"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "bsLabel",
+      "type": "Text",
+      "label": "What it counts",
+      "parent": "bsItem",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--primary-foreground)"
+      },
+      "x": 100,
+      "y": 280
+    },
+    {
+      "id": "bsInputs",
+      "type": "Component Inputs",
+      "label": "The number",
+      "ports": [
+        {
+          "name": "value",
+          "plug": "output",
+          "type": "string"
+        },
+        {
+          "name": "label",
+          "plug": "output",
+          "type": "string"
+        }
+      ],
+      "x": 350,
+      "y": 160
+    }
+  ],
+  "visualRoots": [
+    "bsItem"
+  ]
+}

@@ -1,0 +1,226 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "79fa6fdf-7478-5520-8909-aa1eadcbc57d",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "plCard",
+      "type": "Group",
+      "label": "The plan",
+      "children": [
+        "plName",
+        "plPrice",
+        "plLine",
+        "plPoint1",
+        "plPoint2",
+        "plPoint3",
+        "plAction"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "backgroundColor": "var(--surface)",
+        "borderRadius": "var(--radius-xl)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border)",
+        "clip": true,
+        "flexDirection": "column",
+        "rowGap": "var(--space-4)",
+        "paddingLeft": "var(--space-8)",
+        "paddingRight": "var(--space-8)",
+        "paddingTop": "var(--space-8)",
+        "paddingBottom": "var(--space-8)",
+        "sizeMode": "contentHeight"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "plName",
+      "type": "Text",
+      "label": "The plan’s name",
+      "parent": "plCard",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-xs)",
+        "fontWeight": "var(--font-semibold)",
+        "letterSpacing": "var(--tracking-widest)",
+        "textTransform": "uppercase",
+        "color": "var(--primary)",
+        "as": "span"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "plPrice",
+      "type": "Text",
+      "label": "What it costs",
+      "parent": "plCard",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--display-sm)",
+        "fontWeight": "var(--font-bold)",
+        "lineHeight": "var(--leading-none)",
+        "letterSpacing": "var(--tracking-tighter)",
+        "color": "var(--foreground)"
+      },
+      "x": 100,
+      "y": 280
+    },
+    {
+      "id": "plLine",
+      "type": "Text",
+      "label": "Who it is for",
+      "parent": "plCard",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--muted-foreground)"
+      },
+      "x": 100,
+      "y": 400
+    },
+    {
+      "id": "plPoint1",
+      "type": "/Site/Check",
+      "label": "The first point",
+      "parent": "plCard",
+      "parameters": {
+        "text": "",
+        "color": "var(--foreground)"
+      },
+      "x": 100,
+      "y": 520
+    },
+    {
+      "id": "plPoint2",
+      "type": "/Site/Check",
+      "label": "The second point",
+      "parent": "plCard",
+      "parameters": {
+        "text": "",
+        "color": "var(--foreground)"
+      },
+      "x": 100,
+      "y": 640
+    },
+    {
+      "id": "plPoint3",
+      "type": "/Site/Check",
+      "label": "The third point",
+      "parent": "plCard",
+      "parameters": {
+        "text": "",
+        "color": "var(--foreground)"
+      },
+      "x": 100,
+      "y": 760
+    },
+    {
+      "id": "plAction",
+      "type": "net.noodl.controls.button",
+      "label": "Choose",
+      "parent": "plCard",
+      "parameters": {
+        "label": "Choose",
+        "backgroundColor": "var(--primary)",
+        "color": "var(--primary-foreground)",
+        "borderRadius": "var(--radius-full)",
+        "borderStyle": "none",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "sizeMode": "contentHeight",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        }
+      },
+      "x": 100,
+      "y": 880
+    },
+    {
+      "id": "plInputs",
+      "type": "Component Inputs",
+      "label": "The plan",
+      "ports": [
+        {
+          "name": "name",
+          "plug": "output",
+          "type": "string"
+        },
+        {
+          "name": "price",
+          "plug": "output",
+          "type": "string"
+        },
+        {
+          "name": "line",
+          "plug": "output",
+          "type": "string"
+        },
+        {
+          "name": "point1",
+          "plug": "output",
+          "type": "string"
+        },
+        {
+          "name": "point2",
+          "plug": "output",
+          "type": "string"
+        },
+        {
+          "name": "point3",
+          "plug": "output",
+          "type": "string"
+        },
+        {
+          "name": "action",
+          "plug": "output",
+          "type": "string"
+        },
+        {
+          "name": "ground",
+          "plug": "output",
+          "type": "string"
+        },
+        {
+          "name": "edge",
+          "plug": "output",
+          "type": "string"
+        },
+        {
+          "name": "ink",
+          "plug": "output",
+          "type": "string"
+        }
+      ],
+      "x": 350,
+      "y": 160
+    },
+    {
+      "id": "plOutputs",
+      "type": "Component Outputs",
+      "label": "The plan was chosen",
+      "ports": [
+        {
+          "name": "chosen",
+          "plug": "input",
+          "type": "signal"
+        }
+      ],
+      "x": 350,
+      "y": 880
+    }
+  ],
+  "visualRoots": [
+    "plCard"
+  ]
+}

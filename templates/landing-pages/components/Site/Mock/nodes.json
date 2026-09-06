@@ -1,0 +1,367 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "ed5b46fb-eeee-53b0-8d01-8515359bb31b",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "mkWindow",
+      "type": "Group",
+      "label": "The window",
+      "children": [
+        "mkBar",
+        "mkTitle",
+        "mkRow1",
+        "mkRow2",
+        "mkRow3",
+        "mkChart"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "rowGap": "var(--space-4)",
+        "backgroundColor": "var(--foreground)",
+        "borderRadius": "var(--radius-xl)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-glass)",
+        "boxShadowEnabled": true,
+        "boxShadowOffsetY": {
+          "value": 24,
+          "unit": "px"
+        },
+        "boxShadowBlurRadius": {
+          "value": 48,
+          "unit": "px"
+        },
+        "boxShadowColor": "var(--border-strong)",
+        "paddingTop": "var(--space-4)",
+        "paddingBottom": "var(--space-5)",
+        "paddingLeft": "var(--space-5)",
+        "paddingRight": "var(--space-5)",
+        "clip": true
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "mkBar",
+      "type": "Group",
+      "label": "The title bar",
+      "parent": "mkWindow",
+      "children": [
+        "mkDot1",
+        "mkDot2",
+        "mkDot3"
+      ],
+      "parameters": {
+        "sizeMode": "contentSize",
+        "flexDirection": "row",
+        "columnGap": "var(--space-2)"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "mkDot1",
+      "type": "Group",
+      "label": "Dot 1",
+      "parent": "mkBar",
+      "parameters": {
+        "sizeMode": "explicit",
+        "width": {
+          "value": 10,
+          "unit": "px"
+        },
+        "height": {
+          "value": 10,
+          "unit": "px"
+        },
+        "borderRadius": "var(--radius-full)",
+        "backgroundColor": "var(--border-glass)"
+      },
+      "x": 160,
+      "y": 280
+    },
+    {
+      "id": "mkDot2",
+      "type": "Group",
+      "label": "Dot 2",
+      "parent": "mkBar",
+      "parameters": {
+        "sizeMode": "explicit",
+        "width": {
+          "value": 10,
+          "unit": "px"
+        },
+        "height": {
+          "value": 10,
+          "unit": "px"
+        },
+        "borderRadius": "var(--radius-full)",
+        "backgroundColor": "var(--border-glass)"
+      },
+      "x": 160,
+      "y": 400
+    },
+    {
+      "id": "mkDot3",
+      "type": "Group",
+      "label": "Dot 3",
+      "parent": "mkBar",
+      "parameters": {
+        "sizeMode": "explicit",
+        "width": {
+          "value": 10,
+          "unit": "px"
+        },
+        "height": {
+          "value": 10,
+          "unit": "px"
+        },
+        "borderRadius": "var(--radius-full)",
+        "backgroundColor": "var(--border-glass)"
+      },
+      "x": 160,
+      "y": 520
+    },
+    {
+      "id": "mkTitle",
+      "type": "Text",
+      "label": "What the window is showing",
+      "parent": "mkWindow",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--primary-foreground)",
+        "fontWeight": "var(--font-semibold)"
+      },
+      "x": 100,
+      "y": 640
+    },
+    {
+      "id": "mkRow1",
+      "type": "/Site/MockRow",
+      "label": "Row 1",
+      "parent": "mkWindow",
+      "parameters": {
+        "label": "The first row",
+        "state": "Done"
+      },
+      "x": 100,
+      "y": 760
+    },
+    {
+      "id": "mkRow2",
+      "type": "/Site/MockRow",
+      "label": "Row 2",
+      "parent": "mkWindow",
+      "parameters": {
+        "label": "The second row",
+        "state": "Due today"
+      },
+      "x": 100,
+      "y": 880
+    },
+    {
+      "id": "mkRow3",
+      "type": "/Site/MockRow",
+      "label": "Row 3",
+      "parent": "mkWindow",
+      "parameters": {
+        "label": "The third row",
+        "state": "New"
+      },
+      "x": 100,
+      "y": 1000
+    },
+    {
+      "id": "mkChart",
+      "type": "Group",
+      "label": "The chart",
+      "parent": "mkWindow",
+      "children": [
+        "mkBar1",
+        "mkBar2",
+        "mkBar3",
+        "mkBar4",
+        "mkBar5",
+        "mkBar6"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "row",
+        "alignItems": "flex-end",
+        "columnGap": "var(--space-2)",
+        "paddingTop": "var(--space-2)"
+      },
+      "x": 100,
+      "y": 1120
+    },
+    {
+      "id": "mkBar1",
+      "type": "Group",
+      "label": "Bar 1",
+      "parent": "mkChart",
+      "parameters": {
+        "sizeMode": "explicit",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "height": {
+          "value": 28,
+          "unit": "px"
+        },
+        "borderRadius": "var(--radius-sm)",
+        "backgroundColor": "var(--surface-glass)"
+      },
+      "x": 160,
+      "y": 1240
+    },
+    {
+      "id": "mkBar2",
+      "type": "Group",
+      "label": "Bar 2",
+      "parent": "mkChart",
+      "parameters": {
+        "sizeMode": "explicit",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "height": {
+          "value": 44,
+          "unit": "px"
+        },
+        "borderRadius": "var(--radius-sm)",
+        "backgroundColor": "var(--surface-glass)"
+      },
+      "x": 160,
+      "y": 1360
+    },
+    {
+      "id": "mkBar3",
+      "type": "Group",
+      "label": "Bar 3",
+      "parent": "mkChart",
+      "parameters": {
+        "sizeMode": "explicit",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "height": {
+          "value": 36,
+          "unit": "px"
+        },
+        "borderRadius": "var(--radius-sm)",
+        "backgroundColor": "var(--surface-glass)"
+      },
+      "x": 160,
+      "y": 1480
+    },
+    {
+      "id": "mkBar4",
+      "type": "Group",
+      "label": "Bar 4",
+      "parent": "mkChart",
+      "parameters": {
+        "sizeMode": "explicit",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "height": {
+          "value": 60,
+          "unit": "px"
+        },
+        "borderRadius": "var(--radius-sm)",
+        "backgroundColor": "var(--surface-glass)"
+      },
+      "x": 160,
+      "y": 1600
+    },
+    {
+      "id": "mkBar5",
+      "type": "Group",
+      "label": "Bar 5",
+      "parent": "mkChart",
+      "parameters": {
+        "sizeMode": "explicit",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "height": {
+          "value": 48,
+          "unit": "px"
+        },
+        "borderRadius": "var(--radius-sm)",
+        "backgroundColor": "var(--surface-glass)"
+      },
+      "x": 160,
+      "y": 1720
+    },
+    {
+      "id": "mkBar6",
+      "type": "Group",
+      "label": "Bar 6",
+      "parent": "mkChart",
+      "parameters": {
+        "sizeMode": "explicit",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "height": {
+          "value": 72,
+          "unit": "px"
+        },
+        "borderRadius": "var(--radius-sm)",
+        "backgroundColor": "var(--primary)"
+      },
+      "x": 160,
+      "y": 1840
+    },
+    {
+      "id": "mkInputs",
+      "type": "Component Inputs",
+      "label": "The window",
+      "ports": [
+        {
+          "name": "title",
+          "plug": "output",
+          "type": "string"
+        },
+        {
+          "name": "row1",
+          "plug": "output",
+          "type": "string"
+        },
+        {
+          "name": "row2",
+          "plug": "output",
+          "type": "string"
+        },
+        {
+          "name": "row3",
+          "plug": "output",
+          "type": "string"
+        }
+      ],
+      "x": 410,
+      "y": 640
+    }
+  ],
+  "visualRoots": [
+    "mkWindow"
+  ]
+}

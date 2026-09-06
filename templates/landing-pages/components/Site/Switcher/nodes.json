@@ -1,0 +1,205 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "0dd8b383-297f-51d6-8c7c-0d21f6a763f9",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "swStrip",
+      "type": "Group",
+      "label": "The look switcher",
+      "children": [
+        "swShell"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "alignItems": "center",
+        "backgroundColor": "var(--accent)",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "swShell",
+      "type": "Group",
+      "label": "Shell",
+      "parent": "swStrip",
+      "children": [
+        "swText",
+        "swRow"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "maxWidth": {
+          "value": 1200,
+          "unit": "px"
+        },
+        "flexDirection": "column",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "sizeMode": "contentHeight",
+        "alignX": "center",
+        "rowGap": "var(--space-3)"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "swText",
+      "type": "Text",
+      "label": "EDIT — the look switcher (delete this strip before you publish)",
+      "parent": "swShell",
+      "parameters": {
+        "text": "Three looks ship with this template. Keep the one you want, delete the other two pages, then delete this strip.",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--accent-foreground)",
+        "fontWeight": "var(--font-medium)"
+      },
+      "x": 160,
+      "y": 280
+    },
+    {
+      "id": "swRow",
+      "type": "Group",
+      "label": "The three looks",
+      "parent": "swShell",
+      "children": [
+        "swFreelancer",
+        "swBusiness",
+        "swLaunch"
+      ],
+      "parameters": {
+        "sizeMode": "contentHeight",
+        "flexDirection": "row",
+        "flexWrap": "wrap",
+        "alignItems": "center",
+        "columnGap": "var(--space-3)",
+        "rowGap": "var(--space-3)",
+        "paddingTop": "var(--space-2)",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        }
+      },
+      "x": 160,
+      "y": 400
+    },
+    {
+      "id": "swFreelancer",
+      "type": "net.noodl.controls.button",
+      "label": "Freelancer",
+      "parent": "swRow",
+      "parameters": {
+        "label": "Freelancer",
+        "backgroundColor": "transparent",
+        "color": "var(--foreground)",
+        "borderRadius": "var(--radius-full)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-control)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "paddingTop": "var(--space-2)",
+        "paddingBottom": "var(--space-2)",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "sizeMode": "contentSize"
+      },
+      "x": 220,
+      "y": 520
+    },
+    {
+      "id": "swBusiness",
+      "type": "net.noodl.controls.button",
+      "label": "Local business",
+      "parent": "swRow",
+      "parameters": {
+        "label": "Local business",
+        "backgroundColor": "transparent",
+        "color": "var(--foreground)",
+        "borderRadius": "var(--radius-full)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-control)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "paddingTop": "var(--space-2)",
+        "paddingBottom": "var(--space-2)",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "sizeMode": "contentSize"
+      },
+      "x": 220,
+      "y": 640
+    },
+    {
+      "id": "swLaunch",
+      "type": "net.noodl.controls.button",
+      "label": "Product launch",
+      "parent": "swRow",
+      "parameters": {
+        "label": "Product launch",
+        "backgroundColor": "transparent",
+        "color": "var(--foreground)",
+        "borderRadius": "var(--radius-full)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-control)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "paddingTop": "var(--space-2)",
+        "paddingBottom": "var(--space-2)",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "sizeMode": "contentSize"
+      },
+      "x": 220,
+      "y": 760
+    },
+    {
+      "id": "swToFreelancer",
+      "type": "RouterNavigate",
+      "label": "Go to the freelancer look",
+      "parameters": {
+        "router": "Main",
+        "target": "/Pages/Freelancer"
+      },
+      "x": 470,
+      "y": 520
+    },
+    {
+      "id": "swToBusiness",
+      "type": "RouterNavigate",
+      "label": "Go to the local business look",
+      "parameters": {
+        "router": "Main",
+        "target": "/Pages/Business"
+      },
+      "x": 470,
+      "y": 640
+    },
+    {
+      "id": "swToLaunch",
+      "type": "RouterNavigate",
+      "label": "Go to the product launch look",
+      "parameters": {
+        "router": "Main",
+        "target": "/Pages/Launch"
+      },
+      "x": 470,
+      "y": 760
+    }
+  ],
+  "visualRoots": [
+    "swStrip"
+  ]
+}

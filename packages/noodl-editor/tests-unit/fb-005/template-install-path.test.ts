@@ -193,9 +193,10 @@ describe('FB-005 T1 — the zip transport is removed', () => {
   });
 
   it('every listed row carries an installable URL', async () => {
-    // The shipped shelf is empty until the members' area is published, so this is currently a
-    // statement about zero rows — asserted anyway, because it is the invariant that must hold the
-    // moment the first row arrives, and it costs nothing to have it waiting.
+    // ✅ **This finally grades a real row.** It was written as a statement about zero rows — the
+    // shipped shelf was empty while every embedded template was held — and kept anyway, because it
+    // is the invariant that must hold the moment the first row arrives. The site builder is that
+    // row as of 0.2.2, so the assertion now runs against something.
     const items = await templateRegistry.list({});
     for (const item of items as TemplateItem[]) {
       const claims = await Promise.all(

@@ -1,0 +1,37 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "491fb5c2-0090-5ede-803c-3126c8ca99b1",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "flContactAnchor",
+      "fromProperty": "this",
+      "toId": "flGround",
+      "toProperty": "scrollToElement.element"
+    },
+    {
+      "fromId": "flHeader",
+      "fromProperty": "contact",
+      "toId": "flGround",
+      "toProperty": "scrollToElement.do"
+    },
+    {
+      "fromId": "flWork",
+      "fromProperty": "this",
+      "toId": "flMain",
+      "toProperty": "scrollToElement.element"
+    },
+    {
+      "fromId": "flHeroPrimary",
+      "fromProperty": "onClick",
+      "toId": "flGround",
+      "toProperty": "scrollToElement.do"
+    },
+    {
+      "fromId": "flHeroSecondary",
+      "fromProperty": "onClick",
+      "toId": "flMain",
+      "toProperty": "scrollToElement.do"
+    }
+  ]
+}

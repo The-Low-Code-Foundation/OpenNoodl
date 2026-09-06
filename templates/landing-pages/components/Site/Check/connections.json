@@ -1,0 +1,19 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "8df445c9-9954-5f7c-86ae-4439249d191c",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "ckInputs",
+      "fromProperty": "text",
+      "toId": "ckText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "ckInputs",
+      "fromProperty": "color",
+      "toId": "ckText",
+      "toProperty": "color"
+    }
+  ]
+}

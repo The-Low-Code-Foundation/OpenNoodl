@@ -102,7 +102,7 @@ describe('DEF-038 — every shipped template artefact is settled against NDA-017
     // output stops being discoverable reddens here rather than going quiet.
     expect(artefacts.length).toBeGreaterThanOrEqual(2);
     expect(artefacts.map((a) => a.name)).toEqual(
-      expect.arrayContaining(['site-builder.content.json', 'templates/members-area'])
+      expect.arrayContaining(['site-builder.content.json', 'templates/members-area', 'templates/landing-pages'])
     );
   });
 
@@ -122,10 +122,18 @@ describe('DEF-038 — every shipped template artefact is settled against NDA-017
   it.each(artefacts.map((a) => [a.name, a] as const))(
     '%s — control: the check is live, and unsettling one parameter reddens it',
     (_name, artefact) => {
-      // Mutate a copy: take back the settling on exactly one governed checkbox
+      // Mutate a copy: take back the answer on exactly one governed checkbox
       // and the planner must see work to do again. Without this, a spec that
       // asserted `[]` would pass just as well against a planner that had stopped
       // finding anything at all.
+      //
+      // ⚠️ ANY value, not only a pinned `true`. The planner treats an authored
+      // `false` exactly as it treats a pinned `true` — `hasOwnProperty` is the
+      // whole of its idempotency — so an artefact whose author answered every
+      // checkbox (TPL-003 sets `false` on all of them, so typing cannot open
+      // the mail app) has nothing pinned and was failing this control for a
+      // reason that is not about settling. Deleting an authored answer makes
+      // the planner want to write just the same, which is what "live" means.
       const copy = JSON.parse(JSON.stringify(artefact.project)) as {
         components?: { graph?: { roots?: unknown[] } }[];
       };
@@ -136,7 +144,6 @@ describe('DEF-038 — every shipped template artefact is settled against NDA-017
           const node = raw as { parameters?: Record<string, unknown>; children?: unknown[] };
           for (const key of Object.keys(node.parameters ?? {})) {
             if (unsettled || !key.startsWith('runOnChange-')) continue;
-            if ((node.parameters as Record<string, unknown>)[key] !== true) continue;
             delete (node.parameters as Record<string, unknown>)[key];
             unsettled = key;
           }
@@ -148,8 +155,8 @@ describe('DEF-038 — every shipped template artefact is settled against NDA-017
         if (Array.isArray(component?.graph?.roots)) walk(component.graph.roots);
       }
 
-      // Every settled artefact carries at least one pinned `true`, or there was
-      // nothing to settle and the arm above proved nothing about this artefact.
+      // Every settled artefact carries at least one answered checkbox, or there
+      // was nothing to settle and the arm above proved nothing about this artefact.
       expect(unsettled).toBeDefined();
       expect(planRunOnValueChangeMigration(copy as never).writes.length).toBeGreaterThan(0);
     }

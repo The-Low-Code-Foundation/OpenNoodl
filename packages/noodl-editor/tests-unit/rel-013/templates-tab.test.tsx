@@ -323,8 +323,14 @@ describe('REL-013 AC4 — the empty shelf is the shipped state and it must read 
 
   it('🔴 the shipped empty state is what `galleryFromListing` ACTUALLY produces from a held shelf', () => {
     // 🔴 Not a hand-written `{ items: [], isLoading: false }`. A budget measured on a fixture is a
-    // budget on the fixture: this drives the real mapping with the listing an all-held embedded
-    // provider and a quiet platform produce, and asserts the screen that comes out of it.
+    // budget on the fixture: this drives the real mapping and asserts the screen that comes out
+    // of it.
+    //
+    // ⚠️ **This stopped being the shipped state on 2026-09-05**, when the site builder was
+    // unheld — the embedded provider now answers with a row. A bare shelf is still reachable
+    // (a build whose embedded provider answers with nothing, a quiet platform beside it), and the
+    // screen it produces still has to be the *bare* one rather than the *broken* one, which is
+    // what this grades.
     const gallery = galleryFromListing({ items: [], failures: [] });
     expect(gallery.items.length).toBe(0);
     expect(gallery.partial).toBeUndefined();

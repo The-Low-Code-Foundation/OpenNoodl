@@ -1,0 +1,177 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "967532b6-df7b-5094-8788-7c6e6b34aa7f",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "feItem",
+      "type": "Group",
+      "label": "One feature",
+      "children": [
+        "feBadge",
+        "feWords"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "flexDirection": "row",
+        "columnGap": "var(--space-3)",
+        "alignItems": "flex-start"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "feBadge",
+      "type": "Group",
+      "label": "The badge",
+      "parent": "feItem",
+      "children": [
+        "feGlyph"
+      ],
+      "parameters": {
+        "sizeMode": "explicit",
+        "width": {
+          "value": 44,
+          "unit": "px"
+        },
+        "height": {
+          "value": 44,
+          "unit": "px"
+        },
+        "flexDirection": "column",
+        "alignItems": "center",
+        "justifyContent": "center",
+        "backgroundColor": "var(--accent)",
+        "borderRadius": "var(--radius-lg)"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "feGlyph",
+      "type": "net.noodl.visual.icon",
+      "label": "The glyph",
+      "parent": "feBadge",
+      "parameters": {
+        "iconIconSource": {
+          "class": "lucide",
+          "code": "icon-sparkles",
+          "codeAsClass": true
+        },
+        "iconSize": {
+          "value": 22,
+          "unit": "px"
+        },
+        "iconColor": "var(--accent-foreground)"
+      },
+      "x": 160,
+      "y": 280
+    },
+    {
+      "id": "feWords",
+      "type": "Group",
+      "label": "The words",
+      "parent": "feItem",
+      "children": [
+        "feTitle",
+        "feLine"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "rowGap": "var(--space-1)"
+      },
+      "x": 100,
+      "y": 400
+    },
+    {
+      "id": "feTitle",
+      "type": "Text",
+      "label": "What it is",
+      "parent": "feWords",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-xl)",
+        "fontWeight": "var(--font-semibold)",
+        "lineHeight": "var(--leading-snug)",
+        "color": "var(--foreground)",
+        "as": "h3"
+      },
+      "x": 160,
+      "y": 520
+    },
+    {
+      "id": "feLine",
+      "type": "Text",
+      "label": "What it means for them",
+      "parent": "feWords",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-base)",
+        "color": "var(--muted-foreground)"
+      },
+      "x": 160,
+      "y": 640
+    },
+    {
+      "id": "feInputs",
+      "type": "Component Inputs",
+      "label": "The feature",
+      "ports": [
+        {
+          "name": "icon",
+          "plug": "output",
+          "type": "string"
+        },
+        {
+          "name": "title",
+          "plug": "output",
+          "type": "string"
+        },
+        {
+          "name": "line",
+          "plug": "output",
+          "type": "string"
+        }
+      ],
+      "x": 410,
+      "y": 520
+    },
+    {
+      "id": "feSource",
+      "type": "JavaScriptFunction",
+      "label": "The glyph, from its name",
+      "parameters": {
+        "functionScript": "Outputs.source = { class: 'lucide', code: 'icon-' + (Inputs.icon || 'sparkles'), codeAsClass: true };"
+      },
+      "x": 410,
+      "y": 280,
+      "ports": [
+        {
+          "name": "in-icon",
+          "displayName": "icon",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "out-source",
+          "displayName": "source",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        }
+      ]
+    }
+  ],
+  "visualRoots": [
+    "feItem"
+  ]
+}

@@ -1,0 +1,37 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "d7e32864-5c14-549c-8793-4b14944f7d35",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "bzContactAnchor",
+      "fromProperty": "this",
+      "toId": "bzGround",
+      "toProperty": "scrollToElement.element"
+    },
+    {
+      "fromId": "bzHeader",
+      "fromProperty": "contact",
+      "toId": "bzGround",
+      "toProperty": "scrollToElement.do"
+    },
+    {
+      "fromId": "bzVisit",
+      "fromProperty": "this",
+      "toId": "bzMain",
+      "toProperty": "scrollToElement.element"
+    },
+    {
+      "fromId": "bzHeroPrimary",
+      "fromProperty": "onClick",
+      "toId": "bzGround",
+      "toProperty": "scrollToElement.do"
+    },
+    {
+      "fromId": "bzHeroSecondary",
+      "fromProperty": "onClick",
+      "toId": "bzMain",
+      "toProperty": "scrollToElement.do"
+    }
+  ]
+}

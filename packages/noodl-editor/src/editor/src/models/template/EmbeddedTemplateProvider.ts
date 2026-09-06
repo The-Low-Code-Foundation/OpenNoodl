@@ -14,6 +14,7 @@ import { STYLE_TOKENS_METADATA_KEY } from '../StyleTokensModel/ProjectTokenCss';
 import { INITIAL_OPEN_COMPONENT_METADATA_KEY } from './firstOpenComponent';
 import { assertTemplateDocPath, ProjectContent, NodeDefinition, ProjectTemplate } from './ProjectTemplate';
 import { helloWorldTemplate } from './templates/hello-world.template';
+import { landingPagesTemplate } from './templates/landing-pages.template';
 import { siteBuilderTemplate } from './templates/site-builder.template';
 
 /**
@@ -46,16 +47,22 @@ function generateId(): string {
 /**
  * Templates that stay **installable but unoffered** — registered here, absent from the shelf.
  *
- * 🔴 **`site-builder` is held out of 0.2.2 by Richard's ruling D1, 2026-09-04.** That ruling was
- * given on the understanding that *"holding costs no action — it is not in `templates/` and has
- * never been staged for publication."* **The premise was false about this file**: the site builder
- * was in the map below and `list()` returns the whole map, so every 0.2.2 user would have been
- * offered the held template in the create wizard. Holding it costs exactly this line.
+ * ✅ **`site-builder` was UNHELD for 0.2.2 on 2026-09-05, and D1 is closed.** Richard held it on
+ * 2026-09-04 having ruled nine of its ten screens SHITTY; shown the same screens again after the
+ * two seams he named were built — status demoted and the action promoted on the admin row, and a
+ * per-kind width and rhythm on the public page — he ruled it **PASSABLE** and asked for it in the
+ * release and on the shelf. REL-011c AC3 §13.
  *
- * ⚠️ **Held, not deleted, and the difference is the point.** README §3 names **phase 77** as its
- * owner after 0.2.2; `install('embedded://site-builder')` still works, and every gate that reads
- * `site-builder.content.json` (`sb007Template`, `sbr012RawColourGate`, `def-004`) is untouched.
- * Unholding it is removing one string from this set.
+ * ⚠️ **The seams were ruled on a ONE-VARIABLE pair.** The pictures behind D1 came from a harness
+ * that supplied its own blue and drew gradient rectangles where photographs belong; the pair
+ * behind this ruling holds that instrument fixed and moves only the seams (REL-011 §12). What
+ * changed his answer was the product, not the photography.
+ *
+ * 🔴 **Unholding is exactly this line, and that is what the hold was built to make true.** D1 was
+ * given believing *"holding costs no action — it is not in `templates/` and has never been staged
+ * for publication."* **The premise was false about this file**: the site builder was in the map
+ * below and `list()` returns the whole map, so every 0.2.2 user would have been offered the held
+ * template regardless. Holding it cost one string here; so did letting it out.
  *
  * 🔴 **`hello-world` is held for an entirely different reason, and it CANNOT be deleted.** Richard
  * asked for it to go — *"We should remove Hello World, it's not a template"* — and he is right
@@ -68,7 +75,7 @@ function generateId(): string {
  * every blank project creation throw `Unknown embedded template: hello-world`. Holding it removes
  * the row from the shelf and leaves the fallback intact, which is what was actually wanted.
  */
-export const HELD_TEMPLATE_IDS: ReadonlySet<string> = new Set(['hello-world', 'site-builder']);
+export const HELD_TEMPLATE_IDS: ReadonlySet<string> = new Set(['hello-world']);
 
 /**
  * Provider for templates that are embedded in the application code
@@ -97,7 +104,11 @@ export class EmbeddedTemplateProvider implements ITemplateProvider {
     ['hello-world', helloWorldTemplate],
     // SB-007. ⚠️ Its `content` is a generated JSON blob — `npm run
     // template:site-builder` — not a hand-written graph like `hello-world`'s.
-    ['site-builder', siteBuilderTemplate]
+    ['site-builder', siteBuilderTemplate],
+    // TPL-003 — generated the same way (`npm run template:landing`); Richard,
+    // 2026-09-05: *"make it one of the packages templates like the members
+    // area and site builder"*. No backend, so `templateNeedsBackend` reads false.
+    ['landing-pages', landingPagesTemplate]
     // Add more templates here as they are created
   ]);
 

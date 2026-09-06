@@ -1,0 +1,183 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "3cb4d4a9-6570-5a88-8c04-efd9c7ed803b",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "hdBand",
+      "type": "Group",
+      "label": "The header",
+      "children": [
+        "hdShell"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "alignItems": "center",
+        "as": "header",
+        "backgroundColor": "var(--background)",
+        "borderBottomStyle": "solid",
+        "borderBottomWidth": "var(--border-1)",
+        "borderBottomColor": "var(--border)",
+        "paddingTop": "var(--space-4)",
+        "paddingBottom": "var(--space-4)"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "hdShell",
+      "type": "Group",
+      "label": "Shell",
+      "parent": "hdBand",
+      "children": [
+        "hdMark",
+        "hdContact"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "maxWidth": {
+          "value": 1200,
+          "unit": "px"
+        },
+        "flexDirection": "row",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "sizeMode": "contentHeight",
+        "alignX": "center",
+        "alignItems": "center",
+        "justifyContent": "space-between",
+        "columnGap": "var(--space-4)"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "hdMark",
+      "type": "Group",
+      "label": "The wordmark",
+      "parent": "hdShell",
+      "children": [
+        "hdGlyphBox",
+        "hdName"
+      ],
+      "parameters": {
+        "sizeMode": "contentSize",
+        "flexDirection": "row",
+        "alignItems": "center",
+        "columnGap": "var(--space-3)"
+      },
+      "x": 160,
+      "y": 280
+    },
+    {
+      "id": "hdGlyphBox",
+      "type": "Group",
+      "label": "The mark",
+      "parent": "hdMark",
+      "children": [
+        "hdGlyph"
+      ],
+      "parameters": {
+        "sizeMode": "explicit",
+        "width": {
+          "value": 36,
+          "unit": "px"
+        },
+        "height": {
+          "value": 36,
+          "unit": "px"
+        },
+        "flexDirection": "column",
+        "alignItems": "center",
+        "justifyContent": "center",
+        "backgroundColor": "var(--accent)",
+        "borderRadius": "var(--radius-md)"
+      },
+      "x": 220,
+      "y": 400
+    },
+    {
+      "id": "hdGlyph",
+      "type": "net.noodl.visual.icon",
+      "label": "The glyph",
+      "parent": "hdGlyphBox",
+      "parameters": {
+        "iconIconSource": {
+          "class": "lucide",
+          "code": "icon-sparkles",
+          "codeAsClass": true
+        },
+        "iconSize": {
+          "value": 18,
+          "unit": "px"
+        },
+        "iconColor": "var(--accent-foreground)"
+      },
+      "x": 280,
+      "y": 520
+    },
+    {
+      "id": "hdName",
+      "type": "Text",
+      "label": "EDIT — your name, or the business’s",
+      "parent": "hdMark",
+      "parameters": {
+        "text": "Your name here",
+        "fontSize": "var(--text-lg)",
+        "color": "var(--foreground)",
+        "fontWeight": "var(--font-semibold)"
+      },
+      "x": 220,
+      "y": 640
+    },
+    {
+      "id": "hdContact",
+      "type": "net.noodl.controls.button",
+      "label": "Get in touch",
+      "parent": "hdShell",
+      "parameters": {
+        "label": "Get in touch",
+        "backgroundColor": "transparent",
+        "color": "var(--foreground)",
+        "borderRadius": "var(--radius-full)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-control)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "sizeMode": "contentSize"
+      },
+      "x": 160,
+      "y": 760
+    },
+    {
+      "id": "hdOutputs",
+      "type": "Component Outputs",
+      "label": "What the header asks the page to do",
+      "ports": [
+        {
+          "name": "contact",
+          "plug": "input",
+          "type": "signal"
+        }
+      ],
+      "x": 530,
+      "y": 760
+    }
+  ],
+  "visualRoots": [
+    "hdBand"
+  ]
+}

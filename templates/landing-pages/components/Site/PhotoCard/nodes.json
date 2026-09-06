@@ -1,0 +1,139 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "0b28b322-ab7e-5f7a-879e-0125d32b3d3d",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "pcCard",
+      "type": "Group",
+      "label": "One card",
+      "children": [
+        "pcPhoto",
+        "pcBody"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "backgroundColor": "var(--surface)",
+        "borderRadius": "var(--radius-xl)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border)",
+        "clip": true,
+        "flexDirection": "column"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "pcPhoto",
+      "type": "Image",
+      "label": "The photograph",
+      "parent": "pcCard",
+      "parameters": {
+        "sizeMode": "explicit",
+        "objectFit": "cover",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "height": {
+          "value": 220,
+          "unit": "px"
+        },
+        "src": "",
+        "alt": ""
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "pcBody",
+      "type": "Group",
+      "label": "The words",
+      "parent": "pcCard",
+      "children": [
+        "pcTitle",
+        "pcLine"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "flexDirection": "column",
+        "rowGap": "var(--space-2)",
+        "paddingLeft": "var(--space-5)",
+        "paddingRight": "var(--space-5)",
+        "paddingTop": "var(--space-5)",
+        "paddingBottom": "var(--space-5)",
+        "sizeMode": "contentHeight"
+      },
+      "x": 100,
+      "y": 280
+    },
+    {
+      "id": "pcTitle",
+      "type": "Text",
+      "label": "What it is",
+      "parent": "pcBody",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-xl)",
+        "fontWeight": "var(--font-semibold)",
+        "lineHeight": "var(--leading-snug)",
+        "color": "var(--foreground)",
+        "as": "h3"
+      },
+      "x": 160,
+      "y": 400
+    },
+    {
+      "id": "pcLine",
+      "type": "Text",
+      "label": "A line about it",
+      "parent": "pcBody",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--muted-foreground)"
+      },
+      "x": 160,
+      "y": 520
+    },
+    {
+      "id": "pcInputs",
+      "type": "Component Inputs",
+      "label": "The card",
+      "ports": [
+        {
+          "name": "picture",
+          "plug": "output",
+          "type": "string"
+        },
+        {
+          "name": "alt",
+          "plug": "output",
+          "type": "string"
+        },
+        {
+          "name": "title",
+          "plug": "output",
+          "type": "string"
+        },
+        {
+          "name": "line",
+          "plug": "output",
+          "type": "string"
+        }
+      ],
+      "x": 410,
+      "y": 160
+    }
+  ],
+  "visualRoots": [
+    "pcCard"
+  ]
+}

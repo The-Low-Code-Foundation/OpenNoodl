@@ -1,0 +1,55 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "695d1fd8-10b3-5066-8683-59020dfa4270",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "lnContactAnchor",
+      "fromProperty": "this",
+      "toId": "lnGround",
+      "toProperty": "scrollToElement.element"
+    },
+    {
+      "fromId": "lnHeader",
+      "fromProperty": "contact",
+      "toId": "lnGround",
+      "toProperty": "scrollToElement.do"
+    },
+    {
+      "fromId": "lnSteps",
+      "fromProperty": "this",
+      "toId": "lnMain",
+      "toProperty": "scrollToElement.element"
+    },
+    {
+      "fromId": "lnHeroPrimary",
+      "fromProperty": "onClick",
+      "toId": "lnGround",
+      "toProperty": "scrollToElement.do"
+    },
+    {
+      "fromId": "lnHeroSecondary",
+      "fromProperty": "onClick",
+      "toId": "lnMain",
+      "toProperty": "scrollToElement.do"
+    },
+    {
+      "fromId": "lnCtaButton",
+      "fromProperty": "onClick",
+      "toId": "lnGround",
+      "toProperty": "scrollToElement.do"
+    },
+    {
+      "fromId": "lnPlanFree",
+      "fromProperty": "chosen",
+      "toId": "lnGround",
+      "toProperty": "scrollToElement.do"
+    },
+    {
+      "fromId": "lnPlanPaid",
+      "fromProperty": "chosen",
+      "toId": "lnGround",
+      "toProperty": "scrollToElement.do"
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "3cb4d4a9-6570-5a88-8c04-efd9c7ed803b",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "hdContact",
+      "fromProperty": "onClick",
+      "toId": "hdOutputs",
+      "toProperty": "contact"
+    }
+  ]
+}

@@ -1,0 +1,1421 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "d7e32864-5c14-549c-8793-4b14944f7d35",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "bzPage",
+      "type": "Page",
+      "label": "Local business",
+      "children": [
+        "bzGround"
+      ],
+      "parameters": {
+        "title": "Local business",
+        "urlPath": "business"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "bzGround",
+      "type": "Group",
+      "label": "Page ground",
+      "parent": "bzPage",
+      "children": [
+        "bzSwitcher",
+        "bzHeader",
+        "bzMain",
+        "bzFooter"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "minHeight": {
+          "value": 100,
+          "unit": "vh"
+        },
+        "flexDirection": "column",
+        "backgroundColor": "var(--background)"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "bzSwitcher",
+      "type": "/Site/Switcher",
+      "label": "The look switcher",
+      "parent": "bzGround",
+      "x": 160,
+      "y": 280
+    },
+    {
+      "id": "bzHeader",
+      "type": "/Site/Header",
+      "label": "The header",
+      "parent": "bzGround",
+      "x": 160,
+      "y": 400
+    },
+    {
+      "id": "bzMain",
+      "type": "Group",
+      "label": "The page",
+      "parent": "bzGround",
+      "children": [
+        "bzHero",
+        "bzOffer",
+        "bzWhy",
+        "bzVisit",
+        "bzQuotes",
+        "bzContactAnchor"
+      ],
+      "parameters": {
+        "as": "main",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column"
+      },
+      "x": 160,
+      "y": 520
+    },
+    {
+      "id": "bzContactAnchor",
+      "type": "Group",
+      "label": "Where \"Get in touch\" lands",
+      "parent": "bzMain",
+      "children": [
+        "bzContact"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column"
+      },
+      "x": 220,
+      "y": 8320
+    },
+    {
+      "id": "bzContact",
+      "type": "/Site/Contact",
+      "label": "The contact band",
+      "parent": "bzContactAnchor",
+      "parameters": {
+        "heading": "Book a table, or just ask",
+        "line": "Questions, bookings, orders for a crowd. Say when you would like to come and how many of you there are.",
+        "button": "Send"
+      },
+      "x": 280,
+      "y": 8440
+    },
+    {
+      "id": "bzFooter",
+      "type": "/Site/Footer",
+      "label": "The foot of the page",
+      "parent": "bzGround",
+      "x": 160,
+      "y": 8560
+    },
+    {
+      "id": "bzHero",
+      "type": "Group",
+      "label": "The hero — a photograph of the place",
+      "parent": "bzMain",
+      "children": [
+        "bzHeroShell"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "alignItems": "center",
+        "justifyContent": "flex-end",
+        "backgroundGradient": "var(--gradient-scrim)",
+        "backgroundSize": "cover",
+        "backgroundPosition": "center",
+        "backgroundColor": "var(--foreground)",
+        "paddingBottom": "var(--space-16)",
+        "minHeight": {
+          "value": 640,
+          "unit": "px"
+        },
+        "paddingTop": "var(--space-24)",
+        "backgroundImage": "noodl_modules/starter-imagery/people-coffee-shop.webp"
+      },
+      "x": 220,
+      "y": 640
+    },
+    {
+      "id": "bzHeroShell",
+      "type": "Group",
+      "label": "Shell",
+      "parent": "bzHero",
+      "children": [
+        "bzHeroBadge",
+        "bzHeroHeading",
+        "bzHeroLead",
+        "bzHeroActions",
+        "bzHeroNumbers"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "maxWidth": {
+          "value": 1200,
+          "unit": "px"
+        },
+        "flexDirection": "column",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "sizeMode": "contentHeight",
+        "alignX": "center",
+        "rowGap": "var(--space-5)",
+        "alignItems": "flex-start"
+      },
+      "x": 280,
+      "y": 760
+    },
+    {
+      "id": "bzHeroBadge",
+      "type": "Group",
+      "label": "The badge",
+      "parent": "bzHeroShell",
+      "children": [
+        "bzHeroBadgeGlyph",
+        "bzHeroBadgeText"
+      ],
+      "parameters": {
+        "sizeMode": "contentSize",
+        "flexDirection": "row",
+        "alignItems": "center",
+        "columnGap": "var(--space-2)",
+        "backgroundColor": "var(--surface-glass)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-glass)",
+        "borderRadius": "var(--radius-full)",
+        "paddingLeft": "var(--space-4)",
+        "paddingRight": "var(--space-4)",
+        "paddingTop": "var(--space-2)",
+        "paddingBottom": "var(--space-2)"
+      },
+      "x": 340,
+      "y": 880
+    },
+    {
+      "id": "bzHeroBadgeGlyph",
+      "type": "net.noodl.visual.icon",
+      "label": "The badge — glyph",
+      "parent": "bzHeroBadge",
+      "parameters": {
+        "iconIconSource": {
+          "class": "lucide",
+          "code": "icon-clock",
+          "codeAsClass": true
+        },
+        "iconSize": {
+          "value": 14,
+          "unit": "px"
+        },
+        "iconColor": "var(--primary-foreground)"
+      },
+      "x": 400,
+      "y": 1000
+    },
+    {
+      "id": "bzHeroBadgeText",
+      "type": "Text",
+      "label": "EDIT — the badge on the hero",
+      "parent": "bzHeroBadge",
+      "parameters": {
+        "text": "Open today until six",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--primary-foreground)",
+        "fontWeight": "var(--font-medium)"
+      },
+      "x": 400,
+      "y": 1120
+    },
+    {
+      "id": "bzHeroHeading",
+      "type": "Text",
+      "label": "EDIT — the headline",
+      "parent": "bzHeroShell",
+      "parameters": {
+        "text": "What you make, and why people cross town for it",
+        "fontSize": "var(--display-lg)",
+        "fontWeight": "var(--font-bold)",
+        "lineHeight": "var(--leading-none)",
+        "letterSpacing": "var(--tracking-tighter)",
+        "color": "var(--primary-foreground)",
+        "as": "h1"
+      },
+      "x": 340,
+      "y": 1240
+    },
+    {
+      "id": "bzHeroLead",
+      "type": "Text",
+      "label": "EDIT — the line under the headline",
+      "parent": "bzHeroShell",
+      "parameters": {
+        "text": "One sentence on the place itself: the street it is on, the people behind the counter, what it smells like at eight in the morning.",
+        "fontSize": "var(--text-lg)",
+        "lineHeight": "var(--leading-relaxed)",
+        "color": "var(--primary-foreground)",
+        "maxWidth": {
+          "value": 560,
+          "unit": "px"
+        }
+      },
+      "x": 340,
+      "y": 1360
+    },
+    {
+      "id": "bzHeroActions",
+      "type": "Group",
+      "label": "The two actions",
+      "parent": "bzHeroShell",
+      "children": [
+        "bzHeroPrimary",
+        "bzHeroSecondary"
+      ],
+      "parameters": {
+        "sizeMode": "contentHeight",
+        "flexDirection": "row",
+        "flexWrap": "wrap",
+        "alignItems": "center",
+        "columnGap": "var(--space-3)",
+        "rowGap": "var(--space-3)",
+        "paddingTop": "var(--space-2)",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        }
+      },
+      "x": 340,
+      "y": 1480
+    },
+    {
+      "id": "bzHeroPrimary",
+      "type": "net.noodl.controls.button",
+      "label": "Book a table",
+      "parent": "bzHeroActions",
+      "parameters": {
+        "label": "Book a table",
+        "backgroundColor": "var(--primary)",
+        "color": "var(--primary-foreground)",
+        "borderRadius": "var(--radius-full)",
+        "borderStyle": "none",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "sizeMode": "contentSize"
+      },
+      "x": 400,
+      "y": 1600
+    },
+    {
+      "id": "bzHeroSecondary",
+      "type": "net.noodl.controls.button",
+      "label": "Find us",
+      "parent": "bzHeroActions",
+      "parameters": {
+        "label": "Find us",
+        "backgroundColor": "var(--surface-glass)",
+        "color": "var(--primary-foreground)",
+        "borderRadius": "var(--radius-full)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-glass)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "sizeMode": "contentSize"
+      },
+      "x": 400,
+      "y": 1720
+    },
+    {
+      "id": "bzHeroNumbers",
+      "type": "Group",
+      "label": "Three numbers, on glass",
+      "parent": "bzHeroShell",
+      "children": [
+        "bzNumber1Cell",
+        "bzNumber2Cell",
+        "bzNumber3Cell"
+      ],
+      "parameters": {
+        "flexDirection": "row",
+        "backgroundColor": "var(--surface-glass)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-glass)",
+        "borderRadius": "var(--radius-2xl)",
+        "backdropBlur": {
+          "value": 14,
+          "unit": "px"
+        },
+        "columnGap": "var(--space-8)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "paddingTop": "var(--space-5)",
+        "paddingBottom": "var(--space-5)",
+        "sizeMode": "contentSize",
+        "maxWidth": {
+          "value": 100,
+          "unit": "%"
+        },
+        "flexWrap": "wrap",
+        "rowGap": "var(--space-4)"
+      },
+      "x": 340,
+      "y": 1840
+    },
+    {
+      "id": "bzNumber1Cell",
+      "type": "Group",
+      "label": "Number 1 — its cell",
+      "parent": "bzHeroNumbers",
+      "children": [
+        "bzNumber1"
+      ],
+      "parameters": {
+        "sizeMode": "contentHeight",
+        "width": {
+          "value": 190,
+          "unit": "px"
+        },
+        "flexDirection": "column"
+      },
+      "x": 400,
+      "y": 1960
+    },
+    {
+      "id": "bzNumber1",
+      "type": "/Site/Stat",
+      "label": "EDIT — number 1 on the hero",
+      "parent": "bzNumber1Cell",
+      "parameters": {
+        "value": "2009",
+        "label": "The year you opened",
+        "color": "var(--primary-foreground)"
+      },
+      "x": 460,
+      "y": 2080
+    },
+    {
+      "id": "bzNumber2Cell",
+      "type": "Group",
+      "label": "Number 2 — its cell",
+      "parent": "bzHeroNumbers",
+      "children": [
+        "bzNumber2"
+      ],
+      "parameters": {
+        "sizeMode": "contentHeight",
+        "width": {
+          "value": 190,
+          "unit": "px"
+        },
+        "flexDirection": "column"
+      },
+      "x": 400,
+      "y": 2200
+    },
+    {
+      "id": "bzNumber2",
+      "type": "/Site/Stat",
+      "label": "EDIT — number 2 on the hero",
+      "parent": "bzNumber2Cell",
+      "parameters": {
+        "value": "4.9",
+        "label": "Your rating, and where from",
+        "color": "var(--primary-foreground)"
+      },
+      "x": 460,
+      "y": 2320
+    },
+    {
+      "id": "bzNumber3Cell",
+      "type": "Group",
+      "label": "Number 3 — its cell",
+      "parent": "bzHeroNumbers",
+      "children": [
+        "bzNumber3"
+      ],
+      "parameters": {
+        "sizeMode": "contentHeight",
+        "width": {
+          "value": 190,
+          "unit": "px"
+        },
+        "flexDirection": "column"
+      },
+      "x": 400,
+      "y": 2440
+    },
+    {
+      "id": "bzNumber3",
+      "type": "/Site/Stat",
+      "label": "EDIT — number 3 on the hero",
+      "parent": "bzNumber3Cell",
+      "parameters": {
+        "value": "7 days",
+        "label": "Something true about the place",
+        "color": "var(--primary-foreground)"
+      },
+      "x": 460,
+      "y": 2560
+    },
+    {
+      "id": "bzOffer",
+      "type": "Group",
+      "label": "What we make",
+      "parent": "bzMain",
+      "children": [
+        "bzOfferShell"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "flexDirection": "column",
+        "alignItems": "center",
+        "paddingTop": "var(--space-20)",
+        "paddingBottom": "var(--space-20)",
+        "sizeMode": "contentHeight",
+        "as": "section"
+      },
+      "x": 220,
+      "y": 2680
+    },
+    {
+      "id": "bzOfferShell",
+      "type": "Group",
+      "label": "Shell",
+      "parent": "bzOffer",
+      "children": [
+        "bzOfferHead",
+        "bzOfferGrid"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "maxWidth": {
+          "value": 1200,
+          "unit": "px"
+        },
+        "flexDirection": "column",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "sizeMode": "contentHeight",
+        "alignX": "center",
+        "rowGap": "var(--space-6)"
+      },
+      "x": 280,
+      "y": 2800
+    },
+    {
+      "id": "bzOfferHead",
+      "type": "Group",
+      "label": "What we make — head",
+      "parent": "bzOfferShell",
+      "children": [
+        "bzOfferEyebrow",
+        "bzOfferHeading"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "flexDirection": "column",
+        "rowGap": "var(--space-3)",
+        "paddingBottom": "var(--space-10)"
+      },
+      "x": 340,
+      "y": 2920
+    },
+    {
+      "id": "bzOfferEyebrow",
+      "type": "Text",
+      "label": "What we make — eyebrow",
+      "parent": "bzOfferHead",
+      "parameters": {
+        "text": "What we make",
+        "fontSize": "var(--text-xs)",
+        "fontWeight": "var(--font-semibold)",
+        "letterSpacing": "var(--tracking-widest)",
+        "textTransform": "uppercase",
+        "color": "var(--primary)",
+        "as": "span"
+      },
+      "x": 400,
+      "y": 3040
+    },
+    {
+      "id": "bzOfferHeading",
+      "type": "Text",
+      "label": "EDIT — What we make — heading",
+      "parent": "bzOfferHead",
+      "parameters": {
+        "text": "Three things people come in for",
+        "fontSize": "var(--text-3xl)",
+        "fontWeight": "var(--font-semibold)",
+        "lineHeight": "var(--leading-tight)",
+        "letterSpacing": "var(--tracking-tight)",
+        "color": "var(--foreground)",
+        "as": "h2"
+      },
+      "x": 400,
+      "y": 3160
+    },
+    {
+      "id": "bzOfferGrid",
+      "type": "net.noodl.visual.columns",
+      "label": "The grid",
+      "parent": "bzOfferShell",
+      "children": [
+        "bzOffer1Cell",
+        "bzOffer2Cell",
+        "bzOffer3Cell"
+      ],
+      "parameters": {
+        "sizing": "autoFit",
+        "minWidth": {
+          "value": 300,
+          "unit": "px"
+        },
+        "marginX": {
+          "value": 12,
+          "unit": "px"
+        },
+        "marginY": {
+          "value": 24,
+          "unit": "px"
+        }
+      },
+      "x": 340,
+      "y": 3280
+    },
+    {
+      "id": "bzOffer1Cell",
+      "type": "Group",
+      "label": "the first thing you sell",
+      "parent": "bzOfferGrid",
+      "children": [
+        "bzOffer1"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column"
+      },
+      "x": 400,
+      "y": 3400
+    },
+    {
+      "id": "bzOffer1",
+      "type": "/Site/PhotoCard",
+      "label": "EDIT — the first thing you sell",
+      "parent": "bzOffer1Cell",
+      "parameters": {
+        "picture": "noodl_modules/starter-imagery/food-bread.webp",
+        "alt": "Sourdough loaves",
+        "title": "The first thing",
+        "line": "One line on it: what it is, when it is ready, what it costs."
+      },
+      "x": 460,
+      "y": 3520
+    },
+    {
+      "id": "bzOffer2Cell",
+      "type": "Group",
+      "label": "the second thing you sell",
+      "parent": "bzOfferGrid",
+      "children": [
+        "bzOffer2"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column"
+      },
+      "x": 400,
+      "y": 3640
+    },
+    {
+      "id": "bzOffer2",
+      "type": "/Site/PhotoCard",
+      "label": "EDIT — the second thing you sell",
+      "parent": "bzOffer2Cell",
+      "parameters": {
+        "picture": "noodl_modules/starter-imagery/food-plate.webp",
+        "alt": "A plated dish",
+        "title": "The second thing",
+        "line": "One line on it: what it is, when it is ready, what it costs."
+      },
+      "x": 460,
+      "y": 3760
+    },
+    {
+      "id": "bzOffer3Cell",
+      "type": "Group",
+      "label": "the third thing you sell",
+      "parent": "bzOfferGrid",
+      "children": [
+        "bzOffer3"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column"
+      },
+      "x": 400,
+      "y": 3880
+    },
+    {
+      "id": "bzOffer3",
+      "type": "/Site/PhotoCard",
+      "label": "EDIT — the third thing you sell",
+      "parent": "bzOffer3Cell",
+      "parameters": {
+        "picture": "noodl_modules/starter-imagery/texture-coffee.webp",
+        "alt": "Roasted coffee beans",
+        "title": "The third thing",
+        "line": "One line on it: what it is, when it is ready, what it costs."
+      },
+      "x": 460,
+      "y": 4000
+    },
+    {
+      "id": "bzWhy",
+      "type": "Group",
+      "label": "Why here",
+      "parent": "bzMain",
+      "children": [
+        "bzWhyShell"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "flexDirection": "column",
+        "alignItems": "center",
+        "backgroundColor": "var(--surface)",
+        "borderTopStyle": "solid",
+        "borderTopWidth": "var(--border-1)",
+        "borderTopColor": "var(--border)",
+        "borderBottomStyle": "solid",
+        "borderBottomWidth": "var(--border-1)",
+        "borderBottomColor": "var(--border)",
+        "paddingTop": "var(--space-20)",
+        "paddingBottom": "var(--space-20)",
+        "sizeMode": "contentHeight",
+        "as": "section"
+      },
+      "x": 220,
+      "y": 4120
+    },
+    {
+      "id": "bzWhyShell",
+      "type": "Group",
+      "label": "Shell",
+      "parent": "bzWhy",
+      "children": [
+        "bzWhyHead",
+        "bzWhyGrid"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "maxWidth": {
+          "value": 1200,
+          "unit": "px"
+        },
+        "flexDirection": "column",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "sizeMode": "contentHeight",
+        "alignX": "center",
+        "rowGap": "var(--space-6)"
+      },
+      "x": 280,
+      "y": 4240
+    },
+    {
+      "id": "bzWhyHead",
+      "type": "Group",
+      "label": "Why here — head",
+      "parent": "bzWhyShell",
+      "children": [
+        "bzWhyEyebrow",
+        "bzWhyHeading"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "flexDirection": "column",
+        "rowGap": "var(--space-3)",
+        "paddingBottom": "var(--space-10)"
+      },
+      "x": 340,
+      "y": 4360
+    },
+    {
+      "id": "bzWhyEyebrow",
+      "type": "Text",
+      "label": "Why here — eyebrow",
+      "parent": "bzWhyHead",
+      "parameters": {
+        "text": "Why here",
+        "fontSize": "var(--text-xs)",
+        "fontWeight": "var(--font-semibold)",
+        "letterSpacing": "var(--tracking-widest)",
+        "textTransform": "uppercase",
+        "color": "var(--primary)",
+        "as": "span"
+      },
+      "x": 400,
+      "y": 4480
+    },
+    {
+      "id": "bzWhyHeading",
+      "type": "Text",
+      "label": "EDIT — Why here — heading",
+      "parent": "bzWhyHead",
+      "parameters": {
+        "text": "Three reasons this is the place",
+        "fontSize": "var(--text-3xl)",
+        "fontWeight": "var(--font-semibold)",
+        "lineHeight": "var(--leading-tight)",
+        "letterSpacing": "var(--tracking-tight)",
+        "color": "var(--foreground)",
+        "as": "h2"
+      },
+      "x": 400,
+      "y": 4600
+    },
+    {
+      "id": "bzWhyGrid",
+      "type": "net.noodl.visual.columns",
+      "label": "The grid",
+      "parent": "bzWhyShell",
+      "children": [
+        "bzWhy1Cell",
+        "bzWhy2Cell",
+        "bzWhy3Cell"
+      ],
+      "parameters": {
+        "sizing": "autoFit",
+        "minWidth": {
+          "value": 300,
+          "unit": "px"
+        },
+        "marginX": {
+          "value": 12,
+          "unit": "px"
+        },
+        "marginY": {
+          "value": 24,
+          "unit": "px"
+        }
+      },
+      "x": 340,
+      "y": 4720
+    },
+    {
+      "id": "bzWhy1Cell",
+      "type": "Group",
+      "label": "the first reason",
+      "parent": "bzWhyGrid",
+      "children": [
+        "bzWhy1"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column"
+      },
+      "x": 400,
+      "y": 4840
+    },
+    {
+      "id": "bzWhy1",
+      "type": "/Site/Feature",
+      "label": "EDIT — the first reason",
+      "parent": "bzWhy1Cell",
+      "parameters": {
+        "icon": "leaf",
+        "title": "The first reason",
+        "line": "Where things come from, who makes them, what you refuse to do."
+      },
+      "x": 460,
+      "y": 4960
+    },
+    {
+      "id": "bzWhy2Cell",
+      "type": "Group",
+      "label": "the second reason",
+      "parent": "bzWhyGrid",
+      "children": [
+        "bzWhy2"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column"
+      },
+      "x": 400,
+      "y": 5080
+    },
+    {
+      "id": "bzWhy2",
+      "type": "/Site/Feature",
+      "label": "EDIT — the second reason",
+      "parent": "bzWhy2Cell",
+      "parameters": {
+        "icon": "heart",
+        "title": "The second reason",
+        "line": "The people. Say who is behind the counter and how long they have been."
+      },
+      "x": 460,
+      "y": 5200
+    },
+    {
+      "id": "bzWhy3Cell",
+      "type": "Group",
+      "label": "the third reason",
+      "parent": "bzWhyGrid",
+      "children": [
+        "bzWhy3"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column"
+      },
+      "x": 400,
+      "y": 5320
+    },
+    {
+      "id": "bzWhy3",
+      "type": "/Site/Feature",
+      "label": "EDIT — the third reason",
+      "parent": "bzWhy3Cell",
+      "parameters": {
+        "icon": "truck",
+        "title": "The third reason",
+        "line": "Something practical: delivery, parking, a room for a party."
+      },
+      "x": 460,
+      "y": 5440
+    },
+    {
+      "id": "bzVisit",
+      "type": "Group",
+      "label": "Visit",
+      "parent": "bzMain",
+      "children": [
+        "bzVisitShell"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "flexDirection": "column",
+        "alignItems": "center",
+        "paddingTop": "var(--space-20)",
+        "paddingBottom": "var(--space-20)",
+        "sizeMode": "contentHeight",
+        "as": "section"
+      },
+      "x": 220,
+      "y": 5560
+    },
+    {
+      "id": "bzVisitShell",
+      "type": "Group",
+      "label": "Shell",
+      "parent": "bzVisit",
+      "children": [
+        "bzVisitColumns"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "maxWidth": {
+          "value": 1200,
+          "unit": "px"
+        },
+        "flexDirection": "column",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "sizeMode": "contentHeight",
+        "alignX": "center",
+        "rowGap": "var(--space-6)"
+      },
+      "x": 280,
+      "y": 5680
+    },
+    {
+      "id": "bzVisitColumns",
+      "type": "net.noodl.visual.columns",
+      "label": "Where and when, beside the street",
+      "parent": "bzVisitShell",
+      "children": [
+        "bzVisitWords",
+        "bzVisitPhotoBox"
+      ],
+      "parameters": {
+        "layoutString": "1 1",
+        "marginX": {
+          "value": 48,
+          "unit": "px"
+        },
+        "mediumBreakpoint": {
+          "value": 900,
+          "unit": "px"
+        },
+        "mediumLayout": "1",
+        "smallBreakpoint": {
+          "value": 640,
+          "unit": "px"
+        },
+        "smallLayout": "1",
+        "marginY": {
+          "value": 32,
+          "unit": "px"
+        }
+      },
+      "x": 340,
+      "y": 5800
+    },
+    {
+      "id": "bzVisitWords",
+      "type": "Group",
+      "label": "Where and when",
+      "parent": "bzVisitColumns",
+      "children": [
+        "bzVisitEyebrow",
+        "bzVisitHeading",
+        "bzVisitAddress",
+        "bzHours1",
+        "bzHours2",
+        "bzHours3",
+        "bzHours4"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "rowGap": "var(--space-3)"
+      },
+      "x": 400,
+      "y": 5920
+    },
+    {
+      "id": "bzVisitEyebrow",
+      "type": "Text",
+      "label": "Visit — eyebrow",
+      "parent": "bzVisitWords",
+      "parameters": {
+        "text": "Visit",
+        "fontSize": "var(--text-xs)",
+        "fontWeight": "var(--font-semibold)",
+        "letterSpacing": "var(--tracking-widest)",
+        "textTransform": "uppercase",
+        "color": "var(--primary)",
+        "as": "span"
+      },
+      "x": 460,
+      "y": 6040
+    },
+    {
+      "id": "bzVisitHeading",
+      "type": "Text",
+      "label": "Visit — heading",
+      "parent": "bzVisitWords",
+      "parameters": {
+        "text": "Where we are and when we are open",
+        "fontSize": "var(--text-3xl)",
+        "fontWeight": "var(--font-semibold)",
+        "lineHeight": "var(--leading-tight)",
+        "letterSpacing": "var(--tracking-tight)",
+        "color": "var(--foreground)",
+        "as": "h2"
+      },
+      "x": 460,
+      "y": 6160
+    },
+    {
+      "id": "bzVisitAddress",
+      "type": "Text",
+      "label": "EDIT — the address",
+      "parent": "bzVisitWords",
+      "parameters": {
+        "text": "Your street address, your town, your postcode. Delete this and write yours.",
+        "fontSize": "var(--text-base)",
+        "color": "var(--foreground)"
+      },
+      "x": 460,
+      "y": 6280
+    },
+    {
+      "id": "bzHours1",
+      "type": "/Site/HoursRow",
+      "label": "EDIT — opening hours, weekdays",
+      "parent": "bzVisitWords",
+      "parameters": {
+        "day": "Monday to Friday",
+        "time": "7am – 6pm"
+      },
+      "x": 460,
+      "y": 6400
+    },
+    {
+      "id": "bzHours2",
+      "type": "/Site/HoursRow",
+      "label": "EDIT — opening hours, Saturday",
+      "parent": "bzVisitWords",
+      "parameters": {
+        "day": "Saturday",
+        "time": "8am – 5pm"
+      },
+      "x": 460,
+      "y": 6520
+    },
+    {
+      "id": "bzHours3",
+      "type": "/Site/HoursRow",
+      "label": "EDIT — opening hours, Sunday",
+      "parent": "bzVisitWords",
+      "parameters": {
+        "day": "Sunday",
+        "time": "9am – 3pm"
+      },
+      "x": 460,
+      "y": 6640
+    },
+    {
+      "id": "bzHours4",
+      "type": "/Site/HoursRow",
+      "label": "EDIT — opening hours, holidays",
+      "parent": "bzVisitWords",
+      "parameters": {
+        "day": "Bank holidays",
+        "time": "Closed"
+      },
+      "x": 460,
+      "y": 6760
+    },
+    {
+      "id": "bzVisitPhotoBox",
+      "type": "Group",
+      "label": "The street, rounded",
+      "parent": "bzVisitColumns",
+      "children": [
+        "bzVisitPhoto"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "borderRadius": "var(--radius-2xl)",
+        "clip": true
+      },
+      "x": 400,
+      "y": 6880
+    },
+    {
+      "id": "bzVisitPhoto",
+      "type": "Image",
+      "label": "EDIT — a photograph of the street or the door",
+      "parent": "bzVisitPhotoBox",
+      "parameters": {
+        "sizeMode": "explicit",
+        "objectFit": "cover",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "height": {
+          "value": 420,
+          "unit": "px"
+        },
+        "src": "noodl_modules/starter-imagery/food-grocer.webp",
+        "alt": "A greengrocer stall with a customer"
+      },
+      "x": 460,
+      "y": 7000
+    },
+    {
+      "id": "bzQuotes",
+      "type": "Group",
+      "label": "Kind words",
+      "parent": "bzMain",
+      "children": [
+        "bzQuotesShell"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "flexDirection": "column",
+        "alignItems": "center",
+        "backgroundColor": "var(--surface)",
+        "borderTopStyle": "solid",
+        "borderTopWidth": "var(--border-1)",
+        "borderTopColor": "var(--border)",
+        "borderBottomStyle": "solid",
+        "borderBottomWidth": "var(--border-1)",
+        "borderBottomColor": "var(--border)",
+        "paddingTop": "var(--space-20)",
+        "paddingBottom": "var(--space-20)",
+        "sizeMode": "contentHeight",
+        "as": "section"
+      },
+      "x": 220,
+      "y": 7120
+    },
+    {
+      "id": "bzQuotesShell",
+      "type": "Group",
+      "label": "Shell",
+      "parent": "bzQuotes",
+      "children": [
+        "bzQuotesHead",
+        "bzQuotesGrid"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "maxWidth": {
+          "value": 1200,
+          "unit": "px"
+        },
+        "flexDirection": "column",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "sizeMode": "contentHeight",
+        "alignX": "center",
+        "rowGap": "var(--space-6)"
+      },
+      "x": 280,
+      "y": 7240
+    },
+    {
+      "id": "bzQuotesHead",
+      "type": "Group",
+      "label": "Kind words — head",
+      "parent": "bzQuotesShell",
+      "children": [
+        "bzQuotesEyebrow",
+        "bzQuotesHeading"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "flexDirection": "column",
+        "rowGap": "var(--space-3)",
+        "paddingBottom": "var(--space-10)"
+      },
+      "x": 340,
+      "y": 7360
+    },
+    {
+      "id": "bzQuotesEyebrow",
+      "type": "Text",
+      "label": "Kind words — eyebrow",
+      "parent": "bzQuotesHead",
+      "parameters": {
+        "text": "Kind words",
+        "fontSize": "var(--text-xs)",
+        "fontWeight": "var(--font-semibold)",
+        "letterSpacing": "var(--tracking-widest)",
+        "textTransform": "uppercase",
+        "color": "var(--primary)",
+        "as": "span"
+      },
+      "x": 400,
+      "y": 7480
+    },
+    {
+      "id": "bzQuotesHeading",
+      "type": "Text",
+      "label": "Kind words — heading",
+      "parent": "bzQuotesHead",
+      "parameters": {
+        "text": "What regulars say",
+        "fontSize": "var(--text-3xl)",
+        "fontWeight": "var(--font-semibold)",
+        "lineHeight": "var(--leading-tight)",
+        "letterSpacing": "var(--tracking-tight)",
+        "color": "var(--foreground)",
+        "as": "h2"
+      },
+      "x": 400,
+      "y": 7600
+    },
+    {
+      "id": "bzQuotesGrid",
+      "type": "net.noodl.visual.columns",
+      "label": "The grid",
+      "parent": "bzQuotesShell",
+      "children": [
+        "bzQuote1Cell",
+        "bzQuote2Cell"
+      ],
+      "parameters": {
+        "sizing": "autoFit",
+        "minWidth": {
+          "value": 440,
+          "unit": "px"
+        },
+        "marginX": {
+          "value": 12,
+          "unit": "px"
+        },
+        "marginY": {
+          "value": 24,
+          "unit": "px"
+        }
+      },
+      "x": 340,
+      "y": 7720
+    },
+    {
+      "id": "bzQuote1Cell",
+      "type": "Group",
+      "label": "the first regular’s words",
+      "parent": "bzQuotesGrid",
+      "children": [
+        "bzQuote1"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column"
+      },
+      "x": 400,
+      "y": 7840
+    },
+    {
+      "id": "bzQuote1",
+      "type": "/Site/Quote",
+      "label": "EDIT — the first regular’s words",
+      "parent": "bzQuote1Cell",
+      "parameters": {
+        "quote": "“A sentence or two a customer actually said. Pull it from a review if you have one.”",
+        "name": "Their name",
+        "role": "A regular since whenever",
+        "portrait": "noodl_modules/starter-imagery/avatar-3.webp",
+        "alt": "A woman smiling in a hooded coat"
+      },
+      "x": 460,
+      "y": 7960
+    },
+    {
+      "id": "bzQuote2Cell",
+      "type": "Group",
+      "label": "the second regular’s words",
+      "parent": "bzQuotesGrid",
+      "children": [
+        "bzQuote2"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column"
+      },
+      "x": 400,
+      "y": 8080
+    },
+    {
+      "id": "bzQuote2",
+      "type": "/Site/Quote",
+      "label": "EDIT — the second regular’s words",
+      "parent": "bzQuote2Cell",
+      "parameters": {
+        "quote": "“Another one. Real words beat polished ones; leave the typos in if you like.”",
+        "name": "Their name",
+        "role": "A regular since whenever",
+        "portrait": "noodl_modules/starter-imagery/avatar-1.webp",
+        "alt": "A young man laughing"
+      },
+      "x": 460,
+      "y": 8200
+    }
+  ],
+  "visualRoots": [
+    "bzPage"
+  ]
+}

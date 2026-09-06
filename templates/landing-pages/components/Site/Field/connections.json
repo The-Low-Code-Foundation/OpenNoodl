@@ -1,0 +1,25 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "194d44fb-f5a9-5dfd-82db-554a86de636f",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "fdInputs",
+      "fromProperty": "label",
+      "toId": "fdLabel",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "fdInputs",
+      "fromProperty": "type",
+      "toId": "fdInput",
+      "toProperty": "type"
+    },
+    {
+      "fromId": "fdInput",
+      "fromProperty": "onTextChanged",
+      "toId": "fdOutputs",
+      "toProperty": "text"
+    }
+  ]
+}

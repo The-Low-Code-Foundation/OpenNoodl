@@ -1,0 +1,19 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "b1a2837d-c995-5392-8135-d41da61b6a81",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "bsInputs",
+      "fromProperty": "value",
+      "toId": "bsValue",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "bsInputs",
+      "fromProperty": "label",
+      "toId": "bsLabel",
+      "toProperty": "text"
+    }
+  ]
+}

@@ -1,0 +1,86 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "2c8c5cc3-6415-5a7f-89a0-8850cbda74b7",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "saItem",
+      "type": "Group",
+      "label": "One number",
+      "children": [
+        "saValue",
+        "saLabel"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "rowGap": "var(--space-1)"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "saValue",
+      "type": "Text",
+      "label": "The number",
+      "parent": "saItem",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-3xl)",
+        "fontWeight": "var(--font-bold)",
+        "lineHeight": "var(--leading-none)",
+        "letterSpacing": "var(--tracking-tight)",
+        "color": "var(--foreground)"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "saLabel",
+      "type": "Text",
+      "label": "What it counts",
+      "parent": "saItem",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-xs)",
+        "fontWeight": "var(--font-semibold)",
+        "letterSpacing": "var(--tracking-widest)",
+        "textTransform": "uppercase",
+        "color": "var(--muted-foreground)"
+      },
+      "x": 100,
+      "y": 280
+    },
+    {
+      "id": "saInputs",
+      "type": "Component Inputs",
+      "label": "The stat",
+      "ports": [
+        {
+          "name": "value",
+          "plug": "output",
+          "type": "string"
+        },
+        {
+          "name": "label",
+          "plug": "output",
+          "type": "string"
+        },
+        {
+          "name": "color",
+          "plug": "output",
+          "type": "string"
+        }
+      ],
+      "x": 350,
+      "y": 160
+    }
+  ],
+  "visualRoots": [
+    "saItem"
+  ]
+}

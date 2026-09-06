@@ -1,0 +1,88 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "8df445c9-9954-5f7c-86ae-4439249d191c",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "ckRow",
+      "type": "Group",
+      "label": "One point",
+      "children": [
+        "ckGlyph",
+        "ckText"
+      ],
+      "parameters": {
+        "sizeMode": "contentHeight",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "flexDirection": "row",
+        "alignItems": "flex-start",
+        "columnGap": "var(--space-3)"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "ckGlyph",
+      "type": "net.noodl.visual.icon",
+      "label": "The tick",
+      "parent": "ckRow",
+      "parameters": {
+        "iconIconSource": {
+          "class": "lucide",
+          "code": "icon-check",
+          "codeAsClass": true
+        },
+        "iconSize": {
+          "value": 18,
+          "unit": "px"
+        },
+        "iconColor": "var(--primary)"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "ckText",
+      "type": "Text",
+      "label": "The point",
+      "parent": "ckRow",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-base)",
+        "color": "var(--foreground)",
+        "sizeMode": "contentHeight",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        }
+      },
+      "x": 100,
+      "y": 280
+    },
+    {
+      "id": "ckInputs",
+      "type": "Component Inputs",
+      "label": "The point",
+      "ports": [
+        {
+          "name": "text",
+          "plug": "output",
+          "type": "string"
+        },
+        {
+          "name": "color",
+          "plug": "output",
+          "type": "string"
+        }
+      ],
+      "x": 350,
+      "y": 280
+    }
+  ],
+  "visualRoots": [
+    "ckRow"
+  ]
+}

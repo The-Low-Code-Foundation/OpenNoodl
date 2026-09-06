@@ -1,0 +1,31 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "967532b6-df7b-5094-8788-7c6e6b34aa7f",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "feInputs",
+      "fromProperty": "title",
+      "toId": "feTitle",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "feInputs",
+      "fromProperty": "line",
+      "toId": "feLine",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "feInputs",
+      "fromProperty": "icon",
+      "toId": "feSource",
+      "toProperty": "in-icon"
+    },
+    {
+      "fromId": "feSource",
+      "fromProperty": "out-source",
+      "toId": "feGlyph",
+      "toProperty": "iconIconSource"
+    }
+  ]
+}

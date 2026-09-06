@@ -1,0 +1,19 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "1aab3311-6bb1-5a0b-8436-fb0e97c02dec",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "hrInputs",
+      "fromProperty": "day",
+      "toId": "hrDay",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "hrInputs",
+      "fromProperty": "time",
+      "toId": "hrTime",
+      "toProperty": "text"
+    }
+  ]
+}

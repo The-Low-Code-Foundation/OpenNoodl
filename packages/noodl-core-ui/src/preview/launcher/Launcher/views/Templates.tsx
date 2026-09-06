@@ -25,13 +25,18 @@
  * re-enter that defect by a new door.
  *
  * ═══════════════════════════════════════════════════════════════════════════════
- * ## 🔴 THE SHIPPED STATE OF THIS TAB IS ZERO ROWS, AND IT MUST READ AS AN ANSWER
+ * ## 🔴 ZERO ROWS IS STILL REACHABLE HERE, AND IT MUST READ AS AN ANSWER
  *
- * As of 0.2.2 every embedded template is **held** (`HELD_TEMPLATE_IDS` — registered so
- * `resolveTemplateUrl`'s fallback still works, unoffered so it is not on the shelf) and nothing
- * is published on the platform yet. So the list this tab draws today is empty, and empty is not
- * a transient state to be papered over with a spinner: a spinner that never resolves and a panel
- * that failed to draw look identical to the person in front of them, and both read as *broken*.
+ * As of 0.2.2 this tab draws **one** row: the site builder, unheld on 2026-09-05 once Richard
+ * ruled it passable. `hello-world` stays held (`HELD_TEMPLATE_IDS` — registered so
+ * `resolveTemplateUrl`'s fallback still works, unoffered because it is the blank project rather
+ * than a template choice), and nothing is published on the platform yet.
+ *
+ * ⚠️ **A bare shelf is no longer the shipped state, and none of the reasoning below relaxes.**
+ * It is now reached by a build whose embedded provider answers with nothing rather than by
+ * design, which is a *worse* thing to draw wrongly, not a rarer one: empty is not a transient
+ * state to be papered over with a spinner, because a spinner that never resolves and a panel that
+ * failed to draw look identical to the person in front of them, and both read as *broken*.
  *
  * 🔴 **AN EMPTY SHELF AND AN UNREADABLE SHELF ARE OPPOSITE FACTS AND THEY GET OPPOSITE SCREENS.**
  * `galleryFromListing` reports a provider that could not answer as `partial` *beside* whatever

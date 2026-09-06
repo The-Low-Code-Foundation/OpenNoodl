@@ -1011,12 +1011,15 @@ describe('FB-005 — embedded templates use the platform’s category vocabulary
   /**
    * 🔴 **Constructed with NOTHING held, and that is what keeps this suite honest.**
    *
-   * Every embedded template is held as of 0.2.2 (`HELD_TEMPLATE_IDS` — hello-world is the blank
-   * project, the site builder is Richard's D1), so the shipped `list()` is empty and every
-   * `for (const item of items)` below would iterate zero rows and pass for the worst possible
-   * reason. Grading the unheld shelf keeps the vocabulary rule applied to the templates that
-   * exist — including the ones a later phase will unhold, which is when a bad category would
-   * otherwise first be seen.
+   * The shipped shelf offers the site builder as of 0.2.2 and holds `hello-world`, which is the
+   * blank project rather than a template choice (`HELD_TEMPLATE_IDS`). Grading the **unheld** shelf
+   * keeps the vocabulary rule applied to every template that exists rather than only to the ones
+   * currently offered — a held template's category is still wrong the day somebody unholds it, and
+   * that is precisely when nobody re-reads this file.
+   *
+   * ⚠️ It was also the only thing keeping this suite honest while everything was held and
+   * `list()` returned nothing: every `for (const item of items)` below would have iterated zero
+   * rows and passed for the worst possible reason.
    */
   const provider = new EmbeddedTemplateProvider(new Set());
 

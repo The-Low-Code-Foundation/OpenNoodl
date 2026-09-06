@@ -51,6 +51,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 import { helloWorldTemplate } from '../../noodl-editor/src/editor/src/models/template/templates/hello-world.template';
+import { landingPagesTemplate } from '../../noodl-editor/src/editor/src/models/template/templates/landing-pages.template';
 import { siteBuilderTemplate } from '../../noodl-editor/src/editor/src/models/template/templates/site-builder.template';
 
 // ── The two shapes a template ships in ───────────────────────────────────────
@@ -262,7 +263,11 @@ function barePages(t: CensusTemplate): string[] {
 const TEMPLATES: CensusTemplate[] = [
   censusEmbedded(helloWorldTemplate as never),
   censusEmbedded(siteBuilderTemplate as never),
-  censusArtefact('members-area')
+  censusArtefact('members-area'),
+  // TPL-003. Three landing pages and no backend — EMBEDDED, so the census reads
+  // the compiled template (its `designTokens` come from the content's own
+  // metadata), not the v2 directory the same build also writes.
+  censusEmbedded(landingPagesTemplate as never)
 ];
 
 /**
@@ -285,7 +290,10 @@ const EXPECTED_PAGE_COUNT: Record<string, number> = {
   // what it is for again — both pages then had to answer §4, and both do: they
   // are built from `PAGE_GROUND`, `PANEL`, `notice` and `pageHead`, which is the
   // same token vocabulary the other eleven wear.
-  'members-area': 13
+  'members-area': 13,
+  // TPL-003: three pages, one per landing-page kind. A fourth page here is a
+  // fourth kind, and it has to answer §4 like the other three.
+  'landing-pages': 3
 };
 
 /**
@@ -316,7 +324,8 @@ const BARE_PAGES_TODAY: Record<string, string[]> = {
   // exactly as loudly as a new bare page — which is the whole point of a ratchet,
   // and the reason this entry is gone rather than commented out.
   'site-builder': [],
-  'members-area': []
+  'members-area': [],
+  'landing-pages': []
 };
 
 const multiPage = () => TEMPLATES.filter((t) => pageComponents(t).length > 1);
@@ -325,15 +334,15 @@ describe('template appearance ratchet', () => {
   // ── §1 the population, pinned ──────────────────────────────────────────────
   describe('§1 the population', () => {
     it('grades every shipped template', () => {
-      expect(TEMPLATES.map((t) => t.id).sort()).toEqual(['hello-world', 'members-area', 'site-builder']);
+      expect(TEMPLATES.map((t) => t.id).sort()).toEqual(['hello-world', 'landing-pages', 'members-area', 'site-builder']);
     });
 
     it.each(TEMPLATES.map((t) => [t.id, t] as const))('%s has the pinned page count', (id, t) => {
       expect(pageComponents(t).length).toBe(EXPECTED_PAGE_COUNT[id]);
     });
 
-    it('the multi-page population is the two app templates', () => {
-      expect(multiPage().map((t) => t.id).sort()).toEqual(['members-area', 'site-builder']);
+    it('the multi-page population is the three shipped apps', () => {
+      expect(multiPage().map((t) => t.id).sort()).toEqual(['landing-pages', 'members-area', 'site-builder']);
     });
   });
 

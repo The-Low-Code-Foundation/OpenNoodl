@@ -63,7 +63,16 @@ jest.setTimeout(1800000);
 const SETUP_TOKEN = 'vib001-site-token-6b2e91';
 const OWNER = { email: 'owner@example.invalid', password: 'pw-owner' };
 const CONTACT_TO = 'owner@example.invalid';
-const DATE = today();
+/**
+ * The directory date these pictures land under.
+ *
+ * ⚠️ `today()` keys the output directory, so **two runs on one day overwrite
+ * each other** — which is exactly how s52's renders destroyed the corrected-
+ * instrument before-arm that its own change needed to be compared against
+ * (REL-011 §11.6). `VIB_VERDICT_DATE` lets a session photograph a reverted arm
+ * beside the current one instead of on top of it. Unset, nothing changes.
+ */
+const DATE = process.env.VIB_VERDICT_DATE ?? today();
 
 interface Row {
   objectId: string;
