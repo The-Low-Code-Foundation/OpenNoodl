@@ -283,12 +283,37 @@ describe('a receiver is useSignal; a Set Variable is a statement (STEP5-TARGET �
     expect(app.files['src/components/CheerBanner.tsx']).toBe(GOLDEN_CHEER_BANNER);
   });
 
-  test('a non-string setWith conversion defers the Set Variable', () => {
+  test('(§73) a Number, Date or Any Set as leaves the wire untouched — the runtime never converts them, so CheerBanner.tsx is the golden byte for byte', () => {
+    for (const as of ['number', 'date', '*']) {
+      const mutated = cloneIr();
+      setParam(nodeOf(mutated, 'Components/CheerBanner', 'storeCheer'), 'setWith', { kind: 'literal', value: as });
+      const result = emitApp(mutated, catalog);
+      expect(result.files['src/components/CheerBanner.tsx']).toBe(GOLDEN_CHEER_BANNER);
+      expect(result.notes.join('\n')).not.toContain('setWith');
+    }
+  });
+
+  test('(§73) an Object or Array Set as, and a Boolean one under a wire, still defer the Set Variable by name', () => {
+    for (const as of ['object', 'array', 'boolean']) {
+      const mutated = cloneIr();
+      setParam(nodeOf(mutated, 'Components/CheerBanner', 'storeCheer'), 'setWith', { kind: 'literal', value: as });
+      const result = emitApp(mutated, catalog);
+      expect(result.notes.join('\n')).toContain(`setWith "${as}" conversion is not translated in step 5`);
+      expect(result.files['src/components/CheerBanner.tsx']).not.toContain('useSignal');
+    }
+  });
+
+  test('(§73, §72.5 #1) an Event Sender payload key nothing wires types unknown — the Sender never stores it, the Receiver reads undefined', () => {
+    expect(app.files['src/events.ts']).toContain('message?: string;');
     const mutated = cloneIr();
-    setParam(nodeOf(mutated, 'Components/CheerBanner', 'storeCheer'), 'setWith', { kind: 'literal', value: 'number' });
+    const homePage = mutated.components.find((c) => c.path === 'Pages/Home')!;
+    const before = homePage.connections.length;
+    homePage.connections = homePage.connections.filter((c) => !(c.toId === 'cheerSend' && c.toProperty === 'message'));
+    expect(homePage.connections.length).toBe(before - 1);
+    expect(nodeOf(mutated, 'Pages/Home', 'cheerSend').parameters.find((p) => p.name === 'payload')).toEqual({ name: 'payload', value: { kind: 'literal', value: 'message' } });
     const result = emitApp(mutated, catalog);
-    expect(result.notes.join('\n')).toContain('setWith "number" conversion is not translated in step 5');
-    expect(result.files['src/components/CheerBanner.tsx']).not.toContain('useSignal');
+    expect(result.files['src/events.ts']).toContain('message?: unknown;');
+    expect(result.files['src/events.ts']).not.toContain('message?: string;');
   });
 
   test('an authored enabled input gates the receiver and defers it', () => {

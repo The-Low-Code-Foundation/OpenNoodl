@@ -13815,11 +13815,31 @@ function planComponent(
     // Set Variable
     const variableName = variableNameOf(node);
     if (variableName === undefined) return { defer: 'variable name is not a literal' };
+    /**
+     * EXP-011 §73 (§69.5 #3). The runtime's Set as table, measured in `setvariablenode.ts`
+     * `scheduleStore`: `emptyString` writes `''` and never reads Value (the editor removes the
+     * port; a wire that survives is ignored); `boolean` writes `!!value`; `object`/`array` look a
+     * STRING value up as a Model/Collection id — a store lookup this slice does not translate;
+     * `string`, `number`, `date` and `*` (the default, and what an unset parameter means) leave
+     * the value untouched — the enum only chooses the Value port's declared type. So a Number or
+     * Date Set with a wire or a typed-in value is the String case exactly, and the old gate that
+     * refused every non-string enum refused four values the runtime never converts.
+     */
     const setWith = literalParam(node, 'setWith');
-    if (setWith !== undefined && setWith !== 'string') {
+    const wire = component.connections.find((c) => c.toId === node.id && c.toProperty === 'value');
+    if (setWith === 'object' || setWith === 'array') {
       return { defer: `setWith "${String(setWith)}" conversion is not translated in step 5` };
     }
-    const wire = component.connections.find((c) => c.toId === node.id && c.toProperty === 'value');
+    if (setWith === 'emptyString') {
+      return { action: { kind: 'store-set', variableName, expr: { kind: 'literal', value: '' } }, consumes: wire ? [wire.key] : [], collapses: [], subscribes: [] };
+    }
+    if (setWith === 'boolean' && wire) {
+      return { defer: `setWith "boolean" conversion is not translated in step 5` };
+    }
+    if (!wire && setWith === 'boolean') {
+      // `!!internal.value` — and nothing typed in is `!!undefined`, a write of `false` on every Do.
+      return { action: { kind: 'store-set', variableName, expr: { kind: 'literal', value: Boolean(literalParam(node, 'value')) } }, consumes: [], collapses: [], subscribes: [] };
+    }
     if (!wire) {
       /**
        * EXP-011 §69. A value typed into the node with nothing wired over it is what every Do

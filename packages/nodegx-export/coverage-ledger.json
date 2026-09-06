@@ -174,7 +174,7 @@
     {
       "typeName": "Event Receiver",
       "status": "translated",
-      "note": "channel subscription"
+      "note": "channel subscription; a listed payload key nothing wires types unknown (\u00a773, session 95)"
     },
     {
       "typeName": "Event Sender",
@@ -413,7 +413,7 @@
     {
       "typeName": "Set Variable",
       "status": "translated",
-      "note": "variable write in handler (element/receiver triggers only); a value typed into Value with nothing wired over it is written on every Do and types the variable (\u00a769, session 93); a variable no source types is unknown (\u00a772, session 94)"
+      "note": "variable write in handler (element/receiver triggers only); a value typed into Value with nothing wired over it is written on every Do and types the variable (\u00a769, session 93); a variable no source types is unknown (\u00a772, session 94); the Set as table: Empty string writes '', Boolean !!value, Number/Date/Any untouched, Object/Array refused (\u00a773, session 95)"
     },
     {
       "typeName": "SetDbModelProperties",

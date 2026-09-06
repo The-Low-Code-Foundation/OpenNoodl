@@ -2,6 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 import { Catalog, CatalogIndex } from '../src/catalog';
+import { isGlobalStoreFamily } from '../src/analyze/appState';
 import { planProject } from '../src/analyze/plan';
 import { emitApp } from '../src/emit/emitApp';
 import { parseProject } from '../src/parse/parseProject';
@@ -121,10 +122,13 @@ describe('the store module (NAMED-STORES-TARGET §1)', () => {
 
   test('every naming node defaulted ⇒ the store is app, module src/stores/app.ts', () => {
     const mutated = cloneIr();
-    // §70 added `setStormy`, a sixth naming node; left named it would keep a second store `mood` beside `app`.
-    for (const id of ['moodStore', 'setNote', 'setTheme', 'setStormy', 'subNote', 'subTheme']) {
-      dropParam(nodeOf(mutated, 'Pages/Mood', id), 'storeName');
-    }
+    // §70.4 #1: every Global Store family node on the page, by TYPE, not a list of ids — a list
+    // was a pin on the fixture's node count (§70 added `setStormy`, a sixth, and one left named
+    // would keep a second store `mood` beside `app`). Six today; the count is asserted so a
+    // fixture that grows or shrinks moves this row honestly rather than silently.
+    const naming = mutated.components.find((c) => c.path === 'Pages/Mood')!.nodes.filter((n) => isGlobalStoreFamily(n.type));
+    expect(naming.map((n) => n.id).sort()).toEqual(['moodStore', 'setNote', 'setStormy', 'setTheme', 'subNote', 'subTheme']);
+    for (const node of naming) dropParam(node, 'storeName');
     const result = emitApp(mutated, catalog);
     expect(result.files['src/stores/mood.ts']).toBeUndefined();
     expect(result.files['src/stores/app.ts']).toContain("export const app = store<AppState>('app', {");

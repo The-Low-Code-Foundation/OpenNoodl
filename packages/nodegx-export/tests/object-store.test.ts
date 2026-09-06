@@ -579,10 +579,81 @@ describe('§F — EXP-011 §69: a value typed into the Set Variable with nothing
     expect(home(built)).not.toContain('profile.set(');
   });
 
-  test('F5 the Set as gate stands in front of the typed-in path — a Boolean coercion is refused by name with the value typed in', () => {
+  test('F5 (§73) Set as = Boolean with a value typed in writes !!value — "Saved." is true, false is false, and the variable types unknown; the app typechecks', () => {
     const ir = cloneIr();
     setParam(nodeOf(ir, HOME, 'setStatus'), 'setWith', lit('boolean'));
+    const built = emitApp(ir, catalog);
+    expect(reasonFor(ir, HOME, 'setStatus')).toBeUndefined();
+    expect(handlerOf(home(built), 'Save profile')).toBe("onClick={() => { profile.set({ name: name, city: city, since: '2026' }); status.set(true); }}");
+    expect(variables(built)).toContain('export const status = value<unknown>(undefined);');
+    expect(typecheckEmittedApp(built)).toEqual([]);
+    const off = cloneIr();
+    setParam(nodeOf(off, HOME, 'setStatus'), 'setWith', lit('boolean'));
+    setParam(nodeOf(off, HOME, 'setStatus'), 'value', lit(false));
+    expect(handlerOf(home(emitApp(off, catalog)), 'Save profile')).toContain('status.set(false); }}');
+  });
+
+  test('F9 (§73) Set as = Boolean with NOTHING typed in is !!undefined — a write of false on every Do, not the "nothing is wired" refusal', () => {
+    const ir = cloneIr();
+    setParam(nodeOf(ir, HOME, 'setStatus'), 'setWith', lit('boolean'));
+    dropParam(nodeOf(ir, HOME, 'setStatus'), 'value');
+    const built = emitApp(ir, catalog);
+    expect(reasonFor(ir, HOME, 'setStatus')).toBeUndefined();
+    expect(handlerOf(home(built), 'Save profile')).toContain('status.set(false); }}');
+    expect(variables(built)).toContain('export const status = value<unknown>(undefined);');
+  });
+
+  test('F10 (§73) Set as = Empty string writes \'\' and never reads Value — with "Saved." typed in, with nothing typed in, and under a wire alike; the variable types string', () => {
+    for (const shape of ['typed', 'bare', 'wired'] as const) {
+      const ir = cloneIr();
+      setParam(nodeOf(ir, HOME, 'setStatus'), 'setWith', lit('emptyString'));
+      if (shape === 'bare') dropParam(nodeOf(ir, HOME, 'setStatus'), 'value');
+      // The wired shape feeds the Set from the self-fed `status` Variable — a source whose type is
+      // `unknown` (the cycle guard) — so a wire the runtime never reads would demote the type if it
+      // were still registered; nameInput's string wire could not tell the two apart.
+      if (shape === 'wired') wire(ir, HOME, 'statusVar', 'value', 'setStatus', 'value');
+      const built = emitApp(ir, catalog);
+      expect(reasonFor(ir, HOME, 'setStatus')).toBeUndefined();
+      expect(handlerOf(home(built), 'Save profile')).toBe("onClick={() => { profile.set({ name: name, city: city, since: '2026' }); status.set(''); }}");
+      expect(home(built)).not.toContain('status.set(status');
+      expect(variables(built)).toContain('export const status = value<string | undefined>(undefined);');
+      expect(built.notes.join('\n')).not.toContain('setStatus');
+    }
+  });
+
+  test('F11 (§73) Set as = Number, Date or Any leaves the typed-in value untouched — the enum only names the port type (7 stays 7 and types unknown; "Saved." stays "Saved.")', () => {
+    for (const as of ['number', 'date', '*']) {
+      const num = cloneIr();
+      setParam(nodeOf(num, HOME, 'setStatus'), 'setWith', lit(as));
+      setParam(nodeOf(num, HOME, 'setStatus'), 'value', lit(7));
+      const built = emitApp(num, catalog);
+      expect(reasonFor(num, HOME, 'setStatus')).toBeUndefined();
+      expect(handlerOf(home(built), 'Save profile')).toContain('status.set(7); }}');
+      expect(variables(built)).toContain('export const status = value<unknown>(undefined);');
+      const str = cloneIr();
+      setParam(nodeOf(str, HOME, 'setStatus'), 'setWith', lit(as));
+      expect(handlerOf(home(emitApp(str, catalog)), 'Save profile')).toBe(SAVE);
+    }
+  });
+
+  test('F12 (§73) Set as = Object or Array looks a string value up as an id — refused by name, with the value typed in and under a wire', () => {
+    for (const as of ['object', 'array']) {
+      const ir = cloneIr();
+      setParam(nodeOf(ir, HOME, 'setStatus'), 'setWith', lit(as));
+      expect(reasonFor(ir, HOME, 'setStatus')).toBe(`setWith "${as}" conversion is not translated in step 5`);
+      const wired = cloneIr();
+      setParam(nodeOf(wired, HOME, 'setStatus'), 'setWith', lit(as));
+      wire(wired, HOME, 'nameInput', 'onTextChanged', 'setStatus', 'value');
+      expect(reasonFor(wired, HOME, 'setStatus')).toBe(`setWith "${as}" conversion is not translated in step 5`);
+    }
+  });
+
+  test('F13 (§73) Set as = Boolean UNDER a wire is still refused by name — the wire path has no !! in this slice (§73.5)', () => {
+    const ir = cloneIr();
+    setParam(nodeOf(ir, HOME, 'setStatus'), 'setWith', lit('boolean'));
+    wire(ir, HOME, 'nameInput', 'onTextChanged', 'setStatus', 'value');
     expect(reasonFor(ir, HOME, 'setStatus')).toBe('setWith "boolean" conversion is not translated in step 5');
+    expect(home(emitApp(ir, catalog))).not.toContain('status.set(');
   });
 
   test('F6 an expression parameter is not a literal — refused as nothing wired, never written as its source text', () => {

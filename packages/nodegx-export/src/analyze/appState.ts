@@ -489,8 +489,16 @@ export function collectAppState(ir: ExportIR): AppStateRegistry {
           // so it is a typed source of the variable exactly as §67's seed is (a number literal
           // makes the variable `unknown`). Under a wire the wire's source is registered below
           // instead and the literal is never read.
-          const authored = literalPrimitive(node, 'value');
-          if (authored !== undefined && !wiredPortsOf(component).has(`${node.id}:value`)) {
+          // EXP-011 §73 (§69.5 #3). The Set as coercion the plan applies (setvariablenode.ts
+          // `scheduleStore`) types the source too: Empty string writes `''` with no Value at all
+          // (wire or not); Boolean writes `!!value` (nothing typed in is `false`); String, Number,
+          // Date and Any leave the literal untouched. Object/Array are refused by the plan and the
+          // literal is registered as it is (the §47 convention for a refused Set's source).
+          const setWith = literalString(node, 'setWith');
+          const wired = wiredPortsOf(component).has(`${node.id}:value`);
+          const typed = literalPrimitive(node, 'value');
+          const authored = setWith === 'emptyString' ? '' : setWith === 'boolean' && !wired ? Boolean(typed) : typed;
+          if (authored !== undefined && (!wired || setWith === 'emptyString')) {
             variableSources.get(name)!.push({ component, fromNode: undefined, fromProperty: 'value', literal: authored });
           }
         }
@@ -712,6 +720,9 @@ export function collectAppState(ir: ExportIR): AppStateRegistry {
       if (toNode.type === 'Set Variable' && connection.toProperty === 'value') {
         const name = literalString(toNode, 'name');
         if (name === undefined) continue;
+        // EXP-011 §73. Under Set as = Empty string the runtime writes `''` and never reads Value;
+        // the literal `''` registered at the node is the source, the wire is not.
+        if (literalString(toNode, 'setWith') === 'emptyString') continue;
         ensureVariable(name);
         variableSources.get(name)!.push(fromRef);
       }
@@ -774,7 +785,12 @@ export function collectAppState(ir: ExportIR): AppStateRegistry {
     if (visiting.has(guard)) return 'unknown';
     visiting.add(guard);
     const sources = payloadSources.get(`${channelName} ${key}`) ?? [];
-    const resolved = sources.every((ref) => typeOfSource(ref, visiting) === 'string') ? 'string' : 'unknown';
+    // EXP-011 §73 (§72.5 #1). §47's rule a fourth time: a payload key the Sender LISTS and nothing
+    // wires never enters the runtime's `inputValues` (eventsender.ts `registerInputIfNeeded` stores
+    // only what arrives), so the Receiver's output reads `undefined` — and `[].every(…)` typed it
+    // `string`. Zero statically-known sources is `unknown`, as for a variable and a store key.
+    const resolved =
+      sources.length > 0 && sources.every((ref) => typeOfSource(ref, visiting) === 'string') ? 'string' : 'unknown';
     visiting.delete(guard);
     return resolved;
   };
