@@ -10,9 +10,17 @@
  * That matters because `applyPatches` does not only normalise old node shapes. It runs
  * {@link applyRunOnValueChangeMigration}, which **rewrites stored parameters**: for every node
  * whose control signal is wired it writes `runOnChange-<input>: false`. So a project can differ
- * from itself in a large number of stored parameters depending only on *who opened it* — measured
- * at **56 writes across 13 components** on the shipped site-builder template. The editor sees one
- * graph; a headless render, an export or the MCP server sees another.
+ * from itself in a large number of stored parameters depending only on *who opened it*. The editor
+ * sees one graph; a headless render, an export or the MCP server sees another.
+ *
+ * ⚠️ **This was measured at 56 writes on the shipped site-builder template, and that figure is now
+ * ZERO** — re-measured 2026-08-31 at HEAD: `writes: 0, familyNodes: 82, signalDrivenNodes: 40,
+ * preserved: 91`. It was 56 at `cdd842fc` and 65 two days later; DEF-007 §3.2 drove it to 0 by
+ * making `toTemplateContent` state the values itself. 🔴 **A zero here does NOT mean the seam
+ * closed.** It means this one template stopped exercising it. Any template that leaves a governed
+ * input unstated still differs, and that is the case this registry exists to make findable —
+ * which is why the count is quoted with `familyNodes` beside it, a zero with no family nodes
+ * found being a broken instrument rather than an absence.
  *
  * # Why this list lives here and not in a task file
  *

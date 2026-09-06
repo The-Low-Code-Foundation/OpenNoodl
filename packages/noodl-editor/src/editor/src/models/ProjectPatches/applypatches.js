@@ -2,7 +2,14 @@
  * DEF-007 — 🔴 **this call is the seam.** `ProjectModel.fromJSON` does *not* apply patches, so a
  * path that reaches it without calling `applyPatches` first sees the project file exactly as
  * written, while the editor sees a graph the run-on-value-change migration below has rewritten.
- * On the shipped site-builder template those two readings differ in **56 stored parameters**.
+ * The two readings differ in one stored parameter for every governed input a template leaves
+ * unstated. ⚠️ **On the shipped site-builder template that is now zero, by construction** —
+ * DEF-007 §3.2 made `toTemplateContent` state the values itself, so the migration has nothing
+ * left to write there. **The seam is not closed by that**, it is unexercised by that one
+ * template: any project that does *not* pin its values still differs, and re-measuring only
+ * site-builder is how this number decays into "the seam is gone". Re-measure with
+ * `planRunOnValueChangeMigration` and read `familyNodes` beside `writes` — a zero with no
+ * family nodes found is a broken instrument, not an absence.
  *
  * **Which paths are on which side is registered in `./projectLoadSeam.ts`**, and
  * `noodl-editor/tests-unit/def007-project-load-seam.test.ts` fails when a new `fromJSON` call site
