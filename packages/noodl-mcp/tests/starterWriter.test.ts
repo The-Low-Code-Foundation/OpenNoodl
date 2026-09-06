@@ -281,3 +281,167 @@ describe('the derived starter against the real gate', () => {
     expect(scored.installable).toBe(false);
   });
 });
+
+// ─── P79 L1 + D4: the component the learner creates, and the registry that counted the solution ──
+
+describe('a component every node of which was subtracted (P79 L1) and the registry counts (P79 D4)', () => {
+  /**
+   * Lesson 8's shape: Home, plus a `/Snack` component the learner creates and
+   * nothing else refers to. The registry carries the solution's counts and the
+   * fields the editor writes around them.
+   */
+  function writeSnacksSolution(dir: string): string {
+    const homeDir = path.join(dir, 'components', '__page__', 'Home');
+    const snackDir = path.join(dir, 'components', 'Snack');
+    fs.mkdirSync(homeDir, { recursive: true });
+    fs.mkdirSync(snackDir, { recursive: true });
+
+    fs.writeFileSync(
+      path.join(dir, 'components', '_registry.json'),
+      JSON.stringify({
+        $schema: 'https://opennoodl.dev/schemas/registry-v2.json',
+        version: 1,
+        lastUpdated: '2026-09-06T08:00:00.000Z',
+        components: {
+          '__page__/Home': {
+            path: '__page__/Home',
+            type: 'page',
+            nodeCount: 2,
+            connectionCount: 0,
+            created: '2026-08-28T20:36:41.603Z'
+          },
+          Snack: { path: 'Snack', type: 'visual', nodeCount: 1, connectionCount: 0, created: '2026-09-06T08:00:00.000Z' }
+        },
+        stats: { totalComponents: 2, totalNodes: 3, totalConnections: 0 }
+      })
+    );
+    fs.writeFileSync(
+      path.join(homeDir, 'component.json'),
+      JSON.stringify({ id: 'home', name: 'Home', path: '/#__page__/Home', type: 'visual' })
+    );
+    fs.writeFileSync(path.join(homeDir, 'nodes.json'), JSON.stringify({ componentId: 'home', nodes: SOLUTION_NODES }));
+    fs.writeFileSync(path.join(homeDir, 'connections.json'), JSON.stringify({ componentId: 'home', connections: [] }));
+
+    fs.writeFileSync(
+      path.join(snackDir, 'component.json'),
+      JSON.stringify({ id: 'snack', name: 'Snack', path: '/Snack', type: 'visual' })
+    );
+    fs.writeFileSync(
+      path.join(snackDir, 'nodes.json'),
+      JSON.stringify({ componentId: 'snack', nodes: [{ id: 'row-1', type: 'Group', label: 'Snack row' }] })
+    );
+    fs.writeFileSync(path.join(snackDir, 'connections.json'), JSON.stringify({ componentId: 'snack', connections: [] }));
+
+    fs.writeFileSync(
+      path.join(dir, 'nodegx.project.json'),
+      JSON.stringify({ name: 'Snacks', version: 3, rootNodeId: 'page-1', metadata: {} })
+    );
+    return dir;
+  }
+
+  const SNACKS: LessonManifest = {
+    format: 'noodl-lesson@1',
+    title: 'Snacks',
+    steps: [
+      {
+        title: 'Add a Text node',
+        body: 'Add it.',
+        completeWhen: [{ node: '/#__page__/Home:%Page:#Greeting', hasType: 'Text' }]
+      },
+      {
+        title: 'Design one snack',
+        body: 'Make a component called Snack with a Group in it.',
+        completeWhen: [{ node: '/Snack:#Snack row', hasType: 'Group' }]
+      }
+    ]
+  };
+
+  interface Registry {
+    $schema?: string;
+    version?: number;
+    lastUpdated?: string;
+    components: Record<string, { path?: string; type?: string; nodeCount?: number; connectionCount?: number; created?: string }>;
+    stats?: { totalComponents: number; totalNodes: number; totalConnections: number };
+  }
+
+  it('leaves neither the directory nor the registry entry of the dropped component in the starter', () => {
+    const solutionDir = writeSnacksSolution(tmp('snacks'));
+    const starterDir = path.join(tmp('out'), 'starter');
+
+    const result = writeDerivedStarter(SNACKS, { solutionDir, starterDir });
+    expect(result.written).toBe(true);
+    expect(result.removedComponents).toEqual(['Snack']);
+
+    // 🔴 The row: an empty `components/Snack` used to come across with the copy.
+    expect(fs.existsSync(path.join(starterDir, 'components', 'Snack'))).toBe(false);
+    const registry = readJson<Registry>(starterDir, 'components', '_registry.json');
+    expect(Object.keys(registry.components)).toEqual(['__page__/Home']);
+
+    // The solution still has it — derived FROM, never written TO.
+    expect(fs.existsSync(path.join(solutionDir, 'components', 'Snack', 'nodes.json'))).toBe(true);
+    expect(Object.keys(readJson<Registry>(solutionDir, 'components', '_registry.json').components).sort()).toEqual(
+      ['Snack', '__page__/Home']
+    );
+  });
+
+  it('counts the starter in _registry.json, not the solution, and leaves every other key as it was', () => {
+    const solutionDir = writeSnacksSolution(tmp('snacks'));
+    const starterDir = path.join(tmp('out'), 'starter');
+    writeDerivedStarter(SNACKS, { solutionDir, starterDir });
+
+    const registry = readJson<Registry>(starterDir, 'components', '_registry.json');
+    const home = registry.components['__page__/Home'];
+
+    // Home lost its Text: two nodes in the solution, one in the starter. The
+    // verbatim copy said 2 — every shipped starter did, until this was written.
+    expect(home.nodeCount).toBe(1);
+    expect(home.connectionCount).toBe(0);
+    expect(registry.stats).toEqual({ totalComponents: 1, totalNodes: 1, totalConnections: 0 });
+
+    // Read-modify-write: nothing the writer does not re-derive is touched.
+    expect(home.path).toBe('__page__/Home');
+    expect(home.type).toBe('page');
+    expect(home.created).toBe('2026-08-28T20:36:41.603Z');
+    expect(registry.$schema).toBe('https://opennoodl.dev/schemas/registry-v2.json');
+    expect(registry.version).toBe(1);
+    expect(registry.lastUpdated).toBe('2026-09-06T08:00:00.000Z');
+
+    // And the control on the numbers: the solution's registry still counts the solution.
+    const solutionRegistry = readJson<Registry>(solutionDir, 'components', '_registry.json');
+    expect(solutionRegistry.components['__page__/Home'].nodeCount).toBe(2);
+    expect(solutionRegistry.stats?.totalNodes).toBe(3);
+  });
+
+  it('keeps a component, empty, when the page still places it — and says so', () => {
+    const solutionDir = writeSnacksSolution(tmp('snacks'));
+    // Home now carries an instance of /Snack that no step grades.
+    const homeNodes = path.join(solutionDir, 'components', '__page__', 'Home', 'nodes.json');
+    fs.writeFileSync(
+      homeNodes,
+      JSON.stringify({
+        componentId: 'home',
+        nodes: [
+          { id: 'page-1', type: 'Page', children: ['text-1', 'inst-1'] },
+          { id: 'text-1', type: 'Text', label: 'Greeting', parameters: { text: 'Hello' }, parent: 'page-1' },
+          { id: 'inst-1', type: '/Snack', label: 'One snack', parent: 'page-1' }
+        ]
+      })
+    );
+    const registryFile = path.join(solutionDir, 'components', '_registry.json');
+    const reg = JSON.parse(fs.readFileSync(registryFile, 'utf8')) as Registry;
+    reg.components['__page__/Home'].nodeCount = 3;
+    fs.writeFileSync(registryFile, JSON.stringify(reg));
+
+    const starterDir = path.join(tmp('out'), 'starter');
+    const result = writeDerivedStarter(SNACKS, { solutionDir, starterDir });
+    expect(result.written).toBe(true);
+    expect(result.removedComponents).toEqual([]);
+
+    expect(readJson<{ nodes: unknown[] }>(starterDir, 'components', 'Snack', 'nodes.json').nodes).toEqual([]);
+    const registry = readJson<Registry>(starterDir, 'components', '_registry.json');
+    expect(registry.components.Snack.nodeCount).toBe(0);
+    expect(registry.components['__page__/Home'].nodeCount).toBe(2);
+    expect(registry.stats).toEqual({ totalComponents: 2, totalNodes: 2, totalConnections: 0 });
+    expect(result.retractions.some((r) => r.detail.includes('is an instance of it'))).toBe(true);
+  });
+});

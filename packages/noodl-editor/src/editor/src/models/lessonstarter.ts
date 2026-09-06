@@ -53,6 +53,7 @@
  * | `connection` | has both nodes, **not wired** | the step is about the wire |
  * | `routerLists` | has the page, **not listed by the router** | the step is about reachability |
  * | `metadata` | **without that metadata key** | the step is about a project setting |
+ * | every node of a component | **has no such component** — unless something still refers to it | the step is about creating it, or about filling it in (P79 L1) |
  *
  * A model that wrote a lenient condition therefore gets a lenient subtraction,
  * which is the one-directional authoring gradient the criterion-3 run named (F2
@@ -87,6 +88,7 @@ import { stepConditions } from './lessonbundleverify';
 import { buildLessonEvalContext } from './lessonprojectcontext';
 import type { LessonProjectComponentFiles, LessonProjectSource } from './lessonprojectcontext';
 import { isSamePage, readRouterPagesValue, ROUTER_NODE_TYPES } from './AiAssistant/authoring/pageRegistration';
+import { toLegacyName } from '../io/ProjectImporter';
 import type { LessonManifest } from './lessonformat';
 import { evalConditionsWithContext, findNodeWithPath } from '../views/lessons/lessonevalconditions';
 import type { LessonCondition } from '../views/lessons/lessonevalconditions';
@@ -105,6 +107,16 @@ export type RetractionKind =
   | 'remove-route'
   /** A project metadata key is unset. */
   | 'clear-metadata'
+  /**
+   * A whole component is not in the starter, because every node in it was
+   * subtracted and nothing else in the project refers to it (P79 L1).
+   *
+   * The learner is being asked to CREATE the component, and a starter that
+   * shipped an empty directory under its name would hand them a component they
+   * are then told to make. Reported once per component, against the step that
+   * removed its last node.
+   */
+  | 'remove-component'
   /**
    * Nothing was retracted, and the reason is recorded rather than swallowed.
    *
@@ -147,6 +159,13 @@ export interface DeriveStarterResult {
    * the lesson, and it says so.
    */
   danglingReferences: string[];
+  /**
+   * Registry paths of components the starter does not carry at all — emptied by
+   * the subtraction and referenced by nothing that survived it. The writer
+   * removes their directories and registry entries; without this list it would
+   * copy them across as empty components (P79 L1).
+   */
+  removedComponents: string[];
   ok: boolean;
   /** Present when `starter` is absent. Written for a model to act on. */
   refusal?: string;
@@ -213,7 +232,7 @@ function nodeAndDescendants(files: LessonProjectComponentFiles, rootId: string):
  * discovered later, and `danglingReferences` re-checks the whole project
  * afterwards on the principle that an enumeration is a claim.
  */
-function removeNodeSubtree(files: LessonProjectComponentFiles, rootId: string): void {
+function removeNodeSubtree(files: LessonProjectComponentFiles, rootId: string): Set<string> {
   const doomed = nodeAndDescendants(files, rootId);
 
   files.nodes.nodes = (files.nodes.nodes ?? []).filter((n) => !doomed.has(n.id));
@@ -234,6 +253,8 @@ function removeNodeSubtree(files: LessonProjectComponentFiles, rootId: string): 
   files.connections.connections = (files.connections.connections ?? []).filter(
     (c) => !doomed.has(c.fromId) && !doomed.has(c.toId)
   );
+
+  return doomed;
 }
 
 function clearParameters(source: LessonProjectSource, nodeId: string, names: readonly string[]): string[] {
@@ -313,6 +334,112 @@ function removeRoute(source: LessonProjectSource, page: string, nodeId?: string)
   return changed;
 }
 
+/** Every `fromPort → toPort` wire between two nodes, as the solution has them. */
+function wiresBetween(source: LessonProjectSource, fromId: string, toId: string): string[] {
+  const files = componentHolding(source, fromId);
+  return (files?.connections?.connections ?? [])
+    .filter((c) => c.fromId === fromId && c.toId === toId)
+    .map((c) => `${c.fromProperty ?? ''} → ${c.toProperty ?? ''}`);
+}
+
+/**
+ * Where the draft still refers to a component by its legacy name, if anywhere.
+ *
+ * Three places can: a node whose `type` is the component (an instance placed on
+ * a page), a parameter naming it (a Repeater's `template`), and a router's page
+ * list. The first sentence that fits is the one reported, because one is enough
+ * to decide the question below.
+ */
+function referenceTo(source: LessonProjectSource, legacyName: string): string | undefined {
+  for (const files of source.components) {
+    for (const node of files.nodes?.nodes ?? []) {
+      if (node.type === legacyName) {
+        return `node ${node.id}${node.label ? ` ("${node.label}")` : ''} in ${files.registryPath} is an instance of it`;
+      }
+      if (ROUTER_NODE_TYPES.has(node.type)) {
+        const pages = readRouterPagesValue(node.parameters as Record<string, unknown>);
+        const listed = [...pages.routes, ...(pages.startPage ? [pages.startPage] : [])];
+        if (listed.some((route) => isSamePage(route, legacyName))) {
+          return `the router ${node.id} in ${files.registryPath} lists it as a page`;
+        }
+      }
+      for (const [param, value] of Object.entries(node.parameters ?? {})) {
+        if (value === legacyName) {
+          return `node ${node.id}${node.label ? ` ("${node.label}")` : ''} in ${files.registryPath} names it in "${param}"`;
+        }
+      }
+    }
+  }
+  return undefined;
+}
+
+/**
+ * P79 L1 — a component whose every node the subtraction removed.
+ *
+ * 🔴 Two lessons look identical at this point and want opposite starters. *"Build
+ * the Home page"* empties a page component that the router still lists: the
+ * learner is filling in a component that exists, and the starter must keep it,
+ * empty. *"Make a Snack component"* empties a component nothing refers to: the
+ * learner is creating it, and a starter that carries an empty `/Snack` hands
+ * them a component they are then told to make — which is what shipped lesson 8's
+ * first derivation, and what the chain gate refused.
+ *
+ * The reference decides it, and the decision is written into the retraction
+ * either way so an author whose lesson is the *inconsistent* third shape (the
+ * learner creates a component a page already places) can see which reading was
+ * taken and grade the instance too.
+ *
+ * ⚠️ Only a component the SOLUTION had nodes in. One that was empty to begin
+ * with was not subtracted, and dropping it would be inventing a step.
+ */
+function dropEmptiedComponents(
+  draft: LessonProjectSource,
+  original: LessonProjectSource,
+  removedNodes: Map<string, number>,
+  retractions: StarterRetraction[]
+): string[] {
+  const removed: string[] = [];
+
+  for (const files of [...draft.components]) {
+    if ((files.nodes?.nodes ?? []).length > 0) continue;
+    const before = original.components.find((c) => c.registryPath === files.registryPath);
+    const hadNodes = (before?.nodes?.nodes ?? []).length > 0;
+    if (!hadNodes) continue;
+
+    const legacyName = toLegacyName(files.component, files.registryPath);
+    // The step that took the last of it: the highest step index among its nodes.
+    const step = Math.max(...(before?.nodes?.nodes ?? []).map((n) => removedNodes.get(n.id) ?? -1));
+    const where = retractions.find((r) => r.step === step)?.where ?? `Step ${step + 1}`;
+
+    const reference = referenceTo(draft, legacyName);
+    if (reference) {
+      retractions.push({
+        step,
+        where,
+        kind: 'unsupported',
+        detail:
+          `kept "${legacyName}" (${files.registryPath}) as an EMPTY component: every node in it was removed, but ` +
+          `${reference}. If the learner is meant to create this component rather than fill it in, grade that ` +
+          'reference too and it will be dropped from the starter.'
+      });
+      continue;
+    }
+
+    draft.components.splice(draft.components.indexOf(files), 1);
+    removed.push(files.registryPath);
+    retractions.push({
+      step,
+      where,
+      kind: 'remove-component',
+      detail:
+        `dropped "${legacyName}" (${files.registryPath}) from the starter: every node in it was removed and nothing ` +
+        'else in the project refers to it, so the learner is creating the component, not filling it in.'
+    });
+  }
+
+  return removed;
+}
+
 // ─── The postcondition's second half ────────────────────────────────────────
 
 /**
@@ -356,8 +483,19 @@ export function danglingReferences(source: LessonProjectSource): string[] {
 interface RetractionContext {
   /** The project being subtracted from, mutated in place. */
   draft: LessonProjectSource;
+  /** The unmodified solution — what a wire or a node looked like before any step took it. */
+  original: LessonProjectSource;
   /** Path resolution happens against the ORIGINAL, so one retraction cannot move another's target. */
   resolve(path: string): string | undefined;
+  /** Zero-based index of the step whose condition is being retracted. */
+  step: number;
+  /**
+   * Every node id a `remove-node` retraction has taken out so far, and the step
+   * that took it. This is what lets a later `connection` condition say *"that
+   * wire went with the node step 2 removed"* instead of *"no such wire"* — the
+   * two sentences P79 G3 found being written identically.
+   */
+  removedNodes: Map<string, number>;
 }
 
 /**
@@ -402,7 +540,9 @@ function retract(condition: LessonCondition, ctx: RetractionContext): { kind: Re
       return { kind: 'remove-node', detail: `"${path}" (node ${id}) was already removed by an earlier step.` };
     }
 
-    removeNodeSubtree(files, id);
+    for (const doomed of removeNodeSubtree(files, id)) {
+      if (!ctx.removedNodes.has(doomed)) ctx.removedNodes.set(doomed, ctx.step);
+    }
     return { kind: 'remove-node', detail: `removed "${path}" (node ${id}) and anything under it.` };
   }
 
@@ -448,9 +588,49 @@ function retract(condition: LessonCondition, ctx: RetractionContext): { kind: Re
     }
 
     const removed = removeConnection(ctx.draft, fromId, toId, ports[0], ports[1]);
-    return removed
-      ? { kind: 'remove-connection', detail: `removed the ${ports[0]} → ${ports[1]} wire from "${cond.from}" to "${cond.to}".` }
-      : { kind: 'unsupported', detail: `no ${ports[0]} → ${ports[1]} wire exists between those nodes in the solution.` };
+    if (removed) {
+      return {
+        kind: 'remove-connection',
+        detail: `removed the ${ports[0]} → ${ports[1]} wire from "${cond.from}" to "${cond.to}".`
+      };
+    }
+
+    // 🔴 Three different absences, and only one of them is the author's mistake.
+    // Written as three sentences because the benign one (the node went earlier,
+    // and its wires with it) used to read identically to the typo (a port that
+    // never existed), and a reader who had seen the benign one twice skimmed
+    // past the real one — P79 G3.
+    const goneWith = [
+      [cond.from, ctx.removedNodes.get(fromId)] as const,
+      [cond.to, ctx.removedNodes.get(toId)] as const
+    ].filter(([, step]) => step !== undefined);
+    if (goneWith.length) {
+      const [where, step] = goneWith[0];
+      return {
+        kind: 'remove-connection',
+        detail:
+          `the ${ports[0]} → ${ports[1]} wire from "${cond.from}" to "${cond.to}" went when Step ${(step as number) + 1} ` +
+          `removed "${where}" — nothing left to remove.`
+      };
+    }
+
+    const inSolution = wiresBetween(ctx.original, fromId, toId);
+    const wanted = `${ports[0]} → ${ports[1]}`.toLowerCase();
+    if (inSolution.some((w) => w.toLowerCase() === wanted)) {
+      return {
+        kind: 'remove-connection',
+        detail: `the ${ports[0]} → ${ports[1]} wire from "${cond.from}" to "${cond.to}" was already removed by an earlier step.`
+      };
+    }
+    return {
+      kind: 'unsupported',
+      detail:
+        `no ${ports[0]} → ${ports[1]} wire exists between "${cond.from}" and "${cond.to}" in the solution` +
+        (inSolution.length
+          ? ` — the wires that do: ${inSolution.join(', ')}. A port name that is not one of these is probably ` +
+            'a typo, and the F2 replay will refuse it too.'
+          : ' — those two nodes are not wired to each other at all. Check the paths and the port names.')
+    };
   }
 
   if ('routerlists' in cond) {
@@ -508,8 +688,9 @@ export function deriveLessonStarter(solution: LessonProjectSource, manifest: Les
   const retractions: StarterRetraction[] = [];
 
   // 🔴 Resolved against the original, once, for every retraction. See `retract`.
-  const original = buildLessonEvalContext(solution);
-  const resolve = (path: string) => findNodeWithPath(path, original.components)?.id;
+  const originalContext = buildLessonEvalContext(solution);
+  const resolve = (path: string) => findNodeWithPath(path, originalContext.components)?.id;
+  const removedNodes = new Map<string, number>();
 
   for (const step of graded) {
     if (step.compileError) {
@@ -523,7 +704,7 @@ export function deriveLessonStarter(solution: LessonProjectSource, manifest: Les
     }
 
     for (const condition of step.checkable) {
-      const done = retract(condition, { draft, resolve });
+      const done = retract(condition, { draft, original: solution, resolve, step: step.index, removedNodes });
       retractions.push({ step: step.index, where: step.where, ...done });
     }
 
@@ -536,6 +717,8 @@ export function deriveLessonStarter(solution: LessonProjectSource, manifest: Les
       });
     }
   }
+
+  const removedComponents = dropEmptiedComponents(draft, solution, removedNodes, retractions);
 
   // ─── The postcondition, measured ───────────────────────────────────────────
   // Through the real evaluator against the real derived files. The alternative —
@@ -567,12 +750,13 @@ export function deriveLessonStarter(solution: LessonProjectSource, manifest: Les
       retractions,
       stillSatisfied,
       danglingReferences: dangling,
+      removedComponents,
       ok: false,
       refusal: buildRefusal(stillSatisfied, dangling, retractions)
     };
   }
 
-  return { starter: draft, retractions, stillSatisfied, danglingReferences: dangling, ok: true };
+  return { starter: draft, retractions, stillSatisfied, danglingReferences: dangling, removedComponents, ok: true };
 }
 
 function buildRefusal(

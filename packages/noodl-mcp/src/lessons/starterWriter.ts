@@ -21,6 +21,18 @@
  * the same reasoning `render-from-disk.js` got wrong for two phases by
  * paraphrasing a contract it could have called.
  *
+ * ⚠️ TWO EXCEPTIONS TO "COPIED VERBATIM", BOTH BECAUSE THE COPY WOULD LIE
+ * ----------------------------------------------------------------------
+ * - A component the derivation dropped (every node subtracted, nothing left
+ *   referring to it — P79 L1) has its directory removed after the copy, or the
+ *   learner opens a starter carrying an empty component they are told to create.
+ * - `components/_registry.json` is not one of the three modelled files, but it
+ *   makes claims about them (`nodeCount`, `connectionCount`, the totals) and a
+ *   verbatim copy carries the SOLUTION's counts into the starter (P79 D4 — every
+ *   shipped starter said so until this was written). It is read, its dropped
+ *   entries removed, its counts re-derived from the files actually written, and
+ *   every other key left exactly as the solution had it.
+ *
  * @module noodl-mcp/lessons/starterWriter
  */
 
@@ -28,7 +40,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { deriveLessonStarter, MANIFEST_FILE, readLessonProject, SOLUTION_DIR } from '../editor-deps';
-import type { LessonManifest, StarterRetraction } from '../editor-deps';
+import type { LessonManifest, LessonProjectSource, StarterRetraction } from '../editor-deps';
 import { ToolError } from '../errors';
 import { nodeBundleFs } from './bundleWriter';
 
@@ -44,6 +56,8 @@ export interface WrittenStarter {
   stillSatisfied: Array<{ step: number; where: string }>;
   /** Files the copy removed because a starter is a project, not a bundle. */
   droppedFromCopy: string[];
+  /** Registry paths of components the starter does not carry — see `DeriveStarterResult.removedComponents`. */
+  removedComponents: string[];
   refusal?: string;
 }
 
@@ -119,6 +133,7 @@ export function writeDerivedStarter(manifest: LessonManifest, options: WriteStar
       retractions: derived.retractions,
       stillSatisfied: derived.stillSatisfied,
       droppedFromCopy: [],
+      removedComponents: [],
       ...(derived.refusal ? { refusal: derived.refusal } : {})
     };
   }
@@ -146,6 +161,14 @@ export function writeDerivedStarter(manifest: LessonManifest, options: WriteStar
     writeJson(path.join(compDir, 'connections.json'), files.connections);
   }
 
+  // P79 L1 — the copy brought the dropped component's directory across; take it
+  // out, or the starter carries an empty component under the name the learner
+  // is about to be told to create.
+  for (const registryPath of derived.removedComponents) {
+    fs.rmSync(path.join(options.starterDir, 'components', registryPath), { recursive: true, force: true });
+  }
+
+  rewriteRegistry(options.starterDir, derived.starter, derived.removedComponents);
   writeProjectMetadata(options.starterDir, derived.starter.metadata);
 
   return {
@@ -153,8 +176,79 @@ export function writeDerivedStarter(manifest: LessonManifest, options: WriteStar
     starterDir: options.starterDir,
     retractions: derived.retractions,
     stillSatisfied: derived.stillSatisfied,
-    droppedFromCopy
+    droppedFromCopy,
+    removedComponents: derived.removedComponents
   };
+}
+
+interface RegistryEntry {
+  path?: string;
+  nodeCount?: number;
+  connectionCount?: number;
+  [key: string]: unknown;
+}
+
+interface RegistryFile {
+  components?: Record<string, RegistryEntry>;
+  stats?: { totalComponents?: number; totalNodes?: number; totalConnections?: number; [key: string]: unknown };
+  [key: string]: unknown;
+}
+
+/**
+ * P79 D4 — make `_registry.json` describe the starter, not the solution.
+ *
+ * 🔴 Read-modify-write, like `writeProjectMetadata` below and for the same
+ * reason: the file carries `$schema`, `version`, `lastUpdated`, per-component
+ * `type`/`created`/`modified`, and whatever a later schema adds. Only the counts
+ * are re-derived — from the files this writer just put on disk, which is the one
+ * source that cannot disagree with them — and only the dropped components'
+ * entries are removed. Everything else is left as the solution had it.
+ *
+ * Matches entries the way `readLessonProject` does: an entry's `path`, falling
+ * back to its key.
+ */
+function rewriteRegistry(starterDir: string, starter: LessonProjectSource, removedComponents: string[]): void {
+  const file = path.join(starterDir, 'components', '_registry.json');
+  if (!fs.existsSync(file)) return;
+
+  let registry: RegistryFile;
+  try {
+    registry = JSON.parse(fs.readFileSync(file, 'utf8'));
+  } catch {
+    return;
+  }
+  if (!registry || typeof registry !== 'object' || !registry.components) return;
+
+  const removed = new Set(removedComponents);
+  const written = new Map(starter.components.map((c) => [c.registryPath, c]));
+  let totalNodes = 0;
+  let totalConnections = 0;
+
+  for (const [key, entry] of Object.entries(registry.components)) {
+    const registryPath = entry?.path ?? key;
+    if (removed.has(registryPath)) {
+      delete registry.components[key];
+      continue;
+    }
+    const files = written.get(registryPath);
+    if (!files) continue;
+    const nodeCount = (files.nodes?.nodes ?? []).length;
+    const connectionCount = (files.connections?.connections ?? []).length;
+    registry.components[key] = { ...entry, nodeCount, connectionCount };
+    totalNodes += nodeCount;
+    totalConnections += connectionCount;
+  }
+
+  if (registry.stats && typeof registry.stats === 'object') {
+    registry.stats = {
+      ...registry.stats,
+      totalComponents: Object.keys(registry.components).length,
+      totalNodes,
+      totalConnections
+    };
+  }
+
+  fs.writeFileSync(file, JSON.stringify(registry, null, 2), 'utf8');
 }
 
 function writeJson(file: string, value: unknown): void {

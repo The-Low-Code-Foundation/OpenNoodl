@@ -14,15 +14,15 @@
     "Pages/Home": {
       "path": "Pages/Home",
       "type": "page",
-      "nodeCount": 29,
-      "connectionCount": 23,
+      "nodeCount": 24,
+      "connectionCount": 15,
       "modified": "2026-09-05T15:00:00.000Z",
       "created": "2026-08-28T20:36:41.603Z"
     }
   },
   "stats": {
     "totalComponents": 2,
-    "totalNodes": 30,
-    "totalConnections": 23
+    "totalNodes": 25,
+    "totalConnections": 15
   }
 }

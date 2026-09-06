@@ -14,8 +14,8 @@
     "Pages/Home": {
       "path": "Pages/Home",
       "type": "page",
-      "nodeCount": 12,
-      "connectionCount": 9,
+      "nodeCount": 8,
+      "connectionCount": 0,
       "modified": "2026-08-20T07:45:58.242Z",
       "created": "2026-08-20T07:40:27.023Z"
     },
@@ -30,7 +30,7 @@
   },
   "stats": {
     "totalComponents": 3,
-    "totalNodes": 16,
-    "totalConnections": 10
+    "totalNodes": 12,
+    "totalConnections": 1
   }
 }

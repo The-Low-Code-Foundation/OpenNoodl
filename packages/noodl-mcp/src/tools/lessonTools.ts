@@ -199,6 +199,9 @@ export function registerLessonTools(server: McpServer): void {
           retractions: result.retractions,
           ...(result.stillSatisfied.length ? { still_complete_in_starter: result.stillSatisfied } : {}),
           ...(result.droppedFromCopy.length ? { dropped_from_copy: result.droppedFromCopy } : {}),
+          // A component the learner CREATES is not in the starter at all — its
+          // directory and registry entry are gone, not emptied (P79 L1).
+          ...(result.removedComponents.length ? { removed_components: result.removedComponents } : {}),
           ...(result.refusal ? { refused_because: result.refusal } : {}),
           next_step: result.written
             ? `The starter is at ${result.starterDir}. Read the retractions against your step prose — the ` +
