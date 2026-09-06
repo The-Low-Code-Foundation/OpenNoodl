@@ -437,8 +437,55 @@ look for it rather than only in this file:
 | AC1–AC8, AC10 | **BUILT and now MEASURED** — 15/15 on first application of `0025` |
 | AC2 | 🔴 **AMENDED BY D3** — three conditions, not four. The bar is out |
 | AC3 | **HOLDS, and now matters more**: `pg_get_functiondef` is the only thing pinning that the function survived the removal |
-| AC9, AC11 | ⏳ **STILL BLOCKED ON RICHARD** — two YouTube URLs, one real tutorial |
+| AC9, AC11 | ⏳ **RICHARD SUPPLIED THE LINKS 2026-09-06 — see §6.8. Still not run: needs `DATABASE_URL` against the deployed platform, and nothing is deployed** |
 | §1 "editor button follows after" | ✅ **BUILT** |
+
+## §6.8 The links Richard supplied, 2026-09-06 — and why they are not published yet
+
+He answered the AC9/AC11 blocker with **one video and one channel**:
+
+- **Intro to NodeGX** — `https://youtu.be/fqmHH36ndc0` (*"this 'intro to NodeGX' tutorial"*)
+- **The channel** — `https://www.youtube.com/@simple-rick-tutorials` (*"pretty much dedicated to
+  Noodl tutorials"*)
+
+🔴 **AC9 asked for TWO video URLs and there is one.** The count was this row's guess at what he had,
+not a requirement he agreed to — so **AC9 closes on one replay row, or he supplies a second link.**
+Do not invent a second from the channel: `splitVideoUrl` parses `youtu.be/<id>` and a **channel URL
+is not a video** (`src/lib/replays.ts` — the host branch wants `youtu.be`, `youtube.com/watch`, or
+an embed path). A channel row would store a `provider_id` that renders a broken player.
+
+⚠️ **The channel has no home on the platform.** Measured 2026-09-06: nothing in
+`nodegx-community/src/app` references a YouTube channel, so there is no slot to publish it into.
+It is linked from the two places that do exist — the **release notes footer** and the **changelog
+artefact's colophon**. Giving it a home on `/replays` or `/tutorials` is a small build in the
+community repo and **nobody has asked for it**; it is not on this board.
+
+### The commands, ready to run
+
+⚠️ **Neither has been run.** Both write to the deployed database, which is Richard's act with
+credentials a session does not hold — the same shape as the template publish in REL-001. And per
+§6.7, **`0025` has never run against production**, so do that first.
+
+```sh
+# AC9 — the replay. Slug, title, date held, url, one line of description.
+DATABASE_URL=… npx tsx scripts/publish-replay.ts \
+  intro-to-nodegx "Intro to NodeGX" 2026-09-06 \
+  https://youtu.be/fqmHH36ndc0 \
+  "A walk through what NodeGX is and how to build your first app in it." --publish
+```
+
+🔴 **AC11 needs prose, and a session must not write it.** The script refuses a body under 200
+characters — UNI-020 shipped three rows whose body was the literal string `Placeholder body.`, and
+inventing paragraphs here reproduces that defect with better grammar. Tutorial **content** is
+FB-012's, phase 75. What the script needs beyond the file: a slug, a title, a summary, and a
+category from the closed four (`data-lists`, `logic`, `styling`, `backend`).
+
+```sh
+DATABASE_URL=… npx tsx scripts/publish-tutorial.ts \
+  <slug> <bodyFile> <category> "<title>" "<summary>" --publish
+```
+
+⚠️ **Both then need a drive in a browser** — AC9 and AC11 both say *driven*, not asserted.
 
 ## 🔴 §6.7 What is NOT done
 
