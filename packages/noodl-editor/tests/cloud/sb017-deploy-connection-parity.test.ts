@@ -444,7 +444,12 @@ describe('SB-017: the editor deploy path ships every connection the template hol
     // has leaked. It is a browser component's Function, the viewer pushes its
     // ports over `sendDynamicPorts`, and a cloud adapter that also wrote them
     // would be a second writer on the same `setDynamicPorts`.
-    expect(browserFunctions.length).toBe(38);
+    //
+    // 38 → 39 (P79 s14): `f77e6647` (SBR-007 AC3) gave `/Admin/SectionRow` a
+    // sixth Function for the picture-drop gesture. The claim below was measured
+    // on the JSON before the literal moved: 39 browser Functions, none with
+    // dynamic ports.
+    expect(browserFunctions.length).toBe(39);
     expect(browserFunctions.filter((node) => (node.dynamicports || []).length > 0)).toEqual([]);
 
     // …and the same sweep on the cloud side did write ports, so the assertion
