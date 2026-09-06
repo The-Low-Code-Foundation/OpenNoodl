@@ -14,6 +14,15 @@
  *                             — that is NOODL_REMOTE_DEBUG_PORT + scripts/devtools/cdp.js.
  *   NOODL_MAIN_INSPECT_BRK    if '1', break before main.js runs, so startup can
  *                             be stepped through. Nothing loads until you attach.
+ *   NOODL_USER_DATA_DIR       run against this userData directory instead of the
+ *                             real one (~/Library/Application Support/NodeGX on
+ *                             macOS). This is how a *first-run* drive is done:
+ *                             every electron-store file — editorSettings, the
+ *                             Learning register, recently-opened — lives under
+ *                             userData, so the only honest way to see what a new
+ *                             install sees is to point the app somewhere empty.
+ *                             Mutating the developer's own profile to fake it is
+ *                             both destructive and easy to get wrong on restore.
  */
 const path = require('path');
 const child_process = require('child_process');
@@ -42,6 +51,14 @@ if (inspectPort) {
     console.log('[dev-launcher] paused before main.js — the app will not start until a debugger attaches');
   }
 }
+// Chromium's own switch, honoured by Electron: it moves `app.getPath('userData')`
+// wholesale, so every electron-store file follows it without any app-side change.
+const userDataDir = process.env.NOODL_USER_DATA_DIR;
+if (userDataDir) {
+  electronArgs.push(`--user-data-dir=${path.resolve(userDataDir)}`);
+  console.log(`[dev-launcher] userData redirected to ${path.resolve(userDataDir)}`);
+}
+
 // `.` is the app path; `--dev` is read by main.js and sets devMode=yes, which is
 // what makes index.html load the renderer from the dev server instead of a bundle.
 electronArgs.push('.', '--dev');
