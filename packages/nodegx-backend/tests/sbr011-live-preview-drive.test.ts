@@ -54,9 +54,12 @@
  *
  * ⚠️ **What this instrument cannot see.** It runs one browser against one
  * backend over a loopback proxy. It says nothing about a slow or lossy network,
- * about the hub's reconnect/`resync` path, or about many simultaneous visitors —
- * and `SseTransport` opens one connection per subscription, so the last of those
- * is a real cost this file does not price.
+ * about the hub's reconnect/`resync` path, or about many simultaneous visitors.
+ * ⚠️ It used to add *"and `SseTransport` opens one connection per subscription,
+ * so the last of those is a real cost this file does not price"* — the cost was
+ * then priced, on this drive's own Resource Timing, and it was D46: at six open
+ * streams the browser stops sending anything else to that origin. It is fixed
+ * (`SseConnectionPool`), and the arm that counts streams below is the reading.
  *
  * @see sbr011LivePreview.test.ts — the structural half, over the same artefact.
  * @see sbr011-hub-unreachable-drive.test.ts — AC5, which needs a refusing hub.
@@ -417,13 +420,34 @@ describe('SBR-011 — the open site follows the owner, without a reload', () => 
         asUser(owner)
       );
       expect(warm.status).toBe(201);
-      const warmTheme = await client.post<Row>(
-        '/classes/Theme',
-        { ACL: PUBLIC_ACL, name: 'Warm', tokens: { colorPrimary: WARMUP_PRIMARY } },
+      /**
+       * 🔴 **The theme is a SINGLETON the applier reads at `rows[0]`, so this
+       * has to UPDATE it and must not create a second row.**
+       *
+       * `claimSite` seeds a `Theme` row whose twelve tokens are deliberately
+       * empty (`sb004Components.ts`, `seedTheme`), and
+       * `buildThemeApplierScript` takes `rows[0]` and skips every token that is
+       * falsy. An earlier version of this warm-up POSTed a *second* row
+       * carrying `colorPrimary`: the subscription delivered, the query re-ran,
+       * `rows[0]` stayed the empty seeded row, and `--primary` was never set.
+       * That reads as `Theme: false` — **indistinguishable from a dead
+       * subscription**, with the opposite fix — and it is what AC3 failed on
+       * while `Page` and `Section` passed beside it.
+       *
+       * ⚠️ The cardinality assertion is the guard, not decoration: if the
+       * template ever seeds a second `Theme` row this arm must go red rather
+       * than quietly measure the wrong one again.
+       */
+      const themeRows = await client.get<{ results: Row[] }>('/classes/Theme', asUser(owner));
+      expect(themeRows.status).toBe(200);
+      expect(themeRows.json.results).toHaveLength(1);
+      themeId = themeRows.json.results[0].objectId;
+      const warmTheme = await client.put<Row>(
+        `/classes/Theme/${themeId}`,
+        { tokens: { colorPrimary: WARMUP_PRIMARY } },
         asUser(owner)
       );
-      expect(warmTheme.status).toBe(201);
-      themeId = warmTheme.json.objectId;
+      expect(warmTheme.status).toBe(200);
       const warmSection = await client.put<Row>(
         `/classes/Section/${sectionId}`,
         { data: { heading: 'Hours', body: BODY_BEFORE } },
@@ -623,13 +647,22 @@ describe('SBR-011 — the open site follows the owner, without a reload', () => 
     expect(liveCollections).toEqual({ Page: true, Section: true, Theme: true });
     expect(`warmed up: ${warmedUp}`).toBe('warmed up: true');
 
-    // ⚠️ **At least three, not exactly three.** `SseTransport` opens one
-    // `EventSource` per subscription deliberately (`SseTransport.ts:38-44`), so
-    // three is the floor — but a first attempt that times out leaves its stream
-    // behind and the retry opens another, which is D45 and is why the earlier
-    // exact-three form of this arm was wrong. The claim that carries weight is
-    // the one above; this one only says the streams exist.
-    expect(openStreams).toBeGreaterThanOrEqual(3);
+    // 🔴 **The direction of this arm is reversed, and the reversal IS D46's
+    // fix.** It used to read `>= 3`, on the reasoning that `SseTransport` opened
+    // one `EventSource` per subscription deliberately, so three was the floor.
+    // That floor was the defect: a browser gives an origin six connections, an
+    // SSE stream never ends, and at six an ordinary same-origin request is never
+    // sent — including the registration POSTs the streams are waiting for
+    // (`queued 15007ms, waited 5ms`, measured here). `SseConnectionPool` now puts
+    // every unfiltered subscription on this backend on ONE stream registering in
+    // ONE POST, so three subscribing queries must cost one connection.
+    //
+    // ⚠️ Not `toBe(1)`: the hub counts the drive's own anonymous probe stream
+    // (oracle 1) alongside the browser's, and a retry can leave a corpse the
+    // server has not reaped. `< 3` is what discriminates — it is the assertion
+    // the un-fixed code cannot satisfy, and the number itself is logged below.
+    expect(openStreams).toBeLessThan(3);
+    expect(openStreams).toBeGreaterThanOrEqual(1);
   });
 
   it('CONTROL: the mutant is exactly the three subscriptions, and nothing else', () => {

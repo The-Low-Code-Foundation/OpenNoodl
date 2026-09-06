@@ -6,6 +6,12 @@
  * `RealtimeSubscription`. This module is the seam that picks a transport by backend type,
  * and the place a node asks "is this even possible here?" before it draws a port.
  *
+ * ⚠️ **A transport is not a connection.** Since D46 the two SSE dialects share one
+ * `EventSource` per backend across every unfiltered subscription on it
+ * ({@link SseConnectionPool}) — six subscriptions cost one of the browser's six per-origin
+ * connections rather than all six, which is what the sixth one used to do to every other
+ * request the app made. `createRealtimeSubscription` is unchanged from a caller's side.
+ *
  * | backend type | transport | measured live |
  * |---|---|---|
  * | `nodegx`, `nodegx-backend`, `local` | SSE, `NODEGX_SSE` dialect | ✅ |
@@ -36,6 +42,8 @@ export type { RealtimeSubscriptionOptions } from './RealtimeSubscription';
 export { DirectusWebSocketTransport } from './DirectusWebSocketTransport';
 export { SseTransport, NODEGX_SSE, POCKETBASE_SSE } from './SseTransport';
 export type { SseDialect } from './SseTransport';
+export { connectionFor, connectionKey, filterKey, openConnectionCount, SharedSseConnection } from './SseConnectionPool';
+export type { SseMember, SseSubscriptionRequest } from './SseConnectionPool';
 export { ParseLiveQueryTransport } from './ParseLiveQueryTransport';
 export type { ParseLiveQueryProbeResult } from './ParseLiveQueryTransport';
 export { UnavailableTransport, SUPABASE_REALTIME_REASON, CUSTOM_REALTIME_REASON } from './UnavailableTransport';
