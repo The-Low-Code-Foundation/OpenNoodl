@@ -1,5 +1,19 @@
 # Phase 82 — next session
 
+> ### 🟢 s56 (2026-09-05) — A SECOND ROW FOR THE SHELF: TPL-003, THE LANDING PAGES, BUILT IN ONE SESSION
+>
+> Richard asked for *"one more template to ship with 0.2.2 … no backend … a few different pages
+> … 'top 3' landing page types."* It exists, he ruled it in (the launch page was rebuilt on his
+> first look), and on his second ask it is **EMBEDDED** — `embedded://landing-pages` beside the
+> site builder, no publish. Editor specs 172/172, MCP gates 81/81, look 2/2, both typechecks 0.
+> Board row **REL-017**. Everything is in
+> [TPL-003](../phase-78-the-templates/TPL-003-THE-LANDING-PAGES.md).
+>
+> **Next session: NOTHING to build here from s56.** **Nothing is committed** — the pathspecs are
+> under REL-017 in `TASKS.md`, and two of them carry a peer's uncommitted unhold edit as well.
+> ⚠️ The members' area is still a SHELF row awaiting his publish; he called it a packages template. ⚠️ If you regenerate the members' area for any
+> reason, adopt `templatePins.ts` there (register L8) and run its gate.
+
 > ### 🟢 THE PHASE'S "NOTHING LEFT" WAS TRUE OF THE REL ROWS AND FALSE OF THE PHASE, 2026-09-05 (s55)
 >
 > **One commit: `9d5be875`.** No REL row's ACs moved and none could — that half of s54's finding

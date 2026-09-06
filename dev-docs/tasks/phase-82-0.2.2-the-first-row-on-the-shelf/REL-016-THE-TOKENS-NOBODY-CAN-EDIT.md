@@ -95,3 +95,70 @@ the two that survive are the reset-button and empty-list rows, which the change 
 422/7080 by exactly this file.
 
 ⚠️ **Not driven in a running editor.** See the five points above.
+
+---
+
+## The drive — 2026-09-05 · all five checks run, and the gate is not what the row thought
+
+FIX-015's ruling expected *"a bug list rather than a confirmation"*. **All five checks pass.** What
+the drive found instead is that the panel could not have been reached to be tested at all.
+
+### 🔴 `if (config.devMode)` at `router.setup.ts:435` is DEAD IN EVERY BUILD, dev included
+
+`config.devMode` is **`undefined` everywhere**. `devMode: true` lives only in
+`shared/config/config-dev.js`, and **nothing requires that file**; the only config swap in the repo
+is `scripts/noodl-editor/build-editor.ts`, which copies `config-dist.js` over `config.js` for a
+packaged build, and neither of those declares the key. The repo already knows this — `bugtracker.ts`
+carries the measurement for its *own* branch — but the note never reached this gate.
+
+**So `design-tokens`, `file-explorer` and `undo-queue` are registered in no build at all.** Not "not
+in a packaged build": in none. Measured as an A/B on the running editor, in Settings → Editor →
+Experimental panels:
+
+| arm | the experimental-panels list |
+|---|---|
+| as shipped | Component X-Ray · Explain · Build · Docs · Problems · Node References — **6, and none of the three** |
+| the block forced open | the same six **plus Design Tokens, File Explorer, Undo Queue** |
+
+✅ This is what FIX-015's *"the panel has never run in any shipped or dev build"* actually rests on,
+and it is now a reading rather than an assertion. 🔴 **It also means the row's own phrase — "a
+packaged build does not register it" — is too narrow, and a session that flipped `devMode` to
+un-gate would be changing a flag that turns on two other unexercised panels at the same time.**
+
+### ⚠️ And un-gating is TWO gates, not one
+
+Every one of these registers with `experimental: true`, which puts it behind a **per-user Settings
+toggle that is off by default** (`EditorSettingsTab`, "Experimental panels"). So removing the dead
+`devMode` gate does **not** put the panel on anyone's rail — it puts a checkbox in Settings. That is
+a mild shipping posture, and arguably the one FIX-015's caution actually asks for: the panel becomes
+*reachable by someone who opts in* rather than *revealed to everyone*.
+
+### The five checks — driven, in a real editor, on a copied project
+
+Fresh `userData` (via the new `NOODL_USER_DATA_DIR`, see REL-012), a **copy** of
+`project-examples/lessons/log-a-thing`, the `devMode` block forced open for the drive and
+**restored byte-identical afterwards** (`md5 1fbe9b2f…` before and after).
+
+| # | check | reading |
+|---|---|---|
+| 1 | edit reaches the preview and survives a reload | 🟢 preview `--primary: #2563eb` → `#ff0000` on commit; after a **full reload + reopen** the injected style still carried the override and resolved |
+| 2 | undo undoes one edit, not one keystroke | 🟢 seven keystrokes, **one** `⌘Z` restored the previous committed value |
+| 3 | reset restores the default and clears `isCustom` | 🟢 input `#2563eb`, reset button gone, *"1 token overriding defaults"* gone, **`customTokens: []` on disk** |
+| 4 | a `var(--other)` reference resolves | 🟢 `--primary: var(--blue-500)` in the injected CSS, and **measured at the consumer**: a probe styled `color: var(--primary)` computed `rgb(59, 130, 246)` |
+| 5 | the panel renders under a real `SidebarModel` | 🟢 renders, all categories, rows editable |
+
+🔴 **Check 2's evidence is a pair, not a single reading.** The preview was read **before** the blur
+and still said `#2563eb` with `#ff0000` sitting in the input — so the "one write per edit" claim is
+carried by an observed *absence of writes while typing*, beside the write that did land. A
+per-keystroke implementation would have moved the preview seven times.
+
+🔴 **Check 4 was nearly graded on the wrong thing.** `--primary: var(--blue-500)` appearing in the
+`<style>` block proves only that the string was stored. The question is whether it *resolves*, and
+that is only answerable at a consumer: `getComputedStyle` on an element using `var(--primary)`.
+
+### Registered, owner `NONE`
+
+| finding | detail |
+|---|---|
+| 🆕 **`config.devMode` gates three panels and is dead in every build** | Not this row's to decide: removing it exposes `file-explorer` and `undo-queue` too, neither of which has been driven. **Richard's call whether 0.2.2 carries one of them, all three, or none.** The Design Tokens panel is the only one graded |
+| 🆕 **A collapsed `CollapsableSection`'s contents are in `document.body.innerText` but are not clickable** | The "Enable Design Tokens" label read as present and `elementFromPoint` returned the section root. A DOM-text drive would have reported the toggle as present and then "clicked" nothing. ✅ **`elementFromPoint`, every time** |

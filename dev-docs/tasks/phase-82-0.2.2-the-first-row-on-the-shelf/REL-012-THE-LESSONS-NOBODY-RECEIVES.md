@@ -176,3 +176,113 @@ seed — the shelf is still non-empty on `log-a-thing` alone.
 
 No suite, no `tsc`, no webpack, no build, no editor (shared-box constraint). Every AC below is
 ASSERTED-ONLY until the gate is run — see the session report for the exact commands.
+
+---
+
+## Grading session — 2026-09-05 · every AC moved from ASSERTED-ONLY to a reading
+
+The build session left all five ACs ungraded: *"No suite, no `tsc`, no webpack, no build, no editor."*
+This session ran all of them. **Nothing was rebuilt and nothing was fixed** — the only source change
+is one dev-launcher line that made the drive possible at all.
+
+| AC | instrument | reading |
+|---|---|---|
+| **AC1** | a **real packaged artefact**, built here | 🟢 `Contents/Resources/lessons` present, **4 bundles, 122 files** |
+| **AC2** | `npx jest tests-unit/rel-012` | 🟢 **2 suites / 30 tests, EXIT=0** |
+| **AC3** | same | 🟢 ledger + stand-down arms pass |
+| **AC4** | same | 🟢 the `shipped_` namespace arm passes |
+| **AC5** | **driven**, clean profile, both arms | 🟢 3 lessons on the shelf; **Log a thing opened** |
+
+### 🔴 AC5 — the drive, and the arm that says it was the seed
+
+**The instrument first.** A "clean profile" could not be had without either mutating Richard's own
+`~/Library/Application Support/NodeGX/` (destructive, and the reason his `learning_folder.json`
+already carried a `stood-down` ledger from an earlier launch) or moving `userData` wholesale.
+`packages/noodl-editor/scripts/start-electron-dev.js` now honours **`NOODL_USER_DATA_DIR`**, in the
+same shape as the `NOODL_MAIN_INSPECT_PORT` hook beside it: it appends Chromium's own
+`--user-data-dir` switch, which moves `app.getPath('userData')` and therefore every electron-store
+file with it. ✅ **Richard's register was never touched — `md5` unchanged across the whole session
+(`02d3f478…`).**
+
+**Arm A — the seed present, a profile containing one file (`firstRunLegal.json`):**
+
+```
+[renderer:info] (lessonseed.ts:419) [lesson-seed] seeded 3 shipped lesson(s):
+  shipped_it-breaks-on-a-phone, shipped_log-a-thing, shipped_your-creature-on-screen
+```
+
+The Learning tab opened on **Installed lessons** — *"3 lessons"*, three cards. Clicking **Start** on
+*Log a thing* opened the project: lesson panel, the six task chips, and the live preview rendering
+*"Type a line and press Log it."* Screenshots: `rel012-ac5-learning-tab.png`,
+`rel012-ac5-lesson-opened.png`.
+
+**Arm B — the reverted arm.** `void seedShippedLessonsOnStartup();` disabled (one line), the renderer
+rebuilt, a **second** empty profile, same stack:
+
+- the shelf is empty, and the tab lands on **Your path** — *"Sign in to the community and these three
+  answers build your path"*, which is **exactly the finding this row opened with**;
+- `learning_folder.json` **was never created at all**, so the absence is structural rather than a
+  rendering that happened to read zero.
+
+⚠️ The absence in arm B is asserted **beside a known-firing signal**: the `[lesson-seed]` line is the
+same grep over the same log that returned it in arm A. `grep -c` read **0**.
+
+### 🔴 AC1 — measured against a pre-change artefact that was already on disk
+
+`dist/mac-arm64/NodeGX.app` from **2026-08-20 07:26** — built before this row landed — has **no
+`lessons` directory in `Contents/Resources`**. That is the reverted arm for AC1, and it is a real
+artefact rather than a mutant. The build taken here (`build:bundles`, then
+`electron-builder --mac --arm64 --dir`, both EXIT=0, artefact mtime **2026-09-05 09:50:51**) has it.
+
+🔴 **The stowaway filter was graded with a presence control, because "0 stowaways" is a number a
+broken filter also prints.** On this machine the source directory **does** carry the two files the
+filter exists to stop:
+
+```
+project-examples/lessons/your-creature-on-screen/.mcp.json
+project-examples/lessons/your-creature-on-screen/solution/.mcp.json
+```
+
+and the counts reconcile exactly: **source 124 files − 2 = 122 in the artefact**, `.mcp.json` and
+`.DS_Store` count **0** inside the app. One developer's absolute paths did not ship.
+
+**Trap 2 was closed by running the shipped resolver, not by reasoning about it.**
+`resolveShippedLessonsRoot` was executed against the built app's real `appPath`
+(`…/Resources/app.asar`) and `resourcesPath`, and returned:
+
+```
+root:   …/NodeGX.app/Contents/Resources/lessons
+probed: …/NodeGX.app/Contents/project-examples/lessons   (dev candidate, missed — correct)
+        …/NodeGX.app/Contents/Resources/lessons          (hit)
+```
+
+with `readdir` of that root equal to `readdir` of `project-examples/lessons`. The probe spec was
+temporary and has been deleted — it cannot live in CI, which has no built app.
+
+### 🔴 What the drive found that the build session could not
+
+1. **Three bundles ship, not two — Richard's number is already met.** `it-breaks-on-a-phone` is
+   built and seeded cleanly. A **fourth**, `poke-it`, was being authored by a peer session during
+   this build and is in the artefact too; the packaged count is therefore **4 at the moment of
+   measurement** and will follow whatever is on disk at build time, exactly as designed.
+2. ✅ **The AC5 open risk is closed.** *"Nothing proves `your-creature-on-screen` clears the whole
+   gate"* — all three cleared it: three `installed` ledger rows, three cards, no refusals.
+3. 🔴 **Two editors cannot coexist on this checkout**, so the reverted arm cost a full stack
+   restart. A second Electron on a second profile reached `DevTools listening on 9223` and then died:
+   the web server's port (8574) was taken, main called `showMessageBox` from a `net` error handler,
+   and the process aborted with *"async hook stack has become corrupted"*. **The profile redirect
+   works; a second instance does not.**
+4. ⚠️ **A shipped lesson is badged *"Written locally"* on the shelf** — see the register row below.
+
+### Registered, owner `NONE`
+
+| finding | detail |
+|---|---|
+| 🆕 **Shipped lessons are badged *"Written locally"*** | `SHIPPED_PROVENANCE` is `'curated'`, but both manifests declare `authoredBy: "ai"`, and `resolveProvenance`'s asymmetry is deliberate: *"declaring `curated` buys trust and is ignored; declaring `authoredBy: "ai"` spends it."* So every shipped bundle installs as `local-ai`, and the shelf renders that as *"Written locally"* — on a first run, three lessons that came with the product are labelled as though the learner wrote them. **Do not "fix" by relaxing the policy** — that would undo UNI-010's one-directional trust. The seam is the *label*, not the provenance |
+| 🆕 **Nothing gates the artefact** | AC1 is green here because a build was run **by hand**. `lessons:check` still covers the repo directory only, and the packaging spec still grades the **config**. This is trap 5, still open: the artefact check exists only for as long as someone remembers to run it |
+
+⚠️ **Amendment, same day:** a peer session committed spine lessons 3 (`poke-it`) and 4
+(`it-forgets-you`) after this build, so the repo now carries **five** bundles and `lessons:check` is
+EXIT=0 over all five. **The 4/122 reading above is the artefact that was measured, not a claim about
+the current tree** — the entry copies whatever is on disk at build time, which is the property the
+measurement was taken to establish.

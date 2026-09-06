@@ -39,6 +39,14 @@ Consequence: **REL-001 and REL-004 are independent.** The template can go out to
 on 0.2.0 the moment its look is ruled, whether or not the app cut is ready. Do not let one block
 the other.
 
+⚠️ **AMENDED s45 (2026-09-05) — independent is not unordered.** Neither blocks the other
+*mechanically*, and that stays true. But `EmbeddedTemplateProvider.list()` ships **empty** in 0.2.2
+(`HELD_TEMPLATE_IDS` holds `hello-world` and `site-builder`), so the create wizard and the Templates
+tab draw **only** the community shelf. **Tag before publishing and 0.2.2 ships an empty template
+shelf under release notes whose first headline is *"templates you can start from"*.** So: publish
+first, confirm the row is live, then tag — [`PUBLISH-0.2.2.md`](../release-0.2.2/PUBLISH-0.2.2.md)
+§6. The independence is about dependency; the ordering is about what a person sees.
+
 ### §1.3 🔴 P78's T6 is already done, and its handoff says otherwise
 
 The phase-78 handoff (s17, 2026-08-29) says *"`T6` — three template fixes, and they are the only

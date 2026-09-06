@@ -176,8 +176,77 @@ the app and masks signing problems.
 
 ---
 
-## 6. What row 8 does NOT wait for
+## 6. What row 8 does NOT wait for — and the one ordering that does matter
 
 ✅ **The template publish (row 7) is a separate moment** — Richard's ruling G5a. The shelf is a
 database row written by `publish-project-template.ts`; the tag is a GitHub release. Neither blocks
-the other, and row 7 can go first.
+the other **mechanically**, and row 7 can go first.
+
+🔴 **But it should go first, and "neither blocks the other" was read as "the order does not
+matter".** G5a is a ruling about *mechanism*; the consequence for a reader is the opposite. The
+create wizard and the new Templates tab draw the embedded shelf **plus** whatever the community
+shelf serves, and until `publish-project-template.ts` has run the second half is nothing.
+
+⚠️ **SUPERSEDED LATER THE SAME DAY — the measurement below was true and is not any more, and it is
+kept because it is what the ruling was taken on.** Richard ruled the site builder **PASSABLE** on
+2026-09-05 and asked for it on the shelf; `HELD_TEMPLATE_IDS` now holds `hello-world` alone, and
+`EmbeddedTemplateProvider.list()` returns **one row**, `embedded://site-builder`.
+
+> **As measured 2026-09-05, before the ruling:** `EmbeddedTemplateProvider.list()` returns **zero
+> rows** in 0.2.2 — `HELD_TEMPLATE_IDS` holds both `hello-world` (it is the blank project) and
+> `site-builder` (Richard's D1) — so the create wizard and the new Templates tab draw **only** what
+> the community shelf serves.
+>
+> ✅ **Driven in the running app 2026-09-05, both surfaces, launcher only** — the Templates tab
+> reads *"No templates published yet"* and the create wizard's picker reads *"There are no templates
+> to start from right now"* with **`Next` disabled**. 🔴 **Read as the genuine empty state, not a
+> failed fetch**: the tab's other empty state is *"Templates could not be loaded"* and it did
+> **not** render, so the community request completed and returned nothing. ⚠️ That is a reading
+> against a dev stack's endpoint; it does not by itself prove the **production** shelf is bare.
+
+**So the shelf is no longer bare, and the reason to run row 7 first is now narrower and still
+real**: these notes headline the members' area by name, and a 0.2.2 tagged before the publish
+offers a reader the site builder under a paragraph promising them an association's members' area.
+Nothing is broken and no gate is red; the release is simply wrong about itself for as long as the
+gap lasts. **Run row 7, confirm the row is live, then tag.**
+
+✅ **RETAKEN 2026-09-05 against the unheld shelf, both surfaces, launcher only** — and it was
+written down as a prediction *first*, then measured.
+
+| surface | reading |
+|---|---|
+| Templates tab | facets **`All (1) ✓` / `Site (1)`**, one row: **Site Builder**, its description, chips `Site` and `Built in`, `Use this template →` |
+| create wizard | *Start from a Template* → Project Basics → `Next` → **Choose a Template**, same facets, same row |
+
+🔴 **`Next` is the discriminating half, and it was read on BOTH sides of the selection**: with the
+row drawn but nothing chosen it is **`disabled: true`**; on clicking the row it is **`disabled:
+false`** and the card reads `aria-pressed="true"` / *"✓ Selected"*. The empty-shelf reading above
+recorded `Next` disabled with **nothing to select** — so "disabled" alone would have been the same
+character in both worlds, and only the transition separates them.
+
+Pictures: [`notes/rel-011c-unhold-2026-09-05/`](../phase-82-0.2.2-the-first-row-on-the-shelf/notes/rel-011c-unhold-2026-09-05/).
+
+⚠️ **Neither empty-state sentence rendered** — not *"No templates published yet"* and not
+*"Templates could not be loaded"*. ⚠️ Still a reading against a dev stack; it says nothing about the
+**production** community shelf, which remains bare until row 7 runs.
+
+✅ **THE LANDING PAGES (TPL-003) NEED NO PUBLISH — THEY ARE EMBEDDED, LIKE THE SITE BUILDER.**
+Richard, 2026-09-05, after ruling them in: *"I want to make it one of the packages templates like
+the members area and site builder."* So `landing-pages.content.json` is compiled into the editor
+beside `site-builder.content.json`, registered in `EmbeddedTemplateProvider`, and the shipped
+shelf offers **two** rows the day 0.2.2 installs: `embedded://site-builder` and
+`embedded://landing-pages` (`sbr-001/template-needs-backend.test.ts` pins the whole list). Nothing
+to run here for it. ⚠️ The members' area is NOT embedded — it is the shelf row above, and it is
+still yours to publish.
+
+(A curated copy still exists at `templates/landing-pages/` — the same build writes both shapes and
+the gate holds both — and it passed the platform's own validators on 2026-09-05: 66 text files, 0
+binary, `has-home`. If it is ever wanted on the community shelf as well, the command is in
+`TPL-003-THE-LANDING-PAGES.md`; today that would list the same template twice.)
+
+⚠️ Preconditions for row 7 re-checked at HEAD on 2026-09-05, all green: four top-level entries,
+**100 files** (`32 × 3 + 4`, the figure `tpl001Template.test.ts` §1's control asserts), no
+`.mcp.json` / `CLAUDE.md` / `.gitignore`, no `.env` / `*.key` / `*.pem`, no absolute developer path
+and no credential-shaped literal in any file, and the committed artefact **byte-identical to a fresh
+generate** (`tpl001Template.test.ts`, 82/82, `EXIT=0`). The submission file's "94 files" is the
+09-01 figure and is superseded.

@@ -1,6 +1,27 @@
 # Phase 78 — next session
 
+> ### 🟢 2026-09-05 — TPL-003, THE LANDING PAGES: BUILT, GATED, PHOTOGRAPHED, DRIVEN
+>
+> Richard asked for a third template for 0.2.2 and s4's *"the next template is blocked on the first
+> one being published"* was overridden by the person who made it. `templates/landing-pages/`, three
+> pages, no backend, a working `mailto:` form. Ruled in the same day and then **EMBEDDED** on his
+> ask (`embedded://landing-pages`, beside the site builder — no publish). Full record and an
+> eight-row register: [TPL-003](TPL-003-THE-LANDING-PAGES.md). Rides 0.2.2 as P82's **REL-017**.
+> **Nothing committed** — pathspecs under REL-017 in P82's `TASKS.md`.
+> ⚠️ `templatePins.ts` is the new shared home of the pinning; `tpl001Template.ts` still has its copy
+> (register L8) — adopt it the next time the members' area regenerates, with its gate.
+
 ## Where it stands
+
+> 🔴 **CORRECTED 2026-08-31 (phase 82, session 1): `T6` IS DONE.** The line below said it was the
+> only buildable work left; measured in `templates/members-area/` at HEAD, **all three fixes are in
+> the artefact** — they rode in with the TPL-002 / DEF-011 work rather than as a task called T6. See
+> the table under item 2. **`T5` (publication) is now the only open item here, and it is unblocked.**
+> ✅ *A handoff naming "the only work left" is a claim about an artefact — go read the artefact.*
+>
+> ⚠️ **T5 is being driven from phase 82** as `REL-001`, sequenced behind the template's look
+> (`REL-002a/b/c`). Do not publish from this phase — see
+> [`../phase-82-0.2.2-the-first-row-on-the-shelf/TASKS.md`](../phase-82-0.2.2-the-first-row-on-the-shelf/TASKS.md).
 
 **Everything buildable is built except `T6`, three template fixes owed before publication. The
 register has no unowned rows left.**
@@ -56,11 +77,16 @@ closing; it is `NONE` wearing something that parses like a task id.
 1. ⬜ **T5 / publishing. Richard drives it first.** Unchanged since s4. AC1 of TPL-001 is
    ungradeable until the template is on the shelf. **Still the only thing between phase 78 and
    done.**
-2. 🔴 **`T6` — three template fixes, and they are the only buildable work left in this phase.**
-   D22 (the directory shows the founder's **email address as their name**, on every install, on the
-   first screen a new moderator opens), D23 (two pages both headed "Members"), D24 (Approve and
-   Decline touching). All three are in the template Richard is about to publish. **Do them before
-   T5, not after.** Details in [README](README.md) §T6; measurements in the register.
+2. ✅ **`T6` — DONE. Measured at HEAD 2026-08-31**, not relayed:
+
+   | row | claimed defect | at HEAD |
+   |---|---|---|
+   | D22 | founder's **email address as their name**, every install | `Pages/Setup` asks **"Your name"**; `moderatorName` required at the door — the email fallback carries a comment saying the door makes it **dead** |
+   | D23 | two pages both headed "Members" | `Pages/Directory` heads **"Who belongs"**; `Pages/Members` heads "Announcements" |
+   | D24 | Approve and Decline touching | `Members/RequestRow` sets `columnGap: var(--space-3)` |
+
+   🔴 **This row read `open` for two days after the artefact was fixed.** The fixes landed under
+   TPL-002 / DEF-011 commit messages, so no commit ever said "T6" and nothing re-derived the row.
 3. ⬜ **T3, the category question.** Needs Richard. Its constant lives in `ProjectTemplate.ts` —
    ✅ **checked 08-29: clean in the tree, and P77's last commit there (`2cb89446`, SBR-003) has
    landed.** Confirm P77 is done with it before starting, not just that Richard has ruled.

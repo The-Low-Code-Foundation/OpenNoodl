@@ -43,6 +43,14 @@ here is blocked on knowing what we are building.
   - ⬜ **[TPL-002 — the opt-in notifications](TPL-002-THE-OPT-IN-NOTIFICATIONS.md)**. Split from
     TPL-001 because email needs SMTP config a template **cannot ship** — the shelf's first row
     must not wait on that. Email itself already exists (`Mailer.ts` + the Send Email node).
+  - 🟢 **[TPL-003 — the landing pages](TPL-003-THE-LANDING-PAGES.md)**, `site` (category needs
+    Richard's ruling). Richard's ask, 2026-09-05: *"a simple pretty landing page … no backend just
+    front end small business or freelancer landing page, presentation and a contact form … a few
+    different pages within the same template for different typical 'top 3' landing page types."*
+    **Built, gated (39/39), photographed (12 shots, 0 console errors) and driven (the form composes
+    a real `mailto:`, the header scrolls to it) in one session.** Three pages — freelancer at `/`,
+    local business, product launch — sharing a header, a footer, a contact band and a switcher strip
+    a person deletes. Left: his look, and the publish (command in the task file).
 - ⬜ **T3** — the **category question**: either extend the ruled vocabulary, or re-file the three
   templates that do not fit it. ⚠️ P75 already found the surface-level cost of getting this wrong —
   the card drew the machine slug `starter` at a person.

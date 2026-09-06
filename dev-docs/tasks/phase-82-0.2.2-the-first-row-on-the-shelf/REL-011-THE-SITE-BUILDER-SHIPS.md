@@ -1885,3 +1885,92 @@ heights across the honest pair: `public-home-desktop` **1125 → 1141px (+16)**,
 **It does not re-rule anything, and it does not lift the hold.** D1 stands, `HELD_TEMPLATE_IDS` is
 untouched, AC3 is Richard's. This replaces a comparison that would have flattered the change with
 one that isolates it; the verdict on what it isolates is still his.
+
+---
+
+## §13 🟢 AC3 RULED, D1 CLOSED — the site builder ships in 0.2.2 and is on the shelf (s53, 2026-09-05)
+
+> **Richard, 2026-09-05**, on the honest pair §12 built: *"It's passable, let's include it in the
+> 0.2.2 release, add it to the templates menu."*
+
+**That is REL-011c AC3.** It is the one thing on this row that was never a session's to decide (§4),
+and it is now decided. **REL-011c closes.**
+
+### §13.1 What was unheld, and the four gates that had to move
+
+`HELD_TEMPLATE_IDS` drops `'site-builder'` and keeps `'hello-world'` — held for the separate,
+unchanged reason that it **is** the blank project (`DEFAULT_PROJECT_TEMPLATE`), so offering it would
+offer the blank project twice and deleting it would break Quick Start.
+
+🔴 **Four gates asserted the hold, and only ONE of them failed.** That ratio is the finding.
+
+| gate | what it did |
+|---|---|
+| `sb-007/site-template.test.ts` §1 | **RED** — *"is HELD off the real shelf"*, read on the **shipped** provider. The only one that could see the change. |
+| `sbr-001/template-needs-backend.test.ts` | its shipped-shelf case asserted `toEqual([])` — **rewritten, not deleted** |
+| `fb-005/template-shelf.test.ts` | green throughout: built on `new EmbeddedTemplateProvider(new Set())` |
+| `fb-005/template-install-path.test.ts` | green throughout: *"every listed row carries an installable URL"*, over zero rows |
+
+⚠️ **Two of the four were green before and after because they were constructed with nothing held** —
+deliberately, and the deliberation is recorded in both files: a vocabulary rule asserted over an
+empty list passes for the worst possible reason. ✅ That was the right call and it is why the
+category, the URL and the `needsBackend` mapping were all still being graded through the hold. 🔴
+**But it also means those two arms would have read identically if the shelf had shipped empty
+forever** — which is the D1 defect's own shape, one level up. The gate that can tell the shipped
+shelf from the unheld one is `sb-007`'s, and there was exactly one of it.
+
+### §13.2 What the re-aimed gates now say that they did not before
+
+- **`sb-007`** asserts the **whole row** off the shipped provider — `title`, `category: 'site'`,
+  `needsBackend: true` — not merely that it is present. That is what the wizard and the Templates
+  tab draw, and `needsBackend` is what SBR-001 routes the create path on.
+- **`sbr-001`**'s shipped-shelf case is `toEqual(['embedded://site-builder'])`, a whole-list
+  assertion rather than a `toContain`: *"remove Hello World, it's not a template"* is a separate
+  standing decision, and a `toContain` would let the blank project back onto the shelf silently.
+- **`sbr-001`**'s `needsBackend` composition now reads **both values** — site builder `true`,
+  hello-world `false`. Read at one value it passed for a function returning a constant.
+- 🔴 **The hold MECHANISM is now graded directly.** The old *"unholding is one string"* case became
+  strictly weaker than the shipped assertion and would have gone on passing as a duplicate of it.
+  Re-aimed at a provider constructed holding the site builder: held means unoffered, and never means
+  uninstallable. **Nothing on the shipped shelf exercises the `continue` any more**, so without this
+  a broken skip would leave the list looking correct — which is precisely how D1 was missed.
+
+### §13.3 The prose that had become false, and where
+
+Four documents stated the shipped shelf was empty as a *fact about 0.2.2*. All four moved:
+
+`EmbeddedTemplateProvider.ts` (the hold's own header) · `Templates.tsx` (*"THE SHIPPED STATE OF THIS
+TAB IS ZERO ROWS"*) · `RELEASE-NOTES-0.2.2.md` (two places, one of them a known-issue bullet telling
+readers the template they can now see is not offered) · `PUBLISH-0.2.2.md` §6.
+
+⚠️ **`PUBLISH-0.2.2.md` §6's reading is kept, quoted and marked superseded rather than deleted.**
+It is a real measurement — `list()` returning zero rows, driven in the app on both surfaces the same
+day — and it is what D1 was taken on. **Publish-before-tag survives it with a narrower reason**: the
+shelf is no longer bare, but the notes headline the members' area by name, and a tag before row 7
+offers a reader the site builder under a paragraph promising them something else.
+
+### §13.4 🟢 The driven half — predicted, then taken
+
+**Written as a prediction before the app was launched**: both surfaces draw one row, and the
+picker's `Next` enables on selecting it. Both hold.
+
+| surface | reading |
+|---|---|
+| launcher Templates tab | `All (1) ✓` / `Site (1)`, one **Site Builder** row, chips `Site` + `Built in` |
+| create wizard picker | same facets, same row, reached through *Start from a Template* → basics → `Next` |
+
+🔴 **`Next` was read on both sides of the selection, and that pair is the whole point.** Row drawn,
+nothing chosen: **`disabled: true`**. Row clicked: **`disabled: false`**, `aria-pressed="true"`,
+*"✓ Selected"*. The pre-ruling drive recorded `Next` **disabled** on an empty shelf — so the
+disabled state alone reads identically in both worlds and **only the transition discriminates**.
+⚠️ Neither empty-state sentence rendered, which is what says this is a drawn row rather than a
+papered-over failure.
+
+Pictures: [`notes/rel-011c-unhold-2026-09-05/`](notes/rel-011c-unhold-2026-09-05/).
+
+⚠️ **The launch was blocked for ~4 minutes by a peer's in-flight `nodegx-export/src/analyze/plan.ts`
+(`TS2339`, written 19:23 mid-compile)** — the editor bundle failed, Electron opened, and
+`reactMounted` read **false**. That is the *"window opens, renders nothing"* failure this app is
+prone to, arriving from another lane's uncommitted edit rather than from anything here. Their next
+save cleared it, the watcher rebuilt clean, and a reload mounted. **Nothing was edited in their
+package.**

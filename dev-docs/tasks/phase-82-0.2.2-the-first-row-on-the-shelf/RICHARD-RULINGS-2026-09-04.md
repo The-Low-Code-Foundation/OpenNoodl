@@ -157,10 +157,29 @@ grade**. That distinction is the whole of §1's rubric and this row spent six fi
 Neither is a session's to take, and **nothing about the look should be built until they are
 answered**, because they decide whether the work exists at all.
 
-### ✅ D1 — ANSWERED 2026-09-04: **back on hold, phase 77 owns it**
+### 🟢 D1 — CLOSED 2026-09-05: **the site builder ships in 0.2.2 and is on the shelf**
 
-**Richard's answer: back on hold.** README §3's hold list is **reinstated**, unchanged, with the
-site-builder template, VIB-009 and P77's five unbuilt tasks in it.
+> **Richard, 2026-09-05**, shown the two seams he had named built and photographed against a
+> one-variable before-arm: *"It's passable, let's include it in the 0.2.2 release, add it to the
+> templates menu."*
+>
+> That is **REL-011c AC3** — the ruling this row was waiting on — and it closes D1. `site-builder`
+> is out of `HELD_TEMPLATE_IDS`; `hello-world` stays in it, for the separate and unchanged reason
+> that it is the blank project. The create wizard and the Templates tab now draw one embedded row.
+>
+> 🔴 **What moved his answer was the product, not the photography, and that distinction was nearly
+> lost.** The nine SHITTY verdicts of 09-04 were taken on pictures the harness had supplied its own
+> blue and gradient rectangles to (§8). The hand-off that followed the seam work pointed at those
+> same 09-03 pictures as the comparison to re-show him — which would have credited the two seams
+> with the instrument fix. The before-arm was rebuilt so the pair moves the seams and nothing else
+> (**REL-011 §12**), and the ruling was taken on that pair.
+>
+> ⚠️ **Only the site builder was ruled on.** VIB-009 and P77's unbuilt tasks were not put to him and
+> are not affected by this.
+
+**The 2026-09-04 answer, superseded and kept:** *back on hold.* README §3's hold list was
+**reinstated**, unchanged, with the site-builder template, VIB-009 and P77's five unbuilt tasks in
+it.
 
 🔴 **CORRECTION, 2026-09-04, from Richard's own testing pass — "holding costs no action" was FALSE,
 and it was false about the EDITOR.** The template sat in `EmbeddedTemplateProvider`'s map and
